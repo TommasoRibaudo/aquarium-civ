@@ -12,9 +12,11 @@
 | 2026-10-28 | Hosting/CI | GitHub, private repo | GameCI builds; Play internal testing + TestFlight deploy |
 | 2026-10-28 | Assets | Asset pack + AI for minor things | Kit choice pending (06-assets.md) |
 
+| 2026-10-28 | Unity version | 6000.3.27f1 (6.3 LTS) | Matches GameCI images; project at `AquariumCiv/` |
+| 2026-10-28 | Budget | Free options only for now | KayKit free packs (CC0); no paid packs or AI subscriptions yet |
+
 ## Still open
-- Unity version: 6.3 LTS vs 6.6
-- Asset kit (KayKit recommended) and AI tool subscriptions
+- AI tools for minor assets (free tiers only for now)
 - Monetization model
 - What "cleaning/care" concretely means in-game
 - Offline simulation approach (full catch-up sim vs abstracted)
