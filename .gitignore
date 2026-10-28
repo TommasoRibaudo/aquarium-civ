@@ -1,0 +1,48 @@
+# Unity project lives in AquariumCiv/
+AquariumCiv/[Ll]ibrary/
+AquariumCiv/[Tt]emp/
+AquariumCiv/[Oo]bj/
+AquariumCiv/[Bb]uild/
+AquariumCiv/[Bb]uilds/
+AquariumCiv/[Ll]ogs/
+AquariumCiv/[Uu]ser[Ss]ettings/
+AquariumCiv/[Mm]emoryCaptures/
+AquariumCiv/[Rr]ecordings/
+AquariumCiv/Assets/Plugins/Editor/JetBrains*
+
+# IDE / generated
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Build outputs
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+sysinfo.txt
+
+# Agent scratch output (screenshots, test results)
+agent-out/
+
+# OS
+.DS_Store
+Thumbs.db

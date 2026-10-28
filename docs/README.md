@@ -1,0 +1,25 @@
+# Aquarium Civilization — Discovery Phase
+
+Working concept: an idle civilization builder in a glass box. The civ lives and grows on its own
+(including offline). You log in, watch what the little people are doing, and — like a real
+aquarium — you have to look after it (clean up, keep it healthy) or it degrades.
+
+## Phase order
+1. **Research** (current): gather documentation on technology, idle design and reference games.
+2. **Working method**: pick engine/stack, tools, repo layout, workflow.
+3. **Game definition**: pillars, core loop, what the player sees, what "cleaning" means, scope.
+4. **Planning**: prototype goals, milestones.
+
+## Research documents
+| # | File | Topic |
+|---|------|-------|
+| 00 | [research/00-synthesis.md](research/00-synthesis.md) | **Start here**: cross-cutting conclusions |
+| 01 | [research/01-technology.md](research/01-technology.md) | Engines (Unity / Godot / web), agent simulation, offline progress, saves, desktop overlay |
+| 02 | [research/02-idle-design.md](research/02-idle-design.md) | Idle/incremental design theory, pacing, good vs shallow idle games, monetization |
+| 03 | [research/03-aquarium-references.md](research/03-aquarium-references.md) | Caretaking/neglect loops, god games, emergent narrative, competitors |
+| 04 | [research/04-agentic-unity.md](research/04-agentic-unity.md) | Unity CLI + Pipeline, MCP bridges, batchmode, agent workflow |
+| 05 | [research/05-github-cicd.md](research/05-github-cicd.md) | GameCI builds, Play/TestFlight deploy, LFS, costs |
+| 06 | [research/06-assets.md](research/06-assets.md) | Asset kits (KayKit/Synty/Quaternius/Kenney), crowd animation, AI asset tools |
+
+## Open questions
+See [decisions.md](decisions.md) (to be filled in as we answer them).
