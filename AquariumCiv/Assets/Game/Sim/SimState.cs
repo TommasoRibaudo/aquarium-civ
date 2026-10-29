@@ -13,22 +13,31 @@ namespace AquariumCiv.Sim
     {
         public float yearsPerRealHour = 1f;     // 1 real hour = 1 game year (Gate 2)
         public float notableAgeFactor = 1f;     // notables age with the calendar (user, 2026-10-29: half-speed aging confused people)
-        // Life stages (decisions.md 2026-10-29 "Life stages": "Only stretch elderly"). The lifespan doubled from the
-        // prototypes' 55–80 years, so the elder stages doubled with it (45 → 90, 60 → 120). Adulthood (16), parenthood
-        // (20–40) and marriage (≤ 50) stay as they were.
-        public float lifespanMin = 110f;        // a notable dies of old age at a lifespan drawn from [min, max)
-        public float lifespanMax = 160f;
+        // Life stages. For the slice notables live a normal lifespan, as in the prototypes (user, 2026-10-29: "for this
+        // playthrough make the notables live like the others, for the final game we will expand it"). Adulthood (16),
+        // parenthood (20–40) and marriage (≤ 50) are fixed in the sim.
+        // Planned final-game profile (decisions.md 2026-10-29 "Notable aging" / "Life stages": "Only stretch elderly"):
+        // lifespan 110–160, elderAge 90, eldestStoryAge 120, masterAge 50.
+        public float lifespanMin = 55f;         // a notable dies of old age at a lifespan drawn from [min, max)
+        public float lifespanMax = 80f;
         public float masterAge = 50f;           // old enough to take an apprentice (user, 2026-10-29: "apprentices 50")
-        public float elderAge = 90f;            // elders (prototypes: 45)
-        public float eldestStoryAge = 120f;     // the eldest tells the founding story in winter from this age (prototypes: 60)
+        public float elderAge = 45f;            // elders
+        public float eldestStoryAge = 60f;      // the eldest tells the founding story in winter from this age
         public float messFullHours = 48f;       // mess reaches its cap after this many real hours
         public int trashMax = 12;
         public float trashPerPersonHour = 0.02f;
         public float outputPenaltyMax = 0.25f;  // work-pace drop at full mess (Gate 1)
         public int buildingSlots = 20;
-        public int startNotables = 5;
-        public int minNotables = 5;
-        public int maxNotables = 12;
+        // Named notables per era (game definition §4, #26): about 2–4 in the camp, 4–8 in the village, up to 12 in the
+        // town. The band counts adults (16+). Births pause while the adults are at the era's max; children under 16 don't
+        // count against it, up to familyRoom of them over the max, so notable families go on across generations (user,
+        // 2026-10-29: "notables give birth to people that will become notables"). Below the min the crowd fills in, one
+        // notable a year (SimCore.YearlyNotables).
+        public int familyRoom = 2;              // living notables (children included) never exceed the era's max + this
+        public int startNotables = 3;           // fits the camp's band
+        public NotableBand campNotables = new NotableBand { min = 2, max = 4 };
+        public NotableBand villageNotables = new NotableBand { min = 4, max = 8 };
+        public NotableBand townNotables = new NotableBand { min = 8, max = 12 };
         public float storyChancePerMonth = 0.07f;
         public double fullSpeedHours = 8;       // offline: the first hours away run at full speed (game definition v0.2)
         public double slowSpeed = 0.25;         // ... and the rest at this fraction (a weekend away ≈ 18 game years)
@@ -48,6 +57,23 @@ namespace AquariumCiv.Sim
         }
 
         public double OfflineSimHours(double realHoursAway) => OfflineSimHours(realHoursAway, fullSpeedHours, slowSpeed);
+
+        /// <summary>How many living notables an era wants.</summary>
+        public NotableBand NotablesIn(Era era) => era switch
+        {
+            Era.Camp => campNotables,
+            Era.Village => villageNotables,
+            _ => townNotables,
+        };
+    }
+
+    /// <summary>The adult-notable count an era wants: the crowd fills up to <see cref="min"/>, births pause at <see cref="max"/>
+    /// (children get <see cref="SimConfig.familyRoom"/> on top).</summary>
+    [Serializable]
+    public class NotableBand
+    {
+        public int min;
+        public int max;
     }
 
     /// <summary>What a box needs to be ready for its next era. Reaching it only makes the era ready; it waits for the player.</summary>

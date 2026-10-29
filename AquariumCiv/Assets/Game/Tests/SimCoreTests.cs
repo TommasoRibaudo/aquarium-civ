@@ -33,7 +33,10 @@ namespace AquariumCiv.Tests
         /// fine when meant (update the number in the same commit and say why), a bug when not.
         /// Eras (#23): nobody watches here, so the box stays a camp at its plateau and builds only camp types, and the
         /// chronicle notes that the village is ready.
-        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.</summary>
+        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.
+        /// Notable counts (#26): the camp starts with 3 notables and births stop at 4 (was 5 and 12).
+        /// Families (#26, user 2026-10-29): a normal 55–80 lifespan again (elders 45, eldest 60), and children under 16
+        /// don't count against the era's max (familyRoom 2), so the camp has children; parents with fewer children first.</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -41,7 +44,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(2760499010u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(272871146u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]
@@ -161,11 +164,11 @@ namespace AquariumCiv.Tests
             float startAge = founder.age;
             sim.Advance(10); // 10 game years
             Assert.AreEqual(startAge + 10f, founder.age, 1e-3f, "a person's age matches the calendar");
-            Assert.GreaterOrEqual(founder.lifespan, 110f, "they live twice as long as the prototypes' people");
+            Assert.That(founder.lifespan, Is.GreaterThanOrEqualTo(sim.Config.lifespanMin).And.LessThan(sim.Config.lifespanMax), "a normal lifespan");
             sim.Advance(24 * 14);
             foreach (var n in sim.State.notables.Where(n => !n.alive))
                 Assert.GreaterOrEqual(n.age, n.lifespan, $"{n.FullName} died before their lifespan");
-            Assert.GreaterOrEqual(sim.State.notables.Count(n => n.alive), sim.Config.minNotables - 1);
+            Assert.GreaterOrEqual(sim.State.notables.Count(n => n.alive), sim.NotablesWanted.min - 1);
         }
 
         [Test]

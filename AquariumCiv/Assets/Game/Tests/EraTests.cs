@@ -176,11 +176,12 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheTownEraBuildsLikeTheSimBeforeEras()
         {
-            // Every type is allowed in the town, so seed 1234 must match the slice fingerprint from before eras (#23).
+            // Every type is allowed in the town, so seed 1234 builds like the sim before eras (#23); its notables follow the
+            // town band (#26), so the number is its own now.
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(1405604659u, Fingerprint(sim.State)); // #43: elder stages doubled (no apprentices under 90)
+            Assert.AreEqual(1508855782u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans
         }
 
         [Test]
