@@ -178,3 +178,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   alias `using TestMode = AquariumCiv.Prototypes.TestMode;`. Load the scene from the test with
   `EditorSceneManager.LoadSceneAsyncInPlayMode(path, new LoadSceneParameters(LoadSceneMode.Single))` under
   `#if UNITY_EDITOR`. Private HUD state (banner, toasts) can be read by reflection for evidence. [verified]
+- **2026-10-29 · Tester P2 re-verify notes.** [verified]
+  - A wipe stroke across the middle of the screen goes through the tank's **open top**: it starts a drag (world hit)
+    and may flick junk, but never touches the glass. Aim strokes at the front panes: project
+    `GlassGrime.Instance.Panes[i].renderer.bounds.center` with `Camera.main.WorldToScreenPoint` and take the two with
+    the lowest screen y.
+  - Economy A/B checks don't need play mode: build `new SimCore(cfg, SimCore.NewWorld(seed, cfg))` from a JSON clone
+    of `SimClock.config` in `script eval` and `Advance(h)`; it reproduces the scene's away-path numbers exactly.
+  - Hold gestures (`Pointer.current.press`) work from the touch fixture: `BeginTouch` once, yield frames, `EndTouch`.
+  - After the first PlayMode run, `Assets/Art/Materials/Glass.mat` showed `_SrcBlend: 5 -> 1` in git (not from test
+    code; probably URP re-deriving blend state). Report it, don't revert.

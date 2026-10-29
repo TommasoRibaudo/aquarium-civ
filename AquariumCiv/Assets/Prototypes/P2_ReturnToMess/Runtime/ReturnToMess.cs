@@ -26,12 +26,15 @@ namespace AquariumCiv.Prototypes.P2
         public Vector2 grumbleEverySeconds = new(9f, 16f);
         [Tooltip("No grumbling this long after a return: the welcome comes first.")] public float grumbleQuietAfterReturn = 12f;
         [Tooltip("Seconds to hold the ledger to switch diary/lab.")] public float labHoldSeconds = 2f;
+        [Tooltip("In B, someone says something happy when cleaning brings mess below this.")] public float cheerBelow = 0.1f;
 
+        // Wistful or comic, never a demand on the player: the people react to their world, they don't scold the Keeper.
         static readonly string[] Grumbles =
         {
-            "Ugh, I can't see the sky.", "Who left this junk here?", "These weeds are everywhere.",
-            "Hard to work in this gloom.", "Is anyone going to clean up?", "My crops need light!",
+            "I miss the sun...", "Found a sock bigger than my house.", "The weeds are taller than me now!",
+            "Is it evening already?", "My crops are squinting.", "Someone's crate is in my garden.",
         };
+        static readonly string[] Cheers = { "Look at that sky!", "Sunshine!", "I can see the hills again!", "Back to work, the light's back!" };
 
         public bool OutputVariant => PrototypeConfig.Current.Variant == "B";
         bool Lab => PrototypeConfig.Current.testMode == TestMode.Lab;
@@ -44,7 +47,7 @@ namespace AquariumCiv.Prototypes.P2
         GUIStyle ledgerStyle;
         Rect ledgerScreen;  // last drawn ledger, in screen pixels (top-left origin)
         float holdTime;
-        bool holdDone;
+        bool holdDone, holdOnLedger;
 
         void Awake()
         {
@@ -57,6 +60,7 @@ namespace AquariumCiv.Prototypes.P2
 
         IEnumerator Start()
         {
+            wipe.mess.Cleaned += OnCleaned;
             PrototypeConfig.Current.VariantChanged += _ => StartVariant(true);
             yield return null; // after the launch welcome-back
             StartVariant(false);
@@ -93,6 +97,20 @@ namespace AquariumCiv.Prototypes.P2
                 HudToast.Show(Grumbles[Random.Range(0, Grumbles.Length)], a.transform.position + Vector3.up * crowd.characterScale * 3f, 3f);
                 EventLog.Instance?.Count("grumbles");
             }
+        }
+
+        float messBeforeClean = -1, lastCheer = -99;
+
+        /// <summary>B: when cleaning brings the tank back to (nearly) spotless, a citizen says something happy.</summary>
+        void OnCleaned()
+        {
+            if (!OutputVariant || crowd.Agents.Count == 0) return;
+            var sim = clock.Sim;
+            if (sim.MessLevel >= cheerBelow || Time.unscaledTime - lastCheer < 20f) return;
+            lastCheer = Time.unscaledTime;
+            nextGrumble = Time.unscaledTime + grumbleEverySeconds.y;
+            var a = crowd.Agents[Random.Range(0, crowd.Agents.Count)];
+            HudToast.Show(Cheers[Random.Range(0, Cheers.Length)], a.transform.position + Vector3.up * crowd.characterScale * 3f, 3f);
         }
 
         // ---------- welcome back ----------
@@ -136,9 +154,11 @@ namespace AquariumCiv.Prototypes.P2
         void UpdateLabHold()
         {
             var pointer = Pointer.current;
-            if (pointer == null || !pointer.press.isPressed) { holdTime = 0; holdDone = false; return; }
+            if (pointer == null || !pointer.press.isPressed) { holdTime = 0; holdDone = false; holdOnLedger = false; return; }
             var p = pointer.position.ReadValue();
-            if (holdDone || !ledgerScreen.Contains(new Vector2(p.x, Screen.height - p.y))) { holdTime = 0; return; }
+            bool onLedger = ledgerScreen.Contains(new Vector2(p.x, Screen.height - p.y));
+            if (pointer.press.wasPressedThisFrame) holdOnLedger = onLedger; // only a press that starts on the ledger counts
+            if (holdDone || !holdOnLedger || !onLedger) { holdTime = 0; return; }
             if ((holdTime += Time.unscaledDeltaTime) < labHoldSeconds) return;
             holdDone = true;
             var cfg = PrototypeConfig.Current;
@@ -170,8 +190,10 @@ namespace AquariumCiv.Prototypes.P2
             string ledger = (Lab ? "<color=#8fe0d0>LAB</color>  ·  " : "") + $"Year {Mathf.FloorToInt(s.Year)}  ·  {s.population} people  ·  {sim.Count(BuildingType.Hut)} {(sim.Count(BuildingType.Hut) == 1 ? "hut" : "huts")}";
             if (OutputVariant)
             {
-                int pct = Mathf.RoundToInt(sim.OutputPenalty * 100f);
-                ledger += pct >= 1 ? $"\n<color=#ffb070>Mess is slowing work: −{pct}%</color>" : "\nWork is going well";
+                // Framed as the world's state, not a loss: grime blocks the people's light, and work follows the light.
+                int sun = Mathf.RoundToInt((1f - sim.MessLevel) * 100f);
+                int pace = Mathf.RoundToInt((1f - sim.OutputPenalty) * 100f);
+                ledger += sun >= 99 ? "\n<color=#ffd98a>Full sunlight  ·  work pace 100%</color>" : $"\n<color=#e6dcc4>Sunlight {sun}%  ·  work pace {pace}%</color>";
             }
             ledgerStyle ??= new GUIStyle(ProtoGui.Box) { richText = true, wordWrap = false };
             var size = ledgerStyle.CalcSize(new GUIContent(ledger));
@@ -179,17 +201,19 @@ namespace AquariumCiv.Prototypes.P2
             ProtoGui.Block(r);
             GUI.Box(r, ledger, ledgerStyle);
             ledgerScreen = new Rect(r.x * ProtoGui.Scale, r.y * ProtoGui.Scale, r.width * ProtoGui.Scale, r.height * ProtoGui.Scale);
+            if (holdTime > 0.3f && !holdDone) // hold progress, so a switch never comes as a surprise
+                GUI.Box(new Rect(r.x + 8, r.yMax + 4, (r.width - 16) * Mathf.Clamp01(holdTime / labHoldSeconds), 8), GUIContent.none, ProtoGui.Primary);
 
             if (!Lab) return;
-            float w = ProtoGui.Width, y = ProtoGui.Height - 190;
-            var row = new Rect(20, y - 10, w - 40, 88);
+            float w = ProtoGui.Width;
+            var row = new Rect(20, ProtoGui.Height - 112 - 12 - 108, w - 40, 108); // above Feedback / Done (88 tall at h - 112)
             ProtoGui.Block(row);
             ProtoGui.Panel(row);
             GUILayout.BeginArea(new Rect(row.x + 12, row.y + 8, row.width - 24, row.height - 16));
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Step away:", GUILayout.Width(120), GUILayout.Height(64));
+            GUILayout.Label("Step away:", GUILayout.Width(120), GUILayout.Height(88));
             foreach (var h in new[] { 1, 8, 24, 48 })
-                if (GUILayout.Button($"+{h} h", GUILayout.Height(64))) clock.SimulateAway(h);
+                if (GUILayout.Button($"+{h} h", GUILayout.Height(88))) clock.SimulateAway(h); // 88 canvas ≈ 44 pt
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }

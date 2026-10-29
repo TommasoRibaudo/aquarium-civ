@@ -17,7 +17,7 @@ namespace AquariumCiv.Prototypes.Sim
 
         public static SimState NewWorld(int seed, SimConfig config)
         {
-            var s = new SimState { seed = seed, rng = new SimRandom(seed), population = 5, food = 20, wood = 4, mood = 0.7f };
+            var s = new SimState { seed = seed, rng = new SimRandom(seed), econRng = new SimRandom(seed ^ 0x2C1B3C6D), population = 5, food = 20, wood = 4, mood = 0.7f };
             var core = new SimCore(config, s);
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
@@ -27,7 +27,8 @@ namespace AquariumCiv.Prototypes.Sim
         }
 
         // ---------- derived values ----------
-        public float MessLevel => (State.grime + State.overgrowth + State.trash.Count / (float)Config.trashMax) / 3f;
+        /// <summary>0..1. The glass is half of it: it's what the player sees first and wipes most.</summary>
+        public float MessLevel => State.grime * 0.5f + State.overgrowth * 0.25f + State.trash.Count / (float)Config.trashMax * 0.25f;
         public float OutputPenalty => Config.outputPenaltyEnabled ? Config.outputPenaltyMax * MessLevel : 0f;
         public float OutputMultiplier => (0.8f + 0.4f * State.mood) * (1f - OutputPenalty);
         public int Housing => 4 + Count(BuildingType.Hut) * 4;
@@ -50,7 +51,8 @@ namespace AquariumCiv.Prototypes.Sim
         public void Step()
         {
             var s = State;
-            var rng = s.rng;
+            s.econRng ??= new SimRandom(s.seed ^ 0x2C1B3C6D); // saves from before the split
+            float birthRoll = s.econRng.Value(), deathRoll = s.econRng.Value(), festivalRoll = s.econRng.Value();
             s.month++;
             int season = (int)(s.month % SimConfig.MonthsPerYear);
             bool winter = season == 11 || season == 0 || season == 1;
@@ -64,8 +66,8 @@ namespace AquariumCiv.Prototypes.Sim
             s.food = Math.Clamp(s.food + subsistence + surplus - pop, 0f, FoodCap);
             s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult, 2000f);
 
-            if (s.food > pop * 1.5f && pop < Housing && rng.Chance(0.025f * (0.5f + s.mood))) s.population++; // happier = more births
-            if (pop > 5 && rng.Chance(0.008f)) s.population--; // crowd old age
+            if (s.food > pop * 1.5f && pop < Housing && birthRoll < 0.025f * (0.5f + s.mood) * (1f - OutputPenalty)) s.population++; // happier = more births; a mess penalty slows growth too
+            if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
 
             float target = 0.75f - (Config.messAffectsMood ? MessLevel * 0.5f : 0f) + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
@@ -73,7 +75,7 @@ namespace AquariumCiv.Prototypes.Sim
             TryBuild();
             AccrueMess();
             if (season == 0) YearlyNotables();
-            NarrativeChecks(winter);
+            NarrativeChecks(winter, festivalRoll);
         }
 
         void TryBuild()
@@ -153,10 +155,9 @@ namespace AquariumCiv.Prototypes.Sim
             }
         }
 
-        void NarrativeChecks(bool winter)
+        void NarrativeChecks(bool winter, float festivalRoll)
         {
             var s = State;
-            var rng = s.rng;
             int milestone = s.population / 10 * 10;
             if (milestone > s.lastPopMilestone && milestone > 0)
             {
@@ -169,7 +170,7 @@ namespace AquariumCiv.Prototypes.Sim
                 s.lastLeanYear = year;
                 Chronicle("lean_winter", "A lean winter: the granaries ran low and the people tightened their belts.", 0.5f);
             }
-            if (!winter && s.food > FoodCap * 0.9f && rng.Chance(0.02f))
+            if (!winter && s.food > FoodCap * 0.9f && festivalRoll < 0.02f)
             {
                 s.mood = Math.Min(1f, s.mood + 0.15f);
                 var host = AliveNotable();

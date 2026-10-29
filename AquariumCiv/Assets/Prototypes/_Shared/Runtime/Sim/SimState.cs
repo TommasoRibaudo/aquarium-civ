@@ -118,6 +118,9 @@ namespace AquariumCiv.Prototypes.Sim
         public long lastGrumbleMonth = -999;
         public long lastLeanYear = -99;
         public SimRandom rng;
+        /// <summary>Births, deaths and festivals: drawn every month whether used or not, so two worlds from one seed
+        /// stay in step and differ only by what the rules make different (P2's A/B; tester run 2).</summary>
+        public SimRandom econRng;
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

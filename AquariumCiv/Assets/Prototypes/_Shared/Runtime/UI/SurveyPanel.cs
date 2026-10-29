@@ -36,7 +36,7 @@ namespace AquariumCiv.Prototypes
             {
                 case Mode.Playing:
                 {
-                    var r = new Rect(w - 230, h - 100, 210, 76);
+                    var r = new Rect(w - 240, h - 112, 220, 88);
                     ProtoGui.Block(r);
                     if (GUI.Button(r, "Done for now")) DoneForNow();
                     break;

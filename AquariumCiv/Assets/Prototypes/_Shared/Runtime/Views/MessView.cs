@@ -266,6 +266,12 @@ namespace AquariumCiv.Prototypes
             StartCoroutine(Vanish());
         }
 
+        /// <summary>A little shake: touched but not cleaned.</summary>
+        public void Wobble()
+        {
+            if (!done && !wiggling) StartCoroutine(Wiggle());
+        }
+
         /// <summary>Send it flying (world velocity), spinning, shrinking, then clean it.</summary>
         public void Flick(Vector3 velocity)
         {

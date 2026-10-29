@@ -34,7 +34,7 @@ namespace AquariumCiv.Prototypes
             if (!open)
             {
                 if (!SurveyPanel.IsPlaying) return;
-                var r = new Rect(20, h - 100, 190, 76);
+                var r = new Rect(20, h - 112, 200, 88);
                 ProtoGui.Block(r);
                 if (GUI.Button(r, "Feedback")) { open = true; kind = -1; text = ""; }
                 return;

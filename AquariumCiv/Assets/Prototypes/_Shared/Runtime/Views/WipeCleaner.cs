@@ -4,9 +4,11 @@ using UnityEngine;
 namespace AquariumCiv.Prototypes
 {
     /// <summary>
-    /// The cleaning gesture P1 picked (drag-to-wipe, results/P1.md): a one-finger drag on the tank wipes the glass it
-    /// crosses; a fast swipe across trash or weeds flicks them out; tapping mess only wiggles it. Two fingers, or a
-    /// drag beside the tank, turn the tank. Lifted from P1's variant A so later prototypes share one gesture.
+    /// The cleaning gesture P1 picked (drag-to-wipe, results/P1.md), with one change from P1: the first touch decides.
+    ///   A drag that starts on glass is a wipe. It never flicks junk; junk it crosses only wobbles.
+    ///   A drag that starts on a piece of junk or a weed is a toss: judged at lift-off, a fast flick (release speed and
+    ///   a minimum travel, like platform fling detection) throws it out; a slow one drops it back with a hint.
+    /// Tapping mess only wiggles it. Two fingers, or a drag beside the tank, turn the tank.
     /// </summary>
     public class WipeCleaner : MonoBehaviour, IDragTool
     {
@@ -15,13 +17,14 @@ namespace AquariumCiv.Prototypes
 
         [Tooltip("Wipe radius as a share of screen height (about a fingertip and a half).")] public float wipeRadius = 0.065f;
         [Tooltip("Share of grime removed per stamp at the center (stamps overlap along a stroke).")] public float wipeStrength = 0.5f;
-        [Tooltip("Swipe speed (screen heights per second) that flicks a piece of mess.")] public float flickSpeed = 0.5f;
+        [Tooltip("Release speed (screen heights per second, over the last 0.1 s) that tosses a grabbed piece out.")] public float flickSpeed = 0.6f;
+        [Tooltip("Minimum travel (share of screen height) for a toss, so a press-and-lift never counts.")] public float flickMinTravel = 0.03f;
         [Tooltip("Junk within this screen-height share of the finger counts as touched (about 44 pt).")] public float pickRadius = 0.035f;
 
         [Header("Hints")]
         [Tooltip("Show the gesture hint again after this many seconds without any cleaning (while the tank is messy).")] public float hintIdleSeconds = 25f;
         public int maxHintRepeats = 2;
-        public string hint = "Drag across the glass to wipe it clean. Swipe across junk and weeds to flick them out. Two fingers turn the tank.";
+        public string hint = "Drag across the glass to wipe it clean. Touch junk or weeds and flick them out. Two fingers turn the tank.";
 
         GlassGrime.Pane lastPane;
         Vector2 lastUv, lastScreen;
@@ -29,6 +32,9 @@ namespace AquariumCiv.Prototypes
         float strokeRemoved, strokeMessBefore, strokeStart, glintBudget, lastCleanTime;
         int hintRepeats;
         readonly Dictionary<GlassGrime.Pane, float> strokePanes = new(); // pane -> its grime when the stroke first touched it
+        TapToClean grabbed;  // this stroke started on a piece of mess: it's a toss, not a wipe
+        Vector2 grabStart;
+        readonly List<(float t, Vector2 p)> samples = new(); // recent finger positions, for the release velocity
 
         Camera Cam => OrbitCamera.Instance.Cam;
 
@@ -47,7 +53,7 @@ namespace AquariumCiv.Prototypes
         void Start()
         {
             mess.tapCleansProps = false;
-            mess.PropTapRefused += piece => HudToast.Show("Swipe across it to flick it out", piece.transform.position + Vector3.up * 0.3f);
+            mess.PropTapRefused += piece => HudToast.Show("Touch it and flick it out", piece.transform.position + Vector3.up * 0.3f);
             glass.PaneCleared += (pane, center) => { Juice.Chime(); Juice.Glints(center, 30, 0.5f); };
             mess.Cleaned += () => lastCleanTime = Time.unscaledTime;
             SimClock.Instance.Returned += (_, _) => lastCleanTime = Time.unscaledTime; // time away isn't idling: let the welcome-back read first
@@ -75,6 +81,14 @@ namespace AquariumCiv.Prototypes
 
         public bool BeginDrag(Vector2 screenPos)
         {
+            if (PickMess(screenPos, out var piece))
+            {
+                grabbed = piece;
+                grabStart = screenPos;
+                samples.Clear();
+                samples.Add((Time.unscaledTime, screenPos));
+                return true;
+            }
             var ray = Cam.ScreenPointToRay(screenPos);
             // Any one-finger drag that starts on the tank (glass, or the world through the open top) is a wipe/flick.
             hasLast = glass.Raycast(ray, out var pane, out var uv, out _);
@@ -91,8 +105,14 @@ namespace AquariumCiv.Prototypes
 
         public void Drag(Vector2 screenPos, Vector2 delta)
         {
+            if (grabbed != null)
+            {
+                samples.Add((Time.unscaledTime, screenPos));
+                while (samples.Count > 2 && Time.unscaledTime - samples[0].t > 0.1f) samples.RemoveAt(0);
+                return;
+            }
             float speed = delta.magnitude / Screen.height / Mathf.Max(Time.unscaledDeltaTime, 1f / 120f); // screen heights / s
-            FlickAlong(lastScreen, screenPos, delta, speed);
+            WobbleAlong(lastScreen, screenPos);
             lastScreen = screenPos;
 
             if (!glass.Raycast(Cam.ScreenPointToRay(screenPos), out var pane, out var uv, out var point)) { hasLast = false; return; }
@@ -114,6 +134,7 @@ namespace AquariumCiv.Prototypes
 
         public void EndDrag(Vector2 screenPos)
         {
+            if (grabbed != null) { Toss(screenPos); return; }
             hasLast = false;
             if (strokeRemoved <= 0.0005f) return;
             float paneGrime = 0;
@@ -124,19 +145,35 @@ namespace AquariumCiv.Prototypes
             mess.AfterClean(strokeMessBefore);
         }
 
-        /// <summary>Fast swipes flick any trash or weed the finger crossed this frame (sampled along the segment).</summary>
-        void FlickAlong(Vector2 from, Vector2 to, Vector2 delta, float speed)
+        /// <summary>End of a stroke that started on a piece of mess: a fast flick throws it out, a slow drag drops it back.</summary>
+        void Toss(Vector2 screenPos)
         {
-            if (speed < flickSpeed) return;
-            int samples = Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(from, to) / 6f), 1, 24);
-            for (int i = 1; i <= samples; i++)
+            var piece = grabbed;
+            grabbed = null;
+            if (piece == null || piece.Done) return;
+            samples.Add((Time.unscaledTime, screenPos));
+            var (t0, p0) = samples[0];
+            float dt = Mathf.Max(Time.unscaledTime - t0, 1f / 120f);
+            var v = (screenPos - p0) / Screen.height / dt; // release velocity, screen heights / s
+            float travel = Vector2.Distance(screenPos, grabStart) / Screen.height;
+            EventLog.Instance?.Count("toss_attempts");
+            if (v.magnitude >= flickSpeed && travel >= flickMinTravel)
             {
-                var p = Vector2.Lerp(from, to, i / (float)samples);
-                if (!PickMess(p, out var piece)) continue;
-                var dir = (Cam.transform.right * delta.x + Cam.transform.up * delta.y).normalized;
+                var dir = (Cam.transform.right * v.x + Cam.transform.up * v.y).normalized;
                 float s = Juice.WorldPerScreen(piece.Center);
                 piece.Flick((dir * 0.5f + Vector3.up * 0.35f) * s);
+                return;
             }
+            piece.Wobble();
+            HudToast.Show("Flick it faster to toss it out", piece.transform.position + Vector3.up * 0.3f);
+        }
+
+        /// <summary>A wipe never cleans junk, but junk the finger crosses wobbles, so it reads as touchable.</summary>
+        void WobbleAlong(Vector2 from, Vector2 to)
+        {
+            int samplesN = Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(from, to) / 12f), 1, 12);
+            for (int i = 1; i <= samplesN; i++)
+                if (PickMess(Vector2.Lerp(from, to, i / (float)samplesN), out var piece)) piece.Wobble();
         }
 
         /// <summary>
