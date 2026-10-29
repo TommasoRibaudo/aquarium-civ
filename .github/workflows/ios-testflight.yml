@@ -39,7 +39,7 @@ jobs:
           if [ -n "$missing" ]; then echo "::error::Missing repo secrets:$missing (see docs/testflight.md)"; exit 1; fi
 
       - name: Free disk space
-        uses: jlumbroso/free-disk-space@v2
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2
         with:
           tool-cache: false
           android: true
@@ -48,19 +48,19 @@ jobs:
           large-packages: false
           docker-images: false
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       # Cache LFS objects so every build doesn't burn LFS bandwidth.
       - name: List LFS objects
         run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: .git/lfs
           key: lfs-${{ hashFiles('.lfs-assets-id') }}
       - name: Pull LFS objects
         run: git lfs pull
 
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ env.PROJECT_PATH }}/Library
           key: Library-iOS-${{ hashFiles('AquariumCiv/Assets/**', 'AquariumCiv/Packages/**', 'AquariumCiv/ProjectSettings/**') }}
@@ -79,7 +79,7 @@ jobs:
           [ -n "$FEEDBACK_TOKEN" ] || echo "::warning::FEEDBACK_TOKEN secret not set: in-app feedback will only be saved on the device"
 
       - name: Unity build (iOS export)
-        uses: game-ci/unity-builder@v6
+        uses: game-ci/unity-builder@eb1b9fba120c6e62c9fb7a7a81d6c107ce004c45 # v6
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
@@ -94,7 +94,7 @@ jobs:
       - name: Pack Xcode project
         run: sudo tar -czf ios-xcode.tgz -C build/iOS "$BUILD_NAME"
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ios-xcode
           path: ios-xcode.tgz
@@ -118,7 +118,7 @@ jobs:
           for s in APPSTORE_KEY_ID APPSTORE_ISSUER_ID APPSTORE_P8 APPLE_TEAM_ID; do [ -z "${!s}" ] && missing="$missing $s"; done
           if [ -n "$missing" ]; then echo "::error::Missing repo secrets:$missing (see docs/testflight.md)"; exit 1; fi
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: ios-xcode
 
@@ -184,6 +184,6 @@ jobs:
 
       - name: Delete Xcode artifact
         if: always()
-        uses: geekyeggo/delete-artifact@v6
+        uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6
         with:
           name: ios-xcode
