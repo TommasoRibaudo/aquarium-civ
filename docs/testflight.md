@@ -9,7 +9,9 @@ Workflow: [`.github/workflows/ios-testflight.yml`](../.github/workflows/ios-test
    fastlane `match` repo and no certificates to manage. It then uploads straight to App Store Connect.
    Build number = the workflow run number. Export compliance is pre-answered (`ITSAppUsesNonExemptEncryption = false`).
 
-Cost: about $1.50 of GitHub Actions per iOS build (macOS minutes). Only run it when there's something to test.
+Cost: free. The repo is public (since 2026-10-28), and standard GitHub-hosted runners, macOS included, cost nothing
+on public repos. Limits that still apply: at most 5 macOS jobs at once, 10 GB of Actions cache, and Git LFS
+storage/bandwidth quotas (LFS is billed separately from Actions). When the repo was private, a build cost about $1.50.
 
 ## App identity
 | | |
@@ -92,6 +94,7 @@ Paste into App Store Connect → TestFlight → the build → Test Details:
 Lab session (sitting with a tester): hold the top-left info box for 2 s until "LAB" shows, then use "Step away".
 
 ## Notes
+- The upload job uses the `testflight` environment, which only allows `main`. Merge first, then build.
 - Release builds hide the debug panel (`Debug.isDebugBuild` is false). Lab tests that need the away buttons run in the
   Editor for now.
 - If the macOS job fails on signing, check that the API key has **Admin** access and that the bundle ID is

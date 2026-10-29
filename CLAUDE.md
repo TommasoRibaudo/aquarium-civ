@@ -51,6 +51,8 @@ Every time something runs in Unity (open, recompile, eval, tests, builds, import
 
 ## Conventions
 - Commit before large scene/prefab changes.
+- **`main` is protected**: work on a branch, open a PR (`gh pr create`), let CI pass, then merge. Never push to `main`
+  or use `pull_request_target`. See `docs/ci.md`.
 - **Debug panel stays current:** whenever a prototype adds a resource, mess type, event, variant or other testable
   state, add a cheat for it to the debug panel (give, spawn, skip to, toggle) in the same change, so you, the tester
   and the user can reach it without waiting.
