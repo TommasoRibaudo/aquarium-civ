@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &691998089
+--- !u!1 &1120706339
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,100 +127,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 691998094}
-  - component: {fileID: 691998093}
-  - component: {fileID: 691998092}
-  - component: {fileID: 691998091}
-  - component: {fileID: 691998090}
-  m_Layer: 0
-  m_Name: Hub
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &691998090
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 691998089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5c5b32cb2c5a600468fa657ee4aa7c12, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: AquariumCiv.Prototypes.Hub::AquariumCiv.Prototypes.Hub.TestHub
---- !u!114 &691998091
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 691998089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ea5ee699334af24479b43da95c1d20d2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.FeedbackSender
-  repo: TommasoRibaudo/aquarium-civ
---- !u!114 &691998092
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 691998089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fa476a05ce8068c448d5711c48f46e7f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.EventLog
-  lookInterval: 0.5
---- !u!114 &691998093
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 691998089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bfe08d910615cf746883e369c2ec1ef8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.PrototypeConfig
-  protoId: Hub
-  variants:
-  - '-'
-  testMode: 0
-  surveyQ4: Cleaning felt satisfying
-  surveyExtra: 
---- !u!4 &691998094
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 691998089}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1535069378
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1535069381}
-  - component: {fileID: 1535069380}
-  - component: {fileID: 1535069379}
+  - component: {fileID: 1120706342}
+  - component: {fileID: 1120706341}
+  - component: {fileID: 1120706340}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -228,13 +137,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1535069379
+--- !u!114 &1120706340
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1535069378}
+  m_GameObject: {fileID: 1120706339}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
@@ -272,13 +181,13 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
---- !u!20 &1535069380
+--- !u!20 &1120706341
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1535069378}
+  m_GameObject: {fileID: 1120706339}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
@@ -323,13 +232,105 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1535069381
+--- !u!4 &1120706342
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1535069378}
+  m_GameObject: {fileID: 1120706339}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1512772525
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1512772530}
+  - component: {fileID: 1512772529}
+  - component: {fileID: 1512772528}
+  - component: {fileID: 1512772527}
+  - component: {fileID: 1512772526}
+  m_Layer: 0
+  m_Name: Hub
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1512772526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512772525}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c5b32cb2c5a600468fa657ee4aa7c12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AquariumCiv.Prototypes.Hub::AquariumCiv.Prototypes.Hub.TestHub
+--- !u!114 &1512772527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512772525}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea5ee699334af24479b43da95c1d20d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.FeedbackSender
+  repo: TommasoRibaudo/aquarium-civ
+--- !u!114 &1512772528
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512772525}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa476a05ce8068c448d5711c48f46e7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.EventLog
+  lookInterval: 0.5
+--- !u!114 &1512772529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512772525}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe08d910615cf746883e369c2ec1ef8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.PrototypeConfig
+  protoId: Hub
+  variants:
+  - '-'
+  testMode: 0
+  surveyQ4: Cleaning felt satisfying
+  surveyExtra: 
+  separateLabSave: 0
+--- !u!4 &1512772530
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1512772525}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -342,5 +343,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1535069381}
-  - {fileID: 691998094}
+  - {fileID: 1120706342}
+  - {fileID: 1512772530}

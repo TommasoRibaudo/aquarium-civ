@@ -39,8 +39,9 @@ namespace AquariumCiv.Prototypes
             // Before SimClock.Start runs the launch catch-up, so the rules apply to the time away.
             clock = SimClock.Instance;
             ApplyConfig(clock.config);
-            var req = LabLaunch.Active;
-            skipLaunchReturn = Lab || (req != null && req.modeChanged); // a fresh world replaces it right away
+            // Lab: a fresh world replaces whatever loaded. Diary: continue its own save (lab sessions never touch it),
+            // or start a fresh one with history if this phone has none yet.
+            skipLaunchReturn = Lab || !clock.HasSave;
             clock.Returning += Snapshot;
             clock.Returned += HandleReturn;
         }
@@ -48,8 +49,13 @@ namespace AquariumCiv.Prototypes
         protected virtual IEnumerator Start()
         {
             Cfg.VariantChanged += _ => BeginVariant(true);
-            // Lab → diary: a fresh real-time world. (Diary → lab already starts fresh through VariantChanged.)
-            if (hud != null) hud.ModeSwitched += m => { if (m == TestMode.Diary) { FreshWorld(); BeginVariant(false); } };
+            // Lab → diary: back to the diary's own world (or a fresh one). Diary → lab starts fresh through VariantChanged.
+            if (hud != null) hud.ModeSwitched += m =>
+            {
+                if (m != TestMode.Diary) return;
+                if (clock.HasSave) clock.Reload(); else FreshWorld();
+                BeginVariant(false);
+            };
             yield return null; // after the launch catch-up
             if (skipLaunchReturn) FreshWorld();
             BeginVariant(false);

@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Prototypes/_Hub/Hub.unity
+    guid: c39617ee368c26e4ba0bbf4f0cf1d9ce
+  - enabled: 1
     path: Assets/Prototypes/P3_WhileYouWereAway/P3_WhileYouWereAway.unity
     guid: 1438c6aee924ea047a19d55657dfe9d8
   - enabled: 1

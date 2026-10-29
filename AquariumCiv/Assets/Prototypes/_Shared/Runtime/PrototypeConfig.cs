@@ -20,6 +20,11 @@ namespace AquariumCiv.Prototypes
         [Tooltip("Optional sixth survey question (free text), e.g. P5's follow-up on control. Empty = none.")]
         [TextArea] public string surveyExtra = "";
 
+        [Tooltip("P3+: lab sessions keep their own save, so a lab test never touches this phone's running diary.")]
+        public bool separateLabSave;
+        /// <summary>The save file / last-seen name: the protoId, or protoId_lab for a separate lab world.</summary>
+        public string SaveId => separateLabSave && testMode == TestMode.Lab ? protoId + "_lab" : protoId;
+
         public static PrototypeConfig Current { get; private set; }
         public event Action<string> VariantChanged;
 

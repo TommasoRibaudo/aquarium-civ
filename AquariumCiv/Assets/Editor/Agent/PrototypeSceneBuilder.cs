@@ -127,6 +127,7 @@ namespace AquariumCiv.EditorTools
         public static Built BuildLabBase(string protoId, string scenePath, string surveyQ4)
         {
             var b = BuildBase(protoId, scenePath, surveyQ4, TestMode.Lab);
+            b.systems.GetComponent<PrototypeConfig>().separateLabSave = true; // a lab test never touches the phone's diary
             var hud = b.systems.GetComponent<HudToast>();
             hud.welcomeBack = false;   // each prototype writes its own welcome
             hud.bannerTop = 100f;      // below the one-line ledger

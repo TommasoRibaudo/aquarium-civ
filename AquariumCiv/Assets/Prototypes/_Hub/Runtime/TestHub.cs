@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -18,6 +20,9 @@ namespace AquariumCiv.Prototypes.Hub
         Vector2 scroll;
         float contentHeight = 1600f, pressY, lastY;
         bool dragging, pressed;
+        int dragEndFrame = -1;
+        string confirmDiary;
+        float confirmAt;
         GUIStyle cardTitle, small, gate, pill;
 
         /// <summary>The prototype whose diary runs on this device (null = none). P2's diary counts if its save exists.</summary>
@@ -69,6 +74,9 @@ namespace AquariumCiv.Prototypes.Hub
             var p = Pointer.current;
             if (p == null) return;
             float y = p.position.ReadValue().y / ProtoGui.Scale;
+            // A drag keeps buttons off through its release frame (so lifting the finger presses nothing), then ends.
+            if (dragging && !p.press.isPressed && dragEndFrame >= 0 && Time.frameCount > dragEndFrame) { dragging = false; dragEndFrame = -1; }
+            if (p.press.wasReleasedThisFrame && dragging) dragEndFrame = Time.frameCount;
             if (p.press.wasPressedThisFrame) { pressed = true; dragging = false; pressY = lastY = y; }
             else if (pressed && p.press.isPressed)
             {
@@ -122,30 +130,42 @@ namespace AquariumCiv.Prototypes.Hub
             GUI.enabled = true;
         }
 
+        /// <summary>Diaries with a saved world on this phone, in catalog order (P2 first). Every one stays reachable.</summary>
+        static List<TestCatalog.Entry> Diaries() =>
+            TestCatalog.All.Where(e => e.diaryDays > 0 && InBuild(e.id) && HubLink.HasSave(e.id)).ToList();
+
         float DiaryCard(float x, float y, float cw)
         {
-            var diary = DiaryProto;
-            var e = diary != null ? TestCatalog.Find(diary) : null;
-            float hgt = e != null ? 236 : 120;
+            var current = DiaryProto;
+            var all = Diaries();
+            var e = current != null ? TestCatalog.Find(current) : null;
+            if (e != null && !all.Contains(e)) all.Insert(0, e);
+            float hgt = all.Count == 0 ? 120 : 196 + all.Count * 98;
             var r = new Rect(x, y, cw, hgt);
             ProtoGui.Panel(r);
             float ix = r.x + 20, iw = r.width - 40, iy = r.y + 16;
-            if (e == null)
+            if (all.Count == 0)
             {
                 GUI.Label(new Rect(ix, iy, iw, 36), "No diary running", cardTitle);
                 GUI.Label(new Rect(ix, iy + 40, iw, 56), "A diary runs on real time over a few days. Start one from a test below when the guide says so.", small);
                 return r.yMax;
             }
-            GUI.Label(new Rect(ix, iy, iw, 36), $"Your diary: {e.id} · {e.title}", cardTitle);
-            GUI.Label(new Rect(ix, iy + 40, iw, 30), $"Real time, {e.diaryDays} days. {(e.diaryNote ?? "The version changes by day.")}", small);
-            if (GUI.Button(new Rect(ix, iy + 80, iw * 0.62f, 88), $"{e.id} diary (continue)", ProtoGui.Primary)) OpenDiary(e.id, "button");
+            GUI.Label(new Rect(ix, iy, iw, 36), all.Count == 1 ? "Your diary" : "Your diaries", cardTitle);
+            float by = iy + 46;
+            foreach (var d in all)
+            {
+                bool isCurrent = d == e;
+                if (GUI.Button(new Rect(ix, by, iw, 88), $"{d.id} · {d.title} diary (continue)", isCurrent ? ProtoGui.Primary : GUI.skin.button)) OpenDiary(d.id, "button");
+                by += 98;
+            }
+            GUI.Label(new Rect(ix, by, iw, 30), $"Real time, a few days each. {(e?.diaryNote ?? "The version changes by day.")}", small);
             bool auto = AutoOpen;
-            if (GUI.Button(new Rect(ix + iw * 0.62f + 10, iy + 80, iw * 0.38f - 10, 88), auto ? "Open on launch: on" : "Open on launch: off", auto ? ProtoGui.ChipOn : ProtoGui.Chip))
+            var toggle = new Rect(ix, by + 36, iw, 72);
+            if (GUI.Button(toggle, auto ? $"On launch: open the {e?.id ?? "diary"} diary" : "On launch: show this hub", ProtoGui.Chip))
             {
                 PlayerPrefs.SetInt(AutoOpenKey, auto ? 0 : 1);
                 PlayerPrefs.Save();
             }
-            GUI.Label(new Rect(ix, iy + 176, iw, 30), auto ? "The app opens straight into this diary. Come back here from the thank-you screen." : "The app opens on this hub.", small);
             return r.yMax;
         }
 
@@ -165,12 +185,24 @@ namespace AquariumCiv.Prototypes.Hub
                 GUI.Label(new Rect(br.x + 4, by + 92, bw - 8, 52), e.lines[v], small);
                 if (LabSession.WasPlayed(e.id, v))
                 {
+                    bool surveyed = LabSession.WasSurveyed(e.id, TestCatalog.Letter(v));
                     ProtoGui.Dot(new Rect(br.x + 6, by + 152, 14, 14), ProtoGui.VariantColor(v));
-                    GUI.Label(new Rect(br.x + 26, by + 146, 160, 26), "played", pill);
+                    GUI.Label(new Rect(br.x + 26, by + 146, 260, 26), surveyed ? "played, survey sent" : "played, no survey yet", pill);
                 }
             }
-            if (e.diaryDays > 0 && GUI.Button(new Rect(ix, by + 180, iw, 72), $"Start the {e.diaryDays}-day diary"))
-                OpenDiary(e.id, "start");
+            if (e.diaryDays > 0)
+            {
+                bool has = HubLink.HasSave(e.id);
+                bool confirming = confirmDiary == e.id && Time.unscaledTime - confirmAt < 5f;
+                string other = DiaryProto;
+                string label = has ? $"Continue the {e.id} diary" : confirming ? $"Tap again to start it ({other} stays in Your diaries)" : $"Start the {e.diaryDays}-day diary";
+                if (GUI.Button(new Rect(ix, by + 180, iw, 72), label, confirming ? ProtoGui.Primary : GUI.skin.button))
+                {
+                    // Starting a new diary while another runs takes a second tap; the old one stays listed above.
+                    if (has || confirming || other == null || other == e.id) OpenDiary(e.id, has ? "button" : "start");
+                    else { confirmDiary = e.id; confirmAt = Time.unscaledTime; }
+                }
+            }
             return r.yMax;
         }
     }

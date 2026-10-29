@@ -225,3 +225,10 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `EnhancedTouchSupport.Enable` (fixture noise, not game code): set `LogAssert.ignoreFailingMessages = true` and
   collect console errors yourself. Run one `[UnityTest]` per `test run`: in a two-test run the second fails at once
   ("EnhancedTouch API is not enabled" from the first test's still-loaded `OrbitCamera`). [verified]
+- **2026-10-29 · Tester Test Hub run notes.** [verified]
+  - Scene-flow checks don't need a test fixture: `unity command editor.playmode set_run_in_background` once, then
+    `editor.playmode start` (a cold launch: statics reset), drive with `script eval` (`LabLaunch.Open`,
+    `HubLink.GoToHub`, `TestHub.OpenDiary` by reflection for the diary buttons) and `AgentGameView.Shot` for IMGUI.
+    The Editor in the background needs ~20 s before the first scene's `Start` (frame count stays 1 until then).
+  - `BeginTouch/MoveTouch/EndTouch` are `InputTestFixture` methods, not `Touchscreen` methods (`ts.BeginTouch` = CS1061).
+  - Compile errors from a deleted `_AgentPlaytest` file stay in `console get` until `console clear`.

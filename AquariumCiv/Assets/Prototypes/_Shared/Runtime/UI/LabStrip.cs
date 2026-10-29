@@ -54,7 +54,7 @@ namespace AquariumCiv.Prototypes
             float hubW = hub ? 104 : 0, switchW = 176;
             float textX = r.x + 16, textW = r.width - 32 - switchW - hubW - 8;
             // Line 1: "P3 · [A] Chronicle cards", line 2: "vs B: Plain return"
-            var pill = new Rect(textX + 50, r.y + 14, 34, 34);
+            var pill = new Rect(textX + 60, r.y + 12, 34, 34);
             GUI.Label(new Rect(textX, r.y + 12, 50, 38), $"<b>{entry.id}</b> ·", line1);
             GUI.Box(pill, TestCatalog.Letter(v), ProtoGui.VariantPill(v));
             GUI.Label(new Rect(pill.xMax + 8, r.y + 12, textW - (pill.xMax + 8 - textX), 38), entry.names[v], line1);
@@ -101,14 +101,26 @@ namespace AquariumCiv.Prototypes
             for (int i = 0; i < 2; i++)
             {
                 string label = $"{TestCatalog.Letter(i)} · {entry?.names[i]}{(pick == i ? "  (your pick)" : "")}";
-                if (GUILayout.Button(label, pick == i ? ProtoGui.VariantButton(i) : ProtoGui.Chip, GUILayout.Height(80))) pick = i;
+                if (GUILayout.Button(label, ProtoGui.VariantButton(i), GUILayout.Height(88))) pick = i;
                 if (entry != null) GUILayout.Label(entry.lines[i], ProtoGui.Hint);
             }
             GUILayout.Space(6);
             GUILayout.Label("Why? (a few words is plenty)", ProtoGui.Wrap);
-            why = GUILayout.TextArea(why, 300, GUILayout.Height(90));
+            why = GUILayout.TextArea(why, 300, GUILayout.Height(120));
             GUILayout.Space(10);
-            if (!ProtoGui.PrimaryButton(HubLink.Available ? "Send and back to the hub" : "Send", pick >= 0, GUILayout.Height(80))) return false;
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Skip", GUILayout.Height(88), GUILayout.Width(150)))
+            {
+                EventLog.Instance?.Log("pair_pref", ("pair", cfg.protoId), ("pick", "skip"), ("why", why), ("last_played", cfg.Variant));
+                LabSession.MarkPaired(cfg.protoId);
+                pick = -1; why = "";
+                GUILayout.EndHorizontal();
+                if (HubLink.Available) HubLink.GoToHub();
+                return true;
+            }
+            bool send = ProtoGui.PrimaryButton(HubLink.Available ? "Send and back to the hub" : "Send", pick >= 0, GUILayout.Height(88));
+            GUILayout.EndHorizontal();
+            if (!send) return false;
 
             string letter = TestCatalog.Letter(pick);
             EventLog.Instance?.Log("pair_pref", ("pair", cfg.protoId), ("pick", letter), ("why", why), ("last_played", cfg.Variant));

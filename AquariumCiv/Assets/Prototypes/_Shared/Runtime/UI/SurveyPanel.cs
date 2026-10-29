@@ -97,7 +97,7 @@ namespace AquariumCiv.Prototypes
                 }
                 case Mode.Thanks:
                 {
-                    var r = Modal(w, h, HubLink.Available ? 500 : 420);
+                    var r = Modal(w, h, HubLink.Available ? 540 : 420);
                     GUILayout.BeginArea(r);
                     GUILayout.Label(FeedbackSender.Instance != null ? sendResult : "Thanks! Tap \"Copy summary\" and paste it into our chat.", ProtoGui.Wrap);
                     if (GUILayout.Button("Copy summary", GUILayout.Height(64))) GUIUtility.systemCopyBuffer = EventLog.Instance.LastSummary;
@@ -107,7 +107,7 @@ namespace AquariumCiv.Prototypes
                         Resume();
                     }
                     if (GUILayout.Button("Keep watching", ProtoGui.Primary, GUILayout.Height(72))) Resume();
-                    if (HubLink.Available && GUILayout.Button("Test hub", GUILayout.Height(64))) HubLink.GoToHub();
+                    if (HubLink.Available && GUILayout.Button("Test hub", GUILayout.Height(88))) HubLink.GoToHub();
                     GUILayout.EndArea();
                     break;
                 }

@@ -54,6 +54,7 @@ namespace AquariumCiv.Prototypes
             var cfg = PrototypeConfig.Current;
             var mode = cfg.testMode == TestMode.Lab ? TestMode.Diary : TestMode.Lab;
             EventLog.Instance?.Log("debug", ("test_mode", mode.ToString()));
+            SimClock.Instance.Save(); // into this mode's own save, before the switch changes which file is current
             cfg.SetTestMode(mode);
             ModeSwitched?.Invoke(mode);
             HudToast.ShowBanner(mode == TestMode.Diary

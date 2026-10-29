@@ -122,6 +122,7 @@ namespace AquariumCiv.Prototypes
         }
         public static bool WasPlayed(string proto, int variant) => played.Contains($"{proto}{TestCatalog.Letter(variant)}");
         public static void MarkSurveyed(string proto, string variant) => surveyed.Add(proto + variant);
+        public static bool WasSurveyed(string proto, string variant) => surveyed.Contains(proto + variant);
         public static bool BothSurveyed(string proto) => surveyed.Contains(proto + "A") && surveyed.Contains(proto + "B");
         public static bool Paired(string proto) => paired.Contains(proto);
         public static void MarkPaired(string proto) => paired.Add(proto);

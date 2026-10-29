@@ -37,7 +37,7 @@ namespace AquariumCiv.Prototypes
 
         float saveTimer;
         bool wasPaused; // Unity also sends OnApplicationPause(false) at startup; only a real resume catches up
-        string SavePath => Path.Combine(Application.persistentDataPath, "proto", $"{PrototypeConfig.Current.protoId}.json");
+        string SavePath => Path.Combine(Application.persistentDataPath, "proto", $"{PrototypeConfig.Current.SaveId}.json");
 
         void Awake()
         {
@@ -74,6 +74,18 @@ namespace AquariumCiv.Prototypes
             Return(hours);
         }
 
+        /// <summary>Load this prototype's saved world again (P3+: back from a lab session into a running diary) and catch
+        /// up on the time since it was last seen, like a launch. Starts fresh if there is no save.</summary>
+        public void Reload()
+        {
+            Load();
+            Generation++;
+            CatchUpFromLastSeen();
+        }
+
+        /// <summary>A saved world exists for the current save id (a diary in progress).</summary>
+        public bool HasSave => File.Exists(SavePath);
+
         public void ResetWorld()
         {
             Sim = new SimCore(config, SimCore.NewWorld(seed, config));
@@ -101,7 +113,7 @@ namespace AquariumCiv.Prototypes
             Returned?.Invoke(hours, years);
         }
 
-        string LastSeenKey => $"last_seen_{PrototypeConfig.Current.protoId}";
+        string LastSeenKey => $"last_seen_{PrototypeConfig.Current.SaveId}";
 
         void Load()
         {
