@@ -282,7 +282,7 @@ namespace AquariumCiv.Spikes.Growth.View
             }
 
             float dg = GrowthTerrain.Dist(x, z, world.map.greenX, world.map.greenZ);
-            float thr = 0.5f + (n - 0.5f) * 0.35f;
+            float thr = 0.34f + (n - 0.5f) * 0.25f;
             float t3 = Bilerp(f3, x, z), t2 = Bilerp(f2, x, z), t1 = Bilerp(f1, x, z);
             if (dg < SiteMap.GreenR + 0.02f * n && (snap.flags[Math.Max(0, SiteMap.CellAt(x, z))] & Snapshot.FGreen) != 0)
             {
@@ -292,8 +292,8 @@ namespace AquariumCiv.Spikes.Growth.View
             }
             if (t3 > thr) return Cobble(x, z, n);
             if (t2 > thr) return Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f);
-            if (t1 > thr + 0.08f) return Color.Lerp(baseCol, Palette.Dirt, 0.5f);
-            if (t1 > thr - 0.1f) return Color.Lerp(baseCol, Palette.Dirt, 0.2f);
+            if (t1 > thr + 0.06f) return Color.Lerp(baseCol, Palette.Dirt, 0.6f);
+            if (t1 > thr - 0.12f) return Color.Lerp(baseCol, Palette.Dirt, 0.25f);
             return baseCol;
         }
 
@@ -333,7 +333,7 @@ namespace AquariumCiv.Spikes.Growth.View
             if (overlayF != null)
             {
                 int cell = SiteMap.CellAt(m.x, m.z);
-                if (cell >= 0) col = Color.Lerp(col, OverlayColor(overlayF[cell]), 0.78f);
+                if (cell >= 0 && !float.IsNaN(overlayF[cell])) col = Color.Lerp(col, OverlayColor(overlayF[cell]), 0.78f);
             }
             mb.Tri(a, b, c, col);
         }
@@ -404,13 +404,13 @@ namespace AquariumCiv.Spikes.Growth.View
                 {
                     var c = pl.cands[i];
                     var g = OnGround(c.x, c.z);
-                    if (!c.valid) { mb.Prism(g, 0.012f, 0.012f, 0.02f, 4, new Color(0.25f, 0.25f, 0.28f)); continue; }
+                    if (!c.valid) { mb.Prism(g, 0.016f, 0.016f, 0.02f, 4, new Color(0.25f, 0.25f, 0.28f)); continue; }
                     float t = hi > lo ? (c.score - lo) / (hi - lo) : 1f;
-                    mb.Prism(g, 0.018f, 0.018f, 0.03f + 0.4f * t, 5, Ramp(t));
+                    mb.Prism(g, 0.032f, 0.032f, 0.04f + 0.45f * t, 6, Ramp(t));
                     if (i == pl.chosen)
                     {
-                        mb.emission = 0.6f;
-                        mb.Prism(g, 0.03f, 0.0f, 0.75f, 6, Color.white);
+                        mb.emission = 0.8f;
+                        mb.Prism(g, 0.06f, 0.0f, 0.9f, 6, new Color(1f, 0.95f, 0.3f));
                         mb.emission = 0f;
                     }
                 }

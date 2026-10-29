@@ -15,7 +15,7 @@ namespace AquariumCiv.Spikes.Growth
 
         // Tunables (the spike's tuning knobs; see growth-lab.md for the values that worked).
         public static float WearPerTrip = 1f, Decay = 0.85f;
-        public static float TTrail = 3f, TPath = 11f, TRoad = 26f;
+        public static float TTrail = 2.5f, TPath = 8f, TRoad = 20f;
         public static float WornDiscount = 0.55f, NetworkDiscount = 0.5f, SlopeCost = 6f;
 
         readonly SiteMap m;

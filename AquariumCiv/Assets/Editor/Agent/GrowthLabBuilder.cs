@@ -74,8 +74,8 @@ namespace AquariumCiv.EditorTools
         public static void SetView(Camera cam, string view, float aspect = 16f / 9f)
         {
             var orbit = cam.GetComponent<SpikeOrbit>();
-            float yaw = 14f, pitch = 50f, dist = 14.2f;
-            var target = new Vector3(0, 1.0f, -0.05f);
+            float yaw = 12f, pitch = 52f, dist = 16.8f;
+            var target = new Vector3(0.05f, 0.95f, -0.2f);
             switch (view)
             {
                 case "top": yaw = 0f; pitch = 78f; dist = 14.5f; target = new Vector3(0, 1f, 0f); break;
@@ -122,6 +122,15 @@ namespace AquariumCiv.EditorTools
             box.overlay = overlay; box.showCandidates = candidates; box.labels = labels;
             box.Build();
             return box;
+        }
+
+        /// <summary>The snapshot year that includes the n-th placement of a kind (placements in months (12(y-1), 12y]).</summary>
+        public static int PlacementYear(Kind kind, int n = 0)
+        {
+            var w = Box().EnsureWorld();
+            foreach (var p in w.placements)
+                if (p.kind == kind && n-- == 0) return (int)((p.month + 11) / 12);
+            return -1;
         }
 
         /// <summary>Render frames [from, to] of a run's time-lapse into dir/f###.jpg. Returns ms per frame.</summary>
