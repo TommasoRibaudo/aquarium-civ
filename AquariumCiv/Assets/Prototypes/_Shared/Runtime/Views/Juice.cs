@@ -4,6 +4,7 @@ namespace AquariumCiv.Prototypes
 {
     /// <summary>
     /// Shared feedback for cleaning: synthesized sounds (no audio assets yet) and glint particles.
+    /// Wiping is a live grain synth (<see cref="RubSynth"/>); grabs, flicks and crunches are layered one-shots with variants.
     /// Every cleaning gesture uses the same palette, so A/B variants get the same juice budget.
     /// </summary>
     public class Juice : MonoBehaviour
@@ -16,21 +17,35 @@ namespace AquariumCiv.Prototypes
         static Juice instance;
         /// <summary>Particle material with a soft round sprite (puffs). Glints use a four-point sparkle.</summary>
         public static Material SoftMaterial { get; private set; }
-        AudioSource oneShot, swish, squeak;
+        // A small pool, so each one-shot keeps its own pitch (one shared source re-pitched sounds still playing).
+        readonly AudioSource[] voices = new AudioSource[8];
+        int nextVoice;
+        RubSynth rub;
         AudioClip pop, chime, whoosh;
+        AudioClip[] grab, flick, crunchTrash, crunchVine;
         ParticleSystem glints;
-        float swishTarget, squeakTarget;
+        float rubSpeed, rubGrime;
 
         void Awake()
         {
             instance = this;
             if (FindAnyObjectByType<AudioListener>() == null && Camera.main != null) Camera.main.gameObject.AddComponent<AudioListener>();
-            oneShot = gameObject.AddComponent<AudioSource>();
-            swish = Loop(MakeSwish());
-            squeak = Loop(MakeSqueak());
+            for (int i = 0; i < voices.Length; i++)
+            {
+                voices[i] = gameObject.AddComponent<AudioSource>();
+                voices[i].playOnAwake = false;
+            }
+            var rubGo = new GameObject("RubSynth"); // own object: its filter must not touch the one-shot voices
+            rubGo.transform.SetParent(transform, false);
+            rubGo.AddComponent<AudioSource>();
+            rub = rubGo.AddComponent<RubSynth>();
             pop = MakePop();
             chime = MakeChime();
             whoosh = MakeWhoosh();
+            grab = Variants(4, MakeGrab);
+            flick = Variants(4, MakeFlick);
+            crunchTrash = Variants(4, r => MakeCrunch(r, false));
+            crunchVine = Variants(4, r => MakeCrunch(r, true));
             if (particleMaterial != null)
             {
                 SoftMaterial = new Material(particleMaterial) { name = "Soft (runtime)" };
@@ -41,23 +56,22 @@ namespace AquariumCiv.Prototypes
             glints = MakeGlints();
         }
 
-        AudioSource Loop(AudioClip clip)
-        {
-            var s = gameObject.AddComponent<AudioSource>();
-            s.clip = clip;
-            s.loop = true;
-            s.volume = 0;
-            s.Play();
-            return s;
-        }
-
         void Update()
         {
-            float k = 1f - Mathf.Exp(-18f * Time.unscaledDeltaTime);
-            swish.volume = Mathf.Lerp(swish.volume, swishTarget * volume, k);
-            squeak.volume = Mathf.Lerp(squeak.volume, squeakTarget * volume, k);
-            swishTarget = squeakTarget = 0; // callers refresh every frame while wiping
+            rub.Set(rubSpeed, rubGrime, volume);
+            rubSpeed = 0; // callers refresh every frame while wiping
         }
+
+        static void Play(AudioClip clip, float pitch, float vol)
+        {
+            var v = instance.voices[instance.nextVoice];
+            instance.nextVoice = (instance.nextVoice + 1) % instance.voices.Length;
+            v.Stop();
+            v.pitch = pitch;
+            v.PlayOneShot(clip, vol * instance.volume);
+        }
+
+        static AudioClip Pick(AudioClip[] set) => set[Random.Range(0, set.Length)];
 
         // ---------- API ----------
 
@@ -73,31 +87,50 @@ namespace AquariumCiv.Prototypes
         public static void Pop(float pitch = 1f)
         {
             if (instance == null) return;
-            instance.oneShot.pitch = pitch * Random.Range(0.93f, 1.07f);
-            instance.oneShot.PlayOneShot(instance.pop, instance.volume);
+            Play(instance.pop, pitch * Random.Range(0.93f, 1.07f), 1f);
         }
 
         public static void Chime()
         {
             if (instance == null) return;
-            instance.oneShot.pitch = 1f;
-            instance.oneShot.PlayOneShot(instance.chime, instance.volume * 0.7f);
+            Play(instance.chime, 1f, 0.7f);
         }
 
+        /// <summary>Soft airy swoosh (page turns). Flicking mess uses <see cref="Flick"/>.</summary>
         public static void Whoosh()
         {
             if (instance == null) return;
-            instance.oneShot.pitch = Random.Range(0.9f, 1.15f);
-            instance.oneShot.PlayOneShot(instance.whoosh, instance.volume * 0.8f);
+            Play(instance.whoosh, Random.Range(0.9f, 1.15f), 0.8f);
         }
 
-        /// <summary>Call every frame while a finger rubs the glass. Dirty glass swishes; clean glass squeaks.</summary>
+        /// <summary>A finger picks up a piece of mess: a small gritty pluck.</summary>
+        public static void Grab()
+        {
+            if (instance == null) return;
+            Play(Pick(instance.grab), Random.Range(0.92f, 1.1f), 0.8f);
+        }
+
+        /// <summary>A piece is thrown: a snappy rising "thwip". Faster flicks (0..1) pitch it up.</summary>
+        public static void Flick(float strength01 = 0.5f)
+        {
+            if (instance == null) return;
+            Play(Pick(instance.flick), Mathf.Lerp(0.9f, 1.2f, strength01) * Random.Range(0.95f, 1.05f), 0.9f);
+        }
+
+        /// <summary>Mess gone: a crunchy pop. Weeds snap leafy and low; junk crinkles.</summary>
+        public static void Crunch(bool vine)
+        {
+            if (instance == null) return;
+            Play(Pick(vine ? instance.crunchVine : instance.crunchTrash), Random.Range(0.9f, 1.1f), 1f);
+        }
+
+        /// <summary>Call every frame while a finger rubs the glass. Dirty glass crunches; clean glass squeaks.</summary>
         public static void Rub(float speed01, float grimeUnder)
         {
             if (instance == null) return;
-            instance.swishTarget = Mathf.Max(instance.swishTarget, speed01 * Mathf.Clamp01(grimeUnder * 1.5f));
-            instance.squeakTarget = Mathf.Max(instance.squeakTarget, speed01 * Mathf.Clamp01(1f - grimeUnder * 3f) * 0.5f);
-            instance.squeak.pitch = 0.85f + 0.35f * speed01;
+            if (speed01 < instance.rubSpeed) return;
+            instance.rubSpeed = speed01;
+            instance.rubGrime = grimeUnder;
         }
 
         public static void Glints(Vector3 at, int count, float radius)
@@ -275,39 +308,113 @@ namespace AquariumCiv.Prototypes
             return Clip("Whoosh", d);
         }
 
-        /// <summary>Cloth on grimy glass: soft band-limited noise with a slow wobble. Loops.</summary>
-        static AudioClip MakeSwish()
+        // ---------- crunchy one-shots: layers of thump, snap, sweep and crackle grains ----------
+
+        static AudioClip[] Variants(int count, System.Func<System.Random, AudioClip> make)
         {
-            int n = Rate; // 1 s loop
-            var d = new float[n];
-            var rng = new System.Random(3);
-            float lp = 0, lp2 = 0;
-            for (int i = 0; i < n; i++)
-            {
-                float t = i / (float)n;
-                lp += ((float)(rng.NextDouble() * 2 - 1) - lp) * 0.22f;
-                lp2 += (lp - lp2) * 0.5f;
-                d[i] = (lp - lp2 * 0.6f) * (0.75f + 0.25f * Mathf.Sin(t * Mathf.PI * 2 * 6)) * 0.8f;
-            }
-            return Clip("Swish", d);
+            var set = new AudioClip[count];
+            for (int i = 0; i < count; i++) set[i] = make(new System.Random(100 + i * 7919));
+            return set;
         }
 
-        /// <summary>Rubber on clean glass: a wobbling tone. Integer cycles per loop so it repeats without a click.</summary>
-        static AudioClip MakeSqueak()
+        static float Rnd(System.Random r, float lo, float hi) => lo + (float)r.NextDouble() * (hi - lo);
+
+        /// <summary>Peak-normalise, then soft-saturate: loud and dense without clipping.</summary>
+        static AudioClip Finish(string name, float[] d, float peak = 0.9f)
         {
-            int n = Rate / 2; // 0.5 s loop
+            float max = 1e-5f;
+            foreach (var x in d) max = Mathf.Max(max, Mathf.Abs(x));
+            for (int i = 0; i < d.Length; i++) d[i] = (float)System.Math.Tanh(d[i] / max * 1.6f) / (float)System.Math.Tanh(1.6) * peak;
+            return Clip(name, d);
+        }
+
+        /// <summary>A low sine thump with a quick pitch drop: the "body" under a hit.</summary>
+        static void Thump(float[] d, float at, float f0, float dur, float amp)
+        {
+            int s = (int)(at * Rate), n = (int)(dur * Rate);
+            double ph = 0;
+            for (int i = 0; i < n && s + i < d.Length; i++)
+            {
+                float t = i / (float)Rate, x = i / (float)n;
+                ph += 2 * Mathf.PI * f0 * (1f + 1.5f * Mathf.Exp(-t * 60f)) / Rate;
+                d[s + i] += Mathf.Sin((float)ph) * amp * (1f - x) * (1f - x) * Mathf.Min(1f, t * 3000f);
+            }
+        }
+
+        /// <summary>Crackle: <paramref name="count"/> short band-passed noise grains scattered over a window, thinning out.</summary>
+        static void Crackle(float[] d, System.Random r, float at, float window, int count, float fLo, float fHi, float gLo, float gHi, float amp)
+        {
+            for (int k = 0; k < count; k++)
+            {
+                float u = (float)r.NextDouble();
+                int s = (int)((at + window * u * u) * Rate); // denser at the start
+                int n = (int)(Rnd(r, gLo, gHi) * Rate);
+                float f = 2f * Mathf.Sin(Mathf.PI * Rnd(r, fLo, fHi) / Rate), q = 1f / Rnd(r, 1.5f, 6f);
+                float hit = (float)r.NextDouble();
+                float a = amp * (0.3f + 0.7f * hit * hit) * (1f - 0.6f * u);
+                float low = 0, band = 0;
+                for (int i = 0; i < n && s + i < d.Length; i++)
+                {
+                    float x = i / (float)n, env = Mathf.Min(1f, i / (0.0004f * Rate)) * (1f - x) * (1f - x);
+                    low += f * band;
+                    float high = (float)(r.NextDouble() * 2 - 1) - low - q * band;
+                    band += f * high;
+                    d[s + i] += band * env * a;
+                }
+            }
+        }
+
+        /// <summary>Picking a piece up: a tiny thump and a few grit grains.</summary>
+        static AudioClip MakeGrab(System.Random r)
+        {
+            var d = new float[(int)(Rate * 0.09f)];
+            Thump(d, 0, Rnd(r, 150f, 190f), 0.05f, 0.5f);
+            Crackle(d, r, 0, 0.035f, 6, 1500f, 4500f, 0.002f, 0.008f, 1.2f);
+            return Finish("Grab", d, 0.7f);
+        }
+
+        /// <summary>Throwing it: a sharp snap, then a band-passed noise sweep rising fast (thwip).</summary>
+        static AudioClip MakeFlick(System.Random r)
+        {
+            int n = (int)(Rate * 0.16f);
             var d = new float[n];
-            const float f = 1100f, vib = 22f; // 550 and 11 whole cycles per loop
-            double phase = 0;
+            Crackle(d, r, 0, 0.004f, 3, 2500f, 5500f, 0.001f, 0.003f, 1.5f);
+            float low = 0, band = 0, fFrom = Rnd(r, 500f, 800f), fTo = Rnd(r, 2800f, 4200f);
             for (int i = 0; i < n; i++)
             {
-                float t = i / (float)Rate;
-                float inst = f * (1f + 0.06f * Mathf.Sin(2 * Mathf.PI * vib * t));
-                phase += 2 * Mathf.PI * inst / Rate;
-                float s = Mathf.Sin((float)phase) * 0.5f + Mathf.Sin((float)phase * 2f) * 0.2f + Mathf.Sin((float)phase * 3f) * 0.1f;
-                d[i] = s * 0.35f;
+                float x = i / (float)n;
+                float f = 2f * Mathf.Sin(Mathf.PI * Mathf.Lerp(fFrom, fTo, Mathf.Sqrt(x)) / Rate);
+                low += f * band;
+                float high = (float)(r.NextDouble() * 2 - 1) - low - 0.3f * band;
+                band += f * high;
+                d[i] += band * Mathf.Sin(Mathf.PI * Mathf.Pow(x, 0.45f)) * 0.9f;
             }
-            return Clip("Squeak", d);
+            return Finish("Flick", d, 0.8f);
+        }
+
+        /// <summary>Mess gone. Junk: a bubble pop, a thump and a crinkly crackle tail.
+        /// Weeds: a woody snap and a lower, leafier crackle.</summary>
+        static AudioClip MakeCrunch(System.Random r, bool vine)
+        {
+            var d = new float[(int)(Rate * 0.3f)];
+            Thump(d, 0, vine ? Rnd(r, 95f, 120f) : Rnd(r, 80f, 100f), 0.08f, 0.9f);
+            if (vine)
+            {
+                Crackle(d, r, 0, 0.006f, 4, 1800f, 4000f, 0.001f, 0.004f, 1.6f); // the snap
+                Crackle(d, r, 0.008f, 0.2f, 16, 600f, 2600f, 0.004f, 0.018f, 1.0f);
+            }
+            else
+            {
+                double ph = 0;
+                for (int i = 0; i < (int)(Rate * 0.07f); i++) // bubble: fast downward sweep
+                {
+                    float t = i / (float)Rate;
+                    ph += 2 * Mathf.PI * Mathf.Lerp(1300f, 320f, Mathf.Sqrt(t / 0.07f)) / Rate;
+                    d[i] += Mathf.Sin((float)ph) * 0.5f * Mathf.Exp(-t * 45f) * Mathf.Min(1f, t * 2000f);
+                }
+                Crackle(d, r, 0, 0.16f, 26, 1800f, 6000f, 0.002f, 0.009f, 1.0f);
+            }
+            return Finish(vine ? "CrunchVine" : "CrunchTrash", d);
         }
     }
 }

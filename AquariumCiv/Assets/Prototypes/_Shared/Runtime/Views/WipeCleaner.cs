@@ -88,6 +88,7 @@ namespace AquariumCiv.Prototypes
             {
                 grabbed = piece;
                 grabbed.SetHeld(true); // lifts a little: it's in your fingers now
+                Juice.Grab();
                 grabStart = screenPos;
                 samples.Clear();
                 samples.Add((Time.unscaledTime, screenPos));
@@ -169,7 +170,7 @@ namespace AquariumCiv.Prototypes
             {
                 var dir = (Cam.transform.right * v.x + Cam.transform.up * v.y).normalized;
                 float s = Juice.WorldPerScreen(piece.Center);
-                piece.Flick((dir * 0.5f + Vector3.up * 0.35f) * s);
+                piece.Flick((dir * 0.5f + Vector3.up * 0.35f) * s, Mathf.InverseLerp(flickSpeed, flickSpeed * 4f, v.magnitude));
                 return;
             }
             piece.Wobble();

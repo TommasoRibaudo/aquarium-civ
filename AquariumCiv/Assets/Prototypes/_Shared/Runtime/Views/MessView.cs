@@ -122,7 +122,7 @@ namespace AquariumCiv.Prototypes
             }
             EventLog.Instance?.Clean(kind, 1, gesture, before);
             Puff(at);
-            Juice.Pop(kind == "vine" ? 0.8f : 1f);
+            Juice.Crunch(kind == "vine");
             AfterClean(before);
         }
 
@@ -312,13 +312,13 @@ namespace AquariumCiv.Prototypes
             if (!done && !wiggling) StartCoroutine(Wiggle());
         }
 
-        /// <summary>Send it flying (world velocity), spinning, shrinking, then clean it.</summary>
-        public void Flick(Vector3 velocity)
+        /// <summary>Send it flying (world velocity), spinning, shrinking, then clean it. Strength (0..1) pitches the throw sound.</summary>
+        public void Flick(Vector3 velocity, float strength01 = 0.5f)
         {
             if (done) return;
             done = true;
             StopAllCoroutines();
-            Juice.Whoosh();
+            Juice.Flick(strength01);
             StartCoroutine(Fly(velocity));
         }
 

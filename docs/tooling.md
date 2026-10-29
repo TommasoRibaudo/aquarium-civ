@@ -266,3 +266,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - `AquariumCiv.EditorTools.AgentGameView.SetSize(w,h)` / `.Shot(name)` (Assets/Editor/Agent) set a portrait Game view
     and grab a play-mode screenshot including IMGUI; `Temp/agent/ready.cs` prints `PrototypeBase.started`.
 
+- **2026-10-29 · Tester sound checks (no ears).** [verified]
+  - A live `OnAudioFilterRead` synth can be verified by reflection: its smoothed fields only move on the audio thread,
+    so a value rising during a fixture drag proves the filter runs in Editor play mode. One-shots played with
+    `PlayOneShot` show up in `AudioSource.isPlaying`; to count plays, read the pool's round-robin index before/after.
+  - `Application.logMessageReceivedThreaded` (not `logMessageReceived`) also catches audio-thread exceptions.
+  - P2 lab mode writes the **diary** save `proto/P2.json` (P2 has no separate lab save): back it up before a P2 playtest.
+  - A raster of wipe strokes inset 12% from the front pane's projected rect leaves its mean at ~0.05, just above the
+    `PaneCleared` threshold (< 0.05). To test the clear chime, set a dirty central patch on a clean pane and wipe that.
