@@ -76,7 +76,7 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 | 2 | 0.1.0 | P0 sandbox | first install | - |
 | 3 | 0.1.0 | P1 Glass & Mess | H1 cleaning gesture: wipe vs tap (lab) | - |
 | 5 | 0.1.0 | P1 + in-app feedback | same, plus Feedback button | - |
-| next | **0.2.0** | **P2 Return to Mess** | H2: coming back to mess is a pull, not guilt. A/B by day: A cosmetic mess, B mess slows work. Diary, 4 days | [below](#p2-what-to-test) |
+| 6 | **0.2.0** | **P2 Return to Mess** | H2: coming back to mess is a pull, not guilt. A/B by day: A cosmetic mess, B mess slows work. Diary, 4 days | [below](#p2-what-to-test) |
 
 ### P2 What to Test
 Paste into App Store Connect → TestFlight → the build → Test Details:
