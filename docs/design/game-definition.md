@@ -1,6 +1,6 @@
-# Aquarium Civ — Game Definition (draft v0.2, 2026-10-29)
+# Aquarium Civ — Game Definition (v0.2, 2026-10-29)
 
-Status: **draft for the user's approval.** v0.1 (2026-10-28) defined four concept variants and the prototypes that
+Status: **approved by the user 2026-10-29.** v0.1 (2026-10-28) defined four concept variants and the prototypes that
 tested them. v0.2 folds in the prototype gates (Gates 1–3, [decisions.md](../decisions.md)), the art spike and the
 two-batch interview of 2026-10-29 ([game-definition-interview.md](game-definition-interview.md)). Items marked
 **[slice]** are hypotheses the vertical slice's week-long test checks ([vertical-slice-plan.md](vertical-slice-plan.md)).
@@ -58,6 +58,16 @@ Cleaning is how you both get the light back.
   guildmaster, master builder, merchant, …; exact lists TBD). Traits drive who aspires to what, and rivals compete.
   Successions, elections and feuds feed the chronicle ("John the hunter became chief of the camp"). Notable counts
   grow with the eras: about **2–4 in the camp, 4–8 in the village, up to 12 in the town**.
+  **A role-holder's trait colours their time in office** (user, 2026-10-29), in story and behaviour only, not the
+  economy: a cheerful chief means more festivals, a stern headman a tidy, quiet village, a quarrelsome guildmaster more
+  feuds and chronicle drama.
+- **Life in the box** (user, 2026-10-29: the people "need to go around and be doing things, not just walk around").
+  Every person in the view follows a **day of activities**, not random wandering: go to work at their job site and
+  visibly work (chop, hoe, carry, fish, hammer, cook), carry goods along the paths, eat and gather at the fire/green,
+  chat with friends, argue with rivals, play (kids), rest at home at night. Notables do their everyday job and their
+  role (the chief speaks at the fire, the miller works the mill); the crowd's activities come from the buildings
+  (a farm puts farmers in its field). The paths they walk are the ones the sim wears in (research 08), and later
+  sweepers and gardeners do the care work (§5). It's view-side: the aggregate economy is unchanged.
 - **Death:** old age only. Neglect never kills, and the civ never collapses.
 - **Time:** **1 real hour = 1 game year** (Gate 2). **Notables age with the calendar and live 110–160 years** (user,
   2026-10-29: half-speed aging confused people), so a notable lives about 5–7 real days. The crowd ages normally.

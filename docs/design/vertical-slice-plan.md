@@ -139,12 +139,13 @@ KayKit's huts → homes, and B keeps the free, cohesive base.
 | 1 | Project skeleton: `Assets/Game`, ported sim + tests, versioned atomic save, `GameClock` (load, catch-up with the 8 h quarter-speed tail, autosave) | 3 | Sim tests green, save survives a killed app (test) |
 | 2 | Style kit into `Assets/Game` + **organic placement layer** (sim decides sites; meshes generated from sim state) | 4 | A 3-era time-lapse that grows like a real village; you sign off the look |
 | 3 | Box, care, camera, crowd, notables in UI Toolkit | 4 | Tester agent passes a first-session playtest by touch |
+| 3b | **Life in the box + notable jobs and roles** (game-definition §4): activity days for every person (work at the job site with work animations, carry goods on worn paths, gather, chat/argue, kids play, sleep), notables' everyday jobs and era roles (1/3/7) with trait-driven contests and trait-coloured time in office, new chronicle stories | 4 | A watcher can say what 5 random people are doing; role changes appear as cards |
 | 4 | Chronicle cards + time-lapse + small book | 3 | Recall and history metrics logged |
 | 5 | Shaping the land (rain, grove, channel) in the style kit, answered by placement | 3 | A shaping is answered visibly and credited in diary time |
 | 6 | Eras live (camp → village → town), box completes, second box arrives | 4 | The town moment plays live after a 24 h away |
 | 7 | First run, settings, sound, era notification, polish | 3 | Tester agent and you sign off |
 | 8 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
-About 24 agent days before the week-long test.
+About 28 agent days before the week-long test.
 
 **Progress.** **M1 done 2026-10-29** (branches `vs/m1`, then `vs/m1-clock`): `Assets/Game/Sim` (`AquariumCiv.Sim`,
 pure C#, the prototype sim with the gate switches resolved: no mess→mood, stories and yearly snapshots always on,
