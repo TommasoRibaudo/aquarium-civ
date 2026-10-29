@@ -61,6 +61,7 @@ Cleaning is how you both get the light back.
   **A role-holder's trait colours their time in office** (user, 2026-10-29), in story and behaviour only, not the
   economy: a cheerful chief means more festivals, a stern headman a tidy, quiet village, a quarrelsome guildmaster more
   feuds and chronicle drama.
+  Jobs, role lists, how roles are won and trait aspirations (draft for approval): [notable-roles.md](notable-roles.md).
 - **Life in the box** (user, 2026-10-29: the people "need to go around and be doing things, not just walk around").
   Every person in the view follows a **day of activities**, not random wandering: go to work at their job site and
   visibly work (chop, hoe, carry, fish, hammer, cook), carry goods along the paths, eat and gather at the fire/green,
