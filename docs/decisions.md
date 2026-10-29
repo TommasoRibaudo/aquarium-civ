@@ -15,9 +15,29 @@
 | 2026-10-28 | Unity version | 6000.3.27f1 (6.3 LTS) | Matches GameCI images; project at `AquariumCiv/` |
 | 2026-10-28 | Budget | Free options only for now | KayKit free packs (CC0); no paid packs or AI subscriptions yet |
 
+Phase C interview (details in [design/game-definition.md](design/game-definition.md); "H" = hypothesis pending a prototype):
+
+| Date | Topic | Decision | Notes |
+|------|-------|----------|-------|
+| 2026-10-28 | Neglect feel | Comic chaos + gentle guilt | Visible, funny, reversible mess, plus a slight output drop (H: size tested in P2). Capped at ~48 h; stock never lost |
+| 2026-10-28 | Death | Old age only | Neglect never kills; the civ never collapses |
+| 2026-10-28 | Control | Caretaker + nudges | Player tends the environment and nudges; the people decide what to build |
+| 2026-10-28 | Care types | Glass grime/fog, waste/trash, overgrowth/weather | Disease out of scope for now. The glass is always the player's job |
+| 2026-10-28 | Check-in (3 min) | Chronicle → clean → nudge | |
+| 2026-10-28 | Deep session (20 min) | Live era transitions + watcher events, and terraforming/decorating | |
+| 2026-10-28 | Progression | Eras inside a box → the box grows → new box on a shelf | Old boxes stay alive as museums (H: P6) |
+| 2026-10-28 | Time | 1 real hour ≈ 1 game year | Tunable; mess runs on real hours. H: attachment vs lifespan (P3) |
+| 2026-10-28 | Citizens | Crowd + 5–12 named notables | Pin a favorite; legends roster |
+| 2026-10-28 | History | Saved and shown as a headline feature | Reference: WorldBox. Presentation tested in P4 |
+| 2026-10-28 | Anti-references | FarmVille/Godus timers, Tamagotchi guilt, menu idle civs, F2P ad-farms | |
+| 2026-10-28 | Monetization (hypothesis) | Free first era + one-time unlock (~$4.99–9.99), then cosmetics and box expansions | No ads, no skip currency, no gacha, never sell care |
+| 2026-10-28 | Concept variants | All four (Keeper's Glass, Chronicle Box, Gardener God, Shelf of Worlds) go through prototyping | Plan approved; P0 started |
+| 2026-10-28 | Notable aging | Notables age at half speed | ~5 real days of life at 1 h = 1 y |
+| 2026-10-28 | Test speed | 1 real hour = 1 game year | Faster speeds are dev-only debug presets |
+| 2026-10-28 | Testers | iPhone via TestFlight | User has an Apple developer account. iOS builds via CI (no Mac) |
+| 2026-10-28 | Prototyping | Throwaway scenes under `Assets/Prototypes/`, within-subject A/B with the user + 3–5 friends | Plan: [design/prototype-plan.md](design/prototype-plan.md) |
+
 ## Still open
 - AI tools for minor assets (free tiers only for now)
-- Monetization model
-- What "cleaning/care" concretely means in-game
-- Offline simulation approach (full catch-up sim vs abstracted)
-- Session cadence: how often the player is expected to check in
+- Offline simulation: P0 uses a coarse aggregate catch-up; whether civ progress needs any offline cap (Q7)
+- iOS CI: GameCI + fastlane on GitHub macOS runners vs Unity Build Automation (needs Apple API key + certificates from the user)

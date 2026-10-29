@@ -5,9 +5,9 @@ Working concept: an idle civilization builder in a glass box. The civ lives and 
 aquarium — you have to look after it (clean up, keep it healthy) or it degrades.
 
 ## Phase order
-1. **Research** (current): gather documentation on technology, idle design and reference games.
+1. **Research** (done): gather documentation on technology, idle design and reference games.
 2. **Working method**: pick engine/stack, tools, repo layout, workflow.
-3. **Game definition**: pillars, core loop, what the player sees, what "cleaning" means, scope.
+3. **Game definition** (current): pillars, core loop, what the player sees, what "cleaning" means, scope.
 4. **Planning**: prototype goals, milestones.
 
 ## Research documents
@@ -20,6 +20,12 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | 04 | [research/04-agentic-unity.md](research/04-agentic-unity.md) | Unity CLI + Pipeline, MCP bridges, batchmode, agent workflow |
 | 05 | [research/05-github-cicd.md](research/05-github-cicd.md) | GameCI builds, Play/TestFlight deploy, LFS, costs |
 | 06 | [research/06-assets.md](research/06-assets.md) | Asset kits (KayKit/Synty/Quaternius/Kenney), crowd animation, AI asset tools |
+
+## Design documents
+| File | Topic |
+|------|-------|
+| [design/game-definition.md](design/game-definition.md) | Pillars, loops, care mechanic, progression, concept variants (draft) |
+| [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
 
 ## Open questions
 See [decisions.md](decisions.md) (to be filled in as we answer them).
