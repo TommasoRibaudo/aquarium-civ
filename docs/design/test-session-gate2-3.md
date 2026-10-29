@@ -66,10 +66,10 @@ Lab, about 30 minutes. A, then B.
 
 | ✓ | Open in the hub | What to do (≈ 7 min) | Look for | Survey Q4 | Compared with |
 |---|---|---|---|---|---|
-| ☐ | **P5 · A Omens** | Time runs fast here (a minute is a year). Tap "Nudge", pick a totem or the shrine, tap a spot in the village. Watch the people walk over, and within 1–3 minutes build something beside it ("After the Keeper raised…"). Place another kind. "Step away +8 h" and read the welcome line. Done. | Did you feel you shaped what happened? Too much control, too little? | "I felt I shaped what happened" + "too much or too little control?" | B: shape the land |
+| ☐ | **P5 · A Omens** | Time runs fast here (a minute is a year). Tap "Nudge", pick a totem or the shrine, tap a spot in the village. Watch the people walk over, and within a minute or two build something beside it ("After the Keeper raised…"). Place another kind. "Step away +8 h" and read the welcome line. Done. | Did you feel you shaped what happened? Too much control, too little? | "I felt I shaped what happened" + "too much or too little control?" | B: shape the land |
 | ☐ | **P5 · B Shape the land** | Same: Nudge → rain on a spot, plant a grove, or dig a channel. Watch the answer. Another one. +8 h. Done. | Same | same | A: omens |
 | ☐ | Pair question | | | | |
-| ☐ | **P6 · A The box grows** | A young camp at a minute per year. Wait for "the people are ready to become a hamlet" (about 2 min, or Step away +1 h) and tap **Watch**. Then Step away +24 h: the Village moment waited for you; **Watch**: the box fills and an annex rises. Watch the village spread into it for a minute. Done. | Was the live era moment worth waiting for? Do you want to see what comes next? | "I want to see what comes next" | B: new box on the shelf |
+| ☐ | **P6 · A The box grows** | A young camp at a minute per year. Wait for "the people are ready to become a hamlet" (under a minute) and tap **Watch**. Then Step away +24 h: the Village moment waited for you; **Watch**: the box fills and an annex rises. Watch the village spread into it for a minute. Done. | Was the live era moment worth waiting for? Do you want to see what comes next? | "I want to see what comes next" | B: new box on the shelf |
 | ☐ | **P6 · B New box on the shelf** | Same steps. At Village a new box arrives on a shelf; the old one stays as a museum. Visit the old box and the new one with the buttons. Done. | Does a fresh box excite you, or do you miss the old one? | same | A: the box grows |
 | ☐ | Pair question | | | | |
 

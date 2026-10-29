@@ -254,3 +254,15 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     numbers come out with commas. Use `CultureInfo.InvariantCulture` when it matters.
   - Overlapping IMGUI buttons: the one drawn **first** gets the MouseDown (and the one drawn last shows on top). A
     screenshot where panel X covers panel Y means Y's buttons take the taps.
+- **2026-10-29 · Overnight P3–P6 notes (main session).** [verified]
+  - Python/bash heredocs with apostrophes in C# strings ("Keeper's") fail with "unexpected EOF": write the edit script
+    with the Write tool and run the file (already in §7; it bit three times).
+  - The Editor's "Hold on... Importing assets" window is a progress bar, not a question: `dismiss-dialogs.ps1` lists it as
+    UNKNOWN. Poll `unity status` until `ready` (an until-loop, not chained sleeps).
+  - `unity recompile` right after a large edit often returns "No Pipeline instance" or 400 during the domain reload;
+    wait for `ready` and run it once more. An eval sent during the reload is silently lost (check its result).
+  - Another session can share this working tree and Editor: check `git status` for files you didn't write before every
+    commit, stage paths explicitly (not `git add -A`), and agree on Editor time by message.
+  - `AquariumCiv.EditorTools.AgentGameView.SetSize(w,h)` / `.Shot(name)` (Assets/Editor/Agent) set a portrait Game view
+    and grab a play-mode screenshot including IMGUI; `Temp/agent/ready.cs` prints `PrototypeBase.started`.
+
