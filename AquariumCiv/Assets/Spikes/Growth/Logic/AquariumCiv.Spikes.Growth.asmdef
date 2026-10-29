@@ -1,0 +1,16 @@
+{
+    "name": "AquariumCiv.Spikes.Growth",
+    "rootNamespace": "AquariumCiv.Spikes.Growth",
+    "references": [
+        "AquariumCiv.Sim"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
