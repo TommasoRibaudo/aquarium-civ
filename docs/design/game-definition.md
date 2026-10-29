@@ -71,6 +71,7 @@ First run, glance and check-in beat by beat, and how a check-in ends (Q13): [fir
   role (the chief speaks at the fire, the miller works the mill); the crowd's activities come from the buildings
   (a farm puts farmers in its field). The paths they walk are the ones the sim wears in (research 08), and later
   sweepers and gardeners do the care work (§5). It's view-side: the aggregate economy is unchanged.
+  Activities per job and role, the day and seasons, social moments, reactions to the Keeper (draft for approval): [life-in-the-box.md](life-in-the-box.md).
 - **Death:** old age only. Neglect never kills, and the civ never collapses.
 - **Time:** **1 real hour = 1 game year** (Gate 2). **Notables age with the calendar and live 110–160 years** (user,
   2026-10-29: half-speed aging confused people), so a notable lives about 5–7 real days. The crowd ages normally.
