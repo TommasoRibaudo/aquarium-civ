@@ -1,5 +1,7 @@
 # The first session and the check-in loop (draft, 2026-10-29)
 
+> **Decided by the user 2026-10-29** (decisions.md "First session", "Session close"): wipe the glass *and* clear an overgrown patch first; name the **settlement** (shown on the aquarium plate); one-time "Their first year" skip; Sky Crumb with the second shaping; **the evening talk closes a long session (~15 min), short check-ins end quietly**; notifications asked at the first era-ready; one-line peek for the glance. Where the text below differs, these win.
+
 Status: **draft for the user's confirmation** (issue #52). Expands [game-definition.md](game-definition.md) §3 loops
 and §9 session design, and proposes an answer to **Q13** ("what does a check-in end on, so it never feels like
 nothing to do?"). Binding inputs: the 2026-10-29 rows of [decisions.md](../decisions.md), the shaping toolset
