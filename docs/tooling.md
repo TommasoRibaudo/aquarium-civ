@@ -276,4 +276,4 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     `PaneCleared` threshold (< 0.05). To test the clear chime, set a dirty central patch on a clean pane and wipe that.
 - **2026-10-29 · `test run --mode play` silently runs 0 tests** ("0/0 passed (0s)", exit 0). The Pipeline's modes are
   `editor`, `playmode`, `all`; anything else matches nothing. Use `--mode playmode` (and `--async_tests true` + `test
-  status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified]
+  status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified] Same for `--mode edit` (use `editor`).

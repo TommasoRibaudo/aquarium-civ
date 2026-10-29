@@ -137,6 +137,12 @@ KayKit's huts → homes, and B keeps the free, cohesive base.
 | 7 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
 About 22 agent days before the week-long test.
 
+**Progress.** M1 started 2026-10-29 on branch `vs/m1`: `Assets/Game/Sim` (`AquariumCiv.Sim`, pure C#, the prototype sim
+with the gate switches resolved: no mess→mood, stories and yearly snapshots always on, nudges = rain/grove/channel
+only), `Assets/Game/Runtime` (`AquariumCiv.Game`, versioned atomic `SaveStore`), `Assets/Game/Tests` (32 EditMode
+tests incl. a slice-world fingerprint and a killed-mid-save test). Still to do for M1: the save/catch-up driver
+(`GameClock`: load, catch-up, autosave, pause/quit), a first scene builder, and excluding the prototypes from the slice build.
+
 ## 8. Risks
 - **"Nothing to do" between events** (P2 feedback #8: "there is nothing else to do so it feels a bit like doing
   nothing"). The slice must make every check-in end with something new to see; that's what the Gate 2/3 features are for.
