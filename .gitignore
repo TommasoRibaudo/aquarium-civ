@@ -65,3 +65,4 @@ Thumbs.db
 *.pem
 .env
 .env.*
+.agent-editor.lock

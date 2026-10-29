@@ -49,4 +49,17 @@ _Last updated 2026-10-29._
 3. **Slice build settings** (#35): the slice build should leave out the prototypes, which means changing Build Settings
    that the 0.3.x TestFlight builds use. When?
 4. **CI job for the fast sim tests** (#41): OK to touch `ci.yml` while the `ci-hardening` work is open?
-5. **Growth Lab blind test** (when the spike lands): you + 2 others watch shuffled time-lapses A/B.
+
+## E. Growth Lab results ([design/spikes/growth-lab.md](design/spikes/growth-lab.md))
+1. **Blind test:** you + 2 others watch the shuffled clips (`docs/design/spikes/img/growth-lab/blind/set{1,2,3}_{A,B}.mp4`,
+   15 s each) and pick which "grew like a real village"; then name the era in `era-test/still_01..09.jpg`. Key and
+   instructions: growth-lab.md §6. When?
+2. **The box fills up by year 100–120.** Is a full box the "box complete" moment, or should growth slow and keep
+   commons (woods, a meadow) open?
+3. **Town growth:** the economy plateaus at ~20 buildings; the spike added its own town extension (workshops, cottages,
+   shops). Put town demand into the real sim in M2/M6? (★ yes, in M6 with the town buildings.)
+4. **Phone cost:** 245 ms for a 48 h catch-up in the Editor (budget 300 ms). ★ a cheaper catch-up (path wear every 6
+   months during long absences) now, and a phone timing with the next TestFlight.
+- Decided by the orchestrator (tell me if not): placement results are **stored in the save**, not re-derived (layouts
+  differed slightly between .NET runtimes); nudge answers pick by era and land (M2); the two small cheat gaps are fixed
+  in M2.
