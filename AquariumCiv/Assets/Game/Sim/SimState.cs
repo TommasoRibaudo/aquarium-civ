@@ -24,6 +24,10 @@ namespace AquariumCiv.Sim
         public float storyChancePerMonth = 0.07f;
         public double fullSpeedHours = 8;       // offline: the first hours away run at full speed (game definition v0.2)
         public double slowSpeed = 0.25;         // ... and the rest at this fraction (a weekend away ≈ 18 game years)
+        // Era thresholds (game definition §8): all three must hold; years count from the start of the current era.
+        // Over 100 seeds, watched: the village is ready at a median of year 15 (p90 34), the town ~43 years after it.
+        public EraThreshold villageAt = new EraThreshold { population = 10, buildings = 6, years = 10 };
+        public EraThreshold townAt = new EraThreshold { population = 22, buildings = 13, years = 20 };
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -36,6 +40,15 @@ namespace AquariumCiv.Sim
         }
 
         public double OfflineSimHours(double realHoursAway) => OfflineSimHours(realHoursAway, fullSpeedHours, slowSpeed);
+    }
+
+    /// <summary>What a box needs to be ready for its next era. Reaching it only makes the era ready; it waits for the player.</summary>
+    [Serializable]
+    public class EraThreshold
+    {
+        public int population;
+        public int buildings;
+        public int years;   // game years spent in the current era
     }
 
     /// <summary>What an offline catch-up did: real hours away, sim hours the civ lived, game months stepped.</summary>
@@ -69,10 +82,25 @@ namespace AquariumCiv.Sim
         public T Pick<T>(IReadOnlyList<T> list) => list[Range(0, list.Count)];
     }
 
+    /// <summary>The three eras of a box (game definition §8). Saved as an int, so the order is fixed.</summary>
+    public enum Era { Camp, Village, Town }
+
     public static class BuildingType
     {
         public const string Camp = "Camp", Hut = "Hut", Farm = "Farm", Lumbermill = "Lumbermill", Well = "Well",
             Windmill = "Windmill", Market = "Market", Tavern = "Tavern", Church = "Church";
+        // Industrious town: stubs, nothing builds them yet.
+        public const string Workshop = "Workshop", Guildhall = "Guildhall";
+
+        /// <summary>The era a type first appears in; a box builds it from that era on. Types are roles, not looks: the
+        /// view dresses a camp's Farm as gathering grounds and its Lumbermill as a woodpile.</summary>
+        public static Era EraOf(string type) => type switch
+        {
+            Camp or Hut or Farm or Lumbermill => Era.Camp,
+            Well or Windmill or Market or Tavern or Church => Era.Village,
+            Workshop or Guildhall => Era.Town,
+            _ => Era.Camp,
+        };
     }
 
     [Serializable]
@@ -154,6 +182,7 @@ namespace AquariumCiv.Sim
         public int buildings;
         public int notables;
         public float mood;
+        public Era era;
     }
 
     [Serializable]
@@ -184,6 +213,10 @@ namespace AquariumCiv.Sim
         public List<YearSnapshot> years = new();
         public int pinnedNotableId = -1;
         public List<Nudge> nudges = new();
+        public Era era;                 // the box's era; moves only through SimCore.AdvanceEra
+        public bool eraReady;           // the next era's threshold was reached: it waits for the player to watch
+        public long eraStartMonth;      // month the current era began
+        public long eraReadyMonth = -1; // month eraReady was set (-1 = not ready)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

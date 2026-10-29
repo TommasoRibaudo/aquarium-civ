@@ -188,7 +188,7 @@ namespace AquariumCiv.Sim
             var s = State;
             int year = (int)(s.month / SimConfig.MonthsPerYear);
             if (s.years.Count > 0 && s.years[^1].year == year) return;
-            s.years.Add(new YearSnapshot { year = year, population = s.population, buildings = s.buildings.Count, notables = s.notables.Count(n => n.alive), mood = s.mood });
+            s.years.Add(new YearSnapshot { year = year, population = s.population, buildings = s.buildings.Count, notables = s.notables.Count(n => n.alive), mood = s.mood, era = s.era });
         }
 
         /// <summary>Chronicle line linking two people (wedding, feud...).</summary>

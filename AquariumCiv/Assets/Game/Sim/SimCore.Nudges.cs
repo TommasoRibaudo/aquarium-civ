@@ -74,13 +74,14 @@ namespace AquariumCiv.Sim
             }
         }
 
-        /// <summary>What the people build in answer to a nudge (null = nothing fits right now).</summary>
+        /// <summary>What the people build in answer to a nudge (null = nothing fits right now). Only types of the box's
+        /// era: a camp answers a channel with a field, not a windmill, and a grove with a hut, not a market.</summary>
         string AnswerTo(Nudge n) => n.kind switch
         {
             NudgeKind.Rain => BuildingType.Farm,
-            NudgeKind.Channel => Count(BuildingType.Windmill) == 0 ? BuildingType.Windmill : BuildingType.Farm,
+            NudgeKind.Channel => Wants(BuildingType.Windmill, Count(BuildingType.Windmill) == 0) ? BuildingType.Windmill : BuildingType.Farm,
             NudgeKind.Grove => Count(BuildingType.Lumbermill) == 0 ? BuildingType.Lumbermill
-                : Count(BuildingType.Market) == 0 ? BuildingType.Market : BuildingType.Hut,
+                : Wants(BuildingType.Market, Count(BuildingType.Market) == 0) ? BuildingType.Market : BuildingType.Hut,
             _ => null,
         };
 
