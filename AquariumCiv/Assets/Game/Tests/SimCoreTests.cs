@@ -33,7 +33,8 @@ namespace AquariumCiv.Tests
         /// fine when meant (update the number in the same commit and say why), a bug when not.
         /// Eras (#23): nobody watches here, so the box stays a camp at its plateau and builds only camp types, and the
         /// chronicle notes that the village is ready.
-        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.</summary>
+        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.
+        /// Notable counts (#26): the camp starts with 3 notables and births stop at 4 (was 5 and 12).</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -41,7 +42,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(2760499010u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(3366573008u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]
@@ -165,7 +166,7 @@ namespace AquariumCiv.Tests
             sim.Advance(24 * 14);
             foreach (var n in sim.State.notables.Where(n => !n.alive))
                 Assert.GreaterOrEqual(n.age, n.lifespan, $"{n.FullName} died before their lifespan");
-            Assert.GreaterOrEqual(sim.State.notables.Count(n => n.alive), sim.Config.minNotables - 1);
+            Assert.GreaterOrEqual(sim.State.notables.Count(n => n.alive), sim.NotablesWanted.min - 1);
         }
 
         [Test]

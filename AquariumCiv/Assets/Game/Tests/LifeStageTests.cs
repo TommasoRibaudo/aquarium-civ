@@ -86,12 +86,12 @@ namespace AquariumCiv.Tests
         [Test]
         public void ParenthoodAgeIsUnchanged()
         {
-            // Five people (the minimum, so nobody new rises) over ten years.
-            var over = WithPeople(11, 41f, 45f, 50f, 55f, 60f);
+            // Three people (inside the camp's band, so nobody new rises and births have room) over ten years.
+            var over = WithPeople(11, 41f, 45f, 50f);
             over.Advance(10);
             Assert.IsFalse(over.State.chronicle.Any(e => e.kind == "birth"), "no children after 40");
 
-            var parents = WithPeople(11, 20f, 22f, 25f, 28f, 30f);
+            var parents = WithPeople(11, 20f, 22f, 25f);
             parents.Advance(10);
             Assert.IsTrue(parents.State.chronicle.Any(e => e.kind == "birth"), "children from 20 to 40");
         }

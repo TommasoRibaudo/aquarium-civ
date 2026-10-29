@@ -48,7 +48,7 @@ Cleaning is how you both get the light back.
 
 ## 4. The civ
 
-- **Population:** an anonymous crowd plus **5–12 named notables**, each with a name, one trait, a family, friends,
+- **Population:** an anonymous crowd plus **2–12 named notables** (growing with the era, below), each with a name, one trait, a family, friends,
   rivals and remembered events. Pin a favourite to follow. Dead notables go to a legends roster.
   **Relationships show in the world** (friends meet and talk, rivals argue), not only in cards (Gate 2 note).
 - **Jobs and roles (notables only;** user, 2026-10-29). The economy stays aggregate: the crowd is a count, not workers.

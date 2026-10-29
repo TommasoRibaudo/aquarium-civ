@@ -26,7 +26,9 @@ namespace AquariumCiv.Sim
             var core = new SimCore(config, s);
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
-            for (int i = 0; i < config.startNotables; i++) core.AddNotable(s.rng.Range(18f, 40f), -1, null);
+            // Clamped into the camp's band (#26): a scene saved before the bands may still carry the old 5.
+            int start = Math.Clamp(config.startNotables, config.campNotables.min, config.campNotables.max);
+            for (int i = 0; i < start; i++) core.AddNotable(s.rng.Range(18f, 40f), -1, null);
             core.Chronicle("founding", "Five wanderers settled in the glass and made camp.", 0.9f);
             core.RecordYear();
             return s;
@@ -150,10 +152,14 @@ namespace AquariumCiv.Sim
             });
         }
 
+        /// <summary>The living-notable band of the current era (#26).</summary>
+        public NotableBand NotablesWanted => Config.NotablesIn(State.era);
+
         void YearlyNotables()
         {
             var s = State;
             var rng = s.rng;
+            var band = NotablesWanted;
             foreach (var n in s.notables.Where(n => n.alive).ToList())
             {
                 float before = n.age;
@@ -168,18 +174,25 @@ namespace AquariumCiv.Sim
                     continue;
                 }
                 int alive = s.notables.Count(x => x.alive);
-                if (n.age >= 20f && n.age <= 40f && alive < Config.maxNotables && rng.Chance(0.12f))
+                if (n.age >= 20f && n.age <= 40f && alive < band.max && rng.Chance(0.12f))
                 {
                     var child = AddNotable(0f, n.id, n.family);
                     Chronicle("birth", $"{child.FullName} was born to {n.FullName}.", 0.6f, child.id);
                 }
             }
-            if (s.notables.Count(x => x.alive) < Config.minNotables)
+            // Below the era's band, one notable a year comes out of the crowd: after a death someone rises to take
+            // their place; when a new era wants more people than the last one did, a newcomer arrives.
+            int count = s.notables.Count(x => x.alive);
+            if (count < band.min)
             {
                 var n = AddNotable(rng.Range(18f, 30f), -1, null);
-                Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
+                bool growing = s.era > Era.Camp && count >= Config.NotablesIn(s.era - 1).min;
+                if (growing) Chronicle("newcomer", $"A newcomer, {n.FullName}, {n.trait}, joined the {EraNoun(s.era)}.", 0.55f, n.id);
+                else Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
             }
         }
+
+        static string EraNoun(Era era) => era switch { Era.Camp => "camp", Era.Village => "village", _ => "town" };
 
         void NarrativeChecks(bool winter, float festivalRoll)
         {

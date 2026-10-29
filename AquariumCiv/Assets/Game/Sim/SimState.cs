@@ -26,9 +26,12 @@ namespace AquariumCiv.Sim
         public float trashPerPersonHour = 0.02f;
         public float outputPenaltyMax = 0.25f;  // work-pace drop at full mess (Gate 1)
         public int buildingSlots = 20;
-        public int startNotables = 5;
-        public int minNotables = 5;
-        public int maxNotables = 12;
+        // Named notables per era (game definition §4, #26): about 2–4 in the camp, 4–8 in the village, up to 12 in the
+        // town. Births stop at the era's max; below its min the crowd fills in, one notable a year (SimCore.YearlyNotables).
+        public int startNotables = 3;           // fits the camp's band
+        public NotableBand campNotables = new NotableBand { min = 2, max = 4 };
+        public NotableBand villageNotables = new NotableBand { min = 4, max = 8 };
+        public NotableBand townNotables = new NotableBand { min = 8, max = 12 };
         public float storyChancePerMonth = 0.07f;
         public double fullSpeedHours = 8;       // offline: the first hours away run at full speed (game definition v0.2)
         public double slowSpeed = 0.25;         // ... and the rest at this fraction (a weekend away ≈ 18 game years)
@@ -48,6 +51,22 @@ namespace AquariumCiv.Sim
         }
 
         public double OfflineSimHours(double realHoursAway) => OfflineSimHours(realHoursAway, fullSpeedHours, slowSpeed);
+
+        /// <summary>How many living notables an era wants.</summary>
+        public NotableBand NotablesIn(Era era) => era switch
+        {
+            Era.Camp => campNotables,
+            Era.Village => villageNotables,
+            _ => townNotables,
+        };
+    }
+
+    /// <summary>The living-notable count an era wants: the crowd fills up to <see cref="min"/>, births stop at <see cref="max"/>.</summary>
+    [Serializable]
+    public class NotableBand
+    {
+        public int min;
+        public int max;
     }
 
     /// <summary>What a box needs to be ready for its next era. Reaching it only makes the era ready; it waits for the player.</summary>
