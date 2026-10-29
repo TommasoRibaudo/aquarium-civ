@@ -10,8 +10,123 @@ farming village → industrious town. New box settings so far: desert oasis, mou
 in the style kit's one palette ([style-kit.md](../design/spikes/style-kit.md)).
 
 Markers: **[V]** read in a primary source (the developer's or publisher's own words, official page). **[S]** secondary
-source only (press, wiki, guide, search summary). **[est]** my guess, to measure. This doc gives options and a
-recommendation. It doesn't decide anything.
+source only (press, wiki, guide, search summary). **[est]** my guess, to measure. §0–§6 give the options and a
+recommendation. The decision is the section just below.
+
+---
+
+## Decision (2026-10-29): the toolset per era
+
+Decided by an agent the user delegated it to (#42: "Spawn an agent to research this and make a decision"). It works
+inside the user's rules (decisions.md 2026-10-29, "Shaping the land", "Notable roles", "Relics"): two kinds of tool,
+animals in, one gesture per tool, undo until the people use a shaping, wishes in cards, setting tools replace standard
+ones, free decorations with a small beauty effect, smooth and mist cut. Where this differs from §4, this section wins.
+**Not decided here:** the limit model (experiment E2, §5.4) and "name a place" (tested in E1, §5.3).
+
+### The set: 3 new tools per era, plus decorating
+| Era | Tool | Kind | The one gesture (in shaping mode) | What it changes | Who reacts (job · **role**) | Natural cap |
+|---|---|---|---|---|---|---|
+| **Camp** | **Rain** | Gift | Rub in circles over a spot; rub longer for heavier rain | moisture → fertility (08 §3.6) | Gatherer (mushrooms), later farmer · **chief** | One cloud at a time |
+| | **Grove** | Gift | Tap open ground | forest | Woodcutter | Forest cover cap |
+| | **Herd** (animals) | Gift | Flick in from the box edge. On grass it's deer; flicked into water it's a shoal of fish | game, or fish | Hunter, fisher · **chief** leads the first great hunt | ≤ 2 herds; 1 shoal per water body |
+| **Village** | **Channel** | Gift | Drag a line from water; it snaps downhill and routes round lots | waterDist | Farmer · **headman** shares out the water | ≤ 3 channels [est] |
+| | **Keeper's Lamp** (= 09 #1) | Gift | Press and drag the pool of light to a spot; let go and it hangs there | sun (local): crops under it ripen faster for a season; people bask | Farmer · **headman** calls a feast | One lamp; moving it is a new use |
+| | **Hill & hollow** | Landscaping | Press and pull up (a hill) or push down (a hollow): one drag, its direction picks | height, slope | Kids run up it · the **priest** climbs it; a **miller**'s windmill may choose it; rain fills a hollow into a pond (fisher) | ≤ 3 Keeper hills and hollows |
+| **Town** | **Outcrop** | Gift | Press and hold: rock pushes up through the turf. The land picks the kind: stone on a hill, clay by water, ore deep in a slope | deposit | Mason, potter, smith · **master builder**, **guildmaster** | ≤ 3 deposits; they run out over decades |
+| | **Spring** | Gift | Tap a hillside: water breaks out and finds its own way down | waterDist (source + stream) | A second well and a new quarter · **mayor** | ≤ 2 per box |
+| | **Dye meadow** (flowers, = 09 #7) | Gift | Sweep one stroke across the grass; colour follows the finger | bloom, beauty | Beekeeper, dyer · **guildmaster** (the dyers), **merchant** (honey and dye at the market) | Meadow cover cap |
+| **Any time** | **Decorate** | Landscaping, free | Tap a slot in the glass margin or the soil cross-section | beauty (small): people stroll there; a courting spot, weddings | Nobody's job; never a building | 6–10 slots [est] |
+
+- **Gift** = the people answer it with a credited job site, building or harvest; it spends one *use* (below).
+  **Landscaping** = changes the look and the layers a little, nothing promised, never spends a use, only its cap.
+  The placement scores still read every layer, so a windmill may pick your hill, but nobody owes you that.
+- **The tray** has two rows, grouped by kind (WorldBox's lesson, §1.1): gifts (8 by the town) and landscaping (hill &
+  hollow, decorate). Older tools stay and level up. That is more than §4.3's 6–7 [est], so E1 checks the tray at phone
+  size. Each cap shows on its tray icon (practices §8: caps are stated, not discovered).
+- **Unlock pacing** as §4.3: rain in the first session after the first wipe, then grove, then herd once the camp has a
+  chief. In the village and the town the first tool comes with the era moment (channel, outcrop), the other two over
+  the next ~10 game years [est], each with a one-line hint the first time. Decorate from the first deep session.
+
+### Each tool levels up with the era
+| Tool | Camp | Village | Town |
+|---|---|---|---|
+| Rain | A shower: mushrooms for the gatherers | Steady rain ripens a field; it fills a Keeper's hollow into a pond (fisher) | Storm (09 #3): it fills any hollow into a pond; the **priest** blesses it |
+| Grove | Woods for the woodcutter | Tap your own grove and it blossoms into an **orchard** (09 #4) | A timber yard for the **master builder**; the orchard's cider goes to the **innkeeper** |
+| Herd | Deer for the hunter; fish for the fisher | Goats and sheep, a pasture fence, a shepherd; the **headman** settles a grazing quarrel | Wool for the weavers (**guildmaster**); a fish stall (**merchant**) |
+| Channel | — | Irrigation ditches; the farmers line it with fields | Mill race (09 #5): a little fall where a mill may go; wet trades (dyers, tanners) for the **guildmaster** |
+| Lamp | — | A sunbeam on a field | At dusk it hangs over the square as a lantern: the **captain of the watch** starts the night round from it, the **innkeeper** carries tables out |
+| Hill & hollow | — | A high place (shrine, windmill); a pond after rain | A lookout or bell-tower site for the **captain of the watch** |
+
+Every role in every era has at least one tool that calls it into view: the chief (rain, herd), the headman, miller and
+priest (channel, lamp, herd, hill), and all seven town roles (mayor: spring; priest: storm; innkeeper: lamp, cider;
+guildmaster: outcrop, wool, mill race, dyes; master builder: outcrop, timber; merchant: dyes, fish; captain of the
+watch: lamp, lookout). The camp's tools stay worth using in the town (The Universim's lesson, §1.2 point 8).
+
+### The limit: built so either E2 arm works
+- Every gift spends **one use**. Under E2's arm A a use starts that tool's cooldown (suggested: rain and lamp 2 game
+  years; grove, herd, channel, dye meadow 3; outcrop and spring 4 [est]). Under arm B a use takes one shared charge.
+  The tool table above is the same in both arms; only the meaning of "a use" changes.
+- The natural caps hold in both arms. A level-up never costs extra: turning your grove into an orchard is one grove use.
+- Landscaping never spends a use.
+
+### Undo
+With the tool selected, tap a feature you made: a "Take back" chip shows while the people haven't used it. **Used**
+means a lot, a path (tier ≥ path) or a job site touches it, or a notable has worked it (hunted the herd, picked the
+rain's mushrooms, harvested under the lamp). People walking over to look doesn't count. Taking back refunds the use
+(the cooldown resets, or the charge comes back), and the chronicle never mentions it. Moving the lamp before anything
+under it has ripened is its undo. In E1 the same chip also offers "Name it".
+
+### Wishes in cards
+Each gift has an owner in the "who reacts" column, and that notable may **wish** for it in a chronicle card ("Ivo the
+hunter dreams of deer on the east meadow"). At most one wish per return [est], never a timer, never a penalty, and the
+wish stops once the gift is given.
+
+### Setting tools
+A setting tool takes the **slot, era and kind** of the tool it replaces, so the tray, the unlock pacing and both E2
+arms are the same in every box.
+
+| Setting | Replaces | With | Era | Kind | The one gesture | Who reacts |
+|---|---|---|---|---|---|---|
+| Desert oasis | Rain | **Palm spring** (tool 23) | Camp | Gift | Press and hold in a hollow: water wells up and a ring of palms grows | Gatherers (dates) · **chief**; village: date gardens; town: the shared well and the water-judge story (09's Water-Judge's Cup) |
+| Desert oasis | Hill & hollow | **Dune shift** (tool 22) | Village | Landscaping | Drag across sand: the dune slides that way and may uncover an old wall or an Echo Shard; it never buries a lot | Kids, the curious · **headman** |
+| Desert oasis | Spring | **Desert rain** | Town | Gift | Rub, as rain | The dunes bloom for a season: gatherers, beekeepers · the **priest** leads a rain festival |
+| Mountain village | Channel | **Mountain stream** (tool 25) | Village | Gift | Tap a snowfield: it melts into a stream that finds its own way down | Farmer · **miller** (a mill on the fall); town: a sawmill |
+| Mountain village | Hill & hollow | **Terraces** (tool 24) | Village | Landscaping | Drag down a slope: it steps into strips with dry-stone edges | Farmers usually take them for fields, nothing promised · no avalanches, ever. ≤ 3 flights |
+
+The oasis turns the water order round: the spring comes first, rain last and rare. Look variants (same tool, same
+gesture, a new look, not a replacement): in the oasis the Lamp gives **shade** (crops don't wilt, people rest at
+noon), the grove is palms and tamarisk, the herd is goats; in the mountain the herd is goats from the camp on and the
+grove is pines.
+
+### The alternatives the user named
+| Alternative | Verdict | Why |
+|---|---|---|
+| **Pond** | Out as a tool, in as a result | Rain fills a Keeper's hollow (village) and the storm fills any hollow (town). The pond is a combination the player discovers (Reus's deer-on-shrubs lesson, §1.1); its own icon would duplicate two tools. The fisher still gets it |
+| **Fish** | **In, inside the herd** | "Animals in": flick the herd into water and it's a shoal. The camp already has fishers and a pond. The land picks the kind, as with the outcrop, and it costs no tray icon |
+| **Sun / lamp** | **In, village, as the Keeper's Lamp** | Already in the slice (the Relics row), and this doc owns every tool. It takes wind's slot. One-finger drag, because two fingers are the camera and everything must work one-handed (practices §12). In the town it gives the innkeeper and the captain of the watch a night beat |
+| **Flood** | Out | Even gentle, it reads as a disaster (§1.4 destruction); it needs a pond first (three steps to learn); once a decade is too rare to learn; its effect (rich soil) is rain's. Revisit for a river-delta setting |
+| **Orchard** | **In, as the grove's village level-up** | 09 #4 already calls it an upgrade. Tap your own grove; no tray icon. In the town its cider feeds the innkeeper |
+
+Also out: **wind** (below), **snow** (a game-winter look and 09's Gentle Winter for the mountain box later, not a
+tool), **berry patch** (the gatherers already have bushes, and rain gives them mushrooms), **drain** (needs a marsh in
+the starting land; revisit with a delta setting). **Smooth** and **mist**: cut by the user.
+
+### Why: the hard calls
+1. **Wind out, the Lamp in.** Wind is box-wide, so there's no spot for the answer to land near (Growth Lab's
+   criterion 2, §5.2) and nothing to take back. The town no longer has a miller role (the innkeeper took the 7th seat),
+   so wind's reactor became a plain job. It also sits close to "the glass is always yours" (09 #8). The Lamp is already
+   chosen for the slice, has a spot, a one-finger gesture, and at dusk gives the two town roles nothing else reaches
+   (innkeeper, captain of the watch) a beat of their own.
+2. **Meadow flowers move to the town, as a dye meadow.** With the Lamp in the village, keeping flowers there would make
+   four new village tools and leave the town two. In the town the flowers become woad and madder for the dyers, a
+   renaissance craft, so they fit "crafts and guilds", colour the town's cloth and banners, and give the guildmaster
+   and merchant a gift of their own. The village loses its bees; the beekeeper arrives with the town.
+3. **Fish inside the herd, the pond as a result, the orchard as a level-up.** All three of the user's named
+   alternatives that are good ideas get in without adding icons, because the tray is already at its limit (8 gifts by
+   the town). The rule: a new icon only for a new kind of change on the land; variations ride on a tool's context
+   (water, an existing grove) or on its era.
+4. **Setting tools keep the slot and the kind.** Terraces were a gift in §3.7; here they replace hill & hollow, so they
+   stay landscaping: the mountain box keeps a free deep-session toy, and E2's arms don't change between boxes.
 
 ---
 
@@ -33,7 +148,7 @@ recommendation. It doesn't decide anything.
   change the economy and the people answer them, so they get a cooldown in game years, as P5 did. Landscaping (hills,
   hollows, decoration) is a free deep-session toy on empty land, with a small effect on the layers but no "answer".
   Without the split, a 3-year cooldown leaves a 20-minute deep session (a third of a game year) with nothing to do.
-- **Recommended toolset** (§4): **camp** rain, grove, herd · **village** channel, hill & hollow, meadow flowers ·
+- **Recommended toolset** (§4; **superseded by the Decision above**): **camp** rain, grove, herd · **village** channel, hill & hollow, meadow flowers ·
   **town** outcrop, wind, spring. Each tool levels up with the era (rain → storm fills a pond; grove → orchard; herd →
   pasture → wool for the weavers; channel → mill race; flowers → dye plants for the dyers). Decorating is outside the
   count, free from the start.
@@ -246,23 +361,26 @@ Granny's Hill"). Free, any era. It makes the credit line yours [est: cheap, try 
 ### 3.8 Where this overlaps research 09
 | 09 power-up | Here | Proposal |
 |---|---|---|
-| #1 Keeper's Lamp | Sun (10) | One idea. Keep 09's name ("the Lamp"), this doc's gesture and layer |
-| #3 Storm | Rain level-up, pond (6) | The storm is rain's town level-up and one way to make a pond |
-| #4 Orchard | Orchard (15) | Same. A grove upgrade, not a new tray icon |
-| #5 Mill Race | Channel level-up | Same |
-| #6 Raise and Lower | Hill (1), hollow (2) | Same; here split into two gestures, landscaping class |
-| #7 Wildflower Seeds | Meadow flowers (16) | Same |
-| #8 Breeze | Wind (11) | Same |
+| #1 Keeper's Lamp | Sun (10) | **The Keeper's Lamp, a village gift** (Decision). 09's name; one-finger drag, not two fingers; in the town it hangs over the square as a dusk lantern. In the oasis it gives shade |
+| #3 Storm | Rain level-up, pond (6) | Rain's town level-up: it fills a hollow into a pond. The pond is not a tool |
+| #4 Orchard | Orchard (15) | The grove's village level-up (tap your own grove), not a tray icon |
+| #5 Mill Race | Channel level-up | The channel's town level-up |
+| #6 Raise and Lower | Hill (1), hollow (2) | **Hill & hollow**, village landscaping, **one gesture** (pull up or push down) |
+| #7 Wildflower Seeds | Meadow flowers (16) | **Moved to the town as the dye meadow** (woad and madder for the dyers; bees too) |
+| #8 Breeze | Wind (11) | **Cut** (Decision, hard call 1): no spot to credit, the town has no miller role, and the glass stays the Keeper's |
 | #13 Fireflies | — | Stays a 09 watcher's bonus (grove near water), not a tool |
-| #14 Gentle Winter | Snow (12) | Same |
+| #14 Gentle Winter | Snow (12) | Not a tool. Stays a 09 idea for the mountain box's game winters, later |
 | #2 Rainbow, #9 Era Festival, #10 Bright Day | — | Watcher's bonuses that follow a tool; not tools |
 
-**Proposal:** research 09 §3 keeps the *rewards* (rainbow, festival, sweepers, carry-over); this doc owns every
-*shaping tool*. Where 09 calls something a power-up that is really a tool, the tool definition here wins.
+**Decided** (decisions.md 2026-10-29, "Shaping the land"): research 09 §3 keeps the *rewards* (rainbow, festival,
+sweepers, carry-over); this doc owns every *shaping tool*. Where 09 calls something a power-up that is really a tool,
+the tool definition here wins.
 
 ---
 
 ## 4. Recommended toolset per era
+
+The recommendation before the decision. The decided set is in **Decision (2026-10-29)** at the top.
 
 ### 4.1 The set (about 3 new per era)
 | Era | New tools | Why these | Jobs and roles they show |
