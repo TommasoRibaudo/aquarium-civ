@@ -49,3 +49,15 @@ agent-out/
 # OS
 .DS_Store
 Thumbs.db
+
+# Secrets and signing material: never commit (CI reads them from GitHub secrets)
+*.p8
+*.p12
+*.cer
+*.mobileprovision
+*.keystore
+*.jks
+*.ulf
+*.pem
+.env
+.env.*
