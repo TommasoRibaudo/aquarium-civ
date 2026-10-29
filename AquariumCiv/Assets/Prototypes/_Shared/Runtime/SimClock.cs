@@ -34,6 +34,7 @@ namespace AquariumCiv.Prototypes
         public event Action<double, float> Returned;
 
         float saveTimer;
+        bool wasPaused; // Unity also sends OnApplicationPause(false) at startup; only a real resume catches up
         string SavePath => Path.Combine(Application.persistentDataPath, "proto", $"{PrototypeConfig.Current.protoId}.json");
 
         void Awake()
@@ -53,8 +54,8 @@ namespace AquariumCiv.Prototypes
         void OnApplicationPause(bool paused)
         {
             if (Sim == null) return;
-            if (paused) { EventLog.Instance?.EndSession("background"); Save(); }
-            else CatchUpFromLastSeen();
+            if (paused) { wasPaused = true; EventLog.Instance?.EndSession("background"); Save(); }
+            else if (wasPaused) { wasPaused = false; CatchUpFromLastSeen(); }
         }
 
         void OnApplicationQuit()

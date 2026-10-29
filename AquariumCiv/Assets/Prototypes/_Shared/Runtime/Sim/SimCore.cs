@@ -31,6 +31,8 @@ namespace AquariumCiv.Prototypes.Sim
         public float OutputPenalty => Config.outputPenaltyEnabled ? Config.outputPenaltyMax * MessLevel : 0f;
         public float OutputMultiplier => (0.8f + 0.4f * State.mood) * (1f - OutputPenalty);
         public int Housing => 4 + Count(BuildingType.Hut) * 4;
+        public float FoodCap => 20f + State.population * 6f;
+        public float NextBuildingCost => 10f + State.buildings.Count * 6f + State.buildings.Count * State.buildings.Count * 0.6f;
         public int Count(string type) => State.buildings.Count(b => b.type == type);
 
         // ---------- time ----------
@@ -55,13 +57,15 @@ namespace AquariumCiv.Prototypes.Sim
             float mult = OutputMultiplier;
             int pop = s.population;
 
-            // Economy
-            float foodProd = (2f + pop * 1.0f + Count(BuildingType.Farm) * 2.5f + Count(BuildingType.Windmill) * 2f) * mult * (winter ? 0.5f : 1f);
-            s.food = Math.Max(0f, s.food + foodProd - pop);
-            s.wood += (1f + pop * 0.25f + Count(BuildingType.Lumbermill) * 2f) * mult;
+            // Economy. Subsistence ignores the Keeper's care, so neglect slows growth but never starves the civ;
+            // the surplus (what pays for growth) is scaled by mood and mess.
+            float subsistence = pop * (winter ? 0.85f : 1f);
+            float surplus = (2f + pop * 0.2f + Count(BuildingType.Farm) * 3f + Count(BuildingType.Windmill) * 3f) * mult * (winter ? 0.5f : 1f);
+            s.food = Math.Clamp(s.food + subsistence + surplus - pop, 0f, FoodCap);
+            s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult, 2000f);
 
-            if (s.food > pop * 1.5f && pop < Housing && rng.Chance(0.25f)) s.population++;
-            if (pop > 5 && rng.Chance(0.015f)) s.population--; // crowd old age
+            if (s.food > pop * 1.5f && pop < Housing && rng.Chance(0.025f * (0.5f + s.mood))) s.population++; // happier = more births
+            if (pop > 5 && rng.Chance(0.008f)) s.population--; // crowd old age
 
             float target = 0.75f - MessLevel * 0.5f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
@@ -76,12 +80,12 @@ namespace AquariumCiv.Prototypes.Sim
         {
             var s = State;
             if (s.buildings.Count >= Config.buildingSlots) return;
-            float cost = 10f + s.buildings.Count * 4f;
+            float cost = NextBuildingCost;
             if (s.wood < cost) return;
             int pop = s.population;
             string type;
-            if (pop >= Housing - 1) type = BuildingType.Hut;
-            else if (s.food < pop * 2f && Count(BuildingType.Farm) < 1 + pop / 6) type = BuildingType.Farm;
+            if (Count(BuildingType.Farm) < 1 + pop / 8) type = BuildingType.Farm;
+            else if (pop >= Housing - 1) type = BuildingType.Hut;
             else if (pop >= 6 && Count(BuildingType.Lumbermill) == 0) type = BuildingType.Lumbermill;
             else if (pop >= 8 && Count(BuildingType.Well) == 0) type = BuildingType.Well;
             else if (pop >= 12 && Count(BuildingType.Windmill) == 0) type = BuildingType.Windmill;
@@ -154,12 +158,12 @@ namespace AquariumCiv.Prototypes.Sim
                 Chronicle("milestone", $"The settlement grew to {milestone} people.", 0.7f);
             }
             long year = s.month / SimConfig.MonthsPerYear;
-            if (winter && s.food < s.population && s.lastLeanYear != year)
+            if (winter && s.food < s.population && year - s.lastLeanYear >= 5)
             {
                 s.lastLeanYear = year;
                 Chronicle("lean_winter", "A lean winter: the granaries ran low and the people tightened their belts.", 0.5f);
             }
-            if (!winter && s.food > s.population * 4f && rng.Chance(0.04f))
+            if (!winter && s.food > FoodCap * 0.9f && rng.Chance(0.02f))
             {
                 s.mood = Math.Min(1f, s.mood + 0.15f);
                 var host = AliveNotable();
@@ -167,7 +171,7 @@ namespace AquariumCiv.Prototypes.Sim
                     ? $"{host.FullName} threw a harvest festival. There was dancing until dawn."
                     : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
-            if (MessLevel > 0.6f && s.month - s.lastGrumbleMonth > 12)
+            if (MessLevel > 0.6f && s.month - s.lastGrumbleMonth > 36)
             {
                 s.lastGrumbleMonth = s.month;
                 Chronicle("grumble", "The people grumbled about the grimy glass and the heaps of junk.", 0.45f);

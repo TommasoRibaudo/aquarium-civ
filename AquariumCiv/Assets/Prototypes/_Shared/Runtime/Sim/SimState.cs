@@ -115,7 +115,7 @@ namespace AquariumCiv.Prototypes.Sim
         public int nextId = 1;
         public int lastPopMilestone;
         public long lastGrumbleMonth = -999;
-        public long lastLeanYear = -1;
+        public long lastLeanYear = -99;
         public SimRandom rng;
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
