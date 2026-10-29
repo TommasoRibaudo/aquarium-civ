@@ -95,7 +95,7 @@ namespace AquariumCiv.Sim
                 feuding.rivalId = other.rivalId = -1;
                 Chronicle("reconcile", $"{feuding.FullName} and {other.FullName} made up over a pot of stew. The whole street sighed with relief.", 0.55f, feuding.id, other.id);
             });
-            var elders = adults.Where(n => n.age >= 45f).ToList();
+            var elders = adults.Where(n => n.age >= Config.elderAge).ToList();
             var youngs = s.notables.Where(n => n.alive && n.age >= 8f && n.age < 20f && n.mentorId < 0).ToList();
             if (elders.Count > 0 && youngs.Count > 0) Add(0.8f, () =>
             {
@@ -104,7 +104,7 @@ namespace AquariumCiv.Sim
                 Chronicle("apprentice", $"{m.FullName} took young {y.FullName} as an apprentice.", 0.5f, y.id, m.id);
             });
             var eldest = adults.OrderByDescending(n => n.age).FirstOrDefault();
-            if (eldest != null && eldest.age >= 60f && winter) Add(0.5f, () =>
+            if (eldest != null && eldest.age >= Config.eldestStoryAge && winter) Add(0.5f, () =>
                 Chronicle("elder", $"{eldest.FullName}, now the eldest, told the founding story to the children all winter.", 0.55f, eldest.id));
 
             // ---- one person, by trait (each person tells each kind of story at most once in 15 years) ----
