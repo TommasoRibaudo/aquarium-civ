@@ -1,0 +1,177 @@
+# Build the Unity project for iOS and upload it to TestFlight. No Mac needed:
+# 1. Linux: GameCI exports the Xcode project (Unity Personal license from secrets).
+# 2. macOS: Xcode archives with cloud-managed signing (App Store Connect API key) and uploads to App Store Connect.
+# Setup and secrets: docs/testflight.md
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "What's in this build (shown in the run name)"
+        required: false
+        default: ""
+
+run-name: "TestFlight #${{ github.run_number }} ${{ inputs.notes }}"
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+env:
+  PROJECT_PATH: AquariumCiv
+  BUILD_NAME: AquariumCiv
+
+jobs:
+  export:
+    name: Export Xcode project (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check secrets
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          missing=""
+          for s in UNITY_LICENSE UNITY_EMAIL UNITY_PASSWORD; do [ -z "${!s}" ] && missing="$missing $s"; done
+          if [ -n "$missing" ]; then echo "::error::Missing repo secrets:$missing (see docs/testflight.md)"; exit 1; fi
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v2
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+
+      - uses: actions/checkout@v7
+
+      # Cache LFS objects so every build doesn't burn LFS bandwidth.
+      - name: List LFS objects
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      - uses: actions/cache@v6
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+      - name: Pull LFS objects
+        run: git lfs pull
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.PROJECT_PATH }}/Library
+          key: Library-iOS-${{ hashFiles('AquariumCiv/Assets/**', 'AquariumCiv/Packages/**', 'AquariumCiv/ProjectSettings/**') }}
+          restore-keys: Library-iOS-
+
+      - name: Unity build (iOS export)
+        uses: game-ci/unity-builder@v6
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: ${{ env.PROJECT_PATH }}
+          targetPlatform: iOS
+          buildName: ${{ env.BUILD_NAME }}
+          versioning: None
+
+      # Tar first: artifacts drop the executable bits that Unity's Xcode build scripts need.
+      - name: Pack Xcode project
+        run: sudo tar -czf ios-xcode.tgz -C build/iOS "$BUILD_NAME"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-xcode
+          path: ios-xcode.tgz
+          retention-days: 1
+          compression-level: 0
+
+  testflight:
+    name: Archive, sign and upload (macOS)
+    needs: export
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPSTORE_P8: ${{ secrets.APPSTORE_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - name: Check secrets
+        run: |
+          missing=""
+          for s in APPSTORE_KEY_ID APPSTORE_ISSUER_ID APPSTORE_P8 APPLE_TEAM_ID; do [ -z "${!s}" ] && missing="$missing $s"; done
+          if [ -n "$missing" ]; then echo "::error::Missing repo secrets:$missing (see docs/testflight.md)"; exit 1; fi
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ios-xcode
+
+      - name: Unpack
+        run: |
+          mkdir -p xcode
+          tar -xzf ios-xcode.tgz -C xcode
+          echo "XCODE_DIR=$PWD/xcode/$BUILD_NAME" >> "$GITHUB_ENV"
+
+      - name: Select Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | grep -vi beta | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Install API key
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          KEY="$RUNNER_TEMP/keys/AuthKey_$APPSTORE_KEY_ID.p8"
+          printf '%s\n' "$APPSTORE_P8" > "$KEY"
+          echo "AUTH_ARGS=-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $APPSTORE_KEY_ID -authenticationKeyIssuerID $APPSTORE_ISSUER_ID" >> "$GITHUB_ENV"
+
+      - name: Stamp build number and export compliance
+        run: |
+          PLIST="$XCODE_DIR/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" -c "Print :CFBundleVersion" "$PLIST"
+
+      - name: Archive
+        run: |
+          xcodebuild archive \
+            -project "$XCODE_DIR/Unity-iPhone.xcodeproj" -scheme Unity-iPhone -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/AquariumCiv.xcarchive" \
+            $AUTH_ARGS DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic -quiet
+
+      - name: Export and upload to TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/AquariumCiv.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" $AUTH_ARGS
+          echo "### Uploaded build ${{ github.run_number }} to App Store Connect" >> "$GITHUB_STEP_SUMMARY"
+          echo "It shows up in TestFlight after Apple finishes processing (usually 5-30 min)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"
+
+      - name: Delete Xcode artifact
+        if: always()
+        uses: geekyeggo/delete-artifact@v6
+        with:
+          name: ios-xcode

@@ -127,3 +127,16 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 
 - 2026-10-28: Started this file from a shared Unity 6 workflow doc; added `Tools/unity-dialogs/dismiss-dialogs.ps1`
   (tested against a dummy MessageBox: detects it and clicks the safe answer).
+
+- **2026-10-29 · `unity test` refuses while the Editor is open** ("project is already open in a running Editor").
+  Use the Pipeline instead: `unity command test run --mode editor --filter <Assembly> --filter_type assembly`
+  (synchronous, prints the summary). [verified]
+- **2026-10-29 · Game-view screenshots don't show IMGUI (`OnGUI`) panels.** In play mode, run
+  `UnityEngine.ScreenCapture.CaptureScreenshot("F:/GameDev/AquariumCiv/Temp/agent/x.png")` through `script eval`,
+  then check the file exists with a second eval (it is written at the end of the frame). [verified]
+- **2026-10-29 · Long C# for `script eval`:** write it to `AquariumCiv/Temp/agent/<name>.cs` and pass
+  `"$(cat file)"` from Bash. The result is under `.data.result.result` in `--format json`. [verified]
+- **2026-10-29 · `OnApplicationPause(false)` fires at startup** (Editor too), not only on resume. Track a
+  "was paused" flag before treating it as a resume. [verified]
+- **2026-10-29 · CI Unity license:** this machine has no `C:\ProgramData\Unity\Unity_lic.ulf` (only the Hub's
+  entitlement XML). Generate one via Hub → Licenses → Add → free personal license. See docs/testflight.md. [verified]

@@ -35,10 +35,12 @@ Phase C interview (details in [design/game-definition.md](design/game-definition
 | 2026-10-28 | Notable aging | Notables age at half speed | ~5 real days of life at 1 h = 1 y |
 | 2026-10-28 | Test speed | 1 real hour = 1 game year | Faster speeds are dev-only debug presets |
 | 2026-10-28 | Testers | iPhone via TestFlight | User has an Apple developer account. iOS builds via CI (no Mac) |
+| 2026-10-29 | iOS CI | GitHub Actions: GameCI export on Linux → Xcode 26 cloud-managed signing + upload on macOS | No fastlane `match`, no Mac. Setup: [testflight.md](testflight.md) |
+| 2026-10-29 | App identity | "Aquarium Civ", `com.tommasoribaudo.aquariumciv`, portrait only | Placeholder icon rendered from the look-test diorama |
 | 2026-10-28 | Prototyping | Throwaway scenes under `Assets/Prototypes/`, within-subject A/B with the user + 3–5 friends | Plan: [design/prototype-plan.md](design/prototype-plan.md) |
 | 2026-10-28 | Agent workflow | Main session implements; a `tester` sub-agent plays and judges visual/gameplay changes (never fixes); tooling lessons logged in `docs/tooling.md` | Adapted from a shared Unity workflow doc. Issue tracker, board and branch-per-issue deferred until production |
 
 ## Still open
 - AI tools for minor assets (free tiers only for now)
 - Offline simulation: P0 uses a coarse aggregate catch-up; whether civ progress needs any offline cap (Q7)
-- iOS CI: GameCI + fastlane on GitHub macOS runners vs Unity Build Automation (needs Apple API key + certificates from the user)
+- iOS CI secrets and Apple setup pending (docs/testflight.md checklist)
