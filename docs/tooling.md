@@ -188,3 +188,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - Hold gestures (`Pointer.current.press`) work from the touch fixture: `BeginTouch` once, yield frames, `EndTouch`.
   - After the first PlayMode run, `Assets/Art/Materials/Glass.mat` showed `_SrcBlend: 5 -> 1` in git (not from test
     code; probably URP re-deriving blend state). Report it, don't revert.
+- **2026-10-29 · Tester run 3 notes.** [verified]
+  - The first `unity recompile` right after a PlayMode `test run` often fails with "Pipeline server returned 400 Bad
+    Request" (or "No Pipeline instance found" during the reload). Just run it again; the second one compiles.
+  - Touch-fixture strokes that start **below the tank base** (no glass, no world hit) are camera turns by design and
+    change the pitch for every later stroke in that test. Save `OrbitCamera` `yaw`/`pitch` (private fields) at the
+    start and restore them after each stroke when measuring something else.
+  - Junk usually sits inside the tank, seen through the **open top**, so `GlassGrime.Raycast` at a junk point often
+    hits the *back* pane. Don't read "start on glass" as "start on the front glass".
+  - To see which way a drag went, wrap `OrbitCamera.DragTool` in a spy `IDragTool` that forwards to `WipeCleaner`
+    and logs what `BeginDrag` returns. The input path stays real.
