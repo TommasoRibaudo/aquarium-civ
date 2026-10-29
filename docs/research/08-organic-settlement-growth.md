@@ -264,6 +264,9 @@ already computes, so the paths the player sees match where people go.
 
 ## 5. First spike: "Growth Lab" (2–3 agent days)
 
+**Result (2026-10-29):** see [design/spikes/growth-lab.md](../design/spikes/growth-lab.md). Criteria 2–6 pass; 1 and 7
+are ready for people.
+
 **Question:** do scored frontage placement and wear-grown paths look like a real village growing, at our scale, and do
 the nudges read as answered?
 
