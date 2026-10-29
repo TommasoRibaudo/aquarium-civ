@@ -6,7 +6,7 @@ the workflows and the run logs. Everything below is set up to keep that safe.
 ## Workflows
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| [`ci.yml`](../.github/workflows/ci.yml) | every pull request, every push to `main`, by hand | **Workflow lint** (actionlint + zizmor), **Secret scan** (gitleaks on the new commits), **Unity tests** (EditMode, GameCI) |
+| [`ci.yml`](../.github/workflows/ci.yml) | every pull request, every push to `main`, by hand | **Workflow lint** (actionlint + zizmor), **Secret scan** (gitleaks on the new commits), **Sim tests (dotnet)** (`dotnet test Tools/SimTests`, .NET 8, NuGet cached, no secrets), **Unity tests** (EditMode, GameCI) |
 | [`ios-testflight.yml`](../.github/workflows/ios-testflight.yml) | by hand only, from `main` | iOS export, signing, upload to TestFlight. See [testflight.md](testflight.md) |
 
 Unity tests need the Unity license secrets. GitHub never passes secrets to pull requests from forks, so that job is
@@ -19,6 +19,8 @@ Test results are uploaded as the `test-results` artifact (14 days).
 ## Working on `main` (ruleset "main")
 - No direct pushes: changes land through a pull request (no approval needed, since this is a one-person project).
 - The three CI checks must pass: **Workflow lint**, **Secret scan**, **Unity tests**.
+  **Sim tests (dotnet)** also runs on every PR but is not a required check yet (add it to the ruleset once it has run
+  green on a PR).
 - No force pushes, no deleting `main`.
 - An admin can still merge a PR whose checks fail (bypass on pull requests only), for emergencies like an expired
   Unity license.

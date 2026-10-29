@@ -1,6 +1,7 @@
 # Checks for every pull request and every push to main. Required to pass before merging (ruleset on main).
 # - Workflow lint: actionlint (syntax) + zizmor (Actions security audit).
 # - Secret scan: gitleaks over the commits being checked (GitHub secret scanning also runs on every push).
+# - Sim tests: dotnet test Tools/SimTests (pure-C# sim, no Unity, no secrets; runs on fork PRs too).
 # - Unity tests: EditMode tests via GameCI. Needs the Unity license secrets, so it is skipped for PRs from forks
 #   (GitHub never gives secrets to fork PRs; don't change this to pull_request_target).
 # Setup and rationale: docs/ci.md
@@ -67,6 +68,31 @@ jobs:
           echo "Scanning $range"
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             git /repo --redact --no-banner --log-opts="$range"
+
+  # The pure-C# sim tests outside Unity (Tools/SimTests, docs/workflow.md sim lane). Seconds, no license, no secrets.
+  sim-tests:
+    name: Sim tests (dotnet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Tools/SimTests/*.csproj') }}
+          restore-keys: nuget-
+
+      - name: dotnet test
+        run: dotnet test Tools/SimTests
 
   unity-tests:
     name: Unity tests
