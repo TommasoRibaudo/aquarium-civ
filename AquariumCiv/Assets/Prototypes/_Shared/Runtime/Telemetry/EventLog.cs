@@ -18,6 +18,8 @@ namespace AquariumCiv.Prototypes
 
         [Tooltip("Seconds between 'what is the player looking at' samples.")]
         public float lookInterval = 0.5f;
+        [Tooltip("Share each look sample across everything tagged on screen (LookSampler spike). Off = one centre ray, as the prototypes shipped.")]
+        public bool weightedLook;
 
         public string SessionId { get; private set; }
         public bool InSession { get; private set; }
@@ -44,10 +46,18 @@ namespace AquariumCiv.Prototypes
 
         void Update()
         {
+            if (weightedLook) TrackTouch();
             if (!InSession || (lookTimer += Time.unscaledDeltaTime) < lookInterval) return;
             lookTimer = 0;
             var cam = Camera.main;
             if (cam == null) return;
+            if (weightedLook)
+            {
+                var focus = LookSampler.Focus(lastTouch, Time.unscaledTime - lastTouchTime);
+                foreach (var kv in LookSampler.Weigh(LookSampler.Collect(cam), focus)) Add(look, kv.Key, kv.Value * lookInterval);
+                if (OrbitCamera.Instance != null && OrbitCamera.Instance.ZoomT < 0.5f) zoomedInSeconds += lookInterval;
+                return;
+            }
             string cat = "empty";
             if (Physics.Raycast(cam.ViewportPointToRay(new Vector3(0.5f, 0.5f)), out var hit, 500f))
                 cat = LogCategory.Of(hit.collider)?.category ?? "other";
@@ -153,6 +163,19 @@ namespace AquariumCiv.Prototypes
             Json.Field(sb, "survey", survey);
             sb.Append('}');
             return sb.ToString();
+        }
+
+        Vector2? lastTouch;
+        float lastTouchTime = -99f;
+
+        /// <summary>Weighted look: players look where they touch, so the focus follows the last press for a few seconds.</summary>
+        void TrackTouch()
+        {
+            var p = UnityEngine.InputSystem.Pointer.current;
+            if (p == null || !p.press.isPressed) return;
+            var pos = p.position.ReadValue();
+            lastTouch = new Vector2(pos.x / Screen.width, pos.y / Screen.height);
+            lastTouchTime = Time.unscaledTime;
         }
 
         static void Add(Dictionary<string, float> d, string key, float v) => d[key] = d.TryGetValue(key, out var x) ? x + v : v;
