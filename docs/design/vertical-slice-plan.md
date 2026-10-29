@@ -69,13 +69,16 @@ Slice work per choice is the matching "If … wins" paragraph below; the rest is
 - **If it's a tie:** both stay (the current design: grow inside eras, shelf after the final era). The slice then only
   needs the annex; the shelf comes after the slice.
 
-## 4. Scope
-**In:** one box; eras Camp → Hamlet → Village, crossed live (plateaus); the care layer (Gate 1); the Gate 2 return and
-history view; the Gate 3 nudge form; notables, pins, person cards; real save and offline catch-up; a first-run
-experience (name your box, first wipe, first nudge); sound pass; settings (sound, haptics, reset).
-**Out:** Town and later eras, monetization, notifications, widgets, cloud save, accounts, localization, the shelf
-second box's own eras (the slice ends as the new box
-arrives and the first one becomes a museum), the Test Hub and A/B machinery (the slice is one game, not variants).
+## 4. Scope (updated to game-definition v0.2, 2026-10-29)
+**In:** one box crossing all three eras live (plateaus): **hunter-gatherer camp → farming village → industrious town**;
+the box **completes** at the town's peak and a second box arrives on the shelf (the first stays alive as a museum);
+the care layer (Gate 1); chronicle cards and the time-lapse + small book (Gate 2); shaping the land: rain, grove,
+channel (Gate 3); notables with calendar aging, pins, person cards, relationships visible in the world; **organic
+placement** (the people choose sites; research 08); real save and offline catch-up with the **quarter-speed tail after
+8 h**; the **code-built style kit** for everything; a first run (name your box, first wipe, first shaping); sound;
+settings (sound, haptics, reset); the opt-in era notification.
+**Out:** the second box's own play (it arrives, that's all), descendants/relics carry-over beyond a stub, follow-a-person
+mode, collections, monetization, widget, cloud save, accounts, localization, the Test Hub and A/B machinery.
 
 ## 5. Architecture
 ### 5.1 From prototypes to a game project
@@ -133,14 +136,15 @@ KayKit's huts → homes, and B keeps the free, cohesive base.
 ## 7. Milestones (rough, agent days)
 | # | Milestone | Days | Done when |
 |---|---|---|---|
-| 1 | Project skeleton: `Assets/Game`, ported sim + tests, versioned atomic save | 3 | Sim tests green, save survives a killed app (test) |
-| 2 | Box, care, camera, crowd, notables in the new UI | 4 | Tester agent passes a first-session playtest by touch |
-| 3 | Gate 2 return + history view | 3 | Recall and history metrics logged |
-| 4 | Gate 3 nudge form | 3 | A nudge is answered and credited in diary time |
-| 5 | Eras 1–3 live, progression shape at Village | 4 | The Village moment plays live after a 24 h away |
-| 6 | First run, settings, sound, art pass (option chosen) | 4 | Tester agent and you sign off the look |
-| 7 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
-About 22 agent days before the week-long test.
+| 1 | Project skeleton: `Assets/Game`, ported sim + tests, versioned atomic save, `GameClock` (load, catch-up with the 8 h quarter-speed tail, autosave) | 3 | Sim tests green, save survives a killed app (test) |
+| 2 | Style kit into `Assets/Game` + **organic placement layer** (sim decides sites; meshes generated from sim state) | 4 | A 3-era time-lapse that grows like a real village; you sign off the look |
+| 3 | Box, care, camera, crowd, notables in UI Toolkit | 4 | Tester agent passes a first-session playtest by touch |
+| 4 | Chronicle cards + time-lapse + small book | 3 | Recall and history metrics logged |
+| 5 | Shaping the land (rain, grove, channel) in the style kit, answered by placement | 3 | A shaping is answered visibly and credited in diary time |
+| 6 | Eras live (camp → village → town), box completes, second box arrives | 4 | The town moment plays live after a 24 h away |
+| 7 | First run, settings, sound, era notification, polish | 3 | Tester agent and you sign off |
+| 8 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
+About 24 agent days before the week-long test.
 
 **Progress.** M1 started 2026-10-29 on branch `vs/m1`: `Assets/Game/Sim` (`AquariumCiv.Sim`, pure C#, the prototype sim
 with the gate switches resolved: no mess→mood, stories and yearly snapshots always on, nudges = rain/grove/channel
