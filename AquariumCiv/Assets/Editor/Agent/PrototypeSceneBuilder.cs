@@ -5,6 +5,7 @@ using AquariumCiv.Prototypes.P1;
 using AquariumCiv.Prototypes.P2;
 using AquariumCiv.Prototypes.Hub;
 using AquariumCiv.Prototypes.P3;
+using AquariumCiv.Prototypes.P4;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -118,6 +119,24 @@ namespace AquariumCiv.EditorTools
             var p3 = b.systems.AddComponent<WhileYouWereAway>();
             WireLab(b, p3);
             p3.cards = cards;
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P4 Book of Ages")]
+        public static string BuildP4()
+        {
+            var b = BuildLabBase("P4", "Assets/Prototypes/P4_BookOfAges/P4_BookOfAges.unity", "I'd show this to a friend");
+            var timelapse = b.systems.AddComponent<TimelapseView>();
+            timelapse.village = b.village;
+            timelapse.crowd = b.crowd;
+            timelapse.notables = b.notables;
+            var book = b.systems.AddComponent<IllustratedBook>();
+            var p4 = b.systems.AddComponent<BookOfAges>();
+            WireLab(b, p4);
+            p4.timelapse = timelapse;
+            p4.book = book;
+            p4.prehistoryYears = 100f; // a century to browse
             Save(b);
             return Report(b);
         }

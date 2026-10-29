@@ -44,6 +44,7 @@ namespace AquariumCiv.Prototypes
                 hypothesis = "Browsing the village's 100-year history makes you linger and want to share it.",
                 names = new[] { "Time-lapse", "Illustrated book" },
                 lines = new[] { "Drag a timeline to replay the village growing.", "Turn pages: chapters, portraits, family tree." },
+                diaryDays = 3, diaryNote = "Optional. Variant alternates by day; open History whenever you like.",
             },
             new()
             {

@@ -173,6 +173,9 @@ namespace AquariumCiv.Prototypes
             margin = new RectOffset(5, 5, 5, 5),
         };
 
+        /// <summary>A rounded 9-sliceable texture in any colours (P4's paper pages).</summary>
+        public static Texture2D RoundedTexture(Color fill, Color edge, int radius) => Rounded(fill, edge, radius);
+
         /// <summary>Anti-aliased rounded rect with a 2px edge, for 9-slicing.</summary>
         static Texture2D Rounded(Color fill, Color edge, int radius)
         {
