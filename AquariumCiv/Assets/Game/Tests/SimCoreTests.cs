@@ -32,7 +32,8 @@ namespace AquariumCiv.Tests
         /// <summary>A fingerprint of the slice world (seed 1234, 48 h). If this fails, a change altered the simulation:
         /// fine when meant (update the number in the same commit and say why), a bug when not.
         /// Eras (#23): nobody watches here, so the box stays a camp at its plateau and builds only camp types, and the
-        /// chronicle notes that the village is ready.</summary>
+        /// chronicle notes that the village is ready.
+        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -40,7 +41,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(260752515u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(3916309374u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]

@@ -180,7 +180,7 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(390496490u, Fingerprint(sim.State));
+            Assert.AreEqual(520445443u, Fingerprint(sim.State)); // #43: elder stages doubled (no apprentices under 90)
         }
 
         [Test]

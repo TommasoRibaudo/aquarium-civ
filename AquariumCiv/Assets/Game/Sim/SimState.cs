@@ -13,6 +13,13 @@ namespace AquariumCiv.Sim
     {
         public float yearsPerRealHour = 1f;     // 1 real hour = 1 game year (Gate 2)
         public float notableAgeFactor = 1f;     // notables age with the calendar (user, 2026-10-29: half-speed aging confused people)
+        // Life stages (decisions.md 2026-10-29 "Life stages": "Only stretch elderly"). The lifespan doubled from the
+        // prototypes' 55–80 years, so the elder stages doubled with it (45 → 90, 60 → 120). Adulthood (16), parenthood
+        // (20–40) and marriage (≤ 50) stay as they were.
+        public float lifespanMin = 110f;        // a notable dies of old age at a lifespan drawn from [min, max)
+        public float lifespanMax = 160f;
+        public float elderAge = 90f;            // elders: old enough to take an apprentice (prototypes: 45)
+        public float eldestStoryAge = 120f;     // the eldest tells the founding story in winter from this age (prototypes: 60)
         public float messFullHours = 48f;       // mess reaches its cap after this many real hours
         public int trashMax = 12;
         public float trashPerPersonHour = 0.02f;
