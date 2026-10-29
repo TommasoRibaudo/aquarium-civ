@@ -11,6 +11,8 @@ namespace AquariumCiv.Prototypes
         public static float Scale => Mathf.Min(Screen.width / 720f, Screen.height / 1280f);
         public static float Width => Screen.width / Scale;
         public static float Height => Screen.height / Scale;
+        /// <summary>Canvas units reserved at the bottom (home indicator); bottom-anchored UI sits above it.</summary>
+        public static float SafeBottom => Screen.safeArea.y / Scale;
 
         // Palette: deep water, glass teal, warm sand accent.
         static readonly Color Ink = new(0.96f, 0.93f, 0.86f);

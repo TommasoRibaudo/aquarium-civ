@@ -72,6 +72,8 @@ namespace AquariumCiv.EditorTools
             wipe.glass = b.glass;
             wipe.mess = b.mess;
             b.mess.tapCleansProps = false;
+            b.mess.trashScale = 2.4f; // junk and weeds read at default zoom on a phone (tester run 3: ~8 pt / ~4 pt before)
+            b.mess.vineScale = 1.8f;
             var p2 = b.systems.AddComponent<ReturnToMess>();
             p2.wipe = wipe;
             p2.crowd = b.crowd;

@@ -206,7 +206,7 @@ namespace AquariumCiv.Prototypes.P2
 
             if (!Lab) return;
             float w = ProtoGui.Width;
-            var row = new Rect(20, ProtoGui.Height - 112 - 12 - 108, w - 40, 108); // above Feedback / Done (88 tall at h - 112)
+            var row = new Rect(20, ProtoGui.Height - ProtoGui.SafeBottom - 112 - 12 - 108, w - 40, 108); // above Feedback / Done (88 tall at h - 112)
             ProtoGui.Block(row);
             ProtoGui.Panel(row);
             GUILayout.BeginArea(new Rect(row.x + 12, row.y + 8, row.width - 24, row.height - 16));

@@ -266,6 +266,46 @@ namespace AquariumCiv.Prototypes
             StartCoroutine(Vanish());
         }
 
+        bool held;
+        Vector3 restPos;
+        Quaternion restRot;
+        Coroutine lifting;
+
+        /// <summary>Picked up by a finger: rises a little and tilts, so a grab reads as physical before the toss.
+        /// Letting go snaps it back to rest (a wobble usually follows).</summary>
+        public void SetHeld(bool on)
+        {
+            if (done || on == held) return;
+            held = on;
+            if (on)
+            {
+                restPos = transform.position;
+                restRot = transform.localRotation;
+                lifting = StartCoroutine(Lift());
+                return;
+            }
+            if (lifting != null) StopCoroutine(lifting);
+            transform.position = restPos;
+            transform.localRotation = restRot;
+        }
+
+        IEnumerator Lift()
+        {
+            var t = transform;
+            var r = GetComponentInChildren<Renderer>();
+            float rise = r != null ? Mathf.Max(0.02f, r.bounds.size.y * 0.35f) : 0.05f;
+            var tilt = restRot * Quaternion.Euler(10f, 0, -8f);
+            for (float k = 0; k < 1f; k += Time.unscaledDeltaTime * 12f)
+            {
+                float e = 1f - (1f - k) * (1f - k);
+                t.position = restPos + Vector3.up * rise * e;
+                t.localRotation = Quaternion.Slerp(restRot, tilt, e);
+                yield return null;
+            }
+            t.position = restPos + Vector3.up * rise;
+            t.localRotation = tilt;
+        }
+
         /// <summary>A little shake: touched but not cleaned.</summary>
         public void Wobble()
         {

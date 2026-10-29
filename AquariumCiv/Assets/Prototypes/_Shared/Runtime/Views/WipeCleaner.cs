@@ -84,6 +84,7 @@ namespace AquariumCiv.Prototypes
             if (PickMess(screenPos, out var piece))
             {
                 grabbed = piece;
+                grabbed.SetHeld(true); // lifts a little: it's in your fingers now
                 grabStart = screenPos;
                 samples.Clear();
                 samples.Add((Time.unscaledTime, screenPos));
@@ -151,6 +152,8 @@ namespace AquariumCiv.Prototypes
             var piece = grabbed;
             grabbed = null;
             if (piece == null || piece.Done) return;
+            piece.SetHeld(false);
+            if (OrbitCamera.DragCancelled) return; // a second finger turned this into a camera turn: no toss, no hint
             samples.Add((Time.unscaledTime, screenPos));
             var (t0, p0) = samples[0];
             float dt = Mathf.Max(Time.unscaledTime - t0, 1f / 120f);
@@ -165,7 +168,7 @@ namespace AquariumCiv.Prototypes
                 return;
             }
             piece.Wobble();
-            HudToast.Show("Flick it faster to toss it out", piece.transform.position + Vector3.up * 0.3f);
+            HudToast.Show(travel < flickMinTravel ? "Flick it out" : "Flick it faster to toss it out", piece.transform.position + Vector3.up * 0.3f);
         }
 
         /// <summary>A wipe never cleans junk, but junk the finger crosses wobbles, so it reads as touchable.</summary>

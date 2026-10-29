@@ -30,6 +30,8 @@ namespace AquariumCiv.Prototypes
 
         /// <summary>A tool (e.g. glass wiping) that can claim one-finger drags; the camera then doesn't rotate.</summary>
         public static IDragTool DragTool;
+        /// <summary>True while a drag tool's EndDrag runs because the press was cancelled (a second finger, the OS), not lifted.</summary>
+        public static bool DragCancelled { get; private set; }
         /// <summary>Gets first say on a tap (screen position, what the world raycast hit or null). True = handled.</summary>
         public static Func<Vector2, Collider, bool> TapClaim;
         public event Action ThreeFingerTap;
@@ -157,7 +159,13 @@ namespace AquariumCiv.Prototypes
 
         void CancelPress()
         {
-            if (toolDragging) { toolDragging = false; DragTool.EndDrag(pressPos); }
+            if (toolDragging)
+            {
+                toolDragging = false;
+                DragCancelled = true;
+                try { DragTool.EndDrag(pressPos); }
+                finally { DragCancelled = false; }
+            }
             pressing = false;
         }
 

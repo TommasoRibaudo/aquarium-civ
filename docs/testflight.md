@@ -16,7 +16,7 @@ Cost: about $1.50 of GitHub Actions per iOS build (macOS minutes). Only run it w
 |---|---|
 | Name | Aquarium Civ |
 | Bundle ID | `com.tommasoribaudo.aquariumciv` |
-| Version | 0.1.0 (PlayerSettings), build = run number |
+| Version | **0.<prototype>.<n>** (PlayerSettings): 0.1.x = P1, 0.2.x = P2, ... Build = run number. See the build log below. |
 | Orientation | Portrait only |
 | Icon | `AquariumCiv/Assets/Art/Icon/AppIcon.png` (placeholder render of the look-test diorama) |
 
@@ -66,6 +66,30 @@ Cost: about $1.50 of GitHub Actions per iOS build (macOS minutes). Only run it w
 | `APPSTORE_P8` | the downloaded `AuthKey_XXXX.p8` contents |
 | `APPLE_TEAM_ID` | Membership details |
 | `FEEDBACK_TOKEN` | fine-grained PAT, aquarium-civ only, Issues read/write ([feedback.md](feedback.md)). Optional: without it, feedback stays on the device |
+
+## Build log: which build tests what
+The version says the prototype: TestFlight shows "0.2.0 (6)", meaning P2, build 6. Bump the minor version when a
+new prototype ships, the patch for fixes to the same one, and add a row here plus the "What to Test" text.
+
+| Build | Version | Prototype | Tests | What to Test |
+|---|---|---|---|---|
+| 2 | 0.1.0 | P0 sandbox | first install | - |
+| 3 | 0.1.0 | P1 Glass & Mess | H1 cleaning gesture: wipe vs tap (lab) | - |
+| 5 | 0.1.0 | P1 + in-app feedback | same, plus Feedback button | - |
+| next | **0.2.0** | **P2 Return to Mess** | H2: coming back to mess is a pull, not guilt. A/B by day: A cosmetic mess, B mess slows work. Diary, 4 days | [below](#p2-what-to-test) |
+
+### P2 What to Test
+Paste into App Store Connect → TestFlight → the build → Test Details:
+
+> **Aquarium Civ 0.2: Return to Mess.** A tiny village lives in your glass tank. Keep the app for 4 days and open it
+> whenever you feel like it: no reminders, it runs on real time. Wipe the glass with a finger; touch junk or weeds and
+> flick them out.
+> When you're done, tap "Done for now" (one short survey a day). Tell us anytime with the Feedback button:
+> 1. Did you want to open it again? What made you?
+> 2. When you came back to a dirty tank, did it feel like fun or like a chore?
+> 3. Was anything confusing?
+
+Lab session (sitting with a tester): hold the top-left info box for 2 s until "LAB" shows, then use "Step away".
 
 ## Notes
 - Release builds hide the debug panel (`Debug.isDebugBuild` is false). Lab tests that need the away buttons run in the
