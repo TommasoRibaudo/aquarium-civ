@@ -40,7 +40,6 @@ namespace AquariumCiv.Prototypes.P5
         Option placing;
         Func<Vector2, Collider, bool> savedClaim;
         readonly Dictionary<int, GameObject> props = new();
-        readonly Dictionary<int, float> placedAt = new(); // nudge id → real time placed (time to visible effect)
         int generation = -1, checkinNudges;
         GUIStyle titleStyle, lineStyle;
 
@@ -92,6 +91,7 @@ namespace AquariumCiv.Prototypes.P5
         protected override void OnReturn(double hours, float years, long sinceMonth)
         {
             CancelPlacing();
+            WatchAnswers(quiet: true); // answers that came while away are logged here and told in the welcome line
             var credited = clock.Sim.State.chronicle.Where(e => e.month > sinceMonth && e.keeper).OrderBy(e => e.month).ToList();
             string line = $"Welcome back, Keeper! {StatsLine(hours, years)}";
             if (credited.Count > 0) line += $"\n{credited[^1].text}";
@@ -108,7 +108,7 @@ namespace AquariumCiv.Prototypes.P5
             placing = o;
             savedClaim = OrbitCamera.TapClaim;
             OrbitCamera.TapClaim = PlaceTap;
-            HudToast.ShowBanner(o.takesTile ? $"Tap an empty spot in the village for the {o.title.ToLowerInvariant()}." : $"Tap a spot in the village for the {o.title.ToLowerInvariant()}.", 6f);
+            HudToast.ShowBanner(o.takesTile ? $"{o.title}: tap an empty spot in the village." : $"{o.title}: tap a spot in the village.", 6f);
             EventLog.Instance?.Log("nudge", ("action", "choose"), ("kind", o.kind));
         }
 
@@ -130,11 +130,18 @@ namespace AquariumCiv.Prototypes.P5
             }
             var o = placing;
             var s = clock.Sim.State;
+            int nearest = NearestSlot(info.point);
+            var off = village.SlotPosition(nearest) - info.point; off.y = 0;
+            if (off.magnitude > village.slotRadius * 2.2f)
+            {
+                HudToast.ShowBanner("Tap inside the village to place it.", 3f);
+                return true;
+            }
             var used = s.buildings.Select(b => b.slot).ToHashSet();
             int slot = o.takesTile ? NearestFreeSlot(NearestSlot(info.point), used) : NearestSlot(info.point);
             if (slot < 0) { HudToast.ShowBanner("No empty spot left for that.", 3f); return true; }
             var n = clock.Sim.PlaceNudge(o.kind, slot);
-            placedAt[n.id] = Time.unscaledTime;
+            n.placedUnixS = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             checkinNudges++;
             EventLog.Instance?.Log("nudge", ("action", "place"), ("kind", o.kind), ("slot", slot), ("year", s.Year));
             EventLog.Instance?.Count("nudges");
@@ -150,7 +157,8 @@ namespace AquariumCiv.Prototypes.P5
         IEnumerator Gather(int slot)
         {
             var at = village.SlotPosition(slot);
-            var crowdAgents = crowd.Agents.Take(Mathf.Max(3, crowd.Agents.Count / 2)).ToList();
+            var all = crowd.Agents.Concat(notables != null ? notables.All : Enumerable.Empty<Wanderer>()).Where(a => a != null).ToList();
+            var crowdAgents = all.OrderBy(a => (a.transform.position - at).sqrMagnitude).Take(Mathf.Max(4, all.Count * 2 / 3)).ToList();
             foreach (var a in crowdAgents) a.gatherAt = at;
             yield return new WaitForSecondsRealtime(gatherSeconds);
             foreach (var a in crowdAgents) if (a != null) a.gatherAt = null;
@@ -184,6 +192,22 @@ namespace AquariumCiv.Prototypes.P5
             return best;
         }
 
+        readonly List<GameObject> hiddenTiles = new();
+
+        /// <summary>The ground tile under a slot (the channel replaces it with a river tile).</summary>
+        Transform GroundTileAt(Vector3 slotPos)
+        {
+            var ground = village.transform.parent.Find("Ground");
+            if (ground == null) return null;
+            Transform best = null; float bd = float.MaxValue;
+            foreach (Transform t in ground)
+            {
+                var d = t.position - slotPos; d.y = 0;
+                if (d.sqrMagnitude < bd) { bd = d.sqrMagnitude; best = t; }
+            }
+            return best;
+        }
+
         Option Find(string kind) => omens.Concat(land).FirstOrDefault(o => o.kind == kind);
 
         // ---------- the world shows it ----------
@@ -195,6 +219,8 @@ namespace AquariumCiv.Prototypes.P5
                 generation = clock.Generation;
                 foreach (var go in props.Values) if (go != null) Destroy(go);
                 props.Clear();
+                foreach (var t in hiddenTiles) if (t != null) t.SetActive(true);
+                hiddenTiles.Clear();
             }
             foreach (var n in clock.Sim.State.nudges ?? new List<Nudge>())
             {
@@ -214,8 +240,9 @@ namespace AquariumCiv.Prototypes.P5
             root.transform.position = pos;
             if (n.kind == NudgeKind.Channel && riverTile != null)
             {
-                var tile = Instantiate(riverTile, slotPos - Vector3.up * (tileTop - 0.03f), Quaternion.Euler(0, 30f, 0), root.transform);
-                tile.transform.localScale = new Vector3(1.01f, 1f, 1.01f); // sits just over the grass tile it replaces
+                var grass = GroundTileAt(slotPos);
+                if (grass != null) { grass.gameObject.SetActive(false); hiddenTiles.Add(grass.gameObject); }
+                var tile = Instantiate(riverTile, grass != null ? grass.position : slotPos - Vector3.up * tileTop, grass != null ? grass.rotation : Quaternion.identity, root.transform);
                 tile.name = "Channel";
             }
             if (o?.prop != null)
@@ -285,23 +312,32 @@ namespace AquariumCiv.Prototypes.P5
         }
 
         /// <summary>When the people answer a nudge: a banner with the credited line, a cheer at the new building, a log line.</summary>
-        void WatchAnswers()
+        void WatchAnswers(bool quiet = false)
         {
             foreach (var n in clock.Sim.State.nudges ?? new List<Nudge>())
             {
                 if (!n.credited || n.reported) continue;
                 n.reported = true;
                 var e = clock.Sim.State.chronicle.LastOrDefault(c => c.keeper && c.buildingId == n.buildingId);
-                float realS = placedAt.TryGetValue(n.id, out var t0) ? Time.unscaledTime - t0 : -1f;
+                // Wall-clock seconds from placing to the answer (survives app restarts; lab "Step away" adds no real time).
+                long realS = n.placedUnixS > 0 ? System.DateTimeOffset.UtcNow.ToUnixTimeSeconds() - n.placedUnixS : -1;
                 EventLog.Instance?.Log("nudge_effect", ("kind", n.kind), ("game_months", n.answerMonth - n.month), ("real_s", realS),
-                    ("building", clock.Sim.State.buildings.FirstOrDefault(b => b.id == n.buildingId)?.type ?? "-"));
-                if (!started || e == null) continue;
+                    ("seen_live", !quiet), ("building", clock.Sim.State.buildings.FirstOrDefault(b => b.id == n.buildingId)?.type ?? "-"));
+                if (quiet || !started || e == null) continue; // answered while away: the welcome line tells it
                 HudToast.ShowBanner(e.text, 6f);
-                var b = village.Find(n.buildingId);
-                if (b != null) HudToast.Show("The Keeper's doing!", b.transform.position + Vector3.up * 0.6f, 4f);
+                pendingLabels[n.buildingId] = Time.unscaledTime + 3f;
                 Juice.Chime();
             }
+            // "The Keeper's doing!" once the answering building has actually appeared (it spawns a frame or two later).
+            foreach (var id in pendingLabels.Keys.ToList())
+            {
+                var b = village.Find(id);
+                if (b != null) { HudToast.Show("The Keeper's doing!", b.transform.position + Vector3.up * 0.6f, 5f); pendingLabels.Remove(id); }
+                else if (Time.unscaledTime > pendingLabels[id]) pendingLabels.Remove(id);
+            }
         }
+
+        readonly Dictionary<int, float> pendingLabels = new();
 
         // ---------- UI ----------
 
@@ -312,6 +348,12 @@ namespace AquariumCiv.Prototypes.P5
             titleStyle ??= new GUIStyle(ProtoGui.Title) { fontSize = 26 };
             lineStyle ??= new GUIStyle(ProtoGui.Hint) { fontSize = 20 };
             float w = ProtoGui.Width, h = ProtoGui.Height;
+            foreach (var (id, go) in props)
+            {
+                if (go == null) continue;
+                var p = ProtoGui.WorldToCanvas(go.transform.position + Vector3.up * 0.55f);
+                if (p.x > -100) ProtoGui.Dot(new Rect(p.x - 9, p.y - 9, 18, 18), new Color(1f, 0.83f, 0.4f, 0.95f)); // gold: the Keeper's mark
+            }
             if (placing != null)
             {
                 var c = new Rect(w / 2 - 100, h - 112 - ProtoGui.SafeBottom, 200, 88);
@@ -357,7 +399,7 @@ namespace AquariumCiv.Prototypes.P5
                 if (GUILayout.Button(o.kind.Replace('_', ' '), GUILayout.Height(54)))
                 {
                     var n = sim.PlaceNudge(o.kind, NearestFreeSlot(0, sim.State.buildings.Select(b => b.slot).ToHashSet()));
-                    placedAt[n.id] = Time.unscaledTime;
+                    n.placedUnixS = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();

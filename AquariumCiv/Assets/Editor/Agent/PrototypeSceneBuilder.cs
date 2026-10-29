@@ -157,9 +157,9 @@ namespace AquariumCiv.EditorTools
                 new() { kind = kind, title = title, line = line, prop = prop != null ? Load(prop) : null, scale = scale, takesTile = tile };
             p5.omens = new[]
             {
-                Opt("harvest_totem", "Harvest totem", "A golden banner. The people lean towards farming.", P("flag_yellow"), 3.2f),
+                Opt("harvest_totem", "Harvest totem", "A tall banner. The people lean towards farming.", P("flag_yellow"), 5f),
                 Opt("craft_totem", "Craft totem", "A stack of fine timber. The people lean towards making things.", P("resource_lumber"), 2.6f),
-                Opt("faith_shrine", "Faith shrine", "A small stage of stones. The people lean towards festivals and faith.", Neutral("building_stage_A"), 0.6f),
+                Opt("faith_shrine", "Faith shrine", "A small stage of stones. The people lean towards festivals and faith.", Neutral("building_stage_A"), 1.6f),
             };
             p5.land = new[]
             {

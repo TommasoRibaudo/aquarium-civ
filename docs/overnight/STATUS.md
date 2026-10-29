@@ -6,7 +6,7 @@ Prompt: `docs/prompts/overnight-P3-P6.md`. Started 2026-10-28.
 - [x] P3 plan → build → verify → tester → write-up → tag proto/P3-v1
 - [x] Test Hub (P2 entry + P3) → tester
 - [x] P4 (seeded ~100 years) ... → tag proto/P4-v1, added to hub
-- [ ] P5 ... → tag proto/P5-v1, added to hub
+- [x] P5 ... → tag proto/P5-v1, added to hub
 - [ ] P6 ... → tag proto/P6-v1, added to hub
 - [ ] P2 regression: rebuild, play 30 s, tests green
 - [ ] test-session-gate2-3.md + artifact
@@ -20,3 +20,6 @@ Prompt: `docs/prompts/overnight-P3-P6.md`. Started 2026-10-28.
 - Test Hub built (177b1c7): hub first in build, auto-open of a running diary (P2 by default), lab strip with Switch/Hub, pair question. Hub tester run running.
 - Hub tester: fail (3 real: second diary hid P2, lab wiped diary, scroll left buttons dimmed). Fixed; diary preservation verified in play.
 - P4: tester run 1 fail (5 real), fixed + verified in play. Tagged proto/P4-v1. Next: P5 from staging.
+- P5 built (71a0df1): nudge sim + tests (31/31, P2 fingerprint intact), omens/land props, credited answers. Tester run 1 running.
+- NOTE: another session (likely gamedev-05) has uncommitted sound work in this same tree (Juice/MessView/WipeCleaner/RubSynth/SoundPreview). Not mine; left untouched and unstaged. Briefly committed by accident, undone before push.
+- P5 tester run 1 fail (7 real), fixed, verified in play. Tagged proto/P5-v1. Next: P6.

@@ -122,6 +122,8 @@ namespace AquariumCiv.Prototypes.Sim
         public long answerMonth = -1;
         public int buildingId = -1;
         public bool reported;       // the view has shown and logged the answer
+        public int answerAfter = 8; // game months before the people act (varies, so answers don't feel mechanical)
+        public long placedUnixS;    // real time placed, for "time to visible effect"
     }
 
     /// <summary>One game year, compact (P4 history): enough to replay the village growing.</summary>

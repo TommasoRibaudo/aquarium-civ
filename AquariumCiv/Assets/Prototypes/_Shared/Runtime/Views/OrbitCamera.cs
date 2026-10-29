@@ -191,7 +191,7 @@ namespace AquariumCiv.Prototypes
                 EventLog.Instance?.Tap(lc?.category ?? "other", lc?.id);
                 var tappable = hit.collider.GetComponentInParent<ITappable>();
                 tappable?.OnTap(hit);
-                if (lc != null && (lc.category == "building" || lc.category == "citizen" || lc.category == "notable"))
+                if (lc != null && (lc.category == "building" || lc.category == "citizen" || lc.category == "notable" || lc.category == "nudge"))
                     focusPivot = new Vector3(hit.point.x, basePivot.y, hit.point.z);
                 if (lc == null || lc.category != "ground") return;
             }

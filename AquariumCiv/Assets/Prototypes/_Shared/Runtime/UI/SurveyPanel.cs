@@ -59,7 +59,7 @@ namespace AquariumCiv.Prototypes
                     GUILayout.BeginArea(r);
                     scroll = GUILayout.BeginScrollView(scroll);
                     GUILayout.Label("Quick survey", ProtoGui.Title);
-                    GUILayout.Label("5 questions, under a minute.", ProtoGui.Hint);
+                    GUILayout.Label(string.IsNullOrEmpty(PrototypeConfig.Current.surveyExtra) ? "5 questions, under a minute." : "6 questions, about a minute.", ProtoGui.Hint);
                     GUILayout.Space(8);
                     q1 = Likert("1. That session felt...", "a chore", "relaxing / fun", q1);
                     q2 = Likert("2. How much do you want to check on it again later?", "not at all", "a lot", q2);

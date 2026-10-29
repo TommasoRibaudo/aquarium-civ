@@ -37,7 +37,8 @@ namespace AquariumCiv.Prototypes.Sim
         public Nudge PlaceNudge(string kind, int slot)
         {
             State.nudges ??= new List<Nudge>();
-            var n = new Nudge { id = State.NextId(), kind = kind, slot = slot, month = State.month };
+            var r = State.storyRng ?? State.rng;
+            var n = new Nudge { id = State.NextId(), kind = kind, slot = slot, month = State.month, answerAfter = r.Range(10, 25) };
             State.nudges.Add(n);
             // Rain is felt at once: the fields drink.
             if (kind == NudgeKind.Rain) State.food = Math.Min(FoodCap, State.food + 6f + State.population * 0.5f);
@@ -65,7 +66,7 @@ namespace AquariumCiv.Prototypes.Sim
             {
                 // The people answer within 1–3 game years: the first month after a short pause where they can afford it.
                 long age = s.month - n.month;
-                if (age < 8) continue;
+                if (age < Math.Max(8, n.answerAfter)) continue;
                 string type = AnswerTo(n);
                 if (type == null) continue;
                 float cost = NextBuildingCost * 0.6f; // the Keeper's sign makes it a community effort

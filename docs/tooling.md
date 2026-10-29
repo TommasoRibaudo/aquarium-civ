@@ -240,3 +240,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     touches fine: convert canvas → screen with `(x * ProtoGui.Scale, Screen.height - y * ProtoGui.Scale)` and read
     the panel's private rect (e.g. `TimelapseView.barCanvas`) after one OnGUI frame. Keep touch start points on screen:
     a start at negative x misses `GuiBlocker` and turns the camera.
+- **2026-10-29 · Tester P5 run notes.** [verified]
+  - Banners that get replaced within a frame never show in screenshots. Poll `HudToast`'s private static `instance`
+    and its `banner`/`bannerUntil`/`toasts` fields every frame from the touch-fixture test and log each change.
+  - A ~4-minute lab watch fits in one `[UnityTest]` with `[Timeout(1200000)]` (the default timeout is too short).
+  - `Renderer` bounds `Aggregate` throws on a prop with no renderers (the P5 rain nudge root has none): guard it, or
+    the test fails mid-run.
