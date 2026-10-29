@@ -1,6 +1,6 @@
 # Notable jobs and roles (draft, 2026-10-29)
 
-Status: **draft, waiting for the user** (issue #24). Expands [game-definition.md](game-definition.md) §4 "Jobs and roles".
+Status: **approved by the user 2026-10-29** (issue #24) with one change: the town's 7th role is the **innkeeper**, not the miller. Still open: the town leader's form (elected mayor recommended). Where the text below says the town has a miller, read innkeeper. Expands [game-definition.md](game-definition.md) §4 "Jobs and roles".
 Fixed by the user (decisions.md 2026-10-29): roles are for **notables only**; the **economy is unchanged**; every
 notable holds an **everyday job** and competes for the **important roles: camp 1, village 3, town 7**; the role-holder's
 trait colours their term in **story and behaviour only**; notables ≈ 2–4 / 4–8 / up to 12 per era; ordinary people, no
