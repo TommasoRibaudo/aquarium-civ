@@ -12,6 +12,10 @@ namespace AquariumCiv.Prototypes
         enum Mode { Playing, Nickname, Survey, Thanks }
 
         Mode mode;
+        static SurveyPanel instance;
+        /// <summary>No modal of ours is up (the Feedback button only shows then).</summary>
+        public static bool IsPlaying => instance == null || instance.mode == Mode.Playing;
+        string sendResult = "";
         string nick = "";
         int q1, q2, q4;
         string q3 = "", q5 = "";
@@ -19,6 +23,8 @@ namespace AquariumCiv.Prototypes
 
         void Start()
         {
+            instance = this;
+            if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result += (_, msg) => sendResult = msg;
             mode = string.IsNullOrEmpty(Tester.Nickname) ? Mode.Nickname : Mode.Playing;
         }
 
@@ -76,7 +82,7 @@ namespace AquariumCiv.Prototypes
                 {
                     var r = Modal(w, h, 420);
                     GUILayout.BeginArea(r);
-                    GUILayout.Label("Thanks! Tap \"Copy summary\" and paste it into our chat.", ProtoGui.Wrap);
+                    GUILayout.Label(FeedbackSender.Instance != null ? sendResult : "Thanks! Tap \"Copy summary\" and paste it into our chat.", ProtoGui.Wrap);
                     if (GUILayout.Button("Copy summary", GUILayout.Height(64))) GUIUtility.systemCopyBuffer = EventLog.Instance.LastSummary;
                     if (PrototypeConfig.Current.testMode == TestMode.Lab && GUILayout.Button("Next version (lab test)", GUILayout.Height(64)))
                     {
@@ -98,6 +104,15 @@ namespace AquariumCiv.Prototypes
                 ("q4", q4.ToString()), ("q5_work", q5)
             });
             EventLog.Instance.EndSession("done");
+            sendResult = "Sending your answers...";
+            FeedbackSender.Instance?.SendSurvey(new List<(string, string, string)>
+            {
+                ("q1_feel", "That session felt... (1 chore - 5 relaxing/fun)", q1.ToString()),
+                ("q2_return", "Want to check on it again later? (1-5)", q2.ToString()),
+                ("q3_recall", "One thing that happened or you noticed", q3),
+                ("q4", $"{PrototypeConfig.Current.surveyQ4} (1-5)", q4.ToString()),
+                ("q5_work", "Anything feel like work, confusing, or guilt-inducing?", q5),
+            }, EventLog.Instance.LastSummary);
             mode = Mode.Thanks;
         }
 

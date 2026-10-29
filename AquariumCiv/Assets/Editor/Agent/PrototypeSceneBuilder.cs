@@ -111,6 +111,8 @@ namespace AquariumCiv.EditorTools
             sys.AddComponent<EventLog>();
             sys.AddComponent<HudToast>();
             sys.AddComponent<SurveyPanel>();
+            sys.AddComponent<FeedbackSender>();
+            sys.AddComponent<FeedbackPanel>();
 
             // Village
             var village = b.village = new GameObject("Village").AddComponent<DioramaView>();

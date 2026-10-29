@@ -66,6 +66,18 @@ jobs:
           key: Library-iOS-${{ hashFiles('AquariumCiv/Assets/**', 'AquariumCiv/Packages/**', 'AquariumCiv/ProjectSettings/**') }}
           restore-keys: Library-iOS-
 
+      # Feedback goes to GitHub issues (docs/feedback.md). The token is a fine-grained PAT limited to this repo's
+      # issues; it is written into the build only, never committed. Missing secret = feedback waits in the outbox.
+      - name: Bake feedback token and build info
+        env:
+          FEEDBACK_TOKEN: ${{ secrets.FEEDBACK_TOKEN }}
+        run: |
+          dir="${{ env.PROJECT_PATH }}/Assets/Prototypes/_Shared/Resources"
+          mkdir -p "$dir"
+          printf '%s' "$FEEDBACK_TOKEN" > "$dir/FeedbackToken.txt"
+          printf '%s' "build ${{ github.run_number }} (${GITHUB_SHA::7})" > "$dir/BuildInfo.txt"
+          [ -n "$FEEDBACK_TOKEN" ] || echo "::warning::FEEDBACK_TOKEN secret not set: in-app feedback will only be saved on the device"
+
       - name: Unity build (iOS export)
         uses: game-ci/unity-builder@v6
         env:

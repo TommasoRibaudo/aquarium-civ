@@ -22,6 +22,10 @@ namespace AquariumCiv.Prototypes
         public string SessionId { get; private set; }
         public bool InSession { get; private set; }
         public string LastSummary { get; private set; } = "{}";
+        /// <summary>The live session's summary so far (or the last one between sessions), for feedback reports.</summary>
+        public string CurrentSummary => InSession ? BuildSummary(Time.realtimeSinceStartup - sessionStart) : LastSummary;
+        /// <summary>The most recent log lines (oldest first), for feedback reports.</summary>
+        public IEnumerable<string> RecentLines => recent;
         public string LogPath => Path.Combine(Application.persistentDataPath, "logs", $"{Tester.Id.Substring(0, 8)}_{DateTime.UtcNow:yyyyMMdd}.jsonl");
 
         // Session counters for the summary.
@@ -31,6 +35,8 @@ namespace AquariumCiv.Prototypes
         readonly Dictionary<string, float> look = new();
         readonly Dictionary<string, float> counters = new();
         readonly Dictionary<string, string> survey = new();
+        readonly Queue<string> recent = new();
+        const int RecentMax = 40;
         float lookTimer, zoomedInSeconds;
 
         void Awake() => Instance = this;
@@ -111,6 +117,8 @@ namespace AquariumCiv.Prototypes
                 Json.Field(sb, data[i].key, data[i].value);
             }
             sb.Append("}}");
+            recent.Enqueue(sb.ToString());
+            while (recent.Count > RecentMax) recent.Dequeue();
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(LogPath));

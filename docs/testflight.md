@@ -45,6 +45,9 @@ Cost: about $1.50 of GitHub Actions per iOS build (macOS minutes). Only run it w
    without printing it). Then delete the `.p8` from Downloads and keep a copy in your password manager.
 
 ### Testers
+- **Internal group "Team"** (created 2026-10-29): automatic distribution on, so every uploaded build reaches it
+  with no review. Members must be users on the White Canvas App Store Connect team (Users and Access).
+
 - **You:** after the first build has processed, App Store Connect → the app → TestFlight → Internal Testing → **+**
   group "Team" → add yourself. Install TestFlight on the iPhone and accept the email.
 - **Friends** (choose one):
@@ -62,6 +65,7 @@ Cost: about $1.50 of GitHub Actions per iOS build (macOS minutes). Only run it w
 | `APPSTORE_KEY_ID`, `APPSTORE_ISSUER_ID` | App Store Connect API key page |
 | `APPSTORE_P8` | the downloaded `AuthKey_XXXX.p8` contents |
 | `APPLE_TEAM_ID` | Membership details |
+| `FEEDBACK_TOKEN` | fine-grained PAT, aquarium-civ only, Issues read/write ([feedback.md](feedback.md)). Optional: without it, feedback stays on the device |
 
 ## Notes
 - Release builds hide the debug panel (`Debug.isDebugBuild` is false). Lab tests that need the away buttons run in the
