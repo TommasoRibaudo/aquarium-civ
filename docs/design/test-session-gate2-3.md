@@ -83,23 +83,47 @@ Lab, about 30 minutes. A, then B.
 
 | Question (prototype-plan.md) | Fun if | Where it comes from | Result |
 |---|---|---|---|
-| P3: does the curated chronicle make the return the highlight? | In A, ≥ ⅔ of testers recall a specific named person or event, and A is preferred by most | Survey Q3 (recall) per variant in the GitHub survey issues; `pair_pref` issues ("A/B preference from …"); logs `chronicle_view` (cards read, dwell, fly-to) | |
-| P3: do people care about specific people? | Q4 median ≥ 4 in A | Survey Q4 issues | |
-| P3: notables at half speed, too short a life? | Few "died too soon" remarks in the diary | Q5 text and Feedback issues during the 4-day diary | |
-| P4: is history a reason to linger and share? | ≥ half of testers open history unprompted in the diary, and the winning view scores Q4 ≥ 4 | `history open` log lines with `mode` = Diary (and `since_hint_s`), dwell, `scrub_years` / `page_turns`, `snapshot`; Q4 issues; `pair_pref` | |
-| Time compression: is 1 real hour = 1 game year right? | A diary day reads as a good chunk of story without losing people too fast | Diary returns (`return` log lines: years, stories), recall answers | |
+| P3: does the curated chronicle make the return the highlight? | In A, ≥ ⅔ of testers recall a specific named person or event, and A is preferred by most | Survey Q3 (recall) per variant in the GitHub survey issues; `pair_pref` issues ("A/B preference from …"); logs `chronicle_view` (cards read, dwell, fly-to) || **Yes** (n=1). A: recall names Otto and his friends and enemies; 7/7 cards read, ~10 s each. B: recall names nobody. A preferred; Q1 5 vs 1 |
+| P3: do people care about specific people? | Q4 median ≥ 4 in A | Survey Q4 issues || **Yes** (n=1): Q4 = 5 in A, 1 in B |
+| P3: notables at half speed, too short a life? | Few "died too soon" remarks in the diary | Q5 text and Feedback issues during the 4-day diary || **No data**: the 4-day diary wasn't run. One related remark from P4: a notable born in year 1 is 6 in year 12, which reads as a bug |
+| P4: is history a reason to linger and share? | ≥ half of testers open history unprompted in the diary, and the winning view scores Q4 ≥ 4 | `history open` log lines with `mode` = Diary (and `since_hint_s`), dwell, `scrub_years` / `page_turns`, `snapshot`; Q4 issues; `pair_pref` || **Open** (n=1, lab only, no diary so no unprompted opens). A preferred ("clearer") but scores Q4 3; B scores Q4 5 but "felt empty for something that should be important" |
+| Time compression: is 1 real hour = 1 game year right? | A diary day reads as a good chunk of story without losing people too fast | Diary returns (`return` log lines: years, stories), recall answers || **No data** (no diary). Lab returns: 8 h = 8 years with 10–12 stories; 48 h = ~55 stories |
 
 - Survey answers and pair preferences arrive as GitHub issues labelled `feedback` (via `FeedbackSender`; see
   [feedback.md](../feedback.md)), tagged `[P3·A]`, `[P3·B]`, `[P3] A/B preference`, and so on.
-- **Decision (for docs/decisions.md):** return presentation: ______ · history view: ______ · time compression: ______
+### Recommendation (Gate 2, 2026-10-29, rests on one tester: you)
+- **Return presentation: chronicle cards (A).** The clearest result of the test: 5/5/5 against 1/1/1, and the recall
+  answer names a person and his relationships, which is exactly what H3 predicted. Carry forward your two notes: show
+  relationships *in the world* (friends meet, rivals argue), and calibrate card vs character-sheet detail.
+- **History view: time-lapse (A) as the main view, keep the book's idea for later.** You picked A as clearer; the book
+  scored higher on "show a friend" but felt empty because its pages weren't about people you cared about. Option for
+  the slice: time-lapse now, a book of *your notables* (legends, family trees) once P3's people carry more story.
+- **Time compression: keep 1 real hour = 1 game year provisionally.** Untested (no diary). Fix the age display (notables
+  age at half speed, so a person born in year 1 is 6 in year 12).
+- **Risks:** n = 1, and the tester is the designer. A 4-day P3 diary or two friends playing P3 would firm it up; P3's
+  answer is strong enough to proceed without that.
+
+- **Decision (2026-10-29, in docs/decisions.md):** return presentation: **chronicle cards (A)** · history view: **time-lapse (A) + a small polished book for major events and people** · time compression: **keep 1 h = 1 year**
 
 ## Gate 3 decision sheet (control + progression)
 
 | Question (prototype-plan.md) | Fun if | Where it comes from | Result |
 |---|---|---|---|
-| P5: do nudges feel like authorship? | Q4 ≥ 4, and a nudge is used in ≥ 60 % of check-ins | Q4 + Q6 ("too much / too little control") issues; `nudge place` and `checkin` log lines (nudges per check-in), `nudge_effect` (time to the answer), look-time on `nudge` | |
-| P5: omens or environment shaping? | Preference + Q4 | `pair_pref` issues | |
-| P6: is a live era transition worth waiting for? | Q1 ≥ 4 for most testers | Q1 issues; `era watch` (seconds waited) and `era done` (seconds watched) | |
-| P6: box grows or new box on the shelf? | One form wins preference clearly (≥ ⅔); a tie keeps both | `pair_pref` issues; in B, `old_box_s` (time spent revisiting the old box) | |
+| P5: do nudges feel like authorship? | Q4 ≥ 4, and a nudge is used in ≥ 60 % of check-ins | Q4 + Q6 ("too much / too little control") issues; `nudge place` and `checkin` log lines (nudges per check-in), `nudge_effect` (time to the answer), look-time on `nudge` || **No data**: the P5 survey couldn't be sent (panel didn't scroll, #17), so Q4, Q6 and nudge counts are missing |
+| P5: omens or environment shaping? | Preference + Q4 | `pair_pref` issues || **B, shape the land** (n=1, free-text note, no survey): "much better and clearer to players" |
+| P6: is a live era transition worth waiting for? | Q1 ≥ 4 for most testers | Q1 issues; `era watch` (seconds waited) and `era done` (seconds watched) || **Likely yes, weak** (n=1): Q1 5 in B. Both of B's moments were reached by stepping away, not live; A's 1 was given 7 s into a fresh session |
+| P6: box grows or new box on the shelf? | One form wins preference clearly (≥ ⅔); a tie keeps both | `pair_pref` issues; in B, `old_box_s` (time spent revisiting the old box) || **B, new box on the shelf** (n=1): picked B, "Yes yes yes!"; 78 s spent on the old box |
 
-- **Decision (for docs/decisions.md):** nudge form: ______ · progression shape: ______ · then write the vertical-slice plan.
+### Recommendation (Gate 3, 2026-10-29, rests on one tester: you)
+- **Nudge form: shape the land (B)**, on one free-text note; the authorship question itself (Q4 ≥ 4, a nudge in ≥ 60 %
+  of check-ins) has **no data** because the P5 survey couldn't be sent. Option: decide B now and measure nudge use in
+  the vertical slice, or fix the survey (0.3.1, shared `SurveyPanel`) and replay P5 first.
+- **Progression shape: new box on the shelf (B).** Clear preference and the old box got real attention (78 s). Risk:
+  A's 1/1/1 was entered 7 s into a fresh A session, so the annex was probably judged from the run before; that's a
+  comparison, not a measure of A.
+- **Live era moment:** keep it (B scored 5), but in your run both moments waited for you after stepping away. The
+  vertical slice should test the wait-for-you version as the normal case.
+- **Then:** write the vertical-slice plan from the draft in [vertical-slice-plan.md](vertical-slice-plan.md) (its
+  options already branch on these answers).
+
+- **Decision (2026-10-29, in docs/decisions.md):** nudge form: **shape the land (B), terrain shifts** · progression shape: **new box on the shelf (B)** · next: the vertical-slice plan.

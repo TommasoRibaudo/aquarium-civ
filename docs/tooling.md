@@ -274,3 +274,6 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - P2 lab mode writes the **diary** save `proto/P2.json` (P2 has no separate lab save): back it up before a P2 playtest.
   - A raster of wipe strokes inset 12% from the front pane's projected rect leaves its mean at ~0.05, just above the
     `PaneCleared` threshold (< 0.05). To test the clear chime, set a dirty central patch on a clean pane and wipe that.
+- **2026-10-29 · `test run --mode play` silently runs 0 tests** ("0/0 passed (0s)", exit 0). The Pipeline's modes are
+  `editor`, `playmode`, `all`; anything else matches nothing. Use `--mode playmode` (and `--async_tests true` + `test
+  status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified]

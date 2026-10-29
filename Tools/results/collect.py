@@ -1,0 +1,231 @@
+"""Turn the playtest feedback issues into per-prototype results tables (docs/design/results/data/Pn.md).
+
+Usage (from F:/GameDev):  python Tools/results/collect.py [--min-version 0.3.0] [--protos P3,P4,P5,P6]
+
+Reads every issue labelled `feedback` with gh (format: docs/feedback.md), keeps builds >= --min-version, and writes
+one generated file per prototype: surveys per variant and mode (Lab / Diary), Q1/Q2/Q4 medians, Q3 recall answers to
+classify by hand, the A/B preference count, the logged counters the decision sheets ask for, and free feedback.
+The generated files carry tester nicknames: they stay in this repo (never paste them elsewhere).
+"""
+import argparse
+import json
+import re
+import statistics
+import subprocess
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+REPO = "TommasoRibaudo/aquarium-civ"
+ROOT = Path(__file__).resolve().parents[2]
+OUT = ROOT / "docs" / "design" / "results" / "data"
+
+# Counters from the session summary that each decision sheet asks for (EventLog.Count names).
+METRICS = {
+    "P3": ["cards_read", "card_dwell_s", "fly_to", "notable_cards"],
+    "P4": ["history_opens", "history_s", "scrub_years", "page_turns", "snapshots"],
+    "P5": ["nudges"],
+    "P6": ["transition_s", "old_box_s"],
+}
+# Event lines (from the last 40 log lines in each issue) worth pulling out per prototype.
+EVENTS = {
+    "P3": ["chronicle_open", "chronicle_view", "notable", "return"],
+    "P4": ["history", "snapshot", "return"],
+    "P5": ["nudge", "nudge_effect", "checkin", "return"],
+    "P6": ["era", "growth", "shelf", "return"],
+}
+
+
+def gh_issues():
+    out = subprocess.run(
+        ["gh", "issue", "list", "-R", REPO, "--label", "feedback", "--state", "all", "--limit", "1000",
+         "--json", "number,title,body,labels,createdAt,url"],
+        capture_output=True, text=True, encoding="utf-8", check=True).stdout
+    return json.loads(out)
+
+
+def version_tuple(v):
+    return tuple(int(x) for x in re.findall(r"\d+", v)[:3]) or (0,)
+
+
+def parse(issue):
+    body = issue["body"] or ""
+    d = {"number": issue["number"], "url": issue["url"], "created": issue["createdAt"][:16].replace("T", " "),
+         "title": issue["title"], "labels": [l["name"] for l in issue["labels"]]}
+    m = re.search(r"<!-- aquarium-civ-feedback v1 (.*?) -->", body)
+    foot = dict(kv.split("=", 1) for kv in m.group(1).split() if "=" in kv) if m else {}
+    d["kind"] = foot.get("kind", "")
+    d["proto"] = foot.get("proto") or next((l[6:] for l in d["labels"] if l.startswith("proto:")), "")
+    d["variant"] = foot.get("variant") or next((l[8:] for l in d["labels"] if l.startswith("variant:")), "")
+    d["tester"] = foot.get("tester", "")
+    d["version"] = foot.get("build", "").split("/")[0]
+    t = re.search(r"\| Tester \| (.*?) \(`", body)
+    d["nick"] = t.group(1).strip() if t else d["tester"]
+    pm = re.search(r"\| Prototype / variant \| \S+ / \S+ \((\w+)\)", body)
+    d["mode"] = pm.group(1) if pm else ""
+    # Survey answers: | key | question | answer |
+    d["answers"] = {}
+    sa = re.search(r"### Survey answers\n(.*?)\n\n", body, re.S)
+    if sa:
+        for row in sa.group(1).splitlines():
+            cells = [c.strip() for c in row.strip().strip("|").split("|")]
+            if len(cells) >= 3 and re.match(r"q\d", cells[0]):
+                d["answers"][cells[0]] = "|".join(cells[2:]).strip()
+    # Pair preference
+    pp = re.search(r"\| Preferred \| \*\*(.*?)\*\* \|.*?\| Why \| (.*?) \|", body, re.S)
+    if pp or "A/B preference" in d["title"]:
+        d["kind"] = "pair"
+        mt = re.search(r"\[(P\d)\] A/B preference from .*?: (\w+)", d["title"])
+        if mt:
+            d["proto"], d["pick"] = mt.group(1), mt.group(2)
+        d["why"] = pp.group(2).strip() if pp else ""
+    # What the tester said
+    ws = re.search(r"### What the tester said\n\n(.*?)\n\n###", body, re.S)
+    d["said"] = re.sub(r"^> ?", "", ws.group(1), flags=re.M).strip() if ws else ""
+    # Session stats JSON
+    js = re.search(r"### Session stats\n\n```json\n(.*?)\n```", body, re.S)
+    try:
+        d["stats"] = json.loads(js.group(1)) if js else {}
+    except json.JSONDecodeError:
+        d["stats"] = {}
+    # Recent log events
+    lg = re.search(r"<summary>Recent log events</summary>\n\n```\n(.*?)```", body, re.S)
+    d["events"] = []
+    if lg:
+        for line in lg.group(1).splitlines():
+            try:
+                d["events"].append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+    return d
+
+
+def num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def med(values):
+    v = [x for x in (num(y) for y in values) if x is not None and x > 0]
+    return (f"{statistics.median(v):g}", len(v)) if v else ("-", 0)
+
+
+def cell(s):
+    return str(s).replace("|", "/").replace("\n", " ").strip()
+
+
+def report(proto, items):
+    lines = [f"# {proto} results data (generated by Tools/results/collect.py, do not edit)", ""]
+    surveys = [d for d in items if d["kind"] == "survey"]
+    pairs = [d for d in items if d["kind"] == "pair"]
+    other = [d for d in items if d["kind"] not in ("survey", "pair")]
+    lines.append(f"Issues: {len(surveys)} surveys, {len(pairs)} pair answers, {len(other)} other feedback.")
+    lines.append("")
+
+    # Per variant and mode.
+    cols = ["Variant", "Mode", "Testers", "Surveys", "Q1 feel (median, n)", "Q2 return", "Q4"] + METRICS.get(proto, [])
+    lines += ["## Surveys per variant", "", "| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
+    groups = defaultdict(list)
+    for d in surveys:
+        groups[(d["variant"], d["mode"])].append(d)
+    for (variant, mode), ds in sorted(groups.items()):
+        row = [variant, mode, str(len({d['tester'] for d in ds})), str(len(ds))]
+        for q in ("q1_feel", "q2_return", "q4"):
+            m, n = med(d["answers"].get(q) for d in ds)
+            row.append(f"{m} (n={n})")
+        for c in METRICS.get(proto, []):
+            m, n = med(d["stats"].get("counters", {}).get(c) for d in ds)
+            row.append(f"{m} (n={n})")
+        lines.append("| " + " | ".join(row) + " |")
+    lines.append("")
+    lines.append("Medians skip blanks and zeros (a 0 answer means unanswered; a 0 counter means the thing never happened"
+                 " in that session, so check the per-survey rows below for how often).")
+    lines.append("")
+
+    # A/B preference: the latest answer per tester counts.
+    lines += ["## A/B preference (latest per tester)", ""]
+    latest = {}
+    for d in sorted(pairs, key=lambda x: x["created"]):
+        latest[d["tester"]] = d
+    counts = defaultdict(int)
+    for d in latest.values():
+        counts[d.get("pick", "?")] += 1
+    lines.append(", ".join(f"{k}: {v}" for k, v in sorted(counts.items())) or "none yet")
+    lines.append("")
+    if latest:
+        lines += ["| Tester | Pick | Why | Issue |", "|---|---|---|---|"]
+        for d in latest.values():
+            lines.append(f"| {cell(d['nick'])} | {d.get('pick', '?')} | {cell(d.get('why', ''))} | #{d['number']} |")
+        lines.append("")
+
+    # Every survey, with Q3 (recall) and the free-text answers.
+    lines += ["## Every survey", "",
+              "| # | When | Tester | Var | Mode | Q1 | Q2 | Q4 | Q3 recall | Q5 | Q6 | Duration s | Counters |",
+              "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+    for d in sorted(surveys, key=lambda x: x["created"]):
+        a, st = d["answers"], d["stats"]
+        counters = ", ".join(f"{k} {v:g}" if isinstance(v, (int, float)) else f"{k} {v}"
+                             for k, v in st.get("counters", {}).items() if k in METRICS.get(proto, []))
+        lines.append("| " + " | ".join(cell(x) for x in [
+            f"#{d['number']}", d["created"], d["nick"], d["variant"], d["mode"], a.get("q1_feel", ""),
+            a.get("q2_return", ""), a.get("q4", ""), a.get("q3_recall", ""), a.get("q5_work", ""),
+            a.get("q6_extra", ""), st.get("duration_s", ""), counters]) + " |")
+    lines.append("")
+
+    # Event lines from the issues' recent-log tails (only the last 40 lines per issue, so partial).
+    wanted = EVENTS.get(proto, [])
+    seen, ev_rows = set(), []
+    for d in items:
+        for e in d["events"]:
+            if e.get("proto") != proto or e.get("ev") not in wanted:
+                continue
+            key = (e.get("tester"), e.get("t"), e.get("ev"))
+            if key in seen:
+                continue
+            seen.add(key)
+            ev_rows.append((e.get("t", ""), d["nick"], e.get("variant", ""), e.get("ev"), json.dumps(e.get("data", {}))))
+    lines += ["## Logged events (from issue log tails, partial)", ""]
+    if ev_rows:
+        lines += ["| Time | Tester | Var | Event | Data |", "|---|---|---|---|---|"]
+        for r in sorted(ev_rows):
+            lines.append("| " + " | ".join(cell(x) for x in [r[0][:19], r[1], r[2], r[3], r[4]]) + " |")
+    else:
+        lines.append("none yet")
+    lines.append("")
+
+    lines += ["## Other feedback", ""]
+    if other:
+        for d in sorted(other, key=lambda x: x["created"]):
+            lines.append(f"- #{d['number']} {d['created']} {cell(d['nick'])} ({d['variant']}, {d['mode']}, "
+                         f"{d['kind']}): {cell(d['said'])}")
+    else:
+        lines.append("none yet")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--min-version", default="0.3.0")
+    ap.add_argument("--protos", default="P3,P4,P5,P6")
+    args = ap.parse_args()
+    issues = [parse(i) for i in gh_issues()]
+    floor = version_tuple(args.min_version)
+    issues = [d for d in issues if d["version"] and version_tuple(d["version"]) >= floor
+              and "agent" not in d["said"].lower()[:40]]
+    OUT.mkdir(parents=True, exist_ok=True)
+    for proto in args.protos.split(","):
+        items = [d for d in issues if d["proto"] == proto]
+        path = OUT / f"{proto}.md"
+        path.write_text(report(proto, items), encoding="utf-8", newline="\n")
+        print(f"{proto}: {len(items)} issues -> {path.relative_to(ROOT)}")
+    stray = [d for d in issues if d["proto"] not in args.protos.split(",")]
+    if stray:
+        print(f"{len(stray)} issues from other prototypes on >= {args.min_version}: "
+              + ", ".join(f"#{d['number']} {d['proto']}" for d in stray), file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()
