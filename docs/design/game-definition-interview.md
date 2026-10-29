@@ -12,8 +12,14 @@ interview is done. Nothing here is written into decisions.md until the user conf
 | Deep session (20 min) | All four: **shape the land more** (terraform, rivers, decorate), **history browsing** (time-lapse, small book, family trees, snapshots), **follow a person** (pin a notable and follow their day), **collections / relics** (found in the box, kept on the shelf, some carry over) |
 | Business model | **Free first box + one unlock** (~$4–6 unlocks the shelf: more boxes, settings). No ads, no timers |
 
-## Open for batch 2
-- Does a box finish after the town (and then a new box on the shelf), or keep going?
-- Offline slow-down: to what speed after 8 h (half, a quarter)? Does it slow stories too, or only growth?
-- What makes the second box different (setting/biome, starting people, relics carried over)?
-- Q9 home-screen widget; notifications (none / one gentle daily / only for era moments).
+## Batch 2
+| Topic | Answer |
+|---|---|
+| Box end | **The box completes at the industrious town's peak**: it keeps living on the shelf as a museum you can visit, and a new box starts |
+| Offline | **Full speed for the first 8 h away, then a quarter speed** (a weekend away ≈ 8 + 10 = 18 game years instead of 48). Mess still caps at 48 h |
+| Next box | **A new setting** (river delta, island, mountain valley, steppe…, same style kit), **descendants carry over** (a few families or a notable's line found the new box), **relics carry over** (shelf relics give a small start or a story hook). The game picks the setting |
+| Notifications | **Era moments only, opt-in**: one notification when an era is ready to arrive (it waits for you). No daily nags. Widget after the slice |
+
+## Also decided in this round (outside the questions)
+- Art direction: the code-built style kit (decisions.md 2026-10-29).
+- Buildings are placed by the people and the village grows organically (research 08 in progress).

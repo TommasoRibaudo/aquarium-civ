@@ -1,199 +1,153 @@
-# Aquarium Civ — Game Definition (draft v0.1, 2026-10-28)
+# Aquarium Civ — Game Definition (draft v0.2, 2026-10-29)
 
-Status: **approved 2026-10-28: all four variants go through prototyping.** Built from the Phase C interview (answers logged in
-[../decisions.md](../decisions.md)) and the research in [../research/](../research/).
-Anything tagged **[H → Pn]** is a hypothesis that prototype *Pn* in [prototype-plan.md](prototype-plan.md)
-must confirm before we treat it as decided.
+Status: **draft for the user's approval.** v0.1 (2026-10-28) defined four concept variants and the prototypes that
+tested them. v0.2 folds in the prototype gates (Gates 1–3, [decisions.md](../decisions.md)), the art spike and the
+two-batch interview of 2026-10-29 ([game-definition-interview.md](game-definition-interview.md)). Items marked
+**[slice]** are hypotheses the vertical slice's week-long test checks ([vertical-slice-plan.md](vertical-slice-plan.md)).
+The v0.1 text, with the four variants, is in git history.
 
 ---
 
 ## 1. One-liner and core fantasy
 
 **A tiny civilization lives out its whole history inside a glass box on your shelf. You are its Keeper:
-keep the glass clean and the world tended, nudge it now and then, and come back to find out what happened.**
+keep the glass clean, shape the land now and then, and come back to find out what happened.**
 
-Core fantasy: *being the quiet god of a world in a jar.* You don't rule them. You look after the box they
-live in, and in exchange you get to watch a history unfold: families, founders, feuds, festivals, eras.
-The history is saved and becomes something you can browse and show off (the WorldBox itch, made cozy).
+Core fantasy: *being the quiet god of a world in a jar.* You don't rule them. You look after the box they live in, and
+in exchange you watch a history unfold: families, founders, friendships and feuds, festivals, eras. The history is
+kept and becomes something you can browse and show off (the WorldBox itch, made cozy).
 
-Unifying idea, **care = clarity**: grime and fog on the glass literally hide the history from you.
-Cleaning is how you get to *see* again. **[H → P1, P2]**
+Unifying idea, **care = clarity**: grime on the glass dims the people's sunlight and hides their world from you.
+Cleaning is how you both get the light back.
 
 ## 2. Pillars
 
-1. **A history worth watching.** The civ runs itself and produces stories: named notables, lineages,
-   firsts, disasters weathered. The history is kept (Book of Ages) and shown in a way worth sharing.
-   *Reference: WorldBox.*
-2. **Care is a toy, not a chore.** Mess is visible, a bit comic, reversible and capped. Cleaning gestures
-   feel good even when nothing needs fixing. **[H → P1]**
-3. **Keeper, not King.** You tend the environment and nudge; the people decide what to build and who to be.
+1. **A history worth watching.** The civ runs itself and produces stories about named people. It is kept, and shown
+   in a way worth sharing. *Reference: WorldBox.*
+2. **Care is a toy, not a chore.** Mess is visible, a bit comic, reversible and capped. Cleaning feels good even when
+   nothing needs fixing.
+3. **Keeper, not King.** You tend and shape the land; the people decide what to build, where, and who to be.
 4. **Absence is welcomed.** No guilt pings, no deaths from neglect, no collapse. The people wave when you return.
-5. **The glass is the interface.** Grime, fog, condensation and overgrowth show the tank's state without HUD bars.
-6. **Fair to your time and wallet.** No timers to skip, no ads farm, no gacha, never sell relief from neglect.
+5. **The glass is the interface.** Grime, condensation and overgrowth show the box's state without HUD bars.
+6. **Fair to your time and wallet.** No timers to skip, no ads, no gacha, never sell relief from neglect.
 
 ### Anti-references (we must not become)
 - **FarmVille / Godus**: withering, forced check-ins, timers built to be skipped.
 - **Tamagotchi guilt**: being afraid to open the app.
 - **Menu idle civs** (CivIdle, My Civilization): numbers and menus with nothing alive to watch.
-- **F2P ad-farms** (Terrarium: Garden Idle, IdleOn): interstitials, gacha, FOMO events, gem bundles.
+- **F2P ad-farms**: interstitials, gacha, FOMO events, gem bundles.
 
 ## 3. Loops
 
 | Loop | Length | What happens |
 |---|---|---|
-| **Glance** | ≤ 60 s | Open → people wave at the glass → glance at the top chronicle card → maybe one wipe → close. |
-| **Check-in** (main) | ~3 min | Chronicle (3–7 curated "while you were away" cards, fly-to camera) → clean (wipe glass, clear 1–3 messes) → one nudge or project → leave. |
-| **Deep session** | ~20 min, occasional | Witness an **era transition live** (the box visibly transforms), watcher-only events (festivals, rituals, photo mode), and **terraforming / decorating** the box. |
-| **Long term** | weeks–months | Eras inside one box → the box **grows** (lid opens, annexes) → a final era, then a **new box on the shelf**; the old one stays alive as a museum, relics carry over. |
+| **Glance** | ≤ 60 s | Open → people wave at the glass → the top chronicle card → maybe one wipe → close |
+| **Check-in** (main) | ~3 min | **Chronicle cards** (3–7 "while you were away" stories, fly-to camera) → clean (wipe the glass, clear 1–3 messes) → maybe shape the land once → leave |
+| **Deep session** | ~20 min, occasional | Any of: **shape the land** (terraform, rivers, groves, decorate the box), **browse history** (time-lapse, the small book, family trees, snapshots), **follow a person** (pin a notable and follow their day), **collections** (relics found in the box), and **an era arriving live** |
+| **Long term** | 1–2 weeks per box | Camp → farming village → industrious town inside one box; at the town's peak the **box completes**, stays alive on the shelf as a museum, and a **new box** starts in a new setting with descendants and relics carried over |
 
 ## 4. The civ
 
-- **Population:** an anonymous crowd (dozens early, hundreds later) plus **5–12 named notables** with a face,
-  one trait, a lineage and remembered events. Pin a favorite to follow. Dead notables go to a legends roster.
+- **Population:** an anonymous crowd plus **5–12 named notables**, each with a name, one trait, a family, friends,
+  rivals and remembered events. Pin a favourite to follow. Dead notables go to a legends roster.
+  **Relationships show in the world** (friends meet and talk, rivals argue), not only in cards (Gate 2 note).
 - **Death:** old age only. Neglect never kills, and the civ never collapses.
-- **Time:** **1 real hour ≈ 1 game year** (tunable). A 2-day absence is about 48 years of story.
-  **Notables age at half speed** (decided 2026-10-28), so a named person lives about 5 real days instead of ~2.5;
-  the crowd ages at full speed. P3 still checks that this is enough for attachment.
-- **Two clocks:** civ time is compressed. Care/mess time runs in **real hours**, so grime is tied to your
-  real cadence, not to game years.
-- **Simulation:** an aggregate economy (food, materials, mood, population, mess) stepped coarsely (one game month),
-  with event templates filled from sim state ("Narrative Legos") and ranked by salience for the chronicle.
-  Offline catch-up runs the same coarse sim, deterministic from a seed.
+- **Time:** **1 real hour = 1 game year** (Gate 2). **Notables age with the calendar and live 110–160 years** (user,
+  2026-10-29: half-speed aging confused people), so a notable lives about 5–7 real days. The crowd ages normally.
+- **Two clocks:** civ time is compressed; care/mess time runs in **real hours**, so grime follows your real cadence.
+- **Simulation:** an aggregate economy (food, materials, mood, population, mess) stepped one game month at a time, with
+  ~30 story templates filled from sim state ("Narrative Legos") and ranked by salience for the chronicle. Live play and
+  offline catch-up run the same deterministic steps from a seed.
+- **Where things get built:** the people choose sites themselves and the settlement **grows organically**: around
+  water and a well or square, along paths that become roads, fields at the edge, workshops by the mill stream. Existing
+  buildings never jump around; new ones infill and extend. Approach: research 08 (in progress) → a placement spike.
 
-## 5. Care / neglect mechanic
+## 5. Care / neglect
 
-**What gets messy** (all real-time, all capped at ~48 h of neglect):
+**What gets messy** (real time, all capped at 48 h of neglect):
 
-| Mess | Source | Look | Clean gesture (to test) |
+| Mess | Source | Look | Clean |
 |---|---|---|---|
-| **Glass grime / fog** | time + humidity | smudges, algae film, condensation hiding the view | drag-to-wipe the screen vs tap **[H → P1]** |
-| **Waste / trash** | the civ's own activity (grows with population) | trash heaps, smog under the lid, clogged stream | tap/flick away |
-| **Overgrowth / weather** | the terrarium itself | vines over roofs, weeds, dry patches, needs rain/light | prune, water, give light |
-
-Disease is not in scope for now.
+| **Glass grime** | time | smudges and film on the panes | drag to wipe (P1) |
+| **Trash** | the people's activity (grows with population) | crates, heaps | tap / flick (P1) |
+| **Overgrowth** | the terrarium itself | weeds, vines over roofs | prune |
 
 **Rules**
-1. **Comic chaos + gentle guilt.** Neglect shows as visible, slightly funny mess, with grumpy people waving
-   for help, and a **slight output drop**: capped around −25 %, and stock is never lost. **[H → P2: cap size, and whether the drop helps]**
-2. **Capped.** After about 48 h, nothing gets worse. The tank sits at "struggling but fine".
-3. **Recovery is fast and juicy.** A full clean takes under a minute, with sound, particles and people cheering.
+1. **Mess dims the sunlight and slows the work pace** (linear, at most −25 % at the 48 h cap), and the people's mood
+   shows it in how they walk and what they say: wistful or comic, never a demand on the player (Gate 1, P2 variant B).
+   Stock is never lost.
+2. **Capped.** After 48 h nothing gets worse.
+3. **Recovery is fast and juicy.** A full clean takes under a minute, with sound and the people cheering.
 4. **Welcome back.** The chronicle opens on good news first.
-5. **Care moves up.** As eras advance, the people learn to handle their own trash and gardens (sanitation,
-   gardeners). **The glass is always yours**: they can clean their world, never the outside of the glass.
+5. **Care moves up.** In later eras the people handle their own trash and gardens. **The glass is always yours.**
 6. **Never monetized.** Cleaning is never sold, sped up or ad-gated.
-7. **Notifications** (opt-in, after the first night): only for things the player started, warm and diegetic,
-   at most about one per day. Never decay pings.
 
-## 6. Control: caretaker + nudges
+## 6. Control: Keeper + shaping the land
 
-You never place buildings for them. Your tools:
-- **Care**: clean, water, light, prune.
-- **Nudges**: gentle influence the people respond to, and which the chronicle credits to you ("After the
-  Keeper's rain, the Lund family founded the first farm"). Two candidate forms **[H → P5]**:
-  *omens* (place a shrine or totem → the civ leans toward farming, craft or faith) vs *environment shaping*
-  (rain, plant a forest, divert the stream; the people adapt).
-- **Projects / standing policies** (later eras): player-chosen durations (1 h / 8 h / 24 h), so the appointment
-  belongs to the player.
-- **Terraform & decorate** (deep sessions): reshape terrain and decorate the box and plinth. Placed nature becomes
-  part of the sim (forest = wood, stream = farms).
+You never place buildings. Your tools:
+- **Care:** wipe, tidy, prune.
+- **Shape the land** (Gate 3, P5 variant B): **rain**, **plant a grove**, **dig a channel**; later terraform and
+  decorate. The people answer within 1–3 game years and the chronicle credits you ("After the Keeper's rain, Ada Lund
+  planted a new field"). Placed nature is part of the sim (a grove = wood, a channel = water for farms and mills) and
+  changes where the people choose to build. Omens and totems are dropped.
+- Everything you shape follows the art style (e.g. a canal is code-built in the same palette, cut into the terrain).
 
 ## 7. History: the "cool way to show it"
 
-The history is a headline feature, not a log. Layers:
-1. **Live ticker**: thought bubbles and tiny floating text in the box.
-2. **Chronicle**: curated cards on each return, with fly-to camera. **[H → P3]**
-3. **Book of Ages**: the browsable full history. Candidate presentations **[H → P4]**: a **time-lapse scrubber**
-   (replay the box growing over the years, with event pins) vs an **illustrated book** (era chapters, notable
-   portraits, family trees).
-4. **Shelf museum**: finished boxes keep living, and their history stays browsable.
+1. **Live ticker:** thought bubbles and tiny floating text in the box.
+2. **Chronicle cards** on each return, with fly-to camera (Gate 2, P3 variant A): the check-in's first beat.
+3. **Time-lapse** (Gate 2, P4 variant A): replay the box growing over the years, scrub the timeline, era markers.
+4. **A small, polished book** of the *major* events and people (legends, family trees), not a full log.
+5. **Shelf museum:** completed boxes keep living, and their history stays browsable.
 
-Cheap enabler: record a compact snapshot per game year (buildings, population, notables) so time-lapse replay is
-just playback. No video capture needed.
+Enabler: a compact snapshot per game year (already in the sim), so the time-lapse is playback, not video.
 
 ## 8. Progression
 
-- **Eras inside a box** (draft): Camp → Hamlet → Village → Town (KayKit Medieval covers these). Later eras
-  (city, industrial) need more art (Kenney kits). Each era changes the diorama *in kind* and adds a system.
-- **Eras are plateaus, crossed live.** The civ keeps living offline, but it waits at an era threshold until you
-  are watching, so you never miss the big beat. **[H → P6]**
-- **The box grows**: lid opens, annex boxes attach, the plinth extends.
-- **New box on the shelf** (prestige, non-destructive): a new biome or ruleset, relics and myths carry over, and the old box
-  stays alive. **[H → P6: does growing the box or starting a new one feel better?]**
-- **Automation retires basic chores** (section 5, rule 5).
+- **Three eras per box:** **hunter-gatherer camp → farming village → industrious town** (crafts and guilds,
+  renaissance-style: mills, workshops, a market square; not industrial). Each era changes the box *in kind*.
+- **Eras are plateaus, crossed live.** The civ keeps living offline but waits at an era threshold until you're
+  watching, so you never miss the big moment (P6).
+- **The box completes** at the industrious town's peak. It stays alive on the shelf as a **museum** you can visit.
+- **A new box** (Gate 3, P6 variant B) starts in a **new setting** (river delta, island, mountain valley, steppe…;
+  same style kit, different layout and palette accents), chosen by the game. **Descendants carry over** (a few families
+  or a notable's line found it) and **relics carry over** (found in a box, kept on the shelf, giving a small start or a
+  story hook).
+- **Automation retires basic chores** in later eras (section 5, rule 5).
 
 ## 9. Session design
 
-- Target cadence: 2–5 check-ins/day, ~3 min each; a deep session a few times a week.
+- Target cadence: 2–5 check-ins a day, ~3 min each; a deep session a few times a week.
 - Every session must be satisfying on its own, including a 30-second glance.
-- Offline: catch-up is simulated in full, but **mess is capped at 48 h**. There is no offline-earnings cap in the
-  Egg, Inc. sense (that's open, see section 11).
-- Vacation / dormancy: optional "Hibernate the box" for long absences (no mess accrues).
+- **Offline:** the world runs at full speed for the first **8 hours** away, then at **a quarter speed** (a weekend away
+  ≈ 18 game years instead of 48). Mess caps at 48 h. Eras still wait for you.
+- **Notifications:** opt-in, **only when an era is ready to arrive**. No daily nags, no decay pings.
+  Home-screen widget: after the slice.
 
-## 10. Monetization hypothesis
+## 10. Business model (hypothesis)
 
-- **Free first era + one-time unlock** (~$4.99–9.99) for the rest of the game and the shelf.
-- Later: **cosmetic packs** (glass styles, plinths, lids, biomes) and **paid box expansions** (new biome/era sets).
-- No ads, no skip currency, no gacha, no expiring passes, never sell care.
-- Hypothesis only; it is validated by playtests and the market, not by prototypes.
+- **Free first box, one unlock (~$4–6)** for the shelf: more boxes and settings. No ads, no timers, no skip currency,
+  no gacha, never sell care.
+- Later, maybe: cosmetic glass, plinths and settings. Validated by the slice test and the market, not by prototypes.
 
-## 11. Open questions
+## 11. Art direction
+
+**The code-built style kit** (decided 2026-10-29, [spikes/style-kit.md](spikes/style-kit.md)): every mesh generated in
+code from one palette and one stylised shader. Flat-shaded low poly, soft banded light with cool shadows, baked AO,
+peg-doll villagers (ordinary people, no fantasy gear), a soil cross-section behind the glass, the box on a shelf in a
+room. Everything new follows it.
+
+## 12. Open questions
 
 | # | Question | How we answer it |
 |---|---|---|
-| Q1 | Drag-to-wipe or tap-to-clean? | P1 |
-| Q2 | Does the slight output drop help or create guilt? How big? | P2 |
-| Q3 | ~~How fast should notables age?~~ Decided: half speed. P3 confirms attachment | P3 |
-| Q4 | Which history presentation is the "cool" one? | P4 |
-| Q5 | Omens or environment shaping as the nudge? | P5 |
-| Q6 | Box grows vs new box on the shelf: which carries progression better? | P6 |
-| Q7 | Does the civ's progress need any offline cap, or is "mess caps, history continues" enough? | Design, after P2/P3 |
-| Q8 | How many eras, and does the game have an ending per box? | Design, after P6 |
-| Q9 | Home-screen widget showing the tank? | Research later |
-| Q10 | ~~Tester distribution~~ Decided: **iOS via TestFlight** (user has an Apple developer account; testers have iPhones) | Needs the iOS CI pipeline before the first diary test |
+| Q11 | Organic placement: which algorithm, and does a 3-era time-lapse "grow like a real village"? | Research 08 → placement spike |
+| Q12 | Is 1 h = 1 year with a quarter-speed tail after 8 h the right pace? (Opens per day, "too much / too little happened") | [slice] week-long test |
+| Q13 | What does a check-in end on, so it never feels like "nothing to do" (P2 feedback #8)? | [slice] |
+| Q14 | Which settings for boxes 2–4, and how many descendants/relics carry over? | Design, after the slice |
+| Q15 | Which relics exist, how are they found, what do they do? | Design, after the slice |
+| Q16 | Home-screen widget | After the slice |
 
-## 12. Concept variants (approved: all four are prototyped)
-
-All four respect the decisions above. They differ on the **riskiest axes**: where the fun lives (caring vs
-watching vs shaping) and what the unit of progress is (one long box vs many short boxes).
-
-### Variant A: "Keeper's Glass" (care-forward)
-- **Pitch:** a living tank that's a joy to keep clean.
-- **Fantasy:** the satisfying ritual of tending a beautiful little world.
-- **Loops:** *moment*: wipe, flick, prune, with heavy juice. *Session*: return → clean → watch the people
-  celebrate → nudge. *Long term*: eras unlock new kinds of mess and new tools; automation takes over basic mess.
-- **Care without chore:** cleaning is a tactile toy (ASMR-like). Mess is comic and capped, and it pays out instantly (cheer, gift).
-- **Biggest risk:** the 20th wipe feels like a chore.
-- **Prototype must answer:** *Is cleaning still satisfying on day 4?* (P1, P2)
-
-### Variant B: "Chronicle Box" (watch-forward, history-first)
-- **Pitch:** WorldBox in a jar: a tiny civ writes its own history while you're away.
-- **Fantasy:** discovering what your people did, and owning their saga.
-- **Loops:** *moment*: follow notables, read thoughts. *Session*: the chronicle reel is the main content,
-  then the Book of Ages. *Long term*: a deep, shareable history across eras and boxes.
-- **Care without chore:** care is minimal and tied to seeing: grime blurs the view, and a quick wipe "unlocks" the chronicle.
-- **Biggest risk:** the generated history is samey or boring (curation quality; solo-dev content load).
-- **Prototype must answer:** *Do players remember and care about what happened in their box?* (P3, P4)
-
-### Variant C: "Gardener God" (shape-forward)
-- **Pitch:** shape the terrarium; the people adapt to the world you make.
-- **Fantasy:** a gentle god sculpting land, water and weather.
-- **Loops:** *moment*: rain, plant, divert water. *Session*: tend overgrowth and weather, shape a new area,
-  watch the people settle it. *Long term*: the box grows and the biomes diversify.
-- **Care without chore:** care and creation are the same verbs (pruning is also shaping).
-- **Biggest risk:** it drifts into a sandbox builder without goals (Pocket Build's weak retention).
-- **Prototype must answer:** *Does shaping feel like influence on a living civ, not like building?* (P5)
-
-### Variant D: "Shelf of Worlds" (many short boxes)
-- **Pitch:** each box is a short civilization (1–2 weeks) that ends and joins your shelf.
-- **Fantasy:** a collector's cabinet of finished little worlds, each with its own story.
-- **Loops:** *moment*: same as A/B. *Session*: check the active box. *Long term*: complete boxes, collect
-  biomes and endings, start a new box with new rules.
-- **Care without chore:** each box is short, so care never becomes a months-long obligation.
-- **Biggest risk:** attachment resets each box; content burn for a solo dev.
-- **Prototype must answer:** *After a box ends, do players want a new one, or miss the old one?* (P6)
-
-### Recommendation
-Don't pick one now. The prototypes sequence them: **A is tested first** (P1–P2, the riskiest pillar), then **B**
-(P3–P4, the user's WorldBox/history ask), then **C and D** as the control and progression layers (P5–P6).
-Expected outcome: a **B core with A's glass care** ("care = clarity"), C as the deep-session layer, and D-lite
-(the shelf) as prestige. If A fails at Gate 1, we fall back to B with care reduced to the glass only.
+Resolved since v0.1: Q1 drag-to-wipe (P1); Q2 the pace drop, framed as sunlight (Gate 1); Q3 calendar aging, doubled
+lifespans; Q4 cards + time-lapse + small book (Gate 2); Q5 shape the land (Gate 3); Q6 new box on the shelf (Gate 3);
+Q7 offline slows to a quarter after 8 h; Q8 three eras, the box completes; Q10 TestFlight.
