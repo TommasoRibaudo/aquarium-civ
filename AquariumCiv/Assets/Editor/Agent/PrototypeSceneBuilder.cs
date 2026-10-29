@@ -7,6 +7,7 @@ using AquariumCiv.Prototypes.Hub;
 using AquariumCiv.Prototypes.P3;
 using AquariumCiv.Prototypes.P4;
 using AquariumCiv.Prototypes.P5;
+using AquariumCiv.Prototypes.P6;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -167,6 +168,88 @@ namespace AquariumCiv.EditorTools
                 Opt("grove", "Plant a grove", "Trees on an empty tile. Wood and shade: the people build.", N("trees_A_medium"), 1f, true),
                 Opt("channel", "Dig a channel", "Water on an empty tile. New fields and a mill follow.", null, 1f, true),
             };
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P6 Eras and Shelf")]
+        public static string BuildP6()
+        {
+            var b = BuildLabBase("P6", "Assets/Prototypes/P6_ErasAndShelf/P6_ErasAndShelf.unity", "I want to see what comes next");
+            var p6 = b.systems.AddComponent<ErasAndShelf>();
+            WireLab(b, p6);
+            p6.village = b.village;
+            p6.prehistoryYears = 12f; // a young camp, a couple of minutes from its first threshold at lab speed
+            string Col(string n, string color) => $"{Medieval}/buildings/{color}/building_{n}_{color}.fbx";
+            p6.eras = new[]
+            {
+                new ErasAndShelf.EraLook { name = "Camp", prefabs = new[] { Set(BuildingType.Hut, P("tent")), Set(BuildingType.Camp, P("tent")) } },
+                new ErasAndShelf.EraLook { name = "Hamlet", prefabs = System.Array.Empty<DioramaView.BuildingPrefabs>() },
+                new ErasAndShelf.EraLook
+                {
+                    name = "Village",
+                    prefabs = new[]
+                    {
+                        Set(BuildingType.Hut, Col("home_A", "blue"), Col("home_B", "red"), Col("home_A", "yellow"), Col("home_B", "blue")),
+                        Set(BuildingType.Camp, Col("tower_A", "blue")),
+                        Set(BuildingType.Market, Col("market", "red")),
+                        Set(BuildingType.Tavern, Col("tavern", "yellow")),
+                        Set(BuildingType.Well, Col("well", "blue")),
+                    },
+                },
+            };
+
+            // The second box: built once beside the first, hidden; the controller places it as an annex (A) or on the shelf (B).
+            var water = new[] { new Vector2Int(-2, 2), new(-3, 3) };
+            var d2 = BuildGround(Radius, water);
+            d2.root.name = "Box2";
+            var nature = new (Vector2Int cell, string path, float yaw)[]
+            {
+                (new(3, -3), N("trees_A_large"), 0), (new(2, -3), N("hills_A_trees"), 120), (new(0, 3), N("trees_B_medium"), 0),
+            };
+            PlaceProps(d2, "Nature", nature);
+            var taken = new HashSet<Vector2Int>(water.Concat(nature.Select(n => n.cell)));
+            var free = d2.cells.Where(c => !taken.Contains(c)).OrderBy(c => d2.cellPos[c].sqrMagnitude).ThenBy(c => c.x).ThenBy(c => c.y).ToList();
+            var groundCol = new GameObject("GroundCollider");
+            groundCol.transform.SetParent(d2.root);
+            groundCol.transform.position = new Vector3(0, d2.surfaceY - 0.02f, 0);
+            groundCol.AddComponent<BoxCollider>().size = new Vector3(d2.w * (Radius + 0.5f) * 2, 0.04f, d2.w * (Radius + 0.5f) * 2);
+            LogCategory.Tag(groundCol, "ground");
+            BuildTerrarium(d2);
+            var village2 = new GameObject("Village2").AddComponent<DioramaView>();
+            village2.transform.SetParent(d2.root);
+            village2.buildingRoot = village2.transform;
+            village2.slotPositions = free.Select(d2.Top).ToArray();
+            var rng = new System.Random(23);
+            village2.slotYaw = free.Select(_ => rng.Next(0, 6) * 60f).ToArray();
+            village2.slotRadius = b.village.slotRadius;
+            village2.prefabs = b.village.prefabs;
+            var crowd2 = new GameObject("Crowd2").AddComponent<CrowdView>();
+            crowd2.transform.SetParent(d2.root);
+            crowd2.diorama = village2;
+            crowd2.characterPrefabs = b.crowd.characterPrefabs;
+            crowd2.walkClip = b.crowd.walkClip; crowd2.idleClip = b.crowd.idleClip; crowd2.cheerClip = b.crowd.cheerClip;
+            crowd2.characterScale = b.crowd.characterScale;
+            crowd2.walkSpeed = b.crowd.walkSpeed;
+            crowd2.tagNotables = false;
+            p6.box2 = d2.root;
+            p6.village2 = village2;
+            p6.crowd2 = crowd2;
+            p6.box2LocalSlots = village2.slotPositions; // built at the origin, so world = local
+            p6.boxWidth = b.diorama.boxBounds.size.x;
+            p6.relicPrefab = Load(P("flag_green"));
+
+            // The shelf both boxes stand on in B.
+            var plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plank.name = "Shelf";
+            Object.DestroyImmediate(plank.GetComponent<Collider>());
+            var bb = b.diorama.boxBounds;
+            plank.transform.position = new Vector3(bb.center.x + (p6.boxWidth + p6.shelfGap) / 2, bb.min.y - 0.09f, bb.center.z);
+            plank.transform.localScale = new Vector3(p6.boxWidth * 2 + p6.shelfGap + 0.8f, 0.18f, bb.size.z + 0.5f);
+            plank.GetComponent<MeshRenderer>().sharedMaterial = GetOrCreateMaterial("Shelf", m => { m.SetColor("_BaseColor", new Color(0.45f, 0.30f, 0.19f)); m.SetFloat("_Smoothness", 0.25f); });
+            p6.shelf = plank.transform;
+            plank.SetActive(false);
+            d2.root.gameObject.SetActive(false);
             Save(b);
             return Report(b);
         }

@@ -24,13 +24,15 @@ namespace AquariumCiv.Prototypes
         public bool tagNotables = true;
         [Tooltip("People shown by someone else (NotableView), subtracted from the anonymous crowd.")] public int reserved;
         [Tooltip("History replay: show this many people instead of the live population (-1 = live).")] public int populationOverride = -1;
+        /// <summary>Show this world's people instead of the live one (P6 museum). Null = SimClock's.</summary>
+        [System.NonSerialized] public AquariumCiv.Prototypes.Sim.SimCore source;
 
         readonly List<Wanderer> agents = new();
         public IReadOnlyList<Wanderer> Agents => agents;
 
         void Update()
         {
-            var state = SimClock.Instance.Sim.State;
+            var state = (source ?? SimClock.Instance.Sim).State;
             int want = Mathf.Clamp((populationOverride >= 0 ? populationOverride : state.population) - reserved, 0, maxVisible);
             while (agents.Count < want) agents.Add(SpawnAgent(agents.Count));
             while (agents.Count > want) { Destroy(agents[^1].gameObject); agents.RemoveAt(agents.Count - 1); }

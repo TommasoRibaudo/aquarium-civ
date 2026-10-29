@@ -42,7 +42,7 @@ namespace AquariumCiv.Prototypes
         public float ZoomT => Mathf.InverseLerp(minZoom * baseDistance, baseDistance, distance);
 
         float yaw, pitch, distance, baseDistance, designDistance, fittedAspect;
-        Vector3 basePivot, focusPivot;
+        Vector3 basePivot, focusPivot, homePivot;
         Vector2 pressPos;
         float pressTime, pressTravel, lastEmptyTap;
         bool pressClaimed, toolDragging, pressing;
@@ -52,7 +52,7 @@ namespace AquariumCiv.Prototypes
         {
             Instance = this;
             Cam = GetComponent<Camera>();
-            basePivot = focusPivot = pivot;
+            basePivot = focusPivot = homePivot = pivot;
             var offset = transform.position - pivot;
             designDistance = baseDistance = distance = offset.magnitude;
             FitAspect();
@@ -208,10 +208,11 @@ namespace AquariumCiv.Prototypes
             distance = Mathf.Lerp(minZoom * baseDistance, baseDistance, Mathf.Clamp01(zoomT));
         }
 
-        /// <summary>Pull back for a wider view (P6: an annex box or the shelf), as a multiple of the default distance.</summary>
+        /// <summary>Pull back for a wider view (P6: an annex box or the shelf), as a multiple of the default distance,
+        /// around a new pivot (null = the scene's original pivot).</summary>
         public void SetWide(float factor, Vector3? pivotOverride = null)
         {
-            if (pivotOverride.HasValue) basePivot = pivotOverride.Value;
+            basePivot = pivotOverride ?? homePivot;
             focusPivot = basePivot;
             baseDistance = designDistance * Mathf.Max(1f, designAspect / Mathf.Max(fittedAspect, 0.01f)) * factor;
             distance = baseDistance;

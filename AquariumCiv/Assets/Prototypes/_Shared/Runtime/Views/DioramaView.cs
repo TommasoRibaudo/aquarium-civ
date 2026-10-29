@@ -23,6 +23,8 @@ namespace AquariumCiv.Prototypes
         public BuildingPrefabs[] prefabs;
         [Tooltip("History replay: show only buildings founded by this game month (-1 = live).")]
         public long showUpToMonth = -1;
+        /// <summary>Show this world instead of the live one (P6: the old box kept as a museum). Null = SimClock's.</summary>
+        [System.NonSerialized] public AquariumCiv.Prototypes.Sim.SimCore source;
 
         readonly Dictionary<int, GameObject> spawned = new();
         int lastCount = -1, generation;
@@ -33,16 +35,17 @@ namespace AquariumCiv.Prototypes
         void Update()
         {
             var clock = SimClock.Instance;
-            if (clock.Generation != generation)
+            if (source == null && clock.Generation != generation)
             {
                 generation = clock.Generation;
                 foreach (var go in spawned.Values) Destroy(go);
                 spawned.Clear();
                 lastCount = -1;
             }
-            var state = clock.Sim.State;
+            var state = (source ?? clock.Sim).State;
             if (state.buildings.Count == lastCount && showUpToMonth == lastShown) return;
-            bool firstSync = lastCount < 0;
+            bool firstSync = lastCount < 0 && !respawnAnimated;
+            respawnAnimated = false;
             lastCount = state.buildings.Count;
             lastShown = showUpToMonth;
             var alive = new HashSet<int>();
@@ -69,6 +72,17 @@ namespace AquariumCiv.Prototypes
             LogCategory.Tag(go, "building", type);
             if (animate) StartCoroutine(PopIn(go.transform));
             return go;
+        }
+
+        bool respawnAnimated;
+
+        /// <summary>Rebuild every building now (P6: a new era's look), popping in one by one if animated.</summary>
+        public void Respawn(bool animate)
+        {
+            foreach (var go in spawned.Values) Destroy(go);
+            spawned.Clear();
+            lastCount = -1;
+            respawnAnimated = animate;
         }
 
         /// <summary>The spawned building for this sim id, or null (fly-to).</summary>

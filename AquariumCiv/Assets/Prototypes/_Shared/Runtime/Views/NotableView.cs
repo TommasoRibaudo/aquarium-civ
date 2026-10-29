@@ -17,6 +17,8 @@ namespace AquariumCiv.Prototypes
         [Tooltip("Children appear in the village from this age (notable-years).")] public float minAge = 6f;
         public bool showMarkers = true;
         [Tooltip("History replay: show the notables alive at this game month (-1 = live).")] public long viewMonth = -1;
+        /// <summary>Show this world's notables instead of the live one (P6 museum). Null = SimClock's.</summary>
+        [System.NonSerialized] public SimCore source;
 
         public static NotableView Instance { get; private set; }
 
@@ -71,13 +73,13 @@ namespace AquariumCiv.Prototypes
         void Update()
         {
             var clock = SimClock.Instance;
-            if (clock.Generation != generation)
+            if (source == null && clock.Generation != generation)
             {
                 generation = clock.Generation;
                 foreach (var a in agents.Values) if (a != null) Destroy(a.gameObject);
                 agents.Clear();
             }
-            var s = clock.Sim.State;
+            var s = (source ?? clock.Sim).State;
             var want = new HashSet<int>();
             foreach (var n in s.notables)
             {
@@ -104,7 +106,7 @@ namespace AquariumCiv.Prototypes
             ProtoGui.Begin();
             if (dot == null) dot = MakeDot();
             nameStyle ??= new GUIStyle(ProtoGui.Box) { fontSize = 19, padding = new RectOffset(10, 10, 4, 4), wordWrap = false, alignment = TextAnchor.MiddleCenter };
-            var s = SimClock.Instance.Sim.State;
+            var s = (source ?? SimClock.Instance.Sim).State;
             foreach (var (id, w) in agents)
             {
                 var head = w.transform.position + Vector3.up * crowd.characterScale * scale * 2.9f;
