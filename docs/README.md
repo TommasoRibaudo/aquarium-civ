@@ -26,6 +26,12 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 |------|-------|
 | [design/game-definition.md](design/game-definition.md) | Pillars, loops, care mechanic, progression, concept variants (draft) |
 | [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
+| [game-design-practices.md](game-design-practices.md) | Mobile/idle design checklist the tester agent judges against (draft) |
+
+## Working docs
+| File | Topic |
+|------|-------|
+| [tooling.md](tooling.md) | Unity CLI/Pipeline facts, stuck-dialog fixes, lessons log (append as you learn) |
 
 ## Open questions
 See [decisions.md](decisions.md) (to be filled in as we answer them).

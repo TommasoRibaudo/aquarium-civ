@@ -9,6 +9,9 @@ AquariumCiv/[Uu]ser[Ss]ettings/
 AquariumCiv/[Mm]emoryCaptures/
 AquariumCiv/[Rr]ecordings/
 AquariumCiv/Assets/Plugins/Editor/JetBrains*
+# Tester agent throwaway playtest scripts (deleted after each run)
+AquariumCiv/Assets/_AgentPlaytest/
+AquariumCiv/Assets/_AgentPlaytest.meta
 
 # IDE / generated
 .vs/

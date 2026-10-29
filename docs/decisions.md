@@ -36,6 +36,7 @@ Phase C interview (details in [design/game-definition.md](design/game-definition
 | 2026-10-28 | Test speed | 1 real hour = 1 game year | Faster speeds are dev-only debug presets |
 | 2026-10-28 | Testers | iPhone via TestFlight | User has an Apple developer account. iOS builds via CI (no Mac) |
 | 2026-10-28 | Prototyping | Throwaway scenes under `Assets/Prototypes/`, within-subject A/B with the user + 3–5 friends | Plan: [design/prototype-plan.md](design/prototype-plan.md) |
+| 2026-10-28 | Agent workflow | Main session implements; a `tester` sub-agent plays and judges visual/gameplay changes (never fixes); tooling lessons logged in `docs/tooling.md` | Adapted from a shared Unity workflow doc. Issue tracker, board and branch-per-issue deferred until production |
 
 ## Still open
 - AI tools for minor assets (free tiers only for now)
