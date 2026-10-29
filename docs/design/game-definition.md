@@ -46,6 +46,8 @@ Cleaning is how you both get the light back.
 | **Deep session** | ~20 min, occasional | Any of: **shape the land** (terraform, rivers, groves, decorate the box), **browse history** (time-lapse, the small book, family trees, snapshots), **follow a person** (pin a notable and follow their day), **collections** (relics found in the box), and **an era arriving live** |
 | **Long term** | 1–2 weeks per box | Camp → farming village → industrious town inside one box; at the town's peak the **box completes**, stays alive on the shelf as a museum, and a **new box** starts in a new setting with descendants and relics carried over |
 
+First run, glance and check-in beat by beat, and how a check-in ends (Q13): [first-session-and-check-in.md](first-session-and-check-in.md) (draft, needs the user's confirmation).
+
 ## 4. The civ
 
 - **Population:** an anonymous crowd plus **5–12 named notables**, each with a name, one trait, a family, friends,
