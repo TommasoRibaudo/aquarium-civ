@@ -4,6 +4,16 @@ Prompt: [docs/prompts/while-testing-gate2-3.md](../prompts/while-testing-gate2-3
 across context compaction: resume from the first unchecked step.
 
 ## For you (latest first)
+**2026-10-29 (evening): test results in**
+- 11 issues from your session (#11–#21), all you; lab only, no diaries. Results in `results/P3–P6.md`, both decision
+  sheets filled with recommendations at the bottom: [test-session-gate2-3.md](../design/test-session-gate2-3.md).
+- Gate 2: chronicle cards (A) clearly; time-lapse (A) for history, weakly; time compression untested.
+- Gate 3: shape the land (B) on one note, no survey; new box on the shelf (B) clearly.
+- **Bug, waiting for you (#17):** P5's survey can't be sent on iPhone (6th question pushes Send off-screen, the IMGUI
+  scroll view doesn't drag by touch). The fix is in the shared `SurveyPanel` (P2 uses it), so it needs your go; ships
+  as 0.3.1 only if you want P5 replayed.
+- Listed, not blocking: notables' age contradicts the calendar (born year 1, age 6 in year 12).
+
 **2026-10-29**
 - TestFlight #7 (0.3.0) first failed at upload: the `testflight` environment only allowed `main`. You added
   `overnight/p3-p6` to its branches and re-ran it: **green** (run 40895173646, 15:18 UTC). Waiting for you: add it to
@@ -17,9 +27,9 @@ across context compaction: resume from the first unchecked step.
 ## Checklist
 - [x] read docs (§1), branch vs/prep created from overnight/p3-p6
 - [x] results pipeline: issues read, results tables started in P3–P6.md (1be45cd)
-- [ ] Gate 2 sheet filled (P3, P4) + recommendation
-- [ ] Gate 3 sheet filled (P5, P6) + recommendation
-- [ ] blocking bugs from testers: fixed / listed (ongoing)
+- [x] Gate 2 sheet filled (P3, P4) + recommendation (n=1)
+- [x] Gate 3 sheet filled (P5, P6) + recommendation (n=1, P5 has no survey)
+- [ ] blocking bugs from testers: fixed / listed (ongoing; #17 P5 survey scroll listed, waiting for the user)
 - [x] vs/prep: Gate 1 care layer (CareConfig) + tests (86fc90f)
 - [x] vs/prep: vertical-slice plan draft (docs/design/vertical-slice-plan.md, options only)
 - [x] vs/prep: polish backlog ranked (docs/design/polish-backlog.md)
