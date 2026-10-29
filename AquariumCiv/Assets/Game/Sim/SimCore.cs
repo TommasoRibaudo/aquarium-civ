@@ -152,8 +152,25 @@ namespace AquariumCiv.Sim
             });
         }
 
-        /// <summary>The living-notable band of the current era (#26).</summary>
+        /// <summary>The adult-notable band of the current era (#26).</summary>
         public NotableBand NotablesWanted => Config.NotablesIn(State.era);
+
+        public const float AdultAge = 16f, ParentMinAge = 20f, ParentMaxAge = 40f;
+        const float BirthChance = 0.12f;
+
+        /// <summary>Living notables of 16 and over: the ones the era's band counts.</summary>
+        public int AdultNotables => State.notables.Count(n => n.alive && n.age >= AdultAge);
+
+        /// <summary>Is there room for another notable child? Births pause while the adults fill the era's max; children
+        /// don't count against it, but everyone alive stays within the max + <see cref="SimConfig.familyRoom"/>.</summary>
+        public bool RoomForABirth
+        {
+            get
+            {
+                var band = NotablesWanted;
+                return AdultNotables < band.max && State.notables.Count(n => n.alive) < band.max + Config.familyRoom;
+            }
+        }
 
         void YearlyNotables()
         {
@@ -164,29 +181,36 @@ namespace AquariumCiv.Sim
             {
                 float before = n.age;
                 n.age += Config.notableAgeFactor;
-                if (before < 16f && n.age >= 16f)
+                if (before < AdultAge && n.age >= AdultAge)
                     Chronicle("coming_of_age", $"{n.FullName} came of age and took up their work.", 0.4f, n.id);
                 if (n.age >= n.lifespan)
                 {
                     n.alive = false;
                     n.diedMonth = s.month;
                     Chronicle("death", $"{n.FullName}, {n.trait}, died of old age at {Math.Floor(n.age)}.", 0.85f, n.id);
-                    continue;
-                }
-                int alive = s.notables.Count(x => x.alive);
-                if (n.age >= 20f && n.age <= 40f && alive < band.max && rng.Chance(0.12f))
-                {
-                    var child = AddNotable(0f, n.id, n.family);
-                    Chronicle("birth", $"{child.FullName} was born to {n.FullName}.", 0.6f, child.id);
                 }
             }
-            // Below the era's band, one notable a year comes out of the crowd: after a death someone rises to take
-            // their place; when a new era wants more people than the last one did, a newcomer arrives.
-            int count = s.notables.Count(x => x.alive);
-            if (count < band.min)
+            // Births: a notable's child is a notable from birth and grows up one (never back into the crowd). Families
+            // with fewer children come first: parents try in order of children born (then id, so it stays deterministic),
+            // and each child already born lowers the chance of another, so the room goes round and more lines carry on.
+            var parents = s.notables.Where(n => n.alive && n.age >= ParentMinAge && n.age <= ParentMaxAge)
+                .Select(n => (n, kids: s.notables.Count(c => c.parentId == n.id)))
+                .OrderBy(x => x.kids).ThenBy(x => x.n.id).ToList();
+            foreach (var (p, kids) in parents)
+            {
+                if (!RoomForABirth) break;
+                if (!rng.Chance(BirthChance / (1 + kids))) continue;
+                var child = AddNotable(0f, p.id, p.family);
+                Chronicle("birth", $"{child.FullName} was born to {p.FullName}.", 0.6f, child.id);
+            }
+            // Below the era's band (adults), one notable a year comes out of the crowd: after a death someone rises to
+            // take their place; when a new era wants more people than the last one did, a newcomer arrives. Not while the
+            // family room is full: the children growing up there will fill the band.
+            int adults = AdultNotables;
+            if (adults < band.min && s.notables.Count(n => n.alive) < band.max + Config.familyRoom)
             {
                 var n = AddNotable(rng.Range(18f, 30f), -1, null);
-                bool growing = s.era > Era.Camp && count >= Config.NotablesIn(s.era - 1).min;
+                bool growing = s.era > Era.Camp && adults >= Config.NotablesIn(s.era - 1).min;
                 if (growing) Chronicle("newcomer", $"A newcomer, {n.FullName}, {n.trait}, joined the {EraNoun(s.era)}.", 0.55f, n.id);
                 else Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
             }

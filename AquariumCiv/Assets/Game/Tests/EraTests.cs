@@ -181,7 +181,7 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(3426870034u, Fingerprint(sim.State)); // #26: 3 starting notables, and the town's band (8–12) draws newcomers
+            Assert.AreEqual(1508855782u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans
         }
 
         [Test]

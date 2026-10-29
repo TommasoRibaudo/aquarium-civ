@@ -6,11 +6,12 @@ using static AquariumCiv.Tests.SimCoreTests;
 
 namespace AquariumCiv.Tests
 {
-    /// <summary>Life stages for 110–160-year notables (decisions.md 2026-10-29 "Life stages": "Only stretch elderly").
-    /// The elder stages doubled with the lifespan; adulthood (16), parenthood (20–40) and marriage (≤ 50) did not.</summary>
+    /// <summary>Life stages. For the slice notables live a normal lifespan (user, 2026-10-29: "for this playthrough make
+    /// the notables live like the others, for the final game we will expand it"); masters take apprentices from 50.
+    /// These tests check the config's values against each other, so the final game's long-life profile (110–160, elders
+    /// 90, eldest 120) passes them too. Adulthood (16), parenthood (20–40) and marriage (≤ 50) are fixed.</summary>
     public class LifeStageTests
     {
-        const float ProtoLifespanMin = 55f, ProtoLifespanMax = 80f, ProtoElderAge = 45f, ProtoEldestStoryAge = 60f;
 
         /// <summary>A sim whose notables are exactly these ages (long lifespans, so nobody dies mid-test).</summary>
         static SimCore WithPeople(int seed, params float[] ages)
@@ -37,15 +38,18 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void ElderStagesScaleWithTheLifespan()
+        public void TheStagesFitTheLifespan()
         {
             var c = new SimConfig();
-            float scale = c.lifespanMin / ProtoLifespanMin;
-            Assert.AreEqual(scale, c.lifespanMax / ProtoLifespanMax, 1e-4f, "the lifespan scaled evenly");
-            Assert.AreEqual(ProtoElderAge * scale, c.elderAge, 1e-3f, "elders start at the same share of life as before");
-            Assert.AreEqual(ProtoEldestStoryAge * scale, c.eldestStoryAge, 1e-3f, "the eldest's story too");
+            Assert.AreEqual((55f, 80f), (c.lifespanMin, c.lifespanMax), "the slice's notables live like the others");
+            Assert.AreEqual(50f, c.masterAge, "user: apprentices from 50");
+            Assert.AreEqual(1f, c.notableAgeFactor, "notables age with the calendar");
+            Assert.Less(c.lifespanMin, c.lifespanMax);
             Assert.Less(c.elderAge, c.lifespanMin, "everyone lives long enough to be an elder");
             Assert.Less(c.eldestStoryAge, c.lifespanMax, "some live long enough to tell the founding story");
+            Assert.Less(c.elderAge, c.eldestStoryAge, "the eldest's story comes after elderhood begins");
+            Assert.GreaterOrEqual(c.masterAge, SimCore.ParentMinAge, "a master is a grown parent, not a youth");
+            Assert.Less(c.masterAge, c.lifespanMin, "everyone lives long enough to take an apprentice");
         }
 
         [Test]
@@ -65,11 +69,12 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheEldestTellsTheFoundingStoryOnlyWhenOldEnough()
         {
-            var young = WithPeople(3, 100f, 40f, 30f);
+            float storyAge = new SimConfig().eldestStoryAge;
+            var young = WithPeople(3, storyAge - 1f, 40f, 30f);
             young.State.month = 12 * 50; // winter
-            Assert.IsEmpty(ForceStories(young, 300, "elder"), "100 is no longer old enough");
+            Assert.IsEmpty(ForceStories(young, 300, "elder"), "a year short is not old enough");
 
-            var old = WithPeople(3, 125f, 40f, 30f);
+            var old = WithPeople(3, storyAge + 5f, 40f, 30f);
             old.State.month = 12 * 50;
             var told = ForceStories(old, 300, "elder");
             Assert.IsNotEmpty(told);
@@ -105,29 +110,29 @@ namespace AquariumCiv.Tests
         }
 
         /// <summary>The death roll: a notable dies in the year their age reaches the lifespan drawn at birth, and of
-        /// nothing else. So every death is of old age, between 110 and 160.</summary>
+        /// nothing else. So every death is of old age, within [lifespanMin, lifespanMax) (plus the year it takes to notice).</summary>
         [Test]
-        public void NotablesDieOfOldAgeBetween110And160()
+        public void NotablesDieOnlyOfOldAgeWithinTheLifespan()
         {
             var deathAges = new List<float>();
+            var c = new SimConfig();
             for (int seed = 1; seed <= 12; seed++)
             {
                 var sim = NewSim(seed);
-                sim.Advance(250); // 250 game years: the founders and their children's generation die
-                var c = sim.Config;
+                sim.Advance(c.lifespanMax * 2); // the founders and their children's generation die
                 foreach (var n in sim.State.notables)
                 {
-                    Assert.That(n.lifespan, Is.InRange(c.lifespanMin, c.lifespanMax), n.FullName);
+                    Assert.That(n.lifespan, Is.GreaterThanOrEqualTo(c.lifespanMin).And.LessThan(c.lifespanMax), n.FullName);
                     if (n.alive) { Assert.Less(n.age, n.lifespan, $"{n.FullName} outlived their lifespan"); continue; }
                     Assert.GreaterOrEqual(n.age, n.lifespan, $"{n.FullName} died young");
-                    Assert.Less(n.age - n.lifespan, sim.Config.notableAgeFactor + 1e-3f, $"{n.FullName} died late");
+                    Assert.Less(n.age - n.lifespan, c.notableAgeFactor + 1e-3f, $"{n.FullName} died late");
                     deathAges.Add(n.age);
                 }
             }
             Assert.Greater(deathAges.Count, 30, "enough deaths to judge");
             TestContext.WriteLine($"{deathAges.Count} deaths, ages {deathAges.Min():0}–{deathAges.Max():0}, mean {deathAges.Average():0.0}");
-            Assert.That(deathAges.Min(), Is.GreaterThanOrEqualTo(110f));
-            Assert.That(deathAges.Max(), Is.LessThanOrEqualTo(161f));
+            Assert.That(deathAges.Min(), Is.GreaterThanOrEqualTo(c.lifespanMin));
+            Assert.That(deathAges.Max(), Is.LessThan(c.lifespanMax + c.notableAgeFactor));
         }
     }
 }
