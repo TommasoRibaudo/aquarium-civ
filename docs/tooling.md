@@ -308,3 +308,7 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   h, 24, ARGB32, sRGB)`, `cam.Render()`, `ReadPixels`, `EncodeToJPG` (`GrowthLabBuilder.Render`). Tonemapping, grade and
   SMAA are applied; no play mode needed. Long frame exports: chunk them into `script eval` calls under 60 s
   (`GrowthLabBuilder.Frames(from, to)`), about 1 s per frame with the AO bake. [verified]
+- **2026-10-29 · The Game view size lands a few frames into play mode.** After `AgentGameView.SetSize(1179, 2556)` and
+  `editor.playmode start`, `Start()` still saw the old 1198x702 Game view, so a camera fitted once in `Start` was framed
+  for landscape. Refit when `cam.aspect` changes (PerfCheck does). Also, ProfilerRecorder render counters
+  ("Batches Count", ...) read double in the Editor with the Scene view open, and 0 on some frames. Trust the device numbers. [verified]

@@ -80,6 +80,45 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 | 5 | 0.1.0 | P1 + in-app feedback | same, plus Feedback button | - |
 | 6 | **0.2.0** | **P2 Return to Mess** | H2: coming back to mess is a pull, not guilt. A/B by day: A cosmetic mess, B mess slows work. Diary, 4 days | [below](#p2-what-to-test) |
 | 7 | **0.3.0** | **Test Hub: P3–P6** (branch `overnight/p3-p6`) | Gate 2 (P3 return, P4 history) and Gate 3 (P5 nudges, P6 eras). Lab A/B from the hub, P3 4-day and P5 3-day diaries; P2 diary still reachable | [test-session guide](design/test-session-gate2-3.md) |
+| (not built yet) | **0.4.0** | **Perf check of the style kit** (branch `vs/35-perf-build`, issue #35) | Frame time / GPU ms of the new art style on the user's iPhone: Growth Lab town y110, style-kit camp and village. Not a prototype: Build Settings switched, see [below](#perf-build-04x-issue-35) | "Perf check of the new art style. Tap to switch scenes; send a screenshot of the numbers." |
+
+### Perf build 0.4.x (issue #35)
+A one-off build to measure the style kit on a phone (60 fps / GPU ≤ 10 ms). It ships **only**
+`Assets/Spikes/Perf/PerfCheck.unity`; the prototypes are left out. Set with the menu *AquariumCiv/Agent/Perf Check/Build
+Settings: perf build* (`PerfSceneBuilder.UsePerfBuildSettings`); the scene comes from *Perf Check/Build Scene*.
+
+**What changed** (committed on `vs/35-perf-build` only; `vs/slice` and `main` keep the prototype settings):
+- `EditorBuildSettings`: `PerfCheck.unity` added first and enabled; every prototype scene stays in the list in its old
+  order but **disabled** (Hub, P2, P6, P5, P4, P3, P1, Sandbox, SampleScene).
+- `PlayerSettings.bundleVersion` 0.3.0 → **0.4.0** (App Store versions must be numeric, so no "-perf" suffix).
+- `PlayerSettings.enableFrameTimingStats` 0 → **1** (Player → Other Settings → Frame Timing Stats). Without it,
+  FrameTimingManager reports no CPU/GPU times in a release build. Harmless to leave on.
+
+**Restore the 0.3.x prototype build:** menu *AquariumCiv/Agent/Perf Check/Build Settings: prototype build*
+(`PerfSceneBuilder.UsePrototypeBuildSettings`: Hub first, all prototypes enabled, perf scene dropped), then set
+`bundleVersion` back to `0.3.x` by hand. Or don't merge this branch's `ProjectSettings/` changes.
+
+**On the phone:** the app opens straight into the perf scene. The top panel shows:
+- fps and frame ms;
+- CPU frame ms, which includes the wait for the next vsync (≈ 16.7 at 60 fps); main and render are the real CPU work;
+- **GPU ms**;
+- batches, SetPass calls, draws and triangles drawn (Unity's render counters; "n/a" if the release build doesn't report them);
+- scene mesh size, then device, screen size, render scale, quality level.
+
+Controls:
+- Tap anywhere below the panel (or *Next*) to switch box. Each switch rebuilds the box (a short freeze), and stats
+  start counting after 90 frames of warm-up.
+- *Orbit* pauses the slow camera sweep.
+- *Log* writes one CSV row a second to `persistentDataPath/perf/perf_*.csv`.
+- *Send* posts the per-scene table (avg / p95) as a feedback issue (`fb:feel`, title "[-] Feel: Perf numbers from
+  <device>") and keeps a copy in `perf/summary_*.md`. Without a token, or offline, it waits in the outbox.
+
+Stay about 30 s on each box, then *Send*, or screenshot the panel.
+
+Notes:
+- The prototypes never set `Application.targetFrameRate`, so on iOS they ran at Unity's default **30 fps**. The perf
+  scene sets 60.
+- iOS uses the *Mobile* quality level and `Mobile_RPAsset` (render scale 0.8). The panel shows both.
 
 ### P2 What to Test
 Paste into App Store Connect → TestFlight → the build → Test Details:
@@ -95,7 +134,9 @@ Paste into App Store Connect → TestFlight → the build → Test Details:
 Lab session (sitting with a tester): hold the top-left info box for 2 s until "LAB" shows, then use "Step away".
 
 ## Notes
-- The upload job uses the `testflight` environment, which only allows `main`. Merge first, then build.
+- The upload job uses the `testflight` environment. Its deployment-branch policy allows `main` and `overnight/p3-p6`
+  (checked 2026-10-29). On any other branch the upload job is refused. Adding a branch is a repo-settings change the
+  user makes (Settings → Environments → testflight).
 - Release builds hide the debug panel (`Debug.isDebugBuild` is false). Lab tests that need the away buttons run in the
   Editor for now.
 - If the macOS job fails on signing, check that the API key has **Admin** access and that the bundle ID is
