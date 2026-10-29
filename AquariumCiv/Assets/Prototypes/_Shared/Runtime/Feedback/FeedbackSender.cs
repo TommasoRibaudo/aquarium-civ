@@ -85,6 +85,17 @@ namespace AquariumCiv.Prototypes
             Post($"{Prefix()} Survey from {Nick()}: feel {q1} · return {q2} · Q4 {q4}", body.ToString(), Kind.Survey);
         }
 
+        /// <summary>Lab pair question (Test Hub): which variant the tester preferred after playing both, and why.</summary>
+        public void SendPairPreference(string proto, string pick, string why)
+        {
+            var e = TestCatalog.Find(proto);
+            string Name(string letter) => e == null ? letter : $"{letter} · {e.names[letter == "A" ? 0 : 1]}";
+            var body = new StringBuilder("### A/B preference\n\n| | |\n|---|---|\n");
+            body.Append($"| Preferred | **{Cell(Name(pick))}** |\n| Over | {Cell(Name(pick == "A" ? "B" : "A"))} |\n| Why | {Cell(why)} |\n\n");
+            AppendContext(body, Kind.Survey, EventLog.Instance != null ? EventLog.Instance.LastSummary : "{}");
+            Post($"[{proto}] A/B preference from {Nick()}: {pick}", body.ToString(), Kind.Survey);
+        }
+
         // ---------- formatting ----------
 
         static string Prefix()

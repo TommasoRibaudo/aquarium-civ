@@ -1,0 +1,17 @@
+{
+    "name": "AquariumCiv.Prototypes.Hub",
+    "rootNamespace": "AquariumCiv.Prototypes.Hub",
+    "references": [
+        "AquariumCiv.Prototypes.Shared",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

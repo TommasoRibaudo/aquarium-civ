@@ -19,6 +19,9 @@ namespace AquariumCiv.Prototypes.Sim
         public int startNotables = 5;
         public int minNotables = 5;
         public int maxNotables = 12;
+        public bool storyEvents = false;        // P3+: richer event generator (weddings, rivalries, inventions, weather). Off = P2's world as tested
+        public float storyChancePerMonth = 0.07f;
+        public bool recordYears = false;        // P4+: a compact snapshot every game year, for history views
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -84,6 +87,11 @@ namespace AquariumCiv.Prototypes.Sim
         public int parentId = -1;
         public long bornMonth;
         public long diedMonth = -1;
+        // Story links (P3+); -1 = none. Old saves load with -1.
+        public int partnerId = -1;
+        public int friendId = -1;
+        public int rivalId = -1;
+        public int mentorId = -1;
 
         public string FullName => $"{name} {family}";
     }
@@ -97,6 +105,36 @@ namespace AquariumCiv.Prototypes.Sim
         public string text;
         public float salience;
         public int notableId = -1;
+        public int otherNotableId = -1; // a second person in the story (wedding, rivalry...)
+        public int buildingId = -1;     // the building it happened at, for fly-to
+        public bool keeper;             // P5: the people acted on a Keeper's nudge
+    }
+
+    /// <summary>P5: one of the Keeper's nudges (a totem, a shrine, rain, a grove, a channel).</summary>
+    [Serializable]
+    public class Nudge
+    {
+        public int id;
+        public string kind;
+        public int slot;
+        public long month;
+        public bool credited;       // the people answered it
+        public long answerMonth = -1;
+        public int buildingId = -1;
+        public bool reported;       // the view has shown and logged the answer
+        public int answerAfter = 8; // game months before the people act (varies, so answers don't feel mechanical)
+        public long placedUnixS;    // real time placed, for "time to visible effect"
+    }
+
+    /// <summary>One game year, compact (P4 history): enough to replay the village growing.</summary>
+    [Serializable]
+    public class YearSnapshot
+    {
+        public int year;
+        public int population;
+        public int buildings;
+        public int notables;
+        public float mood;
     }
 
     [Serializable]
@@ -121,6 +159,13 @@ namespace AquariumCiv.Prototypes.Sim
         /// <summary>Births, deaths and festivals: drawn every month whether used or not, so two worlds from one seed
         /// stay in step and differ only by what the rules make different (P2's A/B; tester run 2).</summary>
         public SimRandom econRng;
+        /// <summary>Story events (P3+) draw only from here, so turning them on never shifts the economy's dice.</summary>
+        public SimRandom storyRng;
+        public List<string> storyFlags = new();
+        public string settlementName = "";
+        public List<YearSnapshot> years = new();
+        public int pinnedNotableId = -1;
+        public List<Nudge> nudges = new();
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

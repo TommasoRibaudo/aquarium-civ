@@ -206,3 +206,71 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `docker run --rm -v "F:/GameDev:/repo" -w /repo -e GH_TOKEN=$(gh auth token) ghcr.io/zizmorcore/zizmor:latest .`.
   Without the env var, `-w /repo` becomes `C:/Program Files/Git/repo`. actionlint caught `${{ runner.temp }}` in a
   job-level `env:` (not allowed there; set it from a step via `$GITHUB_ENV`). [verified]
+- **2026-10-29 · Tester P3 run notes.** [verified]
+  - Several Game view sizes in **one** PlayMode test: call the `GameViewSizes` reflection (as in `AgentGameView.SetSize`)
+    from the test under `#if UNITY_EDITOR`, then wait until `Screen.width/height` match (a few frames). IMGUI and
+    `ProtoGui.Scale` follow. One run can then screenshot 1080x1920, 1080x2400 and 1640x2360 of the same state.
+  - Wipe strokes: take the front pane (`GlassGrime.Panes` with the lowest projected `bounds.center.y`) and stroke about
+    ±90 px around its centre. ±140 px runs off the pane, and a stroke that *starts* above the tank rim is a camera turn
+    by design (it looked like "wipe rotates the camera" in the first run).
+  - A tap within `WipeCleaner.pickRadius` of any junk goes to the junk (`TapClaim`) before the world tap. When a tap
+    test on a person fails in a messy tank, check the nearest `TapToClean.Active` distance before blaming the harness.
+  - A PlayMode `test run` can write pending in-memory ProjectSettings to disk (`EditorBuildSettings.asset` showed up
+    modified right after one). Report it, don't revert it.
+- **2026-10-29 · Tester touch fixture: taps only land with `queueEventOnly: true`.** With the default (`false`),
+  `BeginTouch`/`EndTouch` update the Input System outside the player loop and `ETouch.activeTouches` never shows the
+  touch in `OrbitCamera.Update` (every tap silently does nothing: no `tap` log line, no toast). Pass
+  `queueEventOnly: true` to `BeginTouch`/`MoveTouch`/`EndTouch` and yield frames between them. Add the `Touchscreen`
+  *after* the scene has loaded. The fixture logs "Cached unprocessed value unexpectedly became outdated" errors from
+  `EnhancedTouchSupport.Enable` (fixture noise, not game code): set `LogAssert.ignoreFailingMessages = true` and
+  collect console errors yourself. Run one `[UnityTest]` per `test run`: in a two-test run the second fails at once
+  ("EnhancedTouch API is not enabled" from the first test's still-loaded `OrbitCamera`). [verified]
+- **2026-10-29 · Tester Test Hub run notes.** [verified]
+  - Scene-flow checks don't need a test fixture: `unity command editor.playmode set_run_in_background` once, then
+    `editor.playmode start` (a cold launch: statics reset), drive with `script eval` (`LabLaunch.Open`,
+    `HubLink.GoToHub`, `TestHub.OpenDiary` by reflection for the diary buttons) and `AgentGameView.Shot` for IMGUI.
+    The Editor in the background needs ~20 s before the first scene's `Start` (frame count stays 1 until then).
+  - `BeginTouch/MoveTouch/EndTouch` are `InputTestFixture` methods, not `Touchscreen` methods (`ts.BeginTouch` = CS1061).
+  - Compile errors from a deleted `_AgentPlaytest` file stay in `console get` until `console clear`.
+- **2026-10-29 · Tester P4 run notes.** [verified]
+  - A touch-fixture test can open any lab scene the way the hub does: `EditorSceneManager.LoadSceneAsyncInPlayMode` the
+    Hub scene (with `hub_autoopen`=0), wait ~30 frames, `LabLaunch.Open(id, variant, TestMode.Lab)`, then poll the
+    protected `PrototypeBase.started` (ready in under 1 s). Add the `Touchscreen` after that.
+  - Input-System-driven panels that map `Pointer.position` to IMGUI canvas (P4 timeline, book swipe) take fixture
+    touches fine: convert canvas → screen with `(x * ProtoGui.Scale, Screen.height - y * ProtoGui.Scale)` and read
+    the panel's private rect (e.g. `TimelapseView.barCanvas`) after one OnGUI frame. Keep touch start points on screen:
+    a start at negative x misses `GuiBlocker` and turns the camera.
+- **2026-10-29 · Tester P5 run notes.** [verified]
+  - Banners that get replaced within a frame never show in screenshots. Poll `HudToast`'s private static `instance`
+    and its `banner`/`bannerUntil`/`toasts` fields every frame from the touch-fixture test and log each change.
+  - A ~4-minute lab watch fits in one `[UnityTest]` with `[Timeout(1200000)]` (the default timeout is too short).
+  - `Renderer` bounds `Aggregate` throws on a prop with no renderers (the P5 rain nudge root has none): guard it, or
+    the test fails mid-run.
+- **2026-10-29 · Tester P6 run notes.** [verified]
+  - Changing the Game view size mid-test resets `OrbitCamera`'s distance through `FitAspect`, so any `SetWide` pull-back
+    is lost (P6 annex/shelf framing). To judge a wide view at several sizes, set the size **before** loading the scene and
+    reach the state again (one `[UnityTest]` can load Hub → `LabLaunch.Open` several times in a loop).
+  - Float interpolation in harness strings follows the machine locale (`1,5` not `1.5`): screenshot names and log
+    numbers come out with commas. Use `CultureInfo.InvariantCulture` when it matters.
+  - Overlapping IMGUI buttons: the one drawn **first** gets the MouseDown (and the one drawn last shows on top). A
+    screenshot where panel X covers panel Y means Y's buttons take the taps.
+- **2026-10-29 · Overnight P3–P6 notes (main session).** [verified]
+  - Python/bash heredocs with apostrophes in C# strings ("Keeper's") fail with "unexpected EOF": write the edit script
+    with the Write tool and run the file (already in §7; it bit three times).
+  - The Editor's "Hold on... Importing assets" window is a progress bar, not a question: `dismiss-dialogs.ps1` lists it as
+    UNKNOWN. Poll `unity status` until `ready` (an until-loop, not chained sleeps).
+  - `unity recompile` right after a large edit often returns "No Pipeline instance" or 400 during the domain reload;
+    wait for `ready` and run it once more. An eval sent during the reload is silently lost (check its result).
+  - Another session can share this working tree and Editor: check `git status` for files you didn't write before every
+    commit, stage paths explicitly (not `git add -A`), and agree on Editor time by message.
+  - `AquariumCiv.EditorTools.AgentGameView.SetSize(w,h)` / `.Shot(name)` (Assets/Editor/Agent) set a portrait Game view
+    and grab a play-mode screenshot including IMGUI; `Temp/agent/ready.cs` prints `PrototypeBase.started`.
+
+- **2026-10-29 · Tester sound checks (no ears).** [verified]
+  - A live `OnAudioFilterRead` synth can be verified by reflection: its smoothed fields only move on the audio thread,
+    so a value rising during a fixture drag proves the filter runs in Editor play mode. One-shots played with
+    `PlayOneShot` show up in `AudioSource.isPlaying`; to count plays, read the pool's round-robin index before/after.
+  - `Application.logMessageReceivedThreaded` (not `logMessageReceived`) also catches audio-thread exceptions.
+  - P2 lab mode writes the **diary** save `proto/P2.json` (P2 has no separate lab save): back it up before a P2 playtest.
+  - A raster of wipe strokes inset 12% from the front pane's projected rect leaves its mean at ~0.05, just above the
+    `PaneCleared` threshold (< 0.05). To test the clear chime, set a dirty central patch on a clean pane and wipe that.

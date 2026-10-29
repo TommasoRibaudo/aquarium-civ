@@ -26,6 +26,7 @@ namespace AquariumCiv.Prototypes
         [Header("Hints")]
         [Tooltip("Show the gesture hint again after this many seconds without any cleaning (while the tank is messy).")] public float hintIdleSeconds = 25f;
         public int maxHintRepeats = 2;
+        [Tooltip("Taps go to the nearest named person (within the pick radius) before junk (P3+).")] public bool peopleFirst;
         public string hint = "Drag across the glass to wipe it clean. Then touch junk or weeds behind clean glass and flick them out. Two fingers turn the tank.";
 
         GlassGrime.Pane lastPane;
@@ -87,6 +88,7 @@ namespace AquariumCiv.Prototypes
             {
                 grabbed = piece;
                 grabbed.SetHeld(true); // lifts a little: it's in your fingers now
+                Juice.Grab();
                 grabStart = screenPos;
                 samples.Clear();
                 samples.Add((Time.unscaledTime, screenPos));
@@ -161,12 +163,14 @@ namespace AquariumCiv.Prototypes
             float dt = Mathf.Max(Time.unscaledTime - t0, 1f / 120f);
             var v = (screenPos - p0) / Screen.height / dt; // release velocity, screen heights / s
             float travel = Vector2.Distance(screenPos, grabStart) / Screen.height;
+            // P3+: a press-and-lift near a named person is a tap on them (OnTap opens their card): no toss, no hint, no count.
+            if (peopleFirst && travel < flickMinTravel && NotableView.Instance != null && NotableView.Instance.Pick(screenPos, pickRadius * Screen.height, out _)) return;
             EventLog.Instance?.Count("toss_attempts");
             if (v.magnitude >= flickSpeed && travel >= flickMinTravel)
             {
                 var dir = (Cam.transform.right * v.x + Cam.transform.up * v.y).normalized;
                 float s = Juice.WorldPerScreen(piece.Center);
-                piece.Flick((dir * 0.5f + Vector3.up * 0.35f) * s);
+                piece.Flick((dir * 0.5f + Vector3.up * 0.35f) * s, Mathf.InverseLerp(flickSpeed, flickSpeed * 4f, v.magnitude));
                 return;
             }
             piece.Wobble();
@@ -219,6 +223,14 @@ namespace AquariumCiv.Prototypes
         /// <summary>Taps on junk wiggle it and hint at the flick (or at wiping first); everything else goes through to the world.</summary>
         bool OnTap(Vector2 screenPos, Collider worldHit)
         {
+            // P3+: a tap meant for a named person reaches them even with junk nearby (taps on junk only wiggle it;
+            // tossing is a drag, which this doesn't touch). Off in P2, which stays as tested.
+            if (peopleFirst && NotableView.Instance != null && NotableView.Instance.Pick(screenPos, pickRadius * Screen.height, out var person))
+            {
+                EventLog.Instance?.Tap("notable", person.NotableId.ToString());
+                person.OnTap(default);
+                return true;
+            }
             if (!PickMess(screenPos, out var piece)) return false;
             EventLog.Instance?.Tap(piece.Kind);
             if (BehindDirtyGlass(piece))

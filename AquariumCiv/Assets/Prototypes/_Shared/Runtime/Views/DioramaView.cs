@@ -21,29 +21,37 @@ namespace AquariumCiv.Prototypes
         [Tooltip("Half the flat-to-flat width of a hex tile: how far from a slot's center things may stand.")]
         public float slotRadius = 0.5f;
         public BuildingPrefabs[] prefabs;
+        [Tooltip("History replay: show only buildings founded by this game month (-1 = live).")]
+        public long showUpToMonth = -1;
+        /// <summary>Show this world instead of the live one (P6: the old box kept as a museum). Null = SimClock's.</summary>
+        [System.NonSerialized] public AquariumCiv.Prototypes.Sim.SimCore source;
 
         readonly Dictionary<int, GameObject> spawned = new();
         int lastCount = -1, generation;
+        long lastShown = -1;
 
         public Vector3 SlotPosition(int slot) => slotPositions[Mathf.Clamp(slot, 0, slotPositions.Length - 1)];
 
         void Update()
         {
             var clock = SimClock.Instance;
-            if (clock.Generation != generation)
+            if (source == null && clock.Generation != generation)
             {
                 generation = clock.Generation;
                 foreach (var go in spawned.Values) Destroy(go);
                 spawned.Clear();
                 lastCount = -1;
             }
-            var state = clock.Sim.State;
-            if (state.buildings.Count == lastCount) return;
-            bool firstSync = lastCount < 0;
+            var state = (source ?? clock.Sim).State;
+            if (state.buildings.Count == lastCount && showUpToMonth == lastShown) return;
+            bool firstSync = lastCount < 0 && !respawnAnimated;
+            respawnAnimated = false;
             lastCount = state.buildings.Count;
+            lastShown = showUpToMonth;
             var alive = new HashSet<int>();
             foreach (var b in state.buildings)
             {
+                if (showUpToMonth >= 0 && b.foundedMonth > showUpToMonth) continue;
                 alive.Add(b.id);
                 if (spawned.ContainsKey(b.id)) continue;
                 spawned[b.id] = Spawn(b.type, b.id, b.slot, animate: !firstSync);
@@ -66,6 +74,20 @@ namespace AquariumCiv.Prototypes
             return go;
         }
 
+        bool respawnAnimated;
+
+        /// <summary>Rebuild every building now (P6: a new era's look), popping in one by one if animated.</summary>
+        public void Respawn(bool animate)
+        {
+            foreach (var go in spawned.Values) Destroy(go);
+            spawned.Clear();
+            lastCount = -1;
+            respawnAnimated = animate;
+        }
+
+        /// <summary>The spawned building for this sim id, or null (fly-to).</summary>
+        public GameObject Find(int buildingId) => spawned.TryGetValue(buildingId, out var go) ? go : null;
+
         public static void AddBoundsCollider(GameObject go)
         {
             var renderers = go.GetComponentsInChildren<Renderer>();
@@ -83,11 +105,12 @@ namespace AquariumCiv.Prototypes
             var target = t.localScale;
             for (float k = 0; k < 1f; k += Time.deltaTime * 2.5f)
             {
+                if (t == null) yield break; // replaced mid pop-in (fresh world, variant switch)
                 float e = 1f + 2.2f * Mathf.Pow(k - 1f, 3) + 1.2f * Mathf.Pow(k - 1f, 2); // ease-out-back
                 t.localScale = target * Mathf.Max(0.01f, e);
                 yield return null;
             }
-            t.localScale = target;
+            if (t != null) t.localScale = target;
         }
     }
 }

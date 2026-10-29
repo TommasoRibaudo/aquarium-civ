@@ -48,3 +48,4 @@ Phase C interview (details in [design/game-definition.md](design/game-definition
 ## Still open
 - AI tools for minor assets (free tiers only for now)
 - Offline simulation: P0 uses a coarse aggregate catch-up; whether civ progress needs any offline cap (Q7)
+| 2026-10-29 | **Gate 1: care pillar** | **Go with P2 variant B**: mess dims the sunlight and slows the work pace, and the people's mood shows it | User's words: "sunlight + mood and workflow slow down". Care is a pillar; the consequence is the gentle slow-down (capped at −25 % at 48 h), framed as sunlight and work pace, not a loss. [results/P2.md](design/results/P2.md) |

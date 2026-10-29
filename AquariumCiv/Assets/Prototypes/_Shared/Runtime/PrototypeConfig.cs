@@ -17,6 +17,13 @@ namespace AquariumCiv.Prototypes
         public string[] variants = { "A", "B" };
         public TestMode testMode = TestMode.Lab;
         [TextArea] public string surveyQ4 = "Cleaning felt satisfying";
+        [Tooltip("Optional sixth survey question (free text), e.g. P5's follow-up on control. Empty = none.")]
+        [TextArea] public string surveyExtra = "";
+
+        [Tooltip("P3+: lab sessions keep their own save, so a lab test never touches this phone's running diary.")]
+        public bool separateLabSave;
+        /// <summary>The save file / last-seen name: the protoId, or protoId_lab for a separate lab world.</summary>
+        public string SaveId => separateLabSave && testMode == TestMode.Lab ? protoId + "_lab" : protoId;
 
         public static PrototypeConfig Current { get; private set; }
         public event Action<string> VariantChanged;
@@ -31,7 +38,19 @@ namespace AquariumCiv.Prototypes
         {
             Current = this;
             if (PlayerPrefs.HasKey(ModeKey)) testMode = (TestMode)PlayerPrefs.GetInt(ModeKey);
+            // Opened from the Test Hub: take its variant and mode (no listeners yet, so nothing fires).
+            var req = LabLaunch.Consume(protoId);
+            if (req == null) return;
+            req.modeChanged = req.mode != testMode;
+            testMode = req.mode;
+            PlayerPrefs.SetInt(ModeKey, (int)req.mode);
+            if (req.variant >= 0) PlayerPrefs.SetInt(OverrideKey, req.variant);
+            else PlayerPrefs.DeleteKey(OverrideKey); // diary: back to the day-by-day schedule
+            PlayerPrefs.Save();
         }
+
+        /// <summary>Index of the variant on screen (0 = A).</summary>
+        public int CurrentIndex => variants.Length == 0 ? 0 : VariantIndex % variants.Length;
 
         /// <summary>Switch lab/diary on this device (persists), e.g. a phone that joins a lab session.</summary>
         public void SetTestMode(TestMode mode)

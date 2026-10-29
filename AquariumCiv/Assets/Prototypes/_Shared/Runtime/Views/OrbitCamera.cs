@@ -37,10 +37,12 @@ namespace AquariumCiv.Prototypes
         public event Action ThreeFingerTap;
 
         public Camera Cam { get; private set; }
+        /// <summary>The pivot the camera returns to on ResetView.</summary>
+        public Vector3 BasePivot => basePivot;
         public float ZoomT => Mathf.InverseLerp(minZoom * baseDistance, baseDistance, distance);
 
         float yaw, pitch, distance, baseDistance, designDistance, fittedAspect;
-        Vector3 basePivot, focusPivot;
+        Vector3 basePivot, focusPivot, homePivot;
         Vector2 pressPos;
         float pressTime, pressTravel, lastEmptyTap;
         bool pressClaimed, toolDragging, pressing;
@@ -50,7 +52,7 @@ namespace AquariumCiv.Prototypes
         {
             Instance = this;
             Cam = GetComponent<Camera>();
-            basePivot = focusPivot = pivot;
+            basePivot = focusPivot = homePivot = pivot;
             var offset = transform.position - pivot;
             designDistance = baseDistance = distance = offset.magnitude;
             FitAspect();
@@ -189,7 +191,7 @@ namespace AquariumCiv.Prototypes
                 EventLog.Instance?.Tap(lc?.category ?? "other", lc?.id);
                 var tappable = hit.collider.GetComponentInParent<ITappable>();
                 tappable?.OnTap(hit);
-                if (lc != null && (lc.category == "building" || lc.category == "citizen" || lc.category == "notable"))
+                if (lc != null && (lc.category == "building" || lc.category == "citizen" || lc.category == "notable" || lc.category == "nudge"))
                     focusPivot = new Vector3(hit.point.x, basePivot.y, hit.point.z);
                 if (lc == null || lc.category != "ground") return;
             }
@@ -197,6 +199,23 @@ namespace AquariumCiv.Prototypes
             // Double-tap on bare ground or outside the box resets the view.
             if (Time.unscaledTime - lastEmptyTap < 0.4f) ResetView();
             lastEmptyTap = Time.unscaledTime;
+        }
+
+        /// <summary>Fly the camera to look at a world point (chronicle "show me"), zoomed in to zoomT (0 = closest, 1 = default).</summary>
+        public void FocusOn(Vector3 world, float zoomT = 0.55f)
+        {
+            focusPivot = new Vector3(world.x, basePivot.y, world.z);
+            distance = Mathf.Lerp(minZoom * baseDistance, baseDistance, Mathf.Clamp01(zoomT));
+        }
+
+        /// <summary>Pull back for a wider view (P6: an annex box or the shelf), as a multiple of the default distance,
+        /// around a new pivot (null = the scene's original pivot).</summary>
+        public void SetWide(float factor, Vector3? pivotOverride = null)
+        {
+            basePivot = pivotOverride ?? homePivot;
+            focusPivot = basePivot;
+            baseDistance = designDistance * Mathf.Max(1f, designAspect / Mathf.Max(fittedAspect, 0.01f)) * factor;
+            distance = baseDistance;
         }
 
         public void ResetView()

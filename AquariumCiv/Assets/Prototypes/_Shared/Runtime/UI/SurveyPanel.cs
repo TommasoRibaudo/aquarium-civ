@@ -18,7 +18,7 @@ namespace AquariumCiv.Prototypes
         string sendResult = "";
         string nick = "";
         int q1, q2, q4;
-        string q3 = "", q5 = "";
+        string q3 = "", q5 = "", q6 = "";
         Vector2 scroll;
 
         void Start()
@@ -59,7 +59,7 @@ namespace AquariumCiv.Prototypes
                     GUILayout.BeginArea(r);
                     scroll = GUILayout.BeginScrollView(scroll);
                     GUILayout.Label("Quick survey", ProtoGui.Title);
-                    GUILayout.Label("5 questions, under a minute.", ProtoGui.Hint);
+                    GUILayout.Label(string.IsNullOrEmpty(PrototypeConfig.Current.surveyExtra) ? "5 questions, under a minute." : "6 questions, about a minute.", ProtoGui.Hint);
                     GUILayout.Space(8);
                     q1 = Likert("1. That session felt...", "a chore", "relaxing / fun", q1);
                     q2 = Likert("2. How much do you want to check on it again later?", "not at all", "a lot", q2);
@@ -69,6 +69,13 @@ namespace AquariumCiv.Prototypes
                     q4 = Likert($"4. {PrototypeConfig.Current.surveyQ4}", "disagree", "agree", q4);
                     GUILayout.Label("5. Did anything feel like work, confusing, or guilt-inducing?", ProtoGui.Wrap);
                     q5 = GUILayout.TextArea(q5, 300, GUILayout.Height(90));
+                    string extra = PrototypeConfig.Current.surveyExtra;
+                    if (!string.IsNullOrEmpty(extra))
+                    {
+                        GUILayout.Space(10);
+                        GUILayout.Label($"6. {extra}", ProtoGui.Wrap);
+                        q6 = GUILayout.TextArea(q6, 300, GUILayout.Height(90));
+                    }
                     GUILayout.Space(10);
                     GUILayout.Space(10);
                     GUILayout.BeginHorizontal();
@@ -79,9 +86,18 @@ namespace AquariumCiv.Prototypes
                     GUILayout.EndArea();
                     break;
                 }
+                case Mode.Thanks when PairQuestion.Due:
+                {
+                    // Lab via the hub, both variants surveyed: one A/B question, then back to the hub.
+                    var r = Modal(w, h, Mathf.Min(h - 160, 700));
+                    GUILayout.BeginArea(r);
+                    if (PairQuestion.Draw()) mode = Mode.Playing;
+                    GUILayout.EndArea();
+                    break;
+                }
                 case Mode.Thanks:
                 {
-                    var r = Modal(w, h, 420);
+                    var r = Modal(w, h, HubLink.Available ? 540 : 420);
                     GUILayout.BeginArea(r);
                     GUILayout.Label(FeedbackSender.Instance != null ? sendResult : "Thanks! Tap \"Copy summary\" and paste it into our chat.", ProtoGui.Wrap);
                     if (GUILayout.Button("Copy summary", GUILayout.Height(64))) GUIUtility.systemCopyBuffer = EventLog.Instance.LastSummary;
@@ -91,6 +107,7 @@ namespace AquariumCiv.Prototypes
                         Resume();
                     }
                     if (GUILayout.Button("Keep watching", ProtoGui.Primary, GUILayout.Height(72))) Resume();
+                    if (HubLink.Available && GUILayout.Button("Test hub", GUILayout.Height(88))) HubLink.GoToHub();
                     GUILayout.EndArea();
                     break;
                 }
@@ -110,7 +127,7 @@ namespace AquariumCiv.Prototypes
                 mode = Mode.Thanks;
                 return;
             }
-            q1 = q2 = q4 = 0; q3 = q5 = "";
+            q1 = q2 = q4 = 0; q3 = q5 = q6 = "";
             mode = Mode.Survey;
         }
 
@@ -118,21 +135,28 @@ namespace AquariumCiv.Prototypes
         {
             PlayerPrefs.SetString(SurveyDayKey, Today);
             PlayerPrefs.Save();
-            EventLog.Instance.Survey(new List<(string, string)>
+            var cfg = PrototypeConfig.Current;
+            LabSession.MarkSurveyed(cfg.protoId, cfg.Variant);
+            bool extra = !string.IsNullOrEmpty(cfg.surveyExtra);
+            var log = new List<(string, string)>
             {
                 ("q1_feel", q1.ToString()), ("q2_return", q2.ToString()), ("q3_recall", q3),
                 ("q4", q4.ToString()), ("q5_work", q5)
-            });
+            };
+            if (extra) log.Add(("q6_extra", q6));
+            EventLog.Instance.Survey(log);
             EventLog.Instance.EndSession("done");
             sendResult = "Sending your answers...";
-            FeedbackSender.Instance?.SendSurvey(new List<(string, string, string)>
+            var answers = new List<(string, string, string)>
             {
                 ("q1_feel", "That session felt... (1 chore - 5 relaxing/fun)", q1.ToString()),
                 ("q2_return", "Want to check on it again later? (1-5)", q2.ToString()),
                 ("q3_recall", "One thing that happened or you noticed", q3),
-                ("q4", $"{PrototypeConfig.Current.surveyQ4} (1-5)", q4.ToString()),
+                ("q4", $"{cfg.surveyQ4} (1-5)", q4.ToString()),
                 ("q5_work", "Anything feel like work, confusing, or guilt-inducing?", q5),
-            }, EventLog.Instance.LastSummary);
+            };
+            if (extra) answers.Add(("q6_extra", cfg.surveyExtra, q6));
+            FeedbackSender.Instance?.SendSurvey(answers, EventLog.Instance.LastSummary);
             mode = Mode.Thanks;
         }
 
