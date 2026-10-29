@@ -68,7 +68,7 @@ namespace AquariumCiv.Spikes.Perf
 
         Stats[] stats;
         int warmup, pendingSwitch = -1, pendingDelay;
-        float phase, distance = 40f;
+        float phase, distance = 40f, fittedAspect;
         bool orbit = true, logging;
         StreamWriter log;
         string logPath, status = "", buildInfo;
@@ -186,11 +186,13 @@ namespace AquariumCiv.Spikes.Perf
             float halfV = cam.fieldOfView * 0.5f * Mathf.Deg2Rad;
             float halfH = Mathf.Atan(Mathf.Tan(halfV) * aspect);
             distance = e.radius / Mathf.Tan(Mathf.Min(halfH, halfV)) * 0.9f;
+            fittedAspect = aspect;
         }
 
         void ApplyCamera()
         {
             if (cam == null || entries.Length == 0 || Current < 0) return;
+            if (Mathf.Abs(cam.aspect - fittedAspect) > 0.001f) FitCamera(); // screen size settled or rotated
             var e = entries[Current];
             float yaw = e.yaw + orbitAmplitude * Mathf.Sin(phase);
             cam.transform.position = e.target + Quaternion.Euler(e.pitch, yaw, 0) * Vector3.back * distance;
@@ -292,7 +294,7 @@ namespace AquariumCiv.Spikes.Perf
                 var dir = Path.Combine(Application.persistentDataPath, "perf");
                 Directory.CreateDirectory(dir);
                 logPath = Path.Combine(dir, $"perf_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
-                log = new StreamWriter(logPath, false, Encoding.UTF8) { AutoFlush = true };
+                log = new StreamWriter(logPath, false, new UTF8Encoding(false)) { AutoFlush = true };
                 log.WriteLine("# " + DeviceLine());
                 log.WriteLine("t_s,scene,fps,frame_ms,cpu_ms,gpu_ms,batches,setpass,tris");
                 logging = true;
@@ -349,7 +351,7 @@ namespace AquariumCiv.Spikes.Perf
         {
             var b = new StringBuilder();
             b.Append($"Perf check {Application.version} ({buildInfo})\n").Append(DeviceLine()).Append("\n\n");
-            b.Append("| Scene | s | fps | frame ms avg / p95 | CPU ms avg / p95 | main / render ms | GPU ms avg / p95 | batches | setpass | tris (drawn) |\n");
+            b.Append("| Scene | s | fps | frame ms avg / p95 | CPU frame ms avg / p95 (incl. wait) | main / render ms | GPU ms avg / p95 | batches | setpass | tris (drawn) |\n");
             b.Append("|---|---|---|---|---|---|---|---|---|---|\n");
             for (int i = 0; i < entries.Length; i++)
             {
@@ -358,7 +360,7 @@ namespace AquariumCiv.Spikes.Perf
                 float f = Avg(s.frame, s.n);
                 long c = Math.Max(1, s.samplesCounters);
                 b.Append(string.Format(CultureInfo.InvariantCulture,
-                    "| {0} | {1:0} | {2:0.0} | {3:0.0} / {4:0.0} | {5:0.0} / {6:0.0} | {7:0.0} / {8:0.0} | {9} | {10} | {11} | {12} |\n",
+                    "| {0} | {1:0} | {2:0.0} | {3:0.0} / {4:0.0} | {5:0.0} / {6:0.0} | {7:0.0} / {8:0.0} | {9} / {10} | {11} | {12} | {13} |\n",
                     entries[i].name, s.seconds, 1000f / Mathf.Max(0.01f, f), f, P95(s.frame, s.n), Avg(s.cpu, s.n), P95(s.cpu, s.n),
                     Avg(s.main, s.n), Avg(s.render, s.n),
                     Fmt(Avg(s.gpu, s.n, true)), Fmt(P95(s.gpu, s.n, true)),
@@ -413,7 +415,7 @@ namespace AquariumCiv.Spikes.Perf
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));
             float top = (Screen.height - Screen.safeArea.yMax) / scale + 6f;
             const float lineH = 20f;
-            panel = new Rect(6, top, GuiWidth - 12, lineH * 9 + 72);
+            panel = new Rect(6, top, GuiWidth - 12, lineH * 9 + 90);
             GUI.DrawTexture(panel, bg);
             float x = panel.x + 10, y = panel.y + 6, w = panel.width - 20;
             void Line(string s) { GUI.Label(new Rect(x, y, w, lineH + 2), s, label); y += lineH; }
@@ -422,8 +424,8 @@ namespace AquariumCiv.Spikes.Perf
                 $"<color={(v <= good ? "#8f8" : v <= ok ? "#fd6" : "#f77")}>{v.ToString("0.0", CultureInfo.InvariantCulture)}</color>";
             var st = Current >= 0 ? stats[Current] : null;
             Line($"<b>{(pendingSwitch >= 0 ? "Building " + Name(pendingSwitch) + "..." : Name(Current))}</b>  ({Current + 1}/{entries.Length})   tap to switch");
-            Line($"FPS <b>{Col(showFps >= 1 ? showFps : 0, 1e9f, 1e9f)}</b>   frame {Col(showFrame, 17.2f, 20f)} ms");
-            Line($"CPU {Col(showCpu, 12f, 16.6f)} ms   main {Col(showMain, 12f, 16.6f)}  render {Col(showRender, 12f, 16.6f)}");
+            Line($"FPS <b><color={(showFps >= 58f ? "#8f8" : showFps >= 50f ? "#fd6" : "#f77")}>{showFps.ToString("0.0", CultureInfo.InvariantCulture)}</color></b>   frame {Col(showFrame, 17.2f, 20f)} ms");
+            Line($"CPU {Fmt(showCpu)} ms   main {Col(showMain, 12f, 16.6f)}  render {Col(showRender, 12f, 16.6f)}");
             Line($"GPU <b>{Col(showGpu, 10f, 16.6f)}</b> ms   (budget ≤ 10)");
             if (st != null && st.n > 0)
                 Line(string.Format(CultureInfo.InvariantCulture, "since switch {0:0}s: frame p95 {1:0.0}  GPU avg {2}  p95 {3}",
@@ -431,8 +433,8 @@ namespace AquariumCiv.Spikes.Perf
             else Line(warmup > 0 ? $"warming up ({warmup})" : "-");
             Line($"batches {Cnt(recBatches)}  setpass {Cnt(recSetPass)}  draws {Cnt(recDraws)}");
             Line($"tris drawn {Cnt(recTris)}  verts {Cnt(recVerts)}");
-            Line($"scene mesh {sceneTris / 1000f:0.#}k tris, {sceneVerts / 1000f:0.#}k verts, {sceneRenderers} renderers");
-            GUI.Label(new Rect(x, y, w, 34), $"{DeviceLine()} · {Application.version} ({buildInfo})", small); y += 36;
+            Line(string.Format(CultureInfo.InvariantCulture, "scene mesh {0:0.#}k tris, {1:0.#}k verts, {2} renderers", sceneTris / 1000f, sceneVerts / 1000f, sceneRenderers));
+            GUI.Label(new Rect(x, y, w, 50), $"{DeviceLine()} · {Application.version} ({buildInfo})", small); y += 52;
 
             float bw = (w - 18) / 4f, bh = 30f;
             bNext = new Rect(x, y, bw, bh);
@@ -455,7 +457,7 @@ namespace AquariumCiv.Spikes.Perf
         {
             if (!r.Valid) return "n/a";
             long v = r.LastValue;
-            return v <= 0 ? "n/a" : v >= 10000 ? $"{v / 1000f:0.#}k" : v.ToString();
+            return v <= 0 ? "n/a" : v >= 10000 ? (v / 1000f).ToString("0.#", CultureInfo.InvariantCulture) + "k" : v.ToString();
         }
     }
 }
