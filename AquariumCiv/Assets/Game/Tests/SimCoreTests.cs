@@ -32,7 +32,7 @@ namespace AquariumCiv.Tests
             string fp = s.population + "|" + s.month + "|" + s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" +
                         string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Select(c => c.text)) + "|" +
                         string.Join(",", s.notables.Select(n => n.FullName + n.age.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
-            Assert.AreEqual(4135406614u, Fnv(fp), "slice world fingerprint");
+            Assert.AreEqual(390496490u, Fnv(fp), "slice world fingerprint");
         }
 
         [Test]
@@ -145,13 +145,14 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void NotablesDieOnlyOfOldAgeAndAgeAtHalfSpeed()
+        public void NotablesAgeWithTheCalendarAndDieOnlyOfOldAge()
         {
             var sim = NewSim();
             var founder = sim.State.notables[0];
             float startAge = founder.age;
             sim.Advance(10); // 10 game years
-            if (founder.alive) Assert.AreEqual(startAge + 5f, founder.age, 1e-3f);
+            Assert.AreEqual(startAge + 10f, founder.age, 1e-3f, "a person's age matches the calendar");
+            Assert.GreaterOrEqual(founder.lifespan, 110f, "they live twice as long as the prototypes' people");
             sim.Advance(24 * 14);
             foreach (var n in sim.State.notables.Where(n => !n.alive))
                 Assert.GreaterOrEqual(n.age, n.lifespan, $"{n.FullName} died before their lifespan");

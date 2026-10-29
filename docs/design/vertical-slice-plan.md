@@ -22,7 +22,7 @@ session) for a week.
 |---|---|---|
 | Cleaning gesture | Drag-to-wipe, the first touch decides wipe vs toss | P1, P2 (decisions.md) |
 | Care consequence | Mess dims sunlight and slows work pace (−25 % at the 48 h cap), mood shows it | Gate 1. Ready as `CareConfig.Gate1` + `CareMoodView` on `vs/prep` |
-| Time | 1 real hour = 1 game year; notables age at half speed (fix the shown age vs calendar) | Gate 2 (recheck in the slice week) |
+| Time | 1 real hour = 1 game year; notables age with the calendar and live 110–160 years | Gate 2 + aging decision 2026-10-29 |
 | Return presentation | Chronicle cards (P3 A); relationships visible in the world | Gate 2 |
 | History view | Time-lapse (P4 A) + a small, polished book of major events and people | Gate 2 |
 | Nudge form | Shape the land (P5 B): rain, groves, channels; no omens | Gate 3 |

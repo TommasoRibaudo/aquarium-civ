@@ -12,7 +12,7 @@ namespace AquariumCiv.Sim
     public class SimConfig
     {
         public float yearsPerRealHour = 1f;     // 1 real hour = 1 game year (Gate 2)
-        public float notableAgeFactor = 0.5f;   // notables age at half speed
+        public float notableAgeFactor = 1f;     // notables age with the calendar (user, 2026-10-29: half-speed aging confused people)
         public float messFullHours = 48f;       // mess reaches its cap after this many real hours
         public int trashMax = 12;
         public float trashPerPersonHour = 0.02f;
@@ -81,7 +81,7 @@ namespace AquariumCiv.Sim
         public string name;
         public string family;
         public string trait;
-        public float age;        // in notable-years (advances at notableAgeFactor per game year)
+        public float age;        // in years (advances at notableAgeFactor per game year)
         public float lifespan;
         public bool alive = true;
         public int parentId = -1;

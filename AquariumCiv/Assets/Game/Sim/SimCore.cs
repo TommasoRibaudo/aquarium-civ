@@ -243,7 +243,7 @@ namespace AquariumCiv.Sim
             var n = new Notable
             {
                 id = s.NextId(), name = rng.Pick(NameData.Given), family = family ?? rng.Pick(NameData.Families),
-                trait = rng.Pick(NameData.Traits), age = age, lifespan = rng.Range(55f, 80f), parentId = parentId, bornMonth = s.month
+                trait = rng.Pick(NameData.Traits), age = age, lifespan = rng.Range(110f, 160f), parentId = parentId, bornMonth = s.month
             };
             // No two living people share a full name ("Ada Thorn was born to Ada Thorn" muddles recall).
             // Extra draws come from the story stream, so they never shift the main dice.
