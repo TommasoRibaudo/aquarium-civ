@@ -1,7 +1,7 @@
 # Vertical slice plan (draft, 2026-10-29)
 
-**Status: draft, written before Gates 2 and 3 are decided.** Parts that depend on a gate are written as options
-("if Gate 2 picks …"). Nothing here is a decision until you make it; decisions go in [decisions.md](../decisions.md).
+**Status: active (2026-10-29).** Gates 1–3 are decided ([decisions.md](../decisions.md)); §3 now records the chosen
+path for each gate, with the other options kept below it for reference. Art direction (§6) is still open.
 Scope comes from [prototype-plan.md](prototype-plan.md) Gate 3: **one box, eras 1–3, final art direction, real
 save/catch-up architecture.** Design source: [game-definition.md](game-definition.md).
 
@@ -22,12 +22,18 @@ session) for a week.
 |---|---|---|
 | Cleaning gesture | Drag-to-wipe, the first touch decides wipe vs toss | P1, P2 (decisions.md) |
 | Care consequence | Mess dims sunlight and slows work pace (−25 % at the 48 h cap), mood shows it | Gate 1. Ready as `CareConfig.Gate1` + `CareMoodView` on `vs/prep` |
-| Time | 1 real hour = 1 game year; notables age at half speed | decisions.md (Gate 2 can retune) |
+| Time | 1 real hour = 1 game year; notables age at half speed (fix the shown age vs calendar) | Gate 2 (recheck in the slice week) |
+| Return presentation | Chronicle cards (P3 A); relationships visible in the world | Gate 2 |
+| History view | Time-lapse (P4 A) + a small, polished book of major events and people | Gate 2 |
+| Nudge form | Shape the land (P5 B): rain, groves, channels; no omens | Gate 3 |
+| Progression shape | New box on the shelf (P6 B); the full box stays alive as a museum; era moments play live | Gate 3 |
 | Citizens | Crowd + 5–12 named notables, pin a favourite | decisions.md |
 | Assets | KayKit gradient-atlas kit (CC0), Kenney gap-fill | research/06-assets.md Kit A |
 | Monetization | None in the slice (free first era is the hypothesis; no store code yet) | game-definition §10 |
 
-## 3. Gate-dependent parts (options, not decisions)
+## 3. Gate-dependent parts
+**Chosen (2026-10-29):** cards · time-lapse + small book · 1 h = 1 year · shape the land · new box on the shelf.
+Slice work per choice is the matching "If … wins" paragraph below; the rest is kept for reference.
 ### Return presentation (Gate 2, P3)
 - **If chronicle cards win:** cards are the check-in's first beat. Slice work: slimmer cards that don't cover the tank
   (polish #1), clean dwell logging (#7), top card visible within 2 s of opening (practices §11).
@@ -68,7 +74,8 @@ session) for a week.
 history view; the Gate 3 nudge form; notables, pins, person cards; real save and offline catch-up; a first-run
 experience (name your box, first wipe, first nudge); sound pass; settings (sound, haptics, reset).
 **Out:** Town and later eras, monetization, notifications, widgets, cloud save, accounts, localization, the shelf
-museum (unless Gate 3 makes it the progression), the Test Hub and A/B machinery (the slice is one game, not variants).
+second box's own eras (the slice ends as the new box
+arrives and the first one becomes a museum), the Test Hub and A/B machinery (the slice is one game, not variants).
 
 ## 5. Architecture
 ### 5.1 From prototypes to a game project
