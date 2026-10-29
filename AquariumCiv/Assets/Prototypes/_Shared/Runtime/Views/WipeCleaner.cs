@@ -162,6 +162,8 @@ namespace AquariumCiv.Prototypes
             float dt = Mathf.Max(Time.unscaledTime - t0, 1f / 120f);
             var v = (screenPos - p0) / Screen.height / dt; // release velocity, screen heights / s
             float travel = Vector2.Distance(screenPos, grabStart) / Screen.height;
+            // P3+: a press-and-lift near a named person is a tap on them (OnTap opens their card): no toss, no hint, no count.
+            if (peopleFirst && travel < flickMinTravel && NotableView.Instance != null && NotableView.Instance.Pick(screenPos, pickRadius * Screen.height, out _)) return;
             EventLog.Instance?.Count("toss_attempts");
             if (v.magnitude >= flickSpeed && travel >= flickMinTravel)
             {

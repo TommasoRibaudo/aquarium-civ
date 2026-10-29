@@ -107,6 +107,7 @@ namespace AquariumCiv.Prototypes
                 ("stories", sim.State.chronicle.Count(e => e.month > monthBefore)));
             if (!started && skipLaunchReturn) return;
             if (hours < waveMinHours) return;
+            NotableCardPanel.Instance?.Close("return"); // the welcome comes first
             OnReturn(hours, years, monthBefore);
             StartCoroutine(Wave());
         }

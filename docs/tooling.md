@@ -217,3 +217,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     test on a person fails in a messy tank, check the nearest `TapToClean.Active` distance before blaming the harness.
   - A PlayMode `test run` can write pending in-memory ProjectSettings to disk (`EditorBuildSettings.asset` showed up
     modified right after one). Report it, don't revert it.
+- **2026-10-29 · Tester touch fixture: taps only land with `queueEventOnly: true`.** With the default (`false`),
+  `BeginTouch`/`EndTouch` update the Input System outside the player loop and `ETouch.activeTouches` never shows the
+  touch in `OrbitCamera.Update` (every tap silently does nothing: no `tap` log line, no toast). Pass
+  `queueEventOnly: true` to `BeginTouch`/`MoveTouch`/`EndTouch` and yield frames between them. Add the `Touchscreen`
+  *after* the scene has loaded. The fixture logs "Cached unprocessed value unexpectedly became outdated" errors from
+  `EnhancedTouchSupport.Enable` (fixture noise, not game code): set `LogAssert.ignoreFailingMessages = true` and
+  collect console errors yourself. Run one `[UnityTest]` per `test run`: in a two-test run the second fails at once
+  ("EnhancedTouch API is not enabled" from the first test's still-loaded `OrbitCamera`). [verified]
