@@ -11,7 +11,8 @@ across context compaction: resume from the first unchecked step.
 - No P3–P6 test data yet. Results come from `python Tools/results/collect.py` (writes `docs/design/results/data/Pn.md`
   from the feedback issues); I re-run it as data arrives.
 - Ready on `vs/prep` for after Gate 3, nothing decided: vertical-slice plan draft (options per gate outcome),
-  ranked polish backlog, save-versioning spike. Gate 1 care layer for the vertical slice (`CareConfig.Gate1`, `CareMoodView`); P2–P6 untouched.
+  ranked polish backlog, three engineering spikes (save versioning, UI automation, look sampler), each with a
+  recommendation in docs/design/spikes/. Gate 1 care layer for the vertical slice (`CareConfig.Gate1`, `CareMoodView`); P2–P6 untouched.
 
 ## Checklist
 - [x] read docs (§1), branch vs/prep created from overnight/p3-p6
@@ -22,7 +23,7 @@ across context compaction: resume from the first unchecked step.
 - [x] vs/prep: Gate 1 care layer (CareConfig) + tests (86fc90f)
 - [x] vs/prep: vertical-slice plan draft (docs/design/vertical-slice-plan.md, options only)
 - [x] vs/prep: polish backlog ranked (docs/design/polish-backlog.md)
-- [ ] vs/prep: engineering spikes (~~UI automation~~ done, look sampler, ~~save versioning~~ done cd40089)
+- [x] vs/prep: engineering spikes (UI automation ba55981, look sampler, save versioning cd40089; docs/design/spikes/)
 
 ## Log
 - 2026-10-29: started. TestFlight #7 blocked by the environment branch rule (fixed by the user). Issues so far: P1 #3–4,
@@ -39,6 +40,8 @@ across context compaction: resume from the first unchecked step.
 - 2026-10-29: UI automation spike: UI Toolkit card + `UiProbe`, first PlayMode test assembly `_Shared/PlayTests`,
   fixture touch taps buttons by name, 1/1 on first run (docs/design/spikes/ui-automation.md). Recommendation: UI
   Toolkit for the slice. Shared EditMode 42/42. Next: look sampler spike; collector re-runs (no 0.3.0 issues yet).
+- 2026-10-29: look-sampler spike (`LookSampler`, `EventLog.weightedLook` off by default), 47/47, checked live in P6
+  lab with local saves backed up and restored, P2 scene reopened. All §4 prep done; remaining work is §3 (data).
 
 ## Bugs from testers
 | Date | Issue | Prototype | What | Blocking? | Status |
