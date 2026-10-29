@@ -58,7 +58,7 @@ namespace AquariumCiv.Prototypes.P4
         {
             int to = Mathf.Clamp(page + dir, 0, pages.Count - 1);
             if (to == page) return;
-            EventLog.Instance?.Log("history", ("action", "page"), ("from", pages[page].kind), ("to", pages[to].kind), ("dwell_s", Time.unscaledTime - pageAt), ("how", how));
+            EventLog.Instance?.Log("history", ("action", "page"), ("from", pages[page].kind), ("to", pages[to].kind), ("from_page", page + 1), ("to_page", to + 1), ("dwell_s", Time.unscaledTime - pageAt), ("how", how));
             page = to;
             pageAt = Time.unscaledTime;
             pageTurns++;
@@ -176,8 +176,9 @@ namespace AquariumCiv.Prototypes.P4
                 float ps = Mathf.Min(110, cell.height - 70);
                 PortraitStudio.Draw(new Rect(cell.center.x - ps / 2, cell.y, ps, ps), n, !n.alive);
                 GUI.Label(new Rect(cell.x, cell.y + ps + 4, cell.width, 28), n.FullName, new GUIStyle(body) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold });
-                string life = n.alive ? $"born year {n.bornMonth / SimConfig.MonthsPerYear}, living" : $"years {n.bornMonth / SimConfig.MonthsPerYear}–{n.diedMonth / SimConfig.MonthsPerYear}";
-                GUI.Label(new Rect(cell.x, cell.y + ps + 30, cell.width, 26), $"{n.trait}, {life}", new GUIStyle(meta) { alignment = TextAnchor.MiddleCenter });
+                var centered = new GUIStyle(meta) { alignment = TextAnchor.MiddleCenter };
+                GUI.Label(new Rect(cell.x, cell.y + ps + 30, cell.width, 24), n.trait, centered);
+                GUI.Label(new Rect(cell.x, cell.y + ps + 54, cell.width, 24), Life(n), centered);
             }
         }
 
@@ -208,7 +209,7 @@ namespace AquariumCiv.Prototypes.P4
             }
             PortraitStudio.Draw(new Rect(x, y, 56, 56), n, !n.alive);
             var partner = n.partnerId >= 0 ? Sim.FindNotable(n.partnerId) : null;
-            string life = n.alive ? "living" : $"d. year {n.diedMonth / SimConfig.MonthsPerYear}";
+            string life = Life(n);
             GUI.Label(new Rect(x + 66, y + 2, r.xMax - x - 66, 28), $"<b>{n.FullName}</b>{(partner != null ? $"  &  {partner.name}" : "")}", body);
             GUI.Label(new Rect(x + 66, y + 30, r.xMax - x - 66, 24), $"{n.trait}, {life}", meta);
             y += 64;
@@ -216,6 +217,21 @@ namespace AquariumCiv.Prototypes.P4
                 y = Branch(r, kid, Mathf.Min(depth + 1, 4), y);
             return y;
         }
+
+        /// <summary>One way of saying a life everywhere in the book, in the same ages the chronicle uses
+        /// (notables age at half speed, so "died at 62" and the age here always agree).</summary>
+        string Life(Notable n)
+        {
+            int age = Mathf.FloorToInt(n.age);
+            string came = n.parentId < 0 ? $"came in year {n.bornMonth / SimConfig.MonthsPerYear}" : $"born year {n.bornMonth / SimConfig.MonthsPerYear}";
+            return n.alive ? $"{came}, now {age}" : $"died year {n.diedMonth / SimConfig.MonthsPerYear}, aged {age}";
+        }
+
+        string flash;
+        float flashUntil;
+
+        /// <summary>A short message drawn on the page itself (banners sit under the book).</summary>
+        public void Flash(string text, float seconds = 2.5f) { flash = text; flashUntil = Time.unscaledTime + seconds; }
 
         // ---------- frame ----------
 
@@ -244,6 +260,11 @@ namespace AquariumCiv.Prototypes.P4
             GUI.Box(outer, GUIContent.none, paper);
             var inner = new Rect(outer.x + 30, outer.y + 26, outer.width - 60, outer.height - 26 - 112);
             if (pages.Count > 0) pages[page].draw(inner);
+            if (flash != null && Time.unscaledTime < flashUntil)
+            {
+                var fr = new Rect(outer.x + 40, outer.yMax - 104 - 70, outer.width - 80, 56);
+                GUI.Box(fr, flash, new GUIStyle(ProtoGui.Box) { alignment = TextAnchor.MiddleCenter });
+            }
 
             var row = new Rect(outer.x + 18, outer.yMax - 104, outer.width - 36, 88);
             GUILayout.BeginArea(row);

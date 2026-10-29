@@ -232,3 +232,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     The Editor in the background needs ~20 s before the first scene's `Start` (frame count stays 1 until then).
   - `BeginTouch/MoveTouch/EndTouch` are `InputTestFixture` methods, not `Touchscreen` methods (`ts.BeginTouch` = CS1061).
   - Compile errors from a deleted `_AgentPlaytest` file stay in `console get` until `console clear`.
+- **2026-10-29 · Tester P4 run notes.** [verified]
+  - A touch-fixture test can open any lab scene the way the hub does: `EditorSceneManager.LoadSceneAsyncInPlayMode` the
+    Hub scene (with `hub_autoopen`=0), wait ~30 frames, `LabLaunch.Open(id, variant, TestMode.Lab)`, then poll the
+    protected `PrototypeBase.started` (ready in under 1 s). Add the `Touchscreen` after that.
+  - Input-System-driven panels that map `Pointer.position` to IMGUI canvas (P4 timeline, book swipe) take fixture
+    touches fine: convert canvas → screen with `(x * ProtoGui.Scale, Screen.height - y * ProtoGui.Scale)` and read
+    the panel's private rect (e.g. `TimelapseView.barCanvas`) after one OnGUI frame. Keep touch start points on screen:
+    a start at negative x misses `GuiBlocker` and turns the camera.

@@ -37,6 +37,8 @@ namespace AquariumCiv.Prototypes
         public event Action ThreeFingerTap;
 
         public Camera Cam { get; private set; }
+        /// <summary>The pivot the camera returns to on ResetView.</summary>
+        public Vector3 BasePivot => basePivot;
         public float ZoomT => Mathf.InverseLerp(minZoom * baseDistance, baseDistance, distance);
 
         float yaw, pitch, distance, baseDistance, designDistance, fittedAspect;

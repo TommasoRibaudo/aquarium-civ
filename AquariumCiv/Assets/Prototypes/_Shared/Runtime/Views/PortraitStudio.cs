@@ -96,10 +96,10 @@ namespace AquariumCiv.Prototypes
             if (disc == null) disc = MakeDisc(128);
             var c = GUI.color;
             var tint = FamilyColor(n?.family);
-            if (dimmed) tint = Color.Lerp(tint, new Color(0.5f, 0.5f, 0.5f), 0.6f);
+            if (dimmed) tint = Color.Lerp(tint, new Color(0.55f, 0.53f, 0.5f), 0.8f);
             GUI.color = tint;
             GUI.DrawTexture(r, disc);
-            GUI.color = dimmed ? new Color(0.75f, 0.75f, 0.75f, 0.9f) : Color.white;
+            GUI.color = dimmed ? new Color(0.5f, 0.48f, 0.45f, 0.75f) : Color.white; // the dead read as faded at a glance
             var tex = Instance != null && n != null ? Instance.Get(n) : null;
             if (tex != null) GUI.DrawTexture(r, tex, ScaleMode.ScaleToFit, true);
             GUI.color = c;

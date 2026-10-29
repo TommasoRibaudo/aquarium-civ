@@ -70,7 +70,7 @@ namespace AquariumCiv.Prototypes.P4
             EventLog.Instance?.Count("history_opens");
         }
 
-        /// <summary>Snapshot: hide our UI for a frame, save the screen in the app's folder, say where it went.</summary>
+        /// <summary>Snapshot: save what's on screen (the view included) in the app's folder, and say so.</summary>
         void Shot(string view)
         {
             if (!capturing) StartCoroutine(Capture(view));
@@ -87,6 +87,7 @@ namespace AquariumCiv.Prototypes.P4
             yield return null;
             Juice.Chime();
             HudToast.ShowBanner("Snapshot saved. (Sharing to Photos comes in a later build.)", 3f);
+            if (book.IsOpen) book.Flash("Snapshot saved.");
             EventLog.Instance?.Log("history", ("action", "snapshot"), ("view", view));
             EventLog.Instance?.Count("snapshots");
             capturing = false;
