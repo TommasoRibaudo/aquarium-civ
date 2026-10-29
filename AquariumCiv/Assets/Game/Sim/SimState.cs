@@ -23,6 +23,7 @@ namespace AquariumCiv.Sim
         public float masterAge = 50f;           // old enough to take an apprentice (user, 2026-10-29: "apprentices 50")
         public float elderAge = 45f;            // elders
         public float eldestStoryAge = 60f;      // the eldest tells the founding story in winter from this age
+        public float retireAge = 65f;           // a notable leaves their everyday job and becomes an elder (user, 2026-10-29: "retirement at 65 fine")
         public float messFullHours = 48f;       // mess reaches its cap after this many real hours
         public int trashMax = 12;
         public float trashPerPersonHour = 0.02f;
@@ -173,6 +174,7 @@ namespace AquariumCiv.Sim
         public int friendId = -1;
         public int rivalId = -1;
         public int mentorId = -1;
+        public string job = "";  // everyday job (JobType; SimCore.Jobs.cs): "" as a child, "elder" when retired
 
         public string FullName => $"{name} {family}";
     }
