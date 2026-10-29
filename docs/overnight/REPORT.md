@@ -1,6 +1,6 @@
 # Overnight report: P3–P6, Test Hub, Gate 2/3 session
 
-**Test session guide (artifact):** _link added when published_ · source: [test-session-gate2-3.md](../design/test-session-gate2-3.md)
+**Test session guide (artifact):** https://claude.ai/artifact/1YB4s8BGquSAKtQayG1CPU (private to you) · source: [test-session-gate2-3.md](../design/test-session-gate2-3.md)
 
 Branch `overnight/p3-p6` (from `p2-return-to-mess`), pushed as a backup. Nothing merged, no TestFlight run, P2 untouched
 (its sim fingerprint test passes; P2 scene and save format unchanged).

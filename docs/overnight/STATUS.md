@@ -9,7 +9,7 @@ Prompt: `docs/prompts/overnight-P3-P6.md`. Started 2026-10-28.
 - [x] P5 ... → tag proto/P5-v1, added to hub
 - [ ] P6 ... → tag proto/P6-v1, added to hub
 - [ ] P2 regression: rebuild, play 30 s, tests green
-- [ ] test-session-gate2-3.md + artifact
+- [x] test-session-gate2-3.md + artifact
 - [ ] REPORT.md
 
 ## Log
@@ -23,3 +23,4 @@ Prompt: `docs/prompts/overnight-P3-P6.md`. Started 2026-10-28.
 - P5 built (71a0df1): nudge sim + tests (31/31, P2 fingerprint intact), omens/land props, credited answers. Tester run 1 running.
 - NOTE: another session (likely gamedev-05) has uncommitted sound work in this same tree (Juice/MessView/WipeCleaner/RubSynth/SoundPreview). Not mine; left untouched and unstaged. Briefly committed by accident, undone before push.
 - P5 tester run 1 fail (7 real), fixed, verified in play. Tagged proto/P5-v1. Next: P6.
+- Guide published: https://claude.ai/artifact/1YB4s8BGquSAKtQayG1CPU. P6 built (acbb152), tester run 1 running.
