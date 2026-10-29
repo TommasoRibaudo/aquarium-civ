@@ -29,6 +29,8 @@ namespace AquariumCiv.Prototypes
 
         /// <summary>A prop was tapped while taps don't clean it (so the gesture can hint at the right one).</summary>
         public event Action<TapToClean> PropTapRefused;
+        /// <summary>Any cleaning happened (glass, prop, debug).</summary>
+        public event Action Cleaned;
 
         float messySince = -1; // when the tank last became messy (≥ 0.15), for "time to full clean"; -1 = clean since
 
@@ -148,9 +150,14 @@ namespace AquariumCiv.Prototypes
         /// <summary>Call after any cleaning: a tank that goes from messy to spotless gets a cheer and a logged time.</summary>
         public void AfterClean(float messBefore)
         {
+            Cleaned?.Invoke();
             float now = SimClock.Instance.Sim.MessLevel;
-            if (now >= 0.05f || messySince < 0) return; // not spotless yet, or nothing to celebrate since the last full clean
-            if (crowd != null) crowd.CheerAll();
+            if (now >= 0.05f || !GlassClear() || messySince < 0) return; // not spotless yet, or nothing to celebrate since the last full clean
+            if (crowd != null)
+            {
+                crowd.CheerAll();
+                foreach (var a in crowd.Agents) Juice.Confetti(a.transform.position + Vector3.up * crowd.characterScale * 2f, 12);
+            }
             Juice.Chime();
             if (messySince >= 0)
             {
@@ -160,6 +167,15 @@ namespace AquariumCiv.Prototypes
                 EventLog.Instance?.Count("full_clean_s", secs);
             }
             messySince = -1;
+        }
+
+        /// <summary>Spotless means every pane, not just the average (a smudged back pane shouldn't get a cheer).</summary>
+        static bool GlassClear()
+        {
+            var glass = GlassGrime.Instance;
+            if (glass == null) return SimClock.Instance.Sim.State.grime < 0.05f;
+            foreach (var p in glass.Panes) if (p.Mean > 0.06f) return false;
+            return true;
         }
 
         /// <summary>Debug / lab start: the same messy tank every time (fresh even grime, vines, trash).</summary>
@@ -211,6 +227,9 @@ namespace AquariumCiv.Prototypes
     /// <summary>A piece of mess: pops with a little hop when tapped, or flies off when flicked by a swipe.</summary>
     public class TapToClean : MonoBehaviour, ITappable
     {
+        /// <summary>Uncleaned pieces in the scene, for screen-space picking.</summary>
+        public static readonly List<TapToClean> Active = new();
+
         MessView owner;
         string kind;
         int id;
@@ -220,6 +239,19 @@ namespace AquariumCiv.Prototypes
         public bool Done => done;
 
         public void Init(MessView view, string k, int i) { owner = view; kind = k; id = i; }
+
+        void OnEnable() => Active.Add(this);
+        void OnDisable() => Active.Remove(this);
+
+        /// <summary>Center of the visible piece (world).</summary>
+        public Vector3 Center
+        {
+            get
+            {
+                var r = GetComponentInChildren<Renderer>();
+                return r != null ? r.bounds.center : transform.position;
+            }
+        }
 
         public void OnTap(RaycastHit hit)
         {

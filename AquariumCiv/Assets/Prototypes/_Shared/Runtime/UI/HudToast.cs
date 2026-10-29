@@ -48,11 +48,13 @@ namespace AquariumCiv.Prototypes
             {
                 var p = ProtoGui.WorldToCanvas(t.world);
                 var size = GUI.skin.box.CalcSize(new GUIContent(t.text));
-                GUI.Box(new Rect(p.x - size.x / 2 - 6, p.y - size.y - 6, size.x + 12, size.y + 4), t.text);
+                float x = Mathf.Clamp(p.x - size.x / 2 - 6, 8, ProtoGui.Width - size.x - 20); // never clipped at the edges
+                GUI.Box(new Rect(x, p.y - size.y - 6, size.x + 12, size.y + 4), t.text);
             }
             if (banner != null && Time.unscaledTime < bannerUntil)
             {
-                var r = new Rect(30, 90, ProtoGui.Width - 60, 90);
+                float safeTop = (Screen.height - Screen.safeArea.yMax) / ProtoGui.Scale; // notch / status bar
+                var r = new Rect(30, Mathf.Max(90, safeTop + 24), ProtoGui.Width - 60, 90);
                 GUI.Box(r, banner, ProtoGui.Box);
             }
         }

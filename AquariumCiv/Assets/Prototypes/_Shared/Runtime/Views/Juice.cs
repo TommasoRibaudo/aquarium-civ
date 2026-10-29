@@ -116,6 +116,23 @@ namespace AquariumCiv.Prototypes
             }
         }
 
+        /// <summary>Coloured confetti bursting upward (citizens celebrating a spotless tank).</summary>
+        public static void Confetti(Vector3 at, int count)
+        {
+            if (instance == null) return;
+            float s = WorldPerScreen(at);
+            var p = new ParticleSystem.EmitParams();
+            for (int i = 0; i < count; i++)
+            {
+                p.position = at;
+                p.velocity = (Random.insideUnitSphere * 0.06f + Vector3.up * 0.12f) * s;
+                p.startSize = Random.Range(0.016f, 0.026f) * s;
+                p.startLifetime = Random.Range(1.2f, 1.8f);
+                p.startColor = Color.HSVToRGB(Random.value, 0.65f, 1f);
+                instance.glints.Emit(p, 1);
+            }
+        }
+
         /// <summary>A ring of glints, for a tap that pops a patch clean.</summary>
         public static void GlintRing(Vector3 at, Vector3 normal, float radius, int count)
         {

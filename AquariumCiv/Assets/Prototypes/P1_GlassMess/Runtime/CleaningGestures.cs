@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AquariumCiv.Prototypes.P1
@@ -22,7 +23,12 @@ namespace AquariumCiv.Prototypes.P1
         [Header("B: tap")]
         [Tooltip("Patch radius as a share of screen height.")] public float tapRadius = 0.1f;
         public float tapStrength = 0.97f;
-        [Tooltip("Below this local grime a tap on the glass goes through to the world (focus, citizens).")] public float tapMinGrime = 0.06f;
+        [Tooltip("Below this local grime a tap on the glass goes through to the world (focus, citizens).")] public float tapMinGrime = 0.02f;
+
+        [Header("Mess picking and hints")]
+        [Tooltip("Junk within this screen-height share of the finger counts as touched (about 44 pt).")] public float pickRadius = 0.035f;
+        [Tooltip("Show the gesture hint again after this many seconds without any cleaning (while the tank is messy).")] public float hintIdleSeconds = 25f;
+        public int maxHintRepeats = 3;
 
         [Header("Lab")]
         [Tooltip("Lab tests start each variant from the same messy tank.")] public bool messyOnVariantStart = true;
@@ -32,7 +38,9 @@ namespace AquariumCiv.Prototypes.P1
         GlassGrime.Pane lastPane;
         Vector2 lastUv, lastScreen;
         bool hasLast;
-        float strokeRemoved, strokeMessBefore, strokeGrimeBefore, strokeStart, glintBudget;
+        float strokeRemoved, strokeMessBefore, strokeStart, glintBudget, lastCleanTime;
+        int hintRepeats;
+        readonly Dictionary<GlassGrime.Pane, float> strokePanes = new(); // pane -> its grime when the stroke first touched it
 
         Camera Cam => OrbitCamera.Instance.Cam;
 
@@ -53,6 +61,7 @@ namespace AquariumCiv.Prototypes.P1
             PrototypeConfig.Current.VariantChanged += _ => StartVariant();
             mess.PropTapRefused += piece => HudToast.Show("Swipe across it to flick it out", piece.transform.position + Vector3.up * 0.3f);
             glass.PaneCleared += (pane, center) => { Juice.Chime(); Juice.Glints(center, 30, 0.5f); };
+            mess.Cleaned += () => lastCleanTime = Time.unscaledTime;
             yield return null; // after SimClock's welcome-back banner, so the gesture hint wins
             StartVariant();
         }
@@ -61,9 +70,26 @@ namespace AquariumCiv.Prototypes.P1
         {
             mess.tapCleansProps = !WipeMode;
             if (PrototypeConfig.Current.testMode == TestMode.Lab && messyOnVariantStart) mess.MakeMessy();
+            hintRepeats = 0;
+            ShowHint();
+        }
+
+        void ShowHint()
+        {
+            lastCleanTime = Time.unscaledTime;
             HudToast.ShowBanner(WipeMode
                 ? "Drag across the glass to wipe it clean. Swipe across junk and weeds to flick them out. Two fingers turn the tank."
                 : "Tap a smudge to pop it clean. Tap junk and weeds to clear them. Drag to turn the tank.", 8f);
+        }
+
+        void Update()
+        {
+            // A tester who missed the hint and isn't cleaning a messy tank gets it again (a few times at most).
+            if (hintRepeats < maxHintRepeats && Time.unscaledTime - lastCleanTime > hintIdleSeconds && SimClock.Instance.Sim.MessLevel > 0.15f)
+            {
+                hintRepeats++;
+                ShowHint();
+            }
         }
 
         // ---------- A: wipe ----------
@@ -80,7 +106,7 @@ namespace AquariumCiv.Prototypes.P1
             lastScreen = screenPos;
             strokeRemoved = 0;
             strokeMessBefore = SimClock.Instance.Sim.MessLevel;
-            strokeGrimeBefore = SimClock.Instance.Sim.State.grime;
+            strokePanes.Clear();
             strokeStart = Time.unscaledTime;
             return true;
         }
@@ -93,6 +119,7 @@ namespace AquariumCiv.Prototypes.P1
 
             if (!glass.Raycast(Cam.ScreenPointToRay(screenPos), out var pane, out var uv, out var point)) { hasLast = false; return; }
             float radius = wipeRadius * Juice.WorldPerScreen(point);
+            if (!strokePanes.ContainsKey(pane)) strokePanes[pane] = pane.Mean;
             float grimeUnder = glass.GrimeAt(pane, uv, radius);
             float removed = hasLast && pane == lastPane
                 ? glass.BrushLine(pane, lastUv, uv, radius, wipeStrength)
@@ -111,7 +138,9 @@ namespace AquariumCiv.Prototypes.P1
         {
             hasLast = false;
             if (strokeRemoved <= 0.0005f) return;
-            EventLog.Instance?.Clean("glass", strokeRemoved, "wipe", strokeGrimeBefore); // voluntary = glass already nearly clean
+            float paneGrime = 0;
+            foreach (var g in strokePanes.Values) paneGrime = Mathf.Max(paneGrime, g);
+            EventLog.Instance?.Clean("glass", strokeRemoved, "wipe", paneGrime); // voluntary = the wiped pane was already nearly clean
             EventLog.Instance?.Count("wipe_strokes");
             EventLog.Instance?.Count("wipe_s", Time.unscaledTime - strokeStart);
             mess.AfterClean(strokeMessBefore);
@@ -125,23 +154,33 @@ namespace AquariumCiv.Prototypes.P1
             for (int i = 1; i <= samples; i++)
             {
                 var p = Vector2.Lerp(from, to, i / (float)samples);
-                if (!MessUnder(p, out var piece, out var hit)) continue;
+                if (!PickMess(p, out var piece)) continue;
                 var dir = (Cam.transform.right * delta.x + Cam.transform.up * delta.y).normalized;
-                float s = Juice.WorldPerScreen(hit.point);
+                float s = Juice.WorldPerScreen(piece.Center);
                 piece.Flick((dir * 0.5f + Vector3.up * 0.35f) * s);
             }
         }
 
-        /// <summary>The nearest uncleaned trash/weed along the ray, even behind a building (so nothing is unreachable).</summary>
-        bool MessUnder(Vector2 screenPos, out TapToClean piece, out RaycastHit hit)
+        /// <summary>
+        /// The uncleaned trash/weed nearest the finger on screen, within a touch-sized radius, even behind a building.
+        /// A piece the ray hits directly (big weeds) always counts. Nearest wins, so neighbours don't steal taps.
+        /// </summary>
+        bool PickMess(Vector2 screenPos, out TapToClean piece)
         {
-            piece = null; hit = default;
-            float best = float.MaxValue;
-            foreach (var h in Physics.RaycastAll(Cam.ScreenPointToRay(screenPos), 500f))
+            piece = null;
+            float radius = pickRadius * Screen.height, best = float.MaxValue;
+            if (Physics.Raycast(Cam.ScreenPointToRay(screenPos), out var hit, 500f))
             {
-                var t = h.collider.GetComponentInParent<TapToClean>();
-                if (t == null || t.Done || h.distance >= best) continue;
-                best = h.distance; piece = t; hit = h;
+                var direct = hit.collider.GetComponentInParent<TapToClean>();
+                if (direct != null && !direct.Done) { piece = direct; return true; }
+            }
+            foreach (var t in TapToClean.Active)
+            {
+                if (t.Done) continue;
+                var sp = Cam.WorldToScreenPoint(t.Center);
+                if (sp.z <= 0) continue;
+                float d = Vector2.Distance(screenPos, sp);
+                if (d < radius && d < best) { best = d; piece = t; }
             }
             return piece != null;
         }
@@ -150,14 +189,13 @@ namespace AquariumCiv.Prototypes.P1
 
         bool OnTap(Vector2 screenPos, Collider worldHit)
         {
-            if (WipeMode) return false;
-            if (worldHit != null && worldHit.GetComponentInParent<TapToClean>() != null) return false; // props pop themselves
-            if (MessUnder(screenPos, out var piece, out var pieceHit)) // mess hidden behind a building still pops
+            if (PickMess(screenPos, out var piece)) // A: wiggle + hint; B: pop (also behind a building)
             {
                 EventLog.Instance?.Tap(piece.Kind);
-                piece.OnTap(pieceHit);
+                piece.OnTap(default);
                 return true;
             }
+            if (WipeMode) return false;
             if (!glass.Raycast(Cam.ScreenPointToRay(screenPos), out var pane, out var uv, out var point)) return false;
             float radius = tapRadius * Juice.WorldPerScreen(point);
             if (glass.GrimeAt(pane, uv, radius) < tapMinGrime) return false;
@@ -170,7 +208,7 @@ namespace AquariumCiv.Prototypes.P1
         IEnumerator PopPatch(GlassGrime.Pane pane, Vector2 uv, Vector3 point, float radius)
         {
             var sim = SimClock.Instance.Sim;
-            float before = sim.MessLevel, grimeBefore = sim.State.grime, removed = 0;
+            float before = sim.MessLevel, paneGrime = pane.Mean, removed = 0;
             Juice.Pop(1.25f);
             Juice.GlintRing(point, (Cam.transform.position - point).normalized, radius, 14);
             foreach (float k in new[] { 0.45f, 0.75f, 1f })
@@ -178,7 +216,7 @@ namespace AquariumCiv.Prototypes.P1
                 removed += glass.Brush(pane, uv, radius * k, tapStrength);
                 yield return null;
             }
-            EventLog.Instance?.Clean("glass", removed, "tap", grimeBefore);
+            EventLog.Instance?.Clean("glass", removed, "tap", paneGrime);
             EventLog.Instance?.Count("glass_taps");
             mess.AfterClean(before);
         }

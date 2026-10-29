@@ -42,8 +42,13 @@ namespace AquariumCiv.Prototypes
         /// <summary>Lab protocol: move this tester to their next variant.</summary>
         public void NextVariant()
         {
+            int n = Math.Max(1, variants.Length);
+            int next = (VariantIndex + 1) % n; // from what's shown, even if a debug override forced it
             PlayerPrefs.DeleteKey(OverrideKey);
-            PlayerPrefs.SetInt(IndexKey, PlayerPrefs.GetInt(IndexKey, 0) + 1);
+            int order = Tester.Id[0] % 2;
+            int step = PlayerPrefs.GetInt(IndexKey, 0) + 1;
+            while ((step + order) % n != next) step++;
+            PlayerPrefs.SetInt(IndexKey, step);
             PlayerPrefs.Save();
             VariantChanged?.Invoke(Variant);
         }

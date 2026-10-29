@@ -24,6 +24,8 @@ namespace AquariumCiv.Prototypes
         public float minZoom = 0.35f;
         public float rotateDegreesPerPixel = 0.25f;
         public Vector2 pitchLimits = new(15f, 75f);
+        [Tooltip("Aspect (w/h) the scene's camera distance was framed for; narrower screens pull back to keep the tank's width.")]
+        public float designAspect = 9f / 16f;
         public bool inputEnabled = true;
 
         /// <summary>A tool (e.g. glass wiping) that can claim one-finger drags; the camera then doesn't rotate.</summary>
@@ -35,7 +37,7 @@ namespace AquariumCiv.Prototypes
         public Camera Cam { get; private set; }
         public float ZoomT => Mathf.InverseLerp(minZoom * baseDistance, baseDistance, distance);
 
-        float yaw, pitch, distance, baseDistance;
+        float yaw, pitch, distance, baseDistance, designDistance, fittedAspect;
         Vector3 basePivot, focusPivot;
         Vector2 pressPos;
         float pressTime, pressTravel, lastEmptyTap;
@@ -48,7 +50,8 @@ namespace AquariumCiv.Prototypes
             Cam = GetComponent<Camera>();
             basePivot = focusPivot = pivot;
             var offset = transform.position - pivot;
-            baseDistance = distance = offset.magnitude;
+            designDistance = baseDistance = distance = offset.magnitude;
+            FitAspect();
             var e = Quaternion.LookRotation(-offset).eulerAngles;
             pitch = e.x; yaw = e.y;
             var volume = FindAnyObjectByType<Volume>();
@@ -67,6 +70,7 @@ namespace AquariumCiv.Prototypes
                 var kb = Keyboard.current;
                 if (kb != null && (kb.f1Key.wasPressedThisFrame || kb.backquoteKey.wasPressedThisFrame)) ThreeFingerTap?.Invoke();
             }
+            if (!Mathf.Approximately(Cam.aspect, fittedAspect)) FitAspect();
             pivot = Vector3.Lerp(pivot, focusPivot, 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime));
             var rot = Quaternion.Euler(pitch, yaw, 0);
             transform.SetPositionAndRotation(pivot - rot * Vector3.forward * distance, rot);
@@ -155,6 +159,14 @@ namespace AquariumCiv.Prototypes
         {
             if (toolDragging) { toolDragging = false; DragTool.EndDrag(pressPos); }
             pressing = false;
+        }
+
+        void FitAspect()
+        {
+            fittedAspect = Cam.aspect;
+            float old = baseDistance;
+            baseDistance = designDistance * Mathf.Max(1f, designAspect / Mathf.Max(fittedAspect, 0.01f));
+            distance *= baseDistance / old;
         }
 
         void Zoom(float factor) => distance = Mathf.Clamp(distance * factor, minZoom * baseDistance, baseDistance);

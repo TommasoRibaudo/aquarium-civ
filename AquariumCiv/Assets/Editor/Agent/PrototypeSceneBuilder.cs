@@ -151,7 +151,7 @@ namespace AquariumCiv.EditorTools
             mess.diorama = village;
             mess.crowd = crowd;
             mess.trashPrefabs = new[] { "sack", "crate_open", "bucket_empty", "barrel", "pallet", "crate_B_small" }.Select(n => Load(P(n))).ToArray();
-            mess.trashScale = 1.1f;
+            mess.trashScale = 1.5f;
             mess.vinePrefabs = new[] { "waterplant_A", "waterplant_B", "waterplant_C", "tree_single_A" }.Select(n => Load(N(n))).ToArray();
             mess.vineScale = 1.0f;
             mess.puffMaterial = GetOrCreateMaterial("Puff", m =>
