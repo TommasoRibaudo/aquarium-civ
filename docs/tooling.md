@@ -206,3 +206,14 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `docker run --rm -v "F:/GameDev:/repo" -w /repo -e GH_TOKEN=$(gh auth token) ghcr.io/zizmorcore/zizmor:latest .`.
   Without the env var, `-w /repo` becomes `C:/Program Files/Git/repo`. actionlint caught `${{ runner.temp }}` in a
   job-level `env:` (not allowed there; set it from a step via `$GITHUB_ENV`). [verified]
+- **2026-10-29 · Tester P3 run notes.** [verified]
+  - Several Game view sizes in **one** PlayMode test: call the `GameViewSizes` reflection (as in `AgentGameView.SetSize`)
+    from the test under `#if UNITY_EDITOR`, then wait until `Screen.width/height` match (a few frames). IMGUI and
+    `ProtoGui.Scale` follow. One run can then screenshot 1080x1920, 1080x2400 and 1640x2360 of the same state.
+  - Wipe strokes: take the front pane (`GlassGrime.Panes` with the lowest projected `bounds.center.y`) and stroke about
+    ±90 px around its centre. ±140 px runs off the pane, and a stroke that *starts* above the tank rim is a camera turn
+    by design (it looked like "wipe rotates the camera" in the first run).
+  - A tap within `WipeCleaner.pickRadius` of any junk goes to the junk (`TapClaim`) before the world tap. When a tap
+    test on a person fails in a messy tank, check the nearest `TapToClean.Active` distance before blaming the harness.
+  - A PlayMode `test run` can write pending in-memory ProjectSettings to disk (`EditorBuildSettings.asset` showed up
+    modified right after one). Report it, don't revert it.

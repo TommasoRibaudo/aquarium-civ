@@ -178,6 +178,8 @@ namespace AquariumCiv.Prototypes.Sim
             {
                 s.mood = Math.Min(1f, s.mood + 0.15f);
                 var host = AliveNotable();
+                // P3+: a festival makes the chronicle at most every 6 years (they still happen and lift the mood).
+                if (Config.storyEvents && !Fresh("festival", -1, 6)) return;
                 Chronicle("festival", host != null
                     ? $"{host.FullName} threw a harvest festival. There was dancing until dawn."
                     : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
@@ -236,6 +238,14 @@ namespace AquariumCiv.Prototypes.Sim
                 id = s.NextId(), name = rng.Pick(NameData.Given), family = family ?? rng.Pick(NameData.Families),
                 trait = rng.Pick(NameData.Traits), age = age, lifespan = rng.Range(55f, 80f), parentId = parentId, bornMonth = s.month
             };
+            // P3+: no two living people share a full name ("Ada Thorn was born to Ada Thorn" muddles recall).
+            // Extra draws come from the story stream, so P2 (story off) is untouched.
+            if (Config.storyEvents)
+            {
+                s.storyRng ??= new SimRandom(s.seed ^ 0x51ED270B);
+                for (int tries = 0; tries < 20 && s.notables.Any(o => o.alive && o.FullName == n.FullName); tries++)
+                    n.name = s.storyRng.Pick(NameData.Given);
+            }
             s.notables.Add(n);
             return n;
         }

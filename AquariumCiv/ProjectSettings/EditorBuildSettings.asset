@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Prototypes/P3_WhileYouWereAway/P3_WhileYouWereAway.unity
+    guid: 1438c6aee924ea047a19d55657dfe9d8
+  - enabled: 1
     path: Assets/Prototypes/P2_ReturnToMess/P2_ReturnToMess.unity
     guid: e0325adf73767254bb038b47c38ef7b2
   - enabled: 1

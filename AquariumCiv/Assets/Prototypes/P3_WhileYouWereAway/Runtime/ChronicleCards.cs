@@ -14,7 +14,7 @@ namespace AquariumCiv.Prototypes.P3
     {
         public int minCards = 3, maxCards = 7;
         [Tooltip("Cards beyond the minimum need at least this salience.")] public float keepAbove = 0.5f;
-        public float pinnedBoost = 0.25f;
+        public float pinnedBoost = 0.15f; // enough to lead among equals, not to beat a new building with a festival
         public float panelHeight = 470f;
 
         public bool IsOpen => cards.Count > 0;
@@ -42,7 +42,7 @@ namespace AquariumCiv.Prototypes.P3
         public static List<ChronicleEntry> Rank(SimState s, long sinceMonth, int min, int max, float keepAbove, float pinnedBoost)
         {
             float Score(ChronicleEntry e) => e.salience + (s.pinnedNotableId >= 0 && (e.notableId == s.pinnedNotableId || e.otherNotableId == s.pinnedNotableId) ? pinnedBoost : 0f);
-            var ranked = s.chronicle.Where(e => e.month > sinceMonth && e.kind != "grumble")
+            var ranked = s.chronicle.Where(e => e.month > sinceMonth && e.kind != "grumble" && e.kind != "coming_of_age")
                 .OrderByDescending(Score).ThenByDescending(e => e.month).ToList();
             return ranked.Where((e, i) => i < min || (i < max && Score(e) >= keepAbove)).ToList();
         }

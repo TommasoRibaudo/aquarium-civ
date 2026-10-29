@@ -91,11 +91,12 @@ namespace AquariumCiv.Prototypes
             var target = t.localScale;
             for (float k = 0; k < 1f; k += Time.deltaTime * 2.5f)
             {
+                if (t == null) yield break; // replaced mid pop-in (fresh world, variant switch)
                 float e = 1f + 2.2f * Mathf.Pow(k - 1f, 3) + 1.2f * Mathf.Pow(k - 1f, 2); // ease-out-back
                 t.localScale = target * Mathf.Max(0.01f, e);
                 yield return null;
             }
-            t.localScale = target;
+            if (t != null) t.localScale = target;
         }
     }
 }

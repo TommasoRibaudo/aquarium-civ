@@ -109,6 +109,7 @@ namespace AquariumCiv.EditorTools
             var wipe = b.systems.AddComponent<WipeCleaner>();
             wipe.glass = b.glass;
             wipe.mess = b.mess;
+            wipe.peopleFirst = true; // a tap near a named person meets them, junk or not (P3 tester run 1)
             b.mess.tapCleansProps = false;
             b.mess.trashScale = 2.4f; // as P2 (readable on a phone)
             b.mess.vineScale = 1.8f;

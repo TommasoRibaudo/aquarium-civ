@@ -32,6 +32,24 @@ namespace AquariumCiv.Prototypes
         public Wanderer Find(int notableId) => agents.TryGetValue(notableId, out var w) ? w : null;
         public IEnumerable<Wanderer> All => agents.Values;
 
+        /// <summary>The named person nearest the finger on screen, within a touch-sized radius (they're only ~7 pt tall).</summary>
+        public bool Pick(Vector2 screenPos, float radiusPx, out Wanderer who)
+        {
+            who = null;
+            var cam = Camera.main;
+            if (cam == null) return false;
+            float best = radiusPx;
+            foreach (var w in agents.Values)
+            {
+                if (w == null) continue;
+                var sp = cam.WorldToScreenPoint(w.transform.position + Vector3.up * crowd.characterScale * scale * 1.2f);
+                if (sp.z <= 0) continue;
+                float d = Vector2.Distance(screenPos, sp);
+                if (d < best) { best = d; who = w; }
+            }
+            return who != null;
+        }
+
         public void CheerAll(float seconds = 1.7f)
         {
             foreach (var a in agents.Values) a.Cheer(seconds);

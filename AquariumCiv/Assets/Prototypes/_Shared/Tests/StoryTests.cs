@@ -93,6 +93,21 @@ namespace AquariumCiv.Prototypes.Tests
         }
 
         [Test]
+        public void NoTwoLivingPeopleShareAName()
+        {
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                var sim = Story(seed);
+                for (int y = 0; y < 60; y++)
+                {
+                    sim.Advance(1);
+                    var alive = sim.State.notables.Where(n => n.alive).Select(n => n.FullName).ToList();
+                    Assert.AreEqual(alive.Count, alive.Distinct().Count(), $"seed {seed} year {sim.State.Year}: {string.Join(", ", alive)}");
+                }
+            }
+        }
+
+        [Test]
         public void YearSnapshotsCoverTheHistory()
         {
             var sim = Story(years: true);
