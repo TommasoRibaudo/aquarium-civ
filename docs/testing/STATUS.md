@@ -20,7 +20,7 @@ across context compaction: resume from the first unchecked step.
 - [ ] blocking bugs from testers: fixed / listed (ongoing)
 - [x] vs/prep: Gate 1 care layer (CareConfig) + tests (86fc90f)
 - [ ] vs/prep: vertical-slice plan draft
-- [ ] vs/prep: polish backlog ranked
+- [x] vs/prep: polish backlog ranked (docs/design/polish-backlog.md)
 - [ ] vs/prep: engineering spikes (UI automation, look sampler, save versioning)
 
 ## Log
