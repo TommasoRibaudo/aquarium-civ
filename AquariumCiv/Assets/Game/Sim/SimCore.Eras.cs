@@ -67,6 +67,7 @@ namespace AquariumCiv.Sim
             s.eraReadyMonth = -1;
             s.eraStartMonth = s.month;
             Chronicle("era", EraLine(s.era), 0.95f);
+            JobsOnEraChange(); // jobs the new era doesn't have change (SimCore.Jobs.cs)
             return true;
         }
 

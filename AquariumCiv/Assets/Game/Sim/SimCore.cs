@@ -27,6 +27,7 @@ namespace AquariumCiv.Sim
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
             for (int i = 0; i < config.startNotables; i++) core.AddNotable(s.rng.Range(18f, 40f), -1, null);
+            core.JobsStep(); // the founders arrive with their work (SimCore.Jobs.cs)
             core.Chronicle("founding", "Five wanderers settled in the glass and made camp.", 0.9f);
             core.RecordYear();
             return s;
@@ -101,6 +102,7 @@ namespace AquariumCiv.Sim
             StoryStep(season, winter); // draws only from its own stream (SimCore.Story.cs)
             if (season == 0) RecordYear();
             EraStep(); // no dice: only marks the next era ready (SimCore.Eras.cs)
+            JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
         }
 
         void TryBuild()
@@ -159,7 +161,7 @@ namespace AquariumCiv.Sim
                 float before = n.age;
                 n.age += Config.notableAgeFactor;
                 if (before < 16f && n.age >= 16f)
-                    Chronicle("coming_of_age", $"{n.FullName} came of age and took up their work.", 0.4f, n.id);
+                    Chronicle("coming_of_age", ComingOfAgeLine(n), 0.4f, n.id);
                 if (n.age >= n.lifespan)
                 {
                     n.alive = false;

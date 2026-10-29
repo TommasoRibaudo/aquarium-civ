@@ -33,7 +33,9 @@ namespace AquariumCiv.Tests
         /// fine when meant (update the number in the same commit and say why), a bug when not.
         /// Eras (#23): nobody watches here, so the box stays a camp at its plateau and builds only camp types, and the
         /// chronicle notes that the village is ready.
-        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.</summary>
+        /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.
+        /// Jobs (#25): only the chronicle text moved (coming-of-age lines name the job); the economy and every dice stream
+        /// are unchanged (JobTests.TheEconomyIsWhatItWasBeforeJobs).</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -41,7 +43,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(2760499010u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(2614324432u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]
