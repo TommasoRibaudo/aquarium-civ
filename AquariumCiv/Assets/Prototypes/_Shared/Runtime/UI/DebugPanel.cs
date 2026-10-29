@@ -62,6 +62,13 @@ namespace AquariumCiv.Prototypes
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Messy tank", GUILayout.Height(54)) && mess != null) mess.MakeMessy();
+            if (GUILayout.Button("Grime +0.3", GUILayout.Height(54))) sim.AddMess(0.3f, 0, 0);
+            if (GUILayout.Button("Trash +3", GUILayout.Height(54))) sim.AddMess(0, 0, 3);
+            if (GUILayout.Button("Vines +0.3", GUILayout.Height(54))) sim.AddMess(0, 0.3f, 0);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button("Copy last summary", GUILayout.Height(54))) GUIUtility.systemCopyBuffer = EventLog.Instance.LastSummary;
             if (GUILayout.Button("Copy log path", GUILayout.Height(54))) GUIUtility.systemCopyBuffer = EventLog.Instance.LogPath;
             GUILayout.EndHorizontal();

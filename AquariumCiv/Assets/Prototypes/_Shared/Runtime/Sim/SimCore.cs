@@ -108,12 +108,18 @@ namespace AquariumCiv.Prototypes.Sim
             while (s.trashAccum >= 1f && s.trash.Count < Config.trashMax)
             {
                 s.trashAccum -= 1f;
-                s.trash.Add(new TrashItem
-                {
-                    id = s.NextId(), slot = s.rng.Range(0, Config.buildingSlots),
-                    offsetX = s.rng.Range(-0.35f, 0.35f), offsetZ = s.rng.Range(-0.35f, 0.35f), month = s.month
-                });
+                AddTrash();
             }
+        }
+
+        void AddTrash()
+        {
+            var s = State;
+            s.trash.Add(new TrashItem
+            {
+                id = s.NextId(), slot = s.rng.Range(0, Config.buildingSlots),
+                offsetX = s.rng.Range(-0.35f, 0.35f), offsetZ = s.rng.Range(-0.35f, 0.35f), month = s.month
+            });
         }
 
         void YearlyNotables()
@@ -182,6 +188,14 @@ namespace AquariumCiv.Prototypes.Sim
         public void CleanGrime(float amount) => State.grime = Math.Max(0f, State.grime - amount);
         public void Prune(float amount) => State.overgrowth = Math.Max(0f, State.overgrowth - amount);
         public bool RemoveTrash(int id) => State.trash.RemoveAll(t => t.id == id) > 0;
+
+        /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
+        public void AddMess(float grime, float overgrowth, int trashCount)
+        {
+            State.grime = Math.Clamp(State.grime + grime, 0f, 1f);
+            State.overgrowth = Math.Clamp(State.overgrowth + overgrowth, 0f, 1f);
+            for (int i = 0; i < trashCount && State.trash.Count < Config.trashMax; i++) AddTrash();
+        }
 
         public void CleanAll()
         {

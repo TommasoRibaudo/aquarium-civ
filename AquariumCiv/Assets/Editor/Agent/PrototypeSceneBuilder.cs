@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Prototypes;
+using AquariumCiv.Prototypes.P1;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -26,6 +27,8 @@ namespace AquariumCiv.EditorTools
             public DioramaView village;
             public CrowdView crowd;
             public MessView mess;
+            public GlassGrime glass;
+            public SimClock clock;
             public string scenePath;
         }
 
@@ -33,6 +36,23 @@ namespace AquariumCiv.EditorTools
         public static string BuildSandbox()
         {
             var b = BuildBase("P0", $"{SharedDir}/Sandbox.unity", "Cleaning felt satisfying", TestMode.Lab);
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P1 Glass and Mess")]
+        public static string BuildP1()
+        {
+            var b = BuildBase("P1", "Assets/Prototypes/P1_GlassMess/P1_GlassMess.unity", "Cleaning felt satisfying", TestMode.Lab);
+            // Lab pacing: the civ runs at x60 (1 real minute = 1 game year, ambient only) and mess grows back within
+            // minutes, so testers meet both a dirty tank and a nearly clean one in a 7-minute session.
+            b.clock.speed = 60f;
+            b.clock.config.messFullHours = 10f;     // x60: full grime in ~10 real minutes
+            b.clock.config.trashPerPersonHour = 0.12f;
+            b.clock.config.outputPenaltyEnabled = false; // P1 tests the gesture only; consequences are P2
+            var gestures = b.systems.AddComponent<CleaningGestures>();
+            gestures.glass = b.glass;
+            gestures.mess = b.mess;
             Save(b);
             return Report(b);
         }
@@ -86,7 +106,7 @@ namespace AquariumCiv.EditorTools
             cfg.protoId = protoId;
             cfg.surveyQ4 = surveyQ4;
             cfg.testMode = mode;
-            var clock = sys.AddComponent<SimClock>();
+            var clock = b.clock = sys.AddComponent<SimClock>();
             clock.config.buildingSlots = slots.Length;
             sys.AddComponent<EventLog>();
             sys.AddComponent<HudToast>();
@@ -130,11 +150,10 @@ namespace AquariumCiv.EditorTools
             mess.transform.SetParent(d.root);
             mess.diorama = village;
             mess.crowd = crowd;
-            mess.glassRenderers = d.glass;
             mess.trashPrefabs = new[] { "sack", "crate_open", "bucket_empty", "barrel", "pallet", "crate_B_small" }.Select(n => Load(P(n))).ToArray();
-            mess.trashScale = 0.6f;
+            mess.trashScale = 1.1f;
             mess.vinePrefabs = new[] { "waterplant_A", "waterplant_B", "waterplant_C", "tree_single_A" }.Select(n => Load(N(n))).ToArray();
-            mess.vineScale = 0.7f;
+            mess.vineScale = 1.0f;
             mess.puffMaterial = GetOrCreateMaterial("Puff", m =>
             {
                 m.SetFloat("_Surface", 1);
@@ -146,6 +165,18 @@ namespace AquariumCiv.EditorTools
                 m.renderQueue = (int)RenderQueue.Transparent;
                 m.SetColor("_BaseColor", Color.white);
             }, "Universal Render Pipeline/Particles/Unlit", $"{SharedDir}/Materials");
+
+            // Glass grime (paintable mask) and shared cleaning feedback
+            var glass = b.glass = new GameObject("GlassGrime").AddComponent<GlassGrime>();
+            glass.transform.SetParent(d.root);
+            glass.glassRenderers = d.glass;
+            glass.grimeMaterial = GetOrCreateMaterial("GlassGrime", m =>
+            {
+                m.SetColor("_CleanColor", new Color(0.85f, 0.95f, 1f, 0.10f));
+                m.SetColor("_GrimeColor", new Color(0.42f, 0.47f, 0.30f, 1f));
+                m.SetFloat("_DirtyAlpha", 0.8f);
+            }, "AquariumCiv/GlassGrime", $"{SharedDir}/Materials");
+            sys.AddComponent<Juice>().particleMaterial = mess.puffMaterial;
 
             sys.AddComponent<DebugPanel>().mess = mess;
             return b;

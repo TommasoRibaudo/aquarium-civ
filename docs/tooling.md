@@ -140,3 +140,19 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   "was paused" flag before treating it as a resume. [verified]
 - **2026-10-29 · CI Unity license:** this machine has no `C:\ProgramData\Unity\Unity_lic.ulf` (only the Hub's
   entitlement XML). Generate one via Hub → Licenses → Add → free personal license. See docs/testflight.md. [verified]
+- **2026-10-29 · Tester: portrait Game view sizes + touch playtests in Editor play mode.** [verified]
+  - Game view size: add/select a fixed resolution through reflection (`UnityEditor.GameViewSizes` singleton →
+    `GetGroup(Standalone)` → `AddCustomSize(new GameViewSize(FixedResolution, w, h, name))`, then set
+    `GameView.selectedSizeIndex`) from `script eval` before entering play mode. `Screen.width/height` and IMGUI then
+    follow it (checked 1080x1920, 1080x2400, 1640x2360). Custom "Tester WxH" entries stay in the size list.
+  - Touch input: a throwaway PlayMode test deriving `InputTestFixture` with `InputSystem.AddDevice<Touchscreen>()`.
+    The asmdef must be **any platform** (an Editor-only asmdef's `[UnityTest]`s are not found in PlayMode: 0 tests).
+    Set `InputSystem.settings.updateMode = ProcessEventsManually` and pump `InputSystem.Update()` from a
+    `[DefaultExecutionOrder(-10000)]` MonoBehaviour; queue `BeginTouch/MoveTouch/EndTouch(..., queueEventOnly: true)`
+    one step per frame so EnhancedTouch phases (Began/Moved/Ended) reach OrbitCamera exactly once.
+  - Run **one** such test per `test run`: a second test in the same run inherits the first test's scene and its
+    OrbitCamera throws "EnhancedTouch API is not enabled" after the fixture teardown.
+  - IMGUI (OnGUI) buttons can't be clicked from automation in this project (Input System only): neither
+    `GameView.SendEvent` (with `gameMouseOffset/gameMouseScale` mapping) nor `EditorGUIUtility.QueueGameViewInputEvent`
+    reach the player's OnGUI, in play mode or under the test fixture. Survey/debug buttons stay NOT CHECKED via input.
+  - `ScreenCapture.CaptureScreenshot` from a test coroutine sometimes leaves a cyan half-frame (capture artifact).

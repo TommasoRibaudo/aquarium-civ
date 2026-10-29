@@ -34,6 +34,20 @@ namespace AquariumCiv.Prototypes.Tests
         }
 
         [Test]
+        public void AddMessIsCappedLikeNaturalMess()
+        {
+            var sim = NewSim();
+            sim.AddMess(0.7f, 0.7f, 8);
+            sim.AddMess(0.7f, 0.7f, 8);
+            Assert.AreEqual(1f, sim.State.grime);
+            Assert.AreEqual(1f, sim.State.overgrowth);
+            Assert.AreEqual(sim.Config.trashMax, sim.State.trash.Count);
+            Assert.AreEqual(sim.State.trash.Count, sim.State.trash.Select(t => t.id).Distinct().Count());
+            sim.CleanAll();
+            Assert.AreEqual(0f, sim.MessLevel);
+        }
+
+        [Test]
         public void OneRealHourIsOneGameYear()
         {
             var sim = NewSim();
