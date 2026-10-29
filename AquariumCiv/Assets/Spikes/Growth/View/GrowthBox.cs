@@ -348,7 +348,7 @@ namespace AquariumCiv.Spikes.Growth.View
                 case Overlay.None: return;
                 case Overlay.Wear:
                     overlayF = new float[SiteMap.N];
-                    for (int c = 0; c < SiteMap.N; c++) overlayF[c] = Mathf.Clamp01(snap.wear[c] / PathNet.TRoad);
+                    for (int c = 0; c < SiteMap.N; c++) overlayF[c] = snap.wear[c] < 0.3f ? float.NaN : Mathf.Clamp01(snap.wear[c] / PathNet.TRoad);
                     overlayMin = 0; overlayMax = 1;
                     return;
                 case Overlay.Tiers:
