@@ -140,3 +140,8 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   "was paused" flag before treating it as a resume. [verified]
 - **2026-10-29 · CI Unity license:** this machine has no `C:\ProgramData\Unity\Unity_lic.ulf` (only the Hub's
   entitlement XML). Generate one via Hub → Licenses → Add → free personal license. See docs/testflight.md. [verified]
+- **2026-10-28 · Linting workflows locally (Docker from Git Bash).** `export MSYS_NO_PATHCONV=1`, mount with a Windows
+  path: `docker run --rm -v "F:/GameDev:/repo" -w /repo rhysd/actionlint:1.7.12` and
+  `docker run --rm -v "F:/GameDev:/repo" -w /repo -e GH_TOKEN=$(gh auth token) ghcr.io/zizmorcore/zizmor:latest .`.
+  Without the env var, `-w /repo` becomes `C:/Program Files/Git/repo`. actionlint caught `${{ runner.temp }}` in a
+  job-level `env:` (not allowed there; set it from a step via `$GITHUB_ENV`). [verified]
