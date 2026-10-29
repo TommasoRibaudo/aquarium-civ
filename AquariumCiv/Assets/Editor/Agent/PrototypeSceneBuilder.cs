@@ -3,12 +3,14 @@ using System.Linq;
 using AquariumCiv.Prototypes;
 using AquariumCiv.Prototypes.P1;
 using AquariumCiv.Prototypes.P2;
+using AquariumCiv.Prototypes.Hub;
 using AquariumCiv.Prototypes.P3;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using static AquariumCiv.EditorTools.DioramaBuilder;
 
 namespace AquariumCiv.EditorTools
@@ -83,6 +85,29 @@ namespace AquariumCiv.EditorTools
             Save(b);
             return Report(b);
         }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build Test Hub")]
+        public static string BuildHub()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.04f, 0.10f, 0.13f);
+            camGo.AddComponent<UniversalAdditionalCameraData>();
+            var sys = new GameObject("Hub");
+            var cfg = sys.AddComponent<PrototypeConfig>();
+            cfg.protoId = "Hub";
+            cfg.variants = new[] { "-" };
+            sys.AddComponent<EventLog>();
+            sys.AddComponent<FeedbackSender>();
+            sys.AddComponent<TestHub>();
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(HubScenePath));
+            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), HubScenePath);
+            AddToBuild(HubScenePath);
+            return $"Built {HubScenePath}; build order: {string.Join(", ", EditorBuildSettings.scenes.Select(s => System.IO.Path.GetFileNameWithoutExtension(s.path)))}";
+        }
+
 
         [MenuItem("AquariumCiv/Agent/Prototypes/Build P3 While You Were Away")]
         public static string BuildP3()

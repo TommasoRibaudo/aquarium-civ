@@ -89,7 +89,7 @@ namespace AquariumCiv.Prototypes
                 case Mode.Thanks when PairQuestion.Due:
                 {
                     // Lab via the hub, both variants surveyed: one A/B question, then back to the hub.
-                    var r = Modal(w, h, Mathf.Min(h - 160, 820));
+                    var r = Modal(w, h, Mathf.Min(h - 160, 700));
                     GUILayout.BeginArea(r);
                     if (PairQuestion.Draw()) mode = Mode.Playing;
                     GUILayout.EndArea();
