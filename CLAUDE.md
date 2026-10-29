@@ -50,6 +50,8 @@ Every time something runs in Unity (open, recompile, eval, tests, builds, import
    Always run it before a prototype goes to human testers.
 
 ## Conventions
+- Slice work is tracked as GitHub issues on the Slice board and run in lanes (no-Unity work in parallel worktrees,
+  Editor work one at a time behind `.agent-editor.lock`): read `docs/workflow.md` before starting a slice issue.
 - Commit before large scene/prefab changes.
 - **`main` is protected**: work on a branch, open a PR (`gh pr create`), let CI pass, then merge. Never push to `main`
   or use `pull_request_target`. See `docs/ci.md`.
