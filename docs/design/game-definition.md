@@ -105,10 +105,26 @@ Cleaning is how you both get the light back.
 
 You never place buildings. Your tools:
 - **Care:** wipe, tidy, prune.
-- **Shape the land** (Gate 3, P5 variant B): **rain**, **plant a grove**, **dig a channel**; later terraform and
-  decorate. The people answer within 1–3 game years and the chronicle credits you ("After the Keeper's rain, Ada Lund
-  planted a new field"). Placed nature is part of the sim (a grove = wood, a channel = water for farms and mills) and
-  changes where the people choose to build. Omens and totems are dropped.
+- **Shape the land** (Gate 3, P5 variant B; toolset decided 2026-10-29, #42, [research 10](../research/10-shaping-the-land.md)
+  "Decision"). Three new tools per era, each with **one gesture** in a shaping mode (one finger = the tool, two = the
+  camera), and each levels up with the era instead of retiring:
+
+  | Era | Tools |
+  |---|---|
+  | Camp | **rain** (rub), **grove** (tap), **herd** (flick in from the edge: deer on grass, fish in water) |
+  | Village | **channel** (drag), **Keeper's Lamp** (drag the light to a spot), **hill & hollow** (pull up / push down) |
+  | Town | **outcrop** (hold: stone, clay or ore, the land picks), **spring** (tap a hillside), **dye meadow** (sweep) |
+  | Any time | **decorate** (tap a slot in the glass margin or the soil): free, a small beauty effect |
+
+  **Gifts** (all but hill & hollow and decorate) are answered by the people within 1–3 game years with a credited job
+  site, building or harvest ("After the Keeper's rain, Ada Lund planted a new field") and have a limit (cooldown or
+  charges: experiment E2) plus natural caps. **Landscaping** (hill & hollow, decorate) is free, with nothing promised.
+  Placed nature is part of the sim and changes where the people choose to build. Pond, orchard and storm come as
+  results and level-ups, not tools. Every role has a tool that calls it into view (the chief leads the hunt, the
+  captain of the watch starts the night round from the Lamp). A shaping can be **taken back until the people have used
+  it**. Notables may **wish** for a gift in a card, never with a timer. New settings **replace** tools in the same
+  slot: the oasis has palm spring, dune shift and desert rain; the mountain village has a mountain stream and
+  terraces. Cut: smooth, mist, wind, flood. Omens and totems are dropped.
 - Everything you shape follows the art style (e.g. a canal is code-built in the same palette, cut into the terrain).
 
 ## 7. History: the "cool way to show it"
