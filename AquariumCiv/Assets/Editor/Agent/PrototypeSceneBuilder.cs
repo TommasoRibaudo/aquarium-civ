@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Prototypes;
 using AquariumCiv.Prototypes.P1;
+using AquariumCiv.Prototypes.P2;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -53,6 +54,26 @@ namespace AquariumCiv.EditorTools
             var gestures = b.systems.AddComponent<CleaningGestures>();
             gestures.glass = b.glass;
             gestures.mess = b.mess;
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P2 Return to Mess")]
+        public static string BuildP2()
+        {
+            // Diary by default: real time at design speed (1 real hour = 1 game year, mess caps at 48 h).
+            // A lab session switches the device to Lab (debug panel), which adds "step away" buttons.
+            var b = BuildBase("P2", "Assets/Prototypes/P2_ReturnToMess/P2_ReturnToMess.unity", "I felt bad or guilty when I opened it", TestMode.Diary);
+            var hud = b.systems.GetComponent<HudToast>();
+            hud.welcomeBack = false; // P2 writes its own one-line summary
+            hud.bannerTop = 130f;    // below the two-line ledger
+            var wipe = b.systems.AddComponent<WipeCleaner>();
+            wipe.glass = b.glass;
+            wipe.mess = b.mess;
+            b.mess.tapCleansProps = false;
+            var p2 = b.systems.AddComponent<ReturnToMess>();
+            p2.wipe = wipe;
+            p2.crowd = b.crowd;
             Save(b);
             return Report(b);
         }

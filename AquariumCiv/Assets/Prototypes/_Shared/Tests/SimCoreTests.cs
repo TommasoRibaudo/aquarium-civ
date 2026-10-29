@@ -84,6 +84,38 @@ namespace AquariumCiv.Prototypes.Tests
         }
 
         [Test]
+        public void OutputPenaltyIsLinearInMess()
+        {
+            var sim = NewSim();
+            sim.State.trash.Clear();
+            sim.State.grime = sim.State.overgrowth = 0.75f; // mess level 0.5
+            Assert.AreEqual(sim.Config.outputPenaltyMax * 0.5f, sim.OutputPenalty, 1e-5f);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MessMoodEffectFollowsTheSwitch(bool consequences)
+        {
+            // P2: in the cosmetic variant mess must not touch mood (and so output); in the output variant it does.
+            SimCore Make()
+            {
+                // No trash: it would draw from the rng differently in the two worlds.
+                var cfg = new SimConfig { messAffectsMood = consequences, outputPenaltyEnabled = consequences, trashPerPersonHour = 0f };
+                return NewSim(7, cfg);
+            }
+            var clean = Make(); var messy = Make();
+            clean.State.grime = clean.State.overgrowth = 0f;
+            messy.State.grime = messy.State.overgrowth = 1f;
+            for (int i = 0; i < 12; i++) { clean.Step(); messy.Step(); clean.CleanAll(); messy.State.grime = messy.State.overgrowth = 1f; }
+            if (consequences) Assert.Less(messy.State.mood, clean.State.mood - 0.1f);
+            else
+            {
+                Assert.AreEqual(clean.State.mood, messy.State.mood, 1e-5f);
+                Assert.AreEqual(clean.OutputMultiplier, messy.OutputMultiplier, 1e-5f);
+            }
+        }
+
+        [Test]
         public void NotablesDieOnlyOfOldAgeAndAgeAtHalfSpeed()
         {
             var sim = NewSim();

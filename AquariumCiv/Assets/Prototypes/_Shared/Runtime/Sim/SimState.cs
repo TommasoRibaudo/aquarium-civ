@@ -14,6 +14,7 @@ namespace AquariumCiv.Prototypes.Sim
         public float trashPerPersonHour = 0.02f;
         public bool outputPenaltyEnabled = true;
         public float outputPenaltyMax = 0.25f;  // output drop at full mess
+        public bool messAffectsMood = true;     // off = mess is purely cosmetic (P2 variant A)
         public int buildingSlots = 20;
         public int startNotables = 5;
         public int minNotables = 5;

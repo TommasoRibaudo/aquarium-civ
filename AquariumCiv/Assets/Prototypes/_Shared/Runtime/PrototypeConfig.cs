@@ -25,8 +25,22 @@ namespace AquariumCiv.Prototypes
 
         string IndexKey => $"variant_idx_{protoId}";
         string OverrideKey => $"variant_override_{protoId}";
+        string ModeKey => $"test_mode_{protoId}";
 
-        void Awake() => Current = this;
+        void Awake()
+        {
+            Current = this;
+            if (PlayerPrefs.HasKey(ModeKey)) testMode = (TestMode)PlayerPrefs.GetInt(ModeKey);
+        }
+
+        /// <summary>Switch lab/diary on this device (persists), e.g. a phone that joins a lab session.</summary>
+        public void SetTestMode(TestMode mode)
+        {
+            testMode = mode;
+            PlayerPrefs.SetInt(ModeKey, (int)mode);
+            PlayerPrefs.Save();
+            VariantChanged?.Invoke(Variant);
+        }
 
         int VariantIndex
         {

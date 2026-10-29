@@ -8,6 +8,9 @@ namespace AquariumCiv.Prototypes
     {
         struct Toast { public string text; public Vector3 world; public float until; }
 
+        [Tooltip("Show the generic welcome-back banner (off when a prototype writes its own).")] public bool welcomeBack = true;
+        [Tooltip("Banner top on the 720x1280 canvas (below the notch); push it down when a HUD sits above it.")] public float bannerTop = 90f;
+
         static HudToast instance;
         readonly List<Toast> toasts = new();
         string banner;
@@ -21,7 +24,7 @@ namespace AquariumCiv.Prototypes
 
         void OnReturned(double hours, float years)
         {
-            if (hours < 0.05) return;
+            if (!welcomeBack || hours < 0.05) return;
             string away = hours < 1 ? $"{hours * 60:0} minutes" : $"{hours:0.#} hours";
             ShowBanner($"Welcome back, Keeper. You were away {away}: {years:0.#} years passed in the glass.", 5f);
         }
@@ -51,10 +54,10 @@ namespace AquariumCiv.Prototypes
                 float x = Mathf.Clamp(p.x - size.x / 2 - 6, 8, ProtoGui.Width - size.x - 20); // never clipped at the edges
                 GUI.Box(new Rect(x, p.y - size.y - 6, size.x + 12, size.y + 4), t.text);
             }
-            if (banner != null && Time.unscaledTime < bannerUntil)
+            if (banner != null && Time.unscaledTime < bannerUntil && SurveyPanel.IsPlaying && !FeedbackPanel.IsOpen)
             {
                 float safeTop = (Screen.height - Screen.safeArea.yMax) / ProtoGui.Scale; // notch / status bar
-                var r = new Rect(30, Mathf.Max(90, safeTop + 24), ProtoGui.Width - 60, 90);
+                var r = new Rect(30, Mathf.Max(bannerTop, safeTop + bannerTop - 66), ProtoGui.Width - 60, 90);
                 GUI.Box(r, banner, ProtoGui.Box);
             }
         }

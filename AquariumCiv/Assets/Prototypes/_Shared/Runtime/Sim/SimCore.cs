@@ -67,7 +67,7 @@ namespace AquariumCiv.Prototypes.Sim
             if (s.food > pop * 1.5f && pop < Housing && rng.Chance(0.025f * (0.5f + s.mood))) s.population++; // happier = more births
             if (pop > 5 && rng.Chance(0.008f)) s.population--; // crowd old age
 
-            float target = 0.75f - MessLevel * 0.5f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
+            float target = 0.75f - (Config.messAffectsMood ? MessLevel * 0.5f : 0f) + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
 
             TryBuild();
@@ -177,7 +177,7 @@ namespace AquariumCiv.Prototypes.Sim
                     ? $"{host.FullName} threw a harvest festival. There was dancing until dawn."
                     : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
-            if (MessLevel > 0.6f && s.month - s.lastGrumbleMonth > 36)
+            if (Config.messAffectsMood && MessLevel > 0.6f && s.month - s.lastGrumbleMonth > 36)
             {
                 s.lastGrumbleMonth = s.month;
                 Chronicle("grumble", "The people grumbled about the grimy glass and the heaps of junk.", 0.45f);

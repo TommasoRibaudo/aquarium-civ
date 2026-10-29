@@ -18,6 +18,8 @@ namespace AquariumCiv.Prototypes
         public float characterScale = 0.3f;
         [Tooltip("World units per second.")] public float walkSpeed = 0.35f;
         public int maxVisible = 30;
+        [Tooltip("0 = content, 1 = grumpy: citizens trudge slower and stand around longer (P2 variant B).")]
+        [Range(0, 1)] public float grumpiness;
 
         readonly List<Wanderer> agents = new();
         public IReadOnlyList<Wanderer> Agents => agents;
@@ -144,11 +146,13 @@ namespace AquariumCiv.Prototypes
                 state = 0;
                 var to = target - transform.position;
                 to.y = 0;
-                float step = crowd.walkSpeed * Time.deltaTime;
+                float pace = 1f - 0.45f * crowd.grumpiness;
+                float step = crowd.walkSpeed * pace * Time.deltaTime;
+                clips[0].SetSpeed(pace); // feet match the slower walk
                 if (to.magnitude <= step)
                 {
                     transform.position = new Vector3(target.x, transform.position.y, target.z);
-                    idleUntil = Time.time + Random.Range(1f, 4f);
+                    idleUntil = Time.time + Random.Range(1f, 4f) * (1f + 2f * crowd.grumpiness);
                     target = crowd.RandomPoint();
                 }
                 else

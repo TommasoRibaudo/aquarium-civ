@@ -38,6 +38,7 @@ namespace AquariumCiv.Prototypes
         readonly Queue<string> recent = new();
         const int RecentMax = 40;
         float lookTimer, zoomedInSeconds;
+        bool cleanedThisSession;
 
         void Awake() => Instance = this;
 
@@ -62,6 +63,7 @@ namespace AquariumCiv.Prototypes
             sessionStart = Time.realtimeSinceStartup;
             awayHours = hoursAway;
             taps.Clear(); look.Clear(); counters.Clear(); survey.Clear(); zoomedInSeconds = 0;
+            cleanedThisSession = false;
             Log("session_start", ("build", Application.version), ("platform", Application.platform.ToString()),
                 ("away_h", hoursAway), ("years_elapsed", yearsElapsed), ("mess", messLevel), ("nick", Tester.Nickname));
         }
@@ -86,6 +88,13 @@ namespace AquariumCiv.Prototypes
         public void Clean(string kind, float amount, string gesture, float dirtBefore)
         {
             bool voluntary = dirtBefore < 0.1f;
+            if (!cleanedThisSession && InSession)
+            {
+                cleanedThisSession = true; // P2 metric: time from open to first clean
+                float secs = Time.realtimeSinceStartup - sessionStart;
+                counters["first_clean_s"] = secs;
+                Log("first_clean", ("seconds", secs), ("dirt_before", dirtBefore));
+            }
             Add(counters, "cleans", 1);
             if (voluntary) Add(counters, "cleans_voluntary", 1);
             Log("clean", ("kind", kind), ("amount", amount), ("gesture", gesture), ("dirt_before", dirtBefore), ("voluntary", voluntary));

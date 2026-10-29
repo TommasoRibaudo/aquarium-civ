@@ -165,3 +165,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `Application.logMessageReceived` (filter that message). `console clear` afterwards so the main session doesn't
   mistake them for game errors. Also back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/proto/P1.json`
   and the `logs/*.jsonl` before a playtest and restore them after: the test runs the real save and event log. [verified]
+- **2026-10-29 · `--project-path F:\GameDev\AquariumCiv` from Bash mangles the path** (backslashes eaten:
+  "F:\GameDev\GameDevAquariumCiv"; `unity status` then reports no instances). Use forward slashes:
+  `--project-path F:/GameDev/AquariumCiv`, or run from the project dir without the flag. [verified]
+- **2026-10-29 · Domain reload right after entering play mode nulls every `Instance`** (NREs in SimClock, GlassGrime,
+  Wanderer; banners never show). Unity saw "changes in script compilation related files" and recompiled during play.
+  Fix: `EditorPrefs.SetInt("ScriptCompilationDuringPlay", 1)` (Recompile After Finished Playing). Set on this machine.
+  Also `capture game_view --save_path` always lands under `Assets/` (even `Temp/agent/x.png` → `Assets/Temp/agent/`),
+  but it's the only capture that includes IMGUI. Copy the file out and delete `Assets/Temp` **after** leaving play mode. [verified]

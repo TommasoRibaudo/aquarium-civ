@@ -53,6 +53,8 @@ namespace AquariumCiv.Prototypes
             for (int i = 0; i < cfg.variants.Length; i++)
                 if (GUILayout.Button($"Variant {cfg.variants[i]}", GUILayout.Height(54))) cfg.ForceVariant(i);
             if (GUILayout.Button("Next (lab)", GUILayout.Height(54))) cfg.NextVariant();
+            if (GUILayout.Button(cfg.testMode == TestMode.Lab ? "Mode: Lab" : "Mode: Diary", GUILayout.Height(54)))
+                cfg.SetTestMode(cfg.testMode == TestMode.Lab ? TestMode.Diary : TestMode.Lab);
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
