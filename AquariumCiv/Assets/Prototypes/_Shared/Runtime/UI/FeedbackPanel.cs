@@ -14,12 +14,16 @@ namespace AquariumCiv.Prototypes
             FeedbackSender.Kind.Idea, FeedbackSender.Kind.Praise,
         };
 
+        static FeedbackPanel instance;
+        /// <summary>The feedback form is up (banners hide behind it).</summary>
+        public static bool IsOpen => instance != null && instance.open;
         bool open;
         int kind = -1;
         string text = "";
 
         void Start()
         {
+            instance = this;
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result += (_, msg) => HudToast.ShowBanner(msg, 3f);
         }
 
@@ -36,35 +40,41 @@ namespace AquariumCiv.Prototypes
                 return;
             }
 
-            var outer = new Rect(20, h * 0.18f, w - 40, 470);
+            // Sized to its content (title, 2 chip rows, text box, buttons) so nothing gets clipped.
+            const float pad = 24, height = 580;
+            var outer = new Rect(20, Mathf.Max(200, h * 0.2f), w - 40, height); // below the top banner, above the keyboard
             ProtoGui.Block(outer);
-            GUI.Box(outer, GUIContent.none);
-            GUI.Box(outer, GUIContent.none);
-            GUILayout.BeginArea(new Rect(outer.x + 16, outer.y + 16, outer.width - 32, outer.height - 32));
-            GUILayout.Label("<b>Tell us something</b>  (what you saw, felt or expected)", ProtoGui.Wrap);
-            GUILayout.Space(6);
+            ProtoGui.Panel(outer);
+            float inner = outer.width - pad * 2;
+            GUILayout.BeginArea(new Rect(outer.x + pad, outer.y + pad, inner, outer.height - pad * 2));
+            GUILayout.Label("Tell us something", ProtoGui.Title);
+            GUILayout.Label("What you saw, felt or expected. Pick one:", ProtoGui.Hint);
+            GUILayout.Space(10);
+            float chipW = (inner - 30) / 3; // 3 per row, margins 5 each side
             for (int row = 0; row < 2; row++)
             {
                 GUILayout.BeginHorizontal();
                 for (int i = row * 3; i < Mathf.Min(Kinds.Length, row * 3 + 3); i++)
-                {
-                    var label = FeedbackSender.KindLabel(Kinds[i]);
-                    if (GUILayout.Button(kind == i ? $"[{label}]" : label, GUILayout.Height(60))) kind = i;
-                }
+                    if (ProtoGui.ChipButton(FeedbackSender.KindLabel(Kinds[i]), kind == i, GUILayout.Width(chipW), GUILayout.Height(60)))
+                        kind = i;
+                GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
             }
-            GUILayout.Space(8);
-            text = GUILayout.TextArea(text, 600, GUILayout.Height(220));
-            GUILayout.Space(10);
+            GUILayout.Space(12);
+            text = GUILayout.TextArea(text, 600, GUILayout.Height(210));
+            if (text.Length == 0)
+            {
+                var ta = GUILayoutUtility.GetLastRect();
+                GUI.Label(new Rect(ta.x + 18, ta.y + 12, ta.width - 36, 60), "Type here...", ProtoGui.Hint);
+            }
+            GUILayout.Space(16);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Cancel", GUILayout.Height(64))) open = false;
-            GUI.enabled = kind >= 0 && text.Trim().Length > 0;
-            if (GUILayout.Button("Send", GUILayout.Height(64)))
+            if (GUILayout.Button("Cancel", GUILayout.Height(72))) open = false;
+            if (ProtoGui.PrimaryButton("Send", kind >= 0 && text.Trim().Length > 0, GUILayout.Height(72)))
             {
                 FeedbackSender.Instance?.SendFeedback(Kinds[kind], text);
                 open = false;
             }
-            GUI.enabled = true;
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }

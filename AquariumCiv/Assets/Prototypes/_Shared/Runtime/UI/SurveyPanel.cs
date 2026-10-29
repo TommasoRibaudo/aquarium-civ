@@ -38,41 +38,42 @@ namespace AquariumCiv.Prototypes
                 {
                     var r = new Rect(w - 230, h - 100, 210, 76);
                     ProtoGui.Block(r);
-                    if (GUI.Button(r, "Done for now")) { q1 = q2 = q4 = 0; q3 = q5 = ""; mode = Mode.Survey; }
+                    if (GUI.Button(r, "Done for now")) DoneForNow();
                     break;
                 }
                 case Mode.Nickname:
                 {
-                    var r = Modal(w, h, 340);
+                    var r = Modal(w, h, 380);
                     GUILayout.BeginArea(r);
-                    GUILayout.Label("Welcome, Keeper! Pick a nickname so we can tell your test sessions apart (no real name needed).", ProtoGui.Wrap);
+                    GUILayout.Label("Welcome, Keeper!", ProtoGui.Title);
+                    GUILayout.Label("Pick a nickname so we can tell your test sessions apart (no real name needed).", ProtoGui.Wrap);
                     nick = GUILayout.TextField(nick, 20, GUILayout.Height(56));
                     GUILayout.Space(10);
-                    GUI.enabled = nick.Trim().Length > 0;
-                    if (GUILayout.Button("Start", GUILayout.Height(64))) { Tester.Nickname = nick.Trim(); mode = Mode.Playing; }
-                    GUI.enabled = true;
+                    if (ProtoGui.PrimaryButton("Start", nick.Trim().Length > 0, GUILayout.Height(72))) { Tester.Nickname = nick.Trim(); mode = Mode.Playing; }
                     GUILayout.EndArea();
                     break;
                 }
                 case Mode.Survey:
                 {
-                    var r = Modal(w, h, h - 160);
+                    var r = Modal(w, h, Mathf.Min(h - 160, 1000));
                     GUILayout.BeginArea(r);
                     scroll = GUILayout.BeginScrollView(scroll);
-                    GUILayout.Label("<b>Quick survey (5 questions)</b>");
+                    GUILayout.Label("Quick survey", ProtoGui.Title);
+                    GUILayout.Label("5 questions, under a minute.", ProtoGui.Hint);
+                    GUILayout.Space(8);
                     q1 = Likert("1. That session felt...", "a chore", "relaxing / fun", q1);
                     q2 = Likert("2. How much do you want to check on it again later?", "not at all", "a lot", q2);
                     GUILayout.Label("3. Tell me one thing that happened or that you noticed in your tank.", ProtoGui.Wrap);
                     q3 = GUILayout.TextArea(q3, 300, GUILayout.Height(90));
+                    GUILayout.Space(10);
                     q4 = Likert($"4. {PrototypeConfig.Current.surveyQ4}", "disagree", "agree", q4);
                     GUILayout.Label("5. Did anything feel like work, confusing, or guilt-inducing?", ProtoGui.Wrap);
                     q5 = GUILayout.TextArea(q5, 300, GUILayout.Height(90));
                     GUILayout.Space(10);
+                    GUILayout.Space(10);
                     GUILayout.BeginHorizontal();
-                    if (GUILayout.Button("Back to the tank", GUILayout.Height(64))) mode = Mode.Playing;
-                    GUI.enabled = q1 > 0 && q2 > 0 && q4 > 0;
-                    if (GUILayout.Button("Send", GUILayout.Height(64))) Submit();
-                    GUI.enabled = true;
+                    if (GUILayout.Button("Back to the tank", GUILayout.Height(72))) mode = Mode.Playing;
+                    if (ProtoGui.PrimaryButton("Send", q1 > 0 && q2 > 0 && q4 > 0, GUILayout.Height(72))) Submit();
                     GUILayout.EndHorizontal();
                     GUILayout.EndScrollView();
                     GUILayout.EndArea();
@@ -89,15 +90,34 @@ namespace AquariumCiv.Prototypes
                         PrototypeConfig.Current.NextVariant();
                         Resume();
                     }
-                    if (GUILayout.Button("Keep watching", GUILayout.Height(64))) Resume();
+                    if (GUILayout.Button("Keep watching", ProtoGui.Primary, GUILayout.Height(72))) Resume();
                     GUILayout.EndArea();
                     break;
                 }
             }
         }
 
+        // Diary tests ask the survey at most once per calendar day (prototype-plan.md §4).
+        static string SurveyDayKey => $"survey_day_{PrototypeConfig.Current.protoId}";
+        static string Today => System.DateTime.Now.ToString("yyyy-MM-dd");
+
+        void DoneForNow()
+        {
+            if (PrototypeConfig.Current.testMode == TestMode.Diary && PlayerPrefs.GetString(SurveyDayKey, "") == Today)
+            {
+                EventLog.Instance.EndSession("done");
+                sendResult = "Thanks, Keeper! Today's survey is already in. See you next time.";
+                mode = Mode.Thanks;
+                return;
+            }
+            q1 = q2 = q4 = 0; q3 = q5 = "";
+            mode = Mode.Survey;
+        }
+
         void Submit()
         {
+            PlayerPrefs.SetString(SurveyDayKey, Today);
+            PlayerPrefs.Save();
             EventLog.Instance.Survey(new List<(string, string)>
             {
                 ("q1_feel", q1.ToString()), ("q2_return", q2.ToString()), ("q3_recall", q3),
@@ -127,24 +147,23 @@ namespace AquariumCiv.Prototypes
         {
             var outer = new Rect(20, (h - height) / 2, w - 40, height);
             ProtoGui.Block(outer);
-            GUI.Box(outer, GUIContent.none);
-            GUI.Box(outer, GUIContent.none); // double box = more opaque
-            return new Rect(outer.x + 16, outer.y + 16, outer.width - 32, outer.height - 32);
+            ProtoGui.Panel(outer);
+            return new Rect(outer.x + 24, outer.y + 24, outer.width - 48, outer.height - 48);
         }
 
         static int Likert(string question, string low, string high, int value)
         {
             GUILayout.Label(question, ProtoGui.Wrap);
             GUILayout.BeginHorizontal();
-            GUILayout.Label(low, GUILayout.Width(130));
             for (int i = 1; i <= 5; i++)
-            {
-                var label = value == i ? $"[{i}]" : i.ToString();
-                if (GUILayout.Button(label, GUILayout.Height(60), GUILayout.MinWidth(60))) value = i;
-            }
-            GUILayout.Label(high, GUILayout.Width(150));
+                if (ProtoGui.ChipButton(i.ToString(), value == i, GUILayout.Height(64), GUILayout.MinWidth(60))) value = i;
             GUILayout.EndHorizontal();
-            GUILayout.Space(6);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(low, ProtoGui.Hint);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(high, ProtoGui.HintRight);
+            GUILayout.EndHorizontal();
+            GUILayout.Space(14);
             return value;
         }
     }
