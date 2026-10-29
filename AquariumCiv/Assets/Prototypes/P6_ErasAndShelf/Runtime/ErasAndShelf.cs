@@ -26,8 +26,8 @@ namespace AquariumCiv.Prototypes.P6
 
         public DioramaView village;
         public EraLook[] eras;                    // 0 Camp, 1 Hamlet, 2 Village
-        public int[] eraPopulation = { 0, 10, 16 };
-        public float labSpeed = 60f;
+        public int[] eraPopulation = { 0, 9, 13 };
+        public float labSpeed = 120f;
         [Header("Second box (annex in A, new box in B)")]
         public Transform box2;
         public DioramaView village2;
@@ -75,12 +75,25 @@ namespace AquariumCiv.Prototypes.P6
             base.Update();
             if (!started) return;
             clock.speed = watching || readyFor >= 0 ? 0f : labSpeed; // eras are plateaus: the world waits for you
-            if (hud != null) hud.hidden = watching || readyFor >= 0;
+            if (hud != null) hud.hidden = watching || readyFor >= 0 || (grown && !Annex); // B: the shelf chips use that spot
+            if (!SurveyPanel.IsPlaying) FlushOldBox(); // Done / survey ends a visit too
             if (!watching && readyFor < 0 && era + 1 < eras.Length && clock.Sim.State.population >= eraPopulation[era + 1]) Ready(era + 1, "live");
         }
 
+        /// <summary>Count the time on the old box so far (on a focus change, a variant switch, the survey or leaving).</summary>
+        void FlushOldBox()
+        {
+            if (!grown || Annex || focus != "old") { focusSince = Time.unscaledTime; return; }
+            EventLog.Instance?.Count("old_box_s", Time.unscaledTime - focusSince);
+            EventLog.Instance?.Log("shelf", ("action", "visit_end"), ("box", "old"), ("dwell_s", Time.unscaledTime - focusSince));
+            focusSince = Time.unscaledTime;
+        }
+
+        void OnDestroy() => FlushOldBox();
+
         protected override void FreshWorld()
         {
+            FlushOldBox();
             // Back to one box, Camp era, the original seed: the same start line for both variants.
             StopAllCoroutines();
             watching = grown = false;
@@ -109,19 +122,21 @@ namespace AquariumCiv.Prototypes.P6
 
         protected override void OnReturn(double hours, float years, long sinceMonth)
         {
-            HudToast.ShowBanner($"Welcome back, Keeper! {StatsLine(hours, years)}", 6f);
-            // Crossed a threshold while away: it waited.
-            if (readyFor < 0 && era + 1 < eras.Length && clock.Sim.State.population >= eraPopulation[era + 1]) Ready(era + 1, "return");
+            string welcome = $"Welcome back, Keeper! {StatsLine(hours, years)}";
+            // Crossed a threshold while away: it waited (and the welcome line stays on top of the news).
+            if (readyFor < 0 && era + 1 < eras.Length && clock.Sim.State.population >= eraPopulation[era + 1]) Ready(era + 1, "return", welcome);
+            else HudToast.ShowBanner(welcome, 6f);
         }
 
-        void Ready(int next, string how)
+        void Ready(int next, string how, string prefix = null)
         {
             readyFor = next;
             readyAt = Time.unscaledTime;
             EventLog.Instance?.Log("era", ("action", "ready"), ("era", eras[next].name), ("how", how), ("year", clock.Sim.State.Year));
-            HudToast.ShowBanner(how == "return"
+            string news = how == "return"
                 ? $"{Cap(Place)} waited for you: the people are ready to become a {eras[next].name.ToLowerInvariant()}!"
-                : $"Something is stirring in {Place}... the people are ready to become a {eras[next].name.ToLowerInvariant()}!", 8f);
+                : $"Something is stirring in {Place}... the people are ready to become a {eras[next].name.ToLowerInvariant()}!";
+            HudToast.ShowBanner(prefix != null ? $"{prefix}\n{news}" : news, 9f);
             Juice.Chime();
         }
 
@@ -188,7 +203,7 @@ namespace AquariumCiv.Prototypes.P6
 
         IEnumerator GrowAnnex()
         {
-            HudToast.ShowBanner($"{Cap(Place)} has filled the glass... and the glass grows!", 6f);
+            HudToast.ShowBanner($"{Cap(Place)} is outgrowing the glass... and the glass grows!", 6f);
             var origin = village.transform.parent.position;
             box2.position = origin + Vector3.right * boxWidth - Vector3.up * 3f;
             box2.gameObject.SetActive(true);
@@ -201,6 +216,16 @@ namespace AquariumCiv.Prototypes.P6
             var annexSlots = box2LocalSlots.Select(p => box2.TransformPoint(p)).ToArray();
             village.slotPositions = baseSlots.Concat(annexSlots).ToArray();
             clock.config.buildingSlots = baseBuildingSlots + annexSlots.Length;
+            // The first families cross at once (a few homes and a field in the annex), and from now on the village
+            // builds in the annex first: the old box's empty tiles are kept for later.
+            var sim = clock.Sim;
+            int first = baseSlots.Length;
+            sim.AddBuildingAt(BuildingType.Hut, first);
+            sim.AddBuildingAt(BuildingType.Hut, first + 1);
+            sim.AddBuildingAt(BuildingType.Farm, first + 2);
+            sim.AddBuildingAt(BuildingType.Hut, first + 3);
+            sim.State.population += 3;
+            sim.ReservedSlots = () => Enumerable.Range(0, baseSlots.Length);
             clock.Sim.Chronicle("annex", $"The glass grew: an annex opened to the east, and the first families of {Place} crossed into it.", 0.9f);
             crowd.CheerAll(3f);
             HudToast.ShowBanner("An annex joined the tank. Watch the people spread into it.", 7f);
@@ -210,7 +235,7 @@ namespace AquariumCiv.Prototypes.P6
 
         IEnumerator NewBoxOnShelf()
         {
-            HudToast.ShowBanner($"{Cap(Place)} has filled the glass... a new box arrives on your shelf!", 6f);
+            HudToast.ShowBanner($"{Cap(Place)} is outgrowing the glass... a new box arrives on your shelf!", 6f);
             var origin = village.transform.parent.position;
             // The old world becomes a museum: a frozen copy that its own views keep showing (people still wander).
             museum = new SimCore(clock.config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(clock.Sim.State)));
@@ -243,7 +268,7 @@ namespace AquariumCiv.Prototypes.P6
                 LogCategory.Tag(relic, "relic");
             }
             Juice.Chime();
-            HudToast.ShowBanner($"A new box! {oldName} lives on next door as a museum. Tap \"Old box\" or \"New box\" to visit.", 8f);
+            HudToast.ShowBanner($"A new box! {Cap(oldName)} lives on next door as a museum. Tap \"Old box\" or \"New box\" to visit.", 8f);
             grown = true;
             focus = "both";
             focusSince = Time.unscaledTime;
@@ -266,7 +291,7 @@ namespace AquariumCiv.Prototypes.P6
         {
             if (which == focus) return;
             EventLog.Instance?.Log("shelf", ("action", "focus"), ("from", focus), ("to", which), ("dwell_s", Time.unscaledTime - focusSince));
-            if (focus == "old") EventLog.Instance?.Count("old_box_s", Time.unscaledTime - focusSince);
+            FlushOldBox();
             focus = which;
             focusSince = Time.unscaledTime;
             var origin = village.transform.parent.position;

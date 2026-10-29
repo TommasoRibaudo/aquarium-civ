@@ -148,6 +148,17 @@ namespace AquariumCiv.Prototypes.Sim
             return b;
         }
 
+        /// <summary>Scripted moments (P6's annex): a building of this type in this slot, if it is free.</summary>
+        public Building AddBuildingAt(string type, int slot)
+        {
+            var s = State;
+            if (slot < 0 || slot >= Config.buildingSlots || s.buildings.Any(b => b.slot == slot)) return null;
+            var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
+            s.buildings.Add(b);
+            if (!s.foundedTypes.Contains(type)) s.foundedTypes.Add(type);
+            return b;
+        }
+
         /// <summary>Optional: tiles taken by nudges (groves, channels), kept free of buildings. Set by the P5 scene.</summary>
         public Func<IEnumerable<int>> ReservedSlots;
 

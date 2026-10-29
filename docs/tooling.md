@@ -246,3 +246,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - A ~4-minute lab watch fits in one `[UnityTest]` with `[Timeout(1200000)]` (the default timeout is too short).
   - `Renderer` bounds `Aggregate` throws on a prop with no renderers (the P5 rain nudge root has none): guard it, or
     the test fails mid-run.
+- **2026-10-29 · Tester P6 run notes.** [verified]
+  - Changing the Game view size mid-test resets `OrbitCamera`'s distance through `FitAspect`, so any `SetWide` pull-back
+    is lost (P6 annex/shelf framing). To judge a wide view at several sizes, set the size **before** loading the scene and
+    reach the state again (one `[UnityTest]` can load Hub → `LabLaunch.Open` several times in a loop).
+  - Float interpolation in harness strings follows the machine locale (`1,5` not `1.5`): screenshot names and log
+    numbers come out with commas. Use `CultureInfo.InvariantCulture` when it matters.
+  - Overlapping IMGUI buttons: the one drawn **first** gets the MouseDown (and the one drawn last shows on top). A
+    screenshot where panel X covers panel Y means Y's buttons take the taps.

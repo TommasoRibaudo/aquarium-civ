@@ -16,6 +16,7 @@ namespace AquariumCiv.Prototypes
         public static float PanelHeight = 600f;
 
         Notable current;
+        SimCore world; // the world of the open card (null = the live one)
         float openedAt;
         Vector2 scroll;
         GUIStyle nameStyle, small;
@@ -27,7 +28,9 @@ namespace AquariumCiv.Prototypes
         void OnTapped(Wanderer w)
         {
             if (w.NotableId < 0) return;
-            Open(SimClock.Instance.Sim.FindNotable(w.NotableId));
+            var view = w.GetComponentInParent<NotableView>();
+            world = view != null && view.source != null ? view.source : null; // a museum box shows its own people
+            Open((world ?? SimClock.Instance.Sim).FindNotable(w.NotableId));
         }
 
         public void Open(Notable n)
@@ -52,7 +55,7 @@ namespace AquariumCiv.Prototypes
             if (current == null || !SurveyPanel.IsPlaying) return;
             GUI.depth = -10; // above the chronicle cards and the HUD
             ProtoGui.Begin();
-            var sim = SimClock.Instance.Sim;
+            var sim = world ?? SimClock.Instance.Sim;
             var s = sim.State;
             var n = current;
             nameStyle ??= new GUIStyle(ProtoGui.Title) { fontSize = 32 };
