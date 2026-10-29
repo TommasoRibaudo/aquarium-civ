@@ -277,3 +277,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-29 · `test run --mode play` silently runs 0 tests** ("0/0 passed (0s)", exit 0). The Pipeline's modes are
   `editor`, `playmode`, `all`; anything else matches nothing. Use `--mode playmode` (and `--async_tests true` + `test
   status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified] Same for `--mode edit` (use `editor`).
+- **2026-10-29 · Blender 4.5 LTS and RenderDoc 1.46 installed** (user-approved; `winget install --id
+  BlenderFoundation.Blender.LTS.4.5` / `BaldurKarlsson.RenderDoc`, each needs one UAC click). Blender runs headless:
+  `"/c/Program Files/Blender Foundation/Blender 4.5/blender.exe" --background --factory-startup --python script.py -- <args>`
+  (script args after `--`, read via `sys.argv`); FBX export via `bpy.ops.export_scene.fbx` verified. RenderDoc:
+  `C:\Program Files\RenderDoc\qrenderdoc.exe` (UI) and `renderdoccmd.exe` (CLI capture) for Windows frame captures;
+  there is no Android device and no Mac, so iPhone GPU captures still need the in-app FrameTimingManager log. [verified]
