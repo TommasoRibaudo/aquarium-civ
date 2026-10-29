@@ -159,6 +159,15 @@ so a glance doesn't spoil them. Decode it only after the tests:
 - Stills: `era-test/still_01.jpg` … `still_09.jpg`: years 10, 50 and 110 of the three seeds, shuffled.
 - Ask for each: *"Camp, farming village, or crafts town?"* Pass: they sort them right (say ≥ 8 of 9).
 
+### Results so far (2026-10-29)
+| Viewer | Clips: picked as "grew like a real village" | Era stills |
+|---|---|---|
+| The user (not fully blind: had seen two labelled organic-vs-random stills) | set 1 A, set 2 B, set 3 B = **the random control in all 3 sets** (0/3 for scored placement) | **9/9 correct** |
+
+Criterion 7 (eras read) passes for this viewer. **Criterion 1 fails for this viewer:** the random scatter read as more
+like a real village in every set. Next: ask what made the random one feel real, then look at the weights in the
+overlay before changing the method (§5 rule); 2 more viewers still to come.
+
 ## 7. Gaps in SimCore, and what M2 should take over or change
 
 **Gaps found (SimCore unchanged; worked round inside the spike):**
