@@ -18,7 +18,8 @@ namespace AquariumCiv.Sim
         // (20–40) and marriage (≤ 50) stay as they were.
         public float lifespanMin = 110f;        // a notable dies of old age at a lifespan drawn from [min, max)
         public float lifespanMax = 160f;
-        public float elderAge = 90f;            // elders: old enough to take an apprentice (prototypes: 45)
+        public float masterAge = 50f;           // old enough to take an apprentice (user, 2026-10-29: "apprentices 50")
+        public float elderAge = 90f;            // elders (prototypes: 45)
         public float eldestStoryAge = 120f;     // the eldest tells the founding story in winter from this age (prototypes: 60)
         public float messFullHours = 48f;       // mess reaches its cap after this many real hours
         public int trashMax = 12;

@@ -49,17 +49,17 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void OnlyElderAgedPeopleTakeApprentices()
+        public void MastersFromFiftyTakeApprentices()
         {
-            // 60 was an elder under the old stages; now only the 95-year-old is.
-            var sim = WithPeople(7, 60f, 95f, 10f, 12f);
+            // User, 2026-10-29: "apprentices 50". Masters in their prime mentor, not only the elders.
+            var sim = WithPeople(7, 40f, 55f, 10f, 12f);
             var apprenticed = ForceStories(sim, 300, "apprentice");
-            Assert.IsNotEmpty(apprenticed, "the elder should take an apprentice sometimes");
-            int elderId = sim.State.notables.First(n => n.age == 95f).id;
-            Assert.IsTrue(apprenticed.All(e => e.otherNotableId == elderId), "only the elder mentors");
+            Assert.IsNotEmpty(apprenticed, "the 55-year-old should take an apprentice sometimes");
+            int masterId = sim.State.notables.First(n => n.age == 55f).id;
+            Assert.IsTrue(apprenticed.All(e => e.otherNotableId == masterId), "only the master mentors");
 
-            var noElders = WithPeople(7, 60f, 89f, 10f, 12f);
-            Assert.IsEmpty(ForceStories(noElders, 300, "apprentice"), "nobody under the elder age mentors");
+            var noMasters = WithPeople(7, 40f, 49f, 10f, 12f);
+            Assert.IsEmpty(ForceStories(noMasters, 300, "apprentice"), "nobody under the master age mentors");
         }
 
         [Test]

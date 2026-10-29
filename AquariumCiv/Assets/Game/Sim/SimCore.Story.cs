@@ -95,11 +95,11 @@ namespace AquariumCiv.Sim
                 feuding.rivalId = other.rivalId = -1;
                 Chronicle("reconcile", $"{feuding.FullName} and {other.FullName} made up over a pot of stew. The whole street sighed with relief.", 0.55f, feuding.id, other.id);
             });
-            var elders = adults.Where(n => n.age >= Config.elderAge).ToList();
+            var masters = adults.Where(n => n.age >= Config.masterAge).ToList();
             var youngs = s.notables.Where(n => n.alive && n.age >= 8f && n.age < 20f && n.mentorId < 0).ToList();
-            if (elders.Count > 0 && youngs.Count > 0) Add(0.8f, () =>
+            if (masters.Count > 0 && youngs.Count > 0) Add(0.8f, () =>
             {
-                var m = Pick(r, elders); var y = Pick(r, youngs);
+                var m = Pick(r, masters); var y = Pick(r, youngs);
                 y.mentorId = m.id;
                 Chronicle("apprentice", $"{m.FullName} took young {y.FullName} as an apprentice.", 0.5f, y.id, m.id);
             });

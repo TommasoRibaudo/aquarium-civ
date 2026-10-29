@@ -41,7 +41,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(3916309374u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(2760499010u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]
