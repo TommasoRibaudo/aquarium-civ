@@ -292,3 +292,19 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-29 · Slice play-mode checks:** the `GameClock` summary line is in `Editor.log` (`grep -a "\[GameClock\]"`)
   even when `console get` right after `editor.playmode start` shows 0 entries. The slice saves to
   `LocalLow/Tommaso Ribaudo/Aquarium Civ/game/` and never touches `proto/` or `logs/`. [verified]
+- **2026-10-29 · Fast headless loop for pure-C# sim code (no Editor, no domain reload).** [verified] Unity ships a
+  Roslyn compiler and a .NET 6 runtime: compile `Assets/Game/Sim/*.cs` + spike logic + a `Main.cs` with
+  `"<Editor>/Data/NetCoreRuntime/dotnet.exe" "<Editor>/Data/DotNetSdkRoslyn/csc.dll" -noconfig @build.rsp`, referencing
+  every `NetCoreRuntime/shared/Microsoft.NETCore.App/6.0.21/System*.dll` (+ `netstandard.dll`, `mscorlib.dll`; skip
+  `*Native*`, keep `System.Private.CoreLib.dll`), and write a `<out>.runtimeconfig.json` for net6.0. The paths have spaces:
+  put every `-r:"..."` and source path in the `.rsp` file, quoted (on the command line they split). Set
+  `CultureInfo.InvariantCulture` in `Main` (this machine prints `0,5`). Gotcha: CoreCLR and the Editor's Mono differ in
+  float results and in speed (Mono was 3–4× slower on Dijkstra-heavy code), so tune in the harness but measure the
+  budget in the Editor; same-runtime runs are bit-identical.
+- **2026-10-29 · Python edits of C# files: always `encoding='utf-8'`.** Python's default on this machine is cp1252: a
+  write with a non-cp1252 character (→, ≥) raises *after* `open(..., 'w')` truncated the file, leaving it empty.
+  Write to a temp file and `os.replace` it. [verified]
+- **2026-10-29 · Edit-mode renders to JPG with URP post-processing:** `cam.targetTexture = RenderTexture.GetTemporary(w,
+  h, 24, ARGB32, sRGB)`, `cam.Render()`, `ReadPixels`, `EncodeToJPG` (`GrowthLabBuilder.Render`). Tonemapping, grade and
+  SMAA are applied; no play mode needed. Long frame exports: chunk them into `script eval` calls under 60 s
+  (`GrowthLabBuilder.Frames(from, to)`), about 1 s per frame with the AO bake. [verified]
