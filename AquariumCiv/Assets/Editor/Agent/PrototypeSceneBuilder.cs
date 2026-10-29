@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Prototypes;
+using AquariumCiv.Prototypes.P1;
+using AquariumCiv.Prototypes.P2;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -26,6 +28,8 @@ namespace AquariumCiv.EditorTools
             public DioramaView village;
             public CrowdView crowd;
             public MessView mess;
+            public GlassGrime glass;
+            public SimClock clock;
             public string scenePath;
         }
 
@@ -33,6 +37,46 @@ namespace AquariumCiv.EditorTools
         public static string BuildSandbox()
         {
             var b = BuildBase("P0", $"{SharedDir}/Sandbox.unity", "Cleaning felt satisfying", TestMode.Lab);
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P1 Glass and Mess")]
+        public static string BuildP1()
+        {
+            var b = BuildBase("P1", "Assets/Prototypes/P1_GlassMess/P1_GlassMess.unity", "Cleaning felt satisfying", TestMode.Lab);
+            // Lab pacing: the civ runs at x60 (1 real minute = 1 game year, ambient only) and mess grows back within
+            // minutes, so testers meet both a dirty tank and a nearly clean one in a 7-minute session.
+            b.clock.speed = 60f;
+            b.clock.config.messFullHours = 10f;     // x60: full grime in ~10 real minutes
+            b.clock.config.trashPerPersonHour = 0.12f;
+            b.clock.config.outputPenaltyEnabled = false; // P1 tests the gesture only; consequences are P2
+            var gestures = b.systems.AddComponent<CleaningGestures>();
+            gestures.glass = b.glass;
+            gestures.mess = b.mess;
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P2 Return to Mess")]
+        public static string BuildP2()
+        {
+            // Diary by default: real time at design speed (1 real hour = 1 game year, mess caps at 48 h).
+            // A lab session switches the device to Lab (debug panel), which adds "step away" buttons.
+            var b = BuildBase("P2", "Assets/Prototypes/P2_ReturnToMess/P2_ReturnToMess.unity", "I felt bad or guilty when I opened it", TestMode.Diary);
+            var hud = b.systems.GetComponent<HudToast>();
+            hud.welcomeBack = false; // P2 writes its own one-line summary
+            hud.bannerTop = 130f;      // below the two-line ledger
+            hud.bannerBelowSafe = 96f; // ...also under a notch (ledger is ~75 tall at safeTop + 4)
+            var wipe = b.systems.AddComponent<WipeCleaner>();
+            wipe.glass = b.glass;
+            wipe.mess = b.mess;
+            b.mess.tapCleansProps = false;
+            b.mess.trashScale = 2.4f; // junk and weeds read at default zoom on a phone (tester run 3: ~8 pt / ~4 pt before)
+            b.mess.vineScale = 1.8f;
+            var p2 = b.systems.AddComponent<ReturnToMess>();
+            p2.wipe = wipe;
+            p2.crowd = b.crowd;
             Save(b);
             return Report(b);
         }
@@ -71,7 +115,7 @@ namespace AquariumCiv.EditorTools
             var groundCol = new GameObject("GroundCollider");
             groundCol.transform.SetParent(d.root);
             var radiusWorld = d.w * (Radius + 0.5f);
-            groundCol.transform.position = new Vector3(0, d.tileSize.y - 0.02f, 0);
+            groundCol.transform.position = new Vector3(0, d.surfaceY - 0.02f, 0);
             groundCol.AddComponent<BoxCollider>().size = new Vector3(radiusWorld * 2, 0.04f, radiusWorld * 2);
             LogCategory.Tag(groundCol, "ground");
 
@@ -86,11 +130,13 @@ namespace AquariumCiv.EditorTools
             cfg.protoId = protoId;
             cfg.surveyQ4 = surveyQ4;
             cfg.testMode = mode;
-            var clock = sys.AddComponent<SimClock>();
+            var clock = b.clock = sys.AddComponent<SimClock>();
             clock.config.buildingSlots = slots.Length;
             sys.AddComponent<EventLog>();
             sys.AddComponent<HudToast>();
             sys.AddComponent<SurveyPanel>();
+            sys.AddComponent<FeedbackSender>();
+            sys.AddComponent<FeedbackPanel>();
 
             // Village
             var village = b.village = new GameObject("Village").AddComponent<DioramaView>();
@@ -130,11 +176,10 @@ namespace AquariumCiv.EditorTools
             mess.transform.SetParent(d.root);
             mess.diorama = village;
             mess.crowd = crowd;
-            mess.glassRenderers = d.glass;
             mess.trashPrefabs = new[] { "sack", "crate_open", "bucket_empty", "barrel", "pallet", "crate_B_small" }.Select(n => Load(P(n))).ToArray();
-            mess.trashScale = 0.6f;
+            mess.trashScale = 1.5f;
             mess.vinePrefabs = new[] { "waterplant_A", "waterplant_B", "waterplant_C", "tree_single_A" }.Select(n => Load(N(n))).ToArray();
-            mess.vineScale = 0.7f;
+            mess.vineScale = 1.0f;
             mess.puffMaterial = GetOrCreateMaterial("Puff", m =>
             {
                 m.SetFloat("_Surface", 1);
@@ -146,6 +191,18 @@ namespace AquariumCiv.EditorTools
                 m.renderQueue = (int)RenderQueue.Transparent;
                 m.SetColor("_BaseColor", Color.white);
             }, "Universal Render Pipeline/Particles/Unlit", $"{SharedDir}/Materials");
+
+            // Glass grime (paintable mask) and shared cleaning feedback
+            var glass = b.glass = new GameObject("GlassGrime").AddComponent<GlassGrime>();
+            glass.transform.SetParent(d.root);
+            glass.glassRenderers = d.glass;
+            glass.grimeMaterial = GetOrCreateMaterial("GlassGrime", m =>
+            {
+                m.SetColor("_CleanColor", new Color(0.85f, 0.95f, 1f, 0.10f));
+                m.SetColor("_GrimeColor", new Color(0.42f, 0.47f, 0.30f, 1f));
+                m.SetFloat("_DirtyAlpha", 0.8f);
+            }, "AquariumCiv/GlassGrime", $"{SharedDir}/Materials");
+            sys.AddComponent<Juice>().particleMaterial = mess.puffMaterial;
 
             sys.AddComponent<DebugPanel>().mess = mess;
             return b;

@@ -33,7 +33,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 |------|-------|
 | [tooling.md](tooling.md) | Unity CLI/Pipeline facts, stuck-dialog fixes, lessons log (append as you learn) |
 | [ci.md](ci.md) | CI checks, `main` ruleset, Actions security measures |
-| [testflight.md](testflight.md) | iOS builds and TestFlight setup |
+| [testflight.md](testflight.md) | iOS builds via CI, app identity, tester groups, secrets |
+| [feedback.md](feedback.md) | In-app feedback and surveys → GitHub issues → Playtest Feedback project; issue format |
 
 ## Open questions
 See [decisions.md](decisions.md) (to be filled in as we answer them).

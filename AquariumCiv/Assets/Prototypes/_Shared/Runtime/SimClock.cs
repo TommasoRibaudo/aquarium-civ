@@ -32,6 +32,8 @@ namespace AquariumCiv.Prototypes
 
         /// <summary>Raised after catch-up on launch, resume, or a debug away button: (real hours away, game years elapsed).</summary>
         public event Action<double, float> Returned;
+        /// <summary>Raised just before catch-up runs, so views can snapshot the world they are about to see change.</summary>
+        public event Action Returning;
 
         float saveTimer;
         bool wasPaused; // Unity also sends OnApplicationPause(false) at startup; only a real resume catches up
@@ -90,6 +92,7 @@ namespace AquariumCiv.Prototypes
 
         void Return(double hours)
         {
+            Returning?.Invoke();
             long monthBefore = Sim.State.month;
             Sim.Advance(hours);
             float years = (Sim.State.month - monthBefore) / (float)SimConfig.MonthsPerYear;

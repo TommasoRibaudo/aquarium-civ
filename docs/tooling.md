@@ -140,6 +140,67 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   "was paused" flag before treating it as a resume. [verified]
 - **2026-10-29 · CI Unity license:** this machine has no `C:\ProgramData\Unity\Unity_lic.ulf` (only the Hub's
   entitlement XML). Generate one via Hub → Licenses → Add → free personal license. See docs/testflight.md. [verified]
+- **2026-10-29 · Tester: portrait Game view sizes + touch playtests in Editor play mode.** [verified]
+  - Game view size: add/select a fixed resolution through reflection (`UnityEditor.GameViewSizes` singleton →
+    `GetGroup(Standalone)` → `AddCustomSize(new GameViewSize(FixedResolution, w, h, name))`, then set
+    `GameView.selectedSizeIndex`) from `script eval` before entering play mode. `Screen.width/height` and IMGUI then
+    follow it (checked 1080x1920, 1080x2400, 1640x2360). Custom "Tester WxH" entries stay in the size list.
+  - Touch input: a throwaway PlayMode test deriving `InputTestFixture` with `InputSystem.AddDevice<Touchscreen>()`.
+    The asmdef must be **any platform** (an Editor-only asmdef's `[UnityTest]`s are not found in PlayMode: 0 tests).
+    Set `InputSystem.settings.updateMode = ProcessEventsManually` and pump `InputSystem.Update()` from a
+    `[DefaultExecutionOrder(-10000)]` MonoBehaviour; queue `BeginTouch/MoveTouch/EndTouch(..., queueEventOnly: true)`
+    one step per frame so EnhancedTouch phases (Began/Moved/Ended) reach OrbitCamera exactly once.
+  - Run **one** such test per `test run`: a second test in the same run inherits the first test's scene and its
+    OrbitCamera throws "EnhancedTouch API is not enabled" after the fixture teardown.
+  - IMGUI (OnGUI) buttons can't be clicked from automation in this project (Input System only): neither
+    `GameView.SendEvent` (with `gameMouseOffset/gameMouseScale` mapping) nor `EditorGUIUtility.QueueGameViewInputEvent`
+    reach the player's OnGUI, in play mode or under the test fixture. Survey/debug buttons stay NOT CHECKED via input.
+  - `ScreenCapture.CaptureScreenshot` from a test coroutine sometimes leaves a cyan half-frame (capture artifact).
+- **2026-10-29 · CI: "all actions must be pinned to a full-length commit SHA"** (job fails in 3 s at Set up job).
+  The repo's Actions setting now requires SHA pins. Resolve a tag with `gh api repos/<owner>/<action>/commits/<tag> --jq .sha`
+  and write `uses: owner/action@<sha> # vN`. When bumping an action, re-resolve the SHA. [verified]
+- **2026-10-29 · Tester touch playtest: Input System "Cached unprocessed value unexpectedly became outdated" error fails
+  the test** (logged from `InputSystem.Update()` in the manual pump). It is harness noise from the test fixture, not
+  game code. Set `LogAssert.ignoreFailingMessages = true` at test start and collect real warnings/errors yourself via
+  `Application.logMessageReceived` (filter that message). `console clear` afterwards so the main session doesn't
+  mistake them for game errors. Also back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/proto/P1.json`
+  and the `logs/*.jsonl` before a playtest and restore them after: the test runs the real save and event log. [verified]
+- **2026-10-29 · `--project-path F:\GameDev\AquariumCiv` from Bash mangles the path** (backslashes eaten:
+  "F:\GameDev\GameDevAquariumCiv"; `unity status` then reports no instances). Use forward slashes:
+  `--project-path F:/GameDev/AquariumCiv`, or run from the project dir without the flag. [verified]
+- **2026-10-29 · Domain reload right after entering play mode nulls every `Instance`** (NREs in SimClock, GlassGrime,
+  Wanderer; banners never show). Unity saw "changes in script compilation related files" and recompiled during play.
+  Fix: `EditorPrefs.SetInt("ScriptCompilationDuringPlay", 1)` (Recompile After Finished Playing). Set on this machine.
+  Also `capture game_view --save_path` always lands under `Assets/` (even `Temp/agent/x.png` → `Assets/Temp/agent/`),
+  but it's the only capture that includes IMGUI. Copy the file out and delete `Assets/Temp` **after** leaving play mode. [verified]
+- **2026-10-29 · Tester touch fixture compile gotchas.** `EndTouch(id, pos, default, queueEventOnly: true, ...)` is
+  ambiguous (two overloads); pass `delta: Vector2.zero`. `TestMode` clashes with `UnityEngine.TestTools.TestMode`:
+  alias `using TestMode = AquariumCiv.Prototypes.TestMode;`. Load the scene from the test with
+  `EditorSceneManager.LoadSceneAsyncInPlayMode(path, new LoadSceneParameters(LoadSceneMode.Single))` under
+  `#if UNITY_EDITOR`. Private HUD state (banner, toasts) can be read by reflection for evidence. [verified]
+- **2026-10-29 · Tester P2 re-verify notes.** [verified]
+  - A wipe stroke across the middle of the screen goes through the tank's **open top**: it starts a drag (world hit)
+    and may flick junk, but never touches the glass. Aim strokes at the front panes: project
+    `GlassGrime.Instance.Panes[i].renderer.bounds.center` with `Camera.main.WorldToScreenPoint` and take the two with
+    the lowest screen y.
+  - Economy A/B checks don't need play mode: build `new SimCore(cfg, SimCore.NewWorld(seed, cfg))` from a JSON clone
+    of `SimClock.config` in `script eval` and `Advance(h)`; it reproduces the scene's away-path numbers exactly.
+  - Hold gestures (`Pointer.current.press`) work from the touch fixture: `BeginTouch` once, yield frames, `EndTouch`.
+  - After the first PlayMode run, `Assets/Art/Materials/Glass.mat` showed `_SrcBlend: 5 -> 1` in git (not from test
+    code; probably URP re-deriving blend state). Report it, don't revert.
+- **2026-10-29 · Tester run 3 notes.** [verified]
+  - The first `unity recompile` right after a PlayMode `test run` often fails with "Pipeline server returned 400 Bad
+    Request" (or "No Pipeline instance found" during the reload). Just run it again; the second one compiles.
+  - Touch-fixture strokes that start **below the tank base** (no glass, no world hit) are camera turns by design and
+    change the pitch for every later stroke in that test. Save `OrbitCamera` `yaw`/`pitch` (private fields) at the
+    start and restore them after each stroke when measuring something else.
+  - Junk usually sits inside the tank, seen through the **open top**, so `GlassGrime.Raycast` at a junk point often
+    hits the *back* pane. Don't read "start on glass" as "start on the front glass".
+  - To see which way a drag went, wrap `OrbitCamera.DragTool` in a spy `IDragTool` that forwards to `WipeCleaner`
+    and logs what `BeginDrag` returns. The input path stays real.
+- **2026-10-28 · `script eval_file` takes `--file <abs .cs path>`** (not `--path`); there is no top-level
+  `unity eval`, use `unity command script eval --code '...'`. Junk spawned by `MessView.MakeMessy()` isn't in
+  `TapToClean.Active` until a later frame, so make it messy in one eval and inspect it in the next. [verified]
 - **2026-10-28 · Linting workflows locally (Docker from Git Bash).** `export MSYS_NO_PATHCONV=1`, mount with a Windows
   path: `docker run --rm -v "F:/GameDev:/repo" -w /repo rhysd/actionlint:1.7.12` and
   `docker run --rm -v "F:/GameDev:/repo" -w /repo -e GH_TOKEN=$(gh auth token) ghcr.io/zizmorcore/zizmor:latest .`.

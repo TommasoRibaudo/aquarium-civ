@@ -25,8 +25,22 @@ namespace AquariumCiv.Prototypes
 
         string IndexKey => $"variant_idx_{protoId}";
         string OverrideKey => $"variant_override_{protoId}";
+        string ModeKey => $"test_mode_{protoId}";
 
-        void Awake() => Current = this;
+        void Awake()
+        {
+            Current = this;
+            if (PlayerPrefs.HasKey(ModeKey)) testMode = (TestMode)PlayerPrefs.GetInt(ModeKey);
+        }
+
+        /// <summary>Switch lab/diary on this device (persists), e.g. a phone that joins a lab session.</summary>
+        public void SetTestMode(TestMode mode)
+        {
+            testMode = mode;
+            PlayerPrefs.SetInt(ModeKey, (int)mode);
+            PlayerPrefs.Save();
+            VariantChanged?.Invoke(Variant);
+        }
 
         int VariantIndex
         {
@@ -42,8 +56,13 @@ namespace AquariumCiv.Prototypes
         /// <summary>Lab protocol: move this tester to their next variant.</summary>
         public void NextVariant()
         {
+            int n = Math.Max(1, variants.Length);
+            int next = (VariantIndex + 1) % n; // from what's shown, even if a debug override forced it
             PlayerPrefs.DeleteKey(OverrideKey);
-            PlayerPrefs.SetInt(IndexKey, PlayerPrefs.GetInt(IndexKey, 0) + 1);
+            int order = Tester.Id[0] % 2;
+            int step = PlayerPrefs.GetInt(IndexKey, 0) + 1;
+            while ((step + order) % n != next) step++;
+            PlayerPrefs.SetInt(IndexKey, step);
             PlayerPrefs.Save();
             VariantChanged?.Invoke(Variant);
         }

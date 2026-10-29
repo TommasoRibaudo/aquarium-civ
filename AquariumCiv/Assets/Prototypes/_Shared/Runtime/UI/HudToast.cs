@@ -8,6 +8,10 @@ namespace AquariumCiv.Prototypes
     {
         struct Toast { public string text; public Vector3 world; public float until; }
 
+        [Tooltip("Show the generic welcome-back banner (off when a prototype writes its own).")] public bool welcomeBack = true;
+        [Tooltip("Banner top on the 720x1280 canvas when there is no notch; push it down when a HUD sits above it.")] public float bannerTop = 90f;
+        [Tooltip("Gap between the safe-area top (notch) and the banner; must clear any HUD drawn below the notch.")] public float bannerBelowSafe = 24f;
+
         static HudToast instance;
         readonly List<Toast> toasts = new();
         string banner;
@@ -21,7 +25,7 @@ namespace AquariumCiv.Prototypes
 
         void OnReturned(double hours, float years)
         {
-            if (hours < 0.05) return;
+            if (!welcomeBack || hours < 0.05) return;
             string away = hours < 1 ? $"{hours * 60:0} minutes" : $"{hours:0.#} hours";
             ShowBanner($"Welcome back, Keeper. You were away {away}: {years:0.#} years passed in the glass.", 5f);
         }
@@ -48,11 +52,15 @@ namespace AquariumCiv.Prototypes
             {
                 var p = ProtoGui.WorldToCanvas(t.world);
                 var size = GUI.skin.box.CalcSize(new GUIContent(t.text));
-                GUI.Box(new Rect(p.x - size.x / 2 - 6, p.y - size.y - 6, size.x + 12, size.y + 4), t.text);
+                float x = Mathf.Clamp(p.x - size.x / 2 - 6, 8, ProtoGui.Width - size.x - 20); // never clipped at the edges
+                GUI.Box(new Rect(x, p.y - size.y - 6, size.x + 12, size.y + 4), t.text);
             }
-            if (banner != null && Time.unscaledTime < bannerUntil)
+            if (banner != null && Time.unscaledTime < bannerUntil && SurveyPanel.IsPlaying && !FeedbackPanel.IsOpen)
             {
-                var r = new Rect(30, 90, ProtoGui.Width - 60, 90);
+                float safeTop = (Screen.height - Screen.safeArea.yMax) / ProtoGui.Scale; // notch / status bar
+                float bw = ProtoGui.Width - 60;
+                float bh = Mathf.Max(90, ProtoGui.Box.CalcHeight(new GUIContent(banner), bw)); // long summaries never clip
+                var r = new Rect(30, Mathf.Max(bannerTop, safeTop + bannerBelowSafe), bw, bh);
                 GUI.Box(r, banner, ProtoGui.Box);
             }
         }

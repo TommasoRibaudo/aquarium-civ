@@ -53,12 +53,21 @@ namespace AquariumCiv.Prototypes
             for (int i = 0; i < cfg.variants.Length; i++)
                 if (GUILayout.Button($"Variant {cfg.variants[i]}", GUILayout.Height(54))) cfg.ForceVariant(i);
             if (GUILayout.Button("Next (lab)", GUILayout.Height(54))) cfg.NextVariant();
+            if (GUILayout.Button(cfg.testMode == TestMode.Lab ? "Mode: Lab" : "Mode: Diary", GUILayout.Height(54)))
+                cfg.SetTestMode(cfg.testMode == TestMode.Lab ? TestMode.Diary : TestMode.Lab);
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Wipe glass", GUILayout.Height(54)) && mess != null) mess.WipeGlass(1f, "debug");
             if (GUILayout.Button("Clean all", GUILayout.Height(54)) && mess != null) mess.CleanEverything("debug");
             if (GUILayout.Button("Reset world", GUILayout.Height(54))) clock.ResetWorld();
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Messy tank", GUILayout.Height(54)) && mess != null) mess.MakeMessy();
+            if (GUILayout.Button("Grime +0.3", GUILayout.Height(54))) sim.AddMess(0.3f, 0, 0);
+            if (GUILayout.Button("Trash +3", GUILayout.Height(54))) sim.AddMess(0, 0, 3);
+            if (GUILayout.Button("Vines +0.3", GUILayout.Height(54))) sim.AddMess(0, 0.3f, 0);
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
