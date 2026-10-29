@@ -52,6 +52,7 @@ namespace AquariumCiv.Sim
         {
             State.eraReady = true;
             State.eraReadyMonth = State.month;
+            Chronicle("era-ready", ReadyLine(NextEra), 0.8f); // user, 2026-10-29: the wait is part of the story
             EraReadied?.Invoke(NextEra);
         }
 
@@ -68,6 +69,13 @@ namespace AquariumCiv.Sim
             Chronicle("era", EraLine(s.era), 0.95f);
             return true;
         }
+
+        string ReadyLine(Era era) => era switch
+        {
+            Era.Village => $"{Place} is restless. The elders talk of staying put and sowing seed; something is about to change.",
+            Era.Town => $"{Place} hums with new trades. Everyone feels a bigger change coming.",
+            _ => $"{Place} feels a new age coming.",
+        };
 
         string EraLine(Era era) => era switch
         {
