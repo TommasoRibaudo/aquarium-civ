@@ -23,3 +23,15 @@ interview is done. Nothing here is written into decisions.md until the user conf
 ## Also decided in this round (outside the questions)
 - Art direction: the code-built style kit (decisions.md 2026-10-29).
 - Buildings are placed by the people and the village grows organically (research 08 in progress).
+
+## Batch 3 (follow-ups on the v0.2 draft)
+| Topic | Answer |
+|---|---|
+| Care moves up (§5) | Agreed, "but you see people cleaning them" |
+| Price (§10) | "I was aiming to do 99 cents with maybe more unlockables but later" |
+| Q12 pace | "I will do a multiday experiment with this once I have a base game to start testing on" |
+| Q13 check-in end | "that tester did not have families, chronicles, people doing things, nudging" |
+| Q14 settings | "desert oasis, mountain village for now" |
+| Q15 relics | Research agent for comic items + power-ups → [research 09](../research/09-relics-and-powerups.md) |
+| Q16 widget | "YES! A minified version of the box maybe? like closed and a bit tilted!" |
+| Roles | "maybe we do it only to the notables (the economy stays the same but notables compete for these roles, while holding normal jobs, so John the hunter can become tribe leader). so camp has 1 important role, the other notables have normal roles. farming 3. city 7." |

@@ -51,6 +51,13 @@ Cleaning is how you both get the light back.
 - **Population:** an anonymous crowd plus **5–12 named notables**, each with a name, one trait, a family, friends,
   rivals and remembered events. Pin a favourite to follow. Dead notables go to a legends roster.
   **Relationships show in the world** (friends meet and talk, rivals argue), not only in cards (Gate 2 note).
+- **Jobs and roles (notables only;** user, 2026-10-29). The economy stays aggregate: the crowd is a count, not workers.
+  Every notable holds an **everyday job** (hunter, gatherer, farmer, woodcutter, potter, weaver…) that you see them
+  doing in the box. A few **important roles** per era are what notables compete for: **camp 1, farming village 3,
+  industrious town 7** (e.g. camp: chief; village: headman, miller, priest; town: lord, captain of the watch,
+  guildmaster, master builder, merchant, …; exact lists TBD). Traits drive who aspires to what, and rivals compete.
+  Successions, elections and feuds feed the chronicle ("John the hunter became chief of the camp"). Notable counts
+  grow with the eras: about **2–4 in the camp, 4–8 in the village, up to 12 in the town**.
 - **Death:** old age only. Neglect never kills, and the civ never collapses.
 - **Time:** **1 real hour = 1 game year** (Gate 2). **Notables age with the calendar and live 110–160 years** (user,
   2026-10-29: half-speed aging confused people), so a notable lives about 5–7 real days. The crowd ages normally.
@@ -79,7 +86,8 @@ Cleaning is how you both get the light back.
 2. **Capped.** After 48 h nothing gets worse.
 3. **Recovery is fast and juicy.** A full clean takes under a minute, with sound and the people cheering.
 4. **Welcome back.** The chronicle opens on good news first.
-5. **Care moves up.** In later eras the people handle their own trash and gardens. **The glass is always yours.**
+5. **Care moves up.** In later eras the people handle their own trash and gardens, and you **see them doing it**
+   (sweepers, gardeners at work in the box). **The glass is always yours.**
 6. **Never monetized.** Cleaning is never sold, sped up or ad-gated.
 
 ## 6. Control: Keeper + shaping the land
@@ -126,9 +134,10 @@ Enabler: a compact snapshot per game year (already in the sim), so the time-laps
 
 ## 10. Business model (hypothesis)
 
-- **Free first box, one unlock (~$4–6)** for the shelf: more boxes and settings. No ads, no timers, no skip currency,
-  no gacha, never sell care.
-- Later, maybe: cosmetic glass, plinths and settings. Validated by the slice test and the market, not by prototypes.
+- **Free first box, one unlock at $0.99** for the shelf: more boxes and settings (user, 2026-10-29). No ads, no
+  timers, no skip currency, no gacha, never sell care.
+- Later, maybe more small unlockables (cosmetic glass, plinths, settings). Decided after the slice, validated by the
+  slice test and the market, not by prototypes.
 
 ## 11. Art direction
 
@@ -141,12 +150,12 @@ room. Everything new follows it.
 
 | # | Question | How we answer it |
 |---|---|---|
-| Q11 | Organic placement: which algorithm, and does a 3-era time-lapse "grow like a real village"? | Research 08 → placement spike |
-| Q12 | Is 1 h = 1 year with a quarter-speed tail after 8 h the right pace? (Opens per day, "too much / too little happened") | [slice] week-long test |
-| Q13 | What does a check-in end on, so it never feels like "nothing to do" (P2 feedback #8)? | [slice] |
-| Q14 | Which settings for boxes 2–4, and how many descendants/relics carry over? | Design, after the slice |
-| Q15 | Which relics exist, how are they found, what do they do? | Design, after the slice |
-| Q16 | Home-screen widget | After the slice |
+| Q11 | Organic placement: which algorithm, and does a 3-era time-lapse "grow like a real village"? | Research 08 → Growth Lab spike (running) |
+| Q12 | Is 1 h = 1 year with a quarter-speed tail after 8 h the right pace? (Opens per day, "too much / too little happened") | The user's own multi-day test once a base game exists, then the [slice] week-long test |
+| Q13 | What does a check-in end on, so it never feels like "nothing to do" (P2 feedback #8)? | [slice]. User: the P2 tester had no families, chronicle, people doing things or shaping; the slice has all four |
+| Q14 | Which settings for boxes 2–4, and how many descendants/relics carry over? | Settings so far (user): **desert oasis**, **mountain village**. Carry-over amounts: design, after the slice |
+| Q15 | Which relics exist, how are they found, what do they do? Plus power-up ideas | Ideas research (relics, a bit comic; power-ups) → the user picks |
+| Q16 | Home-screen widget | **Yes** (user): a small version of the box, closed and slightly tilted. Built after the slice |
 
 Resolved since v0.1: Q1 drag-to-wipe (P1); Q2 the pace drop, framed as sunlight (Gate 1); Q3 calendar aging, doubled
 lifespans; Q4 cards + time-lapse + small book (Gate 2); Q5 shape the land (Gate 3); Q6 new box on the shelf (Gate 3);
