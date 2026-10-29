@@ -303,7 +303,7 @@ namespace AquariumCiv.Spikes.Growth.View
                 // Paths are drawn as curves on top (PathRibbons); the ground shows yards and the commons.
                 if (snap.clusters != null)
                     foreach (var k in snap.clusters)
-                        if (GrowthTerrain.Dist(x, z, k.x, k.z) < k.r * (0.95f + 0.3f * (n - 0.5f))) return Color.Lerp(baseCol, Palette.Dirt, era == Era.Camp ? 0.5f : 0.4f);
+                        if (GrowthTerrain.Dist(x, z, k.x, k.z) < k.r * (0.95f + 0.3f * (n - 0.5f))) return Color.Lerp(baseCol, Palette.Dirt, era == Era.Camp ? 0.6f : 0.55f);
                 if (Bilerp(commonsF, x, z) > 0.5f + (n - 0.5f) * 0.3f) return Meadow(n);
                 return baseCol;
             }
@@ -358,13 +358,13 @@ namespace AquariumCiv.Spikes.Growth.View
         }
 
         // ---------------- round 2: paths as curves ----------------
-        static float HalfWidth(float tier) => tier <= 1f ? 0.03f : tier <= 2f ? Mathf.Lerp(0.03f, 0.048f, tier - 1f) : Mathf.Lerp(0.048f, 0.07f, Mathf.Min(1f, tier - 2f));
+        static float HalfWidth(float tier) => tier <= 1f ? 0.04f : tier <= 2f ? Mathf.Lerp(0.04f, 0.06f, tier - 1f) : Mathf.Lerp(0.06f, 0.085f, Mathf.Min(1f, tier - 2f));
 
         Color PathColor(float tier, float x, float z)
         {
             float n = GrowthTerrain.Fbm(x * 1.4f, z * 1.4f + 5f);
             var grass = Grass(n, Height(x, z));
-            var trail = Color.Lerp(Palette.Dirt, grass, 0.3f);
+            var trail = Color.Lerp(Palette.Dirt, grass, 0.12f);
             var path = Color.Lerp(Palette.Path, Palette.Dirt, 0.25f + (n - 0.5f) * 0.4f);
             if (tier <= 1f) return trail;
             if (tier <= 2f) return Color.Lerp(trail, path, tier - 1f);

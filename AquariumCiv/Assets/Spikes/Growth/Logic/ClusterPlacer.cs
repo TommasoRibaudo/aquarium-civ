@@ -29,9 +29,9 @@ namespace AquariumCiv.Spikes.Growth
         public static float ClusterGap = 0.26f;                    // home ↔ another family's buildings
         public static float OtherGap = 0.14f;                      // home ↔ any other lot (fields, workshops)
         public static float RelaxedGap = 0.1f;                     // second pass when nothing fits
-        public static float YardSpacing = 0.95f;                   // between two yards
+        public static float YardSpacing = 1.0f;                    // between two yards
         public static float Jitter = 20f;                          // ± degrees on every yaw
-        public static float GreenNear = 0.75f, GreenFar = 1.6f;    // yard distance band from the green
+        public static float GreenNear = 0.9f, GreenFar = 1.9f;     // yard distance band from the green
         public static float SunYaw = -35f;                         // the house front faces the low sun (the lab's light)
         public static float WJoin = 1.4f, WGreen = 1.0f, WNeighbour = 0.6f, WAccess = 0.4f, WSlope = 0.8f, WContour = 0.9f,
             WWater = 0.3f, WForest = 0.6f, WYaw = 0.35f, WTaste = 0.3f, WNudge = 4f;
@@ -56,15 +56,6 @@ namespace AquariumCiv.Spikes.Growth
 
         public bool Place(GrowthWorld w, Site site, NudgeRec nudge, PlacementLog log)
         {
-            long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
-            bool home = Clustered(site.kind);
-            bool ok = false;
-            try { return ok = PlaceCore(w, site, nudge, log); }
-            finally { long dt = System.Diagnostics.Stopwatch.GetTimestamp() - t0; if (home) { ProfHome += dt; NHome++; } else { ProfInner += dt; NInner++; } if (!ok) { ProfFail += dt; NFail++; } }
-        }
-
-        bool PlaceCore(GrowthWorld w, Site site, NudgeRec nudge, PlacementLog log)
-        {
             // A family that stopped growing lets its neighbours have the land round its yard.
             foreach (var k in w.clusters)
                 if (k.ringHeld && w.State.month - k.lastJoinMonth > RingMonths) ReleaseRing(w.map, k);
@@ -75,18 +66,12 @@ namespace AquariumCiv.Spikes.Growth
             site.w *= SizeMin + (SizeMax - SizeMin) * GrowthTerrain.Hash3(w.seed, site.id, 13);
             site.d *= SizeMin - 0.04f + (SizeMax - SizeMin) * GrowthTerrain.Hash3(w.seed, site.id, 14);
 
-            long tf = System.Diagnostics.Stopwatch.GetTimestamp();
             w.net.Network(network, netMark);
             Array.Copy(w.net.Flow(network), reach, SiteMap.N);
-            ProfFlow += System.Diagnostics.Stopwatch.GetTimestamp() - tf;
             var spec = Encyclopedia.Of(site.kind);
             var cands = log.cands;
-            long te = System.Diagnostics.Stopwatch.GetTimestamp();
-            try {
             cands.Clear(); meta.Clear();
-            long tg = System.Diagnostics.Stopwatch.GetTimestamp();
             Generate(w, site, nudge, cands);
-            ProfGen += System.Diagnostics.Stopwatch.GetTimestamp() - tg;
             bool any = false;
             for (int i = 0; i < cands.Count; i++)
             {
@@ -97,7 +82,6 @@ namespace AquariumCiv.Spikes.Growth
             if (!any)
                 for (int i = 0; i < cands.Count; i++)
                     if (cands[i].reject == "neighbours") Evaluate(w, site, spec, nudge, cands[i], meta[i], i, false);
-            } finally { ProfEval += System.Diagnostics.Stopwatch.GetTimestamp() - te; }
 
             var order = new List<int>();
             for (int i = 0; i < cands.Count; i++) if (cands[i].valid) order.Add(i);
@@ -107,8 +91,6 @@ namespace AquariumCiv.Spikes.Growth
                 if (s != 0) return s;
                 return GrowthTerrain.Hash3(w.seed, site.id, a).CompareTo(GrowthTerrain.Hash3(w.seed, site.id, b));
             });
-            long tcl = System.Diagnostics.Stopwatch.GetTimestamp();
-            try {
             foreach (int i in order)
             {
                 var c = cands[i];
@@ -117,23 +99,13 @@ namespace AquariumCiv.Spikes.Growth
                 Join(w, site, c, meta[i]);
                 return true;
             }
-            } finally { ProfClaim += System.Diagnostics.Stopwatch.GetTimestamp() - tcl; }
             // Nothing round a yard fits (a full box): round 1's frontage rules, no family; then any gap left.
             return inner.Place(w, site, nudge, log) || Infill(w, site, nudge, log);
         }
 
         /// <summary>The box is nearly full: try every free cell with four yaws (round 1's scan takes every third cell
         /// and one yaw, which misses the slivers a cluster village leaves). Best access and nearest the green wins.</summary>
-        public static long ProfGen, ProfClaim;
-        public static long ProfFail; public static int NFail;
-        public static long ProfFlow, ProfEval, ProfInfill, ProfHome, ProfInner; public static int NInfill, NHome, NInner;
         bool Infill(GrowthWorld w, Site site, NudgeRec nudge, PlacementLog log)
-        {
-            long t0 = System.Diagnostics.Stopwatch.GetTimestamp(); NInfill++;
-            try { return InfillCore(w, site, nudge, log); } finally { ProfInfill += System.Diagnostics.Stopwatch.GetTimestamp() - t0; }
-        }
-
-        bool InfillCore(GrowthWorld w, Site site, NudgeRec nudge, PlacementLog log)
         {
             var map = w.map;
             var spec = Encyclopedia.Of(site.kind);
@@ -141,7 +113,6 @@ namespace AquariumCiv.Spikes.Growth
             Array.Copy(w.net.Flow(network), reach, SiteMap.N);
             var cands = log.cands;
             cands.Clear();
-            Candidate best = null; int bestI = -1;
             ClearRadius(map);
             float need = MathF.Min(site.w, site.d) / 2f - 0.06f; // the lot holds a disc this big round its centre
             for (int c = 0; c < SiteMap.N; c++)
@@ -160,13 +131,16 @@ namespace AquariumCiv.Spikes.Growth
                     float nud = Placer.TermValue(Term.Nudge, w, site.kind, spec, nudge, x, z, cand.yaw, cand.w, cand.d, cand.door, reach);
                     cand.score = acc - 0.3f * GrowthTerrain.Dist(x, z, map.greenX, map.greenZ) + WNudge * nud;
                     cands.Add(cand);
-                    if (best == null || cand.score > best.score) { best = cand; bestI = cands.Count - 1; }
                 }
             }
             // Best first; on "cut off" try the next (rare).
             var order = new List<int>();
             for (int i = 0; i < cands.Count; i++) order.Add(i);
-            order.Sort((a, b) => cands[b].score.CompareTo(cands[a].score) is var s && s != 0 ? s : a.CompareTo(b));
+            order.Sort((a, b) =>
+            {
+                int s = cands[b].score.CompareTo(cands[a].score);
+                return s != 0 ? s : a.CompareTo(b);
+            });
             foreach (int i in order)
             {
                 var cand = cands[i];
