@@ -5,7 +5,9 @@ using AquariumCiv.Sim;
 
 namespace AquariumCiv.Spikes.Growth
 {
-    public enum Variant { Organic, Random, Hand }
+    /// <summary>Organic = round 1's scored frontage and rows; Random and Hand = the controls; Cluster = round 2's family
+    /// clusters round shared yards (Haufendorf). New values go at the end (the scene stores the number).</summary>
+    public enum Variant { Organic, Random, Hand, Cluster }
 
     /// <summary>A Keeper's shaping as the spike sees it (SimCore keeps its own Nudge; this adds the spot).</summary>
     public sealed class NudgeRec
@@ -33,7 +35,7 @@ namespace AquariumCiv.Spikes.Growth
     /// <summary>One game year, everything the time-lapse needs to draw it.</summary>
     public sealed class Snapshot
     {
-        public const byte FCanal = 1, FForest = 2, FLaid = 4, FGreen = 8, FPond = 16;
+        public const byte FCanal = 1, FForest = 2, FLaid = 4, FGreen = 8, FPond = 16, FCommons = 32, FYard = 64;
         public int year;
         public long month;
         public Era era;
@@ -42,6 +44,7 @@ namespace AquariumCiv.Spikes.Growth
         public byte[] tier, flags;
         public float[] wear;
         public NudgeRec[] nudges;
+        public Cluster[] clusters;
         public List<PlacementLog> placements = new();
         public int stalls;
         public List<string> lines = new();
@@ -67,9 +70,14 @@ namespace AquariumCiv.Spikes.Growth
         public readonly List<Snapshot> snapshots = new();
         public readonly List<PlacementLog> placements = new();
         public readonly List<string> lines = new();
+        /// <summary>Family clusters round shared yards (Cluster variant only).</summary>
+        public readonly List<Cluster> clusters = new();
         public Era era = Era.Camp;
         public long eraMonth;
         public int unplaced;
+        public readonly List<(Kind kind, int year)> unplacedLog = new();
+        /// <summary>Placements that found no lot, with every candidate and why it was rejected (tuning).</summary>
+        public readonly List<PlacementLog> failed = new();
         public bool keepSnapshots = true;
 
         // Timing (criterion 6): placement and wear only (SimCore's own step is reported separately).
@@ -105,7 +113,8 @@ namespace AquariumCiv.Spikes.Growth
             core = new SimCore(cfg, start);
             map = new SiteMap(TerrainSpec.Preset(terrainPreset));
             net = new PathNet(map);
-            placer = variant switch { Variant.Random => new RandomPlacer(), Variant.Hand => new HandPlacer(), _ => new Placer() };
+            placer = variant switch { Variant.Random => new RandomPlacer(), Variant.Hand => new HandPlacer(), Variant.Cluster => new ClusterPlacer(), _ => new Placer() };
+            if (variant == Variant.Cluster) ClusterPlacer.ReserveCommons(this);
             if (events != null) script.AddRange(events);
             script.Sort((a, b) => a.month.CompareTo(b.month));
             ProcessNewBuildings();
@@ -213,7 +222,7 @@ namespace AquariumCiv.Spikes.Growth
                 ok = true;
             }
             else ok = placer.Place(this, site, answer, log);
-            if (!ok) { unplaced++; return null; }
+            if (!ok) { unplaced++; unplacedLog.Add((kind, Year)); failed.Add(log); return null; }
             log.siteId = site.id;
             placements.Add(log);
             if (answer != null) { answer.siteId = site.id; answer.answerMonth = State.month; }
@@ -356,6 +365,9 @@ namespace AquariumCiv.Spikes.Growth
             else if (kind == SimCore.NudgeKind.Grove) PlantGrove(x, z);
             else if (kind == SimCore.NudgeKind.Channel) { if (!DigCanal(x, z)) return null; }
             else return null;
+            // The Keeper's will beats the village's custom: commons under a shaping open up for the answer (Cluster only).
+            for (int c = 0; c < SiteMap.N; c++)
+                if (map.commons[c] && GrowthTerrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z) < 0.7f) map.commons[c] = false;
             var n = core.PlaceNudge(kind, 0);
             var rec = new NudgeRec { coreId = n.id, kind = kind, x = x, z = z, month = State.month };
             nudges.Add(rec);
@@ -479,12 +491,16 @@ namespace AquariumCiv.Spikes.Growth
                 if (map.laid[c]) f |= Snapshot.FLaid;
                 if (map.green[c]) f |= Snapshot.FGreen;
                 if (map.pond[c]) f |= Snapshot.FPond;
+                if (map.commons[c]) f |= Snapshot.FCommons;
+                if (map.yard[c]) f |= Snapshot.FYard;
                 s.flags[c] = f;
             }
             s.sites = new Site[sites.Count];
             for (int i = 0; i < sites.Count; i++) s.sites[i] = sites[i].Clone();
             s.nudges = new NudgeRec[nudges.Count];
             for (int i = 0; i < nudges.Count; i++) s.nudges[i] = nudges[i].Clone();
+            s.clusters = new Cluster[clusters.Count];
+            for (int i = 0; i < clusters.Count; i++) s.clusters[i] = clusters[i].Clone();
             for (int i = snapshotPlacementsFrom; i < placements.Count; i++) s.placements.Add(placements[i]);
             snapshotPlacementsFrom = placements.Count;
             s.lines.AddRange(lines);
@@ -496,7 +512,7 @@ namespace AquariumCiv.Spikes.Growth
         {
             var sb = new System.Text.StringBuilder();
             sb.Append(State.month).Append('|').Append(era).Append('|');
-            foreach (var s in sites) sb.Append($"{s.id}:{s.kind}:{s.x:R},{s.z:R},{s.yaw:R},{s.w:R},{s.d:R};");
+            foreach (var s in sites) sb.Append($"{s.id}:{s.kind}:{s.x:R},{s.z:R},{s.yaw:R},{s.w:R},{s.d:R},{s.cluster};");
             sb.Append('|');
             uint h = 2166136261;
             for (int c = 0; c < SiteMap.N; c++)

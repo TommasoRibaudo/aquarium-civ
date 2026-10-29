@@ -115,6 +115,40 @@ namespace AquariumCiv.Spikes.Growth
 
         public static Emergence Emerge(GrowthWorld w) => Emerge(w.map.tier, c => w.map.laid[c]);
 
+        public struct Alignment
+        {
+            public int pairs, parallel, inLine;
+            public float ParallelShare => pairs > 0 ? parallel / (float)pairs : 0f;
+            public float InLineShare => pairs > 0 ? inLine / (float)pairs : 0f;
+            public override string ToString() => $"neighbouring home pairs {pairs}: parallel (yaw within 5°) {parallel} ({100f * ParallelShare:0}%), fronts in line {inLine} ({100f * InLineShare:0}%)";
+        }
+
+        /// <summary>How "row-like" the homes are: neighbouring homes (gap under 0.5 u) that are parallel (yaw within 5°,
+        /// modulo 90°), and of those, how many also have their fronts on one line (a street row).</summary>
+        public static Alignment Align(IList<Site> sites)
+        {
+            var a = new Alignment();
+            var homes = new List<Site>();
+            foreach (var s in sites) if (!s.retired && Encyclopedia.IsHome(s.kind)) homes.Add(s);
+            for (int i = 0; i < homes.Count; i++)
+                for (int j = i + 1; j < homes.Count; j++)
+                {
+                    Site p = homes[i], q = homes[j];
+                    if (GrowthTerrain.Dist(p.x, p.z, q.x, q.z) > 1.2f || SiteMap.RectGap(p, q) > 0.5f) continue;
+                    a.pairs++;
+                    float dy = Math.Abs(((q.yaw - p.yaw) % 90f + 90f) % 90f);
+                    if (Math.Min(dy, 90f - dy) > 5f) continue;
+                    a.parallel++;
+                    p.Front(out float fx, out float fz);
+                    float frontP = p.d / 2f, frontQ = q.d / 2f;
+                    // offset of q's front line from p's front line, along p's front direction
+                    float along = (q.x - p.x) * fx + (q.z - p.z) * fz + frontQ - frontP;
+                    float same = ((q.yaw - p.yaw) % 360f + 360f) % 360f; // facing the same way, not back to back
+                    if (Math.Abs(along) < 0.06f && (same < 5f || same > 355f)) a.inLine++;
+                }
+            return a;
+        }
+
         public struct NudgeTrial
         {
             public string kind; public int seed, preset; public long month; public float x, z;
@@ -122,10 +156,10 @@ namespace AquariumCiv.Spikes.Growth
         }
 
         /// <summary>Criterion 2: one shaping on open ground at a seeded time and spot; how far away the people answer.</summary>
-        public static NudgeTrial RunNudgeTrial(string kind, int i)
+        public static NudgeTrial RunNudgeTrial(string kind, int i, Variant variant = Variant.Organic)
         {
             int seed = 1000 + i * 7919 + kind.Length * 31, preset = i % 3;
-            var w = new GrowthWorld(seed, preset, Variant.Organic) { keepSnapshots = false };
+            var w = new GrowthWorld(seed, preset, variant) { keepSnapshots = false };
             int year = 8 + (int)(GrowthTerrain.Hash3(seed, 1, 0) * 55f);
             w.RunToYear(year);
             float x = -2.2f + 4.4f * GrowthTerrain.Hash3(seed, 2, 0), z = -1.5f + 3.0f * GrowthTerrain.Hash3(seed, 3, 0);

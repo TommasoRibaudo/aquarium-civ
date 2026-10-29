@@ -14,6 +14,7 @@ namespace AquariumCiv.Spikes.Growth
         public int nudgeId = -1;  // the Keeper's shaping this answered
         public bool retired;      // cleared at an era moment (the camp hearth)
         public int doorCell = -1;
+        public int cluster = -1;  // the family cluster (Cluster variant), else -1
 
         /// <summary>World direction of the lot's front (local -z after yaw).</summary>
         public void Front(out float fx, out float fz)
@@ -45,6 +46,10 @@ namespace AquariumCiv.Spikes.Growth
         public readonly float[] dirC = new float[N], dirS = new float[N];
         public readonly byte[] forest = new byte[N], tier = new byte[N];
         public readonly int[] lot = new int[N];
+        /// <summary>Cluster variant: commons kept open (meadow, orchard) and shared family yards. Never set by the other variants.</summary>
+        public readonly bool[] commons = new bool[N], yard = new bool[N];
+        /// <summary>Cluster variant: the land round a family's yard, kept for that family (cluster id) until it is full.</summary>
+        public readonly int[] ring = new int[N];
         public readonly List<Rain> rains = new();
         public float greenX, greenZ;
 

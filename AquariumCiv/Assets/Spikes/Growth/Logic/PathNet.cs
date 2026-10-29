@@ -28,6 +28,20 @@ namespace AquariumCiv.Spikes.Growth
         readonly bool[] isTarget = new bool[SiteMap.N];
         static readonly int[] DI = { 1, -1, 0, 0, 1, 1, -1, -1 };
         static readonly int[] DJ = { 0, 0, 1, -1, 1, -1, 1, -1 };
+        // The same eight steps as cell offsets, for cells off the border (no bounds checks; same order, same result).
+        static readonly int[] OFF = { 1, -1, SiteMap.NX, -SiteMap.NX, 1 + SiteMap.NX, 1 - SiteMap.NX, -1 + SiteMap.NX, -1 - SiteMap.NX };
+        static readonly bool[] Interior = BuildInterior();
+
+        static bool[] BuildInterior()
+        {
+            var a = new bool[SiteMap.N];
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                int i = SiteMap.I(c), j = SiteMap.J(c);
+                a[c] = i > 0 && j > 0 && i < SiteMap.NX - 1 && j < SiteMap.NZ - 1;
+            }
+            return a;
+        }
 
         public PathNet(SiteMap map) { m = map; }
 
@@ -92,6 +106,23 @@ namespace AquariumCiv.Spikes.Growth
 
         void Relax(int c, int key, ref int nodes, ref int live)
         {
+                if (Interior[c])
+                {
+                    for (int k = 0; k < 8; k++)
+                    {
+                        int nc = c + OFF[k];
+                        int step = cost[nc];
+                        if (step == 0) continue;
+                        if (k >= 4)
+                        {
+                            if (cost[c + DI[k]] == 0 || cost[c + OFF[2] * DJ[k]] == 0) continue; // no corner cutting
+                            step = step * 14 / 10;
+                        }
+                        int nd = key + step;
+                        if (nd < dist[nc]) { dist[nc] = nd; Push(ref nodes, ref live, nc, nd); }
+                    }
+                    return;
+                }
                 int i = SiteMap.I(c), j = SiteMap.J(c);
                 for (int k = 0; k < 8; k++)
                 {
