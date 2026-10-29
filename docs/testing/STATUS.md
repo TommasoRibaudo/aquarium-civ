@@ -22,7 +22,7 @@ across context compaction: resume from the first unchecked step.
 - [x] vs/prep: Gate 1 care layer (CareConfig) + tests (86fc90f)
 - [x] vs/prep: vertical-slice plan draft (docs/design/vertical-slice-plan.md, options only)
 - [x] vs/prep: polish backlog ranked (docs/design/polish-backlog.md)
-- [ ] vs/prep: engineering spikes (UI automation, look sampler, ~~save versioning~~ done cd40089)
+- [ ] vs/prep: engineering spikes (~~UI automation~~ done, look sampler, ~~save versioning~~ done cd40089)
 
 ## Log
 - 2026-10-29: started. TestFlight #7 blocked by the environment branch rule (fixed by the user). Issues so far: P1 #3–4,
@@ -36,6 +36,9 @@ across context compaction: resume from the first unchecked step.
 - 2026-10-29: polish backlog (327ed81), vertical-slice plan draft (b07ff64), save-versioning spike (cd40089,
   docs/design/spikes/save-versioning.md; shared tests 42/42). TestFlight #7 green. Next: re-run the collector as
   issues arrive; spikes left: UI automation, look sampler.
+- 2026-10-29: UI automation spike: UI Toolkit card + `UiProbe`, first PlayMode test assembly `_Shared/PlayTests`,
+  fixture touch taps buttons by name, 1/1 on first run (docs/design/spikes/ui-automation.md). Recommendation: UI
+  Toolkit for the slice. Shared EditMode 42/42. Next: look sampler spike; collector re-runs (no 0.3.0 issues yet).
 
 ## Bugs from testers
 | Date | Issue | Prototype | What | Blocking? | Status |
