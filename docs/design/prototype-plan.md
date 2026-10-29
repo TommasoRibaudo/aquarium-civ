@@ -22,8 +22,8 @@ of agent work, and is ordered so the **riskiest assumption comes first: is carin
 | 6 | **P6 Eras & Shelf** | H6: a live era transition is worth waiting for; which growth form motivates more | box grows vs new box on the shelf | 2–3 | lab |
 | — | **Gate 3: control + progression** → write the vertical-slice plan | | | | |
 
-P0 status: done except the iOS pipeline, see [results/P0.md](results/P0.md).  
-P1 status: built, awaiting the lab test, see [results/P1.md](results/P1.md).
+P0 status: done (iOS TestFlight pipeline included), see [results/P0.md](results/P0.md).  
+P1 status: done, drag-to-wipe won the user's playtest; friends' lab still to run, see [results/P1.md](results/P1.md).
 
 Total is about 19–20 agent days. Diary tests run in the background while the next prototype is being built,
 so wall-clock time is about 4–5 weeks.
