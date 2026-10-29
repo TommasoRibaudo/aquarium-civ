@@ -79,7 +79,7 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 | 3 | 0.1.0 | P1 Glass & Mess | H1 cleaning gesture: wipe vs tap (lab) | - |
 | 5 | 0.1.0 | P1 + in-app feedback | same, plus Feedback button | - |
 | 6 | **0.2.0** | **P2 Return to Mess** | H2: coming back to mess is a pull, not guilt. A/B by day: A cosmetic mess, B mess slows work. Diary, 4 days | [below](#p2-what-to-test) |
-| _(next)_ | **0.3.0** | **Test Hub: P3–P6** (branch `overnight/p3-p6`) | Gate 2 (P3 return, P4 history) and Gate 3 (P5 nudges, P6 eras). Lab A/B from the hub, P3 4-day and P5 3-day diaries; P2 diary still reachable | [test-session guide](design/test-session-gate2-3.md) |
+| 7 | **0.3.0** | **Test Hub: P3–P6** (branch `overnight/p3-p6`) | Gate 2 (P3 return, P4 history) and Gate 3 (P5 nudges, P6 eras). Lab A/B from the hub, P3 4-day and P5 3-day diaries; P2 diary still reachable | [test-session guide](design/test-session-gate2-3.md) |
 
 ### P2 What to Test
 Paste into App Store Connect → TestFlight → the build → Test Details:
