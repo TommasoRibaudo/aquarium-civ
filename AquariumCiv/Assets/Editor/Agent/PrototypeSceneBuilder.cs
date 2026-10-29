@@ -66,7 +66,8 @@ namespace AquariumCiv.EditorTools
             var b = BuildBase("P2", "Assets/Prototypes/P2_ReturnToMess/P2_ReturnToMess.unity", "I felt bad or guilty when I opened it", TestMode.Diary);
             var hud = b.systems.GetComponent<HudToast>();
             hud.welcomeBack = false; // P2 writes its own one-line summary
-            hud.bannerTop = 130f;    // below the two-line ledger
+            hud.bannerTop = 130f;      // below the two-line ledger
+            hud.bannerBelowSafe = 96f; // ...also under a notch (ledger is ~75 tall at safeTop + 4)
             var wipe = b.systems.AddComponent<WipeCleaner>();
             wipe.glass = b.glass;
             wipe.mess = b.mess;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Prototypes.Sim;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace AquariumCiv.Prototypes.P2
 {
@@ -11,8 +12,10 @@ namespace AquariumCiv.Prototypes.P2
     /// One variable, the consequence of mess:
     ///   A "cosmetic": mess only looks bad; output and mood ignore it.
     ///   B "output":   mess drags output down linearly (−25 % at the 48 h cap), shown in the ledger, and people grumble.
+    ///   Mood ignores mess in both, so B's only economic difference is that stated penalty (tester run 1, finding 1).
     /// Both: P1's wipe gesture, a minimal economy, real offline catch-up, and a welcome-back wave with a one-line summary.
     /// Lab mode adds tester-facing "step away" buttons; diary mode runs on real time only.
+    /// Holding a finger on the ledger for 2 s switches this phone between diary and lab (for sit-down lab sessions).
     /// </summary>
     public class ReturnToMess : MonoBehaviour
     {
@@ -21,6 +24,8 @@ namespace AquariumCiv.Prototypes.P2
         [Tooltip("Shorter absences than this (real hours) get no wave or summary.")] public double waveMinHours = 0.25;
         [Tooltip("In B, citizens grumble out loud above this mess level.")] public float grumbleAbove = 0.3f;
         public Vector2 grumbleEverySeconds = new(9f, 16f);
+        [Tooltip("No grumbling this long after a return: the welcome comes first.")] public float grumbleQuietAfterReturn = 12f;
+        [Tooltip("Seconds to hold the ledger to switch diary/lab.")] public float labHoldSeconds = 2f;
 
         static readonly string[] Grumbles =
         {
@@ -37,6 +42,9 @@ namespace AquariumCiv.Prototypes.P2
         float nextGrumble;
         bool started;
         GUIStyle ledgerStyle;
+        Rect ledgerScreen;  // last drawn ledger, in screen pixels (top-left origin)
+        float holdTime;
+        bool holdDone;
 
         void Awake()
         {
@@ -68,12 +76,13 @@ namespace AquariumCiv.Prototypes.P2
         {
             var cfg = clock.config;
             cfg.outputPenaltyEnabled = OutputVariant;
-            cfg.messAffectsMood = OutputVariant;
+            cfg.messAffectsMood = false; // mood x mess would stack on the penalty (about −36 % in total) and confound the A/B
         }
 
         void Update()
         {
             ApplyVariant(); // diary variants change at midnight; cheap and always in sync
+            UpdateLabHold();
             var sim = clock.Sim;
             float grump = OutputVariant ? Mathf.Clamp01(sim.MessLevel * 1.4f) : 0f;
             crowd.grumpiness = Mathf.MoveTowards(crowd.grumpiness, grump, Time.unscaledDeltaTime * 0.5f);
@@ -106,6 +115,7 @@ namespace AquariumCiv.Prototypes.P2
             EventLog.Instance?.Log("return", ("away_h", hours), ("years", years), ("pop_delta", people),
                 ("new_buildings", built.Sum(x => x.n)), ("mess", sim.MessLevel), ("output_penalty", sim.OutputPenalty));
             if (hours < waveMinHours) return;
+            nextGrumble = Time.unscaledTime + grumbleQuietAfterReturn;
 
             string away = hours < 1 ? $"{hours * 60:0} minutes" : $"{hours:0.#} hours";
             var news = new List<string>();
@@ -120,6 +130,26 @@ namespace AquariumCiv.Prototypes.P2
             yield return new WaitForSecondsRealtime(0.6f); // new citizens spawn first
             crowd.CheerAll(2.5f);
             Juice.Chime();
+        }
+
+        /// <summary>Hold a finger on the ledger to switch diary/lab. Each switch starts a fresh village.</summary>
+        void UpdateLabHold()
+        {
+            var pointer = Pointer.current;
+            if (pointer == null || !pointer.press.isPressed) { holdTime = 0; holdDone = false; return; }
+            var p = pointer.position.ReadValue();
+            if (holdDone || !ledgerScreen.Contains(new Vector2(p.x, Screen.height - p.y))) { holdTime = 0; return; }
+            if ((holdTime += Time.unscaledDeltaTime) < labHoldSeconds) return;
+            holdDone = true;
+            var cfg = PrototypeConfig.Current;
+            var mode = cfg.testMode == TestMode.Lab ? TestMode.Diary : TestMode.Lab;
+            EventLog.Instance?.Log("debug", ("test_mode", mode.ToString()));
+            cfg.SetTestMode(mode); // lab resets the village in StartVariant
+            if (mode == TestMode.Diary)
+            {
+                clock.ResetWorld();
+                HudToast.ShowBanner("Diary mode: the tank now runs on real time. Come back whenever you like.", 6f);
+            }
         }
 
         static string Noun(string type, int n)
@@ -137,7 +167,7 @@ namespace AquariumCiv.Prototypes.P2
             var sim = clock.Sim;
             var s = sim.State;
             float safeTop = (Screen.height - Screen.safeArea.yMax) / ProtoGui.Scale;
-            string ledger = $"Year {Mathf.FloorToInt(s.Year)}  ·  {s.population} people  ·  {sim.Count(BuildingType.Hut)} {(sim.Count(BuildingType.Hut) == 1 ? "hut" : "huts")}";
+            string ledger = (Lab ? "<color=#8fe0d0>LAB</color>  ·  " : "") + $"Year {Mathf.FloorToInt(s.Year)}  ·  {s.population} people  ·  {sim.Count(BuildingType.Hut)} {(sim.Count(BuildingType.Hut) == 1 ? "hut" : "huts")}";
             if (OutputVariant)
             {
                 int pct = Mathf.RoundToInt(sim.OutputPenalty * 100f);
@@ -148,6 +178,7 @@ namespace AquariumCiv.Prototypes.P2
             var r = new Rect(20, Mathf.Max(20, safeTop + 4), size.x + 8, size.y);
             ProtoGui.Block(r);
             GUI.Box(r, ledger, ledgerStyle);
+            ledgerScreen = new Rect(r.x * ProtoGui.Scale, r.y * ProtoGui.Scale, r.width * ProtoGui.Scale, r.height * ProtoGui.Scale);
 
             if (!Lab) return;
             float w = ProtoGui.Width, y = ProtoGui.Height - 190;

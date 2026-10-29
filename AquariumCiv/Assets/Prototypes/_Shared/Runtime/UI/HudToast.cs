@@ -9,7 +9,8 @@ namespace AquariumCiv.Prototypes
         struct Toast { public string text; public Vector3 world; public float until; }
 
         [Tooltip("Show the generic welcome-back banner (off when a prototype writes its own).")] public bool welcomeBack = true;
-        [Tooltip("Banner top on the 720x1280 canvas (below the notch); push it down when a HUD sits above it.")] public float bannerTop = 90f;
+        [Tooltip("Banner top on the 720x1280 canvas when there is no notch; push it down when a HUD sits above it.")] public float bannerTop = 90f;
+        [Tooltip("Gap between the safe-area top (notch) and the banner; must clear any HUD drawn below the notch.")] public float bannerBelowSafe = 24f;
 
         static HudToast instance;
         readonly List<Toast> toasts = new();
@@ -57,7 +58,9 @@ namespace AquariumCiv.Prototypes
             if (banner != null && Time.unscaledTime < bannerUntil && SurveyPanel.IsPlaying && !FeedbackPanel.IsOpen)
             {
                 float safeTop = (Screen.height - Screen.safeArea.yMax) / ProtoGui.Scale; // notch / status bar
-                var r = new Rect(30, Mathf.Max(bannerTop, safeTop + bannerTop - 66), ProtoGui.Width - 60, 90);
+                float bw = ProtoGui.Width - 60;
+                float bh = Mathf.Max(90, ProtoGui.Box.CalcHeight(new GUIContent(banner), bw)); // long summaries never clip
+                var r = new Rect(30, Mathf.Max(bannerTop, safeTop + bannerBelowSafe), bw, bh);
                 GUI.Box(r, banner, ProtoGui.Box);
             }
         }
