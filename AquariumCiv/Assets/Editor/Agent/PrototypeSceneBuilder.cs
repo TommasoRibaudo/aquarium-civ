@@ -91,7 +91,7 @@ namespace AquariumCiv.EditorTools
             var groundCol = new GameObject("GroundCollider");
             groundCol.transform.SetParent(d.root);
             var radiusWorld = d.w * (Radius + 0.5f);
-            groundCol.transform.position = new Vector3(0, d.tileSize.y - 0.02f, 0);
+            groundCol.transform.position = new Vector3(0, d.surfaceY - 0.02f, 0);
             groundCol.AddComponent<BoxCollider>().size = new Vector3(radiusWorld * 2, 0.04f, radiusWorld * 2);
             LogCategory.Tag(groundCol, "ground");
 

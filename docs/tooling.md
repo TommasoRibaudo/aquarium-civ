@@ -159,3 +159,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-29 · CI: "all actions must be pinned to a full-length commit SHA"** (job fails in 3 s at Set up job).
   The repo's Actions setting now requires SHA pins. Resolve a tag with `gh api repos/<owner>/<action>/commits/<tag> --jq .sha`
   and write `uses: owner/action@<sha> # vN`. When bumping an action, re-resolve the SHA. [verified]
+- **2026-10-29 · Tester touch playtest: Input System "Cached unprocessed value unexpectedly became outdated" error fails
+  the test** (logged from `InputSystem.Update()` in the manual pump). It is harness noise from the test fixture, not
+  game code. Set `LogAssert.ignoreFailingMessages = true` at test start and collect real warnings/errors yourself via
+  `Application.logMessageReceived` (filter that message). `console clear` afterwards so the main session doesn't
+  mistake them for game errors. Also back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/proto/P1.json`
+  and the `logs/*.jsonl` before a playtest and restore them after: the test runs the real save and event log. [verified]

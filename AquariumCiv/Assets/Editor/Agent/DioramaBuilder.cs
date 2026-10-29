@@ -12,6 +12,7 @@ namespace AquariumCiv.EditorTools
     {
         public Transform root;
         public Vector3 tileSize;
+        public float surfaceY; // world height of the tiles' top face (KayKit tiles pivot at the top, not the bottom)
         public float w; // flat-to-flat tile width
         public List<Vector2Int> cells = new();
         public Dictionary<Vector2Int, Vector3> cellPos = new();
@@ -22,7 +23,7 @@ namespace AquariumCiv.EditorTools
         public Camera camera;
         public Vector3 cameraTarget;
 
-        public Vector3 Top(Vector2Int cell) => cellPos[cell] + Vector3.up * tileSize.y;
+        public Vector3 Top(Vector2Int cell) => cellPos[cell] + Vector3.up * surfaceY;
     }
 
     public static class DioramaBuilder
@@ -49,7 +50,9 @@ namespace AquariumCiv.EditorTools
             // Measure the tile so spacing works whatever its orientation.
             var grassTile = Load($"{Medieval}/tiles/base/hex_grass.fbx");
             var waterTile = Load($"{Medieval}/tiles/base/hex_water.fbx");
-            d.tileSize = MeasureBounds(grassTile).size;
+            var tileBounds = MeasureBounds(grassTile);
+            d.tileSize = tileBounds.size;
+            d.surfaceY = tileBounds.max.y;
             bool pointyTop = d.tileSize.z > d.tileSize.x;
             d.w = pointyTop ? d.tileSize.x : d.tileSize.z;
             d.homeHeight = MeasureBounds(Load(B("home_A"))).size.y;
