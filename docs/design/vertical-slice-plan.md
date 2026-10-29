@@ -1,7 +1,7 @@
 # Vertical slice plan (draft, 2026-10-29)
 
 **Status: active (2026-10-29).** Gates 1–3 are decided ([decisions.md](../decisions.md)); §3 now records the chosen
-path for each gate, with the other options kept below it for reference. Art direction (§6) is still open.
+path for each gate, with the other options kept below it for reference. Art direction (§6) is decided: the code-built style kit.
 Scope comes from [prototype-plan.md](prototype-plan.md) Gate 3: **one box, eras 1–3, final art direction, real
 save/catch-up architecture.** Design source: [game-definition.md](game-definition.md).
 
@@ -114,7 +114,12 @@ Keep the JSONL event log and the GitHub feedback flow (with a relay before any p
 trade-off"). Add the week-long metrics: opens per day, D1/D3/D7, time to first clean, era watched live or skipped,
 stories recalled (a one-question in-app prompt on day 3).
 
-## 6. Art direction (to decide with you; options)
+## 6. Art direction
+**Decided 2026-10-29: the code-built style kit** ([spikes/style-kit.md](spikes/style-kit.md), decisions.md). No KayKit;
+everything generated in code from one palette and one stylised shader; buildings placed by the people, growing
+organically (research 08). The options below are kept for reference.
+
+### Options considered before the spike
 The look test and prototypes use KayKit Medieval Hexagon in a glass tank with tilt-shift. Final direction options:
 - **A · Keep KayKit, polish the glass** (cheapest): one palette pass, better glass (refraction-lite, rim light,
   condensation), a plinth and a shelf backdrop, era-specific ground colour. All CC0.
