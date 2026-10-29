@@ -6,11 +6,12 @@ across context compaction: resume from the first unchecked step.
 ## For you (latest first)
 **2026-10-29**
 - TestFlight #7 (0.3.0) first failed at upload: the `testflight` environment only allowed `main`. You added
-  `overnight/p3-p6` to its branches and re-ran it (run 40895173646).
+  `overnight/p3-p6` to its branches and re-ran it: **green** (run 40895173646, 15:18 UTC). Waiting for you: add it to
+  the Friends group, paste the "What to Test" text, fill the build number in the testflight.md build log row.
 - No P3–P6 test data yet. Results come from `python Tools/results/collect.py` (writes `docs/design/results/data/Pn.md`
   from the feedback issues); I re-run it as data arrives.
-- Gate 1 care layer ready on `vs/prep` for the vertical slice (`CareConfig.Gate1`, `CareMoodView`); P2–P6 untouched.
-- Nothing waiting for you.
+- Ready on `vs/prep` for after Gate 3, nothing decided: vertical-slice plan draft (options per gate outcome),
+  ranked polish backlog, save-versioning spike. Gate 1 care layer for the vertical slice (`CareConfig.Gate1`, `CareMoodView`); P2–P6 untouched.
 
 ## Checklist
 - [x] read docs (§1), branch vs/prep created from overnight/p3-p6
@@ -21,7 +22,7 @@ across context compaction: resume from the first unchecked step.
 - [x] vs/prep: Gate 1 care layer (CareConfig) + tests (86fc90f)
 - [x] vs/prep: vertical-slice plan draft (docs/design/vertical-slice-plan.md, options only)
 - [x] vs/prep: polish backlog ranked (docs/design/polish-backlog.md)
-- [ ] vs/prep: engineering spikes (UI automation, look sampler, save versioning)
+- [ ] vs/prep: engineering spikes (UI automation, look sampler, ~~save versioning~~ done cd40089)
 
 ## Log
 - 2026-10-29: started. TestFlight #7 blocked by the environment branch rule (fixed by the user). Issues so far: P1 #3–4,
@@ -31,6 +32,10 @@ across context compaction: resume from the first unchecked step.
   a later vs/prep PR targets dev (not opened: the prompt says no PRs).
 - 2026-10-29: CareConfig + CareMoodView + CareTests (86fc90f). Gate1 equals P2 B's world fingerprint; shared tests 36/36.
   Console: only the existing P2 warning CS0414 (`messBeforeClean`, left alone: P2 is protected).
+
+- 2026-10-29: polish backlog (327ed81), vertical-slice plan draft (b07ff64), save-versioning spike (cd40089,
+  docs/design/spikes/save-versioning.md; shared tests 42/42). TestFlight #7 green. Next: re-run the collector as
+  issues arrive; spikes left: UI automation, look sampler.
 
 ## Bugs from testers
 | Date | Issue | Prototype | What | Blocking? | Status |
