@@ -60,7 +60,9 @@ namespace AquariumCiv.Spikes.Growth.Tests
             var w = new GrowthWorld(7, 0, Variant.Organic) { keepSnapshots = false };
             w.RunToYear(60);
             var cfg = new SimConfig { buildingSlots = w.cfg.buildingSlots };
-            var bare = new SimCore(cfg, SimCore.NewWorld(7, cfg));
+            var bareState = SimCore.NewWorld(7, cfg);
+            bareState.era = AquariumCiv.Sim.Era.Town; // as GrowthWorld: SimCore's era gate open
+            var bare = new SimCore(cfg, bareState);
             for (int m = 0; m < 60 * 12; m++) bare.Step();
             Assert.AreEqual(bare.State.population, w.State.population);
             Assert.AreEqual(bare.State.buildings.Count, w.State.buildings.Count);

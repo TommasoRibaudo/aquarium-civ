@@ -100,7 +100,9 @@ namespace AquariumCiv.Spikes.Growth
             this.seed = seed;
             this.variant = variant;
             cfg = new SimConfig { buildingSlots = 96 };
-            core = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+            var start = SimCore.NewWorld(seed, cfg);
+            start.era = AquariumCiv.Sim.Era.Town; // the spike runs its own eras; SimCore's era gate (#23) stays open
+            core = new SimCore(cfg, start);
             map = new SiteMap(TerrainSpec.Preset(terrainPreset));
             net = new PathNet(map);
             placer = variant switch { Variant.Random => new RandomPlacer(), Variant.Hand => new HandPlacer(), _ => new Placer() };
