@@ -55,6 +55,20 @@ namespace AquariumCiv.Sim
             return steps;
         }
 
+        /// <summary>
+        /// Offline catch-up (game definition v0.2): the civ lives the first <see cref="SimConfig.fullSpeedHours"/> at full
+        /// speed and the rest at <see cref="SimConfig.slowSpeed"/>; mess runs on real hours, so the real hours the civ didn't
+        /// live are topped up as mess afterwards (capped like natural mess). Live play keeps calling <see cref="Advance"/>.
+        /// </summary>
+        public CatchUpResult CatchUp(double realHoursAway)
+        {
+            var r = new CatchUpResult { realHours = Math.Max(0, realHoursAway), simHours = Config.OfflineSimHours(realHoursAway) };
+            r.months = Advance(r.simHours);
+            double unlived = r.realHours - r.simHours;
+            if (unlived > 0) AccrueMess((float)unlived);
+            return r;
+        }
+
         public void Step()
         {
             var s = State;
@@ -81,7 +95,7 @@ namespace AquariumCiv.Sim
 
             TryBuild();
             if (s.nudges.Count > 0) NudgeStep();
-            AccrueMess();
+            AccrueMess((float)Config.StepHours);
             if (season == 0) YearlyNotables();
             NarrativeChecks(winter, festivalRoll);
             StoryStep(season, winter); // draws only from its own stream (SimCore.Story.cs)
@@ -109,10 +123,10 @@ namespace AquariumCiv.Sim
             AddBuilding(type);
         }
 
-        void AccrueMess()
+        /// <summary>Mess for <paramref name="h"/> real hours, capped (48 h fills it).</summary>
+        void AccrueMess(float h)
         {
             var s = State;
-            float h = (float)Config.StepHours;
             s.grime = Math.Min(1f, s.grime + h / Config.messFullHours);
             s.overgrowth = Math.Min(1f, s.overgrowth + h / Config.messFullHours);
             if (s.trash.Count >= Config.trashMax) { s.trashAccum = 0; return; }

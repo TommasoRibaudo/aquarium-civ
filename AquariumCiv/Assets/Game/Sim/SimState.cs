@@ -22,9 +22,28 @@ namespace AquariumCiv.Sim
         public int minNotables = 5;
         public int maxNotables = 12;
         public float storyChancePerMonth = 0.07f;
+        public double fullSpeedHours = 8;       // offline: the first hours away run at full speed (game definition v0.2)
+        public double slowSpeed = 0.25;         // ... and the rest at this fraction (a weekend away ≈ 18 game years)
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
+
+        /// <summary>Sim hours the civ lives through for a real absence: full speed, then the slow tail.</summary>
+        public static double OfflineSimHours(double realHoursAway, double fullSpeedHours, double slowSpeed)
+        {
+            if (realHoursAway <= 0) return 0;
+            return realHoursAway <= fullSpeedHours ? realHoursAway : fullSpeedHours + (realHoursAway - fullSpeedHours) * slowSpeed;
+        }
+
+        public double OfflineSimHours(double realHoursAway) => OfflineSimHours(realHoursAway, fullSpeedHours, slowSpeed);
+    }
+
+    /// <summary>What an offline catch-up did: real hours away, sim hours the civ lived, game months stepped.</summary>
+    public struct CatchUpResult
+    {
+        public double realHours, simHours;
+        public int months;
+        public bool Slowed => simHours < realHours;
     }
 
     /// <summary>xorshift32 with serializable state, so catch-up and live stepping produce identical worlds.</summary>
