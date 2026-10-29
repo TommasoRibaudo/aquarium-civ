@@ -4,6 +4,9 @@ Prompt: [docs/prompts/while-testing-gate2-3.md](../prompts/while-testing-gate2-3
 across context compaction: resume from the first unchecked step.
 
 ## For you (latest first)
+**2026-10-29 (evening): Gates 2 and 3 decided** (decisions.md): chronicle cards; time-lapse + small polished book;
+1 h = 1 year; shape the land; new box on the shelf. P5 survey bug (#17) left unfixed by your call. Next: vertical-slice plan.
+
 **2026-10-29 (evening): test results in**
 - 11 issues from your session (#11–#21), all you; lab only, no diaries. Results in `results/P3–P6.md`, both decision
   sheets filled with recommendations at the bottom: [test-session-gate2-3.md](../design/test-session-gate2-3.md).

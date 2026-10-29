@@ -103,7 +103,7 @@ Lab, about 30 minutes. A, then B.
 - **Risks:** n = 1, and the tester is the designer. A 4-day P3 diary or two friends playing P3 would firm it up; P3's
   answer is strong enough to proceed without that.
 
-- **Decision (for docs/decisions.md):** return presentation: ______ · history view: ______ · time compression: ______
+- **Decision (2026-10-29, in docs/decisions.md):** return presentation: **chronicle cards (A)** · history view: **time-lapse (A) + a small polished book for major events and people** · time compression: **keep 1 h = 1 year**
 
 ## Gate 3 decision sheet (control + progression)
 
@@ -126,4 +126,4 @@ Lab, about 30 minutes. A, then B.
 - **Then:** write the vertical-slice plan from the draft in [vertical-slice-plan.md](vertical-slice-plan.md) (its
   options already branch on these answers).
 
-- **Decision (for docs/decisions.md):** nudge form: ______ · progression shape: ______ · then write the vertical-slice plan.
+- **Decision (2026-10-29, in docs/decisions.md):** nudge form: **shape the land (B), terrain shifts** · progression shape: **new box on the shelf (B)** · next: the vertical-slice plan.
