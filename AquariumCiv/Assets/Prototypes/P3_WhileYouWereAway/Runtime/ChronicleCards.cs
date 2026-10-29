@@ -90,11 +90,12 @@ namespace AquariumCiv.Prototypes.P3
         {
             at = default;
             who = null;
+            if (village == null) village = FindAnyObjectByType<DioramaView>();
+            var b = village != null && e.buildingId >= 0 ? village.Find(e.buildingId) : null;
+            if (b != null && e.kind == "first_building") { at = b.transform.position; return true; } // the new building is the news
             var nv = NotableView.Instance;
             if (nv != null) who = nv.Find(e.notableId) ?? nv.Find(e.otherNotableId);
             if (who != null) { at = who.transform.position; return true; }
-            if (village == null) village = FindAnyObjectByType<DioramaView>();
-            var b = village != null && e.buildingId >= 0 ? village.Find(e.buildingId) : null;
             if (b != null) { at = b.transform.position; return true; }
             return false;
         }
@@ -135,7 +136,8 @@ namespace AquariumCiv.Prototypes.P3
             // Header: "While you were away · 2 of 5", with page dots.
             GUI.Label(new Rect(inner.x, inner.y, inner.width, 30), $"While you were away  ·  {index + 1} of {cards.Count}", metaStyle);
             for (int i = 0; i < cards.Count; i++)
-                GUI.Box(new Rect(inner.xMax - (cards.Count - i) * 22, inner.y + 10, 14, 14), GUIContent.none, i == index ? ProtoGui.Primary : ProtoGui.Chip);
+                ProtoGui.Dot(new Rect(inner.xMax - (cards.Count - i) * 24, inner.y + 8, 14, 14),
+                    i == index ? ProtoGui.AccentColor : new Color(0.55f, 0.8f, 0.8f, i < index ? 0.8f : 0.35f));
 
             float top = inner.y + 40;
             float textX = inner.x;

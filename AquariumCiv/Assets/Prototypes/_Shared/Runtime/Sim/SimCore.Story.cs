@@ -15,15 +15,25 @@ namespace AquariumCiv.Prototypes.Sim
         // One-off firsts, kept in storyFlags.
         const string FlagWedding = "wedding", FlagSnow = "snow", FlagNamed = "named";
 
-        static readonly string[] Gadgets =
+        /// <summary>Trait incidents: {0} = the person, {1} = a building. Two lines each so a long life doesn't repeat.</summary>
+        static readonly Dictionary<string, (string kind, float salience, string[] lines)> TraitStories = new()
         {
-            "a bucket that pours itself", "a chair with a built-in umbrella", "a very small catapult for seeds",
-            "boots that squeak in tune", "a mirror for signalling the Keeper", "a wheelbarrow with five wheels",
+            ["the tinkerer"] = ("invention", 0.62f, new[] { "{0} invented a bucket that pours itself.", "{0} built a wheelbarrow with five wheels. It mostly works." }),
+            ["the clever"] = ("invention", 0.62f, new[] { "{0} invented a mirror for signalling the Keeper.", "{0} worked out how to tell the time from the glass's shadow." }),
+            ["the singer"] = ("song", 0.5f, new[] { "{0} wrote a song about the Keeper's giant thumb. Everyone hums it now.", "{0} sang at the {1} until the rafters shook." }),
+            ["the joker"] = ("prank", 0.52f, new[] { "{0} painted the {1} roof bright pink overnight.", "{0} hid every spoon in the village inside the {1}." }),
+            ["the gardener"] = ("giant_turnip", 0.55f, new[] { "{0} grew a turnip the size of a sheep. It fed the street for a week.", "{0} planted flowers around the {1}. The bees approve." }),
+            ["the brave"] = ("brave", 0.5f, new[] { "{0} chased a fox away from the hens with a frying pan.", "{0} climbed the {1} roof in a storm to save a kitten." }),
+            ["the stubborn"] = ("stubborn", 0.48f, new[] { "{0} refused to move for the new path. The path now goes around them.", "{0} insisted the {1} was built backwards. It wasn't." }),
+            ["the worrier"] = ("worrier", 0.45f, new[] { "{0} built a little fence around the well, just in case.", "{0} counted the people of the village twice a day for a month." }),
+            ["the gossip"] = ("gossip", 0.5f, new[] { "{0} spread a rumour that the Keeper has a cat. It caused quite a stir.", "{0} knew about the wedding before the couple did." }),
+            ["the grump"] = ("grump", 0.45f, new[] { "{0} complained about the noise from the {1} for a whole season.", "{0} said the harvest festival was too loud, then danced all night." }),
+            ["the dreamer"] = ("dreamer", 0.55f, new[] { "{0} dreamt of a city beyond the glass and drew a map of it.", "{0} spent a summer trying to talk to the clouds." }),
+            ["the lazy"] = ("lazy", 0.45f, new[] { "{0} napped through the entire harvest. Nobody had the heart to wake them.", "{0} invented a hammock. It was their only invention." }),
+            ["the kind"] = ("kind", 0.5f, new[] { "{0} took in a stray goat. It follows them everywhere now.", "{0} baked bread for every house after the storm." }),
+            ["the loud"] = ("loud", 0.45f, new[] { "{0} sneezed so hard the weathervane spun round.", "{0} called the goats home from the far side of the glass." }),
         };
-        static readonly string[] SongTopics =
-        {
-            "the Keeper's giant thumb", "the first winter", "a lost goat", "the light behind the glass", "a turnip",
-        };
+
         static readonly string[] FoundThings =
         {
             "a shiny pebble nobody can explain", "a very old boot", "a jar of honey", "a crown made of twigs",
@@ -99,64 +109,42 @@ namespace AquariumCiv.Prototypes.Sim
             if (eldest != null && eldest.age >= 60f && winter) Add(0.5f, () =>
                 Chronicle("elder", $"{eldest.FullName}, now the eldest, told the founding story to the children all winter.", 0.55f, eldest.id));
 
-            // ---- one person, by trait ----
+            // ---- one person, by trait (each person tells each kind of story at most once in 15 years) ----
             foreach (var n in adults)
             {
                 var who = n;
-                switch (n.trait)
+                if (!TraitStories.TryGetValue(n.trait, out var t) || !Fresh(t.kind, who.id, 15)) continue;
+                Add(0.5f, () =>
                 {
-                    case "the tinkerer": case "the clever":
-                        Add(0.5f, () => Chronicle("invention", $"{who.FullName} invented {Pick(r, Gadgets)}.", 0.62f, who.id)); break;
-                    case "the singer":
-                        Add(0.5f, () => Chronicle("song", $"{who.FullName} wrote a song about {Pick(r, SongTopics)}. Everyone hums it now.", 0.5f, who.id)); break;
-                    case "the joker":
-                        Add(0.5f, () => { var b = RandomBuilding(r); Chronicle("prank", $"{who.FullName} painted the {Label(b)} roof bright pink overnight.", 0.52f, who.id).buildingId = b?.id ?? -1; }); break;
-                    case "the gardener":
-                        Add(0.5f, () => Chronicle("giant_turnip", $"{who.FullName} grew a turnip the size of a sheep. It fed the street for a week.", 0.55f, who.id)); break;
-                    case "the brave":
-                        Add(0.5f, () => Chronicle("brave", $"{who.FullName} chased a fox away from the hens with a frying pan.", 0.5f, who.id)); break;
-                    case "the stubborn":
-                        Add(0.4f, () => Chronicle("stubborn", $"{who.FullName} refused to move for the new path. The path now goes around them.", 0.48f, who.id)); break;
-                    case "the worrier":
-                        Add(0.4f, () => Chronicle("worrier", $"{who.FullName} built a little fence around the well, just in case.", 0.45f, who.id)); break;
-                    case "the gossip":
-                        Add(0.5f, () => Chronicle("gossip", $"{who.FullName} spread a rumour that the Keeper has a cat. It caused quite a stir.", 0.5f, who.id)); break;
-                    case "the grump":
-                        Add(0.4f, () => { var b = RandomBuilding(r); Chronicle("grump", $"{who.FullName} complained about the noise from the {Label(b)} for a whole season.", 0.45f, who.id).buildingId = b?.id ?? -1; }); break;
-                    case "the dreamer":
-                        Add(0.5f, () => Chronicle("dreamer", $"{who.FullName} dreamt of a city beyond the glass and drew a map of it.", 0.55f, who.id)); break;
-                    case "the lazy":
-                        Add(0.4f, () => Chronicle("lazy", $"{who.FullName} napped through the entire harvest. Nobody had the heart to wake them.", 0.45f, who.id)); break;
-                    case "the kind":
-                        Add(0.5f, () => Chronicle("kind", $"{who.FullName} took in a stray goat. It follows them everywhere now.", 0.5f, who.id)); break;
-                    case "the loud":
-                        Add(0.4f, () => Chronicle("loud", $"{who.FullName} sneezed so hard the weathervane spun round.", 0.45f, who.id)); break;
-                }
+                    var b = RandomBuilding(r);
+                    var e = Chronicle(t.kind, string.Format(Pick(r, t.lines), who.FullName, Label(b)), t.salience, who.id);
+                    if (t.lines.Any(l => l.Contains("{1}"))) e.buildingId = b?.id ?? -1;
+                });
             }
-            if (adults.Count > 0) Add(0.6f, () =>
+            if (adults.Count > 0 && Fresh("lost", -1, 6)) Add(0.6f, () =>
             {
                 var n = Pick(r, adults);
                 Chronicle("lost", $"{n.FullName} got lost in the hills for three days and came back with {Pick(r, FoundThings)}.", 0.6f, n.id);
             });
 
             // ---- the world ----
-            Add(0.6f, () =>
+            if (Fresh("storm", -1, 6)) Add(0.6f, () =>
             {
                 var b = RandomBuilding(r);
                 s.mood = Math.Max(0f, s.mood - 0.05f);
                 Chronicle("storm", b != null ? $"A great storm rattled the glass. The people huddled together in the {Label(b)}." : "A great storm rattled the glass.", 0.5f).buildingId = b?.id ?? -1;
             });
-            if (!winter) Add(0.5f, () => { s.mood = Math.Min(1f, s.mood + 0.05f); Chronicle("rainbow", "A rainbow arched over the pond. Nobody worked that afternoon.", 0.42f); });
-            Add(0.4f, () =>
+            if (!winter && Fresh("rainbow", -1, 8)) Add(0.5f, () => { s.mood = Math.Min(1f, s.mood + 0.05f); Chronicle("rainbow", "A rainbow arched over the pond. Nobody worked that afternoon.", 0.42f); });
+            if (Fresh("fog", -1, 8)) Add(0.4f, () =>
             {
                 var n = adults.Count > 0 ? Pick(r, adults) : null;
                 Chronicle("fog", n != null ? $"Fog filled the glass for a week. {n.FullName} walked into the same tree four times." : "Fog filled the glass for a week.", 0.42f, n?.id ?? -1);
             });
-            if (season >= 5 && season <= 7) Add(0.4f, () => { s.food *= 0.85f; Chronicle("drought", "A dry summer: the stream ran low and everyone shared their water.", 0.48f); });
-            if (season >= 8 && season <= 9) Add(0.5f, () => { s.food = Math.Min(FoodCap, s.food * 1.2f + 5f); Chronicle("bumper", "The best harvest anyone can remember. The granary door wouldn't close.", 0.55f); });
-            Add(0.35f, () => Chronicle("strange_light", "A strange warm light crossed the sky. Some say it was the Keeper's lamp.", 0.5f));
-            Add(0.35f, () => Chronicle("ducks", "A family of ducks moved into the pond and took charge of it.", 0.45f));
-            if (Count(BuildingType.Tavern) > 0) Add(0.4f, () =>
+            if (season >= 5 && season <= 7 && Fresh("drought", -1, 6)) Add(0.4f, () => { s.food *= 0.85f; Chronicle("drought", "A dry summer: the stream ran low and everyone shared their water.", 0.48f); });
+            if (season >= 8 && season <= 9 && Fresh("bumper", -1, 6)) Add(0.5f, () => { s.food = Math.Min(FoodCap, s.food * 1.2f + 5f); Chronicle("bumper", "The best harvest anyone can remember. The granary door wouldn't close.", 0.55f); });
+            if (Fresh("strange_light", -1, 20)) Add(0.35f, () => Chronicle("strange_light", "A strange warm light crossed the sky. Some say it was the Keeper's lamp.", 0.5f));
+            if (Fresh("ducks", -1, 30)) Add(0.35f, () => Chronicle("ducks", "A family of ducks moved into the pond and took charge of it.", 0.45f));
+            if (Count(BuildingType.Tavern) > 0 && Fresh("sheep", -1, 30)) Add(0.4f, () =>
             {
                 var b = State.buildings.First(x => x.type == BuildingType.Tavern);
                 Chronicle("sheep", "A sheep wandered into the tavern and refused to leave. It has a stool now.", 0.5f).buildingId = b.id;
@@ -170,6 +158,19 @@ namespace AquariumCiv.Prototypes.Sim
                 run();
                 return;
             }
+        }
+
+        /// <summary>No entry of this kind (about this person, if given) in the last <paramref name="years"/> years.</summary>
+        bool Fresh(string kind, int notableId, int years)
+        {
+            long since = State.month - years * SimConfig.MonthsPerYear;
+            for (int i = State.chronicle.Count - 1; i >= 0; i--)
+            {
+                var e = State.chronicle[i];
+                if (e.month < since) return true;
+                if (e.kind == kind && (notableId < 0 || e.notableId == notableId)) return false;
+            }
+            return true;
         }
 
         void Wedding(Notable a, Notable b, int season)

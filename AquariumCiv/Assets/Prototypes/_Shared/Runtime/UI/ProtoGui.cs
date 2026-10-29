@@ -62,6 +62,31 @@ namespace AquariumCiv.Prototypes
             GUI.skin = skin;
         }
 
+        static Texture2D dot;
+
+        /// <summary>A filled circle (page dots, markers), tinted.</summary>
+        public static void Dot(Rect r, Color color)
+        {
+            if (dot == null)
+            {
+                const int n = 32;
+                dot = new Texture2D(n, n, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
+                for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dx = x + 0.5f - n / 2f, dy = y + 0.5f - n / 2f;
+                    dot.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(n / 2f - Mathf.Sqrt(dx * dx + dy * dy))));
+                }
+                dot.Apply();
+            }
+            var c = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(r, dot);
+            GUI.color = c;
+        }
+
+        public static Color AccentColor => Accent;
+
         /// <summary>A rounded panel background (no content).</summary>
         public static void Panel(Rect r) => GUI.Box(r, GUIContent.none, skin.window);
 

@@ -218,7 +218,11 @@ namespace AquariumCiv.Prototypes.Sim
             if (!s.foundedTypes.Contains(type))
             {
                 s.foundedTypes.Add(type);
-                if (s.month > 0) Chronicle("first_building", NameData.FirstBuildingLine(type, AliveNotable()), 0.75f).buildingId = b.id;
+                if (s.month > 0)
+                {
+                    var by = AliveNotable();
+                    Chronicle("first_building", NameData.FirstBuildingLine(type, by), 0.75f, by?.id ?? -1).buildingId = b.id;
+                }
             }
             return b;
         }
