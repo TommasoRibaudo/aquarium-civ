@@ -100,6 +100,7 @@ namespace AquariumCiv.Sim
             NarrativeChecks(winter, festivalRoll);
             StoryStep(season, winter); // draws only from its own stream (SimCore.Story.cs)
             if (season == 0) RecordYear();
+            EraStep(); // no dice: only marks the next era ready (SimCore.Eras.cs)
         }
 
         void TryBuild()
@@ -110,14 +111,15 @@ namespace AquariumCiv.Sim
             if (s.wood < cost) return;
             int pop = s.population;
             string type;
-            if (Count(BuildingType.Farm) < 1 + pop / 8) type = BuildingType.Farm;
-            else if (pop >= Housing - 1) type = BuildingType.Hut;
-            else if (pop >= 6 && Count(BuildingType.Lumbermill) == 0) type = BuildingType.Lumbermill;
-            else if (pop >= 8 && Count(BuildingType.Well) == 0) type = BuildingType.Well;
-            else if (pop >= 12 && Count(BuildingType.Windmill) == 0) type = BuildingType.Windmill;
-            else if (pop >= 15 && Count(BuildingType.Market) == 0) type = BuildingType.Market;
-            else if (pop >= 18 && Count(BuildingType.Tavern) == 0) type = BuildingType.Tavern;
-            else if (pop >= 24 && Count(BuildingType.Church) == 0) type = BuildingType.Church;
+            // Types from a later era are skipped: a camp waiting at its threshold keeps building, but only camp things.
+            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < 1 + pop / 8)) type = BuildingType.Farm;
+            else if (Wants(BuildingType.Hut, pop >= Housing - 1)) type = BuildingType.Hut;
+            else if (Wants(BuildingType.Lumbermill, pop >= 6 && Count(BuildingType.Lumbermill) == 0)) type = BuildingType.Lumbermill;
+            else if (Wants(BuildingType.Well, pop >= 8 && Count(BuildingType.Well) == 0)) type = BuildingType.Well;
+            else if (Wants(BuildingType.Windmill, pop >= 12 && Count(BuildingType.Windmill) == 0)) type = BuildingType.Windmill;
+            else if (Wants(BuildingType.Market, pop >= 15 && Count(BuildingType.Market) == 0)) type = BuildingType.Market;
+            else if (Wants(BuildingType.Tavern, pop >= 18 && Count(BuildingType.Tavern) == 0)) type = BuildingType.Tavern;
+            else if (Wants(BuildingType.Church, pop >= 24 && Count(BuildingType.Church) == 0)) type = BuildingType.Church;
             else return; // nothing needed: save wood
             s.wood -= cost;
             AddBuilding(type);

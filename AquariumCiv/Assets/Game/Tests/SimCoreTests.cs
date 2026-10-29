@@ -21,18 +21,26 @@ namespace AquariumCiv.Tests
             return h;
         }
 
+        internal static uint Fingerprint(SimState s)
+        {
+            string fp = s.population + "|" + s.month + "|" + s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" +
+                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Select(c => c.text)) + "|" +
+                        string.Join(",", s.notables.Select(n => n.FullName + n.age.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
+            return Fnv(fp);
+        }
+
         /// <summary>A fingerprint of the slice world (seed 1234, 48 h). If this fails, a change altered the simulation:
-        /// fine when meant (update the number in the same commit and say why), a bug when not.</summary>
+        /// fine when meant (update the number in the same commit and say why), a bug when not.
+        /// Eras (#23): nobody watches here, so the box stays a camp at its plateau and builds only camp types, and the
+        /// chronicle notes that the village is ready.</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
             var sim = NewSim(1234);
             sim.Advance(48);
-            var s = sim.State;
-            string fp = s.population + "|" + s.month + "|" + s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" +
-                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Select(c => c.text)) + "|" +
-                        string.Join(",", s.notables.Select(n => n.FullName + n.age.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
-            Assert.AreEqual(390496490u, Fnv(fp), "slice world fingerprint");
+            Assert.AreEqual(Era.Camp, sim.State.era);
+            Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
+            Assert.AreEqual(260752515u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]
