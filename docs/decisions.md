@@ -39,8 +39,10 @@ Phase C interview (details in [design/game-definition.md](design/game-definition
 | 2026-10-29 | App identity | "Aquarium Civ", `com.tommasoribaudo.aquariumciv`, portrait only | Placeholder icon rendered from the look-test diorama |
 | 2026-10-28 | Prototyping | Throwaway scenes under `Assets/Prototypes/`, within-subject A/B with the user + 3–5 friends | Plan: [design/prototype-plan.md](design/prototype-plan.md) |
 | 2026-10-28 | Agent workflow | Main session implements; a `tester` sub-agent plays and judges visual/gameplay changes (never fixes); tooling lessons logged in `docs/tooling.md` | Adapted from a shared Unity workflow doc. Issue tracker, board and branch-per-issue deferred until production |
+| 2026-10-28 | Repo visibility | Public | Free Actions minutes (iOS builds now cost $0). Full-history gitleaks scan was clean before going public |
+| 2026-10-28 | License | Copyleft: code GPL-3.0-or-later + Unity/app-store permissions; original art, audio and docs CC BY-SA 4.0 | Third-party packs keep their own licenses. The user owns all copyright so far. See [README](../README.md) |
+| 2026-10-28 | CI | Every PR and push to `main`: workflow lint, secret scan, Unity EditMode tests; `main` only via PR with green checks | Setup and security measures: [ci.md](ci.md) |
 
 ## Still open
 - AI tools for minor assets (free tiers only for now)
 - Offline simulation: P0 uses a coarse aggregate catch-up; whether civ progress needs any offline cap (Q7)
-- iOS CI secrets and Apple setup pending (docs/testflight.md checklist)

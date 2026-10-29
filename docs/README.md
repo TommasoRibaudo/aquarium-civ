@@ -32,6 +32,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | File | Topic |
 |------|-------|
 | [tooling.md](tooling.md) | Unity CLI/Pipeline facts, stuck-dialog fixes, lessons log (append as you learn) |
+| [ci.md](ci.md) | CI checks, `main` ruleset, Actions security measures |
+| [testflight.md](testflight.md) | iOS builds and TestFlight setup |
 
 ## Open questions
 See [decisions.md](decisions.md) (to be filled in as we answer them).
