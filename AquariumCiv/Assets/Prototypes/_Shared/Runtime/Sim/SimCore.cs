@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace AquariumCiv.Prototypes.Sim
@@ -63,9 +64,9 @@ namespace AquariumCiv.Prototypes.Sim
             // Economy. Subsistence ignores the Keeper's care, so neglect slows growth but never starves the civ;
             // the surplus (what pays for growth) is scaled by mood and mess.
             float subsistence = pop * (winter ? 0.85f : 1f);
-            float surplus = (2f + pop * 0.2f + Count(BuildingType.Farm) * 3f + Count(BuildingType.Windmill) * 3f) * mult * (winter ? 0.5f : 1f);
+            float surplus = (2f + pop * 0.2f + Count(BuildingType.Farm) * 3f + Count(BuildingType.Windmill) * 3f) * mult * (winter ? 0.5f : 1f) * NudgeFood;
             s.food = Math.Clamp(s.food + subsistence + surplus - pop, 0f, FoodCap);
-            s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult, 2000f);
+            s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult * NudgeWood, 2000f);
 
             if (s.food > pop * 1.5f && pop < Housing && birthRoll < 0.025f * (0.5f + s.mood) * (1f - OutputPenalty)) s.population++; // happier = more births; a mess penalty slows growth too
             if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
@@ -74,6 +75,7 @@ namespace AquariumCiv.Prototypes.Sim
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
 
             TryBuild();
+            if (s.nudges != null && s.nudges.Count > 0) NudgeStep(season); // P5 only: P2 never places a nudge
             AccrueMess();
             if (season == 0) YearlyNotables();
             NarrativeChecks(winter, festivalRoll);
@@ -214,6 +216,12 @@ namespace AquariumCiv.Prototypes.Sim
         {
             var s = State;
             var used = s.buildings.Select(b => b.slot).ToHashSet();
+            if (ReservedSlots != null) // P5: groves and channels take a tile (unless that would leave no room at all)
+            {
+                var withReserved = new HashSet<int>(used);
+                withReserved.UnionWith(ReservedSlots());
+                if (Enumerable.Range(0, Config.buildingSlots).Any(i => !withReserved.Contains(i))) used = withReserved;
+            }
             int slot = Enumerable.Range(0, Config.buildingSlots).First(i => !used.Contains(i));
             var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
             s.buildings.Add(b);

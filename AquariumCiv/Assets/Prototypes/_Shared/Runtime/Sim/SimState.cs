@@ -107,6 +107,21 @@ namespace AquariumCiv.Prototypes.Sim
         public int notableId = -1;
         public int otherNotableId = -1; // a second person in the story (wedding, rivalry...)
         public int buildingId = -1;     // the building it happened at, for fly-to
+        public bool keeper;             // P5: the people acted on a Keeper's nudge
+    }
+
+    /// <summary>P5: one of the Keeper's nudges (a totem, a shrine, rain, a grove, a channel).</summary>
+    [Serializable]
+    public class Nudge
+    {
+        public int id;
+        public string kind;
+        public int slot;
+        public long month;
+        public bool credited;       // the people answered it
+        public long answerMonth = -1;
+        public int buildingId = -1;
+        public bool reported;       // the view has shown and logged the answer
     }
 
     /// <summary>One game year, compact (P4 history): enough to replay the village growing.</summary>
@@ -148,6 +163,7 @@ namespace AquariumCiv.Prototypes.Sim
         public string settlementName = "";
         public List<YearSnapshot> years = new();
         public int pinnedNotableId = -1;
+        public List<Nudge> nudges = new();
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

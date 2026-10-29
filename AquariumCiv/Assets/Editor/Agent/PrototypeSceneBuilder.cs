@@ -6,6 +6,7 @@ using AquariumCiv.Prototypes.P2;
 using AquariumCiv.Prototypes.Hub;
 using AquariumCiv.Prototypes.P3;
 using AquariumCiv.Prototypes.P4;
+using AquariumCiv.Prototypes.P5;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -137,6 +138,35 @@ namespace AquariumCiv.EditorTools
             p4.timelapse = timelapse;
             p4.book = book;
             p4.prehistoryYears = 100f; // a century to browse
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P5 Keeper's Nudge")]
+        public static string BuildP5()
+        {
+            var b = BuildLabBase("P5", "Assets/Prototypes/P5_KeepersNudge/P5_KeepersNudge.unity", "I felt I shaped what happened");
+            b.systems.GetComponent<PrototypeConfig>().surveyExtra = "Did you have too much or too little control over what happened? Why?";
+            var p5 = b.systems.AddComponent<KeepersNudge>();
+            WireLab(b, p5);
+            p5.village = b.village;
+            p5.tileTop = b.diorama.surfaceY;
+            p5.cloudPrefab = Load(N("cloud_big"));
+            p5.riverTile = Load($"{Medieval}/tiles/rivers/hex_river_A.fbx");
+            KeepersNudge.Option Opt(string kind, string title, string line, string prop, float scale, bool tile = false) =>
+                new() { kind = kind, title = title, line = line, prop = prop != null ? Load(prop) : null, scale = scale, takesTile = tile };
+            p5.omens = new[]
+            {
+                Opt("harvest_totem", "Harvest totem", "A golden banner. The people lean towards farming.", P("flag_yellow"), 3.2f),
+                Opt("craft_totem", "Craft totem", "A stack of fine timber. The people lean towards making things.", P("resource_lumber"), 2.6f),
+                Opt("faith_shrine", "Faith shrine", "A small stage of stones. The people lean towards festivals and faith.", Neutral("building_stage_A"), 0.6f),
+            };
+            p5.land = new[]
+            {
+                Opt("rain", "Rain", "A raincloud over one spot. The fields drink and the people farm.", null, 1f),
+                Opt("grove", "Plant a grove", "Trees on an empty tile. Wood and shade: the people build.", N("trees_A_medium"), 1f, true),
+                Opt("channel", "Dig a channel", "Water on an empty tile. New fields and a mill follow.", null, 1f, true),
+            };
             Save(b);
             return Report(b);
         }
