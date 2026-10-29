@@ -283,3 +283,12 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   (script args after `--`, read via `sys.argv`); FBX export via `bpy.ops.export_scene.fbx` verified. RenderDoc:
   `C:\Program Files\RenderDoc\qrenderdoc.exe` (UI) and `renderdoccmd.exe` (CLI capture) for Windows frame captures;
   there is no Android device and no Mac, so iPhone GPU captures still need the in-app FrameTimingManager log. [verified]
+- **2026-10-29 · `unity status --timeout 30` fails** with `STATUS_TIMEOUT_REQUIRES_UNTIL_READY`: `--timeout` only goes
+  with `--until-ready`. Plain `unity status --format json` is instant. After `unity recompile`, poll it until `"state":
+  "ready"` (it reads `unreachable`/`starting` for ~10–20 s). [verified]
+- **2026-10-29 · The first `script eval` after a recompile can return 504 (30 s timeout) yet still run.** A scene-builder
+  eval (`NewScene` + `SaveScene` + `AssetDatabase.Refresh`) timed out but the scene was written. Check the effect (file
+  on disk, active scene) before re-running; give builder evals `--timeout 60`. [verified]
+- **2026-10-29 · Slice play-mode checks:** the `GameClock` summary line is in `Editor.log` (`grep -a "\[GameClock\]"`)
+  even when `console get` right after `editor.playmode start` shows 0 entries. The slice saves to
+  `LocalLow/Tommaso Ribaudo/Aquarium Civ/game/` and never touches `proto/` or `logs/`. [verified]

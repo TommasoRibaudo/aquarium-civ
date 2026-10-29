@@ -146,11 +146,19 @@ KayKit's huts → homes, and B keeps the free, cohesive base.
 | 8 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
 About 24 agent days before the week-long test.
 
-**Progress.** M1 started 2026-10-29 on branch `vs/m1`: `Assets/Game/Sim` (`AquariumCiv.Sim`, pure C#, the prototype sim
-with the gate switches resolved: no mess→mood, stories and yearly snapshots always on, nudges = rain/grove/channel
-only), `Assets/Game/Runtime` (`AquariumCiv.Game`, versioned atomic `SaveStore`), `Assets/Game/Tests` (32 EditMode
-tests incl. a slice-world fingerprint and a killed-mid-save test). Still to do for M1: the save/catch-up driver
-(`GameClock`: load, catch-up, autosave, pause/quit), a first scene builder, and excluding the prototypes from the slice build.
+**Progress.** **M1 done 2026-10-29** (branches `vs/m1`, then `vs/m1-clock`): `Assets/Game/Sim` (`AquariumCiv.Sim`,
+pure C#, the prototype sim with the gate switches resolved: no mess→mood, stories and yearly snapshots always on,
+nudges = rain/grove/channel only; **offline slow-down**: `SimCore.CatchUp` lives the first 8 h away at full speed and
+the rest at a quarter, then tops up mess for the real hours it didn't live, so a 48 h absence still reaches full mess),
+`Assets/Game/Runtime` (`AquariumCiv.Game`: versioned atomic `SaveStore`; `GameClock` with its decisions in
+`ClockLogic`: load or start a box, broken saves kept aside as `.corrupt`, a newer build's save never overwritten
+(non-saving session), catch-up on open and on return from the background, live time by unscaled real time, autosave
+every 30 s and on pause/focus loss/quit to `persistentDataPath/game/box.json`; debug hooks `GameClock.DebugSkipHours`
+/ `DebugAway` for `script eval` until the debug panel), `Assets/Editor/Agent/SliceSceneBuilder.cs` →
+`Assets/Game/Scenes/Slice.unity` (camera + GameClock, no art), and `Assets/Game/Tests` (54 EditMode tests incl. the
+slice-world fingerprint, a killed-mid-save test and the clock decisions). Left for later: excluding the prototypes
+from the slice build (Build Settings are untouched while TestFlight prototype builds use them), and measuring a long
+catch-up on a phone (a week away = 576 month steps).
 
 ## 8. Risks
 - **"Nothing to do" between events** (P2 feedback #8: "there is nothing else to do so it feels a bit like doing
