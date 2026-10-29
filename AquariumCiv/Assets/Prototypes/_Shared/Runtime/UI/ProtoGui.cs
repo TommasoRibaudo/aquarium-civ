@@ -30,7 +30,14 @@ namespace AquariumCiv.Prototypes
         static readonly Color FieldFill = new(0.03f, 0.09f, 0.12f, 0.95f);
         static readonly Color FieldEdge = new(0.45f, 0.75f, 0.78f, 0.5f);
 
+        /// <summary>A/B colours, the same on the hub buttons and every lab strip: teal A, sand B.</summary>
+        public static readonly Color VariantA = new(0.24f, 0.70f, 0.66f, 1f);
+        public static readonly Color VariantB = new(0.87f, 0.74f, 0.52f, 1f);
+        public static Color VariantColor(int variant) => variant == 0 ? VariantA : VariantB;
+        public static string VariantHex(int variant) => variant == 0 ? "#5fd6c9" : "#f0cf96";
+
         static GUISkin skin;
+        static GUIStyle[] variantButtons, variantPills;
         static GUIStyle box, wrap, title, hint, hintRight, primary, disabled, chip, chipOn;
         public static GUIStyle Box => box;
         public static GUIStyle Wrap => wrap;
@@ -43,6 +50,10 @@ namespace AquariumCiv.Prototypes
         public static GUIStyle Disabled => disabled;
         public static GUIStyle Chip => chip;
         public static GUIStyle ChipOn => chipOn;
+        /// <summary>A button in variant A's or B's colour (dark text).</summary>
+        public static GUIStyle VariantButton(int variant) { if (skin == null) Build(); return variantButtons[variant == 0 ? 0 : 1]; }
+        /// <summary>A small non-interactive label pill in the variant's colour ("A", "B").</summary>
+        public static GUIStyle VariantPill(int variant) { if (skin == null) Build(); return variantPills[variant == 0 ? 0 : 1]; }
 
         public static void Begin()
         {
@@ -108,6 +119,17 @@ namespace AquariumCiv.Prototypes
             skin.textArea = new GUIStyle(skin.textField) { wordWrap = true, alignment = TextAnchor.UpperLeft };
             skin.settings.cursorColor = Accent;
             skin.settings.selectionColor = new Color(Accent.r, Accent.g, Accent.b, 0.35f);
+
+            variantButtons = new GUIStyle[2];
+            variantPills = new GUIStyle[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var c = VariantColor(i);
+                variantButtons[i] = ButtonStyle(font, c, Color.Lerp(c, Color.white, 0.15f), Color.Lerp(c, Color.black, 0.15f),
+                    new Color(1f, 1f, 1f, 0.5f), InkDark);
+                variantPills[i] = new GUIStyle(variantButtons[i]) { fontSize = 22, padding = new RectOffset(10, 10, 4, 4), margin = new RectOffset(0, 0, 0, 0) };
+                variantPills[i].hover = variantPills[i].active = variantPills[i].normal;
+            }
 
             box = new GUIStyle(skin.box) { alignment = TextAnchor.UpperLeft, padding = new RectOffset(18, 18, 14, 14), wordWrap = true };
             wrap = new GUIStyle(skin.label) { wordWrap = true, alignment = TextAnchor.UpperLeft };

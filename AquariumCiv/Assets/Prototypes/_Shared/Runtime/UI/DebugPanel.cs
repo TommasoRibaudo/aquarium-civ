@@ -10,12 +10,14 @@ namespace AquariumCiv.Prototypes
         public MessView mess;
         public bool visible;
         Vector2 scroll;
+        IDebugCheats[] cheats = System.Array.Empty<IDebugCheats>();
 
         static readonly (string label, float speed)[] Speeds = { ("x1 (1h=1y)", 1f), ("x60", 60f), ("x600", 600f), ("Pause", 0f) };
 
         void Start()
         {
             if (!Debug.isDebugBuild) { enabled = false; return; }
+            cheats = GetComponents<IDebugCheats>(); // prototype-specific rows (P3+), on the same Prototype object
             if (OrbitCamera.Instance != null) OrbitCamera.Instance.ThreeFingerTap += () => visible = !visible;
         }
 
@@ -73,7 +75,14 @@ namespace AquariumCiv.Prototypes
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Copy last summary", GUILayout.Height(54))) GUIUtility.systemCopyBuffer = EventLog.Instance.LastSummary;
             if (GUILayout.Button("Copy log path", GUILayout.Height(54))) GUIUtility.systemCopyBuffer = EventLog.Instance.LogPath;
+            if (HubLink.Available && GUILayout.Button("Test hub", GUILayout.Height(54))) HubLink.GoToHub();
             GUILayout.EndHorizontal();
+
+            foreach (var c in cheats)
+            {
+                GUILayout.Space(6);
+                c.DrawCheats();
+            }
 
             GUILayout.Space(8);
             GUILayout.Label("<b>Chronicle</b>");
@@ -88,5 +97,14 @@ namespace AquariumCiv.Prototypes
             GUILayout.EndScrollView();
             GUILayout.EndArea();
         }
+    }
+}
+
+namespace AquariumCiv.Prototypes
+{
+    /// <summary>A prototype's own debug rows (give, spawn, skip to, toggle), drawn inside the debug panel's scroll view.</summary>
+    public interface IDebugCheats
+    {
+        void DrawCheats();
     }
 }

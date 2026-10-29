@@ -7,7 +7,7 @@ namespace AquariumCiv.Prototypes.Sim
     /// Coarse aggregate civ sim. Pure C#, deterministic from the seed; one step = one game month.
     /// Live play and offline catch-up both go through Advance(), so they produce the same world.
     /// </summary>
-    public class SimCore
+    public partial class SimCore
     {
         public SimConfig Config { get; }
         public SimState State { get; }
@@ -23,6 +23,7 @@ namespace AquariumCiv.Prototypes.Sim
             core.AddBuilding(BuildingType.Hut);
             for (int i = 0; i < config.startNotables; i++) core.AddNotable(s.rng.Range(18f, 40f), -1, null);
             core.Chronicle("founding", "Five wanderers settled in the glass and made camp.", 0.9f);
+            if (config.recordYears) core.RecordYear();
             return s;
         }
 
@@ -76,6 +77,9 @@ namespace AquariumCiv.Prototypes.Sim
             AccrueMess();
             if (season == 0) YearlyNotables();
             NarrativeChecks(winter, festivalRoll);
+            // P3+ layers. Both are off for P2, and the story draws only from its own stream (SimCore.Story.cs).
+            if (Config.storyEvents) StoryStep(season, winter);
+            if (Config.recordYears && season == 0) RecordYear();
         }
 
         void TryBuild()
@@ -214,7 +218,7 @@ namespace AquariumCiv.Prototypes.Sim
             if (!s.foundedTypes.Contains(type))
             {
                 s.foundedTypes.Add(type);
-                if (s.month > 0) Chronicle("first_building", NameData.FirstBuildingLine(type, AliveNotable()), 0.75f);
+                if (s.month > 0) Chronicle("first_building", NameData.FirstBuildingLine(type, AliveNotable()), 0.75f).buildingId = b.id;
             }
             return b;
         }

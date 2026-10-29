@@ -21,9 +21,12 @@ namespace AquariumCiv.Prototypes
         [Tooltip("Half the flat-to-flat width of a hex tile: how far from a slot's center things may stand.")]
         public float slotRadius = 0.5f;
         public BuildingPrefabs[] prefabs;
+        [Tooltip("History replay: show only buildings founded by this game month (-1 = live).")]
+        public long showUpToMonth = -1;
 
         readonly Dictionary<int, GameObject> spawned = new();
         int lastCount = -1, generation;
+        long lastShown = -1;
 
         public Vector3 SlotPosition(int slot) => slotPositions[Mathf.Clamp(slot, 0, slotPositions.Length - 1)];
 
@@ -38,12 +41,14 @@ namespace AquariumCiv.Prototypes
                 lastCount = -1;
             }
             var state = clock.Sim.State;
-            if (state.buildings.Count == lastCount) return;
+            if (state.buildings.Count == lastCount && showUpToMonth == lastShown) return;
             bool firstSync = lastCount < 0;
             lastCount = state.buildings.Count;
+            lastShown = showUpToMonth;
             var alive = new HashSet<int>();
             foreach (var b in state.buildings)
             {
+                if (showUpToMonth >= 0 && b.foundedMonth > showUpToMonth) continue;
                 alive.Add(b.id);
                 if (spawned.ContainsKey(b.id)) continue;
                 spawned[b.id] = Spawn(b.type, b.id, b.slot, animate: !firstSync);
@@ -65,6 +70,9 @@ namespace AquariumCiv.Prototypes
             if (animate) StartCoroutine(PopIn(go.transform));
             return go;
         }
+
+        /// <summary>The spawned building for this sim id, or null (fly-to).</summary>
+        public GameObject Find(int buildingId) => spawned.TryGetValue(buildingId, out var go) ? go : null;
 
         public static void AddBoundsCollider(GameObject go)
         {

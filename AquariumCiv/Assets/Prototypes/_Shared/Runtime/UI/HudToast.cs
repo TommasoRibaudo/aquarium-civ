@@ -60,7 +60,8 @@ namespace AquariumCiv.Prototypes
                 float safeTop = (Screen.height - Screen.safeArea.yMax) / ProtoGui.Scale; // notch / status bar
                 float bw = ProtoGui.Width - 60;
                 float bh = Mathf.Max(90, ProtoGui.Box.CalcHeight(new GUIContent(banner), bw)); // long summaries never clip
-                var r = new Rect(30, Mathf.Max(bannerTop, safeTop + bannerBelowSafe), bw, bh);
+                float strip = LabStrip.Reserved; // lab prototypes: the A/B strip sits under the notch
+                var r = new Rect(30, Mathf.Max(bannerTop + strip, safeTop + bannerBelowSafe + strip), bw, bh);
                 GUI.Box(r, banner, ProtoGui.Box);
             }
         }

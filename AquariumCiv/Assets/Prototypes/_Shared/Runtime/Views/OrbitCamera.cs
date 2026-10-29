@@ -199,6 +199,22 @@ namespace AquariumCiv.Prototypes
             lastEmptyTap = Time.unscaledTime;
         }
 
+        /// <summary>Fly the camera to look at a world point (chronicle "show me"), zoomed in to zoomT (0 = closest, 1 = default).</summary>
+        public void FocusOn(Vector3 world, float zoomT = 0.55f)
+        {
+            focusPivot = new Vector3(world.x, basePivot.y, world.z);
+            distance = Mathf.Lerp(minZoom * baseDistance, baseDistance, Mathf.Clamp01(zoomT));
+        }
+
+        /// <summary>Pull back for a wider view (P6: an annex box or the shelf), as a multiple of the default distance.</summary>
+        public void SetWide(float factor, Vector3? pivotOverride = null)
+        {
+            if (pivotOverride.HasValue) basePivot = pivotOverride.Value;
+            focusPivot = basePivot;
+            baseDistance = designDistance * Mathf.Max(1f, designAspect / Mathf.Max(fittedAspect, 0.01f)) * factor;
+            distance = baseDistance;
+        }
+
         public void ResetView()
         {
             focusPivot = basePivot;

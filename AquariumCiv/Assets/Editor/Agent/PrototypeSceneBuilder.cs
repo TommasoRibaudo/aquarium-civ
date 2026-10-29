@@ -3,6 +3,7 @@ using System.Linq;
 using AquariumCiv.Prototypes;
 using AquariumCiv.Prototypes.P1;
 using AquariumCiv.Prototypes.P2;
+using AquariumCiv.Prototypes.P3;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -30,6 +31,8 @@ namespace AquariumCiv.EditorTools
             public MessView mess;
             public GlassGrime glass;
             public SimClock clock;
+            public NotableView notables;
+            public WipeCleaner wipe;
             public string scenePath;
         }
 
@@ -79,6 +82,57 @@ namespace AquariumCiv.EditorTools
             p2.crowd = b.crowd;
             Save(b);
             return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P3 While You Were Away")]
+        public static string BuildP3()
+        {
+            // Lab by default (the Test Hub opens it in lab or diary). Diary = real time at design speed.
+            var b = BuildLabBase("P3", "Assets/Prototypes/P3_WhileYouWereAway/P3_WhileYouWereAway.unity", "I care about specific people in my tank");
+            var cards = b.systems.AddComponent<ChronicleCards>();
+            var p3 = b.systems.AddComponent<WhileYouWereAway>();
+            WireLab(b, p3);
+            p3.cards = cards;
+            Save(b);
+            return Report(b);
+        }
+
+        /// <summary>P3+ base: the shared diorama plus the wipe gesture, named notables walking the village, portraits,
+        /// person cards, the A/B lab strip and the lab HUD. The care layer has no consequences (set by PrototypeBase).</summary>
+        public static Built BuildLabBase(string protoId, string scenePath, string surveyQ4)
+        {
+            var b = BuildBase(protoId, scenePath, surveyQ4, TestMode.Lab);
+            var hud = b.systems.GetComponent<HudToast>();
+            hud.welcomeBack = false;   // each prototype writes its own welcome
+            hud.bannerTop = 100f;      // below the one-line ledger
+            hud.bannerBelowSafe = 76f; // ...also under a notch (the lab strip adds its own height on top)
+            var wipe = b.systems.AddComponent<WipeCleaner>();
+            wipe.glass = b.glass;
+            wipe.mess = b.mess;
+            b.mess.tapCleansProps = false;
+            b.mess.trashScale = 2.4f; // as P2 (readable on a phone)
+            b.mess.vineScale = 1.8f;
+            b.crowd.tagNotables = false;
+            var notables = new GameObject("Notables").AddComponent<NotableView>();
+            notables.transform.SetParent(b.crowd.transform.parent);
+            notables.crowd = b.crowd;
+            var studio = b.systems.AddComponent<PortraitStudio>();
+            studio.characterPrefabs = b.crowd.characterPrefabs;
+            studio.idleClip = b.crowd.idleClip;
+            b.systems.AddComponent<NotableCardPanel>();
+            b.systems.AddComponent<LabStrip>();
+            b.systems.AddComponent<LabHud>();
+            b.notables = notables;
+            b.wipe = wipe;
+            return b;
+        }
+
+        static void WireLab(Built b, PrototypeBase p)
+        {
+            p.wipe = b.wipe;
+            p.crowd = b.crowd;
+            p.notables = b.notables;
+            p.hud = b.systems.GetComponent<LabHud>();
         }
 
         /// <summary>The shared starting point for every prototype scene (not saved yet: callers add their own bits, then Save).</summary>
@@ -212,10 +266,20 @@ namespace AquariumCiv.EditorTools
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(b.scenePath));
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), b.scenePath);
-            var scenes = EditorBuildSettings.scenes.Where(s => s.path != b.scenePath).ToList();
-            scenes.Insert(0, new EditorBuildSettingsScene(b.scenePath, true));
+            AddToBuild(b.scenePath);
+        }
+
+        /// <summary>Newest build first, except the Test Hub, which always stays first (it opens everything else).</summary>
+        public static void AddToBuild(string scenePath)
+        {
+            var scenes = EditorBuildSettings.scenes.Where(s => s.path != scenePath).ToList();
+            scenes.Insert(0, new EditorBuildSettingsScene(scenePath, true));
+            var hub = scenes.FirstOrDefault(s => s.path == HubScenePath);
+            if (hub != null) { scenes.Remove(hub); scenes.Insert(0, hub); }
             EditorBuildSettings.scenes = scenes.ToArray();
         }
+
+        public const string HubScenePath = "Assets/Prototypes/_Hub/Hub.unity";
 
         static string Report(Built b) =>
             $"Built {b.scenePath}: {b.village.slotPositions.Length} slots, glass panes {b.diorama.glass.Length}, " +
