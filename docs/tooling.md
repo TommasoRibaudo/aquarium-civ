@@ -198,3 +198,6 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     hits the *back* pane. Don't read "start on glass" as "start on the front glass".
   - To see which way a drag went, wrap `OrbitCamera.DragTool` in a spy `IDragTool` that forwards to `WipeCleaner`
     and logs what `BeginDrag` returns. The input path stays real.
+- **2026-10-28 · `script eval_file` takes `--file <abs .cs path>`** (not `--path`); there is no top-level
+  `unity eval`, use `unity command script eval --code '...'`. Junk spawned by `MessView.MakeMessy()` isn't in
+  `TapToClean.Active` until a later frame, so make it messy in one eval and inspect it in the next. [verified]

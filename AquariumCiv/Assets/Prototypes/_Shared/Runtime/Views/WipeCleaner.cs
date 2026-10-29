@@ -8,6 +8,7 @@ namespace AquariumCiv.Prototypes
     ///   A drag that starts on glass is a wipe. It never flicks junk; junk it crosses only wobbles.
     ///   A drag that starts on a piece of junk or a weed is a toss: judged at lift-off, a fast flick (release speed and
     ///   a minimum travel, like platform fling detection) throws it out; a slow one drops it back with a hint.
+    ///   Junk behind dirty glass is out of reach: a drag there wipes the glass, and only clean glass lets you grab it.
     /// Tapping mess only wiggles it. Two fingers, or a drag beside the tank, turn the tank.
     /// </summary>
     public class WipeCleaner : MonoBehaviour, IDragTool
@@ -20,11 +21,12 @@ namespace AquariumCiv.Prototypes
         [Tooltip("Release speed (screen heights per second, over the last 0.1 s) that tosses a grabbed piece out.")] public float flickSpeed = 0.6f;
         [Tooltip("Minimum travel (share of screen height) for a toss, so a press-and-lift never counts.")] public float flickMinTravel = 0.03f;
         [Tooltip("Junk within this screen-height share of the finger counts as touched (about 44 pt).")] public float pickRadius = 0.035f;
+        [Tooltip("Grime on the glass in front of a piece (fingertip-sized patch) above which you can't reach it: wipe first.")] public float blockingGrime = 0.15f;
 
         [Header("Hints")]
         [Tooltip("Show the gesture hint again after this many seconds without any cleaning (while the tank is messy).")] public float hintIdleSeconds = 25f;
         public int maxHintRepeats = 2;
-        public string hint = "Drag across the glass to wipe it clean. Touch junk or weeds and flick them out. Two fingers turn the tank.";
+        public string hint = "Drag across the glass to wipe it clean. Then touch junk or weeds behind clean glass and flick them out. Two fingers turn the tank.";
 
         GlassGrime.Pane lastPane;
         Vector2 lastUv, lastScreen;
@@ -81,7 +83,7 @@ namespace AquariumCiv.Prototypes
 
         public bool BeginDrag(Vector2 screenPos)
         {
-            if (PickMess(screenPos, out var piece))
+            if (PickMess(screenPos, out var piece) && !BehindDirtyGlass(piece))
             {
                 grabbed = piece;
                 grabbed.SetHeld(true); // lifts a little: it's in your fingers now
@@ -171,12 +173,23 @@ namespace AquariumCiv.Prototypes
             HudToast.Show(travel < flickMinTravel ? "Flick it out" : "Flick it faster to toss it out", piece.transform.position + Vector3.up * 0.3f);
         }
 
-        /// <summary>A wipe never cleans junk, but junk the finger crosses wobbles, so it reads as touchable.</summary>
+        /// <summary>A wipe never cleans junk, but reachable junk the finger crosses wobbles, so it reads as touchable.</summary>
         void WobbleAlong(Vector2 from, Vector2 to)
         {
             int samplesN = Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(from, to) / 12f), 1, 12);
             for (int i = 1; i <= samplesN; i++)
-                if (PickMess(Vector2.Lerp(from, to, i / (float)samplesN), out var piece)) piece.Wobble();
+                if (PickMess(Vector2.Lerp(from, to, i / (float)samplesN), out var piece) && !BehindDirtyGlass(piece)) piece.Wobble();
+        }
+
+        /// <summary>Is the glass between the camera and this piece still dirty (a fingertip patch where the sight line crosses it)?</summary>
+        bool BehindDirtyGlass(TapToClean piece)
+        {
+            var from = Cam.transform.position;
+            var ray = new Ray(from, piece.Center - from);
+            if (!glass.Raycast(ray, out var pane, out var uv, out var point)) return false; // seen through the open top
+            if ((point - from).sqrMagnitude >= (piece.Center - from).sqrMagnitude) return false; // that pane is behind it
+            float radius = wipeRadius * 0.5f * Juice.WorldPerScreen(point);
+            return glass.GrimeAt(pane, uv, radius) > blockingGrime;
         }
 
         /// <summary>
@@ -203,11 +216,16 @@ namespace AquariumCiv.Prototypes
             return piece != null;
         }
 
-        /// <summary>Taps on junk wiggle it and hint at the swipe; everything else goes through to the world.</summary>
+        /// <summary>Taps on junk wiggle it and hint at the flick (or at wiping first); everything else goes through to the world.</summary>
         bool OnTap(Vector2 screenPos, Collider worldHit)
         {
             if (!PickMess(screenPos, out var piece)) return false;
             EventLog.Instance?.Tap(piece.Kind);
+            if (BehindDirtyGlass(piece))
+            {
+                HudToast.Show("Wipe the glass clean first", piece.transform.position + Vector3.up * 0.3f);
+                return true;
+            }
             piece.OnTap(default);
             return true;
         }
