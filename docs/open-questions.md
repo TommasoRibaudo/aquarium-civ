@@ -273,3 +273,12 @@ Screens: `AquariumCiv/Temp/agent/showme-*.png` (local).
 - ★ Add an ~8 s warm-up before the first ambient bubble of a session.
 - Show me tilts to ≥ 52° pitch and zooms in close (a close look at the usual pitch goes through the hazy front pane);
   re-check the framing once #75's card stack exists.
+
+### #39 Person card in the world (phase 2) — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/pc-*.png` (local).
+- ★ A tap within ~half a 48 dp target of a notable's doll selects them (so near a crowd, knocks mostly become picks).
+- ★ Crowd dolls have no card; tapping them knocks. Alternative: a small "one of the villagers" note.
+- Lines go only to ties visible on screen (max 6). ★ Add a "show their people" zoom-out on the card later.
+- ★ The Show me camera returns when the card closes, not before. The pin chip shows the first name only.
+- Flaky test seen once: `GlassPlayTests.EachRelicMomentPlaysAndGivesItsCastBackToTheirDay` (left_sandal) failed, then
+  passed on rerun. ★ File an issue.
