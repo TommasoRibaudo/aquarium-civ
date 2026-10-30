@@ -190,3 +190,11 @@ Screens: `AquariumCiv/Temp/agent/m91_*.png` (local), incl. the book still `m91_s
 - ★ Light name filter (whole words, leetspeak, a few stems); names 2–20 characters. The name is set directly; the
   people naming their camp later in a card (design Choice 2) is not done.
 - ★ Hint texts: "Wipe the glass", "Flick the weeds", "Name it", "Give them rain", "Rub a spot".
+
+### #92 Relic moments and the glass (phase 2) — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/glass_*.png`, `relic_*.png` (local).
+- Keeper Doll and Sky Crumb props are modest at full-box zoom. ★ Make them a bit bigger.
+- ★ Every tap on the box outside clean/camera mode is a knock on the glass (people react by belief stage). If tapping a
+  person should select them, the two need sorting out (ties to #39's pin).
+- The knock uses the care chime for now; its own glass sound comes with #96.
+- The Lens moment starts at dusk on the view clock, but the light looked like day: the sky may follow another clock.
