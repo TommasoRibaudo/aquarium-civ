@@ -4,13 +4,13 @@ using UnityEngine;
 namespace AquariumCiv.View.Demo
 {
     /// <summary>
-    /// TEMPORARY (#31): a hand-placed demo layout so the slice scene shows the ported kit before the sim places anything.
-    /// Delete this component (and this file) when #33 drives <see cref="BoxView"/> from SimState. Nothing here is design:
+    /// A hand-placed demo layout (#31), no longer in any scene: the slice draws the sim since #33
+    /// (<see cref="SimLayoutSource"/>). Kept for the View tests (a fixed layout to rebuild and refresh). Nothing here is design:
     /// positions are picked by eye on the style kit's default land, one of each piece kind the slice needs (a camp round a
     /// fire, a couple of first houses, a well, a field, trails and a path, lanterns, people with props).
     /// </summary>
     [ExecuteAlways]
-    [AddComponentMenu("AquariumCiv/TEMPORARY Demo Layout (remove at #33)")]
+    [AddComponentMenu("AquariumCiv/Demo Layout (tests)")]
     public class TemporaryDemoLayout : MonoBehaviour, IBoxLayoutSource
     {
         static float Face(Vector2 from, Vector2 to)
