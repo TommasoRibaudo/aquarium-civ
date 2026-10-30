@@ -4,6 +4,7 @@
     "references": [
         "AquariumCiv.Sim",
         "AquariumCiv.Game",
+        "AquariumCiv.Game.UI",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"

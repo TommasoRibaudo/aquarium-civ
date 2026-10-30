@@ -371,3 +371,30 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - Measure "ground under the fingers" with `BoxCameraMath.GroundPoint(cam.ScreenPointToRay(p), rig.target.y, ...)`.
   - The slice play mode rewrites `LocalLow/.../game/box.json`: copy it out before and back after.
   - Fire halo edge check: scan rows of a night close-up for a strong horizontal luminance step (PIL); the eye misses it in day shots.
+- **2026-10-29 · Tester sim playtest without a UI (#24-#26 jobs/counts).** [verified]
+  - Drive the live Slice box with `unity command script run --file Temp/agent/tester/X.cs --entry Type.Method --args '[...]'`
+    (static methods using `GameClock.Instance.Sim`, `SimLayoutSource.DebugSkipYears/DebugNextEra`, `GameClock.DebugAway`); add
+    `--result-only` and parse `.result` (use `python`, not `python3`, in Git Bash here). Offline audits: build
+    `new SimCore(JsonUtility clone of GameClock.Instance.config, SimCore.NewWorld(seed, cfg))` for many seeds in one call.
+  - IMGUI (the "dbg" panel) only shows in `UnityEngine.ScreenCapture.CaptureScreenshot`; `capture screenshot --view game`
+    sometimes returns a tiny (299x648) image right after a Game view size change: shoot again.
+  - A synchronous `test run --mode editor` can hang the Pipeline (every other command 504s "waiting for another command")
+    when the Editor is unexpectedly in play mode ("This cannot be used during play mode" in RestoreSceneSetupTask, result
+    0/0). Wait for it to end, make sure play mode is off, rerun with `--async_tests true` (234 tests, ~2.5 min).
+  - Back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/game/box.json(.bak)` before a live Slice run; delete
+    them for a fresh camp, restore afterwards.
+
+- **2026-10-29 · UI Toolkit panels are missing from Game-view screenshots** (like IMGUI). Capture with
+  `UnityEngine.ScreenCapture.CaptureScreenshot(path)` from `unity command script run --file Temp/agent/x.cs --entry T.Run`
+  (file path is relative to `AquariumCiv/`, then wait a second and read the PNG). The feedback sheet has to hide its own HUD for a frame before it
+  captures, for the same reason. [verified]
+
+- **2026-10-29 · UI Toolkit in `script eval` / HUD checks (#36).** [verified]
+  - `script eval` doesn't pick up the `UQueryExtensions` extension methods: `root.Q("name")` fails to compile with
+    "'VisualElement' does not contain a definition for 'Q'". Call it statically:
+    `UnityEngine.UIElements.UQueryExtensions.Q(root, "name")`.
+  - Open/close HUD sheets from eval with `GameHud.Instance.Open("settings"|"history"|"shaping")` / `CloseSheet()`, then
+    `AgentGameView.Shot(name)`: the shot shows UI Toolkit (Game-view `capture screenshot` doesn't).
+  - USS edits hot-reload in play mode after `AssetDatabase.Refresh()`; check with `resolvedStyle` before trusting a shot.
+  - The Editor's Game view has no notch: `Screen.safeArea` is the full screen there, so safe-area handling is covered by
+    `SafeInsetsTests` (EditMode) and needs a device or the Device Simulator to see.

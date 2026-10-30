@@ -48,3 +48,14 @@ The token ships inside the app, so anyone holding the build could extract it. It
 this one private repo: an attacker could spam issues or read them, but couldn't touch code or anything else. That's
 acceptable for a friends-only TestFlight. Before any public build, replace it with a small relay (for example a
 serverless function holding the token, with rate limits) and rotate the token.
+
+## In the slice (#55)
+Code: `Assets/Game/UI/` (`FeedbackUI`, `FeedbackSender`, `FeedbackReport`, `LogRing`, `DeviceInfo`). A **Feedback** pill (bottom-left,
+safe area) opens a sheet: kind (bug / confusing / idea / feel / praise), text, optional screenshot of the box taken just before it opens.
+Issues get `feedback`, `fb:<kind>`, `proto:slice`, with the box's key numbers, full device info and the last 150 game-log lines attached.
+Notes go to `persistentDataPath/feedback_outbox` first and leave it only after GitHub accepts them (offline, no token or a kill mid-send: sent on a
+later launch or resume). The same `FeedbackToken.txt` is used.
+- **Screenshot hosting:** committed to the `feedback-assets` branch via the Contents API and linked from the issue. That needs the token to have
+  **Contents: read and write** and the branch to exist; if refused, the small JPEG is embedded in the issue as base64 instead.
+- Debug panel: "Send test feedback". The Settings page of the HUD shell (#36) should call `FeedbackUI.Instance.Open()`.
+- Before any public build, replace the shipped token with a relay (see Security trade-off).

@@ -1,3 +1,4 @@
+using AquariumCiv.GameUI;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -24,7 +25,7 @@ namespace AquariumCiv.View
                 return;
             }
             var src = SimLayoutSource.Find();
-            GUILayout.BeginArea(new Rect(8, 8, 300, 440), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(8, 8, 300, 480), GUI.skin.box);
             GUILayout.Label(src != null ? src.Status() : "no SimLayoutSource");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
@@ -38,6 +39,22 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Build farm")) last = SimLayoutSource.DebugBuild("Farm");
             GUILayout.EndHorizontal();
             if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
+            if (GUILayout.Button("Send test feedback")) last = FeedbackSender.DebugSendTest();
+            if (GameHud.Instance != null && GUILayout.Button(GameHud.Instance.IsVisible ? "Hide HUD" : "Show HUD"))
+            {
+                GameHud.Instance.SetVisible(!GameHud.Instance.IsVisible);
+                last = GameHud.Instance.IsVisible ? "HUD shown" : "HUD hidden";
+            }
+            GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();
+            if (GUILayout.Button("Stop music")) last = MusicDirector.DebugStop();
+            if (GUILayout.Button("Music: " + GameSettings.MusicFrequency))
+            {
+                GameSettings.MusicFrequency = (MusicFrequency)(((int)GameSettings.MusicFrequency + 1) % 3);
+                last = "music frequency " + GameSettings.MusicFrequency;
+            }
+            GUILayout.EndHorizontal();
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
             if (GUILayout.Button("close")) open = false;

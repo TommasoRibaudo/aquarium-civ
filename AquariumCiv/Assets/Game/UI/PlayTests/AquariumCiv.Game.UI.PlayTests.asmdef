@@ -1,0 +1,25 @@
+{
+    "name": "AquariumCiv.Game.UI.PlayTests",
+    "rootNamespace": "AquariumCiv.GameUI.PlayTests",
+    "references": [
+        "AquariumCiv.Game",
+        "AquariumCiv.Game.UI",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

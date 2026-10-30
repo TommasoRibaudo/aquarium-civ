@@ -42,6 +42,7 @@ namespace AquariumCiv.View
         Vector2 pressPos, lastPos, prevMid;
         float prevDist;
         bool orbiting, moved;
+        bool pressOnUi;
 
         /// <summary>True from the moment a press has moved past the slop (or a second finger came down) until all fingers lift:
         /// selection should ignore the release as a tap.</summary>
@@ -77,6 +78,10 @@ namespace AquariumCiv.View
             synced = true;
 
             ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mousePan);
+            // A press that starts on the HUD belongs to the HUD until every finger lifts.
+            if (n == 0) pressOnUi = false;
+            else if (mode == Mode.None && AquariumCiv.Game.UiInput.Over(a)) pressOnUi = true;
+            if (pressOnUi) { n = 0; mode = Mode.None; orbiting = false; }
             float H = Mathf.Max(1f, Screen.height);
 
             if (n == 0) EndPress(now);
