@@ -51,7 +51,7 @@ Shader "AquariumCiv/View/Stylized"
         // the lamp sputters (random on/off, more often on as it warms); once on, it dips now and then for a moment.
         half LampOn(float2 lamp)
         {
-            if (lamp.x < 0.5) return 0;
+            if (lamp.x < 0.5 || lamp.x > 1.5) return 0; // 2 and up is a flame, not a lamp
             float t0 = 0.12 + lamp.y * 0.6;
             float x = saturate((_AC_LampLevel - t0) / 0.14);
             float n = Hash11(floor(_Time.y * 13.0) + lamp.y * 917.0);
@@ -66,6 +66,30 @@ Shader "AquariumCiv/View/Stylized"
             float2 w = float2(sin(t + positionWS.x * 1.7 + positionWS.z * 0.9), cos(t * 0.83 + positionWS.z * 1.3 + positionWS.x * 0.4));
             positionWS.xz += w * _Wind * weight;
             return positionWS;
+        }
+
+        // Flame flicker (the fire pit): UV1.x = 2 + height weight (0 at the flame's foot, 1 at its tip), UV1.y = the fire's
+        // phase. Stretch +-18 % and wobble sideways 0.012 u, both scaled by the weight; two sines at 7.3 and 11.9 Hz.
+        // The glow shader's halo and ground pool use the same n(), so they breathe with the flames.
+        float FlameNoise(float phase)
+        {
+            float t = _Time.y;
+            return 0.5 * (sin(6.2832 * 7.3 * t + phase * 6.2832) + sin(6.2832 * 11.9 * t + phase * 17.0));
+        }
+
+        float3 Displace(float3 positionWS, float swayWeight, float2 lamp)
+        {
+            if (lamp.x > 1.5)
+            {
+                float w = saturate(lamp.x - 2.0);
+                float n = FlameNoise(lamp.y);
+                float ph = lamp.y * 6.2832 + positionWS.x * 23.0 + positionWS.z * 17.0;
+                float t = _Time.y;
+                positionWS.y += w * 0.3 * 0.18 * n; // height weight x flame height x stretch
+                positionWS.xz += 0.012 * w * float2(sin(t * 9.1 + ph), cos(t * 7.3 + ph * 1.3));
+                return positionWS;
+            }
+            return Sway(positionWS, swayWeight);
         }
         ENDHLSL
 
@@ -97,7 +121,7 @@ Shader "AquariumCiv/View/Stylized"
             Varyings vert(Attributes v)
             {
                 Varyings o;
-                float3 p = Sway(TransformObjectToWorld(v.positionOS.xyz), v.uv.x);
+                float3 p = Displace(TransformObjectToWorld(v.positionOS.xyz), v.uv.x, v.lamp);
                 o.positionWS = p;
                 o.positionCS = TransformWorldToHClip(p);
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
@@ -148,13 +172,13 @@ Shader "AquariumCiv/View/Stylized"
             float3 _LightDirection;
             float3 _LightPosition;
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv : TEXCOORD0; float2 lamp : TEXCOORD1; };
             struct Varyings { float4 positionCS : SV_POSITION; };
 
             Varyings vert(Attributes v)
             {
                 Varyings o;
-                float3 p = Sway(TransformObjectToWorld(v.positionOS.xyz), v.uv.x);
+                float3 p = Displace(TransformObjectToWorld(v.positionOS.xyz), v.uv.x, v.lamp);
                 float3 n = TransformObjectToWorldNormal(v.normalOS);
                 #if _CASTING_PUNCTUAL_LIGHT_SHADOW
                     float3 lightDir = normalize(_LightPosition - p);
@@ -184,12 +208,12 @@ Shader "AquariumCiv/View/Stylized"
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; };
+            struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; float2 lamp : TEXCOORD1; };
             struct Varyings { float4 positionCS : SV_POSITION; };
             Varyings vert(Attributes v)
             {
                 Varyings o;
-                o.positionCS = TransformWorldToHClip(Sway(TransformObjectToWorld(v.positionOS.xyz), v.uv.x));
+                o.positionCS = TransformWorldToHClip(Displace(TransformObjectToWorld(v.positionOS.xyz), v.uv.x, v.lamp));
                 return o;
             }
             half4 frag(Varyings i) : SV_Target { return i.positionCS.z; }

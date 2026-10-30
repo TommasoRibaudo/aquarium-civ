@@ -39,7 +39,7 @@ namespace AquariumCiv.View
                         House(mb, Front(hd), hw, hd, wallH, roofH, Wall(p.seed), RoofColor(p.roof, p.seed, p.era), p.chimney, true, storeys, Phase(p.seed));
                     }
                     break;
-                case PieceKind.Fire: Firepit(mb, Vector3.zero, true); break;
+                case PieceKind.Fire: Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
                 case PieceKind.Well: Well(mb, Vector3.zero, !camp); break;
                 case PieceKind.Woodpile: Woodpile(mb, Vector3.zero, 0f); break;
                 case PieceKind.DryingRack: DryingRack(mb, Vector3.zero); break;
@@ -71,7 +71,7 @@ namespace AquariumCiv.View
                     else MarketHall(mb, Vector3.zero, w, d, town, Phase(p.seed));
                     break;
                 case PieceKind.Tavern:
-                    if (camp) { Firepit(mb, Vector3.zero, true); break; }
+                    if (camp) { Firepit(mb, Vector3.zero, true, Phase(p.seed)); break; }
                     House(mb, Front(0.34f), w * 0.9f, 0.34f, town ? 0.2f : 0.28f, 0.26f, Palette.PlasterWarm, town ? Palette.Terracotta : Palette.Thatch, true, true, town ? 2 : 1, Phase(p.seed));
                     {
                         var sign = new Vector3(w * 0.5f, 0, -d / 2f + 0.02f);
@@ -374,7 +374,7 @@ namespace AquariumCiv.View
         /// life-in-the-box §5) with a bright core, so the fire reads and blooms at full-box zoom; the view adds a glow
         /// billboard (<see cref="BoxView"/>) and a warm pool on the ground. <paramref name="seats"/> adds three log seats.
         /// </summary>
-        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats)
+        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase = 0f)
         {
             for (int i = 0; i < 9; i++)
             {
@@ -384,18 +384,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 3; i++) Log(mb, p + Vector3.up * 0.025f, 0.02f, 0.22f, i * 60f, Palette.Bark);
             mb.emission = 0.6f;
             mb.Prism(p, 0.085f, 0.075f, 0.016f, 7, Palette.Ember);
-            mb.emission = 0.75f; mb.sway = 1.4f; // below full glow: the orange stays orange after tonemapping
-            // A main flame, three tongues leaning out and a short bright core, so it reads as fire, not a cone.
-            mb.Prism(p + Vector3.up * 0.012f, 0.085f, 0f, 0.27f, 5, Palette.Fire, Quaternion.Euler(0, 20f, 0));
-            for (int i = 0; i < 3; i++)
-            {
-                float a = i * 120f + 35f;
-                var lean = Quaternion.Euler(0, a, 0) * Quaternion.Euler(18f, 0, 0);
-                mb.Prism(p + Quaternion.Euler(0, a, 0) * new Vector3(0, 0.012f, 0.035f), 0.045f, 0f, 0.15f + 0.03f * i, 4, i == 1 ? Palette.Ember : Palette.Fire, lean);
-            }
-            mb.emission = 1f;
-            mb.Prism(p + new Vector3(0.008f, 0.012f, -0.012f), 0.032f, 0f, 0.09f, 5, Palette.FireCore, Quaternion.Euler(0, 50f, 0));
-            mb.emission = 0f; mb.sway = 0f;
+            Flames(mb, p, phase);
             if (!seats) return;
             for (int i = 0; i < 3; i++)
             {
@@ -403,6 +392,45 @@ namespace AquariumCiv.View
                 var q = p + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.4f;
                 Log(mb, q + Vector3.up * 0.035f, 0.035f, 0.3f, -a * Mathf.Rad2Deg + 90f, Palette.Bark);
             }
+        }
+
+        static float H01(float x) => Mathf.Repeat(Mathf.Sin(x * 12.9898f) * 43758.5453f, 1f);
+
+        /// <summary>Vertices in the flames (about 120): the budget the flicker shader and the phone's vertex stage see per fire.</summary>
+        public const int FlameVertexBudget = 130;
+
+        /// <summary>
+        /// Three nested layers with a colour ramp up each (no lemon: green never above 0.65 of red): a gold core (0.10 tall),
+        /// an orange body (0.24) and five red outer tongues (0.12-0.20), each two overlapping cones, the upper one leaning
+        /// further so the tip curls. The vertices carry the flame flag and a height weight in UV1 (<see cref="MeshBuilder.flameHeight"/>),
+        /// so the Stylized shader stretches and wobbles them: the flicker costs nothing on the CPU. Emission is low
+        /// (0.3 tips, 0.4 body, 0.5 core): only the core gets near the bloom threshold, the rest stays orange.
+        /// </summary>
+        public static void Flames(MeshBuilder mb, Vector3 p, float phase)
+        {
+            float y0 = 0.012f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.3f; mb.flamePhase = phase; mb.sway = 0f;
+            // Outer tongues, behind the body (random yaw and lean from the fire's phase, so a rebuild never changes them).
+            mb.emission = 0.3f;
+            float yaw0 = H01(phase * 91f + 1f) * 72f;
+            for (int i = 0; i < 5; i++)
+            {
+                float a = yaw0 + i * 72f + (H01(phase * 57f + i * 3.1f) - 0.5f) * 36f;
+                float h = Mathf.Lerp(0.12f, 0.2f, H01(phase * 33f + i * 7.7f));
+                float lean = Mathf.Lerp(12f, 22f, H01(phase * 71f + i * 5.3f));
+                var yaw = Quaternion.Euler(0, a, 0);
+                var q1 = yaw * Quaternion.Euler(lean, 0, 0);
+                var q2 = yaw * Quaternion.Euler(lean + 16f, 0, 0);
+                var b1 = p + yaw * new Vector3(0, y0, 0.042f);
+                var mid = Color.Lerp(Palette.FlameTongueA, Palette.FlameTongueB, 0.45f);
+                mb.Prism(b1, 0.035f, 0f, h * 0.7f, 3, Palette.FlameTongueA, q1, topCol: mid, ramp: true);
+                mb.Prism(b1 + q1 * Vector3.up * (h * 0.32f), 0.02f, 0f, h * 0.68f, 3, mid, q2, topCol: Palette.FlameTongueB, ramp: true);
+            }
+            mb.emission = 0.4f;
+            mb.Prism(p + Vector3.up * (y0 + 0.025f), 0.06f, 0f, 0.215f, 5, Palette.FlameBodyA, Quaternion.Euler(0, 20f, 0), topCol: Palette.FlameBodyB, ramp: true);
+            mb.emission = 0.5f;
+            mb.Prism(p + new Vector3(0, y0, 0), 0.07f, 0f, 0.10f, 5, Palette.FlameCoreA, Quaternion.Euler(0, 50f, 0), topCol: Palette.FlameCoreB, ramp: true);
+            mb.emission = 0f; mb.flameHeight = 0f;
         }
 
         public static void Log(MeshBuilder mb, Vector3 centre, float r, float len, float yaw, Color col)

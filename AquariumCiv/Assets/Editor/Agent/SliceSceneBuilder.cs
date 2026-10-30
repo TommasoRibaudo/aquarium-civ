@@ -34,6 +34,7 @@ namespace AquariumCiv.EditorTools
                 m.SetFloat("_Condensation", 0.2f); m.SetFloat("_StreakAlpha", 0.12f);
             });
             var glow = Mat("Glow", "AquariumCiv/View/Glow", m => { });
+            var smoke = Mat("FireSmoke", "AquariumCiv/View/FireSmoke", m => { });
 
             // Light: the Village box's higher midday sun, trilight ambient (style kit).
             var sun = new GameObject("Sun").AddComponent<Light>();
@@ -53,7 +54,7 @@ namespace AquariumCiv.EditorTools
             var boxGo = new GameObject("Box");
             boxGo.SetActive(false);
             var box = boxGo.AddComponent<BoxView>();
-            box.solid = solid; box.water = water; box.glass = glass; box.glow = glow;
+            box.solid = solid; box.water = water; box.glass = glass; box.glow = glow; box.smoke = smoke;
             boxGo.AddComponent<SimLayoutSource>(); // the live sim (#33)
             boxGo.AddComponent<SliceDebugPanel>(); // TEMPORARY: skip years, force the era (until the debug panel)
             boxGo.AddComponent<NightLampDriver>();
@@ -161,7 +162,12 @@ namespace AquariumCiv.EditorTools
             split.balance.Override(-15f);
             var vig = p.Add<Vignette>(true); vig.intensity.Override(0.26f); vig.smoothness.Override(0.45f);
             var bloom = p.Add<Bloom>(true); bloom.intensity.Override(0.5f); bloom.threshold.Override(1.3f); bloom.scatter.Override(0.55f); // glows only
+            // Mobile settings (#63): no high-quality filtering, quarter-resolution start, at most 4 blur iterations.
+            bloom.highQualityFiltering.Override(false); bloom.downscale.Override(BloomDownscaleMode.Quarter); bloom.maxIterations.Override(4);
             // No depth of field: an un-overridden DepthOfField component softened the whole frame (style-kit spike).
+            // The components must be sub-assets of the profile, or they are lost on the next domain reload / in a player (the
+            // committed asset had null components, so the slice ran with no post at all).
+            foreach (var c in p.components) if (!AssetDatabase.Contains(c)) AssetDatabase.AddObjectToAsset(c, p);
             EditorUtility.SetDirty(p);
             AssetDatabase.SaveAssets();
             return p;
