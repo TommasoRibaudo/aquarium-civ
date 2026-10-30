@@ -28,6 +28,12 @@ namespace AquariumCiv.View
         /// the global night level (<see cref="NightLamps"/>), each lamp at its own moment, flickering as it comes on.
         /// </summary>
         public float lamp = -1f;
+        /// <summary>
+        /// Flame vertices (the fire pit): with <see cref="flameHeight"/> above 0 every new vertex gets UV1 = (2 + height
+        /// weight, <see cref="flamePhase"/>); the weight is 0 at <see cref="flameBaseY"/> and ~1 at flameBaseY + flameHeight.
+        /// The Stylized shader stretches and wobbles them by it (no extra vertex stream, no CPU cost).
+        /// </summary>
+        public float flameBaseY, flameHeight, flamePhase;
         readonly System.Random rng;
 
         public MeshBuilder(int seed = 1) { rng = new System.Random(seed); }
@@ -44,7 +50,23 @@ namespace AquariumCiv.View
         {
             verts.Add(p); normals.Add(n); colors.Add(linear);
             uvs.Add(new Vector2(sway, emission));
-            lamps.Add(lamp < 0f ? Vector2.zero : new Vector2(1f, lamp));
+            if (flameHeight > 0f) lamps.Add(new Vector2(2f + Mathf.Clamp01((p.y - flameBaseY) / flameHeight) * 0.99f, flamePhase));
+            else lamps.Add(lamp < 0f ? Vector2.zero : new Vector2(1f, lamp));
+        }
+
+        /// <summary>A triangle wound so it faces away from <paramref name="inside"/> (a point inside the convex part),
+        /// for hand-built wedges where the winding is easy to get wrong.</summary>
+        public void TriOut(Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Color col)
+        {
+            var n = Vector3.Cross(b - a, c - a);
+            if (Vector3.Dot(n, (a + b + c) / 3f - inside) < 0f) Tri(a, c, b, col); else Tri(a, b, c, col);
+        }
+
+        /// <summary><see cref="TriOut"/> for a quad.</summary>
+        public void QuadOut(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 inside, Color col)
+        {
+            TriOut(a, b, c, inside, col);
+            TriOut(a, c, d, inside, col);
         }
 
         public void Tri(Vector3 a, Vector3 b, Vector3 c, Color col)
@@ -99,7 +121,7 @@ namespace AquariumCiv.View
 
         /// <summary>A prism / frustum / cone standing on <paramref name="baseCentre"/> along local up (rotated by rot).</summary>
         public void Prism(Vector3 baseCentre, float rBottom, float rTop, float height, int sides, Color col,
-            Quaternion? rot = null, bool capTop = true, bool capBottom = false, Color? topCol = null, float twist = 0f)
+            Quaternion? rot = null, bool capTop = true, bool capBottom = false, Color? topCol = null, float twist = 0f, bool ramp = false)
         {
             var r = rot ?? Quaternion.identity;
             var top = topCol ?? col;
@@ -109,7 +131,13 @@ namespace AquariumCiv.View
                 Vector3 d0 = new(Mathf.Cos(a0), 0, Mathf.Sin(a0)), d1 = new(Mathf.Cos(a1), 0, Mathf.Sin(a1));
                 Vector3 b0 = baseCentre + r * (d0 * rBottom), b1 = baseCentre + r * (d1 * rBottom);
                 Vector3 t0 = baseCentre + r * (d0 * rTop + Vector3.up * height), t1 = baseCentre + r * (d1 * rTop + Vector3.up * height);
-                if (rTop > 0.0001f) Quad(b0, t0, t1, b1, col);
+                if (ramp)
+                {
+                    // Colour ramp up the sides: col at the base, topCol at the top (flames).
+                    if (rTop > 0.0001f) { TriC(b0, t0, t1, col, top, top); TriC(b0, t1, b1, col, top, col); }
+                    else TriC(b0, t0, b1, col, top, col);
+                }
+                else if (rTop > 0.0001f) Quad(b0, t0, t1, b1, col);
                 else Tri(b0, t0, b1, col);
                 if (capTop && rTop > 0.0001f) Tri(baseCentre + r * (Vector3.up * height), t1, t0, top);
                 if (capBottom) Tri(baseCentre, b0, b1, col);
