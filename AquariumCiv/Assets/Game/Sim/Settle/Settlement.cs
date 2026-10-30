@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace AquariumCiv.Sim.Settle
 {
@@ -178,7 +179,20 @@ namespace AquariumCiv.Sim.Settle
             var kind = KindFor(b, answer);
             var lot = PlaceNew(kind, b.id, answer);
             var plain = Encyclopedia.FromType(b.type);
-            if (lot == null && kind != plain) lot = PlaceNew(plain, b.id, answer); // the special kind found no spot
+            if (lot == null && kind != plain)
+            {
+                lot = PlaceNew(plain, b.id, answer); // the special kind found no spot
+                // The chronicle must name what stands there (#82: "built a watermill" over a plain workshop).
+                if (lot != null && answer != null)
+                {
+                    var e = S.chronicle.LastOrDefault(x => x.keeper && x.kind == "keeper" && x.buildingId == b.id);
+                    if (e != null)
+                    {
+                        var who = S.notables.FirstOrDefault(x => x.id == e.notableId);
+                        e.text = SimCore.CreditLine(answer.kind, b.type, who, S.era, true);
+                    }
+                }
+            }
             if (lot == null) return false;
             b.lotId = lot.id; b.yardId = lot.yard;
             b.x = lot.x; b.z = lot.z; b.yaw = lot.yaw; b.w = lot.w; b.d = lot.d; b.doorX = lot.doorX; b.doorZ = lot.doorZ;

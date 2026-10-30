@@ -258,6 +258,62 @@ namespace AquariumCiv.Tests
             Assert.AreEqual((int)Era.Camp, n.eraAtPlace);
         }
 
+        [TestCase(SimCore.NudgeKind.Rain)]
+        [TestCase(SimCore.NudgeKind.Grove)]
+        [TestCase(SimCore.NudgeKind.Herd)]
+        [TestCase(SimCore.NudgeKind.Channel)]
+        public void AFullTownAnswersWithoutNamingABuildingThatDoesNotExist(string kind)
+        {
+            var sim = Village(21);
+            for (int i = 0; i < sim.Config.buildingSlots; i++) sim.AddBuildingAt(BuildingType.Hut, i);
+            Assert.AreEqual(sim.Config.buildingSlots, sim.State.buildings.Count);
+            float x = 0.4f, z = 0.4f; Dry(sim, ref x, ref z);
+            var n = sim.DebugShape(kind, x, z);
+            Assert.IsNotNull(n);
+            Assert.IsTrue(sim.DebugSkipToAnswer(n.id));
+            Assert.IsTrue(n.credited);
+            Assert.AreEqual(-1, n.buildingId, "no building was made");
+            Assert.AreEqual(sim.Config.buildingSlots, sim.State.buildings.Count);
+            var e = sim.State.chronicle.Last(c => c.kind == "keeper");
+            Assert.AreEqual(-1, e.buildingId);
+            StringAssert.StartsWith("After the Keeper", e.text);
+            foreach (var word in new[] { "yard", "mill", "workshop", "tavern", "market", "dug a well", "opened", "built", "set up", "beside it" })
+                StringAssert.DoesNotContain(word, e.text, e.text);
+        }
+
+        [Test]
+        public void TheChannelLineNamesTheBuildingThatWasMade()
+        {
+            for (int seed = 1; seed <= 6; seed++)
+            {
+                var sim = Village(seed);
+                Assert.IsTrue(sim.ForceNextEra()); // town
+                float x = 0.4f, z = 0.4f; Dry(sim, ref x, ref z);
+                var n = sim.DebugShape(SimCore.NudgeKind.Channel, x, z);
+                Assert.IsTrue(sim.DebugSkipToAnswer(n.id));
+                sim.Advance(0.2);
+                var b = sim.State.buildings.First(q => q.id == n.buildingId);
+                var e = sim.State.chronicle.Last(c => c.kind == "keeper");
+                var lot = sim.Settlement.Lots.FirstOrDefault(l => l.buildingId == b.id);
+                if (lot != null && lot.kind == LotKind.Watermill) StringAssert.Contains("watermill", e.text);
+                else StringAssert.DoesNotContain("watermill", e.text, $"seed {seed}: lot is {lot?.kind}");
+            }
+        }
+
+        [Test]
+        public void StoryLinesOnlyMentionWhatIsInTheBox()
+        {
+            var sim = NewSim(5);
+            Assert.AreEqual(0, sim.Count(BuildingType.Well));
+            Assert.AreNotEqual("whose turn it was at the well", sim.QuarrelGated("whose turn it was at the well"));
+            Assert.AreNotEqual("the best way to bake bread", sim.QuarrelGated("the best way to bake bread"));
+            Assert.AreEqual("a goat", sim.QuarrelGated("a goat"));
+            sim.AddBuildingAt(BuildingType.Well, 3);
+            sim.AddBuildingAt(BuildingType.Windmill, 4);
+            Assert.AreEqual("whose turn it was at the well", sim.QuarrelGated("whose turn it was at the well"));
+            Assert.AreEqual("the best way to bake bread", sim.QuarrelGated("the best way to bake bread"));
+        }
+
         [Test]
         public void DebugHooksPlaceFreelyRefillAndSkipToTheAnswer()
         {

@@ -484,7 +484,7 @@ namespace AquariumCiv.Sim
         {
             string a = others != null && others.Count > 0 ? others[0].FullName : "someone";
             string b = others != null && others.Count > 1 ? others[1].FullName : "someone else";
-            string quarrel = QuarrelIn(Quarrels[(int)(RoleRoll(salt, h.id, 0) * Quarrels.Length) % Quarrels.Length]);
+            string quarrel = QuarrelIn(QuarrelGated(Quarrels[(int)(RoleRoll(salt, h.id, 0) * Quarrels.Length) % Quarrels.Length]));
             string late = State.era == Era.Camp ? "the fire burned low" : "the lamps went out";
             return string.Format(line, h.FullName, seat.role, SeatLabel(seat.role), a, b, EraNoun(State.era), quarrel, late);
         }

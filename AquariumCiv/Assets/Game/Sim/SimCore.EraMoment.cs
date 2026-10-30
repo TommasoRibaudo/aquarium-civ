@@ -84,7 +84,7 @@ namespace AquariumCiv.Sim
         {
             string era = EraNoun(State.era);
             string tail = leader == null ? "" : State.era == Era.Village
-                ? $" {leader.name} fell in the well (they're fine)."
+                ? (Count(BuildingType.Well) > 0 ? $" {leader.name} fell in the well (they're fine)." : $" {leader.name} tripped over a goat (they're fine).")
                 : $" {leader.name} danced on the market steps until the lanterns went out.";
             return $"{Place} danced for three days to welcome the new {era}.{tail}";
         }
