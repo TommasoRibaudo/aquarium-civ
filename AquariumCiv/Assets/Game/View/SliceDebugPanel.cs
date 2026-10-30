@@ -1,3 +1,4 @@
+using AquariumCiv.GameUI;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -24,7 +25,7 @@ namespace AquariumCiv.View
                 return;
             }
             var src = SimLayoutSource.Find();
-            GUILayout.BeginArea(new Rect(8, 8, 300, 440), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(8, 8, 300, 480), GUI.skin.box);
             GUILayout.Label(src != null ? src.Status() : "no SimLayoutSource");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
@@ -38,6 +39,7 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Build farm")) last = SimLayoutSource.DebugBuild("Farm");
             GUILayout.EndHorizontal();
             if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
+            if (GUILayout.Button("Send test feedback")) last = FeedbackSender.DebugSendTest();
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
             if (GUILayout.Button("close")) open = false;
