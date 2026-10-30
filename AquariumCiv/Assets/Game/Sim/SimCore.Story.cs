@@ -96,7 +96,18 @@ namespace AquariumCiv.Sim
 
         /// <summary>The drawn quarrel, unless these two fell out over just that last time (#61: the same pair fell out over
         /// the same song lyric twice). The draw still decides it; no dice.</summary>
-        string QuarrelAgain(string drawn, int a, int b)
+        string QuarrelAgain(string drawn, int a, int b) => QuarrelGated(QuarrelAgainRaw(drawn, a, b));
+
+        /// <summary>A quarrel can only be over what is in the box (#86): no well, no quarrel at the well; no windmill
+        /// to grind the grain, none about baking. Same draw, a plain fallback.</summary>
+        public string QuarrelGated(string q)
+        {
+            if (q == Quarrels[1] && Count(BuildingType.Well) == 0) return Quarrels[3];
+            if (q == Quarrels[2] && Count(BuildingType.Windmill) == 0) return Quarrels[0];
+            return q;
+        }
+
+        string QuarrelAgainRaw(string drawn, int a, int b)
         {
             var last = State.chronicle.LastOrDefault(e => e.kind == "rivalry" && Pair(e, a, b));
             return last != null && last.text.Contains($"over {QuarrelIn(drawn)}.") ? Quarrels[(Array.IndexOf(Quarrels, drawn) + 1) % Quarrels.Length] : drawn;

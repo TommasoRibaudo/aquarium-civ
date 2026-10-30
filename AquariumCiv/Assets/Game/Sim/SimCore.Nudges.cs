@@ -91,6 +91,20 @@ namespace AquariumCiv.Sim
             var s = State;
             string type = AnswerTo(n);
             if (type == null) return false;
+            var named = n.creditNotableId >= 0 ? s.notables.FirstOrDefault(x => x.id == n.creditNotableId && x.alive && x.age >= 16f) : null;
+            // The town is full (#82): no building can be added, so the answer is a harvest of the gift, credited to a person,
+            // with no building behind it (the text never names what doesn't exist).
+            if (s.buildings.Count >= Config.buildingSlots)
+            {
+                if (s.wood < NextBuildingCost * 0.6f && !force) return false;
+                n.credited = true;
+                n.answerMonth = s.month;
+                n.buildingId = -1;
+                var hw = named ?? StoryAdultOrNull();
+                var he = Chronicle("keeper", HarvestLine(n.kind, hw, s.era), 0.9f, hw?.id ?? -1);
+                he.keeper = true;
+                return true;
+            }
             float cost = NextBuildingCost * 0.6f; // the Keeper's sign makes it a community effort
             if (s.wood < cost && !force) return false;
             s.wood = Math.Max(0f, s.wood - cost);
@@ -98,12 +112,32 @@ namespace AquariumCiv.Sim
             n.credited = true;
             n.answerMonth = s.month;
             n.buildingId = b?.id ?? -1;
-            var named = n.creditNotableId >= 0 ? s.notables.FirstOrDefault(x => x.id == n.creditNotableId && x.alive && x.age >= 16f) : null;
             var who = named ?? StoryAdultOrNull();
-            var e = Chronicle("keeper", CreditLine(n.kind, type, who, s.era), 0.9f, who?.id ?? -1);
+            var e = Chronicle("keeper", b != null ? CreditLine(n.kind, type, who, s.era) : HarvestLine(n.kind, who, s.era), 0.9f, who?.id ?? -1);
             e.buildingId = n.buildingId;
             e.keeper = true;
             return true;
+        }
+
+        /// <summary>The credited deed when no building can be added (the box is full): the people make use of the gift.
+        /// Never names a building.</summary>
+        static string HarvestLine(string kind, Notable who, Era era)
+        {
+            string name = who != null ? who.FullName : "the people";
+            string own = who != null ? who.FullName + "'s" : "the people's";
+            bool camp = era == Era.Camp;
+            return kind switch
+            {
+                NudgeKind.Rain => $"After the Keeper's rain, {name} {(camp ? "gathered the bright new growth" : "brought in a second crop")}.",
+                NudgeKind.Grove => $"After the Keeper planted a grove, {name} {(camp ? "gathered nuts and berries among the new trees" : "cut and gathered from the new trees")}.",
+                NudgeKind.Herd => $"After the Keeper sent a herd, {own} flock grazed the new herd.",
+                NudgeKind.Channel => $"After the Keeper dug a channel from the pond, {name} drew water along it to the fields.",
+                NudgeKind.Lamp => $"After the Keeper hung a lamp, {name} sat late in its light and the work went on.",
+                NudgeKind.Spring => $"After a spring broke out at the Keeper's touch, {name} drew the first water from it.",
+                NudgeKind.Outcrop => $"After the Keeper raised an outcrop, {name} split stone from it.",
+                NudgeKind.DyeMeadow => $"After the Keeper sowed a meadow of dye flowers, {name} picked the first flowers.",
+                _ => $"After the Keeper's sign, {name} put the gift to use.",
+            };
         }
 
         /// <summary>What the people build in answer to a nudge, by the era and the land at the spot (Growth Lab gap 5:
@@ -143,7 +177,7 @@ namespace AquariumCiv.Sim
             return null;
         }
 
-        static string CreditLine(string kind, string type, Notable who, Era era = Era.Village)
+        internal static string CreditLine(string kind, string type, Notable who, Era era = Era.Village, bool plain = false)
         {
             string name = who != null ? who.FullName : "the people";
             bool camp = era == Era.Camp; // the camp gathers; it doesn't sow yet (#61)
@@ -156,6 +190,7 @@ namespace AquariumCiv.Sim
                 BuildingType.Windmill => "built a windmill to grind the extra grain",
                 BuildingType.Lumbermill => "set up a lumber mill", BuildingType.Market => "opened a market for their crafts",
                 BuildingType.Well => "dug a well", BuildingType.Tavern => "opened a tavern",
+                BuildingType.Workshop when plain => "set up a workshop",
                 BuildingType.Workshop => kind switch
                 {
                     NudgeKind.Channel => "built a watermill", NudgeKind.Grove => "opened a timber yard",
