@@ -45,7 +45,7 @@ namespace AquariumCiv.Tests
 #endif
             var camp = NewSim(1234);
             camp.Advance(48);
-            var town = NewSim(7);
+            var town = NewSim(7, SweeperTests.NoSweepers()); // #60 changed the town on purpose: compared without its sweepers
             Watched(town, 150);
             Assert.AreEqual(Era.Town, town.State.era);
             Assert.AreEqual(3155006145u, Economy(camp.State), "camp");
@@ -53,6 +53,11 @@ namespace AquariumCiv.Tests
             // (Yara Brook, year 30). One more notable shifts the story dice from then on, as #26's rise does; roles draw no
             // dice themselves (RoleTests.TheEconomyIsWhatItWasBeforeRoles: runs without a crowd pull keep the old hash).
             Assert.AreEqual(2535083235u, Economy(town.State), "town");
+            // #60: town sweepers clear heaps and trim the weeds, so the town has less mess, a quicker work pace (more food
+            // and wood, more births), and every heap they clear lets a new one draw its spot from the main stream.
+            var swept = NewSim(7);
+            Watched(swept, 150);
+            Assert.AreEqual(1792776512u, Economy(swept.State), "town with its sweepers (#60)");
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

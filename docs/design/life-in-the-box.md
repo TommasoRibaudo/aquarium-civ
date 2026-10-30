@@ -259,6 +259,13 @@ Under Choice 6 ★ the sim needs a small change: in the town, the oldest trash i
 every N real hours per sweeper [est], so the view has something real to show them doing. That touches care state, not
 the economy.
 
+**Built (#60, `SimCore.Care.cs`):** sweepers = notables with the sweeper job + one from the crowd per 12 people, town
+only. Each clears a heap every 10 real hours (oldest first) and trims 0.005 overgrowth an hour (mess brings 1/48);
+together never more than half of what comes in, so mess still grows and a day of neglect still leaves about 6–7 heaps
+(vs 11–12) and half the weeds. Grime is never touched. `SweeperTarget(i)` / `SweeperTargets()` give the heap each
+sweeper is heading to, `SweepProgress` how close the next one is. It does touch the economy a little (less mess, quicker
+work pace in the town); camp and village are unchanged.
+
 ---
 
 ## 8. Reactions to the Keeper

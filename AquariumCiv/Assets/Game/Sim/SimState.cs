@@ -28,6 +28,13 @@ namespace AquariumCiv.Sim
         public int trashMax = 12;
         public float trashPerPersonHour = 0.02f;
         public float outputPenaltyMax = 0.25f;  // work-pace drop at full mess (Gate 1)
+        // Care moves up (#60, life-in-the-box §7, choice 6 ★): in the town, sweepers really clear trash heaps and trim
+        // overgrowth, slowly, in real hours like the mess. Never the glass. However many there are, they clear at most
+        // careMaxShare of what the mess brings in, so mess still grows and the Keeper always has care to do.
+        public int peoplePerCrowdSweeper = 12;   // the crowd puts one sweeper out per this many people (§5 "Town care")
+        public float sweepHeapsPerHour = 0.1f;   // trash heaps one sweeper clears per real hour (one every 10 h)
+        public float trimPerHour = 0.005f;       // overgrowth one sweeper trims per real hour (mess brings 1/48 ≈ 0.021)
+        public float careMaxShare = 0.5f;        // all sweepers together clear at most this share of the incoming trash/overgrowth
         public int buildingSlots = 20;
         // Named notables per era (game definition §4, #26): about 2–4 in the camp, 4–8 in the village, up to 12 in the
         // town. The band counts adults (16+). Births pause while the adults are at the era's max; children under 16 don't
@@ -230,6 +237,7 @@ namespace AquariumCiv.Sim
         public int population;
         public float food, wood, mood;
         public float grime, overgrowth, trashAccum;
+        public float sweepAccum;    // town sweepers' progress toward the next heap, 0..1 (SimCore.Care.cs)
         public List<TrashItem> trash = new();
         public List<Building> buildings = new();
         public List<Notable> notables = new();
