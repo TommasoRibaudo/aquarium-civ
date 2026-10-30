@@ -64,5 +64,19 @@ namespace AquariumCiv.Sim
             Settlement?.PlacePending();
             return b;
         }
+
+        /// <summary>Debug: the newest building of this type is gone (its lot is cleared), so a job that needed it can be seen
+        /// to move its worker. False if there is none.</summary>
+        public bool DebugRemoveBuilding(string type)
+        {
+            var s = State;
+            int i = s.buildings.FindLastIndex(x => x.type == type);
+            if (i < 0) return false;
+            var b = s.buildings[i];
+            s.buildings.RemoveAt(i);
+            if (i < s.settle.processed) s.settle.processed--;
+            foreach (var l in s.settle.lots) if (l.buildingId == b.id) { l.retired = true; l.buildingId = 0; }
+            return true;
+        }
     }
 }
