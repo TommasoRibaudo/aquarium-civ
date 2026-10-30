@@ -277,3 +277,15 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-29 · `test run --mode play` silently runs 0 tests** ("0/0 passed (0s)", exit 0). The Pipeline's modes are
   `editor`, `playmode`, `all`; anything else matches nothing. Use `--mode playmode` (and `--async_tests true` + `test
   status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified]
+- **2026-10-29 · Tester sim playtest without a UI (#24-#26 jobs/counts).** [verified]
+  - Drive the live Slice box with `unity command script run --file Temp/agent/tester/X.cs --entry Type.Method --args '[...]'`
+    (static methods using `GameClock.Instance.Sim`, `SimLayoutSource.DebugSkipYears/DebugNextEra`, `GameClock.DebugAway`); add
+    `--result-only` and parse `.result` (use `python`, not `python3`, in Git Bash here). Offline audits: build
+    `new SimCore(JsonUtility clone of GameClock.Instance.config, SimCore.NewWorld(seed, cfg))` for many seeds in one call.
+  - IMGUI (the "dbg" panel) only shows in `UnityEngine.ScreenCapture.CaptureScreenshot`; `capture screenshot --view game`
+    sometimes returns a tiny (299x648) image right after a Game view size change: shoot again.
+  - A synchronous `test run --mode editor` can hang the Pipeline (every other command 504s "waiting for another command")
+    when the Editor is unexpectedly in play mode ("This cannot be used during play mode" in RestoreSceneSetupTask, result
+    0/0). Wait for it to end, make sure play mode is off, rerun with `--async_tests true` (234 tests, ~2.5 min).
+  - Back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/game/box.json(.bak)` before a live Slice run; delete
+    them for a fresh camp, restore afterwards.
