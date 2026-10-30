@@ -66,6 +66,9 @@ namespace AquariumCiv.Sim
             return steps;
         }
 
+        /// <summary>True while <see cref="CatchUp"/> runs the months the player was away.</summary>
+        public bool CatchingUp { get; private set; }
+
         /// <summary>
         /// Offline catch-up (game definition v0.2): the civ lives the first <see cref="SimConfig.fullSpeedHours"/> at full
         /// speed and the rest at <see cref="SimConfig.slowSpeed"/>; mess runs on real hours, so the real hours the civ didn't
@@ -74,7 +77,9 @@ namespace AquariumCiv.Sim
         public CatchUpResult CatchUp(double realHoursAway)
         {
             var r = new CatchUpResult { realHours = Math.Max(0, realHoursAway), simHours = Config.OfflineSimHours(realHoursAway) };
-            r.months = Advance(r.simHours);
+            CatchingUp = true; // no relics are found while the player is away (SimCore.Relics.cs)
+            try { r.months = Advance(r.simHours); }
+            finally { CatchingUp = false; }
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
             return r;

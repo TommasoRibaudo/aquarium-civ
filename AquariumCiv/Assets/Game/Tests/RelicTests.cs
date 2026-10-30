@@ -155,6 +155,23 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void NoRelicIsFoundWhileThePlayerIsAwayItWaitsForTheFirstLiveMonth()
+        {
+            var sim = NewSim(8);
+            sim.ForceNextEra();
+            sim.State.eraStartMonth -= 15 * SimConfig.MonthsPerYear; // the fallback is open
+            CreditNextMonth(sim); // a credited month, which would make the doll
+            var r = sim.CatchUp(sim.Config.StepHours * 3);
+            Assert.GreaterOrEqual(r.months, 1, "months passed while away");
+            Assert.IsFalse(sim.CatchingUp);
+            Assert.IsFalse(sim.HasRelic(RelicId.KeeperDoll), "nothing is found away");
+            Assert.IsTrue(sim.State.dollDue, "the trigger fired and waits");
+            sim.Step(); // the first live month: the same trigger fires
+            Assert.IsTrue(sim.HasRelic(RelicId.KeeperDoll));
+            Assert.IsFalse(sim.State.dollDue);
+        }
+
+        [Test]
         public void TheDollsPropFollowsTheKeepersMostDoneAction()
         {
             var sim = NewSim(8);

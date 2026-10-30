@@ -334,6 +334,7 @@ namespace AquariumCiv.Sim
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
         public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
+        public bool dollDue;                  // the Keeper Doll's trigger fired while the player was away: made on the first live month
         public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
         public int relicLineNextId = SimCore.RelicLineIdBase; // relic cards' own ids, so the shared ids never shift
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
