@@ -1,0 +1,269 @@
+# Seed 1234: the full chronicle, 120 years, eras advanced at the player's next return
+# year.month  era      glass  kind  (salience)  text
+Y  0.0  Camp    g1 founding         (0.90) A few wanderers settled in the glass and made camp.
+Y  0.0  Camp    g1 role_won         (0.75) Hob Barrow the gatherer became chief of the camp. First act: moving the fire closer to their tent.
+Y  0.11 Camp    g1 first_building   (0.75) Hob Barrow marked out the first gathering grounds, where the berries grow thickest.
+Y  1.1  Camp    g1 ducks            (0.45) A family of ducks moved into the pond and took charge of it.
+Y  1.6  Camp    g1 term_lanterns    (0.50) Hob Barrow, the camp's chief, had extra lanterns hung round the camp fire, and a fence put round the fence.
+Y  2.3  Camp    g1 first_building   (0.75) Hob Barrow started a woodpile by the trees, and everyone added to it.
+Y  2.8  Camp    g1 wedding          (0.80) The first wedding in the glass: Hob Barrow married Bram Vane at the harvest dance.
+Y  2.11 Camp    g1 snow             (0.60) Snow fell inside the glass for the first time. The children tried to catch it.
+Y  2.11 Camp    g1 lost             (0.60) Bram Vane got lost in the hills for three days and came back with a crown made of twigs.
+Y  3.8  Camp    g1 rivalry          (0.58) Hob Barrow and Fen Marsh fell out over a fence post. They no longer share a bench.
+Y  4.3  Camp    g1 friendship       (0.50) Hob Barrow and Bram Vane became fast friends after a long night of storytelling.
+Y  4.4  Camp    g1 dreamer          (0.55) Fen Marsh spent a summer trying to talk to the clouds.
+Y  4.5  Camp    g1 fog              (0.42) A thick fog sat in the glass for days. Bram Vane said good morning to a bush.
+Y  4.6  Camp    g1 worrier          (0.45) Hob Barrow counted the people of the camp twice a day for a month.
+Y  5.0  Camp    g1 birth            (0.60) Ada Barrow was born to Bram Vane and Hob Barrow.
+Y  6.4  Camp    g1 festival         (0.65) Hob Barrow threw a harvest festival. There was dancing until dawn.
+Y  6.4  Camp    g1 reconcile        (0.55) Hob Barrow and Fen Marsh made up over a pot of stew. The whole camp sighed with relief.
+Y  7.1  Camp    g1 storm            (0.50) A great storm rattled the glass. The people huddled together in the hut. Hob Barrow the chief had them all counted in before the first gust.
+Y  7.8  Camp    g1 worrier          (0.45) Bram Vane built a little fence around the pond, just in case.
+Y  7.9  Camp    g1 rainbow          (0.42) A rainbow arched over the pond. Nobody worked that afternoon.
+Y  8.3  Camp    g1 keeper           (0.90) After the Keeper's rain, Fen Marsh staked out new gathering grounds.
+Y  9.0  Camp    g1 birth            (0.60) Gus Marsh was born to Fen Marsh.
+Y 11.0  Camp    g1 birth            (0.60) Quill Barrow was born to Hob Barrow and Bram Vane.
+Y 12.9  Camp    g1 term_lanterns    (0.50) Hob Barrow the chief had everyone home before dark, just in case.
+Y 13.0  Camp    g1 lost             (0.60) Bram Vane got lost in the hills for three days and came back with a feather as long as an arm.
+Y 14.0  Camp    g1 rivalry          (0.58) Fen Marsh and Bram Vane fell out over a fence post. They no longer share a bench.
+Y 14.3  Camp    g1 strange_light    (0.50) A strange warm light crossed the sky. Some say the Bright One was looking for something.
+Y 14.6  Camp    g1 keeper           (0.90) After the Keeper's rain, Bram Vane staked out new gathering grounds.
+Y 14.11 Camp    g1 storm            (0.50) Thunder rolled round the glass all night. Everyone squeezed into the hut and told stories till it passed. Hob Barrow the chief had them all counted in before the first gust.
+Y 15.8  Camp    g1 festival         (0.65) Hob Barrow threw a harvest festival. The pies ran out long before the music did.
+Y 17.10 Camp    g1 reconcile        (0.55) Bram Vane and Fen Marsh are friends again. Nobody is sure who said sorry first.
+Y 18.2  Camp    g1 milestone        (0.70) The settlement grew to 10 people.
+Y 18.2  Camp    g1 era-ready        (0.80) The settlement is restless. The elders talk of staying put and sowing seed; something is about to change.
+Y 18.8  Camp    g1 fog              (0.42) Fog filled the glass for a week. Hob Barrow walked into the same tree four times.
+Y 20.10 Village g2 era              (0.95) The settlement became a farming village. Everyone remembers where they stood that day.
+Y 20.10 Village g2 job_era          (0.60) With the village came new work: Hob Barrow went from gatherer to farmer, Fen Marsh went from hunter to fisher.
+Y 20.10 Village g2 role_era         (0.80) The camp became a village, and chief Hob Barrow became its first headman. They kept the feather.
+Y 20.11 Village g2 first_building   (0.75) Hob Barrow dug the first well. The water tasted of glass.
+Y 21.0  Village g2 coming_of_age    (0.40) Ada Barrow came of age and took up work as a farmer.
+Y 22.2  Village g2 festival         (0.65) Ada Barrow threw a harvest festival. There was dancing until dawn.
+Y 22.3  Village g2 worrier          (0.45) Hob Barrow built a little fence around the pond, just in case.
+Y 22.10 Village g2 rainbow          (0.42) A double rainbow hung inside the glass. The children argued all afternoon about where it ended.
+Y 24.9  Village g2 rivalry          (0.58) Ada Barrow and Bram Vane fell out over a song lyric. They no longer share a bench.
+Y 25.0  Village g2 coming_of_age    (0.40) Gus Marsh came of age and took up work as a woodcutter.
+Y 25.0  Village g2 anniversary      (0.65) The settlement celebrated 25 years in the glass with a feast.
+Y 25.3  Village g2 kind             (0.50) Gus Marsh baked bread for every hearth after the storm.
+Y 25.4  Village g2 term_lanterns    (0.50) Hob Barrow, the village's headman, had extra lanterns hung round the green, and a fence put round the fence.
+Y 26.5  Village g2 first_building   (0.75) Hob Barrow built a windmill, though nobody is sure where the wind comes from.
+Y 26.5  Village g2 naming           (0.80) Fen Marsh suggested a name for the settlement: Glasswick. It stuck.
+Y 26.5  Village g2 role_won         (0.75) Bram Vane the woodcutter became miller of the village. The sails turned a little faster that week.
+Y 27.0  Village g2 coming_of_age    (0.40) Quill Barrow came of age and took up work as a fisher.
+Y 28.0  Village g2 wedding          (0.70) Gus Marsh married Ada Barrow by the winter fire.
+Y 28.2  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+Y 28.7  Village g2 friendship       (0.50) Ada Barrow and Quill Barrow became fast friends after a long night of storytelling.
+Y 29.5  Village g2 apprentice       (0.50) Fen Marsh took young Quill Barrow as an apprentice.
+Y 29.8  Village g2 loud             (0.45) Ada Barrow called the goats home from the far side of the glass.
+Y 31.0  Village g2 birth            (0.60) Yara Marsh was born to Ada Barrow and Gus Marsh.
+Y 31.0  Village g2 birth            (0.60) Ilse Marsh was born to Gus Marsh and Ada Barrow.
+Y 31.3  Village g2 fog              (0.42) A thick fog sat in the glass for days. Hob Barrow said good morning to a bush.
+Y 31.4  Village g2 worrier          (0.45) Bram Vane counted the people of the village twice a day for a month.
+Y 32.0  Village g2 birth            (0.60) Hester Marsh was born to Ada Barrow and Gus Marsh.
+Y 32.0  Village g2 lost             (0.60) Fen Marsh got lost in the hills for three days and came back with a jar of honey.
+Y 33.2  Village g2 role_contest     (0.78) Quill Barrow stood against headman Hob Barrow and won on a tied vote. Hob Barrow went home and shut the door very loudly.
+Y 33.6  Village g2 festival         (0.65) Hob Barrow threw a harvest festival. Someone danced with a goat, and the goat led.
+Y 33.8  Village g2 term_meal        (0.50) Quill Barrow, the village's headman, set long tables at the green, and everyone ate together.
+Y 34.2  Village g2 first_building   (0.75) Hob Barrow opened a market. Haggling began immediately.
+Y 34.5  Village g2 term_mend        (0.50) Quill Barrow the headman sat Gus Marsh and Bram Vane down with a pot of stew until they stopped arguing about a song lyric.
+Y 34.10 Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Hob Barrow planted a new field beside it.
+Y 35.0  Village g2 birth            (0.60) Wim Marsh was born to Gus Marsh and Ada Barrow.
+Y 35.4  Village g2 storm            (0.50) A storm shook the glass. By morning the cottage smelled of wet dog, and everyone was fine. Bram Vane the miller had them all counted in before the first gust.
+Y 35.10 Village g2 dreamer          (0.55) Fen Marsh dreamt they climbed to the edge of the sky and knocked. Something knocked back.
+Y 37.7  Village g2 ducks            (0.45) The ducks had ducklings. The pond is theirs now; the people are allowed to visit.
+Y 37.9  Village g2 term_lanterns    (0.50) Bram Vane, the village's miller, had extra lanterns hung round the mill, and a fence put round the fence.
+Y 38.0  Village g2 death            (0.85) Bram Vane, the worrier, died of old age at 57.
+Y 38.0  Village g2 role_succession  (0.70) When Bram Vane died, the mill passed to their child Ada Barrow, who had swept its floor since they were small.
+Y 38.4  Village g2 term_announce    (0.50) Ada Barrow, the village's miller, made an announcement at the mill every morning. Most of them were about the weather.
+Y 39.1  Village g2 term_feast       (0.50) Ada Barrow the miller held a feast at the mill. They could be heard on the far side of the glass.
+Y 40.2  Village g2 strange_light    (0.50) The strange warm light came back and lingered over the pond. Some say the Keeper had dropped something small.
+Y 40.5  Village g2 apprentice       (0.50) Fen Marsh took young Ilse Marsh as an apprentice.
+Y 40.8  Village g2 fog              (0.42) Fog rolled in and stayed. Quill Barrow found the way home by following the smell of supper.
+Y 41.0  Village g2 retired          (0.45) At 65, Fen Marsh stopped being a fisher and became an elder. They still tell everyone how it should be done.
+Y 41.1  Village g2 lost             (0.60) Gus Marsh got lost in the hills for three days and came back with a crown made of twigs.
+Y 44.6  Village g2 term_announce    (0.50) Ada Barrow the miller called the whole village to the mill to say a roof was fixed. It was Gus Marsh's roof.
+Y 45.0  Village g2 death            (0.85) Hob Barrow, the worrier, died of old age at 63.
+Y 45.2  Village g2 role_contest     (0.78) Gus Marsh stood against headman Quill Barrow and won, 3 votes to 1. Quill Barrow spent the evening telling the goats it was rigged.
+Y 47.0  Village g2 coming_of_age    (0.40) Yara Marsh came of age and took up work as a fisher.
+Y 47.0  Village g2 coming_of_age    (0.40) Ilse Marsh came of age and took up work as a woodcutter.
+Y 47.4  Village g2 festival         (0.65) Yara Marsh threw a harvest festival. The pies ran out long before the music did.
+Y 47.5  Village g2 term_feast       (0.50) Ada Barrow, the village's miller, gave a toast at the mill so loud the ducks took off.
+Y 47.7  Village g2 term_meal        (0.50) Gus Marsh, the village's headman, set long tables at the green, and everyone ate together.
+Y 48.0  Village g2 coming_of_age    (0.40) Hester Marsh came of age and took up work as a farmer.
+Y 49.0  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+Y 49.3  Village g2 kind             (0.50) Gus Marsh took in a stray goat. It follows them everywhere now.
+Y 50.0  Village g2 anniversary      (0.65) Glasswick celebrated 50 years in the glass with a feast.
+Y 51.0  Village g2 death            (0.85) Fen Marsh, the dreamer, died of old age at 75.
+Y 51.0  Village g2 coming_of_age    (0.40) Wim Marsh came of age and took up work as a fisher.
+Y 51.7  Village g2 brave            (0.50) Ilse Marsh climbed the windmill roof in a storm to save a kitten.
+Y 52.0  Village g2 term_meal        (0.50) Gus Marsh the headman visited every old and sick person in the village before the winter.
+Y 52.5  Village g2 term_mend        (0.50) Gus Marsh the headman sat Quill Barrow and Ilse Marsh down with a pot of stew until they stopped arguing about a goat.
+Y 54.5  Village g2 friendship       (0.50) Wim Marsh and Ilse Marsh became fast friends after a long night of storytelling.
+Y 55.0  Village g2 birth            (0.60) Alma Marsh was born to Ilse Marsh.
+Y 55.3  Village g2 lost             (0.60) Ada Barrow got lost in the hills for three days and came back with a feather as long as an arm.
+Y 56.0  Village g2 kind             (0.50) Quill Barrow baked bread for every hearth after the storm.
+Y 56.1  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+Y 56.3  Village g2 prank            (0.52) Yara Marsh hid every spoon in the village inside the lumber mill.
+Y 56.8  Village g2 bumper           (0.55) The best harvest anyone can remember. The granary door wouldn't close.
+Y 57.1  Village g2 term_mend        (0.50) Gus Marsh, the village's headman, walked Ilse Marsh and Ada Barrow round the pond until they forgot what the row was about.
+Y 57.2  Village g2 role_contest     (0.78) Quill Barrow stood against headman Gus Marsh and won, 2 votes to 1. Gus Marsh took a very long walk round the pond.
+Y 57.2  Village g2 term_announce    (0.50) Ada Barrow, the village's miller, made an announcement at the mill every morning. Most of them were about the weather.
+Y 57.6  Village g2 loud             (0.45) Wim Marsh called the goats home from the far side of the glass.
+Y 57.9  Village g2 rainbow          (0.42) A rainbow came down right by the pond. Everyone went to look for the end of it and found mud.
+Y 57.10 Village g2 first_building   (0.75) Ilse Marsh opened a tavern. Productivity dipped.
+Y 58.0  Village g2 birth            (0.60) Nils Marsh was born to Hester Marsh.
+Y 59.4  Village g2 storm            (0.50) A great storm rattled the glass. The people huddled together in the cottage.
+Y 60.1  Village g2 rivalry          (0.58) Gus Marsh and Wim Marsh fell out over a goat. They no longer share a bench. Quill Barrow the headman has promised to sort it out.
+Y 61.1  Village g2 stubborn         (0.48) Hester Marsh insisted the cottage was built backwards. It wasn't.
+Y 62.8  Village g2 friendship       (0.50) Gus Marsh and Hester Marsh became fast friends after a snowball fight.
+Y 63.0  Village g2 reconcile        (0.55) Gus Marsh and Wim Marsh made up over a pot of stew. The whole village sighed with relief.
+Y 63.1  Village g2 loud             (0.45) Ada Barrow sneezed so hard the birds left every tree in the village.
+Y 63.2  Village g2 rivalry          (0.58) Quill Barrow and Wim Marsh fell out over a goat. They no longer share a bench.
+Y 63.7  Village g2 festival         (0.65) Hester Marsh threw a harvest festival. The pies ran out long before the music did.
+Y 63.9  Village g2 apprentice       (0.50) Gus Marsh took young Alma Marsh as an apprentice.
+Y 64.0  Village g2 birth            (0.60) Juna Marsh was born to Wim Marsh.
+Y 64.1  Village g2 fog              (0.42) Fog filled the glass for a week. Quill Barrow walked into the same tree four times.
+Y 65.5  Village g2 drought          (0.48) A dry summer: the stream ran low and everyone shared their water.
+Y 66.9  Village g2 brave            (0.50) Ilse Marsh chased a fox away from the hens with a frying pan.
+Y 66.10 Village g2 milestone        (0.70) Glasswick grew to 20 people.
+Y 67.1  Village g2 strange_light    (0.50) A strange warm light crossed the sky. Some say the Keeper was looking for something.
+Y 67.7  Village g2 term_meal        (0.50) Quill Barrow the headman visited every old and sick person in the village before the winter.
+Y 68.6  Village g2 term_mend        (0.50) Quill Barrow, the village's headman, walked Wim Marsh and Ilse Marsh round the pond until they forgot what the row was about.
+Y 69.2  Village g2 role_reelected   (0.60) Glasswick kept Quill Barrow as headman for another twelve years. Gus Marsh asked for a recount of all 7 votes.
+Y 69.6  Village g2 rainbow          (0.42) A rainbow arched over the pond. Nobody worked that afternoon.
+Y 70.0  Village g2 retired          (0.45) Ada Barrow put down their work as a farmer at 65 and sat down by the fire, to tell stories and mind the children.
+Y 70.2  Village g2 storm            (0.50) Thunder rolled round the glass all night. Everyone squeezed into the tavern and told stories till it passed.
+Y 71.0  Village g2 death            (0.85) Ada Barrow, the loud, died of old age at 66.
+Y 71.0  Village g2 coming_of_age    (0.40) Alma Marsh came of age and took up work as a farmer.
+Y 71.0  Village g2 birth            (0.60) Hob Marsh was born to Yara Marsh.
+Y 71.0  Village g2 role_succession  (0.70) When Ada Barrow died, the mill passed to their child Yara Marsh, who had swept its floor since they were small.
+Y 71.9  Village g2 sheep            (0.50) A sheep wandered into the tavern and refused to leave. It has a stool now.
+Y 72.7  Village g2 apprentice       (0.50) Gus Marsh took young Nils Marsh as an apprentice.
+Y 72.9  Village g2 apprentice       (0.50) Gus Marsh took young Juna Marsh as an apprentice.
+Y 72.10 Village g2 ducks            (0.45) A second family of ducks arrived and fell out with the first. The pond is split down the middle.
+Y 73.6  Village g2 fog              (0.42) A thick fog sat in the glass for days. Yara Marsh said good morning to a bush.
+Y 74.0  Village g2 coming_of_age    (0.40) Nils Marsh came of age and took up work as a woodcutter.
+Y 74.0  Village g2 retired          (0.45) At 65, Gus Marsh stopped being a woodcutter and became an elder. They still tell everyone how it should be done.
+Y 74.2  Village g2 reconcile        (0.55) Quill Barrow and Wim Marsh made peace while looking for the same lost goat. They found it together.
+Y 75.0  Village g2 anniversary      (0.65) Glasswick celebrated 75 years in the glass with a feast.
+Y 76.0  Village g2 death            (0.85) Gus Marsh, the kind, died of old age at 67.
+Y 76.0  Village g2 retired          (0.45) At 65, Quill Barrow stopped being a fisher and became an elder. They still tell everyone how it should be done.
+Y 76.0  Village g2 term_prank       (0.50) Yara Marsh, the village's miller, ended a speech at the mill with a joke about the goats. Even the goats laughed.
+Y 76.5  Village g2 loud             (0.45) Wim Marsh sneezed so hard the birds left every tree in the village.
+Y 77.0  Village g2 birth            (0.60) Otto Marsh was born to Alma Marsh.
+Y 77.1  Village g2 term_feast       (0.50) Yara Marsh the miller held a feast day with games at the mill. Quill Barrow won the sack race by falling over the line.
+Y 77.3  Village g2 lost             (0.60) Nils Marsh got lost in the hills for three days and came back with a crown made of twigs.
+Y 79.10 Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Hester Marsh planted a new field beside it.
+Y 80.0  Village g2 coming_of_age    (0.40) Juna Marsh came of age and took up work as a brewer.
+Y 80.5  Village g2 term_meal        (0.50) Quill Barrow, the village's headman, set long tables at the green, and everyone ate together.
+Y 80.8  Village g2 bumper           (0.55) Another fine harvest: there were turnips in places turnips have no business being.
+Y 81.2  Village g2 role_contest     (0.78) Hester Marsh stood against headman Quill Barrow and won, 3 votes to 0. Quill Barrow went home and shut the door very loudly.
+Y 81.8  Village g2 storm            (0.50) A storm shook the glass. By morning the cottage smelled of wet dog, and everyone was fine.
+Y 82.2  Village g2 era-ready        (0.80) Glasswick hums with new trades. Everyone feels a bigger change coming.
+Y 82.4  Village g2 term_meeting     (0.50) Hester Marsh the headman kept the meeting at the green going until everyone agreed with them. It took two days.
+Y 82.8  Village g2 prank            (0.52) Yara Marsh painted the cottage roof bright pink overnight.
+Y 82.9  Village g2 stubborn         (0.48) Hester Marsh refused to move for the new path. The path now goes around them.
+Y 83.6  Village g2 festival         (0.65) Alma Marsh threw a harvest festival. Someone danced with a goat, and the goat led. Yara Marsh the miller organised the sack race.
+Y 83.7  Village g2 brave            (0.50) Nils Marsh chased a fox away from the hens with a frying pan.
+Y 84.6  Town    g3 era              (0.95) Glasswick became a town of crafts and guilds. The old folk said they'd seen it coming.
+Y 84.6  Town    g3 job_era          (0.60) With the town came new work: Juna Marsh went from brewer to baker.
+Y 84.6  Town    g3 role_era         (0.80) The village became a town, and headman Hester Marsh became its first lord. The title will pass to their children.
+Y 84.6  Town    g3 role_offices     (0.70) The new town needed people for its offices: Yara Marsh became innkeeper, Ilse Marsh became guildmaster, Nils Marsh became master builder, and 2 more took up offices.
+Y 84.7  Town    g3 sweepers         (0.60) Glasswick has sweepers now: a few folk with brooms and a handcart take the heaps to the midden one by one, and trim the weeds on the green.
+Y 84.9  Town    g3 term_row         (0.50) Hester Marsh the lord and Nils Marsh argued about a goat at the market steps until the lamps went out.
+Y 84.9  Town    g3 term_expedition  (0.50) Ilse Marsh, the town's guildmaster, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+Y 84.11 Town    g3 apprentice       (0.50) Ilse Marsh took young Hob Marsh as an apprentice.
+Y 85.0  Town    g3 death            (0.85) Quill Barrow, the kind, died of old age at 74.
+Y 85.0  Town    g3 birth            (0.60) Bo Marsh was born to Alma Marsh.
+Y 85.0  Town    g3 newcomer         (0.55) A newcomer, Gus Stile, the loud, joined the town.
+Y 85.10 Town    g3 term_announce    (0.50) Wim Marsh, the town's merchant, made an announcement at the market steps every morning. Most of them were about the weather.
+Y 86.1  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Alma Marsh opened a workshop for the new stone beside it.
+Y 87.0  Town    g3 coming_of_age    (0.40) Hob Marsh came of age and took up work as a mason.
+Y 87.4  Town    g3 rivalry          (0.58) Ilse Marsh and Gus Stile fell out over the best way to bake bread. They no longer share a bench.
+Y 87.5  Town    g3 song             (0.50) Juna Marsh wrote a song about the Keeper's giant thumb. Everyone hums it now.
+Y 88.9  Town    g3 strange_light    (0.50) The strange warm light came back and lingered over the pond. Some say the Keeper had dropped something small.
+Y 89.0  Town    g3 birth            (0.60) Cela Marsh was born to Juna Marsh.
+Y 89.4  Town    g3 term_feast       (0.50) Wim Marsh the merchant held a feast at the market steps. They could be heard on the far side of the glass.
+Y 89.5  Town    g3 apprentice       (0.50) Yara Marsh took young Otto Marsh as an apprentice.
+Y 90.2  Town    g3 wedding          (0.70) Gus Stile married Nils Marsh among the spring blossoms.
+Y 90.8  Town    g3 festival         (0.65) Hob Marsh threw a harvest festival. The pies ran out long before the music did. Yara Marsh the innkeeper organised the sack race.
+Y 92.0  Town    g3 death            (0.85) Ilse Marsh, the brave, died of old age at 61.
+Y 92.0  Town    g3 role_death       (0.85) Ilse Marsh died as guildmaster after 7 years. The town left the seat empty until spring.
+Y 92.2  Town    g3 role_contest     (0.78) Gus Stile and Hob Marsh both wanted to be guildmaster. The town chose Gus Stile, 2 votes to 1; Hob Marsh went home and shut the door very loudly.
+Y 92.2  Town    g3 term_feast       (0.50) Yara Marsh, the town's innkeeper, declared a day of games at the inn. Juna Marsh is still champion of the egg-and-spoon.
+Y 93.0  Town    g3 coming_of_age    (0.40) Otto Marsh came of age and took up work as a baker.
+Y 93.10 Town    g3 term_meeting     (0.50) Hester Marsh, the town's lord, refused to move the woodpile. The path now goes around it.
+Y 94.0  Town    g3 death            (0.85) Hester Marsh, the stubborn, died of old age at 62.
+Y 94.0  Town    g3 birth            (0.60) Ada Marsh was born to Juna Marsh.
+Y 94.0  Town    g3 role_inherited   (0.80) When old Hester Marsh died, their eldest child, Nils Marsh, became lord of the town.
+Y 94.2  Town    g3 role_masterwork  (0.65) Juna Marsh and Hob Marsh each built a chimney to prove who should be master builder. Juna Marsh's is still standing.
+Y 95.0  Town    g3 death            (0.85) Wim Marsh, the loud, died of old age at 60.
+Y 95.0  Town    g3 newcomer         (0.55) A newcomer, Ulf Gale, the brave, joined the town.
+Y 95.0  Town    g3 role_appointed   (0.55) Lord Nils Marsh made Ulf Gale merchant. Ulf Gale promised everyone a fair price, and mostly kept it.
+Y 95.7  Town    g3 brave            (0.50) Ulf Gale climbed the tavern roof in a storm to save a kitten.
+Y 95.10 Town    g3 friendship       (0.50) Juna Marsh and Yara Marsh became fast friends after a snowball fight.
+Y 96.0  Town    g3 birth            (0.60) Hester Stile was born to Nils Marsh and Gus Stile.
+Y 96.0  Town    g3 birth            (0.60) Pim Stile was born to Gus Stile and Nils Marsh.
+Y 96.0  Town    g3 retired          (0.45) At 65, Yara Marsh stopped being a fisher and became an elder. They still tell everyone how it should be done.
+Y 96.6  Town    g3 brave            (0.50) Hob Marsh climbed the lumber mill roof in a storm to save a kitten.
+Y 96.7  Town    g3 term_garden      (0.50) Alma Marsh, the town's captain of the watch, planted flowers all round the market steps. The bees approve.
+Y 96.10 Town    g3 lost             (0.60) Nils Marsh got lost in the hills for three days and came back with a jar of honey. Ulf Gale the merchant led the search party, which came home with firewood and a goat as well.
+Y 98.0  Town    g3 death            (0.85) Yara Marsh, the joker, died of old age at 67.
+Y 98.0  Town    g3 newcomer         (0.55) A newcomer, Flora Dale, the kind, joined the town.
+Y 98.0  Town    g3 role_succession  (0.70) When Yara Marsh died, the inn passed to their apprentice Otto Marsh, who had carried its barrels since they were small.
+Y 98.6  Town    g3 term_announce    (0.50) Gus Stile, the town's guildmaster, made an announcement at the inn every morning. Most of them were about the weather.
+Y 98.7  Town    g3 festival         (0.65) Nils Marsh threw a harvest festival. There was dancing until dawn. Juna Marsh the master builder sang until the stars came out.
+Y 99.0  Town    g3 birth            (0.60) Ilse Gale was born to Ulf Gale.
+Y 99.4  Town    g3 wedding          (0.70) Hob Marsh married Ulf Gale among the spring blossoms. Juna Marsh the master builder sang them down the path.
+Y 99.6  Town    g3 loud             (0.45) Gus Stile called the goats home from the far side of the glass.
+Y 99.11 Town    g3 term_pilgrim     (0.50) Otto Marsh the innkeeper led a walk up the hill to wave at the sky. Ulf Gale swears something waved back.
+Y100.0  Town    g3 anniversary      (0.65) Glasswick celebrated 100 years in the glass with a feast.
+Y100.5  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Gus Stile opened a workshop for the new stone beside it.
+Y100.10 Town    g3 wedding          (0.70) Flora Dale married Otto Marsh at the harvest dance. Juna Marsh the master builder sang them down the path.
+Y101.0  Town    g3 coming_of_age    (0.40) Bo Marsh came of age and took up work as a mason.
+Y101.0  Town    g3 brave            (0.50) Nils Marsh climbed the house roof in a storm to save a kitten.
+Y101.5  Town    g3 term_expedition  (0.50) Nils Marsh, the town's lord, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+Y101.9  Town    g3 brave            (0.50) Bo Marsh climbed the lumber mill roof in a storm to save a kitten.
+Y101.10 Town    g3 fog              (0.42) Fog rolled in and stayed. Ulf Gale found the way home by following the smell of supper.
+Y101.11 Town    g3 term_feast       (0.50) Gus Stile the guildmaster held a feast at the inn. They could be heard on the far side of the glass.
+Y102.0  Town    g3 storm            (0.50) A great storm rattled the glass. The people huddled together in the tavern.
+Y102.11 Town    g3 rivalry          (0.58) Flora Dale and Alma Marsh fell out over whose turn it was at the well. They no longer share a bench.
+Y103.4  Town    g3 rivalry          (0.58) Hob Marsh and Juna Marsh fell out over whose turn it was at the well. They no longer share a bench.
+Y104.0  Town    g3 lost             (0.60) Ulf Gale got lost in the hills for three days and came back with a jar of honey. Nils Marsh the lord led the search party, which came home with firewood and a goat as well.
+Y104.2  Town    g3 role_contest     (0.78) Hob Marsh stood against guildmaster Gus Stile and won, 3 votes to 2. Gus Stile took a very long walk round the pond.
+Y105.0  Town    g3 coming_of_age    (0.40) Cela Marsh came of age and took up work as a fisher.
+Y105.0  Town    g3 song             (0.50) Juna Marsh sang at the house until the rafters shook.
+Y106.6  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Ulf Gale opened a workshop for the new stone beside it.
+Y107.0  Town    g3 rivalry          (0.58) Ulf Gale and Otto Marsh fell out over the best way to bake bread. They no longer share a bench.
+Y108.2  Town    g3 term_feast       (0.50) Juna Marsh, the town's master builder, called a feast at the timber yard for no reason but a fine evening. Nobody minded.
+Y108.5  Town    g3 term_expedition  (0.50) Ulf Gale, the town's merchant, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+Y108.10 Town    g3 term_garden      (0.50) Alma Marsh the captain of the watch blessed the fields one by one. It took all autumn.
+Y109.7  Town    g3 ducks            (0.45) A family of ducks moved into the pond and took charge of it.
+Y110.0  Town    g3 coming_of_age    (0.40) Ada Marsh came of age and took up work as a sweeper.
+Y110.0  Town    g3 giant_turnip     (0.55) Cela Marsh planted flowers around the tavern. The bees approve.
+Y110.2  Town    g3 storm            (0.50) Thunder rolled round the glass all night. Everyone squeezed into the windmill and told stories till it passed.
+Y111.6  Town    g3 term_expedition  (0.50) Nils Marsh the lord took Flora Dale and Alma Marsh on a long hunt. They came back muddy and very proud.
+Y111.7  Town    g3 term_pilgrim     (0.50) Otto Marsh, the town's innkeeper, spent a night on the hill watching the sky, with Ulf Gale holding the blanket.
+Y112.0  Town    g3 coming_of_age    (0.40) Hester Stile came of age and took up work as a farmer.
+Y112.0  Town    g3 coming_of_age    (0.40) Pim Stile came of age and took up work as a smith.
+Y112.9  Town    g3 term_expedition  (0.50) Ulf Gale the merchant took Otto Marsh and Bo Marsh on a long hunt. They came back muddy and very proud.
+Y113.0  Town    g3 fog              (0.42) Fog rolled in and stayed. Alma Marsh found the way home by following the smell of supper.
+Y113.0  Town    g3 term_plan        (0.50) Otto Marsh, the town's innkeeper, announced a tower tall enough to see over the glass. They built the first step.
+Y113.7  Town    g3 term_expedition  (0.50) Hob Marsh, the town's guildmaster, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+Y114.9  Town    g3 festival         (0.65) Flora Dale threw a harvest festival. There was dancing until dawn. Juna Marsh the master builder sang until the stars came out.
+Y115.0  Town    g3 coming_of_age    (0.40) Ilse Gale came of age and took up work as a sweeper.
+Y115.8  Town    g3 term_feast       (0.50) Juna Marsh the master builder sang Hob Marsh and Alma Marsh through supper at the timber yard, and then everyone else too.
+Y116.0  Town    g3 death            (0.85) Gus Stile, the loud, died of old age at 59.
+Y116.2  Town    g3 role_reelected   (0.60) Glasswick kept Hob Marsh as guildmaster for another twelve years. Bo Marsh asked for a recount of all 7 votes.
+Y116.11 Town    g3 wedding          (0.70) Cela Marsh married Pim Stile by the winter fire. Juna Marsh the master builder sang them down the path.
+Y117.7  Town    g3 storm            (0.50) A storm shook the glass. By morning the house smelled of wet dog, and everyone was fine.
+Y117.11 Town    g3 giant_turnip     (0.55) Alma Marsh planted flowers around the house. The bees approve.
+Y119.7  Town    g3 kind             (0.50) Flora Dale took in a stray goat. It follows them everywhere now.
+Y120.0  Town    g3 death            (0.85) Juna Marsh, the singer, died of old age at 56.
+Y120.0  Town    g3 retired          (0.45) At 65, Alma Marsh stopped being a farmer and became an elder. They still tell everyone how it should be done.
+Y120.0  Town    g3 role_death       (0.85) Juna Marsh died as master builder after 25 years. The town left the seat empty until spring.
+Y120.2  Town    g3 role_masterwork  (0.65) Pim Stile and Bo Marsh each built a chimney to prove who should be master builder. Pim Stile's is still standing.
+Y120.3  Town    g3 term_device      (0.50) The timber yard sprouted a weathervane, a bell and a little crank. Pim Stile the master builder isn't finished.
+Y120.11 Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Alma Marsh opened a workshop for the new stone beside it.
+Y122.7  Town    g3 wedding          (0.70) Ada Marsh married Hester Stile under the summer sky.

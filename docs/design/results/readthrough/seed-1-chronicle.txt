@@ -1,0 +1,302 @@
+# Seed 1: the full chronicle, 120 years, eras advanced at the player's next return
+# year.month  era      glass  kind  (salience)  text
+Y  0.0  Camp    g1 founding         (0.90) A few wanderers settled in the glass and made camp.
+Y  0.0  Camp    g1 role_contest     (0.78) Dov Vane and Moss Hearth both wanted to be chief. The camp chose Dov Vane; Moss Hearth stomped off to their tent and stayed there until supper.
+Y  0.4  Camp    g1 term_meeting     (0.50) Dov Vane the chief kept the meeting at the camp fire going until everyone agreed with them. It took two days.
+Y  0.6  Camp    g1 drought          (0.48) A dry summer: the stream ran low and everyone shared their water.
+Y  0.7  Camp    g1 term_row         (0.50) Dov Vane the chief and Moss Hearth argued about whose turn it was to fetch water at the camp fire until the fire burned low.
+Y  0.10 Camp    g1 wedding          (0.80) The first wedding in the glass: Greta Gale married Moss Hearth at the harvest dance.
+Y  0.11 Camp    g1 first_building   (0.75) Moss Hearth marked out the first gathering grounds, where the berries grow thickest.
+Y  1.0  Camp    g1 birth            (0.60) Lorn Gale was born to Greta Gale and Moss Hearth.
+Y  2.2  Camp    g1 festival         (0.65) Dov Vane threw a harvest festival. Someone danced with a goat, and the goat led.
+Y  2.6  Camp    g1 loud             (0.45) Moss Hearth sneezed so hard the birds left every tree in the camp.
+Y  3.0  Camp    g1 birth            (0.60) Tilda Gale was born to Moss Hearth and Greta Gale.
+Y  3.1  Camp    g1 friendship       (0.50) Moss Hearth and Greta Gale became fast friends after a long night of storytelling.
+Y  3.11 Camp    g1 snow             (0.60) Snow fell inside the glass for the first time. The children tried to catch it.
+Y  5.4  Camp    g1 first_building   (0.75) Greta Gale started a woodpile by the trees, and everyone added to it.
+Y  6.0  Camp    g1 birth            (0.60) Otto Gale was born to Moss Hearth and Greta Gale.
+Y  6.2  Camp    g1 milestone        (0.70) The settlement grew to 10 people.
+Y  6.3  Camp    g1 fog              (0.42) Fog rolled in and stayed. Dov Vane found the way home by following the smell of supper.
+Y  6.4  Camp    g1 dreamer          (0.55) Greta Gale spent a summer trying to talk to the clouds.
+Y  6.10 Camp    g1 naming           (0.80) Dov Vane suggested a name for the settlement: Keepersend. It stuck.
+Y  7.0  Camp    g1 storm            (0.50) A great storm rattled the glass. The people huddled together in the hut.
+Y  8.0  Camp    g1 term_meeting     (0.50) Dov Vane, the camp's chief, refused to move the woodpile. The path now goes around it.
+Y  8.4  Camp    g1 keeper           (0.90) After the Keeper's rain, Moss Hearth staked out new gathering grounds.
+Y  8.4  Camp    g1 ducks            (0.45) A family of ducks moved into the pond and took charge of it.
+Y  8.11 Camp    g1 term_row         (0.50) Greta Gale and Moss Hearth shouted each other hoarse over a fence post at the meeting. Dov Vane the chief would not let anyone go home.
+Y  9.1  Camp    g1 rivalry          (0.58) Moss Hearth and Dov Vane fell out over a song lyric. They no longer share a bench.
+Y 10.0  Camp    g1 lost             (0.60) Moss Hearth got lost in the hills for three days and came back with a jar of honey.
+Y 10.0  Camp    g1 era-ready        (0.80) Keepersend is restless. The elders talk of staying put and sowing seed; something is about to change.
+Y 12.2  Camp    g1 rainbow          (0.42) A rainbow arched over the pond. Nobody worked that afternoon.
+Y 12.4  Camp    g1 reconcile        (0.55) Moss Hearth and Dov Vane are friends again. Nobody is sure who said sorry first.
+Y 12.7  Village g2 era              (0.95) Keepersend became a farming village. Everyone remembers where they stood that day.
+Y 12.7  Village g2 job_era          (0.60) With the village came new work: Greta Gale went from toolmaker to woodcutter, Dov Vane went from hunter to fisher.
+Y 12.7  Village g2 role_era         (0.80) The camp became a village, and chief Dov Vane became its first headman. They kept the feather.
+Y 12.8  Village g2 first_building   (0.75) Moss Hearth dug the first well. The water tasted of glass.
+Y 12.9  Village g2 first_building   (0.75) Dov Vane built a windmill, though nobody is sure where the wind comes from.
+Y 12.9  Village g2 role_won         (0.75) Greta Gale the woodcutter became miller of the village. The sails turned a little faster that week.
+Y 13.0  Village g2 birth            (0.60) Zeb Vane was born to Dov Vane.
+Y 13.0  Village g2 newcomer         (0.55) A newcomer, Kit Marsh, the clever, joined the village.
+Y 13.6  Village g2 term_plan        (0.50) Greta Gale, the village's miller, announced a tower tall enough to see over the glass. They built the first step.
+Y 14.1  Village g2 rivalry          (0.58) Moss Hearth and Dov Vane fell out over a goat. They no longer share a bench.
+Y 14.2  Village g2 invention        (0.62) Kit Marsh made a stick that throws a shadow, and now everyone knows when lunch is.
+Y 14.9  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Moss Hearth planted a new field beside it.
+Y 15.3  Village g2 reconcile        (0.55) Moss Hearth and Dov Vane made peace while looking for the same lost goat. They found it together.
+Y 17.0  Village g2 coming_of_age    (0.40) Lorn Gale came of age and took up work as a farmer.
+Y 17.6  Village g2 drought          (0.48) The pond shrank all summer. The whole village learned to wash in one bucket.
+Y 18.1  Village g2 fog              (0.42) Fog filled the glass for a week. Dov Vane walked into the same tree four times.
+Y 18.3  Village g2 wedding          (0.70) Dov Vane married Kit Marsh among the spring blossoms.
+Y 19.0  Village g2 coming_of_age    (0.40) Tilda Gale came of age and took up work as a farmer.
+Y 19.4  Village g2 rivalry          (0.58) Tilda Gale and Lorn Gale fell out over a song lyric. They no longer share a bench.
+Y 19.5  Village g2 term_pilgrim     (0.50) Greta Gale the miller led a walk up the hill to wave at the sky. Kit Marsh swears something waved back.
+Y 21.5  Village g2 festival         (0.65) Moss Hearth threw a harvest festival. The pies ran out long before the music did.
+Y 22.0  Village g2 coming_of_age    (0.40) Otto Gale came of age and took up work as a woodcutter.
+Y 22.2  Village g2 stubborn         (0.48) Tilda Gale insisted the windmill was built backwards. It wasn't.
+Y 22.7  Village g2 loud             (0.45) Moss Hearth called the goats home from the far side of the glass.
+Y 23.0  Village g2 birth            (0.60) Bo Gale was born to Tilda Gale.
+Y 23.4  Village g2 storm            (0.50) Thunder rolled round the glass all night. Everyone squeezed into the cottage and told stories till it passed.
+Y 23.5  Village g2 term_row         (0.50) Dov Vane the headman and Moss Hearth argued about whose turn it was at the well at the green until the lamps went out.
+Y 23.5  Village g2 term_plan        (0.50) Greta Gale the miller drew a map of the village as it will be in a hundred years. It has a lot of bridges.
+Y 24.1  Village g2 reconcile        (0.55) Lorn Gale and Tilda Gale made up over a pot of stew. The whole village sighed with relief.
+Y 24.4  Village g2 term_pilgrim     (0.50) Greta Gale, the village's miller, spent a night on the hill watching the sky, with Tilda Gale holding the blanket.
+Y 25.0  Village g2 birth            (0.60) Hester Gale was born to Tilda Gale.
+Y 25.0  Village g2 anniversary      (0.65) Keepersend celebrated 25 years in the glass with a feast.
+Y 25.2  Village g2 role_reelected   (0.60) Keepersend kept Dov Vane as headman for another twelve years. Moss Hearth asked for a recount of all 7 votes.
+Y 26.5  Village g2 term_meeting     (0.50) Dov Vane the headman kept the meeting at the green going until everyone agreed with them. It took two days.
+Y 26.10 Village g2 kind             (0.50) Lorn Gale took in a stray goat. It follows them everywhere now.
+Y 27.0  Village g2 strange_light    (0.50) A strange warm light crossed the sky. Some say the Keeper was looking for something.
+Y 27.4  Village g2 apprentice       (0.50) Greta Gale took young Zeb Vane as an apprentice.
+Y 27.10 Village g2 rainbow          (0.42) A double rainbow hung inside the glass. The children argued all afternoon about where it ended.
+Y 28.0  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Dov Vane planted a new field beside it.
+Y 29.0  Village g2 coming_of_age    (0.40) Zeb Vane came of age and took up work as a farmer.
+Y 30.10 Village g2 friendship       (0.50) Dov Vane and Tilda Gale became fast friends after sharing the last apple.
+Y 31.3  Village g2 first_building   (0.75) Otto Gale opened a market. Haggling began immediately.
+Y 31.8  Village g2 bumper           (0.55) The best harvest anyone can remember. The granary door wouldn't close.
+Y 33.0  Village g2 wedding          (0.70) Zeb Vane married Tilda Gale by the winter fire.
+Y 33.0  Village g2 retired          (0.45) Moss Hearth retired at 65 after a lifetime as a fisher. The children now get their stories every evening.
+Y 33.7  Village g2 rivalry          (0.58) Lorn Gale and Zeb Vane fell out over a goat. They no longer share a bench.
+Y 33.10 Village g2 stubborn         (0.48) Dov Vane insisted the cottage was built backwards. It wasn't.
+Y 34.6  Village g2 prank            (0.52) Zeb Vane painted the lumber mill roof bright pink overnight.
+Y 34.8  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Lorn Gale planted a new field beside it.
+Y 35.9  Village g2 term_row         (0.50) Tilda Gale and Greta Gale shouted each other hoarse over the best way to bake bread at the meeting. Dov Vane the headman would not let anyone go home.
+Y 35.10 Village g2 brave            (0.50) Otto Gale chased a fox away from the hens with a frying pan.
+Y 36.0  Village g2 rivalry          (0.58) Kit Marsh and Greta Gale fell out over a song lyric. They no longer share a bench.
+Y 37.2  Village g2 role_contest     (0.78) Tilda Gale stood against headman Dov Vane and won, 3 votes to 2. Dov Vane took a very long walk round the pond.
+Y 37.7  Village g2 first_building   (0.75) Otto Gale opened a tavern. Productivity dipped.
+Y 37.9  Village g2 storm            (0.50) A storm shook the glass. By morning the lumber mill smelled of wet dog, and everyone was fine.
+Y 38.4  Village g2 rivalry          (0.58) Otto Gale and Tilda Gale fell out over whose turn it was at the well. They no longer share a bench.
+Y 38.9  Village g2 term_meeting     (0.50) Tilda Gale the headman kept the meeting at the green going until everyone agreed with them. It took two days.
+Y 39.0  Village g2 coming_of_age    (0.40) Bo Gale came of age and took up work as a farmer.
+Y 40.1  Village g2 ducks            (0.45) The ducks had ducklings. The pond is theirs now; the people are allowed to visit.
+Y 40.2  Village g2 festival         (0.65) Bo Gale threw a harvest festival. There was dancing until dawn.
+Y 40.4  Village g2 friendship       (0.50) Otto Gale and Zeb Vane became fast friends after sharing the last apple.
+Y 40.5  Village g2 term_plan        (0.50) Greta Gale, the village's miller, announced a tower tall enough to see over the glass. They built the first step.
+Y 40.7  Village g2 milestone        (0.70) Keepersend grew to 20 people.
+Y 40.11 Village g2 stubborn         (0.48) Tilda Gale refused to move for the new path. The path now goes around them.
+Y 41.0  Village g2 coming_of_age    (0.40) Hester Gale came of age and took up work as a fisher.
+Y 41.0  Village g2 retired          (0.45) Greta Gale put down their work as a woodcutter at 65 and sat down by the fire, to tell stories and mind the children.
+Y 42.2  Village g2 giant_turnip     (0.55) Bo Gale planted flowers around the tavern. The bees approve.
+Y 42.10 Village g2 sheep            (0.50) A sheep wandered into the tavern and refused to leave. It has a stool now.
+Y 43.0  Village g2 death            (0.85) Moss Hearth, the loud, died of old age at 75.
+Y 44.3  Village g2 term_pilgrim     (0.50) Greta Gale the miller led a walk up the hill to wave at the sky. Kit Marsh swears something waved back.
+Y 44.8  Village g2 term_meeting     (0.50) Tilda Gale, the village's headman, refused to move the woodpile. The path now goes around it.
+Y 46.9  Village g2 lost             (0.60) Otto Gale got lost in the hills for three days and came back with a shiny pebble nobody can explain.
+Y 47.0  Village g2 retired          (0.45) At 65, Dov Vane stopped being a fisher and became an elder. They still tell everyone how it should be done.
+Y 47.4  Village g2 term_row         (0.50) Tilda Gale the headman and Otto Gale argued about the best way to bake bread at the green until the lamps went out.
+Y 48.7  Village g2 era-ready        (0.80) Keepersend hums with new trades. Everyone feels a bigger change coming.
+Y 49.2  Village g2 role_reelected   (0.60) Keepersend kept Tilda Gale as headman for another twelve years. Kit Marsh asked for a recount of all 9 votes.
+Y 49.10 Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Kit Marsh planted a new field beside it.
+Y 50.0  Village g2 anniversary      (0.65) Keepersend celebrated 50 years in the glass with a feast.
+Y 50.10 Town    g3 era              (0.95) Keepersend became a town of crafts and guilds. The old folk said they'd seen it coming.
+Y 50.10 Town    g3 role_era         (0.80) The village became a town, and headman Tilda Gale became its first lord. The title will pass to their children.
+Y 50.10 Town    g3 role_offices     (0.70) The new town needed people for its offices: Zeb Vane became innkeeper, Otto Gale became guildmaster, Lorn Gale became master builder, and 2 more took up offices.
+Y 50.11 Town    g3 sweepers         (0.60) Keepersend has sweepers now: a few folk with brooms and a handcart take the heaps to the midden one by one, and trim the weeds on the green.
+Y 51.0  Town    g3 death            (0.85) Kit Marsh, the clever, died of old age at 58.
+Y 51.1  Town    g3 loud             (0.45) Hester Gale called the goats home from the far side of the glass.
+Y 52.5  Town    g3 festival         (0.65) Zeb Vane threw a harvest festival. The pies ran out long before the music did.
+Y 52.8  Town    g3 term_expedition  (0.50) Otto Gale, the town's guildmaster, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+Y 54.0  Town    g3 death            (0.85) Greta Gale, the dreamer, died of old age at 78.
+Y 54.0  Town    g3 newcomer         (0.55) A newcomer, Esk Marsh, the grump, joined the town.
+Y 54.0  Town    g3 rivalry          (0.58) Hester Gale and Bo Gale fell out over a goat. They no longer share a bench. Lorn Gale the master builder has promised to sort it out.
+Y 54.0  Town    g3 term_row         (0.50) Otto Gale and Esk Marsh shouted each other hoarse over a fence post at the meeting. Tilda Gale the lord would not let anyone go home.
+Y 54.2  Town    g3 brave            (0.50) Otto Gale climbed the windmill roof in a storm to save a kitten.
+Y 55.0  Town    g3 birth            (0.60) Nils Gale was born to Hester Gale.
+Y 55.1  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Zeb Vane opened a workshop for the new stone beside it.
+Y 55.9  Town    g3 reconcile        (0.55) Lorn Gale and Zeb Vane are friends again. Nobody is sure who said sorry first.
+Y 56.0  Town    g3 rivalry          (0.58) Lorn Gale and Esk Marsh fell out over a song lyric. They no longer share a bench.
+Y 56.5  Town    g3 term_garden      (0.50) Bo Gale, the town's captain of the watch, planted flowers all round the market steps. The bees approve.
+Y 56.7  Town    g3 wedding          (0.70) Esk Marsh married Hester Gale under the summer sky.
+Y 56.9  Town    g3 term_meeting     (0.50) Tilda Gale the lord kept the meeting at the market steps going until everyone agreed with them. It took two days.
+Y 57.7  Town    g3 fog              (0.42) Fog rolled in and stayed. Esk Marsh found the way home by following the smell of supper.
+Y 58.0  Town    g3 birth            (0.60) Gus Gale was born to Bo Gale.
+Y 58.5  Town    g3 term_announce    (0.50) Hester Gale, the town's merchant, made an announcement at the market steps every morning. Most of them were about the weather.
+Y 58.11 Town    g3 term_expedition  (0.50) Otto Gale the guildmaster took Tilda Gale and Bo Gale on a long hunt. They came back muddy and very proud.
+Y 59.0  Town    g3 death            (0.85) Lorn Gale, the kind, died of old age at 58.
+Y 59.0  Town    g3 birth            (0.60) Rhea Marsh was born to Esk Marsh and Hester Gale.
+Y 59.0  Town    g3 newcomer         (0.55) A newcomer, Dina Brook, the lazy, joined the town.
+Y 59.0  Town    g3 role_death       (0.85) Lorn Gale died as master builder after 8 years. The town left the seat empty until spring.
+Y 59.2  Town    g3 strange_light    (0.50) The strange warm light came back and lingered over the pond. Some say the Keeper had dropped something small.
+Y 59.2  Town    g3 role_reluctant   (0.60) Dina Brook was made master builder while asleep at the meeting. They have not yet been told.
+Y 59.5  Town    g3 term_feast       (0.50) Zeb Vane the innkeeper held a feast day with games at the inn. Tilda Gale won the sack race by falling over the line.
+Y 60.0  Town    g3 birth            (0.60) Zeb Gale was born to Bo Gale.
+Y 60.4  Town    g3 term_prank       (0.50) Zeb Vane, the town's innkeeper, ended a speech at the inn with a joke about the goats. Even the goats laughed.
+Y 60.11 Town    g3 stubborn         (0.48) Dov Vane refused to move for the new path. The path now goes around them.
+Y 61.0  Town    g3 death            (0.85) Dov Vane, the stubborn, died of old age at 79.
+Y 61.0  Town    g3 newcomer         (0.55) A newcomer, Esk Stile, the singer, joined the town.
+Y 61.7  Town    g3 wedding          (0.70) Esk Stile married Dina Brook under the summer sky.
+Y 62.2  Town    g3 festival         (0.65) Bo Gale threw a harvest festival. The pies ran out long before the music did. Zeb Vane the innkeeper organised the sack race.
+Y 63.2  Town    g3 role_contest     (0.78) Esk Stile stood against guildmaster Otto Gale and won, 2 votes to 1. Otto Gale went home and shut the door very loudly.
+Y 63.3  Town    g3 stubborn         (0.48) Tilda Gale insisted the tavern was built backwards. It wasn't.
+Y 63.4  Town    g3 song             (0.50) Esk Stile wrote a song about the Keeper's giant thumb. Everyone hums it now.
+Y 63.11 Town    g3 friendship       (0.50) Esk Stile and Hester Gale became fast friends after sharing the last apple.
+Y 64.4  Town    g3 term_announce    (0.50) Hester Gale the merchant called the whole town to the market steps to say a roof was fixed. It was Bo Gale's roof.
+Y 65.7  Town    g3 lazy             (0.45) Dina Brook napped through the entire harvest. Nobody had the heart to wake them.
+Y 65.7  Town    g3 term_nap         (0.50) Dina Brook, the town's master builder, declared a long lunch. It became a long nap on the green.
+Y 65.10 Town    g3 term_garden      (0.50) Bo Gale the captain of the watch blessed the fields one by one. It took all autumn.
+Y 66.0  Town    g3 friendship       (0.50) Bo Gale and Esk Marsh became fast friends after a snowball fight.
+Y 66.3  Town    g3 term_feast       (0.50) Zeb Vane, the town's innkeeper, declared a day of games at the inn. Esk Marsh is still champion of the egg-and-spoon.
+Y 66.4  Town    g3 fog              (0.42) Fog filled the glass for a week. Otto Gale walked into the same tree four times.
+Y 67.6  Town    g3 term_row         (0.50) Tilda Gale the lord and Otto Gale argued about a goat at the market steps until the lamps went out.
+Y 67.6  Town    g3 term_song        (0.50) With Esk Stile as guildmaster there was singing at the inn every night. The owls moved out.
+Y 68.0  Town    g3 death            (0.85) Otto Gale, the brave, died of old age at 62.
+Y 68.0  Town    g3 newcomer         (0.55) A newcomer, Greta Wick, the lazy, joined the town.
+Y 68.0  Town    g3 retired          (0.45) At 65, Tilda Gale stopped being a farmer and became an elder. They still tell everyone how it should be done.
+Y 68.1  Town    g3 reconcile        (0.55) Bo Gale and Hester Gale made up over a pot of stew. The whole town sighed with relief.
+Y 68.1  Town    g3 term_feast       (0.50) Hester Gale the merchant held a feast at the market steps. They could be heard on the far side of the glass.
+Y 68.6  Town    g3 term_feast       (0.50) Esk Stile, the town's guildmaster, called a feast at the inn for no reason but a fine evening. Nobody minded.
+Y 69.2  Town    g3 festival         (0.65) Dina Brook threw a harvest festival. Someone danced with a goat, and the goat led. Zeb Vane the innkeeper organised the sack race.
+Y 69.11 Town    g3 term_meeting     (0.50) Tilda Gale, the town's lord, refused to move the woodpile. The path now goes around it.
+Y 70.1  Town    g3 term_prank       (0.50) On the orders of Zeb Vane, the first day of spring is now Hat Day. Esk Marsh wore three.
+Y 70.5  Town    g3 grump            (0.45) Esk Marsh complained about the noise from the tavern for a whole season.
+Y 71.0  Town    g3 coming_of_age    (0.40) Nils Gale came of age and took up work as a woodcutter.
+Y 71.9  Town    g3 apprentice       (0.50) Tilda Gale took young Rhea Marsh as an apprentice.
+Y 73.2  Town    g3 term_nap         (0.50) Dina Brook the master builder has not called a meeting in two years. Nobody has complained.
+Y 74.0  Town    g3 coming_of_age    (0.40) Gus Gale came of age and took up work as a stallholder.
+Y 74.0  Town    g3 birth            (0.60) Bram Brook was born to Esk Stile and Dina Brook.
+Y 75.0  Town    g3 coming_of_age    (0.40) Rhea Marsh came of age and took up work as a stallholder.
+Y 75.0  Town    g3 anniversary      (0.65) Keepersend celebrated 75 years in the glass with a feast.
+Y 75.2  Town    g3 role_reelected   (0.60) Keepersend kept Esk Stile as guildmaster for another twelve years. Nils Gale asked for a recount of all 6 votes.
+Y 75.4  Town    g3 term_feast       (0.50) Hester Gale, the town's merchant, gave a toast at the market steps so loud the ducks took off.
+Y 75.9  Town    g3 rainbow          (0.42) A rainbow came down right by the pond. Everyone went to look for the end of it and found mud. Dina Brook the master builder made the afternoon off official.
+Y 76.0  Town    g3 coming_of_age    (0.40) Zeb Gale came of age and took up work as a farmer.
+Y 76.2  Town    g3 friendship       (0.50) Gus Gale and Nils Gale became fast friends after sharing the last apple.
+Y 78.0  Town    g3 retired          (0.45) At 65, Zeb Vane stopped being a farmer and became an elder. They still tell everyone how it should be done.
+Y 78.3  Town    g3 giant_turnip     (0.55) Zeb Gale grew a turnip the size of a sheep. It fed the whole town for a week.
+Y 78.9  Town    g3 friendship       (0.50) Dina Brook and Zeb Gale became fast friends after a long night of storytelling.
+Y 79.0  Town    g3 death            (0.85) Tilda Gale, the stubborn, died of old age at 76.
+Y 79.0  Town    g3 birth            (0.60) Edda Gale was born to Nils Gale.
+Y 79.0  Town    g3 role_inherited   (0.80) When old Tilda Gale died, their eldest child, Bo Gale, became lord of the town.
+Y 79.0  Town    g3 role_appointed   (0.55) Lord Bo Gale made Esk Marsh captain of the watch. The watch is Esk Marsh and a very large dog.
+Y 79.5  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Hester Gale opened a workshop for the new stone beside it.
+Y 79.7  Town    g3 term_feast       (0.50) Zeb Vane the innkeeper held a feast day with games at the inn. Nils Gale won the sack race by falling over the line.
+Y 80.5  Town    g3 wedding          (0.70) Rhea Marsh married Greta Wick under the summer sky. Esk Stile the guildmaster sang them down the path.
+Y 80.11 Town    g3 term_complaint   (0.50) Esk Marsh the captain of the watch complained about the noise from Nils Gale's house for a whole season.
+Y 81.3  Town    g3 term_garden      (0.50) Bo Gale, the town's lord, planted flowers all round the market steps. The bees approve.
+Y 82.6  Town    g3 lost             (0.60) Zeb Gale got lost in the hills for three days and came back with a crown made of twigs.
+Y 82.10 Town    g3 term_prank       (0.50) Zeb Vane, the town's innkeeper, ended a speech at the inn with a joke about the goats. Even the goats laughed.
+Y 83.1  Town    g3 term_song        (0.50) Esk Stile, the town's guildmaster, taught everyone a new song. It has eleven verses and no ending.
+Y 83.5  Town    g3 ducks            (0.45) A second family of ducks arrived and fell out with the first. The pond is split down the middle.
+Y 84.4  Town    g3 festival         (0.65) Esk Stile threw a harvest festival. There was dancing until dawn. Zeb Vane the innkeeper organised the sack race.
+Y 84.11 Town    g3 giant_turnip     (0.55) Bo Gale grew a turnip the size of a sheep. It fed the whole town for a week.
+Y 85.0  Town    g3 birth            (0.60) Sten Wick was born to Greta Wick and Rhea Marsh.
+Y 85.5  Town    g3 gossip           (0.50) Rhea Marsh spread a rumour that the Keeper has a cat. It caused quite a stir.
+Y 85.5  Town    g3 term_nap         (0.50) Dina Brook, the town's master builder, declared a long lunch. It became a long nap on the green.
+Y 86.9  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Dina Brook opened a workshop for the new stone beside it.
+Y 87.2  Town    g3 role_contest     (0.78) Nils Gale stood against guildmaster Esk Stile and won on a tied vote. Esk Stile went home and shut the door very loudly.
+Y 88.0  Town    g3 retired          (0.45) Bo Gale retired at 65 after a lifetime as a farmer. The children now get their stories every evening.
+Y 88.2  Town    g3 rivalry          (0.58) Bo Gale and Hester Gale fell out over a song lyric. They no longer share a bench.
+Y 88.5  Town    g3 term_row         (0.50) Nils Gale the guildmaster and Esk Stile argued about a song lyric at the inn until the lamps went out.
+Y 88.7  Town    g3 term_tidy        (0.50) Under guildmaster Nils Gale, someone sweeps the inn every morning and nobody laughs after dark.
+Y 88.8  Town    g3 song             (0.50) Esk Stile sang at the house until the rafters shook.
+Y 88.8  Town    g3 term_announce    (0.50) Hester Gale, the town's merchant, made an announcement at the market steps every morning. Most of them were about the weather.
+Y 89.0  Town    g3 death            (0.85) Zeb Vane, the joker, died of old age at 76.
+Y 89.0  Town    g3 death            (0.85) Esk Marsh, the grump, died of old age at 56.
+Y 89.0  Town    g3 birth            (0.60) Wim Gale was born to Nils Gale.
+Y 89.0  Town    g3 role_appointed   (0.55) Lord Bo Gale made Gus Gale captain of the watch. The watch is Gus Gale and a very large dog.
+Y 89.0  Town    g3 role_death       (0.85) Zeb Vane died as innkeeper after 38 years. The town left the seat empty until spring.
+Y 89.2  Town    g3 role_contest     (0.78) Esk Stile and Rhea Marsh both wanted to be innkeeper. The town chose Esk Stile; Rhea Marsh went home and shut the door very loudly.
+Y 90.0  Town    g3 coming_of_age    (0.40) Bram Brook came of age and took up work as a woodcutter.
+Y 90.0  Town    g3 birth            (0.60) Wim Wick was born to Rhea Marsh and Greta Wick.
+Y 90.0  Town    g3 retired          (0.45) Hester Gale retired at 65 after a lifetime as a fisher. The children now get their stories every evening.
+Y 90.1  Town    g3 strange_light    (0.50) A strange warm light crossed the sky. Some say the Keeper was looking for something.
+Y 90.9  Town    g3 rivalry          (0.58) Bram Brook and Greta Wick fell out over whose turn it was at the well. They no longer share a bench.
+Y 91.6  Town    g3 term_announce    (0.50) Gus Gale, the town's captain of the watch, made an announcement at the market steps every morning. Most of them were about the weather.
+Y 91.7  Town    g3 term_feast       (0.50) Hester Gale the merchant held a feast at the market steps. They could be heard on the far side of the glass.
+Y 92.0  Town    g3 death            (0.85) Bo Gale, the gardener, died of old age at 69.
+Y 92.0  Town    g3 birth            (0.60) Alma Gale was born to Gus Gale.
+Y 92.0  Town    g3 role_inherited   (0.80) When old Bo Gale died, their eldest child, Gus Gale, became lord of the town.
+Y 92.0  Town    g3 role_appointed   (0.55) Lord Gus Gale made Rhea Marsh merchant. Rhea Marsh promised everyone a fair price, and mostly kept it.
+Y 92.0  Town    g3 role_appointed   (0.55) Lord Gus Gale made Zeb Gale captain of the watch. The watch is Zeb Gale and a very large dog.
+Y 92.3  Town    g3 storm            (0.50) A great storm rattled the glass. The people huddled together in the windmill.
+Y 92.11 Town    g3 elder            (0.55) Hester Gale told the children how the first wanderers found the glass. The story gets longer every winter.
+Y 93.3  Town    g3 festival         (0.65) Zeb Gale threw a harvest festival. Someone danced with a goat, and the goat led. Esk Stile the innkeeper sang until the stars came out.
+Y 93.11 Town    g3 term_garden      (0.50) Zeb Gale, the town's captain of the watch, planted flowers all round the market steps. The bees approve.
+Y 94.5  Town    g3 term_feast       (0.50) Gus Gale the lord held a feast at the market steps. They could be heard on the far side of the glass.
+Y 94.6  Town    g3 lost             (0.60) Dina Brook got lost in the hills for three days and came back with a song nobody had heard before.
+Y 94.7  Town    g3 loud             (0.45) Gus Gale called the goats home from the far side of the glass.
+Y 95.0  Town    g3 coming_of_age    (0.40) Edda Gale came of age and took up work as a sweeper.
+Y 96.10 Town    g3 term_complaint   (0.50) Nils Gale the guildmaster complained about the noise from Edda Gale's house for a whole season.
+Y 97.0  Town    g3 death            (0.85) Hester Gale, the loud, died of old age at 72.
+Y 97.0  Town    g3 rivalry          (0.58) Zeb Gale and Edda Gale fell out over a fence post. They no longer share a bench. Rhea Marsh the merchant told everyone by supper.
+Y 97.3  Town    g3 term_tidy        (0.50) Nils Gale, the town's guildmaster, made a rule: lamps out early. The town has never slept so well, or so grumpily.
+Y 97.11 Town    g3 friendship       (0.50) Edda Gale and Bram Brook became fast friends after fixing a roof together.
+Y 98.0  Town    g3 birth            (0.60) Tilda Gale was born to Gus Gale.
+Y 98.3  Town    g3 lazy             (0.45) Greta Wick napped through the entire harvest. Nobody had the heart to wake them.
+Y 98.4  Town    g3 term_garden      (0.50) Zeb Gale the captain of the watch blessed the fields one by one. It took all autumn.
+Y 98.5  Town    g3 term_announce    (0.50) Gus Gale the lord called the whole town to the market steps to say a roof was fixed. It was Nils Gale's roof.
+Y 99.2  Town    g3 role_contest     (0.78) Bram Brook stood against guildmaster Nils Gale and won, 3 votes to 2. Nils Gale spent the evening telling the goats it was rigged.
+Y 99.11 Town    g3 grump            (0.45) Nils Gale said the harvest festival was too loud, then danced all night.
+Y100.0  Town    g3 anniversary      (0.65) Keepersend celebrated 100 years in the glass with a feast.
+Y100.2  Town    g3 term_feast       (0.50) Gus Gale, the town's lord, gave a toast at the market steps so loud the ducks took off.
+Y100.4  Town    g3 festival         (0.65) Bram Brook threw a harvest festival. The pies ran out long before the music did. Esk Stile the innkeeper sang until the stars came out.
+Y100.9  Town    g3 lost             (0.60) Greta Wick got lost in the hills for three days and came back with a feather as long as an arm.
+Y100.9  Town    g3 term_news        (0.50) With Rhea Marsh as merchant, the whole town knew about Bram Brook and Edda Gale before Bram Brook and Edda Gale did.
+Y100.10 Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Rhea Marsh opened a workshop for the new stone beside it.
+Y101.0  Town    g3 coming_of_age    (0.40) Sten Wick came of age and took up work as a mason.
+Y101.0  Town    g3 retired          (0.45) At 65, Dina Brook stopped being a baker and became an elder. They still tell everyone how it should be done.
+Y102.3  Town    g3 grump            (0.45) Edda Gale said the harvest festival was too loud, then danced all night.
+Y105.0  Town    g3 coming_of_age    (0.40) Wim Gale came of age and took up work as a sweeper.
+Y105.1  Town    g3 term_device      (0.50) A strange device appeared by the inn. Bram Brook the guildmaster says it counts the days. Nobody has checked.
+Y106.0  Town    g3 coming_of_age    (0.40) Wim Wick came of age and took up work as a fisher.
+Y106.0  Town    g3 retired          (0.45) At 65, Esk Stile stopped being a smith and became an elder. They still tell everyone how it should be done.
+Y106.1  Town    g3 reconcile        (0.55) Zeb Gale and Edda Gale made peace while looking for the same lost goat. They found it together.
+Y106.10 Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Gus Gale opened a workshop for the new stone beside it.
+Y106.10 Town    g3 festival         (0.65) Gus Gale threw a harvest festival. There was dancing until dawn. Esk Stile the innkeeper sang until the stars came out.
+Y107.9  Town    g3 fog              (0.42) Fog filled the glass for a week. Gus Gale walked into the same tree four times.
+Y108.0  Town    g3 coming_of_age    (0.40) Alma Gale came of age and took up work as a baker.
+Y108.10 Town    g3 giant_turnip     (0.55) Zeb Gale planted flowers around the house. The bees approve.
+Y109.2  Town    g3 invention        (0.62) Wim Wick built a wheelbarrow with five wheels. It mostly works.
+Y109.6  Town    g3 term_news        (0.50) Rhea Marsh, the town's merchant, held every meeting at the market steps, the better to hear everything. They heard everything.
+Y110.7  Town    g3 term_announce    (0.50) Gus Gale, the town's lord, made an announcement at the market steps every morning. Most of them were about the weather.
+Y111.0  Town    g3 death            (0.85) Greta Wick, the lazy, died of old age at 61.
+Y111.2  Town    g3 role_contest     (0.78) Nils Gale stood against guildmaster Bram Brook and won on a tied vote. Bram Brook took a very long walk round the pond.
+Y111.5  Town    g3 term_nap         (0.50) Dina Brook the master builder has not called a meeting in two years. Nobody has complained.
+Y111.7  Town    g3 term_row         (0.50) Nils Gale and Esk Stile fell out over whose turn it was at the well after Rhea Marsh the merchant told each what the other had said.
+Y112.8  Town    g3 friendship       (0.50) Sten Wick and Rhea Marsh became fast friends after sharing the last apple.
+Y113.0  Town    g3 death            (0.85) Esk Stile, the singer, died of old age at 72.
+Y113.0  Town    g3 role_succession  (0.70) When Esk Stile died, the inn passed to their child Bram Brook, who had carried its barrels since they were small.
+Y113.9  Town    g3 term_feast       (0.50) Gus Gale the lord held a feast at the market steps. They could be heard on the far side of the glass.
+Y114.0  Town    g3 death            (0.85) Dina Brook, the lazy, died of old age at 78.
+Y114.0  Town    g3 coming_of_age    (0.40) Tilda Gale came of age and took up work as a sweeper.
+Y114.0  Town    g3 birth            (0.60) Ilse Gale was born to Alma Gale.
+Y114.0  Town    g3 role_death       (0.85) Dina Brook died as master builder after 54 years. The town left the seat empty until spring.
+Y114.2  Town    g3 role_masterwork  (0.65) Alma Gale and Sten Wick each built a chimney to prove who should be master builder. Alma Gale's is still standing.
+Y114.9  Town    g3 ducks            (0.45) A family of ducks moved into the pond and took charge of it.
+Y115.0  Town    g3 death            (0.85) Rhea Marsh, the gossip, died of old age at 56.
+Y115.0  Town    g3 role_appointed   (0.55) Lord Gus Gale made Wim Gale merchant. Wim Gale promised everyone a fair price, and mostly kept it.
+Y116.11 Town    g3 term_device      (0.50) A strange device appeared by the market steps. Wim Gale the merchant says it counts the days. Nobody has checked.
+Y117.2  Town    g3 term_complaint   (0.50) Nils Gale, the town's guildmaster, sent Wim Gale home from the inn for whistling.
+Y117.5  Town    g3 gossip           (0.50) Tilda Gale knew about the wedding before the couple did.
+Y117.6  Town    g3 lost             (0.60) Sten Wick got lost in the hills for three days and came back with a feather as long as an arm.
+Y117.10 Town    g3 term_prank       (0.50) Alma Gale, the town's master builder, ended a speech at the timber yard with a joke about the goats. Even the goats laughed.
+Y118.7  Town    g3 term_feast       (0.50) Alma Gale the master builder held a feast day with games at the timber yard. Nils Gale won the sack race by falling over the line.
+Y118.10 Town    g3 worrier          (0.45) Sten Wick built a little fence around the pond, just in case.
+Y119.0  Town    g3 birth            (0.60) Greta Wick was born to Sten Wick.
+Y119.7  Town    g3 prank            (0.52) Alma Gale painted the house roof bright pink overnight.
+Y119.9  Town    g3 invention        (0.62) Wim Gale worked out how to tell the time from the glass's shadow.
+Y120.0  Town    g3 birth            (0.60) Pim Gale was born to Alma Gale.
+Y120.0  Town    g3 retired          (0.45) At 65, Nils Gale stopped being a woodcutter and became an elder. They still tell everyone how it should be done.
+Y120.9  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Wim Gale opened a workshop for the new stone beside it.
+Y121.1  Town    g3 rivalry          (0.58) Tilda Gale and Wim Gale fell out over a fence post. They no longer share a bench.
+Y122.0  Town    g3 birth            (0.60) Nell Gale was born to Wim Gale.
+Y122.4  Town    g3 loud             (0.45) Gus Gale sneezed so hard the birds left every tree in the town.

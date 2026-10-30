@@ -323,7 +323,7 @@ namespace AquariumCiv.Sim
             else if (loser != null && w.rivalId == loser.id)
                 RoleLine("role_contest", $"Old rivals {w.FullName} and {loser.FullName} both stood for {seat.role}. The {place} chose {w.FullName}{Votes(votesW, votesL)}; {loser.FullName} has not spoken to them since.", 0.88f, w, loser, seat);
             else if (loser != null)
-                RoleLine("role_contest", $"{w.FullName} and {loser.FullName} both wanted to be {seat.role}. The {place} chose {w.FullName}{Votes(votesW, votesL)}; {loser.FullName} went home and shut the door very loudly.", 0.78f, w, loser, seat);
+                RoleLine("role_contest", $"{w.FullName} and {loser.FullName} both wanted to be {seat.role}. The {place} chose {w.FullName}{Votes(votesW, votesL)}; {loser.FullName} {SoreLoser(loser)}.", 0.78f, w, loser, seat);
             else
                 RoleLine("role_won", $"{w.FullName} the {Calling(w)} became {RoleIn(seat.role)}. {FirstActs[seat.role]}", 0.75f, w, null, seat);
         }
@@ -334,6 +334,24 @@ namespace AquariumCiv.Sim
         static string Votes(int a, int b) => a < 0 ? "" : a == b ? " on a tied vote" : $", {a} {(a == 1 ? "vote" : "votes")} to {b}";
 
         static float RivalBonus(Notable a, Notable b) => a.rivalId == b.id ? 0.1f : 0f;
+
+        /// <summary>How a loser takes it (#61: every lost vote read "went home and shut the door very loudly", tents included).
+        /// Picked by a hash, no dice.</summary>
+        string SoreLoser(Notable loser)
+        {
+            if (State.era == Era.Camp) return "stomped off to their tent and stayed there until supper";
+            string[] ways =
+            {
+                "went home and shut the door very loudly",
+                "spent the evening telling the goats it was rigged",
+                "took a very long walk round the pond",
+            };
+            return ways[(int)(RoleRoll(29, loser.id, 0) * ways.Length) % ways.Length];
+        }
+
+        /// <summary>A naming or an appointment passes over the young while someone of 25 or more could take it (§3's 25+
+        /// [est]; #61 found a priest named on their sixteenth birthday).</summary>
+        static float Seasoned(Notable n) => n.age >= 25f ? 2f : 0f;
 
         // ---------- the rules ----------
         /// <summary>The lord's title passes in the family: eldest adult child, else the nearest relative (§ lord, decisions
@@ -401,7 +419,7 @@ namespace AquariumCiv.Sim
             var pool = RoleCandidates(seat.role);
             var apprentice = State.notables.Where(n => n.alive && n.age >= AdultAge && RoleOf(n) == null && n.mentorId == prev.id)
                 .OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
-            var next = apprentice ?? pool.OrderByDescending(c => Affinity(prev, c) + (Aspires(c, seat.role) ? 1.5f : 0f) + RoleRoll(3, prev.id, c.id))
+            var next = apprentice ?? pool.OrderByDescending(c => Affinity(prev, c) + (Aspires(c, seat.role) ? 1.5f : 0f) + Seasoned(c) + RoleRoll(3, prev.id, c.id))
                 .ThenBy(c => c.id).FirstOrDefault();
             if (next == null) return false;
             Assign(seat, next);
@@ -416,7 +434,7 @@ namespace AquariumCiv.Sim
             var pool = RoleCandidates(seat.role);
             if (keep != null && keep.alive && keep.age < Config.retireAge) pool.Add(keep);
             if (pool.Count == 0) { if (keep == null) TryFillFromCrowd(seat); return; }
-            var pick = pool.OrderByDescending(c => Affinity(lord, c) + (Aspires(c, seat.role) ? 1.5f : 0f) + (c == keep ? 1f : 0f) + RoleRoll(4, lord.id, c.id))
+            var pick = pool.OrderByDescending(c => Affinity(lord, c) + (Aspires(c, seat.role) ? 1.5f : 0f) + (c == keep ? 1f : 0f) + Seasoned(c) + RoleRoll(4, lord.id, c.id))
                 .ThenBy(c => c.id).First();
             if (pick == keep) return; // kept on, no line
             Assign(seat, pick);
@@ -468,7 +486,7 @@ namespace AquariumCiv.Sim
             Vacate(seat);
             Assign(seat, w);
             if (holder != null)
-                RoleLine("role_contest", $"{w.FullName} stood against {seat.role} {holder.FullName} and won{Votes(vw, VotesFor(holder, cands, voters, seat.role))}. {holder.FullName} went home and shut the door very loudly.", 0.78f + RivalBonus(w, holder), w, holder, seat);
+                RoleLine("role_contest", $"{w.FullName} stood against {seat.role} {holder.FullName} and won{Votes(vw, VotesFor(holder, cands, voters, seat.role))}. {holder.FullName} {SoreLoser(holder)}.", 0.78f + RivalBonus(w, holder), w, holder, seat);
             else Won(seat, w, r, vw, vr, voters.Count);
         }
 

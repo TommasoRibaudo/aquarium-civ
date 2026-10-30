@@ -347,7 +347,13 @@ namespace AquariumCiv.Sim
             return i > 0 ? text.Substring(0, i) : text;
         }
 
-        static string Clip(string s) => s.Length <= 50 ? s : s.Substring(0, 49).TrimEnd(' ', ',') + "…";
+        /// <summary>At most ~50 characters, cut at a word (#61: "at the camp f…" read as a typo).</summary>
+        static string Clip(string s)
+        {
+            if (s.Length <= 50) return s;
+            int cut = s.LastIndexOf(' ', 48);
+            return (cut > 20 ? s.Substring(0, cut) : s.Substring(0, 49)).TrimEnd(' ', ',', ';', ':') + "…";
+        }
 
         // ---------- annotation: links and teaser resolution ----------
         /// <summary>End of Step (no dice): brings the card records up to date. Also called by every query.</summary>
@@ -565,6 +571,7 @@ namespace AquariumCiv.Sim
             {
                 string key = Key(c.source, c.a, c.b, c.subject, c.role);
                 if (key == lastKey && c.source != ThreadSource.Slice) continue;
+                if (last != null && c.line == last.teaser) continue; // #61: a new gift of the same kind said the same words every evening
                 if (c.source == ThreadSource.Slice && last != null && last.source == ThreadSource.Slice && last.teaser == c.line) continue;
                 foreach (var old in s.threads.Where(t => t.state == ThreadState.Open && t.source == ThreadSource.Slice)) old.state = ThreadState.Died;
                 var t = s.threads.FirstOrDefault(x => x.state == ThreadState.Open && x.source != ThreadSource.Link &&
@@ -627,8 +634,8 @@ namespace AquariumCiv.Sim
             foreach (var a in adults)
             {
                 var b = Alive(a.friendId);
-                if (b == null || b.id < a.id || b.friendId != a.id || a.partnerId >= 0 || b.partnerId >= 0 || a.family == b.family ||
-                    a.age > 50f || b.age > 50f || b.age < AdultAge) continue;
+                if (b == null || b.id < a.id || b.friendId != a.id || Alive(a.partnerId) != null || Alive(b.partnerId) != null ||
+                    !CanCourt(a, b) || a.age > 50f || b.age > 50f || a.age < MarryAge || b.age < MarryAge) continue; // as weddings (#61)
                 yield return (ThreadSource.Couple, $"{a.FullName} and {b.FullName} keep sitting together at the {seat}.", a.id, b.id, -1, "");
                 break;
             }
@@ -640,7 +647,13 @@ namespace AquariumCiv.Sim
                 {
                     NudgeKind.Grove => "People keep walking out to look at the new trees.",
                     NudgeKind.Channel => "Everyone keeps going down to look at the new water.",
-                    _ => "The gatherers keep checking the wet ground.",
+                    // #61: every gift had the rain's line ("the gatherers", in a town, about an outcrop).
+                    NudgeKind.Herd => "People keep walking out to look at the new animals.",
+                    NudgeKind.Lamp => "Everyone keeps stopping to stand in the new light.",
+                    NudgeKind.Outcrop => "The craftsfolk keep going out to tap the new rock.",
+                    NudgeKind.Spring => "Everyone keeps going down to taste the new spring.",
+                    NudgeKind.DyeMeadow => "People keep walking through the new flowers, looking thoughtful.",
+                    _ => s.era == Era.Camp ? "The gatherers keep checking the wet ground." : "The farmers keep checking the wet ground.",
                 }, -1, -1, gift.id, "");
 
             // A rivalry.
@@ -657,7 +670,8 @@ namespace AquariumCiv.Sim
             if (office != null) yield return (ThreadSource.Office, office, holder.id, -1, -1, "");
 
             // Nothing pending: a slice of life in the people's own words for their glass stage (§5). Takes turns.
-            var lines = SliceLines[GlassStage - 1];
+            // Stage 3 says "glass" only once the Lens is set up (decisions 2026-10-29, #58; #61): its early lines are the wall.
+            var lines = GlassStage == 3 && !GlassNudged ? EarlyTownSliceLines : SliceLines[GlassStage - 1];
             int told = s.threads.Count(t => t.source == ThreadSource.Slice);
             var kid = adults.Count == 0 ? null : adults[told % adults.Count];
             string line = lines[told % lines.Length].Replace("{0}", kid?.FullName ?? "Someone").Replace("{1}", seat);
@@ -689,6 +703,16 @@ namespace AquariumCiv.Sim
                 "The scholars argue at the {1}: one Keeper, or many?",
                 "{0} has drawn a map with four edges. Each says: here be glass.",
             },
+        };
+
+        /// <summary>Stage 3 before the Lens (relics-and-glass-voice.md line bank 29–31): the scholars study "the wall"; nobody
+        /// says glass, and there is no lens to ask a bigger one of.</summary>
+        static readonly string[] EarlyTownSliceLines =
+        {
+            "The scholars say the wall is not sky. It is a thing, and things can be measured.",
+            "{0} wants to measure the Keeper. The priest wants them to ask first.",
+            "The scholars argue at the {1}: one Keeper, or many?",
+            "{0} says if there's a room out there, there's a market out there.",
         };
 
         // ---------- the glass stage ----------

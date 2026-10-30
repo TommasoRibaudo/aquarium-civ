@@ -85,7 +85,8 @@ namespace AquariumCiv.Sim
         public const int TermLineIdBase = 1_000_000_000; // term lines' own ids, far above the shared counter
 
         /// <summary>A term line: {0} = the holder, {1} = their role, {2} = the seat ("camp fire", "green"), {3} and {4} =
-        /// two other adult notables, {5} = the era noun, {6} = a quarrel subject.</summary>
+        /// two other adult notables, {5} = the era noun, {6} = a quarrel subject, {7} = late evening ("the fire burned low" in
+        /// the camp, which has no lamps).</summary>
         sealed class TermStory
         {
             public string kind;
@@ -93,6 +94,8 @@ namespace AquariumCiv.Sim
             public string[] lines;
             public TermStory(string kind, float weight, params string[] lines) { this.kind = kind; this.weight = weight; this.lines = lines; }
             public int Others => lines.Max(l => l.Contains("{4}") ? 2 : l.Contains("{3}") ? 1 : 0);
+            public bool couple;             // {3} and {4} are a couple-to-be: two single, unrelated adults of an age (#61)
+            public TermStory Couple() { couple = true; return this; }
         }
 
         sealed class TraitTerm
@@ -123,7 +126,8 @@ namespace AquariumCiv.Sim
                 {
                     new TermStory("term_prank", 2f, "{0}, the {5}'s {1}, ended a speech at the {2} with a joke about the goats. Even the goats laughed.",
                         "On the orders of {0}, the first day of spring is now Hat Day. {3} wore three."),
-                    new TermStory("term_feast", 1f, "{0} the {1} held a feast day with games at the {2}. {3} won the sack race by falling over the line."),
+                    new TermStory("term_feast", 1f, "{0} the {1} held a feast day with games at the {2}. {3} won the sack race by falling over the line.",
+                        "{0}, the {5}'s {1}, declared a day of games at the {2}. {3} is still champion of the egg-and-spoon."),
                 },
                 teaser = "{0} is planning something for Hat Day. Nobody knows what.",
             },
@@ -132,11 +136,12 @@ namespace AquariumCiv.Sim
                 flavor = new TermFlavor { tidiness = 0.45f, quiet = 0.45f, feasts = -0.3f, mirth = -0.3f, music = -0.2f, quarrels = 0.1f },
                 stories = new[]
                 {
-                    new TermStory("term_tidy", 2f, "Under {1} {0} the {2} is swept every morning and nobody laughs after dark.",
+                    new TermStory("term_tidy", 2f, "Under {1} {0}, someone sweeps the {2} every morning and nobody laughs after dark.",
                         "{0}, the {5}'s {1}, made a rule: lamps out early. The {5} has never slept so well, or so grumpily."),
                     new TermStory("term_complaint", 1.2f, "{0} the {1} complained about the noise from {3}'s house for a whole season.",
                         "{0}, the {5}'s {1}, sent {3} home from the {2} for whistling."),
-                    new TermStory("term_row", 0.6f, "{0} the {1} and {3} argued about {6} at the {2} until the lamps went out."),
+                    new TermStory("term_row", 0.6f, "{0} the {1} and {3} argued about {6} at the {2} until {7}.",
+                        "{0}, the {5}'s {1}, told {3} exactly what they thought about {6}. It took most of an afternoon."),
                 },
                 teaser = "{0} has been glaring at the untidy end of the {5}.",
             },
@@ -147,10 +152,10 @@ namespace AquariumCiv.Sim
                 {
                     new TermStory("term_meeting", 2f, "{0} the {1} kept the meeting at the {2} going until everyone agreed with them. It took two days.",
                         "{0}, the {5}'s {1}, refused to move the woodpile. The path now goes around it."),
-                    new TermStory("term_row", 1f, "{0} the {1} and {3} argued about {6} at the {2} until the lamps went out.",
+                    new TermStory("term_row", 1f, "{0} the {1} and {3} argued about {6} at the {2} until {7}.",
                         "{3} and {4} shouted each other hoarse over {6} at the meeting. {0} the {1} would not let anyone go home."),
                 },
-                teaser = "{0} is still not changing their mind about {6}.",
+                teaser = "{0} has made up their mind about something, and nothing will change it.", // #61: the payoff can't promise the subject
             },
             ["the kind"] = new TraitTerm
             {
@@ -159,7 +164,8 @@ namespace AquariumCiv.Sim
                 {
                     new TermStory("term_meal", 2f, "{0}, the {5}'s {1}, set long tables at the {2}, and everyone ate together.",
                         "{0} the {1} visited every old and sick person in the {5} before the winter."),
-                    new TermStory("term_mend", 1.2f, "{0} the {1} sat {3} and {4} down with a pot of stew until they stopped arguing about {6}."),
+                    new TermStory("term_mend", 1.2f, "{0} the {1} sat {3} and {4} down with a pot of stew until they stopped arguing about {6}.",
+                        "{0}, the {5}'s {1}, walked {3} and {4} round the pond until they forgot what the row was about."),
                 },
                 teaser = "{0} has been cooking enough stew for the whole {5}.",
             },
@@ -170,7 +176,8 @@ namespace AquariumCiv.Sim
                 {
                     new TermStory("term_announce", 2f, "{0}, the {5}'s {1}, made an announcement at the {2} every morning. Most of them were about the weather.",
                         "{0} the {1} called the whole {5} to the {2} to say a roof was fixed. It was {3}'s roof."),
-                    new TermStory("term_feast", 0.5f, "{0} the {1} held a feast at the {2}. They could be heard on the far side of the glass."),
+                    new TermStory("term_feast", 0.5f, "{0} the {1} held a feast at the {2}. They could be heard on the far side of the glass.",
+                        "{0}, the {5}'s {1}, gave a toast at the {2} so loud the ducks took off."),
                 },
                 teaser = "{0} has an announcement for tomorrow. Everyone will hear it.",
             },
@@ -201,7 +208,8 @@ namespace AquariumCiv.Sim
                 {
                     new TermStory("term_plan", 1.5f, "{0}, the {5}'s {1}, announced a tower tall enough to see over the glass. They built the first step.",
                         "{0} the {1} drew a map of the {5} as it will be in a hundred years. It has a lot of bridges."),
-                    new TermStory("term_pilgrim", 1.5f, "{0} the {1} led a walk up the hill to wave at the sky. {3} swears something waved back."),
+                    new TermStory("term_pilgrim", 1.5f, "{0} the {1} led a walk up the hill to wave at the sky. {3} swears something waved back.",
+                        "{0}, the {5}'s {1}, spent a night on the hill watching the sky, with {3} holding the blanket."),
                 },
                 teaser = "{0} has been staring up at the sky again, making plans.",
             },
@@ -221,11 +229,13 @@ namespace AquariumCiv.Sim
                 stories = new[]
                 {
                     new TermStory("term_news", 2f, "With {0} as {1}, the whole {5} knew about {3} and {4} before {3} and {4} did.",
-                        "{0}, the {5}'s {1}, held every meeting at the {2}, the better to hear everything. They heard everything."),
-                    new TermStory("term_matchmaking", 1f, "{0} the {1} introduced {3} to {4} at the {2}. They talked until the lamps went out."),
-                    new TermStory("term_row", 1f, "{3} and {4} fell out over {6} after {0} the {1} told each what the other had said."),
+                        "{0}, the {5}'s {1}, held every meeting at the {2}, the better to hear everything. They heard everything.").Couple(),
+                    new TermStory("term_matchmaking", 1f, "{0} the {1} introduced {3} to {4} at the {2}. They talked until {7}.",
+                        "{0}, the {5}'s {1}, made sure {3} and {4} sat next to each other at supper. Twice.").Couple(),
+                    new TermStory("term_row", 1f, "{3} and {4} fell out over {6} after {0} the {1} told each what the other had said.",
+                        "{0} the {1} let slip what {3} said about {4}'s cooking. The {5} took sides."),
                 },
-                teaser = "{0} knows something about {3}, and is dying to tell.",
+                teaser = "{0} knows something, and is dying to tell.", // #61: the payoff is about whoever it's about
             },
             ["the worrier"] = new TraitTerm
             {
@@ -341,7 +351,10 @@ namespace AquariumCiv.Sim
         {
             if (!TraitTerms.TryGetValue(h.trait ?? "", out var t)) return null;
             bool rival = Alive(h.rivalId) != null;
-            var options = t.stories.Where(st => Fresh(st.kind, h.id, TermFreshYears) && (st.Others == 0 || TermOthers(h, st.Others, 24) != null)).ToList();
+            // A holder tells a kind's lines in turn; once they've told them all, the kind rests longer each round (#61: a
+            // 40-year term had "made an announcement every morning" three times).
+            int Rest(TermStory st) => TermFreshYears * (1 + 2 * (State.chronicle.Count(e => e.kind == st.kind && e.notableId == h.id) / st.lines.Length));
+            var options = t.stories.Where(st => Fresh(st.kind, h.id, Rest(st)) && (st.Others == 0 || TermOthers(h, st.Others, 24) != null)).ToList();
             if (options.Count == 0) return null;
             // A quarrelsome holder with a living rival rows more (notable-roles §4: rivalries ×1.5 [est]).
             float W(TermStory st) => st.weight * (st.kind == "term_row" && rival ? 1.5f : 1f);
@@ -352,6 +365,11 @@ namespace AquariumCiv.Sim
             // The holder's lines of a kind take turns, so a long term doesn't repeat itself.
             int told = State.chronicle.Count(e => e.kind == chosen.kind && e.notableId == h.id);
             string line = chosen.lines[told % chosen.lines.Length];
+            if (chosen.couple && line.Contains("{4}"))
+            {
+                others = TermCouple(h, 26); // never a parent and child, the married, or the holder's own spouse (#61)
+                if (others == null) return null;
+            }
             return TermLine(chosen.kind, FillTerm(line, h, seat, others, 27), h.id, line.Contains("{3}") ? others[0].id : -1, SeatBuilding(seat.role)?.id ?? -1);
         }
 
@@ -372,13 +390,14 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>The coda for a story line of this kind from the first office (leader first) whose holder's trait has one.
-        /// Not when the story is about the holder themself.</summary>
-        string TermCoda(string kind, string text, int notableId)
+        /// Not when the story is about the holder themself, as either party (#61: a headman doesn't promise to sort out their
+        /// own feud).</summary>
+        string TermCoda(string kind, string text, int notableId, int otherId = -1)
         {
             if (!TermFlavourOn || State.roles == null || State.roles.Count == 0) return text;
             foreach (var seat in State.roles)
             {
-                if (seat.holderId < 0 || seat.holderId == notableId) continue;
+                if (seat.holderId < 0 || seat.holderId == notableId || seat.holderId == otherId) continue;
                 var h = FindNotable(seat.holderId);
                 if (h == null || !h.alive || !TermCodas.TryGetValue((kind, h.trait ?? ""), out var coda)) continue;
                 return text + FillTerm(coda, h, seat, null, 28);
@@ -403,12 +422,60 @@ namespace AquariumCiv.Sim
             return picked;
         }
 
+        /// <summary>Two living, single adults (18+), not of one family, not parent and child, within 12 years of each other,
+        /// and not the holder: the pair a gossip matches or talks about. Picked by a hash; null if there is none.</summary>
+        List<Notable> TermCouple(Notable h, int salt)
+        {
+            var single = State.notables.Where(n => n.alive && n.age >= 18f && n.age <= 50f && n.id != h.id && Alive(n.partnerId) == null)
+                .OrderBy(n => n.id).ToList();
+            var pairs = new List<(Notable a, Notable b)>();
+            for (int i = 0; i < single.Count; i++)
+                for (int j = i + 1; j < single.Count; j++)
+                    if (CanCourt(single[i], single[j])) pairs.Add((single[i], single[j]));
+            if (pairs.Count == 0) return null;
+            var p = pairs[(int)(RoleRoll(salt, h.id, pairs.Count) * pairs.Count) % pairs.Count];
+            return new List<Notable> { p.a, p.b };
+        }
+
+        /// <summary>Could these two court? Different family names, not kin (no parent, grandparent or sibling in common, as
+        /// far as two generations show) and within 12 years of each other.</summary>
+        public bool CanCourt(Notable a, Notable b) => a != b && a.family != b.family && Math.Abs(a.age - b.age) <= 12f && !Kin(a, b);
+
+        /// <summary>Close family: one is in the other's line (parents, their partners, grandparents), or the lines meet.</summary>
+        public bool Kin(Notable a, Notable b)
+        {
+            var la = Line(a); var lb = Line(b);
+            return la.Contains(b.id) || lb.Contains(a.id) || la.Overlaps(lb);
+        }
+
+        /// <summary>A notable's parents and grandparents, with their partners (the sim keeps one parent per child).</summary>
+        HashSet<int> Line(Notable n)
+        {
+            var line = new HashSet<int>();
+            var gen = new List<Notable> { n };
+            for (int depth = 0; depth < 2; depth++)
+            {
+                var next = new List<Notable>();
+                foreach (var x in gen)
+                {
+                    var p = FindNotable(x.parentId);
+                    if (p == null) continue;
+                    line.Add(p.id); next.Add(p);
+                    var q = FindNotable(p.partnerId);
+                    if (q != null) { line.Add(q.id); next.Add(q); }
+                }
+                gen = next;
+            }
+            return line;
+        }
+
         string FillTerm(string line, Notable h, RoleSeat seat, List<Notable> others, int salt)
         {
             string a = others != null && others.Count > 0 ? others[0].FullName : "someone";
             string b = others != null && others.Count > 1 ? others[1].FullName : "someone else";
-            string quarrel = Quarrels[(int)(RoleRoll(salt, h.id, 0) * Quarrels.Length) % Quarrels.Length];
-            return string.Format(line, h.FullName, seat.role, SeatLabel(seat.role), a, b, EraNoun(State.era), quarrel);
+            string quarrel = QuarrelIn(Quarrels[(int)(RoleRoll(salt, h.id, 0) * Quarrels.Length) % Quarrels.Length]);
+            string late = State.era == Era.Camp ? "the fire burned low" : "the lamps went out";
+            return string.Format(line, h.FullName, seat.role, SeatLabel(seat.role), a, b, EraNoun(State.era), quarrel, late);
         }
 
         /// <summary>Where a role works from, as people would say it.</summary>

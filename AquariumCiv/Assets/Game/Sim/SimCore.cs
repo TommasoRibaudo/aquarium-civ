@@ -219,8 +219,13 @@ namespace AquariumCiv.Sim
             {
                 if (!RoomForABirth) break;
                 if (!rng.Chance(BirthChance / (1 + kids))) continue;
-                var child = AddNotable(0f, p.id, p.family);
-                Chronicle("birth", $"{child.FullName} was born to {p.FullName}.", 0.6f, child.id);
+                // A couple's children share one family name, whichever of them is born to it (#61: full siblings came out
+                // Gale and Hearth); the line names both parents.
+                var partner = Alive(p.partnerId);
+                var child = AddNotable(0f, p.id, HouseOf(p));
+                Chronicle("birth", partner != null
+                    ? $"{child.FullName} was born to {p.FullName} and {partner.FullName}."
+                    : $"{child.FullName} was born to {p.FullName}.", 0.6f, child.id);
             }
             // Below the era's band (adults), one notable a year comes out of the crowd: after a death someone rises to
             // take their place; when a new era wants more people than the last one did, a newcomer arrives. Not while the
@@ -235,6 +240,24 @@ namespace AquariumCiv.Sim
             }
         }
 
+        /// <summary>The family name a notable's children take. A couple's first child takes the rarer of their two names
+        /// (fewer living notables bear it; the lower id on a tie), and the brothers and sisters after take the same, so a
+        /// couple's children share one name and the box keeps a few names going instead of one swallowing the rest. A single
+        /// parent's children take their name.</summary>
+        public string HouseOf(Notable p)
+        {
+            var q = FindNotable(p.partnerId);
+            if (q == null) return p.family;
+            var wed = State.chronicle.LastOrDefault(e => e.kind == "wedding" && Pair(e, p.id, q.id));
+            long since = wed?.month ?? long.MinValue;
+            var first = State.notables.FirstOrDefault(c => (c.parentId == p.id || c.parentId == q.id) && c.bornMonth >= since &&
+                                                           (c.family == p.family || c.family == q.family));
+            if (first != null) return first.family;
+            int Bearers(string f) => State.notables.Count(n => n.alive && n.family == f);
+            int bp = Bearers(p.family), bq = Bearers(q.family);
+            return bp < bq ? p.family : bq < bp ? q.family : (p.id < q.id ? p.family : q.family);
+        }
+
         static string EraNoun(Era era) => era switch { Era.Camp => "camp", Era.Village => "village", _ => "town" };
 
         void NarrativeChecks(bool winter, float festivalRoll)
@@ -244,7 +267,7 @@ namespace AquariumCiv.Sim
             if (milestone > s.lastPopMilestone && milestone > 0)
             {
                 s.lastPopMilestone = milestone;
-                Chronicle("milestone", $"The settlement grew to {milestone} people.", 0.7f);
+                Chronicle("milestone", $"{Place} grew to {milestone} people.", 0.7f); // the name once it has one (#61)
             }
             long year = s.month / SimConfig.MonthsPerYear;
             if (winter && s.food < s.population && year - s.lastLeanYear >= 5)
@@ -259,7 +282,7 @@ namespace AquariumCiv.Sim
                 // A festival makes the chronicle at most every 6 years (they still happen and lift the mood).
                 if (!Fresh("festival", -1, 6)) return;
                 Chronicle("festival", host != null
-                    ? $"{host.FullName} threw a harvest festival. There was dancing until dawn."
+                    ? string.Format(Nth(FestivalLines, Told("festival", host.id) + host.id), host.FullName) // told in turn (#61)
                     : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
         }
@@ -302,7 +325,7 @@ namespace AquariumCiv.Sim
                 if (s.month > 0)
                 {
                     var by = AliveNotable();
-                    Chronicle("first_building", NameData.FirstBuildingLine(type, by), 0.75f, by?.id ?? -1).buildingId = b.id;
+                    Chronicle("first_building", NameData.FirstBuildingLine(type, by, s.era), 0.75f, by?.id ?? -1).buildingId = b.id;
                 }
             }
             return b;
@@ -331,10 +354,13 @@ namespace AquariumCiv.Sim
             return alive.Count == 0 ? null : State.rng.Pick(alive);
         }
 
-        public ChronicleEntry Chronicle(string kind, string text, float salience, int notableId = -1)
+        public ChronicleEntry Chronicle(string kind, string text, float salience, int notableId = -1) => Record(kind, text, salience, notableId, -1);
+
+        /// <summary>Adds an entry about one or two people (the second for a wedding, a feud...).</summary>
+        ChronicleEntry Record(string kind, string text, float salience, int notableId, int otherId)
         {
-            text = TermCoda(kind, text, notableId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
-            var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId };
+            text = TermCoda(kind, text, notableId, otherId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
+            var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
             Chronicled?.Invoke(e);
             return e;

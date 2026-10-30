@@ -52,6 +52,7 @@ namespace AquariumCiv.Sim
             State.nudges.Add(n);
             // Rain is felt at once: the fields drink.
             if (kind == NudgeKind.Rain) State.food = Math.Min(FoodCap, State.food + 6f + State.population * 0.5f);
+            if (kind == NudgeKind.Lamp) KeeperLampUsed(); // from now on the strange light is the Keeper's lamp (#61: nothing called the hook)
             Settlement?.ApplyShaping(n); // no dice, nothing the economy reads
             return n;
         }
@@ -87,7 +88,7 @@ namespace AquariumCiv.Sim
                 n.answerMonth = s.month;
                 n.buildingId = b?.id ?? -1;
                 var who = StoryAdultOrNull();
-                var e = Chronicle("keeper", CreditLine(n.kind, type, who), 0.9f, who?.id ?? -1);
+                var e = Chronicle("keeper", CreditLine(n.kind, type, who, s.era), 0.9f, who?.id ?? -1);
                 e.buildingId = n.buildingId;
                 e.keeper = true;
             }
@@ -130,13 +131,16 @@ namespace AquariumCiv.Sim
             return null;
         }
 
-        static string CreditLine(string kind, string type, Notable who)
+        static string CreditLine(string kind, string type, Notable who, Era era = Era.Village)
         {
             string name = who != null ? who.FullName : "the people";
+            bool camp = era == Era.Camp; // the camp gathers; it doesn't sow yet (#61)
             string built = type switch
             {
-                BuildingType.Farm => kind == NudgeKind.Herd ? "staked out new hunting and grazing grounds"
-                    : kind == NudgeKind.Grove ? "planted among the new trees" : "planted a new field",
+                BuildingType.Farm => kind == NudgeKind.Herd ? (camp ? "staked out new hunting grounds" : "staked out new hunting and grazing grounds")
+                    : kind == NudgeKind.Grove ? (camp ? "gathered nuts and berries among the new trees" : "planted among the new trees")
+                    : camp ? "staked out new gathering grounds" : "planted a new field",
+                BuildingType.Lumbermill when camp => "started a woodpile",
                 BuildingType.Windmill => "built a windmill to grind the extra grain",
                 BuildingType.Lumbermill => "set up a lumber mill", BuildingType.Market => "opened a market for their crafts",
                 BuildingType.Well => "dug a well", BuildingType.Tavern => "opened a tavern",
