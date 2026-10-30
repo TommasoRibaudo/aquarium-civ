@@ -70,3 +70,11 @@ _Last updated 2026-10-30._
 - ★ A building's "look" is its era for now; finer looks later.
 - ★ An era's title comes from its top-salience entry (relic name, a kind→phrase table, or a person), fallback "The Camp
   Years". Pin time counts game months, so offline catch-up counts at the slow pace.
+
+### Tester batch 1 (2026-10-30): [polish] items for you to decide
+Report and screenshots: `AquariumCiv/Temp/agent/tester-batch1/` (local). The [real] findings are being fixed.
+- #30: people heap up at meals (9 dolls within 0.12 u at the tavern; 3–4 on one spot at homes). Reads as a blob at phone
+  size. ★ Spread meal/home slots like work slots.
+- #30: work poses are hard to read at phone size (dolls ~15–20 px tall at default zoom, ~40 px after fly-to), and at
+  midday/winter most people eat, sit out or repair at home, so a 60 s glance shows little work. ★ Bigger/bolder poses and
+  props, and more outdoor work in the day; or accept until the camera work in M3.
