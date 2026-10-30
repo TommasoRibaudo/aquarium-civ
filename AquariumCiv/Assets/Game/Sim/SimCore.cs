@@ -39,6 +39,7 @@ namespace AquariumCiv.Sim
             core.RolesStep(); // the founders choose a chief (SimCore.Roles.cs)
             core.RecordYear();
             if (config.settle) _ = core.Settlement; // the camp and the first hut get their lots (Sim/Settle, #32)
+            core.HistoryStep(); // year 0 for the time-lapse (SimCore.History.cs)
             return s;
         }
 
@@ -121,6 +122,7 @@ namespace AquariumCiv.Sim
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
             PeakStep(); // no dice: leaders for the book, the town's peak (SimCore.EraMoment.cs)
+            HistoryStep(); // no dice: records for the time-lapse and the book (SimCore.History.cs)
         }
 
         void TryBuild()

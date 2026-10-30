@@ -79,6 +79,14 @@ namespace AquariumCiv.Sim
         public int festivalYears = 1;
         public PeakRule peakAt = new PeakRule { townYears = 40, seats = 7, fullYears = 3 };
 
+        // History records (SimCore.History.cs, #73): observe only, no dice.
+        public bool recordHistory = true;
+        public int historyKeyframeYears = 10;       // a full path keyframe this often, for scrubbing back [est]
+        public int historyPruneYears = 30;          // a chronicle older than this loses its low entries (0 = never) [est]
+        public float historyPruneBelow = 0.5f;
+        public float historyPositionMinSalience = 0.5f; // entries below this get no stored x, z (worked out when asked)
+        public float pinLegendHours = 24f;          // "pinned for a day": the legend rule
+
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
 
@@ -346,6 +354,7 @@ namespace AquariumCiv.Sim
         public long boxCompleteMonth = -1;
         public List<int> founderIds = new(); // the notables who crossed to the next box
         public int boxIndex;                 // which box of the shelf this is (0 = the first; SimShelf.cs, #87)
+        public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

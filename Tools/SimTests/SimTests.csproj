@@ -40,6 +40,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SaveStoreTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ClockLogicTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/HistoryTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>
