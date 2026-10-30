@@ -58,6 +58,10 @@ namespace AquariumCiv.Sim
         // Over 100 seeds, watched: the village is ready at a median of year 15 (p90 34), the town ~43 years after it.
         public EraThreshold villageAt = new EraThreshold { population = 10, buildings = 6, years = 10 };
         public EraThreshold townAt = new EraThreshold { population = 22, buildings = 13, years = 20 };
+        // The era moment and the box's peak (era-moment.md §6, §8; SimCore.EraMoment.cs, #86).
+        public float festivalMoodLift = 0.05f;  // the era festival lifts the mood target this much for a year [est], no dice
+        public int festivalYears = 1;
+        public PeakRule peakAt = new PeakRule { townYears = 40, seats = 7, fullYears = 3 };
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -96,6 +100,17 @@ namespace AquariumCiv.Sim
         public int population;
         public int buildings;
         public int years;   // game years spent in the current era
+    }
+
+    /// <summary>When the town has reached its peak (era-moment.md §8, Choice 6): the box is full (no building found a lot,
+    /// or the economy's cap was reached) for <see cref="fullYears"/>, the town era is <see cref="townYears"/> old, and
+    /// <see cref="seats"/> different town seats have been held. Reaching it only makes the peak ready; it waits.</summary>
+    [Serializable]
+    public class PeakRule
+    {
+        public int townYears;
+        public int seats;
+        public int fullYears;
     }
 
     /// <summary>What an offline catch-up did: real hours away, sim hours the civ lived, game months stepped.</summary>
@@ -285,6 +300,17 @@ namespace AquariumCiv.Sim
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        // The era moment and the box completing (SimCore.EraMoment.cs, #86).
+        public long festivalUntilMonth = -1; // the era festival runs until this month (-1 = none yet)
+        public int lordLineId = -1;          // the first lord: the line the title passes down (-1 = no lord yet)
+        public List<LeaderTerm> leaders = new(); // who led, from when: the book's chapters
+        public List<string> townSeatsHeld = new(); // town seats held at least once (the peak rule)
+        public long fullSinceMonth = -1;     // the box has been full since this month (-1 = not full)
+        public bool peakReady;               // the town reached its peak: the box waits to be completed
+        public long peakReadyMonth = -1;
+        public bool boxComplete;             // CompleteBox ran: the box is a museum on the shelf
+        public long boxCompleteMonth = -1;
+        public List<int> founderIds = new(); // the notables who crossed to the next box
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

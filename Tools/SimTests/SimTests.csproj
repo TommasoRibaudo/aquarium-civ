@@ -29,6 +29,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CardsTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>

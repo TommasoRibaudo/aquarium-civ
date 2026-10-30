@@ -595,6 +595,10 @@ namespace AquariumCiv.Sim
             {
                 var offices = eraOffices;
                 eraOffices = null;
+                // An empty leader seat got an instant vote (era-moment.md §4): told as its own beat, not as an office.
+                var voted = leader == null ? HolderOf(LeaderOf(s.era)) : null;
+                if (voted != null && offices.RemoveAll(o => o.n == voted && o.role == LeaderOf(s.era)) > 0)
+                    RoleLine("role_era", $"No {LeaderOf(s.era - 1)} was left to carry the title, so the new {EraNoun(s.era)} chose {voted.FullName} as its first {LeaderOf(s.era)} on the spot.", 0.8f, voted, null, SeatOf(LeaderOf(s.era)));
                 if (offices.Count > 0)
                 {
                     var parts = offices.Take(3).Select(o => $"{o.n.FullName} became {o.role}").ToList();
