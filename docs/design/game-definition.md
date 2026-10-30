@@ -153,6 +153,8 @@ Enabler: a compact snapshot per game year (already in the sim), so the time-laps
   story hook).
 - **Automation retires basic chores** in later eras (section 5, rule 5).
 
+The era moment, the box completing and the second box arriving, beat by beat: [era-moment.md](era-moment.md) (draft, needs the user's confirmation).
+
 ## 9. Session design
 
 - Target cadence: 2–5 check-ins a day, ~3 min each; a deep session a few times a week.
