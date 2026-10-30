@@ -39,6 +39,9 @@ namespace AquariumCiv.Sim
                 BuildingType.Market => $"{who} opened a market. Haggling began immediately.",
                 BuildingType.Tavern => $"{who} opened a tavern. Productivity dipped.",
                 BuildingType.Church => $"{who} built a chapel facing the glass, where the Keeper sometimes appears.",
+                BuildingType.Workshop => $"{who} set up a workshop by the green. The first tools were borrowed from everyone.",
+                BuildingType.Guildhall => $"{who} raised a guildhall. The crafts finally had a door to argue behind.",
+                BuildingType.Shop => $"{who} turned a market stall into the first shop. The sign took longer than the shelves.",
                 _ => $"{who} built a {type.ToLower()}."
             };
         }

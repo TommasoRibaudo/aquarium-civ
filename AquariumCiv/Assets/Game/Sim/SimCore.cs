@@ -140,7 +140,9 @@ namespace AquariumCiv.Sim
             int pop = s.population;
             string type;
             // Types from a later era are skipped: a camp waiting at its threshold keeps building, but only camp things.
-            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < 1 + pop / 8)) type = BuildingType.Farm;
+            // The twenty slots can't hold every farm a growing town would sow plus its own buildings: from the third farm on, a
+            // farm waits while the town's workshop, guildhall or shops are still wanted (#114), so the box keeps room for them.
+            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < Math.Min(MaxFarms, 1 + pop / 8) && !(Count(BuildingType.Farm) >= 3 && TownWant(pop) != null))) type = BuildingType.Farm;
             else if (Wants(BuildingType.Hut, pop >= Housing - 1)) type = BuildingType.Hut;
             else if (Wants(BuildingType.Lumbermill, pop >= 6 && Count(BuildingType.Lumbermill) == 0)) type = BuildingType.Lumbermill;
             else if (Wants(BuildingType.Well, pop >= 8 && Count(BuildingType.Well) == 0)) type = BuildingType.Well;
@@ -148,10 +150,30 @@ namespace AquariumCiv.Sim
             else if (Wants(BuildingType.Market, pop >= 15 && Count(BuildingType.Market) == 0)) type = BuildingType.Market;
             else if (Wants(BuildingType.Tavern, pop >= 18 && Count(BuildingType.Tavern) == 0)) type = BuildingType.Tavern;
             else if (Wants(BuildingType.Church, pop >= 24 && Count(BuildingType.Church) == 0)) type = BuildingType.Church;
+            else if (TownWant(pop) is string town) type = town;
             else return; // nothing needed: save wood
             s.wood -= cost;
             AddBuilding(type);
         }
+
+        /// <summary>Slots the town's own buildings leave free for shaping answers (#114). None: a full box is the goal, and a shaping in a full town becomes a harvest line.</summary>
+        const int TownSlotsKept = 0;
+
+        /// <summary>What the town wants once the essentials stand (#114), or null. Order is the order of need: the market's
+        /// shops, the first workshop (even with no shaping), the guildhall, then more workshops, one per 14 people. Add a
+        /// bakery (#112) as another line here. Stops short of the cap so a shaping can still be answered with a building.</summary>
+        string TownWant(int pop)
+        {
+            if (State.era < Era.Town || State.buildings.Count >= Config.buildingSlots - TownSlotsKept) return null;
+            bool market = Count(BuildingType.Market) > 0;
+            if (Wants(BuildingType.Workshop, pop >= 20 && Count(BuildingType.Workshop) == 0)) return BuildingType.Workshop;
+            if (Wants(BuildingType.Guildhall, pop >= 24 && market && Count(BuildingType.Guildhall) == 0)) return BuildingType.Guildhall;
+            if (Wants(BuildingType.Shop, market && pop >= 22 && Count(BuildingType.Shop) < Math.Min(MaxShops, 1 + (pop - 22) / 8))) return BuildingType.Shop;
+            if (Wants(BuildingType.Workshop, pop >= 34 && Count(BuildingType.Workshop) < Math.Min(MaxWorkshops, 1 + (pop - 20) / 14))) return BuildingType.Workshop;
+            return null;
+        }
+
+        const int MaxShops = 3, MaxWorkshops = 3, MaxFarms = 4; // (the fifth farm of a 30-person town left no slot for a guildhall)
 
         /// <summary>Mess for <paramref name="h"/> real hours, capped (48 h fills it).</summary>
         void AccrueMess(float h)

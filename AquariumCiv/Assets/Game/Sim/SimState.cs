@@ -175,8 +175,9 @@ namespace AquariumCiv.Sim
     {
         public const string Camp = "Camp", Hut = "Hut", Farm = "Farm", Lumbermill = "Lumbermill", Well = "Well",
             Windmill = "Windmill", Market = "Market", Tavern = "Tavern", Church = "Church";
-        // Industrious town: stubs, nothing builds them yet.
-        public const string Workshop = "Workshop", Guildhall = "Guildhall";
+        // The town's own buildings (#114): the economy builds them (SimCore.TryBuild); a shaping's answer can also be a Workshop.
+        // A Shop is a market stall hardened into a shop, on the green's rim beside the Market.
+        public const string Workshop = "Workshop", Guildhall = "Guildhall", Shop = "Shop";
 
         /// <summary>The era a type first appears in; a box builds it from that era on. Types are roles, not looks: the
         /// view dresses a camp's Farm as gathering grounds and its Lumbermill as a woodpile.</summary>
@@ -184,7 +185,7 @@ namespace AquariumCiv.Sim
         {
             Camp or Hut or Farm or Lumbermill => Era.Camp,
             Well or Windmill or Market or Tavern or Church => Era.Village,
-            Workshop or Guildhall => Era.Town,
+            Workshop or Guildhall or Shop => Era.Town,
             _ => Era.Camp,
         };
     }

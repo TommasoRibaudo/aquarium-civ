@@ -206,7 +206,7 @@ namespace AquariumCiv.Sim.Settle
         public LotKind KindFor(Building b, Nudge n)
         {
             var plain = Encyclopedia.FromType(b.type);
-            if (n == null) return plain;
+            if (n == null) return b.type == BuildingType.Hut && S.era == Era.Town ? LotKind.Cottage : plain; // the town's huts are cottages: smaller, clustered, one more to a yard (#114)
             bool wet = SimCore.WetSpot(Map.spec, n.x, n.z);
             switch (b.type)
             {
