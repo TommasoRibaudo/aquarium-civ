@@ -124,7 +124,11 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(2, box.sweeperExtraBlocks);
             Assert.AreEqual(0f, box.feastChance);
             var other = sim.State.notables.First(n => n.alive && n != leader);
-            Assert.AreEqual(default(PersonHints), hints.Person(other, null), "no role, no colour");
+            other.trait = "the stubborn"; // nothing that shows in a day of their own
+            Assert.AreEqual(default(PersonHints), hints.Person(other, null), "no colour in the trait, no colour in the day");
+            other.trait = leader.trait = "the lazy";
+            Assert.That(hints.Person(other, null).napChance, Is.GreaterThan(0f).And.LessThan(hints.Person(leader, role).napChance),
+                "without a role their own trait shows too, more weakly (#64)");
         }
 
         // ------------------------------------------------------------------ #32: places, routes and homes
@@ -461,7 +465,9 @@ namespace AquariumCiv.Life.Tests
                 for (float h = 0f; h < 24f; h += 0.25f)
                 {
                     one.Restart();
-                    planner.PlanAll(new ViewTime(day, h), acts);
+                    var t = new ViewTime(day, h);
+                    planner.PlanAll(t, acts);
+                    foreach (var a in acts) planner.PositionAt(a.who, t, out _, out _); // #64: where everyone is
                     one.Stop();
                     worst = Math.Max(worst, one.Elapsed.TotalMilliseconds);
                     steps++;
@@ -471,7 +477,7 @@ namespace AquariumCiv.Life.Tests
                 fields += pos.FieldsBuilt;
             }
             double ms = sw.Elapsed.TotalMilliseconds / steps;
-            TestContext.WriteLine($"[LifeWiring] Planning the whole wired town box ({people} people): {ms:0.000} ms per view-time step on average, " +
+            TestContext.WriteLine($"[LifeWiring] Planning and placing the whole wired town box ({people} people): {ms:0.000} ms per view-time step on average, " +
                                   $"worst {worst:0.000} ms (a new month's first step: snapshot, homes, {fields / 20.0:0.0} flow fields); {steps} steps, " +
 #if UNITY_2017_1_OR_NEWER
                 "Unity Mono)");

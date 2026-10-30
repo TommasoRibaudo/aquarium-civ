@@ -18,6 +18,9 @@ namespace AquariumCiv.Life
             public TripType trip;
             public int chronicleId;
             public bool copies;
+            /// <summary>#64: a move whose end a later layer cut off (the walk is redirected to the interruption's place) /
+            /// whose start it cut off (the rest of the walk re-routes from wherever the interruption left them).</summary>
+            public bool cut, resumed;
             public bool Moving => ActivityInfo.IsMove(kind) && from != place && !from.IsNone;
         }
 
@@ -39,12 +42,13 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { dayCache.Clear(); dayInfo.day = long.MinValue; }
+        void ClearDays() { dayCache.Clear(); blockCache.Clear(); dayInfo.day = long.MinValue; }
 
         void EnsureDay(long day)
         {
             if (dayInfo.day == day) return;
             dayCache.Clear();
+            blockCache.Clear();
             var d = dayInfo;
             var s = sim.State;
             d.day = day;
@@ -208,8 +212,9 @@ namespace AquariumCiv.Life
                 var o = list[i];
                 if (o.end <= s.start || o.start >= s.end) continue;
                 list.RemoveAt(i);
-                if (o.start < s.start) { var a = o; a.end = s.start; list.Insert(i, a); i++; }
-                if (o.end > s.end) { var c = o; c.start = s.end; list.Insert(i, c); }
+                bool walk = ActivityInfo.IsMove(o.kind) && o.from != o.place; // #64: an interrupted walk
+                if (o.start < s.start) { var a = o; a.end = s.start; a.cut |= walk; list.Insert(i, a); i++; }
+                if (o.end > s.end) { var c = o; c.start = s.end; c.resumed |= walk; list.Insert(i, c); }
             }
             int at = 0;
             while (at < list.Count && list[at].start < s.start) at++;
@@ -222,10 +227,32 @@ namespace AquariumCiv.Life
             var outList = new List<Seg>(list.Count + 8);
             Place cur = p.home;
             float t = 0f;
-            foreach (var s0 in list)
+            for (int i = 0; i < list.Count; i++)
             {
-                var s = s0;
+                var s = list[i];
                 if (s.start < t) s.start = t;
+                bool isMove = ActivityInfo.IsMove(s.kind);
+                // #64: a walk a later layer interrupted never ends at its old destination. Its first part heads for the
+                // interruption's place instead; its rest re-routes from wherever the interruption left them.
+                if (isMove && s.resumed)
+                {
+                    InterruptedWalks++;
+                    if (s.place == cur) continue; // already there: what came before stretches over it
+                    s.from = cur;
+                }
+                if (isMove && s.cut && i + 1 < list.Count)
+                {
+                    InterruptedWalks++;
+                    var n = list[i + 1];
+                    bool nMove = ActivityInfo.IsMove(n.kind);
+                    Place to = !nMove ? n.place : !n.from.IsNone && n.from != n.place && !n.resumed ? n.from : Place.None;
+                    if (to.IsNone || to == cur) continue; // the next thing starts from here: wait here instead
+                    float w = WalkHours(cur, to);
+                    if (w <= s.end - s.start) s.start = s.end - w; // set off just in time; what came before stretches
+                    else s.end = Math.Max(s.end, Math.Min(s.start + w, n.start + (n.end - n.start) * 0.5f)); // late: eat into it
+                    s.place = to;
+                    s.from = cur;
+                }
                 if (s.end - s.start < 0.02f && outList.Count > 0) { var last = outList[outList.Count - 1]; last.end = s.end; outList[outList.Count - 1] = last; t = s.end; continue; }
                 if (s.start > t && outList.Count > 0) { var last = outList[outList.Count - 1]; last.end = s.start; outList[outList.Count - 1] = last; }
                 bool move = ActivityInfo.IsMove(s.kind);
@@ -252,6 +279,42 @@ namespace AquariumCiv.Life
                 outList.Insert(0, new Seg { start = 0f, end = outList.Count > 0 ? outList[0].start : 24f, kind = ActivityKind.Sleep, place = p.home, from = p.home, chronicleId = -1, partner = PersonRef.None });
             var lastSeg = outList[outList.Count - 1];
             if (lastSeg.end < 24f) { lastSeg.end = 24f; outList[outList.Count - 1] = lastSeg; }
+            // #64: a walk that runs straight on into a walk to a beat or a scene from its end (the beat starts just as they
+            // arrive) is one walk, from the first start to the last end, timed by its own route.
+            for (int i = outList.Count - 1; i > 0; i--)
+            {
+                var a = outList[i - 1];
+                var c = outList[i];
+                if (a.kind != ActivityKind.Walk || c.kind != ActivityKind.Walk || !a.Moving || !c.Moving || c.from != a.place) continue;
+                if (c.src == ActivitySource.Schedule && a.src == ActivitySource.Schedule) continue; // the plain day's own shape
+                if (a.from == c.place)
+                {
+                    // There and straight back: they stay where they were.
+                    if (i < 2 || outList[i - 2].Moving || outList[i - 2].place != a.from) continue;
+                    var stay = outList[i - 2];
+                    stay.end = c.end;
+                    outList[i - 2] = stay;
+                    outList.RemoveAt(i);
+                    outList.RemoveAt(i - 1);
+                    i--;
+                    continue;
+                }
+                var m = c;
+                m.from = a.from;
+                m.start = a.start;
+                m.trip = a.trip != TripType.Errand ? a.trip : c.trip;
+                m.src = c.src != ActivitySource.Schedule ? c.src : a.src;
+                float w = WalkHours(m.from, m.place);
+                if (i >= 2 && w < m.end - m.start)
+                {
+                    m.start = m.end - w; // set off just in time: what came before stretches
+                    var before = outList[i - 2];
+                    before.end = m.start;
+                    outList[i - 2] = before;
+                }
+                outList[i - 1] = m;
+                outList.RemoveAt(i);
+            }
             // Merge neighbours that are the same thing (two work blocks of the same loop read as one).
             for (int i = outList.Count - 1; i > 0; i--)
             {
@@ -415,9 +478,10 @@ namespace AquariumCiv.Life
 
                 if (p.mentor != null) CopyMaster(p, 7f, 9f); // a young apprentice still learns from the master first
                 WorkBlocks(p, d, work, LifeClock.WorkStart, LifeClock.Midday, 10, false);
-                Midday(p, d, work);
+                bool nap = p.hints.napChance > 0f && R(k, day, 4) < p.hints.napChance; // the lazy, after lunch
+                Midday(p, d, work, nap);
                 var after = WorkOf(p, d, morning: false);
-                if (p.hints.napChance > 0f && R(k, day, 4) < p.hints.napChance) At(ActivityKind.Nap, 14f, gather); // the lazy, after lunch
+                if (nap) At(ActivityKind.Nap, 14f, gather); // straight from lunch to the green (#64)
                 WorkBlocks(p, d, after, bt, LifeClock.Evening, 30, true);
             }
             Evening(p, d);
@@ -439,11 +503,12 @@ namespace AquariumCiv.Life
             At(ActivityKind.Chat, 17f, gather);
         }
 
-        void Midday(Person p, DayInfo d, Work work)
+        void Midday(Person p, DayInfo d, Work work, bool napAfter = false)
         {
             var meal = MealPlace(p, d);
             var with = p.partner != null && p.partner.Adult ? p.partner : null;
             At(ActivityKind.Eat, 12.8f, meal, Prop.None, Ref(with));
+            if (napAfter) return; // off to the green for a nap instead of back to work
             if (meal != work.site) Move(ActivityKind.Walk, work.site, 13f, Prop.None, TripType.HomeToWork);
             else At(ActivityKind.SitOut, 13f, meal);
         }

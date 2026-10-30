@@ -285,6 +285,17 @@ namespace AquariumCiv.Sim
             return f.Clamp();
         }
 
+        /// <summary>Anyone's own trait colour (#64, life-in-the-box rule 9): the same deltas as <see cref="TermFlavorOf"/>,
+        /// whether or not they hold a role, so a lazy notable without a role naps a little too. A readout: no economy, no
+        /// dice, no state change. Neutral if the flavour is off, the notable is gone or the trait has no colour.</summary>
+        public TermFlavor TraitFlavorOf(Notable n)
+        {
+            var f = TermFlavor.Neutral();
+            if (!TermFlavourOn || n == null || !n.alive) return f;
+            if (TraitTerms.TryGetValue(n.trait ?? "", out var t)) f.Add(t.flavor, 1f);
+            return f.Clamp();
+        }
+
         /// <summary>How the box feels now: the leader's trait counts in full, every other office's at half.</summary>
         public TermFlavor CurrentTermFlavor()
         {

@@ -17,7 +17,7 @@ namespace AquariumCiv.Life
     /// shaping), so a planned day costs a few lookups. With settling off (<see cref="SimConfig.settle"/> false) every
     /// query answers false and the planner falls back to its abstract places.
     /// </summary>
-    public sealed class SettlePlacePositions : IPlacePositions
+    public sealed class SettlePlacePositions : IPlacePositions, IPointRoutes
     {
         readonly SimCore sim;
 
@@ -110,6 +110,17 @@ namespace AquariumCiv.Life
             into.Clear();
             if (!Ready()) return false;
             int a = WalkCell(from), b = WalkCell(to);
+            if (a < 0 || b < 0) return false;
+            if (!st.Net.Trace(FieldTo(b), a, cells)) return false;
+            foreach (int c in cells) into.Add(new Waypoint(SiteMap.CXc(c), SiteMap.CZc(c)));
+            return true;
+        }
+
+        public bool TryRouteFrom(float x, float z, Place to, List<Waypoint> into)
+        {
+            into.Clear();
+            if (!Ready()) return false;
+            int a = Walkable(x, z), b = WalkCell(to);
             if (a < 0 || b < 0) return false;
             if (!st.Net.Trace(FieldTo(b), a, cells)) return false;
             foreach (int c in cells) into.Add(new Waypoint(SiteMap.CXc(c), SiteMap.CZc(c)));
