@@ -114,6 +114,7 @@ namespace AquariumCiv.Sim
             JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
+            ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
@@ -288,9 +289,9 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- player actions ----------
-        public void CleanGrime(float amount) => State.grime = Math.Max(0f, State.grime - amount);
-        public void Prune(float amount) => State.overgrowth = Math.Max(0f, State.overgrowth - amount);
-        public bool RemoveTrash(int id) => State.trash.RemoveAll(t => t.id == id) > 0;
+        public void CleanGrime(float amount) { float was = State.grime; State.grime = Math.Max(0f, was - amount); CleaningRefill((was - State.grime) * Config.shapingPerGrime); }
+        public void Prune(float amount) { float was = State.overgrowth; State.overgrowth = Math.Max(0f, was - amount); CleaningRefill((was - State.overgrowth) * Config.shapingPerOvergrowth); }
+        public bool RemoveTrash(int id) { bool gone = State.trash.RemoveAll(t => t.id == id) > 0; if (gone) CleaningRefill(Config.shapingPerTrash); return gone; }
 
         /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
         public void AddMess(float grime, float overgrowth, int trashCount)
@@ -302,6 +303,7 @@ namespace AquariumCiv.Sim
 
         public void CleanAll()
         {
+            CleaningRefill(State.grime * Config.shapingPerGrime + State.overgrowth * Config.shapingPerOvergrowth + State.trash.Count * Config.shapingPerTrash);
             State.grime = 0; State.overgrowth = 0; State.trash.Clear();
         }
 

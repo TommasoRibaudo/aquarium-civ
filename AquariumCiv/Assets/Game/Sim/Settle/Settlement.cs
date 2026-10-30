@@ -361,6 +361,34 @@ namespace AquariumCiv.Sim.Settle
         {
             n.x = Terrain.Clamp(n.x, -Terrain.HX + 0.1f, Terrain.HX - 0.1f);
             n.z = Terrain.Clamp(n.z, -Terrain.HZ + 0.1f, Terrain.HZ - 0.1f);
+            byte[] before = n.shapeCells == null ? (byte[])Map.flags.Clone() : null; // #82: what to put back on a take-back
+            ApplyShapingToLand(n);
+            if (before == null) return;
+            var cells = new List<int>(); var was = new List<byte>();
+            for (int c = 0; c < SiteMap.N; c++)
+                if (Map.flags[c] != before[c]) { cells.Add(c); was.Add(before[c]); }
+            n.shapeCells = cells.ToArray(); n.shapeBefore = was.ToArray();
+        }
+
+        /// <summary>Take a shaping back (#82): the cells it changed go back to what they were, unless a lot has since
+        /// claimed them. Only for shapings the people have not used.</summary>
+        public void RevertShaping(Nudge n)
+        {
+            if (n.shapeCells == null) return;
+            bool water = false;
+            for (int k = 0; k < n.shapeCells.Length; k++)
+            {
+                int c = n.shapeCells[k];
+                if (Map.lot[c] != 0) continue;
+                if (((Map.flags[c] ^ n.shapeBefore[k]) & SiteMap.FCanal) != 0) water = true;
+                Map.flags[c] = n.shapeBefore[k];
+            }
+            if (water) Map.RecomputeWaterDist();
+            n.shapeCells = null; n.shapeBefore = null;
+        }
+
+        void ApplyShapingToLand(Nudge n)
+        {
             switch (n.kind)
             {
                 case SimCore.NudgeKind.Grove: Paint(n.x, n.z, 0.38f, SiteMap.FForest, true); break;
