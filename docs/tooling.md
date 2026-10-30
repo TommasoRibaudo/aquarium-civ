@@ -316,3 +316,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   fingerprint (ints, rng states, ages to 2 decimals) matches in both, but hashes over raw float fields (food, wood, mood…)
   differ, with "R" text or with raw bits. So: never pin a float-derived hash in a test that runs in both; pin under
   `#if !UNITY_2017_1_OR_NEWER` (dotnet only) and compare same-runtime runs in Unity. Unity stays the authority. [verified]
+- **2026-10-30 · "The referenced script (Unknown) on this Behaviour is missing!" on a component the builder just
+  added.** The MonoBehaviour (`NightLampDriver`) lived in a file named after another class (`NightLamps.cs`), so Unity
+  gave it no script asset and the scene saved `m_Script: {fileID: N}` with no guid. Every MonoBehaviour needs its own
+  file named like the class. Check after a scene build: `grep -n "m_Script: {fileID: [0-9]*}$" <scene>.unity` must be
+  empty. [verified]
+- **2026-10-30 · Phone-size renders of the slice:** `AquariumCiv.EditorTools.SliceSceneBuilder.Shot(path, w, h, zoom,
+  target, yaw, pitch)` renders the main camera (URP post included) to PNG in edit or play mode, with the `BoxCamera`
+  refitted to that aspect, and restores the rig. [verified]
