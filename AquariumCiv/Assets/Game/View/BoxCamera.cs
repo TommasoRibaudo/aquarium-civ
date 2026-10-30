@@ -63,6 +63,13 @@ namespace AquariumCiv.View
         /// <summary>Raised when a flight ends: true = it arrived, false = a touch (or a new flight / Cancel) interrupted it.</summary>
         public event System.Action<bool> FlightEnded;
 
+        /// <summary>Camera mode (#70): after <see cref="AutoOrbitIdleSeconds"/> without a touch the box drifts slowly left and right. Toggle in the debug panel.</summary>
+        public static bool AutoOrbitInCameraMode = true;
+        public const float AutoOrbitIdleSeconds = 4f, AutoOrbitDegPerSecond = 2.5f;
+        float lastInputTime;
+        float autoDir = 1f;
+        bool wasCameraMode;
+
         public void AddGate(ICameraGate g) { if (g != null && !gates.Contains(g)) gates.Add(g); }
         public void RemoveGate(ICameraGate g) => gates.Remove(g);
         /// <summary>True while a press is owned by a gate (a tool) and the camera ignores it.</summary>
@@ -212,12 +219,25 @@ namespace AquariumCiv.View
                 targetPitch = BoxCameraMath.Spring(targetPitch, lo, hi, dt);
             }
             if (mode != Mode.TwoFinger) SpringPan(dt);
+            AutoOrbit(n, dragging, dt, now);
 
             float f = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
             yaw += (targetYaw - yaw) * f;
             pitch += (targetPitch - pitch) * f;
             lastYaw = yaw; lastPitch = pitch;
             zoom = Mathf.Clamp(zoom, minZoom, maxZoom);
+        }
+
+        void AutoOrbit(int touches, bool dragging, float dt, float now)
+        {
+            var hud = AquariumCiv.GameUI.GameHud.Instance;
+            bool cm = hud != null && hud.CameraMode;
+            if (cm != wasCameraMode) { wasCameraMode = cm; lastInputTime = now; }
+            if (touches > 0 || dragging || IsFlying || velocity != Vector2.zero) lastInputTime = now;
+            if (!cm || !AutoOrbitInCameraMode || now - lastInputTime < AutoOrbitIdleSeconds) return;
+            float lo = minYaw + 6f, hi = maxYaw - 6f;
+            if (targetYaw >= hi) autoDir = -1f; else if (targetYaw <= lo) autoDir = 1f;
+            targetYaw += autoDir * AutoOrbitDegPerSecond * dt;
         }
 
         // ---------------- input ----------------

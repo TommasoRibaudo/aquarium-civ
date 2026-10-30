@@ -30,6 +30,9 @@ namespace AquariumCiv.GameUI
         /// <summary>Raised when clean mode (one finger wipes the glass and flicks the mess, #37) is switched on or off.</summary>
         public event Action<bool> CleanModeChanged;
 
+        /// <summary>Raised when camera mode (photo mode, #70: all UI hidden, only the box) is switched on or off.</summary>
+        public event Action<bool> CameraModeChanged;
+
         UIDocument doc;
         VisualElement root, safe, bottomRow, openSheet;
         Label nameLabel, yearLabel;
@@ -42,6 +45,14 @@ namespace AquariumCiv.GameUI
         Vector2Int lastScreen;
         float nextText;
         bool hidden;
+        bool cameraMode;
+        Button exitButton;
+        float cameraModeSince, exitFadeAt;
+        // The tap that brings the UI back: a short press that stays put, never a drag, never two fingers.
+        bool tapDown, tapMoved, tapMulti;
+        Vector2 tapStart;
+        float tapTime;
+        public const float TapSlopFraction = 0.02f, TapMaxSeconds = 0.4f;
 
         public VisualElement Root => root;
         public string OpenSheet => openSheet?.name.Replace("-scrim", "");
@@ -123,10 +134,70 @@ namespace AquariumCiv.GameUI
             CleanModeChanged?.Invoke(on);
         }
 
+        /// <summary>Camera mode (photo mode, #70): every control, toast and sheet hides (and the IMGUI debug dock, see
+        /// DebugDock.Hidden), the camera stays fully usable. A short tap anywhere (not a drag, not a pinch) or the small
+        /// "Tap to show the UI" pill brings it all back. Clean mode and any open sheet are closed first.</summary>
+        public bool CameraMode => cameraMode;
+
+        public void SetCameraMode(bool on)
+        {
+            if (cameraMode == on || root == null) return;
+            if (on)
+            {
+                if (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen) return;
+                CloseSheet();
+                SetCleanMode(false);
+                if (toastLabel != null) toastLabel.style.display = DisplayStyle.None;
+            }
+            cameraMode = on;
+            safe.EnableInClassList("hud-photo", on);
+            exitButton.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            exitButton.style.opacity = 1f;
+            cameraModeSince = exitFadeAt = Time.unscaledTime;
+            tapDown = false;
+            CameraModeChanged?.Invoke(on);
+        }
+
+        // Camera mode each frame: the pill fades to a whisper after a few seconds; a tap anywhere brings the UI back.
+        void UpdateCameraMode()
+        {
+            exitButton.style.opacity = Time.unscaledTime - exitFadeAt < 4f ? 1f : 0.45f;
+            ReadPointer(out bool down, out int count, out Vector2 pos);
+            float slop = Screen.height * TapSlopFraction;
+            if (!tapDown)
+            {
+                // Only a press that begins in this mode counts (not the one that pressed Photo).
+                if (down && count == 1 && Time.unscaledTime - cameraModeSince > 0.15f)
+                {
+                    tapDown = true; tapMoved = false; tapMulti = false; tapStart = pos; tapTime = Time.unscaledTime;
+                }
+                return;
+            }
+            if (down)
+            {
+                if (count > 1) tapMulti = true;
+                if ((pos - tapStart).sqrMagnitude > slop * slop) tapMoved = true;
+                return;
+            }
+            tapDown = false;
+            if (!tapMoved && !tapMulti && Time.unscaledTime - tapTime <= TapMaxSeconds) SetCameraMode(false);
+        }
+
+        static void ReadPointer(out bool down, out int count, out Vector2 pos)
+        {
+            count = 0; pos = default;
+            var ts = Touchscreen.current;
+            if (ts != null)
+                foreach (var t in ts.touches)
+                    if (t.press.isPressed) { count++; if (count == 1) pos = t.position.ReadValue(); }
+            if (count == 0 && Mouse.current != null && Mouse.current.leftButton.isPressed) { count = 1; pos = Mouse.current.position.ReadValue(); }
+            down = count > 0;
+        }
+
         /// <summary>A short line above the bottom row (hints, "all clean"); replaces the one showing.</summary>
         public void Toast(string text, float seconds = 3f)
         {
-            if (toastLabel == null) return;
+            if (toastLabel == null || cameraMode) return;
             toastLabel.text = text;
             toastLabel.style.display = DisplayStyle.Flex;
             toastUntil = Time.unscaledTime + seconds;
@@ -139,6 +210,7 @@ namespace AquariumCiv.GameUI
             if (root == null) return;
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateBlockers();
+            if (cameraMode) UpdateCameraMode();
             if (toastLabel != null && toastLabel.resolvedStyle.display == DisplayStyle.Flex && Time.unscaledTime >= toastUntil) toastLabel.style.display = DisplayStyle.None;
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             // Android Back / Esc closes the open sheet.
@@ -167,13 +239,13 @@ namespace AquariumCiv.GameUI
             top.Add(title);
             safe.Add(top);
 
-            if (FeedbackUI.InTestBuild)
-            {
-                var corner = new VisualElement { name = "hud-corner", pickingMode = PickingMode.Ignore };
-                corner.AddToClassList("hud-corner");
-                corner.Add(Btn("hud-feedback", "Feedback", OpenFeedback, "hud-btn", "hud-btn--small"));
-                safe.Add(corner);
-            }
+            var corner = new VisualElement { name = "hud-corner", pickingMode = PickingMode.Ignore };
+            corner.AddToClassList("hud-corner");
+            if (FeedbackUI.InTestBuild) corner.Add(Btn("hud-feedback", "Feedback", OpenFeedback, "hud-btn", "hud-btn--small"));
+            var photo = Btn("hud-photo", "Photo", () => SetCameraMode(true), "hud-btn", "hud-btn--small");
+            photo.style.marginTop = 16;
+            corner.Add(photo);
+            safe.Add(corner);
 
             bottomRow = Row("hud-bottom");
             bottomRow.Add(Btn("hud-history", "History", () => Open(History), "hud-btn"));
@@ -198,6 +270,10 @@ namespace AquariumCiv.GameUI
                 blockers[i].style.display = DisplayStyle.None;
                 root.Add(blockers[i]);
             }
+            // The way back from camera mode: a small pill at the bottom, inside the safe area, shown only in that mode.
+            exitButton = Btn("hud-photo-exit", "Tap to show the UI", () => SetCameraMode(false), "hud-photo-exit");
+            exitButton.style.display = DisplayStyle.None;
+            safe.Add(exitButton);
             BuildSettings();
             BuildHistory();
             BuildShaping();
