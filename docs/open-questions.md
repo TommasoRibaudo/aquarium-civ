@@ -88,3 +88,12 @@ Report and screenshots: `AquariumCiv/Temp/agent/tester-batch1/` (local). The [re
   walks in real seconds everywhere would fix it — a bigger change, not done.
 - Seen, not fixed: `Settlement.HomeOf` picks a home by hash over the yard's home count, so a new home can move a
   household; and one sweep case depended on query order (maybe lazy settlement growth). ★ File as issues.
+
+### #37 Care in the slice (View, `CareView.cs`, `GlassMask.cs`, `MessProps.cs`)
+- ★ A wipe cleans every pane the finger crosses (far panes from the front); the soil strip never gets grime.
+- ★ "Spotless" = mean grime < 4 % (faint streaks snap clean); a full glass takes ~3 passes (≈ 3 s of finger path).
+- ★ A tap on glass in clean mode is the wipe's, so it doesn't select a person (the design wanted taps to still select).
+- ★ Mess seen through the open top is reachable without wiping first.
+- ★ Clean mode ends 2.2 s after the last mess goes, or after 30 s with no touch (guesses to tune).
+- Sounds are procedural placeholders (rub, chime, swish, pop); no haptics yet. Trash/weed props are small at default
+  zoom — your call on their look and size.
