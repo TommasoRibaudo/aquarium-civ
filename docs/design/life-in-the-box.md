@@ -366,7 +366,7 @@ phone. Practices §7: steady 30 fps minimum.
 |---|---|---|
 | Era, month, season | `era`, `month` (season = month % 12) | — |
 | Notables: job, age, alive, trait, family links | `notables` (job, age, partner, friend, rival, mentor, parent) | — |
-| Roles and their holders | — | `RoleSeat` list (#27); trait planner hints (#28) |
+| Roles and their holders | `roles` (`RoleSeat`, #27); trait hints: `SimCore.CurrentTermFlavor()` / `TermFlavorOf(holder)`, 0..1 per aspect, 0.5 = ordinary (feasts, music, tidiness, quiet, quarrels, kindness, …; #28) | — |
 | Buildings and where they are | `buildings` (type, id, slot, founded) | Positions, doors and footprints (M2, the Growth Lab's `SiteMap` / `Placer` into `Sim/Settle`) |
 | The path network | — | Tiers and walking cost per cell (M2, `PathNet`) |
 | Land features (pond, forest edge, bushes, herds, groves, outcrops, meadows) | `HasFeature` stubs; `nudges` (kind, slot, credited) | Feature positions; `Nudge` x, z (Growth Lab gap 6) |

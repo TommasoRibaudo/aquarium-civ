@@ -38,7 +38,9 @@ namespace AquariumCiv.Tests
         /// Families (#26, user 2026-10-29): a normal 55–80 lifespan again (elders 45, eldest 60), and children under 16
         /// don't count against the era's max (familyRoom 2), so the camp has children; parents with fewer children first.
         /// Roles (#27): the founders choose a chief and the chronicle tells the camp's role stories; the text (and the ids
-        /// the new lines take) change, the economy, the dice and the notables don't (JobTests.Economy is unchanged).</summary>
+        /// the new lines take) change, the economy, the dice and the notables don't (JobTests.Economy is unchanged).
+        /// Term flavour (#28): the chief's trait adds term lines and codas to the chronicle text; term lines take their own
+        /// ids, so nothing else changes (JobTests.Economy is unchanged).</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -46,7 +48,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(172455737u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(3061733244u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]
