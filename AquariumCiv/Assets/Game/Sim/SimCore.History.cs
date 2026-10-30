@@ -394,6 +394,10 @@ namespace AquariumCiv.Sim
                 var lot = b.lotId > 0 ? lots?.Find(l => l.id == b.lotId) : null;
                 long appeared = lot != null ? lot.foundedMonth : (lots == null || s.settle.version == 0 ? b.foundedMonth : long.MaxValue);
                 if (appeared > month) continue;
+                // The village's first well is built at the era change, after the year's snapshot of that month, like the
+                // era's looks: the snapshot at the change month is taken before it.
+                if (appeared == month && b.type == BuildingType.Well && h.eraStarts.Count > 1 && appeared == h.eraStarts[1]
+                    && s.chronicle.Any(e => e.kind == "era" && e.month == appeared && e.id < b.id)) continue;
                 var end = h.ends.Find(e => e.buildingId == b.id);
                 if (end != null && end.month <= month) continue;
                 var look = h.looks.LastOrDefault(l => l.buildingId == b.id && l.month <= month);

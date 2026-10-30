@@ -97,7 +97,7 @@ namespace AquariumCiv.View.Moments
             b.Add(headman);
 
             var vote = Beat("vote", 40f, BeatAction.Vote);
-            vote.when = BeatCondition.LeaderMissing; vote.line = "The village chose its headman.";
+            vote.when = BeatCondition.LeaderMissing; vote.line = "The village chose {winner} as its headman.";
             vote.camera.Add(Key(1.2f, MomentAnchor.Hearth, 10f, 24f, 0.5f));
             b.Add(vote);
 
@@ -164,7 +164,7 @@ namespace AquariumCiv.View.Moments
             b.Add(lord);
 
             var vote = Beat("vote", 65f, BeatAction.Vote, BeatAction.LordChair);
-            vote.when = BeatCondition.LeaderMissing; vote.line = "The town chose its first lord.";
+            vote.when = BeatCondition.LeaderMissing; vote.line = "The town chose {winner} as its first lord.";
             vote.camera.Add(Key(1.2f, MomentAnchor.Steps, 20f, 24f, 0.5f));
             b.Add(vote);
 

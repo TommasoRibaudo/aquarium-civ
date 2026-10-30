@@ -52,6 +52,17 @@ namespace AquariumCiv.Life
             return DayPhase.Evening;
         }
 
+        /// <summary>When the afternoon's work ends in a season (user 2026-10-30: in winter people work less in the daytime, in
+        /// summer more): the short winter days end at 15:30 and the people sit at home by the hearth until the evening
+        /// gathering; summer runs a little past the usual 17:00.</summary>
+        public static float AfternoonEnd(Season season) => season == Season.Winter ? 15.5f : season == Season.Summer ? 17.3f : Evening;
+
+        /// <summary>Work hours that day: the morning block and the afternoon one, which ends with the season.</summary>
+        public static bool IsWorkHour(float hour, Season season) => (hour >= WorkStart && hour < Midday) || (hour >= AfternoonStart && hour < AfternoonEnd(season));
+
+        /// <summary>Hours of daytime work in a season (the morning's and the afternoon's).</summary>
+        public static float WorkHours(Season season) => (Midday - WorkStart) + (AfternoonEnd(season) - AfternoonStart);
+
         public static bool IsWorkHour(float hour) => (hour >= WorkStart && hour < Midday) || (hour >= AfternoonStart && hour < Evening);
 
         /// <summary>Real seconds one view hour lasts at this hour.</summary>

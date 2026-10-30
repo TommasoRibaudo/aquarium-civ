@@ -694,7 +694,15 @@ namespace AquariumCiv.Life
                 var after = WorkOf(p, d, morning: false);
                 Midday(p, d, after, nap);
                 if (nap) At(ActivityKind.Nap, 14f, gather); // straight from lunch to the green (#64)
-                WorkBlocks(p, d, after, bt, LifeClock.Evening, 30, true);
+                float workEnd = LifeClock.AfternoonEnd(d.season);
+                WorkBlocks(p, d, after, bt, workEnd, 30, true);
+                if (workEnd < LifeClock.Evening - 0.01f)
+                {
+                    // A short winter day: home by the hearth until the evening gathering (a chore, then a sit).
+                    var chore = Chore(p, d, 7);
+                    At(chore, Math.Min(LifeClock.Evening - 0.4f, bt + WalkHours(bcur, p.home) + 0.6f), p.home, ChoreProp(chore), default, TripType.Home);
+                    At(ActivityKind.SitOut, LifeClock.Evening, p.home);
+                }
             }
             Evening(p, d);
         }

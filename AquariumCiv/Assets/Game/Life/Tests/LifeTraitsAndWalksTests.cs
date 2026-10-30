@@ -191,7 +191,7 @@ namespace AquariumCiv.Life.Tests
             Assert.LessOrEqual(jump, MaxStep, "never more than one cell per step across the interruption");
         }
 
-        [TestCase(Era.Village, 7)]
+        [TestCase(Era.Village, 8)]
         [TestCase(Era.Town, 1234)]
         public void ALiveSceneWalksThemOverFromWhereTheyAreAndBack(Era era, int seed)
         {

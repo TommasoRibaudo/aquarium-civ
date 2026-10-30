@@ -66,6 +66,9 @@ namespace AquariumCiv.Sim
             return steps;
         }
 
+        /// <summary>True while <see cref="CatchUp"/> runs the months the player was away.</summary>
+        public bool CatchingUp { get; private set; }
+
         /// <summary>
         /// Offline catch-up (game definition v0.2): the civ lives the first <see cref="SimConfig.fullSpeedHours"/> at full
         /// speed and the rest at <see cref="SimConfig.slowSpeed"/>; mess runs on real hours, so the real hours the civ didn't
@@ -74,7 +77,9 @@ namespace AquariumCiv.Sim
         public CatchUpResult CatchUp(double realHoursAway)
         {
             var r = new CatchUpResult { realHours = Math.Max(0, realHoursAway), simHours = Config.OfflineSimHours(realHoursAway) };
-            r.months = Advance(r.simHours);
+            CatchingUp = true; // no relics are found while the player is away (SimCore.Relics.cs)
+            try { r.months = Advance(r.simHours); }
+            finally { CatchingUp = false; }
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
             return r;
@@ -333,7 +338,7 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- helpers ----------
-        Building AddBuilding(string type)
+        Building AddBuilding(string type, bool tellFirst = true)
         {
             var s = State;
             var used = s.buildings.Select(b => b.slot).ToHashSet();
@@ -349,7 +354,7 @@ namespace AquariumCiv.Sim
             if (!s.foundedTypes.Contains(type))
             {
                 s.foundedTypes.Add(type);
-                if (s.month > 0)
+                if (s.month > 0 && tellFirst) // (the era's own well is told by the festival line: no extra draw)
                 {
                     var by = AliveNotable();
                     Chronicle("first_building", NameData.FirstBuildingLine(type, by, s.era), 0.75f, by?.id ?? -1).buildingId = b.id;

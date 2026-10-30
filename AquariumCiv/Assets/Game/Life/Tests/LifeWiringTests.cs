@@ -523,6 +523,8 @@ namespace AquariumCiv.Life.Tests
             {
                 int target = planner.SweeperTargetOf(who);
                 if (target < 0) continue;
+                // A role holder's day starts at their office (a beat first): the walk to the heap is not the morning's.
+                if (who.IsNotable && sim.RoleOf(sim.FindNotable(who.notableId)) != null) continue;
                 var heap = Place.Land(PlaceKind.TrashHeap, target);
                 for (long d = sim.State.month; d < sim.State.month + 12; d++)
                 {
@@ -619,7 +621,7 @@ namespace AquariumCiv.Life.Tests
                 if (w == Weather.Storm || w == Weather.Rainbow) continue;
                 for (float h = 7.1f; h < 17f; h += 0.4f)
                 {
-                    if (!LifeClock.IsWorkHour(h)) continue;
+                    if (!LifeClock.IsWorkHour(h, planner.SeasonOn(day))) continue;
                     planner.PlanAll(new ViewTime(day, h), acts);
                     foreach (var a in acts)
                     {

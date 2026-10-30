@@ -106,6 +106,49 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(offices.Any(e => e.text.Contains($"{headman.FullName} became headman")), "told once, as the vote");
         }
 
+        [TestCase(5)]
+        [TestCase(21)]
+        [TestCase(1234)]
+        public void PreviewEraVoteNamesTheWinnerWithoutTouchingAnything(int seed)
+        {
+            var sim = NewSim(seed);
+            sim.Advance(5);
+            sim.ForceEraReady();
+            Assert.IsNull(sim.PreviewEraVote(), "the chief is there: the leader carries over, no vote");
+            Assert.IsTrue(sim.DebugVacateRole(RoleType.Chief));
+            string before = UnityEngine.JsonUtility.ToJson(sim.State);
+            var preview = sim.PreviewEraVote();
+            Assert.AreEqual(before, UnityEngine.JsonUtility.ToJson(sim.State), "the preview changes nothing");
+            Assert.IsNotNull(preview);
+            Assert.IsTrue(sim.AdvanceEra());
+            Assert.AreEqual(sim.HolderOf(RoleType.Headman).id, preview.id, "the moment's line names who the village then chose");
+        }
+
+        [Test]
+        public void TheVoteBeatLinesNameTheWinner()
+        {
+            var ctx = new AquariumCiv.View.Moments.MomentContext { winnerName = "Ada" };
+            Assert.AreEqual("The village chose Ada as its headman.", ctx.Fill("The village chose {winner} as its headman."));
+            Assert.AreEqual("The village chose someone as its headman.", new AquariumCiv.View.Moments.MomentContext().Fill("The village chose {winner} as its headman."));
+        }
+
+        [TestCase(5)]
+        [TestCase(21)]
+        public void TheFirstWellIsBuiltAtTheVillageChangeWhereTheViewStoodIt(int seed)
+        {
+            var sim = NewSim(seed);
+            sim.Advance(5);
+            sim.ForceEraReady();
+            Assert.AreEqual(0, sim.Count(BuildingType.Well));
+            Assert.IsTrue(sim.AdvanceEra());
+            Assert.AreEqual(1, sim.Count(BuildingType.Well), "the village green has its well from the moment");
+            var lot = sim.Settlement.Lots.First(l => l.kind == AquariumCiv.Sim.Settle.LotKind.Well);
+            Assert.AreEqual(sim.Settlement.GreenX + 0.17f, lot.x, 1e-4f, "where the view's own well stood (SimLayout.FirstWellDX)");
+            Assert.AreEqual(sim.Settlement.GreenZ - 0.1f, lot.z, 1e-4f);
+            sim.Advance(40 * SimConfig.MonthsPerYear);
+            Assert.AreEqual(1, sim.Count(BuildingType.Well), "the pop >= 8 rule builds no second");
+        }
+
         [Test]
         public void AMomentLeftHalfwayChangesNothing()
         {

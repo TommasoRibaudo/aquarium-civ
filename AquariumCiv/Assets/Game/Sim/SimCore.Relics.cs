@@ -290,12 +290,17 @@ namespace AquariumCiv.Sim
         {
             if (!RelicsOn) return;
             var s = State;
-            if (s.era >= Era.Village && !HasRelic(RelicId.KeeperDoll) && CreditedThisMonth())
+            if (s.era >= Era.Village && !HasRelic(RelicId.KeeperDoll) && (CreditedThisMonth() || s.dollDue))
             {
                 int credited = s.chronicle.Count(e => e.keeper);
                 bool fallback = s.era == Era.Town || YearsInEra >= Config.dollFallbackYears;
-                if (credited >= Config.dollKeeperEntries || fallback) MakeDoll();
+                if (credited >= Config.dollKeeperEntries || fallback)
+                {
+                    if (CatchingUp) s.dollDue = true; // user 2026-10-30: nothing is found while the player is away; it waits for the first live month
+                    else { s.dollDue = false; MakeDoll(); }
+                }
             }
+            if (CatchingUp) return; // (the Lens's trigger is a standing condition: it fires on the first live step by itself)
             if (s.era == Era.Town && !HasRelic(RelicId.Lens) && s.storyFlags.Contains(FlagLampInTown) && Scholars.Count > 0) MakeLens(null, "lamp");
             QuoteKeeperEntries();
         }

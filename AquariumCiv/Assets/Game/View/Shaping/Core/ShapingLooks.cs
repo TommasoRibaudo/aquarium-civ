@@ -148,7 +148,7 @@ namespace AquariumCiv.View.Shaping
         /// none yet): the herd drifts there once answered.</summary>
         public static HerdLook Herd(ShapingFootprint f, ShapingClock c, float lotX = float.NaN, float lotZ = float.NaN)
         {
-            var sp = f.Species;
+            var sp = f.SpeciesAt(c.era); // the herd follows the era: deer, then goats, then sheep
             int count = f.spots.Count == 0 ? 0 : T.HerdCount(sp); // not a herd: nothing to draw
             var list = new List<AnimalLook>(count);
             bool fish = sp == HerdSpecies.Fish;

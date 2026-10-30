@@ -75,7 +75,7 @@ namespace AquariumCiv.Sim
         public EraThreshold villageAt = new EraThreshold { population = 10, buildings = 6, years = 10 };
         public EraThreshold townAt = new EraThreshold { population = 22, buildings = 13, years = 20 };
         // The era moment and the box's peak (era-moment.md §6, §8; SimCore.EraMoment.cs, #86).
-        public float festivalMoodLift = 0.05f;  // the era festival lifts the mood target this much for a year [est], no dice
+        public float festivalMoodLift = 0.10f;  // the era festival lifts the mood target this much for a year [est], no dice
         public int festivalYears = 1;
         public PeakRule peakAt = new PeakRule { townYears = 40, seats = 7, fullYears = 3 };
 
@@ -334,6 +334,7 @@ namespace AquariumCiv.Sim
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
         public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
+        public bool dollDue;                  // the Keeper Doll's trigger fired while the player was away: made on the first live month
         public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
         public int relicLineNextId = SimCore.RelicLineIdBase; // relic cards' own ids, so the shared ids never shift
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
