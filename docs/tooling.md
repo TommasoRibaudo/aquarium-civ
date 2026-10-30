@@ -460,3 +460,26 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     `LoadSceneAsyncInPlayMode` (the bootstrap ran earlier): tests call `X.Create()` when `Instance` is null.
   - The camera looks from -z (front of the box = -z). Anything meant to face the player (plate, plinths) goes at -z.
   - A "finished" state that stays set on a pure-C# director (`Phase.Finished`) re-fires a per-frame `Finish()`: guard with a flag.
+- **2026-10-30 · Tester batch 2 notes (slice moments, box complete).** [verified]
+  - One throwaway `InputTestFixture` class per `[Category]` (one test each) runs alone with `test run --mode playmode
+    --filter <Cat> --filter_type category --async_tests true`; four classes can share an abstract harness base class.
+  - Kill-like interruption in play mode: invoke every MonoBehaviour's `OnApplicationPause(true)` by reflection (GameClock
+    saves), then `LoadSceneAsyncInPlayMode` the Slice again and re-add the bootstraps (GameHud, MomentPlayer,
+    BoxCompleteController, CareView, GlassVoice, TimeLapseView.Ensure). The relaunch reads the saved box.json.
+  - A UI audit that walks every `UIDocument` root (shown Buttons/Labels → screen rects, overlaps) logged per screenshot
+    catches stuck bubbles and overlapping banners that the eye misses on a contact sheet.
+  - Contact sheets: `ffmpeg -i a.png -i b.png ... -filter_complex "[0]scale=440:-1[s0];...;[s0][s1]...hstack=inputs=N"`.
+  - The debug "belief stage" cheat can't go below the stage the found relics give (`DebugSetBelief(0..1)` reads back 2
+    after two relics): test early-stage knocks on a fresh box.
+  - Restoring the dev save: `rm -rf "$G"/*` is blocked by the safety check; copy the backup back with literal paths and
+    delete only the stills your run added.
+- **2026-10-30 · Tester batch 2 fixes (lane B).** [verified]
+  - `unity command test run --filter "A;B" --filter_type assembly` ran **0 tests**: one assembly per run (a small loop
+    that waits for `ready`, starts `--async_tests true`, polls `test status` until `completed`).
+  - `unity status --project-path F:\GameDev\AquariumCiv` from Git Bash said "no instances" (the backslashes); run it
+    from `F:/GameDev/AquariumCiv` without `--project-path` instead.
+  - Prove a regression test catches the bug: disable the fix with a marked `if (false && ...)` line, recompile, run the
+    test by name (`--filter <TestName>`, no filter_type), expect red, restore. Caught that an override-only fix passed
+    a test whose real trigger was the view day turning at midnight.
+  - `PeopleView.DebugSetHour` calls `Tick(0)`, and `dt <= 0` snaps every doll to its plan: never use it from game code
+    mid-play (moments used it for their light). `PeopleView.SetHourGently` moves the clock and lets the dolls walk.

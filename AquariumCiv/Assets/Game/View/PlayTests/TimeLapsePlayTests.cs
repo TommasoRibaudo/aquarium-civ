@@ -122,10 +122,14 @@ namespace AquariumCiv.View.PlayTests
             string before = Signature(box.layout);
             int piecesBefore = box.layout.pieces.Count;
 
+            var hud = AquariumCiv.GameUI.GameHud.Instance ?? AquariumCiv.GameUI.GameHud.Create();
+            yield return null;
             Assert.IsTrue(tl.Open(), "the replay opens");
             Assert.IsTrue(GameClock.Instance.Held, "the live clock holds while replaying");
             if (people != null) Assert.IsFalse(people.enabled, "the live people step aside");
             yield return null;
+            Assert.IsTrue(hud.ToolsHidden, "no Clean / Shape on the past (tester batch 2)");
+            Assert.IsFalse(hud.CleanMode);
 
             var seen = new Dictionary<int, int>();
             foreach (int year in new[] { 0, 30, 60 })
@@ -171,6 +175,7 @@ namespace AquariumCiv.View.PlayTests
             yield return null; yield return null;
             Assert.IsFalse(tl.Active);
             Assert.IsFalse(GameClock.Instance.Held, "the clock runs again");
+            Assert.IsFalse(AquariumCiv.GameUI.GameHud.Instance.ToolsHidden, "Clean and Shape are back");
             if (hadPeople) Assert.IsTrue(people.enabled, "the people are back");
             box.Refresh();
             Assert.AreEqual(piecesBefore, box.layout.pieces.Count);

@@ -206,6 +206,10 @@ namespace AquariumCiv.View
             if (UiInput.Over(pos)) return false;
             var hud = GameHud.Instance;
             if (hud != null && (hud.CleanMode || hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return false;
+            var tl = TimeLapseView.Find(); // the time-lapse replays the past: the live people can't hear a knock (tester batch 2)
+            if (tl != null && tl.Active) return false;
+            var bc = BoxCompleteController.Instance;
+            if (bc != null && bc.Playing) return false;
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return false;
             var care = CareView.Instance;
@@ -242,9 +246,9 @@ namespace AquariumCiv.View
             taps = 0;
             Knocks++;
             LastTaps = n;
-            int id = sim.KeeperTapped(n); // stage 3 with the Lens: a scholar taps back (and the first one makes a card)
-            LastTapBack = id;
-            if (id >= 0) planner.TapBack(now, id, n);
+            // stage 3 with the Lens: a scholar the planner can stage knocks back; the sim credits it (the first one makes a
+            // card) only when it really plays (tester batch 2: a credit with nobody walking over)
+            LastTapBack = planner.AnswerKnock(now, n);
         }
 
         // ---------------- debug (the debug panel, `script eval`) ----------------

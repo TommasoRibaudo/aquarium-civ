@@ -134,6 +134,17 @@ namespace AquariumCiv.View
         public bool FlyToBuilding(int buildingId, float zoomTo = BoxCameraMath.FlyPlaceZoom, float seconds = BoxCameraMath.FlyDefaultSeconds)
             => buildingId >= 0 && FlyToPlace(new AquariumCiv.Life.Place(AquariumCiv.Life.PlaceKind.Home, buildingId), zoomTo, seconds);
 
+        /// <summary>Eases back to a whole pose (target, yaw, pitch, zoom) over <paramref name="seconds"/>: the end of an era
+        /// moment hands the camera back where the player had it (tester batch 2). Touch interrupts it like any flight.</summary>
+        public void EaseTo(Vector3 worldPoint, float yawTo, float pitchTo, float zoomTo, float seconds = BoxCameraMath.FlyDefaultSeconds)
+        {
+            FlyTo(worldPoint, zoomTo, seconds);
+            targetYaw = Mathf.Clamp(yawTo, minYaw, maxYaw);
+            targetPitch = pitchTo;
+            lastYaw = yaw; lastPitch = pitch;
+            synced = true;
+        }
+
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
 
