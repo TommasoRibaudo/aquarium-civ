@@ -17,6 +17,8 @@ namespace AquariumCiv.Game
         public static void EraMomentEnded(this TelemetryLog l, int era, bool skipped, double seconds) =>
             l?.Log(Ev.EraMoment, "era", era, "mode", skipped ? "skipped" : "live", "secs", seconds);
 
+        public static void FirstRunStepStarted(this TelemetryLog l, string step) => l?.Log(Ev.FirstRunStep, "step", step);
+
         // cards
         public static void CardShown(this TelemetryLog l, string card, string kind, int index, int total) =>
             l?.Log(Ev.CardShown, "card", card, "kind", kind, "i", index, "n", total);

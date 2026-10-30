@@ -162,7 +162,7 @@ namespace AquariumCiv.View
             EnsureUi();
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
-            if (OpenId != notableId) ShowingBest = false;
+            if (OpenId != notableId) { ShowingBest = false; GameClock.Tel.CardOpened("person", notableId); }
             OpenId = notableId;
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);
@@ -192,6 +192,7 @@ namespace AquariumCiv.View
             var sim = Sim;
             if (sim == null || !IsOpen) return;
             bool on = sim.TogglePin(OpenId);
+            if (on) GameClock.Tel.PinTapped(OpenId);
             Sfx.Play(CueLibrary.UiToggle); // #96
             if (on && GameHud.Instance != null) GameHud.Instance.Toast($"Following {sim.FindNotable(OpenId)?.name}. Their stories come first.", 3f);
             Refresh(true);

@@ -456,7 +456,7 @@ namespace AquariumCiv.View
         void EndWipe(SimCore sim)
         {
             System.Array.Clear(hasLast, 0, hasLast.Length);
-            if (strokeRemoved > 0.0005f) strokes++;
+            if (strokeRemoved > 0.0005f) { strokes++; GameClock.Tel.Cleaned("wipe", true); }
             strokeRemoved = 0f;
         }
 
@@ -482,6 +482,7 @@ namespace AquariumCiv.View
         /// <summary>Throws a piece out (the flick, or a test): the sim loses it, the people react, the piece flies off.</summary>
         public void Toss(SimCore sim, MessProps.Piece piece, Vector2 releaseSpeed)
         {
+            GameClock.Tel.Cleaned(piece.weed ? "prune" : "flick", true);
             var c = Cam;
             var dir = (c.transform.right * releaseSpeed.x + c.transform.up * releaseSpeed.y).normalized;
             float s = WorldPerScreen(piece.Center);

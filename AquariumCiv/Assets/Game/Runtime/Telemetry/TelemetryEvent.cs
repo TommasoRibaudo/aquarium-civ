@@ -18,6 +18,7 @@ namespace AquariumCiv.Game
         public const string SessionEnd = "session_end";       // reason(pause|quit), secs
         public const string CatchUp = "catch_up";             // away_h, lived_h, months, ms
         // play
+        public const string FirstRunStep = "first_run_step";  // step (the first-run step now starting)
         public const string Clean = "clean";                  // kind (wipe|sweep|...), voluntary
         public const string EraMoment = "era_moment";         // era, mode(live|skipped), secs   (#88: watched live or hurried/skipped)
         // M4: chronicle cards (#75)

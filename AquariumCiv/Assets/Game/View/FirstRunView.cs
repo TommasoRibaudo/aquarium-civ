@@ -233,6 +233,7 @@ namespace AquariumCiv.View
 
         void OnStep(FirstRunStep s)
         {
+            GameClock.Tel.FirstRunStepStarted(s.ToString());
             if (GameClock.Instance != null) GameClock.Instance.Save(); // a kill resumes at this step
             rainArmed = false;
             if (s != FirstRunStep.Rain && ShapingView.Instance != null) { ShapingView.Instance.SetTool(null); ShapingView.Instance.Free = true; }
