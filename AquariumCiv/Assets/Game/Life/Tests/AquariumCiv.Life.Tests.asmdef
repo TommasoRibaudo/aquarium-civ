@@ -1,0 +1,25 @@
+{
+    "name": "AquariumCiv.Life.Tests",
+    "rootNamespace": "AquariumCiv.Life.Tests",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Life",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
