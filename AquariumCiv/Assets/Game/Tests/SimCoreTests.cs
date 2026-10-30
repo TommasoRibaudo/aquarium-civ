@@ -36,7 +36,9 @@ namespace AquariumCiv.Tests
         /// Life stages (#43): elders now start at 90, so nobody in these 48 years takes an apprentice.
         /// Notable counts (#26): the camp starts with 3 notables and births stop at 4 (was 5 and 12).
         /// Families (#26, user 2026-10-29): a normal 55–80 lifespan again (elders 45, eldest 60), and children under 16
-        /// don't count against the era's max (familyRoom 2), so the camp has children; parents with fewer children first.</summary>
+        /// don't count against the era's max (familyRoom 2), so the camp has children; parents with fewer children first.
+        /// Roles (#27): the founders choose a chief and the chronicle tells the camp's role stories; the text (and the ids
+        /// the new lines take) change, the economy, the dice and the notables don't (JobTests.Economy is unchanged).</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -44,7 +46,7 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(1779286310u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(172455737u, Fingerprint(sim.State), "slice world fingerprint");
         }
 
         [Test]

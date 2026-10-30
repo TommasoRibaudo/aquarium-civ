@@ -68,6 +68,7 @@ namespace AquariumCiv.Sim
             s.eraStartMonth = s.month;
             Chronicle("era", EraLine(s.era), 0.95f);
             JobsOnEraChange(); // jobs the new era doesn't have change (SimCore.Jobs.cs)
+            RolesOnEraChange(); // the leader carries over, new offices fill (SimCore.Roles.cs)
             return true;
         }
 

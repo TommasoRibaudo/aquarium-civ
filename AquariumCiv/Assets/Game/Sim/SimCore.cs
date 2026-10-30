@@ -31,6 +31,7 @@ namespace AquariumCiv.Sim
             for (int i = 0; i < start; i++) core.AddNotable(s.rng.Range(18f, 40f), -1, null);
             core.JobsStep(); // the founders arrive with their work (SimCore.Jobs.cs)
             core.Chronicle("founding", "A few wanderers settled in the glass and made camp.", 0.9f);
+            core.RolesStep(); // the founders choose a chief (SimCore.Roles.cs)
             core.RecordYear();
             return s;
         }
@@ -105,6 +106,7 @@ namespace AquariumCiv.Sim
             if (season == 0) RecordYear();
             EraStep(); // no dice: only marks the next era ready (SimCore.Eras.cs)
             JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
+            RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
         }
 
         void TryBuild()
