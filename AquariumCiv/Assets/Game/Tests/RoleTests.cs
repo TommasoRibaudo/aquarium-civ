@@ -307,7 +307,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(3155006145u, JobTests.Economy(camp.State), "camp, as before jobs and roles");
             foreach (var (seed, before) in new[] { (1, PreRoles1), (1234, PreRoles1234) })
             {
-                var town = NewSim(seed);
+                var town = NewSim(seed, SweeperTests.NoSweepers()); // #60 changed the town on purpose: compared without its sweepers
                 foreach (var _ in Months(town, 120)) { }
                 Assert.AreEqual(Era.Town, town.State.era);
                 Assert.IsFalse(town.State.chronicle.Any(e => e.kind == "role_rise"), $"seed {seed}: nobody came from the crowd");

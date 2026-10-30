@@ -181,7 +181,7 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(1316030141u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged)
+            Assert.AreEqual(2961323032u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #60: town sweepers clear heaps and weeds (less mess, so a quicker work pace; new heaps draw from the main stream), and the first-sweepers line (was 1316030141)
         }
 
         [Test]

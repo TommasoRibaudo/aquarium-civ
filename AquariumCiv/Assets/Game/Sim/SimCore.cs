@@ -108,6 +108,7 @@ namespace AquariumCiv.Sim
             JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
+            CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
         }
 
         void TryBuild()
@@ -137,7 +138,10 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             s.grime = Math.Min(1f, s.grime + h / Config.messFullHours);
-            s.overgrowth = Math.Min(1f, s.overgrowth + h / Config.messFullHours);
+            float trim = TrimPerHour; // town sweepers weed and trim (SimCore.Care.cs); 0 outside the town
+            if (trim > 0f) s.overgrowth = Math.Clamp(s.overgrowth + (1f / Config.messFullHours - trim) * h, 0f, 1f);
+            else s.overgrowth = Math.Min(1f, s.overgrowth + h / Config.messFullHours);
+            if (Sweepers > 0) Sweep(h); // ... and take the oldest heaps to the midden; never the glass
             if (s.trash.Count >= Config.trashMax) { s.trashAccum = 0; return; }
             s.trashAccum += s.population * Config.trashPerPersonHour * h;
             while (s.trashAccum >= 1f && s.trash.Count < Config.trashMax)
