@@ -46,7 +46,7 @@ namespace AquariumCiv.View
                 camp = camp,
             };
             if ((kid || camp) && look.hairStyle == 3) look.hairStyle = 0; // straw hats are for village fieldwork; a hat would hide the camp headband
-            if (camp) look.tunic = Color.Lerp(look.tunic, Palette.Hide, 0.55f);
+            if (camp) look.tunic = Color.Lerp(look.tunic, Palette.Hide, 0.4f);
             int a = accent >= 0 ? accent : camp ? rng.Next(Palette.Accents.Length) : -1;
             look.accent = a >= 0 ? Palette.Accents[a % Palette.Accents.Length] : Color.clear;
             return look;
@@ -80,6 +80,9 @@ namespace AquariumCiv.View
                 if (look.hairStyle == 1) mb.Ico(new Vector3(0, headY + 0.02f * s, 0.045f * s), 0.02f * s, Vector3.one, cap, 0.05f);
                 if (hasAccent && look.camp)
                 {
+                    // A collar band in the same colour: with the headband it gives the accent enough pixels to show as a
+                    // dot of colour at full-box zoom, even on the trodden dirt round the fire (tester #31).
+                    mb.Prism(new Vector3(0, BodyH * 0.8f * s, 0), 0.0445f * s, 0.040f * s, 0.024f * s, 8, look.accent);
                     // Headband: a bright ring round the brow, wide enough to read as a dot of colour at full zoom.
                     mb.Prism(new Vector3(0, headY - 0.002f * s, 0.004f * s), 0.0505f * s, 0.049f * s, 0.022f * s, 9, look.accent, capTop: false);
                 }

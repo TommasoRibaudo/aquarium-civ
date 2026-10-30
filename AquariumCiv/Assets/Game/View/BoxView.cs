@@ -295,7 +295,7 @@ namespace AquariumCiv.View
 
         static void QuadUp(MeshBuilder mb, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color col)
         {
-            if (Vector3.Cross(b - a, c - a).y < 0f) mb.Quad(a, b, c, d, col);
+            if (Vector3.Cross(b - a, c - a).y > 0f) mb.Quad(a, b, c, d, col); // front faces have cross.y > 0 (see Box's top)
             else mb.Quad(d, c, b, a, col);
         }
 
@@ -399,7 +399,7 @@ namespace AquariumCiv.View
             mb.Box(new Vector3(gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
             mb.emission = 0f;
             // The shelf: a grid top so the baked AO can draw the box's contact shadow on it.
-            float sy = -plinthH, sx0 = -9f, sx1 = 9f, sz0 = -4.2f, sz1 = 3.6f, cell = 0.3f;
+            float sy = -plinthH, sx0 = -16f, sx1 = 16f, sz0 = -4.2f, sz1 = 3.6f, cell = 0.3f;
             var keep = mb.jitter; mb.jitter = 0f;
             for (float x = sx0; x < sx1 - 1e-3f; x += cell)
                 for (float z = sz0; z < sz1 - 1e-3f; z += cell)

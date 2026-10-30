@@ -13,6 +13,8 @@ namespace AquariumCiv.View
     {
         public Vector3 target = new(0, 1.0f, 0);
         public float yaw = 28f, pitch = 34f;
+        [Tooltip("Orbit stays in front of the box, so the shelf and wall behind it stay in view (tester #31).")]
+        public float minYaw = -30f, maxYaw = 55f;
         [Tooltip("Zoom: 1 = the whole box fits the width; < 1 is closer.")]
         public float zoom = 1f, minZoom = 0.3f, maxZoom = 1.3f;
         [Tooltip("How much of the screen width the box takes at zoom 1 (about).")]
@@ -52,7 +54,7 @@ namespace AquariumCiv.View
                 if (p != null && p.press.isPressed)
                 {
                     var delta = p.delta.ReadValue();
-                    yaw += delta.x * 0.25f;
+                    yaw = Mathf.Clamp(yaw + delta.x * 0.25f, minYaw, maxYaw);
                     pitch = Mathf.Clamp(pitch - delta.y * 0.15f, 12f, 70f);
                 }
             }

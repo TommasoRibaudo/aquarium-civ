@@ -23,7 +23,7 @@ Shader "AquariumCiv/View/Stylized"
         _Emission ("Emission boost", Float) = 3
         _Wind ("Wind strength", Float) = 0.018
         _WindSpeed ("Wind speed", Float) = 1.4
-        _LampBoost ("Lamp brightness at night", Float) = 3.2
+        _LampBoost ("Lamp brightness at night", Float) = 2.2
     }
     SubShader
     {

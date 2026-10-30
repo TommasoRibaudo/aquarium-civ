@@ -206,7 +206,7 @@ namespace AquariumCiv.View
                 mb.Prism(p + Quaternion.Euler(0, a, 0) * new Vector3(0, 0.012f, 0.035f), 0.045f, 0f, 0.15f + 0.03f * i, 4, i == 1 ? Palette.Ember : Palette.Fire, lean);
             }
             mb.emission = 1f;
-            mb.Prism(p + new Vector3(0.008f, 0.012f, -0.012f), 0.038f, 0f, 0.12f, 5, Palette.FireCore, Quaternion.Euler(0, 50f, 0));
+            mb.Prism(p + new Vector3(0.008f, 0.012f, -0.012f), 0.032f, 0f, 0.09f, 5, Palette.FireCore, Quaternion.Euler(0, 50f, 0));
             mb.emission = 0f; mb.sway = 0f;
             if (!seats) return;
             for (int i = 0; i < 3; i++)

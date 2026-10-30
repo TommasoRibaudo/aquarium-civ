@@ -324,3 +324,12 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-30 · Phone-size renders of the slice:** `AquariumCiv.EditorTools.SliceSceneBuilder.Shot(path, w, h, zoom,
   target, yaw, pitch)` renders the main camera (URP post included) to PNG in edit or play mode, with the `BoxCamera`
   refitted to that aspect, and restores the rig. [verified]
+- **2026-10-29 · Tester: Slice look checks (#31).** [verified]
+  - `SliceSceneBuilder.Shot(path, w, h, zoom, target, yaw, pitch)` renders any size/angle in edit mode without dirtying
+    the scene; villagers are `HideFlags.DontSave`, so find them with `Resources.FindObjectsOfTypeAll<PegDollView>()`
+    (`FindObjectsByType` returns 0) and aim close-ups at their positions.
+  - `BoxCamera` reads `Touchscreen.current`/`Pointer.current` directly, so an `InputTestFixture` with the default update
+    mode and `queueEventOnly: true` touches drives it (no manual pump or EnhancedTouch needed).
+  - Lamp flicker is per-frame shader noise: sample pixel luminance from `ScreenCapture.CaptureScreenshotAsTexture()`
+    after `WaitForEndOfFrame` across frames at fixed `NightLamps.DebugSetLevel` values instead of diffing whole
+    screenshots (wind sway changes ~100k pixels per frame).
