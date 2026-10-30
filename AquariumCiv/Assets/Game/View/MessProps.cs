@@ -20,6 +20,9 @@ namespace AquariumCiv.View
         public const int MaxWeeds = 8;
         public const float WeedUnit = 1f / MaxWeeds;
         const float LeaveSeconds = 0.4f, AppearSeconds = 0.35f, Gravity = 2.2f;
+        /// <summary>The heaps' and weed patches' size on the land (user 2026-10-30: bigger, clearly visible at default zoom;
+        /// was 1.7 and 1.5).</summary>
+        public const float HeapScale = 2.6f, WeedScale = 2.4f;
 
         public class Piece
         {
@@ -107,7 +110,7 @@ namespace AquariumCiv.View
             if (root == null) return;
             for (int i = 0; i < MaxWeeds; i++)
             {
-                if (spotKnown[i] && !rebuilt && box.FreeForProp(spots[i], 0.14f)) continue;
+                if (spotKnown[i] && !rebuilt && box.FreeForProp(spots[i], 0.2f)) continue;
                 spotKnown[i] = FindSpot(i, out spots[i]);
                 if (weeds.TryGetValue(i, out var w) && spotKnown[i]) w.t.localPosition = Ground(spots[i]);
             }
@@ -120,9 +123,9 @@ namespace AquariumCiv.View
                 var p = PatchCentre.HasValue
                     ? PatchCentre.Value + new Vector2(Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f, Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * PatchRadius
                     : new Vector2((Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f) * (Land.HX - 0.5f), (Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * (Land.HZ - 0.5f));
-                if (!box.FreeForProp(p, 0.16f)) continue;
+                if (!box.FreeForProp(p, 0.22f)) continue;
                 bool clash = false;
-                for (int j = 0; j < MaxWeeds; j++) if (j != i && spotKnown[j] && (spots[j] - p).sqrMagnitude < (PatchCentre.HasValue ? 0.2f : 0.3f) * (PatchCentre.HasValue ? 0.2f : 0.3f)) { clash = true; break; }
+                for (int j = 0; j < MaxWeeds; j++) if (j != i && spotKnown[j] && (spots[j] - p).sqrMagnitude < (PatchCentre.HasValue ? 0.26f : 0.38f) * (PatchCentre.HasValue ? 0.26f : 0.38f)) { clash = true; break; }
                 if (!clash) { spot = p; return true; }
             }
             spot = default;
@@ -157,7 +160,7 @@ namespace AquariumCiv.View
             r.sharedMaterial = box.SolidMaterial;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             meshes.Add(mesh);
-            var p = new Piece { weed = weed, key = key, t = go.transform, baseScale = Vector3.one * (weed ? 1.5f : 1.7f), age = first ? AppearSeconds : 0f };
+            var p = new Piece { weed = weed, key = key, t = go.transform, baseScale = Vector3.one * (weed ? WeedScale : HeapScale), age = first ? AppearSeconds : 0f };
             go.transform.localScale = first ? p.baseScale : Vector3.zero;
             all.Add(p);
             return p;
