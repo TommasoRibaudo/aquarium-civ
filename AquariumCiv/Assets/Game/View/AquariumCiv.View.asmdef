@@ -5,6 +5,7 @@
         "AquariumCiv.Sim",
         "AquariumCiv.Life",
         "AquariumCiv.Moments",
+        "AquariumCiv.ShowMe",
         "AquariumCiv.Game",
         "AquariumCiv.Game.UI",
         "Unity.InputSystem",

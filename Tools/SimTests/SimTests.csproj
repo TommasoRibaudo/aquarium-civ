@@ -50,6 +50,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
+    <!-- #76: Show me (target, echo plan), world bubbles in the people's voice, and their tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/ShowMe/Core/**/*.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>
