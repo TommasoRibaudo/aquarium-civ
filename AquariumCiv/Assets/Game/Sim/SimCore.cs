@@ -14,7 +14,12 @@ namespace AquariumCiv.Sim
         public SimState State { get; }
         public event Action<ChronicleEntry> Chronicled;
 
-        public SimCore(SimConfig config, SimState state) { Config = config; State = state; }
+        public SimCore(SimConfig config, SimState state)
+        {
+            Config = config; State = state;
+            // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
+            if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;
+        }
 
         public static SimState NewWorld(int seed, SimConfig config)
         {
@@ -33,6 +38,7 @@ namespace AquariumCiv.Sim
             core.Chronicle("founding", "A few wanderers settled in the glass and made camp.", 0.9f);
             core.RolesStep(); // the founders choose a chief (SimCore.Roles.cs)
             core.RecordYear();
+            if (config.settle) _ = core.Settlement; // the camp and the first hut get their lots (Sim/Settle, #32)
             return s;
         }
 
@@ -110,6 +116,7 @@ namespace AquariumCiv.Sim
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
+            SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
         }
 
         void TryBuild()
@@ -155,11 +162,13 @@ namespace AquariumCiv.Sim
         void AddTrash()
         {
             var s = State;
-            s.trash.Add(new TrashItem
+            var t = new TrashItem
             {
                 id = s.NextId(), slot = s.rng.Range(0, Config.buildingSlots),
                 offsetX = s.rng.Range(-0.35f, 0.35f), offsetZ = s.rng.Range(-0.35f, 0.35f), month = s.month
-            });
+            };
+            s.trash.Add(t);
+            Settlement?.TrashSpot(t); // where it lies: from the drawn slot and offsets, no new dice
         }
 
         /// <summary>The adult-notable band of the current era (#26).</summary>

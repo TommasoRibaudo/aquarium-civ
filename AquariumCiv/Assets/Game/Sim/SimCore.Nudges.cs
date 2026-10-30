@@ -14,12 +14,19 @@ namespace AquariumCiv.Sim
         public static class NudgeKind
         {
             public const string Rain = "rain", Grove = "grove", Channel = "channel";
+            /// <summary>The prototypes' three (P5). Kept as it was: Growth Lab's criterion 2 runs over exactly these.</summary>
             public static readonly string[] All = { Rain, Grove, Channel };
+            // The rest of the shaping toolset per era (research 10 "Decision", #42). Their own sim layers (charges, herds,
+            // light, deposits) come later; for now the people answer them at the spot like the first three.
+            public const string Herd = "herd", Lamp = "lamp", Spring = "spring", Outcrop = "outcrop", DyeMeadow = "dye meadow";
+            /// <summary>Every gift tool the people answer: camp rain, grove, herd; village channel, lamp; town outcrop,
+            /// spring, dye meadow. (Hill and hollow are landscaping: nothing is owed for them.)</summary>
+            public static readonly string[] Gifts = { Rain, Grove, Herd, Channel, Lamp, Outcrop, Spring, DyeMeadow };
         }
 
         public enum Lean { Food, Craft }
 
-        public static Lean LeanOf(string kind) => kind == NudgeKind.Grove ? Lean.Craft : Lean.Food;
+        public static Lean LeanOf(string kind) => kind == NudgeKind.Grove || kind == NudgeKind.Outcrop || kind == NudgeKind.DyeMeadow ? Lean.Craft : Lean.Food;
 
         /// <summary>Game months a nudge keeps its lean.</summary>
         public const int NudgeMonths = 36;
@@ -27,13 +34,25 @@ namespace AquariumCiv.Sim
         public IEnumerable<Nudge> ActiveNudges => State.nudges.Where(n => State.month - n.month < NudgeMonths);
         bool Leaning(Lean l) => State.nudges.Count > 0 && ActiveNudges.Any(n => LeanOf(n.kind) == l);
 
-        /// <summary>Shape the land near a building slot. Returns the nudge (the view shows its prop and logs it).</summary>
+        /// <summary>Shape the land near a building slot (the prototypes' call). The spot is the slot's old hex position.</summary>
         public Nudge PlaceNudge(string kind, int slot)
         {
-            var n = new Nudge { id = State.NextId(), kind = kind, slot = slot, month = State.month, answerAfter = State.storyRng.Range(10, 25) };
+            float x = 0f, z = 0f;
+            Settlement?.SlotPosition(slot, out x, out z);
+            return PlaceNudge(kind, x, z, slot);
+        }
+
+        /// <summary>Shape the land at a spot (box coordinates, the same as Building.x/z). Returns the nudge (the view
+        /// shows its prop and logs it). The land changes at once (Settle); the people answer within 1–3 years.</summary>
+        public Nudge PlaceNudge(string kind, float x, float z) => PlaceNudge(kind, x, z, 0);
+
+        Nudge PlaceNudge(string kind, float x, float z, int slot)
+        {
+            var n = new Nudge { id = State.NextId(), kind = kind, slot = slot, x = x, z = z, month = State.month, answerAfter = State.storyRng.Range(10, 25) };
             State.nudges.Add(n);
             // Rain is felt at once: the fields drink.
             if (kind == NudgeKind.Rain) State.food = Math.Min(FoodCap, State.food + 6f + State.population * 0.5f);
+            Settlement?.ApplyShaping(n); // no dice, nothing the economy reads
             return n;
         }
 
@@ -74,30 +93,68 @@ namespace AquariumCiv.Sim
             }
         }
 
-        /// <summary>What the people build in answer to a nudge (null = nothing fits right now). Only types of the box's
-        /// era: a camp answers a channel with a field, not a windmill, and a grove with a hut, not a market.</summary>
-        string AnswerTo(Nudge n) => n.kind switch
+        /// <summary>What the people build in answer to a nudge, by the era and the land at the spot (Growth Lab gap 5:
+        /// a grove was answered by a market or a hut). Only types of the box's era. The land is read from the terrain
+        /// alone (never from placement), so placement can't change the economy. Settlement.KindFor then picks the
+        /// lot's kind: a town's channel workshop is a watermill, a herd by the pond is a fishing jetty, and so on.
+        /// - rain: a field (gathering grounds in the camp).
+        /// - grove: the first lumber mill; then a field among the trees (camp) or an orchard (village), a timber yard (town).
+        /// - herd: hunting grounds or a fishing jetty (camp), a pasture (village), a weaver's workshop or a jetty (town).
+        /// - channel: a field (camp), the windmill then irrigated fields (village), a watermill (town).
+        /// - lamp: a field under the sunbeam; in a town the tavern (tables out under the lantern), else the market, else a field.
+        /// - spring: a well (a field in a camp).
+        /// - outcrop: a quarry, kiln or smithy by the rock (town); a stone hut before.
+        /// - dye meadow: a dyer's yard (town); a meadow field before.</summary>
+        string AnswerTo(Nudge n)
         {
-            NudgeKind.Rain => BuildingType.Farm,
-            NudgeKind.Channel => Wants(BuildingType.Windmill, Count(BuildingType.Windmill) == 0) ? BuildingType.Windmill : BuildingType.Farm,
-            NudgeKind.Grove => Count(BuildingType.Lumbermill) == 0 ? BuildingType.Lumbermill
-                : Wants(BuildingType.Market, Count(BuildingType.Market) == 0) ? BuildingType.Market : BuildingType.Hut,
-            _ => null,
-        };
+            var era = State.era;
+            bool town = era >= Era.Town, village = era >= Era.Village;
+            switch (n.kind)
+            {
+                case NudgeKind.Rain: return BuildingType.Farm;
+                case NudgeKind.Grove:
+                    if (Count(BuildingType.Lumbermill) == 0) return BuildingType.Lumbermill;
+                    return town ? BuildingType.Workshop : BuildingType.Farm;
+                case NudgeKind.Herd: return town ? BuildingType.Workshop : BuildingType.Farm;
+                case NudgeKind.Channel:
+                    if (town) return BuildingType.Workshop;
+                    return Wants(BuildingType.Windmill, Count(BuildingType.Windmill) == 0) ? BuildingType.Windmill : BuildingType.Farm;
+                case NudgeKind.Lamp:
+                    if (town && Count(BuildingType.Tavern) == 0) return BuildingType.Tavern;
+                    if (town && Count(BuildingType.Market) == 0) return BuildingType.Market;
+                    return BuildingType.Farm;
+                case NudgeKind.Spring: return village ? BuildingType.Well : BuildingType.Farm;
+                case NudgeKind.Outcrop: return town ? BuildingType.Workshop : BuildingType.Hut;
+                case NudgeKind.DyeMeadow: return town ? BuildingType.Workshop : BuildingType.Farm;
+            }
+            return null;
+        }
 
         static string CreditLine(string kind, string type, Notable who)
         {
             string name = who != null ? who.FullName : "the people";
             string built = type switch
             {
-                BuildingType.Farm => "planted a new field", BuildingType.Windmill => "built a windmill to grind the extra grain",
+                BuildingType.Farm => kind == NudgeKind.Herd ? "staked out new hunting and grazing grounds"
+                    : kind == NudgeKind.Grove ? "planted among the new trees" : "planted a new field",
+                BuildingType.Windmill => "built a windmill to grind the extra grain",
                 BuildingType.Lumbermill => "set up a lumber mill", BuildingType.Market => "opened a market for their crafts",
+                BuildingType.Well => "dug a well", BuildingType.Tavern => "opened a tavern",
+                BuildingType.Workshop => kind switch
+                {
+                    NudgeKind.Channel => "built a watermill", NudgeKind.Grove => "opened a timber yard",
+                    NudgeKind.Outcrop => "opened a workshop for the new stone", NudgeKind.DyeMeadow => "set up a dyer's yard",
+                    _ => "set up a workshop",
+                },
                 _ => $"built a new {type.ToLowerInvariant()}",
             };
             string cause = kind switch
             {
                 NudgeKind.Rain => "the Keeper's rain",
                 NudgeKind.Grove => "the Keeper planted a grove", NudgeKind.Channel => "the Keeper dug a channel from the pond",
+                NudgeKind.Herd => "the Keeper sent a herd", NudgeKind.Lamp => "the Keeper hung a lamp",
+                NudgeKind.Spring => "a spring broke out at the Keeper's touch", NudgeKind.Outcrop => "the Keeper raised an outcrop",
+                NudgeKind.DyeMeadow => "the Keeper sowed a meadow of dye flowers",
                 _ => "the Keeper's sign",
             };
             return kind == NudgeKind.Rain ? $"After {cause}, {name} {built}." : $"After {cause}, {name} {built} beside it.";

@@ -59,7 +59,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
             // No nudges: the economy under the spike is the same economy run on its own.
             var w = new GrowthWorld(7, 0, Variant.Organic) { keepSnapshots = false };
             w.RunToYear(60);
-            var cfg = new SimConfig { buildingSlots = w.cfg.buildingSlots };
+            var cfg = new SimConfig { buildingSlots = w.cfg.buildingSlots, settle = false };
             var bareState = SimCore.NewWorld(7, cfg);
             bareState.era = AquariumCiv.Sim.Era.Town; // as GrowthWorld: SimCore's era gate open
             var bare = new SimCore(cfg, bareState);

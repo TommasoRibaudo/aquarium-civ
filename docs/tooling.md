@@ -333,3 +333,6 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - Lamp flicker is per-frame shader noise: sample pixel luminance from `ScreenCapture.CaptureScreenshotAsTexture()`
     after `WaitForEndOfFrame` across frames at fixed `NightLamps.DebugSetLevel` values instead of diffing whole
     screenshots (wind sway changes ~100k pixels per frame).
+- **2026-10-29 · Bash tool: a long `python - <<'EOF'` heredoc full of apostrophes failed to parse** ("unexpected EOF
+  while looking for matching `''") although the delimiter was quoted. Workaround: write the edit spec or script with the
+  Write tool to the scratchpad and run it (`python script.py spec`). [workaround]

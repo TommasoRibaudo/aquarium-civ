@@ -70,6 +70,7 @@ namespace AquariumCiv.Sim
             JobsOnEraChange(); // jobs the new era doesn't have change (SimCore.Jobs.cs)
             RolesOnEraChange(); // the leader carries over, new offices fill (SimCore.Roles.cs)
             GlassOnEraChange(); // the people's view of the glass moves on (SimCore.Cards.cs)
+            Settlement?.OnEraChange(); // lots never move: they rebuild in place; families get barns (Sim/Settle)
             return true;
         }
 

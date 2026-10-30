@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
@@ -35,7 +36,11 @@ namespace AquariumCiv.Sim
         public float sweepHeapsPerHour = 0.1f;   // trash heaps one sweeper clears per real hour (one every 10 h)
         public float trimPerHour = 0.005f;       // overgrowth one sweeper trims per real hour (mess brings 1/48 ≈ 0.021)
         public float careMaxShare = 0.5f;        // all sweepers together clear at most this share of the incoming trash/overgrowth
-        public int buildingSlots = 20;
+        public int buildingSlots = 20;          // the economy's building cap (where they stand is Settle's: Building.x/z, lotId)
+        // Organic placement (M2, #32; Sim/Settle): every building gets a lot, paths wear in from walking. Off only for
+        // tests that compare the economy with and without it. terrainPreset picks the box's land (0 = the style kit's).
+        public bool settle = true;
+        public int terrainPreset = 0;
         // Named notables per era (game definition §4, #26): about 2–4 in the camp, 4–8 in the village, up to 12 in the
         // town. The band counts adults (16+). Births pause while the adults are at the era's max; children under 16 don't
         // count against it, up to familyRoom of them over the max, so notable families go on across generations (user,
@@ -150,17 +155,25 @@ namespace AquariumCiv.Sim
     {
         public int id;
         public string type;
+        /// <summary>Legacy (prototypes, saves before #32): the hex slot index. Still assigned as before so the economy
+        /// and old views keep working; where the building stands is <see cref="x"/>, <see cref="z"/> and its lot.</summary>
         public int slot;
         public long foundedMonth;
+        // Placement (Sim/Settle, #32): set when the building gets its lot; lotId 0 = still waiting for a good lot.
+        public float x, z, yaw, w, d;   // lot centre, facing (degrees; the front is local −z), size along / back from the front
+        public int lotId;
+        public int yardId;              // the family yard a home stands round (0 = none)
+        public float doorX, doorZ;      // just outside the front, on the path network
     }
 
     [Serializable]
     public class TrashItem
     {
         public int id;
-        public int slot;
+        public int slot;                // drawn by the economy's dice (kept, so placement never shifts them)
         public float offsetX, offsetZ;
         public long month;
+        public float x, z;              // where it lies (Settle: by the door of the lot its slot picks)
     }
 
     [Serializable]
@@ -207,11 +220,13 @@ namespace AquariumCiv.Sim
     {
         public int id;
         public string kind;
-        public int slot;
+        public int slot;            // legacy (prototypes): the slot it was placed near
+        public float x, z;          // the shaped spot (#32)
         public long month;
         public bool credited;       // the people answered it
         public long answerMonth = -1;
         public int buildingId = -1;
+        public int lotId;           // the answer's lot (Settle; 0 = none yet)
         public bool reported;       // the view has shown and logged the answer
         public int answerAfter = 8; // game months before the people act (varies, so answers don't feel mechanical)
         public long placedUnixS;    // real time placed, for "time to visible effect"
@@ -268,6 +283,8 @@ namespace AquariumCiv.Sim
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
+        /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
+        public SettleState settle = new();
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

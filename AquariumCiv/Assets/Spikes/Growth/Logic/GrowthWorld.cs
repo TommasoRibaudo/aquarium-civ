@@ -107,7 +107,7 @@ namespace AquariumCiv.Spikes.Growth
         {
             this.seed = seed;
             this.variant = variant;
-            cfg = new SimConfig { buildingSlots = 96 };
+            cfg = new SimConfig { buildingSlots = 96, settle = false }; // the lab places with its own Placer; the slice's Settle (#32) stays off
             var start = SimCore.NewWorld(seed, cfg);
             start.era = AquariumCiv.Sim.Era.Town; // the spike runs its own eras; SimCore's era gate (#23) stays open
             core = new SimCore(cfg, start);
