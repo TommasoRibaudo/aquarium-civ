@@ -36,6 +36,15 @@ namespace AquariumCiv.Sim
         public float sweepHeapsPerHour = 0.1f;   // trash heaps one sweeper clears per real hour (one every 10 h)
         public float trimPerHour = 0.005f;       // overgrowth one sweeper trims per real hour (mess brings 1/48 ≈ 0.021)
         public float careMaxShare = 0.5f;        // all sweepers together clear at most this share of the incoming trash/overgrowth
+        // Shaping by placement (#82; SimCore.Shaping.cs): shared charges, refilled by cleaning and over time while the
+        // people are happy (decisions.md "Shaping limit"). Amounts are first guesses, tuned later by E2.
+        public float shapingStartCharges = 2f;
+        public float shapingMaxCharges = 3f;        // the camp's cap; each later era holds one more
+        public float shapingPerHappyYear = 0.5f;    // charges per game year while mood >= shapingHappyMood
+        public float shapingHappyMood = 0.6f;
+        public float shapingPerGrime = 0.5f;        // charges for wiping the whole glass (scaled to what was really wiped)
+        public float shapingPerOvergrowth = 0.4f;   // ... for trimming all the overgrowth
+        public float shapingPerTrash = 0.08f;       // ... per trash heap taken away
         public int buildingSlots = 20;          // the economy's building cap (where they stand is Settle's: Building.x/z, lotId)
         // Organic placement (M2, #32; Sim/Settle): every building gets a lot, paths wear in from walking. Off only for
         // tests that compare the economy with and without it. terrainPreset picks the box's land (0 = the style kit's).
@@ -230,6 +239,14 @@ namespace AquariumCiv.Sim
         public bool reported;       // the view has shown and logged the answer
         public int answerAfter = 8; // game months before the people act (varies, so answers don't feel mechanical)
         public long placedUnixS;    // real time placed, for "time to visible effect"
+        // Shaping by placement (SimCore.Shaping.cs, #82)
+        public int creditNotableId = -1; // the notable the answer is credited to (-1 = the sim picks one when it answers)
+        public string variant = "";      // herd: "deer" on grass, "fish" in water
+        public int eraAtPlace;           // the Era the tool was used in: its level (rain/storm, grove/orchard...)
+        public float chargeSpent;        // charges it cost, given back on a take-back
+        public float foodGiven;          // food it brought at once (rain), taken back with it
+        public int[] shapeCells;         // land cells it changed and what they were, to put back (Settle)
+        public byte[] shapeBefore;
     }
 
     /// <summary>One game year, compact: enough to replay the village growing in the time-lapse.</summary>
@@ -285,6 +302,7 @@ namespace AquariumCiv.Sim
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        public float shapingCharges = -1f; // the Keeper's shared shaping charges (SimCore.Shaping.cs, #82); -1 = not started (old saves)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;
