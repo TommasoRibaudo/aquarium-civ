@@ -93,6 +93,13 @@ namespace AquariumCiv.Sim
         {
             "pond" or "trees" or "forest" => true,
             "grove" => State.nudges.Any(n => n.kind == NudgeKind.Grove && n.credited),
+            // The later shaping tools (research 10, #32): an answered shaping opens its trade. Read from the shaping and
+            // the terrain only, never from placement.
+            "herd" => State.nudges.Any(n => n.kind == NudgeKind.Herd && n.credited),
+            "meadow" or "dye" => State.nudges.Any(n => n.kind == NudgeKind.DyeMeadow && n.credited),
+            "stone" or "quarry" => State.nudges.Any(n => n.kind == NudgeKind.Outcrop && n.credited && Deposit(n) == "stone"),
+            "clay" or "kiln" => State.nudges.Any(n => n.kind == NudgeKind.Outcrop && n.credited && Deposit(n) == "clay"),
+            "ore" or "smithy" => State.nudges.Any(n => n.kind == NudgeKind.Outcrop && n.credited && Deposit(n) == "ore"),
             _ => false,
         };
 
