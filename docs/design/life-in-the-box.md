@@ -383,6 +383,16 @@ phone. Practices §7: steady 30 fps minimum.
 | Mess and pace | `grime`, `overgrowth`, `trash` (slot, offset), `OutputMultiplier` | Trash x, z (Growth Lab gap 6); under Choice 6 ★, town sweepers clearing items |
 | The era waiting | `eraReady` | — |
 
+**Wired (#62, `Assets/Game/Life`):** `LifePlanner.Wired(sim)` plugs in `TermLifeHints` (#28: a role-holder's
+`TermFlavorOf` above 0.5 becomes naps, songs, visits to the old, hill walks and an early night for the holder; box-wide,
+the leader in full and other offices at half, early nights, extra sweeping blocks, feast evenings and announcements) and
+`SettlePlacePositions` (#32: lot doors and field middles, the fire and market centre, the nearest pond shore, forest edge,
+woods, meadow, rock and hill to the green, the Keeper's shapings and their answers' lots, trash and nudge spots; walks
+cost the traced Settle route at the path net's walking cost and `RouteOf` returns that route; homes are
+`Settlement.HomeOf`, so children live with a parent and partners share a home). Town sweepers are numbered notables
+first, then the crowd's, and sweeper i heads to `SweeperTarget(i)` first (#60). With settling off the planner keeps its
+abstract places and stand-in homes.
+
 ---
 
 ## Sources

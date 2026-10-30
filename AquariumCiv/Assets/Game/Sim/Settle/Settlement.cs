@@ -618,6 +618,16 @@ namespace AquariumCiv.Sim.Settle
         /// otherwise a home of the family's yard picked by a hash of the household head. Null if the box has no home.</summary>
         public Lot HomeOf(Notable n)
         {
+            var head = HouseholdHead(n);
+            var list = HomesOf(head.family);
+            if (list.Count == 0) return null;
+            return list[(int)(Terrain.Hash3(Seed, head.id, 77) * list.Count) % list.Count];
+        }
+
+        /// <summary>Whose home a notable lives in (<see cref="HomeOf"/>): a child's parent (up to the first grown-up), then
+        /// of a couple the partner with the lower id; the notable itself otherwise.</summary>
+        public Notable HouseholdHead(Notable n)
+        {
             var head = n;
             for (int guard = 0; guard < 4 && head.age < SimCore.AdultAge && head.parentId >= 0; guard++)
             {
@@ -630,9 +640,7 @@ namespace AquariumCiv.Sim.Settle
                 var p = S.notables.Find(q => q.id == head.partnerId);
                 if (p != null && p.alive) head = p;
             }
-            var list = HomesOf(head.family);
-            if (list.Count == 0) return null;
-            return list[(int)(Terrain.Hash3(Seed, head.id, 77) * list.Count) % list.Count];
+            return head;
         }
 
         /// <summary>Tier at a cell (0 none, 1 trail, 2 path, 3 road) and the walking cost into it (×10; 0 = can't).</summary>

@@ -132,8 +132,9 @@ namespace AquariumCiv.Life
         List<Seg> b = new List<Seg>(48);
         float bt;
         Place bcur;
+        int sweepBlock; // the sweeper's heaps so far today
 
-        void Begin(Place at) { b = new List<Seg>(48); bt = 0f; bcur = at; }
+        void Begin(Place at) { b = new List<Seg>(48); bt = 0f; bcur = at; sweepBlock = 0; }
 
         void Push(ActivityKind k, float start, float end, Place place, Place from, Prop prop, PersonRef partner, TripType trip, ActivitySource src = ActivitySource.Schedule, int chronicle = -1, bool copies = false)
         {
@@ -398,10 +399,19 @@ namespace AquariumCiv.Life
                     At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.Buckets);
                     Move(ActivityKind.FetchWater, p.home, bt + WalkHours(water, p.home), Prop.Buckets, TripType.Home);
                 }
-                At(Chore(p, d, 3), 6.6f, p.home, ChoreProp(Chore(p, d, 3)));
-                float walk = WalkHours(p.home, work.site);
-                At(ActivityKind.SitOut, LifeClock.WorkStart - walk, p.home);
-                Move(ActivityKind.Walk, work.site, LifeClock.WorkStart, Prop.None, TripType.HomeToWork);
+                if (work.sweeps && box.sweeperExtraBlocks > 0)
+                {
+                    // A tidy holder in office (the grump, #28): the sweepers sweep the green at dawn before their round.
+                    At(ActivityKind.Sweep, LifeClock.WorkStart - WalkHours(gather, work.site), gather, Prop.Broom, default, TripType.HomeToGreen);
+                }
+                else
+                {
+                    At(Chore(p, d, 3), 6.6f, p.home, ChoreProp(Chore(p, d, 3)));
+                    float walk = WalkHours(p.home, work.site);
+                    At(ActivityKind.SitOut, LifeClock.WorkStart - walk, p.home);
+                }
+                // The walk to work takes as long as the route does: a late start (the water came first) arrives late.
+                Move(ActivityKind.Walk, work.site, Math.Max(LifeClock.WorkStart, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);
 
                 if (p.mentor != null) CopyMaster(p, 7f, 9f); // a young apprentice still learns from the master first
                 WorkBlocks(p, d, work, LifeClock.WorkStart, LifeClock.Midday, 10, false);
@@ -484,7 +494,6 @@ namespace AquariumCiv.Life
             long day = d.day;
             float t = Math.Max(from, bt);
             int i = 0;
-            int heap = 0;
             while (t < to - 0.01f)
             {
                 float len = 1.25f + (H(k, day, salt + i) % 4) * 0.25f;
@@ -494,10 +503,12 @@ namespace AquariumCiv.Life
                 var site = alt ? work.altSite : work.site;
                 var loop = alt ? work.altLoop : work.loop;
                 var tool = alt ? work.altTool : work.tool;
-                if (work.sweeps)
+                if (work.sweeps && !alt)
                 {
-                    // The sweeper stops at each heap in turn (§7); with no heap, the streets.
-                    if (trashList.Count > 0) site = Place.Land(PlaceKind.TrashHeap, trashList[(int)((H(k, day, 77) + heap++) % (uint)trashList.Count)]);
+                    // The sweeper stops at their heaps in turn (§7, #60: the one SimCore.SweeperTargets names first); with no
+                    // heap left for them, the streets.
+                    int heapId = SweepHeap(p, day, sweepBlock++);
+                    site = heapId >= 0 ? Place.Land(PlaceKind.TrashHeap, heapId) : gather;
                 }
                 if (work.chores) { loop = Chore(p, d, salt + i); tool = ChoreProp(loop); if (loop == ActivityKind.SitOut) { loop = ActivityKind.SweepStep; tool = Prop.Broom; } }
                 bool carry = work.load != Prop.None && (i > 0 || from > LifeClock.WorkStart) && R(k, day, salt + 200 + i) < work.carryShare;
@@ -525,6 +536,8 @@ namespace AquariumCiv.Life
             long day = d.day;
             float home = 19.6f + R(p.partner != null ? PairKey(p, p.partner) : k, day, 50) * 0.5f - box.homeEarlyHours - p.hints.homeEarlyHours;
             home = Math.Max(18.4f, home);
+            // A very tidy holder in office: the sweepers sweep the green again before the evening gathering.
+            if (box.sweeperExtraBlocks >= 2 && p.job == JobType.Sweeper && !d.rest) At(ActivityKind.Sweep, 17.5f, gather, Prop.Broom);
             At(ActivityKind.SitOut, 17.6f, gather, Prop.None, default, TripType.HomeToGreen);
             At(leader != null && leader != p ? ActivityKind.Listen : ActivityKind.Chat, 18.3f, gather, Prop.None, Ref(leader));
             ActivityKind free;

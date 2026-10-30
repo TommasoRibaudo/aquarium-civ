@@ -14,8 +14,10 @@ namespace AquariumCiv.Life
     /// Interrupt order (rule 10): Keeper reaction (<see cref="React"/>) &gt; story scene (this month's chronicle,
     /// <see cref="StartScene"/>, <see cref="Echo"/>) &gt; role beat &gt; the day's schedule.
     ///
-    /// Places are abstract (building ids, "the fire", "field N", "home of family X"); world positions come later through
-    /// <see cref="IPlacePositions"/> (M2's placement layer).
+    /// Places are abstract (building ids, "the fire", "field N", "home of family X"); world positions, walking costs and
+    /// the homes per family come through <see cref="IPlacePositions"/> (M2's placement layer, <see cref="SettlePlacePositions"/>),
+    /// the trait colour through <see cref="ILifeHints"/> (#28, <see cref="TermLifeHints"/>). <see cref="Wired"/> plugs both in;
+    /// without them the planner runs on abstract places and plain days.
     /// </summary>
     public sealed partial class LifePlanner
     {
@@ -30,12 +32,20 @@ namespace AquariumCiv.Life
             this.positions = positions ?? NoPlacePositions.Instance;
         }
 
+        /// <summary>The planner wired to the sim: #28's trait colour (<see cref="TermLifeHints"/>) and #32's places, paths and
+        /// homes (<see cref="SettlePlacePositions"/>), or abstract places when the sim doesn't settle (<see cref="SimConfig.settle"/>).</summary>
+        public static LifePlanner Wired(SimCore sim)
+        {
+            if (sim == null) throw new ArgumentNullException(nameof(sim));
+            return new LifePlanner(sim, new TermLifeHints(sim), sim.Config.settle ? new SettlePlacePositions(sim) : (IPlacePositions)NoPlacePositions.Instance);
+        }
+
         public SimCore Sim => sim;
 
         /// <summary>Plug in #28's trait flavour (the planner re-plans from the next query).</summary>
         public ILifeHints Hints { get => hints; set { hints = value ?? NeutralLifeHints.Instance; Invalidate(); } }
 
-        /// <summary>Plug in M2's positions (walk lengths, who stands near a gesture).</summary>
+        /// <summary>Plug in M2's positions (walk lengths, routes, homes per family, who stands near a gesture).</summary>
         public IPlacePositions Positions { get => positions; set { positions = value ?? NoPlacePositions.Instance; Invalidate(); } }
 
         /// <summary>Debug: force a season (null = follow the sim month).</summary>
@@ -95,6 +105,21 @@ namespace AquariumCiv.Life
                 into.Add(new Trip { kind = s.kind, from = s.from, to = s.place, start = s.start, end = s.end, prop = s.prop, type = s.trip });
             }
             return into.Count;
+        }
+
+        /// <summary>The walk of a trip along the path network, door to door (<see cref="IPlacePositions.TryRoute"/>). False
+        /// without positions or when there is no way; the view then walks straight.</summary>
+        public bool RouteOf(Trip trip, List<Waypoint> into) => RouteOf(trip.from, trip.to, into);
+
+        /// <summary>The walk from one place to another along the path network (false without positions).</summary>
+        public bool RouteOf(Place from, Place to, List<Waypoint> into) => positions.TryRoute(from, to, into);
+
+        /// <summary>The trash heap this sweeper heads to first (<see cref="SimCore.SweeperTargets"/>: one heap per sweeper,
+        /// the oldest first), or -1 (not a town sweeper, or no heap left for them: they sweep the streets).</summary>
+        public int SweeperTargetOf(PersonRef who)
+        {
+            Sync();
+            return byKey.TryGetValue(who.Key, out var p) && p.sweeper >= 0 ? SweepHeap(p, 0, 0) : -1;
         }
 
         /// <summary>The whole planned day of a person (debug panel, tests).</summary>
@@ -212,6 +237,7 @@ namespace AquariumCiv.Life
             public Place home;
             public Person partner, friend, rival, mentor, parent, trails, coworker;
             public PersonHints hints;
+            public int sweeper = -1;    // the town sweeper's number (SimCore.SweeperTarget), -1 = not a sweeper
             public bool reconciledWithSomeone;
             public Person reconciled;
             public bool Adult => stage == LifeStage.Adult;
@@ -233,6 +259,12 @@ namespace AquariumCiv.Life
         readonly HashSet<int> nudgeIds = new HashSet<int>();
         readonly List<int> trashList = new List<int>();
         readonly List<Building> farms = new List<Building>(), homes = new List<Building>(), workshops = new List<Building>();
+        readonly Dictionary<int, Building> buildingById = new Dictionary<int, Building>();
+        readonly Dictionary<int, Notable> notableById = new Dictionary<int, Notable>();
+        readonly List<int> tmpIds = new List<int>();
+        // Town care (#60): the heaps in the sweepers' order (oldest first) and each sweeper's first one.
+        readonly List<int> sweepOrder = new List<int>(), sweepTargets = new List<int>();
+        int sweepersTotal;
         Building campB, wellB, marketB, tavernB, churchB, windmillB, lumberB, guildB, newestB;
         Place fire, gather, remembering;
         Era era;
@@ -273,11 +305,12 @@ namespace AquariumCiv.Life
             era = s.era;
             eraReady = s.eraReady;
 
-            buildingIds.Clear(); farms.Clear(); homes.Clear(); workshops.Clear();
+            buildingIds.Clear(); farms.Clear(); homes.Clear(); workshops.Clear(); buildingById.Clear();
             campB = wellB = marketB = tavernB = churchB = windmillB = lumberB = guildB = newestB = null;
             foreach (var b in s.buildings)
             {
                 buildingIds.Add(b.id);
+                buildingById[b.id] = b;
                 switch (b.type)
                 {
                     case BuildingType.Camp: campB ??= b; break;
@@ -293,6 +326,15 @@ namespace AquariumCiv.Life
                     case BuildingType.Guildhall: guildB ??= b; break;
                 }
                 if (newestB == null || b.foundedMonth > newestB.foundedMonth || (b.foundedMonth == newestB.foundedMonth && b.id > newestB.id)) newestB = b;
+            }
+            // Placed homes (#32): the huts that stand on a lot, in the settlement's order.
+            positions.GetHomes(tmpIds);
+            if (tmpIds.Count > 0)
+            {
+                int before = homes.Count;
+                foreach (int id in tmpIds)
+                    if (buildingById.TryGetValue(id, out var hb)) homes.Add(hb);
+                if (homes.Count > before) homes.RemoveRange(0, before);
             }
             var any = campB ?? (s.buildings.Count > 0 ? s.buildings[0] : null);
             if (homes.Count == 0 && any != null) homes.Add(any); // tents round the fire
@@ -310,8 +352,12 @@ namespace AquariumCiv.Life
             // ---- notables
             people.Clear(); peopleRefs.Clear(); byKey.Clear();
             var family = new Dictionary<string, int>();
+            notableById.Clear();
             foreach (var n in s.notables) // the dead stay in the list, so family order is stable
+            {
+                notableById[n.id] = n;
                 if (n.family != null && !family.ContainsKey(n.family)) family[n.family] = family.Count;
+            }
             var roleOf = new Dictionary<int, string>();
             if (s.roles != null)
                 foreach (var seat in s.roles)
@@ -327,7 +373,13 @@ namespace AquariumCiv.Life
                     : (n.age >= sim.Config.retireAge || n.job == JobType.Elder) ? LifeStage.Elder : LifeStage.Adult;
                 roleOf.TryGetValue(n.id, out p.role);
                 int fam = n.family != null && family.TryGetValue(n.family, out var fi) ? fi : 0;
-                p.home = new Place(PlaceKind.Home, homes.Count > 0 ? homes[fam % homes.Count].id : -1, fam);
+                if (positions.TryGetHome(n, out int homeId, out int headId) && buildingIds.Contains(homeId))
+                {
+                    // #32: the household's home (children with a parent, partners together), as the head's family's place.
+                    int hf = notableById.TryGetValue(headId, out var head) && head.family != null && family.TryGetValue(head.family, out var hfi) ? hfi : fam;
+                    p.home = new Place(PlaceKind.Home, homeId, hf);
+                }
+                else p.home = new Place(PlaceKind.Home, homes.Count > 0 ? homes[fam % homes.Count].id : -1, fam); // stand-in
                 p.hints = hints.Person(n, p.role);
                 Add(p);
             }
@@ -405,6 +457,24 @@ namespace AquariumCiv.Life
                     foreach (var q in people)
                         if (q != p && q.job == CrowdSawyer && q.coworker == null && q.jobBuilding == p.jobBuilding) { p.coworker = q; q.coworker = p; break; }
 
+            // ---- town care (#60): sweepers are numbered notables first (by id), then the crowd's; sweeper i heads to
+            // SimCore.SweeperTarget(i), then to every sweepersTotal-th heap after it in the sweeping order.
+            sweepOrder.Clear(); sweepTargets.Clear(); sweepersTotal = 0;
+            if (era == Era.Town)
+            {
+                int idx = 0;
+                tmpIds.Clear();
+                foreach (var p in people) if (p.n != null && p.job == JobType.Sweeper && p.Grown) tmpIds.Add(p.key);
+                tmpIds.Sort();
+                foreach (int key in tmpIds) byKey[key].sweeper = idx++;
+                foreach (var p in people) if (p.n == null && p.job == JobType.Sweeper) p.sweeper = idx++;
+                sweepTargets.AddRange(sim.SweeperTargets());
+                var heaps = new List<TrashItem>(s.trash);
+                heaps.Sort((a, c) => a.month != c.month ? a.month.CompareTo(c.month) : a.id.CompareTo(c.id));
+                foreach (var t in heaps) sweepOrder.Add(t.id);
+                sweepersTotal = Math.Max(1, Math.Max(sim.Sweepers, idx));
+            }
+
             dayFireKeeper = null;
         }
 
@@ -437,7 +507,7 @@ namespace AquariumCiv.Life
             if (marketB != null) Slots(marketB, 4, 2, JobType.Stallholder);
             if (tavernB != null) Slots(tavernB, 5, 1, CrowdServer);
             foreach (var w in workshops) Slots(w, 6, 2, JobType.Weaver);
-            if (era == Era.Town) Slots(null, 7, Math.Max(1, sim.State.population / 12), JobType.Sweeper); // 1 per ~12 people [est]
+            if (era == Era.Town) Slots(null, 7, sim.CrowdSweepers, JobType.Sweeper); // the sim's crowd sweepers (#60): 1 per 12 people
             list.Sort((a, b) => a.rank != b.rank ? a.rank.CompareTo(b.rank) : a.priority != b.priority ? a.priority.CompareTo(b.priority) : a.order.CompareTo(b.order));
             return list;
         }
@@ -477,15 +547,21 @@ namespace AquariumCiv.Life
 
         static int PairKey(Person a, Person b) => Math.Min(a.key, b.key) * 7919 + Math.Max(a.key, b.key);
 
+        /// <summary>How long a walk takes: the path network's walking cost when placed (rule 3: the same cost the wear pass
+        /// walks with), else the straight line, else a flat quarter hour.</summary>
         float WalkHours(Place a, Place b)
         {
             if (a == b) return 0f;
+            if (positions.TryWalkLength(a, b, out float len)) return Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
             if (positions.TryGetPosition(a, out float ax, out float az) && positions.TryGetPosition(b, out float bx, out float bz))
             {
                 float dx = ax - bx, dz = az - bz;
-                return Math.Max(0.08f, Math.Min(0.6f, (float)Math.Sqrt(dx * dx + dz * dz) / 5f)); // ~5 u per view hour [est]
+                return Math.Max(MinWalk, Math.Min(MaxWalk, (float)Math.Sqrt(dx * dx + dz * dz) / WalkSpeed));
             }
             return 0.25f;
         }
+
+        /// <summary>World units of plain ground walked per view hour [est], and the shortest and longest walk in view hours.</summary>
+        public const float WalkSpeed = 5f, MinWalk = 0.08f, MaxWalk = 0.6f;
     }
 }
