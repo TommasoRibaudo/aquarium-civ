@@ -117,3 +117,12 @@ Screens: `AquariumCiv/Temp/agent/t34/` (local; town day/night, zoomed, kit sheet
 - ★ The timeline ends at "now" (the open year scrubs up to the current month).
 - ★ Play speeds 1/2/4/8/16 years per second, default 4 (120 years ≈ 30 s).
 - ★ An era change during replay shows as each building re-looking; alternative: replay the era's rebuild wave.
+
+### #88 Moment director + era-ready waiting state
+- ★ The town moment orbits 85° (BoxCamera allows yaw −30..55), not the doc's ~120°. Alternative: let the rail leave the
+  player's range during a moment.
+- ★ With no leader the vote line is generic ("The village chose its headman."); naming the winner needs a sim preview of
+  the vote.
+- ★ Leaving after the cheer drops the remaining beats; the notification question is then asked at the next moment.
+- Guesses to tune: waiting piles at 12/72/288 months waited, "Wipe for a clear view?" at grime ≥ 60, the camera keys.
+- A stationary press hurries ×2, a moving one orbits.
