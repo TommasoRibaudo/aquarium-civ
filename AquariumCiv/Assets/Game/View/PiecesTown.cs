@@ -263,6 +263,42 @@ namespace AquariumCiv.View
             mb.sway = 0f;
         }
 
+        // ---------------- the bakery (#112) ----------------
+        /// <summary>The town's bakery: a warm plaster shop under a terracotta roof, a tall brick oven chimney with a
+        /// smoke-coloured cap, a lit shop window, a loaf sign over the door and a few loaves on a bench out front.
+        /// Kept simple (about 300 vertices); needs an Editor look.</summary>
+        public static void TownBakery(MeshBuilder mb, float w, float d, float lampPhase, int seed)
+        {
+            float hw = w * 0.82f, hd = Mathf.Min(d * 0.7f, 0.3f), hz = d / 2f - hd / 2f - 0.03f;
+            var h = new Vector3(0, 0, hz);
+            const float wallH = 0.2f, roofH = 0.17f;
+            mb.Box(h + new Vector3(0, 0.02f, 0), new Vector3(hw + 0.04f, 0.04f, hd + 0.04f), Palette.Stone);
+            mb.Box(h + new Vector3(0, 0.04f + wallH / 2f, 0), new Vector3(hw, wallH, hd), Palette.PlasterWarm);
+            foreach (int s in new[] { -1, 1 })
+                mb.Box(h + new Vector3(s * (hw / 2f), 0.04f + wallH / 2f, -hd / 2f), new Vector3(0.025f, wallH, 0.025f), Palette.Timber);
+            // Door on the left of the front, shop window on the right.
+            mb.Box(h + new Vector3(-hw * 0.22f, 0.04f + 0.065f, -hd / 2f - 0.004f), new Vector3(0.07f, 0.13f, 0.01f), Palette.Door);
+            LampBox(mb, h + new Vector3(hw * 0.2f, 0.04f + 0.11f, -hd / 2f - 0.004f), new Vector3(0.11f, 0.075f, 0.01f), lampPhase);
+            mb.Box(h + new Vector3(hw * 0.2f, 0.04f + 0.065f, -hd / 2f - 0.02f), new Vector3(0.13f, 0.012f, 0.03f), Palette.WoodLight); // sill / counter
+            float top = 0.04f + wallH;
+            Gable(mb, h, hw + 0.02f, hd + 0.02f, top, roofH, Palette.Terracotta, Palette.PlasterWarm, 0.04f);
+            // Oven chimney: brick stack up the right gable, a smoke-grey cap.
+            var c = h + new Vector3(hw * 0.32f, 0, hd * 0.12f);
+            mb.Box(c + new Vector3(0, top + 0.13f, 0), new Vector3(0.075f, 0.3f, 0.075f), Palette.Terracotta);
+            mb.Box(c + new Vector3(0, top + 0.285f, 0), new Vector3(0.095f, 0.03f, 0.095f), Palette.FireSmoke);
+            // Loaf sign on a bracket over the door.
+            var sg = h + new Vector3(-hw * 0.22f, 0.04f + 0.17f, -hd / 2f - 0.05f);
+            mb.Box(sg + new Vector3(0, 0.03f, 0.03f), new Vector3(0.012f, 0.012f, 0.06f), Palette.Timber);
+            mb.sway = 0.2f;
+            mb.Ico(sg, 0.03f, new Vector3(1.5f, 0.8f, 0.9f), Palette.Wheat, 0.08f);
+            mb.sway = 0f;
+            // A bench with loaves out front.
+            var bn = h + new Vector3(hw * 0.2f, 0, -hd / 2f - 0.1f);
+            mb.Box(bn + new Vector3(0, 0.035f, 0), new Vector3(0.18f, 0.012f, 0.05f), Palette.WoodLight);
+            foreach (int s in new[] { -1, 1 }) mb.Box(bn + new Vector3(s * 0.07f, 0.0175f, 0), new Vector3(0.015f, 0.035f, 0.04f), Palette.Timber);
+            for (int k = 0; k < 3; k++) mb.Ico(bn + new Vector3(-0.055f + k * 0.055f, 0.06f, 0), 0.02f, new Vector3(1.4f, 0.8f, 0.9f), Palette.Wheat, 0.08f);
+        }
+
         // ---------------- workshops ----------------
         /// <summary>A town workshop: a timber-framed house on the left of the lot, its trade out in the yard on the
         /// right, a hanging sign in the trade's colour.</summary>

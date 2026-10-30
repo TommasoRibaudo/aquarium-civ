@@ -117,6 +117,11 @@ namespace AquariumCiv.View
                     if (town) TownGuildhall(mb, w, d, Phase(p.seed), p.seed);
                     else Guildhall(mb, Front(0.36f), w * 0.92f, 0.36f, Phase(p.seed), p.seed);
                     break;
+                case PieceKind.Bakery:
+                    if (camp) { Teepee(mb, Vector3.zero, 0.16f, 0.46f, Palette.Canvas, 0f, p.seed); break; } // a camp has no bakery; only a stray save gets here
+                    if (town) { TownBakery(mb, w, d, Phase(p.seed), p.seed); break; }
+                    House(mb, Front(0.3f), w * 0.8f, 0.3f, 0.2f, 0.18f, Palette.PlasterWarm, Palette.Terracotta, true, true, 1, Phase(p.seed));
+                    break;
                 case PieceKind.Barn:
                     if (camp) { DryingRack(mb, Vector3.zero); break; }
                     if (p.variant == 0) Barn(mb, Vector3.zero, Mathf.Min(w * 0.85f, 0.26f), Mathf.Min(d * 0.85f, 0.2f), 0.13f, RoofColor(RoofStyle.Auto, p.seed, Era.Village));

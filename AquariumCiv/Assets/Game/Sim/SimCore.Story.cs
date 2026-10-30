@@ -98,12 +98,12 @@ namespace AquariumCiv.Sim
         /// the same song lyric twice). The draw still decides it; no dice.</summary>
         string QuarrelAgain(string drawn, int a, int b) => QuarrelGated(QuarrelAgainRaw(drawn, a, b));
 
-        /// <summary>A quarrel can only be over what is in the box (#86): no well, no quarrel at the well; no windmill
-        /// to grind the grain, none about baking. Same draw, a plain fallback.</summary>
+        /// <summary>A quarrel can only be over what is in the box (#86): no well, no quarrel at the well; no bakery
+        /// to bake in, none about baking. Same draw, a plain fallback.</summary>
         public string QuarrelGated(string q)
         {
             if (q == Quarrels[1] && Count(BuildingType.Well) == 0) return Quarrels[3];
-            if (q == Quarrels[2] && Count(BuildingType.Windmill) == 0) return Quarrels[0];
+            if (q == Quarrels[2] && Count(BuildingType.Bakery) == 0) return Quarrels[0];
             return q;
         }
 
@@ -200,7 +200,7 @@ namespace AquariumCiv.Sim
         }
 
         bool HasRoof(Building b) => b.type == BuildingType.Hut || b.type == BuildingType.Windmill || b.type == BuildingType.Tavern ||
-                                    b.type == BuildingType.Church || b.type == BuildingType.Guildhall || b.type == BuildingType.Workshop || b.type == BuildingType.Shop || (b.type == BuildingType.Lumbermill && State.era > Era.Camp);
+                                    b.type == BuildingType.Church || b.type == BuildingType.Guildhall || b.type == BuildingType.Workshop || b.type == BuildingType.Shop || b.type == BuildingType.Bakery || (b.type == BuildingType.Lumbermill && State.era > Era.Camp);
 
         /// <summary>Hook for the Lamp tool (research 10, not in the sim yet): from now on the strange light is the Keeper's lamp.</summary>
         public void KeeperLampUsed()

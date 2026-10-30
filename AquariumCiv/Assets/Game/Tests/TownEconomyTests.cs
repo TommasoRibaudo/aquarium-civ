@@ -51,6 +51,34 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void MostTownsBuildABakeryAndASimBakerWorksIt()
+        {
+            int towns = 0, withBakery = 0, withBaker = 0;
+            for (int seed = 1; seed <= 12; seed++)
+            {
+                var sim = Run(seed, 120);
+                if (sim.State.era != Era.Town) continue;
+                towns++;
+                Assert.LessOrEqual(sim.Count(BuildingType.Bakery), 1, $"seed {seed}: one bakery");
+                if (sim.Count(BuildingType.Bakery) == 0) continue;
+                withBakery++;
+                if (sim.State.notables.Any(n => n.alive && n.job == JobType.Baker)) withBaker++;
+                var lot = sim.Settlement.Lots.FirstOrDefault(l => l.buildingId == sim.State.buildings.First(b => b.type == BuildingType.Bakery).id);
+                if (lot != null) Assert.AreEqual(LotKind.Bakery, lot.kind, $"seed {seed}");
+            }
+            Assert.GreaterOrEqual(towns, 6);
+            Assert.GreaterOrEqual(withBakery, towns * 3 / 4, "most towns have a bakery");
+            Assert.GreaterOrEqual(withBaker, withBakery / 2, "and a baker in it");
+        }
+
+        [Test]
+        public void TheBakeryCarriesItsOwnFirstBuildingLine()
+        {
+            StringAssert.Contains("oven", NameData.FirstBuildingLine(BuildingType.Bakery, null, Era.Town));
+            Assert.AreEqual(Era.Town, BuildingType.EraOf(BuildingType.Bakery));
+        }
+
+        [Test]
         public void TheTownBuildingsGetLotsOfTheRightKind()
         {
             for (int seed = 1; seed <= 6; seed++)

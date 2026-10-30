@@ -160,13 +160,13 @@ namespace AquariumCiv.Sim
         const int TownSlotsKept = 0;
 
         /// <summary>What the town wants once the essentials stand (#114), or null. Order is the order of need: the market's
-        /// shops, the first workshop (even with no shaping), the guildhall, then more workshops, one per 14 people. Add a
-        /// bakery (#112) as another line here. Stops short of the cap so a shaping can still be answered with a building.</summary>
+        /// shops, the first workshop (even with no shaping), the guildhall, then more workshops, one per 14 people. The bakery (#112) comes right after the first workshop. Stops short of the cap so a shaping can still be answered with a building.</summary>
         string TownWant(int pop)
         {
             if (State.era < Era.Town || State.buildings.Count >= Config.buildingSlots - TownSlotsKept) return null;
             bool market = Count(BuildingType.Market) > 0;
             if (Wants(BuildingType.Workshop, pop >= 20 && Count(BuildingType.Workshop) == 0)) return BuildingType.Workshop;
+            if (Wants(BuildingType.Bakery, pop >= 20 && Count(BuildingType.Bakery) == 0 && (Count(BuildingType.Farm) > 0 || Count(BuildingType.Windmill) > 0))) return BuildingType.Bakery; // #112
             if (Wants(BuildingType.Guildhall, pop >= 24 && market && Count(BuildingType.Guildhall) == 0)) return BuildingType.Guildhall;
             if (Wants(BuildingType.Shop, market && pop >= 22 && Count(BuildingType.Shop) < Math.Min(MaxShops, 1 + (pop - 22) / 8))) return BuildingType.Shop;
             if (Wants(BuildingType.Workshop, pop >= 34 && Count(BuildingType.Workshop) < Math.Min(MaxWorkshops, 1 + (pop - 20) / 14))) return BuildingType.Workshop;

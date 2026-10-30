@@ -55,6 +55,7 @@ namespace AquariumCiv.View
             LotKind.Shop => PieceKind.Shop,
             LotKind.Workshop => PieceKind.Workshop,
             LotKind.Guildhall => PieceKind.Guildhall,
+            LotKind.Bakery => PieceKind.Bakery,
             LotKind.Outbuilding => PieceKind.Barn,
             LotKind.Pasture => PieceKind.Herd,
             LotKind.Orchard => PieceKind.Orchard,

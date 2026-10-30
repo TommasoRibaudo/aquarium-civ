@@ -273,7 +273,7 @@ namespace AquariumCiv.Life
         // Town care (#60): the heaps in the sweepers' order (oldest first) and each sweeper's first one.
         readonly List<int> sweepOrder = new List<int>(), sweepTargets = new List<int>();
         int sweepersTotal;
-        Building campB, wellB, marketB, tavernB, churchB, windmillB, lumberB, guildB, newestB;
+        Building campB, wellB, marketB, tavernB, churchB, windmillB, lumberB, guildB, bakeryB, newestB;
         Place fire, gather, remembering;
         Era era;
         bool eraReady;
@@ -316,7 +316,7 @@ namespace AquariumCiv.Life
             eraReady = s.eraReady;
 
             buildingIds.Clear(); farms.Clear(); homes.Clear(); workshops.Clear(); buildingById.Clear();
-            campB = wellB = marketB = tavernB = churchB = windmillB = lumberB = guildB = newestB = null;
+            campB = wellB = marketB = tavernB = churchB = windmillB = lumberB = guildB = bakeryB = newestB = null;
             foreach (var b in s.buildings)
             {
                 buildingIds.Add(b.id);
@@ -334,6 +334,7 @@ namespace AquariumCiv.Life
                     case BuildingType.Church: churchB ??= b; break;
                     case BuildingType.Workshop: workshops.Add(b); break;
                     case BuildingType.Guildhall: guildB ??= b; break;
+                    case BuildingType.Bakery: bakeryB ??= b; break;
                 }
                 if (newestB == null || b.foundedMonth > newestB.foundedMonth || (b.foundedMonth == newestB.foundedMonth && b.id > newestB.id)) newestB = b;
             }
@@ -546,6 +547,8 @@ namespace AquariumCiv.Life
                 BuildingType.Church => PlaceKind.Shrine,
                 BuildingType.Workshop => PlaceKind.Workshop,
                 BuildingType.Guildhall => PlaceKind.Guildhall,
+                BuildingType.Bakery => PlaceKind.Bakery,
+                BuildingType.Shop => PlaceKind.Market, // shopkeepers work at the market (the shop stands on its rim)
                 _ => PlaceKind.BuildingSite,
             };
             return new Place(k, b.id);

@@ -63,6 +63,8 @@ namespace AquariumCiv.Life
         // #92: the front glass (index = the wall: 0 = -z, 1 = +x, 2 = +z, 3 = -x; LifePlanner.GlassSide) and a relic's spot
         // (index = its place in RelicId.All)
         Glass, Relic,
+        /// <summary>The bakery (#112); a building place like the rest. Appended last so the saved ints stay.</summary>
+        Bakery,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
