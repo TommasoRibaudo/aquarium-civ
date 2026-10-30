@@ -352,9 +352,13 @@ phone. Practices §7: steady 30 fps minimum.
 8. **Relationships:** friends meet at least once a day when both are free; rivals argue at most once a day and not
    every day [est]; reconciled pairs sit together.
 9. **Traits** colour the day through the #28 planner hints only (the lazy naps, the grump goes home early, the singer
-   sings); the economy is never touched.
+   sings); the economy is never touched. Everyone shows their own trait, role or not (#64): a notable without a role at
+   half a holder's strength; only holders colour the whole box.
 10. **Interrupt order:** Keeper reaction > story scene (wedding, festival, mourning, an era) > role beat > the day's
-    schedule. A reaction lasts ≤ 4 s; a scene ≤ one view day.
+    schedule. A reaction lasts ≤ 4 s; a scene ≤ one view day. An interrupted walk never jumps (#64): a planned beat or
+    scene redirects it to its own place and the rest re-routes from there; a reaction stops the person where they are
+    on the route, a live scene walks them over from there, and afterwards they re-route from where they stand to the
+    next place their day has them stay (`LifePlanner.PositionAt` gives the view the point on the route at any time).
 11. **Story scenes** come from chronicle entries of the current month (kind, people, building). A scene that
     happened while you were away is not replayed; it is echoed when you press "Show me" (Choice 9).
 12. **Never show:** a death, a kill (the hunt stays off-screen), anyone hungry, cold, hurt or crying. Mood shows only as

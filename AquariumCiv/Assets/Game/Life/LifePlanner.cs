@@ -60,6 +60,10 @@ namespace AquariumCiv.Life
         /// the sim changed under a cached day without <see cref="Invalidate"/>.</summary>
         public int FallbackCount { get; private set; }
 
+        /// <summary>Walks a role beat, scene, the weather or a relationship cut in the days planned so far (#64; tests):
+        /// each was redirected or re-routed instead of jumping to its old destination.</summary>
+        public int InterruptedWalks { get; private set; }
+
         // ======================================================================== public API
 
         /// <summary>Everyone in the box now: living notables by id, then the crowd by index.</summary>
@@ -71,6 +75,7 @@ namespace AquariumCiv.Life
             into.Clear();
             Sync();
             EnsureDay(t.day);
+            PruneLive(t);
             slotCounter.Clear();
             for (int i = 0; i < people.Count; i++)
             {
@@ -87,6 +92,7 @@ namespace AquariumCiv.Life
         {
             Sync();
             EnsureDay(t.day);
+            PruneLive(t);
             return byKey.TryGetValue(who.Key, out var p) ? PlanPerson(p, t) : new PersonActivity { who = who, kind = ActivityKind.None, chronicleId = -1 };
         }
 
@@ -168,10 +174,11 @@ namespace AquariumCiv.Life
 
         PersonActivity PlanPerson(Person p, ViewTime t)
         {
-            // 1. Keeper reactions (≤ 4 s).
-            if (TryReaction(p, t, out var r)) return r;
-            // 2. Live story scenes: echoes from "Show me", the debug panel, the evening talk.
-            if (TryLiveScene(p, t, out var sc)) return sc;
+            // 1+2. Keeper reactions (≤ 4 s) and live story scenes (echoes from "Show me", the debug panel, the evening talk),
+            // with the walk back into the day after them (#64).
+            var blocks = BlocksOf(p);
+            for (int b = 0; b < blocks.Length; b++)
+                if (t.hour >= blocks[b].bs && t.hour < blocks[b].be) return BlockActivity(p, blocks[b], t);
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);
@@ -278,6 +285,7 @@ namespace AquariumCiv.Life
             long sig = Signature();
             if (sig == snapSig) return;
             snapSig = sig;
+            polyCache.Clear();
             Snapshot();
             ClearDays();
         }

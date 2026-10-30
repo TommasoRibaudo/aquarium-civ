@@ -225,6 +225,7 @@ namespace AquariumCiv.Life
             if (kind == SceneKind.Birth && Alive(a)?.parent is Person parent) { sc.b = parent.key; sc.place = parent.home; }
             if (kind == SceneKind.RoleMoment && buildingId < 0) sc.place = SeatOfHolder(a);
             live.Add(sc);
+            LiveChanged();
         }
 
         /// <summary>"Show me" (chronicle-and-history §2.5): the people involved do a 3–5 s echo of the story, then go back to
@@ -270,11 +271,12 @@ namespace AquariumCiv.Life
             }
             if (kind == SceneKind.Chat) sc.b = -1;
             live.Add(sc);
+            LiveChanged();
             return true;
         }
 
         /// <summary>Debug / view: end every live scene and reaction.</summary>
-        public void ClearLive() { live.Clear(); reactions.Clear(); }
+        public void ClearLive() { live.Clear(); reactions.Clear(); LiveChanged(); }
 
         Building FindBuilding(int id)
         {
@@ -291,36 +293,6 @@ namespace AquariumCiv.Life
             SceneKind.Apprentice => Place.None,
             _ => gather,
         };
-
-        bool TryLiveScene(Person p, ViewTime t, out PersonActivity act)
-        {
-            act = default;
-            if (live.Count == 0) return false;
-            for (int i = live.Count - 1; i >= 0; i--)
-            {
-                var sc = live[i];
-                if (sc.day < t.day - 1) { live.RemoveAt(i); continue; }
-                if (sc.day != t.day || t.hour < sc.start || t.hour >= sc.end) continue;
-                liveScratch.Clear();
-                SceneLayer(sc, p, dayInfo, liveScratch, true);
-                foreach (var s in liveScratch)
-                    if (t.hour >= s.start && t.hour < s.end)
-                    {
-                        var seg = s;
-                        if (seg.Moving || ActivityInfo.IsMove(seg.kind)) seg.from = CurrentPlace(p, t);
-                        act = ToActivity(p, seg, t);
-                        return true;
-                    }
-            }
-            return false;
-        }
-
-        Place CurrentPlace(Person p, ViewTime t)
-        {
-            var segs = DayOf(p);
-            var s = segs[Find(segs, t.hour)];
-            return s.Moving && (t.hour - s.start) < (s.end - s.start) * 0.5f ? s.from : s.place;
-        }
 
         // ---------------------------------------------------------------- Keeper reactions (≤ 4 s, rule 10)
 
@@ -360,6 +332,7 @@ namespace AquariumCiv.Life
                 gesture = gesture, day = at.day, start = at.hour, end = Math.Min(24f, at.hour + LifeClock.ViewHoursFor(at.hour, secs)),
                 near = near, target = person, share = Math.Max(0f, Math.Min(1f, share)), radius = radius,
             });
+            LiveChanged();
         }
 
         /// <summary>A gesture at a world point (needs <see cref="Positions"/>): those within <paramref name="radius"/> react.</summary>
@@ -369,6 +342,7 @@ namespace AquariumCiv.Life
             var r = reactions[reactions.Count - 1];
             r.hasPoint = true; r.x = x; r.z = z;
             reactions[reactions.Count - 1] = r;
+            LiveChanged();
         }
 
         /// <summary>The finger lifted: the people under it scatter back to their day.</summary>
@@ -376,31 +350,7 @@ namespace AquariumCiv.Life
         {
             for (int i = reactions.Count - 1; i >= 0; i--)
                 if (reactions[i].gesture == KeeperGesture.HoldFinger) reactions.RemoveAt(i);
-        }
-
-        bool TryReaction(Person p, ViewTime t, out PersonActivity act)
-        {
-            act = default;
-            if (reactions.Count == 0) return false;
-            for (int i = reactions.Count - 1; i >= 0; i--)
-            {
-                var r = reactions[i];
-                if (r.day < t.day - 1 || (r.day == t.day - 1 && t.hour > 1f)) { reactions.RemoveAt(i); continue; }
-                if (r.day != t.day || t.hour < r.start || t.hour >= r.end) continue;
-                if (!Reacts(p, r, t, out var kind, out var prop, out var to)) continue;
-                var segs = DayOf(p);
-                var under = segs[Find(segs, t.hour)];
-                var here = under.Moving && (t.hour - under.start) < (under.end - under.start) * 0.5f ? under.from : under.place;
-                if (under.kind == ActivityKind.Sleep) here = p.home; // stepping out of the door
-                var s = new Seg
-                {
-                    start = r.start, end = r.end, kind = kind, place = to.IsNone ? here : to, from = here, prop = prop, partner = PersonRef.None,
-                    src = ActivitySource.Reaction, trip = TripType.None, chronicleId = -1,
-                };
-                act = ToActivity(p, s, t);
-                return true;
-            }
-            return false;
+            LiveChanged();
         }
 
         bool Reacts(Person p, Reaction r, ViewTime t, out ActivityKind kind, out Prop prop, out Place to)

@@ -38,7 +38,7 @@ namespace AquariumCiv.Life
     public interface ILifeHints
     {
         /// <summary>This person's own flavour (a hobby in free time; the holder's behaviour in office). <paramref name="role"/>
-        /// is their role or null.</summary>
+        /// is their role or null; people without a role get their own trait's colour too, more weakly (#64).</summary>
         PersonHints Person(Notable n, string role);
 
         /// <summary>The box-wide flavour while <paramref name="holder"/> holds <paramref name="role"/>.</summary>
@@ -87,6 +87,17 @@ namespace AquariumCiv.Life
 
         /// <summary>Building ids of the homes standing now, in a stable order (the crowd lives in them). Empty = stand-in.</summary>
         void GetHomes(List<int> buildingIds);
+    }
+
+    /// <summary>
+    /// Optional on an <see cref="IPlacePositions"/> (#64): a walk from any world point, e.g. where a Keeper reaction or a
+    /// scene stopped someone halfway along a route, to a place along the path network. Without it such walks go straight.
+    /// </summary>
+    public interface IPointRoutes
+    {
+        /// <summary><paramref name="into"/> gets the cell centres from the point's nearest walkable cell to the place's walk
+        /// cell. False when the place has no spot or there is no way.</summary>
+        bool TryRouteFrom(float x, float z, Place to, List<Waypoint> into);
     }
 
     public sealed class NoPlacePositions : IPlacePositions
