@@ -250,3 +250,6 @@ leaving mid-moment replays, festival, relic moments, tap-back, time-lapse, compl
   as a follow-up (or relabel until then).
 - #92: relic moments, knocks and the tap-back are invisible at default zoom; only the bubble tells you. ★ A gentle
   camera nudge or a marker toward where it happens.
+- (tester 2 fixes) ★ A knock too late in the evening to finish before midnight gets no answer and no card (the
+  alternative carries the tap-back into the next view day). ★ After "Wipe for a clear view?", Watch shows inside clean
+  mode. The museum plate is now taller (0.8) — look check.
