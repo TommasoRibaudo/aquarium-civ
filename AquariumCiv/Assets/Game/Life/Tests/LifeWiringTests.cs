@@ -212,6 +212,63 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(timed, 3);
         }
 
+        /// <summary>#30: the sim's month ticks in the middle of a view day (a month and a view day are both ~5 real
+        /// minutes, out of step). The view keeps the day it is on until midnight (<see cref="LifeClock.NextViewDay"/>), so
+        /// across the tick the plan for that day must stay put: the same people where they were, but for what the month
+        /// really changed (a heap swept away, a birth, a new holder), which the view walks them over to.</summary>
+        [TestCase(Era.Village, 7)]
+        [TestCase(Era.Town, 1234)]
+        [TestCase(Era.Town, 3)]
+        public void AMonthTick_KeepsTheViewDaysPlan(Era era, int seed)
+        {
+            var sim = SimIn(era, seed);
+            var planner = LifePlanner.Wired(sim);
+            int checkedPeople = 0, moved = 0, switched = 0;
+            var log = new List<string>();
+            for (int tick = 0; tick < 6; tick++)
+            {
+                long day = sim.State.month;
+                float hour = 5.5f + tick * 2.7f; // the month ticks at any hour
+                var at = new ViewTime(day, hour);
+                var before = new Dictionary<int, (float x, float z, string what)>();
+                foreach (var who in planner.People)
+                    if (planner.PositionAt(who, at, out float x, out float z)) before[who.Key] = (x, z, Describe(planner, who, at));
+                sim.Step();
+                foreach (var who in planner.People)
+                {
+                    if (!before.TryGetValue(who.Key, out var b) || !planner.PositionAt(who, at, out float x, out float z)) continue;
+                    checkedPeople++;
+                    // What the view used to do: switch to the new month's day there and then.
+                    if (planner.PositionAt(who, new ViewTime(sim.State.month, hour), out float sx, out float sz) &&
+                        (sx - b.x) * (sx - b.x) + (sz - b.z) * (sz - b.z) > 0.09f) switched++;
+                    float dist = (float)Math.Sqrt((x - b.x) * (x - b.x) + (z - b.z) * (z - b.z));
+                    if (dist <= 0.3f) continue;
+                    moved++;
+                    if (log.Count < 12) log.Add($"{at} {who} moved {dist:0.00}: {b.what} -> {Describe(planner, who, at)}");
+                }
+            }
+            TestContext.WriteLine($"{era} seed {seed}: {moved}/{checkedPeople} people moved > 0.3 u across a month tick ({switched} had the view switched day)\n  " + string.Join("\n  ", log));
+            Assert.Greater(checkedPeople, 60);
+            Assert.Greater(switched, checkedPeople / 6, "switching the day at the tick moves many (the #30 jump this guards against)");
+            Assert.LessOrEqual(moved, checkedPeople / 10, "most of the day's plan stays where it was across a month tick:\n  " + string.Join("\n  ", log));
+        }
+
+        static string Describe(LifePlanner planner, PersonRef who, ViewTime at)
+        {
+            var a = planner.Plan(who, at);
+            return $"{a.kind} {a.from}->{a.place}";
+        }
+
+        [Test]
+        public void NextViewDay_TurnsAtMidnight_OrWhenTheSimJumpsAhead()
+        {
+            Assert.AreEqual(40, LifeClock.NextViewDay(40, 0, 41), "the month ticked mid-day: the view keeps its day");
+            Assert.AreEqual(41, LifeClock.NextViewDay(40, 1, 41), "midnight: the new month's day");
+            Assert.AreEqual(41, LifeClock.NextViewDay(41, 1, 41), "the view clock ran faster than the sim: the day comes round again");
+            Assert.AreEqual(45, LifeClock.NextViewDay(40, 0, 45), "a catch-up or a skip: straight to the sim's month");
+            Assert.AreEqual(3, LifeClock.NextViewDay(40, 0, 3), "another box: its own month");
+        }
+
         [Test]
         public void RealSecondsBetween_FollowsThePhases()
         {
@@ -229,12 +286,71 @@ namespace AquariumCiv.Life.Tests
         {
             var sim = SimIn(era, seed);
             var planner = LifePlanner.Wired(sim);
-            var day = new List<PersonActivity>();
-            var route = new List<Waypoint>();
-            int walks = 0, night = 0, capped = 0;
-            float worst = 0f;
-            string worstWho = "";
-            for (long d = sim.State.month; d < sim.State.month + 3; d++)
+            var r = new RushTally($"{era} seed {seed}");
+            for (long d = sim.State.month; d < sim.State.month + 3; d++) r.Day(planner, d);
+            TestContext.WriteLine(r.Summary());
+            Assert.Greater(r.walks, 20);
+            // ≤ 2x: the longest walks across the box are capped at LifePlanner.MaxWalk (a brisk walk); a rush was 3-7x.
+            Assert.LessOrEqual(r.worst, 2f, r.Summary());
+        }
+
+        /// <summary>#109: the same check over many towns and days. Floats differ a little between .NET and Unity's Mono
+        /// (docs/tooling.md), so a single pinned seed walks a different day in each; this sweeps camp, village and town for
+        /// several seeds, a week each (a rest day), every kind of weather, a few months apart.</summary>
+        [Test]
+        public void NoWalkRushes_AcrossSeedsErasAndWeather() => RushSweep(Enumerable.Range(1, 6).Concat(new[] { 7, 1234 }), 2, 2f);
+
+        /// <summary>The heavy sweep: 200 seeds, four rounds (about a minute under .NET). Run on demand; prints the worst walks.</summary>
+        [Test, Explicit("#109: the heavy walk-rush sweep, run on demand")]
+        public void NoWalkRushes_HeavySweep() => RushSweep(Enumerable.Range(1, 200).Concat(new[] { 1234 }), 4, 2f);
+
+        static readonly Weather[] SweepWeathers = { Weather.Storm, Weather.Snow, Weather.Rainbow, Weather.KeeperRain, Weather.Fog };
+
+        static void RushSweep(IEnumerable<int> seeds, int rounds, float limit)
+        {
+            var all = new RushTally("sweep");
+            foreach (int seed in seeds)
+            {
+                var sim = NewSim(seed);
+                foreach (var era in new[] { Era.Camp, Era.Village, Era.Town })
+                {
+                    for (int m = 0; m < 120 * 12 && sim.State.era < era; m++) Month(sim);
+                    if (sim.State.era != era) continue;
+                    for (int round = 0; round < rounds; round++)
+                    {
+                        for (int m = 0; m < (round == 0 ? 24 : 5); m++) sim.Step();
+                        var planner = LifePlanner.Wired(sim);
+                        all.tag = $"{era} seed {seed} round {round}";
+                        long d0 = sim.State.month;
+                        for (long d = d0; d < d0 + 7; d++) all.Day(planner, d);
+                        for (int w = 0; w < SweepWeathers.Length; w++)
+                        {
+                            planner.ForcedWeather = SweepWeathers[w];
+                            all.tag = $"{era} seed {seed} round {round} {SweepWeathers[w]}";
+                            all.Day(planner, d0 + 7 + w);
+                        }
+                    }
+                }
+            }
+            TestContext.WriteLine(all.Summary());
+            Assert.Greater(all.walks, 1000);
+            Assert.LessOrEqual(all.worst, limit, all.Summary());
+        }
+
+        /// <summary>Every plain-schedule walk's on-screen pace against <see cref="LifePlanner.RealWalkSpeed"/>; keeps the worst.</summary>
+        sealed class RushTally
+        {
+            public string tag;
+            public int walks, capped, night, over15, over2;
+            public float worst;
+            public int topN = 12;
+            readonly Dictionary<string, (float pace, string what)> top = new Dictionary<string, (float, string)>();
+            readonly List<PersonActivity> day = new List<PersonActivity>();
+            readonly List<Waypoint> route = new List<Waypoint>();
+            public RushTally(string tag) { this.tag = tag; }
+
+            public void Day(LifePlanner planner, long d)
+            {
                 foreach (var who in planner.People)
                 {
                     planner.DaySchedule(who, d, day);
@@ -246,20 +362,30 @@ namespace AquariumCiv.Life.Tests
                         float len = 0f, px = fx, pz = fz;
                         foreach (var w in route.Concat(new[] { new Waypoint(tx, tz) })) { len += (float)Math.Sqrt((w.x - px) * (w.x - px) + (w.z - pz) * (w.z - pz)); px = w.x; pz = w.z; }
                         if (len < 0.2f) continue;
-                        float secs = LifeClock.RealSecondsBetween(a.start, a.end);
                         // A walk at LifePlanner.MaxWalk is the longest the planner gives any walk (a cross-box trip): brisk by
                         // design, not a rush; counted, not judged.
                         if (a.end - a.start >= LifePlanner.MaxWalk - 1e-3f) { capped++; continue; }
+                        float secs = LifeClock.RealSecondsBetween(a.start, a.end);
                         float pace = len / Math.Max(1e-3f, secs) / LifePlanner.RealWalkSpeed;
                         walks++;
                         if (LifeClock.PhaseOf(a.start) == DayPhase.Night || LifeClock.PhaseOf(a.end - 1e-3f) == DayPhase.Night) night++;
-                        if (pace > worst) { worst = pace; worstWho = $"{who} day {d} {a.kind} {a.from}->{a.place} {a.start:0.00}-{a.end:0.00} len {len:0.00}\n  " + string.Join("\n  ", day.Select(x => $"{x.start:0.00}-{x.end:0.00} {x.kind} {x.from}->{x.place} {x.source} moving={x.moving}")); }
+                        if (pace > 1.5f) over15++;
+                        if (pace > 2f) over2++;
+                        if (pace > worst) worst = pace;
+                        if (pace <= 1.5f) continue;
+                        // One line per person and walk: the same walk recurs across rounds and weathers.
+                        string key = $"{tag.Split(' ')[0]} {tag.Split(' ')[2]} {who} {a.kind} {a.from}->{a.place}";
+                        if (top.TryGetValue(key, out var had) && had.pace >= pace) continue;
+                        top[key] = (pace, $"{pace:0.00}x {tag} {who} ({planner.StageOf(who)} {planner.JobOf(who)}) day {d} {planner.WeatherOn(d)}{(planner.IsRestDay(d) ? " rest" : "")}: " +
+                                          $"{a.kind} {a.from}->{a.place} {a.start:0.00}-{a.end:0.00} len {len:0.00}\n    " +
+                                          string.Join("\n    ", day.Select(x => $"{x.start:0.00}-{x.end:0.00} {x.kind} {x.from}->{x.place} {x.source}{(x.moving ? " moving" : "")}")));
                     }
                 }
-            TestContext.WriteLine($"{walks} walks ({capped} at MaxWalk), {night} touch the night; fastest {worst:0.00}x the pace: {worstWho}");
-            Assert.Greater(walks, 20);
-            // ≤ 2x: the longest walks across the box are capped at LifePlanner.MaxWalk (a brisk walk); a rush was 3-7x.
-            Assert.LessOrEqual(worst, 2f, $"fastest walk {worst:0.00}x the pace: {worstWho}");
+            }
+
+            public string Summary() =>
+                $"{walks} walks ({capped} at MaxWalk), {night} touch the night, {over15} over 1.5x, {over2} over 2x; fastest {worst:0.00}x the pace" +
+                (top.Count == 0 ? "" : ":\n  " + string.Join("\n  ", top.Values.OrderByDescending(t => t.pace).Take(topN).Select(t => t.what)));
         }
 
         [TestCase(Era.Village, 7)]

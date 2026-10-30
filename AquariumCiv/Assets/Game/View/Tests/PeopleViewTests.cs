@@ -270,6 +270,47 @@ namespace AquariumCiv.View.Tests
             finally { Object.DestroyImmediate(go); }
         }
 
+        /// <summary>#30: the sim's month ticks in the middle of a view day. The view keeps its day till midnight, and a plan
+        /// the month did change (a heap swept away, a new home) is walked to, not jumped to.</summary>
+        [Test]
+        public void AMonthTick_MidDay_NoDollJumps()
+        {
+            var go = NewBox(3, 90f, out var box, out var people);
+            try
+            {
+                var sim = go.GetComponent<SimLayoutSource>().Sim;
+                people.timeScale = 1f;
+                var jumpLog = new List<string>();
+                int ticks = 0;
+                foreach (float hour in new[] { 6.5f, 9.3f, 13.6f, 17.4f })
+                {
+                    PeopleView.DebugSetHour(hour);
+                    for (int f = 0; f < 20; f++) people.Tick(0.1f); // settle into slots
+                    long day = people.Now.day;
+                    var last = new Dictionary<PegDollView, Vector3>();
+                    foreach (var d in go.GetComponentsInChildren<PegDollView>(false)) last[d] = d.transform.localPosition;
+                    sim.Step();
+                    ticks++;
+                    for (int f = 0; f < 30; f++)
+                    {
+                        people.Tick(0.1f);
+                        Assert.AreEqual(day, people.Now.day, "the view keeps its day till midnight");
+                        foreach (var d in go.GetComponentsInChildren<PegDollView>(false))
+                        {
+                            var p = d.transform.localPosition;
+                            if (last.TryGetValue(d, out var q) && Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z)) > 0.25f && jumpLog.Count < 12)
+                                jumpLog.Add($"{people.Now} {d.name}: ({q.x:0.00},{q.z:0.00}) -> ({p.x:0.00},{p.z:0.00}) · " +
+                                    (people.TryGetActivity(d, out var act) ? people.Describe(act) : "?"));
+                            last[d] = p;
+                        }
+                    }
+                }
+                Assert.AreEqual(4, ticks);
+                Assert.AreEqual(0, jumpLog.Count, "no doll jumps (> 0.25 u in a 100 ms frame) at a month tick:\n" + string.Join("\n", jumpLog));
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
         [Test]
         public void DebugReport_SaysWhatPeopleAreDoing()
         {
