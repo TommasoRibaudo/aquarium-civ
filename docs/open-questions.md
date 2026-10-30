@@ -253,3 +253,15 @@ leaving mid-moment replays, festival, relic moments, tap-back, time-lapse, compl
 - (tester 2 fixes) ★ A knock too late in the evening to finish before midnight gets no answer and no card (the
   alternative carries the tap-back into the next view day). ★ After "Wipe for a clear view?", Watch shows inside clean
   mode. The museum plate is now taller (0.8) — look check.
+
+### #85 Shaping in the world (phase 2) — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/85_*.png` (local).
+- In a full town, a herd or mill race can land behind houses and be hard to see. ★ Fly the camera to the gift when the
+  people answer it.
+- The fish shoal reads as one small orange clump; the glow ring on the answered building is faint in daylight.
+  ★ Spread the shoal, brighten the ring.
+- Camp herd: the answer is a pasture lot with its own sheep, so the deer drift onto it and fade — deer become sheep.
+  Your call.
+- ★ An answer label stays 12 s.
+- Placement is through a debug "shape mode" until #84's tray exists. Sounds: cue ids are emitted but no cue player is
+  wired yet (#96 phase 2).
