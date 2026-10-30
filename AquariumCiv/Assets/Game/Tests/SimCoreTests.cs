@@ -40,7 +40,10 @@ namespace AquariumCiv.Tests
         /// Roles (#27): the founders choose a chief and the chronicle tells the camp's role stories; the text (and the ids
         /// the new lines take) change, the economy, the dice and the notables don't (JobTests.Economy is unchanged).
         /// Term flavour (#28): the chief's trait adds term lines and codas to the chronicle text; term lines take their own
-        /// ids, so nothing else changes (JobTests.Economy is unchanged).</summary>
+        /// ids, so nothing else changes (JobTests.Economy is unchanged).
+        /// Cards (#59): the lines that know too much wait for the town (a stand-in is told in their place) and the strange
+        /// light is the Bright One's until the Lamp is used: text only, swapped after the dice, so with the cards off the
+        /// number is the old one (and CardsTests shows the economy is the same).</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -48,7 +51,11 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(3061733244u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(2575113388u, Fingerprint(sim.State), "slice world fingerprint");
+            var before = NewSim(1234);
+            before.CardsOn = false;
+            before.Advance(48);
+            Assert.AreEqual(3061733244u, Fingerprint(before.State), "the same world with #59's text swaps off");
         }
 
         [Test]

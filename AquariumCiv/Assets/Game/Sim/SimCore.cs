@@ -109,6 +109,7 @@ namespace AquariumCiv.Sim
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
+            CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
         }
 
         void TryBuild()

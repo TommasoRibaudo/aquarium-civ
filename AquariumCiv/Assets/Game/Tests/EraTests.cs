@@ -181,7 +181,12 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(2961323032u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #60: town sweepers clear heaps and weeds (less mess, so a quicker work pace; new heaps draw from the main stream), and the first-sweepers line (was 1316030141)
+            Assert.AreEqual(3410384959u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers
+            var before = NewSim(1234);
+            before.CardsOn = false; // #59 off: the text as it was, so that is all that changed
+            before.State.era = Era.Town;
+            before.Advance(48);
+            Assert.AreEqual(2961323032u, Fingerprint(before.State));
         }
 
         [Test]
