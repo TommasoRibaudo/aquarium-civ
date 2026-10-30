@@ -340,7 +340,7 @@ namespace AquariumCiv.View
                 mb.Ico(Vector3.zero, 0.1f, Vector3.one, Palette.Plaster, 0.2f);
                 puffMesh = mb.ToMesh("MomentPuff");
             }
-            var go = new GameObject("Puff" + s.lotId) { hideFlags = HideFlags.DontSave };
+            var go = new GameObject("MomentPuff") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(box.transform, false);
             go.transform.localPosition = new Vector3(x, box.GroundHeight(x, z) + 0.08f, z);
             go.AddComponent<MeshFilter>().sharedMesh = puffMesh;

@@ -203,6 +203,84 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>#89: a grown camp (+14 years) watched to the end. The wave rebuilds every lot in place in the village
+        /// look before the cheer; at the end no lot shows the camp look, the green has its well, no exceptions. Stills of
+        /// the chief, the green, the wave and the cheer at a portrait phone size.</summary>
+        [UnityTest]
+        public IEnumerator GrownCampBecomesAVillageLotByLot()
+        {
+            yield return Open();
+            try
+            {
+                LogAssert.ignoreFailingMessages = false;
+                var sim = GameClock.Instance.Sim;
+                var mp = MomentPlayer.Instance;
+                var src = SimLayoutSource.Find();
+                var cam = Camera.main.GetComponent<BoxCamera>();
+                MomentPlayer.DebugGrow(14f);
+                if (!sim.State.eraReady) sim.ForceEraReady();
+                Assert.AreEqual(Era.Camp, sim.State.era);
+                var lots = sim.Settlement.Lots.FindAll(l => !l.retired && l.kind != AquariumCiv.Sim.Settle.LotKind.Camp);
+                Assert.Greater(lots.Count, 2, "a grown camp has lots to rebuild");
+                yield return new WaitForSecondsRealtime(0.7f);
+                var props = UnityEngine.Object.FindAnyObjectByType<WaitingProps>();
+                Assert.IsTrue(props != null && props.Showing);
+                cam.FlyTo(Vector3.zero, 1f, 0.01f);
+                yield return null; yield return null;
+                yield return Shot("m89_0_waiting");
+
+                Assert.IsTrue(mp.Watch(true));
+                Assert.IsTrue(src.MomentLook);
+                MomentPlayer.DebugHurry(4f);
+
+                IEnumerator To(float t)
+                {
+                    MomentPlayer.DebugHoldHurry = true;
+                    yield return Until(() => mp.Director.Time >= t - 0.3f, 40f);
+                    MomentPlayer.DebugHoldHurry = false;
+                    yield return Until(() => mp.Director.Time >= t, 5f);
+                }
+
+                yield return To(11f);
+                yield return Shot("m89_1_chief");
+                foreach (var l in lots) Assert.AreEqual(Era.Camp, src.ShownEra(l), "nothing rebuilt before the wave");
+
+                yield return To(18f);
+                yield return Shot("m89_2_green");
+                Assert.AreEqual(Era.Village, src.ShownEra(null), "the fire ring has become the green");
+                Assert.AreEqual(Era.Camp, sim.State.era, "the sim has not moved yet");
+
+                yield return To(29f);
+                yield return Shot("m89_3_wave");
+                int mid = mp.KnocksPlayed;
+                Assert.Greater(mid, 0, "the wave has reached some lots");
+
+                yield return To(40f);
+                Assert.AreEqual(lots.Count, mp.KnocksPlayed, "every lot rebuilt by the end of the wave");
+                foreach (var l in lots) Assert.AreEqual(Era.Village, src.ShownEra(l), $"lot {l.id} ({l.kind}) shows the village look");
+                Assert.AreEqual(Era.Camp, sim.State.era, "still before the cheer");
+
+                yield return To(48f);
+                Assert.AreEqual(Era.Village, sim.State.era, "the cheer moved the era");
+                yield return Shot("m89_4_cheer");
+
+                MomentPlayer.DebugHoldHurry = true;
+                yield return Until(() => !mp.Playing, 40f);
+                MomentPlayer.DebugHoldHurry = false;
+                for (int i = 0; i < 10; i++) yield return null;
+                Assert.IsFalse(src.MomentLook);
+                Assert.IsFalse(src.WaveRunning, "no second wave after the cheer");
+                foreach (var l in sim.Settlement.Lots)
+                    if (!l.retired) Assert.AreEqual(Era.Village, src.ShownEra(l), $"lot {l.id} ({l.kind})");
+                Assert.IsTrue(sim.Settlement.Lots.Exists(l => l.kind == AquariumCiv.Sim.Settle.LotKind.Camp && l.retired), "the camp hearth is retired");
+                var well = UnityEngine.Object.FindAnyObjectByType<BoxView>().layout.pieces.Exists(p => p.kind == PieceKind.Well);
+                Assert.IsTrue(well, "the green has its well");
+                Assert.IsTrue(cam.enabled);
+                yield return Shot("m89_5_after");
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator LeavingBeforeTheCheerReplays()
         {

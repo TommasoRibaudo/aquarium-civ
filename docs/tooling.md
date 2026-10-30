@@ -439,3 +439,7 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   --format json` until `"status": "completed"`. Runs only that class (the assembly filter would also run the other
   InputTestFixture classes). `scene save` before the run writes a noise-only `lastBuildInfo` change into Slice.unity:
   leave it out of the commit. [verified]
+- **2026-10-30 · `dismiss-dialogs.ps1 -Click` now answers "The open scene(s) have been modified externally" with Reload
+  (#89).** Before, the "have been modified" rule matched it too (case-insensitive) and looked for a Cancel button that
+  this dialog doesn't have, so it stayed KNOWN and blocked recompiles. After a checkout/merge, disk holds what git holds.
+  [verified]
