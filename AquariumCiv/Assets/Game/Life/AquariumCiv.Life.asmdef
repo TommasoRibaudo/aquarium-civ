@@ -1,0 +1,16 @@
+{
+    "name": "AquariumCiv.Life",
+    "rootNamespace": "AquariumCiv.Life",
+    "references": [
+        "AquariumCiv.Sim"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
