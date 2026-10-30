@@ -6,6 +6,7 @@ using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
 using NUnit.Framework;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain; // not UnityEngine.Terrain
 using static AquariumCiv.Tests.SimCoreTests;
 
 namespace AquariumCiv.Tests
