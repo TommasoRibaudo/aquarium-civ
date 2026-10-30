@@ -110,3 +110,10 @@ Screens: `AquariumCiv/Temp/agent/t34/` (local; town day/night, zoomed, kit sheet
 - The sim never builds Guildhall, Shop or Cottage lots; workshops come only from town shapings or the debug panel.
   ★ Let the town's economy build a guildhall and workshops (sim issue).
 - Cobbles are a quiet grey at default zoom; a stronger pattern needs a finer ground grid or decals.
+
+### #78 Time-lapse replay (phase 1, `Sim/Replay/TimeLapse.cs`)
+- ★ Story pins: the top 24 chronicle entries with salience ≥ 0.5 (no term lines, no era-ready). Add shapings and the
+  remembering stone as pins?
+- ★ The timeline ends at "now" (the open year scrubs up to the current month).
+- ★ Play speeds 1/2/4/8/16 years per second, default 4 (120 years ≈ 30 s).
+- ★ An era change during replay shows as each building re-looking; alternative: replay the era's rebuild wave.
