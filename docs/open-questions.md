@@ -180,3 +180,13 @@ Screens: `AquariumCiv/Temp/agent/m91_*.png` (local), incl. the book still `m91_s
 - ★ A pair that are both rivals and siblings is drawn as rivals.
 - ★ With no bank line for them, the card's quote is a crowd line in their voice.
 - Not done: the book's epithet ("the Sky-Bread Chief"). Founders of box 2+ may need `founderIds`.
+
+### #94 First run (phase 1, `Sim/FirstRun`)
+- ★ Step order Wipe → Patch → Name → Rain → Year → Card (decision 2026-10-29: wipe and patch first; the slice plan had
+  naming first).
+- ★ Never blocks: an untouched plate keeps the suggested name after 75 s; skipping the rain step drops the rain on the
+  suggested spot so the first year still has its story.
+- ★ The first card is the rain's standard credit line (not the design's "mushrooms by the stream" flavour).
+- ★ Light name filter (whole words, leetspeak, a few stems); names 2–20 characters. The name is set directly; the
+  people naming their camp later in a card (design Choice 2) is not done.
+- ★ Hint texts: "Wipe the glass", "Flick the weeds", "Name it", "Give them rain", "Rub a spot".
