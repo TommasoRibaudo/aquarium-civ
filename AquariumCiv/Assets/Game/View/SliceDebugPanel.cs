@@ -45,6 +45,16 @@ namespace AquariumCiv.View
                 GameHud.Instance.SetVisible(!GameHud.Instance.IsVisible);
                 last = GameHud.Instance.IsVisible ? "HUD shown" : "HUD hidden";
             }
+            GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();
+            if (GUILayout.Button("Stop music")) last = MusicDirector.DebugStop();
+            if (GUILayout.Button("Music: " + GameSettings.MusicFrequency))
+            {
+                GameSettings.MusicFrequency = (MusicFrequency)(((int)GameSettings.MusicFrequency + 1) % 3);
+                last = "music frequency " + GameSettings.MusicFrequency;
+            }
+            GUILayout.EndHorizontal();
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
             if (GUILayout.Button("close")) open = false;
