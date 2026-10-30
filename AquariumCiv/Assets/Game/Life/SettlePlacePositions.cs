@@ -404,13 +404,22 @@ namespace AquariumCiv.Life
             foreach (var q in sim.State.relics ?? new List<Relic>()) if (q.id == RelicId.All[index]) { r = q; break; }
             if (r == null) return false;
             if (r.id == RelicId.FestivalMask) { st.Fire(out x, out z, out _); return true; }
-            if (r.id == RelicId.KeeperDoll && r.buildingId >= 0 && lotOfBuilding.TryGetValue(r.buildingId, out var lot))
+            if (r.id == RelicId.KeeperDoll && r.buildingId >= 0 && lotOfBuilding.TryGetValue(r.buildingId, out var lot) && !lot.open)
             {
-                x = lot.open ? lot.x : lot.doorX; z = lot.open ? lot.z : lot.doorZ;
+                x = lot.doorX; z = lot.doorZ; // by the shrine's door
                 return true;
             }
             float rx = r.x, rz = r.z;
-            if (rx == 0f && rz == 0f) { rx = st.GreenX; rz = st.GreenZ; } // no spot: the green
+            // No spot of its own, or one in the middle of the green / at the fire (the doll before a shrine, a lens with no
+            // lamp, a crumb given by the debug panel): on the green's rim, each relic at its own place round it, so they
+            // never stand in the well or on top of each other (#92 phase 2).
+            float gx = st.GreenX, gz = st.GreenZ;
+            if ((rx == 0f && rz == 0f) || (rx - gx) * (rx - gx) + (rz - gz) * (rz - gz) < 0.5f * 0.5f)
+            {
+                double a = 0.9 + index * 1.25;
+                rx = gx + (float)Math.Cos(a) * 0.62f;
+                rz = gz + (float)Math.Sin(a) * 0.62f;
+            }
             int c = Walkable(rx, rz);
             if (c < 0) return false;
             x = SiteMap.CXc(c); z = SiteMap.CZc(c);

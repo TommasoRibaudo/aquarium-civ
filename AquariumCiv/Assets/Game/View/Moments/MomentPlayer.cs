@@ -61,6 +61,7 @@ namespace AquariumCiv.View
         Button watchButton;
         Label hint, bubble, caption;
         float bubbleUntil;
+        float sayUntil = -1f; // #92: a line said outside an era moment (a relic moment), in unscaled seconds
         float nextRead;
         // puffs
         readonly List<(Transform t, float age, float size)> puffs = new();
@@ -226,7 +227,26 @@ namespace AquariumCiv.View
                 EndMoment(true);
             UpdatePuffs(Time.unscaledDeltaTime);
             UpdateWatchButton();
+            if (sayUntil > 0f && !Playing && Time.unscaledTime >= sayUntil) { bubble.style.display = DisplayStyle.None; sayUntil = -1f; }
         }
+
+        /// <summary>#92: the moment's speech bubble for a line said outside an era moment (a relic moment, the people at the
+        /// glass), for <paramref name="seconds"/> real seconds. Ignored while an era moment plays (its own lines win) and in
+        /// camera mode (no UI).</summary>
+        public bool Say(string text, float seconds = BubbleSeconds)
+        {
+            if (bubble == null || Playing || string.IsNullOrEmpty(text)) return false;
+            var hud = GameHud.Instance;
+            if (hud != null && hud.CameraMode) return false;
+            bubble.text = text;
+            bubble.style.display = DisplayStyle.Flex;
+            sayUntil = Time.unscaledTime + Mathf.Max(0.5f, seconds);
+            LastSaid = text;
+            return true;
+        }
+
+        /// <summary>The last line <see cref="Say"/> showed (tests).</summary>
+        public string LastSaid { get; private set; } = "";
 
         void Play(float dt)
         {
