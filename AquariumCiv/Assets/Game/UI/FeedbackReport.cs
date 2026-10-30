@@ -33,7 +33,8 @@ namespace AquariumCiv.GameUI
         }
 
         public static string Body(FeedbackKind k, string text, bool hasScreenshot, string nick,
-            IReadOnlyList<(string key, string value)> context, IReadOnlyList<string> logLines)
+            IReadOnlyList<(string key, string value)> context, IReadOnlyList<string> logLines,
+            string telemetryJson = null, IReadOnlyList<string> telemetryLines = null)
         {
             var b = new StringBuilder("### What the tester said\n\n");
             foreach (var line in (text ?? "").Trim().Split('\n')) b.Append("> ").Append(line.TrimEnd('\r')).Append('\n');
@@ -46,6 +47,14 @@ namespace AquariumCiv.GameUI
             {
                 b.Append("\n<details><summary>Game log (last ").Append(logLines.Count).Append(" lines)</summary>\n\n```\n");
                 foreach (var line in logLines) b.Append(line.Replace("```", "'''").TrimEnd('\n')).Append('\n');
+                b.Append("```\n</details>\n");
+            }
+            if (!string.IsNullOrEmpty(telemetryJson))
+                b.Append("\n### Session stats (event log summary)\n\n```json\n").Append(telemetryJson).Append("\n```\n");
+            if (telemetryLines != null && telemetryLines.Count > 0)
+            {
+                b.Append("\n<details><summary>Recent events (last ").Append(telemetryLines.Count).Append(")</summary>\n\n```\n");
+                foreach (var line in telemetryLines) b.Append(line.Replace("```", "'''").TrimEnd('\n')).Append('\n');
                 b.Append("```\n</details>\n");
             }
             b.Append("\n<!-- aquarium-civ-feedback v1 kind=").Append(k.ToString().ToLowerInvariant()).Append(" proto=slice -->\n");

@@ -111,7 +111,7 @@ namespace AquariumCiv.View
         void OnDestroy()
         {
             if (Instance != this) return;
-            if (Playing) { Director.Leave(); EndMoment(false); }
+            if (Playing) { Director.Leave(); leftByPlayer = true; EndMoment(false); }
             if (puffMesh != null) Destroy(puffMesh);
             Instance = null;
         }
@@ -139,6 +139,7 @@ namespace AquariumCiv.View
             }
             wipeOffer.style.display = DisplayStyle.None;
             var def = MomentLibrary.For(replay ? sim.State.era : sim.NextEra);
+            momentEra = (int)def.toEra; momentStart = Time.unscaledTime; momentReplay = replay; leftByPlayer = false;
             var ctx = MomentContext.From(sim, replay);
 
             var hud = GameHud.Instance;
@@ -179,6 +180,7 @@ namespace AquariumCiv.View
         public MomentDirector.LeaveResult Leave()
         {
             var r = Director.Leave();
+            if (r != MomentDirector.LeaveResult.NotPlaying) leftByPlayer = true;
             if (r != MomentDirector.LeaveResult.NotPlaying) EndMoment(r == MomentDirector.LeaveResult.AlreadyCrossed);
             return r;
         }
@@ -192,8 +194,11 @@ namespace AquariumCiv.View
             return ok;
         }
 
+        int momentEra; float momentStart; bool momentReplay, leftByPlayer;
+
         void EndMoment(bool crossed)
         {
+            if (!momentReplay) GameClock.Tel.EraMomentEnded(momentEra, leftByPlayer, Time.unscaledTime - momentStart); // #100: watched live or skipped
             ReleaseCamera();
             if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f);
             hadCamera = false;

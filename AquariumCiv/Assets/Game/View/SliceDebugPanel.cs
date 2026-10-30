@@ -46,6 +46,17 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
             if (GUILayout.Button("Send test feedback")) last = FeedbackSender.DebugSendTest();
+            GUILayout.Label(RecallPromptView.Status());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Day +1")) last = RecallPromptView.DebugAddDays(1);
+            if (GUILayout.Button("Day 3")) last = RecallPromptView.DebugSetDay(3);
+            if (GUILayout.Button("Day 0")) last = RecallPromptView.DebugSetDay(0);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Ask recall")) last = RecallPromptView.DebugForce();
+            if (GUILayout.Button("Reset recall")) last = RecallPromptView.DebugReset();
+            if (GUILayout.Button("Week report")) last = RecallPromptView.DebugReport();
+            GUILayout.EndHorizontal();
             if (GameHud.Instance != null && GUILayout.Button(GameHud.Instance.IsVisible ? "Hide HUD" : "Show HUD"))
             {
                 GameHud.Instance.SetVisible(!GameHud.Instance.IsVisible);

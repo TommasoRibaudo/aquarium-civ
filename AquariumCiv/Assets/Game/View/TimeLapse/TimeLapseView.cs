@@ -80,6 +80,8 @@ namespace AquariumCiv.View
             hadCare = care != null && care.enabled;
             if (hadCare) care.enabled = false;
             Active = true;
+            GameClock.Tel.TimelapseOpened(false);
+            scrubFrom = float.NaN;
             if (Application.isPlaying && AquariumCiv.GameUI.GameHud.Instance != null) AquariumCiv.GameUI.GameHud.Instance.HideTools("timelapse", true); // no Clean / Shape on the past (tester batch 2)
             Steps = 0; TotalStepMs = 0;
             Clock.Seek(atYear < 0f ? Lapse.EndPosition : atYear);
@@ -90,9 +92,19 @@ namespace AquariumCiv.View
         /// <summary>Back to the live box: the sim clock runs again, people and care return, the layout is the live one.</summary>
         public void Close() => Close(true);
 
+        float scrubFrom = float.NaN, scrubTo;
+
+        /// <summary>A scrub is a drag: one event per drag (start year to where it stopped), logged when the drag ends.</summary>
+        void FlushScrub()
+        {
+            if (!float.IsNaN(scrubFrom)) GameClock.Tel.TimelapseScrubbed(scrubFrom, scrubTo);
+            scrubFrom = float.NaN;
+        }
+
         void Close(bool refresh)
         {
             if (!Active) return;
+            FlushScrub();
             Active = false;
             Src.Replay = null;
             Box.deferAO = false;
@@ -111,12 +123,14 @@ namespace AquariumCiv.View
         public void Seek(float position)
         {
             if (!Active) return;
+            if (float.IsNaN(scrubFrom)) scrubFrom = Clock.Position;
+            scrubTo = position;
             Clock.Seek(position);
             Show(Clock.Position, false);
         }
 
-        public void Play() { if (Active) Clock.Play(); }
-        public void Pause() { if (Active) { Clock.Pause(); Settle(); } }
+        public void Play() { if (Active) { FlushScrub(); GameClock.Tel.TimelapsePlayed(); Clock.Play(); } }
+        public void Pause() { if (Active) { FlushScrub(); Clock.Pause(); Settle(); } }
 
         /// <summary>Bakes the AO of the chunks the scrub rebuilt without it (the box looks as it does live).</summary>
         public void Settle()

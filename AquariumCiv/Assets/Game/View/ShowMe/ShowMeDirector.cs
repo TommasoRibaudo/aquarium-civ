@@ -154,6 +154,8 @@ namespace AquariumCiv.View
                 saved = (cam.target, cam.yaw, cam.pitch, cam.zoom); // a Show me after a Show me keeps the first view to go back to
             if (State != Phase.Idle && State != Phase.Returning) { pv.Planner?.EndEchoes(); if (flower != null) { Destroy(flower); flower = null; } }
             Current = plan;
+            GameClock.Tel.ShowMe(plan.entry != null ? plan.entry.id.ToString() : "?");
+            GameClock.Tel.CardFlownTo(plan.entry != null ? plan.entry.id.ToString() : "?");
             CurrentEcho = null;
             autoReturn = auto;
             lineSaid = false;
