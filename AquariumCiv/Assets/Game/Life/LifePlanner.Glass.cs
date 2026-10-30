@@ -368,6 +368,7 @@ namespace AquariumCiv.Life
         sealed class Staging
         {
             public string relicId;
+            public int nudgeId = -1; // #85: a shaping's answer moment (LifePlanner.Shaping.cs)
             public RelicMomentDef def;
             public Place spot, glass;
             public float start, end;
@@ -379,7 +380,7 @@ namespace AquariumCiv.Life
 
             public RelicMomentInfo Info(long day)
             {
-                var info = new RelicMomentInfo { relicId = relicId, day = day, start = start, end = end, spot = spot };
+                var info = new RelicMomentInfo { relicId = relicId, nudgeId = nudgeId, day = day, start = start, end = end, spot = spot };
                 foreach (int k in order)
                     info.cast.Add((k > 0 ? PersonRef.Notable(k) : PersonRef.Crowd(-k - 1), roles.TryGetValue(k, out var r) ? r : RelicCast.Grown));
                 return info;
@@ -639,6 +640,8 @@ namespace AquariumCiv.Life
     public sealed class RelicMomentInfo
     {
         public string relicId;
+        /// <summary>#85: the shaping whose answer this moment shows (−1 for a relic's).</summary>
+        public int nudgeId = -1;
         public long day;
         public float start, end;
         public Place spot;

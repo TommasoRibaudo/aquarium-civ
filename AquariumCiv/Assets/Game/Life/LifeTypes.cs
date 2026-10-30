@@ -135,6 +135,8 @@ namespace AquariumCiv.Life
         EraMoment, Argument, Chat,
         // #92: a relic's moment (RelicMoments), a gathering at the glass, a scholar tapping back
         Relic, GlassGathering, TapBack,
+        // #85: the people's answer to a Keeper's shaping (LifePlanner.StartShapingAnswer)
+        ShapingAnswer,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>

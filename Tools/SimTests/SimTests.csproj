@@ -50,6 +50,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
+    <!-- #85: the shaping looks (rain, grove, channel, herd over time), the answer shown, the take-back, and their tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Shaping/Core/**/*.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>
