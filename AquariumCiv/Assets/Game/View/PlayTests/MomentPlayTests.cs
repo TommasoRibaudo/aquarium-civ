@@ -367,6 +367,83 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>#91: after the camp → village cheer the festival dresses the box (bunting, tables), the people dance
+        /// (the Festival Mask's ring dance), the still for the book is saved once (a replay doesn't take another), and when
+        /// the festival year is over the dressing clears. No error logs.</summary>
+        [UnityTest]
+        public IEnumerator FestivalDressesTheBoxForItsYearAndTheStillIsSavedOnce()
+        {
+            yield return Open();
+            try
+            {
+                var sim = GameClock.Instance.Sim;
+                var mp = MomentPlayer.Instance;
+                EraStills.DebugClear(sim.State.seed);
+                MomentPlayer.DebugGrow(14f);
+                if (!sim.State.eraReady) sim.ForceEraReady();
+                LogAssert.ignoreFailingMessages = false;
+                Assert.IsTrue(mp.Watch(true));
+                MomentPlayer.DebugHurry(4f);
+                MomentPlayer.DebugHoldHurry = true;
+                yield return Until(() => mp.Director.Time >= 58.5f, 40f); // the festival beat
+                MomentPlayer.DebugHoldHurry = false;
+                Assert.AreEqual(Era.Village, sim.State.era);
+                Assert.IsTrue(sim.FestivalOn, "the festival year has begun");
+                Assert.IsNotNull(mp.StillTaken, "the still was taken after the cheer");
+                string png = EraStills.PngPath(EraStills.Find(sim.State.seed, Era.Village));
+                Assert.IsTrue(File.Exists(png), png);
+                var written = File.GetLastWriteTimeUtc(png);
+                Assert.AreEqual(1, EraStills.All(sim.State.seed).Count);
+
+                yield return new WaitForSecondsRealtime(1.5f);
+                var fest = UnityEngine.Object.FindAnyObjectByType<FestivalDressing>();
+                Assert.IsTrue(fest != null && fest.Showing, "bunting and tables are up");
+                Assert.Greater(fest.Flags, 20);
+                Assert.AreEqual(2, fest.Tables);
+                var pv = PeopleView.Find();
+                Assert.IsTrue(mp.MaskDanced, "the Festival Mask's wearer leads the ring dance");
+                yield return Shot("m91_1_festival");
+                int dancers = 0;
+                int Dancers() { int n = 0; foreach (var a in pv.Activities) if (a.kind == AquariumCiv.Life.ActivityKind.Dance) n++; return n; }
+                yield return Until(() => (dancers = Dancers()) > 0, 25f);
+                Debug.Log($"[festival test] dancers {dancers}");
+                Camera.main.GetComponent<BoxCamera>().FlyToPlace(new AquariumCiv.Life.Place(AquariumCiv.Life.PlaceKind.Fire), 0.45f, 0.01f);
+                for (int i = 0; i < 8; i++) yield return null;
+                yield return Shot("m91_2_festival_close");
+
+                MomentPlayer.DebugHoldHurry = true;
+                yield return Until(() => !mp.Playing, 30f);
+                MomentPlayer.DebugHoldHurry = false;
+                Assert.Greater(dancers, 0, "people dance at the festival");
+
+                // a replay never takes a second still
+                Assert.IsTrue(mp.Watch(true, replay: true));
+                MomentPlayer.DebugHoldHurry = true;
+                yield return Until(() => !mp.Playing, 40f);
+                MomentPlayer.DebugHoldHurry = false;
+                Assert.IsNull(mp.StillTaken);
+                Assert.AreEqual(written, File.GetLastWriteTimeUtc(png), "the still is saved once");
+
+                // a festival evening later in the year
+                PeopleView.DebugSetHour(19f);
+                for (int i = 0; i < 10; i++) yield return null;
+                int festive = 0;
+                foreach (var a in pv.Activities) if (a.kind == AquariumCiv.Life.ActivityKind.Dance || a.kind == AquariumCiv.Life.ActivityKind.Eat) festive++;
+                Assert.Greater(festive, 0, "festival evenings through the year");
+                yield return Shot("m91_3_evening");
+
+                // the year passes: the dressing clears
+                GameClock.DebugSkipHours(1.1);
+                yield return new WaitForSecondsRealtime(0.8f);
+                Assert.IsFalse(sim.FestivalOn);
+                Assert.IsFalse(fest.Showing, "the bunting comes down when the festival year is over");
+                yield return Shot("m91_4_after");
+                File.Copy(png, Shots + "m91_still.png", true); // the book's still, to look at
+                EraStills.DebugClear(sim.State.seed);
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator LeavingBeforeTheCheerReplays()
         {

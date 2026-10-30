@@ -65,6 +65,10 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Waited 1d")) last = MomentPlayer.DebugWaited(288);
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Festival")) last = MomentPlayer.DebugFestival();
+            if (GUILayout.Button("End festival")) last = MomentPlayer.DebugEndFestival();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
             if (GUILayout.Button("Watch")) last = MomentPlayer.DebugWatch(false);
             if (GUILayout.Button("Replay last")) last = MomentPlayer.DebugReplay();
             if (GUILayout.Button("Leave")) last = MomentPlayer.DebugLeave();

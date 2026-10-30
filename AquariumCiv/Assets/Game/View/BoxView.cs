@@ -615,7 +615,12 @@ namespace AquariumCiv.View
         static Color Cobble(float x, float z, float n)
         {
             float s = Land.Noise(x * 22f, z * 22f);
-            return Color.Lerp(Color.Lerp(Palette.Stone, Palette.Path, 0.35f), Palette.RockDark, s * 0.45f + (n - 0.5f) * 0.2f);
+            // Stones and darker grout in a staggered grid, so the square reads as cobbles at default zoom (#91).
+            float gx = x * 9f, gz = z * 9f + (Mathf.FloorToInt(x * 9f) & 1) * 0.5f;
+            float fx = gx - Mathf.Floor(gx), fz = gz - Mathf.Floor(gz);
+            bool grout = fx < 0.14f || fz < 0.14f;
+            var stone = Color.Lerp(Color.Lerp(Palette.Stone, Palette.Path, 0.2f), Palette.RockLight, s * 0.5f + (n - 0.5f) * 0.3f);
+            return grout ? Color.Lerp(stone, Palette.RockDark, 0.55f) : stone;
         }
 
         static Color Grass(float n, float y)
@@ -647,13 +652,15 @@ namespace AquariumCiv.View
                 if (d > r + 0.12f) continue;
                 if (d > r)
                 {
-                    if (c.kind == ClearingKind.Dirt || c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Dirt, 0.35f);
-                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.GrassC, 0.35f);
+                    if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, Palette.Dirt, 0.35f);
+                    else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Path, 0.6f); // a worn sandy edge round the square
+                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.Path, 0.45f); // a trodden ring round the green
                     continue;
                 }
                 col = c.kind switch
                 {
-                    ClearingKind.Green => Color.Lerp(Palette.GrassC, Palette.GrassA, n),
+                    // The village green: a mown lawn, brighter than the grass round it, so it reads at default zoom (#91).
+                    ClearingKind.Green => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Wheat, 0.3f), Palette.GrassC, n * 0.35f),
                     ClearingKind.Cobble => Cobble(x, z, n),
                     ClearingKind.Yard => Color.Lerp(col, Palette.Dirt, d < r * 0.7f ? 0.55f : 0.3f),
                     ClearingKind.Meadow => Meadow(n),

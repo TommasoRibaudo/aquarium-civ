@@ -156,6 +156,7 @@ namespace AquariumCiv.View
             pressDown = false;
             wave = null;
             KnocksPlayed = 0;
+            StillTaken = null; stillTried = false; MaskDanced = false;
             lastTime = 0f;
             var src = SimLayoutSource.Find();
             if (src != null) src.BeginMomentLook(def.toEra - 1, def.toEra); // the box shows the old look until the wave reaches each lot
@@ -216,6 +217,8 @@ namespace AquariumCiv.View
                     if (!box.TryGetComponent(out WaitingProps props)) props = box.gameObject.AddComponent<WaitingProps>();
                     // the piles stay up through the moment until the cheer moves the era
                     props.Sync(Waiting, Sim);
+                    if (!box.TryGetComponent(out FestivalDressing fest)) fest = box.gameObject.AddComponent<FestivalDressing>();
+                    fest.Sync(Sim); // the festival year: bunting and tables (#91)
                 }
             }
             if (Playing) Play(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
@@ -254,6 +257,7 @@ namespace AquariumCiv.View
             }
             lastTime = Director.Time;
             UnrollCobbles();
+            TakeStillWhenFramed();
 
             if (cam != null)
             {
@@ -555,6 +559,28 @@ namespace AquariumCiv.View
             if (!sim.State.eraReady) sim.ForceEraReady();
             if (Instance != null) Instance.nextRead = 0f;
             return r + " · the town waits";
+        }
+
+        /// <summary>Debug (#91): start the era festival now (a festival year: bunting, tables, festival evenings) and, if
+        /// the box has the Festival Mask, the mask's dance.</summary>
+        public static string DebugFestival()
+        {
+            var sim = GameClock.Instance?.Sim;
+            if (sim == null) return "no sim";
+            sim.State.festivalUntilMonth = sim.State.month + sim.Config.festivalYears * SimConfig.MonthsPerYear;
+            if (Instance != null) { Instance.nextRead = 0f; Instance.StartFestivalScenes(sim, true); }
+            return "festival until month " + sim.State.festivalUntilMonth;
+        }
+
+        public static string DebugEndFestival()
+        {
+            var sim = GameClock.Instance?.Sim;
+            if (sim == null) return "no sim";
+            sim.DebugEndFestival();
+            if (Instance != null) Instance.nextRead = 0f;
+            var pv = PeopleView.Find();
+            if (pv != null && pv.Planner != null) pv.Planner.ClearLive();
+            return "festival over";
         }
 
         public static string DebugEraReady()
