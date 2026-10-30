@@ -186,11 +186,28 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Next era")) last = SimLayoutSource.DebugNextEra(true);
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Peak ready")) last = Done(sim.ForcePeakReady() ? "peak ready" : "not in the town / already");
-                if (GUILayout.Button("Complete box")) last = Done(sim.ForceCompleteBox() != null ? "box complete" : "already complete");
+                if (GUILayout.Button("Peak ready")) last = Done(BoxCompleteController.DebugPeak());
+                if (GUILayout.Button("Last moment")) last = BoxCompleteController.DebugMoment();
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("End festival")) { sim.DebugEndFestival(); last = Done("festival ended"); }
                 if (GUILayout.Button("Open teaser")) last = Done(sim.DebugOpenTeaser() ?? "no teaser");
+            }
+
+            if (Section("Shelf (#93)"))
+            {
+                GUILayout.Label(BoxCompleteController.Status());
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Complete now: oasis")) last = BoxCompleteController.DebugComplete(BoxSetting.DesertOasis);
+                if (GUILayout.Button("Complete now: mountain")) last = BoxCompleteController.DebugComplete(BoxSetting.MountainVillage);
+                GUILayout.EndHorizontal();
+                var shelf = GameClock.Instance?.Shelf;
+                if (shelf != null)
+                    foreach (var sb in shelf.boxes.Where(b => b.museum))
+                        if (GUILayout.Button("Visit box " + sb.index + " (" + sb.setting + ")")) last = BoxCompleteController.DebugVisit(sb.index);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Back to active")) last = BoxCompleteController.DebugBack();
+                if (GUILayout.Button("Shelf view")) last = BoxCompleteController.DebugShelf();
+                GUILayout.EndHorizontal();
             }
 
             if (Section("Notables")) NotablesGui(sim);

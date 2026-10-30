@@ -40,7 +40,7 @@ namespace AquariumCiv.Life.Tests
             {
                 float ax = px, az = pz;
                 if (!sim.Settlement.OpenSpotNear(ref ax, ref az, 0.35f)) continue;
-                if (Terrain.Dist(ax, az, spec.pondX, spec.pondZ) < 1.1f) continue;
+                if (AquariumCiv.Sim.Settle.Terrain.Dist(ax, az, spec.pondX, spec.pondZ) < 1.1f) continue;
                 return (ax, az);
             }
             return (x, z);

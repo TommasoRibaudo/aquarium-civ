@@ -22,7 +22,13 @@ namespace AquariumCiv.Game
         /// <summary>A hitch or a debugger stop never fast-forwards the live world by more than this.</summary>
         public float maxFrameSeconds = 1f;
 
-        public SimCore Sim => Session?.sim;
+        /// <summary>The box on screen: a visited museum, else the active box.</summary>
+        public SimCore Sim => Session?.ViewSim;
+        /// <summary>The shelf's active box: the one that lives, saves and gets the offline catch-up.</summary>
+        public SimCore ActiveSim => Session?.sim;
+        public ShelfState Shelf => Session?.shelf;
+        /// <summary>The box on screen changed (a visit began or ended, or box 2 arrived). The view rebuilds.</summary>
+        public event Action ViewChanged;
         /// <summary>How the box opened (load result, away hours, catch-up). For the return chronicle.</summary>
         public ClockStart Session { get; private set; }
         /// <summary>The latest catch-up (the open, a resume from the background, or <see cref="DebugAway"/>).</summary>
@@ -57,8 +63,8 @@ namespace AquariumCiv.Game
 
         void Update()
         {
-            if (Sim == null) return;
-            if (!Held) Sim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) / 3600.0);
+            if (ActiveSim == null) return;
+            if (!Held) ActiveSim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) / 3600.0);
             sinceSave += Time.unscaledDeltaTime;
             if (sinceSave >= autosaveSeconds) Save();
         }
@@ -83,9 +89,9 @@ namespace AquariumCiv.Game
 
         void Return()
         {
-            if (!paused || Sim == null) return;
+            if (!paused || ActiveSim == null) return;
             paused = false;
-            Report(ClockLogic.Resume(Sim, pausedUtc, DateTime.UtcNow), "back from the background");
+            Report(ClockLogic.Resume(ActiveSim, pausedUtc, DateTime.UtcNow), "back from the background");
             Save();
         }
 
@@ -105,13 +111,51 @@ namespace AquariumCiv.Game
             catch (Exception ex) { Debug.LogError($"[GameClock] save failed: {ex.Message}"); return false; }
         }
 
+        // ---------- the shelf (#93) ----------
+        public bool Visiting => Session != null && Session.visit != null;
+
+        /// <summary>Completes the box: the finished box becomes a museum, box 2 is the active one, and the file is written at
+        /// once (one atomic write holds both boxes: a kill before it keeps the old box, after it both). The box on screen
+        /// stays the finished one (<see cref="Visiting"/>) until <see cref="ShowActive"/>. Returns box 2, or null.</summary>
+        public SimCore CompleteBox(string setting = BoxSetting.DesertOasis, int seed = 0, bool force = false)
+        {
+            if (Session == null || ActiveSim == null || Visiting) return null;
+            var done = ActiveSim;
+            var completion = force ? done.ForceCompleteBox() : done.CompleteBox();
+            if (completion == null) return null;
+            int boxSeed = seed != 0 ? seed : new System.Random().Next(1, int.MaxValue);
+            ClockLogic.StartNextBox(Session, config, completion, setting, boxSeed, DateTime.UtcNow);
+            Session.visit = done; Session.visitIndex = Session.shelf.boxes.Find(b => b.state == done.State)?.index ?? -1;
+            Save();
+            return Session.sim;
+        }
+
+        /// <summary>Looks at a museum box (see <see cref="ClockLogic.Visit"/>).</summary>
+        public bool VisitBox(int index, out MuseumResult result)
+        {
+            result = default;
+            if (Session == null || !ClockLogic.Visit(Session, index, config, DateTime.UtcNow, out result)) return false;
+            Save();
+            ViewChanged?.Invoke();
+            return true;
+        }
+
+        /// <summary>Back to the active box.</summary>
+        public void ShowActive()
+        {
+            if (Session == null || !Visiting) return;
+            ClockLogic.EndVisit(Session);
+            Save();
+            ViewChanged?.Invoke();
+        }
+
         // ---------- debug (callable from `unity command script eval`) ----------
         /// <summary>Live time jump: the civ lives <paramref name="hours"/> at full speed, mess as in live play.</summary>
         public static string DebugSkipHours(double hours)
         {
             var c = Instance;
-            if (c == null || c.Sim == null) return "no GameClock running";
-            int months = c.Sim.Advance(hours);
+            if (c == null || c.ActiveSim == null) return "no GameClock running";
+            int months = c.ActiveSim.Advance(hours);
             c.Save();
             return string.Format(CultureInfo.InvariantCulture, "skipped {0:0.00} h ({1} months) · year {2:0.0} · pop {3}", hours, months, c.Sim.State.Year, c.Sim.State.population);
         }

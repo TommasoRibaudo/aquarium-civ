@@ -450,3 +450,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   escapes (`tr -d '\\'`); GET the url → the zip. Extract into a fresh temp dir outside the repo, copy only the clips used.
   OpenGameArt files are plain links (`/sites/default/files/...`); check the page's `license-name` says CC0. ffmpeg (winget
   Gyan.FFmpeg, on PATH) converts to mono .ogg and makes crossfade loops. [verified]
+
+- **2026-10-30 · Shelf views pull the camera past the far plane; PlayMode filters; no tests run from `unity test` with the Editor open.** [verified, #93]
+  - `BoxCamera` sits `FitDistance() * zoom` away (about 50 units at zoom 1). The Slice camera's far plane is 120, so a
+    zoom above about 2.3 shows only the backdrop vignette. `BoxCompleteController.Start` raises the far plane to 420.
+  - `unity command test run --mode PlayMode --filter BoxComplete` ran 0 tests; the fully qualified class name
+    (`--filter AquariumCiv.View.PlayTests.BoxCompletePlayTests --async_tests true`) ran them. Check `test list --mode PlayMode`.
+  - A new `RuntimeInitializeOnLoadMethod(AfterSceneLoad)` component is not created when a test loads the scene with
+    `LoadSceneAsyncInPlayMode` (the bootstrap ran earlier): tests call `X.Create()` when `Instance` is null.
+  - The camera looks from -z (front of the box = -z). Anything meant to face the player (plate, plinths) goes at -z.
+  - A "finished" state that stays set on a pure-C# director (`Phase.Finished`) re-fires a per-frame `Finish()`: guard with a flag.
