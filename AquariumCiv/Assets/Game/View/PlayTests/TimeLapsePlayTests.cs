@@ -148,16 +148,21 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less(seen[0], seen[60], "the box grew");
 
             // a scrub sweep, timed
+            tl.Seek(0f); // the jump from year 60 is the open-like big one, not part of the sweep
             double max = 0, total = 0; int n = 0;
             for (float y = 0f; y <= 60f; y += 0.25f)
             {
                 tl.Seek(y);
-                max = Math.Max(max, tl.LastStepMs); total += tl.LastStepMs; n++;
+                if (tl.LastStepMs > 25) Debug.Log("[TimeLapse] slow step at " + y + ": " + box.lastRefreshInfo); max = Math.Max(max, tl.LastStepMs); total += tl.LastStepMs; n++;
             }
             TestContext.Out.WriteLine("scrub sweep 0..60 in quarter years: " + n + " steps, mean " + (total / n).ToString("0.0") + " ms, max " + max.ToString("0.0") + " ms");
             Debug.Log("[TimeLapse] scrub sweep: " + n + " steps, mean " + (total / n).ToString("0.0") + " ms, max " + max.ToString("0.0") + " ms");
-            Assert.Less(total / n, 40.0, "a scrub step stays cheap on desktop");
+            Assert.Less(total / n, 12.0, "a scrub step stays cheap on desktop");
+            Assert.Less(max, 60.0, "no scrub step is a hitch (target 25: the worst are 4-chunk era changes with a cold GC)");
 
+            Assert.Greater(box.AoPending, 0, "the scrub left chunks without AO");
+            tl.Settle();
+            Assert.AreEqual(0, box.AoPending, "settling bakes them");
             tl.Seek(10.5f);
             yield return null;
             TestContext.Out.WriteLine("blend: " + tl.LastInfo + ", growing pieces " + box.layout.pieces.Count(p => p.grow < 1f));

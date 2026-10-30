@@ -43,6 +43,14 @@ namespace AquariumCiv.View
         public float aoDistance = 0.45f;
         [Tooltip("Log every chunk rebuild with its timing.")]
         public bool logRebuilds = true;
+        /// <summary>Refresh rebuilds chunks without the AO bake (the time-lapse scrub, #78); the chunks wait in
+        /// <see cref="AoPending"/> until <see cref="FlushAo"/> and the next Refresh bake them.</summary>
+        [System.NonSerialized] public bool deferAO;
+        readonly HashSet<int> aoPending = new();
+        public int AoPending => aoPending.Count;
+        /// <summary>Marks the chunks that were built without AO as changed, so the next <see cref="Refresh"/> (with
+        /// <see cref="deferAO"/> off) rebuilds them with it.</summary>
+        public void FlushAo() { foreach (int k in aoPending) chunkHash[k] = ~chunkHash[k] ^ 0x9E3779B9u; aoPending.Clear(); }
         public Material solid, water, glass, glow;
         [Tooltip("Alpha-blended smoke for the camp fires (FireSmoke.mat); a runtime material is made when empty.")]
         public Material smoke;
@@ -174,6 +182,7 @@ namespace AquariumCiv.View
             Glows();
             SyncPeople();
             Glass();
+            aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
             ChunkHashes(chunkHash);
             landHash = LandHash();
@@ -224,8 +233,10 @@ namespace AquariumCiv.View
             }
             double meshMs = sw.Elapsed.TotalMilliseconds;
             double aoMs = 0;
-            if (bakeAO && builders.Count > 0)
+            if (bakeAO && deferAO) foreach (var (k, _, _, _) in builders) aoPending.Add(k);
+            else if (bakeAO && builders.Count > 0)
             {
+                foreach (var (k, _, _, _) in builders) aoPending.Remove(k);
                 var t = System.Diagnostics.Stopwatch.StartNew();
                 Physics.SyncTransforms();
                 var all = new List<(MeshBuilder, int, Mesh)>();

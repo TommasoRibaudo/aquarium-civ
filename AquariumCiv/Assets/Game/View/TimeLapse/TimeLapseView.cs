@@ -22,6 +22,9 @@ namespace AquariumCiv.View
     {
         /// <summary>Animation steps between two years (a still piece grows in this many sizes).</summary>
         public int growSteps = 6;
+        [Tooltip("Scrubbing draws without the AO bake; the chunks bake once the playhead has been still this long, or on pause or close.")]
+        public float settleSeconds = 0.25f;
+        float lastShowTime;
 
         BoxView box;
         SimLayoutSource src;
@@ -91,6 +94,8 @@ namespace AquariumCiv.View
             if (!Active) return;
             Active = false;
             Src.Replay = null;
+            Box.deferAO = false;
+            Box.FlushAo();
             shownKey = -1;
             var clock = GameClock.Instance;
             if (clock != null) clock.Held = heldBefore;
@@ -109,13 +114,25 @@ namespace AquariumCiv.View
         }
 
         public void Play() { if (Active) Clock.Play(); }
-        public void Pause() { if (Active) Clock.Pause(); }
+        public void Pause() { if (Active) { Clock.Pause(); Settle(); } }
+
+        /// <summary>Bakes the AO of the chunks the scrub rebuilt without it (the box looks as it does live).</summary>
+        public void Settle()
+        {
+            if (!Active || Box.AoPending == 0) return;
+            Box.deferAO = false;
+            Box.FlushAo();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Box.Refresh();
+            LastInfo += string.Format(CultureInfo.InvariantCulture, " · AO baked in {0:0.0} ms", sw.Elapsed.TotalMilliseconds);
+        }
         public void SetSpeed(int index) { if (Active) Clock.SetSpeed(index); }
 
         void Update()
         {
             if (!Active) return;
             if (Application.isPlaying && Clock.Playing) { Clock.Tick(Time.unscaledDeltaTime); Show(Clock.Position, false); }
+            else if (Box.AoPending > 0 && Time.unscaledTime - lastShowTime >= settleSeconds) Settle();
         }
 
         void OnDisable() { if (Active) Close(false); }
@@ -123,12 +140,14 @@ namespace AquariumCiv.View
         /// <summary>Draws the box at a position now (refreshing only what changed). Skips when nothing visible differs.</summary>
         public void Show(float position, bool force)
         {
+            lastShowTime = Time.unscaledTime;
+            Box.deferAO = true;
             var s = Lapse.Scrub(position);
             var near = s.Nearest;
             var other = near == s.a ? s.b : s.a;
             float q = Mathf.Round(s.blend * growSteps) / growSteps;
             int key = s.yearA * 1000 + Mathf.RoundToInt(q * growSteps);
-            if (!force && key == shownKey) return;
+            if (!force && key == shownKey) { LastStepMs = 0; LastChunks = 0; return; }
             shownKey = key;
             shownPos = position;
             var sw = System.Diagnostics.Stopwatch.StartNew();
