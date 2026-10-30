@@ -12,4 +12,8 @@ _Last updated 2026-10-30._
 - You picked "rewrite in this direction" for the 22 story kinds + 11 bank lines in first person
   (`View/ShowMe/Core/PeopleVoice.cs`), but no note came through. Which direction?
 
+### Shaping answers after dark
+- After about 20:00 a shaping answer has nobody acting it out (the label and the line show alone); by day someone now
+  always comes over. ★ Wait until morning to stage it. Alternative: keep showing the label alone at night.
+
 The 90 overnight questions were answered on 2026-10-30: see [decisions.md](decisions.md).
