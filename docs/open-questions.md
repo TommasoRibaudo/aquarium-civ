@@ -156,3 +156,11 @@ Screens: `AquariumCiv/Temp/agent/m89_*.png` (local).
 - ★ The village shows a view-only well until the sim builds its first. Alternative: the sim builds the well at
   AdvanceEra.
 - Speech bubbles last 4 real seconds, so when hurried they spill into later beats.
+
+### #90 Village → town moment — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/m90_*.png` (local).
+- The cobbled square's ground is faint at this zoom; the stalls carry the beat. ★ Stronger cobble look later.
+- ★ Cobbles reach every main path (tier "path" and up), not one "main path".
+- Placeholder beats (puffs + role/gather scenes): scaffolding, the hammer-knock scale, the cleared-hearth stone, the
+  headman's walk, banners and the lord's chair are not built yet.
+- A village without a market keeps its green in the town (#34's rule).
