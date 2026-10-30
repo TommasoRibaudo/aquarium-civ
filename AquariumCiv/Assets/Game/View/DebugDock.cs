@@ -18,7 +18,7 @@ namespace AquariumCiv.View
         static Rect bar, panel;
 
         public static bool Hidden =>
-            (GameHud.Instance != null && GameHud.Instance.SheetOpen) || (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen);
+            (GameHud.Instance != null && (GameHud.Instance.SheetOpen || GameHud.Instance.CameraMode)) || (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen);
 
         /// <summary>Sets the IMGUI matrix and returns the safe area in IMGUI units.</summary>
         public static Rect Begin(out float sc)

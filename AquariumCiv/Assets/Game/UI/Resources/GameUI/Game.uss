@@ -53,6 +53,17 @@ Label { white-space: normal; }
 .hud-btn--on { background-color: var(--thatch); color: var(--frame); }
 .hud-btn--on:hover { background-color: var(--thatch); }
 
+/* camera mode (#70): everything in the safe area hides except the way back */
+.hud-photo > * { display: none; }
+.hud-photo > .hud-photo-exit { display: flex; }
+.hud-photo-exit {
+    position: absolute; bottom: 36px; left: 50%; translate: -50% 0;
+    height: 110px; padding: 0 44px; margin: 0; border-width: 0; border-radius: 55px;
+    background-color: rgba(46, 42, 39, 0.62); color: var(--plaster);
+    font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.hud-photo-exit:hover { background-color: rgba(46, 42, 39, 0.62); }
+
 /* a short hint line above the bottom row */
 .hud-toast {
     position: absolute; left: 60px; right: 60px; bottom: 240px;
