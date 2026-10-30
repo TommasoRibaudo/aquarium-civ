@@ -228,3 +228,13 @@ Clips in `Assets/Audio/Resources/Sfx/` and `/Ambience` (Kenney CC0 + OpenGameArt
 - ★ The answer moment: 40 s, up to 3 helpers and 2 kids, thanking the Keeper at the glass (the camp looks up instead of
   waving); the label stays 12 s. Answers older than 12 months while away are reported quietly; at most 3 queued.
 - Sounds missing for placing a grove or a herd (#96 has no cue yet).
+
+### #93 The box completes, box 2 arrives — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/bc_*.png` (local).
+- Box 2 still draws the river-valley terrain whatever its setting (oasis/mountain shows only on the shelf and label).
+  ★ Per-setting terrain and palette as a follow-up issue.
+- ★ The next box defaults to the desert oasis; no setting-choice UI yet (Choice 11).
+- ★ Box 2 keeps living while you visit a museum (unlike the time-lapse, which holds the clock).
+- Placeholders: museums on the shelf are setting-coloured slabs (not miniatures); the "last evening" gather isn't
+  staged; lanterns have no floating names; the plate uses the built-in font; the last wipe is a caption.
+- Not done: relic effects in box 2 (sim stub), naming the new settlement on its plate.
