@@ -621,7 +621,7 @@ namespace AquariumCiv.Life.Tests
                 if (w == Weather.Storm || w == Weather.Rainbow) continue;
                 for (float h = 7.1f; h < 17f; h += 0.4f)
                 {
-                    if (!LifeClock.IsWorkHour(h)) continue;
+                    if (!LifeClock.IsWorkHour(h, planner.SeasonOn(day))) continue;
                     planner.PlanAll(new ViewTime(day, h), acts);
                     foreach (var a in acts)
                     {
