@@ -43,6 +43,14 @@ namespace AquariumCiv.View
         public float aoDistance = 0.45f;
         [Tooltip("Log every chunk rebuild with its timing.")]
         public bool logRebuilds = true;
+        /// <summary>Refresh rebuilds chunks without the AO bake (the time-lapse scrub, #78); the chunks wait in
+        /// <see cref="AoPending"/> until <see cref="FlushAo"/> and the next Refresh bake them.</summary>
+        [System.NonSerialized] public bool deferAO;
+        readonly HashSet<int> aoPending = new();
+        public int AoPending => aoPending.Count;
+        /// <summary>Marks the chunks that were built without AO as changed, so the next <see cref="Refresh"/> (with
+        /// <see cref="deferAO"/> off) rebuilds them with it.</summary>
+        public void FlushAo() { foreach (int k in aoPending) chunkHash[k] = ~chunkHash[k] ^ 0x9E3779B9u; aoPending.Clear(); }
         public Material solid, water, glass, glow;
         [Tooltip("Alpha-blended smoke for the camp fires (FireSmoke.mat); a runtime material is made when empty.")]
         public Material smoke;
@@ -174,6 +182,7 @@ namespace AquariumCiv.View
             Glows();
             SyncPeople();
             Glass();
+            aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
             ChunkHashes(chunkHash);
             landHash = LandHash();
@@ -224,8 +233,10 @@ namespace AquariumCiv.View
             }
             double meshMs = sw.Elapsed.TotalMilliseconds;
             double aoMs = 0;
-            if (bakeAO && builders.Count > 0)
+            if (bakeAO && deferAO) foreach (var (k, _, _, _) in builders) aoPending.Add(k);
+            else if (bakeAO && builders.Count > 0)
             {
+                foreach (var (k, _, _, _) in builders) aoPending.Remove(k);
                 var t = System.Diagnostics.Stopwatch.StartNew();
                 Physics.SyncTransforms();
                 var all = new List<(MeshBuilder, int, Mesh)>();
@@ -359,7 +370,7 @@ namespace AquariumCiv.View
             {
                 var e = Hash.New();
                 e.Add((int)p.kind); e.Add(p.x); e.Add(p.z); e.Add(p.yaw); e.Add(p.w); e.Add(p.d); e.Add((int)p.era); e.Add((int)p.roof);
-                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant);
+                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant); e.Add(p.grow);
                 float r = PieceRadius(p) + (p.kind == PieceKind.Fire ? 0.6f : 0f);
                 Into(h, p.x - r, p.z - r, p.x + r, p.z + r, e.h);
             }
@@ -905,7 +916,7 @@ namespace AquariumCiv.View
             // Each piece gets its own builder seeded by its seed, so its look doesn't change when others are added.
             var lb = new MeshBuilder(p.seed * 7919 + (int)p.era * 31 + seed) { jitter = 0.035f };
             float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
-            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one);
+            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one * Mathf.Max(0.02f, p.grow));
             Pieces.Draw(lb, p, LotGround(lb));
             mb.Append(lb);
         }
