@@ -240,6 +240,13 @@ namespace AquariumCiv.Life
                     if (s.place == cur) continue; // already there: what came before stretches over it
                     s.from = cur;
                 }
+                // A plain walk from a place a later layer took away (the walk home from the tavern after a courting hour
+                // on the green replaced the drink): it sets off from where they are, or, already there, is dropped (#110).
+                if (s.kind == ActivityKind.Walk && !s.resumed && !s.cut && !s.from.IsNone && s.from != s.place && s.from != cur)
+                {
+                    if (s.place == cur) continue;
+                    s.from = cur;
+                }
                 if (isMove && s.cut && i + 1 < list.Count)
                 {
                     InterruptedWalks++;
@@ -534,8 +541,11 @@ namespace AquariumCiv.Life
                 }
                 if (work.sweeps && box.sweeperExtraBlocks > 0)
                 {
-                    // A tidy holder in office (the grump, #28): the sweepers sweep the green at dawn before their round.
-                    At(ActivityKind.Sweep, LifeClock.WorkStart - WalkHours(gather, work.site), gather, Prop.Broom, default, TripType.HomeToGreen);
+                    // A tidy holder in office (the grump, #28): the sweepers sweep the green at dawn before their round. After
+                    // the water there may be no time left before the round: the walk to the green still takes its route's
+                    // time and they sweep a little, so the round starts late (a squeezed walk rushed at 4x, #110).
+                    float sweepUntil = Math.Max(LifeClock.WorkStart - WalkHours(gather, work.site), bt + WalkHours(bcur, gather) + 0.1f);
+                    At(ActivityKind.Sweep, sweepUntil, gather, Prop.Broom, default, TripType.HomeToGreen);
                 }
                 else
                 {
