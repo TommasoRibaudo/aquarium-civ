@@ -42,11 +42,7 @@ namespace AquariumCiv.View
                     planner.ClearLive();
                     planner.React(KeeperGesture.FullClean, now, seconds: 4f);
                 }
-                if (b.Has(BeatAction.FestivalStart))
-                {
-                    planner.ClearLive();
-                    planner.StartScene(SceneKind.Festival, now);
-                }
+                if (b.Has(BeatAction.FestivalStart)) StartFestivalScenes(sim, !Director.Context.replay);
                 if (b.Has(BeatAction.RebuildWave)) planner.ClearLive(); // back to their lots: the wave passes them at home and at work
             }
 
@@ -65,6 +61,40 @@ namespace AquariumCiv.View
                 if (b.Has(BeatAction.ClearHearth)) PuffAt(gx, gz, 1.2f); // the old camp hearth lifted out (#91 stages the stone)
                 if (b.Has(BeatAction.Cheer)) src.MomentAll(); // nothing is left in the old look when the era moves
             }
+        }
+
+        /// <summary>The festival begins (§6): the party on the green or the square; at the first village festival the
+        /// Festival Mask's wearer leads the ring dance facing the glass (relics-and-glass-voice §1.2, #92's relic moment).</summary>
+        void StartFestivalScenes(SimCore sim, bool withMask)
+        {
+            var pv = PeopleView.Find();
+            var planner = pv != null ? pv.Planner : null;
+            if (planner == null || sim == null) return;
+            planner.ClearLive();
+            var mask = sim.FindRelic(RelicId.FestivalMask);
+            if (withMask && mask != null && mask.Found && planner.StartRelicMoment(RelicId.FestivalMask, pv.Now) != null)
+            {
+                MaskDanced = true;
+                return;
+            }
+            planner.StartScene(SceneKind.Festival, pv.Now);
+        }
+
+        /// <summary>The Festival Mask's dance was staged this festival (tests).</summary>
+        public bool MaskDanced { get; private set; }
+
+        /// <summary>The still for the book, taken once the cheer's camera has settled (2 s after the cheer), never on a replay.</summary>
+        public EraStillInfo StillTaken { get; private set; }
+        bool stillTried;
+
+        void TakeStillWhenFramed()
+        {
+            if (stillTried || !Director.Cheered || !Director.EraAdvanced) return;
+            var cheer = Director.Def.beats.Find(x => x.Has(BeatAction.Cheer));
+            if (cheer == null || Director.Time < cheer.start + 2f) return;
+            var c = Camera.main;
+            stillTried = true;
+            StillTaken = EraStills.Take(c, cam, Sim);
         }
 
         /// <summary>One lot rebuilt: the knock a note higher each time and a light haptic tick (placeholder: a log line

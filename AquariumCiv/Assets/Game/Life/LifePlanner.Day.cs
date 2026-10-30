@@ -89,6 +89,11 @@ namespace AquariumCiv.Life
             if (forcedWeather.HasValue && forcedWeather.Value == Weather.KeeperRain && d.rainNudgeId < 0 && nudgeIds.Count > 0)
                 foreach (var id in nudgeIds) { d.rainNudgeId = id; break; }
             d.scenes.Reverse(); // chronicle order
+            // The era festival's year (era-moment.md §6, #91): every evening is a festival evening (tables, the ring
+            // dance) unless the day already has its own festival.
+            if (sim.FestivalOn && !d.scenes.Exists(x => x.kind == SceneKind.Festival))
+                d.scenes.Add(new Scene { kind = SceneKind.Festival, day = day, start = FestivalEveningFrom, end = FestivalEveningTo, place = gather,
+                    a = -1, b = -1, chronicleId = -1, aPartner = -1, aFriend = -1, aParent = -1 });
             bool festival = false;
             foreach (var sc in d.scenes) festival |= sc.kind == SceneKind.Festival;
             d.rest = LifeClock.IsRestDay(day) && !festival;

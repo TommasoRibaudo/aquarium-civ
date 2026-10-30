@@ -200,6 +200,9 @@ namespace AquariumCiv.Life
         readonly List<Scene> live = new List<Scene>();
         readonly List<Seg> liveScratch = new List<Seg>(8);
 
+        /// <summary>The festival year's evenings (view hours) [est].</summary>
+        public const float FestivalEveningFrom = 17.5f, FestivalEveningTo = 21.5f;
+
         static float DefaultHours(SceneKind k) => k switch
         {
             SceneKind.Wedding => 3f, SceneKind.Birth => 1f, SceneKind.Festival => 7f, SceneKind.Mourning => 1.4f,
