@@ -48,9 +48,8 @@ namespace AquariumCiv.View.PlayTests
             backup = savePath + ".shaping-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
             if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
-            // A pinned world: whether anyone can walk to a gift in time to act out the people's answer depends on where the
-            // box put its people (LifePlanner.StartShapingAnswer gives null when nobody can, about 1 gift in 15 in a random
-            // camp), so a random seed made the "staged in the world" check flaky.
+            // A pinned world, so a failure replays: who walks to a gift and how far depends on where the box put its people
+            // (a random camp once left nobody able to answer about 1 gift in 15; LifeShapingAnswerTests covers that now).
             GameClock.DebugNextSeed = Seed;
             SetSize(w, h);
             float waited = 0f;
