@@ -181,9 +181,15 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(2393058935u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers; #61: read-through text fixes (text and roles only)
+            Assert.AreEqual(1776563604u, Fingerprint(sim.State)); // #74: the Left Sandal's loss (text only, RelicsOn = false gives 2393058935); #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers; #61: read-through text fixes (text and roles only)
+            var noRelics = NewSim(1234);
+            noRelics.RelicsOn = false;
+            noRelics.State.era = Era.Town;
+            noRelics.Advance(48);
+            Assert.AreEqual(2393058935u, Fingerprint(noRelics.State), "without #74's relics");
             var before = NewSim(1234);
             before.CardsOn = false; // #59 off: the text as it was, so that is all that changed
+            before.RelicsOn = false; // and #74's
             before.State.era = Era.Town;
             before.Advance(48);
             Assert.AreEqual(2652515594u, Fingerprint(before.State));

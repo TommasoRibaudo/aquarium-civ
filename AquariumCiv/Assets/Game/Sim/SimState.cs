@@ -61,6 +61,13 @@ namespace AquariumCiv.Sim
         public NotableBand villageNotables = new NotableBand { min = 4, max = 8 };
         public NotableBand townNotables = new NotableBand { min = 8, max = 12 };
         public float storyChancePerMonth = 0.07f;
+        // The slice relics (#74, relics-and-glass-voice.md §1): the Keeper Doll after this many credited Keeper entries in the
+        // village (or, after dollFallbackYears there, the next one); the Sandal stays lost at least sandalLostYears; the Lens
+        // without the Lamp after lensFallbackYears in the town.
+        public int dollKeeperEntries = 10;
+        public int dollFallbackYears = 15;
+        public int sandalLostYears = 20;
+        public int lensFallbackYears = 10;
         public double fullSpeedHours = 8;       // offline: the first hours away run at full speed (game definition v0.2)
         public double slowSpeed = 0.25;         // ... and the rest at this fraction (a weekend away ≈ 18 game years)
         // Era thresholds (game definition §8): all three must hold; years count from the start of the current era.
@@ -236,6 +243,9 @@ namespace AquariumCiv.Sim
         public int buildingId = -1;     // the building it happened at, for fly-to
         public bool keeper;             // the people acted on a Keeper's nudge
         public int threadId = -1;       // its StoryThread (SimCore.Cards.cs): -1 = not looked at yet, 0 = none
+        public string relicId = "";     // the relic this card made, found or lost (SimCore.Relics.cs, #74)
+        public string quote = "";       // the people's words with it (the line bank, SimCore.Relics.cs)
+        public int speakerId = -1;      // who says the quote (-1 = the crowd)
     }
 
     /// <summary>One of the Keeper's land shapings (rain, a grove, a channel; Gate 3).</summary>
@@ -314,6 +324,9 @@ namespace AquariumCiv.Sim
         public List<StoryThread> threads = new(); // teaser threads and story links (SimCore.Cards.cs, #59)
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
+        public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
+        public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
+        public int relicLineNextId = SimCore.RelicLineIdBase; // relic cards' own ids, so the shared ids never shift
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();

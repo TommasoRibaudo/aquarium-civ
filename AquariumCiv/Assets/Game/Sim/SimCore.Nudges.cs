@@ -54,6 +54,7 @@ namespace AquariumCiv.Sim
             if (kind == NudgeKind.Rain) State.food = Math.Min(FoodCap, State.food + 6f + State.population * 0.5f);
             if (kind == NudgeKind.Lamp) KeeperLampUsed(); // from now on the strange light is the Keeper's lamp (#61: nothing called the hook)
             Settlement?.ApplyShaping(n); // no dice, nothing the economy reads
+            RelicsOnShaping(n); // the Sky Crumb, the Lens, the doll's count (SimCore.Relics.cs; no dice)
             return n;
         }
 

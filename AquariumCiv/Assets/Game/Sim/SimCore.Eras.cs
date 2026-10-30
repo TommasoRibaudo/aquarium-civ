@@ -72,6 +72,7 @@ namespace AquariumCiv.Sim
             GlassOnEraChange(); // the people's view of the glass moves on (SimCore.Cards.cs)
             Settlement?.OnEraChange(); // lots never move: they rebuild in place; families get barns (Sim/Settle)
             EraMomentOnChange(); // the lord line, the cleared hearth, the festival (SimCore.EraMoment.cs)
+            RelicsOnEraChange(); // the first era festival leaves the Festival Mask (SimCore.Relics.cs, #74)
             return true;
         }
 
