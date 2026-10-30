@@ -408,3 +408,6 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   (else every `[Test]` fails with CS0012 "Attribute ... mscorlib"). Paths with spaces go quoted in an `.rsp` file
   (Git Bash `/c/...` paths don't work inside it: use `C:/...`). Catches compile errors in seconds while another agent
   holds the Editor; it can't run the tests (no engine). Unity's compile is still the authority.
+- **2026-10-29 · "Scene(s) modified externally" after a merge/checkout.** `dismiss-dialogs.ps1 -Click` leaves it as KNOWN but
+  doesn't answer it. Copy the script, add `@{ Match = 'modified externally'; Button = 'Reload' }` to `$safe`, run the copy
+  with `-Click`. After the reload an "Importing assets" progress window follows: poll `unity status` until ready. [verified]

@@ -234,6 +234,14 @@ namespace AquariumCiv.View
             return $"{type} → lot {b.lotId} at ({b.x:0.00}, {b.z:0.00}) · {info}";
         }
 
+        /// <summary>Debug: the newest building of this type is gone (its lot is cleared); the box refreshes.</summary>
+        public static string DebugRemoveBuilding(string type)
+        {
+            var s = Need(out var err); if (s == null) return err;
+            if (!s.Sim.DebugRemoveBuilding(type)) return "no " + type + " to remove";
+            return $"{type} removed · " + s.Box.Refresh();
+        }
+
         /// <summary>Debug (edit mode): grow a new preview box from <paramref name="seed"/> for <paramref name="years"/>.</summary>
         public static string DebugPreview(int seed, float years)
         {

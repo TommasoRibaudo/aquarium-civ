@@ -364,6 +364,13 @@ MonoBehaviour:
     sweepHeapsPerHour: 0.1
     trimPerHour: 0.005
     careMaxShare: 0.5
+    shapingStartCharges: 2
+    shapingMaxCharges: 3
+    shapingPerHappyYear: 0.5
+    shapingHappyMood: 0.6
+    shapingPerGrime: 0.5
+    shapingPerOvergrowth: 0.4
+    shapingPerTrash: 0.08
     buildingSlots: 20
     settle: 1
     terrainPreset: 0
@@ -379,6 +386,10 @@ MonoBehaviour:
       min: 8
       max: 12
     storyChancePerMonth: 0.07
+    dollKeeperEntries: 10
+    dollFallbackYears: 15
+    sandalLostYears: 20
+    lensFallbackYears: 10
     fullSpeedHours: 8
     slowSpeed: 0.25
     villageAt:
@@ -389,6 +400,12 @@ MonoBehaviour:
       population: 22
       buildings: 13
       years: 20
+    festivalMoodLift: 0.05
+    festivalYears: 1
+    peakAt:
+      townYears: 40
+      seats: 7
+      fullYears: 3
   autosaveSeconds: 30
   maxFrameSeconds: 1
 --- !u!4 &614143116
@@ -420,6 +437,7 @@ GameObject:
   - component: {fileID: 896176678}
   - component: {fileID: 896176677}
   - component: {fileID: 896176682}
+  - component: {fileID: 896176683}
   m_Layer: 0
   m_Name: Box
   m_TagString: Untagged
@@ -499,7 +517,7 @@ MonoBehaviour:
   glass: {fileID: 2100000, guid: 2ca55f126e0e7af438aa6199c81ac511, type: 2}
   glow: {fileID: 2100000, guid: 74cf033f5929b38429d4c8103c1aed2a, type: 2}
   smoke: {fileID: 2100000, guid: e0a8c6b245e42154f8f2e2a5d7b90f8c, type: 2}
-  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 65 ms, total 185
+  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 75 ms, total 202
     ms
   lastRefreshInfo: no chunk changed, 0 new people, 56,5 ms
 --- !u!4 &896176681
@@ -534,6 +552,19 @@ MonoBehaviour:
   timeScale: 1
   replanSeconds: 0.2
   animateInEditMode: 0
+--- !u!114 &896176683
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 896176676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35b8f2bae4e313846911facac72f27c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AquariumCiv.View::AquariumCiv.View.SimDebugPanel
+  open: 0
 --- !u!1 &1235873607
 GameObject:
   m_ObjectHideFlags: 0
