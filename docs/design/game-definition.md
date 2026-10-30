@@ -140,6 +140,8 @@ You never place buildings. Your tools:
 
 Enabler: a compact snapshot per game year (already in the sim), so the time-lapse is playback, not video.
 
+Cards, the peek, the time-lapse, the small book and the people's voice (draft, needs the user's confirmation): [chronicle-and-history.md](chronicle-and-history.md).
+
 ## 8. Progression
 
 - **Three eras per box:** **hunter-gatherer camp → farming village → industrious town** (crafts and guilds,
