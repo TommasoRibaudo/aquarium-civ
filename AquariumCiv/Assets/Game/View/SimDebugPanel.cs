@@ -75,6 +75,37 @@ namespace AquariumCiv.View
             return Done(w == null ? "nobody can wish" : $"{Name(s, w.notableId)} wishes for {w.kind}");
         }
 
+        static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
+
+        /// <summary>Camera fly-to cheats (#38): "person" (notable id, -1 = a random one alive), "fire", "building" (sim id, -1 = the first), "point" (x, z).</summary>
+        public static string DoFly(string what, int id = -1, float x = 0f, float z = 0f)
+        {
+            var cam = Cam; if (cam == null) return "no BoxCamera";
+            var sim = Sim;
+            switch (what)
+            {
+                case "person":
+                {
+                    if (sim == null) return "no sim";
+                    var alive = sim.State.notables.Where(n => n.alive).ToList();
+                    if (alive.Count == 0) return "nobody alive";
+                    var n = id >= 0 ? sim.FindNotable(id) : alive[Random.Range(0, alive.Count)];
+                    return n != null && cam.FlyToPerson(AquariumCiv.Life.PersonRef.Notable(n.id)) ? "flying to " + n.FullName : "no doll for " + (n?.FullName ?? "#" + id);
+                }
+                case "fire":
+                    return cam.FlyToPlace(new AquariumCiv.Life.Place(AquariumCiv.Life.PlaceKind.Fire)) ? "flying to the fire" : "no fire spot";
+                case "building":
+                {
+                    if (sim == null) return "no sim";
+                    int bid = id >= 0 ? id : (sim.State.buildings.FirstOrDefault()?.id ?? -1);
+                    return cam.FlyToBuilding(bid) ? "flying to building #" + bid : "no spot for building #" + bid;
+                }
+                case "point": cam.FlyTo(new Vector3(x, 0f, z), 0.6f); return $"flying to ({x:0.0}, {z:0.0})";
+                case "overview": cam.FlyTo(Vector3.zero, 1f); return "flying to the overview";
+            }
+            return "unknown " + what;
+        }
+
         static string Name(SimCore s, int id) => s.FindNotable(id)?.FullName ?? ("#" + id);
 
         // ---------- IMGUI ----------
@@ -146,6 +177,19 @@ namespace AquariumCiv.View
 
             if (Section("Notables")) NotablesGui(sim);
             if (Section("Roles")) RolesGui(sim);
+
+            if (Section("Camera"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Fly: random person")) last = DoFly("person");
+                if (GUILayout.Button("Fly: selected")) last = DoFly("person", sel);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Fly: fire")) last = DoFly("fire");
+                if (GUILayout.Button("Fly: building")) last = DoFly("building");
+                if (GUILayout.Button("Fly: overview")) last = DoFly("overview");
+                GUILayout.EndHorizontal();
+            }
 
             if (Section("Buildings"))
             {
