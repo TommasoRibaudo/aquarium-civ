@@ -221,3 +221,10 @@ Clips in `Assets/Audio/Resources/Sfx/` and `/Ambience` (Kenney CC0 + OpenGameArt
   era changes). ★ Check on a phone (TestFlight); if it stutters, split a rebuild across frames.
 - ★ Yards, the Keeper's shapings and people are absent in a replay (frame shapings are available to draw).
 - Farm fields pop in once their farm is 60 % grown; home size/storeys use today's path tiers in every year.
+
+### #85 Shaping looks + the people's answer (phase 1)
+- ★ Rain, the herd's animal and the label follow the era when the tool was used; the grove look and the channel style
+  follow the era now (they level up). Should a camp-era herd become goats when the village comes?
+- ★ The answer moment: 40 s, up to 3 helpers and 2 kids, thanking the Keeper at the glass (the camp looks up instead of
+  waving); the label stays 12 s. Answers older than 12 months while away are reported quietly; at most 3 queued.
+- Sounds missing for placing a grove or a herd (#96 has no cue yet).
