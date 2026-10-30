@@ -381,8 +381,18 @@ namespace AquariumCiv.Life
             if (l.t1 <= l.t0) return 1f;
             if (t <= l.t0) return 0f;
             if (t >= l.t1) return 1f;
-            float all = LifeClock.RealSecondsBetween(l.t0, Math.Min(24f, l.t1));
-            return all > 1e-5f ? Math.Max(0f, Math.Min(1f, LifeClock.RealSecondsBetween(l.t0, t) / all)) : (t - l.t0) / (l.t1 - l.t0);
+            // A walk that runs past midnight goes on at the night's pace: the part after 24h counts too, or the walk would
+            // reach its end at 24h (a walk back into the day late in the evening rushed up to 1.5x).
+            float all = RealSecondsTo(l.t0, l.t1);
+            return all > 1e-5f ? Math.Max(0f, Math.Min(1f, RealSecondsTo(l.t0, t) / all)) : (t - l.t0) / (l.t1 - l.t0);
+        }
+
+        /// <summary>Real seconds from <paramref name="h0"/> to <paramref name="h1"/>, past 24h too (the night's pace).</summary>
+        static float RealSecondsTo(float h0, float h1)
+        {
+            float s = LifeClock.RealSecondsBetween(h0, Math.Min(24f, h1));
+            if (h1 > 24f) s += (h1 - Math.Max(24f, h0)) * LifeClock.RealSecondsPerViewHour(0f);
+            return s;
         }
 
         static int LegAt(Block b, float t)

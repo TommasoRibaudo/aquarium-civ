@@ -516,6 +516,50 @@ namespace AquariumCiv.Life.Tests
             Assert.LessOrEqual(worst, 2f, worstWhat);
         }
 
+        /// <summary>The walk back into the day after a relic moment or an echo keeps the pace too, sampled until everyone has
+        /// rejoined their day, from early to late-evening starts (view hours run faster after 20h).</summary>
+        [Test]
+        public void MomentTailsKeepThePace_RelicMomentsAndEchoes()
+        {
+            float worst = 0f;
+            string worstWhat = "";
+            int moments = 0, echoes = 0;
+            foreach (int seed in new[] { 1, 2, 3, 7, 1234 })
+                foreach (var m in Moments)
+                {
+                    SimCore sim;
+                    try { sim = WithRelic(m.relic, m.era, seed); }
+                    catch (AssertionException) { continue; }
+                    var planner = LifePlanner.Wired(sim);
+                    long day = sim.State.month;
+                    var entry = sim.State.chronicle.FirstOrDefault(x => x.kind == "relic" && x.relicId == m.relic);
+                    foreach (float hour in new[] { 10f, 18.4f, 19.6f, 20.5f, 21.5f, 22.2f, 22.7f, 23.2f })
+                    {
+                        planner.ClearLive();
+                        var info = planner.StartRelicMoment(m.relic, new ViewTime(day, hour));
+                        if (info != null)
+                        {
+                            moments++;
+                            var r = MomentTailPace.Worst(planner, day, hour, info.end, $"{m.relic} seed {seed}");
+                            if (r.worst > worst) { worst = r.worst; worstWhat = r.what; }
+                        }
+                        planner.ClearLive();
+                        var echo = entry == null ? null : EchoScenes.For(sim, entry);
+                        var einfo = echo == null ? null : planner.StageEcho(echo, new ViewTime(day, hour));
+                        if (einfo != null)
+                        {
+                            echoes++;
+                            var r = MomentTailPace.Worst(planner, day, hour, einfo.end, $"echo {m.relic} seed {seed}");
+                            if (r.worst > worst) { worst = r.worst; worstWhat = r.what; }
+                        }
+                    }
+                }
+            TestContext.WriteLine($"{moments} moments, {echoes} echoes; fastest {worst:0.00}x the walking pace ({worstWhat})");
+            Assert.Greater(moments, 10);
+            Assert.Greater(echoes, 5);
+            Assert.LessOrEqual(worst, 2f, worstWhat);
+        }
+
         // ------------------------------------------------------------------ the line bank in the moments
 
         [Test]
