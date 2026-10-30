@@ -371,3 +371,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - Measure "ground under the fingers" with `BoxCameraMath.GroundPoint(cam.ScreenPointToRay(p), rig.target.y, ...)`.
   - The slice play mode rewrites `LocalLow/.../game/box.json`: copy it out before and back after.
   - Fire halo edge check: scan rows of a night close-up for a strong horizontal luminance step (PIL); the eye misses it in day shots.
+- **2026-10-29 · Compile-check UnityEngine code (View, its tests) without the Editor.** [verified] Same csc as the sim
+  loop above, but `-target:library` against `Editor/Data/NetStandard/ref/2.1.0/netstandard.dll`, every
+  `Editor/Data/Managed/UnityEngine/*.dll`, and the project's own and package assemblies from
+  `AquariumCiv/Library/ScriptAssemblies/` (`AquariumCiv.Sim/Game/Life`, `Unity.InputSystem`, `Unity.RenderPipelines.*.Runtime`,
+  `Unity.Collections`, `Unity.Mathematics`; built by whichever branch the Editor last compiled, so only for assemblies you
+  didn't change). Define `UNITY_EDITOR` for `#if` blocks. Tests also need `UnityEngine.TestRunner.dll`, the nunit from
+  `Library/PackageCache/com.unity.ext.nunit*/net40/unity-custom/`, and `NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll`
+  (else every `[Test]` fails with CS0012 "Attribute ... mscorlib"). Paths with spaces go quoted in an `.rsp` file
+  (Git Bash `/c/...` paths don't work inside it: use `C:/...`). Catches compile errors in seconds while another agent
+  holds the Editor; it can't run the tests (no engine). Unity's compile is still the authority.
