@@ -55,3 +55,11 @@ _Last updated 2026-10-30._
   and #87 (shelf / box 2) so #78, #76 and #93 can go ahead. UI prerequisites (#108 design system, #75 cards, #84 shaping
   tray, #95 settings, #79 time-lapse screen, #80 book) are not started; the tickets that need them (#39, #55, #76, #81,
   #85, #91, #93, #94, #96, #100) wait or are done only as far as they can go without them.
+
+### #87 The shelf and box 2 (sim + save v3, `Shelf.cs`, `SimCore.Museum.cs`)
+- ★ A museum visit lives through at most 40 game years; a museum box keeps at most 120 new lines and 40 dead
+  museum-born people.
+- ★ Box 2's setting (`desert_oasis` / `mountain_village`) is only a label for now; the view/terrain has to read it.
+- ★ Founders carry age, name, trait and lifespan, not jobs or roles; fewer than 2 founders → random notables are added.
+- ★ All found relics go on the old box's plinths; the carried ones are flagged `carried`.
+- Not wired in Unity yet (no UI calls `StartNextBox` / `Visit`): that's #93.
