@@ -15,3 +15,19 @@ _Last updated 2026-10-30._
   (one pond).
 - ★ Take back is allowed until the people answer (not only until they "use" it).
 - Era names only for now (orchard, mill race, goats/wool flock): their sim effect is the old answer logic.
+
+### #86 Era change, festival, peak (sim, `SimCore.EraMoment.cs`)
+- ★ The festival year lifts the mood target by +5 % (changes the economy a little after each era). Alternative: party
+  only, no lift.
+- Peak rule: town ≥ 40 years old + all 7 town seats held once + box full 3 years. On 12 seeds only 5 peak by year 120
+  (at years 71–110); the design expected ~100–120. ★ Keep 40 for now; tune with E2 (lower the town-age or "full" bar if
+  too many boxes never peak).
+- ★ Player-facing years start at 1 ("years 1–118" on the plate).
+- The cleared-hearth line says "old fire ring", not the design's "old camp ring" (a test forbids "camp" in town text).
+
+### #74 Relics and the people's quotes (sim, `SimCore.Relics.cs`)
+- ★ Sky Crumb fallback (the design has none): the first shaping after the camp.
+- ★ The Left Sandal can also be lost in the town if no "lost" story came earlier, so it can't be missed.
+- ★ In the camp, line 28 says "Ask the sky" instead of "the window".
+- ★ A wipe counts once per game month for the Keeper Doll's prop, so the cloth will often win. Alternative: weight
+  shapings higher.
