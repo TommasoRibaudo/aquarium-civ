@@ -293,15 +293,17 @@ namespace AquariumCiv.View
             if (Mathf.Abs(p.x) > Land.HX - 0.14f || Mathf.Abs(p.y) > Land.HZ - 0.14f) return false;
             int c = SiteMap.CellAt(p.x, p.y);
             if (c < 0 || map.Water(c) || map.Green(c)) return false;
+            // A crown is ~0.2 u across: no lot within two cells (tester #33: a hut squeezed into the woods), no path or
+            // channel in the cells round it.
             int i = SiteMap.I(c), j = SiteMap.J(c);
-            for (int dj = -1; dj <= 1; dj++)
-                for (int di = -1; di <= 1; di++)
+            for (int dj = -2; dj <= 2; dj++)
+                for (int di = -2; di <= 2; di++)
                 {
                     int ni = i + di, nj = j + dj;
                     if (ni < 0 || nj < 0 || ni >= SiteMap.NX || nj >= SiteMap.NZ) continue;
                     int nc = SiteMap.Index(ni, nj);
-                    if (map.lot[nc] != 0 || map.Canal(nc)) return false;
-                    if ((di == 0 || dj == 0) && map.tier[nc] >= PathNet.Trail) return false;
+                    if (map.lot[nc] != 0 && di * di + dj * dj <= 5) return false;
+                    if (Mathf.Abs(di) <= 1 && Mathf.Abs(dj) <= 1 && (map.Canal(nc) || map.tier[nc] >= PathNet.Trail)) return false;
                 }
             return true;
         }
@@ -309,7 +311,15 @@ namespace AquariumCiv.View
         static bool OpenSpot(SiteMap map, Vector2 p)
         {
             int c = SiteMap.CellAt(p.x, p.y);
-            return c >= 0 && map.lot[c] == 0 && !map.Water(c) && map.tier[c] < PathNet.PathTier;
+            if (c < 0 || map.Water(c) || map.tier[c] >= PathNet.PathTier) return false;
+            int i = SiteMap.I(c), j = SiteMap.J(c);
+            for (int dj = -1; dj <= 1; dj++)
+                for (int di = -1; di <= 1; di++)
+                {
+                    int ni = i + di, nj = j + dj;
+                    if (ni >= 0 && nj >= 0 && ni < SiteMap.NX && nj < SiteMap.NZ && map.lot[SiteMap.Index(ni, nj)] != 0) return false; // not against a wall
+                }
+            return true;
         }
 
         // ---------------- people ----------------
@@ -342,7 +352,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i < 3; i++)
                 {
                     float a = i / 3f * Mathf.PI * 2f + 0.5f;
-                    var p = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.24f;
+                    var p = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.3f;
                     V(p, Face(p, centre), greenEra, 100 + i, prop: i == 0 ? PropKind.Pot : PropKind.None, slot: PropSlot.Head);
                 }
             }
@@ -403,6 +413,10 @@ namespace AquariumCiv.View
                 float a = STerrain.Hash3(sim.State.seed, i, 81) * Mathf.PI * 2f, r = SiteMap.GreenR * (0.45f + 0.5f * STerrain.Hash3(sim.State.seed, i, 82));
                 var p = green + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
                 if (campFire && Vector2.Distance(p, new Vector2(camp.x, camp.z)) < 0.24f) continue;
+                bool byWell = false; // keep clear of the well and the other wells' footprints
+                foreach (var l in st.Lots)
+                    if (l.kind == LotKind.Well && !l.retired && Vector2.Distance(p, new Vector2(l.x, l.z)) < 0.24f) { byWell = true; break; }
+                if (byWell) continue;
                 V(p, STerrain.Hash3(sim.State.seed, i, 83) * 360f, greenEra, 9000 + i, kid: i % 3 == 1, prop: i % 5 == 2 ? PropKind.Bundle : PropKind.None, slot: PropSlot.Back);
             }
         }

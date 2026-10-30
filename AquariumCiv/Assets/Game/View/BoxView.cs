@@ -933,76 +933,88 @@ namespace AquariumCiv.View
             }
         }
 
+        /// <summary>
+        /// A chunk's nature. Every item comes from a fixed candidate (its spot, size and look hashed from the seed, the
+        /// chunk and its index) and draws into its own builder, so a candidate that a new building or path now blocks
+        /// simply goes, and nothing else in the chunk moves (tester #33: a new hut made bushes and rocks jump).
+        /// </summary>
         void Nature(MeshBuilder mb, int k)
         {
-            var nb = new MeshBuilder(seed * 3 + 1 + k * 7919);
             var near = new List<(Vector2 p, float r)>(taken);
             ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
             bool In(Vector2 p) => ChunkOf(p) == k;
-            foreach (var t in layout.trees) if (In(t.pos)) Pieces.Tree(nb, land.OnGround(t.pos), t.scale, t.pine);
-            if (layout.reeds)
-                foreach (var (at, sprout) in reedSpots)
+            float H(int cat, int i, int c) => Land.Hash3(seed * 977 + k * 131 + cat, i, c);
+            MeshBuilder Item(int cat, int i) => new(seed * 7919 + k * 104729 + cat * 15485863 + i * 31);
+            foreach (var t in layout.trees)
+                if (In(t.pos))
                 {
+                    var tb = new MeshBuilder(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
+                    Pieces.Tree(tb, land.OnGround(t.pos), t.scale, t.pine);
+                    mb.Append(tb);
+                }
+            if (layout.reeds)
+                for (int i = 0; i < reedSpots.Count; i++)
+                {
+                    var (at, sprout) = reedSpots[i];
                     if (!In(at)) continue;
                     bool clash = false;
                     foreach (var (q, qr) in taken) if (Vector2.Distance(at, q) < qr) { clash = true; break; }
                     if (clash || CanalDist(at.x, at.y) < 0.06f) continue;
-                    Pieces.Reed(nb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
+                    var rb = Item(0, i);
+                    Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
+                    mb.Append(rb);
                 }
-            if (layout.autoNature)
+            if (!layout.autoNature) return;
+            // Candidates per chunk: about a quarter of the old whole-box counts get through the free-spot checks.
+            float kd = Mathf.Max(0f, layout.natureDensity);
+            Vector2 Spot(int cat, int i) => new(Mathf.Lerp(x0, x1, H(cat, i, 1)), Mathf.Lerp(z0, z1, H(cat, i, 2)));
+            if (layout.autoTrees)
+                for (int i = 0, n = Mathf.RoundToInt(30 * kd); i < n; i++)
+                {
+                    var p = Spot(1, i);
+                    float xm = land.mirror ? -p.x : p.x;
+                    float bias = Land.Smooth(-0.6f, 1.8f, p.y) * 0.6f + Land.Smooth(1.5f, -2.5f, xm) * 0.5f + 0.1f;
+                    if (H(1, i, 3) > bias || !Free(p, 0.22f, near)) continue;
+                    var ib = Item(1, i);
+                    Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f);
+                    mb.Append(ib);
+                    near.Add((p, 0.2f));
+                }
+            for (int i = 0, n = Mathf.RoundToInt(9 * kd); i < n; i++)
             {
-                // A quarter of the whole box's counts per chunk, sampled inside the chunk.
-                float kd = Mathf.Max(0f, layout.natureDensity) / ChunkCount;
-                Vector2 Pick() => new(nb.Range(x0, x1), nb.Range(z0, z1));
-                if (layout.autoTrees)
-                {
-                    int trees = Mathf.RoundToInt(24 * kd), placed = 0;
-                    for (int tries = 0; tries < 300 && placed < trees; tries++)
-                    {
-                        var p = Pick();
-                        float xm = land.mirror ? -p.x : p.x;
-                        float bias = Land.Smooth(-0.6f, 1.8f, p.y) * 0.6f + Land.Smooth(1.5f, -2.5f, xm) * 0.5f + 0.1f;
-                        if (nb.Range(0f, 1f) > bias) continue;
-                        if (!Free(p, 0.22f, near)) continue;
-                        Pieces.Tree(nb, land.OnGround(p), nb.Range(0.75f, 1.2f), nb.Range(0f, 1f) < 0.35f);
-                        near.Add((p, 0.2f));
-                        placed++;
-                    }
-                }
-                for (int i = 0, n = 0; i < 125 && n < Mathf.RoundToInt(16 * kd); i++)
-                {
-                    var p = Pick();
-                    if (!Free(p, 0.1f, near)) continue;
-                    Pieces.Bush(nb, land.OnGround(p), nb.Range(0.07f, 0.12f), n % 3 == 0);
-                    near.Add((p, 0.1f));
-                    n++;
-                }
-                for (int i = 0, n = 0; i < 100 && n < Mathf.RoundToInt(14 * kd); i++)
-                {
-                    var p = Pick();
-                    if (!Free(p, 0.08f, near)) continue;
-                    float r = nb.Range(0.05f, 0.14f);
-                    Pieces.Rock(nb, land.OnGround(p), r, n % 3 == 0);
-                    near.Add((p, r));
-                    n++;
-                }
-                int tufts = Mathf.RoundToInt(340 * kd);
-                for (int i = 0, n = 0; i < tufts * 4 && n < tufts; i++)
-                {
-                    var p = Pick();
-                    if (!Free(p, 0.02f, near)) continue;
-                    var g = land.OnGround(p);
-                    float h = nb.Range(0.05f, 0.1f);
-                    var col = nb.Range(0, 3) switch { 0 => Palette.GrassC, 1 => Palette.LeafC, _ => Palette.GrassA };
-                    Pieces.GrassTuft(nb, g, h, col);
-                    bool flowers = false;
-                    foreach (var c in layout.clearings)
-                        if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
-                    if (flowers || n % 5 == 0) nb.Ico(g + Vector3.up * h * 0.8f, flowers ? 0.018f : 0.014f, Vector3.one, Palette.Flowers[nb.Range(0, Palette.Flowers.Length)], 0.1f);
-                    n++;
-                }
+                var p = Spot(2, i);
+                if (!Free(p, 0.1f, near)) continue;
+                var ib = Item(2, i);
+                Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f);
+                mb.Append(ib);
+                near.Add((p, 0.1f));
             }
-            mb.Append(nb);
+            for (int i = 0, n = Mathf.RoundToInt(8 * kd); i < n; i++)
+            {
+                var p = Spot(3, i);
+                if (!Free(p, 0.08f, near)) continue;
+                float r = Mathf.Lerp(0.05f, 0.14f, H(3, i, 3));
+                var ib = Item(3, i);
+                Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f);
+                mb.Append(ib);
+                near.Add((p, r));
+            }
+            for (int i = 0, n = Mathf.RoundToInt(150 * kd); i < n; i++)
+            {
+                var p = Spot(4, i);
+                if (!Free(p, 0.02f, near)) continue;
+                var ib = Item(4, i);
+                var g = land.OnGround(p);
+                float h = Mathf.Lerp(0.05f, 0.1f, H(4, i, 3));
+                float c3 = H(4, i, 4);
+                Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? Palette.GrassC : c3 < 0.66f ? Palette.LeafC : Palette.GrassA);
+                bool flowers = false;
+                foreach (var c in layout.clearings)
+                    if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
+                if (flowers || H(4, i, 5) < 0.2f)
+                    ib.Ico(g + Vector3.up * h * 0.8f, flowers ? 0.018f : 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(4, i, 6) * Palette.Flowers.Length))], 0.1f);
+                mb.Append(ib);
+            }
         }
 
         Mesh WaterMesh()
