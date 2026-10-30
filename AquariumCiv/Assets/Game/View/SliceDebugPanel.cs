@@ -40,6 +40,11 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
             if (GUILayout.Button("Send test feedback")) last = FeedbackSender.DebugSendTest();
+            if (GameHud.Instance != null && GUILayout.Button(GameHud.Instance.IsVisible ? "Hide HUD" : "Show HUD"))
+            {
+                GameHud.Instance.SetVisible(!GameHud.Instance.IsVisible);
+                last = GameHud.Instance.IsVisible ? "HUD shown" : "HUD hidden";
+            }
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
             if (GUILayout.Button("close")) open = false;

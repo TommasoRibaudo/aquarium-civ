@@ -1,17 +1,28 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace AquariumCiv.Game
 {
     /// <summary>
-    /// The one seam between the UI Toolkit HUD and the box camera (which reads the touchscreen directly): the HUD sets
-    /// <see cref="IsOverUi"/>, the camera ignores a press that started on it, so tapping a button never orbits the box.
+    /// The one seam between the UI Toolkit HUD and the box camera (which reads the touchscreen directly): each UI layer
+    /// (HUD shell, feedback sheet, ...) adds a hit test, the camera ignores a press that started on any of them, so
+    /// tapping a button never orbits the box.
     /// </summary>
     public static class UiInput
     {
-        /// <summary>Screen position (pixels, y up) → is there UI under it. Null while no HUD is up.</summary>
-        public static Func<Vector2, bool> IsOverUi;
+        static readonly List<Func<Vector2, bool>> Layers = new();
 
-        public static bool Over(Vector2 screenPos) => IsOverUi != null && IsOverUi(screenPos);
+        /// <summary>Add a hit test: screen position (pixels, y up) → is this layer's UI under it.</summary>
+        public static void Add(Func<Vector2, bool> isOver) { if (isOver != null && !Layers.Contains(isOver)) Layers.Add(isOver); }
+
+        public static void Remove(Func<Vector2, bool> isOver) => Layers.Remove(isOver);
+
+        public static bool Over(Vector2 screenPos)
+        {
+            for (int i = 0; i < Layers.Count; i++)
+                if (Layers[i](screenPos)) return true;
+            return false;
+        }
     }
 }

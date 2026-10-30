@@ -10,7 +10,8 @@ namespace AquariumCiv.GameUI
     /// optionally keep the screenshot of the box that was taken just before the sheet opened, Send. UI Toolkit, built in
     /// code, every control has a stable name (<c>fb-button</c>, <c>fb-kind-bug</c>, <c>fb-text</c>, <c>fb-send</c>,
     /// <c>fb-cancel</c>, <c>fb-shot</c>, <c>fb-toast</c>) so tests and the tester agent find them. Until the HUD shell
-    /// (#36) exists this builds its own panel in the Slice scene; the shell's Settings page should call <see cref="Open"/>.
+    /// shares the game panel (<see cref="GameUiPanel"/>). While the HUD shell (<see cref="GameHud"/>) is up it hides its own
+    /// button: the HUD has a Feedback button and a Settings row that call <see cref="Open"/>.
     /// Presses on the sheet or button never reach the box camera (<see cref="UiInput"/>).
     /// </summary>
     public class FeedbackUI : MonoBehaviour
@@ -25,9 +26,18 @@ namespace AquariumCiv.GameUI
         public static FeedbackUI Instance { get; private set; }
         /// <summary>Set false (tests) to keep the bootstrap from adding a button to the scene.</summary>
         public static bool AutoCreate = true;
+        /// <summary>Feedback is for test builds (the Editor and development builds) until a relay exists (feedback.md).</summary>
+        public static bool InTestBuild => Application.isEditor || Debug.isDebugBuild;
+
+        static bool hostedByHud;
+        /// <summary>The HUD shell is up and shows its own Feedback button: hide this one.</summary>
+        public static bool HostedByHud
+        {
+            get => hostedByHud;
+            set { hostedByHud = value; if (Instance != null) Instance.ShowButton(); }
+        }
 
         UIDocument doc;
-        PanelSettings panelSettings;
         VisualElement root, button, sheet, shotRow;
         Label toast;
         TextField text;
@@ -63,22 +73,16 @@ namespace AquariumCiv.GameUI
             if (Instance != null) { Destroy(gameObject); return; }
             Instance = this;
             FeedbackSender.Ensure();
-            panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
-            panelSettings.themeStyleSheet = Resources.Load<ThemeStyleSheet>("GameUI/GameTheme");
-            panelSettings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
-            panelSettings.referenceResolution = new Vector2Int(1080, 1920);
-            panelSettings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
-            panelSettings.match = 0f; // width: a phone in portrait and a tablet both keep the 1080-wide layout
-            panelSettings.sortingOrder = 100;
             doc = gameObject.AddComponent<UIDocument>();
-            doc.panelSettings = panelSettings;
+            doc.panelSettings = GameUiPanel.Settings;
+            doc.sortingOrder = 100; // over the HUD shell
         }
 
         void OnEnable()
         {
             if (Instance != this) return;
             Build(doc.rootVisualElement);
-            UiInput.IsOverUi = IsOverUi;
+            UiInput.Add(IsOverUi);
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result += OnResult;
         }
 
@@ -86,23 +90,16 @@ namespace AquariumCiv.GameUI
         {
             if (Instance != this) return;
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result -= OnResult;
-            if (UiInput.IsOverUi == (System.Func<Vector2, bool>)IsOverUi) UiInput.IsOverUi = null;
+            UiInput.Remove(IsOverUi);
         }
 
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (panelSettings != null) Destroy(panelSettings);
             if (shotPreview != null) Destroy(shotPreview);
         }
 
-        bool IsOverUi(Vector2 screenPos)
-        {
-            if (root == null || root.panel == null) return false;
-            var p = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(screenPos.x, Screen.height - screenPos.y));
-            var hit = root.panel.Pick(p);
-            return hit != null && hit != root;
-        }
+        bool IsOverUi(Vector2 screenPos) => GameUiPanel.Over(root, screenPos);
 
         // ---------------- building ----------------
         void Build(VisualElement parent)
@@ -133,7 +130,7 @@ namespace AquariumCiv.GameUI
 
             var card = new VisualElement { name = "fb-card" };
             card.style.position = Position.Absolute;
-            card.style.left = 40; card.style.right = 40; card.style.top = 120 + topInset;
+            card.style.left = 40; card.style.right = 40; card.style.top = 196 + topInset; // below the HUD title
             Pad(card, 36); Round(card, 36);
             card.style.backgroundColor = Plaster;
             sheet.Add(card);
@@ -205,13 +202,20 @@ namespace AquariumCiv.GameUI
             toast = Text("", 36, Plaster, FontStyle.Bold);
             toast.name = "fb-toast"; toast.pickingMode = PickingMode.Ignore;
             toast.style.position = Position.Absolute;
-            toast.style.left = 80; toast.style.right = 80; toast.style.bottom = 180 + bottomInset;
+            toast.style.left = 80; toast.style.right = 80; toast.style.bottom = 230 + bottomInset; // above the HUD's bottom row
             toast.style.unityTextAlign = TextAnchor.MiddleCenter;
             toast.style.backgroundColor = new Color(Frame.r, Frame.g, Frame.b, 0.92f);
             Pad(toast, 24); Round(toast, 28);
             toast.style.display = DisplayStyle.None;
             root.Add(toast);
             Refresh();
+            ShowButton();
+        }
+
+        void ShowButton()
+        {
+            if (button == null) return;
+            button.style.display = !HostedByHud && !IsOpen ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         // ---------------- behaviour ----------------
@@ -227,11 +231,15 @@ namespace AquariumCiv.GameUI
         IEnumerator OpenRoutine()
         {
             capturing = true;
-            root.style.display = DisplayStyle.None; // out of the picture
+            root.style.display = DisplayStyle.None; // out of the picture, with the HUD
+            var hud = GameHud.Instance;
+            bool hudWasVisible = hud != null && hud.IsVisible;
+            if (hudWasVisible) hud.SetVisible(false);
             yield return null;
             yield return new WaitForEndOfFrame();
             shot = ScreenShot.Jpg(ScreenCapture.CaptureScreenshotAsTexture());
             root.style.display = DisplayStyle.Flex;
+            if (hudWasVisible) hud.SetVisible(true);
             capturing = false;
 
             if (shotPreview == null) shotPreview = new Texture2D(2, 2);
@@ -242,13 +250,13 @@ namespace AquariumCiv.GameUI
             kind = -1; text.value = "";
             Refresh();
             sheet.style.display = DisplayStyle.Flex;
-            button.style.display = DisplayStyle.None;
+            ShowButton();
         }
 
         public void Close()
         {
             sheet.style.display = DisplayStyle.None;
-            button.style.display = DisplayStyle.Flex;
+            ShowButton();
             text.Blur();
         }
 

@@ -388,3 +388,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `UnityEngine.ScreenCapture.CaptureScreenshot(path)` from `unity command script run --file Temp/agent/x.cs --entry T.Run`
   (file path is relative to `AquariumCiv/`, then wait a second and read the PNG). The feedback sheet has to hide its own HUD for a frame before it
   captures, for the same reason. [verified]
+
+- **2026-10-29 · UI Toolkit in `script eval` / HUD checks (#36).** [verified]
+  - `script eval` doesn't pick up the `UQueryExtensions` extension methods: `root.Q("name")` fails to compile with
+    "'VisualElement' does not contain a definition for 'Q'". Call it statically:
+    `UnityEngine.UIElements.UQueryExtensions.Q(root, "name")`.
+  - Open/close HUD sheets from eval with `GameHud.Instance.Open("settings"|"history"|"shaping")` / `CloseSheet()`, then
+    `AgentGameView.Shot(name)`: the shot shows UI Toolkit (Game-view `capture screenshot` doesn't).
+  - USS edits hot-reload in play mode after `AssetDatabase.Refresh()`; check with `resolvedStyle` before trusting a shot.
+  - The Editor's Game view has no notch: `Screen.safeArea` is the full screen there, so safe-area handling is covered by
+    `SafeInsetsTests` (EditMode) and needs a device or the Device Simulator to see.

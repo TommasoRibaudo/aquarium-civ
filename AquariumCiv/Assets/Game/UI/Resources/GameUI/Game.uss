@@ -1,0 +1,117 @@
+/* The game's screen UI, in the style kit's palette (View/Palette.cs, docs/design/spikes/style-kit.md).
+   Panel units: 1080 wide (GameUiPanel). Tap targets >= 144 (48 dp / 44 pt). USS has no gap or nth-child:
+   space children with one-sided margins (tooling.md §8). */
+
+:root {
+    --plaster: #EFE3CC;
+    --canvas: #E2D3B3;
+    --timber: #6A4B36;
+    --frame: #2E2A27;
+    --terracotta: #C66F4E;
+    --moss: #5E7F43;
+    --thatch: #CFA65E;
+    --scrim: rgba(30, 26, 23, 0.45);
+    --ink-soft: rgba(106, 75, 54, 0.7);
+}
+
+Label { white-space: normal; }
+
+/* ---------------- HUD shell ---------------- */
+.hud-fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.hud-safe { justify-content: space-between; }
+
+.hud-top { flex-direction: row; justify-content: center; align-items: flex-start; padding-top: 18px; }
+.hud-bottom { flex-direction: row; justify-content: space-between; align-items: flex-end; padding: 0 32px 32px 32px; }
+.hud-corner { position: absolute; top: 18px; right: 24px; }
+
+/* the box's name and year: small, quiet, a tap opens settings */
+.hud-title {
+    min-height: 144px; min-width: 300px; padding: 0 44px;
+    background-color: rgba(46, 42, 39, 0.62);
+    border-width: 0; border-radius: 72px; margin: 0;
+    justify-content: center; align-items: center;
+}
+.hud-title-name { color: var(--plaster); font-size: 38px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.hud-title-year { color: rgba(239, 227, 204, 0.85); font-size: 30px; -unity-text-align: middle-center; margin-top: -2px; }
+.hud-title:hover { background-color: rgba(46, 42, 39, 0.62); }
+.hud-title:active { background-color: rgba(46, 42, 39, 0.75); }
+
+/* round-cornered buttons on the glass */
+.hud-btn {
+    min-width: 230px; height: 150px; padding: 0 36px; margin: 0;
+    border-width: 0; border-radius: 75px;
+    background-color: rgba(239, 227, 204, 0.94);
+    color: var(--timber); font-size: 38px; -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.hud-btn:hover { background-color: rgba(239, 227, 204, 0.94); }
+.hud-btn:active { background-color: var(--canvas); scale: 0.96 0.96; }
+.hud-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
+.hud-btn--primary:hover { background-color: var(--terracotta); }
+.hud-btn--primary:active { background-color: #B5603F; }
+/* test builds only: present but quieter than the title */
+.hud-btn--small { min-width: 0; height: 144px; padding: 0 30px; font-size: 28px; background-color: rgba(46, 42, 39, 0.4); color: var(--plaster); }
+.hud-btn--small:hover { background-color: rgba(46, 42, 39, 0.4); }
+.hud-btn--small:active { background-color: rgba(46, 42, 39, 0.6); }
+
+/* pinned person's chip (filled in by the person card work) */
+.hud-chip {
+    height: 150px; padding: 0 36px; margin: 0 20px; flex-shrink: 1;
+    border-width: 0; border-radius: 75px;
+    background-color: rgba(46, 42, 39, 0.5); color: #FFD98A;
+    font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+
+/* ---------------- sheets (bottom panels) ---------------- */
+.sheet-scrim { background-color: var(--scrim); justify-content: flex-end; }
+.sheet {
+    background-color: var(--plaster);
+    border-top-left-radius: 56px; border-top-right-radius: 56px;
+    padding: 40px 44px 44px 44px;
+}
+.sheet-head { flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.sheet-title { font-size: 54px; color: var(--timber); -unity-font-style: bold; flex-shrink: 1; }
+.sheet-close {
+    height: 144px; min-width: 200px; padding: 0 36px; margin: 0;
+    border-width: 0; border-radius: 72px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 36px; -unity-font-style: bold;
+}
+.sheet-close:hover { background-color: var(--canvas); }
+.sheet-close:active { background-color: #D4C39F; }
+.sheet-text { font-size: 36px; color: var(--timber); margin-bottom: 18px; }
+.sheet-note { font-size: 30px; color: var(--ink-soft); -unity-font-style: italic; margin-top: 8px; }
+
+/* a settings row: label left, control right */
+.row {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    min-height: 160px; border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.15);
+}
+.row-label { font-size: 40px; color: var(--timber); flex-shrink: 1; }
+
+/* an on/off switch drawn as a pill */
+.switch {
+    width: 200px; height: 112px; margin: 0; border-width: 0; border-radius: 56px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 34px; -unity-font-style: bold;
+}
+.switch:hover { background-color: var(--canvas); }
+.switch--on, .switch--on:hover { background-color: var(--moss); color: var(--plaster); }
+
+.sheet-btn {
+    height: 144px; margin: 24px 0 0 0; border-width: 0; border-radius: 72px;
+    background-color: var(--canvas); color: var(--timber); font-size: 38px; -unity-font-style: bold;
+}
+.sheet-btn:hover { background-color: var(--canvas); }
+.sheet-btn:active { background-color: #D4C39F; }
+
+/* the shaping tray's tool slots */
+.tools { flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; }
+.tool {
+    width: 220px; height: 200px; margin: 0 20px 20px 0; padding: 0;
+    border-width: 0; border-radius: 40px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 34px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.tool:hover { background-color: var(--canvas); }
+.tool:disabled { background-color: var(--canvas); color: var(--timber); opacity: 0.45; }
