@@ -87,6 +87,49 @@ namespace AquariumCiv.EditorTools
             return $"built {ScenePath}: {info}";
         }
 
+        /// <summary>
+        /// Renders the main camera to a PNG at a phone size (edit or play mode, URP post included), framed by the
+        /// <see cref="BoxCamera"/> for that aspect. <paramref name="zoom"/> &lt; 1 moves in on <paramref name="target"/>
+        /// (null = the box centre). The camera rig is restored afterwards.
+        /// </summary>
+        public static string Shot(string path, int w = 1179, int h = 2556, float zoom = 1f, Vector3? target = null, float yaw = float.NaN, float pitch = float.NaN)
+        {
+            var cam = Camera.main;
+            var rig = cam.GetComponent<BoxCamera>();
+            var keep = (rig.target, rig.zoom, rig.yaw, rig.pitch);
+            var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB, 1);
+            var prev = cam.targetTexture;
+            try
+            {
+                cam.targetTexture = rt;
+                cam.aspect = w / (float)h;
+                if (target.HasValue) rig.target = target.Value;
+                rig.zoom = zoom;
+                if (!float.IsNaN(yaw)) rig.yaw = yaw;
+                if (!float.IsNaN(pitch)) rig.pitch = pitch;
+                rig.Apply();
+                cam.Render();
+                var active = RenderTexture.active;
+                RenderTexture.active = rt;
+                var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+                tex.Apply();
+                RenderTexture.active = active;
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+                System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+            }
+            finally
+            {
+                cam.targetTexture = prev;
+                cam.ResetAspect();
+                RenderTexture.ReleaseTemporary(rt);
+                (rig.target, rig.zoom, rig.yaw, rig.pitch) = keep;
+                rig.Apply();
+            }
+            return path;
+        }
+
         static Material Mat(string name, string shader, System.Action<Material> setup)
         {
             var path = $"{ViewDir}/Materials/{name}.mat";

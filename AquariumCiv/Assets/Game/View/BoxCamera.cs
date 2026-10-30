@@ -15,8 +15,8 @@ namespace AquariumCiv.View
         public float yaw = 28f, pitch = 34f;
         [Tooltip("Zoom: 1 = the whole box fits the width; < 1 is closer.")]
         public float zoom = 1f, minZoom = 0.3f, maxZoom = 1.3f;
-        [Tooltip("How much of the screen width the box takes at zoom 1.")]
-        public float fill = 0.88f;
+        [Tooltip("How much of the screen width the box takes at zoom 1 (about).")]
+        public float fill = 1f;
 
         Camera cam;
         float lastPinch;
@@ -27,7 +27,7 @@ namespace AquariumCiv.View
             float aspect = cam != null ? cam.aspect : 9f / 16f;
             float fov = cam != null ? cam.fieldOfView : 22f;
             float halfH = Mathf.Atan(Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad) * Mathf.Min(1f, aspect));
-            return new Vector3(Land.HX + 0.3f, 1.7f, Land.HZ + 0.3f).magnitude / Mathf.Tan(halfH) * fill;
+            return new Vector3(Land.HX + 0.3f, 1.7f, Land.HZ + 0.3f).magnitude / Mathf.Tan(halfH) / Mathf.Max(0.1f, fill);
         }
 
         void Update()

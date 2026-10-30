@@ -196,10 +196,17 @@ namespace AquariumCiv.View
             for (int i = 0; i < 3; i++) Log(mb, p + Vector3.up * 0.025f, 0.02f, 0.22f, i * 60f, Palette.Bark);
             mb.emission = 0.6f;
             mb.Prism(p, 0.085f, 0.075f, 0.016f, 7, Palette.Ember);
-            mb.emission = 1f; mb.sway = 1.4f;
-            mb.Prism(p + Vector3.up * 0.012f, 0.1f, 0f, 0.3f, 5, Palette.Fire, Quaternion.Euler(0, 20f, 0));
-            mb.Prism(p + new Vector3(0.035f, 0.012f, -0.02f), 0.055f, 0f, 0.2f, 5, Palette.Fire, Quaternion.Euler(0, 75f, 0));
-            mb.Prism(p + new Vector3(0.01f, 0.012f, 0.01f), 0.06f, 0f, 0.22f, 5, Palette.FireCore, Quaternion.Euler(0, 50f, 0));
+            mb.emission = 0.75f; mb.sway = 1.4f; // below full glow: the orange stays orange after tonemapping
+            // A main flame, three tongues leaning out and a short bright core, so it reads as fire, not a cone.
+            mb.Prism(p + Vector3.up * 0.012f, 0.085f, 0f, 0.27f, 5, Palette.Fire, Quaternion.Euler(0, 20f, 0));
+            for (int i = 0; i < 3; i++)
+            {
+                float a = i * 120f + 35f;
+                var lean = Quaternion.Euler(0, a, 0) * Quaternion.Euler(18f, 0, 0);
+                mb.Prism(p + Quaternion.Euler(0, a, 0) * new Vector3(0, 0.012f, 0.035f), 0.045f, 0f, 0.15f + 0.03f * i, 4, i == 1 ? Palette.Ember : Palette.Fire, lean);
+            }
+            mb.emission = 1f;
+            mb.Prism(p + new Vector3(0.008f, 0.012f, -0.012f), 0.038f, 0f, 0.12f, 5, Palette.FireCore, Quaternion.Euler(0, 50f, 0));
             mb.emission = 0f; mb.sway = 0f;
             if (!seats) return;
             for (int i = 0; i < 3; i++)

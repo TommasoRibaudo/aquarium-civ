@@ -23,7 +23,7 @@ Shader "AquariumCiv/View/Stylized"
         _Emission ("Emission boost", Float) = 3
         _Wind ("Wind strength", Float) = 0.018
         _WindSpeed ("Wind speed", Float) = 1.4
-        _LampBoost ("Lamp brightness at night", Float) = 4.5
+        _LampBoost ("Lamp brightness at night", Float) = 3.2
     }
     SubShader
     {
@@ -126,7 +126,7 @@ Shader "AquariumCiv/View/Stylized"
                 half rim = pow(1 - saturate(dot(n, viewDir)), 3) * _Rim * (0.3 + 0.7 * lit);
                 col += rim * light.color * (albedo + 0.25);
                 col = lerp(col, albedo * _Emission, i.uv.y);
-                col = lerp(col, albedo * _LampBoost, i.uv.z);
+                col = lerp(col, albedo * half3(1.0, 0.78, 0.45) * _LampBoost, i.uv.z); // warm, so lit windows stay amber after tonemapping
                 col = MixFog(col, i.fog);
                 return half4(col, 1);
             }
