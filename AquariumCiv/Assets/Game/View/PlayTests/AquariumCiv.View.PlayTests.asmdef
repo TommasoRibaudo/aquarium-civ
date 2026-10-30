@@ -9,6 +9,7 @@
         "AquariumCiv.View",
         "AquariumCiv.Moments",
         "AquariumCiv.Shaping",
+        "AquariumCiv.ShowMe",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "UnityEngine.TestRunner",

@@ -25,8 +25,9 @@ namespace AquariumCiv.View.ShowMe
         public const float MaxFlySeconds = 1.2f, MinFlySeconds = 0.5f;
         /// <summary>End zooms (BoxCamera: &lt; 1 closer). A person close, a place a little wider, a shaping wider, the box whole.</summary>
         public const float PersonZoom = 0.45f, PlaceZoom = 0.6f, ShapingZoom = 0.7f, YearZoom = 0.8f, BoxZoom = 1f;
-        /// <summary>The point sits at 70 % of the screen height: the card covers the bottom ~40 %.</summary>
-        public const float AnchorAboveCard = 0.7f;
+        /// <summary>The point sits at 60 % of the screen height: the card covers the bottom ~40 %, the speech bubble sits at
+        /// ~70 % (MomentPlayer), so the people stand between them.</summary>
+        public const float AnchorAboveCard = 0.6f;
         /// <summary>A beat between landing and the echo (the people notice).</summary>
         public const float EchoDelay = 0.25f;
 

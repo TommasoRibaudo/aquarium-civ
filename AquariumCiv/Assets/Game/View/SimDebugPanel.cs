@@ -226,6 +226,22 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
 
+            if (Section("Show me & bubbles"))
+            {
+                // #76: Show me on any of the latest cards' entries, a bubble now.
+                GUILayout.Label(ShowMeDirector.Status());
+                foreach (var e in ShowMeDirector.Latest(8))
+                {
+                    string h = sim.Headline(e);
+                    if (h.Length > 34) h = h.Substring(0, 33) + "…";
+                    if (GUILayout.Button($"Show me: {e.kind} · {h}")) last = ShowMeDirector.DebugShow(e.id);
+                }
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Force a bubble")) last = ShowMeDirector.DebugBubble();
+                if (GUILayout.Button("End show me")) last = ShowMeDirector.DebugEnd();
+                GUILayout.EndHorizontal();
+            }
+
             if (Section("Buildings"))
             {
                 GUILayout.Label(string.Join(" ", sim.State.buildings.GroupBy(b => b.type).Select(g => g.Key + "×" + g.Count())));
