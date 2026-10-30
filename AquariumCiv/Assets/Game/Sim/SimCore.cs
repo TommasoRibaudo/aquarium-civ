@@ -108,6 +108,7 @@ namespace AquariumCiv.Sim
             JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
+            CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
         }
 
         void TryBuild()

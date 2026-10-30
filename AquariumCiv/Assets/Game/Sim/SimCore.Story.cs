@@ -34,6 +34,39 @@ namespace AquariumCiv.Sim
             ["the loud"] = ("loud", 0.45f, new[] { "{0} sneezed so hard the weathervane spun round.", "{0} called the goats home from the far side of the glass." }),
         };
 
+        /// <summary>
+        /// Lines that know too much for the camp and village (chronicle-and-history.md §5.1, relics-and-glass-voice.md §4):
+        /// town-only (stage 3). Before the town each is told as its stand-in, so every trait keeps two lines. The swap
+        /// happens after the dice: the story stream draws exactly as before (same options, weights and picks), so storms,
+        /// droughts and harvests land where they did and the economy can't move. Wording waits on the user: plain strings.
+        /// </summary>
+        static readonly Dictionary<string, string> TownOnlyLines = new()
+        {
+            ["{0} invented a mirror for signalling the Keeper."] =
+                "{0} made a stick that throws a shadow, and now everyone knows when lunch is.",
+            ["{0} worked out how to tell the time from the glass's shadow."] =
+                "{0} invented a better basket. It holds slightly more berries and everyone is very impressed.",
+            ["{0} spread a rumour that the Keeper has a cat. It caused quite a stir."] =
+                "{0} swears the Bright One sneezed last spring. Half the camp believes it.",
+            ["{0} dreamt of a city beyond the glass and drew a map of it."] =
+                "{0} dreamt they climbed to the edge of the sky and knocked. Something knocked back.",
+        };
+
+        /// <summary>The strange light, before and after the Keeper's Lamp has been used (relics-and-glass-voice.md §4).</summary>
+        const string StrangeLightLamp = "A strange warm light crossed the sky. Some say it was the Keeper's lamp.";
+        const string StrangeLightEarly = "A strange warm light crossed the sky. Some say the Bright One was looking for something.";
+        public const string FlagLampUsed = "lamp-used";
+
+        /// <summary>A trait line as told in this era: the town-only ones become their stand-ins before the town.</summary>
+        string EraLine(string line) =>
+            CardsOn && State.era < Era.Town && TownOnlyLines.TryGetValue(line, out var early) ? early : line;
+
+        /// <summary>Hook for the Lamp tool (research 10, not in the sim yet): from now on the strange light is the Keeper's lamp.</summary>
+        public void KeeperLampUsed()
+        {
+            if (!State.storyFlags.Contains(FlagLampUsed)) State.storyFlags.Add(FlagLampUsed);
+        }
+
         static readonly string[] FoundThings =
         {
             "a shiny pebble nobody can explain", "a very old boot", "a jar of honey", "a crown made of twigs",
@@ -115,7 +148,7 @@ namespace AquariumCiv.Sim
                 Add(0.5f, () =>
                 {
                     var b = RandomBuilding(r);
-                    var e = Chronicle(t.kind, string.Format(Pick(r, t.lines), who.FullName, Label(b)), t.salience, who.id);
+                    var e = Chronicle(t.kind, string.Format(EraLine(Pick(r, t.lines)), who.FullName, Label(b)), t.salience, who.id);
                     if (t.lines.Any(l => l.Contains("{1}"))) e.buildingId = b?.id ?? -1;
                 });
             }
@@ -140,7 +173,7 @@ namespace AquariumCiv.Sim
             });
             if (season >= 5 && season <= 7 && Fresh("drought", -1, 6)) Add(0.4f, () => { s.food *= 0.85f; Chronicle("drought", "A dry summer: the stream ran low and everyone shared their water.", 0.48f); });
             if (season >= 8 && season <= 9 && Fresh("bumper", -1, 6)) Add(0.5f, () => { s.food = Math.Min(FoodCap, s.food * 1.2f + 5f); Chronicle("bumper", "The best harvest anyone can remember. The granary door wouldn't close.", 0.55f); });
-            if (Fresh("strange_light", -1, 20)) Add(0.35f, () => Chronicle("strange_light", "A strange warm light crossed the sky. Some say it was the Keeper's lamp.", 0.5f));
+            if (Fresh("strange_light", -1, 20)) Add(0.35f, () => Chronicle("strange_light", !CardsOn || s.storyFlags.Contains(FlagLampUsed) ? StrangeLightLamp : StrangeLightEarly, 0.5f));
             if (Fresh("ducks", -1, 30)) Add(0.35f, () => Chronicle("ducks", "A family of ducks moved into the pond and took charge of it.", 0.45f));
             if (Count(BuildingType.Tavern) > 0 && Fresh("sheep", -1, 30)) Add(0.4f, () =>
             {

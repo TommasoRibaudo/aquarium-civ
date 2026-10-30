@@ -301,8 +301,12 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>A true line for the evening talk from a role-holder (the leader first), or null. No dice.</summary>
-        public string OfficeTeaser()
+        public string OfficeTeaser() => OfficeTeaser(out _);
+
+        /// <summary><see cref="OfficeTeaser()"/>, with the holder who says it (the teaser thread follows them, SimCore.Cards.cs).</summary>
+        internal string OfficeTeaser(out Notable holder)
         {
+            holder = null;
             if (!TermFlavourOn || State.roles == null) return null;
             foreach (var seat in State.roles)
             {
@@ -310,6 +314,7 @@ namespace AquariumCiv.Sim
                 if (h == null || !h.alive || !TraitTerms.TryGetValue(h.trait ?? "", out var t)) continue;
                 var others = TermOthers(h, 1, 21);
                 if (t.teaser.Contains("{3}") && others == null) continue;
+                holder = h;
                 return FillTerm(t.teaser, h, seat, others, 22);
             }
             return null;

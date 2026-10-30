@@ -191,6 +191,7 @@ namespace AquariumCiv.Sim
         public int otherNotableId = -1; // a second person in the story (wedding, rivalry...)
         public int buildingId = -1;     // the building it happened at, for fly-to
         public bool keeper;             // the people acted on a Keeper's nudge
+        public int threadId = -1;       // its StoryThread (SimCore.Cards.cs): -1 = not looked at yet, 0 = none
     }
 
     /// <summary>One of the Keeper's land shapings (rain, a grove, a channel; Gate 3).</summary>
@@ -255,6 +256,10 @@ namespace AquariumCiv.Sim
         public long eraReadyMonth = -1; // month eraReady was set (-1 = not ready)
         public List<RoleSeat> roles = new(); // the important roles and their holders (SimCore.Roles.cs, #27)
         public int termLineNextId = SimCore.TermLineIdBase; // term lines' own ids (SimCore.Office.cs, #28), so the shared ids never shift
+        public List<StoryThread> threads = new(); // teaser threads and story links (SimCore.Cards.cs, #59)
+        public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
+        public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
+        public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

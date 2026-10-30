@@ -181,7 +181,12 @@ namespace AquariumCiv.Tests
             var sim = NewSim(1234);
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(1316030141u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged)
+            Assert.AreEqual(349017570u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only)
+            var before = NewSim(1234);
+            before.CardsOn = false; // #59 off: the text as it was, so that is all that changed
+            before.State.era = Era.Town;
+            before.Advance(48);
+            Assert.AreEqual(1316030141u, Fingerprint(before.State));
         }
 
         [Test]
