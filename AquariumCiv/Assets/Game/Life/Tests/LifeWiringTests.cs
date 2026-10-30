@@ -92,7 +92,7 @@ namespace AquariumCiv.Life.Tests
             var singer = Count("the singer");
             TestContext.WriteLine($"seed {seed}, {Days} view days: grump lord {grump.tidy} sweeping blocks, {grump.feastDays} feast days; " +
                                   $"singer lord {singer.tidy} sweeping blocks, {singer.feastDays} feast days ({grump.sweepers} sweepers)");
-            Assume.That(grump.sweepers, Is.GreaterThan(0), "the town has sweepers");
+            Assert.Greater(grump.sweepers, 0, "the town has sweepers");
             Assert.Greater(grump.tidy, singer.tidy, "a grump lord's town plans more tidy blocks");
             Assert.Greater(singer.feastDays, grump.feastDays, "a singer lord's town plans more feasts");
             Assert.AreEqual(0, grump.feastDays, "the grump calls no feasts");
@@ -328,7 +328,7 @@ namespace AquariumCiv.Life.Tests
                                   $"{couples} couples together, {children} children with a parent");
         }
 
-        [TestCase(7, Ignore = "#109: after #67 and #86 the planner's seed-7 sweeper walks to the lumber mill, not its heap")]
+        [TestCase(7)]
         [TestCase(1234)]
         public void SweepersHeadToTheTargetedHeap(int seed)
         {
@@ -340,9 +340,8 @@ namespace AquariumCiv.Life.Tests
             var targets = sim.SweeperTargets();
             var planner = LifePlanner.Wired(sim);
             var sweepers = planner.People.Where(p => planner.JobOf(p) == JobType.Sweeper && planner.StageOf(p) != LifeStage.Kid).ToList();
-            // #86 moved seed 7's town: the sim has a crowd sweeper, but the planner's crowd runs out of adults before the sweeper's
-            // slot (CrowdSlots: priority 7, last). A planner gap, not this test's subject: flagged in #86's report.
-            Assume.That(sweepers.Count, Is.GreaterThan(0), "the planner shows a sweeper");
+            // Every sim sweeper shows: the notables with the broom and the crowd's (CrowdSlots fills theirs first, #109).
+            Assert.AreEqual(sim.Sweepers, sweepers.Count, "the planner shows every sweeper the sim counts");
             var firsts = sweepers.Select(planner.SweeperTargetOf).Where(t => t >= 0).ToList();
             Assert.AreEqual(Math.Min(sweepers.Count, targets.Count), firsts.Count, "every sweeper with a heap left has one");
             CollectionAssert.AreEquivalent(targets.Take(firsts.Count), firsts, "the sweepers head to the heaps SweeperTargets names, one each");
@@ -363,7 +362,9 @@ namespace AquariumCiv.Life.Tests
                     if (firstSweep.kind == ActivityKind.None) continue;
                     Assert.AreEqual(heap, firstSweep.place, $"{who}: the first heap swept is the targeted one");
                     planner.UpcomingTrips(who, new ViewTime(d, 0f), trips, 12);
-                    var toWork = trips.FirstOrDefault(t => t.type == TripType.HomeToWork);
+                    // The walk to work that leads into the sweeping: the morning's, or after lunch for a role holder whose
+                    // morning goes to the role (#109: seed 7's master builder took the broom in #67's job filling).
+                    var toWork = trips.LastOrDefault(t => t.type == TripType.HomeToWork && t.start < firstSweep.start);
                     Assert.AreEqual(heap, toWork.to, $"{who}: the walk to work heads to the targeted heap");
                     Assert.IsTrue(planner.RouteOf(toWork, new List<Waypoint>()), "along a Settle route");
                     verified++;

@@ -516,7 +516,14 @@ namespace AquariumCiv.Life
             if (tavernB != null) Slots(tavernB, 5, 1, CrowdServer);
             foreach (var w in workshops) Slots(w, 6, 2, JobType.Weaver);
             if (era == Era.Town) Slots(null, 7, sim.CrowdSweepers, JobType.Sweeper); // the sim's crowd sweepers (#60): 1 per 12 people
-            list.Sort((a, b) => a.rank != b.rank ? a.rank.CompareTo(b.rank) : a.priority != b.priority ? a.priority.CompareTo(b.priority) : a.order.CompareTo(b.order));
+            // The sim's crowd sweepers come first: they are counted in the sim (its sweep rate, SweeperTargets), so a crowd
+            // that runs out of adults must still show every one of them (#109). Then rank, priority, order.
+            list.Sort((a, b) =>
+            {
+                bool sa = a.job == JobType.Sweeper, sb = b.job == JobType.Sweeper;
+                if (sa != sb) return sa ? -1 : 1;
+                return a.rank != b.rank ? a.rank.CompareTo(b.rank) : a.priority != b.priority ? a.priority.CompareTo(b.priority) : a.order.CompareTo(b.order);
+            });
             return list;
         }
 

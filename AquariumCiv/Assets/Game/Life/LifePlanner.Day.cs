@@ -559,8 +559,10 @@ namespace AquariumCiv.Life
                 if (p.mentor != null) CopyMaster(p, 7f, 9f); // a young apprentice still learns from the master first
                 WorkBlocks(p, d, work, LifeClock.WorkStart, LifeClock.Midday, 10, false);
                 bool nap = p.hints.napChance > 0f && R(k, day, 4) < p.hints.napChance; // the lazy, after lunch
-                Midday(p, d, work, nap);
+                // After lunch they walk to the afternoon's work: a role holder's morning duty (the master builder at the
+                // mill) may differ from the job they go back to (sweeping their heap, #109).
                 var after = WorkOf(p, d, morning: false);
+                Midday(p, d, after, nap);
                 if (nap) At(ActivityKind.Nap, 14f, gather); // straight from lunch to the green (#64)
                 WorkBlocks(p, d, after, bt, LifeClock.Evening, 30, true);
             }
