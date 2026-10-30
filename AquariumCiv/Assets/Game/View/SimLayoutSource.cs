@@ -87,6 +87,17 @@ namespace AquariumCiv.View
             return months;
         }
 
+        /// <summary>The box on screen is another world now (a museum visit, box 2): rebuild it whole, with no era wave.</summary>
+        public void WorldChanged()
+        {
+            waveStep = -1; Replay = null;
+            MomentLook = false;
+            seenAny = false;
+            FillLayout(Box.layout); // Rebuild() builds from the layout as it is: refill it from the new world first
+            Box.Rebuild();
+            seenMonth = Sim.State.month; seenEra = Sim.State.era; seenAny = true;
+        }
+
         public void FillLayout(BoxLayout layout)
         {
             var sim = Sim;

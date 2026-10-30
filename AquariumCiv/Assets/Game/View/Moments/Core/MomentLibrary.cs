@@ -11,7 +11,7 @@ namespace AquariumCiv.View.Moments
     /// </summary>
     public static class MomentLibrary
     {
-        public const string CampToVillageId = "camp_to_village", VillageToTownId = "village_to_town";
+        public const string CampToVillageId = "camp_to_village", VillageToTownId = "village_to_town", LastMomentId = "last_moment";
 
         /// <summary>The moment into <paramref name="to"/> (null for the camp, which has none).</summary>
         public static MomentDef For(Era to) => to switch
@@ -20,6 +20,40 @@ namespace AquariumCiv.View.Moments
             Era.Town => VillageToTown(),
             _ => null,
         };
+
+        /// <summary>The last moment (era-moment.md §8, #93), ~2.7 min. The crossing beat carries the Cheer action: the director's
+        /// callback completes the box there (nothing moves before it, so a moment left earlier replays).</summary>
+        public static MomentDef LastMoment()
+        {
+            var m = new MomentDef { id = LastMomentId, toEra = Era.Town };
+            var b = m.beats;
+            MomentBeat Add(string id, float start, MomentLight light, string audio, string line, params BeatAction[] a)
+            {
+                var x = Beat(id, start, a); x.light = light; x.audio = audio; x.line = line; b.Add(x); return x;
+            }
+            var evening = Add("evening", 0f, MomentLight.Dusk, "fiddle", "", BeatAction.Gather);
+            evening.camera.Add(Key(3f, MomentAnchor.Steps, 20f, 24f, 0.6f));
+            var look = Add("lookback", 15f, MomentLight.Keep, "", "{lookback}", BeatAction.LeaderSpeaks);
+            look.camera.Add(Key(2f, MomentAnchor.Leader, 22f, 20f, 0.42f)); look.camera.Add(Key(26f, MomentAnchor.Hearth, 10f, 30f, 0.8f));
+            var lant = Add("lanterns", 45f, MomentLight.Keep, "chime", "", BeatAction.LegendLanterns);
+            lant.camera.Add(Key(3f, MomentAnchor.Box, 28f, 14f, 0.9f)); lant.camera.Add(Key(22f, MomentAnchor.Box, 28f, 10f, 1.05f));
+            var founders = Add("founders", 70f, MomentLight.Keep, "", "", BeatAction.GatherFounders);
+            founders.camera.Add(Key(2f, MomentAnchor.Box, 40f, 24f, 0.75f));
+            var shelf = Add("shelf", 85f, MomentLight.Keep, "thump", "", BeatAction.SetDownBox);
+            shelf.camera.Add(Key(5f, MomentAnchor.Shelf, 12f, 36f, 2.2f, MomentEase.EaseOut));
+            var cross = Add("crossing", 95f, MomentLight.Keep, "fiddle", "", BeatAction.Crossing, BeatAction.Cheer);
+            cross.camera.Add(Key(4f, MomentAnchor.Shelf, 8f, 30f, 2.2f)); cross.camera.Add(Key(18f, MomentAnchor.NewBox, 8f, 26f, 1.6f));
+            var wipe = Add("wipe", 115f, MomentLight.Keep, "chime", "One last wipe", BeatAction.LastWipe);
+            wipe.camera.Add(Key(3f, MomentAnchor.Shelf, 18f, 24f, 2.1f));
+            var plate = Add("plate", 125f, MomentLight.Keep, "", "", BeatAction.EngravePlate);
+            plate.camera.Add(Key(3f, MomentAnchor.Box, 6f, 20f, 0.55f));
+            var roll = Add("rollcall", 135f, MomentLight.Keep, "", "", BeatAction.RollCall);
+            roll.camera.Add(Key(3f, MomentAnchor.Shelf, 14f, 30f, 2.1f));
+            var arrive = Add("newbox", 155f, MomentLight.Morning, "flute", "", BeatAction.ArriveNewBox);
+            arrive.hold = 6f; arrive.freeCamera = false;
+            arrive.camera.Add(Key(4f, MomentAnchor.NewBox, 20f, 28f, 0.9f));
+            return m;
+        }
 
         static MomentBeat Beat(string id, float start, params BeatAction[] actions) => new() { id = id, start = start, actions = new List<BeatAction>(actions) };
 

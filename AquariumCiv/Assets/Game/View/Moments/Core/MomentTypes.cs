@@ -46,6 +46,8 @@ namespace AquariumCiv.View.Moments
         Square,     // the busiest junction: the market square (village → town)
         Steps,      // the market steps where the lord's chair goes
         WaveFront,  // the lot the rebuild wave reached last
+        Shelf,      // the shelf: the finished box and the new one beside it (the last moment, #93)
+        NewBox,     // the new box set down on the shelf
     }
 
     /// <summary>The view's side of the anchors: where each one is right now.</summary>
@@ -92,6 +94,15 @@ namespace AquariumCiv.View.Moments
         ToolUnlock,      // the shaping slot opens with its hint (MomentBeat.param = the tool id)
         FestivalStart,   // bunting / a fair: the camera is free again
         AskNotification, // "Want a note when the next one is ready?" Yes / Not now
+        // the last moment (era-moment.md §8, #93)
+        LegendLanterns,  // one lantern rises for each legend, settles against the glass like a star
+        GatherFounders,  // the founders of box 2 gather at the edge with bundles
+        SetDownBox,      // the new empty box is set down on the shelf beside the old one
+        Crossing,        // the ruler is laid, the founders walk across: the box completes here (the only sim effect: Cheer)
+        LastWipe,        // the glass is left museum-clean; the lamp lights
+        EngravePlate,    // the brass plate's second line, letter by letter
+        RollCall,        // the names scroll past
+        ArriveNewBox,    // the camera moves to the new box
     }
 
     /// <summary>A camera key on a beat's rail. <see cref="at"/> is seconds from the beat's start; the pose is the

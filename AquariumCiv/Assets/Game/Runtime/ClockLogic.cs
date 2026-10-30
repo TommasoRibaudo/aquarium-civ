@@ -11,6 +11,11 @@ namespace AquariumCiv.Game
         public SimCore sim;
         /// <summary>The boxes on the shelf (#87); <see cref="sim"/> is the active one.</summary>
         public ShelfState shelf;
+        /// <summary>A finished box being looked at (#93): what the box on screen shows instead of <see cref="sim"/>, which stays
+        /// the shelf's active box (and what saves and the live clock use). Null = the active box is on screen.</summary>
+        public SimCore visit;
+        public int visitIndex = -1;
+        public SimCore ViewSim => visit ?? sim;
         public SaveStore.LoadResult load;
         public bool newWorld;
         /// <summary>False when the save on disk is from a newer build: this session never writes over it.</summary>
@@ -95,6 +100,22 @@ namespace AquariumCiv.Game
             session.sim = Shelf.StartNextBox(session.shelf, config, setting, seed, nowUtc, completion);
             return session.sim;
         }
+
+        /// <summary>Opens a museum box to look at: its people live the time since the last visit
+        /// (<see cref="SimCore.MuseumAdvance"/>). The active box is untouched and still what saves. False if there is no such
+        /// museum.</summary>
+        public static bool Visit(ClockStart session, int index, SimConfig config, DateTime nowUtc, out MuseumResult result)
+        {
+            result = default;
+            var box = session.shelf?.Box(index);
+            if (box == null || !box.museum || box.state == null) return false;
+            session.visit = Shelf.Visit(session.shelf, index, config, nowUtc, out result);
+            session.visitIndex = index;
+            return true;
+        }
+
+        /// <summary>Back to the active box.</summary>
+        public static void EndVisit(ClockStart session) { session.visit = null; session.visitIndex = -1; }
 
         /// <summary>Moves a broken file to <c>name.corrupt</c> (replacing an older one) and returns the new path.</summary>
         static string KeepAside(string file)
