@@ -34,9 +34,36 @@ namespace AquariumCiv.View
         /// The Stylized shader stretches and wobbles them by it (no extra vertex stream, no CPU cost).
         /// </summary>
         public float flameBaseY, flameHeight, flamePhase;
-        readonly System.Random rng;
+        System.Random rng;
 
         public MeshBuilder(int seed = 1) { rng = new System.Random(seed); }
+
+        // Builders with their list capacity kept: a chunk rebuild makes thousands of throwaway buffers otherwise, and the GC
+        // pause they bring lands inside a time-lapse step (#78, user 2026-10-30: a scrub step never hitches).
+        static readonly System.Collections.Concurrent.ConcurrentBag<MeshBuilder> Pool = new();
+        const int PoolMax = 256;
+
+        /// <summary>A clean builder from the pool (same as <c>new MeshBuilder(seed)</c>); hand it back with <see cref="Free"/>.
+        /// Safe from worker threads.</summary>
+        public static MeshBuilder Rent(int seed)
+        {
+            if (!Pool.TryTake(out var b)) return new MeshBuilder(seed);
+            b.rng = new System.Random(seed);
+            return b;
+        }
+
+        /// <summary>Back to the pool: don't use this builder again.</summary>
+        public void Free()
+        {
+            verts.Clear(); normals.Clear(); colors.Clear(); uvs.Clear(); lamps.Clear(); tris.Clear();
+            M = Matrix4x4.identity;
+            jitter = 0.035f; sway = emission = 0f; lamp = -1f;
+            flameBaseY = flameHeight = flamePhase = 0f;
+            if (Pool.Count < PoolMax) Pool.Add(this);
+        }
+
+        /// <summary><see cref="Append"/>, then <see cref="Free"/>s <paramref name="src"/>.</summary>
+        public void AppendFree(MeshBuilder src) { Append(src); src.Free(); }
 
         /// <summary>sRGB to linear in managed code (Color.linear is a native call), so builders can run on worker
         /// threads (BoxView builds terrain bands in parallel).</summary>

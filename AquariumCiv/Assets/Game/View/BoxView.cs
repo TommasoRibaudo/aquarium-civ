@@ -185,17 +185,23 @@ namespace AquariumCiv.View
             aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
             ChunkHashes(chunkHash);
+            System.Array.Copy(chunkHash, wantHash, ChunkCount);
             landHash = LandHash();
             lastBuildInfo = $"{verts} verts, {tris} tris, {layout.pieces.Count} pieces, {dolls.Count} people, AO {aoMs:0} ms, total {sw.ElapsedMilliseconds} ms";
         }
 
         /// <summary>
         /// Refills the layout from the source and rebuilds only what changed: the chunks whose contents hash differently,
-        /// the glows, and the people (kept, moved, made or removed). A changed land rebuilds everything. Returns the timing.
+        /// the glows, and the people (kept, moved, made or removed). A changed land rebuilds everything. While
+        /// <see cref="deferAO"/> is on (the time-lapse scrub, #78) at most <see cref="ScrubChunksPerFrame"/> chunks rebuild here
+        /// and the others wait, one more each frame (<see cref="ChunksWaiting"/>), so a scrub step never hitches
+        /// (user 2026-10-30). Returns the timing.
         /// </summary>
         public string Refresh()
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
+            refreshFrame = Time.frameCount;
+            int gc0 = System.GC.CollectionCount(0);
             var src = GetComponent<IBoxLayoutSource>();
             if (src != null) src.FillLayout(layout);
             double fillMs = sw.Elapsed.TotalMilliseconds;
@@ -208,17 +214,61 @@ namespace AquariumCiv.View
             }
             PrepareFields();
             Reserve();
-            var h = new uint[ChunkCount];
-            ChunkHashes(h);
-            lastChunks.Clear();
-            for (int k = 0; k < ChunkCount; k++) if (h[k] != chunkHash[k]) lastChunks.Add(k);
+            System.Array.Clear(wantHash, 0, ChunkCount);
+            ChunkHashes(wantHash);
+            PickChunks(deferAO ? ScrubChunksPerFrame : ChunkCount);
             double prepMs = sw.Elapsed.TotalMilliseconds;
+            RebuildChunks(sw, out double buildMs, out double meshMs, out double aoMs);
+            Glows();
+            int made = SyncPeople();
+            lastRefreshMs = sw.Elapsed.TotalMilliseconds;
+            lastAoMs = aoMs;
+            lastRefreshInfo = lastChunks.Count == 0
+                ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
+                : $"rebuilt chunk(s) {string.Join(",", lastChunks)} in {lastRefreshMs:0.0} ms (AO {aoMs:0.0} ms), {made} new people, {layout.pieces.Count} pieces, {ChunksWaiting} waiting " +
+                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}, gc {System.GC.CollectionCount(0) - gc0}]";
+            if (logRebuilds && lastChunks.Count > 0) Debug.Log("[BoxView] " + lastRefreshInfo);
+            return lastRefreshInfo;
+        }
+
+        /// <summary>Chunks one <see cref="deferAO"/> refresh, or one frame after it, may rebuild (#78).</summary>
+        public const int ScrubChunksPerFrame = 1;
+        /// <summary>Chunks whose new look waits for a frame of their own.</summary>
+        public int ChunksWaiting { get { int n = 0; for (int k = 0; k < ChunkCount; k++) if (wantHash[k] != chunkHash[k]) n++; return n; } }
+
+        // What the layout wants each chunk to hash to, and how many refreshes each has waited (the longest wait goes first).
+        readonly uint[] wantHash = new uint[ChunkCount];
+        readonly int[] chunkWaited = new int[ChunkCount];
+        int refreshFrame = -1;
+        /// <summary>Milliseconds the last catch-up chunk took (tests time these with the scrub steps).</summary>
+        [System.NonSerialized] public double lastWaitingMs;
+
+        /// <summary>Fills <see cref="lastChunks"/> with up to <paramref name="budget"/> dirty chunks, longest waiting first.</summary>
+        void PickChunks(int budget)
+        {
+            lastChunks.Clear();
+            for (int k = 0; k < ChunkCount; k++)
+            {
+                if (wantHash[k] == chunkHash[k]) { chunkWaited[k] = 0; continue; }
+                chunkWaited[k]++;
+                lastChunks.Add(k);
+            }
+            if (lastChunks.Count <= budget) return;
+            lastChunks.Sort((a, b) => chunkWaited[a] != chunkWaited[b] ? chunkWaited[b].CompareTo(chunkWaited[a]) : a.CompareTo(b));
+            lastChunks.RemoveRange(budget, lastChunks.Count - budget);
+            lastChunks.Sort();
+        }
+
+        /// <summary>Rebuilds <see cref="lastChunks"/> to <see cref="wantHash"/> from the layout as it is.</summary>
+        void RebuildChunks(System.Diagnostics.Stopwatch sw, out double buildMs, out double meshMs, out double aoMs)
+        {
             var builders = new List<(int k, MeshBuilder mb, int tv, Mesh mesh)>();
             var built = new MeshBuilder[lastChunks.Count];
             var tvs = new int[lastChunks.Count];
             // The dirty chunks build side by side on worker threads (pure maths into their own builders).
             System.Threading.Tasks.Parallel.For(0, lastChunks.Count, i => built[i] = BuildChunk(lastChunks[i], out tvs[i]));
-            double buildMs = sw.Elapsed.TotalMilliseconds;
+            buildMs = sw.Elapsed.TotalMilliseconds;
+            bool defer = bakeAO && deferAO;
             for (int i = 0; i < lastChunks.Count; i++)
             {
                 int k = lastChunks[i], tv = tvs[i];
@@ -226,14 +276,17 @@ namespace AquariumCiv.View
                 var mesh = mb.ToMesh("BoxChunk" + k);
                 var old = chunkFilters[k].sharedMesh;
                 chunkFilters[k].sharedMesh = mesh;
-                chunkColliders[k].sharedMesh = mesh;
+                // The collider is only there for the AO rays: a deferred chunk cooks it when it bakes (every deferred chunk
+                // rebuilds together, FlushAo).
+                if (!defer) chunkColliders[k].sharedMesh = mesh;
                 Kill(old);
                 builders.Add((k, mb, tv, mesh));
-                chunkHash[k] = h[k];
+                chunkHash[k] = wantHash[k];
+                chunkWaited[k] = 0;
             }
-            double meshMs = sw.Elapsed.TotalMilliseconds;
-            double aoMs = 0;
-            if (bakeAO && deferAO) foreach (var (k, _, _, _) in builders) aoPending.Add(k);
+            meshMs = sw.Elapsed.TotalMilliseconds;
+            aoMs = 0;
+            if (defer) foreach (var (k, _, _, _) in builders) aoPending.Add(k);
             else if (bakeAO && builders.Count > 0)
             {
                 foreach (var (k, _, _, _) in builders) aoPending.Remove(k);
@@ -244,16 +297,17 @@ namespace AquariumCiv.View
                 BakeAO(all);
                 aoMs = t.Elapsed.TotalMilliseconds;
             }
-            Glows();
-            int made = SyncPeople();
-            lastRefreshMs = sw.Elapsed.TotalMilliseconds;
-            lastAoMs = aoMs;
-            lastRefreshInfo = lastChunks.Count == 0
-                ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
-                : $"rebuilt chunk(s) {string.Join(",", lastChunks)} in {lastRefreshMs:0.0} ms (AO {aoMs:0.0} ms), {made} new people, {layout.pieces.Count} pieces " +
-                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}]";
-            if (logRebuilds && lastChunks.Count > 0) Debug.Log("[BoxView] " + lastRefreshInfo);
-            return lastRefreshInfo;
+            foreach (var (_, mb, _, _) in builders) mb.Free();
+        }
+
+        /// <summary>A frame without a refresh: the next waiting chunk (the layout has not moved on since it was hashed).</summary>
+        void BuildWaitingChunk()
+        {
+            if (root == null || !deferAO || refreshFrame == Time.frameCount || ChunksWaiting == 0) return;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            PickChunks(ScrubChunksPerFrame);
+            RebuildChunks(sw, out _, out _, out _);
+            lastWaitingMs = sw.Elapsed.TotalMilliseconds;
         }
 
         /// <summary>Debug hook: rebuild every box in the scene (after editing a layout from `script eval`).</summary>
@@ -307,7 +361,7 @@ namespace AquariumCiv.View
 
         MeshBuilder BuildChunk(int k, out int terrainVerts)
         {
-            var mb = new MeshBuilder(seed * 31 + k * 7);
+            var mb = MeshBuilder.Rent(seed * 31 + k * 7);
             Terrain(mb, k);
             terrainVerts = mb.VertexCount;
             foreach (var f in layout.fields)
@@ -737,11 +791,11 @@ namespace AquariumCiv.View
             var parts = new MeshBuilder[Bands];
             System.Threading.Tasks.Parallel.For(0, Bands, b =>
             {
-                var pb = new MeshBuilder(seed * 31 + k * 7 + b * 101);
+                var pb = MeshBuilder.Rent(seed * 31 + k * 7 + b * 101);
                 TerrainRows(pb, k, j0 + (j1 - j0) * b / Bands, j0 + (j1 - j0) * (b + 1) / Bands);
                 parts[b] = pb;
             });
-            foreach (var pb in parts) mb.Append(pb);
+            foreach (var pb in parts) mb.AppendFree(pb);
         }
 
         void TerrainRows(MeshBuilder mb, int k, int j0, int j1)
@@ -914,16 +968,16 @@ namespace AquariumCiv.View
         void PieceMesh(MeshBuilder mb, PieceData p)
         {
             // Each piece gets its own builder seeded by its seed, so its look doesn't change when others are added.
-            var lb = new MeshBuilder(p.seed * 7919 + (int)p.era * 31 + seed) { jitter = 0.035f };
+            var lb = MeshBuilder.Rent(p.seed * 7919 + (int)p.era * 31 + seed);
             float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
             lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one * Mathf.Max(0.02f, p.grow));
             Pieces.Draw(lb, p, LotGround(lb));
-            mb.Append(lb);
+            mb.AppendFree(lb);
         }
 
         void FieldMesh(MeshBuilder mb, FieldData f)
         {
-            var fb = new MeshBuilder(f.seed * 131 + seed);
+            var fb = MeshBuilder.Rent(f.seed * 131 + seed);
             Pieces.Ground ground = q => land.OnGround(q.x, q.z);
             if (f.crop == CropKind.Wheat || f.crop == CropKind.Sprout)
             {
@@ -958,7 +1012,7 @@ namespace AquariumCiv.View
                     else Pieces.Fence(fb, ground, new[] { A, B });
                 }
             }
-            mb.Append(fb);
+            mb.AppendFree(fb);
         }
 
         // ---------------- nature ----------------
@@ -990,13 +1044,13 @@ namespace AquariumCiv.View
             ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
             bool In(Vector2 p) => ChunkOf(p) == k;
             float H(int cat, int i, int c) => Land.Hash3(seed * 977 + k * 131 + cat, i, c);
-            MeshBuilder Item(int cat, int i) => new(seed * 7919 + k * 104729 + cat * 15485863 + i * 31);
+            MeshBuilder Item(int cat, int i) => MeshBuilder.Rent(seed * 7919 + k * 104729 + cat * 15485863 + i * 31);
             foreach (var t in layout.trees)
                 if (In(t.pos))
                 {
-                    var tb = new MeshBuilder(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
+                    var tb = MeshBuilder.Rent(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
                     Pieces.Tree(tb, land.OnGround(t.pos), t.scale, t.pine);
-                    mb.Append(tb);
+                    mb.AppendFree(tb);
                 }
             if (layout.reeds)
                 for (int i = 0; i < reedSpots.Count; i++)
@@ -1008,7 +1062,7 @@ namespace AquariumCiv.View
                     if (clash || CanalDist(at.x, at.y) < 0.06f) continue;
                     var rb = Item(0, i);
                     Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
-                    mb.Append(rb);
+                    mb.AppendFree(rb);
                 }
             if (!layout.autoNature) return;
             // Candidates per chunk: about a quarter of the old whole-box counts get through the free-spot checks.
@@ -1023,7 +1077,7 @@ namespace AquariumCiv.View
                     if (H(1, i, 3) > bias || !Free(p, 0.22f, near)) continue;
                     var ib = Item(1, i);
                     Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f);
-                    mb.Append(ib);
+                    mb.AppendFree(ib);
                     near.Add((p, 0.2f));
                 }
             for (int i = 0, n = Mathf.RoundToInt(9 * kd); i < n; i++)
@@ -1032,7 +1086,7 @@ namespace AquariumCiv.View
                 if (!Free(p, 0.1f, near)) continue;
                 var ib = Item(2, i);
                 Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f);
-                mb.Append(ib);
+                mb.AppendFree(ib);
                 near.Add((p, 0.1f));
             }
             for (int i = 0, n = Mathf.RoundToInt(8 * kd); i < n; i++)
@@ -1042,7 +1096,7 @@ namespace AquariumCiv.View
                 float r = Mathf.Lerp(0.05f, 0.14f, H(3, i, 3));
                 var ib = Item(3, i);
                 Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f);
-                mb.Append(ib);
+                mb.AppendFree(ib);
                 near.Add((p, r));
             }
             for (int i = 0, n = Mathf.RoundToInt(150 * kd); i < n; i++)
@@ -1059,7 +1113,7 @@ namespace AquariumCiv.View
                     if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
                 if (flowers || H(4, i, 5) < 0.2f)
                     ib.Ico(g + Vector3.up * h * 0.8f, flowers ? 0.018f : 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(4, i, 6) * Palette.Flowers.Length))], 0.1f);
-                mb.Append(ib);
+                mb.AppendFree(ib);
             }
         }
 
@@ -1231,7 +1285,7 @@ namespace AquariumCiv.View
             }
         }
 
-        void LateUpdate() => SortPanes();
+        void LateUpdate() { BuildWaitingChunk(); SortPanes(); }
 
         // ---------------- ambient occlusion ----------------
         /// <summary>The last AO bake's breakdown (keys, timings), for profiling.</summary>

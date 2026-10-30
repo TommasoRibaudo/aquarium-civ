@@ -173,8 +173,8 @@ namespace AquariumCiv.View
             LastStepMs = sw.Elapsed.TotalMilliseconds;
             LastChunks = Box.lastChunks.Count;
             Steps++; TotalStepMs += LastStepMs;
-            LastInfo = string.Format(CultureInfo.InvariantCulture, "year {0:0.00} ({1}) · {2} buildings · {3:0.0} ms, {4} chunk(s)",
-                position + 1f, near.era, near.buildings.Count, LastStepMs, LastChunks);
+            LastInfo = string.Format(CultureInfo.InvariantCulture, "year {0:0.00} ({1}) · {2} buildings · {3:0.0} ms, {4} chunk(s), {5} waiting",
+                position + 1f, near.era, near.buildings.Count, LastStepMs, LastChunks, Box.ChunksWaiting);
         }
 
         // ---------------- debug (SimDebugPanel, `script eval`) ----------------
