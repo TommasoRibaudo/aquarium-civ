@@ -93,6 +93,47 @@ namespace AquariumCiv.View.Tests
             Assert.IsFalse(L.paths.Any(p => p.cobbled));
         }
 
+        /// <summary>User 2026-10-30: cobbles only on the busiest path. Of the town's main-path curves one is chosen (the most
+        /// worn), the cobbled runs follow only it, the other main paths stay earth, and the choice is sticky.</summary>
+        [Test]
+        public void OnlyTheBusiestMainPathIsCobbled()
+        {
+            var cfg = new SimConfig();
+            var sim = new SimCore(cfg, SimCore.NewWorld(20261029, cfg));
+            SimLayoutSource.Skip(sim, 200f, true);
+            Assert.AreEqual(Era.Town, sim.State.era);
+            var st = sim.Settlement;
+            var curves = st.Paths();
+            var tiers = st.Map.tier;
+            var main = curves.Where(c => c.cells.Any(x => tiers[x] >= PathNet.PathTier)).ToList();
+            Assert.Greater(main.Count, 1, "a town has more than one main path");
+            var busy = SimLayout.BusiestPathCells(st.Map, curves, tiers);
+            Assert.IsNotNull(busy);
+            float Score(PathCurve c) => c.cells.Where(x => tiers[x] >= PathNet.PathTier).Sum(x => Mathf.Max(st.Map.wear[x], PathNet.TPath));
+            int MainCells(PathCurve c) => c.cells.Count(x => tiers[x] >= PathNet.PathTier);
+            var chosen = new System.Collections.Generic.List<PathCurve> { main.OrderByDescending(Score).First() };
+            Assert.IsTrue(chosen[0].cells.Where(x => tiers[x] >= PathNet.PathTier).All(busy.Contains), "the most worn path is the one chosen");
+            // every other main path of any length is (mostly) left out; a stub at a junction may sit inside its neighbours
+            foreach (var c in main)
+                if (c != chosen[0] && MainCells(c) > 6)
+                    Assert.Less(c.cells.Count(x => tiers[x] >= PathNet.PathTier && busy.Contains(x)), MainCells(c) / 2, "another main path is not cobbled");
+
+            var L = new BoxLayout();
+            SimLayout.Fill(L, sim, null, SimLayout.BusiestCobbles(tiers, busy));
+            var cob = L.paths.Where(p => p.cobbled).ToList();
+            Assert.IsNotEmpty(cob, "the busiest path is cobbled");
+            Assert.IsTrue(L.paths.Any(p => !p.cobbled && p.tier == PathTier.Path), "other main paths stay earth");
+            Assert.IsTrue(L.clearings.Any(c => c.kind == ClearingKind.Cobble), "the square stays cobbled");
+            int cobPts = cob.Sum(p => p.points.Length), offPts = cob.Sum(p => p.points.Count(q => !busy.Contains(SiteMap.CellAt(q.x, q.y))));
+            Assert.Less(offPts, cobPts * 0.05f, "cobbled runs lie on the busiest path");
+
+            // sticky: the last choice keeps its cobbles against a path only a little busier
+            var other = main.First(c => c != chosen[0]);
+            var keep = SimLayout.BusiestPathCells(st.Map, new System.Collections.Generic.List<PathCurve> { other, chosen[0] }, tiers, busy);
+            if (Score(other) < Score(chosen[0]) * SimLayout.BusiestStickiness)
+                Assert.IsTrue(chosen[0].cells.Where(x => tiers[x] >= PathNet.PathTier).All(keep.Contains), "the cobbles stay put");
+        }
+
         [Test]
         public void CobbledPath_PaintsCobbles_PlainPathStaysSandy()
         {

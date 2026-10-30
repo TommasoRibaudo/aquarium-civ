@@ -342,6 +342,61 @@ namespace AquariumCiv.View
         /// <summary>Stalls the town's square holds (#34).</summary>
         public const int TownStalls = 3;
 
+        /// <summary>
+        /// The town's busiest main path (user 2026-10-30, #90: cobbles only on the busiest path, not every main path): of
+        /// the path curves that reach path tier, the one whose path-tier cells carry the most wear (each counts at least
+        /// <see cref="PathNet.TPath"/>, so a replay's paths that have since faded still count). Returns its path-tier
+        /// skeleton cells and their eight neighbours (the smoothed curve's samples land within a cell of the skeleton), or
+        /// null when there is no main path. <paramref name="prefer"/> (the last choice) wins ties up to
+        /// <see cref="BusiestStickiness"/>, so the cobbles don't hop between two paths of about the same traffic.
+        /// </summary>
+        public static HashSet<int> BusiestPathCells(SiteMap map, List<PathCurve> curves, byte[] tiers, ICollection<int> prefer = null)
+        {
+            if (map == null || curves == null || tiers == null) return null;
+            var wear = map.wear;
+            PathCurve best = null;
+            float bestScore = 0f;
+            foreach (var c in curves)
+            {
+                float score = 0f;
+                int mine = 0, kept = 0;
+                foreach (int cell in c.cells)
+                {
+                    if (cell < 0 || cell >= tiers.Length || tiers[cell] < PathNet.PathTier) continue;
+                    score += Mathf.Max(wear != null ? wear[cell] : 0f, PathNet.TPath);
+                    mine++;
+                    if (prefer != null && prefer.Contains(cell)) kept++;
+                }
+                if (mine == 0) continue;
+                if (prefer != null && kept * 2 > mine) score *= BusiestStickiness;
+                if (score > bestScore) { bestScore = score; best = c; }
+            }
+            if (best == null) return null;
+            var set = new HashSet<int>();
+            foreach (int cell in best.cells)
+            {
+                if (cell < 0 || cell >= tiers.Length || tiers[cell] < PathNet.PathTier) continue;
+                int i = cell % SiteMap.NX, j = cell / SiteMap.NX;
+                for (int dj = -1; dj <= 1; dj++)
+                    for (int di = -1; di <= 1; di++)
+                    {
+                        int ii = i + di, jj = j + dj;
+                        if (ii >= 0 && jj >= 0 && ii < SiteMap.NX && jj < SiteMap.NZ) set.Add(jj * SiteMap.NX + ii);
+                    }
+            }
+            return set;
+        }
+
+        /// <summary>The last busiest path keeps its cobbles until another carries this much more traffic.</summary>
+        public const float BusiestStickiness = 1.3f;
+
+        /// <summary>The cobble hook (<see cref="Fill"/>'s <c>cobbled</c>) for the busiest path: its path-tier cells.</summary>
+        public static Func<int, bool> BusiestCobbles(byte[] tiers, HashSet<int> busiest)
+        {
+            if (tiers == null || busiest == null) return null;
+            return c => c >= 0 && c < tiers.Length && tiers[c] >= PathNet.PathTier && busiest.Contains(c);
+        }
+
         /// <summary>The town's market stalls: an arc on the cobbled square on the market's side, facing the middle, kept
         /// off lots, water and the open well.</summary>
         static void MarketStalls(BoxLayout L, Settlement st, Vector2 green, int seed)
