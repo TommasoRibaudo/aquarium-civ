@@ -18,7 +18,8 @@ namespace AquariumCiv.View
     [AddComponentMenu("AquariumCiv/TEMPORARY Sim Debug Panel")]
     public class SimDebugPanel : MonoBehaviour
     {
-        public bool open;
+        public bool open { get => DebugDock.Active == DebugDock.Sim; set => DebugDock.Active = value ? DebugDock.Sim : DebugDock.None; }
+        float contentH = 600f;
         static readonly CultureInfo Ci = CultureInfo.InvariantCulture;
         readonly Dictionary<string, bool> fold = new();
         Vector2 scroll;
@@ -111,17 +112,10 @@ namespace AquariumCiv.View
         // ---------- IMGUI ----------
         void OnGUI()
         {
-            float sc = Mathf.Max(1f, Screen.height / 1100f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(sc, sc, 1f));
-            var sa = Screen.safeArea;
-            var safe = new Rect(sa.x / sc, (Screen.height - sa.yMax) / sc, sa.width / sc, sa.height / sc);
-            if (!open)
-            {
-                if (GUI.Button(new Rect(safe.xMax - 64, safe.y + 8, 56, 32), "sim")) open = true;
-                return;
-            }
-            float w = Mathf.Min(safe.width - 16, 340);
-            var area = new Rect(safe.xMax - w - 8, safe.y + 8, w, safe.height - 16);
+            if (DebugDock.Active != DebugDock.Sim || DebugDock.Hidden) return;
+            var safe = DebugDock.Begin(out float sc);
+            var area = DebugDock.PanelArea(safe, 340f, contentH + 60f);
+            DebugDock.SetPanel(area);
             GUILayout.BeginArea(area, GUI.skin.box);
             var sim = Sim;
             if (sim == null)
@@ -137,6 +131,7 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             if (!string.IsNullOrEmpty(last)) GUILayout.Label(last);
             scroll = GUILayout.BeginScrollView(scroll);
+            GUILayout.BeginVertical();
 
             if (Section("Time"))
             {
@@ -268,6 +263,8 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Sweepers clear a heap")) last = Done(sim.DebugSweep() ? "swept" : "no sweepers (town)");
             }
 
+            GUILayout.EndVertical();
+            if (Event.current.type == EventType.Repaint) contentH = GUILayoutUtility.GetLastRect().height;
             GUILayout.EndScrollView();
             GUILayout.EndArea();
         }

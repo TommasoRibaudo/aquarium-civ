@@ -919,6 +919,7 @@ MonoBehaviour:
   - type: Church
     prefabs:
     - {fileID: 919132149155446097, guid: 55d3d3712021182408e30ae8dd85f98a, type: 3}
+  showUpToMonth: -1
 --- !u!4 &299896584
 Transform:
   m_ObjectHideFlags: 0
@@ -1733,6 +1734,7 @@ GameObject:
   - component: {fileID: 621285384}
   - component: {fileID: 621285383}
   - component: {fileID: 621285382}
+  - component: {fileID: 621285386}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1868,6 +1870,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &621285386
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 621285381}
+  m_Enabled: 1
 --- !u!1001 &661717956
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1973,6 +1983,9 @@ MonoBehaviour:
   walkSpeed: 0.5
   maxVisible: 30
   grumpiness: 0
+  tagNotables: 1
+  reserved: 0
+  populationOverride: -1
 --- !u!4 &708568554
 Transform:
   m_ObjectHideFlags: 0
@@ -2206,8 +2219,10 @@ MonoBehaviour:
   flickSpeed: 0.6
   flickMinTravel: 0.03
   pickRadius: 0.035
+  blockingGrime: 0.15
   hintIdleSeconds: 25
   maxHintRepeats: 2
+  peopleFirst: 0
   hint: Drag across the glass to wipe it clean. Touch junk or weeds and flick them
     out. Two fingers turn the tank.
 --- !u!114 &808651394
@@ -2303,6 +2318,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.EventLog
   lookInterval: 0.5
+  weightedLook: 0
 --- !u!114 &808651401
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2328,6 +2344,9 @@ MonoBehaviour:
     startNotables: 5
     minNotables: 5
     maxNotables: 12
+    storyEvents: 0
+    storyChancePerMonth: 0.07
+    recordYears: 0
   seed: 1234
   speed: 1
 --- !u!114 &808651402
@@ -2348,6 +2367,8 @@ MonoBehaviour:
   - B
   testMode: 1
   surveyQ4: I felt bad or guilty when I opened it
+  surveyExtra: 
+  separateLabSave: 0
 --- !u!4 &808651403
 Transform:
   m_ObjectHideFlags: 0

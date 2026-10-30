@@ -81,12 +81,34 @@ namespace AquariumCiv.GameUI
             if (Instance == this) Instance = null;
         }
 
+        // Picking blockers over the IMGUI debug panels (UiInput.DebugBlocks), so taps there never reach HUD buttons below.
+        readonly VisualElement[] blockers = new VisualElement[2];
+        public bool SheetOpen => openSheet != null;
+
+        void UpdateBlockers()
+        {
+            float k = GameUiPanel.ReferenceWidth / Mathf.Max(1f, Screen.width);
+            for (int i = 0; i < blockers.Length; i++)
+            {
+                var b = blockers[i];
+                if (b == null) continue;
+                if (i < UiInput.DebugBlocks.Count)
+                {
+                    var r = UiInput.DebugBlocks[i];
+                    b.style.left = r.x * k; b.style.top = r.y * k; b.style.width = r.width * k; b.style.height = r.height * k;
+                    b.style.display = DisplayStyle.Flex;
+                }
+                else b.style.display = DisplayStyle.None;
+            }
+        }
+
         bool IsOverUi(Vector2 screenPos) => !hidden && GameUiPanel.Over(root, screenPos);
 
         void Update()
         {
             if (root == null) return;
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
+            UpdateBlockers();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             // Android Back / Esc closes the open sheet.
             if (openSheet != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) CloseSheet();
@@ -130,6 +152,13 @@ namespace AquariumCiv.GameUI
             bottomRow.Add(Btn("hud-shape", "Shape", () => Open(Shaping), "hud-btn", "hud-btn--primary"));
             safe.Add(bottomRow);
 
+            for (int i = 0; i < blockers.Length; i++)
+            {
+                blockers[i] = new VisualElement { name = "hud-debug-block" + i, pickingMode = PickingMode.Position };
+                blockers[i].style.position = Position.Absolute;
+                blockers[i].style.display = DisplayStyle.None;
+                root.Add(blockers[i]);
+            }
             BuildSettings();
             BuildHistory();
             BuildShaping();

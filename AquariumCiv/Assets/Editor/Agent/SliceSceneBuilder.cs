@@ -61,6 +61,7 @@ namespace AquariumCiv.EditorTools
 
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = camGo.AddComponent<Camera>();
+            camGo.AddComponent<AudioListener>(); // without one the music is silent and the console spams (#72)
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.9f, 0.86f, 0.8f);
             cam.fieldOfView = 22f;

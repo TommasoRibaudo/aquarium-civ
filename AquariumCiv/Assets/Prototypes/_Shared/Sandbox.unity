@@ -1897,6 +1897,10 @@ MonoBehaviour:
   characterScale: 0.18005957
   walkSpeed: 0.5
   maxVisible: 30
+  grumpiness: 0
+  tagNotables: 1
+  reserved: 0
+  populationOverride: -1
 --- !u!4 &808447556
 Transform:
   m_ObjectHideFlags: 0
@@ -2972,6 +2976,7 @@ MonoBehaviour:
   - type: Church
     prefabs:
     - {fileID: 919132149155446097, guid: 55d3d3712021182408e30ae8dd85f98a, type: 3}
+  showUpToMonth: -1
 --- !u!1 &1242078219
 GameObject:
   m_ObjectHideFlags: 0
@@ -3074,6 +3079,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 505d7069b8c00c74999c1d1d2019a992, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.HudToast
+  welcomeBack: 1
+  bannerTop: 90
+  bannerBelowSafe: 24
 --- !u!114 &1242078226
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3087,6 +3095,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: AquariumCiv.Prototypes.Shared::AquariumCiv.Prototypes.EventLog
   lookInterval: 0.5
+  weightedLook: 0
 --- !u!114 &1242078227
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3107,10 +3116,14 @@ MonoBehaviour:
     trashPerPersonHour: 0.02
     outputPenaltyEnabled: 1
     outputPenaltyMax: 0.25
+    messAffectsMood: 1
     buildingSlots: 26
     startNotables: 5
     minNotables: 5
     maxNotables: 12
+    storyEvents: 0
+    storyChancePerMonth: 0.07
+    recordYears: 0
   seed: 1234
   speed: 1
 --- !u!114 &1242078228
@@ -3131,6 +3144,8 @@ MonoBehaviour:
   - B
   testMode: 0
   surveyQ4: Cleaning felt satisfying
+  surveyExtra: 
+  separateLabSave: 0
 --- !u!4 &1242078229
 Transform:
   m_ObjectHideFlags: 0
@@ -4020,6 +4035,7 @@ GameObject:
   - component: {fileID: 1573968912}
   - component: {fileID: 1573968911}
   - component: {fileID: 1573968910}
+  - component: {fileID: 1573968914}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -4155,6 +4171,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &1573968914
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1573968909}
+  m_Enabled: 1
 --- !u!1 &1583666591
 GameObject:
   m_ObjectHideFlags: 0

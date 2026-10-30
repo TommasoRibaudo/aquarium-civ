@@ -180,6 +180,7 @@ GameObject:
   - component: {fileID: 472921969}
   - component: {fileID: 472921968}
   - component: {fileID: 472921967}
+  - component: {fileID: 472921971}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -318,6 +319,14 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!81 &472921971
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 472921966}
+  m_Enabled: 1
 --- !u!1 &614143114
 GameObject:
   m_ObjectHideFlags: 0
@@ -406,6 +415,12 @@ MonoBehaviour:
       townYears: 40
       seats: 7
       fullYears: 3
+    recordHistory: 1
+    historyKeyframeYears: 10
+    historyPruneYears: 30
+    historyPruneBelow: 0.5
+    historyPositionMinSalience: 0.5
+    pinLegendHours: 24
   autosaveSeconds: 30
   maxFrameSeconds: 1
 --- !u!4 &614143116
@@ -470,7 +485,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb45565114743334c9440703bc2f2842, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AquariumCiv.View::AquariumCiv.View.SliceDebugPanel
-  open: 0
 --- !u!114 &896176679
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -517,7 +531,7 @@ MonoBehaviour:
   glass: {fileID: 2100000, guid: 2ca55f126e0e7af438aa6199c81ac511, type: 2}
   glow: {fileID: 2100000, guid: 74cf033f5929b38429d4c8103c1aed2a, type: 2}
   smoke: {fileID: 2100000, guid: e0a8c6b245e42154f8f2e2a5d7b90f8c, type: 2}
-  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 75 ms, total 202
+  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 59 ms, total 128
     ms
   lastRefreshInfo: no chunk changed, 0 new people, 56,5 ms
 --- !u!4 &896176681
@@ -564,7 +578,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 35b8f2bae4e313846911facac72f27c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AquariumCiv.View::AquariumCiv.View.SimDebugPanel
-  open: 0
 --- !u!1 &1235873607
 GameObject:
   m_ObjectHideFlags: 0
