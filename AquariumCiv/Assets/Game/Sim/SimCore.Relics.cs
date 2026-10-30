@@ -638,10 +638,32 @@ namespace AquariumCiv.Sim
 
         int TapBack(int taps, bool force)
         {
-            if (!RelicsOn || taps <= 0) return -1;
-            if (!force && (BeliefStage < 3 || BeliefHalfNow != BeliefHalf.Later)) return -1;
-            var scholar = Scholars.FirstOrDefault() ?? (force ? FirstAdult() : null);
-            if (scholar == null) return -1;
+            var c = Candidates(taps, force);
+            if (c.Count == 0) return -1;
+            CreditTapBack(c[0], taps);
+            return c[0];
+        }
+
+        List<int> Candidates(int taps, bool force)
+        {
+            var list = new List<int>();
+            if (!RelicsOn || taps <= 0) return list;
+            if (!force && (BeliefStage < 3 || BeliefHalfNow != BeliefHalf.Later)) return list;
+            list.AddRange(Scholars.Select(n => n.id));
+            if (list.Count == 0 && force && FirstAdult() is Notable a) list.Add(a.id);
+            return list;
+        }
+
+        /// <summary>Who could tap back after the Keeper's <paramref name="taps"/> taps (the scholars, in order), with no side
+        /// effects: the view stages one (<c>LifePlanner.AnswerKnock</c>) and credits it with <see cref="CreditTapBack"/> only
+        /// when it really plays. Empty before stage 3's later half.</summary>
+        public List<int> TapBackCandidates(int taps) => Candidates(taps, false);
+
+        /// <summary>A tap-back played: the first one makes the chronicle card (tester batch 2: never before it is seen).</summary>
+        public void CreditTapBack(int scholarId, int taps)
+        {
+            var scholar = FindNotable(scholarId);
+            if (scholar == null || taps <= 0) return;
             if (!State.storyFlags.Contains(FlagTapBack))
             {
                 State.storyFlags.Add(FlagTapBack);
@@ -651,7 +673,6 @@ namespace AquariumCiv.Sim
                     : LineBank.First(l => l.no == 39).text.Replace("{0}", scholar.FullName).Replace("{1}", n);
                 RelicLine("tapback", text, 0.6f, scholar.id, -1);
             }
-            return scholar.id;
         }
 
         // ---------- the era moment's pick ----------

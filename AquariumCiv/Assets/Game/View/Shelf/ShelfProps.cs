@@ -181,14 +181,14 @@ namespace AquariumCiv.View
             if (main) { lampLight = l; lampBulb = bulb; }
             // the brass plate on the base's front edge
             var pm = new MeshBuilder(23) { jitter = 0.005f };
-            pm.Box(Vector3.zero, new Vector3(3.1f, 0.5f, 0.06f), PegDoll.Brass);
-            var plate = Part(d, "Plate", pm.ToMesh("MuseumPlate"), new Vector3(0, 0.3f, -hz - 0.3f));
+            pm.Box(Vector3.zero, new Vector3(PlateW, PlateH, 0.06f), PegDoll.Brass);
+            var plate = Part(d, "Plate", pm.ToMesh("MuseumPlate"), new Vector3(0, 0.05f + PlateH * 0.5f, -hz - 0.3f));
             plate.localRotation = Quaternion.Euler(14f, 0, 0);
             string text = PlateLines(b);
             var tm = new GameObject("PlateText") { hideFlags = HideFlags.DontSave };
             tm.transform.SetParent(plate, false);
             tm.transform.localPosition = new Vector3(0, 0f, -0.04f);
-            tm.transform.localScale = Vector3.one * 0.055f;
+            tm.transform.localScale = Vector3.one * PlateTextScale(text);
             var t = tm.AddComponent<TextMesh>();
             t.text = text; t.anchor = TextAnchor.MiddleCenter; t.alignment = TextAlignment.Center;
             t.fontSize = 48; t.characterSize = 0.6f; t.color = new Color(0.22f, 0.15f, 0.07f);
@@ -206,6 +206,22 @@ namespace AquariumCiv.View
                 Part(d, "Plinth_" + pl[i].relicId, m2.ToMesh("Plinth"), new Vector3(px, 0.02f, -hz - 1.5f));
             }
             return d;
+        }
+
+        /// <summary>The brass plate's size (box units): three lines fit on it.</summary>
+        public const float PlateW = 3.1f, PlateH = 0.8f;
+
+        /// <summary>The plate text's scale so every line fits inside the plate with a margin (tester batch 2: the third line ran
+        /// off the bottom). Measured on the built-in font at fontSize 48, characterSize 0.6: a line is ~4.3 units tall and a
+        /// character ~2.6 wide per unit of scale.</summary>
+        public static float PlateTextScale(string text)
+        {
+            var lines = string.IsNullOrEmpty(text) ? new[] { "" } : text.Split('\n');
+            int longest = 1;
+            foreach (var l in lines) longest = Mathf.Max(longest, l.Length);
+            float byHeight = (PlateH - 0.12f) / (lines.Length * 4.3f);
+            float byWidth = (PlateW - 0.3f) / (longest * 2.6f);
+            return Mathf.Min(0.05f, byHeight, byWidth);
         }
 
         public static string PlateLines(ShelfBox b) => string.IsNullOrEmpty(b.plate) ? "" : b.plate.Replace(" - ", "\n").Replace(" · ", "\n");

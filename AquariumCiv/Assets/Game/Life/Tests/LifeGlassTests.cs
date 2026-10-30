@@ -318,6 +318,56 @@ namespace AquariumCiv.Life.Tests
             Assert.IsFalse(planner.TapBack(at, 999999, 3), "nobody to tap back");
         }
 
+        /// <summary>Tester batch 2: a knock right after the Lens moment, after the day's five relic moments, credited a tap-back
+        /// but the scholar stayed in the Lens moment (its later beats won). The scholar now really knocks back, and the
+        /// chronicle credit only comes when it plays; a knock too late to finish before midnight gets no answer and no card.</summary>
+        [TestCase(1234)]
+        [TestCase(7)]
+        public void ATapBackAfterTheDaysRelicMoments_Plays_AndOnlyThenIsCredited(int seed)
+        {
+            var sim = Believing(Era.Town, seed, 3, true);
+            Assume.That(sim.Scholars.Count, Is.GreaterThan(0));
+            foreach (var id in RelicId.All) if (sim.FindRelic(id) == null || !sim.FindRelic(id).Found) sim.DebugGiveRelic(id);
+            var planner = LifePlanner.Wired(sim);
+            long day = sim.State.month;
+            float h = 10f;
+            foreach (var id in new[] { RelicId.SkyCrumb, RelicId.KeeperDoll, RelicId.LeftSandal, RelicId.FestivalMask })
+            {
+                var m = planner.StartRelicMoment(id, new ViewTime(day, h));
+                if (m != null) h = Math.Max(h + 0.3f, m.end);
+            }
+            var lens = planner.StartRelicMoment(RelicId.Lens, new ViewTime(day, 18.4f));
+            Assume.That(lens, Is.Not.Null, "the Lens moment plays");
+
+            // Too late: it couldn't finish before the view day turns. Nobody answers, nothing is credited.
+            Assert.AreEqual(-1, planner.AnswerKnock(new ViewTime(day, 23.9f), 3), "no answer at midnight");
+            Assert.IsFalse(sim.State.storyFlags.Contains("tapback"), "no card for a tap-back nobody saw");
+
+            // Right after the knock in the Lens moment (the scholar is in it): the tap-back wins.
+            var at = new ViewTime(day, 18.6f);
+            int scholar = planner.AnswerKnock(at, 3);
+            Assert.GreaterOrEqual(scholar, 0, "a scholar answers");
+            Assert.IsTrue(sim.State.storyFlags.Contains("tapback"), "credited once it is staged");
+            var who = PersonRef.Notable(scholar);
+            PersonActivity knock = default;
+            var seen = new List<ActivityKind>();
+            for (float t = at.hour; t < 24f; t += 0.01f)
+            {
+                var a = planner.Plan(who, new ViewTime(day, t));
+                if (seen.Count == 0 || seen[seen.Count - 1] != a.kind) seen.Add(a.kind);
+                if (a.kind == ActivityKind.TapBack) { knock = a; break; }
+            }
+            TestContext.WriteLine($"seed {seed}: {string.Join(" > ", seen)}");
+            Assert.AreEqual(ActivityKind.TapBack, knock.kind, "the scholar walks over and knocks back");
+            Assert.AreEqual(3, knock.count);
+            // The whole knock plays: the Lens moment's later beats (set up, look) don't cut into it.
+            for (float t = knock.start + 0.002f; t < knock.end - 0.002f; t += 0.005f)
+                Assert.AreEqual(ActivityKind.TapBack, planner.Plan(who, new ViewTime(day, t)).kind, $"still knocking at {t:0.000}h ({knock.start:0.000}-{knock.end:0.000})");
+            Assert.IsTrue(planner.Positions.TryGetPosition(planner.GlassPlace, out float gx, out float gz));
+            Assert.IsTrue(planner.PositionAt(who, new ViewTime(day, (knock.start + knock.end) * 0.5f), out float x, out float z));
+            Assert.Less(Math.Sqrt((x - gx) * (x - gx) + (z - gz) * (z - gz)), 0.05, "knocking at the glass");
+        }
+
         // ------------------------------------------------------------------ the relic moments (§1)
 
         static readonly (string relic, Era era, int stage)[] Moments =

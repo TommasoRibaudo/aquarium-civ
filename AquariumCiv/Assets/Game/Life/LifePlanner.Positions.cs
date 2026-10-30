@@ -227,14 +227,27 @@ namespace AquariumCiv.Life
                 if (!Reacts(p, r, new ViewTime(day, r.start), out _, out _, out var to)) continue;
                 pieces.Add(new Piece { t0 = r.start, t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
             }
+            // A tap-back (Choice 9) overrides the scholar's other live scenes while it plays: a beat of a relic moment that
+            // starts inside its window (the Lens moment's later beats) would otherwise win and the knock never be seen.
+            float tbStart = float.MaxValue, tbEnd = float.MinValue;
+            for (int i = 0; i < live.Count; i++)
+            {
+                var sc = live[i];
+                if (sc.day != day || sc.kind != SceneKind.TapBack || sc.a != p.key) continue;
+                tbStart = Math.Min(tbStart, sc.start); tbEnd = Math.Max(tbEnd, sc.end);
+            }
             for (int i = 0; i < live.Count; i++)
             {
                 var sc = live[i];
                 if (sc.day != day) continue;
                 liveScratch.Clear();
                 SceneLayer(sc, p, dayInfo, liveScratch, true);
+                bool tapBack = sc.kind == SceneKind.TapBack && sc.a == p.key;
                 foreach (var s in liveScratch)
+                {
+                    if (!tapBack && s.start >= tbStart && s.start < tbEnd) continue;
                     pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = i, target = s.place, seg = s, order = pieces.Count });
+                }
             }
             if (pieces.Count == 0) return NoBlocks;
             pieces.Sort((a, b) => a.t0 != b.t0 ? a.t0.CompareTo(b.t0) : a.order.CompareTo(b.order));

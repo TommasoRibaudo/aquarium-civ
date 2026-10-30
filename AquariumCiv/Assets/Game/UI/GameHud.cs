@@ -36,7 +36,8 @@ namespace AquariumCiv.GameUI
         UIDocument doc;
         VisualElement root, safe, bottomRow, openSheet;
         Label nameLabel, yearLabel;
-        Button pinChip, soundSwitch, hapticsSwitch, cleanButton;
+        Button pinChip, soundSwitch, hapticsSwitch, cleanButton, shapeButton;
+        readonly System.Collections.Generic.HashSet<string> toolBlocks = new();
         Label toastLabel;
         float toastUntil;
         bool cleanMode;
@@ -194,6 +195,19 @@ namespace AquariumCiv.GameUI
             down = count > 0;
         }
 
+        /// <summary>Clean and Shape don't apply (a museum visit, the time-lapse): hidden while any <paramref name="reason"/> holds
+        /// them, clean mode ends and the toast showing goes (tester batch 2).</summary>
+        public void HideTools(string reason, bool hide)
+        {
+            if (!(hide ? toolBlocks.Add(reason) : toolBlocks.Remove(reason))) return;
+            bool h = toolBlocks.Count > 0;
+            if (h) { SetCleanMode(false); if (toastLabel != null) toastLabel.style.display = DisplayStyle.None; }
+            if (cleanButton != null) cleanButton.style.display = h ? DisplayStyle.None : DisplayStyle.Flex;
+            if (shapeButton != null) shapeButton.style.display = h ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        public bool ToolsHidden => toolBlocks.Count > 0;
+
         /// <summary>A short line above the bottom row (hints, "all clean"); replaces the one showing.</summary>
         public void Toast(string text, float seconds = 3f)
         {
@@ -254,7 +268,7 @@ namespace AquariumCiv.GameUI
             bottomRow.Add(pinChip);
             cleanButton = Btn("hud-clean", "Clean", () => SetCleanMode(!cleanMode), "hud-btn");
             bottomRow.Add(cleanButton);
-            bottomRow.Add(Btn("hud-shape", "Shape", () => Open(Shaping), "hud-btn", "hud-btn--primary"));
+            bottomRow.Add(shapeButton = Btn("hud-shape", "Shape", () => Open(Shaping), "hud-btn", "hud-btn--primary"));
             safe.Add(bottomRow);
 
             toastLabel = Text("", "hud-toast");

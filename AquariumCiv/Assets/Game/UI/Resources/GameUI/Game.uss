@@ -70,6 +70,7 @@ Label { white-space: normal; }
     padding: 22px 36px; border-radius: 48px;
     background-color: rgba(46, 42, 39, 0.78); color: var(--plaster);
     font-size: 36px; -unity-font-style: bold; -unity-text-align: middle-center;
+    white-space: normal; /* long hints wrap inside the safe area (tester batch 2) */
 }
 
 /* test builds only: present but quieter than the title */

@@ -80,6 +80,7 @@ namespace AquariumCiv.View
             hadCare = care != null && care.enabled;
             if (hadCare) care.enabled = false;
             Active = true;
+            if (Application.isPlaying && AquariumCiv.GameUI.GameHud.Instance != null) AquariumCiv.GameUI.GameHud.Instance.HideTools("timelapse", true); // no Clean / Shape on the past (tester batch 2)
             Steps = 0; TotalStepMs = 0;
             Clock.Seek(atYear < 0f ? Lapse.EndPosition : atYear);
             Show(Clock.Position, true);
@@ -101,6 +102,7 @@ namespace AquariumCiv.View
             if (clock != null) clock.Held = heldBefore;
             if (hadPeople && people != null) people.enabled = true;
             if (hadCare && care != null) care.enabled = true;
+            if (AquariumCiv.GameUI.GameHud.Instance != null) AquariumCiv.GameUI.GameHud.Instance.HideTools("timelapse", false);
             if (refresh) Box.Refresh();
             Lapse = null; Clock = null;
         }

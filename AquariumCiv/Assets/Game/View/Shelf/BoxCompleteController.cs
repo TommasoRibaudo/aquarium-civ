@@ -63,6 +63,12 @@ namespace AquariumCiv.View
         bool momentActive;
         CameraPose shelfPose;
 
+        /// <summary>The banner's top in panel units, under the HUD's top row (the title pill and Photo end near 330).</summary>
+        public const float VisitBannerTop = 350f;
+
+        /// <summary>A box's name as the HUD says it: the settlement's name, else <paramref name="unnamed"/> ("Your box").</summary>
+        public static string BoxName(SimCore sim, string unnamed) => sim != null && !string.IsNullOrEmpty(sim.State.settlementName) ? sim.State.settlementName : unnamed;
+
         public static string SettingLabel(string setting) => setting switch
         {
             BoxSetting.DesertOasis => "Desert oasis",
@@ -172,7 +178,10 @@ namespace AquariumCiv.View
             else if (momentActive && Director.State == MomentDirector.Phase.Finished) Finish();
             else if (ShelfOpen) ShelfInput();
             UpdateButtons();
-            if (lastToast > 0f && Time.unscaledTime > lastToast && !Playing) { bubble.style.display = DisplayStyle.None; lastToast = -1f; }
+            if (lastToast > 0f && Time.unscaledTime > lastToast) { bubble.style.display = DisplayStyle.None; lastToast = -1f; }
+            // a museum visit: Clean and Shape don't apply there (tester batch 2)
+            var hudNow = GameHud.Instance;
+            if (hudNow != null) hudNow.HideTools("museum", Clock.Visiting && !Playing);
         }
 
         bool HudFree()
@@ -207,7 +216,7 @@ namespace AquariumCiv.View
             var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
             prompt.style.bottom = 250f + i.w;
             shelfBtn.style.bottom = 250f + i.w;
-            banner.style.top = 120f + i.y;
+            banner.style.top = VisitBannerTop + i.y; // under the title pill and the Feedback / Photo corner
             bool hud = GameHud.Instance != null && GameHud.Instance.CameraMode;
             if (hud) banner.style.display = DisplayStyle.None;
         }
@@ -225,7 +234,7 @@ namespace AquariumCiv.View
             string t = ShelfProps.PlateLines(b).Replace("\n", " · ");
             t = SettingLabel(b.setting) + " · " + t;
             if (bannerText.text != t) bannerText.text = t;
-            string back = "Back to " + (clock.ActiveSim?.PlaceName ?? "the box");
+            string back = "Back to " + BoxName(clock.ActiveSim, "your box");
             if (backBtn.text != back) backBtn.text = back;
         }
 
@@ -272,6 +281,7 @@ namespace AquariumCiv.View
             Props.ClearStage();
             Props.HideIndex = -2;
             var ctx = new MomentContext { place = sim.PlaceName, leaderName = preview?.lord?.name ?? "", leaderPresent = preview?.lord != null, year = (int)(sim.State.month / SimConfig.MonthsPerYear) };
+            HideLines();
             momentActive = true;
             Director.Start(MomentLibrary.LastMoment(), ctx, from);
             LastInfo = "last moment started";
@@ -361,10 +371,11 @@ namespace AquariumCiv.View
             var ctx = Director.Context;
             Debug.Log($"[LastMoment] beat {b.id} at {Director.Time:0.0} s");
             beatStartTime = Director.Time;
+            if (string.IsNullOrEmpty(b.line)) { bubble.style.display = DisplayStyle.None; bubbleUntil = 0f; }
             switch (b.light)
             {
-                case MomentLight.Morning: PeopleView.DebugSetHour(8.5f); break;
-                case MomentLight.Dusk: PeopleView.DebugSetHour(19.5f); break;
+                case MomentLight.Morning: PeopleView.SetHourGently(8.5f); break;
+                case MomentLight.Dusk: PeopleView.SetHourGently(19.5f); break;
             }
             if (!string.IsNullOrEmpty(b.line) && !b.line.Contains("{lookback}"))
             {
@@ -504,6 +515,7 @@ namespace AquariumCiv.View
             var clock = Clock;
             if (clock == null || clock.Shelf == null || ShelfOpen || Playing) return false;
             var hud = GameHud.Instance;
+            HideLines();
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
             ShelfOpen = true;
             cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
@@ -573,6 +585,7 @@ namespace AquariumCiv.View
             var clock = Clock;
             if (clock == null || Playing) return false;
             if (!clock.VisitBox(index, out var r)) return false;
+            HideLines();
             string away = r.months > 0
                 ? $"While you were away: {r.months / SimConfig.MonthsPerYear} years, {r.births} born, {r.deaths} gone."
                 : "";
@@ -581,7 +594,15 @@ namespace AquariumCiv.View
             return true;
         }
 
-        public void Back() { if (Clock != null && Clock.Visiting) Clock.ShowActive(); }
+        public void Back() { if (Clock != null && Clock.Visiting) { HideLines(); Clock.ShowActive(); } }
+
+        /// <summary>Takes any said line down (this one's and the era moment's), e.g. "the founders unpack by a fire".</summary>
+        void HideLines()
+        {
+            if (bubble != null) bubble.style.display = DisplayStyle.None;
+            lastToast = -1f;
+            if (MomentPlayer.Instance != null) MomentPlayer.Instance.HideSaid();
+        }
 
         void Say(string text, float seconds)
         {
@@ -661,11 +682,11 @@ namespace AquariumCiv.View
 
             banner = new VisualElement { name = "visit-banner" };
             banner.AddToClassList("hud-toast");
-            banner.style.top = 120f; banner.style.bottom = StyleKeyword.Auto;
+            banner.style.top = VisitBannerTop; banner.style.bottom = StyleKeyword.Auto;
             banner.style.flexDirection = FlexDirection.Column; banner.style.alignItems = Align.Center;
             banner.style.display = DisplayStyle.None;
             bannerText = new Label("") { name = "visit-plate", pickingMode = PickingMode.Ignore };
-            bannerText.style.whiteSpace = WhiteSpace.Normal; bannerText.style.marginBottom = 14;
+            bannerText.style.whiteSpace = WhiteSpace.Normal; bannerText.style.marginBottom = 14; bannerText.style.fontSize = 30;
             banner.Add(bannerText);
             backBtn = new Button(Back) { name = "shelf-back", text = "Back" };
             backBtn.AddToClassList("hud-btn");

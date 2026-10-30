@@ -63,6 +63,10 @@ namespace AquariumCiv.View
         float bubbleUntil;
         float sayUntil = -1f; // #92: a line said outside an era moment (a relic moment), in unscaled seconds
         float nextRead;
+        CameraPose fromPose; // where the player had the camera before the moment (it eases back there after)
+        bool hadCamera;
+        string toolLine = ""; // the tool beat's hint, said once the moment is over (mid-moment a press hurries)
+        bool wipingForMoment; // clean mode was opened from the wipe offer
         // puffs
         readonly List<(Transform t, float age, float size)> puffs = new();
         Mesh puffMesh;
@@ -152,6 +156,9 @@ namespace AquariumCiv.View
                 from = new CameraPose(V(cam.target), cam.yaw, cam.pitch, cam.zoom);
                 cam.enabled = false;
             }
+            fromPose = from; hadCamera = cam != null;
+            toolLine = "";
+            sayUntil = -1f; bubble.style.display = DisplayStyle.None; // a relic line still up gives way to the moment
             if (GameClock.Instance != null) GameClock.Instance.Held = true;
             Offset.Reset();
             pressDown = false;
@@ -186,6 +193,8 @@ namespace AquariumCiv.View
         void EndMoment(bool crossed)
         {
             ReleaseCamera();
+            if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f);
+            hadCamera = false;
             if (GameClock.Instance != null) GameClock.Instance.Held = false;
             var hud = GameHud.Instance;
             if (hud != null) hud.SetVisible(hudWasVisible);
@@ -197,6 +206,8 @@ namespace AquariumCiv.View
             if (src != null) src.EndMomentLook();
             Debug.Log($"[Moment] ended ({(crossed ? "crossed" : "left before the cheer: it will replay")})");
             MomentEnded?.Invoke(crossed);
+            if (crossed && toolLine != "") Say(toolLine, 6f);
+            toolLine = "";
         }
 
         void ReleaseCamera()
@@ -227,7 +238,7 @@ namespace AquariumCiv.View
                 EndMoment(true);
             UpdatePuffs(Time.unscaledDeltaTime);
             UpdateWatchButton();
-            if (sayUntil > 0f && !Playing && Time.unscaledTime >= sayUntil) { bubble.style.display = DisplayStyle.None; sayUntil = -1f; }
+            if (sayUntil > 0f && Time.unscaledTime >= sayUntil) { bubble.style.display = DisplayStyle.None; sayUntil = -1f; }
         }
 
         /// <summary>#92: the moment's speech bubble for a line said outside an era moment (a relic moment, the people at the
@@ -243,6 +254,14 @@ namespace AquariumCiv.View
             sayUntil = Time.unscaledTime + Mathf.Max(0.5f, seconds);
             LastSaid = text;
             return true;
+        }
+
+        /// <summary>Takes a <see cref="Say"/> line down now (the shelf opens, a museum visit starts or ends).</summary>
+        public void HideSaid()
+        {
+            if (bubble == null || Playing || sayUntil < 0f) return;
+            bubble.style.display = DisplayStyle.None;
+            sayUntil = -1f;
         }
 
         /// <summary>The last line <see cref="Say"/> showed (tests).</summary>
@@ -312,13 +331,14 @@ namespace AquariumCiv.View
             Debug.Log($"[Moment] beat {b.id} at {Director.Time:0.0} s");
             switch (b.light)
             {
-                case MomentLight.Dawn: PeopleView.DebugSetHour(6.5f); break;
-                case MomentLight.Morning: PeopleView.DebugSetHour(8.5f); break;
-                case MomentLight.Midday: PeopleView.DebugSetHour(12.2f); break;
-                case MomentLight.Evening: PeopleView.DebugSetHour(18f); break;
-                case MomentLight.Dusk: PeopleView.DebugSetHour(19.5f); break;
+                case MomentLight.Dawn: PeopleView.SetHourGently(6.5f); break;
+                case MomentLight.Morning: PeopleView.SetHourGently(8.5f); break;
+                case MomentLight.Midday: PeopleView.SetHourGently(12.2f); break;
+                case MomentLight.Evening: PeopleView.SetHourGently(18f); break;
+                case MomentLight.Dusk: PeopleView.SetHourGently(19.5f); break;
             }
             if (b.Has(BeatAction.AskNotification)) notifyAsk.style.display = DisplayStyle.Flex;
+            else if (b.Has(BeatAction.ToolUnlock)) toolLine = ctx.Fill(b.line); // shown after the moment: a press now only hurries
             else if (!string.IsNullOrEmpty(b.line))
             {
                 bubble.text = ctx.Fill(b.line);
@@ -466,7 +486,7 @@ namespace AquariumCiv.View
             caption.style.fontSize = 44;
 
             wipeOffer = Card("moment-wipe", EraWaiting.WipeOffer,
-                ("moment-wipe-yes", "Wipe", () => { wipeOffer.style.display = DisplayStyle.None; if (GameHud.Instance != null) GameHud.Instance.SetCleanMode(true); }),
+                ("moment-wipe-yes", "Wipe", () => { wipeOffer.style.display = DisplayStyle.None; wipingForMoment = true; if (GameHud.Instance != null) GameHud.Instance.SetCleanMode(true); }),
                 ("moment-wipe-no", EraWaiting.WatchAnyway, () => Watch(true)));
             notifyAsk = Card("moment-notify", "Want a note when the next one is ready?",
                 ("moment-notify-yes", "Yes", () => AnswerNotify(true)),
@@ -530,7 +550,11 @@ namespace AquariumCiv.View
         void UpdateWatchButton()
         {
             var hud = GameHud.Instance;
-            bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && !hud.CleanMode && !hud.SheetOpen);
+            // wiping after the offer: once the glass is under the offer's threshold Watch shows in clean mode too (tester
+            // batch 2: junk left in the box kept clean mode on and Watch hidden)
+            if (hud == null || !hud.CleanMode) wipingForMoment = false;
+            bool wipedEnough = wipingForMoment && Sim != null && !EraWaiting.OfferWipeFirst(Sim.State.grime);
+            bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && (!hud.CleanMode || wipedEnough) && !hud.SheetOpen);
             bool show = Waiting.waiting && !Playing && hudFree && wipeOffer.resolvedStyle.display == DisplayStyle.None;
             watchButton.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             if (show && watchButton.text != Waiting.watchLabel) watchButton.text = Waiting.watchLabel;

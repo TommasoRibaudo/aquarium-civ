@@ -629,6 +629,19 @@ namespace AquariumCiv.View
             return p.Status();
         }
 
+        /// <summary>A moment's light (an era moment's beat, the last moment): the view hour moves to <paramref name="hour"/> on
+        /// the sim's current month, but nobody is put anywhere: on the next frames every doll walks from where it stands to
+        /// where the new hour has it, at the walking pace (tester batch 2: <see cref="DebugSetHour"/>'s Tick(0) snapped all
+        /// of them 0.7-2.6 u in one frame at the bell, the cheer and the last moment's evening).</summary>
+        public static void SetHourGently(float hour)
+        {
+            var p = Find();
+            if (p == null) return;
+            p.now = new ViewTime(p.plannerSim != null ? p.plannerSim.State.month : p.now.day, Mathf.Repeat(hour, 24f));
+            p.clockStarted = true;
+            p.replanIn = 0f;
+        }
+
         /// <summary>Debug: jump the view clock on by <paramref name="hours"/> view hours.</summary>
         public static string DebugSkipHours(float hours) { var p = Find(); return p == null ? "no PeopleView" : DebugSetHour(p.now.hour + hours); }
 

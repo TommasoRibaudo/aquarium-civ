@@ -4,11 +4,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using AquariumCiv.Game;
+using AquariumCiv.GameUI;
 using AquariumCiv.Sim;
 using AquariumCiv.View.Moments;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace AquariumCiv.View.PlayTests
 {
@@ -19,18 +22,22 @@ namespace AquariumCiv.View.PlayTests
     /// Screenshots go to Temp/agent (bc_*.png). Backs up and restores the save file.
     /// </summary>
     [Category("BoxCompletePlay")]
-    public class BoxCompletePlayTests
+    public class BoxCompletePlayTests : InputTestFixture
     {
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
         const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
         string savePath, backup;
         readonly List<string> errors = new();
+        Touchscreen touch;
+        int touchId = 1;
 
         void OnLog(string msg, string stack, LogType type) { if (type == LogType.Exception || type == LogType.Error) errors.Add(msg); }
 
         IEnumerator Open(int w = 1179, int h = 2556)
         {
             LogAssert.ignoreFailingMessages = true;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
             backup = savePath + ".boxcomplete-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
@@ -43,6 +50,12 @@ namespace AquariumCiv.View.PlayTests
 #endif
             for (int i = 0; i < 90; i++) yield return null;
             Assume.That(GameClock.Instance, Is.Not.Null);
+            if (GameHud.Instance == null) GameHud.Create();
+            if (MomentPlayer.Instance == null) MomentPlayer.Create();
+            if (BoxCompleteController.Instance == null) BoxCompleteController.Create();
+            yield return null; yield return null;
+            touch = InputSystem.AddDevice<Touchscreen>();
+            yield return null;
             errors.Clear();
             Application.logMessageReceived += OnLog;
         }
@@ -82,6 +95,32 @@ namespace AquariumCiv.View.PlayTests
         }
 
         static string Stable(SimState st) => System.Text.RegularExpressions.Regex.Replace(JsonUtility.ToJson(st), "\"simHours\":[0-9.eE+-]+", "");
+
+        IEnumerator TapAt(Vector2 p)
+        {
+            BeginTouch(touchId, p, queueEventOnly: true);
+            yield return null; yield return null;
+            EndTouch(touchId, p, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+            touchId++;
+        }
+
+        /// <summary>Taps a shown button of the controller's or the HUD's UI by name, through the touch screen.</summary>
+        IEnumerator Tap(VisualElement root, string name)
+        {
+            var e = root.Q(name);
+            Assert.IsNotNull(e, name);
+            Assert.IsTrue(Shown(e), name + " is shown");
+            yield return TapAt(GameUiPanel.ScreenCenter(e));
+        }
+
+        static bool Shown(VisualElement e)
+        {
+            for (; e != null; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return false;
+            return true;
+        }
+
+        static VisualElement UiOf(Component c) => c.GetComponent<UIDocument>().rootVisualElement;
 
         static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
 
@@ -125,7 +164,9 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(c, "the controller is in the scene");
             yield return new WaitForSecondsRealtime(0.7f);
             yield return Shot("bc_1_prompt");
-            Assert.IsTrue(c.Begin(), "the player can finish the box");
+            var ui = UiOf(c);
+            yield return Tap(ui, "complete-prompt");
+            Assert.IsTrue(c.Playing, "a tap on Finish starts the last moment");
             Assert.IsFalse(clock.ActiveSim.State.boxComplete, "nothing moves before the crossing");
             c.Director.HurryFactor = 3f;
             MomentPlayer.DebugHoldHurry = true;
@@ -160,16 +201,34 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(bv.layout.pieces.Count > 0 && bv.layout.pieces.All(p => p.era == Era.Camp), "box 2 is drawn as a camp, not the old town");
             yield return Shot("bc_10_box2");
             string box2Before = Stable(clock.ActiveSim.State);
+            var bubble = ui.Q("boxcomplete-bubble");
+            Assert.IsTrue(Shown(bubble), "the founders' line after the moment");
+            yield return new WaitForSecondsRealtime(5.5f);
+            Assert.IsFalse(Shown(bubble), "the founders' line goes away by itself");
 
-            Assert.IsTrue(c.OpenShelf());
+            yield return Tap(ui, "shelf-open");
+            Assert.IsTrue(c.ShelfOpen, "a tap on Shelf opens the shelf view");
             yield return Frames(30);
             yield return Shot("bc_11_shelf");
-            Assert.IsTrue(c.PickBox(0));
-            Assert.IsTrue(clock.Visiting);
+            yield return Tap(ui, "shelf-box-0");
+            Assert.IsTrue(clock.Visiting, "a tap on the museum in the list visits it");
             Assert.IsTrue(clock.Sim.State.boxComplete);
             yield return Frames(40);
             Assert.IsTrue(UnityEngine.Object.FindAnyObjectByType<BoxView>().layout.pieces.Any(p => p.era == Era.Town), "the museum is drawn as the town it was");
             yield return Shot("bc_12_visit");
+            // the visit banner sits under the HUD's top row, never over its controls; Clean and Shape don't apply
+            var hudRoot = GameHud.Instance.Root;
+            var bannerRect = ui.Q("visit-banner").worldBound;
+            Assert.IsTrue(Shown(ui.Q("visit-banner")));
+            foreach (var n in new[] { "hud-title", "hud-feedback", "hud-photo", "hud-history", "shelf-open" })
+            {
+                var h = hudRoot.Q(n) ?? ui.Q(n);
+                if (h == null || !Shown(h)) continue;
+                Assert.IsFalse(bannerRect.Overlaps(h.worldBound), $"the visit banner {bannerRect} covers {n} {h.worldBound}");
+            }
+            Assert.IsFalse(Shown(hudRoot.Q("hud-clean")), "no Clean in a museum");
+            Assert.IsFalse(Shown(hudRoot.Q("hud-shape")), "no Shape in a museum");
+            Assert.AreEqual("Back to your box", ui.Q<Button>("shelf-back").text);
             var props = UnityEngine.Object.FindAnyObjectByType<BoxView>().GetComponent<ShelfProps>();
             Assert.IsTrue(props.Dressed, "the museum wears its plate, lamp and plinths");
             Assert.IsTrue(props.PlateFull.Length > 5, "the plate reads: " + props.PlateFull);
@@ -177,9 +236,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(clock.Save());
             SaveStore.Read(savePath, out env);
             Assert.AreEqual(1, env.shelf.activeIndex, "a save while visiting writes the active box");
-            c.Back();
+            yield return Tap(ui, "shelf-back");
             yield return Frames(30);
-            Assert.IsFalse(clock.Visiting);
+            Assert.IsFalse(clock.Visiting, "a tap on Back returns to box 2");
+            Assert.IsTrue(Shown(hudRoot.Q("hud-clean")), "Clean is back on the playing box");
             Assert.AreEqual(box2Before, Stable(clock.ActiveSim.State), "box 2 is exactly as it was (it lives on in the background; only the sub-month clock moves)");
             Assert.IsTrue(UnityEngine.Object.FindAnyObjectByType<BoxView>().layout.pieces.All(p => p.era == Era.Camp), "back on box 2: the camp");
             yield return Shot("bc_13_back_on_box2");

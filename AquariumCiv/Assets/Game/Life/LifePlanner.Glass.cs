@@ -116,7 +116,11 @@ namespace AquariumCiv.Life
             var p = Alive(scholarId);
             if (p == null || taps <= 0) return false;
             var glass = GlassPlace;
-            float walk = WalkSecs(WalkLen(StopPlace(p, at.hour), glass));
+            float len = WalkLen(StopPlace(p, at.hour), glass);
+            // From where they really stand (a relic moment may have taken them elsewhere), so they reach the glass before the
+            // knock begins instead of walking through it.
+            if (PositionAt(p.who, at, out float px, out float pz) && RouteFromPoint(px, pz, glass) is Poly here) len = Math.Max(len, here.len);
+            float walk = WalkSecs(len);
             var t = at;
             var st = new Staging { glass = glass };
             var list = new List<Seg>(3);
@@ -133,6 +137,9 @@ namespace AquariumCiv.Life
             s1.faces = true; s1.count = taps;
             list.Add(s1);
             var written = LifeClock.Advance(knocked, 3f);
+            // The view day turns at midnight and drops the day's live scenes: a tap-back that can't finish before then would
+            // be credited and never seen (tester batch 2). Late at night nobody answers.
+            if (written.day > at.day) return false;
             var s2 = Mk(ActivityKind.WriteDown, HourOf(at, knocked), HourOf(at, written), glass, Prop.Slate, ActivitySource.Scene);
             s2.count = taps;
             list.Add(s2);
@@ -140,6 +147,23 @@ namespace AquariumCiv.Life
             st.order.Add(p.key);
             AddLive(SceneKind.TapBack, at, HourOf(at, written), st, p.key);
             return true;
+        }
+
+        /// <summary>
+        /// The Keeper's knock is over (<paramref name="taps"/> taps): if the sim says someone taps back now (stage 3, the Lens),
+        /// the first scholar the planner can stage today knocks back, overriding what else they are doing, and only then the
+        /// sim credits it (the chronicle card, <see cref="SimCore.CreditTapBack"/>). Returns the scholar's id, or −1 when
+        /// nobody answers (not yet believed, no scholar in the box, or too late in the day to finish before midnight).
+        /// </summary>
+        public int AnswerKnock(ViewTime at, int taps)
+        {
+            foreach (int id in sim.TapBackCandidates(taps))
+                if (TapBack(at, id, taps))
+                {
+                    sim.CreditTapBack(id, taps);
+                    return id;
+                }
+            return -1;
         }
 
         /// <summary>

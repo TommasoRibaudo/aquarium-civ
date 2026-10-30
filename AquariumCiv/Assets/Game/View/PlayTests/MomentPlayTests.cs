@@ -444,6 +444,64 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>Tester batch 2: at a beat's light change (the bell, the cheer) every doll jumped 0.3-1.9 u in one frame.
+        /// Watched from waiting to the end (hurried), no shown doll moves more than 0.25 u per 100 ms on screen.</summary>
+        [UnityTest]
+        public IEnumerator TheTownMoment_NoDollJumps()
+        {
+            yield return Open();
+            try
+            {
+                var sim = GameClock.Instance.Sim;
+                var mp = MomentPlayer.Instance;
+                var src = SimLayoutSource.Find();
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                MomentPlayer.DebugGrowVillage(40f);
+                Assert.AreEqual(Era.Village, sim.State.era);
+                yield return Until(() => !src.WaveRunning, 30f);
+                PeopleView.DebugSetHour(10f); // a settled day before the moment
+                for (int i = 0; i < 30; i++) yield return null;
+
+                var last = new System.Collections.Generic.Dictionary<PegDollView, Vector3>();
+                var log = new System.Collections.Generic.List<string>();
+                int jumps = 0, frames = 0;
+                float worst = 0f;
+                void Audit()
+                {
+                    float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-3f);
+                    float limit = 0.25f * Mathf.Max(1f, dt / 0.1f);
+                    var shown = new System.Collections.Generic.HashSet<PegDollView>(box.GetComponentsInChildren<PegDollView>(false));
+                    foreach (var d in shown)
+                    {
+                        var p = d.transform.localPosition;
+                        if (last.TryGetValue(d, out var q))
+                        {
+                            float m = Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z));
+                            worst = Mathf.Max(worst, m);
+                            if (m > limit) { jumps++; if (log.Count < 12) log.Add($"t={mp.Director.Time:0.0} {mp.Director.CurrentBeat?.id} {d.name} {m:0.00}"); }
+                        }
+                    }
+                    last.Clear();
+                    foreach (var d in shown) last[d] = d.transform.localPosition;
+                    frames++;
+                }
+
+                Assert.IsTrue(mp.Watch(true));
+                MomentPlayer.DebugHurry(4f);
+                MomentPlayer.DebugHoldHurry = true;
+                float guard = 0f;
+                while (mp.Playing && guard < 90f) { Audit(); guard += Time.unscaledDeltaTime; yield return null; }
+                MomentPlayer.DebugHoldHurry = false;
+                for (int i = 0; i < 30; i++) { Audit(); yield return null; }
+                Debug.Log($"[jump test] frames {frames} jumps {jumps} worst {worst:0.000}\n" + string.Join("\n", log));
+                Assert.IsFalse(mp.Playing, "the moment ended");
+                Assert.AreEqual(Era.Town, sim.State.era);
+                Assert.Greater(frames, 100);
+                Assert.AreEqual(0, jumps, "no doll jumps on screen: " + string.Join("; ", log));
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator LeavingBeforeTheCheerReplays()
         {
