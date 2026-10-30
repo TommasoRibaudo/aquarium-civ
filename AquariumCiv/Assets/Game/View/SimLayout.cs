@@ -132,8 +132,9 @@ namespace AquariumCiv.View
                 L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp));
             }
             else L.Clearing(green, SiteMap.GreenR + 0.04f, greenEra == Era.Town && st.Has(LotKind.Market) ? ClearingKind.Cobble : ClearingKind.Green);
-            // The village green has its well from the era moment on (era-moment.md §4, #89). Until the sim builds its
-            // first well, the view stands one exactly where the sim's first well will go (Settlement: green + (0.17, -0.1)).
+            // The village green has its well from the era moment on (era-moment.md §4, #89). The sim builds it at the era change
+            // (the cheer); this stand-in covers only the moment before the cheer, a replay of those years and older saves, on the
+            // same spot (Settlement: green + (0.17, -0.1)) and looking the same, so the handover shows nothing.
             if (greenEra >= Era.Village && !HasOpenWell(st))
                 L.Add(PieceKind.Well, green.x + FirstWellDX, green.y + FirstWellDZ, 0f, 0.3f, 0.3f, greenEra, 19000);
 
@@ -208,7 +209,10 @@ namespace AquariumCiv.View
                         P(PieceKind.Orchard, l.w, l.d);
                         break;
                     case LotKind.TimberYard: P(PieceKind.Lumbermill, l.w, l.d).variant = 1; break;
-                    case LotKind.Well: P(PieceKind.Well, 0.3f, 0.3f); break;
+                    case LotKind.Well:
+                        // The first well stands as the moment showed it, so the sim taking over changes nothing on screen.
+                        P(PieceKind.Well, 0.3f, 0.3f).yaw = l.open ? 0f : l.yaw;
+                        break;
                     case LotKind.Outbuilding: P(PieceKind.Barn, l.w, l.d).variant = h < 0.6f ? 0 : 1; break;
                     default: P(PieceFor(l.kind), l.w, l.d); break;
                 }

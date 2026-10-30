@@ -160,7 +160,7 @@ namespace AquariumCiv.View
 
         Era MomentEra(Lot l)
         {
-            if (l == null) return momentGreen ? momentTo : momentFrom;
+            if (l == null || (l.kind == LotKind.Well && l.open)) return momentGreen ? momentTo : momentFrom; // the green, and the well on it
             return momentDone.Contains(l.id) ? momentTo : momentFrom;
         }
 

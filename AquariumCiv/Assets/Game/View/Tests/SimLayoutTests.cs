@@ -146,6 +146,25 @@ namespace AquariumCiv.View.Tests
             Assert.IsTrue(old.pieces.Where(p => p.kind == PieceKind.Home).All(p => p.era == Era.Camp));
         }
 
+        /// <summary>#89 + the sim's first well (user 2026-10-30): the well the moment stood before the cheer and the one the sim
+        /// builds at the era change are the same on screen: one well, same spot, angle, size and era.</summary>
+        [Test]
+        public void TheSimsFirstWellTakesOverFromTheMomentsWellUnseen()
+        {
+            var sim = Grow(20261029, 12f);
+            Assert.AreEqual(Era.Camp, sim.State.era);
+            var before = Fill(sim, l => Era.Village).pieces.Where(p => p.kind == PieceKind.Well).ToList();
+            Assert.AreEqual(1, before.Count, "the moment's well");
+            Assert.IsTrue(sim.ForceNextEra());
+            Assert.IsTrue(sim.Settlement.Lots.Any(l => l.kind == LotKind.Well && l.open), "the sim built it");
+            var after = Fill(sim).pieces.Where(p => p.kind == PieceKind.Well).ToList();
+            Assert.AreEqual(1, after.Count, "one well, the stand-in is gone");
+            Assert.AreEqual(before[0].x, after[0].x, 1e-4f); Assert.AreEqual(before[0].z, after[0].z, 1e-4f);
+            Assert.AreEqual(before[0].yaw, after[0].yaw, 1e-4f, "same angle");
+            Assert.AreEqual(before[0].w, after[0].w, 1e-4f); Assert.AreEqual(before[0].d, after[0].d, 1e-4f);
+            Assert.AreEqual(before[0].era, after[0].era);
+        }
+
         [Test]
         public void Refresh_RebuildsOnlyTheChunkThatChanged_AndKeepsThePeople()
         {
