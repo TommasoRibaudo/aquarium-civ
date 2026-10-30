@@ -57,7 +57,7 @@ namespace AquariumCiv.Tests
             // and wood, more births), and every heap they clear lets a new one draw its spot from the main stream.
             var swept = NewSim(7);
             Watched(swept, 150);
-            Assert.AreEqual(1396206599u, Economy(swept.State), "town with its sweepers (#60)"); // re-measured for #67 (see above)
+            Assert.AreEqual(1331687072u, Economy(swept.State), "town with its sweepers (#60)"); // re-measured for #67 (see above)
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

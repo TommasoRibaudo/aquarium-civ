@@ -147,8 +147,8 @@ namespace AquariumCiv.Sim
                     continue;
                 }
                 n.job = ChooseJob(n, from);
-                n.jobChangedMonth = State.month;
                 if (from == JobType.None || from == JobType.Elder) continue; // a first job: the coming-of-age or rise line covers it
+                n.jobChangedMonth = State.month;
                 bool eraGone = !JobsOf(State.era).Contains(from);
                 if (eraChange || eraGone) (moved ??= new List<(Notable, string)>()).Add((n, from));
                 else Chronicle("job_change", $"{n.FullName} had no {NeedLabel(from)} to work at any more, and became {A(n.job)}.", 0.5f, n.id);

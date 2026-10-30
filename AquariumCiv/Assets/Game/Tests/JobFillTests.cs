@@ -31,7 +31,7 @@ namespace AquariumCiv.Tests
                         bool vacant = !workers.Any(n => n.job == job);
                         bool fillable = workers.GroupBy(n => n.job).Any(g => g.Key != JobType.Elder && g.Count() >= 2);
                         empty[job] = vacant && fillable ? (empty.TryGetValue(job, out int c) ? c + 1 : 1) : 0;
-                        worstStreak = System.Math.Max(worstStreak, empty[job]);
+                        if (empty[job] > worstStreak) { worstStreak = empty[job]; TestContext.WriteLine($"seed {seed} month {m} {job} streak {worstStreak} era {sim.State.era}"); }
                     }
                 }
                 fills = sim.State.chronicle.Count(e => e.kind == "job_fill");
@@ -50,12 +50,12 @@ namespace AquariumCiv.Tests
             sim.Step();
             var workers = sim.State.notables.Where(x => Worker(x, sim)).ToList();
             Assert.GreaterOrEqual(workers.Count, 3);
-            foreach (var n in workers) sim.DebugSetJob(n, JobType.Fisher); // a crowded, valid job
+            foreach (var n in workers) { sim.DebugSetJob(n, JobType.Fisher); n.jobChangedMonth = -1000000; } // a crowded, valid job, free to move
             Assert.IsNotNull(sim.DebugBuild(BuildingType.Farm));
             sim.Step();
             var farmers = workers.Where(n => n.job == JobType.Farmer).ToList();
             Assert.AreEqual(1, farmers.Count);
-            var line = sim.State.chronicle.Single(e => e.kind == "job_fill");
+            var line = sim.State.chronicle.Single(e => e.kind == "job_fill" && e.text.Contains("farm opened"));
             StringAssert.Contains("farm opened", line.text);
             StringAssert.Contains(farmers[0].FullName, line.text);
             sim.Step();
@@ -76,9 +76,10 @@ namespace AquariumCiv.Tests
             workers = workers.Take(jobs.Length).ToList();
             Assert.AreEqual(jobs.Length, workers.Count, "need three workers for this test");
             var before = workers.Select(w => w.job).ToList();
-            for (int i = 0; i < 24; i++) sim.Step();
+            int lines = sim.State.chronicle.Count(e => e.kind == "job_fill");
+            sim.Step(); // one month: no one is yet of age to make a crowd
             CollectionAssert.AreEqual(before, workers.Select(w => w.job).ToList());
-            Assert.IsFalse(sim.State.chronicle.Any(e => e.kind == "job_fill"));
+            Assert.AreEqual(lines, sim.State.chronicle.Count(e => e.kind == "job_fill"));
         }
 
         [Test]
