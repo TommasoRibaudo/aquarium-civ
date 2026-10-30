@@ -354,6 +354,7 @@ namespace AquariumCiv.Sim
         public long boxCompleteMonth = -1;
         public List<int> founderIds = new(); // the notables who crossed to the next box
         public int boxIndex;                 // which box of the shelf this is (0 = the first; SimShelf.cs, #87)
+        public FirstRunState firstRun = new(); // the first run's progress; inactive unless FirstRun.Begin ran (#94)
         public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;

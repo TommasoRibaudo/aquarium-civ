@@ -37,6 +37,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShelfTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/FirstRunTests.cs" /><!-- #94 -->
     <!-- #87: the save and the clock's decisions are pure C# on a JsonUtility shim, so their tests run here too -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/SaveStore.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />
