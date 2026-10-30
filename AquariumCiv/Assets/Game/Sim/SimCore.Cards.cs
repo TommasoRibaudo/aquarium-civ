@@ -170,7 +170,7 @@ namespace AquariumCiv.Sim
             AnnotateNew();
             var viewed = viewedPeople == null ? new HashSet<int>() : new HashSet<int>(viewedPeople);
             var stack = new ReturnStack { cap = Math.Max(1, cap) };
-            var fresh = State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e)).ToList();
+            var fresh = State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e)).ToList();
             stack.collected = fresh.Count;
 
             // Merge: one card per thread, one per lone entry, in chronicle order.

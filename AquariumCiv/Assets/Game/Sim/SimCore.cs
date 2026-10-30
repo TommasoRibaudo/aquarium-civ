@@ -115,6 +115,7 @@ namespace AquariumCiv.Sim
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
+            WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
