@@ -103,3 +103,10 @@ Report and screenshots: `AquariumCiv/Temp/agent/tester-batch1/` (local). The [re
 - ★ The Photo button sits top right under Feedback. Alternative: bottom row or Settings.
 - ★ A slow auto-orbit starts after 4 s idle, on by default (not saved in settings yet).
 - Open: should a tap on a person in camera mode also select them?
+
+### #34 Town kit — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/t34/` (local; town day/night, zoomed, kit sheets, before/after).
+- The slice has **no night lighting yet** (the clock leaves the lamp level at 0). ★ File an issue for day/night light.
+- The sim never builds Guildhall, Shop or Cottage lots; workshops come only from town shapings or the debug panel.
+  ★ Let the town's economy build a guildhall and workshops (sim issue).
+- Cobbles are a quiet grey at default zoom; a stronger pattern needs a finer ground grid or decals.
