@@ -428,3 +428,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   Slice with `EditorSceneManager.LoadSceneAsyncInPlayMode` adds them by hand. A press over the open top of the box is not
   on glass: aim touch strokes with `CareView.GlassAt(screenPos)`. The first `unity recompile` often answers 400; retry.
   The play test backs up and restores `LocalLow/.../game/box.json` (and `.bak`, which the game falls back to).
+- **2026-10-30 · Live town shots in play mode overwrite the dev save (#34).** `SimLayoutSource.DebugSkipYears` saves, so
+  copy `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/game/box.json` aside before entering play mode and
+  copy it back after `editor.playmode stop`. After a long skip the glass is full of grime: `Sim.CleanAll()` before shots.
+  There is no night lighting yet: `PeopleView.DebugSetHour(22)` leaves `NightLamps.Level` at 0, so night shots are
+  `NightLamps.DebugSetLevel(1)` over the day light. Kit sheets of every town piece in edit mode:
+  `AquariumCiv.EditorTools.TownKitShots.Sheet()` then `SliceSceneBuilder.Shot(...)`, `TownKitShots.Restore()`. [verified]

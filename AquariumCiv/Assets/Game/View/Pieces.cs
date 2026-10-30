@@ -10,7 +10,7 @@ namespace AquariumCiv.View
     /// caller sets <c>mb.M</c> to the lot's frame (origin = lot centre on the ground, local -z = the front). Windows and
     /// lanterns are lamps (<see cref="MeshBuilder.lamp"/>): they light at night through <see cref="NightLamps"/>.
     /// </summary>
-    public static class Pieces
+    public static partial class Pieces
     {
         /// <summary>Lot-local ground height: maps a local point onto the terrain and back (for fences and crops on slopes).</summary>
         public delegate Vector3 Ground(Vector3 local);
@@ -40,7 +40,10 @@ namespace AquariumCiv.View
                     }
                     break;
                 case PieceKind.Fire: Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
-                case PieceKind.Well: Well(mb, Vector3.zero, !camp); break;
+                case PieceKind.Well:
+                    if (town) Fountain(mb, Vector3.zero, p.seed);
+                    else Well(mb, Vector3.zero, !camp);
+                    break;
                 case PieceKind.Woodpile: Woodpile(mb, Vector3.zero, 0f); break;
                 case PieceKind.DryingRack: DryingRack(mb, Vector3.zero); break;
                 case PieceKind.LeanTo: LeanTo(mb); break;
@@ -49,16 +52,21 @@ namespace AquariumCiv.View
                 case PieceKind.Granary: Granary(mb, Vector3.zero); break;
                 case PieceKind.Crates: Crates(mb, Vector3.zero); break;
                 case PieceKind.LogSeat: Log(mb, new Vector3(0, 0.035f, 0), 0.035f, Mathf.Max(0.2f, w), 90f, Palette.Bark); break;
-                case PieceKind.Stall: Stall(mb, Vector3.zero, 0f, Palette.Tunics[Mathf.Abs(p.seed) % Palette.Tunics.Length]); break;
+                case PieceKind.Stall:
+                    if (town) MarketStall(mb, Vector3.zero, p.seed);
+                    else Stall(mb, Vector3.zero, 0f, Palette.Tunics[Mathf.Abs(p.seed) % Palette.Tunics.Length]);
+                    break;
                 case PieceKind.Windmill:
                     if (camp) Granary(mb, Vector3.zero);
-                    else Windmill(mb, Vector3.zero, p.seed * 37f, town ? Palette.Stone : Palette.Plaster, town, Phase(p.seed));
+                    else if (town) TowerMill(mb, Vector3.zero, p.seed * 37f, Phase(p.seed));
+                    else Windmill(mb, Vector3.zero, p.seed * 37f, Palette.Plaster, false, Phase(p.seed));
                     break;
                 case PieceKind.Lumbermill:
                     if (camp) { Woodpile(mb, new Vector3(0, 0, -d * 0.1f), 20f); Log(mb, new Vector3(w * 0.2f, 0.03f, d * 0.2f), 0.035f, 0.3f, 70f, Palette.Bark); }
                     else
                     {
                         Lumbermill(mb, Vector3.zero, w, d);
+                        if (town) SawFrame(mb, new Vector3(w * 0.05f, 0, -d * 0.36f));
                         if (p.variant == 1) { Woodpile(mb, new Vector3(w * 0.25f, 0, -d * 0.3f), 0f); Woodpile(mb, new Vector3(-w * 0.32f, 0, d * 0.3f), 80f); } // a timber yard
                     }
                     break;
@@ -68,7 +76,8 @@ namespace AquariumCiv.View
                         mb.Box(new Vector3(0, 0.005f, 0), new Vector3(0.3f, 0.01f, 0.2f), Palette.Hide);
                         Crates(mb, new Vector3(-0.05f, 0, 0));
                     }
-                    else MarketHall(mb, Vector3.zero, w, d, town, Phase(p.seed));
+                    else if (town) TownMarketHall(mb, Vector3.zero, w, d, Phase(p.seed), p.seed);
+                    else MarketHall(mb, Vector3.zero, w, d, false, Phase(p.seed));
                     break;
                 case PieceKind.Tavern:
                     if (camp) { Firepit(mb, Vector3.zero, true, Phase(p.seed)); break; }
@@ -78,6 +87,7 @@ namespace AquariumCiv.View
                         mb.Box(sign + new Vector3(0, 0.16f, 0), new Vector3(0.02f, 0.32f, 0.02f), Palette.Timber);
                         mb.Box(sign + new Vector3(-0.05f, 0.27f, 0), new Vector3(0.08f, 0.06f, 0.01f), Palette.Ember);
                         mb.Box(new Vector3(-w * 0.25f, 0.04f, -d / 2f + 0.01f), new Vector3(0.18f, 0.016f, 0.05f), Palette.WoodLight);
+                        if (town) { Barrel(mb, new Vector3(w * 0.32f, 0, -d / 2f + 0.03f)); Barrel(mb, new Vector3(w * 0.42f, 0, -d / 2f + 0.07f)); }
                     }
                     break;
                 case PieceKind.Church:
@@ -85,7 +95,10 @@ namespace AquariumCiv.View
                     else Church(mb, Vector3.zero, w, d, Phase(p.seed));
                     break;
                 case PieceKind.StandingStones: StandingStones(mb, Vector3.zero); break;
-                case PieceKind.Watermill: Watermill(mb, Vector3.zero, w, d, Phase(p.seed)); break;
+                case PieceKind.Watermill:
+                    if (town) TownWatermill(mb, Vector3.zero, w, d, Phase(p.seed));
+                    else Watermill(mb, Vector3.zero, w, d, Phase(p.seed));
+                    break;
                 case PieceKind.Smithy: Smithy(mb, Vector3.zero, w, d, Phase(p.seed)); break;
                 case PieceKind.Dyer: Dyer(mb, Vector3.zero, w, d); break;
                 case PieceKind.Shop:
@@ -94,13 +107,15 @@ namespace AquariumCiv.View
                     break;
                 case PieceKind.Workshop:
                     if (camp) { LeanTo(mb); break; }
+                    if (town) { TradeWorkshop(mb, w, d, TradeOf(p), Phase(p.seed), p.seed); break; }
                     House(mb, Front(0.3f) + new Vector3(-w * 0.1f, 0, 0), w * 0.66f, 0.3f, 0.24f, 0.2f, Wall(p.seed), town ? Palette.Slate : Palette.Thatch, true, true, 1, Phase(p.seed));
                     Shed(mb, new Vector3(w * 0.32f, 0, d * 0.05f), 0.16f, 0.22f, 0.17f, Palette.WoodLight, Palette.Timber);
                     Crates(mb, new Vector3(w * 0.25f, 0, -d * 0.32f));
                     break;
                 case PieceKind.Guildhall:
                     if (camp) { StandingStones(mb, Vector3.zero); break; }
-                    Guildhall(mb, Front(0.36f), w * 0.92f, 0.36f, Phase(p.seed), p.seed);
+                    if (town) TownGuildhall(mb, w, d, Phase(p.seed), p.seed);
+                    else Guildhall(mb, Front(0.36f), w * 0.92f, 0.36f, Phase(p.seed), p.seed);
                     break;
                 case PieceKind.Barn:
                     if (camp) { DryingRack(mb, Vector3.zero); break; }

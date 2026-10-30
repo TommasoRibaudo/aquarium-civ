@@ -90,7 +90,10 @@ namespace AquariumCiv.View
 
         static PathTier TierOf(float t) => (PathTier)(Mathf.Clamp(Mathf.RoundToInt(t), 1, 3) - 1);
 
-        public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null)
+        /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
+        /// cobbles) cobbles those cells of any path tier (#34's hook for #90's cobbles spreading along the main path);
+        /// roads are cobbled anyway.</summary>
+        public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null)
         {
             L.Clear();
             var st = sim?.Settlement;
@@ -192,27 +195,38 @@ namespace AquariumCiv.View
                 }
             }
 
-            // ---- paths: the settlement's curves, one run per tier ----
+            // ---- paths: the settlement's curves, one run per tier (and per cobbled stretch) ----
+            bool Cob(PathCurve c, int k)
+            {
+                if (cobbled == null) return false;
+                int cell = SiteMap.CellAt(c.x[k], c.z[k]);
+                return cell >= 0 && cobbled(cell);
+            }
             foreach (var c in st.Paths())
             {
                 int n = c.Count;
                 if (n < 2) continue;
                 int start = 0;
                 var t0 = TierOf(c.tier[0]);
+                bool c0 = Cob(c, 0);
                 for (int i = 1; i <= n; i++)
                 {
                     var ti = i < n ? TierOf(c.tier[i]) : (PathTier)(-1);
-                    if (i < n && ti == t0) continue;
+                    bool ci = i < n && Cob(c, i);
+                    if (i < n && ti == t0 && ci == c0) continue;
                     int end = Mathf.Min(i, n - 1);
                     if (end > start)
                     {
                         var pts = new Vector2[end - start + 1];
                         for (int k = start; k <= end; k++) pts[k - start] = new Vector2(c.x[k], c.z[k]);
-                        L.Path(t0, pts);
+                        L.Path(t0, pts).cobbled = c0;
                     }
-                    start = i; t0 = ti;
+                    start = i; t0 = ti; c0 = ci;
                 }
             }
+
+            // ---- market stalls (town): an arc of awnings on the cobbled square, on the market's side ----
+            if (greenEra == Era.Town) MarketStalls(L, st, green, seed);
 
             // ---- dug channels: canal cells joined to their canal or pond neighbours ----
             for (int c = 0; c < SiteMap.N; c++)
@@ -260,7 +274,7 @@ namespace AquariumCiv.View
                 {
                     float a = (k + 0.3f + 0.4f * STerrain.Hash3(seed, k, 71)) / count * Mathf.PI * 2f;
                     var p = green + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (SiteMap.GreenR + 0.06f);
-                    if (OpenSpot(map, p)) L.Add(PieceKind.Lantern, p.x, p.y, Face(p, green) + 90f, 0.1f, 0.1f, greenEra, 20000 + k);
+                    if (OpenSpot(map, p) && !StallNear(L, p)) L.Add(PieceKind.Lantern, p.x, p.y, Face(p, green) + 90f, 0.1f, 0.1f, greenEra, 20000 + k);
                 }
             }
             if (S.era == Era.Town)
@@ -286,6 +300,46 @@ namespace AquariumCiv.View
             }
 
             People(L, sim, st, EraOf, green, camp, campFire);
+        }
+
+        /// <summary>Stalls the town's square holds (#34).</summary>
+        public const int TownStalls = 3;
+
+        /// <summary>The town's market stalls: an arc on the cobbled square on the market's side, facing the middle, kept
+        /// off lots, water and the open well.</summary>
+        static void MarketStalls(BoxLayout L, Settlement st, Vector2 green, int seed)
+        {
+            Lot market = null;
+            foreach (var l in st.Lots) if (l.kind == LotKind.Market && !l.retired) { market = l; break; }
+            if (market == null) return;
+            var toMarket = new Vector2(market.x, market.z) - green;
+            float a0 = toMarket.sqrMagnitude > 1e-6f ? Mathf.Atan2(toMarket.y, toMarket.x) : 0f;
+            var map = st.Map;
+            for (int k = 0, placed = 0; k < 7 && placed < TownStalls; k++)
+            {
+                // 0, +1, -1, +2, -2...: the arc grows from the market's side both ways.
+                int step = (k + 1) / 2 * (k % 2 == 1 ? 1 : -1);
+                float a = a0 + step * 1.0f; // ~0.3 u apart on the arc: stalls and their crates never touch
+                var p = green + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (SiteMap.GreenR * 0.74f);
+                if (!StallSpot(st, map, p)) continue;
+                L.Add(PieceKind.Stall, p.x, p.y, Face(p, green), 0.3f, 0.22f, Era.Town, 22000 + placed * 13 + (seed & 0xFF));
+                placed++;
+            }
+        }
+
+        static bool StallNear(BoxLayout L, Vector2 p)
+        {
+            foreach (var q in L.pieces) if (q.kind == PieceKind.Stall && Vector2.Distance(q.Pos, p) < 0.24f) return true;
+            return false;
+        }
+
+        static bool StallSpot(Settlement st, SiteMap map, Vector2 p)
+        {
+            int c = SiteMap.CellAt(p.x, p.y);
+            if (c < 0 || map.Water(c) || map.lot[c] != 0) return false;
+            foreach (var l in st.Lots)
+                if (!l.retired && (l.open || l.kind == LotKind.Well) && Vector2.Distance(p, new Vector2(l.x, l.z)) < 0.3f) return false;
+            return true;
         }
 
         static bool TreeSpot(SiteMap map, Vector2 p)

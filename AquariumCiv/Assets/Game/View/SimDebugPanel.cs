@@ -29,7 +29,7 @@ namespace AquariumCiv.View
         float shapeX, shapeZ = 0.8f;
         int shapeKind;
         static readonly string[] Types = { BuildingType.Hut, BuildingType.Farm, BuildingType.Lumbermill, BuildingType.Well,
-            BuildingType.Windmill, BuildingType.Market, BuildingType.Tavern, BuildingType.Church };
+            BuildingType.Windmill, BuildingType.Market, BuildingType.Tavern, BuildingType.Church, BuildingType.Workshop, BuildingType.Guildhall };
         static readonly string[] Jobs = { JobType.Gatherer, JobType.Hunter, JobType.Fisher, JobType.Woodcutter, JobType.Toolmaker,
             JobType.Farmer, JobType.Shepherd, JobType.Beekeeper, JobType.Potter, JobType.Brewer, JobType.Mason, JobType.Smith,
             JobType.Weaver, JobType.Baker, JobType.Stallholder, JobType.Sweeper, JobType.Elder };
@@ -200,6 +200,8 @@ namespace AquariumCiv.View
                     }
                     GUILayout.EndHorizontal();
                 }
+                if (GUILayout.Button(SimLayoutSource.CobbleAllPaths ? "Cobbles on every path: on (tap = off)" : "Cobbles on every path: off (tap = on)"))
+                    last = SimLayoutSource.DebugCobblePaths(!SimLayoutSource.CobbleAllPaths);
             }
 
             if (Section("Shaping"))

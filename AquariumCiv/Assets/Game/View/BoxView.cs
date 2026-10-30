@@ -378,7 +378,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i + 1 < path.points.Length; i++)
                 {
                     Vector2 a = path.points[i], b = path.points[i + 1];
-                    var e = Hash.New(); e.Add(a); e.Add(b); e.Add((int)path.tier);
+                    var e = Hash.New(); e.Add(a); e.Add(b); e.Add((int)path.tier); e.Add(path.cobbled);
                     Into(h, Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y), e.h);
                 }
             }
@@ -415,6 +415,9 @@ namespace AquariumCiv.View
         const float FieldRes = 0.025f, PathRange = 0.3f, CanalRange = 0.12f;
         static readonly int FX = Mathf.CeilToInt(2f * Land.HX / FieldRes) + 1, FZ = Mathf.CeilToInt(2f * Land.HZ / FieldRes) + 1;
         readonly float[][] pathField = new float[3][];
+        /// <summary>Cobbled paths below road tier (#34/#90), per tier; only filled while there are any.</summary>
+        readonly float[][] cobbleField = new float[3][];
+        bool anyCobbled;
         float[] canalField, shoreField;
         const float ShoreRange = 0.45f;
 
@@ -442,18 +445,24 @@ namespace AquariumCiv.View
         void PrepareFields()
         {
             for (int t = 0; t < 3; t++) Fill(ref pathField[t], PathRange);
+            anyCobbled = false;
+            foreach (var path in layout.paths)
+                if (path.cobbled && path.tier != PathTier.Road && path.points != null && path.points.Length > 0) { anyCobbled = true; break; }
+            if (anyCobbled) for (int t = 0; t < 3; t++) Fill(ref cobbleField[t], PathRange);
             Fill(ref canalField, CanalRange);
             foreach (var path in layout.paths)
             {
                 var pts = path.points;
                 if (pts == null || pts.Length == 0) continue;
                 var f = pathField[(int)path.tier];
-                if (pts.Length == 1) { Stamp(f, pts[0], pts[0], PathRange); continue; }
+                var cf = anyCobbled && path.cobbled && path.tier != PathTier.Road ? cobbleField[(int)path.tier] : null;
+                if (pts.Length == 1) { Stamp(f, pts[0], pts[0], PathRange); if (cf != null) Stamp(cf, pts[0], pts[0], PathRange); continue; }
                 var last = pts[0];
                 for (int i = 1; i < pts.Length; i++)
                 {
                     if (i < pts.Length - 1 && (pts[i] - last).sqrMagnitude < 0.05f * 0.05f) continue; // coarser for the field
                     Stamp(f, last, pts[i], PathRange);
+                    if (cf != null) Stamp(cf, last, pts[i], PathRange);
                     last = pts[i];
                 }
             }
@@ -681,6 +690,7 @@ namespace AquariumCiv.View
                     PathTier.Road => Cobble(x, z, n),
                     _ => Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f),
                 };
+                if (anyCobbled && (PathTier)t != PathTier.Road && Sample(cobbleField[t], x, z, PathRange) < w) col = Cobble(x, z, n);
                 onPath = true;
             }
             if (!onPath && !painted)

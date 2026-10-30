@@ -64,6 +64,9 @@ namespace AquariumCiv.View
     {
         public Vector2[] points;
         public PathTier tier = PathTier.Path;
+        /// <summary>Laid with cobbles whatever its tier (#34; #90 spreads cobbles along the main path). A town road is
+        /// always cobbled; this cobbles a trail or path too, at its own width.</summary>
+        public bool cobbled;
     }
 
     /// <summary>An open patch of ground: the camp's trodden circle, a village green, a town square.</summary>
@@ -153,6 +156,14 @@ namespace AquariumCiv.View
         {
             var p = new PathData { points = points, tier = tier };
             paths.Add(p);
+            return p;
+        }
+
+        /// <summary>A cobbled path (any tier): see <see cref="PathData.cobbled"/>.</summary>
+        public PathData CobbledPath(PathTier tier, params Vector2[] points)
+        {
+            var p = Path(tier, points);
+            p.cobbled = true;
             return p;
         }
 
