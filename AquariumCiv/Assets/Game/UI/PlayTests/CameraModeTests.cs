@@ -40,6 +40,7 @@ namespace AquariumCiv.GameUI.PlayTests
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             hud = GameHud.Create();
             for (int i = 0; i < 5; i++) yield return null;

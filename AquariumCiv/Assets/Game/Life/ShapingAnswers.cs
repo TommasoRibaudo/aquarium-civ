@@ -25,6 +25,10 @@ namespace AquariumCiv.Life
         /// <summary>Real seconds an answer moment lasts [est].</summary>
         public const float Seconds = 40f;
 
+        /// <summary>The longest an answer stretches so someone from the far side of the box can still come over at the
+        /// walking pace (LifePlanner.StartShapingAnswer) [est].</summary>
+        public const float MaxStretchedSeconds = 90f;
+
         /// <summary>Where a far-off credited notable's work starts (a fraction of the moment).</summary>
         public const float LateOwnerArrives = 0.62f;
 

@@ -31,6 +31,10 @@ namespace AquariumCiv.Prototypes.Tests
         {
             LogAssert.ignoreFailingMessages = true; // fixture noise ("Cached unprocessed value..."), see tooling.md
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            // UI Toolkit drops pointer events while the Editor is not the foreground app (Windows/macOS) unless it thinks
+            // Unity Remote is attached: flip that switch (as GameUiPanel.AcceptInputUnfocused does for the game; see tooling.md).
+            var remote = typeof(PanelSettings).Assembly.GetType("UnityEngine.UIElements.DefaultEventSystem")?.GetField("IsEditorRemoteConnected", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (remote != null && remote.FieldType == typeof(System.Func<bool>)) remote.SetValue(null, (System.Func<bool>)(() => true));
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
 
             var spike = ToolkitSurveySpike.Create();

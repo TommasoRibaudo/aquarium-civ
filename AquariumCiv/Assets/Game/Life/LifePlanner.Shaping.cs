@@ -28,24 +28,52 @@ namespace AquariumCiv.Life
             if (spot.IsNone) return null;
             string type = null;
             if (n.buildingId >= 0) foreach (var b in sim.State.buildings) if (b.id == n.buildingId) { type = b.type; break; }
-            var def = ShapingAnswers.For(n.kind, n.variant, era, type);
-            float end = EndAfter(at, def.seconds);
-            var st = new Staging { nudgeId = nudgeId, def = def, glass = GlassPlace, spot = spot, start = at.hour, end = end };
-            var used = new HashSet<int>();
             var credited = Alive(ShapingAnswers.CreditedNotableId(sim, n));
+            var st = StageAnswer(n, spot, type, ShapingAnswers.Seconds, credited, at);
+            if (st == null)
+            {
+                // Nobody could walk over in the usual come-over (a small camp all on the far side of the box from the gift):
+                // the moment stretches so the nearest grown-up who is up comes over at the walking pace, the late way. The
+                // walking pace is never broken; nobody is woken for it.
+                // (The beats are spread evenly in view hours, so a moment that runs into the slow midday hour leaves the
+                // come-over fewer real seconds than its share: try longer moments rather than compute one.)
+                bool awake = false;
+                foreach (var q in people)
+                    if (q.Grown && DayOf(q)[Find(DayOf(q), at.hour)].kind != ActivityKind.Sleep) { awake = true; break; }
+                for (float s = ShapingAnswers.Seconds * 1.25f; awake && st == null && s <= ShapingAnswers.MaxStretchedSeconds + 0.01f; s += ShapingAnswers.Seconds * 0.25f)
+                    st = StageAnswer(n, spot, type, s, credited, at);
+            }
+            if (st == null) return null;
+            AddLive(SceneKind.ShapingAnswer, at, st.end, st);
+            return st.Info(at.day);
+        }
+
+        /// <summary>Cast the answer moment lasting <paramref name="seconds"/>; null when nobody can play it.</summary>
+        Staging StageAnswer(Nudge n, Place spot, string type, float seconds, Person credited, ViewTime at)
+        {
+            var def = ShapingAnswers.For(n.kind, n.variant, era, type);
+            def.seconds = seconds;
+            float end = EndAfter(at, seconds);
+            var st = new Staging { nudgeId = n.id, def = def, glass = GlassPlace, spot = spot, start = at.hour, end = end };
+            var used = new HashSet<int>();
             // Far off: the credited notable comes over for longer and works less, so it's still them who answers.
             if (credited != null && credited.stage != LifeStage.Baby && Part(st, credited, def.For(RelicCast.Owner), at, false) == null)
             {
                 var late = ShapingAnswers.For(n.kind, n.variant, era, type, true);
+                late.seconds = seconds;
                 st.def = late;
                 if (Part(st, credited, late.For(RelicCast.Owner), at, false) == null) st.def = def;
+            }
+            // A stretched moment exists for the one who comes from far: they always come the late way.
+            if (seconds > ShapingAnswers.Seconds)
+            {
+                st.def = ShapingAnswers.For(n.kind, n.variant, era, type, true);
+                st.def.seconds = seconds;
             }
             Cast(st, RelicCast.Owner, credited, at, used);
             CastCrowd(st, RelicCast.Grown, at, used, st.def.maxGrown, q => q.Adult);
             CastCrowd(st, RelicCast.Kids, at, used, st.def.maxKids, q => q.stage == LifeStage.Kid);
-            if (st.segs.Count == 0) return null;
-            AddLive(SceneKind.ShapingAnswer, at, end, st);
-            return st.Info(at.day);
+            return st.segs.Count == 0 ? null : st;
         }
 
         /// <summary>Where a shaping's answer is shown: its building's place once the building is on a lot, else the gift.</summary>

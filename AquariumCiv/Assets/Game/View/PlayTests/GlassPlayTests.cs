@@ -39,6 +39,7 @@ namespace AquariumCiv.View.PlayTests
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
             backup = savePath + ".glass-test-backup";
@@ -175,7 +176,9 @@ namespace AquariumCiv.View.PlayTests
                     Assert.Greater(inScene, 0, $"{id}: the cast is in the scene half way");
                     yield return Until(() => pv.Now.hour >= info.end + 0.6f || pv.Now.day != info.day, 40f);
                     pv.timeScale = 1f;
-                    var still = info.cast.Where(c => planner.Plan(c.who, pv.Now).source == ActivitySource.Scene).ToList();
+                    // still in this moment: a staged scene (chronicleId -1); a story scene from the chronicle they walk into after it
+                    // (a visit at midday) is their day
+                    var still = info.cast.Where(c => { var a = planner.Plan(c.who, pv.Now); return a.source == ActivitySource.Scene && a.chronicleId < 0; }).ToList();
                     Assert.IsEmpty(still, $"{id}: the cast is back in their day ({string.Join(", ", still.Select(c => c.who))})");
                     var moments = new List<RelicMomentInfo>();
                     Assert.AreEqual(0, planner.ActiveRelicMoments(pv.Now, moments), "the moment is over");

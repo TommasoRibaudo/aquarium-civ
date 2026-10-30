@@ -40,6 +40,10 @@ namespace AquariumCiv.Game
         /// Real time is not banked: the held seconds are simply not lived.</summary>
         public bool Held { get; set; }
 
+        /// <summary>Tests: the seed of the next new world this clock starts (used once, then back to 0 = random). Play tests
+        /// that assert on what a box's people do pin it, so a run doesn't depend on a random world.</summary>
+        public static int DebugNextSeed;
+
         float sinceSave;
         bool paused;
         DateTime pausedUtc;
@@ -49,7 +53,9 @@ namespace AquariumCiv.Game
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
             SavePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
-            Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, new System.Random().Next(1, int.MaxValue));
+            int seed = DebugNextSeed != 0 ? DebugNextSeed : new System.Random().Next(1, int.MaxValue);
+            DebugNextSeed = 0; // one box only
+            Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, seed);
             LastAway = Session.catchUp;
             if (Session.load == SaveStore.LoadResult.TooNew)
                 Debug.LogWarning($"[GameClock] {SavePath} is from a newer build: playing a fresh box without saving; the file is left untouched.");

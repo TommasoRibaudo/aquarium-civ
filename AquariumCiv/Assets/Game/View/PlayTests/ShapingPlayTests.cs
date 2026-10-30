@@ -32,6 +32,7 @@ namespace AquariumCiv.View.PlayTests
         int touchId = 1;
         string savePath, backup;
         readonly List<string> errors = new();
+        const int Seed = 1234;
 
         void OnLog(string msg, string stack, LogType type)
         {
@@ -42,11 +43,15 @@ namespace AquariumCiv.View.PlayTests
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
             backup = savePath + ".shaping-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
             if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
+            // A pinned world, so a failure replays: who walks to a gift and how far depends on where the box put its people
+            // (a random camp once left nobody able to answer about 1 gift in 15; LifeShapingAnswerTests covers that now).
+            GameClock.DebugNextSeed = Seed;
             SetSize(w, h);
             float waited = 0f;
             while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
@@ -73,6 +78,7 @@ namespace AquariumCiv.View.PlayTests
         void Close()
         {
             Application.logMessageReceived -= OnLog;
+            GameClock.DebugNextSeed = 0;
             ShapingView.Instance?.SetTool(null);
             var pv = PeopleView.Find();
             if (pv != null) { pv.timeScale = 1f; pv.Planner?.ClearLive(); }
@@ -120,6 +126,7 @@ namespace AquariumCiv.View.PlayTests
         readonly List<string> jumpLog = new();
         int jumps, frames;
         float worst;
+        string worstAt = "";
 
         void ResetAudit() => lastDoll.Clear();
 
@@ -135,8 +142,8 @@ namespace AquariumCiv.View.PlayTests
                 if (lastDoll.TryGetValue(d, out var q))
                 {
                     float m = Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z));
-                    worst = Mathf.Max(worst, m);
-                    if (m > limit) { jumps++; if (jumpLog.Count < 12) jumpLog.Add($"{tag} {d.name} {m:0.00}"); }
+                    if (m > worst) { worst = m; worstAt = $"{tag} {d.name} at {PeopleView.Find()?.Now.hour:0.00} h"; }
+                    if (m > limit) { jumps++; if (jumpLog.Count < 12) jumpLog.Add($"{tag} {d.name} {m:0.00} at {PeopleView.Find()?.Now.hour:0.00} h"); }
                 }
             }
             lastDoll.Clear();
@@ -243,6 +250,10 @@ namespace AquariumCiv.View.PlayTests
                 ResetAudit();
                 foreach (var tool in tools)
                 {
+                    // The view day started at 9:30 and four gifts take about 1-1.5 view hours each, so every answer is staged
+                    // in daylight (after ~20:00 nobody is up to act it out). Logged so a failure shows the hour.
+                    Debug.Log($"[ShapingPlay] {era} {tool}: view hour {pv.Now.hour:0.00}");
+                    Assert.Less(pv.Now.hour, 19f, "the answers are staged while people are up");
                     string kind = tool == "fish" ? SimCore.NudgeKind.Herd : tool;
                     var (x, z) = tool == "fish" ? (sim.Settlement.Map.spec.pondX, sim.Settlement.Map.spec.pondZ) : Spot(sim, 1.3f, 0.6f, used);
                     yield return Look(x, z, kind == SimCore.NudgeKind.Rain ? 0.45f : 0.32f);
@@ -339,7 +350,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Look(0f, 0f, 1f);
                 yield return Shot($"85_{tag}_overview");
 
-                Debug.Log($"[ShapingPlay] {era}: frames {frames} jumps {jumps} worst {worst:0.000}\n" + string.Join("\n", jumpLog));
+                Debug.Log($"[ShapingPlay] {era}: frames {frames} jumps {jumps} worst {worst:0.000} ({worstAt})\n" + string.Join("\n", jumpLog));
                 Assert.Greater(frames, 100);
                 Assert.AreEqual(0, jumps, "no doll jumps: " + string.Join("; ", jumpLog));
                 Assert.IsEmpty(errors, "no console errors: " + string.Join(" | ", errors.Take(5)));

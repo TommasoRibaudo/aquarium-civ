@@ -490,3 +490,25 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   overlaps unless it has `flexShrink = 0`, and a label column next to buttons only wraps with `flexBasis = 0` +
   `minWidth = 0`. [verified]
 - **2026-10-30 · `unity test` (top-level) refuses while the Editor is open; use `unity command test run --mode playmode --filter <name> --async_tests true`, then poll `unity command test status`.** A bare `unity command test run` (no filter) ran all 811 EditMode tests and blocked every other command for minutes (the client timeout does not cancel it; `test cancel` itself waits). Always pass `--filter`. `ShapingView.GroundPoint` marched only 30 units: the default camera is ~50 away, so no ground tap worked at the default framing until the step was doubled (#94). [verified]
+- **2026-10-30 · ShapingPlay flaked on "the people's answer is staged in the world"; pin a play test's world with
+  `GameClock.DebugNextSeed`.** [verified] About 1 run in 3 failed (`e.moment` null, a different tool each run, before and
+  after #96). `LifePlanner.StartShapingAnswer` gave null when nobody could walk to the gift in half the come-over beat: in
+  a 3-year camp the 3-5 people are often all in the woods or at the fire, 7-13 s of walking from a gift on open ground
+  (about 1 gift in 15 by day, worse near midday because the beats are spread evenly in view hours and the slow midday hour
+  squeezes the come-over). Fixed in Life: by day the answer stretches (50-90 s, the late way) until someone comes over at
+  the walking pace (`LifeShapingAnswerTests.ByDaySomeoneAlwaysComesToAFarGift`). After ~20:00 nobody is up and nothing is
+  staged (by design for now). Found with a dotnet probe in `Tools/SimTests` (a probe `.cs` in a `<Compile Include>`,
+  40 seeds × view hours, private planner state by reflection; deleted after): seconds instead of 5-minute play runs.
+  `GameClock.DebugNextSeed = <seed>` before loading the Slice makes the next new world use that seed once (reset it in the
+  test's Close); ShapingPlay pins 1234. Don't move the view clock back mid-test with `PeopleView.SetHourGently`: dolls glide
+  up to 0.26 u in a frame and trip the doll-jump audit. MomentPlay/BoxComplete passed every run here.
+- **2026-10-30 · Play tests' taps on UI buttons fail at random when the Editor isn't the foreground window.** [verified]
+  "a tap on Watch starts the moment", "a tap on Finish", "the Clean button switches clean mode on", CameraMode's pill:
+  all passed with Unity in front and failed while another app (a browser) was in front. UI Toolkit's
+  `DefaultEventSystem` drops pointer events on Windows/macOS while `!Application.isFocused` unless
+  `DefaultEventSystem.IsEditorRemoteConnected()` says Unity Remote is attached (read from its IL by reflection in
+  `script eval`). The Input System side was already handled (`backgroundBehavior = IgnoreFocus`). Fix: every game play
+  test calls `GameUiPanel.AcceptInputUnfocused(true)` in its Open (sets that internal `Func<bool>` to true, Editor only;
+  play mode's domain reload resets it). Also: an edit made from a script was not picked up by `unity recompile` once
+  (the dll in `Library/ScriptAssemblies` kept the old test); check with `script eval` reflection on the type and
+  `ImportAsset(path, ForceUpdate)` + recompile when it's stale.

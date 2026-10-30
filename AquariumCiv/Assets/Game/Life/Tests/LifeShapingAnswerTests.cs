@@ -128,6 +128,32 @@ namespace AquariumCiv.Life.Tests
             Assert.GreaterOrEqual(ownedByCredited * 2, creditedAlive, "the credited notable plays their part, mostly");
         }
 
+        /// <summary>A small camp all on the far side of the box (in the woods, at the fire) could not reach a far gift in the
+        /// usual come-over, and nobody answered (ShapingPlayTests flaked on it): by day the moment stretches so someone comes
+        /// over at the walking pace. These seeds and hours all failed before.</summary>
+        [Test]
+        public void ByDaySomeoneAlwaysComesToAFarGift()
+        {
+            foreach (int seed in new[] { 6, 10, 16, 18, 19, 33, 35 })
+                foreach (var kind in new[] { SimCore.NudgeKind.Herd, SimCore.NudgeKind.Rain, SimCore.NudgeKind.Grove })
+                {
+                    var cfg = new SimConfig();
+                    var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                    for (int m = 0; m < 36; m++) sim.Step();
+                    float x = 1.3f, z = 0.6f;
+                    if (!sim.Settlement.OpenSpotNear(ref x, ref z, 0.3f)) continue;
+                    var n = sim.DebugShape(kind, x, z);
+                    Assert.IsTrue(sim.DebugSkipToAnswer(n.id));
+                    sim.Settlement.PlacePending();
+                    for (float h = 6f; h <= 19f; h += 0.5f)
+                    {
+                        var planner = LifePlanner.Wired(sim);
+                        var info = planner.StartShapingAnswer(n.id, new ViewTime(sim.State.month, h));
+                        Assert.IsNotNull(info, $"{kind} seed {seed} at {h}h: someone answers");
+                    }
+                }
+        }
+
         /// <summary>The walk back into the day after an answer keeps the pace, sampled until everyone has rejoined their day,
         /// also for late-evening starts (view hours run faster after 20h).</summary>
         [Test]
