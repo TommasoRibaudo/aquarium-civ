@@ -200,12 +200,14 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Is a press here a knock on the glass? Not on the UI, not in clean mode (that's a wipe), not in camera mode
-        /// (a tap brings the UI back), not with a sheet open or an era moment playing, and on the glass.</summary>
+        /// (a tap brings the UI back), not in shape mode (#85), not with a sheet open or an era moment playing, and on the glass.</summary>
         static bool KnockAllowed(Vector2 pos)
         {
             if (UiInput.Over(pos)) return false;
             var hud = GameHud.Instance;
             if (hud != null && (hud.CleanMode || hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return false;
+            var shaping = ShapingView.Instance; // #85: in shape mode a tap places the tool
+            if (shaping != null && shaping.ShapeMode) return false;
             var tl = TimeLapseView.Find(); // the time-lapse replays the past: the live people can't hear a knock (tester batch 2)
             if (tl != null && tl.Active) return false;
             var bc = BoxCompleteController.Instance;

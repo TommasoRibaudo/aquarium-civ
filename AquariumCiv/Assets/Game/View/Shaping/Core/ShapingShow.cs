@@ -285,7 +285,9 @@ namespace AquariumCiv.View.Shaping
         }
 
         public RainLook Rain(Entry e) => ShapingLooks.Rain(e.footprint, ClockOf(e));
-        public GroveLook Grove(Entry e) => ShapingLooks.Grove(e.footprint, ClockOf(e), sim?.Settlement?.Map);
+        /// <summary>The grove (its trees leave with the woods the people cut; a taken-back grove sinks whole, the land is
+        /// already put back).</summary>
+        public GroveLook Grove(Entry e) => ShapingLooks.Grove(e.footprint, ClockOf(e), e.leavingAt >= 0f ? null : sim?.Settlement?.Map);
         public ChannelLook Channel(Entry e) => ShapingLooks.Channel(e.footprint, ClockOf(e));
 
         public HerdLook Herd(Entry e)

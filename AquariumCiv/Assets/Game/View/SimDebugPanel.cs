@@ -254,11 +254,26 @@ namespace AquariumCiv.View
                 shapeX = Slider("x", shapeX, -2.6f, 2.6f);
                 shapeZ = Slider("z", shapeZ, -1.9f, 1.9f);
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Shape here (free)")) last = DoShape(tools[shapeKind], shapeX, shapeZ);
+                if (GUILayout.Button("Shape here (free)")) last = ShapingView.Instance != null ? ShapingView.DebugPlace(tools[shapeKind], shapeX, shapeZ) : DoShape(tools[shapeKind], shapeX, shapeZ);
                 if (GUILayout.Button("Refill")) { sim.DebugRefillShaping(); last = Done("charges full"); }
                 GUILayout.EndHorizontal();
+                var sv = ShapingView.Instance;
+                if (sv != null)
+                {
+                    // #85: until the tray (#84), pick a tool here and tap the ground (one finger; two move the camera).
+                    GUILayout.Label(sv.ShapeMode ? $"shape mode: tap the ground to place {sv.Tool}" : "tap to place: pick a tool");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Toggle(!sv.ShapeMode, "off", GUI.skin.button)) { if (sv.ShapeMode) sv.SetTool(null); }
+                    foreach (var k in tools) if (GUILayout.Toggle(sv.Tool == k, k, GUI.skin.button) && sv.Tool != k) sv.SetTool(k);
+                    GUILayout.EndHorizontal();
+                    sv.Free = GUILayout.Toggle(sv.Free, sv.Free ? "free (no charge, lock or cap)" : "real (spends a charge)");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Take back last")) last = ShapingView.DebugTakeBack();
+                    if (GUILayout.Button("Answer last")) last = ShapingView.DebugSkip();
+                    GUILayout.EndHorizontal();
+                }
                 var waiting = sim.State.nudges.Count(n => !n.credited);
-                if (GUILayout.Button($"People answer the last one ({waiting} waiting)")) last = DoSkipToAnswer();
+                if (GUILayout.Button($"People answer the last one ({waiting} waiting)")) last = sv != null ? ShapingView.DebugSkip() : DoSkipToAnswer();
             }
 
             if (Section("Wishes"))

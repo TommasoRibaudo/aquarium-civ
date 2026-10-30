@@ -8,6 +8,7 @@
         "AquariumCiv.Game.UI",
         "AquariumCiv.View",
         "AquariumCiv.Moments",
+        "AquariumCiv.Shaping",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "UnityEngine.TestRunner",
