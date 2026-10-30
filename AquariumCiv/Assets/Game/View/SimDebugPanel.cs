@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using AquariumCiv.Game;
+using AquariumCiv.GameUI;
 using AquariumCiv.Sim;
 using UnityEngine;
 
@@ -261,6 +262,19 @@ namespace AquariumCiv.View
             {
                 GUILayout.Label($"mess {sim.MessLevel:0.00} · grime {sim.State.grime:0.00} · overgrowth {sim.State.overgrowth:0.00} · trash {sim.State.trash.Count}");
                 if (GUILayout.Button("Sweepers clear a heap")) last = Done(sim.DebugSweep() ? "swept" : "no sweepers (town)");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("+grime .3")) { sim.AddMess(0.3f, 0f, 0); last = Done("grime +0.3"); }
+                if (GUILayout.Button("+trash 3")) { sim.AddMess(0f, 0f, 3); last = Done("trash +3"); }
+                if (GUILayout.Button("+weeds .3")) { sim.AddMess(0f, 0.3f, 0); last = Done("overgrowth +0.3"); }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Full mess")) { sim.AddMess(1f, 1f, sim.Config.trashMax); last = Done("full mess"); }
+                if (GUILayout.Button("Clean all")) { sim.CleanAll(); last = Done("cleaned all"); }
+                GUILayout.EndHorizontal();
+                var hud = GameHud.Instance;
+                if (hud != null && GUILayout.Button(hud.CleanMode ? "Clean mode: on (tap = off)" : "Clean mode: off (tap = on)")) { hud.SetCleanMode(!hud.CleanMode); last = Done("clean mode " + (hud.CleanMode ? "on" : "off")); }
+                var care = CareView.Instance;
+                if (care != null) GUILayout.Label($"sun x{care.SunFactor:0.00} · glass drawn {care.GlassMean:0.00} · heaps {care.Props.HeapCount} · weeds {care.Props.WeedCount} · strokes {care.StrokeCount}");
             }
 
             GUILayout.EndVertical();

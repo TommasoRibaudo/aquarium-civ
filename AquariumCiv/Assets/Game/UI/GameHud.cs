@@ -27,11 +27,16 @@ namespace AquariumCiv.GameUI
 
         /// <summary>Raised with the sheet's name when one opens, and with null when it closes.</summary>
         public event Action<string> SheetChanged;
+        /// <summary>Raised when clean mode (one finger wipes the glass and flicks the mess, #37) is switched on or off.</summary>
+        public event Action<bool> CleanModeChanged;
 
         UIDocument doc;
         VisualElement root, safe, bottomRow, openSheet;
         Label nameLabel, yearLabel;
-        Button pinChip, soundSwitch, hapticsSwitch;
+        Button pinChip, soundSwitch, hapticsSwitch, cleanButton;
+        Label toastLabel;
+        float toastUntil;
+        bool cleanMode;
         Label historyBody;
         Rect lastSafe;
         Vector2Int lastScreen;
@@ -102,6 +107,31 @@ namespace AquariumCiv.GameUI
             }
         }
 
+        /// <summary>Clean mode (design/one-handed-controls.md): off, one finger always moves the camera; on, one finger wipes the
+        /// glass and flicks the mess. The Clean button toggles it (it reads "Done" and is lit while on).</summary>
+        public bool CleanMode => cleanMode;
+
+        public void SetCleanMode(bool on)
+        {
+            if (cleanMode == on) return;
+            cleanMode = on;
+            if (cleanButton != null)
+            {
+                cleanButton.text = on ? "Done" : "Clean";
+                cleanButton.EnableInClassList("hud-btn--on", on);
+            }
+            CleanModeChanged?.Invoke(on);
+        }
+
+        /// <summary>A short line above the bottom row (hints, "all clean"); replaces the one showing.</summary>
+        public void Toast(string text, float seconds = 3f)
+        {
+            if (toastLabel == null) return;
+            toastLabel.text = text;
+            toastLabel.style.display = DisplayStyle.Flex;
+            toastUntil = Time.unscaledTime + seconds;
+        }
+
         bool IsOverUi(Vector2 screenPos) => !hidden && GameUiPanel.Over(root, screenPos);
 
         void Update()
@@ -109,6 +139,7 @@ namespace AquariumCiv.GameUI
             if (root == null) return;
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateBlockers();
+            if (toastLabel != null && toastLabel.resolvedStyle.display == DisplayStyle.Flex && Time.unscaledTime >= toastUntil) toastLabel.style.display = DisplayStyle.None;
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             // Android Back / Esc closes the open sheet.
             if (openSheet != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) CloseSheet();
@@ -149,8 +180,16 @@ namespace AquariumCiv.GameUI
             pinChip = Btn("hud-pin", "", null, "hud-chip");
             pinChip.style.display = DisplayStyle.None; // nobody pinned yet (person card work)
             bottomRow.Add(pinChip);
+            cleanButton = Btn("hud-clean", "Clean", () => SetCleanMode(!cleanMode), "hud-btn");
+            bottomRow.Add(cleanButton);
             bottomRow.Add(Btn("hud-shape", "Shape", () => Open(Shaping), "hud-btn", "hud-btn--primary"));
             safe.Add(bottomRow);
+
+            toastLabel = Text("", "hud-toast");
+            toastLabel.name = "hud-toast";
+            toastLabel.pickingMode = PickingMode.Ignore;
+            toastLabel.style.display = DisplayStyle.None;
+            safe.Add(toastLabel);
 
             for (int i = 0; i < blockers.Length; i++)
             {

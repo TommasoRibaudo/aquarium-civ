@@ -552,6 +552,9 @@ namespace AquariumCiv.View
             return best;
         }
 
+        /// <summary>Open ground for a small prop here (not water, a path, a field, a building or a tree)? For the care layer's weeds (#37).</summary>
+        public bool FreeForProp(Vector2 p, float r) => Free(p, r, taken);
+
         public bool InPond(Vector2 p) => shore != null && InPolygon(shore, p);
 
         /// <summary>Signed distance to the shoreline: negative in the pond.</summary>

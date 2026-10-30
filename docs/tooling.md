@@ -422,3 +422,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - `unity command script run --args` wants a JSON array (`'["a1","x"]'`); string/int params are converted. A shell helper that builds it with `jq -R . | jq -sc .` works.
   - IMGUI debug panels now share `DebugDock` (View): one "dbg" toggle top left, tabs dbg/sim, rects in `UiInput.DebugBlocks` (camera ignores presses there, `GameHud` puts picking blockers `hud-debug-block0/1` over them), hidden while a HUD/Feedback sheet is open. Check blocking with `root.panel.Pick(...)` in `script eval` (hit name `hud-debug-block1`).
   - Scenes had no AudioListener (music silent, "no audio listeners" spam); added to every game/prototype scene's Main Camera and to `SliceSceneBuilder`.
+- **2026-10-30 · Care/wipe play tests (#37).** [verified] `unity command test run --mode playmode --filter <Assembly>
+  --filter_type assembly --async_tests true`, then `test status` (the `name` filter ran 0 tests). The start-up
+  `RuntimeInitializeOnLoadMethod` bootstraps (HUD, CareView) only run for the first scene, so a play test that loads the
+  Slice with `EditorSceneManager.LoadSceneAsyncInPlayMode` adds them by hand. A press over the open top of the box is not
+  on glass: aim touch strokes with `CareView.GlassAt(screenPos)`. The first `unity recompile` often answers 400; retry.
+  The play test backs up and restores `LocalLow/.../game/box.json` (and `.bak`, which the game falls back to).
