@@ -39,7 +39,7 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void TownPieces_LookDifferent_FromTheVillages()
         {
-            foreach (var k in new[] { PieceKind.Windmill, PieceKind.Market, PieceKind.Well, PieceKind.Workshop, PieceKind.Guildhall,
+            foreach (var k in new[] { PieceKind.Windmill, PieceKind.Market, PieceKind.Well, PieceKind.Workshop, PieceKind.Guildhall, PieceKind.Bakery,
                          PieceKind.Watermill, PieceKind.Stall, PieceKind.Lumbermill })
             {
                 var town = Draw(k, Era.Town); var village = Draw(k, Era.Village);
@@ -63,7 +63,7 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void TownWindowsAndLamps_LightAtNight()
         {
-            foreach (var k in new[] { PieceKind.Windmill, PieceKind.Market, PieceKind.Guildhall, PieceKind.Workshop, PieceKind.Watermill })
+            foreach (var k in new[] { PieceKind.Windmill, PieceKind.Market, PieceKind.Guildhall, PieceKind.Bakery, PieceKind.Workshop, PieceKind.Watermill })
                 Assert.IsTrue(Draw(k, Era.Town).lamps.Any(l => l.x > 0.5f && l.x < 1.5f), $"{k} has lamp windows");
         }
 

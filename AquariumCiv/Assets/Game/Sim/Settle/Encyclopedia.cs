@@ -57,6 +57,7 @@ namespace AquariumCiv.Sim.Settle
             BuildingType.Workshop => LotKind.Workshop,
             BuildingType.Guildhall => LotKind.Guildhall,
             BuildingType.Shop => LotKind.Shop,
+            BuildingType.Bakery => LotKind.Bakery,
             _ => LotKind.Hut,
         };
 
@@ -117,6 +118,10 @@ namespace AquariumCiv.Sim.Settle
             var guild = S(LotKind.Guildhall, 0.5f, 0.54f, 0.44f, 0.5f);
             guild.trips = TripGroup.Gathering; guild.tall = true; guild.greenNear = 0.5f; guild.greenFar = 1.2f; guild.nearKinds = new[] { LotKind.Market };
             guild.W(Term.Busy, 1.0f).W(Term.NearKind, 1.0f).W(Term.Green, 1.0f).W(Term.Access, 1.0f).W(Term.Slope, 0.4f).W(Term.Nudge, 4.0f);
+
+            var bakery = S(LotKind.Bakery, 0.44f, 0.48f, 0.4f, 0.44f);
+            bakery.trips = TripGroup.Gathering; bakery.greenNear = 0.5f; bakery.greenFar = 1.2f; bakery.nearKinds = new[] { LotKind.Market };
+            bakery.W(Term.Busy, 1.0f).W(Term.NearKind, 0.8f).W(Term.Green, 0.8f).W(Term.Access, 1.0f).W(Term.Slope, 0.4f).W(Term.Nudge, 4.0f);
 
             var church = S(LotKind.Church, 0.42f, 0.46f, 0.7f, 0.76f);
             church.trips = TripGroup.Gathering; church.tall = true; church.edgeCandidates = true; church.maxSlope = 0.5f; church.greenNear = 0.5f; church.greenFar = 1.5f;

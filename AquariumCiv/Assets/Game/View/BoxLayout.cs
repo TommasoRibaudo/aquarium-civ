@@ -13,6 +13,8 @@ namespace AquariumCiv.View
         Windmill, Lumbermill, Market, Tavern, Church, StandingStones, Watermill, Smithy, Dyer,
         // #33: the rest of the sim's lot kinds and the Keeper's shapings (town ones stay placeholders until M6).
         Shop, Workshop, Guildhall, Barn, Gathering, Orchard, Herd, Jetty, Quarry, Kiln, Outcrop,
+        /// <summary>The town's bakery (#112): chimney, loaf sign. Appended last (saved as an int).</summary>
+        Bakery,
     }
 
     public enum RoofStyle { Auto, Thatch, Terracotta, Slate }

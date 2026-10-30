@@ -310,6 +310,8 @@ namespace AquariumCiv.Tests
             Assert.AreEqual("a goat", sim.QuarrelGated("a goat"));
             sim.AddBuildingAt(BuildingType.Well, 3);
             sim.AddBuildingAt(BuildingType.Windmill, 4);
+            Assert.AreNotEqual("the best way to bake bread", sim.QuarrelGated("the best way to bake bread"), "a windmill alone is no bakery (#112)");
+            sim.AddBuildingAt(BuildingType.Bakery, 5);
             Assert.AreEqual("whose turn it was at the well", sim.QuarrelGated("whose turn it was at the well"));
             Assert.AreEqual("the best way to bake bread", sim.QuarrelGated("the best way to bake bread"));
         }

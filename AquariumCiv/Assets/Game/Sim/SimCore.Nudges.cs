@@ -190,7 +190,7 @@ namespace AquariumCiv.Sim
                 BuildingType.Windmill => "built a windmill to grind the extra grain",
                 BuildingType.Lumbermill => "set up a lumber mill", BuildingType.Market => "opened a market for their crafts",
                 BuildingType.Well => "dug a well", BuildingType.Tavern => "opened a tavern",
-                BuildingType.Guildhall => "raised a guildhall", BuildingType.Shop => "opened a shop beside the market",
+                BuildingType.Bakery => "lit the ovens of a bakery", BuildingType.Guildhall => "raised a guildhall", BuildingType.Shop => "opened a shop beside the market",
                 BuildingType.Workshop when plain => "set up a workshop",
                 BuildingType.Workshop => kind switch
                 {

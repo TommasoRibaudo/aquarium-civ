@@ -52,14 +52,14 @@ namespace AquariumCiv.Tests
             // #27: at the town's era moment no one is free to be captain of the watch, so a notable steps out of the crowd
             // (Yara Brook, year 30). One more notable shifts the story dice from then on, as #26's rise does; roles draw no
             // dice themselves (RoleTests.TheEconomyIsWhatItWasBeforeRoles: runs without a crowd pull keep the old hash).
-            Assert.AreEqual(2786919243u, Economy(town.State), "town"); // re-measured for #114 (the town builds a workshop, guildhall and shops by itself) and earlier for #67 + #74 + #86 + the village well built at the era change (user 2026-10-30; its building id shifts the hashed rolls): a job that opens gets a notable, craft holders shift the contests, so who steps out of the crowd (not food or wood)
+            Assert.AreEqual(4203644684u, Economy(town.State), "town"); // re-measured for the bakery (#112), #114 (the town builds a workshop, guildhall and shops by itself) and earlier for #67 + #74 + #86 + the village well built at the era change (user 2026-10-30; its building id shifts the hashed rolls): a job that opens gets a notable, craft holders shift the contests, so who steps out of the crowd (not food or wood)
             // #60: town sweepers clear heaps and trim the weeds, so the town has less mess, a quicker work pace (more food
             // and wood, more births), and every heap they clear lets a new one draw its spot from the main stream.
             var swept = NewSim(7);
             Watched(swept, 150);
             // #86: the era moment's new lines (festival, cleared hearth, the leader vote) take ids, which seed the crowd's
             // risers, and the festival year lifts the mood; #67 fills open jobs: re-measured.
-            Assert.AreEqual(324628735u, Economy(swept.State), "town with its sweepers (#60)");
+            Assert.AreEqual(83994224u, Economy(swept.State), "town with its sweepers (#60)");
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

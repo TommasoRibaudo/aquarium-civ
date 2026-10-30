@@ -33,6 +33,7 @@ namespace AquariumCiv.EditorTools
             P(PieceKind.Church, -0.2f, 1.2f, 0.44f, 0.72f);
             P(PieceKind.Market, 0.65f, 1.15f, 0.56f, 0.42f);
             P(PieceKind.Watermill, 1.5f, 1.2f, 0.46f, 0.4f);
+            P(PieceKind.Bakery, 2.2f, 0.45f, 0.46f, 0.42f);
             // Middle row: workshops and trades.
             P(PieceKind.Workshop, -2.0f, 0.45f, 0.42f, 0.4f, 1);
             P(PieceKind.Workshop, -1.4f, 0.45f, 0.42f, 0.4f, 2);

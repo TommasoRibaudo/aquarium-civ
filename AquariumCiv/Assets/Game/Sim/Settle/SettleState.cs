@@ -13,6 +13,7 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>A family's barn, byre or shed across its yard (no economy building; see Settlement.Outbuildings).</summary>
         Outbuilding,
         Pasture, Orchard, Jetty, Quarry, Kiln, TimberYard,
+        Bakery,
     }
 
     /// <summary>A claimed lot: an oriented rectangle whose front (local −z) faces its door. Lots never move: an era

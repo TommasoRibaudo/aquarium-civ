@@ -503,6 +503,7 @@ namespace AquariumCiv.Sim
                 BuildingType.Tavern => "inn",
                 BuildingType.Lumbermill => "timber yard",
                 BuildingType.Guildhall => "guildhall",
+                BuildingType.Bakery => "bakery",
                 null => "fire",
                 _ => Label(b),
             };

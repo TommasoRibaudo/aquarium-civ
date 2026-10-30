@@ -558,6 +558,7 @@ namespace AquariumCiv.Life
             PlaceKind.Shrine => "the shrine",
             PlaceKind.Workshop => "the workshop",
             PlaceKind.Guildhall => "the guildhall",
+            PlaceKind.Bakery => "the bakery",
             PlaceKind.BuildingSite => "the building site",
             PlaceKind.ForestEdge => "the forest edge",
             PlaceKind.ClayBank => "the clay bank",

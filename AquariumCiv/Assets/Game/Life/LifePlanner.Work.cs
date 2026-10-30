@@ -126,7 +126,7 @@ namespace AquariumCiv.Life
                     return Alt(w, site, ActivityKind.HangWashing, Prop.Cloth, 0.25f); // cloth drying on lines
                 }
                 case JobType.Baker:
-                    return W(p.home, ActivityKind.Knead, Prop.Loaves, Prop.Loaves, Store(Prop.Loaves), 0.25f);
+                    return W(bakeryB != null ? PlaceOf(bakeryB) : p.home, ActivityKind.Knead, Prop.Loaves, Prop.Loaves, Store(Prop.Loaves), 0.25f);
                 case JobType.Stallholder:
                 {
                     var site = !jb.IsNone ? jb : marketB != null ? PlaceOf(marketB) : gather;

@@ -49,7 +49,7 @@ namespace AquariumCiv.Sim
             (Era.Town, JobType.Potter, new[] { "clay", "kiln" }),
             (Era.Town, JobType.Smith, new[] { "ore", "smithy" }),
             (Era.Town, JobType.Weaver, new[] { "herd|dye", BuildingType.Workshop }),
-            (Era.Town, JobType.Baker, new[] { BuildingType.Windmill, BuildingType.Market }),
+            (Era.Town, JobType.Baker, new[] { BuildingType.Bakery }), // #112: the windmill stays a flour source, the oven is the bakery
             (Era.Town, JobType.Stallholder, new[] { BuildingType.Market }),
             (Era.Town, JobType.Sweeper, new string[0]), // care moves up: the people sweep and weed in the town
         };
