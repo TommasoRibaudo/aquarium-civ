@@ -271,7 +271,7 @@ namespace AquariumCiv.Sim
         void HistoryPin(HistoryState h)
         {
             int id = State.pinnedNotableId;
-            if (id < 0) return;
+            if (id < 0 || Alive(id) == null) return; // a pin left on someone who died stops counting (#39)
             var p = h.pins.FirstOrDefault(x => x.notableId == id);
             if (p == null) h.pins.Add(p = new PinTime { notableId = id });
             p.hours += (float)Config.StepHours;

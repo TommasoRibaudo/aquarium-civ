@@ -43,6 +43,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SaveStoreTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ClockLogicTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/HistoryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/PersonCardTests.cs" /><!-- #39 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
