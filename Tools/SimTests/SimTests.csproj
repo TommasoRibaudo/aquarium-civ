@@ -52,6 +52,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
     <!-- #76: Show me (target, echo plan), world bubbles in the people's voice, and their tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/ShowMe/Core/**/*.cs" />
+    <!-- #85: the shaping looks (rain, grove, channel, herd over time), the answer shown, the take-back, and their tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Shaping/Core/**/*.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>
