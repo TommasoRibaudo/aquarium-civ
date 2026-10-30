@@ -265,3 +265,11 @@ Screens: `AquariumCiv/Temp/agent/85_*.png` (local).
 - ★ An answer label stays 12 s.
 - Placement is through a debug "shape mode" until #84's tray exists. Sounds: cue ids are emitted but no cue player is
   wired yet (#96 phase 2).
+
+### #76 Show me + bubbles (phase 2)
+Screens: `AquariumCiv/Temp/agent/showme-*.png` (local).
+- The echo's line bubble sits at a fixed spot (~30 % from the top) and can cover the place. ★ Draw it over the
+  speaker's head like the world bubbles.
+- ★ Add an ~8 s warm-up before the first ambient bubble of a session.
+- Show me tilts to ≥ 52° pitch and zooms in close (a close look at the usual pitch goes through the hazy front pane);
+  re-check the framing once #75's card stack exists.
