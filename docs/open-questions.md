@@ -171,3 +171,12 @@ Screens: `AquariumCiv/Temp/agent/m91_*.png` (local), incl. the book still `m91_s
 - The green lawn is still subtle at default zoom (per-vertex ground colours). Bolder needs a palette call from you.
 - ★ The book still is a fresh render at the cheer (pose saved), not a re-render from the year snapshot as the doc says.
 - Not done: lanterns, more food on the tables, festival-night mood.
+
+### #39 Person card and relationships (phase 1, `SimCore.People.cs`)
+- ★ A pin stays on a notable who dies (their card becomes a memorial; pin time stops). Alternatives: clear it, or pass
+  it to an heir.
+- ★ The living card has both "last 3 stories" and "3 best stories"; phase 2 shows the last 3 with "best" on a tap.
+- ★ "Shared stories" ties (2+ co-mentions) stay on the card only, not drawn in the world.
+- ★ A pair that are both rivals and siblings is drawn as rivals.
+- ★ With no bank line for them, the card's quote is a crowd line in their voice.
+- Not done: the book's epithet ("the Sky-Bread Chief"). Founders of box 2+ may need `founderIds`.
