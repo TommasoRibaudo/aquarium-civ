@@ -443,3 +443,10 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   (#89).** Before, the "have been modified" rule matched it too (case-insensitive) and looked for a Cancel button that
   this dialog doesn't have, so it stayed KNOWN and blocked recompiles. After a checkout/merge, disk holds what git holds.
   [verified]
+- **2026-10-30 · Downloading Kenney packs from the shell (#96).** The site's Download button calls
+  `https://kenney.nl/download-link/<hex of "assets/<slug>">` (JSON `{"url": ...}`, a signed short-lived link). From bash:
+  `id=$(printf "assets/interface-sounds" | xxd -p | tr -d '\n')`; GET the asset page once with a cookie jar
+  (`-c ck.txt`, a browser User-Agent, `-e <page>` referer); GET the download-link with the same cookies; strip the `\/`
+  escapes (`tr -d '\\'`); GET the url → the zip. Extract into a fresh temp dir outside the repo, copy only the clips used.
+  OpenGameArt files are plain links (`/sites/default/files/...`); check the page's `license-name` says CC0. ffmpeg (winget
+  Gyan.FFmpeg, on PATH) converts to mono .ogg and makes crossfade loops. [verified]
