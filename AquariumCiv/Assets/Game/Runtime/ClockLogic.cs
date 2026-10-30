@@ -9,6 +9,8 @@ namespace AquariumCiv.Game
     public class ClockStart
     {
         public SimCore sim;
+        /// <summary>The boxes on the shelf (#87); <see cref="sim"/> is the active one.</summary>
+        public ShelfState shelf;
         public SaveStore.LoadResult load;
         public bool newWorld;
         /// <summary>False when the save on disk is from a newer build: this session never writes over it.</summary>
@@ -50,6 +52,7 @@ namespace AquariumCiv.Game
                     // A broken main file next to a good .bak would become the next .bak: move it aside first.
                     if (r.load == SaveStore.LoadResult.LoadedFromBackup && File.Exists(path)) r.corruptKeptAs = KeepAside(path);
                     r.sim = new SimCore(config, e.state);
+                    r.shelf = e.shelf;
                     r.awayHours = SaveStore.AwayHours(e, nowUtc, out r.awayCapped);
                     r.catchUp = r.sim.CatchUp(r.awayHours);
                     return r;
@@ -64,6 +67,7 @@ namespace AquariumCiv.Game
             }
             r.newWorld = true;
             r.sim = new SimCore(config, SimCore.NewWorld(newSeed, config));
+            r.shelf = ShelfState.Single(r.sim.State);
             return r;
         }
 
@@ -78,8 +82,18 @@ namespace AquariumCiv.Game
         public static bool Save(string path, ClockStart session, DateTime nowUtc)
         {
             if (!session.canSave) return false;
-            SaveStore.Write(path, session.sim.State, nowUtc);
+            SaveStore.Write(path, session.sim.State, nowUtc, session.shelf);
             return true;
+        }
+
+        /// <summary>The finished box becomes a museum and box 2 starts as the active box (#87). The session's sim is the new box
+        /// afterwards. Returns it. Saves are the caller's.</summary>
+        public static SimCore StartNextBox(ClockStart session, SimConfig config, BoxCompletion completion, string setting, int seed, DateTime nowUtc)
+        {
+            session.shelf ??= ShelfState.Single(session.sim.State);
+            Shelf.FinishActive(session.shelf, session.sim, completion, nowUtc);
+            session.sim = Shelf.StartNextBox(session.shelf, config, setting, seed, nowUtc, completion);
+            return session.sim;
         }
 
         /// <summary>Moves a broken file to <c>name.corrupt</c> (replacing an older one) and returns the new path.</summary>
