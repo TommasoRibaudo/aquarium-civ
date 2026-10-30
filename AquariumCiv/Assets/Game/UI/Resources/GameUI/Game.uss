@@ -49,6 +49,18 @@ Label { white-space: normal; }
 .hud-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
 .hud-btn--primary:hover { background-color: var(--terracotta); }
 .hud-btn--primary:active { background-color: #B5603F; }
+/* Clean mode is on: the button is lit, so the mode is never a silent one */
+.hud-btn--on { background-color: var(--thatch); color: var(--frame); }
+.hud-btn--on:hover { background-color: var(--thatch); }
+
+/* a short hint line above the bottom row */
+.hud-toast {
+    position: absolute; left: 60px; right: 60px; bottom: 240px;
+    padding: 22px 36px; border-radius: 48px;
+    background-color: rgba(46, 42, 39, 0.78); color: var(--plaster);
+    font-size: 36px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+
 /* test builds only: present but quieter than the title */
 .hud-btn--small { min-width: 0; height: 144px; padding: 0 30px; font-size: 28px; background-color: rgba(46, 42, 39, 0.4); color: var(--plaster); }
 .hud-btn--small:hover { background-color: rgba(46, 42, 39, 0.4); }
