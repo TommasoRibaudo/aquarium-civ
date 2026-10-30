@@ -42,7 +42,10 @@ namespace AquariumCiv.Tests
             Watched(town, 150);
             Assert.AreEqual(Era.Town, town.State.era);
             Assert.AreEqual(857494807u, Economy(camp.State), "camp");
-            Assert.AreEqual(578492028u, Economy(town.State), "town");
+            // #27: at the town's era moment no one is free to be captain of the watch, so a notable steps out of the crowd
+            // (Yara Brook, year 30). One more notable shifts the story dice from then on, as #26's rise does; roles draw no
+            // dice themselves (RoleTests.TheEconomyIsWhatItWasBeforeRoles: runs without a crowd pull keep the old hash).
+            Assert.AreEqual(2035534650u, Economy(town.State), "town");
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

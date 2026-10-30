@@ -253,6 +253,7 @@ namespace AquariumCiv.Sim
         public bool eraReady;           // the next era's threshold was reached: it waits for the player to watch
         public long eraStartMonth;      // month the current era began
         public long eraReadyMonth = -1; // month eraReady was set (-1 = not ready)
+        public List<RoleSeat> roles = new(); // the important roles and their holders (SimCore.Roles.cs, #27)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;
