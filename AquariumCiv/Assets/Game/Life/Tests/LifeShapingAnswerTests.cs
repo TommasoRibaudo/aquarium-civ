@@ -128,6 +128,37 @@ namespace AquariumCiv.Life.Tests
             Assert.GreaterOrEqual(ownedByCredited * 2, creditedAlive, "the credited notable plays their part, mostly");
         }
 
+        /// <summary>The walk back into the day after an answer keeps the pace, sampled until everyone has rejoined their day,
+        /// also for late-evening starts (view hours run faster after 20h).</summary>
+        [Test]
+        public void TheWalkBackAfterAnAnswerKeepsThePace()
+        {
+            float worst = 0f;
+            string worstWhat = "";
+            int answers = 0;
+            foreach (int seed in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1234 })
+                foreach (var c in Cases)
+                {
+                    var (sim, n) = Answered(c.kind, c.era, seed, c.fish);
+                    if (sim == null) continue;
+                    var planner = LifePlanner.Wired(sim);
+                    long day = sim.State.month;
+                    while (planner.IsRestDay(day)) day++;
+                    foreach (float hour in new[] { 10f, 17.5f, 19.6f, 20.2f, 20.7f, 21.2f, 21.7f, 22.2f, 22.4f, 22.6f, 22.68f, 22.9f, 23.2f, 23.5f })
+                    {
+                        planner.ClearLive();
+                        var info = planner.StartShapingAnswer(n.id, new ViewTime(day, hour));
+                        if (info == null) continue;
+                        answers++;
+                        var r = MomentTailPace.Worst(planner, day, hour, info.end, $"{c.kind}{(c.fish ? " (fish)" : "")} {c.era} seed {seed}");
+                        if (r.worst > worst) { worst = r.worst; worstWhat = r.what; }
+                    }
+                }
+            TestContext.WriteLine($"{answers} answers; fastest {worst:0.00}x the walking pace ({worstWhat})");
+            Assert.Greater(answers, 20);
+            Assert.LessOrEqual(worst, 2f, worstWhat);
+        }
+
         [Test]
         public void NoAnswerForAShapingNotYetAnswered()
         {
