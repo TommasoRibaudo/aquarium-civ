@@ -336,3 +336,15 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-29 · Bash tool: a long `python - <<'EOF'` heredoc full of apostrophes failed to parse** ("unexpected EOF
   while looking for matching `''") although the delimiter was quoted. Workaround: write the edit spec or script with the
   Write tool to the scratchpad and run it (`python script.py spec`). [workaround]
+- **2026-10-30 · The Editor compiles scripts in Debug mode (`CompilationPipeline.codeOptimization` = Debug), so managed
+  per-vertex loops are several times slower than in a player.** Measure Editor budgets with that in mind. What made the
+  slice box's chunk rebuild fit (#33): AO with `RaycastCommand.ScheduleBatch` plus plain (non-Burst) `IJobParallelFor`
+  jobs that build the commands and sum the hits (the rays were only ~1/4 of the cost; the managed loops around them were
+  the rest), packed `long` dictionary keys instead of tuple keys, `List.ToArray()` before hot loops, distance fields on
+  a 0.025 u grid instead of walking polylines per triangle, and `Parallel.For` over terrain row bands.
+  `Color.linear` is a native call: `MeshBuilder.Linear` does the same in managed code so builders run on worker threads;
+  `Quaternion.FromToRotation` worked inside jobs. [verified]
+- **2026-10-30 · Profiling a private method from `script eval`:** call it by reflection
+  (`typeof(T).GetMethod("Name", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(obj, args)`), with a `Stopwatch`
+  around each stage; out params come back in the `args` array. Build the result string with `+`, not `$"...\n"`, when
+  the script is passed through `"$(cat file)"` (an escaped `\n` inside an interpolated string got mangled). [verified]
