@@ -350,3 +350,57 @@ Cluster passes criterion 1 for this viewer (picked in 2 of 3 sets), and random s
 was picked in none. Caveat: only Cluster had the curved paths, yards and commons dressing, so this measures the overall
 look, not placement alone. Next: M2 (#32) takes `ClusterPlacer` + `PathCurves` for homes and keeps round 1's rules for
 fields, mills and workshops; open points from the round-2 report (bigger families, full-box densify) go to #32.
+
+## M2 (#32, 2026-10-29): what went into the slice sim
+
+Ported to `Assets/Game/Sim/Settle/` (assembly `AquariumCiv.Sim`, pure C#): `Terrain` (+ `TerrainSpec`), `SiteMap`,
+`PathNet`, `Encyclopedia`, `Placer` (round 1: fields, mills, workshops, market, tavern, church, shops),
+`ClusterPlacer` (round 2: homes in family yards, commons, fine infill), `PathCurves`, `SettleChecks`, and the driver
+`Settlement` (the spike's `GrowthWorld` without the economy, eras or snapshots). `SimCore.Step` calls it at the end of
+every month (`SimCore.Settle.cs`); the lab in `Assets/Spikes/Growth` is unchanged.
+
+- **Stored, not re-derived:** `SimState.settle` (`SettleState`) holds the lots, yards, commons, and per-cell flags
+  (canal, forest, laid, green, commons, yard, meadow, rock), tier, wear, walked direction, lot and family-ring ids and
+  each path cell's founded month. About 70 KB of JSON at year 40. `Building` gains `x, z, yaw, w, d, lotId, yardId,
+  doorX, doorZ`; `Nudge` gains `x, z, lotId`; `TrashItem` gains `x, z` (its slot and offsets are still drawn by the
+  economy's dice, so the economy is unchanged). `slot` stays as a legacy field.
+- **Old saves** (no `settle`, `version` 0) are placed once when the `SimCore` is made: shapings and trash get the
+  spot of their old hex slot, buildings are placed in the order they were built with a wear pass every second one.
+  `SaveStore` is at version 2 (the 1 → 2 step is empty; the sim does the work).
+- **No dice, no feedback into the economy:** the economy reads only the terrain at a shaped spot (`SimCore.WetSpot`,
+  `SimCore.Deposit`), never placement results; `SettleTests.TheEconomyIsUnchangedByPlacement` runs settle on and off.
+  All pinned fingerprints and economy hashes are unchanged.
+- **Answers by era and land:** rain → field; grove → the first lumber mill, then a field among the trees (camp), an
+  orchard (village), a timber yard (town); herd → hunting grounds or a fishing jetty (by the pond), a pasture, a
+  weaver's workshop (town); channel → field (camp), windmill then irrigated fields (village), watermill (town); lamp →
+  a field under it, in a town the tavern, then the market; spring → a well at the spring; outcrop → a quarry, kiln or
+  smithy by what the rock is (stone, clay by water, ore in a slope), a stone hut before the town; dye meadow → a
+  dyer's yard (town), a meadow field before. The new kinds' own sim layers (charges, herds, light) are stubs: the
+  people answer them at the spot, and an answered herd, meadow or outcrop opens its jobs.
+- **Connections only to laid paths.** A new door is joined to the green and the laid paths, not to any worn trail:
+  a worn trail can fade, and in one test run that left two doors cut off. Laid cells never go, so a lot stays
+  connected for good. Emergent paths still wear in (largest emergent run 13 / 17 / 13 cells).
+
+**Open points of round 2, my choices:**
+1. *Families stop at ~2 homes.* (a) Each yard gets a **barn, byre or shed lot** across from its homes (village era
+   on, from the second home or once the family stops growing): a real lot, no economy building. (b) Join candidates
+   at two setbacks (by the yard, or a garden's width back), **yards 1.2 u apart** (was 1.0), the family's land held
+   **0.6 u round the yard for 15 years** (was 0.3 u, 8 years: the slice builds a hut every 10–15 years), family caps
+   2 / 3 / 4 at 35 / 45 / 20 %. Result: yards of 2, 3, 2, 1 homes (was mostly 1–2), 8 of 12 families are farmsteads of
+   3+ buildings. Homes don't split: the economy builds ~8 huts in 120 years, so more, smaller homes would need M6.
+2. *Late builds with no lot.* The economy's building stays (the economy never hears about land); it **waits for a
+   lot**, retried once a year. `SettleState.noLotSince` / `noLotMonths` / `noLotBuilds` and
+   `Settlement.MonthsWithoutLot` feed the town's peak ("no good lot for 3 years", era-moment.md §8). No densify yet.
+3. *Homes per family* (life-in-the-box): `Settlement.YardOfFamily` maps notable families to yards in the order both
+   appeared (round-robin when there are more families than yards); `HomeOf(notable)` puts children with a parent and
+   partners together. A planner rule, derived, not saved.
+
+**Numbers** (`SettleTests`, .NET 8, this PC): nudge answers within 1 u: rain 29/30, grove 25/30, channel 25/30 (bar
+24), herd 11/12, lamp 12/12, outcrop 11/12, spring 12/12, dye meadow 12/12. Live = catch-up: identical state. Three
+seeds × 120 years, eras advanced: 0 overlaps / 0 in the margin / 0 cut off, every one of the economy's 20 buildings
+on a lot (plus 2–3 barns). Cost: placement 0.037 + wear 0.084 = **0.12 ms per month**; a 576-month catch-up from
+year 60, whole sim: **98 ms**. A forced full box (3 debug builds a year in the town) fits ~32 lots and then waits.
+
+**Still open:** the economy is capped at 20 buildings (`buildingSlots`; M6 brings town demand); the box fills at
+~30–35 lots with yards and commons, so M6 will reach "full" soon and may want densifying; the Growth Lab's own
+catch-up timing (C6) now also pays for the slice's placement inside `SimCore.Step`.

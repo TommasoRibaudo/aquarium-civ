@@ -316,3 +316,6 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   fingerprint (ints, rng states, ages to 2 decimals) matches in both, but hashes over raw float fields (food, wood, mood…)
   differ, with "R" text or with raw bits. So: never pin a float-derived hash in a test that runs in both; pin under
   `#if !UNITY_2017_1_OR_NEWER` (dotnet only) and compare same-runtime runs in Unity. Unity stays the authority. [verified]
+- **2026-10-29 · Bash tool: a long `python - <<'EOF'` heredoc full of apostrophes failed to parse** ("unexpected EOF
+  while looking for matching `''") although the delimiter was quoted. Workaround: write the edit spec or script with the
+  Write tool to the scratchpad and run it (`python script.py spec`). [workaround]
