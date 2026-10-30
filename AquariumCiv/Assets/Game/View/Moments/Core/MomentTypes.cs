@@ -163,6 +163,7 @@ namespace AquariumCiv.View.Moments
         public bool somethingCleared; // the old camp hearth stands and will be cleared for the market
         public string place = "The settlement";
         public string leaderName = "";
+        public string winnerName = "";   // who the instant vote will choose when the leader seat is empty (sim.PreviewEraVote), "" if unknown
         public int year;              // the year the cheer's caption shows (the HUD's year)
         /// <summary>A replay (debug, the time-lapse marker): the cheer does not call AdvanceEra.</summary>
         public bool replay;
@@ -180,6 +181,7 @@ namespace AquariumCiv.View.Moments
                 firstMoment = !s.storyFlags.Contains(FlagNotifyAsked),
                 leaderPresent = leader != null,
                 leaderName = leader?.name ?? "",
+                winnerName = leader == null ? sim.PreviewEraVote()?.name ?? "" : "",
                 somethingCleared = sim.NextEra == AquariumCiv.Sim.Era.Town && s.buildings.Exists(b => b.type == AquariumCiv.Sim.BuildingType.Camp),
                 place = sim.PlaceName,
                 year = (int)(s.month / AquariumCiv.Sim.SimConfig.MonthsPerYear), // as the HUD shows it ("Year 14")
@@ -202,9 +204,10 @@ namespace AquariumCiv.View.Moments
             _ => true,
         };
 
-        /// <summary>Fills {leader} {place} {year} in a beat's line or caption.</summary>
+        /// <summary>Fills {leader} {winner} {place} {year} in a beat's line or caption.</summary>
         public string Fill(string text) => string.IsNullOrEmpty(text) ? "" :
             text.Replace("{leader}", string.IsNullOrEmpty(leaderName) ? "friend" : leaderName)
+                .Replace("{winner}", string.IsNullOrEmpty(winnerName) ? "someone" : winnerName)
                 .Replace("{place}", place).Replace("{year}", year.ToString());
     }
 }

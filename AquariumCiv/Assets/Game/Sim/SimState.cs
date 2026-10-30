@@ -75,7 +75,7 @@ namespace AquariumCiv.Sim
         public EraThreshold villageAt = new EraThreshold { population = 10, buildings = 6, years = 10 };
         public EraThreshold townAt = new EraThreshold { population = 22, buildings = 13, years = 20 };
         // The era moment and the box's peak (era-moment.md §6, §8; SimCore.EraMoment.cs, #86).
-        public float festivalMoodLift = 0.05f;  // the era festival lifts the mood target this much for a year [est], no dice
+        public float festivalMoodLift = 0.10f;  // the era festival lifts the mood target this much for a year [est], no dice
         public int festivalYears = 1;
         public PeakRule peakAt = new PeakRule { townYears = 40, seats = 7, fullYears = 3 };
 

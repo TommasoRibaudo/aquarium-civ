@@ -609,6 +609,31 @@ namespace AquariumCiv.Sim
             }
         }
 
+        /// <summary>Side-effect free: who the next era's instant vote would choose for its leader if the leader seat is empty
+        /// at the era change (#86, user 2026-10-30: the vote line names the winner). Null when the leader carries over, when
+        /// nobody stands (someone then steps out of the crowd, unnamed until it happens) or there is no next era. Mirrors
+        /// <see cref="TryFill"/> for the leader seat, which is first in the table, so nothing else has filled before it.</summary>
+        public Notable PreviewEraVote()
+        {
+            var s = State;
+            if (IsFinalEra || HolderOf(LeaderOf(s.era)) != null) return null;
+            var next = s.era + 1;
+            string role = LeaderOf(next);
+            var keeps = RolesOf(next).ToList();
+            bool Free(Notable n) => n.alive && n.age >= AdultAge && (RoleOf(n) == null || !keeps.Contains(RoleOf(n)) || RoleOf(n) == LeaderOf(s.era));
+            var free = s.notables.Where(Free).ToList();
+            var working = free.Where(n => n.age < Config.retireAge).ToList();
+            var pool = working.Count > 0 ? working : free;
+            if (pool.Count == 0) return null;
+            var rule = RuleOf(next, role);
+            if (rule == RoleRule.Election)
+            {
+                var voters = s.notables.Where(n => n.alive && n.age >= AdultAge).ToList();
+                return Election(role, pool, voters).winner;
+            }
+            return pool.OrderByDescending(n => Standing(n, role)).ThenBy(n => n.id).First();
+        }
+
         // ---------- helpers ----------
         /// <summary>A notable steps out of the crowd to fill a role, if the era's band + family room has space. Drawn from a
         /// stream seeded by a hash (not the economy's dice); they get a job at once.</summary>
