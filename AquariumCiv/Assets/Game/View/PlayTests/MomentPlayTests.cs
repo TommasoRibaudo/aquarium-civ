@@ -211,7 +211,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 var sim = GameClock.Instance.Sim;
                 var mp = MomentPlayer.Instance;
-                sim.State.grime = 90f;
+                sim.State.grime = 0.9f;
                 Assert.IsTrue(sim.ForceEraReady());
                 Era from = sim.State.era;
                 yield return new WaitForSecondsRealtime(0.7f);

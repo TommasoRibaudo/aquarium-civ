@@ -58,6 +58,7 @@ namespace AquariumCiv.View
             // The era moment (#88): era ready now, the wait's pile size, watch / replay / leave, hurry speed.
             GUILayout.Label(MomentPlayer.Status());
             GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Grow 12y")) last = MomentPlayer.DebugGrow(12f);
             if (GUILayout.Button("Era ready")) last = MomentPlayer.DebugEraReady();
             if (GUILayout.Button("Waited 1y")) last = MomentPlayer.DebugWaited(12);
             if (GUILayout.Button("Waited 1d")) last = MomentPlayer.DebugWaited(288);

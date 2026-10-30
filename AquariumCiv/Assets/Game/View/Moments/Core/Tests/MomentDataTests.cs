@@ -283,8 +283,8 @@ namespace AquariumCiv.View.Moments.Tests
             var sim = NewSim();
             sim.ForceNextEra(); sim.ForceNextEra();
             Assert.IsFalse(EraWaiting.Read(sim.State, "").waiting);
-            Assert.IsFalse(EraWaiting.OfferWipeFirst(20f));
-            Assert.IsTrue(EraWaiting.OfferWipeFirst(80f));
+            Assert.IsFalse(EraWaiting.OfferWipeFirst(0.2f));
+            Assert.IsTrue(EraWaiting.OfferWipeFirst(0.8f));
         }
     }
 }
