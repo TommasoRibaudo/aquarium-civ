@@ -81,6 +81,10 @@ namespace AquariumCiv.View.Shaping
 
         public HerdSpecies Species => SpeciesOf(variant, level);
 
+        /// <summary>The animal now (user 2026-10-30: herds level up with the era): the era's animal, never a step back from the
+        /// one sent; a herd sent in the camp is goats in the village and a flock of sheep in the town.</summary>
+        public HerdSpecies SpeciesAt(Era now) => SpeciesOf(variant, now > level ? now : level);
+
         /// <summary>The animal sent: fish in water; on grass deer in the camp, goats in the village, sheep in the town (the
         /// herd's level when it was sent, research 10).</summary>
         public static HerdSpecies SpeciesOf(string variant, Era level) =>

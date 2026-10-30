@@ -371,6 +371,27 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.Less(d1, T.GrazeRadius + T.HerdSpread + 0.1f, "grazing round it");
         }
 
+        [Test]
+        public void AHerdSentInTheCampBecomesGoatsAndThenSheepAsTheEraMoves()
+        {
+            var sim = NewSim(1234);
+            var (x, z) = OpenLand(sim, 1.3f, 0.7f);
+            var f = Shaped(sim, SimCore.NudgeKind.Herd, x, z);
+            Assert.AreEqual(HerdSpecies.Deer, ShapingLooks.Herd(f, Clock(30f, 0f, Era.Camp)).species);
+            var goats = ShapingLooks.Herd(f, Clock(30f, 0f, Era.Village));
+            Assert.AreEqual(HerdSpecies.Goat, goats.species);
+            Assert.AreEqual(T.HerdCount(HerdSpecies.Goat), goats.animals.Count);
+            var sheep = ShapingLooks.Herd(f, Clock(30f, 0f, Era.Town));
+            Assert.AreEqual(HerdSpecies.Sheep, sheep.species);
+            Assert.AreEqual(T.HerdCount(HerdSpecies.Sheep), sheep.animals.Count);
+            Assert.AreEqual(HerdSpecies.Deer, f.Species, "what was sent stays on the footprint");
+            // A shoal stays a shoal; a later herd is never a step back.
+            var fish = new ShapingFootprint { variant = "fish", level = Era.Camp };
+            Assert.AreEqual(HerdSpecies.Fish, fish.SpeciesAt(Era.Town));
+            var late = new ShapingFootprint { variant = "deer", level = Era.Town };
+            Assert.AreEqual(HerdSpecies.Sheep, late.SpeciesAt(Era.Camp));
+        }
+
         // ------------------------------------------------------------------ the answer's label, sameness
 
         [Test]
