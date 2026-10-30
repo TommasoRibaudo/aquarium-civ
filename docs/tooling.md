@@ -312,3 +312,7 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `editor.playmode start`, `Start()` still saw the old 1198x702 Game view, so a camera fitted once in `Start` was framed
   for landscape. Refit when `cam.aspect` changes (PerfCheck does). Also, ProfilerRecorder render counters
   ("Batches Count", ...) read double in the Editor with the Scene view open, and 0 on some frames. Trust the device numbers. [verified]
+- **2026-10-29 · Unity (Mono) and Tools/SimTests (.NET 8) don't give bit-identical floats for the sim.** The slice
+  fingerprint (ints, rng states, ages to 2 decimals) matches in both, but hashes over raw float fields (food, wood, mood…)
+  differ, with "R" text or with raw bits. So: never pin a float-derived hash in a test that runs in both; pin under
+  `#if !UNITY_2017_1_OR_NEWER` (dotnet only) and compare same-runtime runs in Unity. Unity stays the authority. [verified]

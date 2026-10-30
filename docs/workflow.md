@@ -42,7 +42,7 @@ fight over compiles, domain reloads and the open scene.
 | **A: no Unity** (`lane:sim`, `lane:docs`) | Sim logic (`Assets/Game/Sim`, pure C#), research, design docs | **Yes**, 3–4 agents, one worktree each | `dotnet test Tools/SimTests` (seconds, no Editor) |
 | **B: Editor** (`needs:editor`: `lane:view`, `lane:ui`) | Scenes, art, shaders, UI, play mode | **One at a time** (Editor lock) | Unity tests, screenshots, tester agent |
 
-- `Tools/SimTests` compiles the same `Assets/Game/Sim` files plus the pure sim test classes against .NET 8 and NUnit,
+- `Tools/SimTests` compiles the same `Assets/Game/Sim` files plus the pure sim test classes against .NET 8 and NUnit (floats can differ slightly from Unity's Mono: never pin a float-derived hash in both, see tooling.md),
   with a tiny `JsonUtility` shim. Unity's own test run (and CI) stays the authority before a merge.
 - New sim test classes that don't use `UnityEngine` (other than `JsonUtility`) go into `Tools/SimTests/SimTests.csproj`
   too.
