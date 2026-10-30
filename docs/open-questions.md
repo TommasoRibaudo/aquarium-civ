@@ -53,8 +53,11 @@ _Last updated 2026-10-30._
 ### Scope added overnight (orchestrator)
 - Many listed tickets depend on issues that weren't in the list. ★ I did the sim prerequisites #73 (history records)
   and #87 (shelf / box 2) so #78, #76 and #93 can go ahead. UI prerequisites (#108 design system, #75 cards, #84 shaping
-  tray, #95 settings, #79 time-lapse screen, #80 book) are not started; the tickets that need them (#39, #55, #76, #81,
-  #85, #91, #93, #94, #96, #100) wait or are done only as far as they can go without them.
+  tray, #95 settings, #79 time-lapse screen, #80 book) are not started; the tickets that need them are built against what exists (the #36 HUD and sheets, the debug
+  panel, GameSettings) and note what's left for when #108/#75/#84/#95/#79/#80 land: #39 (pin + card in the #36 sheet
+  style), #55 (verify), #76 ("Show me" callable from the debug panel until #75's cards), #85 (tools placed from the
+  debug panel until #84's tray), #91 (the still is saved; the book page comes with #80), #94, #96 (settings toggles
+  minimal until #95), #81/#100 (hooks wired where UI exists).
 
 ### #87 The shelf and box 2 (sim + save v3, `Shelf.cs`, `SimCore.Museum.cs`)
 - ★ A museum visit lives through at most 40 game years; a museum box keeps at most 120 new lines and 40 dead
