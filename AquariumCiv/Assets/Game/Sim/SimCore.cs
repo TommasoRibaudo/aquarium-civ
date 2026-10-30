@@ -100,7 +100,7 @@ namespace AquariumCiv.Sim
             if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
 
             // Mood ignores mess (Gate 1): the pace drop is the whole cost, and mood x mess would stack on it.
-            float target = 0.75f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
+            float target = 0.75f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f) + FestivalMoodLift; // era festival (SimCore.EraMoment.cs)
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
 
             TryBuild();
@@ -118,6 +118,7 @@ namespace AquariumCiv.Sim
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
+            PeakStep(); // no dice: leaders for the book, the town's peak (SimCore.EraMoment.cs)
         }
 
         void TryBuild()

@@ -122,6 +122,9 @@ namespace AquariumCiv.Sim
             ["lean_winter"] = (CardTone.Neutral, "world"), ["strange_light"] = (CardTone.Neutral, "world"),
             ["keeper"] = (CardTone.Good, "keeper"),
             ["era"] = (CardTone.Good, "era"), ["era-ready"] = (CardTone.Good, "era"),
+            ["era_festival"] = (CardTone.Good, "era"), ["era_cleared"] = (CardTone.Neutral, "era"), // #86
+            ["peak-ready"] = (CardTone.Good, "era"), ["box-complete"] = (CardTone.Good, "era"), ["founders"] = (CardTone.Good, "era"),
+            ["founders_left"] = (CardTone.Good, "people"),
             ["role_contest"] = (CardTone.Neutral, "role"), ["role_challenge"] = (CardTone.Neutral, "role"),
             ["role_stepdown"] = (CardTone.Neutral, "role"),
             ["death"] = (CardTone.Sad, "legend"), ["role_death"] = (CardTone.Sad, "legend"),

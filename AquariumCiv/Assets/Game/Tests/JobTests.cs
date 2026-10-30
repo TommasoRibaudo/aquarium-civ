@@ -57,7 +57,9 @@ namespace AquariumCiv.Tests
             // and wood, more births), and every heap they clear lets a new one draw its spot from the main stream.
             var swept = NewSim(7);
             Watched(swept, 150);
-            Assert.AreEqual(3088876224u, Economy(swept.State), "town with its sweepers (#60)");
+            // #86: the era moment's new lines (festival, cleared hearth, the leader vote) take ids, which seed the crowd's
+            // risers, and the festival year lifts the mood: re-measured.
+            Assert.AreEqual(2026357028u, Economy(swept.State), "town with its sweepers (#60)");
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

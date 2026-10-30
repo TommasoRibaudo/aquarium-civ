@@ -279,6 +279,9 @@ namespace AquariumCiv.Life.Tests
             var targets = sim.SweeperTargets();
             var planner = LifePlanner.Wired(sim);
             var sweepers = planner.People.Where(p => planner.JobOf(p) == JobType.Sweeper && planner.StageOf(p) != LifeStage.Kid).ToList();
+            // #86 moved seed 7's town: the sim has a crowd sweeper, but the planner's crowd runs out of adults before the sweeper's
+            // slot (CrowdSlots: priority 7, last). A planner gap, not this test's subject: flagged in #86's report.
+            Assume.That(sweepers.Count, Is.GreaterThan(0), "the planner shows a sweeper");
             var firsts = sweepers.Select(planner.SweeperTargetOf).Where(t => t >= 0).ToList();
             Assert.AreEqual(Math.Min(sweepers.Count, targets.Count), firsts.Count, "every sweeper with a heap left has one");
             CollectionAssert.AreEquivalent(targets.Take(firsts.Count), firsts, "the sweepers head to the heaps SweeperTargets names, one each");
