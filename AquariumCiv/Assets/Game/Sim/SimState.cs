@@ -36,6 +36,15 @@ namespace AquariumCiv.Sim
         public float sweepHeapsPerHour = 0.1f;   // trash heaps one sweeper clears per real hour (one every 10 h)
         public float trimPerHour = 0.005f;       // overgrowth one sweeper trims per real hour (mess brings 1/48 ≈ 0.021)
         public float careMaxShare = 0.5f;        // all sweepers together clear at most this share of the incoming trash/overgrowth
+        // Shaping by placement (#82; SimCore.Shaping.cs): shared charges, refilled by cleaning and over time while the
+        // people are happy (decisions.md "Shaping limit"). Amounts are first guesses, tuned later by E2.
+        public float shapingStartCharges = 2f;
+        public float shapingMaxCharges = 3f;        // the camp's cap; each later era holds one more
+        public float shapingPerHappyYear = 0.5f;    // charges per game year while mood >= shapingHappyMood
+        public float shapingHappyMood = 0.6f;
+        public float shapingPerGrime = 0.5f;        // charges for wiping the whole glass (scaled to what was really wiped)
+        public float shapingPerOvergrowth = 0.4f;   // ... for trimming all the overgrowth
+        public float shapingPerTrash = 0.08f;       // ... per trash heap taken away
         public int buildingSlots = 20;          // the economy's building cap (where they stand is Settle's: Building.x/z, lotId)
         // Organic placement (M2, #32; Sim/Settle): every building gets a lot, paths wear in from walking. Off only for
         // tests that compare the economy with and without it. terrainPreset picks the box's land (0 = the style kit's).
@@ -65,6 +74,10 @@ namespace AquariumCiv.Sim
         // Over 100 seeds, watched: the village is ready at a median of year 15 (p90 34), the town ~43 years after it.
         public EraThreshold villageAt = new EraThreshold { population = 10, buildings = 6, years = 10 };
         public EraThreshold townAt = new EraThreshold { population = 22, buildings = 13, years = 20 };
+        // The era moment and the box's peak (era-moment.md §6, §8; SimCore.EraMoment.cs, #86).
+        public float festivalMoodLift = 0.05f;  // the era festival lifts the mood target this much for a year [est], no dice
+        public int festivalYears = 1;
+        public PeakRule peakAt = new PeakRule { townYears = 40, seats = 7, fullYears = 3 };
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -103,6 +116,17 @@ namespace AquariumCiv.Sim
         public int population;
         public int buildings;
         public int years;   // game years spent in the current era
+    }
+
+    /// <summary>When the town has reached its peak (era-moment.md §8, Choice 6): the box is full (no building found a lot,
+    /// or the economy's cap was reached) for <see cref="fullYears"/>, the town era is <see cref="townYears"/> old, and
+    /// <see cref="seats"/> different town seats have been held. Reaching it only makes the peak ready; it waits.</summary>
+    [Serializable]
+    public class PeakRule
+    {
+        public int townYears;
+        public int seats;
+        public int fullYears;
     }
 
     /// <summary>What an offline catch-up did: real hours away, sim hours the civ lived, game months stepped.</summary>
@@ -240,6 +264,14 @@ namespace AquariumCiv.Sim
         public bool reported;       // the view has shown and logged the answer
         public int answerAfter = 8; // game months before the people act (varies, so answers don't feel mechanical)
         public long placedUnixS;    // real time placed, for "time to visible effect"
+        // Shaping by placement (SimCore.Shaping.cs, #82)
+        public int creditNotableId = -1; // the notable the answer is credited to (-1 = the sim picks one when it answers)
+        public string variant = "";      // herd: "deer" on grass, "fish" in water
+        public int eraAtPlace;           // the Era the tool was used in: its level (rain/storm, grove/orchard...)
+        public float chargeSpent;        // charges it cost, given back on a take-back
+        public float foodGiven;          // food it brought at once (rain), taken back with it
+        public int[] shapeCells;         // land cells it changed and what they were, to put back (Settle)
+        public byte[] shapeBefore;
     }
 
     /// <summary>One game year, compact: enough to replay the village growing in the time-lapse.</summary>
@@ -298,6 +330,18 @@ namespace AquariumCiv.Sim
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        public float shapingCharges = -1f; // the Keeper's shared shaping charges (SimCore.Shaping.cs, #82); -1 = not started (old saves)
+        // The era moment and the box completing (SimCore.EraMoment.cs, #86).
+        public long festivalUntilMonth = -1; // the era festival runs until this month (-1 = none yet)
+        public int lordLineId = -1;          // the first lord: the line the title passes down (-1 = no lord yet)
+        public List<LeaderTerm> leaders = new(); // who led, from when: the book's chapters
+        public List<string> townSeatsHeld = new(); // town seats held at least once (the peak rule)
+        public long fullSinceMonth = -1;     // the box has been full since this month (-1 = not full)
+        public bool peakReady;               // the town reached its peak: the box waits to be completed
+        public long peakReadyMonth = -1;
+        public bool boxComplete;             // CompleteBox ran: the box is a museum on the shelf
+        public long boxCompleteMonth = -1;
+        public List<int> founderIds = new(); // the notables who crossed to the next box
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

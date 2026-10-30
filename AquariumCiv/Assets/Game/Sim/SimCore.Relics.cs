@@ -101,8 +101,8 @@ namespace AquariumCiv.Sim
     /// trigger from the box's own story and a fallback so none is missable:
     /// <list type="bullet">
     /// <item><b>Sky Crumb</b>: the box's second shaping (fallback: the first shaping after the camp).</item>
-    /// <item><b>Festival Mask</b>: the first era festival (camp → village). Seam: the era change is the festival until #86's
-    /// festival calls <see cref="EraFestivalHeld"/>; a box that missed it gets it at the next era change.</item>
+    /// <item><b>Festival Mask</b>: the first era festival (camp → village; #86's era_festival line, the same card). A box
+    /// that missed it gets it at the next era change.</item>
     /// <item><b>Keeper Doll</b>: village and 10 credited Keeper entries (fallback: after 15 village years, or in the town, the
     /// next credited entry). It holds what the Keeper does most (<see cref="KeeperActionCount"/>).</item>
     /// <item><b>Left Sandal</b>: the first "lost" story becomes the sandal's loss (owner and spot kept); at least 20 game years
@@ -248,7 +248,7 @@ namespace AquariumCiv.Sim
                 FindSandal(s);
         }
 
-        /// <summary>The era moment (SimCore.Cards.cs GlassOnEraChange): the first era festival leaves the Festival Mask.</summary>
+        /// <summary>The era moment (SimCore.Eras.cs, after #86's festival opened): the first era festival leaves the Festival Mask.</summary>
         void RelicsOnEraChange()
         {
             if (!RelicsOn || State.era == Era.Camp) return;
@@ -256,8 +256,8 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>
-        /// The era festival was held (#86's festival calls this; until then the era change does). The first one leaves the
-        /// Festival Mask; later calls do nothing. Returns the mask, or null before the village.
+        /// The era festival was held (called at the era moment, right after #86's festival line). The first one leaves the
+        /// Festival Mask, merged into the festival's card; later calls do nothing. Returns the mask, or null before the village.
         /// </summary>
         public Relic EraFestivalHeld()
         {
@@ -376,9 +376,11 @@ namespace AquariumCiv.Sim
             r.ownerId = r.holderId = wearer?.id ?? -1;
             SpotAt(r, FirstOf(BuildingType.Camp)); // the ring dance round the fire, facing the glass
             var e = RelicLine("relic",
-                $"{Place} danced for three days to welcome the new {EraNoun(State.era)}. {Named(r.ownerId)} wore a mask of the sky's face and nobody recognised them, though everyone did.",
+                $"At the dance for the new {EraNoun(State.era)}, {Named(r.ownerId)} wore a mask of the sky's face, and nobody recognised them, though everyone did.",
                 0.75f, r.ownerId, r.buildingId);
             SetQuote(e, Line(14, r.ownerId));
+            var festival = State.chronicle.LastOrDefault(x => x.kind == "era_festival" && x.month == State.month);
+            if (festival != null) LinkStories(festival, e); // one card with the festival (#86)
             return Found(r, e);
         }
 
@@ -659,6 +661,31 @@ namespace AquariumCiv.Sim
             if (r == null || !r.Found) return false;
             if (r.takenMonth < 0) r.takenMonth = State.month;
             return true;
+        }
+
+        /// <summary>The relics as the founders line says them ("carrying the Sky Crumb wrapped in cloth").</summary>
+        public static string RelicName(string id) => id switch
+        {
+            RelicId.SkyCrumb => "Sky Crumb", RelicId.FestivalMask => "Festival Mask", RelicId.KeeperDoll => "Keeper Doll",
+            RelicId.LeftSandal => "Left Sandal", RelicId.Lens => "Lens", _ => id,
+        };
+
+        /// <summary>The relics that would cross with the founders now (ids): the ones taken with <see cref="TakeRelic"/> (the
+        /// player's pick of 3), else the pre-ticked ones found (Choice 6 ★); at most 3, in relic order.</summary>
+        public List<string> RelicsForCrossing()
+        {
+            var taken = RelicId.All.Where(id => FindRelic(id) is Relic r && r.Found && r.takenMonth >= 0).ToList();
+            return (taken.Count > 0 ? taken : DefaultRelicPicks()).Take(3).ToList();
+        }
+
+        /// <summary><see cref="CompleteBox"/> (#86): the crossing relics, as names (<see cref="RelicName"/>), each marked taken.</summary>
+        partial void CollectRelicsForCrossing(List<string> relics)
+        {
+            foreach (var id in RelicsForCrossing())
+            {
+                TakeRelic(id);
+                relics.Add(RelicName(id));
+            }
         }
 
         /// <summary>The relics pre-ticked for the next box (Choice 6 ★: Sky Crumb, Keeper Doll, Lens), those found only.</summary>

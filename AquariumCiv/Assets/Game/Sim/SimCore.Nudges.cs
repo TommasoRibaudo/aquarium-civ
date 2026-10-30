@@ -78,21 +78,32 @@ namespace AquariumCiv.Sim
                 // The people answer within 1–3 game years: the first month after a short pause where they can afford it.
                 long age = s.month - n.month;
                 if (age < Math.Max(8, n.answerAfter)) continue;
-                string type = AnswerTo(n);
-                if (type == null) continue;
-                float cost = NextBuildingCost * 0.6f; // the Keeper's sign makes it a community effort
                 bool lastChance = age >= NudgeMonths - 1;
-                if (s.wood < cost && !lastChance) continue;
-                s.wood = Math.Max(0f, s.wood - cost);
-                var b = AddBuildingNear(type, n.slot);
-                n.credited = true;
-                n.answerMonth = s.month;
-                n.buildingId = b?.id ?? -1;
-                var who = StoryAdultOrNull();
-                var e = Chronicle("keeper", CreditLine(n.kind, type, who, s.era), 0.9f, who?.id ?? -1);
-                e.buildingId = n.buildingId;
-                e.keeper = true;
+                Answer(n, lastChance);
             }
+        }
+
+        /// <summary>The people answer a shaping: a building beside it, credited in the chronicle to the notable the Keeper
+        /// named (<see cref="Nudge.creditNotableId"/>) or else one the story picks. Without <paramref name="force"/> they
+        /// wait until they can afford it. False if nothing was done.</summary>
+        bool Answer(Nudge n, bool force)
+        {
+            var s = State;
+            string type = AnswerTo(n);
+            if (type == null) return false;
+            float cost = NextBuildingCost * 0.6f; // the Keeper's sign makes it a community effort
+            if (s.wood < cost && !force) return false;
+            s.wood = Math.Max(0f, s.wood - cost);
+            var b = AddBuildingNear(type, n.slot);
+            n.credited = true;
+            n.answerMonth = s.month;
+            n.buildingId = b?.id ?? -1;
+            var named = n.creditNotableId >= 0 ? s.notables.FirstOrDefault(x => x.id == n.creditNotableId && x.alive && x.age >= 16f) : null;
+            var who = named ?? StoryAdultOrNull();
+            var e = Chronicle("keeper", CreditLine(n.kind, type, who, s.era), 0.9f, who?.id ?? -1);
+            e.buildingId = n.buildingId;
+            e.keeper = true;
+            return true;
         }
 
         /// <summary>What the people build in answer to a nudge, by the era and the land at the spot (Growth Lab gap 5:

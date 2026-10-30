@@ -98,7 +98,9 @@ namespace AquariumCiv.Tests
             Assert.IsNotNull(mask);
             Assert.IsTrue(mask.Found);
             var e = RelicCard(sim, RelicId.FestivalMask);
-            StringAssert.Contains("welcome the new village", e.text);
+            StringAssert.Contains("the dance for the new village", e.text);
+            var festival = sim.State.chronicle.Single(x => x.kind == "era_festival");
+            Assert.IsTrue(sim.ReturnCardsCapped(-1, 50).cards.Any(c => c.entries.Contains(festival) && c.entries.Contains(e)), "one card with #86's festival");
             Assert.AreEqual("Dance facing the sky tonight. Let it see us.", e.quote);
             Assert.AreEqual(mask.ownerId, e.speakerId, "the wearer says it");
             Assert.AreSame(mask, sim.EraFestivalHeld(), "#86's festival seam: idempotent");
@@ -435,6 +437,29 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(JsonUtility.ToJson(sim.State), JsonUtility.ToJson(loaded.State));
             Assert.AreEqual(5, loaded.FoundRelics.Count());
             Assert.AreEqual(RelicId.LeftSandal, loaded.State.chronicle.First(e => e.kind == "lost").relicId);
+        }
+
+        [Test]
+        public void TheRelicsCrossWithTheFounders()
+        {
+            var sim = NewSim(4);
+            foreach (var id in RelicId.All) sim.DebugGiveRelic(id);
+            CollectionAssert.AreEqual(RelicId.DefaultCarried, sim.RelicsForCrossing(), "the pre-ticked three");
+            Assert.AreEqual("Sky Crumb", SimCore.RelicName(RelicId.SkyCrumb));
+
+            var picked = NewSim(4);
+            foreach (var id in RelicId.All) picked.DebugGiveRelic(id);
+            picked.TakeRelic(RelicId.LeftSandal);
+            picked.TakeRelic(RelicId.FestivalMask);
+            CollectionAssert.AreEqual(new[] { RelicId.FestivalMask, RelicId.LeftSandal }, picked.RelicsForCrossing(), "the player's pick wins");
+
+            // CompleteBox (#86) carries them.
+            sim.ForceNextEra(); sim.ForceNextEra();
+            Assert.IsTrue(sim.ForcePeakReady());
+            var done = sim.CompleteBox();
+            CollectionAssert.AreEqual(new[] { "Sky Crumb", "Keeper Doll", "Lens" }, done.relics);
+            Assert.IsTrue(RelicId.DefaultCarried.All(id => sim.FindRelic(id).takenMonth >= 0), "marked taken");
+            if (done.leader != null) StringAssert.Contains("carrying the Sky Crumb wrapped in cloth", done.foundersLine);
         }
 
         [Test]
