@@ -149,7 +149,7 @@ Cards, the peek, the time-lapse, the small book and the people's voice (draft, n
 - **Eras are plateaus, crossed live.** The civ keeps living offline but waits at an era threshold until you're
   watching, so you never miss the big moment (P6).
 - **The box completes** at the industrious town's peak. It stays alive on the shelf as a **museum** you can visit.
-- **A new box** (Gate 3, P6 variant B) starts in a **new setting** (river delta, island, mountain valley, steppe…;
+- **A new box** (Gate 3, P6 variant B) starts in a **new setting** (decided so far: **desert oasis, mountain village**;
   same style kit, different layout and palette accents), chosen by the game. **Descendants carry over** (a few families
   or a notable's line found it) and **relics carry over** (found in a box, kept on the shelf, giving a small start or a
   story hook).

@@ -17,3 +17,41 @@ _Last updated 2026-10-29._
 8. **Mourning:** ★ one quiet evening at a remembering place with a flower; a small stone stays · the chronicle card only.
 9. **A new Keeper interaction:** ★ hold a finger on clean glass: people look up, kids gather under it and jump · tap the glass and people look up · none for now.
 10. **"Show me" on a card:** ★ fly there and the people involved do a short echo of the event · a staged replay · just fly to the place.
+
+## The era moment and the box completing (#57, [design/era-moment.md](design/era-moment.md))
+11. **How the moment starts:** ★ a "Watch" button, never automatic · tap the waiting leader · plays automatically on open.
+12. **Hurry/skip:** ★ hold to hurry (2×), no skip · a Skip button · neither.
+13. **Rebuild look:** ★ a wave from the centre outward, lot by lot · all at once · scaffolding finishing over the next years.
+14. **Notification question:** ★ at the end of the first era moment · when the waiting state is first seen.
+15. **Festival effect:** ★ a party + one game year of slightly higher mood (~+5 %) · a party only.
+16. **The town's peak (box completes):** ★ the box is full (no good lot for 3 years) + the town is ≥ 40 years old + all 7
+    seats held once; then it waits for you · a fixed town age · you may end the box any time after 40 town years.
+17. **Last gesture:** ★ one long wipe polishes the old glass into museum glass · tap the plate to engrave it · none.
+18. **Museum life:** ★ alive but steady (people age, marry, die; no building, no grime; stories wait for your visit) ·
+    frozen in a looping day.
+19. **How the founders cross:** ★ they walk across a ruler laid between the boxes · already inside the new box · ferried
+    in a teacup.
+20. **Who founds box 2:** ★ the lord's younger child + two young families, and you may swap the leader for your pinned
+    notable · your pinned notable's family · you pick all three.
+21. **Box 2's setting:** ★ desert oasis · mountain village · you choose between the two.
+22. **Relics that travel:** ★ you pick 3 (3 pre-ticked) · the game picks.
+
+## Chronicle cards, time-lapse, small book (#56, [design/chronicle-and-history.md](design/chronicle-and-history.md))
+23. **Cards per return:** ★ up to 3 / 5 / 7 by time away, plus one "Also…" card for the rest · always 3–7 · no cap.
+24. **Linked stories:** ★ merged into one card (wedding + first child; lost + found; teaser + payoff) · one card each.
+25. **The peek when nothing is new:** ★ the current teaser line · nothing.
+26. **"Show me":** ★ fly there + a 3–5 s echo by the people involved (their remembering stone if they've died) ·
+    fly-to only · a staged replay.
+27. **Time-lapse speed:** ★ the whole history in ~20 s, 1 s pause at each era · a fixed 5 years per second.
+28. **People in the time-lapse:** ★ still figures (that year's crowd, notables at their seat or home) · none · walking.
+29. **What earns a book page:** ★ ~12–20 pages: founding, a spread per era, ≤ ~10 legends, their family trees, relics ·
+    every notable · eras and relics only.
+30. **The book's look:** ★ changes with the era (painted stones → the priest's hand-written book → a printed town book) ·
+    one look.
+31. **How the people see the glass:** ★ three stages by era (the sky wall → the Keeper's window → a wall with a room
+    beyond), each nudged on by a relic (Sky Crumb, Keeper Doll, Lens) · by era only · by relics only.
+32. **Who says "glass":** ★ the card narrator uses your words; the people's own quotes never say "glass" until the
+    town's scholars · the people's words everywhere.
+33. **Sharing:** ★ a clean still with a museum label in the slice, a clip later · both in the slice · none yet.
+- Orchestrator's call (tell me if not): four camp-era story lines that "know too much" (a mirror to signal the Keeper,
+  the Keeper's cat, a city beyond the glass, telling time by the glass's shadow) become town-only.
