@@ -257,7 +257,25 @@ namespace AquariumCiv.View
                     if (GUILayout.Button("later")) last = DoBelief(stage, true);
                     GUILayout.EndHorizontal();
                 }
-                if (GUILayout.Button("Glass: tap back x3")) last = DoTapBack();
+                if (GUILayout.Button("Glass: tap back x3 (sim only)")) last = DoTapBack();
+                // #92: the moments and the people at the glass, as the view plays them.
+                GUILayout.Label(GlassVoice.Status());
+                for (int i = 0; i < RelicId.All.Length; i += 2)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int j = i; j < i + 2 && j < RelicId.All.Length; j++)
+                        if (GUILayout.Button("Play " + RelicId.All[j])) last = GlassVoice.DebugPlayMoment(RelicId.All[j]);
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Gather at glass")) last = GlassVoice.DebugGather();
+                if (GUILayout.Button("Knock x3")) last = GlassVoice.DebugKnock(3);
+                if (GUILayout.Button("Tap back x3")) last = GlassVoice.DebugTapBack(3);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Front: camera")) last = GlassVoice.DebugGlassSide(-1);
+                for (int side = 0; side < 4; side++) { int sd = side; if (GUILayout.Button("side " + sd)) last = GlassVoice.DebugGlassSide(sd); }
+                GUILayout.EndHorizontal();
             }
 
             if (Section("Care"))

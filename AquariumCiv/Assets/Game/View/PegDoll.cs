@@ -3,7 +3,10 @@ using UnityEngine;
 
 namespace AquariumCiv.View
 {
-    public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear, Rod, Hammer, Broom, Sack, Stick, Bucket, Block, Barrel }
+    public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear, Rod, Hammer, Broom, Sack, Stick, Bucket, Block, Barrel,
+        // #92: the relics and the glass (a chunk of the Sky Crumb, the Festival Mask worn on the face, the Keeper Doll, the Left
+        // Sandal, the Lens's folded tripod, the brass Lens, the scholar's slate, the measuring rod)
+        Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate, MeasuringRod }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
@@ -274,6 +277,54 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(-0.016f, 0.036f, 0), 0.034f, 0.034f, 0.008f, 8, Palette.Iron, side, false, false);
                     break;
                 }
+                // ---------------- #92: the relics ----------------
+                case PropKind.Crumb:
+                    // A chunk of sky bread hugged in both arms: a pale golden lump with a darker crust.
+                    mb.Ico(new Vector3(0, 0.0f, 0), 0.038f, new Vector3(1.2f, 0.9f, 1f), Palette.Wheat, 0.18f, Palette.Thatch);
+                    break;
+                case PropKind.Mask:
+                {
+                    // Worn on the face (the head slot sits on top of the head: the disc hangs in front of the face). A round
+                    // bark mask: one half a pale smile, the other half bare bark (the other side was still drying).
+                    float y = -(HeadR + 0.008f), z = -(HeadR + 0.006f);
+                    var face = Quaternion.Euler(90f, 0f, 0f);
+                    mb.Prism(new Vector3(0, y, z), HeadR * 1.15f, HeadR * 1.15f, 0.006f, 10, Palette.Plaster, face, true, true, Palette.Plaster);
+                    mb.Box(new Vector3(HeadR * 0.45f, y, z - 0.004f), new Vector3(HeadR * 0.9f, HeadR * 2f, 0.004f), Palette.Bark);
+                    mb.Box(new Vector3(-HeadR * 0.4f, y - HeadR * 0.35f, z - 0.005f), new Vector3(HeadR * 0.7f, HeadR * 0.12f, 0.004f), Palette.Ember);
+                    mb.Box(new Vector3(-HeadR * 0.45f, y + HeadR * 0.25f, z - 0.005f), new Vector3(HeadR * 0.22f, HeadR * 0.22f, 0.004f), Palette.Iron);
+                    break;
+                }
+                case PropKind.Doll:
+                    // The Keeper Doll carried to its post: a little peg figure with enormous hands and one open eye.
+                    KeeperDoll(mb, Vector3.zero, 0.55f);
+                    break;
+                case PropKind.Sandal:
+                    // A single left sandal held up: a flat sole and two straps.
+                    mb.Box(new Vector3(0, 0.02f, 0), new Vector3(0.024f, 0.06f, 0.008f), Palette.Hide);
+                    mb.Box(new Vector3(0, 0.035f, -0.006f), new Vector3(0.028f, 0.006f, 0.006f), Palette.Timber);
+                    mb.Box(new Vector3(0, 0.015f, -0.006f), new Vector3(0.028f, 0.006f, 0.006f), Palette.Timber);
+                    break;
+                case PropKind.Tripod:
+                    // Folded legs on the shoulder, the brass tube tied on.
+                    mb.Box(Vector3.zero, new Vector3(0.012f, 0.012f, 0.16f), Palette.WoodLight);
+                    mb.Box(new Vector3(0.012f, 0, 0), new Vector3(0.012f, 0.012f, 0.16f), Palette.WoodLight);
+                    mb.Prism(new Vector3(0, 0.014f, -0.06f), 0.012f, 0.012f, 0.1f, 8, Brass, Quaternion.Euler(90f, 0, 0));
+                    break;
+                case PropKind.Lens:
+                    // The brass tube held up to the eye.
+                    mb.Prism(new Vector3(0, 0.02f, 0), 0.012f, 0.015f, 0.09f, 8, Brass, Quaternion.Euler(-60f, 0, 0), true, true, Palette.GlassEdge);
+                    break;
+                case PropKind.Slate:
+                    // A dark slate in a wooden frame, a chalk mark on it.
+                    mb.Box(Vector3.zero, new Vector3(0.06f, 0.045f, 0.008f), Palette.Timber);
+                    mb.Box(new Vector3(0, 0, -0.002f), new Vector3(0.05f, 0.035f, 0.006f), Palette.Slate);
+                    mb.Box(new Vector3(-0.01f, 0.004f, -0.0055f), new Vector3(0.02f, 0.003f, 0.001f), Palette.Plaster);
+                    break;
+                case PropKind.MeasuringRod:
+                    // A long rod with painted bands every hand (0.34): the scholar measuring the glass.
+                    mb.Box(new Vector3(0, 0.12f, 0), new Vector3(0.009f, 0.34f, 0.009f), Palette.Plaster);
+                    for (int i = 0; i < 4; i++) mb.Box(new Vector3(0, -0.01f + i * 0.08f, 0), new Vector3(0.011f, 0.03f, 0.011f), Palette.Ember);
+                    break;
                 case PropKind.Lantern:
                     mb.Box(new Vector3(0, 0.0f, 0), new Vector3(0.006f, 0.03f, 0.006f), Palette.Iron);
                     mb.emission = 0.2f; mb.lamp = 0.05f;
@@ -282,6 +333,26 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, -0.012f, 0), new Vector3(0.038f, 0.008f, 0.038f), Palette.Iron);
                     break;
             }
+        }
+
+        /// <summary>Polished brass for the Lens (#92).</summary>
+        public static readonly Color Brass = new(0.80f, 0.62f, 0.28f);
+
+        /// <summary>
+        /// The Keeper Doll (relics-and-glass-voice 1.3): a peg figure with a big round head, one huge open eye, and enormous
+        /// hands, one raised. Feet at <paramref name="at"/>, facing -z. <paramref name="s"/> = 1 is a doll about as tall as a
+        /// person (the one on the post); the carried one is smaller.
+        /// </summary>
+        public static void KeeperDoll(MeshBuilder mb, Vector3 at, float s)
+        {
+            var wood = Palette.WoodLight;
+            mb.Prism(at, 0.03f * s, 0.022f * s, 0.09f * s, 6, wood, topCol: wood);
+            mb.Ico(at + new Vector3(0, 0.118f * s, 0), 0.034f * s, Vector3.one, Palette.Plaster, 0.06f);
+            mb.Ico(at + new Vector3(0, 0.122f * s, -0.03f * s), 0.013f * s, new Vector3(1f, 1f, 0.5f), Palette.Plaster, 0.02f); // the eye: always open
+            mb.Ico(at + new Vector3(0, 0.122f * s, -0.036f * s), 0.007f * s, new Vector3(1f, 1f, 0.5f), Palette.Iron, 0.02f);
+            mb.Box(at + new Vector3(0.04f * s, 0.11f * s, 0), new Vector3(0.012f * s, 0.07f * s, 0.012f * s), wood); // the raised arm
+            mb.Ico(at + new Vector3(0.045f * s, 0.16f * s, 0), 0.028f * s, new Vector3(1f, 1.2f, 0.5f), Palette.Skins[0], 0.08f); // hands: enormous
+            mb.Ico(at + new Vector3(-0.045f * s, 0.035f * s, 0), 0.026f * s, new Vector3(1f, 1.2f, 0.5f), Palette.Skins[0], 0.08f);
         }
 
         /// <summary>Where a slot sits on an adult doll (scale 1), relative to the feet, and how the prop is turned there.</summary>

@@ -9,6 +9,9 @@ namespace AquariumCiv.View
         Stand, Walk, Run, Hidden, Lie, Sit, SitStrike, SitWeave, Crouch, Chop, Hammer, Hoe, Pick, Scatter, Fish, Stir, Sweep,
         Saw, Lift, Talk, Argue, Speech, Haggle, Wave, Cheer, Point, LookUp, Hop, Mourn, Swim, Bell, Bless, Reach, Stretch,
         Hang, Look,
+        // #92: at the glass and in the relic moments
+        LookUpWary, PressHands, WaveSmall, Flinch, Peek, HopBack, Laugh, Measure, Knock, Write, Peer, Freeze, Bow, PoseBig,
+        Lopsided, Taste, HoldUp,
     }
 
     /// <summary>
@@ -72,7 +75,28 @@ namespace AquariumCiv.View
             ActivityKind.LightLanterns => DollStyle.Reach,
             ActivityKind.RingBell => DollStyle.Bell,
             ActivityKind.Bless or ActivityKind.HandsOut => DollStyle.Bless,
-            ActivityKind.LookAtGlass or ActivityKind.LookUp or ActivityKind.LookUpWary or ActivityKind.Study => DollStyle.LookUp,
+            ActivityKind.LookAtGlass or ActivityKind.LookUp or ActivityKind.Study or ActivityKind.Gaze => DollStyle.LookUp,
+            // #92: the glass by belief stage and the relic moments
+            ActivityKind.LookUpWary or ActivityKind.GazeWary => DollStyle.LookUpWary,
+            ActivityKind.PressHands => DollStyle.PressHands,
+            ActivityKind.WaveWary => DollStyle.WaveSmall,
+            ActivityKind.Flinch or ActivityKind.StepBack => DollStyle.Flinch,
+            ActivityKind.Peek => DollStyle.Peek,
+            ActivityKind.CreepUp or ActivityKind.PutOn => DollStyle.Crouch,
+            ActivityKind.HopBack => DollStyle.HopBack,
+            ActivityKind.LaughPoint => DollStyle.Laugh,
+            ActivityKind.Measure => DollStyle.Measure,
+            ActivityKind.TapBack => DollStyle.Knock,
+            ActivityKind.WriteDown => DollStyle.Write,
+            ActivityKind.LookThroughLens => DollStyle.Peer,
+            ActivityKind.TurnLens or ActivityKind.Poke or ActivityKind.Give => DollStyle.Point,
+            ActivityKind.Freeze => DollStyle.Freeze,
+            ActivityKind.Bow => DollStyle.Bow,
+            ActivityKind.CopyPose => DollStyle.PoseBig,
+            ActivityKind.LopsidedDance => DollStyle.Lopsided,
+            ActivityKind.Taste => DollStyle.Taste,
+            ActivityKind.HoldUp => DollStyle.HoldUp,
+            ActivityKind.Deliver or ActivityKind.SetUp or ActivityKind.PickUp => DollStyle.Lift,
             ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit => DollStyle.Talk,
             ActivityKind.Argue => DollStyle.Argue,
             ActivityKind.Swim or ActivityKind.Splash => DollStyle.Swim,
@@ -96,7 +120,11 @@ namespace AquariumCiv.View
         /// <paramref name="steps"/> is the planner's loop step: the last step of a work loop is a short straighten-up.
         /// <paramref name="speed"/> is the doll's ground speed (u/s) for the walk's cadence.
         /// </summary>
-        public static DollPose Evaluate(DollStyle style, float t, float pace, int step, int steps, PropSlot slot, bool hasProp, float speed = 0.25f)
+        /// <para><paramref name="progress"/> (0..1 through the activity), <paramref name="since"/> (real seconds into it) and
+        /// <paramref name="count"/> drive the moves that tell a story once rather than loop (#92): the lens look (look, lean
+        /// back startled, laugh) and the tap-back's knocks (exactly <paramref name="count"/> of them, then still).</para>
+        public static DollPose Evaluate(DollStyle style, float t, float pace, int step, int steps, PropSlot slot, bool hasProp, float speed = 0.25f,
+                                        float progress = 0f, float since = 0f, int count = 0)
         {
             var p = DollPose.Rest;
             pace = Mathf.Clamp(pace <= 0f ? 1f : pace, 0.5f, 1.5f);
@@ -393,6 +421,165 @@ namespace AquariumCiv.View
                 case DollStyle.Look:
                     p.yaw = Mathf.Sin(t * 0.9f) * 35f;
                     p.armR = new Vector3(0, 0, 150f); // a hand over the eyes, roughly
+                    break;
+
+                // ---------------- #92: the glass and the relic moments ----------------
+                case DollStyle.LookUpWary:
+                    // A step back, arms close, looking up: the camp is a bit scared of the edge of the sky.
+                    p.offset.z = 0.03f;
+                    p.lean = -14f + Mathf.Sin(t * 0.7f) * 2f;
+                    p.armL = new Vector3(18f, 0, -6f); p.armR = new Vector3(18f, 0, 6f);
+                    p.squash = 0.96f;
+                    break;
+
+                case DollStyle.PressHands:
+                {
+                    // Both hands flat on the glass, nose close, a little bob on the toes.
+                    float w = Mathf.Max(0f, Mathf.Sin(t * 2.2f));
+                    p.armL = new Vector3(95f, 0, -18f); p.armR = new Vector3(95f + Mathf.Sin(t * 1.3f) * 8f, 0, 18f);
+                    p.lean = 8f;
+                    p.offset.y = w * 0.012f;
+                    break;
+                }
+
+                case DollStyle.WaveSmall:
+                    p.offset.z = 0.03f;
+                    p.armR = new Vector3(0, 0, 115f + Mathf.Sin(t * 10f) * 15f);
+                    p.armL = new Vector3(18f, 0, -6f);
+                    p.lean = -4f;
+                    break;
+
+                case DollStyle.Flinch:
+                {
+                    // A jolt back, arms up to the chest, then a held, hunched stillness.
+                    float j = Mathf.Clamp01(since / 0.25f);
+                    p.offset.z = Mathf.Lerp(0f, 0.05f, j);
+                    p.squash = Mathf.Lerp(1f, 0.9f, j);
+                    p.lean = -10f * j;
+                    p.armL = new Vector3(70f, 0, -30f); p.armR = new Vector3(70f, 0, 30f);
+                    break;
+                }
+
+                case DollStyle.Peek:
+                    p.offset.z = 0.04f;
+                    p.squash = 0.86f;
+                    p.lean = -14f + Mathf.Sin(t * 1.4f) * 4f;
+                    p.armR = new Vector3(150f, 0, 20f); // a hand over the brow, peeking up
+                    p.armL = new Vector3(40f, 0, -20f);
+                    break;
+
+                case DollStyle.HopBack:
+                {
+                    float u = Frac(t * 1.6f);
+                    p.offset.y = Mathf.Sin(u * Mathf.PI) * 0.03f;
+                    p.offset.z = 0.02f + Mathf.Sin(u * Mathf.PI) * 0.02f;
+                    p.armL = new Vector3(-20f, 0, -40f); p.armR = new Vector3(-20f, 0, 40f);
+                    p.lean = -8f;
+                    break;
+                }
+
+                case DollStyle.Laugh:
+                {
+                    // Pointing at the spot, shaking with laughter.
+                    float w = Mathf.Abs(Mathf.Sin(t * 9f));
+                    p.armR = new Vector3(110f, 0, 12f);
+                    p.armL = new Vector3(30f, 0, -40f);
+                    p.offset.y = w * 0.012f;
+                    p.roll = Mathf.Sin(t * 9f) * 4f;
+                    p.lean = -6f;
+                    break;
+                }
+
+                case DollStyle.Measure:
+                    // The rod held up against the glass, the other hand counting along it, slowly sweeping.
+                    p.armR = HoldArm + new Vector3(30f, 0, 0);
+                    p.armL = new Vector3(120f + Mathf.Sin(t * 1.1f) * 25f, 0, -12f);
+                    p.lean = -8f;
+                    p.yaw = Mathf.Sin(t * 0.5f) * 10f;
+                    break;
+
+                case DollStyle.Knock:
+                {
+                    // Exactly count knocks, one every half second, then the fist rests at the glass.
+                    const float period = 0.5f;
+                    float u = since / period;
+                    int k = Mathf.FloorToInt(u);
+                    bool knocking = since >= 0f && k < Mathf.Max(1, count);
+                    float f = Frac(u);
+                    float a = knocking ? (f < 0.5f ? Smooth(80f, 105f, f / 0.5f) : Smooth(105f, 80f, (f - 0.5f) / 0.5f)) : 85f;
+                    p.armR = new Vector3(a, 0, 8f);
+                    p.armL = new Vector3(20f, 0, -10f);
+                    p.lean = 6f;
+                    p.hit = knocking && f > 0.45f && f < 0.6f ? 1f : 0f;
+                    break;
+                }
+
+                case DollStyle.Write:
+                {
+                    // The slate hugged in front, the right hand scribbling.
+                    float w = Mathf.Sin(t * 12f);
+                    p.armL = new Vector3(70f, 0, -6f);
+                    p.armR = new Vector3(65f + w * 6f, w * 10f, 6f);
+                    p.lean = 14f;
+                    break;
+                }
+
+                case DollStyle.Peer:
+                {
+                    // Look through the lens, lean back startled, then laugh (the queue's turn, 1.5).
+                    float u = Mathf.Clamp01(progress);
+                    if (u < 0.5f) { p.lean = 16f; p.armL = new Vector3(70f, 0, -8f); p.armR = new Vector3(70f, 0, 8f); }
+                    else if (u < 0.7f) { p.lean = -16f; p.offset.z = 0.03f; p.armL = new Vector3(60f, 0, -40f); p.armR = new Vector3(60f, 0, 40f); }
+                    else { float w = Mathf.Abs(Mathf.Sin(t * 9f)); p.offset.y = w * 0.012f; p.lean = -6f; p.armL = new Vector3(20f, 0, -30f); p.armR = new Vector3(20f, 0, 30f); p.roll = Mathf.Sin(t * 9f) * 3f; }
+                    break;
+                }
+
+                case DollStyle.Freeze:
+                    // The thud: rigid, arms out, no breathing.
+                    p.armL = new Vector3(10f, 0, -45f); p.armR = new Vector3(10f, 0, 45f);
+                    p.lean = -4f;
+                    break;
+
+                case DollStyle.Bow:
+                    p.lean = 32f + Mathf.Sin(t * 0.6f) * 2f;
+                    p.armL = new Vector3(10f, 0, -8f); p.armR = new Vector3(10f, 0, 8f);
+                    break;
+
+                case DollStyle.PoseBig:
+                    // The Keeper Doll's pose, copied by the kids: one hand raised, very big.
+                    p.armR = new Vector3(0, 0, 170f);
+                    p.armL = new Vector3(0, 0, -60f);
+                    p.offset.y = Mathf.Abs(Mathf.Sin(t * 4f)) * 0.01f;
+                    p.lean = -5f;
+                    break;
+
+                case DollStyle.Lopsided:
+                {
+                    // A lopsided little dance: hop on one side, tilt, turn.
+                    float u = t * 5f;
+                    p.offset.y = Mathf.Max(0f, Mathf.Sin(u)) * 0.025f;
+                    p.roll = 9f + Mathf.Sin(u) * 6f;
+                    p.yaw = Mathf.Sin(t * 1.5f) * 40f;
+                    p.armL = new Vector3(0, 0, -100f + Mathf.Sin(u) * 20f); p.armR = new Vector3(0, 0, 60f);
+                    break;
+                }
+
+                case DollStyle.Taste:
+                {
+                    // A hand to the mouth and back: chewing, considering.
+                    float u = Frac(t / 1.4f);
+                    p.armR = new Vector3(u < 0.5f ? Smooth(40f, 135f, u / 0.5f) : 135f - Mathf.Sin((u - 0.5f) * 12f) * 6f, 0, 18f);
+                    p.offset.y = u > 0.5f ? Mathf.Abs(Mathf.Sin(t * 8f)) * 0.004f : 0f;
+                    p.lean = -3f;
+                    break;
+                }
+
+                case DollStyle.HoldUp:
+                    // Holding the find up high, to the glass.
+                    p.armR = new Vector3(160f + Mathf.Sin(t * 3f) * 6f, 0, 10f);
+                    p.armL = new Vector3(0, 0, -30f);
+                    p.lean = -10f;
+                    p.offset.y = Mathf.Abs(Mathf.Sin(t * 3f)) * 0.006f;
                     break;
 
                 default: // Stand: breathing, a slow weight shift

@@ -97,8 +97,8 @@ namespace AquariumCiv.View
             propRest = prop.localRotation;
             extended = false;
             if (kind == PropKind.Bundle && slot == PropSlot.Back) propExtra = Part(transform, "ChestStrap", StrapMesh(scale < 1f), material, Vector3.zero, Quaternion.identity);
-            // Something on the head or shoulder is held there by a hand.
-            if (slot == PropSlot.Head) armR.localRotation = Quaternion.Euler(0, 0, 160f);
+            // Something on the head or shoulder is held there by a hand (a mask is worn, not held).
+            if (slot == PropSlot.Head && kind != PropKind.Mask) armR.localRotation = Quaternion.Euler(0, 0, 160f);
         }
 
         /// <summary>Turns a hand tool out along the arm (a strike: the axe head ends up in front, the rod out over the water)

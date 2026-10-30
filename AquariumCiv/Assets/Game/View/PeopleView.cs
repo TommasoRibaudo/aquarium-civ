@@ -268,8 +268,10 @@ namespace AquariumCiv.View
                 if (!a.moving) face = wet; // the fisher faces the water
             }
             if (!a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
-            target.x = Mathf.Clamp(target.x, -Land.HX + 0.12f, Land.HX - 0.12f);
-            target.y = Mathf.Clamp(target.y, -Land.HZ + 0.12f, Land.HZ - 0.12f);
+            if (!a.moving && a.facesGlass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave, sitting at the window
+            float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
+            target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
+            target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
 
             // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
             // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there. A plan that
@@ -317,7 +319,10 @@ namespace AquariumCiv.View
             float phase = time + d.phase - (a.copiesPartner ? 0.35f : 0f);
             if (!a.partner.IsNone && !a.copiesPartner && a.kind is ActivityKind.Chat or ActivityKind.Argue) phase += a.who.Key < a.partner.Key ? 0f : 0.65f;
             int steps = ActivityInfo.LoopSteps(a.kind);
-            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, slot, kind != PropKind.None, d.speed);
+            // #92: a story told once (the lens look, the tap-back's knocks) runs on real seconds into the activity.
+            float since = a.end > a.start ? LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)) : 0f;
+            bool holds = kind != PropKind.None && kind != PropKind.Mask; // a mask is worn, the hands stay free
+            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, slot, holds, d.speed, a.progress, since, a.count);
 
             v.gameObject.SetActive(!pose.hidden);
             if (pose.hidden) return;
@@ -339,6 +344,27 @@ namespace AquariumCiv.View
             float h = Hash01(a.place.GetHashCode(), 11) * Mathf.PI * 2f;
             switch (a.place.kind)
             {
+                case PlaceKind.Glass:
+                {
+                    // #92: a row along the glass, facing it; the wary (stage 1) keep a step back, the kids press right up.
+                    var n = GlassNormal(planner.GlassSide);
+                    var along = new Vector2(-n.y, n.x);
+                    int k = a.slot;
+                    float off = k == 0 ? 0f : ((k & 1) == 1 ? 1f : -1f) * ((k + 1) / 2) * 0.13f;
+                    float back = a.kind is ActivityKind.GazeWary or ActivityKind.LookUpWary or ActivityKind.WaveWary ? 0.16f
+                        : a.kind is ActivityKind.SitOut ? 0.06f : -0.09f; // the kids' noses on the glass
+                    var p = spot + along * off - n * back;
+                    face = p + n;
+                    return p;
+                }
+                case PlaceKind.Relic:
+                {
+                    // #92: round the relic (the crumb, the doll's post, the tripod, the vines), a little back from it.
+                    float r = 0.2f + Mathf.Max(0, count - 6) * 0.02f;
+                    float ang = h + a.slot * Mathf.PI * 2f / Mathf.Max(count, 6);
+                    face = spot;
+                    return spot + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
+                }
                 case PlaceKind.Fire:
                 case PlaceKind.Green:
                 case PlaceKind.Remembering:
@@ -372,6 +398,9 @@ namespace AquariumCiv.View
         }
 
         static bool InField(Place p) => p.kind is PlaceKind.Field or PlaceKind.Pasture;
+
+        /// <summary>#92: out through the front glass (box-local x, z) for a <see cref="LifePlanner.GlassSide"/>.</summary>
+        public static Vector2 GlassNormal(int side) => (side & 3) switch { 0 => Vector2.down, 1 => Vector2.right, 2 => Vector2.up, _ => Vector2.left };
 
         /// <summary>A slot that fell on a building's lot (a ring round the market running into a house) moves to the nearest
         /// walkable ground: round the same ring first, then closer to the middle. The spot itself if nothing is free.</summary>
@@ -497,7 +526,16 @@ namespace AquariumCiv.View
                 LifeProp.Goods or LifeProp.Cloth or LifeProp.Wool or LifeProp.Handcart => PropKind.Bundle,
                 LifeProp.Hide => PropKind.Bundle,
                 LifeProp.Broom => PropKind.Broom,
-                LifeProp.Stick or LifeProp.Crook or LifeProp.MeasuringRod or LifeProp.Saw => PropKind.Stick,
+                LifeProp.Stick or LifeProp.Crook or LifeProp.Saw => PropKind.Stick,
+                LifeProp.MeasuringRod => PropKind.MeasuringRod,
+                // #92: the relics and the scholars' things
+                LifeProp.Crumb => PropKind.Crumb,
+                LifeProp.Mask => PropKind.Mask,
+                LifeProp.Doll => PropKind.Doll,
+                LifeProp.Sandal => PropKind.Sandal,
+                LifeProp.Tripod => PropKind.Tripod,
+                LifeProp.Lens => PropKind.Lens,
+                LifeProp.Slate or LifeProp.Notebook => PropKind.Slate,
                 LifeProp.Sheaf => PropKind.Sheaf,
                 LifeProp.Lantern => PropKind.Lantern,
                 LifeProp.Buckets => PropKind.Bucket,
@@ -518,6 +556,7 @@ namespace AquariumCiv.View
             else if (kind == PropKind.Bucket) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
+            else if (kind == PropKind.Slate && activity == ActivityKind.WriteDown) slot = PropSlot.Arms; // hugged, the hand writes
             return (kind, slot);
         }
 
