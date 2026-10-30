@@ -18,8 +18,8 @@ namespace AquariumCiv.View
     /// activity as a procedural pose (<see cref="DollMotion"/>) with its prop in the right slot. Role holders wear their
     /// role's colour (a wide sash and a headband, <see cref="Palette.RoleAccent"/>); notables a thin sash.
     /// <para>
-    /// The view day: one view day per sim month (its number is the month), the hour runs on <see cref="LifeClock"/>'s
-    /// uneven ~5-minute day from <see cref="startHour"/>. The planner is asked for everyone every
+    /// The view day: one view day per sim month (its number is the month, taken at midnight: <see cref="LifeClock.NextViewDay"/>),
+    /// the hour runs on <see cref="LifeClock"/>'s uneven ~5-minute day from <see cref="startHour"/>. The planner is asked for everyone every
     /// <see cref="replanSeconds"/>; positions and poses every frame. With this component on the box, the
     /// <see cref="BoxView"/> drops the layout's standing people (#33's placeholders).
     /// </para>
@@ -65,6 +65,8 @@ namespace AquariumCiv.View
         Transform peopleRoot;
         ViewTime now;
         bool clockStarted;
+        /// <summary>This frame every doll is put straight where its plan says (a clock or box jump), else they walk there.</summary>
+        bool snapAll;
         float replanIn, lastTime = -1f;
         readonly List<PersonActivity> acts = new();
         readonly Dictionary<int, Doll> dolls = new();
@@ -130,11 +132,16 @@ namespace AquariumCiv.View
             var sim = Source != null ? Source.Sim : null;
             if (sim == null || Box == null || Box.Root == null) return;
             Box.PlannedPeople = true;
-            if (planner == null || plannerSim != sim) { planner = LifePlanner.Wired(sim); plannerSim = sim; replanIn = 0f; }
+            bool newSim = planner == null || plannerSim != sim;
+            if (newSim) { planner = LifePlanner.Wired(sim); plannerSim = sim; replanIn = 0f; snapAll = clockStarted; }
 
+            // The view day turns at midnight, not when the sim's month ticks mid-day (that swapped everyone's plan and the
+            // dolls jumped, #30); a sim that jumped ahead (a catch-up, a skip) or another box is taken at once, in place.
             float hour = clockStarted ? now.hour : startHour;
-            hour = LifeClock.Advance(new ViewTime(0, hour), dt * Mathf.Max(0f, timeScale)).hour;
-            now = new ViewTime(sim.State.month, hour);
+            var next = LifeClock.Advance(new ViewTime(0, hour), dt * Mathf.Max(0f, timeScale));
+            long day = clockStarted && !newSim ? LifeClock.NextViewDay(now.day, next.day, sim.State.month) : sim.State.month;
+            if (clockStarted && day != now.day && next.day == 0) snapAll = true;
+            now = new ViewTime(day, next.hour);
             clockStarted = true;
 
             replanIn -= dt;
@@ -144,6 +151,7 @@ namespace AquariumCiv.View
                 Replan(sim);
             }
             Animate(sim, dt);
+            snapAll = false;
             msAvg = msAvg <= 0 ? sw.Elapsed.TotalMilliseconds : msAvg * 0.95 + sw.Elapsed.TotalMilliseconds * 0.05;
             FrameMs = msAvg;
         }
@@ -264,12 +272,16 @@ namespace AquariumCiv.View
             target.y = Mathf.Clamp(target.y, -Land.HZ + 0.12f, Land.HZ - 0.12f);
 
             // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
-            // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there.
+            // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there. A plan that
+            // changed under them (the month ticked: a heap swept away, a new home) is walked to at the walking pace, never
+            // jumped (#30): the planner's point moving faster than any walk is such a change, not a walk to keep up with.
             var prev = d.pos;
             // How fast the planner's own point moves (the walk), not the slot target, which steps on arrival.
+            float pace = LifePlanner.RealWalkSpeed * Mathf.Max(1f, timeScale);
             float targetSpeed = dt > 0f && d.placed ? (spot - d.lastSpot).magnitude / dt : 0f;
+            if (targetSpeed > pace * 3f) targetSpeed = pace;
             d.lastSpot = spot;
-            if (!d.placed || d.wasHidden || dt <= 0f || (target - d.pos).sqrMagnitude > 2.25f) d.pos = target;
+            if (!d.placed || d.wasHidden || dt <= 0f || snapAll) d.pos = target;
             else
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
@@ -566,12 +578,12 @@ namespace AquariumCiv.View
             "people: {0} · {1} {2:00}:{3:00} ({4}{5}) · {6:0.00} ms/frame", dolls.Count, LifeClock.PhaseOf(now.hour), Mathf.Floor(now.hour),
             Mathf.Floor((now.hour % 1f) * 60f), planner.SeasonOn(now.day), planner.IsRestDay(now.day) ? ", rest day" : "", FrameMs);
 
-        /// <summary>Debug: set the view hour (0–24) on today's view day.</summary>
+        /// <summary>Debug: set the view hour (0–24) on the sim's current month.</summary>
         public static string DebugSetHour(float hour)
         {
             var p = Find();
             if (p == null) return "no PeopleView";
-            p.now = new ViewTime(p.now.day, Mathf.Repeat(hour, 24f));
+            p.now = new ViewTime(p.plannerSim != null ? p.plannerSim.State.month : p.now.day, Mathf.Repeat(hour, 24f)); // a jump: today's month
             p.clockStarted = true;
             p.replanIn = 0f;
             p.Tick(0f);

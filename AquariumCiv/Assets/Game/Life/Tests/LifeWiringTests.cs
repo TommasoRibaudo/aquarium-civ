@@ -212,6 +212,63 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(timed, 3);
         }
 
+        /// <summary>#30: the sim's month ticks in the middle of a view day (a month and a view day are both ~5 real
+        /// minutes, out of step). The view keeps the day it is on until midnight (<see cref="LifeClock.NextViewDay"/>), so
+        /// across the tick the plan for that day must stay put: the same people where they were, but for what the month
+        /// really changed (a heap swept away, a birth, a new holder), which the view walks them over to.</summary>
+        [TestCase(Era.Village, 7)]
+        [TestCase(Era.Town, 1234)]
+        [TestCase(Era.Town, 3)]
+        public void AMonthTick_KeepsTheViewDaysPlan(Era era, int seed)
+        {
+            var sim = SimIn(era, seed);
+            var planner = LifePlanner.Wired(sim);
+            int checkedPeople = 0, moved = 0, switched = 0;
+            var log = new List<string>();
+            for (int tick = 0; tick < 6; tick++)
+            {
+                long day = sim.State.month;
+                float hour = 5.5f + tick * 2.7f; // the month ticks at any hour
+                var at = new ViewTime(day, hour);
+                var before = new Dictionary<int, (float x, float z, string what)>();
+                foreach (var who in planner.People)
+                    if (planner.PositionAt(who, at, out float x, out float z)) before[who.Key] = (x, z, Describe(planner, who, at));
+                sim.Step();
+                foreach (var who in planner.People)
+                {
+                    if (!before.TryGetValue(who.Key, out var b) || !planner.PositionAt(who, at, out float x, out float z)) continue;
+                    checkedPeople++;
+                    // What the view used to do: switch to the new month's day there and then.
+                    if (planner.PositionAt(who, new ViewTime(sim.State.month, hour), out float sx, out float sz) &&
+                        (sx - b.x) * (sx - b.x) + (sz - b.z) * (sz - b.z) > 0.09f) switched++;
+                    float dist = (float)Math.Sqrt((x - b.x) * (x - b.x) + (z - b.z) * (z - b.z));
+                    if (dist <= 0.3f) continue;
+                    moved++;
+                    if (log.Count < 12) log.Add($"{at} {who} moved {dist:0.00}: {b.what} -> {Describe(planner, who, at)}");
+                }
+            }
+            TestContext.WriteLine($"{era} seed {seed}: {moved}/{checkedPeople} people moved > 0.3 u across a month tick ({switched} had the view switched day)\n  " + string.Join("\n  ", log));
+            Assert.Greater(checkedPeople, 60);
+            Assert.Greater(switched, checkedPeople / 6, "switching the day at the tick moves many (the #30 jump this guards against)");
+            Assert.LessOrEqual(moved, checkedPeople / 10, "most of the day's plan stays where it was across a month tick:\n  " + string.Join("\n  ", log));
+        }
+
+        static string Describe(LifePlanner planner, PersonRef who, ViewTime at)
+        {
+            var a = planner.Plan(who, at);
+            return $"{a.kind} {a.from}->{a.place}";
+        }
+
+        [Test]
+        public void NextViewDay_TurnsAtMidnight_OrWhenTheSimJumpsAhead()
+        {
+            Assert.AreEqual(40, LifeClock.NextViewDay(40, 0, 41), "the month ticked mid-day: the view keeps its day");
+            Assert.AreEqual(41, LifeClock.NextViewDay(40, 1, 41), "midnight: the new month's day");
+            Assert.AreEqual(41, LifeClock.NextViewDay(41, 1, 41), "the view clock ran faster than the sim: the day comes round again");
+            Assert.AreEqual(45, LifeClock.NextViewDay(40, 0, 45), "a catch-up or a skip: straight to the sim's month");
+            Assert.AreEqual(3, LifeClock.NextViewDay(40, 0, 3), "another box: its own month");
+        }
+
         [Test]
         public void RealSecondsBetween_FollowsThePhases()
         {

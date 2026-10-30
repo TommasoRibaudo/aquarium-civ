@@ -87,6 +87,18 @@ namespace AquariumCiv.Life
         /// <summary>View hours that <paramref name="seconds"/> real seconds cover from this hour (a reaction's length).</summary>
         public static float ViewHoursFor(float hour, float seconds) => seconds / RealSecondsPerViewHour(hour);
 
+        /// <summary>
+        /// The view day after a frame (#30). A view day and a sim month are both ~5 real minutes but out of step, so the
+        /// month ticks in the middle of a view day; switching the day there swapped everyone's plan and the dolls jumped.
+        /// The view keeps <paramref name="day"/> until the clock passes midnight (<paramref name="midnights"/> &gt; 0), then
+        /// takes the sim's month; a sim further ahead (a catch-up, a skip) or behind (another box) is taken at once.
+        /// </summary>
+        public static long NextViewDay(long day, long midnights, long simMonth)
+        {
+            if (midnights > 0 || simMonth < day || simMonth > day + 1) return simMonth;
+            return day;
+        }
+
         /// <summary>Advance the view clock by real seconds (the view calls this every frame).</summary>
         public static ViewTime Advance(ViewTime t, float realSeconds)
         {
