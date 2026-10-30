@@ -194,7 +194,14 @@ namespace AquariumCiv.View.PlayTests
                         audit.Step();
                         if (d.State == ShowMeDirector.Phase.Waiting) flewThere = true;
                         if (d.CurrentEcho != null && !echoed) echoed = true;
-                        if (d.EchoBubbleShown) overHead = true;
+                        if (d.EchoBubbleShown && !overHead && pv.TryGetDollFeet(d.EchoSpeaker, out var feet))
+                        {
+                            var fs = Camera.main.WorldToScreenPoint(feet);
+                            overHead = true;
+                            Assert.Greater(d.BubbleScreen.y, fs.y, $"{c.name}: the line sits above the speaker's feet");
+                            Assert.Less(d.BubbleScreen.y - fs.y, 0.2f * Screen.height, $"{c.name}: and right over their head");
+                            Assert.Less(Mathf.Abs(d.BubbleScreen.x - fs.x), 0.05f * Screen.width, $"{c.name}: not off to the side");
+                        }
                         if (echoed && !shotLine && d.EchoBubbleShown) { shotLine = true; yield return Shot("showme-" + c.name); }
                         if (!c.echo && d.State == ShowMeDirector.Phase.Hold && !flower)
                         {

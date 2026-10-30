@@ -43,8 +43,8 @@ namespace AquariumCiv.View
         public const float HoldSeconds = 0.8f, NoEchoHoldSeconds = 2.5f, ReturnSeconds = 0.9f;
         /// <summary>Show me looks down from at least this pitch (degrees), over the glass's rim.</summary>
         public const float ShowPitch = 52f;
-        /// <summary>A bubble sits this far over the doll's feet (world units), and is checked this often (real seconds).</summary>
-        public const float HeadHeight = 0.32f, BubbleCheckSeconds = 1f;
+        /// <summary>How often a world bubble is considered (real seconds).</summary>
+        public const float BubbleCheckSeconds = 1f;
 
         public Phase State { get; private set; }
         public bool Busy => State != Phase.Idle && State != Phase.Returning;
@@ -346,8 +346,9 @@ namespace AquariumCiv.View
         /// <summary>Echo lines drawn over their speaker's head so far, and whether one shows now (tests).</summary>
         public int EchoLinesOverHead { get; private set; }
         public bool EchoBubbleShown => !echoWho.IsNone && bubbleEl != null && bubbleEl.style.display == DisplayStyle.Flex;
-        /// <summary>The screen point the echo's bubble sits over, in panel coordinates (tests).</summary>
-        public Vector2 EchoBubblePanelPos => bubbleEl != null ? new Vector2(bubbleEl.style.left.value.value, bubbleEl.style.top.value.value) : default;
+        /// <summary>The screen point the bubble sits over, and who says the echo (tests).</summary>
+        public Vector2 BubbleScreen { get; private set; }
+        public PersonRef EchoSpeaker => echoWho;
 
         /// <summary>The echo's bubble follows its speaker while it lasts; world bubbles wait. True while it does.</summary>
         bool StepEchoBubble(PeopleView pv, Camera cam)
@@ -444,8 +445,7 @@ namespace AquariumCiv.View
             if (planner == null) return;
             foreach (var who in planner.People)
             {
-                if (!pv.TryGetDollPosition(who, out var p)) continue;
-                var w = pv.transform.TransformPoint(new Vector3(p.x, HeadHeight, p.y));
+                if (!pv.TryGetDollTop(who, out var w)) continue;
                 var v = cam.WorldToViewportPoint(w);
                 if (v.z <= 0f || v.x < 0.12f || v.x > 0.88f || v.y < 0.42f || v.y > 0.88f) continue; // over the card's half: not there
                 if (who.IsNotable) visibleNotables.Add(who.notableId); else visibleCrowd.Add(who);
@@ -471,10 +471,11 @@ namespace AquariumCiv.View
 
         bool Place(PeopleView pv, Camera cam, PersonRef who)
         {
-            if (bubbleEl == null || bubbleEl.panel == null || !pv.TryGetDollPosition(who, out var p)) return false;
-            var w = pv.transform.TransformPoint(new Vector3(p.x, HeadHeight, p.y));
+            // The real top of the doll (a fixed height in box space fell below the land: it sits higher than that).
+            if (bubbleEl == null || bubbleEl.panel == null || !pv.TryGetDollTop(who, out var w)) return false;
             var s = cam.WorldToScreenPoint(w);
             if (s.z <= 0f || s.x < 0f || s.x > Screen.width || s.y < 0f || s.y > Screen.height) return false;
+            BubbleScreen = new Vector2(s.x, s.y);
             var q = RuntimePanelUtils.ScreenToPanel(bubbleEl.panel, new Vector2(s.x, Screen.height - s.y));
             bubbleEl.style.left = q.x;
             bubbleEl.style.top = q.y - 16f;
