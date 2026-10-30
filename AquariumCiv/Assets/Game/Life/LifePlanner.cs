@@ -164,6 +164,7 @@ namespace AquariumCiv.Life
                 case PlaceKind.None: return false;
                 case PlaceKind.TrashHeap: return trashIds.Contains(p.index);
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
+                case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
             }
             return !p.IsBuilding || buildingIds.Contains(p.buildingId);
         }
@@ -215,7 +216,7 @@ namespace AquariumCiv.Life
                 who = p.who, kind = kind, place = place, from = from, moving = s.Moving && from != place, partner = s.partner,
                 prop = s.prop, start = s.start, end = s.end, progress = Math.Min(1f, into / len),
                 step = steps <= 1 ? 0 : (int)(into / StepHours) % steps, source = s.src, trip = s.trip, pace = dayInfo.pace,
-                chronicleId = s.chronicleId, copiesPartner = s.copies,
+                chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces, count = s.count,
             };
         }
 
@@ -302,6 +303,7 @@ namespace AquariumCiv.Life
             h = h * 31 + s.trash.Count;
             h = h * 31 + s.nudges.Count;
             h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
+            h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
             if (s.roles != null)
                 for (int i = 0; i < s.roles.Count; i++) h = h * 31 + s.roles[i].holderId * (i + 7);
             return h;
@@ -484,6 +486,7 @@ namespace AquariumCiv.Life
             }
 
             dayFireKeeper = null;
+            SnapshotGlass(); // #92
         }
 
         void Add(Person p)

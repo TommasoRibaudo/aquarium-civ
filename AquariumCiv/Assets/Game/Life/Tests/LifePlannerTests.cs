@@ -439,7 +439,11 @@ namespace AquariumCiv.Life.Tests
                 var kinds = acts.Where(a => a.source == ActivitySource.Reaction).Select(a => a.kind).ToList();
                 TestContext.WriteLine($"{era}: {string.Join(", ", kinds)}");
                 Assert.IsNotEmpty(kinds, $"{era}: someone reacts to the finger");
-                if (era == Era.Camp) Assert.IsTrue(kinds.All(k => k == ActivityKind.LookUpWary), "the camp is a bit scared of the glass");
+                // #92 (relics-and-glass-voice §3): in the camp the grown-ups stay back, wary; the kids creep in, hop back, then jump.
+                if (era == Era.Camp)
+                    foreach (var a in acts.Where(a => a.source == ActivitySource.Reaction))
+                        if (planner.StageOf(a.who) == LifeStage.Kid) Assert.Contains(a.kind, new[] { ActivityKind.CreepUp, ActivityKind.HopBack, ActivityKind.JumpAndPoint }, "camp kids creep in");
+                        else Assert.AreEqual(ActivityKind.LookUpWary, a.kind, "the camp's grown-ups are a bit scared of the glass");
                 else if (acts.Any(a => planner.StageOf(a.who) == LifeStage.Kid)) Assert.Contains(kidKind, kinds, $"{era}: kids jump and point");
                 planner.Release(new ViewTime(day, 10.3f));
                 planner.PlanAll(new ViewTime(day, 10.31f), acts);
