@@ -54,8 +54,8 @@ namespace AquariumCiv.View.Moments
         /// evening), twenty-four (a day away). Real time: a game year is one real hour.</summary>
         public static readonly long[] PileSteps = { 12, 72, 288 };
 
-        /// <summary>Grime (0–100) above which Watch first offers "Wipe for a clear view?" [est]. It never blocks.</summary>
-        public const float WipeOfferGrime = 60f;
+        /// <summary>Grime (<c>SimState.grime</c>, 0–1) above which Watch first offers "Wipe for a clear view?" [est]. It never blocks.</summary>
+        public const float WipeOfferGrime = 0.6f;
         public const string WipeOffer = "Wipe for a clear view?", WatchAnyway = "Watch anyway";
         public const string CloseLine = "They'll wait for you";
 

@@ -79,6 +79,8 @@ $VK_ESCAPE = 0x1B
 # Safe answers: [regex on title + body] -> button label to press. Never add an answer that discards work.
 $safe = @(
     @{ Match = 'quit';                     Button = 'No' },
+    # After a git checkout/merge touched the open scene: disk holds what git holds (docs/tooling.md §1).
+    @{ Match = 'modified externally';      Button = 'Reload' },
     @{ Match = 'Scene\(s\) Have Been Modified|have been modified\b(?!.*externally)'; Button = 'Cancel' }
 )
 

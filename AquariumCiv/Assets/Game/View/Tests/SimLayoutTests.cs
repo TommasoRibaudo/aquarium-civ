@@ -25,6 +25,37 @@ namespace AquariumCiv.View.Tests
             return L;
         }
 
+        /// <summary>#89: the moment's look before the cheer. A camp drawn with the village green (eraOf(null) = village)
+        /// has no fire and a well where the sim's first well will go; until the sim builds it, the village keeps that well.</summary>
+        [Test]
+        public void MomentLook_GreenTurnsAndTheWellStandsWhereTheFirstWellWillGo()
+        {
+            var cfg = new SimConfig();
+            var sim = new SimCore(cfg, SimCore.NewWorld(5, cfg));
+            SimLayoutSource.Skip(sim, 12f, false);
+            Assert.AreEqual(Era.Camp, sim.State.era);
+            var camp = Fill(sim);
+            Assert.IsTrue(camp.pieces.Any(p => p.kind == PieceKind.Fire), "the camp has its fire");
+            Assert.IsFalse(camp.pieces.Any(p => p.kind == PieceKind.Well));
+
+            var st = sim.Settlement;
+            var green = Fill(sim, l => l == null ? Era.Village : Era.Camp);
+            Assert.IsFalse(green.pieces.Any(p => p.kind == PieceKind.Fire), "the fire ring has become the green");
+            var well = green.pieces.Single(p => p.kind == PieceKind.Well);
+            Assert.AreEqual(st.GreenX + SimLayout.FirstWellDX, well.x, 1e-4f);
+            Assert.AreEqual(st.GreenZ + SimLayout.FirstWellDZ, well.z, 1e-4f);
+            // lots keep the camp look until the wave reaches them, then the village look on the same spot
+            var all = Fill(sim, l => Era.Village);
+            foreach (var l in st.Standing())
+            {
+                if (l.kind == LotKind.Camp) continue;
+                var before = Fill(sim, x => Era.Camp).pieces.Where(p => p.seed == SimLayout.SeedOf(l)).ToList();
+                var after = all.pieces.Where(p => p.seed == SimLayout.SeedOf(l)).ToList();
+                foreach (var p in after) { Assert.AreEqual(l.x, p.x, 1e-4f, "lots never move"); Assert.AreEqual(Era.Village, p.era); }
+                foreach (var p in before) Assert.AreEqual(Era.Camp, p.era);
+            }
+        }
+
         [Test]
         public void EveryStandingLot_HasItsPieceOrField_OnTheLot()
         {

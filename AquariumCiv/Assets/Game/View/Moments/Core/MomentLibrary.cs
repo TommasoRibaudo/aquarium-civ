@@ -53,8 +53,8 @@ namespace AquariumCiv.View.Moments
 
             var wave = Beat("wave", 20f, BeatAction.RebuildWave);
             wave.param = "village"; wave.audio = "knock_scale"; wave.haptic = true;
-            wave.camera.Add(Key(1.5f, MomentAnchor.Hearth, 50f, 32f, 0.85f));
-            wave.camera.Add(Key(18f, MomentAnchor.Box, -10f, 38f, 1f)); // ~60° orbit, pulling back to the whole box
+            wave.camera.Add(Key(1.5f, MomentAnchor.Hearth, 50f, 30f, 0.62f)); // close enough that each rebuild reads at phone size (P6)
+            wave.camera.Add(Key(18f, MomentAnchor.Hearth, -10f, 36f, 0.85f)); // ~60° orbit, pulling back towards the whole village
             b.Add(wave);
 
             var headman = Beat("headman", 40f, BeatAction.PassSash);
@@ -70,7 +70,7 @@ namespace AquariumCiv.View.Moments
             var cheer = Beat("cheer", 46f, BeatAction.Cheer);
             cheer.light = MomentLight.Midday; cheer.audio = "chord";
             cheer.caption = "{place} · a farming village · year {year}";
-            cheer.camera.Add(Key(1.5f, MomentAnchor.Box, 28f, 30f, 0.95f)); // everyone faces the glass
+            cheer.camera.Add(Key(1.5f, MomentAnchor.Hearth, 28f, 26f, 0.6f)); // everyone faces the glass: close enough to see them cheer
             b.Add(cheer);
 
             var tool = Beat("tool", 53f, BeatAction.ToolUnlock);

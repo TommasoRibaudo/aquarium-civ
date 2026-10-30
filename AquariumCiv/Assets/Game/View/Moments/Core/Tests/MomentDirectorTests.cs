@@ -238,7 +238,7 @@ namespace AquariumCiv.View.Moments.Tests
             var chief = sim.HolderOf(RoleType.Chief);
             Assert.AreEqual(chief != null, ctx.leaderPresent);
             if (chief != null) Assert.AreEqual(chief.name, ctx.leaderName);
-            Assert.AreEqual(SimCore.YearNo(sim.State.month), ctx.year);
+            Assert.AreEqual((int)(sim.State.month / SimConfig.MonthsPerYear), ctx.year);
             Assert.IsFalse(ctx.somethingCleared, "only the town moment clears the camp hearth");
             Assert.AreEqual("Headman Ada, then.", new MomentContext { leaderName = "Ada" }.Fill("Headman {leader}, then."));
             Assert.AreEqual("Glasswick · a farming village · year 14",

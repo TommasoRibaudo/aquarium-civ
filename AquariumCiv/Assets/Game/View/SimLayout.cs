@@ -88,6 +88,15 @@ namespace AquariumCiv.View
             return Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg + 180f; // local -z (the front) faces the target
         }
 
+        /// <summary>Where the sim puts the first well, from the green's centre (Settlement.TryPlace, "first on green").</summary>
+        public const float FirstWellDX = 0.17f, FirstWellDZ = -0.1f;
+
+        static bool HasOpenWell(Settlement st)
+        {
+            foreach (var l in st.Lots) if (l.kind == LotKind.Well && l.open && !l.retired) return true;
+            return false;
+        }
+
         static PathTier TierOf(float t) => (PathTier)(Mathf.Clamp(Mathf.RoundToInt(t), 1, 3) - 1);
 
         /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
@@ -117,6 +126,10 @@ namespace AquariumCiv.View
                 L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp));
             }
             else L.Clearing(green, SiteMap.GreenR + 0.04f, greenEra == Era.Town && st.Has(LotKind.Market) ? ClearingKind.Cobble : ClearingKind.Green);
+            // The village green has its well from the era moment on (era-moment.md §4, #89). Until the sim builds its
+            // first well, the view stands one exactly where the sim's first well will go (Settlement: green + (0.17, -0.1)).
+            if (greenEra >= Era.Village && !HasOpenWell(st))
+                L.Add(PieceKind.Well, green.x + FirstWellDX, green.y + FirstWellDZ, 0f, 0.3f, 0.3f, greenEra, 19000);
 
             // ---- ground: yards, commons, the Keeper's shapings ----
             foreach (var y in st.Yards)

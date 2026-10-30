@@ -87,9 +87,62 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             Box.land = SimLayout.LandFor(sim.TerrainPreset);
-            SimLayout.Fill(layout, sim, WaveRunning ? WaveEra : null, Cobbled(sim));
+            SimLayout.Fill(layout, sim, MomentLook ? MomentEra : WaveRunning ? WaveEra : null, Cobbled(sim));
             seenMonth = sim.State.month; seenEra = sim.State.era; seenAny = true;
         }
+
+        // ---------------- the era moment's look (#89) ----------------
+        // While an era moment plays, the box shows each lot in the next era's look as the moment's wave reaches it, before
+        // the sim moves the era at the cheer (the director drives it: MomentGreen, MomentLot). After the cheer the sim's
+        // era is the new one and nothing rebuilds again (no second wave).
+        Era momentFrom, momentTo;
+        bool momentGreen;
+        readonly HashSet<int> momentDone = new();
+        public bool MomentLook { get; private set; }
+        public int MomentLotsDone => momentDone.Count;
+
+        public void BeginMomentLook(Era from, Era to)
+        {
+            if (WaveRunning) waveStep = -1;
+            MomentLook = true; momentFrom = from; momentTo = to; momentGreen = false;
+            momentDone.Clear();
+            // A replay on an older box: what was built after the era began never had the older look.
+            var st = Sim.Settlement;
+            if (st != null && Sim.State.era >= to)
+                foreach (var l in st.Lots) if (l.foundedMonth > Sim.State.eraStartMonth) momentDone.Add(l.id);
+            Box.Refresh();
+        }
+
+        public void MomentGreen() { if (!MomentLook || momentGreen) return; momentGreen = true; Box.Refresh(); }
+
+        public void MomentLot(int lotId) { if (MomentLook && momentDone.Add(lotId)) Box.Refresh(); }
+
+        /// <summary>Every lot and the green in the new look (the cheer: nothing is left behind).</summary>
+        public void MomentAll()
+        {
+            if (!MomentLook) return;
+            momentGreen = true;
+            var st = Sim.Settlement;
+            if (st != null) foreach (var l in st.Lots) momentDone.Add(l.id);
+            Box.Refresh();
+        }
+
+        public void EndMomentLook()
+        {
+            if (!MomentLook) return;
+            MomentLook = false;
+            momentDone.Clear();
+            Box.Refresh();
+        }
+
+        Era MomentEra(Lot l)
+        {
+            if (l == null) return momentGreen ? momentTo : momentFrom;
+            return momentDone.Contains(l.id) ? momentTo : momentFrom;
+        }
+
+        /// <summary>The era a lot shows now (tests: no lot left in the old look).</summary>
+        public Era ShownEra(Lot l) => MomentLook ? MomentEra(l) : WaveRunning ? WaveEra(l) : Sim.State.era;
 
         // ---------------- the era wave ----------------
         /// <summary>Step s of the wave: the green turns at step 1, lot i (in rebuild order) at step i + 2.</summary>
@@ -162,7 +215,7 @@ namespace AquariumCiv.View
                 if (Application.isPlaying && Now >= waveNext) { waveNext = Now + waveStepSeconds; StepWave(); }
                 return;
             }
-            if (sim.State.era > seenEra && waveOnEraChange) { StartWave(seenEra); return; }
+            if (sim.State.era > seenEra && waveOnEraChange && !MomentLook) { StartWave(seenEra); return; }
             if (sim.State.month != seenMonth || sim.State.era != seenEra) Box.Refresh();
         }
 

@@ -26,7 +26,7 @@ namespace AquariumCiv.View
     /// Beat staging here is placeholder (bubbles, a caption, puffs on the lots, the view clock for the light); #89/#90/#91
     /// do the real staging through <see cref="BeatStarted"/>. Debug: static <c>Debug*</c> methods (also `script eval`).
     /// </summary>
-    public class MomentPlayer : MonoBehaviour, IMomentAnchors
+    public partial class MomentPlayer : MonoBehaviour, IMomentAnchors
     {
         public static MomentPlayer Instance { get; private set; }
         public static bool AutoCreate = true;
@@ -61,7 +61,7 @@ namespace AquariumCiv.View
         float bubbleUntil;
         float nextRead;
         // puffs
-        readonly List<(Transform t, float age)> puffs = new();
+        readonly List<(Transform t, float age, float size)> puffs = new();
         Mesh puffMesh;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -153,7 +153,10 @@ namespace AquariumCiv.View
             Offset.Reset();
             pressDown = false;
             wave = null;
+            KnocksPlayed = 0;
             lastTime = 0f;
+            var src = SimLayoutSource.Find();
+            if (src != null) src.BeginMomentLook(def.toEra - 1, def.toEra); // the box shows the old look until the wave reaches each lot
             Director.Start(def, ctx, from);
             Debug.Log($"[Moment] {(replay ? "replay" : "watch")} {def.id} · {Director.Beats.Count} beats · {Director.Length:0.#} s");
             return true;
@@ -186,6 +189,8 @@ namespace AquariumCiv.View
             bubble.style.display = DisplayStyle.None;
             caption.style.display = DisplayStyle.None;
             wave = null;
+            var src = SimLayoutSource.Find();
+            if (src != null) src.EndMomentLook();
             Debug.Log($"[Moment] ended ({(crossed ? "crossed" : "left before the cheer: it will replay")})");
             MomentEnded?.Invoke(crossed);
         }
@@ -300,6 +305,7 @@ namespace AquariumCiv.View
             }
             if (b.Has(BeatAction.FestivalStart)) caption.style.display = DisplayStyle.None;
             if (b.Has(BeatAction.RebuildWave)) StartWave(b, index);
+            Stage(b, index);
             BeatStarted?.Invoke(b, index);
         }
 
@@ -307,7 +313,7 @@ namespace AquariumCiv.View
         {
             var st = Sim?.Settlement;
             if (st == null) return;
-            var lots = st.RebuildOrder().Select(l => (l.id, new MVec3(l.x, 0f, l.z)));
+            var lots = st.RebuildOrder().Where(l => !l.retired && l.kind != AquariumCiv.Sim.Settle.LotKind.Camp).Select(l => (l.id, new MVec3(l.x, 0f, l.z)));
             var centre = new MVec3(st.Map.greenX, 0f, st.Map.greenZ);
             wave = new RebuildWave(lots, centre, Director.BeatStart(index), Director.BeatEnd(index) - Director.BeatStart(index));
             lastTime = Mathf.Min(lastTime, Director.BeatStart(index) - 1e-3f);
@@ -316,22 +322,31 @@ namespace AquariumCiv.View
         // A placeholder puff where a lot rebuilds: a pale ball that swells and fades (#89/#90 do the real dust and swap).
         void Puff(RebuildWave.Step s)
         {
-            var box = FindAnyObjectByType<BoxView>();
             var lot = Sim?.Settlement?.Lots.FirstOrDefault(l => l.id == s.lotId);
-            if (box == null || lot == null) return;
+            if (lot == null) return;
+            var src = SimLayoutSource.Find();
+            if (src != null) src.MomentLot(s.lotId); // the lot rebuilds in place, in the new era's look
+            PuffAt(lot.x, lot.z, 1f);
+            WaveKnock(s);
+        }
+
+        void PuffAt(float x, float z, float size)
+        {
+            var box = FindAnyObjectByType<BoxView>();
+            if (box == null) return;
             if (puffMesh == null)
             {
                 var mb = new MeshBuilder(5) { jitter = 0.02f };
                 mb.Ico(Vector3.zero, 0.1f, Vector3.one, Palette.Plaster, 0.2f);
                 puffMesh = mb.ToMesh("MomentPuff");
             }
-            var go = new GameObject("Puff" + s.lotId) { hideFlags = HideFlags.DontSave };
+            var go = new GameObject("MomentPuff") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(box.transform, false);
-            go.transform.localPosition = new Vector3(lot.x, box.GroundHeight(lot.x, lot.z) + 0.08f, lot.z);
+            go.transform.localPosition = new Vector3(x, box.GroundHeight(x, z) + 0.08f, z);
             go.AddComponent<MeshFilter>().sharedMesh = puffMesh;
             go.AddComponent<MeshRenderer>().sharedMaterial = box.SolidMaterial;
             go.transform.localScale = Vector3.zero;
-            puffs.Add((go.transform, 0f));
+            puffs.Add((go.transform, 0f, size));
         }
 
         void UpdatePuffs(float dt)
@@ -339,12 +354,12 @@ namespace AquariumCiv.View
             const float life = 0.7f;
             for (int i = puffs.Count - 1; i >= 0; i--)
             {
-                var (t, age) = puffs[i];
+                var (t, age, size) = puffs[i];
                 age += dt;
                 if (t == null || age >= life) { if (t != null) Destroy(t.gameObject); puffs.RemoveAt(i); continue; }
                 float u = age / life;
-                t.localScale = Vector3.one * (Mathf.Sin(u * Mathf.PI) * 2.2f);
-                puffs[i] = (t, age);
+                t.localScale = Vector3.one * (Mathf.Sin(u * Mathf.PI) * 2.2f * size);
+                puffs[i] = (t, age, size);
             }
         }
 
@@ -509,6 +524,20 @@ namespace AquariumCiv.View
             return d.State == MomentDirector.Phase.Playing
                 ? string.Format(CultureInfo.InvariantCulture, "moment {0} · {1:0.0}/{2:0.0} s · beat {3} · ×{4:0.#}{5}", d.Def.id, d.Time, d.Length, d.CurrentBeat?.id, d.Speed, d.Cheered ? " · cheered" : "")
                 : wait;
+        }
+
+        /// <summary>Debug (#89): the camp lives <paramref name="years"/> without crossing the era (it waits), the glass is
+        /// cleaned, so a grown camp's moment can be watched at once.</summary>
+        public static string DebugGrow(float years)
+        {
+            var sim = GameClock.Instance?.Sim;
+            if (sim == null) return "no sim";
+            string r = GameClock.DebugSkipHours(years);
+            sim.CleanAll();
+            if (Instance != null) Instance.nextRead = 0f;
+            var src = SimLayoutSource.Find();
+            if (src != null) src.GetComponent<BoxView>()?.Refresh();
+            return r + (sim.State.eraReady ? " · era waits" : "");
         }
 
         public static string DebugEraReady()

@@ -152,7 +152,7 @@ namespace AquariumCiv.View.Moments
         public bool somethingCleared; // the old camp hearth stands and will be cleared for the market
         public string place = "The settlement";
         public string leaderName = "";
-        public int year = 1;          // the year the cheer's caption shows
+        public int year;              // the year the cheer's caption shows (the HUD's year)
         /// <summary>A replay (debug, the time-lapse marker): the cheer does not call AdvanceEra.</summary>
         public bool replay;
 
@@ -171,7 +171,7 @@ namespace AquariumCiv.View.Moments
                 leaderName = leader?.name ?? "",
                 somethingCleared = sim.NextEra == AquariumCiv.Sim.Era.Town && s.buildings.Exists(b => b.type == AquariumCiv.Sim.BuildingType.Camp),
                 place = sim.PlaceName,
-                year = AquariumCiv.Sim.SimCore.YearNo(s.month),
+                year = (int)(s.month / AquariumCiv.Sim.SimConfig.MonthsPerYear), // as the HUD shows it ("Year 14")
                 replay = replay,
             };
         }
