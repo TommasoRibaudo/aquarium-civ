@@ -255,6 +255,7 @@ namespace AquariumCiv.View.PlayTests
                 float t = 0f;
                 while (cam.IsFlying && t < 4f) { t += Time.unscaledDeltaTime; yield return null; }
                 Assert.LessOrEqual(cam.zoom, BoxCamera.NudgeZoom + 0.02f);
+                Assert.GreaterOrEqual(cam.pitch, BoxCamera.NudgePitch - 3f, "from over the rim, not through the front pane");
                 Assert.IsTrue(pv.Planner.Positions.TryGetPosition(glass.LastMoment.spot, out float x, out float z));
                 var world = pv.transform.TransformPoint(new Vector3(x, 0f, z));
                 var v = Camera.main.WorldToViewportPoint(world);

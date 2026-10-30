@@ -154,12 +154,14 @@ namespace AquariumCiv.View
             if (cam == null || !isActiveAndEnabled || Touching || pressClaimed) return false;
             var v = cam.WorldToViewportPoint(worldPoint);
             bool framed = v.z > 0f && v.x > 0.15f && v.x < 0.85f && v.y > 0.2f && v.y < 0.85f;
-            if (framed && zoom <= zoomTo + 0.02f) return false;
-            FlyTo(worldPoint, Mathf.Min(zoom, zoomTo), seconds);
+            if (framed && zoom <= zoomTo + 0.02f && pitch >= NudgePitch - 3f) return false;
+            EaseTo(worldPoint, yaw, Mathf.Max(pitch, NudgePitch), Mathf.Min(zoom, zoomTo), seconds);
             return true;
         }
 
-        public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f;
+        /// <summary>A nudge looks down from at least <see cref="NudgePitch"/> degrees: from the usual angle the land behind the
+        /// front pane is lost in its haze (Show me does the same).</summary>
+        public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f, NudgePitch = 50f;
 
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }

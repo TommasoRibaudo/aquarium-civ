@@ -391,7 +391,7 @@ namespace AquariumCiv.View
         {
             var a = show.Answer;
             if (cam == null || !a.active || !GlassVoice.CameraFree() || cam.Touching) return;
-            cam.FlyTo(box.transform.TransformPoint(new Vector3(a.x, 0f, a.z)), Mathf.Min(cam.zoom, BoxCameraMath.FlyPlaceZoom), AnswerFlySeconds);
+            cam.EaseTo(box.transform.TransformPoint(new Vector3(a.x, 0f, a.z)), cam.yaw, Mathf.Max(cam.pitch, BoxCamera.NudgePitch), Mathf.Min(cam.zoom, BoxCameraMath.FlyPlaceZoom), AnswerFlySeconds);
             AnswerFlights++;
         }
 
