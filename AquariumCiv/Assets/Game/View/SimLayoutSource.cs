@@ -87,7 +87,7 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             Box.land = SimLayout.LandFor(sim.TerrainPreset);
-            SimLayout.Fill(layout, sim, WaveRunning ? WaveEra : null);
+            SimLayout.Fill(layout, sim, WaveRunning ? WaveEra : null, Cobbled(sim));
             seenMonth = sim.State.month; seenEra = sim.State.era; seenAny = true;
         }
 
@@ -166,6 +166,21 @@ namespace AquariumCiv.View
             if (sim.State.month != seenMonth || sim.State.era != seenEra) Box.Refresh();
         }
 
+        /// <summary>Which site cells are laid with cobbles beyond the roads (#90 sets this when cobbles spread along
+        /// the main path). Null = only roads.</summary>
+        [System.NonSerialized] public System.Func<int, bool> cobbled;
+
+        /// <summary>Debug: cobble every path cell (path tier and up), to preview #90's look.</summary>
+        public static bool CobbleAllPaths;
+
+        System.Func<int, bool> Cobbled(SimCore sim)
+        {
+            if (!CobbleAllPaths) return cobbled;
+            var tier = sim.Settlement?.Map.tier;
+            if (tier == null) return cobbled;
+            return c => tier[c] >= AquariumCiv.Sim.Settle.PathNet.PathTier || (cobbled != null && cobbled(c));
+        }
+
         // ---------------- debug ----------------
         public string Status()
         {
@@ -190,6 +205,14 @@ namespace AquariumCiv.View
             if (s.IsLive) GameClock.Instance.Save();
             s.Box.Refresh();
             return s.Status();
+        }
+
+        /// <summary>Debug: cobbles on every path (on) or only on the roads (off); the box refreshes.</summary>
+        public static string DebugCobblePaths(bool on)
+        {
+            var s = Need(out var err); if (s == null) return err;
+            CobbleAllPaths = on;
+            return (on ? "cobbles on every path · " : "cobbles on roads only · ") + s.Box.Refresh();
         }
 
         /// <summary>Debug: cross into the next era now and play the rebuild wave (or rebuild at once).</summary>
