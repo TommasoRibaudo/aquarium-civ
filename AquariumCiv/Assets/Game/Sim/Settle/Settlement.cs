@@ -67,6 +67,7 @@ namespace AquariumCiv.Sim.Settle
             placer = new Placer(this);
             cluster = new ClusterPlacer(this, placer);
             if (fresh) Found();
+            AssignHomes();
         }
 
         /// <summary>A new box, or a save from before placement (slots only): reserve the commons, find a spot for every
@@ -91,7 +92,9 @@ namespace AquariumCiv.Sim.Settle
         public void Step()
         {
             long t0 = Stopwatch.GetTimestamp();
+            AssignHomes();
             ProcessNewBuildings(false);
+            AssignHomes();
             if (S.month % SimConfig.MonthsPerYear == 0) Yearly();
             if (Waiting() > 0) { St.noLotMonths++; if (St.noLotSince < 0) St.noLotSince = S.month; }
             else St.noLotSince = -1;
@@ -634,8 +637,16 @@ namespace AquariumCiv.Sim.Settle
 
         /// <summary>The yard a notable family (surname) lives round: families in the order they first appeared among the
         /// notables, yards in the order they were founded, shared round-robin when there are more families than yards.
-        /// 0 when the box has no family yard yet. A planner rule: derived, not saved.</summary>
+        /// 0 when the box has no family yard yet. Once a family has a yard it keeps it (<see cref="SettleState.familyYards"/>:
+        /// a yard founded later must not shift the round-robin and put two families in one home).</summary>
         public int YardOfFamily(string family)
+        {
+            if (string.IsNullOrEmpty(family)) return 0;
+            foreach (var f in St.familyYards) if (f.family == family) return f.yard;
+            return DeriveYardOfFamily(family);
+        }
+
+        int DeriveYardOfFamily(string family)
         {
             var yards = new List<Yard>();
             foreach (var k in Yards) if (k.count > 0) yards.Add(k);
@@ -657,13 +668,60 @@ namespace AquariumCiv.Sim.Settle
         }
 
         /// <summary>The home a notable sleeps in: children with their parent, partners together (the elder id's home),
-        /// otherwise a home of the family's yard picked by a hash of the household head. Null if the box has no home.</summary>
+        /// otherwise a home of the family's yard. The household keeps the home it was given (<see cref="SettleState.homes"/>)
+        /// while that lot stands: a new home is filled by households that appear later and never moves one that is settled.
+        /// First choice is a hash of the household head over the family's homes. A pure query: it stores nothing (the month
+        /// step does, <see cref="AssignHomes"/>). Null if the box has no home.</summary>
         public Lot HomeOf(Notable n)
         {
             var head = HouseholdHead(n);
+            var kept = KeptHome(head.id);
+            return kept ?? PickHome(head);
+        }
+
+        Lot KeptHome(int headId)
+        {
+            var hs = St.homes;
+            if (hs == null) return null;
+            for (int i = 0; i < hs.Count; i++)
+                if (hs[i].head == headId)
+                {
+                    foreach (var l in St.lots) if (l.id == hs[i].lot) return !l.retired && Encyclopedia.IsHome(l.kind) ? l : null;
+                    return null;
+                }
+            return null;
+        }
+
+        Lot PickHome(Notable head)
+        {
             var list = HomesOf(head.family);
             if (list.Count == 0) return null;
             return list[(int)(Terrain.Hash3(Seed, head.id, 77) * list.Count) % list.Count];
+        }
+
+        /// <summary>Give every living household head without a standing home one (the hash pick over the homes standing
+        /// now) and store it. Runs each month before and after new buildings are placed, and once when a box is loaded,
+        /// so an old save keeps the homes its hash gives today.</summary>
+        void AssignHomes()
+        {
+            if (St.homes == null) St.homes = new List<HomeAssign>();
+            if (St.familyYards == null) St.familyYards = new List<FamilyYard>();
+            foreach (var n in S.notables)
+            {
+                if (string.IsNullOrEmpty(n.family) || St.familyYards.Exists(f => f.family == n.family)) continue;
+                int y = DeriveYardOfFamily(n.family);
+                if (y > 0) St.familyYards.Add(new FamilyYard { family = n.family, yard = y });
+            }
+            foreach (var n in S.notables)
+            {
+                if (!n.alive) continue;
+                var head = HouseholdHead(n);
+                if (!head.alive || KeptHome(head.id) != null) continue;
+                var lot = PickHome(head);
+                if (lot == null) continue;
+                int i = St.homes.FindIndex(a => a.head == head.id);
+                if (i >= 0) St.homes[i].lot = lot.id; else St.homes.Add(new HomeAssign { head = head.id, lot = lot.id });
+            }
         }
 
         /// <summary>Whose home a notable lives in (<see cref="HomeOf"/>): a child's parent (up to the first grown-up), then
