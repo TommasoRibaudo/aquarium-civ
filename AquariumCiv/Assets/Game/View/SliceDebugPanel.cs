@@ -66,6 +66,7 @@ namespace AquariumCiv.View
             {
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Camera mode")) { GameHud.Instance.SetCameraMode(true); last = "camera mode on (tap to leave)"; }
+                if (GUILayout.Button("Follow someone")) last = PersonCardView.DebugFollowInCameraMode();
                 if (GUILayout.Button("Auto-orbit: " + (BoxCamera.AutoOrbitInCameraMode ? "on" : "off")))
                     BoxCamera.AutoOrbitInCameraMode = !BoxCamera.AutoOrbitInCameraMode;
                 GUILayout.EndHorizontal();

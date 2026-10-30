@@ -10,6 +10,7 @@ namespace AquariumCiv.GameUI.PlayTests
 {
     /// <summary>Camera mode (#70): one tap on Photo hides all UI, a drag or a pinch leaves it hidden, a short tap brings it back.
     /// Run alone (one InputTestFixture class per run).</summary>
+    [Category("CameraMode")]
     public class CameraModeTests : InputTestFixture
     {
         Touchscreen touch;

@@ -182,7 +182,8 @@ namespace AquariumCiv.View
             edges.Clear();
             if (cardRoot != null) cardRoot.style.display = DisplayStyle.None;
             ClearLines();
-            if (showMeFromCard && ShowMeDirector.Instance != null) ShowMeDirector.Instance.End();
+            // Camera mode keeps the view it took over (it follows this person, #70): no easing back.
+            if (showMeFromCard && ShowMeDirector.Instance != null) ShowMeDirector.Instance.End(GameHud.Instance == null || !GameHud.Instance.CameraMode);
             showMeFromCard = false;
         }
 
@@ -662,6 +663,17 @@ namespace AquariumCiv.View
             var v = Instance;
             if (v == null) return "no person card";
             return v.Open(notableId, true) ? "card: " + v.Card.fullName : "no notable #" + notableId;
+        }
+
+        /// <summary>Debug: open the first living notable's card, then camera mode: the camera follows their doll (#70).</summary>
+        public static string DebugFollowInCameraMode()
+        {
+            var v = Instance; var sim = Sim; var hud = GameHud.Instance;
+            if (v == null || sim == null || hud == null) return "no person card";
+            var n = sim.Pinned != null && sim.Pinned.alive ? sim.Pinned : sim.State.notables.Find(x => x.alive);
+            if (n == null || !v.Open(n.id, false)) return "nobody to follow";
+            hud.SetCameraMode(true);
+            return "camera mode follows " + n.FullName;
         }
 
         public static string DebugPin(int notableId)
