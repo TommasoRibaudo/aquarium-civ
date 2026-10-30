@@ -14,6 +14,9 @@ namespace AquariumCiv.View
     /// </summary>
     public class MessProps : MonoBehaviour
     {
+        /// <summary>#94: while set, the weeds grow in one overgrown patch round this point (box coordinates) instead of being scattered.</summary>
+        public static Vector2? PatchCentre;
+        public const float PatchRadius = 0.5f;
         public const int MaxWeeds = 8;
         public const float WeedUnit = 1f / MaxWeeds;
         const float LeaveSeconds = 0.4f, AppearSeconds = 0.35f, Gravity = 2.2f;
@@ -46,6 +49,9 @@ namespace AquariumCiv.View
         public IReadOnlyList<Piece> AllPieces => all;
         public int HeapCount => heaps.Count;
         public int WeedCount => weeds.Count;
+        /// <summary>Choose every weed spot again (the patch moved).</summary>
+        public void ResetSpots() { spotsRoot = null; for (int i = 0; i < MaxWeeds; i++) spotKnown[i] = false; }
+
         public bool TryGetHeap(int id, out Piece p) => heaps.TryGetValue(id, out p);
 
         void Awake()
@@ -111,10 +117,12 @@ namespace AquariumCiv.View
         {
             for (int k = 0; k < 60; k++)
             {
-                var p = new Vector2((Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f) * (Land.HX - 0.5f), (Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * (Land.HZ - 0.5f));
+                var p = PatchCentre.HasValue
+                    ? PatchCentre.Value + new Vector2(Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f, Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * PatchRadius
+                    : new Vector2((Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f) * (Land.HX - 0.5f), (Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * (Land.HZ - 0.5f));
                 if (!box.FreeForProp(p, 0.16f)) continue;
                 bool clash = false;
-                for (int j = 0; j < MaxWeeds; j++) if (j != i && spotKnown[j] && (spots[j] - p).sqrMagnitude < 0.3f * 0.3f) { clash = true; break; }
+                for (int j = 0; j < MaxWeeds; j++) if (j != i && spotKnown[j] && (spots[j] - p).sqrMagnitude < (PatchCentre.HasValue ? 0.2f : 0.3f) * (PatchCentre.HasValue ? 0.2f : 0.3f)) { clash = true; break; }
                 if (!clash) { spot = p; return true; }
             }
             spot = default;

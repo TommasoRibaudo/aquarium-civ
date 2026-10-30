@@ -58,7 +58,7 @@ namespace AquariumCiv.Sim
         public const double YearSeconds = 15.0;             // the live skip, one game year
         public const float WipedGrime = 0.08f;              // the glass counts as wiped at or below this
         public const float ClearedOvergrowth = 0.06f;       // the patch counts as cleared at or below this
-        public const float StartGrime = 0.8f, StartOvergrowth = 0.55f;
+        public const float StartGrime = 0.8f, StartOvergrowth = 0.5f;
 
         readonly SimCore sim;
         FirstRunState F => sim.State.firstRun;
@@ -83,7 +83,7 @@ namespace AquariumCiv.Sim
             var f = new FirstRunState
             {
                 active = true, beganMonth = s.month, step = (int)FirstRunStep.Arrive,
-                patchX = ClampX(spec.centreX + dx * 1.5f), patchZ = ClampZ(spec.centreZ + dz * 1.5f),
+                patchX = ClampX(spec.centreX + dz * 1.2f), patchZ = ClampZ(spec.centreZ - dx * 1.2f),
                 rainX = ClampX(spec.pondX + dx * 1.1f), rainZ = ClampZ(spec.pondZ + dz * 1.1f),
                 suggestedName = SettlementNaming.Suggest(s.seed),
             };
@@ -197,7 +197,7 @@ namespace AquariumCiv.Sim
             FirstRunStep.Patch => new FirstRunHint { visible = true, id = "patch", text = "Flick the weeds", gesture = HintGesture.Flick, anchor = HintAnchor.Patch },
             FirstRunStep.Name => new FirstRunHint { visible = true, id = "name", text = "Name it", gesture = HintGesture.Tap, anchor = HintAnchor.Plate },
             FirstRunStep.Rain => tray
-                ? new FirstRunHint { visible = true, id = "rain-rub", text = "Rub a spot", gesture = HintGesture.Rub, anchor = HintAnchor.RainSpot }
+                ? new FirstRunHint { visible = true, id = "rain-tap-spot", text = "Tap a spot", gesture = HintGesture.Tap, anchor = HintAnchor.RainSpot }
                 : new FirstRunHint { visible = true, id = "rain-tap", text = "Give them rain", gesture = HintGesture.Tap, anchor = HintAnchor.ShapingButton },
             _ => default,
         };
@@ -369,7 +369,7 @@ namespace AquariumCiv.Sim
             var rain = f.rainNudgeId >= 0 ? st.nudges.FirstOrDefault(n => n.id == f.rainNudgeId) : null;
             var answer = rain != null ? sim.AnswerOf(rain) : null;
             sum.rainAnswered = answer != null;
-            var all = stack.cards.Where(c => c.kind != CardKind.Wish).ToList();
+            var all = stack.cards.Where(c => c.kind != CardKind.Wish && c.lead?.kind != "founding").ToList();
             sum.card = (answer != null ? all.FirstOrDefault(c => c.entries.Any(e => e.id == answer.id)) : null) ?? all.FirstOrDefault();
             sum.cardText = sum.card?.lead?.text ?? FallbackLine;
             sum.flyToBuildingId = sum.card?.buildingId ?? -1;
