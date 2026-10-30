@@ -106,6 +106,7 @@ namespace AquariumCiv.Sim
 
             TryBuild();
             if (s.nudges.Count > 0) NudgeStep();
+            if (s.firstRun.active) FirstRunStep(); // opt-in, no dice: the first rain is answered inside the first year (SimCore.FirstRun.cs, #94)
             AccrueMess((float)Config.StepHours);
             if (season == 0) YearlyNotables();
             NarrativeChecks(winter, festivalRoll);
