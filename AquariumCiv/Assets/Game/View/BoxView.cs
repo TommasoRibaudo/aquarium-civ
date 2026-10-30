@@ -359,7 +359,7 @@ namespace AquariumCiv.View
             {
                 var e = Hash.New();
                 e.Add((int)p.kind); e.Add(p.x); e.Add(p.z); e.Add(p.yaw); e.Add(p.w); e.Add(p.d); e.Add((int)p.era); e.Add((int)p.roof);
-                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant);
+                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant); e.Add(p.grow);
                 float r = PieceRadius(p) + (p.kind == PieceKind.Fire ? 0.6f : 0f);
                 Into(h, p.x - r, p.z - r, p.x + r, p.z + r, e.h);
             }
@@ -905,7 +905,7 @@ namespace AquariumCiv.View
             // Each piece gets its own builder seeded by its seed, so its look doesn't change when others are added.
             var lb = new MeshBuilder(p.seed * 7919 + (int)p.era * 31 + seed) { jitter = 0.035f };
             float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
-            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one);
+            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one * Mathf.Max(0.02f, p.grow));
             Pieces.Draw(lb, p, LotGround(lb));
             mb.Append(lb);
         }

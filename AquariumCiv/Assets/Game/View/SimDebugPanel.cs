@@ -5,6 +5,7 @@ using System.Text;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Replay;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -110,6 +111,26 @@ namespace AquariumCiv.View
 
         static string Name(SimCore s, int id) => s.FindNotable(id)?.FullName ?? ("#" + id);
 
+        void TimeLapseGui()
+        {
+            var tl = TimeLapseView.Find();
+            if (tl == null || !tl.Active)
+            {
+                if (GUILayout.Button("Open replay")) last = TimeLapseView.DebugOpen();
+                return;
+            }
+            float end = tl.Lapse.EndPosition, p = tl.Position;
+            GUILayout.Label($"year {p + 1f:0.0} of {end + 1f:0.0} · {tl.Lapse.EraAt(p)} · {tl.LastInfo}");
+            float np = GUILayout.HorizontalSlider(p, 0f, end);
+            if (Mathf.Abs(np - p) > 1e-4f) tl.Seek(np);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(tl.Clock.Playing ? "pause" : "play")) tl.Clock.Toggle();
+            for (int i = 0; i < ReplayClock.Speeds.Length; i++)
+                if (GUILayout.Toggle(tl.Clock.SpeedIndex == i, ReplayClock.Speeds[i] + "x", GUI.skin.button)) tl.SetSpeed(i);
+            GUILayout.EndHorizontal();
+            if (GUILayout.Button("Back to now")) last = TimeLapseView.DebugClose();
+        }
+
         // ---------- IMGUI ----------
         void OnGUI()
         {
@@ -155,6 +176,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("One story event")) { sim.ForceStory(); last = Done("story forced"); }
             }
 
+            if (Section("Time-lapse")) TimeLapseGui();
             if (Section("Era and box"))
             {
                 var st = sim.State;

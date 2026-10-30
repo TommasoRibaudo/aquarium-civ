@@ -65,7 +65,8 @@ namespace AquariumCiv.View
         };
 
         /// <summary>A stable seed for a lot's piece (its look survives rebuilds).</summary>
-        public static int SeedOf(Lot l) => l.id * 101 + 7;
+        public static int SeedOf(Lot l) => SeedOfLot(l.id);
+        public static int SeedOfLot(int lotId) => lotId * 101 + 7;
 
         /// <summary>A lot's rectangle in world space, front edge first (the gate edge of a field).</summary>
         public static Vector2[] Corners(Lot l, float inset = 0f)
@@ -102,7 +103,7 @@ namespace AquariumCiv.View
         /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
         /// cobbles) cobbles those cells of any path tier (#34's hook for #90's cobbles spreading along the main path);
         /// roads are cobbled anyway.</summary>
-        public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null)
+        public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null, ReplayFrame replay = null)
         {
             L.Clear();
             var st = sim?.Settlement;
@@ -110,8 +111,9 @@ namespace AquariumCiv.View
             L.autoTrees = false; // the forest layer gives the trees
             var S = sim.State;
             int seed = S.seed;
-            Era EraOf(Lot l) => eraOf != null ? eraOf(l) : S.era;
-            int year = (int)(S.month / SimConfig.MonthsPerYear);
+            Era now = replay != null ? replay.era : S.era;
+            Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
+            int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
             var map = st.Map;
             var green = new Vector2(st.GreenX, st.GreenZ);
             Lot camp = null;
@@ -132,9 +134,9 @@ namespace AquariumCiv.View
                 L.Add(PieceKind.Well, green.x + FirstWellDX, green.y + FirstWellDZ, 0f, 0.3f, 0.3f, greenEra, 19000);
 
             // ---- ground: yards, commons, the Keeper's shapings ----
-            foreach (var y in st.Yards)
+            foreach (var y in replay != null ? NoYards : st.Yards)
                 if (y.count > 0) L.Clearing(new Vector2(y.x, y.z), Mathf.Clamp(y.r * 0.85f, 0.16f, 0.35f), ClearingKind.Yard);
-            foreach (var f in st.Features())
+            foreach (var f in replay != null ? NoFeatures : st.Features())
             {
                 var at = new Vector2(f.x, f.z);
                 switch (f.kind)
@@ -157,7 +159,7 @@ namespace AquariumCiv.View
             // ---- lots ----
             foreach (var l in st.Lots)
             {
-                if (l.retired || l.kind == LotKind.Camp) continue;
+                if (l.kind == LotKind.Camp || (replay != null ? !replay.Shows(l) : l.retired)) continue;
                 var e = EraOf(l);
                 int s = SeedOf(l);
                 float h = STerrain.Hash3(seed, l.id, 61);
@@ -215,7 +217,7 @@ namespace AquariumCiv.View
                 int cell = SiteMap.CellAt(c.x[k], c.z[k]);
                 return cell >= 0 && cobbled(cell);
             }
-            foreach (var c in st.Paths())
+            foreach (var c in replay != null ? PathCurves.Build(map, replay.tiers) : st.Paths())
             {
                 int n = c.Count;
                 if (n < 2) continue;
@@ -290,7 +292,7 @@ namespace AquariumCiv.View
                     if (OpenSpot(map, p) && !StallNear(L, p)) L.Add(PieceKind.Lantern, p.x, p.y, Face(p, green) + 90f, 0.1f, 0.1f, greenEra, 20000 + k);
                 }
             }
-            if (S.era == Era.Town)
+            if (now == Era.Town)
             {
                 int k = 0;
                 foreach (var path in L.paths.ToArray())
@@ -312,8 +314,16 @@ namespace AquariumCiv.View
                 }
             }
 
-            People(L, sim, st, EraOf, green, camp, campFire);
+            if (replay == null) People(L, sim, st, EraOf, green, camp, campFire);
+            else if (replay.grow.Count > 0)
+            {
+                foreach (var p in L.pieces) if (replay.grow.TryGetValue(p.seed, out var g)) p.grow = g;
+                L.fields.RemoveAll(f => replay.grow.TryGetValue(f.seed, out var g) && g < 0.6f); // a field comes with its farm, once it is mostly there
+            }
         }
+
+        static readonly List<Yard> NoYards = new();
+        static readonly List<Feature> NoFeatures = new();
 
         /// <summary>Stalls the town's square holds (#34).</summary>
         public const int TownStalls = 3;

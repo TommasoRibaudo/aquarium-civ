@@ -55,6 +55,10 @@ namespace AquariumCiv.View
             }
         }
 
+        /// <summary>A past year (or the blend of two) the box shows instead of the live sim (#78: <see cref="TimeLapseView"/>
+        /// sets it and refreshes). Null = the live box.</summary>
+        [System.NonSerialized] public ReplayFrame Replay;
+
         public bool IsLive => Application.isPlaying && GameClock.Instance != null && GameClock.Instance.Sim != null;
         public bool WaveRunning => waveStep >= 0;
         BoxView Box => box != null ? box : box = GetComponent<BoxView>();
@@ -87,6 +91,11 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             Box.land = SimLayout.LandFor(sim.TerrainPreset);
+            if (Replay != null)
+            {
+                SimLayout.Fill(layout, sim, Replay.EraOf, Cobbled(sim), Replay);
+                return; // a replay does not move what the live view has seen
+            }
             SimLayout.Fill(layout, sim, MomentLook ? MomentEra : WaveRunning ? WaveEra : null, Cobbled(sim));
             seenMonth = sim.State.month; seenEra = sim.State.era; seenAny = true;
         }
@@ -212,7 +221,7 @@ namespace AquariumCiv.View
             // The era's rebuild wave is a moment: the music ducks out and no track starts until it is done.
             if (WaveRunning) MusicDirector.Hold(MusicHold); else MusicDirector.Release(MusicHold);
             var sim = Sim;
-            if (sim == null || Box == null || !seenAny) return;
+            if (sim == null || Box == null || !seenAny || Replay != null) return;
             if (WaveRunning)
             {
                 if (Application.isPlaying && Now >= waveNext) { waveNext = Now + waveStepSeconds; StepWave(); }
@@ -244,9 +253,9 @@ namespace AquariumCiv.View
         System.Func<int, bool> Cobbled(SimCore sim)
         {
             var st = sim.Settlement;
-            var tier = st?.Map.tier;
+            var tier = Replay != null ? Replay.tiers : st?.Map.tier;
             if (tier == null) return cobbled;
-            bool town = MomentLook ? momentTo == Era.Town && momentGreen : sim.State.era == Era.Town;
+            bool town = Replay != null ? Replay.era == Era.Town : MomentLook ? momentTo == Era.Town && momentGreen : sim.State.era == Era.Town;
             if (!CobbleAllPaths && !town) return cobbled;
             float reach = MomentLook && !CobbleAllPaths ? CobbleReach : float.MaxValue;
             float gx = st.Map.greenX, gz = st.Map.greenZ;

@@ -41,6 +41,8 @@ namespace AquariumCiv.View
         public int seed;
         /// <summary>A per-kind look switch (barn or shed; an outcrop's deposit: 0 stone, 1 clay, 2 ore; a timber yard).</summary>
         public int variant;
+        /// <summary>0..1: how much of the piece is there (the time-lapse grows a new building in and shrinks a cleared one away, #78).</summary>
+        public float grow = 1f;
 
         public Vector2 Pos => new(x, z);
     }
