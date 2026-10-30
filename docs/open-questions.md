@@ -164,3 +164,10 @@ Screens: `AquariumCiv/Temp/agent/m90_*.png` (local).
 - Placeholder beats (puffs + role/gather scenes): scaffolding, the hammer-knock scale, the cleared-hearth stone, the
   headman's walk, banners and the lord's chair are not built yet.
 - A village without a market keeps its green in the town (#34's rule).
+
+### #91 Era festival — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/m91_*.png` (local), incl. the book still `m91_still.png`.
+- In some layouts the green's houses hide the tables and dancers at default zoom. ★ Put the tables in front of the well.
+- The green lawn is still subtle at default zoom (per-vertex ground colours). Bolder needs a palette call from you.
+- ★ The book still is a fresh render at the cheer (pose saved), not a re-render from the year snapshot as the doc says.
+- Not done: lanterns, more food on the tables, festival-night mood.
