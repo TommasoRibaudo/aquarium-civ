@@ -228,8 +228,9 @@ namespace AquariumCiv.View.Shaping
             float w = c.sinceSeen;
             int k = f.spots.Count;
             float cyc = T.SwimCycle;
-            int idx = (int)Math.Floor(w / cyc);
-            float t = Smooth((w - idx * cyc) / cyc);
+            float along = w + i * T.ShoalLagSeconds * Smooth(Ramp(w, 0f, T.ShoalFanSeconds)); // strung out along the route
+            int idx = (int)Math.Floor(along / cyc);
+            float t = Smooth((along - idx * cyc) / cyc);
             var a = f.spots[Mod(idx, k)];
             var b = f.spots[Mod(idx + 1, k)];
             float cx = a.x + (b.x - a.x) * t + ox, cz = a.z + (b.z - a.z) * t + oz;
