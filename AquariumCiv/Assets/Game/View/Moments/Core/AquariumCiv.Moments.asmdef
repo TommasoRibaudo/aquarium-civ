@@ -1,0 +1,16 @@
+{
+    "name": "AquariumCiv.Moments",
+    "rootNamespace": "AquariumCiv.View.Moments",
+    "references": [
+        "AquariumCiv.Sim"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

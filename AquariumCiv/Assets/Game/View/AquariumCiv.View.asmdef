@@ -4,6 +4,7 @@
     "references": [
         "AquariumCiv.Sim",
         "AquariumCiv.Life",
+        "AquariumCiv.Moments",
         "AquariumCiv.Game",
         "AquariumCiv.Game.UI",
         "Unity.InputSystem",
