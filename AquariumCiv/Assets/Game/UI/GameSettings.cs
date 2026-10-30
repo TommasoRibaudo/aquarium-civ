@@ -35,6 +35,20 @@ namespace AquariumCiv.GameUI
             set { PlayerPrefs.SetFloat("set_music_vol", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
         }
 
+        /// <summary>#96: the sound effects (UI, care, world, moment cues) and the ambience loops, 0..1 each; the mixer's
+        /// SFX and Ambience groups follow them (AquariumCiv.Audio.MixLevels). #95 shows them in the settings.</summary>
+        public static float SfxVolume
+        {
+            get => PlayerPrefs.GetFloat("set_sfx_vol", 1f);
+            set { PlayerPrefs.SetFloat("set_sfx_vol", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+        }
+
+        public static float AmbienceVolume
+        {
+            get => PlayerPrefs.GetFloat("set_amb_vol", 0.8f);
+            set { PlayerPrefs.SetFloat("set_amb_vol", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+        }
+
         public static void Apply() => AudioListener.volume = Sound ? 1f : 0f;
     }
 }
