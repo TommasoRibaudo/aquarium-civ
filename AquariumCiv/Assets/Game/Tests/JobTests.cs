@@ -40,6 +40,9 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheEconomyIsWhatItWasBeforeJobs()
         {
+#if UNITY_2017_1_OR_NEWER
+            Assert.Ignore("Pinned hashes are measured under .NET (Tools/SimTests); Unity's Mono rounds some float math differently. The same-runtime comparisons run here.");
+#endif
             var camp = NewSim(1234);
             camp.Advance(48);
             var town = NewSim(7);
