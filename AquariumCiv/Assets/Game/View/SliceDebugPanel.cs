@@ -12,20 +12,22 @@ namespace AquariumCiv.View
     [AddComponentMenu("AquariumCiv/TEMPORARY Slice Debug Panel")]
     public class SliceDebugPanel : MonoBehaviour
     {
-        public bool open;
+        public bool open { get => DebugDock.Active == DebugDock.Dbg; set => DebugDock.Active = value ? DebugDock.Dbg : DebugDock.None; }
         string last = "";
+        float contentH = 800f;
+        Vector2 scroll;
 
         void OnGUI()
         {
-            float s = Mathf.Max(1f, Screen.height / 1100f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(s, s, 1f));
-            if (!open)
-            {
-                if (GUI.Button(new Rect(8, 8, 56, 32), "dbg")) open = true;
-                return;
-            }
+            var safe = DebugDock.Begin(out float sc);
+            if (!DebugDock.DrawBar(safe, sc)) return;
+            if (DebugDock.Active != DebugDock.Dbg) { if (DebugDock.Active == DebugDock.None) DebugDock.SetPanel(default); return; }
             var src = SimLayoutSource.Find();
-            GUILayout.BeginArea(new Rect(8, 8, 300, 800), GUI.skin.box);
+            var area = DebugDock.PanelArea(safe, 300f, contentH + 16f);
+            DebugDock.SetPanel(area);
+            GUILayout.BeginArea(area, GUI.skin.box);
+            GUILayout.BeginVertical();
+            scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label(src != null ? src.Status() : "no SimLayoutSource");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
@@ -74,7 +76,9 @@ namespace AquariumCiv.View
             }
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
-            if (GUILayout.Button("close")) open = false;
+            GUILayout.EndScrollView();
+            GUILayout.EndVertical();
+            if (Event.current.type == EventType.Repaint) contentH = GUILayoutUtility.GetLastRect().height;
             GUILayout.EndArea();
         }
     }
