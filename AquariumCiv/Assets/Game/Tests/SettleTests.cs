@@ -272,6 +272,64 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void AHouseholdKeepsItsHomeWhenNewHomesAreBuilt()
+        {
+            int checkedPairs = 0, newHomes = 0;
+            foreach (var (seed, preset) in new[] { (3, 0), (11, 1), (42, 2) })
+            {
+                var sim = NewBox(seed, preset);
+                var seen = new Dictionary<int, (int head, int lot)>();
+                int homesBefore = 0;
+                while (sim.State.month < 100 * 12L)
+                {
+                    Month(sim);
+                    int homesNow = sim.Settlement.Homes().Count;
+                    if (homesNow > homesBefore) newHomes++;
+                    homesBefore = homesNow;
+                    foreach (var n in sim.State.notables)
+                    {
+                        if (!n.alive) continue;
+                        var home = sim.Settlement.HomeOf(n);
+                        if (home == null) continue;
+                        int head = sim.Settlement.HouseholdHead(n).id;
+                        if (seen.TryGetValue(n.id, out var prev) && prev.head == head && !sim.Settlement.Lots.First(l => l.id == prev.lot).retired)
+                        {
+                            Assert.AreEqual(prev.lot, home.id, $"{n.FullName} moved house in month {sim.State.month} (seed {seed})");
+                            checkedPairs++;
+                        }
+                        seen[n.id] = (head, home.id);
+                    }
+                }
+            }
+            Assert.Greater(newHomes, 10, "homes were built while households lived");
+            Assert.Greater(checkedPairs, 1000);
+        }
+
+        [Test]
+        public void HomeAssignmentsSurviveASaveAndAnOldSaveGetsThemFromTheHash()
+        {
+            var sim = NewBox(42, 0);
+            ToYear(sim, 60);
+            var living = sim.State.notables.Where(q => q.alive).ToList();
+            var before = living.ToDictionary(n => n.id, n => sim.Settlement.HomeOf(n).id);
+            Assert.IsNotEmpty(sim.State.settle.homes);
+            var json = JsonUtility.ToJson(sim.State.settle);
+            var loaded = JsonUtility.FromJson<SettleState>(json);
+            Assert.AreEqual(sim.State.settle.homes.Count, loaded.homes.Count);
+            for (int i = 0; i < loaded.homes.Count; i++)
+            {
+                Assert.AreEqual(sim.State.settle.homes[i].head, loaded.homes[i].head);
+                Assert.AreEqual(sim.State.settle.homes[i].lot, loaded.homes[i].lot);
+            }
+            // An old save has no assignments: they are derived once, from the hash over today's homes.
+            sim.State.settle.homes.Clear();
+            var again = new SimCore(sim.Config, sim.State);
+            _ = again.Settlement;
+            Assert.IsNotEmpty(sim.State.settle.homes);
+            foreach (var n in living) Assert.IsNotNull(again.Settlement.HomeOf(n));
+        }
+
+        [Test]
         public void AFullBoxRecordsMonthsWithNoGoodLot()
         {
             // The economy asks for far more than fits (debug builds every year in the town era): the layout stays sane,
