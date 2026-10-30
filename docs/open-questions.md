@@ -31,3 +31,16 @@ _Last updated 2026-10-30._
 - ★ In the camp, line 28 says "Ask the sky" instead of "the window".
 - ★ A wipe counts once per game month for the Keeper Doll's prop, so the cloth will often win. Alternative: weight
   shapings higher.
+
+### #67 Open jobs get a notable (sim, `SimCore.Jobs.cs`)
+- The issue said "no effect on the economy", but filling a job shifts who holds the crafts, which feeds the role contests
+  and who rises from the crowd, so the economy hashes moved (food and wood rules untouched; sweepers excluded because
+  they do change the economy). ★ Accept and re-pin (done). Alternative: fill only from people outside the contests.
+- ★ A job change (also one forced by a lost building) starts a 3-year cooldown before the next switch.
+
+### #83 Wishes in cards (sim, `SimCore.Wishes.cs`)
+- ★ About 12 % a month with an 8-month gap after each wish (≈ one wish every 1–2 years), one open wish at a time,
+  lapses quietly after 24 months. Estimates for E2.
+- ★ Job → tool table: farmer rain/channel, hunter deer, fisher fish (always the pond), woodcutter grove.
+- ★ A wish only needs the tool unlocked and under its cap; with no charge, Give fails and the wish stays open.
+- ★ Placing the same tool yourself, anywhere, counts as meeting the wish.
