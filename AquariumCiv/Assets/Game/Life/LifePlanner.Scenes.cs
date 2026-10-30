@@ -21,6 +21,8 @@ namespace AquariumCiv.Life
             // For a mourning: the dead are no longer in the planner's people, so their links are kept here.
             public string family;
             public int aPartner, aFriend, aParent;
+            // #92: a relic moment, a gathering at the glass or a tap-back, staged in full when it starts.
+            public Staging staging;
         }
 
         // ---------------------------------------------------------------- scenes from this month's chronicle
@@ -73,6 +75,7 @@ namespace AquariumCiv.Life
         void SceneLayer(Scene sc, Person p, DayInfo d, List<Seg> list, bool live)
         {
             if (p.stage == LifeStage.Baby) return;
+            if (sc.staging != null) { StagedLayer(sc, p, d, list); return; } // #92
             var A = Alive(sc.a);
             var B = Alive(sc.b);
             float len = sc.end - sc.start;
@@ -235,6 +238,7 @@ namespace AquariumCiv.Life
             if (e == null) return false;
             Sync();
             if (sim.State.month - e.month > 60) return false; // older than ~5 years [est]
+            if (!string.IsNullOrEmpty(e.relicId) && e.kind == "relic") return EchoRelic(e, at, seconds); // #92
             SceneKind kind;
             switch (e.kind)
             {
@@ -333,6 +337,11 @@ namespace AquariumCiv.Life
                 near = near, target = person, share = Math.Max(0f, Math.Min(1f, share)), radius = radius,
             });
             LiveChanged();
+            // #92 (§3 "Gathering"): in stage 1 a wipe brings a few to the glass, a step back, looking up; later a return sends
+            // the kids running to it to look for you. At most once a view day.
+            Sync();
+            if ((gesture == KeeperGesture.Wipe && belief == 1) || (gesture == KeeperGesture.Return && belief >= 2))
+                GatherAtGlass(at);
         }
 
         /// <summary>A gesture at a world point (needs <see cref="Positions"/>): those within <paramref name="radius"/> react.</summary>
@@ -362,6 +371,17 @@ namespace AquariumCiv.Life
             bool asleep = under.kind == ActivityKind.Sleep;
             bool kid = p.stage == LifeStage.Kid;
             float roll = R(p.key, (long)(r.start * 1000) + r.day * 100000, 140 + (int)r.gesture);
+            float f = r.end > r.start ? Math.Max(0f, Math.Min(1f, (t.hour - r.start) / (r.end - r.start))) : 0f;
+            if (!ReactsPlain(p, r, t, under, asleep, kid, roll, out kind, out prop, out to)) return false;
+            if (prop == Prop.Lantern) return true; // stepping out of the door at night with a lantern
+            kind = StagedReaction(r.gesture, p, f, kind, out var staged);
+            if (staged != Prop.None) prop = staged;
+            return true;
+        }
+
+        bool ReactsPlain(Person p, Reaction r, ViewTime t, Seg under, bool asleep, bool kid, float roll, out ActivityKind kind, out Prop prop, out Place to)
+        {
+            kind = ActivityKind.LookUp; prop = Prop.None; to = Place.None;
             if (r.gesture == KeeperGesture.TapPerson || r.gesture == KeeperGesture.Glance)
             {
                 if (r.target != p.who) return false;
@@ -390,10 +410,10 @@ namespace AquariumCiv.Life
                     return true;
                 case KeeperGesture.Wipe:
                     if (!(near || (global && roll < 0.5f * r.share))) return false;
-                    kind = era == Era.Camp ? ActivityKind.LookUpWary : ActivityKind.LookUp; return true;
+                    kind = ActivityKind.LookUp; return true; // by stage: StagedReaction
                 case KeeperGesture.TapGlass:
                     if (!(near || global) || roll >= r.share) return false;
-                    kind = era == Era.Camp ? ActivityKind.LookUpWary : ActivityKind.LookUp; return true;
+                    kind = ActivityKind.LookUp; return true; // by stage: StagedReaction
                 case KeeperGesture.FlickTrash:
                     if (!(near || (global && roll < 0.3f * r.share))) return false;
                     if (kid && !r.near.IsNone) { kind = ActivityKind.RunOver; to = r.near; return true; }
@@ -410,7 +430,7 @@ namespace AquariumCiv.Life
                     // scared; the village plays with it and looks for you; the town's scholars study it.
                     bool reach = near || (global && (kid || roll < 0.3f * r.share));
                     if (!reach) return false;
-                    if (era == Era.Camp) { kind = ActivityKind.LookUpWary; return true; }
+                    if (kid && belief == 1) { kind = ActivityKind.LookUpWary; return true; } // kids creep in (StagedReaction)
                     if (kid)
                     {
                         bool arriving = (t.hour - r.start) < (r.end - r.start) * 0.3f && !r.near.IsNone && under.place != r.near;
@@ -418,8 +438,7 @@ namespace AquariumCiv.Life
                         if (arriving) to = r.near;
                         return true;
                     }
-                    if (era == Era.Town && p.Adult && roll < 0.3f) { kind = ActivityKind.Study; prop = Prop.Notebook; return true; }
-                    kind = ActivityKind.LookUp; return true;
+                    kind = ActivityKind.LookUp; return true; // a town scholar studies or measures it (StagedReaction)
                 }
             }
             return false;
@@ -497,6 +516,16 @@ namespace AquariumCiv.Life
             ActivityKind.Wave => "waving", ActivityKind.LookUp => "looking up", ActivityKind.LookUpWary => "peering up warily", ActivityKind.Clap => "clapping",
             ActivityKind.Point => "pointing", ActivityKind.RunOver => "running over", ActivityKind.JumpAndPoint => "jumping and pointing",
             ActivityKind.HandsOut => "holding out their hands", ActivityKind.Splash => "splashing", ActivityKind.Study => "studying the glass",
+            ActivityKind.Gaze => "looking up", ActivityKind.GazeWary => "looking up from a step back", ActivityKind.PressHands => "pressing their hands to it",
+            ActivityKind.WaveWary => "waving, a little warily", ActivityKind.Flinch => "flinching", ActivityKind.Peek => "peeking up",
+            ActivityKind.CreepUp => "creeping closer", ActivityKind.HopBack => "hopping back", ActivityKind.LaughPoint => "laughing and pointing",
+            ActivityKind.Measure => "measuring", ActivityKind.TapBack => "knocking back", ActivityKind.WriteDown => "writing it down",
+            ActivityKind.TurnLens => "turning the lens", ActivityKind.LookThroughLens => "looking through the lens", ActivityKind.Queue => "waiting for a turn",
+            ActivityKind.Freeze => "frozen to the spot", ActivityKind.StepBack => "stepping back", ActivityKind.Watch => "watching",
+            ActivityKind.Poke => "poking it with a stick", ActivityKind.Taste => "tasting it", ActivityKind.Deliver => "setting something down",
+            ActivityKind.SetUp => "setting it up", ActivityKind.Bow => "bowing", ActivityKind.CopyPose => "copying the pose",
+            ActivityKind.PickUp => "picking something up", ActivityKind.HoldUp => "holding it up", ActivityKind.Give => "handing it over",
+            ActivityKind.PutOn => "putting on a sandal", ActivityKind.LopsidedDance => "dancing, a little lopsided",
             _ => "busy",
         };
 
@@ -506,6 +535,11 @@ namespace AquariumCiv.Life
             Prop.FishStick => "fish", Prop.Pots => "pots", Prop.Block => "a stone block", Prop.Cloth => "cloth", Prop.Loaves => "loaves",
             Prop.Goods => "goods", Prop.Sack => "flour sacks", Prop.Honey => "honey", Prop.Wool => "wool", Prop.Lamb => "a lamb",
             Prop.Buckets => "water", Prop.Spear => "new tools", Prop.SeedBag => "seed baskets", Prop.Barrel => "a barrel", _ => "things",
+        };
+
+        static string RelicNoun(int index) => index switch
+        {
+            0 => "the sky bread", 1 => "the dance", 2 => "the Keeper doll", 3 => "the old gathering ground", 4 => "the great eye-glass", _ => "the relic",
         };
 
         string PlaceNoun(Place p) => p.kind switch
@@ -528,6 +562,8 @@ namespace AquariumCiv.Life
             PlaceKind.Nudge => "the Keeper's gift",
             PlaceKind.Remembering => p.index == 1 ? "the churchyard" : "the cairn",
             PlaceKind.Hill => "the hill",
+            PlaceKind.Glass => belief <= 1 ? "the edge of the sky" : belief == 2 ? "the window" : beliefLater ? "the glass" : "the wall",
+            PlaceKind.Relic => RelicNoun(p.index),
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }

@@ -24,6 +24,9 @@ namespace AquariumCiv.Life
             /// <summary>#109: a stay doing a move's loop where it is (filling the buckets at the well), not a move from wherever
             /// they are to <see cref="place"/> (a layer's carry to the green).</summary>
             public bool still;
+            /// <summary>#92: facing the front glass; walking there carrying <see cref="prop"/> (a staged beat); a count (knocks).</summary>
+            public bool faces, carries;
+            public int count;
             public bool Moving => ActivityInfo.IsMove(kind) && from != place && !from.IsNone;
         }
 
@@ -38,6 +41,8 @@ namespace AquariumCiv.Life
             public float pace = 1f;
             public readonly List<Scene> scenes = new List<Scene>();
             public Person teller;
+            /// <summary>#92: who visits the glass today (<see cref="PlanGlassVisits"/>).</summary>
+            public readonly Dictionary<int, List<Seg>> glass = new Dictionary<int, List<Seg>>();
         }
 
         readonly DayInfo dayInfo = new DayInfo();
@@ -121,6 +126,7 @@ namespace AquariumCiv.Life
                         if (p.Adult && k-- == 0) { dayFireKeeper = p; break; }
                 }
             }
+            PlanGlassVisits(d); // #92
         }
 
         Seg[] DayOf(Person p)
@@ -208,6 +214,7 @@ namespace AquariumCiv.Life
             // Layers, lowest first: relationships and owls colour the schedule; role beats beat it; weather; scenes beat all.
             if (p.Grown) Relationships(p, d, list);
             if (p.Adult) NightOwls(p, d, list);
+            GlassLayer(p, d, list); // #92: the people at the glass, by belief stage
             if (p.n != null && p.role != null && p.Grown) RoleBeats(p, d, list);
             if (p.trails != null) Trail(p, list);
             if (eraReady && p == leader) Put(list, Mk(ActivityKind.LookAtGlass, 18.3f, 19.1f, gather, Prop.None, ActivitySource.RoleBeat), d);
@@ -374,7 +381,7 @@ namespace AquariumCiv.Life
                 var a = outList[i - 1];
                 var c = outList[i];
                 if (a.kind != c.kind || a.place != c.place || a.from != c.from || a.prop != c.prop || a.partner != c.partner || a.src != c.src ||
-                    a.chronicleId != c.chronicleId || a.copies != c.copies || ActivityInfo.IsMove(a.kind)) continue;
+                    a.chronicleId != c.chronicleId || a.copies != c.copies || a.faces != c.faces || a.count != c.count || ActivityInfo.IsMove(a.kind)) continue;
                 a.end = c.end;
                 outList[i - 1] = a;
                 outList.RemoveAt(i);

@@ -304,6 +304,49 @@ namespace AquariumCiv.Life.Tests
         [Test, Explicit("#109: the heavy walk-rush sweep, run on demand")]
         public void NoWalkRushes_HeavySweep() => RushSweep(Enumerable.Range(1, 200).Concat(new[] { 1234 }), 4, 2f);
 
+        /// <summary>#92: the walks to and from the glass and the relics (the people at the glass by belief stage and half)
+        /// keep the pace too. Every stage and half is forced (with its relic), over several seeds, a week each and every
+        /// weather; the glass walks are counted so the sweep can't pass by having none.</summary>
+        [Test]
+        public void NoWalkRushes_AtTheGlass_EveryStageAndHalf()
+        {
+            var all = new RushTally("glass");
+            foreach (int seed in Enumerable.Range(1, 6).Concat(new[] { 7, 1234 }))
+            {
+                var sim = NewSim(seed);
+                foreach (var era in new[] { Era.Camp, Era.Village, Era.Town })
+                {
+                    for (int m = 0; m < 120 * 12 && sim.State.era < era; m++) Month(sim);
+                    if (sim.State.era != era) continue;
+                    for (int m = 0; m < 24; m++) sim.Step();
+                    if (era == Era.Town && sim.Scholars.Count == 0)
+                    {
+                        var n = sim.State.notables.Where(x => x.alive && x.age >= SimCore.AdultAge && x.age < 55f).OrderBy(x => x.id).FirstOrDefault();
+                        if (n != null) n.trait = "the clever";
+                    }
+                    int stage = (int)era + 1;
+                    foreach (bool later in new[] { false, true })
+                    {
+                        if (later) sim.DebugGiveRelic(SimCore.GlassRelic.OfStage(stage));
+                        sim.DebugSetBelief(stage, later);
+                        var planner = LifePlanner.Wired(sim);
+                        all.tag = $"{era} seed {seed} {(later ? "later" : "early")}";
+                        long d0 = sim.State.month;
+                        for (long d = d0; d < d0 + 7; d++) all.Day(planner, d);
+                        for (int w = 0; w < SweepWeathers.Length; w++)
+                        {
+                            planner.ForcedWeather = SweepWeathers[w];
+                            all.tag = $"{era} seed {seed} {(later ? "later" : "early")} {SweepWeathers[w]}";
+                            all.Day(planner, d0 + 7 + w);
+                        }
+                    }
+                }
+            }
+            TestContext.WriteLine($"{all.glassWalks} walks to or from the glass or a relic; " + all.Summary());
+            Assert.Greater(all.glassWalks, 200, "the sweep walks to the glass");
+            Assert.LessOrEqual(all.worst, 2f, all.Summary());
+        }
+
         static readonly Weather[] SweepWeathers = { Weather.Storm, Weather.Snow, Weather.Rainbow, Weather.KeeperRain, Weather.Fog };
 
         static void RushSweep(IEnumerable<int> seeds, int rounds, float limit)
@@ -341,7 +384,7 @@ namespace AquariumCiv.Life.Tests
         sealed class RushTally
         {
             public string tag;
-            public int walks, capped, night, over15, over2;
+            public int walks, capped, night, over15, over2, glassWalks;
             public float worst;
             public int topN = 12;
             readonly Dictionary<string, (float pace, string what)> top = new Dictionary<string, (float, string)>();
@@ -362,6 +405,7 @@ namespace AquariumCiv.Life.Tests
                         float len = 0f, px = fx, pz = fz;
                         foreach (var w in route.Concat(new[] { new Waypoint(tx, tz) })) { len += (float)Math.Sqrt((w.x - px) * (w.x - px) + (w.z - pz) * (w.z - pz)); px = w.x; pz = w.z; }
                         if (len < 0.2f) continue;
+                        if (a.place.kind is PlaceKind.Glass or PlaceKind.Relic || a.from.kind is PlaceKind.Glass or PlaceKind.Relic) glassWalks++;
                         // A walk at LifePlanner.MaxWalk is the longest the planner gives any walk (a cross-box trip): brisk by
                         // design, not a rush; counted, not judged.
                         if (a.end - a.start >= LifePlanner.MaxWalk - 1e-3f) { capped++; continue; }
