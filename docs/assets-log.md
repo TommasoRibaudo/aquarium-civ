@@ -24,6 +24,8 @@ Every third-party pack in the project: where it came from and its license.
 Credits for the published game: see `CREDITS.md` at the repo root.
 Sound effects (#96): sources downloaded 2026-10-30, licenses checked on each page / in each pack's License.txt; only the
 clips the cue library (`Assets/Game/Audio/Core/CueLibrary.cs`) uses are in the repo.
+No CC0 fly buzz was found on Kenney or OpenGameArt (2026-10-30), so the mess layer's flies are made in code
+(`CareSound.MakeFlies`), like the cheer, the wipe rub and the swish: no third-party asset.
 
 ## Still to get (free, itch.io only)
 - KayKit Forest Nature Pack, KayKit Resource Bits: https://kaylousberg.itch.io/

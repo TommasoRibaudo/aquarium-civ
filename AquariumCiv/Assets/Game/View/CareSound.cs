@@ -1,38 +1,32 @@
+using AquariumCiv.Audio;
 using UnityEngine;
 
 namespace AquariumCiv.View
 {
     /// <summary>
-    /// The care layer's sounds, made in code so no audio asset is imported (placeholder until the sound pass): a looped
-    /// cloth-on-glass rub driven by finger speed and dirt, a three-note chime (a clean pane, a full clean), a flick swish
-    /// and a soft pop (a wobble, a heap going). Everything respects the Sound switch through <c>AudioListener.volume</c>.
+    /// The wipe rub (#37): a looped cloth-on-glass noise driven by finger speed and dirt, made in code. Its level follows
+    /// the Care bus (#96: <see cref="Sfx.Gain"/>, so Sound off and the SFX volume apply). The other care sounds are cues
+    /// (<see cref="CueLibrary"/>) the AudioDirector plays; the ones still made in code come from <see cref="MakeProc"/>
+    /// (<c>proc:swish</c>, <c>proc:pop</c>, <c>proc:chime</c>, <c>proc:cheer</c>).
     /// </summary>
     public class CareSound : MonoBehaviour
     {
-        AudioSource rub, shot;
-        AudioClip chime, swish, pop;
+        AudioSource rub;
         float rubVol, rubTarget;
 
         const int Rate = 24000;
 
+        /// <summary>The rub's level now, before the bus gain (tests).</summary>
+        public float RubLevel => rubVol;
+
         void Awake()
         {
-            rub = Source("CareRub", true);
+            var go = new GameObject("CareRub") { hideFlags = HideFlags.DontSave };
+            go.transform.SetParent(transform, false);
+            rub = go.AddComponent<AudioSource>();
+            rub.playOnAwake = false; rub.loop = true; rub.spatialBlend = 0f;
             rub.clip = MakeRub();
             rub.volume = 0f;
-            shot = Source("CareShot", false);
-            chime = MakeChime();
-            swish = MakeSwish();
-            pop = MakePop();
-        }
-
-        AudioSource Source(string name, bool loop)
-        {
-            var go = new GameObject(name) { hideFlags = HideFlags.DontSave };
-            go.transform.SetParent(transform, false);
-            var s = go.AddComponent<AudioSource>();
-            s.playOnAwake = false; s.loop = loop; s.spatialBlend = 0f;
-            return s;
         }
 
         /// <summary>Finger speed 0..1 and dirt under it 0..1: louder and higher when fast on dirty glass; 0 stops the rub.</summary>
@@ -45,14 +39,80 @@ namespace AquariumCiv.View
         void Update()
         {
             rubVol = Mathf.MoveTowards(rubVol, rubTarget, Time.unscaledDeltaTime * 4f);
-            rub.volume = rubVol;
+            rub.volume = rubVol * Sfx.Gain(SoundBus.Care);
             if (rubVol > 0.001f && !rub.isPlaying) rub.Play();
             else if (rubVol <= 0.001f && rub.isPlaying) rub.Pause();
         }
 
-        public void Chime(float volume = 0.7f) => shot.PlayOneShot(chime, volume);
-        public void Swish(float pitchUp = 0f) { shot.pitch = 1f + pitchUp * 0.25f; shot.PlayOneShot(swish, 0.8f); }
-        public void Pop() { shot.pitch = 1f; shot.PlayOneShot(pop, 0.7f); }
+        /// <summary>A sound made in code, by its <c>proc:</c> name (null if unknown).</summary>
+        public static AudioClip MakeProc(string name) => name switch
+        {
+            "rub" => MakeRub(),
+            "chime" => MakeChime(),
+            "swish" => MakeSwish(),
+            "pop" => MakePop(),
+            "cheer" => MakeCheer(),
+            "flies" => MakeFlies(),
+            _ => null,
+        };
+
+        /// <summary>The mess ambience (#96): three flies circling, an 8 s seamless loop. Each fly is a buzzy tone (the
+        /// fundamental plus odd partials) whose pitch wanders and whose level swells as it passes; every frequency and
+        /// wobble makes whole cycles over the loop, so the end meets the start.</summary>
+        static AudioClip MakeFlies()
+        {
+            const float L = 8f;
+            int n = (int)(Rate * L);
+            var d = new float[n];
+            var flies = new (float f0, float dev, int wob, int pass, float phase)[] { (184f, 9f, 5, 2, 0f), (212f, 12f, 7, 3, 1.7f), (241f, 8f, 4, 1, 3.1f) };
+            foreach (var fly in flies)
+            {
+                float f0 = Mathf.Round(fly.f0 * L) / L; // whole cycles in the loop
+                double ph = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    float t = i / (float)Rate;
+                    float f = f0 + fly.dev * Mathf.Sin(2f * Mathf.PI * fly.wob * t / L + fly.phase);
+                    ph += 2.0 * System.Math.PI * f / Rate;
+                    float s = (float)(System.Math.Sin(ph) + 0.33 * System.Math.Sin(3 * ph) + 0.2 * System.Math.Sin(5 * ph) + 0.14 * System.Math.Sin(7 * ph));
+                    float near = 0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * fly.pass * t / L + fly.phase * 2f); // passing close, then away
+                    d[i] += s * (0.04f + 0.12f * near * near);
+                }
+            }
+            return Clip("CareFlies", d);
+        }
+
+        /// <summary>A placeholder cheer (no CC0 crowd cheer found yet): a dozen small voices rising "hey!" at slightly
+        /// different times and pitches, with a little breath noise.</summary>
+        static AudioClip MakeCheer()
+        {
+            int n = (int)(Rate * 1.3f);
+            var d = new float[n];
+            var rng = new System.Random(96);
+            for (int v = 0; v < 12; v++)
+            {
+                float f0 = 330f + (float)rng.NextDouble() * 330f, onset = (float)rng.NextDouble() * 0.18f;
+                float len = 0.45f + (float)rng.NextDouble() * 0.5f, vib = 5f + (float)rng.NextDouble() * 2f, ph = 0f;
+                for (int i = (int)(onset * Rate); i < n; i++)
+                {
+                    float t = i / (float)Rate - onset;
+                    if (t > len) break;
+                    float f = f0 * (1f + 0.35f * Mathf.Min(1f, t / 0.12f)) * (1f + 0.012f * Mathf.Sin(2f * Mathf.PI * vib * t));
+                    ph += 2f * Mathf.PI * f / Rate;
+                    float env = Mathf.Min(1f, t / 0.03f) * Mathf.Exp(-t * 2.5f) * (1f - t / len);
+                    // a soft vowel: the fundamental and two quieter partials
+                    d[i] += (Mathf.Sin(ph) + 0.4f * Mathf.Sin(2f * ph) + 0.15f * Mathf.Sin(3f * ph)) * env * 0.07f;
+                }
+            }
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate;
+                lp += (((float)rng.NextDouble() * 2f - 1f) - lp) * 0.2f;
+                d[i] += lp * 0.05f * Mathf.Exp(-t * 3f);
+            }
+            return Clip("CareCheer", d);
+        }
 
         // ---------- clips ----------
         static AudioClip MakeRub()

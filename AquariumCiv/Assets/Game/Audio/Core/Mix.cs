@@ -12,25 +12,24 @@ namespace AquariumCiv.Audio
         public float sfx;           // UI, care, world and moment cues, 0..1
         public float ambience;      // the ambience loops, 0..1
         public float music;         // background music, 0..1 (GameSettings.MusicVolume)
-        public bool deviceSilent;   // the phone's silent/ring switch: music and ambience stay off (#72), cues stay
+        public bool deviceSilent;   // the phone's silent/ring switch: everything stays quiet (user, 2026-10-30); haptics may still buzz
 
         public static AudioSettings Default => new() { sound = true, sfx = 1f, ambience = 0.8f, music = 0.6f };
     }
 
     /// <summary>
-    /// Each bus's volume from the settings and the duck (#96): the master switch silences everything; the silent switch
-    /// silences music and ambience only (a phone on silent still clicks quietly, as the OS does) [est]. Phase 2 sets the
-    /// mixer groups to <see cref="Decibels"/> of these.
+    /// Each bus's volume from the settings and the duck (#96): the master switch and the phone's silent switch both
+    /// silence everything (the user's call, 2026-10-30: a phone on silent makes no sound; haptics are separate).
     /// </summary>
     public static class MixLevels
     {
         public static float Bus(SoundBus bus, in AudioSettings s, float duck = 1f)
         {
-            if (!s.sound) return 0f;
+            if (!s.sound || s.deviceSilent) return 0f;
             switch (bus)
             {
-                case SoundBus.Music: return s.deviceSilent ? 0f : Clamp01(s.music) * duck;
-                case SoundBus.Ambience: return s.deviceSilent ? 0f : Clamp01(s.ambience) * AmbienceUnder(duck);
+                case SoundBus.Music: return Clamp01(s.music) * duck;
+                case SoundBus.Ambience: return Clamp01(s.ambience) * AmbienceUnder(duck);
                 default: return Clamp01(s.sfx);
             }
         }

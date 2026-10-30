@@ -112,7 +112,7 @@ namespace AquariumCiv.View.Moments
             b.Add(tool);
 
             var festival = Beat("festival", 58f, BeatAction.FestivalStart);
-            festival.freeCamera = true; festival.hold = 7f;
+            festival.freeCamera = true; festival.hold = 7f; festival.audio = "fiddle"; // #96: the fiddle (village and town, era-moment §10)
             b.Add(festival);
 
             var ask = Beat("notify", 65f, BeatAction.AskNotification);
@@ -179,7 +179,7 @@ namespace AquariumCiv.View.Moments
             b.Add(tool);
 
             var festival = Beat("festival", 88f, BeatAction.FestivalStart);
-            festival.freeCamera = true; festival.hold = 7f;
+            festival.freeCamera = true; festival.hold = 7f; festival.audio = "fiddle"; // #96: the fiddle (village and town, era-moment §10)
             b.Add(festival);
 
             // Only if the first moment ended before its question (the player left after the cheer).

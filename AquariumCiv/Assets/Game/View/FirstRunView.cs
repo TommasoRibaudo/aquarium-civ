@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -243,7 +244,7 @@ namespace AquariumCiv.View
         {
             // The child's smiley in the mist is a view staging beat that is not built yet (see the issue's open questions);
             // for now the line says what the child does.
-            if (c == FirstRunCue.ChildSmiley && hud != null) hud.Toast("A child draws a smiley in the mist.", 3.5f);
+            if (c == FirstRunCue.ChildSmiley && hud != null) { hud.Toast("A child draws a smiley in the mist.", 3.5f); Sfx.Play(CueLibrary.Discovery); }
         }
 
         void EnterStep()
@@ -500,6 +501,7 @@ namespace AquariumCiv.View
             hud?.CloseSheet();
             if (string.IsNullOrEmpty(nameField.value)) nameField.value = run.SuggestedName;
             nameMsg.text = "";
+            if (nameScrim.style.display != DisplayStyle.Flex) Sfx.Play(CueLibrary.UiOpen); // #96
             nameScrim.style.display = DisplayStyle.Flex;
         }
 
@@ -511,6 +513,7 @@ namespace AquariumCiv.View
             var problem = run.KeepName(clean);
             if (problem != NameProblem.None) { nameMsg.text = SettlementNaming.Message(problem); return; }
             nameScrim.style.display = DisplayStyle.None;
+            Sfx.Play(CueLibrary.UiConfirm); // #96: the name is kept
             hud?.Toast($"Welcome to {clean}.", 3.5f);
             GameClock.Instance?.Save();
         }
@@ -522,6 +525,7 @@ namespace AquariumCiv.View
             var sv = ShapingView.Instance;
             if (sv == null) { var (x, z) = run.SuggestedRainSpot; run.PlaceRain(x, z); return; }
             rainArmed = !rainArmed;
+            Sfx.Play(CueLibrary.UiToggle); // #96
             if (rainArmed)
             {
                 sv.Free = false;
@@ -546,6 +550,7 @@ namespace AquariumCiv.View
             cardAlso.style.display = summary.alsoHeadlines.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             showMeBtn.style.display = summary.card != null && summary.flyToBuildingId >= 0 ? DisplayStyle.Flex : DisplayStyle.None;
             cardScrim.style.display = DisplayStyle.Flex;
+            Sfx.Play(CueLibrary.CardArrive); // #96: "Their first year" arrives
             cardShown = true; showingMe = false;
         }
 
@@ -565,6 +570,7 @@ namespace AquariumCiv.View
             if (run == null) return;
             ShowMeDirector.Instance?.End();
             cardScrim.style.display = DisplayStyle.None;
+            Sfx.Play(CueLibrary.CardDismiss); // #96
             showingMe = false;
             run.AcknowledgeCard();
             GameClock.Instance?.Save();

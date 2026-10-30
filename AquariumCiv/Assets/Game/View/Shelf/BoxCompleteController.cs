@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -534,6 +535,7 @@ namespace AquariumCiv.View
             SyncShelf();
             RebuildSheet();
             sheet.style.display = DisplayStyle.Flex;
+            Sfx.Play(CueLibrary.UiOpen); // #96
             return true;
         }
 
@@ -541,6 +543,7 @@ namespace AquariumCiv.View
         {
             if (!ShelfOpen) return;
             ShelfOpen = false;
+            Sfx.Play(CueLibrary.UiClose); // #96
             sheet.style.display = DisplayStyle.None;
             if (cam != null) { cam.enabled = true; OnViewChanged(); }
         }

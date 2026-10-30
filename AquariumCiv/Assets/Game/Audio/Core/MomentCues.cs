@@ -49,6 +49,7 @@ namespace AquariumCiv.Audio
                 ["pause_note"] = new[] { (CueLibrary.PauseNote, 0f) },
                 ["fiddle"] = new[] { (CueLibrary.Fiddle, 0f) },
                 ["bell"] = new[] { (CueLibrary.Bell, 0f) },
+                ["thump"] = new[] { (CueLibrary.Thump, 0f) }, // the new box set down on the shelf (last moment, #93)
             };
 
         /// <summary>The per-lot cue of a wave beat: knocks for the village (wood), hammers for the town.</summary>

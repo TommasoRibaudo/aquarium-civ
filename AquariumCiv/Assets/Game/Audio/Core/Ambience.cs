@@ -17,24 +17,30 @@ namespace AquariumCiv.Audio
         public bool festival;     // a festival evening: the crickets give way to the people (the fiddle cue carries it)
     }
 
-    /// <summary>The five ambience layers' levels, 0..1 of each layer's cue volume.</summary>
+    /// <summary>The six ambience layers' levels, 0..1 of each layer's cue volume.</summary>
     public struct AmbienceLevels
     {
-        public float calm, birds, crickets, rain, wind;
+        public float calm, birds, crickets, rain, wind, flies;
 
-        public float this[int i] => i switch { 0 => calm, 1 => birds, 2 => crickets, 3 => rain, _ => wind };
+        public float this[int i] => i switch { 0 => calm, 1 => birds, 2 => crickets, 3 => rain, 4 => wind, _ => flies };
         public static readonly string[] CueIds =
-            { CueLibrary.AmbCalm, CueLibrary.AmbBirds, CueLibrary.AmbCrickets, CueLibrary.AmbRain, CueLibrary.AmbWind };
-        public const int Count = 5;
+            { CueLibrary.AmbCalm, CueLibrary.AmbBirds, CueLibrary.AmbCrickets, CueLibrary.AmbRain, CueLibrary.AmbWind, CueLibrary.AmbFlies };
+        public const int Count = 6;
+
+        public void Set(int i, float v)
+        {
+            switch (i) { case 0: calm = v; break; case 1: birds = v; break; case 2: crickets = v; break; case 3: rain = v; break; case 4: wind = v; break; default: flies = v; break; }
+        }
 
         public override string ToString() =>
-            $"calm {calm:0.00} birds {birds:0.00} crickets {crickets:0.00} rain {rain:0.00} wind {wind:0.00}";
+            $"calm {calm:0.00} birds {birds:0.00} crickets {crickets:0.00} rain {rain:0.00} wind {wind:0.00} flies {flies:0.00}";
     }
 
     /// <summary>
     /// The ambience mix (#96): a calm loop always (the room the box sits in), birds by day, crickets by night, rain and
     /// wind with the weather. Smooth in the hour, so dawn fades the crickets out as the birds come in. Mess thins the
-    /// birds a little but never adds a nagging sound (practices §9: no guilt trip). All numbers [est], to tune by ear.
+    /// birds and brings a subtle fly buzz that rises with it and is gone when the box is clean (the user's call,
+    /// 2026-10-30; kept quiet so it reads as "the box needs you", not a nag). All numbers [est], to tune by ear.
     /// </summary>
     public static class Ambience
     {
@@ -56,8 +62,13 @@ namespace AquariumCiv.Audio
             float calm = 0.7f + 0.3f * night; // the room tone carries the quiet night
             if (rain > 0f) calm *= 0.6f;
 
-            var l = new AmbienceLevels { calm = calm, birds = birds, crickets = crickets, rain = rain, wind = wind };
-            if (a.inMoment) { l.calm *= 0.6f; l.birds *= 0.4f; l.crickets *= 0.4f; l.rain *= 0.7f; l.wind *= 0.6f; }
+            float flies = Flies(a.mess01);
+            if (a.weather == Weather.Storm || a.weather == Weather.Snow) flies *= 0.3f;
+            if (a.season == Season.Winter) flies *= 0.5f;
+            flies *= 0.6f + 0.4f * day; // a little quieter at night
+
+            var l = new AmbienceLevels { calm = calm, birds = birds, crickets = crickets, rain = rain, wind = wind, flies = flies };
+            if (a.inMoment) { l.calm *= 0.6f; l.birds *= 0.4f; l.crickets *= 0.4f; l.rain *= 0.7f; l.wind *= 0.6f; l.flies *= 0.3f; }
             return l;
         }
 
@@ -65,6 +76,16 @@ namespace AquariumCiv.Audio
         // after the evening. Crickets: the mirror, starting in the evening.
         static readonly float[] DayCurve = { 0f, 0f, 4.5f, 0f, 6f, 1f, 8f, 0.8f, 12f, 0.5f, 16f, 0.65f, 19f, 0.3f, 20.5f, 0f, 24f, 0f };
         static readonly float[] NightCurve = { 0f, 1f, 4.5f, 1f, 6f, 0f, 18f, 0f, 20.5f, 1f, 24f, 1f };
+
+        /// <summary>Below this much mess there are no flies at all [est].</summary>
+        public const float FliesFrom = 0.15f;
+        /// <summary>The fly layer by mess: silent below <see cref="FliesFrom"/>, full at 0.8 (eased in, so the first flies are faint).</summary>
+        public static float Flies(float mess01)
+        {
+            float u = (Clamp01(mess01) - FliesFrom) / (0.8f - FliesFrom);
+            u = Clamp01(u);
+            return u * u * (3f - 2f * u);
+        }
 
         static float BirdsByWeather(Weather w) => w switch
         {

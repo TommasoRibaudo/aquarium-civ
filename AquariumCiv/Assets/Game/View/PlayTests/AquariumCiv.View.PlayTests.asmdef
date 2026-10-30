@@ -8,6 +8,7 @@
         "AquariumCiv.Game.UI",
         "AquariumCiv.View",
         "AquariumCiv.Moments",
+        "AquariumCiv.Audio",
         "AquariumCiv.Shaping",
         "AquariumCiv.ShowMe",
         "Unity.InputSystem",

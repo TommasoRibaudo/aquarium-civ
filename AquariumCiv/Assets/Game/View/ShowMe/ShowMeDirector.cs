@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using System.Globalization;
 using AquariumCiv.Game;
@@ -171,7 +172,8 @@ namespace AquariumCiv.View
             cam.EaseTo(focus, cam.yaw, pitch, zoom, ShowMeCore.FlySeconds(dist));
             State = Phase.Flying;
             phaseT = 0f;
-            if (plan.echo != null && plan.echo.flower) LayFlower(t);
+            Sfx.Play(CueLibrary.ShowMe); // #96: "look at this"
+            if (plan.echo != null && plan.echo.flower) { LayFlower(t); Sfx.Play(CueLibrary.Flower, 0f, 1f, 0.6f); }
             Debug.Log($"[ShowMe] {plan.entry?.kind} #{plan.entry?.id}: {t}; echo {(plan.HasEcho ? plan.echo.kind.ToString() : plan.echo?.skip.ToString())}");
             return plan;
         }

@@ -490,3 +490,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   overlaps unless it has `flexShrink = 0`, and a label column next to buttons only wraps with `flexBasis = 0` +
   `minWidth = 0`. [verified]
 - **2026-10-30 · `unity test` (top-level) refuses while the Editor is open; use `unity command test run --mode playmode --filter <name> --async_tests true`, then poll `unity command test status`.** A bare `unity command test run` (no filter) ran all 811 EditMode tests and blocked every other command for minutes (the client timeout does not cancel it; `test cancel` itself waits). Always pass `--filter`. `ShapingView.GroundPoint` marched only 30 units: the default camera is ~50 away, so no ground tap worked at the default framing until the step was doubled (#94). [verified]
+- **2026-10-30 · Checking sound without ears (#96).** In the Editor `AudioDirector.LogPlays` is on: every cue played logs
+  `[Audio] <cue>: <clip> vol .. pitch ..` and every buzz `[Haptic] <kind>`. `AudioDirector.Status()` (script eval, or
+  the Sound section of the dbg panel) shows the settings, bus gains, duck and the five ambience levels;
+  `AudioDirector.Instance.Recent` / `.MomentLog` list what played. `DebugCheckClips()` lists CueLibrary clips that don't
+  load. Play tests that load the Slice by hand call `AudioDirector.Ensure()` (the bootstrap ran for the first scene
+  only). Long clips (ambience, the flute tag) are set to Compressed In Memory / Vorbis 0.6 / mono in their .meta. [verified]
