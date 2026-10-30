@@ -50,16 +50,16 @@ namespace AquariumCiv.Tests
         [Test]
         public void SliceWorldFingerprint()
         {
-            var sim = NewSim(1234);
+            var sim = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
             Assert.AreEqual(2152486408u, Fingerprint(sim.State), "slice world fingerprint"); // #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
-            var noRelics = NewSim(1234);
+            var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             noRelics.RelicsOn = false;
             noRelics.Advance(48);
             Assert.AreEqual(282779734u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
-            var before = NewSim(1234);
+            var before = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             before.CardsOn = false;
             before.RelicsOn = false;
             before.Advance(48);

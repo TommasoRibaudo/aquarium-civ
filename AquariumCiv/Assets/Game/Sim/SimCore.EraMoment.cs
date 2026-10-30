@@ -18,6 +18,7 @@ namespace AquariumCiv.Sim
     {
         public Era era;
         public string title;            // "The camp years (1–14)"
+        public string eraTitle = "";    // the era's own title, "The Years of the Sky Bread" (written when the era ends, #73; "" while it goes on)
         public int fromYear, toYear;    // toYear = -1 while the era goes on
         public long fromMonth, toMonth; // toMonth = -1 while the era goes on
         public List<Notable> leaders = new();
@@ -229,6 +230,7 @@ namespace AquariumCiv.Sim
                 var c = new BookChapter { era = era, fromMonth = from, toMonth = to, fromYear = YearNo(from), toYear = to < 0 ? -1 : YearNo(to) };
                 string years = to < 0 ? $"{c.fromYear}–…" : $"{c.fromYear}–{c.toYear}";
                 c.title = $"The {EraNoun(era)} years ({years})";
+                c.eraTitle = EraTitle(era);
                 var ids = new List<int>();
                 for (int k = 0; k < s.leaders.Count; k++)
                 {

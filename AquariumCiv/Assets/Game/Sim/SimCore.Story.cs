@@ -81,7 +81,7 @@ namespace AquariumCiv.Sim
         {
             int n = 0;
             foreach (var e in State.chronicle) if (e.kind == kind && (notableId < 0 || e.notableId == notableId)) n++;
-            return n;
+            return n + PrunedTold(kind, notableId); // lines dropped from an old chronicle still count as told (SimCore.History.cs)
         }
 
         static string Nth(string[] lines, int n) => lines[n % lines.Length];
