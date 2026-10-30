@@ -208,6 +208,21 @@ namespace AquariumCiv.GameUI
 
         public bool ToolsHidden => toolBlocks.Count > 0;
 
+        Action pinTap;
+
+        /// <summary>#39: the pinned person's chip in the bottom row: <paramref name="text"/> null hides it; a tap calls
+        /// <paramref name="onTap"/> (the person card opens on them).</summary>
+        public void SetPinChip(string text, Action onTap)
+        {
+            pinTap = onTap;
+            if (pinChip == null) return;
+            pinChip.text = text ?? "";
+            pinChip.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        /// <summary>The pin chip's text, or null while it is hidden (tests).</summary>
+        public string PinChipText => pinChip != null && pinChip.style.display != DisplayStyle.None ? pinChip.text : null;
+
         /// <summary>A short line above the bottom row (hints, "all clean"); replaces the one showing.</summary>
         public void Toast(string text, float seconds = 3f)
         {
@@ -263,7 +278,7 @@ namespace AquariumCiv.GameUI
 
             bottomRow = Row("hud-bottom");
             bottomRow.Add(Btn("hud-history", "History", () => Open(History), "hud-btn"));
-            pinChip = Btn("hud-pin", "", null, "hud-chip");
+            pinChip = Btn("hud-pin", "", () => pinTap?.Invoke(), "hud-chip");
             pinChip.style.display = DisplayStyle.None; // nobody pinned yet (person card work)
             bottomRow.Add(pinChip);
             cleanButton = Btn("hud-clean", "Clean", () => SetCleanMode(!cleanMode), "hud-btn");

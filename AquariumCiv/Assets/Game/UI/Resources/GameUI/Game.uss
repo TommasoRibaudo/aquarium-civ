@@ -139,3 +139,69 @@ Label { white-space: normal; }
 }
 .tool:hover { background-color: var(--canvas); }
 .tool:disabled { background-color: var(--canvas); color: var(--timber); opacity: 0.45; }
+
+/* ---------------- the person card and world tags (#39) ---------------- */
+.pc-sheet { padding-top: 32px; }
+.pc-head { margin-bottom: 12px; align-items: flex-start; }
+.pc-sub { font-size: 32px; color: var(--ink-soft); margin-top: 4px; }
+.pc-pin {
+    height: 144px; min-width: 170px; padding: 0 30px; margin: 0 16px 0 12px;
+    border-width: 0; border-radius: 72px;
+    background-color: rgba(46, 42, 39, 0.75); color: #FFD98A;
+    font-size: 34px; -unity-font-style: bold;
+}
+.pc-pin:hover { background-color: rgba(46, 42, 39, 0.75); }
+.pc-pin--on, .pc-pin--on:hover { background-color: #E7B54E; color: var(--frame); }
+.pc-body { flex-shrink: 1; }
+.pc-quote {
+    white-space: normal;
+    font-size: 34px; color: var(--timber); -unity-font-style: italic;
+    background-color: rgba(226, 211, 179, 0.6); border-radius: 28px; padding: 18px 26px; margin-bottom: 18px;
+}
+.pc-section { margin-bottom: 18px; }
+.pc-label { font-size: 28px; color: var(--ink-soft); -unity-font-style: bold; margin-bottom: 8px; }
+.pc-note { font-size: 30px; color: var(--ink-soft); margin-bottom: 6px; }
+.pc-chips { flex-direction: row; flex-wrap: wrap; }
+.pc-chip {
+    height: 112px; padding: 0 28px; margin: 0 14px 14px 0;
+    border-width: 0; border-left-width: 12px; border-radius: 56px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 30px; -unity-font-style: bold;
+}
+.pc-chip:hover { background-color: var(--canvas); }
+.pc-chip:active { background-color: #D4C39F; }
+.pc-chip--dead { opacity: 0.6; -unity-font-style: italic; }
+.pc-toggle { flex-direction: row; margin-bottom: 10px; }
+.pc-tab {
+    height: 100px; min-width: 170px; padding: 0 26px; margin: 0 12px 0 0;
+    border-width: 0; border-radius: 50px; background-color: transparent; color: var(--ink-soft);
+    font-size: 30px; -unity-font-style: bold;
+}
+.pc-tab:hover { background-color: transparent; }
+.pc-tab--on, .pc-tab--on:hover { background-color: var(--canvas); color: var(--timber); }
+.pc-story { flex-direction: row; align-items: center; margin-bottom: 12px; border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.12); padding-bottom: 10px; }
+.pc-story-text { white-space: normal; font-size: 30px; color: var(--timber); flex-shrink: 1; flex-grow: 1; margin-right: 14px; }
+.pc-showme {
+    height: 112px; min-width: 190px; padding: 0 22px; margin: 0;
+    border-width: 0; border-radius: 56px; background-color: var(--terracotta); color: var(--plaster);
+    font-size: 28px; -unity-font-style: bold; flex-shrink: 0;
+}
+.pc-showme:hover { background-color: var(--terracotta); }
+
+/* name tags over a doll's head: gold for the pin, paper for the open card's person */
+.pc-tag { position: absolute; translate: -50% -100%; align-items: center; }
+.pc-tag-text {
+    padding: 6px 22px; border-radius: 30px; font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+.pc-tag-point { width: 18px; height: 18px; rotate: 45deg; margin-top: -10px; }
+.pc-tag--pin .pc-tag-text { background-color: #E7B54E; color: var(--frame); border-width: 3px; border-color: rgba(46, 42, 39, 0.8); }
+.pc-tag--pin .pc-tag-point { background-color: #E7B54E; border-right-width: 3px; border-bottom-width: 3px; border-color: rgba(46, 42, 39, 0.8); }
+.pc-tag--name .pc-tag-text { background-color: rgba(239, 227, 204, 0.95); color: var(--timber); }
+.pc-tag--name .pc-tag-point { background-color: rgba(239, 227, 204, 0.95); }
+.pc-tie {
+    position: absolute; translate: -50% -50%;
+    padding: 4px 16px; border-radius: 24px; border-width: 4px;
+    background-color: rgba(46, 42, 39, 0.72); color: var(--plaster);
+    font-size: 26px; -unity-font-style: bold; white-space: nowrap;
+}

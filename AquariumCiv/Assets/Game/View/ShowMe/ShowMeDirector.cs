@@ -186,7 +186,7 @@ namespace AquariumCiv.View
 
         /// <summary>The camera target that puts <paramref name="world"/> at <paramref name="anchorY"/> of the screen height (the
         /// card covers the bottom): the target slides toward the viewer along the ground.</summary>
-        static Vector3 AboveCard(BoxCamera cam, Vector3 world, float zoom, float pitchDeg, float anchorY)
+        public static Vector3 AboveCard(BoxCamera cam, Vector3 world, float zoom, float pitchDeg, float anchorY)
         {
             var c = cam.GetComponent<Camera>();
             float fov = c != null ? c.fieldOfView : 22f;

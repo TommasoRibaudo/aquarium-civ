@@ -580,6 +580,35 @@ namespace AquariumCiv.View
             return true;
         }
 
+        /// <summary>#39: the top of a person's doll (just over the head) in world space, false if they have no doll or it is
+        /// hidden (indoors, a baby). For world labels (the pin marker) and the person card's relationship lines.</summary>
+        public bool TryGetDollTop(PersonRef who, out Vector3 world)
+        {
+            world = default;
+            if (!dolls.TryGetValue(who.Key, out var d) || !d.placed || d.view == null || !d.view.gameObject.activeInHierarchy) return false;
+            var t = d.view.transform;
+            float top = (PegDoll.HeadY + PegDoll.HeadR) * d.view.scale;
+            world = t.parent != null ? t.parent.TransformPoint(t.localPosition + Vector3.up * top) : t.position + Vector3.up * top;
+            return true;
+        }
+
+        /// <summary>#39: the feet of a person's doll in world space (see <see cref="TryGetDollTop"/>).</summary>
+        public bool TryGetDollFeet(PersonRef who, out Vector3 world)
+        {
+            world = default;
+            if (!dolls.TryGetValue(who.Key, out var d) || !d.placed || d.view == null || !d.view.gameObject.activeInHierarchy) return false;
+            world = d.view.transform.position;
+            return true;
+        }
+
+        /// <summary>#39: the notables who have a doll in the box now (ids).</summary>
+        public void NotablesShown(List<int> into)
+        {
+            into.Clear();
+            foreach (var kv in dolls)
+                if (kv.Key > 0 && kv.Value.placed && kv.Value.view != null && kv.Value.view.gameObject.activeInHierarchy) into.Add(kv.Key);
+        }
+
         // ---------------- reports and debug ----------------
         string Label(PersonRef who, Notable n, string role)
         {
