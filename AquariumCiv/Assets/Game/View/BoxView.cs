@@ -1,12 +1,14 @@
 using System.Collections.Generic;
-using UnityEngine;
 using AquariumCiv.Sim;
+using Unity.Collections;
+using Unity.Jobs;
+using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace AquariumCiv.View
 {
-    /// <summary>Anything that can fill a <see cref="BoxLayout"/> before the box builds (the sim view in #33; until then
-    /// the temporary demo layout). Put it on the same GameObject as the <see cref="BoxView"/>.</summary>
+    /// <summary>Anything that can fill a <see cref="BoxLayout"/> before the box builds or refreshes (the live sim,
+    /// <see cref="SimLayoutSource"/>; the demo layout in tests). Put it on the same GameObject as the <see cref="BoxView"/>.</summary>
     public interface IBoxLayoutSource
     {
         void FillLayout(BoxLayout layout);
@@ -15,34 +17,55 @@ namespace AquariumCiv.View
     /// <summary>
     /// The terrarium, drawn with the style kit (docs/design/spikes/style-kit.md): terrain with the pond, the soil
     /// cross-section behind the glass, the plinth, frame, shelf and wall, nature, and whatever the <see cref="layout"/>
-    /// holds (pieces, fields, paths, clearings, people). Static parts merge into one mesh with ambient occlusion baked
-    /// into vertex alpha; water, glows, people and the four glass panes are separate. Rebuilt on enable (edit and play
-    /// mode) and on <see cref="Rebuild"/>; nothing generated is saved with the scene. No layout logic lives here: where
-    /// things go comes from the layout (#32/#33).
+    /// holds (pieces, fields, paths, clearings, canals, people). No layout logic lives here: where things go comes from
+    /// the layout (<see cref="SimLayout"/>, #33).
+    /// <para>
+    /// Chunked (research 08 §3.8): the parts that never change (soil cut, box, shelf, wall, pond rim) are one Base mesh;
+    /// the land inside the glass is four chunks (the box's quarters), each with its terrain, fields, pieces and nature,
+    /// ambient occlusion baked into vertex alpha per chunk. <see cref="Refresh"/> refills the layout, hashes what touches
+    /// each chunk and rebuilds only the chunks whose hash changed (a new building or a path-tier change rebuilds its
+    /// quarter, not the box). People are kept and moved, made only when new. Water, glows and the four glass panes are
+    /// separate. Nothing generated is saved with the scene.
+    /// </para>
     /// </summary>
     [ExecuteAlways]
     public class BoxView : MonoBehaviour
     {
         public Land land = new();
-        /// <summary>Filled by an <see cref="IBoxLayoutSource"/> on enable (not saved with the scene: the sim or the demo
-        /// owns it).</summary>
+        /// <summary>Filled by an <see cref="IBoxLayoutSource"/> on enable and on <see cref="Refresh"/> (not saved with the
+        /// scene: the sim owns it).</summary>
         [System.NonSerialized] public BoxLayout layout = new();
         public int seed = 7;
-        [Tooltip("Terrain grid; finer grids keep painted paths and the shore smooth.")]
+        [Tooltip("Terrain grid (made even); finer grids keep painted paths and the shore smooth.")]
         public int terrainX = 96, terrainZ = 70;
         public bool bakeAO = true;
         public int aoRays = 10;
         public float aoDistance = 0.45f;
+        [Tooltip("Log every chunk rebuild with its timing.")]
+        public bool logRebuilds = true;
         public Material solid, water, glass, glow;
-        public string lastBuildInfo;
+        public string lastBuildInfo, lastRefreshInfo;
+        /// <summary>The last <see cref="Refresh"/>: chunks rebuilt, total and AO milliseconds.</summary>
+        [System.NonSerialized] public List<int> lastChunks = new();
+        [System.NonSerialized] public double lastRefreshMs, lastAoMs;
 
         public const float GlassMargin = 0.1f;
+        public const int ChunkCount = 4;
         public static float PathWidth(PathTier t) => t switch { PathTier.Trail => 0.055f, PathTier.Road => 0.13f, _ => 0.085f };
+        const int AoLayer = 2; // Ignore Raycast: the AO colliders stay out of everyone else's raycasts
 
-        Transform root;
+        Transform root, peopleRoot;
         readonly List<Material> panes = new();
         Vector2[] shore;
         readonly List<(Vector2 p, float r)> taken = new();
+        readonly List<(Vector2 p, bool sprout)> reedSpots = new();
+        readonly MeshFilter[] chunkFilters = new MeshFilter[ChunkCount];
+        readonly MeshCollider[] chunkColliders = new MeshCollider[ChunkCount];
+        readonly uint[] chunkHash = new uint[ChunkCount];
+        uint landHash;
+        GameObject glowGo;
+        Material glowMat;
+        readonly Dictionary<int, (PegDollView doll, uint sig)> dollByKey = new();
         public Transform Root => root;
         public IReadOnlyList<PegDollView> Dolls => dolls;
         readonly List<PegDollView> dolls = new();
@@ -58,15 +81,37 @@ namespace AquariumCiv.View
 
         void Clear()
         {
-            if (root != null) { if (Application.isPlaying) Destroy(root.gameObject); else DestroyImmediate(root.gameObject); }
+            if (root != null)
+            {
+                // The box's own generated meshes (not the built-in cube of the panes, nor the dolls' shared prop meshes).
+                foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    var m = mf.sharedMesh;
+                    if (m != null && (m.name.StartsWith("Box") || m.name == "Water" || m.name == "Glows")) Kill(m);
+                }
+                Kill(root.gameObject);
+            }
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
             dolls.Clear();
-            root = null;
+            dollByKey.Clear();
+            root = peopleRoot = null;
+            glowGo = null;
+        }
+
+        static void Kill(Object o)
+        {
+            if (o == null) return;
+            if (Application.isPlaying) Destroy(o); else DestroyImmediate(o);
         }
 
         Material Solid => solid != null ? solid : solid = new Material(Shader.Find("AquariumCiv/View/Stylized")) { hideFlags = HideFlags.DontSave };
 
+        int NX => Mathf.Max(8, terrainX + (terrainX & 1));
+        int NZ => Mathf.Max(8, terrainZ + (terrainZ & 1));
+
+        // ---------------- build ----------------
+        /// <summary>Builds everything from the current <see cref="layout"/> (no refill).</summary>
         [ContextMenu("Rebuild")]
         public void Rebuild()
         {
@@ -75,25 +120,114 @@ namespace AquariumCiv.View
             root = new GameObject("Generated") { hideFlags = HideFlags.DontSave }.transform;
             root.SetParent(transform, false);
             shore = land.Shoreline(64);
+            ShoreField();
+            ReedSpots();
+            PrepareFields();
             Reserve();
 
-            var mb = new MeshBuilder(seed);
-            Terrain(mb);
-            PondRim(mb);
-            Substrate(mb);
-            BoxAndRoom(mb);
-            Fields(mb);
-            PiecesMesh(mb);
-            Nature(mb);
-            var staticMesh = mb.ToMesh("BoxStatic");
-            float aoMs = 0;
-            if (bakeAO) { var t = System.Diagnostics.Stopwatch.StartNew(); BakeAO(staticMesh, mb); aoMs = t.ElapsedMilliseconds; }
-            Spawn("Static", staticMesh, Solid, true);
+            var bm = new MeshBuilder(seed);
+            PondRim(bm);
+            Substrate(bm);
+            BoxAndRoom(bm);
+            var baseMesh = bm.ToMesh("BoxBase");
+            Spawn("Base", baseMesh, Solid, true);
+            AoCollider("AO Base", baseMesh);
+
+            var builders = new MeshBuilder[ChunkCount];
+            var terrainVerts = new int[ChunkCount];
+            var meshes = new Mesh[ChunkCount];
+            int verts = baseMesh.vertexCount, tris = baseMesh.triangles.Length / 3;
+            for (int k = 0; k < ChunkCount; k++)
+            {
+                builders[k] = BuildChunk(k, out terrainVerts[k]);
+                meshes[k] = builders[k].ToMesh("BoxChunk" + k);
+                chunkFilters[k] = Spawn("Chunk " + k, meshes[k], Solid, true).GetComponent<MeshFilter>();
+                chunkColliders[k] = AoCollider("AO " + k, meshes[k]);
+                verts += meshes[k].vertexCount; tris += builders[k].TriangleCount;
+            }
+            double aoMs = 0;
+            if (bakeAO)
+            {
+                var t = System.Diagnostics.Stopwatch.StartNew();
+                Physics.SyncTransforms();
+                var all = new List<(MeshBuilder, int, Mesh)> { (bm, 0, baseMesh) };
+                for (int k = 0; k < ChunkCount; k++) all.Add((builders[k], terrainVerts[k], meshes[k]));
+                BakeAO(all);
+                aoMs = t.Elapsed.TotalMilliseconds;
+            }
             Spawn("Water", WaterMesh(), water != null ? water : Solid, false);
             Glows();
-            People();
+            SyncPeople();
             Glass();
-            lastBuildInfo = $"{staticMesh.vertexCount} verts, {staticMesh.triangles.Length / 3} tris, {layout.pieces.Count} pieces, {dolls.Count} people, AO {aoMs} ms, total {sw.ElapsedMilliseconds} ms";
+            for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
+            ChunkHashes(chunkHash);
+            landHash = LandHash();
+            lastBuildInfo = $"{verts} verts, {tris} tris, {layout.pieces.Count} pieces, {dolls.Count} people, AO {aoMs:0} ms, total {sw.ElapsedMilliseconds} ms";
+        }
+
+        /// <summary>
+        /// Refills the layout from the source and rebuilds only what changed: the chunks whose contents hash differently,
+        /// the glows, and the people (kept, moved, made or removed). A changed land rebuilds everything. Returns the timing.
+        /// </summary>
+        public string Refresh()
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var src = GetComponent<IBoxLayoutSource>();
+            if (src != null) src.FillLayout(layout);
+            double fillMs = sw.Elapsed.TotalMilliseconds;
+            if (root == null || LandHash() != landHash)
+            {
+                Rebuild();
+                lastChunks.Clear(); for (int k = 0; k < ChunkCount; k++) lastChunks.Add(k);
+                lastRefreshInfo = "full rebuild: " + lastBuildInfo;
+                return lastRefreshInfo;
+            }
+            PrepareFields();
+            Reserve();
+            var h = new uint[ChunkCount];
+            ChunkHashes(h);
+            lastChunks.Clear();
+            for (int k = 0; k < ChunkCount; k++) if (h[k] != chunkHash[k]) lastChunks.Add(k);
+            double prepMs = sw.Elapsed.TotalMilliseconds;
+            var builders = new List<(int k, MeshBuilder mb, int tv, Mesh mesh)>();
+            var built = new MeshBuilder[lastChunks.Count];
+            var tvs = new int[lastChunks.Count];
+            // The dirty chunks build side by side on worker threads (pure maths into their own builders).
+            System.Threading.Tasks.Parallel.For(0, lastChunks.Count, i => built[i] = BuildChunk(lastChunks[i], out tvs[i]));
+            double buildMs = sw.Elapsed.TotalMilliseconds;
+            for (int i = 0; i < lastChunks.Count; i++)
+            {
+                int k = lastChunks[i], tv = tvs[i];
+                var mb = built[i];
+                var mesh = mb.ToMesh("BoxChunk" + k);
+                var old = chunkFilters[k].sharedMesh;
+                chunkFilters[k].sharedMesh = mesh;
+                chunkColliders[k].sharedMesh = mesh;
+                Kill(old);
+                builders.Add((k, mb, tv, mesh));
+                chunkHash[k] = h[k];
+            }
+            double meshMs = sw.Elapsed.TotalMilliseconds;
+            double aoMs = 0;
+            if (bakeAO && builders.Count > 0)
+            {
+                var t = System.Diagnostics.Stopwatch.StartNew();
+                Physics.SyncTransforms();
+                var all = new List<(MeshBuilder, int, Mesh)>();
+                foreach (var (_, mb, tv, mesh) in builders) all.Add((mb, tv, mesh));
+                BakeAO(all);
+                aoMs = t.Elapsed.TotalMilliseconds;
+            }
+            Glows();
+            int made = SyncPeople();
+            lastRefreshMs = sw.Elapsed.TotalMilliseconds;
+            lastAoMs = aoMs;
+            lastRefreshInfo = lastChunks.Count == 0
+                ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
+                : $"rebuilt chunk(s) {string.Join(",", lastChunks)} in {lastRefreshMs:0.0} ms (AO {aoMs:0.0} ms), {made} new people, {layout.pieces.Count} pieces " +
+                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}]";
+            if (logRebuilds && lastChunks.Count > 0) Debug.Log("[BoxView] " + lastRefreshInfo);
+            return lastRefreshInfo;
         }
 
         /// <summary>Debug hook: rebuild every box in the scene (after editing a layout from `script eval`).</summary>
@@ -101,6 +235,14 @@ namespace AquariumCiv.View
         {
             var s = "";
             foreach (var b in FindObjectsByType<BoxView>(FindObjectsSortMode.None)) { b.Rebuild(); s += b.lastBuildInfo + "\n"; }
+            return s;
+        }
+
+        /// <summary>Debug hook: refresh every box in the scene from its source (only changed chunks rebuild).</summary>
+        public static string DebugRefresh()
+        {
+            var s = "";
+            foreach (var b in FindObjectsByType<BoxView>(FindObjectsSortMode.None)) s += b.Refresh() + "\n";
             return s;
         }
 
@@ -113,6 +255,248 @@ namespace AquariumCiv.View
             r.sharedMaterial = mat;
             r.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
             return go;
+        }
+
+        MeshCollider AoCollider(string name, Mesh mesh)
+        {
+            var go = new GameObject(name) { hideFlags = HideFlags.HideAndDontSave, layer = AoLayer };
+            go.transform.SetParent(root, false);
+            var c = go.AddComponent<MeshCollider>();
+            c.cookingOptions = MeshColliderCookingOptions.UseFastMidphase;
+            c.sharedMesh = mesh;
+            return c;
+        }
+
+        // ---------------- chunks ----------------
+        /// <summary>Which quarter of the box a ground point is in: bit 0 = right (x ≥ 0), bit 1 = back (z ≥ 0).</summary>
+        public static int ChunkOf(float x, float z) => (x < 0f ? 0 : 1) + (z < 0f ? 0 : 2);
+        public static int ChunkOf(Vector2 p) => ChunkOf(p.x, p.y);
+
+        static void ChunkBounds(int k, out float x0, out float x1, out float z0, out float z1)
+        {
+            bool right = (k & 1) != 0, back = (k & 2) != 0;
+            x0 = right ? 0f : -Land.HX; x1 = right ? Land.HX : 0f;
+            z0 = back ? 0f : -Land.HZ; z1 = back ? Land.HZ : 0f;
+        }
+
+        MeshBuilder BuildChunk(int k, out int terrainVerts)
+        {
+            var mb = new MeshBuilder(seed * 31 + k * 7);
+            Terrain(mb, k);
+            terrainVerts = mb.VertexCount;
+            foreach (var f in layout.fields)
+                if (f.polygon != null && f.polygon.Length >= 3 && ChunkOf(Centroid(f.polygon)) == k) FieldMesh(mb, f);
+            foreach (var p in layout.pieces)
+                if (ChunkOf(p.x, p.z) == k) PieceMesh(mb, p);
+            Nature(mb, k);
+            return mb;
+        }
+
+        static Rect FieldBox(FieldData f)
+        {
+            if (f.polygon == null || f.polygon.Length == 0) return Rect.zero;
+            Vector2 min = f.polygon[0], max = f.polygon[0];
+            foreach (var q in f.polygon) { min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
+            return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+        }
+
+        static Vector2 Centroid(Vector2[] poly)
+        {
+            var c = Vector2.zero;
+            foreach (var q in poly) c += q;
+            return c / poly.Length;
+        }
+
+        // FNV-1a over the bits of whatever touches a chunk.
+        struct Hash
+        {
+            public uint h;
+            public static Hash New() => new() { h = 2166136261u };
+            public void Add(uint v) { unchecked { for (int i = 0; i < 4; i++) { h ^= (v >> (i * 8)) & 0xFF; h *= 16777619u; } } }
+            public void Add(int v) => Add((uint)v);
+            public void Add(bool v) => Add(v ? 1u : 0u);
+            public void Add(float v) => Add((uint)System.BitConverter.SingleToInt32Bits(v));
+            public void Add(Vector2 v) { Add(v.x); Add(v.y); }
+        }
+
+        /// <summary>Mixes an item's hash into every chunk its box (grown by the reach of nature checks, the path fringe
+        /// and the fire's warm pool) overlaps.</summary>
+        static void Into(uint[] h, float minX, float minZ, float maxX, float maxZ, uint v)
+        {
+            const float M = 0.22f;
+            for (int k = 0; k < ChunkCount; k++)
+            {
+                ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
+                if (k % 2 == 0) x0 -= 9f; else x1 += 9f; // outer edges reach anything outside the land
+                if (k < 2) z0 -= 9f; else z1 += 9f;
+                if (maxX < x0 - M || minX > x1 + M || maxZ < z0 - M || minZ > z1 + M) continue;
+                unchecked { h[k] = (h[k] ^ v) * 16777619u + 0x9E3779B9u; }
+            }
+        }
+
+        void ChunkHashes(uint[] h)
+        {
+            var g = Hash.New();
+            g.Add(seed); g.Add(NX); g.Add(NZ); g.Add(layout.autoNature); g.Add(layout.autoTrees); g.Add(layout.natureDensity);
+            g.Add(layout.reeds); g.Add(bakeAO); g.Add(aoRays); g.Add(aoDistance);
+            for (int k = 0; k < ChunkCount; k++) h[k] = g.h + (uint)k;
+            foreach (var p in layout.pieces)
+            {
+                var e = Hash.New();
+                e.Add((int)p.kind); e.Add(p.x); e.Add(p.z); e.Add(p.yaw); e.Add(p.w); e.Add(p.d); e.Add((int)p.era); e.Add((int)p.roof);
+                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant);
+                float r = PieceRadius(p) + (p.kind == PieceKind.Fire ? 0.6f : 0f);
+                Into(h, p.x - r, p.z - r, p.x + r, p.z + r, e.h);
+            }
+            foreach (var f in layout.fields)
+            {
+                if (f.polygon == null || f.polygon.Length == 0) continue;
+                var e = Hash.New();
+                Vector2 min = f.polygon[0], max = f.polygon[0];
+                foreach (var q in f.polygon) { e.Add(q); min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
+                e.Add((int)f.crop); e.Add(f.rowYaw); e.Add(f.fence); e.Add(f.gateEdge); e.Add(f.seed);
+                Into(h, min.x - 0.1f, min.y - 0.1f, max.x + 0.1f, max.y + 0.1f, e.h);
+            }
+            foreach (var path in layout.paths)
+            {
+                if (path.points == null) continue;
+                for (int i = 0; i + 1 < path.points.Length; i++)
+                {
+                    Vector2 a = path.points[i], b = path.points[i + 1];
+                    var e = Hash.New(); e.Add(a); e.Add(b); e.Add((int)path.tier);
+                    Into(h, Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y), e.h);
+                }
+            }
+            foreach (var c in layout.clearings)
+            {
+                var e = Hash.New(); e.Add(c.centre); e.Add(c.radius); e.Add((int)c.kind);
+                float r = c.radius + 0.12f;
+                Into(h, c.centre.x - r, c.centre.y - r, c.centre.x + r, c.centre.y + r, e.h);
+            }
+            foreach (var t in layout.trees)
+            {
+                var e = Hash.New(); e.Add(t.pos); e.Add(t.scale); e.Add(t.pine);
+                float r = 0.2f * t.scale;
+                Into(h, t.pos.x - r, t.pos.y - r, t.pos.x + r, t.pos.y + r, e.h);
+            }
+            foreach (var cn in layout.canals)
+            {
+                if (cn == null || cn.Length == 0) continue;
+                var e = Hash.New();
+                Vector2 min = cn[0], max = cn[0];
+                foreach (var q in cn) { e.Add(q); min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
+                Into(h, min.x - 0.1f, min.y - 0.1f, max.x + 0.1f, max.y + 0.1f, e.h);
+            }
+        }
+
+        uint LandHash()
+        {
+            var e = Hash.New();
+            e.Add(land.mirror); e.Add(land.noiseOffset); e.Add(land.pond); e.Add(land.centre); e.Add(seed); e.Add(NX); e.Add(NZ);
+            return e.h;
+        }
+
+        // ---------------- distance fields (paths per tier, canals) ----------------
+        const float FieldRes = 0.025f, PathRange = 0.3f, CanalRange = 0.12f;
+        static readonly int FX = Mathf.CeilToInt(2f * Land.HX / FieldRes) + 1, FZ = Mathf.CeilToInt(2f * Land.HZ / FieldRes) + 1;
+        readonly float[][] pathField = new float[3][];
+        float[] canalField, shoreField;
+        const float ShoreRange = 0.45f;
+
+        /// <summary>Signed distance to the shoreline (negative in the pond), capped at ±<see cref="ShoreRange"/>, on the
+        /// field grid: the ground colour and the free-spot checks read it instead of walking the shore per triangle.</summary>
+        void ShoreField()
+        {
+            Fill(ref shoreField, ShoreRange);
+            for (int i = 0; i < shore.Length; i++) Stamp(shoreField, shore[i], shore[(i + 1) % shore.Length], ShoreRange);
+            Vector2 min = shore[0], max = shore[0];
+            foreach (var q in shore) { min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
+            for (int j = 0; j < FZ; j++)
+                for (int i = 0; i < FX; i++)
+                {
+                    var p = new Vector2(-Land.HX + i * FieldRes, -Land.HZ + j * FieldRes);
+                    if (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || !InPolygon(shore, p)) continue;
+                    shoreField[j * FX + i] = -shoreField[j * FX + i];
+                }
+        }
+
+        float ShoreSD(float x, float z) => Sample(shoreField, x, z, ShoreRange);
+
+        /// <summary>Stamps every path (by tier) and canal into distance grids, so painting the ground and finding free
+        /// spots don't walk every polyline for every triangle.</summary>
+        void PrepareFields()
+        {
+            for (int t = 0; t < 3; t++) Fill(ref pathField[t], PathRange);
+            Fill(ref canalField, CanalRange);
+            foreach (var path in layout.paths)
+            {
+                var pts = path.points;
+                if (pts == null || pts.Length == 0) continue;
+                var f = pathField[(int)path.tier];
+                if (pts.Length == 1) { Stamp(f, pts[0], pts[0], PathRange); continue; }
+                var last = pts[0];
+                for (int i = 1; i < pts.Length; i++)
+                {
+                    if (i < pts.Length - 1 && (pts[i] - last).sqrMagnitude < 0.05f * 0.05f) continue; // coarser for the field
+                    Stamp(f, last, pts[i], PathRange);
+                    last = pts[i];
+                }
+            }
+            foreach (var cn in layout.canals)
+            {
+                if (cn == null || cn.Length == 0) continue;
+                if (cn.Length == 1) Stamp(canalField, cn[0], cn[0], CanalRange);
+                for (int i = 0; i + 1 < cn.Length; i++) Stamp(canalField, cn[i], cn[i + 1], CanalRange);
+            }
+        }
+
+        static void Fill(ref float[] f, float v)
+        {
+            f ??= new float[FX * FZ];
+            for (int i = 0; i < f.Length; i++) f[i] = v;
+        }
+
+        static void Stamp(float[] f, Vector2 a, Vector2 b, float range)
+        {
+            int i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - range + Land.HX) / FieldRes));
+            int i1 = Mathf.Min(FX - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + range + Land.HX) / FieldRes));
+            int j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - range + Land.HZ) / FieldRes));
+            int j1 = Mathf.Min(FZ - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + range + Land.HZ) / FieldRes));
+            float abx = b.x - a.x, abz = b.y - a.y, len2 = abx * abx + abz * abz;
+            for (int j = j0; j <= j1; j++)
+            {
+                float pz = -Land.HZ + j * FieldRes;
+                for (int i = i0; i <= i1; i++)
+                {
+                    float px = -Land.HX + i * FieldRes;
+                    float t = len2 < 1e-10f ? 0f : Mathf.Clamp01(((px - a.x) * abx + (pz - a.y) * abz) / len2);
+                    float dx = px - (a.x + abx * t), dz = pz - (a.y + abz * t);
+                    float d = Mathf.Sqrt(dx * dx + dz * dz);
+                    int idx = j * FX + i;
+                    if (d < f[idx]) f[idx] = d;
+                }
+            }
+        }
+
+        static float Sample(float[] f, float x, float z, float far)
+        {
+            if (f == null) return far;
+            float fx = (x + Land.HX) / FieldRes, fz = (z + Land.HZ) / FieldRes;
+            int i = Mathf.FloorToInt(fx), j = Mathf.FloorToInt(fz);
+            if (i < 0 || j < 0 || i >= FX - 1 || j >= FZ - 1) return far;
+            float u = fx - i, v = fz - j;
+            int o = j * FX + i;
+            return (f[o] * (1 - u) + f[o + 1] * u) * (1 - v) + (f[o + FX] * (1 - u) + f[o + FX + 1] * u) * v;
+        }
+
+        float CanalDist(float x, float z) => Sample(canalField, x, z, CanalRange);
+
+        /// <summary>The terrain's height with canals carved in (the dug channels sit a little below the land).</summary>
+        public float GroundHeight(float x, float z)
+        {
+            float h = land.Height(x, z);
+            float d = CanalDist(x, z);
+            return d >= CanalRange ? h : h - 0.045f * (1f - Land.Smooth(0.035f, 0.085f, d));
         }
 
         // ---------------- queries ----------------
@@ -163,12 +547,13 @@ namespace AquariumCiv.View
             return InPolygon(shore, p) ? -d : d;
         }
 
-        static float PieceRadius(PieceData p) => p.kind switch
+        public static float PieceRadius(PieceData p) => p.kind switch
         {
             PieceKind.Lantern => 0.08f,
             PieceKind.Crates or PieceKind.Bench or PieceKind.LogSeat => 0.14f,
             PieceKind.Fire => 0.48f,
             PieceKind.Woodpile or PieceKind.DryingRack or PieceKind.Well => 0.2f,
+            PieceKind.Jetty => 0.5f * Mathf.Sqrt(p.w * p.w + p.d * p.d) + 0.3f,
             _ => 0.5f * Mathf.Sqrt(p.w * p.w + p.d * p.d),
         };
 
@@ -179,14 +564,23 @@ namespace AquariumCiv.View
             foreach (var t in layout.trees) taken.Add((t.pos, 0.2f * t.scale));
         }
 
-        bool Free(Vector2 p, float r)
+        static bool Grassy(ClearingKind k) => k == ClearingKind.Meadow || k == ClearingKind.Flowers;
+
+        bool Free(Vector2 p, float r, List<(Vector2 p, float r)> near)
         {
             if (!land.Inside(p, r + GlassMargin)) return false;
-            if (ShoreDistance(p) < 0.12f + r) return false;
-            foreach (var (q, qr) in taken) if (Vector2.Distance(p, q) < qr + r) return false;
-            foreach (var c in layout.clearings) if (Vector2.Distance(p, c.centre) < c.radius + r) return false;
-            foreach (var f in layout.fields) if (InPolygon(f.polygon, p) || DistToRing(f.polygon, p) < r + 0.06f) return false;
-            foreach (var path in layout.paths) if (DistToPolyline(path.points, p) < PathWidth(path.tier) + 0.05f + r) return false;
+            if (ShoreSD(p.x, p.y) < Mathf.Min(0.12f + r, ShoreRange * 0.999f)) return false;
+            foreach (var (q, qr) in near) if ((p - q).sqrMagnitude < (qr + r) * (qr + r)) return false;
+            foreach (var c in layout.clearings) if (!Grassy(c.kind) && Vector2.Distance(p, c.centre) < c.radius + r) return false;
+            foreach (var f in layout.fields)
+            {
+                var b = FieldBox(f);
+                if (p.x < b.xMin - r - 0.06f || p.x > b.xMax + r + 0.06f || p.y < b.yMin - r - 0.06f || p.y > b.yMax + r + 0.06f) continue;
+                if (InPolygon(f.polygon, p) || DistToRing(f.polygon, p) < r + 0.06f) return false;
+            }
+            for (int t = 0; t < 3; t++)
+                if (Sample(pathField[t], p.x, p.y, PathRange) < Mathf.Min(PathWidth((PathTier)t) + 0.05f + r, PathRange * 0.999f)) return false;
+            if (CanalDist(p.x, p.y) < Mathf.Min(0.1f + r, CanalRange * 0.999f)) return false;
             return true;
         }
 
@@ -203,13 +597,15 @@ namespace AquariumCiv.View
             return Color.Lerp(g, Palette.Moss, Land.Smooth(Land.G + 0.35f, Land.G + 0.7f, y) * 0.5f);
         }
 
-        /// <summary>The ground's colour at a point (pond bed, shore, fields, paths, clearings, grass) and how much it glows
-        /// (the warm pool round a fire).</summary>
+        static Color Meadow(float n) => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Sprout, 0.35f), Palette.GrassA, n * 0.5f);
+
+        /// <summary>The ground's colour at a point (pond bed, shore, clearings, fields, canals, paths, grass) and how much
+        /// it glows (the warm pool round a fire).</summary>
         public Color GroundColor(float x, float z, float y, out float glowAmount)
         {
             glowAmount = 0f;
             var p = new Vector2(x, z);
-            float sd = ShoreDistance(p);
+            float sd = ShoreSD(x, z);
             if (sd < 0f) return y < Land.WaterY - 0.06f ? Palette.PondBed : Color.Lerp(Palette.SandWet, Palette.PondBed, Mathf.Clamp01(-sd / 0.12f));
             if (sd < 0.05f) return Palette.Sand;
             float n = Land.Fbm(x * 1.4f, z * 1.4f + 5f);
@@ -218,44 +614,63 @@ namespace AquariumCiv.View
 
             foreach (var c in layout.clearings)
             {
+                float dx = x - c.centre.x, dz = z - c.centre.y, reach = c.radius + 0.2f;
+                if (dx * dx + dz * dz > reach * reach) continue;
                 float d = Vector2.Distance(p, c.centre), r = c.radius + 0.08f * (n - 0.5f);
                 if (d > r + 0.12f) continue;
-                if (d > r) { col = Color.Lerp(col, c.kind == ClearingKind.Green ? Palette.GrassC : Palette.Dirt, 0.35f); continue; }
+                if (d > r)
+                {
+                    if (c.kind == ClearingKind.Dirt || c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Dirt, 0.35f);
+                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.GrassC, 0.35f);
+                    continue;
+                }
                 col = c.kind switch
                 {
                     ClearingKind.Green => Color.Lerp(Palette.GrassC, Palette.GrassA, n),
                     ClearingKind.Cobble => Cobble(x, z, n),
+                    ClearingKind.Yard => Color.Lerp(col, Palette.Dirt, d < r * 0.7f ? 0.55f : 0.3f),
+                    ClearingKind.Meadow => Meadow(n),
+                    ClearingKind.Flowers => Color.Lerp(Meadow(n), Palette.Flowers[3], 0.15f),
                     _ => d < r * 0.72f ? Palette.Dirt : Color.Lerp(Palette.Dirt, Palette.GrassB, 0.45f),
                 };
-                painted = true;
+                painted = !Grassy(c.kind);
             }
             if (!painted)
                 foreach (var f in layout.fields)
                 {
-                    if (!InPolygon(f.polygon, p)) continue;
+                    var b = FieldBox(f);
+                    if (x < b.xMin || x > b.xMax || z < b.yMin || z > b.yMax || !InPolygon(f.polygon, p)) continue;
                     if (f.crop == CropKind.Gathering) { col = n < 0.5f ? Color.Lerp(Palette.Dirt, col, 0.55f) : col; break; }
+                    if (f.crop == CropKind.Pasture) { col = Color.Lerp(col, Palette.GrassC, 0.45f); painted = true; break; }
                     float a = f.rowYaw * Mathf.Deg2Rad;
                     float across = x * Mathf.Cos(a) - z * Mathf.Sin(a);
                     col = (Mathf.FloorToInt(across / 0.08f) & 1) == 0 ? Palette.FieldSoil : Palette.FieldSoilLight;
                     painted = true;
                     break;
                 }
+            float dc = CanalDist(x, z);
+            if (dc < 0.05f) { col = Color.Lerp(Palette.WaterDeep, Palette.Water, dc / 0.05f); painted = true; }
+            else if (dc < 0.075f) { col = Color.Lerp(col, Palette.Mud, 0.55f); painted = true; }
             float thrN = (n - 0.5f) * 0.03f;
-            foreach (var path in layout.paths)
+            bool onPath = false;
+            for (int t = 0; t < 3; t++)
             {
-                float d = DistToPolyline(path.points, p), w = PathWidth(path.tier) + thrN;
-                if (d < w)
-                    col = path.tier switch
-                    {
-                        PathTier.Trail => Color.Lerp(Grass(n, y), Palette.Dirt, 0.6f),
-                        PathTier.Road => Cobble(x, z, n),
-                        _ => Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f),
-                    };
-                else if (d < w + 0.035f && !painted) col = Color.Lerp(col, Palette.Dirt, 0.25f);
+                float d = Sample(pathField[t], x, z, PathRange), w = PathWidth((PathTier)t) + thrN;
+                if (d >= w) continue;
+                col = (PathTier)t switch
+                {
+                    PathTier.Trail => Color.Lerp(Grass(n, y), Palette.Dirt, 0.6f),
+                    PathTier.Road => Cobble(x, z, n),
+                    _ => Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f),
+                };
+                onPath = true;
             }
+            if (!onPath && !painted)
+                for (int t = 0; t < 3; t++)
+                    if (Sample(pathField[t], x, z, PathRange) < PathWidth((PathTier)t) + thrN + 0.035f) { col = Color.Lerp(col, Palette.Dirt, 0.25f); break; }
             foreach (var pc in layout.pieces)
             {
-                if (pc.kind != PieceKind.Fire) continue;
+                if (pc.kind != PieceKind.Fire || Mathf.Abs(pc.x - x) > 0.6f || Mathf.Abs(pc.z - z) > 0.6f) continue;
                 float d = Vector2.Distance(p, pc.Pos);
                 if (d > 0.6f) continue;
                 float k = 1f - d / 0.6f;
@@ -266,17 +681,36 @@ namespace AquariumCiv.View
             return col;
         }
 
-        void Terrain(MeshBuilder mb)
+        /// <summary>One quarter of the terrain grid (the grid is even, so the quarters meet on grid lines), in row bands
+        /// built in parallel (the ground colour only reads the layout and the fields) and appended in order.</summary>
+        void Terrain(MeshBuilder mb, int k)
         {
-            int nx = Mathf.Max(8, terrainX), nz = Mathf.Max(8, terrainZ);
+            int nz = NZ;
+            int j0 = (k & 2) != 0 ? nz / 2 : 0, j1 = (k & 2) != 0 ? nz : nz / 2;
+            const int Bands = 6;
+            var parts = new MeshBuilder[Bands];
+            System.Threading.Tasks.Parallel.For(0, Bands, b =>
+            {
+                var pb = new MeshBuilder(seed * 31 + k * 7 + b * 101);
+                TerrainRows(pb, k, j0 + (j1 - j0) * b / Bands, j0 + (j1 - j0) * (b + 1) / Bands);
+                parts[b] = pb;
+            });
+            foreach (var pb in parts) mb.Append(pb);
+        }
+
+        void TerrainRows(MeshBuilder mb, int k, int j0, int j1)
+        {
+            int nx = NX, nz = NZ;
             float HX = Land.HX, HZ = Land.HZ;
-            var h = new float[(nx + 1) * (nz + 1)];
-            for (int j = 0; j <= nz; j++)
-                for (int i = 0; i <= nx; i++)
-                    h[j * (nx + 1) + i] = land.Height(-HX + 2 * HX * i / nx, -HZ + 2 * HZ * j / nz);
-            Vector3 P(int i, int j) => new(-HX + 2 * HX * i / nx, h[j * (nx + 1) + i], -HZ + 2 * HZ * j / nz);
-            for (int i = 0; i < nx; i++)
-                for (int j = 0; j < nz; j++)
+            int i0 = (k & 1) != 0 ? nx / 2 : 0, i1 = (k & 1) != 0 ? nx : nx / 2;
+            int w = i1 - i0 + 1;
+            var h = new float[w * (j1 - j0 + 1)];
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++)
+                    h[(j - j0) * w + (i - i0)] = GroundHeight(-HX + 2 * HX * i / nx, -HZ + 2 * HZ * j / nz);
+            Vector3 P(int i, int j) => new(-HX + 2 * HX * i / nx, h[(j - j0) * w + (i - i0)], -HZ + 2 * HZ * j / nz);
+            for (int i = i0; i < i1; i++)
+                for (int j = j0; j < j1; j++)
                 {
                     Vector3 a = P(i, j), b = P(i, j + 1), c = P(i + 1, j + 1), d = P(i + 1, j);
                     if (((i + j) & 1) == 0) { GroundTri(mb, a, b, c); GroundTri(mb, a, c, d); }
@@ -431,127 +865,140 @@ namespace AquariumCiv.View
             };
         }
 
-        void PiecesMesh(MeshBuilder mb)
+        void PieceMesh(MeshBuilder mb, PieceData p)
         {
-            foreach (var p in layout.pieces)
-            {
-                // Each piece gets its own builder seeded by its seed, so its look doesn't change when others are added.
-                var lb = new MeshBuilder(p.seed * 7919 + (int)p.era * 31 + seed) { jitter = 0.035f };
-                float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
-                lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one);
-                Pieces.Draw(lb, p, LotGround(lb));
-                mb.Append(lb);
-            }
+            // Each piece gets its own builder seeded by its seed, so its look doesn't change when others are added.
+            var lb = new MeshBuilder(p.seed * 7919 + (int)p.era * 31 + seed) { jitter = 0.035f };
+            float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
+            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one);
+            Pieces.Draw(lb, p, LotGround(lb));
+            mb.Append(lb);
         }
 
-        void Fields(MeshBuilder mb)
+        void FieldMesh(MeshBuilder mb, FieldData f)
         {
-            foreach (var f in layout.fields)
+            var fb = new MeshBuilder(f.seed * 131 + seed);
+            Pieces.Ground ground = q => land.OnGround(q.x, q.z);
+            if (f.crop == CropKind.Wheat || f.crop == CropKind.Sprout)
             {
-                if (f.polygon == null || f.polygon.Length < 3) continue;
-                var fb = new MeshBuilder(f.seed * 131 + seed);
-                Pieces.Ground ground = q => land.OnGround(q.x, q.z);
-                if (f.crop == CropKind.Wheat || f.crop == CropKind.Sprout)
-                {
-                    var col = f.crop == CropKind.Wheat ? Palette.Wheat : Palette.Sprout;
-                    float a = f.rowYaw * Mathf.Deg2Rad;
-                    var across = new Vector2(Mathf.Cos(a), -Mathf.Sin(a)); var along = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
-                    Vector2 min = f.polygon[0], max = f.polygon[0];
-                    foreach (var q in f.polygon) { min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
-                    var c = (min + max) / 2f;
-                    float ext = (max - min).magnitude / 2f;
-                    for (float u = -ext; u <= ext; u += 0.08f)
-                        for (float v = -ext; v <= ext; v += 0.07f)
-                        {
-                            var q = c + across * (u + 0.04f) + along * v + new Vector2(fb.Range(-0.012f, 0.012f), fb.Range(-0.012f, 0.012f));
-                            if (!InPolygon(f.polygon, q) || DistToRing(f.polygon, q) < 0.05f) continue;
-                            Pieces.Crop(fb, land.OnGround(q), col);
-                        }
-                }
-                if (f.fence)
-                {
-                    int n = f.polygon.Length;
-                    for (int e = 0; e < n; e++)
+                var col = f.crop == CropKind.Wheat ? Palette.Wheat : Palette.Sprout;
+                float a = f.rowYaw * Mathf.Deg2Rad;
+                var across = new Vector2(Mathf.Cos(a), -Mathf.Sin(a)); var along = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
+                Vector2 min = f.polygon[0], max = f.polygon[0];
+                foreach (var q in f.polygon) { min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
+                var c = (min + max) / 2f;
+                float ext = (max - min).magnitude / 2f;
+                for (float u = -ext; u <= ext; u += 0.08f)
+                    for (float v = -ext; v <= ext; v += 0.07f)
                     {
-                        Vector3 A = new(f.polygon[e].x, 0, f.polygon[e].y), B = new(f.polygon[(e + 1) % n].x, 0, f.polygon[(e + 1) % n].y);
-                        if (e == f.gateEdge)
-                        {
-                            // Leave a gate in the middle of this edge.
-                            float len = Vector3.Distance(A, B), gap = Mathf.Min(0.24f, len * 0.5f) / len;
-                            Pieces.Fence(fb, ground, new[] { A, Vector3.Lerp(A, B, 0.5f - gap / 2f) });
-                            Pieces.Fence(fb, ground, new[] { Vector3.Lerp(A, B, 0.5f + gap / 2f), B });
-                        }
-                        else Pieces.Fence(fb, ground, new[] { A, B });
+                        var q = c + across * (u + 0.04f) + along * v + new Vector2(fb.Range(-0.012f, 0.012f), fb.Range(-0.012f, 0.012f));
+                        if (!InPolygon(f.polygon, q) || DistToRing(f.polygon, q) < 0.05f) continue;
+                        Pieces.Crop(fb, land.OnGround(q), col);
                     }
-                }
-                mb.Append(fb);
             }
+            if (f.fence)
+            {
+                int n = f.polygon.Length;
+                for (int e = 0; e < n; e++)
+                {
+                    Vector3 A = new(f.polygon[e].x, 0, f.polygon[e].y), B = new(f.polygon[(e + 1) % n].x, 0, f.polygon[(e + 1) % n].y);
+                    if (e == f.gateEdge)
+                    {
+                        // Leave a gate in the middle of this edge.
+                        float len = Vector3.Distance(A, B), gap = Mathf.Min(0.24f, len * 0.5f) / len;
+                        Pieces.Fence(fb, ground, new[] { A, Vector3.Lerp(A, B, 0.5f - gap / 2f) });
+                        Pieces.Fence(fb, ground, new[] { Vector3.Lerp(A, B, 0.5f + gap / 2f), B });
+                    }
+                    else Pieces.Fence(fb, ground, new[] { A, B });
+                }
+            }
+            mb.Append(fb);
         }
 
         // ---------------- nature ----------------
-        void Nature(MeshBuilder mb)
+        /// <summary>Reed spots along the shore: fixed by the seed and the land, so a chunk's reeds don't move when the
+        /// layout changes (a spot is skipped while something stands on it).</summary>
+        void ReedSpots()
         {
-            var nb = new MeshBuilder(seed * 3 + 1);
-            float HX = Land.HX, HZ = Land.HZ;
-            foreach (var t in layout.trees) Pieces.Tree(nb, land.OnGround(t.pos), t.scale, t.pine);
-            if (layout.reeds)
+            reedSpots.Clear();
+            var r = new System.Random(seed * 3 + 1);
+            float F(float a, float b) => a + (float)r.NextDouble() * (b - a);
+            for (int i = 0; i < 120 && reedSpots.Count < 34; i++)
             {
-                int count = 0;
-                for (int i = 0; i < 120 && count < 34; i++)
+                var s = shore[r.Next(0, shore.Length)];
+                var dir = (s - land.pond).normalized;
+                var at = s + dir * F(-0.03f, 0.1f) + new Vector2(F(-0.03f, 0.03f), F(-0.03f, 0.03f));
+                if (!land.Inside(at, GlassMargin)) continue;
+                reedSpots.Add((at, reedSpots.Count % 3 == 0));
+            }
+        }
+
+        void Nature(MeshBuilder mb, int k)
+        {
+            var nb = new MeshBuilder(seed * 3 + 1 + k * 7919);
+            var near = new List<(Vector2 p, float r)>(taken);
+            ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
+            bool In(Vector2 p) => ChunkOf(p) == k;
+            foreach (var t in layout.trees) if (In(t.pos)) Pieces.Tree(nb, land.OnGround(t.pos), t.scale, t.pine);
+            if (layout.reeds)
+                foreach (var (at, sprout) in reedSpots)
                 {
-                    var s = shore[nb.Range(0, shore.Length)];
-                    var dir = (s - land.pond).normalized;
-                    var at = s + dir * nb.Range(-0.03f, 0.1f) + new Vector2(nb.Range(-0.03f, 0.03f), nb.Range(-0.03f, 0.03f));
-                    if (!land.Inside(at, GlassMargin)) continue;
+                    if (!In(at)) continue;
                     bool clash = false;
                     foreach (var (q, qr) in taken) if (Vector2.Distance(at, q) < qr) { clash = true; break; }
-                    if (clash) continue;
-                    Pieces.Reed(nb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), count % 3 == 0 ? Palette.Sprout : Palette.LeafB);
-                    count++;
+                    if (clash || CanalDist(at.x, at.y) < 0.06f) continue;
+                    Pieces.Reed(nb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
                 }
-            }
             if (layout.autoNature)
             {
-                float k = Mathf.Max(0f, layout.natureDensity);
-                int trees = Mathf.RoundToInt(24 * k), placed = 0;
-                for (int tries = 0; tries < 1200 && placed < trees; tries++)
+                // A quarter of the whole box's counts per chunk, sampled inside the chunk.
+                float kd = Mathf.Max(0f, layout.natureDensity) / ChunkCount;
+                Vector2 Pick() => new(nb.Range(x0, x1), nb.Range(z0, z1));
+                if (layout.autoTrees)
                 {
-                    var p = new Vector2(nb.Range(-HX, HX), nb.Range(-HZ, HZ));
-                    float xm = land.mirror ? -p.x : p.x;
-                    float bias = Land.Smooth(-0.6f, 1.8f, p.y) * 0.6f + Land.Smooth(1.5f, -2.5f, xm) * 0.5f + 0.1f;
-                    if (nb.Range(0f, 1f) > bias) continue;
-                    if (!Free(p, 0.22f)) continue;
-                    Pieces.Tree(nb, land.OnGround(p), nb.Range(0.75f, 1.2f), nb.Range(0f, 1f) < 0.35f);
-                    taken.Add((p, 0.2f));
-                    placed++;
+                    int trees = Mathf.RoundToInt(24 * kd), placed = 0;
+                    for (int tries = 0; tries < 300 && placed < trees; tries++)
+                    {
+                        var p = Pick();
+                        float xm = land.mirror ? -p.x : p.x;
+                        float bias = Land.Smooth(-0.6f, 1.8f, p.y) * 0.6f + Land.Smooth(1.5f, -2.5f, xm) * 0.5f + 0.1f;
+                        if (nb.Range(0f, 1f) > bias) continue;
+                        if (!Free(p, 0.22f, near)) continue;
+                        Pieces.Tree(nb, land.OnGround(p), nb.Range(0.75f, 1.2f), nb.Range(0f, 1f) < 0.35f);
+                        near.Add((p, 0.2f));
+                        placed++;
+                    }
                 }
-                for (int i = 0, n = 0; i < 500 && n < Mathf.RoundToInt(16 * k); i++)
+                for (int i = 0, n = 0; i < 125 && n < Mathf.RoundToInt(16 * kd); i++)
                 {
-                    var p = new Vector2(nb.Range(-HX, HX), nb.Range(-HZ, HZ));
-                    if (!Free(p, 0.1f)) continue;
+                    var p = Pick();
+                    if (!Free(p, 0.1f, near)) continue;
                     Pieces.Bush(nb, land.OnGround(p), nb.Range(0.07f, 0.12f), n % 3 == 0);
-                    taken.Add((p, 0.1f));
+                    near.Add((p, 0.1f));
                     n++;
                 }
-                for (int i = 0, n = 0; i < 400 && n < Mathf.RoundToInt(14 * k); i++)
+                for (int i = 0, n = 0; i < 100 && n < Mathf.RoundToInt(14 * kd); i++)
                 {
-                    var p = new Vector2(nb.Range(-HX, HX), nb.Range(-HZ, HZ));
-                    if (!Free(p, 0.08f)) continue;
+                    var p = Pick();
+                    if (!Free(p, 0.08f, near)) continue;
                     float r = nb.Range(0.05f, 0.14f);
                     Pieces.Rock(nb, land.OnGround(p), r, n % 3 == 0);
-                    taken.Add((p, r));
+                    near.Add((p, r));
                     n++;
                 }
-                int tufts = Mathf.RoundToInt(340 * k);
+                int tufts = Mathf.RoundToInt(340 * kd);
                 for (int i = 0, n = 0; i < tufts * 4 && n < tufts; i++)
                 {
-                    var p = new Vector2(nb.Range(-HX, HX), nb.Range(-HZ, HZ));
-                    if (!Free(p, 0.02f)) continue;
+                    var p = Pick();
+                    if (!Free(p, 0.02f, near)) continue;
                     var g = land.OnGround(p);
                     float h = nb.Range(0.05f, 0.1f);
                     var col = nb.Range(0, 3) switch { 0 => Palette.GrassC, 1 => Palette.LeafC, _ => Palette.GrassA };
                     Pieces.GrassTuft(nb, g, h, col);
-                    if (n % 5 == 0) nb.Ico(g + Vector3.up * h * 0.8f, 0.014f, Vector3.one, Palette.Flowers[nb.Range(0, Palette.Flowers.Length)], 0.1f);
+                    bool flowers = false;
+                    foreach (var c in layout.clearings)
+                        if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
+                    if (flowers || n % 5 == 0) nb.Ico(g + Vector3.up * h * 0.8f, flowers ? 0.018f : 0.014f, Vector3.one, Palette.Flowers[nb.Range(0, Palette.Flowers.Length)], 0.1f);
                     n++;
                 }
             }
@@ -576,9 +1023,10 @@ namespace AquariumCiv.View
 
         // ---------------- glows ----------------
         /// <summary>Soft additive glows: a big breathing one over every fire, a small one on every lantern that follows
-        /// the night level. One mesh, one draw.</summary>
+        /// the night level. One mesh, one draw; rebuilt on every refresh (it is tiny).</summary>
         void Glows()
         {
+            if (glowGo != null) { Kill(glowGo.GetComponent<MeshFilter>().sharedMesh); Kill(glowGo); glowGo = null; }
             var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var tris = new List<int>();
             void Add(Vector3 c, float radius, float kind, Color col)
             {
@@ -599,24 +1047,53 @@ namespace AquariumCiv.View
             var m = new Mesh { name = "Glows" };
             m.SetVertices(verts); m.SetColors(cols); m.SetUVs(0, corner); m.SetUVs(1, data); m.SetTriangles(tris, 0);
             m.bounds = new Bounds(new Vector3(0, 1.5f, 0), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
-            var mat = glow != null ? glow : new Material(Shader.Find("AquariumCiv/View/Glow")) { hideFlags = HideFlags.DontSave };
-            var go = Spawn("Glows", m, mat, false);
-            go.GetComponent<MeshRenderer>().receiveShadows = false;
+            var mat = glow != null ? glow : glowMat != null ? glowMat : glowMat = new Material(Shader.Find("AquariumCiv/View/Glow")) { hideFlags = HideFlags.DontSave };
+            glowGo = Spawn("Glows", m, mat, false);
+            glowGo.GetComponent<MeshRenderer>().receiveShadows = false;
         }
 
         // ---------------- people ----------------
-        void People()
+        static uint LookSig(VillagerData v)
         {
-            var parent = new GameObject("People") { hideFlags = HideFlags.DontSave }.transform;
-            parent.SetParent(root, false);
+            var e = Hash.New(); e.Add(v.seed); e.Add((int)v.era == (int)Era.Camp); e.Add(v.kid); e.Add(v.accent);
+            return e.h;
+        }
+
+        /// <summary>Keeps the people in step with the layout: a doll whose look is unchanged is moved (and its prop
+        /// swapped), a new one is made, a gone one removed. Returns how many were made.</summary>
+        int SyncPeople()
+        {
+            if (peopleRoot == null)
+            {
+                peopleRoot = new GameObject("People") { hideFlags = HideFlags.DontSave }.transform;
+                peopleRoot.SetParent(root, false);
+            }
+            var seen = new HashSet<int>();
+            dolls.Clear();
+            int made = 0;
             foreach (var v in layout.villagers)
             {
-                var look = PegDoll.PickLook(v.seed, v.era == Era.Camp, v.kid, v.accent);
-                var doll = PegDollView.Create(parent, Solid, look, v.kid, v.seed);
+                int key = v.seed;
+                while (!seen.Add(key)) key += 1 << 24;
+                uint sig = LookSig(v);
+                PegDollView doll;
+                if (dollByKey.TryGetValue(key, out var have) && have.doll != null && have.sig == sig) doll = have.doll;
+                else
+                {
+                    if (have.doll != null) Kill(have.doll.gameObject);
+                    var look = PegDoll.PickLook(v.seed, v.era == Era.Camp, v.kid, v.accent);
+                    doll = PegDollView.Create(peopleRoot, Solid, look, v.kid, v.seed);
+                    dollByKey[key] = (doll, sig);
+                    made++;
+                }
                 doll.transform.SetLocalPositionAndRotation(land.OnGround(v.pos), Quaternion.Euler(0, v.yaw, 0));
-                if (v.prop != PropKind.None) doll.SetProp(v.prop, v.slot);
+                if (doll.propKind != v.prop || doll.propSlot != v.slot || (v.prop != PropKind.None && doll.prop == null)) doll.SetProp(v.prop, v.slot);
                 dolls.Add(doll);
             }
+            var gone = new List<int>();
+            foreach (var kv in dollByKey) if (!seen.Contains(kv.Key)) gone.Add(kv.Key);
+            foreach (int key in gone) { if (dollByKey[key].doll != null) Kill(dollByKey[key].doll.gameObject); dollByKey.Remove(key); }
+            return made;
         }
 
         // ---------------- glass ----------------
@@ -666,45 +1143,176 @@ namespace AquariumCiv.View
         void LateUpdate() => SortPanes();
 
         // ---------------- ambient occlusion ----------------
-        void BakeAO(Mesh mesh, MeshBuilder mb)
+        /// <summary>The last AO bake's breakdown (keys, timings), for profiling.</summary>
+        [System.NonSerialized] public string aoStats;
+
+        /// <summary>Builds every ray of every sample point (worker threads; plain jobs, no Burst needed).</summary>
+        struct AoCommands : IJobParallelFor
         {
-            var go = new GameObject("AO collider") { hideFlags = HideFlags.HideAndDontSave };
-            go.transform.SetParent(transform, false);
-            var col = go.AddComponent<MeshCollider>();
-            col.sharedMesh = mesh;
-            Physics.SyncTransforms();
-            var dirs = new Vector3[aoRays];
-            var r = new System.Random(5);
-            for (int i = 0; i < aoRays; i++)
+            [ReadOnly] public NativeArray<Vector3> origins, normals, dirs;
+            public PhysicsScene scene;
+            public QueryParameters query;
+            public Matrix4x4 toWorld;
+            public float distance;
+            public int rays;
+            [NativeDisableParallelForRestriction] public NativeArray<RaycastCommand> commands;
+
+            public void Execute(int k)
             {
-                float u = (i + 0.5f) / aoRays, v = (float)r.NextDouble();
+                var n = toWorld.MultiplyVector(normals[k]).normalized;
+                var o = toWorld.MultiplyPoint3x4(origins[k]) + n * 0.004f;
+                var f = Quaternion.FromToRotation(Vector3.forward, n);
+                for (int d = 0; d < rays; d++) commands[k * rays + d] = new RaycastCommand(scene, o, f * dirs[d], query, distance);
+            }
+        }
+
+        /// <summary>Turns each sample point's hits into its AO (a miss leaves a zero normal).</summary>
+        struct AoSum : IJobParallelFor
+        {
+            [ReadOnly] public NativeArray<RaycastHit> hits;
+            public NativeArray<float> ao;
+            public float distance;
+            public int rays;
+
+            public void Execute(int k)
+            {
+                float occ = 0f;
+                for (int d = 0; d < rays; d++)
+                {
+                    var h = hits[k * rays + d];
+                    if (h.normal.sqrMagnitude > 0.5f) occ += 1f - h.distance / distance * 0.6f;
+                }
+                ao[k] = 1f - 0.85f * occ / rays;
+            }
+        }
+
+        static long PackKey(Vector3 p, Vector3 n, bool withNormal)
+        {
+            long x = Mathf.RoundToInt(p.x * 500f) & 0xFFFF, y = Mathf.RoundToInt(p.y * 500f) & 0xFFFF, z = Mathf.RoundToInt(p.z * 500f) & 0xFFFF;
+            long k = x | (y << 16) | (z << 32);
+            if (withNormal) k |= ((long)(Mathf.RoundToInt(n.x * 7f) + 8) << 48) | ((long)(Mathf.RoundToInt(n.y * 7f) + 8) << 53) | ((long)(Mathf.RoundToInt(n.z * 7f) + 8) << 58);
+            return k;
+        }
+
+        /// <summary>
+        /// Bakes AO into vertex alpha with batched raycasts against the AO colliders of the base and all four chunks: the
+        /// rays are built, cast (RaycastCommand) and summed on worker threads. Terrain vertices (the first
+        /// <paramref name="terrainVerts"/>) are sampled once per grid point; big faces per corner (contact shadows on
+        /// walls); small faces and swaying foliage (grass, leaves, crops) once per face.
+        /// </summary>
+        sealed class AoWork
+        {
+            public int nv, nk;
+            public int[] keyOf;
+            public Mesh mesh;
+            public Color[] colors;
+            public NativeArray<Vector3> origins, normals, dirs;
+            public NativeArray<RaycastCommand> cmds;
+            public NativeArray<RaycastHit> hits;
+            public NativeArray<float> ao;
+            public JobHandle handle;
+
+            public void Dispose()
+            {
+                handle.Complete();
+                if (origins.IsCreated) origins.Dispose();
+                if (normals.IsCreated) normals.Dispose();
+                if (dirs.IsCreated) dirs.Dispose();
+                if (cmds.IsCreated) cmds.Dispose();
+                if (hits.IsCreated) hits.Dispose();
+                if (ao.IsCreated) ao.Dispose();
+            }
+        }
+
+        void BakeAO(MeshBuilder mb, int terrainVerts, Mesh mesh) => BakeAO(new List<(MeshBuilder, int, Mesh)> { (mb, terrainVerts, mesh) });
+
+        /// <summary>Bakes several meshes: the rays of each start as soon as its sample points are keyed, so keying the
+        /// next mesh overlaps the raycasts of the one before.</summary>
+        void BakeAO(List<(MeshBuilder mb, int terrainVerts, Mesh mesh)> items)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var works = new List<AoWork>();
+            int keys = 0;
+            try
+            {
+                foreach (var (mb, tv, mesh) in items)
+                {
+                    var w = AoBegin(mb, tv, mesh);
+                    if (w == null) continue;
+                    works.Add(w);
+                    keys += w.nk;
+                    JobHandle.ScheduleBatchedJobs();
+                }
+                double keyMs = sw.Elapsed.TotalMilliseconds;
+                foreach (var w in works)
+                {
+                    w.handle.Complete();
+                    for (int i = 0; i < w.nv; i++) w.colors[i].a = w.ao[w.keyOf[i]];
+                    w.mesh.SetColors(w.colors);
+                }
+                aoStats = $"{works.Count} mesh(es), {keys} keys: keyed {keyMs:0.0} ms, total {sw.Elapsed.TotalMilliseconds:0.0} ms";
+            }
+            finally { foreach (var w in works) w.Dispose(); }
+        }
+
+        AoWork AoBegin(MeshBuilder mb, int terrainVerts, Mesh mesh)
+        {
+            int nv = mb.verts.Count;
+            if (nv == 0) return null;
+            var verts = mb.verts.ToArray();
+            var norms = mb.normals.ToArray();
+            var uvs = mb.uvs.ToArray();
+            var w = new AoWork { nv = nv, mesh = mesh, keyOf = new int[nv], colors = mb.colors.ToArray() };
+            var keyOf = w.keyOf;
+            var origins = w.origins = new NativeArray<Vector3>(nv, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            var normals = w.normals = new NativeArray<Vector3>(nv, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            int nk = 0;
+            var byKey = new Dictionary<long, int>(nv / 2);
+            for (int i = 0; i < terrainVerts; i++)
+            {
+                long key = PackKey(verts[i], default, false);
+                if (!byKey.TryGetValue(key, out int id)) { id = nk++; byKey[key] = id; origins[id] = verts[i]; normals[id] = norms[i]; }
+                keyOf[i] = id;
+            }
+            for (int i = terrainVerts; i + 2 < nv; i += 3)
+            {
+                Vector3 a = verts[i], b = verts[i + 1], c = verts[i + 2], n = norms[i];
+                float area = Vector3.Cross(b - a, c - a).sqrMagnitude; // (2 x area) squared
+                if (area < 0.000025f || uvs[i].x > 0.5f) // small faces and swaying foliage: once per face
+                {
+                    origins[nk] = (a + b + c) * (1f / 3f); normals[nk] = n;
+                    keyOf[i] = keyOf[i + 1] = keyOf[i + 2] = nk++;
+                    continue;
+                }
+                for (int q = 0; q < 3; q++)
+                {
+                    long key = PackKey(verts[i + q], n, true);
+                    if (!byKey.TryGetValue(key, out int id)) { id = nk++; byKey[key] = id; origins[id] = verts[i + q]; normals[id] = n; }
+                    keyOf[i + q] = id;
+                }
+            }
+            w.nk = nk;
+            int nr = aoRays;
+            var dirs = w.dirs = new NativeArray<Vector3>(nr, Allocator.TempJob);
+            var r = new System.Random(5);
+            for (int i = 0; i < nr; i++)
+            {
+                float u = (i + 0.5f) / nr, v = (float)r.NextDouble();
                 float rad = Mathf.Sqrt(u), phi = v * Mathf.PI * 2f + i * 2.4f;
                 dirs[i] = new Vector3(rad * Mathf.Cos(phi), rad * Mathf.Sin(phi), Mathf.Sqrt(1 - u));
             }
-            var cache = new Dictionary<(Vector3Int, Vector3Int), float>();
-            var colors = mb.colors;
-            var scene = gameObject.scene.GetPhysicsScene();
-            for (int i = 0; i < mb.verts.Count; i++)
+            w.cmds = new NativeArray<RaycastCommand>(nk * nr, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            w.hits = new NativeArray<RaycastHit>(nk * nr, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            w.ao = new NativeArray<float>(nk, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+            var build = new AoCommands
             {
-                var n = mb.normals[i];
-                var p = transform.TransformPoint(mb.verts[i]);
-                var key = (Vector3Int.RoundToInt(p * 500f), Vector3Int.RoundToInt(n * 50f));
-                if (!cache.TryGetValue(key, out float ao))
-                {
-                    var wn = transform.TransformDirection(n);
-                    var rot = Quaternion.FromToRotation(Vector3.forward, wn);
-                    float occ = 0f;
-                    var origin = p + wn * 0.004f;
-                    for (int k = 0; k < aoRays; k++)
-                        if (scene.Raycast(origin, rot * dirs[k], out var hit, aoDistance))
-                            occ += 1f - hit.distance / aoDistance * 0.6f;
-                    ao = 1f - 0.85f * occ / aoRays;
-                    cache[key] = ao;
-                }
-                var c = colors[i]; c.a = ao; colors[i] = c;
-            }
-            mesh.SetColors(colors);
-            if (Application.isPlaying) Destroy(go); else DestroyImmediate(go);
+                origins = origins, normals = normals, dirs = dirs, scene = gameObject.scene.GetPhysicsScene(),
+                query = new QueryParameters(1 << AoLayer, false, QueryTriggerInteraction.Ignore, false),
+                toWorld = transform.localToWorldMatrix, distance = aoDistance, rays = nr, commands = w.cmds,
+            }.Schedule(nk, 64);
+            var cast = RaycastCommand.ScheduleBatch(w.cmds, w.hits, 128, 1, build);
+            w.handle = new AoSum { hits = w.hits, ao = w.ao, distance = aoDistance, rays = nr }.Schedule(nk, 64, cast);
+            return w;
         }
     }
 }

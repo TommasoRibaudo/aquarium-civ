@@ -6,17 +6,22 @@ using UnityEngine;
 namespace AquariumCiv.View
 {
     /// <summary>What a placed piece is. The view dresses each kind per era (a camp's Home is a tent, a village's a hut or
-    /// a house, a town's a jettied house). Kinds are looks, not sim roles: the sim-to-view mapping lives in #33.</summary>
+    /// a house, a town's a jettied house). Kinds are looks, not sim roles: the sim-to-view mapping is <see cref="SimLayout"/>.</summary>
     public enum PieceKind
     {
         Home, Fire, Well, Woodpile, DryingRack, LeanTo, Bench, Lantern, Granary, Crates, LogSeat, Stall,
         Windmill, Lumbermill, Market, Tavern, Church, StandingStones, Watermill, Smithy, Dyer,
+        // #33: the rest of the sim's lot kinds and the Keeper's shapings (town ones stay placeholders until M6).
+        Shop, Workshop, Guildhall, Barn, Gathering, Orchard, Herd, Jetty, Quarry, Kiln, Outcrop,
     }
 
     public enum RoofStyle { Auto, Thatch, Terracotta, Slate }
     public enum PathTier { Trail, Path, Road }
-    public enum CropKind { Wheat, Sprout, Fallow, Gathering }
-    public enum ClearingKind { Dirt, Green, Cobble }
+    public enum CropKind { Wheat, Sprout, Fallow, Gathering, Pasture }
+    /// <summary>Dirt: the camp's trodden circle. Green, Cobble: the village green, the town square. Yard: a family's
+    /// shared yard (trodden grass). Meadow: commons kept open. Flowers: a dye meadow in bloom. Meadow and Flowers leave
+    /// room for grass and flowers.</summary>
+    public enum ClearingKind { Dirt, Green, Cobble, Yard, Meadow, Flowers }
 
     /// <summary>
     /// A piece on a lot: centre (x, z) on the ground, yaw in degrees (local -z = the front, the door side, faces the
@@ -34,6 +39,8 @@ namespace AquariumCiv.View
         public int storeys;
         public bool chimney;
         public int seed;
+        /// <summary>A per-kind look switch (barn or shed; an outcrop's deposit: 0 stone, 1 clay, 2 ore; a timber yard).</summary>
+        public int variant;
 
         public Vector2 Pos => new(x, z);
     }
@@ -93,8 +100,8 @@ namespace AquariumCiv.View
     }
 
     /// <summary>
-    /// Everything the view draws inside the box, as plain data. The sim side (#33) fills it from SimState; until then a
-    /// temporary demo layout does (Demo/TemporaryDemoLayout.cs). <see cref="BoxView.Rebuild"/> turns it into meshes.
+    /// Everything the view draws inside the box, as plain data. <see cref="SimLayout"/> fills it from the live sim (#33);
+    /// the demo layout (Demo/TemporaryDemoLayout.cs) is kept for tests. <see cref="BoxView.Rebuild"/> turns it into meshes.
     /// </summary>
     [Serializable]
     public class BoxLayout
@@ -105,14 +112,19 @@ namespace AquariumCiv.View
         public List<ClearingData> clearings = new();
         public List<TreeData> trees = new();
         public List<VillagerData> villagers = new();
+        /// <summary>Dug channels: short polylines (cell centre to cell centre) carved into the ground as water strips.</summary>
+        public List<Vector2[]> canals = new();
         /// <summary>Scatter trees, bushes, rocks, grass and flowers into the free ground (away from pieces, fields, paths).</summary>
         public bool autoNature = true;
+        /// <summary>With <see cref="autoNature"/>: also scatter trees. Off when the sim's forest gives the trees.</summary>
+        public bool autoTrees = true;
         public float natureDensity = 1f;
         public bool reeds = true;
 
         public void Clear()
         {
-            pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); villagers.Clear();
+            pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); villagers.Clear(); canals.Clear();
+            autoNature = true; autoTrees = true;
         }
 
         // Builders, so callers can write layout.House(...).Fire(...) without object initialisers.
