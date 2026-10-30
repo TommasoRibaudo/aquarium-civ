@@ -42,6 +42,7 @@ namespace AquariumCiv.GameUI.PlayTests
         {
             LogAssert.ignoreFailingMessages = true; // fixture noise ("Cached unprocessed value..."), see tooling.md
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             soundWas = GameSettings.Sound;
             hud = GameHud.Create();

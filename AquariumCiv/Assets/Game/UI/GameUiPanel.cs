@@ -70,5 +70,31 @@ namespace AquariumCiv.GameUI
 
         public static Vector2 ScreenCenter(VisualElement root, string name) =>
             ScreenCenter(root.Q(name) ?? throw new System.ArgumentException($"No element named '{name}'"));
+
+        /// <summary>
+        /// Play tests and agents in the Editor: on Windows and macOS UI Toolkit drops every pointer event while the app isn't
+        /// focused (DefaultEventSystem.ShouldIgnoreEventsOnAppNotFocused), so a test's touches miss every button whenever the
+        /// Editor sits behind another window, and "a tap on Watch / Finish / Clean" fails at random. On: the panels take
+        /// input unfocused, as they do with Unity Remote connected (the same internal switch). Editor only; play mode's
+        /// domain reload resets it.
+        /// </summary>
+        public static void AcceptInputUnfocused(bool on)
+        {
+#if UNITY_EDITOR
+            var t = typeof(PanelSettings).Assembly.GetType("UnityEngine.UIElements.DefaultEventSystem");
+            var f = t?.GetField("IsEditorRemoteConnected", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (f == null || f.FieldType != typeof(System.Func<bool>))
+            {
+                if (on) Debug.LogWarning("[GameUiPanel] UI Toolkit's focus switch moved: taps from tests need the Editor focused");
+                return;
+            }
+            if (on && remoteWas == null) { remoteWas = (System.Func<bool>)f.GetValue(null); f.SetValue(null, (System.Func<bool>)(() => true)); }
+            else if (!on && remoteWas != null) { f.SetValue(null, remoteWas); remoteWas = null; }
+#endif
+        }
+
+#if UNITY_EDITOR
+        static System.Func<bool> remoteWas;
+#endif
     }
 }

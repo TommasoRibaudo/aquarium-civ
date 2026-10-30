@@ -502,3 +502,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `GameClock.DebugNextSeed = <seed>` before loading the Slice makes the next new world use that seed once (reset it in the
   test's Close); ShapingPlay pins 1234. Don't move the view clock back mid-test with `PeopleView.SetHourGently`: dolls glide
   up to 0.26 u in a frame and trip the doll-jump audit. MomentPlay/BoxComplete passed every run here.
+- **2026-10-30 · Play tests' taps on UI buttons fail at random when the Editor isn't the foreground window.** [verified]
+  "a tap on Watch starts the moment", "a tap on Finish", "the Clean button switches clean mode on", CameraMode's pill:
+  all passed with Unity in front and failed while another app (a browser) was in front. UI Toolkit's
+  `DefaultEventSystem` drops pointer events on Windows/macOS while `!Application.isFocused` unless
+  `DefaultEventSystem.IsEditorRemoteConnected()` says Unity Remote is attached (read from its IL by reflection in
+  `script eval`). The Input System side was already handled (`backgroundBehavior = IgnoreFocus`). Fix: every game play
+  test calls `GameUiPanel.AcceptInputUnfocused(true)` in its Open (sets that internal `Func<bool>` to true, Editor only;
+  play mode's domain reload resets it). Also: an edit made from a script was not picked up by `unity recompile` once
+  (the dll in `Library/ScriptAssemblies` kept the old test); check with `script eval` reflection on the type and
+  `ImportAsset(path, ForceUpdate)` + recompile when it's stale.
