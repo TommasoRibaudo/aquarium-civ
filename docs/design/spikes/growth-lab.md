@@ -4,6 +4,10 @@
 do scored frontage placement and wear-grown paths look like a real village growing, at our scale, and do the
 Keeper's shapings read as answered?
 
+> **Round 2 (issue #44):** the user picked random scatter over these rows in 3 of 3 blind sets, so a third variant,
+> a **cluster village** (family clusters round shared yards, curved worn lanes, commons), was added and the blind
+> test redone with three clips per set. See [Round 2](#round-2-2026-10-29-issue-44-branch-vs44-growth-cluster-the-cluster-village) at the end.
+
 Seed 1 = SimCore seed 7 on the style kit's own terrain; seed 2 = seed 11 on the mirrored terrain; seed 3 = seed 1
 with the pond at the back.
 
@@ -221,3 +225,118 @@ overlay before changing the method (§5 rule); 2 more viewers still to come.
   anywhere); the scripted Keeper and the criterion-2 runs use open ground. A forced era starts the following year.
 - The hex control shrinks lots to fit a slot and doesn't check overlaps (that is today's behaviour).
 - Tuning stopped once the measurable criteria passed; the weights were tuned on the three time-lapse seeds only.
+
+## Round 2 (2026-10-29, issue #44, branch vs/44-growth-cluster): the cluster village
+
+**Why.** In the user's blind test the random-scatter control beat round 1's scored placement in 3 of 3 sets: *"the
+non random do not have a lot of straight lines (since the map is very small, you end up with a couple of rows only and
+it looks a bit wonky. i guess it looks overall unreal."* With about 30 buildings in a tabletop box, frontage rows give
+two stiff, half-planned rows. Real hamlets of this size are cluster villages (Haufendorf). Round 2 adds that as a
+third variant. **Organic (rows) and Random are unchanged**: their 120-year fingerprints are bit-identical to round 1's
+code on `origin/vs/slice`.
+
+![Seed 1, year 110: Organic, Cluster, Random](img/growth-lab-2/seed1-y110-organic-cluster-random.jpg)
+![Seed 2, year 110: Organic, Cluster, Random](img/growth-lab-2/seed2-y110-organic-cluster-random.jpg)
+![Seed 3, year 110: Organic, Cluster, Random](img/growth-lab-2/seed3-y110-organic-cluster-random.jpg)
+
+### R2.1 What changed
+
+| Part | Where | What |
+|---|---|---|
+| `Variant.Cluster` | `Logic/ClusterPlacer.cs` (new) | Huts and cottages live in **family clusters round a shared yard**. A new home either joins a family whose yard has room (candidates all round the yard's edge), or founds a new yard on rings round the green. A family builds 2 (40 %), 3 (45 %) or 4 (15 %) homes; in the Town era a cottage may add one more. |
+| No lining up | same | **Yaw** comes from one of four rules, each with **±20° hashed jitter**: face the yard (preferred), face the low sun (the lab light, yaw −35°), face the green, or face downhill (only where the slope is over 0.12, so the long side follows the **contour**). **Sizes** vary (× 0.8–1.08 of the lot range, depth a little less), **setbacks** from the yard vary (0.02–0.09 u). Round 1's house rows are off for this variant (`Placer.homeRows = false`). |
+| Keep gaps | same | A home keeps **0.26 u** from another family's buildings and 0.14 u from other lots; the yard itself is never built on; the land round a yard (yard radius + 0.3 u) waits for the family until it is full or 8 years pass without a new home. **Three commons** (radius 0.24–0.32 u, one near the village, two further out) are never built on; a Keeper's shaping opens commons within 0.7 u of it so the answer can land there. |
+| Everything else | inner `Placer` | Fields stay at the edge, mills, workshops, market, tavern, church and shops keep round 1's siting rules (strip-field rows stay). When nothing fits, a **fine infill** (every free cell × 4 yaws, pruned by a clear-radius field) replaces round 1's coarse scan as the last resort. |
+| Paths | unchanged wear model | Paths are **not laid between clusters**: each new home gets its short connection, and the paths between clusters wear in from walking as in round 1. |
+| Curves | `Logic/PathCurves.cs` (new) | The tier grid is thinned to a one-cell skeleton (Zhang–Suen), traced into chains between junctions and dead ends, simplified (Douglas–Peucker, 0.06 u), corners cut twice (Chaikin), drawn through a centripetal **Catmull–Rom** spline, resampled every 0.03 u and relaxed six times. |
+| Look (Cluster only) | `View/GrowthBox.cs`, `View/GrowthArt.cs` | Paths as ribbons draped on the ground (trail / path / cobbled road widths 0.08 / 0.12 / 0.17 u, soft verge, round caps; bridges as before). Each yard is trodden earth with a **barn, byre or open shed** across from the houses and a woodpile or crates at its edge. **Between clusters**: hedges, fruit trees, kitchen gardens and woodpiles, only on open ground. The commons are a flowering meadow with an old orchard. |
+| Speed (all variants) | `Logic/PathNet.cs` | `Relax` takes a no-bounds-check path for interior cells, in the same order: results bit-identical, round 1's catch-up went from 234 to 199 ms. |
+| Debug | `GrowthWorld.unplacedLog`, `.failed` | Which builds found no lot, with every candidate and its reject reason. The Cluster variant is in the `GrowthBox` inspector's `variant` drop-down; all cheats (rain, grove, channel, skip, era) work on it. |
+
+### R2.2 The numbers (Editor, Mono; `[GrowthLab]` log lines of `AquariumCiv.Spikes.Growth.Tests`, 18/18 green)
+
+| # | Check | Pass bar | Cluster | Organic (round 1, for reference) |
+|---|---|---|---|---|
+| 2 | Nudge answer within 1.0 u, 30 runs per kind | ≥ 80 % | rain **28/30 (93 %)**, mean 0.31 u; grove **25/30 (83 %)**, mean 0.65 u; channel **26/30 (87 %)**, mean 0.66 u | 97 / 97 / 87 % |
+| 3 | Live = catch-up (576 months: one by one, `Advance(48 h)`, odd frames) | identical | identical fingerprints and families | identical |
+| 4 | Sanity, 3 seeds × 120 years | 0 overlaps / cut off / in margin, ≥ 35 buildings | 0 / 0 / 0; **35, 36, 35 buildings**; commons and yards never built on; lots and yards never move | 38, 37, 37 |
+| 5 | Emergent path; main street | a path ≥ 5 cells no step laid; roads > 0 | largest emergent run **16 / 13 / 6 cells**; roads 75 / 92 / 98 cells | 9 / 8 / 26; 71 / 84 / 79 |
+| 6 | Cost | < 1 ms/month; catch-up < 300 ms | 0.121 + 0.189 = **0.31 ms/month**; catch-up **264 ms** | 0.20 ms; 199 ms |
+| — | No rows: neighbouring homes parallel (yaw within 5°) / fronts in line | Cluster < 0.6 × Organic; in line ≤ 5 % | **14 / 30 / 23 %** parallel, **4 / 3 / 0 %** in line | 70 / 55 / 44 %; 18 / 18 / 22 % (Random 0 / 22 / 29 %; 0 %) |
+| — | Curves | cover the path cells; no kinks | cover 141/141 path cells within 0.15 u; sharpest bend 21° between samples | — |
+
+`AquariumCiv.Sim.Tests` 85/85 and `AquariumCiv.Prototypes.Shared.Tests` 47/47 still pass.
+
+**Margins are thin, say so plainly:** building count 35 on two seeds (bar 35), grove 25/30 (bar 24), catch-up 264 ms
+(bar 300; it moved between 259 and 289 ms across runs). The cluster village uses more land per home (yards, gaps,
+commons), so 1–5 of the Town era's late builds find no lot (Organic: 1–2). Mono and the CoreCLR harness give
+slightly different layouts (37/36/37 buildings there), as round 1 found. Wear costs more than in round 1 (0.19 vs
+0.13 ms/month) because families sit further from the green and the flow fields run longer before every door settles.
+
+Families: 10/16, 5/17 and 8/15 of the huts and cottages end in a family of 2 or more. SimCore builds only 7–9 huts
+in 120 years, and most of the Town-era cottages find no room by a yard, so many families stay at 2; the barns and
+sheds make each one read as a farmstead of 3–4 buildings.
+
+### R2.3 The weights that changed (Cluster homes only; `ClusterPlacer` statics)
+
+| Term | Weight | Shape |
+|---|---|---|
+| Join a family with room | **+1.4** (none while answering a shaping) | — |
+| Yard distance from the green | 1.0 | 1 inside 0.9–1.9 u, −1 at the green's rim and 1.2 u beyond the band |
+| New yard near the other yards | 0.6 | 1 up to 1.6 u, −1 at 2.4 u |
+| Access (door to network) | **0.4** (round 1 huts: 1.2) | round 1's |
+| Slope / water / woods | 0.8 / 0.3 / 0.6 | round 1's shapes, one pass over the lot |
+| Contour (long side along the slope) | 0.9 | (2·\|front·downhill\| − 1) × min(1, slope/0.4), only on slopes over 0.12 |
+| Yaw rule | 0.35 | yard 1, downhill 0.6, sun 0.2, green 0 |
+| Taste (hashed per candidate) | 0.3 | ±1, so equal spots don't always resolve the same way |
+| Nudge | 4.0 | round 1's; answer candidates sit on rings 0.1–0.55 u round the spot with their yard in front (a lone house if no yard fits) |
+| Frontage, setback 0.12, rows, social pull | **off** | — |
+
+Lot gap 0.08 and glass margin 0.25 as round 1. Yards 0.15–0.24 u radius, 1.0 u apart.
+
+### R2.4 My look verdict (honest; the user is the judge)
+
+![Seed 1: years 30, 60, 110 for the three variants](img/growth-lab-2/seed1-years-30-60-110.jpg)
+
+*Does the cluster version look like a real tiny village from the side, more than random does?* **A little, not
+decisively.**
+- **Against round 1's rows it is clearly better.** The two stiff rows are gone: houses sit at all angles round small
+  yards with a barn, fruit trees, hedges and gardens between the families, and the lanes curve. Nothing reads as
+  planned. From the side the Cluster box at years 30–60 looks like a hamlet of farmsteads round a green.
+- **Against Random the difference is small at the overview distance.** Both spread irregular houses over the box with
+  greenery between. Cluster is more *nucleated* (a centre and its farmsteads, fields at the edge) and its paths are
+  smooth lanes instead of 0.1 u stair-steps. Random scatters fields among the houses and its yards don't exist. In
+  the middle years I would pick Cluster as the real village; at year 110 both are "a lot of houses" and I could not
+  say which is real without looking closely.
+- **Weak spots:** the families are often pairs (few huts, see R2.2), so the cluster idea shows best in the close view;
+  the Town era still packs workshops and cottages round the market and the box is nearly full by year 110; Town-era
+  cottages that find no family land wherever infill finds room.
+- **A confound for the blind test:** only the Cluster variant gets curved path ribbons, yards, barns, hedges and the
+  orchard commons (Organic and Random are drawn exactly as in round 1). A viewer who prefers Cluster may be preferring
+  the dressing, not the placement. See R2.6.
+
+### R2.5 The human test: how to run it
+
+Everything is in `docs/design/spikes/img/growth-lab-2/`. The answers are in **`blind-key.b64.txt`**, base64-encoded so
+a glance doesn't spoil them. Decode only after the test:
+`python -c "import base64;print(base64.b64decode(open('docs/design/spikes/img/growth-lab-2/blind-key.b64.txt').read()).decode())"`.
+
+- **Clips:** `blind/set{1,2,3}_{A,B,C}.mp4`, 960×540, years 0 → 120 at 8 years a second (15 s) with the last frame
+  held 2 s, a small year counter bottom right (as round 1). Each set is one map and one build order; the three clips
+  are the three variants (rows, cluster, random) in a shuffled order per set; the seed order is shuffled too.
+- Same scripted Keeper in every clip of a set: rain at year 14, a grove at year 33, a channel at year 58.
+- Ask per set, after all three clips: *"Which one grew most like a real village?"* (A, B or C), and optionally *"Which
+  looks least real?"* and *"Why?"*. Don't say what differs.
+- Pass for round 2: the user (and ideally 2 more viewers) picks the cluster clip on ≥ 2 of the 3 sets.
+- Labelled stills for after the test: `stills/seed{1,2,3}-{organic,cluster,random}-y{030,060,110}.jpg`, the 3×3 sheets
+  `seed{1,2,3}-years-30-60-110.jpg` and the side-by-sides `seed{1,2,3}-y110-organic-cluster-random.jpg`.
+
+### R2.6 Open questions
+
+1. **The dressing confound:** should the next round give all three variants the same path curves, yards-free dressing
+   and commons, so the blind test isolates placement? (I kept Organic and Random exactly as they were, as asked.)
+2. **More homes per family need more homes:** SimCore builds 7–9 huts in 120 years. Should a family's barn or byre
+   become a real lot (a spike-side "outbuilding" kind), or should M2's economy build more, smaller homes?
+3. **The full box:** with commons and gaps, 1–5 late builds find no lot. Is that the "box complete" moment research
+   08 asked for, or should the Town era densify the clusters instead?
+4. If Cluster wins, M2 would take `ClusterPlacer` + `PathCurves` (and keep round 1's field, mill and workshop rules).
