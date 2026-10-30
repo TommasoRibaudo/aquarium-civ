@@ -282,3 +282,10 @@ Screens: `AquariumCiv/Temp/agent/pc-*.png` (local).
 - ★ The Show me camera returns when the card closes, not before. The pin chip shows the first name only.
 - Flaky test seen once: `GlassPlayTests.EachRelicMomentPlaysAndGivesItsCastBackToTheirDay` (left_sandal) failed, then
   passed on rerun. ★ File an issue.
+
+### #94 First run on screen (phase 2) — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/firstrun_*.png` (local).
+- The start glass is only lightly misty and the weeds are small: your call on grime strength and weed size.
+- Not built yet: the child's smiley drawn in the mist (a toast for now), the year's seasonal light sweep, the notables
+  beat, the box-arrival thump; the name plate is a UI pill, not a brass plate on the plinth.
+- ★ "Skip all" leaves the glass dirty and the weeds in place.
