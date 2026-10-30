@@ -207,3 +207,11 @@ Clips in `Assets/Audio/Resources/Sfx/` and `/Ambience` (Kenney CC0 + OpenGameArt
 - ★ Mess only thins the birds (no fly buzz, to avoid guilt-trip).
 - Storm wind reuses the calm wind loop louder; ★ source a storm clip later.
 - ★ Give the festival beat the fiddle cue.
+
+### #76 Show me, echo scenes, world bubbles (phase 1)
+- The first-person story lines (22 story kinds + 11 bank lines rephrased) are **new writing** — they need your voice
+  check (`View/ShowMe/Core/PeopleVoice.cs`).
+- ★ In a two-person echo, the second person joins only if within ~2 s' walk; otherwise the lead echoes alone.
+- ★ A rivalry echo is a short argument then each sits out (no "turn backs" pose yet).
+- ★ Bubbles: one every 20 s, 90 s per speaker, 6 s for a moment's line; never repeat within a session (not saved).
+- Death echoes and box-wide entries (an era, a festival) are fly-to only.
