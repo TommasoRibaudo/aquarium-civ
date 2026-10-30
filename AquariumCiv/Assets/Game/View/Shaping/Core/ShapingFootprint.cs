@@ -37,7 +37,10 @@ namespace AquariumCiv.View.Shaping
         public const float GrazeRadius = 0.45f, ShoalRadius = 0.5f, GrazeCycle = 14f, GrazeShare = 0.65f, SwimCycle = 8f;
         public const int GrazeSpots = 5;
         /// <summary>How far an animal stands from the herd's focus (deer) or swims round the shoal's centre (fish).</summary>
-        public const float HerdSpread = 0.1f, ShoalSpread = 0.06f;
+        public const float HerdSpread = 0.1f, ShoalSpread = 0.11f;
+        /// <summary>Each fish swims this many seconds ahead of the next along the swimming spots, so the shoal strings out
+        /// across the pond instead of a tight ball (user 2026-10-30).</summary>
+        public const float ShoalLagSeconds = 0.9f, ShoalFanSeconds = 2.5f;
         /// <summary>An answered herd drifts to its pasture or jetty over this many real seconds.</summary>
         public const float HerdMoveToLotSeconds = 6f;
         /// <summary>Animals never walk faster than this (box units per real second): a run-in is brisk, never a teleport.</summary>

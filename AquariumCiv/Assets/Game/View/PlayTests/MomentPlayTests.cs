@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Sim;
@@ -283,8 +284,8 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>#90: a grown village (+40 years) watched to the town. Every lot rebuilds in the town look on the wave
-        /// before the cheer; the green becomes a cobbled square with stalls; the cobbles unroll from the square and reach
-        /// the main paths; no error logs. Stills of the bell, the square, the wave, the lord and the cheer.</summary>
+        /// before the cheer; the green becomes a cobbled square with stalls; the cobbles unroll from the square along the
+        /// busiest main path only (user 2026-10-30); no error logs. Stills of the bell, the square, the wave, the lord and the cheer.</summary>
         [UnityTest]
         public IEnumerator GrownVillageBecomesATown()
         {
@@ -345,7 +346,10 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot("m90_4_lord");
                 Assert.AreEqual(lots.Count, mp.KnocksPlayed, "every lot rebuilt by the end of the wave");
                 foreach (var l in lots) Assert.AreEqual(Era.Town, src.ShownEra(l), $"lot {l.id} ({l.kind}) shows the town look");
-                Assert.AreEqual(pathCells.Count, Cobbled(), "the cobbles reached every main path");
+                int busyCells = pathCells.Count(c => src.OnBusiestPath(c));
+                Assert.Greater(busyCells, 0, "a busiest path");
+                Assert.AreEqual(busyCells, Cobbled(), "the cobbles reached the end of the busiest path");
+                Assert.Less(busyCells, pathCells.Count, "and only it: the other main paths stay earth (user 2026-10-30)");
                 Assert.AreEqual(Era.Village, sim.State.era, "still before the cheer");
 
                 yield return To(77f);
@@ -360,7 +364,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(src.WaveRunning, "no second wave after the cheer");
                 foreach (var l in sim.Settlement.Lots)
                     if (!l.retired) Assert.AreEqual(Era.Town, src.ShownEra(l), $"lot {l.id} ({l.kind})");
-                Assert.AreEqual(pathCells.Count, Cobbled(), "the town keeps its cobbles after the moment");
+                Assert.AreEqual(pathCells.Count(c => src.OnBusiestPath(c)), Cobbled(), "the town keeps the busiest path's cobbles after the moment");
                 Assert.IsTrue(box.layout.paths.Exists(p => p.cobbled), "cobbled paths in the box");
                 Assert.IsTrue(cam.enabled);
                 yield return Shot("m90_6_after");

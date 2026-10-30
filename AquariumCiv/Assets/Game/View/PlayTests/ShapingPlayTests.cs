@@ -221,6 +221,25 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(900000)]
         public IEnumerator Camp_EachToolPlacedByTapGrowsIsAnsweredAndTakenBack() => EraRun(Era.Camp);
 
+        /// <summary>Scene-unload noise: deactivating the box used to make ShapingView.OnDisable refresh it mid-deactivation
+        /// ("Cannot set the parent of the GameObject 'Generated' while activating or deactivating the parent").</summary>
+        [UnityTest]
+        public IEnumerator DeactivatingTheBoxLogsNoParentError()
+        {
+            yield return Open();
+            try
+            {
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                Assert.IsNotNull(ShapingView.Instance);
+                box.gameObject.SetActive(false);
+                yield return null;
+                box.gameObject.SetActive(true);
+                for (int i = 0; i < 10; i++) yield return null;
+                Assert.IsFalse(errors.Any(x => x.Contains("Cannot set the parent")), string.Join(" | ", errors.Take(5)));
+            }
+            finally { Close(); }
+        }
+
         [UnityTest, Timeout(900000)]
         public IEnumerator Village_EachToolPlacedByTapGrowsIsAnsweredAndTakenBack() => EraRun(Era.Village);
 
@@ -319,11 +338,14 @@ namespace AquariumCiv.View.PlayTests
 
                     // The people answer (debug skip): staged in the world, the label and the line over it.
                     sv.SetTool(null);
+                    int flights = sv.AnswerFlights;
                     Assert.IsTrue(sv.SkipToAnswer(n.id), sv.LastResult);
                     yield return Play(20f, tool, () => sv.Show.Answer.active && sv.Show.Answer.nudgeId == n.id);
                     var a = sv.Show.Answer;
                     Assert.IsTrue(a.active && a.nudgeId == n.id, $"{era} {tool}: the answer is shown");
                     Assert.IsNotNull(e.moment, $"{era} {tool}: the people's answer is staged in the world");
+                    Assert.Greater(sv.AnswerFlights, flights, $"{era} {tool}: the camera flies to the answer");
+                    Assert.IsTrue(Camera.main.GetComponent<BoxCamera>().IsFlying || sv.Show.Answer.active, "(on its way)");
                     if (n.buildingId >= 0) { var b = sim.State.buildings.First(q => q.id == n.buildingId); yield return Look(b.x, b.z, 0.5f); }
                     else yield return Look(n.x, n.z, 0.5f);
                     yield return Play(2.5f, tool);

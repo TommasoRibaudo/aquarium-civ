@@ -106,10 +106,10 @@ namespace AquariumCiv.View
 
         /// <summary>The cobbles at the square beat: the square itself (world units from the green's centre) [est].</summary>
         public const float SquareReach = 0.45f;
-        /// <summary>How far the cobbles unroll along the main paths by the end of the town wave: the whole box [est].</summary>
+        /// <summary>How far the cobbles unroll along the busiest main path by the end of the town wave: the whole box [est].</summary>
         public const float CobbleMaxReach = 4.5f;
 
-        /// <summary>The town wave: the cobbles unroll from the square along the main paths with the wave, in steps (each
+        /// <summary>The town wave: the cobbles unroll from the square along the busiest main path with the wave, in steps (each
         /// step rebuilds the touched chunks).</summary>
         void UnrollCobbles()
         {

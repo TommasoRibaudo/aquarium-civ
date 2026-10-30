@@ -18,7 +18,7 @@ namespace AquariumCiv.View
     /// <list type="bullet">
     /// <item><b>Show me</b> (<see cref="Show(ChronicleEntry, bool)"/>, <see cref="Show(ChronicleCard, bool)"/>): the camera flies to
     /// the plan's place (<see cref="ShowMeCore"/>) with the point above the card, the people play the echo
-    /// (<see cref="LifePlanner.StageEcho"/>), its line shows in the speech bubble (<see cref="MomentPlayer.Say"/>), then the
+    /// (<see cref="LifePlanner.StageEcho"/>), its line shows over the speaker's head, then the
     /// echo ends and the camera eases back to where it was (<see cref="End"/>: the card stack calls it when it closes; the
     /// debug panel's Show me ends by itself). A death flies to the remembering stone and lays a flower; the weather and the
     /// box's big days fly wide. A touch takes the camera back from it: the flight stops and the camera stays where the
@@ -43,8 +43,8 @@ namespace AquariumCiv.View
         public const float HoldSeconds = 0.8f, NoEchoHoldSeconds = 2.5f, ReturnSeconds = 0.9f;
         /// <summary>Show me looks down from at least this pitch (degrees), over the glass's rim.</summary>
         public const float ShowPitch = 52f;
-        /// <summary>A bubble sits this far over the doll's feet (world units), and is checked this often (real seconds).</summary>
-        public const float HeadHeight = 0.32f, BubbleCheckSeconds = 1f;
+        /// <summary>How often a world bubble is considered (real seconds).</summary>
+        public const float BubbleCheckSeconds = 1f;
 
         public Phase State { get; private set; }
         public bool Busy => State != Phase.Idle && State != Phase.Returning;
@@ -98,6 +98,8 @@ namespace AquariumCiv.View
             if (uiGo != null) Destroy(uiGo);
         }
 
+        void OnApplicationPause(bool paused) { if (!paused) bubbles?.WarmUp(); } // a new sitting: the people let you settle in
+
         /// <summary>The pure core for the box shown now (null before the people are up).</summary>
         public ShowMeCore Core { get { Bind(); return core; } }
         public WorldBubbles Bubbles { get { Bind(); return bubbles; } }
@@ -131,6 +133,7 @@ namespace AquariumCiv.View
             if (State == Phase.Idle && Current == null) return;
             var planner = PeopleView.Find()?.Planner;
             planner?.EndEchoes();
+            ClearEchoBubble();
             CurrentEcho = null;
             if (flower != null) { Destroy(flower); flower = null; }
             var cam = Cam;
@@ -159,6 +162,7 @@ namespace AquariumCiv.View
             CurrentEcho = null;
             autoReturn = auto;
             lineSaid = false;
+            ClearEchoBubble();
             Returned = Interrupted = false;
             HideBubble();
 
@@ -300,7 +304,7 @@ namespace AquariumCiv.View
             if (plan?.echo != null && plan.echo.skip == EchoSkip.Death && plan.entry != null)
             {
                 var q = PeopleVoice.StoryLine(Sim, plan.entry);
-                if (q != null) Say(q.text, q.speakerId, PeopleVoice.SecondsFor(q.text));
+                if (q != null) Say(q.text, q.speakerId >= 0 ? PersonRef.Notable(q.speakerId) : PersonRef.None, PeopleVoice.SecondsFor(q.text));
             }
             State = Phase.Hold; phaseT = 0f; holdFor = NoEchoHoldSeconds;
         }
@@ -311,16 +315,57 @@ namespace AquariumCiv.View
             if (pv.Planner.EchoLinesAt(pv.Now, lines) == 0) return;
             var l = lines[0];
             lineSaid = true;
-            Say(l.text, l.speaker.IsNotable ? l.speaker.notableId : -1, Mathf.Clamp(LifeClock.RealSecondsBetween(pv.Now.hour, l.end) + 1.5f, 3f, MomentPlayer.BubbleSeconds));
+            Say(l.text, l.speaker, Mathf.Clamp(LifeClock.RealSecondsBetween(pv.Now.hour, l.end) + 1.5f, 3f, MomentPlayer.BubbleSeconds));
         }
 
-        void Say(string text, int speakerId, float seconds)
+        /// <summary>The echo's line goes over the speaker's head like the world bubbles (user 2026-10-30, #76). With nobody to
+        /// put it over (no speaker, no doll) it shows in the moment's bubble.</summary>
+        void Say(string text, PersonRef speaker, float seconds)
         {
-            var mp = MomentPlayer.Instance;
-            string who = speakerId >= 0 ? Sim?.FindNotable(speakerId)?.name : null;
-            string shown = who != null && !text.Contains(who) ? $"{who}: “{text}”" : $"“{text}”";
             LastLine = text;
-            if (mp != null) mp.Say(shown, seconds);
+            var pv = PeopleView.Find();
+            var cam = Camera.main;
+            if (!speaker.IsNone && pv != null && cam != null && pv.TryGetDollPosition(speaker, out _))
+            {
+                EnsureUi();
+                echoWho = speaker;
+                echoUntil = Time.unscaledTime + seconds;
+                bubbleEl.text = $"“{text}”";
+                bubbleEl.style.display = DisplayStyle.Flex;
+                if (!Place(pv, cam, speaker)) bubbleEl.style.display = DisplayStyle.None; // shows as soon as they're on screen
+                EchoLinesOverHead++;
+                return;
+            }
+            var mp = MomentPlayer.Instance;
+            string who = speaker.IsNotable ? Sim?.FindNotable(speaker.notableId)?.name : null;
+            if (mp != null) mp.Say(who != null && !text.Contains(who) ? $"{who}: “{text}”" : $"“{text}”", seconds);
+        }
+
+        PersonRef echoWho;
+        float echoUntil;
+        /// <summary>Echo lines drawn over their speaker's head so far, and whether one shows now (tests).</summary>
+        public int EchoLinesOverHead { get; private set; }
+        public bool EchoBubbleShown => !echoWho.IsNone && bubbleEl != null && bubbleEl.style.display == DisplayStyle.Flex;
+        /// <summary>The screen point the bubble sits over, and who says the echo (tests).</summary>
+        public Vector2 BubbleScreen { get; private set; }
+        public PersonRef EchoSpeaker => echoWho;
+
+        /// <summary>The echo's bubble follows its speaker while it lasts; world bubbles wait. True while it does.</summary>
+        bool StepEchoBubble(PeopleView pv, Camera cam)
+        {
+            if (echoWho.IsNone) return false;
+            if (Time.unscaledTime >= echoUntil) { ClearEchoBubble(); return false; }
+            var hud = GameHud.Instance;
+            bool show = (hud == null || (!hud.CameraMode && hud.IsVisible)) && Place(pv, cam, echoWho);
+            bubbleEl.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            return true;
+        }
+
+        void ClearEchoBubble()
+        {
+            if (echoWho.IsNone) return;
+            echoWho = PersonRef.None;
+            if (bubbleEl != null) bubbleEl.style.display = DisplayStyle.None;
         }
 
         static bool Pressed(out Vector2 pos)
@@ -375,6 +420,7 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             var cam = Camera.main;
             if (pv == null || cam == null || bubbles == null) { HideBubble(); return; }
+            if (StepEchoBubble(pv, cam)) return;
             string quiet = QuietReason();
             if (bubble != null)
             {
@@ -399,8 +445,7 @@ namespace AquariumCiv.View
             if (planner == null) return;
             foreach (var who in planner.People)
             {
-                if (!pv.TryGetDollPosition(who, out var p)) continue;
-                var w = pv.transform.TransformPoint(new Vector3(p.x, HeadHeight, p.y));
+                if (!pv.TryGetDollTop(who, out var w)) continue;
                 var v = cam.WorldToViewportPoint(w);
                 if (v.z <= 0f || v.x < 0.12f || v.x > 0.88f || v.y < 0.42f || v.y > 0.88f) continue; // over the card's half: not there
                 if (who.IsNotable) visibleNotables.Add(who.notableId); else visibleCrowd.Add(who);
@@ -426,10 +471,11 @@ namespace AquariumCiv.View
 
         bool Place(PeopleView pv, Camera cam, PersonRef who)
         {
-            if (bubbleEl == null || bubbleEl.panel == null || !pv.TryGetDollPosition(who, out var p)) return false;
-            var w = pv.transform.TransformPoint(new Vector3(p.x, HeadHeight, p.y));
+            // The real top of the doll (a fixed height in box space fell below the land: it sits higher than that).
+            if (bubbleEl == null || bubbleEl.panel == null || !pv.TryGetDollTop(who, out var w)) return false;
             var s = cam.WorldToScreenPoint(w);
             if (s.z <= 0f || s.x < 0f || s.x > Screen.width || s.y < 0f || s.y > Screen.height) return false;
+            BubbleScreen = new Vector2(s.x, s.y);
             var q = RuntimePanelUtils.ScreenToPanel(bubbleEl.panel, new Vector2(s.x, Screen.height - s.y));
             bubbleEl.style.left = q.x;
             bubbleEl.style.top = q.y - 16f;

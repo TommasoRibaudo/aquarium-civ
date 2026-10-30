@@ -518,3 +518,13 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `AudioDirector.Instance.Recent` / `.MomentLog` list what played. `DebugCheckClips()` lists CueLibrary clips that don't
   load. Play tests that load the Slice by hand call `AudioDirector.Ensure()` (the bootstrap ran for the first scene
   only). Long clips (ambience, the flute tag) are set to Compressed In Memory / Vorbis 0.6 / mono in their .meta. [verified]
+- **2026-10-30 · Time-lapse hitches were GC pauses; `test status` lies after a timed-out `test run`.** [verified]
+  - A chunk build took 12 ms, but about 1 step in 80 took 45-75 ms: `BoxView.lastRefreshInfo` now ends in `gc N`, and every slow
+    step had `gc 1`. Splitting steps across frames alone gave 56 ms and pacing the sweep per frame didn't help (worker-thread
+    allocation isn't sliced by the incremental GC). The fix was to stop making the garbage: `MeshBuilder.Rent` / `Free` /
+    `AppendFree` keep list capacity (seeds and draw order unchanged, so the looks are the same). Sweep max 75 -> 23 ms.
+  - `unity command test run --timeout 60` can answer 504 while the import before play mode runs (1-2 min here). `test status`
+    then returns the **previous** run as `completed`, with its own counts. Pass `--timeout 170` and trust `completed` only
+    after seeing `running`. JSON sits at `.data.result` (`status`, `summary`, `results[]` with `FullName`, `Status`, `Message`).
+  - `unity recompile` can answer "timed out after 30000ms" or "no instances" during a reload: wait for `ready`, run it again.
+  - A sed insert (`/pat/{n;r file}`) that looks silent may have worked: grep for the new text before inserting again.

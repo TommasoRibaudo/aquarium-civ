@@ -228,6 +228,51 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>User 2026-10-30 (#92): relic props read at default zoom, and a relic moment off-screen or too small to see
+        /// nudges the camera there; a press on the box, or one already in close-up, doesn't get pulled.</summary>
+        [UnityTest]
+        public IEnumerator BigRelicsAndARelicMomentNudgesTheCamera()
+        {
+            yield return Open();
+            try
+            {
+                var sim = GameClock.Instance.Sim;
+                var pv = PeopleView.Find();
+                var glass = GlassVoice.Instance;
+                var cam = Camera.main.GetComponent<BoxCamera>();
+                yield return GrowInto(Era.Village);
+                EnsureScholar(sim);
+                PeopleView.DebugSetHour(10f);
+                yield return null;
+                cam.FlyTo(Vector3.zero, 1f, 0.01f);
+                yield return null; yield return null;
+
+                int before = glass.Nudges;
+                Debug.Log("[GlassPlay] " + GlassVoice.DebugPlayMoment(RelicId.KeeperDoll));
+                Assert.IsNotNull(glass.LastMoment, "the moment plays");
+                Assert.Greater(glass.Nudges, before, "from the whole box the camera nudges closer");
+                Assert.IsTrue(cam.IsFlying, "gently");
+                float t = 0f;
+                while (cam.IsFlying && t < 4f) { t += Time.unscaledDeltaTime; yield return null; }
+                Assert.LessOrEqual(cam.zoom, BoxCamera.NudgeZoom + 0.02f);
+                Assert.GreaterOrEqual(cam.pitch, BoxCamera.NudgePitch - 3f, "from over the rim, not through the front pane");
+                Assert.IsTrue(pv.Planner.Positions.TryGetPosition(glass.LastMoment.spot, out float x, out float z));
+                var world = pv.transform.TransformPoint(new Vector3(x, 0f, z));
+                var v = Camera.main.WorldToViewportPoint(world);
+                Assert.IsTrue(v.x > 0.1f && v.x < 0.9f && v.y > 0.1f && v.y < 0.9f, $"the moment is on screen ({v})");
+                Assert.IsFalse(cam.NudgeToward(world), "framed and close: no nudge");
+                yield return new WaitForSecondsRealtime(1f);
+                yield return Shot("relic_nudged");
+
+                var props = glass.GetComponent<RelicProps>();
+                Assert.IsTrue(props.Made.TryGetValue(RelicId.KeeperDoll, out var doll), "the doll stands");
+                float h = doll.GetComponent<Renderer>().bounds.size.y;
+                Assert.Greater(h, 0.45f, "taller than a person, it reads at default zoom");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator ATapOnTheGlassInTheTownWithTheLensIsTappedBack()
         {

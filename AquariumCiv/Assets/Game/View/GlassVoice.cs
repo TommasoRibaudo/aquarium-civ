@@ -166,9 +166,34 @@ namespace AquariumCiv.View
                 LastMoment = info;
                 if (props != null) props.MomentStarted(id);
                 Sfx.Play(CueLibrary.Discovery); // #96: a relic's moment begins ("look at this")
+                NudgeTo(planner, info.spot);
                 Debug.Log($"[GlassVoice] the {SimCore.RelicName(id)} moment: {info.cast.Count} people, {now.hour:0.00}h to {info.end:0.00}h");
             }
             return info;
+        }
+
+
+        /// <summary>A relic moment or a tap-back is happening off-screen or too small to see: a gentle nudge there (user
+        /// 2026-10-30, #92). Counted for tests.</summary>
+        public int Nudges { get; private set; }
+
+        void NudgeTo(LifePlanner planner, Place place)
+        {
+            var cam = Cam;
+            if (cam == null || !CameraFree() || planner?.Positions == null) return;
+            if (!planner.Positions.TryGetPosition(place, out float x, out float z)) return;
+            if (cam.NudgeToward(transform.TransformPoint(new Vector3(x, 0f, z)))) Nudges++;
+        }
+
+        /// <summary>May the world pull the camera now (a nudge, the fly to an answered gift)? Not while the player is busy with
+        /// something else: a sheet, a card, a wipe, a tool, a photo, Show me, a moment, the time-lapse.</summary>
+        public static bool CameraFree()
+        {
+            if (!WorldFree()) return false;
+            var sm = ShowMeDirector.Instance;
+            if (sm != null && sm.Busy) return false;
+            var card = PersonCardView.Instance;
+            return card == null || !card.IsOpen;
         }
 
         void SayLines(LifePlanner planner, ViewTime now)
@@ -215,7 +240,12 @@ namespace AquariumCiv.View
         /// without "on the glass": a doll seen through the open top can be picked.</summary>
         public static bool WorldTapAllowed(Vector2 pos)
         {
-            if (UiInput.Over(pos)) return false;
+            return !UiInput.Over(pos) && WorldFree();
+        }
+
+        /// <summary>The world is the player's to touch: no clean or camera mode, no sheet, no shape mode, no replay, no moment.</summary>
+        static bool WorldFree()
+        {
             var hud = GameHud.Instance;
             if (hud != null && (hud.CleanMode || hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return false;
             var shaping = ShapingView.Instance; // #85: in shape mode a tap places the tool
@@ -287,7 +317,7 @@ namespace AquariumCiv.View
             LastTapBack = planner.AnswerKnock(now, n);
             // #96: a scholar knocks back from inside: as many soft knocks, a little after (the people turn first)
             // #96: the knocks back sound when the scholar's fist reaches the glass (UpdateTapBackSound), not now
-            if (LastTapBack >= 0) { tapBackWho = PersonRef.Notable(LastTapBack); tapBackCount = n; tapBackSince = Time.unscaledTime; }
+            if (LastTapBack >= 0) { tapBackWho = PersonRef.Notable(LastTapBack); tapBackCount = n; tapBackSince = Time.unscaledTime; NudgeTo(planner, planner.GlassPlace); }
         }
 
         // ---------------- debug (the debug panel, `script eval`) ----------------

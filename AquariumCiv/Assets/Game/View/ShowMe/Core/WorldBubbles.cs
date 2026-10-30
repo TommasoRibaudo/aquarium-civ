@@ -10,6 +10,8 @@ namespace AquariumCiv.View.ShowMe
     {
         /// <summary>Real seconds between two ambient bubbles (one at a time on a phone).</summary>
         public float minGapSeconds = 20f;
+        /// <summary>Real seconds of quiet before the first bubble of a session (user 2026-10-30: the player settles in first).</summary>
+        public float warmUpSeconds = 8f;
         /// <summary>Real seconds before the same person speaks again.</summary>
         public float speakerGapSeconds = 90f;
         /// <summary>A moment's line (the glass, rain, a return) may come this soon after the last bubble.</summary>
@@ -34,7 +36,7 @@ namespace AquariumCiv.View.ShowMe
         public readonly BubbleRules rules;
         readonly HashSet<string> said = new HashSet<string>();
         readonly Dictionary<int, double> lastBy = new Dictionary<int, double>();
-        double last = double.NegativeInfinity;
+        double last = double.NegativeInfinity, started = double.NaN;
 
         public WorldBubbles(SimCore sim, BubbleRules rules = null)
         {
@@ -46,7 +48,10 @@ namespace AquariumCiv.View.ShowMe
         public IReadOnlyCollection<string> Said => said;
 
         /// <summary>Forget what was said (a new session, the debug panel).</summary>
-        public void Reset() { said.Clear(); lastBy.Clear(); last = double.NegativeInfinity; }
+        public void Reset() { said.Clear(); lastBy.Clear(); last = double.NegativeInfinity; started = double.NaN; }
+
+        /// <summary>The player came back to the box: a fresh warm-up before the next bubble (what was said stays said).</summary>
+        public void WarmUp() => started = double.NaN;
 
         /// <summary>
         /// The next bubble at real time <paramref name="now"/> (seconds), or null (too soon, quiet, nothing new).
@@ -58,6 +63,8 @@ namespace AquariumCiv.View.ShowMe
         public WorldBubble Next(double now, string moment = null, ICollection<int> visible = null, bool quiet = false)
         {
             if (quiet) return null;
+            if (double.IsNaN(started)) started = now; // the session starts with the first moment the people may speak
+            if (now - started < rules.warmUpSeconds) return null;
             double gap = now - last;
             bool momentReady = moment != null && gap >= rules.momentGapSeconds;
             if (gap < rules.minGapSeconds && !momentReady) return null;

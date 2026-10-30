@@ -18,6 +18,7 @@ namespace AquariumCiv.View.PlayTests
     /// glass in clean mode never orbits; off the glass or with the mode off it does), the cheer and the auto-exit.
     /// Run alone (one InputTestFixture class per run); it backs up and restores the slice's save file.
     /// </summary>
+    [Category("CarePlay")]
     public class CarePlayTests : InputTestFixture
     {
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
@@ -181,6 +182,23 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(care.GlassMean, 0.5f, "the glass shows the grime");
                 Assert.Greater(care.Props.HeapCount, 0, "heaps are drawn");
                 Assert.Greater(care.Props.WeedCount, 0, "weeds are drawn");
+                // User 2026-10-30: bigger trash and weeds, clearly visible at default zoom (each at least 3 % of the screen
+                // height on a phone in portrait).
+                yield return new WaitForSecondsRealtime(0.6f); // done popping in
+                var cam = Camera.main;
+                foreach (var p in care.Props.AllPieces)
+                {
+                    if (p.leaving || p.t == null) continue;
+                    var b = p.t.GetComponent<Renderer>().bounds;
+                    float lo = float.MaxValue, hi = float.MinValue;
+                    for (int k = 0; k < 8; k++)
+                    {
+                        var c = b.center + Vector3.Scale(b.extents, new Vector3((k & 1) * 2 - 1, (k >> 1 & 1) * 2 - 1, (k >> 2 & 1) * 2 - 1));
+                        var s = cam.WorldToScreenPoint(c);
+                        lo = Mathf.Min(lo, s.x); hi = Mathf.Max(hi, s.x);
+                    }
+                    Assert.Greater((hi - lo) / Screen.height, 0.03f, $"{p.t.name} reads at default zoom ({hi - lo:0} px wide)");
+                }
                 Assert.Less(care.SunFactor, 0.99f, "and the sun has started to dim");
                 yield return Shot("care_dirty");
 

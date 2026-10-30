@@ -160,7 +160,7 @@ namespace AquariumCiv.View
 
         Era MomentEra(Lot l)
         {
-            if (l == null) return momentGreen ? momentTo : momentFrom;
+            if (l == null || (l.kind == LotKind.Well && l.open)) return momentGreen ? momentTo : momentFrom; // the green, and the well on it
             return momentDone.Contains(l.id) ? momentTo : momentFrom;
         }
 
@@ -246,12 +246,13 @@ namespace AquariumCiv.View
         /// the main path). Null = only roads.</summary>
         [System.NonSerialized] public System.Func<int, bool> cobbled;
 
-        /// <summary>Debug: cobble every path cell (path tier and up), to preview #90's look.</summary>
+        /// <summary>Debug: cobble every path cell (path tier and up), not only the busiest path (#90's first look).</summary>
         public static bool CobbleAllPaths;
 
-        /// <summary>The town's main paths are cobbled (era-moment.md §5, #90): every path cell (path tier and up) once the
-        /// box shows the town; during the village → town moment the cobbles unroll from the square out to
-        /// <see cref="CobbleReach"/> (world units from the green's centre). Roads are cobbled anyway.</summary>
+        /// <summary>The town's busiest main path is cobbled (era-moment.md §5, #90; user 2026-10-30: only the busiest path,
+        /// <see cref="SimLayout.BusiestPathCells"/>) once the box shows the town; during the village → town moment the
+        /// cobbles unroll from the square along it out to <see cref="CobbleReach"/> (world units from the green's centre).
+        /// The square stays cobbled and roads are cobbled anyway.</summary>
         public float CobbleReach { get; private set; } = -1f;
 
         public void SetCobbleReach(float reach)
@@ -259,6 +260,45 @@ namespace AquariumCiv.View
             if (Mathf.Abs(reach - CobbleReach) < 1e-4f) return;
             CobbleReach = reach;
             if (MomentLook) Box.Refresh();
+        }
+
+        // The busiest path's cells: chosen again when the path curves change or a year passes (sticky, so the cobbles stay
+        // put); a replay's own choice is cached per frame's tier grid.
+        HashSet<int> busiest, replayBusiest;
+        object busiestKey, replayBusiestKey;
+        long busiestYear = -1;
+
+        /// <summary>The busiest main path's cells (with their neighbours) for what the box shows now; null = no main path.</summary>
+        public HashSet<int> BusiestPath(SimCore sim)
+        {
+            var st = sim?.Settlement;
+            if (st == null) return null;
+            if (Replay != null)
+            {
+                if (!ReferenceEquals(replayBusiestKey, Replay.tiers))
+                {
+                    replayBusiestKey = Replay.tiers;
+                    replayBusiest = SimLayout.BusiestPathCells(st.Map, PathCurves.Build(st.Map, Replay.tiers), Replay.tiers, busiest);
+                }
+                return replayBusiest;
+            }
+            var curves = st.Paths();
+            long year = sim.State.month / SimConfig.MonthsPerYear;
+            if (!ReferenceEquals(busiestKey, curves) || year != busiestYear)
+            {
+                busiestKey = curves; busiestYear = year;
+                busiest = SimLayout.BusiestPathCells(st.Map, curves, st.Map.tier, busiest);
+            }
+            return busiest;
+        }
+
+        /// <summary>Whether a site cell is a main-path cell of the busiest path (tests).</summary>
+        public bool OnBusiestPath(int cell)
+        {
+            var sim = Sim;
+            var tier = Replay != null ? Replay.tiers : sim?.Settlement?.Map.tier;
+            var set = BusiestPath(sim);
+            return set != null && tier != null && cell >= 0 && cell < tier.Length && tier[cell] >= PathNet.PathTier && set.Contains(cell);
         }
 
         System.Func<int, bool> Cobbled(SimCore sim)
@@ -270,7 +310,10 @@ namespace AquariumCiv.View
             if (!CobbleAllPaths && !town) return cobbled;
             float reach = MomentLook && !CobbleAllPaths ? CobbleReach : float.MaxValue;
             float gx = st.Map.greenX, gz = st.Map.greenZ;
-            return c => (tier[c] >= AquariumCiv.Sim.Settle.PathNet.PathTier
+            var busy = CobbleAllPaths ? null : BusiestPath(sim);
+            if (!CobbleAllPaths && busy == null) return cobbled;
+            return c => (tier[c] >= PathNet.PathTier
+                         && (busy == null || busy.Contains(c))
                          && AquariumCiv.Sim.Settle.Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), gx, gz) <= reach)
                         || (cobbled != null && cobbled(c));
         }
@@ -309,7 +352,7 @@ namespace AquariumCiv.View
         {
             var s = Need(out var err); if (s == null) return err;
             CobbleAllPaths = on;
-            return (on ? "cobbles on every path · " : "cobbles on roads only · ") + s.Box.Refresh();
+            return (on ? "cobbles on every path · " : "cobbles on the busiest path · ") + s.Box.Refresh();
         }
 
         /// <summary>Debug: cross into the next era now and play the rebuild wave (or rebuild at once).</summary>

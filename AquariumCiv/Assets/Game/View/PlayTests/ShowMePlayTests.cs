@@ -186,14 +186,23 @@ namespace AquariumCiv.View.PlayTests
                     Assert.AreEqual(c.subject, plan.target.subject, $"{c.name}: {plan.target}");
                     if (c.name == "gone-building") Assert.AreEqual(ShowMeFallback.BuildingGone, plan.target.fallback);
                     Assert.AreEqual(c.echo, plan.HasEcho, $"{c.name}: echo {plan.echo.skip}");
-                    bool echoed = false, flewThere = false, flower = false, shotLine = false;
+                    bool echoed = false, flewThere = false, flower = false, shotLine = false, overHead = false;
+                    int linesOver = d.EchoLinesOverHead;
                     float t = 0f;
                     while (d.State != ShowMeDirector.Phase.Idle && t < 25f)
                     {
                         audit.Step();
                         if (d.State == ShowMeDirector.Phase.Waiting) flewThere = true;
                         if (d.CurrentEcho != null && !echoed) echoed = true;
-                        if (echoed && !shotLine && !string.IsNullOrEmpty(d.LastLine)) { shotLine = true; yield return Shot("showme-" + c.name); }
+                        if (d.EchoBubbleShown && !overHead && pv.TryGetDollFeet(d.EchoSpeaker, out var feet))
+                        {
+                            var fs = Camera.main.WorldToScreenPoint(feet);
+                            overHead = true;
+                            Assert.Greater(d.BubbleScreen.y, fs.y, $"{c.name}: the line sits above the speaker's feet");
+                            Assert.Less(d.BubbleScreen.y - fs.y, 0.2f * Screen.height, $"{c.name}: and right over their head");
+                            Assert.Less(Mathf.Abs(d.BubbleScreen.x - fs.x), 0.05f * Screen.width, $"{c.name}: not off to the side");
+                        }
+                        if (echoed && !shotLine && d.EchoBubbleShown) { shotLine = true; yield return Shot("showme-" + c.name); }
                         if (!c.echo && d.State == ShowMeDirector.Phase.Hold && !flower)
                         {
                             flower = GameObject.Find("ShowMeFlower") != null;
@@ -206,7 +215,12 @@ namespace AquariumCiv.View.PlayTests
                     Assert.AreEqual(ShowMeDirector.Phase.Idle, d.State, $"{c.name}: it ends");
                     Assert.IsTrue(flewThere, $"{c.name}: the camera flew there");
                     Assert.AreEqual(c.echo, echoed, $"{c.name}: the people echo it");
-                    if (c.echo && !string.IsNullOrEmpty(plan.echo.line)) StringAssert.Contains(plan.echo.line, MomentPlayer.Instance.LastSaid, $"{c.name}: the echo's line shows");
+                    if (c.echo && !string.IsNullOrEmpty(plan.echo.line))
+                    {
+                        StringAssert.Contains(plan.echo.line, d.LastLine, $"{c.name}: the echo's line is said");
+                        Assert.Greater(d.EchoLinesOverHead, linesOver, $"{c.name}: over the speaker's head, not at the fixed spot");
+                        Assert.IsTrue(overHead, $"{c.name}: and it showed");
+                    }
                     if (!c.echo) Assert.IsTrue(flower, "a flower at the stone");
                     Assert.IsTrue(d.Returned, $"{c.name}: the camera comes back");
                     Assert.Less(Flat(cam.target, before.target), 0.05f, $"{c.name}: back where it was");

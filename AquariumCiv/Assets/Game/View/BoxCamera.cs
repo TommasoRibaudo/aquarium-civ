@@ -65,7 +65,7 @@ namespace AquariumCiv.View
 
         /// <summary>Camera mode (#70): after <see cref="AutoOrbitIdleSeconds"/> without a touch the box drifts slowly left and right. Toggle in the debug panel.</summary>
         public static bool AutoOrbitInCameraMode = true;
-        public const float AutoOrbitIdleSeconds = 4f, AutoOrbitDegPerSecond = 2.5f;
+        public const float AutoOrbitIdleSeconds = 10f, AutoOrbitDegPerSecond = 2.5f; // 10 s: user 2026-10-30 (was 4)
         float lastInputTime;
         float autoDir = 1f;
         bool wasCameraMode;
@@ -145,6 +145,24 @@ namespace AquariumCiv.View
             synced = true;
         }
 
+        /// <summary>A gentle move toward something happening (a relic moment, a tap-back; user 2026-10-30, #92): only when it's
+        /// off-screen or the camera is too far out to see it, and never against a finger. Same flight as any other: a touch
+        /// stops it. True when the camera moves.</summary>
+        public bool NudgeToward(Vector3 worldPoint, float zoomTo = NudgeZoom, float seconds = NudgeSeconds)
+        {
+            if (cam == null) cam = GetComponent<Camera>();
+            if (cam == null || !isActiveAndEnabled || Touching || pressClaimed) return false;
+            var v = cam.WorldToViewportPoint(worldPoint);
+            bool framed = v.z > 0f && v.x > 0.15f && v.x < 0.85f && v.y > 0.2f && v.y < 0.85f;
+            if (framed && zoom <= zoomTo + 0.02f && pitch >= NudgePitch - 3f) return false;
+            EaseTo(worldPoint, yaw, Mathf.Max(pitch, NudgePitch), Mathf.Min(zoom, zoomTo), seconds);
+            return true;
+        }
+
+        /// <summary>A nudge looks down from at least <see cref="NudgePitch"/> degrees: from the usual angle the land behind the
+        /// front pane is lost in its haze (Show me does the same).</summary>
+        public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f, NudgePitch = 50f;
+
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
 
@@ -180,6 +198,7 @@ namespace AquariumCiv.View
             if (!synced || Mathf.Abs(yaw - lastYaw) > 1e-3f) targetYaw = yaw;
             if (!synced || Mathf.Abs(pitch - lastPitch) > 1e-3f) targetPitch = pitch;
             synced = true;
+            HookHud();
 
             ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mousePan);
             // A press that starts on the HUD belongs to the HUD until every finger lifts.
@@ -229,7 +248,7 @@ namespace AquariumCiv.View
                 targetYaw = BoxCameraMath.Spring(targetYaw, minYaw, maxYaw, dt);
                 targetPitch = BoxCameraMath.Spring(targetPitch, lo, hi, dt);
             }
-            if (mode != Mode.TwoFinger) SpringPan(dt);
+            if (mode != Mode.TwoFinger) { StepFollow(dt); SpringPan(dt); }
             AutoOrbit(n, dragging, dt, now);
 
             float f = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
@@ -243,7 +262,7 @@ namespace AquariumCiv.View
         {
             var hud = AquariumCiv.GameUI.GameHud.Instance;
             bool cm = hud != null && hud.CameraMode;
-            if (cm != wasCameraMode) { wasCameraMode = cm; lastInputTime = now; }
+            if (cm != wasCameraMode) { wasCameraMode = cm; lastInputTime = now; if (!cm) Follow(AquariumCiv.Life.PersonRef.None); }
             if (touches > 0 || dragging || IsFlying || velocity != Vector2.zero) lastInputTime = now;
             if (!cm || !AutoOrbitInCameraMode || now - lastInputTime < AutoOrbitIdleSeconds) return;
             float lo = minYaw + 6f, hi = maxYaw - 6f;
@@ -251,6 +270,79 @@ namespace AquariumCiv.View
             targetYaw += autoDir * AutoOrbitDegPerSecond * dt;
         }
 
+
+        // ---------------- camera mode: follow the person you were following (#70, user 2026-10-30) ----------------
+        /// <summary>The person the camera follows in camera mode (<see cref="PersonRef.None"/> = nobody): picked when camera
+        /// mode starts from what the player was following (an open person card, a Show me on a person, the pinned notable
+        /// near the middle of the screen). The target eases after their doll; one finger still orbits round them and a pinch
+        /// still zooms, a two-finger pan of more than <see cref="FollowReleaseFraction"/> of the screen height lets go.</summary>
+        public AquariumCiv.Life.PersonRef Following { get; private set; }
+        public bool IsFollowing => !Following.IsNone;
+        public const float FollowRate = 3f, FollowReleaseFraction = 0.08f;
+        AquariumCiv.GameUI.GameHud hookedHud;
+        float panTravel;
+        int followMissing;
+        PeopleView followPeople;
+
+        /// <summary>Follow a person's doll (None stops). Camera mode sets it by itself; tests and the debug panel call it.</summary>
+        public void Follow(AquariumCiv.Life.PersonRef who) { Following = who; followMissing = 0; }
+
+        void HookHud()
+        {
+            var hud = AquariumCiv.GameUI.GameHud.Instance;
+            if (hud == hookedHud) return;
+            if (hookedHud != null) hookedHud.CameraModeChanged -= OnCameraMode;
+            hookedHud = hud;
+            if (hud != null) hud.CameraModeChanged += OnCameraMode;
+        }
+
+        void OnCameraMode(bool on)
+        {
+            // Called inside SetCameraMode, before the person card notices camera mode and closes: it is still open here.
+            Follow(on ? PickFollow() : AquariumCiv.Life.PersonRef.None);
+            if (on && IsFollowing) Debug.Log("[BoxCamera] camera mode follows " + Following);
+        }
+
+        /// <summary>Who the player was following when camera mode starts (None = nobody).</summary>
+        public AquariumCiv.Life.PersonRef PickFollow()
+        {
+            var card = PersonCardView.Instance;
+            if (card != null && card.IsOpen) return AquariumCiv.Life.PersonRef.Notable(card.OpenId);
+            var sm = ShowMeDirector.Instance;
+            if (sm != null && sm.Busy && sm.Current != null && sm.Current.target.followId >= 0)
+                return AquariumCiv.Life.PersonRef.Notable(sm.Current.target.followId);
+            var sim = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
+            var pin = sim?.Pinned;
+            if (pin != null && pin.alive && cam != null)
+            {
+                var who = AquariumCiv.Life.PersonRef.Notable(pin.id);
+                var pv = PeopleView.Find();
+                if (pv != null && pv.TryGetDollPosition(who, out var p))
+                {
+                    var v = cam.WorldToViewportPoint(pv.transform.TransformPoint(new Vector3(p.x, 0f, p.y)));
+                    if (v.z > 0f && v.x > 0.2f && v.x < 0.8f && v.y > 0.2f && v.y < 0.8f) return who; // the pinned one is what you're looking at
+                }
+            }
+            return AquariumCiv.Life.PersonRef.None;
+        }
+
+        void StepFollow(float dt)
+        {
+            if (!IsFollowing) return;
+            if (followPeople == null) followPeople = PeopleView.Find();
+            if (followPeople == null || !followPeople.TryGetDollPosition(Following, out var p))
+            {
+                if (++followMissing > 90) Follow(AquariumCiv.Life.PersonRef.None); // gone (indoors for good, died)
+                return;
+            }
+            followMissing = 0;
+            var w = followPeople.transform.TransformPoint(new Vector3(p.x, 0f, p.y));
+            var bound = BoxCameraMath.PanBounds(zoom);
+            float gx = Mathf.Clamp(w.x, -bound.x, bound.x), gz = Mathf.Clamp(w.z, -bound.y, bound.y);
+            float k = 1f - Mathf.Exp(-FollowRate * dt);
+            target.x += (gx - target.x) * k;
+            target.z += (gz - target.z) * k;
+        }
         // ---------------- input ----------------
         /// <summary>The first two live fingers (or the mouse). <paramref name="mousePan"/>: a right or middle button is down.</summary>
         static void ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mousePan)
@@ -283,6 +375,9 @@ namespace AquariumCiv.View
         void EndPress(float now)
         {
             if (mode == Mode.Orbit && orbiting) velocity = BoxCameraMath.CapFling(BoxCameraMath.Velocity(samples, now));
+            // A two-finger pan that moved away from the person followed lets them go (a pinch on the spot keeps them).
+            if (IsFollowing && panTravel > FollowReleaseFraction * Mathf.Max(1f, Screen.height)) Follow(AquariumCiv.Life.PersonRef.None);
+            panTravel = 0f;
             mode = Mode.None; orbiting = false; moved = false; samples.Clear();
         }
 
@@ -316,9 +411,10 @@ namespace AquariumCiv.View
             if (mode != Mode.TwoFinger)
             {
                 mode = Mode.TwoFinger; orbiting = false; moved = true; velocity = Vector2.zero; samples.Clear();
-                prevMid = mid; prevDist = dist;
+                prevMid = mid; prevDist = dist; panTravel = 0f;
                 return;
             }
+            panTravel += (mid - prevMid).magnitude;
             if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, minZoom, maxZoom), mid);
             if (GroundAt(prevMid, out var g0) && GroundAt(mid, out var g1))
             {

@@ -316,6 +316,25 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.IsTrue(gone.animals.All(a => Terrain.Dist(a.x, a.z, f.entryX, f.entryZ) < 1e-3f), "out at the edge");
         }
 
+        /// <summary>User 2026-10-30: the shoal is spread out across the pond, not a tight ball.</summary>
+        [TestCase(1)]
+        [TestCase(2)]
+        public void AShoalSpreadsAcrossThePond(int seed)
+        {
+            var sim = NewSim(seed);
+            var map = sim.Settlement.Map;
+            var f = Shaped(sim, SimCore.NudgeKind.Herd, map.spec.pondX, map.spec.pondZ);
+            float widest = 0f;
+            for (float s = 5f; s < 30f; s += 1f)
+            {
+                var h = ShapingLooks.Herd(f, Clock(s));
+                float w = 0f;
+                foreach (var a in h.animals) foreach (var b in h.animals) w = Math.Max(w, Terrain.Dist(a.x, a.z, b.x, b.z));
+                widest = Math.Max(widest, w);
+            }
+            Assert.Greater(widest, 0.35f, "fish far apart (a tight ball is about 0.15)");
+        }
+
         [TestCase(1)]
         [TestCase(2)]
         public void AShoalLandsWithASplashAndSwimsInThePond(int seed)

@@ -12,6 +12,29 @@ namespace AquariumCiv.View.ShowMe.Tests
     /// the game), stories in the words of the people in them, quiet while the cards are open.</summary>
     public class WorldBubblesTests
     {
+        /// <summary>These tests are about the gaps and the words: no warm-up (it has its own test).</summary>
+        static BubbleRules NoWarmUp => new BubbleRules { warmUpSeconds = 0f };
+
+        /// <summary>User 2026-10-30: about 8 s of quiet before the first bubble of a session, also for a moment's line;
+        /// a return to the box warms up again; the debug panel's force ignores it.</summary>
+        [Test]
+        public void TheFirstBubbleOfASessionWaitsForTheWarmUp()
+        {
+            var sim = Believing(Era.Village, 7, 2, true);
+            var wb = new WorldBubbles(sim);
+            Assert.AreEqual(8f, wb.rules.warmUpSeconds, 2f, "about 8 s");
+            float warm = wb.rules.warmUpSeconds;
+            Assert.IsNull(wb.Next(100), "the session starts quiet");
+            Assert.IsNull(wb.Next(100 + warm - 0.5, PeopleMoment.Glass), "a moment's line waits too");
+            Assert.IsNotNull(wb.Next(100 + warm + 0.5), "then someone speaks");
+            wb.WarmUp();
+            double later = 100 + warm + wb.rules.minGapSeconds + 10;
+            Assert.IsNull(wb.Next(later), "back from the home screen: quiet again");
+            Assert.IsNotNull(wb.Next(later + warm + 0.5));
+            var fresh = new WorldBubbles(sim);
+            Assert.IsNotNull(fresh.Force(0), "force ignores the warm-up");
+        }
+
         static SimCore Believing(Era era, int seed, int stage, bool later)
         {
             var sim = era == Era.Camp ? ShowMeTests.NewSim(seed) : ShowMeTests.SimIn(era, seed);
@@ -58,7 +81,7 @@ namespace AquariumCiv.View.ShowMe.Tests
         {
             var sim = Believing(era, seed, stage, later);
             string before = JsonUtility.ToJson(sim.State);
-            var wb = new WorldBubbles(sim);
+            var wb = new WorldBubbles(sim, NoWarmUp);
             var got = Play(wb);
             foreach (var (t, b) in got) TestContext.WriteLine($"{t,5}s {b}");
             Assert.IsNotEmpty(got, "the people say something");
@@ -93,7 +116,7 @@ namespace AquariumCiv.View.ShowMe.Tests
         public void QuietWhileTheCardsAreOpenAndForceIgnoresTheGap()
         {
             var sim = Believing(Era.Village, 7, 2, true);
-            var wb = new WorldBubbles(sim);
+            var wb = new WorldBubbles(sim, NoWarmUp);
             Assert.IsNull(wb.Next(1000, PeopleMoment.Glass, null, quiet: true), "the card is never covered");
             var first = wb.Next(1000);
             Assert.IsNotNull(first);
@@ -107,7 +130,7 @@ namespace AquariumCiv.View.ShowMe.Tests
         public void OnlyPeopleOnScreenSpeak()
         {
             var sim = Believing(Era.Town, 1234, 3, true);
-            var wb = new WorldBubbles(sim);
+            var wb = new WorldBubbles(sim, NoWarmUp);
             var nobody = new HashSet<int>();
             foreach (var b in wb.Candidates(PeopleMoment.Glass, nobody)) Assert.AreEqual(-1, b.speakerId, "with nobody on screen only the crowd speaks");
         }
@@ -119,7 +142,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             var live = sim.State.notables.Where(n => n.alive && n.age >= SimCore.AdultAge).OrderBy(n => n.id).Take(2).ToList();
             var e = sim.Chronicle("wedding", "A wedding.", 0.9f, live[0].id);
             e.otherNotableId = live[1].id;
-            var wb = new WorldBubbles(sim);
+            var wb = new WorldBubbles(sim, NoWarmUp);
             var b = wb.Candidates().FirstOrDefault(x => x.entryId == e.id);
             Assert.IsNotNull(b, "the wedding is talked about");
             Assert.AreEqual(BubbleSource.StoryVoice, b.source);
@@ -168,7 +191,7 @@ namespace AquariumCiv.View.ShowMe.Tests
         public void ResetLetsTheLinesBeSaidAgain()
         {
             var sim = Believing(Era.Village, 7, 2, true);
-            var wb = new WorldBubbles(sim);
+            var wb = new WorldBubbles(sim, NoWarmUp);
             var a = wb.Next(0, PeopleMoment.Glass);
             Assert.IsNotNull(a);
             wb.Reset();

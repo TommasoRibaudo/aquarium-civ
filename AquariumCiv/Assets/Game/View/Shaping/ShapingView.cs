@@ -92,7 +92,8 @@ namespace AquariumCiv.View
             if (hud != null) hud.CleanModeChanged -= OnCleanMode;
             UiInput.Remove(IsOverUi);
             SimLayout.KeeperOverlays = false;
-            if (box != null && Application.isPlaying) box.Refresh();
+            // Not while the box itself is being deactivated or its scene unloads: BoxView can't reparent then, and it goes anyway.
+            if (box != null && Application.isPlaying && box.isActiveAndEnabled && gameObject.activeInHierarchy && gameObject.scene.isLoaded) box.Refresh();
             ClearVisuals();
             if (root != null) Destroy(root.gameObject);
             if (uiGo != null) Destroy(uiGo);
@@ -339,6 +340,7 @@ namespace AquariumCiv.View
                 EventLog.Add(e);
                 if (!string.IsNullOrEmpty(e.cue)) Sfx.Play(e.cue); // #96: a tool landing, the people answering, one taken back
                 if (e.kind == ShapingEventKind.Gone || e.kind == ShapingEventKind.TakenBack) box.Refresh();
+                if (e.kind == ShapingEventKind.Answered) FlyToAnswer();
             }
             while (EventLog.Count > 64) EventLog.RemoveAt(0);
             if (Usable()) HandleInput(); else pressDown = false;
@@ -379,6 +381,21 @@ namespace AquariumCiv.View
             DrawAnswer(show.Answer, t);
             UpdateUi(sim);
         }
+
+        /// <summary>Flights to an answer so far (tests).</summary>
+        public int AnswerFlights { get; private set; }
+
+        /// <summary>The people answer a gift: the camera flies there (user 2026-10-30), unless the player is busy elsewhere.
+        /// A touch stops the flight like any other.</summary>
+        void FlyToAnswer()
+        {
+            var a = show.Answer;
+            if (cam == null || !a.active || !GlassVoice.CameraFree() || cam.Touching) return;
+            cam.EaseTo(box.transform.TransformPoint(new Vector3(a.x, 0f, a.z)), cam.yaw, Mathf.Max(cam.pitch, BoxCamera.NudgePitch), Mathf.Min(cam.zoom, BoxCameraMath.FlyPlaceZoom), AnswerFlySeconds);
+            AnswerFlights++;
+        }
+
+        public const float AnswerFlySeconds = 1.6f;
 
         /// <summary>An answered herd that went to a pasture joins the pasture's own flock: it fades once it gets there.</summary>
         float PastureFade(SimCore sim, ShapingShow.Entry e)
@@ -435,8 +452,11 @@ namespace AquariumCiv.View
             float pulse = 1f + 0.06f * Mathf.Sin(t * 3f);
             answerFx.Clear();
             var glow = Palette.Glow;
-            answerFx.Ring(g, 0.26f * pulse, 0.36f * pulse, 32, new Color(glow.r, glow.g, glow.b, 0.85f), new Color(glow.r, glow.g, glow.b, 0f));
-            answerFx.Beam(g, 0.24f, 0.9f, 20, new Color(1f, 0.9f, 0.6f, 0.35f), new Color(1f, 0.9f, 0.6f, 0f));
+            // Brighter (user 2026-10-30): a hot core line, the wide warm ring, a stronger beam.
+            var hot = Palette.FireCore;
+            answerFx.Ring(g, 0.2f * pulse, 0.27f * pulse, 32, new Color(hot.r, hot.g, hot.b, 0f), new Color(hot.r, hot.g, hot.b, 1f));
+            answerFx.Ring(g, 0.27f * pulse, 0.5f * pulse, 32, new Color(hot.r, hot.g, hot.b, 1f), new Color(glow.r, glow.g, glow.b, 0f));
+            answerFx.Beam(g, 0.27f, 1.1f, 20, new Color(1f, 0.93f, 0.68f, 0.65f), new Color(1f, 0.93f, 0.68f, 0f));
             answerFx.Apply();
             answerMpb.SetColor("_Color", new Color(1f, 1f, 1f, a.highlight));
             answerR.SetPropertyBlock(answerMpb);
