@@ -44,6 +44,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ClockLogicTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/HistoryTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>
