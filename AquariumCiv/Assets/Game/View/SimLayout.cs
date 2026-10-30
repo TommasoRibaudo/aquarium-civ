@@ -103,6 +103,10 @@ namespace AquariumCiv.View
         /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
         /// cobbles) cobbles those cells of any path tier (#34's hook for #90's cobbles spreading along the main path);
         /// roads are cobbled anyway.</summary>
+        /// <summary>#85: <see cref="ShapingView"/> draws the Keeper's groves (saplings growing into trees) and the herds waiting
+        /// for an answer, animated; while it does, the live layout leaves them out (the time-lapse keeps them).</summary>
+        public static bool KeeperOverlays;
+
         public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null, ReplayFrame replay = null)
         {
             L.Clear();
@@ -151,7 +155,7 @@ namespace AquariumCiv.View
                     }
                     case SimCore.NudgeKind.Herd:
                         // An answered herd lives on its pasture or jetty; until then the animals graze at the spot.
-                        if (f.lotId == 0) L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId).variant = 4;
+                        if (f.lotId == 0 && !(KeeperOverlays && replay == null)) L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId).variant = 4;
                         break;
                 }
             }
@@ -262,11 +266,21 @@ namespace AquariumCiv.View
             }
 
             // ---- trees from the forest layer ----
+            // (#85: the cells of the Keeper's groves are ShapingView's, which grows them from saplings)
+            HashSet<int> keeperGrove = null;
+            if (KeeperOverlays && replay == null)
+                foreach (var n in S.nudges)
+                    if (n.kind == SimCore.NudgeKind.Grove)
+                    {
+                        keeperGrove ??= new HashSet<int>();
+                        foreach (int c in AquariumCiv.View.Shaping.ShapingFootprint.Of(n, map, seed).cells) keeperGrove.Add(c);
+                    }
+            bool Woods(int c) => map.Forest(c) && (keeperGrove == null || !keeperGrove.Contains(c));
             for (int j = 0; j + 1 < SiteMap.NZ; j += 2)
                 for (int i = 0; i + 1 < SiteMap.NX; i += 2)
                 {
                     int cnt = 0;
-                    for (int dj = 0; dj < 2; dj++) for (int di = 0; di < 2; di++) if (map.Forest(SiteMap.Index(i + di, j + dj))) cnt++;
+                    for (int dj = 0; dj < 2; dj++) for (int di = 0; di < 2; di++) if (Woods(SiteMap.Index(i + di, j + dj))) cnt++;
                     if (cnt == 0 || (cnt == 1 && STerrain.Hash3(seed, i * 7 + 1, j) > 0.4f)) continue;
                     var pos = new Vector2(SiteMap.CX(i) + 0.05f + (STerrain.Hash3(seed, i, j * 3 + 1) - 0.5f) * 0.08f,
                                           SiteMap.CZ(j) + 0.05f + (STerrain.Hash3(seed, i, j * 3 + 2) - 0.5f) * 0.08f);
