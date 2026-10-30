@@ -30,6 +30,10 @@ namespace AquariumCiv.Game
         public event Action<CatchUpResult> CaughtUp;
         public string SavePath { get; private set; }
 
+        /// <summary>The sim clock holds still (an era moment plays, era-moment.md §3: no months pass, mess doesn't grow).
+        /// Real time is not banked: the held seconds are simply not lived.</summary>
+        public bool Held { get; set; }
+
         float sinceSave;
         bool paused;
         DateTime pausedUtc;
@@ -54,7 +58,7 @@ namespace AquariumCiv.Game
         void Update()
         {
             if (Sim == null) return;
-            Sim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) / 3600.0);
+            if (!Held) Sim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) / 3600.0);
             sinceSave += Time.unscaledDeltaTime;
             if (sinceSave >= autosaveSeconds) Save();
         }

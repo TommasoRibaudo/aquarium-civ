@@ -55,6 +55,26 @@ namespace AquariumCiv.View
                     BoxCamera.AutoOrbitInCameraMode = !BoxCamera.AutoOrbitInCameraMode;
                 GUILayout.EndHorizontal();
             }
+            // The era moment (#88): era ready now, the wait's pile size, watch / replay / leave, hurry speed.
+            GUILayout.Label(MomentPlayer.Status());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Era ready")) last = MomentPlayer.DebugEraReady();
+            if (GUILayout.Button("Waited 1y")) last = MomentPlayer.DebugWaited(12);
+            if (GUILayout.Button("Waited 1d")) last = MomentPlayer.DebugWaited(288);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Watch")) last = MomentPlayer.DebugWatch(false);
+            if (GUILayout.Button("Replay last")) last = MomentPlayer.DebugReplay();
+            if (GUILayout.Button("Leave")) last = MomentPlayer.DebugLeave();
+            GUILayout.EndHorizontal();
+            if (MomentPlayer.Instance != null)
+            {
+                GUILayout.BeginHorizontal();
+                float hf = MomentPlayer.Instance.Director.HurryFactor;
+                if (GUILayout.Button("Hurry ×" + (hf > 2f ? "4" : "2"))) last = MomentPlayer.DebugHurry(hf > 2f ? 2f : 4f);
+                if (GUILayout.Button(MomentPlayer.DebugHoldHurry ? "Hold: on" : "Hold: off")) MomentPlayer.DebugHoldHurry = !MomentPlayer.DebugHoldHurry;
+                GUILayout.EndHorizontal();
+            }
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();

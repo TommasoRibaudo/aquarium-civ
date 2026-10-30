@@ -65,7 +65,7 @@ namespace AquariumCiv.View.Moments
             if (s == null || !s.eraReady || s.era >= Era.Town) return w;
             w.waiting = true;
             w.next = s.era + 1;
-            w.monthsWaited = s.eraReadyMonth < 0 ? 0 : Math.Max(0, s.month - s.eraReadyMonth);
+            w.monthsWaited = s.eraReadyMonth == -1 ? 0 : Math.Max(0, s.month - s.eraReadyMonth); // -1 = not set; a debug wait may push it below 0
             w.pileLevel = PileLevel(w.monthsWaited);
             string noun = w.next == Era.Village ? "village" : "town";
             w.watchLabel = $"Watch them become a {noun}";
