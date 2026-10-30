@@ -63,3 +63,10 @@ _Last updated 2026-10-30._
 - ★ Founders carry age, name, trait and lifespan, not jobs or roles; fewer than 2 founders → random notables are added.
 - ★ All found relics go on the old box's plinths; the carried ones are flagged `carried`.
 - Not wired in Unity yet (no UI calls `StartNextBox` / `Visit`): that's #93.
+
+### #73 History records (sim, `SimCore.History.cs`)
+- ★ Low-salience chronicle lines older than 30 years are pruned once a year (book-worthy and top-five entries kept);
+  pruned lines still count as "told" so wording doesn't restart. Saves are ~6 % bigger than with no records.
+- ★ A building's "look" is its era for now; finer looks later.
+- ★ An era's title comes from its top-salience entry (relic name, a kind→phrase table, or a person), fallback "The Camp
+  Years". Pin time counts game months, so offline catch-up counts at the slow pace.
