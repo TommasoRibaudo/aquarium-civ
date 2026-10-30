@@ -215,3 +215,9 @@ Clips in `Assets/Audio/Resources/Sfx/` and `/Ambience` (Kenney CC0 + OpenGameArt
 - ★ A rivalry echo is a short argument then each sits out (no "turn backs" pose yet).
 - ★ Bubbles: one every 20 s, 90 s per speaker, 6 s for a moment's line; never repeat within a session (not saved).
 - Death echoes and box-wide entries (an era, a festival) are fly-to only.
+
+### #78 Time-lapse replay (phase 2)
+- Scrub cost on desktop: mean ~7–11 ms per step, but ~15 steps per 60-year sweep spike to 30–50 ms (4-chunk rebuilds at
+  era changes). ★ Check on a phone (TestFlight); if it stutters, split a rebuild across frames.
+- ★ Yards, the Keeper's shapings and people are absent in a replay (frame shapings are available to draw).
+- Farm fields pop in once their farm is 60 % grown; home size/storeys use today's path tiers in every year.
