@@ -483,3 +483,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     a test whose real trigger was the view day turning at midnight.
   - `PeopleView.DebugSetHour` calls `Tick(0)`, and `dt <= 0` snaps every doll to its plan: never use it from game code
     mid-play (moments used it for their light). `PeopleView.SetHourGently` moves the clock and lets the dolls walk.
+- **2026-10-30 · Waiting on async test runs from Bash (#39).** A foreground `sleep N; check` is blocked by the harness
+  and a long poll loop gets moved to the background after 180 s. Run the poll loop with `run_in_background` (or wait
+  for it with `until grep -q "== Done" <output file>; do sleep 5; done` in a background Bash) and read the output file
+  when the notification lands. UI Toolkit tip from the same work: a header row inside a `max-height` sheet shrinks and
+  overlaps unless it has `flexShrink = 0`, and a label column next to buttons only wraps with `flexBasis = 0` +
+  `minWidth = 0`. [verified]

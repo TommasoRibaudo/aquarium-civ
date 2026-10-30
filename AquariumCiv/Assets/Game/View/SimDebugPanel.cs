@@ -424,6 +424,17 @@ namespace AquariumCiv.View
                 cur.trait = NameData.Traits[(t + 1) % NameData.Traits.Length];
                 last = Done($"{cur.FullName} is now {cur.trait}");
             }
+            // #39: the person card and the pin
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Card: selected")) last = PersonCardView.DebugOpen(cur.id);
+            if (GUILayout.Button(sim.State.pinnedNotableId == cur.id ? "Unpin" : "Pin selected"))
+                last = PersonCardView.DebugPin(sim.State.pinnedNotableId == cur.id ? -1 : cur.id);
+            if (GUILayout.Button("Card: a dead one"))
+            {
+                var dead = sim.State.notables.LastOrDefault(n => !n.alive);
+                last = dead != null ? PersonCardView.DebugOpen(dead.id) : "nobody has died yet";
+            }
+            GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Birth")) last = Done(sim.DebugBirth() is Notable c ? "born: " + c.FullName : "no adult to bear");
             if (GUILayout.Button("Oldest dies")) last = Done(sim.DebugKillOldest() is Notable k ? "died: " + k.FullName : "nobody");

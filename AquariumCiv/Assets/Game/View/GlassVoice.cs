@@ -50,7 +50,7 @@ namespace AquariumCiv.View
         readonly List<RelicLine> lines = new();
         readonly HashSet<(string, int, float)> said = new();
         // taps
-        bool pressDown, pressValid;
+        bool pressDown, pressValid, pressWorld;
         Vector2 pressPos;
         float pressTime, lastTapTime = -10f;
         int taps;
@@ -203,6 +203,15 @@ namespace AquariumCiv.View
         /// (a tap brings the UI back), not in shape mode (#85), not with a sheet open or an era moment playing, and on the glass.</summary>
         static bool KnockAllowed(Vector2 pos)
         {
+            if (!WorldTapAllowed(pos)) return false;
+            var care = CareView.Instance;
+            return care == null || care.GlassAt(pos);
+        }
+
+        /// <summary>#39: may a tap here reach the world at all (pick a person, close the person card, knock)? The knock's rules
+        /// without "on the glass": a doll seen through the open top can be picked.</summary>
+        public static bool WorldTapAllowed(Vector2 pos)
+        {
             if (UiInput.Over(pos)) return false;
             var hud = GameHud.Instance;
             if (hud != null && (hud.CleanMode || hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return false;
@@ -213,22 +222,25 @@ namespace AquariumCiv.View
             var bc = BoxCompleteController.Instance;
             if (bc != null && bc.Playing) return false;
             var mp = MomentPlayer.Instance;
-            if (mp != null && mp.Playing) return false;
-            var care = CareView.Instance;
-            return care == null || care.GlassAt(pos);
+            return mp == null || !mp.Playing;
         }
 
         void HandleTaps(SimCore sim, LifePlanner planner, ViewTime now)
         {
             int n = ReadPointer(out var pos);
             float t = Time.unscaledTime;
-            if (n == 1 && !pressDown) { pressDown = true; pressPos = pos; pressTime = t; pressValid = KnockAllowed(pos); }
-            else if (n >= 2) pressValid = false;
-            else if (n == 1 && (pos - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height)) pressValid = false;
+            if (n == 1 && !pressDown) { pressDown = true; pressPos = pos; pressTime = t; pressValid = KnockAllowed(pos); pressWorld = WorldTapAllowed(pos); }
+            else if (n >= 2) pressValid = pressWorld = false;
+            else if (n == 1 && (pos - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height)) pressValid = pressWorld = false;
             if (n == 0 && pressDown)
             {
                 pressDown = false;
-                if (pressValid && t - pressTime <= TapMaxSeconds) Tap(planner, now);
+                // #39: a tap on a person's doll opens their card (and a tap on the world closes an open card); only a tap
+                // that reaches neither is the Keeper's knock.
+                bool quick = t - pressTime <= TapMaxSeconds;
+                var cards = PersonCardView.Instance;
+                if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
+                else if (pressValid && quick) Tap(planner, now);
             }
             if (taps > 0 && t - lastTapTime > TapGap) FinishKnock(sim, planner, now);
         }
