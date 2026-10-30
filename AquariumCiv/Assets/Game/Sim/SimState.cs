@@ -203,6 +203,7 @@ namespace AquariumCiv.Sim
         public int friendId = -1;
         public int rivalId = -1;
         public int mentorId = -1;
+        public long jobChangedMonth = -1000000; // month of the last job fill or forced move (SimCore.Jobs.cs, #67); old saves: long ago
         public string job = "";  // everyday job (JobType; SimCore.Jobs.cs): "" as a child, "elder" when retired
 
         public string FullName => $"{name} {family}";

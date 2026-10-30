@@ -147,7 +147,7 @@ namespace AquariumCiv.Sim
                     continue;
                 }
                 n.job = ChooseJob(n, from);
-                jobChangedMonth[n.id] = State.month;
+                n.jobChangedMonth = State.month;
                 if (from == JobType.None || from == JobType.Elder) continue; // a first job: the coming-of-age or rise line covers it
                 bool eraGone = !JobsOf(State.era).Contains(from);
                 if (eraChange || eraGone) (moved ??= new List<(Notable, string)>()).Add((n, from));
@@ -161,10 +161,6 @@ namespace AquariumCiv.Sim
         /// <summary>A notable doesn't switch again for this many months after a change (3 years).</summary>
         const int JobChangeCooldownMonths = 36;
 
-        /// <summary>When each notable last changed job through a fill or a forced move. Not saved: after a load the
-        /// cooldown starts fresh, which only means one person may switch a little sooner.</summary>
-        readonly Dictionary<int, long> jobChangedMonth = new();
-
         /// <summary>A job that is open (its building or land is there) but no one holds: one suitable notable takes it,
         /// at most one a month. Trait-weighted, preferring someone from a crowded job; never an elder, a child, someone
         /// who switched lately, or the only holder of their job. No dice, no effect on the economy.</summary>
@@ -177,7 +173,7 @@ namespace AquariumCiv.Sim
                 if (workers.Any(n => n.job == job)) continue;
                 var cands = workers.Where(n => !string.IsNullOrEmpty(n.job) && n.job != JobType.Elder &&
                     workers.Count(o => o.job == n.job) >= 2 &&
-                    (!jobChangedMonth.TryGetValue(n.id, out long m) || State.month - m >= JobChangeCooldownMonths)).ToList();
+                    State.month - n.jobChangedMonth >= JobChangeCooldownMonths).ToList();
                 if (cands.Count == 0) continue;
                 var weights = new float[cands.Count];
                 float total = 0;
@@ -194,7 +190,7 @@ namespace AquariumCiv.Sim
                     if ((pick -= weights[i]) < 0) { who = cands[i]; break; }
                 string from = who.job;
                 who.job = job;
-                jobChangedMonth[who.id] = State.month;
+                who.jobChangedMonth = State.month;
                 Chronicle("job_fill", $"{OpenedLabel(job)}, {who.FullName} left {LeftLabel(from)} to {Verb(job)}.", 0.5f, who.id);
                 return; // one a month: the next open job waits its turn
             }
