@@ -1,7 +1,7 @@
 # Vertical slice plan (draft, 2026-10-29)
 
 **Status: active (2026-10-29).** Gates 1–3 are decided ([decisions.md](../decisions.md)); §3 now records the chosen
-path for each gate, with the other options kept below it for reference. Art direction (§6) is still open.
+path for each gate, with the other options kept below it for reference. Art direction (§6) is decided: the code-built style kit.
 Scope comes from [prototype-plan.md](prototype-plan.md) Gate 3: **one box, eras 1–3, final art direction, real
 save/catch-up architecture.** Design source: [game-definition.md](game-definition.md).
 
@@ -22,7 +22,7 @@ session) for a week.
 |---|---|---|
 | Cleaning gesture | Drag-to-wipe, the first touch decides wipe vs toss | P1, P2 (decisions.md) |
 | Care consequence | Mess dims sunlight and slows work pace (−25 % at the 48 h cap), mood shows it | Gate 1. Ready as `CareConfig.Gate1` + `CareMoodView` on `vs/prep` |
-| Time | 1 real hour = 1 game year; notables age at half speed (fix the shown age vs calendar) | Gate 2 (recheck in the slice week) |
+| Time | 1 real hour = 1 game year; notables age with the calendar and live 110–160 years | Gate 2 + aging decision 2026-10-29 |
 | Return presentation | Chronicle cards (P3 A); relationships visible in the world | Gate 2 |
 | History view | Time-lapse (P4 A) + a small, polished book of major events and people | Gate 2 |
 | Nudge form | Shape the land (P5 B): rain, groves, channels; no omens | Gate 3 |
@@ -69,13 +69,16 @@ Slice work per choice is the matching "If … wins" paragraph below; the rest is
 - **If it's a tie:** both stay (the current design: grow inside eras, shelf after the final era). The slice then only
   needs the annex; the shelf comes after the slice.
 
-## 4. Scope
-**In:** one box; eras Camp → Hamlet → Village, crossed live (plateaus); the care layer (Gate 1); the Gate 2 return and
-history view; the Gate 3 nudge form; notables, pins, person cards; real save and offline catch-up; a first-run
-experience (name your box, first wipe, first nudge); sound pass; settings (sound, haptics, reset).
-**Out:** Town and later eras, monetization, notifications, widgets, cloud save, accounts, localization, the shelf
-second box's own eras (the slice ends as the new box
-arrives and the first one becomes a museum), the Test Hub and A/B machinery (the slice is one game, not variants).
+## 4. Scope (updated to game-definition v0.2, 2026-10-29)
+**In:** one box crossing all three eras live (plateaus): **hunter-gatherer camp → farming village → industrious town**;
+the box **completes** at the town's peak and a second box arrives on the shelf (the first stays alive as a museum);
+the care layer (Gate 1); chronicle cards and the time-lapse + small book (Gate 2); shaping the land: rain, grove,
+channel (Gate 3); notables with calendar aging, pins, person cards, relationships visible in the world; **organic
+placement** (the people choose sites; research 08); real save and offline catch-up with the **quarter-speed tail after
+8 h**; the **code-built style kit** for everything; a first run (name your box, first wipe, first shaping); sound;
+settings (sound, haptics, reset); the opt-in era notification.
+**Out:** the second box's own play (it arrives, that's all), descendants/relics carry-over beyond a stub, follow-a-person
+mode, collections, monetization, widget, cloud save, accounts, localization, the Test Hub and A/B machinery.
 
 ## 5. Architecture
 ### 5.1 From prototypes to a game project
@@ -114,7 +117,12 @@ Keep the JSONL event log and the GitHub feedback flow (with a relay before any p
 trade-off"). Add the week-long metrics: opens per day, D1/D3/D7, time to first clean, era watched live or skipped,
 stories recalled (a one-question in-app prompt on day 3).
 
-## 6. Art direction (to decide with you; options)
+## 6. Art direction
+**Decided 2026-10-29: the code-built style kit** ([spikes/style-kit.md](spikes/style-kit.md), decisions.md). No KayKit;
+everything generated in code from one palette and one stylised shader; buildings placed by the people, growing
+organically (research 08). The options below are kept for reference.
+
+### Options considered before the spike
 The look test and prototypes use KayKit Medieval Hexagon in a glass tank with tilt-shift. Final direction options:
 - **A · Keep KayKit, polish the glass** (cheapest): one palette pass, better glass (refraction-lite, rim light,
   condensation), a plinth and a shelf backdrop, era-specific ground colour. All CC0.
@@ -128,14 +136,30 @@ KayKit's huts → homes, and B keeps the free, cohesive base.
 ## 7. Milestones (rough, agent days)
 | # | Milestone | Days | Done when |
 |---|---|---|---|
-| 1 | Project skeleton: `Assets/Game`, ported sim + tests, versioned atomic save | 3 | Sim tests green, save survives a killed app (test) |
-| 2 | Box, care, camera, crowd, notables in the new UI | 4 | Tester agent passes a first-session playtest by touch |
-| 3 | Gate 2 return + history view | 3 | Recall and history metrics logged |
-| 4 | Gate 3 nudge form | 3 | A nudge is answered and credited in diary time |
-| 5 | Eras 1–3 live, progression shape at Village | 4 | The Village moment plays live after a 24 h away |
-| 6 | First run, settings, sound, art pass (option chosen) | 4 | Tester agent and you sign off the look |
-| 7 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
-About 22 agent days before the week-long test.
+| 1 | Project skeleton: `Assets/Game`, ported sim + tests, versioned atomic save, `GameClock` (load, catch-up with the 8 h quarter-speed tail, autosave) | 3 | Sim tests green, save survives a killed app (test) |
+| 2 | Style kit into `Assets/Game` + **organic placement layer** (sim decides sites; meshes generated from sim state) | 4 | A 3-era time-lapse that grows like a real village; you sign off the look |
+| 3 | Box, care, camera, crowd, notables in UI Toolkit | 4 | Tester agent passes a first-session playtest by touch |
+| 3b | **Life in the box + notable jobs and roles** (game-definition §4): activity days for every person (work at the job site with work animations, carry goods on worn paths, gather, chat/argue, kids play, sleep), notables' everyday jobs and era roles (1/3/7) with trait-driven contests and trait-coloured time in office, new chronicle stories | 4 | A watcher can say what 5 random people are doing; role changes appear as cards |
+| 4 | Chronicle cards + time-lapse + small book | 3 | Recall and history metrics logged |
+| 5 | Shaping the land (rain, grove, channel) in the style kit, answered by placement | 3 | A shaping is answered visibly and credited in diary time |
+| 6 | Eras live (camp → village → town), box completes, second box arrives | 4 | The town moment plays live after a 24 h away |
+| 7 | First run, settings, sound, era notification, polish | 3 | Tester agent and you sign off |
+| 8 | Week-long diary build (TestFlight 0.4.0) | 1 + a week | Results note and go / no-go for production |
+About 28 agent days before the week-long test.
+
+**Progress.** **M1 done 2026-10-29** (branches `vs/m1`, then `vs/m1-clock`): `Assets/Game/Sim` (`AquariumCiv.Sim`,
+pure C#, the prototype sim with the gate switches resolved: no mess→mood, stories and yearly snapshots always on,
+nudges = rain/grove/channel only; **offline slow-down**: `SimCore.CatchUp` lives the first 8 h away at full speed and
+the rest at a quarter, then tops up mess for the real hours it didn't live, so a 48 h absence still reaches full mess),
+`Assets/Game/Runtime` (`AquariumCiv.Game`: versioned atomic `SaveStore`; `GameClock` with its decisions in
+`ClockLogic`: load or start a box, broken saves kept aside as `.corrupt`, a newer build's save never overwritten
+(non-saving session), catch-up on open and on return from the background, live time by unscaled real time, autosave
+every 30 s and on pause/focus loss/quit to `persistentDataPath/game/box.json`; debug hooks `GameClock.DebugSkipHours`
+/ `DebugAway` for `script eval` until the debug panel), `Assets/Editor/Agent/SliceSceneBuilder.cs` →
+`Assets/Game/Scenes/Slice.unity` (camera + GameClock, no art), and `Assets/Game/Tests` (54 EditMode tests incl. the
+slice-world fingerprint, a killed-mid-save test and the clock decisions). Left for later: excluding the prototypes
+from the slice build (Build Settings are untouched while TestFlight prototype builds use them), and measuring a long
+catch-up on a phone (a week away = 576 month steps).
 
 ## 8. Risks
 - **"Nothing to do" between events** (P2 feedback #8: "there is nothing else to do so it feels a bit like doing

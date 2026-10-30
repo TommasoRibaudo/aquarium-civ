@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Runs the pure-C# slice sim tests outside Unity (docs/workflow.md, lane:sim), so sim work can be tested in
+    parallel git worktrees without the Editor. Unity (and CI) stay the authority: this compiles the same files.
+    Run: dotnet test Tools/SimTests
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS0414;NUnit2005;NUnit2006;NUnit2007;NUnit2015;NUnit2017</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../AquariumCiv/Assets/Game/Sim/**/*.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Life/**/*.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SimCoreTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryAndNudgeTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfflineCatchUpTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeStageTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/NotableCountTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/RoleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfficeTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SweeperTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/CardsTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
+    <Compile Include="Shims/*.cs" />
+    <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

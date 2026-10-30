@@ -276,7 +276,101 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     `PaneCleared` threshold (< 0.05). To test the clear chime, set a dirty central patch on a clean pane and wipe that.
 - **2026-10-29 · `test run --mode play` silently runs 0 tests** ("0/0 passed (0s)", exit 0). The Pipeline's modes are
   `editor`, `playmode`, `all`; anything else matches nothing. Use `--mode playmode` (and `--async_tests true` + `test
-  status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified]
+  status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified] Same for `--mode edit` (use `editor`).
+- **2026-10-29 · Blender 4.5 LTS and RenderDoc 1.46 installed** (user-approved; `winget install --id
+  BlenderFoundation.Blender.LTS.4.5` / `BaldurKarlsson.RenderDoc`, each needs one UAC click). Blender runs headless:
+  `"/c/Program Files/Blender Foundation/Blender 4.5/blender.exe" --background --factory-startup --python script.py -- <args>`
+  (script args after `--`, read via `sys.argv`); FBX export via `bpy.ops.export_scene.fbx` verified. RenderDoc:
+  `C:\Program Files\RenderDoc\qrenderdoc.exe` (UI) and `renderdoccmd.exe` (CLI capture) for Windows frame captures;
+  there is no Android device and no Mac, so iPhone GPU captures still need the in-app FrameTimingManager log. [verified]
+- **2026-10-29 · `unity status --timeout 30` fails** with `STATUS_TIMEOUT_REQUIRES_UNTIL_READY`: `--timeout` only goes
+  with `--until-ready`. Plain `unity status --format json` is instant. After `unity recompile`, poll it until `"state":
+  "ready"` (it reads `unreachable`/`starting` for ~10–20 s). [verified]
+- **2026-10-29 · The first `script eval` after a recompile can return 504 (30 s timeout) yet still run.** A scene-builder
+  eval (`NewScene` + `SaveScene` + `AssetDatabase.Refresh`) timed out but the scene was written. Check the effect (file
+  on disk, active scene) before re-running; give builder evals `--timeout 60`. [verified]
+- **2026-10-29 · Slice play-mode checks:** the `GameClock` summary line is in `Editor.log` (`grep -a "\[GameClock\]"`)
+  even when `console get` right after `editor.playmode start` shows 0 entries. The slice saves to
+  `LocalLow/Tommaso Ribaudo/Aquarium Civ/game/` and never touches `proto/` or `logs/`. [verified]
+- **2026-10-29 · Fast headless loop for pure-C# sim code (no Editor, no domain reload).** [verified] Unity ships a
+  Roslyn compiler and a .NET 6 runtime: compile `Assets/Game/Sim/*.cs` + spike logic + a `Main.cs` with
+  `"<Editor>/Data/NetCoreRuntime/dotnet.exe" "<Editor>/Data/DotNetSdkRoslyn/csc.dll" -noconfig @build.rsp`, referencing
+  every `NetCoreRuntime/shared/Microsoft.NETCore.App/6.0.21/System*.dll` (+ `netstandard.dll`, `mscorlib.dll`; skip
+  `*Native*`, keep `System.Private.CoreLib.dll`), and write a `<out>.runtimeconfig.json` for net6.0. The paths have spaces:
+  put every `-r:"..."` and source path in the `.rsp` file, quoted (on the command line they split). Set
+  `CultureInfo.InvariantCulture` in `Main` (this machine prints `0,5`). Gotcha: CoreCLR and the Editor's Mono differ in
+  float results and in speed (Mono was 3–4× slower on Dijkstra-heavy code), so tune in the harness but measure the
+  budget in the Editor; same-runtime runs are bit-identical.
+- **2026-10-29 · Python edits of C# files: always `encoding='utf-8'`.** Python's default on this machine is cp1252: a
+  write with a non-cp1252 character (→, ≥) raises *after* `open(..., 'w')` truncated the file, leaving it empty.
+  Write to a temp file and `os.replace` it. [verified]
+- **2026-10-29 · Edit-mode renders to JPG with URP post-processing:** `cam.targetTexture = RenderTexture.GetTemporary(w,
+  h, 24, ARGB32, sRGB)`, `cam.Render()`, `ReadPixels`, `EncodeToJPG` (`GrowthLabBuilder.Render`). Tonemapping, grade and
+  SMAA are applied; no play mode needed. Long frame exports: chunk them into `script eval` calls under 60 s
+  (`GrowthLabBuilder.Frames(from, to)`), about 1 s per frame with the AO bake. [verified]
+- **2026-10-29 · The Game view size lands a few frames into play mode.** After `AgentGameView.SetSize(1179, 2556)` and
+  `editor.playmode start`, `Start()` still saw the old 1198x702 Game view, so a camera fitted once in `Start` was framed
+  for landscape. Refit when `cam.aspect` changes (PerfCheck does). Also, ProfilerRecorder render counters
+  ("Batches Count", ...) read double in the Editor with the Scene view open, and 0 on some frames. Trust the device numbers. [verified]
+- **2026-10-29 · Unity (Mono) and Tools/SimTests (.NET 8) don't give bit-identical floats for the sim.** The slice
+  fingerprint (ints, rng states, ages to 2 decimals) matches in both, but hashes over raw float fields (food, wood, mood…)
+  differ, with "R" text or with raw bits. So: never pin a float-derived hash in a test that runs in both; pin under
+  `#if !UNITY_2017_1_OR_NEWER` (dotnet only) and compare same-runtime runs in Unity. Unity stays the authority. [verified]
+- **2026-10-30 · "The referenced script (Unknown) on this Behaviour is missing!" on a component the builder just
+  added.** The MonoBehaviour (`NightLampDriver`) lived in a file named after another class (`NightLamps.cs`), so Unity
+  gave it no script asset and the scene saved `m_Script: {fileID: N}` with no guid. Every MonoBehaviour needs its own
+  file named like the class. Check after a scene build: `grep -n "m_Script: {fileID: [0-9]*}$" <scene>.unity` must be
+  empty. [verified]
+- **2026-10-30 · Phone-size renders of the slice:** `AquariumCiv.EditorTools.SliceSceneBuilder.Shot(path, w, h, zoom,
+  target, yaw, pitch)` renders the main camera (URP post included) to PNG in edit or play mode, with the `BoxCamera`
+  refitted to that aspect, and restores the rig. [verified]
+- **2026-10-29 · Tester: Slice look checks (#31).** [verified]
+  - `SliceSceneBuilder.Shot(path, w, h, zoom, target, yaw, pitch)` renders any size/angle in edit mode without dirtying
+    the scene; villagers are `HideFlags.DontSave`, so find them with `Resources.FindObjectsOfTypeAll<PegDollView>()`
+    (`FindObjectsByType` returns 0) and aim close-ups at their positions.
+  - `BoxCamera` reads `Touchscreen.current`/`Pointer.current` directly, so an `InputTestFixture` with the default update
+    mode and `queueEventOnly: true` touches drives it (no manual pump or EnhancedTouch needed).
+  - Lamp flicker is per-frame shader noise: sample pixel luminance from `ScreenCapture.CaptureScreenshotAsTexture()`
+    after `WaitForEndOfFrame` across frames at fixed `NightLamps.DebugSetLevel` values instead of diffing whole
+    screenshots (wind sway changes ~100k pixels per frame).
+- **2026-10-29 · Bash tool: a long `python - <<'EOF'` heredoc full of apostrophes failed to parse** ("unexpected EOF
+  while looking for matching `''") although the delimiter was quoted. Workaround: write the edit spec or script with the
+  Write tool to the scratchpad and run it (`python script.py spec`). [workaround]
+- **2026-10-30 · The Editor compiles scripts in Debug mode (`CompilationPipeline.codeOptimization` = Debug), so managed
+  per-vertex loops are several times slower than in a player.** Measure Editor budgets with that in mind. What made the
+  slice box's chunk rebuild fit (#33): AO with `RaycastCommand.ScheduleBatch` plus plain (non-Burst) `IJobParallelFor`
+  jobs that build the commands and sum the hits (the rays were only ~1/4 of the cost; the managed loops around them were
+  the rest), packed `long` dictionary keys instead of tuple keys, `List.ToArray()` before hot loops, distance fields on
+  a 0.025 u grid instead of walking polylines per triangle, and `Parallel.For` over terrain row bands.
+  `Color.linear` is a native call: `MeshBuilder.Linear` does the same in managed code so builders run on worker threads;
+  `Quaternion.FromToRotation` worked inside jobs. [verified]
+- **2026-10-30 · Profiling a private method from `script eval`:** call it by reflection
+  (`typeof(T).GetMethod("Name", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(obj, args)`), with a `Stopwatch`
+  around each stage; out params come back in the `args` array. Build the result string with `+`, not `$"...\n"`, when
+  the script is passed through `"$(cat file)"` (an escaped `\n` inside an interpolated string got mangled). [verified]
+- **2026-10-30 · `VolumeProfile` built in code must add its components as sub-assets (#63).** `Post_Slice.asset` was
+  committed with `components: [{fileID: 0} x5]`: `p.Add<T>(true)` creates the overrides in memory only, and they survive a
+  domain reload but not an Editor restart or a player build, so a fresh checkout ran the slice with no tonemap, grade,
+  vignette or bloom. `AssetDatabase.AddObjectToAsset(c, profile)` for each component before `SaveAssets` fixes it
+  (`SliceSceneBuilder.Profile`). Check with `grep -c "" Post_Slice.asset` (about 190 lines, not 20). [verified]
+- **2026-10-30 · After a mesh-builder or shader change, `BoxView.Rebuild()` before shots.** `SimLayoutSource.DebugPreview`
+  reports "no chunk changed" when the layout hash is the same, so the old piece meshes stay. Call
+  `UnityEngine.Object.FindAnyObjectByType<AquariumCiv.View.BoxView>().Rebuild()` first. [verified]
+- **2026-10-30 · `script eval` takes no `using` lines** (top-level `using X;` is parsed as a using-statement and fails with
+  "Identifier expected"): write fully qualified names. A sed pass over a script file does it:
+  `sed -E 's/(^|[^A-Za-z0-9_.])(Vector3|Color)\b/\1UnityEngine.\2/g'`. This machine has no `python` (the Store stub) but
+  has `perl`, which handles multi-line edits (`perl -0pi -e ...`) when a heredoc has no apostrophes. [verified]
+- **2026-10-30 · `unity command test run` prints only the totals; failures are in `TestResults.xml`.** Read
+  `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/TestResults.xml` and grep `result="Failed"` with `-A12`
+  (use `grep -a`). [verified]
+- **2026-10-29 · Tester #63 camera-by-touch notes.** [verified]
+  - `BoxCamera` takes `InputTestFixture` touches with the default update mode: `BeginTouch/MoveTouch/EndTouch(...,
+    queueEventOnly: true)`, one step per frame, two ids for pinch/pan. The fixture leaves no `Mouse`, so `Touchscreen.current`
+    is the only pointer. Several Game view sizes in one test: call `AgentGameView.SetSize` by reflection
+    (`AppDomain.GetAssemblies()` → `AquariumCiv.EditorTools.AgentGameView`) and wait ~1 s; the yaw/pitch deltas then match.
+  - Measure "ground under the fingers" with `BoxCameraMath.GroundPoint(cam.ScreenPointToRay(p), rig.target.y, ...)`.
+  - The slice play mode rewrites `LocalLow/.../game/box.json`: copy it out before and back after.
+  - Fire halo edge check: scan rows of a night close-up for a strong horizontal luminance step (PIL); the eye misses it in day shots.
 - **2026-10-29 · Tester sim playtest without a UI (#24-#26 jobs/counts).** [verified]
   - Drive the live Slice box with `unity command script run --file Temp/agent/tester/X.cs --entry Type.Method --args '[...]'`
     (static methods using `GameClock.Instance.Sim`, `SimLayoutSource.DebugSkipYears/DebugNextEra`, `GameClock.DebugAway`); add
@@ -289,3 +383,18 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     0/0). Wait for it to end, make sure play mode is off, rerun with `--async_tests true` (234 tests, ~2.5 min).
   - Back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/game/box.json(.bak)` before a live Slice run; delete
     them for a fresh camp, restore afterwards.
+
+- **2026-10-29 · UI Toolkit panels are missing from Game-view screenshots** (like IMGUI). Capture with
+  `UnityEngine.ScreenCapture.CaptureScreenshot(path)` from `unity command script run --file Temp/agent/x.cs --entry T.Run`
+  (file path is relative to `AquariumCiv/`, then wait a second and read the PNG). The feedback sheet has to hide its own HUD for a frame before it
+  captures, for the same reason. [verified]
+
+- **2026-10-29 · UI Toolkit in `script eval` / HUD checks (#36).** [verified]
+  - `script eval` doesn't pick up the `UQueryExtensions` extension methods: `root.Q("name")` fails to compile with
+    "'VisualElement' does not contain a definition for 'Q'". Call it statically:
+    `UnityEngine.UIElements.UQueryExtensions.Q(root, "name")`.
+  - Open/close HUD sheets from eval with `GameHud.Instance.Open("settings"|"history"|"shaping")` / `CloseSheet()`, then
+    `AgentGameView.Shot(name)`: the shot shows UI Toolkit (Game-view `capture screenshot` doesn't).
+  - USS edits hot-reload in play mode after `AssetDatabase.Refresh()`; check with `resolvedStyle` before trusting a shot.
+  - The Editor's Game view has no notch: `Screen.safeArea` is the full screen there, so safe-area handling is covered by
+    `SafeInsetsTests` (EditMode) and needs a device or the Device Simulator to see.

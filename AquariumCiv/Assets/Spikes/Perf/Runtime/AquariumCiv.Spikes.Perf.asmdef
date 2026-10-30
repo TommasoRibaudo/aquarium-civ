@@ -1,0 +1,19 @@
+{
+    "name": "AquariumCiv.Spikes.Perf",
+    "rootNamespace": "AquariumCiv.Spikes.Perf",
+    "references": [
+        "AquariumCiv.Prototypes.Shared",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

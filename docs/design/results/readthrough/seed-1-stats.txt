@@ -1,0 +1,130 @@
+# Seed 1: counts and automatic flags
+Eras: ready Y10, ready Y48, Village at Y12, Town at Y50
+Entries: 300; shown as cards: 273
+
+Card-worthy entries per decade (all / term_ lines / role_ lines / deaths / births):
+    0-  9:  25 /  4 /  1 /  0 /  3   C
+   10- 19:  22 /  2 /  2 /  0 /  1   C V
+   20- 29:  18 /  4 /  1 /  0 /  2   V
+   30- 39:  16 /  2 /  1 /  0 /  0   V
+   40- 49:  16 /  4 /  1 /  1 /  0   V
+   50- 59:  32 /  7 /  4 /  3 /  3   V T
+   60- 69:  27 / 10 /  1 /  2 /  1   T
+   70- 79:  18 /  4 /  3 /  1 /  2   T
+   80- 89:  25 /  8 /  4 /  2 /  2   T
+   90- 99:  28 /  8 /  4 /  2 /  3   T
+  100-109:  15 /  4 /  0 /  0 /  0   T
+  110-119:  26 /  8 /  5 /  4 /  2   T
+
+By kind:
+  birth               21
+  coming_of_age       17
+  death               15
+  rivalry             12
+  keeper              11
+  term_feast          11
+  festival            10
+  retired             10
+  term_row             9
+  friendship           9
+  role_contest         7
+  term_meeting         7
+  wedding              6
+  first_building       6
+  lost                 6
+  reconcile            6
+  term_announce        6
+  loud                 5
+  fog                  5
+  newcomer             5
+  stubborn             5
+  term_garden          5
+  role_appointed       5
+  storm                4
+  ducks                4
+  anniversary          4
+  giant_turnip         4
+  term_prank           4
+  term_nap             4
+  rainbow              3
+  term_plan            3
+  invention            3
+  term_pilgrim         3
+  role_reelected       3
+  strange_light        3
+  role_death           3
+  grump                3
+  term_complaint       3
+  drought              2
+  milestone            2
+  era-ready            2
+  era                  2
+  role_era             2
+  apprentice           2
+  prank                2
+  brave                2
+  term_expedition      2
+  song                 2
+  lazy                 2
+  term_song            2
+  role_inherited       2
+  gossip               2
+  term_tidy            2
+  term_news            2
+  term_device          2
+  founding             1
+  snow                 1
+  dreamer              1
+  naming               1
+  job_era              1
+  role_won             1
+  kind                 1
+  bumper               1
+  sheep                1
+  role_offices         1
+  sweepers             1
+  role_reluctant       1
+  elder                1
+  role_succession      1
+  role_masterwork      1
+  worrier              1
+
+Most repeated templates (names and numbers taken out):
+  x14  {N} was born to {N}.
+  x7   {N} was born to {N} and {N}.
+  x6   After the Keeper raised an outcrop, {N} opened a workshop for the new stone beside it.
+  x5   {N} and {N} fell out over a song lyric. They no longer share a bench.
+  x5   {N} came of age and took up work as a farmer.
+  x5   {N} and {N} became fast friends after sharing the last apple.
+  x4   After the Keeper dug a channel from the pond, {N} planted a new field beside it.
+  x4   {P} celebrated # years in the glass with a feast.
+  x3   Fog filled the glass for a week. {N} walked into the same tree four times.
+  x3   {N} came of age and took up work as a woodcutter.
+  x3   {N} called the goats home from the far side of the glass.
+  x3   Lord {N} made {N} captain of the watch. The watch is {N} and a very large dog.
+  x3   {N} came of age and took up work as a sweeper.
+Exact duplicate texts: 10
+  x2 A family of ducks moved into the pond and took charge of it.
+  x2 Greta Gale, the village's miller, announced a tower tall enough to see over the glass. They built the first step.
+  x2 Greta Gale the miller led a walk up the hill to wave at the sky. Kit Marsh swears something waved back.
+  x2 A strange warm light crossed the sky. Some say the Keeper was looking for something.
+  x2 Hester Gale, the town's merchant, made an announcement at the market steps every morning. Most of them were about the weather.
+  x2 Zeb Vane, the town's innkeeper, ended a speech at the inn with a joke about the goats. Even the goats laughed.
+  x2 Dina Brook, the town's master builder, declared a long lunch. It became a long nap on the green.
+  x2 Hester Gale the merchant held a feast at the market steps. They could be heard on the far side of the glass.
+  x2 Dina Brook the master builder has not called a meeting in two years. Nobody has complained.
+  x2 Gus Gale the lord held a feast at the market steps. They could be heard on the far side of the glass.
+
+Evening-talk teasers (12):
+  x2   [office] Dov Vane has made up their mind about something, and nothing will change it.
+  x2   [gift] Everyone keeps going down to look at the new water.
+  x2   [gift] The craftsfolk keep going out to tap the new rock.
+  x1   [gift] The gatherers keep checking the wet ground.
+  x1   [era] The craftsfolk talk of guilds, and of a bigger market.
+  x1   [office] Tilda Gale has made up their mind about something, and nothing will change it.
+  x1   [seat] Nils Gale has been shaking a lot of hands at the inn. The guildmaster's term is nearly up.
+  x1   [seat] Bram Brook has been shaking a lot of hands at the inn. The guildmaster's term is nearly up.
+  x1   [couple] Bram Brook and Edda Gale keep sitting together at the market steps.
+
+Flags:
+  (0 flags)

@@ -21,6 +21,7 @@ AquariumCiv/Assets/Prototypes/_Shared/Resources/BuildInfo.txt*
 .vscode/
 .idea/
 *.csproj
+!Tools/SimTests/SimTests.csproj
 *.unityproj
 *.sln
 *.suo
@@ -64,3 +65,4 @@ Thumbs.db
 *.pem
 .env
 .env.*
+.agent-editor.lock

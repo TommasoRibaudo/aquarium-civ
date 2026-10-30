@@ -1,0 +1,125 @@
+# Seed 1234: counts and automatic flags
+Eras: ready Y18, ready Y82, Village at Y20, Town at Y84
+Entries: 267; shown as cards: 243
+
+Card-worthy entries per decade (all / term_ lines / role_ lines / deaths / births):
+    0-  9:  22 /  1 /  1 /  0 /  2   C
+   10- 19:  12 /  1 /  0 /  0 /  1   C
+   20- 29:  19 /  1 /  2 /  0 /  0   V
+   30- 39:  21 /  5 /  2 /  1 /  4   V
+   40- 49:  12 /  3 /  1 /  1 /  0   V
+   50- 59:  20 /  4 /  1 /  1 /  2   V
+   60- 69:  18 /  2 /  1 /  0 /  1   V
+   70- 79:  18 /  2 /  1 /  2 /  2   V
+   80- 89:  29 /  6 /  3 /  1 /  2   V T
+   90- 99:  30 /  5 /  6 /  4 /  4   T
+  100-109:  20 /  5 /  1 /  0 /  0   T
+  110-119:  16 /  6 /  1 /  1 /  0   T
+
+By kind:
+  birth               18
+  coming_of_age       18
+  death               12
+  keeper              11
+  festival            10
+  rivalry              9
+  storm                9
+  lost                 8
+  fog                  8
+  term_feast           8
+  wedding              7
+  apprentice           7
+  brave                7
+  first_building       6
+  role_contest         6
+  retired              6
+  term_expedition      6
+  friendship           5
+  loud                 5
+  term_meal            5
+  term_announce        5
+  ducks                4
+  term_lanterns        4
+  worrier              4
+  reconcile            4
+  rainbow              4
+  strange_light        4
+  anniversary          4
+  kind                 4
+  term_mend            4
+  role_succession      3
+  newcomer             3
+  role_won             2
+  dreamer              2
+  milestone            2
+  era-ready            2
+  era                  2
+  job_era              2
+  role_era             2
+  prank                2
+  bumper               2
+  stubborn             2
+  role_reelected       2
+  term_meeting         2
+  song                 2
+  role_death           2
+  role_masterwork      2
+  term_garden          2
+  term_pilgrim         2
+  giant_turnip         2
+  founding             1
+  snow                 1
+  naming               1
+  drought              1
+  sheep                1
+  term_prank           1
+  role_offices         1
+  sweepers             1
+  term_row             1
+  role_inherited       1
+  role_appointed       1
+  term_plan            1
+  term_device          1
+
+Most repeated templates (names and numbers taken out):
+  x10  {N} was born to {N}.
+  x8   {N} was born to {N} and {N}.
+  x7   {N} took young {N} as an apprentice.
+  x5   After the Keeper dug a channel from the pond, {N} planted a new field beside it.
+  x4   {N} came of age and took up work as a farmer.
+  x4   {N} came of age and took up work as a fisher.
+  x4   After the Keeper raised an outcrop, {N} opened a workshop for the new stone beside it.
+  x3   {N} got lost in the hills for three days and came back with a crown made of twigs.
+  x3   {N} and {N} became fast friends after a long night of storytelling.
+  x3   A thick fog sat in the glass for days. {N} said good morning to a bush.
+  x3   {N} threw a harvest festival. The pies ran out long before the music did.
+  x3   {N} came of age and took up work as a woodcutter.
+  x3   {N} called the goats home from the far side of the glass.
+  x3   {N}, the village's headman, set long tables at the green, and everyone ate together.
+  x3   Fog rolled in and stayed. {N} found the way home by following the smell of supper.
+  x3   At #, {N} stopped being a fisher and became an elder. They still tell everyone how it should be done.
+  x3   {P} celebrated # years in the glass with a feast.
+  x3   {N}, the loud, died of old age at #.
+Exact duplicate texts: 7
+  x2 A family of ducks moved into the pond and took charge of it.
+  x2 A rainbow arched over the pond. Nobody worked that afternoon.
+  x3 After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+  x2 Quill Barrow, the village's headman, set long tables at the green, and everyone ate together.
+  x2 Ada Barrow, the village's miller, made an announcement at the mill every morning. Most of them were about the weather.
+  x2 The strange warm light came back and lingered over the pond. Some say the Keeper had dropped something small.
+  x2 After the Keeper raised an outcrop, Alma Marsh opened a workshop for the new stone beside it.
+
+Evening-talk teasers (12):
+  x2   [gift] Everyone keeps going down to look at the new water.
+  x2   [gift] The craftsfolk keep going out to tap the new rock.
+  x1   [office] Hob Barrow has been counting the lanterns. And then counting them again.
+  x1   [gift] The gatherers keep checking the wet ground.
+  x1   [era] The elders talk about planting seeds and staying put.
+  x1   [rivalry] Bram Vane and Ada Barrow aren't speaking again.
+  x1   [office] Gus Marsh has been cooking enough stew for the whole village.
+  x1   [era] The craftsfolk talk of guilds, and of a bigger market.
+  x1   [office] Nils Marsh wants to see what's past the far edge of the town.
+  x1   [rivalry] Alma Marsh and Flora Dale aren't speaking again.
+
+Flags:
+  (0 flags)
