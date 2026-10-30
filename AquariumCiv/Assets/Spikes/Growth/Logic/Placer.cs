@@ -11,6 +11,7 @@ namespace AquariumCiv.Spikes.Growth
         public string reject;
         public float score;               // Σ wᵢ·fᵢ (only meaningful when valid)
         public float[] f;                 // the terms (only when valid)
+        public int cluster = -1;          // ClusterPlacer: joins this cluster (-2 founds a new one)
         public byte source;               // 0 frontage, 1 edge ray, 2 backland, 3 water edge, 4 nudge ring, 5 green ring, 6 scan, 7 random, 8 hand
     }
 
@@ -41,6 +42,10 @@ namespace AquariumCiv.Spikes.Growth
     {
         public const float Setback = 0.12f, Gap = 0.08f;
         public const int MaxFrontageCells = 240;
+        /// <summary>Rows of homes side by side (round 1). The Cluster variant turns them off: no lining up.</summary>
+        public bool homeRows = true;
+        /// <summary>Fall back to a coarse scan of the whole box (round 1). The Cluster variant has its own finer infill.</summary>
+        public bool coarseScan = true;
 
         readonly List<int> cells = new();
         readonly float[] cornerX = new float[4], cornerZ = new float[4];
@@ -59,7 +64,7 @@ namespace AquariumCiv.Spikes.Growth
             cands.Clear();
             Generate(w, site, spec, nudge, cands);
             foreach (var c in cands) Evaluate(w, site, spec, nudge, c, reach);
-            if (!AnyValid(cands))
+            if (!AnyValid(cands) && coarseScan)
             {
                 // Nothing on the network fits: scan the whole box (coarse) so the people still build.
                 int before = cands.Count;
@@ -164,6 +169,7 @@ namespace AquariumCiv.Spikes.Growth
             foreach (var o in w.sites)
             {
                 if (o.retired || !RowsWith(site.kind, o.kind)) continue;
+                if (!homeRows && site.kind != Kind.Farm) continue;
                 o.Front(out float fx, out float fz);
                 float rx = -fz, rz = fx;
                 for (int s = -1; s <= 1; s += 2)
@@ -343,6 +349,8 @@ namespace AquariumCiv.Spikes.Growth
             foreach (int k in cells)
             {
                 if (map.Water(k)) return "water";
+                if (map.commons[k] || map.yard[k]) return "commons";
+                if (map.ring[k] != 0 && map.ring[k] != c.cluster) return "family";
                 if (map.lot[k] != 0) return "lot";
                 if (map.green[k] && site.kind != Kind.Shop) return "green";
                 if (map.laid[k] || map.tier[k] >= PathNet.PathTier) return "path";

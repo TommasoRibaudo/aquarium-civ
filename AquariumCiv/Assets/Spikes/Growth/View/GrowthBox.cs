@@ -57,7 +57,9 @@ namespace AquariumCiv.Spikes.Growth.View
         readonly List<Material> panes = new();
         Snapshot snap;
         TerrainSpec spec;
-        float[] canalF, f1, f2, f3, overlayF;
+        float[] canalF, f1, f2, f3, overlayF, commonsF;
+        bool clusterLook;              // round 2's Cluster variant: curved paths, yards, outbuildings, commons
+        List<PathCurve> curves;
         float overlayMin, overlayMax;
         readonly List<(Vector3 p, string label)> labelList = new();
 
@@ -133,6 +135,7 @@ namespace AquariumCiv.Spikes.Growth.View
             year = Mathf.Clamp(year, 0, world.snapshots.Count - 1);
             snap = world.snapshots[year];
             spec = world.map.spec;
+            clusterLook = world.variant == Variant.Cluster;
             PrepareFields();
             PrepareOverlay();
 
@@ -144,9 +147,11 @@ namespace AquariumCiv.Spikes.Growth.View
 
             var mb = new MeshBuilder(seed);
             Terrain(mb);
+            if (clusterLook && overlay == Overlay.None) PathRibbons(mb);
             Substrate(mb);
             BoxAndRoom(mb);
             Buildings(mb);
+            if (clusterLook) ClusterDressing(mb);
             Nature(mb);
             if (people) People(mb);
             if (showCandidates) Candidates(mb);
@@ -192,6 +197,9 @@ namespace AquariumCiv.Spikes.Growth.View
             // Roads read wider than paths; paths a little wider than trails.
             f3 = Dilate(f3, 0.75f);
             f2 = Dilate(f2, 0.45f);
+            commonsF = new float[n];
+            for (int c = 0; c < n; c++) commonsF[c] = (snap.flags[c] & Snapshot.FCommons) != 0 ? 1f : 0f;
+            curves = clusterLook ? PathCurves.Build(snap.tier, snap.flags, world.map.greenX, world.map.greenZ) : null;
         }
 
         static float[] Dilate(float[] f, float k)
@@ -290,12 +298,23 @@ namespace AquariumCiv.Spikes.Growth.View
                 if (era == Era.Town && HasMarket()) return Cobble(x, z, n); // the green became a market square
                 return Color.Lerp(Palette.GrassC, Palette.GrassA, n);
             }
+            if (clusterLook)
+            {
+                // Paths are drawn as curves on top (PathRibbons); the ground shows yards and the commons.
+                if (snap.clusters != null)
+                    foreach (var k in snap.clusters)
+                        if (GrowthTerrain.Dist(x, z, k.x, k.z) < k.r * (0.95f + 0.3f * (n - 0.5f))) return Color.Lerp(baseCol, Palette.Dirt, era == Era.Camp ? 0.6f : 0.55f);
+                if (Bilerp(commonsF, x, z) > 0.5f + (n - 0.5f) * 0.3f) return Meadow(n);
+                return baseCol;
+            }
             if (t3 > thr) return Cobble(x, z, n);
             if (t2 > thr) return Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f);
             if (t1 > thr + 0.06f) return Color.Lerp(baseCol, Palette.Dirt, 0.6f);
             if (t1 > thr - 0.12f) return Color.Lerp(baseCol, Palette.Dirt, 0.25f);
             return baseCol;
         }
+
+        static Color Meadow(float n) => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Sprout, 0.35f), Palette.GrassA, n * 0.5f);
 
         static Color Cobble(float x, float z, float n)
         {
@@ -336,6 +355,217 @@ namespace AquariumCiv.Spikes.Growth.View
                 if (cell >= 0 && !float.IsNaN(overlayF[cell])) col = Color.Lerp(col, OverlayColor(overlayF[cell]), 0.78f);
             }
             mb.Tri(a, b, c, col);
+        }
+
+        // ---------------- round 2: paths as curves ----------------
+        static float HalfWidth(float tier) => tier <= 1f ? 0.04f : tier <= 2f ? Mathf.Lerp(0.04f, 0.06f, tier - 1f) : Mathf.Lerp(0.06f, 0.085f, Mathf.Min(1f, tier - 2f));
+
+        Color PathColor(float tier, float x, float z)
+        {
+            float n = GrowthTerrain.Fbm(x * 1.4f, z * 1.4f + 5f);
+            var grass = Grass(n, Height(x, z));
+            var trail = Color.Lerp(Palette.Dirt, grass, 0.12f);
+            var path = Color.Lerp(Palette.Path, Palette.Dirt, 0.25f + (n - 0.5f) * 0.4f);
+            if (tier <= 1f) return trail;
+            if (tier <= 2f) return Color.Lerp(trail, path, tier - 1f);
+            return Color.Lerp(path, Cobble(x, z, n), Mathf.Min(1f, tier - 2f));
+        }
+
+        /// <summary>Each curve as a ribbon draped on the ground, with a soft verge under it and round caps.</summary>
+        void PathRibbons(MeshBuilder mb)
+        {
+            var rb = new MeshBuilder(seed + 11) { jitter = 0.012f };
+            foreach (var cv in curves)
+            {
+                int n = cv.Count;
+                var left = new Vector3[n]; var right = new Vector3[n]; var cols = new Color[n]; var hw = new float[n];
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    bool verge = pass == 0;
+                    for (int k = 0; k < n; k++)
+                    {
+                        int a = Mathf.Max(0, k - 1), b = Mathf.Min(n - 1, k + 1);
+                        var t = new Vector2(cv.x[b] - cv.x[a], cv.z[b] - cv.z[a]);
+                        if (t.sqrMagnitude < 1e-10f) t = Vector2.up;
+                        t.Normalize();
+                        var nrm = new Vector2(-t.y, t.x);
+                        hw[k] = HalfWidth(cv.tier[k]) * (verge ? 1.6f : 1f);
+                        float lift = verge ? 0.007f : 0.009f + 0.002f * cv.tier[k];
+                        float lx = cv.x[k] + nrm.x * hw[k], lz = cv.z[k] + nrm.y * hw[k], rx = cv.x[k] - nrm.x * hw[k], rz = cv.z[k] - nrm.y * hw[k];
+                        left[k] = new Vector3(lx, Height(lx, lz) + lift, lz);
+                        right[k] = new Vector3(rx, Height(rx, rz) + lift, rz);
+                        var c = PathColor(cv.tier[k], cv.x[k], cv.z[k]);
+                        if (verge) c = Color.Lerp(c, Grass(GrowthTerrain.Fbm(cv.x[k] * 1.4f, cv.z[k] * 1.4f + 5f), Height(cv.x[k], cv.z[k])), 0.55f);
+                        cols[k] = c;
+                    }
+                    for (int k = 0; k + 1 < n; k++)
+                    {
+                        if (Bilerp(canalF, cv.x[k], cv.z[k]) > 0.3f || Bilerp(canalF, cv.x[k + 1], cv.z[k + 1]) > 0.3f) continue; // the bridge
+                        rb.TriC(left[k], left[k + 1], right[k + 1], cols[k], cols[k + 1], cols[k + 1]);
+                        rb.TriC(left[k], right[k + 1], right[k], cols[k], cols[k + 1], cols[k]);
+                    }
+                    // round caps: the ends meet other curves at junctions and doors
+                    foreach (int k in new[] { 0, n - 1 })
+                    {
+                        if (Bilerp(canalF, cv.x[k], cv.z[k]) > 0.3f) continue;
+                        float lift = verge ? 0.007f : 0.009f + 0.002f * cv.tier[k];
+                        var centre = new Vector3(cv.x[k], Height(cv.x[k], cv.z[k]) + lift, cv.z[k]);
+                        const int segs = 10;
+                        for (int s = 0; s < segs; s++)
+                        {
+                            float a0 = s / (float)segs * Mathf.PI * 2f, a1 = (s + 1) / (float)segs * Mathf.PI * 2f;
+                            float x0 = cv.x[k] + Mathf.Cos(a0) * hw[k], z0 = cv.z[k] + Mathf.Sin(a0) * hw[k];
+                            float x1 = cv.x[k] + Mathf.Cos(a1) * hw[k], z1 = cv.z[k] + Mathf.Sin(a1) * hw[k];
+                            rb.TriC(centre, new Vector3(x1, Height(x1, z1) + lift, z1), new Vector3(x0, Height(x0, z0) + lift, z0), cols[k], cols[k], cols[k]);
+                        }
+                    }
+                }
+            }
+            Append(mb, rb);
+        }
+
+        // ---------------- round 2: farmsteads round their yards, and what lies between them ----------------
+        Func<Vector3, Vector3> GroundFn(MeshBuilder mb) => local =>
+        {
+            var wp = mb.M.MultiplyPoint3x4(local);
+            var g = OnGround(wp.x, wp.z);
+            return mb.M.inverse.MultiplyPoint3x4(g);
+        };
+
+        /// <summary>Inside a yard and off its paths and lots (for the outbuilding and the woodpile).</summary>
+        bool YardSpotFree(float x, float z, float r)
+        {
+            for (int s = 0; s < 5; s++)
+            {
+                float px = x + (s == 1 ? r : s == 2 ? -r : 0f), pz = z + (s == 3 ? r : s == 4 ? -r : 0f);
+                int c = SiteMap.CellAt(px, pz);
+                if (c < 0 || snap.tier[c] >= 1 || (snap.flags[c] & (Snapshot.FCanal | Snapshot.FGreen)) != 0) return false;
+                if (LotAt(px, pz, out _, out _) != null) return false;
+            }
+            return true;
+        }
+
+        void ClusterDressing(MeshBuilder mb)
+        {
+            if (snap.clusters == null) return;
+            bool camp = snap.era == Era.Camp;
+            foreach (var k in snap.clusters)
+            {
+                float mx = 0, mz = 0, reach = k.r; int m = 0; int roofId = 0;
+                foreach (var s in snap.sites)
+                {
+                    if (s.cluster != k.id || s.retired) continue;
+                    mx += s.x; mz += s.z; m++; roofId = s.id;
+                    reach = Mathf.Max(reach, GrowthTerrain.Dist(s.x, s.z, k.x, k.z) + 0.5f * Mathf.Max(s.w, s.d));
+                }
+                if (m == 0) continue;
+                mx /= m; mz /= m;
+                var away = new Vector2(k.x - mx, k.z - mz);
+                if (away.sqrMagnitude < 0.0004f) { float a = GrowthTerrain.Hash3(k.id, 1, 3) * Mathf.PI * 2f; away = new Vector2(Mathf.Cos(a), Mathf.Sin(a)); }
+                away.Normalize();
+
+                // The outbuilding (a barn, byre or open shed) across the yard from the houses, its front to the yard.
+                var ob = new MeshBuilder(k.id * 977 + 13) { jitter = 0.035f };
+                foreach (float turn in new[] { 0f, 55f, -55f, 110f, -110f })
+                {
+                    var v = Rotate(away, turn);
+                    float px = k.x + v.x * k.r * 0.55f, pz = k.z + v.y * k.r * 0.55f;
+                    if (!YardSpotFree(px, pz, 0.1f)) continue;
+                    float yaw = Mathf.Atan2(v.x, v.y) * Mathf.Rad2Deg + (GrowthTerrain.Hash3(k.id, 2, 5) - 0.5f) * 30f;
+                    ob.M = Matrix4x4.TRS(OnGround(px, pz), Quaternion.Euler(0, yaw, 0), Vector3.one);
+                    if (camp) GrowthArt.DryingRack(ob, Vector3.zero);
+                    else if (GrowthTerrain.Hash3(k.id, 3, 5) < 0.6f) GrowthArt.Barn(ob, Vector3.zero, 0.2f, 0.15f, 0.12f, GrowthArt.Roof(roofId, snap.era));
+                    else { GrowthArt.Shed(ob, Vector3.zero, 0.2f, 0.14f, 0.12f, Palette.Thatch, Palette.Timber); GrowthArt.Woodpile(ob, new Vector3(0, 0, 0.01f), 90f); }
+                    break;
+                }
+                // A woodpile or crates by the yard's edge.
+                foreach (float turn in new[] { 90f, -90f, 150f, -150f })
+                {
+                    var v = Rotate(away, turn);
+                    float px = k.x + v.x * k.r * 0.8f, pz = k.z + v.y * k.r * 0.8f;
+                    if (!YardSpotFree(px, pz, 0.06f)) continue;
+                    ob.M = Matrix4x4.TRS(OnGround(px, pz), Quaternion.Euler(0, Mathf.Atan2(v.x, v.y) * Mathf.Rad2Deg + 90f, 0), Vector3.one);
+                    if (GrowthTerrain.Hash3(k.id, 4, 5) < 0.6f) GrowthArt.Woodpile(ob, Vector3.zero, 0f); else GrowthArt.Crates(ob, Vector3.zero);
+                    break;
+                }
+                Append(mb, ob);
+
+                // Between the clusters: hedges, fruit trees, kitchen gardens and woodpiles (only where the land is open).
+                for (int q = 0; q < 9; q++)
+                {
+                    float h = GrowthTerrain.Hash3(k.id, q, 71);
+                    float ang = (q + GrowthTerrain.Hash3(k.id, q, 72)) / 9f * Mathf.PI * 2f;
+                    float rr = reach + 0.12f + 0.14f * GrowthTerrain.Hash3(k.id, q, 73);
+                    float px = k.x + Mathf.Cos(ang) * rr, pz = k.z + Mathf.Sin(ang) * rr;
+                    var ib = new MeshBuilder(k.id * 131 + q) { jitter = 0.035f };
+                    float faceYard = Mathf.Atan2(k.x - px, k.z - pz) * Mathf.Rad2Deg;
+                    if (h < 0.32f)
+                    {
+                        // a hedge along the cluster's edge
+                        var tg = new Vector2(-Mathf.Sin(ang), Mathf.Cos(ang));
+                        for (int b = -2; b <= 2; b++)
+                        {
+                            float bx = px + tg.x * b * 0.065f, bz = pz + tg.y * b * 0.065f;
+                            if (!Open(bx, bz, 0.04f)) continue;
+                            GrowthArt.Bush(ib, OnGround(bx, bz) - Vector3.up * 0.012f, ib.Range(0.042f, 0.055f), false);
+                        }
+                    }
+                    else if (h < 0.56f)
+                    {
+                        if (Open(px, pz, 0.11f)) FruitTree(ib, px, pz, 0.5f + 0.15f * GrowthTerrain.Hash3(k.id, q, 74));
+                    }
+                    else if (h < 0.8f && !camp)
+                    {
+                        if (Open(px, pz, 0.13f))
+                        {
+                            ib.M = Matrix4x4.TRS(OnGround(px, pz), Quaternion.Euler(0, faceYard, 0), Vector3.one);
+                            Garden(ib, 0.22f, 0.17f);
+                        }
+                    }
+                    else if (h < 0.9f)
+                    {
+                        if (Open(px, pz, 0.1f))
+                        {
+                            ib.M = Matrix4x4.TRS(OnGround(px, pz), Quaternion.Euler(0, faceYard + 90f, 0), Vector3.one);
+                            GrowthArt.Woodpile(ib, Vector3.zero, 0f);
+                        }
+                    }
+                    Append(mb, ib);
+                }
+            }
+        }
+
+        static Vector2 Rotate(Vector2 v, float deg)
+        {
+            float r = deg * Mathf.Deg2Rad, c = Mathf.Cos(r), s = Mathf.Sin(r);
+            return new Vector2(v.x * c - v.y * s, v.x * s + v.y * c);
+        }
+
+        /// <summary>A kitchen garden: dug soil, rows of greens, a wattle fence (local space of mb.M).</summary>
+        void Garden(MeshBuilder mb, float w, float d)
+        {
+            var ground = GroundFn(mb);
+            var a = ground(new Vector3(-w / 2f, 0, -d / 2f)) + Vector3.up * 0.006f; var b = ground(new Vector3(-w / 2f, 0, d / 2f)) + Vector3.up * 0.006f;
+            var c = ground(new Vector3(w / 2f, 0, d / 2f)) + Vector3.up * 0.006f; var e = ground(new Vector3(w / 2f, 0, -d / 2f)) + Vector3.up * 0.006f;
+            mb.Quad(a, b, c, e, Palette.FieldSoil);
+            for (int row = 0; row < 3; row++)
+                for (int col = 0; col < 4; col++)
+                {
+                    var p = ground(new Vector3(-w / 2f + (col + 0.5f) * w / 4f, 0, -d / 2f + (row + 0.5f) * d / 3f));
+                    mb.Ico(p + Vector3.up * 0.016f, 0.02f, new Vector3(1f, 0.7f, 1f), row % 2 == 0 ? Palette.LeafB : Palette.Sprout, 0.15f);
+                }
+            GrowthArt.Fence(mb, ground, new[] { new Vector3(-w / 2f + 0.06f, 0, -d / 2f), new Vector3(-w / 2f, 0, -d / 2f), new Vector3(-w / 2f, 0, d / 2f), new Vector3(w / 2f, 0, d / 2f), new Vector3(w / 2f, 0, -d / 2f), new Vector3(w / 2f - 0.06f, 0, -d / 2f) });
+        }
+
+        void FruitTree(MeshBuilder mb, float x, float z, float s)
+        {
+            Tree(mb, new Vector2(x, z), s, false);
+            var g = OnGround(x, z);
+            for (int f = 0; f < 5; f++)
+            {
+                float a = f * 1.3f + mb.Range(0f, 1f);
+                mb.Ico(g + new Vector3(Mathf.Cos(a) * 0.15f * s, (0.38f + mb.Range(0f, 0.2f)) * s, Mathf.Sin(a) * 0.15f * s), 0.016f, Vector3.one, f % 2 == 0 ? Palette.Ember : Palette.Wheat, 0.1f);
+            }
         }
 
         // ---------------- overlay ----------------
@@ -648,6 +878,27 @@ namespace AquariumCiv.Spikes.Growth.View
                 }
                 Append(nb, tb);
             }
+            // The commons: a meadow with flowers, some of it an old orchard (Cluster variant).
+            if (clusterLook)
+                for (int c = 0; c < SiteMap.N; c++)
+                {
+                    if ((snap.flags[c] & Snapshot.FCommons) == 0) continue;
+                    int i = SiteMap.I(c), j = SiteMap.J(c);
+                    float hh = GrowthTerrain.Hash3(i, j, seed + 5);
+                    float x = SiteMap.CX(i) + (GrowthTerrain.Hash3(i, j, 6) - 0.5f) * 0.07f, z = SiteMap.CZ(j) + (GrowthTerrain.Hash3(i, j, 7) - 0.5f) * 0.07f;
+                    var tb = new MeshBuilder(c + 9001);
+                    if ((i + 2 * j) % 4 == 0 && hh < 0.5f && snap.era != Era.Camp)
+                    {
+                        if (Open(x, z, 0.1f)) FruitTree(tb, x, z, 0.55f + 0.2f * hh);
+                    }
+                    else if (hh < 0.75f && Open(x, z, 0.02f))
+                    {
+                        var g = OnGround(x, z);
+                        for (int f = 0; f < 3; f++)
+                            tb.Ico(g + new Vector3(tb.Range(-0.03f, 0.03f), tb.Range(0.03f, 0.06f), tb.Range(-0.03f, 0.03f)), 0.012f, Vector3.one, Palette.Flowers[(c + f) % Palette.Flowers.Length], 0.1f);
+                    }
+                    Append(nb, tb);
+                }
             // Reeds round the pond.
             for (int k = 0; k < 30; k++)
             {

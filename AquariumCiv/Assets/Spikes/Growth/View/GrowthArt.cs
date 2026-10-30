@@ -208,6 +208,26 @@ namespace AquariumCiv.Spikes.Growth.View
                 mb.Box(at + new Vector3(0, h + rh / 2f, s * half / 2f), new Vector3(w + 0.1f, 0.03f, slope), roof, Quaternion.Euler(s * ang, 0, 0), true);
         }
 
+        /// <summary>A small closed barn or byre (Cluster variant outbuildings round a family yard): plank walls, a door, a roof.</summary>
+        public static void Barn(MeshBuilder mb, Vector3 at, float w, float d, float h, Color roof)
+        {
+            mb.Box(at + new Vector3(0, h / 2f, 0), new Vector3(w, h, d), Color.Lerp(Palette.Bark, Palette.WoodLight, 0.45f));
+            foreach (var (x, z) in new[] { (-1, -1), (1, -1), (1, 1), (-1, 1) })
+                mb.Box(at + new Vector3(x * (w / 2f - 0.008f), h / 2f, z * (d / 2f - 0.008f)), new Vector3(0.022f, h, 0.022f), Palette.Timber);
+            mb.Box(at + new Vector3(0, h * 0.38f, -d / 2f - 0.006f), new Vector3(w * 0.42f, h * 0.76f, 0.012f), Palette.Timber);
+            float half = d / 2f + 0.04f, rh = h * 0.75f;
+            float slope = Mathf.Sqrt(half * half + rh * rh), ang = Mathf.Atan2(rh, half) * Mathf.Rad2Deg;
+            for (int s = -1; s <= 1; s += 2)
+                mb.Box(at + new Vector3(0, h + rh / 2f, s * half / 2f), new Vector3(w + 0.06f, 0.028f, slope), roof, Quaternion.Euler(s * ang, 0, 0), true);
+            foreach (int s in new[] { -1, 1 })
+            {
+                float x = at.x + s * w / 2f;
+                var a = new Vector3(x, at.y + h, at.z - d / 2f); var b = new Vector3(x, at.y + h + rh * (d / 2f) / half, at.z); var c = new Vector3(x, at.y + h, at.z + d / 2f);
+                var col = Color.Lerp(Palette.Bark, Palette.WoodLight, 0.45f);
+                if (s > 0) mb.Tri(a, b, c, col); else mb.Tri(c, b, a, col);
+            }
+        }
+
         public static void Windmill(MeshBuilder mb, Vector3 at, float yaw, Color body, bool stone)
         {
             float h = 0.56f;
