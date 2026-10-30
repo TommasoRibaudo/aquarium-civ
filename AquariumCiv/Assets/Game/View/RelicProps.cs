@@ -22,6 +22,8 @@ namespace AquariumCiv.View
         /// <summary>Game months the crumb takes to be eaten down to its last piece.</summary>
         public const int CrumbMonths = 12;
         public const float DropSeconds = 0.6f;
+        /// <summary>How much bigger than life the relics stand, so they read at default zoom (user 2026-10-30, #92).</summary>
+        public const float CrumbScale = 1.5f, DollScale = 2.2f, LensScale = 1.9f, SandalScale = 2.2f;
 
         BoxView box;
         Transform root;
@@ -77,13 +79,14 @@ namespace AquariumCiv.View
                     if (u >= 1f) crumbDrop = -1f;
                 }
                 big.localPosition = box.land.OnGround(cx, cz) + Vector3.up * drop;
-                big.localScale = new Vector3(s, s * (drop > 0f ? 1f : 0.92f), s);
+                big.localScale = new Vector3(s, s * (drop > 0f ? 1f : 0.92f), s) * CrumbScale;
                 if (crumbPiece == null) crumbPiece = Part("SkyCrumb_LastPiece", BuildCrumbPiece);
                 var st = sim.Settlement;
                 if (st != null)
                 {
                     st.Fire(out float fx, out float fz, out _);
                     crumbPiece.localPosition = box.land.OnGround(fx + 0.34f, fz + 0.1f);
+                    crumbPiece.localScale = Vector3.one * CrumbScale;
                 }
             }
 
@@ -93,6 +96,7 @@ namespace AquariumCiv.View
                 var doll = Ensure(RelicId.KeeperDoll, BuildDollPost);
                 var n = PeopleView.GlassNormal(planner.GlassSide);
                 doll.localPosition = box.land.OnGround(dx + n.x * 0.08f, dz + n.y * 0.08f);
+                doll.localScale = Vector3.one * DollScale;
                 doll.localRotation = Quaternion.Euler(0f, Mathf.Atan2(n.x, n.y) * Mathf.Rad2Deg + 180f, 0f); // its front (-z) faces out
             }
 
@@ -101,6 +105,7 @@ namespace AquariumCiv.View
             {
                 var lens = Ensure(RelicId.Lens, BuildLens);
                 lens.localPosition = box.land.OnGround(lx + 0.12f, lz);
+                lens.localScale = Vector3.one * LensScale;
                 var cam = Camera.main;
                 if (cam != null)
                 {
@@ -118,7 +123,11 @@ namespace AquariumCiv.View
             {
                 bool church = sim.State.buildings.Exists(b => b.type == BuildingType.Church);
                 if (pos.TryGetPosition(Place.Land(PlaceKind.Remembering, church ? 1 : 0), out float rx, out float rz))
-                    Ensure(RelicId.LeftSandal, BuildSandalStone).localPosition = box.land.OnGround(rx, rz);
+                {
+                    var stone = Ensure(RelicId.LeftSandal, BuildSandalStone);
+                    stone.localPosition = box.land.OnGround(rx, rz);
+                    stone.localScale = Vector3.one * SandalScale;
+                }
             }
             else if (made.TryGetValue(RelicId.LeftSandal, out var gone)) { Kill(gone.gameObject); made.Remove(RelicId.LeftSandal); }
         }

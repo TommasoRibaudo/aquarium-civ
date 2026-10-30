@@ -145,6 +145,22 @@ namespace AquariumCiv.View
             synced = true;
         }
 
+        /// <summary>A gentle move toward something happening (a relic moment, a tap-back; user 2026-10-30, #92): only when it's
+        /// off-screen or the camera is too far out to see it, and never against a finger. Same flight as any other: a touch
+        /// stops it. True when the camera moves.</summary>
+        public bool NudgeToward(Vector3 worldPoint, float zoomTo = NudgeZoom, float seconds = NudgeSeconds)
+        {
+            if (cam == null) cam = GetComponent<Camera>();
+            if (cam == null || !isActiveAndEnabled || Touching || pressClaimed) return false;
+            var v = cam.WorldToViewportPoint(worldPoint);
+            bool framed = v.z > 0f && v.x > 0.15f && v.x < 0.85f && v.y > 0.2f && v.y < 0.85f;
+            if (framed && zoom <= zoomTo + 0.02f) return false;
+            FlyTo(worldPoint, Mathf.Min(zoom, zoomTo), seconds);
+            return true;
+        }
+
+        public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f;
+
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
 
