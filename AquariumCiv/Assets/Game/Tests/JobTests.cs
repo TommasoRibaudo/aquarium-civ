@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Linq;
 using AquariumCiv.Sim;
@@ -13,16 +14,19 @@ namespace AquariumCiv.Tests
     {
         /// <summary>Everything the economy and the dice produce, without chronicle text or ids (job lines add entries,
         /// which shift ids but nothing else).</summary>
+        /// <summary>A hash of everything the economy owns. Floats go in as their exact bits: Unity's Mono and .NET format
+        /// "R" differently, which made the same economy hash differently in the Editor and in Tools/SimTests.</summary>
         internal static uint Economy(SimState s)
         {
-            var inv = CultureInfo.InvariantCulture;
-            string fp = s.population + "|" + s.month + "|" + s.food.ToString("R", inv) + "|" + s.wood.ToString("R", inv) + "|" +
-                        s.mood.ToString("R", inv) + "|" + s.grime.ToString("R", inv) + "|" + s.overgrowth.ToString("R", inv) + "|" +
+            string fp = s.population + "|" + s.month + "|" + Bits(s.food) + "|" + Bits(s.wood) + "|" + Bits(s.mood) + "|" +
+                        Bits(s.grime) + "|" + Bits(s.overgrowth) + "|" +
                         s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" + s.era + "|" + s.eraReadyMonth + "|" +
                         string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join(",", s.trash.Select(t => t.slot)) + "|" +
-                        string.Join(",", s.notables.Select(n => n.FullName + n.trait + n.alive + n.age.ToString("0.00", inv))) + "|" + s.settlementName;
+                        string.Join(",", s.notables.Select(n => n.FullName + n.trait + n.alive + Bits(n.age))) + "|" + s.settlementName;
             return Fnv(fp);
         }
+
+        static int Bits(float f) => BitConverter.SingleToInt32Bits(f);
 
         static void Watched(SimCore sim, int hours)
         {
@@ -41,11 +45,11 @@ namespace AquariumCiv.Tests
             var town = NewSim(7);
             Watched(town, 150);
             Assert.AreEqual(Era.Town, town.State.era);
-            Assert.AreEqual(857494807u, Economy(camp.State), "camp");
+            Assert.AreEqual(3155006145u, Economy(camp.State), "camp");
             // #27: at the town's era moment no one is free to be captain of the watch, so a notable steps out of the crowd
             // (Yara Brook, year 30). One more notable shifts the story dice from then on, as #26's rise does; roles draw no
             // dice themselves (RoleTests.TheEconomyIsWhatItWasBeforeRoles: runs without a crowd pull keep the old hash).
-            Assert.AreEqual(2035534650u, Economy(town.State), "town");
+            Assert.AreEqual(2535083235u, Economy(town.State), "town");
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

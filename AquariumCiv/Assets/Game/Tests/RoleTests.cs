@@ -292,7 +292,7 @@ namespace AquariumCiv.Tests
 
         /// <summary>JobTests.Economy measured on the sim before roles (vs/slice 5d0fcf3): seeds 1 and 1234 watched month by
         /// month for 120 years, and seed 77 stepped 60 years with the village forced at year 25.</summary>
-        const uint PreRoles1 = 2332240402u, PreRoles1234 = 331716048u, PreRoles77 = 4124572513u;
+        const uint PreRoles1 = 2496239907u, PreRoles1234 = 1855436489u, PreRoles77 = 2087997378u; // measured on 5d0fcf3 (before roles) with the float-bits hash
 
         [Test]
         public void TheEconomyIsWhatItWasBeforeRoles()
@@ -301,7 +301,7 @@ namespace AquariumCiv.Tests
             // stream, the economy and the notables exactly as they were.
             var camp = NewSim(1234);
             camp.Advance(48);
-            Assert.AreEqual(857494807u, JobTests.Economy(camp.State), "camp, as before jobs and roles");
+            Assert.AreEqual(3155006145u, JobTests.Economy(camp.State), "camp, as before jobs and roles");
             foreach (var (seed, before) in new[] { (1, PreRoles1), (1234, PreRoles1234) })
             {
                 var town = NewSim(seed);
