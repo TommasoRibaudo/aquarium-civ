@@ -434,3 +434,8 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   There is no night lighting yet: `PeopleView.DebugSetHour(22)` leaves `NightLamps.Level` at 0, so night shots are
   `NightLamps.DebugSetLevel(1)` over the day light. Kit sheets of every town piece in edit mode:
   `AquariumCiv.EditorTools.TownKitShots.Sheet()` then `SliceSceneBuilder.Shot(...)`, `TownKitShots.Restore()`. [verified]
+- **2026-10-30 · One PlayMode test class alone (#88).** Put `[Category("X")]` on the class and run
+  `unity command test run --mode playmode --filter X --filter_type category --async_tests true`, then poll `test status
+  --format json` until `"status": "completed"`. Runs only that class (the assembly filter would also run the other
+  InputTestFixture classes). `scene save` before the run writes a noise-only `lastBuildInfo` change into Slice.unity:
+  leave it out of the commit. [verified]
