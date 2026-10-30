@@ -1,7 +1,6 @@
 using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.View;
-using AquariumCiv.View.Demo;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -12,9 +11,9 @@ namespace AquariumCiv.EditorTools
 {
     /// <summary>
     /// Builds the vertical slice's scene (vertical-slice-plan §7): the box on its shelf drawn by the View assembly's
-    /// style kit (<see cref="BoxView"/>: terrain, soil cut, glass, plinth, shelf, wall), a few placeholder pieces from
-    /// the TEMPORARY demo layout (until #33 draws the sim), the camera rig with light and grade, and the
-    /// <see cref="GameClock"/>. The box generates itself on load, so the scene only holds the rig. Not added to Build
+    /// style kit (<see cref="BoxView"/>: terrain, soil cut, glass, plinth, shelf, wall) showing the live sim through
+    /// <see cref="SimLayoutSource"/> (#33; a preview sim in edit mode, the <see cref="GameClock"/>'s in play mode), the
+    /// TEMPORARY <see cref="SliceDebugPanel"/>, the camera rig with light and grade, and the <see cref="GameClock"/>. The box generates itself on load, so the scene only holds the rig. Not added to Build
     /// Settings. Call from the menu or `unity command script eval`.
     /// </summary>
     public static class SliceSceneBuilder
@@ -55,7 +54,8 @@ namespace AquariumCiv.EditorTools
             boxGo.SetActive(false);
             var box = boxGo.AddComponent<BoxView>();
             box.solid = solid; box.water = water; box.glass = glass; box.glow = glow;
-            boxGo.AddComponent<TemporaryDemoLayout>(); // TEMPORARY until #33 draws the sim
+            boxGo.AddComponent<SimLayoutSource>(); // the live sim (#33)
+            boxGo.AddComponent<SliceDebugPanel>(); // TEMPORARY: skip years, force the era (until the debug panel)
             boxGo.AddComponent<NightLampDriver>();
 
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };

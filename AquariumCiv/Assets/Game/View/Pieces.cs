@@ -56,7 +56,11 @@ namespace AquariumCiv.View
                     break;
                 case PieceKind.Lumbermill:
                     if (camp) { Woodpile(mb, new Vector3(0, 0, -d * 0.1f), 20f); Log(mb, new Vector3(w * 0.2f, 0.03f, d * 0.2f), 0.035f, 0.3f, 70f, Palette.Bark); }
-                    else Lumbermill(mb, Vector3.zero, w, d);
+                    else
+                    {
+                        Lumbermill(mb, Vector3.zero, w, d);
+                        if (p.variant == 1) { Woodpile(mb, new Vector3(w * 0.25f, 0, -d * 0.3f), 0f); Woodpile(mb, new Vector3(-w * 0.32f, 0, d * 0.3f), 80f); } // a timber yard
+                    }
                     break;
                 case PieceKind.Market:
                     if (camp)
@@ -84,7 +88,191 @@ namespace AquariumCiv.View
                 case PieceKind.Watermill: Watermill(mb, Vector3.zero, w, d, Phase(p.seed)); break;
                 case PieceKind.Smithy: Smithy(mb, Vector3.zero, w, d, Phase(p.seed)); break;
                 case PieceKind.Dyer: Dyer(mb, Vector3.zero, w, d); break;
+                case PieceKind.Shop:
+                    if (camp) { Teepee(mb, Vector3.zero, 0.16f, 0.46f, Palette.Canvas, 0f, p.seed); Crates(mb, new Vector3(w * 0.3f, 0, -d * 0.3f)); break; }
+                    Shop(mb, Front(0.3f), w * 0.86f, 0.3f, town, Phase(p.seed), p.seed);
+                    break;
+                case PieceKind.Workshop:
+                    if (camp) { LeanTo(mb); break; }
+                    House(mb, Front(0.3f) + new Vector3(-w * 0.1f, 0, 0), w * 0.66f, 0.3f, 0.24f, 0.2f, Wall(p.seed), town ? Palette.Slate : Palette.Thatch, true, true, 1, Phase(p.seed));
+                    Shed(mb, new Vector3(w * 0.32f, 0, d * 0.05f), 0.16f, 0.22f, 0.17f, Palette.WoodLight, Palette.Timber);
+                    Crates(mb, new Vector3(w * 0.25f, 0, -d * 0.32f));
+                    break;
+                case PieceKind.Guildhall:
+                    if (camp) { StandingStones(mb, Vector3.zero); break; }
+                    Guildhall(mb, Front(0.36f), w * 0.92f, 0.36f, Phase(p.seed), p.seed);
+                    break;
+                case PieceKind.Barn:
+                    if (camp) { DryingRack(mb, Vector3.zero); break; }
+                    if (p.variant == 0) Barn(mb, Vector3.zero, Mathf.Min(w * 0.85f, 0.26f), Mathf.Min(d * 0.85f, 0.2f), 0.13f, RoofColor(RoofStyle.Auto, p.seed, Era.Village));
+                    else { Shed(mb, new Vector3(0, 0, d * 0.1f), Mathf.Min(w * 0.8f, 0.24f), Mathf.Min(d * 0.7f, 0.17f), 0.13f, Palette.Thatch, Palette.Timber); Woodpile(mb, new Vector3(0, 0, d * 0.08f), 90f); }
+                    break;
+                case PieceKind.Gathering: Gathering(mb, ground, w, d, p.seed); break;
+                case PieceKind.Orchard: Orchard(mb, ground, w, d, p.seed); break;
+                case PieceKind.Herd: Herd(mb, ground, w, d, p.seed, Mathf.Max(2, p.variant)); break;
+                case PieceKind.Jetty: Jetty(mb, ground, w, d); break;
+                case PieceKind.Quarry: Quarry(mb, ground, w, d, p.seed); break;
+                case PieceKind.Kiln: Kiln(mb, w, d); break;
+                case PieceKind.Outcrop: Outcrop(mb, ground, Mathf.Max(0.1f, w * 0.5f), p.variant, p.seed); break;
             }
+        }
+
+        // ---------------- #33: the sim's other lot kinds and the shapings ----------------
+        /// <summary>A shop: a two-storey town house (one in the village) with a striped awning and crates out front.</summary>
+        public static void Shop(MeshBuilder mb, Vector3 at, float w, float d, bool town, float lampPhase, int seed)
+        {
+            House(mb, at, w, d, town ? 0.2f : 0.26f, 0.22f, Wall(seed), RoofColor(RoofStyle.Auto, seed, Era.Town), false, true, town ? 2 : 1, lampPhase);
+            var aw = at + new Vector3(0, 0.27f, -d / 2f - 0.05f);
+            mb.Box(aw, new Vector3(w * 0.85f, 0.012f, 0.11f), Palette.Tunics[Mathf.Abs(seed) % Palette.Tunics.Length], Quaternion.Euler(-18, 0, 0), true);
+            Crates(mb, at + new Vector3(-w * 0.3f, 0, -d / 2f - 0.09f));
+        }
+
+        /// <summary>The guildhall (a town placeholder until M6): a stone plinth, two jettied storeys, a banner.</summary>
+        public static void Guildhall(MeshBuilder mb, Vector3 at, float w, float d, float lampPhase, int seed)
+        {
+            mb.Box(at + new Vector3(0, 0.04f, 0), new Vector3(w + 0.08f, 0.08f, d + 0.08f), Palette.RockDark);
+            House(mb, at + new Vector3(0, 0.05f, 0), w, d, 0.22f, 0.26f, Palette.PlasterWarm, Palette.Slate, true, true, 2, lampPhase);
+            var pole = at + new Vector3(-w * 0.45f, 0, -d / 2f - 0.04f);
+            mb.Box(pole + new Vector3(0, 0.3f, 0), new Vector3(0.018f, 0.6f, 0.018f), Palette.Timber);
+            mb.sway = 0.4f;
+            mb.Box(pole + new Vector3(0.05f, 0.5f, 0), new Vector3(0.09f, 0.14f, 0.006f), Palette.Accents[Mathf.Abs(seed) % Palette.Accents.Length]);
+            mb.sway = 0f;
+        }
+
+        /// <summary>A family's barn: plank walls, corner posts, a big door at the front, a steep roof.</summary>
+        public static void Barn(MeshBuilder mb, Vector3 at, float w, float d, float h, Color roof)
+        {
+            var plank = Color.Lerp(Palette.Bark, Palette.WoodLight, 0.45f);
+            mb.Box(at + new Vector3(0, h / 2f, 0), new Vector3(w, h, d), plank);
+            foreach (var (x, z) in new[] { (-1, -1), (1, -1), (1, 1), (-1, 1) })
+                mb.Box(at + new Vector3(x * (w / 2f - 0.008f), h / 2f, z * (d / 2f - 0.008f)), new Vector3(0.022f, h, 0.022f), Palette.Timber);
+            mb.Box(at + new Vector3(0, h * 0.38f, -d / 2f - 0.006f), new Vector3(w * 0.42f, h * 0.76f, 0.012f), Palette.Timber);
+            float half = d / 2f + 0.04f, rh = h * 0.75f;
+            float slope = Mathf.Sqrt(half * half + rh * rh), ang = Mathf.Atan2(rh, half) * Mathf.Rad2Deg;
+            for (int s = -1; s <= 1; s += 2)
+                mb.Box(at + new Vector3(0, h + rh / 2f, s * half / 2f), new Vector3(w + 0.06f, 0.028f, slope), roof, Quaternion.Euler(s * ang, 0, 0), true);
+            foreach (int s in new[] { -1, 1 })
+            {
+                float x = at.x + s * w / 2f;
+                var a = new Vector3(x, at.y + h, at.z - d / 2f); var b = new Vector3(x, at.y + h + rh * (d / 2f) / half, at.z); var c = new Vector3(x, at.y + h, at.z + d / 2f);
+                if (s > 0) mb.Tri(a, b, c, plank); else mb.Tri(c, b, a, plank);
+            }
+        }
+
+        static Vector3 LotSpot(int seed, int k, float w, float d, float inset = 0.7f) =>
+            new((Land.Hash3(seed, k, 41) - 0.5f) * w * inset, 0, (Land.Hash3(seed, k, 42) - 0.5f) * d * inset);
+
+        /// <summary>The camp's farm: gathering grounds, berry bushes and a drying rack (decisions 2026-10-29: farms
+        /// exist in the camp but look different).</summary>
+        public static void Gathering(MeshBuilder mb, Ground ground, float w, float d, int seed)
+        {
+            for (int k = 0; k < 5; k++) Bush(mb, ground(LotSpot(seed, k, w, d)), mb.Range(0.06f, 0.09f), true);
+            DryingRack(mb, ground(new Vector3(0, 0, -d * 0.32f)));
+            mb.Prism(ground(new Vector3(w * 0.28f, 0, -d * 0.3f)), 0.035f, 0.03f, 0.06f, 7, Palette.Bark, topCol: Palette.Ember); // a basket of berries
+        }
+
+        /// <summary>Fruit trees in rows (an orchard on a grove, village era on).</summary>
+        public static void Orchard(MeshBuilder mb, Ground ground, float w, float d, int seed)
+        {
+            for (int i = 0; i < 2; i++)
+                for (int j = 0; j < 3; j++)
+                {
+                    var g = ground(new Vector3((i - 0.5f) * w * 0.5f + (Land.Hash3(seed, i, j) - 0.5f) * 0.03f, 0, (j - 1f) * d * 0.3f));
+                    FruitTree(mb, g, 0.5f + 0.12f * Land.Hash3(seed, j, i + 9));
+                }
+        }
+
+        public static void FruitTree(MeshBuilder mb, Vector3 g, float s)
+        {
+            Tree(mb, g, s, false);
+            for (int f = 0; f < 5; f++)
+            {
+                float a = f * 1.3f + mb.Range(0f, 1f);
+                mb.Ico(g + new Vector3(Mathf.Cos(a) * 0.15f * s, (0.38f + mb.Range(0f, 0.2f)) * s, Mathf.Sin(a) * 0.15f * s), 0.018f, Vector3.one, f % 2 == 0 ? Palette.Ember : Palette.Wheat, 0.1f);
+            }
+        }
+
+        /// <summary>A few sheep (a herd shaping, a pasture): woolly bodies, dark heads, grazing every which way.</summary>
+        public static void Herd(MeshBuilder mb, Ground ground, float w, float d, int seed, int count)
+        {
+            for (int k = 0; k < count; k++)
+            {
+                var g = ground(LotSpot(seed, k + 3, w, d, 0.6f));
+                var f = Quaternion.Euler(0, Land.Hash3(seed, k, 43) * 360f, 0);
+                mb.Ico(g + Vector3.up * 0.05f, 0.045f, new Vector3(1.25f, 0.85f, 0.9f), Color.Lerp(Palette.Plaster, Palette.Canvas, Land.Hash3(seed, k, 44)), 0.2f);
+                mb.Ico(g + Vector3.up * 0.06f + f * new Vector3(0.055f, 0, 0), 0.02f, new Vector3(1.2f, 0.9f, 0.9f), Palette.Door, 0.1f);
+                foreach (int s in new[] { -1, 1 })
+                    mb.Box(g + f * new Vector3(s * 0.025f, 0.012f, 0), new Vector3(0.01f, 0.024f, 0.01f), Palette.Door);
+            }
+        }
+
+        /// <summary>A fishing jetty: planks on posts from the lot out over the water at its back (+z), a small boat.</summary>
+        public static void Jetty(MeshBuilder mb, Ground ground, float w, float d)
+        {
+            float water = Land.WaterY - mb.M.m13; // the water level in the lot's local space
+            float DeckY(float z) => Mathf.Max(ground(new Vector3(0, 0, z)).y, water) + 0.03f;
+            float len = d / 2f + 0.3f;
+            int n = 0;
+            for (float z = -d * 0.2f; z < len; z += 0.05f, n++)
+                mb.Box(new Vector3(0, DeckY(z), z), new Vector3(0.12f, 0.012f, 0.042f), n % 2 == 0 ? Palette.WoodLight : Color.Lerp(Palette.WoodLight, Palette.Bark, 0.3f));
+            foreach (int s in new[] { -1, 1 })
+                for (float z = 0.05f; z < len; z += 0.15f)
+                    mb.Box(new Vector3(s * 0.065f, DeckY(z) - 0.04f, z), new Vector3(0.018f, 0.1f, 0.018f), Palette.Timber);
+            var boat = new Vector3(0.14f, water + 0.015f, len - 0.08f);
+            mb.Box(boat, new Vector3(0.07f, 0.03f, 0.18f), Palette.Bark);
+            mb.Box(boat + Vector3.up * 0.012f, new Vector3(0.05f, 0.012f, 0.15f), Palette.WoodLight);
+            Crates(mb, ground(new Vector3(-0.12f, 0, -d * 0.15f)));
+        }
+
+        /// <summary>A quarry: rubble, cut blocks and a timber hoist.</summary>
+        public static void Quarry(MeshBuilder mb, Ground ground, float w, float d, int seed)
+        {
+            for (int k = 0; k < 6; k++)
+                mb.Ico(ground(LotSpot(seed, k, w, d, 0.8f)), mb.Range(0.045f, 0.08f), new Vector3(1.2f, 0.7f, 1f), k % 2 == 0 ? Palette.Rock : Palette.RockLight, 0.25f, Palette.RockDark);
+            for (int k = 0; k < 4; k++)
+            {
+                var g = ground(new Vector3(-w * 0.2f + (k % 2) * 0.09f, 0, -d * 0.25f + (k / 2) * 0.08f));
+                mb.Box(g + new Vector3(0, 0.025f + (k == 3 ? 0.05f : 0), 0), new Vector3(0.07f, 0.05f, 0.06f), Palette.Stone, Quaternion.Euler(0, k * 7f, 0));
+            }
+            var h = ground(new Vector3(w * 0.22f, 0, 0));
+            foreach (int s in new[] { -1, 1 }) mb.Box(h + new Vector3(s * 0.06f, 0.14f, 0), new Vector3(0.018f, 0.3f, 0.018f), Palette.Timber, Quaternion.Euler(0, 0, -s * 12f));
+            mb.Box(h + new Vector3(0, 0.28f, 0), new Vector3(0.1f, 0.018f, 0.018f), Palette.Timber);
+        }
+
+        /// <summary>A kiln: a clay dome with a glowing mouth, pots drying out front, a woodpile.</summary>
+        public static void Kiln(MeshBuilder mb, float w, float d)
+        {
+            var c = new Vector3(0, 0, d * 0.1f);
+            mb.Ico(c + Vector3.up * 0.06f, 0.15f, new Vector3(1f, 0.9f, 1f), Color.Lerp(Palette.Terracotta, Palette.Loam, 0.4f), 0.08f);
+            mb.Prism(c + Vector3.up * 0.18f, 0.035f, 0.03f, 0.08f, 6, Palette.RockDark);
+            mb.emission = 0.8f;
+            mb.Box(c + new Vector3(0, 0.05f, -0.135f), new Vector3(0.07f, 0.06f, 0.02f), Palette.Fire);
+            mb.emission = 0f;
+            for (int k = 0; k < 4; k++)
+                mb.Prism(new Vector3(-w * 0.3f + k * 0.06f, 0, -d * 0.32f), 0.022f, 0.016f, 0.05f, 7, Color.Lerp(Palette.Terracotta, Palette.SoilLight, k * 0.2f));
+            Woodpile(mb, new Vector3(w * 0.3f, 0, -d * 0.25f), 90f);
+        }
+
+        /// <summary>The Keeper's outcrop: pushed-up rock, tinted by what it holds (0 stone, 1 clay by the water, 2 ore).</summary>
+        public static void Outcrop(MeshBuilder mb, Ground ground, float r, int deposit, int seed)
+        {
+            Color a, b;
+            switch (deposit)
+            {
+                case 1: a = Color.Lerp(Palette.Terracotta, Palette.Loam, 0.5f); b = Palette.Loam; break;
+                case 2: a = Palette.RockDark; b = Color.Lerp(Palette.RockDark, Palette.Iron, 0.5f); break;
+                default: a = Palette.Rock; b = Palette.RockLight; break;
+            }
+            for (int k = 0; k < 6; k++)
+            {
+                float ang = (k + Land.Hash3(seed, k, 45)) / 6f * Mathf.PI * 2f, rr = r * (k == 0 ? 0f : 0.45f + 0.4f * Land.Hash3(seed, k, 46));
+                var g = ground(new Vector3(Mathf.Cos(ang) * rr, 0, Mathf.Sin(ang) * rr));
+                float size = (k == 0 ? 0.11f : 0.055f) + 0.03f * Land.Hash3(seed, k, 47);
+                mb.Ico(g + Vector3.up * size * 0.25f, size, new Vector3(1.1f, k == 0 ? 1.1f : 0.75f, 1f), k % 2 == 0 ? a : b, 0.28f, Palette.RockDark);
+            }
+            if (deposit == 2)
+                for (int k = 0; k < 4; k++)
+                    mb.Ico(ground(new Vector3((Land.Hash3(seed, k, 48) - 0.5f) * r, 0, (Land.Hash3(seed, k, 49) - 0.5f) * r)) + Vector3.up * 0.05f, 0.014f, Vector3.one, Palette.Ember, 0.1f);
         }
 
         /// <summary>A lamp's phase in 0..1 from a seed: when in the dusk it comes on.</summary>

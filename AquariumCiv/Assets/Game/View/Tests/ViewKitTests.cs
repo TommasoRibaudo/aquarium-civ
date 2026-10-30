@@ -148,8 +148,9 @@ namespace AquariumCiv.View.Tests
                 Assert.AreNotEqual(onPath, grass);
                 Assert.Greater(onPath.r, onPath.g * 0.95f, "path ground is sandy, not green");
 
-                var mesh = box.Root.Find("Static").GetComponent<MeshFilter>().sharedMesh;
-                var alphas = mesh.colors.Select(c => c.a).ToArray();
+                var alphas = box.Root.Cast<Transform>().Where(t => t.name.StartsWith("Chunk"))
+                    .SelectMany(t => t.GetComponent<MeshFilter>().sharedMesh.colors).Select(c => c.a).ToArray();
+                Assert.AreEqual(BoxView.ChunkCount, box.Root.Cast<Transform>().Count(t => t.name.StartsWith("Chunk")));
                 Assert.That(alphas.Min(), Is.GreaterThanOrEqualTo(0.14f));
                 Assert.That(alphas.Max(), Is.LessThanOrEqualTo(1f));
                 Assert.Less(alphas.Min(), 0.95f, "something is occluded");

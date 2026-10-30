@@ -32,6 +32,11 @@ namespace AquariumCiv.View
 
         public MeshBuilder(int seed = 1) { rng = new System.Random(seed); }
 
+        /// <summary>sRGB to linear in managed code (Color.linear is a native call), so builders can run on worker
+        /// threads (BoxView builds terrain bands in parallel).</summary>
+        static float Lin(float c) => c <= 0.04045f ? c / 12.92f : Mathf.Pow((c + 0.055f) / 1.055f, 2.4f);
+        public static Color Linear(Color c) => new(Lin(c.r), Lin(c.g), Lin(c.b), c.a);
+
         public int VertexCount => verts.Count;
         public int TriangleCount => tris.Count / 3;
 
@@ -49,7 +54,7 @@ namespace AquariumCiv.View
             if (n.sqrMagnitude < 1e-12f) return;
             n.Normalize();
             float j = 1f + ((float)rng.NextDouble() * 2f - 1f) * jitter;
-            var lin = new Color(col.r * j, col.g * j, col.b * j).linear;
+            var lin = Linear(new Color(col.r * j, col.g * j, col.b * j));
             lin.a = 1f;
             int i = verts.Count;
             Add(a, n, lin); Add(b, n, lin); Add(c, n, lin);
@@ -64,7 +69,7 @@ namespace AquariumCiv.View
             if (n.sqrMagnitude < 1e-12f) return;
             n.Normalize();
             int i = verts.Count;
-            var la = ca.linear; la.a = 1f; var lb = cb.linear; lb.a = 1f; var lc = cc.linear; lc.a = 1f;
+            var la = Linear(ca); la.a = 1f; var lb = Linear(cb); lb.a = 1f; var lc = Linear(cc); lc.a = 1f;
             Add(a, n, la); Add(b, n, lb); Add(c, n, lc);
             tris.Add(i); tris.Add(i + 1); tris.Add(i + 2);
         }

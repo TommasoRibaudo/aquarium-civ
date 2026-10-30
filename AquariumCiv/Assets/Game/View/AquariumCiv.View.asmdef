@@ -3,6 +3,7 @@
     "rootNamespace": "AquariumCiv.View",
     "references": [
         "AquariumCiv.Sim",
+        "AquariumCiv.Game",
         "Unity.InputSystem",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime"
