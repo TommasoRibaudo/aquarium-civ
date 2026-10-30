@@ -28,6 +28,10 @@ namespace AquariumCiv.View
         public static readonly Color Thatch = H("#CFA65E"), Terracotta = H("#C66F4E"), Slate = H("#6E7C8C"), Stone = H("#B3ACA0");
         public static readonly Color Canvas = H("#E2D3B3"), Hide = H("#B98C62"), WindowLit = H("#FFD98A"), Door = H("#5A3D2B");
         public static readonly Color Fire = H("#FF9A3C"), FireCore = H("#FFE07A"), Ember = H("#C4432B"), Glow = H("#FFB25C");
+        // fire: per-vertex ramps (core gold to orange, body orange to red-orange, tongues red to deep red), halo, sparks, smoke, ground pool
+        public static readonly Color FlameCoreA = H("#FFC247"), FlameCoreB = H("#FF9A2E"), FlameBodyA = H("#FF7A1F"), FlameBodyB = H("#E5481F");
+        public static readonly Color FlameTongueA = H("#E0401F"), FlameTongueB = H("#A82A1C");
+        public static readonly Color FireHalo = H("#FF8A3A"), FireSpark = H("#FF8A2A"), FireSmoke = H("#D9D2C8"), FirePool = H("#FF9A4A");
         public static readonly Color Lamp = H("#FFC86B"), Iron = H("#4A4440");
 
         // box and room

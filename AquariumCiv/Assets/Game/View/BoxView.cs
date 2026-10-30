@@ -44,6 +44,8 @@ namespace AquariumCiv.View
         [Tooltip("Log every chunk rebuild with its timing.")]
         public bool logRebuilds = true;
         public Material solid, water, glass, glow;
+        [Tooltip("Alpha-blended smoke for the camp fires (FireSmoke.mat); a runtime material is made when empty.")]
+        public Material smoke;
         public string lastBuildInfo, lastRefreshInfo;
         /// <summary>The last <see cref="Refresh"/>: chunks rebuilt, total and AO milliseconds.</summary>
         [System.NonSerialized] public List<int> lastChunks = new();
@@ -63,8 +65,8 @@ namespace AquariumCiv.View
         readonly MeshCollider[] chunkColliders = new MeshCollider[ChunkCount];
         readonly uint[] chunkHash = new uint[ChunkCount];
         uint landHash;
-        GameObject glowGo;
-        Material glowMat;
+        GameObject glowGo, smokeGo;
+        Material glowMat, smokeMat;
         readonly Dictionary<int, (PegDollView doll, uint sig)> dollByKey = new();
         public Transform Root => root;
         public IReadOnlyList<PegDollView> Dolls => dolls;
@@ -87,7 +89,7 @@ namespace AquariumCiv.View
                 foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
                 {
                     var m = mf.sharedMesh;
-                    if (m != null && (m.name.StartsWith("Box") || m.name == "Water" || m.name == "Glows")) Kill(m);
+                    if (m != null && (m.name.StartsWith("Box") || m.name == "Water" || m.name == "Glows" || m.name == "Smoke")) Kill(m);
                 }
                 Kill(root.gameObject);
             }
@@ -96,7 +98,7 @@ namespace AquariumCiv.View
             dolls.Clear();
             dollByKey.Clear();
             root = peopleRoot = null;
-            glowGo = null;
+            glowGo = smokeGo = null;
         }
 
         static void Kill(Object o)
@@ -1034,34 +1036,67 @@ namespace AquariumCiv.View
         }
 
         // ---------------- glows ----------------
-        /// <summary>Soft additive glows: a big breathing one over every fire, a small one on every lantern that follows
-        /// the night level. One mesh, one draw; rebuilt on every refresh (it is tiny).</summary>
+        /// <summary>
+        /// Soft additive glows in one mesh (one draw, rebuilt on every refresh: it is tiny): per fire a halo behind the flame,
+        /// a flat warm pool on the ground, 8 embers; per lantern a small light that follows the night level. The motion of
+        /// all of it is in the Glow shader. The fires' smoke is a second tiny mesh with its own alpha-blended material
+        /// (one more draw for every fire in the box).
+        /// </summary>
         void Glows()
         {
             if (glowGo != null) { Kill(glowGo.GetComponent<MeshFilter>().sharedMesh); Kill(glowGo); glowGo = null; }
-            var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var tris = new List<int>();
-            void Add(Vector3 c, float radius, float kind, Color col)
+            if (smokeGo != null) { Kill(smokeGo.GetComponent<MeshFilter>().sharedMesh); Kill(smokeGo); smokeGo = null; }
+            var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var extra = new List<Vector2>(); var tris = new List<int>();
+            var sVerts = new List<Vector3>(); var sCols = new List<Color>(); var sCorner = new List<Vector2>(); var sData = new List<Vector2>(); var sTris = new List<int>();
+            var corners = new[] { new Vector2(-1, -1), new Vector2(-1, 1), new Vector2(1, 1), new Vector2(1, -1) };
+            void Add(Vector3 c, float radius, float kind, Color col, float x = 0f, float y = 0f)
             {
                 int o = verts.Count;
-                foreach (var k in new[] { new Vector2(-1, -1), new Vector2(-1, 1), new Vector2(1, 1), new Vector2(1, -1) })
-                { verts.Add(c); cols.Add(col); corner.Add(k); data.Add(new Vector2(radius, kind)); }
+                foreach (var k in corners) { verts.Add(c); cols.Add(col); corner.Add(k); data.Add(new Vector2(radius, kind)); extra.Add(new Vector2(x, y)); }
                 tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
+            }
+            void AddSmoke(Vector3 c, float phase, float period)
+            {
+                int o = sVerts.Count;
+                foreach (var k in corners) { sVerts.Add(c); sCols.Add(Palette.FireSmoke); sCorner.Add(k); sData.Add(new Vector2(phase, period)); }
+                sTris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
             }
             foreach (var p in layout.pieces)
             {
                 var frame = Matrix4x4.TRS(land.OnGround(p.x, p.z), Quaternion.Euler(0, p.yaw, 0), Vector3.one);
                 if (p.kind == PieceKind.Fire || (p.kind == PieceKind.Tavern && p.era == Era.Camp))
-                    Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), 0.42f, 0f, Palette.Glow);
+                {
+                    var foot = frame.MultiplyPoint3x4(Vector3.zero);
+                    float phase = Pieces.Phase(p.seed);
+                    Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), 0.42f, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
+                    Add(foot + Vector3.up * 0.02f, 0.55f, 4f, Palette.FirePool, phase);                            // warm pool on the ground
+                    for (int e = 0; e < 8; e++)                                                                     // embers
+                        Add(foot + Vector3.up * 0.14f, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 11)) / 8f, 1.2f + 0.8f * Land.Hash3(p.seed, e, 12));
+                    for (int s = 0; s < 4; s++)                                                                     // smoke
+                        AddSmoke(foot + Vector3.up * 0.3f, (s + Land.Hash3(p.seed, s, 13) * 0.4f) / 4f, 4f);
+                }
                 else if (p.kind == PieceKind.Lantern)
                     Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + Pieces.Phase(p.seed), Palette.Lamp);
             }
-            if (verts.Count == 0) return;
-            var m = new Mesh { name = "Glows" };
-            m.SetVertices(verts); m.SetColors(cols); m.SetUVs(0, corner); m.SetUVs(1, data); m.SetTriangles(tris, 0);
-            m.bounds = new Bounds(new Vector3(0, 1.5f, 0), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
-            var mat = glow != null ? glow : glowMat != null ? glowMat : glowMat = new Material(Shader.Find("AquariumCiv/View/Glow")) { hideFlags = HideFlags.DontSave };
-            glowGo = Spawn("Glows", m, mat, false);
-            glowGo.GetComponent<MeshRenderer>().receiveShadows = false;
+            var bounds = new Bounds(new Vector3(0, 1.5f, 0), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
+            if (verts.Count > 0)
+            {
+                var m = new Mesh { name = "Glows" };
+                m.SetVertices(verts); m.SetColors(cols); m.SetUVs(0, corner); m.SetUVs(1, data); m.SetUVs(2, extra); m.SetTriangles(tris, 0);
+                m.bounds = bounds;
+                var mat = glow != null ? glow : glowMat != null ? glowMat : glowMat = new Material(Shader.Find("AquariumCiv/View/Glow")) { hideFlags = HideFlags.DontSave };
+                glowGo = Spawn("Glows", m, mat, false);
+                glowGo.GetComponent<MeshRenderer>().receiveShadows = false;
+            }
+            if (sVerts.Count > 0)
+            {
+                var m = new Mesh { name = "Smoke" };
+                m.SetVertices(sVerts); m.SetColors(sCols); m.SetUVs(0, sCorner); m.SetUVs(1, sData); m.SetTriangles(sTris, 0);
+                m.bounds = bounds;
+                var mat = smoke != null ? smoke : smokeMat != null ? smokeMat : smokeMat = new Material(Shader.Find("AquariumCiv/View/FireSmoke")) { hideFlags = HideFlags.DontSave };
+                smokeGo = Spawn("Smoke", m, mat, false);
+                smokeGo.GetComponent<MeshRenderer>().receiveShadows = false;
+            }
         }
 
         // ---------------- people ----------------

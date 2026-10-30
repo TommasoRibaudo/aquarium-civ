@@ -497,9 +497,10 @@ MonoBehaviour:
   water: {fileID: 2100000, guid: b28e355389f822a42ac9ba6c202d55f5, type: 2}
   glass: {fileID: 2100000, guid: 2ca55f126e0e7af438aa6199c81ac511, type: 2}
   glow: {fileID: 2100000, guid: 74cf033f5929b38429d4c8103c1aed2a, type: 2}
-  lastBuildInfo: 121872 verts, 40624 tris, 5 pieces, 7 people, AO 271 ms, total 483
+  smoke: {fileID: 2100000, guid: e0a8c6b245e42154f8f2e2a5d7b90f8c, type: 2}
+  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 122 ms, total 264
     ms
-  lastRefreshInfo: 
+  lastRefreshInfo: no chunk changed, 0 new people, 56,5 ms
 --- !u!4 &896176681
 Transform:
   m_ObjectHideFlags: 0
@@ -525,6 +526,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1235873609}
   - component: {fileID: 1235873608}
+  - component: {fileID: 1235873610}
   m_Layer: 0
   m_Name: Sun
   m_TagString: Untagged
@@ -612,6 +614,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1235873610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1235873607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

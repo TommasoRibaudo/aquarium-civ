@@ -348,3 +348,26 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   (`typeof(T).GetMethod("Name", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(obj, args)`), with a `Stopwatch`
   around each stage; out params come back in the `args` array. Build the result string with `+`, not `$"...\n"`, when
   the script is passed through `"$(cat file)"` (an escaped `\n` inside an interpolated string got mangled). [verified]
+- **2026-10-30 · `VolumeProfile` built in code must add its components as sub-assets (#63).** `Post_Slice.asset` was
+  committed with `components: [{fileID: 0} x5]`: `p.Add<T>(true)` creates the overrides in memory only, and they survive a
+  domain reload but not an Editor restart or a player build, so a fresh checkout ran the slice with no tonemap, grade,
+  vignette or bloom. `AssetDatabase.AddObjectToAsset(c, profile)` for each component before `SaveAssets` fixes it
+  (`SliceSceneBuilder.Profile`). Check with `grep -c "" Post_Slice.asset` (about 190 lines, not 20). [verified]
+- **2026-10-30 · After a mesh-builder or shader change, `BoxView.Rebuild()` before shots.** `SimLayoutSource.DebugPreview`
+  reports "no chunk changed" when the layout hash is the same, so the old piece meshes stay. Call
+  `UnityEngine.Object.FindAnyObjectByType<AquariumCiv.View.BoxView>().Rebuild()` first. [verified]
+- **2026-10-30 · `script eval` takes no `using` lines** (top-level `using X;` is parsed as a using-statement and fails with
+  "Identifier expected"): write fully qualified names. A sed pass over a script file does it:
+  `sed -E 's/(^|[^A-Za-z0-9_.])(Vector3|Color)\b/\1UnityEngine.\2/g'`. This machine has no `python` (the Store stub) but
+  has `perl`, which handles multi-line edits (`perl -0pi -e ...`) when a heredoc has no apostrophes. [verified]
+- **2026-10-30 · `unity command test run` prints only the totals; failures are in `TestResults.xml`.** Read
+  `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/TestResults.xml` and grep `result="Failed"` with `-A12`
+  (use `grep -a`). [verified]
+- **2026-10-29 · Tester #63 camera-by-touch notes.** [verified]
+  - `BoxCamera` takes `InputTestFixture` touches with the default update mode: `BeginTouch/MoveTouch/EndTouch(...,
+    queueEventOnly: true)`, one step per frame, two ids for pinch/pan. The fixture leaves no `Mouse`, so `Touchscreen.current`
+    is the only pointer. Several Game view sizes in one test: call `AgentGameView.SetSize` by reflection
+    (`AppDomain.GetAssemblies()` → `AquariumCiv.EditorTools.AgentGameView`) and wait ~1 s; the yaw/pitch deltas then match.
+  - Measure "ground under the fingers" with `BoxCameraMath.GroundPoint(cam.ScreenPointToRay(p), rig.target.y, ...)`.
+  - The slice play mode rewrites `LocalLow/.../game/box.json`: copy it out before and back after.
+  - Fire halo edge check: scan rows of a night close-up for a strong horizontal luminance step (PIL); the eye misses it in day shots.

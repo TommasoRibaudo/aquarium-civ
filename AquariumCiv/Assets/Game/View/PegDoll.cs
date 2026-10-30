@@ -62,8 +62,8 @@ namespace AquariumCiv.View
             bool hasAccent = look.accent.a > 0.5f;
             if (hasAccent && !look.camp)
             {
-                // A sash over one shoulder: a thin slanted band round the tunic.
-                mb.Box(new Vector3(0, bodyH * 0.62f, 0), new Vector3(0.1f * s, 0.016f * s, 0.098f * s), look.accent, Quaternion.Euler(0, 0, 32f));
+                // A sash over one shoulder: a thin band tilted 28 degrees that hugs the tunic (nothing sticks out > 0.004 u).
+                Band(mb, s, BodyH * 0.62f * s, 0.046f * s * Mathf.Sin(28f * Mathf.Deg2Rad), 0.007f * s, 0f, Mathf.PI * 2f, 10, look.accent, 0.003f);
             }
             float headY = HeadY * s;
             mb.Ico(new Vector3(0, headY, 0), HeadR * s, Vector3.one, look.skin, 0.06f);
@@ -87,6 +87,35 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(0, headY - 0.002f * s, 0.004f * s), 0.0505f * s, 0.049f * s, 0.022f * s, 9, look.accent, capTop: false);
                 }
             }
+        }
+
+        /// <summary>The tunic's (circumscribed) radius at height <paramref name="y"/> (already scaled by the doll's scale).</summary>
+        public static float TunicRadius(float y, float s) => (0.055f - 0.017f * Mathf.Clamp01(y / (BodyH * s))) * s;
+
+        /// <summary>
+        /// A thin band that follows the tunic's taper, <paramref name="standoff"/> proud of it: centre height
+        /// <paramref name="yc"/> + <paramref name="amp"/>Â·cos(angle) (a tilted ring when it runs all the way round),
+        /// <paramref name="halfH"/> half its width, over the angles a0..a1 (x = cos, z = sin; the front is 3Ï/2).
+        /// </summary>
+        public static void Band(MeshBuilder mb, float s, float yc, float amp, float halfH, float a0, float a1, int segs, Color col, float standoff)
+        {
+            Vector3 P(float a, float dy)
+            {
+                float y = yc + amp * Mathf.Cos(a) + dy;
+                float r = TunicRadius(y, s) + standoff * s;
+                return new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r);
+            }
+            for (int i = 0; i < segs; i++)
+            {
+                float t0 = Mathf.Lerp(a0, a1, i / (float)segs), t1 = Mathf.Lerp(a0, a1, (i + 1) / (float)segs);
+                mb.Quad(P(t0, -halfH), P(t0, halfH), P(t1, halfH), P(t1, -halfH), col);
+            }
+        }
+
+        /// <summary>The thin strap across the chest of someone carrying a back bundle (a body part, so it hugs the tunic at any scale).</summary>
+        public static void ChestStrap(MeshBuilder mb, float s)
+        {
+            Band(mb, s, BodyH * 0.72f * s, -0.032f * s, 0.0045f * s, Mathf.PI * 1.17f, Mathf.PI * 1.83f, 6, Palette.Timber, 0.0025f);
         }
 
         /// <summary>One stub arm: pivot (shoulder) at the origin, hanging down -y, sleeve in the tunic colour, skin hand.</summary>
@@ -117,13 +146,32 @@ namespace AquariumCiv.View
             switch (kind)
             {
                 case PropKind.Axe:
-                    mb.Box(new Vector3(0, 0.03f, 0), new Vector3(0.012f, 0.13f, 0.012f), Palette.WoodLight);
-                    mb.Box(new Vector3(0, 0.085f, -0.022f), new Vector3(0.01f, 0.035f, 0.04f), Palette.Iron);
+                {
+                    // Handle 0.2 × 0.018; head 0.06 tall × 0.07 long: an Iron poll round the handle and a pale steel wedge
+                    // whose edge points forward (-z), so the head reads from the side as a bright triangle.
+                    mb.Box(new Vector3(0, 0.05f, 0), new Vector3(0.018f, 0.2f, 0.018f), Palette.WoodLight);
+                    const float yc = 0.115f, z0 = -0.014f, z1 = -0.056f;
+                    mb.Box(new Vector3(0, yc, 0), new Vector3(0.026f, 0.06f, 0.028f), Palette.Iron);
+                    Vector3 A = new(-0.012f, yc + 0.03f, z0), B = new(0.012f, yc + 0.03f, z0), C = new(0.012f, yc - 0.03f, z0), D = new(-0.012f, yc - 0.03f, z0);
+                    Vector3 E = new(0, yc + 0.036f, z1), F = new(0, yc - 0.036f, z1), inside = new(0, yc, (z0 + z1) * 0.5f);
+                    mb.QuadOut(B, E, F, C, inside, Palette.RockLight);
+                    mb.QuadOut(A, D, F, E, inside, Palette.RockLight);
+                    mb.TriOut(A, B, E, inside, Palette.RockLight);
+                    mb.TriOut(D, C, F, inside, Palette.RockLight);
                     break;
+                }
                 case PropKind.Hoe:
-                    mb.Box(new Vector3(0, 0.05f, 0), new Vector3(0.01f, 0.18f, 0.01f), Palette.WoodLight);
-                    mb.Box(new Vector3(0, 0.135f, -0.02f), new Vector3(0.03f, 0.01f, 0.035f), Palette.Iron);
+                {
+                    // Handle 0.24 × 0.016; blade 0.055 wide × 0.05 deep, angled 70 degrees to the handle (down and forward),
+                    // an Iron neck and a pale steel edge.
+                    mb.Box(new Vector3(0, 0.07f, 0), new Vector3(0.016f, 0.24f, 0.016f), Palette.WoodLight);
+                    var top = new Vector3(0, 0.185f, 0);
+                    var d = new Vector3(0, -Mathf.Cos(70f * Mathf.Deg2Rad), -Mathf.Sin(70f * Mathf.Deg2Rad));
+                    var q = Quaternion.LookRotation(d, Vector3.up);
+                    mb.Box(top + d * 0.015f, new Vector3(0.034f, 0.008f, 0.03f), Palette.Iron, q, true);
+                    mb.Box(top + d * 0.041f, new Vector3(0.055f, 0.008f, 0.022f), Palette.RockLight, q, true);
                     break;
+                }
                 case PropKind.Spear:
                     mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.008f, 0.22f, 0.008f), Palette.WoodLight);
                     mb.Prism(new Vector3(0, 0.17f, 0), 0.012f, 0f, 0.035f, 4, Palette.RockLight);
@@ -132,20 +180,42 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(0, -0.01f, 0), 0.032f, 0.042f, 0.04f, 8, Palette.Thatch, topCol: Palette.Ember);
                     break;
                 case PropKind.Sheaf:
-                    mb.Prism(new Vector3(0, 0f, 0), 0.022f, 0.04f, 0.075f, 6, Palette.Wheat, topCol: Palette.Straw);
-                    mb.Prism(new Vector3(0, 0.03f, 0), 0.026f, 0.026f, 0.01f, 6, Palette.Bark, capTop: false);
+                {
+                    // Lies crosswise on the head: two cones (0.075 each, 0.15 in all) joined at a tied waist, tilted 8 degrees.
+                    // Stalk end in Straw, ear end in darker Wheat (#B8913F); the Bark tie band is 0.012 wide.
+                    var ear = new Color(0.722f, 0.569f, 0.247f);
+                    var ax = Quaternion.Euler(0, 0, 8f);
+                    var lift = new Vector3(0, 0.02f, 0);
+                    var toEar = ax * Quaternion.Euler(0, 0, -90f);   // local up -> +x (the ear end)
+                    var toStalk = ax * Quaternion.Euler(0, 0, 90f);  // local up -> -x (the stalk end)
+                    mb.Prism(lift, 0.012f, 0.03f, 0.075f, 6, ear, toEar, true, false, ear);
+                    mb.Prism(lift, 0.012f, 0.025f, 0.075f, 6, Palette.Straw, toStalk, true, false, Palette.Straw);
+                    mb.Prism(lift - (ax * Vector3.right) * 0.006f, 0.016f, 0.016f, 0.012f, 6, Palette.Bark, toEar, false);
                     break;
+                }
                 case PropKind.Log:
                     Pieces.Log(mb, Vector3.zero, 0.02f, 0.14f, 90f, Palette.Bark);
                     break;
                 case PropKind.Bundle:
-                    mb.Box(Vector3.zero, new Vector3(0.06f, 0.07f, 0.035f), Palette.Hide);
-                    mb.Box(new Vector3(0, 0.0f, 0), new Vector3(0.062f, 0.01f, 0.037f), Palette.Timber);
+                    // A canvas roll (0.075 × 0.085 × 0.045) with two dark straps; a lighter colour than the tunics so it shows.
+                    mb.Box(Vector3.zero, new Vector3(0.075f, 0.085f, 0.045f), Palette.Canvas);
+                    mb.Box(new Vector3(0, 0.022f, 0), new Vector3(0.079f, 0.009f, 0.049f), Palette.Timber);
+                    mb.Box(new Vector3(0, -0.022f, 0), new Vector3(0.079f, 0.009f, 0.049f), Palette.Timber);
                     break;
                 case PropKind.Pot:
-                    mb.Prism(new Vector3(0, 0, 0), 0.025f, 0.034f, 0.025f, 8, Palette.Terracotta, capTop: false);
-                    mb.Prism(new Vector3(0, 0.025f, 0), 0.034f, 0.02f, 0.02f, 8, Palette.Terracotta, topCol: Palette.Door);
+                {
+                    // 0.075 tall: a straw head-ring (r 0.03, h 0.008), a narrow foot, a wide belly (r 0.04) with a plaster
+                    // stripe, a narrow neck and a flared lip.
+                    var clay = Palette.Terracotta;
+                    mb.Prism(new Vector3(0, -0.004f, 0), 0.03f, 0.03f, 0.008f, 8, Palette.Straw);
+                    mb.Prism(new Vector3(0, 0.003f, 0), 0.017f, 0.04f, 0.026f, 8, clay, capTop: false);
+                    mb.Prism(new Vector3(0, 0.029f, 0), 0.04f, 0.019f, 0.027f, 8, clay, capTop: false);
+                    mb.Prism(new Vector3(0, 0.022f, 0), 0.0353f, 0.0415f, 0.007f, 8, Palette.Plaster, capTop: false);
+                    mb.Prism(new Vector3(0, 0.029f, 0), 0.0415f, 0.0361f, 0.007f, 8, Palette.Plaster, capTop: false);
+                    mb.Prism(new Vector3(0, 0.054f, 0), 0.019f, 0.0165f, 0.012f, 8, Color.Lerp(clay, Palette.Door, 0.25f), capTop: false);
+                    mb.Prism(new Vector3(0, 0.066f, 0), 0.0165f, 0.029f, 0.009f, 8, clay, topCol: Palette.Door);
                     break;
+                }
                 case PropKind.Fish:
                     mb.Box(new Vector3(0, 0.035f, 0), new Vector3(0.006f, 0.1f, 0.006f), Palette.WoodLight);
                     mb.Ico(new Vector3(0, 0.0f, -0.012f), 0.016f, new Vector3(0.5f, 1.8f, 0.9f), Palette.Water, 0.05f);
@@ -166,7 +236,7 @@ namespace AquariumCiv.View
             switch (slot)
             {
                 case PropSlot.Head: return (new Vector3(0, HeadY + HeadR + 0.008f, 0), Quaternion.identity);
-                case PropSlot.Back: return (new Vector3(0, BodyH * 0.65f, 0.05f), Quaternion.identity);
+                case PropSlot.Back: return (new Vector3(0, BodyH * 0.75f, 0.062f), Quaternion.identity);
                 case PropSlot.Shoulder: return (new Vector3(ShoulderX * 0.6f, BodyH + 0.008f, 0), Quaternion.Euler(0, 90f, 0));
                 default: return (new Vector3(0, -ArmLen, 0), Quaternion.identity); // relative to the right arm's pivot
             }
