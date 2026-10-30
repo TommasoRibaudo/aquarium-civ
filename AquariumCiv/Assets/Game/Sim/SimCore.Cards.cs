@@ -127,6 +127,7 @@ namespace AquariumCiv.Sim
             ["death"] = (CardTone.Sad, "legend"), ["role_death"] = (CardTone.Sad, "legend"),
             ["term_row"] = (CardTone.Neutral, "office"), ["term_complaint"] = (CardTone.Neutral, "office"),
             ["wish"] = (CardTone.Good, "wish"), ["relic"] = (CardTone.Good, "relic"),
+            ["tapback"] = (CardTone.Good, "keeper"), // a scholar taps back (SimCore.Relics.cs, #74)
             ["coming_of_age"] = (CardTone.Neutral, "hidden"),
         };
 
@@ -315,7 +316,9 @@ namespace AquariumCiv.Sim
                 "era" => $"{Place} became a {EraNoun(State.era)}",
                 "naming" => $"The settlement was named {Place}",
                 "first_building" => FirstBuildingHeadline(e),
+                "lost" when e.relicId == RelicId.LeftSandal => $"{A} lost a sandal",
                 "lost" => $"{A} got lost in the hills",
+                "relic" => RelicHeadline(e),
                 _ => null,
             };
             return Clip(h ?? FirstSentence(e.text));
@@ -751,7 +754,11 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>Called at the era moment (SimCore.Eras.cs): the era lifts the stage to its own.</summary>
-        void GlassOnEraChange() => SetGlassStage(GlassStage);
+        void GlassOnEraChange()
+        {
+            SetGlassStage(GlassStage);
+            RelicsOnEraChange(); // the first era festival leaves the Festival Mask (SimCore.Relics.cs, #74)
+        }
 
         void SetGlassStage(int stage)
         {

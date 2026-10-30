@@ -115,6 +115,7 @@ namespace AquariumCiv.Sim
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
+            RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
         }
@@ -288,9 +289,25 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- player actions ----------
-        public void CleanGrime(float amount) => State.grime = Math.Max(0f, State.grime - amount);
-        public void Prune(float amount) => State.overgrowth = Math.Max(0f, State.overgrowth - amount);
-        public bool RemoveTrash(int id) => State.trash.RemoveAll(t => t.id == id) > 0;
+        public void CleanGrime(float amount)
+        {
+            if (amount > 0f && State.grime > 0f) CountKeeperAction(KeeperAction.Wipe, true); // the Keeper Doll's prop (SimCore.Relics.cs)
+            State.grime = Math.Max(0f, State.grime - amount);
+        }
+
+        public void Prune(float amount)
+        {
+            float before = State.overgrowth;
+            State.overgrowth = Math.Max(0f, State.overgrowth - amount);
+            RelicsOnPrune(before - State.overgrowth); // the Left Sandal turns up under the weeds (SimCore.Relics.cs)
+        }
+
+        public bool RemoveTrash(int id)
+        {
+            bool removed = State.trash.RemoveAll(t => t.id == id) > 0;
+            if (removed) CountKeeperAction(KeeperAction.Trash, true);
+            return removed;
+        }
 
         /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
         public void AddMess(float grime, float overgrowth, int trashCount)

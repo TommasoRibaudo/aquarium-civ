@@ -290,7 +290,10 @@ namespace AquariumCiv.Sim
             if (adults.Count > 0 && Fresh("lost", -1, 6)) Add(0.6f, () =>
             {
                 var n = Pick(r, adults);
-                Chronicle("lost", $"{n.FullName} got lost in the hills for three days and came back with {FoundNext(Pick(r, FoundThings), n.id)}.", 0.6f, n.id);
+                string thing = FoundNext(Pick(r, FoundThings), n.id); // drawn as before
+                string sandal = SandalLossLine(n); // the box's first "lost" story is the Left Sandal's (SimCore.Relics.cs, #74)
+                var lost = Chronicle("lost", sandal ?? $"{n.FullName} got lost in the hills for three days and came back with {thing}.", 0.6f, n.id);
+                if (sandal != null) SandalLost(n, lost);
             });
 
             // ---- the world ----
