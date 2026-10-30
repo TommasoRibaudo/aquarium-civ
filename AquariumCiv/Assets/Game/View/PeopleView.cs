@@ -70,6 +70,9 @@ namespace AquariumCiv.View
         readonly Dictionary<int, Doll> dolls = new();
         readonly Dictionary<Place, int> countAt = new();
         readonly HashSet<(Place, int)> taken = new();
+        /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
+        readonly List<Vector2> claimed = new();
+        const float Personal = 0.075f; // closest two standing dolls get, centre to centre
         readonly Dictionary<int, Lot> lotOfBuilding = new();
         readonly Dictionary<int, Notable> notables = new();
         readonly HashSet<int> seen = new();
@@ -200,6 +203,7 @@ namespace AquariumCiv.View
             bool camp = sim.State.era == Era.Camp;
             float time = Application.isPlaying ? Time.time : Time.realtimeSinceStartup;
             seen.Clear();
+            claimed.Clear();
             for (int i = 0; i < acts.Count; i++)
             {
                 var a = acts[i];
@@ -237,7 +241,12 @@ namespace AquariumCiv.View
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (!a.moving && !hidden) target = SlotSpot(a, spot, out face);
+            if (!a.moving && !hidden)
+            {
+                target = SlotSpot(a, spot, out face);
+                target = Standable(target, spot, !InField(a.place));
+                claimed.Add(target);
+            }
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(target.x, target.y))
             {
                 var wet = target;
@@ -339,6 +348,36 @@ namespace AquariumCiv.View
             return spot + new Vector2(Mathf.Cos(ga), Mathf.Sin(ga)) * spread * Mathf.Sqrt(a.slot);
         }
 
+        static bool InField(Place p) => p.kind is PlaceKind.Field or PlaceKind.Pasture;
+
+        /// <summary>A slot that fell on a building's lot (a ring round the market running into a house) moves to the nearest
+        /// walkable ground: round the same ring first, then closer to the middle. The spot itself if nothing is free.</summary>
+        static readonly float[] Rings = { 1f, 1.4f, 0.75f, 1.8f, 0.5f };
+
+        Vector2 Standable(Vector2 p, Vector2 centre, bool offLots)
+        {
+            var st = offLots && plannerSim != null ? plannerSim.Settlement : null;
+            bool Free(Vector2 q)
+            {
+                foreach (var o in claimed) if ((o - q).sqrMagnitude < Personal * Personal) return false;
+                if (st == null) return true;
+                int c = SiteMap.CellAt(q.x, q.y);
+                return c < 0 || st.WalkCost(c) > 0;
+            }
+            if (Free(p)) return p;
+            var off = p - centre;
+            float r = Mathf.Max(off.magnitude, Personal), a0 = Mathf.Atan2(off.y, off.x);
+            foreach (float shrink in Rings)
+                for (int k = 0; k <= 12; k++)
+                    for (int sgn = -1; sgn <= 1; sgn += 2)
+                    {
+                        float a = a0 + sgn * k * 15f * Mathf.Deg2Rad;
+                        var q = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r * shrink;
+                        if (Free(q)) return q;
+                    }
+            return centre;
+        }
+
         static Vector2 Ashore(Land land, Vector2 p)
         {
             var dir = land.centre - p;
@@ -368,6 +407,8 @@ namespace AquariumCiv.View
             }
             else if (n != null && !kid)
                 look.accent = Palette.Accents[(n.id * 7 + 3) % Palette.Accents.Length]; // a notable's thin sash (camp: headband)
+            // Gold is the leader's (chief, headman, lord): nobody else wears it, so the leader is the one gold dot in the box.
+            if (!look.role && look.accent == Palette.Accents[1]) look.accent = Palette.Accents[(Seed(who) & 1) == 0 ? 0 : 3];
             return look;
         }
 
@@ -436,6 +477,9 @@ namespace AquariumCiv.View
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             return (kind, slot);
         }
+
+        /// <summary>Is this person's doll walking (on a route, or gliding into its slot)?</summary>
+        public bool IsWalking(PersonRef who) => dolls.TryGetValue(who.Key, out var d) && d.speed > 0.04f;
 
         /// <summary>The activity a doll is showing (tests, reports).</summary>
         public bool TryGetActivity(PegDollView view, out PersonActivity act)

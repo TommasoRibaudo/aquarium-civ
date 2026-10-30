@@ -195,12 +195,14 @@ namespace AquariumCiv.View.Tests
             try
             {
                 var land = box.land;
+                var settle = go.GetComponent<SimLayoutSource>().Sim.Settlement;
                 people.timeScale = 1f; // the real day: walks at the speed a player sees
                 PeopleView.DebugSetHour(6.5f);
                 var last = new Dictionary<PegDollView, Vector3>();
-                int jumps = 0, nightJumps = 0, frames = 0, busySamples = 0, busyAdults = 0, adultSamples = 0, wet = 0;
+                int jumps = 0, nightJumps = 0, onLot = 0, stacked = 0, frames = 0, busySamples = 0, busyAdults = 0, adultSamples = 0, wet = 0;
                 var styles = new HashSet<string>();
                 var jumpLog = new List<string>();
+                var lotLog = new List<string>();
                 while (people.Now.hour < 21f && frames < 4000)
                 {
                     people.Tick(0.1f);
@@ -223,7 +225,25 @@ namespace AquariumCiv.View.Tests
                     foreach (var a in people.Activities)
                     {
                         styles.Add(DollMotion.StyleOf(a.kind).ToString());
-                        if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && people.TryGetDollPosition(a.who, out var pos) && land.IsWater(pos.x, pos.y)) wet++;
+                        if (!people.TryGetDollPosition(a.who, out var pos)) continue;
+                        if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(pos.x, pos.y)) wet++;
+                        int cell = Sim.Settle.SiteMap.CellAt(pos.x, pos.y);
+                        if (!a.moving && !people.IsWalking(a.who) && a.place.kind != PlaceKind.Field && a.place.kind != PlaceKind.Pasture && a.kind != ActivityKind.Sleep &&
+                            people.Planner.StageOf(a.who) != LifeStage.Baby && cell >= 0 && settle.WalkCost(cell) == 0)
+                        {
+                            onLot++;
+                            if (lotLog.Count < 10 && frames % 10 == 0) lotLog.Add($"{people.Now} {people.Describe(a)}");
+                        }
+                    }
+                    // Rule 6: one doll per spot. Settled, visible dolls never stand on top of each other.
+                    if (frames % 10 == 0)
+                    {
+                        var still = people.Activities.Where(a => !a.moving && !people.IsWalking(a.who) && a.kind != ActivityKind.Sleep &&
+                            people.Planner.StageOf(a.who) != LifeStage.Baby && people.TryGetDollPosition(a.who, out _))
+                            .Select(a => { people.TryGetDollPosition(a.who, out var q); return q; }).ToList();
+                        for (int i = 0; i < still.Count; i++)
+                            for (int j = i + 1; j < still.Count; j++)
+                                if ((still[i] - still[j]).sqrMagnitude < 0.05f * 0.05f) stacked++;
                     }
                     if (frames % 20 == 0 && LifeClock.IsWorkHour(people.Now.hour) && !people.Planner.IsRestDay(people.Now.day))
                     {
@@ -240,6 +260,8 @@ namespace AquariumCiv.View.Tests
                 Assert.Less(frames, 4000, "the clock ran through the day");
                 Assert.AreEqual(0, jumps, "no doll teleports (> 0.25 u in a 100 ms frame):\n" + string.Join("\n", jumpLog));
                 Assert.AreEqual(0, wet, "nobody stands in the pond unless swimming");
+                Assert.AreEqual(0, stacked, "no two dolls stand on the same spot");
+                Assert.AreEqual(0, onLot, "nobody stands inside a building's lot (a ring round the market runs round the houses):\n" + string.Join("\n", lotLog));
                 TestContext.WriteLine($"styles seen: {string.Join(", ", styles)}; busy {busyAdults}/{adultSamples}; night rushes {nightJumps}; {people.Status()}");
                 Assert.GreaterOrEqual(styles.Count, 8, "a day shows many different moves");
                 if (adultSamples > 0) Assert.GreaterOrEqual(busyAdults / (float)adultSamples, 0.6f, "work hours: most adults are busy");

@@ -419,6 +419,7 @@ GameObject:
   - component: {fileID: 896176679}
   - component: {fileID: 896176678}
   - component: {fileID: 896176677}
+  - component: {fileID: 896176682}
   m_Layer: 0
   m_Name: Box
   m_TagString: Untagged
@@ -498,7 +499,7 @@ MonoBehaviour:
   glass: {fileID: 2100000, guid: 2ca55f126e0e7af438aa6199c81ac511, type: 2}
   glow: {fileID: 2100000, guid: 74cf033f5929b38429d4c8103c1aed2a, type: 2}
   smoke: {fileID: 2100000, guid: e0a8c6b245e42154f8f2e2a5d7b90f8c, type: 2}
-  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 122 ms, total 264
+  lastBuildInfo: 119214 verts, 39738 tris, 5 pieces, 7 people, AO 65 ms, total 185
     ms
   lastRefreshInfo: no chunk changed, 0 new people, 56,5 ms
 --- !u!4 &896176681
@@ -516,6 +517,23 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &896176682
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 896176676}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0284e3e5394f37a4f82883130eac548a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: AquariumCiv.View::AquariumCiv.View.PeopleView
+  maxPeople: 60
+  startHour: 9
+  timeScale: 1
+  replanSeconds: 0.2
+  animateInEditMode: 0
 --- !u!1 &1235873607
 GameObject:
   m_ObjectHideFlags: 0
