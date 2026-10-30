@@ -345,6 +345,7 @@ namespace AquariumCiv.Sim
         public bool boxComplete;             // CompleteBox ran: the box is a museum on the shelf
         public long boxCompleteMonth = -1;
         public List<int> founderIds = new(); // the notables who crossed to the next box
+        public int boxIndex;                 // which box of the shelf this is (0 = the first; SimShelf.cs, #87)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

@@ -34,6 +34,8 @@ namespace AquariumCiv.Sim
         public string prop = "";        // the Keeper Doll: what it holds (KeeperAction prop: cloth, watering can, ...)
         public string cause = "";       // the Sky Crumb: the shaping it fell with; the Lens: "lamp" or "fallback"
 
+        public int carriedFromBox = -1; // a relic that crossed from an earlier box (#87); -1 = made in this box
+
         public bool Found => foundMonth >= 0;
     }
 
@@ -229,7 +231,7 @@ namespace AquariumCiv.Sim
         {
             if (!RelicsOn || n == null) return;
             CountKeeperAction(n.kind, false);
-            if (!HasRelic(RelicId.SkyCrumb) && (State.nudges.Count >= 2 || State.era > Era.Camp)) MakeSkyCrumb(n);
+            if (State.boxIndex == 0 && !HasRelic(RelicId.SkyCrumb) && (State.nudges.Count >= 2 || State.era > Era.Camp)) MakeSkyCrumb(n);
             if (State.era == Era.Town && !HasRelic(RelicId.Lens))
             {
                 if (n.kind == NudgeKind.Lamp && !State.storyFlags.Contains(FlagLampInTown)) State.storyFlags.Add(FlagLampInTown);

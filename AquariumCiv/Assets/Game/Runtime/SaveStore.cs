@@ -17,7 +17,7 @@ namespace AquariumCiv.Game
     /// </summary>
     public static class SaveStore
     {
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
         public const double MaxAwayHours = 30 * 24;
 
         [Serializable]
@@ -25,7 +25,8 @@ namespace AquariumCiv.Game
         {
             public int v;
             public string lastSeenUtc;
-            public SimState state;
+            public SimState state;      // the box being played (the shelf's active box)
+            public ShelfState shelf;    // version 3 (#87): the boxes on the shelf; the active box's state is the one above
         }
 
         public enum LoadResult { Loaded, LoadedFromBackup, Missing, Corrupt, TooNew }
@@ -36,14 +37,16 @@ namespace AquariumCiv.Game
             e => { }, // 0 → 1: prototype saves; same fields, only the version is new
             e => { }, // 1 → 2 (#32, placement): the new state.settle reads as unsettled (version 0); the sim gives every
                       // building a lot from its old slot order once, when the SimCore is made (Sim/Settle, Settlement.Found)
+            e => e.shelf = ShelfState.Single(e.state), // 2 → 3 (#87, the shelf): today's single box becomes a shelf of one
         };
 
-        public static void Write(string path, SimState state, DateTime nowUtc)
+        public static void Write(string path, SimState state, DateTime nowUtc, ShelfState shelf = null)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             var json = JsonUtility.ToJson(new Envelope
             {
                 v = CurrentVersion, lastSeenUtc = nowUtc.ToString("o", CultureInfo.InvariantCulture), state = state,
+                shelf = (shelf ?? ShelfState.Single(state)).ForSave(),
             });
             string tmp = path + ".tmp", bak = path + ".bak";
             File.WriteAllText(tmp, json);
@@ -74,6 +77,7 @@ namespace AquariumCiv.Game
             if (e?.state?.rng == null) { e = null; return LoadResult.Corrupt; }
             if (e.v > CurrentVersion) { e = null; return LoadResult.TooNew; }
             while (e.v < CurrentVersion) Migrations[e.v++](e);
+            e.shelf = ShelfState.Attach(e.shelf, e.state); // the active box's state is the envelope's own
             return LoadResult.Loaded;
         }
 
