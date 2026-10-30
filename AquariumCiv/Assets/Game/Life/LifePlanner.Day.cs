@@ -21,6 +21,9 @@ namespace AquariumCiv.Life
             /// <summary>#64: a move whose end a later layer cut off (the walk is redirected to the interruption's place) /
             /// whose start it cut off (the rest of the walk re-routes from wherever the interruption left them).</summary>
             public bool cut, resumed;
+            /// <summary>#109: a stay doing a move's loop where it is (filling the buckets at the well), not a move from wherever
+            /// they are to <see cref="place"/> (a layer's carry to the green).</summary>
+            public bool still;
             public bool Moving => ActivityInfo.IsMove(kind) && from != place && !from.IsNone;
         }
 
@@ -138,12 +141,23 @@ namespace AquariumCiv.Life
         Place bcur;
         int sweepBlock; // the sweeper's heaps so far today
 
+        /// <summary>The shortest stay worth walking to, in view hours (#109).</summary>
+        const float MinStay = 0.05f;
+
+        /// <summary>The share of its route's time a re-routed walk or a carry must get, else it is dropped (#109): at dawn's
+        /// fast clock a walk given its full time already shows at 1.6x the pace.</summary>
+        const float WalkSlack = 0.85f;
+
+        /// <summary>How much of the stay after it a walk short of time may eat into, arriving late (#109; it was half, and a
+        /// long walk to a quarrel on the green still rushed at 2x).</summary>
+        const float LateShare = 0.75f;
+
         void Begin(Place at) { b = new List<Seg>(48); bt = 0f; bcur = at; sweepBlock = 0; }
 
-        void Push(ActivityKind k, float start, float end, Place place, Place from, Prop prop, PersonRef partner, TripType trip, ActivitySource src = ActivitySource.Schedule, int chronicle = -1, bool copies = false)
+        void Push(ActivityKind k, float start, float end, Place place, Place from, Prop prop, PersonRef partner, TripType trip, ActivitySource src = ActivitySource.Schedule, int chronicle = -1, bool copies = false, bool still = false)
         {
             if (end <= start + 1e-4f) return;
-            b.Add(new Seg { start = start, end = end, kind = k, place = place, from = from, prop = prop, partner = partner, trip = trip, src = src, chronicleId = chronicle, copies = copies });
+            b.Add(new Seg { start = start, end = end, kind = k, place = place, from = from, prop = prop, partner = partner, trip = trip, src = src, chronicleId = chronicle, copies = copies, still = still });
         }
 
         /// <summary>Stay at a place doing <paramref name="k"/> until <paramref name="until"/>; walks there first if needed
@@ -153,11 +167,14 @@ namespace AquariumCiv.Life
             if (until <= bt + 1e-4f) return;
             if (place != bcur)
             {
-                float w = Math.Min(WalkHours(bcur, place), (until - bt) * 0.5f);
+                // The walk takes its route's time. A stay too short to walk there and still be there a moment is skipped:
+                // they carry on from where they are (a walk squeezed into half the stay rushed at 3-5x, #109).
+                float w = WalkHours(bcur, place);
+                if (w > until - bt - MinStay) return;
                 Push(ActivityKind.Walk, bt, bt + w, place, bcur, Prop.None, PersonRef.None, trip);
                 bt += w;
             }
-            Push(k, bt, until, place, place, prop, partner.IsNone ? PersonRef.None : partner, TripType.None);
+            Push(k, bt, until, place, place, prop, partner.IsNone ? PersonRef.None : partner, TripType.None, still: true);
             bt = until;
             bcur = place;
         }
@@ -231,7 +248,8 @@ namespace AquariumCiv.Life
             {
                 var s = list[i];
                 if (s.start < t) s.start = t;
-                bool isMove = ActivityInfo.IsMove(s.kind);
+                if (s.end <= s.start + 1e-4f && i + 1 < list.Count) continue; // a walk before it ran on through all of it (#109)
+                bool isMove = ActivityInfo.IsMove(s.kind) && !s.still;
                 // #64: a walk a later layer interrupted never ends at its old destination. Its first part heads for the
                 // interruption's place instead; its rest re-routes from wherever the interruption left them.
                 if (isMove && s.resumed)
@@ -239,6 +257,7 @@ namespace AquariumCiv.Life
                     InterruptedWalks++;
                     if (s.place == cur) continue; // already there: what came before stretches over it
                     s.from = cur;
+                    if (!TakeTheWalksTime(ref s, list, i, outList, cur)) continue;
                 }
                 // A plain walk from a place a later layer took away (the walk home from the tavern after a courting hour
                 // on the green replaced the drink): it sets off from where they are, or, already there, is dropped (#110).
@@ -246,6 +265,7 @@ namespace AquariumCiv.Life
                 {
                     if (s.place == cur) continue;
                     s.from = cur;
+                    if (!TakeTheWalksTime(ref s, list, i, outList, cur)) continue;
                 }
                 if (isMove && s.cut && i + 1 < list.Count)
                 {
@@ -256,27 +276,53 @@ namespace AquariumCiv.Life
                     if (to.IsNone || to == cur) continue; // the next thing starts from here: wait here instead
                     float w = WalkHours(cur, to);
                     if (w <= s.end - s.start) s.start = s.end - w; // set off just in time; what came before stretches
-                    else s.end = Math.Max(s.end, Math.Min(s.start + w, n.start + (n.end - n.start) * 0.5f)); // late: eat into it
+                    else
+                    {
+                        // Short of time: set off earlier (#109), then arrive late, eating into what comes next; when even that
+                        // is over before they could get there (a quarrel on the green at 17:15 for one coming from the mill),
+                        // they walk on through it to what follows.
+                        s.start = SetOffEarlier(outList, cur, s.start, w - (s.end - s.start), true);
+                        float stayEnd = StayEnd(list, i + 1);
+                        s.end = Math.Max(s.end, s.start + w > stayEnd - MinStay && i + 2 < list.Count ? s.start + w : Math.Min(s.start + w, n.start + (stayEnd - n.start) * LateShare));
+                    }
                     s.place = to;
                     s.from = cur;
                 }
                 if (s.end - s.start < 0.02f && outList.Count > 0) { var last = outList[outList.Count - 1]; last.end = s.end; outList[outList.Count - 1] = last; t = s.end; continue; }
-                if (s.start > t && outList.Count > 0) { var last = outList[outList.Count - 1]; last.end = s.start; outList[outList.Count - 1] = last; }
-                bool move = ActivityInfo.IsMove(s.kind);
+                bool move = ActivityInfo.IsMove(s.kind) && !s.still;
                 if (move && !s.from.IsNone && s.from != cur && s.from != s.place)
                 {
-                    // A carry starts where its load is: walk there first (a role beat may have moved the person away).
-                    float w = Math.Min(WalkHours(cur, s.from), (s.end - s.start) * 0.5f);
-                    outList.Add(new Seg { start = s.start, end = s.start + w, kind = ActivityKind.Walk, place = s.from, from = cur, src = s.src, trip = TripType.Errand, chronicleId = -1, partner = PersonRef.None });
-                    s.start += w;
+                    // A carry starts where its load is: walk there first (a role beat may have moved the person away). The walk
+                    // sets off early enough to take its route's time, eating into the stay before it (at most half of it);
+                    // only what that can't give comes out of the carry, at most half of it (a walk to the load squeezed into
+                    // half the carry rushed at 2-3x, #109).
+                    float need = WalkHours(cur, s.from);
+                    float start = SetOffEarlier(outList, cur, s.start, need, false);
+                    // No time left for the walk there and the carry (the water after the bell rung at dawn): a plain carry is
+                    // dropped, they carry on from where they are.
+                    if (s.src == ActivitySource.Schedule && i + 1 < list.Count &&
+                        s.end - (start + need) < Math.Min(WalkHours(s.from, s.place), s.end - s.start) * WalkSlack) continue;
+                    start = SetOffEarlier(outList, cur, s.start, need, true);
+                    float arrive = Math.Min(start + need, s.start + (s.end - s.start) * 0.5f);
+                    outList.Add(new Seg { start = start, end = arrive, kind = ActivityKind.Walk, place = s.from, from = cur, src = s.src, trip = TripType.Errand, chronicleId = -1, partner = PersonRef.None });
+                    s.start = Math.Max(s.start, arrive);
                 }
                 else if (move) s.from = cur;
                 else if (s.place != cur)
                 {
-                    float w = Math.Min(WalkHours(cur, s.place), (s.end - s.start) * 0.5f);
-                    outList.Add(new Seg { start = s.start, end = s.start + w, kind = ActivityKind.Walk, place = s.place, from = cur, src = s.src, trip = TripType.Errand, chronicleId = -1, partner = PersonRef.None });
-                    s.start += w;
+                    // The walk there takes its route's time, setting off in the time of any stay skipped before it. A plain
+                    // stay a layer left too short to walk to and still be there a moment (the last minutes of chopping in the
+                    // woods after a beat at the fields) is skipped: the next thing sets off from here (#109). A beat or a
+                    // scene keeps its place: the walk to it takes half of it at most, and PaceNightWalks has it set off earlier.
+                    float need = WalkHours(cur, s.place);
+                    float start = SetOffEarlier(outList, cur, s.start, need, false, false);
+                    if (s.src == ActivitySource.Schedule && need > s.end - start - MinStay && i + 1 < list.Count) continue;
+                    start = SetOffEarlier(outList, cur, s.start, need, true, false);
+                    float arrive = Math.Min(start + need, s.src == ActivitySource.Schedule ? s.end - MinStay : s.start + (s.end - s.start) * 0.5f);
+                    outList.Add(new Seg { start = start, end = arrive, kind = ActivityKind.Walk, place = s.place, from = cur, src = s.src, trip = TripType.Errand, chronicleId = -1, partner = PersonRef.None });
+                    s.start = Math.Max(s.start, arrive);
                 }
+                if (s.start > t && outList.Count > 0 && outList[outList.Count - 1].end < s.start) { var last = outList[outList.Count - 1]; last.end = s.start; outList[outList.Count - 1] = last; }
                 if (!move) s.from = s.place;
                 outList.Add(s);
                 cur = s.place;
@@ -335,6 +381,64 @@ namespace AquariumCiv.Life
             }
             PaceNightWalks(outList);
             return outList.ToArray();
+        }
+
+        /// <summary>A walk Stitch re-routed from where the person is (the rest of a walk a storm or a beat interrupted, a walk
+        /// whose origin a layer took away) keeps only the leftover of the old walk's time: it sets off earlier, eating into
+        /// the plain stay before it (at most half), and arrives late, eating into the stay after it (LateShare). A resumed walk
+        /// of 0.02 h across the town rushed at 6x (#109). A plain walk that still can't get most of its time, or whose plain
+        /// stay would be over before they got there, is dropped (Stitch then skips that stay as well and they carry on from
+        /// where they are): false.</summary>
+        bool TakeTheWalksTime(ref Seg s, List<Seg> list, int i, List<Seg> outList, Place cur)
+        {
+            float w = WalkHours(s.from, s.place);
+            if (s.end - s.start >= w) return true;
+            float start = SetOffEarlier(outList, cur, s.start, w - (s.end - s.start), false), end = s.end;
+            bool plain = s.src == ActivitySource.Schedule && i + 1 < list.Count;
+            if (i + 1 < list.Count && !list[i + 1].Moving)
+            {
+                var n = list[i + 1];
+                float stayEnd = StayEnd(list, i + 1);
+                if (plain && n.src == ActivitySource.Schedule && n.place == s.place && start + w > stayEnd - MinStay && i + 2 < list.Count) return false;
+                end = Math.Max(end, Math.Min(start + w, n.start + (stayEnd - n.start) * LateShare));
+            }
+            if (plain && end - start < w * WalkSlack) return false;
+            s.start = SetOffEarlier(outList, cur, s.start, w - (s.end - s.start), true);
+            s.end = end;
+            return true;
+        }
+
+        /// <summary>How much earlier than <paramref name="start"/> a walk from <paramref name="cur"/> can set off to gain up to
+        /// <paramref name="gain"/> view hours: first the gap before it (the time of a stay Stitch skipped), then, with
+        /// <paramref name="eat"/>, at most half of the plain stays at <paramref name="cur"/> just before it (beats and scenes
+        /// keep their time). With <paramref name="commit"/> what came before ends where the walk sets off (cut short, or
+        /// stretched over the rest of the gap).</summary>
+        static float SetOffEarlier(List<Seg> outList, Place cur, float start, float gain, bool commit, bool eat = true)
+        {
+            if (outList.Count == 0) return start;
+            float free = Math.Min(start, outList[outList.Count - 1].end);
+            float s0 = Math.Max(start - Math.Max(0f, gain), free);
+            int first = outList.Count;
+            if (eat && gain > 0f && s0 <= free + 1e-5f)
+            {
+                while (first > 0 && !outList[first - 1].Moving && outList[first - 1].place == cur && outList[first - 1].src == ActivitySource.Schedule) first--;
+                if (first < outList.Count) s0 = Math.Min(free, Math.Max(start - gain, outList[first].start + (free - outList[first].start) * 0.5f));
+            }
+            if (!commit) return s0;
+            while (outList.Count > first + 1 && first < outList.Count && outList[outList.Count - 1].start >= s0) outList.RemoveAt(outList.Count - 1);
+            var last = outList[outList.Count - 1];
+            last.end = s0;
+            outList[outList.Count - 1] = last;
+            return s0;
+        }
+
+        /// <summary>The end of the stay at <paramref name="j"/> with the pieces after it at the same place (a stay a layer
+        /// split, the storm's shelter in one piece per hour of the plain day).</summary>
+        static float StayEnd(List<Seg> list, int j)
+        {
+            float e = list[j].end;
+            for (int k = j + 1; k < list.Count && !list[k].Moving && list[k].place == list[j].place; k++) e = list[k].end;
+            return e;
         }
 
         /// <summary>
@@ -421,7 +525,11 @@ namespace AquariumCiv.Life
             long day = d.day;
             At(ActivityKind.Sleep, 6f + R(k, day, 1) * 0.6f, p.home);
             At(ActivityKind.Play, 7f, p.home, Prop.Ball);
-            if (p.mentor != null && !d.rest) CopyMaster(p, 7f, 12f);
+            if (p.mentor != null && !d.rest)
+            {
+                CopyMaster(p, 7f, 12f);
+                if (bt < 12f) At(ActivityKind.WatchWork, 12f, bcur, Prop.None, Ref(p.mentor)); // the master walked off: watch from here
+            }
             else
             {
                 At(PlayKind(p, d, 10), 10f, PlayPlace(p, d, 10, near: true), PlayProp(p, d, 10));
@@ -432,7 +540,8 @@ namespace AquariumCiv.Life
             var parentField = p.parent != null && p.parent.Adult && era != Era.Camp && !d.rest ? FieldOf(p.parent, d) : Place.None;
             if (!parentField.IsNone)
             {
-                Move(ActivityKind.Carry, parentField, 12.3f, Prop.Basket, TripType.HomeToWork);
+                // The basket takes as long as the walk out there (from the hill it rushed at 2.6x in 0.3 h, #109).
+                Move(ActivityKind.Carry, parentField, Math.Max(12.3f, bt + WalkHours(bcur, parentField)), Prop.Basket, TripType.HomeToWork);
                 At(ActivityKind.Eat, 12.8f, parentField, Prop.Basket, Ref(p.parent));
             }
             else At(ActivityKind.Eat, 12.8f, MealPlace(p.parent ?? p, d), Prop.None, Ref(p.parent));
@@ -483,8 +592,17 @@ namespace AquariumCiv.Life
                 if (e <= a) continue;
                 if (a > bt) At(ActivityKind.WatchWork, a, s.Moving ? s.from : s.place, Prop.None, Ref(p.mentor));
                 var prop = s.prop;
-                if (s.Moving) { Move(s.kind, s.place, e, prop, s.trip); continue; }
-                Push(s.kind, a, e, s.place, s.place, prop, p.mentor.who, TripType.None, ActivitySource.Schedule, -1, true);
+                if (s.Moving)
+                {
+                    // The apprentice walks from where they are and takes the route's time, a beat late; a walk the master
+                    // finishes after the copying ends (or one the apprentice couldn't finish by then) isn't copied: they go off
+                    // to their own work from here. Clipped walks rushed at 5-9x (#109).
+                    float until = Math.Max(e, bt + WalkHours(bcur, s.place));
+                    if (s.end > to + 1e-4f || until > to + 1e-4f) break;
+                    Move(s.kind, s.place, until, prop, s.trip);
+                    continue;
+                }
+                Push(s.kind, a, e, s.place, s.place, prop, p.mentor.who, TripType.None, ActivitySource.Schedule, -1, true, true);
                 bt = e; bcur = s.place;
             }
         }
@@ -589,9 +707,13 @@ namespace AquariumCiv.Life
         {
             var meal = MealPlace(p, d);
             var with = p.partner != null && p.partner.Adult ? p.partner : null;
-            At(ActivityKind.Eat, 12.8f, meal, Prop.None, Ref(with));
+            // The walk back to work takes its route's time: from a far inn they finish eating earlier, and arrive late if
+            // they got there late (a 0.2 h walk back across the town rushed at 2x, #109).
+            float back = !napAfter && meal != work.site ? WalkHours(meal, work.site) : 0f;
+            float arrive = bt + (meal != bcur ? WalkHours(bcur, meal) : 0f);
+            At(ActivityKind.Eat, Math.Min(12.8f, Math.Max(13f - back, arrive + 0.3f)), meal, Prop.None, Ref(with));
             if (napAfter) return; // off to the green for a nap instead of back to work
-            if (meal != work.site) Move(ActivityKind.Walk, work.site, 13f, Prop.None, TripType.HomeToWork);
+            if (meal != work.site) { if (bcur != work.site) Move(ActivityKind.Walk, work.site, Math.Max(13f, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork); }
             else At(ActivityKind.SitOut, 13f, meal);
         }
 
@@ -727,7 +849,10 @@ namespace AquariumCiv.Life
                     if (q.rival != null && q.key < q.rival.key && q != p && q.rival != p && q.Grown && q.rival.Grown && !EveningBusy(q) && !EveningBusy(q.rival) && R(PairKey(q, q.rival), d.day, 60) < 0.35f)
                     { Put(list, Mk(ActivityKind.Mediate, 17.25f, 17.55f, gather, Prop.None, ActivitySource.RoleBeat, q.who), d); break; }
             var sit = p.reconciled != null && !EveningBusy(p.reconciled) ? p.reconciled : p.partner != null && p.partner.Grown && !EveningBusy(p.partner) ? p.partner : null;
-            if (sit != null) Put(list, Mk(ActivityKind.SitTogether, 19.1f, Math.Max(19.15f, EndOfEvening(p, d) - 0.05f), gather, Prop.None, ActivitySource.Schedule, sit.who), d);
+            // Only while they're still on the green: one who heads home before 19:10 doesn't walk back for a moment's sit
+            // (home, back to the green and home again in 0.05 h rushed at 7x, #109).
+            float sitUntil = EndOfEvening(p, d) - 0.05f;
+            if (sit != null && sitUntil >= 19.15f) Put(list, Mk(ActivityKind.SitTogether, 19.1f, sitUntil, gather, Prop.None, ActivitySource.Schedule, sit.who), d);
         }
 
         float EndOfEvening(Person p, DayInfo d)
@@ -757,13 +882,17 @@ namespace AquariumCiv.Life
             if (p.stage == LifeStage.Baby) return;
             if (d.weather == Weather.Storm)
             {
-                // Everyone outdoors shelters under the eaves for the afternoon: the nearest building, else home.
+                // Everyone outdoors shelters under the eaves for the afternoon: the building they are at or heading for when
+                // it breaks (or the one they set off from), else home, and they stay there till it passes. A shelter per
+                // piece of the plain afternoon sent them from eaves to eaves through the storm, in walks squeezed into the
+                // pieces (#109).
                 var shelters = new List<Seg>();
+                var at = Place.None;
                 foreach (var s in list)
                 {
                     if (s.end <= 13f || s.start >= 16f || s.kind == ActivityKind.Sleep) continue;
-                    var shelter = s.place.IsBuilding ? s.place : p.home;
-                    shelters.Add(Mk(ActivityKind.Shelter, Math.Max(13f, s.start), Math.Min(16f, s.end), shelter));
+                    if (at.IsNone) at = s.place.IsBuilding ? s.place : ActivityInfo.IsMove(s.kind) && s.from.IsBuilding ? s.from : p.home;
+                    shelters.Add(Mk(ActivityKind.Shelter, Math.Max(13f, s.start), Math.Min(16f, s.end), at));
                 }
                 foreach (var s in shelters) Put(list, s, d);
             }
