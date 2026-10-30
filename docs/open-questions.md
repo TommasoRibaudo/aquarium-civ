@@ -97,3 +97,9 @@ Report and screenshots: `AquariumCiv/Temp/agent/tester-batch1/` (local). The [re
 - ★ Clean mode ends 2.2 s after the last mess goes, or after 30 s with no touch (guesses to tune).
 - Sounds are procedural placeholders (rub, chime, swish, pop); no haptics yet. Trash/weed props are small at default
   zoom — your call on their look and size.
+
+### #70 Camera mode
+- ★ A short tap anywhere brings the UI back (plus a fading "Tap to show the UI" pill). Alternative: only the pill.
+- ★ The Photo button sits top right under Feedback. Alternative: bottom row or Settings.
+- ★ A slow auto-orbit starts after 4 s idle, on by default (not saved in settings yet).
+- Open: should a tap on a person in camera mode also select them?
