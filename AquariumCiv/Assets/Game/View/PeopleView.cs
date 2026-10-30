@@ -384,13 +384,19 @@ namespace AquariumCiv.View
                 var centre = new Vector2(lot.x, lot.z);
                 var outDir = (spot - centre).sqrMagnitude > 1e-6f ? (spot - centre).normalized : Vector2.down;
                 float baseAng = Mathf.Atan2(outDir.y, outDir.x);
-                float off = a.slot == 0 ? 0f : ((a.slot & 1) == 1 ? 1f : -1f) * ((a.slot + 1) / 2) * 0.55f;
-                float r = 0.07f + 0.035f * Mathf.Min(a.slot, 6);
+                var (dx, dz) = SlotSpots.Door(a.slot, baseAng); // a fan outside the door, no two closer than SlotSpots.Gap
                 face = centre;
-                return spot + new Vector2(Mathf.Cos(baseAng + off), Mathf.Sin(baseAng + off)) * r;
+                return spot + new Vector2(dx, dz);
             }
             // Open ground (a field, the woods, the pond, a heap): a loose spiral round the spot, facing it.
             float spread = a.place.kind is PlaceKind.Field or PlaceKind.Pasture or PlaceKind.Meadow or PlaceKind.Woods or PlaceKind.ForestEdge or PlaceKind.Bushes ? 0.2f : 0.12f;
+            if (spread <= SlotSpots.Gap)
+            {
+                // A heap, a bare doorstep: rings round the spot, nobody closer than the gap.
+                var (ox, oz) = SlotSpots.Open(a.slot, h);
+                face = a.slot == 0 ? spot + new Vector2(Mathf.Cos(h), Mathf.Sin(h)) * 0.1f : spot;
+                return spot + new Vector2(ox, oz);
+            }
             if (a.slot == 0) { face = spot + new Vector2(Mathf.Cos(h), Mathf.Sin(h)) * 0.1f; return spot; }
             float ga = h + a.slot * 2.39996f;
             face = spot;
