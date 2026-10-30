@@ -287,7 +287,7 @@ Echo Shard and Time Capsule).
 | **Away a long time** | "The sky was quiet a long time." | "The Keeper must be busy with very big things." | "The observatory reports: the room has been dark for days. They lit a candle for you." |
 | **A death** | "Old Ada went up past the sky." | "We buried Ada facing the window, so she can see the Keeper." | "Ada asked to be buried by the glass. 'Closer to the room,' she said." |
 | **Evening teaser** | "Ivo wants to speak at the fire. The chief has noticed." | "The elders say the Keeper likes the new mill. Nobody knows how they know." | "The astronomers have asked for a bigger lens." |
-| **Relic label** | Sky Crumb: "Sky Bread. Fell when the Bright One made rain. Delicious." | Keeper Doll: "The Keeper. Hands: very large. Eye: always open." | The Lens: "The Great Eye-Glass. Through it: a room, a lamp, and something with whiskers." |
+| **Relic label** | Sky Crumb: "Sky Bread. Fell when the Bright One made the trees. Delicious." | Keeper Doll: "The Keeper. Hands: very large. Eye: always open." | The Lens: "The Great Eye-Glass. Through it: a room, a lamp, and something with whiskers." |
 | **Book caption** | (painted) "The year the sky gave bread." | "In the time of headman Bo, the Keeper sent water down the hill." | "Chronicle of Brightmere, printed in the year 96, by order of the lord." |
 
 The relic book's hints use the same voice: "The old ones say something fell from the sky once…" (research 09 §4).
