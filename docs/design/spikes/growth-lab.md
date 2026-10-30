@@ -340,3 +340,13 @@ a glance doesn't spoil them. Decode only after the test:
 3. **The full box:** with commons and gaps, 1–5 late builds find no lot. Is that the "box complete" moment research
    08 asked for, or should the Town era densify the clusters instead?
 4. If Cluster wins, M2 would take `ClusterPlacer` + `PathCurves` (and keep round 1's field, mill and workshop rules).
+
+### Round 2 blind results (2026-10-29)
+| Viewer | Set 1 | Set 2 | Set 3 | Tally |
+|---|---|---|---|---|
+| The user | B = **Cluster** | A = Rows | A = **Cluster** | Cluster 2 · Rows 1 · Random 0 |
+
+Cluster passes criterion 1 for this viewer (picked in 2 of 3 sets), and random scatter, which won all 3 sets in round 1,
+was picked in none. Caveat: only Cluster had the curved paths, yards and commons dressing, so this measures the overall
+look, not placement alone. Next: M2 (#32) takes `ClusterPlacer` + `PathCurves` for homes and keeps round 1's rules for
+fields, mills and workshops; open points from the round-2 report (bigger families, full-box densify) go to #32.
