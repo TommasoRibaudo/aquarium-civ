@@ -198,3 +198,12 @@ Screens: `AquariumCiv/Temp/agent/glass_*.png`, `relic_*.png` (local).
   person should select them, the two need sorting out (ties to #39's pin).
 - The knock uses the care chime for now; its own glass sound comes with #96.
 - The Lens moment starts at dusk on the view clock, but the light looked like day: the sky may follow another clock.
+
+### #96 Sound (phase 1: cue model + CC0 clips) — please listen
+Clips in `Assets/Audio/Resources/Sfx/` and `/Ambience` (Kenney CC0 + OpenGameArt CC0; logged in assets-log.md).
+- No CC0 crowd cheer found: ★ keep the code-made cheer. Alternative: Freesound CC0 (needs a login).
+- The fiddle is pizzicato strings; the flute is a cartoon flute-and-drum tag nobody has listened to yet — your ear.
+- ★ Phone on silent: music and ambience off, small cues still play quietly. Alternative: silent mutes everything.
+- ★ Mess only thins the birds (no fly buzz, to avoid guilt-trip).
+- Storm wind reuses the calm wind loop louder; ★ source a storm clip later.
+- ★ Give the festival beat the fiddle cue.
