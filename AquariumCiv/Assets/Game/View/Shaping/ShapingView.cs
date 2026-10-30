@@ -276,7 +276,7 @@ namespace AquariumCiv.View
             var ray = c.ScreenPointToRay(screenPos);
             var o = box.transform.InverseTransformPoint(ray.origin);
             var d = box.transform.InverseTransformDirection(ray.direction).normalized;
-            const float step = 0.02f;
+            const float step = 0.04f; // 1500 steps reach 60 units: the camera may be 30+ away at the default framing (#94)
             float prev = 0f;
             bool wasAbove = true;
             for (int i = 1; i < 1500; i++)

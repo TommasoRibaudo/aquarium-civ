@@ -489,3 +489,4 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   when the notification lands. UI Toolkit tip from the same work: a header row inside a `max-height` sheet shrinks and
   overlaps unless it has `flexShrink = 0`, and a label column next to buttons only wraps with `flexBasis = 0` +
   `minWidth = 0`. [verified]
+- **2026-10-30 · `unity test` (top-level) refuses while the Editor is open; use `unity command test run --mode playmode --filter <name> --async_tests true`, then poll `unity command test status`.** A bare `unity command test run` (no filter) ran all 811 EditMode tests and blocked every other command for minutes (the client timeout does not cancel it; `test cancel` itself waits). Always pass `--filter`. `ShapingView.GroundPoint` marched only 30 units: the default camera is ~50 away, so no ground tap worked at the default framing until the step was doubled (#94). [verified]

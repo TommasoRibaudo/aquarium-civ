@@ -263,7 +263,7 @@ namespace AquariumCiv.Tests
             TickTo(run, 1.2);
             Assert.AreEqual("rain-tap", run.Hint.id);
             run.NoteTrayOpened();
-            Assert.AreEqual("rain-rub", run.Hint.id);
+            Assert.AreEqual("rain-tap-spot", run.Hint.id);
             Assert.IsTrue(run.Hint.visible);
         }
 
