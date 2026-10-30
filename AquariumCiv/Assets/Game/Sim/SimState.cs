@@ -302,6 +302,8 @@ namespace AquariumCiv.Sim
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        public List<Wish> wishes = new();   // notables' wishes for a gift (SimCore.Wishes.cs, #83)
+        public int wishNextId = 1;
         public float shapingCharges = -1f; // the Keeper's shared shaping charges (SimCore.Shaping.cs, #82); -1 = not started (old saves)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;

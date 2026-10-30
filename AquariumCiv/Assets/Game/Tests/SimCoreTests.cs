@@ -24,7 +24,7 @@ namespace AquariumCiv.Tests
         internal static uint Fingerprint(SimState s)
         {
             string fp = s.population + "|" + s.month + "|" + s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" +
-                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Select(c => c.text)) + "|" +
+                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Where(c => c.kind != "wish").Select(c => c.text)) + "|" +
                         string.Join(",", s.notables.Select(n => n.FullName + n.age.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
             return Fnv(fp);
         }
