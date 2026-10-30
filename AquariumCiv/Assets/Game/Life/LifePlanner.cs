@@ -575,5 +575,10 @@ namespace AquariumCiv.Life
 
         /// <summary>World units of plain ground walked per view hour [est], and the shortest and longest walk in view hours.</summary>
         public const float WalkSpeed = 5f, MinWalk = 0.08f, MaxWalk = 0.6f;
+
+        /// <summary>The walking pace on screen, in world units per real second: <see cref="WalkSpeed"/> at the work hours'
+        /// clock rate. Night hours run ~3× faster (<see cref="LifeClock"/>), so a walk timed in view hours alone rushes
+        /// after nightfall; <see cref="PaceNightWalks"/> holds walks to this pace.</summary>
+        public static float RealWalkSpeed => WalkSpeed / LifeClock.RealSecondsPerViewHour(LifeClock.WorkStart);
     }
 }

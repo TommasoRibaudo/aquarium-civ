@@ -72,6 +72,8 @@ namespace AquariumCiv.View
         readonly HashSet<(Place, int)> taken = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
+        /// <summary>Pieces standing on open ground (a well by the fire): rings and spreads keep off them.</summary>
+        readonly List<(Vector2 c, float r)> blockers = new();
         const float Personal = 0.075f; // closest two standing dolls get, centre to centre
         readonly Dictionary<int, Lot> lotOfBuilding = new();
         readonly Dictionary<int, Notable> notables = new();
@@ -180,6 +182,10 @@ namespace AquariumCiv.View
             }
             notables.Clear();
             foreach (var n in sim.State.notables) if (n.alive) notables[n.id] = n;
+            blockers.Clear();
+            foreach (var pc in Box.layout.pieces)
+                if (pc.kind != PieceKind.Fire && pc.kind != PieceKind.LogSeat)
+                    blockers.Add((pc.Pos, Mathf.Min(pc.w, pc.d) * 0.5f + 0.05f));
             var st = sim.Settlement;
             int lots = st != null ? st.Lots.Count : 0;
             if (sim.State.month != lotsMonth || lots != lotsCount)
@@ -264,7 +270,12 @@ namespace AquariumCiv.View
             float targetSpeed = dt > 0f && d.placed ? (spot - d.lastSpot).magnitude / dt : 0f;
             d.lastSpot = spot;
             if (!d.placed || d.wasHidden || dt <= 0f || (target - d.pos).sqrMagnitude > 2.25f) d.pos = target;
-            else d.pos = Vector2.MoveTowards(d.pos, target, (targetSpeed + 0.35f) * dt);
+            else
+            {
+                // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
+                var goal = a.moving || Clear(d.pos, target) ? target : spot;
+                d.pos = Vector2.MoveTowards(d.pos, goal, (targetSpeed + 0.35f) * dt);
+            }
             d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
             d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
@@ -360,9 +371,11 @@ namespace AquariumCiv.View
             bool Free(Vector2 q)
             {
                 foreach (var o in claimed) if ((o - q).sqrMagnitude < Personal * Personal) return false;
+                if (!offLots) return true;
+                foreach (var b in blockers) if ((b.c - q).sqrMagnitude < b.r * b.r) return false;
                 if (st == null) return true;
                 int c = SiteMap.CellAt(q.x, q.y);
-                return c < 0 || st.WalkCost(c) > 0;
+                return (c < 0 || st.WalkCost(c) > 0) && Clear(centre, q);
             }
             if (Free(p)) return p;
             var off = p - centre;
@@ -376,6 +389,24 @@ namespace AquariumCiv.View
                         if (Free(q)) return q;
                     }
             return centre;
+        }
+
+        /// <summary>Is the straight line between two points on walkable ground (no lot, no pond)? A line that starts on a
+        /// lot (a market's middle) is checked from where it leaves it. True without a settlement.</summary>
+        bool Clear(Vector2 a, Vector2 b)
+        {
+            var st = plannerSim != null ? plannerSim.Settlement : null;
+            if (st == null) return true;
+            bool Walkable(Vector2 q) { int c = SiteMap.CellAt(q.x, q.y); return c < 0 || st.WalkCost(c) > 0; }
+            bool outside = Walkable(a);
+            int n = Mathf.CeilToInt((b - a).magnitude / 0.04f);
+            for (int i = 1; i < n; i++)
+            {
+                bool w = Walkable(Vector2.Lerp(a, b, i / (float)n));
+                if (!outside) { outside = w; continue; }
+                if (!w) return false;
+            }
+            return true;
         }
 
         static Vector2 Ashore(Land land, Vector2 p)

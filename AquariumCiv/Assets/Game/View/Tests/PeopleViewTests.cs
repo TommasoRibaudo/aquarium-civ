@@ -203,7 +203,7 @@ namespace AquariumCiv.View.Tests
                 var styles = new HashSet<string>();
                 var jumpLog = new List<string>();
                 var lotLog = new List<string>();
-                while (people.Now.hour < 21f && frames < 4000)
+                while (people.Now.hour < 22.5f && frames < 4000)
                 {
                     people.Tick(0.1f);
                     frames++;
@@ -212,9 +212,9 @@ namespace AquariumCiv.View.Tests
                         var p = d.transform.localPosition;
                         if (last.TryGetValue(d, out var q) && Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z)) > 0.25f)
                         {
-                            // Night view hours pass ~3x faster (LifeClock), and the planner times walks in view hours, so a walk
-                            // that starts at nightfall rushes: a planner follow-up, logged here, not failed.
-                            if (LifeClock.PhaseOf(people.Now.hour) == DayPhase.Night) nightJumps++; else jumps++;
+                            // Also after nightfall, when view hours run ~3x faster: the planner paces night walks (#30).
+                            jumps++;
+                            if (LifeClock.PhaseOf(people.Now.hour) == DayPhase.Night) nightJumps++;
                             if (jumpLog.Count < 12) jumpLog.Add($"{people.Now} {d.name}: ({q.x:0.00},{q.z:0.00}) -> ({p.x:0.00},{p.z:0.00}) · " +
                                 (people.TryGetActivity(d, out var act) ? people.Describe(act) : "?"));
                         }

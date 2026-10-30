@@ -212,6 +212,56 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(timed, 3);
         }
 
+        [Test]
+        public void RealSecondsBetween_FollowsThePhases()
+        {
+            Assert.AreEqual(80f, LifeClock.RealSecondsBetween(LifeClock.WorkStart, LifeClock.Midday), 1e-3f, "morning work is 80 s");
+            Assert.AreEqual(LifeClock.RealSecondsPerDay, LifeClock.RealSecondsBetween(0f, 24f), 1e-3f, "the whole day");
+            Assert.AreEqual(50f / 3f + 5f, LifeClock.RealSecondsBetween(19f, 21f), 1e-3f, "an evening hour, then a night hour");
+            Assert.AreEqual(0f, LifeClock.RealSecondsBetween(9f, 9f));
+        }
+
+        /// <summary>#30: a walk is never shown much faster than the walking pace, also after nightfall, when view hours run
+        /// ~3x faster: night walks set off earlier instead of rushing.</summary>
+        [TestCase(Era.Village, 7)]
+        [TestCase(Era.Town, 1234)]
+        public void NoWalkRushes_EvenAfterNightfall(Era era, int seed)
+        {
+            var sim = SimIn(era, seed);
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            var route = new List<Waypoint>();
+            int walks = 0, night = 0, capped = 0;
+            float worst = 0f;
+            string worstWho = "";
+            for (long d = sim.State.month; d < sim.State.month + 3; d++)
+                foreach (var who in planner.People)
+                {
+                    planner.DaySchedule(who, d, day);
+                    foreach (var a in day)
+                    {
+                        if (!a.moving || a.from == a.place || a.source != ActivitySource.Schedule) continue;
+                        if (!planner.Positions.TryGetPosition(a.from, out float fx, out float fz) || !planner.Positions.TryGetPosition(a.place, out float tx, out float tz)) continue;
+                        planner.RouteOf(a.from, a.place, route);
+                        float len = 0f, px = fx, pz = fz;
+                        foreach (var w in route.Concat(new[] { new Waypoint(tx, tz) })) { len += (float)Math.Sqrt((w.x - px) * (w.x - px) + (w.z - pz) * (w.z - pz)); px = w.x; pz = w.z; }
+                        if (len < 0.2f) continue;
+                        float secs = LifeClock.RealSecondsBetween(a.start, a.end);
+                        // A walk at LifePlanner.MaxWalk is the longest the planner gives any walk (a cross-box trip): brisk by
+                        // design, not a rush; counted, not judged.
+                        if (a.end - a.start >= LifePlanner.MaxWalk - 1e-3f) { capped++; continue; }
+                        float pace = len / Math.Max(1e-3f, secs) / LifePlanner.RealWalkSpeed;
+                        walks++;
+                        if (LifeClock.PhaseOf(a.start) == DayPhase.Night || LifeClock.PhaseOf(a.end - 1e-3f) == DayPhase.Night) night++;
+                        if (pace > worst) { worst = pace; worstWho = $"{who} day {d} {a.kind} {a.from}->{a.place} {a.start:0.00}-{a.end:0.00} len {len:0.00}\n  " + string.Join("\n  ", day.Select(x => $"{x.start:0.00}-{x.end:0.00} {x.kind} {x.from}->{x.place} {x.source} moving={x.moving}")); }
+                    }
+                }
+            TestContext.WriteLine($"{walks} walks ({capped} at MaxWalk), {night} touch the night; fastest {worst:0.00}x the pace: {worstWho}");
+            Assert.Greater(walks, 20);
+            // ≤ 2x: the longest walks across the box are capped at LifePlanner.MaxWalk (a brisk walk); a rush was 3-7x.
+            Assert.LessOrEqual(worst, 2f, $"fastest walk {worst:0.00}x the pace: {worstWho}");
+        }
+
         [TestCase(Era.Village, 7)]
         [TestCase(Era.Town, 1234)]
         [TestCase(Era.Town, 1)]
