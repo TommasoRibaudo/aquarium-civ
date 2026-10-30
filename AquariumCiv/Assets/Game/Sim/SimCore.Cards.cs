@@ -82,7 +82,7 @@ namespace AquariumCiv.Sim
     /// <item><b>Ranking inputs</b> per entry: tone and kind group from a table in code (<see cref="ToneOf"/>,
     /// <see cref="GroupOf"/>), people (<see cref="ChronicleEntry.notableId"/>, other), place (building).</item>
     /// <item><b><see cref="ReturnCards"/></b>: ranked, merged and grouped per §2.2, capped 3/5/7 by time away, with "Also…".</item>
-    /// <item><b>The glass stage</b> (1–3, §5.2): by era, pushed along by relics (<see cref="GlassRelicFound"/>).</item>
+    /// <item><b>The glass stage</b> (1–3, §5.2): opened by the era; its relic opens the later half (<see cref="GlassRelicFound"/>).</item>
     /// </list>
     /// Story only. No dice stream is drawn, no economy value is read for a decision that writes back, and threads take
     /// their ids from their own counter (<see cref="SimState.threadNextId"/>), so the shared ids (buildings, notables,
@@ -157,11 +157,15 @@ namespace AquariumCiv.Sim
         /// <see cref="CardCap"/> picked and ordered: era ready (if waiting), the best good news, the other good and neutral
         /// cards, the sad ones, the wish. The rest go to "Also…". Read-only apart from bringing the records up to date.
         /// </summary>
-        public ReturnStack ReturnCards(long sinceMonth, double realHoursAway, IEnumerable<int> viewedPeople = null)
+        public ReturnStack ReturnCards(long sinceMonth, double realHoursAway, IEnumerable<int> viewedPeople = null) =>
+            ReturnCardsCapped(sinceMonth, CardCap(realHoursAway), viewedPeople);
+
+        /// <summary><see cref="ReturnCards(long, double, IEnumerable{int})"/> with an explicit cap (tests, debug).</summary>
+        public ReturnStack ReturnCardsCapped(long sinceMonth, int cap, IEnumerable<int> viewedPeople = null)
         {
             AnnotateNew();
             var viewed = viewedPeople == null ? new HashSet<int>() : new HashSet<int>(viewedPeople);
-            var stack = new ReturnStack { cap = CardCap(realHoursAway) };
+            var stack = new ReturnStack { cap = Math.Max(1, cap) };
             var fresh = State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e)).ToList();
             stack.collected = fresh.Count;
 
@@ -196,6 +200,22 @@ namespace AquariumCiv.Sim
                 }
                 chosen.Add(best);
                 pool.Remove(best);
+            }
+
+            // Good news first (decided): if any good-news card exists, one always makes the stack. It takes the place of the
+            // lowest-scoring sad card, else the lowest neutral one, never era ready or the wish; if those two fill the cap,
+            // it comes on top of it.
+            if (!chosen.Any(c => c.tone == CardTone.Good && c.kind != CardKind.EraReady && c.kind != CardKind.Wish))
+            {
+                var good = pool.Where(c => c.tone == CardTone.Good).OrderByDescending(c => c.score).ThenByDescending(c => c.month).FirstOrDefault();
+                if (good != null)
+                {
+                    var swappable = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Wish).ToList();
+                    var drop = swappable.Where(c => c.tone == CardTone.Sad).OrderBy(c => c.score).FirstOrDefault()
+                               ?? swappable.OrderBy(c => c.score).FirstOrDefault();
+                    if (drop != null) chosen.Remove(drop);
+                    chosen.Add(good);
+                }
             }
 
             // Order (good news first, decided).
@@ -396,7 +416,7 @@ namespace AquariumCiv.Sim
                 case ThreadSource.Couple: return e.kind == "wedding" && Pair(e, t.notableId, t.otherNotableId);
                 case ThreadSource.Rivalry:
                     return (e.kind == "reconcile" || e.kind == "role_contest" || e.kind == "role_challenge") && Pair(e, t.notableId, t.otherNotableId);
-                case ThreadSource.Seat: return e.kind.StartsWith("role_") && e.kind != "role_death" && About(e, t.notableId);
+                case ThreadSource.Seat: return SeatContests.Contains(e.kind) && About(e, t.notableId) && IsSeatLine(e, t.role);
                 case ThreadSource.Era: return e.kind == "era-ready" || e.kind == "era";
                 case ThreadSource.Gift:
                     var n = State.nudges.FirstOrDefault(x => x.id == t.subjectId);
@@ -404,6 +424,21 @@ namespace AquariumCiv.Sim
                 case ThreadSource.Office: return e.kind.StartsWith("term_") && e.notableId == t.notableId;
                 default: return false;
             }
+        }
+
+        /// <summary>The role lines that settle who holds a seat: contests, challenges, elections and successions. Not the era
+        /// moment's offices line, not a death or a step-down.</summary>
+        static readonly HashSet<string> SeatContests = new()
+        {
+            "role_contest", "role_challenge", "role_won", "role_reelected", "role_reluctant", "role_rise", "role_masterwork",
+            "role_succession", "role_named", "role_inherited", "role_appointed",
+        };
+
+        /// <summary>The line is about this seat: told at its building and naming the role (seats can share a building).</summary>
+        bool IsSeatLine(ChronicleEntry e, string role)
+        {
+            var b = SeatBuilding(role);
+            return b != null && e.buildingId == b.id && !string.IsNullOrEmpty(role) && e.text.Contains(role);
         }
 
         /// <summary>Does this entry end the teaser without paying it off? <paramref name="endLine"/> = what the death card
@@ -439,6 +474,7 @@ namespace AquariumCiv.Sim
                     if (n == null || (!n.credited && State.month - n.month >= NudgeMonths)) t.state = ThreadState.Died;
                 }
                 else if (t.source == ThreadSource.Office && RoleOf(FindNotable(t.notableId)) == null) t.state = ThreadState.Died;
+                else if (t.source == ThreadSource.Seat && SeatOf(t.role) == null) t.state = ThreadState.Died; // the era moved on
             }
         }
 
@@ -658,12 +694,13 @@ namespace AquariumCiv.Sim
         // ---------- the glass stage ----------
         /// <summary>How the people understand the glass (§5.2, decisions 2026-10-29): 1 = the sky wall (camp: they gather
         /// at it, a bit scared), 2 = the Keeper's window (village: they play with it and look for you), 3 = a wall with a
-        /// room beyond (town: the scholars study it). Never below the era's own stage, never back.</summary>
+        /// room beyond (town: the scholars study it). The era opens each stage; never back.</summary>
         public int GlassStage => Math.Clamp(Math.Max(State.glassStage, (int)State.era + 1), 1, 3);
 
-        /// <summary>The current stage was pushed along by its relic (the Sky Crumb in stage 1, the Keeper Doll in 2, the
-        /// Lens in 3): the people's lines can lean on it.</summary>
-        public bool GlassNudged => State.storyFlags.Contains("glass-nudged:" + GlassStage);
+        /// <summary>The current stage's relic has been found (the Sky Crumb in stage 1, the Keeper Doll in 2, the Lens in
+        /// 3): the stage's later half is open (decisions 2026-10-29, #58). A relic found before its era counts once the era
+        /// arrives.</summary>
+        public bool GlassNudged => GlassRelic.OfStage(GlassStage) is string r && State.storyFlags.Contains("relic:" + r);
 
         public static class GlassRelic
         {
@@ -671,22 +708,22 @@ namespace AquariumCiv.Sim
 
             /// <summary>The stage a relic belongs to (0 = it says nothing about the glass).</summary>
             public static int StageOf(string relic) => relic switch { SkyCrumb => 1, KeeperDoll => 2, Lens => 3, _ => 0 };
+
+            /// <summary>The relic that opens a stage's later half.</summary>
+            public static string OfStage(int stage) => stage switch { 1 => SkyCrumb, 2 => KeeperDoll, 3 => Lens, _ => null };
         }
 
         /// <summary>
-        /// Hook for the relic events (none exist yet): a relic was found. Its own stage's relic nudges that stage along
-        /// (<see cref="GlassNudged"/>); a later stage's relic found early pulls the people one stage on (at most one step
-        /// per relic); an earlier one is just remembered. Flags go in <see cref="SimState.storyFlags"/>. Returns the stage.
+        /// Hook for the relic events (none exist yet): a relic was found. It is remembered in
+        /// <see cref="SimState.storyFlags"/> ("relic:" + id) and opens its own stage's later half (<see cref="GlassNudged"/>).
+        /// It never moves the stage: the era opens each stage (#58), so a later stage's relic found early applies when that
+        /// era arrives. Returns the stage (unchanged).
         /// </summary>
         public int GlassRelicFound(string relic)
         {
             var flags = State.storyFlags;
-            if (!flags.Contains("relic:" + relic)) flags.Add("relic:" + relic);
-            int stage = GlassRelic.StageOf(relic), now = GlassStage;
-            if (stage == 0) return now;
-            if (stage > now) SetGlassStage(now + 1);
-            if (stage == GlassStage && !flags.Contains("glass-nudged:" + stage)) flags.Add("glass-nudged:" + stage);
-            return GlassStage;
+            if (!string.IsNullOrEmpty(relic) && !flags.Contains("relic:" + relic)) flags.Add("relic:" + relic);
+            return GlassStage; // only the era moves the stage (#58)
         }
 
         /// <summary>Called at the era moment (SimCore.Eras.cs): the era lifts the stage to its own.</summary>

@@ -90,9 +90,10 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(CardKind.Wish, r.cards[6].kind);
             Assert.IsFalse(r.cards.Concat(r.also).Any(c => c.lead.kind == "coming_of_age"), "never a card");
 
-            // Under an hour: era ready and the wish still come, then the best by score (sad still after good, before the wish).
+            // Under an hour: era ready and the wish still come; the death outscores the wedding, but good news keeps its slot.
             r = sim.ReturnCards(0, 0.5);
-            CollectionAssert.AreEqual(new[] { "era-ready", "death", "wish" }, r.cards.Select(c => c.lead.kind).ToArray(), "the death outscores the wedding");
+            CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "wish" }, r.cards.Select(c => c.lead.kind).ToArray());
+            Assert.IsTrue(r.also.Any(c => c.lead.kind == "death"));
 
             // Once the era is watched, era-ready is plain good news.
             sim.State.eraReady = false;
@@ -108,6 +109,68 @@ namespace AquariumCiv.Tests
             var r = sim.ReturnCards(0, 0.5);
             Assert.AreEqual(2, r.cards.Count(c => c.lead.kind == "wedding"), "−0.15 per wedding already chosen: 0.7, 0.55, then 0.4 < 0.5");
             Assert.AreEqual(1, r.also.Count(c => c.lead.kind == "wedding"));
+        }
+
+        [Test]
+        public void GoodNewsAlwaysGetsASlotUnderTheCap()
+        {
+            var sim = Quiet();
+            var a = Adults(sim);
+            Add(sim, 1, "death", 0.85f, a[0].id);
+            Add(sim, 2, "death", 0.84f, a[1].id);
+            Add(sim, 3, "rivalry", 0.58f);
+            Add(sim, 4, "rainbow", 0.42f);
+            string[] Kinds(int cap) => sim.ReturnCardsCapped(0, cap).cards.Select(c => c.lead.kind + (c.lead.kind == "death" ? c.lead.salience.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) : "")).ToArray();
+
+            CollectionAssert.AreEqual(new[] { "rainbow" }, Kinds(1), "the good news takes the only slot from the death");
+            CollectionAssert.AreEqual(new[] { "rainbow", "death0.85" }, Kinds(2), "it replaces the lowest sad card");
+            CollectionAssert.AreEqual(new[] { "rainbow", "rivalry", "death0.85" }, Kinds(3));
+
+            // Never in place of era ready or the wish: if they fill the cap, the good news comes on top.
+            Add(sim, 5, "wish", 0.6f, a[2].id);
+            Add(sim, 6, "era-ready", 0.8f);
+            sim.State.eraReady = true;
+            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow" }, Kinds(1));
+            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow", "wish" }, Kinds(2));
+            CollectionAssert.AreEqual(new[] { "era-ready", "rainbow", "wish" }, Kinds(3));
+
+            // No good news: nothing to protect.
+            var sad = Quiet();
+            Add(sad, 1, "death", 0.85f, Adults(sad)[0].id);
+            Add(sad, 2, "storm", 0.5f);
+            CollectionAssert.AreEqual(new[] { "death" }, sad.ReturnCardsCapped(0, 1).cards.Select(c => c.lead.kind).ToArray());
+        }
+
+        [Test]
+        public void ASeatTeaserPaysOffOnlyOnThatSeat()
+        {
+            var sim = Quiet();
+            var chief = sim.HolderOf(RoleType.Chief);
+            var rival = Adults(sim).First(n => n != chief);
+            chief.rivalId = rival.id; rival.rivalId = chief.id;
+            rival.age = 30;
+            var t = sim.OpenTeaserThread();
+            Assert.AreEqual(ThreadSource.Seat, t.source);
+            StringAssert.Contains("The chief has noticed", t.teaser);
+            int fire = sim.SeatBuilding(RoleType.Chief).id;
+
+            var offices = Add(sim, 5, "role_offices", 0.7f, rival.id);
+            offices.text = $"The new village needed people for its offices: {rival.FullName} became miller.";
+            var elsewhere = Add(sim, 6, "role_won", 0.75f, rival.id);
+            elsewhere.text = $"{rival.FullName} became miller of the village.";
+            var stepdown = Add(sim, 7, "role_stepdown", 0.6f, rival.id);
+            stepdown.text = $"{rival.FullName} stepped down as chief.";
+            stepdown.buildingId = fire;
+            sim.ReturnCards(0, 24);
+            Assert.AreEqual(ThreadState.Open, t.state, "not the offices line, not another seat, not a step-down");
+
+            var challenge = Add(sim, 8, "role_challenge", 0.85f, rival.id, chief.id);
+            challenge.text = $"{rival.FullName} challenged old rival {chief.FullName} at the fire, and won. {rival.FullName} is chief now.";
+            challenge.buildingId = fire;
+            var card = sim.ReturnCards(0, 24).cards.Single(c => c.entries.Contains(challenge));
+            Assert.AreEqual(ThreadState.PaidOff, t.state);
+            Assert.AreEqual(challenge.id, t.payoffEntryId);
+            Assert.IsTrue(card.paysOffTeaser);
         }
 
         [Test]
@@ -300,25 +363,27 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(1, sim.GlassStage);
             Assert.IsFalse(sim.GlassNudged);
 
-            Assert.AreEqual(1, sim.GlassRelicFound(SimCore.GlassRelic.SkyCrumb), "the camp's own relic nudges stage 1");
+            Assert.AreEqual(1, sim.GlassRelicFound("left_sandal"), "a relic that says nothing about the glass");
+            Assert.IsFalse(sim.GlassNudged);
+            Assert.AreEqual(1, sim.GlassRelicFound(SimCore.GlassRelic.KeeperDoll), "a later stage's relic never moves the people ahead of the era");
+            Assert.IsFalse(sim.GlassNudged, "the doll opens stage 2's later half, not stage 1's");
+            Assert.AreEqual(1, sim.GlassRelicFound(SimCore.GlassRelic.SkyCrumb), "the camp's own relic opens stage 1's later half");
             Assert.IsTrue(sim.GlassNudged);
             Assert.AreEqual(1, sim.GlassRelicFound(SimCore.GlassRelic.SkyCrumb));
-            Assert.AreEqual(1, sim.GlassRelicFound("left_sandal"), "a relic that says nothing about the glass");
+            CollectionAssert.IsEmpty(changes, "relics never move the stage");
 
-            Assert.AreEqual(2, sim.GlassRelicFound(SimCore.GlassRelic.Lens), "a later relic pulls them on one stage, not two");
-            Assert.IsFalse(sim.GlassNudged);
-            CollectionAssert.AreEqual(new[] { 2 }, changes);
-
-            sim.ForceNextEra(); // village: already at 2
+            sim.ForceNextEra(); // village: the era opens stage 2, and the doll found in the camp counts now
             Assert.AreEqual(2, sim.GlassStage);
-            sim.GlassRelicFound(SimCore.GlassRelic.KeeperDoll);
-            Assert.IsTrue(sim.GlassNudged);
+            Assert.IsTrue(sim.GlassNudged, "remembered from the camp");
             sim.ForceNextEra(); // town
             Assert.AreEqual(3, sim.GlassStage);
+            Assert.IsFalse(sim.GlassNudged, "no Lens yet");
+            Assert.AreEqual(3, sim.GlassRelicFound(SimCore.GlassRelic.Lens));
+            Assert.IsTrue(sim.GlassNudged);
             CollectionAssert.AreEqual(new[] { 2, 3 }, changes);
             sim.GlassRelicFound(SimCore.GlassRelic.SkyCrumb);
             Assert.AreEqual(3, sim.GlassStage, "never back");
-            Assert.IsTrue(sim.State.storyFlags.Contains("relic:sky_crumb") && sim.State.storyFlags.Contains("relic:lens"));
+            Assert.IsTrue(sim.State.storyFlags.Contains("relic:sky_crumb") && sim.State.storyFlags.Contains("relic:keeper_doll") && sim.State.storyFlags.Contains("relic:lens"));
 
             var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
             Assert.AreEqual(3, loaded.GlassStage);
