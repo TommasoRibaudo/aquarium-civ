@@ -105,6 +105,7 @@ namespace AquariumCiv.View
         {
             if (WaveRunning) waveStep = -1;
             MomentLook = true; momentFrom = from; momentTo = to; momentGreen = false;
+            CobbleReach = 0f;
             momentDone.Clear();
             // A replay on an older box: what was built after the era began never had the older look.
             var st = Sim.Settlement;
@@ -122,6 +123,7 @@ namespace AquariumCiv.View
         {
             if (!MomentLook) return;
             momentGreen = true;
+            CobbleReach = float.MaxValue;
             var st = Sim.Settlement;
             if (st != null) foreach (var l in st.Lots) momentDone.Add(l.id);
             Box.Refresh();
@@ -132,6 +134,7 @@ namespace AquariumCiv.View
             if (!MomentLook) return;
             MomentLook = false;
             momentDone.Clear();
+            CobbleReach = -1f;
             Box.Refresh();
         }
 
@@ -226,13 +229,34 @@ namespace AquariumCiv.View
         /// <summary>Debug: cobble every path cell (path tier and up), to preview #90's look.</summary>
         public static bool CobbleAllPaths;
 
+        /// <summary>The town's main paths are cobbled (era-moment.md §5, #90): every path cell (path tier and up) once the
+        /// box shows the town; during the village → town moment the cobbles unroll from the square out to
+        /// <see cref="CobbleReach"/> (world units from the green's centre). Roads are cobbled anyway.</summary>
+        public float CobbleReach { get; private set; } = -1f;
+
+        public void SetCobbleReach(float reach)
+        {
+            if (Mathf.Abs(reach - CobbleReach) < 1e-4f) return;
+            CobbleReach = reach;
+            if (MomentLook) Box.Refresh();
+        }
+
         System.Func<int, bool> Cobbled(SimCore sim)
         {
-            if (!CobbleAllPaths) return cobbled;
-            var tier = sim.Settlement?.Map.tier;
+            var st = sim.Settlement;
+            var tier = st?.Map.tier;
             if (tier == null) return cobbled;
-            return c => tier[c] >= AquariumCiv.Sim.Settle.PathNet.PathTier || (cobbled != null && cobbled(c));
+            bool town = MomentLook ? momentTo == Era.Town && momentGreen : sim.State.era == Era.Town;
+            if (!CobbleAllPaths && !town) return cobbled;
+            float reach = MomentLook && !CobbleAllPaths ? CobbleReach : float.MaxValue;
+            float gx = st.Map.greenX, gz = st.Map.greenZ;
+            return c => (tier[c] >= AquariumCiv.Sim.Settle.PathNet.PathTier
+                         && AquariumCiv.Sim.Settle.Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), gx, gz) <= reach)
+                        || (cobbled != null && cobbled(c));
         }
+
+        /// <summary>Whether a site cell shows cobbles now (tests).</summary>
+        public bool CellCobbled(int cell) => Cobbled(Sim)?.Invoke(cell) ?? false;
 
         // ---------------- debug ----------------
         public string Status()

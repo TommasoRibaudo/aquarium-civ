@@ -281,6 +281,92 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>#90: a grown village (+40 years) watched to the town. Every lot rebuilds in the town look on the wave
+        /// before the cheer; the green becomes a cobbled square with stalls; the cobbles unroll from the square and reach
+        /// the main paths; no error logs. Stills of the bell, the square, the wave, the lord and the cheer.</summary>
+        [UnityTest]
+        public IEnumerator GrownVillageBecomesATown()
+        {
+            yield return Open();
+            try
+            {
+                var sim = GameClock.Instance.Sim;
+                var mp = MomentPlayer.Instance;
+                var src = SimLayoutSource.Find();
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var cam = Camera.main.GetComponent<BoxCamera>();
+                Debug.Log("[town test] " + MomentPlayer.DebugGrowVillage(40f));
+                Assert.AreEqual(Era.Village, sim.State.era);
+                Assert.IsTrue(sim.State.eraReady);
+                yield return Until(() => !src.WaveRunning, 30f); // the debug crossing's own wave
+                LogAssert.ignoreFailingMessages = false;
+                var st = sim.Settlement;
+                var lots = st.Lots.FindAll(l => !l.retired && l.kind != AquariumCiv.Sim.Settle.LotKind.Camp);
+                Assert.Greater(lots.Count, 6, "a grown village");
+                var pathCells = new System.Collections.Generic.List<int>();
+                for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N; c++) if (st.Map.tier[c] >= AquariumCiv.Sim.Settle.PathNet.PathTier) pathCells.Add(c);
+                Assert.IsNotEmpty(pathCells, "the village has main paths");
+                yield return new WaitForSecondsRealtime(0.7f);
+                cam.FlyTo(Vector3.zero, 1f, 0.01f);
+                yield return null; yield return null;
+                yield return Shot("m90_0_waiting");
+
+                Assert.IsTrue(mp.Watch(true));
+                MomentPlayer.DebugHurry(4f);
+                IEnumerator To(float t)
+                {
+                    MomentPlayer.DebugHoldHurry = true;
+                    yield return Until(() => mp.Director.Time >= t - 0.3f, 60f);
+                    MomentPlayer.DebugHoldHurry = false;
+                    yield return Until(() => mp.Director.Time >= t, 5f);
+                }
+                int Cobbled() { int n = 0; foreach (int c in pathCells) if (src.CellCobbled(c)) n++; return n; }
+
+                yield return To(4f);
+                yield return Shot("m90_1_bell");
+                Assert.AreEqual(0, Cobbled(), "no cobbles before the square");
+
+                yield return To(21f);
+                yield return Shot("m90_2_square");
+                Assert.AreEqual(Era.Town, src.ShownEra(null), "the green has become the square");
+                Assert.IsTrue(box.layout.clearings.Exists(c => c.kind == ClearingKind.Cobble) || !st.Has(AquariumCiv.Sim.Settle.LotKind.Market),
+                    "a cobbled square (once there is a market)");
+                Assert.IsTrue(box.layout.pieces.Exists(p => p.kind == PieceKind.Stall) || !st.Has(AquariumCiv.Sim.Settle.LotKind.Market), "stalls round the rim");
+                int atSquare = Cobbled();
+
+                yield return To(50f);
+                yield return Shot("m90_3_wave");
+                int mid = Cobbled();
+                Assert.Greater(mp.KnocksPlayed, 0);
+                Assert.Greater(mid, atSquare, "the cobbles unroll along the main paths with the wave");
+
+                yield return To(66f);
+                yield return Shot("m90_4_lord");
+                Assert.AreEqual(lots.Count, mp.KnocksPlayed, "every lot rebuilt by the end of the wave");
+                foreach (var l in lots) Assert.AreEqual(Era.Town, src.ShownEra(l), $"lot {l.id} ({l.kind}) shows the town look");
+                Assert.AreEqual(pathCells.Count, Cobbled(), "the cobbles reached every main path");
+                Assert.AreEqual(Era.Village, sim.State.era, "still before the cheer");
+
+                yield return To(77f);
+                Assert.AreEqual(Era.Town, sim.State.era, "the cheer moved the era");
+                yield return Shot("m90_5_cheer");
+
+                MomentPlayer.DebugHoldHurry = true;
+                yield return Until(() => !mp.Playing, 40f);
+                MomentPlayer.DebugHoldHurry = false;
+                for (int i = 0; i < 10; i++) yield return null;
+                Assert.IsFalse(src.MomentLook);
+                Assert.IsFalse(src.WaveRunning, "no second wave after the cheer");
+                foreach (var l in sim.Settlement.Lots)
+                    if (!l.retired) Assert.AreEqual(Era.Town, src.ShownEra(l), $"lot {l.id} ({l.kind})");
+                Assert.AreEqual(pathCells.Count, Cobbled(), "the town keeps its cobbles after the moment");
+                Assert.IsTrue(box.layout.paths.Exists(p => p.cobbled), "cobbled paths in the box");
+                Assert.IsTrue(cam.enabled);
+                yield return Shot("m90_6_after");
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator LeavingBeforeTheCheerReplays()
         {

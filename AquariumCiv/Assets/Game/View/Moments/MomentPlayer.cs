@@ -33,6 +33,8 @@ namespace AquariumCiv.View
 
         /// <summary>A press that moves less than this fraction of the screen height hurries; more, and it orbits.</summary>
         public const float HurrySlopFraction = 0.02f;
+        /// <summary>How long a speech bubble stays, in moment seconds (at most to the end of its beat).</summary>
+        public const float BubbleSeconds = 4.5f;
 
         public MomentDirector Director { get; private set; }
         public readonly GuidedOffset Offset = new();
@@ -251,6 +253,7 @@ namespace AquariumCiv.View
                 foreach (var s in wave.Due(lastTime, Director.Time)) Puff(s);
             }
             lastTime = Director.Time;
+            UnrollCobbles();
 
             if (cam != null)
             {
@@ -264,7 +267,7 @@ namespace AquariumCiv.View
                 else ReleaseCamera();
             }
             hint.style.display = Director.ShowHurryHint ? DisplayStyle.Flex : DisplayStyle.None;
-            if (bubble.resolvedStyle.display == DisplayStyle.Flex && Director.RealTime > bubbleUntil) bubble.style.display = DisplayStyle.None;
+            if (bubble.resolvedStyle.display == DisplayStyle.Flex && Director.Time >= bubbleUntil) bubble.style.display = DisplayStyle.None;
             if (!Playing) EndMoment(true);
         }
 
@@ -296,7 +299,7 @@ namespace AquariumCiv.View
             {
                 bubble.text = ctx.Fill(b.line);
                 bubble.style.display = DisplayStyle.Flex;
-                bubbleUntil = Director.RealTime + 4f;
+                bubbleUntil = Mathf.Min(Director.Time + BubbleSeconds, Director.BeatEnd(index)); // moment time: hurrying shortens it, never spills into the next beat
             }
             if (!string.IsNullOrEmpty(b.caption))
             {
@@ -538,6 +541,20 @@ namespace AquariumCiv.View
             var src = SimLayoutSource.Find();
             if (src != null) src.GetComponent<BoxView>()?.Refresh();
             return r + (sim.State.eraReady ? " · era waits" : "");
+        }
+
+        /// <summary>Debug (#90): a grown village waiting for the town. From the camp, crosses into the village (no moment),
+        /// then lives <paramref name="years"/>, cleans the glass and makes the town ready if the numbers aren't there yet.</summary>
+        public static string DebugGrowVillage(float years)
+        {
+            var sim = GameClock.Instance?.Sim;
+            if (sim == null) return "no sim";
+            if (sim.State.era == Era.Camp) { GameClock.DebugSkipHours(12f); sim.ForceNextEra(); }
+            if (sim.State.era != Era.Village) return "not a village";
+            string r = DebugGrow(years);
+            if (!sim.State.eraReady) sim.ForceEraReady();
+            if (Instance != null) Instance.nextRead = 0f;
+            return r + " · the town waits";
         }
 
         public static string DebugEraReady()

@@ -53,12 +53,16 @@ namespace AquariumCiv.View
             if (src != null && sim?.Settlement != null)
             {
                 float gx = sim.Settlement.Map.greenX, gz = sim.Settlement.Map.greenZ;
-                if (b.Has(BeatAction.GreenSpreads))
+                if (b.Has(BeatAction.GreenSpreads) || b.Has(BeatAction.SquareSpreads))
                 {
-                    src.MomentGreen(); // fire ring → the green; the well rises beside the old hearth
+                    // camp: fire ring → the green, the well rises beside the old hearth;
+                    // village: the green → the cobbled square, stalls round its rim, the well becomes the fountain
+                    src.MomentGreen();
+                    if (b.Has(BeatAction.SquareSpreads)) src.SetCobbleReach(SquareReach);
                     PuffAt(gx, gz, 1.6f);
                     PuffAt(gx + SimLayout.FirstWellDX, gz + SimLayout.FirstWellDZ, 1f);
                 }
+                if (b.Has(BeatAction.ClearHearth)) PuffAt(gx, gz, 1.2f); // the old camp hearth lifted out (#91 stages the stone)
                 if (b.Has(BeatAction.Cheer)) src.MomentAll(); // nothing is left in the old look when the era moves
             }
         }
@@ -68,6 +72,25 @@ namespace AquariumCiv.View
         void WaveKnock(RebuildWave.Step s)
         {
             KnocksPlayed++;
+        }
+
+        /// <summary>The cobbles at the square beat: the square itself (world units from the green's centre) [est].</summary>
+        public const float SquareReach = 0.45f;
+        /// <summary>How far the cobbles unroll along the main paths by the end of the town wave: the whole box [est].</summary>
+        public const float CobbleMaxReach = 4.5f;
+
+        /// <summary>The town wave: the cobbles unroll from the square along the main paths with the wave, in steps (each
+        /// step rebuilds the touched chunks).</summary>
+        void UnrollCobbles()
+        {
+            if (wave == null || Director.Def == null || Director.Def.toEra != Era.Town) return;
+            var src = SimLayoutSource.Find();
+            if (src == null || wave.Steps.Count == 0) return;
+            float a = wave.Steps[0].time, b = wave.Steps[wave.Steps.Count - 1].time;
+            float u = b > a ? Mathf.Clamp01((Director.Time - a) / (b - a)) : 1f;
+            float reach = Mathf.Lerp(SquareReach, CobbleMaxReach, u);
+            reach = Mathf.Floor(reach / 0.3f) * 0.3f; // a refresh every ~0.3 units, not every frame
+            if (reach > src.CobbleReach + 1e-3f) src.SetCobbleReach(reach);
         }
 
         /// <summary>Lots rebuilt by this moment's wave so far (tests, debug status).</summary>

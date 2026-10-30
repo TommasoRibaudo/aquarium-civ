@@ -59,6 +59,7 @@ namespace AquariumCiv.View
             GUILayout.Label(MomentPlayer.Status());
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Grow 12y")) last = MomentPlayer.DebugGrow(12f);
+            if (GUILayout.Button("Village +40y")) last = MomentPlayer.DebugGrowVillage(40f);
             if (GUILayout.Button("Era ready")) last = MomentPlayer.DebugEraReady();
             if (GUILayout.Button("Waited 1y")) last = MomentPlayer.DebugWaited(12);
             if (GUILayout.Button("Waited 1d")) last = MomentPlayer.DebugWaited(288);
