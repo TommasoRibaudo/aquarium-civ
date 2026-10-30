@@ -555,11 +555,15 @@ namespace AquariumCiv.Life
 
         static int PairKey(Person a, Person b) => Math.Min(a.key, b.key) * 7919 + Math.Max(a.key, b.key);
 
-        /// <summary>How long a walk takes: the path network's walking cost when placed (rule 3: the same cost the wear pass
-        /// walks with), else the straight line, else a flat quarter hour.</summary>
+        /// <summary>How long a walk takes: the length of the route the view walks (rule 3: chosen by the path network's
+        /// walking cost, the same cost the wear pass walks with), else the straight line, else a flat quarter hour. The
+        /// time comes from the route's real length, not its cost (they differ both ways: worn paths are cheaper, rough ground dearer); a
+        /// cost-timed walk along a road ran 3–4× <see cref="WalkSpeed"/> on screen (#30).</summary>
         float WalkHours(Place a, Place b)
         {
             if (a == b) return 0f;
+            var route = RouteBetween(a, b);
+            if (route != null && route.len > 1e-4f) return Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
             if (positions.TryWalkLength(a, b, out float len)) return Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
             if (positions.TryGetPosition(a, out float ax, out float az) && positions.TryGetPosition(b, out float bx, out float bz))
             {

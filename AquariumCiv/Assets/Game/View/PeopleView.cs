@@ -50,8 +50,12 @@ namespace AquariumCiv.View
             public uint sig;
             public Vector2 pos;
             public float yaw, speed, phase;
-            public bool placed;
+            public bool placed, wasHidden;
             public PersonActivity act;
+            /// <summary>The place this person holds a slot at, and which (stable while they stay, rule 6).</summary>
+            public Place slotPlace;
+            public int slot = -1;
+            public Vector2 lastSpot;
         }
 
         BoxView box;
@@ -65,6 +69,7 @@ namespace AquariumCiv.View
         readonly List<PersonActivity> acts = new();
         readonly Dictionary<int, Doll> dolls = new();
         readonly Dictionary<Place, int> countAt = new();
+        readonly HashSet<(Place, int)> taken = new();
         readonly Dictionary<int, Lot> lotOfBuilding = new();
         readonly Dictionary<int, Notable> notables = new();
         readonly HashSet<int> seen = new();
@@ -142,12 +147,33 @@ namespace AquariumCiv.View
         {
             planner.PlanAll(now, acts);
             if (acts.Count > maxPeople) acts.RemoveRange(maxPeople, acts.Count - maxPeople);
+            // Slots that stay put: the planner numbers a place's slots in person order, so someone leaving would shift
+            // everyone after them round the ring. Keep each person's slot while they stay; a newcomer takes the lowest
+            // free one. countAt holds the slots in use + 1 (the ring's spacing).
             countAt.Clear();
-            foreach (var a in acts)
+            taken.Clear();
+            for (int i = 0; i < acts.Count; i++)
             {
-                if (a.moving) continue;
+                var a = acts[i];
+                if (a.moving || !dolls.TryGetValue(a.who.Key, out var d) || d.slotPlace != a.place || d.slot < 0) continue;
+                taken.Add((a.place, d.slot));
+            }
+            for (int i = 0; i < acts.Count; i++)
+            {
+                var a = acts[i];
+                if (!dolls.TryGetValue(a.who.Key, out var d)) { d = new Doll { phase = Hash01(a.who.Key, 5) * 37f }; dolls[a.who.Key] = d; }
+                if (a.moving) { d.slotPlace = Place.None; d.slot = -1; continue; }
+                if (d.slotPlace != a.place || d.slot < 0)
+                {
+                    int s = 0;
+                    while (taken.Contains((a.place, s))) s++;
+                    taken.Add((a.place, s));
+                    d.slotPlace = a.place; d.slot = s;
+                }
+                a.slot = d.slot;
+                acts[i] = a;
                 countAt.TryGetValue(a.place, out int c);
-                countAt[a.place] = c + 1;
+                countAt[a.place] = Mathf.Max(c, d.slot + 1);
             }
             notables.Clear();
             foreach (var n in sim.State.notables) if (n.alive) notables[n.id] = n;
@@ -222,10 +248,15 @@ namespace AquariumCiv.View
             target.x = Mathf.Clamp(target.x, -Land.HX + 0.12f, Land.HX - 0.12f);
             target.y = Mathf.Clamp(target.y, -Land.HZ + 0.12f, Land.HZ - 0.12f);
 
-            // Chase the target: walks are continuous already; slot changes and arrivals glide at a walking pace.
+            // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
+            // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there.
             var prev = d.pos;
-            if (!d.placed || (target - d.pos).sqrMagnitude > 1.0f || dt <= 0f) d.pos = target;
-            else d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Max(0.45f, (target - d.pos).magnitude * 6f) * dt);
+            // How fast the planner's own point moves (the walk), not the slot target, which steps on arrival.
+            float targetSpeed = dt > 0f && d.placed ? (spot - d.lastSpot).magnitude / dt : 0f;
+            d.lastSpot = spot;
+            if (!d.placed || d.wasHidden || dt <= 0f || (target - d.pos).sqrMagnitude > 2.25f) d.pos = target;
+            else d.pos = Vector2.MoveTowards(d.pos, target, (targetSpeed + 0.35f) * dt);
+            d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
             d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
             d.placed = true;
@@ -283,7 +314,7 @@ namespace AquariumCiv.View
                 {
                     // A ring facing the middle; more people widen it a little.
                     float r = a.place.kind switch { PlaceKind.Fire => 0.3f, PlaceKind.Remembering => 0.2f, _ => 0.36f } + Mathf.Max(0, count - 8) * 0.015f;
-                    float ang = h + a.slot * Mathf.PI * 2f / Mathf.Max(count, 5);
+                    float ang = h + a.slot * Mathf.PI * 2f / Mathf.Max(count, 8); // fixed spacing up to 8, so arrivals don't shift the ring
                     face = spot;
                     return spot + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
                 }
@@ -404,6 +435,14 @@ namespace AquariumCiv.View
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             return (kind, slot);
+        }
+
+        /// <summary>The activity a doll is showing (tests, reports).</summary>
+        public bool TryGetActivity(PegDollView view, out PersonActivity act)
+        {
+            foreach (var d in dolls.Values) if (d.view == view) { act = d.act; return true; }
+            act = default;
+            return false;
         }
 
         /// <summary>Where a person's doll stands now (box-local x, z), false if they have none.</summary>

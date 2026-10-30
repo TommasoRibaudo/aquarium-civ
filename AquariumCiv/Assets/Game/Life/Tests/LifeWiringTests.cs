@@ -188,7 +188,18 @@ namespace AquariumCiv.Life.Tests
                         bool arrives = at >= 0 && at + 1 < segs.Count && segs[at + 1].source == ActivitySource.Schedule && segs[at + 1].from == tr.to;
                         if (arrives)
                         {
-                            float hours = Math.Max(LifePlanner.MinWalk, Math.Min(LifePlanner.MaxWalk, len / LifePlanner.WalkSpeed));
+                            // Timed by the length of the line the view walks (spot, the route's cells, spot), not by its cost:
+                            // cost and length differ both ways (worn paths are cheaper, rough ground dearer), and a cost-timed
+                            // walk along a road ran 3-4x too fast on screen (#30).
+                            Assert.IsTrue(planner.Positions.TryGetPosition(tr.from, out float fx, out float fz));
+                            Assert.IsTrue(planner.Positions.TryGetPosition(tr.to, out float tx, out float tz));
+                            float walked = 0f, px = fx, pz = fz;
+                            foreach (var w in route.Concat(new[] { new Waypoint(tx, tz) }))
+                            {
+                                walked += (float)Math.Sqrt((w.x - px) * (w.x - px) + (w.z - pz) * (w.z - pz));
+                                px = w.x; pz = w.z;
+                            }
+                            float hours = Math.Max(LifePlanner.MinWalk, Math.Min(LifePlanner.MaxWalk, walked / LifePlanner.WalkSpeed));
                             Assert.AreEqual(hours, tr.end - tr.start, 1e-3f, $"{who}: the walk to work takes the route's time");
                             timed++;
                         }
