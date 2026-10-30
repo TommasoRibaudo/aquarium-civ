@@ -238,3 +238,15 @@ Screens: `AquariumCiv/Temp/agent/bc_*.png` (local).
 - Placeholders: museums on the shelf are setting-coloured slabs (not miniatures); the "last evening" gather isn't
   staged; lanterns have no floating names; the plate uses the built-in font; the last wipe is a caption.
 - Not done: relic effects in box 2 (sim stub), naming the new settlement on its plate.
+
+### Tester batch 2 (2026-10-30): [polish] for you to decide
+Report and screenshots: `AquariumCiv/Temp/agent/tester-batch2/` (local). The [real] findings and the cheap polish
+(hint width, Watch after Wipe, mid-moment hold hint, time-lapse knocks/HUD, end-of-moment framing) are being fixed.
+Everything else on the pass list passed by touch: clean < 1 min, camera mode, both era moments (normal and hurried),
+leaving mid-moment replays, festival, relic moments, tap-back, time-lapse, completing the box, no console errors.
+- #91: the festival barely shows at phone size (bunting a few pixels); the saved still crops the box and shows nobody.
+  ★ Bigger bunting/lanterns and frame the still on the crowd.
+- #93: box 2 is labelled "Desert oasis" but looks like box 1's green river valley. ★ Per-setting terrain/palette
+  as a follow-up (or relabel until then).
+- #92: relic moments, knocks and the tap-back are invisible at default zoom; only the bubble tells you. ★ A gentle
+  camera nudge or a marker toward where it happens.
