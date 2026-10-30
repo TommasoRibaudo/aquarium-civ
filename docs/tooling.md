@@ -411,3 +411,10 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-29 · "Scene(s) modified externally" after a merge/checkout.** `dismiss-dialogs.ps1 -Click` leaves it as KNOWN but
   doesn't answer it. Copy the script, add `@{ Match = 'modified externally'; Button = 'Reload' }` to `$safe`, run the copy
   with `-Click`. After the reload an "Importing assets" progress window follows: poll `unity status` until ready. [verified]
+- **2026-10-30 · Tester slice batch (#30/#38/#40) notes.** [verified]
+  - A PlayMode fixture test that loads `Slice.unity` with `LoadSceneAsyncInPlayMode` gets no `GameHud` (its
+    `AfterSceneLoad` bootstrap has already run): call `GameHud.Create()` in the test after the scene is up.
+  - `script run --entry Drive.X --result-only` returns JSON: pipe it through `jq -r .result` (jq is installed via WinGet).
+    `script eval --format json` puts the value at `.data.result.result`.
+  - Doll motion audit without screenshots: a throwaway MonoBehaviour reading `PeopleView.dolls` (private dict, `Doll.pos`
+    / `view` / `act`) by reflection every `LateUpdate` finds teleports (> 0.12 u in one frame), walk speeds and heaps.
