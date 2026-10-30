@@ -512,3 +512,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   play mode's domain reload resets it). Also: an edit made from a script was not picked up by `unity recompile` once
   (the dll in `Library/ScriptAssemblies` kept the old test); check with `script eval` reflection on the type and
   `ImportAsset(path, ForceUpdate)` + recompile when it's stale.
+- **2026-10-30 · Checking sound without ears (#96).** In the Editor `AudioDirector.LogPlays` is on: every cue played logs
+  `[Audio] <cue>: <clip> vol .. pitch ..` and every buzz `[Haptic] <kind>`. `AudioDirector.Status()` (script eval, or
+  the Sound section of the dbg panel) shows the settings, bus gains, duck and the five ambience levels;
+  `AudioDirector.Instance.Recent` / `.MomentLog` list what played. `DebugCheckClips()` lists CueLibrary clips that don't
+  load. Play tests that load the Slice by hand call `AudioDirector.Ensure()` (the bootstrap ran for the first scene
+  only). Long clips (ambience, the flute tag) are set to Compressed In Memory / Vorbis 0.6 / mono in their .meta. [verified]

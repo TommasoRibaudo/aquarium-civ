@@ -51,6 +51,8 @@ namespace AquariumCiv.View
         BoxCamera cam;
         bool hudWasVisible = true;
         RebuildWave wave;
+        /// <summary>The rebuild wave of the moment playing (null before the wave beat): the AudioDirector adds its knocks.</summary>
+        public RebuildWave Wave => wave;
         float lastTime;
         // input
         bool pressDown, pressMoved;

@@ -16,6 +16,10 @@ namespace AquariumCiv.View
         string last = "";
         float contentH = 800f;
         Vector2 scroll;
+        bool soundOpen;
+        int cueIndex;
+        static string[] cueIds;
+        static string[] CueIds => cueIds ??= System.Linq.Enumerable.ToArray(System.Linq.Enumerable.OrderBy(AquariumCiv.Audio.CueLibrary.All.Keys, k => k));
 
         void OnGUI()
         {
@@ -91,6 +95,38 @@ namespace AquariumCiv.View
                 last = "music frequency " + GameSettings.MusicFrequency;
             }
             GUILayout.EndHorizontal();
+            // Sound (#96): bus levels, play any cue, force ambience layers, the switches, a test buzz.
+            soundOpen = GUILayout.Toggle(soundOpen, soundOpen ? "▼ Sound" : "► Sound", "button");
+            if (soundOpen)
+            {
+                GUILayout.Label(AudioDirector.Status());
+                var ids = CueIds;
+                cueIndex = (cueIndex + ids.Length) % ids.Length;
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("◀", GUILayout.Width(36))) cueIndex--;
+                if (GUILayout.Button("Play " + ids[(cueIndex + ids.Length) % ids.Length])) last = AudioDirector.DebugPlay(ids[(cueIndex + ids.Length) % ids.Length]);
+                if (GUILayout.Button("▶", GUILayout.Width(36))) cueIndex++;
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                for (int i = 0; i < AquariumCiv.Audio.AmbienceLevels.Count; i++)
+                {
+                    var ad = AudioDirector.Instance;
+                    string n = AquariumCiv.Audio.AmbienceLevels.CueIds[i].Substring(4);
+                    if (GUILayout.Button(n + ":" + (ad != null ? AudioDirector.LayerForceName(ad.LayerForce[i]) : "-"))) last = AudioDirector.DebugCycleLayer(i);
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Sound: " + (GameSettings.Sound ? "on" : "off"))) { GameSettings.Sound = !GameSettings.Sound; last = "sound " + (GameSettings.Sound ? "on" : "off"); }
+                if (GUILayout.Button("Haptics: " + (GameSettings.Haptics ? "on" : "off"))) { GameSettings.Haptics = !GameSettings.Haptics; last = "haptics " + (GameSettings.Haptics ? "on" : "off"); }
+                if (GUILayout.Button("SFX " + GameSettings.SfxVolume.ToString("0.0"))) GameSettings.SfxVolume = GameSettings.SfxVolume > 0.05f ? Mathf.Round((GameSettings.SfxVolume - 0.25f) * 4f) / 4f : 1f;
+                if (GUILayout.Button("Amb " + GameSettings.AmbienceVolume.ToString("0.0"))) GameSettings.AmbienceVolume = GameSettings.AmbienceVolume > 0.05f ? Mathf.Round((GameSettings.AmbienceVolume - 0.25f) * 4f) / 4f : 1f;
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Buzz light")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Light);
+                if (GUILayout.Button("Buzz success")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Success);
+                if (GUILayout.Button("Check clips")) last = AudioDirector.DebugCheckClips();
+                GUILayout.EndHorizontal();
+            }
             // The people's view clock (#30): jump to a time of day, speed the day up, list what people are doing.
             var people = PeopleView.Find();
             if (people != null)

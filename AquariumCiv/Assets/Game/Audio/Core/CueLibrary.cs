@@ -21,6 +21,9 @@ namespace AquariumCiv.Audio
             ShapeChannel = "shape_channel", ShapeOutcrop = "shape_outcrop", ShapeFail = "shape_fail", TapGlass = "tap_glass",
             TapPerson = "tap_person", Discovery = "discovery";
 
+        // ---------- ids: the glass and show-me (#92, #76) ----------
+        public const string KnockBack = "knock_back", ShowMe = "show_me", Flower = "flower", Thump = "thump";
+
         // ---------- ids: the world and the era moments (MomentBeat.audio maps onto these, see MomentCues) ----------
         public const string Cheer = "cheer", CheerSmall = "cheer_small", Flute = "flute", Drum = "drum", TuneUp = "tune_up",
             Fiddle = "fiddle", Knock = "knock", Hammer = "hammer", Bell = "bell", CobbleTap = "cobble_tap", Chord = "chord",
@@ -28,7 +31,7 @@ namespace AquariumCiv.Audio
 
         // ---------- ids: ambience loops (see Ambience) ----------
         public const string AmbCalm = "amb_calm", AmbBirds = "amb_birds", AmbCrickets = "amb_crickets", AmbRain = "amb_rain",
-            AmbWind = "amb_wind";
+            AmbWind = "amb_wind", AmbFlies = "amb_flies";
 
         const string Ui = "Sfx/Ui/", Care = "Sfx/Care/", Moment = "Sfx/Moment/", Amb = "Ambience/";
 
@@ -89,6 +92,12 @@ namespace AquariumCiv.Audio
             Add(new CueDef(TapPerson, SoundBus.Care, 0.4f, Care + "pluck_001", Care + "pluck_002").Jitter(2f).Limit(0.15f, 1, true).Prio(50).Len(0.3f).Buzz(HapticKind.Light));
             Add(new CueDef(Discovery, SoundBus.Care, 0.55f, Care + "maximize_003").Limit(1f, 1).Prio(80).Len(0.8f).Buzz(HapticKind.Success));
 
+            // The glass and show-me: a knock back from inside (soft, lower, World bus so it doesn't duck), the camera's
+            // "look at this", the show-me flower set down.
+            Add(new CueDef(KnockBack, SoundBus.World, 0.4f, Moment + "impactWood_light_000").Jitter(0.3f).Limit(0.15f, 2).Prio(70).Len(0.4f).Buzz(HapticKind.Selection));
+            Add(new CueDef(ShowMe, SoundBus.Ui, 0.45f, Ui + "maximize_001").Limit(0.5f, 1).Prio(60).Len(0.4f));
+            Add(new CueDef(Flower, SoundBus.World, 0.3f, Care + "pluck_001").Limit(0.5f, 1).Prio(40).Len(0.3f));
+
             // World and era moments. The moment's own cues duck the music (era-moment.md §10).
             Add(new CueDef(Cheer, SoundBus.World, 0.7f, "proc:cheer").Limit(1.5f, 1).Prio(90).Len(1.5f).Buzz(HapticKind.Success).Ducks());
             Add(new CueDef(CheerSmall, SoundBus.World, 0.45f, "proc:cheer").Jitter(1f).Limit(1f, 1).Prio(70).Len(1f).Ducks());
@@ -99,6 +108,7 @@ namespace AquariumCiv.Audio
             // The wave's knocks: one clip pitched up the pentatonic scale per lot (MomentCues adds the semitone), so no jitter.
             Add(new CueDef(Knock, SoundBus.Moment, 0.6f, Moment + "impactWood_light_000").Limit(0f, 4, true).Prio(80).Len(0.4f).Buzz(HapticKind.Selection).Ducks());
             Add(new CueDef(Hammer, SoundBus.Moment, 0.55f, Moment + "impactPlank_medium_000").Limit(0f, 4, true).Prio(80).Len(0.4f).Buzz(HapticKind.Selection).Ducks());
+            Add(new CueDef(Thump, SoundBus.Moment, 0.6f, Moment + "impactSoft_heavy_000").Limit(0.5f, 1).Prio(75).Len(0.6f).Buzz(HapticKind.Medium).Ducks());
             Add(new CueDef(Bell, SoundBus.Moment, 0.7f, Moment + "impactBell_heavy_000").Limit(2f, 1).Prio(90).Len(2.5f).Buzz(HapticKind.Medium).Ducks());
             Add(new CueDef(CobbleTap, SoundBus.Moment, 0.4f, Moment + "footstep_concrete_000", Moment + "footstep_concrete_001", Moment + "footstep_concrete_002").Jitter(2f, 0.15f).Limit(0.07f, 3).Prio(60).Len(0.3f).Ducks());
             Add(new CueDef(Chord, SoundBus.Moment, 0.75f, Moment + "guitar_chord").Limit(3f, 1).Prio(95).Len(2f).Buzz(HapticKind.Success).Ducks());
@@ -111,6 +121,8 @@ namespace AquariumCiv.Audio
             Add(new CueDef(AmbCrickets, SoundBus.Ambience, 0.35f, Amb + "crickets_night_loop").Looped().Prio(10).Len(11f));
             Add(new CueDef(AmbRain, SoundBus.Ambience, 0.5f, Amb + "rain_loop").Looped().Prio(10).Len(88f));
             Add(new CueDef(AmbWind, SoundBus.Ambience, 0.5f, Amb + "calm_wind_loop").Looped().Prio(10).Len(40f));
+            // A few flies circling (made in code: no CC0 fly buzz found on Kenney/OpenGameArt). Subtle even at full.
+            Add(new CueDef(AmbFlies, SoundBus.Ambience, 0.18f, "proc:flies").Looped().Prio(10).Len(8f));
             return d;
         }
     }

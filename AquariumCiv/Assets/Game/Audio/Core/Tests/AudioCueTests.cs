@@ -47,9 +47,9 @@ namespace AquariumCiv.Audio.Tests
         [Test]
         public void EveryMomentAudioIdIsMapped()
         {
-            foreach (var era in new[] { Era.Village, Era.Town })
+            foreach (var def0 in new[] { MomentLibrary.For(Era.Village), MomentLibrary.For(Era.Town), MomentLibrary.LastMoment() })
             {
-                var def = MomentLibrary.For(era);
+                var def = def0;
                 foreach (var b in def.beats)
                 {
                     if (string.IsNullOrEmpty(b.audio)) continue;
@@ -189,10 +189,9 @@ namespace AquariumCiv.Audio.Tests
             var s = AudioSettings.Default;
             Assert.That(MixLevels.Bus(SoundBus.Ui, s), Is.EqualTo(1f));
             Assert.That(MixLevels.Bus(SoundBus.Music, s), Is.EqualTo(0.6f).Within(1e-5f));
-            s.deviceSilent = true;
-            Assert.That(MixLevels.Bus(SoundBus.Music, s), Is.EqualTo(0f));
-            Assert.That(MixLevels.Bus(SoundBus.Ambience, s), Is.EqualTo(0f));
-            Assert.That(MixLevels.Bus(SoundBus.Care, s), Is.EqualTo(1f));
+            s.deviceSilent = true; // a phone on silent: no sound at all (the user's call, 2026-10-30)
+            foreach (SoundBus b in Enum.GetValues(typeof(SoundBus))) Assert.That(MixLevels.Bus(b, s), Is.EqualTo(0f), "silent: " + b);
+            s.deviceSilent = false;
             s.sound = false;
             foreach (SoundBus b in Enum.GetValues(typeof(SoundBus))) Assert.That(MixLevels.Bus(b, s), Is.EqualTo(0f), b.ToString());
             Assert.That(MixLevels.Decibels(1f), Is.EqualTo(0f).Within(1e-4f));
@@ -261,6 +260,26 @@ namespace AquariumCiv.Audio.Tests
             Assert.That(Ambience.Targets(At(10f, era: Era.Town)).birds, Is.LessThan(Ambience.Targets(At(10f)).birds));
             var m = At(10f); m.inMoment = true;
             Assert.That(Ambience.Targets(m).birds, Is.LessThan(Ambience.Targets(At(10f)).birds));
+        }
+
+        [Test]
+        public void FliesRiseWithMessAndAreGoneWhenClean()
+        {
+            Assert.That(Ambience.Targets(At(10f, mess: 0f)).flies, Is.EqualTo(0f), "a clean box: no flies");
+            Assert.That(Ambience.Targets(At(10f, mess: Ambience.FliesFrom)).flies, Is.EqualTo(0f), "a little mess: still none");
+            float some = Ambience.Targets(At(10f, mess: 0.4f)).flies, lots = Ambience.Targets(At(10f, mess: 1f)).flies;
+            Assert.That(some, Is.GreaterThan(0f));
+            Assert.That(lots, Is.GreaterThan(some), "more mess, more flies");
+            Assert.That(Ambience.Flies(1f), Is.EqualTo(1f).Within(1e-4f), "full at the worst mess");
+            for (float m = 0f; m < 1f; m += 0.05f) Assert.That(Ambience.Flies(m + 0.05f), Is.GreaterThanOrEqualTo(Ambience.Flies(m)), "never falls as mess grows");
+            Assert.That(Ambience.Targets(At(23f, mess: 1f)).flies, Is.LessThan(lots), "quieter at night");
+            var m2 = At(10f, mess: 1f); m2.inMoment = true;
+            Assert.That(Ambience.Targets(m2).flies, Is.LessThan(lots), "the moment carries");
+            var c = CueLibrary.Get(CueLibrary.AmbFlies);
+            Assert.That(c.loop && c.bus == SoundBus.Ambience, Is.True);
+            Assert.That(c.volume, Is.LessThanOrEqualTo(0.25f), "subtle even at full");
+            Assert.That(AmbienceLevels.CueIds, Does.Contain(CueLibrary.AmbFlies));
+            Assert.That(AmbienceLevels.CueIds.Length, Is.EqualTo(AmbienceLevels.Count));
         }
 
         [Test]

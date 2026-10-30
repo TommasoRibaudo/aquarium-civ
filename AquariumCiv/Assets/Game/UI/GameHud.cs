@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System;
 using System.Globalization;
 using AquariumCiv.Game;
@@ -260,7 +261,7 @@ namespace AquariumCiv.GameUI
             root.Add(safe);
 
             var top = Row("hud-top");
-            var title = new Button(() => Open(Settings)) { name = "hud-title" };
+            var title = new Button(() => { Sfx.Play(CueLibrary.UiOpen); Open(Settings); }) { name = "hud-title" };
             title.AddToClassList("hud-title");
             title.Add(nameLabel = Text("Your box", "hud-title-name"));
             title.Add(yearLabel = Text("Year 0", "hud-title-year"));
@@ -347,7 +348,7 @@ namespace AquariumCiv.GameUI
             scrim.AddToClassList("hud-fill");
             scrim.AddToClassList("sheet-scrim");
             scrim.style.display = DisplayStyle.None;
-            scrim.RegisterCallback<PointerUpEvent>(e => { if (e.target == scrim) CloseSheet(); });
+            scrim.RegisterCallback<PointerUpEvent>(e => { if (e.target == scrim) { Sfx.Play(CueLibrary.UiClose); CloseSheet(); } });
             root.Add(scrim);
 
             var sheet = new VisualElement { name = id + "-sheet" };
@@ -460,9 +461,20 @@ namespace AquariumCiv.GameUI
             return l;
         }
 
+        /// <summary>#96: the sound a HUD button makes (same action, same sound): a sheet opening, closing, a switch
+        /// or mode flipping, else a plain tap.</summary>
+        internal static string ButtonCue(string name, string[] classes)
+        {
+            if (name.EndsWith("-close")) return CueLibrary.UiClose;
+            if (name == "hud-history" || name == "hud-shape") return CueLibrary.UiOpen;
+            if (name == "hud-clean" || name == "hud-photo" || name == "hud-photo-exit" || System.Array.IndexOf(classes, "switch") >= 0) return CueLibrary.UiToggle;
+            return CueLibrary.UiTap;
+        }
+
         static Button Btn(string name, string label, Action onClick, params string[] classes)
         {
-            var b = onClick != null ? new Button(onClick) : new Button();
+            string cue = ButtonCue(name, classes);
+            var b = onClick != null ? new Button(() => { Sfx.Play(cue); onClick(); }) : new Button();
             b.name = name; b.text = label;
             foreach (var c in classes) b.AddToClassList(c);
             return b;

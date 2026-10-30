@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
@@ -144,6 +145,7 @@ namespace AquariumCiv.View
                 if (!r.Ok)
                 {
                     LastResult = FailText(sim, kind, r.fail);
+                    Sfx.Play(ShapingShow.FailCue); // soft: "not now", the text says why
                     hud?.Toast(LastResult, 3f);
                     return LastResult;
                 }
@@ -335,7 +337,7 @@ namespace AquariumCiv.View
             foreach (var e in events)
             {
                 EventLog.Add(e);
-                if (e.kind == ShapingEventKind.Answered && TryGetComponent(out CareSound s)) s.Chime(0.3f); // placeholder until #96's cues play
+                if (!string.IsNullOrEmpty(e.cue)) Sfx.Play(e.cue); // #96: a tool landing, the people answering, one taken back
                 if (e.kind == ShapingEventKind.Gone || e.kind == ShapingEventKind.TakenBack) box.Refresh();
             }
             while (EventLog.Count > 64) EventLog.RemoveAt(0);

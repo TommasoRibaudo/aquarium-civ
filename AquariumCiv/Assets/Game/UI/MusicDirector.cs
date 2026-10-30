@@ -31,12 +31,15 @@ namespace AquariumCiv.GameUI
 
         /// <summary>A moment (era, evening talk, mourning, ...) holds the music: it fades down and nothing starts until released.</summary>
         public static void Hold(string who) => holds.Add(who);
+        /// <summary>#96: the AudioDirector's duck (era moments, the cheer, the chord): 1 = full, set every frame.</summary>
+        public static float ExternalDuck = 1f;
         public static void Release(string who) => holds.Remove(who);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
         {
             holds.Clear();
+            ExternalDuck = 1f;
             if (Instance != null || FindAnyObjectByType<GameClock>() == null) return;
             new GameObject("MusicDirector").AddComponent<MusicDirector>();
         }
@@ -92,7 +95,7 @@ namespace AquariumCiv.GameUI
             float len = source.clip.length;
             float fade = Mathf.Min(source.time / FadeIn, Mathf.Max(0f, (len - source.time) / FadeOut), 1f);
             if (scheduler.Frequency == MusicFrequency.Off) fade = Mathf.MoveTowards(source.volume, 0f, dt / FadeOut);
-            source.volume = fade * duck * GameSettings.MusicVolume;
+            source.volume = fade * duck * GameSettings.MusicVolume * Mathf.Clamp01(ExternalDuck);
 
             bool ended = !source.isPlaying || scheduler.Frequency == MusicFrequency.Off && source.volume <= 0.001f;
             if (ended) Stop();

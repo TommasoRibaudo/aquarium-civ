@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -166,6 +167,7 @@ namespace AquariumCiv.View
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);
             Build(card);
+            if (cardRoot.resolvedStyle.display != DisplayStyle.Flex || OpenId != notableId || Card != card) Sfx.Play(CueLibrary.UiOpen); // #96
             cardRoot.style.display = DisplayStyle.Flex;
             if (fly) FlyTo(notableId);
             return true;
@@ -174,6 +176,7 @@ namespace AquariumCiv.View
         public void Close()
         {
             if (!IsOpen) return;
+            Sfx.Play(CueLibrary.UiClose); // #96
             OpenId = -1;
             Card = null;
             edges.Clear();
@@ -189,6 +192,7 @@ namespace AquariumCiv.View
             var sim = Sim;
             if (sim == null || !IsOpen) return;
             bool on = sim.TogglePin(OpenId);
+            Sfx.Play(CueLibrary.UiToggle); // #96
             if (on && GameHud.Instance != null) GameHud.Instance.Toast($"Following {sim.FindNotable(OpenId)?.name}. Their stories come first.", 3f);
             Refresh(true);
             UpdateChip(sim, true);

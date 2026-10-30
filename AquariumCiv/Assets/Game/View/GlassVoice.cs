@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using System.Globalization;
 using AquariumCiv.Game;
@@ -133,6 +134,7 @@ namespace AquariumCiv.View
             lastMonth = month;
             PlayPending(sim, planner, now);
             HandleTaps(sim, planner, now);
+            UpdateTapBackSound(planner, now);
             SayLines(planner, now);
             if (props != null) props.Sync(sim, planner, Time.unscaledDeltaTime);
         }
@@ -163,6 +165,7 @@ namespace AquariumCiv.View
             {
                 LastMoment = info;
                 if (props != null) props.MomentStarted(id);
+                Sfx.Play(CueLibrary.Discovery); // #96: a relic's moment begins ("look at this")
                 Debug.Log($"[GlassVoice] the {SimCore.RelicName(id)} moment: {info.cast.Count} people, {now.hour:0.00}h to {info.end:0.00}h");
             }
             return info;
@@ -251,7 +254,26 @@ namespace AquariumCiv.View
             taps++;
             lastTapTime = Time.unscaledTime;
             planner.React(KeeperGesture.TapGlass, now);
-            if (TryGetComponent(out CareSound s)) s.Chime(0.15f); // a soft knock (placeholder until the glass's own sound)
+            Sfx.Play(CueLibrary.TapGlass); // #96: a knuckle on glass
+        }
+
+        /// <summary>#96: the knocks back line up with the doll's Knock (one every half second, the hit mid-swing); a
+        /// scholar who never starts knocking within <see cref="KnockBackGiveUp"/> real seconds stays silent.</summary>
+        public const float KnockBackFirst = 0.25f, KnockBackGap = 0.5f, KnockBackGiveUp = 60f;
+        PersonRef tapBackWho;
+        int tapBackCount;
+        float tapBackSince;
+        /// <summary>Knocks back sounded so far (tests, debug).</summary>
+        public int KnockBacksSounded { get; private set; }
+
+        void UpdateTapBackSound(LifePlanner planner, ViewTime now)
+        {
+            if (tapBackCount <= 0) return;
+            if (Time.unscaledTime - tapBackSince > KnockBackGiveUp) { tapBackCount = 0; return; }
+            if (planner.Plan(tapBackWho, now).kind != ActivityKind.TapBack) return;
+            for (int i = 0; i < tapBackCount; i++) Sfx.Play(CueLibrary.KnockBack, -3f, 1f, KnockBackFirst + i * KnockBackGap);
+            KnockBacksSounded += tapBackCount;
+            tapBackCount = 0;
         }
 
         void FinishKnock(SimCore sim, LifePlanner planner, ViewTime now)
@@ -263,6 +285,9 @@ namespace AquariumCiv.View
             // stage 3 with the Lens: a scholar the planner can stage knocks back; the sim credits it (the first one makes a
             // card) only when it really plays (tester batch 2: a credit with nobody walking over)
             LastTapBack = planner.AnswerKnock(now, n);
+            // #96: a scholar knocks back from inside: as many soft knocks, a little after (the people turn first)
+            // #96: the knocks back sound when the scholar's fist reaches the glass (UpdateTapBackSound), not now
+            if (LastTapBack >= 0) { tapBackWho = PersonRef.Notable(LastTapBack); tapBackCount = n; tapBackSince = Time.unscaledTime; }
         }
 
         // ---------------- debug (the debug panel, `script eval`) ----------------
@@ -316,6 +341,7 @@ namespace AquariumCiv.View
             if (sim == null || pv == null || pv.Planner == null) return "no people";
             int id = sim.DebugTapBack(n);
             if (id < 0 || !pv.Planner.TapBack(pv.Now, id, n)) return "nobody to tap back";
+            if (Instance != null) { Instance.tapBackWho = PersonRef.Notable(id); Instance.tapBackCount = n; Instance.tapBackSince = Time.unscaledTime; }
             return $"{sim.FindNotable(id)?.FullName} taps back {n}";
         }
 

@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
@@ -384,6 +385,7 @@ namespace AquariumCiv.View
             {
                 grabbed = piece;
                 props.SetHeld(piece, true);
+                Sfx.Play(CueLibrary.MessGrab);
                 grabStart = pos;
                 samples.Clear();
                 samples.Add((Time.unscaledTime, pos));
@@ -392,6 +394,7 @@ namespace AquariumCiv.View
             {
                 strokeRemoved = 0f;
                 strokeStart = Time.unscaledTime;
+                Sfx.Play(CueLibrary.WipeStart);
                 System.Array.Clear(hasLast, 0, hasLast.Length);
                 ContinueWipe(Sim, pos, 0.016f, true);
             }
@@ -419,7 +422,7 @@ namespace AquariumCiv.View
                 total += (float)removed;
                 lastUv[i] = uv; hasLast[i] = true; hitPanes++;
                 lastPoint = hit.point;
-                if (masks[i].CheckCleared()) { sound.Chime(0.35f); Burst(cols[i].bounds.center, 8, 0.5f); }
+                if (masks[i].CheckCleared()) { Sfx.Play(CueLibrary.PaneClean); Burst(cols[i].bounds.center, 8, 0.5f); }
             }
             if (hitPanes == 0) { sound.SetRub(0f, 0f); return; }
             long texels = 0;
@@ -472,7 +475,7 @@ namespace AquariumCiv.View
             float travel = Vector2.Distance(pos, grabStart) / H;
             if (v.magnitude >= flickSpeed && travel >= flickMinTravel) { Toss(sim, piece, v); return; }
             props.Wobble(piece);
-            sound.Pop();
+            Sfx.Play(CueLibrary.MessDrop);
             hud?.Toast(travel < flickMinTravel ? "Flick it out." : "Flick it faster to throw it out.", 2.5f);
         }
 
@@ -497,7 +500,9 @@ namespace AquariumCiv.View
                 people?.Planner?.React(KeeperGesture.FlickTrash, people.Now, Place.Land(PlaceKind.TrashHeap, piece.key));
             }
             props.Throw(piece, vel);
-            sound.Swish(strength);
+            // #96: the swish of the throw, a snip for a weed; a harder flick swishes higher
+            Sfx.Play(CueLibrary.MessFlick, strength * 3f);
+            if (piece.weed) Sfx.Play(CueLibrary.Prune);
             Burst(piece.Center, 4, 0.12f, 0.1f);
             strokes++;
         }
@@ -558,7 +563,8 @@ namespace AquariumCiv.View
         {
             LastCheer = everything ? "all" : "glass";
             CheerCount++;
-            sound.Chime(everything ? 0.9f : 0.7f);
+            Sfx.Play(CueLibrary.FullClean, 0f, everything ? 1f : 0.75f);
+            Sfx.Play(everything ? CueLibrary.Cheer : CueLibrary.CheerSmall, 0f, 1f, 0.35f); // the people cheer (they also turn and wave)
             int n = everything ? 36 : 22;
             for (int i = 0; i < n; i++)
             {
