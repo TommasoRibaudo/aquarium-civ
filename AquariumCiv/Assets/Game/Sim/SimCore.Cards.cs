@@ -571,6 +571,7 @@ namespace AquariumCiv.Sim
             {
                 string key = Key(c.source, c.a, c.b, c.subject, c.role);
                 if (key == lastKey && c.source != ThreadSource.Slice) continue;
+                if (last != null && c.line == last.teaser) continue; // #61: a new gift of the same kind said the same words every evening
                 if (c.source == ThreadSource.Slice && last != null && last.source == ThreadSource.Slice && last.teaser == c.line) continue;
                 foreach (var old in s.threads.Where(t => t.state == ThreadState.Open && t.source == ThreadSource.Slice)) old.state = ThreadState.Died;
                 var t = s.threads.FirstOrDefault(x => x.state == ThreadState.Open && x.source != ThreadSource.Link &&
@@ -633,8 +634,8 @@ namespace AquariumCiv.Sim
             foreach (var a in adults)
             {
                 var b = Alive(a.friendId);
-                if (b == null || b.id < a.id || b.friendId != a.id || a.partnerId >= 0 || b.partnerId >= 0 || a.family == b.family ||
-                    a.age > 50f || b.age > 50f || b.age < AdultAge) continue;
+                if (b == null || b.id < a.id || b.friendId != a.id || Alive(a.partnerId) != null || Alive(b.partnerId) != null ||
+                    !CanCourt(a, b) || a.age > 50f || b.age > 50f || a.age < MarryAge || b.age < MarryAge) continue; // as weddings (#61)
                 yield return (ThreadSource.Couple, $"{a.FullName} and {b.FullName} keep sitting together at the {seat}.", a.id, b.id, -1, "");
                 break;
             }
@@ -646,7 +647,13 @@ namespace AquariumCiv.Sim
                 {
                     NudgeKind.Grove => "People keep walking out to look at the new trees.",
                     NudgeKind.Channel => "Everyone keeps going down to look at the new water.",
-                    _ => "The gatherers keep checking the wet ground.",
+                    // #61: every gift had the rain's line ("the gatherers", in a town, about an outcrop).
+                    NudgeKind.Herd => "People keep walking out to look at the new animals.",
+                    NudgeKind.Lamp => "Everyone keeps stopping to stand in the new light.",
+                    NudgeKind.Outcrop => "The craftsfolk keep going out to tap the new rock.",
+                    NudgeKind.Spring => "Everyone keeps going down to taste the new spring.",
+                    NudgeKind.DyeMeadow => "People keep walking through the new flowers, looking thoughtful.",
+                    _ => s.era == Era.Camp ? "The gatherers keep checking the wet ground." : "The farmers keep checking the wet ground.",
                 }, -1, -1, gift.id, "");
 
             // A rivalry.

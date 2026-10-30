@@ -80,7 +80,7 @@ namespace AquariumCiv.Tests
                 string a = m.Groups[1].Success ? m.Groups[1].Value : m.Groups[3].Value, b = m.Groups[2].Success ? m.Groups[2].Value : m.Groups[4].Value;
                 Notable At(string name) => sim.State.notables.Single(n => n.FullName == name && n.bornMonth <= e.month && (n.alive || n.diedMonth >= e.month));
                 var x = At(a); var y = At(b);
-                Assert.IsTrue(SimCore.CanCourt(x, y), $"year {e.month / 12}: {e.text}");
+                Assert.IsTrue(sim.CanCourt(x, y), $"year {e.month / 12}: {e.text}");
                 checkedPairs++;
             }
             TestContext.WriteLine($"seed {seed}: {checkedPairs} matches and rumours");
@@ -99,6 +99,65 @@ namespace AquariumCiv.Tests
                 string tail = e.text.Substring(coda + "share a bench. ".Length);
                 foreach (var id in new[] { e.notableId, e.otherNotableId })
                     Assert.IsFalse(tail.StartsWith(sim.FindNotable(id).FullName + " the "), e.text);
+            }
+        }
+
+        /// <summary>A notable's age in a past month: ages step up at each new year, and stop at death.</summary>
+        static float AgeAt(SimCore sim, Notable n, long month)
+        {
+            long end = n.alive ? sim.State.month : n.diedMonth;
+            int turns = 0;
+            for (long k = month + 1; k <= end; k++) if (k % SimConfig.MonthsPerYear == 0) turns++;
+            return n.age - turns;
+        }
+
+        [TestCase(1)]
+        [TestCase(77)]
+        [TestCase(1234)]
+        public void WeddingsAreBetweenPeopleOfAnAge(int seed)
+        {
+            var log = Century(seed, out var sim);
+            var weddings = log.Select(x => x.e).Where(e => e.kind == "wedding").ToList();
+            Assert.Greater(weddings.Count, 3);
+            foreach (var e in weddings)
+            {
+                var a = sim.FindNotable(e.notableId); var b = sim.FindNotable(e.otherNotableId);
+                float ageA = AgeAt(sim, a, e.month), ageB = AgeAt(sim, b, e.month);
+                string at = $"year {e.month / 12}: {e.text} ({ageA}, {ageB})";
+                Assert.GreaterOrEqual(ageA, SimCore.MarryAge, at);
+                Assert.GreaterOrEqual(ageB, SimCore.MarryAge, at);
+                Assert.LessOrEqual(System.Math.Abs(ageA - ageB), 12f, at);
+                Assert.IsFalse(sim.Kin(a, b), at);
+                Assert.AreNotEqual(a.family, b.family, at);
+            }
+        }
+
+        [TestCase(1)]
+        [TestCase(77)]
+        [TestCase(1234)]
+        public void ACouplesChildrenShareOneFamilyName(int seed)
+        {
+            var log = Century(seed, out var sim);
+            int pairs = 0;
+            foreach (var e in log.Select(x => x.e).Where(e => e.kind == "birth"))
+            {
+                var m = Regex.Match(e.text, @"was born to (.+) and (.+)\.$");
+                if (!m.Success) continue;
+                var child = sim.FindNotable(e.notableId);
+                var p = sim.FindNotable(child.parentId);
+                var other = sim.State.notables.First(n => n.FullName == m.Groups[2].Value && n.bornMonth <= e.month && (n.alive || n.diedMonth >= e.month));
+                Assert.That(child.family == p.family || child.family == other.family, e.text);
+                pairs++;
+            }
+            Assert.Greater(pairs, 0, "some children were born to couples");
+            // Brothers and sisters born to one couple share the name.
+            foreach (var g in sim.State.notables.Where(n => n.parentId >= 0).GroupBy(n => n.parentId))
+            {
+                var kids = g.ToList();
+                var births = log.Select(x => x.e).Where(e => e.kind == "birth" && kids.Any(k => k.id == e.notableId) && e.text.Contains(" and ")).ToList();
+                var byPartner = births.GroupBy(e => e.text.Substring(e.text.LastIndexOf(" and ")));
+                foreach (var same in byPartner)
+                    Assert.AreEqual(1, same.Select(e => sim.FindNotable(e.notableId).family).Distinct().Count(), string.Join(" / ", same.Select(e => e.text)));
             }
         }
 
@@ -176,6 +235,19 @@ namespace AquariumCiv.Tests
             sim.ForceNextEra();
             sim.PlaceNudge(SimCore.NudgeKind.Lamp, 3);
             Assert.Contains(SimCore.FlagLampUsed, sim.State.storyFlags);
+        }
+
+        [Test]
+        public void EachGiftHasItsOwnTeaser()
+        {
+            var sim = NewSim(9);
+            sim.ForceNextEra(); sim.ForceNextEra();
+            sim.State.roles.Clear(); sim.TermFlavourOn = false;
+            foreach (var n in sim.State.notables) { n.friendId = n.rivalId = -1; }
+            sim.PlaceNudge(SimCore.NudgeKind.Outcrop, 4);
+            var t = sim.OpenTeaserThread();
+            Assert.AreEqual(ThreadSource.Gift, t.source);
+            StringAssert.Contains("rock", t.teaser);
         }
 
         [Test]

@@ -1,0 +1,89 @@
+# Seed 1234: notables
+
+== Year 0 (seen at year 0.3), Camp, population 5, buildings 2
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Fen Marsh         24   74  the dreamer    hunter       -                     -                -                - / -
+   Bram Vane         19   57  the worrier    woodcutter   -                     -                -                - / -
+   Hob Barrow        18   62  the worrier    gatherer     chief                 -                -                - / -
+   Seats: chief: Hob Barrow
+
+== Year 10 (seen at year 12.6), Camp, population 8, buildings 6
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Fen Marsh         36   74  the dreamer    hunter       -                     -                -                - / -
+   Bram Vane         31   57  the worrier    woodcutter   -                     -                Hob Barrow       Hob Barrow / -
+   Hob Barrow        30   62  the worrier    gatherer     chief                 -                Bram Vane        Bram Vane / -
+   Ada Barrow         7   65  the loud       -            -                     Bram Vane        -                - / -
+   Gus Marsh          3   66  the kind       -            -                     Fen Marsh        -                - / -
+   Quill Barrow       1   73  the kind       -            -                     Hob Barrow       -                - / -
+   Seats: chief: Hob Barrow
+
+== Year 25 (seen at year 26.9), Village, population 12, buildings 10
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Fen Marsh         50   74  the dreamer    fisher       -                     -                -                - / -
+   Bram Vane         45   57  the worrier    woodcutter   miller                -                Hob Barrow       Hob Barrow / Ada Barrow
+   Hob Barrow        44   62  the worrier    farmer       headman               -                Bram Vane        Bram Vane / -
+   Ada Barrow        21   65  the loud       farmer       -                     Bram Vane        -                - / Bram Vane
+   Gus Marsh         17   66  the kind       woodcutter   -                     Fen Marsh        -                - / -
+   Quill Barrow      15   73  the kind       -            -                     Hob Barrow       -                - / -
+   Seats: headman: Hob Barrow; miller: Bram Vane
+
+== Year 50 (seen at year 50.8), Village, population 15, buildings 15
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Fen Marsh         74   74  the dreamer    elder        -                     -                -                - / -
+   Ada Barrow        45   65  the loud       farmer       miller                Bram Vane†       Gus Marsh        Quill Barrow / Bram Vane†
+   Gus Marsh         41   66  the kind       woodcutter   headman               Fen Marsh        Ada Barrow       - / -
+   Quill Barrow      39   73  the kind       fisher       -                     Hob Barrow†      -                Ada Barrow / -
+   Yara Marsh        19   66  the joker      fisher       -                     Ada Barrow       -                - / -
+   Ilse Marsh        19   60  the brave      woodcutter   -                     Gus Marsh        -                - / -
+   Hester Marsh      18   61  the stubborn   farmer       -                     Ada Barrow       -                - / -
+   Wim Marsh         15   59  the loud       -            -                     Gus Marsh        -                - / -
+   Seats: headman: Gus Marsh; miller: Ada Barrow
+
+== Year 75 (seen at year 75.2), Village, population 20, buildings 18
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Gus Marsh         66   66  the kind       elder        -                     Fen Marsh†       Ada Barrow†      Hester Marsh / -
+   Quill Barrow      64   73  the kind       fisher       headman               Hob Barrow†      -                Ada Barrow† / -
+   Yara Marsh        44   66  the joker      fisher       miller                Ada Barrow†      -                - / -
+   Ilse Marsh        44   60  the brave      woodcutter   -                     Gus Marsh        -                Wim Marsh / -
+   Hester Marsh      43   61  the stubborn   farmer       -                     Ada Barrow†      -                Gus Marsh / -
+   Wim Marsh         40   59  the loud       fisher       -                     Gus Marsh        -                Ilse Marsh / -
+   Alma Marsh        20   74  the gardener   farmer       -                     Ilse Marsh       -                - / -
+   Nils Marsh        17   69  the brave      woodcutter   -                     Hester Marsh     -                - / -
+   Juna Marsh        11   55  the singer     -            -                     Wim Marsh        -                - / -
+   Hob Marsh          4   73  the brave      -            -                     Yara Marsh       -                - / -
+   Seats: headman: Quill Barrow; miller: Yara Marsh
+
+== Year 100 (seen at year 102.1), Town, population 24, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Alma Marsh        47   74  the gardener   farmer       captain of the watch  Ilse Marsh†      -                - / -
+   Gus Stile         45   59  the loud       stallholder  guildmaster           -                Nils Marsh       - / Ilse Marsh†
+   Nils Marsh        44   69  the brave      woodcutter   lord                  Hester Marsh†    Gus Stile        - / -
+   Juna Marsh        38   55  the singer     baker        master builder        Wim Marsh†       -                Yara Marsh† / -
+   Ulf Gale          34   64  the brave      woodcutter   merchant              -                Hob Marsh        - / -
+   Hob Marsh         31   73  the brave      mason        -                     Yara Marsh†      Ulf Gale         - / -
+   Flora Dale        26   57  the kind       fisher       -                     -                Otto Marsh       - / -
+   Otto Marsh        25   77  the dreamer    baker        innkeeper             Alma Marsh       Flora Dale       - / -
+   Bo Marsh          17   65  the brave      mason        -                     Alma Marsh       -                - / -
+   Cela Marsh        13   76  the gardener   -            -                     Juna Marsh       -                - / -
+   Ada Marsh          8   71  the worrier    -            -                     Juna Marsh       -                - / -
+   Hester Stile       6   78  the clever     -            -                     Nils Marsh       -                - / -
+   Pim Stile          6   56  the tinkerer   -            -                     Gus Stile        -                - / -
+   Ilse Gale          3   72  the tinkerer   -            -                     Ulf Gale         -                - / -
+   Seats: lord: Nils Marsh; innkeeper: Otto Marsh; guildmaster: Gus Stile; master builder: Juna Marsh; merchant: Ulf Gale; captain of the watch: Alma Marsh
+
+== Year 120 (seen at year 122.8), Town, population 28, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Alma Marsh        67   74  the gardener   elder        captain of the watch  Ilse Marsh†      -                - / Flora Dale
+   Nils Marsh        64   69  the brave      woodcutter   lord                  Hester Marsh†    Gus Stile†       - / -
+   Ulf Gale          54   64  the brave      woodcutter   merchant              -                Hob Marsh        - / Otto Marsh
+   Hob Marsh         51   73  the brave      mason        guildmaster           Yara Marsh†      Ulf Gale         - / Juna Marsh†
+   Flora Dale        46   57  the kind       fisher       -                     -                Otto Marsh       - / Alma Marsh
+   Otto Marsh        45   77  the dreamer    baker        innkeeper             Alma Marsh       Flora Dale       - / Ulf Gale
+   Bo Marsh          37   65  the brave      mason        -                     Alma Marsh       -                - / -
+   Cela Marsh        33   76  the gardener   fisher       -                     Juna Marsh†      Pim Stile        - / -
+   Ada Marsh         28   71  the worrier    sweeper      -                     Juna Marsh†      Hester Stile     - / -
+   Hester Stile      26   78  the clever     farmer       -                     Nils Marsh       Ada Marsh        - / -
+   Pim Stile         26   56  the tinkerer   smith        master builder        Gus Stile†       Cela Marsh       - / -
+   Ilse Gale         23   72  the tinkerer   sweeper      -                     Ulf Gale         -                - / -
+   Seats: lord: Nils Marsh; innkeeper: Otto Marsh; guildmaster: Hob Marsh; master builder: Pim Stile; merchant: Ulf Gale; captain of the watch: Alma Marsh
+

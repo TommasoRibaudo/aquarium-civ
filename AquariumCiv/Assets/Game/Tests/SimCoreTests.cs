@@ -54,11 +54,11 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(1244585753u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(1750279217u, Fingerprint(sim.State), "slice world fingerprint");
             var before = NewSim(1234);
             before.CardsOn = false;
             before.Advance(48);
-            Assert.AreEqual(1553613139u, Fingerprint(before.State), "the same world with #59's text swaps off");
+            Assert.AreEqual(3732380117u, Fingerprint(before.State), "the same world with #59's text swaps off");
         }
 
         [Test]

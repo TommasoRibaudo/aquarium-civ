@@ -437,9 +437,37 @@ namespace AquariumCiv.Sim
             return new List<Notable> { p.a, p.b };
         }
 
-        /// <summary>Could these two court? Different families, not parent and child, within 12 years of each other.</summary>
-        public static bool CanCourt(Notable a, Notable b) =>
-            a != b && a.family != b.family && a.parentId != b.id && b.parentId != a.id && Math.Abs(a.age - b.age) <= 12f;
+        /// <summary>Could these two court? Different family names, not kin (no parent, grandparent or sibling in common, as
+        /// far as two generations show) and within 12 years of each other.</summary>
+        public bool CanCourt(Notable a, Notable b) => a != b && a.family != b.family && Math.Abs(a.age - b.age) <= 12f && !Kin(a, b);
+
+        /// <summary>Close family: one is in the other's line (parents, their partners, grandparents), or the lines meet.</summary>
+        public bool Kin(Notable a, Notable b)
+        {
+            var la = Line(a); var lb = Line(b);
+            return la.Contains(b.id) || lb.Contains(a.id) || la.Overlaps(lb);
+        }
+
+        /// <summary>A notable's parents and grandparents, with their partners (the sim keeps one parent per child).</summary>
+        HashSet<int> Line(Notable n)
+        {
+            var line = new HashSet<int>();
+            var gen = new List<Notable> { n };
+            for (int depth = 0; depth < 2; depth++)
+            {
+                var next = new List<Notable>();
+                foreach (var x in gen)
+                {
+                    var p = FindNotable(x.parentId);
+                    if (p == null) continue;
+                    line.Add(p.id); next.Add(p);
+                    var q = FindNotable(p.partnerId);
+                    if (q != null) { line.Add(q.id); next.Add(q); }
+                }
+                gen = next;
+            }
+            return line;
+        }
 
         string FillTerm(string line, Notable h, RoleSeat seat, List<Notable> others, int salt)
         {

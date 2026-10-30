@@ -1,0 +1,424 @@
+# Seed 1: returns as the player sees them
+# Schedule: away 3 h / 3-min check-in, 3 h / 15-min session (evening talk), x2, then 8 h overnight; every 3rd night is 48 h.
+
+== First session ends, year 0.3. Evening talk: "Dov Vane has made up their mind about something, and nothing will change it."
+
+== Return 1: after 3 h away (real h 3), year 0.3 -> 3.3, Camp, 10 entries, cap 5
+   Peek: "Greta married Moss"   | teaser under it: (none)
+   1. [Story/Good/family 0.80] Greta married Moss
+        The first wedding in the glass: Greta Gale married Moss Hearth at the harvest dance.
+        + Lorn Gale was born to Greta Gale and Moss Hearth.
+   2. [Story/Good/milestone 0.75] The first gathering grounds
+        Moss Hearth marked out the first gathering grounds, where the berries grow thickest.
+   3. [Story/Good/office 0.70] Dov Vane the chief kept the meeting at the camp…
+        (at the fire: Dov Vane has made up their mind about something, and nothing will change it.)
+        Dov Vane the chief kept the meeting at the camp fire going until everyone agreed with them. It took two days.
+   4. [Story/Good/milestone 0.65] Dov Vane threw a harvest festival
+        Dov Vane threw a harvest festival. Someone danced with a goat, and the goat led.
+   5. [Story/Good/friends 0.50] Moss and Greta became friends
+        Moss Hearth and Greta Gale became fast friends after a long night of storytelling.
+   Also: Moss and Greta had a baby, Tilda / Dov Vane the chief and Moss Hearth argued about… / A dry summer (+1 more)
+
+== Return 2: after 3 h away (real h 6), year 3.3 -> 6.3, Camp, 5 entries, cap 5
+   Peek: "The first woodpile"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.75] The first woodpile
+        Greta Gale started a woodpile by the trees, and everyone added to it.
+   2. [Story/Good/milestone 0.70] The settlement grew to 10 people
+        The settlement grew to 10 people.
+   3. [Story/Good/world 0.60] Snow fell inside the glass for the first time
+        Snow fell inside the glass for the first time. The children tried to catch it.
+   4. [Story/Good/family 0.60] Moss and Greta had a baby, Otto
+        Otto Gale was born to Moss Hearth and Greta Gale.
+   5. [Story/Neutral/world 0.42] Fog rolled in and stayed
+        Fog rolled in and stayed. Dov Vane found the way home by following the smell of supper.
+   (the player shapes: rain)
+   Evening talk (end of a 15-min session, year 6.5): "The gatherers keep checking the wet ground."
+
+== Return 3: after 3 h away (real h 10), year 6.5 -> 9.5, Camp, 7 entries, cap 5
+   Peek: "Moss answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Moss answered the Keeper
+        (at the fire: The gatherers keep checking the wet ground.)
+        After the Keeper's rain, Moss Hearth staked out new gathering grounds.
+   2. [Story/Good/milestone 0.80] The settlement was named Keepersend
+        Dov Vane suggested a name for the settlement: Keepersend. It stuck.
+   3. [Story/Neutral/friends 0.58] Moss and Dov fell out
+        Moss Hearth and Dov Vane fell out over a song lyric. They no longer share a bench.
+   4. [Story/Neutral/world 0.50] A great storm rattled the glass
+        A great storm rattled the glass. The people huddled together in the hut.
+   5. [Story/Neutral/office 0.50] Greta Gale and Moss Hearth shouted each other…
+        Greta Gale and Moss Hearth shouted each other hoarse over a fence post at the meeting. Dov Vane the chief would not let anyone go home.
+   Also: Dov Vane, the camp's chief, refused to move the… / A family of ducks moved into the pond and took…
+
+== Return 4: after 3 h away (real h 13), year 9.6 -> 12.6, Camp (next era READY), 4 entries, cap 5
+   Peek: "Keepersend is ready for a new age"   | teaser under it: (none)
+   1. [EraReady/Good/era 0.80] Keepersend is ready for a new age
+        Keepersend is restless. The elders talk of staying put and sowing seed; something is about to change.
+   2. [Story/Good/friends 0.55] Moss and Dov made up
+        Moss Hearth and Dov Vane are friends again. Nobody is sure who said sorry first.
+   3. [Story/Neutral/trait 0.60] Moss got lost in the hills
+        Moss Hearth got lost in the hills for three days and came back with a jar of honey.
+   4. [Story/Good/world 0.42] A rainbow arched over the pond
+        A rainbow arched over the pond. Nobody worked that afternoon.
+   ** The player watches the era moment: now Village (year 12.6).
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 12.8): "Everyone keeps going down to look at the new water."
+
+== Return 5: after 8 h away (real h 21), year 12.8 -> 20.8, Village, 12 entries, cap 5
+   Peek: "Moss answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Moss answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Moss Hearth planted a new field beside it.
+   2. [Story/Good/family 0.70] Dov married Kit
+        Dov Vane married Kit Marsh among the spring blossoms.
+   3. [Story/Good/trait 0.62] Kit Marsh made a stick that throws a shadow, and…
+        Kit Marsh made a stick that throws a shadow, and now everyone knows when lunch is.
+   4. [Story/Neutral/friends 0.58] Tilda and Lorn fell out
+        Tilda Gale and Lorn Gale fell out over a song lyric. They no longer share a bench.
+   5. [Story/Good/people 0.55] A newcomer, Kit Marsh, the clever, joined the…
+        A newcomer, Kit Marsh, the clever, joined the village.
+   Also: Dov and Kit had a baby, Zeb / Moss and Dov fell out / Greta Gale, the village's miller, announced a… (+3 more)
+
+== Return 6: after 3 h away (real h 24), year 20.8 -> 23.8, Village, 7 entries, cap 5
+   Peek: "Moss Hearth threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Moss Hearth threw a harvest festival
+        Moss Hearth threw a harvest festival. The pies ran out long before the music did.
+   2. [Story/Good/family 0.60] Tilda had a baby, Bo
+        Bo Gale was born to Tilda Gale.
+   3. [Story/Neutral/world 0.50] Thunder rolled round the glass all night
+        Thunder rolled round the glass all night. Everyone squeezed into the cottage and told stories till it passed.
+   4. [Story/Neutral/office 0.50] Dov Vane the headman and Moss Hearth argued…
+        Dov Vane the headman and Moss Hearth argued about whose turn it was at the well at the green until the lamps went out.
+   5. [Story/Neutral/trait 0.48] Tilda Gale insisted the windmill was built…
+        Tilda Gale insisted the windmill was built backwards. It wasn't.
+   Also: Greta Gale the miller drew a map of the village… / Moss Hearth called the goats home from the far…
+
+== Return 7: after 3 h away (real h 27), year 23.9 -> 26.9, Village, 7 entries, cap 5
+   Peek: "Keepersend celebrated 25 years in the glass with…"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Keepersend celebrated 25 years in the glass with…
+        Keepersend celebrated 25 years in the glass with a feast.
+   2. [Story/Good/family 0.60] Tilda had a baby, Hester
+        Hester Gale was born to Tilda Gale.
+   3. [Story/Good/role 0.60] Keepersend kept Dov Vane as headman for another…
+        Keepersend kept Dov Vane as headman for another twelve years. Moss Hearth asked for a recount of all 7 votes.
+   4. [Story/Good/friends 0.55] Lorn and Tilda made up
+        Lorn Gale and Tilda Gale made up over a pot of stew. The whole village sighed with relief.
+   5. [Story/Good/trait 0.50] Lorn Gale took in a stray goat
+        Lorn Gale took in a stray goat. It follows them everywhere now.
+   Also: Greta Gale, the village's miller, spent a night… / Dov Vane the headman kept the meeting at the…
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 27.2): "Dov Vane has made up their mind about something, and nothing will change it."
+
+== Return 8: after 3 h away (real h 30), year 27.2 -> 30.2, Village, 3 entries, cap 5
+   Peek: "Dov answered the Keeper"   | teaser under it: "Dov Vane has made up their mind about something, and nothing will change it."
+   1. [Keeper/Good/keeper 0.90] Dov answered the Keeper
+        After the Keeper dug a channel from the pond, Dov Vane planted a new field beside it.
+   2. [Story/Good/people 0.50] Zeb became Greta's apprentice
+        Greta Gale took young Zeb Vane as an apprentice.
+   3. [Story/Good/world 0.42] A double rainbow hung inside the glass
+        A double rainbow hung inside the glass. The children argued all afternoon about where it ended.
+
+== Return 9: after 3 h away (real h 33), year 30.3 -> 33.3, Village, 4 entries, cap 5
+   Peek: "The first market"   | teaser under it: "Dov Vane has made up their mind about something, and nothing will change it."
+   1. [Story/Good/milestone 0.75] The first market
+        Otto Gale opened a market. Haggling began immediately.
+   2. [Story/Good/family 0.70] Zeb married Tilda
+        Zeb Vane married Tilda Gale by the winter fire.
+   3. [Story/Good/world 0.55] The best harvest anyone can remember
+        The best harvest anyone can remember. The granary door wouldn't close.
+   4. [Story/Good/friends 0.50] Dov and Tilda became friends
+        Dov Vane and Tilda Gale became fast friends after sharing the last apple.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 33.5): "Everyone keeps going down to look at the new water."
+
+== Return 10: after 8 h away (real h 42), year 33.5 -> 41.5, Village, 18 entries, cap 5
+   Peek: "Lorn answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Lorn answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Lorn Gale planted a new field beside it.
+   2. [Story/Neutral/role 0.78] Tilda Gale stood against headman Dov Vane and…
+        Tilda Gale stood against headman Dov Vane and won, 3 votes to 2. Dov Vane took a very long walk round the pond.
+   3. [Story/Good/milestone 0.75] The first tavern
+        Otto Gale opened a tavern. Productivity dipped.
+   4. [Story/Neutral/office 0.70] Tilda Gale and Greta Gale shouted each other…
+        (at the fire: Dov Vane has made up their mind about something, and nothing will change it.)
+        Tilda Gale and Greta Gale shouted each other hoarse over the best way to bake bread at the meeting. Dov Vane the headman would not let anyone go home.
+   5. [Story/Neutral/friends 0.58] Otto and Tilda fell out
+        Otto Gale and Tilda Gale fell out over whose turn it was at the well. They no longer share a bench.
+   Also: Keepersend grew to 20 people / Bo Gale threw a harvest festival / Lorn and Zeb fell out (+10 more)
+
+== Return 11: after 3 h away (real h 45), year 41.5 -> 44.5, Village, 4 entries, cap 5
+   Peek: "Bo Gale planted flowers around the tavern"   | teaser under it: (none)
+   1. [Story/Good/trait 0.55] Bo Gale planted flowers around the tavern
+        Bo Gale planted flowers around the tavern. The bees approve.
+   2. [Story/Good/world 0.50] A sheep wandered into the tavern and refused to…
+        A sheep wandered into the tavern and refused to leave. It has a stool now.
+   3. [Story/Good/office 0.50] Greta Gale the miller led a walk up the hill to…
+        Greta Gale the miller led a walk up the hill to wave at the sky. Kit Marsh swears something waved back.
+   4. [Legend/Sad/legend 0.85] Moss died
+        Moss Hearth, the loud, died of old age at 75.
+
+== Return 12: after 3 h away (real h 48), year 44.6 -> 47.6, Village, 3 entries, cap 5
+   Peek: "Tilda Gale, the village's headman, refused to…"   | teaser under it: (none)
+   1. [Story/Good/office 0.50] Tilda Gale, the village's headman, refused to…
+        Tilda Gale, the village's headman, refused to move the woodpile. The path now goes around it.
+   2. [Story/Neutral/trait 0.60] Otto got lost in the hills
+        Otto Gale got lost in the hills for three days and came back with a shiny pebble nobody can explain.
+   3. [Story/Neutral/office 0.50] Tilda Gale the headman and Otto Gale argued…
+        Tilda Gale the headman and Otto Gale argued about the best way to bake bread at the green until the lamps went out.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 47.8): "The craftsfolk talk of guilds, and of a bigger market."
+
+== Return 13: after 3 h away (real h 51), year 47.8 -> 50.8, Village (next era READY), 4 entries, cap 5
+   Peek: "Keepersend is ready for a new age"   | teaser under it: (none)
+   1. [EraReady/Good/era 1.00] Keepersend is ready for a new age
+        (at the fire: The craftsfolk talk of guilds, and of a bigger market.)
+        Keepersend hums with new trades. Everyone feels a bigger change coming.
+   2. [Keeper/Good/keeper 0.90] Kit answered the Keeper
+        After the Keeper dug a channel from the pond, Kit Marsh planted a new field beside it.
+   3. [Story/Good/milestone 0.65] Keepersend celebrated 50 years in the glass with…
+        Keepersend celebrated 50 years in the glass with a feast.
+   4. [Story/Good/role 0.60] Keepersend kept Tilda Gale as headman for…
+        Keepersend kept Tilda Gale as headman for another twelve years. Kit Marsh asked for a recount of all 9 votes.
+   ** The player watches the era moment: now Town (year 50.8).
+
+== Return 14: after 3 h away (real h 54), year 50.8 -> 53.8, Town, 5 entries, cap 5
+   Peek: "Zeb Vane threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Zeb Vane threw a harvest festival
+        Zeb Vane threw a harvest festival. The pies ran out long before the music did.
+   2. [Story/Neutral/other 0.60] Keepersend has sweepers now
+        Keepersend has sweepers now: a few folk with brooms and a handcart take the heaps to the midden one by one, and trim the weeds on the green.
+   3. [Story/Good/office 0.50] Otto Gale, the town's guildmaster, led an…
+        Otto Gale, the town's guildmaster, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+   4. [Story/Good/trait 0.45] Hester Gale called the goats home from the far…
+        Hester Gale called the goats home from the far side of the glass.
+   5. [Legend/Sad/legend 0.85] Kit died
+        Kit Marsh, the clever, died of old age at 58.
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 54.1): "The craftsfolk keep going out to tap the new rock."
+
+== Return 15: after 48 h away (real h 102), year 54.1 -> 72.1, Town, 49 entries, cap 7
+   Peek: "Zeb answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Zeb answered the Keeper
+        (at the fire: The craftsfolk keep going out to tap the new rock.)
+        After the Keeper raised an outcrop, Zeb Vane opened a workshop for the new stone beside it.
+   2. [Story/Neutral/role 0.78] Esk Stile stood against guildmaster Otto Gale…
+        Esk Stile stood against guildmaster Otto Gale and won, 2 votes to 1. Otto Gale went home and shut the door very loudly.
+   3. [Story/Good/family 0.70] Esk married Dina
+        Esk Stile married Dina Brook under the summer sky.
+   4. [Story/Good/milestone 0.65] Dina Brook threw a harvest festival
+        Dina Brook threw a harvest festival. Someone danced with a goat, and the goat led. Zeb Vane the innkeeper organised the sack race.
+   5. [Story/Neutral/friends 0.58] Lorn and Esk fell out
+        Lorn Gale and Esk Marsh fell out over a song lyric. They no longer share a bench.
+   6. [Legend/Sad/legend 0.85] Dov died
+        Dov Vane, the stubborn, died of old age at 79.
+   7. [Legend/Sad/legend 0.85] Otto died
+        Otto Gale, the brave, died of old age at 62.
+   Also: Lorn died / Esk married Hester / Bo Gale threw a harvest festival (+37 more)
+
+== Return 16: after 3 h away (real h 105), year 72.2 -> 75.2, Town, 4 entries, cap 5
+   Peek: "Keepersend celebrated 75 years in the glass with…"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Keepersend celebrated 75 years in the glass with…
+        Keepersend celebrated 75 years in the glass with a feast.
+   2. [Story/Good/family 0.60] Esk and Dina had a baby, Bram
+        Bram Brook was born to Esk Stile and Dina Brook.
+   3. [Story/Good/role 0.60] Keepersend kept Esk Stile as guildmaster for…
+        Keepersend kept Esk Stile as guildmaster for another twelve years. Nils Gale asked for a recount of all 6 votes.
+   4. [Story/Good/office 0.50] Dina Brook the master builder has not called a…
+        Dina Brook the master builder has not called a meeting in two years. Nobody has complained.
+
+== Return 17: after 3 h away (real h 108), year 75.3 -> 78.3, Town, 4 entries, cap 5
+   Peek: "Zeb Gale grew a turnip the size of a sheep"   | teaser under it: (none)
+   1. [Story/Good/trait 0.55] Zeb Gale grew a turnip the size of a sheep
+        Zeb Gale grew a turnip the size of a sheep. It fed the whole town for a week.
+   2. [Story/Good/office 0.50] Hester Gale, the town's merchant, gave a toast…
+        Hester Gale, the town's merchant, gave a toast at the market steps so loud the ducks took off.
+   3. [Story/Good/friends 0.50] Gus and Nils became friends
+        Gus Gale and Nils Gale became fast friends after sharing the last apple.
+   4. [Story/Good/world 0.42] A rainbow came down right by the pond
+        A rainbow came down right by the pond. Everyone went to look for the end of it and found mud. Dina Brook the master builder made the afternoon off official.
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 78.5): "Tilda Gale has made up their mind about something, and nothing will change it."
+
+== Return 18: after 3 h away (real h 112), year 78.5 -> 81.5, Town, 10 entries, cap 5
+   Peek: "Hester answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Hester answered the Keeper
+        After the Keeper raised an outcrop, Hester Gale opened a workshop for the new stone beside it.
+   2. [Story/Good/role 0.80] When old Tilda Gale died, their eldest child, Bo…
+        When old Tilda Gale died, their eldest child, Bo Gale, became lord of the town.
+   3. [Story/Good/family 0.70] Rhea married Greta
+        Rhea Marsh married Greta Wick under the summer sky. Esk Stile the guildmaster sang them down the path.
+   4. [Story/Good/office 0.50] Bo Gale, the town's lord, planted flowers all…
+        Bo Gale, the town's lord, planted flowers all round the market steps. The bees approve.
+   5. [Legend/Sad/legend 0.85] Tilda died
+        Tilda Gale, the stubborn, died of old age at 76.
+   Also: Nils had a baby, Edda / Lord Bo Gale made Esk Marsh captain of the watch / Dina and Zeb became friends (+2 more)
+
+== Return 19: after 3 h away (real h 115), year 81.5 -> 84.5, Town, 5 entries, cap 5
+   Peek: "Esk Stile threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Esk Stile threw a harvest festival
+        Esk Stile threw a harvest festival. There was dancing until dawn. Zeb Vane the innkeeper organised the sack race.
+   2. [Story/Neutral/trait 0.60] Zeb got lost in the hills
+        Zeb Gale got lost in the hills for three days and came back with a crown made of twigs.
+   3. [Story/Good/office 0.50] Zeb Vane, the town's innkeeper, ended a speech…
+        Zeb Vane, the town's innkeeper, ended a speech at the inn with a joke about the goats. Even the goats laughed.
+   4. [Story/Good/office 0.50] Esk Stile, the town's guildmaster, taught…
+        Esk Stile, the town's guildmaster, taught everyone a new song. It has eleven verses and no ending.
+   5. [Story/Good/world 0.45] A second family of ducks arrived and fell out…
+        A second family of ducks arrived and fell out with the first. The pond is split down the middle.
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 84.8): "Nils Gale has been shaking a lot of hands at the inn. The guildmaster's term is nearly up."
+
+== Return 20: after 8 h away (real h 123), year 84.8 -> 92.8, Town, 28 entries, cap 5
+   Peek: "Dina answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Dina answered the Keeper
+        After the Keeper raised an outcrop, Dina Brook opened a workshop for the new stone beside it.
+   2. [Story/Neutral/role 0.98] Nils Gale stood against guildmaster Esk Stile…
+        (at the fire: Nils Gale has been shaking a lot of hands at the inn. The guildmaster's term is nearly up.)
+        Nils Gale stood against guildmaster Esk Stile and won on a tied vote. Esk Stile went home and shut the door very loudly.
+   3. [Story/Good/role 0.80] When old Bo Gale died, their eldest child, Gus…
+        When old Bo Gale died, their eldest child, Gus Gale, became lord of the town.
+   4. [Legend/Sad/legend 0.85] Zeb died
+        Zeb Vane, the joker, died of old age at 76.
+        + Zeb Vane died as innkeeper after 38 years. The town left the seat empty until spring.
+   5. [Legend/Sad/legend 0.85] Bo died
+        Bo Gale, the gardener, died of old age at 69.
+   Also: Esk died / Esk Stile and Rhea Marsh both wanted to be… / Greta and Rhea had a baby, Sten (+19 more)
+
+== Return 21: after 3 h away (real h 126), year 92.8 -> 95.8, Town, 6 entries, cap 5
+   Peek: "Zeb Gale threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Zeb Gale threw a harvest festival
+        Zeb Gale threw a harvest festival. Someone danced with a goat, and the goat led. Esk Stile the innkeeper sang until the stars came out.
+   2. [Story/Neutral/trait 0.60] Dina got lost in the hills
+        Dina Brook got lost in the hills for three days and came back with a song nobody had heard before.
+   3. [Story/Good/people 0.55] Hester Gale told the children how the first…
+        Hester Gale told the children how the first wanderers found the glass. The story gets longer every winter.
+   4. [Story/Good/office 0.50] Zeb Gale, the town's captain of the watch…
+        Zeb Gale, the town's captain of the watch, planted flowers all round the market steps. The bees approve.
+   5. [Story/Good/office 0.50] Gus Gale the lord held a feast at the market steps
+        Gus Gale the lord held a feast at the market steps. They could be heard on the far side of the glass.
+   Also: Gus Gale called the goats home from the far side…
+
+== Return 22: after 3 h away (real h 129), year 95.8 -> 98.8, Town, 9 entries, cap 5
+   Peek: "Gus had a baby, Tilda"   | teaser under it: (none)
+   1. [Story/Good/family 0.60] Gus had a baby, Tilda
+        Tilda Gale was born to Gus Gale.
+   2. [Story/Neutral/friends 0.58] Zeb and Edda fell out
+        Zeb Gale and Edda Gale fell out over a fence post. They no longer share a bench. Rhea Marsh the merchant told everyone by supper.
+   3. [Story/Good/office 0.50] Gus Gale the lord called the whole town to the…
+        Gus Gale the lord called the whole town to the market steps to say a roof was fixed. It was Nils Gale's roof.
+   4. [Story/Good/trait 0.45] Greta Wick napped through the entire harvest
+        Greta Wick napped through the entire harvest. Nobody had the heart to wake them.
+   5. [Legend/Sad/legend 0.85] Hester died
+        Hester Gale, the loud, died of old age at 72.
+   Also: Nils Gale the guildmaster complained about the… / Nils Gale, the town's guildmaster, made a rule / Edda and Bram became friends (+1 more)
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 99.1): "Bram Brook has been shaking a lot of hands at the inn. The guildmaster's term is nearly up."
+
+== Return 23: after 3 h away (real h 132), year 99.1 -> 102.1, Town, 8 entries, cap 5
+   Peek: "Rhea answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Rhea answered the Keeper
+        After the Keeper raised an outcrop, Rhea Marsh opened a workshop for the new stone beside it.
+   2. [Story/Neutral/role 0.98] Bram Brook stood against guildmaster Nils Gale…
+        (at the fire: Bram Brook has been shaking a lot of hands at the inn. The guildmaster's term is nearly up.)
+        Bram Brook stood against guildmaster Nils Gale and won, 3 votes to 2. Nils Gale spent the evening telling the goats it was rigged.
+   3. [Story/Good/milestone 0.65] Bram Brook threw a harvest festival
+        Bram Brook threw a harvest festival. The pies ran out long before the music did. Esk Stile the innkeeper sang until the stars came out.
+   4. [Story/Neutral/trait 0.60] Greta got lost in the hills
+        Greta Wick got lost in the hills for three days and came back with a feather as long as an arm.
+   5. [Story/Good/office 0.50] With Rhea Marsh as merchant, the whole town knew…
+        With Rhea Marsh as merchant, the whole town knew about Bram Brook and Edda Gale before Bram Brook and Edda Gale did.
+   Also: Keepersend celebrated 100 years in the glass… / Gus Gale, the town's lord, gave a toast at the… / Nils Gale said the harvest festival was too…
+
+== Return 24: after 3 h away (real h 135), year 102.2 -> 105.2, Town, 2 entries, cap 5
+   Peek: "A strange device appeared by the inn"   | teaser under it: (none)
+   1. [Story/Good/office 0.50] A strange device appeared by the inn
+        A strange device appeared by the inn. Bram Brook the guildmaster says it counts the days. Nobody has checked.
+   2. [Story/Neutral/trait 0.45] Edda Gale said the harvest festival was too…
+        Edda Gale said the harvest festival was too loud, then danced all night.
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 105.4): "Bram Brook and Edda Gale keep sitting together at the market steps."
+
+== Return 25: after 8 h away (real h 143), year 105.4 -> 113.4, Town, 15 entries, cap 5
+   Peek: "Gus answered the Keeper"   | teaser under it: "Bram Brook and Edda Gale keep sitting together at the market steps."
+   1. [Keeper/Good/keeper 0.90] Gus answered the Keeper
+        After the Keeper raised an outcrop, Gus Gale opened a workshop for the new stone beside it.
+   2. [Story/Neutral/role 0.78] Nils Gale stood against guildmaster Bram Brook…
+        Nils Gale stood against guildmaster Bram Brook and won on a tied vote. Bram Brook took a very long walk round the pond.
+   3. [Story/Good/milestone 0.65] Gus Gale threw a harvest festival
+        Gus Gale threw a harvest festival. There was dancing until dawn. Esk Stile the innkeeper sang until the stars came out.
+   4. [Legend/Sad/legend 0.85] Greta died
+        Greta Wick, the lazy, died of old age at 61.
+   5. [Legend/Sad/legend 0.85] Esk died
+        Esk Stile, the singer, died of old age at 72.
+   Also: When Esk Stile died, the inn passed to their… / Wim Wick built a wheelbarrow with five wheels / Zeb and Edda made up (+7 more)
+
+== Return 26: after 3 h away (real h 147), year 113.5 -> 116.5, Town, 8 entries, cap 5
+   Peek: "Alma Gale and Sten Wick each built a chimney to…"   | teaser under it: "Bram Brook and Edda Gale keep sitting together at the market steps."
+   1. [Story/Good/role 0.65] Alma Gale and Sten Wick each built a chimney to…
+        Alma Gale and Sten Wick each built a chimney to prove who should be master builder. Alma Gale's is still standing.
+   2. [Story/Good/family 0.60] Alma had a baby, Ilse
+        Ilse Gale was born to Alma Gale.
+   3. [Story/Good/office 0.50] Gus Gale the lord held a feast at the market steps
+        Gus Gale the lord held a feast at the market steps. They could be heard on the far side of the glass.
+   4. [Legend/Sad/legend 0.85] Dina died
+        Dina Brook, the lazy, died of old age at 78.
+        + Dina Brook died as master builder after 54 years. The town left the seat empty until spring.
+   5. [Legend/Sad/legend 0.85] Rhea died
+        Rhea Marsh, the gossip, died of old age at 56.
+   Also: Lord Gus Gale made Wim Gale merchant / A family of ducks moved into the pond and took…
+
+== Return 27: after 3 h away (real h 150), year 116.5 -> 119.5, Town, 8 entries, cap 5
+   Peek: "Sten had a baby, Greta"   | teaser under it: "Bram Brook and Edda Gale keep sitting together at the market steps."
+   1. [Story/Good/family 0.60] Sten had a baby, Greta
+        Greta Wick was born to Sten Wick.
+   2. [Story/Neutral/trait 0.60] Sten got lost in the hills
+        Sten Wick got lost in the hills for three days and came back with a feather as long as an arm.
+   3. [Story/Neutral/trait 0.50] Tilda Gale knew about the wedding before the…
+        Tilda Gale knew about the wedding before the couple did.
+   4. [Story/Good/office 0.50] Alma Gale, the town's master builder, ended a…
+        Alma Gale, the town's master builder, ended a speech at the timber yard with a joke about the goats. Even the goats laughed.
+   5. [Story/Good/office 0.50] Alma Gale the master builder held a feast day…
+        Alma Gale the master builder held a feast day with games at the timber yard. Nils Gale won the sack race by falling over the line.
+   Also: A strange device appeared by the market steps / Nils Gale, the town's guildmaster, sent Wim Gale… / Sten Wick built a little fence around the pond…
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 119.8): "The craftsfolk keep going out to tap the new rock."
+
+== Return 28: after 3 h away (real h 153), year 119.8 -> 122.8, Town, 5 entries, cap 5
+   Peek: "Wim answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Wim answered the Keeper
+        (at the fire: The craftsfolk keep going out to tap the new rock.)
+        After the Keeper raised an outcrop, Wim Gale opened a workshop for the new stone beside it.
+   2. [Story/Good/family 0.60] Alma had a baby, Pim
+        Pim Gale was born to Alma Gale.
+   3. [Story/Good/family 0.60] Wim had a baby, Nell
+        Nell Gale was born to Wim Gale.
+   4. [Story/Neutral/friends 0.58] Tilda and Wim fell out
+        Tilda Gale and Wim Gale fell out over a fence post. They no longer share a bench.
+   5. [Story/Good/trait 0.45] Gus Gale sneezed so hard the birds left every…
+        Gus Gale sneezed so hard the birds left every tree in the town.
+
+== Teaser threads (said at the evening talk) and how they ended
+  Y  0 [office] Dov Vane has made up their mind about something, and nothing will change it.
+        -> PaidOff Y0: Dov Vane the chief kept the meeting at the camp fire going until everyone agreed with them. It took two days.
+  Y  6 [gift] The gatherers keep checking the wet ground.
+        -> PaidOff Y8: After the Keeper's rain, Moss Hearth staked out new gathering grounds.
+  Y 12 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y14: After the Keeper dug a channel from the pond, Moss Hearth planted a new field beside it.
+  Y 27 [office] Dov Vane has made up their mind about something, and nothing will change it.
+        -> PaidOff Y35: Tilda Gale and Greta Gale shouted each other hoarse over the best way to bake bread at the meeting. Dov Vane the headman would not let anyone go home.
+  Y 33 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y34: After the Keeper dug a channel from the pond, Lorn Gale planted a new field beside it.
+  Y 47 [era] The craftsfolk talk of guilds, and of a bigger market.
+        -> PaidOff Y48: Keepersend hums with new trades. Everyone feels a bigger change coming.
+  Y 54 [gift] The craftsfolk keep going out to tap the new rock.
+        -> PaidOff Y55: After the Keeper raised an outcrop, Zeb Vane opened a workshop for the new stone beside it.
+  Y 78 [office] Tilda Gale has made up their mind about something, and nothing will change it.
+        -> Died
+  Y 84 [seat] Nils Gale has been shaking a lot of hands at the inn. The guildmaster's term is nearly up.
+        -> PaidOff Y87: Nils Gale stood against guildmaster Esk Stile and won on a tied vote. Esk Stile went home and shut the door very loudly.
+  Y 99 [seat] Bram Brook has been shaking a lot of hands at the inn. The guildmaster's term is nearly up.
+        -> PaidOff Y99: Bram Brook stood against guildmaster Nils Gale and won, 3 votes to 2. Nils Gale spent the evening telling the goats it was rigged.
+  Y105 [couple] Bram Brook and Edda Gale keep sitting together at the market steps.
+        -> Open
+  Y119 [gift] The craftsfolk keep going out to tap the new rock.
+        -> PaidOff Y120: After the Keeper raised an outcrop, Wim Gale opened a workshop for the new stone beside it.

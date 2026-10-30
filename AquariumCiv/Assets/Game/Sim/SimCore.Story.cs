@@ -86,9 +86,21 @@ namespace AquariumCiv.Sim
 
         static string Nth(string[] lines, int n) => lines[n % lines.Length];
 
-        /// <summary>The thing found, moved on by how many times people got lost (#61: the same pebble came back twice). The
+        /// <summary>The thing found, unless this person found just that last time (#61: the same pebble came back twice). The
         /// drawn thing still decides it, so the dice are untouched.</summary>
-        string FoundNext(string drawn) => FoundThings[(Array.IndexOf(FoundThings, drawn) + Told("lost")) % FoundThings.Length];
+        string FoundNext(string drawn, int who)
+        {
+            var last = State.chronicle.LastOrDefault(e => e.kind == "lost" && e.notableId == who);
+            return last != null && last.text.Contains(drawn) ? FoundThings[(Array.IndexOf(FoundThings, drawn) + 1) % FoundThings.Length] : drawn;
+        }
+
+        /// <summary>The drawn quarrel, unless these two fell out over just that last time (#61: the same pair fell out over
+        /// the same song lyric twice). The draw still decides it; no dice.</summary>
+        string QuarrelAgain(string drawn, int a, int b)
+        {
+            var last = State.chronicle.LastOrDefault(e => e.kind == "rivalry" && Pair(e, a, b));
+            return last != null && last.text.Contains($"over {QuarrelIn(drawn)}.") ? Quarrels[(Array.IndexOf(Quarrels, drawn) + 1) % Quarrels.Length] : drawn;
+        }
 
         /// <summary>A quarrel subject as said in this era: the camp has no well (#61).</summary>
         string QuarrelIn(string q) => State.era == Era.Camp && q == "whose turn it was at the well" ? "whose turn it was to fetch water" : q;
@@ -225,8 +237,10 @@ namespace AquariumCiv.Sim
             void Add(float w, Action a) => options.Add((w, a));
 
             // ---- people together ----
-            var single = adults.Where(n => n.partnerId < 0 && n.age <= 50f).ToList();
-            var couple = PickPair(r, single, (a, b) => a.family != b.family);
+            // Couples of an age (#61: a founder of 35 married a girl of 17 he had watched grow up): both 18 to 50, single or
+            // widowed, different families, not parent and child, at most 12 years apart.
+            var single = adults.Where(n => Alive(n.partnerId) == null && n.age >= MarryAge && n.age <= 50f).ToList();
+            var couple = PickPair(r, single, CanCourt);
             if (couple.a != null) Add(1.4f, () => Wedding(couple.a, couple.b, season));
             var mates = PickPair(r, adults, (a, b) => a.friendId < 0 && b.friendId < 0 && a.rivalId != b.id);
             if (mates.a != null) Add(1f, () =>
@@ -238,7 +252,7 @@ namespace AquariumCiv.Sim
             if (foes.a != null) Add(0.9f, () =>
             {
                 foes.a.rivalId = foes.b.id; foes.b.rivalId = foes.a.id;
-                Chronicle("rivalry", $"{foes.a.FullName} and {foes.b.FullName} fell out over {QuarrelIn(Pick(r, Quarrels))}. They no longer share a bench.", 0.58f, foes.a.id, foes.b.id);
+                Chronicle("rivalry", $"{foes.a.FullName} and {foes.b.FullName} fell out over {QuarrelIn(QuarrelAgain(Pick(r, Quarrels), foes.a.id, foes.b.id))}. They no longer share a bench.", 0.58f, foes.a.id, foes.b.id);
             });
             var feuding = adults.FirstOrDefault(n => n.rivalId >= 0 && Alive(n.rivalId) != null);
             if (feuding != null) Add(0.5f, () =>
@@ -276,7 +290,7 @@ namespace AquariumCiv.Sim
             if (adults.Count > 0 && Fresh("lost", -1, 6)) Add(0.6f, () =>
             {
                 var n = Pick(r, adults);
-                Chronicle("lost", $"{n.FullName} got lost in the hills for three days and came back with {FoundNext(Pick(r, FoundThings))}.", 0.6f, n.id);
+                Chronicle("lost", $"{n.FullName} got lost in the hills for three days and came back with {FoundNext(Pick(r, FoundThings), n.id)}.", 0.6f, n.id);
             });
 
             // ---- the world ----
@@ -324,6 +338,8 @@ namespace AquariumCiv.Sim
             }
             return true;
         }
+
+        public const float MarryAge = 18f;
 
         void Wedding(Notable a, Notable b, int season)
         {

@@ -227,7 +227,7 @@ namespace AquariumCiv.Tests
             int nextShared = old.State.nextId;
             var leader = old.State.roles.First(r => r.holderId >= 0);
             ChronicleEntry e = null;
-            for (int i = 0; i < 50 && e == null; i++) { e = old.DebugTermStory(leader.role); if (e == null) old.Step(); }
+            for (int i = 0; i < 400 && e == null; i++) { e = old.DebugTermStory(leader.role); if (e == null) old.Step(); } // #61: told kinds rest longer
             Assert.IsNotNull(e);
             Assert.GreaterOrEqual(e.id, SimCore.TermLineIdBase);
             Assert.AreEqual(old.State.chronicle.Count, old.State.chronicle.Select(x => x.id).Distinct().Count(), "ids are unique");

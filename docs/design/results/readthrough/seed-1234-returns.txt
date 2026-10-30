@@ -1,0 +1,422 @@
+# Seed 1234: returns as the player sees them
+# Schedule: away 3 h / 3-min check-in, 3 h / 15-min session (evening talk), x2, then 8 h overnight; every 3rd night is 48 h.
+
+== First session ends, year 0.3. Evening talk: "Hob Barrow has been counting the lanterns. And then counting them again."
+
+== Return 1: after 3 h away (real h 3), year 0.3 -> 3.3, Camp, 7 entries, cap 5
+   Peek: "Hob married Bram"   | teaser under it: (none)
+   1. [Story/Good/family 0.80] Hob married Bram
+        The first wedding in the glass: Hob Barrow married Bram Vane at the harvest dance.
+   2. [Story/Good/milestone 0.75] The first woodpile
+        Hob Barrow started a woodpile by the trees, and everyone added to it.
+   3. [Story/Good/office 0.70] Hob Barrow, the camp's chief, had extra lanterns…
+        (at the fire: Hob Barrow has been counting the lanterns. And then counting them again.)
+        Hob Barrow, the camp's chief, had extra lanterns hung round the camp fire, and a fence put round the fence.
+   4. [Story/Good/world 0.60] Snow fell inside the glass for the first time
+        Snow fell inside the glass for the first time. The children tried to catch it.
+   5. [Story/Neutral/trait 0.60] Bram got lost in the hills
+        Bram Vane got lost in the hills for three days and came back with a crown made of twigs.
+   Also: The first gathering grounds / A family of ducks moved into the pond and took…
+
+== Return 2: after 3 h away (real h 6), year 3.3 -> 6.3, Camp, 6 entries, cap 5
+   Peek: "Bram and Hob had a baby, Ada"   | teaser under it: (none)
+   1. [Story/Good/family 0.60] Bram and Hob had a baby, Ada
+        Ada Barrow was born to Bram Vane and Hob Barrow.
+   2. [Story/Neutral/friends 0.58] Hob and Fen fell out
+        Hob Barrow and Fen Marsh fell out over a fence post. They no longer share a bench.
+   3. [Story/Good/trait 0.55] Fen Marsh spent a summer trying to talk to the…
+        Fen Marsh spent a summer trying to talk to the clouds.
+   4. [Story/Good/friends 0.50] Hob and Bram became friends
+        Hob Barrow and Bram Vane became fast friends after a long night of storytelling.
+   5. [Story/Neutral/world 0.42] A thick fog sat in the glass for days
+        A thick fog sat in the glass for days. Bram Vane said good morning to a bush.
+   Also: Hob Barrow counted the people of the camp twice…
+   (the player shapes: rain)
+   Evening talk (end of a 15-min session, year 6.5): "The gatherers keep checking the wet ground."
+
+== Return 3: after 3 h away (real h 10), year 6.5 -> 9.5, Camp, 5 entries, cap 5
+   Peek: "Fen answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Fen answered the Keeper
+        (at the fire: The gatherers keep checking the wet ground.)
+        After the Keeper's rain, Fen Marsh staked out new gathering grounds.
+   2. [Story/Good/family 0.60] Fen had a baby, Gus
+        Gus Marsh was born to Fen Marsh.
+   3. [Story/Neutral/world 0.50] A great storm rattled the glass
+        A great storm rattled the glass. The people huddled together in the hut. Hob Barrow the chief had them all counted in before the first gust.
+   4. [Story/Neutral/trait 0.45] Bram Vane built a little fence around the pond…
+        Bram Vane built a little fence around the pond, just in case.
+   5. [Story/Good/world 0.42] A rainbow arched over the pond
+        A rainbow arched over the pond. Nobody worked that afternoon.
+
+== Return 4: after 3 h away (real h 13), year 9.6 -> 12.6, Camp, 1 entries, cap 5
+   Peek: "Hob and Bram had a baby, Quill"   | teaser under it: (none)
+   1. [Story/Good/family 0.60] Hob and Bram had a baby, Quill
+        Quill Barrow was born to Hob Barrow and Bram Vane.
+   (the player shapes: rain)
+   Evening talk (end of a 15-min session, year 12.8): "The elders talk about planting seeds and staying put."
+
+== Return 5: after 8 h away (real h 21), year 12.8 -> 20.8, Camp (next era READY), 10 entries, cap 5
+   Peek: "The settlement is ready for a new age"   | teaser under it: (none)
+   1. [EraReady/Good/era 1.00] The settlement is ready for a new age
+        (at the fire: The elders talk about planting seeds and staying put.)
+        The settlement is restless. The elders talk of staying put and sowing seed; something is about to change.
+   2. [Keeper/Good/keeper 0.90] Bram answered the Keeper
+        After the Keeper's rain, Bram Vane staked out new gathering grounds.
+   3. [Story/Good/milestone 0.70] The settlement grew to 10 people
+        The settlement grew to 10 people.
+   4. [Story/Neutral/trait 0.60] Bram got lost in the hills
+        Bram Vane got lost in the hills for three days and came back with a feather as long as an arm.
+   5. [Story/Neutral/friends 0.58] Fen and Bram fell out
+        Fen Marsh and Bram Vane fell out over a fence post. They no longer share a bench.
+        + Bram Vane and Fen Marsh are friends again. Nobody is sure who said sorry first.
+   Also: Hob Barrow threw a harvest festival / A strange warm light crossed the sky / Thunder rolled round the glass all night (+1 more)
+   ** The player watches the era moment: now Village (year 20.8).
+
+== Return 6: after 3 h away (real h 24), year 20.8 -> 23.8, Village, 4 entries, cap 5
+   Peek: "The first well"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.75] The first well
+        Hob Barrow dug the first well. The water tasted of glass.
+   2. [Story/Good/milestone 0.65] Ada Barrow threw a harvest festival
+        Ada Barrow threw a harvest festival. There was dancing until dawn.
+   3. [Story/Neutral/trait 0.45] Hob Barrow built a little fence around the pond…
+        Hob Barrow built a little fence around the pond, just in case.
+   4. [Story/Good/world 0.42] A double rainbow hung inside the glass
+        A double rainbow hung inside the glass. The children argued all afternoon about where it ended.
+
+== Return 7: after 3 h away (real h 27), year 23.9 -> 26.9, Village, 7 entries, cap 5
+   Peek: "The settlement was named Glasswick"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.80] The settlement was named Glasswick
+        Fen Marsh suggested a name for the settlement: Glasswick. It stuck.
+   2. [Story/Good/role 0.75] Bram Vane the woodcutter became miller of the…
+        Bram Vane the woodcutter became miller of the village. The sails turned a little faster that week.
+   3. [Story/Good/milestone 0.75] The first windmill
+        Hob Barrow built a windmill, though nobody is sure where the wind comes from.
+   4. [Story/Neutral/friends 0.58] Ada and Bram fell out
+        Ada Barrow and Bram Vane fell out over a song lyric. They no longer share a bench.
+   5. [Story/Good/office 0.50] Hob Barrow, the village's headman, had extra…
+        Hob Barrow, the village's headman, had extra lanterns hung round the green, and a fence put round the fence.
+   Also: The settlement celebrated 25 years in the glass… / Gus Marsh baked bread for every hearth after the…
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 27.2): "Everyone keeps going down to look at the new water."
+
+== Return 8: after 3 h away (real h 30), year 27.2 -> 30.2, Village, 5 entries, cap 5
+   Peek: "Gus answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Gus answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+   2. [Story/Good/family 0.70] Gus married Ada
+        Gus Marsh married Ada Barrow by the winter fire.
+   3. [Story/Good/friends 0.50] Ada and Quill became friends
+        Ada Barrow and Quill Barrow became fast friends after a long night of storytelling.
+   4. [Story/Good/people 0.50] Quill became Fen's apprentice
+        Fen Marsh took young Quill Barrow as an apprentice.
+   5. [Story/Good/trait 0.45] Ada Barrow called the goats home from the far…
+        Ada Barrow called the goats home from the far side of the glass.
+
+== Return 9: after 3 h away (real h 33), year 30.3 -> 33.3, Village, 7 entries, cap 5
+   Peek: "Ada and Gus had a baby, Yara"   | teaser under it: (none)
+   1. [Story/Good/family 0.60] Ada and Gus had a baby, Yara
+        Yara Marsh was born to Ada Barrow and Gus Marsh.
+   2. [Story/Neutral/role 0.78] Quill Barrow stood against headman Hob Barrow…
+        Quill Barrow stood against headman Hob Barrow and won on a tied vote. Hob Barrow went home and shut the door very loudly.
+   3. [Story/Good/family 0.60] Ada and Gus had a baby, Hester
+        Hester Marsh was born to Ada Barrow and Gus Marsh.
+   4. [Story/Neutral/trait 0.60] Fen got lost in the hills
+        Fen Marsh got lost in the hills for three days and came back with a jar of honey.
+   5. [Story/Neutral/world 0.42] A thick fog sat in the glass for days
+        A thick fog sat in the glass for days. Hob Barrow said good morning to a bush.
+   Also: Gus and Ada had a baby, Ilse / Bram Vane counted the people of the village…
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 33.5): "Bram Vane and Ada Barrow aren't speaking again."
+
+== Return 10: after 8 h away (real h 42), year 33.5 -> 41.5, Village, 17 entries, cap 5
+   Peek: "Hob answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Hob answered the Keeper
+        After the Keeper dug a channel from the pond, Hob Barrow planted a new field beside it.
+   2. [Story/Good/milestone 0.75] The first market
+        Hob Barrow opened a market. Haggling began immediately.
+   3. [Story/Good/role 0.70] When Bram Vane died, the mill passed to their…
+        When Bram Vane died, the mill passed to their child Ada Barrow, who had swept its floor since they were small.
+   4. [Story/Neutral/trait 0.60] Gus got lost in the hills
+        Gus Marsh got lost in the hills for three days and came back with a crown made of twigs.
+   5. [Legend/Sad/legend 0.85] Bram died
+        (at the fire: Bram Vane and Ada Barrow aren't speaking again.)
+        Bram Vane, the worrier, died of old age at 57.
+        (They never did make up.)
+   Also: Gus and Ada had a baby, Wim / Fen Marsh dreamt they climbed to the edge of the… / Quill Barrow, the village's headman, set long… (+9 more)
+
+== Return 11: after 3 h away (real h 45), year 41.5 -> 44.5, Village, 1 entries, cap 5
+   Peek: "Ada Barrow the miller called the whole village…"   | teaser under it: (none)
+   1. [Story/Good/office 0.50] Ada Barrow the miller called the whole village…
+        Ada Barrow the miller called the whole village to the mill to say a roof was fixed. It was Gus Marsh's roof.
+
+== Return 12: after 3 h away (real h 48), year 44.6 -> 47.6, Village, 5 entries, cap 5
+   Peek: "Yara Marsh threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Yara Marsh threw a harvest festival
+        Yara Marsh threw a harvest festival. The pies ran out long before the music did.
+   2. [Story/Neutral/role 0.78] Gus Marsh stood against headman Quill Barrow and…
+        Gus Marsh stood against headman Quill Barrow and won, 3 votes to 1. Quill Barrow spent the evening telling the goats it was rigged.
+   3. [Story/Good/office 0.50] Ada Barrow, the village's miller, gave a toast…
+        Ada Barrow, the village's miller, gave a toast at the mill so loud the ducks took off.
+   4. [Story/Good/office 0.50] Gus Marsh, the village's headman, set long…
+        Gus Marsh, the village's headman, set long tables at the green, and everyone ate together.
+   5. [Legend/Sad/legend 0.85] Hob died
+        Hob Barrow, the worrier, died of old age at 63.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 47.8): "Everyone keeps going down to look at the new water."
+
+== Return 13: after 3 h away (real h 51), year 47.8 -> 50.8, Village, 3 entries, cap 5
+   Peek: "Gus answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Gus answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+   2. [Story/Good/milestone 0.65] Glasswick celebrated 50 years in the glass with…
+        Glasswick celebrated 50 years in the glass with a feast.
+   3. [Story/Good/trait 0.50] Gus Marsh took in a stray goat
+        Gus Marsh took in a stray goat. It follows them everywhere now.
+
+== Return 14: after 3 h away (real h 54), year 50.8 -> 53.8, Village, 4 entries, cap 5
+   Peek: "Ilse Marsh climbed the windmill roof in a storm…"   | teaser under it: (none)
+   1. [Story/Good/trait 0.50] Ilse Marsh climbed the windmill roof in a storm…
+        Ilse Marsh climbed the windmill roof in a storm to save a kitten.
+   2. [Story/Good/office 0.50] Gus Marsh the headman visited every old and sick…
+        Gus Marsh the headman visited every old and sick person in the village before the winter.
+   3. [Story/Good/office 0.50] Gus Marsh the headman sat Quill Barrow and Ilse…
+        Gus Marsh the headman sat Quill Barrow and Ilse Marsh down with a pot of stew until they stopped arguing about a goat.
+   4. [Legend/Sad/legend 0.85] Fen died
+        Fen Marsh, the dreamer, died of old age at 75.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 54.1): "Gus Marsh has been cooking enough stew for the whole village."
+
+== Return 15: after 48 h away (real h 102), year 54.1 -> 72.1, Village, 38 entries, cap 7
+   Peek: "Gus answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Gus answered the Keeper
+        After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+   2. [Story/Neutral/role 0.78] Quill Barrow stood against headman Gus Marsh and…
+        Quill Barrow stood against headman Gus Marsh and won, 2 votes to 1. Gus Marsh took a very long walk round the pond.
+   3. [Story/Good/milestone 0.75] The first tavern
+        Ilse Marsh opened a tavern. Productivity dipped.
+   4. [Story/Good/office 0.70] Gus Marsh, the village's headman, walked Ilse…
+        (at the fire: Gus Marsh has been cooking enough stew for the whole village.)
+        Gus Marsh, the village's headman, walked Ilse Marsh and Ada Barrow round the pond until they forgot what the row was about.
+   5. [Story/Neutral/trait 0.60] Ada got lost in the hills
+        Ada Barrow got lost in the hills for three days and came back with a feather as long as an arm.
+   6. [Story/Good/family 0.60] Yara had a baby, Hob
+        Hob Marsh was born to Yara Marsh.
+   7. [Legend/Sad/legend 0.85] Ada died
+        Ada Barrow, the loud, died of old age at 66.
+   Also: Glasswick grew to 20 people / When Ada Barrow died, the mill passed to their… / Hester Marsh threw a harvest festival (+27 more)
+
+== Return 16: after 3 h away (real h 105), year 72.2 -> 75.2, Village, 6 entries, cap 5
+   Peek: "Glasswick celebrated 75 years in the glass with…"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Glasswick celebrated 75 years in the glass with…
+        Glasswick celebrated 75 years in the glass with a feast.
+   2. [Story/Good/friends 0.55] Quill and Wim made up
+        Quill Barrow and Wim Marsh made peace while looking for the same lost goat. They found it together.
+   3. [Story/Good/people 0.50] Nils became Gus's apprentice
+        Gus Marsh took young Nils Marsh as an apprentice.
+   4. [Story/Good/people 0.50] Juna became Gus's apprentice
+        Gus Marsh took young Juna Marsh as an apprentice.
+   5. [Story/Good/world 0.45] A second family of ducks arrived and fell out…
+        A second family of ducks arrived and fell out with the first. The pond is split down the middle.
+   Also: A thick fog sat in the glass for days
+
+== Return 17: after 3 h away (real h 108), year 75.3 -> 78.3, Village, 6 entries, cap 5
+   Peek: "Alma had a baby, Otto"   | teaser under it: (none)
+   1. [Story/Good/family 0.60] Alma had a baby, Otto
+        Otto Marsh was born to Alma Marsh.
+   2. [Story/Neutral/trait 0.60] Nils got lost in the hills
+        Nils Marsh got lost in the hills for three days and came back with a crown made of twigs.
+   3. [Story/Good/office 0.50] Yara Marsh, the village's miller, ended a speech…
+        Yara Marsh, the village's miller, ended a speech at the mill with a joke about the goats. Even the goats laughed.
+   4. [Story/Good/office 0.50] Yara Marsh the miller held a feast day with…
+        Yara Marsh the miller held a feast day with games at the mill. Quill Barrow won the sack race by falling over the line.
+   5. [Legend/Sad/legend 0.85] Gus died
+        Gus Marsh, the kind, died of old age at 67.
+   Also: Wim Marsh sneezed so hard the birds left every…
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 78.5): "The craftsfolk talk of guilds, and of a bigger market."
+
+== Return 18: after 3 h away (real h 112), year 78.5 -> 81.5, Village, 4 entries, cap 5
+   Peek: "Hester answered the Keeper"   | teaser under it: "The craftsfolk talk of guilds, and of a bigger market."
+   1. [Keeper/Good/keeper 0.90] Hester answered the Keeper
+        After the Keeper dug a channel from the pond, Hester Marsh planted a new field beside it.
+   2. [Story/Neutral/role 0.78] Hester Marsh stood against headman Quill Barrow…
+        Hester Marsh stood against headman Quill Barrow and won, 3 votes to 0. Quill Barrow went home and shut the door very loudly.
+   3. [Story/Good/world 0.55] Another fine harvest
+        Another fine harvest: there were turnips in places turnips have no business being.
+   4. [Story/Good/office 0.50] Quill Barrow, the village's headman, set long…
+        Quill Barrow, the village's headman, set long tables at the green, and everyone ate together.
+
+== Return 19: after 3 h away (real h 115), year 81.5 -> 84.5, Village (next era READY), 7 entries, cap 5
+   Peek: "Glasswick is ready for a new age"   | teaser under it: (none)
+   1. [EraReady/Good/era 1.00] Glasswick is ready for a new age
+        (at the fire: The craftsfolk talk of guilds, and of a bigger market.)
+        Glasswick hums with new trades. Everyone feels a bigger change coming.
+   2. [Story/Good/milestone 0.65] Alma Marsh threw a harvest festival
+        Alma Marsh threw a harvest festival. Someone danced with a goat, and the goat led. Yara Marsh the miller organised the sack race.
+   3. [Story/Good/trait 0.52] Yara Marsh painted the cottage roof bright pink…
+        Yara Marsh painted the cottage roof bright pink overnight.
+   4. [Story/Neutral/world 0.50] A storm shook the glass
+        A storm shook the glass. By morning the cottage smelled of wet dog, and everyone was fine.
+   5. [Story/Good/office 0.50] Hester Marsh the headman kept the meeting at the…
+        Hester Marsh the headman kept the meeting at the green going until everyone agreed with them. It took two days.
+   Also: Nils Marsh chased a fox away from the hens with… / Hester Marsh refused to move for the new path
+   ** The player watches the era moment: now Town (year 84.5).
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 84.8): "The craftsfolk keep going out to tap the new rock."
+
+== Return 20: after 8 h away (real h 123), year 84.8 -> 92.8, Town, 18 entries, cap 5
+   Peek: "Alma answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Alma answered the Keeper
+        (at the fire: The craftsfolk keep going out to tap the new rock.)
+        After the Keeper raised an outcrop, Alma Marsh opened a workshop for the new stone beside it.
+   2. [Story/Neutral/role 0.78] Gus Stile and Hob Marsh both wanted to be…
+        Gus Stile and Hob Marsh both wanted to be guildmaster. The town chose Gus Stile, 2 votes to 1; Hob Marsh went home and shut the door very loudly.
+   3. [Story/Good/family 0.70] Gus married Nils
+        Gus Stile married Nils Marsh among the spring blossoms.
+   4. [Legend/Sad/legend 0.85] Quill died
+        Quill Barrow, the kind, died of old age at 74.
+   5. [Legend/Sad/legend 0.85] Ilse died
+        Ilse Marsh, the brave, died of old age at 61.
+        + Ilse Marsh died as guildmaster after 7 years. The town left the seat empty until spring.
+   Also: Hob Marsh threw a harvest festival / Alma had a baby, Bo / Juna had a baby, Cela (+9 more)
+
+== Return 21: after 3 h away (real h 126), year 92.8 -> 95.8, Town, 10 entries, cap 5
+   Peek: "When old Hester Marsh died, their eldest child…"   | teaser under it: (none)
+   1. [Story/Good/role 0.80] When old Hester Marsh died, their eldest child…
+        When old Hester Marsh died, their eldest child, Nils Marsh, became lord of the town.
+   2. [Story/Good/family 0.60] Juna had a baby, Ada
+        Ada Marsh was born to Juna Marsh.
+   3. [Story/Good/people 0.55] A newcomer, Ulf Gale, the brave, joined the town
+        A newcomer, Ulf Gale, the brave, joined the town.
+   4. [Legend/Sad/legend 0.85] Hester died
+        Hester Marsh, the stubborn, died of old age at 62.
+   5. [Legend/Sad/legend 0.85] Wim died
+        Wim Marsh, the loud, died of old age at 60.
+   Also: Juna Marsh and Hob Marsh each built a chimney to… / Lord Nils Marsh made Ulf Gale merchant / Hester Marsh, the town's lord, refused to move… (+2 more)
+
+== Return 22: after 3 h away (real h 129), year 95.8 -> 98.8, Town, 10 entries, cap 5
+   Peek: "When Yara Marsh died, the inn passed to their…"   | teaser under it: (none)
+   1. [Story/Good/role 0.70] When Yara Marsh died, the inn passed to their…
+        When Yara Marsh died, the inn passed to their apprentice Otto Marsh, who had carried its barrels since they were small.
+   2. [Story/Good/milestone 0.65] Nils Marsh threw a harvest festival
+        Nils Marsh threw a harvest festival. There was dancing until dawn. Juna Marsh the master builder sang until the stars came out.
+   3. [Story/Good/family 0.60] Nils and Gus had a baby, Hester
+        Hester Stile was born to Nils Marsh and Gus Stile.
+   4. [Story/Neutral/trait 0.60] Nils got lost in the hills
+        Nils Marsh got lost in the hills for three days and came back with a jar of honey. Ulf Gale the merchant led the search party, which came home with firewood and a goat as well.
+   5. [Legend/Sad/legend 0.85] Yara died
+        Yara Marsh, the joker, died of old age at 67.
+   Also: Gus and Nils had a baby, Pim / A newcomer, Flora Dale, the kind, joined the town / Hob Marsh climbed the lumber mill roof in a… (+2 more)
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 99.1): "Nils Marsh wants to see what's past the far edge of the town."
+
+== Return 23: after 3 h away (real h 132), year 99.1 -> 102.1, Town, 12 entries, cap 5
+   Peek: "Gus answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Gus answered the Keeper
+        After the Keeper raised an outcrop, Gus Stile opened a workshop for the new stone beside it.
+   2. [Story/Good/family 0.70] Hob married Ulf
+        Hob Marsh married Ulf Gale among the spring blossoms. Juna Marsh the master builder sang them down the path.
+   3. [Story/Good/family 0.70] Flora married Otto
+        Flora Dale married Otto Marsh at the harvest dance. Juna Marsh the master builder sang them down the path.
+   4. [Story/Good/office 0.70] Nils Marsh, the town's lord, led an expedition…
+        (at the fire: Nils Marsh wants to see what's past the far edge of the town.)
+        Nils Marsh, the town's lord, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+   5. [Story/Good/milestone 0.65] Glasswick celebrated 100 years in the glass with…
+        Glasswick celebrated 100 years in the glass with a feast.
+   Also: Otto Marsh the innkeeper led a walk up the hill… / Nils Marsh climbed the house roof in a storm to… / Bo Marsh climbed the lumber mill roof in a storm… (+4 more)
+
+== Return 24: after 3 h away (real h 135), year 102.2 -> 105.2, Town, 5 entries, cap 5
+   Peek: "Juna Marsh sang at the house until the rafters…"   | teaser under it: (none)
+   1. [Story/Good/trait 0.50] Juna Marsh sang at the house until the rafters…
+        Juna Marsh sang at the house until the rafters shook.
+   2. [Story/Neutral/role 0.78] Hob Marsh stood against guildmaster Gus Stile…
+        Hob Marsh stood against guildmaster Gus Stile and won, 3 votes to 2. Gus Stile took a very long walk round the pond.
+   3. [Story/Neutral/trait 0.60] Ulf got lost in the hills
+        Ulf Gale got lost in the hills for three days and came back with a jar of honey. Nils Marsh the lord led the search party, which came home with firewood and a goat as well.
+   4. [Story/Neutral/friends 0.58] Flora and Alma fell out
+        Flora Dale and Alma Marsh fell out over whose turn it was at the well. They no longer share a bench.
+   5. [Story/Neutral/friends 0.58] Hob and Juna fell out
+        Hob Marsh and Juna Marsh fell out over whose turn it was at the well. They no longer share a bench.
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 105.4): "The craftsfolk keep going out to tap the new rock."
+
+== Return 25: after 8 h away (real h 143), year 105.4 -> 113.4, Town, 13 entries, cap 5
+   Peek: "Ulf answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Ulf answered the Keeper
+        (at the fire: The craftsfolk keep going out to tap the new rock.)
+        After the Keeper raised an outcrop, Ulf Gale opened a workshop for the new stone beside it.
+   2. [Story/Neutral/friends 0.58] Ulf and Otto fell out
+        Ulf Gale and Otto Marsh fell out over the best way to bake bread. They no longer share a bench.
+   3. [Story/Good/trait 0.55] Cela Marsh planted flowers around the tavern
+        Cela Marsh planted flowers around the tavern. The bees approve.
+   4. [Story/Neutral/world 0.50] Thunder rolled round the glass all night
+        Thunder rolled round the glass all night. Everyone squeezed into the windmill and told stories till it passed.
+   5. [Story/Good/office 0.50] Otto Marsh, the town's innkeeper, announced a…
+        Otto Marsh, the town's innkeeper, announced a tower tall enough to see over the glass. They built the first step.
+   Also: Juna Marsh, the town's master builder, called a… / Ulf Gale, the town's merchant, led an expedition… / Alma Marsh the captain of the watch blessed the… (+5 more)
+
+== Return 26: after 3 h away (real h 147), year 113.5 -> 116.5, Town, 5 entries, cap 5
+   Peek: "Flora Dale threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Flora Dale threw a harvest festival
+        Flora Dale threw a harvest festival. There was dancing until dawn. Juna Marsh the master builder sang until the stars came out.
+   2. [Story/Good/role 0.60] Glasswick kept Hob Marsh as guildmaster for…
+        Glasswick kept Hob Marsh as guildmaster for another twelve years. Bo Marsh asked for a recount of all 7 votes.
+   3. [Story/Good/office 0.50] Hob Marsh, the town's guildmaster, led an…
+        Hob Marsh, the town's guildmaster, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+   4. [Story/Good/office 0.50] Juna Marsh the master builder sang Hob Marsh and…
+        Juna Marsh the master builder sang Hob Marsh and Alma Marsh through supper at the timber yard, and then everyone else too.
+   5. [Legend/Sad/legend 0.85] Gus died
+        Gus Stile, the loud, died of old age at 59.
+
+== Return 27: after 3 h away (real h 150), year 116.5 -> 119.5, Town, 3 entries, cap 5
+   Peek: "Cela married Pim"   | teaser under it: (none)
+   1. [Story/Good/family 0.70] Cela married Pim
+        Cela Marsh married Pim Stile by the winter fire. Juna Marsh the master builder sang them down the path.
+   2. [Story/Good/trait 0.55] Alma Marsh planted flowers around the house
+        Alma Marsh planted flowers around the house. The bees approve.
+   3. [Story/Neutral/world 0.50] A storm shook the glass
+        A storm shook the glass. By morning the house smelled of wet dog, and everyone was fine.
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 119.8): "Alma Marsh and Flora Dale aren't speaking again."
+
+== Return 28: after 3 h away (real h 153), year 119.8 -> 122.8, Town, 6 entries, cap 5
+   Peek: "Alma answered the Keeper"   | teaser under it: "Alma Marsh and Flora Dale aren't speaking again."
+   1. [Keeper/Good/keeper 0.90] Alma answered the Keeper
+        After the Keeper raised an outcrop, Alma Marsh opened a workshop for the new stone beside it.
+   2. [Story/Good/family 0.70] Ada married Hester
+        Ada Marsh married Hester Stile under the summer sky.
+   3. [Story/Good/role 0.65] Pim Stile and Bo Marsh each built a chimney to…
+        Pim Stile and Bo Marsh each built a chimney to prove who should be master builder. Pim Stile's is still standing.
+   4. [Story/Good/office 0.50] The timber yard sprouted a weathervane, a bell…
+        The timber yard sprouted a weathervane, a bell and a little crank. Pim Stile the master builder isn't finished.
+   5. [Legend/Sad/legend 0.85] Juna died
+        Juna Marsh, the singer, died of old age at 56.
+        + Juna Marsh died as master builder after 25 years. The town left the seat empty until spring.
+
+== Teaser threads (said at the evening talk) and how they ended
+  Y  0 [office] Hob Barrow has been counting the lanterns. And then counting them again.
+        -> PaidOff Y1: Hob Barrow, the camp's chief, had extra lanterns hung round the camp fire, and a fence put round the fence.
+  Y  6 [gift] The gatherers keep checking the wet ground.
+        -> PaidOff Y8: After the Keeper's rain, Fen Marsh staked out new gathering grounds.
+  Y 12 [era] The elders talk about planting seeds and staying put.
+        -> PaidOff Y18: The settlement is restless. The elders talk of staying put and sowing seed; something is about to change.
+  Y 27 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y28: After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+  Y 33 [rivalry] Bram Vane and Ada Barrow aren't speaking again.
+        -> Died (They never did make up.)
+  Y 47 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y49: After the Keeper dug a channel from the pond, Gus Marsh planted a new field beside it.
+  Y 54 [office] Gus Marsh has been cooking enough stew for the whole village.
+        -> PaidOff Y57: Gus Marsh, the village's headman, walked Ilse Marsh and Ada Barrow round the pond until they forgot what the row was about.
+  Y 78 [era] The craftsfolk talk of guilds, and of a bigger market.
+        -> PaidOff Y82: Glasswick hums with new trades. Everyone feels a bigger change coming.
+  Y 84 [gift] The craftsfolk keep going out to tap the new rock.
+        -> PaidOff Y86: After the Keeper raised an outcrop, Alma Marsh opened a workshop for the new stone beside it.
+  Y 99 [office] Nils Marsh wants to see what's past the far edge of the town.
+        -> PaidOff Y101: Nils Marsh, the town's lord, led an expedition to the far edge, where the world turns to glass. They came back with stories.
+  Y105 [gift] The craftsfolk keep going out to tap the new rock.
+        -> PaidOff Y106: After the Keeper raised an outcrop, Ulf Gale opened a workshop for the new stone beside it.
+  Y119 [rivalry] Alma Marsh and Flora Dale aren't speaking again.
+        -> Open
