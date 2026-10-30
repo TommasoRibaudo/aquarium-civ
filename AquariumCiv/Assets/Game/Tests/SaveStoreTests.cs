@@ -94,11 +94,32 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void AVersion1SaveFromBeforePlacementLoadsAndGetsItsLots()
+        {
+            // #32: a v1 save has buildings with slots and no settle data. It loads as v2 and the sim places it once.
+            var cfg = new SimConfig { settle = false };
+            var old = new SimCore(cfg, SimCore.NewWorld(42, cfg));
+            old.Advance(30);
+            Directory.CreateDirectory(dir);
+            var oldJson = JsonUtility.ToJson(old.State);
+            File.WriteAllText(path, "{\"v\":1,\"lastSeenUtc\":\"2026-10-29T10:00:00.0000000Z\",\"state\":" + oldJson + "}");
+            Assert.AreEqual(SaveStore.LoadResult.Loaded, SaveStore.Read(path, out var e));
+            Assert.AreEqual(2, e.v);
+            Assert.AreEqual(0, e.state.settle.version, "not settled until the sim is made");
+            var sim = new SimCore(new SimConfig(), e.state);
+            Assert.AreEqual(AquariumCiv.Sim.Settle.SettleState.Version, sim.State.settle.version);
+            foreach (var b in sim.State.buildings) Assert.AreNotEqual(0, b.lotId, b.type);
+            SaveStore.Write(path, sim.State, Now);
+            SaveStore.Read(path, out var again);
+            Assert.AreEqual(JsonUtility.ToJson(sim.State), JsonUtility.ToJson(again.state), "the placed box saves and loads as it is");
+        }
+
+        [Test]
         public void ASaveFromANewerBuildIsRefused()
         {
             var sim = World();
             SaveStore.Write(path, sim.State, Now);
-            File.WriteAllText(path, File.ReadAllText(path).Replace("\"v\":1", "\"v\":99"));
+            File.WriteAllText(path, File.ReadAllText(path).Replace("\"v\":" + SaveStore.CurrentVersion, "\"v\":99"));
             Assert.AreEqual(SaveStore.LoadResult.TooNew, SaveStore.Read(path, out var e));
             Assert.IsNull(e);
         }

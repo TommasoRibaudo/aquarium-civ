@@ -17,7 +17,7 @@ namespace AquariumCiv.Game
     /// </summary>
     public static class SaveStore
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
         public const double MaxAwayHours = 30 * 24;
 
         [Serializable]
@@ -34,6 +34,8 @@ namespace AquariumCiv.Game
         static readonly Action<Envelope>[] Migrations =
         {
             e => { }, // 0 → 1: prototype saves; same fields, only the version is new
+            e => { }, // 1 → 2 (#32, placement): the new state.settle reads as unsettled (version 0); the sim gives every
+                      // building a lot from its old slot order once, when the SimCore is made (Sim/Settle, Settlement.Found)
         };
 
         public static void Write(string path, SimState state, DateTime nowUtc)
