@@ -136,6 +136,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
         [Test]
         public void Criterion2_NudgeAnswers_Within1Unit()
         {
+            Assert.Ignore("Lab result frozen at round 2 (growth-lab.md). The slice sim has grown since (jobs, roles, cards, care), which shifts these numbers; the live checks are Assets/Game/Tests/SettleTests (#32).");
             const int n = 30;
             foreach (var kind in SimCore.NudgeKind.All)
             {
@@ -156,6 +157,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
         [Test]
         public void Criterion6_Cost()
         {
+            Assert.Ignore("Lab result frozen at round 2 (growth-lab.md). The slice sim has grown since (jobs, roles, cards, care), which shifts these numbers; the live checks are Assets/Game/Tests/SettleTests (#32).");
             // Warm up (JIT), then measure a full 120-year run and a 576-month catch-up from year 60.
             new GrowthWorld(3, 0, Variant.Organic) { keepSnapshots = false }.RunToYear(5);
             var w = new GrowthWorld(7, 0, Variant.Organic, GrowthChecks.DefaultScript(0)) { keepSnapshots = false };
@@ -214,6 +216,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
         [Test]
         public void Cluster_Criterion4_Sanity_3x120Years()
         {
+            Assert.Ignore("Lab result frozen at round 2 (growth-lab.md). The slice sim has grown since (jobs, roles, cards, care), which shifts these numbers; the live checks are Assets/Game/Tests/SettleTests (#32).");
             foreach (var (seed, preset) in Runs)
             {
                 var w = Run(seed, preset, Variant.Cluster);
@@ -275,6 +278,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
         [Test]
         public void Cluster_Criterion6_Cost()
         {
+            Assert.Ignore("Lab result frozen at round 2 (growth-lab.md). The slice sim has grown since (jobs, roles, cards, care), which shifts these numbers; the live checks are Assets/Game/Tests/SettleTests (#32).");
             new GrowthWorld(3, 0, Variant.Cluster) { keepSnapshots = false }.RunToYear(5);
             var w = new GrowthWorld(7, 0, Variant.Cluster, GrowthChecks.DefaultScript(0)) { keepSnapshots = false };
             w.RunToYear(120);
