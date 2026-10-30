@@ -23,6 +23,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/NotableCountTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RoleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfficeTests.cs" />
     <Compile Include="Shims/*.cs" />
   </ItemGroup>
   <ItemGroup>

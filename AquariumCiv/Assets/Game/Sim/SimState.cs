@@ -254,6 +254,7 @@ namespace AquariumCiv.Sim
         public long eraStartMonth;      // month the current era began
         public long eraReadyMonth = -1; // month eraReady was set (-1 = not ready)
         public List<RoleSeat> roles = new(); // the important roles and their holders (SimCore.Roles.cs, #27)
+        public int termLineNextId = SimCore.TermLineIdBase; // term lines' own ids (SimCore.Office.cs, #28), so the shared ids never shift
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

@@ -107,6 +107,7 @@ namespace AquariumCiv.Sim
             EraStep(); // no dice: only marks the next era ready (SimCore.Eras.cs)
             JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
+            OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
         }
 
         void TryBuild()
@@ -318,6 +319,7 @@ namespace AquariumCiv.Sim
 
         public ChronicleEntry Chronicle(string kind, string text, float salience, int notableId = -1)
         {
+            text = TermCoda(kind, text, notableId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
             var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId };
             State.chronicle.Add(e);
             Chronicled?.Invoke(e);
