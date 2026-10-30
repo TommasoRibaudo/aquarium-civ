@@ -22,9 +22,13 @@ namespace AquariumCiv.Sim
             "the gardener", "the grump", "the singer", "the tinkerer", "the worrier", "the joker"
         };
 
-        public static string FirstBuildingLine(string type, Notable by)
+        public static string FirstBuildingLine(string type, Notable by, Era era = Era.Village)
         {
             string who = by != null ? by.FullName : "The people";
+            // The camp gathers and stacks wood; it sows nothing yet (decisions 2026-10-29, #23: farms and lumber mills exist in
+            // the camp but look different, and the village era is "staying put and sowing seed"). #61.
+            if (era == Era.Camp && type == BuildingType.Farm) return $"{who} marked out the first gathering grounds, where the berries grow thickest.";
+            if (era == Era.Camp && type == BuildingType.Lumbermill) return $"{who} started a woodpile by the trees, and everyone added to it.";
             return type switch
             {
                 BuildingType.Hut => $"{who} raised the first proper hut.",

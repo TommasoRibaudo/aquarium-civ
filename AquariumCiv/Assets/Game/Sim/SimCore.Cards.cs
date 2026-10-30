@@ -347,7 +347,13 @@ namespace AquariumCiv.Sim
             return i > 0 ? text.Substring(0, i) : text;
         }
 
-        static string Clip(string s) => s.Length <= 50 ? s : s.Substring(0, 49).TrimEnd(' ', ',') + "…";
+        /// <summary>At most ~50 characters, cut at a word (#61: "at the camp f…" read as a typo).</summary>
+        static string Clip(string s)
+        {
+            if (s.Length <= 50) return s;
+            int cut = s.LastIndexOf(' ', 48);
+            return (cut > 20 ? s.Substring(0, cut) : s.Substring(0, 49)).TrimEnd(' ', ',', ';', ':') + "…";
+        }
 
         // ---------- annotation: links and teaser resolution ----------
         /// <summary>End of Step (no dice): brings the card records up to date. Also called by every query.</summary>
@@ -657,7 +663,8 @@ namespace AquariumCiv.Sim
             if (office != null) yield return (ThreadSource.Office, office, holder.id, -1, -1, "");
 
             // Nothing pending: a slice of life in the people's own words for their glass stage (§5). Takes turns.
-            var lines = SliceLines[GlassStage - 1];
+            // Stage 3 says "glass" only once the Lens is set up (decisions 2026-10-29, #58; #61): its early lines are the wall.
+            var lines = GlassStage == 3 && !GlassNudged ? EarlyTownSliceLines : SliceLines[GlassStage - 1];
             int told = s.threads.Count(t => t.source == ThreadSource.Slice);
             var kid = adults.Count == 0 ? null : adults[told % adults.Count];
             string line = lines[told % lines.Length].Replace("{0}", kid?.FullName ?? "Someone").Replace("{1}", seat);
@@ -689,6 +696,16 @@ namespace AquariumCiv.Sim
                 "The scholars argue at the {1}: one Keeper, or many?",
                 "{0} has drawn a map with four edges. Each says: here be glass.",
             },
+        };
+
+        /// <summary>Stage 3 before the Lens (relics-and-glass-voice.md line bank 29–31): the scholars study "the wall"; nobody
+        /// says glass, and there is no lens to ask a bigger one of.</summary>
+        static readonly string[] EarlyTownSliceLines =
+        {
+            "The scholars say the wall is not sky. It is a thing, and things can be measured.",
+            "{0} wants to measure the Keeper. The priest wants them to ask first.",
+            "The scholars argue at the {1}: one Keeper, or many?",
+            "{0} says if there's a room out there, there's a market out there.",
         };
 
         // ---------- the glass stage ----------

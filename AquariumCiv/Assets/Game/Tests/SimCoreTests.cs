@@ -43,7 +43,10 @@ namespace AquariumCiv.Tests
         /// ids, so nothing else changes (JobTests.Economy is unchanged).
         /// Cards (#59): the lines that know too much wait for the town (a stand-in is told in their place) and the strange
         /// light is the Bright One's until the Lamp is used: text only, swapped after the dice, so with the cards off the
-        /// number is the old one (and CardsTests shows the economy is the same).</summary>
+        /// number is the old one (and CardsTests shows the economy is the same).
+        /// Read-through (#61): each era's own words, repeated events told in turn, roofed buildings for storms and pranks,
+        /// codas never about the holder's own feud, the gossip's pairs, seasoned priests: text and roles only, the dice are
+        /// drawn as before (JobTests.Economy and the pre-roles pins are unchanged).</summary>
         [Test]
         public void SliceWorldFingerprint()
         {
@@ -51,11 +54,11 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(2575113388u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(1244585753u, Fingerprint(sim.State), "slice world fingerprint");
             var before = NewSim(1234);
             before.CardsOn = false;
             before.Advance(48);
-            Assert.AreEqual(3061733244u, Fingerprint(before.State), "the same world with #59's text swaps off");
+            Assert.AreEqual(1553613139u, Fingerprint(before.State), "the same world with #59's text swaps off");
         }
 
         [Test]

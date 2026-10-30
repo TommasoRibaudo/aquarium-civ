@@ -244,7 +244,7 @@ namespace AquariumCiv.Sim
             if (milestone > s.lastPopMilestone && milestone > 0)
             {
                 s.lastPopMilestone = milestone;
-                Chronicle("milestone", $"The settlement grew to {milestone} people.", 0.7f);
+                Chronicle("milestone", $"{Place} grew to {milestone} people.", 0.7f); // the name once it has one (#61)
             }
             long year = s.month / SimConfig.MonthsPerYear;
             if (winter && s.food < s.population && year - s.lastLeanYear >= 5)
@@ -259,7 +259,7 @@ namespace AquariumCiv.Sim
                 // A festival makes the chronicle at most every 6 years (they still happen and lift the mood).
                 if (!Fresh("festival", -1, 6)) return;
                 Chronicle("festival", host != null
-                    ? $"{host.FullName} threw a harvest festival. There was dancing until dawn."
+                    ? string.Format(Nth(FestivalLines, Told("festival", host.id) + host.id), host.FullName) // told in turn (#61)
                     : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
         }
@@ -302,7 +302,7 @@ namespace AquariumCiv.Sim
                 if (s.month > 0)
                 {
                     var by = AliveNotable();
-                    Chronicle("first_building", NameData.FirstBuildingLine(type, by), 0.75f, by?.id ?? -1).buildingId = b.id;
+                    Chronicle("first_building", NameData.FirstBuildingLine(type, by, s.era), 0.75f, by?.id ?? -1).buildingId = b.id;
                 }
             }
             return b;
@@ -331,10 +331,13 @@ namespace AquariumCiv.Sim
             return alive.Count == 0 ? null : State.rng.Pick(alive);
         }
 
-        public ChronicleEntry Chronicle(string kind, string text, float salience, int notableId = -1)
+        public ChronicleEntry Chronicle(string kind, string text, float salience, int notableId = -1) => Record(kind, text, salience, notableId, -1);
+
+        /// <summary>Adds an entry about one or two people (the second for a wedding, a feud...).</summary>
+        ChronicleEntry Record(string kind, string text, float salience, int notableId, int otherId)
         {
-            text = TermCoda(kind, text, notableId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
-            var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId };
+            text = TermCoda(kind, text, notableId, otherId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
+            var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
             Chronicled?.Invoke(e);
             return e;

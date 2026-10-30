@@ -479,7 +479,7 @@ namespace AquariumCiv.Tests
             Watched(off, 120);
             Watched(on, 120, s => { s.OpenTeaser(); s.ReturnCards(s.State.month - 12, 1); });
             Assert.AreEqual(Era.Town, on.State.era);
-            Assert.Greater(on.State.threads.Count, 50);
+            Assert.Greater(on.State.threads.Count, 40); // #61: term lines rest longer once told, so fewer office teasers pay off and reopen
 
             // Same runtime: the economy, the dice and the notables are identical.
             Assert.AreEqual(JobTests.Economy(off.State), JobTests.Economy(on.State), "economy, dice and notables");
