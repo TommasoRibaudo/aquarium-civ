@@ -200,7 +200,7 @@ namespace AquariumCiv.Sim
         }
 
         bool HasRoof(Building b) => b.type == BuildingType.Hut || b.type == BuildingType.Windmill || b.type == BuildingType.Tavern ||
-                                    b.type == BuildingType.Church || (b.type == BuildingType.Lumbermill && State.era > Era.Camp);
+                                    b.type == BuildingType.Church || b.type == BuildingType.Guildhall || b.type == BuildingType.Workshop || b.type == BuildingType.Shop || (b.type == BuildingType.Lumbermill && State.era > Era.Camp);
 
         /// <summary>Hook for the Lamp tool (research 10, not in the sim yet): from now on the strange light is the Keeper's lamp.</summary>
         public void KeeperLampUsed()
@@ -400,6 +400,7 @@ namespace AquariumCiv.Sim
             BuildingType.Farm => State.era == Era.Camp ? "gathering grounds" : "farm",
             BuildingType.Lumbermill => State.era == Era.Camp ? "woodpile" : "lumber mill",
             BuildingType.Church => "chapel",
+            BuildingType.Shop => "shop",
             _ => b.type.ToLowerInvariant(),
         };
 

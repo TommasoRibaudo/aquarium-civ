@@ -56,6 +56,7 @@ namespace AquariumCiv.Sim.Settle
             BuildingType.Church => LotKind.Church,
             BuildingType.Workshop => LotKind.Workshop,
             BuildingType.Guildhall => LotKind.Guildhall,
+            BuildingType.Shop => LotKind.Shop,
             _ => LotKind.Hut,
         };
 

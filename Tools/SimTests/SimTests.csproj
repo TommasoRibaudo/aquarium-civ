@@ -48,6 +48,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/TownEconomyTests.cs" />
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
     <!-- #76: Show me (target, echo plan), world bubbles in the people's voice, and their tests -->

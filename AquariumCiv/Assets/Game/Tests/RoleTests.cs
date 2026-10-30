@@ -295,7 +295,7 @@ namespace AquariumCiv.Tests
         /// wedding rules (18+, at most 12 years apart, widows may remarry) and shared family names change who can marry, so
         /// the story stream picks other stories and its weather (storms, rainbows, droughts, harvests) lands elsewhere; the
         /// economy's rules are untouched and roles still draw no dice (MeddlingWithRolesLeavesTheEconomyAlone).</summary>
-        const uint PreRoles1 = 2257443192u, PreRoles1234 = 1051165992u, PreRoles77 = 4264686827u; // first measured on 5d0fcf3 (before roles) with the float-bits hash; re-measured for #61 (see above) and for the era-change well (its building id shifts the hashed rolls)
+        const uint PreRoles1 = 3319803787u, PreRoles1234 = 2885372951u, PreRoles77 = 4264686827u; // first measured on 5d0fcf3 (before roles) with the float-bits hash; re-measured for #61 (see above), for the era-change well (its building id shifts the hashed rolls) and for the town economy (#114: workshop, guildhall, shops)
 
         [Test]
         public void TheEconomyIsWhatItWasBeforeRoles()
