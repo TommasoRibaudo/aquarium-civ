@@ -110,7 +110,7 @@ namespace AquariumCiv.View.Moments
 
             var square = Beat("square", 18f, BeatAction.SquareSpreads);
             square.audio = "cobble_taps";
-            square.camera.Add(Key(2f, MomentAnchor.Square, 25f, 40f, 0.75f));
+            square.camera.Add(Key(2f, MomentAnchor.Square, 25f, 36f, 0.55f)); // close on the cobbles and stalls
             b.Add(square);
 
             var cleared = Beat("cleared", 28f, BeatAction.ClearHearth);
@@ -120,8 +120,8 @@ namespace AquariumCiv.View.Moments
 
             var wave = Beat("wave", 35f, BeatAction.RebuildWave);
             wave.param = "town"; wave.audio = "hammer_scale"; wave.haptic = true;
-            wave.camera.Add(Key(1.5f, MomentAnchor.Square, 55f, 34f, 0.85f));
-            wave.camera.Add(Key(28f, MomentAnchor.Box, -30f, 40f, 1.05f)); // the long orbit: the whole 85° BoxCamera allows
+            wave.camera.Add(Key(1.5f, MomentAnchor.Square, 55f, 32f, 0.65f)); // close enough that each rebuild reads at phone size (P6)
+            wave.camera.Add(Key(28f, MomentAnchor.Square, -30f, 38f, 0.9f)); // the long orbit: the whole 85° BoxCamera allows, pulling back
             b.Add(wave);
 
             var lord = Beat("lord", 65f, BeatAction.LordChair);
@@ -137,7 +137,7 @@ namespace AquariumCiv.View.Moments
             var cheer = Beat("cheer", 75f, BeatAction.Cheer);
             cheer.light = MomentLight.Midday; cheer.audio = "chord";
             cheer.caption = "{place} · a town of crafts and guilds · year {year}";
-            cheer.camera.Add(Key(1.5f, MomentAnchor.Box, 28f, 30f, 0.95f));
+            cheer.camera.Add(Key(1.5f, MomentAnchor.Square, 28f, 26f, 0.6f)); // the crowd cheering on the square
             b.Add(cheer);
 
             var tool = Beat("tool", 82f, BeatAction.ToolUnlock);
