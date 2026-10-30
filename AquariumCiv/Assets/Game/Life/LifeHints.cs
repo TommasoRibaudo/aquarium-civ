@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using AquariumCiv.Sim;
 
 namespace AquariumCiv.Life
@@ -31,8 +32,8 @@ namespace AquariumCiv.Life
     }
 
     /// <summary>
-    /// Trait flavour for the planner, from #28 (the role-holder's trait colours their term). Kept to this small interface
-    /// so #28 can plug its table in; <see cref="NeutralLifeHints"/> is the default until then.
+    /// Trait flavour for the planner, from #28 (the role-holder's trait colours their term). <see cref="TermLifeHints"/>
+    /// reads #28's <see cref="TermFlavor"/>; <see cref="NeutralLifeHints"/> (no colour) is the default.
     /// </summary>
     public interface ILifeHints
     {
@@ -52,19 +53,49 @@ namespace AquariumCiv.Life
         public BoxHints Office(Notable holder, string role) => default;
     }
 
+    /// <summary>A point on a walk (world x, z on the box floor).</summary>
+    public struct Waypoint
+    {
+        public float x, z;
+        public Waypoint(float x, float z) { this.x = x; this.z = z; }
+        public override string ToString() => $"({x:0.00}, {z:0.00})";
+    }
+
     /// <summary>
-    /// World positions for abstract places, from M2's placement layer (SiteMap / Placer / PathNet). Until it exists the
-    /// planner runs on abstract places only (<see cref="NoPlacePositions"/>). When plugged in, the planner uses it for walk
-    /// lengths and for who stands near a Keeper gesture.
+    /// Where things are, from M2's placement layer (#32, Sim/Settle; <see cref="SettlePlacePositions"/>): positions and
+    /// doors of the abstract places, the walking cost and routes along the path network, and who lives where. Without it
+    /// (<see cref="NoPlacePositions"/>, or the sim's settling off) the planner runs on abstract places: a stand-in home
+    /// per family, a flat quarter hour per walk.
     /// </summary>
     public interface IPlacePositions
     {
+        /// <summary>Where the activity at a place happens (a lot's door, a field's middle, the fire, a heap). False when
+        /// the place has no spot (yet).</summary>
         bool TryGetPosition(Place place, out float x, out float z);
+
+        /// <summary>The walking cost from one place to another along the people's walking cost (paths are cheaper; lots and
+        /// the pond can't be crossed), in world units of plain ground. False when either end has no spot or there is no way.</summary>
+        bool TryWalkLength(Place from, Place to, out float length);
+
+        /// <summary>The walk itself, door to door along the path network: <paramref name="into"/> gets the cell centres from
+        /// start to end. False when either end has no spot or there is no way.</summary>
+        bool TryRoute(Place from, Place to, List<Waypoint> into);
+
+        /// <summary>The home a notable sleeps in (a sim building id) and the household's head (a notable id): children live
+        /// with a parent, partners share a home. False = no placed home; the planner uses its stand-in.</summary>
+        bool TryGetHome(Notable n, out int buildingId, out int householdId);
+
+        /// <summary>Building ids of the homes standing now, in a stable order (the crowd lives in them). Empty = stand-in.</summary>
+        void GetHomes(List<int> buildingIds);
     }
 
     public sealed class NoPlacePositions : IPlacePositions
     {
         public static readonly NoPlacePositions Instance = new NoPlacePositions();
         public bool TryGetPosition(Place place, out float x, out float z) { x = z = 0f; return false; }
+        public bool TryWalkLength(Place from, Place to, out float length) { length = 0f; return false; }
+        public bool TryRoute(Place from, Place to, List<Waypoint> into) { into?.Clear(); return false; }
+        public bool TryGetHome(Notable n, out int buildingId, out int householdId) { buildingId = householdId = -1; return false; }
+        public void GetHomes(List<int> buildingIds) => buildingIds.Clear();
     }
 }
