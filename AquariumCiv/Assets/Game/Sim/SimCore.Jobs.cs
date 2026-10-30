@@ -125,7 +125,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>Every month (end of Step): children have no job, the old retire, newcomers get one, and a job whose
         /// building is gone is swapped for the nearest. Also fixes saves from before jobs.</summary>
-        void JobsStep() => ReassignJobs(false);
+        void JobsStep() { ReassignJobs(false); FillOpenJobs(); }
 
         /// <summary>The era moved: jobs that aren't on the new era's list change, in one chronicle line.</summary>
         void JobsOnEraChange() => ReassignJobs(true);
@@ -147,6 +147,7 @@ namespace AquariumCiv.Sim
                     continue;
                 }
                 n.job = ChooseJob(n, from);
+                jobChangedMonth[n.id] = State.month;
                 if (from == JobType.None || from == JobType.Elder) continue; // a first job: the coming-of-age or rise line covers it
                 bool eraGone = !JobsOf(State.era).Contains(from);
                 if (eraChange || eraGone) (moved ??= new List<(Notable, string)>()).Add((n, from));
@@ -154,6 +155,104 @@ namespace AquariumCiv.Sim
             }
             if (moved != null) Chronicle("job_era", EraJobsLine(moved), 0.6f, moved[0].n.id);
         }
+
+
+        // ---------- an open job gets someone (#67) ----------
+        /// <summary>A notable doesn't switch again for this many months after a change (3 years).</summary>
+        const int JobChangeCooldownMonths = 36;
+
+        /// <summary>When each notable last changed job through a fill or a forced move. Not saved: after a load the
+        /// cooldown starts fresh, which only means one person may switch a little sooner.</summary>
+        readonly Dictionary<int, long> jobChangedMonth = new();
+
+        /// <summary>A job that is open (its building or land is there) but no one holds: one suitable notable takes it,
+        /// at most one a month. Trait-weighted, preferring someone from a crowded job; never an elder, a child, someone
+        /// who switched lately, or the only holder of their job. No dice, no effect on the economy.</summary>
+        void FillOpenJobs()
+        {
+            var workers = State.notables.Where(n => n.alive && n.age >= 16f && n.age < Config.retireAge).ToList();
+            if (workers.Count < 2) return;
+            foreach (var job in OpenJobs())
+            {
+                if (workers.Any(n => n.job == job)) continue;
+                var cands = workers.Where(n => !string.IsNullOrEmpty(n.job) && n.job != JobType.Elder &&
+                    workers.Count(o => o.job == n.job) >= 2 &&
+                    (!jobChangedMonth.TryGetValue(n.id, out long m) || State.month - m >= JobChangeCooldownMonths)).ToList();
+                if (cands.Count == 0) continue;
+                var weights = new float[cands.Count];
+                float total = 0;
+                for (int i = 0; i < cands.Count; i++)
+                {
+                    TraitJobs.TryGetValue(cands[i].trait ?? "", out var liked);
+                    int holders = workers.Count(o => o.job == cands[i].job);
+                    weights[i] = (liked != null && Array.IndexOf(liked, job) >= 0 ? 4f : 1f) * (holders - 1);
+                    total += weights[i];
+                }
+                float pick = JobRoll(cands[0]) * total;
+                var who = cands[^1];
+                for (int i = 0; i < cands.Count; i++)
+                    if ((pick -= weights[i]) < 0) { who = cands[i]; break; }
+                string from = who.job;
+                who.job = job;
+                jobChangedMonth[who.id] = State.month;
+                Chronicle("job_fill", $"{OpenedLabel(job)}, {who.FullName} left {LeftLabel(from)} to {Verb(job)}.", 0.5f, who.id);
+                return; // one a month: the next open job waits its turn
+            }
+        }
+
+        static string OpenedLabel(string job) => job switch
+        {
+            JobType.Farmer => "When the farm opened",
+            JobType.Baker => "When the bakery opened",
+            JobType.Brewer => "When the tavern opened",
+            JobType.Stallholder => "When the market opened",
+            JobType.Woodcutter => "When the lumber mill opened",
+            JobType.Weaver => "When the workshop opened",
+            JobType.Toolmaker => "When the camp was set",
+            _ => "When work as " + A(job) + " opened",
+        };
+
+        static string LeftLabel(string job) => job switch
+        {
+            JobType.Gatherer => "the foraging",
+            JobType.Hunter => "the hunt",
+            JobType.Fisher => "the pond",
+            JobType.Woodcutter => "the trees",
+            JobType.Farmer => "the fields",
+            JobType.Shepherd => "the flock",
+            JobType.Beekeeper => "the hives",
+            JobType.Potter => "the clay",
+            JobType.Brewer => "the brewing",
+            JobType.Mason => "the stone",
+            JobType.Smith => "the forge",
+            JobType.Weaver => "the loom",
+            JobType.Baker => "the oven",
+            JobType.Stallholder => "the stall",
+            JobType.Sweeper => "the broom",
+            JobType.Toolmaker => "the tool bench",
+            _ => "their work",
+        };
+
+        static string Verb(string job) => job switch
+        {
+            JobType.Gatherer => "gather",
+            JobType.Hunter => "hunt",
+            JobType.Fisher => "fish",
+            JobType.Woodcutter => "cut wood",
+            JobType.Toolmaker => "make tools",
+            JobType.Farmer => "farm",
+            JobType.Shepherd => "tend the flock",
+            JobType.Beekeeper => "keep bees",
+            JobType.Potter => "throw pots",
+            JobType.Brewer => "brew",
+            JobType.Mason => "cut stone",
+            JobType.Smith => "forge iron",
+            JobType.Weaver => "weave",
+            JobType.Baker => "bake",
+            JobType.Stallholder => "keep a stall",
+            JobType.Sweeper => "sweep",
+            _ => "work as " + A(job),
+        };
 
         /// <summary>The nearest open job to the one lost, else a trait-weighted pick that spreads people over the open jobs.</summary>
         string ChooseJob(Notable n, string from)
