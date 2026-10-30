@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using AquariumCiv.Game;
+using AquariumCiv.GameUI;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
 using UnityEngine;
@@ -146,8 +147,14 @@ namespace AquariumCiv.View
         void OnDisable() => UnityEditor.EditorApplication.update -= EditorTick;
 #endif
 
+        const string MusicHold = "era-wave";
+
+        void OnDestroy() => MusicDirector.Release(MusicHold);
+
         void Update()
         {
+            // The era's rebuild wave is a moment: the music ducks out and no track starts until it is done.
+            if (WaveRunning) MusicDirector.Hold(MusicHold); else MusicDirector.Release(MusicHold);
             var sim = Sim;
             if (sim == null || Box == null || !seenAny) return;
             if (WaveRunning)
