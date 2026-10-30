@@ -3,10 +3,11 @@ using UnityEngine;
 
 namespace AquariumCiv.View
 {
-    public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear }
+    public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear, Rod, Hammer, Broom, Sack, Stick, Bucket, Block, Barrel }
 
-    /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder.</summary>
-    public enum PropSlot { Hand, Head, Back, Shoulder }
+    /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
+    /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
+    public enum PropSlot { Hand, Head, Back, Shoulder, Arms, Front }
 
     /// <summary>
     /// The peg-doll villager's meshes (style kit, life-in-the-box §9): body + head as one mesh (tapered tunic, belt,
@@ -29,6 +30,9 @@ namespace AquariumCiv.View
             public bool camp;
             /// <summary>Alpha 0 = no accent.</summary>
             public Color accent;
+            /// <summary>A role holder (notable-roles §6): a wide sash and a headband in the role's colour, in every era, so
+            /// the chief or the miller can be spotted at the default zoom.</summary>
+            public bool role;
         }
 
         /// <summary>Picks a doll's colours from a seed (stable across rebuilds). Camp people wear hide tones and always
@@ -60,10 +64,11 @@ namespace AquariumCiv.View
             mb.Prism(Vector3.zero, 0.055f * s, 0.038f * s, bodyH, 8, tunic, topCol: tunic);
             mb.Prism(new Vector3(0, bodyH * 0.42f, 0), 0.049f * s, 0.046f * s, 0.012f * s, 8, Color.Lerp(tunic, Palette.Door, 0.6f)); // belt
             bool hasAccent = look.accent.a > 0.5f;
-            if (hasAccent && !look.camp)
+            if (hasAccent && (!look.camp || look.role))
             {
-                // A sash over one shoulder: a thin band tilted 28 degrees that hugs the tunic (nothing sticks out > 0.004 u).
-                Band(mb, s, BodyH * 0.62f * s, 0.046f * s * Mathf.Sin(28f * Mathf.Deg2Rad), 0.007f * s, 0f, Mathf.PI * 2f, 10, look.accent, 0.003f);
+                // A sash over one shoulder: a band tilted 28 degrees that hugs the tunic (nothing sticks out > 0.004 u). A role
+                // holder's is twice as wide, the one thing on them that reads as "someone" at full-box zoom.
+                Band(mb, s, BodyH * 0.62f * s, 0.046f * s * Mathf.Sin(28f * Mathf.Deg2Rad), (look.role ? 0.014f : 0.007f) * s, 0f, Mathf.PI * 2f, 10, look.accent, 0.003f);
             }
             float headY = HeadY * s;
             mb.Ico(new Vector3(0, headY, 0), HeadR * s, Vector3.one, look.skin, 0.06f);
@@ -78,6 +83,11 @@ namespace AquariumCiv.View
                 var cap = look.hairStyle == 2 && look.camp ? Palette.Hide : look.hair;
                 mb.Ico(new Vector3(0, headY + 0.012f * s, 0.008f * s), 0.047f * s, new Vector3(1f, 0.8f, 1f), cap, 0.05f);
                 if (look.hairStyle == 1) mb.Ico(new Vector3(0, headY + 0.02f * s, 0.045f * s), 0.02f * s, Vector3.one, cap, 0.05f);
+                if (hasAccent && look.role && !look.camp)
+                {
+                    // The role's headband (camp people already wear one, below).
+                    mb.Prism(new Vector3(0, headY - 0.002f * s, 0.004f * s), 0.0505f * s, 0.049f * s, 0.022f * s, 9, look.accent, capTop: false);
+                }
                 if (hasAccent && look.camp)
                 {
                     // A collar band in the same colour: with the headband it gives the accent enough pixels to show as a
@@ -220,6 +230,50 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, 0.035f, 0), new Vector3(0.006f, 0.1f, 0.006f), Palette.WoodLight);
                     mb.Ico(new Vector3(0, 0.0f, -0.012f), 0.016f, new Vector3(0.5f, 1.8f, 0.9f), Palette.Water, 0.05f);
                     break;
+                case PropKind.Rod:
+                    // A long pole (0.32) with a dark line hanging from the tip and a pale float: the fisher's outline.
+                    mb.Box(new Vector3(0, 0.13f, 0), new Vector3(0.007f, 0.32f, 0.007f), Palette.WoodLight);
+                    mb.Box(new Vector3(0, 0.24f, -0.004f), new Vector3(0.002f, 0.1f, 0.002f), Palette.Iron);
+                    mb.Ico(new Vector3(0, 0.19f, -0.004f), 0.008f, Vector3.one, Palette.Plaster, 0.05f);
+                    break;
+                case PropKind.Hammer:
+                    // Handle 0.13; an Iron head 0.055 × 0.03 across the top, so the stroke reads as a hammer.
+                    mb.Box(new Vector3(0, 0.035f, 0), new Vector3(0.014f, 0.13f, 0.014f), Palette.WoodLight);
+                    mb.Box(new Vector3(0, 0.1f, -0.008f), new Vector3(0.03f, 0.03f, 0.058f), Palette.Iron);
+                    break;
+                case PropKind.Broom:
+                    // Handle up from the hand, a straw head down at the feet (the doll's hand hangs ~0.05 above the ground).
+                    mb.Box(new Vector3(0, 0.05f, 0), new Vector3(0.012f, 0.2f, 0.012f), Palette.WoodLight);
+                    mb.Prism(new Vector3(0, -0.075f, 0), 0.03f, 0.012f, 0.03f, 6, Palette.Straw, topCol: Palette.Thatch);
+                    break;
+                case PropKind.Sack:
+                    // A plump canvas sack (0.08 tall) with a tied neck.
+                    mb.Ico(new Vector3(0, 0.0f, 0), 0.042f, new Vector3(1f, 1.1f, 0.85f), Color.Lerp(Palette.Canvas, Palette.Hide, 0.35f), 0.08f);
+                    mb.Prism(new Vector3(0, 0.04f, 0), 0.012f, 0.016f, 0.016f, 6, Palette.Timber);
+                    break;
+                case PropKind.Stick:
+                    // A plain staff or stirring paddle (0.24), flat at the low end.
+                    mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.011f, 0.24f, 0.011f), Palette.Bark);
+                    mb.Box(new Vector3(0, -0.06f, 0), new Vector3(0.026f, 0.04f, 0.008f), Palette.WoodLight);
+                    break;
+                case PropKind.Bucket:
+                    // A wooden bucket (0.05 tall) with an Iron hoop and a handle the hand holds.
+                    mb.Prism(new Vector3(0, -0.06f, 0), 0.026f, 0.032f, 0.05f, 8, Palette.WoodLight, topCol: Palette.Water);
+                    mb.Prism(new Vector3(0, -0.04f, 0), 0.031f, 0.032f, 0.008f, 8, Palette.Iron, capTop: false);
+                    mb.Box(new Vector3(0, -0.005f, 0), new Vector3(0.06f, 0.006f, 0.006f), Palette.Iron);
+                    break;
+                case PropKind.Block:
+                    mb.Box(Vector3.zero, new Vector3(0.075f, 0.05f, 0.055f), Palette.Stone);
+                    break;
+                case PropKind.Barrel:
+                {
+                    // Lying on its side (axis x), 0.07 long, radius 0.036, two Iron hoops; the bottom touches the origin.
+                    var side = Quaternion.Euler(0, 0, 90f);
+                    mb.Prism(new Vector3(0.035f, 0.036f, 0), 0.032f, 0.032f, 0.07f, 8, Palette.Timber, side, true, true, Palette.WoodLight);
+                    mb.Prism(new Vector3(0.024f, 0.036f, 0), 0.034f, 0.034f, 0.008f, 8, Palette.Iron, side, false, false);
+                    mb.Prism(new Vector3(-0.016f, 0.036f, 0), 0.034f, 0.034f, 0.008f, 8, Palette.Iron, side, false, false);
+                    break;
+                }
                 case PropKind.Lantern:
                     mb.Box(new Vector3(0, 0.0f, 0), new Vector3(0.006f, 0.03f, 0.006f), Palette.Iron);
                     mb.emission = 0.2f; mb.lamp = 0.05f;
@@ -238,6 +292,8 @@ namespace AquariumCiv.View
                 case PropSlot.Head: return (new Vector3(0, HeadY + HeadR + 0.008f, 0), Quaternion.identity);
                 case PropSlot.Back: return (new Vector3(0, BodyH * 0.75f, 0.062f), Quaternion.identity);
                 case PropSlot.Shoulder: return (new Vector3(ShoulderX * 0.6f, BodyH + 0.008f, 0), Quaternion.Euler(0, 90f, 0));
+                case PropSlot.Arms: return (new Vector3(0, BodyH * 0.6f, -0.058f), Quaternion.identity);
+                case PropSlot.Front: return (new Vector3(0, 0f, -0.11f), Quaternion.identity);
                 default: return (new Vector3(0, -ArmLen, 0), Quaternion.identity); // relative to the right arm's pivot
             }
         }

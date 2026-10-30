@@ -71,6 +71,19 @@ namespace AquariumCiv.View
         public Transform Root => root;
         public IReadOnlyList<PegDollView> Dolls => dolls;
         readonly List<PegDollView> dolls = new();
+        static readonly List<VillagerData> NoVillagers = new();
+        bool plannedPeople;
+
+        /// <summary>A <see cref="PeopleView"/> draws the people from the activity planner (#30): the layout's standing
+        /// people (#33's placeholders) are dropped, and come back when it lets go.</summary>
+        public bool PlannedPeople
+        {
+            get => plannedPeople;
+            set { if (plannedPeople == value) return; plannedPeople = value; if (root != null) SyncPeople(); }
+        }
+
+        /// <summary>The style kit's shared solid material (the one every generated mesh and doll uses).</summary>
+        public Material SolidMaterial => Solid;
 
         void OnEnable()
         {
@@ -1118,7 +1131,7 @@ namespace AquariumCiv.View
             var seen = new HashSet<int>();
             dolls.Clear();
             int made = 0;
-            foreach (var v in layout.villagers)
+            foreach (var v in plannedPeople ? NoVillagers : layout.villagers)
             {
                 int key = v.seed;
                 while (!seen.Add(key)) key += 1 << 24;

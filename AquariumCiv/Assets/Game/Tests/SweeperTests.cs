@@ -67,8 +67,8 @@ namespace AquariumCiv.Tests
                     TestContext.WriteLine($"seed {seed} 24 h: trash {a.trash.Count} vs {b.trash.Count}, overgrowth {a.overgrowth:0.000} vs {b.overgrowth:0.000}");
                 }
             }
-            // 0.85 until #86; the era festival's mood year moved seed 1 to 0.852 (more people, more trash), so 0.87.
-            Assert.Less(trashHoursWith, trashHoursWithout * 0.87f, $"seed {seed}: fewer heaps lying about over the two days");
+            // Back to 0.85 (#109): after #67/#83 the seeds sit at 0.75-0.77 (#86 had briefly moved seed 1 to 0.852).
+            Assert.Less(trashHoursWith, trashHoursWithout * 0.85f, $"seed {seed}: fewer heaps lying about over the two days");
             Assert.LessOrEqual(with.State.overgrowth, 1f);
             Assert.LessOrEqual(with.State.trash.Count, with.Config.trashMax);
             TestContext.WriteLine($"seed {seed} 48 h: trash {with.State.trash.Count} vs {without.State.trash.Count}, overgrowth " +

@@ -516,7 +516,14 @@ namespace AquariumCiv.Life
             if (tavernB != null) Slots(tavernB, 5, 1, CrowdServer);
             foreach (var w in workshops) Slots(w, 6, 2, JobType.Weaver);
             if (era == Era.Town) Slots(null, 7, sim.CrowdSweepers, JobType.Sweeper); // the sim's crowd sweepers (#60): 1 per 12 people
-            list.Sort((a, b) => a.rank != b.rank ? a.rank.CompareTo(b.rank) : a.priority != b.priority ? a.priority.CompareTo(b.priority) : a.order.CompareTo(b.order));
+            // The sim's crowd sweepers come first: they are counted in the sim (its sweep rate, SweeperTargets), so a crowd
+            // that runs out of adults must still show every one of them (#109). Then rank, priority, order.
+            list.Sort((a, b) =>
+            {
+                bool sa = a.job == JobType.Sweeper, sb = b.job == JobType.Sweeper;
+                if (sa != sb) return sa ? -1 : 1;
+                return a.rank != b.rank ? a.rank.CompareTo(b.rank) : a.priority != b.priority ? a.priority.CompareTo(b.priority) : a.order.CompareTo(b.order);
+            });
             return list;
         }
 
@@ -555,11 +562,15 @@ namespace AquariumCiv.Life
 
         static int PairKey(Person a, Person b) => Math.Min(a.key, b.key) * 7919 + Math.Max(a.key, b.key);
 
-        /// <summary>How long a walk takes: the path network's walking cost when placed (rule 3: the same cost the wear pass
-        /// walks with), else the straight line, else a flat quarter hour.</summary>
+        /// <summary>How long a walk takes: the length of the route the view walks (rule 3: chosen by the path network's
+        /// walking cost, the same cost the wear pass walks with), else the straight line, else a flat quarter hour. The
+        /// time comes from the route's real length, not its cost (they differ both ways: worn paths are cheaper, rough ground dearer); a
+        /// cost-timed walk along a road ran 3–4× <see cref="WalkSpeed"/> on screen (#30).</summary>
         float WalkHours(Place a, Place b)
         {
             if (a == b) return 0f;
+            var route = RouteBetween(a, b);
+            if (route != null && route.len > 1e-4f) return Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
             if (positions.TryWalkLength(a, b, out float len)) return Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
             if (positions.TryGetPosition(a, out float ax, out float az) && positions.TryGetPosition(b, out float bx, out float bz))
             {
@@ -571,5 +582,10 @@ namespace AquariumCiv.Life
 
         /// <summary>World units of plain ground walked per view hour [est], and the shortest and longest walk in view hours.</summary>
         public const float WalkSpeed = 5f, MinWalk = 0.08f, MaxWalk = 0.6f;
+
+        /// <summary>The walking pace on screen, in world units per real second: <see cref="WalkSpeed"/> at the work hours'
+        /// clock rate. Night hours run ~3× faster (<see cref="LifeClock"/>), so a walk timed in view hours alone rushes
+        /// after nightfall; <see cref="PaceNightWalks"/> holds walks to this pace.</summary>
+        public static float RealWalkSpeed => WalkSpeed / LifeClock.RealSecondsPerViewHour(LifeClock.WorkStart);
     }
 }

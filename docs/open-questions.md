@@ -44,3 +44,14 @@ _Last updated 2026-10-30._
 - ★ Job → tool table: farmer rain/channel, hunter deer, fisher fish (always the pond), woodcutter grove.
 - ★ A wish only needs the tool unlocked and under its cap; with no charge, Give fails and the wish stays open.
 - ★ Placing the same tool yourself, anywhere, counts as meeting the wish.
+
+### #30 / #109 Role holders with the broom
+- #67's job filling can give the broom to a role holder (seed 7: the Master Builder). In the planner they work the role
+  in the morning and sweep in the afternoon, while the sim counts them as a full sweeper. ★ Keep (it reads fine).
+  Alternative: #67 skips role holders when filling the sweeper job.
+
+### Scope added overnight (orchestrator)
+- Many listed tickets depend on issues that weren't in the list. ★ I did the sim prerequisites #73 (history records)
+  and #87 (shelf / box 2) so #78, #76 and #93 can go ahead. UI prerequisites (#108 design system, #75 cards, #84 shaping
+  tray, #95 settings, #79 time-lapse screen, #80 book) are not started; the tickets that need them (#39, #55, #76, #81,
+  #85, #91, #93, #94, #96, #100) wait or are done only as far as they can go without them.

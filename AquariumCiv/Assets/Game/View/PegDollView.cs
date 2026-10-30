@@ -22,6 +22,10 @@ namespace AquariumCiv.View
         public PegDoll.Look look;
 
         Material material;
+        /// <summary>The hand prop's turn in the fist as built (upright), and whether it's now turned out along the arm.</summary>
+        Quaternion propRest = Quaternion.identity;
+        bool extended;
+        static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
         public static PegDollView Create(Transform parent, Material material, PegDoll.Look look, bool kid, int seed)
         {
@@ -90,9 +94,29 @@ namespace AquariumCiv.View
                 bool tool = kind is PropKind.Axe or PropKind.Hoe or PropKind.Spear or PropKind.Fish;
                 prop.localRotation = Quaternion.Inverse(armR.localRotation) * Quaternion.Euler(0, 0, tool ? -ToolTilt : 0f) * rot;
             }
+            propRest = prop.localRotation;
+            extended = false;
             if (kind == PropKind.Bundle && slot == PropSlot.Back) propExtra = Part(transform, "ChestStrap", StrapMesh(scale < 1f), material, Vector3.zero, Quaternion.identity);
             // Something on the head or shoulder is held there by a hand.
             if (slot == PropSlot.Head) armR.localRotation = Quaternion.Euler(0, 0, 160f);
+        }
+
+        /// <summary>Turns a hand tool out along the arm (a strike: the axe head ends up in front, the rod out over the water)
+        /// or back upright in the fist (carried).</summary>
+        public void SetGrip(bool extend)
+        {
+            if (extend == extended || prop == null || propSlot != PropSlot.Hand) return;
+            extended = extend;
+            prop.localRotation = extend ? AlongArm : propRest;
+        }
+
+        /// <summary>The arms (and the hand tool's grip) for one frame of a <see cref="DollPose"/>. The whole-doll part of the
+        /// pose (lean, squash, offset) goes on this transform; <see cref="PeopleView"/> sets it with the position.</summary>
+        public void ApplyArms(in DollPose pose)
+        {
+            armL.localRotation = Quaternion.Euler(pose.armL);
+            armR.localRotation = Quaternion.Euler(pose.armR);
+            SetGrip(pose.extend);
         }
     }
 }
