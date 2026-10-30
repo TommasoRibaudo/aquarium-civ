@@ -26,6 +26,11 @@ namespace AquariumCiv.Life
         WatchWork, Visit, Mourn, Dance, Cheer, Procession, Search, Explore, Shelter,
         // reactions to the Keeper (≤ 4 s)
         Wave, LookUp, LookUpWary, Clap, Point, RunOver, JumpAndPoint, HandsOut, Splash, Study,
+        // at the glass, by belief stage (#92, relics-and-glass-voice.md §3; appended so the older values keep their numbers)
+        Gaze, GazeWary, PressHands, WaveWary, Flinch, Peek, CreepUp, HopBack, LaughPoint, Measure, TapBack, WriteDown,
+        // the relic moments (§1): staged by RelicMoments
+        TurnLens, LookThroughLens, Queue, Freeze, StepBack, Watch, Poke, Taste, Deliver, SetUp, Bow, CopyPose, PickUp, HoldUp,
+        Give, PutOn, LopsidedDance,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -37,6 +42,9 @@ namespace AquariumCiv.Life
         None, Basket, Spear, Hide, Rod, FishStick, Axe, Log, Saw, Hammerstone, Hoe, SeedBag, Scythe, Sheaf, Crook, Lamb,
         Hive, Pots, Barrel, Mug, Pick, Block, Hammer, Cloth, Loaves, Goods, Broom, Handcart, Shears, Sack, Lantern, Bell,
         Flower, Ball, Stick, Buckets, Table, MeasuringRod, CoinBag, Plans, Stool, Honey, Wool, Notebook,
+        // the relics (#92): a chunk of the Sky Crumb, the Festival Mask, the Keeper Doll, the Left Sandal, the Lens's tripod
+        // (carried folded) and the Lens itself, the scholar's slate
+        Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate,
     }
 
     /// <summary>Where the prop sits on a peg doll (§9 "Carry").</summary>
@@ -52,6 +60,9 @@ namespace AquariumCiv.Life
         // land and placeholders (no building yet; the view places them)
         Pond, Stream, Woods, ForestEdge, Bushes, Pasture, Meadow, ClayBank, Outcrop, Smithy, Kiln, Hill, Remembering,
         Midden, TrashHeap, Nudge, Road,
+        // #92: the front glass (index = the wall: 0 = -z, 1 = +x, 2 = +z, 3 = -x; LifePlanner.GlassSide) and a relic's spot
+        // (index = its place in RelicId.All)
+        Glass, Relic,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -122,6 +133,8 @@ namespace AquariumCiv.Life
     {
         None, Wedding, Birth, Festival, Mourning, RoleMoment, Reconcile, Lost, Friendship, Rivalry, Apprentice, EveningTalk,
         EraMoment, Argument, Chat,
+        // #92: a relic's moment (RelicMoments), a gathering at the glass, a scholar tapping back
+        Relic, GlassGathering, TapBack,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>
@@ -157,6 +170,10 @@ namespace AquariumCiv.Life
         public bool copiesPartner;
         /// <summary>Rule 6: the slot at the place (0, 1, 2 ...), set by <see cref="LifePlanner.PlanAll"/>; at most one doll per slot.</summary>
         public int slot;
+        /// <summary>#92: they face the front glass (a dance for the sky, a wave, sitting at the glass), not their partner or work.</summary>
+        public bool facesGlass;
+        /// <summary>#92: how many times (a scholar's <see cref="ActivityKind.TapBack"/> knocks as often as the Keeper tapped).</summary>
+        public int count;
 
         public PropSlot PropSlot => ActivityInfo.SlotOf(prop, kind);
         public ActivityGroup Group => ActivityInfo.GroupOf(kind);
@@ -180,6 +197,20 @@ namespace AquariumCiv.Life
         {
             switch (k)
             {
+                // #92 (appended after the reactions, so named here before the ranges below)
+                case ActivityKind.PressHands:
+                    return ActivityGroup.Play;
+                case ActivityKind.Measure: case ActivityKind.SetUp: case ActivityKind.TurnLens:
+                    return ActivityGroup.Role;
+                case ActivityKind.Flinch: case ActivityKind.Peek: case ActivityKind.CreepUp: case ActivityKind.HopBack:
+                case ActivityKind.LaughPoint: case ActivityKind.WaveWary: case ActivityKind.TapBack: case ActivityKind.WriteDown:
+                case ActivityKind.Freeze: case ActivityKind.StepBack:
+                    return ActivityGroup.Reaction;
+                case ActivityKind.Gaze: case ActivityKind.GazeWary: case ActivityKind.LookThroughLens: case ActivityKind.Queue:
+                case ActivityKind.Watch: case ActivityKind.Poke: case ActivityKind.Taste: case ActivityKind.Deliver: case ActivityKind.Bow:
+                case ActivityKind.CopyPose: case ActivityKind.PickUp: case ActivityKind.HoldUp: case ActivityKind.Give: case ActivityKind.PutOn:
+                case ActivityKind.LopsidedDance:
+                    return ActivityGroup.Social;
                 case ActivityKind.Sleep: case ActivityKind.Nap: case ActivityKind.SitOut: case ActivityKind.Stretch:
                 case ActivityKind.Eat: case ActivityKind.Toddle:
                     return ActivityGroup.Rest;
@@ -220,6 +251,8 @@ namespace AquariumCiv.Life
             ActivityKind.StackWood or ActivityKind.MillWork or ActivityKind.Prepare or ActivityKind.Serve or ActivityKind.TendHives or
                 ActivityKind.Herd or ActivityKind.Repair => 3,
             ActivityKind.Chat or ActivityKind.Argue or ActivityKind.StoryTell or ActivityKind.Speech or ActivityKind.Play => 2,
+            ActivityKind.PressHands or ActivityKind.CopyPose or ActivityKind.LopsidedDance => 2,
+            ActivityKind.Measure or ActivityKind.LookThroughLens => 3, // look, lean back startled, laugh (§1.5)
             _ => 1,
         };
 
@@ -230,9 +263,10 @@ namespace AquariumCiv.Life
             return p switch
             {
                 Prop.Sheaf or Prop.Loaves or Prop.Pots => carrying ? PropSlot.Head : PropSlot.Hand,
-                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.Table => PropSlot.Shoulder,
+                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
+                Prop.Mask => PropSlot.Head,
                 Prop.Wool or Prop.Cloth or Prop.Goods => carrying ? PropSlot.Back : PropSlot.Hand,
-                Prop.Lamb or Prop.Basket or Prop.Honey => PropSlot.Arms,
+                Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
                 Prop.Handcart => PropSlot.Pulled,
                 Prop.Barrel => PropSlot.Rolled,
                 _ => PropSlot.Hand,

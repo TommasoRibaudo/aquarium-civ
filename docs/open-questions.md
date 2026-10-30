@@ -53,8 +53,11 @@ _Last updated 2026-10-30._
 ### Scope added overnight (orchestrator)
 - Many listed tickets depend on issues that weren't in the list. ★ I did the sim prerequisites #73 (history records)
   and #87 (shelf / box 2) so #78, #76 and #93 can go ahead. UI prerequisites (#108 design system, #75 cards, #84 shaping
-  tray, #95 settings, #79 time-lapse screen, #80 book) are not started; the tickets that need them (#39, #55, #76, #81,
-  #85, #91, #93, #94, #96, #100) wait or are done only as far as they can go without them.
+  tray, #95 settings, #79 time-lapse screen, #80 book) are not started; the tickets that need them are built against what exists (the #36 HUD and sheets, the debug
+  panel, GameSettings) and note what's left for when #108/#75/#84/#95/#79/#80 land: #39 (pin + card in the #36 sheet
+  style), #55 (verify), #76 ("Show me" callable from the debug panel until #75's cards), #85 (tools placed from the
+  debug panel until #84's tray), #91 (the still is saved; the book page comes with #80), #94, #96 (settings toggles
+  minimal until #95), #81/#100 (hooks wired where UI exists).
 
 ### #87 The shelf and box 2 (sim + save v3, `Shelf.cs`, `SimCore.Museum.cs`)
 - ★ A museum visit lives through at most 40 game years; a museum box keeps at most 120 new lines and 40 dead
@@ -126,3 +129,20 @@ Screens: `AquariumCiv/Temp/agent/t34/` (local; town day/night, zoomed, kit sheet
 - ★ Leaving after the cheer drops the remaining beats; the notification question is then asked at the next moment.
 - Guesses to tune: waiting piles at 12/72/288 months waited, "Wipe for a clear view?" at grime ≥ 60, the camera keys.
 - A stationary press hurries ×2, a moving one orbits.
+
+### #92 People at the glass and relic moments (phase 1, Life)
+- ★ People stand at the glass on the camera's wall; the side changes only when a view day turns (live following would
+  re-plan the day). Alternative: follow the camera live.
+- ★ The Sandal turns up at the sim's spot (old farm/camp), not under the vine actually pruned.
+- ★ The tap-back scholar is the sim's first scholar, who may walk a while before knocking.
+- ★ Relics found while you're away get only the "Show me" echo, not the full moment. Alternative: replay on return.
+- Visit rates are first guesses (stage 2 kids 70 % of afternoons, adults at dusk 50 %, stage 3 measuring 70 % of
+  mornings, stage 1 after the crumb 50 %).
+
+### #81 / #100 Telemetry (phase 1, `Runtime/Telemetry`)
+- ★ D1/D3/D7 = opened on calendar day install+N in the phone's timezone (alternative: rolling 24 h windows).
+- ★ The recall prompt asks on days 3–7 (not only day 3), at most 3 dismissals, never twice a day, never over a moment
+  or cards.
+- ★ A new "open" = cold start or a return after ≥ 5 min away.
+- ★ ~1 MB log per box (256 KB × 4 files); the oldest is dropped in a heavy week (retention still works).
+- ★ Metrics per install (all boxes merged). Free-text recall answers are not logged; they go through Feedback.
