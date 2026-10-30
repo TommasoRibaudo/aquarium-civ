@@ -490,3 +490,12 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   overlaps unless it has `flexShrink = 0`, and a label column next to buttons only wraps with `flexBasis = 0` +
   `minWidth = 0`. [verified]
 - **2026-10-30 · `unity test` (top-level) refuses while the Editor is open; use `unity command test run --mode playmode --filter <name> --async_tests true`, then poll `unity command test status`.** A bare `unity command test run` (no filter) ran all 811 EditMode tests and blocked every other command for minutes (the client timeout does not cancel it; `test cancel` itself waits). Always pass `--filter`. `ShapingView.GroundPoint` marched only 30 units: the default camera is ~50 away, so no ground tap worked at the default framing until the step was doubled (#94). [verified]
+- **2026-10-30 · Flaky play tests: pin the world's seed (`GameClock.DebugNextSeed`).** [verified] `ShapingPlayTests` failed
+  about 1 run in 3 ("the people's answer is staged in the world": `e.moment` null, a different tool each run). Cause: each
+  run starts a new world with a random seed, and `LifePlanner.StartShapingAnswer` returns null when nobody can walk to the
+  gift within half its come-over beat (about 1 gift in 15 in a random 3-year camp at any daytime hour; nearly always after
+  20:00, when people sleep). A dotnet probe over 40 seeds × view hours in `Tools/SimTests` found it in seconds (put a probe
+  `.cs` in a `<Compile Include>` there, delete it after). Fix: `GameClock.DebugNextSeed = <seed>` before loading the Slice
+  (used once, then random again; reset it in the test's Close). Moving the view clock back mid-test with
+  `PeopleView.SetHourGently` made dolls glide up to 0.26 u in a frame and tripped the doll-jump audit: don't. Not a
+  regression from #39/#76/#94/#96; MomentPlay/BoxComplete passed every run here.
