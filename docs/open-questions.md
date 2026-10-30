@@ -146,3 +146,13 @@ Screens: `AquariumCiv/Temp/agent/t34/` (local; town day/night, zoomed, kit sheet
 - ★ A new "open" = cold start or a return after ≥ 5 min away.
 - ★ ~1 MB log per box (256 KB × 4 files); the oldest is dropped in a heavy week (retention still works).
 - ★ Metrics per install (all boxes merged). Free-text recall answers are not logged; they go through Feedback.
+
+### #89 Camp → village moment — look sign-off is yours
+Screens: `AquariumCiv/Temp/agent/m89_*.png` (local).
+- ★ The fire disappears at the green beat (the doc says "shrinks to a hearth"; the village has no hearth piece).
+- The green clearing is subtle at default zoom. ★ Make it stronger in #91.
+- ★ During the wave people just return to their day (the doc has someone walk to each tent before its puff).
+- ★ Rebuilds are an instant swap with a puff: no scaffolding, sound or haptics yet (sound comes with #96).
+- ★ The village shows a view-only well until the sim builds its first. Alternative: the sim builds the well at
+  AdvanceEra.
+- Speech bubbles last 4 real seconds, so when hurried they spill into later beats.
