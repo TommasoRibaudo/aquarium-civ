@@ -68,6 +68,22 @@ namespace AquariumCiv.Life
             }
         }
 
+        /// <summary>Real seconds between two view hours of one day (<paramref name="h0"/> ≤ <paramref name="h1"/>), across
+        /// the phases' different speeds.</summary>
+        public static float RealSecondsBetween(float h0, float h1)
+        {
+            float s = 0f, h = Math.Max(0f, h0);
+            h1 = Math.Min(24f, h1);
+            int guard = 0;
+            while (h < h1 - 1e-6f && guard++ < 16)
+            {
+                float next = Math.Min(h1, NextBoundary(h));
+                s += (next - h) * RealSecondsPerViewHour(h);
+                h = next;
+            }
+            return s;
+        }
+
         /// <summary>View hours that <paramref name="seconds"/> real seconds cover from this hour (a reaction's length).</summary>
         public static float ViewHoursFor(float hour, float seconds) => seconds / RealSecondsPerViewHour(hour);
 

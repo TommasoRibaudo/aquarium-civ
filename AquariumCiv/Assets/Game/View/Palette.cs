@@ -50,5 +50,23 @@ namespace AquariumCiv.View
         /// purpose: they are the only strong colour a camp person wears, so the eye finds people first.
         /// </summary>
         public static readonly Color[] Accents = { H("#E0402A"), H("#F2B630"), H("#2E86C8"), H("#1FA38A"), H("#D9487E"), H("#F07A1E") };
+
+        /// <summary>
+        /// Role holders' sash and headband (notable-roles §6), one colour per role so the leader is always the same gold
+        /// from chief to mayor. Brighter and more saturated than the tunics, and not the camp's leaf-green or the water's
+        /// teal, so the sash reads against grass, dirt and cobbles.
+        /// </summary>
+        public static Color RoleAccent(string role) => role switch
+        {
+            Sim.RoleType.Chief or Sim.RoleType.Headman or Sim.RoleType.Lord => H("#FFC21A"),
+            Sim.RoleType.Priest => H("#F5F1FF"),
+            Sim.RoleType.Miller => H("#2E86C8"),
+            Sim.RoleType.Innkeeper => H("#D9487E"),
+            Sim.RoleType.Guildmaster => H("#1FA38A"),
+            Sim.RoleType.MasterBuilder => H("#F07A1E"),
+            Sim.RoleType.Merchant => H("#E0402A"),
+            Sim.RoleType.Captain => H("#3A4FC8"),
+            _ => H("#FFC21A"),
+        };
     }
 }

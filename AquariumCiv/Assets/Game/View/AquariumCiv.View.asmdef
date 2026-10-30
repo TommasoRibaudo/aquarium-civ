@@ -3,6 +3,7 @@
     "rootNamespace": "AquariumCiv.View",
     "references": [
         "AquariumCiv.Sim",
+        "AquariumCiv.Life",
         "AquariumCiv.Game",
         "AquariumCiv.Game.UI",
         "Unity.InputSystem",

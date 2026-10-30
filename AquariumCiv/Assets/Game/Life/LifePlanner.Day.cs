@@ -240,6 +240,13 @@ namespace AquariumCiv.Life
                     if (s.place == cur) continue; // already there: what came before stretches over it
                     s.from = cur;
                 }
+                // A plain walk from a place a later layer took away (the walk home from the tavern after a courting hour
+                // on the green replaced the drink): it sets off from where they are, or, already there, is dropped (#110).
+                if (s.kind == ActivityKind.Walk && !s.resumed && !s.cut && !s.from.IsNone && s.from != s.place && s.from != cur)
+                {
+                    if (s.place == cur) continue;
+                    s.from = cur;
+                }
                 if (isMove && s.cut && i + 1 < list.Count)
                 {
                     InterruptedWalks++;
@@ -326,7 +333,77 @@ namespace AquariumCiv.Life
                 outList[i - 1] = a;
                 outList.RemoveAt(i);
             }
+            PaceNightWalks(outList);
             return outList.ToArray();
+        }
+
+        /// <summary>
+        /// A walk shown in less than 60 % of the real seconds its route needs at <see cref="RealWalkSpeed"/> (one that falls
+        /// in the fast night hours: everyone heading home at 20:00) sets off earlier instead, eating into the stays before it
+        /// (at most half of them), or, right after another walk, arrives later, eating into the stays after it. Day walks
+        /// are untouched: at work-hour and evening rates they already take their time (#30).
+        /// </summary>
+        void PaceNightWalks(List<Seg> list)
+        {
+            float speed = RealWalkSpeed;
+            for (int i = 1; i < list.Count; i++)
+            {
+                var s = list[i];
+                if (!s.Moving || s.from == s.place) continue;
+                var route = RouteBetween(s.from, s.place);
+                if (route == null || route.len <= 1e-4f) continue;
+                float need = Math.Min(route.len / speed, MaxWalk * LifeClock.RealSecondsPerViewHour(LifeClock.WorkStart));
+                if (LifeClock.RealSecondsBetween(s.start, s.end) >= need * 0.6f) continue;
+                // The stays before it (the evening on the green, in slivers of chat and listening): set off within their
+                // later half.
+                int first = i;
+                while (first > 0 && !list[first - 1].Moving) first--;
+                if (first < i)
+                {
+                    float lo = list[first].start + (s.start - list[first].start) * 0.5f, hi = s.start;
+                    if (lo < hi)
+                    {
+                        for (int k = 0; k < 24; k++) // the latest start that gives the walk its time
+                        {
+                            float mid = (lo + hi) * 0.5f;
+                            if (LifeClock.RealSecondsBetween(mid, s.end) >= need) lo = mid; else hi = mid;
+                        }
+                        s.start = lo;
+                        list[i] = s;
+                        for (int m = i - 1; m >= first; m--)
+                        {
+                            var prev = list[m];
+                            if (prev.start >= lo - 1e-4f) { list.RemoveAt(m); i--; continue; }
+                            prev.end = lo;
+                            list[m] = prev;
+                            break;
+                        }
+                    }
+                }
+                if (LifeClock.RealSecondsBetween(s.start, s.end) >= need * 0.6f) continue;
+                // Nothing to set off earlier from (it follows another walk, a night round): arrive later instead, within the
+                // first half of the stays after it (usually sleep).
+                int last = i;
+                while (last + 1 < list.Count && !list[last + 1].Moving) last++;
+                if (last == i) continue;
+                float lo2 = s.end, hi2 = s.end + (list[last].end - s.end) * 0.5f;
+                if (LifeClock.RealSecondsBetween(s.start, hi2) < need * 0.6f) continue;
+                for (int k = 0; k < 24; k++) // the earliest end that gives the walk its time
+                {
+                    float mid = (lo2 + hi2) * 0.5f;
+                    if (LifeClock.RealSecondsBetween(s.start, mid) >= need) hi2 = mid; else lo2 = mid;
+                }
+                s.end = hi2;
+                list[i] = s;
+                for (int m = i + 1; m <= last; m++)
+                {
+                    var next = list[m];
+                    if (next.end <= hi2 + 1e-4f) { list.RemoveAt(m); m--; last--; continue; }
+                    next.start = hi2;
+                    list[m] = next;
+                    break;
+                }
+            }
         }
 
         // ---------------------------------------------------------------- babies and kids
@@ -464,8 +541,11 @@ namespace AquariumCiv.Life
                 }
                 if (work.sweeps && box.sweeperExtraBlocks > 0)
                 {
-                    // A tidy holder in office (the grump, #28): the sweepers sweep the green at dawn before their round.
-                    At(ActivityKind.Sweep, LifeClock.WorkStart - WalkHours(gather, work.site), gather, Prop.Broom, default, TripType.HomeToGreen);
+                    // A tidy holder in office (the grump, #28): the sweepers sweep the green at dawn before their round. After
+                    // the water there may be no time left before the round: the walk to the green still takes its route's
+                    // time and they sweep a little, so the round starts late (a squeezed walk rushed at 4x, #110).
+                    float sweepUntil = Math.Max(LifeClock.WorkStart - WalkHours(gather, work.site), bt + WalkHours(bcur, gather) + 0.1f);
+                    At(ActivityKind.Sweep, sweepUntil, gather, Prop.Broom, default, TripType.HomeToGreen);
                 }
                 else
                 {
@@ -479,8 +559,10 @@ namespace AquariumCiv.Life
                 if (p.mentor != null) CopyMaster(p, 7f, 9f); // a young apprentice still learns from the master first
                 WorkBlocks(p, d, work, LifeClock.WorkStart, LifeClock.Midday, 10, false);
                 bool nap = p.hints.napChance > 0f && R(k, day, 4) < p.hints.napChance; // the lazy, after lunch
-                Midday(p, d, work, nap);
+                // After lunch they walk to the afternoon's work: a role holder's morning duty (the master builder at the
+                // mill) may differ from the job they go back to (sweeping their heap, #109).
                 var after = WorkOf(p, d, morning: false);
+                Midday(p, d, after, nap);
                 if (nap) At(ActivityKind.Nap, 14f, gather); // straight from lunch to the green (#64)
                 WorkBlocks(p, d, after, bt, LifeClock.Evening, 30, true);
             }
@@ -578,6 +660,15 @@ namespace AquariumCiv.Life
                 if (work.chores) { loop = Chore(p, d, salt + i); tool = ChoreProp(loop); if (loop == ActivityKind.SitOut) { loop = ActivityKind.SweepStep; tool = Prop.Broom; } }
                 bool carry = work.load != Prop.None && (i > 0 || from > LifeClock.WorkStart) && R(k, day, salt + 200 + i) < work.carryShare;
                 if (lastCarries && end >= to && work.load != Prop.None) carry = true;
+                if (carry && (work.dest != site || !work.fetchFrom.IsNone))
+                {
+                    // #30: only when the walk back to the site and the carry both fit the block; a squeezed walk back ran
+                    // at several times the walking pace (the merchant's cart loop). Else this block is the work loop.
+                    var src0 = work.fetchFrom.IsNone ? site : work.fetchFrom;
+                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.fetchFrom.IsNone ? work.dest : site)) +
+                                 (work.fetchFrom.IsNone ? 0f : WalkHours(site, src0));
+                    if (end - t < fits) carry = false;
+                }
                 if (carry && (work.dest != site || !work.fetchFrom.IsNone))
                 {
                     var src = work.fetchFrom.IsNone ? site : work.fetchFrom;
