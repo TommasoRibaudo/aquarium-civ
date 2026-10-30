@@ -50,3 +50,9 @@ pass (it's a look study for the user to judge, not a player-facing build), no Ha
 2. A phone build of the two scenes to check frame time (needs a TestFlight run: user's go).
 3. Move the kit into `Assets/Game` as the slice's art layer: meshes generated from the sim state (buildings from
    `SimState.buildings`, people from notables and the crowd), per-chunk rebuild on change.
+
+## Ported (2026-10-30, #31)
+The kit now lives in `Assets/Game/View` (assembly `AquariumCiv.View`, shaders `AquariumCiv/View/Stylized`, `Glass`,
+`Glow`); this spike folder stays as a reference. Fixed from the findings above: smooth pond rim (drawn along the real
+shoreline), a bigger fire with a glow halo and a warm pool, camp headbands, a glass rim highlight plus a pale edge line
+on the frame, and window/lantern lamps that flicker on at night (`NightLamps`).
