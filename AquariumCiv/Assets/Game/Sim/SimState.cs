@@ -61,12 +61,23 @@ namespace AquariumCiv.Sim
         public NotableBand villageNotables = new NotableBand { min = 4, max = 8 };
         public NotableBand townNotables = new NotableBand { min = 8, max = 12 };
         public float storyChancePerMonth = 0.07f;
+        // The slice relics (#74, relics-and-glass-voice.md §1): the Keeper Doll after this many credited Keeper entries in the
+        // village (or, after dollFallbackYears there, the next one); the Sandal stays lost at least sandalLostYears; the Lens
+        // without the Lamp after lensFallbackYears in the town.
+        public int dollKeeperEntries = 10;
+        public int dollFallbackYears = 15;
+        public int sandalLostYears = 20;
+        public int lensFallbackYears = 10;
         public double fullSpeedHours = 8;       // offline: the first hours away run at full speed (game definition v0.2)
         public double slowSpeed = 0.25;         // ... and the rest at this fraction (a weekend away ≈ 18 game years)
         // Era thresholds (game definition §8): all three must hold; years count from the start of the current era.
         // Over 100 seeds, watched: the village is ready at a median of year 15 (p90 34), the town ~43 years after it.
         public EraThreshold villageAt = new EraThreshold { population = 10, buildings = 6, years = 10 };
         public EraThreshold townAt = new EraThreshold { population = 22, buildings = 13, years = 20 };
+        // The era moment and the box's peak (era-moment.md §6, §8; SimCore.EraMoment.cs, #86).
+        public float festivalMoodLift = 0.05f;  // the era festival lifts the mood target this much for a year [est], no dice
+        public int festivalYears = 1;
+        public PeakRule peakAt = new PeakRule { townYears = 40, seats = 7, fullYears = 3 };
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -105,6 +116,17 @@ namespace AquariumCiv.Sim
         public int population;
         public int buildings;
         public int years;   // game years spent in the current era
+    }
+
+    /// <summary>When the town has reached its peak (era-moment.md §8, Choice 6): the box is full (no building found a lot,
+    /// or the economy's cap was reached) for <see cref="fullYears"/>, the town era is <see cref="townYears"/> old, and
+    /// <see cref="seats"/> different town seats have been held. Reaching it only makes the peak ready; it waits.</summary>
+    [Serializable]
+    public class PeakRule
+    {
+        public int townYears;
+        public int seats;
+        public int fullYears;
     }
 
     /// <summary>What an offline catch-up did: real hours away, sim hours the civ lived, game months stepped.</summary>
@@ -203,6 +225,7 @@ namespace AquariumCiv.Sim
         public int friendId = -1;
         public int rivalId = -1;
         public int mentorId = -1;
+        public long jobChangedMonth = -1000000; // month of the last job fill or forced move (SimCore.Jobs.cs, #67); old saves: long ago
         public string job = "";  // everyday job (JobType; SimCore.Jobs.cs): "" as a child, "elder" when retired
 
         public string FullName => $"{name} {family}";
@@ -221,6 +244,9 @@ namespace AquariumCiv.Sim
         public int buildingId = -1;     // the building it happened at, for fly-to
         public bool keeper;             // the people acted on a Keeper's nudge
         public int threadId = -1;       // its StoryThread (SimCore.Cards.cs): -1 = not looked at yet, 0 = none
+        public string relicId = "";     // the relic this card made, found or lost (SimCore.Relics.cs, #74)
+        public string quote = "";       // the people's words with it (the line bank, SimCore.Relics.cs)
+        public int speakerId = -1;      // who says the quote (-1 = the crowd)
     }
 
     /// <summary>One of the Keeper's land shapings (rain, a grove, a channel; Gate 3).</summary>
@@ -299,10 +325,26 @@ namespace AquariumCiv.Sim
         public List<StoryThread> threads = new(); // teaser threads and story links (SimCore.Cards.cs, #59)
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
+        public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
+        public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
+        public int relicLineNextId = SimCore.RelicLineIdBase; // relic cards' own ids, so the shared ids never shift
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        public List<Wish> wishes = new();   // notables' wishes for a gift (SimCore.Wishes.cs, #83)
+        public int wishNextId = 1;
         public float shapingCharges = -1f; // the Keeper's shared shaping charges (SimCore.Shaping.cs, #82); -1 = not started (old saves)
+        // The era moment and the box completing (SimCore.EraMoment.cs, #86).
+        public long festivalUntilMonth = -1; // the era festival runs until this month (-1 = none yet)
+        public int lordLineId = -1;          // the first lord: the line the title passes down (-1 = no lord yet)
+        public List<LeaderTerm> leaders = new(); // who led, from when: the book's chapters
+        public List<string> townSeatsHeld = new(); // town seats held at least once (the peak rule)
+        public long fullSinceMonth = -1;     // the box has been full since this month (-1 = not full)
+        public bool peakReady;               // the town reached its peak: the box waits to be completed
+        public long peakReadyMonth = -1;
+        public bool boxComplete;             // CompleteBox ran: the box is a museum on the shelf
+        public long boxCompleteMonth = -1;
+        public List<int> founderIds = new(); // the notables who crossed to the next box
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

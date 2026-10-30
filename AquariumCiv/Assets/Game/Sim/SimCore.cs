@@ -100,7 +100,7 @@ namespace AquariumCiv.Sim
             if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
 
             // Mood ignores mess (Gate 1): the pace drop is the whole cost, and mood x mess would stack on it.
-            float target = 0.75f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
+            float target = 0.75f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f) + FestivalMoodLift; // era festival (SimCore.EraMoment.cs)
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
 
             TryBuild();
@@ -115,9 +115,12 @@ namespace AquariumCiv.Sim
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
+            WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
+            RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
+            PeakStep(); // no dice: leaders for the book, the town's peak (SimCore.EraMoment.cs)
         }
 
         void TryBuild()
@@ -289,9 +292,28 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- player actions ----------
-        public void CleanGrime(float amount) { float was = State.grime; State.grime = Math.Max(0f, was - amount); CleaningRefill((was - State.grime) * Config.shapingPerGrime); }
-        public void Prune(float amount) { float was = State.overgrowth; State.overgrowth = Math.Max(0f, was - amount); CleaningRefill((was - State.overgrowth) * Config.shapingPerOvergrowth); }
-        public bool RemoveTrash(int id) { bool gone = State.trash.RemoveAll(t => t.id == id) > 0; if (gone) CleaningRefill(Config.shapingPerTrash); return gone; }
+        public void CleanGrime(float amount)
+        {
+            float was = State.grime;
+            if (amount > 0f && was > 0f) CountKeeperAction(KeeperAction.Wipe, true); // the Keeper Doll's prop (SimCore.Relics.cs)
+            State.grime = Math.Max(0f, was - amount);
+            CleaningRefill((was - State.grime) * Config.shapingPerGrime);
+        }
+
+        public void Prune(float amount)
+        {
+            float was = State.overgrowth;
+            State.overgrowth = Math.Max(0f, was - amount);
+            CleaningRefill((was - State.overgrowth) * Config.shapingPerOvergrowth);
+            RelicsOnPrune(was - State.overgrowth); // the Left Sandal turns up under the weeds (SimCore.Relics.cs)
+        }
+
+        public bool RemoveTrash(int id)
+        {
+            bool gone = State.trash.RemoveAll(t => t.id == id) > 0;
+            if (gone) { CleaningRefill(Config.shapingPerTrash); CountKeeperAction(KeeperAction.Trash, true); }
+            return gone;
+        }
 
         /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
         public void AddMess(float grime, float overgrowth, int trashCount)

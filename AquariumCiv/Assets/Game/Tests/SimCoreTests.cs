@@ -24,7 +24,7 @@ namespace AquariumCiv.Tests
         internal static uint Fingerprint(SimState s)
         {
             string fp = s.population + "|" + s.month + "|" + s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" +
-                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Select(c => c.text)) + "|" +
+                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join("/", s.chronicle.Where(c => c.kind != "wish").Select(c => c.text)) + "|" +
                         string.Join(",", s.notables.Select(n => n.FullName + n.age.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
             return Fnv(fp);
         }
@@ -54,11 +54,16 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(1750279217u, Fingerprint(sim.State), "slice world fingerprint");
+            Assert.AreEqual(2152486408u, Fingerprint(sim.State), "slice world fingerprint"); // #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
+            var noRelics = NewSim(1234);
+            noRelics.RelicsOn = false;
+            noRelics.Advance(48);
+            Assert.AreEqual(282779734u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
             var before = NewSim(1234);
             before.CardsOn = false;
+            before.RelicsOn = false;
             before.Advance(48);
-            Assert.AreEqual(3732380117u, Fingerprint(before.State), "the same world with #59's text swaps off");
+            Assert.AreEqual(4235061020u, Fingerprint(before.State), "the same world with #59's text swaps off");
         }
 
         [Test]

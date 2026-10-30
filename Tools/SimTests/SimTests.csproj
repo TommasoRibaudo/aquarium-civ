@@ -23,13 +23,17 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeStageTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/NotableCountTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobFillTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RoleTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfficeTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SweeperTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CardsTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/RelicTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/WishTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
   </ItemGroup>
