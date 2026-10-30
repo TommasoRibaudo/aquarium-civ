@@ -132,6 +132,23 @@ namespace AquariumCiv.Tests
             Assert.AreEqual("The village chose someone as its headman.", new AquariumCiv.View.Moments.MomentContext().Fill("The village chose {winner} as its headman."));
         }
 
+        [TestCase(5)]
+        [TestCase(21)]
+        public void TheFirstWellIsBuiltAtTheVillageChangeWhereTheViewStoodIt(int seed)
+        {
+            var sim = NewSim(seed);
+            sim.Advance(5);
+            sim.ForceEraReady();
+            Assert.AreEqual(0, sim.Count(BuildingType.Well));
+            Assert.IsTrue(sim.AdvanceEra());
+            Assert.AreEqual(1, sim.Count(BuildingType.Well), "the village green has its well from the moment");
+            var lot = sim.Settlement.Lots.First(l => l.kind == AquariumCiv.Sim.Settle.LotKind.Well);
+            Assert.AreEqual(sim.Settlement.GreenX + 0.17f, lot.x, 1e-4f, "where the view's own well stood (SimLayout.FirstWellDX)");
+            Assert.AreEqual(sim.Settlement.GreenZ - 0.1f, lot.z, 1e-4f);
+            sim.Advance(40 * SimConfig.MonthsPerYear);
+            Assert.AreEqual(1, sim.Count(BuildingType.Well), "the pop >= 8 rule builds no second");
+        }
+
         [Test]
         public void AMomentLeftHalfwayChangesNothing()
         {

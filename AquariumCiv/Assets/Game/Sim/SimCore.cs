@@ -333,7 +333,7 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- helpers ----------
-        Building AddBuilding(string type)
+        Building AddBuilding(string type, bool tellFirst = true)
         {
             var s = State;
             var used = s.buildings.Select(b => b.slot).ToHashSet();
@@ -349,7 +349,7 @@ namespace AquariumCiv.Sim
             if (!s.foundedTypes.Contains(type))
             {
                 s.foundedTypes.Add(type);
-                if (s.month > 0)
+                if (s.month > 0 && tellFirst) // (the era's own well is told by the festival line: no extra draw)
                 {
                     var by = AliveNotable();
                     Chronicle("first_building", NameData.FirstBuildingLine(type, by, s.era), 0.75f, by?.id ?? -1).buildingId = b.id;

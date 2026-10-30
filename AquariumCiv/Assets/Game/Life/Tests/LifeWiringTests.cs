@@ -523,6 +523,8 @@ namespace AquariumCiv.Life.Tests
             {
                 int target = planner.SweeperTargetOf(who);
                 if (target < 0) continue;
+                // A role holder's day starts at their office (a beat first): the walk to the heap is not the morning's.
+                if (who.IsNotable && sim.RoleOf(sim.FindNotable(who.notableId)) != null) continue;
                 var heap = Place.Land(PlaceKind.TrashHeap, target);
                 for (long d = sim.State.month; d < sim.State.month + 12; d++)
                 {
