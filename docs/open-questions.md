@@ -78,3 +78,13 @@ Report and screenshots: `AquariumCiv/Temp/agent/tester-batch1/` (local). The [re
 - #30: work poses are hard to read at phone size (dolls ~15–20 px tall at default zoom, ~40 px after fly-to), and at
   midday/winter most people eat, sit out or repair at home, so a 60 s glance shows little work. ★ Bigger/bolder poses and
   props, and more outdoor work in the day; or accept until the camera work in M3.
+
+### Tester batch 1 fixes (sim + life)
+- ★ A shaping answered while the town is at the building cap gets a harvest line credited to a person ("Ada Lund's
+  flock grazed the new herd"), no building. Alternative: upgrade and name an existing building (needs design).
+- ★ The bread quarrel needs a Windmill (there's no bakery building); the well lines need a Well.
+- Walks (#109): plain stays/carries a person can't reach in time are now skipped; a late walk may eat up to 3/4 of the
+  next stay; one shelter per storm. Remaining worst walk 1.88× the pace, at dawn (the clock runs faster then): timing
+  walks in real seconds everywhere would fix it — a bigger change, not done.
+- Seen, not fixed: `Settlement.HomeOf` picks a home by hash over the yard's home count, so a new home can move a
+  household; and one sweep case depended on query order (maybe lazy settlement growth). ★ File as issues.
