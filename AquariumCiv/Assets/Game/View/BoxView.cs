@@ -1068,7 +1068,7 @@ namespace AquariumCiv.View
                 {
                     var foot = frame.MultiplyPoint3x4(Vector3.zero);
                     float phase = Pieces.Phase(p.seed);
-                    Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), 0.42f, 0f, Palette.FireHalo, phase);   // halo, behind the flame
+                    Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), 0.42f, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
                     Add(foot + Vector3.up * 0.02f, 0.55f, 4f, Palette.FirePool, phase);                            // warm pool on the ground
                     for (int e = 0; e < 8; e++)                                                                     // embers
                         Add(foot + Vector3.up * 0.14f, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 11)) / 8f, 1.2f + 0.8f * Land.Hash3(p.seed, e, 12));

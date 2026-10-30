@@ -428,7 +428,7 @@ namespace AquariumCiv.View
             }
             mb.emission = 0.4f;
             mb.Prism(p + Vector3.up * (y0 + 0.025f), 0.06f, 0f, 0.215f, 5, Palette.FlameBodyA, Quaternion.Euler(0, 20f, 0), topCol: Palette.FlameBodyB, ramp: true);
-            mb.emission = 0.5f;
+            mb.emission = 0.4f; // spec 0.5; 0.4 keeps the gold core from tonemapping to pale lemon (tester #63)
             mb.Prism(p + new Vector3(0, y0, 0), 0.07f, 0f, 0.10f, 5, Palette.FlameCoreA, Quaternion.Euler(0, 50f, 0), topCol: Palette.FlameCoreB, ramp: true);
             mb.emission = 0f; mb.flameHeight = 0f;
         }

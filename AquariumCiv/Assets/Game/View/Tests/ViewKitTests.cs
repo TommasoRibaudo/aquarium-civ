@@ -62,7 +62,7 @@ namespace AquariumCiv.View.Tests
         {
             var mb = new MeshBuilder();
             Pieces.Firepit(mb, Vector3.zero, false);
-            Assert.IsTrue(mb.uvs.Any(u => u.y >= 0.49f), "the flame core glows (emission 0.5; only it nears the bloom threshold)");
+            Assert.IsTrue(mb.uvs.Any(u => u.y >= 0.39f), "the flames glow a little (emission 0.3 tips to 0.4 core, so they stay orange after tonemapping)");
             Assert.IsTrue(mb.lamps.Any(l => l.x >= 2f), "and the flames carry the flicker flag the shader moves (#63)");
         }
 

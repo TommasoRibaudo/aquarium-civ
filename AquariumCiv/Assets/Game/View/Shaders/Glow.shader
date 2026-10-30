@@ -13,7 +13,8 @@ Shader "AquariumCiv/View/Glow"
         _Intensity ("Intensity", Float) = 0.55
         _Breath ("Fire breathing (unused)", Range(0, 1)) = 0.25
         _HaloIntensity ("Fire halo intensity", Float) = 0.4
-        _HaloHole ("Halo hole (fraction of its radius)", Range(0, 0.6)) = 0.13
+        _HaloHole ("Halo core size (fraction of its radius)", Range(0, 0.6)) = 0.2
+        _HaloCore ("Halo strength inside the core (0 = a hole)", Range(0, 1)) = 0.55
         _PoolIntensity ("Warm pool intensity", Float) = 0.12
         _EmberIntensity ("Ember intensity", Float) = 0.8
     }
@@ -34,12 +35,12 @@ Shader "AquariumCiv/View/Glow"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                half _Intensity, _Breath, _HaloIntensity, _HaloHole, _PoolIntensity, _EmberIntensity;
+                half _Intensity, _Breath, _HaloIntensity, _HaloHole, _HaloCore, _PoolIntensity, _EmberIntensity;
             CBUFFER_END
             float _AC_LampLevel;
 
             struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; float2 corner : TEXCOORD0; float2 data : TEXCOORD1; float2 extra : TEXCOORD2; };
-            struct Varyings { float4 positionCS : SV_POSITION; float2 corner : TEXCOORD0; half4 color : COLOR; half kind : TEXCOORD1; };
+            struct Varyings { float4 positionCS : SV_POSITION; float2 corner : TEXCOORD0; half4 color : COLOR; half kind : TEXCOORD1; half above : TEXCOORD2; };
 
             float Hash11(float n) { return frac(sin(n * 12.9898) * 43758.5453); }
 
@@ -57,6 +58,7 @@ Shader "AquariumCiv/View/Glow"
                 float kind = v.data.y;
                 float strength = 1.0;
                 float3 posWS;
+                o.above = 1;
                 o.kind = kind < 0.5 ? 0 : kind < 2.0 ? 1 : kind < 3.5 ? 3 : 4;
                 if (o.kind == 4)
                 {
@@ -87,6 +89,10 @@ Shader "AquariumCiv/View/Glow"
                         // A fire's halo: behind the flame, breathing with its flicker.
                         strength = _HaloIntensity * (1.0 + 0.2 * FlameNoise(v.extra.x));
                         centreVS.z -= radius * 0.3;
+                        // How far above the ground (the fire's foot, v.extra.y below the centre) this corner of the quad is, so the
+                        // part of the quad that dips into the terrain fades out instead of ending in a hard line.
+                        float3 corner3 = centreVS; corner3.xy += v.corner * radius;
+                        o.above = TransformViewToWorld(corner3).y - (centreWS.y - v.extra.y);
                     }
                     else
                     {
@@ -113,9 +119,11 @@ Shader "AquariumCiv/View/Glow"
                 fall *= fall;
                 if (i.kind < 0.5)
                 {
-                    // Ring: nothing inside the flame's own radius, so the halo never washes the flame out.
+                    // Softer inside the flame's own radius (it sits behind the flame, which hides it there anyway) and
+                    // fading out where the quad meets the ground.
                     half r = sqrt(r2);
-                    fall *= smoothstep(_HaloHole * 0.6, _HaloHole * 1.7, r);
+                    fall *= lerp(_HaloCore, 1, smoothstep(_HaloHole * 0.6, _HaloHole * 1.7, r));
+                    fall *= smoothstep(0.0, 0.12, i.above);
                 }
                 else if (i.kind > 2.5 && i.kind < 3.5)
                 {
