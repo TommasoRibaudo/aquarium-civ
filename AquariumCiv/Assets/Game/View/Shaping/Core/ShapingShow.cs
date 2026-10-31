@@ -52,6 +52,8 @@ namespace AquariumCiv.View.Shaping
         public const int ShowAnswersWithinMonths = 12;
         /// <summary>At most this many answers queue up to be shown after a return; the rest are reported quietly.</summary>
         public const int MaxQueuedAnswers = 3;
+        /// <summary>Answers are staged only in the day's view hours (from the work start to nightfall); the rest wait for morning.</summary>
+        public static bool ShowHour(float hour) => hour >= LifeClock.WorkStart && hour < LifeClock.Night;
         /// <summary>Real seconds between two queued answer shows.</summary>
         public const float AnswerGap = 1.5f;
         /// <summary>Box units round a new shaping within which the people react.</summary>
@@ -188,6 +190,9 @@ namespace AquariumCiv.View.Shaping
                 showing = null;
             }
             if (answerQueue.Count == 0) return;
+            // After dark nobody can walk over to it (user 2026-10-30): the answer is held, queue and all, until the next
+            // morning's view hours. The sim's answer isn't delayed, only its staging.
+            if (!ShowHour(viewNow.hour)) return;
             var next = answerQueue[0];
             float lastEnd = lastAnswerEnd;
             if (now - lastEnd < AnswerGap) return;

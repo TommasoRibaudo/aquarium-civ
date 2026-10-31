@@ -144,6 +144,79 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.AreEqual(0f, show.Herd(show.Find(waiting.id)).splash, "no splash replay");
         }
 
+        (SimCore sim, LifePlanner planner, ShapingShow show, Nudge n, long day) AnsweredAt(int seed, float hour, List<ShapingEvent> ev)
+        {
+            var sim = NewSim(seed);
+            for (int m = 0; m < 12; m++) sim.Step();
+            var planner = LifePlanner.Wired(sim);
+            var show = new ShapingShow();
+            long day = sim.State.month;
+            while (planner.IsRestDay(day) || planner.IsRestDay(day + 1)) day++;
+            show.Sync(sim, 0f, new ViewTime(day, hour), planner, ev);
+            var (x, z) = OpenLand(sim, 1.2f, 0.6f);
+            var n = show.DebugPlace(sim, SimCore.NudgeKind.Grove, x, z);
+            Assert.IsTrue(show.SkipToAnswer(sim, n.id));
+            planner.Invalidate();
+            return (sim, planner, show, n, day);
+        }
+
+        [Test]
+        public void AnAnswerAfterDarkWaitsForMorningAndIsThenStaged()
+        {
+            var ev = new List<ShapingEvent>();
+            var (sim, planner, show, n, day) = AnsweredAt(6, 21f, ev);
+            show.Sync(sim, 5f, new ViewTime(day, 21f), planner, ev);
+            Assert.IsFalse(ev.Any(e => e.kind == ShapingEventKind.Answered), "not shown at night");
+            Assert.IsFalse(show.Answer.active);
+            Assert.IsNull(show.Find(n.id).moment, "nobody is sent over at night");
+            Assert.IsFalse(n.reported);
+            Assert.IsTrue(n.credited, "the sim's answer itself isn't delayed");
+            // The view day turns and the small hours pass: still held.
+            show.Sync(sim, 30f, new ViewTime(day + 1, 2f), planner, ev);
+            show.Sync(sim, 40f, new ViewTime(day + 1, 6.5f), planner, ev);
+            Assert.IsFalse(ev.Any(e => e.kind == ShapingEventKind.Answered), "held over the day turn");
+            Assert.IsFalse(n.reported);
+            show.Sync(sim, 50f, new ViewTime(day + 1, 8f), planner, ev);
+            Assert.AreEqual(1, ev.Count(e => e.kind == ShapingEventKind.Answered), "shown with the people next morning");
+            Assert.IsNotNull(show.Find(n.id).moment, "staged in the world");
+            Assert.IsTrue(show.Answer.active);
+        }
+
+        [Test]
+        public void AnAnswerByDayIsStagedAtOnce()
+        {
+            var ev = new List<ShapingEvent>();
+            var (sim, planner, show, n, day) = AnsweredAt(6, 10f, ev);
+            show.Sync(sim, 5f, new ViewTime(day, 10f), planner, ev);
+            Assert.AreEqual(1, ev.Count(e => e.kind == ShapingEventKind.Answered));
+            Assert.IsNotNull(show.Find(n.id).moment);
+        }
+
+        [Test]
+        public void HeldAnswersKeepTheQueueCap()
+        {
+            var sim = NewSim(6);
+            for (int m = 0; m < 12; m++) sim.Step();
+            var show = new ShapingShow();
+            var ev = new List<ShapingEvent>();
+            long day = sim.State.month;
+            show.Sync(sim, 0f, new ViewTime(day, 22f), null, ev);
+            var ns = new List<Nudge>();
+            for (int i = 0; i < 5; i++)
+            {
+                var (x, z) = OpenLand(sim, 1.2f, 0.6f);
+                var n = sim.DebugShape(SimCore.NudgeKind.Rain, i % 2 == 0 ? x : -x, i < 2 ? z : -z + i * 0.01f);
+                if (n == null) continue;
+                sim.DebugSkipToAnswer(n.id);
+                ns.Add(n);
+            }
+            Assert.GreaterOrEqual(ns.Count, 4);
+            show.Sync(sim, 5f, new ViewTime(day, 22f), null, ev);
+            Assert.AreEqual(ShapingShow.MaxQueuedAnswers, ns.Count(q => !q.reported), "three are held, the rest reported quietly");
+            show.Sync(sim, 10f, new ViewTime(day + 1, 9f), null, ev);
+            Assert.AreEqual(1, ev.Count(e => e.kind == ShapingEventKind.Answered));
+        }
+
         [Test]
         public void ShowingShapingsNeverTouchesTheSimsDice()
         {
