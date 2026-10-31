@@ -24,6 +24,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeStageTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/NotableCountTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/NameTests.cs" /><!-- #66 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobFillTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RoleTests.cs" />
