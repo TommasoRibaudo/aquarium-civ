@@ -120,7 +120,14 @@ namespace AquariumCiv.View.PlayTests
         {
             var sv = ShapingView.Instance;
             Sim.DebugRefillShaping();
-            sv.SetTool(SimCore.NudgeKind.Rain);
+            // The real tray: the HUD's Shape button, the rain's button in the sheet, then a tap on the ground (spends a charge).
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root.Q("hud-shape")));
+            yield return Frames(4);
+            Assert.AreEqual(GameHud.Shaping, GameHud.Instance.OpenSheet, "the Shape button opens the tray");
+            float charges = Sim.ShapingCharges;
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root.Q("shaping-tool-" + SimCore.NudgeKind.Rain)));
+            yield return Frames(4);
+            Assert.AreEqual(SimCore.NudgeKind.Rain, sv.Tool, "the tray's rain is in hand");
             yield return new WaitForSecondsRealtime(0.5f);
             int before = Sim.State.nudges.Count;
             // Open ground somewhere near the middle of the view: the first spot the box takes.
@@ -136,6 +143,7 @@ namespace AquariumCiv.View.PlayTests
                 if (Sim.State.nudges.Count > before) break;
             }
             Assert.Greater(Sim.State.nudges.Count, before, "a tap on the ground places the tool: " + sv.LastResult);
+            Assert.Less(Sim.ShapingCharges, charges, "the tray's tool spent a charge");
             sv.SetTool(null);
             yield return Frames(4);
         }

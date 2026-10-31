@@ -357,16 +357,16 @@ namespace AquariumCiv.GameUI
             sheet.Add(Text("The chronicle and the time-lapse of the years will live here.", "sheet-note"));
         }
 
+        /// <summary>The shaping sheet's body (#84): empty here; the shaping view fills it with the tray when the sheet opens
+        /// (<see cref="SheetChanged"/>), so the tray's logic and look live with the shaping, not in the HUD shell.</summary>
+        public VisualElement ShapingBody { get; private set; }
+
         void BuildShaping()
         {
             var sheet = Sheet(Shaping, "Shape the land");
-            var tools = new VisualElement { name = "shaping-tools" };
-            tools.AddToClassList("tools");
-            var rain = Btn("shaping-rain", "Rain", null, "tool");
-            rain.SetEnabled(false);
-            tools.Add(rain);
-            sheet.Add(tools);
-            sheet.Add(Text("Gifts and landscaping arrive with the shaping tools.", "sheet-note"));
+            ShapingBody = new VisualElement { name = "shaping-tray" };
+            ShapingBody.AddToClassList("tray");
+            sheet.Add(ShapingBody);
         }
 
         /// <summary>A bottom sheet: a dimmed full-screen scrim (tap closes) holding the sheet with a title and Close.</summary>
