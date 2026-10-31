@@ -5,8 +5,7 @@ pieces connect. It feeds the hierarchy and wireframes (#163) and the UI rework e
 
 **Sources:** the design docs, the open issues, the "Note for the UI rework" comments, and the code on `vs/slice` at
 7851231 (element names, buttons and toasts pulled from the source).
-**Limit:** states come from code and docs, not from looking at each one. The capture pass (one screenshot per state
-through the debug panel) needs the Editor and belongs to #163.
+**Captures:** one image per state in [ui/captures/](ui/captures/README.md), which also lists the bugs they show.
 
 Status: **built** = works, in the plain #36 style. **part** = works with parts missing. **none** = not built.
 Serves: **P** player, **T** tester (test builds), **D** developer.
@@ -77,17 +76,17 @@ Three things this shows:
 | Piece | Purpose | Where | States | Serves | Code | Issue | Status |
 |---|---|---|---|---|---|---|---|
 | Ambient bubble | The people speak | Over the speaker | One at a time, rate limited | P | `WorldBubbles`, `showme-bubble` | #76, #143, #144 | part |
-| Notable marker, pin tag | Who is special or pinned | Over the person | Marked, pinned gold | P | `PersonCardView` | #39 | built |
+| Name tag, pin tag | Who is open or pinned | Over the person | Card open, pinned gold; no always-on marker | P | `pc-name-tag`, `pc-pin-tag` | #39 | built |
 | Tie lines | Friends, family, rivals | Between people | Colour per tie | P | `ColorOf(TieKind)` | #39 | built |
 | Take back chip | Undo a shaping | Near the shaping | Visible, then gone (#149 timer) | P | `shaping-takeback-` | #84, #149 | built |
-| Footprint | Where a tool lands | Under the finger | Valid, invalid | P | `ShapingFootprint` | #84 | built |
+| Footprint | Where a tool lands | Under the finger | No preview today; only the wish's "Here" pin | P | `ShapingFootprint` (core only) | #84 | none |
 | Brass plate | The box's name | On the plinth | Blank, named, second line | P | `firstrun-plate`, `visit-plate`, `ShelfProps` | #94 | part |
 
 ### 3.3 The return
 | Piece | Purpose | Where | States | Serves | Code | Issue | Status |
 |---|---|---|---|---|---|---|---|
 | Peek | One line, what happened | Bottom | Shown, dismissed, dot | P | `cards-peek` | #75 | built |
-| Card stack | Stories since you left | Bottom sheet | Story, wish, era, payoff, last page | P | `cards-sheet` | #75 | built |
+| Card stack | Stories since you left | Bottom sheet | Story, wish, era, relic, legend, Keeper, teaser line, end line, last page | P | `cards-sheet` | #75 | built |
 | Also… card | The overflow | Last in stack | 1–3 headlines | P | `cards-also` | #75 | built |
 | Show me | Fly to a story | World + card | Running, cannot go there | P | `ShowMeDirector` | #76 | built |
 | Recall prompt | Day-3 research question | Sheet | Asked, answered, Not now | T | `recall-sheet` | #100 | built |
@@ -96,7 +95,7 @@ Three things this shows:
 | Piece | Purpose | Where | States | Serves | Code | Issue | Status |
 |---|---|---|---|---|---|---|---|
 | Person card | Who this is | Lower sheet | Notable, no stories, legend, pinned, Best or Recent | P | `person-card` | #39, #148 | built, crowd none |
-| Shaping tray | Pick a tool | Sheet | Tools, charges, locked, capped, empty | P | `shaping-tray`, `-tools`, `-pips` | #84 | built, landscaping row is a note |
+| Shaping tray | Pick a tool | Sheet | Tools, charges, locked, capped, empty, Take back list | P | `shaping-tray`, `-tools`, `-pips` | #84 | built, landscaping row is a note |
 | Shaping mode | Place a tool | Banner + Cancel | Armed, wish-armed, placed, refused | P | `shaping-banner`, `-cancel`, `-wish-bar` | #84, #145 | built |
 | Clean mode | Wipe | Glass | On, idle off, spotless | P | `CareView` | one-handed doc | built |
 
@@ -115,10 +114,10 @@ Three things this shows:
 | Evening talk | How a check-in ends | World + caption | Gather, speak, shelf view | P | | #77 | none |
 | Era-ready and Watch | The era waits | Thumb zone | Hidden, ready, wipe first | P | `moment-watch` | #86 on | built |
 | Moment overlays | Era moment | World | Hold-to-hurry, bubble, caption | P | `moment-root`, `-hint`, `-caption`, `-bubble` | #88 on | built |
-| Notification ask | Opt-in | Prompt | First era only, asked, off | P | | #97 | none |
+| Notification ask | Opt-in | Prompt | Yes, Not now; scheduling not built | P | `moment-notify` | #97 | part |
 | Finish the box | Starts the end | Thumb zone | Hidden, ready | P | `complete-prompt` | #87 | built |
 | Last moment | The end | World | Bubble, caption, hint, roll call | P | `boxcomplete-*` | #87 | built |
-| Setting picker | Choose the next box | Sheet | Desert oasis, Mountain village | P | `BoxCompleteController` | #87 | built |
+| Setting picker | Choose the next box | | No UI: only debug sets it | P | `SettingForNextBox` | #115 | none |
 | Shelf | Finished boxes | Sheet + world | List, open, visiting (banner + plate) | P | `shelf-*`, `visit-*` | #87 | built |
 
 ### 3.7 First run
@@ -135,6 +134,7 @@ Three things this shows:
 | Piece | Purpose | Where | States | Serves | Code | Issue | Status |
 |---|---|---|---|---|---|---|---|
 | Settings sheet | Options | Sheet | Sound, haptics, version today | P | `settings-*` | #95 | part |
+| History sheet (first run) | Placeholder before the first year | Sheet | Text only | P | `GameHud.BuildHistory` | #79 | built |
 | Volumes, music | Three sliders + frequency | Settings | Silent phone notice | P | `GameSettings` has them, no UI | #95 | none |
 | Rename, reset, licences | Box and legal | Settings | Reset confirm | P | | #95 | none |
 | Feedback sheet | Send a note | Sheet | Kind, text, screenshot, sent, queued | T | `fb-sheet` | #55, #153 | built |

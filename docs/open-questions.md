@@ -5,6 +5,15 @@ deleted here. Recommended options come first and are marked ★. On GitHub: issu
 
 _Last updated 2026-10-31._
 
+## UI hierarchy, sign-off for #163 (2026-10-31)
+Check on the phone: [the wireframes](https://claude.ai/artifact/EcnzmRQisy5Vi5mGYSZMmD). Details: [design/ui/hierarchy.md](design/ui/hierarchy.md) §4.
+- **History:** ★ always opens the time-lapse, and unread stories live on the peek. Alternative: a small menu.
+- **Pin chip (#136):** ★ a small portrait and name, apart from the tools. Alternative: no chip, only a gold name and an edge marker.
+- **Box name and year:** ★ quiet text with a small settings mark. Alternative: tap the name, no mark.
+- **Photo and Feedback:** ★ small icons, Feedback in test builds and in Settings. Alternative: Feedback only in Settings.
+- **Year:** ★ always on, quietly; era gets no HUD sign. Alternative: year only in Settings and History.
+- **Shape:** ★ loses its strong look. Alternative: stays strong in free play only.
+
 ## Still open (2026-10-30)
 
 ### Camera lifts after the glass fix
