@@ -32,7 +32,7 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator Open(int w = 1179, int h = 2556)
         {
             LogAssert.ignoreFailingMessages = true;
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
+            savePath = GameClock.DefaultSavePath;
             backup = savePath + ".timelapse-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
             if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }

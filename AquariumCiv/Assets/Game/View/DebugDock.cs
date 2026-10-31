@@ -1,6 +1,7 @@
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace AquariumCiv.View
 {
@@ -8,7 +9,8 @@ namespace AquariumCiv.View
     /// TEMPORARY shared layout for the IMGUI debug panels (#40): one "dbg" toggle at the top left of the safe area (the
     /// HUD's title is centred and Feedback sits top right), one panel open at a time (dbg or sim tab), nothing drawn
     /// while a HUD sheet is open, and the covered rects go to <see cref="UiInput.DebugBlocks"/> so neither the camera nor
-    /// the HUD reacts under them.
+    /// the HUD reacts under them. The panels are IMGUI, which gets no input events in a player unless Active Input Handling
+    /// is Both (docs/tooling.md, 2026-10-31), so the project is on Both; the long-press itself reads the Input System.
     /// </summary>
     public static class DebugDock
     {
@@ -24,7 +26,6 @@ namespace AquariumCiv.View
         public static bool? ForceLocked;
         static bool unlocked;
         static float pressStart = -1f;
-        static bool held;
 
         public static bool Locked => !unlocked && (ForceLocked ?? !Application.isEditor);
 
@@ -42,16 +43,20 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Back to the first-launch state (tests).</summary>
-        public static void ResetLock() { unlocked = false; pressStart = -1f; held = false; ForceLocked = null; Active = None; }
+        public static void ResetLock() { unlocked = false; pressStart = -1f; ForceLocked = null; Active = None; }
 
-        static void WatchCorner(Rect safe)
+        /// <summary>Once a frame (not from OnGUI): the long-press reads the pointer, so it needs no IMGUI input at all.</summary>
+        public static void WatchCorner()
         {
-            var e = Event.current;
-            if (e == null) return;
-            if (e.type == EventType.MouseDown || e.type == EventType.MouseDrag) held = true;
-            else if (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp) held = false;
-            Hold(held, e.mousePosition, CornerRect(safe), Time.realtimeSinceStartup);
+            if (!Locked) return;
+            var safe = SafeArea(out float sc);
+            var p = Pointer.current;
+            bool down = p != null && p.press.isPressed;
+            Hold(down, down ? ToGui(p.position.ReadValue(), sc) : default, CornerRect(safe), Time.realtimeSinceStartup);
         }
+
+        /// <summary>A pointer position (pixels, y up) in IMGUI units (y down).</summary>
+        public static Vector2 ToGui(Vector2 screen, float sc) => new(screen.x / sc, (Screen.height - screen.y) / sc);
 
         public static bool Hidden =>
             (GameHud.Instance != null && (GameHud.Instance.SheetOpen || GameHud.Instance.CameraMode)) || (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen);
@@ -59,8 +64,14 @@ namespace AquariumCiv.View
         /// <summary>Sets the IMGUI matrix and returns the safe area in IMGUI units.</summary>
         public static Rect Begin(out float sc)
         {
-            sc = Mathf.Max(1f, Screen.height / 1100f);
+            var safe = SafeArea(out sc);
             GUI.matrix = Matrix4x4.Scale(new Vector3(sc, sc, 1f));
+            return safe;
+        }
+
+        static Rect SafeArea(out float sc)
+        {
+            sc = Mathf.Max(1f, Screen.height / 1100f);
             var sa = Screen.safeArea;
             return new Rect(sa.x / sc, (Screen.height - sa.yMax) / sc, sa.width / sc, sa.height / sc);
         }
@@ -76,11 +87,7 @@ namespace AquariumCiv.View
         /// <summary>The toggle bar; call once per OnGUI. Returns false when nothing may be drawn (a HUD sheet is open).</summary>
         public static bool DrawBar(Rect safe, float sc)
         {
-            if (Locked)
-            {
-                WatchCorner(safe);
-                if (Locked) { Active = None; Publish(sc, false); return false; }
-            }
+            if (Locked) { Active = None; Publish(sc, false); return false; }
             if (Hidden) { Publish(sc, false); return false; }
             bool open = Active != None;
             bar = new Rect(safe.x + Gap, safe.y + Gap, open ? 3 * 58f : 56f, BarH);

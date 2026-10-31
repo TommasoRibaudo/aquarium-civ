@@ -33,7 +33,7 @@ namespace AquariumCiv.View.PlayTests
             GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             GameClock.DebugDayOffset = 0;
-            gameDir = Path.Combine(Application.persistentDataPath, "game");
+            gameDir = Path.GetDirectoryName(GameClock.DefaultSavePath);
             backupDir = gameDir + "-telemetry-test-backup";
             if (Directory.Exists(backupDir)) Directory.Delete(backupDir, true);
             Directory.CreateDirectory(backupDir);

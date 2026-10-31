@@ -96,8 +96,20 @@ namespace AquariumCiv.View.Cards
 
         public CardStackMode Mode { get; private set; }
         public CardPeek Peek { get; private set; }
-        /// <summary>A dot, never a number: stories wait to be read.</summary>
-        public bool HistoryDot { get; private set; }
+        /// <summary>A dot, never a number: stories wait to be read. None in the first run, which tells its own card; when it
+        /// ends the dot is worked out again, or the founding stories it counted as seen would keep it lit.</summary>
+        public bool HistoryDot
+        {
+            get
+            {
+                bool held = sim.State.firstRun.active;
+                if (dotHeld && !held) dot = sim.HasUnreadCards;
+                dotHeld = held;
+                return dot && !held;
+            }
+            private set => dot = value;
+        }
+        bool dot, dotHeld;
         public int Index { get; private set; }
         /// <summary>A card opened from "Also…" (null = none): it covers that page until <see cref="Back"/>.</summary>
         public ChronicleCard Detail { get; private set; }

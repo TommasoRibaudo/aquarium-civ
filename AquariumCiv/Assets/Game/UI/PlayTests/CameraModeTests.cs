@@ -92,6 +92,7 @@ namespace AquariumCiv.GameUI.PlayTests
             hud.Toast("hello");
             Assert.IsFalse(Shown(root.Q("hud-toast")), "no toasts in camera mode");
             Assert.IsFalse(UiInput.Over(GameUiPanel.ScreenCenter(root, "hud-shape")), "hidden buttons take no presses");
+            yield return new WaitForSecondsRealtime(0.3f); // past the HUD's 0.15 s guard, in seconds: the frame rate varies
 
             // A drag (orbit) and a pinch do not exit.
             yield return DragFrom(Middle, Middle + new Vector2(300, 100));

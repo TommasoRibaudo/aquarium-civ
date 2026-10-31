@@ -35,6 +35,10 @@ namespace AquariumCiv.Game
         public CatchUpResult LastAway { get; private set; }
         public event Action<CatchUpResult> CaughtUp;
         public string SavePath { get; private set; }
+        /// <summary>Play tests send the save to a folder of their own (null = the player's), so a clock still alive after a test
+        /// (autosave, focus, quit) can't write a test box over the real one. Read at Awake: a clock keeps its path to the end.</summary>
+        public static string SaveFolderOverride;
+        public static string DefaultSavePath => Path.Combine(SaveFolderOverride ?? Path.Combine(Application.persistentDataPath, "game"), "box.json");
 
         /// <summary>The sim clock holds still (an era moment plays, era-moment.md §3: no months pass, mess doesn't grow).
         /// Real time is not banked: the held seconds are simply not lived.</summary>
@@ -64,7 +68,7 @@ namespace AquariumCiv.Game
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-            SavePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
+            SavePath = DefaultSavePath;
             int seed = DebugNextSeed != 0 ? DebugNextSeed : new System.Random().Next(1, int.MaxValue);
             DebugNextSeed = 0; // one box only
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -84,7 +88,7 @@ namespace AquariumCiv.Game
         {
             try
             {
-                TelemetryDir = Path.Combine(Application.persistentDataPath, "game", "telemetry");
+                TelemetryDir = Path.Combine(Path.GetDirectoryName(SavePath), "telemetry");
                 Telemetry = new TelemetryLog(new FileTelemetryStorage(TelemetryDir), () => TelemetryNow, BoxTelemetryId());
                 BeginSession("open", Session.awayHours);
                 if (!Session.newWorld)

@@ -614,6 +614,24 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
+        public void TheFirstRunShowsNoDotAndItsEndLeavesNone()
+        {
+            var cfg = new SimConfig();
+            var sim = new SimCore(cfg, SimCore.NewWorld(9, cfg));
+            var run = FirstRun.Begin(sim);
+            var m = Model(sim);
+            Assert.IsTrue(sim.HasUnreadCards, "the founding stories count");
+            Assert.IsFalse(m.HistoryDot, "not while the first run lasts");
+            Assert.IsFalse(m.Reopen());
+            while (run.Active) run.SkipStep();
+            Assert.IsFalse(m.HistoryDot, "the run told them");
+            sim.Advance(3);
+            m.Prepare(Day);
+            m.HidePeek();
+            Assert.IsTrue(m.HistoryDot, "real cards after the run: the dot as usual");
+        }
+
+        [Test]
         public void SkippingTheFirstRunAlsoStartsTheLedgerNow()
         {
             var cfg = new SimConfig();

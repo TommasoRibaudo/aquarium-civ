@@ -35,7 +35,7 @@ namespace AquariumCiv.View.PlayTests
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
+            savePath = GameClock.DefaultSavePath;
             backup = savePath + ".firstrun-test-backup";
             if (backup != null && !File.Exists(backup + ".marker"))
             {
@@ -64,12 +64,7 @@ namespace AquariumCiv.View.PlayTests
 #endif
             for (int i = 0; i < 90; i++) yield return null;
             // The start-up bootstraps run after the first scene only, so a scene loaded in play mode gets them by hand.
-            var b = UnityEngine.Object.FindAnyObjectByType<BoxView>();
-            if (GameHud.Instance == null) GameHud.Create();
-            if (b != null && CareView.Instance == null) b.gameObject.AddComponent<CareView>();
-            if (b != null && ShapingView.Instance == null) b.gameObject.AddComponent<ShapingView>();
-            if (b != null && ShowMeDirector.Instance == null) b.gameObject.AddComponent<ShowMeDirector>();
-            if (FirstRunView.Instance == null) FirstRunView.Create();
+            Bootstraps.All();
             for (int i = 0; i < 6; i++) yield return null;
         }
 
@@ -220,6 +215,15 @@ namespace AquariumCiv.View.PlayTests
                 Assert.LessOrEqual(View.ShownHintText.Split(' ').Length, 3);
                 Assert.IsTrue(hud.CleanMode, "one finger wipes: clean mode is on for the player");
                 yield return Shot("1_wipe_hint");
+                // No dot and no time-lapse in the first run (first-session §2): History is the plain sheet.
+                var dot = hud.Root.Q("hud-history-dot");
+                Assert.AreEqual(DisplayStyle.None, dot.resolvedStyle.display, "the founding stories light no dot");
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsFalse(TimeLapseScreenView.Ensure().IsOpen, "no time-lapse in the first run");
+                Assert.AreEqual(GameHud.History, hud.OpenSheet);
+                hud.CloseSheet();
+                for (int i = 0; i < 4; i++) yield return null;
                 yield return WipeTheGlass();
                 for (int i = 0; i < 20; i++) yield return null;
                 Assert.AreEqual(FirstRunStep.Patch, View.Step, "the clear glass moves the run to the patch");
@@ -312,6 +316,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(hud.ToolsHidden, "the tools are back");
                 Assert.IsFalse(GameClock.Instance.Held);
                 Assert.AreEqual("", View.ShownHintId);
+                Assert.AreEqual(DisplayStyle.None, dot.resolvedStyle.display, "the run told its stories: no dot after it");
 
                 // Normal play again: the Clean button works, the HUD sheet opens, the name is on the HUD.
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));

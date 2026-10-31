@@ -21,6 +21,8 @@ namespace AquariumCiv.View
         static string[] cueIds;
         static string[] CueIds => cueIds ??= System.Linq.Enumerable.ToArray(System.Linq.Enumerable.OrderBy(AquariumCiv.Audio.CueLibrary.All.Keys, k => k));
 
+        void Update() => DebugDock.WatchCorner();
+
         void OnGUI()
         {
             var safe = DebugDock.Begin(out float sc);
