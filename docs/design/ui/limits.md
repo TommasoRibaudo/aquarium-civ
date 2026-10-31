@@ -138,6 +138,23 @@ Reading it: CPU is the busier thread without the wait for Present. A drop is a f
 fixed order, so a hot phone flatters the first ones: if the numbers are close, run it again after a rest. Thermal state
 isn't read (no cheap route), so watch for GPU ms climbing between runs.
 
+Off costs nothing, measured in the Editor (`FrostCostProbe`, [Explicit], category `FrostProbe`, median of 300 frames, same
+session, VSync off, 1179x2556, PC renderer). Without the code and with it, test never opened or closed again, both read
+the same:
+
+| State | SetPass | Draws | Frame ms |
+|---|---|---|---|
+| No frost code in the project | 31 | 88 | 5.03 to 5.07 |
+| With the code, never opened | 31 | 88 | 5.02 |
+| With the code, opened, all modes, closed | 31 | 89 | 5.03 |
+| Panel open, off (its own table and buttons) | 31 | 93 | 5.00 |
+| Flat | 31 | 94 | 5.03 |
+| 1/8 + 6 | 40 | 105 | 5.40 |
+| 1/4 + 14 | 39 | 105 | 5.37 |
+
+The one extra draw after closing also appears without the code at the same point in the run: the game moving on. Render
+texture memory matched at 221.0 MB, 25.9 and 28.7 MB more in the two frost modes.
+
 Pass or fail goes here, against 30 fps minimum and steady, 60 where cheap (practices §7): *not measured yet*.
 
 ## Fonts used
