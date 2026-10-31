@@ -26,16 +26,16 @@ Shader "AquariumCiv/View/Glow"
         _HaloCore ("Halo strength inside the core (0 = a hole)", Range(0, 1)) = 0.55
         _PoolIntensity ("Warm pool intensity", Float) = 0.12
         _EmberIntensity ("Ember intensity", Float) = 0.8
-        _FlameCore ("Flame core", Color) = (1, 0.76, 0.28, 1)
+        _FlameCore ("Flame core", Color) = (1, 0.68, 0.2, 1)
         _FlameMid ("Flame body", Color) = (1, 0.48, 0.12, 1)
         _FlameEdge ("Flame edge", Color) = (0.9, 0.28, 0.12, 1)
-        _FlameBoost ("Flame brightness", Float) = 1.25
+        _FlameBoost ("Flame brightness", Float) = 1.1
         _FlameOpacity ("Flame opacity", Range(0, 1)) = 0.92
         _FlameSoft ("Flame edge softness", Range(0.01, 0.6)) = 0.18
-        _SparkIntensity ("Spark intensity", Float) = 2.2
-        _SparkOpacity ("Spark opacity", Range(0, 1)) = 0.6
-        _SparkRise ("Spark rise (u)", Float) = 0.75
-        _WashIntensity ("Warm wash intensity", Float) = 0.28
+        _SparkIntensity ("Spark intensity", Float) = 1.6
+        _SparkOpacity ("Spark opacity", Range(0, 1)) = 0.8
+        _SparkRise ("Spark rise (u)", Float) = 0.5
+        _WashIntensity ("Warm wash intensity", Float) = 0.1
     }
     SubShader
     {
@@ -111,13 +111,13 @@ Shader "AquariumCiv/View/Glow"
                     float u = frac(_Time.y / period + phase);
                     float a = u * 6.2832 * 1.25 + phase * 40.0;
                     float3 off = float3(0.07 * u * sin(a), _SparkRise * u * (2.0 - u), 0.07 * u * cos(a * 0.8 + 1.0));
-                    off.xz += (float2(Hash11(phase * 91.0), Hash11(phase * 53.0)) - 0.5) * 0.12;
+                    off.xz += (float2(Hash11(phase * 91.0), Hash11(phase * 53.0)) - 0.5) * 0.08;
                     float size = radius * saturate(u * 12.0) * (1.0 - u * u);
                     float3 c = TransformWorldToView(centreWS + off);
-                    c.xy += v.corner * size * float2(1.0, 1.0 + 2.5 * (1.0 - u));
+                    c.xy += v.corner * size * float2(1.0, 1.0 + 1.5 * (1.0 - u));
                     o.positionCS = TransformWViewToHClip(c);
                     strength = _SparkIntensity;
-                    tint *= lerp(half3(1.2, 1.0, 0.7), half3(0.9, 0.4, 0.3), (half)u);
+                    tint *= lerp(half3(1.2, 0.8, 0.4), half3(1.0, 0.3, 0.15), (half)u);
                     opaque = _SparkOpacity;
                 }
                 else if (o.kind == 4)
@@ -195,7 +195,7 @@ Shader "AquariumCiv/View/Glow"
                     half heat = saturate(1.0 - abs(i.corner.x - bend) / max(wide, 0.02));
                     half band = heat * (1.0 - 0.55 * h);
                     half3 ramp = lerp(_FlameEdge.rgb, _FlameMid.rgb, smoothstep(0.1, 0.16, band));
-                    ramp = lerp(ramp, _FlameCore.rgb, smoothstep(0.34, 0.4, band));
+                    ramp = lerp(ramp, _FlameCore.rgb, smoothstep(0.42, 0.48, band));
                     half a = smoothstep(0.0, _FlameSoft, heat) * (1.0 - smoothstep(0.72, 1.0, h));
                     return half4(ramp * i.color.rgb * _FlameBoost * a, a * i.color.a);
                 }

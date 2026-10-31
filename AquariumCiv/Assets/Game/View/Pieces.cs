@@ -473,7 +473,7 @@ namespace AquariumCiv.View
             mb.emission = 0f;
         }
 
-        /// <summary>Embers: the coal heap and three stubby flames, 0.1-0.14 tall, gold going to orange, each on its own
+        /// <summary>Embers: the coal heap and three stubby flames, 0.13-0.18 tall, gold going to orange, each on its own
         /// flicker phase. 90 vertices.</summary>
         public static void EmberHeap(MeshBuilder mb, Vector3 p, float phase)
         {
@@ -484,15 +484,15 @@ namespace AquariumCiv.View
             for (int i = 0; i < 3; i++)
             {
                 var yaw = Quaternion.Euler(0, yaw0 + i * 120f, 0);
-                float h = Mathf.Lerp(0.1f, 0.14f, H01(phase * 33f + i * 7.7f));
+                float h = Mathf.Lerp(0.13f, 0.18f, H01(phase * 33f + i * 7.7f));
                 mb.flamePhase = Mathf.Repeat(phase + i * 0.37f, 1f);
-                mb.Prism(p + yaw * new Vector3(0, y0, 0.03f), 0.045f, 0f, h, 4, Hot(Palette.FlameCoreA, 1.5f), yaw * Quaternion.Euler(10f, 0, 0), topCol: Hot(Palette.FlameBodyA, 1.1f), ramp: true);
+                mb.Prism(p + yaw * new Vector3(0, y0, 0.03f), 0.052f, 0f, h, 4, Hot(Palette.FlameCoreB, 1f), yaw * Quaternion.Euler(10f, 0, 0), topCol: Hot(Palette.FlameBodyB, 1f), ramp: true);
             }
             mb.emission = 0f; mb.flameHeight = 0f;
         }
 
         /// <summary>
-        /// Paper: six folded tongues, back to front: three tall orange ones, two gold-orange, one gold (0.30 tall at most).
+        /// Paper: six folded tongues, back to front: three tall orange ones, two gold-orange, one gold (0.27 tall at most).
         /// Each is a bent double pyramid of 8 faces, 24 vertices (144 in all), two tones per tongue, like a folded strip of
         /// paper; the fold reads with no lights because the tones are in the vertex colours. Each tongue flickers on its own
         /// phase.
@@ -506,24 +506,24 @@ namespace AquariumCiv.View
             {
                 mb.flamePhase = Mathf.Repeat(phase + i * 0.37f, 1f);
                 float a = yaw0 + yaw + (H01(phase * 57f + i * 3.1f) - 0.5f) * 24f;
-                PaperTongue(mb, p + Quaternion.Euler(0, a, 0) * new Vector3(0, y0, r), a, h, w, 0.05f + 0.04f * H01(phase * 71f + i * 5.3f), low, belly, tip);
+                PaperTongue(mb, p + Quaternion.Euler(0, a, 0) * new Vector3(0, y0, r), a, h, w, 0.04f + 0.03f * H01(phase * 71f + i * 5.3f), low, belly, tip);
             }
-            Color gold = Hot(Palette.FlameCoreA, 1.5f), amber = Hot(Palette.FlameCoreB, 1.25f), orange = Hot(Palette.FlameBodyA, 1.1f), red = Hot(Palette.FlameBodyB, 1f);
-            Tongue(0, 0f, 0.05f, 0.3f, 0.062f, orange, orange, red);
-            Tongue(1, 125f, 0.05f, 0.25f, 0.056f, orange, orange, red);
-            Tongue(2, 235f, 0.05f, 0.27f, 0.056f, orange, orange, red);
-            Tongue(3, 60f, 0.03f, 0.2f, 0.052f, amber, amber, orange);
-            Tongue(4, 190f, 0.03f, 0.18f, 0.05f, amber, amber, orange);
-            Tongue(5, 300f, 0.012f, 0.13f, 0.046f, gold, gold, amber);
+            Color gold = Hot(Palette.FlameCoreA, 1.3f), amber = Hot(Palette.FlameCoreB, 1.25f), orange = Hot(Palette.FlameBodyA, 1.1f), red = Hot(Palette.FlameBodyB, 1f);
+            Tongue(0, 0f, 0.05f, 0.27f, 0.078f, orange, orange, red);
+            Tongue(1, 125f, 0.05f, 0.23f, 0.07f, orange, orange, red);
+            Tongue(2, 235f, 0.05f, 0.25f, 0.07f, orange, orange, red);
+            Tongue(3, 60f, 0.03f, 0.19f, 0.066f, amber, amber, orange);
+            Tongue(4, 190f, 0.03f, 0.17f, 0.062f, amber, amber, orange);
+            Tongue(5, 300f, 0.012f, 0.14f, 0.058f, gold, gold, amber);
             mb.emission = 0f; mb.flameHeight = 0f;
         }
 
-        /// <summary>One tongue: from a pointed foot out to a diamond belly at 38 % of the height, then to a tip leaning
+        /// <summary>One tongue: from a pointed foot out to a diamond belly at 45 % of the height, then to a tip leaning
         /// <paramref name="lean"/> outwards. Faces at each side of the blade are the lit fold, the others a shade deeper.</summary>
         public static void PaperTongue(MeshBuilder mb, Vector3 foot, float yawDeg, float h, float halfWidth, float lean, Color low, Color belly, Color tip)
         {
             var q = Quaternion.Euler(0, yawDeg, 0);
-            var bellyC = foot + q * new Vector3(0, h * 0.38f, lean * 0.3f);
+            var bellyC = foot + q * new Vector3(0, h * 0.45f, lean * 0.3f);
             var tipP = foot + q * new Vector3(lean * 0.35f, h, lean);
             Vector3 wide = q * Vector3.right * halfWidth, deep = q * Vector3.forward * (halfWidth * 0.45f);
             var ring = new[] { bellyC + wide, bellyC + deep, bellyC - wide, bellyC - deep };

@@ -1203,7 +1203,7 @@ namespace AquariumCiv.View
                     var look = FireLooks.Spec(FireLooks.Active);
                     Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), look.haloRadius, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
                     Add(foot + Vector3.up * 0.02f, look.poolRadius, 4f, Palette.FirePool, phase, look.poolBoost);                 // warm pool on the ground
-                    if (look.washRadius > 0f) Add(frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), look.washRadius, 7f, Palette.FireHalo, phase, 0.16f); // warm wash over the neighbours
+                    if (look.washRadius > 0f) Add(frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), look.washRadius, 7f, Palette.FlameBodyA, phase, 0.16f); // warm wash over the neighbours
                     for (int t = 0; t < look.softTongues; t++)                                                                     // billboard flames, the big one last
                     {
                         FireLooks.SoftTongue(t, look.softTongues, phase * 6.2832f, out float dx, out float dz, out float halfW, out float tall);
@@ -1212,7 +1212,7 @@ namespace AquariumCiv.View
                     for (int e = 0; e < look.embers; e++)                                                                          // embers
                         Add(foot + Vector3.up * look.emberY, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 11)) / look.embers, 1.2f + 0.8f * Land.Hash3(p.seed, e, 12));
                     for (int e = 0; e < look.sparks; e++)                                                                          // sparks
-                        Add(foot + Vector3.up * 0.06f, 0.016f, 6f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 14)) / look.sparks, 1.4f + 1.1f * Land.Hash3(p.seed, e, 15));
+                        Add(foot + Vector3.up * 0.06f, 0.013f, 6f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 14)) / look.sparks, 1.4f + 1.1f * Land.Hash3(p.seed, e, 15));
                     for (int s = 0; s < look.smokePuffs; s++)                                                                      // smoke
                         AddSmoke(foot + Vector3.up * 0.3f, (s + Land.Hash3(p.seed, s, 13) * 0.4f) / look.smokePuffs, 4f);
                 }

@@ -37,8 +37,11 @@ namespace AquariumCiv.View
     /// <summary>The look in use and the table behind it. Pure: read from worker threads by the mesh builders.</summary>
     public static class FireLooks
     {
-        /// <summary>The look the box builds. Stays <see cref="FireLook.Current"/> until the user picks (#65).</summary>
-        public static FireLook Active = FireLook.Current;
+        /// <summary>The look a fresh game starts with: the #63 fire until the user picks (#65).</summary>
+        public const FireLook Default = FireLook.Current;
+
+        /// <summary>The look the box builds. A debug flip outlives leaving play mode.</summary>
+        public static FireLook Active = Default;
 
         /// <summary>Quads of glow per fire, whatever the look (each is one more quad in one small mesh, no extra draw).</summary>
         public const int GlowQuadBudget = 24;
@@ -47,7 +50,7 @@ namespace AquariumCiv.View
         {
             new FireSpec { haloRadius = 0.42f, poolRadius = 0.55f, embers = 8, emberY = 0.14f, smokePuffs = 4, bodyVertexBudget = 130 },
             new FireSpec { haloRadius = 0.5f, poolRadius = 0.6f, poolBoost = 0.6f, embers = 8, emberY = 0.28f, smokePuffs = 3, softTongues = 4, bodyVertexBudget = 45 },
-            new FireSpec { haloRadius = 0.34f, poolRadius = 0.8f, poolBoost = 1.6f, washRadius = 0.7f, embers = 4, emberY = 0.08f, sparks = 14, smokePuffs = 2, bodyVertexBudget = 90 },
+            new FireSpec { haloRadius = 0.34f, poolRadius = 0.8f, poolBoost = 1.6f, washRadius = 0.6f, embers = 4, emberY = 0.08f, sparks = 14, smokePuffs = 2, bodyVertexBudget = 90 },
             new FireSpec { haloRadius = 0.46f, poolRadius = 0.6f, poolBoost = 0.6f, embers = 6, emberY = 0.26f, smokePuffs = 3, bodyVertexBudget = 150 },
         };
 
@@ -81,10 +84,10 @@ namespace AquariumCiv.View
         {
             if (i >= count - 1) { dx = dz = 0f; halfWidth = 0.11f; height = 0.36f; return; }
             float a = yaw + i * 6.2832f / (count - 1);
-            dx = (float)System.Math.Cos(a) * 0.055f;
-            dz = (float)System.Math.Sin(a) * 0.055f;
-            halfWidth = 0.065f;
-            height = 0.2f + 0.05f * i;
+            dx = (float)System.Math.Cos(a) * 0.075f;
+            dz = (float)System.Math.Sin(a) * 0.075f;
+            halfWidth = 0.075f;
+            height = 0.23f + 0.03f * i;
         }
     }
 }

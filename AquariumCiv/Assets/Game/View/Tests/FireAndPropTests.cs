@@ -79,7 +79,7 @@ namespace AquariumCiv.View.Tests
         {
             Assert.IsFalse(FireLooks.TryParse("lava", out _));
             Assert.IsFalse(FireLooks.TryParse(null, out _));
-            Assert.AreEqual(FireLook.Current, FireLooks.Active, "stays on the #63 fire until the user picks");
+            Assert.AreEqual(FireLook.Current, FireLooks.Default, "stays on the #63 fire until the user picks");
         }
 
         [Test]
@@ -145,7 +145,7 @@ namespace AquariumCiv.View.Tests
             Pieces.PaperTongue(mb, foot, 40f, 0.3f, 0.06f, 0.07f, Color.red, Color.red, Color.red);
             Assert.AreEqual(24, mb.VertexCount, "8 faces");
             float top = float.MinValue;
-            var belly = foot + Quaternion.Euler(0, 40f, 0) * new Vector3(0, 0.114f, 0.021f);
+            var belly = foot + Quaternion.Euler(0, 40f, 0) * new Vector3(0, 0.135f, 0.021f);
             for (int t = 0; t < mb.tris.Count; t += 3)
             {
                 Vector3 a = mb.verts[mb.tris[t]], b = mb.verts[mb.tris[t + 1]], c = mb.verts[mb.tris[t + 2]];
