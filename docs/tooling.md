@@ -569,3 +569,5 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   target is Android/iOS: switch back with `SwitchActiveBuildTarget(Standalone, StandaloneWindows64)` and `git checkout` the
   URP assets under `Assets/Settings` and `ProjectSettings.asset`. `unity job` has no `get`/`list` here. Foreground `sleep`
   followed by another command is blocked; `ping -n N 127.0.0.1 >/dev/null` is a wait that works.
+
+- **2026-10-31 · An Editor restart empties `AquariumCiv/Temp/`, including `Temp/agent/`.** Tester run 4's screenshots vanished when the next agent ran `restart-editor.sh`. Copy anything worth keeping out of `Temp/` before a restart. [verified]
