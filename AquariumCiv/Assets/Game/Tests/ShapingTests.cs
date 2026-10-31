@@ -242,6 +242,10 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(SimCore.ShapeFail.AtCap, sim.PlaceShaping(SimCore.NudgeKind.Herd, wx, wz).fail, "one shoal per water body");
             float x = 0.6f, z = 0.6f; Dry(sim, ref x, ref z);
             Assert.AreEqual("deer", sim.PlaceShaping(SimCore.NudgeKind.Herd, x, z).nudge.variant, "deer are separate");
+            // Tester batch 3: a shoal's answer speaks of fish.
+            StringAssert.Contains("shoal", SimCore.CreditLine(SimCore.NudgeKind.Herd, BuildingType.Farm, null, Era.Camp, variant: "fish"));
+            StringAssert.Contains("fishing", SimCore.CreditLine(SimCore.NudgeKind.Herd, BuildingType.Farm, null, Era.Camp, variant: "fish"));
+            StringAssert.Contains("herd", SimCore.CreditLine(SimCore.NudgeKind.Herd, BuildingType.Farm, null, Era.Camp, variant: "deer"));
         }
 
         [Test]

@@ -192,7 +192,7 @@ namespace AquariumCiv.Sim.Settle
                     if (e != null)
                     {
                         var who = S.notables.FirstOrDefault(x => x.id == e.notableId);
-                        e.text = SimCore.CreditLine(answer.kind, b.type, who, S.era, true);
+                        e.text = SimCore.CreditLine(answer.kind, b.type, who, S.era, true, answer.variant);
                     }
                 }
             }

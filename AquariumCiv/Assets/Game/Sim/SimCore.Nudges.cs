@@ -101,7 +101,7 @@ namespace AquariumCiv.Sim
                 n.answerMonth = s.month;
                 n.buildingId = -1;
                 var hw = named ?? StoryAdultOrNull();
-                var he = Chronicle("keeper", HarvestLine(n.kind, hw, s.era), 0.9f, hw?.id ?? -1);
+                var he = Chronicle("keeper", HarvestLine(n.kind, hw, s.era, n.variant), 0.9f, hw?.id ?? -1);
                 he.keeper = true;
                 return true;
             }
@@ -113,7 +113,7 @@ namespace AquariumCiv.Sim
             n.answerMonth = s.month;
             n.buildingId = b?.id ?? -1;
             var who = named ?? StoryAdultOrNull();
-            var e = Chronicle("keeper", b != null ? CreditLine(n.kind, type, who, s.era) : HarvestLine(n.kind, who, s.era), 0.9f, who?.id ?? -1);
+            var e = Chronicle("keeper", b != null ? CreditLine(n.kind, type, who, s.era, variant: n.variant) : HarvestLine(n.kind, who, s.era, n.variant), 0.9f, who?.id ?? -1);
             e.buildingId = n.buildingId;
             e.keeper = true;
             return true;
@@ -121,11 +121,12 @@ namespace AquariumCiv.Sim
 
         /// <summary>The credited deed when no building can be added (the box is full): the people make use of the gift.
         /// Never names a building.</summary>
-        static string HarvestLine(string kind, Notable who, Era era)
+        static string HarvestLine(string kind, Notable who, Era era, string variant = null)
         {
             string name = who != null ? who.FullName : "the people";
             string own = who != null ? who.FullName + "'s" : "the people's";
             bool camp = era == Era.Camp;
+            if (variant == "fish") return $"After the Keeper sent a shoal, {name} cast nets over the pond.";
             return kind switch
             {
                 NudgeKind.Rain => $"After the Keeper's rain, {name} {(camp ? "gathered the bright new growth" : "brought in a second crop")}.",
@@ -177,10 +178,12 @@ namespace AquariumCiv.Sim
             return null;
         }
 
-        internal static string CreditLine(string kind, string type, Notable who, Era era = Era.Village, bool plain = false)
+        public static string CreditLine(string kind, string type, Notable who, Era era = Era.Village, bool plain = false, string variant = null)
         {
             string name = who != null ? who.FullName : "the people";
             bool camp = era == Era.Camp; // the camp gathers; it doesn't sow yet (#61)
+            if (variant == "fish" && kind == NudgeKind.Herd && (type == BuildingType.Farm || type == BuildingType.Workshop))
+                return $"After the Keeper sent a shoal, {name} {(camp ? "staked out new fishing grounds" : "built a fishing jetty")} beside it.";
             string built = type switch
             {
                 BuildingType.Farm => kind == NudgeKind.Herd ? (camp ? "staked out new hunting grounds" : "staked out new hunting and grazing grounds")
