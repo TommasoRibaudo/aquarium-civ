@@ -6,10 +6,14 @@ four storyboards and the flat fallback.
 
 Builds on [hierarchy.md](hierarchy.md) (rules and D1 to D6), [limits.md](limits.md) (what USS can draw) and
 [../ui-inventory.md](../ui-inventory.md) (pieces and states). The canvas draws with CSS, so where the two differ, this file and
-limits.md decide how it's built. **Pending:** the user's sign-off, the hero piece in Unity and the tester review (see the
-end of this file).
+limits.md decide how it's built. The tester's [real] findings are fixed on the boards, and the hero piece is done
+(`vs/107-hero`, `docs/design/ui/hero/README.md`: matches with changes, folded in here). **Pending:** the user's sign-off.
 
 Scale: 1 pt on a 393 pt phone is 2.75 USS px in the 1080-wide panel. Sizes below are pt. Multiply by 2.75 for USS.
+
+**The boards are CSS, which blends in sRGB. The project is Linear, so UI Toolkit blends in linear light.** Light over light
+hardly changes, dark over light comes out paler, light over dark comes out lighter. Check any translucent dark token in a
+render, and never copy it from the boards' CSS.
 
 ## 1. Tokens
 
@@ -21,13 +25,15 @@ Name the USS variables as in the first column, in `Game.uss` `:root`.
 |---|---|---|
 | `--ink` | `#3D2A1E` | Text on frost, tint and paper |
 | `--ink-soft` | `#4A3324` | Button and tool labels, on flat tint only |
-| `--timber` | `#6A4B36` | Pips, dots, dashed locked edge, sliders |
+| `--timber` | `#6A4B36` | Pips, dots, sliders, thin edge of unavailable pieces |
+| `--dot-off` | timber at 52 % | Page dots, off (the boards' 40 % comes out too pale in Unity) |
 | `--paper` | `#F3E9D6` | Base of every light surface; solid on book pages |
 | `--frost-tint` | paper at 72 % | One surface per screen, over the blur |
 | `--flat-tint` | paper at 92 % | Tools, chips, tags, pin, bubbles, hints, banner |
 | `--flat-sheet` | paper at 94 % | Replaces the frost when the switch is off. No blur |
 | `--quiet-backing` | paper at 72 %, no blur | Behind the box name and top icons once the camera leaves its home view |
-| `--brass` | `#B88A3E` | Hairlines at 53 %, portrait ring, slider thumb |
+| `--brass` | `#B88A3E` | Portrait ring, slider thumb |
+| `--edge` | `#D3B684`, opaque | Hairline on buttons and tools (the boards' brass at 53 % comes out too pale) |
 | `--brass-light` | `#D9B873` | Frost edge, gold pin tag, brass plate |
 | `--primary` | `#9E5033` | One per moment; selected tab line, armed ring |
 | `--on-primary` | `#EFE3CC` | Text on primary, toast and caption |
@@ -36,9 +42,16 @@ Name the USS variables as in the first column, in `Game.uss` `:root`.
 
 ### Type
 
-Lora and PT Serif only, SIL OFL 1.1. Lora's file is variable, so import static cuts. Files: Lora 700, Lora 500, PT Serif 400,
-700, 400 italic; drop Lora 500 if the atlas budget needs it (the selected-tab weight then falls to fake bold on regular).
-Nothing under 13 pt. Line height is a rich tag (`<line-height=135%>`): USS has no property.
+Lora and PT Serif only, SIL OFL 1.1. Five files: Lora 700 and 500, PT Serif 400, 700 and 400 italic. **Don't instance
+Lora's variable file:** "Lora" is a Reserved Font Name, and an instanced file is a modified version that couldn't keep it.
+Use upstream's static cuts from `cyrealtype/Lora-Cyrillic` (`fonts/ttf/`), and take Lora 500 from there too. Nothing
+under 13 pt.
+
+Line height is a rich tag, because USS has no property. **Use px, not %:** `<line-height=135%>` is a percent of the font's
+own line and gives 1.79 of the size. Use size × 1.35 in panel px, so body is `<line-height=55.7px>`.
+
+Unity's type reads 7 to 16 % lighter than the board. Add `-unity-text-outline-width: 0.3px` in the text's own colour to
+every class, pending the phone check in #108.
 
 | Class | Font | Size | Use |
 |---|---|---|---|
@@ -60,7 +73,8 @@ Nothing under 13 pt. Line height is a rich tag (`<line-height=135%>`): USS has n
   `:nth-child`, `:not` all fail; the last two empty the whole file).
 - Screen sides 16. Bottom safe area 30 or `GameUiPanel.SafeInsets`, whichever is larger.
 - Radii: chip 14, tile 16, toast and caption 18, pin 22, button 23, peek 24, sheet 26, tool 28.
-- Soft shadow is a 9-slice PNG behind sheet and peek only. Small pieces get a hairline, no shadow.
+- Soft shadow is a 9-slice PNG behind sheet and peek only, tinted 45 % (the boards' 20 % almost vanishes). Small pieces
+  get a hairline, no shadow.
 
 ### Lanes (distance from the bottom edge)
 
@@ -112,17 +126,29 @@ Components call a role, which calls `Sfx.Play` with a `CueLibrary` id. Nothing i
 
 ## 2. Surfaces and the one switch
 
-- **Frost** = URP pass copying the frame to 1/4 size, a panel showing it, `filter: blur(14px)`, `--frost-tint` on top. One
-  surface on screen. It needs runtime code and is costly (limits.md).
+- **Frost** = URP pass copying the frame to 1/4 size, then in the panel, bottom to top: paper, the sharp copy, the blurred
+  copy, `--frost-tint`. Without the sharp copy, a light band shows along the sheet's edges. One surface on screen. It
+  needs runtime code and is costly (limits.md).
+- **Blur size:** limits.md's "blur 14" is 14 panel px, about 5 pt, and it leaves shelf and glass edges as streaks on a close
+  camera. `blur(38.5px)` matches the board's 14 pt at the same Editor cost. Test both on the phone.
 - **Flat** = `--flat-sheet`, no copy, no filter. Frost surfaces use a single class, `.surface`; the switch swaps it for
   `.surface--flat` in one place (#108). Layout doesn't change. Every frost surface is on the Flat fallback board.
 - Frost surfaces: peek, card stack, person card, tray, recall, time-lapse panel, naming, first-year card, setting picker,
   shelf list, settings, licences, reset, history sheet, feedback.
 - Flat tint, never frost: tools, chips, tags, pin, bubbles, hints, banner, tiles.
 - Paper, solid: book pages.
-- Sheets sit on the bottom edge at 30 % (`height: 30%`, 237 pt on a 790 pt screen). Longer content scrolls inside. Above
-  30 %: setting picker 33 %, settings and feedback 59 %. None of those talk about the world, so rule 5 holds.
-- A scrim appears only behind the reset confirm. Nothing dims before Watch.
+- Sheets sit on the bottom edge at 30 % of the screen (`height: 30%`): 237 pt on the boards, 256 pt on a 393 × 852 phone.
+  Top padding is 12 pt plus the hairline. Longer content scrolls inside, and the scroll view's height snaps to whole lines so
+  no line is cut. Above 30 %: setting picker 33 %, licences 35 %, settings and feedback 59 %, settings with the silent notice
+  63 %. None of those talk about the world, so rule 5 holds.
+- **Short phones (375 × 667):** the sheet stays 30 %, 200 pt. The card needs about 216 pt at full layout, so under 700 pt
+  tall the year joins the dots row and bottom padding drops to 14, which gives 193 pt. Longer text scrolls. Drawn at the
+  end of 3.3. Not yet tried in Unity.
+- **Keyboard:** a text-entry sheet rides on top of the keyboard, by translate, using `TouchScreenKeyboard.area`. Keep and
+  Send stay above it. Naming and rename keep their layout, with bottom padding 12. Feedback folds to heading, text and
+  buttons, because its full layout wouldn't fit. Drawn on 3.7 and 3.8. Check Unity's mobile input bar on a device.
+- A scrim appears only behind the reset confirm, and the URP copy won't include it, so that sheet comes out lighter than
+  drawn. Nothing dims before Watch.
 
 ## 3. Components
 
@@ -130,8 +156,8 @@ One component each, per inventory §4. Every element name stays the same: the pl
 
 | Component | Replaces | States | USS route |
 |---|---|---|---|
-| **Button** | Button classes across views | Primary, secondary, quiet, icon; default, pressed, unavailable | Primary `--primary`. Unavailable is a dashed edge and a lock with full-strength text, never faded |
-| **Chip** | Tie chips, kind chips | Label; choice off, on (check mark) | Visible 30, 44 slot when tappable |
+| **Button** | Button classes across views | Primary, secondary, quiet, icon; default, pressed, unavailable | Primary `--primary`. Unavailable is a thin solid `--timber` edge, a paler fill and a lock, with full-strength text, never faded |
+| **Chip** | Tie chips, kind chips | Label; choice off, on (check mark) | Visible 30, inside a transparent 44 tall parent that takes the tap. Slots touch, with no gap between rows. Drawn on Design System, used in the person card |
 | **Pin chip** | `hud-pin` | Hidden, pinned, long label | 40 portrait + name, `max-width`, ellipsis only past 220 |
 | **Stories chip** | `hud-history-dot` | Hidden, shown | Dot + word, never a number |
 | **Sheet + scrim** | `GameHud.Sheet`, `cards-sheet`, `recall-sheet`, `shelf-sheet`, `fb-sheet`, naming sheet | Closed, open, scrolled | `.surface`, translate on open, `SafeInsets` as padding |
@@ -148,6 +174,9 @@ One component each, per inventory §4. Every element name stays the same: the pl
 | **Banner** | `shaping-banner`, `visit-banner` | Tool in hand, visiting | Fixed exit, bottom row |
 | **Big prompt** | `moment-watch`, `complete-prompt`, `firstrun-rain` | Hidden, ready | Prompt lane, no timer |
 
+USS has no dashed border, so nothing in the UI is dashed. Locked tiles use the same solid edge as unavailable buttons.
+The footprint's dashes are a world mesh, not USS.
+
 Icons: 24 grid, stroke 2, one colour. Import as VectorImage, draw white, tint with
 `-unity-background-image-tint-color`. The set is on the Design System board. Portraits: `border-radius` mask + 2 pt
 `--brass` border, initials on `--moss` until real ones exist.
@@ -161,17 +190,21 @@ Rules that change today's layout. Everything else is as drawn.
 - **Quiet backing:** ink on the world passes on the default view (8.05:1 or better) and fails on any closer camera, down
   to 1.0:1 over the glass frame. Add `--quiet-backing` to the name and top icons whenever the camera is off its home view.
 - **D1:** History always opens the time-lapse. The unread dot moves to the Stories chip after a peek is swiped away.
-- **Card stack:** one sheet, 237 tall. Order is Back, Next, Show me, then the one primary at the right: Give, Watch,
-  Remember or Done. Next is never primary. A story card has no filled button; its headline leads. Long cards scroll.
+- **Card stack:** one sheet, 30 %. Order is Back, Next, Show me, then the one primary at the right: Give, Watch,
+  Remember or Done. Next is never primary. A story card has no filled button; its headline leads. Long cards scroll, snapped to whole
+  lines. The last page drops "and 21 more" (`CardStackView.cs:469`): rule 8.
 - **Person card:** name, Pin and Close in one row, the subtitle on its own row below, so it can't run under Pin. Tabs
   are About, Recent, Best. Tie labels sit at the far end of each tie line, off the name tag.
-- **Tray:** a low row of tiles, 30 %, no dim. Charges sit in the head. The reason for a locked or capped tool is a note
+- **Tray:** a low row of four tiles that fit the width, 30 %, no dim. A fifth tool makes the row scroll. Charges sit in the head. The reason for a locked or capped tool is a note
   under the row. Picking a tool removes the sheet.
 - **Placing:** footprint on the ground, tool in hand, charges, Cancel. **Cancel's place is the user's call, see §7.**
 - **Time-lapse:** the HUD leaves, so the only year is the tag on the playhead. A hairline band with era names as text, a
   44 pt hit strip, pin marks. The caption lives inside the panel (27 %), and its controls replace the play row.
 - **Era card:** always the era at the playhead. Check the timing bug in captures/README.md when building it.
 - **Feedback, recall:** sheets from the bottom edge. Feedback's Send is unavailable until there's text.
+- **Notification ask:** at the close, first era only. The HUD stays down, the caption leads, and both buttons are
+  secondary.
+- **Visiting:** box name and years in the banner, with "Back to your box" beside them.
 - **Reset:** "Reset Mossbarrow?", says what's lost, "Keep playing" is primary, "Reset box" is small, far and marked.
 - **Book:** full-screen paper, swipe to turn, Back, Next and Close at the bottom. Era look changes with paper colour and
   type treatment; the stone and bark art doesn't exist yet.
@@ -187,6 +220,7 @@ Test builds only: Feedback icon and sheet, recall prompt, skip row. Dev only: de
 | Subtitle under Pin | Subtitle has its own row |
 | Clipped pin chip | Wider chip, ellipsis only past 220 |
 | Two primaries side by side | Next is always secondary |
+| Hint over a bubble on the wipe repeat | The hint rests while the reward line shows |
 | Tie labels over the name tag | Labels at the far end of the tie |
 | Two years on the time-lapse | HUD leaves, one tag on the playhead |
 | Sheets out of the thumb zone | Every sheet sits on the bottom edge |
@@ -196,26 +230,24 @@ Test builds only: Feedback icon and sheet, recall prompt, skip row. Dev only: de
 
 ## 6. Contrast
 
-Measured on the real backgrounds at phone size: a Gaussian blur of 14 on each image, tint on top, lowest pixel in each
-region. Worst case is pure black, since no night capture exists (`extra-hud-default-night` looks like day). This is a
-calculation, not a Unity render; the frost's URP copy still needs checking in the game.
+Measured in the Unity render of the hero card (hero/README.md), so these replace the first pass's calculated figures. Each
+state was captured with and without the words: ink is the darkest 2 % of the changed pixels, background the 1 % darkest
+pixel in the text's box. No real night exists yet, so pure black stands in for it.
 
-| Pair | Lowest on real backgrounds | Over black | Result |
-|---|---|---:|---|
-| Ink on frost, 72 %, sheet | 7.07:1 (close camera) | 5.73:1 | Pass, frost not raised |
-| Ink on frost, peek | 8.51:1 | 5.73:1 | Pass |
-| Ink on frost, tall sheet 62 % | 7.08:1 | 5.73:1 | Pass |
-| Ink on flat tint 92 % | | 9.44:1 | Pass |
-| Ink on flat sheet 94 % | | 9.88:1 | Pass |
-| Ink soft on frost | | 4.96:1 | Pass, but not used on frost |
-| Primary text on primary | 4.53:1 | | Pass, no margin: don't lighten |
-| Paper on moss portrait | 4.78:1 | | Pass |
-| Ink on gold tag | 7.14:1 | | Pass |
-| On-primary on dark plate | 8.08:1 over white | 11.31:1 | Pass |
-| Ink on the world, no backing | 8.05:1 default view | 1.0:1 close camera | **Fails, needs the quiet backing** |
-| Ink on quiet backing, 72 % | | 5.73:1 | Pass |
+| Pair | Measured | Result |
+|---|---:|---|
+| Ink on frost, home view | 9.38:1 lowest | Pass |
+| Ink on frost, close camera, dirty glass (worst game state) | 8.52:1 | Pass |
+| Ink on frost, over pure black | 8.33:1 | Pass |
+| Ink on flat, close camera, dirty glass | 10.64:1 | Pass |
+| On-primary on primary | 4.53:1 | Pass, no margin: don't lighten |
+| M on moss | 4.72:1 | Pass |
 
-Keep `--frost-tint` at 64 % or higher: below that, ink over black drops under 4.5:1.
+Frost stays at 72 %. On the home view the sheet covers only the shelf, so **dirty glass must be tested with the close camera.**
+
+Not measured in Unity, so still sRGB calculations on our captures: ink on the gold tag 7.14:1, on-primary on the dark plate at
+least 8.08:1. Ink directly on the world passes at 8.05:1 on the default view and falls to 1.0:1 over the glass frame on a close
+camera, so it needs the quiet backing. That's the frost tint with no blur, which should behave like the black row above.
 
 ## 7. Open, for the user
 
@@ -229,18 +261,18 @@ Cancel in the bottom row. Both are drawn on the 3.4 board.
 | Against | The far end of the screen from the footprint, a longer move | Moves with the footprint, and a tap meant for the ground can land on it |
 | Recommendation | **A**, with the tool bar joined to it. A wrong tap on B would place or cancel by accident (#145) | |
 
-Also open:
+Also open. Each has a recommendation; none blocks the build order.
 
-1. **Quiet backing:** only when the camera is off its home view (drawn), or always on, which is the safer guarantee but
-   brings back something close to the pill D3 removed?
-2. **Long cards:** relic and end-line cards scroll inside 30 %. Fine, or let those grow to about 34 %?
-3. **Story cards** have no filled button, on the reading that the headline is the primary. Is that calm or too flat?
-4. **Shelf and Stories** share the chip slot. Once a box is finished both can want it. Proposed: Stories wins, and Shelf
-   moves into Settings while it's up.
-5. **New words** with no game text behind them yet: "Stories", "Back to the story", the silent notice, the reset body,
-   "The next box", "Begin", "Rename your box", tab "About". Samples on the boards: crowd card "Tob", "The Guild Years",
-   "The Quarry family", the snapshot file name, licence rows.
-6. **Setting picker:** draw two settings only, as decided (desert oasis, mountain village), with desert oasis preselected?
+1. **Quiet backing:** only off the home view, as drawn. Always on is safer but close to the pill D3 removed.
+2. **Long cards:** keep the scroll inside 30 %, snapped to whole lines.
+3. **Story cards** with no filled button: keep.
+4. **Shelf and Stories** share a slot: Stories wins, Shelf moves into Settings while it's up.
+5. **Sheets over 30 %:** accept them, and move the silent notice into the Sound row so settings stays at 59 %.
+6. **Setting picker:** two settings, desert oasis preselected. Give Mountain village a sub-line.
+7. **New words:** approve them, or replace them: "Stories", "Back to the story", the silent notice, the reset body, "The next box",
+   "Begin", "Rename your box", tab "About". Change "How often" to "Music plays". Samples, not game text: crowd "Tob", "The
+   Guild Years", "The Quarry family", the snapshot file name, licence rows. Doc lines: "Mira and Tob…", "They'll wait for you…".
+   The invalid-name sample stays masked.
 
 ## 8. Which issue builds what
 
@@ -263,9 +295,6 @@ moves it.
 
 ## 9. Still to do
 
-- Hero piece in Unity over the live tank: the frost is what the mockup can't prove. Proposed: **the wish card in the card
-  stack**. It proves the URP frost at 30 %, real Lora and PT Serif, a 9-slice shadow, the portrait ring, the safe area
-  and one primary in a single piece, and #166 needs it anyway.
-- Tester review against game-design-practices.md.
-- Legibility at 375×667, and a night background once one exists. Tablet isn't drawn.
+- The tester's [polish] findings wait for the user.
+- Legibility at 375×667 beyond the wish card, and a night background once one exists. Tablet isn't drawn.
 - Frost on a phone, in the final build (limits.md list). If it fails, flip the switch.
