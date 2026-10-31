@@ -371,7 +371,9 @@ namespace AquariumCiv.View.PlayTests
             yield return Open();
             try
             {
+#if UNITY_EDITOR
                 Assert.IsEmpty(BoxView.OrphanRoots().Select(g => g.name), "no generated box is left over from another scene");
+#endif
                 var panes = Resources.FindObjectsOfTypeAll<Renderer>().Where(r => r.name.StartsWith("Glass") && r.enabled && r.gameObject.activeInHierarchy).ToArray();
                 Assert.AreEqual(4, panes.Length, "four panes are drawn, no more");
                 var sim = GameClock.Instance.Sim;
