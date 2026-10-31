@@ -238,6 +238,26 @@ its lines [obs].
 5. **Watch waits with no timer,** and the player can stay as long as they like (Islanders [S]).
 6. **Darken the button terracotta** (§4).
 
+### General principles
+
+These are our own rules, from general UX guidance and the game's pillars. They don't rest on any reference game, and
+they apply to #106 and #107 like the recommendations above.
+
+1. **Keep controls near the action.** Confirm, cancel and rotate sit close to what's being placed, inside thumb reach,
+   and never under the finger or on top of the thing itself. Frequent actions are big and near; destructive ones are
+   smaller and further away ([Laws of UX](https://lawsofux.com/fittss-law/), [UX Tigers](https://www.uxtigers.com/post/fitts-law)).
+2. **A destructive confirm says what's lost, and its buttons are verbs.** "Reset Mossbarrow?" with "Reset box" and
+   "Keep playing", never Yes and No ([Primer](https://primer.style/product/components/confirmation-dialog/accessibility),
+   [Workday](https://canvas.workday.com/content/ui-text/buttons-ctas), [Splunk](https://help.splunk.com/en/splunk-style-guide/ui-text-guidelines/confirmation-dialog-box-text)).
+3. **Don't take over the screen before the player chooses.** No dimming, blur or modal before Watch: the player can keep
+   playing around it (pillars 4 and 6, era-moment.md, practices §14).
+4. **One person, one look.** Every picture of a person comes from the same source and sits beside their name, at a few
+   fixed sizes (practices §1).
+5. **Keep the world in view.** Settings and other sheets leave some of the box visible where they can. How that's drawn
+   depends on the limits sheet (#164), so translucency isn't assumed (practices §6).
+6. **Calm attention cues.** At most one thing asks for attention at a time, gently, with no looping urgency or flicker
+   (practices §12 and §14).
+
 ## 9. Source terms (read before #106)
 
 All read 2026-10-31. The coordinator's rule was to re-source only from pages whose terms don't forbid this.

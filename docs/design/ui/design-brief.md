@@ -23,7 +23,7 @@ No design pass starts without all of these:
 1. [hierarchy.md](hierarchy.md), signed off, with its rules (one primary per moment)
 2. [../ui-inventory.md](../ui-inventory.md), including the duplicates to merge
 3. [captures/](captures/README.md), so designs sit on the actual game
-4. The research findings from #104 (`docs/research/ui/README.md`)
+4. The research findings from #104 (`docs/research/ui/README.md`), including §8's general principles
 5. The style kit palette: `Game.uss` `:root`, `View/Palette.cs`, [../spikes/style-kit.md](../spikes/style-kit.md)
 6. **The limits sheet from #164 (`limits.md`)**
 
