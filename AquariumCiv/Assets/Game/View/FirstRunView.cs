@@ -49,7 +49,7 @@ namespace AquariumCiv.View
         TextField nameField;
         Button showMeBtn;
         FirstYearSummary summary;
-        bool heldClock, toolsHidden, cardShown, showingMe, rainArmed;
+        bool heldClock, toolsHidden, cardShown, showingMe, rainArmed, runEnded;
         float hintShownAt = -1f;
         string lastHintId = "";
         bool prevHintVisible;
@@ -104,6 +104,7 @@ namespace AquariumCiv.View
             heldClock = false;
             if (toolsHidden && GameHud.Instance != null) GameHud.Instance.HideTools("firstrun", false);
             toolsHidden = false;
+            SetSoftDays(false);
             MessProps.PatchCentre = null;
         }
 
@@ -128,6 +129,7 @@ namespace AquariumCiv.View
 
         void Hook()
         {
+            runEnded = false;
             run.StepChanged += OnStep;
             run.Cue += OnCue;
             shownStep = (FirstRunStep)(-1);
@@ -203,6 +205,7 @@ namespace AquariumCiv.View
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             bool year = run.Step == FirstRunStep.Year;
             if (year != heldClock) { heldClock = year; clock.Held = year; }
+            SetSoftDays(year);
             SetToolsHidden(year || run.Step == FirstRunStep.Card);
             if (year) run.AdvanceYear(dt);
             ReadPointer(out bool touching);
@@ -210,6 +213,14 @@ namespace AquariumCiv.View
             if (!run.Active) { EndRun(); HideAll(); return; }
             if (run.Step != shownStep) EnterStep();
             UpdateUi();
+        }
+
+        // "Their first year" runs a month every 1.25 s, far ahead of the view clock: the people walk to their new plans
+        // instead of jumping there at each skip (tester batch 3).
+        static void SetSoftDays(bool on)
+        {
+            var pv = PeopleView.Find();
+            if (pv != null) pv.SoftDayTurns = on;
         }
 
         void SetToolsHidden(bool hide)
@@ -220,8 +231,13 @@ namespace AquariumCiv.View
             if (hide) { hud.CloseSheet(); ShapingView.Instance?.SetTool(null); }
         }
 
+        /// <summary>Once per run: Update reaches here every frame after the run is over, and the shaping tool the player
+        /// picks later must not be cleared (tester batch 3).</summary>
         void EndRun()
         {
+            if (runEnded) return;
+            runEnded = true;
+            SetSoftDays(false);
             if (heldClock && GameClock.Instance != null) GameClock.Instance.Held = false;
             heldClock = false;
             SetToolsHidden(false);
@@ -315,7 +331,7 @@ namespace AquariumCiv.View
             // the rain button, in the thumb zone
             rainBtn = Btn("firstrun-rain", "Give them rain", OnRainButton, "hud-btn", "hud-btn--primary");
             rainBtn.style.position = Position.Absolute;
-            rainBtn.style.bottom = 330;
+            rainBtn.style.bottom = GameUiPanel.PromptBottom;
             rainBtn.style.alignSelf = Align.Center;
             rainBtn.style.width = 560;
             rainBtn.style.display = DisplayStyle.None;
@@ -624,12 +640,19 @@ namespace AquariumCiv.View
                 if (pv != null && n != null && pv.TryGetDollTop(PersonRef.Notable(w.notableId), out var top) && ToPanel(top, out var p))
                 {
                     bubble.text = $"{n.name} hopes for rain.";
-                    bubble.style.left = p.x; bubble.style.top = p.y - 24;
-                    bubble.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(-100, LengthUnit.Percent));
+                    PlaceOver(bubble, p, 24f);
                 }
                 else show = false;
             }
             bubble.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Centres a label over a panel point, on screen whatever its size (one frame late on new text).</summary>
+        static void PlaceOver(VisualElement e, Vector2 p, float gap)
+        {
+            float w = e.resolvedStyle.width, h = e.resolvedStyle.height;
+            var q = GameUiPanel.KeepOnScreen(e, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - gap - (float.IsNaN(h) ? 0f : h)), 190f);
+            e.style.left = q.x; e.style.top = q.y;
         }
 
         bool ToPanel(Vector3 world, out Vector2 panelPos)
@@ -697,15 +720,20 @@ namespace AquariumCiv.View
             }
             if (h.gesture != HintGesture.Tap) ghostRing.style.opacity = 0f;
             ghost.style.display = DisplayStyle.Flex;
+            // on a button the finger rests on its corner, so the word stays readable; the button already says it
+            bool onButton = h.anchor == HintAnchor.ShapingButton || h.anchor == HintAnchor.Plate;
+            var anchorEl = h.anchor == HintAnchor.Plate ? plate : rainBtn;
+            if (onButton) at += new Vector2(anchorEl.resolvedStyle.width * 0.5f - 30f, anchorEl.resolvedStyle.height * 0.5f - 6f);
             ghost.style.left = at.x + off.x - 48; ghost.style.top = at.y + off.y - 48;
             ghost.style.scale = new Scale(new Vector3(scale, scale, 1f));
             ghost.style.opacity = fade * alpha;
             hintLabel.text = h.text;
-            hintLabel.style.display = DisplayStyle.Flex;
+            hintLabel.style.display = onButton && h.anchor == HintAnchor.ShapingButton ? DisplayStyle.None : DisplayStyle.Flex;
             hintLabel.style.opacity = fade;
-            hintLabel.style.left = at.x;
-            hintLabel.style.top = at.y + (labelBelow ? 96f : -90f);
-            hintLabel.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(labelBelow ? 0 : -100, LengthUnit.Percent));
+            var hl = hintLabel.resolvedStyle;
+            float hw = float.IsNaN(hl.width) ? 0f : hl.width, hh = float.IsNaN(hl.height) ? 0f : hl.height;
+            var spot = GameUiPanel.KeepOnScreen(hintLabel, new Vector2(at.x - hw * 0.5f, labelBelow ? at.y + 96f : at.y - 90f - hh), 190f);
+            hintLabel.style.left = spot.x; hintLabel.style.top = spot.y;
         }
 
         bool Anchor(FirstRunHint h, out Vector2 at, out bool labelBelow)

@@ -333,6 +333,88 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        // ---------------- the glass as rendered (tester batch 3: 81 leaked panes hid the land and the grime) ----------------
+        /// <summary>The camera's frame without the UI, for reading pixels.</summary>
+        static Texture2D Render(string shot)
+        {
+            var cam = Camera.main;
+            int w = Screen.width, h = Screen.height;
+            var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB, 1);
+            var keep = cam.targetTexture;
+            cam.targetTexture = rt;
+            cam.Render();
+            cam.targetTexture = keep;
+            var active = RenderTexture.active;
+            RenderTexture.active = rt;
+            var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+            tex.Apply();
+            RenderTexture.active = active;
+            RenderTexture.ReleaseTemporary(rt);
+            if (shot != null) File.WriteAllBytes(Shots + shot + ".png", tex.EncodeToPNG());
+            return tex;
+        }
+
+        /// <summary>The mean colour (0..255) of a square of the frame.</summary>
+        static Vector3 Mean(Texture2D t, Vector2 at, int half)
+        {
+            var s = Vector3.zero; int n = 0;
+            for (int y = (int)at.y - half; y <= at.y + half; y += 2)
+                for (int x = (int)at.x - half; x <= at.x + half; x += 2)
+                { var c = t.GetPixel(x, y); s += new Vector3(c.r, c.g, c.b) * 255f; n++; }
+            return s / n;
+        }
+
+        [UnityTest, Timeout(180000)]
+        public IEnumerator Glass_CleanIsClear_DirtyIsObvious_AndAWipeShows()
+        {
+            yield return Open();
+            try
+            {
+#if UNITY_EDITOR
+                Assert.IsEmpty(BoxView.OrphanRoots().Select(g => g.name), "no generated box is left over from another scene");
+#endif
+                var panes = Resources.FindObjectsOfTypeAll<Renderer>().Where(r => r.name.StartsWith("Glass") && r.enabled && r.gameObject.activeInHierarchy).ToArray();
+                Assert.AreEqual(4, panes.Length, "four panes are drawn, no more");
+                var sim = GameClock.Instance.Sim;
+                var care = CareView.Instance;
+                var cam = Camera.main;
+                // a spot of the front pane over the land, well inside the pane
+                var front = panes.First(r => r.name == "GlassFront");
+                var c = front.bounds.center;
+                var spot = (Vector2)cam.WorldToScreenPoint(new Vector3(c.x, 1.7f, c.z));
+                sim.CleanAll();
+                for (int i = 0; i < 6; i++) yield return null;
+                front.enabled = false;
+                var bare = Render(null);
+                front.enabled = true;
+                var clean = Render("t3_glass_clean");
+                Vector3 bareC = Mean(bare, spot, 60), cleanC = Mean(clean, spot, 60);
+                Debug.Log($"[care] pixels: no pane {bareC}, clean {cleanC}");
+                Assert.Less((cleanC - bareC).magnitude, 26f, "clean glass barely changes what is behind it");
+
+                sim.State.grime = 0.8f;
+                for (int i = 0; i < 6; i++) yield return null;
+                var dirty = Render("t3_glass_dirty");
+                Vector3 dirtyC = Mean(dirty, spot, 60);
+                Debug.Log($"[care] pixels: grime 0.8 {dirtyC}, mask means {string.Join(", ", care.Masks.Select(m => m.Mean.ToString("0.00")))}");
+                Assert.Greater((dirtyC - cleanC).magnitude, 45f, "0.8 grime is obviously dirty");
+
+                // wipe a trail across the front pane: the wiped strip comes back to the clean look
+                int fi = Array.FindIndex(care.Masks, m => Mathf.Approximately(m.size.y, front.bounds.size.y) && Mathf.Approximately(m.size.x, front.bounds.size.x));
+                Assert.GreaterOrEqual(fi, 0);
+                float uvy = (1.7f - front.bounds.min.y) / front.bounds.size.y;
+                for (int i = 0; i < 4; i++) care.Masks[fi].BrushLine(new Vector2(0.3f, uvy), new Vector2(0.7f, uvy), 0.35f, 0.5f);
+                for (int i = 0; i < 3; i++) yield return null;
+                var wiped = Render("t3_glass_wiped");
+                Vector3 wipedC = Mean(wiped, spot, 30), wasC = Mean(dirty, spot, 30);
+                Debug.Log($"[care] pixels: wiped {wipedC}, same spot dirty {wasC}");
+                Assert.Greater((wipedC - wasC).magnitude, 40f, "the wiped trail shows");
+                UnityEngine.Object.Destroy(bare); UnityEngine.Object.Destroy(clean); UnityEngine.Object.Destroy(dirty); UnityEngine.Object.Destroy(wiped);
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator SlowDragOnMess_DropsItBack_AndAFastFlickThrowsItOut()
         {

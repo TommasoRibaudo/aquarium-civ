@@ -332,6 +332,8 @@ namespace AquariumCiv.View
                 echoUntil = Time.unscaledTime + seconds;
                 bubbleEl.text = $"“{text}”";
                 bubbleEl.style.display = DisplayStyle.Flex;
+                bubbleEl.style.fontSize = 34; bubbleEl.style.maxWidth = 640;
+                HoldUntilMeasured();
                 if (!Place(pv, cam, speaker)) bubbleEl.style.display = DisplayStyle.None; // shows as soon as they're on screen
                 EchoLinesOverHead++;
                 return;
@@ -457,12 +459,15 @@ namespace AquariumCiv.View
             var who = b.speakerId >= 0 ? PersonRef.Notable(b.speakerId) : visibleCrowd.Count > 0 ? visibleCrowd[(BubblesShown * 7) % visibleCrowd.Count] : PersonRef.None;
             if (who.IsNone && visibleNotables.Count > 0) who = PersonRef.Notable(visibleNotables[0]);
             if (who.IsNone) return; // nobody on screen to say it (it's counted said: fine, there are more)
+            if (DollPixels(pv, cam, who) < TinySpeakerPx) return; // zoomed far out: a bubble nobody can tie to a person
             EnsureUi();
             bubble = b;
             bubbleWho = who;
             bubbleUntil = Time.unscaledTime + b.seconds;
             bubbleEl.text = string.Join("\n", b.lines);
             bubbleEl.style.display = DisplayStyle.Flex;
+            FitToSpeaker(pv, cam, who);
+            HoldUntilMeasured();
             if (!Place(pv, cam, who)) { HideBubble(); return; }
             LastBubble = b;
             BubblesShown++;
@@ -477,10 +482,62 @@ namespace AquariumCiv.View
             if (s.z <= 0f || s.x < 0f || s.x > Screen.width || s.y < 0f || s.y > Screen.height) return false;
             BubbleScreen = new Vector2(s.x, s.y);
             var q = RuntimePanelUtils.ScreenToPanel(bubbleEl.panel, new Vector2(s.x, Screen.height - s.y));
-            bubbleEl.style.left = q.x;
-            bubbleEl.style.top = q.y - 16f;
-            bubbleEl.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(-100, LengthUnit.Percent));
+            float bw = bubbleEl.resolvedStyle.width, bh = bubbleEl.resolvedStyle.height;
+            if (float.IsNaN(bw)) bw = 0f;
+            if (float.IsNaN(bh)) bh = 0f;
+            // The echo sits right over its speaker. An ambient line goes to the side with more room, so it covers the
+            // speaker's neighbours less: at usual zooms a bubble over the head hid the place (tester batch 3).
+            bool ambient = echoWho.IsNone;
+            float panelW = bubbleEl.panel.visualTree.layout.width;
+            var at = !ambient ? new Vector2(q.x - bw * 0.5f, q.y - 16f - bh)
+                : q.x < panelW * 0.5f ? new Vector2(q.x + 30f, q.y - 26f - bh)
+                : new Vector2(q.x - 30f - bw, q.y - 26f - bh);
+            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            float topMin = TopHudBottom + i.y;
+            at = GameUiPanel.KeepOnScreen(bubbleEl, at, topMin);
+            // never on the answer's own label and line
+            var sv = ShapingView.Instance;
+            if (sv != null)
+                foreach (var r in sv.ShownLabelRects())
+                {
+                    var me = new Rect(at.x, at.y, bw, bh);
+                    if (!me.Overlaps(r)) continue;
+                    at.y = r.yMin - bh - 12f >= topMin ? r.yMin - bh - 12f : r.yMax + 12f;
+                }
+            bubbleEl.style.left = at.x;
+            bubbleEl.style.top = at.y;
+            if (measureFrames > 0 && --measureFrames == 0) bubbleEl.style.opacity = 1f;
             return true;
+        }
+
+        // New text has no size until the panel lays it out, and clamping a size of 0 would flash the bubble past the edge:
+        // it stays invisible for the frame that takes.
+        int measureFrames;
+
+        void HoldUntilMeasured()
+        {
+            measureFrames = 2;
+            bubbleEl.style.opacity = 0f;
+        }
+
+        /// <summary>Under the title pill (panel units).</summary>
+        const float TopHudBottom = 190f;
+        /// <summary>A doll shorter than this on screen (pixels of a 2556 tall frame) is too small to say whose line it is.</summary>
+        public const float TinySpeakerPx = 12f;
+
+        /// <summary>The doll's height on screen, in pixels of a 2556 tall frame.</summary>
+        float DollPixels(PeopleView pv, Camera cam, PersonRef who)
+        {
+            if (!pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return 0f;
+            return (cam.WorldToScreenPoint(top) - cam.WorldToScreenPoint(feet)).magnitude * 2556f / Mathf.Max(1f, Screen.height);
+        }
+
+        /// <summary>An ambient bubble scales with the speaker: small at the default view, full size close up.</summary>
+        void FitToSpeaker(PeopleView pv, Camera cam, PersonRef who)
+        {
+            float k = Mathf.Clamp01((DollPixels(pv, cam, who) - 30f) / 70f);
+            bubbleEl.style.fontSize = Mathf.Lerp(30f, 34f, k);
+            bubbleEl.style.maxWidth = Mathf.Lerp(470f, 640f, k);
         }
 
         void HideBubble()

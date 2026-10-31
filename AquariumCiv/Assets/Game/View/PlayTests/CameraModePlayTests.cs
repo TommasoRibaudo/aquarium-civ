@@ -10,6 +10,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace AquariumCiv.View.PlayTests
 {
@@ -216,6 +217,7 @@ namespace AquariumCiv.View.PlayTests
 
                 hud.SetCameraMode(true);
                 Assert.AreEqual(who, rig.Following, "camera mode takes over the card's person");
+                StringAssert.StartsWith("Following ", hud.Root.Q<UnityEngine.UIElements.Button>("hud-photo-exit").text, "the pill says who is followed");
                 yield return null; yield return null;
                 Assert.IsFalse(cards.IsOpen, "the card closes in camera mode");
 

@@ -68,6 +68,9 @@ namespace AquariumCiv.View
         CameraPose fromPose; // where the player had the camera before the moment (it eases back there after)
         bool hadCamera;
         string toolLine = ""; // the tool beat's hint, said once the moment is over (mid-moment a press hurries)
+        /// <summary>The unlock captions ("Drag from the water") ask for a tool the player can't pick up until the shaping tray
+        /// (#84) exists: off until then, the lines stay in <see cref="MomentLibrary"/> (tester batch 3).</summary>
+        public static bool ToolCaptions = false;
         bool wipingForMoment; // clean mode was opened from the wipe offer
         // puffs
         readonly List<(Transform t, float age, float size)> puffs = new();
@@ -163,6 +166,7 @@ namespace AquariumCiv.View
             toolLine = "";
             sayUntil = -1f; bubble.style.display = DisplayStyle.None; // a relic line still up gives way to the moment
             if (GameClock.Instance != null) GameClock.Instance.Held = true;
+            momentOpen = true;
             Offset.Reset();
             pressDown = false;
             wave = null;
@@ -195,9 +199,13 @@ namespace AquariumCiv.View
         }
 
         int momentEra; float momentStart; bool momentReplay, leftByPlayer;
+        // The director stays Finished after a moment: without this, anyone holding the clock later (the time-lapse) "ended"
+        // it again and let the clock go (tester batch 3).
+        bool momentOpen;
 
         void EndMoment(bool crossed)
         {
+            momentOpen = false;
             if (!momentReplay) GameClock.Tel.EraMomentEnded(momentEra, leftByPlayer, Time.unscaledTime - momentStart); // #100: watched live or skipped
             ReleaseCamera();
             if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f);
@@ -213,7 +221,7 @@ namespace AquariumCiv.View
             if (src != null) src.EndMomentLook();
             Debug.Log($"[Moment] ended ({(crossed ? "crossed" : "left before the cheer: it will replay")})");
             MomentEnded?.Invoke(crossed);
-            if (crossed && toolLine != "") Say(toolLine, 6f);
+            if (crossed && toolLine != "" && ToolCaptions) Say(toolLine, 6f);
             toolLine = "";
         }
 
@@ -241,7 +249,7 @@ namespace AquariumCiv.View
                 }
             }
             if (Playing) Play(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
-            else if (Director.State == MomentDirector.Phase.Finished && (cam != null && !cam.enabled || (GameClock.Instance != null && GameClock.Instance.Held)))
+            else if (momentOpen && Director.State == MomentDirector.Phase.Finished && (cam != null && !cam.enabled || (GameClock.Instance != null && GameClock.Instance.Held)))
                 EndMoment(true);
             UpdatePuffs(Time.unscaledDeltaTime);
             UpdateWatchButton();
@@ -554,6 +562,20 @@ namespace AquariumCiv.View
             return card;
         }
 
+        /// <summary>The player is inside something else (a person card, the time-lapse, Show me, the first run's sheets):
+        /// prompts that float over the world wait (tester batch 3).</summary>
+        public static bool PromptsBlocked()
+        {
+            var card = PersonCardView.Instance;
+            if (card != null && card.IsOpen) return true;
+            var tl = TimeLapseView.Find();
+            if (tl != null && tl.Active) return true;
+            var sm = ShowMeDirector.Instance;
+            if (sm != null && sm.Busy) return true;
+            var fr = FirstRunView.Instance;
+            return fr != null && (fr.CardOpen || fr.NameSheetOpen);
+        }
+
         void UpdateWatchButton()
         {
             var hud = GameHud.Instance;
@@ -562,12 +584,12 @@ namespace AquariumCiv.View
             if (hud == null || !hud.CleanMode) wipingForMoment = false;
             bool wipedEnough = wipingForMoment && Sim != null && !EraWaiting.OfferWipeFirst(Sim.State.grime);
             bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && (!hud.CleanMode || wipedEnough) && !hud.SheetOpen);
-            bool show = Waiting.waiting && !Playing && hudFree && wipeOffer.resolvedStyle.display == DisplayStyle.None;
+            bool show = Waiting.waiting && !Playing && hudFree && !PromptsBlocked() && wipeOffer.resolvedStyle.display == DisplayStyle.None;
             watchButton.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             if (show && watchButton.text != Waiting.watchLabel) watchButton.text = Waiting.watchLabel;
             // the safe area: keep the button above the home indicator and the HUD's bottom row
             var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            watchButton.style.bottom = 250f + i.w;
+            watchButton.style.bottom = GameUiPanel.PromptBottom + i.w;
             if (hud != null && (hud.CameraMode || hud.SheetOpen)) wipeOffer.style.display = DisplayStyle.None;
         }
 

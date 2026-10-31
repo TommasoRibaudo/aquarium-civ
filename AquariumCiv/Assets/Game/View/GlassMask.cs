@@ -169,6 +169,61 @@ namespace AquariumCiv.View
         }
     }
 
+    /// <summary>The grime's detail texture (RGBA32, tiles), so dirty glass reads as smears and drips rather than a flat tint.
+    /// A = the smears (mostly vertical, the glass shader breaks the mask with it), R = tone, G = fine speckle.
+    /// Pure, so it is the same on every run.</summary>
+    public static class GlassNoise
+    {
+        public const int Size = 128;
+
+        public static byte[] Bytes(int seed = 11)
+        {
+            var b = new byte[Size * Size * 4];
+            for (int y = 0; y < Size; y++)
+            for (int x = 0; x < Size; x++)
+            {
+                float u = x / (float)Size, v = y / (float)Size;
+                float tone = Fbm(u, v, 4, 4, seed);
+                float fine = Fbm(u, v, 24, 24, seed + 3);
+                float blotch = Fbm(u, v, 3, 3, seed + 7), drips = Fbm(u, v, 14, 2, seed + 11);
+                int i = (y * Size + x) * 4;
+                b[i] = Stretch(tone); b[i + 1] = Stretch(fine); b[i + 2] = 255; b[i + 3] = Stretch(blotch * 0.6f + drips * 0.4f);
+            }
+            return b;
+        }
+
+        static byte Stretch(float v) => (byte)(Mathf.Clamp01((v - 0.5f) * 2.6f + 0.5f) * 255f + 0.5f);
+
+        // Three octaves of value noise on a lattice that wraps at (px, py) cells, so the texture tiles.
+        static float Fbm(float u, float v, int px, int py, int seed)
+        {
+            float sum = 0f, amp = 0.5f, total = 0f;
+            for (int o = 0; o < 3; o++, px *= 2, py *= 2, amp *= 0.5f)
+            {
+                sum += Value(u * px, v * py, px, py, seed + o * 31) * amp;
+                total += amp;
+            }
+            return sum / total;
+        }
+
+        static float Value(float x, float y, int px, int py, int seed)
+        {
+            int ix = Mathf.FloorToInt(x), iy = Mathf.FloorToInt(y);
+            float fx = x - ix, fy = y - iy;
+            fx = fx * fx * (3f - 2f * fx); fy = fy * fy * (3f - 2f * fy);
+            float a = Hash(ix, iy, px, py, seed), b = Hash(ix + 1, iy, px, py, seed);
+            float c = Hash(ix, iy + 1, px, py, seed), d = Hash(ix + 1, iy + 1, px, py, seed);
+            return Mathf.Lerp(Mathf.Lerp(a, b, fx), Mathf.Lerp(c, d, fx), fy);
+        }
+
+        static float Hash(int x, int y, int px, int py, int seed)
+        {
+            uint h = (uint)((x % px) * 73856093 ^ (y % py) * 19349663 ^ seed * 83492791);
+            h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
+            return (h & 0xFFFFFF) / (float)0xFFFFFF;
+        }
+    }
+
     /// <summary>The care layer's pure numbers (unit-tested): how mess dims the sun, and the spotless thresholds.</summary>
     public static class CareMath
     {

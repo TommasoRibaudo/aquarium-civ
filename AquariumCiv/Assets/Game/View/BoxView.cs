@@ -95,6 +95,9 @@ namespace AquariumCiv.View
 
         void OnEnable()
         {
+#if UNITY_EDITOR
+            SweepOrphans();
+#endif
             var src = GetComponent<IBoxLayoutSource>();
             if (src != null) src.FillLayout(layout);
             Rebuild();
@@ -112,7 +115,10 @@ namespace AquariumCiv.View
                     var m = mf.sharedMesh;
                     if (m != null && (m.name.StartsWith("Box") || m.name == "Water" || m.name == "Glows" || m.name == "Smoke")) Kill(m);
                 }
-                Kill(root.gameObject);
+                // A root built in edit mode is DontSave: when play mode starts, a deferred Destroy is lost to the domain reload
+                // and the scene unload only detaches it, so it has to go now (see SweepOrphans).
+                if (root.gameObject.hideFlags != HideFlags.None) DestroyImmediate(root.gameObject);
+                else Kill(root.gameObject);
             }
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
@@ -121,6 +127,30 @@ namespace AquariumCiv.View
             root = peopleRoot = null;
             glowGo = smokeGo = null;
         }
+
+        /// <summary>Generated objects stay out of the scene file in edit mode. In play mode they need no flag: without one they
+        /// die with the scene, while DontSave would outlive it.</summary>
+        static HideFlags GenFlags => Application.isPlaying ? HideFlags.None : HideFlags.DontSave;
+
+#if UNITY_EDITOR
+        /// <summary>Generated roots no box owns. DontSave objects survive a scene unload and domain reloads, parentless and
+        /// sceneless, and they keep rendering: their land meshes die but the panes use the built-in cube, so every leaked root
+        /// stacked four more panes on the box (81 roots = a 98 % opaque haze that hid the land and the grime, Editor only,
+        /// tester batch 3).</summary>
+        public static List<GameObject> OrphanRoots()
+        {
+            var list = new List<GameObject>();
+            foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
+                if (t != null && t.parent == null && t.name == "Generated" && !t.gameObject.scene.IsValid() && !UnityEditor.EditorUtility.IsPersistent(t))
+                    list.Add(t.gameObject);
+            return list;
+        }
+
+        static void SweepOrphans()
+        {
+            foreach (var go in OrphanRoots()) DestroyImmediate(go);
+        }
+#endif
 
         static void Kill(Object o)
         {
@@ -140,7 +170,7 @@ namespace AquariumCiv.View
         {
             Clear();
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            root = new GameObject("Generated") { hideFlags = HideFlags.DontSave }.transform;
+            root = new GameObject("Generated") { hideFlags = GenFlags }.transform;
             root.SetParent(transform, false);
             shore = land.Shoreline(64);
             ShoreField();
@@ -328,7 +358,7 @@ namespace AquariumCiv.View
 
         GameObject Spawn(string name, Mesh mesh, Material mat, bool shadows)
         {
-            var go = new GameObject(name) { hideFlags = HideFlags.DontSave };
+            var go = new GameObject(name) { hideFlags = GenFlags };
             go.transform.SetParent(root, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();
@@ -339,7 +369,7 @@ namespace AquariumCiv.View
 
         MeshCollider AoCollider(string name, Mesh mesh)
         {
-            var go = new GameObject(name) { hideFlags = HideFlags.HideAndDontSave, layer = AoLayer };
+            var go = new GameObject(name) { hideFlags = GenFlags | HideFlags.HideInHierarchy | HideFlags.HideInInspector, layer = AoLayer };
             go.transform.SetParent(root, false);
             var c = go.AddComponent<MeshCollider>();
             c.cookingOptions = MeshColliderCookingOptions.UseFastMidphase;
@@ -1210,7 +1240,7 @@ namespace AquariumCiv.View
         {
             if (peopleRoot == null)
             {
-                peopleRoot = new GameObject("People") { hideFlags = HideFlags.DontSave }.transform;
+                peopleRoot = new GameObject("People") { hideFlags = GenFlags }.transform;
                 peopleRoot.SetParent(root, false);
             }
             var seen = new HashSet<int>();

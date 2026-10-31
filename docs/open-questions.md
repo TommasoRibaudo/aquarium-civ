@@ -5,5 +5,11 @@ deleted here. Recommended options come first and are marked ★. On GitHub: issu
 
 _Last updated 2026-10-30._
 
+## Still open (2026-10-30)
 
-_(No open questions right now. The 2026-10-30 answers are in [decisions.md](decisions.md).)_
+### Camera lifts after the glass fix
+- Show me, relic nudges and answer flights still rise to pitch 50 for a haze that turned out to be an Editor bug.
+  ★ Keep them, they frame well. Alternative: go back to the player's pitch.
+
+### Dirty glass look
+- Olive smears and drips now. ★ Keep (you said it's fine for now; variety is #121). Alternative: heavier or mistier.

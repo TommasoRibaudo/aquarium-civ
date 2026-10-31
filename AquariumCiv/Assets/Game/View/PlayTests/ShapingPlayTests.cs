@@ -39,7 +39,7 @@ namespace AquariumCiv.View.PlayTests
             if (type == LogType.Exception || type == LogType.Error) errors.Add(msg);
         }
 
-        IEnumerator Open(int w = 1179, int h = 2556)
+        IEnumerator Open(int w = 1179, int h = 2556, bool skipFirstRun = true)
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -67,7 +67,11 @@ namespace AquariumCiv.View.PlayTests
                 if (box != null && CareView.Instance == null) box.gameObject.AddComponent<CareView>();
                 if (box != null && GlassVoice.Instance == null) box.gameObject.AddComponent<GlassVoice>();
                 if (box != null && ShapingView.Instance == null) box.gameObject.AddComponent<ShapingView>();
+                if (FirstRunView.Instance == null) FirstRunView.Create(); // every bootstrap: leaving one out hid a tool-clearing bug
+                if (BoxCompleteController.Instance == null) BoxCompleteController.Create();
             }
+            yield return null; yield return null;
+            if (skipFirstRun && FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll();
             yield return null; yield return null;
             touch = InputSystem.AddDevice<Touchscreen>();
             yield return null;
@@ -236,6 +240,34 @@ namespace AquariumCiv.View.PlayTests
                 box.gameObject.SetActive(true);
                 for (int i = 0; i < 10; i++) yield return null;
                 Assert.IsFalse(errors.Any(x => x.Contains("Cannot set the parent")), string.Join(" | ", errors.Take(5)));
+            }
+            finally { Close(); }
+        }
+
+        /// <summary>Tester batch 3: FirstRunView ended its run every frame once it was over, which cleared the tool in hand.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator AfterTheFirstRunAToolStaysInHandAndATapPlacesIt()
+        {
+            yield return Open(skipFirstRun: false);
+            try
+            {
+                var run = FirstRunView.Instance;
+                Assert.IsTrue(run.Active, "a new box starts its first run");
+                FirstRunView.DebugSkipAll();
+                yield return Skip(0.3f);
+                Assert.IsFalse(run.Active);
+                var sim = GameClock.Instance.Sim;
+                sim.CleanAll();
+                var sv = ShapingView.Instance;
+                var (x, z) = Spot(sim, 1.3f, 0.6f, new List<(float, float)>());
+                yield return Look(x, z, 0.45f);
+                sv.SetTool(SimCore.NudgeKind.Rain);
+                yield return Skip(0.5f);
+                Assert.AreEqual(SimCore.NudgeKind.Rain, sv.Tool, "the tool stays in hand");
+                int before = sim.State.nudges.Count;
+                yield return TapAt(sv.ScreenOf(x, z));
+                yield return Skip(0.2f);
+                Assert.AreEqual(before + 1, sim.State.nudges.Count, "a tap on the ground placed it: " + sv.LastResult);
             }
             finally { Close(); }
         }

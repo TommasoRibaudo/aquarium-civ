@@ -258,6 +258,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(1f);
                 Assert.IsTrue(ShapingView.Instance.ShapeMode, "the rain button picks the rain");
                 yield return Shot("6_rain_armed");
+                var toastEl = hud.Root.Q("hud-toast");
+                Assert.IsFalse(toastEl.resolvedStyle.display == DisplayStyle.Flex && toastEl.worldBound.Overlaps(View.Root.Q("firstrun-rain").worldBound), "the button and the toast keep to their lanes");
                 var (rx, rz) = View.Run.SuggestedRainSpot;
                 var rainPt = ShapingView.Instance.ScreenOf(rx, rz);
                 Debug.Log($"[firstrun] tapping the ground at {rainPt}, over UI: {UiInput.Over(rainPt)}, ground: {ShapingView.Instance.GroundPoint(rainPt, out var gx, out var gz)} ({gx:0.00},{gz:0.00}) vs ({rx:0.00},{rz:0.00}), charges {Sim.ShapingCharges}, cam dist {Vector3.Distance(Camera.main.transform.position, ShapingView.Instance.transform.position):0.0}");
@@ -267,7 +269,24 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(FirstRunStep.Year, View.Step, "a rain placed by touch moves the run to the year");
                 Assert.IsTrue(sim.State.nudges.Any(n => n.kind == SimCore.NudgeKind.Rain));
                 Assert.IsTrue(GameClock.Instance.Held, "the live clock is held while the year plays");
-                yield return new WaitForSecondsRealtime(4f);
+                // Tester batch 3: the year's fast clock made the dolls jump at every skip.
+                var boxView = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var lastPos = new System.Collections.Generic.Dictionary<PegDollView, Vector3>();
+                float yearT = 0f, worstStep = 0f;
+                while (yearT < 8f)
+                {
+                    yield return null;
+                    yearT += Time.unscaledDeltaTime;
+                    float allow = Mathf.Max(1f, Time.unscaledDeltaTime / 0.1f);
+                    foreach (var d in boxView.GetComponentsInChildren<PegDollView>(false))
+                    {
+                        var p = d.transform.localPosition;
+                        if (lastPos.TryGetValue(d, out var q)) worstStep = Mathf.Max(worstStep, Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z)) / allow);
+                        lastPos[d] = p;
+                    }
+                }
+                Debug.Log($"[firstrun] worst doll step in the year {worstStep:0.00} u");
+                Assert.Less(worstStep, 0.25f, "the dolls walk through the first year");
                 yield return Shot("7_year");
 
                 // The year plays; the card.

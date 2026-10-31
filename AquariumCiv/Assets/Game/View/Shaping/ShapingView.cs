@@ -525,6 +525,13 @@ namespace AquariumCiv.View
 
         bool IsOverUi(Vector2 screenPos) => uiRoot != null && GameUiPanel.Over(uiRoot, screenPos);
 
+        /// <summary>The answer's label and line on screen now (panel units), so other bubbles keep off them.</summary>
+        public IEnumerable<Rect> ShownLabelRects()
+        {
+            if (labelEl != null && labelEl.style.display == DisplayStyle.Flex) yield return labelEl.worldBound;
+            if (bubbleEl != null && bubbleEl.style.display == DisplayStyle.Flex) yield return bubbleEl.worldBound;
+        }
+
         /// <summary>The nudge whose take-back chip is under a screen point (0 = none).</summary>
         int ChipAt(Vector2 screenPos)
         {
