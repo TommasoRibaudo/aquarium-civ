@@ -394,12 +394,26 @@ namespace AquariumCiv.Sim
                 id = s.NextId(), name = rng.Pick(NameData.Given), family = family ?? rng.Pick(NameData.Families),
                 trait = rng.Pick(NameData.Traits), age = age, lifespan = rng.Range(Config.lifespanMin, Config.lifespanMax), parentId = parentId, bornMonth = s.month
             };
-            // No two living people share a full name ("Ada Thorn was born to Ada Thorn" muddles recall).
-            // Extra draws come from the story stream, so they never shift the main dice.
-            for (int tries = 0; tries < 20 && s.notables.Any(o => o.alive && o.FullName == n.FullName); tries++)
-                n.name = s.storyRng.Pick(NameData.Given);
+            MakeNameUnique(n, s.storyRng);
             s.notables.Add(n);
             return n;
+        }
+
+        /// <summary>No two living notables share a given name, and nobody (living or dead) repeats a full name ("Moss Thorn and
+        /// Moss Cole" muddles recall; "Dov Quarry" must not come back). Retries come from <paramref name="r"/> (never the main
+        /// dice); if the luck runs out, a deterministic scan of the table finishes the job.</summary>
+        void MakeNameUnique(Notable n, SimRandom r)
+        {
+            var s = State;
+            bool Clash(string given) => s.notables.Any(o => o != n && (o.alive && o.name == given || o.name == given && o.family == n.family));
+            for (int tries = 0; tries < 30 && Clash(n.name); tries++) n.name = r.Pick(NameData.Given);
+            if (!Clash(n.name)) return;
+            int start = System.Array.IndexOf(NameData.Given, n.name);
+            for (int i = 1; i <= NameData.Given.Length; i++)
+            {
+                string g = NameData.Given[(Math.Max(start, 0) + i) % NameData.Given.Length];
+                if (!Clash(g)) { n.name = g; return; }
+            }
         }
 
         Notable AliveNotable()

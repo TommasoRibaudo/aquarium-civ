@@ -54,16 +54,16 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(467765842u, Fingerprint(sim.State), "slice world fingerprint"); // #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
+            Assert.AreEqual(3198244750u, Fingerprint(sim.State), "slice world fingerprint"); // #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
             var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             noRelics.RelicsOn = false;
             noRelics.Advance(48);
-            Assert.AreEqual(2641854592u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
+            Assert.AreEqual(1589955187u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
             var before = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             before.CardsOn = false;
             before.RelicsOn = false;
             before.Advance(48);
-            Assert.AreEqual(2685317486u, Fingerprint(before.State), "the same world with #59's text swaps off");
+            Assert.AreEqual(964360791u, Fingerprint(before.State), "the same world with #59's text swaps off");
         }
 
         [Test]

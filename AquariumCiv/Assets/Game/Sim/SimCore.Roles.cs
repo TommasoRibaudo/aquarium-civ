@@ -647,8 +647,7 @@ namespace AquariumCiv.Sim
                 id = s.NextId(), name = r.Pick(NameData.Given), family = r.Pick(NameData.Families), trait = r.Pick(NameData.Traits),
                 age = r.Range(25f, 40f), lifespan = r.Range(Config.lifespanMin, Config.lifespanMax), bornMonth = s.month,
             };
-            for (int tries = 0; tries < 20 && s.notables.Any(o => o.alive && o.FullName == n.FullName); tries++)
-                n.name = r.Pick(NameData.Given);
+            MakeNameUnique(n, r);
             s.notables.Add(n);
             n.job = ChooseJob(n, null);
             return n;
