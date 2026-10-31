@@ -153,8 +153,9 @@ namespace AquariumCiv.View
             return (p - (a + ab * t)).magnitude;
         }
 
-        /// <summary>Open a notable's card (living or dead). <paramref name="fly"/>: the camera brings their doll above the card.</summary>
-        public bool Open(int notableId, bool fly = true)
+        /// <summary>Open a notable's card (living or dead). <paramref name="fly"/>: the camera brings their doll above the card.
+        /// <paramref name="logOpen"/> false: the caller logs it (the chronicle card it was opened from).</summary>
+        public bool Open(int notableId, bool fly = true, bool logOpen = true)
         {
             var sim = Sim;
             var card = sim?.PersonCardOf(notableId);
@@ -162,7 +163,7 @@ namespace AquariumCiv.View
             EnsureUi();
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
-            if (OpenId != notableId) { ShowingBest = false; GameClock.Tel.CardOpened("person", notableId); }
+            if (OpenId != notableId) { ShowingBest = false; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
             OpenId = notableId;
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);

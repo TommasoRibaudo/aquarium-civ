@@ -49,6 +49,10 @@ namespace AquariumCiv.View
 
         /// <summary>The tracker (tests, the debug panel, #84's tray).</summary>
         public ShapingShow Show => show;
+        /// <summary>The tray's model. Until #84 gives it a screen only a wish arms it (<see cref="ArmWish"/>).</summary>
+        public ShapingTray Tray { get; } = new();
+        /// <summary>A wish card's Give put the tool in hand at the wish's spot.</summary>
+        public bool WishArmed => Tray.HasPending;
         /// <summary>The tool in the Keeper's hand (a <see cref="SimCore.NudgeKind"/>), or null: shape mode off.</summary>
         public string Tool { get; private set; }
         public bool ShapeMode => Tool != null;
@@ -120,12 +124,49 @@ namespace AquariumCiv.View
         public void SetTool(string kind)
         {
             if (kind != null && System.Array.IndexOf(SimCore.SliceTools, kind) < 0) kind = null;
+            Tray.Close();
             Tool = kind;
             if (kind == null) return;
             if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
             var sim = Sim;
             string name = sim != null ? sim.ShapingToolName(kind) : kind;
             hud?.Toast($"Tap the ground to place the {name}. Two fingers move the camera.", 4f);
+        }
+
+        /// <summary>A wish card's Give (#75): shape mode with the wish's tool, pre-armed at the wished spot, with a banner and a
+        /// Cancel. A tap on the ground gives it, a drag moves the spot first. False, with the reason as a toast, if it can't be.</summary>
+        public bool ArmWish(int wishId)
+        {
+            var sim = Sim;
+            if (sim == null) return false;
+            SetTool(null);
+            if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
+            if (!Tray.ArmForWish(sim, wishId))
+            {
+                var f = Tray.Feedback;
+                LastResult = f.text ?? "";
+                if (!string.IsNullOrEmpty(f.cue)) Sfx.Play(f.cue);
+                hud?.Toast(LastResult, 3f);
+                return false;
+            }
+            Tool = Tray.Armed;
+            return true;
+        }
+
+        /// <summary>Put the wish's tool down. Nothing is spent; the wish stays open.</summary>
+        public void CancelWish() => SetTool(null);
+
+        void ConfirmWish()
+        {
+            var sim = Sim;
+            if (sim == null) return;
+            var r = Tray.Confirm(sim, show);
+            var f = Tray.Feedback;
+            LastResult = f.text ?? "";
+            if (!r.Ok && !string.IsNullOrEmpty(f.cue)) Sfx.Play(f.cue); // on success the placing's own cue plays from the show
+            hud?.Toast(LastResult, 3f);
+            SetTool(null);
+            Changed();
         }
 
         /// <summary>Place the tool in hand (or <paramref name="kind"/>) at a box point. Free in debug; else it spends a charge
@@ -216,7 +257,7 @@ namespace AquariumCiv.View
         /// <summary>In shape mode a one-finger press on the ground is the tool's (not on the UI, not in clean mode).</summary>
         public bool ClaimsPress(Vector2 screenPos) => Usable() && !UiInput.Over(screenPos) && GroundPoint(screenPos, out _, out _);
 
-        bool pressDown, pressOk;
+        bool pressDown, pressOk, pressDrag;
         int pressChip;
         Vector2 pressPos;
         float pressTime;
@@ -250,8 +291,9 @@ namespace AquariumCiv.View
             {
                 bool tap = pressDown && now - pressTime <= TapMaxSeconds;
                 if (tap && pressChip > 0) TakeBack(pressChip); // the chip's own click may have done it already: then this is a no-op
+                else if (tap && pressOk && WishArmed) ConfirmWish();
                 else if (tap && pressOk && GroundPoint(pressPos, out float x, out float z)) PlaceAt(x, z);
-                pressDown = false;
+                pressDown = pressDrag = false;
                 return;
             }
             if (!pressDown)
@@ -261,7 +303,12 @@ namespace AquariumCiv.View
                 pressOk = n == 1 && pressChip == 0 && ClaimsPress(a);
                 return;
             }
-            if (n >= 2 || (a - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height)) { pressOk = false; pressChip = 0; }
+            if (n >= 2 || (a - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height))
+            {
+                pressDrag = (pressDrag || pressOk) && n == 1 && WishArmed; // a wish's spot follows the finger
+                pressOk = false; pressChip = 0;
+            }
+            if (pressDrag && GroundPoint(a, out float dx, out float dz)) Tray.MovePending(dx, dz);
         }
 
         /// <summary>The ground under a screen point, in box coordinates (a march along the ray over the land's height).</summary>
@@ -488,6 +535,7 @@ namespace AquariumCiv.View
             uiRoot.pickingMode = PickingMode.Ignore;
             uiRoot.style.position = Position.Absolute;
             uiRoot.style.left = uiRoot.style.right = uiRoot.style.top = uiRoot.style.bottom = 0;
+            BuildWishBar();
             labelEl = Pill("shaping-label", 30);
             labelEl.style.backgroundColor = new Color(0.94f, 0.89f, 0.8f, 0.94f); // the HUD's plaster pill: the gift's name
             labelEl.style.color = new Color(0.42f, 0.29f, 0.21f);
@@ -507,6 +555,29 @@ namespace AquariumCiv.View
                 uiRoot.Add(b);
                 chipEls.Add(b);
             }
+        }
+
+        VisualElement wishBar;
+        Label wishBanner, wishSpot;
+
+        /// <summary>A wish's tool in hand: the banner and Cancel in the prompts' lane, and a pin on the spot. #84 skins this.</summary>
+        void BuildWishBar()
+        {
+            wishBar = new VisualElement { name = "shaping-wish-bar" };
+            wishBar.AddToClassList("wish-bar");
+            wishBar.style.display = DisplayStyle.None;
+            wishBanner = new Label { name = "shaping-banner", pickingMode = PickingMode.Ignore };
+            wishBanner.AddToClassList("wish-banner");
+            wishBar.Add(wishBanner);
+            var cancel = new Button(() => { Sfx.Play(CueLibrary.UiClose); CancelWish(); }) { name = "shaping-cancel", text = "Cancel" };
+            cancel.AddToClassList("hud-btn");
+            cancel.AddToClassList("wish-cancel");
+            wishBar.Add(cancel);
+            uiRoot.Add(wishBar);
+            wishSpot = new Label { name = "shaping-wish-spot", text = "Here", pickingMode = PickingMode.Ignore };
+            wishSpot.AddToClassList("wish-spot");
+            wishSpot.style.display = DisplayStyle.None;
+            uiRoot.Add(wishSpot);
         }
 
         Label Pill(string name, int fontSize)
@@ -550,6 +621,8 @@ namespace AquariumCiv.View
             if (labelEl == null) return;
             labelEl.style.display = DisplayStyle.None;
             bubbleEl.style.display = DisplayStyle.None;
+            wishBar.style.display = DisplayStyle.None;
+            wishSpot.style.display = DisplayStyle.None;
             foreach (var c in chipEls) c.style.display = DisplayStyle.None;
         }
 
@@ -572,6 +645,16 @@ namespace AquariumCiv.View
         {
             if (uiRoot == null) return;
             bool noUi = hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible);
+            bool armed = !noUi && WishArmed;
+            wishBar.style.display = armed ? DisplayStyle.Flex : DisplayStyle.None;
+            bool spot = armed && Anchor(wishSpot, Tray.PendingX, Tray.PendingZ, 0.1f);
+            wishSpot.style.display = spot ? DisplayStyle.Flex : DisplayStyle.None;
+            if (armed)
+            {
+                string banner = Tray.Banner(sim);
+                if (wishBanner.text != banner) wishBanner.text = banner;
+                wishBar.style.bottom = GameUiPanel.PromptBottom + GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w;
+            }
             var a = show.Answer;
             bool label = !noUi && a.active && a.labelAlpha > 0.01f && Anchor(labelEl, a.x, a.z, 0.35f);
             labelEl.style.display = label ? DisplayStyle.Flex : DisplayStyle.None;

@@ -186,6 +186,14 @@ namespace AquariumCiv.View
             }
 
             if (Section("Time-lapse")) TimeLapseGui();
+            if (Section("Cards (#75)"))
+            {
+                GUILayout.Label(CardStackView.Status());
+                GUILayout.BeginHorizontal();
+                foreach (int n in new[] { 1, 3, 5, 7 }) if (GUILayout.Button("Return " + n)) last = CardStackView.DebugReturn(n);
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("Clear read cards")) last = CardStackView.DebugClearRead();
+            }
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

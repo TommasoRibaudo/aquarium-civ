@@ -11,6 +11,7 @@
         "AquariumCiv.Audio",
         "AquariumCiv.Shaping",
         "AquariumCiv.ShowMe",
+        "AquariumCiv.Cards",
         "Unity.InputSystem",
         "Unity.InputSystem.TestFramework",
         "UnityEngine.TestRunner",

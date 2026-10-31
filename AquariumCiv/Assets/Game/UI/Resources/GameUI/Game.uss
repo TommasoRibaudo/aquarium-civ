@@ -205,3 +205,95 @@ Label { white-space: normal; }
     background-color: rgba(46, 42, 39, 0.72); color: var(--plaster);
     font-size: 26px; -unity-font-style: bold; white-space: nowrap;
 }
+
+
+/* ---------------- the chronicle cards (#75), plain until the UI rework restyles them ---------------- */
+.hud-dot {
+    position: absolute; top: 16px; right: 24px; width: 34px; height: 34px; border-radius: 17px;
+    background-color: var(--terracotta); border-width: 4px; border-color: var(--plaster);
+}
+
+/* the peek: one line in the prompts' lane */
+.card-peek {
+    position: absolute; min-height: 144px; flex-direction: row; align-items: center;
+    padding: 14px 34px 14px 20px; border-radius: 72px;
+    background-color: rgba(239, 227, 204, 0.96);
+}
+.card-peek--teaser { background-color: rgba(46, 42, 39, 0.78); padding-left: 40px; }
+.card-peek--teaser .card-peek-text { color: var(--plaster); -unity-font-style: italic; }
+.card-peek-lines { flex-shrink: 1; flex-grow: 1; }
+.card-peek-text { white-space: normal; font-size: 36px; color: var(--timber); -unity-font-style: bold; }
+
+/* the portrait: an initial until the peg-doll portraits come with the rework */
+.card-portrait {
+    width: 112px; height: 112px; min-width: 112px; margin: 0 16px 0 0; padding: 0;
+    border-width: 0; border-radius: 56px;
+    background-color: var(--moss); color: var(--plaster);
+    font-size: 48px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.card-portrait:hover { background-color: var(--moss); }
+.card-portrait:active { background-color: #4E6B38; }
+Button.card-portrait { height: 144px; width: 144px; min-width: 144px; border-radius: 72px; }
+
+/* the slim sheet: at most ~30 % of the height */
+.card-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; padding-top: 20px;
+    background-color: var(--plaster);
+    border-top-left-radius: 56px; border-top-right-radius: 56px;
+}
+.card--legend { border-top-width: 10px; border-color: var(--timber); }
+.card--wish { border-top-width: 10px; border-color: var(--thatch); }
+.card--relic { border-top-width: 10px; border-color: var(--moss); }
+.card--eraready { border-top-width: 10px; border-color: var(--terracotta); }
+
+.card-dots { flex-direction: row; justify-content: center; height: 26px; align-items: center; margin-bottom: 6px; }
+.card-dot { width: 14px; height: 14px; border-radius: 7px; margin: 0 8px; background-color: rgba(106, 75, 54, 0.3); }
+.card-dot--on { width: 24px; height: 24px; border-radius: 12px; background-color: var(--timber); }
+
+.card-teaser { white-space: normal; font-size: 28px; color: var(--ink-soft); -unity-font-style: italic; margin-bottom: 2px; }
+.card-head { flex-direction: row; align-items: center; margin-bottom: 4px; }
+.card-headline { white-space: normal; font-size: 40px; color: var(--timber); -unity-font-style: bold; flex-shrink: 1; flex-grow: 1; margin-right: 12px; }
+.card-body { white-space: normal; font-size: 33px; color: var(--timber); margin-bottom: 4px; }
+.card-quote { white-space: normal; font-size: 30px; color: var(--timber); -unity-font-style: italic; margin-bottom: 4px; }
+.card-note { white-space: normal; font-size: 30px; color: var(--terracotta); -unity-font-style: bold; margin-bottom: 4px; }
+.card-footer { white-space: normal; font-size: 26px; color: var(--ink-soft); margin-bottom: 8px; }
+
+.card-also-head { flex-direction: row; align-items: center; }
+.card-also-line {
+    height: 144px; margin: 0; padding: 0 28px; border-width: 0; border-radius: 0;
+    border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.15);
+    background-color: transparent; color: var(--timber);
+    font-size: 34px; -unity-text-align: middle-left;
+}
+.card-also-line:hover { background-color: transparent; }
+.card-also-line:active { background-color: var(--canvas); }
+
+.card-buttons { flex-direction: row; justify-content: flex-end; margin-top: 4px; }
+.card-btn {
+    height: 144px; min-width: 190px; padding: 0 26px; margin: 0 0 0 14px;
+    border-width: 0; border-radius: 72px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 34px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.card-btn:hover { background-color: var(--canvas); }
+.card-btn:active { background-color: #D4C39F; }
+.card-btn:disabled { opacity: 0.45; }
+.card-btn--quiet { background-color: transparent; color: var(--ink-soft); min-width: 170px; }
+.card-btn--quiet:hover { background-color: transparent; }
+.card-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
+.card-btn--primary:hover { background-color: var(--terracotta); }
+.card-btn--primary:active { background-color: #B5603F; }
+
+/* a wish's tool in hand: the banner and Cancel in the prompts' lane, a pin on the spot. #84 skins this */
+.wish-bar {
+    position: absolute; left: 40px; right: 40px; flex-direction: row; align-items: center;
+    padding: 12px 12px 12px 36px; border-radius: 84px; background-color: rgba(46, 42, 39, 0.82);
+}
+.wish-banner { white-space: normal; flex-shrink: 1; flex-grow: 1; color: var(--plaster); font-size: 32px; -unity-font-style: bold; margin-right: 16px; }
+.wish-cancel { min-width: 200px; height: 144px; }
+.wish-spot {
+    position: absolute; padding: 8px 26px; border-radius: 30px;
+    background-color: var(--thatch); color: var(--frame);
+    border-width: 4px; border-color: var(--frame);
+    font-size: 30px; -unity-font-style: bold; -unity-text-align: middle-center;
+}

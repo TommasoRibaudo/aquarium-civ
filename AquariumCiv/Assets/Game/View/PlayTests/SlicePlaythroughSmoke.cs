@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.Cards;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -212,6 +213,27 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
         }
 
+        /// <summary>A return: the peek, the stack by touch, Skip all.</summary>
+        IEnumerator ReturnCards()
+        {
+            var stack = CardStackView.Instance;
+            Assert.IsNotNull(stack, "the card stack came up with the bootstraps");
+            GameClock.DebugAway(8);
+            yield return Frames(6);
+            Assert.AreEqual(CardStackMode.Peek, stack.Model.Mode, "a return shows the peek");
+            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek"));
+            yield return Frames(6);
+            Assert.AreEqual(CardStackMode.Open, stack.Model.Mode, "a tap opens the stack");
+            yield return Shot("smoke_cards");
+            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-next"));
+            yield return Frames(4);
+            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
+            yield return Frames(6);
+            Assert.AreEqual(CardStackMode.Hidden, stack.Model.Mode, "Skip all closes it");
+            Assert.IsFalse(GameHud.Instance.ToolsHidden);
+            yield return Frames(4);
+        }
+
         IEnumerator EraMoment()
         {
             var mp = MomentPlayer.Instance;
@@ -285,6 +307,7 @@ namespace AquariumCiv.View.PlayTests
             yield return ToolByTouch(); Step("tool");
             yield return PersonCardByTouch(); Step("person card");
             yield return CleanByTouch(); Step("clean");
+            yield return ReturnCards(); Step("return cards");
             yield return EraMoment(); Step("era moment");
             yield return TimeLapse(); Step("time-lapse");
             yield return BoxComplete(); Step("box complete");
