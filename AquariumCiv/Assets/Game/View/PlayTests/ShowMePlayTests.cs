@@ -12,6 +12,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace AquariumCiv.View.PlayTests
 {
@@ -286,6 +287,11 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsNotNull(d.ShownBubble, "someone says something over their head");
                 Debug.Log($"[ShowMePlay] bubble after {t:0.0}s: {d.ShownBubble}");
                 Assert.IsTrue(PeopleVoice.Allowed(d.ShownBubble.text, GameClock.Instance.Sim));
+                yield return null; yield return null; yield return null;
+                var el = d.GetComponentInChildren<UnityEngine.UIElements.UIDocument>().rootVisualElement.Q("showme-bubble");
+                var wb = el.worldBound;
+                float pw = el.panel.visualTree.layout.width;
+                Assert.IsTrue(wb.xMin >= 0f && wb.xMax <= pw && wb.yMin >= 0f, $"the bubble stays on screen: {wb}, panel width {pw}");
                 yield return Shot("showme-bubble");
 
                 hud.SetCameraMode(true);

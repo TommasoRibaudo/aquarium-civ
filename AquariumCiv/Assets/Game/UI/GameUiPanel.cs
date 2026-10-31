@@ -65,6 +65,18 @@ namespace AquariumCiv.GameUI
         }
 
         /// <summary>Screen point (pixels, y up) at the centre of an element: what a test or the tester agent touches.</summary>
+        /// <summary>The top-left of an element of its laid-out size, kept inside the panel's width and under the top HUD row
+        /// (<paramref name="topMin"/>, panel units). Before the first layout the size reads as 0.</summary>
+        public static Vector2 KeepOnScreen(VisualElement e, Vector2 topLeft, float topMin, float margin = 24f)
+        {
+            float w = e.resolvedStyle.width, h = e.resolvedStyle.height;
+            if (float.IsNaN(w)) w = 0f;
+            if (float.IsNaN(h)) h = 0f;
+            float W = e.panel != null ? e.panel.visualTree.layout.width : ReferenceWidth;
+            float H = e.panel != null ? e.panel.visualTree.layout.height : 1920f;
+            return new Vector2(Mathf.Clamp(topLeft.x, margin, Mathf.Max(margin, W - w - margin)), Mathf.Clamp(topLeft.y, topMin, Mathf.Max(topMin, H - h - margin)));
+        }
+
         public static Vector2 ScreenCenter(VisualElement e)
         {
             var c = e.worldBound.center; // panel space: y down

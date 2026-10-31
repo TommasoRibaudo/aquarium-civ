@@ -351,7 +351,11 @@ namespace AquariumCiv.View
             if (!ok) return false;
             // keep clear of the card: a person under it has no tag
             if (IsOpen && sheet != null && sheet.worldBound.height > 0f && p.y > sheet.worldBound.yMin) return false;
-            tag.style.left = p.x;
+            // the tag hangs from its point (Game.uss translates it): keep its half width on screen
+            float half = tag.resolvedStyle.width * 0.5f;
+            float W = overlayRoot.layout.width;
+            if (float.IsNaN(half)) half = 0f;
+            tag.style.left = W > 0f ? Mathf.Clamp(p.x, half + 16f, Mathf.Max(half + 16f, W - half - 16f)) : p.x;
             tag.style.top = p.y - 10f;
             if (tag == pinTag) { var s = cam.WorldToScreenPoint(w); PinTagScreen = new Vector2(s.x, s.y); }
             return true;

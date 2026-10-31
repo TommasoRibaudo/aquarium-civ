@@ -629,8 +629,7 @@ namespace AquariumCiv.View
                 if (pv != null && n != null && pv.TryGetDollTop(PersonRef.Notable(w.notableId), out var top) && ToPanel(top, out var p))
                 {
                     bubble.text = $"{n.name} hopes for rain.";
-                    bubble.style.left = p.x; bubble.style.top = p.y - 24;
-                    bubble.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(-100, LengthUnit.Percent));
+                    PlaceOver(bubble, p, 24f);
                 }
                 else show = false;
             }
@@ -646,6 +645,14 @@ namespace AquariumCiv.View
             if (s.z <= 0f) return false;
             panelPos = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(s.x, Screen.height - s.y));
             return true;
+        }
+
+        /// <summary>Centres a label over a panel point, on screen whatever its size (one frame late on new text).</summary>
+        static void PlaceOver(VisualElement e, Vector2 p, float gap)
+        {
+            float w = e.resolvedStyle.width, h = e.resolvedStyle.height;
+            var q = GameUiPanel.KeepOnScreen(e, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - gap - (float.IsNaN(h) ? 0f : h)), 190f);
+            e.style.left = q.x; e.style.top = q.y;
         }
 
         Vector3 BoxPoint(float x, float z, float up) => box.transform.TransformPoint(new Vector3(x, box.GroundHeight(x, z) + up, z));
@@ -706,12 +713,17 @@ namespace AquariumCiv.View
             ghost.style.scale = new Scale(new Vector3(scale, scale, 1f));
             ghost.style.opacity = fade * alpha;
             hintLabel.text = h.text;
-            hintLabel.style.display = DisplayStyle.Flex;
+            hintLabel.style.display = onButton && h.anchor == HintAnchor.ShapingButton ? DisplayStyle.None : DisplayStyle.Flex;
             hintLabel.style.opacity = fade;
-            hintLabel.style.left = at.x;
-            hintLabel.style.top = at.y + (labelBelow ? 96f : -90f);
-            hintLabel.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(labelBelow ? 0 : -100, LengthUnit.Percent));
+            var hl = hintLabel.resolvedStyle;
+            float hw = float.IsNaN(hl.width) ? 0f : hl.width, hh = float.IsNaN(hl.height) ? 0f : hl.height;
+            var spot = GameUiPanel.KeepOnScreen(hintLabel, new Vector2(at.x - hw * 0.5f, labelBelow ? at.y + 96f : at.y - 90f - hh), 190f);
+            hintLabel.style.left = spot.x; hintLabel.style.top = spot.y;
         }
+            // on a button the finger rests on its corner, so the word stays readable; the button already says it
+            bool onButton = h.anchor == HintAnchor.ShapingButton || h.anchor == HintAnchor.Plate;
+            var anchorEl = h.anchor == HintAnchor.Plate ? plate : rainBtn;
+            if (onButton) at += new Vector2(anchorEl.resolvedStyle.width * 0.5f - 30f, anchorEl.resolvedStyle.height * 0.5f - 6f);
 
         bool Anchor(FirstRunHint h, out Vector2 at, out bool labelBelow)
         {
