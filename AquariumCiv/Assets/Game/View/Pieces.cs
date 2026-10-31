@@ -394,24 +394,157 @@ namespace AquariumCiv.View
         /// life-in-the-box §5) with a bright core, so the fire reads and blooms at full-box zoom; the view adds a glow
         /// billboard (<see cref="BoxView"/>) and a warm pool on the ground. <paramref name="seats"/> adds three log seats.
         /// </summary>
-        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase = 0f)
+        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase = 0f) => Firepit(mb, p, seats, phase, FireLooks.Active);
+
+        /// <summary><see cref="Firepit(MeshBuilder, Vector3, bool, float)"/> in a given look (#65). Embers warms the stones
+        /// and seats in the mesh and lays its logs radially, hot ends in; the others share the #63 ring and logs.</summary>
+        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase, FireLook look)
         {
+            bool warm = look == FireLook.Embers;
+            mb.emission = warm ? 0.12f : 0f;
             for (int i = 0; i < 9; i++)
             {
                 float a = i / 9f * Mathf.PI * 2f;
-                mb.Ico(p + new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.14f, 0.042f, new Vector3(1, 0.7f, 1), i % 2 == 0 ? Palette.Rock : Palette.RockDark, 0.25f);
+                var rock = i % 2 == 0 ? Palette.Rock : Palette.RockDark;
+                mb.Ico(p + new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.14f, 0.042f, new Vector3(1, 0.7f, 1), warm ? Color.Lerp(rock, Palette.Ember, 0.22f) : rock, 0.25f);
             }
-            for (int i = 0; i < 3; i++) Log(mb, p + Vector3.up * 0.025f, 0.02f, 0.22f, i * 60f, Palette.Bark);
+            mb.emission = 0f;
+            if (warm) RadialLogs(mb, p);
+            else for (int i = 0; i < 3; i++) Log(mb, p + Vector3.up * 0.025f, 0.02f, 0.22f, i * 60f, Palette.Bark);
             mb.emission = 0.6f;
             mb.Prism(p, 0.085f, 0.075f, 0.016f, 7, Palette.Ember);
-            Flames(mb, p, phase);
+            FireBody(mb, p, phase, look);
+            mb.emission = 0f;
             if (!seats) return;
+            mb.emission = warm ? 0.1f : 0f;
             for (int i = 0; i < 3; i++)
             {
                 float a = i * 2.1f + 0.4f;
                 var q = p + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.4f;
-                Log(mb, q + Vector3.up * 0.035f, 0.035f, 0.3f, -a * Mathf.Rad2Deg + 90f, Palette.Bark);
+                Log(mb, q + Vector3.up * 0.035f, 0.035f, 0.3f, -a * Mathf.Rad2Deg + 90f, warm ? Color.Lerp(Palette.Bark, Palette.Glow, 0.18f) : Palette.Bark);
             }
+            mb.emission = 0f;
+        }
+
+        /// <summary>The look's flame body, on top of the ember bed. Soft has only coals: its flames are glow quads
+        /// (<see cref="BoxView"/>).</summary>
+        public static void FireBody(MeshBuilder mb, Vector3 p, float phase, FireLook look)
+        {
+            switch (look)
+            {
+                case FireLook.Soft: Coals(mb, p, 0.06f, 0.03f, 0.022f, 5); break;
+                case FireLook.Embers: EmberHeap(mb, p, phase); break;
+                case FireLook.Paper: PaperFlames(mb, p, phase); break;
+                default: Flames(mb, p, phase); break;
+            }
+        }
+
+        /// <summary>Linear brightness of a fully emissive face per unit of vertex colour (Stylized.mat's _Emission).</summary>
+        public const float EmissionBoost = 3f;
+
+        /// <summary>
+        /// A palette colour for a face at emission 1 (the shader ignores the lights there, so day and night match and flat
+        /// faces don't go dark). That face shows albedo x <see cref="EmissionBoost"/>, so the colour is scaled to come out as
+        /// the palette colour x <paramref name="gain"/> in linear. Bloom starts at 1.3: only gains above it get a bloom.
+        /// </summary>
+        public static Color Hot(Color c, float gain = 1f)
+        {
+            float k = Mathf.Pow(gain / EmissionBoost, 1f / 2.2f);
+            return new Color(c.r * k, c.g * k, c.b * k, c.a);
+        }
+
+        /// <summary>A low glowing dome of coals, unlit (6 sides = 54 vertices).</summary>
+        static void Coals(MeshBuilder mb, Vector3 p, float rBottom, float rTop, float h, int sides)
+        {
+            mb.emission = 1f;
+            mb.Prism(p + Vector3.up * 0.012f, rBottom, rTop, h, sides, Hot(Palette.Ember, 1.1f), topCol: Hot(Palette.FlameCoreB, 1.4f), ramp: true);
+            mb.emission = 0f;
+        }
+
+        /// <summary>Four half logs from the rim to the middle, hot at the inner end. 180 vertices against the #63 logs' 216.</summary>
+        static void RadialLogs(MeshBuilder mb, Vector3 p)
+        {
+            mb.emission = 0.35f;
+            for (int i = 0; i < 4; i++)
+            {
+                var rot = Quaternion.Euler(0, i * 90f + 25f, 0) * Quaternion.Euler(84f, 0, 0);
+                mb.Prism(p + Vector3.up * 0.036f, 0.02f, 0.018f, 0.16f, 5, Palette.Ember, rot, topCol: Palette.Bark, ramp: true);
+            }
+            mb.emission = 0f;
+        }
+
+        /// <summary>Embers: the coal heap and three stubby flames, 0.1-0.14 tall, gold going to orange, each on its own
+        /// flicker phase. 90 vertices.</summary>
+        public static void EmberHeap(MeshBuilder mb, Vector3 p, float phase)
+        {
+            Coals(mb, p, 0.1f, 0.05f, 0.035f, 6);
+            float y0 = 0.03f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.2f; mb.sway = 0f; mb.emission = 1f;
+            float yaw0 = H01(phase * 91f + 1f) * 120f;
+            for (int i = 0; i < 3; i++)
+            {
+                var yaw = Quaternion.Euler(0, yaw0 + i * 120f, 0);
+                float h = Mathf.Lerp(0.1f, 0.14f, H01(phase * 33f + i * 7.7f));
+                mb.flamePhase = Mathf.Repeat(phase + i * 0.37f, 1f);
+                mb.Prism(p + yaw * new Vector3(0, y0, 0.03f), 0.045f, 0f, h, 4, Hot(Palette.FlameCoreA, 1.5f), yaw * Quaternion.Euler(10f, 0, 0), topCol: Hot(Palette.FlameBodyA, 1.1f), ramp: true);
+            }
+            mb.emission = 0f; mb.flameHeight = 0f;
+        }
+
+        /// <summary>
+        /// Paper: six folded tongues, back to front: three tall orange ones, two gold-orange, one gold (0.30 tall at most).
+        /// Each is a bent double pyramid of 8 faces, 24 vertices (144 in all), two tones per tongue, like a folded strip of
+        /// paper; the fold reads with no lights because the tones are in the vertex colours. Each tongue flickers on its own
+        /// phase.
+        /// </summary>
+        public static void PaperFlames(MeshBuilder mb, Vector3 p, float phase)
+        {
+            float y0 = 0.012f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.3f; mb.sway = 0f; mb.emission = 1f;
+            float yaw0 = H01(phase * 91f + 1f) * 120f;
+            void Tongue(int i, float yaw, float r, float h, float w, Color low, Color belly, Color tip)
+            {
+                mb.flamePhase = Mathf.Repeat(phase + i * 0.37f, 1f);
+                float a = yaw0 + yaw + (H01(phase * 57f + i * 3.1f) - 0.5f) * 24f;
+                PaperTongue(mb, p + Quaternion.Euler(0, a, 0) * new Vector3(0, y0, r), a, h, w, 0.05f + 0.04f * H01(phase * 71f + i * 5.3f), low, belly, tip);
+            }
+            Color gold = Hot(Palette.FlameCoreA, 1.5f), amber = Hot(Palette.FlameCoreB, 1.25f), orange = Hot(Palette.FlameBodyA, 1.1f), red = Hot(Palette.FlameBodyB, 1f);
+            Tongue(0, 0f, 0.05f, 0.3f, 0.062f, orange, orange, red);
+            Tongue(1, 125f, 0.05f, 0.25f, 0.056f, orange, orange, red);
+            Tongue(2, 235f, 0.05f, 0.27f, 0.056f, orange, orange, red);
+            Tongue(3, 60f, 0.03f, 0.2f, 0.052f, amber, amber, orange);
+            Tongue(4, 190f, 0.03f, 0.18f, 0.05f, amber, amber, orange);
+            Tongue(5, 300f, 0.012f, 0.13f, 0.046f, gold, gold, amber);
+            mb.emission = 0f; mb.flameHeight = 0f;
+        }
+
+        /// <summary>One tongue: from a pointed foot out to a diamond belly at 38 % of the height, then to a tip leaning
+        /// <paramref name="lean"/> outwards. Faces at each side of the blade are the lit fold, the others a shade deeper.</summary>
+        public static void PaperTongue(MeshBuilder mb, Vector3 foot, float yawDeg, float h, float halfWidth, float lean, Color low, Color belly, Color tip)
+        {
+            var q = Quaternion.Euler(0, yawDeg, 0);
+            var bellyC = foot + q * new Vector3(0, h * 0.38f, lean * 0.3f);
+            var tipP = foot + q * new Vector3(lean * 0.35f, h, lean);
+            Vector3 wide = q * Vector3.right * halfWidth, deep = q * Vector3.forward * (halfWidth * 0.45f);
+            var ring = new[] { bellyC + wide, bellyC + deep, bellyC - wide, bellyC - deep };
+            for (int i = 0; i < 4; i++)
+            {
+                var a = ring[i]; var b = ring[(i + 1) % 4];
+                bool lit = i % 2 == 0;
+                Color l = lit ? low : Fold(low), m = lit ? belly : Fold(belly), t = lit ? tip : Fold(tip);
+                FacetOut(mb, foot, a, b, bellyC, l, m, m);
+                FacetOut(mb, a, tipP, b, bellyC, m, t, m);
+            }
+        }
+
+        /// <summary>The shaded side of a paper fold.</summary>
+        static Color Fold(Color c) => new Color(c.r * 0.8f, c.g * 0.8f, c.b * 0.8f, c.a);
+
+        /// <summary>A gradient triangle wound to face away from <paramref name="inside"/>.</summary>
+        static void FacetOut(MeshBuilder mb, Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Color ca, Color cb, Color cc)
+        {
+            if (Vector3.Dot(Vector3.Cross(b - a, c - a), (a + b + c) / 3f - inside) < 0f) mb.TriC(a, c, b, ca, cc, cb);
+            else mb.TriC(a, b, c, ca, cb, cc);
         }
 
         static float H01(float x) => Mathf.Repeat(Mathf.Sin(x * 12.9898f) * 43758.5453f, 1f);

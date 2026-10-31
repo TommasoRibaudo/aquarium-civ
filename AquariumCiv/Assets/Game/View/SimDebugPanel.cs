@@ -15,7 +15,7 @@ namespace AquariumCiv.View
     /// state without waiting. A "sim" button (top right, inside the safe area) opens it; <see cref="SliceDebugPanel"/> keeps
     /// the camp/era/box/music tools. IMGUI, drawn on the safe area, scrollable by drag. Every action also goes through the
     /// static <c>Do*</c> methods, so `script eval` can call them (SimDebugPanel.DoRelic("lens")).
-    /// Sections: Time, Era and box, Notables (selected one), Roles, Buildings, Shaping, Wishes, Relics and belief, Care.
+    /// Sections: Time, Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Wishes, Relics and belief, Care.
     /// </summary>
     [AddComponentMenu("AquariumCiv/TEMPORARY Sim Debug Panel")]
     public class SimDebugPanel : MonoBehaviour
@@ -109,6 +109,15 @@ namespace AquariumCiv.View
             return "unknown " + what;
         }
 
+        /// <summary>Flips the camp fire's look (#65; "current", "soft"/"a", "embers"/"b", "paper"/"c") and rebuilds the box.</summary>
+        public static string DoFireLook(string name)
+        {
+            if (!FireLooks.TryParse(name, out var look)) return "unknown fire look " + name;
+            FireLooks.Active = look;
+            BoxView.DebugRebuild();
+            return "fire look: " + look;
+        }
+
         static string Name(SimCore s, int id) => s.FindNotable(id)?.FullName ?? ("#" + id);
 
         void TimeLapseGui()
@@ -177,6 +186,17 @@ namespace AquariumCiv.View
             }
 
             if (Section("Time-lapse")) TimeLapseGui();
+            if (Section("Fire (#65)"))
+            {
+                GUILayout.BeginHorizontal();
+                foreach (var look in FireLooks.All)
+                    if (GUILayout.Toggle(FireLooks.Active == look, look.ToString(), GUI.skin.button) && FireLooks.Active != look) last = DoFireLook(look.ToString());
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
+                if (GUILayout.Button("Fly to the fire")) last = DoFly("fire");
+                GUILayout.EndHorizontal();
+            }
             if (Section("Era and box"))
             {
                 var st = sim.State;
