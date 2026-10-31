@@ -20,7 +20,7 @@ namespace AquariumCiv.View
     /// <item><b>Relic moments.</b> When the sim finds a relic while the box is watched (<see cref="SimCore.RelicFound"/>, not
     /// in a catch-up), its moment is staged (<see cref="LifePlanner.StartRelicMoment"/>); the Lens waits for dusk, an era moment
     /// first plays out. The Festival Mask's is the festival's (MomentPlayer, #91). The lines said in a moment show in the era
-    /// moment's speech bubble (<see cref="MomentPlayer.Say"/>).</item>
+    /// speaker's head (<see cref="ShowMeDirector.SayOverHead"/>).</item>
     /// <item><b>Tapping the glass.</b> A tap on the box outside clean mode and camera mode is the Keeper knocking: the people
     /// react as their stage does (<see cref="KeeperGesture.TapGlass"/>), and once the taps stop the sim is told how many
     /// (<see cref="SimCore.KeeperTapped"/>); in stage 3 with the Lens a scholar walks over and knocks back as often
@@ -204,10 +204,12 @@ namespace AquariumCiv.View
             foreach (var l in lines)
             {
                 if (!said.Add((l.relicId, l.lineNo, l.start))) continue;
-                string who = l.speaker.IsNotable ? Sim?.FindNotable(l.speaker.notableId)?.name : null;
-                string text = who != null && !l.text.Contains(who) ? $"{who}: “{l.text}”" : $"“{l.text}”";
                 float secs = Mathf.Clamp(LifeClock.RealSecondsBetween(l.start, l.end), 3f, MomentPlayer.BubbleSeconds);
-                mp.Say(text, secs);
+                // Over the speaker's head, like Show me (user 2026-10-30); the moment's bubble if nobody can carry it.
+                var sm = ShowMeDirector.Instance;
+                if (sm != null && sm.SayOverHead(l.text, l.speaker, secs)) continue;
+                string who = l.speaker.IsNotable ? Sim?.FindNotable(l.speaker.notableId)?.name : null;
+                mp.Say(who != null && !l.text.Contains(who) ? $"{who}: “{l.text}”" : $"“{l.text}”", secs);
             }
         }
 
