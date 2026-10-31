@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Restart the Unity Editor between stints (docs/workflow.md §4). Only while you hold .agent-editor.lock,
+# out of play mode. Saves open scenes, quits, reopens the project, waits for `ready`. Never kill Unity by hand.
+set -u
+P='F:\GameDev\AquariumCiv'
+export UNITY_NO_PAGER=1 UNITY_NO_BANNER=1
+CODE='UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes(); UnityEditor.AssetDatabase.SaveAssets(); UnityEditor.EditorApplication.delayCall += () => UnityEditor.EditorApplication.Exit(0); return "quitting";'
+unity command script eval --timeout 30 --code "$CODE" || { echo "quit command failed: stop and report"; exit 1; }
+for i in $(seq 1 30); do tasklist | grep -qi "^Unity.exe" || break; sleep 5; done
+if tasklist | grep -qi "^Unity.exe"; then echo "Editor did not quit in 150 s: stop and report"; exit 1; fi
+"/c/Program Files/Unity/Hub/Editor/6000.3.27f1/Editor/Unity.exe" -projectpath "$P" >/dev/null 2>&1 &
+for i in $(seq 1 60); do
+  if unity status --project-path "$P" --format json 2>/dev/null | grep -q '"state": "ready"'; then echo "Editor ready"; exit 0; fi
+  sleep 10
+done
+echo "Editor not ready after 10 min: check dismiss-dialogs.ps1 and Editor.log, stop and report"
+exit 1

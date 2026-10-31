@@ -18,9 +18,8 @@ Test results are uploaded as the `test-results` artifact (14 days).
 
 ## Working on `main` (ruleset "main")
 - No direct pushes: changes land through a pull request (no approval needed, since this is a one-person project).
-- The three CI checks must pass: **Workflow lint**, **Secret scan**, **Unity tests**.
-  **Sim tests (dotnet)** also runs on every PR but is not a required check yet (add it to the ruleset once it has run
-  green on a PR).
+- The CI checks must pass: **Workflow lint**, **Secret scan**, **Unity tests**, **Sim tests (dotnet)** (required on `main`
+  and `dev` since 2026-10-30).
 - No force pushes, no deleting `main`.
 - An admin can still merge a PR whose checks fail (bypass on pull requests only), for emergencies like an expired
   Unity license.
