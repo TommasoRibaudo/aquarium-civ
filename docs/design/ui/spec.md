@@ -144,6 +144,9 @@ Components call a role, which calls `Sfx.Play` with a `CueLibrary` id. Nothing i
 - **Short phones (375 × 667):** the sheet stays 30 %, 200 pt. The card needs about 216 pt at full layout, so under 700 pt
   tall the year joins the dots row and bottom padding drops to 14, which gives 193 pt. Longer text scrolls. Drawn at the
   end of 3.3. Not yet tried in Unity.
+- **Feedback under 700 pt tall:** its 470 pt doesn't fit 59 % of a 667 pt phone (394 pt). It's test-only, so it grows to full
+  height over the box, top under the safe area, with Cancel and Send on the bottom edge. Not drawn.
+- **375 × 667 is drawn for the wish card only.** #165 to #170 and #95 must check it screen by screen.
 - **Keyboard:** a text-entry sheet rides on top of the keyboard, by translate, using `TouchScreenKeyboard.area`. Keep and
   Send stay above it. Naming and rename keep their layout, with bottom padding 12. Feedback folds to heading, text and
   buttons, because its full layout wouldn't fit. Drawn on 3.7 and 3.8. Check Unity's mobile input bar on a device.
