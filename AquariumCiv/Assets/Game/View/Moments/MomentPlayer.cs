@@ -68,6 +68,9 @@ namespace AquariumCiv.View
         CameraPose fromPose; // where the player had the camera before the moment (it eases back there after)
         bool hadCamera;
         string toolLine = ""; // the tool beat's hint, said once the moment is over (mid-moment a press hurries)
+        /// <summary>The unlock captions ("Drag from the water") ask for a tool the player can't pick up until the shaping tray
+        /// (#84) exists: off until then, the lines stay in <see cref="MomentLibrary"/> (tester batch 3).</summary>
+        public static bool ToolCaptions = false;
         bool wipingForMoment; // clean mode was opened from the wipe offer
         // puffs
         readonly List<(Transform t, float age, float size)> puffs = new();
@@ -213,7 +216,7 @@ namespace AquariumCiv.View
             if (src != null) src.EndMomentLook();
             Debug.Log($"[Moment] ended ({(crossed ? "crossed" : "left before the cheer: it will replay")})");
             MomentEnded?.Invoke(crossed);
-            if (crossed && toolLine != "") Say(toolLine, 6f);
+            if (crossed && toolLine != "" && ToolCaptions) Say(toolLine, 6f);
             toolLine = "";
         }
 
