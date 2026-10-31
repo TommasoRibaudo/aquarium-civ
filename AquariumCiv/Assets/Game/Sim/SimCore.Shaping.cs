@@ -28,6 +28,16 @@ namespace AquariumCiv.Sim
             public bool Ok => fail == ShapeFail.None;
         }
 
+        /// <summary>Why a tool can't be placed, in the player's words (the tray's toast and a wish card's Give).</summary>
+        public string ShapeFailLine(string kind, ShapeFail f) => f switch
+        {
+            ShapeFail.None => "",
+            ShapeFail.Locked => $"The {ShapingToolName(kind)} comes with the village.",
+            ShapeFail.NoCharge => "No shaping left for now: cleaning the glass brings it back.",
+            ShapeFail.AtCap => $"That's as many as the box holds ({ShapingCap(kind)} at once).",
+            _ => "That tool can't be used here.",
+        };
+
         /// <summary>The slice's tools, in tray order.</summary>
         public static readonly string[] SliceTools = { NudgeKind.Rain, NudgeKind.Grove, NudgeKind.Herd, NudgeKind.Channel };
 

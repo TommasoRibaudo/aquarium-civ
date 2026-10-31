@@ -358,6 +358,7 @@ namespace AquariumCiv.Sim
         public int boxIndex;                 // which box of the shelf this is (0 = the first; SimShelf.cs, #87)
         public FirstRunState firstRun = new(); // the first run's progress; inactive unless FirstRun.Begin ran (#94)
         public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
+        public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

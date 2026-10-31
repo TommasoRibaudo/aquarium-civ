@@ -1,0 +1,19 @@
+{
+    "name": "AquariumCiv.Cards",
+    "rootNamespace": "AquariumCiv.View.Cards",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Life",
+        "AquariumCiv.ShowMe",
+        "AquariumCiv.Game"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

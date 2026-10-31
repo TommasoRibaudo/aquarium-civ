@@ -19,6 +19,7 @@ namespace AquariumCiv.Sim
             Config = config; State = state;
             // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
             if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;
+            StartCardLedger();
         }
 
         public static SimState NewWorld(int seed, SimConfig config)
