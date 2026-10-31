@@ -20,88 +20,18 @@ namespace AquariumCiv.View.PlayTests
     /// pan lets go, and the auto-orbit waits 10 s. The HUD side is CameraModeTests (UI). It backs up and restores the save.
     /// </summary>
     [Category("CameraModePlay")]
-    public class CameraModePlayTests : InputTestFixture
+    public class CameraModePlayTests : PlayTestBase
     {
-        const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
-        Touchscreen touch;
-        int touchId = 1;
-        string savePath, backup;
-        readonly List<string> errors = new();
-
-        void OnLog(string msg, string stack, LogType type)
-        {
-            if (type == LogType.Exception || type == LogType.Error) errors.Add(msg);
-        }
-
         IEnumerator Open(int w = 1179, int h = 2556)
         {
-            LogAssert.ignoreFailingMessages = true;
-            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
-            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
-            backup = savePath + ".cameramode-test-backup";
-            if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
-            if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
-            GameClock.DebugNextSeed = 1234;
-            SetSize(w, h);
-            float waited = 0f;
-            while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
-#if UNITY_EDITOR
-            yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Single));
-#endif
-            for (int i = 0; i < 90; i++) yield return null;
-            if (GameClock.Instance != null)
-            {
-                if (GameHud.Instance == null) GameHud.Create();
-                if (MomentPlayer.Instance == null) MomentPlayer.Create();
-                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
-                if (box != null && CareView.Instance == null) box.gameObject.AddComponent<CareView>();
-                if (box != null && GlassVoice.Instance == null) box.gameObject.AddComponent<GlassVoice>();
-                if (box != null && ShowMeDirector.Instance == null) box.gameObject.AddComponent<ShowMeDirector>();
-                if (box != null && PersonCardView.Instance == null) box.gameObject.AddComponent<PersonCardView>();
-            }
             ShowMeDirector.BubblesOn = false;
-            yield return null; yield return null;
-            touch = InputSystem.AddDevice<Touchscreen>();
-            yield return null;
-            errors.Clear();
-            Application.logMessageReceived += OnLog;
+            yield return OpenSlice(w, h, seed: 1234);
         }
 
         void Close()
         {
-            Application.logMessageReceived -= OnLog;
-            GameClock.DebugNextSeed = 0;
             ShowMeDirector.BubblesOn = true;
-            try
-            {
-                if (File.Exists(backup + ".bak")) { File.Copy(backup + ".bak", savePath + ".bak", true); File.Delete(backup + ".bak"); }
-                if (File.Exists(backup)) { File.Copy(backup, savePath, true); File.Delete(backup); }
-                else if (File.Exists(savePath)) File.Delete(savePath);
-            }
-            catch (Exception e) { Debug.LogWarning("restore save: " + e.Message); }
-        }
-
-        static void SetSize(int w, int h)
-        {
-            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var t = a.GetType("AquariumCiv.EditorTools.AgentGameView");
-                if (t == null) continue;
-                t.GetMethod("SetSize").Invoke(null, new object[] { w, h });
-                return;
-            }
-        }
-
-        static IEnumerator Shot(string name)
-        {
-            yield return new WaitForEndOfFrame();
-            var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(Shots);
-            File.WriteAllBytes(Shots + name + ".png", tex.EncodeToPNG());
-            UnityEngine.Object.Destroy(tex);
+            CloseSlice();
         }
 
         IEnumerator Drag(Vector2 a, Vector2 b, int steps = 20)
@@ -258,7 +188,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
-        public IEnumerator ThePinnedPersonIsFollowedWhenInView_AndAnUnpinnedBoxIsNot()
+        public IEnumerator ThePinnedPersonIsAlwaysFlownTo_AndAnUnpinnedBoxIsNot()
         {
             yield return Open();
             try
@@ -279,6 +209,22 @@ namespace AquariumCiv.View.PlayTests
                 yield return null; yield return null;
                 hud.SetCameraMode(true);
                 Assert.AreEqual(PersonRef.Notable(id), rig.Following, "the pinned person in view is followed");
+                hud.SetCameraMode(false);
+                yield return null;
+
+                // Off screen (user 2026-10-30): the far corner of the box, zoomed in.
+                rig.FlyTo(new Vector3(w.x > 0f ? -2.4f : 2.4f, w.y, w.z > 0f ? -1.4f : 1.4f), 0.3f, 0.01f);
+                yield return new WaitForSecondsRealtime(0.2f);
+                Assert.IsTrue(DollWorld(PersonRef.Notable(id), out w));
+                var seen = Camera.main.WorldToViewportPoint(w);
+                Assert.IsFalse(seen.z > 0f && seen.x > 0.05f && seen.x < 0.95f && seen.y > 0.05f && seen.y < 0.95f, "they start off screen");
+                hud.SetCameraMode(true);
+                Assert.AreEqual(PersonRef.Notable(id), rig.Following, "off screen, they are still followed");
+                Assert.IsTrue(rig.IsFlying, "and the camera flies to them");
+                yield return new WaitForSecondsRealtime(BoxCameraMath.FlyDefaultSeconds + 0.8f);
+                Assert.IsTrue(DollWorld(PersonRef.Notable(id), out w));
+                seen = Camera.main.WorldToViewportPoint(w);
+                Assert.IsTrue(seen.z > 0f && seen.x > 0.1f && seen.x < 0.9f && seen.y > 0.1f && seen.y < 0.9f, $"they are on screen after the flight ({seen})");
                 hud.SetCameraMode(false);
                 sim.Unpin();
             }
