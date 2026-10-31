@@ -267,14 +267,42 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("smoke_after_moment");
         }
 
+        /// <summary>History through the real button (no cards waiting): the time-lapse screen, a drag by touch, Close.</summary>
         IEnumerator TimeLapse()
         {
             var tl = TimeLapseView.Ensure();
-            Assert.IsTrue(tl.Open(), "the replay opens");
-            yield return new WaitForSecondsRealtime(1f);
+            var hud = GameHud.Instance;
+            // History opens the waiting cards first (the dot stays after "Skip all"); read everything so it is the time-lapse's turn
+            Sim.CardsSeenToNow();
+            yield return Frames(40);
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
+            yield return new WaitForSecondsRealtime(0.6f);
+            var stack = CardStackView.Instance;
+            string branch = "direct";
+            if (TimeLapseScreenView.Instance == null || !TimeLapseScreenView.Instance.IsOpen)
+            {   branch = "cards";
+                // the era's cards wait: History shows them first; Skip all, then History is the time-lapse
+                Assert.AreNotEqual(CardStackMode.Hidden, stack.Model.Mode, "History showed the waiting cards");
+                if (stack.Model.Mode == CardStackMode.Peek) { yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek")); yield return Frames(6); }
+                yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
+                yield return Frames(6);
+                Assert.AreEqual(CardStackMode.Hidden, stack.Model.Mode);
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
+                yield return new WaitForSecondsRealtime(0.6f);
+            }
+            var screen = TimeLapseScreenView.Instance;
+            Assert.IsNotNull(screen, $"the History button made the time-lapse screen (cards {stack.Model.Mode}, dot {stack.Model.HistoryDot}, sheet {GameHud.Instance.OpenSheet}, moment {MomentPlayer.Instance.Playing}, branch {branch})");
+            Assert.IsTrue(screen.IsOpen, "the History button opens the time-lapse when no cards wait");
+            Assert.IsTrue(tl.Active);
             Assert.IsTrue(GameClock.Instance.Held, "the clock holds while replaying");
-            tl.Close();
+            var m = screen.Model;
+            yield return Until(() => m.Layout.Width > 0f, 2f);
+            yield return Drag(new[] { screen.ScreenPointAtBarX(m.Layout.XOf(m.Clock.End) - 2f), screen.ScreenPointAtBarX(m.Layout.XOf(m.Clock.End * 0.5f)) }, 20f);
+            Assert.Less(m.Position, m.Clock.End - 0.5f, "a drag by touch moves the playhead");
+            yield return Shot("smoke_timelapse");
+            yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-close"));
             yield return Frames(6);
+            Assert.IsFalse(screen.IsOpen);
             Assert.IsFalse(tl.Active, "the replay closes");
             Assert.IsFalse(GameClock.Instance.Held, "and the clock runs again");
         }

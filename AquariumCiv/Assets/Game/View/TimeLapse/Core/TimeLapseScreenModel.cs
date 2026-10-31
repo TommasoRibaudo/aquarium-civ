@@ -19,7 +19,7 @@ namespace AquariumCiv.View.TimeLapseScreen
         public float secondsLeft = -1f;        // counting down (Crossed, or a Tap once play moves on); -1 = stays until dismissed
         public string Text => pin.text;
         public int EntryId => pin.entryId;
-        public bool CanOpenPerson => pin.notableId != 0;   // PersonCardView.Open(notableId)
+        public bool CanOpenPerson => pin.notableId >= 0;   // PersonCardView.Open(notableId)
         public bool CanFlyTo => pin.hasPos;                // pin.x, pin.z in box units
     }
 

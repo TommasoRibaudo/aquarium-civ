@@ -22,6 +22,9 @@ namespace AquariumCiv.View
     {
         /// <summary>Animation steps between two years (a still piece grows in this many sizes).</summary>
         public int growSteps = 6;
+        /// <summary>The #79 screen ticks the clock itself (through its model, which logs the telemetry) and calls <see cref="Show"/>;
+        /// with this on the view does not tick a playing clock a second time. Reset on close.</summary>
+        [System.NonSerialized] public bool externalTick;
         [Tooltip("Scrubbing draws without the AO bake; the chunks bake once the playhead has been still this long, or on pause or close.")]
         public float settleSeconds = 0.25f;
         float lastShowTime;
@@ -106,6 +109,7 @@ namespace AquariumCiv.View
             if (!Active) return;
             FlushScrub();
             Active = false;
+            externalTick = false;
             Src.Replay = null;
             Box.deferAO = false;
             Box.FlushAo();
@@ -147,7 +151,7 @@ namespace AquariumCiv.View
         void Update()
         {
             if (!Active) return;
-            if (Application.isPlaying && Clock.Playing) { Clock.Tick(Time.unscaledDeltaTime); Show(Clock.Position, false); }
+            if (Application.isPlaying && Clock.Playing) { if (!externalTick) { Clock.Tick(Time.unscaledDeltaTime); Show(Clock.Position, false); } }
             else if (Box.AoPending > 0 && Time.unscaledTime - lastShowTime >= settleSeconds) Settle();
         }
 

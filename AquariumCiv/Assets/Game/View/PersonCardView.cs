@@ -230,8 +230,7 @@ namespace AquariumCiv.View
             if (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible || hud.CleanMode)) return true;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return true;
-            var tl = TimeLapseView.Find();
-            if (tl != null && tl.Active) return true;
+            // (the time-lapse screen's Who opens a card over the past on purpose: #79)
             var bc = BoxCompleteController.Instance;
             if (bc != null && bc.Playing) return true;
             var mp = MomentPlayer.Instance;
