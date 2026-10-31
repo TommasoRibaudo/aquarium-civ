@@ -104,7 +104,20 @@ The first build of the vertical slice, for the user alone on their iPhone.
 - **Local builds (no upload):** menu *Slice/Build Android (apk)* and *Build iOS (Xcode project)*, or
   `unity command script eval --code "AquariumCiv.EditorTools.SliceBuild.Android()"` (also `.Ios()`). Output goes to
   `F:\GameDevBuilds\` (outside git, off C:). Windows can only produce the Xcode project for iOS; archiving and signing stay in
-  the macOS CI job. Results: see below.
+  the macOS CI job. Results below.
+- **Build profiles:** the Pipeline has no build-profile command (only `scene add_to_build` / `remove_from_build`), so the
+  script-based builds above stay; they are what "iOS and Android build from the CLI" means here.
+- **Results (2026-10-31, Editor 6000.3.27f1, IL2CPP, Slice scene only):**
+  - Android: `F:\GameDevBuilds\android\AquariumCiv-0.4.0.apk`, **43.6 MB** (45,749,643 bytes), arm64, about 7 min, Result: Success.
+  - iOS: Xcode project at `F:\GameDevBuilds\ios\AquariumCiv`, **about 1.08 GB on disk** (Il2CppOutputProject 831 MB, Libraries
+    221 MB, Data 25 MB), about 6 min, Result: Success. This is source, not the app: the .ipa size is only known after the macOS job
+    archives it. The Xcode project is not signed or uploaded from here.
+  - Tests before the build: `DebugDockLock` 3/3, `SmokePlay` 1/1 (play mode, by category).
+  - A build switches the active target (Android, then iOS) and reimports. Switch back afterwards with
+    `EditorUserBuildSettings.SwitchActiveBuildTarget(Standalone, StandaloneWindows64)` (about a minute), then
+    `git checkout AquariumCiv/Assets/Settings AquariumCiv/ProjectSettings/ProjectSettings.asset`: the builds rewrite the URP
+    assets and `runInBackground`/batching in ProjectSettings, which are noise, not changes to commit.
+  - `unity command script eval` takes statements: write `return X();` (a bare expression fails with "; expected").
 
 ### Perf build 0.4.x (issue #35)
 A one-off build to measure the style kit on a phone (60 fps / GPU ≤ 10 ms). It ships **only**
