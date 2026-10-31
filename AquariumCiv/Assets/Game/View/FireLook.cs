@@ -37,8 +37,8 @@ namespace AquariumCiv.View
     /// <summary>The look in use and the table behind it. Pure: read from worker threads by the mesh builders.</summary>
     public static class FireLooks
     {
-        /// <summary>The look a fresh game starts with: the #63 fire until the user picks (#65).</summary>
-        public const FireLook Default = FireLook.Current;
+        /// <summary>The look a fresh game starts with: Embers, the user's pick (#65).</summary>
+        public const FireLook Default = FireLook.Embers;
 
         /// <summary>The look the box builds. A debug flip outlives leaving play mode.</summary>
         public static FireLook Active = Default;

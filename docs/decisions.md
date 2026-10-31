@@ -2,6 +2,7 @@
 
 | Date | Topic | Decision | Notes |
 |------|-------|----------|-------|
+| 2026-10-31 | Campfire (#65) | Embers (option B) is the default fire | User's pick; they judge it in the Editor before publishing |
 | 2026-10-28 | Platform | Mobile (iOS/Android) | Primary target |
 | 2026-10-28 | Team | Solo developer, knows Unity/C# | Unity is the frontrunner; engine still to be confirmed after research |
 | 2026-10-28 | Visual style | 3D diorama | Tiny rotatable world in glass (Tiny Glade / Townscaper feel) |

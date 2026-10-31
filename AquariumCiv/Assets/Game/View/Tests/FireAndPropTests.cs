@@ -75,11 +75,11 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
-        public void FireLooks_UnknownNameIsRefused_AndTheDefaultIsThe63Fire()
+        public void FireLooks_UnknownNameIsRefused_AndTheDefaultIsEmbers()
         {
             Assert.IsFalse(FireLooks.TryParse("lava", out _));
             Assert.IsFalse(FireLooks.TryParse(null, out _));
-            Assert.AreEqual(FireLook.Current, FireLooks.Default, "stays on the #63 fire until the user picks");
+            Assert.AreEqual(FireLook.Embers, FireLooks.Default, "the user picked Embers (#65)");
         }
 
         [Test]
