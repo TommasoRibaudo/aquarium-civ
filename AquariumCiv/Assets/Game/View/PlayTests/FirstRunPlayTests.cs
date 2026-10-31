@@ -269,7 +269,24 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(FirstRunStep.Year, View.Step, "a rain placed by touch moves the run to the year");
                 Assert.IsTrue(sim.State.nudges.Any(n => n.kind == SimCore.NudgeKind.Rain));
                 Assert.IsTrue(GameClock.Instance.Held, "the live clock is held while the year plays");
-                yield return new WaitForSecondsRealtime(4f);
+                // Tester batch 3: the year's fast clock made the dolls jump at every skip.
+                var boxView = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var lastPos = new System.Collections.Generic.Dictionary<PegDollView, Vector3>();
+                float yearT = 0f, worstStep = 0f;
+                while (yearT < 8f)
+                {
+                    yield return null;
+                    yearT += Time.unscaledDeltaTime;
+                    float allow = Mathf.Max(1f, Time.unscaledDeltaTime / 0.1f);
+                    foreach (var d in boxView.GetComponentsInChildren<PegDollView>(false))
+                    {
+                        var p = d.transform.localPosition;
+                        if (lastPos.TryGetValue(d, out var q)) worstStep = Mathf.Max(worstStep, Vector2.Distance(new Vector2(p.x, p.z), new Vector2(q.x, q.z)) / allow);
+                        lastPos[d] = p;
+                    }
+                }
+                Debug.Log($"[firstrun] worst doll step in the year {worstStep:0.00} u");
+                Assert.Less(worstStep, 0.25f, "the dolls walk through the first year");
                 yield return Shot("7_year");
 
                 // The year plays; the card.

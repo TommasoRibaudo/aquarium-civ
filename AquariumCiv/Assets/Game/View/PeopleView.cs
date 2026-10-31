@@ -67,6 +67,9 @@ namespace AquariumCiv.View
         bool clockStarted;
         /// <summary>This frame every doll is put straight where its plan says (a clock or box jump), else they walk there.</summary>
         bool snapAll;
+        /// <summary>A sim running ahead of the view (the first year's fast clock): the dolls walk to the new day's plans instead
+        /// of snapping there at every skip.</summary>
+        public bool SoftDayTurns;
         float replanIn, lastTime = -1f;
         readonly List<PersonActivity> acts = new();
         readonly Dictionary<int, Doll> dolls = new();
@@ -140,7 +143,7 @@ namespace AquariumCiv.View
             float hour = clockStarted ? now.hour : startHour;
             var next = LifeClock.Advance(new ViewTime(0, hour), dt * Mathf.Max(0f, timeScale));
             long day = clockStarted && !newSim ? LifeClock.NextViewDay(now.day, next.day, sim.State.month) : sim.State.month;
-            if (clockStarted && day != now.day && next.day == 0) snapAll = true;
+            if (clockStarted && day != now.day && next.day == 0 && !SoftDayTurns) snapAll = true;
             now = new ViewTime(day, next.hour);
             clockStarted = true;
 
