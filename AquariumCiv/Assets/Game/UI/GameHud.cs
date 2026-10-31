@@ -215,6 +215,23 @@ namespace AquariumCiv.GameUI
 
         public bool ToolsHidden => toolBlocks.Count > 0;
 
+        /// <summary>The History button asks this first: true = taken care of (the card stack opens what's waiting), else the
+        /// History sheet opens.</summary>
+        public Func<bool> HistoryTapped;
+
+        VisualElement historyDot;
+
+        /// <summary>A dot on the History button: stories wait. A dot, never a number.</summary>
+        public void SetHistoryDot(bool on)
+        {
+            if (historyDot != null) historyDot.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        void OnHistory()
+        {
+            if (HistoryTapped == null || !HistoryTapped()) Open(History);
+        }
+
         Action pinTap;
 
         /// <summary>#39: the pinned person's chip in the bottom row: <paramref name="text"/> null hides it; a tap calls
@@ -284,7 +301,12 @@ namespace AquariumCiv.GameUI
             safe.Add(corner);
 
             bottomRow = Row("hud-bottom");
-            bottomRow.Add(Btn("hud-history", "History", () => Open(History), "hud-btn"));
+            var history = Btn("hud-history", "History", OnHistory, "hud-btn");
+            historyDot = new VisualElement { name = "hud-history-dot", pickingMode = PickingMode.Ignore };
+            historyDot.AddToClassList("hud-dot");
+            historyDot.style.display = DisplayStyle.None;
+            history.Add(historyDot);
+            bottomRow.Add(history);
             pinChip = Btn("hud-pin", "", () => pinTap?.Invoke(), "hud-chip");
             pinChip.style.display = DisplayStyle.None; // nobody pinned yet (person card work)
             bottomRow.Add(pinChip);

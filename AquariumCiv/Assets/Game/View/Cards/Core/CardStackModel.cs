@@ -49,14 +49,13 @@ namespace AquariumCiv.View.Cards
         public string actionNote = "";  // why the action can't happen now, said on the card (practices §4)
     }
 
-    /// <summary>What Give did: the shaping that was placed, or why not (<see cref="line"/> is ready to show).</summary>
+    /// <summary>What Give did: the wish to arm the tool for, or why not (<see cref="line"/> is ready to show).</summary>
     public struct GiveOutcome
     {
         public bool ok;
         public SimCore.ShapeFail fail;
         public string line;
         public Wish wish;
-        public Nudge nudge;
     }
 
     /// <summary>
@@ -71,7 +70,7 @@ namespace AquariumCiv.View.Cards
     /// //   Next/swipe → Next(), back → Back(), Skip all → SkipAll(), back gesture → Close().
     /// //   Show me: var card = ShowMe(); ShowMeDirector.Instance.Show(card); when the flight lands, ShowMeLanded().
     /// //   Portrait: OpenPerson(id), then PersonClosed(). Also…: OpenAlso(i), Back().
-    /// //   Give(), Remember() (then PersonClosed()), Watch().
+    /// //   Give() (then ShapingView.ArmWish), Remember() (then PersonClosed()), Watch().
     /// // on Changed redraw; on ShowMeEnd call ShowMeDirector.Instance.End(true).
     /// // the history button's dot: HistoryDot. Pause: OnPause().
     /// </code>
@@ -227,7 +226,8 @@ namespace AquariumCiv.View.Cards
 
         string CurrentId => Shown != null ? IdOf(Shown) : AlsoId;
 
-        static string IdOf(ChronicleCard c) => "e" + c.lead.id;
+        /// <summary>The entry's id, as ShowMeDirector logs it, so a card's events join up.</summary>
+        static string IdOf(ChronicleCard c) => c.lead.id.ToString();
 
         void ShowCurrent()
         {
@@ -329,8 +329,7 @@ namespace AquariumCiv.View.Cards
             var card = Shown;
             if (card == null || !CanShowMe(card)) return null;
             sim.MarkCardRead(card);
-            log.ShowMe(IdOf(card));
-            showMeUsed = true;
+            showMeUsed = true; // ShowMeDirector logs show_me and card_flown_to, for every Show me
             if (!flying) { flying = true; dwell.Cover(now()); }
             return card;
         }
@@ -340,7 +339,6 @@ namespace AquariumCiv.View.Cards
             if (!flying) return;
             flying = false;
             dwell.Uncover(now());
-            if (Shown != null) log.CardFlownTo(IdOf(Shown));
         }
 
         bool CanShowMe(ChronicleCard c) => showMe.Target(c.lead).hasPoint;
@@ -356,16 +354,18 @@ namespace AquariumCiv.View.Cards
 
         public void PersonClosed() { if (Mode == CardStackMode.Open) dwell.Uncover(now()); }
 
-        /// <summary>The wish card's Give: the shaping goes where the wish points. A failure leaves the wish open and says why.</summary>
+        /// <summary>The wish card's Give: the stack closes and the view arms the tool at the wish's spot (ShapingTray.ArmForWish);
+        /// the wish stays open until the player places it. If it can't be given the stack stays and <see cref="GiveOutcome.line"/>
+        /// says why.</summary>
         public GiveOutcome Give()
         {
             var card = Shown;
             var wish = card?.kind == CardKind.Wish ? sim.WishOfEntry(card.lead.id) : null;
             if (wish == null) return new GiveOutcome { fail = SimCore.ShapeFail.Unknown, line = "" };
-            var r = sim.GiveWish(wish.id);
-            var o = new GiveOutcome { ok = r.Ok, fail = r.fail, wish = wish, nudge = r.nudge, line = FailLine(wish, r.fail) };
-            if (r.Ok) sim.MarkCardRead(card);
-            Changed?.Invoke();
+            var fail = sim.CanGiveWish(wish.id);
+            var o = new GiveOutcome { ok = fail == SimCore.ShapeFail.None, fail = fail, wish = wish, line = FailLine(wish, fail) };
+            if (o.ok) { sim.MarkCardRead(card); End(); }
+            else Changed?.Invoke();
             return o;
         }
 
@@ -405,7 +405,7 @@ namespace AquariumCiv.View.Cards
                 if (c == null) return new CardFace { isAlso = true, id = AlsoId, headline = "Also…", alsoLines = stack.alsoHeadlines.ToList(), alsoMore = stack.alsoMore };
                 var f = new CardFace
                 {
-                    card = c, id = IdOf(c), kind = c.kind, tone = c.tone, headline = c.headline, body = c.lead.text ?? "",
+                    card = c, id = IdOf(c), kind = c.kind, tone = c.tone, headline = c.headline, body = BodyOf(c),
                     teaserLine = string.IsNullOrEmpty(c.teaser) ? "" : "At the fire: " + c.teaser, endLine = c.endLine ?? "",
                     quote = c.lead.quote ?? "", quoteBy = c.lead.speakerId, footer = sim.CardFooter(c),
                     portraits = c.people.Take(2).ToList(), keeperMark = c.kind == CardKind.Keeper, relicId = c.lead.relicId ?? "",
@@ -419,6 +419,14 @@ namespace AquariumCiv.View.Cards
                 }
                 return f;
             }
+        }
+
+        /// <summary>The lead's text, without saying the headline twice: most stories' headline is their first sentence.</summary>
+        static string BodyOf(ChronicleCard c)
+        {
+            string text = c.lead.text ?? "", head = c.headline ?? "";
+            if (head.Length == 0 || !text.StartsWith(head, StringComparison.Ordinal)) return text;
+            return text.Substring(head.Length).TrimStart('.', ':', ';', '!', ' ');
         }
 
         void FillGive(CardFace f, Wish w)

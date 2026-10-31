@@ -341,6 +341,26 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
+        public void TheBodyDoesntRepeatTheHeadline()
+        {
+            var sim = Quiet();
+            var e = Add(sim, "song", 0.7f);
+            e.text = "The miller wrote a song. Nobody asked him to.";
+            var m = Opened(Model(sim));
+            Assert.AreEqual("The miller wrote a song", m.Face.headline);
+            Assert.AreEqual("Nobody asked him to.", m.Face.body);
+        }
+
+        [Test]
+        public void AWishHasAShortHeadlineAndItsWholeLineAsTheBody()
+        {
+            var sim = WithWish(out var w);
+            var m = Opened(Model(sim));
+            Assert.AreEqual(sim.FindNotable(w.notableId).name + " has a wish", m.Face.headline);
+            Assert.That(m.Face.body, Does.Contain("rain"));
+        }
+
+        [Test]
         public void WatchClosesTheStackAndReopenBringsTheRestBack()
         {
             var sim = Quiet();
@@ -382,7 +402,7 @@ namespace AquariumCiv.View.Cards.Tests
         }
 
         [Test]
-        public void GivePlacesTheShapingCreditsTheWisherAndTheCardStops()
+        public void GiveClosesTheStackForTheToolAndTheWishStaysOpenUntilPlaced()
         {
             var sim = WithWish(out var w);
             var m = Opened(Model(sim));
@@ -391,11 +411,13 @@ namespace AquariumCiv.View.Cards.Tests
             var o = m.Give();
             Assert.IsTrue(o.ok);
             Assert.AreEqual("", o.line);
-            Assert.AreEqual(WishState.Given, w.state);
-            Assert.AreEqual(w.kind, o.nudge.kind);
-            Assert.AreEqual(CardAction.None, m.Face.action, "given: the button is gone");
-            m.Next();
-            Assert.IsFalse(m.Prepare(Day));
+            Assert.AreSame(w, o.wish);
+            Assert.AreEqual(CardStackMode.Hidden, m.Mode, "Give leads into the shaping");
+            Assert.AreEqual(WishState.Open, w.state, "cancelling the tool costs nothing");
+            Assert.IsTrue(m.Prepare(Day), "still open: it comes back");
+            m.HidePeek();
+            Assert.IsTrue(sim.GiveWish(w.id).Ok);
+            Assert.IsFalse(m.Prepare(Day), "given: the card stops");
         }
 
         [Test]
@@ -529,8 +551,7 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.AreEqual(1, N(Ev.PeekTap));
             Assert.AreEqual(2, N(Ev.CardShown));
             Assert.AreEqual(1, N(Ev.CardOpened));
-            Assert.AreEqual(1, N(Ev.ShowMe));
-            Assert.AreEqual(1, N(Ev.CardFlownTo));
+            Assert.AreEqual(0, N(Ev.ShowMe), "ShowMeDirector logs it, once");
             Assert.AreEqual(1, N(Ev.SkipAll));
             Assert.AreEqual(2, ev.First(e => e.name == Ev.SkipAll).Num("left"), "the skipped one and the one never reached");
             var read = ev.First(e => e.name == Ev.CardRead);

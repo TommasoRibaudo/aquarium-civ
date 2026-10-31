@@ -326,6 +326,7 @@ namespace AquariumCiv.Sim
                 "lost" when e.relicId == RelicId.LeftSandal => $"{A} lost a sandal",
                 "lost" => $"{A} got lost in the hills",
                 "relic" => RelicHeadline(e),
+                "wish" when e.notableId >= 0 => $"{A} has a wish",
                 _ => null,
             };
             return Clip(h ?? FirstSentence(e.text));
