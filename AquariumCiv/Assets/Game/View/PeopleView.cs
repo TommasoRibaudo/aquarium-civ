@@ -105,7 +105,8 @@ namespace AquariumCiv.View
             if (box != null) box.PlannedPeople = false;
             foreach (var d in dolls.Values) if (d.view != null) Kill(d.view.gameObject);
             dolls.Clear();
-            if (peopleRoot != null) Kill(peopleRoot.gameObject);
+            // DontSave: like BoxView's root, a deferred Destroy can be lost on the way into play mode (BoxView.OrphanRoots).
+            if (peopleRoot != null) DestroyImmediate(peopleRoot.gameObject);
             peopleRoot = null;
         }
 
@@ -659,12 +660,17 @@ namespace AquariumCiv.View
         public static string DebugSetHour(float hour)
         {
             var p = Find();
-            if (p == null) return "no PeopleView";
-            p.now = new ViewTime(p.plannerSim != null ? p.plannerSim.State.month : p.now.day, Mathf.Repeat(hour, 24f)); // a jump: today's month
-            p.clockStarted = true;
-            p.replanIn = 0f;
-            p.Tick(0f);
-            return p.Status();
+            return p == null ? "no PeopleView" : p.SetHour(hour);
+        }
+
+        /// <summary>Sets this view's hour (0–24) on the sim's current month.</summary>
+        public string SetHour(float hour)
+        {
+            now = new ViewTime(plannerSim != null ? plannerSim.State.month : now.day, Mathf.Repeat(hour, 24f)); // a jump: today's month
+            clockStarted = true;
+            replanIn = 0f;
+            Tick(0f);
+            return Status();
         }
 
         /// <summary>A moment's light (an era moment's beat, the last moment): the view hour moves to <paramref name="hour"/> on

@@ -21,100 +21,10 @@ namespace AquariumCiv.View.PlayTests
     /// (one InputTestFixture class per run); it backs up and restores the slice's save file.
     /// </summary>
     [Category("GlassPlay")]
-    public class GlassPlayTests : InputTestFixture
+    public class GlassPlayTests : PlayTestBase
     {
-        const string ScenePath = "Assets/Game/Scenes/Slice.unity";
-        const string Shots = "F:/GameDev/AquariumCiv/Temp/agent/";
-        Touchscreen touch;
-        int touchId = 1;
-        string savePath, backup;
-        readonly List<string> errors = new();
-
-        void OnLog(string msg, string stack, LogType type)
-        {
-            if (type == LogType.Exception || type == LogType.Error) errors.Add(msg);
-        }
-
-        IEnumerator Open(int w = 1179, int h = 2556)
-        {
-            LogAssert.ignoreFailingMessages = true;
-            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
-            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
-            backup = savePath + ".glass-test-backup";
-            if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
-            if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
-            SetSize(w, h);
-            float waited = 0f;
-            while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
-#if UNITY_EDITOR
-            yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Single));
-#endif
-            for (int i = 0; i < 90; i++) yield return null;
-            if (GameClock.Instance != null)
-            {
-                if (GameHud.Instance == null) GameHud.Create();
-                if (MomentPlayer.Instance == null) MomentPlayer.Create();
-                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
-                if (box != null && CareView.Instance == null) box.gameObject.AddComponent<CareView>();
-                if (box != null && GlassVoice.Instance == null) box.gameObject.AddComponent<GlassVoice>();
-            }
-            yield return null; yield return null;
-            touch = InputSystem.AddDevice<Touchscreen>();
-            yield return null;
-            errors.Clear();
-            Application.logMessageReceived += OnLog;
-        }
-
-        void Close()
-        {
-            Application.logMessageReceived -= OnLog;
-            var pv = PeopleView.Find();
-            if (pv != null) { pv.timeScale = 1f; pv.Planner?.ClearLive(); }
-            try
-            {
-                if (File.Exists(backup + ".bak")) { File.Copy(backup + ".bak", savePath + ".bak", true); File.Delete(backup + ".bak"); }
-                if (File.Exists(backup)) { File.Copy(backup, savePath, true); File.Delete(backup); }
-                else if (File.Exists(savePath)) File.Delete(savePath);
-            }
-            catch (Exception e) { Debug.LogWarning("restore save: " + e.Message); }
-        }
-
-        static void SetSize(int w, int h)
-        {
-            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var t = a.GetType("AquariumCiv.EditorTools.AgentGameView");
-                if (t == null) continue;
-                t.GetMethod("SetSize").Invoke(null, new object[] { w, h });
-                return;
-            }
-        }
-
-        static IEnumerator Shot(string name)
-        {
-            yield return new WaitForEndOfFrame();
-            var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(Shots);
-            File.WriteAllBytes(Shots + name + ".png", tex.EncodeToPNG());
-            UnityEngine.Object.Destroy(tex);
-        }
-
-        IEnumerator TapAt(Vector2 p)
-        {
-            BeginTouch(touchId, p, queueEventOnly: true);
-            yield return null; yield return null;
-            EndTouch(touchId, p, delta: Vector2.zero, queueEventOnly: true);
-            yield return null; yield return null;
-            touchId++;
-        }
-
-        static IEnumerator Until(Func<bool> done, float seconds)
-        {
-            float t = 0f;
-            while (!done() && t < seconds) { t += Time.unscaledDeltaTime; yield return null; }
-        }
+        IEnumerator Open(int w = 1179, int h = 2556) => OpenSlice(w, h);
+        void Close() => CloseSlice();
 
         /// <summary>Grow the fresh box into <paramref name="era"/> (no relic moments: a skip is a catch-up).</summary>
         static IEnumerator GrowInto(Era era)
@@ -184,8 +94,10 @@ namespace AquariumCiv.View.PlayTests
                     Assert.AreEqual(0, planner.ActiveRelicMoments(pv.Now, moments), "the moment is over");
                     Assert.IsEmpty(errors, $"{id}: no errors: {string.Join(" | ", errors)}");
                 }
-                StringAssert.DoesNotContain("{0}", MomentPlayer.Instance.LastSaid, "a line was said with the name filled in");
-                Assert.IsNotEmpty(MomentPlayer.Instance.LastSaid, "the moments' lines show in the bubble");
+                var sm = ShowMeDirector.Instance;
+                Assert.Greater(sm.EchoLinesOverHead, 0, "the moments' lines go over the speaker's head (user 2026-10-30)");
+                StringAssert.DoesNotContain("{0}", sm.LastLine, "a line was said with the name filled in");
+                Assert.IsNotEmpty(sm.LastLine);
             }
             finally { Close(); }
         }
@@ -289,8 +201,17 @@ namespace AquariumCiv.View.PlayTests
                 PeopleView.DebugSetHour(10f);
                 yield return null; yield return null;
                 var cam = Camera.main.GetComponent<BoxCamera>();
-                var centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-                if (CareView.Instance != null) Assume.That(CareView.Instance.GlassAt(centre), "the middle of the screen is on the glass");
+                // Glass with no doll behind it: a tap on a doll opens their card instead.
+                var centre = new Vector2(-1f, -1f);
+                for (float fy = 0.3f; fy <= 0.7f && centre.x < 0f; fy += 0.03f)
+                    for (float fx = 0.15f; fx <= 0.85f; fx += 0.05f)
+                    {
+                        var p = new Vector2(Screen.width * fx, Screen.height * fy);
+                        if (!CareView.Instance.GlassAt(p) || PersonCardView.Instance.Pick(p) > 0) continue;
+                        centre = p;
+                        break;
+                    }
+                Assume.That(centre.x, Is.GreaterThanOrEqualTo(0f), "some glass has no doll behind it");
                 // Three quick taps: one knock of three.
                 for (int i = 0; i < 3; i++) yield return TapAt(centre);
                 yield return Until(() => glass.Knocks > 0, 3f);

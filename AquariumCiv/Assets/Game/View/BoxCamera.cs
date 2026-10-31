@@ -273,8 +273,8 @@ namespace AquariumCiv.View
 
         // ---------------- camera mode: follow the person you were following (#70, user 2026-10-30) ----------------
         /// <summary>The person the camera follows in camera mode (<see cref="PersonRef.None"/> = nobody): picked when camera
-        /// mode starts from what the player was following (an open person card, a Show me on a person, the pinned notable
-        /// near the middle of the screen). The target eases after their doll; one finger still orbits round them and a pinch
+        /// mode starts from what the player was following (an open person card, a Show me on a person, the pinned notable,
+        /// wherever they are). The target eases after their doll; one finger still orbits round them and a pinch
         /// still zooms, a two-finger pan of more than <see cref="FollowReleaseFraction"/> of the screen height lets go.</summary>
         public AquariumCiv.Life.PersonRef Following { get; private set; }
         public bool IsFollowing => !Following.IsNone;
@@ -313,7 +313,17 @@ namespace AquariumCiv.View
         {
             // Called inside SetCameraMode, before the person card notices camera mode and closes: it is still open here.
             Follow(on ? PickFollow() : AquariumCiv.Life.PersonRef.None);
-            if (on && IsFollowing) Debug.Log("[BoxCamera] camera mode follows " + Following);
+            if (!on || !IsFollowing) return;
+            Debug.Log("[BoxCamera] camera mode follows " + Following);
+            // The pinned person may be anywhere (user 2026-10-30): go to them, closer in if the view is wide.
+            if (IsPinned(Following)) FlyToPerson(Following, Mathf.Min(zoom, BoxCameraMath.FlyPersonZoom));
+        }
+
+        static bool IsPinned(AquariumCiv.Life.PersonRef who)
+        {
+            var clock = AquariumCiv.Game.GameClock.Instance;
+            var pin = clock != null ? clock.Sim?.Pinned : null;
+            return pin != null && pin.alive && who.IsNotable && who.notableId == pin.id;
         }
 
         /// <summary>Who the player was following when camera mode starts (None = nobody).</summary>
@@ -326,17 +336,8 @@ namespace AquariumCiv.View
                 return AquariumCiv.Life.PersonRef.Notable(sm.Current.target.followId);
             var sim = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
             var pin = sim?.Pinned;
-            if (pin != null && pin.alive && cam != null)
-            {
-                var who = AquariumCiv.Life.PersonRef.Notable(pin.id);
-                var pv = PeopleView.Find();
-                if (pv != null && pv.TryGetDollPosition(who, out var p))
-                {
-                    var v = cam.WorldToViewportPoint(pv.transform.TransformPoint(new Vector3(p.x, 0f, p.y)));
-                    if (v.z > 0f && v.x > 0.2f && v.x < 0.8f && v.y > 0.2f && v.y < 0.8f) return who; // the pinned one is what you're looking at
-                }
-            }
-            return AquariumCiv.Life.PersonRef.None;
+            // Always the pinned person, on screen or not (user 2026-10-30): OnCameraMode flies there.
+            return pin != null && pin.alive ? AquariumCiv.Life.PersonRef.Notable(pin.id) : AquariumCiv.Life.PersonRef.None;
         }
 
         void StepFollow(float dt)
@@ -345,7 +346,7 @@ namespace AquariumCiv.View
             if (followPeople == null) followPeople = PeopleView.Find();
             if (followPeople == null || !followPeople.TryGetDollPosition(Following, out var p))
             {
-                if (++followMissing > 90) Follow(AquariumCiv.Life.PersonRef.None); // gone (indoors for good, died)
+                if (++followMissing > 90 && !IsPinned(Following)) Follow(AquariumCiv.Life.PersonRef.None); // gone (indoors for good, died); the pinned are waited for
                 return;
             }
             followMissing = 0;

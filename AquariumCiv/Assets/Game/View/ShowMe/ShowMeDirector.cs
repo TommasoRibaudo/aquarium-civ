@@ -322,11 +322,23 @@ namespace AquariumCiv.View
         /// put it over (no speaker, no doll) it shows in the moment's bubble.</summary>
         void Say(string text, PersonRef speaker, float seconds)
         {
+            if (SayOverHead(text, speaker, seconds)) return;
             LastLine = text;
+            var mp = MomentPlayer.Instance;
+            string who = speaker.IsNotable ? Sim?.FindNotable(speaker.notableId)?.name : null;
+            if (mp != null) mp.Say(who != null && !text.Contains(who) ? $"{who}: “{text}”" : $"“{text}”", seconds);
+        }
+
+        /// <summary>A line of a staged scene (an echo, a relic moment) in a bubble that follows the speaker. False if they
+        /// have no doll to carry it.</summary>
+        public bool SayOverHead(string text, PersonRef speaker, float seconds)
+        {
             var pv = PeopleView.Find();
             var cam = Camera.main;
             if (!speaker.IsNone && pv != null && cam != null && pv.TryGetDollPosition(speaker, out _))
             {
+                LastLine = text;
+                HideBubble(); // a world bubble gives way to the scene's line
                 EnsureUi();
                 echoWho = speaker;
                 echoUntil = Time.unscaledTime + seconds;
@@ -336,11 +348,9 @@ namespace AquariumCiv.View
                 HoldUntilMeasured();
                 if (!Place(pv, cam, speaker)) bubbleEl.style.display = DisplayStyle.None; // shows as soon as they're on screen
                 EchoLinesOverHead++;
-                return;
+                return true;
             }
-            var mp = MomentPlayer.Instance;
-            string who = speaker.IsNotable ? Sim?.FindNotable(speaker.notableId)?.name : null;
-            if (mp != null) mp.Say(who != null && !text.Contains(who) ? $"{who}: “{text}”" : $"“{text}”", seconds);
+            return false;
         }
 
         PersonRef echoWho;
@@ -356,7 +366,8 @@ namespace AquariumCiv.View
         bool StepEchoBubble(PeopleView pv, Camera cam)
         {
             if (echoWho.IsNone) return false;
-            if (Time.unscaledTime >= echoUntil) { ClearEchoBubble(); return false; }
+            var mp = MomentPlayer.Instance;
+            if (Time.unscaledTime >= echoUntil || (mp != null && mp.Playing)) { ClearEchoBubble(); return false; } // a line still up gives way to a moment
             var hud = GameHud.Instance;
             bool show = (hud == null || (!hud.CameraMode && hud.IsVisible)) && Place(pv, cam, echoWho);
             bubbleEl.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
@@ -506,17 +517,17 @@ namespace AquariumCiv.View
                 }
             bubbleEl.style.left = at.x;
             bubbleEl.style.top = at.y;
-            if (measureFrames > 0 && --measureFrames == 0) bubbleEl.style.opacity = 1f;
+            if (Time.frameCount >= measuredAt) bubbleEl.style.opacity = 1f;
             return true;
         }
 
         // New text has no size until the panel lays it out, and clamping a size of 0 would flash the bubble past the edge:
         // it stays invisible for the frame that takes.
-        int measureFrames;
+        int measuredAt;
 
         void HoldUntilMeasured()
         {
-            measureFrames = 2;
+            measuredAt = Time.frameCount + 2; // frames, not calls: a line said in Update is placed twice in its first frame
             bubbleEl.style.opacity = 0f;
         }
 
