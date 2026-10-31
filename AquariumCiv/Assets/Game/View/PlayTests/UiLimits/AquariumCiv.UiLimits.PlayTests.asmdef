@@ -1,0 +1,30 @@
+{
+    "name": "AquariumCiv.UiLimits.PlayTests",
+    "rootNamespace": "AquariumCiv.UiLimits",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Game",
+        "AquariumCiv.Game.UI",
+        "AquariumCiv.View",
+        "AquariumCiv.View.PlayTests",
+        "Unity.InputSystem",
+        "Unity.InputSystem.TestFramework",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
