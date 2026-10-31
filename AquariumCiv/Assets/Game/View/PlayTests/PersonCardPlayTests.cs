@@ -48,6 +48,7 @@ namespace AquariumCiv.View.PlayTests
                 backup = savePath + ".card-test-backup";
                 if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
                 if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
+                GameClock.DebugNextSeed = 1234; // a pinned world, so a failure replays (tooling.md)
             }
             SetSize(w, h);
             float waited = 0f;
@@ -78,6 +79,7 @@ namespace AquariumCiv.View.PlayTests
         void Close()
         {
             Application.logMessageReceived -= OnLog;
+            GameClock.DebugNextSeed = 0;
             ShowMeDirector.BubblesOn = true;
             if (PersonCardView.Instance != null) PersonCardView.Instance.Close();
             try

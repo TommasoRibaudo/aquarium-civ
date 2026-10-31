@@ -333,6 +333,7 @@ namespace AquariumCiv.View
                 bubbleEl.text = $"“{text}”";
                 bubbleEl.style.display = DisplayStyle.Flex;
                 bubbleEl.style.fontSize = 34; bubbleEl.style.maxWidth = 640;
+                HoldUntilMeasured();
                 if (!Place(pv, cam, speaker)) bubbleEl.style.display = DisplayStyle.None; // shows as soon as they're on screen
                 EchoLinesOverHead++;
                 return;
@@ -466,6 +467,7 @@ namespace AquariumCiv.View
             bubbleEl.text = string.Join("\n", b.lines);
             bubbleEl.style.display = DisplayStyle.Flex;
             FitToSpeaker(pv, cam, who);
+            HoldUntilMeasured();
             if (!Place(pv, cam, who)) { HideBubble(); return; }
             LastBubble = b;
             BubblesShown++;
@@ -504,7 +506,18 @@ namespace AquariumCiv.View
                 }
             bubbleEl.style.left = at.x;
             bubbleEl.style.top = at.y;
+            if (measureFrames > 0 && --measureFrames == 0) bubbleEl.style.opacity = 1f;
             return true;
+        }
+
+        // New text has no size until the panel lays it out, and clamping a size of 0 would flash the bubble past the edge:
+        // it stays invisible for the frame that takes.
+        int measureFrames;
+
+        void HoldUntilMeasured()
+        {
+            measureFrames = 2;
+            bubbleEl.style.opacity = 0f;
         }
 
         /// <summary>Under the title pill (panel units).</summary>

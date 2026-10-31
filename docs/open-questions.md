@@ -16,4 +16,13 @@ _Last updated 2026-10-30._
 - After about 20:00 a shaping answer has nobody acting it out (the label and the line show alone); by day someone now
   always comes over. ★ Wait until morning to stage it. Alternative: keep showing the label alone at night.
 
+### Camera lifts made for the glass haze
+- The haze was a leak in the Editor, gone now (it never reached a phone). Show me, relic nudges and answer flights still
+  lift the camera to pitch 50 to get past it, and moments keep their low rails, which now read fine.
+  ★ Keep the lifts: they frame the action well anyway. Alternative: bring them back down to the default angle.
+
+### Dirty glass look
+- Grime is now smears and drips in the old olive colour (it never had its detail texture). Clean glass is 5 % tint, and at
+  0.8 grime the land still shows through. ★ Keep it. Alternative: heavier or a paler, mistier colour.
+
 The 90 overnight questions were answered on 2026-10-30: see [decisions.md](decisions.md).

@@ -45,6 +45,7 @@ namespace AquariumCiv.View.PlayTests
             backup = savePath + ".showme-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
             if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
+            GameClock.DebugNextSeed = 1234; // a pinned world, so a failure replays (tooling.md)
             SetSize(w, h);
             float waited = 0f;
             while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
@@ -67,6 +68,7 @@ namespace AquariumCiv.View.PlayTests
         void Close()
         {
             Application.logMessageReceived -= OnLog;
+            GameClock.DebugNextSeed = 0;
             ShowMeDirector.BubblesOn = true;
             var pv = PeopleView.Find();
             if (pv != null) { pv.timeScale = 1f; pv.Planner?.ClearLive(); }
@@ -203,7 +205,15 @@ namespace AquariumCiv.View.PlayTests
                             Assert.Less(d.BubbleScreen.y - fs.y, 0.2f * Screen.height, $"{c.name}: and right over their head");
                             Assert.Less(Mathf.Abs(d.BubbleScreen.x - fs.x), 0.05f * Screen.width, $"{c.name}: not off to the side");
                         }
-                        if (echoed && !shotLine && d.EchoBubbleShown) { shotLine = true; yield return Shot("showme-" + c.name); }
+                        if (echoed && !shotLine && d.EchoBubbleShown)
+                        {
+                            shotLine = true;
+                            for (int f = 0; f < 3; f++) { yield return null; audit.Step(); }
+                            var line = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-bubble");
+                            var lb = line.worldBound;
+                            if (d.EchoBubbleShown) Assert.IsTrue(lb.xMin >= 0f && lb.xMax <= line.panel.visualTree.layout.width && lb.yMin >= 0f, $"{c.name}: the line stays on screen: {lb}");
+                            yield return Shot("showme-" + c.name);
+                        }
                         if (!c.echo && d.State == ShowMeDirector.Phase.Hold && !flower)
                         {
                             flower = GameObject.Find("ShowMeFlower") != null;
@@ -288,7 +298,7 @@ namespace AquariumCiv.View.PlayTests
                 Debug.Log($"[ShowMePlay] bubble after {t:0.0}s: {d.ShownBubble}");
                 Assert.IsTrue(PeopleVoice.Allowed(d.ShownBubble.text, GameClock.Instance.Sim));
                 yield return null; yield return null; yield return null;
-                var el = d.GetComponentInChildren<UnityEngine.UIElements.UIDocument>().rootVisualElement.Q("showme-bubble");
+                var el = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-bubble");
                 var wb = el.worldBound;
                 float pw = el.panel.visualTree.layout.width;
                 Assert.IsTrue(wb.xMin >= 0f && wb.xMax <= pw && wb.yMin >= 0f, $"the bubble stays on screen: {wb}, panel width {pw}");
