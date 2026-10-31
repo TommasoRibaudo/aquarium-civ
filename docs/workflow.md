@@ -49,15 +49,30 @@ fight over compiles, domain reloads and the open scene.
 - **Editor lock:** whoever drives the Editor writes `F:\GameDev\.agent-editor.lock` (owner, issue, start time) and
   deletes it when done; others wait. The orchestrator checks it before starting any lane B item.
 - A lane B agent works in the main checkout `F:\GameDev` (the folder the Editor has open).
+- **Editor health gate:** before taking the lock run `bash Tools/editor-health.sh`; exit 1 → `bash Tools/restart-editor.sh`
+  (holding the lock, out of play mode), exit 2 → C: is nearly full, tell the user. Restart at least every 3 tickets. Measured
+  2026-10-30: 28 h without a restart took reloads from 4 s to 95 s+ (3.3 h lost) and let 81 leaked glass sets pile up.
+- **Phase 1 / phase 2:** when the Editor is busy, start a `needs:editor` ticket's pure logic as lane A (phase 1, dotnet
+  tests), then wire it in the Editor (phase 2). The Editor is the bottleneck: it was busy 97 % of a 19 h run.
 
 ## 5. The loop
 1. **Orchestrator** (the main session) keeps the board: picks Ready items, at most 3–4 lane A items and 1 lane B item
    at a time, whose `Touches` don't overlap.
 2. Sends each to a **worker agent** with the issue as its brief (plus CLAUDE.md, which binds every agent).
 3. Worker: branch + worktree, implement, tests, push the branch, comment on the issue with the result, move it to Review.
-4. Orchestrator **reviews**: diff read, tests re-run, Unity tests for anything touching `Assets/`, tester agent for
-   visual/UI/gameplay work. Then merges into `vs/slice`, closes the issue, moves the card to Done.
+4. Orchestrator **reviews**: diff read, tests re-run, Unity tests for anything touching `Assets/`, tester agent on its
+   cadence (CLAUDE.md, loop step 5). Then merges into `vs/slice` and closes with `Tools/close-issue.sh <n> "<note>"`,
+   which also moves the card to Done. New issues go on the board when filed.
 5. Anything only the user can decide → `needs:user`, and it's surfaced to the user, never decided by an agent.
+6. **Every loop tick:** (a) fewer than 3 lane A agents running → `gh issue list --state open`, start the next Ready or
+   Backlog items whose `Touches` don't overlap, and phase 1 of any `needs:editor` ticket; the user should never have to
+   ask what can run in parallel. (b) `ListAgents`, and `TaskStop` anything finished that still looks active.
+   (c) at the start of a run, merge `dev` into `vs/slice` first.
+7. **Baseline first:** when a ticket's failures also fail on its base commit, they aren't the ticket's. Merge it, file
+   one issue per failing class, and hunt them as their own ticket with a **90-minute time box** (report at 60). A 4 h 09 m
+   hunt on 2026-10-30 held the Editor and delayed everything behind it.
+8. Run the full Unity EditMode suite after every merge of sim work that touches `Assets/`, or at least every 4 hours:
+   floats differ under Mono, and an 11 h 47 m gap hid failures.
 - Large fan-outs (several items through implement → review → verify) can use the Workflow tool, only when the user
   says so ("use a workflow"): it's token-heavy.
 

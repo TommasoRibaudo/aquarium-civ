@@ -108,6 +108,15 @@ namespace AquariumCiv.GameUI
             return id;
         }
 
+        /// <summary>The event log's summary (opens, D1/D3/D7, cleans, cards...) for the report; null when there is no log.</summary>
+        static string TelemetryJson()
+        {
+            var log = GameClock.Tel;
+            if (log == null) return null;
+            try { return TelemetryAnalyzer.Analyze(log.ReadAllLines(), GameClock.TelemetryNow).ToJson(); }
+            catch (Exception) { return null; }
+        }
+
         /// <summary>Queues the note (and its screenshot, if any) and tries to send it. Returns false when it was refused
         /// (empty text, or a note a moment ago).</summary>
         public bool Submit(FeedbackKind kind, string text, byte[] jpg)
@@ -117,7 +126,8 @@ namespace AquariumCiv.GameUI
             if (text.Length > FeedbackReport.MaxTextChars) text = text.Substring(0, FeedbackReport.MaxTextChars);
             lastSubmit = Time.realtimeSinceStartup;
 
-            var body = FeedbackReport.Body(kind, text, jpg != null, TesterId(), Context(buildInfo), LogRing.Last(FeedbackReport.MaxLogLines));
+            var body = FeedbackReport.Body(kind, text, jpg != null, TesterId(), Context(buildInfo), LogRing.Last(FeedbackReport.MaxLogLines),
+                TelemetryJson(), GameClock.Tel?.RecentLines(40));
             var payload = FeedbackReport.PayloadJson(FeedbackReport.Title(kind, text, EraAndYear()), body, FeedbackReport.Labels(kind));
             var stamp = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}";
             try

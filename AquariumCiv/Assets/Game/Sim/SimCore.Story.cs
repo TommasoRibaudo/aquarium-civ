@@ -81,7 +81,7 @@ namespace AquariumCiv.Sim
         {
             int n = 0;
             foreach (var e in State.chronicle) if (e.kind == kind && (notableId < 0 || e.notableId == notableId)) n++;
-            return n;
+            return n + PrunedTold(kind, notableId); // lines dropped from an old chronicle still count as told (SimCore.History.cs)
         }
 
         static string Nth(string[] lines, int n) => lines[n % lines.Length];
@@ -96,7 +96,18 @@ namespace AquariumCiv.Sim
 
         /// <summary>The drawn quarrel, unless these two fell out over just that last time (#61: the same pair fell out over
         /// the same song lyric twice). The draw still decides it; no dice.</summary>
-        string QuarrelAgain(string drawn, int a, int b)
+        string QuarrelAgain(string drawn, int a, int b) => QuarrelGated(QuarrelAgainRaw(drawn, a, b));
+
+        /// <summary>A quarrel can only be over what is in the box (#86): no well, no quarrel at the well; no bakery
+        /// to bake in, none about baking. Same draw, a plain fallback.</summary>
+        public string QuarrelGated(string q)
+        {
+            if (q == Quarrels[1] && Count(BuildingType.Well) == 0) return Quarrels[3];
+            if (q == Quarrels[2] && Count(BuildingType.Bakery) == 0) return Quarrels[0];
+            return q;
+        }
+
+        string QuarrelAgainRaw(string drawn, int a, int b)
         {
             var last = State.chronicle.LastOrDefault(e => e.kind == "rivalry" && Pair(e, a, b));
             return last != null && last.text.Contains($"over {QuarrelIn(drawn)}.") ? Quarrels[(Array.IndexOf(Quarrels, drawn) + 1) % Quarrels.Length] : drawn;
@@ -189,7 +200,7 @@ namespace AquariumCiv.Sim
         }
 
         bool HasRoof(Building b) => b.type == BuildingType.Hut || b.type == BuildingType.Windmill || b.type == BuildingType.Tavern ||
-                                    b.type == BuildingType.Church || (b.type == BuildingType.Lumbermill && State.era > Era.Camp);
+                                    b.type == BuildingType.Church || b.type == BuildingType.Guildhall || b.type == BuildingType.Workshop || b.type == BuildingType.Shop || b.type == BuildingType.Bakery || (b.type == BuildingType.Lumbermill && State.era > Era.Camp);
 
         /// <summary>Hook for the Lamp tool (research 10, not in the sim yet): from now on the strange light is the Keeper's lamp.</summary>
         public void KeeperLampUsed()
@@ -290,7 +301,10 @@ namespace AquariumCiv.Sim
             if (adults.Count > 0 && Fresh("lost", -1, 6)) Add(0.6f, () =>
             {
                 var n = Pick(r, adults);
-                Chronicle("lost", $"{n.FullName} got lost in the hills for three days and came back with {FoundNext(Pick(r, FoundThings), n.id)}.", 0.6f, n.id);
+                string thing = FoundNext(Pick(r, FoundThings), n.id); // drawn as before
+                string sandal = SandalLossLine(n); // the box's first "lost" story is the Left Sandal's (SimCore.Relics.cs, #74)
+                var lost = Chronicle("lost", sandal ?? $"{n.FullName} got lost in the hills for three days and came back with {thing}.", 0.6f, n.id);
+                if (sandal != null) SandalLost(n, lost);
             });
 
             // ---- the world ----
@@ -386,6 +400,7 @@ namespace AquariumCiv.Sim
             BuildingType.Farm => State.era == Era.Camp ? "gathering grounds" : "farm",
             BuildingType.Lumbermill => State.era == Era.Camp ? "woodpile" : "lumber mill",
             BuildingType.Church => "chapel",
+            BuildingType.Shop => "shop",
             _ => b.type.ToLowerInvariant(),
         };
 

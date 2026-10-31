@@ -67,10 +67,19 @@ namespace AquariumCiv.Sim
             s.eraReadyMonth = -1;
             s.eraStartMonth = s.month;
             Chronicle("era", EraLine(s.era), 0.95f);
+            if (s.era == Era.Village && Count(BuildingType.Well) == 0 && s.buildings.Count < Config.buildingSlots)
+            {
+                // The village green has its well from the era moment on (user 2026-10-30, #89): the sim builds the first one
+                // here, no wood, no dice; Settlement puts it where the view already stood it (green + (0.17, -0.1)).
+                AddBuilding(BuildingType.Well, tellFirst: false);
+                Settlement?.PlacePending();
+            }
             JobsOnEraChange(); // jobs the new era doesn't have change (SimCore.Jobs.cs)
             RolesOnEraChange(); // the leader carries over, new offices fill (SimCore.Roles.cs)
             GlassOnEraChange(); // the people's view of the glass moves on (SimCore.Cards.cs)
             Settlement?.OnEraChange(); // lots never move: they rebuild in place; families get barns (Sim/Settle)
+            EraMomentOnChange(); // the lord line, the cleared hearth, the festival (SimCore.EraMoment.cs)
+            RelicsOnEraChange(); // the first era festival leaves the Festival Mask (SimCore.Relics.cs, #74)
             return true;
         }
 

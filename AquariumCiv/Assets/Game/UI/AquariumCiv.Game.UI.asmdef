@@ -4,7 +4,10 @@
     "references": [
         "AquariumCiv.Sim",
         "AquariumCiv.Game",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "AquariumCiv.Life",
+        "AquariumCiv.Moments",
+        "AquariumCiv.Audio"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

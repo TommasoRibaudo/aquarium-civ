@@ -19,6 +19,7 @@ namespace AquariumCiv.Sim
             Config = config; State = state;
             // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
             if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;
+            StartCardLedger();
         }
 
         public static SimState NewWorld(int seed, SimConfig config)
@@ -39,6 +40,7 @@ namespace AquariumCiv.Sim
             core.RolesStep(); // the founders choose a chief (SimCore.Roles.cs)
             core.RecordYear();
             if (config.settle) _ = core.Settlement; // the camp and the first hut get their lots (Sim/Settle, #32)
+            core.HistoryStep(); // year 0 for the time-lapse (SimCore.History.cs)
             return s;
         }
 
@@ -65,6 +67,9 @@ namespace AquariumCiv.Sim
             return steps;
         }
 
+        /// <summary>True while <see cref="CatchUp"/> runs the months the player was away.</summary>
+        public bool CatchingUp { get; private set; }
+
         /// <summary>
         /// Offline catch-up (game definition v0.2): the civ lives the first <see cref="SimConfig.fullSpeedHours"/> at full
         /// speed and the rest at <see cref="SimConfig.slowSpeed"/>; mess runs on real hours, so the real hours the civ didn't
@@ -73,7 +78,9 @@ namespace AquariumCiv.Sim
         public CatchUpResult CatchUp(double realHoursAway)
         {
             var r = new CatchUpResult { realHours = Math.Max(0, realHoursAway), simHours = Config.OfflineSimHours(realHoursAway) };
-            r.months = Advance(r.simHours);
+            CatchingUp = true; // no relics are found while the player is away (SimCore.Relics.cs)
+            try { r.months = Advance(r.simHours); }
+            finally { CatchingUp = false; }
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
             return r;
@@ -100,11 +107,12 @@ namespace AquariumCiv.Sim
             if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
 
             // Mood ignores mess (Gate 1): the pace drop is the whole cost, and mood x mess would stack on it.
-            float target = 0.75f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
+            float target = 0.75f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f) + FestivalMoodLift; // era festival (SimCore.EraMoment.cs)
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
 
             TryBuild();
             if (s.nudges.Count > 0) NudgeStep();
+            if (s.firstRun.active) FirstRunStep(); // opt-in, no dice: the first rain is answered inside the first year (SimCore.FirstRun.cs, #94)
             AccrueMess((float)Config.StepHours);
             if (season == 0) YearlyNotables();
             NarrativeChecks(winter, festivalRoll);
@@ -114,9 +122,14 @@ namespace AquariumCiv.Sim
             JobsStep(); // no dice: everyday jobs follow the era and the buildings (SimCore.Jobs.cs)
             RolesStep(); // no dice: important roles, contests and succession (SimCore.Roles.cs)
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
+            ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
+            WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
+            RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
+            PeakStep(); // no dice: leaders for the book, the town's peak (SimCore.EraMoment.cs)
+            HistoryStep(); // no dice: records for the time-lapse and the book (SimCore.History.cs)
         }
 
         void TryBuild()
@@ -128,7 +141,9 @@ namespace AquariumCiv.Sim
             int pop = s.population;
             string type;
             // Types from a later era are skipped: a camp waiting at its threshold keeps building, but only camp things.
-            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < 1 + pop / 8)) type = BuildingType.Farm;
+            // The twenty slots can't hold every farm a growing town would sow plus its own buildings: from the third farm on, a
+            // farm waits while the town's workshop, guildhall or shops are still wanted (#114), so the box keeps room for them.
+            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < Math.Min(MaxFarms, 1 + pop / 8) && !(Count(BuildingType.Farm) >= 3 && TownWant(pop) != null))) type = BuildingType.Farm;
             else if (Wants(BuildingType.Hut, pop >= Housing - 1)) type = BuildingType.Hut;
             else if (Wants(BuildingType.Lumbermill, pop >= 6 && Count(BuildingType.Lumbermill) == 0)) type = BuildingType.Lumbermill;
             else if (Wants(BuildingType.Well, pop >= 8 && Count(BuildingType.Well) == 0)) type = BuildingType.Well;
@@ -136,10 +151,30 @@ namespace AquariumCiv.Sim
             else if (Wants(BuildingType.Market, pop >= 15 && Count(BuildingType.Market) == 0)) type = BuildingType.Market;
             else if (Wants(BuildingType.Tavern, pop >= 18 && Count(BuildingType.Tavern) == 0)) type = BuildingType.Tavern;
             else if (Wants(BuildingType.Church, pop >= 24 && Count(BuildingType.Church) == 0)) type = BuildingType.Church;
+            else if (TownWant(pop) is string town) type = town;
             else return; // nothing needed: save wood
             s.wood -= cost;
             AddBuilding(type);
         }
+
+        /// <summary>Slots the town's own buildings leave free for shaping answers (#114). None: a full box is the goal, and a shaping in a full town becomes a harvest line.</summary>
+        const int TownSlotsKept = 0;
+
+        /// <summary>What the town wants once the essentials stand (#114), or null. Order is the order of need: the market's
+        /// shops, the first workshop (even with no shaping), the guildhall, then more workshops, one per 14 people. The bakery (#112) comes right after the first workshop. Stops short of the cap so a shaping can still be answered with a building.</summary>
+        string TownWant(int pop)
+        {
+            if (State.era < Era.Town || State.buildings.Count >= Config.buildingSlots - TownSlotsKept) return null;
+            bool market = Count(BuildingType.Market) > 0;
+            if (Wants(BuildingType.Workshop, pop >= 20 && Count(BuildingType.Workshop) == 0)) return BuildingType.Workshop;
+            if (Wants(BuildingType.Bakery, pop >= 20 && Count(BuildingType.Bakery) == 0 && (Count(BuildingType.Farm) > 0 || Count(BuildingType.Windmill) > 0))) return BuildingType.Bakery; // #112
+            if (Wants(BuildingType.Guildhall, pop >= 24 && market && Count(BuildingType.Guildhall) == 0)) return BuildingType.Guildhall;
+            if (Wants(BuildingType.Shop, market && pop >= 22 && Count(BuildingType.Shop) < Math.Min(MaxShops, 1 + (pop - 22) / 8))) return BuildingType.Shop;
+            if (Wants(BuildingType.Workshop, pop >= 34 && Count(BuildingType.Workshop) < Math.Min(MaxWorkshops, 1 + (pop - 20) / 14))) return BuildingType.Workshop;
+            return null;
+        }
+
+        const int MaxShops = 3, MaxWorkshops = 3, MaxFarms = 4; // (the fifth farm of a 30-person town left no slot for a guildhall)
 
         /// <summary>Mess for <paramref name="h"/> real hours, capped (48 h fills it).</summary>
         void AccrueMess(float h)
@@ -288,9 +323,28 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- player actions ----------
-        public void CleanGrime(float amount) => State.grime = Math.Max(0f, State.grime - amount);
-        public void Prune(float amount) => State.overgrowth = Math.Max(0f, State.overgrowth - amount);
-        public bool RemoveTrash(int id) => State.trash.RemoveAll(t => t.id == id) > 0;
+        public void CleanGrime(float amount)
+        {
+            float was = State.grime;
+            if (amount > 0f && was > 0f) CountKeeperAction(KeeperAction.Wipe, true); // the Keeper Doll's prop (SimCore.Relics.cs)
+            State.grime = Math.Max(0f, was - amount);
+            CleaningRefill((was - State.grime) * Config.shapingPerGrime);
+        }
+
+        public void Prune(float amount)
+        {
+            float was = State.overgrowth;
+            State.overgrowth = Math.Max(0f, was - amount);
+            CleaningRefill((was - State.overgrowth) * Config.shapingPerOvergrowth);
+            RelicsOnPrune(was - State.overgrowth); // the Left Sandal turns up under the weeds (SimCore.Relics.cs)
+        }
+
+        public bool RemoveTrash(int id)
+        {
+            bool gone = State.trash.RemoveAll(t => t.id == id) > 0;
+            if (gone) { CleaningRefill(Config.shapingPerTrash); CountKeeperAction(KeeperAction.Trash, true); }
+            return gone;
+        }
 
         /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
         public void AddMess(float grime, float overgrowth, int trashCount)
@@ -302,11 +356,12 @@ namespace AquariumCiv.Sim
 
         public void CleanAll()
         {
+            CleaningRefill(State.grime * Config.shapingPerGrime + State.overgrowth * Config.shapingPerOvergrowth + State.trash.Count * Config.shapingPerTrash);
             State.grime = 0; State.overgrowth = 0; State.trash.Clear();
         }
 
         // ---------- helpers ----------
-        Building AddBuilding(string type)
+        Building AddBuilding(string type, bool tellFirst = true)
         {
             var s = State;
             var used = s.buildings.Select(b => b.slot).ToHashSet();
@@ -322,7 +377,7 @@ namespace AquariumCiv.Sim
             if (!s.foundedTypes.Contains(type))
             {
                 s.foundedTypes.Add(type);
-                if (s.month > 0)
+                if (s.month > 0 && tellFirst) // (the era's own well is told by the festival line: no extra draw)
                 {
                     var by = AliveNotable();
                     Chronicle("first_building", NameData.FirstBuildingLine(type, by, s.era), 0.75f, by?.id ?? -1).buildingId = b.id;
@@ -340,12 +395,26 @@ namespace AquariumCiv.Sim
                 id = s.NextId(), name = rng.Pick(NameData.Given), family = family ?? rng.Pick(NameData.Families),
                 trait = rng.Pick(NameData.Traits), age = age, lifespan = rng.Range(Config.lifespanMin, Config.lifespanMax), parentId = parentId, bornMonth = s.month
             };
-            // No two living people share a full name ("Ada Thorn was born to Ada Thorn" muddles recall).
-            // Extra draws come from the story stream, so they never shift the main dice.
-            for (int tries = 0; tries < 20 && s.notables.Any(o => o.alive && o.FullName == n.FullName); tries++)
-                n.name = s.storyRng.Pick(NameData.Given);
+            MakeNameUnique(n, s.storyRng);
             s.notables.Add(n);
             return n;
+        }
+
+        /// <summary>No two living notables share a given name, and nobody (living or dead) repeats a full name ("Moss Thorn and
+        /// Moss Cole" muddles recall; "Dov Quarry" must not come back). Retries come from <paramref name="r"/> (never the main
+        /// dice); if the luck runs out, a deterministic scan of the table finishes the job.</summary>
+        void MakeNameUnique(Notable n, SimRandom r)
+        {
+            var s = State;
+            bool Clash(string given) => s.notables.Any(o => o != n && (o.alive && o.name == given || o.name == given && o.family == n.family));
+            for (int tries = 0; tries < 30 && Clash(n.name); tries++) n.name = r.Pick(NameData.Given);
+            if (!Clash(n.name)) return;
+            int start = System.Array.IndexOf(NameData.Given, n.name);
+            for (int i = 1; i <= NameData.Given.Length; i++)
+            {
+                string g = NameData.Given[(Math.Max(start, 0) + i) % NameData.Given.Length];
+                if (!Clash(g)) { n.name = g; return; }
+            }
         }
 
         Notable AliveNotable()

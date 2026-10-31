@@ -11,6 +11,10 @@ namespace AquariumCiv.GameUI
     public static class GameUiPanel
     {
         public const float ReferenceWidth = 1080f;
+        /// <summary>The lanes of the bottom of the screen, up from the safe area's edge (panel units). Toasts sit at
+        /// <see cref="ToastBottom"/> (Game.uss .hud-toast, three lines reach about 420); prompts (Watch, Finish, the first run's
+        /// button) sit above them at <see cref="PromptBottom"/>, so a prompt and a toast never share a spot (tester batch 3).</summary>
+        public const float ToastBottom = 240f, PromptBottom = 430f;
         /// <summary>48 dp on a 360 dp-wide phone (1080 px at 3×), which also covers 44 pt on a 375 pt iPhone.</summary>
         public const float MinTarget = 144f;
 
@@ -61,6 +65,18 @@ namespace AquariumCiv.GameUI
         }
 
         /// <summary>Screen point (pixels, y up) at the centre of an element: what a test or the tester agent touches.</summary>
+        /// <summary>The top-left of an element of its laid-out size, kept inside the panel's width and under the top HUD row
+        /// (<paramref name="topMin"/>, panel units). Before the first layout the size reads as 0.</summary>
+        public static Vector2 KeepOnScreen(VisualElement e, Vector2 topLeft, float topMin, float margin = 24f)
+        {
+            float w = e.resolvedStyle.width, h = e.resolvedStyle.height;
+            if (float.IsNaN(w)) w = 0f;
+            if (float.IsNaN(h)) h = 0f;
+            float W = e.panel != null ? e.panel.visualTree.layout.width : ReferenceWidth;
+            float H = e.panel != null ? e.panel.visualTree.layout.height : 1920f;
+            return new Vector2(Mathf.Clamp(topLeft.x, margin, Mathf.Max(margin, W - w - margin)), Mathf.Clamp(topLeft.y, topMin, Mathf.Max(topMin, H - h - margin)));
+        }
+
         public static Vector2 ScreenCenter(VisualElement e)
         {
             var c = e.worldBound.center; // panel space: y down
@@ -70,5 +86,31 @@ namespace AquariumCiv.GameUI
 
         public static Vector2 ScreenCenter(VisualElement root, string name) =>
             ScreenCenter(root.Q(name) ?? throw new System.ArgumentException($"No element named '{name}'"));
+
+        /// <summary>
+        /// Play tests and agents in the Editor: on Windows and macOS UI Toolkit drops every pointer event while the app isn't
+        /// focused (DefaultEventSystem.ShouldIgnoreEventsOnAppNotFocused), so a test's touches miss every button whenever the
+        /// Editor sits behind another window, and "a tap on Watch / Finish / Clean" fails at random. On: the panels take
+        /// input unfocused, as they do with Unity Remote connected (the same internal switch). Editor only; play mode's
+        /// domain reload resets it.
+        /// </summary>
+        public static void AcceptInputUnfocused(bool on)
+        {
+#if UNITY_EDITOR
+            var t = typeof(PanelSettings).Assembly.GetType("UnityEngine.UIElements.DefaultEventSystem");
+            var f = t?.GetField("IsEditorRemoteConnected", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (f == null || f.FieldType != typeof(System.Func<bool>))
+            {
+                if (on) Debug.LogWarning("[GameUiPanel] UI Toolkit's focus switch moved: taps from tests need the Editor focused");
+                return;
+            }
+            if (on && remoteWas == null) { remoteWas = (System.Func<bool>)f.GetValue(null); f.SetValue(null, (System.Func<bool>)(() => true)); }
+            else if (!on && remoteWas != null) { f.SetValue(null, remoteWas); remoteWas = null; }
+#endif
+        }
+
+#if UNITY_EDITOR
+        static System.Func<bool> remoteWas;
+#endif
     }
 }

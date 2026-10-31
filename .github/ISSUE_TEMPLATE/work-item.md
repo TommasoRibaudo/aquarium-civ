@@ -16,7 +16,8 @@ labels: []
 **Done when:**
 - [ ] <!-- testable check: tests named + green, numbers hit -->
 - [ ] `dotnet test Tools/SimTests` green (lane:sim) / Unity tests green (`editor` mode, count > 0)
-- [ ] tester agent pass (visual / UI / gameplay changes)
+- [ ] `SlicePlaythroughSmoke` green (anything touching View, UI or Runtime)
+- [ ] covered by the next tester run (visual / UI / gameplay changes)
 - [ ] user sign-off (only if a look/feel call)
 
 **Depends on:** <!-- #issues -->

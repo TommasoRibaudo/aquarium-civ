@@ -1,0 +1,28 @@
+{
+    "name": "AquariumCiv.Cards.Tests",
+    "rootNamespace": "AquariumCiv.View.Cards.Tests",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Life",
+        "AquariumCiv.ShowMe",
+        "AquariumCiv.Game",
+        "AquariumCiv.Cards",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -272,6 +272,64 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void AHouseholdKeepsItsHomeWhenNewHomesAreBuilt()
+        {
+            int checkedPairs = 0, newHomes = 0;
+            foreach (var (seed, preset) in new[] { (3, 0), (11, 1), (42, 2) })
+            {
+                var sim = NewBox(seed, preset);
+                var seen = new Dictionary<int, (int head, int lot)>();
+                int homesBefore = 0;
+                while (sim.State.month < 100 * 12L)
+                {
+                    Month(sim);
+                    int homesNow = sim.Settlement.Homes().Count;
+                    if (homesNow > homesBefore) newHomes++;
+                    homesBefore = homesNow;
+                    foreach (var n in sim.State.notables)
+                    {
+                        if (!n.alive) continue;
+                        var home = sim.Settlement.HomeOf(n);
+                        if (home == null) continue;
+                        int head = sim.Settlement.HouseholdHead(n).id;
+                        if (seen.TryGetValue(n.id, out var prev) && prev.head == head && !sim.Settlement.Lots.First(l => l.id == prev.lot).retired)
+                        {
+                            Assert.AreEqual(prev.lot, home.id, $"{n.FullName} moved house in month {sim.State.month} (seed {seed})");
+                            checkedPairs++;
+                        }
+                        seen[n.id] = (head, home.id);
+                    }
+                }
+            }
+            Assert.Greater(newHomes, 10, "homes were built while households lived");
+            Assert.Greater(checkedPairs, 1000);
+        }
+
+        [Test]
+        public void HomeAssignmentsSurviveASaveAndAnOldSaveGetsThemFromTheHash()
+        {
+            var sim = NewBox(42, 0);
+            ToYear(sim, 60);
+            var living = sim.State.notables.Where(q => q.alive).ToList();
+            var before = living.ToDictionary(n => n.id, n => sim.Settlement.HomeOf(n).id);
+            Assert.IsNotEmpty(sim.State.settle.homes);
+            var json = JsonUtility.ToJson(sim.State.settle);
+            var loaded = JsonUtility.FromJson<SettleState>(json);
+            Assert.AreEqual(sim.State.settle.homes.Count, loaded.homes.Count);
+            for (int i = 0; i < loaded.homes.Count; i++)
+            {
+                Assert.AreEqual(sim.State.settle.homes[i].head, loaded.homes[i].head);
+                Assert.AreEqual(sim.State.settle.homes[i].lot, loaded.homes[i].lot);
+            }
+            // An old save has no assignments: they are derived once, from the hash over today's homes.
+            sim.State.settle.homes.Clear();
+            var again = new SimCore(sim.Config, sim.State);
+            _ = again.Settlement;
+            Assert.IsNotEmpty(sim.State.settle.homes);
+            foreach (var n in living) Assert.IsNotNull(again.Settlement.HomeOf(n));
+        }
+
+        [Test]
         public void AFullBoxRecordsMonthsWithNoGoodLot()
         {
             // The economy asks for far more than fits (debug builds every year in the town era): the layout stays sane,
@@ -317,6 +375,81 @@ namespace AquariumCiv.Tests
                     Assert.LessOrEqual(c.foundedMonth, sim.State.month);
                 }
             }
+        }
+
+        // ---------- the town layout: clusters round yards, not rows (#119; the lab's Cluster_HomesDontLineUp, live) ----------
+        struct Align { public int homes, pairs, parallel, inLine, longestRow; public float Parallel => pairs > 0 ? parallel / (float)pairs : 0f; public float InLine => pairs > 0 ? inLine / (float)pairs : 0f; }
+
+        /// <summary>Neighbouring homes (gap under 0.5 u) that are parallel (yaw within 5 degrees, modulo 90) and, of those,
+        /// in line (fronts on one line, same facing): the lab's measure, on the real Settlement. longestRow is the largest
+        /// run of homes chained by "parallel, same facing, side by side along their fronts" - an actual street row.</summary>
+        static Align Alignment(Settlement st)
+        {
+            var a = new Align();
+            var homes = st.Lots.Where(l => !l.retired && Encyclopedia.IsHome(l.kind)).ToList();
+            a.homes = homes.Count;
+            var parent = Enumerable.Range(0, homes.Count).ToArray();
+            int Find(int i) { while (parent[i] != i) i = parent[i] = parent[parent[i]]; return i; }
+            var inRow = new HashSet<int>();
+            for (int i = 0; i < homes.Count; i++)
+                for (int j = i + 1; j < homes.Count; j++)
+                {
+                    Lot p = homes[i], q = homes[j];
+                    if (Terrain.Dist(p.x, p.z, q.x, q.z) > 1.2f || SiteMap.RectGap(p, q) > 0.5f) continue;
+                    a.pairs++;
+                    float dy = Math.Abs(((q.yaw - p.yaw) % 90f + 90f) % 90f);
+                    if (Math.Min(dy, 90f - dy) > 5f) continue;
+                    a.parallel++;
+                    p.Front(out float fx, out float fz);
+                    float along = (q.x - p.x) * fx + (q.z - p.z) * fz + q.d / 2f - p.d / 2f;
+                    float same = ((q.yaw - p.yaw) % 360f + 360f) % 360f;
+                    bool sameFacing = same < 5f || same > 355f;
+                    if (Math.Abs(along) < 0.06f && sameFacing) a.inLine++;
+                    // a street row: same facing, fronts in line, and q beside p (offset across the front direction, not in front of it)
+                    float side = Math.Abs((q.x - p.x) * -fz + (q.z - p.z) * fx);
+                    if (sameFacing && Math.Abs(along) < 0.1f && side > Math.Abs(along)) parent[Find(i)] = Find(j);
+                }
+            var size = new Dictionary<int, int>();
+            for (int i = 0; i < homes.Count; i++) { int r = Find(i); size[r] = size.TryGetValue(r, out var n) ? n + 1 : 1; }
+            a.longestRow = size.Count > 0 ? size.Values.Max() : 0;
+            return a;
+        }
+
+        static readonly (int seed, int preset)[] LayoutRuns = { (7, 0), (11, 1), (1, 2), (1234, 0), (1234, 1), (1234, 2), (777, 0), (777, 1), (777, 2), (42, 0), (99, 1), (5, 2) };
+
+        [Test]
+        public void TownHomesSitInClustersNotRows()
+        {
+            // Measured 2026-10-30 on 12 seeds x presets, 120 years (8 homes each): pooled 77 neighbouring pairs, 16 parallel
+            // (21%), 1 in line (1.3%), longest chained row 2 homes. The lab's round-1 rows were ~41% parallel; its frozen
+            // threshold was 24%. Limits below = measured + margin (small samples, so pooled, not per seed).
+            const float MaxParallel = 0.33f, MaxInLine = 0.05f; const int MaxRow = 3;
+            int pairs = 0, parallel = 0, inLine = 0, row = 0;
+            foreach (var (seed, preset) in LayoutRuns)
+            {
+                var a = Alignment(Century(seed, preset).Settlement);
+                Log($"layout seed {seed}/preset {preset}: {a.homes} homes, {a.pairs} neighbouring pairs, parallel {a.parallel} ({100f * a.Parallel:0}%), in line {a.inLine} ({100f * a.InLine:0}%), longest row {a.longestRow}");
+                Assert.GreaterOrEqual(a.homes, 6, "a town to judge");
+                pairs += a.pairs; parallel += a.parallel; inLine += a.inLine; row = Math.Max(row, a.longestRow);
+            }
+            Log($"layout pooled: {pairs} pairs, parallel {100f * parallel / pairs:0}%, in line {100f * inLine / pairs:0.0}%, longest row {row}");
+            Assert.Greater(pairs, 40, "enough neighbouring homes to measure");
+            Assert.LessOrEqual(parallel / (float)pairs, MaxParallel, "neighbouring homes are not mostly parallel");
+            Assert.LessOrEqual(inLine / (float)pairs, MaxInLine, "no street rows (fronts in line)");
+            Assert.LessOrEqual(row, MaxRow, "no row of four or more homes side by side");
+        }
+
+        [Test]
+        public void TheRowDetectorSeesARow()
+        {
+            var sim = NewBox(1);
+            var lots = sim.Settlement.Lots;
+            lots.Clear();
+            for (int i = 0; i < 5; i++)
+                lots.Add(new Lot { id = i + 1, kind = LotKind.Hut, x = i * 0.55f, z = 0f, yaw = 0f, w = 0.5f, d = 0.5f });
+            var a = Alignment(sim.Settlement);
+            Assert.AreEqual(5, a.longestRow);
+            Assert.Greater(a.InLine, 0.9f);
         }
 
         [Test]

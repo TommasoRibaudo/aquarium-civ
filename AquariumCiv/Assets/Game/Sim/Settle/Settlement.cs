@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace AquariumCiv.Sim.Settle
 {
@@ -66,6 +67,7 @@ namespace AquariumCiv.Sim.Settle
             placer = new Placer(this);
             cluster = new ClusterPlacer(this, placer);
             if (fresh) Found();
+            AssignHomes();
         }
 
         /// <summary>A new box, or a save from before placement (slots only): reserve the commons, find a spot for every
@@ -90,7 +92,9 @@ namespace AquariumCiv.Sim.Settle
         public void Step()
         {
             long t0 = Stopwatch.GetTimestamp();
+            AssignHomes();
             ProcessNewBuildings(false);
+            AssignHomes();
             if (S.month % SimConfig.MonthsPerYear == 0) Yearly();
             if (Waiting() > 0) { St.noLotMonths++; if (St.noLotSince < 0) St.noLotSince = S.month; }
             else St.noLotSince = -1;
@@ -178,7 +182,20 @@ namespace AquariumCiv.Sim.Settle
             var kind = KindFor(b, answer);
             var lot = PlaceNew(kind, b.id, answer);
             var plain = Encyclopedia.FromType(b.type);
-            if (lot == null && kind != plain) lot = PlaceNew(plain, b.id, answer); // the special kind found no spot
+            if (lot == null && kind != plain)
+            {
+                lot = PlaceNew(plain, b.id, answer); // the special kind found no spot
+                // The chronicle must name what stands there (#82: "built a watermill" over a plain workshop).
+                if (lot != null && answer != null)
+                {
+                    var e = S.chronicle.LastOrDefault(x => x.keeper && x.kind == "keeper" && x.buildingId == b.id);
+                    if (e != null)
+                    {
+                        var who = S.notables.FirstOrDefault(x => x.id == e.notableId);
+                        e.text = SimCore.CreditLine(answer.kind, b.type, who, S.era, true, answer.variant);
+                    }
+                }
+            }
             if (lot == null) return false;
             b.lotId = lot.id; b.yardId = lot.yard;
             b.x = lot.x; b.z = lot.z; b.yaw = lot.yaw; b.w = lot.w; b.d = lot.d; b.doorX = lot.doorX; b.doorZ = lot.doorZ;
@@ -192,7 +209,7 @@ namespace AquariumCiv.Sim.Settle
         public LotKind KindFor(Building b, Nudge n)
         {
             var plain = Encyclopedia.FromType(b.type);
-            if (n == null) return plain;
+            if (n == null) return b.type == BuildingType.Hut && S.era == Era.Town ? LotKind.Cottage : plain; // the town's huts are cottages: smaller, clustered, one more to a yard (#114)
             bool wet = SimCore.WetSpot(Map.spec, n.x, n.z);
             switch (b.type)
             {
@@ -361,6 +378,34 @@ namespace AquariumCiv.Sim.Settle
         {
             n.x = Terrain.Clamp(n.x, -Terrain.HX + 0.1f, Terrain.HX - 0.1f);
             n.z = Terrain.Clamp(n.z, -Terrain.HZ + 0.1f, Terrain.HZ - 0.1f);
+            byte[] before = n.shapeCells == null ? (byte[])Map.flags.Clone() : null; // #82: what to put back on a take-back
+            ApplyShapingToLand(n);
+            if (before == null) return;
+            var cells = new List<int>(); var was = new List<byte>();
+            for (int c = 0; c < SiteMap.N; c++)
+                if (Map.flags[c] != before[c]) { cells.Add(c); was.Add(before[c]); }
+            n.shapeCells = cells.ToArray(); n.shapeBefore = was.ToArray();
+        }
+
+        /// <summary>Take a shaping back (#82): the cells it changed go back to what they were, unless a lot has since
+        /// claimed them. Only for shapings the people have not used.</summary>
+        public void RevertShaping(Nudge n)
+        {
+            if (n.shapeCells == null) return;
+            bool water = false;
+            for (int k = 0; k < n.shapeCells.Length; k++)
+            {
+                int c = n.shapeCells[k];
+                if (Map.lot[c] != 0) continue;
+                if (((Map.flags[c] ^ n.shapeBefore[k]) & SiteMap.FCanal) != 0) water = true;
+                Map.flags[c] = n.shapeBefore[k];
+            }
+            if (water) Map.RecomputeWaterDist();
+            n.shapeCells = null; n.shapeBefore = null;
+        }
+
+        void ApplyShapingToLand(Nudge n)
+        {
             switch (n.kind)
             {
                 case SimCore.NudgeKind.Grove: Paint(n.x, n.z, 0.38f, SiteMap.FForest, true); break;
@@ -592,8 +637,16 @@ namespace AquariumCiv.Sim.Settle
 
         /// <summary>The yard a notable family (surname) lives round: families in the order they first appeared among the
         /// notables, yards in the order they were founded, shared round-robin when there are more families than yards.
-        /// 0 when the box has no family yard yet. A planner rule: derived, not saved.</summary>
+        /// 0 when the box has no family yard yet. Once a family has a yard it keeps it (<see cref="SettleState.familyYards"/>:
+        /// a yard founded later must not shift the round-robin and put two families in one home).</summary>
         public int YardOfFamily(string family)
+        {
+            if (string.IsNullOrEmpty(family)) return 0;
+            foreach (var f in St.familyYards) if (f.family == family) return f.yard;
+            return DeriveYardOfFamily(family);
+        }
+
+        int DeriveYardOfFamily(string family)
         {
             var yards = new List<Yard>();
             foreach (var k in Yards) if (k.count > 0) yards.Add(k);
@@ -615,13 +668,60 @@ namespace AquariumCiv.Sim.Settle
         }
 
         /// <summary>The home a notable sleeps in: children with their parent, partners together (the elder id's home),
-        /// otherwise a home of the family's yard picked by a hash of the household head. Null if the box has no home.</summary>
+        /// otherwise a home of the family's yard. The household keeps the home it was given (<see cref="SettleState.homes"/>)
+        /// while that lot stands: a new home is filled by households that appear later and never moves one that is settled.
+        /// First choice is a hash of the household head over the family's homes. A pure query: it stores nothing (the month
+        /// step does, <see cref="AssignHomes"/>). Null if the box has no home.</summary>
         public Lot HomeOf(Notable n)
         {
             var head = HouseholdHead(n);
+            var kept = KeptHome(head.id);
+            return kept ?? PickHome(head);
+        }
+
+        Lot KeptHome(int headId)
+        {
+            var hs = St.homes;
+            if (hs == null) return null;
+            for (int i = 0; i < hs.Count; i++)
+                if (hs[i].head == headId)
+                {
+                    foreach (var l in St.lots) if (l.id == hs[i].lot) return !l.retired && Encyclopedia.IsHome(l.kind) ? l : null;
+                    return null;
+                }
+            return null;
+        }
+
+        Lot PickHome(Notable head)
+        {
             var list = HomesOf(head.family);
             if (list.Count == 0) return null;
             return list[(int)(Terrain.Hash3(Seed, head.id, 77) * list.Count) % list.Count];
+        }
+
+        /// <summary>Give every living household head without a standing home one (the hash pick over the homes standing
+        /// now) and store it. Runs each month before and after new buildings are placed, and once when a box is loaded,
+        /// so an old save keeps the homes its hash gives today.</summary>
+        void AssignHomes()
+        {
+            if (St.homes == null) St.homes = new List<HomeAssign>();
+            if (St.familyYards == null) St.familyYards = new List<FamilyYard>();
+            foreach (var n in S.notables)
+            {
+                if (string.IsNullOrEmpty(n.family) || St.familyYards.Exists(f => f.family == n.family)) continue;
+                int y = DeriveYardOfFamily(n.family);
+                if (y > 0) St.familyYards.Add(new FamilyYard { family = n.family, yard = y });
+            }
+            foreach (var n in S.notables)
+            {
+                if (!n.alive) continue;
+                var head = HouseholdHead(n);
+                if (!head.alive || KeptHome(head.id) != null) continue;
+                var lot = PickHome(head);
+                if (lot == null) continue;
+                int i = St.homes.FindIndex(a => a.head == head.id);
+                if (i >= 0) St.homes[i].lot = lot.id; else St.homes.Add(new HomeAssign { head = head.id, lot = lot.id });
+            }
         }
 
         /// <summary>Whose home a notable lives in (<see cref="HomeOf"/>): a child's parent (up to the first grown-up), then

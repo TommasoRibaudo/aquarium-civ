@@ -178,15 +178,21 @@ namespace AquariumCiv.Tests
         {
             // Every type is allowed in the town, so seed 1234 builds like the sim before eras (#23); its notables follow the
             // town band (#26), so the number is its own now.
-            var sim = NewSim(1234);
+            var sim = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             sim.State.era = Era.Town;
             sim.Advance(48);
-            Assert.AreEqual(2393058935u, Fingerprint(sim.State)); // #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers; #61: read-through text fixes (text and roles only)
-            var before = NewSim(1234);
+            Assert.AreEqual(3167006865u, Fingerprint(sim.State)); // re-pinned for the bakery (#112); #82fix: quarrels gated on the box (text only); #67: job_fill lines and who holds the crafts; #74: the Left Sandal's loss (text only); #26: the town band (8–12 adults, +2 children) and 55–80 lifespans; #27: role lines in the chronicle (economy unchanged); #28: term lines and codas in the chronicle (economy unchanged); #59: the strange light is the Bright One's until the Lamp is used (text only); #60: town sweepers; #61: read-through text fixes (text and roles only)
+            var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
+            noRelics.RelicsOn = false;
+            noRelics.State.era = Era.Town;
+            noRelics.Advance(48);
+            Assert.AreEqual(927274114u, Fingerprint(noRelics.State), "without #74's relics");
+            var before = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             before.CardsOn = false; // #59 off: the text as it was, so that is all that changed
+            before.RelicsOn = false; // and #74's
             before.State.era = Era.Town;
             before.Advance(48);
-            Assert.AreEqual(2652515594u, Fingerprint(before.State));
+            Assert.AreEqual(927274114u, Fingerprint(before.State));
         }
 
         [Test]

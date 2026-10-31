@@ -122,11 +122,15 @@ namespace AquariumCiv.Sim
             ["lean_winter"] = (CardTone.Neutral, "world"), ["strange_light"] = (CardTone.Neutral, "world"),
             ["keeper"] = (CardTone.Good, "keeper"),
             ["era"] = (CardTone.Good, "era"), ["era-ready"] = (CardTone.Good, "era"),
+            ["era_festival"] = (CardTone.Good, "era"), ["era_cleared"] = (CardTone.Neutral, "era"), // #86
+            ["peak-ready"] = (CardTone.Good, "era"), ["box-complete"] = (CardTone.Good, "era"), ["founders"] = (CardTone.Good, "era"),
+            ["founders_left"] = (CardTone.Good, "people"),
             ["role_contest"] = (CardTone.Neutral, "role"), ["role_challenge"] = (CardTone.Neutral, "role"),
             ["role_stepdown"] = (CardTone.Neutral, "role"),
             ["death"] = (CardTone.Sad, "legend"), ["role_death"] = (CardTone.Sad, "legend"),
             ["term_row"] = (CardTone.Neutral, "office"), ["term_complaint"] = (CardTone.Neutral, "office"),
             ["wish"] = (CardTone.Good, "wish"), ["relic"] = (CardTone.Good, "relic"),
+            ["tapback"] = (CardTone.Good, "keeper"), // a scholar taps back (SimCore.Relics.cs, #74)
             ["coming_of_age"] = (CardTone.Neutral, "hidden"),
         };
 
@@ -164,10 +168,14 @@ namespace AquariumCiv.Sim
         public ReturnStack ReturnCardsCapped(long sinceMonth, int cap, IEnumerable<int> viewedPeople = null)
         {
             AnnotateNew();
+            return BuildStack(State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e)).ToList(), cap, viewedPeople);
+        }
+
+        /// <summary>§2.2 steps 2–5 over the collected entries (chronicle order).</summary>
+        ReturnStack BuildStack(List<ChronicleEntry> fresh, int cap, IEnumerable<int> viewedPeople)
+        {
             var viewed = viewedPeople == null ? new HashSet<int>() : new HashSet<int>(viewedPeople);
-            var stack = new ReturnStack { cap = Math.Max(1, cap) };
-            var fresh = State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e)).ToList();
-            stack.collected = fresh.Count;
+            var stack = new ReturnStack { cap = Math.Max(1, cap), collected = fresh.Count };
 
             // Merge: one card per thread, one per lone entry, in chronicle order.
             var cards = new List<ChronicleCard>();
@@ -315,7 +323,10 @@ namespace AquariumCiv.Sim
                 "era" => $"{Place} became a {EraNoun(State.era)}",
                 "naming" => $"The settlement was named {Place}",
                 "first_building" => FirstBuildingHeadline(e),
+                "lost" when e.relicId == RelicId.LeftSandal => $"{A} lost a sandal",
                 "lost" => $"{A} got lost in the hills",
+                "relic" => RelicHeadline(e),
+                "wish" when e.notableId >= 0 => $"{A} has a wish",
                 _ => null,
             };
             return Clip(h ?? FirstSentence(e.text));

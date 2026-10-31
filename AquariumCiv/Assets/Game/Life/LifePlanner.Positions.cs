@@ -227,14 +227,27 @@ namespace AquariumCiv.Life
                 if (!Reacts(p, r, new ViewTime(day, r.start), out _, out _, out var to)) continue;
                 pieces.Add(new Piece { t0 = r.start, t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
             }
+            // A tap-back (Choice 9) overrides the scholar's other live scenes while it plays: a beat of a relic moment that
+            // starts inside its window (the Lens moment's later beats) would otherwise win and the knock never be seen.
+            float tbStart = float.MaxValue, tbEnd = float.MinValue;
+            for (int i = 0; i < live.Count; i++)
+            {
+                var sc = live[i];
+                if (sc.day != day || sc.kind != SceneKind.TapBack || sc.a != p.key) continue;
+                tbStart = Math.Min(tbStart, sc.start); tbEnd = Math.Max(tbEnd, sc.end);
+            }
             for (int i = 0; i < live.Count; i++)
             {
                 var sc = live[i];
                 if (sc.day != day) continue;
                 liveScratch.Clear();
                 SceneLayer(sc, p, dayInfo, liveScratch, true);
+                bool tapBack = sc.kind == SceneKind.TapBack && sc.a == p.key;
                 foreach (var s in liveScratch)
+                {
+                    if (!tapBack && s.start >= tbStart && s.start < tbEnd) continue;
                     pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = i, target = s.place, seg = s, order = pieces.Count });
+                }
             }
             if (pieces.Count == 0) return NoBlocks;
             pieces.Sort((a, b) => a.t0 != b.t0 ? a.t0.CompareTo(b.t0) : a.order.CompareTo(b.order));
@@ -277,9 +290,12 @@ namespace AquariumCiv.Life
                 if (goes)
                 {
                     var poly = RouteFrom(cx, cz, cat, pc.target);
-                    float w = Math.Min(WalkTimeOf(poly.len), (t1 - t0) * 0.5f);
+                    // #92: the walk takes its time at the walking pace, in real seconds (a walk squeezed into half the piece
+                    // rushed at up to 8x across the box). One that outlasts the piece is cut where the next piece (or the
+                    // walk back into the day) starts, and goes on from there.
+                    float w = LiveWalkHours(dayInfo.day, t0, poly.len);
                     if (w > 0f) b.legs.Add(new Leg { t0 = t0, t1 = t0 + w, poly = poly, f0 = 0f, f1 = 1f, at = pc.target });
-                    b.legs.Add(new Leg { t0 = t0 + w, t1 = t1, x = tx, z = tz, at = pc.target });
+                    if (t0 + w < t1) b.legs.Add(new Leg { t0 = t0 + w, t1 = t1, x = tx, z = tz, at = pc.target });
                 }
                 else
                 {
@@ -289,6 +305,7 @@ namespace AquariumCiv.Life
                 if (coreEnd > t1)
                 {
                     // A short interruption inside a longer one: the longer one goes on where this one left them.
+                    Truncate(b, t1);
                     EndPoint(b, out cx, out cz, out cat);
                     b.legs.Add(new Leg { t0 = t1, t1 = coreEnd, x = cx, z = cz, at = cat });
                 }
@@ -304,6 +321,7 @@ namespace AquariumCiv.Life
             b.be = b.ie;
             b.hasAfter = false;
             if (!b.placed) return;
+            Truncate(b, b.ie); // a walk still going when the interruptions end goes on from where it has got to (#92)
             EndPoint(b, out float ex, out float ez, out Place eat);
             var segs = DayOf(p);
             for (int i = Find(segs, b.ie); i < segs.Length; i++)
@@ -317,7 +335,7 @@ namespace AquariumCiv.Life
                 if (place != eat && !Near(ex, ez, px, pz))
                 {
                     poly = RouteFrom(ex, ez, eat, place);
-                    w = WalkTimeOf(poly.len);
+                    w = LiveWalkHours(dayInfo.day, b.ie, poly.len); // #92: at the pace in real seconds
                 }
                 if (b.ie + w > s.end - 0.01f && i < segs.Length - 1) continue; // gone before they'd get there: the next stop
                 if (w > 0f) b.legs.Add(new Leg { t0 = b.ie, t1 = b.ie + w, poly = poly, f0 = 0f, f1 = 1f, at = place, tail = true });
@@ -365,8 +383,29 @@ namespace AquariumCiv.Life
         static void LegPos(in Leg l, float t, out float x, out float z)
         {
             if (l.poly == null) { x = l.x; z = l.z; return; }
-            float u = l.t1 > l.t0 ? Math.Max(0f, Math.Min(1f, (t - l.t0) / (l.t1 - l.t0))) : 1f;
+            float u = LegU(l, t);
             l.poly.At(l.f0 + (l.f1 - l.f0) * u, out x, out z);
+        }
+
+        /// <summary>How far along a leg at <paramref name="t"/>, by real seconds (#92): a walk that crosses a phase boundary
+        /// (into the night's faster hours) keeps one pace instead of speeding up 3x past it.</summary>
+        static float LegU(in Leg l, float t)
+        {
+            if (l.t1 <= l.t0) return 1f;
+            if (t <= l.t0) return 0f;
+            if (t >= l.t1) return 1f;
+            // A walk that runs past midnight goes on at the night's pace: the part after 24h counts too, or the walk would
+            // reach its end at 24h (a walk back into the day late in the evening rushed up to 1.5x).
+            float all = RealSecondsTo(l.t0, l.t1);
+            return all > 1e-5f ? Math.Max(0f, Math.Min(1f, RealSecondsTo(l.t0, t) / all)) : (t - l.t0) / (l.t1 - l.t0);
+        }
+
+        /// <summary>Real seconds from <paramref name="h0"/> to <paramref name="h1"/>, past 24h too (the night's pace).</summary>
+        static float RealSecondsTo(float h0, float h1)
+        {
+            float s = LifeClock.RealSecondsBetween(h0, Math.Min(24f, h1));
+            if (h1 > 24f) s += (h1 - Math.Max(24f, h0)) * LifeClock.RealSecondsPerViewHour(0f);
+            return s;
         }
 
         static int LegAt(Block b, float t)
@@ -402,8 +441,19 @@ namespace AquariumCiv.Life
                     if (pc.reaction || h < pc.t0 || h >= pc.t1) continue;
                     var seg = pc.seg;
                     if (seg.Moving || ActivityInfo.IsMove(seg.kind)) seg.from = b.stopPlace;
+                    if (seg.place.IsNone)
+                    {
+                        // #92: a staged beat done where they stand: the place they stand at (or walked to), else the nearest.
+                        var here = li >= 0 && !b.legs[li].at.IsNone ? b.legs[li].at : b.stopPlace;
+                        seg.place = seg.from = IsValidPlace(here) ? here : ValidHome(p);
+                    }
                     var a = ToActivity(p, seg, t);
-                    if (walking && !b.legs[li].tail) WalkLeg(ref a, b, li, h);
+                    if (walking && !b.legs[li].tail)
+                    {
+                        var load = a.prop;
+                        WalkLeg(ref a, b, li, h);
+                        if (seg.carries) { a.kind = ActivityKind.Carry; a.prop = load; } // #92: a chunk to the fire, the doll to its post
+                    }
                     return a;
                 }
             }
@@ -431,8 +481,9 @@ namespace AquariumCiv.Life
             a.prop = Prop.None;
             a.start = l.t0;
             a.end = l.t1;
-            a.progress = l.t1 > l.t0 ? Math.Min(1f, (h - l.t0) / (l.t1 - l.t0)) : 1f;
+            a.progress = LegU(l, h);
             a.step = 0;
+            a.facesGlass = false;
         }
 
         PersonActivity ReactionActivity(Person p, Piece pc, ViewTime t)

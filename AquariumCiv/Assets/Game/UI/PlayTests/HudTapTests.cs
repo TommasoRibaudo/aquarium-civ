@@ -42,8 +42,13 @@ namespace AquariumCiv.GameUI.PlayTests
         {
             LogAssert.ignoreFailingMessages = true; // fixture noise ("Cached unprocessed value..."), see tooling.md
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             soundWas = GameSettings.Sound;
+            // With the Slice scene open in the Editor the game's own bootstrap already made a HUD (and a feedback sheet): clear them.
+            if (GameHud.Instance != null) Object.Destroy(GameHud.Instance.gameObject);
+            if (FeedbackUI.Instance != null) Object.Destroy(FeedbackUI.Instance.gameObject);
+            yield return null;
             hud = GameHud.Create();
             for (int i = 0; i < 5; i++) yield return null; // layout
             touch = InputSystem.AddDevice<Touchscreen>();

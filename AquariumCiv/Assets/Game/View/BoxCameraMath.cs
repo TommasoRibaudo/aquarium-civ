@@ -25,6 +25,19 @@ namespace AquariumCiv.View
         /// <summary>Margin the pan keeps from the box's edge (world units).</summary>
         public const float PanMargin = 0.3f;
 
+        /// <summary>Fly-to: default duration, and the zoom a flight to a person / a place ends at (< 1 = closer).</summary>
+        public const float FlyDefaultSeconds = 0.9f, FlyPersonZoom = 0.45f, FlyPlaceZoom = 0.6f;
+
+        /// <summary>Smoother-step ease in and out, t clamped to 0..1.</summary>
+        public static float FlyEase(float t) { t = Mathf.Clamp01(t); return t * t * t * (t * (t * 6f - 15f) + 10f); }
+
+        /// <summary>The target kept inside the pan bounds of this zoom (a flight never ends where the camera would spring back).</summary>
+        public static Vector3 ClampFocus(Vector3 target, float zoom)
+        {
+            var b = PanBounds(zoom);
+            return new Vector3(Mathf.Clamp(target.x, -b.x, b.x), target.y, Mathf.Clamp(target.z, -b.y, b.y));
+        }
+
         public static float YawDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * YawPerScreen;
         public static float PitchDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * PitchPerScreen;
 

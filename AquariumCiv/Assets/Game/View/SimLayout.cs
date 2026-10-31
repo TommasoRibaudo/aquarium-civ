@@ -55,6 +55,7 @@ namespace AquariumCiv.View
             LotKind.Shop => PieceKind.Shop,
             LotKind.Workshop => PieceKind.Workshop,
             LotKind.Guildhall => PieceKind.Guildhall,
+            LotKind.Bakery => PieceKind.Bakery,
             LotKind.Outbuilding => PieceKind.Barn,
             LotKind.Pasture => PieceKind.Herd,
             LotKind.Orchard => PieceKind.Orchard,
@@ -65,7 +66,8 @@ namespace AquariumCiv.View
         };
 
         /// <summary>A stable seed for a lot's piece (its look survives rebuilds).</summary>
-        public static int SeedOf(Lot l) => l.id * 101 + 7;
+        public static int SeedOf(Lot l) => SeedOfLot(l.id);
+        public static int SeedOfLot(int lotId) => lotId * 101 + 7;
 
         /// <summary>A lot's rectangle in world space, front edge first (the gate edge of a field).</summary>
         public static Vector2[] Corners(Lot l, float inset = 0f)
@@ -88,9 +90,25 @@ namespace AquariumCiv.View
             return Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg + 180f; // local -z (the front) faces the target
         }
 
+        /// <summary>Where the sim puts the first well, from the green's centre (Settlement.TryPlace, "first on green").</summary>
+        public const float FirstWellDX = 0.17f, FirstWellDZ = -0.1f;
+
+        static bool HasOpenWell(Settlement st)
+        {
+            foreach (var l in st.Lots) if (l.kind == LotKind.Well && l.open && !l.retired) return true;
+            return false;
+        }
+
         static PathTier TierOf(float t) => (PathTier)(Mathf.Clamp(Mathf.RoundToInt(t), 1, 3) - 1);
 
-        public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null)
+        /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
+        /// cobbles) cobbles those cells of any path tier (#34's hook for #90's cobbles spreading along the main path);
+        /// roads are cobbled anyway.</summary>
+        /// <summary>#85: <see cref="ShapingView"/> draws the Keeper's groves (saplings growing into trees) and the herds waiting
+        /// for an answer, animated; while it does, the live layout leaves them out (the time-lapse keeps them).</summary>
+        public static bool KeeperOverlays;
+
+        public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null, ReplayFrame replay = null)
         {
             L.Clear();
             var st = sim?.Settlement;
@@ -98,8 +116,9 @@ namespace AquariumCiv.View
             L.autoTrees = false; // the forest layer gives the trees
             var S = sim.State;
             int seed = S.seed;
-            Era EraOf(Lot l) => eraOf != null ? eraOf(l) : S.era;
-            int year = (int)(S.month / SimConfig.MonthsPerYear);
+            Era now = replay != null ? replay.era : S.era;
+            Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
+            int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
             var map = st.Map;
             var green = new Vector2(st.GreenX, st.GreenZ);
             Lot camp = null;
@@ -114,11 +133,16 @@ namespace AquariumCiv.View
                 L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp));
             }
             else L.Clearing(green, SiteMap.GreenR + 0.04f, greenEra == Era.Town && st.Has(LotKind.Market) ? ClearingKind.Cobble : ClearingKind.Green);
+            // The village green has its well from the era moment on (era-moment.md §4, #89). The sim builds it at the era change
+            // (the cheer); this stand-in covers only the moment before the cheer, a replay of those years and older saves, on the
+            // same spot (Settlement: green + (0.17, -0.1)) and looking the same, so the handover shows nothing.
+            if (greenEra >= Era.Village && !HasOpenWell(st))
+                L.Add(PieceKind.Well, green.x + FirstWellDX, green.y + FirstWellDZ, 0f, 0.3f, 0.3f, greenEra, 19000);
 
             // ---- ground: yards, commons, the Keeper's shapings ----
-            foreach (var y in st.Yards)
+            foreach (var y in replay != null ? NoYards : st.Yards)
                 if (y.count > 0) L.Clearing(new Vector2(y.x, y.z), Mathf.Clamp(y.r * 0.85f, 0.16f, 0.35f), ClearingKind.Yard);
-            foreach (var f in st.Features())
+            foreach (var f in replay != null ? NoFeatures : st.Features())
             {
                 var at = new Vector2(f.x, f.z);
                 switch (f.kind)
@@ -133,7 +157,7 @@ namespace AquariumCiv.View
                     }
                     case SimCore.NudgeKind.Herd:
                         // An answered herd lives on its pasture or jetty; until then the animals graze at the spot.
-                        if (f.lotId == 0) L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId).variant = 4;
+                        if (f.lotId == 0 && !(KeeperOverlays && replay == null)) L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId).variant = 4;
                         break;
                 }
             }
@@ -141,7 +165,7 @@ namespace AquariumCiv.View
             // ---- lots ----
             foreach (var l in st.Lots)
             {
-                if (l.retired || l.kind == LotKind.Camp) continue;
+                if (l.kind == LotKind.Camp || (replay != null ? !replay.Shows(l) : l.retired)) continue;
                 var e = EraOf(l);
                 int s = SeedOf(l);
                 float h = STerrain.Hash3(seed, l.id, 61);
@@ -186,33 +210,47 @@ namespace AquariumCiv.View
                         P(PieceKind.Orchard, l.w, l.d);
                         break;
                     case LotKind.TimberYard: P(PieceKind.Lumbermill, l.w, l.d).variant = 1; break;
-                    case LotKind.Well: P(PieceKind.Well, 0.3f, 0.3f); break;
+                    case LotKind.Well:
+                        // The first well stands as the moment showed it, so the sim taking over changes nothing on screen.
+                        P(PieceKind.Well, 0.3f, 0.3f).yaw = l.open ? 0f : l.yaw;
+                        break;
                     case LotKind.Outbuilding: P(PieceKind.Barn, l.w, l.d).variant = h < 0.6f ? 0 : 1; break;
                     default: P(PieceFor(l.kind), l.w, l.d); break;
                 }
             }
 
-            // ---- paths: the settlement's curves, one run per tier ----
-            foreach (var c in st.Paths())
+            // ---- paths: the settlement's curves, one run per tier (and per cobbled stretch) ----
+            bool Cob(PathCurve c, int k)
+            {
+                if (cobbled == null) return false;
+                int cell = SiteMap.CellAt(c.x[k], c.z[k]);
+                return cell >= 0 && cobbled(cell);
+            }
+            foreach (var c in replay != null ? PathCurves.Build(map, replay.tiers) : st.Paths())
             {
                 int n = c.Count;
                 if (n < 2) continue;
                 int start = 0;
                 var t0 = TierOf(c.tier[0]);
+                bool c0 = Cob(c, 0);
                 for (int i = 1; i <= n; i++)
                 {
                     var ti = i < n ? TierOf(c.tier[i]) : (PathTier)(-1);
-                    if (i < n && ti == t0) continue;
+                    bool ci = i < n && Cob(c, i);
+                    if (i < n && ti == t0 && ci == c0) continue;
                     int end = Mathf.Min(i, n - 1);
                     if (end > start)
                     {
                         var pts = new Vector2[end - start + 1];
                         for (int k = start; k <= end; k++) pts[k - start] = new Vector2(c.x[k], c.z[k]);
-                        L.Path(t0, pts);
+                        L.Path(t0, pts).cobbled = c0;
                     }
-                    start = i; t0 = ti;
+                    start = i; t0 = ti; c0 = ci;
                 }
             }
+
+            // ---- market stalls (town): an arc of awnings on the cobbled square, on the market's side ----
+            if (greenEra == Era.Town) MarketStalls(L, st, green, seed);
 
             // ---- dug channels: canal cells joined to their canal or pond neighbours ----
             for (int c = 0; c < SiteMap.N; c++)
@@ -233,11 +271,21 @@ namespace AquariumCiv.View
             }
 
             // ---- trees from the forest layer ----
+            // (#85: the cells of the Keeper's groves are ShapingView's, which grows them from saplings)
+            HashSet<int> keeperGrove = null;
+            if (KeeperOverlays && replay == null)
+                foreach (var n in S.nudges)
+                    if (n.kind == SimCore.NudgeKind.Grove)
+                    {
+                        keeperGrove ??= new HashSet<int>();
+                        foreach (int c in AquariumCiv.View.Shaping.ShapingFootprint.Of(n, map, seed).cells) keeperGrove.Add(c);
+                    }
+            bool Woods(int c) => map.Forest(c) && (keeperGrove == null || !keeperGrove.Contains(c));
             for (int j = 0; j + 1 < SiteMap.NZ; j += 2)
                 for (int i = 0; i + 1 < SiteMap.NX; i += 2)
                 {
                     int cnt = 0;
-                    for (int dj = 0; dj < 2; dj++) for (int di = 0; di < 2; di++) if (map.Forest(SiteMap.Index(i + di, j + dj))) cnt++;
+                    for (int dj = 0; dj < 2; dj++) for (int di = 0; di < 2; di++) if (Woods(SiteMap.Index(i + di, j + dj))) cnt++;
                     if (cnt == 0 || (cnt == 1 && STerrain.Hash3(seed, i * 7 + 1, j) > 0.4f)) continue;
                     var pos = new Vector2(SiteMap.CX(i) + 0.05f + (STerrain.Hash3(seed, i, j * 3 + 1) - 0.5f) * 0.08f,
                                           SiteMap.CZ(j) + 0.05f + (STerrain.Hash3(seed, i, j * 3 + 2) - 0.5f) * 0.08f);
@@ -260,10 +308,10 @@ namespace AquariumCiv.View
                 {
                     float a = (k + 0.3f + 0.4f * STerrain.Hash3(seed, k, 71)) / count * Mathf.PI * 2f;
                     var p = green + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (SiteMap.GreenR + 0.06f);
-                    if (OpenSpot(map, p)) L.Add(PieceKind.Lantern, p.x, p.y, Face(p, green) + 90f, 0.1f, 0.1f, greenEra, 20000 + k);
+                    if (OpenSpot(map, p) && !StallNear(L, p)) L.Add(PieceKind.Lantern, p.x, p.y, Face(p, green) + 90f, 0.1f, 0.1f, greenEra, 20000 + k);
                 }
             }
-            if (S.era == Era.Town)
+            if (now == Era.Town)
             {
                 int k = 0;
                 foreach (var path in L.paths.ToArray())
@@ -285,7 +333,110 @@ namespace AquariumCiv.View
                 }
             }
 
-            People(L, sim, st, EraOf, green, camp, campFire);
+            if (replay == null) People(L, sim, st, EraOf, green, camp, campFire);
+            else if (replay.grow.Count > 0)
+            {
+                foreach (var p in L.pieces) if (replay.grow.TryGetValue(p.seed, out var g)) p.grow = g;
+                L.fields.RemoveAll(f => replay.grow.TryGetValue(f.seed, out var g) && g < 0.6f); // a field comes with its farm, once it is mostly there
+            }
+        }
+
+        static readonly List<Yard> NoYards = new();
+        static readonly List<Feature> NoFeatures = new();
+
+        /// <summary>Stalls the town's square holds (#34).</summary>
+        public const int TownStalls = 3;
+
+        /// <summary>
+        /// The town's busiest main path (user 2026-10-30, #90: cobbles only on the busiest path, not every main path): of
+        /// the path curves that reach path tier, the one whose path-tier cells carry the most wear (each counts at least
+        /// <see cref="PathNet.TPath"/>, so a replay's paths that have since faded still count). Returns its path-tier
+        /// skeleton cells and their eight neighbours (the smoothed curve's samples land within a cell of the skeleton), or
+        /// null when there is no main path. <paramref name="prefer"/> (the last choice) wins ties up to
+        /// <see cref="BusiestStickiness"/>, so the cobbles don't hop between two paths of about the same traffic.
+        /// </summary>
+        public static HashSet<int> BusiestPathCells(SiteMap map, List<PathCurve> curves, byte[] tiers, ICollection<int> prefer = null)
+        {
+            if (map == null || curves == null || tiers == null) return null;
+            var wear = map.wear;
+            PathCurve best = null;
+            float bestScore = 0f;
+            foreach (var c in curves)
+            {
+                float score = 0f;
+                int mine = 0, kept = 0;
+                foreach (int cell in c.cells)
+                {
+                    if (cell < 0 || cell >= tiers.Length || tiers[cell] < PathNet.PathTier) continue;
+                    score += Mathf.Max(wear != null ? wear[cell] : 0f, PathNet.TPath);
+                    mine++;
+                    if (prefer != null && prefer.Contains(cell)) kept++;
+                }
+                if (mine == 0) continue;
+                if (prefer != null && kept * 2 > mine) score *= BusiestStickiness;
+                if (score > bestScore) { bestScore = score; best = c; }
+            }
+            if (best == null) return null;
+            var set = new HashSet<int>();
+            foreach (int cell in best.cells)
+            {
+                if (cell < 0 || cell >= tiers.Length || tiers[cell] < PathNet.PathTier) continue;
+                int i = cell % SiteMap.NX, j = cell / SiteMap.NX;
+                for (int dj = -1; dj <= 1; dj++)
+                    for (int di = -1; di <= 1; di++)
+                    {
+                        int ii = i + di, jj = j + dj;
+                        if (ii >= 0 && jj >= 0 && ii < SiteMap.NX && jj < SiteMap.NZ) set.Add(jj * SiteMap.NX + ii);
+                    }
+            }
+            return set;
+        }
+
+        /// <summary>The last busiest path keeps its cobbles until another carries this much more traffic.</summary>
+        public const float BusiestStickiness = 1.3f;
+
+        /// <summary>The cobble hook (<see cref="Fill"/>'s <c>cobbled</c>) for the busiest path: its path-tier cells.</summary>
+        public static Func<int, bool> BusiestCobbles(byte[] tiers, HashSet<int> busiest)
+        {
+            if (tiers == null || busiest == null) return null;
+            return c => c >= 0 && c < tiers.Length && tiers[c] >= PathNet.PathTier && busiest.Contains(c);
+        }
+
+        /// <summary>The town's market stalls: an arc on the cobbled square on the market's side, facing the middle, kept
+        /// off lots, water and the open well.</summary>
+        static void MarketStalls(BoxLayout L, Settlement st, Vector2 green, int seed)
+        {
+            Lot market = null;
+            foreach (var l in st.Lots) if (l.kind == LotKind.Market && !l.retired) { market = l; break; }
+            if (market == null) return;
+            var toMarket = new Vector2(market.x, market.z) - green;
+            float a0 = toMarket.sqrMagnitude > 1e-6f ? Mathf.Atan2(toMarket.y, toMarket.x) : 0f;
+            var map = st.Map;
+            for (int k = 0, placed = 0; k < 7 && placed < TownStalls; k++)
+            {
+                // 0, +1, -1, +2, -2...: the arc grows from the market's side both ways.
+                int step = (k + 1) / 2 * (k % 2 == 1 ? 1 : -1);
+                float a = a0 + step * 1.0f; // ~0.3 u apart on the arc: stalls and their crates never touch
+                var p = green + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (SiteMap.GreenR * 0.74f);
+                if (!StallSpot(st, map, p)) continue;
+                L.Add(PieceKind.Stall, p.x, p.y, Face(p, green), 0.3f, 0.22f, Era.Town, 22000 + placed * 13 + (seed & 0xFF));
+                placed++;
+            }
+        }
+
+        static bool StallNear(BoxLayout L, Vector2 p)
+        {
+            foreach (var q in L.pieces) if (q.kind == PieceKind.Stall && Vector2.Distance(q.Pos, p) < 0.24f) return true;
+            return false;
+        }
+
+        static bool StallSpot(Settlement st, SiteMap map, Vector2 p)
+        {
+            int c = SiteMap.CellAt(p.x, p.y);
+            if (c < 0 || map.Water(c) || map.lot[c] != 0) return false;
+            foreach (var l in st.Lots)
+                if (!l.retired && (l.open || l.kind == LotKind.Well) && Vector2.Distance(p, new Vector2(l.x, l.z)) < 0.3f) return false;
+            return true;
         }
 
         static bool TreeSpot(SiteMap map, Vector2 p)

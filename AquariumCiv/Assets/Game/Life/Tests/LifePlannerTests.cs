@@ -126,7 +126,7 @@ namespace AquariumCiv.Life.Tests
                 days++;
                 for (float h = 7.1f; h < 17f; h += 0.4f)
                 {
-                    if (!LifeClock.IsWorkHour(h)) continue;
+                    if (!LifeClock.IsWorkHour(h, planner.SeasonOn(day))) continue;
                     planner.PlanAll(new ViewTime(day, h), acts);
                     foreach (var a in acts)
                     {
@@ -142,6 +142,44 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(adults, 0);
             Assert.GreaterOrEqual(share, 0.7f, "≥ 70 % of working-age adults busy in work hours (rule 4)");
             Assert.LessOrEqual(walk, 0.12f, "few walk empty-handed in work hours (rule 4: ≤ 10 % [est])");
+        }
+
+        [Test]
+        public void TheSeasonsSetTheWorkHours()
+        {
+            Assert.Less(LifeClock.WorkHours(Season.Winter), LifeClock.WorkHours(Season.Spring), "winter: less daytime work");
+            Assert.Greater(LifeClock.WorkHours(Season.Summer), LifeClock.WorkHours(Season.Autumn), "summer: more");
+            Assert.AreEqual(LifeClock.WorkHours(Season.Spring), LifeClock.WorkHours(Season.Autumn));
+            Assert.IsTrue(LifeClock.IsWorkHour(16f, Season.Summer));
+            Assert.IsFalse(LifeClock.IsWorkHour(16f, Season.Winter));
+            // In the planner: the busy-at-work share of adults at 16:00 on working days is higher in summer than in winter.
+            var sim = SimIn(Era.Village, 7);
+            var planner = new LifePlanner(sim);
+            var acts = new List<PersonActivity>();
+            float Share(Season season)
+            {
+                planner.ForcedSeason = season;
+                int adults = 0, atWork = 0;
+                for (long day = sim.State.month; day < sim.State.month + 40; day++)
+                {
+                    if (planner.IsRestDay(day)) continue;
+                    var w = planner.WeatherOn(day);
+                    if (w == Weather.Storm || w == Weather.Rainbow) continue;
+                    planner.PlanAll(new ViewTime(day, 16.2f), acts);
+                    foreach (var a in acts)
+                    {
+                        if (planner.StageOf(a.who) != LifeStage.Adult || a.source == ActivitySource.Scene) continue;
+                        adults++;
+                        if (ActivityInfo.GroupOf(a.kind) == ActivityGroup.Work) atWork++;
+                    }
+                }
+                Assert.Greater(adults, 0);
+                return atWork / (float)adults;
+            }
+            float winter = Share(Season.Winter), summer = Share(Season.Summer);
+            TestContext.WriteLine($"at 16:12 adults working: winter {winter:P0}, summer {summer:P0}");
+            Assert.Less(winter, 0.1f, "winter afternoons end at half past three");
+            Assert.Greater(summer, 0.4f, "summer afternoons are still at work");
         }
 
         static string Dump(LifePlanner planner, IEnumerable<ViewTime> times)
@@ -439,7 +477,11 @@ namespace AquariumCiv.Life.Tests
                 var kinds = acts.Where(a => a.source == ActivitySource.Reaction).Select(a => a.kind).ToList();
                 TestContext.WriteLine($"{era}: {string.Join(", ", kinds)}");
                 Assert.IsNotEmpty(kinds, $"{era}: someone reacts to the finger");
-                if (era == Era.Camp) Assert.IsTrue(kinds.All(k => k == ActivityKind.LookUpWary), "the camp is a bit scared of the glass");
+                // #92 (relics-and-glass-voice §3): in the camp the grown-ups stay back, wary; the kids creep in, hop back, then jump.
+                if (era == Era.Camp)
+                    foreach (var a in acts.Where(a => a.source == ActivitySource.Reaction))
+                        if (planner.StageOf(a.who) == LifeStage.Kid) Assert.Contains(a.kind, new[] { ActivityKind.CreepUp, ActivityKind.HopBack, ActivityKind.JumpAndPoint }, "camp kids creep in");
+                        else Assert.AreEqual(ActivityKind.LookUpWary, a.kind, "the camp's grown-ups are a bit scared of the glass");
                 else if (acts.Any(a => planner.StageOf(a.who) == LifeStage.Kid)) Assert.Contains(kidKind, kinds, $"{era}: kids jump and point");
                 planner.Release(new ViewTime(day, 10.3f));
                 planner.PlanAll(new ViewTime(day, 10.31f), acts);

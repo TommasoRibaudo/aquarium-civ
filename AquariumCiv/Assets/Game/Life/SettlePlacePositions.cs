@@ -236,6 +236,8 @@ namespace AquariumCiv.Life
                 case PlaceKind.Market:
                     st.MarketCentre(out x, out z);
                     return true;
+                case PlaceKind.Glass: return GlassSpot(p.index, out x, out z);
+                case PlaceKind.Relic: return RelicSpot(p.index, out x, out z);
             }
             if (p.IsBuilding)
             {
@@ -362,6 +364,66 @@ namespace AquariumCiv.Life
             Set(PlaceKind.Remembering, new Spot(gx + st.GreenRadius * 0.9f, gz)); // the cairn at the green's rim
             var church = LotOfKind(LotKind.Church, true);
             land[(int)PlaceKind.Remembering * 4 + 1] = church ?? land[(int)PlaceKind.Remembering * 4]; // the churchyard
+        }
+
+        /// <summary>#92: where the people stand at the front glass: on walkable ground just inside the wall
+        /// (<paramref name="side"/>: 0 = -z, 1 = +x, 2 = +z, 3 = -x), across from the green.</summary>
+        bool GlassSpot(int side, out float x, out float z)
+        {
+            x = z = 0f;
+            int key = (int)PlaceKind.Glass * 4 + (side & 3);
+            if (land.TryGetValue(key, out var s)) { x = s.x; z = s.z; return true; }
+            const float inset = 0.18f, ends = 0.6f;
+            float gx = st.GreenX, gz = st.GreenZ;
+            float tx, tz;
+            switch (side & 3)
+            {
+                case 0: tx = Clamp(gx, Terrain.HX - ends); tz = -Terrain.HZ + inset; break;
+                case 2: tx = Clamp(gx, Terrain.HX - ends); tz = Terrain.HZ - inset; break;
+                case 1: tx = Terrain.HX - inset; tz = Clamp(gz, Terrain.HZ - ends); break;
+                default: tx = -Terrain.HX + inset; tz = Clamp(gz, Terrain.HZ - ends); break;
+            }
+            int c = Walkable(tx, tz);
+            if (c < 0) return false;
+            s = new Spot(SiteMap.CXc(c), SiteMap.CZc(c));
+            land[key] = s;
+            x = s.x; z = s.z;
+            return true;
+        }
+
+        static float Clamp(float v, float m) => Math.Max(-m, Math.Min(m, v));
+
+        /// <summary>#92: a relic's spot (index into <see cref="RelicId.All"/>): the Festival Mask's dance at the fire, the
+        /// Keeper Doll's post at the shrine's (or the green's) door, the others where the sim put them (where the crumb fell,
+        /// the vines, the lamp), on the nearest walkable ground.</summary>
+        bool RelicSpot(int index, out float x, out float z)
+        {
+            x = z = 0f;
+            if (index < 0 || index >= RelicId.All.Length) return false;
+            Relic r = null;
+            foreach (var q in sim.State.relics ?? new List<Relic>()) if (q.id == RelicId.All[index]) { r = q; break; }
+            if (r == null) return false;
+            if (r.id == RelicId.FestivalMask) { st.Fire(out x, out z, out _); return true; }
+            if (r.id == RelicId.KeeperDoll && r.buildingId >= 0 && lotOfBuilding.TryGetValue(r.buildingId, out var lot) && !lot.open)
+            {
+                x = lot.doorX; z = lot.doorZ; // by the shrine's door
+                return true;
+            }
+            float rx = r.x, rz = r.z;
+            // No spot of its own, or one in the middle of the green / at the fire (the doll before a shrine, a lens with no
+            // lamp, a crumb given by the debug panel): on the green's rim, each relic at its own place round it, so they
+            // never stand in the well or on top of each other (#92 phase 2).
+            float gx = st.GreenX, gz = st.GreenZ;
+            if ((rx == 0f && rz == 0f) || (rx - gx) * (rx - gx) + (rz - gz) * (rz - gz) < 0.5f * 0.5f)
+            {
+                double a = 0.9 + index * 1.25;
+                rx = gx + (float)Math.Cos(a) * 0.62f;
+                rz = gz + (float)Math.Sin(a) * 0.62f;
+            }
+            int c = Walkable(rx, rz);
+            if (c < 0) return false;
+            x = SiteMap.CXc(c); z = SiteMap.CZc(c);
+            return true;
         }
 
         static int ForestAround(SiteMap map, int c)

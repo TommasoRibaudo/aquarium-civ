@@ -1,0 +1,27 @@
+{
+    "name": "AquariumCiv.Audio.Tests",
+    "rootNamespace": "AquariumCiv.Audio.Tests",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Life",
+        "AquariumCiv.Moments",
+        "AquariumCiv.Audio",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

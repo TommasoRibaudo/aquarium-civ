@@ -13,6 +13,8 @@ namespace AquariumCiv.View
         Windmill, Lumbermill, Market, Tavern, Church, StandingStones, Watermill, Smithy, Dyer,
         // #33: the rest of the sim's lot kinds and the Keeper's shapings (town ones stay placeholders until M6).
         Shop, Workshop, Guildhall, Barn, Gathering, Orchard, Herd, Jetty, Quarry, Kiln, Outcrop,
+        /// <summary>The town's bakery (#112): chimney, loaf sign. Appended last (saved as an int).</summary>
+        Bakery,
     }
 
     public enum RoofStyle { Auto, Thatch, Terracotta, Slate }
@@ -41,6 +43,8 @@ namespace AquariumCiv.View
         public int seed;
         /// <summary>A per-kind look switch (barn or shed; an outcrop's deposit: 0 stone, 1 clay, 2 ore; a timber yard).</summary>
         public int variant;
+        /// <summary>0..1: how much of the piece is there (the time-lapse grows a new building in and shrinks a cleared one away, #78).</summary>
+        public float grow = 1f;
 
         public Vector2 Pos => new(x, z);
     }
@@ -64,6 +68,9 @@ namespace AquariumCiv.View
     {
         public Vector2[] points;
         public PathTier tier = PathTier.Path;
+        /// <summary>Laid with cobbles whatever its tier (#34; #90 spreads cobbles along the main path). A town road is
+        /// always cobbled; this cobbles a trail or path too, at its own width.</summary>
+        public bool cobbled;
     }
 
     /// <summary>An open patch of ground: the camp's trodden circle, a village green, a town square.</summary>
@@ -153,6 +160,14 @@ namespace AquariumCiv.View
         {
             var p = new PathData { points = points, tier = tier };
             paths.Add(p);
+            return p;
+        }
+
+        /// <summary>A cobbled path (any tier): see <see cref="PathData.cobbled"/>.</summary>
+        public PathData CobbledPath(PathTier tier, params Vector2[] points)
+        {
+            var p = Path(tier, points);
+            p.cobbled = true;
             return p;
         }
 

@@ -55,6 +55,10 @@ namespace AquariumCiv.View
             }
         }
 
+        /// <summary>A past year (or the blend of two) the box shows instead of the live sim (#78: <see cref="TimeLapseView"/>
+        /// sets it and refreshes). Null = the live box.</summary>
+        [System.NonSerialized] public ReplayFrame Replay;
+
         public bool IsLive => Application.isPlaying && GameClock.Instance != null && GameClock.Instance.Sim != null;
         public bool WaveRunning => waveStep >= 0;
         BoxView Box => box != null ? box : box = GetComponent<BoxView>();
@@ -83,13 +87,85 @@ namespace AquariumCiv.View
             return months;
         }
 
+        /// <summary>The box on screen is another world now (a museum visit, box 2): rebuild it whole, with no era wave.</summary>
+        public void WorldChanged()
+        {
+            waveStep = -1; Replay = null;
+            MomentLook = false;
+            seenAny = false;
+            FillLayout(Box.layout); // Rebuild() builds from the layout as it is: refill it from the new world first
+            Box.Rebuild();
+            seenMonth = Sim.State.month; seenEra = Sim.State.era; seenAny = true;
+        }
+
         public void FillLayout(BoxLayout layout)
         {
             var sim = Sim;
             Box.land = SimLayout.LandFor(sim.TerrainPreset);
-            SimLayout.Fill(layout, sim, WaveRunning ? WaveEra : null);
+            if (Replay != null)
+            {
+                SimLayout.Fill(layout, sim, Replay.EraOf, Cobbled(sim), Replay);
+                return; // a replay does not move what the live view has seen
+            }
+            SimLayout.Fill(layout, sim, MomentLook ? MomentEra : WaveRunning ? WaveEra : null, Cobbled(sim));
             seenMonth = sim.State.month; seenEra = sim.State.era; seenAny = true;
         }
+
+        // ---------------- the era moment's look (#89) ----------------
+        // While an era moment plays, the box shows each lot in the next era's look as the moment's wave reaches it, before
+        // the sim moves the era at the cheer (the director drives it: MomentGreen, MomentLot). After the cheer the sim's
+        // era is the new one and nothing rebuilds again (no second wave).
+        Era momentFrom, momentTo;
+        bool momentGreen;
+        readonly HashSet<int> momentDone = new();
+        public bool MomentLook { get; private set; }
+        public int MomentLotsDone => momentDone.Count;
+
+        public void BeginMomentLook(Era from, Era to)
+        {
+            if (WaveRunning) waveStep = -1;
+            MomentLook = true; momentFrom = from; momentTo = to; momentGreen = false;
+            CobbleReach = 0f;
+            momentDone.Clear();
+            // A replay on an older box: what was built after the era began never had the older look.
+            var st = Sim.Settlement;
+            if (st != null && Sim.State.era >= to)
+                foreach (var l in st.Lots) if (l.foundedMonth > Sim.State.eraStartMonth) momentDone.Add(l.id);
+            Box.Refresh();
+        }
+
+        public void MomentGreen() { if (!MomentLook || momentGreen) return; momentGreen = true; Box.Refresh(); }
+
+        public void MomentLot(int lotId) { if (MomentLook && momentDone.Add(lotId)) Box.Refresh(); }
+
+        /// <summary>Every lot and the green in the new look (the cheer: nothing is left behind).</summary>
+        public void MomentAll()
+        {
+            if (!MomentLook) return;
+            momentGreen = true;
+            CobbleReach = float.MaxValue;
+            var st = Sim.Settlement;
+            if (st != null) foreach (var l in st.Lots) momentDone.Add(l.id);
+            Box.Refresh();
+        }
+
+        public void EndMomentLook()
+        {
+            if (!MomentLook) return;
+            MomentLook = false;
+            momentDone.Clear();
+            CobbleReach = -1f;
+            Box.Refresh();
+        }
+
+        Era MomentEra(Lot l)
+        {
+            if (l == null || (l.kind == LotKind.Well && l.open)) return momentGreen ? momentTo : momentFrom; // the green, and the well on it
+            return momentDone.Contains(l.id) ? momentTo : momentFrom;
+        }
+
+        /// <summary>The era a lot shows now (tests: no lot left in the old look).</summary>
+        public Era ShownEra(Lot l) => MomentLook ? MomentEra(l) : WaveRunning ? WaveEra(l) : Sim.State.era;
 
         // ---------------- the era wave ----------------
         /// <summary>Step s of the wave: the green turns at step 1, lot i (in rebuild order) at step i + 2.</summary>
@@ -156,15 +232,94 @@ namespace AquariumCiv.View
             // The era's rebuild wave is a moment: the music ducks out and no track starts until it is done.
             if (WaveRunning) MusicDirector.Hold(MusicHold); else MusicDirector.Release(MusicHold);
             var sim = Sim;
-            if (sim == null || Box == null || !seenAny) return;
+            if (sim == null || Box == null || !seenAny || Replay != null) return;
             if (WaveRunning)
             {
                 if (Application.isPlaying && Now >= waveNext) { waveNext = Now + waveStepSeconds; StepWave(); }
                 return;
             }
-            if (sim.State.era > seenEra && waveOnEraChange) { StartWave(seenEra); return; }
+            if (sim.State.era > seenEra && waveOnEraChange && !MomentLook) { StartWave(seenEra); return; }
             if (sim.State.month != seenMonth || sim.State.era != seenEra) Box.Refresh();
         }
+
+        /// <summary>Which site cells are laid with cobbles beyond the roads (#90 sets this when cobbles spread along
+        /// the main path). Null = only roads.</summary>
+        [System.NonSerialized] public System.Func<int, bool> cobbled;
+
+        /// <summary>Debug: cobble every path cell (path tier and up), not only the busiest path (#90's first look).</summary>
+        public static bool CobbleAllPaths;
+
+        /// <summary>The town's busiest main path is cobbled (era-moment.md §5, #90; user 2026-10-30: only the busiest path,
+        /// <see cref="SimLayout.BusiestPathCells"/>) once the box shows the town; during the village → town moment the
+        /// cobbles unroll from the square along it out to <see cref="CobbleReach"/> (world units from the green's centre).
+        /// The square stays cobbled and roads are cobbled anyway.</summary>
+        public float CobbleReach { get; private set; } = -1f;
+
+        public void SetCobbleReach(float reach)
+        {
+            if (Mathf.Abs(reach - CobbleReach) < 1e-4f) return;
+            CobbleReach = reach;
+            if (MomentLook) Box.Refresh();
+        }
+
+        // The busiest path's cells: chosen again when the path curves change or a year passes (sticky, so the cobbles stay
+        // put); a replay's own choice is cached per frame's tier grid.
+        HashSet<int> busiest, replayBusiest;
+        object busiestKey, replayBusiestKey;
+        long busiestYear = -1;
+
+        /// <summary>The busiest main path's cells (with their neighbours) for what the box shows now; null = no main path.</summary>
+        public HashSet<int> BusiestPath(SimCore sim)
+        {
+            var st = sim?.Settlement;
+            if (st == null) return null;
+            if (Replay != null)
+            {
+                if (!ReferenceEquals(replayBusiestKey, Replay.tiers))
+                {
+                    replayBusiestKey = Replay.tiers;
+                    replayBusiest = SimLayout.BusiestPathCells(st.Map, PathCurves.Build(st.Map, Replay.tiers), Replay.tiers, busiest);
+                }
+                return replayBusiest;
+            }
+            var curves = st.Paths();
+            long year = sim.State.month / SimConfig.MonthsPerYear;
+            if (!ReferenceEquals(busiestKey, curves) || year != busiestYear)
+            {
+                busiestKey = curves; busiestYear = year;
+                busiest = SimLayout.BusiestPathCells(st.Map, curves, st.Map.tier, busiest);
+            }
+            return busiest;
+        }
+
+        /// <summary>Whether a site cell is a main-path cell of the busiest path (tests).</summary>
+        public bool OnBusiestPath(int cell)
+        {
+            var sim = Sim;
+            var tier = Replay != null ? Replay.tiers : sim?.Settlement?.Map.tier;
+            var set = BusiestPath(sim);
+            return set != null && tier != null && cell >= 0 && cell < tier.Length && tier[cell] >= PathNet.PathTier && set.Contains(cell);
+        }
+
+        System.Func<int, bool> Cobbled(SimCore sim)
+        {
+            var st = sim.Settlement;
+            var tier = Replay != null ? Replay.tiers : st?.Map.tier;
+            if (tier == null) return cobbled;
+            bool town = Replay != null ? Replay.era == Era.Town : MomentLook ? momentTo == Era.Town && momentGreen : sim.State.era == Era.Town;
+            if (!CobbleAllPaths && !town) return cobbled;
+            float reach = MomentLook && !CobbleAllPaths ? CobbleReach : float.MaxValue;
+            float gx = st.Map.greenX, gz = st.Map.greenZ;
+            var busy = CobbleAllPaths ? null : BusiestPath(sim);
+            if (!CobbleAllPaths && busy == null) return cobbled;
+            return c => (tier[c] >= PathNet.PathTier
+                         && (busy == null || busy.Contains(c))
+                         && AquariumCiv.Sim.Settle.Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), gx, gz) <= reach)
+                        || (cobbled != null && cobbled(c));
+        }
+
+        /// <summary>Whether a site cell shows cobbles now (tests).</summary>
+        public bool CellCobbled(int cell) => Cobbled(Sim)?.Invoke(cell) ?? false;
 
         // ---------------- debug ----------------
         public string Status()
@@ -190,6 +345,14 @@ namespace AquariumCiv.View
             if (s.IsLive) GameClock.Instance.Save();
             s.Box.Refresh();
             return s.Status();
+        }
+
+        /// <summary>Debug: cobbles on every path (on) or only on the roads (off); the box refreshes.</summary>
+        public static string DebugCobblePaths(bool on)
+        {
+            var s = Need(out var err); if (s == null) return err;
+            CobbleAllPaths = on;
+            return (on ? "cobbles on every path · " : "cobbles on the busiest path · ") + s.Box.Refresh();
         }
 
         /// <summary>Debug: cross into the next era now and play the rebuild wave (or rebuild at once).</summary>
@@ -232,6 +395,14 @@ namespace AquariumCiv.View
             var b = s.Sim.DebugBuild(type);
             string info = s.Box.Refresh();
             return $"{type} → lot {b.lotId} at ({b.x:0.00}, {b.z:0.00}) · {info}";
+        }
+
+        /// <summary>Debug: the newest building of this type is gone (its lot is cleared); the box refreshes.</summary>
+        public static string DebugRemoveBuilding(string type)
+        {
+            var s = Need(out var err); if (s == null) return err;
+            if (!s.Sim.DebugRemoveBuilding(type)) return "no " + type + " to remove";
+            return $"{type} removed · " + s.Box.Refresh();
         }
 
         /// <summary>Debug (edit mode): grow a new preview box from <paramref name="seed"/> for <paramref name="years"/>.</summary>

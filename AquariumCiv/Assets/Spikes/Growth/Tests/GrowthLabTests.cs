@@ -265,6 +265,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
         [Test]
         public void Cluster_Criterion5_PathsEmerge_ThatNoConnectionLaid()
         {
+            Assert.Ignore("Lab result frozen at round 2 (growth-lab.md). #114 (cottages, farm cap, town wants) moved these numbers; the live checks are Assets/Game/Tests/SettleTests (#119: TownHomesSitInClustersNotRows, PathsEmergeThatNoConnectionLaid).");
             foreach (var (seed, preset) in Runs)
             {
                 var w = Run(seed, preset, Variant.Cluster);
@@ -297,6 +298,7 @@ namespace AquariumCiv.Spikes.Growth.Tests
         [Test]
         public void Cluster_HomesDontLineUp()
         {
+            Assert.Ignore("Lab result frozen at round 2 (growth-lab.md). #114 (cottages, farm cap, town wants) moved these numbers; the live checks are Assets/Game/Tests/SettleTests (#119: TownHomesSitInClustersNotRows, PathsEmergeThatNoConnectionLaid).");
             foreach (var (seed, preset) in Runs)
             {
                 var o = GrowthChecks.Align(Run(seed, preset, Variant.Organic).sites);

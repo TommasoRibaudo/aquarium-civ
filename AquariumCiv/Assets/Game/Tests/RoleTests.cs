@@ -295,7 +295,7 @@ namespace AquariumCiv.Tests
         /// wedding rules (18+, at most 12 years apart, widows may remarry) and shared family names change who can marry, so
         /// the story stream picks other stories and its weather (storms, rainbows, droughts, harvests) lands elsewhere; the
         /// economy's rules are untouched and roles still draw no dice (MeddlingWithRolesLeavesTheEconomyAlone).</summary>
-        const uint PreRoles1 = 3466609103u, PreRoles1234 = 3006638110u, PreRoles77 = 3610713562u; // first measured on 5d0fcf3 (before roles) with the float-bits hash; re-measured for #61 (see above)
+        const uint PreRoles1 = 277100708u, PreRoles1234 = 757235758u, PreRoles77 = 2539109392u; // re-measured for the bakery (#112); first measured on 5d0fcf3 (before roles) with the float-bits hash; re-measured for #61 (see above), for the era-change well (its building id shifts the hashed rolls) and for the town economy (#114: workshop, guildhall, shops)
 
         [Test]
         public void TheEconomyIsWhatItWasBeforeRoles()
@@ -307,7 +307,7 @@ namespace AquariumCiv.Tests
             // stream, the economy and the notables exactly as they were.
             var camp = NewSim(1234);
             camp.Advance(48);
-            Assert.AreEqual(2932785620u, JobTests.Economy(camp.State), "camp, as before jobs and roles");
+            Assert.AreEqual(366032956u, JobTests.Economy(camp.State), "camp, as before jobs and roles");
             foreach (var (seed, before) in new[] { (1, PreRoles1), (1234, PreRoles1234) })
             {
                 var town = NewSim(seed, SweeperTests.NoSweepers()); // #60 changed the town on purpose: compared without its sweepers

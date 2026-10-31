@@ -10,7 +10,7 @@ namespace AquariumCiv.View
     /// caller sets <c>mb.M</c> to the lot's frame (origin = lot centre on the ground, local -z = the front). Windows and
     /// lanterns are lamps (<see cref="MeshBuilder.lamp"/>): they light at night through <see cref="NightLamps"/>.
     /// </summary>
-    public static class Pieces
+    public static partial class Pieces
     {
         /// <summary>Lot-local ground height: maps a local point onto the terrain and back (for fences and crops on slopes).</summary>
         public delegate Vector3 Ground(Vector3 local);
@@ -40,7 +40,10 @@ namespace AquariumCiv.View
                     }
                     break;
                 case PieceKind.Fire: Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
-                case PieceKind.Well: Well(mb, Vector3.zero, !camp); break;
+                case PieceKind.Well:
+                    if (town) Fountain(mb, Vector3.zero, p.seed);
+                    else Well(mb, Vector3.zero, !camp);
+                    break;
                 case PieceKind.Woodpile: Woodpile(mb, Vector3.zero, 0f); break;
                 case PieceKind.DryingRack: DryingRack(mb, Vector3.zero); break;
                 case PieceKind.LeanTo: LeanTo(mb); break;
@@ -49,16 +52,21 @@ namespace AquariumCiv.View
                 case PieceKind.Granary: Granary(mb, Vector3.zero); break;
                 case PieceKind.Crates: Crates(mb, Vector3.zero); break;
                 case PieceKind.LogSeat: Log(mb, new Vector3(0, 0.035f, 0), 0.035f, Mathf.Max(0.2f, w), 90f, Palette.Bark); break;
-                case PieceKind.Stall: Stall(mb, Vector3.zero, 0f, Palette.Tunics[Mathf.Abs(p.seed) % Palette.Tunics.Length]); break;
+                case PieceKind.Stall:
+                    if (town) MarketStall(mb, Vector3.zero, p.seed);
+                    else Stall(mb, Vector3.zero, 0f, Palette.Tunics[Mathf.Abs(p.seed) % Palette.Tunics.Length]);
+                    break;
                 case PieceKind.Windmill:
                     if (camp) Granary(mb, Vector3.zero);
-                    else Windmill(mb, Vector3.zero, p.seed * 37f, town ? Palette.Stone : Palette.Plaster, town, Phase(p.seed));
+                    else if (town) TowerMill(mb, Vector3.zero, p.seed * 37f, Phase(p.seed));
+                    else Windmill(mb, Vector3.zero, p.seed * 37f, Palette.Plaster, false, Phase(p.seed));
                     break;
                 case PieceKind.Lumbermill:
                     if (camp) { Woodpile(mb, new Vector3(0, 0, -d * 0.1f), 20f); Log(mb, new Vector3(w * 0.2f, 0.03f, d * 0.2f), 0.035f, 0.3f, 70f, Palette.Bark); }
                     else
                     {
                         Lumbermill(mb, Vector3.zero, w, d);
+                        if (town) SawFrame(mb, new Vector3(w * 0.05f, 0, -d * 0.36f));
                         if (p.variant == 1) { Woodpile(mb, new Vector3(w * 0.25f, 0, -d * 0.3f), 0f); Woodpile(mb, new Vector3(-w * 0.32f, 0, d * 0.3f), 80f); } // a timber yard
                     }
                     break;
@@ -68,7 +76,8 @@ namespace AquariumCiv.View
                         mb.Box(new Vector3(0, 0.005f, 0), new Vector3(0.3f, 0.01f, 0.2f), Palette.Hide);
                         Crates(mb, new Vector3(-0.05f, 0, 0));
                     }
-                    else MarketHall(mb, Vector3.zero, w, d, town, Phase(p.seed));
+                    else if (town) TownMarketHall(mb, Vector3.zero, w, d, Phase(p.seed), p.seed);
+                    else MarketHall(mb, Vector3.zero, w, d, false, Phase(p.seed));
                     break;
                 case PieceKind.Tavern:
                     if (camp) { Firepit(mb, Vector3.zero, true, Phase(p.seed)); break; }
@@ -78,6 +87,7 @@ namespace AquariumCiv.View
                         mb.Box(sign + new Vector3(0, 0.16f, 0), new Vector3(0.02f, 0.32f, 0.02f), Palette.Timber);
                         mb.Box(sign + new Vector3(-0.05f, 0.27f, 0), new Vector3(0.08f, 0.06f, 0.01f), Palette.Ember);
                         mb.Box(new Vector3(-w * 0.25f, 0.04f, -d / 2f + 0.01f), new Vector3(0.18f, 0.016f, 0.05f), Palette.WoodLight);
+                        if (town) { Barrel(mb, new Vector3(w * 0.32f, 0, -d / 2f + 0.03f)); Barrel(mb, new Vector3(w * 0.42f, 0, -d / 2f + 0.07f)); }
                     }
                     break;
                 case PieceKind.Church:
@@ -85,7 +95,10 @@ namespace AquariumCiv.View
                     else Church(mb, Vector3.zero, w, d, Phase(p.seed));
                     break;
                 case PieceKind.StandingStones: StandingStones(mb, Vector3.zero); break;
-                case PieceKind.Watermill: Watermill(mb, Vector3.zero, w, d, Phase(p.seed)); break;
+                case PieceKind.Watermill:
+                    if (town) TownWatermill(mb, Vector3.zero, w, d, Phase(p.seed));
+                    else Watermill(mb, Vector3.zero, w, d, Phase(p.seed));
+                    break;
                 case PieceKind.Smithy: Smithy(mb, Vector3.zero, w, d, Phase(p.seed)); break;
                 case PieceKind.Dyer: Dyer(mb, Vector3.zero, w, d); break;
                 case PieceKind.Shop:
@@ -94,13 +107,20 @@ namespace AquariumCiv.View
                     break;
                 case PieceKind.Workshop:
                     if (camp) { LeanTo(mb); break; }
+                    if (town) { TradeWorkshop(mb, w, d, TradeOf(p), Phase(p.seed), p.seed); break; }
                     House(mb, Front(0.3f) + new Vector3(-w * 0.1f, 0, 0), w * 0.66f, 0.3f, 0.24f, 0.2f, Wall(p.seed), town ? Palette.Slate : Palette.Thatch, true, true, 1, Phase(p.seed));
                     Shed(mb, new Vector3(w * 0.32f, 0, d * 0.05f), 0.16f, 0.22f, 0.17f, Palette.WoodLight, Palette.Timber);
                     Crates(mb, new Vector3(w * 0.25f, 0, -d * 0.32f));
                     break;
                 case PieceKind.Guildhall:
                     if (camp) { StandingStones(mb, Vector3.zero); break; }
-                    Guildhall(mb, Front(0.36f), w * 0.92f, 0.36f, Phase(p.seed), p.seed);
+                    if (town) TownGuildhall(mb, w, d, Phase(p.seed), p.seed);
+                    else Guildhall(mb, Front(0.36f), w * 0.92f, 0.36f, Phase(p.seed), p.seed);
+                    break;
+                case PieceKind.Bakery:
+                    if (camp) { Teepee(mb, Vector3.zero, 0.16f, 0.46f, Palette.Canvas, 0f, p.seed); break; } // a camp has no bakery; only a stray save gets here
+                    if (town) { TownBakery(mb, w, d, Phase(p.seed), p.seed); break; }
+                    House(mb, Front(0.3f), w * 0.8f, 0.3f, 0.2f, 0.18f, Palette.PlasterWarm, Palette.Terracotta, true, true, 1, Phase(p.seed));
                     break;
                 case PieceKind.Barn:
                     if (camp) { DryingRack(mb, Vector3.zero); break; }
@@ -374,24 +394,157 @@ namespace AquariumCiv.View
         /// life-in-the-box §5) with a bright core, so the fire reads and blooms at full-box zoom; the view adds a glow
         /// billboard (<see cref="BoxView"/>) and a warm pool on the ground. <paramref name="seats"/> adds three log seats.
         /// </summary>
-        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase = 0f)
+        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase = 0f) => Firepit(mb, p, seats, phase, FireLooks.Active);
+
+        /// <summary><see cref="Firepit(MeshBuilder, Vector3, bool, float)"/> in a given look (#65). Embers warms the stones
+        /// and seats in the mesh and lays its logs radially, hot ends in; the others share the #63 ring and logs.</summary>
+        public static void Firepit(MeshBuilder mb, Vector3 p, bool seats, float phase, FireLook look)
         {
+            bool warm = look == FireLook.Embers;
+            mb.emission = warm ? 0.12f : 0f;
             for (int i = 0; i < 9; i++)
             {
                 float a = i / 9f * Mathf.PI * 2f;
-                mb.Ico(p + new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.14f, 0.042f, new Vector3(1, 0.7f, 1), i % 2 == 0 ? Palette.Rock : Palette.RockDark, 0.25f);
+                var rock = i % 2 == 0 ? Palette.Rock : Palette.RockDark;
+                mb.Ico(p + new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.14f, 0.042f, new Vector3(1, 0.7f, 1), warm ? Color.Lerp(rock, Palette.Ember, 0.22f) : rock, 0.25f);
             }
-            for (int i = 0; i < 3; i++) Log(mb, p + Vector3.up * 0.025f, 0.02f, 0.22f, i * 60f, Palette.Bark);
+            mb.emission = 0f;
+            if (warm) RadialLogs(mb, p);
+            else for (int i = 0; i < 3; i++) Log(mb, p + Vector3.up * 0.025f, 0.02f, 0.22f, i * 60f, Palette.Bark);
             mb.emission = 0.6f;
             mb.Prism(p, 0.085f, 0.075f, 0.016f, 7, Palette.Ember);
-            Flames(mb, p, phase);
+            FireBody(mb, p, phase, look);
+            mb.emission = 0f;
             if (!seats) return;
+            mb.emission = warm ? 0.1f : 0f;
             for (int i = 0; i < 3; i++)
             {
                 float a = i * 2.1f + 0.4f;
                 var q = p + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.4f;
-                Log(mb, q + Vector3.up * 0.035f, 0.035f, 0.3f, -a * Mathf.Rad2Deg + 90f, Palette.Bark);
+                Log(mb, q + Vector3.up * 0.035f, 0.035f, 0.3f, -a * Mathf.Rad2Deg + 90f, warm ? Color.Lerp(Palette.Bark, Palette.Glow, 0.18f) : Palette.Bark);
             }
+            mb.emission = 0f;
+        }
+
+        /// <summary>The look's flame body, on top of the ember bed. Soft has only coals: its flames are glow quads
+        /// (<see cref="BoxView"/>).</summary>
+        public static void FireBody(MeshBuilder mb, Vector3 p, float phase, FireLook look)
+        {
+            switch (look)
+            {
+                case FireLook.Soft: Coals(mb, p, 0.06f, 0.03f, 0.022f, 5); break;
+                case FireLook.Embers: EmberHeap(mb, p, phase); break;
+                case FireLook.Paper: PaperFlames(mb, p, phase); break;
+                default: Flames(mb, p, phase); break;
+            }
+        }
+
+        /// <summary>Linear brightness of a fully emissive face per unit of vertex colour (Stylized.mat's _Emission).</summary>
+        public const float EmissionBoost = 3f;
+
+        /// <summary>
+        /// A palette colour for a face at emission 1 (the shader ignores the lights there, so day and night match and flat
+        /// faces don't go dark). That face shows albedo x <see cref="EmissionBoost"/>, so the colour is scaled to come out as
+        /// the palette colour x <paramref name="gain"/> in linear. Bloom starts at 1.3: only gains above it get a bloom.
+        /// </summary>
+        public static Color Hot(Color c, float gain = 1f)
+        {
+            float k = Mathf.Pow(gain / EmissionBoost, 1f / 2.2f);
+            return new Color(c.r * k, c.g * k, c.b * k, c.a);
+        }
+
+        /// <summary>A low glowing dome of coals, unlit (6 sides = 54 vertices).</summary>
+        static void Coals(MeshBuilder mb, Vector3 p, float rBottom, float rTop, float h, int sides)
+        {
+            mb.emission = 1f;
+            mb.Prism(p + Vector3.up * 0.012f, rBottom, rTop, h, sides, Hot(Palette.Ember, 1.1f), topCol: Hot(Palette.FlameCoreB, 1.4f), ramp: true);
+            mb.emission = 0f;
+        }
+
+        /// <summary>Four half logs from the rim to the middle, hot at the inner end. 180 vertices against the #63 logs' 216.</summary>
+        static void RadialLogs(MeshBuilder mb, Vector3 p)
+        {
+            mb.emission = 0.35f;
+            for (int i = 0; i < 4; i++)
+            {
+                var rot = Quaternion.Euler(0, i * 90f + 25f, 0) * Quaternion.Euler(84f, 0, 0);
+                mb.Prism(p + Vector3.up * 0.036f, 0.02f, 0.018f, 0.16f, 5, Palette.Ember, rot, topCol: Palette.Bark, ramp: true);
+            }
+            mb.emission = 0f;
+        }
+
+        /// <summary>Embers: the coal heap and three stubby flames, 0.13-0.18 tall, gold going to orange, each on its own
+        /// flicker phase. 90 vertices.</summary>
+        public static void EmberHeap(MeshBuilder mb, Vector3 p, float phase)
+        {
+            Coals(mb, p, 0.1f, 0.05f, 0.035f, 6);
+            float y0 = 0.03f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.2f; mb.sway = 0f; mb.emission = 1f;
+            float yaw0 = H01(phase * 91f + 1f) * 120f;
+            for (int i = 0; i < 3; i++)
+            {
+                var yaw = Quaternion.Euler(0, yaw0 + i * 120f, 0);
+                float h = Mathf.Lerp(0.13f, 0.18f, H01(phase * 33f + i * 7.7f));
+                mb.flamePhase = Mathf.Repeat(phase + i * 0.37f, 1f);
+                mb.Prism(p + yaw * new Vector3(0, y0, 0.03f), 0.052f, 0f, h, 4, Hot(Palette.FlameCoreB, 1f), yaw * Quaternion.Euler(10f, 0, 0), topCol: Hot(Palette.FlameBodyB, 1f), ramp: true);
+            }
+            mb.emission = 0f; mb.flameHeight = 0f;
+        }
+
+        /// <summary>
+        /// Paper: six folded tongues, back to front: three tall orange ones, two gold-orange, one gold (0.27 tall at most).
+        /// Each is a bent double pyramid of 8 faces, 24 vertices (144 in all), two tones per tongue, like a folded strip of
+        /// paper; the fold reads with no lights because the tones are in the vertex colours. Each tongue flickers on its own
+        /// phase.
+        /// </summary>
+        public static void PaperFlames(MeshBuilder mb, Vector3 p, float phase)
+        {
+            float y0 = 0.012f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.3f; mb.sway = 0f; mb.emission = 1f;
+            float yaw0 = H01(phase * 91f + 1f) * 120f;
+            void Tongue(int i, float yaw, float r, float h, float w, Color low, Color belly, Color tip)
+            {
+                mb.flamePhase = Mathf.Repeat(phase + i * 0.37f, 1f);
+                float a = yaw0 + yaw + (H01(phase * 57f + i * 3.1f) - 0.5f) * 24f;
+                PaperTongue(mb, p + Quaternion.Euler(0, a, 0) * new Vector3(0, y0, r), a, h, w, 0.04f + 0.03f * H01(phase * 71f + i * 5.3f), low, belly, tip);
+            }
+            Color gold = Hot(Palette.FlameCoreA, 1.3f), amber = Hot(Palette.FlameCoreB, 1.25f), orange = Hot(Palette.FlameBodyA, 1.1f), red = Hot(Palette.FlameBodyB, 1f);
+            Tongue(0, 0f, 0.05f, 0.27f, 0.078f, orange, orange, red);
+            Tongue(1, 125f, 0.05f, 0.23f, 0.07f, orange, orange, red);
+            Tongue(2, 235f, 0.05f, 0.25f, 0.07f, orange, orange, red);
+            Tongue(3, 60f, 0.03f, 0.19f, 0.066f, amber, amber, orange);
+            Tongue(4, 190f, 0.03f, 0.17f, 0.062f, amber, amber, orange);
+            Tongue(5, 300f, 0.012f, 0.14f, 0.058f, gold, gold, amber);
+            mb.emission = 0f; mb.flameHeight = 0f;
+        }
+
+        /// <summary>One tongue: from a pointed foot out to a diamond belly at 45 % of the height, then to a tip leaning
+        /// <paramref name="lean"/> outwards. Faces at each side of the blade are the lit fold, the others a shade deeper.</summary>
+        public static void PaperTongue(MeshBuilder mb, Vector3 foot, float yawDeg, float h, float halfWidth, float lean, Color low, Color belly, Color tip)
+        {
+            var q = Quaternion.Euler(0, yawDeg, 0);
+            var bellyC = foot + q * new Vector3(0, h * 0.45f, lean * 0.3f);
+            var tipP = foot + q * new Vector3(lean * 0.35f, h, lean);
+            Vector3 wide = q * Vector3.right * halfWidth, deep = q * Vector3.forward * (halfWidth * 0.45f);
+            var ring = new[] { bellyC + wide, bellyC + deep, bellyC - wide, bellyC - deep };
+            for (int i = 0; i < 4; i++)
+            {
+                var a = ring[i]; var b = ring[(i + 1) % 4];
+                bool lit = i % 2 == 0;
+                Color l = lit ? low : Fold(low), m = lit ? belly : Fold(belly), t = lit ? tip : Fold(tip);
+                FacetOut(mb, foot, a, b, bellyC, l, m, m);
+                FacetOut(mb, a, tipP, b, bellyC, m, t, m);
+            }
+        }
+
+        /// <summary>The shaded side of a paper fold.</summary>
+        static Color Fold(Color c) => new Color(c.r * 0.8f, c.g * 0.8f, c.b * 0.8f, c.a);
+
+        /// <summary>A gradient triangle wound to face away from <paramref name="inside"/>.</summary>
+        static void FacetOut(MeshBuilder mb, Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Color ca, Color cb, Color cc)
+        {
+            if (Vector3.Dot(Vector3.Cross(b - a, c - a), (a + b + c) / 3f - inside) < 0f) mb.TriC(a, c, b, ca, cc, cb);
+            else mb.TriC(a, b, c, ca, cb, cc);
         }
 
         static float H01(float x) => Mathf.Repeat(Mathf.Sin(x * 12.9898f) * 43758.5453f, 1f);

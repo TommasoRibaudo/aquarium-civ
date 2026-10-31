@@ -13,6 +13,7 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>A family's barn, byre or shed across its yard (no economy building; see Settlement.Outbuildings).</summary>
         Outbuilding,
         Pasture, Orchard, Jetty, Quarry, Kiln, TimberYard,
+        Bakery,
     }
 
     /// <summary>A claimed lot: an oriented rectangle whose front (local −z) faces its door. Lots never move: an era
@@ -53,6 +54,21 @@ namespace AquariumCiv.Sim.Settle
         public int outbuildingLot;   // the barn's lot (0 = none yet)
     }
 
+    /// <summary>A household head's assigned home lot.</summary>
+    [Serializable]
+    public class HomeAssign
+    {
+        public int head, lot;
+    }
+
+    /// <summary>A notable family's yard.</summary>
+    [Serializable]
+    public class FamilyYard
+    {
+        public string family;
+        public int yard;
+    }
+
     /// <summary>Land kept open for good (a meadow or orchard): never built on, except where the Keeper shapes it.</summary>
     [Serializable]
     public class Commons
@@ -89,6 +105,10 @@ namespace AquariumCiv.Sim.Settle
         public List<Yard> yards = new List<Yard>();
         public List<Commons> commons = new List<Commons>();
         public int nextLotId = 1;
+        /// <summary>The home each household head was given (Settlement.HomeOf): kept while the lot stands.</summary>
+        public List<HomeAssign> homes = new List<HomeAssign>();
+        /// <summary>The yard each notable family lives round, fixed when first chosen (Settlement.YardOfFamily).</summary>
+        public List<FamilyYard> familyYards = new List<FamilyYard>();
         /// <summary>Buildings (in SimState.buildings order) already offered a lot.</summary>
         public int processed;
         /// <summary>Months in which some building waited for a lot (the box is full; feeds the town's peak).</summary>

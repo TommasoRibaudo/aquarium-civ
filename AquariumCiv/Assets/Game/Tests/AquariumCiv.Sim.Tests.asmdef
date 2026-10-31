@@ -4,6 +4,7 @@
     "references": [
         "AquariumCiv.Sim",
         "AquariumCiv.Game",
+        "AquariumCiv.Moments",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

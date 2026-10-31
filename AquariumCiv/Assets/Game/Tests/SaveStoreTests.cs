@@ -104,7 +104,7 @@ namespace AquariumCiv.Tests
             var oldJson = JsonUtility.ToJson(old.State);
             File.WriteAllText(path, "{\"v\":1,\"lastSeenUtc\":\"2026-10-29T10:00:00.0000000Z\",\"state\":" + oldJson + "}");
             Assert.AreEqual(SaveStore.LoadResult.Loaded, SaveStore.Read(path, out var e));
-            Assert.AreEqual(2, e.v);
+            Assert.AreEqual(SaveStore.CurrentVersion, e.v);
             Assert.AreEqual(0, e.state.settle.version, "not settled until the sim is made");
             var sim = new SimCore(new SimConfig(), e.state);
             Assert.AreEqual(AquariumCiv.Sim.Settle.SettleState.Version, sim.State.settle.version);

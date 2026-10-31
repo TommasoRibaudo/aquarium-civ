@@ -43,6 +43,14 @@ namespace AquariumCiv.View
         public float aoDistance = 0.45f;
         [Tooltip("Log every chunk rebuild with its timing.")]
         public bool logRebuilds = true;
+        /// <summary>Refresh rebuilds chunks without the AO bake (the time-lapse scrub, #78); the chunks wait in
+        /// <see cref="AoPending"/> until <see cref="FlushAo"/> and the next Refresh bake them.</summary>
+        [System.NonSerialized] public bool deferAO;
+        readonly HashSet<int> aoPending = new();
+        public int AoPending => aoPending.Count;
+        /// <summary>Marks the chunks that were built without AO as changed, so the next <see cref="Refresh"/> (with
+        /// <see cref="deferAO"/> off) rebuilds them with it.</summary>
+        public void FlushAo() { foreach (int k in aoPending) chunkHash[k] = ~chunkHash[k] ^ 0x9E3779B9u; aoPending.Clear(); }
         public Material solid, water, glass, glow;
         [Tooltip("Alpha-blended smoke for the camp fires (FireSmoke.mat); a runtime material is made when empty.")]
         public Material smoke;
@@ -71,11 +79,29 @@ namespace AquariumCiv.View
         public Transform Root => root;
         public IReadOnlyList<PegDollView> Dolls => dolls;
         readonly List<PegDollView> dolls = new();
+        static readonly List<VillagerData> NoVillagers = new();
+        bool plannedPeople;
+
+        /// <summary>A <see cref="PeopleView"/> draws the people from the activity planner (#30): the layout's standing
+        /// people (#33's placeholders) are dropped, and come back when it lets go.</summary>
+        public bool PlannedPeople
+        {
+            get => plannedPeople;
+            set { if (plannedPeople == value) return; plannedPeople = value; if (root != null) SyncPeople(); }
+        }
+
+        /// <summary>The style kit's shared solid material (the one every generated mesh and doll uses).</summary>
+        public Material SolidMaterial => Solid;
 
         void OnEnable()
         {
+#if UNITY_EDITOR
+            SweepOrphans();
+#endif
             var src = GetComponent<IBoxLayoutSource>();
             if (src != null) src.FillLayout(layout);
+            // The planner's people replace the layout's standing ones: don't build dolls it would take down on the same frame.
+            if (src is SimLayoutSource && TryGetComponent<PeopleView>(out var pv) && pv.enabled) plannedPeople = true;
             Rebuild();
         }
 
@@ -91,7 +117,10 @@ namespace AquariumCiv.View
                     var m = mf.sharedMesh;
                     if (m != null && (m.name.StartsWith("Box") || m.name == "Water" || m.name == "Glows" || m.name == "Smoke")) Kill(m);
                 }
-                Kill(root.gameObject);
+                // A root built in edit mode is DontSave: when play mode starts, a deferred Destroy is lost to the domain reload
+                // and the scene unload only detaches it, so it has to go now (see SweepOrphans).
+                if (root.gameObject.hideFlags != HideFlags.None) DestroyImmediate(root.gameObject);
+                else Kill(root.gameObject);
             }
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
@@ -100,6 +129,32 @@ namespace AquariumCiv.View
             root = peopleRoot = null;
             glowGo = smokeGo = null;
         }
+
+        /// <summary>Generated objects stay out of the scene file in edit mode. In play mode they need no flag: without one they
+        /// die with the scene, while DontSave would outlive it.</summary>
+        static HideFlags GenFlags => Application.isPlaying ? HideFlags.None : HideFlags.DontSave;
+
+#if UNITY_EDITOR
+        /// <summary>Generated roots no box owns. DontSave objects survive a scene unload and domain reloads, parentless and
+        /// sceneless, and they keep rendering: their land meshes die but the panes use the built-in cube, so every leaked root
+        /// stacked four more panes on the box (81 roots = a 98 % opaque haze that hid the land and the grime, Editor only,
+        /// tester batch 3). The dolls in them go the same way: body and arm meshes die with the scene while the shared prop
+        /// meshes are DontSave, so each leaked root left its hoes, axes and red-topped baskets standing in the town with
+        /// nobody holding them (the "red discs and sticks", tester batch 3, K_b2).</summary>
+        public static List<GameObject> OrphanRoots()
+        {
+            var list = new List<GameObject>();
+            foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
+                if (t != null && t.parent == null && (t.name == "Generated" || t.name == "Planned People") && !t.gameObject.scene.IsValid() && !UnityEditor.EditorUtility.IsPersistent(t))
+                    list.Add(t.gameObject);
+            return list;
+        }
+
+        static void SweepOrphans()
+        {
+            foreach (var go in OrphanRoots()) DestroyImmediate(go);
+        }
+#endif
 
         static void Kill(Object o)
         {
@@ -119,7 +174,7 @@ namespace AquariumCiv.View
         {
             Clear();
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            root = new GameObject("Generated") { hideFlags = HideFlags.DontSave }.transform;
+            root = new GameObject("Generated") { hideFlags = GenFlags }.transform;
             root.SetParent(transform, false);
             shore = land.Shoreline(64);
             ShoreField();
@@ -161,19 +216,26 @@ namespace AquariumCiv.View
             Glows();
             SyncPeople();
             Glass();
+            aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
             ChunkHashes(chunkHash);
+            System.Array.Copy(chunkHash, wantHash, ChunkCount);
             landHash = LandHash();
             lastBuildInfo = $"{verts} verts, {tris} tris, {layout.pieces.Count} pieces, {dolls.Count} people, AO {aoMs:0} ms, total {sw.ElapsedMilliseconds} ms";
         }
 
         /// <summary>
         /// Refills the layout from the source and rebuilds only what changed: the chunks whose contents hash differently,
-        /// the glows, and the people (kept, moved, made or removed). A changed land rebuilds everything. Returns the timing.
+        /// the glows, and the people (kept, moved, made or removed). A changed land rebuilds everything. While
+        /// <see cref="deferAO"/> is on (the time-lapse scrub, #78) at most <see cref="ScrubChunksPerFrame"/> chunks rebuild here
+        /// and the others wait, one more each frame (<see cref="ChunksWaiting"/>), so a scrub step never hitches
+        /// (user 2026-10-30). Returns the timing.
         /// </summary>
         public string Refresh()
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
+            refreshFrame = Time.frameCount;
+            int gc0 = System.GC.CollectionCount(0);
             var src = GetComponent<IBoxLayoutSource>();
             if (src != null) src.FillLayout(layout);
             double fillMs = sw.Elapsed.TotalMilliseconds;
@@ -186,17 +248,61 @@ namespace AquariumCiv.View
             }
             PrepareFields();
             Reserve();
-            var h = new uint[ChunkCount];
-            ChunkHashes(h);
-            lastChunks.Clear();
-            for (int k = 0; k < ChunkCount; k++) if (h[k] != chunkHash[k]) lastChunks.Add(k);
+            System.Array.Clear(wantHash, 0, ChunkCount);
+            ChunkHashes(wantHash);
+            PickChunks(deferAO ? ScrubChunksPerFrame : ChunkCount);
             double prepMs = sw.Elapsed.TotalMilliseconds;
+            RebuildChunks(sw, out double buildMs, out double meshMs, out double aoMs);
+            Glows();
+            int made = SyncPeople();
+            lastRefreshMs = sw.Elapsed.TotalMilliseconds;
+            lastAoMs = aoMs;
+            lastRefreshInfo = lastChunks.Count == 0
+                ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
+                : $"rebuilt chunk(s) {string.Join(",", lastChunks)} in {lastRefreshMs:0.0} ms (AO {aoMs:0.0} ms), {made} new people, {layout.pieces.Count} pieces, {ChunksWaiting} waiting " +
+                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}, gc {System.GC.CollectionCount(0) - gc0}]";
+            if (logRebuilds && lastChunks.Count > 0) Debug.Log("[BoxView] " + lastRefreshInfo);
+            return lastRefreshInfo;
+        }
+
+        /// <summary>Chunks one <see cref="deferAO"/> refresh, or one frame after it, may rebuild (#78).</summary>
+        public const int ScrubChunksPerFrame = 1;
+        /// <summary>Chunks whose new look waits for a frame of their own.</summary>
+        public int ChunksWaiting { get { int n = 0; for (int k = 0; k < ChunkCount; k++) if (wantHash[k] != chunkHash[k]) n++; return n; } }
+
+        // What the layout wants each chunk to hash to, and how many refreshes each has waited (the longest wait goes first).
+        readonly uint[] wantHash = new uint[ChunkCount];
+        readonly int[] chunkWaited = new int[ChunkCount];
+        int refreshFrame = -1;
+        /// <summary>Milliseconds the last catch-up chunk took (tests time these with the scrub steps).</summary>
+        [System.NonSerialized] public double lastWaitingMs;
+
+        /// <summary>Fills <see cref="lastChunks"/> with up to <paramref name="budget"/> dirty chunks, longest waiting first.</summary>
+        void PickChunks(int budget)
+        {
+            lastChunks.Clear();
+            for (int k = 0; k < ChunkCount; k++)
+            {
+                if (wantHash[k] == chunkHash[k]) { chunkWaited[k] = 0; continue; }
+                chunkWaited[k]++;
+                lastChunks.Add(k);
+            }
+            if (lastChunks.Count <= budget) return;
+            lastChunks.Sort((a, b) => chunkWaited[a] != chunkWaited[b] ? chunkWaited[b].CompareTo(chunkWaited[a]) : a.CompareTo(b));
+            lastChunks.RemoveRange(budget, lastChunks.Count - budget);
+            lastChunks.Sort();
+        }
+
+        /// <summary>Rebuilds <see cref="lastChunks"/> to <see cref="wantHash"/> from the layout as it is.</summary>
+        void RebuildChunks(System.Diagnostics.Stopwatch sw, out double buildMs, out double meshMs, out double aoMs)
+        {
             var builders = new List<(int k, MeshBuilder mb, int tv, Mesh mesh)>();
             var built = new MeshBuilder[lastChunks.Count];
             var tvs = new int[lastChunks.Count];
             // The dirty chunks build side by side on worker threads (pure maths into their own builders).
             System.Threading.Tasks.Parallel.For(0, lastChunks.Count, i => built[i] = BuildChunk(lastChunks[i], out tvs[i]));
-            double buildMs = sw.Elapsed.TotalMilliseconds;
+            buildMs = sw.Elapsed.TotalMilliseconds;
+            bool defer = bakeAO && deferAO;
             for (int i = 0; i < lastChunks.Count; i++)
             {
                 int k = lastChunks[i], tv = tvs[i];
@@ -204,15 +310,20 @@ namespace AquariumCiv.View
                 var mesh = mb.ToMesh("BoxChunk" + k);
                 var old = chunkFilters[k].sharedMesh;
                 chunkFilters[k].sharedMesh = mesh;
-                chunkColliders[k].sharedMesh = mesh;
+                // The collider is only there for the AO rays: a deferred chunk cooks it when it bakes (every deferred chunk
+                // rebuilds together, FlushAo).
+                if (!defer) chunkColliders[k].sharedMesh = mesh;
                 Kill(old);
                 builders.Add((k, mb, tv, mesh));
-                chunkHash[k] = h[k];
+                chunkHash[k] = wantHash[k];
+                chunkWaited[k] = 0;
             }
-            double meshMs = sw.Elapsed.TotalMilliseconds;
-            double aoMs = 0;
-            if (bakeAO && builders.Count > 0)
+            meshMs = sw.Elapsed.TotalMilliseconds;
+            aoMs = 0;
+            if (defer) foreach (var (k, _, _, _) in builders) aoPending.Add(k);
+            else if (bakeAO && builders.Count > 0)
             {
+                foreach (var (k, _, _, _) in builders) aoPending.Remove(k);
                 var t = System.Diagnostics.Stopwatch.StartNew();
                 Physics.SyncTransforms();
                 var all = new List<(MeshBuilder, int, Mesh)>();
@@ -220,16 +331,17 @@ namespace AquariumCiv.View
                 BakeAO(all);
                 aoMs = t.Elapsed.TotalMilliseconds;
             }
-            Glows();
-            int made = SyncPeople();
-            lastRefreshMs = sw.Elapsed.TotalMilliseconds;
-            lastAoMs = aoMs;
-            lastRefreshInfo = lastChunks.Count == 0
-                ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
-                : $"rebuilt chunk(s) {string.Join(",", lastChunks)} in {lastRefreshMs:0.0} ms (AO {aoMs:0.0} ms), {made} new people, {layout.pieces.Count} pieces " +
-                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}]";
-            if (logRebuilds && lastChunks.Count > 0) Debug.Log("[BoxView] " + lastRefreshInfo);
-            return lastRefreshInfo;
+            foreach (var (_, mb, _, _) in builders) mb.Free();
+        }
+
+        /// <summary>A frame without a refresh: the next waiting chunk (the layout has not moved on since it was hashed).</summary>
+        void BuildWaitingChunk()
+        {
+            if (root == null || !deferAO || refreshFrame == Time.frameCount || ChunksWaiting == 0) return;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            PickChunks(ScrubChunksPerFrame);
+            RebuildChunks(sw, out _, out _, out _);
+            lastWaitingMs = sw.Elapsed.TotalMilliseconds;
         }
 
         /// <summary>Debug hook: rebuild every box in the scene (after editing a layout from `script eval`).</summary>
@@ -250,7 +362,7 @@ namespace AquariumCiv.View
 
         GameObject Spawn(string name, Mesh mesh, Material mat, bool shadows)
         {
-            var go = new GameObject(name) { hideFlags = HideFlags.DontSave };
+            var go = new GameObject(name) { hideFlags = GenFlags };
             go.transform.SetParent(root, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();
@@ -261,7 +373,7 @@ namespace AquariumCiv.View
 
         MeshCollider AoCollider(string name, Mesh mesh)
         {
-            var go = new GameObject(name) { hideFlags = HideFlags.HideAndDontSave, layer = AoLayer };
+            var go = new GameObject(name) { hideFlags = GenFlags | HideFlags.HideInHierarchy | HideFlags.HideInInspector, layer = AoLayer };
             go.transform.SetParent(root, false);
             var c = go.AddComponent<MeshCollider>();
             c.cookingOptions = MeshColliderCookingOptions.UseFastMidphase;
@@ -283,7 +395,7 @@ namespace AquariumCiv.View
 
         MeshBuilder BuildChunk(int k, out int terrainVerts)
         {
-            var mb = new MeshBuilder(seed * 31 + k * 7);
+            var mb = MeshBuilder.Rent(seed * 31 + k * 7);
             Terrain(mb, k);
             terrainVerts = mb.VertexCount;
             foreach (var f in layout.fields)
@@ -346,7 +458,7 @@ namespace AquariumCiv.View
             {
                 var e = Hash.New();
                 e.Add((int)p.kind); e.Add(p.x); e.Add(p.z); e.Add(p.yaw); e.Add(p.w); e.Add(p.d); e.Add((int)p.era); e.Add((int)p.roof);
-                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant);
+                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant); e.Add(p.grow);
                 float r = PieceRadius(p) + (p.kind == PieceKind.Fire ? 0.6f : 0f);
                 Into(h, p.x - r, p.z - r, p.x + r, p.z + r, e.h);
             }
@@ -365,7 +477,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i + 1 < path.points.Length; i++)
                 {
                     Vector2 a = path.points[i], b = path.points[i + 1];
-                    var e = Hash.New(); e.Add(a); e.Add(b); e.Add((int)path.tier);
+                    var e = Hash.New(); e.Add(a); e.Add(b); e.Add((int)path.tier); e.Add(path.cobbled);
                     Into(h, Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y), e.h);
                 }
             }
@@ -402,6 +514,9 @@ namespace AquariumCiv.View
         const float FieldRes = 0.025f, PathRange = 0.3f, CanalRange = 0.12f;
         static readonly int FX = Mathf.CeilToInt(2f * Land.HX / FieldRes) + 1, FZ = Mathf.CeilToInt(2f * Land.HZ / FieldRes) + 1;
         readonly float[][] pathField = new float[3][];
+        /// <summary>Cobbled paths below road tier (#34/#90), per tier; only filled while there are any.</summary>
+        readonly float[][] cobbleField = new float[3][];
+        bool anyCobbled;
         float[] canalField, shoreField;
         const float ShoreRange = 0.45f;
 
@@ -429,18 +544,24 @@ namespace AquariumCiv.View
         void PrepareFields()
         {
             for (int t = 0; t < 3; t++) Fill(ref pathField[t], PathRange);
+            anyCobbled = false;
+            foreach (var path in layout.paths)
+                if (path.cobbled && path.tier != PathTier.Road && path.points != null && path.points.Length > 0) { anyCobbled = true; break; }
+            if (anyCobbled) for (int t = 0; t < 3; t++) Fill(ref cobbleField[t], PathRange);
             Fill(ref canalField, CanalRange);
             foreach (var path in layout.paths)
             {
                 var pts = path.points;
                 if (pts == null || pts.Length == 0) continue;
                 var f = pathField[(int)path.tier];
-                if (pts.Length == 1) { Stamp(f, pts[0], pts[0], PathRange); continue; }
+                var cf = anyCobbled && path.cobbled && path.tier != PathTier.Road ? cobbleField[(int)path.tier] : null;
+                if (pts.Length == 1) { Stamp(f, pts[0], pts[0], PathRange); if (cf != null) Stamp(cf, pts[0], pts[0], PathRange); continue; }
                 var last = pts[0];
                 for (int i = 1; i < pts.Length; i++)
                 {
                     if (i < pts.Length - 1 && (pts[i] - last).sqrMagnitude < 0.05f * 0.05f) continue; // coarser for the field
                     Stamp(f, last, pts[i], PathRange);
+                    if (cf != null) Stamp(cf, last, pts[i], PathRange);
                     last = pts[i];
                 }
             }
@@ -539,6 +660,9 @@ namespace AquariumCiv.View
             return best;
         }
 
+        /// <summary>Open ground for a small prop here (not water, a path, a field, a building or a tree)? For the care layer's weeds (#37).</summary>
+        public bool FreeForProp(Vector2 p, float r) => Free(p, r, taken);
+
         public bool InPond(Vector2 p) => shore != null && InPolygon(shore, p);
 
         /// <summary>Signed distance to the shoreline: negative in the pond.</summary>
@@ -590,7 +714,12 @@ namespace AquariumCiv.View
         static Color Cobble(float x, float z, float n)
         {
             float s = Land.Noise(x * 22f, z * 22f);
-            return Color.Lerp(Color.Lerp(Palette.Stone, Palette.Path, 0.35f), Palette.RockDark, s * 0.45f + (n - 0.5f) * 0.2f);
+            // Stones and darker grout in a staggered grid, so the square reads as cobbles at default zoom (#91).
+            float gx = x * 9f, gz = z * 9f + (Mathf.FloorToInt(x * 9f) & 1) * 0.5f;
+            float fx = gx - Mathf.Floor(gx), fz = gz - Mathf.Floor(gz);
+            bool grout = fx < 0.14f || fz < 0.14f;
+            var stone = Color.Lerp(Color.Lerp(Palette.Stone, Palette.Path, 0.2f), Palette.RockLight, s * 0.5f + (n - 0.5f) * 0.3f);
+            return grout ? Color.Lerp(stone, Palette.RockDark, 0.55f) : stone;
         }
 
         static Color Grass(float n, float y)
@@ -622,13 +751,15 @@ namespace AquariumCiv.View
                 if (d > r + 0.12f) continue;
                 if (d > r)
                 {
-                    if (c.kind == ClearingKind.Dirt || c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Dirt, 0.35f);
-                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.GrassC, 0.35f);
+                    if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, Palette.Dirt, 0.35f);
+                    else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Path, 0.6f); // a worn sandy edge round the square
+                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.Path, 0.45f); // a trodden ring round the green
                     continue;
                 }
                 col = c.kind switch
                 {
-                    ClearingKind.Green => Color.Lerp(Palette.GrassC, Palette.GrassA, n),
+                    // The village green: a mown lawn, brighter than the grass round it, so it reads at default zoom (#91).
+                    ClearingKind.Green => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Wheat, 0.3f), Palette.GrassC, n * 0.35f),
                     ClearingKind.Cobble => Cobble(x, z, n),
                     ClearingKind.Yard => Color.Lerp(col, Palette.Dirt, d < r * 0.7f ? 0.55f : 0.3f),
                     ClearingKind.Meadow => Meadow(n),
@@ -665,6 +796,7 @@ namespace AquariumCiv.View
                     PathTier.Road => Cobble(x, z, n),
                     _ => Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f),
                 };
+                if (anyCobbled && (PathTier)t != PathTier.Road && Sample(cobbleField[t], x, z, PathRange) < w) col = Cobble(x, z, n);
                 onPath = true;
             }
             if (!onPath && !painted)
@@ -693,11 +825,11 @@ namespace AquariumCiv.View
             var parts = new MeshBuilder[Bands];
             System.Threading.Tasks.Parallel.For(0, Bands, b =>
             {
-                var pb = new MeshBuilder(seed * 31 + k * 7 + b * 101);
+                var pb = MeshBuilder.Rent(seed * 31 + k * 7 + b * 101);
                 TerrainRows(pb, k, j0 + (j1 - j0) * b / Bands, j0 + (j1 - j0) * (b + 1) / Bands);
                 parts[b] = pb;
             });
-            foreach (var pb in parts) mb.Append(pb);
+            foreach (var pb in parts) mb.AppendFree(pb);
         }
 
         void TerrainRows(MeshBuilder mb, int k, int j0, int j1)
@@ -870,16 +1002,16 @@ namespace AquariumCiv.View
         void PieceMesh(MeshBuilder mb, PieceData p)
         {
             // Each piece gets its own builder seeded by its seed, so its look doesn't change when others are added.
-            var lb = new MeshBuilder(p.seed * 7919 + (int)p.era * 31 + seed) { jitter = 0.035f };
+            var lb = MeshBuilder.Rent(p.seed * 7919 + (int)p.era * 31 + seed);
             float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
-            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one);
+            lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one * Mathf.Max(0.02f, p.grow));
             Pieces.Draw(lb, p, LotGround(lb));
-            mb.Append(lb);
+            mb.AppendFree(lb);
         }
 
         void FieldMesh(MeshBuilder mb, FieldData f)
         {
-            var fb = new MeshBuilder(f.seed * 131 + seed);
+            var fb = MeshBuilder.Rent(f.seed * 131 + seed);
             Pieces.Ground ground = q => land.OnGround(q.x, q.z);
             if (f.crop == CropKind.Wheat || f.crop == CropKind.Sprout)
             {
@@ -914,7 +1046,7 @@ namespace AquariumCiv.View
                     else Pieces.Fence(fb, ground, new[] { A, B });
                 }
             }
-            mb.Append(fb);
+            mb.AppendFree(fb);
         }
 
         // ---------------- nature ----------------
@@ -946,13 +1078,13 @@ namespace AquariumCiv.View
             ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
             bool In(Vector2 p) => ChunkOf(p) == k;
             float H(int cat, int i, int c) => Land.Hash3(seed * 977 + k * 131 + cat, i, c);
-            MeshBuilder Item(int cat, int i) => new(seed * 7919 + k * 104729 + cat * 15485863 + i * 31);
+            MeshBuilder Item(int cat, int i) => MeshBuilder.Rent(seed * 7919 + k * 104729 + cat * 15485863 + i * 31);
             foreach (var t in layout.trees)
                 if (In(t.pos))
                 {
-                    var tb = new MeshBuilder(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
+                    var tb = MeshBuilder.Rent(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
                     Pieces.Tree(tb, land.OnGround(t.pos), t.scale, t.pine);
-                    mb.Append(tb);
+                    mb.AppendFree(tb);
                 }
             if (layout.reeds)
                 for (int i = 0; i < reedSpots.Count; i++)
@@ -964,7 +1096,7 @@ namespace AquariumCiv.View
                     if (clash || CanalDist(at.x, at.y) < 0.06f) continue;
                     var rb = Item(0, i);
                     Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
-                    mb.Append(rb);
+                    mb.AppendFree(rb);
                 }
             if (!layout.autoNature) return;
             // Candidates per chunk: about a quarter of the old whole-box counts get through the free-spot checks.
@@ -979,7 +1111,7 @@ namespace AquariumCiv.View
                     if (H(1, i, 3) > bias || !Free(p, 0.22f, near)) continue;
                     var ib = Item(1, i);
                     Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f);
-                    mb.Append(ib);
+                    mb.AppendFree(ib);
                     near.Add((p, 0.2f));
                 }
             for (int i = 0, n = Mathf.RoundToInt(9 * kd); i < n; i++)
@@ -988,7 +1120,7 @@ namespace AquariumCiv.View
                 if (!Free(p, 0.1f, near)) continue;
                 var ib = Item(2, i);
                 Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f);
-                mb.Append(ib);
+                mb.AppendFree(ib);
                 near.Add((p, 0.1f));
             }
             for (int i = 0, n = Mathf.RoundToInt(8 * kd); i < n; i++)
@@ -998,7 +1130,7 @@ namespace AquariumCiv.View
                 float r = Mathf.Lerp(0.05f, 0.14f, H(3, i, 3));
                 var ib = Item(3, i);
                 Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f);
-                mb.Append(ib);
+                mb.AppendFree(ib);
                 near.Add((p, r));
             }
             for (int i = 0, n = Mathf.RoundToInt(150 * kd); i < n; i++)
@@ -1015,7 +1147,7 @@ namespace AquariumCiv.View
                     if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
                 if (flowers || H(4, i, 5) < 0.2f)
                     ib.Ico(g + Vector3.up * h * 0.8f, flowers ? 0.018f : 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(4, i, 6) * Palette.Flowers.Length))], 0.1f);
-                mb.Append(ib);
+                mb.AppendFree(ib);
             }
         }
 
@@ -1038,9 +1170,9 @@ namespace AquariumCiv.View
         // ---------------- glows ----------------
         /// <summary>
         /// Soft additive glows in one mesh (one draw, rebuilt on every refresh: it is tiny): per fire a halo behind the flame,
-        /// a flat warm pool on the ground, 8 embers; per lantern a small light that follows the night level. The motion of
-        /// all of it is in the Glow shader. The fires' smoke is a second tiny mesh with its own alpha-blended material
-        /// (one more draw for every fire in the box).
+        /// a flat warm pool on the ground, embers (and, by look, billboard flames, sparks and a warm wash: <see cref="FireLooks"/>);
+        /// per lantern a small light that follows the night level. The motion of all of it is in the Glow shader. The fires'
+        /// smoke is a second tiny mesh with its own alpha-blended material (one more draw for every fire in the box).
         /// </summary>
         void Glows()
         {
@@ -1068,12 +1200,21 @@ namespace AquariumCiv.View
                 {
                     var foot = frame.MultiplyPoint3x4(Vector3.zero);
                     float phase = Pieces.Phase(p.seed);
-                    Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), 0.42f, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
-                    Add(foot + Vector3.up * 0.02f, 0.55f, 4f, Palette.FirePool, phase);                            // warm pool on the ground
-                    for (int e = 0; e < 8; e++)                                                                     // embers
-                        Add(foot + Vector3.up * 0.14f, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 11)) / 8f, 1.2f + 0.8f * Land.Hash3(p.seed, e, 12));
-                    for (int s = 0; s < 4; s++)                                                                     // smoke
-                        AddSmoke(foot + Vector3.up * 0.3f, (s + Land.Hash3(p.seed, s, 13) * 0.4f) / 4f, 4f);
+                    var look = FireLooks.Spec(FireLooks.Active);
+                    Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), look.haloRadius, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
+                    Add(foot + Vector3.up * 0.02f, look.poolRadius, 4f, Palette.FirePool, phase, look.poolBoost);                 // warm pool on the ground
+                    if (look.washRadius > 0f) Add(frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), look.washRadius, 7f, Palette.FlameBodyA, phase, 0.16f); // warm wash over the neighbours
+                    for (int t = 0; t < look.softTongues; t++)                                                                     // billboard flames, the big one last
+                    {
+                        FireLooks.SoftTongue(t, look.softTongues, phase * 6.2832f, out float dx, out float dz, out float halfW, out float tall);
+                        Add(foot + new Vector3(dx, 0.012f, dz), halfW, 5f, Color.white, Mathf.Repeat(phase + t * 0.37f, 1f), tall);
+                    }
+                    for (int e = 0; e < look.embers; e++)                                                                          // embers
+                        Add(foot + Vector3.up * look.emberY, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 11)) / look.embers, 1.2f + 0.8f * Land.Hash3(p.seed, e, 12));
+                    for (int e = 0; e < look.sparks; e++)                                                                          // sparks
+                        Add(foot + Vector3.up * 0.06f, 0.013f, 6f, Palette.FireSpark, (e + Land.Hash3(p.seed, e, 14)) / look.sparks, 1.4f + 1.1f * Land.Hash3(p.seed, e, 15));
+                    for (int s = 0; s < look.smokePuffs; s++)                                                                      // smoke
+                        AddSmoke(foot + Vector3.up * 0.3f, (s + Land.Hash3(p.seed, s, 13) * 0.4f) / look.smokePuffs, 4f);
                 }
                 else if (p.kind == PieceKind.Lantern)
                     Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + Pieces.Phase(p.seed), Palette.Lamp);
@@ -1112,13 +1253,13 @@ namespace AquariumCiv.View
         {
             if (peopleRoot == null)
             {
-                peopleRoot = new GameObject("People") { hideFlags = HideFlags.DontSave }.transform;
+                peopleRoot = new GameObject("People") { hideFlags = GenFlags }.transform;
                 peopleRoot.SetParent(root, false);
             }
             var seen = new HashSet<int>();
             dolls.Clear();
             int made = 0;
-            foreach (var v in layout.villagers)
+            foreach (var v in plannedPeople ? NoVillagers : layout.villagers)
             {
                 int key = v.seed;
                 while (!seen.Add(key)) key += 1 << 24;
@@ -1187,7 +1328,7 @@ namespace AquariumCiv.View
             }
         }
 
-        void LateUpdate() => SortPanes();
+        void LateUpdate() { BuildWaitingChunk(); SortPanes(); }
 
         // ---------------- ambient occlusion ----------------
         /// <summary>The last AO bake's breakdown (keys, timings), for profiling.</summary>

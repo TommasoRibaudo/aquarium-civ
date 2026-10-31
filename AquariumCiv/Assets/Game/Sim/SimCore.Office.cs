@@ -364,7 +364,7 @@ namespace AquariumCiv.Sim
             bool rival = Alive(h.rivalId) != null;
             // A holder tells a kind's lines in turn; once they've told them all, the kind rests longer each round (#61: a
             // 40-year term had "made an announcement every morning" three times).
-            int Rest(TermStory st) => TermFreshYears * (1 + 2 * (State.chronicle.Count(e => e.kind == st.kind && e.notableId == h.id) / st.lines.Length));
+            int Rest(TermStory st) => TermFreshYears * (1 + 2 * ((State.chronicle.Count(e => e.kind == st.kind && e.notableId == h.id) + PrunedTold(st.kind, h.id)) / st.lines.Length));
             var options = t.stories.Where(st => Fresh(st.kind, h.id, Rest(st)) && (st.Others == 0 || TermOthers(h, st.Others, 24) != null)).ToList();
             if (options.Count == 0) return null;
             // A quarrelsome holder with a living rival rows more (notable-roles §4: rivalries ×1.5 [est]).
@@ -374,7 +374,7 @@ namespace AquariumCiv.Sim
             foreach (var st in options) if ((pick -= W(st)) < 0) { chosen = st; break; }
             var others = chosen.Others == 0 ? null : TermOthers(h, chosen.Others, 24);
             // The holder's lines of a kind take turns, so a long term doesn't repeat itself.
-            int told = State.chronicle.Count(e => e.kind == chosen.kind && e.notableId == h.id);
+            int told = State.chronicle.Count(e => e.kind == chosen.kind && e.notableId == h.id) + PrunedTold(chosen.kind, h.id);
             string line = chosen.lines[told % chosen.lines.Length];
             if (chosen.couple && line.Contains("{4}"))
             {
@@ -484,7 +484,7 @@ namespace AquariumCiv.Sim
         {
             string a = others != null && others.Count > 0 ? others[0].FullName : "someone";
             string b = others != null && others.Count > 1 ? others[1].FullName : "someone else";
-            string quarrel = QuarrelIn(Quarrels[(int)(RoleRoll(salt, h.id, 0) * Quarrels.Length) % Quarrels.Length]);
+            string quarrel = QuarrelIn(QuarrelGated(Quarrels[(int)(RoleRoll(salt, h.id, 0) * Quarrels.Length) % Quarrels.Length]));
             string late = State.era == Era.Camp ? "the fire burned low" : "the lamps went out";
             return string.Format(line, h.FullName, seat.role, SeatLabel(seat.role), a, b, EraNoun(State.era), quarrel, late);
         }
@@ -503,6 +503,7 @@ namespace AquariumCiv.Sim
                 BuildingType.Tavern => "inn",
                 BuildingType.Lumbermill => "timber yard",
                 BuildingType.Guildhall => "guildhall",
+                BuildingType.Bakery => "bakery",
                 null => "fire",
                 _ => Label(b),
             };

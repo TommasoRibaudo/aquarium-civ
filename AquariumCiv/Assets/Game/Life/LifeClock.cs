@@ -52,6 +52,17 @@ namespace AquariumCiv.Life
             return DayPhase.Evening;
         }
 
+        /// <summary>When the afternoon's work ends in a season (user 2026-10-30: in winter people work less in the daytime, in
+        /// summer more): the short winter days end at 15:30 and the people sit at home by the hearth until the evening
+        /// gathering; summer runs a little past the usual 17:00.</summary>
+        public static float AfternoonEnd(Season season) => season == Season.Winter ? 15.5f : season == Season.Summer ? 17.3f : Evening;
+
+        /// <summary>Work hours that day: the morning block and the afternoon one, which ends with the season.</summary>
+        public static bool IsWorkHour(float hour, Season season) => (hour >= WorkStart && hour < Midday) || (hour >= AfternoonStart && hour < AfternoonEnd(season));
+
+        /// <summary>Hours of daytime work in a season (the morning's and the afternoon's).</summary>
+        public static float WorkHours(Season season) => (Midday - WorkStart) + (AfternoonEnd(season) - AfternoonStart);
+
         public static bool IsWorkHour(float hour) => (hour >= WorkStart && hour < Midday) || (hour >= AfternoonStart && hour < Evening);
 
         /// <summary>Real seconds one view hour lasts at this hour.</summary>
@@ -68,8 +79,36 @@ namespace AquariumCiv.Life
             }
         }
 
+        /// <summary>Real seconds between two view hours of one day (<paramref name="h0"/> ≤ <paramref name="h1"/>), across
+        /// the phases' different speeds.</summary>
+        public static float RealSecondsBetween(float h0, float h1)
+        {
+            float s = 0f, h = Math.Max(0f, h0);
+            h1 = Math.Min(24f, h1);
+            int guard = 0;
+            while (h < h1 - 1e-6f && guard++ < 16)
+            {
+                float next = Math.Min(h1, NextBoundary(h));
+                s += (next - h) * RealSecondsPerViewHour(h);
+                h = next;
+            }
+            return s;
+        }
+
         /// <summary>View hours that <paramref name="seconds"/> real seconds cover from this hour (a reaction's length).</summary>
         public static float ViewHoursFor(float hour, float seconds) => seconds / RealSecondsPerViewHour(hour);
+
+        /// <summary>
+        /// The view day after a frame (#30). A view day and a sim month are both ~5 real minutes but out of step, so the
+        /// month ticks in the middle of a view day; switching the day there swapped everyone's plan and the dolls jumped.
+        /// The view keeps <paramref name="day"/> until the clock passes midnight (<paramref name="midnights"/> &gt; 0), then
+        /// takes the sim's month; a sim further ahead (a catch-up, a skip) or behind (another box) is taken at once.
+        /// </summary>
+        public static long NextViewDay(long day, long midnights, long simMonth)
+        {
+            if (midnights > 0 || simMonth < day || simMonth > day + 1) return simMonth;
+            return day;
+        }
 
         /// <summary>Advance the view clock by real seconds (the view calls this every frame).</summary>
         public static ViewTime Advance(ViewTime t, float realSeconds)

@@ -3,6 +3,7 @@
     "rootNamespace": "AquariumCiv.View.Tests",
     "references": [
         "AquariumCiv.Sim",
+        "AquariumCiv.Life",
         "AquariumCiv.View",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

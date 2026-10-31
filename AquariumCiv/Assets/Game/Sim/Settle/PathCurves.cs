@@ -31,10 +31,13 @@ namespace AquariumCiv.Sim.Settle
 
         /// <summary>Curves for the map's tier grid. Cells on the green or the pond are left out (the green is drawn on
         /// its own); a chain that ends next to the green reaches into it.</summary>
-        public static List<PathCurve> Build(SiteMap map)
+        public static List<PathCurve> Build(SiteMap map) => Build(map, null);
+
+        /// <summary>The same for another tier grid (the time-lapse draws a past year's paths on today's map).</summary>
+        public static List<PathCurve> Build(SiteMap map, byte[] tiers)
         {
             const int NX = SiteMap.NX, NZ = SiteMap.NZ, N = SiteMap.N;
-            var tier = map.tier;
+            var tier = tiers ?? map.tier;
             var on = new bool[N];
             for (int c = 0; c < N; c++)
                 on[c] = tier[c] >= PathNet.Trail && !map.Green(c) && !map.pond[c];

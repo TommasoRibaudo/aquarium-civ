@@ -595,6 +595,10 @@ namespace AquariumCiv.Sim
             {
                 var offices = eraOffices;
                 eraOffices = null;
+                // An empty leader seat got an instant vote (era-moment.md §4): told as its own beat, not as an office.
+                var voted = leader == null ? HolderOf(LeaderOf(s.era)) : null;
+                if (voted != null && offices.RemoveAll(o => o.n == voted && o.role == LeaderOf(s.era)) > 0)
+                    RoleLine("role_era", $"No {LeaderOf(s.era - 1)} was left to carry the title, so the new {EraNoun(s.era)} chose {voted.FullName} as its first {LeaderOf(s.era)} on the spot.", 0.8f, voted, null, SeatOf(LeaderOf(s.era)));
                 if (offices.Count > 0)
                 {
                     var parts = offices.Take(3).Select(o => $"{o.n.FullName} became {o.role}").ToList();
@@ -603,6 +607,31 @@ namespace AquariumCiv.Sim
                     if (offices.Count > 1) e.otherNotableId = offices[1].n.id;
                 }
             }
+        }
+
+        /// <summary>Side-effect free: who the next era's instant vote would choose for its leader if the leader seat is empty
+        /// at the era change (#86, user 2026-10-30: the vote line names the winner). Null when the leader carries over, when
+        /// nobody stands (someone then steps out of the crowd, unnamed until it happens) or there is no next era. Mirrors
+        /// <see cref="TryFill"/> for the leader seat, which is first in the table, so nothing else has filled before it.</summary>
+        public Notable PreviewEraVote()
+        {
+            var s = State;
+            if (IsFinalEra || HolderOf(LeaderOf(s.era)) != null) return null;
+            var next = s.era + 1;
+            string role = LeaderOf(next);
+            var keeps = RolesOf(next).ToList();
+            bool Free(Notable n) => n.alive && n.age >= AdultAge && (RoleOf(n) == null || !keeps.Contains(RoleOf(n)) || RoleOf(n) == LeaderOf(s.era));
+            var free = s.notables.Where(Free).ToList();
+            var working = free.Where(n => n.age < Config.retireAge).ToList();
+            var pool = working.Count > 0 ? working : free;
+            if (pool.Count == 0) return null;
+            var rule = RuleOf(next, role);
+            if (rule == RoleRule.Election)
+            {
+                var voters = s.notables.Where(n => n.alive && n.age >= AdultAge).ToList();
+                return Election(role, pool, voters).winner;
+            }
+            return pool.OrderByDescending(n => Standing(n, role)).ThenBy(n => n.id).First();
         }
 
         // ---------- helpers ----------
@@ -618,8 +647,7 @@ namespace AquariumCiv.Sim
                 id = s.NextId(), name = r.Pick(NameData.Given), family = r.Pick(NameData.Families), trait = r.Pick(NameData.Traits),
                 age = r.Range(25f, 40f), lifespan = r.Range(Config.lifespanMin, Config.lifespanMax), bornMonth = s.month,
             };
-            for (int tries = 0; tries < 20 && s.notables.Any(o => o.alive && o.FullName == n.FullName); tries++)
-                n.name = r.Pick(NameData.Given);
+            MakeNameUnique(n, r);
             s.notables.Add(n);
             n.job = ChooseJob(n, null);
             return n;
