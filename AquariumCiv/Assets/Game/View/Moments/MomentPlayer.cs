@@ -166,6 +166,7 @@ namespace AquariumCiv.View
             toolLine = "";
             sayUntil = -1f; bubble.style.display = DisplayStyle.None; // a relic line still up gives way to the moment
             if (GameClock.Instance != null) GameClock.Instance.Held = true;
+            momentOpen = true;
             Offset.Reset();
             pressDown = false;
             wave = null;
@@ -198,9 +199,13 @@ namespace AquariumCiv.View
         }
 
         int momentEra; float momentStart; bool momentReplay, leftByPlayer;
+        // The director stays Finished after a moment: without this, anyone holding the clock later (the time-lapse) "ended"
+        // it again and let the clock go (tester batch 3).
+        bool momentOpen;
 
         void EndMoment(bool crossed)
         {
+            momentOpen = false;
             if (!momentReplay) GameClock.Tel.EraMomentEnded(momentEra, leftByPlayer, Time.unscaledTime - momentStart); // #100: watched live or skipped
             ReleaseCamera();
             if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f);
@@ -244,7 +249,7 @@ namespace AquariumCiv.View
                 }
             }
             if (Playing) Play(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
-            else if (Director.State == MomentDirector.Phase.Finished && (cam != null && !cam.enabled || (GameClock.Instance != null && GameClock.Instance.Held)))
+            else if (momentOpen && Director.State == MomentDirector.Phase.Finished && (cam != null && !cam.enabled || (GameClock.Instance != null && GameClock.Instance.Held)))
                 EndMoment(true);
             UpdatePuffs(Time.unscaledDeltaTime);
             UpdateWatchButton();
@@ -557,14 +562,6 @@ namespace AquariumCiv.View
             return card;
         }
 
-        void UpdateWatchButton()
-        {
-            var hud = GameHud.Instance;
-            // wiping after the offer: once the glass is under the offer's threshold Watch shows in clean mode too (tester
-            // batch 2: junk left in the box kept clean mode on and Watch hidden)
-            if (hud == null || !hud.CleanMode) wipingForMoment = false;
-            bool wipedEnough = wipingForMoment && Sim != null && !EraWaiting.OfferWipeFirst(Sim.State.grime);
-            bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && (!hud.CleanMode || wipedEnough) && !hud.SheetOpen);
         /// <summary>The player is inside something else (a person card, the time-lapse, Show me, the first run's sheets):
         /// prompts that float over the world wait (tester batch 3).</summary>
         public static bool PromptsBlocked()
@@ -579,6 +576,14 @@ namespace AquariumCiv.View
             return fr != null && (fr.CardOpen || fr.NameSheetOpen);
         }
 
+        void UpdateWatchButton()
+        {
+            var hud = GameHud.Instance;
+            // wiping after the offer: once the glass is under the offer's threshold Watch shows in clean mode too (tester
+            // batch 2: junk left in the box kept clean mode on and Watch hidden)
+            if (hud == null || !hud.CleanMode) wipingForMoment = false;
+            bool wipedEnough = wipingForMoment && Sim != null && !EraWaiting.OfferWipeFirst(Sim.State.grime);
+            bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && (!hud.CleanMode || wipedEnough) && !hud.SheetOpen);
             bool show = Waiting.waiting && !Playing && hudFree && !PromptsBlocked() && wipeOffer.resolvedStyle.display == DisplayStyle.None;
             watchButton.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             if (show && watchButton.text != Waiting.watchLabel) watchButton.text = Waiting.watchLabel;

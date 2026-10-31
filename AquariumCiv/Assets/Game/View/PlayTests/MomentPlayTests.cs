@@ -188,6 +188,15 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(GameClock.Instance.Held);
                 Assert.IsTrue(hud.IsVisible, "the HUD comes back");
                 Assert.IsFalse(Shown(watch), "nothing waits now");
+                StringAssert.DoesNotContain("Drag from", mp.LastSaid ?? "", "no caption for a tool the player can't pick up yet");
+                // Tester batch 3: the finished moment let go of a clock someone else held afterwards.
+                var lapse = TimeLapseView.Ensure();
+                Assert.IsTrue(lapse.Open());
+                yield return new WaitForSecondsRealtime(1f);
+                Assert.IsTrue(GameClock.Instance.Held, "the replay keeps the clock held");
+                lapse.Close();
+                yield return null; yield return null;
+                Assert.IsFalse(GameClock.Instance.Held);
                 var ask = mp.GetComponent<UIDocument>().rootVisualElement.Q("moment-notify");
                 Assert.IsTrue(Shown(ask), "the first moment ends with the notification question");
                 yield return TapAt(GameUiPanel.ScreenCenter(ask.Q("moment-notify-no")));
