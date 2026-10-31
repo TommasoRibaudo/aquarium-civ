@@ -196,6 +196,12 @@ namespace AquariumCiv.GameUI
             down = count > 0;
         }
 
+        /// <summary>Camera mode: the small pill says who the camera follows (null = nobody), so a follow shows even at full view.</summary>
+        public void SetCameraNote(string note)
+        {
+            if (exitButton != null) exitButton.text = string.IsNullOrEmpty(note) ? "Tap to show the UI" : $"{note} · tap to show the UI";
+        }
+
         /// <summary>Clean and Shape don't apply (a museum visit, the time-lapse): hidden while any <paramref name="reason"/> holds
         /// them, clean mode ends and the toast showing goes (tester batch 2).</summary>
         public void HideTools(string reason, bool hide)

@@ -285,7 +285,20 @@ namespace AquariumCiv.View
         PeopleView followPeople;
 
         /// <summary>Follow a person's doll (None stops). Camera mode sets it by itself; tests and the debug panel call it.</summary>
-        public void Follow(AquariumCiv.Life.PersonRef who) { Following = who; followMissing = 0; }
+        public void Follow(AquariumCiv.Life.PersonRef who)
+        {
+            Following = who;
+            followMissing = 0;
+            var hud = AquariumCiv.GameUI.GameHud.Instance;
+            if (hud != null) hud.SetCameraNote(who.IsNone ? null : "Following " + FollowName(who));
+        }
+
+        static string FollowName(AquariumCiv.Life.PersonRef who)
+        {
+            var clock = AquariumCiv.Game.GameClock.Instance;
+            var n = who.IsNotable && clock != null && clock.Sim != null ? clock.Sim.FindNotable(who.notableId) : null;
+            return n != null ? n.name : "a villager";
+        }
 
         void HookHud()
         {
