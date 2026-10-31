@@ -156,7 +156,7 @@ namespace AquariumCiv.View
             if (root != null) return;
             doc = gameObject.AddComponent<UIDocument>();
             doc.panelSettings = GameUiPanel.Settings;
-            doc.sortingOrder = 14; // over the HUD's bottom row and the person card
+            doc.sortingOrder = 11; // over the HUD (10) and under the person card and the moments (12): Who opens the card over this panel
             var uss = Resources.Load<StyleSheet>("GameUI/TimeLapse");
             if (uss != null) doc.rootVisualElement.styleSheets.Add(uss);
             else Debug.LogWarning("[TimeLapseScreenView] Resources/GameUI/TimeLapse.uss is missing: the screen draws unstyled");

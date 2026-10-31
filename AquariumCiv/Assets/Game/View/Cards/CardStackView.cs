@@ -118,7 +118,13 @@ namespace AquariumCiv.View
 
         /// <summary>The History button: the waiting stack if there is one. Until the time-lapse has a screen of its own (#79,
         /// nothing there lets a player back out yet) the rest stays the History sheet.</summary>
-        bool OnHistory() => model != null && model.HistoryDot && model.Reopen();
+        /// <summary>Cards waiting: show them. Otherwise the time-lapse screen (#79; its Close is the way out). False (nothing to replay yet,
+        /// or a moment is playing): the HUD opens its History sheet.</summary>
+        bool OnHistory()
+        {
+            if (model != null && model.HistoryDot && model.Reopen()) return true;
+            return TimeLapseScreenView.Ensure().Open();
+        }
 
         void Bind(SimCore sim)
         {

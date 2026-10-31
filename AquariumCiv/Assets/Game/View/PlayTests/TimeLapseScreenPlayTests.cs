@@ -5,6 +5,7 @@ using AquariumCiv.GameUI;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace AquariumCiv.View.PlayTests
 {
@@ -87,12 +88,70 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(m.AtNow);
 
             // close: the live box comes back
+            yield return Frames(4);
+            yield return Shot("tl-before-close");
             yield return TapName("tl-close");
             yield return Frames(3);
             Assert.IsFalse(screen.IsOpen);
             Assert.IsFalse(view.Active);
             Assert.IsFalse(GameClock.Instance.Held, "the sim clock runs again");
             AssertNoErrors("time-lapse screen");
+        }
+
+        /// <summary>The panel scale on a second phone size, the Snapshot button's PNG (with its label), and Who on a pin.</summary>
+        [UnityTest]
+        public IEnumerator SnapshotSavesAPngWhoOpensTheCardAndThePanelFitsAt1080x2340()
+        {
+            yield return OpenSlice(1080, 2340, seed: 7902);
+            yield return Grow(45);
+            var screen = TimeLapseScreenView.Ensure();
+            Assert.IsTrue(screen.Open());
+            yield return Until(() => screen.Model.Layout.Width > 0f, 2f);
+            yield return Frames(4);
+            var m = screen.Model;
+            var vt = screen.Root.panel.visualTree.worldBound;
+            Assert.AreEqual(1080f, vt.width, 1f, "the panel is 1080 units wide at this size");
+            var pw = screen.Root.Q("tl-panel").worldBound;
+            Assert.LessOrEqual(pw.xMax, vt.xMax + 0.5f); Assert.GreaterOrEqual(pw.xMin, -0.5f);
+            Assert.LessOrEqual(pw.yMax, vt.yMax + 0.5f, "the panel stays on screen");
+            Assert.Greater(screen.Bar.resolvedStyle.width, 800f, "the bar uses the width");
+            Assert.AreEqual(screen.Bar.resolvedStyle.width, m.Layout.Width, 1f, "the model laid out for the bar's width");
+            yield return Shot("tl-1080x2340");
+
+            // Who: a pin of a person opens their card over the panel
+            var g = m.Layout.Groups.FirstOrDefault(x => x.pins.Any(p => p.notableId >= 0));
+            if (g != null)
+            {
+                int idx = g.pins.FindIndex(p => p.notableId >= 0);
+                m.TapPin(g, idx);
+                yield return Frames(4);
+                var who = screen.Root.Q("tl-cap-person");
+                Assert.AreNotEqual(UnityEngine.UIElements.DisplayStyle.None, who.resolvedStyle.display, "Who shows for a person's story");
+                yield return TapAt(GameUiPanel.ScreenCenter(who));
+                yield return Until(() => PersonCardView.Instance.IsOpen, 2f);
+                Assert.IsTrue(PersonCardView.Instance.IsOpen, "Who opens the person card");
+                yield return Shot("tl-who");
+                PersonCardView.Instance.Close();
+                yield return Frames(4);
+            }
+
+            // Snapshot: a PNG with the label, saved
+            string folder = TimeLapseSnapshot.Folder;
+            if (System.IO.Directory.Exists(folder)) System.IO.Directory.Delete(folder, true);
+            m.GoNow();
+            yield return Frames(4);
+            yield return TapName("tl-snapshot");
+            yield return Until(() => System.IO.Directory.Exists(folder) && System.IO.Directory.GetFiles(folder, "*.png").Length > 0, 6f);
+            var files = System.IO.Directory.Exists(folder) ? System.IO.Directory.GetFiles(folder, "*.png") : new string[0];
+            Assert.AreEqual(1, files.Length, "Snapshot saved one PNG");
+            Assert.Greater(new System.IO.FileInfo(files[0]).Length, 20000, "the PNG has a picture in it");
+            System.IO.Directory.CreateDirectory(Shots);
+            System.IO.File.Copy(files[0], Shots + "tl-snapshot.png", true);
+            StringAssert.Contains("year-", System.IO.Path.GetFileName(files[0]));
+
+            yield return TapName("tl-close");
+            yield return Frames(4);
+            AssertNoErrors("snapshot and who");
         }
     }
 }

@@ -553,3 +553,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-30 · `SliceSceneBuilder.Shot` in play mode paints the glass magenta (#65).** [verified] Cause not chased: the shader and materials report fine and the Game view is clean. In play mode take shots from the Game view: set the rig (`BoxCamera.target/zoom`, `Apply()`) in one eval, then `unity command screenshot --view game --output <abs path>` (two calls per shot, about 4 s). `FireLooks.Active` and other debug statics survive leaving play mode here (no domain reload), so tests must not assert a debug static's live value.
 - **2026-10-30 · A restart empties `Temp/agent`; a run started during a reload never starts.** [verified]
   - `mkdir -p AquariumCiv/Temp/agent` before redirecting into it. After `unity recompile`, a `test run` sent at once can fail with `PIPELINE_UNREACHABLE`: `test status` then shows the **previous** run as `completed`. Check the start call's `"success"` and the test count.
+
+- **2026-10-31 · `test run` right after an edit + `unity recompile` can run the OLD code once** (a debug `Debug.Log` added to a
+  test did not show on the first run, only on the second). When a play test result does not match what you just changed, run
+  it a second time before debugging. `--filter_type class` matches nothing: use `category` (the `[Category]` of the fixture).
+  A play-test tap right after something changes the panel's layout (a caption card closing) can miss the button: wait 3-4
+  frames before touching. [verified, #79]

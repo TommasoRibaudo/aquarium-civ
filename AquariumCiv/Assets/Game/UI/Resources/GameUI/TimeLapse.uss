@@ -45,6 +45,7 @@
 .tl-caption { background-color: #E2D3B3; border-radius: 36px; padding: 28px 32px; margin-bottom: 16px; }
 .tl-caption-text { font-size: 38px; color: #6A4B36; white-space: normal; }
 .tl-cap-row { flex-direction: row; justify-content: flex-end; margin-top: 16px; }
+.tl-cap-row > Button { background-color: #EFE3CC; }
 
 /* over the world */
 .tl-era-card {
