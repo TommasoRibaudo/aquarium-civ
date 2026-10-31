@@ -562,12 +562,26 @@ namespace AquariumCiv.View
             if (hud == null || !hud.CleanMode) wipingForMoment = false;
             bool wipedEnough = wipingForMoment && Sim != null && !EraWaiting.OfferWipeFirst(Sim.State.grime);
             bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && (!hud.CleanMode || wipedEnough) && !hud.SheetOpen);
-            bool show = Waiting.waiting && !Playing && hudFree && wipeOffer.resolvedStyle.display == DisplayStyle.None;
+        /// <summary>The player is inside something else (a person card, the time-lapse, Show me, the first run's sheets):
+        /// prompts that float over the world wait (tester batch 3).</summary>
+        public static bool PromptsBlocked()
+        {
+            var card = PersonCardView.Instance;
+            if (card != null && card.IsOpen) return true;
+            var tl = TimeLapseView.Find();
+            if (tl != null && tl.Active) return true;
+            var sm = ShowMeDirector.Instance;
+            if (sm != null && sm.Busy) return true;
+            var fr = FirstRunView.Instance;
+            return fr != null && (fr.CardOpen || fr.NameSheetOpen);
+        }
+
+            bool show = Waiting.waiting && !Playing && hudFree && !PromptsBlocked() && wipeOffer.resolvedStyle.display == DisplayStyle.None;
             watchButton.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             if (show && watchButton.text != Waiting.watchLabel) watchButton.text = Waiting.watchLabel;
             // the safe area: keep the button above the home indicator and the HUD's bottom row
             var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            watchButton.style.bottom = 250f + i.w;
+            watchButton.style.bottom = GameUiPanel.PromptBottom + i.w;
             if (hud != null && (hud.CameraMode || hud.SheetOpen)) wipeOffer.style.display = DisplayStyle.None;
         }
 

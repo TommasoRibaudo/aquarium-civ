@@ -258,6 +258,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(1f);
                 Assert.IsTrue(ShapingView.Instance.ShapeMode, "the rain button picks the rain");
                 yield return Shot("6_rain_armed");
+                var toastEl = hud.Root.Q("hud-toast");
+                Assert.IsFalse(toastEl.resolvedStyle.display == DisplayStyle.Flex && toastEl.worldBound.Overlaps(View.Root.Q("firstrun-rain").worldBound), "the button and the toast keep to their lanes");
                 var (rx, rz) = View.Run.SuggestedRainSpot;
                 var rainPt = ShapingView.Instance.ScreenOf(rx, rz);
                 Debug.Log($"[firstrun] tapping the ground at {rainPt}, over UI: {UiInput.Over(rainPt)}, ground: {ShapingView.Instance.GroundPoint(rainPt, out var gx, out var gz)} ({gx:0.00},{gz:0.00}) vs ({rx:0.00},{rz:0.00}), charges {Sim.ShapingCharges}, cam dist {Vector3.Distance(Camera.main.transform.position, ShapingView.Instance.transform.position):0.0}");

@@ -166,6 +166,18 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.7f);
             yield return Shot("bc_1_prompt");
             var ui = UiOf(c);
+            // Tester batch 3: prompts and toasts have their own lanes, and a prompt waits while the player is elsewhere.
+            var promptEl = ui.Q("complete-prompt");
+            GameHud.Instance.Toast("All tidy, and a line long enough to wrap to a second line of the toast, so the lanes are tested.", 2f);
+            yield return Frames(3);
+            Assert.IsFalse(GameHud.Instance.Root.Q("hud-toast").worldBound.Overlaps(promptEl.worldBound), "the prompt and the toast keep to their lanes");
+            var lapse = TimeLapseView.Ensure();
+            Assert.IsTrue(lapse.Open());
+            yield return Frames(3);
+            Assert.IsFalse(Shown(promptEl), "no prompt over the time-lapse");
+            lapse.Close();
+            yield return Frames(3);
+            Assert.IsTrue(Shown(promptEl), "the prompt comes back");
             yield return Tap(ui, "complete-prompt");
             Assert.IsTrue(c.Playing, "a tap on Finish starts the last moment");
             Assert.IsFalse(clock.ActiveSim.State.boxComplete, "nothing moves before the crossing");

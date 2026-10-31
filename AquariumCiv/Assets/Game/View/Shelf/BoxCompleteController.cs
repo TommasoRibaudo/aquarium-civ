@@ -204,7 +204,7 @@ namespace AquariumCiv.View
 
         void UpdateButtons()
         {
-            bool free = HudFree() && !Playing && !ShelfOpen && !(MomentPlayer.Instance != null && MomentPlayer.Instance.Playing);
+            bool free = HudFree() && !MomentPlayer.PromptsBlocked() && !Playing && !ShelfOpen && !(MomentPlayer.Instance != null && MomentPlayer.Instance.Playing);
             prompt.style.display = free && PeakWaiting ? DisplayStyle.Flex : DisplayStyle.None;
             if (prompt.resolvedStyle.display == DisplayStyle.Flex || free)
             {
@@ -215,8 +215,8 @@ namespace AquariumCiv.View
             bool hasShelf = shelf != null && shelf.boxes.Count > 1;
             shelfBtn.style.display = free && hasShelf ? DisplayStyle.Flex : DisplayStyle.None;
             var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            prompt.style.bottom = 250f + i.w;
-            shelfBtn.style.bottom = 250f + i.w;
+            prompt.style.bottom = GameUiPanel.PromptBottom + i.w;
+            shelfBtn.style.bottom = GameUiPanel.PromptBottom + i.w;
             banner.style.top = VisitBannerTop + i.y; // under the title pill and the Feedback / Photo corner
             bool hud = GameHud.Instance != null && GameHud.Instance.CameraMode;
             if (hud) banner.style.display = DisplayStyle.None;
@@ -668,12 +668,12 @@ namespace AquariumCiv.View
 
             prompt = new Button(() => Begin()) { name = "complete-prompt", text = "Finish the box" };
             prompt.AddToClassList("hud-btn"); prompt.AddToClassList("hud-btn--primary");
-            CenterPin(prompt, 250f);
+            CenterPin(prompt, GameUiPanel.PromptBottom);
             root.Add(prompt);
 
             shelfBtn = new Button(() => OpenShelf()) { name = "shelf-open", text = "Shelf" };
             shelfBtn.AddToClassList("hud-btn"); shelfBtn.AddToClassList("hud-btn--small");
-            shelfBtn.style.position = Position.Absolute; shelfBtn.style.left = 24; shelfBtn.style.bottom = 250f;
+            shelfBtn.style.position = Position.Absolute; shelfBtn.style.left = 24; shelfBtn.style.bottom = GameUiPanel.PromptBottom;
             root.Add(shelfBtn);
 
             hint = Pill("boxcomplete-hint", MomentDirector.HurryHint, 120f, false);

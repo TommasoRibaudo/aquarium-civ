@@ -130,6 +130,9 @@ namespace AquariumCiv.View.PlayTests
                 // the waiting state
                 var watch = mp.GetComponent<UIDocument>().rootVisualElement.Q<Button>("moment-watch");
                 Assert.IsTrue(Shown(watch), "Watch shows while the era waits");
+                hud.Toast("A toast long enough to wrap to a second line, to test that Watch stays in its own lane above it.", 2f);
+                yield return null; yield return null; yield return null;
+                Assert.IsFalse(hud.Root.Q("hud-toast").worldBound.Overlaps(watch.worldBound), "Watch and the toast keep to their lanes");
                 Assert.AreEqual("Watch them become a village", watch.text);
                 var props = UnityEngine.Object.FindAnyObjectByType<WaitingProps>();
                 Assert.IsTrue(props != null && props.Showing, "the piles are in the box");

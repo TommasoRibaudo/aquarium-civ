@@ -11,6 +11,10 @@ namespace AquariumCiv.GameUI
     public static class GameUiPanel
     {
         public const float ReferenceWidth = 1080f;
+        /// <summary>The lanes of the bottom of the screen, up from the safe area's edge (panel units). Toasts sit at
+        /// <see cref="ToastBottom"/> (Game.uss .hud-toast, three lines reach about 420); prompts (Watch, Finish, the first run's
+        /// button) sit above them at <see cref="PromptBottom"/>, so a prompt and a toast never share a spot (tester batch 3).</summary>
+        public const float ToastBottom = 240f, PromptBottom = 430f;
         /// <summary>48 dp on a 360 dp-wide phone (1080 px at 3×), which also covers 44 pt on a 375 pt iPhone.</summary>
         public const float MinTarget = 144f;
 

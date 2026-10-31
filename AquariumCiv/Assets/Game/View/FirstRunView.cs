@@ -320,7 +320,7 @@ namespace AquariumCiv.View
             // the rain button, in the thumb zone
             rainBtn = Btn("firstrun-rain", "Give them rain", OnRainButton, "hud-btn", "hud-btn--primary");
             rainBtn.style.position = Position.Absolute;
-            rainBtn.style.bottom = 330;
+            rainBtn.style.bottom = GameUiPanel.PromptBottom;
             rainBtn.style.alignSelf = Align.Center;
             rainBtn.style.width = 560;
             rainBtn.style.display = DisplayStyle.None;
