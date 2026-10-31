@@ -115,8 +115,14 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 
 ## 8. UI Toolkit (for when we leave IMGUI prototypes)
 
-- USS has no `:first-child`/`:nth-child`, `gap`, `line-height` or `text-transform` (rules are silently ignored). Space
-  children with one-sided margins. [inherited]
+- USS has no `:first-child`/`:last-child`, `gap`, `line-height`, `text-transform`, `box-shadow`, `backdrop-filter`, gradients,
+  `calc()`, `vw`, `rem`, `grid` or `animation`: the importer warns and ignores them. Space children with one-sided margins.
+  Line height: rich tag `<line-height=150%>` works. [verified, #164, Unity 6000.3]
+- **`:nth-child()` and `:not()` are import errors that leave the whole .uss empty**, with only one line in the console.
+  No styles at all after an edit? Look for those. [verified, #164]
+- 6000.3 has `filter` (blur, grayscale, contrast, hue-rotate, invert, opacity, sepia, tint, custom), `-unity-material`,
+  `aspect-ratio`, `-unity-text-auto-size`, `text-shadow`, tiled 9-slice. Filters blur the element's own subtree only, spread
+  inwards too, and re-render every frame. See docs/design/ui/limits.md. [verified, #164]
 - Runtime panels never show `tooltip`: draw your own. Don't add a child to a `Label` that should size to its text. A
   `GeometryChangedEvent` handler that moves its own element loops ("Layout update is struggling"): ignore sub-pixel
   changes. [inherited]
@@ -584,3 +590,11 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-10-31 · Play tests have their own save folder.** The backup/restore in PlayTestBase could not hold: the GameClock outlives `CloseSlice`, so its autosave, focus and quit saves (the last one as play mode ends) wrote the test box over the restored save, and the `.bak` rotated with it; a dead run also left the next run copying a test box over its own backup. Now `SaveSandbox` (`[SetUpFixture]` in `AquariumCiv.View.PlayTests`) sets `GameClock.SaveFolderOverride` to `Temp/agent/playtest-save` for the run, a clock reads the path once at Awake, and telemetry follows the save folder. Tests use `GameClock.DefaultSavePath`, never `persistentDataPath`. `game/stills` still gets test files (`EraStills.Folder`), and `TimeLapseSnapshot.Folder` has the same hard-coded path. [verified]
 - **2026-10-31 · `test run --mode playmode` without `--async_tests true` returns at once** with `success: true`, total 0 and an `error` inside the result ("cannot run synchronously over HTTP"). The exit code is 0: read the summary. [verified]
 - 2026-10-31 · **`[Explicit]` tests through the Pipeline.** `test run` skips them with no error, and reports `0/0 passed`, unless you pass `--include_explicit true`. Even with it, a synchronous run still gave 0/0 for category filters; `--async_tests true` ran them (`UiCaptureTour`, 15/15 by category `UiCapture`, about 5 minutes). Cause of the synchronous 0/0 unknown. `test list` shows Explicit tests either way. `Temp/agent` doesn't exist after an Editor restart: `mkdir -p` before writing there. [verified]
+- 2026-10-31 · **#164 UI spike notes.** [verified]
+  - A `test cancel` during a failed compile left the Editor in play mode; the next run died with "This cannot be used during play mode" and stayed `running` forever. Check `EditorApplication.isPlaying`, set it false, delete `Assets/InitTestScene*` before the rerun.
+  - The bash tool failed on long heredocs ("unexpected EOF while looking for matching '"). Write the script with Write, then run it.
+  - A play test can import its own throwaway assets: `File.WriteAllText` + `AssetDatabase.ImportAsset(..., ForceSynchronousImport)` in `[OneTimeSetUp]`, `DeleteAsset` in `[OneTimeTearDown]`. Import errors need `LogAssert.ignoreFailingMessages = true` there. A cancelled run leaves the folder behind.
+  - A new shader or UI Shader Graph shows **cyan** until it compiles: wait for `!ShaderUtil.anythingCompiling` before a screenshot.
+  - `.row` and other class names in `Game.uss` reach any panel on GamePanel through the theme: prefix spike classes.
+  - Custom UITK filter: include `UnityUIEFilter.cginc`, take input from `FilterVertexInput`. `_MainTex_TexelSize` gave no usable offset, `abs(ddx(uv)) + abs(ddy(uv))` did. A `.shadergraph` is plain JSON objects split by blank lines, and can be built from `UITKBasicTemplate.shadergraph`. **Element Layout UV came out 0** in a hand-built graph; the plain UV node gave 0..1 across the element.
+  - A `[SetUpFixture]` stops at its assembly: a play test in its own asmdef needs its own `GameClock.SaveFolderOverride`, or `OpenSlice` deletes the real save.
