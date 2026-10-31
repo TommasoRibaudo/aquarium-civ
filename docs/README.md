@@ -27,7 +27,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 |------|-------|
 | [design/game-definition.md](design/game-definition.md) | Pillars, loops, care mechanic, progression, concept variants (draft) |
 | [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
-| [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (chosen, not built) |
+| [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (built) |
+| [design/ui-inventory.md](design/ui-inventory.md) | Every UI piece: objects, connections, states, flows, docs against code (#105) |
 | [game-design-practices.md](game-design-practices.md) | Mobile/idle design checklist the tester agent judges against (draft) |
 
 ## Working docs
