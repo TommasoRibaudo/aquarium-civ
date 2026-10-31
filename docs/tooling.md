@@ -569,3 +569,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   target is Android/iOS: switch back with `SwitchActiveBuildTarget(Standalone, StandaloneWindows64)` and `git checkout` the
   URP assets under `Assets/Settings` and `ProjectSettings.asset`. `unity job` has no `get`/`list` here. Foreground `sleep`
   followed by another command is blocked; `ping -n N 127.0.0.1 >/dev/null` is a wait that works.
+- **2026-10-31 · Tester run 4 notes.** [verified]
+  - Since the leak fix the Editor runs at about 100 fps, so a play test that waits a number of frames for something timed in seconds now fails: `CarePlay.FullCleanByTouch` waits 120 frames for the sun (about 2.6 s to recover), and `CameraModeTests.PhotoHides...` reaches its last tap 0.08 s after entering camera mode, inside the HUD's 0.15 s guard (a 0.3 s gap passes). Wait in seconds.
+  - A queue script (wait for `ready`, `test run --async_tests true --timeout 170`, poll `test status`, stop when `results[0].FullName` holds the filter) with `run_in_background` ran 11 classes hands-free. `ping -n N 127.0.0.1` is the foreground wait.
+  - PlayTestBase's restore does not hold: after a run `box.json` was the last test's box (seed 4243, written at the end of the test). Copy the save aside yourself before a test session if it matters.
+  - UI audit: walk every `UIDocument`, log each shown TextElement's rect and flag overlaps and `MeasureTextSize` overflow. An overlap in the audit can be an element hidden *under* a sheet: check it against the shot (the HUD toast sits behind sheets).
+  - A URP asset upgrade rewrites `Assets/Settings/Mobile_RPAsset.asset` during test runs (version 12 to 13): noise, `git checkout` it.
