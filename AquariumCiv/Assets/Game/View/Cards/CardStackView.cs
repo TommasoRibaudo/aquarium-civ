@@ -119,9 +119,10 @@ namespace AquariumCiv.View
         /// <summary>The History button: the waiting stack if there is one. Until the time-lapse has a screen of its own (#79,
         /// nothing there lets a player back out yet) the rest stays the History sheet.</summary>
         /// <summary>Cards waiting: show them. Otherwise the time-lapse screen (#79; its Close is the way out). False (nothing to replay yet,
-        /// or a moment is playing): the HUD opens its History sheet.</summary>
+        /// a moment is playing, or the first run: first-session §2 keeps the time-lapse out of it): the HUD opens its History sheet.</summary>
         bool OnHistory()
         {
+            if (bound != null && bound.State.firstRun.active) return false;
             if (model != null && model.HistoryDot && model.Reopen()) return true;
             return TimeLapseScreenView.Ensure().Open();
         }
@@ -216,7 +217,16 @@ namespace AquariumCiv.View
             sheet.style.paddingBottom = 24 + i.w;
             sheet.style.paddingLeft = 40 + i.x;
             sheet.style.paddingRight = 40 + i.z;
+            if (model != null && model.OnAlsoPage) Draw();
         }
+
+        /// <summary>The "Also…" page without its lines (panel units): padding, dots, title, the buttons.</summary>
+        const float AlsoChrome = 288f, SheetShare = 0.30f;
+
+        /// <summary>The slim sheet's rule (at most 30 % of the height) on the "Also…" page: how many lines fit at a full
+        /// target's height, 1 to 3. The panel matches the width, so a wider screen is a shorter panel.</summary>
+        public static int AlsoLinesThatFit(float panelHeight, float bottomInset) =>
+            Mathf.Clamp(Mathf.FloorToInt((panelHeight * SheetShare - AlsoChrome - bottomInset) / GameUiPanel.MinTarget), 1, 3);
 
         // ================================================================== building
 
@@ -446,13 +456,17 @@ namespace AquariumCiv.View
             if (f.isAlso)
             {
                 foreach (var l in new[] { teaser, body, endLine, quote, note, footer }) Show(l, false);
+                float panelH = Screen.height * GameUiPanel.ReferenceWidth / Mathf.Max(1f, Screen.width);
+                float bottom = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w;
+                int fit = Mathf.Min(AlsoLinesThatFit(panelH, bottom), f.alsoLines.Count);
                 for (int i = 0; i < alsoLines.Length; i++)
                 {
-                    bool on = i < f.alsoLines.Count;
+                    bool on = i < fit;
                     Show(alsoLines[i], on);
                     if (on) alsoLines[i].text = f.alsoLines[i];
                 }
-                Set(alsoMore, f.alsoMore > 0 ? $"and {f.alsoMore} more" : "");
+                int more = f.alsoMore + f.alsoLines.Count - fit; // told like the overflow past three: counted here, kept in the chronicle
+                Set(alsoMore, more > 0 ? $"and {more} more" : "");
             }
             else
             {

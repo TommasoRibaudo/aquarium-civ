@@ -37,7 +37,7 @@ namespace AquariumCiv.View.PlayTests
         {
             LogAssert.ignoreFailingMessages = true;
             problems.Clear();
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
+            savePath = GameClock.DefaultSavePath;
             backup = savePath + ".audio-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
             if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }

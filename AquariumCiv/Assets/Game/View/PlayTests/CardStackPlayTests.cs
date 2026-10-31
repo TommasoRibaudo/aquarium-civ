@@ -46,9 +46,9 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>A grown box with stories, nothing read, away for a day: the peek is up.</summary>
-        IEnumerator Returned(double hours = 24)
+        IEnumerator Returned(double hours = 24, int w = 1179, int h = 2556)
         {
-            yield return OpenSlice(seed: Seed);
+            yield return OpenSlice(w, h, seed: Seed);
             SimLayoutSource.DebugSkipYears(8f);
             yield return null;
             Sim.CleanAll();
@@ -263,7 +263,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Model.OnAlsoPage);
             yield return Frames(2);
             yield return Shot("cards_also");
-            Assert.LessOrEqual(View.Root.Q("cards-sheet").worldBound.height / View.Root.worldBound.height, 0.34f);
+            Assert.LessOrEqual(View.Root.Q("cards-sheet").worldBound.height / View.Root.worldBound.height, 0.30f);
             string line = View.Root.Q<Button>("cards-also-0").text;
             yield return Tap("cards-also-0");
             Assert.AreEqual(line, Model.Face.headline);
@@ -273,6 +273,47 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(CardStackMode.Hidden, Model.Mode);
             Assert.IsFalse(Sim.HasUnreadCards);
             AssertNoErrors("also");
+        }
+
+        /// <summary>The slim sheet's 30 % on a short phone, a tall one and a tablet: a wider screen is a shorter panel, so the
+        /// page shows the lines that fit and counts the rest, and nothing is clipped.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator TheAlsoPageStaysSlimOnEveryScreen([Values(0, 1, 2)] int size)
+        {
+            int w = new[] { 1080, 1080, 1640 }[size], h = new[] { 1920, 2400, 2360 }[size];
+            yield return Returned(0.5, w, h);
+            yield return Tap("cards-peek");
+            for (int guard = 0; guard < 8 && !Model.OnAlsoPage; guard++) yield return Tap("cards-next");
+            Assert.IsTrue(Model.OnAlsoPage);
+            yield return Frames(4);
+            yield return Shot($"cards_also_{w}x{h}");
+            var sheet = View.Root.Q("cards-sheet").worldBound;
+            float panelH = View.Root.worldBound.height;
+            Assert.LessOrEqual(sheet.height / panelH, 0.30f, $"{w}x{h}");
+            Assert.LessOrEqual(sheet.yMax, panelH + 0.5f, "nothing falls off the bottom");
+            int lines = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                var l = View.Root.Q("cards-also-" + i);
+                if (!Shown(l)) continue;
+                lines++;
+                Assert.GreaterOrEqual(l.worldBound.height, GameUiPanel.MinTarget - 2f, "a line is still a target");
+                Assert.GreaterOrEqual(l.worldBound.yMin, sheet.yMin);
+            }
+            Assert.GreaterOrEqual(lines, 1);
+            var more = View.Root.Q<Label>("cards-also-more");
+            int counted = Shown(more) ? int.Parse(more.text.Split(' ')[1]) : 0;
+            Assert.AreEqual(Model.AlsoCount, lines + counted, "every story is either shown or counted");
+            AssertNoErrors("also, " + size);
+        }
+
+        [Test]
+        public void TheAlsoLinesFollowTheRoomLeft()
+        {
+            Assert.AreEqual(3, CardStackView.AlsoLinesThatFit(2400f, 0f));
+            Assert.AreEqual(2, CardStackView.AlsoLinesThatFit(1920f, 0f));
+            Assert.AreEqual(1, CardStackView.AlsoLinesThatFit(1554f, 0f));
+            Assert.AreEqual(1, CardStackView.AlsoLinesThatFit(800f, 90f), "never none");
         }
 
         [UnityTest, Timeout(120000)]

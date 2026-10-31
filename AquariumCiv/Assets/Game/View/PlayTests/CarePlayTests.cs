@@ -35,7 +35,7 @@ namespace AquariumCiv.View.PlayTests
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
+            savePath = GameClock.DefaultSavePath;
             backup = savePath + ".care-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
             if (File.Exists(savePath + ".bak")) { File.Copy(savePath + ".bak", backup + ".bak", true); File.Delete(savePath + ".bak"); }
@@ -254,7 +254,8 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(0, sim.State.trash.Count, "every heap is thrown out");
                 Assert.Less(sim.State.overgrowth, 0.03f, "and the weeds");
                 Assert.Less(sim.MessLevel, 0.001f, "all tidy");
-                for (int i = 0; i < 120; i++) yield return null;
+                // In seconds: the sun takes about 4 s to recover, whatever the frame rate.
+                for (float t = 0f; t < 8f && (care.LastCheer != "all" || care.SunFactor <= 0.995f); t += Time.unscaledDeltaTime) yield return null;
                 Assert.AreEqual("all", care.LastCheer, "the big cheer for everything tidy");
                 Assert.Greater(care.SunFactor, 0.995f, "the sun is back");
                 yield return new WaitForSecondsRealtime(2.5f);

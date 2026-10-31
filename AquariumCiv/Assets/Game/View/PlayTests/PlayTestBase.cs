@@ -52,8 +52,9 @@ namespace AquariumCiv.View.PlayTests
 
     /// <summary>
     /// The shared harness for play tests on the real Slice scene at a portrait phone size: unfocused input, a pinned seed,
-    /// the player's save backed up and put back, every bootstrap, touch helpers, a list of console errors, and at teardown
-    /// the leak check (<see cref="LeakCheck"/>). One InputTestFixture class per run, as ever.
+    /// a save of the test's own (<see cref="SaveSandbox"/>; the player's is never touched), every bootstrap, touch helpers, a
+    /// list of console errors, and at teardown the leak check (<see cref="LeakCheck"/>). One InputTestFixture class per run,
+    /// as ever.
     /// </summary>
     public abstract class PlayTestBase : InputTestFixture
     {
@@ -65,7 +66,6 @@ namespace AquariumCiv.View.PlayTests
         protected string savePath;
         /// <summary>How many bootstraps the last <see cref="OpenSlice"/> ran.</summary>
         protected int bootstrapsRun;
-        string backup;
         bool soundWas, opened;
 
         void OnLog(string msg, string stack, LogType type)
@@ -81,12 +81,9 @@ namespace AquariumCiv.View.PlayTests
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-            savePath = Path.Combine(Application.persistentDataPath, "game", "box.json");
-            backup = savePath + ".playtest-backup";
+            savePath = GameClock.DefaultSavePath;
             if (!opened)
             {
-                foreach (var ext in new[] { "", ".bak" })
-                    if (File.Exists(savePath + ext)) File.Copy(savePath + ext, backup + ext, true);
                 soundWas = GameSettings.Sound;
                 opened = true;
             }
@@ -112,7 +109,7 @@ namespace AquariumCiv.View.PlayTests
             Application.logMessageReceived += OnLog;
         }
 
-        /// <summary>Puts the save and the settings back. Safe to call twice.</summary>
+        /// <summary>Puts the settings back. Safe to call twice.</summary>
         protected void CloseSlice()
         {
             Application.logMessageReceived -= OnLog;
@@ -123,18 +120,9 @@ namespace AquariumCiv.View.PlayTests
             if (!opened) return;
             opened = false;
             GameSettings.Sound = soundWas;
-            try
-            {
-                foreach (var ext in new[] { "", ".bak" })
-                {
-                    if (File.Exists(backup + ext)) { File.Copy(backup + ext, savePath + ext, true); File.Delete(backup + ext); }
-                    else if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
-                }
-            }
-            catch (Exception e) { Debug.LogWarning("restore save: " + e.Message); }
         }
 
-        /// <summary>Whatever a test did, the save goes back and no box may have leaked.</summary>
+        /// <summary>Whatever a test did, the settings go back and no box may have leaked.</summary>
         public override void TearDown()
         {
             CloseSlice();
