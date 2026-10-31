@@ -22,7 +22,16 @@ of agent work, and is ordered so the **riskiest assumption comes first: is carin
 | 6 | **P6 Eras & Shelf** | H6: a live era transition is worth waiting for; which growth form motivates more | box grows vs new box on the shelf | 2–3 | lab |
 | — | **Gate 3: control + progression** → write the vertical-slice plan | | | | |
 
-P0 status: done except the iOS pipeline, see [results/P0.md](results/P0.md).
+P0 status: done (iOS TestFlight pipeline included), see [results/P0.md](results/P0.md).  
+P1 status: done, drag-to-wipe won the user's playtest; friends' lab still to run, see [results/P1.md](results/P1.md).  
+P2 status: built, agent playtest next, see [results/P2.md](results/P2.md).  
+Gate 1: **decided 2026-10-29: Go, with P2 variant B** (mess dims sunlight and slows work; mood shows it). See [decisions.md](../decisions.md).  
+Gate 2: **decided 2026-10-29**: chronicle cards; time-lapse + a small polished book for major events and people; keep 1 h = 1 year. See [decisions.md](../decisions.md).  
+Gate 3: **decided 2026-10-29**: nudges shape the land (terrain shifts); new box on the shelf. Next: the vertical-slice plan.  
+P3 status: built and agent-tested (tag `proto/P3-v1`), lab and 4-day diary next, see [results/P3.md](results/P3.md).  
+P4 status: built and agent-tested (tag `proto/P4-v1`), lab next, see [results/P4.md](results/P4.md).  
+P5 status: built and agent-tested (tag `proto/P5-v1`), lab and 3-day diary next, see [results/P5.md](results/P5.md).  
+P6 status: built and agent-tested (tag `proto/P6-v1`), lab next, see [results/P6.md](results/P6.md).
 
 Total is about 19–20 agent days. Diary tests run in the background while the next prototype is being built,
 so wall-clock time is about 4–5 weeks.

@@ -65,7 +65,7 @@ namespace AquariumCiv.EditorTools
                 if (prefab == null) continue;
                 float h = MeasureBounds(prefab).size.y;
                 float scale = d.homeHeight * 0.5f / Mathf.Max(h, 0.01f);
-                var pos = new Vector3(spots[i].x * d.w * 0.9f, d.tileSize.y, spots[i].y * d.w * 0.9f);
+                var pos = new Vector3(spots[i].x * d.w * 0.9f, d.surfaceY, spots[i].y * d.w * 0.9f);
                 var go = Place(prefab, people, pos, rng.Next(0, 360), scale);
                 PoseIdle(go, charPaths[i % charPaths.Length]);
             }

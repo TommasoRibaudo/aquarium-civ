@@ -34,6 +34,20 @@ namespace AquariumCiv.Prototypes.Tests
         }
 
         [Test]
+        public void AddMessIsCappedLikeNaturalMess()
+        {
+            var sim = NewSim();
+            sim.AddMess(0.7f, 0.7f, 8);
+            sim.AddMess(0.7f, 0.7f, 8);
+            Assert.AreEqual(1f, sim.State.grime);
+            Assert.AreEqual(1f, sim.State.overgrowth);
+            Assert.AreEqual(sim.Config.trashMax, sim.State.trash.Count);
+            Assert.AreEqual(sim.State.trash.Count, sim.State.trash.Select(t => t.id).Distinct().Count());
+            sim.CleanAll();
+            Assert.AreEqual(0f, sim.MessLevel);
+        }
+
+        [Test]
         public void OneRealHourIsOneGameYear()
         {
             var sim = NewSim();
@@ -67,6 +81,70 @@ namespace AquariumCiv.Prototypes.Tests
             Assert.AreEqual(cfg.outputPenaltyMax, sim.OutputPenalty, 1e-5f);
             cfg.outputPenaltyEnabled = false;
             Assert.AreEqual(0f, sim.OutputPenalty);
+        }
+
+        [Test]
+        public void OutputPenaltyIsLinearInMess()
+        {
+            var sim = NewSim();
+            sim.State.trash.Clear();
+            for (int i = 0; i < sim.Config.trashMax / 2; i++) sim.State.trash.Add(new TrashItem { id = 1000 + i });
+            sim.State.grime = sim.State.overgrowth = 0.5f; // mess level 0.5
+            Assert.AreEqual(sim.Config.outputPenaltyMax * 0.5f, sim.OutputPenalty, 1e-5f);
+        }
+
+        [Test]
+        public void GlassIsHalfTheMess()
+        {
+            var sim = NewSim();
+            sim.State.trash.Clear();
+            sim.State.overgrowth = 0f;
+            sim.State.grime = 1f;
+            Assert.AreEqual(0.5f, sim.MessLevel, 1e-5f);
+        }
+
+        [Test]
+        public void OutputPenaltyNeverHelpsAndRandomnessStaysInStep()
+        {
+            // P2 A/B: same seed, penalty off vs on, 48 h of neglect. The economy's dice are drawn every month, so the
+            // penalised world can only fall behind, never get luckier (tester run 2 found seed-dependent swings of 30 %).
+            int behind = 0, popA = 0, popB = 0;
+            for (int seed = 1; seed <= 40; seed++)
+            {
+                SimCore Make(bool penalty) => NewSim(seed, new SimConfig { outputPenaltyEnabled = penalty, messAffectsMood = false });
+                var a = Make(false); var b = Make(true);
+                a.Advance(48); b.Advance(48);
+                // Build order can shift by a hut either way, so allow a small wobble; the trend must favour the clean world.
+                Assert.LessOrEqual(b.State.population, a.State.population * 1.08f, $"seed {seed}");
+                popA += a.State.population; popB += b.State.population;
+                if (b.State.population < a.State.population || b.State.buildings.Count < a.State.buildings.Count) behind++;
+            }
+            TestContext.WriteLine($"B behind A in {behind}/40 seeds; mean pop A {popA / 40f:0.0}, B {popB / 40f:0.0}");
+            Assert.Less(popB, popA, "the penalty must slow growth on average");
+            Assert.Greater(popB, popA * 0.75f, "...but only slightly");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MessMoodEffectFollowsTheSwitch(bool consequences)
+        {
+            // P2: in the cosmetic variant mess must not touch mood (and so output); in the output variant it does.
+            SimCore Make()
+            {
+                // No trash: it would draw from the rng differently in the two worlds.
+                var cfg = new SimConfig { messAffectsMood = consequences, outputPenaltyEnabled = consequences, trashPerPersonHour = 0f };
+                return NewSim(7, cfg);
+            }
+            var clean = Make(); var messy = Make();
+            clean.State.grime = clean.State.overgrowth = 0f;
+            messy.State.grime = messy.State.overgrowth = 1f;
+            for (int i = 0; i < 12; i++) { clean.Step(); messy.Step(); clean.CleanAll(); messy.State.grime = messy.State.overgrowth = 1f; }
+            if (consequences) Assert.Less(messy.State.mood, clean.State.mood - 0.1f);
+            else
+            {
+                Assert.AreEqual(clean.State.mood, messy.State.mood, 1e-5f);
+                Assert.AreEqual(clean.OutputMultiplier, messy.OutputMultiplier, 1e-5f);
+            }
         }
 
         [Test]

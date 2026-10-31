@@ -20,18 +20,25 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | 04 | [research/04-agentic-unity.md](research/04-agentic-unity.md) | Unity CLI + Pipeline, MCP bridges, batchmode, agent workflow |
 | 05 | [research/05-github-cicd.md](research/05-github-cicd.md) | GameCI builds, Play/TestFlight deploy, LFS, costs |
 | 06 | [research/06-assets.md](research/06-assets.md) | Asset kits (KayKit/Synty/Quaternius/Kenney), crowd animation, AI asset tools |
+| 11 | [research/11-music-playback.md](research/11-music-playback.md) | When and how background music starts and pauses (Minecraft-style sparse music), proposal for the game |
 
 ## Design documents
 | File | Topic |
 |------|-------|
 | [design/game-definition.md](design/game-definition.md) | Pillars, loops, care mechanic, progression, concept variants (draft) |
 | [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
+| [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (chosen, not built) |
 | [game-design-practices.md](game-design-practices.md) | Mobile/idle design checklist the tester agent judges against (draft) |
 
 ## Working docs
 | File | Topic |
 |------|-------|
 | [tooling.md](tooling.md) | Unity CLI/Pipeline facts, stuck-dialog fixes, lessons log (append as you learn) |
+| [ci.md](ci.md) | CI checks, `main` ruleset, Actions security measures |
+| [workflow.md](workflow.md) | How slice work is defined (issues), tracked (Slice board) and run (lanes, Editor lock, multi-agent loop) |
+| [open-questions.md](open-questions.md) | Everything waiting on a decision by the user, kept current |
+| [testflight.md](testflight.md) | iOS builds via CI, app identity, tester groups, secrets |
+| [feedback.md](feedback.md) | In-app feedback and surveys → GitHub issues → Playtest Feedback project; issue format |
 
 ## Open questions
 See [decisions.md](decisions.md) (to be filled in as we answer them).

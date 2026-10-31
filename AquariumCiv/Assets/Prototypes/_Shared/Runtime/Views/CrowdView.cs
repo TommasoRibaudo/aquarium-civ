@@ -18,17 +18,26 @@ namespace AquariumCiv.Prototypes
         public float characterScale = 0.3f;
         [Tooltip("World units per second.")] public float walkSpeed = 0.35f;
         public int maxVisible = 30;
+        [Tooltip("0 = content, 1 = grumpy: citizens trudge slower and stand around longer (P2 variant B).")]
+        [Range(0, 1)] public float grumpiness;
+        [Tooltip("Name the first agents after living notables (P2). Off when a NotableView shows notables itself (P3+).")]
+        public bool tagNotables = true;
+        [Tooltip("People shown by someone else (NotableView), subtracted from the anonymous crowd.")] public int reserved;
+        [Tooltip("History replay: show this many people instead of the live population (-1 = live).")] public int populationOverride = -1;
+        /// <summary>Show this world's people instead of the live one (P6 museum). Null = SimClock's.</summary>
+        [System.NonSerialized] public AquariumCiv.Prototypes.Sim.SimCore source;
 
         readonly List<Wanderer> agents = new();
         public IReadOnlyList<Wanderer> Agents => agents;
 
         void Update()
         {
-            var state = SimClock.Instance.Sim.State;
-            int want = Mathf.Min(state.population, maxVisible);
+            var state = (source ?? SimClock.Instance.Sim).State;
+            int want = Mathf.Clamp((populationOverride >= 0 ? populationOverride : state.population) - reserved, 0, maxVisible);
             while (agents.Count < want) agents.Add(SpawnAgent(agents.Count));
             while (agents.Count > want) { Destroy(agents[^1].gameObject); agents.RemoveAt(agents.Count - 1); }
 
+            if (!tagNotables) return;
             var notables = state.notables.Where(n => n.alive && n.age >= 6f).ToList();
             for (int i = 0; i < agents.Count; i++)
             {
@@ -43,12 +52,12 @@ namespace AquariumCiv.Prototypes
             foreach (var a in agents) a.Cheer(seconds);
         }
 
-        Wanderer SpawnAgent(int index)
+        internal Wanderer SpawnAgent(int index, Transform parent = null, GameObject prefabOverride = null, float scale = 1f)
         {
-            var prefab = characterPrefabs[index % characterPrefabs.Length];
+            var prefab = prefabOverride != null ? prefabOverride : characterPrefabs[index % characterPrefabs.Length];
             var start = RandomPoint();
-            var go = Instantiate(prefab, start, Quaternion.Euler(0, Random.Range(0, 360f), 0), transform);
-            go.transform.localScale = Vector3.one * characterScale;
+            var go = Instantiate(prefab, start, Quaternion.Euler(0, Random.Range(0, 360f), 0), parent != null ? parent : transform);
+            go.transform.localScale = Vector3.one * characterScale * scale;
             go.name = $"Citizen_{index}";
             var col = go.AddComponent<CapsuleCollider>();
             col.center = new Vector3(0, 1.2f, 0);
@@ -86,6 +95,10 @@ namespace AquariumCiv.Prototypes
 
     public class Wanderer : MonoBehaviour, ITappable
     {
+        /// <summary>Any citizen was tapped (P3+ opens a notable card).</summary>
+        public static event System.Action<Wanderer> Tapped;
+        /// <summary>Walk towards here instead of wandering (P5: people gather at the Keeper's shrine), until cleared.</summary>
+        public Vector3? gatherAt;
         public int NotableId { get; private set; } = -1;
         public string DisplayName { get; private set; }
 
@@ -132,6 +145,7 @@ namespace AquariumCiv.Prototypes
         {
             if (NotableId >= 0) EventLog.Instance?.Log("notable", ("action", "tap"), ("id", NotableId));
             HudToast.Show(NotableId >= 0 ? DisplayName : "A villager", transform.position + Vector3.up * 0.6f);
+            Tapped?.Invoke(this);
         }
 
         void Update()
@@ -144,12 +158,14 @@ namespace AquariumCiv.Prototypes
                 state = 0;
                 var to = target - transform.position;
                 to.y = 0;
-                float step = crowd.walkSpeed * Time.deltaTime;
+                float pace = 1f - 0.45f * crowd.grumpiness;
+                float step = crowd.walkSpeed * pace * Time.deltaTime;
+                clips[0].SetSpeed(pace); // feet match the slower walk
                 if (to.magnitude <= step)
                 {
                     transform.position = new Vector3(target.x, transform.position.y, target.z);
-                    idleUntil = Time.time + Random.Range(1f, 4f);
-                    target = crowd.RandomPoint();
+                    idleUntil = Time.time + Random.Range(1f, 4f) * (1f + 2f * crowd.grumpiness);
+                    target = gatherAt.HasValue ? gatherAt.Value + RandomNear(crowd.diorama.slotRadius * 0.8f) : crowd.RandomPoint();
                 }
                 else
                 {
@@ -164,6 +180,12 @@ namespace AquariumCiv.Prototypes
                 float w = mixer.GetInputWeight(i);
                 mixer.SetInputWeight(i, Mathf.MoveTowards(w, i == state ? 1f : 0f, 6f * Time.deltaTime));
             }
+        }
+
+        static Vector3 RandomNear(float r)
+        {
+            var o = Random.insideUnitCircle * r;
+            return new Vector3(o.x, 0, o.y);
         }
 
         void OnDestroy()

@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Runs the pure-C# slice sim tests outside Unity (docs/workflow.md, lane:sim), so sim work can be tested in
+    parallel git worktrees without the Editor. Unity (and CI) stay the authority: this compiles the same files.
+    Run: dotnet test Tools/SimTests
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS0414;NUnit2005;NUnit2006;NUnit2007;NUnit2015;NUnit2017</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../AquariumCiv/Assets/Game/Sim/**/*.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Life/**/*.cs" />
+    <!-- #88: the moment director's pure core (beats as data, rail, hurry, waiting state) and its tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Moments/Core/**/*.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SimCoreTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryAndNudgeTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfflineCatchUpTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeStageTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/NotableCountTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/NameTests.cs" /><!-- #66 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/JobFillTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/RoleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfficeTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SweeperTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/CardsTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/RelicTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettleTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/WishTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShelfTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/FirstRunTests.cs" /><!-- #94 -->
+    <!-- #87: the save and the clock's decisions are pure C# on a JsonUtility shim, so their tests run here too -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Runtime/SaveStore.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SaveStoreTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ClockLogicTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/HistoryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/PersonCardTests.cs" /><!-- #39 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/TownEconomyTests.cs" />
+    <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
+    <!-- #76: Show me (target, echo plan), world bubbles in the people's voice, and their tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/ShowMe/Core/**/*.cs" />
+    <!-- #75: the card stack on return (peek, paging, read state, Give) and its tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Cards/Core/**/*.cs" />
+    <!-- #85: the shaping looks (rain, grove, channel, herd over time), the answer shown, the take-back, and their tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Shaping/Core/**/*.cs" />
+    <!-- #79: the time-lapse screen model (timeline layout, pins, drag/snap, caption, Now, snapshot data) and its tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/TimeLapse/Core/**/*.cs" />
+    <Compile Include="Shims/*.cs" />
+    <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

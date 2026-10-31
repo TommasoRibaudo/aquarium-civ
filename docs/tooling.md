@@ -140,3 +140,446 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   "was paused" flag before treating it as a resume. [verified]
 - **2026-10-29 · CI Unity license:** this machine has no `C:\ProgramData\Unity\Unity_lic.ulf` (only the Hub's
   entitlement XML). Generate one via Hub → Licenses → Add → free personal license. See docs/testflight.md. [verified]
+- **2026-10-29 · Tester: portrait Game view sizes + touch playtests in Editor play mode.** [verified]
+  - Game view size: add/select a fixed resolution through reflection (`UnityEditor.GameViewSizes` singleton →
+    `GetGroup(Standalone)` → `AddCustomSize(new GameViewSize(FixedResolution, w, h, name))`, then set
+    `GameView.selectedSizeIndex`) from `script eval` before entering play mode. `Screen.width/height` and IMGUI then
+    follow it (checked 1080x1920, 1080x2400, 1640x2360). Custom "Tester WxH" entries stay in the size list.
+  - Touch input: a throwaway PlayMode test deriving `InputTestFixture` with `InputSystem.AddDevice<Touchscreen>()`.
+    The asmdef must be **any platform** (an Editor-only asmdef's `[UnityTest]`s are not found in PlayMode: 0 tests).
+    Set `InputSystem.settings.updateMode = ProcessEventsManually` and pump `InputSystem.Update()` from a
+    `[DefaultExecutionOrder(-10000)]` MonoBehaviour; queue `BeginTouch/MoveTouch/EndTouch(..., queueEventOnly: true)`
+    one step per frame so EnhancedTouch phases (Began/Moved/Ended) reach OrbitCamera exactly once.
+  - Run **one** such test per `test run`: a second test in the same run inherits the first test's scene and its
+    OrbitCamera throws "EnhancedTouch API is not enabled" after the fixture teardown.
+  - IMGUI (OnGUI) buttons can't be clicked from automation in this project (Input System only): neither
+    `GameView.SendEvent` (with `gameMouseOffset/gameMouseScale` mapping) nor `EditorGUIUtility.QueueGameViewInputEvent`
+    reach the player's OnGUI, in play mode or under the test fixture. Survey/debug buttons stay NOT CHECKED via input.
+  - `ScreenCapture.CaptureScreenshot` from a test coroutine sometimes leaves a cyan half-frame (capture artifact).
+- **2026-10-29 · CI: "all actions must be pinned to a full-length commit SHA"** (job fails in 3 s at Set up job).
+  The repo's Actions setting now requires SHA pins. Resolve a tag with `gh api repos/<owner>/<action>/commits/<tag> --jq .sha`
+  and write `uses: owner/action@<sha> # vN`. When bumping an action, re-resolve the SHA. [verified]
+- **2026-10-29 · Tester touch playtest: Input System "Cached unprocessed value unexpectedly became outdated" error fails
+  the test** (logged from `InputSystem.Update()` in the manual pump). It is harness noise from the test fixture, not
+  game code. Set `LogAssert.ignoreFailingMessages = true` at test start and collect real warnings/errors yourself via
+  `Application.logMessageReceived` (filter that message). `console clear` afterwards so the main session doesn't
+  mistake them for game errors. Also back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/proto/P1.json`
+  and the `logs/*.jsonl` before a playtest and restore them after: the test runs the real save and event log. [verified]
+- **2026-10-29 · `--project-path F:\GameDev\AquariumCiv` from Bash mangles the path** (backslashes eaten:
+  "F:\GameDev\GameDevAquariumCiv"; `unity status` then reports no instances). Use forward slashes:
+  `--project-path F:/GameDev/AquariumCiv`, or run from the project dir without the flag. [verified]
+- **2026-10-29 · Domain reload right after entering play mode nulls every `Instance`** (NREs in SimClock, GlassGrime,
+  Wanderer; banners never show). Unity saw "changes in script compilation related files" and recompiled during play.
+  Fix: `EditorPrefs.SetInt("ScriptCompilationDuringPlay", 1)` (Recompile After Finished Playing). Set on this machine.
+  Also `capture game_view --save_path` always lands under `Assets/` (even `Temp/agent/x.png` → `Assets/Temp/agent/`),
+  but it's the only capture that includes IMGUI. Copy the file out and delete `Assets/Temp` **after** leaving play mode. [verified]
+- **2026-10-29 · Tester touch fixture compile gotchas.** `EndTouch(id, pos, default, queueEventOnly: true, ...)` is
+  ambiguous (two overloads); pass `delta: Vector2.zero`. `TestMode` clashes with `UnityEngine.TestTools.TestMode`:
+  alias `using TestMode = AquariumCiv.Prototypes.TestMode;`. Load the scene from the test with
+  `EditorSceneManager.LoadSceneAsyncInPlayMode(path, new LoadSceneParameters(LoadSceneMode.Single))` under
+  `#if UNITY_EDITOR`. Private HUD state (banner, toasts) can be read by reflection for evidence. [verified]
+- **2026-10-29 · Tester P2 re-verify notes.** [verified]
+  - A wipe stroke across the middle of the screen goes through the tank's **open top**: it starts a drag (world hit)
+    and may flick junk, but never touches the glass. Aim strokes at the front panes: project
+    `GlassGrime.Instance.Panes[i].renderer.bounds.center` with `Camera.main.WorldToScreenPoint` and take the two with
+    the lowest screen y.
+  - Economy A/B checks don't need play mode: build `new SimCore(cfg, SimCore.NewWorld(seed, cfg))` from a JSON clone
+    of `SimClock.config` in `script eval` and `Advance(h)`; it reproduces the scene's away-path numbers exactly.
+  - Hold gestures (`Pointer.current.press`) work from the touch fixture: `BeginTouch` once, yield frames, `EndTouch`.
+  - After the first PlayMode run, `Assets/Art/Materials/Glass.mat` showed `_SrcBlend: 5 -> 1` in git (not from test
+    code; probably URP re-deriving blend state). Report it, don't revert.
+- **2026-10-29 · Tester run 3 notes.** [verified]
+  - The first `unity recompile` right after a PlayMode `test run` often fails with "Pipeline server returned 400 Bad
+    Request" (or "No Pipeline instance found" during the reload). Just run it again; the second one compiles.
+  - Touch-fixture strokes that start **below the tank base** (no glass, no world hit) are camera turns by design and
+    change the pitch for every later stroke in that test. Save `OrbitCamera` `yaw`/`pitch` (private fields) at the
+    start and restore them after each stroke when measuring something else.
+  - Junk usually sits inside the tank, seen through the **open top**, so `GlassGrime.Raycast` at a junk point often
+    hits the *back* pane. Don't read "start on glass" as "start on the front glass".
+  - To see which way a drag went, wrap `OrbitCamera.DragTool` in a spy `IDragTool` that forwards to `WipeCleaner`
+    and logs what `BeginDrag` returns. The input path stays real.
+- **2026-10-28 · `script eval_file` takes `--file <abs .cs path>`** (not `--path`); there is no top-level
+  `unity eval`, use `unity command script eval --code '...'`. Junk spawned by `MessView.MakeMessy()` isn't in
+  `TapToClean.Active` until a later frame, so make it messy in one eval and inspect it in the next. [verified]
+- **2026-10-28 · Linting workflows locally (Docker from Git Bash).** `export MSYS_NO_PATHCONV=1`, mount with a Windows
+  path: `docker run --rm -v "F:/GameDev:/repo" -w /repo rhysd/actionlint:1.7.12` and
+  `docker run --rm -v "F:/GameDev:/repo" -w /repo -e GH_TOKEN=$(gh auth token) ghcr.io/zizmorcore/zizmor:latest .`.
+  Without the env var, `-w /repo` becomes `C:/Program Files/Git/repo`. actionlint caught `${{ runner.temp }}` in a
+  job-level `env:` (not allowed there; set it from a step via `$GITHUB_ENV`). [verified]
+- **2026-10-29 · Tester P3 run notes.** [verified]
+  - Several Game view sizes in **one** PlayMode test: call the `GameViewSizes` reflection (as in `AgentGameView.SetSize`)
+    from the test under `#if UNITY_EDITOR`, then wait until `Screen.width/height` match (a few frames). IMGUI and
+    `ProtoGui.Scale` follow. One run can then screenshot 1080x1920, 1080x2400 and 1640x2360 of the same state.
+  - Wipe strokes: take the front pane (`GlassGrime.Panes` with the lowest projected `bounds.center.y`) and stroke about
+    ±90 px around its centre. ±140 px runs off the pane, and a stroke that *starts* above the tank rim is a camera turn
+    by design (it looked like "wipe rotates the camera" in the first run).
+  - A tap within `WipeCleaner.pickRadius` of any junk goes to the junk (`TapClaim`) before the world tap. When a tap
+    test on a person fails in a messy tank, check the nearest `TapToClean.Active` distance before blaming the harness.
+  - A PlayMode `test run` can write pending in-memory ProjectSettings to disk (`EditorBuildSettings.asset` showed up
+    modified right after one). Report it, don't revert it.
+- **2026-10-29 · Tester touch fixture: taps only land with `queueEventOnly: true`.** With the default (`false`),
+  `BeginTouch`/`EndTouch` update the Input System outside the player loop and `ETouch.activeTouches` never shows the
+  touch in `OrbitCamera.Update` (every tap silently does nothing: no `tap` log line, no toast). Pass
+  `queueEventOnly: true` to `BeginTouch`/`MoveTouch`/`EndTouch` and yield frames between them. Add the `Touchscreen`
+  *after* the scene has loaded. The fixture logs "Cached unprocessed value unexpectedly became outdated" errors from
+  `EnhancedTouchSupport.Enable` (fixture noise, not game code): set `LogAssert.ignoreFailingMessages = true` and
+  collect console errors yourself. Run one `[UnityTest]` per `test run`: in a two-test run the second fails at once
+  ("EnhancedTouch API is not enabled" from the first test's still-loaded `OrbitCamera`). [verified]
+- **2026-10-29 · Tester Test Hub run notes.** [verified]
+  - Scene-flow checks don't need a test fixture: `unity command editor.playmode set_run_in_background` once, then
+    `editor.playmode start` (a cold launch: statics reset), drive with `script eval` (`LabLaunch.Open`,
+    `HubLink.GoToHub`, `TestHub.OpenDiary` by reflection for the diary buttons) and `AgentGameView.Shot` for IMGUI.
+    The Editor in the background needs ~20 s before the first scene's `Start` (frame count stays 1 until then).
+  - `BeginTouch/MoveTouch/EndTouch` are `InputTestFixture` methods, not `Touchscreen` methods (`ts.BeginTouch` = CS1061).
+  - Compile errors from a deleted `_AgentPlaytest` file stay in `console get` until `console clear`.
+- **2026-10-29 · Tester P4 run notes.** [verified]
+  - A touch-fixture test can open any lab scene the way the hub does: `EditorSceneManager.LoadSceneAsyncInPlayMode` the
+    Hub scene (with `hub_autoopen`=0), wait ~30 frames, `LabLaunch.Open(id, variant, TestMode.Lab)`, then poll the
+    protected `PrototypeBase.started` (ready in under 1 s). Add the `Touchscreen` after that.
+  - Input-System-driven panels that map `Pointer.position` to IMGUI canvas (P4 timeline, book swipe) take fixture
+    touches fine: convert canvas → screen with `(x * ProtoGui.Scale, Screen.height - y * ProtoGui.Scale)` and read
+    the panel's private rect (e.g. `TimelapseView.barCanvas`) after one OnGUI frame. Keep touch start points on screen:
+    a start at negative x misses `GuiBlocker` and turns the camera.
+- **2026-10-29 · Tester P5 run notes.** [verified]
+  - Banners that get replaced within a frame never show in screenshots. Poll `HudToast`'s private static `instance`
+    and its `banner`/`bannerUntil`/`toasts` fields every frame from the touch-fixture test and log each change.
+  - A ~4-minute lab watch fits in one `[UnityTest]` with `[Timeout(1200000)]` (the default timeout is too short).
+  - `Renderer` bounds `Aggregate` throws on a prop with no renderers (the P5 rain nudge root has none): guard it, or
+    the test fails mid-run.
+- **2026-10-29 · Tester P6 run notes.** [verified]
+  - Changing the Game view size mid-test resets `OrbitCamera`'s distance through `FitAspect`, so any `SetWide` pull-back
+    is lost (P6 annex/shelf framing). To judge a wide view at several sizes, set the size **before** loading the scene and
+    reach the state again (one `[UnityTest]` can load Hub → `LabLaunch.Open` several times in a loop).
+  - Float interpolation in harness strings follows the machine locale (`1,5` not `1.5`): screenshot names and log
+    numbers come out with commas. Use `CultureInfo.InvariantCulture` when it matters.
+  - Overlapping IMGUI buttons: the one drawn **first** gets the MouseDown (and the one drawn last shows on top). A
+    screenshot where panel X covers panel Y means Y's buttons take the taps.
+- **2026-10-29 · Overnight P3–P6 notes (main session).** [verified]
+  - Python/bash heredocs with apostrophes in C# strings ("Keeper's") fail with "unexpected EOF": write the edit script
+    with the Write tool and run the file (already in §7; it bit three times).
+  - The Editor's "Hold on... Importing assets" window is a progress bar, not a question: `dismiss-dialogs.ps1` lists it as
+    UNKNOWN. Poll `unity status` until `ready` (an until-loop, not chained sleeps).
+  - `unity recompile` right after a large edit often returns "No Pipeline instance" or 400 during the domain reload;
+    wait for `ready` and run it once more. An eval sent during the reload is silently lost (check its result).
+  - Another session can share this working tree and Editor: check `git status` for files you didn't write before every
+    commit, stage paths explicitly (not `git add -A`), and agree on Editor time by message.
+  - `AquariumCiv.EditorTools.AgentGameView.SetSize(w,h)` / `.Shot(name)` (Assets/Editor/Agent) set a portrait Game view
+    and grab a play-mode screenshot including IMGUI; `Temp/agent/ready.cs` prints `PrototypeBase.started`.
+
+- **2026-10-29 · Tester sound checks (no ears).** [verified]
+  - A live `OnAudioFilterRead` synth can be verified by reflection: its smoothed fields only move on the audio thread,
+    so a value rising during a fixture drag proves the filter runs in Editor play mode. One-shots played with
+    `PlayOneShot` show up in `AudioSource.isPlaying`; to count plays, read the pool's round-robin index before/after.
+  - `Application.logMessageReceivedThreaded` (not `logMessageReceived`) also catches audio-thread exceptions.
+  - P2 lab mode writes the **diary** save `proto/P2.json` (P2 has no separate lab save): back it up before a P2 playtest.
+  - A raster of wipe strokes inset 12% from the front pane's projected rect leaves its mean at ~0.05, just above the
+    `PaneCleared` threshold (< 0.05). To test the clear chime, set a dirty central patch on a clean pane and wipe that.
+- **2026-10-29 · `test run --mode play` silently runs 0 tests** ("0/0 passed (0s)", exit 0). The Pipeline's modes are
+  `editor`, `playmode`, `all`; anything else matches nothing. Use `--mode playmode` (and `--async_tests true` + `test
+  status` for anything long). `test list --mode play` still lists the tests, so a listed test is no proof it ran. [verified] Same for `--mode edit` (use `editor`).
+- **2026-10-29 · Blender 4.5 LTS and RenderDoc 1.46 installed** (user-approved; `winget install --id
+  BlenderFoundation.Blender.LTS.4.5` / `BaldurKarlsson.RenderDoc`, each needs one UAC click). Blender runs headless:
+  `"/c/Program Files/Blender Foundation/Blender 4.5/blender.exe" --background --factory-startup --python script.py -- <args>`
+  (script args after `--`, read via `sys.argv`); FBX export via `bpy.ops.export_scene.fbx` verified. RenderDoc:
+  `C:\Program Files\RenderDoc\qrenderdoc.exe` (UI) and `renderdoccmd.exe` (CLI capture) for Windows frame captures;
+  there is no Android device and no Mac, so iPhone GPU captures still need the in-app FrameTimingManager log. [verified]
+- **2026-10-29 · `unity status --timeout 30` fails** with `STATUS_TIMEOUT_REQUIRES_UNTIL_READY`: `--timeout` only goes
+  with `--until-ready`. Plain `unity status --format json` is instant. After `unity recompile`, poll it until `"state":
+  "ready"` (it reads `unreachable`/`starting` for ~10–20 s). [verified]
+- **2026-10-29 · The first `script eval` after a recompile can return 504 (30 s timeout) yet still run.** A scene-builder
+  eval (`NewScene` + `SaveScene` + `AssetDatabase.Refresh`) timed out but the scene was written. Check the effect (file
+  on disk, active scene) before re-running; give builder evals `--timeout 60`. [verified]
+- **2026-10-29 · Slice play-mode checks:** the `GameClock` summary line is in `Editor.log` (`grep -a "\[GameClock\]"`)
+  even when `console get` right after `editor.playmode start` shows 0 entries. The slice saves to
+  `LocalLow/Tommaso Ribaudo/Aquarium Civ/game/` and never touches `proto/` or `logs/`. [verified]
+- **2026-10-29 · Fast headless loop for pure-C# sim code (no Editor, no domain reload).** [verified] Unity ships a
+  Roslyn compiler and a .NET 6 runtime: compile `Assets/Game/Sim/*.cs` + spike logic + a `Main.cs` with
+  `"<Editor>/Data/NetCoreRuntime/dotnet.exe" "<Editor>/Data/DotNetSdkRoslyn/csc.dll" -noconfig @build.rsp`, referencing
+  every `NetCoreRuntime/shared/Microsoft.NETCore.App/6.0.21/System*.dll` (+ `netstandard.dll`, `mscorlib.dll`; skip
+  `*Native*`, keep `System.Private.CoreLib.dll`), and write a `<out>.runtimeconfig.json` for net6.0. The paths have spaces:
+  put every `-r:"..."` and source path in the `.rsp` file, quoted (on the command line they split). Set
+  `CultureInfo.InvariantCulture` in `Main` (this machine prints `0,5`). Gotcha: CoreCLR and the Editor's Mono differ in
+  float results and in speed (Mono was 3–4× slower on Dijkstra-heavy code), so tune in the harness but measure the
+  budget in the Editor; same-runtime runs are bit-identical.
+- **2026-10-29 · Python edits of C# files: always `encoding='utf-8'`.** Python's default on this machine is cp1252: a
+  write with a non-cp1252 character (→, ≥) raises *after* `open(..., 'w')` truncated the file, leaving it empty.
+  Write to a temp file and `os.replace` it. [verified]
+- **2026-10-29 · Edit-mode renders to JPG with URP post-processing:** `cam.targetTexture = RenderTexture.GetTemporary(w,
+  h, 24, ARGB32, sRGB)`, `cam.Render()`, `ReadPixels`, `EncodeToJPG` (`GrowthLabBuilder.Render`). Tonemapping, grade and
+  SMAA are applied; no play mode needed. Long frame exports: chunk them into `script eval` calls under 60 s
+  (`GrowthLabBuilder.Frames(from, to)`), about 1 s per frame with the AO bake. [verified]
+- **2026-10-29 · The Game view size lands a few frames into play mode.** After `AgentGameView.SetSize(1179, 2556)` and
+  `editor.playmode start`, `Start()` still saw the old 1198x702 Game view, so a camera fitted once in `Start` was framed
+  for landscape. Refit when `cam.aspect` changes (PerfCheck does). Also, ProfilerRecorder render counters
+  ("Batches Count", ...) read double in the Editor with the Scene view open, and 0 on some frames. Trust the device numbers. [verified]
+- **2026-10-29 · Unity (Mono) and Tools/SimTests (.NET 8) don't give bit-identical floats for the sim.** The slice
+  fingerprint (ints, rng states, ages to 2 decimals) matches in both, but hashes over raw float fields (food, wood, mood…)
+  differ, with "R" text or with raw bits. So: never pin a float-derived hash in a test that runs in both; pin under
+  `#if !UNITY_2017_1_OR_NEWER` (dotnet only) and compare same-runtime runs in Unity. Unity stays the authority. [verified]
+- **2026-10-30 · "The referenced script (Unknown) on this Behaviour is missing!" on a component the builder just
+  added.** The MonoBehaviour (`NightLampDriver`) lived in a file named after another class (`NightLamps.cs`), so Unity
+  gave it no script asset and the scene saved `m_Script: {fileID: N}` with no guid. Every MonoBehaviour needs its own
+  file named like the class. Check after a scene build: `grep -n "m_Script: {fileID: [0-9]*}$" <scene>.unity` must be
+  empty. [verified]
+- **2026-10-30 · Phone-size renders of the slice:** `AquariumCiv.EditorTools.SliceSceneBuilder.Shot(path, w, h, zoom,
+  target, yaw, pitch)` renders the main camera (URP post included) to PNG in edit or play mode, with the `BoxCamera`
+  refitted to that aspect, and restores the rig. [verified]
+- **2026-10-29 · Tester: Slice look checks (#31).** [verified]
+  - `SliceSceneBuilder.Shot(path, w, h, zoom, target, yaw, pitch)` renders any size/angle in edit mode without dirtying
+    the scene; villagers are `HideFlags.DontSave`, so find them with `Resources.FindObjectsOfTypeAll<PegDollView>()`
+    (`FindObjectsByType` returns 0) and aim close-ups at their positions.
+  - `BoxCamera` reads `Touchscreen.current`/`Pointer.current` directly, so an `InputTestFixture` with the default update
+    mode and `queueEventOnly: true` touches drives it (no manual pump or EnhancedTouch needed).
+  - Lamp flicker is per-frame shader noise: sample pixel luminance from `ScreenCapture.CaptureScreenshotAsTexture()`
+    after `WaitForEndOfFrame` across frames at fixed `NightLamps.DebugSetLevel` values instead of diffing whole
+    screenshots (wind sway changes ~100k pixels per frame).
+- **2026-10-29 · Bash tool: a long `python - <<'EOF'` heredoc full of apostrophes failed to parse** ("unexpected EOF
+  while looking for matching `''") although the delimiter was quoted. Workaround: write the edit spec or script with the
+  Write tool to the scratchpad and run it (`python script.py spec`). [workaround]
+- **2026-10-30 · The Editor compiles scripts in Debug mode (`CompilationPipeline.codeOptimization` = Debug), so managed
+  per-vertex loops are several times slower than in a player.** Measure Editor budgets with that in mind. What made the
+  slice box's chunk rebuild fit (#33): AO with `RaycastCommand.ScheduleBatch` plus plain (non-Burst) `IJobParallelFor`
+  jobs that build the commands and sum the hits (the rays were only ~1/4 of the cost; the managed loops around them were
+  the rest), packed `long` dictionary keys instead of tuple keys, `List.ToArray()` before hot loops, distance fields on
+  a 0.025 u grid instead of walking polylines per triangle, and `Parallel.For` over terrain row bands.
+  `Color.linear` is a native call: `MeshBuilder.Linear` does the same in managed code so builders run on worker threads;
+  `Quaternion.FromToRotation` worked inside jobs. [verified]
+- **2026-10-30 · Profiling a private method from `script eval`:** call it by reflection
+  (`typeof(T).GetMethod("Name", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(obj, args)`), with a `Stopwatch`
+  around each stage; out params come back in the `args` array. Build the result string with `+`, not `$"...\n"`, when
+  the script is passed through `"$(cat file)"` (an escaped `\n` inside an interpolated string got mangled). [verified]
+- **2026-10-30 · `VolumeProfile` built in code must add its components as sub-assets (#63).** `Post_Slice.asset` was
+  committed with `components: [{fileID: 0} x5]`: `p.Add<T>(true)` creates the overrides in memory only, and they survive a
+  domain reload but not an Editor restart or a player build, so a fresh checkout ran the slice with no tonemap, grade,
+  vignette or bloom. `AssetDatabase.AddObjectToAsset(c, profile)` for each component before `SaveAssets` fixes it
+  (`SliceSceneBuilder.Profile`). Check with `grep -c "" Post_Slice.asset` (about 190 lines, not 20). [verified]
+- **2026-10-30 · After a mesh-builder or shader change, `BoxView.Rebuild()` before shots.** `SimLayoutSource.DebugPreview`
+  reports "no chunk changed" when the layout hash is the same, so the old piece meshes stay. Call
+  `UnityEngine.Object.FindAnyObjectByType<AquariumCiv.View.BoxView>().Rebuild()` first. [verified]
+- **2026-10-30 · `script eval` takes no `using` lines** (top-level `using X;` is parsed as a using-statement and fails with
+  "Identifier expected"): write fully qualified names. A sed pass over a script file does it:
+  `sed -E 's/(^|[^A-Za-z0-9_.])(Vector3|Color)\b/\1UnityEngine.\2/g'`. This machine has no `python` (the Store stub) but
+  has `perl`, which handles multi-line edits (`perl -0pi -e ...`) when a heredoc has no apostrophes. [verified]
+- **2026-10-30 · `unity command test run` prints only the totals; failures are in `TestResults.xml`.** Read
+  `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/TestResults.xml` and grep `result="Failed"` with `-A12`
+  (use `grep -a`). [verified]
+- **2026-10-29 · Tester #63 camera-by-touch notes.** [verified]
+  - `BoxCamera` takes `InputTestFixture` touches with the default update mode: `BeginTouch/MoveTouch/EndTouch(...,
+    queueEventOnly: true)`, one step per frame, two ids for pinch/pan. The fixture leaves no `Mouse`, so `Touchscreen.current`
+    is the only pointer. Several Game view sizes in one test: call `AgentGameView.SetSize` by reflection
+    (`AppDomain.GetAssemblies()` → `AquariumCiv.EditorTools.AgentGameView`) and wait ~1 s; the yaw/pitch deltas then match.
+  - Measure "ground under the fingers" with `BoxCameraMath.GroundPoint(cam.ScreenPointToRay(p), rig.target.y, ...)`.
+  - The slice play mode rewrites `LocalLow/.../game/box.json`: copy it out before and back after.
+  - Fire halo edge check: scan rows of a night close-up for a strong horizontal luminance step (PIL); the eye misses it in day shots.
+- **2026-10-29 · Tester sim playtest without a UI (#24-#26 jobs/counts).** [verified]
+  - Drive the live Slice box with `unity command script run --file Temp/agent/tester/X.cs --entry Type.Method --args '[...]'`
+    (static methods using `GameClock.Instance.Sim`, `SimLayoutSource.DebugSkipYears/DebugNextEra`, `GameClock.DebugAway`); add
+    `--result-only` and parse `.result` (use `python`, not `python3`, in Git Bash here). Offline audits: build
+    `new SimCore(JsonUtility clone of GameClock.Instance.config, SimCore.NewWorld(seed, cfg))` for many seeds in one call.
+  - IMGUI (the "dbg" panel) only shows in `UnityEngine.ScreenCapture.CaptureScreenshot`; `capture screenshot --view game`
+    sometimes returns a tiny (299x648) image right after a Game view size change: shoot again.
+  - A synchronous `test run --mode editor` can hang the Pipeline (every other command 504s "waiting for another command")
+    when the Editor is unexpectedly in play mode ("This cannot be used during play mode" in RestoreSceneSetupTask, result
+    0/0). Wait for it to end, make sure play mode is off, rerun with `--async_tests true` (234 tests, ~2.5 min).
+  - Back up `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/game/box.json(.bak)` before a live Slice run; delete
+    them for a fresh camp, restore afterwards.
+
+- **2026-10-29 · UI Toolkit panels are missing from Game-view screenshots** (like IMGUI). Capture with
+  `UnityEngine.ScreenCapture.CaptureScreenshot(path)` from `unity command script run --file Temp/agent/x.cs --entry T.Run`
+  (file path is relative to `AquariumCiv/`, then wait a second and read the PNG). The feedback sheet has to hide its own HUD for a frame before it
+  captures, for the same reason. [verified]
+
+- **2026-10-29 · UI Toolkit in `script eval` / HUD checks (#36).** [verified]
+  - `script eval` doesn't pick up the `UQueryExtensions` extension methods: `root.Q("name")` fails to compile with
+    "'VisualElement' does not contain a definition for 'Q'". Call it statically:
+    `UnityEngine.UIElements.UQueryExtensions.Q(root, "name")`.
+  - Open/close HUD sheets from eval with `GameHud.Instance.Open("settings"|"history"|"shaping")` / `CloseSheet()`, then
+    `AgentGameView.Shot(name)`: the shot shows UI Toolkit (Game-view `capture screenshot` doesn't).
+  - USS edits hot-reload in play mode after `AssetDatabase.Refresh()`; check with `resolvedStyle` before trusting a shot.
+  - The Editor's Game view has no notch: `Screen.safeArea` is the full screen there, so safe-area handling is covered by
+    `SafeInsetsTests` (EditMode) and needs a device or the Device Simulator to see.
+- **2026-10-29 · Compile-check UnityEngine code (View, its tests) without the Editor.** [verified] Same csc as the sim
+  loop above, but `-target:library` against `Editor/Data/NetStandard/ref/2.1.0/netstandard.dll`, every
+  `Editor/Data/Managed/UnityEngine/*.dll`, and the project's own and package assemblies from
+  `AquariumCiv/Library/ScriptAssemblies/` (`AquariumCiv.Sim/Game/Life`, `Unity.InputSystem`, `Unity.RenderPipelines.*.Runtime`,
+  `Unity.Collections`, `Unity.Mathematics`; built by whichever branch the Editor last compiled, so only for assemblies you
+  didn't change). Define `UNITY_EDITOR` for `#if` blocks. Tests also need `UnityEngine.TestRunner.dll`, the nunit from
+  `Library/PackageCache/com.unity.ext.nunit*/net40/unity-custom/`, and `NetStandard/compat/2.1.0/shims/netfx/mscorlib.dll`
+  (else every `[Test]` fails with CS0012 "Attribute ... mscorlib"). Paths with spaces go quoted in an `.rsp` file
+  (Git Bash `/c/...` paths don't work inside it: use `C:/...`). Catches compile errors in seconds while another agent
+  holds the Editor; it can't run the tests (no engine). Unity's compile is still the authority.
+- **2026-10-29 · "Scene(s) modified externally" after a merge/checkout.** `dismiss-dialogs.ps1 -Click` leaves it as KNOWN but
+  doesn't answer it. Copy the script, add `@{ Match = 'modified externally'; Button = 'Reload' }` to `$safe`, run the copy
+  with `-Click`. After the reload an "Importing assets" progress window follows: poll `unity status` until ready. [verified]
+- **2026-10-30 · Tester slice batch (#30/#38/#40) notes.** [verified]
+  - A PlayMode fixture test that loads `Slice.unity` with `LoadSceneAsyncInPlayMode` gets no `GameHud` (its
+    `AfterSceneLoad` bootstrap has already run): call `GameHud.Create()` in the test after the scene is up.
+  - `script run --entry Drive.X --result-only` returns JSON: pipe it through `jq -r .result` (jq is installed via WinGet).
+    `script eval --format json` puts the value at `.data.result.result`.
+  - Doll motion audit without screenshots: a throwaway MonoBehaviour reading `PeopleView.dolls` (private dict, `Doll.pos`
+    / `view` / `act`) by reflection every `LateUpdate` finds teleports (> 0.12 u in one frame), walk speeds and heaps.
+- **2026-10-30 · Panel-fix notes (lane B).** [verified]
+  - `unity command script run --args` wants a JSON array (`'["a1","x"]'`); string/int params are converted. A shell helper that builds it with `jq -R . | jq -sc .` works.
+  - IMGUI debug panels now share `DebugDock` (View): one "dbg" toggle top left, tabs dbg/sim, rects in `UiInput.DebugBlocks` (camera ignores presses there, `GameHud` puts picking blockers `hud-debug-block0/1` over them), hidden while a HUD/Feedback sheet is open. Check blocking with `root.panel.Pick(...)` in `script eval` (hit name `hud-debug-block1`).
+  - Scenes had no AudioListener (music silent, "no audio listeners" spam); added to every game/prototype scene's Main Camera and to `SliceSceneBuilder`.
+- **2026-10-30 · Care/wipe play tests (#37).** [verified] `unity command test run --mode playmode --filter <Assembly>
+  --filter_type assembly --async_tests true`, then `test status` (the `name` filter ran 0 tests). The start-up
+  `RuntimeInitializeOnLoadMethod` bootstraps (HUD, CareView) only run for the first scene, so a play test that loads the
+  Slice with `EditorSceneManager.LoadSceneAsyncInPlayMode` adds them by hand. A press over the open top of the box is not
+  on glass: aim touch strokes with `CareView.GlassAt(screenPos)`. The first `unity recompile` often answers 400; retry.
+  The play test backs up and restores `LocalLow/.../game/box.json` (and `.bak`, which the game falls back to).
+- **2026-10-30 · Live town shots in play mode overwrite the dev save (#34).** `SimLayoutSource.DebugSkipYears` saves, so
+  copy `%USERPROFILE%/AppData/LocalLow/Tommaso Ribaudo/Aquarium Civ/game/box.json` aside before entering play mode and
+  copy it back after `editor.playmode stop`. After a long skip the glass is full of grime: `Sim.CleanAll()` before shots.
+  There is no night lighting yet: `PeopleView.DebugSetHour(22)` leaves `NightLamps.Level` at 0, so night shots are
+  `NightLamps.DebugSetLevel(1)` over the day light. Kit sheets of every town piece in edit mode:
+  `AquariumCiv.EditorTools.TownKitShots.Sheet()` then `SliceSceneBuilder.Shot(...)`, `TownKitShots.Restore()`. [verified]
+- **2026-10-30 · One PlayMode test class alone (#88).** Put `[Category("X")]` on the class and run
+  `unity command test run --mode playmode --filter X --filter_type category --async_tests true`, then poll `test status
+  --format json` until `"status": "completed"`. Runs only that class (the assembly filter would also run the other
+  InputTestFixture classes). `scene save` before the run writes a noise-only `lastBuildInfo` change into Slice.unity:
+  leave it out of the commit. [verified]
+- **2026-10-30 · `dismiss-dialogs.ps1 -Click` now answers "The open scene(s) have been modified externally" with Reload
+  (#89).** Before, the "have been modified" rule matched it too (case-insensitive) and looked for a Cancel button that
+  this dialog doesn't have, so it stayed KNOWN and blocked recompiles. After a checkout/merge, disk holds what git holds.
+  [verified]
+- **2026-10-30 · Downloading Kenney packs from the shell (#96).** The site's Download button calls
+  `https://kenney.nl/download-link/<hex of "assets/<slug>">` (JSON `{"url": ...}`, a signed short-lived link). From bash:
+  `id=$(printf "assets/interface-sounds" | xxd -p | tr -d '\n')`; GET the asset page once with a cookie jar
+  (`-c ck.txt`, a browser User-Agent, `-e <page>` referer); GET the download-link with the same cookies; strip the `\/`
+  escapes (`tr -d '\\'`); GET the url → the zip. Extract into a fresh temp dir outside the repo, copy only the clips used.
+  OpenGameArt files are plain links (`/sites/default/files/...`); check the page's `license-name` says CC0. ffmpeg (winget
+  Gyan.FFmpeg, on PATH) converts to mono .ogg and makes crossfade loops. [verified]
+
+- **2026-10-30 · Shelf views pull the camera past the far plane; PlayMode filters; no tests run from `unity test` with the Editor open.** [verified, #93]
+  - `BoxCamera` sits `FitDistance() * zoom` away (about 50 units at zoom 1). The Slice camera's far plane is 120, so a
+    zoom above about 2.3 shows only the backdrop vignette. `BoxCompleteController.Start` raises the far plane to 420.
+  - `unity command test run --mode PlayMode --filter BoxComplete` ran 0 tests; the fully qualified class name
+    (`--filter AquariumCiv.View.PlayTests.BoxCompletePlayTests --async_tests true`) ran them. Check `test list --mode PlayMode`.
+  - A new `RuntimeInitializeOnLoadMethod(AfterSceneLoad)` component is not created when a test loads the scene with
+    `LoadSceneAsyncInPlayMode` (the bootstrap ran earlier): tests call `X.Create()` when `Instance` is null.
+  - The camera looks from -z (front of the box = -z). Anything meant to face the player (plate, plinths) goes at -z.
+  - A "finished" state that stays set on a pure-C# director (`Phase.Finished`) re-fires a per-frame `Finish()`: guard with a flag.
+- **2026-10-30 · Tester batch 2 notes (slice moments, box complete).** [verified]
+  - One throwaway `InputTestFixture` class per `[Category]` (one test each) runs alone with `test run --mode playmode
+    --filter <Cat> --filter_type category --async_tests true`; four classes can share an abstract harness base class.
+  - Kill-like interruption in play mode: invoke every MonoBehaviour's `OnApplicationPause(true)` by reflection (GameClock
+    saves), then `LoadSceneAsyncInPlayMode` the Slice again and re-add the bootstraps (GameHud, MomentPlayer,
+    BoxCompleteController, CareView, GlassVoice, TimeLapseView.Ensure). The relaunch reads the saved box.json.
+  - A UI audit that walks every `UIDocument` root (shown Buttons/Labels → screen rects, overlaps) logged per screenshot
+    catches stuck bubbles and overlapping banners that the eye misses on a contact sheet.
+  - Contact sheets: `ffmpeg -i a.png -i b.png ... -filter_complex "[0]scale=440:-1[s0];...;[s0][s1]...hstack=inputs=N"`.
+  - The debug "belief stage" cheat can't go below the stage the found relics give (`DebugSetBelief(0..1)` reads back 2
+    after two relics): test early-stage knocks on a fresh box.
+  - Restoring the dev save: `rm -rf "$G"/*` is blocked by the safety check; copy the backup back with literal paths and
+    delete only the stills your run added.
+- **2026-10-30 · Tester batch 2 fixes (lane B).** [verified]
+  - `unity command test run --filter "A;B" --filter_type assembly` ran **0 tests**: one assembly per run (a small loop
+    that waits for `ready`, starts `--async_tests true`, polls `test status` until `completed`).
+  - `unity status --project-path F:\GameDev\AquariumCiv` from Git Bash said "no instances" (the backslashes); run it
+    from `F:/GameDev/AquariumCiv` without `--project-path` instead.
+  - Prove a regression test catches the bug: disable the fix with a marked `if (false && ...)` line, recompile, run the
+    test by name (`--filter <TestName>`, no filter_type), expect red, restore. Caught that an override-only fix passed
+    a test whose real trigger was the view day turning at midnight.
+  - `PeopleView.DebugSetHour` calls `Tick(0)`, and `dt <= 0` snaps every doll to its plan: never use it from game code
+    mid-play (moments used it for their light). `PeopleView.SetHourGently` moves the clock and lets the dolls walk.
+- **2026-10-30 · Waiting on async test runs from Bash (#39).** A foreground `sleep N; check` is blocked by the harness
+  and a long poll loop gets moved to the background after 180 s. Run the poll loop with `run_in_background` (or wait
+  for it with `until grep -q "== Done" <output file>; do sleep 5; done` in a background Bash) and read the output file
+  when the notification lands. UI Toolkit tip from the same work: a header row inside a `max-height` sheet shrinks and
+  overlaps unless it has `flexShrink = 0`, and a label column next to buttons only wraps with `flexBasis = 0` +
+  `minWidth = 0`. [verified]
+- **2026-10-30 · `unity test` (top-level) refuses while the Editor is open; use `unity command test run --mode playmode --filter <name> --async_tests true`, then poll `unity command test status`.** A bare `unity command test run` (no filter) ran all 811 EditMode tests and blocked every other command for minutes (the client timeout does not cancel it; `test cancel` itself waits). Always pass `--filter`. `ShapingView.GroundPoint` marched only 30 units: the default camera is ~50 away, so no ground tap worked at the default framing until the step was doubled (#94). [verified]
+- **2026-10-30 · ShapingPlay flaked on "the people's answer is staged in the world"; pin a play test's world with
+  `GameClock.DebugNextSeed`.** [verified] About 1 run in 3 failed (`e.moment` null, a different tool each run, before and
+  after #96). `LifePlanner.StartShapingAnswer` gave null when nobody could walk to the gift in half the come-over beat: in
+  a 3-year camp the 3-5 people are often all in the woods or at the fire, 7-13 s of walking from a gift on open ground
+  (about 1 gift in 15 by day, worse near midday because the beats are spread evenly in view hours and the slow midday hour
+  squeezes the come-over). Fixed in Life: by day the answer stretches (50-90 s, the late way) until someone comes over at
+  the walking pace (`LifeShapingAnswerTests.ByDaySomeoneAlwaysComesToAFarGift`). After ~20:00 nobody is up and nothing is
+  staged (by design for now). Found with a dotnet probe in `Tools/SimTests` (a probe `.cs` in a `<Compile Include>`,
+  40 seeds × view hours, private planner state by reflection; deleted after): seconds instead of 5-minute play runs.
+  `GameClock.DebugNextSeed = <seed>` before loading the Slice makes the next new world use that seed once (reset it in the
+  test's Close); ShapingPlay pins 1234. Don't move the view clock back mid-test with `PeopleView.SetHourGently`: dolls glide
+  up to 0.26 u in a frame and trip the doll-jump audit. MomentPlay/BoxComplete passed every run here.
+- **2026-10-30 · Play tests' taps on UI buttons fail at random when the Editor isn't the foreground window.** [verified]
+  "a tap on Watch starts the moment", "a tap on Finish", "the Clean button switches clean mode on", CameraMode's pill:
+  all passed with Unity in front and failed while another app (a browser) was in front. UI Toolkit's
+  `DefaultEventSystem` drops pointer events on Windows/macOS while `!Application.isFocused` unless
+  `DefaultEventSystem.IsEditorRemoteConnected()` says Unity Remote is attached (read from its IL by reflection in
+  `script eval`). The Input System side was already handled (`backgroundBehavior = IgnoreFocus`). Fix: every game play
+  test calls `GameUiPanel.AcceptInputUnfocused(true)` in its Open (sets that internal `Func<bool>` to true, Editor only;
+  play mode's domain reload resets it). Also: an edit made from a script was not picked up by `unity recompile` once
+  (the dll in `Library/ScriptAssemblies` kept the old test); check with `script eval` reflection on the type and
+  `ImportAsset(path, ForceUpdate)` + recompile when it's stale.
+- **2026-10-30 · Checking sound without ears (#96).** In the Editor `AudioDirector.LogPlays` is on: every cue played logs
+  `[Audio] <cue>: <clip> vol .. pitch ..` and every buzz `[Haptic] <kind>`. `AudioDirector.Status()` (script eval, or
+  the Sound section of the dbg panel) shows the settings, bus gains, duck and the five ambience levels;
+  `AudioDirector.Instance.Recent` / `.MomentLog` list what played. `DebugCheckClips()` lists CueLibrary clips that don't
+  load. Play tests that load the Slice by hand call `AudioDirector.Ensure()` (the bootstrap ran for the first scene
+  only). Long clips (ambience, the flute tag) are set to Compressed In Memory / Vorbis 0.6 / mono in their .meta. [verified]
+- **2026-10-30 · Time-lapse hitches were GC pauses; `test status` lies after a timed-out `test run`.** [verified]
+  - A chunk build took 12 ms, but about 1 step in 80 took 45-75 ms: `BoxView.lastRefreshInfo` now ends in `gc N`, and every slow
+    step had `gc 1`. Splitting steps across frames alone gave 56 ms and pacing the sweep per frame didn't help (worker-thread
+    allocation isn't sliced by the incremental GC). The fix was to stop making the garbage: `MeshBuilder.Rent` / `Free` /
+    `AppendFree` keep list capacity (seeds and draw order unchanged, so the looks are the same). Sweep max 75 -> 23 ms.
+  - `unity command test run --timeout 60` can answer 504 while the import before play mode runs (1-2 min here). `test status`
+    then returns the **previous** run as `completed`, with its own counts. Pass `--timeout 170` and trust `completed` only
+    after seeing `running`. JSON sits at `.data.result` (`status`, `summary`, `results[]` with `FullName`, `Status`, `Message`).
+  - `unity recompile` can answer "timed out after 30000ms" or "no instances" during a reload: wait for `ready`, run it again.
+  - A sed insert (`/pat/{n;r file}`) that looks silent may have worked: grep for the new text before inserting again.
+- **2026-10-30 · Agent shell on Windows: `python3` is a Store stub, and a long Bash call dies.** [verified]
+  - `python3` only prints "Python was not found"; use `py -3`. A Bash command of a few tens of KB fails with `ENAMETOOLONG: name too long, uv_spawn` and nothing in it runs: write big files with the Write tool, then run a short command.
+- **2026-10-30 · Tester batch 3 notes (one continuous session).** [verified]
+  - A play test that loads the Slice by hand must add **every** bootstrap, `FirstRunView` and `BoxCompleteController` too. ShapingPlay leaves them out, which hid a real bug (`FirstRunView.Update` runs `EndRun` every frame once a run is over and clears the shaping tool).
+  - `test run --async_tests true` can show `running` for about 5 minutes before the first log line (import, then play mode); check `Run started` and `Loaded scene` in Editor.log before calling it stuck. "Run started: 50 test(s)" is the assembly's total; the category filter still runs 1.
+  - After `editor.playmode start`, `script eval` can answer 504 for a minute (reload ~50 s) and then see `frameCount` 1. Retry; don't trust the first read.
+  - To see buildings up close, pitch 60 or more: at pitch 28 close-ups show only the front pane's haze.
+  - A `Safe(tag, coroutine)` wrapper (a stack of enumerators, `try` around `MoveNext`) lets one long `[UnityTest]` log a failed step and go on; a per-screenshot UI audit (every shown text rect, overlaps) finds covered toasts the eye misses.
+- **2026-10-30 · The "glass haze" was leaked boxes, Editor only (tester batch 3).** [verified] `BoxView` builds its `Generated` root with `HideFlags.DontSave` and `[ExecuteAlways]`. DontSave objects outlive a scene unload and a domain reload: at the play-mode switch a deferred `Destroy` never ran, and the root stayed parentless and sceneless, still rendering. Its land meshes die (they show as null) but the panes use the built-in Cube, so each leak added four more 5 % panes. 81 roots = 1 - 0.95^81 = 98 % opaque: land and grime hidden, wipes changing 3 levels of RGB, in every Editor screenshot and play session. A device build never had it. Find them with `Resources.FindObjectsOfTypeAll<Transform>()` (`FindObjectsByType` doesn't list them): parent null, `scene.IsValid()` false. `BoxView.OnEnable` now sweeps them (`OrphanRoots`), edit-built roots go with `DestroyImmediate`, and play-mode roots carry no flag. Lesson: when a look can't be explained by the shader's numbers, disable the renderer and see if the look goes; and judge look from a shot with one pane count, not from the material.
+  - The same Editor had 4780 meshes and 180 `Code-based tests runner` objects; a domain reload took ~110 s and entering play mode ~4 min. Restart the Editor if it gets that slow.
+  - `Temp/agent` shots from before this fix show the wrong glass: don't use them as a reference for the look.
+- **2026-10-30 · Tester batch 3 fixes (lane B).** [verified]
+  - A Git Bash `nohup x &` keeps running after the tool call ends, while `pgrep` and `ps` here don't show it: a monitor said "queue gone" and a second queue ran next to it (both started the same class, and a real-looking failure came out of that). `all.log` turning "binary" (NUL gap from a second writer) was the giveaway. Find them with `Get-CimInstance Win32_Process -Filter "Name='bash.exe'"` and match `CommandLine`. Start queues with the tool's `run_in_background` only.
+  - `FirstRunPlayTests` has no `[Category]`: `--filter FirstRunPlay --filter_type category` runs **0 tests** and reports completed. Check `total` isn't 0, and use the full class name.
+  - `dismiss-dialogs.ps1` reports "UNKNOWN ... 'Hold on... (busy for 01:40)'" and "'Running managed callbacks'" during a reload: those are progress bars, not dialogs.
+  - Per-item commits from one working tree: `git diff -U0 -- file`, keep the hunks matching a keyword, `git apply --cached --unidiff-zero`. Check no commit leaves a name defined in a later one.
+  - Editing a heredoc with an apostrophe in a multi-line `python - <<'EOF'` failed in the tool's shell ("unexpected EOF"): write the script with the Write tool instead.
+  - ShowMePlay and PersonCardPlay built a random world each run and failed a different test each time ("and it showed", "the card's Pin pins them", "doll N didn't jump"). They pin seed 1234 now, like ShapingPlay and CameraModePlay; 2+ clean runs since. The "didn't jump" audit compares two samples about a second apart, so a walk during a hitch can trip it: read it as a coarse check.
+  - The "pitch 60 or more" tip in the tester batch 3 notes came from the leaked panes: close-ups read at any pitch now.
+- **2026-10-30 · PlayTestBase, the smoke test, leak checks.** New play tests derive from `PlayTestBase` (`Assets/Game/View/PlayTests/`): `OpenSlice(w, h, seed, freshSave, skipFirstRun)` / `CloseSlice()`, unfocused input, a sandboxed save (2026-10-31), touch helpers, `errors`, and `Bootstraps.All()` (every `AfterSceneLoad` bootstrap in the `AquariumCiv.*` assemblies, by reflection, plus the time-lapse). Its teardown runs `LeakCheck.AssertClean()`. Whole-slice check on every Editor ticket: `unity command test run --mode playmode --filter SmokePlay --filter_type category --async_tests true` (about 100 s; fails on any console error). Audio, Telemetry and the other older classes keep their own `Open` for now (special save handling). [verified]
+- **2026-10-30 · Leaked dolls look like props with nobody holding them.** A DontSave root that outlives its scene loses every non-DontSave mesh (doll body and arms) but keeps `PegDoll.PropMesh` (DontSave, shared): tester batch 3's "red discs and axe-like sticks" (K_b2) were the baskets, hoes and axes of the standing villagers in the 81 leaked `Generated` roots. Proved by planting a doll under a DontSave root and reopening the scene: `Body:NONE ArmL:NONE ArmR:NONE Prop_Hoe:mesh`. Only ever in the Editor. To see sceneless objects: `Resources.FindObjectsOfTypeAll<Transform>()`; `FindObjectsByType` skips hidden/DontSave ones. In play mode a DontSave object survives a Single scene load with a valid scene, so a sceneless orphan can only be planted in edit mode. [verified]
+- **2026-10-30 · `test status` right after `test run --async_tests true` can still show the previous run as `completed`.** Wait ~25 s before the first read, and check the total matches what you started. Worker bash heredocs with apostrophes in C# failed to parse here (`unexpected EOF`): write such files with the Write tool, or use a quoted delimiter that isn't `EOF`. [verified]
+- **2026-10-30 · `SliceSceneBuilder.Shot` in play mode paints the glass magenta (#65).** [verified] Cause not chased: the shader and materials report fine and the Game view is clean. In play mode take shots from the Game view: set the rig (`BoxCamera.target/zoom`, `Apply()`) in one eval, then `unity command screenshot --view game --output <abs path>` (two calls per shot, about 4 s). `FireLooks.Active` and other debug statics survive leaving play mode here (no domain reload), so tests must not assert a debug static's live value.
+- **2026-10-30 · A restart empties `Temp/agent`; a run started during a reload never starts.** [verified]
+  - `mkdir -p AquariumCiv/Temp/agent` before redirecting into it. After `unity recompile`, a `test run` sent at once can fail with `PIPELINE_UNREACHABLE`: `test status` then shows the **previous** run as `completed`. Check the start call's `"success"` and the test count.
+
+- **2026-10-31 · `test run` right after an edit + `unity recompile` can run the OLD code once** (a debug `Debug.Log` added to a
+  test did not show on the first run, only on the second). When a play test result does not match what you just changed, run
+  it a second time before debugging. `--filter_type class` matches nothing: use `category` (the `[Category]` of the fixture).
+  A play-test tap right after something changes the panel's layout (a caption card closing) can miss the button: wait 3-4
+  frames before touching. [verified, #79]
+- **2026-10-31 · Editor quit via `EditorApplication.delayCall += Exit` never happened** (restart-editor.sh timed out after 150 s, Editor
+  responsive and idle). Calling `EditorApplication.Exit(0)` directly inside the eval works: the Editor quits and the CLI returns
+  "Invalid response format from Pipeline server", which is expected. restart-editor.sh now does this and ignores that error.
+  A restart plus recompile of new files takes about 5+ min on this machine. [verified, #98]
+- **2026-10-31 · Local mobile builds from the Pipeline (#98).** [verified] `script eval --code "return AquariumCiv.EditorTools.SliceBuild.Android();" --detach`
+  (also `.Ios()`); the call returns a job id at once and the Editor builds on (status stays `ready`; watch `Editor.log`, the
+  `[n/1610]` IL2CPP lines). Android arm64 about 7 min, iOS Xcode project about 6 min on this machine. Afterwards the active
+  target is Android/iOS: switch back with `SwitchActiveBuildTarget(Standalone, StandaloneWindows64)` and `git checkout` the
+  URP assets under `Assets/Settings` and `ProjectSettings.asset`. `unity job` has no `get`/`list` here. Foreground `sleep`
+  followed by another command is blocked; `ping -n N 127.0.0.1 >/dev/null` is a wait that works.
+
+- **2026-10-31 · An Editor restart empties `AquariumCiv/Temp/`, including `Temp/agent/`.** Tester run 4's screenshots vanished when the next agent ran `restart-editor.sh`. Copy anything worth keeping out of `Temp/` before a restart. [verified]
+- **2026-10-31 · Tester run 4 notes.** [verified]
+  - Since the leak fix the Editor runs at about 100 fps, so a play test that waits a number of frames for something timed in seconds now fails: `CarePlay.FullCleanByTouch` waits 120 frames for the sun (about 2.6 s to recover), and `CameraModeTests.PhotoHides...` reaches its last tap 0.08 s after entering camera mode, inside the HUD's 0.15 s guard (a 0.3 s gap passes). Wait in seconds.
+  - A queue script (wait for `ready`, `test run --async_tests true --timeout 170`, poll `test status`, stop when `results[0].FullName` holds the filter) with `run_in_background` ran 11 classes hands-free. `ping -n N 127.0.0.1` is the foreground wait.
+  - PlayTestBase's restore did not hold: after a run `box.json` was the last test's box (seed 4243, written at the end of the test). Fixed the same day, see the entry below.
+  - UI audit: walk every `UIDocument`, log each shown TextElement's rect and flag overlaps and `MeasureTextSize` overflow. An overlap in the audit can be an element hidden *under* a sheet: check it against the shot (the HUD toast sits behind sheets).
+  - A URP asset upgrade rewrites `Assets/Settings/Mobile_RPAsset.asset` during test runs (version 12 to 13): noise, `git checkout` it.
+- **2026-10-31 · Active Input Handling is Both (`activeInputHandler: 2`); the debug long-press reads `Pointer.current`.** [verified in the Editor; not on a device]
+  - With Input System only, `OnGUI` gets no input events in a player (Input System doc `use-imgui-alongside-input-system.md`), so the IMGUI debug panels would draw but no button would work, and a long-press read from `Event.current` would never fire. The Editor hides this: IMGUI gets input there either way.
+  - Fix: Both, set through `Unsupported.GetSerializedAssetInterfaceSingleton("PlayerSettings")` + `SerializedObject` (a one-line diff), then `Tools/restart-editor.sh`. The long-press moved to `DebugDock.WatchCorner()`, called from `SliceDebugPanel.Update`. Cost: Unity processes input twice (small), and every Editor start logs "This project uses Input Manager, which is marked for deprecation": expected, ignore it. If the IMGUI panels ever go, return to Input System only.
+  - UI Toolkit stays on the Input System path under Both: touch, wipe and camera suites pass. `DebugDockLockTests.TheDebugPanelsHaveLegacyInputInAPlayer` fails if someone switches back while the panels are IMGUI.
+- **2026-10-31 · Play tests have their own save folder.** The backup/restore in PlayTestBase could not hold: the GameClock outlives `CloseSlice`, so its autosave, focus and quit saves (the last one as play mode ends) wrote the test box over the restored save, and the `.bak` rotated with it; a dead run also left the next run copying a test box over its own backup. Now `SaveSandbox` (`[SetUpFixture]` in `AquariumCiv.View.PlayTests`) sets `GameClock.SaveFolderOverride` to `Temp/agent/playtest-save` for the run, a clock reads the path once at Awake, and telemetry follows the save folder. Tests use `GameClock.DefaultSavePath`, never `persistentDataPath`. `game/stills` still gets test files (`EraStills.Folder`), and `TimeLapseSnapshot.Folder` has the same hard-coded path. [verified]
+- **2026-10-31 · `test run --mode playmode` without `--async_tests true` returns at once** with `success: true`, total 0 and an `error` inside the result ("cannot run synchronously over HTTP"). The exit code is 0: read the summary. [verified]

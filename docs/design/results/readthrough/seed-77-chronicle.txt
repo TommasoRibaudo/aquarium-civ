@@ -1,0 +1,263 @@
+# Seed 77: the full chronicle, 120 years, eras advanced at the player's next return
+# year.month  era      glass  kind  (salience)  text
+Y  0.0  Camp    g1 founding         (0.90) A few wanderers settled in the glass and made camp.
+Y  0.0  Camp    g1 role_won         (0.75) Cela Wick the hunter became chief of the camp. First act: moving the fire closer to their tent.
+Y  0.8  Camp    g1 term_announce    (0.50) Cela Wick, the camp's chief, made an announcement at the camp fire every morning. Most of them were about the weather.
+Y  0.9  Camp    g1 term_feast       (0.50) Cela Wick the chief held a feast at the camp fire. They could be heard on the far side of the glass.
+Y  0.11 Camp    g1 first_building   (0.75) Dina Reed marked out the first gathering grounds, where the berries grow thickest.
+Y  2.0  Camp    g1 snow             (0.60) Snow fell inside the glass for the first time. The children tried to catch it.
+Y  2.6  Camp    g1 wedding          (0.80) The first wedding in the glass: Dina Reed married Cela Wick under the summer sky.
+Y  2.7  Camp    g1 drought          (0.48) A dry summer: the stream ran low and everyone shared their water.
+Y  3.3  Camp    g1 fog              (0.42) Fog rolled in and stayed. Cela Wick found the way home by following the smell of supper.
+Y  3.4  Camp    g1 festival         (0.65) Lorn Gale threw a harvest festival. There was dancing until dawn.
+Y  5.4  Camp    g1 first_building   (0.75) Cela Wick started a woodpile by the trees, and everyone added to it.
+Y  7.3  Camp    g1 strange_light    (0.50) A strange warm light crossed the sky. Some say the Bright One was looking for something.
+Y  8.3  Camp    g1 lost             (0.60) Lorn Gale got lost in the hills for three days and came back with a feather as long as an arm.
+Y  8.5  Camp    g1 keeper           (0.90) After the Keeper's rain, Dina Reed staked out new gathering grounds.
+Y  9.10 Camp    g1 term_announce    (0.50) Cela Wick the chief called the whole camp to the camp fire to say a roof was fixed. It was Dina Reed's roof.
+Y 11.0  Camp    g1 storm            (0.50) A great storm rattled the glass. The people huddled together in the hut.
+Y 12.4  Camp    g1 milestone        (0.70) The settlement grew to 10 people.
+Y 12.4  Camp    g1 era-ready        (0.80) The settlement is restless. The elders talk of staying put and sowing seed; something is about to change.
+Y 12.7  Camp    g1 drought          (0.48) The pond shrank all summer. The whole camp learned to wash in one bucket.
+Y 12.7  Village g2 era              (0.95) The settlement became a farming village. Everyone remembers where they stood that day.
+Y 12.7  Village g2 job_era          (0.60) With the village came new work: Lorn Gale went from toolmaker to woodcutter, Dina Reed went from gatherer to farmer, Cela Wick went from hunter to fisher.
+Y 12.7  Village g2 role_era         (0.80) The camp became a village, and chief Cela Wick became its first headman. They kept the feather.
+Y 12.8  Village g2 first_building   (0.75) Lorn Gale dug the first well. The water tasted of glass.
+Y 13.0  Village g2 newcomer         (0.55) A newcomer, Flora Fernby, the stubborn, joined the village.
+Y 13.2  Village g2 rivalry          (0.58) Cela Wick and Flora Fernby fell out over a song lyric. They no longer share a bench.
+Y 13.9  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Lorn Gale built a windmill to grind the extra grain beside it.
+Y 13.9  Village g2 role_won         (0.75) Dina Reed the farmer became miller of the village. The sails turned a little faster that week.
+Y 14.9  Village g2 reconcile        (0.55) Cela Wick and Flora Fernby made peace while looking for the same lost goat. They found it together.
+Y 15.0  Village g2 friendship       (0.50) Flora Fernby and Cela Wick became fast friends after sharing the last apple.
+Y 16.5  Village g2 loud             (0.45) Cela Wick called the goats home from the far side of the glass.
+Y 16.8  Village g2 lost             (0.60) Lorn Gale got lost in the hills for three days and came back with a song nobody had heard before.
+Y 16.10 Village g2 rivalry          (0.58) Lorn Gale and Dina Reed fell out over the best way to bake bread. They no longer share a bench.
+Y 17.0  Village g2 birth            (0.60) Ulf Fernby was born to Flora Fernby.
+Y 17.11 Village g2 stubborn         (0.48) Flora Fernby refused to move for the new path. The path now goes around them.
+Y 18.11 Village g2 fog              (0.42) Fog filled the glass for a week. Cela Wick walked into the same tree four times.
+Y 19.7  Village g2 kind             (0.50) Lorn Gale baked bread for every hearth after the storm.
+Y 19.9  Village g2 term_feast       (0.50) Cela Wick, the village's headman, gave a toast at the green so loud the ducks took off.
+Y 19.11 Village g2 term_meal        (0.50) Dina Reed, the village's miller, set long tables at the mill, and everyone ate together.
+Y 21.2  Village g2 term_mend        (0.50) Dina Reed the miller sat Lorn Gale and Flora Fernby down with a pot of stew until they stopped arguing about a song lyric.
+Y 21.6  Village g2 rainbow          (0.42) A rainbow arched over the pond. Nobody worked that afternoon.
+Y 21.8  Village g2 storm            (0.50) Thunder rolled round the glass all night. Everyone squeezed into the cottage and told stories till it passed.
+Y 21.10 Village g2 naming           (0.80) Cela Wick suggested a name for the settlement: Glasswick. It stuck.
+Y 22.10 Village g2 kind             (0.50) Dina Reed took in a stray goat. It follows them everywhere now.
+Y 23.0  Village g2 lost             (0.60) Lorn Gale got lost in the hills for three days and came back with a shiny pebble nobody can explain.
+Y 23.3  Village g2 ducks            (0.45) A family of ducks moved into the pond and took charge of it.
+Y 23.7  Village g2 reconcile        (0.55) Lorn Gale and Dina Reed made up over a pot of stew. The whole village sighed with relief.
+Y 23.8  Village g2 rivalry          (0.58) Cela Wick and Lorn Gale fell out over the best way to bake bread. They no longer share a bench. Dina Reed the miller has promised to sort it out.
+Y 24.6  Village g2 term_announce    (0.50) Cela Wick, the village's headman, made an announcement at the green every morning. Most of them were about the weather.
+Y 24.8  Village g2 term_meal        (0.50) Dina Reed the miller visited every old and sick person in the village before the winter.
+Y 25.0  Village g2 anniversary      (0.65) Glasswick celebrated 25 years in the glass with a feast.
+Y 25.2  Village g2 role_reelected   (0.60) Glasswick kept Cela Wick as headman for another twelve years. Flora Fernby asked for a recount of all 4 votes.
+Y 25.4  Village g2 apprentice       (0.50) Lorn Gale took young Ulf Fernby as an apprentice.
+Y 27.0  Village g2 death            (0.85) Lorn Gale, the kind, died of old age at 63.
+Y 27.0  Village g2 newcomer         (0.55) A newcomer, Cobb Brook, the gardener, joined the village.
+Y 28.8  Village g2 rivalry          (0.58) Flora Fernby and Dina Reed fell out over a song lyric. They no longer share a bench.
+Y 29.0  Village g2 birth            (0.60) Wim Brook was born to Cobb Brook.
+Y 29.2  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Cobb Brook planted a new field beside it.
+Y 29.9  Village g2 friendship       (0.50) Dina Reed and Cobb Brook became fast friends after a long night of storytelling.
+Y 29.10 Village g2 lost             (0.60) Flora Fernby got lost in the hills for three days and came back with a very old boot.
+Y 30.0  Village g2 retired          (0.45) Dina Reed retired at 65 after a lifetime as a farmer. The children now get their stories every evening.
+Y 31.6  Village g2 giant_turnip     (0.55) Cobb Brook grew a turnip the size of a sheep. It fed the whole village for a week.
+Y 32.4  Village g2 festival         (0.65) Dina Reed threw a harvest festival. The pies ran out long before the music did.
+Y 32.4  Village g2 reconcile        (0.55) Dina Reed and Flora Fernby are friends again. Nobody is sure who said sorry first.
+Y 33.0  Village g2 coming_of_age    (0.40) Ulf Fernby came of age and took up work as a fisher.
+Y 33.11 Village g2 term_mend        (0.50) Dina Reed, the village's miller, walked Cela Wick and Cobb Brook round the pond until they forgot what the row was about.
+Y 34.0  Village g2 term_feast       (0.50) Cela Wick the headman held a feast at the green. They could be heard on the far side of the glass.
+Y 35.0  Village g2 death            (0.85) Cela Wick, the loud, died of old age at 59.
+Y 35.0  Village g2 role_death       (0.85) Cela Wick died as headman after 22 years. The village left the seat empty until spring.
+Y 35.1  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Ulf Fernby planted a new field beside it.
+Y 35.2  Village g2 role_contest     (0.78) Cobb Brook and Flora Fernby both wanted to be headman. The village chose Cobb Brook, 2 votes to 1; Flora Fernby took a very long walk round the pond.
+Y 36.0  Village g2 rivalry          (0.58) Cobb Brook and Ulf Fernby fell out over whose turn it was at the well. They no longer share a bench. Dina Reed the miller has promised to sort it out.
+Y 36.1  Village g2 rivalry          (0.58) Flora Fernby and Dina Reed fell out over whose turn it was at the well. They no longer share a bench.
+Y 36.6  Village g2 first_building   (0.75) Dina Reed opened a market. Haggling began immediately.
+Y 37.0  Village g2 death            (0.85) Dina Reed, the kind, died of old age at 72.
+Y 37.0  Village g2 newcomer         (0.55) A newcomer, Zeb Ember, the lazy, joined the village.
+Y 37.0  Village g2 role_death       (0.85) Dina Reed died as miller after 23 years. The village left the seat empty until spring.
+Y 37.2  Village g2 role_won         (0.75) Flora Fernby the woodcutter became miller of the village. The sails turned a little faster that week.
+Y 38.1  Village g2 lost             (0.60) Cobb Brook got lost in the hills for three days and came back with a feather as long as an arm.
+Y 38.2  Village g2 friendship       (0.50) Zeb Ember and Ulf Fernby became fast friends after a snowball fight.
+Y 39.9  Village g2 festival         (0.65) Zeb Ember threw a harvest festival. There was dancing until dawn.
+Y 40.2  Village g2 term_garden      (0.50) Cobb Brook, the village's headman, planted flowers all round the green. The bees approve.
+Y 40.11 Village g2 stubborn         (0.48) Flora Fernby insisted the cottage was built backwards. It wasn't.
+Y 42.0  Village g2 wedding          (0.70) Zeb Ember married Cobb Brook by the winter fire.
+Y 42.3  Village g2 fog              (0.42) Fog filled the glass for a week. Zeb Ember walked into the same tree four times.
+Y 42.8  Village g2 apprentice       (0.50) Flora Fernby took young Wim Brook as an apprentice.
+Y 43.0  Village g2 lazy             (0.45) Ulf Fernby invented a hammock. It was their only invention.
+Y 45.0  Village g2 death            (0.85) Flora Fernby, the stubborn, died of old age at 57.
+Y 45.0  Village g2 coming_of_age    (0.40) Wim Brook came of age and took up work as a fisher.
+Y 45.0  Village g2 birth            (0.60) Juna Ember was born to Zeb Ember and Cobb Brook.
+Y 45.0  Village g2 role_succession  (0.70) When Flora Fernby died, the mill passed to their apprentice Wim Brook, who had swept its floor since they were small.
+Y 45.1  Village g2 lazy             (0.45) Zeb Ember napped through the entire harvest. Nobody had the heart to wake them.
+Y 46.10 Village g2 storm            (0.50) A storm shook the glass. By morning the cottage smelled of wet dog, and everyone was fine.
+Y 47.0  Village g2 birth            (0.60) Gus Ember was born to Zeb Ember and Cobb Brook.
+Y 47.2  Village g2 role_reelected   (0.60) Glasswick kept Cobb Brook as headman for another twelve years. Zeb Ember asked for a recount of all 4 votes.
+Y 47.5  Village g2 rivalry          (0.58) Zeb Ember and Wim Brook fell out over a song lyric. They no longer share a bench.
+Y 47.10 Village g2 wedding          (0.70) Ulf Fernby married Wim Brook at the harvest dance.
+Y 49.0  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Ulf Fernby planted a new field beside it.
+Y 49.0  Village g2 birth            (0.60) Dov Fernby was born to Ulf Fernby and Wim Brook.
+Y 50.0  Village g2 anniversary      (0.65) Glasswick celebrated 50 years in the glass with a feast.
+Y 50.7  Village g2 term_device      (0.50) A strange device appeared by the mill. Wim Brook the miller says it counts the days. Nobody has checked.
+Y 51.0  Village g2 birth            (0.60) Nils Fernby was born to Wim Brook and Ulf Fernby.
+Y 52.2  Village g2 fog              (0.42) A thick fog sat in the glass for days. Zeb Ember said good morning to a bush.
+Y 52.4  Village g2 giant_turnip     (0.55) Cobb Brook planted flowers around the cottage. The bees approve.
+Y 52.6  Village g2 reconcile        (0.55) Ulf Fernby and Cobb Brook made peace while looking for the same lost goat. They found it together.
+Y 52.8  Village g2 invention        (0.62) Wim Brook invented a better basket. It holds slightly more berries and everyone is very impressed.
+Y 52.10 Village g2 term_garden      (0.50) Cobb Brook the headman blessed the fields one by one. It took all autumn.
+Y 53.5  Village g2 reconcile        (0.55) Wim Brook and Zeb Ember made peace while looking for the same lost goat. They found it together.
+Y 53.10 Village g2 apprentice       (0.50) Cobb Brook took young Juna Ember as an apprentice.
+Y 53.11 Village g2 ducks            (0.45) The ducks had ducklings. The pond is theirs now; the people are allowed to visit.
+Y 54.2  Village g2 rivalry          (0.58) Ulf Fernby and Cobb Brook fell out over a goat. They no longer share a bench.
+Y 54.4  Village g2 lost             (0.60) Wim Brook got lost in the hills for three days and came back with a song nobody had heard before.
+Y 54.9  Village g2 storm            (0.50) A great storm rattled the glass. The people huddled together in the cottage.
+Y 55.1  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Cobb Brook planted a new field beside it.
+Y 55.4  Village g2 strange_light    (0.50) The strange warm light came back and lingered over the pond. Some say the Keeper had dropped something small.
+Y 58.8  Village g2 reconcile        (0.55) Ulf Fernby and Cobb Brook made up over a pot of stew. The whole village sighed with relief.
+Y 58.10 Village g2 rainbow          (0.42) A double rainbow hung inside the glass. The children argued all afternoon about where it ended.
+Y 59.2  Village g2 role_contest     (0.78) Zeb Ember stood against headman Cobb Brook and won, 2 votes to 0. Cobb Brook took a very long walk round the pond.
+Y 59.5  Village g2 festival         (0.65) Wim Brook threw a harvest festival. Someone danced with a goat, and the goat led.
+Y 61.0  Village g2 coming_of_age    (0.40) Juna Ember came of age and took up work as a woodcutter.
+Y 63.0  Village g2 coming_of_age    (0.40) Gus Ember came of age and took up work as a fisher.
+Y 63.9  Village g2 first_building   (0.75) Juna Ember opened a tavern. Productivity dipped.
+Y 63.11 Village g2 friendship       (0.50) Juna Ember and Wim Brook became fast friends after sharing the last apple.
+Y 64.5  Village g2 term_nap         (0.50) Zeb Ember, the village's headman, declared a long lunch. It became a long nap on the green.
+Y 65.0  Village g2 coming_of_age    (0.40) Dov Fernby came of age and took up work as a brewer.
+Y 65.2  Village g2 friendship       (0.50) Dov Fernby and Gus Ember became fast friends after fixing a roof together.
+Y 65.10 Village g2 fog              (0.42) A thick fog sat in the glass for days. Dov Fernby said good morning to a bush.
+Y 66.1  Village g2 apprentice       (0.50) Zeb Ember took young Gus Ember as an apprentice.
+Y 67.0  Village g2 coming_of_age    (0.40) Nils Fernby came of age and took up work as a farmer.
+Y 67.3  Village g2 invention        (0.62) Dov Fernby invented a better basket. It holds slightly more berries and everyone is very impressed.
+Y 67.4  Village g2 lost             (0.60) Nils Fernby got lost in the hills for three days and came back with a shiny pebble nobody can explain.
+Y 68.0  Village g2 retired          (0.45) Cobb Brook put down their work as a farmer at 65 and sat down by the fire, to tell stories and mind the children.
+Y 68.7  Village g2 prank            (0.52) Juna Ember painted the tavern roof bright pink overnight.
+Y 68.8  Village g2 festival         (0.65) Cobb Brook threw a harvest festival. There was dancing until dawn.
+Y 69.10 Village g2 term_device      (0.50) Wim Brook, the village's miller, worked out a faster way to carry water. Now everyone does it their way.
+Y 70.6  Village g2 invention        (0.62) Wim Brook made a stick that throws a shadow, and now everyone knows when lunch is.
+Y 71.2  Village g2 role_contest     (0.78) Ulf Fernby stood against headman Zeb Ember and won on a tied vote. Zeb Ember took a very long walk round the pond.
+Y 71.4  Village g2 term_nap         (0.50) Ulf Fernby, the village's headman, declared a long lunch. It became a long nap on the green.
+Y 72.5  Village g2 lazy             (0.45) Zeb Ember invented a hammock. It was their only invention.
+Y 75.0  Village g2 anniversary      (0.65) Glasswick celebrated 75 years in the glass with a feast.
+Y 76.0  Village g2 death            (0.85) Ulf Fernby, the lazy, died of old age at 59.
+Y 76.0  Village g2 birth            (0.60) Fen Ember was born to Gus Ember.
+Y 76.0  Village g2 role_death       (0.85) Ulf Fernby died as headman after 4 years. The village left the seat empty until spring.
+Y 76.2  Village g2 role_reluctant   (0.60) Zeb Ember was made headman while asleep at the meeting. They have not yet been told.
+Y 76.9  Village g2 giant_turnip     (0.55) Cobb Brook grew a turnip the size of a sheep. It fed the whole village for a week.
+Y 77.0  Village g2 death            (0.85) Zeb Ember, the lazy, died of old age at 64.
+Y 77.0  Village g2 lost             (0.60) Nils Fernby got lost in the hills for three days and came back with a crown made of twigs.
+Y 77.0  Village g2 role_death       (0.85) Zeb Ember died as headman after less than a year. The village left the seat empty until spring.
+Y 77.2  Village g2 role_contest     (0.78) Juna Ember and Nils Fernby both wanted to be headman. The village chose Juna Ember on a tied vote; Nils Fernby went home and shut the door very loudly.
+Y 77.4  Village g2 festival         (0.65) Nils Fernby threw a harvest festival. The pies ran out long before the music did. Juna Ember the headman organised the sack race.
+Y 77.7  Village g2 grump            (0.45) Gus Ember complained about the noise from the cottage for a whole season.
+Y 78.5  Village g2 drought          (0.48) A long dry spell. The people carried water up from the pond in a line, singing to keep time.
+Y 79.6  Village g2 worrier          (0.45) Nils Fernby built a little fence around the pond, just in case.
+Y 80.0  Village g2 birth            (0.60) Lune Fernby was born to Nils Fernby.
+Y 80.1  Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Wim Brook planted a new field beside it.
+Y 81.0  Village g2 death            (0.85) Cobb Brook, the gardener, died of old age at 78.
+Y 81.4  Village g2 rivalry          (0.58) Nils Fernby and Wim Brook fell out over whose turn it was at the well. They no longer share a bench.
+Y 82.5  Village g2 fog              (0.42) A thick fog sat in the glass for days. Gus Ember said good morning to a bush.
+Y 82.8  Village g2 invention        (0.62) Dov Fernby made a stick that throws a shadow, and now everyone knows when lunch is.
+Y 84.3  Village g2 reconcile        (0.55) Wim Brook and Nils Fernby made up over a pot of stew. The whole village sighed with relief.
+Y 84.4  Village g2 festival         (0.65) Juna Ember threw a harvest festival. The pies ran out long before the music did.
+Y 84.10 Village g2 term_device      (0.50) A strange device appeared by the mill. Wim Brook the miller says it counts the days. Nobody has checked.
+Y 85.11 Village g2 keeper           (0.90) After the Keeper dug a channel from the pond, Nils Fernby planted a new field beside it.
+Y 86.11 Village g2 milestone        (0.70) Glasswick grew to 20 people.
+Y 87.0  Village g2 birth            (0.60) Fen Fernby was born to Dov Fernby.
+Y 87.2  Village g2 term_prank       (0.50) Juna Ember, the village's headman, ended a speech at the green with a joke about the goats. Even the goats laughed.
+Y 87.4  Village g2 term_feast       (0.50) Juna Ember the headman held a feast day with games at the green. Gus Ember won the sack race by falling over the line.
+Y 89.2  Village g2 role_reelected   (0.60) Glasswick kept Juna Ember as headman for another twelve years. Dov Fernby asked for a recount of all 5 votes.
+Y 91.0  Village g2 birth            (0.60) Joss Fernby was born to Nils Fernby.
+Y 91.3  Village g2 era-ready        (0.80) Glasswick hums with new trades. Everyone feels a bigger change coming.
+Y 92.0  Village g2 coming_of_age    (0.40) Fen Ember came of age and took up work as a woodcutter.
+Y 92.9  Town    g3 era              (0.95) Glasswick became a town of crafts and guilds. The old folk said they'd seen it coming.
+Y 92.9  Town    g3 job_era          (0.60) With the town came new work: Dov Fernby went from brewer to baker.
+Y 92.9  Town    g3 role_era         (0.80) The village became a town, and headman Juna Ember became its first lord. The title will pass to their children.
+Y 92.9  Town    g3 role_offices     (0.70) The new town needed people for its offices: Dov Fernby became innkeeper, Fen Ember became guildmaster, Wim Brook became master builder, and 2 more took up offices.
+Y 92.10 Town    g3 sweepers         (0.60) Glasswick has sweepers now: a few folk with brooms and a handcart take the heaps to the midden one by one, and trim the weeds on the green.
+Y 93.0  Town    g3 newcomer         (0.55) A newcomer, Fen Dale, the stubborn, joined the town.
+Y 93.10 Town    g3 festival         (0.65) Nils Fernby threw a harvest festival. Someone danced with a goat, and the goat led. Juna Ember the lord organised the sack race.
+Y 94.0  Town    g3 newcomer         (0.55) A newcomer, Lune Quarry, the gossip, joined the town.
+Y 94.0  Town    g3 retired          (0.45) At 65, Wim Brook stopped being a fisher and became an elder. They still tell everyone how it should be done.
+Y 94.6  Town    g3 term_device      (0.50) A strange device appeared by the inn. Dov Fernby the innkeeper says it counts the days. Nobody has checked.
+Y 94.8  Town    g3 term_tidy        (0.50) Under merchant Gus Ember, someone sweeps the market steps every morning and nobody laughs after dark.
+Y 95.2  Town    g3 term_complaint   (0.50) Fen Ember the guildmaster complained about the noise from Dov Fernby's house for a whole season.
+Y 96.0  Town    g3 coming_of_age    (0.40) Lune Fernby came of age and took up work as a stallholder.
+Y 96.0  Town    g3 birth            (0.60) Zeb Ember was born to Fen Ember.
+Y 97.0  Town    g3 birth            (0.60) Pell Dale was born to Fen Dale.
+Y 97.2  Town    g3 term_prank       (0.50) On the orders of Juna Ember, the first day of spring is now Hat Day. Nils Fernby wore three.
+Y 97.3  Town    g3 storm            (0.50) Thunder rolled round the glass all night. Everyone squeezed into the lumber mill and told stories till it passed. Nils Fernby the captain of the watch had them all counted in before the first gust.
+Y 97.4  Town    g3 term_complaint   (0.50) Gus Ember the merchant complained about the noise from Fen Dale's house for a whole season.
+Y 97.9  Town    g3 fog              (0.42) Fog rolled in and stayed. Gus Ember found the way home by following the smell of supper.
+Y 97.9  Town    g3 term_feast       (0.50) Juna Ember, the town's lord, declared a day of games at the market steps. Nils Fernby is still champion of the egg-and-spoon.
+Y 98.9  Town    g3 invention        (0.62) Dov Fernby worked out how to tell the time from the glass's shadow.
+Y 99.2  Town    g3 friendship       (0.50) Fen Dale and Nils Fernby became fast friends after a snowball fight.
+Y100.0  Town    g3 anniversary      (0.65) Glasswick celebrated 100 years in the glass with a feast.
+Y100.5  Town    g3 gossip           (0.50) Lune Quarry knew about the wedding before the couple did.
+Y100.6  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Dov Fernby opened a workshop for the new stone beside it.
+Y101.0  Town    g3 birth            (0.60) Pim Fernby was born to Lune Fernby.
+Y102.0  Town    g3 term_complaint   (0.50) Gus Ember, the town's merchant, sent Fen Ember home from the market steps for whistling.
+Y102.1  Town    g3 elder            (0.55) All winter the children sat round Wim Brook, the eldest, asking for the one about the first fire.
+Y102.8  Town    g3 bumper           (0.55) The best harvest anyone can remember. The granary door wouldn't close.
+Y103.0  Town    g3 coming_of_age    (0.40) Fen Fernby came of age and took up work as a mason.
+Y103.8  Town    g3 term_device      (0.50) Wim Brook, the town's master builder, worked out a faster way to carry water. Now everyone does it their way.
+Y103.9  Town    g3 apprentice       (0.50) Gus Ember took young Joss Fernby as an apprentice.
+Y104.0  Town    g3 death            (0.85) Wim Brook, the clever, died of old age at 75.
+Y104.0  Town    g3 role_death       (0.85) Wim Brook died as master builder after 11 years. The town left the seat empty until spring.
+Y104.2  Town    g3 role_masterwork  (0.65) Fen Dale and Lune Fernby each built a chimney to prove who should be master builder. Fen Dale's is still standing.
+Y104.8  Town    g3 term_lanterns    (0.50) Nils Fernby, the town's captain of the watch, had extra lanterns hung round the market steps, and a fence put round the fence.
+Y105.0  Town    g3 sheep            (0.50) A sheep wandered into the tavern and refused to leave. It has a stool now.
+Y105.2  Town    g3 role_reelected   (0.60) Glasswick kept Fen Ember as guildmaster for another twelve years. Fen Fernby asked for a recount of all 6 votes.
+Y105.4  Town    g3 wedding          (0.70) Fen Ember married Lune Quarry among the spring blossoms.
+Y106.6  Town    g3 term_meeting     (0.50) Fen Dale the master builder kept the meeting at the timber yard going until everyone agreed with them. It took two days.
+Y106.9  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Dov Fernby opened a workshop for the new stone beside it.
+Y107.0  Town    g3 coming_of_age    (0.40) Joss Fernby came of age and took up work as a baker.
+Y107.3  Town    g3 term_row         (0.50) Fen Dale the master builder and Joss Fernby argued about a song lyric at the timber yard until the lamps went out.
+Y107.5  Town    g3 festival         (0.65) Fen Dale threw a harvest festival. Someone danced with a goat, and the goat led. Juna Ember the lord organised the sack race.
+Y109.0  Town    g3 term_lanterns    (0.50) Nils Fernby the captain of the watch had everyone home before dark, just in case.
+Y109.8  Town    g3 lazy             (0.45) Fen Fernby napped through the entire harvest. Nobody had the heart to wake them.
+Y110.0  Town    g3 death            (0.85) Gus Ember, the grump, died of old age at 63.
+Y110.0  Town    g3 retired          (0.45) At 65, Juna Ember stopped being a woodcutter and became an elder. They still tell everyone how it should be done.
+Y110.0  Town    g3 role_appointed   (0.55) Lord Juna Ember made Lune Quarry merchant. Lune Quarry promised everyone a fair price, and mostly kept it.
+Y110.6  Town    g3 term_device      (0.50) Dov Fernby, the town's innkeeper, worked out a faster way to carry water. Now everyone does it their way.
+Y111.6  Town    g3 grump            (0.45) Fen Ember complained about the noise from the house for a whole season.
+Y111.7  Town    g3 rivalry          (0.58) Fen Fernby and Lune Quarry fell out over the best way to bake bread. They no longer share a bench.
+Y112.0  Town    g3 coming_of_age    (0.40) Zeb Ember came of age and took up work as a farmer.
+Y112.1  Town    g3 invention        (0.62) Joss Fernby built a wheelbarrow with five wheels. It mostly works.
+Y113.0  Town    g3 death            (0.85) Juna Ember, the joker, died of old age at 68.
+Y113.0  Town    g3 death            (0.85) Dov Fernby, the clever, died of old age at 64.
+Y113.0  Town    g3 coming_of_age    (0.40) Pell Dale came of age and took up work as a fisher.
+Y113.0  Town    g3 birth            (0.60) Hob Fernby was born to Fen Fernby.
+Y113.0  Town    g3 role_inherited   (0.80) When old Juna Ember died, their sibling's child, Fen Ember, became lord of the town.
+Y113.0  Town    g3 role_succession  (0.70) When Dov Fernby died, the inn passed to their child Fen Fernby, who had carried its barrels since they were small.
+Y113.2  Town    g3 role_contest     (0.78) Lune Fernby and Joss Fernby both wanted to be guildmaster. The town chose Lune Fernby, 3 votes to 2; Joss Fernby went home and shut the door very loudly.
+Y113.5  Town    g3 strange_light    (0.50) A strange warm light crossed the sky. Some say the Keeper was looking for something.
+Y113.8  Town    g3 festival         (0.65) Fen Fernby threw a harvest festival. Someone danced with a goat, and the goat led. Fen Ember the lord went to bed early.
+Y113.9  Town    g3 stubborn         (0.48) Fen Dale refused to move for the new path. The path now goes around them.
+Y113.9  Town    g3 term_complaint   (0.50) Fen Ember, the town's lord, sent Lune Quarry home from the market steps for whistling.
+Y114.0  Town    g3 birth            (0.60) Dov Fernby was born to Joss Fernby.
+Y114.0  Town    g3 birth            (0.60) Cobb Quarry was born to Fen Ember and Lune Quarry.
+Y114.2  Town    g3 term_row         (0.50) Fen Fernby and Zeb Ember fell out over the best way to bake bread after Lune Quarry the merchant told each what the other had said.
+Y114.3  Town    g3 rivalry          (0.58) Lune Fernby and Nils Fernby fell out over a fence post. They no longer share a bench. Lune Quarry the merchant told everyone by supper.
+Y114.10 Town    g3 storm            (0.50) A storm shook the glass. By morning the lumber mill smelled of wet dog, and everyone was fine. Nils Fernby the captain of the watch had them all counted in before the first gust.
+Y114.10 Town    g3 term_news        (0.50) With Lune Quarry as merchant, the whole town knew about Joss Fernby and Zeb Ember before Joss Fernby and Zeb Ember did.
+Y115.0  Town    g3 death            (0.85) Nils Fernby, the worrier, died of old age at 64.
+Y115.0  Town    g3 role_appointed   (0.55) Lord Fen Ember made Zeb Ember captain of the watch. The watch is Zeb Ember and a very large dog.
+Y116.7  Town    g3 term_row         (0.50) Fen Ember the lord and Fen Dale argued about a goat at the market steps until the lamps went out.
+Y116.9  Town    g3 rivalry          (0.58) Pell Dale and Fen Dale fell out over a song lyric. They no longer share a bench. Lune Fernby the guildmaster has promised to sort it out.
+Y116.11 Town    g3 apprentice       (0.50) Lune Quarry took young Pim Fernby as an apprentice.
+Y117.0  Town    g3 coming_of_age    (0.40) Pim Fernby came of age and took up work as a baker.
+Y117.0  Town    g3 birth            (0.60) Bram Fernby was born to Fen Fernby.
+Y117.5  Town    g3 friendship       (0.50) Pim Fernby and Lune Quarry became fast friends after sharing the last apple.
+Y118.2  Town    g3 term_meal        (0.50) Lune Fernby, the town's guildmaster, set long tables at the inn, and everyone ate together.
+Y118.10 Town    g3 term_tidy        (0.50) Under lord Fen Ember, someone sweeps the market steps every morning and nobody laughs after dark.
+Y119.1  Town    g3 term_nap         (0.50) Fen Fernby, the town's innkeeper, declared a long lunch. It became a long nap on the green.
+Y119.2  Town    g3 invention        (0.62) Zeb Ember worked out how to tell the time from the glass's shadow.
+Y119.6  Town    g3 friendship       (0.50) Fen Ember and Zeb Ember became fast friends after fixing a roof together.
+Y120.0  Town    g3 birth            (0.60) Wim Ember was born to Zeb Ember.
+Y120.3  Town    g3 wedding          (0.70) Pell Dale married Joss Fernby among the spring blossoms.
+Y121.2  Town    g3 reconcile        (0.55) Fen Fernby and Lune Quarry made peace while looking for the same lost goat. They found it together.
+Y121.3  Town    g3 keeper           (0.90) After the Keeper raised an outcrop, Lune Quarry opened a workshop for the new stone beside it.
+Y122.9  Town    g3 term_row         (0.50) Fen Ember, the town's lord, told Zeb Ember exactly what they thought about a fence post. It took most of an afternoon.
+Y122.9  Town    g3 term_row         (0.50) Pell Dale and Pim Fernby shouted each other hoarse over the best way to bake bread at the meeting. Fen Dale the master builder would not let anyone go home.
+Y122.9  Town    g3 term_device      (0.50) A strange device appeared by the market steps. Zeb Ember the captain of the watch says it counts the days. Nobody has checked.

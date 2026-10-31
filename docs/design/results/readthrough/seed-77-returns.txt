@@ -1,0 +1,429 @@
+# Seed 77: returns as the player sees them
+# Schedule: away 3 h / 3-min check-in, 3 h / 15-min session (evening talk), x2, then 8 h overnight; every 3rd night is 48 h.
+
+== First session ends, year 0.3. Evening talk: "Cela Wick has an announcement for tomorrow. Everyone will hear it."
+
+== Return 1: after 3 h away (real h 3), year 0.3 -> 3.3, Camp, 7 entries, cap 5
+   Peek: "Dina married Cela"   | teaser under it: (none)
+   1. [Story/Good/family 0.80] Dina married Cela
+        The first wedding in the glass: Dina Reed married Cela Wick under the summer sky.
+   2. [Story/Good/milestone 0.75] The first gathering grounds
+        Dina Reed marked out the first gathering grounds, where the berries grow thickest.
+   3. [Story/Good/office 0.70] Cela Wick, the camp's chief, made an…
+        (at the fire: Cela Wick has an announcement for tomorrow. Everyone will hear it.)
+        Cela Wick, the camp's chief, made an announcement at the camp fire every morning. Most of them were about the weather.
+   4. [Story/Good/world 0.60] Snow fell inside the glass for the first time
+        Snow fell inside the glass for the first time. The children tried to catch it.
+   5. [Story/Good/office 0.50] Cela Wick the chief held a feast at the camp fire
+        Cela Wick the chief held a feast at the camp fire. They could be heard on the far side of the glass.
+   Also: A dry summer / Fog rolled in and stayed
+
+== Return 2: after 3 h away (real h 6), year 3.3 -> 6.3, Camp, 2 entries, cap 5
+   Peek: "The first woodpile"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.75] The first woodpile
+        Cela Wick started a woodpile by the trees, and everyone added to it.
+   2. [Story/Good/milestone 0.65] Lorn Gale threw a harvest festival
+        Lorn Gale threw a harvest festival. There was dancing until dawn.
+   (the player shapes: rain)
+   Evening talk (end of a 15-min session, year 6.5): "The gatherers keep checking the wet ground."
+
+== Return 3: after 3 h away (real h 10), year 6.5 -> 9.5, Camp, 3 entries, cap 5
+   Peek: "Dina answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Dina answered the Keeper
+        (at the fire: The gatherers keep checking the wet ground.)
+        After the Keeper's rain, Dina Reed staked out new gathering grounds.
+   2. [Story/Neutral/trait 0.60] Lorn got lost in the hills
+        Lorn Gale got lost in the hills for three days and came back with a feather as long as an arm.
+   3. [Story/Neutral/world 0.50] A strange warm light crossed the sky
+        A strange warm light crossed the sky. Some say the Bright One was looking for something.
+
+== Return 4: after 3 h away (real h 13), year 9.6 -> 12.6, Camp (next era READY), 5 entries, cap 5
+   Peek: "The settlement is ready for a new age"   | teaser under it: (none)
+   1. [EraReady/Good/era 0.80] The settlement is ready for a new age
+        The settlement is restless. The elders talk of staying put and sowing seed; something is about to change.
+   2. [Story/Good/milestone 0.70] The settlement grew to 10 people
+        The settlement grew to 10 people.
+   3. [Story/Good/office 0.50] Cela Wick the chief called the whole camp to the…
+        Cela Wick the chief called the whole camp to the camp fire to say a roof was fixed. It was Dina Reed's roof.
+   4. [Story/Neutral/world 0.50] A great storm rattled the glass
+        A great storm rattled the glass. The people huddled together in the hut.
+   5. [Story/Neutral/world 0.48] The pond shrank all summer
+        The pond shrank all summer. The whole camp learned to wash in one bucket.
+   ** The player watches the era moment: now Village (year 12.6).
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 12.8): "Everyone keeps going down to look at the new water."
+
+== Return 5: after 8 h away (real h 21), year 12.8 -> 20.8, Village, 15 entries, cap 5
+   Peek: "Lorn answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Lorn answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Lorn Gale built a windmill to grind the extra grain beside it.
+   2. [Story/Good/role 0.75] Dina Reed the farmer became miller of the village
+        Dina Reed the farmer became miller of the village. The sails turned a little faster that week.
+   3. [Story/Neutral/trait 0.60] Lorn got lost in the hills
+        Lorn Gale got lost in the hills for three days and came back with a song nobody had heard before.
+   4. [Story/Good/family 0.60] Flora had a baby, Ulf
+        Ulf Fernby was born to Flora Fernby.
+   5. [Story/Neutral/friends 0.58] Lorn and Dina fell out
+        Lorn Gale and Dina Reed fell out over the best way to bake bread. They no longer share a bench.
+   Also: Cela and Flora fell out / A newcomer, Flora Fernby, the stubborn, joined… / Flora and Cela became friends (+6 more)
+
+== Return 6: after 3 h away (real h 24), year 20.8 -> 23.8, Village, 9 entries, cap 5
+   Peek: "The settlement was named Glasswick"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.80] The settlement was named Glasswick
+        Cela Wick suggested a name for the settlement: Glasswick. It stuck.
+   2. [Story/Neutral/trait 0.60] Lorn got lost in the hills
+        Lorn Gale got lost in the hills for three days and came back with a shiny pebble nobody can explain.
+   3. [Story/Neutral/friends 0.58] Cela and Lorn fell out
+        Cela Wick and Lorn Gale fell out over the best way to bake bread. They no longer share a bench. Dina Reed the miller has promised to sort it out.
+   4. [Story/Good/office 0.50] Dina Reed the miller sat Lorn Gale and Flora…
+        Dina Reed the miller sat Lorn Gale and Flora Fernby down with a pot of stew until they stopped arguing about a song lyric.
+   5. [Story/Neutral/world 0.50] Thunder rolled round the glass all night
+        Thunder rolled round the glass all night. Everyone squeezed into the cottage and told stories till it passed.
+   Also: Lorn and Dina made up / Dina Reed took in a stray goat / A family of ducks moved into the pond and took… (+1 more)
+
+== Return 7: after 3 h away (real h 27), year 23.9 -> 26.9, Village, 5 entries, cap 5
+   Peek: "Glasswick celebrated 25 years in the glass with…"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Glasswick celebrated 25 years in the glass with…
+        Glasswick celebrated 25 years in the glass with a feast.
+   2. [Story/Good/role 0.60] Glasswick kept Cela Wick as headman for another…
+        Glasswick kept Cela Wick as headman for another twelve years. Flora Fernby asked for a recount of all 4 votes.
+   3. [Story/Good/office 0.50] Cela Wick, the village's headman, made an…
+        Cela Wick, the village's headman, made an announcement at the green every morning. Most of them were about the weather.
+   4. [Story/Good/office 0.50] Dina Reed the miller visited every old and sick…
+        Dina Reed the miller visited every old and sick person in the village before the winter.
+   5. [Story/Good/people 0.50] Ulf became Lorn's apprentice
+        Lorn Gale took young Ulf Fernby as an apprentice.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 27.2): "Cela Wick has an announcement for tomorrow. Everyone will hear it."
+
+== Return 8: after 3 h away (real h 30), year 27.2 -> 30.2, Village, 5 entries, cap 5
+   Peek: "Cobb answered the Keeper"   | teaser under it: "Cela Wick has an announcement for tomorrow. Everyone will hear it."
+   1. [Keeper/Good/keeper 0.90] Cobb answered the Keeper
+        After the Keeper dug a channel from the pond, Cobb Brook planted a new field beside it.
+   2. [Story/Good/family 0.60] Cobb had a baby, Wim
+        Wim Brook was born to Cobb Brook.
+   3. [Story/Neutral/trait 0.60] Flora got lost in the hills
+        Flora Fernby got lost in the hills for three days and came back with a very old boot.
+   4. [Story/Neutral/friends 0.58] Flora and Dina fell out
+        Flora Fernby and Dina Reed fell out over a song lyric. They no longer share a bench.
+   5. [Story/Good/friends 0.50] Dina and Cobb became friends
+        Dina Reed and Cobb Brook became fast friends after a long night of storytelling.
+
+== Return 9: after 3 h away (real h 33), year 30.3 -> 33.3, Village, 3 entries, cap 5
+   Peek: "Dina Reed threw a harvest festival"   | teaser under it: "Cela Wick has an announcement for tomorrow. Everyone will hear it."
+   1. [Story/Good/milestone 0.65] Dina Reed threw a harvest festival
+        Dina Reed threw a harvest festival. The pies ran out long before the music did.
+   2. [Story/Good/trait 0.55] Cobb Brook grew a turnip the size of a sheep
+        Cobb Brook grew a turnip the size of a sheep. It fed the whole village for a week.
+   3. [Story/Good/friends 0.55] Dina and Flora made up
+        Dina Reed and Flora Fernby are friends again. Nobody is sure who said sorry first.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 33.5): "Everyone keeps going down to look at the new water."
+
+== Return 10: after 8 h away (real h 42), year 33.5 -> 41.5, Village, 18 entries, cap 5
+   Peek: "Ulf answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Ulf answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Ulf Fernby planted a new field beside it.
+   2. [Story/Neutral/role 0.78] Cobb Brook and Flora Fernby both wanted to be…
+        Cobb Brook and Flora Fernby both wanted to be headman. The village chose Cobb Brook, 2 votes to 1; Flora Fernby took a very long walk round the pond.
+   3. [Story/Good/milestone 0.75] The first market
+        Dina Reed opened a market. Haggling began immediately.
+   4. [Legend/Sad/legend 0.85] Cela died
+        Cela Wick, the loud, died of old age at 59.
+        + Cela Wick died as headman after 22 years. The village left the seat empty until spring.
+   5. [Legend/Sad/legend 0.85] Dina died
+        Dina Reed, the kind, died of old age at 72.
+        + Dina Reed died as miller after 23 years. The village left the seat empty until spring.
+   Also: Flora Fernby the woodcutter became miller of the… / Cela Wick the headman held a feast at the green / Zeb Ember threw a harvest festival (+8 more)
+
+== Return 11: after 3 h away (real h 45), year 41.5 -> 44.5, Village, 4 entries, cap 5
+   Peek: "Zeb married Cobb"   | teaser under it: (none)
+   1. [Story/Good/family 0.70] Zeb married Cobb
+        Zeb Ember married Cobb Brook by the winter fire.
+   2. [Story/Good/people 0.50] Wim became Flora's apprentice
+        Flora Fernby took young Wim Brook as an apprentice.
+   3. [Story/Good/trait 0.45] Ulf Fernby invented a hammock
+        Ulf Fernby invented a hammock. It was their only invention.
+   4. [Story/Neutral/world 0.42] Fog filled the glass for a week
+        Fog filled the glass for a week. Zeb Ember walked into the same tree four times.
+
+== Return 12: after 3 h away (real h 48), year 44.6 -> 47.6, Village, 8 entries, cap 5
+   Peek: "When Flora Fernby died, the mill passed to their…"   | teaser under it: (none)
+   1. [Story/Good/role 0.70] When Flora Fernby died, the mill passed to their…
+        When Flora Fernby died, the mill passed to their apprentice Wim Brook, who had swept its floor since they were small.
+   2. [Story/Good/family 0.60] Zeb and Cobb had a baby, Gus
+        Gus Ember was born to Zeb Ember and Cobb Brook.
+   3. [Story/Neutral/friends 0.58] Zeb and Wim fell out
+        Zeb Ember and Wim Brook fell out over a song lyric. They no longer share a bench.
+   4. [Story/Neutral/world 0.50] A storm shook the glass
+        A storm shook the glass. By morning the cottage smelled of wet dog, and everyone was fine.
+   5. [Legend/Sad/legend 0.85] Flora died
+        Flora Fernby, the stubborn, died of old age at 57.
+   Also: Zeb and Cobb had a baby, Juna / Glasswick kept Cobb Brook as headman for another… / Zeb Ember napped through the entire harvest
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 47.8): "Ulf Fernby and Cobb Brook aren't speaking again."
+
+== Return 13: after 3 h away (real h 51), year 47.8 -> 50.8, Village, 4 entries, cap 5
+   Peek: "Ulf answered the Keeper"   | teaser under it: "Ulf Fernby and Cobb Brook aren't speaking again."
+   1. [Keeper/Good/keeper 0.90] Ulf answered the Keeper
+        After the Keeper dug a channel from the pond, Ulf Fernby planted a new field beside it.
+   2. [Story/Good/milestone 0.65] Glasswick celebrated 50 years in the glass with…
+        Glasswick celebrated 50 years in the glass with a feast.
+   3. [Story/Good/family 0.60] Ulf and Wim had a baby, Dov
+        Dov Fernby was born to Ulf Fernby and Wim Brook.
+   4. [Story/Good/office 0.50] A strange device appeared by the mill
+        A strange device appeared by the mill. Wim Brook the miller says it counts the days. Nobody has checked.
+
+== Return 14: after 3 h away (real h 54), year 50.8 -> 53.8, Village, 8 entries, cap 5
+   Peek: "Ulf and Cobb made up"   | teaser under it: (none)
+   1. [Story/Good/friends 0.75] Ulf and Cobb made up
+        (at the fire: Ulf Fernby and Cobb Brook aren't speaking again.)
+        Ulf Fernby and Cobb Brook made peace while looking for the same lost goat. They found it together.
+   2. [Story/Good/trait 0.62] Wim Brook invented a better basket
+        Wim Brook invented a better basket. It holds slightly more berries and everyone is very impressed.
+   3. [Story/Good/family 0.60] Wim and Ulf had a baby, Nils
+        Nils Fernby was born to Wim Brook and Ulf Fernby.
+   4. [Story/Good/office 0.50] Cobb Brook the headman blessed the fields one by…
+        Cobb Brook the headman blessed the fields one by one. It took all autumn.
+   5. [Story/Good/people 0.50] Juna became Cobb's apprentice
+        Cobb Brook took young Juna Ember as an apprentice.
+   Also: Cobb Brook planted flowers around the cottage / Wim and Zeb made up / A thick fog sat in the glass for days
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 54.1): "Everyone keeps going down to look at the new water."
+
+== Return 15: after 48 h away (real h 102), year 54.1 -> 72.1, Village, 23 entries, cap 7
+   Peek: "Cobb answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Cobb answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Cobb Brook planted a new field beside it.
+   2. [Story/Neutral/role 0.78] Zeb Ember stood against headman Cobb Brook and…
+        Zeb Ember stood against headman Cobb Brook and won, 2 votes to 0. Cobb Brook took a very long walk round the pond.
+   3. [Story/Neutral/role 0.78] Ulf Fernby stood against headman Zeb Ember and…
+        Ulf Fernby stood against headman Zeb Ember and won on a tied vote. Zeb Ember took a very long walk round the pond.
+   4. [Story/Good/milestone 0.75] The first tavern
+        Juna Ember opened a tavern. Productivity dipped.
+   5. [Story/Good/trait 0.62] Wim Brook made a stick that throws a shadow, and…
+        Wim Brook made a stick that throws a shadow, and now everyone knows when lunch is.
+   6. [Story/Neutral/friends 0.58] Ulf and Cobb fell out
+        Ulf Fernby and Cobb Brook fell out over a goat. They no longer share a bench.
+        + Ulf Fernby and Cobb Brook made up over a pot of stew. The whole village sighed with relief.
+   7. [Story/Good/office 0.50] Ulf Fernby, the village's headman, declared a…
+        Ulf Fernby, the village's headman, declared a long lunch. It became a long nap on the green.
+   Also: Wim Brook threw a harvest festival / Cobb Brook threw a harvest festival / Dov Fernby invented a better basket (+12 more)
+
+== Return 16: after 3 h away (real h 105), year 72.2 -> 75.2, Village, 2 entries, cap 5
+   Peek: "Glasswick celebrated 75 years in the glass with…"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Glasswick celebrated 75 years in the glass with…
+        Glasswick celebrated 75 years in the glass with a feast.
+   2. [Story/Good/trait 0.45] Zeb Ember invented a hammock
+        Zeb Ember invented a hammock. It was their only invention.
+
+== Return 17: after 3 h away (real h 108), year 75.3 -> 78.3, Village, 11 entries, cap 5
+   Peek: "Nils Fernby threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Nils Fernby threw a harvest festival
+        Nils Fernby threw a harvest festival. The pies ran out long before the music did. Juna Ember the headman organised the sack race.
+   2. [Story/Neutral/role 0.78] Juna Ember and Nils Fernby both wanted to be…
+        Juna Ember and Nils Fernby both wanted to be headman. The village chose Juna Ember on a tied vote; Nils Fernby went home and shut the door very loudly.
+   3. [Story/Neutral/trait 0.60] Nils got lost in the hills
+        Nils Fernby got lost in the hills for three days and came back with a crown made of twigs.
+   4. [Legend/Sad/legend 0.85] Ulf died
+        Ulf Fernby, the lazy, died of old age at 59.
+        + Ulf Fernby died as headman after 4 years. The village left the seat empty until spring.
+   5. [Legend/Sad/legend 0.85] Zeb died
+        Zeb Ember, the lazy, died of old age at 64.
+        + Zeb Ember died as headman after less than a year. The village left the seat empty until spring.
+   Also: Gus had a baby, Fen / Zeb Ember was made headman while asleep at the… / Cobb Brook grew a turnip the size of a sheep (+1 more)
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 78.5): "Juna Ember is planning something for Hat Day. Nobody knows what."
+
+== Return 18: after 3 h away (real h 112), year 78.5 -> 81.5, Village, 5 entries, cap 5
+   Peek: "Wim answered the Keeper"   | teaser under it: "Juna Ember is planning something for Hat Day. Nobody knows what."
+   1. [Keeper/Good/keeper 0.90] Wim answered the Keeper
+        After the Keeper dug a channel from the pond, Wim Brook planted a new field beside it.
+   2. [Story/Good/family 0.60] Nils had a baby, Lune
+        Lune Fernby was born to Nils Fernby.
+   3. [Story/Neutral/friends 0.58] Nils and Wim fell out
+        Nils Fernby and Wim Brook fell out over whose turn it was at the well. They no longer share a bench.
+   4. [Story/Neutral/trait 0.45] Nils Fernby built a little fence around the…
+        Nils Fernby built a little fence around the pond, just in case.
+   5. [Legend/Sad/legend 0.85] Cobb died
+        Cobb Brook, the gardener, died of old age at 78.
+
+== Return 19: after 3 h away (real h 115), year 81.5 -> 84.5, Village, 4 entries, cap 5
+   Peek: "Juna Ember threw a harvest festival"   | teaser under it: "Juna Ember is planning something for Hat Day. Nobody knows what."
+   1. [Story/Good/milestone 0.65] Juna Ember threw a harvest festival
+        Juna Ember threw a harvest festival. The pies ran out long before the music did.
+   2. [Story/Good/trait 0.62] Dov Fernby made a stick that throws a shadow…
+        Dov Fernby made a stick that throws a shadow, and now everyone knows when lunch is.
+   3. [Story/Good/friends 0.55] Wim and Nils made up
+        Wim Brook and Nils Fernby made up over a pot of stew. The whole village sighed with relief.
+   4. [Story/Neutral/world 0.42] A thick fog sat in the glass for days
+        A thick fog sat in the glass for days. Gus Ember said good morning to a bush.
+   (the player shapes: channel)
+   Evening talk (end of a 15-min session, year 84.8): "Everyone keeps going down to look at the new water."
+
+== Return 20: after 8 h away (real h 123), year 84.8 -> 92.8, Village (next era READY), 9 entries, cap 5
+   Peek: "Glasswick is ready for a new age"   | teaser under it: (none)
+   1. [EraReady/Good/era 0.80] Glasswick is ready for a new age
+        Glasswick hums with new trades. Everyone feels a bigger change coming.
+   2. [Keeper/Good/keeper 1.10] Nils answered the Keeper
+        (at the fire: Everyone keeps going down to look at the new water.)
+        After the Keeper dug a channel from the pond, Nils Fernby planted a new field beside it.
+   3. [Story/Good/milestone 0.70] Glasswick grew to 20 people
+        Glasswick grew to 20 people.
+   4. [Story/Good/office 0.70] Juna Ember, the village's headman, ended a…
+        (at the fire: Juna Ember is planning something for Hat Day. Nobody knows what.)
+        Juna Ember, the village's headman, ended a speech at the green with a joke about the goats. Even the goats laughed.
+   5. [Story/Good/family 0.60] Nils had a baby, Joss
+        Joss Fernby was born to Nils Fernby.
+   Also: Dov had a baby, Fen / Glasswick kept Juna Ember as headman for another… / A strange device appeared by the mill (+1 more)
+   ** The player watches the era moment: now Town (year 92.8).
+
+== Return 21: after 3 h away (real h 126), year 92.8 -> 95.8, Town, 6 entries, cap 5
+   Peek: "Nils Fernby threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Nils Fernby threw a harvest festival
+        Nils Fernby threw a harvest festival. Someone danced with a goat, and the goat led. Juna Ember the lord organised the sack race.
+   2. [Story/Good/people 0.55] A newcomer, Fen Dale, the stubborn, joined the…
+        A newcomer, Fen Dale, the stubborn, joined the town.
+   3. [Story/Good/people 0.55] A newcomer, Lune Quarry, the gossip, joined the…
+        A newcomer, Lune Quarry, the gossip, joined the town.
+   4. [Story/Good/office 0.50] Under merchant Gus Ember, someone sweeps the…
+        Under merchant Gus Ember, someone sweeps the market steps every morning and nobody laughs after dark.
+   5. [Story/Neutral/office 0.50] Fen Ember the guildmaster complained about the…
+        Fen Ember the guildmaster complained about the noise from Dov Fernby's house for a whole season.
+   Also: A strange device appeared by the inn
+
+== Return 22: after 3 h away (real h 129), year 95.8 -> 98.8, Town, 8 entries, cap 5
+   Peek: "Dov Fernby worked out how to tell the time from…"   | teaser under it: (none)
+   1. [Story/Good/trait 0.62] Dov Fernby worked out how to tell the time from…
+        Dov Fernby worked out how to tell the time from the glass's shadow.
+   2. [Story/Good/family 0.60] Fen had a baby, Zeb
+        Zeb Ember was born to Fen Ember.
+   3. [Story/Good/family 0.60] Fen had a baby, Pell
+        Pell Dale was born to Fen Dale.
+   4. [Story/Neutral/world 0.50] Thunder rolled round the glass all night
+        Thunder rolled round the glass all night. Everyone squeezed into the lumber mill and told stories till it passed. Nils Fernby the captain of the watch had them all counted in before the first gust.
+   5. [Story/Good/office 0.50] Juna Ember, the town's lord, declared a day of…
+        Juna Ember, the town's lord, declared a day of games at the market steps. Nils Fernby is still champion of the egg-and-spoon.
+   Also: On the orders of Juna Ember, the first day of… / Gus Ember the merchant complained about the… / Fog rolled in and stayed
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 99.1): "The craftsfolk keep going out to tap the new rock."
+
+== Return 23: after 3 h away (real h 132), year 99.1 -> 102.1, Town, 7 entries, cap 5
+   Peek: "Dov answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Dov answered the Keeper
+        (at the fire: The craftsfolk keep going out to tap the new rock.)
+        After the Keeper raised an outcrop, Dov Fernby opened a workshop for the new stone beside it.
+   2. [Story/Good/milestone 0.65] Glasswick celebrated 100 years in the glass with…
+        Glasswick celebrated 100 years in the glass with a feast.
+   3. [Story/Good/family 0.60] Lune had a baby, Pim
+        Pim Fernby was born to Lune Fernby.
+   4. [Story/Good/people 0.55] All winter the children sat round Wim Brook, the…
+        All winter the children sat round Wim Brook, the eldest, asking for the one about the first fire.
+   5. [Story/Neutral/office 0.50] Gus Ember, the town's merchant, sent Fen Ember…
+        Gus Ember, the town's merchant, sent Fen Ember home from the market steps for whistling.
+   Also: Fen and Nils became friends / Lune Quarry knew about the wedding before the…
+
+== Return 24: after 3 h away (real h 135), year 102.2 -> 105.2, Town, 9 entries, cap 5
+   Peek: "Fen Dale and Lune Fernby each built a chimney to…"   | teaser under it: (none)
+   1. [Story/Good/role 0.65] Fen Dale and Lune Fernby each built a chimney to…
+        Fen Dale and Lune Fernby each built a chimney to prove who should be master builder. Fen Dale's is still standing.
+   2. [Story/Good/world 0.55] The best harvest anyone can remember
+        The best harvest anyone can remember. The granary door wouldn't close.
+   3. [Story/Good/people 0.50] Joss became Gus's apprentice
+        Gus Ember took young Joss Fernby as an apprentice.
+   4. [Story/Good/office 0.50] Nils Fernby, the town's captain of the watch…
+        Nils Fernby, the town's captain of the watch, had extra lanterns hung round the market steps, and a fence put round the fence.
+   5. [Legend/Sad/legend 0.85] Wim died
+        Wim Brook, the clever, died of old age at 75.
+        + Wim Brook died as master builder after 11 years. The town left the seat empty until spring.
+   Also: Glasswick kept Fen Ember as guildmaster for… / Wim Brook, the town's master builder, worked out… / A sheep wandered into the tavern and refused to…
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 105.4): "Juna Ember is planning something for Hat Day. Nobody knows what."
+
+== Return 25: after 8 h away (real h 143), year 105.4 -> 113.4, Town, 19 entries, cap 5
+   Peek: "Dov answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 0.90] Dov answered the Keeper
+        After the Keeper raised an outcrop, Dov Fernby opened a workshop for the new stone beside it.
+   2. [Story/Good/role 0.80] When old Juna Ember died, their sibling's child…
+        When old Juna Ember died, their sibling's child, Fen Ember, became lord of the town.
+   3. [Story/Good/milestone 0.65] Fen Dale threw a harvest festival
+        Fen Dale threw a harvest festival. Someone danced with a goat, and the goat led. Juna Ember the lord organised the sack race.
+   4. [Legend/Sad/legend 0.85] Juna died
+        Juna Ember, the joker, died of old age at 68.
+   5. [Legend/Sad/legend 0.85] Dov died
+        Dov Fernby, the clever, died of old age at 64.
+   Also: Gus died / Lune Fernby and Joss Fernby both wanted to be… / When Dov Fernby died, the inn passed to their… (+11 more)
+
+== Return 26: after 3 h away (real h 147), year 113.5 -> 116.5, Town, 11 entries, cap 5
+   Peek: "Fen Fernby threw a harvest festival"   | teaser under it: (none)
+   1. [Story/Good/milestone 0.65] Fen Fernby threw a harvest festival
+        Fen Fernby threw a harvest festival. Someone danced with a goat, and the goat led. Fen Ember the lord went to bed early.
+   2. [Story/Good/family 0.60] Joss had a baby, Dov
+        Dov Fernby was born to Joss Fernby.
+   3. [Story/Neutral/friends 0.58] Lune and Nils fell out
+        Lune Fernby and Nils Fernby fell out over a fence post. They no longer share a bench. Lune Quarry the merchant told everyone by supper.
+   4. [Story/Good/role 0.55] Lord Fen Ember made Zeb Ember captain of the watch
+        Lord Fen Ember made Zeb Ember captain of the watch. The watch is Zeb Ember and a very large dog.
+   5. [Legend/Sad/legend 0.85] Nils died
+        Nils Fernby, the worrier, died of old age at 64.
+   Also: Fen and Lune had a baby, Cobb / Fen Ember, the town's lord, sent Lune Quarry… / Fen Fernby and Zeb Ember fell out over the best… (+3 more)
+
+== Return 27: after 3 h away (real h 150), year 116.5 -> 119.5, Town, 10 entries, cap 5
+   Peek: "Zeb Ember worked out how to tell the time from…"   | teaser under it: (none)
+   1. [Story/Good/trait 0.62] Zeb Ember worked out how to tell the time from…
+        Zeb Ember worked out how to tell the time from the glass's shadow.
+   2. [Story/Good/family 0.60] Fen had a baby, Bram
+        Bram Fernby was born to Fen Fernby.
+   3. [Story/Neutral/friends 0.58] Pell and Fen fell out
+        Pell Dale and Fen Dale fell out over a song lyric. They no longer share a bench. Lune Fernby the guildmaster has promised to sort it out.
+   4. [Story/Good/people 0.50] Pim became Lune's apprentice
+        Lune Quarry took young Pim Fernby as an apprentice.
+   5. [Story/Good/office 0.50] Fen Fernby, the town's innkeeper, declared a…
+        Fen Fernby, the town's innkeeper, declared a long lunch. It became a long nap on the green.
+   Also: Fen Ember the lord and Fen Dale argued about a… / Pim and Lune became friends / Lune Fernby, the town's guildmaster, set long… (+2 more)
+   (the player shapes: outcrop)
+   Evening talk (end of a 15-min session, year 119.8): "The craftsfolk keep going out to tap the new rock."
+
+== Return 28: after 3 h away (real h 153), year 119.8 -> 122.8, Town, 7 entries, cap 5
+   Peek: "Lune answered the Keeper"   | teaser under it: (none)
+   1. [Keeper/Good/keeper 1.10] Lune answered the Keeper
+        (at the fire: The craftsfolk keep going out to tap the new rock.)
+        After the Keeper raised an outcrop, Lune Quarry opened a workshop for the new stone beside it.
+   2. [Story/Good/family 0.70] Pell married Joss
+        Pell Dale married Joss Fernby among the spring blossoms.
+   3. [Story/Good/family 0.60] Zeb had a baby, Wim
+        Wim Ember was born to Zeb Ember.
+   4. [Story/Good/friends 0.55] Fen and Lune made up
+        Fen Fernby and Lune Quarry made peace while looking for the same lost goat. They found it together.
+   5. [Story/Neutral/office 0.50] Fen Ember, the town's lord, told Zeb Ember…
+        Fen Ember, the town's lord, told Zeb Ember exactly what they thought about a fence post. It took most of an afternoon.
+   Also: Pell Dale and Pim Fernby shouted each other… / A strange device appeared by the market steps
+
+== Teaser threads (said at the evening talk) and how they ended
+  Y  0 [office] Cela Wick has an announcement for tomorrow. Everyone will hear it.
+        -> PaidOff Y0: Cela Wick, the camp's chief, made an announcement at the camp fire every morning. Most of them were about the weather.
+  Y  6 [gift] The gatherers keep checking the wet ground.
+        -> PaidOff Y8: After the Keeper's rain, Dina Reed staked out new gathering grounds.
+  Y 12 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y13: After the Keeper dug a channel from the pond, Lorn Gale built a windmill to grind the extra grain beside it.
+  Y 27 [office] Cela Wick has an announcement for tomorrow. Everyone will hear it.
+        -> PaidOff Y34: Cela Wick the headman held a feast at the green. They could be heard on the far side of the glass.
+  Y 33 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y35: After the Keeper dug a channel from the pond, Ulf Fernby planted a new field beside it.
+  Y 47 [rivalry] Ulf Fernby and Cobb Brook aren't speaking again.
+        -> PaidOff Y52: Ulf Fernby and Cobb Brook made peace while looking for the same lost goat. They found it together.
+  Y 54 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y55: After the Keeper dug a channel from the pond, Cobb Brook planted a new field beside it.
+  Y 78 [office] Juna Ember is planning something for Hat Day. Nobody knows what.
+        -> PaidOff Y87: Juna Ember, the village's headman, ended a speech at the green with a joke about the goats. Even the goats laughed.
+  Y 84 [gift] Everyone keeps going down to look at the new water.
+        -> PaidOff Y85: After the Keeper dug a channel from the pond, Nils Fernby planted a new field beside it.
+  Y 99 [gift] The craftsfolk keep going out to tap the new rock.
+        -> PaidOff Y100: After the Keeper raised an outcrop, Dov Fernby opened a workshop for the new stone beside it.
+  Y105 [office] Juna Ember is planning something for Hat Day. Nobody knows what.
+        -> Died
+  Y119 [gift] The craftsfolk keep going out to tap the new rock.
+        -> PaidOff Y121: After the Keeper raised an outcrop, Lune Quarry opened a workshop for the new stone beside it.

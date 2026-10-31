@@ -1,0 +1,28 @@
+{
+    "name": "AquariumCiv.View",
+    "rootNamespace": "AquariumCiv.View",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Life",
+        "AquariumCiv.Moments",
+        "AquariumCiv.ShowMe",
+        "AquariumCiv.Cards",
+        "AquariumCiv.Shaping",
+        "AquariumCiv.TimeLapseScreen",
+        "AquariumCiv.Audio",
+        "AquariumCiv.Game",
+        "AquariumCiv.Game.UI",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

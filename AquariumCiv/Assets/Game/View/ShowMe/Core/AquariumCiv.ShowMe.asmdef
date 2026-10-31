@@ -1,0 +1,17 @@
+{
+    "name": "AquariumCiv.ShowMe",
+    "rootNamespace": "AquariumCiv.View.ShowMe",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Life"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

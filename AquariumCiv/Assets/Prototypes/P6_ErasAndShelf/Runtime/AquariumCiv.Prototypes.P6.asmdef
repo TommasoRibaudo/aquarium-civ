@@ -1,0 +1,17 @@
+{
+    "name": "AquariumCiv.Prototypes.P6",
+    "rootNamespace": "AquariumCiv.Prototypes.P6",
+    "references": [
+        "AquariumCiv.Prototypes.Shared",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

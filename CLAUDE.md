@@ -10,6 +10,10 @@ Design and research docs: `docs/` (start at `docs/README.md`; decisions in `docs
 
 ## Driving the Editor (Unity CLI + Pipeline)
 - Before any scene/prefab/asset edit: `unity status --project-path F:\GameDev\AquariumCiv` → state must be `ready`.
+- **Before taking `.agent-editor.lock`: `bash Tools/editor-health.sh`.** Exit 1 → `bash Tools/restart-editor.sh` first (a reload over 20 s, or 3+ tickets since the last restart). Exit 2 → C: is nearly full: tell the user. A long-lived Editor cost 3.3 h in one run and hid a leak of 81 glass panes.
+- Wait for long Unity runs in the background and end your turn. Never write `until grep`/`while` poll loops; any wait helper has a timeout.
+- PlayMode UI tests call `GameUiPanel.AcceptInputUnfocused(true)`; UI Toolkit drops taps while Unity isn't the foreground window.
+- Never run a bare `unity command test run` (it runs everything and blocks the Editor): filter by assembly, class or category.
 - **Never hand-edit `.unity` / `.prefab` / `.asset` YAML while an Editor is reachable.** Use `unity command ...` or `eval`.
 - Discover commands with `unity command` / `unity command --tag <tag>`; don't guess names.
 - Full Pipeline command reference: `AquariumCiv/Library/PackageCache/com.unity.pipeline@*/Documentation~/commands/*.md`.
@@ -44,13 +48,20 @@ Every time something runs in Unity (open, recompile, eval, tests, builds, import
 3. Visual change? Take a screenshot and look at it. The user is the final judge of look & feel.
 4. Logic change? Add or run tests (`unity test`, exit 8 = real failures). Run only the affected assembly/class;
    check the test count isn't 0.
-5. Visual, UI, interaction or gameplay change? Run the **`tester`** sub-agent (`.claude/agents/tester.md`) with a
-   brief: what changed, what to play, what to watch for, a pass list, which tests. Don't touch the Editor while it
-   runs. Fix its **[real]** findings before calling the work done; list **[polish]** ones for the user to decide.
-   Always run it before a prototype goes to human testers.
+5. Visual, UI, interaction or gameplay change? Run the slice smoke test (`SlicePlaythroughSmoke`) before you finish;
+   it builds the real scene with every bootstrap, which per-feature tests don't. Run the **`tester`** sub-agent
+   (`.claude/agents/tester.md`) after **6 view tickets or 4 hours of merged Editor work, whichever comes first**, unless
+   the user sets another cadence, with a brief: what changed, what to play, what to watch for, a pass list, the fresh-box
+   path, and scene sanity (leftover roots, mesh count). Don't touch the Editor while it runs. Fix its **[real]** findings
+   before calling the work done; list **[polish]** ones for the user to decide. Always run it before a prototype goes
+   to human testers.
 
 ## Conventions
+- Slice work is tracked as GitHub issues on the Slice board and run in lanes (no-Unity work in parallel worktrees,
+  Editor work one at a time behind `.agent-editor.lock`): read `docs/workflow.md` before starting a slice issue.
 - Commit before large scene/prefab changes.
+- **`main` is protected**: work on a branch, open a PR (`gh pr create`), let CI pass, then merge. Never push to `main`
+  or use `pull_request_target`. See `docs/ci.md`.
 - **Debug panel stays current:** whenever a prototype adds a resource, mess type, event, variant or other testable
   state, add a cheat for it to the debug panel (give, spawn, skip to, toggle) in the same change, so you, the tester
   and the user can reach it without waiting.

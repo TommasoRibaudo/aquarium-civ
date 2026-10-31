@@ -1,0 +1,21 @@
+{
+    "name": "AquariumCiv.Game.UI",
+    "rootNamespace": "AquariumCiv.GameUI",
+    "references": [
+        "AquariumCiv.Sim",
+        "AquariumCiv.Game",
+        "Unity.InputSystem",
+        "AquariumCiv.Life",
+        "AquariumCiv.Moments",
+        "AquariumCiv.Audio"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

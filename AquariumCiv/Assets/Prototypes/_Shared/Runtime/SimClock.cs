@@ -32,10 +32,12 @@ namespace AquariumCiv.Prototypes
 
         /// <summary>Raised after catch-up on launch, resume, or a debug away button: (real hours away, game years elapsed).</summary>
         public event Action<double, float> Returned;
+        /// <summary>Raised just before catch-up runs, so views can snapshot the world they are about to see change.</summary>
+        public event Action Returning;
 
         float saveTimer;
         bool wasPaused; // Unity also sends OnApplicationPause(false) at startup; only a real resume catches up
-        string SavePath => Path.Combine(Application.persistentDataPath, "proto", $"{PrototypeConfig.Current.protoId}.json");
+        string SavePath => Path.Combine(Application.persistentDataPath, "proto", $"{PrototypeConfig.Current.SaveId}.json");
 
         void Awake()
         {
@@ -72,6 +74,18 @@ namespace AquariumCiv.Prototypes
             Return(hours);
         }
 
+        /// <summary>Load this prototype's saved world again (P3+: back from a lab session into a running diary) and catch
+        /// up on the time since it was last seen, like a launch. Starts fresh if there is no save.</summary>
+        public void Reload()
+        {
+            Load();
+            Generation++;
+            CatchUpFromLastSeen();
+        }
+
+        /// <summary>A saved world exists for the current save id (a diary in progress).</summary>
+        public bool HasSave => File.Exists(SavePath);
+
         public void ResetWorld()
         {
             Sim = new SimCore(config, SimCore.NewWorld(seed, config));
@@ -90,6 +104,7 @@ namespace AquariumCiv.Prototypes
 
         void Return(double hours)
         {
+            Returning?.Invoke();
             long monthBefore = Sim.State.month;
             Sim.Advance(hours);
             float years = (Sim.State.month - monthBefore) / (float)SimConfig.MonthsPerYear;
@@ -98,7 +113,7 @@ namespace AquariumCiv.Prototypes
             Returned?.Invoke(hours, years);
         }
 
-        string LastSeenKey => $"last_seen_{PrototypeConfig.Current.protoId}";
+        string LastSeenKey => $"last_seen_{PrototypeConfig.Current.SaveId}";
 
         void Load()
         {

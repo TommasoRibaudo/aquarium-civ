@@ -1,0 +1,84 @@
+# Seed 77: notables
+
+== Year 0 (seen at year 0.3), Camp, population 5, buildings 2
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Lorn Gale         36   62  the kind       toolmaker    -                     -                -                - / -
+   Dina Reed         35   72  the kind       gatherer     -                     -                -                - / -
+   Cela Wick         24   58  the loud       hunter       chief                 -                -                - / -
+   Seats: chief: Cela Wick
+
+== Year 10 (seen at year 12.6), Village, population 10, buildings 6
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Lorn Gale         48   62  the kind       woodcutter   -                     -                -                - / -
+   Dina Reed         47   72  the kind       farmer       -                     -                Cela Wick        - / -
+   Cela Wick         36   58  the loud       fisher       headman               -                Dina Reed        - / -
+   Seats: headman: Cela Wick
+
+== Year 25 (seen at year 26.9), Village, population 13, buildings 9
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Lorn Gale         62   62  the kind       woodcutter   -                     -                -                - / Cela Wick
+   Dina Reed         61   72  the kind       farmer       miller                -                Cela Wick        - / -
+   Cela Wick         50   58  the loud       fisher       headman               -                Dina Reed        Flora Fernby / Lorn Gale
+   Flora Fernby      38   57  the stubborn   woodcutter   -                     -                -                Cela Wick / -
+   Ulf Fernby         9   58  the lazy       -            -                     Flora Fernby     -                - / -
+   Seats: headman: Cela Wick; miller: Dina Reed
+
+== Year 50 (seen at year 50.8), Village, population 16, buildings 14
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Cobb Brook        47   78  the gardener   farmer       headman               -                Zeb Ember        Dina Reed† / Ulf Fernby
+   Zeb Ember         37   63  the lazy       fisher       -                     -                Cobb Brook       Ulf Fernby / Wim Brook
+   Ulf Fernby        33   58  the lazy       fisher       -                     Flora Fernby†    Wim Brook        Zeb Ember / Cobb Brook
+   Wim Brook         21   74  the clever     fisher       miller                Cobb Brook       Ulf Fernby       - / Zeb Ember
+   Juna Ember         5   67  the joker      -            -                     Zeb Ember        -                - / -
+   Gus Ember          3   62  the grump      -            -                     Zeb Ember        -                - / -
+   Dov Fernby         1   63  the clever     -            -                     Ulf Fernby       -                - / -
+   Seats: headman: Cobb Brook; miller: Wim Brook
+
+== Year 75 (seen at year 75.2), Village, population 19, buildings 17
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Cobb Brook        72   78  the gardener   elder        -                     -                Zeb Ember        Dina Reed† / -
+   Zeb Ember         62   63  the lazy       fisher       -                     -                Cobb Brook       Ulf Fernby / -
+   Ulf Fernby        58   58  the lazy       fisher       headman               Flora Fernby†    Wim Brook        Zeb Ember / -
+   Wim Brook         46   74  the clever     fisher       miller                Cobb Brook       Ulf Fernby       Juna Ember / -
+   Juna Ember        30   67  the joker      woodcutter   -                     Zeb Ember        -                Wim Brook / -
+   Gus Ember         28   62  the grump      fisher       -                     Zeb Ember        -                Dov Fernby / -
+   Dov Fernby        26   63  the clever     brewer       -                     Ulf Fernby       -                Gus Ember / -
+   Nils Fernby       24   63  the worrier    farmer       -                     Wim Brook        -                - / -
+   Seats: headman: Ulf Fernby; miller: Wim Brook
+
+== Year 100 (seen at year 102.1), Town, population 22, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Wim Brook         73   74  the clever     elder        master builder        Cobb Brook†      Ulf Fernby†      Juna Ember / -
+   Juna Ember        57   67  the joker      woodcutter   lord                  Zeb Ember†       -                Wim Brook / -
+   Gus Ember         55   62  the grump      fisher       merchant              Zeb Ember†       -                Dov Fernby / -
+   Dov Fernby        53   63  the clever     baker        innkeeper             Ulf Fernby†      -                Gus Ember / -
+   Nils Fernby       51   63  the worrier    farmer       captain of the watch  Wim Brook        -                Fen Dale / -
+   Lune Quarry       36   74  the gossip     sweeper      -                     -                -                - / -
+   Fen Dale          36   77  the stubborn   woodcutter   -                     -                -                Nils Fernby / -
+   Fen Ember         26   64  the grump      woodcutter   guildmaster           Gus Ember        -                - / -
+   Lune Fernby       22   72  the kind       stallholder  -                     Nils Fernby      -                - / -
+   Fen Fernby        15   68  the lazy       -            -                     Dov Fernby       -                - / -
+   Joss Fernby       11   57  the tinkerer   -            -                     Nils Fernby      -                - / -
+   Zeb Ember          6   74  the clever     -            -                     Fen Ember        -                - / -
+   Pell Dale          5   66  the gossip     -            -                     Fen Dale         -                - / -
+   Pim Fernby         1   79  the singer     -            -                     Lune Fernby      -                - / -
+   Seats: lord: Juna Ember; innkeeper: Dov Fernby; guildmaster: Fen Ember; master builder: Wim Brook; merchant: Gus Ember; captain of the watch: Nils Fernby
+
+== Year 120 (seen at year 122.8), Town, population 24, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Lune Quarry       56   74  the gossip     sweeper      merchant              -                Fen Ember        Pim Fernby / -
+   Fen Dale          56   77  the stubborn   woodcutter   master builder        -                -                Nils Fernby† / Pell Dale
+   Fen Ember         46   64  the grump      woodcutter   lord                  Gus Ember†       Lune Quarry      Zeb Ember / -
+   Lune Fernby       42   72  the kind       stallholder  guildmaster           Nils Fernby†     -                - / Nils Fernby†
+   Fen Fernby        35   68  the lazy       mason        innkeeper             Dov Fernby†      -                - / -
+   Joss Fernby       31   57  the tinkerer   baker        -                     Nils Fernby†     Pell Dale        - / -
+   Zeb Ember         26   74  the clever     farmer       captain of the watch  Fen Ember        -                Fen Ember / -
+   Pell Dale         25   66  the gossip     fisher       -                     Fen Dale         Joss Fernby      - / Fen Dale
+   Pim Fernby        21   79  the singer     baker        -                     Lune Fernby      -                Lune Quarry / -
+   Hob Fernby         9   79  the loud       -            -                     Fen Fernby       -                - / -
+   Dov Fernby         8   68  the gardener   -            -                     Joss Fernby      -                - / -
+   Cobb Quarry        8   57  the clever     -            -                     Fen Ember        -                - / -
+   Bram Fernby        5   56  the gardener   -            -                     Fen Fernby       -                - / -
+   Wim Ember          2   67  the gossip     -            -                     Zeb Ember        -                - / -
+   Seats: lord: Fen Ember; innkeeper: Fen Fernby; guildmaster: Lune Fernby; master builder: Fen Dale; merchant: Lune Quarry; captain of the watch: Zeb Ember
+

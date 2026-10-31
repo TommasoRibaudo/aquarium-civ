@@ -1,0 +1,61 @@
+/* The time-lapse screen (#79), plain HUD sheet style. Look only: the logic is TimeLapseScreenModel, the code sets only
+   data-driven positions (band/pin/playhead x). The UI rework restyles this file. Sizes are panel units (1080 wide). */
+
+.tl-panel { padding-top: 32px; }
+.tl-head { flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.tl-year { font-size: 54px; color: #6A4B36; -unity-font-style: bold; flex-grow: 1; flex-shrink: 1; }
+
+.tl-btn {
+    height: 144px; min-width: 200px; padding: 0 36px; margin: 0 0 0 16px;
+    border-width: 0; border-radius: 72px;
+    background-color: #E2D3B3; color: #6A4B36; font-size: 36px; -unity-font-style: bold;
+}
+.tl-btn:hover { background-color: #E2D3B3; }
+.tl-btn:active { background-color: #D4C39F; }
+.tl-btn--small { height: 120px; min-width: 150px; font-size: 32px; }
+.tl-btn:disabled { opacity: 0.4; }
+
+.tl-controls { flex-direction: row; align-items: center; justify-content: space-between; margin-top: 20px; }
+.tl-play { flex-grow: 1; margin-right: 16px; }
+
+/* timeline bar */
+.tl-bar { margin-top: 8px; }
+.tl-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.tl-band { position: absolute; top: 24px; height: 64px; border-radius: 16px; justify-content: center; }
+.tl-band--camp { background-color: #CFA65E; }
+.tl-band--village { background-color: #8DAA5B; }
+.tl-band--town { background-color: #6E7C8C; }
+.tl-band-label { font-size: 28px; color: #2E2A27; -unity-font-style: bold; margin-left: 14px; }
+.tl-era-tick { position: absolute; top: 12px; width: 3px; height: 88px; background-color: #2E2A27; }
+
+.tl-pin {
+    position: absolute; top: 96px; width: 60px; height: 60px; border-radius: 30px;
+    background-color: #C66F4E; border-width: 4px; border-color: #EFE3CC;
+    color: #EFE3CC; font-size: 28px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.tl-pin--group { background-color: #6A4B36; }
+
+.tl-playhead { position: absolute; top: 0; bottom: 0; width: 6px; background-color: #2E2A27; align-items: center; }
+.tl-handle {
+    position: absolute; top: 0; width: 48px; height: 48px; margin-left: -21px; border-radius: 24px;
+    background-color: #C66F4E; border-width: 5px; border-color: #EFE3CC;
+}
+
+/* caption card */
+.tl-caption { background-color: #E2D3B3; border-radius: 36px; padding: 28px 32px; margin-bottom: 16px; }
+.tl-caption-text { font-size: 38px; color: #6A4B36; white-space: normal; }
+.tl-cap-row { flex-direction: row; justify-content: flex-end; margin-top: 16px; }
+.tl-cap-row > Button { background-color: #EFE3CC; }
+
+/* over the world */
+.tl-era-card {
+    position: absolute; left: 80px; right: 80px; top: 320px; align-items: center;
+    background-color: rgba(46, 42, 39, 0.78); border-radius: 48px; padding: 36px 40px;
+}
+.tl-era-card > Label { color: #EFE3CC; font-size: 56px; -unity-font-style: bold; -unity-text-align: middle-center; white-space: normal; }
+.tl-toast {
+    position: absolute; left: 120px; right: 120px; bottom: 900px; padding: 20px 28px; border-radius: 40px;
+    background-color: rgba(46, 42, 39, 0.8); color: #EFE3CC; font-size: 34px; -unity-text-align: middle-center;
+}
+.tl-empty { padding: 32px 0; }
+.tl-empty > Label { font-size: 38px; color: rgba(106, 75, 54, 0.7); white-space: normal; }

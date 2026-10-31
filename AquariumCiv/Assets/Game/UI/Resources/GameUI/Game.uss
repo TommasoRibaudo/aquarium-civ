@@ -1,0 +1,318 @@
+/* The game's screen UI, in the style kit's palette (View/Palette.cs, docs/design/spikes/style-kit.md).
+   Panel units: 1080 wide (GameUiPanel). Tap targets >= 144 (48 dp / 44 pt). USS has no gap or nth-child:
+   space children with one-sided margins (tooling.md §8). */
+
+:root {
+    --plaster: #EFE3CC;
+    --canvas: #E2D3B3;
+    --timber: #6A4B36;
+    --frame: #2E2A27;
+    --terracotta: #C66F4E;
+    --moss: #5E7F43;
+    --thatch: #CFA65E;
+    --scrim: rgba(30, 26, 23, 0.45);
+    --ink-soft: rgba(106, 75, 54, 0.7);
+}
+
+Label { white-space: normal; }
+
+/* ---------------- HUD shell ---------------- */
+.hud-fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.hud-safe { justify-content: space-between; }
+
+.hud-top { flex-direction: row; justify-content: center; align-items: flex-start; padding-top: 18px; }
+.hud-bottom { flex-direction: row; justify-content: space-between; align-items: flex-end; padding: 0 32px 32px 32px; }
+.hud-corner { position: absolute; top: 18px; right: 24px; }
+
+/* the box's name and year: small, quiet, a tap opens settings */
+.hud-title {
+    min-height: 144px; min-width: 300px; padding: 0 44px;
+    background-color: rgba(46, 42, 39, 0.62);
+    border-width: 0; border-radius: 72px; margin: 0;
+    justify-content: center; align-items: center;
+}
+.hud-title-name { color: var(--plaster); font-size: 38px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.hud-title-year { color: rgba(239, 227, 204, 0.85); font-size: 30px; -unity-text-align: middle-center; margin-top: -2px; }
+.hud-title:hover { background-color: rgba(46, 42, 39, 0.62); }
+.hud-title:active { background-color: rgba(46, 42, 39, 0.75); }
+
+/* round-cornered buttons on the glass */
+.hud-btn {
+    min-width: 230px; height: 150px; padding: 0 36px; margin: 0;
+    border-width: 0; border-radius: 75px;
+    background-color: rgba(239, 227, 204, 0.94);
+    color: var(--timber); font-size: 38px; -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+.hud-btn:hover { background-color: rgba(239, 227, 204, 0.94); }
+.hud-btn:active { background-color: var(--canvas); scale: 0.96 0.96; }
+.hud-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
+.hud-btn--primary:hover { background-color: var(--terracotta); }
+.hud-btn--primary:active { background-color: #B5603F; }
+/* Clean mode is on: the button is lit, so the mode is never a silent one */
+.hud-btn--on { background-color: var(--thatch); color: var(--frame); }
+.hud-btn--on:hover { background-color: var(--thatch); }
+
+/* camera mode (#70): everything in the safe area hides except the way back */
+.hud-photo > * { display: none; }
+.hud-photo > .hud-photo-exit { display: flex; }
+.hud-photo-exit {
+    position: absolute; bottom: 36px; left: 50%; translate: -50% 0;
+    height: 110px; padding: 0 44px; margin: 0; border-width: 0; border-radius: 55px;
+    background-color: rgba(46, 42, 39, 0.62); color: var(--plaster);
+    font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.hud-photo-exit:hover { background-color: rgba(46, 42, 39, 0.62); }
+
+/* a short hint line above the bottom row */
+.hud-toast {
+    position: absolute; left: 60px; right: 60px; bottom: 240px;
+    padding: 22px 36px; border-radius: 48px;
+    background-color: rgba(46, 42, 39, 0.78); color: var(--plaster);
+    font-size: 36px; -unity-font-style: bold; -unity-text-align: middle-center;
+    white-space: normal; /* long hints wrap inside the safe area (tester batch 2) */
+}
+
+/* test builds only: present but quieter than the title */
+.hud-btn--small { min-width: 0; height: 144px; padding: 0 30px; font-size: 28px; background-color: rgba(46, 42, 39, 0.4); color: var(--plaster); }
+.hud-btn--small:hover { background-color: rgba(46, 42, 39, 0.4); }
+.hud-btn--small:active { background-color: rgba(46, 42, 39, 0.6); }
+
+/* pinned person's chip (filled in by the person card work) */
+.hud-chip {
+    height: 150px; padding: 0 36px; margin: 0 20px; flex-shrink: 1;
+    border-width: 0; border-radius: 75px;
+    background-color: rgba(46, 42, 39, 0.5); color: #FFD98A;
+    font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+
+/* ---------------- sheets (bottom panels) ---------------- */
+.sheet-scrim { background-color: var(--scrim); justify-content: flex-end; }
+.sheet {
+    background-color: var(--plaster);
+    border-top-left-radius: 56px; border-top-right-radius: 56px;
+    padding: 40px 44px 44px 44px;
+}
+.sheet-head { flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.sheet-title { font-size: 54px; color: var(--timber); -unity-font-style: bold; flex-shrink: 1; }
+.sheet-close {
+    height: 144px; min-width: 200px; padding: 0 36px; margin: 0;
+    border-width: 0; border-radius: 72px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 36px; -unity-font-style: bold;
+}
+.sheet-close:hover { background-color: var(--canvas); }
+.sheet-close:active { background-color: #D4C39F; }
+.sheet-text { font-size: 36px; color: var(--timber); margin-bottom: 18px; }
+.sheet-note { font-size: 30px; color: var(--ink-soft); -unity-font-style: italic; margin-top: 8px; }
+
+/* a settings row: label left, control right */
+.row {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    min-height: 160px; border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.15);
+}
+.row-label { font-size: 40px; color: var(--timber); flex-shrink: 1; }
+
+/* an on/off switch drawn as a pill */
+.switch {
+    width: 200px; height: 112px; margin: 0; border-width: 0; border-radius: 56px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 34px; -unity-font-style: bold;
+}
+.switch:hover { background-color: var(--canvas); }
+.switch--on, .switch--on:hover { background-color: var(--moss); color: var(--plaster); }
+
+.sheet-btn {
+    height: 144px; margin: 24px 0 0 0; border-width: 0; border-radius: 72px;
+    background-color: var(--canvas); color: var(--timber); font-size: 38px; -unity-font-style: bold;
+}
+.sheet-btn:hover { background-color: var(--canvas); }
+.sheet-btn:active { background-color: #D4C39F; }
+
+/* the shaping tray's tool slots */
+.tools { flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; }
+.tool {
+    width: 470px; min-height: 200px; margin: 0 20px 20px 0; padding: 20px 28px;
+    border-width: 0; border-radius: 40px; align-items: flex-start; justify-content: center;
+    background-color: var(--canvas); color: var(--timber);
+}
+.tool:hover { background-color: var(--canvas); }
+.tool:active { scale: 0.97 0.97; }
+.tool-name { font-size: 44px; -unity-font-style: bold; color: var(--timber); }
+.tool-level { font-size: 28px; color: var(--ink-soft); margin-top: 2px; }
+.tool-reason { font-size: 28px; color: var(--ink-soft); -unity-font-style: italic; white-space: normal; margin-top: 8px; }
+.tool--off { opacity: 0.5; }
+.tool--armed { border-width: 4px; border-color: var(--timber); }
+
+/* the shaping tray (#84): charges, gifts, take back. Plain; the UI rework restyles these classes */
+.tray-head { font-size: 34px; -unity-font-style: bold; color: var(--timber); margin: 20px 0 10px 0; }
+.tray-charges { flex-direction: row; align-items: center; min-height: 100px; }
+.tray-charges-label { font-size: 38px; color: var(--timber); margin-right: 24px; }
+.tray-charges-text { font-size: 34px; color: var(--ink-soft); margin-left: 24px; }
+.tray-pips { flex-direction: row; align-items: center; }
+.tray-pip { width: 64px; height: 64px; margin-right: 14px; border-radius: 32px; overflow: hidden; background-color: rgba(106, 75, 54, 0.18); }
+.tray-pip--on { background-color: var(--timber); }
+.tray-pip-fill { height: 100%; background-color: rgba(106, 75, 54, 0.55); }
+.tray-takeback {
+    height: 130px; margin: 0 0 14px 0; padding: 0 36px; border-width: 0; border-radius: 65px;
+    background-color: var(--canvas); color: var(--timber); font-size: 36px; -unity-font-style: bold; -unity-text-align: middle-left;
+}
+
+/* ---------------- the person card and world tags (#39) ---------------- */
+.pc-sheet { padding-top: 32px; }
+.pc-head { margin-bottom: 12px; align-items: flex-start; }
+.pc-sub { font-size: 32px; color: var(--ink-soft); margin-top: 4px; }
+.pc-pin {
+    height: 144px; min-width: 170px; padding: 0 30px; margin: 0 16px 0 12px;
+    border-width: 0; border-radius: 72px;
+    background-color: rgba(46, 42, 39, 0.75); color: #FFD98A;
+    font-size: 34px; -unity-font-style: bold;
+}
+.pc-pin:hover { background-color: rgba(46, 42, 39, 0.75); }
+.pc-pin--on, .pc-pin--on:hover { background-color: #E7B54E; color: var(--frame); }
+.pc-body { flex-shrink: 1; }
+.pc-quote {
+    white-space: normal;
+    font-size: 34px; color: var(--timber); -unity-font-style: italic;
+    background-color: rgba(226, 211, 179, 0.6); border-radius: 28px; padding: 18px 26px; margin-bottom: 18px;
+}
+.pc-section { margin-bottom: 18px; }
+.pc-label { font-size: 28px; color: var(--ink-soft); -unity-font-style: bold; margin-bottom: 8px; }
+.pc-note { font-size: 30px; color: var(--ink-soft); margin-bottom: 6px; }
+.pc-chips { flex-direction: row; flex-wrap: wrap; }
+.pc-chip {
+    height: 112px; padding: 0 28px; margin: 0 14px 14px 0;
+    border-width: 0; border-left-width: 12px; border-radius: 56px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 30px; -unity-font-style: bold;
+}
+.pc-chip:hover { background-color: var(--canvas); }
+.pc-chip:active { background-color: #D4C39F; }
+.pc-chip--dead { opacity: 0.6; -unity-font-style: italic; }
+.pc-toggle { flex-direction: row; margin-bottom: 10px; }
+.pc-tab {
+    height: 100px; min-width: 170px; padding: 0 26px; margin: 0 12px 0 0;
+    border-width: 0; border-radius: 50px; background-color: transparent; color: var(--ink-soft);
+    font-size: 30px; -unity-font-style: bold;
+}
+.pc-tab:hover { background-color: transparent; }
+.pc-tab--on, .pc-tab--on:hover { background-color: var(--canvas); color: var(--timber); }
+.pc-story { flex-direction: row; align-items: center; margin-bottom: 12px; border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.12); padding-bottom: 10px; }
+.pc-story-text { white-space: normal; font-size: 30px; color: var(--timber); flex-shrink: 1; flex-grow: 1; margin-right: 14px; }
+.pc-showme {
+    height: 112px; min-width: 190px; padding: 0 22px; margin: 0;
+    border-width: 0; border-radius: 56px; background-color: var(--terracotta); color: var(--plaster);
+    font-size: 28px; -unity-font-style: bold; flex-shrink: 0;
+}
+.pc-showme:hover { background-color: var(--terracotta); }
+
+/* name tags over a doll's head: gold for the pin, paper for the open card's person */
+.pc-tag { position: absolute; translate: -50% -100%; align-items: center; }
+.pc-tag-text {
+    padding: 6px 22px; border-radius: 30px; font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
+    white-space: nowrap;
+}
+.pc-tag-point { width: 18px; height: 18px; rotate: 45deg; margin-top: -10px; }
+.pc-tag--pin .pc-tag-text { background-color: #E7B54E; color: var(--frame); border-width: 3px; border-color: rgba(46, 42, 39, 0.8); }
+.pc-tag--pin .pc-tag-point { background-color: #E7B54E; border-right-width: 3px; border-bottom-width: 3px; border-color: rgba(46, 42, 39, 0.8); }
+.pc-tag--name .pc-tag-text { background-color: rgba(239, 227, 204, 0.95); color: var(--timber); }
+.pc-tag--name .pc-tag-point { background-color: rgba(239, 227, 204, 0.95); }
+.pc-tie {
+    position: absolute; translate: -50% -50%;
+    padding: 4px 16px; border-radius: 24px; border-width: 4px;
+    background-color: rgba(46, 42, 39, 0.72); color: var(--plaster);
+    font-size: 26px; -unity-font-style: bold; white-space: nowrap;
+}
+
+
+/* ---------------- the chronicle cards (#75), plain until the UI rework restyles them ---------------- */
+.hud-dot {
+    position: absolute; top: 16px; right: 24px; width: 34px; height: 34px; border-radius: 17px;
+    background-color: var(--terracotta); border-width: 4px; border-color: var(--plaster);
+}
+
+/* the peek: one line in the prompts' lane */
+.card-peek {
+    position: absolute; min-height: 144px; flex-direction: row; align-items: center;
+    padding: 14px 34px 14px 20px; border-radius: 72px;
+    background-color: rgba(239, 227, 204, 0.96);
+}
+.card-peek--teaser { background-color: rgba(46, 42, 39, 0.78); padding-left: 40px; }
+.card-peek--teaser .card-peek-text { color: var(--plaster); -unity-font-style: italic; }
+.card-peek-lines { flex-shrink: 1; flex-grow: 1; }
+.card-peek-text { white-space: normal; font-size: 36px; color: var(--timber); -unity-font-style: bold; }
+
+/* the portrait: an initial until the peg-doll portraits come with the rework */
+.card-portrait {
+    width: 112px; height: 112px; min-width: 112px; margin: 0 16px 0 0; padding: 0;
+    border-width: 0; border-radius: 56px;
+    background-color: var(--moss); color: var(--plaster);
+    font-size: 48px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.card-portrait:hover { background-color: var(--moss); }
+.card-portrait:active { background-color: #4E6B38; }
+Button.card-portrait { height: 144px; width: 144px; min-width: 144px; border-radius: 72px; }
+
+/* the slim sheet: at most ~30 % of the height */
+.card-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; padding-top: 20px;
+    background-color: var(--plaster);
+    border-top-left-radius: 56px; border-top-right-radius: 56px;
+}
+.card--legend { border-top-width: 10px; border-color: var(--timber); }
+.card--wish { border-top-width: 10px; border-color: var(--thatch); }
+.card--relic { border-top-width: 10px; border-color: var(--moss); }
+.card--eraready { border-top-width: 10px; border-color: var(--terracotta); }
+
+.card-dots { flex-direction: row; justify-content: center; height: 26px; align-items: center; margin-bottom: 6px; }
+.card-dot { width: 14px; height: 14px; border-radius: 7px; margin: 0 8px; background-color: rgba(106, 75, 54, 0.3); }
+.card-dot--on { width: 24px; height: 24px; border-radius: 12px; background-color: var(--timber); }
+
+.card-teaser { white-space: normal; font-size: 28px; color: var(--ink-soft); -unity-font-style: italic; margin-bottom: 2px; }
+.card-head { flex-direction: row; align-items: center; margin-bottom: 4px; }
+.card-headline { white-space: normal; font-size: 40px; color: var(--timber); -unity-font-style: bold; flex-shrink: 1; flex-grow: 1; margin-right: 12px; }
+.card-body { white-space: normal; font-size: 33px; color: var(--timber); margin-bottom: 4px; }
+.card-quote { white-space: normal; font-size: 30px; color: var(--timber); -unity-font-style: italic; margin-bottom: 4px; }
+.card-note { white-space: normal; font-size: 30px; color: var(--terracotta); -unity-font-style: bold; margin-bottom: 4px; }
+.card-footer { white-space: normal; font-size: 26px; color: var(--ink-soft); margin-bottom: 8px; }
+
+.card-also-head { flex-direction: row; align-items: center; }
+.card-also-line {
+    height: 144px; margin: 0; padding: 0 28px; border-width: 0; border-radius: 0;
+    border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.15);
+    background-color: transparent; color: var(--timber);
+    font-size: 34px; -unity-text-align: middle-left;
+}
+.card-also-line:hover { background-color: transparent; }
+.card-also-line:active { background-color: var(--canvas); }
+
+.card-buttons { flex-direction: row; justify-content: flex-end; margin-top: 4px; }
+.card-btn {
+    height: 144px; min-width: 190px; padding: 0 26px; margin: 0 0 0 14px;
+    border-width: 0; border-radius: 72px;
+    background-color: var(--canvas); color: var(--timber);
+    font-size: 34px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.card-btn:hover { background-color: var(--canvas); }
+.card-btn:active { background-color: #D4C39F; }
+.card-btn:disabled { opacity: 0.45; }
+.card-btn--quiet { background-color: transparent; color: var(--ink-soft); min-width: 170px; }
+.card-btn--quiet:hover { background-color: transparent; }
+.card-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
+.card-btn--primary:hover { background-color: var(--terracotta); }
+.card-btn--primary:active { background-color: #B5603F; }
+
+/* a wish's tool in hand: the banner and Cancel in the prompts' lane, a pin on the spot. #84 skins this */
+.wish-bar {
+    position: absolute; left: 40px; right: 40px; flex-direction: row; align-items: center;
+    padding: 12px 12px 12px 36px; border-radius: 84px; background-color: rgba(46, 42, 39, 0.82);
+}
+.wish-banner { white-space: normal; flex-shrink: 1; flex-grow: 1; color: var(--plaster); font-size: 32px; -unity-font-style: bold; margin-right: 16px; }
+.wish-cancel { min-width: 200px; height: 144px; }
+.wish-spot {
+    position: absolute; padding: 8px 26px; border-radius: 30px;
+    background-color: var(--thatch); color: var(--frame);
+    border-width: 4px; border-color: var(--frame);
+    font-size: 30px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.tray .sheet-note { white-space: normal; }

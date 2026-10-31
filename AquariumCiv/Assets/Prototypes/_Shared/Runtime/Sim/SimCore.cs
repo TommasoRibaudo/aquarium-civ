@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace AquariumCiv.Prototypes.Sim
@@ -7,7 +8,7 @@ namespace AquariumCiv.Prototypes.Sim
     /// Coarse aggregate civ sim. Pure C#, deterministic from the seed; one step = one game month.
     /// Live play and offline catch-up both go through Advance(), so they produce the same world.
     /// </summary>
-    public class SimCore
+    public partial class SimCore
     {
         public SimConfig Config { get; }
         public SimState State { get; }
@@ -17,17 +18,19 @@ namespace AquariumCiv.Prototypes.Sim
 
         public static SimState NewWorld(int seed, SimConfig config)
         {
-            var s = new SimState { seed = seed, rng = new SimRandom(seed), population = 5, food = 20, wood = 4, mood = 0.7f };
+            var s = new SimState { seed = seed, rng = new SimRandom(seed), econRng = new SimRandom(seed ^ 0x2C1B3C6D), population = 5, food = 20, wood = 4, mood = 0.7f };
             var core = new SimCore(config, s);
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
             for (int i = 0; i < config.startNotables; i++) core.AddNotable(s.rng.Range(18f, 40f), -1, null);
             core.Chronicle("founding", "Five wanderers settled in the glass and made camp.", 0.9f);
+            if (config.recordYears) core.RecordYear();
             return s;
         }
 
         // ---------- derived values ----------
-        public float MessLevel => (State.grime + State.overgrowth + State.trash.Count / (float)Config.trashMax) / 3f;
+        /// <summary>0..1. The glass is half of it: it's what the player sees first and wipes most.</summary>
+        public float MessLevel => State.grime * 0.5f + State.overgrowth * 0.25f + State.trash.Count / (float)Config.trashMax * 0.25f;
         public float OutputPenalty => Config.outputPenaltyEnabled ? Config.outputPenaltyMax * MessLevel : 0f;
         public float OutputMultiplier => (0.8f + 0.4f * State.mood) * (1f - OutputPenalty);
         public int Housing => 4 + Count(BuildingType.Hut) * 4;
@@ -50,7 +53,8 @@ namespace AquariumCiv.Prototypes.Sim
         public void Step()
         {
             var s = State;
-            var rng = s.rng;
+            s.econRng ??= new SimRandom(s.seed ^ 0x2C1B3C6D); // saves from before the split
+            float birthRoll = s.econRng.Value(), deathRoll = s.econRng.Value(), festivalRoll = s.econRng.Value();
             s.month++;
             int season = (int)(s.month % SimConfig.MonthsPerYear);
             bool winter = season == 11 || season == 0 || season == 1;
@@ -60,20 +64,24 @@ namespace AquariumCiv.Prototypes.Sim
             // Economy. Subsistence ignores the Keeper's care, so neglect slows growth but never starves the civ;
             // the surplus (what pays for growth) is scaled by mood and mess.
             float subsistence = pop * (winter ? 0.85f : 1f);
-            float surplus = (2f + pop * 0.2f + Count(BuildingType.Farm) * 3f + Count(BuildingType.Windmill) * 3f) * mult * (winter ? 0.5f : 1f);
+            float surplus = (2f + pop * 0.2f + Count(BuildingType.Farm) * 3f + Count(BuildingType.Windmill) * 3f) * mult * (winter ? 0.5f : 1f) * NudgeFood;
             s.food = Math.Clamp(s.food + subsistence + surplus - pop, 0f, FoodCap);
-            s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult, 2000f);
+            s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult * NudgeWood, 2000f);
 
-            if (s.food > pop * 1.5f && pop < Housing && rng.Chance(0.025f * (0.5f + s.mood))) s.population++; // happier = more births
-            if (pop > 5 && rng.Chance(0.008f)) s.population--; // crowd old age
+            if (s.food > pop * 1.5f && pop < Housing && birthRoll < 0.025f * (0.5f + s.mood) * (1f - OutputPenalty)) s.population++; // happier = more births; a mess penalty slows growth too
+            if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
 
-            float target = 0.75f - MessLevel * 0.5f + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
+            float target = 0.75f - (Config.messAffectsMood ? MessLevel * 0.5f : 0f) + (s.food > pop * 2f ? 0.15f : 0f) - (s.food <= 0f ? 0.3f : 0f);
             s.mood += (Math.Clamp(target, 0f, 1f) - s.mood) * 0.1f;
 
             TryBuild();
+            if (s.nudges != null && s.nudges.Count > 0) NudgeStep(season); // P5 only: P2 never places a nudge
             AccrueMess();
             if (season == 0) YearlyNotables();
-            NarrativeChecks(winter);
+            NarrativeChecks(winter, festivalRoll);
+            // P3+ layers. Both are off for P2, and the story draws only from its own stream (SimCore.Story.cs).
+            if (Config.storyEvents) StoryStep(season, winter);
+            if (Config.recordYears && season == 0) RecordYear();
         }
 
         void TryBuild()
@@ -108,12 +116,18 @@ namespace AquariumCiv.Prototypes.Sim
             while (s.trashAccum >= 1f && s.trash.Count < Config.trashMax)
             {
                 s.trashAccum -= 1f;
-                s.trash.Add(new TrashItem
-                {
-                    id = s.NextId(), slot = s.rng.Range(0, Config.buildingSlots),
-                    offsetX = s.rng.Range(-0.35f, 0.35f), offsetZ = s.rng.Range(-0.35f, 0.35f), month = s.month
-                });
+                AddTrash();
             }
+        }
+
+        void AddTrash()
+        {
+            var s = State;
+            s.trash.Add(new TrashItem
+            {
+                id = s.NextId(), slot = s.rng.Range(0, Config.buildingSlots),
+                offsetX = s.rng.Range(-0.35f, 0.35f), offsetZ = s.rng.Range(-0.35f, 0.35f), month = s.month
+            });
         }
 
         void YearlyNotables()
@@ -147,10 +161,9 @@ namespace AquariumCiv.Prototypes.Sim
             }
         }
 
-        void NarrativeChecks(bool winter)
+        void NarrativeChecks(bool winter, float festivalRoll)
         {
             var s = State;
-            var rng = s.rng;
             int milestone = s.population / 10 * 10;
             if (milestone > s.lastPopMilestone && milestone > 0)
             {
@@ -163,15 +176,17 @@ namespace AquariumCiv.Prototypes.Sim
                 s.lastLeanYear = year;
                 Chronicle("lean_winter", "A lean winter: the granaries ran low and the people tightened their belts.", 0.5f);
             }
-            if (!winter && s.food > FoodCap * 0.9f && rng.Chance(0.02f))
+            if (!winter && s.food > FoodCap * 0.9f && festivalRoll < 0.02f)
             {
                 s.mood = Math.Min(1f, s.mood + 0.15f);
                 var host = AliveNotable();
+                // P3+: a festival makes the chronicle at most every 6 years (they still happen and lift the mood).
+                if (Config.storyEvents && !Fresh("festival", -1, 6)) return;
                 Chronicle("festival", host != null
                     ? $"{host.FullName} threw a harvest festival. There was dancing until dawn."
                     : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
-            if (MessLevel > 0.6f && s.month - s.lastGrumbleMonth > 36)
+            if (Config.messAffectsMood && MessLevel > 0.6f && s.month - s.lastGrumbleMonth > 36)
             {
                 s.lastGrumbleMonth = s.month;
                 Chronicle("grumble", "The people grumbled about the grimy glass and the heaps of junk.", 0.45f);
@@ -183,6 +198,14 @@ namespace AquariumCiv.Prototypes.Sim
         public void Prune(float amount) => State.overgrowth = Math.Max(0f, State.overgrowth - amount);
         public bool RemoveTrash(int id) => State.trash.RemoveAll(t => t.id == id) > 0;
 
+        /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
+        public void AddMess(float grime, float overgrowth, int trashCount)
+        {
+            State.grime = Math.Clamp(State.grime + grime, 0f, 1f);
+            State.overgrowth = Math.Clamp(State.overgrowth + overgrowth, 0f, 1f);
+            for (int i = 0; i < trashCount && State.trash.Count < Config.trashMax; i++) AddTrash();
+        }
+
         public void CleanAll()
         {
             State.grime = 0; State.overgrowth = 0; State.trash.Clear();
@@ -193,13 +216,23 @@ namespace AquariumCiv.Prototypes.Sim
         {
             var s = State;
             var used = s.buildings.Select(b => b.slot).ToHashSet();
+            if (ReservedSlots != null) // P5: groves and channels take a tile (unless that would leave no room at all)
+            {
+                var withReserved = new HashSet<int>(used);
+                withReserved.UnionWith(ReservedSlots());
+                if (Enumerable.Range(0, Config.buildingSlots).Any(i => !withReserved.Contains(i))) used = withReserved;
+            }
             int slot = Enumerable.Range(0, Config.buildingSlots).First(i => !used.Contains(i));
             var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type))
             {
                 s.foundedTypes.Add(type);
-                if (s.month > 0) Chronicle("first_building", NameData.FirstBuildingLine(type, AliveNotable()), 0.75f);
+                if (s.month > 0)
+                {
+                    var by = AliveNotable();
+                    Chronicle("first_building", NameData.FirstBuildingLine(type, by), 0.75f, by?.id ?? -1).buildingId = b.id;
+                }
             }
             return b;
         }
@@ -213,6 +246,14 @@ namespace AquariumCiv.Prototypes.Sim
                 id = s.NextId(), name = rng.Pick(NameData.Given), family = family ?? rng.Pick(NameData.Families),
                 trait = rng.Pick(NameData.Traits), age = age, lifespan = rng.Range(55f, 80f), parentId = parentId, bornMonth = s.month
             };
+            // P3+: no two living people share a full name ("Ada Thorn was born to Ada Thorn" muddles recall).
+            // Extra draws come from the story stream, so P2 (story off) is untouched.
+            if (Config.storyEvents)
+            {
+                s.storyRng ??= new SimRandom(s.seed ^ 0x51ED270B);
+                for (int tries = 0; tries < 20 && s.notables.Any(o => o.alive && o.FullName == n.FullName); tries++)
+                    n.name = s.storyRng.Pick(NameData.Given);
+            }
             s.notables.Add(n);
             return n;
         }

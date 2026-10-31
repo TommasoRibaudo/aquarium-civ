@@ -12,12 +12,16 @@ AquariumCiv/Assets/Plugins/Editor/JetBrains*
 # Tester agent throwaway playtest scripts (deleted after each run)
 AquariumCiv/Assets/_AgentPlaytest/
 AquariumCiv/Assets/_AgentPlaytest.meta
+# Feedback token + build info are baked in by CI only (docs/feedback.md)
+AquariumCiv/Assets/Prototypes/_Shared/Resources/FeedbackToken.txt*
+AquariumCiv/Assets/Prototypes/_Shared/Resources/BuildInfo.txt*
 
 # IDE / generated
 .vs/
 .vscode/
 .idea/
 *.csproj
+!Tools/SimTests/SimTests.csproj
 *.unityproj
 *.sln
 *.suo
@@ -61,3 +65,4 @@ Thumbs.db
 *.pem
 .env
 .env.*
+.agent-editor.lock

@@ -1,0 +1,28 @@
+# Branch flow: feature branches -> dev -> main. GitHub rulesets can't limit a PR's source branch, so this check
+# fails any PR into main that doesn't come from dev. "Source is dev" is a required check in the main ruleset.
+# Kept out of ci.yml so it runs no Unity work and needs no secrets.
+name: Branch flow
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  source-is-dev:
+    name: Source is dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check PR source branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ] || [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "::error::PRs into main must come from dev in this repo (got $HEAD_REPO:$HEAD_REF). Open the PR into dev instead."
+            exit 1
+          fi
+          echo "Source is dev."

@@ -1,0 +1,99 @@
+# Seed 1: notables
+
+== Year 0 (seen at year 0.3), Camp, population 5, buildings 2
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Moss Hearth       32   74  the loud       fisher       -                     -                -                - / -
+   Greta Gale        24   78  the dreamer    toolmaker    -                     -                -                - / -
+   Dov Vane          18   78  the stubborn   hunter       chief                 -                -                - / -
+   Seats: chief: Dov Vane
+
+== Year 10 (seen at year 12.6), Village, population 13, buildings 8
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Moss Hearth       44   74  the loud       fisher       -                     -                Greta Gale       Greta Gale / -
+   Greta Gale        36   78  the dreamer    woodcutter   -                     -                Moss Hearth      Moss Hearth / -
+   Dov Vane          30   78  the stubborn   fisher       headman               -                -                - / -
+   Lorn Gale         11   57  the kind       -            -                     Greta Gale       -                - / -
+   Tilda Gale         9   75  the stubborn   -            -                     Moss Hearth      -                - / -
+   Otto Gale          6   61  the brave      -            -                     Moss Hearth      -                - / -
+   Seats: headman: Dov Vane
+
+== Year 25 (seen at year 26.9), Village, population 13, buildings 12
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Moss Hearth       58   74  the loud       fisher       -                     -                Greta Gale       Greta Gale / -
+   Greta Gale        50   78  the dreamer    woodcutter   miller                -                Moss Hearth      Moss Hearth / -
+   Dov Vane          44   78  the stubborn   fisher       headman               -                Kit Marsh        - / -
+   Kit Marsh         33   57  the clever     fisher       -                     -                Dov Vane         - / -
+   Lorn Gale         25   57  the kind       farmer       -                     Greta Gale       -                - / -
+   Tilda Gale        23   75  the stubborn   farmer       -                     Moss Hearth      -                - / -
+   Otto Gale         20   61  the brave      woodcutter   -                     Moss Hearth      -                - / -
+   Zeb Vane          13   75  the joker      -            -                     Dov Vane         -                - / -
+   Bo Gale            3   68  the gardener   -            -                     Tilda Gale       -                - / -
+   Hester Gale        1   71  the loud       -            -                     Tilda Gale       -                - / -
+   Seats: headman: Dov Vane; miller: Greta Gale
+
+== Year 50 (seen at year 50.8), Town, population 22, buildings 19
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Greta Gale        74   78  the dreamer    elder        -                     -                Moss Hearth†     Moss Hearth† / Kit Marsh
+   Dov Vane          68   78  the stubborn   elder        -                     -                Kit Marsh        Tilda Gale / -
+   Kit Marsh         57   57  the clever     fisher       -                     -                Dov Vane         - / Greta Gale
+   Lorn Gale         49   57  the kind       farmer       master builder        Greta Gale       -                - / Zeb Vane
+   Tilda Gale        47   75  the stubborn   farmer       lord                  Moss Hearth†     Zeb Vane         Dov Vane / Otto Gale
+   Otto Gale         44   61  the brave      woodcutter   guildmaster           Moss Hearth†     -                Zeb Vane / Tilda Gale
+   Zeb Vane          37   75  the joker      farmer       innkeeper             Dov Vane         Tilda Gale       Otto Gale / Lorn Gale
+   Bo Gale           27   68  the gardener   farmer       captain of the watch  Tilda Gale       -                - / -
+   Hester Gale       25   71  the loud       fisher       merchant              Tilda Gale       -                - / -
+   Seats: lord: Tilda Gale; innkeeper: Zeb Vane; guildmaster: Otto Gale; master builder: Lorn Gale; merchant: Hester Gale; captain of the watch: Bo Gale
+
+== Year 75 (seen at year 75.2), Town, population 24, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Tilda Gale        72   75  the stubborn   elder        lord                  Moss Hearth†     Zeb Vane         Dov Vane† / Otto Gale†
+   Zeb Vane          62   75  the joker      farmer       innkeeper             Dov Vane†        Tilda Gale       Otto Gale† / -
+   Bo Gale           52   68  the gardener   farmer       captain of the watch  Tilda Gale       -                Esk Marsh / -
+   Hester Gale       50   71  the loud       fisher       merchant              Tilda Gale       Esk Marsh        Esk Stile / -
+   Esk Marsh         42   56  the grump      sweeper      -                     -                Hester Gale      Bo Gale / Lorn Gale†
+   Dina Brook        39   78  the lazy       baker        master builder        -                Esk Stile        - / -
+   Esk Stile         34   72  the singer     smith        guildmaster           -                Dina Brook       Hester Gale / -
+   Greta Wick        25   60  the lazy       stallholder  -                     -                -                - / -
+   Nils Gale         20   75  the grump      woodcutter   -                     Hester Gale      -                - / -
+   Gus Gale          17   75  the loud       stallholder  -                     Bo Gale          -                - / -
+   Rhea Marsh        16   55  the gossip     stallholder  -                     Esk Marsh        -                - / -
+   Zeb Gale          15   64  the gardener   -            -                     Bo Gale          -                - / -
+   Bram Brook         1   70  the clever     -            -                     Esk Stile        -                - / -
+   Seats: lord: Tilda Gale; innkeeper: Zeb Vane; guildmaster: Esk Stile; master builder: Dina Brook; merchant: Hester Gale; captain of the watch: Bo Gale
+
+== Year 100 (seen at year 102.1), Town, population 27, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Dina Brook        66   78  the lazy       elder        master builder        -                Esk Stile        Zeb Gale / -
+   Esk Stile         61   72  the singer     smith        innkeeper             -                Dina Brook       Hester Gale† / -
+   Greta Wick        52   60  the lazy       stallholder  -                     -                Rhea Marsh       - / Bram Brook
+   Nils Gale         47   75  the grump      woodcutter   -                     Hester Gale†     -                Gus Gale / -
+   Gus Gale          44   75  the loud       stallholder  lord                  Bo Gale†         -                Nils Gale / -
+   Rhea Marsh        43   55  the gossip     stallholder  merchant              Esk Marsh†       Greta Wick       - / -
+   Zeb Gale          42   64  the gardener   farmer       captain of the watch  Bo Gale†         -                Dina Brook / Edda Gale
+   Bram Brook        28   70  the clever     woodcutter   guildmaster           Esk Stile        -                Edda Gale / Greta Wick
+   Edda Gale         23   57  the grump      sweeper      -                     Nils Gale        -                Bram Brook / Zeb Gale
+   Sten Wick         17   75  the worrier    mason        -                     Greta Wick       -                - / -
+   Wim Gale          13   76  the clever     -            -                     Nils Gale        -                - / -
+   Wim Wick          12   58  the tinkerer   -            -                     Rhea Marsh       -                - / -
+   Alma Gale         10   74  the joker      -            -                     Gus Gale         -                - / -
+   Tilda Gale         4   77  the gossip     -            -                     Gus Gale         -                - / -
+   Seats: lord: Gus Gale; innkeeper: Esk Stile; guildmaster: Bram Brook; master builder: Dina Brook; merchant: Rhea Marsh; captain of the watch: Zeb Gale
+
+== Year 120 (seen at year 122.8), Town, population 27, buildings 20
+   name             age  life  trait          job          role                  parent           partner          friend / rival
+   Nils Gale         67   75  the grump      elder        guildmaster           Hester Gale†     -                Gus Gale / -
+   Gus Gale          64   75  the loud       stallholder  lord                  Bo Gale†         -                Nils Gale / -
+   Zeb Gale          62   64  the gardener   farmer       captain of the watch  Bo Gale†         -                Dina Brook† / -
+   Bram Brook        48   70  the clever     woodcutter   innkeeper             Esk Stile†       -                Edda Gale / Greta Wick†
+   Edda Gale         43   57  the grump      sweeper      -                     Nils Gale        -                Bram Brook / -
+   Sten Wick         37   75  the worrier    mason        -                     Greta Wick†      -                Rhea Marsh† / -
+   Wim Gale          33   76  the clever     sweeper      merchant              Nils Gale        -                - / Tilda Gale
+   Wim Wick          32   58  the tinkerer   fisher       -                     Rhea Marsh†      -                - / -
+   Alma Gale         30   74  the joker      baker        master builder        Gus Gale         -                - / -
+   Tilda Gale        24   77  the gossip     sweeper      -                     Gus Gale         -                - / Wim Gale
+   Ilse Gale          8   59  the clever     -            -                     Alma Gale        -                - / -
+   Greta Wick         3   64  the gardener   -            -                     Sten Wick        -                - / -
+   Pim Gale           2   64  the tinkerer   -            -                     Alma Gale        -                - / -
+   Nell Gale          0   66  the worrier    -            -                     Wim Gale         -                - / -
+   Seats: lord: Gus Gale; innkeeper: Bram Brook; guildmaster: Nils Gale; master builder: Alma Gale; merchant: Wim Gale; captain of the watch: Zeb Gale
+

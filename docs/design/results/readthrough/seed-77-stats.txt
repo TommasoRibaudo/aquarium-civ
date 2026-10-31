@@ -1,0 +1,120 @@
+# Seed 77: counts and automatic flags
+Eras: ready Y12, ready Y91, Village at Y12, Town at Y92
+Entries: 261; shown as cards: 244
+
+Card-worthy entries per decade (all / term_ lines / role_ lines / deaths / births):
+    0-  9:  15 /  3 /  1 /  0 /  0   C
+   10- 19:  23 /  2 /  2 /  0 /  1   C V
+   20- 29:  21 /  3 /  1 /  1 /  1   V
+   30- 39:  19 /  2 /  4 /  2 /  0   V
+   40- 49:  17 /  1 /  2 /  1 /  3   V
+   50- 59:  20 /  2 /  1 /  0 /  1   V
+   60- 69:  11 /  2 /  0 /  0 /  0   V
+   70- 79:  18 /  1 /  5 /  2 /  1   V
+   80- 89:  15 /  3 /  1 /  1 /  2   V
+   90- 99:  22 /  6 /  2 /  0 /  3   V T
+  100-109:  22 /  6 /  3 /  1 /  1   T
+  110-119:  34 /  8 /  5 /  4 /  4   T
+
+By kind:
+  birth               18
+  coming_of_age       13
+  rivalry             12
+  death               12
+  keeper              11
+  festival            10
+  lost                 8
+  reconcile            8
+  friendship           8
+  fog                  7
+  term_device          7
+  invention            7
+  storm                6
+  apprentice           6
+  term_feast           5
+  first_building       5
+  wedding              5
+  newcomer             5
+  role_death           5
+  role_contest         5
+  term_row             5
+  anniversary          4
+  role_reelected       4
+  retired              4
+  lazy                 4
+  term_complaint       4
+  role_won             3
+  term_announce        3
+  drought              3
+  strange_light        3
+  stubborn             3
+  term_meal            3
+  giant_turnip         3
+  term_nap             3
+  milestone            2
+  era-ready            2
+  era                  2
+  job_era              2
+  role_era             2
+  kind                 2
+  term_mend            2
+  rainbow              2
+  ducks                2
+  term_garden          2
+  role_succession      2
+  grump                2
+  term_prank           2
+  term_tidy            2
+  term_lanterns        2
+  role_appointed       2
+  founding             1
+  snow                 1
+  loud                 1
+  naming               1
+  prank                1
+  role_reluctant       1
+  worrier              1
+  role_offices         1
+  sweepers             1
+  gossip               1
+  elder                1
+  bumper               1
+  role_masterwork      1
+  sheep                1
+  term_meeting         1
+  role_inherited       1
+  term_news            1
+
+Most repeated templates (names and numbers taken out):
+  x13  {N} was born to {N}.
+  x6   {N} took young {N} as an apprentice.
+  x6   After the Keeper dug a channel from the pond, {N} planted a new field beside it.
+  x5   {N} was born to {N} and {N}.
+  x4   {N} and {N} made peace while looking for the same lost goat. They found it together.
+  x4   {P} celebrated # years in the glass with a feast.
+  x4   {N} came of age and took up work as a fisher.
+  x3   {N} threw a harvest festival. There was dancing until dawn.
+  x3   {N} and {N} fell out over a song lyric. They no longer share a bench.
+  x3   {N} and {N} became fast friends after sharing the last apple.
+  x3   {N} and {N} made up over a pot of stew. The whole village sighed with relief.
+  x3   {P} kept {N} as headman for another twelve years. {N} asked for a recount of all # votes.
+  x3   A thick fog sat in the glass for days. {N} said good morning to a bush.
+  x3   After the Keeper raised an outcrop, {N} opened a workshop for the new stone beside it.
+Exact duplicate texts: 5
+  x2 After the Keeper dug a channel from the pond, Cobb Brook planted a new field beside it.
+  x2 Cobb Brook grew a turnip the size of a sheep. It fed the whole village for a week.
+  x2 After the Keeper dug a channel from the pond, Ulf Fernby planted a new field beside it.
+  x2 A strange device appeared by the mill. Wim Brook the miller says it counts the days. Nobody has checked.
+  x2 After the Keeper raised an outcrop, Dov Fernby opened a workshop for the new stone beside it.
+
+Evening-talk teasers (12):
+  x4   [gift] Everyone keeps going down to look at the new water.
+  x2   [office] Cela Wick has an announcement for tomorrow. Everyone will hear it.
+  x2   [office] Juna Ember is planning something for Hat Day. Nobody knows what.
+  x2   [gift] The craftsfolk keep going out to tap the new rock.
+  x1   [gift] The gatherers keep checking the wet ground.
+  x1   [rivalry] Ulf Fernby and Cobb Brook aren't speaking again.
+
+Flags:
+  Y 96 Town    birth            parent aged 19: Zeb Ember was born to Fen Ember.
+  (1 flags)

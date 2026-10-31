@@ -1,11 +1,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Prototypes;
+using AquariumCiv.Prototypes.P1;
+using AquariumCiv.Prototypes.P2;
+using AquariumCiv.Prototypes.Hub;
+using AquariumCiv.Prototypes.P3;
+using AquariumCiv.Prototypes.P4;
+using AquariumCiv.Prototypes.P5;
+using AquariumCiv.Prototypes.P6;
 using AquariumCiv.Prototypes.Sim;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using static AquariumCiv.EditorTools.DioramaBuilder;
 
 namespace AquariumCiv.EditorTools
@@ -26,6 +34,10 @@ namespace AquariumCiv.EditorTools
             public DioramaView village;
             public CrowdView crowd;
             public MessView mess;
+            public GlassGrime glass;
+            public SimClock clock;
+            public NotableView notables;
+            public WipeCleaner wipe;
             public string scenePath;
         }
 
@@ -35,6 +47,251 @@ namespace AquariumCiv.EditorTools
             var b = BuildBase("P0", $"{SharedDir}/Sandbox.unity", "Cleaning felt satisfying", TestMode.Lab);
             Save(b);
             return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P1 Glass and Mess")]
+        public static string BuildP1()
+        {
+            var b = BuildBase("P1", "Assets/Prototypes/P1_GlassMess/P1_GlassMess.unity", "Cleaning felt satisfying", TestMode.Lab);
+            // Lab pacing: the civ runs at x60 (1 real minute = 1 game year, ambient only) and mess grows back within
+            // minutes, so testers meet both a dirty tank and a nearly clean one in a 7-minute session.
+            b.clock.speed = 60f;
+            b.clock.config.messFullHours = 10f;     // x60: full grime in ~10 real minutes
+            b.clock.config.trashPerPersonHour = 0.12f;
+            b.clock.config.outputPenaltyEnabled = false; // P1 tests the gesture only; consequences are P2
+            var gestures = b.systems.AddComponent<CleaningGestures>();
+            gestures.glass = b.glass;
+            gestures.mess = b.mess;
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P2 Return to Mess")]
+        public static string BuildP2()
+        {
+            // Diary by default: real time at design speed (1 real hour = 1 game year, mess caps at 48 h).
+            // A lab session switches the device to Lab (debug panel), which adds "step away" buttons.
+            var b = BuildBase("P2", "Assets/Prototypes/P2_ReturnToMess/P2_ReturnToMess.unity", "I felt bad or guilty when I opened it", TestMode.Diary);
+            var hud = b.systems.GetComponent<HudToast>();
+            hud.welcomeBack = false; // P2 writes its own one-line summary
+            hud.bannerTop = 130f;      // below the two-line ledger
+            hud.bannerBelowSafe = 96f; // ...also under a notch (ledger is ~75 tall at safeTop + 4)
+            var wipe = b.systems.AddComponent<WipeCleaner>();
+            wipe.glass = b.glass;
+            wipe.mess = b.mess;
+            b.mess.tapCleansProps = false;
+            b.mess.trashScale = 2.4f; // junk and weeds read at default zoom on a phone (tester run 3: ~8 pt / ~4 pt before)
+            b.mess.vineScale = 1.8f;
+            var p2 = b.systems.AddComponent<ReturnToMess>();
+            p2.wipe = wipe;
+            p2.crowd = b.crowd;
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build Test Hub")]
+        public static string BuildHub()
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
+            var cam = camGo.AddComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.04f, 0.10f, 0.13f);
+            camGo.AddComponent<UniversalAdditionalCameraData>();
+            var sys = new GameObject("Hub");
+            var cfg = sys.AddComponent<PrototypeConfig>();
+            cfg.protoId = "Hub";
+            cfg.variants = new[] { "-" };
+            sys.AddComponent<EventLog>();
+            sys.AddComponent<FeedbackSender>();
+            sys.AddComponent<TestHub>();
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(HubScenePath));
+            EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), HubScenePath);
+            AddToBuild(HubScenePath);
+            return $"Built {HubScenePath}; build order: {string.Join(", ", EditorBuildSettings.scenes.Select(s => System.IO.Path.GetFileNameWithoutExtension(s.path)))}";
+        }
+
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P3 While You Were Away")]
+        public static string BuildP3()
+        {
+            // Lab by default (the Test Hub opens it in lab or diary). Diary = real time at design speed.
+            var b = BuildLabBase("P3", "Assets/Prototypes/P3_WhileYouWereAway/P3_WhileYouWereAway.unity", "I care about specific people in my tank");
+            var cards = b.systems.AddComponent<ChronicleCards>();
+            var p3 = b.systems.AddComponent<WhileYouWereAway>();
+            WireLab(b, p3);
+            p3.cards = cards;
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P4 Book of Ages")]
+        public static string BuildP4()
+        {
+            var b = BuildLabBase("P4", "Assets/Prototypes/P4_BookOfAges/P4_BookOfAges.unity", "I'd show this to a friend");
+            var timelapse = b.systems.AddComponent<TimelapseView>();
+            timelapse.village = b.village;
+            timelapse.crowd = b.crowd;
+            timelapse.notables = b.notables;
+            var book = b.systems.AddComponent<IllustratedBook>();
+            var p4 = b.systems.AddComponent<BookOfAges>();
+            WireLab(b, p4);
+            p4.timelapse = timelapse;
+            p4.book = book;
+            p4.prehistoryYears = 100f; // a century to browse
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P5 Keeper's Nudge")]
+        public static string BuildP5()
+        {
+            var b = BuildLabBase("P5", "Assets/Prototypes/P5_KeepersNudge/P5_KeepersNudge.unity", "I felt I shaped what happened");
+            b.systems.GetComponent<PrototypeConfig>().surveyExtra = "Did you have too much or too little control over what happened? Why?";
+            var p5 = b.systems.AddComponent<KeepersNudge>();
+            WireLab(b, p5);
+            p5.village = b.village;
+            p5.tileTop = b.diorama.surfaceY;
+            p5.cloudPrefab = Load(N("cloud_big"));
+            p5.riverTile = Load($"{Medieval}/tiles/rivers/hex_river_A.fbx");
+            KeepersNudge.Option Opt(string kind, string title, string line, string prop, float scale, bool tile = false) =>
+                new() { kind = kind, title = title, line = line, prop = prop != null ? Load(prop) : null, scale = scale, takesTile = tile };
+            p5.omens = new[]
+            {
+                Opt("harvest_totem", "Harvest totem", "A tall banner. The people lean towards farming.", P("flag_yellow"), 5f),
+                Opt("craft_totem", "Craft totem", "A stack of fine timber. The people lean towards making things.", P("resource_lumber"), 2.6f),
+                Opt("faith_shrine", "Faith shrine", "A small stage of stones. The people lean towards festivals and faith.", Neutral("building_stage_A"), 1.6f),
+            };
+            p5.land = new[]
+            {
+                Opt("rain", "Rain", "A raincloud over one spot. The fields drink and the people farm.", null, 1f),
+                Opt("grove", "Plant a grove", "Trees on an empty tile. Wood and shade: the people build.", N("trees_A_medium"), 1f, true),
+                Opt("channel", "Dig a channel", "Water on an empty tile. New fields and a mill follow.", null, 1f, true),
+            };
+            Save(b);
+            return Report(b);
+        }
+
+        [MenuItem("AquariumCiv/Agent/Prototypes/Build P6 Eras and Shelf")]
+        public static string BuildP6()
+        {
+            var b = BuildLabBase("P6", "Assets/Prototypes/P6_ErasAndShelf/P6_ErasAndShelf.unity", "I want to see what comes next");
+            var p6 = b.systems.AddComponent<ErasAndShelf>();
+            WireLab(b, p6);
+            p6.village = b.village;
+            p6.prehistoryYears = 12f; // a young camp, a couple of minutes from its first threshold at lab speed
+            string Col(string n, string color) => $"{Medieval}/buildings/{color}/building_{n}_{color}.fbx";
+            p6.eras = new[]
+            {
+                new ErasAndShelf.EraLook { name = "Camp", prefabs = new[] { Set(BuildingType.Hut, P("tent")), Set(BuildingType.Camp, P("tent")) } },
+                new ErasAndShelf.EraLook { name = "Hamlet", prefabs = System.Array.Empty<DioramaView.BuildingPrefabs>() },
+                new ErasAndShelf.EraLook
+                {
+                    name = "Village",
+                    prefabs = new[]
+                    {
+                        Set(BuildingType.Hut, Col("home_A", "blue"), Col("home_B", "red"), Col("home_A", "yellow"), Col("home_B", "blue")),
+                        Set(BuildingType.Camp, Col("tower_A", "blue")),
+                        Set(BuildingType.Market, Col("market", "red")),
+                        Set(BuildingType.Tavern, Col("tavern", "yellow")),
+                        Set(BuildingType.Well, Col("well", "blue")),
+                    },
+                },
+            };
+
+            // The second box: built once beside the first, hidden; the controller places it as an annex (A) or on the shelf (B).
+            var water = new[] { new Vector2Int(-2, 2), new(-3, 3) };
+            var d2 = BuildGround(Radius, water);
+            d2.root.name = "Box2";
+            var nature = new (Vector2Int cell, string path, float yaw)[]
+            {
+                (new(3, -3), N("trees_A_large"), 0), (new(2, -3), N("hills_A_trees"), 120), (new(0, 3), N("trees_B_medium"), 0),
+            };
+            PlaceProps(d2, "Nature", nature);
+            var taken = new HashSet<Vector2Int>(water.Concat(nature.Select(n => n.cell)));
+            var free = d2.cells.Where(c => !taken.Contains(c)).OrderBy(c => d2.cellPos[c].sqrMagnitude).ThenBy(c => c.x).ThenBy(c => c.y).ToList();
+            var groundCol = new GameObject("GroundCollider");
+            groundCol.transform.SetParent(d2.root);
+            groundCol.transform.position = new Vector3(0, d2.surfaceY - 0.02f, 0);
+            groundCol.AddComponent<BoxCollider>().size = new Vector3(d2.w * (Radius + 0.5f) * 2, 0.04f, d2.w * (Radius + 0.5f) * 2);
+            LogCategory.Tag(groundCol, "ground");
+            BuildTerrarium(d2);
+            var village2 = new GameObject("Village2").AddComponent<DioramaView>();
+            village2.transform.SetParent(d2.root);
+            village2.buildingRoot = village2.transform;
+            village2.slotPositions = free.Select(d2.Top).ToArray();
+            var rng = new System.Random(23);
+            village2.slotYaw = free.Select(_ => rng.Next(0, 6) * 60f).ToArray();
+            village2.slotRadius = b.village.slotRadius;
+            village2.prefabs = b.village.prefabs;
+            var crowd2 = new GameObject("Crowd2").AddComponent<CrowdView>();
+            crowd2.transform.SetParent(d2.root);
+            crowd2.diorama = village2;
+            crowd2.characterPrefabs = b.crowd.characterPrefabs;
+            crowd2.walkClip = b.crowd.walkClip; crowd2.idleClip = b.crowd.idleClip; crowd2.cheerClip = b.crowd.cheerClip;
+            crowd2.characterScale = b.crowd.characterScale;
+            crowd2.walkSpeed = b.crowd.walkSpeed;
+            crowd2.tagNotables = false;
+            p6.box2 = d2.root;
+            p6.village2 = village2;
+            p6.crowd2 = crowd2;
+            p6.box2LocalSlots = village2.slotPositions; // built at the origin, so world = local
+            p6.boxWidth = b.diorama.boxBounds.size.x;
+            p6.relicPrefab = Load(P("flag_green"));
+
+            // The shelf both boxes stand on in B.
+            var plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plank.name = "Shelf";
+            Object.DestroyImmediate(plank.GetComponent<Collider>());
+            var bb = b.diorama.boxBounds;
+            plank.transform.position = new Vector3(bb.center.x + (p6.boxWidth + p6.shelfGap) / 2, bb.min.y - 0.09f, bb.center.z);
+            plank.transform.localScale = new Vector3(p6.boxWidth * 2 + p6.shelfGap + 0.8f, 0.18f, bb.size.z + 0.5f);
+            plank.GetComponent<MeshRenderer>().sharedMaterial = GetOrCreateMaterial("Shelf", m => { m.SetColor("_BaseColor", new Color(0.45f, 0.30f, 0.19f)); m.SetFloat("_Smoothness", 0.25f); });
+            p6.shelf = plank.transform;
+            plank.SetActive(false);
+            d2.root.gameObject.SetActive(false);
+            Save(b);
+            return Report(b);
+        }
+
+        /// <summary>P3+ base: the shared diorama plus the wipe gesture, named notables walking the village, portraits,
+        /// person cards, the A/B lab strip and the lab HUD. The care layer has no consequences (set by PrototypeBase).</summary>
+        public static Built BuildLabBase(string protoId, string scenePath, string surveyQ4)
+        {
+            var b = BuildBase(protoId, scenePath, surveyQ4, TestMode.Lab);
+            b.systems.GetComponent<PrototypeConfig>().separateLabSave = true; // a lab test never touches the phone's diary
+            var hud = b.systems.GetComponent<HudToast>();
+            hud.welcomeBack = false;   // each prototype writes its own welcome
+            hud.bannerTop = 100f;      // below the one-line ledger
+            hud.bannerBelowSafe = 76f; // ...also under a notch (the lab strip adds its own height on top)
+            var wipe = b.systems.AddComponent<WipeCleaner>();
+            wipe.glass = b.glass;
+            wipe.mess = b.mess;
+            wipe.peopleFirst = true; // a tap near a named person meets them, junk or not (P3 tester run 1)
+            b.mess.tapCleansProps = false;
+            b.mess.trashScale = 2.4f; // as P2 (readable on a phone)
+            b.mess.vineScale = 1.8f;
+            b.crowd.tagNotables = false;
+            var notables = new GameObject("Notables").AddComponent<NotableView>();
+            notables.transform.SetParent(b.crowd.transform.parent);
+            notables.crowd = b.crowd;
+            var studio = b.systems.AddComponent<PortraitStudio>();
+            studio.characterPrefabs = b.crowd.characterPrefabs;
+            studio.idleClip = b.crowd.idleClip;
+            b.systems.AddComponent<NotableCardPanel>();
+            b.systems.AddComponent<LabStrip>();
+            b.systems.AddComponent<LabHud>();
+            b.notables = notables;
+            b.wipe = wipe;
+            return b;
+        }
+
+        static void WireLab(Built b, PrototypeBase p)
+        {
+            p.wipe = b.wipe;
+            p.crowd = b.crowd;
+            p.notables = b.notables;
+            p.hud = b.systems.GetComponent<LabHud>();
         }
 
         /// <summary>The shared starting point for every prototype scene (not saved yet: callers add their own bits, then Save).</summary>
@@ -71,7 +328,7 @@ namespace AquariumCiv.EditorTools
             var groundCol = new GameObject("GroundCollider");
             groundCol.transform.SetParent(d.root);
             var radiusWorld = d.w * (Radius + 0.5f);
-            groundCol.transform.position = new Vector3(0, d.tileSize.y - 0.02f, 0);
+            groundCol.transform.position = new Vector3(0, d.surfaceY - 0.02f, 0);
             groundCol.AddComponent<BoxCollider>().size = new Vector3(radiusWorld * 2, 0.04f, radiusWorld * 2);
             LogCategory.Tag(groundCol, "ground");
 
@@ -86,11 +343,13 @@ namespace AquariumCiv.EditorTools
             cfg.protoId = protoId;
             cfg.surveyQ4 = surveyQ4;
             cfg.testMode = mode;
-            var clock = sys.AddComponent<SimClock>();
+            var clock = b.clock = sys.AddComponent<SimClock>();
             clock.config.buildingSlots = slots.Length;
             sys.AddComponent<EventLog>();
             sys.AddComponent<HudToast>();
             sys.AddComponent<SurveyPanel>();
+            sys.AddComponent<FeedbackSender>();
+            sys.AddComponent<FeedbackPanel>();
 
             // Village
             var village = b.village = new GameObject("Village").AddComponent<DioramaView>();
@@ -130,11 +389,10 @@ namespace AquariumCiv.EditorTools
             mess.transform.SetParent(d.root);
             mess.diorama = village;
             mess.crowd = crowd;
-            mess.glassRenderers = d.glass;
             mess.trashPrefabs = new[] { "sack", "crate_open", "bucket_empty", "barrel", "pallet", "crate_B_small" }.Select(n => Load(P(n))).ToArray();
-            mess.trashScale = 0.6f;
+            mess.trashScale = 1.5f;
             mess.vinePrefabs = new[] { "waterplant_A", "waterplant_B", "waterplant_C", "tree_single_A" }.Select(n => Load(N(n))).ToArray();
-            mess.vineScale = 0.7f;
+            mess.vineScale = 1.0f;
             mess.puffMaterial = GetOrCreateMaterial("Puff", m =>
             {
                 m.SetFloat("_Surface", 1);
@@ -147,6 +405,18 @@ namespace AquariumCiv.EditorTools
                 m.SetColor("_BaseColor", Color.white);
             }, "Universal Render Pipeline/Particles/Unlit", $"{SharedDir}/Materials");
 
+            // Glass grime (paintable mask) and shared cleaning feedback
+            var glass = b.glass = new GameObject("GlassGrime").AddComponent<GlassGrime>();
+            glass.transform.SetParent(d.root);
+            glass.glassRenderers = d.glass;
+            glass.grimeMaterial = GetOrCreateMaterial("GlassGrime", m =>
+            {
+                m.SetColor("_CleanColor", new Color(0.85f, 0.95f, 1f, 0.10f));
+                m.SetColor("_GrimeColor", new Color(0.42f, 0.47f, 0.30f, 1f));
+                m.SetFloat("_DirtyAlpha", 0.8f);
+            }, "AquariumCiv/GlassGrime", $"{SharedDir}/Materials");
+            sys.AddComponent<Juice>().particleMaterial = mess.puffMaterial;
+
             sys.AddComponent<DebugPanel>().mess = mess;
             return b;
         }
@@ -155,10 +425,20 @@ namespace AquariumCiv.EditorTools
         {
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(b.scenePath));
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), b.scenePath);
-            var scenes = EditorBuildSettings.scenes.Where(s => s.path != b.scenePath).ToList();
-            scenes.Insert(0, new EditorBuildSettingsScene(b.scenePath, true));
+            AddToBuild(b.scenePath);
+        }
+
+        /// <summary>Newest build first, except the Test Hub, which always stays first (it opens everything else).</summary>
+        public static void AddToBuild(string scenePath)
+        {
+            var scenes = EditorBuildSettings.scenes.Where(s => s.path != scenePath).ToList();
+            scenes.Insert(0, new EditorBuildSettingsScene(scenePath, true));
+            var hub = scenes.FirstOrDefault(s => s.path == HubScenePath);
+            if (hub != null) { scenes.Remove(hub); scenes.Insert(0, hub); }
             EditorBuildSettings.scenes = scenes.ToArray();
         }
+
+        public const string HubScenePath = "Assets/Prototypes/_Hub/Hub.unity";
 
         static string Report(Built b) =>
             $"Built {b.scenePath}: {b.village.slotPositions.Length} slots, glass panes {b.diorama.glass.Length}, " +
