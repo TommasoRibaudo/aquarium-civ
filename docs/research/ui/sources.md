@@ -1,5 +1,7 @@
 # UI research sources (#104, clean set)
 
+The pictures aren't in the repo (user, 2026-10-31). File names below are labels for the notes.
+
 Internal reference only. Never shipped. Taken 2026-10-31 in Chrome from public pages.
 Commons files are cropped from the original and keep the licence shown. Terms for each source type are in README.md §9.
 

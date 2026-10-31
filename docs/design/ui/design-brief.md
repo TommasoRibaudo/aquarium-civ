@@ -27,7 +27,7 @@ No design pass starts without all of these:
 5. The style kit palette: `Game.uss` `:root`, `View/Palette.cs`, [../spikes/style-kit.md](../spikes/style-kit.md)
 6. **The limits sheet from #164 (`limits.md`)**
 
-**Never give a design pass third-party screenshots.** Game UI Database prohibits any use of its content for AI asset generation or machine learning, so nothing from it enters this project. Apple and Steam images stay out of design passes too unless the user decides otherwise. Designs get the written findings and our own captures.
+**Never give a design pass third-party screenshots.** Game UI Database prohibits any use of its content for AI asset generation or machine learning, so nothing from it enters this project. No research pictures are merged into the repo at all (decisions.md). Designs get the written findings and our own captures.
 
 The limits sheet is the guard against the main risk: design tools can draw what Unity can't render. USS has no `gap` or
 `line-height`, and Unity 6.3 has no drop-shadow filter, so soft shadows and frosted glass can look great in a mockup and

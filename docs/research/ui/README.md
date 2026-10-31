@@ -3,11 +3,10 @@ Game UI Database material was excluded because of its terms.
 # UI research: how other games solve our open problems (#104)
 
 Taken 2026-10-31 for the UI rework (#103), against the pieces in [ui-inventory.md](../../design/ui-inventory.md) and
-[game-design-practices.md](../../game-design-practices.md). 42 reference images in `img/`, listed in
-[sources.md](sources.md). Internal reference only: nothing here ships.
+[game-design-practices.md](../../game-design-practices.md). **No pictures are kept in the repo** (user, 2026-10-31): image names below are labels, and
+[sources.md](sources.md) lists where each one was seen. Internal reference only: nothing here ships.
 
-**Read §9 before using this for #106.** 33 of the 42 images come from Apple and Steam pages, whose terms also restrict
-copying. That decision is still open.
+**Read §9 before using this for #106.** Design passes get these written findings only, never third-party screenshots.
 
 **Marks.** [obs] = I saw it in an image kept here. [S] = a source says so. "Rec" = my recommendation, for #163 and the
 user to judge.
