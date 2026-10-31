@@ -1,7 +1,7 @@
-# UI hierarchy (#163, draft, 2026-10-31)
+# UI hierarchy (#163, 2026-10-31)
 
 What each moment must show, and how loud. Structure only: no colour, type or icon choices (those start at #106).
-Built on [../ui-inventory.md](../ui-inventory.md). **Waiting for the user's sign-off.** Recommended options are marked ★.
+Built on [../ui-inventory.md](../ui-inventory.md). **Signed off by the user 2026-10-31**, with the ★ option on all six decisions in §4.
 
 ## 1. Method
 
