@@ -528,3 +528,5 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
     after seeing `running`. JSON sits at `.data.result` (`status`, `summary`, `results[]` with `FullName`, `Status`, `Message`).
   - `unity recompile` can answer "timed out after 30000ms" or "no instances" during a reload: wait for `ready`, run it again.
   - A sed insert (`/pat/{n;r file}`) that looks silent may have worked: grep for the new text before inserting again.
+- **2026-10-30 · Agent shell on Windows: `python3` is a Store stub, and a long Bash call dies.** [verified]
+  - `python3` only prints "Python was not found"; use `py -3`. A Bash command of a few tens of KB fails with `ENAMETOOLONG: name too long, uv_spawn` and nothing in it runs: write big files with the Write tool, then run a short command.

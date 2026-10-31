@@ -246,7 +246,7 @@ namespace AquariumCiv.Sim
             f.stepSeconds = 0; f.untouchedSeconds = 0; f.hintPhase = 0; f.hintReturns = 0; f.hintIdle = 0; f.hintSubstep = false;
             if (Step == FirstRunStep.Rain) RaiseRainWish();
             if (Step == FirstRunStep.Year) BeginYear();
-            if (Step == FirstRunStep.Done) f.active = false;
+            if (Step == FirstRunStep.Done) { f.active = false; sim.CardsSeenToNow(); }
             StepChanged?.Invoke(Step);
         }
 
@@ -418,6 +418,7 @@ namespace AquariumCiv.Sim
             if (string.IsNullOrEmpty(sim.State.settlementName)) sim.SetSettlementName(f.suggestedName);
             f.step = (int)FirstRunStep.Done;
             f.active = false;
+            sim.CardsSeenToNow();
             StepChanged?.Invoke(FirstRunStep.Done);
         }
 

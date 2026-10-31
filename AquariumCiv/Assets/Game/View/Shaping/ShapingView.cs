@@ -156,13 +156,7 @@ namespace AquariumCiv.View
             return LastResult;
         }
 
-        static string FailText(SimCore sim, string kind, SimCore.ShapeFail f) => f switch
-        {
-            SimCore.ShapeFail.Locked => $"The {sim.ShapingToolName(kind)} comes with the village.",
-            SimCore.ShapeFail.NoCharge => "No shaping left for now: cleaning the glass brings it back.",
-            SimCore.ShapeFail.AtCap => $"That's as many as the box holds ({SimCore.ShapingCap(kind)} at once).",
-            _ => "That tool can't be used here.",
-        };
+        static string FailText(SimCore sim, string kind, SimCore.ShapeFail f) => sim.ShapeFailLine(kind, f);
 
         /// <summary>Take a shaping back (the chip). False once the people have used it.</summary>
         public bool TakeBack(int nudgeId)

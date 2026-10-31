@@ -168,10 +168,14 @@ namespace AquariumCiv.Sim
         public ReturnStack ReturnCardsCapped(long sinceMonth, int cap, IEnumerable<int> viewedPeople = null)
         {
             AnnotateNew();
+            return BuildStack(State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e)).ToList(), cap, viewedPeople);
+        }
+
+        /// <summary>§2.2 steps 2–5 over the collected entries (chronicle order).</summary>
+        ReturnStack BuildStack(List<ChronicleEntry> fresh, int cap, IEnumerable<int> viewedPeople)
+        {
             var viewed = viewedPeople == null ? new HashSet<int>() : new HashSet<int>(viewedPeople);
-            var stack = new ReturnStack { cap = Math.Max(1, cap) };
-            var fresh = State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e)).ToList();
-            stack.collected = fresh.Count;
+            var stack = new ReturnStack { cap = Math.Max(1, cap), collected = fresh.Count };
 
             // Merge: one card per thread, one per lone entry, in chronicle order.
             var cards = new List<ChronicleCard>();
