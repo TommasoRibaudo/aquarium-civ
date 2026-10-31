@@ -51,6 +51,125 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
+        public void FireLooks_EveryLookHasASpec_AndTheCycleVisitsThemAll()
+        {
+            Assert.AreEqual(System.Enum.GetValues(typeof(FireLook)).Length, FireLooks.All.Length);
+            var look = FireLooks.All[0];
+            var seen = new System.Collections.Generic.HashSet<FireLook>();
+            for (int i = 0; i < FireLooks.All.Length; i++) { Assert.IsNotNull(FireLooks.Spec(look)); seen.Add(look); look = FireLooks.Next(look); }
+            Assert.AreEqual(FireLooks.All.Length, seen.Count);
+            Assert.AreEqual(FireLooks.All[0], look, "wraps round");
+        }
+
+        [TestCase("current", FireLook.Current)]
+        [TestCase("Soft", FireLook.Soft)]
+        [TestCase("a", FireLook.Soft)]
+        [TestCase(" EMBERS ", FireLook.Embers)]
+        [TestCase("b", FireLook.Embers)]
+        [TestCase("paper", FireLook.Paper)]
+        [TestCase("C", FireLook.Paper)]
+        public void FireLooks_ParseByNameOrIssueLetter(string name, FireLook want)
+        {
+            Assert.IsTrue(FireLooks.TryParse(name, out var look));
+            Assert.AreEqual(want, look);
+        }
+
+        [Test]
+        public void FireLooks_UnknownNameIsRefused_AndTheDefaultIsThe63Fire()
+        {
+            Assert.IsFalse(FireLooks.TryParse("lava", out _));
+            Assert.IsFalse(FireLooks.TryParse(null, out _));
+            Assert.AreEqual(FireLook.Current, FireLooks.Default, "stays on the #63 fire until the user picks");
+        }
+
+        [Test]
+        public void FireLooks_StayInBudget_AndLeaveTheBuilderClean()
+        {
+            foreach (var look in FireLooks.All)
+            {
+                var spec = FireLooks.Spec(look);
+                var mb = new MeshBuilder(3);
+                Pieces.FireBody(mb, Vector3.zero, 0.37f, look);
+                Assert.Greater(mb.VertexCount, 0, look.ToString());
+                Assert.LessOrEqual(mb.VertexCount, spec.bodyVertexBudget, look.ToString());
+                Assert.LessOrEqual(spec.GlowQuads, FireLooks.GlowQuadBudget, look.ToString());
+                Assert.LessOrEqual(spec.smokePuffs, 4, "smoke is alpha overdraw: never more than the #63 fire");
+                Assert.AreEqual(0f, mb.emission, look + " leaves no emission on for the next part");
+                Assert.AreEqual(0f, mb.flameHeight, look + " leaves the flame flag off");
+            }
+        }
+
+        [Test]
+        public void FireLooks_ThePitsDifferByLook_AndNeverOutgrowThe63PitByMuch()
+        {
+            int Pit(FireLook look) { var mb = new MeshBuilder(3); Pieces.Firepit(mb, Vector3.zero, true, 0.37f, look); return mb.VertexCount; }
+            int baseline = Pit(FireLook.Current);
+            foreach (var look in FireLooks.All) Assert.LessOrEqual(Pit(look), baseline + 30, look.ToString());
+            Assert.AreNotEqual(Pit(FireLook.Soft), Pit(FireLook.Paper));
+        }
+
+        [TestCase(FireLook.Embers)]
+        [TestCase(FireLook.Paper)]
+        public void FireLooks_MeshFlames_AreUnlit_SoDayAndNightMatch(FireLook look)
+        {
+            var mb = new MeshBuilder(3);
+            Pieces.FireBody(mb, Vector3.zero, 0.37f, look);
+            int flames = 0;
+            for (int i = 0; i < mb.lamps.Count; i++)
+            {
+                if (mb.lamps[i].x < 2f) continue;
+                flames++;
+                Assert.AreEqual(1f, mb.uvs[i].y, 1e-5f, "emission");
+                Assert.GreaterOrEqual(mb.lamps[i].y, 0f); Assert.Less(mb.lamps[i].y, 1f);
+            }
+            Assert.Greater(flames, 0);
+        }
+
+        [Test]
+        public void Hot_ComesOutAsThePaletteColour_ThroughTheEmissionBoost()
+        {
+            foreach (var c in new[] { Palette.FlameCoreA, Palette.FlameBodyA, Palette.FlameBodyB })
+            {
+                var shown = MeshBuilder.Linear(Pieces.Hot(c));
+                var want = MeshBuilder.Linear(c);
+                Assert.AreEqual(want.r, shown.r * Pieces.EmissionBoost, want.r * 0.12f + 0.01f);
+                Assert.AreEqual(want.g, shown.g * Pieces.EmissionBoost, want.g * 0.12f + 0.01f);
+            }
+        }
+
+        [Test]
+        public void PaperTongue_FacesOutwards_AndKeepsItsHeight()
+        {
+            var mb = new MeshBuilder(3);
+            var foot = new Vector3(0.1f, 0.2f, -0.1f);
+            Pieces.PaperTongue(mb, foot, 40f, 0.3f, 0.06f, 0.07f, Color.red, Color.red, Color.red);
+            Assert.AreEqual(24, mb.VertexCount, "8 faces");
+            float top = float.MinValue;
+            var belly = foot + Quaternion.Euler(0, 40f, 0) * new Vector3(0, 0.135f, 0.021f);
+            for (int t = 0; t < mb.tris.Count; t += 3)
+            {
+                Vector3 a = mb.verts[mb.tris[t]], b = mb.verts[mb.tris[t + 1]], c = mb.verts[mb.tris[t + 2]];
+                top = Mathf.Max(top, a.y, Mathf.Max(b.y, c.y));
+                Assert.Greater(Vector3.Dot(Vector3.Cross(b - a, c - a), (a + b + c) / 3f - belly), 0f, "face " + t / 3);
+            }
+            Assert.AreEqual(foot.y + 0.3f, top, 1e-4f);
+        }
+
+        [Test]
+        public void SoftTongues_EndOnTheBigOne_InTheMiddle()
+        {
+            int n = FireLooks.Spec(FireLook.Soft).softTongues;
+            Assert.Greater(n, 1);
+            FireLooks.SoftTongue(n - 1, n, 0f, out float dx, out float dz, out float w, out float h);
+            Assert.AreEqual(0f, dx); Assert.AreEqual(0f, dz);
+            for (int i = 0; i < n - 1; i++)
+            {
+                FireLooks.SoftTongue(i, n, 1f, out _, out _, out float wi, out float hi);
+                Assert.Less(wi, w); Assert.Less(hi, h, "drawn first, so the big one covers their feet");
+            }
+        }
+
+        [Test]
         public void Sash_HugsTheTunic_NothingSticksOutMoreThanFourMillimetres()
         {
             foreach (var s in new[] { 1f, PegDoll.KidScale })
