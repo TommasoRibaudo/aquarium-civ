@@ -65,6 +65,7 @@ namespace AquariumCiv.View
         Transform boundRoot;
         GlassMask[] masks = new GlassMask[0];
         Texture2D[] textures = new Texture2D[0];
+        Texture2D noise;
         Material[] mats = new Material[0];
         BoxCollider[] cols = new BoxCollider[0];
         bool[] zAxis = new bool[0];
@@ -151,6 +152,7 @@ namespace AquariumCiv.View
             textures = new Texture2D[0];
             masks = new GlassMask[0];
             boundRoot = null;
+            if (noise != null) Destroy(noise);
             foreach (var s in sparkles) if (s != null) Destroy(s.gameObject);
             sparkles.Clear(); sparkleState.Clear();
             if (sparkleMesh != null) Destroy(sparkleMesh);
@@ -224,6 +226,13 @@ namespace AquariumCiv.View
             if (root == null || root == boundRoot) return;
             boundRoot = root;
             foreach (var t in textures) if (t != null) Destroy(t);
+            if (noise == null)
+            {
+                noise = new Texture2D(GlassNoise.Size, GlassNoise.Size, TextureFormat.RGBA32, false, true)
+                    { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear, name = "GrimeDetail", hideFlags = HideFlags.DontSave };
+                noise.SetPixelData(GlassNoise.Bytes(), 0);
+                noise.Apply(false, true);
+            }
             var list = new List<Transform>();
             foreach (Transform t in root) if (t.name.StartsWith("Glass") && t.GetComponent<MeshRenderer>() != null) list.Add(t);
             int n = list.Count;
@@ -247,6 +256,7 @@ namespace AquariumCiv.View
                 bytes[i] = new byte[masks[i].Texels];
                 mats[i] = t.GetComponent<MeshRenderer>().sharedMaterial;
                 mats[i].SetTexture("_MaskTex", textures[i]);
+                mats[i].SetTexture("_NoiseTex", noise);
                 t.gameObject.layer = GlassLayer;
                 if (!t.TryGetComponent(out cols[i])) cols[i] = t.gameObject.AddComponent<BoxCollider>();
                 masks[i].ResetTo(sim.State.grime);
