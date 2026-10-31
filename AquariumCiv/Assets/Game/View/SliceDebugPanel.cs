@@ -48,6 +48,11 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
             if (GUILayout.Button("Send test feedback")) last = FeedbackSender.DebugSendTest();
+            if (GUILayout.Button(FrostTestPanel.Instance != null ? "Close frost test" : "Frost test (phone)"))
+            {
+                last = FrostTestPanel.DebugToggle();
+                DebugDock.Active = DebugDock.None; // this panel off the screen: it isn't what's being measured
+            }
             GUILayout.Label(RecallPromptView.Status());
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Day +1")) last = RecallPromptView.DebugAddDays(1);

@@ -27,7 +27,7 @@ for ranking effects and nothing else.
 | Soft shadow, custom filter | costly | `FilterFunctionDefinition`, hand HLSL | 02-shadows | Works on the panel itself. Needs a shader in the build |
 | Backdrop blur in USS | not possible | `backdrop-filter` is unknown; `filter: blur` blurs only the element's own subtree | 03-blur (top panel) | Confirms the community report |
 | Tinted scrim | free | `rgba()` background | 03-blur | Tank stays sharp behind it |
-| **Frosted glass over the moving tank** | costly | URP pass copies the frame to 1/4 size, panel shows it, `filter: blur(14px)` in the panel, tint on top | 03-blur, 03-blur-later | **Deliverable and looks right.** Needs runtime code. 1/8 copy + `blur(6px)` (03-blur-eighth-filter) is close |
+| **Frosted glass over the moving tank** | costly | URP pass copies the frame to 1/4 size, panel shows it, `filter: blur(14px)` in the panel, tint on top | 03-blur, 03-blur-later | **Deliverable and looks right.** Needs runtime code. 1/8 copy + `blur(6px)` (03-blur-eighth-filter) is close. **Phone verdict pending: run the frost test, see below (#178)** |
 | Frosted, copy only, no filter | free in Editor | Small copy, bilinear | 03-blur | Dark glass edges turn to visible steps at 1/8 and 1/16: not good enough alone |
 | Frosted, second camera | costly | Low-res camera instead of a URP pass | 03-blur-second-camera | Works, but the world draws twice and the colour comes out warmer than the screen. Ruled out |
 | Gradients in USS | not possible | `linear-gradient` is refused | import log | Use the next row |
@@ -120,6 +120,25 @@ A filter is not cached. A still panel with a filter pays every frame.
 6. 9-slice paper and brass: texture memory.
 7. Custom shader and filter survive stripping in a build. Only the Editor saw them.
 8. Safe area on real notches.
+
+## Frost test on a phone (#178)
+
+Off by default and gone when closed: `FrostBackdrop` (Assets/Game/UI/Frost) hands a render-graph pass to the main camera's
+renderer only while a frost mode is on, so neither renderer asset changed. `FrostTestPanel` exists only while open.
+
+1. On a build, hold the top-left corner for 2 s. The `dbg` button appears. Tap it, then **Frost test (phone)**.
+2. The tank stays live under a 30 % Keeper's Glass sheet. Tap **Off**, **Flat**, **1/8 + 6** or **1/4 + 14**. The table shows
+   frame, CPU and GPU ms as average/worst, and dropped frames, per mode.
+3. **Auto run** gives each mode 20 s, about 80 s in all, skipping the first 2 s of each. Don't touch the phone meanwhile.
+4. **Send** files the table as a feedback note. The numbers are also in the note's game log.
+5. **Cap 30** / **Cap 60** switches the frame cap. A phone defaults to 30; run Auto once at each for "60 where cheap". **Close**
+   restores the cap and removes everything.
+
+Reading it: CPU is the busier thread without the wait for Present. A drop is a frame over 1.5 budgets. The modes run in a
+fixed order, so a hot phone flatters the first ones: if the numbers are close, run it again after a rest. Thermal state
+isn't read (no cheap route), so watch for GPU ms climbing between runs.
+
+Pass or fail goes here, against 30 fps minimum and steady, 60 where cheap (practices §7): *not measured yet*.
 
 ## Fonts used
 
