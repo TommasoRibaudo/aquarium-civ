@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Game/Scenes/Slice.unity
+    guid: 36f9857e413c0fa419a90a542c258d21
+  - enabled: 0
     path: Assets/Spikes/Perf/PerfCheck.unity
     guid: 53d785e32df004f42a8622149908c50d
   - enabled: 0

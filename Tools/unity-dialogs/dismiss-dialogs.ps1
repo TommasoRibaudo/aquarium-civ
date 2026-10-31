@@ -78,6 +78,8 @@ $VK_ESCAPE = 0x1B
 
 # Safe answers: [regex on title + body] -> button label to press. Never add an answer that discards work.
 $safe = @(
+    # Compile errors on open/reload: Ignore keeps the Editor out of Safe Mode so the next recompile can pick up a fix.
+    @{ Match = 'Enter Safe Mode';          Button = 'Ignore' },
     @{ Match = 'quit';                     Button = 'No' },
     # After a git checkout/merge touched the open scene: disk holds what git holds (docs/tooling.md §1).
     @{ Match = 'modified externally';      Button = 'Reload' },

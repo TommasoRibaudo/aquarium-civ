@@ -17,6 +17,42 @@ namespace AquariumCiv.View
         public const float BarH = 32f, Gap = 8f;
         static Rect bar, panel;
 
+        // ---- long-press unlock (#98): the first slice build ships with the panels hidden. Hold the top-left corner for 2 s
+        // and the "dbg" toggle appears for the rest of the session. The Editor shows it from the start.
+        public const float UnlockSeconds = 2f, CornerSize = 96f;
+        /// <summary>Tests set this to true to exercise the lock inside the Editor; null = locked outside the Editor only.</summary>
+        public static bool? ForceLocked;
+        static bool unlocked;
+        static float pressStart = -1f;
+        static bool held;
+
+        public static bool Locked => !unlocked && (ForceLocked ?? !Application.isEditor);
+
+        /// <summary>The corner that counts for the long-press, in IMGUI units, inside the safe area.</summary>
+        public static Rect CornerRect(Rect safe) => new(safe.x, safe.y, CornerSize, CornerSize);
+
+        /// <summary>Feeds the press state machine: <paramref name="down"/> = pointer held, <paramref name="pos"/> in IMGUI units.
+        /// Leaving the corner or letting go starts over. Returns true once the dock is unlocked.</summary>
+        public static bool Hold(bool down, Vector2 pos, Rect corner, float now)
+        {
+            if (!down || !corner.Contains(pos)) { pressStart = -1f; return !Locked; }
+            if (pressStart < 0f) pressStart = now;
+            if (now - pressStart >= UnlockSeconds) unlocked = true;
+            return !Locked;
+        }
+
+        /// <summary>Back to the first-launch state (tests).</summary>
+        public static void ResetLock() { unlocked = false; pressStart = -1f; held = false; ForceLocked = null; Active = None; }
+
+        static void WatchCorner(Rect safe)
+        {
+            var e = Event.current;
+            if (e == null) return;
+            if (e.type == EventType.MouseDown || e.type == EventType.MouseDrag) held = true;
+            else if (e.type == EventType.MouseUp || e.rawType == EventType.MouseUp) held = false;
+            Hold(held, e.mousePosition, CornerRect(safe), Time.realtimeSinceStartup);
+        }
+
         public static bool Hidden =>
             (GameHud.Instance != null && (GameHud.Instance.SheetOpen || GameHud.Instance.CameraMode)) || (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen);
 
@@ -40,6 +76,11 @@ namespace AquariumCiv.View
         /// <summary>The toggle bar; call once per OnGUI. Returns false when nothing may be drawn (a HUD sheet is open).</summary>
         public static bool DrawBar(Rect safe, float sc)
         {
+            if (Locked)
+            {
+                WatchCorner(safe);
+                if (Locked) { Active = None; Publish(sc, false); return false; }
+            }
             if (Hidden) { Publish(sc, false); return false; }
             bool open = Active != None;
             bar = new Rect(safe.x + Gap, safe.y + Gap, open ? 3 * 58f : 56f, BarH);

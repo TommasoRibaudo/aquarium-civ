@@ -13,8 +13,8 @@ editor_up() {
 }
 
 if editor_up; then
-  CODE='UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes(); UnityEditor.AssetDatabase.SaveAssets(); UnityEditor.EditorApplication.delayCall += () => UnityEditor.EditorApplication.Exit(0); return "quitting";'
-  unity command script eval --timeout 30 --code "$CODE" || { echo "quit command failed: stop and report"; exit 1; }
+  CODE='UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes(); UnityEditor.AssetDatabase.SaveAssets(); UnityEditor.EditorApplication.Exit(0); return "quitting";'
+  unity command script eval --timeout 30 --code "$CODE" || echo "(an error reply is normal: the Editor quits mid-call)"
   for i in $(seq 1 30); do editor_up || break; sleep 5; done
   if editor_up; then echo "Editor did not quit in 150 s: stop and report"; exit 1; fi
 fi

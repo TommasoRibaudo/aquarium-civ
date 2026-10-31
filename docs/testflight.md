@@ -82,6 +82,43 @@ new prototype ships, the patch for fixes to the same one, and add a row here plu
 | 7 | **0.3.0** | **Test Hub: P3–P6** (branch `overnight/p3-p6`) | Gate 2 (P3 return, P4 history) and Gate 3 (P5 nudges, P6 eras). Lab A/B from the hub, P3 4-day and P5 3-day diaries; P2 diary still reachable | [test-session guide](design/test-session-gate2-3.md) |
 | (not built yet) | **0.4.0** | **Perf check of the style kit** (branch `vs/35-perf-build`, issue #35) | Frame time / GPU ms of the new art style on the user's iPhone: Growth Lab town y110, style-kit camp and village. Not a prototype: Build Settings switched, see [below](#perf-build-04x-issue-35) | "Perf check of the new art style. Tap to switch scenes; send a screenshot of the numbers." |
 
+### Slice build 0.4.0 (issue #98)
+The first build of the vertical slice, for the user alone on their iPhone.
+
+- **Scenes:** Build Settings enable only `Assets/Game/Scenes/Slice.unity`. The prototype, perf and sample scenes stay in the
+  list but disabled. Set with the menu *AquariumCiv/Agent/Slice/Build Settings: slice build* (`SliceBuild.UseSliceBuildSettings`,
+  `Assets/Editor/Agent/SliceBuild.cs`). The iOS workflow uses GameCI's builder with no scene argument, so it builds exactly the
+  enabled scenes: nothing in `ios-testflight.yml` needs to change. CI's EditMode/PlayMode tests open scenes by path and don't
+  depend on the list.
+- **Version:** 0.4.0 (App Store versions are numeric). The build number is still the workflow run number.
+- **Debug panels:** present, hidden. The "dbg" toggle (and the sim tab behind it) appears after a **2 s press on the top-left
+  corner** (a 96-unit square at the safe-area corner; moving out of it or letting go starts over; it stays for the session).
+  The Editor shows it from the start. Code: `DebugDock.cs`, tests `DebugDockLockTests`.
+- **Feedback button:** shown in this build. `FeedbackUI.InTestBuild` is now true in the Editor, in development builds and in any
+  build with the `SLICE_TEST` scripting define. `SliceBuild.UseSliceBuildSettings` sets that define for iOS and Android in
+  ProjectSettings, so CI's release export has it too. A real send still needs the `FEEDBACK_TOKEN` secret (below).
+- **Feedback relay:** no token ships unless CI adds one. The workflow's *Bake feedback token* step writes `FEEDBACK_TOKEN` into
+  `Resources/FeedbackToken.txt` if the secret is set; with it, notes go straight to GitHub issues from the phone (the
+  security trade-off in [feedback.md](feedback.md) applies: friends-only, one user here). Without it, notes wait in the
+  on-device outbox. A relay is only needed before anything public.
+- **Local builds (no upload):** menu *Slice/Build Android (apk)* and *Build iOS (Xcode project)*, or
+  `unity command script eval --code "AquariumCiv.EditorTools.SliceBuild.Android()"` (also `.Ios()`). Output goes to
+  `F:\GameDevBuilds\` (outside git, off C:). Windows can only produce the Xcode project for iOS; archiving and signing stay in
+  the macOS CI job. Results below.
+- **Build profiles:** the Pipeline has no build-profile command (only `scene add_to_build` / `remove_from_build`), so the
+  script-based builds above stay; they are what "iOS and Android build from the CLI" means here.
+- **Results (2026-10-31, Editor 6000.3.27f1, IL2CPP, Slice scene only):**
+  - Android: `F:\GameDevBuilds\android\AquariumCiv-0.4.0.apk`, **43.6 MB** (45,749,643 bytes), arm64, about 7 min, Result: Success.
+  - iOS: Xcode project at `F:\GameDevBuilds\ios\AquariumCiv`, **about 1.08 GB on disk** (Il2CppOutputProject 831 MB, Libraries
+    221 MB, Data 25 MB), about 6 min, Result: Success. This is source, not the app: the .ipa size is only known after the macOS job
+    archives it. The Xcode project is not signed or uploaded from here.
+  - Tests before the build: `DebugDockLock` 3/3, `SmokePlay` 1/1 (play mode, by category).
+  - A build switches the active target (Android, then iOS) and reimports. Switch back afterwards with
+    `EditorUserBuildSettings.SwitchActiveBuildTarget(Standalone, StandaloneWindows64)` (about a minute), then
+    `git checkout AquariumCiv/Assets/Settings AquariumCiv/ProjectSettings/ProjectSettings.asset`: the builds rewrite the URP
+    assets and `runInBackground`/batching in ProjectSettings, which are noise, not changes to commit.
+  - `unity command script eval` takes statements: write `return X();` (a bare expression fails with "; expected").
+
 ### Perf build 0.4.x (issue #35)
 A one-off build to measure the style kit on a phone (60 fps / GPU ≤ 10 ms). It ships **only**
 `Assets/Spikes/Perf/PerfCheck.unity`; the prototypes are left out. Set with the menu *AquariumCiv/Agent/Perf Check/Build
@@ -137,7 +174,6 @@ Lab session (sitting with a tester): hold the top-left info box for 2 s until "L
 - The upload job uses the `testflight` environment. Its deployment-branch policy allows `main` and `overnight/p3-p6`
   (checked 2026-10-29). On any other branch the upload job is refused. Adding a branch is a repo-settings change the
   user makes (Settings → Environments → testflight).
-- Release builds hide the debug panel (`Debug.isDebugBuild` is false). Lab tests that need the away buttons run in the
-  Editor for now.
+- Debug panels: hidden behind a 2 s top-left long-press in every non-Editor build (see Slice build 0.4.0). Lab tests that need the away buttons still run in the Editor.
 - If the macOS job fails on signing, check that the API key has **Admin** access and that the bundle ID is
   registered under the same team.
