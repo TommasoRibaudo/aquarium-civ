@@ -49,7 +49,7 @@ namespace AquariumCiv.View
         TextField nameField;
         Button showMeBtn;
         FirstYearSummary summary;
-        bool heldClock, toolsHidden, cardShown, showingMe, rainArmed;
+        bool heldClock, toolsHidden, cardShown, showingMe, rainArmed, runEnded;
         float hintShownAt = -1f;
         string lastHintId = "";
         bool prevHintVisible;
@@ -128,6 +128,7 @@ namespace AquariumCiv.View
 
         void Hook()
         {
+            runEnded = false;
             run.StepChanged += OnStep;
             run.Cue += OnCue;
             shownStep = (FirstRunStep)(-1);
@@ -220,8 +221,12 @@ namespace AquariumCiv.View
             if (hide) { hud.CloseSheet(); ShapingView.Instance?.SetTool(null); }
         }
 
+        /// <summary>Once per run: Update reaches here every frame after the run is over, and the shaping tool the player
+        /// picks later must not be cleared (tester batch 3).</summary>
         void EndRun()
         {
+            if (runEnded) return;
+            runEnded = true;
             if (heldClock && GameClock.Instance != null) GameClock.Instance.Held = false;
             heldClock = false;
             SetToolsHidden(false);
