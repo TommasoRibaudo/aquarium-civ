@@ -559,3 +559,7 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   it a second time before debugging. `--filter_type class` matches nothing: use `category` (the `[Category]` of the fixture).
   A play-test tap right after something changes the panel's layout (a caption card closing) can miss the button: wait 3-4
   frames before touching. [verified, #79]
+- **2026-10-31 · Editor quit via `EditorApplication.delayCall += Exit` never happened** (restart-editor.sh timed out after 150 s, Editor
+  responsive and idle). Calling `EditorApplication.Exit(0)` directly inside the eval works: the Editor quits and the CLI returns
+  "Invalid response format from Pipeline server", which is expected. restart-editor.sh now does this and ignores that error.
+  A restart plus recompile of new files takes about 5+ min on this machine. [verified, #98]

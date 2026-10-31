@@ -26,8 +26,14 @@ namespace AquariumCiv.GameUI
         public static FeedbackUI Instance { get; private set; }
         /// <summary>Set false (tests) to keep the bootstrap from adding a button to the scene.</summary>
         public static bool AutoCreate = true;
-        /// <summary>Feedback is for test builds (the Editor and development builds) until a relay exists (feedback.md).</summary>
-        public static bool InTestBuild => Application.isEditor || Debug.isDebugBuild;
+        /// <summary>Feedback is for test builds (the Editor, development builds, and slice test builds with the SLICE_TEST define,
+        /// set for iOS and Android by SliceBuild.UseSliceBuildSettings so CI's release build has it) until a relay exists (feedback.md).</summary>
+        public static bool InTestBuild =>
+#if SLICE_TEST
+            true;
+#else
+            Application.isEditor || Debug.isDebugBuild;
+#endif
 
         static bool hostedByHud;
         /// <summary>The HUD shell is up and shows its own Feedback button: hide this one.</summary>
