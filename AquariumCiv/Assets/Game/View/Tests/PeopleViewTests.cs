@@ -197,7 +197,7 @@ namespace AquariumCiv.View.Tests
                 var land = box.land;
                 var settle = go.GetComponent<SimLayoutSource>().Sim.Settlement;
                 people.timeScale = 1f; // the real day: walks at the speed a player sees
-                PeopleView.DebugSetHour(6.5f);
+                people.SetHour(6.5f);
                 var last = new Dictionary<PegDollView, Vector3>();
                 int jumps = 0, nightJumps = 0, onLot = 0, stacked = 0, frames = 0, busySamples = 0, busyAdults = 0, adultSamples = 0, wet = 0;
                 var styles = new HashSet<string>();
@@ -284,7 +284,7 @@ namespace AquariumCiv.View.Tests
                 int ticks = 0;
                 foreach (float hour in new[] { 6.5f, 9.3f, 13.6f, 17.4f })
                 {
-                    PeopleView.DebugSetHour(hour);
+                    people.SetHour(hour);
                     for (int f = 0; f < 20; f++) people.Tick(0.1f); // settle into slots
                     long day = people.Now.day;
                     var last = new Dictionary<PegDollView, Vector3>();

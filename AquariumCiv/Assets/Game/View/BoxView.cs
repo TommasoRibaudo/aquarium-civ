@@ -100,6 +100,8 @@ namespace AquariumCiv.View
 #endif
             var src = GetComponent<IBoxLayoutSource>();
             if (src != null) src.FillLayout(layout);
+            // The planner's people replace the layout's standing ones: don't build dolls it would take down on the same frame.
+            if (src is SimLayoutSource && TryGetComponent<PeopleView>(out var pv) && pv.enabled) plannedPeople = true;
             Rebuild();
         }
 
@@ -136,12 +138,14 @@ namespace AquariumCiv.View
         /// <summary>Generated roots no box owns. DontSave objects survive a scene unload and domain reloads, parentless and
         /// sceneless, and they keep rendering: their land meshes die but the panes use the built-in cube, so every leaked root
         /// stacked four more panes on the box (81 roots = a 98 % opaque haze that hid the land and the grime, Editor only,
-        /// tester batch 3).</summary>
+        /// tester batch 3). The dolls in them go the same way: body and arm meshes die with the scene while the shared prop
+        /// meshes are DontSave, so each leaked root left its hoes, axes and red-topped baskets standing in the town with
+        /// nobody holding them (the "red discs and sticks", tester batch 3, K_b2).</summary>
         public static List<GameObject> OrphanRoots()
         {
             var list = new List<GameObject>();
             foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
-                if (t != null && t.parent == null && t.name == "Generated" && !t.gameObject.scene.IsValid() && !UnityEditor.EditorUtility.IsPersistent(t))
+                if (t != null && t.parent == null && (t.name == "Generated" || t.name == "Planned People") && !t.gameObject.scene.IsValid() && !UnityEditor.EditorUtility.IsPersistent(t))
                     list.Add(t.gameObject);
             return list;
         }
