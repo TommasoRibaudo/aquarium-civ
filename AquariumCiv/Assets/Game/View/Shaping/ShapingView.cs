@@ -55,6 +55,9 @@ namespace AquariumCiv.View
         public bool WishArmed => Tray.HasPending;
         /// <summary>The tool in the Keeper's hand (a <see cref="SimCore.NudgeKind"/>), or null: shape mode off.</summary>
         public string Tool { get; private set; }
+        /// <summary>The tool in hand came from the tray (or a wish): it spends a charge and shows the banner and Cancel. Off for
+        /// the debug panel's free shape mode and the first run's rain button.</summary>
+        public bool RealTool { get; private set; }
         public bool ShapeMode => Tool != null;
         /// <summary>Debug: place without spending a charge or minding the era lock and caps.</summary>
         public bool Free = true;
@@ -93,7 +96,7 @@ namespace AquariumCiv.View
             if (Instance != this) return;
             Instance = null;
             cam?.RemoveGate(this);
-            if (hud != null) hud.CleanModeChanged -= OnCleanMode;
+            if (hud != null) { hud.CleanModeChanged -= OnCleanMode; hud.SheetChanged -= OnSheet; }
             UiInput.Remove(IsOverUi);
             SimLayout.KeeperOverlays = false;
             // Not while the box itself is being deactivated or its scene unloads: BoxView can't reparent then, and it goes anyway.
@@ -110,9 +113,9 @@ namespace AquariumCiv.View
             var h = GameHud.Instance;
             if (h != hud)
             {
-                if (hud != null) hud.CleanModeChanged -= OnCleanMode;
+                if (hud != null) { hud.CleanModeChanged -= OnCleanMode; hud.SheetChanged -= OnSheet; }
                 hud = h;
-                if (hud != null) hud.CleanModeChanged += OnCleanMode;
+                if (hud != null) { hud.CleanModeChanged += OnCleanMode; hud.SheetChanged += OnSheet; }
             }
         }
 
@@ -126,6 +129,7 @@ namespace AquariumCiv.View
             if (kind != null && System.Array.IndexOf(SimCore.SliceTools, kind) < 0) kind = null;
             Tray.Close();
             Tool = kind;
+            RealTool = false;
             if (kind == null) return;
             if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
             var sim = Sim;
@@ -150,11 +154,40 @@ namespace AquariumCiv.View
                 return false;
             }
             Tool = Tray.Armed;
+            RealTool = true;
             return true;
         }
 
+        /// <summary>The tray's pick (#84): the tool in hand with shaping mode on, spending a charge when it lands. A tool that
+        /// can't be used says why (<see cref="ShapingTray.ReasonText"/>) and isn't picked.</summary>
+        public bool ArmTool(string kind)
+        {
+            var sim = Sim;
+            if (sim == null) return false;
+            SetTool(null);
+            if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
+            if (!Tray.Select(sim, kind))
+            {
+                Say(Tray.Feedback);
+                return false;
+            }
+            Tool = kind;
+            RealTool = true;
+            return true;
+        }
+
+        void Say(TrayFeedback f)
+        {
+            LastResult = f.text ?? "";
+            if (f.kind == TrayFeedbackKind.Failed && !string.IsNullOrEmpty(f.cue)) Sfx.Play(f.cue);
+            hud?.Toast(LastResult, 3f);
+        }
+
+        /// <summary>Put the tool in hand down (the banner's Cancel). Nothing is spent; a wish stays open.</summary>
+        public void CancelTool() => SetTool(null);
+
         /// <summary>Put the wish's tool down. Nothing is spent; the wish stays open.</summary>
-        public void CancelWish() => SetTool(null);
+        public void CancelWish() => CancelTool();
 
         void ConfirmWish()
         {
@@ -176,17 +209,27 @@ namespace AquariumCiv.View
             var sim = Sim;
             kind ??= Tool;
             if (sim == null || kind == null) return LastResult = "no sim or no tool";
-            if (free ?? Free)
+            bool isFree = free ?? (Free && !RealTool);
+            if (isFree)
             {
                 var n = show.DebugPlace(sim, kind, x, z);
                 LastResult = n == null ? "no such tool" : $"{kind} #{n.id} at ({x:0.00}, {z:0.00})";
+            }
+            else if (RealTool && kind == Tool && Tray.Mode == TrayMode.Armed)
+            {
+                // The tray's tool: the tray places it, says what happened, and the tool leaves the hand.
+                var r = Tray.PlaceAt(sim, show, x, z);
+                Say(Tray.Feedback);
+                SetTool(null);
+                if (r.Ok) Changed();
+                return LastResult;
             }
             else
             {
                 var r = show.Place(sim, kind, x, z);
                 if (!r.Ok)
                 {
-                    LastResult = FailText(sim, kind, r.fail);
+                    LastResult = FailText(kind, r.fail);
                     Sfx.Play(ShapingShow.FailCue); // soft: "not now", the text says why
                     hud?.Toast(LastResult, 3f);
                     return LastResult;
@@ -197,14 +240,17 @@ namespace AquariumCiv.View
             return LastResult;
         }
 
-        static string FailText(SimCore sim, string kind, SimCore.ShapeFail f) => sim.ShapeFailLine(kind, f);
+        static string FailText(string kind, SimCore.ShapeFail f) => ShapingTray.ReasonText(kind, f);
 
         /// <summary>Take a shaping back (the chip). False once the people have used it.</summary>
         public bool TakeBack(int nudgeId)
         {
             var sim = Sim;
-            if (sim == null || !show.TakeBack(sim, nudgeId)) return false;
+            if (sim == null) return false;
+            bool ok = Tray.TakeBack(sim, show, nudgeId);
+            if (!ok) { Say(Tray.Feedback); return false; }
             LastResult = $"took back #{nudgeId}";
+            hud?.Toast(Tray.Feedback.text, 3f);
             Changed();
             return true;
         }
@@ -244,9 +290,12 @@ namespace AquariumCiv.View
 
         // ================================================================== the camera gate and the tap
 
-        bool Usable()
+        bool Usable() => ShapeMode && UiUsable();
+
+        /// <summary>The world is free for the shaping UI (the Take back chips, the tool): no sheet, clean mode, photo mode, moment or replay.</summary>
+        bool UiUsable()
         {
-            if (!ShapeMode || box == null || Sim == null) return false;
+            if (box == null || Sim == null) return false;
             if (hud != null && (hud.CleanMode || hud.SheetOpen || hud.ToolsHidden || hud.CameraMode)) return false;
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return false;
@@ -257,9 +306,9 @@ namespace AquariumCiv.View
         /// <summary>In shape mode a one-finger press on the ground is the tool's (not on the UI, not in clean mode).</summary>
         public bool ClaimsPress(Vector2 screenPos) => Usable() && !UiInput.Over(screenPos) && GroundPoint(screenPos, out _, out _);
 
-        bool pressDown, pressOk, pressDrag;
+        bool pressDown, pressOk, pressDrag, pressStroke;
         int pressChip;
-        Vector2 pressPos;
+        Vector2 pressPos, lastPos;
         float pressTime;
 
         static int ReadPointers(out Vector2 a)
@@ -283,30 +332,45 @@ namespace AquariumCiv.View
             return m.leftButton.isPressed ? 1 : (m.rightButton.isPressed || m.middleButton.isPressed) ? 2 : 0;
         }
 
+        /// <summary>The tray's tool is a stroke tool (rain rubbed, channel dragged, herd flicked): a drag ends in one point, where the
+        /// finger lifts. The grove, and the debug mode's tools, are taps only.</summary>
+        bool StrokeTool => RealTool && !WishArmed && Tool != null && ShapingTray.GestureOf(Tool) != ToolGesture.Tap;
+
+        /// <summary>Two seconds of rubbing or dragging is still one gesture.</summary>
+        const float StrokeMaxSeconds = 6f;
+
         void HandleInput()
         {
             int n = ReadPointers(out var a);
             float now = Time.unscaledTime;
+            if (RealTool) Tray.RouteFingers(n); // two fingers hand the gesture to the camera
             if (n == 0)
             {
                 bool tap = pressDown && now - pressTime <= TapMaxSeconds;
+                bool stroke = pressDown && pressStroke && now - pressTime <= StrokeMaxSeconds;
+                bool tool = !RealTool || Tray.EndGesture();
                 if (tap && pressChip > 0) TakeBack(pressChip); // the chip's own click may have done it already: then this is a no-op
                 else if (tap && pressOk && WishArmed) ConfirmWish();
-                else if (tap && pressOk && GroundPoint(pressPos, out float x, out float z)) PlaceAt(x, z);
-                pressDown = pressDrag = false;
+                else if (pressOk && tool && (tap || stroke) && GroundPoint(stroke ? lastPos : pressPos, out float x, out float z)) PlaceAt(x, z);
+                pressDown = pressDrag = pressStroke = false;
                 return;
             }
             if (!pressDown)
             {
-                pressDown = true; pressPos = a; pressTime = now;
+                pressDown = true; pressPos = lastPos = a; pressTime = now;
                 pressChip = n == 1 ? ChipAt(a) : 0;
                 pressOk = n == 1 && pressChip == 0 && ClaimsPress(a);
+                if (pressOk && RealTool) Tray.BeginGesture();
                 return;
             }
+            if (n == 1) lastPos = a;
             if (n >= 2 || (a - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height))
             {
+                bool stroke = pressOk && n == 1 && StrokeTool;
                 pressDrag = (pressDrag || pressOk) && n == 1 && WishArmed; // a wish's spot follows the finger
-                pressOk = false; pressChip = 0;
+                if (stroke) pressStroke = true;
+                else pressOk = false;
+                pressChip = 0;
             }
             if (pressDrag && GroundPoint(a, out float dx, out float dz)) Tray.MovePending(dx, dz);
         }
@@ -645,9 +709,9 @@ namespace AquariumCiv.View
         {
             if (uiRoot == null) return;
             bool noUi = hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible);
-            bool armed = !noUi && WishArmed;
+            bool armed = !noUi && RealTool && Tool != null;
             wishBar.style.display = armed ? DisplayStyle.Flex : DisplayStyle.None;
-            bool spot = armed && Anchor(wishSpot, Tray.PendingX, Tray.PendingZ, 0.1f);
+            bool spot = armed && WishArmed && Anchor(wishSpot, Tray.PendingX, Tray.PendingZ, 0.1f);
             wishSpot.style.display = spot ? DisplayStyle.Flex : DisplayStyle.None;
             if (armed)
             {
@@ -655,6 +719,7 @@ namespace AquariumCiv.View
                 if (wishBanner.text != banner) wishBanner.text = banner;
                 wishBar.style.bottom = GameUiPanel.PromptBottom + GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w;
             }
+            RefreshTray(sim, false);
             var a = show.Answer;
             bool label = !noUi && a.active && a.labelAlpha > 0.01f && Anchor(labelEl, a.x, a.z, 0.35f);
             labelEl.style.display = label ? DisplayStyle.Flex : DisplayStyle.None;
@@ -664,7 +729,7 @@ namespace AquariumCiv.View
             if (bubble) { bubbleEl.text = a.bubble; bubbleEl.style.opacity = a.bubbleAlpha; }
 
             int k = 0;
-            if (!noUi && Usable())
+            if (!noUi && UiUsable())
                 for (int i = show.Entries.Count - 1; i >= 0 && k < MaxChips; i--)
                 {
                     var e = show.Entries[i];
@@ -676,6 +741,107 @@ namespace AquariumCiv.View
                     k++;
                 }
             for (; k < MaxChips; k++) { chipEls[k].style.display = DisplayStyle.None; chipIds[k] = 0; }
+        }
+
+        // ================================================================== the tray's sheet (#84)
+        // Plain #36 look: every element carries a class from Game.uss (tray-*, tool*), and a name the tests and the tester find
+        // (shaping-charges, shaping-tool-<kind>, shaping-tray-takeback-<id>). The model is ShapingTray; this only draws it.
+
+        string traySig = "";
+
+        void OnSheet(string id)
+        {
+            var sim = Sim;
+            if (id == GameHud.Shaping && sim != null) { Tray.Open(); RefreshTray(sim, true); }
+        }
+
+        void RefreshTray(SimCore sim, bool force)
+        {
+            if (hud == null || hud.ShapingBody == null || hud.OpenSheet != GameHud.Shaping) return;
+            var charges = Tray.Charges(sim);
+            var sig = new System.Text.StringBuilder();
+            sig.Append(charges.text).Append(charges.refill.ToString("0.00")).Append(sim.State.era);
+            foreach (var t in Tray.Tools(sim)) sig.Append(t.kind).Append(t.fail).Append(t.standing).Append(t.name);
+            foreach (var i in Tray.TakeBackList(sim)) sig.Append('#').Append(i.nudgeId);
+            if (!force && sig.ToString() == traySig) return;
+            traySig = sig.ToString();
+            var body = hud.ShapingBody;
+            body.Clear();
+
+            var row = new VisualElement { name = "shaping-charges" };
+            row.AddToClassList("tray-charges");
+            row.Add(TrayLabel("Charges", "tray-charges-label"));
+            var pips = new VisualElement { name = "shaping-pips" };
+            pips.AddToClassList("tray-pips");
+            for (int i = 0; i < charges.max; i++)
+            {
+                var pip = new VisualElement();
+                pip.AddToClassList("tray-pip");
+                if (i < charges.whole) pip.AddToClassList("tray-pip--on");
+                else if (i == charges.whole && !charges.full)
+                {
+                    var fill = new VisualElement { name = "shaping-refill" };
+                    fill.AddToClassList("tray-pip-fill");
+                    fill.style.width = Length.Percent(Mathf.Clamp01(charges.refill) * 100f);
+                    pip.Add(fill);
+                }
+                pips.Add(pip);
+            }
+            row.Add(pips);
+            var ct = TrayLabel(charges.text, "tray-charges-text");
+            ct.name = "shaping-charges-text";
+            row.Add(ct);
+            body.Add(row);
+            if (!charges.full && charges.whole < charges.max)
+                body.Add(TrayLabel("The next one comes back as the people are happy, or when you clean the glass.", "sheet-note"));
+
+            body.Add(TrayLabel("Gifts", "tray-head"));
+            var tools = new VisualElement { name = "shaping-tools" };
+            tools.AddToClassList("tools");
+            foreach (var t in Tray.Tools(sim))
+            {
+                string kind = t.kind;
+                var b = new Button(() => OnToolButton(kind)) { name = "shaping-tool-" + kind };
+                b.AddToClassList("tool");
+                if (!t.enabled) b.AddToClassList("tool--off");
+                if (t.armed) b.AddToClassList("tool--armed");
+                b.Add(TrayLabel(Cap(t.name), "tool-name"));
+                b.Add(TrayLabel($"Level {t.level}  ·  {t.standing} of {t.cap}", "tool-level"));
+                if (!t.enabled) b.Add(TrayLabel(t.reason, "tool-reason"));
+                tools.Add(b);
+            }
+            body.Add(tools);
+
+            body.Add(TrayLabel("Landscaping", "tray-head"));
+            body.Add(TrayLabel("Hill and hollow come later.", "sheet-note"));
+
+            body.Add(TrayLabel("Take back", "tray-head"));
+            var list = Tray.TakeBackList(sim);
+            if (list.Count == 0) body.Add(TrayLabel("Nothing waiting. A gift can be taken back until the people use it.", "sheet-note"));
+            foreach (var item in list)
+            {
+                int id = item.nudgeId;
+                var b = new Button(() => { TakeBack(id); traySig = ""; }) { name = "shaping-tray-takeback-" + id, text = item.label };
+                b.AddToClassList("tray-takeback");
+                body.Add(b);
+            }
+        }
+
+        static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
+
+        static Label TrayLabel(string text, string cls)
+        {
+            var l = new Label(text) { pickingMode = PickingMode.Ignore };
+            l.AddToClassList(cls);
+            return l;
+        }
+
+        /// <summary>A tool button: picks the tool and closes the sheet so the world is free for the finger; a greyed tool says why.</summary>
+        void OnToolButton(string kind)
+        {
+            Sfx.Play(CueLibrary.UiTap);
+            if (ArmTool(kind)) hud?.CloseSheet();
+            else traySig = "";
         }
 
         // ================================================================== one shaping's objects

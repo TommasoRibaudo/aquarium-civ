@@ -134,9 +134,9 @@ namespace AquariumCiv.View.Shaping
         /// <summary>The banner line while the tool is in hand: what the finger does.</summary>
         public static string GestureHint(string kind) => GestureOf(kind) switch
         {
-            ToolGesture.Rub => "Rub the sky over the land you want wet",
-            ToolGesture.Drag => "Drag from the water to where the channel should run",
-            ToolGesture.FlickFromEdge => "Flick in from the edge to send them",
+            ToolGesture.Rub => "Rub the sky, or tap, where the rain should fall",
+            ToolGesture.Drag => "Drag to where the channel should end",
+            ToolGesture.FlickFromEdge => "Flick them onto the land",
             _ => "Tap the ground where it should grow",
         };
 
