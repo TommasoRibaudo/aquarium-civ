@@ -17,7 +17,7 @@ namespace AquariumCiv.View
     ///
     /// A low <see cref="GlassSheet"/> on the bottom edge, its height the content's. The box at that year leads, so the HUD leaves
     /// (<see cref="GameHud.SetOutsideSheet"/>) and the only year on screen is the tag on the playhead. Under the timeline, a story's
-    /// caption sits in the panel, and its controls take the play row's place while the replay is paused; while it plays the row stays,
+    /// caption sits in the panel, and its controls take the play row's place when the player stopped on it; otherwise the row stays,
     /// so a caption the playhead crossed never takes Pause away. Words come in the shared toast, which rides above the panel.
     /// Colours, sizes and fonts are in Resources/GameUI/TimeLapse.uss; the code sets only what depends on data (x and width of bands and
     /// markers, the playhead, the caption's lines).
@@ -372,7 +372,7 @@ namespace AquariumCiv.View
             bar.style.display = model.HasHistory ? DisplayStyle.Flex : DisplayStyle.None;
             var cap = model.Caption;
             captionCard.style.display = cap != null ? DisplayStyle.Flex : DisplayStyle.None;
-            bool capControls = cap != null && !model.Playing;
+            bool capControls = cap != null && cap.secondsLeft < 0f; // a story the player stopped on; one the playhead crossed goes by itself
             capRow.style.display = capControls ? DisplayStyle.Flex : DisplayStyle.None;
             controls.style.display = capControls ? DisplayStyle.None : DisplayStyle.Flex;
             if (cap != null)
