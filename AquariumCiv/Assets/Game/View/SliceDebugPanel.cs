@@ -153,6 +153,8 @@ namespace AquariumCiv.View
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Clear said")) last = ShowMeDirector.DebugClearSaid();
             if (GUILayout.Button("Clean hint")) last = CareView.DebugCleanHint();
+            if (GUILayout.Button("Wind")) last = WindView.DebugNext();
+            if (GUILayout.Button("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
             if (GUILayout.Button("Stalls")) last = StallProps.DebugStock();
             if (GUILayout.Button("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
             if (GUILayout.Button("Drop crumb")) last = GlassVoice.DebugDropCrumb();

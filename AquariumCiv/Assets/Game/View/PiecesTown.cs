@@ -97,7 +97,7 @@ namespace AquariumCiv.View
         // ---------------- mills ----------------
         /// <summary>The town's tower mill: a tapering stone tower with a timber gallery, a turning cap and four big
         /// lattice sails (the village's post mill is plaster and smaller): the tallest silhouette in the box.</summary>
-        public static void TowerMill(MeshBuilder mb, Vector3 at, float yaw, float lampPhase)
+        public static void TowerMill(MeshBuilder mb, Vector3 at, float yaw, float lampPhase, bool sails = true)
         {
             const float h = 0.66f;
             mb.Prism(at, 0.16f, 0.105f, h, 8, Palette.Stone, topCol: Palette.Stone);
@@ -116,9 +116,15 @@ namespace AquariumCiv.View
             LampBox(mb, at + new Vector3(0, 0.5f, -0.125f), new Vector3(0.04f, 0.045f, 0.02f), lampPhase + 0.3f);
             var hub = at + new Vector3(0, h + 0.03f, -0.15f);
             mb.Box(hub, new Vector3(0.045f, 0.045f, 0.06f), Palette.Timber);
+            if (sails) TowerSails(mb, hub, yaw * 0.13f);
+        }
+
+        /// <summary>The tower mill's four big lattice sails about <paramref name="hub"/>.</summary>
+        public static void TowerSails(MeshBuilder mb, Vector3 hub, float turn)
+        {
             for (int k = 0; k < 4; k++)
             {
-                var r = Quaternion.Euler(0, 0, 30f + k * 90f + yaw * 0.13f);
+                var r = Quaternion.Euler(0, 0, 30f + k * 90f + turn);
                 mb.Box(hub + r * new Vector3(0, 0.26f, 0) - new Vector3(0, 0, 0.03f), new Vector3(0.018f, 0.52f, 0.012f), Palette.Timber, r);
                 mb.Box(hub + r * new Vector3(0.045f, 0.3f, 0) - new Vector3(0, 0, 0.034f), new Vector3(0.075f, 0.4f, 0.005f), Palette.Canvas, r);
                 for (int b = 1; b <= 3; b++) // lattice bars over the canvas

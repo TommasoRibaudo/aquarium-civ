@@ -58,8 +58,8 @@ namespace AquariumCiv.View
                     break;
                 case PieceKind.Windmill:
                     if (camp) Granary(mb, Vector3.zero);
-                    else if (town) TowerMill(mb, Vector3.zero, p.seed * 37f, Phase(p.seed));
-                    else Windmill(mb, Vector3.zero, p.seed * 37f, Palette.Plaster, false, Phase(p.seed));
+                    else if (town) TowerMill(mb, Vector3.zero, p.seed * 37f, Phase(p.seed), !LiveSails);
+                    else Windmill(mb, Vector3.zero, p.seed * 37f, Palette.Plaster, false, Phase(p.seed), !LiveSails);
                     break;
                 case PieceKind.Lumbermill:
                     if (camp) { Woodpile(mb, new Vector3(0, 0, -d * 0.1f), 20f); Log(mb, new Vector3(w * 0.2f, 0.03f, d * 0.2f), 0.035f, 0.3f, 70f, Palette.Bark); }
@@ -735,7 +735,13 @@ namespace AquariumCiv.View
                 mb.Box(at + new Vector3(0, h + rh / 2f, s * half / 2f), new Vector3(w + 0.1f, 0.03f, slope), roof, Quaternion.Euler(s * ang, 0, 0), true);
         }
 
-        public static void Windmill(MeshBuilder mb, Vector3 at, float yaw, Color body, bool stone, float lampPhase)
+        /// <summary>#202: the live box turns its sails by itself (<see cref="WindView"/>), so its chunks leave them out. Set round a chunk build only: everyone else (the
+        /// shelf, the kit shots) gets the whole mill.</summary>
+        [System.ThreadStatic] public static bool LiveSails;
+        /// <summary>Where the sails hang on each mill, from its foot (the mill's own axes).</summary>
+        public static readonly Vector3 WindmillHub = new(0f, 0.54f, -0.13f), TowerHub = new(0f, 0.69f, -0.15f);
+
+        public static void Windmill(MeshBuilder mb, Vector3 at, float yaw, Color body, bool stone, float lampPhase, bool sails = true)
         {
             float h = 0.56f;
             mb.Prism(at, 0.13f, 0.085f, h, 8, body, topCol: body);
@@ -746,9 +752,15 @@ namespace AquariumCiv.View
             mb.emission = 0f; mb.lamp = -1f;
             var hub = at + new Vector3(0, h - 0.02f, -0.13f);
             mb.Box(hub, new Vector3(0.04f, 0.04f, 0.05f), Palette.Timber);
+            if (sails) WindmillSails(mb, hub, yaw * 0.13f);
+        }
+
+        /// <summary>The post mill's four sails about <paramref name="hub"/>.</summary>
+        public static void WindmillSails(MeshBuilder mb, Vector3 hub, float turn)
+        {
             for (int k = 0; k < 4; k++)
             {
-                var r = Quaternion.Euler(0, 0, 45f + k * 90f + yaw * 0.13f);
+                var r = Quaternion.Euler(0, 0, 45f + k * 90f + turn);
                 mb.Box(hub + r * new Vector3(0, 0.2f, 0) - new Vector3(0, 0, 0.02f), new Vector3(0.016f, 0.4f, 0.01f), Palette.Timber, r);
                 mb.Box(hub + r * new Vector3(0.035f, 0.23f, 0) - new Vector3(0, 0, 0.024f), new Vector3(0.06f, 0.3f, 0.005f), Palette.Canvas, r);
             }

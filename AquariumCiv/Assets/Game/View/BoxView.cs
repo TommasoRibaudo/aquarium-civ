@@ -93,8 +93,12 @@ namespace AquariumCiv.View
         /// <summary>The style kit's shared solid material (the one every generated mesh and doll uses).</summary>
         public Material SolidMaterial => Solid;
 
+        /// <summary>#202: sails are <see cref="WindView"/>'s in play. Read here, on the main thread: chunks build on workers.</summary>
+        bool sailsApart;
+
         void OnEnable()
         {
+            sailsApart = Application.isPlaying && WindView.AutoCreate;
 #if UNITY_EDITOR
             SweepOrphans();
 #endif
@@ -369,6 +373,19 @@ namespace AquariumCiv.View
             r.sharedMaterial = mat;
             r.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
             return go;
+        }
+
+        /// <summary>Is anything solid of the box (a roof, a wall, a tree, a rise of the land) on the straight line between two world points, short of its
+        /// end? The real meshes, so what it says is what the camera sees.</summary>
+        public bool Blocked(Vector3 from, Vector3 to)
+        {
+            var d = to - from;
+            float len = d.magnitude;
+            if (len < 1e-4f) return false;
+            var ray = new Ray(from, d / len);
+            foreach (var c in chunkColliders)
+                if (c != null && c.sharedMesh != null && c.Raycast(ray, out _, len)) return true;
+            return false;
         }
 
         MeshCollider AoCollider(string name, Mesh mesh)
@@ -1005,7 +1022,9 @@ namespace AquariumCiv.View
             var lb = MeshBuilder.Rent(p.seed * 7919 + (int)p.era * 31 + seed);
             float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
             lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one * Mathf.Max(0.02f, p.grow));
+            Pieces.LiveSails = sailsApart; // #202: this may be a worker thread
             Pieces.Draw(lb, p, LotGround(lb));
+            Pieces.LiveSails = false;
             mb.AppendFree(lb);
         }
 
