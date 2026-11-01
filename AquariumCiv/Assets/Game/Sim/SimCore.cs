@@ -416,6 +416,7 @@ namespace AquariumCiv.Sim
             }
             int slot = Enumerable.Range(0, Config.buildingSlots).First(i => !used.Contains(i));
             var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
+            b.builderId = PickBuilder(b.id);
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type))
             {

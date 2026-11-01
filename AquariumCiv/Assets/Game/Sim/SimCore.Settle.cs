@@ -59,6 +59,7 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             var b = new Building { id = s.NextId(), type = type, slot = -1, foundedMonth = s.month };
+            b.builderId = PickBuilder(b.id);
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type)) s.foundedTypes.Add(type);
             Settlement?.PlacePending();
