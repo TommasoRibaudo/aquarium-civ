@@ -225,10 +225,10 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(8);
             yield return Cap("3.4-tray-tools", hud.OpenSheet == GameHud.Shaping, hud.Root.Q<Label>("shaping-charges-text")?.text);
             var ch = hud.Root.Q("shaping-tool-" + K.Channel);
-            yield return Cap("3.4-tray-locked", ch != null && ch.ClassListContains("tool--off"), ch?.Q<Label>(className: "tool-reason")?.text);
+            yield return Cap("3.4-tray-locked", ch != null && ch.ClassListContains("kg-tile--off"), hud.Root.Q<Label>("shaping-tray-note")?.text);
             Sim.State.shapingCharges = 0f;
             yield return Frames(8);
-            yield return Cap("3.4-tray-empty", hud.Root.Q("shaping-tool-" + K.Rain).ClassListContains("tool--off"));
+            yield return Cap("3.4-tray-empty", hud.Root.Q("shaping-tool-" + K.Rain).ClassListContains("kg-tile--off"));
             Sim.DebugRefillShaping();
             hud.CloseSheet();
             yield return Frames(4);
@@ -240,8 +240,10 @@ namespace AquariumCiv.View.PlayTests
             Sim.State.shapingCharges = 0f;
             yield return TapAt(Sv.ScreenOf(x, z));
             yield return Frames(4);
-            yield return Cap("3.4-shapingmode-refused", Sv.ShapeMode, Sv.LastResult);
             Sim.DebugRefillShaping();
+            ShapingView.DebugRefused();
+            yield return Frames(6);
+            yield return Cap("3.4-shapingmode-refused", Sv.ShapeMode && !Sv.FootprintValid, Sv.LastResult);
             yield return Frames(90);
             Sv.CancelTool();
             yield return Frames(4);
@@ -265,7 +267,9 @@ namespace AquariumCiv.View.PlayTests
             yield return Cap("3.2-takeback-visible", Shown(chip));
             hud.Open(GameHud.Shaping);
             yield return Frames(8);
-            yield return Cap("3.4-tray-capped", hud.Root.Q("shaping-tool-" + K.Rain).ClassListContains("tool--off"), hud.Root.Q("shaping-tool-" + K.Rain).Q<Label>(className: "tool-reason")?.text);
+            yield return Cap("3.4-tray-capped", hud.Root.Q("shaping-tool-" + K.Rain).ClassListContains("kg-tile--off"), hud.Root.Q<Label>("shaping-tray-note")?.text);
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root.Q("shaping-takeback-open")));
+            yield return Frames(8);
             yield return Cap("3.4-tray-takeback-list", hud.Root.Query<Button>(className: "tray-takeback").First() != null);
             hud.CloseSheet();
             yield return Frames(4);
@@ -587,7 +591,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.8f);
             yield return Frames(20);
             yield return Cap("3.6-watch-ready", Shown(ui.Q("moment-watch")), mp.Glance);
-            Hud.Toast("Tap the ground to place the Grove. Two fingers move the camera.", 2f);
+            Hud.Toast("Tap the ground to place the grove.", 2f);
             yield return Frames(4);
             yield return Cap("3.6-watch-with-toast", Shown(ui.Q("moment-watch")) && Shown(Hud.Root.Q("hud-toast")));
             yield return new WaitForSecondsRealtime(2.2f);

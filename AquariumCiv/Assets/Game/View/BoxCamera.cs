@@ -75,6 +75,10 @@ namespace AquariumCiv.View
         /// <summary>True while a press is owned by a gate (a tool) and the camera ignores it.</summary>
         public bool PressClaimed => pressClaimed;
 
+        /// <summary>A one-finger press doesn't start orbiting before this <c>Time.unscaledTime</c>: a tool that tells a flick from a drag
+        /// by its speed (the herd, #145) gets that long to see which it is, and a drag then orbits from where the finger is.</summary>
+        public float HoldOrbitUntil { get; set; }
+
         /// <summary>True from the moment a press has moved past the slop (or a second finger came down) until all fingers lift:
         /// selection should ignore the release as a tap.</summary>
         public bool GestureMoved => moved;
@@ -419,7 +423,7 @@ namespace AquariumCiv.View
             }
             if (!orbiting)
             {
-                if (!BoxCameraMath.PastSlop(pos - pressPos, H)) return;
+                if (!BoxCameraMath.PastSlop(pos - pressPos, H) || now < HoldOrbitUntil) return;
                 orbiting = moved = true; lastPos = pos; // the slop itself is swallowed: no jump when it is crossed
                 return;
             }

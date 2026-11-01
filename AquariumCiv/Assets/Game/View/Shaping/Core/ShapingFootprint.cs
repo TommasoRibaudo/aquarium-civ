@@ -49,6 +49,9 @@ namespace AquariumCiv.View.Shaping
         // the take-back
         public const float LeaveSeconds = 1.2f, HerdLeaveSeconds = 1.6f;
 
+        /// <summary>The Take back chip goes this many real seconds after the placing (#149), fading over the last <see cref="ChipFadeSeconds"/>.</summary>
+        public const float ChipSeconds = 20f, ChipFadeSeconds = 4f;
+
         // the answer
         public const float HighlightIn = 0.4f, HighlightHold = 6f, HighlightOut = 1f;
         public const float BubbleDelay = 1f, BubbleMin = 4f, BubbleMax = 9f, BubbleCharsPerSecond = 15f, FadeSeconds = 0.5f;
@@ -109,6 +112,38 @@ namespace AquariumCiv.View.Shaping
                 case SimCore.NudgeKind.Herd: f.HerdSpots(map); break;
             }
             return f;
+        }
+
+        /// <summary>How wide the tool's mark on the ground is drawn while it's in hand (box units).</summary>
+        public static float PreviewRadius(string kind) => kind switch
+        {
+            SimCore.NudgeKind.Rain => ShapingTuning.RainCellRadius,
+            SimCore.NudgeKind.Grove => ShapingTuning.GroveRadius,
+            SimCore.NudgeKind.Herd => ShapingTuning.GrazeRadius,
+            _ => 0.25f,
+        };
+
+        /// <summary>Why this ground won't take the tool, in the player's words (question 16), or empty when it will. Only what the gift
+        /// itself would waste: the charge and cap reasons are the sim's. No map, no opinion.</summary>
+        public static string GroundReason(SiteMap map, string kind, float x, float z)
+        {
+            if (map == null) return "";
+            int own = SiteMap.CellAt(x, z);
+            bool wet = own >= 0 && map.Water(own);
+            switch (kind)
+            {
+                case SimCore.NudgeKind.Rain:
+                    foreach (int c in Disc(x, z, ShapingTuning.RainCellRadius)) if (!map.Water(c)) return "";
+                    return "That's all water. Try over the land";
+                case SimCore.NudgeKind.Grove:
+                    if (wet) return "Trees won't root in the water";
+                    foreach (int c in Disc(x, z, ShapingTuning.GroveRadius)) if (!map.Water(c) && map.lot[c] == 0) return "";
+                    return "No room for trees here";
+                case SimCore.NudgeKind.Channel:
+                    return wet ? "A channel needs dry land to run through" : "";
+                default:
+                    return "";
+            }
         }
 
         void RainCells(SiteMap map)

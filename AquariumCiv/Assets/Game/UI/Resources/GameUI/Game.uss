@@ -150,49 +150,6 @@ Label { white-space: normal; }
 .sheet-btn:hover { background-color: var(--canvas); }
 .sheet-btn:active { background-color: #D4C39F; }
 
-/* the shaping tray's tool slots */
-.tools { flex-direction: row; flex-wrap: wrap; margin-bottom: 8px; }
-.tool {
-    width: 470px; min-height: 200px; margin: 0 20px 20px 0; padding: 20px 28px;
-    border-width: 0; border-radius: 40px; align-items: flex-start; justify-content: center;
-    background-color: var(--canvas); color: var(--timber);
-}
-.tool:hover { background-color: var(--canvas); }
-.tool:active { scale: 0.97 0.97; }
-.tool-name { font-size: 44px; -unity-font-style: bold; color: var(--timber); }
-.tool-level { font-size: 28px; color: var(--old-ink-soft); margin-top: 2px; }
-.tool-reason { font-size: 28px; color: var(--old-ink-soft); -unity-font-style: italic; white-space: normal; margin-top: 8px; }
-.tool--off { opacity: 0.5; }
-.tool--armed { border-width: 4px; border-color: var(--timber); }
-
-/* the shaping tray (#84): charges, gifts, take back. Plain; the UI rework restyles these classes */
-.tray-head { font-size: 34px; -unity-font-style: bold; color: var(--timber); margin: 20px 0 10px 0; }
-.tray-charges { flex-direction: row; align-items: center; min-height: 100px; }
-.tray-charges-label { font-size: 38px; color: var(--timber); margin-right: 24px; }
-.tray-charges-text { font-size: 34px; color: var(--old-ink-soft); margin-left: 24px; }
-.tray-pips { flex-direction: row; align-items: center; }
-.tray-pip { width: 64px; height: 64px; margin-right: 14px; border-radius: 32px; overflow: hidden; background-color: rgba(106, 75, 54, 0.18); }
-.tray-pip--on { background-color: var(--timber); }
-.tray-pip-fill { height: 100%; background-color: rgba(106, 75, 54, 0.55); }
-.tray-takeback {
-    height: 130px; margin: 0 0 14px 0; padding: 0 36px; border-width: 0; border-radius: 65px;
-    background-color: var(--canvas); color: var(--timber); font-size: 36px; -unity-font-style: bold; -unity-text-align: middle-left;
-}
-
 /* still used by the first-year card, until #169 */
 .pc-label { font-size: 28px; color: var(--old-ink-soft); -unity-font-style: bold; margin-bottom: 8px; }
 
-/* a wish's tool in hand: the banner and Cancel in the prompts' lane, a pin on the spot. #84 skins this */
-.wish-bar {
-    position: absolute; left: 40px; right: 40px; flex-direction: row; align-items: center;
-    padding: 12px 12px 12px 36px; border-radius: 84px; background-color: rgba(46, 42, 39, 0.82);
-}
-.wish-banner { white-space: normal; flex-shrink: 1; flex-grow: 1; color: var(--plaster); font-size: 32px; -unity-font-style: bold; margin-right: 16px; }
-.wish-cancel { min-width: 200px; height: 144px; }
-.wish-spot {
-    position: absolute; padding: 8px 26px; border-radius: 30px;
-    background-color: var(--thatch); color: var(--frame);
-    border-width: 4px; border-color: var(--frame);
-    font-size: 30px; -unity-font-style: bold; -unity-text-align: middle-center;
-}
-.tray .sheet-note { white-space: normal; }

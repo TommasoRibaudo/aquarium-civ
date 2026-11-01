@@ -5,7 +5,7 @@ using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
-    public enum HintGesture { None, Wipe, Flick, Tap, Rub }
+    public enum HintGesture { None, Wipe, Flick, Tap }
     public enum HintAnchor { None, Glass, Patch, Plate, ShapingButton, RainSpot }
     /// <summary>One-off moments the view stages (a child's smiley in the mist).</summary>
     public enum FirstRunCue { None, ChildSmiley }
@@ -14,7 +14,7 @@ namespace AquariumCiv.Sim
     public struct FirstRunHint
     {
         public bool visible;
-        public string id;              // stable, for telemetry and tests ("wipe", "patch", "name", "rain-tap", "rain-rub")
+        public string id;              // stable, for telemetry and tests ("wipe", "patch", "name", "rain-tap", "rain-tap-spot")
         public string text;            // at most 3 words
         public HintGesture gesture;
         public HintAnchor anchor;
@@ -202,7 +202,7 @@ namespace AquariumCiv.Sim
             _ => default,
         };
 
-        /// <summary>The player opened the shaping tray: the rain hint moves on to "rub a spot" and shows at once.</summary>
+        /// <summary>The player opened the shaping tray: the rain hint moves on to "tap a spot" and shows at once.</summary>
         public void NoteTrayOpened()
         {
             if (!F.active || Step != FirstRunStep.Rain || F.hintSubstep) return;

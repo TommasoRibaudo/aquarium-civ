@@ -279,7 +279,7 @@ then the person picks up where they left off.
 | **Wipes** grime off the glass | People under the clearing patch stop and **look up** (whole-body lean back), shade their eyes; at a full clean, everyone **cheers** (a jump) and someone says "Look at that sky!" |
 | **Flicks trash** away | Those nearby clap (a quick double bob); kids run to where it vanished |
 | **Prunes** a vine off a roof | The family steps out of the door and waves |
-| **Rains** (rub) | People stop, look up, hold their hands out; some run under the eaves with baskets over their heads; **kids splash**; later the gatherers or farmers walk over (the tool's "who reacts", research 10) |
+| **Rains** (tap) | People stop, look up, hold their hands out; some run under the eaves with baskets over their heads; **kids splash**; later the gatherers or farmers walk over (the tool's "who reacts", research 10) |
 | **Other shapings** (grove, herd, channel, lamp, hill, outcrop, spring, dye meadow, decorate) | The nearest look and **point**; a few walk over to look (that doesn't count as "used", research 10); then the tool's job or role arrives (the chief leads the hunt, the captain lights the night round from the lamp) |
 | **Holds a finger on clean glass** (Choice 8) | People under it look up; kids run to stand under it, point and jump; they scatter when you lift |
 | **Taps a person** | They stop, look up and wave; the one-line job report shows ("Ivo Lund is taking logs to the woodpile") |

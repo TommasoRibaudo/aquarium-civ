@@ -226,6 +226,57 @@ namespace AquariumCiv.View
             return r;
         }
 
+        /// <summary>The tool's mark on the ground (spec §3): a pale disc, a dark ring and paper dashes on valid ground; on ground that won't
+        /// take it, no dashes at all but a solid red ring and a cross (question 34). <paramref name="ground"/> gives the ground under a
+        /// box point, so the mark lies on the land.</summary>
+        public static void Footprint(FxMesh fx, System.Func<float, float, Vector3> ground, float x, float z, float r, bool valid)
+        {
+            const int Sides = 48, Dashes = 16;
+            const float Lift = 0.022f;
+            var ink = new Color(0.239f, 0.165f, 0.118f, 0.9f);
+            var paper = new Color(0.953f, 0.914f, 0.839f, 1f);
+            var red = new Color(0.62f, 0.24f, 0.13f, 1f);
+            Vector3 P(float a, float rr) => ground(x + Mathf.Cos(a) * rr, z + Mathf.Sin(a) * rr) + Vector3.up * Lift;
+            void Band(float r0, float r1, Color col, int every = 1)
+            {
+                for (int i = 0; i < Sides; i++)
+                {
+                    if (every > 1 && i % every >= every - 1) continue; // the gap between two dashes
+                    float a0 = i * Mathf.PI * 2f / Sides, a1 = (i + 1) * Mathf.PI * 2f / Sides;
+                    fx.Quad(P(a0, r0), P(a1, r0), P(a1, r1), P(a0, r1), col);
+                }
+            }
+            var fill = valid ? paper : red;
+            fill.a = valid ? 0.3f : 0.34f;
+            Band(0f, r, fill);
+            float w = Mathf.Max(0.03f, r * 0.09f);
+            if (valid)
+            {
+                Band(r - w, r + w * 1.4f, ink);
+                Band(r - w * 0.3f, r + w * 0.7f, paper, Sides / Dashes);
+                return;
+            }
+            Band(r - w * 1.6f, r + w * 2f, paper);
+            Band(r - w, r + w * 1.4f, red);
+            void Bar(float a, float half, float wide, Color col)
+            {
+                const int Steps = 6;
+                var d = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
+                var n = new Vector2(-d.y, d.x) * wide;
+                Vector3 Q(float t, float side) { var p = new Vector2(x, z) + d * t + n * side; return ground(p.x, p.y) + Vector3.up * (Lift + 0.004f); }
+                for (int i = 0; i < Steps; i++)
+                {
+                    float t0 = Mathf.Lerp(-half, half, (float)i / Steps), t1 = Mathf.Lerp(-half, half, (i + 1f) / Steps);
+                    fx.Quad(Q(t0, -1f), Q(t1, -1f), Q(t1, 1f), Q(t0, 1f), col);
+                }
+            }
+            foreach (float a in new[] { Mathf.PI * 0.25f, Mathf.PI * 0.75f })
+            {
+                Bar(a, r * 0.62f, w * 1.9f, paper);
+                Bar(a, r * 0.56f, w * 1.1f, red);
+            }
+        }
+
         /// <summary>A solid shared-mesh part under <paramref name="parent"/>.</summary>
         public static Transform Solid(Transform parent, string name, Mesh mesh, Material mat, bool shadows = true)
         {

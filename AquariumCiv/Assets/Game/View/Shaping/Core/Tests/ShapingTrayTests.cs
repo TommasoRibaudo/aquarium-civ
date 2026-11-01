@@ -1,5 +1,6 @@
 using System.Linq;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Settle;
 using NUnit.Framework;
 using static AquariumCiv.View.Shaping.Tests.ShapingLookTests;
 using K = AquariumCiv.Sim.SimCore.NudgeKind;
@@ -112,8 +113,8 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.AreEqual(K.Rain, tray.Armed);
             Assert.IsTrue(Tool(tray, sim, K.Rain).armed);
             StringAssert.StartsWith("Shower:", tray.Banner(sim));
-            StringAssert.Contains("Rub", tray.Banner(sim));
-            Assert.AreEqual(ToolGesture.Rub, Tool(tray, sim, K.Rain).gesture);
+            StringAssert.Contains("Tap the ground", tray.Banner(sim));
+            Assert.AreEqual(ToolGesture.Tap, Tool(tray, sim, K.Rain).gesture);
             Assert.AreEqual(ToolGesture.Tap, ShapingTray.GestureOf(K.Grove));
             Assert.AreEqual(ToolGesture.Drag, ShapingTray.GestureOf(K.Channel));
             Assert.AreEqual(ToolGesture.FlickFromEdge, ShapingTray.GestureOf(K.Herd));
@@ -149,8 +150,8 @@ namespace AquariumCiv.View.Shaping.Tests
 
             Assert.IsTrue(tray.BeginGesture());
             Assert.IsTrue(tray.GestureActive);
-            Assert.AreEqual(FingerRoute.Camera, tray.RouteFingers(2), "a second finger lands mid-rub");
-            Assert.IsFalse(tray.GestureActive, "the rub is abandoned");
+            Assert.AreEqual(FingerRoute.Camera, tray.RouteFingers(2), "a second finger lands mid-gesture");
+            Assert.IsFalse(tray.GestureActive, "the gesture is abandoned");
             Assert.IsFalse(tray.EndGesture(), "lifting the fingers places nothing");
             Assert.AreEqual(K.Rain, tray.Armed, "the tool is still in hand");
             Assert.AreEqual(TrayMode.Armed, tray.Mode);
@@ -193,6 +194,31 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.IsTrue(tray.PlaceAt(sim, show, x, z).Ok);
             Assert.AreEqual(TrayMode.Armed, tray.Mode);
             Assert.AreEqual(K.Grove, tray.Armed);
+        }
+
+        [Test]
+        public void GroundThatWontTakeTheToolSaysSoAndKeepsItInHand()
+        {
+            var tray = new ShapingTray();
+            var sim = NewSim(4);
+            var show = new ShapingShow();
+            var map = sim.Settlement.Map;
+            int pond = -1;
+            for (int c = 0; c < SiteMap.N && pond < 0; c++) if (map.Water(c)) pond = c;
+            Assert.GreaterOrEqual(pond, 0, "a pond");
+            float charges = sim.ShapingCharges;
+            tray.Select(sim, K.Grove);
+            var r = tray.PlaceAt(sim, show, SiteMap.CXc(pond), SiteMap.CZc(pond));
+            Assert.IsFalse(r.Ok);
+            Assert.AreEqual(TrayFeedbackKind.Failed, tray.Feedback.kind);
+            StringAssert.Contains("water", tray.Feedback.text, "the ground's reason, not the charges'");
+            Assert.AreEqual(TrayMode.Armed, tray.Mode, "still in hand");
+            Assert.AreEqual(K.Grove, tray.Armed);
+            Assert.AreEqual(charges, sim.ShapingCharges, 1e-4f);
+            Assert.IsEmpty(sim.State.nudges);
+
+            var (x, z) = OpenLand(sim, 1.2f, 0.6f);
+            Assert.IsTrue(tray.PlaceAt(sim, show, x, z).Ok, "a better spot takes it");
         }
 
         [Test]

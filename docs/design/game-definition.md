@@ -114,7 +114,7 @@ You never place buildings. Your tools:
 
   | Era | Tools |
   |---|---|
-  | Camp | **rain** (rub), **grove** (tap), **herd** (flick in from the edge: deer on grass, fish in water) |
+  | Camp | **rain** (tap), **grove** (tap), **herd** (flick in from the edge: deer on grass, fish in water) |
   | Village | **channel** (drag), **Keeper's Lamp** (drag the light to a spot), **hill & hollow** (pull up / push down) |
   | Town | **outcrop** (hold: stone, clay or ore, the land picks), **spring** (tap a hillside), **dye meadow** (sweep) |
   | Any time | **decorate** (tap a slot in the glass margin or the soil): free, a small beauty effect |

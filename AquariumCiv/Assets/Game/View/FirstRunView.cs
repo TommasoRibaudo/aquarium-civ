@@ -707,9 +707,6 @@ namespace AquariumCiv.View
                     if (k > 0.5f) alpha = 0f;
                     break;
                 }
-                case HintGesture.Rub:
-                    off = new Vector2(Mathf.Cos(k * Mathf.PI * 4f), Mathf.Sin(k * Mathf.PI * 4f)) * 40f;
-                    break;
                 default: // tap: press, release, ring
                 {
                     float press = Mathf.Clamp01(k / 0.2f) * (1f - Mathf.Clamp01((k - 0.35f) / 0.15f));

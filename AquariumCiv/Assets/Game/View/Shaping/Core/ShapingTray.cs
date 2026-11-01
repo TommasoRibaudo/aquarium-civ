@@ -8,9 +8,9 @@ namespace AquariumCiv.View.Shaping
     /// <summary>The tray's two rows (#84): gifts to the people, and landscaping (hill and hollow come after the slice).</summary>
     public enum TrayRow { Gifts, Landscaping }
 
-    /// <summary>The one gesture a tool is used with (#84): rain is rubbed, a grove tapped, a channel dragged, a herd flicked
+    /// <summary>The one gesture a tool is used with (#84, #145): rain and a grove are tapped, a channel dragged, a herd flicked
     /// in from the box's edge.</summary>
-    public enum ToolGesture { Rub, Tap, Drag, FlickFromEdge }
+    public enum ToolGesture { Tap, Drag, FlickFromEdge }
 
     /// <summary>Where the tray is: closed, open (tools to pick from), or a tool in hand (shaping mode: banner and Cancel).</summary>
     public enum TrayMode { Closed, Open, Armed }
@@ -125,19 +125,17 @@ namespace AquariumCiv.View.Shaping
 
         public static ToolGesture GestureOf(string kind) => kind switch
         {
-            SimCore.NudgeKind.Rain => ToolGesture.Rub,
             SimCore.NudgeKind.Channel => ToolGesture.Drag,
             SimCore.NudgeKind.Herd => ToolGesture.FlickFromEdge,
             _ => ToolGesture.Tap,
         };
 
         /// <summary>The banner line while the tool is in hand: what the finger does.</summary>
-        public static string GestureHint(string kind) => GestureOf(kind) switch
+        public static string GestureHint(string kind, string name) => GestureOf(kind) switch
         {
-            ToolGesture.Rub => "Rub the sky, or tap, where the rain should fall",
-            ToolGesture.Drag => "Drag to where the channel should end",
-            ToolGesture.FlickFromEdge => "Flick them onto the land",
-            _ => "Tap the ground where it should grow",
+            ToolGesture.Drag => $"Drag to where the {name} should end.",
+            ToolGesture.FlickFromEdge => "Flick them onto the land.",
+            _ => $"Tap the ground to place the {name}.",
         };
 
         /// <summary>Short player text for why a tool is disabled (practices §4: say why, in the player's words).</summary>
@@ -192,11 +190,17 @@ namespace AquariumCiv.View.Shaping
             return new ChargeDisplay { whole = whole, max = max, refill = frac, full = full, text = $"{whole} of {max}" };
         }
 
-        /// <summary>The banner while a tool is in hand ("Shower: rub the sky..."), or empty.</summary>
-        public string Banner(SimCore sim) =>
-            Mode == TrayMode.Armed && Armed.Length > 0
-                ? Cap(sim.ShapingToolName(Armed)) + ": " + (HasPending ? "tap to give it here, or drag it elsewhere" : GestureHint(Armed))
-                : "";
+        bool InHand => Mode == TrayMode.Armed && Armed.Length > 0;
+
+        /// <summary>The tool in hand's name, for the banner's headline, or empty.</summary>
+        public string BannerTitle(SimCore sim) => InHand ? Cap(sim.ShapingToolName(Armed)) : "";
+
+        /// <summary>What the finger does with the tool in hand, or empty.</summary>
+        public string BannerHint(SimCore sim) =>
+            !InHand ? "" : HasPending ? "Tap to give it here, or drag it elsewhere." : GestureHint(Armed, sim.ShapingToolName(Armed));
+
+        /// <summary>The banner as one line ("Shower: Tap the ground..."), or empty.</summary>
+        public string Banner(SimCore sim) => InHand ? BannerTitle(sim) + ": " + BannerHint(sim) : "";
 
         // ================================================================== modes
 
@@ -252,11 +256,19 @@ namespace AquariumCiv.View.Shaping
         // ================================================================== placing
 
         /// <summary>The tool lands at a point (box coordinates). Says what happened in <see cref="Feedback"/>; on success the tray
-        /// leaves shaping mode (unless <see cref="StayArmedAfterPlace"/>). On a fail the tool is put down and the reason said.</summary>
+        /// leaves shaping mode (unless <see cref="StayArmedAfterPlace"/>). On a fail the tool is put down and the reason said, unless
+        /// it's the ground that's wrong (<see cref="ShapingFootprint.GroundReason"/>): then nothing is spent and it stays in hand.</summary>
         public SimCore.ShapeResult PlaceAt(SimCore sim, ShapingShow show, float x, float z)
         {
             if (Mode != TrayMode.Armed || Armed.Length == 0) return new SimCore.ShapeResult { fail = SimCore.ShapeFail.Unknown };
             string kind = Armed;
+            string ground = ShapingFootprint.GroundReason(sim.Settlement?.Map, kind, x, z);
+            if (ground.Length > 0)
+            {
+                // The ground's fault, not the tool's: it stays in hand for a better spot (question 16).
+                Say(TrayFeedbackKind.Failed, ground, ShapingShow.FailCue);
+                return new SimCore.ShapeResult { fail = SimCore.ShapeFail.Unknown };
+            }
             int credit = HasPending ? PendingNotableId : -1;
             var r = show.Place(sim, kind, x, z, credit);
             Finish(sim, kind, r);

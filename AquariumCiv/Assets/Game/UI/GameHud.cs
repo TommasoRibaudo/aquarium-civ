@@ -286,7 +286,7 @@ namespace AquariumCiv.GameUI
         {
             if (toastLabel == null) return;
             var i = GameUiPanel.SafeInsets(lastSafe, lastScreen.x, lastScreen.y);
-            float lane = GameUiPanel.Lane(GameUiPanel.ToastBottom, i.w);
+            float lane = GameUiPanel.Lane(toolInHand ? GameUiPanel.ToastOverStrip : GameUiPanel.ToastBottom, i.w);
             VisualElement up = openSheet != null ? openSheet.Sheet : outsideSheet;
             if (up != null)
             {
@@ -438,14 +438,20 @@ namespace AquariumCiv.GameUI
         /// <summary>The shaping sheet's body (#84): empty here; the shaping view fills it with the tray when the sheet opens
         /// (<see cref="SheetChanged"/>), so the tray's logic and look live with the shaping, not in the HUD shell.</summary>
         public VisualElement ShapingBody { get; private set; }
+        /// <summary>The slot in the tray's head, between the title and Close, where the charges sit (spec §4).</summary>
+        public VisualElement ShapingHead { get; private set; }
+
+        GlassSheet shapingSheet;
 
         void BuildShaping()
         {
-            // Content height until #167 gives the tray its low tile row at 30 %.
-            var sheet = Sheet(Shaping, "Shape the land", SheetHeight.Content);
-            ShapingBody = new VisualElement { name = "shaping-tray" };
+            shapingSheet = Sheet(Shaping, "Shape the land");
+            shapingSheet.AddToClassList("tray-sheet");
+            ShapingHead = new VisualElement { name = "shaping-head", pickingMode = PickingMode.Ignore };
+            shapingSheet.Q(className: "kg-sheet-head").Insert(1, ShapingHead);
+            ShapingBody = new VisualElement { name = "shaping-tray", pickingMode = PickingMode.Ignore };
             ShapingBody.AddToClassList("tray");
-            sheet.Add(ShapingBody);
+            shapingSheet.Add(ShapingBody);
         }
 
         /// <summary>A bottom sheet in its clear scrim (a tap outside closes it), with a title and Close.</summary>
@@ -502,7 +508,7 @@ namespace AquariumCiv.GameUI
         /// <summary>The tools step back behind a sheet: a flat sheet is 96 %, so they would show through it as ghosts.</summary>
         void ToolsBehindSheet()
         {
-            var v = openSheet != null || outsideSheet != null ? Visibility.Hidden : Visibility.Visible;
+            var v = openSheet != null || outsideSheet != null || toolInHand ? Visibility.Hidden : Visibility.Visible;
             bottomRow.style.visibility = v;
             pinRow.style.visibility = peekUp ? Visibility.Hidden : v;
         }
@@ -522,6 +528,18 @@ namespace AquariumCiv.GameUI
         {
             outsideSheet = sheet;
             outsideKeepsTop = keepTop;
+            ToolsBehindSheet();
+            PlaceToast();
+        }
+
+        bool toolInHand;
+
+        /// <summary>A tool is in hand: its strip takes the tools' lane, the rest of the HUD leaves the ground to the finger (board 3.4), and a
+        /// refusal's toast drops into the free pin lane, right over the strip (<see cref="GameUiPanel.ToastOverStrip"/>).</summary>
+        public void SetToolInHand(bool on)
+        {
+            if (toolInHand == on) return;
+            toolInHand = on;
             ToolsBehindSheet();
             PlaceToast();
         }
@@ -551,6 +569,9 @@ namespace AquariumCiv.GameUI
             safe.style.left = i.x; safe.style.top = i.y; safe.style.right = i.z; safe.style.bottom = i.w;
             // Sheets run to the screen's bottom edge but keep their content above the home indicator.
             foreach (var scrim in sheets.Values) scrim.Sheet.SetInsets(i);
+            bool tight = GlassSheet.IsShort(Screen.width, Screen.height);
+            shapingSheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
+            shapingSheet.EnableInClassList("tray-sheet--short", tight);
             // The lanes count from the screen's edge; a home bar taller than 30 pt lifts them.
             bottomRow.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
             pinRow.style.bottom = GameUiPanel.Lane(GameUiPanel.PinBottom, i.w);
@@ -564,7 +585,7 @@ namespace AquariumCiv.GameUI
         void FollowFirstRun()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
-            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || (sim != null && sim.State.firstRun.active));
+            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || toolInHand || (sim != null && sim.State.firstRun.active));
         }
 
         void RefreshText()
