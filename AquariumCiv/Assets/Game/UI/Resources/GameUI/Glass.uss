@@ -492,8 +492,8 @@
 .kg-tool {
     width: 31.85%; height: 154px; min-width: 0; padding: 0; border-radius: var(--radius-tool);
     -unity-font-definition: var(--font-lora-bold); font-size: 46.75px;
-    transition: scale 80ms ease-out, background-color 80ms ease-out, translate 280ms ease-out-cubic, opacity 280ms ease-out;
 }
+.kg-tool--arrive { transition: scale 80ms ease-out, background-color 80ms ease-out, translate 280ms ease-out-cubic, opacity 280ms ease-out; }
 /* the first run has one primary and no other tools; they arrive one at a time at the end of it */
 .kg-tool--waiting { translate: 0 60px; opacity: 0; }
 .kg-tool-mark { position: absolute; left: 50%; top: 52px; margin-left: -96px; display: none; }

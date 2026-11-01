@@ -62,6 +62,7 @@ namespace AquariumCiv.GameUI
         public const float TapSlopFraction = 0.02f, TapMaxSeconds = 0.4f;
         const float TopRowTop = 110f; // 40 pt
         const string WaitingClass = "kg-tool--waiting";
+        const string ArriveClass = "kg-tool--arrive";
         const int ArriveStepMs = 220;
 
         public VisualElement Root => root;
@@ -608,7 +609,11 @@ namespace AquariumCiv.GameUI
                 var tool = tools[i];
                 tool.pickingMode = waiting ? PickingMode.Ignore : PickingMode.Position;
                 if (waiting || GlassMotion.Instant) tool.EnableInClassList(WaitingClass, waiting);
-                else tool.schedule.Execute(() => { if (!toolsWaiting) tool.RemoveFromClassList(WaitingClass); }).ExecuteLater(i * ArriveStepMs);
+                else
+                {
+                    tool.AddToClassList(ArriveClass); // a transition of its own: elsewhere a tool's place is exact at once
+                    tool.schedule.Execute(() => { if (!toolsWaiting) tool.RemoveFromClassList(WaitingClass); }).ExecuteLater(i * ArriveStepMs);
+                }
             }
             PlaceToast();
         }
