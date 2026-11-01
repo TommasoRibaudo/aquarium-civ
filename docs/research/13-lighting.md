@@ -181,7 +181,7 @@ The safe version in section 7 is in, Soft Blue Dusk the default, and `LightLook`
 - **Lamp reach:** 1.25 box units, not 1.6 to 2.2: more lit the whole box. Pool radii 0.62 (lantern) and 0.36 (a building's door), on a 5x5 grid laid on the land, in the Glows mesh: no extra draw.
 - **The room:** the camera's clear colour falls with the sky, or the floor stays lit under a dark night.
 - **HUD at night:** the name and icons take the backing they have off home when Daylight < 0.75. Dark ink on the night wall was unreadable.
-- **Readability rule (section 5):** the whole frame at 22 h is 0.48 of 12 h (Town, 1080x1920), or 0.33 at night floor 0.45. Rule of thumb 0.30 holds. The 1.5:1 person-to-ground ratio was not measured, only looked at.
+- **Readability rule (section 5):** the whole frame at 22 h is 0.42 of 12 h (Town, 1080x1920), or 0.33 at night floor 0.45. Rule of thumb 0.30 holds. The 1.5:1 person-to-ground ratio was not measured, only looked at.
 - **Risk 2 (vertex lamps on faceted ground):** it reads as low-poly facets at zoom 0.2. Looks fine in the shots; the user's call.
 
 ## Open risks to check first
