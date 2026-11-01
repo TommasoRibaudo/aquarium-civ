@@ -387,8 +387,7 @@ namespace AquariumCiv.GameUI
             lines.Add(Text("At the fire: rain on the west fields.", "type-quote", "kg-peek-teaser"));
             peek.Add(new GlassPortrait("Mabel"));
             peek.Add(lines);
-            State(s, "peek", "story", peek);
-            peek.Open();
+            State(s, "peek", "story", peek); // never opened: a gallery piece holds no frost, as the sheets above
         }
 
         void TabsToggles()
