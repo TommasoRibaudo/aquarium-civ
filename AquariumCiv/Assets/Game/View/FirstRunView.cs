@@ -708,12 +708,9 @@ namespace AquariumCiv.View
 
         void PlaceBubble(Vector2 p)
         {
-            float w = bubble.resolvedStyle.width;
             PlaceOver(bubble, p, 24f);
-            if (!float.IsNaN(w)) bubble.TailAt(Mathf.Clamp(p.x - bubble.style.left.value.value - TailHalf, TailEnd, Mathf.Max(TailEnd, w - TailEnd - TailHalf * 2f)));
+            bubble.TailTo(p - new Vector2(bubble.style.left.value.value, bubble.style.top.value.value)); // #204: on them, even pushed off by the edge
         }
-
-        const float TailHalf = 13.75f, TailEnd = 44f;
 
         /// <summary>Centres a label over a panel point, on screen whatever its size (one frame late on new text).</summary>
         static void PlaceOver(VisualElement e, Vector2 p, float gap)

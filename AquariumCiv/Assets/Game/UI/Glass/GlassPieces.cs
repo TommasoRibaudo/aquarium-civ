@@ -222,7 +222,8 @@ namespace AquariumCiv.GameUI
         }
     }
 
-    /// <summary>One bubble: who and a line, or chatter in symbols. The tail is a rotated square. <see cref="MessageQueue"/> keeps it to one at a time.</summary>
+    /// <summary>One bubble: who and a line, or chatter in symbols. The tail is a rotated square, or for a line in the world a wedge that reaches its
+    /// speaker (<see cref="TailTo"/>, #204). <see cref="MessageQueue"/> keeps it to one at a time.</summary>
     [UxmlElement]
     public partial class GlassBubble : VisualElement
     {
@@ -279,8 +280,64 @@ namespace AquariumCiv.GameUI
 
         const int BalanceSteps = 7;
 
-        /// <summary>Where the tail sits along the bubble (panel px), so it points at whoever speaks.</summary>
-        public void TailAt(float x) => tail.style.left = x;
+        /// <summary>#204: the wedge's tip, from the bubble's top left (panel px), and whether it's drawn.</summary>
+        public Vector2 TailTip { get; private set; }
+        public bool Reaching => reach != null && reach.style.display == DisplayStyle.Flex;
+
+        VisualElement reach;
+
+        /// <summary>#204: the tail as a wedge from the bubble's nearest edge out to this point, from the bubble's top left (panel px), however far that is.</summary>
+        public void TailTo(Vector2 tip)
+        {
+            if (reach == null)
+            {
+                reach = new VisualElement { pickingMode = PickingMode.Ignore };
+                reach.style.position = Position.Absolute;
+                reach.style.left = reach.style.top = reach.style.right = reach.style.bottom = 0;
+                reach.generateVisualContent += DrawReach;
+                Add(reach);
+                tail.style.visibility = Visibility.Hidden; // it stays for its colours
+            }
+            TailTip = tip;
+            reach.style.display = DisplayStyle.Flex;
+            reach.MarkDirtyRepaint();
+        }
+
+        /// <summary>#204: no tail at all: better none than one pointing at nobody.</summary>
+        public void NoTail() { if (reach != null) reach.style.display = DisplayStyle.None; }
+
+        void DrawReach(MeshGenerationContext c)
+        {
+            var box = reach.contentRect;
+            float w = box.width, h = box.height, edge = resolvedStyle.borderLeftWidth;
+            if (w <= 0f || h <= 0f) return;
+            var t = TailTip - new Vector2(edge, edge);
+            float dx = Mathf.Max(-t.x, t.x - w), dy = Mathf.Max(-t.y, t.y - h);
+            if (dx <= 0f && dy <= 0f) return; // the speaker is behind the bubble: nothing to reach
+            Vector2 a, b;
+            if (dy >= dx)
+            {
+                float x = w > (WedgeCorner + WedgeHalf) * 2f ? Mathf.Clamp(t.x, WedgeCorner + WedgeHalf, w - WedgeCorner - WedgeHalf) : w * 0.5f;
+                float y = t.y > h ? h - WedgeSink : WedgeSink;
+                a = new Vector2(x - WedgeHalf, y); b = new Vector2(x + WedgeHalf, y);
+            }
+            else
+            {
+                float y = h > (WedgeCorner + WedgeHalf) * 2f ? Mathf.Clamp(t.y, WedgeCorner + WedgeHalf, h - WedgeCorner - WedgeHalf) : h * 0.5f;
+                float x = t.x > w ? w - WedgeSink : WedgeSink;
+                a = new Vector2(x, y - WedgeHalf); b = new Vector2(x, y + WedgeHalf);
+            }
+            var p = c.painter2D;
+            p.fillColor = tail.resolvedStyle.backgroundColor;
+            p.BeginPath(); p.MoveTo(a); p.LineTo(t); p.LineTo(b); p.ClosePath(); p.Fill();
+            p.strokeColor = tail.resolvedStyle.borderRightColor;
+            p.lineWidth = Mathf.Max(1f, edge);
+            p.lineJoin = LineJoin.Round;
+            p.BeginPath(); p.MoveTo(a); p.LineTo(t); p.LineTo(b); p.Stroke();
+        }
+
+        /// <summary>The wedge's half width at the bubble, the rounded corner it keeps off, and how far into the bubble it starts, over the edge line.</summary>
+        const float WedgeHalf = 15f, WedgeCorner = 26f, WedgeSink = 3f;
 
         /// <summary>Chatter: symbols, no words.</summary>
         public GlassBubble(params string[] symbols)
