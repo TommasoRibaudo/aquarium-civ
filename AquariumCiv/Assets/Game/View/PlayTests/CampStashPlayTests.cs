@@ -45,21 +45,26 @@ namespace AquariumCiv.View.PlayTests
                 Assert.LessOrEqual(new Vector2(t.localPosition.x - pile.x, t.localPosition.z - pile.z).magnitude, CampStash.PileExtent, t.name + " stays on the pile");
             }
 
-            // Carriers come and go through a few days: whoever stops at the stash stands round the pile, not in it.
-            pv.timeScale = 40f;
-            int seen = 0;
-            for (int i = 0; i < 400; i++)
+            // Carriers come and go through a few days. A carry is a walk that ends at the stand, so someone stopped there is rare:
+            // those stand round the pile, not in it. The walk in is measured too.
+            pv.timeScale = 20f;
+            int stopped = 0, walking = 0, overPile = 0;
+            var centre = new Vector2(pile.x, pile.z);
+            for (int i = 0; i < 1500; i++)
             {
-                foreach (var a in pv.Activities.Where(a => a.place.kind == PlaceKind.Stash && !a.moving))
-                    if (pv.TryGetDollPosition(a.who, out var at) && !pv.IsWalking(a.who))
-                    {
-                        seen++;
-                        Assert.GreaterOrEqual((at - new Vector2(pile.x, pile.z)).magnitude, CampStash.PileExtent, a.who + " stands off the pile");
-                    }
+                foreach (var a in pv.Activities.Where(a => a.place.kind == PlaceKind.Stash))
+                {
+                    if (!pv.TryGetDollPosition(a.who, out var at)) continue;
+                    float d = (at - centre).magnitude;
+                    if (a.moving || pv.IsWalking(a.who)) { walking++; if (d < CampStash.PileExtent) overPile++; continue; }
+                    stopped++;
+                    Assert.GreaterOrEqual(d, CampStash.PileExtent, a.who + " stands off the pile");
+                }
                 yield return null;
             }
             pv.timeScale = 1f;
-            TestContext.WriteLine($"{seen} doll frames at the stash");
+            TestContext.WriteLine($"at the stash: {stopped} doll frames stopped; on the way {walking}, of them {overPile} over the pile");
+            Assert.Greater(stopped + walking, 0, "carriers came");
 
             SimLayoutSource.DebugNextEra(false);
             yield return Frames(8);
