@@ -97,8 +97,8 @@ namespace AquariumCiv.Life
                         case Season.Spring: return Alt(W(field, ActivityKind.Sow, Prop.SeedBag, Prop.None, field, 0f), field, ActivityKind.Hoe, Prop.Hoe, 0.4f);
                         case Season.Summer: return Alt(W(field, ActivityKind.Weed, Prop.Hoe, Prop.None, field, 0f), field, ActivityKind.Hoe, Prop.Hoe, 0.3f);
                         case Season.Autumn: return W(field, ActivityKind.Harvest, Prop.Scythe, Prop.Sheaf, Store(Prop.Sheaf), 0.4f);
-                        default: // winter: wood, repairs
-                            return Fetch(Alt(W(p.home, ActivityKind.Repair, Prop.Hammer, Prop.Log, fire, 0.25f), p.home, ActivityKind.ChopKindling, Prop.Axe, 0.4f), Woods);
+                        default: // winter: wood. #201: no hammer at a finished house, nothing here has a site under way to hammer at.
+                            return Fetch(Alt(W(p.home, ActivityKind.StackWood, Prop.Axe, Prop.Log, fire, 0.25f), p.home, ActivityKind.ChopKindling, Prop.Axe, 0.4f), Woods);
                     }
                 }
                 case JobType.Shepherd:

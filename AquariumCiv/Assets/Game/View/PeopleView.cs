@@ -37,6 +37,8 @@ namespace AquariumCiv.View
         public float replanSeconds = 0.2f;
         [Tooltip("Animate in edit mode (otherwise edit mode only updates when the Editor repaints).")]
         public bool animateInEditMode;
+        /// <summary>A test steps <see cref="Tick"/> itself on a fixed frame time, so <c>Update</c> keeps out of it.</summary>
+        [System.NonSerialized] public bool HandDriven;
 
         public ViewTime Now => now;
         public LifePlanner Planner => planner;
@@ -60,6 +62,14 @@ namespace AquariumCiv.View
             /// by <see cref="offset"/> and kept off the solids. <see cref="heading"/> is the way the plan walks, its index this frame's in the crowd.</summary>
             public Vector2 drawn, offset, heading;
             public int crowdIndex = -1;
+            /// <summary>The pose drawn last frame and the move it was (#203: a change of move blends over <see cref="BlendSeconds"/>, from <see cref="blendFrom"/>).</summary>
+            public DollPose pose, blendFrom;
+            public DollStyle drew;
+            public float blendT = BlendSeconds;
+            /// <summary>#203: the walk's phase, added up frame by frame; the way the doll goes, smoothed, which it faces; and whether it counts as walking.</summary>
+            public float stride;
+            public Vector2 velocity;
+            public bool walking;
         }
 
         BoxView box;
@@ -75,6 +85,8 @@ namespace AquariumCiv.View
         /// of snapping there at every skip.</summary>
         public bool SoftDayTurns;
         float replanIn, lastTime = -1f;
+        /// <summary>The poses' clock: seconds this view has run, so a pose moves with the frames it is stepped by.</summary>
+        float poseClock;
         readonly List<PersonActivity> acts = new();
         readonly Dictionary<int, Doll> dolls = new();
         readonly Dictionary<Place, int> countAt = new();
@@ -88,6 +100,12 @@ namespace AquariumCiv.View
         readonly List<Solid> solids = new();
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
+        /// <summary>#203: how fast the way a walker goes settles (per second), how fast a doll turns to face it, and the fastest it turns (degrees a second).</summary>
+        const float HeadingRate = 8f, VelocityRate = 10f, TurnRate = 9f, MostTurn = 300f;
+        /// <summary>#203: slower than this a doll isn't walking, faster than that it is: a doll easing onto its spot doesn't flick between the two.</summary>
+        const float WalkStops = 0.03f, WalkStarts = 0.05f;
+        /// <summary>#203: how long one move takes to become the next.</summary>
+        const float BlendSeconds = 0.16f;
         /// <summary>#189: off, walkers go where the plan says (debug panel; the perf test compares the two).</summary>
         public static bool AvoidCrowds = true;
         const float Personal = 0.075f; // closest two standing dolls get, centre to centre
@@ -131,6 +149,7 @@ namespace AquariumCiv.View
 
         void Update()
         {
+            if (HandDriven) return;
             float t = Time.realtimeSinceStartup;
             float dt = lastTime < 0f ? 0f : Mathf.Clamp(t - lastTime, 0f, 0.25f);
             lastTime = t;
@@ -241,14 +260,15 @@ namespace AquariumCiv.View
                 peopleRoot.SetParent(transform, false);
             }
             bool camp = sim.State.era == Era.Camp;
-            float time = Application.isPlaying ? Time.time : Time.realtimeSinceStartup;
+            poseClock += dt;
+            float time = poseClock;
             seen.Clear();
             claimed.Clear();
-            // #189: everyone where they were drawn last frame, for the walkers to keep clear of.
+            // #189: everyone on view where they were drawn last frame, for the walkers to keep clear of (nobody goes round a sleeper they can't see, #203).
             crowd.Clear();
             for (int i = 0; i < acts.Count; i++)
                 if (dolls.TryGetValue(acts[i].who.Key, out var c))
-                    c.crowdIndex = AvoidCrowds && c.placed && !c.wasHidden ? crowd.Add(acts[i].who.Key, c.drawn.x, c.drawn.y, acts[i].moving, c.heading.x, c.heading.y) : -1;
+                    c.crowdIndex = AvoidCrowds && c.placed && !c.wasHidden && !c.pose.hidden ? crowd.Add(acts[i].who.Key, c.drawn.x, c.drawn.y, acts[i].moving, c.heading.x, c.heading.y) : -1;
             crowd.Build();
             for (int i = 0; i < acts.Count; i++)
             {
@@ -331,7 +351,8 @@ namespace AquariumCiv.View
             d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
             d.placed = true;
 
-            bool walking = d.speed > 0.04f;
+            if (d.speed > WalkStarts) d.walking = true; else if (d.speed < WalkStops) d.walking = false;
+            bool walking = d.walking;
             var style = DollMotion.StyleOf(a.kind);
             if (walking && style != DollStyle.Hop) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
             if (hidden) style = DollStyle.Hidden;
@@ -342,14 +363,16 @@ namespace AquariumCiv.View
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
             float want = d.yaw;
-            if (walking && d.drawn != drawnWas) want = Yaw(drawnWas, d.drawn);
-            else if (!walking)
+            if (jump || dt <= 0f) d.velocity = Vector2.zero;
+            else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
+            if (walking) { if (d.velocity.sqrMagnitude > 1e-4f) want = Yaw(Vector2.zero, d.velocity); }
+            else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
                     want = Yaw(d.pos, p.pos);
                 else if (face.HasValue && (face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value);
             }
-            d.yaw = dt > 0f ? Mathf.MoveTowardsAngle(d.yaw, want, 300f * dt) : want;
+            d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * TurnRate)), -MostTurn * dt, MostTurn * dt) : want;
 
             // Pose: the apprentice copies the master a beat late (§4).
             float phase = time + d.phase - (a.copiesPartner ? 0.35f : 0f);
@@ -360,8 +383,20 @@ namespace AquariumCiv.View
             bool holds = kind != PropKind.None && kind != PropKind.Mask; // a mask is worn, the hands stay free
             // #192: a baby in the arms holds them the way a load does; on the back it rides, and the hands stay on the work.
             bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !holds;
-            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count);
-
+            d.stride = Mathf.Repeat(d.stride + DollMotion.Cadence(style, d.speed) * Mathf.PI * dt, Mathf.PI * 2f);
+            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride);
+            if (style != d.drew)
+            {
+                d.blendFrom = d.pose;
+                d.blendT = pose.hidden || pose.lying || d.pose.hidden || d.pose.lying || jump ? BlendSeconds : 0f;
+                d.drew = style;
+            }
+            if (d.blendT < BlendSeconds)
+            {
+                d.blendT += dt;
+                pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
+            }
+            d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             if (pose.hidden) return;
             v.SetBaby(!a.carrying.IsNone, a.carryOnBack);
@@ -375,10 +410,13 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#189: from the planned point to the drawn one: the walker's offset eases toward what the crowd presses (it fades when
-        /// nothing does), a point in a solid slides out to its rim, and the doll follows at a walking pace, so a change of side is a walk.</summary>
+        /// nothing does), a point in a solid slides out to its rim, and the doll follows a moment behind at no more than a walking pace, so a
+        /// change of side is a walk and a corner a curve (#203).</summary>
         void StepDrawn(Doll d, in PersonActivity a, bool jump, bool hidden, Vector2 prev, float inst, float dt)
         {
-            d.heading = a.moving ? d.pos - prev : Vector2.zero;
+            // The way the plan walks, settling over a moment: a corner of the route turns the sidestep with it, not in one frame.
+            if (!a.moving || jump || hidden || dt <= 0f) d.heading = Vector2.zero;
+            else d.heading = Vector2.Lerp(d.heading, (d.pos - prev) / dt, 1f - Mathf.Exp(-dt * HeadingRate));
             float px = 0f, pz = 0f;
             if (d.crowdIndex >= 0 && !jump && !hidden) crowd.Push(d.crowdIndex, out px, out pz);
             if (jump || hidden) d.offset = Vector2.zero;
@@ -389,7 +427,7 @@ namespace AquariumCiv.View
             if (hidden) { d.drawn = wanted; return; }
             CrowdAvoid.KeepOut(ref wanted.x, ref wanted.y, solids, d.heading.x, d.heading.y);
             if (jump) { d.drawn = wanted; return; }
-            d.drawn = Vector2.MoveTowards(d.drawn, wanted, (inst + DrawnSlack) * dt);
+            CrowdAvoid.Follow(ref d.drawn.x, ref d.drawn.y, wanted.x, wanted.y, (inst + DrawnSlack) * dt, dt);
             CrowdAvoid.KeepOut(ref d.drawn.x, ref d.drawn.y, solids, d.heading.x, d.heading.y);
         }
 
@@ -456,8 +494,10 @@ namespace AquariumCiv.View
                 var outDir = (spot - centre).sqrMagnitude > 1e-6f ? (spot - centre).normalized : Vector2.down;
                 float baseAng = Mathf.Atan2(outDir.y, outDir.x);
                 var (dx, dz) = SlotSpots.Door(a.slot, baseAng); // a fan outside the door, no two closer than SlotSpots.Gap
-                face = centre;
-                return spot + new Vector2(dx, dz);
+                var at = spot + new Vector2(dx, dz);
+                // #200: at home they look out over the town. Facing their own wall, a sitter or a chopper looks as if they're building it.
+                face = a.place.kind == PlaceKind.Home ? at + (at - centre).normalized : centre;
+                return at;
             }
             // Open ground (a field, the woods, the pond, a heap): a loose spiral round the spot, facing it.
             float spread = a.place.kind is PlaceKind.Field or PlaceKind.Pasture or PlaceKind.Meadow or PlaceKind.Woods or PlaceKind.ForestEdge or PlaceKind.Bushes ? 0.2f : 0.12f;
@@ -642,7 +682,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Is this person's doll walking (on a route, or gliding into its slot)?</summary>
-        public bool IsWalking(PersonRef who) => dolls.TryGetValue(who.Key, out var d) && d.speed > 0.04f;
+        public bool IsWalking(PersonRef who) => dolls.TryGetValue(who.Key, out var d) && d.walking;
 
         /// <summary>The activity a doll is showing (tests, reports).</summary>
         public bool TryGetActivity(PegDollView view, out PersonActivity act)
@@ -678,6 +718,15 @@ namespace AquariumCiv.View
             if (!dolls.TryGetValue(who.Key, out var d) || !d.placed) return false;
             var f = Quaternion.Euler(0f, d.yaw, 0f) * Vector3.back; // a doll faces local -z
             forward = new Vector2(f.x, f.z);
+            return true;
+        }
+
+        /// <summary>The pose a person's doll was drawn in last (tests).</summary>
+        public bool TryGetDollPose(PersonRef who, out DollPose pose)
+        {
+            pose = default;
+            if (!dolls.TryGetValue(who.Key, out var d) || !d.placed) return false;
+            pose = d.pose;
             return true;
         }
 
@@ -756,7 +805,7 @@ namespace AquariumCiv.View
             if (pk != PropKind.None) sb.Append(" with ").Append(pk).Append(" (").Append(ps).Append(')');
             if (!a.partner.IsNone) sb.Append(" with ").Append(a.partner);
             if (dolls.TryGetValue(a.who.Key, out var d) && d.view != null)
-                sb.Append(string.Format(CultureInfo.InvariantCulture, " · doll {0} at ({1:0.00}, {2:0.00}){3}", d.view.gameObject.activeSelf ? "shown" : "hidden", d.pos.x, d.pos.y, d.speed > 0.04f ? " walking" : ""));
+                sb.Append(string.Format(CultureInfo.InvariantCulture, " · doll {0} at ({1:0.00}, {2:0.00}){3}", d.view.gameObject.activeSelf ? "shown" : "hidden", d.pos.x, d.pos.y, d.walking ? " walking" : ""));
             return sb.ToString();
         }
 

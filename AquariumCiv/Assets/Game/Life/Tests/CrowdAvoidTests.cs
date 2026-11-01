@@ -143,6 +143,108 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual((0f, 0f), (sx, sz), "and a standing person is never pushed");
         }
 
+        /// <summary>#203: walkers on the view's loop, offset eased, doll following, through the frame-to-frame turn of their way. A real mid-walk frame
+        /// on the phone (30 fps) and at 60.</summary>
+        static float WorstTurn(List<Walker> ws, float dt, float seconds, out float gap)
+        {
+            var av = new CrowdAvoid();
+            float worst = 0f, end = 0f;
+            var was = new Dictionary<int, (float x, float z)>();
+            foreach (var w in ws) { w.x = w.sx; w.z = w.sz; }
+            for (float t = 0f; t < seconds; t += dt)
+            {
+                av.Clear();
+                foreach (var w in ws) av.Add(w.key, w.x, w.z, true, w.vx, w.vz);
+                av.Build();
+                for (int i = 0; i < ws.Count; i++)
+                {
+                    var w = ws[i];
+                    av.Push(i, out float px, out float pz);
+                    CrowdAvoid.Ease(ref w.ox, ref w.oz, px, pz, dt);
+                    float ax = w.x, az = w.z;
+                    CrowdAvoid.Follow(ref w.x, ref w.z, w.sx + w.vx * t + w.ox, w.sz + w.vz * t + w.oz, 1f * dt, dt);
+                    float sx = w.x - ax, sz = w.z - az;
+                    if (t > 1f && was.TryGetValue(w.key, out var s))
+                    {
+                        float cross = s.x * sz - s.z * sx, dot = s.x * sx + s.z * sz;
+                        worst = Math.Max(worst, Math.Abs((float)Math.Atan2(cross, dot)) * 57.3f / dt);
+                    }
+                    was[w.key] = (sx, sz);
+                }
+                end = MinPair(ws);
+            }
+            gap = end;
+            return worst;
+        }
+
+        [TestCase(1f / 30f), TestCase(1f / 60f)]
+        public void ThreeWalkingSideBySideGoStraight(float dt)
+        {
+            var ws = new List<Walker>();
+            for (int i = 0; i < 3; i++) ws.Add(new Walker { key = 10 + i, sx = -1f, sz = (i - 1) * 0.07f, vx = 0.31f });
+            float turn = WorstTurn(ws, dt, 6f, out float gap);
+            Assert.Less(turn, 60f, "degrees a second off their way, once they've settled");
+            Assert.GreaterOrEqual(gap, CrowdAvoid.Personal * 0.8f, "and they do keep apart");
+        }
+
+        [TestCase(1f / 30f), TestCase(1f / 60f)]
+        public void ANeighbourDriftingAcrossTheMiddleDoesNotFlipTheSidestep(float dt)
+        {
+            // One overtaking another on almost the same line: the old side flipped at 0.15 off the middle.
+            var ws = new List<Walker>
+            {
+                new Walker { key = 1, sx = -1.0f, sz = 0.02f, vx = 0.42f },
+                new Walker { key = 2, sx = -0.7f, sz = 0f, vx = 0.31f },
+            };
+            Assert.Less(WorstTurn(ws, dt, 6f, out _), 200f);
+        }
+
+        [Test]
+        public void TwoMeetingHeadOnPassOnOppositeSides()
+        {
+            var ws = new List<Walker>
+            {
+                new Walker { key = 1, sx = -1f, sz = 0f, vx = 0.31f },
+                new Walker { key = 2, sx = 1f, sz = 0f, vx = -0.31f },
+            };
+            foreach (var w in ws) { w.x = w.sx; w.z = w.sz; }
+            float closest = float.MaxValue;
+            Run(new CrowdAvoid(), ws, 6f, _ => closest = Math.Min(closest, MinPair(ws)));
+            Assert.Greater(closest, CrowdAvoid.Personal * 0.5f, "nobody walks through anybody");
+            Assert.Greater(ws[0].x, 0.5f, "and both got past");
+            Assert.Less(ws[1].x, -0.5f);
+        }
+
+        [Test]
+        public void ANeighbourCountsOnceWhateverCellsTheyShare()
+        {
+            // Two of the nine cells round someone can land in one bucket of the grid: the push must not count anyone twice.
+            for (int k = 0; k < 400; k++)
+            {
+                float x = k * 0.137f, z = k * 0.091f;
+                var av = new CrowdAvoid();
+                av.Add(1, x, z, true, 1f, 0f);
+                av.Add(2, x + 0.05f, z + 0.03f, false);
+                av.Build();
+                av.Push(0, out float px, out float pz);
+                float over = CrowdAvoid.Personal - Hyp(0.05f, 0.03f);
+                Assert.LessOrEqual(Hyp(px, pz), over * 1.01f, $"at {x}, {z}");
+            }
+        }
+
+        [Test]
+        public void TheOffsetSettlesTheSameAtAnyFrameRate()
+        {
+            // Closed like the view's loop: the push shrinks as the offset clears the overlap.
+            float At(int fps)
+            {
+                float ox = 0f, oz = 0f, dt = 1f / fps;
+                for (int i = 0; i < fps / 4; i++) CrowdAvoid.Ease(ref ox, ref oz, 0.05f - ox, 0f, dt);
+                return ox;
+            }
+            Assert.AreEqual(At(30), At(60), 0.003f);
+        }
+
         [Test]
         public void OffsetsFadeBackWhenNobodyIsNear()
         {

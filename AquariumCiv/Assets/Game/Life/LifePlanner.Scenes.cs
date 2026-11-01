@@ -524,6 +524,7 @@ namespace AquariumCiv.Life
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
+                ActivityKind.Indoors => "indoors",
                 ActivityKind.Toddle => "toddling about at home",
                 ActivityKind.Speech => $"speaking to everyone at {where}",
                 ActivityKind.Listen => $"listening at {where}",

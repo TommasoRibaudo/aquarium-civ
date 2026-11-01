@@ -23,8 +23,11 @@ namespace AquariumCiv.Life
     /// side of their way by key, so a group heading for one spot fans out instead of sharing a line.</item>
     /// </list>
     /// Per frame, the view adds everyone's drawn point (<see cref="Add"/>), calls <see cref="Build"/>, then per walker asks
-    /// <see cref="Push"/> and eases that walker's offset with <see cref="Ease"/>. Cost is linear: a uniform grid with one
-    /// reused set of arrays, no allocation after warm-up.
+    /// <see cref="Push"/>, eases that walker's offset with <see cref="Ease"/> and moves the doll with <see cref="Follow"/>. Cost is
+    /// linear: a uniform grid with one reused set of arrays, no allocation after warm-up.
+    /// <para>#203: walkers side by side jittered, so nothing here may change in a step. The push grows from nothing at
+    /// <see cref="Personal"/>, the side eases through the middle (<see cref="SideBand"/>), the offset grows and fades on one law with no
+    /// branch between them, and the doll lags it a little, which rounds what is left, corners of a route included.</para>
     /// </summary>
     public sealed class CrowdAvoid
     {
@@ -36,9 +39,15 @@ namespace AquariumCiv.Life
         public const float MaxOffset = 0.3f;
         /// <summary>Easing a walker's offset: how fast it grows (per second, of the overlap) and fades back when clear.</summary>
         public const float Grow = 14f, Fade = 1.2f;
+        /// <summary>#203: a push this big holds the offset: under it the fade comes back bit by bit, so a pressed group keeps its space and nothing flips.</summary>
+        public const float PressHolds = 0.008f;
+        /// <summary>#203: how fast a doll closes on where it should be (per second): about 70 ms behind.</summary>
+        public const float FollowRate = 14f;
+        /// <summary>#203: the width of the middle a sidestep eases through (the cosine off the way), and how far off dead ahead a tie reaches.</summary>
+        public const float SideBand = 0.15f, SideTie = 0.05f;
 
         float[] xs = new float[64], zs = new float[64], hx = new float[64], hz = new float[64];
-        int[] keys = new int[64];
+        int[] keys = new int[64], cellX = new int[64], cellZ = new int[64];
         bool[] moving = new bool[64];
         int n;
         const int Cells = 256;
@@ -57,7 +66,7 @@ namespace AquariumCiv.Life
             {
                 int m = n * 2;
                 Array.Resize(ref xs, m); Array.Resize(ref zs, m); Array.Resize(ref hx, m); Array.Resize(ref hz, m);
-                Array.Resize(ref keys, m); Array.Resize(ref moving, m); Array.Resize(ref next, m);
+                Array.Resize(ref keys, m); Array.Resize(ref cellX, m); Array.Resize(ref cellZ, m); Array.Resize(ref moving, m); Array.Resize(ref next, m);
             }
             xs[n] = x; zs[n] = z; hx[n] = headX; hz[n] = headZ; keys[n] = key; moving[n] = walking;
             return n++;
@@ -74,7 +83,9 @@ namespace AquariumCiv.Life
             for (int c = 0; c < Cells; c++) head[c] = -1;
             for (int i = 0; i < n; i++)
             {
-                int c = CellOf((int)Math.Floor(xs[i] / Personal), (int)Math.Floor(zs[i] / Personal));
+                cellX[i] = (int)Math.Floor(xs[i] / Personal);
+                cellZ[i] = (int)Math.Floor(zs[i] / Personal);
+                int c = CellOf(cellX[i], cellZ[i]);
                 next[i] = head[c]; head[c] = i;
             }
         }
@@ -85,12 +96,12 @@ namespace AquariumCiv.Life
         {
             px = pz = 0f;
             if (!moving[i]) return;
-            int cx = (int)Math.Floor(xs[i] / Personal), cz = (int)Math.Floor(zs[i] / Personal);
+            int cx = cellX[i], cz = cellZ[i];
             for (int ox = -1; ox <= 1; ox++)
                 for (int oz = -1; oz <= 1; oz++)
                     for (int j = head[CellOf(cx + ox, cz + oz)]; j >= 0; j = next[j])
                     {
-                        if (j == i) continue;
+                        if (j == i || cellX[j] != cx + ox || cellZ[j] != cz + oz) continue; // a bucket is shared: one neighbour counts once
                         float dx = xs[i] - xs[j], dz = zs[i] - zs[j];
                         float d2 = dx * dx + dz * dz;
                         if (d2 >= Personal * Personal) continue;
@@ -109,13 +120,17 @@ namespace AquariumCiv.Life
                         {
                             dx /= d; dz /= d;
                             // Head-on, straight back would only hold them up: ease half of it into a sidestep, to the side
-                            // they are already on (the key's side when dead ahead).
+                            // they are already on. Dead ahead a tie decides: two meeting both keep left, two going one way split by
+                            // key. The side runs through zero, so a neighbour drifting across the middle doesn't flip it (#203).
                             float hl = (float)Math.Sqrt(hx[i] * hx[i] + hz[i] * hz[i]);
                             if (hl > 1e-4f)
                             {
                                 float ux = hx[i] / hl, uz = hz[i] / hl, lx = -uz, lz = ux;
                                 float lat = dx * lx + dz * lz;
-                                float side = lat > 0.15f ? 1f : lat < -0.15f ? -1f : keys[i] < keys[j] ? 1f : -1f;
+                                float jl = (float)Math.Sqrt(hx[j] * hx[j] + hz[j] * hz[j]);
+                                float meet = jl > 1e-4f ? Math.Max(0f, -(ux * hx[j] + uz * hz[j]) / jl) : 0f;
+                                float key = keys[i] < keys[j] ? 1f : -1f;
+                                float side = Math.Max(-1f, Math.Min(1f, (lat + (key + (1f - key) * meet) * SideTie) / SideBand));
                                 dx += lx * side * 0.9f; dz += lz * side * 0.9f;
                                 float dl = (float)Math.Sqrt(dx * dx + dz * dz);
                                 dx /= dl; dz /= dl;
@@ -126,22 +141,28 @@ namespace AquariumCiv.Life
                     }
         }
 
-        /// <summary>One frame of a walker's offset (ox, oz from their planned point): grows toward the push, fades back when
-        /// nothing presses, never more than <see cref="MaxOffset"/>.</summary>
+        /// <summary>One frame of a walker's offset (ox, oz from their planned point): grows with the push and always fades a little, so
+        /// it settles where the two balance instead of chattering on and off at the edge of someone's space. The same at any frame
+        /// rate, and never more than <see cref="MaxOffset"/>.</summary>
         public static void Ease(ref float ox, ref float oz, float pushX, float pushZ, float dt)
         {
-            if (pushX * pushX + pushZ * pushZ > 1e-8f)
-            {
-                float k = Math.Min(1f, Grow * dt);
-                ox += pushX * k; oz += pushZ * k;
-            }
-            else
-            {
-                float k = (float)Math.Exp(-Fade * dt);
-                ox *= k; oz *= k;
-            }
+            float press = (float)Math.Sqrt(pushX * pushX + pushZ * pushZ);
+            float grow = 1f - (float)Math.Exp(-Grow * dt), keep = (float)Math.Exp(-Fade * dt * Math.Max(0f, 1f - press / PressHolds));
+            ox = ox * keep + pushX * grow;
+            oz = oz * keep + pushZ * grow;
             float len = (float)Math.Sqrt(ox * ox + oz * oz);
             if (len > MaxOffset) { ox *= MaxOffset / len; oz *= MaxOffset / len; }
+        }
+
+        /// <summary>One frame of a doll closing on where it should be: a short lag (<see cref="FollowRate"/>), at most <paramref name="most"/> this
+        /// frame. A small step or corner in what it follows becomes a curve.</summary>
+        public static void Follow(ref float x, ref float z, float wantX, float wantZ, float most, float dt)
+        {
+            float k = 1f - (float)Math.Exp(-FollowRate * dt);
+            float dx = (wantX - x) * k, dz = (wantZ - z) * k;
+            float len = (float)Math.Sqrt(dx * dx + dz * dz);
+            if (len > most && len > 0f) { dx *= most / len; dz *= most / len; }
+            x += dx; z += dz;
         }
 
         /// <summary>Move a point outside every solid: one inside is pushed straight out to the rim (continuous along any

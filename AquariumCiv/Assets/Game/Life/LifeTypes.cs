@@ -31,6 +31,8 @@ namespace AquariumCiv.Life
         // the relic moments (§1): staged by RelicMoments
         TurnLens, LookThroughLens, Queue, Freeze, StepBack, Watch, Poke, Taste, Deliver, SetUp, Bow, CopyPose, PickUp, HoldUp,
         Give, PutOn, LopsidedDance,
+        /// <summary>#200: at home with the door shut, awake: nothing to draw. Appended so the older values keep their numbers.</summary>
+        Indoors,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -230,7 +232,7 @@ namespace AquariumCiv.Life
                 case ActivityKind.LopsidedDance:
                     return ActivityGroup.Social;
                 case ActivityKind.Sleep: case ActivityKind.Nap: case ActivityKind.SitOut: case ActivityKind.Stretch:
-                case ActivityKind.Eat: case ActivityKind.Toddle:
+                case ActivityKind.Eat: case ActivityKind.Toddle: case ActivityKind.Indoors:
                     return ActivityGroup.Rest;
                 case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;

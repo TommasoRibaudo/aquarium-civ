@@ -44,6 +44,39 @@ namespace AquariumCiv.Life
             public Person teller;
             /// <summary>#92: who visits the glass today (<see cref="PlanGlassVisits"/>).</summary>
             public readonly Dictionary<int, List<Seg>> glass = new Dictionary<int, List<Seg>>();
+            /// <summary>#200: the few who may sit out at their door today, and the day that list is for.</summary>
+            public readonly HashSet<int> doorSitters = new HashSet<int>();
+            public long doorSittersDay = long.MinValue;
+        }
+
+        /// <summary>#200: the most people who sit out at their doors in a day. A whole Village sat in front of its houses each morning, facing them.</summary>
+        public const int DoorSitters = 3;
+
+        /// <summary>Today's door sitters: the elders first, then by the day's hash, so the same few sit all day and it's someone else's turn tomorrow.</summary>
+        bool MaySitAtDoor(Person p, DayInfo d)
+        {
+            if (d.doorSittersDay != d.day)
+            {
+                d.doorSittersDay = d.day;
+                d.doorSitters.Clear();
+                var order = new List<Person>(people);
+                order.Sort((a, b) =>
+                {
+                    int old = (b.stage == LifeStage.Elder).CompareTo(a.stage == LifeStage.Elder);
+                    return old != 0 ? old : H(a.key, d.day, 777).CompareTo(H(b.key, d.day, 777));
+                });
+                for (int i = 0; i < order.Count && d.doorSitters.Count < DoorSitters; i++)
+                    if (order[i].Grown) d.doorSitters.Add(order[i].key);
+            }
+            return d.doorSitters.Contains(p.key);
+        }
+
+        /// <summary>#200: everyone else who would sit at their door today stays in.</summary>
+        void KeepDoorsQuiet(Person p, Seg[] day)
+        {
+            if (MaySitAtDoor(p, dayInfo)) return;
+            for (int i = 0; i < day.Length; i++)
+                if (day[i].kind == ActivityKind.SitOut && day[i].place == p.home && !day[i].Moving) { day[i].kind = ActivityKind.Indoors; day[i].prop = Prop.None; }
         }
 
         readonly DayInfo dayInfo = new DayInfo();
@@ -143,6 +176,7 @@ namespace AquariumCiv.Life
             buildDepth++;
             try { segs = BuildDay(p, dayInfo); }
             finally { buildDepth--; }
+            KeepDoorsQuiet(p, segs);
             dayCache[p.key] = segs;
             return segs;
         }
