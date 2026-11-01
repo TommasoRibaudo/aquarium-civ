@@ -354,6 +354,8 @@ namespace AquariumCiv.GameUI
     public partial class GlassBanner : VisualElement
     {
         public VisualElement End { get; }
+        readonly VisualElement words;
+        Label title, sub;
 
         public GlassBanner() : this(null, null) { }
 
@@ -361,29 +363,40 @@ namespace AquariumCiv.GameUI
         {
             AddToClassList("kg-banner");
             AddToClassList(GlassMotion.SlideClass);
-            var words = new VisualElement { pickingMode = PickingMode.Ignore };
+            words = new VisualElement { pickingMode = PickingMode.Ignore };
             words.AddToClassList("kg-banner-words");
-            if (!string.IsNullOrEmpty(title))
-            {
-                var t = new Label(title) { pickingMode = PickingMode.Ignore };
-                t.AddToClassList("type-head");
-                words.Add(t);
-            }
-            if (!string.IsNullOrEmpty(sub))
-            {
-                var s = new Label(sub) { pickingMode = PickingMode.Ignore };
-                s.AddToClassList("type-note");
-                s.AddToClassList("kg-banner-sub");
-                words.Add(s);
-            }
             Add(words);
+            Set(title, sub);
             End = new VisualElement();
             End.style.flexDirection = FlexDirection.Row;
             End.style.alignItems = Align.Center;
+            End.style.flexShrink = 0;
             Add(End);
         }
 
         public bool Inline { set => EnableInClassList("kg-banner--inline", value); }
+
+        /// <summary>The words; an empty line takes no room.</summary>
+        public void Set(string headline, string note)
+        {
+            Line(ref title, headline, "type-head", null);
+            Line(ref sub, note, "type-note", "kg-banner-sub");
+        }
+
+        void Line(ref Label l, string text, string type, string extra)
+        {
+            bool on = !string.IsNullOrEmpty(text);
+            if (l == null && on)
+            {
+                l = new Label { pickingMode = PickingMode.Ignore };
+                l.AddToClassList(type);
+                if (extra != null) l.AddToClassList(extra);
+                words.Add(l);
+            }
+            if (l == null) return;
+            l.text = text ?? "";
+            l.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+        }
     }
 
     /// <summary>

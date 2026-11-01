@@ -45,6 +45,7 @@ namespace AquariumCiv.View
 
         BoxView box;
         RelicProps props;
+        StashProps stash;
         SimCore boundSim;
         long lastDay = long.MinValue, lastMonth;
         readonly List<string> pending = new();
@@ -81,6 +82,7 @@ namespace AquariumCiv.View
             Instance = this;
             box = GetComponent<BoxView>();
             if (!TryGetComponent(out props)) props = gameObject.AddComponent<RelicProps>();
+            if (!TryGetComponent(out stash)) stash = gameObject.AddComponent<StashProps>();
         }
 
         void OnDisable()
@@ -137,6 +139,7 @@ namespace AquariumCiv.View
             UpdateTapBackSound(planner, now);
             SayLines(planner, now);
             if (props != null) props.Sync(sim, planner, Time.unscaledDeltaTime);
+            if (stash != null) stash.Sync(planner);
         }
 
         // ---------------- relic moments ----------------
@@ -193,7 +196,7 @@ namespace AquariumCiv.View
             var sm = ShowMeDirector.Instance;
             if (sm != null && sm.Busy) return false;
             var card = PersonCardView.Instance;
-            return card == null || !card.IsOpen;
+            return card == null || !card.AnyOpen;
         }
 
         void SayLines(LifePlanner planner, ViewTime now)

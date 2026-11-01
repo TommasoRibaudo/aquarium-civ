@@ -168,18 +168,83 @@ namespace AquariumCiv.View.PlayTests
             yield return Tap("cards-peek");
             var cam = Camera.main.GetComponent<BoxCamera>();
             var before = cam.target;
+            var sheet = View.Root.Q("cards-sheet");
+            var bar = View.Root.Q("cards-showme-bar");
             yield return Tap("cards-showme");
             Assert.IsTrue(ShowMeDirector.Instance.Busy, "the camera flies");
             Assert.AreEqual(CardStackMode.Open, Model.Mode, "the stack stays");
             yield return new WaitForSecondsRealtime(1.6f);
             yield return Shot("cards_showme");
-            Assert.IsTrue(Shown(View.Root.Q("cards-sheet")));
+            Assert.IsFalse(Shown(sheet), "the card slides off: the place stays clear (board S33Return)");
+            Assert.IsTrue(Shown(bar), "a bar brings it back");
+            var words = bar.Q(className: "kg-banner-words").worldBound;
+            Assert.LessOrEqual(words.xMax, View.Root.Q("cards-showme-back").worldBound.xMin + 0.5f, "the headline stops short of the button");
+            Assert.IsTrue(GameHud.Instance.ToolsHidden, "the bar has the tools' lane");
             Assert.IsTrue(Sim.IsCardRead(Model.Shown));
+            yield return Tap("cards-showme-back");
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.IsTrue(Shown(sheet), "a tap on the bar brings the card back");
+            Assert.IsFalse(Shown(bar));
+
+            // And by itself, when the echo is over.
+            yield return Tap("cards-showme");
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.IsFalse(Shown(sheet));
+            yield return Until(() => Shown(sheet), 60f);
+            Assert.IsTrue(Shown(sheet), "the card comes back when the echo ends");
+            Assert.IsTrue(ShowMeDirector.Instance.Settled);
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.IsFalse(Shown(bar), "and the bar goes");
             yield return Tap("cards-next");
             yield return Tap("cards-skip");
             yield return new WaitForSecondsRealtime(1.2f);
             Assert.Less(Vector3.Distance(before, cam.target), 0.05f, "closing the stack takes the camera back");
             AssertNoErrors("show me");
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator TwoPortraitsAreEachAWholeTarget()
+        {
+            yield return Returned();
+            yield return Tap("cards-peek");
+            Assert.AreEqual("card text: two", CardStackView.DebugText("two"));
+            yield return Frames(4);
+            VisualElement a = View.Root.Q("cards-portrait-0"), b = View.Root.Q("cards-portrait-1");
+            Assert.IsTrue(Shown(a) && Shown(b));
+            Vector2 ca = a.worldBound.center, cb = b.worldBound.center;
+            Assert.GreaterOrEqual(cb.x - ca.x, GameUiPanel.MinTarget - 1f, "a whole target between their centres");
+            float reach = GameUiPanel.MinTarget * 0.5f - 2f;
+            foreach (var (who, at) in new[] { (a, ca), (b, cb) })
+                foreach (float dx in new[] { -reach, reach })
+                {
+                    var hit = View.Root.panel.Pick(at + new Vector2(dx, 0f));
+                    Assert.IsTrue(hit == who || who.Contains(hit), $"{who.name} takes a tap {dx:0} from its centre, got {hit?.name}");
+                }
+            yield return TapAt(GameUiPanel.ScreenCenter(b));
+            yield return Frames(4);
+            var cards = PersonCardView.Instance;
+            Assert.IsTrue(cards.IsOpen);
+            Assert.AreEqual(Sim.State.notables.FindAll(n => n.alive)[1].id, cards.OpenId, "the second face opens the second person");
+            AssertNoErrors("two portraits");
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ALongCardStopsOnAWholeLine()
+        {
+            yield return Returned();
+            yield return Tap("cards-peek");
+            Assert.AreEqual("card text: long", CardStackView.DebugText("long"));
+            yield return Frames(6);
+            var view = View.Root.Q<GlassScroll>("cards-scroll").View;
+            Assume.That(view.contentContainer.layout.height, Is.GreaterThan(view.layout.height + 1f), "the card has more than fits");
+            var from = GameUiPanel.ScreenCenter(view);
+            yield return Drag(new[] { from, from + Vector2.up * 60f }, 8f);
+            yield return Frames(4);
+            float y = view.scrollOffset.y, end = view.contentContainer.layout.height - view.layout.height;
+            float lines = (y - View.Root.Q("cards-body").layout.y) / GlassType.BodyPitch;
+            Assert.Greater(y, 0f, "it moved");
+            Assert.IsTrue(Mathf.Abs(lines - Mathf.Round(lines)) < 0.02f || Mathf.Abs(y - end) < 1f, $"stopped at {y:0.0}, {lines:0.00} lines down, end {end:0.0}");
+            AssertNoErrors("long card");
         }
 
         [UnityTest, Timeout(120000)]

@@ -402,6 +402,16 @@ namespace AquariumCiv.Life
 
             public float T(float f) => start + f * (end - start);
 
+            /// <summary>#142: someone in it comes over, rather than looking from where they stand.</summary>
+            public bool HasWalker
+            {
+                get
+                {
+                    foreach (int k in order) if (roles[k] != RelicCast.Onlookers) return true;
+                    return false;
+                }
+            }
+
             public RelicMomentInfo Info(long day)
             {
                 var info = new RelicMomentInfo { relicId = relicId, nudgeId = nudgeId, day = day, start = start, end = end, spot = spot };

@@ -258,6 +258,65 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        [UnityTest, Timeout(120000)]
+        public IEnumerator TapACrowdDollOpensTheirSmallCard()
+        {
+            yield return Open();
+            try
+            {
+                yield return Grow(20f);
+                var sim = GameClock.Instance.Sim;
+                var cards = PersonCardView.Instance;
+                var pv = PeopleView.Find();
+                pv.timeScale = 0.05f;
+                yield return null;
+                var crowd = new List<PersonRef>();
+                pv.CrowdShown(crowd);
+                PersonRef who = PersonRef.None;
+                var cam = Camera.main;
+                var at = Vector2.zero;
+                foreach (var c in crowd)
+                {
+                    if (!pv.TryGetDollTop(c, out var top) || !pv.TryGetDollFeet(c, out var feet)) continue;
+                    var s = cam.WorldToScreenPoint((top + feet) * 0.5f);
+                    var p = new Vector2(s.x, s.y);
+                    if (s.z <= 0f || s.x < 60f || s.x > Screen.width - 60f || s.y < Screen.height * 0.25f || s.y > Screen.height * 0.85f) continue;
+                    if (!cards.PickPerson(p).IsCrowd) continue; // a notable in front of them is a notable's tap
+                    who = cards.PickPerson(p); at = p;
+                    break;
+                }
+                Assume.That(who.IsCrowd, "a crowd doll on screen with nobody in front");
+                int knocks = GlassVoice.Instance.Knocks;
+                yield return TapAt(at);
+                yield return null; yield return null;
+                Assert.IsTrue(cards.CrowdOpen, "a tap on a crowd doll opens their card");
+                Assert.IsFalse(cards.IsOpen, "and no notable's");
+                Assert.AreEqual(who.crowdIndex, cards.CrowdIndex);
+                Assert.AreEqual(knocks, GlassVoice.Instance.Knocks, "it is no knock");
+                yield return new WaitForSecondsRealtime(0.5f);
+
+                var root = cards.CardRoot;
+                Assert.AreEqual(sim.CrowdName(who.crowdIndex), root.Q<Label>("crowd-card-name").text, "their own first name");
+                Assert.IsNotEmpty(root.Q<Label>("crowd-card-job").text);
+                Assert.That(root.Q<Label>("crowd-card-doing").text, Does.Contain(cards.Crowd.name));
+                Assert.AreEqual(DisplayStyle.None, root.Q("person-card").resolvedStyle.display, "no stories, family or pin: the big card stays away");
+                var sheet = root.Q("crowd-card");
+                Assert.Less(sheet.worldBound.height / root.worldBound.height, 0.3f, "smaller than a person's");
+                Assert.LessOrEqual(sheet.worldBound.yMax, root.worldBound.height + 0.5f, "on the bottom edge");
+                Assert.AreEqual("crowd " + who.crowdIndex, who.ToString());
+                Assert.AreEqual(who.crowdIndex, cards.CrowdIndex);
+                Assert.IsTrue(MomentPlayer.PromptsBlocked(), "prompts wait for it");
+                yield return Shot("pc-crowd");
+
+                yield return TapAt(GameUiPanel.ScreenCenter(root.Q("crowd-card-close")));
+                yield return new WaitForSecondsRealtime(0.5f);
+                Assert.IsFalse(cards.CrowdOpen, "Close closes it");
+                Assert.AreEqual(DisplayStyle.None, root.Q("crowd-card").resolvedStyle.display);
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator ATapOnEmptyGlassStillKnocks()
         {

@@ -48,6 +48,8 @@ namespace AquariumCiv.View
 
         public Phase State { get; private set; }
         public bool Busy => State != Phase.Idle && State != Phase.Returning;
+        /// <summary>Nothing left to watch: the flight is over and the echo has played, or it was all ended (the card comes back).</summary>
+        public bool Settled => !Busy || (State == Phase.Hold && phaseT >= holdFor);
         public ShowMePlan Current { get; private set; }
         public RelicMomentInfo CurrentEcho { get; private set; }
         /// <summary>The echo's line said last (tests).</summary>

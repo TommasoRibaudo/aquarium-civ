@@ -53,6 +53,76 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.IsFalse(show.TakeBack(sim, r.nudge.id), "only once");
         }
 
+        /// <summary>A camp past its first year with a gift just placed, and the show that placed it.</summary>
+        static (SimCore sim, LifePlanner planner, ShapingShow show, int id) Gift(ViewTime? at = null)
+        {
+            var sim = NewSim(3);
+            for (int m = 0; m < 12; m++) sim.Step();
+            var planner = LifePlanner.Wired(sim);
+            var show = new ShapingShow();
+            show.Sync(sim, 0f, at ?? At(sim), planner);
+            var (x, z) = OpenLand(sim, 1.2f, 0.6f);
+            var r = show.Place(sim, SimCore.NudgeKind.Grove, x, z);
+            Assert.IsTrue(r.Ok, r.fail.ToString());
+            return (sim, planner, show, r.nudge.id);
+        }
+
+        [Test]
+        public void TheSyncStagesTheReactionOnce()
+        {
+            var (sim, planner, show, id) = Gift();
+            var view = At(sim);
+            var playing = new List<RelicMomentInfo>();
+            show.Sync(sim, 0.05f, view, planner);
+            Assert.AreEqual(1, planner.ActiveShapingReactions(view, playing), "#142: someone up reacts at once");
+            Assert.AreEqual(id, playing[0].nudgeId);
+            Assert.IsFalse(show.Find(id).react, "done with it");
+            var first = playing[0].cast.Count;
+            show.Sync(sim, 0.1f, view, planner);
+            Assert.AreEqual(1, planner.ActiveShapingReactions(view, playing), "not a second one");
+            Assert.AreEqual(first, playing[0].cast.Count);
+        }
+
+        [Test]
+        public void ReactionsWaitForSomeoneUp()
+        {
+            var sim0 = NewSim(3);
+            long day = sim0.State.month + 12;
+            var night = new ViewTime(day, 2f);
+            var (sim, planner, show, id) = Gift(night);
+            var playing = new List<RelicMomentInfo>();
+            var e = show.Find(id);
+            show.Sync(sim, 0.05f, night, planner);
+            bool up = planner.ActiveShapingReactions(night, playing) > 0;
+            Assert.AreNotEqual(up, e.react, "the reaction stays asked for until someone can play it");
+            var morning = new ViewTime(day + 1, 9f);
+            show.Sync(sim, 5f, morning, planner);
+            Assert.IsFalse(e.react, "by morning somebody has seen it");
+        }
+
+        [Test]
+        public void AnAnsweredGiftHasNoReactionToWaitFor()
+        {
+            var (sim, planner, show, id) = Gift();
+            Assert.IsTrue(show.SkipToAnswer(sim, id));
+            var view = At(sim);
+            show.Sync(sim, 0.05f, view, planner);
+            Assert.IsFalse(show.Find(id).react);
+            Assert.AreEqual(0, planner.ActiveShapingReactions(view, new List<RelicMomentInfo>()), "the answer goes on as it did");
+        }
+
+        [Test]
+        public void WithoutAPlannerNothingWaits()
+        {
+            var sim = NewSim(4);
+            var show = new ShapingShow();
+            show.Sync(sim, 0f, At(sim));
+            var (x, z) = OpenLand(sim, 1.2f, 0.6f);
+            var r = show.Place(sim, SimCore.NudgeKind.Rain, x, z);
+            show.Sync(sim, 0.05f, At(sim));
+            Assert.IsFalse(show.Find(r.nudge.id).react);
+        }
+
         [Test]
         public void AToolThatCantBeUsedSaysWhy()
         {

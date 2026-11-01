@@ -96,7 +96,7 @@ namespace AquariumCiv.View
             if (CardStackView.Instance != null && CardStackView.Instance.Showing) return true; // same place on the screen, and the story comes first
             if (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen) return true;
             if (MomentPlayer.Instance != null && (MomentPlayer.Instance.Playing || GameClock.Instance != null && GameClock.Instance.Held)) return true;
-            if (PersonCardView.Instance != null && PersonCardView.Instance.IsOpen) return true;
+            if (PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen) return true;
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var sm = ShowMeDirector.Instance;

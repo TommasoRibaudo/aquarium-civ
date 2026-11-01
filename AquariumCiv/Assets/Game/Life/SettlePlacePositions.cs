@@ -253,7 +253,7 @@ namespace AquariumCiv.Life
             }
             if (p.kind == PlaceKind.Green) { x = st.GreenX; z = st.GreenZ; return true; }
             if (!landReady) BuildLand();
-            int key = (int)p.kind * 4 + (p.kind == PlaceKind.Remembering && p.index == 1 ? 1 : 0);
+            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash && p.index == 1 ? 1 : 0);
             if (!land.TryGetValue(key, out var s)) return false;
             x = s.x; z = s.z;
             return true;
@@ -364,6 +364,13 @@ namespace AquariumCiv.Life
             Set(PlaceKind.Remembering, new Spot(gx + st.GreenRadius * 0.9f, gz)); // the cairn at the green's rim
             var church = LotOfKind(LotKind.Church, true);
             land[(int)PlaceKind.Remembering * 4 + 1] = church ?? land[(int)PlaceKind.Remembering * 4]; // the churchyard
+
+            // #150: the camp's stash.
+            st.Fire(out float fx, out float fz, out _);
+            CampStash.At(fx, fz, CampStash.StandRadius, out float wx, out float wz);
+            land[(int)PlaceKind.Stash * 4] = new Spot(wx, wz);
+            CampStash.At(fx, fz, CampStash.PileRadius, out wx, out wz);
+            land[(int)PlaceKind.Stash * 4 + 1] = new Spot(wx, wz);
         }
 
         /// <summary>#92: where the people stand at the front glass: on walkable ground just inside the wall

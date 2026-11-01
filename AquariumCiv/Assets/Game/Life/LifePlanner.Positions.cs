@@ -42,6 +42,21 @@ namespace AquariumCiv.Life
             return PlanPos(p, t.hour, out x, out z);
         }
 
+        /// <summary>#150: what a view needs to draw the camp's stash: where the pile stands and what's in it (read fresh, so a
+        /// cheat that sets the stock shows at once). False outside the camp, or without positions.</summary>
+        public bool TryGetStash(out StashLook look)
+        {
+            look = default;
+            Sync();
+            if (stash.kind != PlaceKind.Stash) return false;
+            if (!positions.TryGetPosition(CampStash.Pile, out look.x, out look.z)) return false;
+            if (!positions.TryGetPosition(fire, out float fx, out float fz)) return false;
+            look.faceX = fx - look.x;
+            look.faceZ = fz - look.z;
+            look.stock = CampStash.StockOf(sim.State.food, sim.State.wood);
+            return true;
+        }
+
         // ======================================================================== routes as polylines
 
         sealed class Poly

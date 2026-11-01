@@ -99,6 +99,15 @@ namespace AquariumCiv.Sim
 
         public double OfflineSimHours(double realHoursAway) => OfflineSimHours(realHoursAway, fullSpeedHours, slowSpeed);
 
+        /// <summary>The other way round: the real hours away that give the civ this many sim hours. Infinite when the slow tail
+        /// stands still and the hours lie past the full-speed part.</summary>
+        public double RealHoursFor(double simHours)
+        {
+            if (simHours <= 0) return 0;
+            if (simHours <= fullSpeedHours) return simHours;
+            return slowSpeed > 0 ? fullSpeedHours + (simHours - fullSpeedHours) / slowSpeed : double.PositiveInfinity;
+        }
+
         /// <summary>How many living notables an era wants.</summary>
         public NotableBand NotablesIn(Era era) => era switch
         {
@@ -359,6 +368,8 @@ namespace AquariumCiv.Sim
         public FirstRunState firstRun = new(); // the first run's progress; inactive unless FirstRun.Begin ran (#94)
         public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
         public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
+        public List<string> crowdNames = new(); // first names of the crowd, by crowd index (SimCore.Crowd.cs, #148); old saves fill it from the seed
+        public int crowdNameNext;            // how far the box has read the shuffled crowd name table
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;
