@@ -12,7 +12,9 @@ namespace AquariumCiv.View
     /// Each mill's sails are a mesh of their own, one draw call a mill, turned about the hub; <see cref="BoxView"/> leaves them out of its chunks.
     /// Debug: <see cref="DebugNext"/> holds the wind still, gentle or brisk.
     /// </summary>
+    /// <remarks><see cref="BoxView"/> adds this itself, so every box that leaves its sails out has one. Runs after it, so sails go up in the frame their chunk does.</remarks>
     [RequireComponent(typeof(BoxView))]
+    [DefaultExecutionOrder(100)]
     public class WindView : MonoBehaviour
     {
         public static bool AutoCreate = true;
@@ -31,19 +33,12 @@ namespace AquariumCiv.View
         readonly List<PieceData> found = new();
         Mesh villageSails, townSails;
         float angle, nextSync;
+        int builtAt = -1;
 
         /// <summary>The wind now (0 still, 1 brisk), how far the sails have gone (degrees), and how many mills have sails (tests, the debug panel).</summary>
         public float Wind { get; private set; }
         public float Angle => angle;
         public int Mills => mills.Count;
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        static void Bootstrap()
-        {
-            if (!AutoCreate || Instance != null || FindAnyObjectByType<GameClock>() == null) return;
-            var b = FindAnyObjectByType<BoxView>();
-            if (b != null && b.GetComponent<WindView>() == null) b.gameObject.AddComponent<WindView>();
-        }
 
         void OnEnable()
         {
@@ -63,13 +58,18 @@ namespace AquariumCiv.View
             villageSails = townSails = null;
         }
 
-        void Update()
+        void LateUpdate()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.ActiveSim : null;
             int seed = sim != null ? sim.State.seed : 1;
             Wind = Held >= 0f ? Held : WindDrift.At(seed, Time.unscaledTimeAsDouble);
             angle = Mathf.Repeat(angle + WindDrift.Degrees(Wind) * Time.unscaledDeltaTime, 360f);
-            if (Time.unscaledTime >= nextSync) { nextSync = Time.unscaledTime + SyncSeconds; Sync(); }
+            if (Time.unscaledTime >= nextSync || builtAt != box.ChunkBuilds)
+            {
+                nextSync = Time.unscaledTime + SyncSeconds;
+                builtAt = box.ChunkBuilds;
+                Sync();
+            }
             foreach (var m in mills)
                 if (m.go != null) Pose(m);
         }

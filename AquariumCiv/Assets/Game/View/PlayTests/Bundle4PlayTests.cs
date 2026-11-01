@@ -344,11 +344,12 @@ namespace AquariumCiv.View.PlayTests
         // ---------------- #202 ----------------
 
         [UnityTest, Timeout(120000)]
+        [Category("Mills")]
         public IEnumerator TheMillsSailsGoWithTheWind()
         {
             yield return Village(30f);
             var wind = WindView.Instance;
-            Assert.IsNotNull(wind, "the bootstrap made it");
+            Assert.IsNotNull(wind, "the box made it");
             yield return new WaitForSecondsRealtime(0.8f);
             Assert.GreaterOrEqual(wind.Mills, 1, "this box has a mill with sails");
             try
@@ -388,6 +389,121 @@ namespace AquariumCiv.View.PlayTests
             }
             finally { WindView.Held = -1f; }
             AssertNoErrors("wind");
+        }
+
+        /// <summary>A sail's tip is over this height from the mill's foot, and both mills' caps stop short of it.</summary>
+        const float SailTop = 0.85f;
+
+        /// <summary>The chunks hold something at sail height over this spot: the sails were built in.</summary>
+        static bool SailsInChunks(BoxView box, float x, float z)
+        {
+            float ground = box.GroundHeight(x, z);
+            foreach (var f in box.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (f.sharedMesh == null || !f.sharedMesh.name.StartsWith("BoxChunk")) continue;
+                foreach (var v in f.sharedMesh.vertices)
+                    if ((new Vector2(v.x - x, v.z - z)).magnitude < 0.5f && v.y - ground > SailTop) return true;
+            }
+            return false;
+        }
+
+        static List<MeshRenderer> Turning(BoxView box)
+        {
+            var root = box.transform.Find("Sails");
+            return root == null ? new List<MeshRenderer>() : root.GetComponentsInChildren<MeshRenderer>().ToList();
+        }
+
+        /// <summary>Each mill in the layout has a real set of sails: in the chunks, or a mesh of its own that draws, at full size, hanging on that mill's hub.</summary>
+        static string SailProblem(BoxView box)
+        {
+            var mills = box.layout.pieces.Where(p => p.kind == PieceKind.Windmill && p.era != Era.Camp).ToList();
+            var live = Turning(box);
+            foreach (var m in mills)
+            {
+                if (SailsInChunks(box, m.x, m.z)) { if (live.Count > 0) return $"{m.era} mill has two sets"; continue; }
+                var hub = box.transform.TransformPoint(box.land.OnGround(m.x, m.z) + Quaternion.Euler(0f, m.yaw, 0f) * (m.era == Era.Town ? Pieces.TowerHub : Pieces.WindmillHub));
+                var on = live.FirstOrDefault(r => (r.transform.position - hub).magnitude < 0.01f);
+                if (on == null) return $"{m.era} mill at {m.x:0.00},{m.z:0.00} has no sails: {live.Count} sets live, wind {(box.GetComponent<WindView>() != null ? "there" : "none")}";
+                var mesh = on.GetComponent<MeshFilter>().sharedMesh;
+                if (mesh == null || mesh.vertexCount == 0 || on.sharedMaterial == null || !on.enabled || !on.gameObject.activeInHierarchy) return $"{m.era} sails don't draw";
+                if (Mathf.Abs(on.transform.lossyScale.y - box.transform.lossyScale.y) > 0.01f) return $"{m.era} sails scaled {on.transform.lossyScale.y}";
+                if (on.bounds.extents.magnitude < 0.3f) return $"{m.era} sails too small: {on.bounds.extents}";
+            }
+            return null;
+        }
+
+        static BoxView MillBox(string name, Era era)
+        {
+            var go = new GameObject(name);
+            go.SetActive(false);
+            var box = go.AddComponent<BoxView>();
+            box.bakeAO = false;
+            box.logRebuilds = false;
+            box.layout.autoNature = false;
+            box.layout.pieces.Add(new PieceData { kind = PieceKind.Windmill, era = era, x = 0.3f, z = 0.2f, seed = 3 });
+            go.SetActive(true);
+            return box;
+        }
+
+        /// <summary>The user's bare mills: a box nothing bootstrapped still has sails, on the post mill and the tower mill, a new mill gets them in the frame it stands
+        /// in, and a second box, which can't have the wind, keeps them in its chunks.</summary>
+        [UnityTest, Timeout(60000)]
+        [Category("Mills")]
+        public IEnumerator AMillInABoxMadeAfterTheBootstrapHasItsSails([Values(Era.Village, Era.Town)] Era era)
+        {
+            Assert.IsNull(WindView.Instance, "no scene has a wind here");
+            var first = MillBox("MillBoxA", era);
+            var second = MillBox("MillBoxB", era);
+            try
+            {
+                yield return null;
+                yield return null;
+                Debug.Log($"[#202] {era} first: wind {first.GetComponent<WindView>() != null}, chunks {SailsInChunks(first, 0.3f, 0.2f)}, turning {Turning(first).Count}; second: wind on {second.GetComponent<WindView>()?.enabled}, chunks {SailsInChunks(second, 0.3f, 0.2f)}, turning {Turning(second).Count}");
+                Assert.IsNull(SailProblem(first), "the first box");
+                Assert.IsNull(SailProblem(second), "a second box");
+                first.layout.pieces.Add(new PieceData { kind = PieceKind.Windmill, era = era, x = -0.8f, z = -0.3f, seed = 5 });
+                first.Rebuild();
+                yield return null; // a new mill's sails come with the frame it stands in, not at the next half-second sync
+                Assert.IsNull(SailProblem(first), "a new mill isn't left bare");
+            }
+            finally
+            {
+                Object.DestroyImmediate(first.gameObject);
+                Object.DestroyImmediate(second.gameObject);
+            }
+        }
+
+        /// <summary>The path the user saw: the real scene loaded by a test that doesn't run the bootstraps, grown through both mills, with a look at each.</summary>
+        [UnityTest, Timeout(170000)]
+        [Category("Mills")]
+        public IEnumerator BothMillsHaveSailsOnTheirHubsInTheRealScene([Values(true, false)] bool bootstraps)
+        {
+            yield return OpenSlice(1080, 1920, Seed, bootstraps: bootstraps);
+            ShowMeDirector.BubblesOn = false;
+            var clock = GameClock.Instance;
+            var box = Box;
+            WindView.Held = 0f;
+            try
+            {
+                foreach (var era in new[] { Era.Village, Era.Town })
+                {
+                    for (int i = 0; i < 12 && clock.Sim.State.era < era; i++) { clock.Sim.ForceNextEra(); yield return Frames(3); SimLayoutSource.DebugSkipYears(10f); yield return Frames(3); }
+                    for (int i = 0; i < 20 && !box.layout.pieces.Any(p => p.kind == PieceKind.Windmill && p.era == era); i++) { if (i % 5 == 0) SimLayoutSource.DebugSkipYears(15f); yield return Frames(12); }
+                    yield return Frames(3);
+                    var mill = box.layout.pieces.FirstOrDefault(p => p.kind == PieceKind.Windmill && p.era == era);
+                    Debug.Log($"[#202] scene, bootstraps {bootstraps}, {era}: era now {clock.Sim.State.era}, mill {(mill != null)}, wind {box.GetComponent<WindView>() != null}, instance {WindView.Instance != null}, turning {Turning(box).Count}, chunks {(mill != null && SailsInChunks(box, mill.x, mill.z))}");
+                    Assume.That(mill != null, $"a {era} mill in this box");
+                    Assert.IsNull(SailProblem(box), era.ToString());
+                    if (!bootstraps || !Application.isPlaying) continue;
+                    Camera.main.GetComponent<BoxCamera>().EaseTo(box.transform.TransformPoint(box.land.OnGround(mill.x, mill.z)), Cam.yaw, 35f, Cam.minZoom, 0.05f);
+                    yield return new WaitForSecondsRealtime(0.4f);
+                    yield return LookShot("mill-" + era);
+                    Cam.GoHome(0.02f);
+                    yield return new WaitForSecondsRealtime(0.1f);
+                }
+            }
+            finally { WindView.Held = -1f; }
+            AssertNoErrors("mills");
         }
 
         // ---------------- tester run 8: the marks ----------------

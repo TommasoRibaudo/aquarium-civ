@@ -93,12 +93,22 @@ namespace AquariumCiv.View
         /// <summary>The style kit's shared solid material (the one every generated mesh and doll uses).</summary>
         public Material SolidMaterial => Solid;
 
-        /// <summary>#202: sails are <see cref="WindView"/>'s in play. Read here, on the main thread: chunks build on workers.</summary>
+        /// <summary>#202: the chunks leave the sails out only when an enabled <see cref="WindView"/> on this box has them: asking if a wind is allowed left any box
+        /// nothing had bootstrapped with bare mills. Read here, on the main thread: chunks build on workers.</summary>
         bool sailsApart;
+
+        /// <summary>Times the chunks have been rebuilt: a mill's sails go up with the chunk it stands in.</summary>
+        public int ChunkBuilds { get; private set; }
 
         void OnEnable()
         {
-            sailsApart = Application.isPlaying && WindView.AutoCreate;
+            sailsApart = false;
+            if (Application.isPlaying && WindView.AutoCreate)
+            {
+                var wind = GetComponent<WindView>();
+                if (wind == null) wind = gameObject.AddComponent<WindView>();
+                sailsApart = wind.enabled; // a second box stays out of it: the wind is one a scene
+            }
 #if UNITY_EDITOR
             SweepOrphans();
 #endif
@@ -222,6 +232,7 @@ namespace AquariumCiv.View
             Glass();
             aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
+            ChunkBuilds++;
             ChunkHashes(chunkHash);
             System.Array.Copy(chunkHash, wantHash, ChunkCount);
             landHash = LandHash();
@@ -320,6 +331,7 @@ namespace AquariumCiv.View
                 Kill(old);
                 builders.Add((k, mb, tv, mesh));
                 chunkHash[k] = wantHash[k];
+                ChunkBuilds++;
                 chunkWaited[k] = 0;
             }
             meshMs = sw.Elapsed.TotalMilliseconds;

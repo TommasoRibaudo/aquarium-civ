@@ -75,7 +75,7 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>Loads Slice with a new box (or the save on disk, <paramref name="freshSave"/> false) and every bootstrap.
         /// <paramref name="seed"/> pins the world so a failure replays (0 = a random box).</summary>
-        protected IEnumerator OpenSlice(int w = 1179, int h = 2556, int seed = 0, bool freshSave = true, bool skipFirstRun = true)
+        protected IEnumerator OpenSlice(int w = 1179, int h = 2556, int seed = 0, bool freshSave = true, bool skipFirstRun = true, bool bootstraps = true)
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -98,7 +98,7 @@ namespace AquariumCiv.View.PlayTests
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Single));
 #endif
             for (int i = 0; i < 90; i++) yield return null; // build, layout, the Game view size lands
-            if (GameClock.Instance != null) bootstrapsRun = Bootstraps.All();
+            if (bootstraps && GameClock.Instance != null) bootstrapsRun = Bootstraps.All(); // without: what the older classes' own Open gets
             EveningTalkView.AutoStart = false; // a test that stands still mustn't lose its HUD to the close; its own tests turn it on
             yield return null; yield return null;
             if (skipFirstRun && FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll();
