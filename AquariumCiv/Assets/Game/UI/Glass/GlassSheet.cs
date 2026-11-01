@@ -60,7 +60,13 @@ namespace AquariumCiv.GameUI
             content = new VisualElement { name = "kg-sheet-content" };
             content.AddToClassList("kg-sheet-content");
             hierarchy.Add(content);
+            RegisterCallback<PointerDownEvent>(e => { tapSpot = e.position; tapAt = Time.realtimeSinceStartup; }, TrickleDown.TrickleDown); // the press: a button holds the lift for itself
         }
+
+        /// <summary>The last press on the sheet: a Close soon after came from that tap, and its spot gets a <see cref="GlassTapGuard"/>.</summary>
+        Vector2 tapSpot;
+        float tapAt = -1f;
+        const float ClosedByTapSeconds = 1f;
 
         public static string HeightClass(SheetHeight h) => h switch
         {
@@ -105,6 +111,8 @@ namespace AquariumCiv.GameUI
             // A leaving sheet takes no taps: what it still covers is free at once. Picking doesn't inherit, so every piece stops.
             this.Query<VisualElement>().Where(e => e.pickingMode == PickingMode.Position).ForEach(stopped.Add);
             foreach (var e in stopped) e.pickingMode = PickingMode.Ignore;
+            if (tapAt >= 0f && Time.realtimeSinceStartup - tapAt < ClosedByTapSeconds) GlassTapGuard.Arm(this, tapSpot);
+            tapAt = -1f;
             Surface.Follow(GlassMotion.SlideMs);
             GlassMotion.Hide(this, GlassMotion.SlideOff, GlassMotion.SlideMs, () => { Surface.Hide(); done?.Invoke(); });
         }

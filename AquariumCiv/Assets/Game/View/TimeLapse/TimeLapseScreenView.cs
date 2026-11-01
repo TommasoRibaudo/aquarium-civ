@@ -276,7 +276,7 @@ namespace AquariumCiv.View
             book.Add(ribbon = new GlassRibbon { name = "tl-book-ribbon" });
             ribbon.AddToClassList("tl-book-ribbon");
             Icon("tl-snapshot", "photo", OnSnapshot, controls, UiRole.Tap);
-            Icon("tl-close", "close", Close, controls, UiRole.Close).AddToClassList("tl-last");
+            Icon("tl-close", "close", () => { GlassTapGuard.Arm(root.Q("tl-close")); Close(); }, controls, UiRole.Close).AddToClassList("tl-last");
             panel.Add(controls);
 
             capRow = Row("tl-cap-row");

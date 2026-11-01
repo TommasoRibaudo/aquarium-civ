@@ -213,7 +213,7 @@ namespace AquariumCiv.View
             momentOpen = false;
             if (!momentReplay) GameClock.Tel.EraMomentEnded(momentEra, leftByPlayer, Time.unscaledTime - momentStart); // #100: watched live or skipped
             ReleaseCamera();
-            if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f);
+            if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f, firm: true);
             hadCamera = false;
             if (GameClock.Instance != null) GameClock.Instance.Held = false;
             // The close: with the ask up the HUD stays down and the caption leads (spec §4), until it's answered.
@@ -441,6 +441,17 @@ namespace AquariumCiv.View
             if (src != null) src.MomentLot(s.lotId); // the lot rebuilds in place, in the new era's look
             PuffAt(lot.x, lot.z, 1f);
             WaveKnock(s);
+        }
+
+        /// <summary>#191: the gift's arrival, where it lands: one puff and a ring of small ones (<paramref name="ring"/> 0 = just the puff).</summary>
+        public void GiftPuffs(float x, float z, float size, int ring)
+        {
+            PuffAt(x, z, size);
+            for (int i = 0; i < ring; i++)
+            {
+                float a = i * Mathf.PI * 2f / ring;
+                PuffAt(x + Mathf.Cos(a) * 0.32f, z + Mathf.Sin(a) * 0.32f, size * 0.5f);
+            }
         }
 
         void PuffAt(float x, float z, float size)

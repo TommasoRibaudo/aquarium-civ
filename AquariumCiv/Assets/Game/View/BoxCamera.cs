@@ -60,6 +60,8 @@ namespace AquariumCiv.View
         Vector3 flyFrom, flyTo;
         float flyZoomFrom, flyZoomTo, flyT, flyDur;
         public bool IsFlying { get; private set; }
+        /// <summary>A flight no touch or scroll stops (<see cref="EaseTo"/>'s firm): the way back from a moment, which the player can't redo by hand.</summary>
+        bool firmFlight;
         /// <summary>Raised when a flight ends: true = it arrived, false = a touch (or a new flight / Cancel) interrupted it.</summary>
         public event System.Action<bool> FlightEnded;
 
@@ -92,9 +94,9 @@ namespace AquariumCiv.View
         bool homeKnown;
 
         /// <summary>Eases back to the view the box opened on.</summary>
-        public void GoHome(float seconds = BoxCameraMath.FlyDefaultSeconds)
+        public void GoHome(float seconds = BoxCameraMath.FlyDefaultSeconds, bool firm = false)
         {
-            if (homeKnown) EaseTo(homeTarget, homeYaw, homePitch, homeFit, seconds);
+            if (homeKnown) EaseTo(homeTarget, homeYaw, homePitch, homeFit, seconds, firm);
         }
 
         /// <summary>Is the camera off its home view? The HUD backs the box name and top icons while it is (spec §4).</summary>
@@ -115,7 +117,7 @@ namespace AquariumCiv.View
             return new Vector3(Land.HX + 0.3f, 1.7f, Land.HZ + 0.3f).magnitude / Mathf.Tan(halfH) / Mathf.Max(0.1f, fill);
         }
 
-        void OnEnable() { synced = false; mode = Mode.None; velocity = Vector2.zero; IsFlying = false; pressClaimed = false; }
+        void OnEnable() { synced = false; mode = Mode.None; velocity = Vector2.zero; IsFlying = firmFlight = false; pressClaimed = false; }
 
         // ---------------- fly-to ----------------
         /// <summary>
@@ -131,6 +133,7 @@ namespace AquariumCiv.View
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
             flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), z1);
             flyDur = Mathf.Max(0f, seconds); flyT = 0f;
+            firmFlight = false;
             velocity = Vector2.zero;
             if (flyDur <= 1e-4f) { target = flyTo; zoom = z1; Apply(); return flyTo; }
             IsFlying = true;
@@ -160,10 +163,12 @@ namespace AquariumCiv.View
             => buildingId >= 0 && FlyToPlace(new AquariumCiv.Life.Place(AquariumCiv.Life.PlaceKind.Home, buildingId), zoomTo, seconds);
 
         /// <summary>Eases back to a whole pose (target, yaw, pitch, zoom) over <paramref name="seconds"/>: the end of an era
-        /// moment hands the camera back where the player had it (tester batch 2). Touch interrupts it like any flight.</summary>
-        public void EaseTo(Vector3 worldPoint, float yawTo, float pitchTo, float zoomTo, float seconds = BoxCameraMath.FlyDefaultSeconds)
+        /// moment hands the camera back where the player had it (tester batch 2). Touch interrupts it like any flight, unless it's
+        /// <paramref name="firm"/>: then only a new flight or a Cancel does, and a finger held through it starts fresh once it lands.</summary>
+        public void EaseTo(Vector3 worldPoint, float yawTo, float pitchTo, float zoomTo, float seconds = BoxCameraMath.FlyDefaultSeconds, bool firm = false)
         {
             FlyTo(worldPoint, zoomTo, seconds);
+            firmFlight = firm && IsFlying;
             targetYaw = Mathf.Clamp(yawTo, minYaw, maxYaw);
             targetPitch = pitchTo;
             lastYaw = yaw; lastPitch = pitch;
@@ -191,14 +196,14 @@ namespace AquariumCiv.View
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
 
-        void EndFlight(bool arrived) { IsFlying = false; FlightEnded?.Invoke(arrived); }
+        void EndFlight(bool arrived) { IsFlying = false; firmFlight = false; FlightEnded?.Invoke(arrived); }
 
         /// <summary>One frame of flight (public for tests): <paramref name="touches"/> fingers or buttons down, or a scroll, interrupt it.
         /// Returns true while the camera is still flying after this frame.</summary>
         public bool TickFlight(float dt, int touches = 0, float scroll = 0f)
         {
             if (!IsFlying) return false;
-            if (touches > 0 || Mathf.Abs(scroll) > 0.01f) { EndFlight(false); return false; }
+            if (!firmFlight && (touches > 0 || Mathf.Abs(scroll) > 0.01f)) { EndFlight(false); return false; }
             flyT += dt;
             float k = BoxCameraMath.FlyEase(flyDur > 0f ? flyT / flyDur : 1f);
             target = Vector3.Lerp(flyFrom, flyTo, k);
@@ -234,20 +239,16 @@ namespace AquariumCiv.View
             if (n == 0) pressClaimed = false;
             else if (mode == Mode.None && !pressClaimed && ClaimedByGate(a)) pressClaimed = true;
             float scrollY = Mouse.current != null && n == 0 ? Mouse.current.scroll.ReadValue().y : 0f;
+            // A firm flight has the camera: the finger's press counts from where the camera lands, so nothing jumps.
+            if (firmFlight && n > 0) { mode = Mode.None; orbiting = moved = false; velocity = Vector2.zero; samples.Clear(); }
             if (pressClaimed)
             {
                 // The tool keeps the touch; a flight still gives way to it.
-                if (IsFlying) TickFlight(dt, n, scrollY);
+                if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
                 n = 0; mode = Mode.None; orbiting = false; velocity = Vector2.zero;
                 return;
             }
-            if (IsFlying && TickFlight(dt, n, scrollY))
-            {
-                float ff = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
-                yaw += (targetYaw - yaw) * ff; pitch += (targetPitch - pitch) * ff;
-                lastYaw = yaw; lastPitch = pitch;
-                return;
-            }
+            if (IsFlying && TickFlight(dt, n, scrollY)) { FollowAngles(dt); return; }
             float H = Mathf.Max(1f, Screen.height);
 
             if (n == 0) EndPress(now);
@@ -281,6 +282,13 @@ namespace AquariumCiv.View
             pitch += (targetPitch - pitch) * f;
             lastYaw = yaw; lastPitch = pitch;
             zoom = Mathf.Clamp(zoom, minZoom, maxZoom);
+        }
+
+        void FollowAngles(float dt)
+        {
+            float f = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
+            yaw += (targetYaw - yaw) * f; pitch += (targetPitch - pitch) * f;
+            lastYaw = yaw; lastPitch = pitch;
         }
 
         void AutoOrbit(int touches, bool dragging, float dt, float now)

@@ -288,7 +288,7 @@ namespace AquariumCiv.View
         void GoHome()
         {
             homeOnLift = false;
-            if (cam != null && cam.isActiveAndEnabled && !cam.IsFlying) cam.GoHome();
+            if (cam != null && cam.isActiveAndEnabled && !cam.IsFlying) cam.GoHome(firm: true);
         }
 
         void Finish()
