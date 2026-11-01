@@ -89,9 +89,13 @@ namespace AquariumCiv.Lighting
         public const float DefaultNightFloor = 0.9f, MinNightFloor = 0.45f, MaxNightFloor = 0.9f;
         public const float DayShaderAmbient = 0.75f;
         const float MaxDt = 0.1f;
+        /// <summary>The sun's intensity while it swaps places with the moon: too little to see it move.</summary>
+        public const float OutSun = 0.06f;
 
         // Key hours; the last key is the first + 24 (the night holds until 02:30, then dawn warms up to 05:00).
-        static readonly float[] Hours = { 5f, 7f, 9f, 15f, 17f, 18.5f, 19.5f, 22f, 26.5f, 29f };
+        // The sun never sweeps to the moon: it goes down to almost nothing with no shadow where it is (20.7 h), turns over in
+        // a moment while it is out (20.9 h), and the moon comes up from there; the same on the way back (03:00 to 03:12).
+        static readonly float[] Hours = { 5f, 7f, 9f, 15f, 17f, 18.5f, 19.5f, 20.7f, 20.9f, 22f, 26.5f, 27f, 27.2f, 29f };
         static readonly LightValues[] Keys = BuildKeys();
 
         static LightValues Key(Rgb sun, float inten, float pitch, float yaw, Rgb sky, Rgb eq, Rgb gr, float exp, float sat, float vig, float bloom, float shadow, float daylight)
@@ -116,7 +120,18 @@ namespace AquariumCiv.Lighting
             var h185 = Key(new Rgb(1, .62f, .45f), .75f, 12, -40, new Rgb(.55f, .60f, .88f), new Rgb(.55f, .50f, .62f), new Rgb(.30f, .27f, .36f), -.15f, 6, .30f, .55f, .8f, .6f);
             var dusk = Key(new Rgb(.82f, .68f, .88f), .45f, 7, -40, new Rgb(.48f, .56f, .90f), new Rgb(.44f, .47f, .72f), new Rgb(.25f, .26f, .40f), -.25f, 4, .33f, .6f, .7f, .35f);
             var night = Key(new Rgb(.55f, .66f, 1.0f), .30f, 35, 30, new Rgb(.36f, .44f, .76f), new Rgb(.32f, .36f, .58f), new Rgb(.20f, .22f, .34f), -.35f, 2, .36f, .7f, .55f, 0f);
-            return new[] { dawn, morn, day, day, h17, h185, dusk, night, night, dawn };
+            LightValues Out(in LightValues a, in LightValues b, float t, in LightValues pose)
+            {
+                var v = LightValues.Lerp(a, b, t);
+                v.SunIntensity = OutSun; v.ShadowStrength = 0f; v.SunColor = night.SunColor;
+                v.SunPitch = pose.SunPitch; v.SunYaw = pose.SunYaw;
+                return v;
+            }
+            var sunOut = Out(dusk, night, .48f, dusk);
+            var moonIn = Out(dusk, night, .56f, night);
+            var moonOut = Out(night, dawn, .2f, night);
+            var sunIn = Out(night, dawn, .28f, dawn);
+            return new[] { dawn, morn, day, day, h17, h185, dusk, sunOut, moonIn, night, night, moonOut, sunIn, dawn };
         }
 
         public static float Wrap24(float h) { h %= 24f; return h < 0f ? h + 24f : h; }
@@ -164,7 +179,7 @@ namespace AquariumCiv.Lighting
             v.AmbientGround = v.AmbientGround.Scaled(amb);
             v.FogColor = v.FogColor.Scaled(amb);
             v.ShaderAmbient = DayShaderAmbient + (nf - DayShaderAmbient) * night;        // 0.75 by day, the floor at night
-            v.ShadowStrength = v.ShadowStrength + (tune.NightShadow - 0.55f) * night;    // research: 0.85 day, 0.55 night; the moon look differs
+            v.ShadowStrength *= 1f + (tune.NightShadow / 0.55f - 1f) * night;            // research: 0.85 day, 0.55 night; the moon look differs (and 0 stays 0 at the swap)
             return v;
         }
 
@@ -193,6 +208,13 @@ namespace AquariumCiv.Lighting
             Current = Evaluate(ShownHour, Look, NightFloor);
             FlickerHeld = false;
             _started = true;
+        }
+
+        /// <summary>Puts back what a <see cref="Snap"/> replaced (an era still is taken, the light carries on as it was).</summary>
+        public void Restore(in LightValues current, float shownHour)
+        {
+            Current = current;
+            ShownHour = shownHour;
         }
 
         /// <summary>One frame. <paramref name="hour"/> is the view hour; the light chases it, never faster than the clamp.</summary>

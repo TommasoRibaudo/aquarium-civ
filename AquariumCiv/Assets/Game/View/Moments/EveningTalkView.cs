@@ -214,7 +214,7 @@ namespace AquariumCiv.View
 
             var next = CloseRules.StepAt(t);
             if (next != Step) Enter(next);
-            if (Step >= CloseStep.Shelf && Step <= CloseStep.Rest)
+            if (Step >= CloseStep.Shelf && Step <= CloseStep.Rest && !DayLightDriver.Driving) // the hour has them on already
                 NightLamps.SetLevel(Mathf.Clamp01((t - CloseRules.TotalSeconds + CloseRules.ShelfSeconds) / CloseRules.ShelfSeconds) * LampLevel);
             PlaceTag();
             if (asked && !(moment != null && moment.NotifyAskUp)) Leave(); // answered: the HUD comes back, Watch with it
@@ -300,7 +300,7 @@ namespace AquariumCiv.View
             lastClose = Time.unscaledTime;
             lastActive = Time.unscaledTime;
             forcedLine = null;
-            NightLamps.SetLevel(0f);
+            if (!DayLightDriver.Driving) NightLamps.SetLevel(0f);
             GameUiPanel.Toasts.Hold("close", false);
             speakerTag.style.display = DisplayStyle.None;
             if (MomentPlayer.Instance != null) MomentPlayer.Instance.Overlay?.HideCaption();

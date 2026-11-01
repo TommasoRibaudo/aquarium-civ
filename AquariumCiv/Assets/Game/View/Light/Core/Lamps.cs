@@ -40,8 +40,11 @@ namespace AquariumCiv.Lighting
         /// stutter and the shimmer: the lamp just fades on.
         /// </summary>
         public static float Brightness(float level, int seed, int lampId, float time, bool steady = false)
+            => BrightnessAt(level, Threshold(seed, lampId), seed, lampId, time, steady);
+
+        /// <summary><see cref="Brightness"/> with the lamp's threshold given: a lamp in the world comes on with its mesh's window, whose threshold is in the shader.</summary>
+        public static float BrightnessAt(float level, float th, int seed, int lampId, float time, bool steady = false)
         {
-            float th = Threshold(seed, lampId);
             if (level <= th) return 0f;
             float over = level - th;
             if (steady) return Smooth01(over / IgniteWindow);

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using AquariumCiv.Lighting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering.Universal;
 
 namespace AquariumCiv.View
 {
@@ -36,7 +38,7 @@ namespace AquariumCiv.View
         [Tooltip("Orbit stays in front of the box, so the shelf and wall behind it stay in view (tester #31).")]
         public float minYaw = -30f, maxYaw = 55f;
         [Tooltip("Zoom: 1 = the whole box fits the width; < 1 is closer.")]
-        public float zoom = 1f, minZoom = 0.3f, maxZoom = 1.3f;
+        public float zoom = 1f, minZoom = CameraReach.MinZoom, maxZoom = CameraReach.MaxZoom;
         [Tooltip("How much of the screen width the box takes at zoom 1 (about).")]
         public float fill = 1f;
 
@@ -117,7 +119,14 @@ namespace AquariumCiv.View
             return new Vector3(Land.HX + 0.3f, 1.7f, Land.HZ + 0.3f).magnitude / Mathf.Tan(halfH) / Mathf.Max(0.1f, fill);
         }
 
-        void OnEnable() { synced = false; mode = Mode.None; velocity = Vector2.zero; IsFlying = firmFlight = false; pressClaimed = false; }
+        void OnEnable()
+        {
+            synced = false; mode = Mode.None; velocity = Vector2.zero; IsFlying = firmFlight = false; pressClaimed = false;
+            minZoom = CameraReach.MinZoom; maxZoom = CameraReach.MaxZoom; // the scene file still holds the old limits
+            glide.Cancel(); glideNext = false;
+        }
+
+        void OnDisable() { RestoreDepth(); }
 
         // ---------------- fly-to ----------------
         /// <summary>
@@ -129,6 +138,8 @@ namespace AquariumCiv.View
         public Vector3 FlyTo(Vector3 worldPoint, float zoomTo = -1f, float seconds = BoxCameraMath.FlyDefaultSeconds)
         {
             if (IsFlying) EndFlight(false);
+            if (!glideNext) glide.Cancel(); // a flight of its own, the way back or a moment's: it has the camera now
+            glideNext = false;
             float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, minZoom, maxZoom) : zoom;
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
             flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), z1);
@@ -185,6 +196,7 @@ namespace AquariumCiv.View
             var v = cam.WorldToViewportPoint(worldPoint);
             bool framed = v.z > 0f && v.x > 0.15f && v.x < 0.85f && v.y > 0.2f && v.y < 0.85f;
             if (framed && zoom <= zoomTo + 0.02f && pitch >= NudgePitch - 3f) return false;
+            ReturnAfterFlight(); // tester run 9: a wish's or a crumb's nudge used to leave the camera there
             EaseTo(worldPoint, yaw, Mathf.Max(pitch, NudgePitch), Mathf.Min(zoom, zoomTo), seconds);
             return true;
         }
@@ -192,6 +204,94 @@ namespace AquariumCiv.View
         /// <summary>A nudge looks down from at least <see cref="NudgePitch"/> degrees: from the usual angle the land behind the
         /// front pane is lost in its haze (Show me does the same).</summary>
         public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f, NudgePitch = 50f;
+
+        // ---------------- the glide back (#146) ----------------
+        readonly GlideBack glide = new();
+        bool glideNext;
+        Vector3 glideTarget;
+        float glideZoom, glideYaw, glidePitch;
+
+        /// <summary>True from a fly-in until the camera has glided back or a touch cancelled it.</summary>
+        public bool GlideArmed => glide.Armed;
+        public bool Gliding => glide.Gliding;
+
+        /// <summary>Call just before a fly-in the player didn't ask to keep (a person's card, a nudge): when it ends and nothing holds the view,
+        /// the camera waits <see cref="GlideBack.Hold"/> s and glides to where it is now. Chained fly-ins keep the first place to come back to.</summary>
+        public void ReturnAfterFlight()
+        {
+            if (!glide.Armed) { glideTarget = target; glideZoom = zoom; glideYaw = yaw; glidePitch = pitch; }
+            glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch);
+            glideNext = true;
+        }
+
+        /// <summary>Something is using the view the flight went to: its card is up, a moment plays, camera mode. The wait restarts when that ends.</summary>
+        bool GlideHeld()
+        {
+            var hud = AquariumCiv.GameUI.GameHud.Instance;
+            if (IsFollowing || (hud != null && (hud.CameraMode || hud.CleanMode || hud.SheetOpen))) return true;
+            var card = PersonCardView.Instance;
+            if (card != null && (card.AnyOpen || card.BuildingOpen)) return true;
+            var show = ShowMeDirector.Instance;
+            if (show != null && show.Busy) return true;
+            var moment = MomentPlayer.Instance;
+            if (moment != null && moment.Playing) return true;
+            var box = BoxCompleteController.Instance;
+            if (box != null && box.Playing) return true;
+            var lapse = TimeLapseView.Find();
+            if (lapse != null && lapse.Active) return true;
+            var shape = ShapingView.Instance;
+            return shape != null && shape.ShapeMode;
+        }
+
+        /// <summary>One frame of the glide; true while it has the camera.</summary>
+        bool StepGlide(float dt, int touches, float scroll)
+        {
+            if (!glide.Armed) return false;
+            if (touches > 0 || Mathf.Abs(scroll) > 0.01f) { glide.Cancel(); return false; }
+            if (GlideHeld()) { glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch); return false; }
+            float x = target.x, z = target.z, zm = zoom, y = yaw, p = pitch;
+            if (!glide.Step(dt, ref x, ref z, ref zm, ref y, ref p)) return false;
+            target.x = x; target.z = z; zoom = zm;
+            yaw = targetYaw = lastYaw = y;
+            pitch = targetPitch = lastPitch = p;
+            velocity = Vector2.zero;
+            Apply();
+            return true;
+        }
+
+        /// <summary>Debug: a fly-in to a world point at this zoom, gliding back after, for the look at the closest zoom (#146).</summary>
+        public void DebugFlyIn(Vector3 worldPoint, float zoomTo)
+        {
+            ReturnAfterFlight();
+            FlyTo(worldPoint, zoomTo);
+        }
+
+        // ---------------- the depth around the box (#193) ----------------
+        float shadowWas = -1f;
+
+        /// <summary>The camera sits 8 to 53 units from the box (a 22 degree lens), so no one shadow distance fits, and a fixed one spreads the shadow map over
+        /// all the empty air in front of the box: that is the saw-tooth. Near plane and shadow distance follow the camera instead: the shadow map covers
+        /// about 15 units of depth around the box, at every zoom, and the far edge of the box always gets shadows. The asset's own value is put back on disable.</summary>
+        void FitDepth()
+        {
+            if (cam == null) return;
+            float d = Vector3.Distance(transform.position, new Vector3(0f, 1f, 0f));
+            cam.nearClipPlane = Mathf.Max(BoxCameraMath.NearestPlane, d - BoxCameraMath.DepthFront);
+            var urp = UniversalRenderPipeline.asset;
+            if (urp == null) return;
+            if (shadowWas < 0f) shadowWas = urp.shadowDistance;
+            urp.shadowDistance = d + BoxCameraMath.DepthBack;
+        }
+
+        void RestoreDepth()
+        {
+            if (shadowWas < 0f) return;
+            var urp = UniversalRenderPipeline.asset;
+            if (urp != null) urp.shadowDistance = shadowWas;
+            shadowWas = -1f;
+        }
+
+        void LateUpdate() { if (Application.isPlaying) FitDepth(); }
 
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
@@ -246,9 +346,11 @@ namespace AquariumCiv.View
                 // The tool keeps the touch; a flight still gives way to it.
                 if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
                 n = 0; mode = Mode.None; orbiting = false; velocity = Vector2.zero;
+                glide.Cancel();
                 return;
             }
             if (IsFlying && TickFlight(dt, n, scrollY)) { FollowAngles(dt); return; }
+            if (!IsFlying && StepGlide(dt, n, scrollY)) return;
             float H = Mathf.Max(1f, Screen.height);
 
             if (n == 0) EndPress(now);

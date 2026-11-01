@@ -79,6 +79,155 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors(when);
         }
 
+        const int HW = 1080, HH = 1920, SW = 375, SH = 667;
+        static readonly float[] Hours = { 6f, 12f, 17.5f, 19.5f, 22f };
+
+        IEnumerator Grow(Era era)
+        {
+            var sim = GameClock.Instance.ActiveSim;
+            for (int i = 0; i < 24 && sim.State.era < era; i++) { SimLayoutSource.DebugSkipYears(10f); yield return null; }
+            sim.CleanAll();
+            yield return Frames(4);
+            Debug.Log($"[light] era {sim.State.era}, lamps {Object.FindAnyObjectByType<BoxView>().LampCount}");
+        }
+
+        static IEnumerator Hour(float hour)
+        {
+            PeopleView.DebugSetHour(hour);
+            yield return Wait(0.35f);
+            var sh = RenderSettings.ambientProbe;
+            Debug.Log($"[light] {hour} h: ambient sky {RenderSettings.ambientSkyColor}, SH L0 ({sh[0, 0]:0.000}, {sh[1, 0]:0.000}, {sh[2, 0]:0.000})");
+        }
+
+#if UNITY_EDITOR
+        static void Stats(string tag) => Debug.Log($"[light] {tag}: batches {UnityEditor.UnityStats.batches}, draws {UnityEditor.UnityStats.drawCalls}, setpass {UnityEditor.UnityStats.setPassCalls}, tris {UnityEditor.UnityStats.triangles}, verts {UnityEditor.UnityStats.vertices}, shadow casters {UnityEditor.UnityStats.shadowCasters}");
+#else
+        static void Stats(string tag) { }
+#endif
+
+        /// <summary>The five hours in Village and Town at both phone sizes.</summary>
+        [UnityTest, Timeout(300000), Category("LightHours")]
+        public IEnumerator HoursInVillageAndTown([Values(Era.Village, Era.Town)] Era era)
+        {
+            yield return Box(HW, HH, 0f, 12f);
+            yield return Grow(era);
+            DayLightDriver.DebugPauseClock(true);
+            foreach (float h in Hours)
+            {
+                yield return Hour(h);
+                yield return Snap($"h-{era}-1080-{h:00.0}");
+                Stats($"{era} {h}");
+            }
+            SetSize(SW, SH);
+            yield return Wait(0.6f);
+            foreach (float h in Hours)
+            {
+                yield return Hour(h);
+                yield return Snap($"h-{era}-375-{h:00.0}");
+            }
+            DayLightDriver.DebugPauseClock(false);
+            Done("hours");
+        }
+
+        /// <summary>The looks side by side at dusk and night, and what they cost.</summary>
+        [UnityTest, Timeout(300000), Category("LightLooks")]
+        public IEnumerator Looks()
+        {
+            yield return Box(HW, HH, 0f, 12f);
+            yield return Grow(Era.Town);
+            DayLightDriver.DebugPauseClock(true);
+            foreach (var look in new[] { Lighting.LightLook.Today, Lighting.LightLook.SoftBlueDusk, Lighting.LightLook.SoftBlueMoon, Lighting.LightLook.Lamplight })
+            {
+                DayLightDriver.DebugLook(look);
+                foreach (float h in new[] { 12f, 19.5f, 22f })
+                {
+                    yield return Hour(h);
+                    yield return Snap($"look-{look}-{h:00.0}");
+                }
+                yield return FrameMs($"look {look} 22 h, town, 1080");
+                Stats($"look {look} 22 h");
+            }
+            DayLightDriver.DebugLook(Lighting.LightLook.SoftBlueDusk);
+            DayLightDriver.DebugNightFloor(0.45f);
+            yield return Hour(22f);
+            yield return Snap("look-floor-045-22.0");
+            DayLightDriver.DebugNightFloor(0.9f);
+            GameClock.Instance.ActiveSim.State.grime = 1f;
+            yield return Wait(3f);
+            yield return Snap("look-grime-22.0");
+            yield return Hour(12f);
+            yield return Wait(1f);
+            yield return Snap("look-grime-12.0");
+            DayLightDriver.DebugPauseClock(false);
+            Done("looks");
+        }
+
+        /// <summary>The closest zoom at the fire and at a door: the glass, the doll, the pan, the glide back.</summary>
+        [UnityTest, Timeout(240000), Category("LightClose")]
+        public IEnumerator CloseIn()
+        {
+            yield return Box(HW, HH, 0f, 12f);
+            yield return Grow(Era.Village);
+            DayLightDriver.DebugPauseClock(true);
+            var box = Object.FindAnyObjectByType<BoxView>();
+            var pv = PeopleView.Find();
+            pv.Planner.Positions.TryGetPosition(Life.Place.Land(Life.PlaceKind.Fire), out float fx, out float fz);
+            var fire = pv.transform.TransformPoint(new Vector3(fx, 0f, fz));
+            int k = box.LampCount / 2;
+            var door = new Vector3(box.LampX[k], 0f, box.LampZ[k]);
+            foreach (var (name, at) in new[] { ("fire", fire), ("door", door) })
+                foreach (float hour in new[] { 12f, 22f })
+                {
+                    yield return Hour(hour);
+                    float yaw = name == "fire" ? 28f : -20f;
+                    Cam.EaseTo(at, yaw, 34f, 0.2f, 0.01f);
+                    yield return Wait(1.2f);
+                    Debug.Log($"[light] {name} {hour}: zoom {Cam.zoom:0.00} target {Cam.target} panes {box.PaneOpacity(0):0.00} {box.PaneOpacity(1):0.00} {box.PaneOpacity(2):0.00} {box.PaneOpacity(3):0.00} frame {box.FrameOpacity(0):0.00} {box.FrameOpacity(2):0.00} {box.FrameOpacity(4):0.00}");
+                    yield return Snap($"close-{name}-{hour:00}");
+                    Cam.EaseTo(at, -yaw, 50f, 0.2f, 0.01f);
+                    yield return Wait(1.2f);
+                    yield return Snap($"close-{name}-{hour:00}-orbit");
+                    Cam.EaseTo(Vector3.zero, 28f, 34f, 1f, 0.01f);
+                    yield return Wait(0.5f);
+                }
+            yield return Hour(12f);
+            yield return Snap("close-home-doll");
+            // The glide: a fly-in at the closest zoom, timed.
+            var home = Cam.target; float zoomHome = Cam.zoom;
+            Cam.DebugFlyIn(fire, 0.2f);
+            yield return Until(() => !Cam.IsFlying, 3f);
+            float t0 = Time.realtimeSinceStartup, started = -1f;
+            while (Cam.GlideArmed && Time.realtimeSinceStartup - t0 < 6f) { if (started < 0f && Cam.Gliding) started = Time.realtimeSinceStartup - t0; yield return null; }
+            Debug.Log($"[light] glide: began {started:0.00} s after landing, home {Time.realtimeSinceStartup - t0:0.00} s; off by {(Cam.target - home).magnitude:0.000}, zoom {Cam.zoom:0.00} (was {zoomHome:0.00})");
+            DayLightDriver.DebugPauseClock(false);
+            Done("close in");
+        }
+
+        /// <summary>The sun's swap for the moon, in steps, and how long the Dusk moment's light takes to arrive.</summary>
+        [UnityTest, Timeout(180000), Category("LightSwap")]
+        public IEnumerator Swap()
+        {
+            yield return Box(SW, SH, 0f, 12f);
+            yield return Grow(Era.Village);
+            DayLightDriver.DebugPauseClock(true);
+            foreach (float h in new[] { 19.5f, 20.2f, 20.6f, 20.8f, 21f, 21.5f, 22f })
+            {
+                yield return Hour(h);
+                yield return Snap($"swap-{h:00.0}");
+            }
+            yield return Hour(12f);
+            var day = DayLightDriver.Instance;
+            PeopleView.SetHourGently(19.5f);
+            float t0 = Time.realtimeSinceStartup;
+            yield return Until(() => Mathf.Abs(day.Logic.ShownHour - 19.5f) < 0.05f, 15f);
+            float arrived = Time.realtimeSinceStartup - t0;
+            yield return Wait(1.2f);
+            Debug.Log($"[light] the dusk moment's light arrived in {arrived:0.0} s, sun {day.Current.SunIntensity:0.00}, lamp {day.Current.Lamp:0.00}, ambient {RenderSettings.ambientSkyColor}");
+            yield return Snap("swap-moment-dusk");
+            DayLightDriver.DebugPauseClock(false);
+            Done("swap");
+        }
+
         /// <summary>#193: the wall shadow at phone size, at three zooms, plus frame time.</summary>
         [UnityTest, Timeout(240000), Category("LightShadows")]
         public IEnumerator Shadows()

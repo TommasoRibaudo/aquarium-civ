@@ -34,10 +34,12 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void Table_SunIntensityFallsMonotonicallyFrom15To22AndRisesFrom5To9()
+        public void Table_SunIntensityFallsFrom15UntilTheSwapAndRisesFrom5To9()
         {
             float prev = float.MaxValue;
-            for (float h = 15f; h <= 22f; h += 0.1f) { float v = DayLight.Table(h).SunIntensity; Assert.LessOrEqual(v, prev + 1e-5f, "at " + h); prev = v; }
+            for (float h = 15f; h <= 20.7f; h += 0.1f) { float v = DayLight.Table(h).SunIntensity; Assert.LessOrEqual(v, prev + 1e-5f, "at " + h); prev = v; }
+            prev = 0f;
+            for (float h = 20.9f; h <= 22f; h += 0.1f) { float v = DayLight.Table(h).SunIntensity; Assert.GreaterOrEqual(v, prev - 1e-5f, "the moon comes up, at " + h); prev = v; }
             prev = 0f;
             for (float h = 5f; h <= 9f; h += 0.1f) { float v = DayLight.Table(h).SunIntensity; Assert.GreaterOrEqual(v, prev - 1e-5f, "at " + h); prev = v; }
         }
@@ -55,6 +57,37 @@ namespace AquariumCiv.Tests
             }
             Assert.AreEqual(DayLight.Table(3f).SunIntensity, DayLight.Table(27f).SunIntensity, 1e-5f, "24 h periodic");
             Assert.AreEqual(DayLight.Table(-2f).SunIntensity, DayLight.Table(22f).SunIntensity, 1e-5f, "negative hours wrap");
+        }
+
+        [Test]
+        public void SunAndMoon_SwapOnlyWhileNeitherShows()
+        {
+            // Wherever the light's direction moves fast, it must be too dim and shadowless to read as a sweep.
+            for (float h = 19.5f; h < 29f; h += 0.02f)
+            {
+                var a = DayLight.Table(h);
+                var b = DayLight.Table(h + 0.02f);
+                if (Math.Abs(b.SunYaw - a.SunYaw) <= 0.1f) continue;
+                Assert.LessOrEqual(a.SunIntensity, DayLight.OutSun + 1e-3f, "at " + h);
+                Assert.AreEqual(0f, a.ShadowStrength, 1e-3f, "at " + h);
+            }
+            Assert.AreEqual(-40f, DayLight.Table(20.6f).SunYaw, 1e-3f, "dusk: still the sun");
+            Assert.AreEqual(30f, DayLight.Table(21f).SunYaw, 1e-3f, "the moon by 21 h");
+            Assert.AreEqual(0f, DayLight.Evaluate(20.8f, LightLook.SoftBlueMoon, 0.9f).ShadowStrength, 1e-3f, "no look puts a shadow on the swap");
+        }
+
+        [Test]
+        public void Restore_PutsTheLightBackAfterASnap()
+        {
+            var d = new DayLight();
+            d.Snap(12f);
+            d.Update(0.05f, 12.5f);
+            var was = d.Current; float shown = d.ShownHour;
+            d.Snap(17.5f);
+            Assert.AreNotEqual(was.SunIntensity, d.Current.SunIntensity);
+            d.Restore(was, shown);
+            Assert.AreEqual(was.SunIntensity, d.Current.SunIntensity);
+            Assert.AreEqual(shown, d.ShownHour);
         }
 
         [Test]
@@ -405,6 +438,30 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(24f, CameraReach.PitchFloor(1.3f), 1e-4f);
             Assert.AreEqual(14f, CameraReach.PitchFloor(CameraReach.MinZoom), 1e-4f);
             Assert.AreEqual(14f, CameraReach.PitchFloor(0.1f), 1e-4f);
+        }
+
+        [Test]
+        public void DollScale_GrowsAsTheCameraBacksOffAndNeverPops()
+        {
+            Assert.AreEqual(1f, CameraReach.DollScale(CameraReach.MinZoom), 1e-5f, "close in the doll is its size");
+            Assert.AreEqual(1f + CameraReach.DollScaleUp, CameraReach.DollScale(1f), 1e-5f);
+            Assert.AreEqual(1f + CameraReach.DollScaleUp, CameraReach.DollScale(1.3f), 1e-5f);
+            Assert.AreEqual(1f, CameraReach.DollScale(1f, 0f), 1e-6f, "amount 0 = off");
+            float prev = 1f;
+            for (float z = 0.2f; z <= 1.3f; z += 0.01f) { float s = CameraReach.DollScale(z); Assert.GreaterOrEqual(s, prev); Assert.Less(s - prev, 0.02f, "no pop"); prev = s; }
+        }
+
+        [Test]
+        public void GlideBack_BringsTheAnglesHomeToo()
+        {
+            var g = new GlideBack();
+            g.Remember(1f, 2f, 1f, 28f, 34f);
+            float x = 0f, z = 0f, zoom = 0.7f, yaw = 28f, pitch = 50f;
+            for (float t = 0f; t < GlideBack.Hold + GlideBack.Duration + 0.2f; t += 0.02f) g.Step(0.02f, ref x, ref z, ref zoom, ref yaw, ref pitch);
+            Assert.AreEqual(34f, pitch, 1e-3f);
+            Assert.AreEqual(28f, yaw, 1e-3f);
+            Assert.AreEqual(1f, zoom, 1e-3f);
+            Assert.IsFalse(g.Armed);
         }
 
         [Test]

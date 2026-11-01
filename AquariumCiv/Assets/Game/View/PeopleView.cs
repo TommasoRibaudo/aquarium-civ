@@ -34,6 +34,11 @@ namespace AquariumCiv.View
         public float startHour = 9f;
         [Tooltip("View-clock speed (1 = the ~5-minute day).")]
         public float timeScale = 1f;
+
+        /// <summary>#146: how much bigger people are at full view (debug panel; 0 = their real size everywhere).</summary>
+        public static float DollScaleAmount = AquariumCiv.Lighting.CameraReach.DollScaleUp;
+        BoxCamera rig;
+        float dollZoomScale = 1f;
         public float replanSeconds = 0.2f;
         [Tooltip("Animate in edit mode (otherwise edit mode only updates when the Editor repaints).")]
         public bool animateInEditMode;
@@ -41,6 +46,8 @@ namespace AquariumCiv.View
         [System.NonSerialized] public bool HandDriven;
 
         public ViewTime Now => now;
+        /// <summary>The hour the box shows, also before the first tick (<see cref="Now"/> is midnight then).</summary>
+        public float ViewHour => clockStarted ? now.hour : startHour;
         public LifePlanner Planner => planner;
         public IReadOnlyList<PersonActivity> Activities => acts;
         /// <summary>Average milliseconds of this component's frame work (planning + all dolls), for the perf budget (≤ 0.5 ms).</summary>
@@ -175,6 +182,8 @@ namespace AquariumCiv.View
             var sim = Source != null ? Source.Sim : null;
             if (sim == null || Box == null || Box.Root == null) return;
             Box.PlannedPeople = true;
+            if (rig == null && Camera.main != null) rig = Camera.main.GetComponent<BoxCamera>();
+            dollZoomScale = rig != null ? AquariumCiv.Lighting.CameraReach.DollScale(rig.zoom, DollScaleAmount) : 1f;
             bool newSim = planner == null || plannerSim != sim;
             if (newSim) { planner = LifePlanner.Wired(sim); plannerSim = sim; replanIn = 0f; snapAll = clockStarted; }
 
@@ -433,7 +442,7 @@ namespace AquariumCiv.View
             var ground = land.OnGround(d.drawn);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
-            v.transform.localScale = new Vector3(1f, pose.squash, 1f);
+            v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
         }
 
@@ -775,7 +784,7 @@ namespace AquariumCiv.View
             world = default;
             if (!dolls.TryGetValue(who.Key, out var d) || !d.placed || d.view == null || !d.view.gameObject.activeInHierarchy) return false;
             var t = d.view.transform;
-            float top = (PegDoll.HeadY + PegDoll.HeadR) * d.view.scale;
+            float top = (PegDoll.HeadY + PegDoll.HeadR) * d.view.scale * dollZoomScale;
             world = t.parent != null ? t.parent.TransformPoint(t.localPosition + Vector3.up * top) : t.position + Vector3.up * top;
             return true;
         }
@@ -846,7 +855,10 @@ namespace AquariumCiv.View
         public static string DebugSetHour(float hour)
         {
             var p = Find();
-            return p == null ? "no PeopleView" : p.SetHour(hour);
+            if (p == null) return "no PeopleView";
+            string s = p.SetHour(hour);
+            DayLightDriver.Instance?.Snap(p.now.hour); // the light is there at once: a night can be judged straight away
+            return s;
         }
 
         /// <summary>Sets this view's hour (0–24) on the sim's current month.</summary>

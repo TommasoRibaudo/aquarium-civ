@@ -45,6 +45,17 @@ namespace AquariumCiv.GameUI
             set { if (suspended != value) { suspended = value; Refresh(); } }
         }
 
+        /// <summary>The sheets' tint at day (Game.uss --frost-tint).</summary>
+        public const float DayTintAlpha = 0.72f;
+        static float tintAlpha = DayTintAlpha;
+
+        /// <summary>The frosted tint's opacity now: the night world behind a sheet is dark, so its tint gets denser and the text keeps its contrast (research 13 section 6). The day's light sets it.</summary>
+        public static float TintAlpha
+        {
+            get => tintAlpha;
+            set { if (Mathf.Abs(tintAlpha - value) < 0.015f) return; tintAlpha = value; foreach (var s in shown) s.ApplyTint(); }
+        }
+
         /// <summary>Surfaces on screen now.</summary>
         public static int ShownCount => shown.Count;
         /// <summary>The surface holding the frost, or null.</summary>
@@ -94,7 +105,7 @@ namespace AquariumCiv.GameUI
         const float Bleed = 48f; // the blur's element reaches this far above the sheet, so its top edge stays soft
         const int WatchMs = 150;
 
-        readonly VisualElement baseImage, inner, image;
+        readonly VisualElement baseImage, inner, image, tint;
         bool wanted, registered;
         IVisualElementScheduledItem watch, follow;
         float lastBlur = -1f;
@@ -112,7 +123,7 @@ namespace AquariumCiv.GameUI
             image = new VisualElement { pickingMode = PickingMode.Ignore };
             image.AddToClassList("kg-frost-image");
             inner.Add(image);
-            Layer("kg-frost-tint");
+            tint = Layer("kg-frost-tint");
             RegisterCallback<GeometryChangedEvent>(_ => Align());
             RegisterCallback<DetachFromPanelEvent>(_ => Unregister());
             RegisterCallback<AttachToPanelEvent>(_ => { if (wanted) Check(); });
@@ -184,6 +195,7 @@ namespace AquariumCiv.GameUI
             var bg = frost ? new StyleBackground(copy) : new StyleBackground(StyleKeyword.None);
             image.style.backgroundImage = bg;
             baseImage.style.backgroundImage = bg;
+            ApplyTint();
             if (!frost) return;
             var size = new BackgroundSize(Length.Percent(100f), Length.Percent(100f));
             image.style.backgroundSize = size;
@@ -196,6 +208,14 @@ namespace AquariumCiv.GameUI
                 inner.style.filter = new List<FilterFunction> { f };
             }
             Align();
+        }
+
+        /// <summary>Frosted at night: the denser tint, inline. Otherwise the stylesheet's own.</summary>
+        internal void ApplyTint()
+        {
+            if (IsFrosted && FrostSwitch.TintAlpha > FrostSwitch.DayTintAlpha + 0.005f)
+                tint.style.backgroundColor = new Color(243f / 255f, 233f / 255f, 214f / 255f, FrostSwitch.TintAlpha);
+            else tint.style.backgroundColor = StyleKeyword.Null;
         }
 
         /// <summary>The whole-screen copy laid under the surface, so it lines up with the tank.</summary>

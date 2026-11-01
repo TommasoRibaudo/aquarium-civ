@@ -31,8 +31,8 @@ namespace AquariumCiv.View.Tests
         {
             Assert.AreEqual(24f, BoxCameraMath.PitchFloor(1f), 1e-4f);
             Assert.AreEqual(24f, BoxCameraMath.PitchFloor(1.3f), 1e-4f, "zoomed out past the full box keeps the 24 degree floor");
-            Assert.AreEqual(14f, BoxCameraMath.PitchFloor(0.3f), 1e-4f);
-            Assert.AreEqual(19f, BoxCameraMath.PitchFloor(0.65f), 1e-3f);
+            Assert.AreEqual(14f, BoxCameraMath.PitchFloor(AquariumCiv.Lighting.CameraReach.MinZoom), 1e-4f);
+            Assert.AreEqual(19f, BoxCameraMath.PitchFloor(0.6f), 1e-3f);
             Assert.AreEqual(68f, BoxCameraMath.PitchCeiling);
         }
 
@@ -103,16 +103,17 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
-        public void PanBounds_ByZoom_FullBoxStaysCentred()
+        public void PanBounds_ByZoom_ALittleAtTheFullBoxAndNeverLosesIt()
         {
-            Assert.AreEqual(Vector2.zero, BoxCameraMath.PanBounds(1f), "no pan at the full box");
-            Assert.AreEqual(Vector2.zero, BoxCameraMath.PanBounds(1.3f));
-            var closest = BoxCameraMath.PanBounds(0.3f);
-            Assert.AreEqual(Land.HX - 0.3f, closest.x, 1e-4f);
-            Assert.AreEqual(Land.HZ - 0.3f, closest.y, 1e-4f);
-            Assert.AreEqual(0.5f, BoxCameraMath.PanK(0.65f), 1e-4f);
-            var mid = BoxCameraMath.PanBounds(0.65f);
-            Assert.AreEqual((Land.HX - 0.3f) * 0.5f, mid.x, 1e-4f);
+            var full = BoxCameraMath.PanBounds(1f);
+            Assert.Greater(full.x, 0.2f, "#146: a little pan at the full box");
+            Assert.Less(full.x, 0.5f, "only a little");
+            Assert.Less(BoxCameraMath.PanBounds(1.3f).x, full.x, "less past it");
+            var closest = BoxCameraMath.PanBounds(AquariumCiv.Lighting.CameraReach.MinZoom);
+            Assert.Greater(closest.x, Land.HX - 0.3f, "further than the old limit");
+            Assert.Less(closest.x, Land.HX + 0.5f, "the focus stays at the box");
+            Assert.Less(closest.y, Land.HZ + 0.5f);
+            Assert.AreEqual(1f, BoxCameraMath.PanK(0.5f), 1e-4f, "fully open by 0.5");
             Assert.Greater(BoxCameraMath.PanBounds(0.5f).x, BoxCameraMath.PanBounds(0.8f).x, "closer = more room to pan");
         }
 

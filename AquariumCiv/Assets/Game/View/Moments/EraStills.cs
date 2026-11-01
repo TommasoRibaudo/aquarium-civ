@@ -66,8 +66,10 @@ namespace AquariumCiv.View
             var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB); // sRGB, or the PNG comes out washed
             var prevTarget = cam.targetTexture;
             Texture2D tex = null;
+            var day = DayLightDriver.Instance;
             try
             {
+                day?.BeginStill(DayLightDriver.StillHour); // every era's picture has the same light
                 var req = new RenderPipeline.StandardRequest { destination = rt };
                 if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
                 else { cam.targetTexture = rt; cam.Render(); cam.targetTexture = prevTarget; }
@@ -94,6 +96,7 @@ namespace AquariumCiv.View
             catch (Exception e) { Debug.LogWarning("[EraStills] could not take the still: " + e.Message); return null; }
             finally
             {
+                day?.EndStill();
                 cam.targetTexture = prevTarget;
                 RenderTexture.ReleaseTemporary(rt);
                 if (tex != null) UnityEngine.Object.Destroy(tex);

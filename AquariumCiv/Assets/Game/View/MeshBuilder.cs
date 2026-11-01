@@ -28,6 +28,8 @@ namespace AquariumCiv.View
         /// the global night level (<see cref="NightLamps"/>), each lamp at its own moment, flickering as it comes on.
         /// </summary>
         public float lamp = -1f;
+        /// <summary>0..7: this face belongs to a part of the box's frame, which fades by itself near the camera (#162): UV1.x = -1 - part.</summary>
+        public int frameSide = -1;
         /// <summary>
         /// Flame vertices (the fire pit): with <see cref="flameHeight"/> above 0 every new vertex gets UV1 = (2 + height
         /// weight, <see cref="flamePhase"/>); the weight is 0 at <see cref="flameBaseY"/> and ~1 at flameBaseY + flameHeight.
@@ -57,7 +59,7 @@ namespace AquariumCiv.View
         {
             verts.Clear(); normals.Clear(); colors.Clear(); uvs.Clear(); lamps.Clear(); tris.Clear();
             M = Matrix4x4.identity;
-            jitter = 0.035f; sway = emission = 0f; lamp = -1f;
+            jitter = 0.035f; sway = emission = 0f; lamp = -1f; frameSide = -1;
             flameBaseY = flameHeight = flamePhase = 0f;
             if (Pool.Count < PoolMax) Pool.Add(this);
         }
@@ -78,6 +80,7 @@ namespace AquariumCiv.View
             verts.Add(p); normals.Add(n); colors.Add(linear);
             uvs.Add(new Vector2(sway, emission));
             if (flameHeight > 0f) lamps.Add(new Vector2(2f + Mathf.Clamp01((p.y - flameBaseY) / flameHeight) * 0.99f, flamePhase));
+            else if (frameSide >= 0) lamps.Add(new Vector2(-1f - frameSide, 0f));
             else lamps.Add(lamp < 0f ? Vector2.zero : new Vector2(1f, lamp));
         }
 

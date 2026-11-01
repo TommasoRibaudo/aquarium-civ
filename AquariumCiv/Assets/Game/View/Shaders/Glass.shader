@@ -27,6 +27,7 @@ Shader "AquariumCiv/View/Glass"
         _RimColor ("Rim highlight", Color) = (0.95, 1, 0.97, 0.75)
         _RimWidth ("Rim highlight width (world)", Float) = 0.035
         _RimSide ("Rim highlight on the sides", Range(0, 1)) = 0.35
+        _Fade ("Opacity (near glass, #162)", Range(0, 1)) = 1
     }
     SubShader
     {
@@ -67,7 +68,10 @@ Shader "AquariumCiv/View/Glass"
                 half4 _RimColor;
                 float _RimWidth;
                 half _RimSide;
+                half _Fade;
             CBUFFER_END
+            // 0 by day and in edit mode, up to 0.65 at night: the white-ish tint would haze a dark world, so it follows the day (GlassNight).
+            float _AC_GlassNight;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
             struct Varyings
@@ -106,13 +110,15 @@ Shader "AquariumCiv/View/Glass"
 
                 Light light = GetMainLight();
                 half lambert = saturate(dot(normal, light.direction)) * 0.35 + 0.65;
-                half3 grime = _GrimeColor.rgb * (0.85 + 0.3 * n.r) * light.color * lambert;
+                half night = (half)_AC_GlassNight;
+                half dim = 1 - night; // 1 by day, 0.35 at night: what was white in the clean glass
+                half3 grime = _GrimeColor.rgb * (0.85 + 0.3 * n.r) * (light.color * lambert + night * half3(0.34, 0.38, 0.5)); // grime catches the night's light: it stays the box's state
 
-                half3 rgb = lerp(_CleanColor.rgb, grime, cover);
+                half3 rgb = lerp(_CleanColor.rgb * dim, grime, cover);
                 half alpha = lerp(_CleanColor.a, _DirtyAlpha, cover);
                 // Clean glass gets a faint sheen and, right after a wipe, a sparkle that fades.
                 half sheen = fresnel * (1 - cover) + _Glint * (1 - cover) * 0.35;
-                rgb = lerp(rgb, 1, saturate(sheen * 2));
+                rgb = lerp(rgb, dim, saturate(sheen * 2));
                 alpha = saturate(alpha + sheen);
 
                 // Thickness edge: real glass shows its green-blue body where you look along it.
@@ -128,12 +134,12 @@ Shader "AquariumCiv/View/Glass"
                 half s2 = smoothstep(0.0, 0.03, frac(d + 0.42)) * (1 - smoothstep(0.03, 0.08, frac(d + 0.42)));
                 // Only on the upper half of the pane, fading out toward the bottom.
                 half streak = (s1 + s2 * 0.6) * _StreakAlpha * (0.35 + fresnel * 3) * (1 - cover) * smoothstep(0.9, 2.2, w.y);
-                rgb = lerp(rgb, 1, saturate(streak * 2));
+                rgb = lerp(rgb, 1 - night * 0.5, saturate(streak * 2));
                 alpha = saturate(alpha + streak);
 
                 // Condensation: a faint misty band just above the soil line (the ground sits at about 1 unit).
                 half mist = smoothstep(0.8, 1.0, w.y) * (1 - smoothstep(1.05, 1.6, w.y)) * _Condensation * (0.6 + 0.4 * n.g) * (1 - cover);
-                rgb = lerp(rgb, half3(0.92, 0.96, 0.97), mist * 0.6);
+                rgb = lerp(rgb, half3(0.92, 0.96, 0.97) * dim, mist * 0.6);
                 alpha = saturate(alpha + mist * 0.25);
                 // Rim highlight: a crisp bright line just under the top edge (brightest), fainter down both sides; a touch
                 // stronger at grazing angles, like light running along the glass.
@@ -143,7 +149,7 @@ Shader "AquariumCiv/View/Glass"
                 half rim = saturate(max(rimTop, rimSide) * (0.75 + fresnel * 2.0)) * (1 - cover * 0.7);
                 rgb = lerp(rgb, _RimColor.rgb, rim);
                 alpha = max(alpha, rim * _RimColor.a);
-                return half4(rgb, alpha);
+                return half4(rgb, alpha * _Fade);
             }
             ENDHLSL
         }

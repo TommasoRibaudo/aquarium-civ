@@ -2,6 +2,7 @@ using AquariumCiv.Audio;
 using System.Collections.Generic;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
+using AquariumCiv.Lighting;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.View.Shaping;
@@ -88,7 +89,7 @@ namespace AquariumCiv.View
 
         // sun and cheer
         Light sun;
-        float sunBase = 1f, sunScale = 1f;
+        float sunBase = 1f, sceneSun = 1f, sunScale = 1f;
         float prevGrime = -1f, prevMess = -1f;
         readonly List<Transform> sparkles = new();
         readonly List<(Vector3 v, float life)> sparkleState = new();
@@ -669,12 +670,16 @@ namespace AquariumCiv.View
                 sun = RenderSettings.sun;
                 if (sun == null) foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.type == LightType.Directional) { sun = l; break; }
                 if (sun == null) return;
-                sunBase = sun.intensity;
+                sunBase = sceneSun = sun.intensity;
             }
             float target = CareMath.SunScale(sim.MessLevel);
             sunScale = Mathf.Lerp(sunScale, target, 1f - Mathf.Exp(-sunFollowRate * dt));
             if (Mathf.Abs(sunScale - target) < 0.0005f) sunScale = target;
+            // The day sets the sun, the mess takes its share of it; at night the sun is too weak for that to show, so the ambient goes down too.
+            var day = DayLightDriver.Instance;
+            sunBase = DayLightDriver.Driving ? day.Current.SunIntensity : sceneSun;
             sun.intensity = sunBase * sunScale;
+            if (day != null) day.MessAmbient = DayLight.MessAmbientScale(sunScale);
         }
 
         void UpdateCheer(SimCore sim)

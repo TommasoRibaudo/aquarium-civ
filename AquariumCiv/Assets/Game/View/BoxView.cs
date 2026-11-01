@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AquariumCiv.Lighting;
 using AquariumCiv.Sim;
 using Unity.Collections;
 using Unity.Jobs;
@@ -66,6 +67,8 @@ namespace AquariumCiv.View
 
         Transform root, peopleRoot;
         readonly List<Material> panes = new();
+        readonly List<MeshRenderer> paneRenderers = new();
+        Material frameMat;
         Vector2[] shore;
         readonly List<(Vector2 p, float r)> taken = new();
         readonly List<(Vector2 p, bool sprout)> reedSpots = new();
@@ -138,6 +141,9 @@ namespace AquariumCiv.View
             }
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
+            paneRenderers.Clear();
+            if (frameMat != null) DestroyImmediate(frameMat);
+            frameMat = null;
             dolls.Clear();
             dollByKey.Clear();
             root = peopleRoot = null;
@@ -199,10 +205,14 @@ namespace AquariumCiv.View
             var bm = new MeshBuilder(seed);
             PondRim(bm);
             Substrate(bm);
-            BoxAndRoom(bm);
+            var fm = new MeshBuilder(seed + 1);
+            BoxAndRoom(bm, fm);
             var baseMesh = bm.ToMesh("BoxBase");
             Spawn("Base", baseMesh, Solid, true);
             AoCollider("AO Base", baseMesh);
+            var frameMesh = fm.ToMesh("BoxFrame");
+            Spawn("Frame", frameMesh, FrameMaterial(), true);
+            AoCollider("AO Frame", frameMesh);
 
             var builders = new MeshBuilder[ChunkCount];
             var terrainVerts = new int[ChunkCount];
@@ -221,7 +231,7 @@ namespace AquariumCiv.View
             {
                 var t = System.Diagnostics.Stopwatch.StartNew();
                 Physics.SyncTransforms();
-                var all = new List<(MeshBuilder, int, Mesh)> { (bm, 0, baseMesh) };
+                var all = new List<(MeshBuilder, int, Mesh)> { (bm, 0, baseMesh), (fm, 0, frameMesh) };
                 for (int k = 0; k < ChunkCount; k++) all.Add((builders[k], terrainVerts[k], meshes[k]));
                 BakeAO(all);
                 aoMs = t.Elapsed.TotalMilliseconds;
@@ -970,31 +980,48 @@ namespace AquariumCiv.View
             return new[] { 0f, 0.18f + 0.06f * n1, 0.46f + 0.08f * n2, Mathf.Max(0.5f, top - 0.08f - 0.04f * n3), Mathf.Max(top, Land.WaterY) };
         }
 
-        void BoxAndRoom(MeshBuilder mb)
+        /// <summary>The solid material with blending on, for the frame alone: it stays its colour at alpha 1, and its near parts fade (#162).
+        /// Blending, not a dither: a <c>clip()</c> in the one shader would cost every fragment in the box its early depth test on a tiler.</summary>
+        Material FrameMaterial()
+        {
+            frameMat = new Material(Solid) { hideFlags = HideFlags.DontSave, name = "Frame" };
+            frameMat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            frameMat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            frameMat.renderQueue = 2900; // after the opaque world, before the glass
+            return frameMat;
+        }
+
+        void BoxAndRoom(MeshBuilder mb, MeshBuilder frame)
         {
             float HX = Land.HX, HZ = Land.HZ, GlassTop = Land.GlassTop;
             const float lip = 0.2f, plinthH = 0.3f;
             mb.Box(new Vector3(0, -plinthH / 2f, 0), new Vector3(2 * HX + 2 * lip, plinthH, 2 * HZ + 2 * lip), Palette.Plinth);
             mb.Box(new Vector3(0, 0.012f, 0), new Vector3(2 * HX + 2 * lip - 0.04f, 0.024f, 2 * HZ + 2 * lip - 0.04f), Palette.PlinthTop);
             float gx = HX + 0.075f, gz = HZ + 0.075f, t = 0.07f;
+            // Parts 0..3 are the sides (front, back, left, right: the glass's order), 4..7 the corner posts: each fades by itself (#162).
+            int post = 4;
             foreach (var (x, z) in new[] { (-gx, -gz), (gx, -gz), (gx, gz), (-gx, gz) })
-                mb.Box(new Vector3(x, GlassTop / 2f, z), new Vector3(t, GlassTop, t), Palette.Frame);
+            {
+                frame.frameSide = post++;
+                frame.Box(new Vector3(x, GlassTop / 2f, z), new Vector3(t, GlassTop, t), Palette.Frame);
+            }
             foreach (float y in new[] { 0.05f, GlassTop })
             {
-                mb.Box(new Vector3(0, y, -gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
-                mb.Box(new Vector3(0, y, gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
-                mb.Box(new Vector3(-gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
-                mb.Box(new Vector3(gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
+                frame.frameSide = 0; frame.Box(new Vector3(0, y, -gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
+                frame.frameSide = 1; frame.Box(new Vector3(0, y, gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
+                frame.frameSide = 2; frame.Box(new Vector3(-gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
+                frame.frameSide = 3; frame.Box(new Vector3(gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
             }
             // The glass's cut edge along the top of the frame: a pale, faintly glowing line (polish note: the glass read
             // only by its dark frame). Together with the shader's rim highlight it says "glass" at full view.
             float ey = GlassTop + t / 2f + 0.004f, ew = 0.022f;
-            mb.emission = 0.12f;
-            mb.Box(new Vector3(0, ey, -gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
-            mb.Box(new Vector3(0, ey, gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
-            mb.Box(new Vector3(-gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
-            mb.Box(new Vector3(gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
-            mb.emission = 0f;
+            frame.emission = 0.12f;
+            frame.frameSide = 0; frame.Box(new Vector3(0, ey, -gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
+            frame.frameSide = 1; frame.Box(new Vector3(0, ey, gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
+            frame.frameSide = 2; frame.Box(new Vector3(-gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
+            frame.frameSide = 3; frame.Box(new Vector3(gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
+            frame.emission = 0f;
+            frame.frameSide = -1;
             // The shelf: a grid top so the baked AO can draw the box's contact shadow on it.
             float sy = -plinthH, sx0 = -16f, sx1 = 16f, sz0 = -4.2f, sz1 = 3.6f, cell = 0.3f;
             var keep = mb.jitter; mb.jitter = 0f;
@@ -1211,6 +1238,7 @@ namespace AquariumCiv.View
             if (smokeGo != null) { Kill(smokeGo.GetComponent<MeshFilter>().sharedMesh); Kill(smokeGo); smokeGo = null; }
             var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var extra = new List<Vector2>(); var tris = new List<int>();
             var sVerts = new List<Vector3>(); var sCols = new List<Color>(); var sCorner = new List<Vector2>(); var sData = new List<Vector2>(); var sTris = new List<int>();
+            var spots = new List<(Vector3 at, float threshold)>();
             var corners = new[] { new Vector2(-1, -1), new Vector2(-1, 1), new Vector2(1, 1), new Vector2(1, -1) };
             void Add(Vector3 c, float radius, float kind, Color col, float x = 0f, float y = 0f)
             {
@@ -1232,6 +1260,7 @@ namespace AquariumCiv.View
                     var foot = frame.MultiplyPoint3x4(Vector3.zero);
                     float phase = Pieces.Phase(p.seed);
                     var look = FireLooks.Spec(FireLooks.Active);
+                    spots.Add((frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), 0.05f));                                         // a fire lights its neighbours from the first dusk
                     Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), look.haloRadius, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
                     Add(foot + Vector3.up * 0.02f, look.poolRadius, 4f, Palette.FirePool, phase, look.poolBoost);                 // warm pool on the ground
                     if (look.washRadius > 0f) Add(frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), look.washRadius, 7f, Palette.FlameBodyA, phase, 0.16f); // warm wash over the neighbours
@@ -1248,7 +1277,27 @@ namespace AquariumCiv.View
                         AddSmoke(foot + Vector3.up * 0.3f, (s + Land.Hash3(p.seed, s, 13) * 0.4f) / look.smokePuffs, 4f);
                 }
                 else if (p.kind == PieceKind.Lantern)
-                    Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + Pieces.Phase(p.seed), Palette.Lamp);
+                {
+                    float phase = Pieces.Phase(p.seed);
+                    Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + phase, Palette.Lamp);
+                    Add(land.OnGround(frame.MultiplyPoint3x4(new Vector3(0.065f, 0f, 0))) + Vector3.up * 0.018f, LanternPool, 8f, Palette.Lamp, phase, 1f);
+                    spots.Add((frame.MultiplyPoint3x4(new Vector3(0.065f, 0.26f, 0)), LampThreshold01(phase)));
+                }
+                else if (p.kind == PieceKind.Home && p.era != Era.Camp)
+                {
+                    // The light from a house's front window on the path, a smaller and softer pool than a lantern's.
+                    float phase = Pieces.Phase(p.seed);
+                    var step = frame.MultiplyPoint3x4(new Vector3(-p.w * 0.18f, 0f, -p.d * 0.5f - 0.1f));
+                    Add(land.OnGround(step.x, step.z) + Vector3.up * 0.016f, WindowPool, 8f, Palette.Lamp, phase, 0.6f);
+                    spots.Add((step + Vector3.up * 0.16f, LampThreshold01(phase)));
+                }
+            }
+            lampCount = spots.Count;
+            if (LampX.Length < lampCount) { LampX = new float[lampCount]; LampY = new float[lampCount]; LampZ = new float[lampCount]; LampThreshold = new float[lampCount]; }
+            for (int i = 0; i < lampCount; i++)
+            {
+                var w = transform.TransformPoint(spots[i].at);
+                LampX[i] = w.x; LampY[i] = w.y; LampZ[i] = w.z; LampThreshold[i] = spots[i].threshold;
             }
             var bounds = new Bounds(new Vector3(0, 1.5f, 0), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
             if (verts.Count > 0)
@@ -1270,6 +1319,20 @@ namespace AquariumCiv.View
                 smokeGo.GetComponent<MeshRenderer>().receiveShadows = false;
             }
         }
+
+        /// <summary>Pool radii (world units) before the look's own size.</summary>
+        public const float LanternPool = 0.62f, WindowPool = 0.36f;
+        /// <summary>The level a lamp's mesh lights at, as the Stylized and Glow shaders' LampOn work it out from its phase.</summary>
+        static float LampThreshold01(float phase) => 0.12f + phase * 0.6f;
+
+        // The lamps of this layout for the driver (world space): filled when the glows are built, read every frame without allocating.
+        int lampCount;
+        public int LampCount => lampCount;
+        public float[] LampX { get; private set; } = new float[0];
+        public float[] LampY { get; private set; } = new float[0];
+        public float[] LampZ { get; private set; } = new float[0];
+        public float[] LampThreshold { get; private set; } = new float[0];
+        public int LampSeed => seed;
 
         // ---------------- people ----------------
         static uint LookSig(VillagerData v)
@@ -1339,9 +1402,66 @@ namespace AquariumCiv.View
                 var go = Spawn("Glass" + name, cube, mat, false);
                 go.transform.localPosition = pos;
                 go.transform.localScale = size;
-                go.GetComponent<MeshRenderer>().receiveShadows = false;
+                var r = go.GetComponent<MeshRenderer>();
+                r.receiveShadows = false;
+                paneRenderers.Add(r);
             }
+            System.Array.Fill(paneFade, 1f);
+            System.Array.Clear(frameFade, 0, frameFade.Length);
+            System.Array.Fill(frameShown, 1f);
             SortPanes();
+            FadeNearGlass(1f);
+        }
+
+        // Front, back, left, right, then the corner posts: the outward direction on the ground, box space.
+        static readonly Vector3[] PartOut =
+        {
+            Vector3.back, Vector3.forward, Vector3.left, Vector3.right,
+            new(-0.7071f, 0f, -0.7071f), new(0.7071f, 0f, -0.7071f), new(0.7071f, 0f, 0.7071f), new(-0.7071f, 0f, 0.7071f),
+        };
+        static readonly int FadeId = Shader.PropertyToID("_Fade"), FrameFadeId = Shader.PropertyToID("_AC_FrameFade");
+
+        /// <summary>The debug panel's near-glass force: 0..1 stands in for the zoom, negative = off.</summary>
+        public static float NearGlassForce = -1f;
+        readonly float[] paneFade = new float[4], frameShown = new float[8], frameFade = new float[8];
+        /// <summary>What a pane shows now (1 = there, 0 = gone): tests and the debug read-out.</summary>
+        public float PaneOpacity(int pane) => paneFade[pane];
+        /// <summary>A part of the frame now (0..3 the sides, 4..7 the posts).</summary>
+        public float FrameOpacity(int part) => frameShown[part];
+
+        /// <summary>#162: panes and frame between the camera and the people fade as it comes close, and follow as it orbits; the back of the box never does, and clean mode brings everything back.</summary>
+        void FadeNearGlass(float dt)
+        {
+            var cam = Camera.main;
+            if (cam == null || root == null || paneRenderers.Count != 4 || !Application.isPlaying) return;
+            var rig = cam.GetComponent<BoxCamera>();
+            float ratio = rig != null ? rig.zoom : 1f;
+            var care = CareView.Instance;
+            bool clean = care != null && care.CleanMode;
+            var to = transform.InverseTransformDirection(cam.transform.position - transform.position);
+            to.y = 0f;
+            to.Normalize();
+            for (int i = 0; i < 4; i++)
+            {
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), false, clean, NearGlassForce);
+                float now = NearGlassFade.Follow(paneFade[i], want, dt);
+                if (Mathf.Abs(want - now) < 0.002f) now = want;
+                if (now == paneFade[i]) continue;
+                paneFade[i] = now;
+                panes[i].SetFloat(FadeId, now);
+            }
+            bool changed = false;
+            for (int i = 0; i < 8; i++)
+            {
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), true, clean, NearGlassForce);
+                float now = NearGlassFade.Follow(frameShown[i], want, dt);
+                if (Mathf.Abs(want - now) < 0.002f) now = want;
+                if (now == frameShown[i]) continue;
+                frameShown[i] = now;
+                frameFade[i] = 1f - now;
+                changed = true;
+            }
+            if (changed) Shader.SetGlobalFloatArray(FrameFadeId, frameFade);
         }
 
         /// <summary>Back panes draw first, then the front ones (fixed queues, no per-frame distance sort).</summary>
@@ -1349,17 +1469,17 @@ namespace AquariumCiv.View
         {
             var cam = Camera.main;
             if (cam == null || root == null) return;
-            foreach (Transform t in root)
+            foreach (var r in paneRenderers)
             {
-                if (!t.name.StartsWith("Glass")) continue;
-                var r = t.GetComponent<MeshRenderer>();
+                if (r == null) continue;
+                var t = r.transform;
                 var outward = new Vector3(Mathf.Sign(t.localPosition.x) * (t.localScale.x < 0.1f ? 1 : 0), 0, Mathf.Sign(t.localPosition.z) * (t.localScale.z < 0.1f ? 1 : 0));
                 bool facing = Vector3.Dot(transform.TransformDirection(outward), cam.transform.position - t.position) > 0;
                 r.sharedMaterial.renderQueue = facing ? 3010 : 3000;
             }
         }
 
-        void LateUpdate() { BuildWaitingChunk(); SortPanes(); }
+        void LateUpdate() { BuildWaitingChunk(); SortPanes(); FadeNearGlass(Mathf.Min(Time.unscaledDeltaTime, 0.1f)); }
 
         // ---------------- ambient occlusion ----------------
         /// <summary>The last AO bake's breakdown (keys, timings), for profiling.</summary>

@@ -3,8 +3,7 @@ using System;
 namespace AquariumCiv.Lighting
 {
     /// <summary>
-    /// #146 camera reach, pure floats so it runs outside Unity. The BoxCamera wiring swaps its limits for these
-    /// (<c>BoxCameraMath</c> itself keeps its old behaviour and its Unity tests until then).
+    /// #146 camera reach, pure floats so it runs outside Unity. <c>BoxCameraMath</c> and <c>BoxCamera</c> take their limits from here.
     /// Zoom: smaller = closer. Land half-sizes are passed in (Land.HX = 3, Land.HZ = 2.2).
     /// </summary>
     public static class CameraReach
@@ -20,8 +19,14 @@ namespace AquariumCiv.Lighting
         /// <summary>The pitch floor is 24 at zoom 1 and out, down to 14 at <see cref="MinZoom"/>.</summary>
         public const float PitchFloorFull = 24f, PitchFloorClose = 14f;
 
+        /// <summary>Tester run 4: people at default zoom are about 30x41 px. This much bigger at zoom 1 and out, nothing from <see cref="DollScaleCloseZoom"/> in.</summary>
+        public const float DollScaleUp = 0.2f, DollScaleCloseZoom = 0.45f;
+
         static float Clamp01(float t) => t < 0f ? 0f : t > 1f ? 1f : t;
         static float Smooth(float t) { t = Clamp01(t); return t * t * (3f - 2f * t); }
+
+        /// <summary>A doll's size at this zoom: they grow a little as the camera backs off, so a person stays a person at full view. 1 close in; smooth, so a pinch never pops.</summary>
+        public static float DollScale(float zoom, float amount = DollScaleUp) => 1f + amount * Smooth((zoom - DollScaleCloseZoom) / (1f - DollScaleCloseZoom));
 
         /// <summary>0..1 share of the pan range open at this zoom. Continuous: FullBoxPan at 1, 1 at FullPanZoom, a little less past 1.</summary>
         public static float PanK(float zoom)
@@ -56,10 +61,13 @@ namespace AquariumCiv.Lighting
 
         public bool Armed { get; private set; }
         public bool Gliding { get; private set; }
-        float _x, _z, _zoom, _t, _sx, _sz, _sz0;
+        float _x, _z, _zoom, _yaw, _pitch, _t, _sx, _sz, _sz0, _sy, _sp;
 
         /// <summary>Call as a fly-in starts, with the focus (x, z) and zoom to return to.</summary>
-        public void Remember(float x, float z, float zoom) { _x = x; _z = z; _zoom = zoom; Armed = true; Gliding = false; _t = 0f; }
+        public void Remember(float x, float z, float zoom) => Remember(x, z, zoom, 0f, 0f);
+
+        /// <summary>As above, with the angles a nudge also moved.</summary>
+        public void Remember(float x, float z, float zoom, float yaw, float pitch) { _x = x; _z = z; _zoom = zoom; _yaw = yaw; _pitch = pitch; Armed = true; Gliding = false; _t = 0f; }
 
         /// <summary>Call on any touch or a new flight: forget the return.</summary>
         public void Cancel() { Armed = false; Gliding = false; _t = 0f; }
@@ -70,18 +78,27 @@ namespace AquariumCiv.Lighting
         /// </summary>
         public bool Step(float dt, ref float x, ref float z, ref float zoom)
         {
+            float yaw = 0f, pitch = 0f;
+            return Step(dt, ref x, ref z, ref zoom, ref yaw, ref pitch);
+        }
+
+        /// <summary>As above, with the angles.</summary>
+        public bool Step(float dt, ref float x, ref float z, ref float zoom, ref float yaw, ref float pitch)
+        {
             if (!Armed) return false;
             _t += dt;
             if (!Gliding)
             {
                 if (_t < Hold) return false;
-                Gliding = true; _sx = x; _sz = z; _sz0 = zoom; _t = 0f;
+                Gliding = true; _sx = x; _sz = z; _sz0 = zoom; _sy = yaw; _sp = pitch; _t = 0f;
             }
             float u = Clamp(_t / Duration);
             float e = u * u * u * (u * (u * 6f - 15f) + 10f);
             x = _sx + (_x - _sx) * e;
             z = _sz + (_z - _sz) * e;
             zoom = _sz0 + (_zoom - _sz0) * e;
+            yaw = _sy + (_yaw - _sy) * e;
+            pitch = _sp + (_pitch - _sp) * e;
             if (u >= 1f) Cancel();
             return true;
         }

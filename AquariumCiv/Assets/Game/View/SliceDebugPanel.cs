@@ -23,6 +23,66 @@ namespace AquariumCiv.View
 
         void Update() => DebugDock.WatchCorner();
 
+        /// <summary>Light and camera (#113, #175, #146, #162): the hour, the look, how dark the night may be, the near glass, the closest zoom.</summary>
+        void DrawLight(PeopleView people)
+        {
+            var day = DayLightDriver.Instance;
+            if (day == null || people == null) return;
+            GUILayout.Label(DayLightDriver.Status());
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"{people.ViewHour:00.0} h", GUILayout.Width(56));
+            float h = GUILayout.HorizontalSlider(people.ViewHour, 0f, 23.99f);
+            if (!Mathf.Approximately(h, people.ViewHour)) last = PeopleView.DebugSetHour(h);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            foreach (float at in new[] { 6f, 12f, 17.5f, 19.5f, 22f })
+                if (GUILayout.Button(at.ToString("0.#"))) last = PeopleView.DebugSetHour(at);
+            if (GUILayout.Button(day.ClockPaused ? "Clock: paused" : "Clock: runs")) last = DayLightDriver.DebugPauseClock(!day.ClockPaused);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            foreach (AquariumCiv.Lighting.LightLook look in System.Enum.GetValues(typeof(AquariumCiv.Lighting.LightLook)))
+                if (GUILayout.Button((day.Logic.Look == look ? "> " : "") + look)) last = DayLightDriver.DebugLook(look);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Floor {day.Logic.NightFloor:0.00}", GUILayout.Width(80));
+            float floor = GUILayout.HorizontalSlider(day.Logic.NightFloor, AquariumCiv.Lighting.DayLight.MinNightFloor, AquariumCiv.Lighting.DayLight.MaxNightFloor);
+            if (!Mathf.Approximately(floor, day.Logic.NightFloor)) last = DayLightDriver.DebugNightFloor(floor);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            bool forced = BoxView.NearGlassForce >= 0f;
+            if (GUILayout.Button(forced ? "Near glass: forced" : "Near glass: zoom")) BoxView.NearGlassForce = forced ? -1f : 1f;
+            if (forced) BoxView.NearGlassForce = GUILayout.HorizontalSlider(BoxView.NearGlassForce, 0f, 1f);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Doll +{PeopleView.DollScaleAmount * 100f:0} %", GUILayout.Width(80));
+            PeopleView.DollScaleAmount = GUILayout.HorizontalSlider(PeopleView.DollScaleAmount, 0f, 0.4f);
+            GUILayout.EndHorizontal();
+            var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+            if (rig == null) return;
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Fly in: fire")) last = DebugFlyFire(people, rig);
+            if (GUILayout.Button("Fly in: door")) last = DebugFlyDoor(people, rig);
+            if (GUILayout.Button("Go home")) rig.GoHome();
+            GUILayout.EndHorizontal();
+        }
+
+        static string DebugFlyFire(PeopleView people, BoxCamera rig)
+        {
+            var at = people.Planner != null ? people.Planner.Positions : null;
+            if (at == null || !at.TryGetPosition(AquariumCiv.Life.Place.Land(AquariumCiv.Life.PlaceKind.Fire), out float x, out float z)) return "no fire";
+            rig.DebugFlyIn(people.transform.TransformPoint(new Vector3(x, 0f, z)), AquariumCiv.Lighting.CameraReach.MinZoom);
+            return "closest, at the fire";
+        }
+
+        static string DebugFlyDoor(PeopleView people, BoxCamera rig)
+        {
+            var box = people.GetComponent<BoxView>();
+            if (box == null || box.LampCount == 0) return "no doors";
+            int k = box.LampCount / 2;
+            rig.DebugFlyIn(new Vector3(box.LampX[k], 0f, box.LampZ[k]), AquariumCiv.Lighting.CameraReach.MinZoom);
+            return "closest, at a door";
+        }
+
         void OnGUI()
         {
             var safe = DebugDock.Begin(out float sc);
@@ -245,6 +305,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Who's doing what")) last = PeopleView.DebugReport(6);
                 GUILayout.EndHorizontal();
             }
+            DrawLight(people);
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
             GUILayout.EndScrollView();

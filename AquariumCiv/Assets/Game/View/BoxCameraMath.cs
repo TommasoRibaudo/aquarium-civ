@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AquariumCiv.Lighting;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -14,7 +15,7 @@ namespace AquariumCiv.View
         public const float YawPerScreen = 110f, PitchPerScreen = 50f;
         /// <summary>A touch that moved less than this fraction of the screen height has not started an orbit (so a tap never nudges).</summary>
         public const float SlopFraction = 0.012f;
-        public const float PitchCeiling = 68f, PitchFloorFull = 24f, PitchFloorClose = 14f, CloseZoom = 0.3f;
+        public const float PitchCeiling = 68f;
         /// <summary>Past a limit a drag counts at 1 / (1 + over / SoftRange): degrees for the angles, world units for the pan.</summary>
         public const float SoftRange = 6f, PanSoftRange = 0.25f;
         /// <summary>After release, what is past a limit decays as exp(-dt / SpringTau).</summary>
@@ -22,8 +23,8 @@ namespace AquariumCiv.View
         public const float InertiaTau = 0.2f, InertiaStop = 3f, InertiaCap = 200f, VelocityWindow = 0.08f;
         /// <summary>The shown angles follow the target angles with 1 - exp(-FollowRate dt).</summary>
         public const float FollowRate = 18f;
-        /// <summary>Margin the pan keeps from the box's edge (world units).</summary>
-        public const float PanMargin = 0.3f;
+        /// <summary>#193: the depth the camera keeps around the box: near plane and shadow range both follow it (about 15 units, wherever the zoom has the camera).</summary>
+        public const float DepthFront = 7f, DepthBack = 8f, NearestPlane = 0.3f;
 
         /// <summary>Fly-to: default duration, and the zoom a flight to a person / a place ends at (< 1 = closer).</summary>
         public const float FlyDefaultSeconds = 0.9f, FlyPersonZoom = 0.45f, FlyPlaceZoom = 0.6f;
@@ -43,8 +44,8 @@ namespace AquariumCiv.View
 
         public static bool PastSlop(Vector2 movedPixels, float screenHeight) => movedPixels.magnitude >= SlopFraction * screenHeight;
 
-        /// <summary>The lowest pitch allowed: 24 degrees at full-box zoom (zoom 1 and out), down to 14 at zoom 0.3.</summary>
-        public static float PitchFloor(float zoom) => Mathf.Lerp(PitchFloorClose, PitchFloorFull, Mathf.InverseLerp(CloseZoom, 1f, zoom));
+        /// <summary>The lowest pitch allowed: 24 degrees at full-box zoom (zoom 1 and out), down to 14 at the closest zoom.</summary>
+        public static float PitchFloor(float zoom) => CameraReach.PitchFloor(zoom);
 
         /// <summary>
         /// Moves <paramref name="value"/> by <paramref name="delta"/> inside [lo, hi]; the part of the move beyond a limit
@@ -101,14 +102,14 @@ namespace AquariumCiv.View
             return v.magnitude < InertiaStop ? Vector2.zero : v;
         }
 
-        /// <summary>k: 0 at full-box zoom (no pan, the box stays centred) up to 1 at zoom 0.3.</summary>
-        public static float PanK(float zoom) => Mathf.Clamp01((1f - zoom) / 0.7f);
+        /// <summary>k: a little at full-box zoom (#146), fully open by zoom 0.5.</summary>
+        public static float PanK(float zoom) => CameraReach.PanK(zoom);
 
         /// <summary>The most the target may be off the box centre in x and z at this zoom.</summary>
         public static Vector2 PanBounds(float zoom)
         {
-            float k = PanK(zoom);
-            return new Vector2((Land.HX - PanMargin) * k, (Land.HZ - PanMargin) * k);
+            CameraReach.PanBounds(zoom, Land.HX, Land.HZ, out float x, out float z);
+            return new Vector2(x, z);
         }
 
         /// <summary>Zoom towards a point: the target moves (1 - z1/z0) of the way to the ground point under the fingers.</summary>

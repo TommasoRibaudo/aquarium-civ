@@ -398,6 +398,7 @@ namespace AquariumCiv.View
             if (cam == null || pv == null || !pv.TryGetDollFeet(who, out var feet)) return false;
             float zoom = Mathf.Min(cam.zoom, BoxCameraMath.FlyPersonZoom);
             var focus = ShowMeDirector.AboveCard(cam, feet, zoom, cam.pitch, CardAnchorY);
+            cam.ReturnAfterFlight(); // back to the player's view once the card is closed (#146)
             lastFlight = cam.FlyTo(focus, zoom, BoxCameraMath.FlyDefaultSeconds);
             return true;
         }

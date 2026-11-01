@@ -24,6 +24,8 @@ Shader "AquariumCiv/View/Stylized"
         _Wind ("Wind strength", Float) = 0.018
         _WindSpeed ("Wind speed", Float) = 1.4
         _LampBoost ("Lamp brightness at night", Float) = 2.2
+        [HideInInspector] _SrcBlend ("Src blend", Float) = 1
+        [HideInInspector] _DstBlend ("Dst blend", Float) = 0
     }
     SubShader
     {
@@ -42,8 +44,15 @@ Shader "AquariumCiv/View/Stylized"
             half _LampBoost;
         CBUFFER_END
 
-        // Global (not per material): the night level every lamp in the box follows.
+        // Globals (not per material): the night level every lamp in the box follows; the day's extra ambient strength (added to
+        // _Ambient, 0 by day and in edit mode); the lamps that light their neighbours, nearest the view first (xyz, w = how lit,
+        // DayLightDriver), with _AC_LampParams = (1 / reach^2, strength, flicker held, pool size); how far each part of the box's
+        // frame has faded (#162; the frame's vertices say which part in UV1.x = -1 - part).
         float _AC_LampLevel;
+        float _AC_AmbientBoost;
+        float4 _AC_LampPos[8];
+        float4 _AC_LampParams;
+        float _AC_FrameFade[8];
 
         float Hash11(float n) { return frac(sin(n * 12.9898) * 43758.5453); }
 
@@ -57,7 +66,23 @@ Shader "AquariumCiv/View/Stylized"
             float n = Hash11(floor(_Time.y * 13.0) + lamp.y * 917.0);
             float sputter = (x > 0.0 && x < 1.0) ? step(1.0 - x * x, n) * (0.55 + 0.45 * x) : x;
             float dip = step(0.988, Hash11(floor(_Time.y * 7.0) + lamp.y * 571.0 + 3.0)) * step(0.999, x);
+            if (_AC_LampParams.z > 0.5) return (half)x; // the clock runs fast (time-lapse): no strobing
             return (half)(sputter * (1.0 - 0.7 * dip));
+        }
+
+        // The lamps' light on what stands near them, per vertex: at most 8 loops of a few instructions, no URP additional light, no
+        // new variant. The soft end of (1 - d^2 / reach^2)^2 needs no square root.
+        half LampLight(float3 p, float3 n)
+        {
+            if (_AC_LampParams.y <= 0.0) return 0;
+            half sum = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                float3 d = _AC_LampPos[i].xyz - p;
+                float k = saturate(1.0 - dot(d, d) * _AC_LampParams.x);
+                sum += (half)(k * k * _AC_LampPos[i].w * (0.65 + 0.35 * saturate(dot(n, d) * 2.0)));
+            }
+            return sum * (half)_AC_LampParams.y;
         }
 
         float3 Sway(float3 positionWS, float weight)
@@ -98,6 +123,7 @@ Shader "AquariumCiv/View/Stylized"
             Name "Forward"
             Tags { "LightMode" = "UniversalForward" }
             Cull Back
+            Blend [_SrcBlend] [_DstBlend]
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -114,8 +140,8 @@ Shader "AquariumCiv/View/Stylized"
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 half4 color : COLOR;
-                float3 uv : TEXCOORD2; // x sway, y emission, z lamp on
-                half fog : TEXCOORD3;
+                float4 uv : TEXCOORD2; // x sway, y emission, z lamp on, w frame opacity
+                half2 fog : TEXCOORD3; // x fog, y lamp light
             };
 
             Varyings vert(Attributes v)
@@ -126,8 +152,9 @@ Shader "AquariumCiv/View/Stylized"
                 o.positionCS = TransformWorldToHClip(p);
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.color = v.color;
-                o.uv = float3(v.uv, LampOn(v.lamp));
-                o.fog = ComputeFogFactor(o.positionCS.z);
+                float opacity = v.lamp.x < -0.5 ? 1.0 - _AC_FrameFade[(int)(-v.lamp.x - 0.5)] : 1.0;
+                o.uv = float4(v.uv, LampOn(v.lamp), opacity);
+                o.fog = half2(ComputeFogFactor(o.positionCS.z), LampLight(p, o.normalWS));
                 return o;
             }
 
@@ -142,8 +169,8 @@ Shader "AquariumCiv/View/Stylized"
                 half band = smoothstep(_BandAt - _BandSoft, _BandAt + _BandSoft, wrapped);
                 half lit = band * lerp(1, light.shadowAttenuation, 0.85);
                 half3 direct = lerp(_ShadowTint.rgb * 0.55, light.color, lit);
-                half3 ambient = SampleSH(n) * _Ambient;
-                half3 col = albedo * (direct * (0.55 + 0.45 * ao) + ambient * ao);
+                half3 ambient = SampleSH(n) * (_Ambient + _AC_AmbientBoost);
+                half3 col = albedo * (direct * (0.55 + 0.45 * ao) + ambient * ao + half3(1.0, 0.78, 0.45) * i.fog.y);
                 half h = saturate((i.positionWS.y - _GroundY) / _HeightRange);
                 col *= lerp(_LowTint.rgb, _HighTint.rgb, h);
                 float3 viewDir = normalize(GetWorldSpaceViewDir(i.positionWS));
@@ -151,8 +178,8 @@ Shader "AquariumCiv/View/Stylized"
                 col += rim * light.color * (albedo + 0.25);
                 col = lerp(col, albedo * _Emission, i.uv.y);
                 col = lerp(col, albedo * half3(1.0, 0.78, 0.45) * _LampBoost, i.uv.z); // warm, so lit windows stay amber after tonemapping
-                col = MixFog(col, i.fog);
-                return half4(col, 1);
+                col = MixFog(col, i.fog.x);
+                return half4(col, i.uv.w);
             }
             ENDHLSL
         }

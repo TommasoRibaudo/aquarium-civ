@@ -64,10 +64,11 @@ namespace AquariumCiv.View.Tests
             Run(cam, 0.3f);
             var b = BoxCameraMath.PanBounds(0.3f);
             Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(-b.y, cam.target.z, 1e-4f);
-            // Zooming out to the full box leaves no room to pan: the flight ends centred.
+            // Zooming out to the full box leaves little room to pan: the flight ends at its bound.
             cam.FlyTo(new Vector3(2f, 0f, 1f), 1f, 0.2f);
             Run(cam, 0.3f);
-            Assert.AreEqual(0f, cam.target.x, 1e-4f); Assert.AreEqual(0f, cam.target.z, 1e-4f);
+            b = BoxCameraMath.PanBounds(1f);
+            Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(b.y, cam.target.z, 1e-4f);
             // Zoom is clamped to the camera's range.
             cam.FlyTo(Vector3.zero, 0.01f, 0.1f); Run(cam, 0.2f);
             Assert.AreEqual(cam.minZoom, cam.zoom, 1e-4f);
