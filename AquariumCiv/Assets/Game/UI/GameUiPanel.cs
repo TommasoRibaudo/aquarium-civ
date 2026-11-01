@@ -18,10 +18,8 @@ namespace AquariumCiv.GameUI
         public const float ToolsBottom = 82.5f, PinBottom = 264f, PeekBottom = 269.5f, ToastBottom = 401.5f, PromptBottom = 561f;
         /// <summary>The toast sits this far above a sheet when one is up (8 pt).</summary>
         public const float ToastAboveSheet = 22f;
-        /// <summary>48 dp on a 360 dp-wide phone (1080 px at 3×), which also covers 44 pt on a 375 pt iPhone.</summary>
+        /// <summary>48 dp on a 360 dp-wide phone (1080 px at 3×), which also covers 44 pt on a 375 pt iPhone. Every tap target reaches this (spec §1); smaller pieces use <see cref="GlassReach"/>.</summary>
         public const float MinTarget = 144f;
-        /// <summary>44 pt on the boards' 393 pt phone: the size components are drawn to (a <see cref="GlassChip"/>'s slot, a button's height).</summary>
-        public const float Target44 = 121f;
 
         /// <summary>The one toast queue (hierarchy rule 3). <see cref="GameHud"/> draws it; a <see cref="GlassBigPrompt"/> holds it, since prompts outrank toasts.</summary>
         public static readonly MessageQueue Toasts = new();

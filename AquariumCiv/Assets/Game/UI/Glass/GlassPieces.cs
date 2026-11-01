@@ -62,7 +62,8 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>The label on a new thing: 13 pt, the floor (question 10).</summary>
-    public class GlassNewTag : Label
+    [UxmlElement]
+    public partial class GlassNewTag : Label
     {
         public GlassNewTag() : base("New")
         {
@@ -73,7 +74,8 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>The book's ribbon: new pages wait.</summary>
-    public class GlassRibbon : VisualElement
+    [UxmlElement]
+    public partial class GlassRibbon : VisualElement
     {
         public GlassRibbon() { pickingMode = PickingMode.Ignore; AddToClassList("kg-ribbon"); }
     }
@@ -81,8 +83,11 @@ namespace AquariumCiv.GameUI
     public enum TagKind { Name, Pin, Tie }
 
     /// <summary>A label in the world: the name tag, the gold pin tag with its mark, a tie with its mark.</summary>
-    public class GlassTag : VisualElement
+    [UxmlElement]
+    public partial class GlassTag : VisualElement
     {
+        public GlassTag() : this("") { }
+
         public GlassTag(string word, TagKind kind = TagKind.Name, string mark = null)
         {
             pickingMode = PickingMode.Ignore;
@@ -98,8 +103,11 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>The brass plate: the box's name and its lines.</summary>
-    public class GlassPlate : VisualElement
+    [UxmlElement]
+    public partial class GlassPlate : VisualElement
     {
+        public GlassPlate() : this("") { }
+
         public GlassPlate(string name, params string[] lines)
         {
             pickingMode = PickingMode.Ignore;
@@ -180,8 +188,11 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>One bubble: who and a line, or chatter in symbols. The tail is a rotated square. <see cref="MessageQueue"/> keeps it to one at a time.</summary>
-    public class GlassBubble : VisualElement
+    [UxmlElement]
+    public partial class GlassBubble : VisualElement
     {
+        public GlassBubble() : this("", "") { }
+
         /// <summary>Longer lines become a caption, not a bigger bubble.</summary>
         public const int MaxChars = 48;
 
@@ -241,11 +252,14 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>The caption plate (and the era card): one line, or a line and who. In panel form it's plain text inside the time-lapse panel.</summary>
-    public class GlassCaption : VisualElement
+    [UxmlElement]
+    public partial class GlassCaption : VisualElement
     {
         readonly Label line, who;
 
-        public GlassCaption(string line = "", string who = null)
+        public GlassCaption() : this("") { }
+
+        public GlassCaption(string line, string who = null)
         {
             pickingMode = PickingMode.Ignore;
             AddToClassList("kg-caption");
@@ -269,9 +283,12 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>A light pill of three words at most. Rests while a reward line shows (the bug in captures/README.md).</summary>
-    public class GlassHint : VisualElement
+    [UxmlElement]
+    public partial class GlassHint : VisualElement
     {
         public const int MaxWords = 3;
+
+        public GlassHint() : this("") { }
 
         public GlassHint(string word, string icon = null)
         {
@@ -294,9 +311,12 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>The mode's state and its one way out, in the tools' lane: the tool in hand, or a visit.</summary>
-    public class GlassBanner : VisualElement
+    [UxmlElement]
+    public partial class GlassBanner : VisualElement
     {
         public VisualElement End { get; }
+
+        public GlassBanner() : this(null, null) { }
 
         public GlassBanner(string title, string sub)
         {

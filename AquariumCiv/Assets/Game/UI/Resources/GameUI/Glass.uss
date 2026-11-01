@@ -88,9 +88,13 @@
 }
 .kg-portrait--chip { width: 110px; height: 110px; font-size: 41.25px; }
 
+/* ---------------- reach: the clear child that takes a small piece's hit area out to --hit (GlassReach). Past the edges so
+   it covers any border; ContainsPoint draws the exact line ---------------- */
+.kg-reach { position: absolute; left: -16px; right: -16px; top: -16px; bottom: -16px; }
+
 /* ---------------- button ---------------- */
 .kg-btn {
-    height: 126.5px; min-width: var(--hit); margin: 0; padding: 0 var(--space-16); flex-shrink: 0;
+    height: 126.5px; min-width: var(--drawn); margin: 0; padding: 0 var(--space-16); flex-shrink: 0;
     border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-button);
     background-color: var(--flat-tint);
     color: var(--ink-soft); -unity-text-outline-color: var(--ink-soft);
@@ -101,13 +105,13 @@
 .kg-btn--primary { padding: 0 71.5px; border-width: 0; background-color: var(--primary); color: var(--on-primary); -unity-text-outline-color: var(--on-primary); }
 .kg-btn--primary:active, .kg-btn--primary.kg-btn--pressed { background-color: var(--primary-pressed); }
 .kg-btn--quiet {
-    height: var(--hit); padding: 0 var(--space-6); border-width: 0; background-color: var(--clear);
+    height: var(--drawn); padding: 0 var(--space-6); border-width: 0; background-color: var(--clear);
     color: var(--ink); -unity-text-outline-color: var(--ink);
     -unity-font-definition: var(--font-serif); font-size: 38.5px;
 }
 .kg-btn--quiet:active, .kg-btn--quiet.kg-btn--pressed { background-color: var(--clear); }
 .kg-btn--icon {
-    width: var(--hit); height: var(--hit); padding: 0; border-width: 0; background-color: var(--clear);
+    width: var(--drawn); height: var(--drawn); padding: 0; border-width: 0; background-color: var(--clear);
     justify-content: center; align-items: center;
 }
 .kg-btn--icon:active, .kg-btn--icon.kg-btn--pressed { background-color: var(--clear); }
@@ -117,11 +121,12 @@
     background-color: var(--off-fill); border-width: var(--hairline); border-color: var(--timber);
     color: var(--ink); -unity-text-outline-color: var(--ink);
 }
+.kg-btn--quiet.kg-btn--off { padding-right: var(--space-16); }
 .kg-btn-lock { position: absolute; left: 41px; top: 41px; display: none; }
 .kg-btn-measure { visibility: hidden; margin: 0; padding: 0; white-space: nowrap; }
 .kg-btn--off > .kg-btn-lock { display: flex; }
 
-/* ---------------- chip: 30 visible inside a clear 44 tall slot that takes the tap. Slots touch ---------------- */
+/* ---------------- chip: 30 visible inside a clear slot of --hit that takes the tap. Slots touch ---------------- */
 .kg-chip-slot {
     height: var(--hit); min-width: var(--hit); margin: 0 var(--space-6) 0 0; padding: 0;
     border-width: 0; background-color: var(--clear); justify-content: center; align-items: flex-start;
@@ -139,7 +144,7 @@
 .kg-chip-slot--pressed > .kg-chip, .kg-chip-slot:active > .kg-chip { background-color: var(--pressed-fill); }
 
 .kg-pin {
-    height: var(--hit); max-width: 605px; margin: 0; padding: 0 38.5px 0 2.75px; flex-direction: row; align-items: center; flex-shrink: 1;
+    height: var(--drawn); max-width: 605px; margin: 0; padding: 0 38.5px 0 2.75px; flex-direction: row; align-items: center; flex-shrink: 1;
     border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-pin);
     background-color: var(--flat-tint);
     transition: scale 80ms ease-out;
@@ -152,7 +157,7 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .kg-stories {
-    height: var(--hit); margin: 0 0 0 auto; padding: 0 38.5px 0 33px; flex-direction: row; align-items: center; flex-shrink: 0;
+    height: var(--drawn); margin: 0 0 0 auto; padding: 0 38.5px 0 33px; flex-direction: row; align-items: center; flex-shrink: 0;
     border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-pin);
     background-color: var(--flat-tint);
     transition: scale 80ms ease-out;
@@ -230,7 +235,7 @@
 /* ---------------- tab, toggle, slider ---------------- */
 .kg-tabs { flex-direction: row; }
 .kg-tab {
-    height: var(--hit); margin: 0 5.5px 0 0; padding: 0 var(--space-12); flex-shrink: 0;
+    height: var(--hit); min-width: var(--hit); margin: 0 5.5px 0 0; padding: 0 var(--space-12); flex-shrink: 0;
     border-width: 0; border-bottom-width: 5.5px; border-color: var(--clear); background-color: var(--clear);
     color: var(--ink); -unity-text-outline-color: var(--ink);
     -unity-font-definition: var(--font-lora-medium); font-size: 41.25px; -unity-text-align: middle-center; white-space: nowrap;
@@ -244,13 +249,13 @@
     font-size: 35.75px;
 }
 .kg-toggle-track {
-    position: absolute; left: 0; right: 0; top: 16.5px; height: 88px;
+    position: absolute; left: 0; right: 0; top: 28px; height: 88px;
     border-width: var(--hairline); border-color: var(--timber); border-radius: 44px;
     background-color: var(--flat-tint);
     transition: background-color 160ms ease-out, border-color 160ms ease-out;
 }
 .kg-toggle-knob {
-    position: absolute; left: 8.25px; top: 24.75px; width: 71.5px; height: 71.5px; border-radius: 50%;
+    position: absolute; left: 8.25px; top: 36.25px; width: 71.5px; height: 71.5px; border-radius: 50%;
     background-color: var(--timber);
     transition: translate 160ms ease-out, background-color 160ms ease-out;
 }
@@ -268,10 +273,10 @@
 .kg-toggle--on > .kg-toggle-knob { translate: 88px 0; background-color: var(--paper); }
 
 .kg-slider { height: var(--hit); flex-grow: 1; }
-.kg-slider-line { position: absolute; left: 0; right: 0; top: 55px; height: 11px; border-radius: 5.5px; background-color: var(--dot-off); }
-.kg-slider-fill { position: absolute; left: 0; top: 55px; height: 11px; border-radius: 5.5px; background-color: var(--timber); }
+.kg-slider-line { position: absolute; left: 0; right: 0; top: 66.5px; height: 11px; border-radius: 5.5px; background-color: var(--dot-off); }
+.kg-slider-fill { position: absolute; left: 0; top: 66.5px; height: 11px; border-radius: 5.5px; background-color: var(--timber); }
 .kg-slider-thumb {
-    position: absolute; top: 30.25px; width: 60.5px; height: 60.5px; margin-left: -30.25px; border-radius: 50%;
+    position: absolute; top: 41.75px; width: 60.5px; height: 60.5px; margin-left: -30.25px; border-radius: 50%;
     background-color: var(--paper); border-width: 5.5px; border-color: var(--brass);
 }
 
@@ -356,7 +361,7 @@
 }
 .kg-hint > .kg-icon { margin-right: var(--space-8); }
 .kg-ghost {
-    width: var(--hit); height: var(--hit); border-radius: 50%;
+    width: var(--drawn); height: var(--drawn); border-radius: 50%;
     border-width: 5.5px; border-color: var(--paper); background-color: rgba(243, 233, 214, 0.33);
 }
 .kg-banner {
@@ -380,7 +385,7 @@
 .kg-big-prompt--inline { position: relative; left: auto; right: auto; bottom: auto; }
 
 /* ---------------- settings row ---------------- */
-.kg-row { flex-direction: row; align-items: center; min-height: 132px; border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }
+.kg-row { flex-direction: row; align-items: center; min-height: var(--hit); border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }
 .kg-row-label { flex-grow: 1; flex-shrink: 1; }
 .kg-sheet-action { margin-top: var(--space-12); align-self: flex-start; }
 .kg-sheet-note { margin-top: var(--space-12); }
@@ -420,12 +425,12 @@
 .kg-tool > .kg-new-tag { position: absolute; left: 50%; top: -30px; margin-left: -60.5px; display: none; }
 .kg-tool--new > .kg-new-tag { display: flex; }
 
-.hud-pins { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 264px; height: var(--hit); flex-direction: row; align-items: center; }
+.hud-pins { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 264px; height: var(--drawn); flex-direction: row; align-items: center; }
 
 /* camera mode's way back */
 .kg-way-back {
     position: absolute; bottom: 82.5px; left: 50%; translate: -50% 0;
-    height: var(--hit); min-height: var(--hit); margin: 0; padding: 0 44px 0 93.5px;
+    height: var(--drawn); min-height: var(--drawn); margin: 0; padding: 0 44px 0 93.5px;
     border-width: var(--hairline); border-color: var(--brass); border-radius: var(--radius-pin);
     background-color: var(--flat-tint);
     color: var(--ink-soft); -unity-text-outline-color: var(--ink-soft);

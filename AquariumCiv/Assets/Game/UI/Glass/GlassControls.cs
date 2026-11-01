@@ -7,6 +7,32 @@ namespace AquariumCiv.GameUI
 {
     public enum ButtonKind { Primary, Secondary, Quiet, Icon }
 
+    /// <summary>
+    /// A hit area that reaches <see cref="GameUiPanel.MinTarget"/> around a piece drawn smaller. UI Toolkit picks an element only inside
+    /// its bounding box, and a Button fires only if the finger lifts inside <c>ContainsPoint</c>, so it takes both: a clear child past
+    /// the edges widens the box (<c>.kg-reach</c>), and the element's <c>ContainsPoint</c> calls <see cref="Contains"/>. Don't give it to
+    /// pieces that touch their neighbours: those get a clear box of the full size instead, as chips, tabs, toggles and sliders do.
+    /// </summary>
+    public static class GlassReach
+    {
+        public const string Class = "kg-reach";
+
+        public static void AddTo(VisualElement e)
+        {
+            var r = new VisualElement { pickingMode = PickingMode.Ignore };
+            r.AddToClassList(Class);
+            e.hierarchy.Add(r);
+        }
+
+        /// <summary>Is <paramref name="local"/> within the drawn box, or the square of <see cref="GameUiPanel.MinTarget"/> around its centre?</summary>
+        public static bool Contains(VisualElement e, Vector2 local)
+        {
+            float w = e.layout.width, h = e.layout.height;
+            float dx = Mathf.Max(0f, (GameUiPanel.MinTarget - w) * 0.5f), dy = Mathf.Max(0f, (GameUiPanel.MinTarget - h) * 0.5f);
+            return local.x >= -dx && local.x <= w + dx && local.y >= -dy && local.y <= h + dy;
+        }
+    }
+
     /// <summary>An icon from the set: 24 grid, one colour, drawn white and tinted in USS. <c>kg-i-*</c> in Glass.uss.</summary>
     [UxmlElement]
     public partial class GlassIcon : VisualElement
@@ -60,6 +86,7 @@ namespace AquariumCiv.GameUI
     /// <summary>
     /// The button: Primary (one per moment), Secondary, Quiet, Icon, each with default, pressed and unavailable. It sounds by role.
     /// Unavailable keeps its text at full strength, with a thin solid edge, a paler fill and a lock, and a tap on it is refused.
+    /// Drawn 44 to 46 pt, it takes taps out to <see cref="GameUiPanel.MinTarget"/> (<see cref="GlassReach"/>).
     /// </summary>
     [UxmlElement]
     public partial class GlassButton : Button
@@ -74,6 +101,27 @@ namespace AquariumCiv.GameUI
         /// <summary>What a tap does while available.</summary>
         public event Action Tapped;
 
+        /// <summary>An element with children no longer measures its own text, and every button has its reach, so an invisible twin of
+        /// the text holds the width. It's made with the first words: an icon button has none, and an empty twin would still take a line.</summary>
+        public override string text
+        {
+            get => base.text;
+            set
+            {
+                base.text = value;
+                if (measure == null && !string.IsNullOrEmpty(value)) Twin();
+                else if (measure != null) measure.text = value;
+            }
+        }
+
+        void Twin()
+        {
+            measure = new Label(text) { pickingMode = PickingMode.Ignore };
+            measure.RemoveFromClassList(Label.ussClassName);
+            measure.AddToClassList("kg-btn-measure");
+            Add(measure);
+        }
+
         public GlassButton() : this("", null) { }
 
         public GlassButton(string text, Action tapped = null, ButtonKind kind = ButtonKind.Secondary, UiRole role = UiRole.Tap)
@@ -86,7 +134,10 @@ namespace AquariumCiv.GameUI
             Kind = kind;
             if (tapped != null) Tapped += tapped;
             clicked += OnClicked;
+            GlassReach.AddTo(this);
         }
+
+        public override bool ContainsPoint(Vector2 local) => GlassReach.Contains(this, local);
 
         void OnClicked()
         {
@@ -129,34 +180,19 @@ namespace AquariumCiv.GameUI
             }
         }
 
-        /// <summary>Adds a small mark beside the text. An element with children no longer measures its own text, so an invisible twin
-        /// of the text holds the width. After this, change the words with <see cref="Say"/>.</summary>
-        public void Mark(VisualElement mark)
-        {
-            if (measure == null)
-            {
-                measure = new Label(text) { pickingMode = PickingMode.Ignore };
-                measure.RemoveFromClassList(Label.ussClassName);
-                measure.AddToClassList("kg-btn-measure");
-                Add(measure);
-            }
-            Add(mark);
-        }
+        /// <summary>Adds a small mark beside the text.</summary>
+        public void Mark(VisualElement mark) => Add(mark);
 
-        /// <summary>Sets the words, keeping a marked button's width right.</summary>
-        public void Say(string words)
-        {
-            text = words;
-            if (measure != null) measure.text = words;
-        }
+        /// <summary>Sets the words.</summary>
+        public void Say(string words) => text = words;
 
         /// <summary>Holds the pressed look (the gallery shows the state without a finger).</summary>
         public bool ShowPressed { set => EnableInClassList(PressedClass, value); }
     }
 
     /// <summary>
-    /// A chip: 30 pt tall to the eye, inside a clear 44 pt parent that takes the tap, the only route that keeps a small thing
-    /// tappable. Slots touch, with no gap between rows. As a choice it holds on or off, with a check mark.
+    /// A chip: 30 pt tall to the eye, inside a clear parent of <see cref="GameUiPanel.MinTarget"/> that takes the tap, the only route that
+    /// keeps a small thing tappable. Slots touch, with no gap between rows. As a choice it holds on or off, with a check mark.
     /// </summary>
     [UxmlElement]
     public partial class GlassChip : Button
@@ -224,7 +260,10 @@ namespace AquariumCiv.GameUI
             word.AddToClassList("kg-pin-name");
             Add(word);
             clicked += () => { UiSound.Play(UiRole.Tap); tapped?.Invoke(); };
+            GlassReach.AddTo(this);
         }
+
+        public override bool ContainsPoint(Vector2 local) => GlassReach.Contains(this, local);
 
         public string Person
         {
@@ -247,7 +286,10 @@ namespace AquariumCiv.GameUI
             word.AddToClassList("kg-stories-word");
             Add(word);
             clicked += () => { UiSound.Play(UiRole.Open); tapped?.Invoke(); };
+            GlassReach.AddTo(this);
         }
+
+        public override bool ContainsPoint(Vector2 local) => GlassReach.Contains(this, local);
     }
 
     /// <summary>Tabs; the same control serves as a segment (Music plays). Selected is bold and underlined, not colour alone.</summary>
@@ -325,7 +367,7 @@ namespace AquariumCiv.GameUI
         }
     }
 
-    /// <summary>A 44 pt hit strip, a 4 pt line, a 22 pt ring. Value 0 to 1. A finger anywhere on the strip takes it.</summary>
+    /// <summary>A hit strip of <see cref="GameUiPanel.MinTarget"/>, a 4 pt line, a 22 pt ring. Value 0 to 1. A finger anywhere on the strip takes it.</summary>
     [UxmlElement]
     public partial class GlassSlider : VisualElement
     {

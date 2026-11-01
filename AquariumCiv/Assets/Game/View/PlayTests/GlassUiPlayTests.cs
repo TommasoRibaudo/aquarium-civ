@@ -176,18 +176,76 @@ namespace AquariumCiv.View.PlayTests
 
             // Spec's USS routes
             var slot = g.Root.Q<GlassChip>("gal-chip-label");
-            Assert.AreEqual(GameUiPanel.Target44, slot.layout.height, 0.6f, "the slot is 44");
+            Assert.AreEqual(GameUiPanel.MinTarget, slot.layout.height, 0.6f, "the slot is a whole target");
             Assert.AreEqual(82.5f, slot.Face.layout.height, 0.6f, "the chip shows 30");
             Assert.AreEqual(605f, g.Root.Q("gal-pin-long").layout.width, 1f, "the long pin stops at 220 pt");
             var off = g.Root.Q<GlassButton>("gal-button-secondary-off");
             Assert.AreEqual(1f, off.resolvedStyle.opacity, "unavailable is never faded");
             Assert.AreEqual(ColorOf("#3D2A1E"), off.resolvedStyle.color, "and keeps full-strength text");
-            Assert.AreEqual(GameUiPanel.Target44, g.Root.Q("gal-slider-value").layout.height, 0.6f, "slider hit strip");
+            Assert.AreEqual(GameUiPanel.MinTarget, g.Root.Q("gal-slider-value").layout.height, 0.6f, "slider hit strip");
 
             Assert.AreEqual("gallery closed", GlassGallery.DebugToggle());
             yield return Frames(3);
             Assert.IsNull(GlassGallery.Instance, "gone when closed");
             AssertNoErrors("gallery");
+        }
+
+        /// <summary>Practices §5, spec §1: a square of MinTarget around the centre takes a tap, or the piece's own box does. Both of the
+        /// tests the picker makes, in the piece's own space so a pressed button's scale doesn't count.</summary>
+        static void AssertReaches(VisualElement e, string who)
+        {
+            Assert.AreNotEqual(PickingMode.Ignore, e.pickingMode, who);
+            var r = e.layout;
+            float half = GameUiPanel.MinTarget * 0.5f - 0.5f;
+            float x0 = Mathf.Min(0.5f, r.width * 0.5f - half), x1 = Mathf.Max(r.width - 0.5f, r.width * 0.5f + half);
+            float y0 = Mathf.Min(0.5f, r.height * 0.5f - half), y1 = Mathf.Max(r.height - 0.5f, r.height * 0.5f + half);
+            Assert.GreaterOrEqual(x1 - x0, GameUiPanel.MinTarget - 2f, who + " width");
+            Assert.GreaterOrEqual(y1 - y0, GameUiPanel.MinTarget - 2f, who + " height");
+            // Smaller than a target? The picker looks only inside the bounding box, and the clear child is what widens that.
+            bool small = r.width < GameUiPanel.MinTarget - 1f || r.height < GameUiPanel.MinTarget - 1f;
+            var reach = e.Q(className: GlassReach.Class);
+            if (small) Assert.IsNotNull(reach, $"{who} is drawn {r.width:0}x{r.height:0} with no reach");
+            foreach (var p in new[] { new Vector2(x0, y0), new Vector2(x1, y0), new Vector2(x0, y1), new Vector2(x1, y1) })
+            {
+                Assert.IsTrue(e.ContainsPoint(p), $"{who} takes a tap at {p}, drawn {r.width:0}x{r.height:0}");
+                if (small) Assert.IsTrue(reach.worldBound.Contains(e.LocalToWorld(p)), $"{who}: the reach covers {p}, drawn {r.width:0}x{r.height:0}");
+            }
+        }
+
+        static VisualElement[] Targets(VisualElement root) =>
+            root.Query<Button>().ToList().Cast<VisualElement>().Concat(root.Query<GlassSlider>().ToList()).Where(Displayed).ToArray();
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator EveryTargetReachesMinTarget()
+        {
+            yield return OpenSlice(seed: 7531);
+            var hud = GameHud.Instance;
+            hud.SetPinChip("Piers", null);
+            hud.ForceStories = true;
+            yield return Frames(4);
+            var onHud = Targets(hud.Root);
+            Assert.GreaterOrEqual(onHud.Length, 7, "the tools, the top row, the pin and Stories");
+            foreach (var e in onHud) AssertReaches(e, "HUD " + e.name);
+            hud.ForceStories = false;
+            hud.SetPinChip(null, null);
+
+            GlassGallery.DebugToggle();
+            yield return Frames(6);
+            var g = GlassGallery.Instance;
+            var all = Targets(g.Root);
+            Assert.GreaterOrEqual(all.Length, 30, "the gallery's buttons, chips, tabs, toggles, sliders and prompts");
+            foreach (var e in all) AssertReaches(e, $"{e.name} {e.GetType().Name}");
+
+            // A real tap past the drawn edge, on each route: the reach, and the clear box
+            g.ScrollTo("Button");
+            yield return Frames(4);
+            var b = g.Root.Q<GlassButton>("gal-button-secondary");
+            int taps = 0;
+            b.Tapped += () => taps++;
+            float k = Screen.width / g.Root.worldBound.width;
+            yield return TapAt(GameUiPanel.ScreenCenter(b) + new Vector2(0f, (GameUiPanel.MinTarget * 0.5f - 2f) * k));
+            Assert.AreEqual(1, taps, "a button takes a tap just past its drawn edge");
+            AssertNoErrors("targets");
         }
 
         static Color ColorOf(string hex) { ColorUtility.TryParseHtmlString(hex, out var c); return c; }
@@ -489,6 +547,72 @@ namespace AquariumCiv.View.PlayTests
         }
 
         static SimCore Sim() => GameClock.Instance.ActiveSim;
+
+        /// <summary>The new HUD and lanes in the game scene with the screens not retrofitted yet over it, at a tall and a short phone:
+        /// tray, card stack, time-lapse, Watch, each with a toast where a toast can land.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator OldScreensOverTheHud([Values(1179, 750)] int w)
+        {
+            System.IO.Directory.CreateDirectory(Shots + Dir);
+            int h = w == 1179 ? 2556 : 1334;
+            string at = $"old-{w}-";
+            yield return OpenSlice(w, h, seed: 7531);
+            DebugDock.ForceLocked = true;
+            for (int y = 0; y < 7; y++) { SimLayoutSource.DebugSkipYears(10f); yield return null; }
+            Sim().CleanAll();
+            Sim().CardsSeenToNow();
+            PeopleView.DebugSetHour(11f);
+            NightLamps.DebugSetLevel(0f);
+            yield return Frames(40);
+            var hud = GameHud.Instance;
+            yield return Pic(at + "hud");
+            hud.SetPinChip("Piers", null);
+            hud.ForceStories = true;
+            hud.Toast("All tidy. Look at that sky!", 6f);
+            yield return Pic(at + "hud-pin-stories-toast");
+            hud.SetPinChip(null, null);
+            hud.ForceStories = false;
+            GameUiPanel.Toasts.Clear();
+
+            hud.Open(GameHud.Shaping);
+            yield return Pic(at + "tray");
+            hud.Toast("Above the sheet.", 2f);
+            yield return Pic(at + "tray-toast");
+            hud.CloseSheet();
+            GameUiPanel.Toasts.Clear();
+            yield return Frames(6);
+
+            var stack = CardStackView.Instance;
+            CardStackView.DebugClearRead();
+            CardStackView.DebugReturn(3);
+            yield return Until(() => stack.Model.Mode == CardStackMode.Peek, 2f);
+            yield return Pic(at + "cards-peek");
+            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek"));
+            yield return Frames(6);
+            yield return Pic(at + "cards-stack");
+            yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
+            yield return Frames(6);
+            Sim().CardsSeenToNow();
+            yield return Frames(6);
+
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return Pic(at + "timelapse");
+            var screen = TimeLapseScreenView.Instance;
+            yield return TapAt(GameUiPanel.ScreenCenter(screen.Root.Q("tl-close")));
+            yield return new WaitForSecondsRealtime(0.8f);
+
+            Sim().State.grime = 0f;
+            Assert.IsTrue(Sim().ForceEraReady(), "an era is ready");
+            MomentPlayer.DebugWaited(100);
+            yield return new WaitForSecondsRealtime(0.8f);
+            yield return Frames(20);
+            yield return Pic(at + "watch");
+            hud.Toast("Tap the ground to place the Grove. Two fingers move the camera.", 2f);
+            yield return Pic(at + "watch-toast");
+            GameUiPanel.Toasts.Clear();
+            AssertNoErrors("old screens");
+        }
 
         [UnityTest, Timeout(300000)]
         public IEnumerator GalleryPages()

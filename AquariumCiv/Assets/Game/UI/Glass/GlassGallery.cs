@@ -281,7 +281,7 @@ namespace AquariumCiv.GameUI
             State(r, "button", "quiet", new GlassButton("Skip all", null, ButtonKind.Quiet));
             State(r, "button", "quiet-pressed", new GlassButton("Skip all", null, ButtonKind.Quiet) { ShowPressed = true });
             State(r, "button", "quiet-off", new GlassButton("Skip all", null, ButtonKind.Quiet) { Available = false });
-            r = Row(s, "Icon, 44 pt hit area: default, pressed");
+            r = Row(s, "Icon, 44 pt, reaching 144 px: default, pressed");
             State(r, "button", "icon", new GlassButton("", null, ButtonKind.Icon) { Icon = "close" });
             State(r, "button", "icon-pressed", new GlassButton("", null, ButtonKind.Icon) { Icon = "back", ShowPressed = true });
         }
@@ -289,7 +289,7 @@ namespace AquariumCiv.GameUI
         void Chips()
         {
             var s = Section("Chip");
-            var r = Row(s, "Label, 30 pt inside a 44 pt slot: default, pressed");
+            var r = Row(s, "Label, 30 pt inside a 144 px slot: default, pressed");
             State(r, "chip", "label", new GlassChip("Dorrit · child"));
             State(r, "chip", "label-pressed", new GlassChip("Hilda · friend") { ShowPressed = true });
             r = Row(s, "Choice: off, on");
@@ -386,7 +386,7 @@ namespace AquariumCiv.GameUI
             r = Row(s, "Toggle: on, off");
             State(r, "toggle", "on", new GlassToggle(true));
             State(r, "toggle", "off", new GlassToggle(false));
-            r = Row(s, "Slider: 70 %, 0 %. 44 pt hit strip");
+            r = Row(s, "Slider: 70 %, 0 %. 144 px hit strip");
             var a = State(r, "slider", "value", new GlassSlider(0.7f));
             a.style.width = Length.Percent(100f);
             r = Row(s);

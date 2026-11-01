@@ -324,6 +324,7 @@ namespace AquariumCiv.GameUI
             UpdateBlockers();
             if (cameraMode) UpdateCameraMode();
             if (toastLabel != null) PumpToast();
+            FollowFirstRun();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             // Android Back / Esc closes the open sheet.
             if (openSheet != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) CloseSheet();
@@ -404,6 +405,7 @@ namespace AquariumCiv.GameUI
             BuildShaping();
             ApplySafeArea();
             RefreshText();
+            FollowFirstRun();
         }
 
         void BuildSettings()
@@ -528,6 +530,14 @@ namespace AquariumCiv.GameUI
             PlaceToast();
         }
 
+        /// <summary>Question 26: the top row arrives when the first run is done. Every frame, not with the half-second text: while it's
+        /// away Settings, Photo and Feedback can't be tapped, so they come back the moment the first run ends.</summary>
+        void FollowFirstRun()
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (sim != null) topRow.EnableInClassList("hud-top--away", sim.State.firstRun.active);
+        }
+
         void RefreshText()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
@@ -536,7 +546,6 @@ namespace AquariumCiv.GameUI
             string place = string.IsNullOrEmpty(s.settlementName) ? "Your box" : s.settlementName;
             nameLabel.text = place;
             yearLabel.text = "Year " + Mathf.FloorToInt(s.Year).ToString(CultureInfo.InvariantCulture);
-            topRow.EnableInClassList("hud-top--away", s.firstRun.active); // question 26: the top row arrives when the first run is done
             if (historyBody != null)
                 historyBody.text = $"{place}, year {Mathf.FloorToInt(s.Year)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
         }

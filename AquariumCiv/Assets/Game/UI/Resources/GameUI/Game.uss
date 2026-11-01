@@ -34,7 +34,8 @@
     --space-12: 33px;
     --space-16: 44px;
     --space-24: 66px;
-    --hit: 121px; /* 44 pt */
+    --hit: 144px; /* GameUiPanel.MinTarget: every tap target reaches this */
+    --drawn: 121px; /* 44 pt: what small pieces show. Their reach is GlassReach */
     --hairline: 2.75px;
 
     --radius-chip: 38.5px;
