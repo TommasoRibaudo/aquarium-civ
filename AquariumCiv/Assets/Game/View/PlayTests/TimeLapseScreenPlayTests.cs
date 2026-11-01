@@ -87,6 +87,9 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(g.Year, m.Position, 0.05f);
             Assert.IsNotNull(screen.Root.Q("tl-caption"));
             yield return Shot("tl-pin");
+            var words = screen.Root.Q("tl-caption-text");
+            Assert.Greater(words.worldBound.height, 40f, "the story has lines");
+            Assert.GreaterOrEqual(screen.Root.Q("tl-caption").Q<ScrollView>().layout.height, Mathf.Min(words.worldBound.height, 150f) - 2f, "and they show");
 
             // The caption's controls have the play row's place (spec §4), so a story is put away before play
             Assert.AreEqual(DisplayStyle.None, screen.Root.Q(className: "tl-controls").resolvedStyle.display, "the caption's row replaces the play row");

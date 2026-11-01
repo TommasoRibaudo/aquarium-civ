@@ -406,8 +406,8 @@ namespace AquariumCiv.View
             float h = captionText.MeasureTextSize(captionText.text, w, VisualElement.MeasureMode.AtMost, 0f, VisualElement.MeasureMode.Undefined).y;
             float most = (tight ? ShortCaptionLines : CaptionLines) * CaptionPitch;
             bool fits = h <= most + CaptionPitch * 0.4f; // a text's last line runs a little past its pitch
-            float room = fits ? h + 1f : most;
-            captionScroll.LinePitch = fits ? room : CaptionPitch; // whole, or snapped to whole lines
+            float room = fits ? h + 2f : most; // past the text: layout rounds this, and a pitch over the room would snap the view to nothing
+            captionScroll.LinePitch = fits ? h : CaptionPitch; // the text whole, or snapped to whole lines
             captionScroll.style.height = room;
         }
 
