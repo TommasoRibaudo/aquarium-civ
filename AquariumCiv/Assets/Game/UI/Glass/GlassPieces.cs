@@ -86,6 +86,9 @@ namespace AquariumCiv.GameUI
     [UxmlElement]
     public partial class GlassTag : VisualElement
     {
+        readonly Label word;
+        GlassIcon icon;
+
         public GlassTag() : this("") { }
 
         public GlassTag(string word, TagKind kind = TagKind.Name, string mark = null)
@@ -94,12 +97,28 @@ namespace AquariumCiv.GameUI
             AddToClassList("kg-tag");
             if (kind == TagKind.Pin) { AddToClassList("kg-tag--gold"); mark ??= "pin"; }
             if (kind == TagKind.Tie) AddToClassList("kg-tag--tie");
-            if (mark != null) Add(new GlassIcon(mark, "kg-icon--small"));
-            var l = new Label(word) { pickingMode = PickingMode.Ignore };
-            l.AddToClassList("type-note");
-            l.AddToClassList("kg-tag-word");
-            Add(l);
+            this.word = new Label(word) { pickingMode = PickingMode.Ignore };
+            this.word.AddToClassList("type-note");
+            this.word.AddToClassList("kg-tag-word");
+            Add(this.word);
+            if (mark != null) Mark = mark;
         }
+
+        public string Word { get => word.text; set => word.text = value; }
+
+        /// <summary>The mark from the icon set, before the word.</summary>
+        public string Mark
+        {
+            get => icon?.Shape;
+            set
+            {
+                if (icon == null) { icon = new GlassIcon(value, "kg-icon--small"); Insert(0, icon); }
+                else icon.Shape = value;
+            }
+        }
+
+        /// <summary>Hangs over a point in the world: absolute, its bottom centre on <c>left</c> and <c>top</c>; a tie label is centred on them.</summary>
+        public bool InWorld { set => EnableInClassList("kg-tag--world", value); }
     }
 
     /// <summary>The brass plate: the box's name and its lines.</summary>

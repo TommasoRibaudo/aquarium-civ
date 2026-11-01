@@ -35,7 +35,7 @@ namespace AquariumCiv.GameUI
         public event Action<bool> CameraModeChanged;
 
         UIDocument doc;
-        VisualElement root, safe, topRow, bottomRow, pinRow;
+        VisualElement root, safe, topRow, bottomRow, pinRow, outsideSheet;
         GlassScrim openSheet;
         readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
         Label nameLabel, yearLabel;
@@ -286,9 +286,10 @@ namespace AquariumCiv.GameUI
             if (toastLabel == null) return;
             var i = GameUiPanel.SafeInsets(lastSafe, lastScreen.x, lastScreen.y);
             float lane = GameUiPanel.Lane(GameUiPanel.ToastBottom, i.w);
-            if (openSheet != null)
+            VisualElement up = openSheet != null ? openSheet.Sheet : outsideSheet;
+            if (up != null)
             {
-                float h = openSheet.Sheet.layout.height;
+                float h = up.layout.height;
                 if (!float.IsNaN(h) && h > 0f) lane = h - i.w + GameUiPanel.ToastAboveSheet;
             }
             toastLabel.style.bottom = lane;
@@ -327,6 +328,7 @@ namespace AquariumCiv.GameUI
             UpdateBlockers();
             if (cameraMode) UpdateCameraMode();
             if (toastLabel != null) PumpToast();
+            if (outsideSheet != null) PlaceToast(); // it has no height until its first layout
             FollowFirstRun();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             // Android Back / Esc closes the open sheet.
@@ -480,7 +482,7 @@ namespace AquariumCiv.GameUI
             if (id == Settings) { soundSwitch.On = GameSettings.Sound; hapticsSwitch.On = GameSettings.Haptics; }
             if (id == History) RefreshText();
             scrim.Open();
-            ToolsBehindSheet(true);
+            ToolsBehindSheet();
             PlaceToast();
             SheetChanged?.Invoke(id);
         }
@@ -491,17 +493,26 @@ namespace AquariumCiv.GameUI
             var closing = openSheet;
             openSheet = null;
             closing.Close();
-            ToolsBehindSheet(false);
+            ToolsBehindSheet();
             PlaceToast();
             SheetChanged?.Invoke(null);
         }
 
         /// <summary>The tools step back behind a sheet: a flat sheet is 96 %, so they would show through it as ghosts.</summary>
-        void ToolsBehindSheet(bool behind)
+        void ToolsBehindSheet()
         {
-            var v = behind ? Visibility.Hidden : Visibility.Visible;
+            var v = openSheet != null || outsideSheet != null ? Visibility.Hidden : Visibility.Visible;
             bottomRow.style.visibility = v;
             pinRow.style.visibility = v;
+        }
+
+        /// <summary>A sheet the HUD doesn't own is up (the person card; null when it goes): the tools and the top row step back, so the
+        /// person has the world to themselves (board 3.4), and a toast rides above it as it does above the HUD's own.</summary>
+        public void SetOutsideSheet(VisualElement sheet)
+        {
+            outsideSheet = sheet;
+            ToolsBehindSheet();
+            PlaceToast();
         }
 
         /// <summary>Hide the whole HUD (feedback screenshots, a clean snapshot, the debug toggle).</summary>
@@ -539,7 +550,7 @@ namespace AquariumCiv.GameUI
         void FollowFirstRun()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
-            if (sim != null) topRow.EnableInClassList("hud-top--away", sim.State.firstRun.active);
+            topRow.EnableInClassList("hud-top--away", outsideSheet != null || (sim != null && sim.State.firstRun.active));
         }
 
         void RefreshText()

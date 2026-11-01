@@ -29,6 +29,12 @@ namespace AquariumCiv.GameUI
     {
         /// <summary>Sides and bottom of the content box, panel px: 16 pt sides, 30 pt under it.</summary>
         public const float SidePad = 44f, BottomPad = 82.5f;
+        /// <summary>Bottom padding on a short phone (spec §2): 14 pt, under 700 pt tall.</summary>
+        public const float ShortBottomPad = 38.5f;
+        /// <summary>700 pt tall on a 375 pt wide phone. The panel only knows the screen's shape, and the shape is what runs out of room.</summary>
+        public const float ShortAspect = 700f / 375f;
+
+        public static bool IsShort(float width, float height) => height / Mathf.Max(1f, width) < ShortAspect;
 
         readonly VisualElement content;
         Vector4 insets;
@@ -64,12 +70,12 @@ namespace AquariumCiv.GameUI
         };
 
         /// <summary>Safe-area insets (left, top, right, bottom, panel px): the sheet runs under them, its content doesn't.</summary>
-        public void SetInsets(Vector4 i)
+        public void SetInsets(Vector4 i, float bottomPad = BottomPad)
         {
             insets = i;
             content.style.paddingLeft = SidePad + i.x;
             content.style.paddingRight = SidePad + i.z;
-            content.style.paddingBottom = Mathf.Max(BottomPad, i.w);
+            content.style.paddingBottom = Mathf.Max(bottomPad, i.w);
         }
 
         public Vector4 Insets => insets;
@@ -155,6 +161,9 @@ namespace AquariumCiv.GameUI
         readonly ScrollView view;
         readonly VisualElement bar;
         public float LinePitch { get; set; } = GlassType.BodyPitch;
+        /// <summary>Content of mixed heights, where no pitch fits: the view ends under the last element of this class that fits whole.</summary>
+        public const string RowClass = "kg-scroll-row";
+        public bool SnapToRows { get; set; }
         public ScrollView View => view;
         public override VisualElement contentContainer => view != null ? view.contentContainer : this;
 
@@ -180,8 +189,20 @@ namespace AquariumCiv.GameUI
         {
             float room = layout.height;
             if (float.IsNaN(room) || room <= 0f || LinePitch <= 0f) return;
-            view.style.height = Mathf.Floor(room / LinePitch) * LinePitch;
+            float fit = SnapToRows ? LastWholeRow(room) : 0f;
+            view.style.height = fit > 0f ? fit : Mathf.Floor(room / LinePitch) * LinePitch;
             Bar();
+        }
+
+        float LastWholeRow(float room)
+        {
+            float top = view.contentContainer.worldBound.yMin, fit = 0f;
+            view.contentContainer.Query(className: RowClass).ForEach(r =>
+            {
+                float bottom = r.worldBound.yMax - top;
+                if (bottom <= room && bottom > fit) fit = bottom;
+            });
+            return fit;
         }
 
         void Bar()

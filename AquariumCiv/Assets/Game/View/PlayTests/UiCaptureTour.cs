@@ -430,6 +430,7 @@ namespace AquariumCiv.View.PlayTests
             var root = Cards.CardRoot;
             yield return Cap("3.4-person-notable", Cards.IsOpen, Cards.Card.name);
             yield return Cap("3.2-marker-name-tag", Cards.IsOpen);
+            yield return Tap(root, "person-card-recent");
             var scroll = root.Q<ScrollView>("person-card-body");
             scroll.scrollOffset = new Vector2(0f, 99999f);
             yield return Frames(4);

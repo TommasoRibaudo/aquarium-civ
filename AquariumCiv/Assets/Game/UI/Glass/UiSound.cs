@@ -49,6 +49,7 @@ namespace AquariumCiv.GameUI
 
         public static void Play(UiRole role)
         {
+            if (role == UiRole.None) return;
             Sfx.Play(Cue(role));
             if (role == UiRole.NewTool) Sfx.Haptic(HapticKind.Success); // the moments' chime stays silent to the hand
         }

@@ -94,7 +94,7 @@ namespace AquariumCiv.GameUI
         public const string PressedClass = "kg-btn--pressed", OffClass = "kg-btn--off";
         ButtonKind kind;
         bool available = true;
-        GlassIcon icon;
+        GlassIcon icon, mark;
         Label measure;
 
         public UiRole Role { get; set; } = UiRole.Tap;
@@ -183,6 +183,16 @@ namespace AquariumCiv.GameUI
         /// <summary>Adds a small mark beside the text.</summary>
         public void Mark(VisualElement mark) => Add(mark);
 
+        /// <summary>44 pt, for a button in a row with other things (Pin, Show me).</summary>
+        public bool Compact { set => EnableInClassList("kg-btn--compact", value); }
+
+        /// <summary>A small icon before the words, on or off: Pinned has one, Pin hasn't.</summary>
+        public void Marked(string shape, bool on)
+        {
+            EnableInClassList("kg-btn--marked", on);
+            if (mark == null) { mark = new GlassIcon(shape, "kg-icon--small", "kg-btn-mark"); Add(mark); }
+        }
+
         /// <summary>Sets the words.</summary>
         public void Say(string words) => text = words;
 
@@ -238,6 +248,9 @@ namespace AquariumCiv.GameUI
             get => on;
             set { on = value; face.EnableInClassList("kg-chip--on", value); }
         }
+
+        /// <summary>The person it names has died: the words go italic, never faded.</summary>
+        public bool Gone { set => face.EnableInClassList("kg-chip--gone", value); }
 
         public bool ShowPressed { set => EnableInClassList("kg-chip-slot--pressed", value); }
     }
@@ -315,6 +328,9 @@ namespace AquariumCiv.GameUI
             }
             Select(0, false);
         }
+
+        /// <summary>One tab's button, so a screen can give it the name its play tests use.</summary>
+        public Button Tab(int index) => tabs[index];
 
         public void Select(int index, bool tell = true)
         {
