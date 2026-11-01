@@ -150,6 +150,7 @@ namespace AquariumCiv.GameUI
             Cards();
             TabsToggles();
             Bubbles();
+            Asks();
             Labels();
             Badges();
             Plates();
@@ -415,6 +416,17 @@ namespace AquariumCiv.GameUI
             State(s, "bubble", "line", new GlassBubble("Piers", "Piers hopes for rain."));
             var c = State(s, "bubble", "chatter", new GlassBubble(new[] { "drop", "star" }));
             c.style.marginTop = 44f;
+        }
+
+        void Asks()
+        {
+            var s = Section("Ask and option");
+            s.Add(Text("A question and two answers in the toast lane; both buttons can be secondary", "type-note", "gal-state"));
+            State(s, "ask", "wipe", new GlassAsk("Wipe for a clear view?", new GlassButton("Wipe"), new GlassButton("Watch anyway", null, ButtonKind.Primary)) { Inline = true });
+            State(s, "ask", "notify", new GlassAsk("Want a note when your people are ready to grow again?", new GlassButton("Not now"), new GlassButton("Yes")) { Inline = true });
+            s.Add(Text("A choice on a sheet", "type-note", "gal-state"));
+            State(s, "option", "on", new GlassOption("Desert oasis", "The founders unpack by a fire") { On = true });
+            State(s, "option", "off", new GlassOption("Mountain village", "The founders climb to a high meadow"));
         }
 
         void Labels()

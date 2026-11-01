@@ -212,7 +212,7 @@ namespace AquariumCiv.View
                 var sm = ShowMeDirector.Instance;
                 if (sm != null && sm.SayOverHead(l.text, l.speaker, secs)) continue;
                 string who = l.speaker.IsNotable ? Sim?.FindNotable(l.speaker.notableId)?.name : null;
-                mp.Say(who != null && !l.text.Contains(who) ? $"{who}: “{l.text}”" : $"“{l.text}”", secs);
+                mp.Say($"“{l.text}”", secs, who != null && !l.text.Contains(who) ? who : null);
             }
         }
 

@@ -661,11 +661,14 @@ namespace AquariumCiv.View.PlayTests
             while (c.Playing && t < 200f && !(gotBubble && gotCaption && gotRoll))
             {
                 t += Time.unscaledDeltaTime;
+                if (c.PickerOpen) { yield return Frames(4); yield return Cap("3.6-setting-picker", true); yield return Tap(ui, "picker-begin"); }
                 if (!gotBubble && Shown(bubble)) { gotBubble = true; yield return Frames(2); yield return Cap("3.6-last-bubble", Shown(bubble), (bubble as TextElement)?.text); }
                 if (!gotCaption && Shown(caption)) { gotCaption = true; yield return Frames(2); yield return Cap("3.6-last-caption", Shown(caption), (caption as TextElement)?.text); }
                 if (!gotRoll && Shown(roll)) { gotRoll = true; yield return Frames(6); yield return Cap("3.6-last-roll-call", Shown(roll), (roll as TextElement)?.text); }
                 yield return null;
             }
+            yield return Until(() => c.PickerOpen || !c.Playing, 200f);
+            if (c.PickerOpen) yield return Tap(ui, "picker-begin");
             yield return Until(() => !c.Playing, 200f);
             MomentPlayer.DebugHoldHurry = false;
             File.AppendAllText(Manifest, $"log\tlast\t\tbubble {gotBubble} caption {gotCaption} roll {gotRoll} committed {c.Committed} boxes {clock.Shelf.boxes.Count}\n");

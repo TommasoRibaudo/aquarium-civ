@@ -119,6 +119,7 @@ namespace AquariumCiv.View
 
         void Release()
         {
+            if (voice != null) GameUiPanel.Bubbles.Done(voice);
             if (heldClock && GameClock.Instance != null) GameClock.Instance.Held = false;
             heldClock = false;
             if (toolsHidden && GameHud.Instance != null) GameHud.Instance.HideTools("firstrun", false);
@@ -686,6 +687,7 @@ namespace AquariumCiv.View
         {
             if (root == null) return;
             foreach (var e in new VisualElement[] { plate, bubble, skipRow, ghost, hint }) if (e != null) e.style.display = DisplayStyle.None;
+            if (voice != null) GameUiPanel.Bubbles.Done(voice);
             rainBtn.Ready = false;
             Fade(yearBox, ref yearUp, false, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
             if (shownStep != (FirstRunStep)(-1) && (run == null || !run.Active)) { shownStep = (FirstRunStep)(-1); }
@@ -760,8 +762,13 @@ namespace AquariumCiv.View
                     }
                 }
             }
+            voice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line);
+            if (show) show = GameUiPanel.Bubbles.Ask(voice); // asked every frame, so it waits for whoever has the word
+            else GameUiPanel.Bubbles.Done(voice);
             bubble.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
+        BubbleHost.Voice voice;
 
         void PlaceBubble(Vector2 p)
         {

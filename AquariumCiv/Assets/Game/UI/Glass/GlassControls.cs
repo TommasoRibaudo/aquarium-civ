@@ -305,6 +305,60 @@ namespace AquariumCiv.GameUI
         public override bool ContainsPoint(Vector2 local) => GlassReach.Contains(this, local);
     }
 
+    /// <summary>A finished box waits on the shelf: an icon and the word, in the Stories chip's place and look. Stories wins the slot (question 5).</summary>
+    [UxmlElement]
+    public partial class ShelfChip : Button
+    {
+        public ShelfChip() : this(null) { }
+        public ShelfChip(Action tapped)
+        {
+            RemoveFromClassList(ussClassName);
+            AddToClassList("kg-stories");
+            AddToClassList("shelf-chip");
+            Add(new GlassIcon("shelf", "kg-icon--small"));
+            var word = new Label("Shelf") { pickingMode = PickingMode.Ignore };
+            word.AddToClassList("kg-stories-word");
+            Add(word);
+            clicked += () => tapped?.Invoke();
+            GlassReach.AddTo(this);
+        }
+
+        public override bool ContainsPoint(Vector2 local) => GlassReach.Contains(this, local);
+    }
+
+    /// <summary>One of a few choices on a sheet (the next box's setting): a title, a line, and a ring and a check when it's the one.</summary>
+    [UxmlElement]
+    public partial class GlassOption : Button
+    {
+        bool on;
+
+        public GlassOption() : this("", null) { }
+
+        public GlassOption(string title, string note, Action tapped = null)
+        {
+            RemoveFromClassList(ussClassName);
+            AddToClassList("kg-option");
+            var words = new VisualElement { pickingMode = PickingMode.Ignore };
+            words.AddToClassList("kg-option-words");
+            var head = new Label(title) { pickingMode = PickingMode.Ignore };
+            head.AddToClassList("type-head");
+            words.Add(head);
+            var line = new Label(note ?? "") { pickingMode = PickingMode.Ignore };
+            line.AddToClassList("type-sub");
+            line.style.display = string.IsNullOrEmpty(note) ? DisplayStyle.None : DisplayStyle.Flex;
+            words.Add(line);
+            Add(words);
+            Add(new GlassIcon("check", "kg-option-mark"));
+            clicked += () => { UiSound.Play(UiRole.Toggle); tapped?.Invoke(); };
+        }
+
+        public bool On
+        {
+            get => on;
+            set { on = value; EnableInClassList("kg-option--on", value); }
+        }
+    }
+
     /// <summary>Tabs; the same control serves as a segment (Music plays). Selected is bold and underlined, not colour alone.</summary>
     [UxmlElement]
     public partial class GlassTabs : VisualElement

@@ -86,7 +86,8 @@ One piece per lane, so nothing collides. `GameUiPanel.PromptBottom` and `ToastBo
 | Pin and Stories | 96, 44 tall | Pin chip left, Stories or Shelf chip right |
 | Peek | 98 | Replaces the pin lane while shown |
 | Toast | 146 | Eight above a sheet when one is up |
-| Prompt | 204 | Watch, Finish, Give them rain, the two asks |
+| Prompt | 204 | Watch, Finish, Give them rain. Under 700 pt tall, Watch and Finish take the toast lane, which they hold free (#170) |
+| Asks | 146 | Wipe first, the notification: the toast lane (question 23), or the pin's lane under 700 pt tall, so they stay off the tank (#170) |
 | Caption | top 52 (100 with the HUD up) | Caption, era card |
 
 ### Touch targets
@@ -234,8 +235,13 @@ Rules that change today's layout. Everything else is as drawn.
 - **Era card:** always the era at the playhead. Check the timing bug in captures/README.md when building it.
 - **Feedback, recall:** sheets from the bottom edge. Feedback's Send is unavailable until there's text.
 - **Notification ask:** at the close, first era only. The HUD stays down, the caption leads, and both buttons are
-  secondary.
-- **Visiting:** box name and years in the banner, with "Back to your box" beside them.
+  secondary. The new tool's glow and hint wait for the answer.
+- **Bubbles:** every view keeps its own, and asks `GameUiPanel.Bubbles` (`BubbleHost`) for the word: a moment's lines take it, a said
+  line waits for it, the people's chatter gives way (#170).
+- **Setting picker:** the last moment waits at the shelf beat, once the camera has arrived, because the crossing needs the setting.
+  Begin goes on; Close leaves the moment, which replays. The box on the shelf follows the choice (#170).
+- **Visiting:** box name and years in the banner, with "Back to your box" beside them. The banner has the tools' lane, so the tools and
+  the top row leave.
 - **Reset:** "Reset Mossbarrow?", says what's lost, "Keep playing" is primary, "Reset box" is small, far and marked.
 - **Book:** full-screen paper, swipe to turn, Back, Next and Close at the bottom. Era look changes with paper colour and
   type treatment; the stone and bark art doesn't exist yet.

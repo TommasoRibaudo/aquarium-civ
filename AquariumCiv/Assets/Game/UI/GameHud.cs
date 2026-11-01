@@ -43,7 +43,7 @@ namespace AquariumCiv.GameUI
         PinChip pinChip;
         StoriesChip storiesChip;
         GlassToggle soundSwitch, hapticsSwitch;
-        GlassButton cleanButton, shapeButton, historyButton;
+        GlassButton cleanButton, shapeButton, historyButton, shelfRow;
         readonly System.Collections.Generic.HashSet<string> toolBlocks = new();
         GlassToast toastLabel;
         bool cleanMode, shapeNew, offHome, toolsWaiting;
@@ -235,6 +235,21 @@ namespace AquariumCiv.GameUI
         /// <summary>The Stories chip: opens what's waiting.</summary>
         public Action StoriesTapped;
 
+        /// <summary>The Stories chip is up, so it has the slot the Shelf chip shares (question 5).</summary>
+        public bool StoriesUp => storiesChip != null && storiesChip.style.display == DisplayStyle.Flex;
+
+        /// <summary>The peek has the pin's lane now.</summary>
+        public bool PeekUp => peekUp;
+
+        /// <summary>A Shelf row in Settings, while Stories has the chip's slot. A tap closes the sheet and calls <see cref="ShelfTapped"/>.</summary>
+        public void SetShelfRow(bool on)
+        {
+            var d = on ? DisplayStyle.Flex : DisplayStyle.None;
+            if (shelfRow != null && shelfRow.style.display != d) shelfRow.style.display = d;
+        }
+
+        public Action ShelfTapped;
+
         /// <summary>The Stories chip: unread stories wait after a peek was swiped away. A dot and a word, never a number.</summary>
         public void SetHistoryDot(bool on)
         {
@@ -293,7 +308,7 @@ namespace AquariumCiv.GameUI
         {
             if (toastLabel == null) return;
             var i = GameUiPanel.SafeInsets(lastSafe, lastScreen.x, lastScreen.y);
-            float lane = GameUiPanel.Lane(toolInHand ? GameUiPanel.ToastOverStrip : toolsWaiting ? GameUiPanel.ToolsBottom : GameUiPanel.ToastBottom, i.w);
+            float lane = GameUiPanel.Lane(toolInHand || bannerUp ? GameUiPanel.ToastOverStrip : toolsWaiting ? GameUiPanel.ToolsBottom : GameUiPanel.ToastBottom, i.w);
             VisualElement up = openSheet != null ? openSheet.Sheet : outsideSheet;
             if (up != null)
             {
@@ -354,6 +369,7 @@ namespace AquariumCiv.GameUI
             safe = new VisualElement { name = "hud-safe", pickingMode = PickingMode.Ignore };
             safe.AddToClassList("hud-fill");
             safe.AddToClassList("hud-safe");
+            safe.AddToClassList(GlassMotion.AwayClass);
             root.Add(safe);
 
             topRow = Row("hud-top");
@@ -395,6 +411,7 @@ namespace AquariumCiv.GameUI
             safe.Add(bottomRow);
 
             GameUiPanel.Toasts.Clear();
+            GameUiPanel.Bubbles.Clear();
             toastLabel = new GlassToast { name = "hud-toast" };
             toastLabel.style.display = DisplayStyle.None;
             safe.Add(toastLabel);
@@ -426,6 +443,10 @@ namespace AquariumCiv.GameUI
             var sheet = Sheet(Settings, "Settings", SheetHeight.Tall);
             soundSwitch = SwitchRow(sheet, "settings-sound", "Sound", () => GameSettings.Sound, v => GameSettings.Sound = v);
             hapticsSwitch = SwitchRow(sheet, "settings-haptics", "Haptics", () => GameSettings.Haptics, v => GameSettings.Haptics = v);
+            shelfRow = new GlassButton("The shelf", () => { CloseSheet(); ShelfTapped?.Invoke(); }) { name = "settings-shelf" };
+            shelfRow.AddToClassList("kg-sheet-action");
+            shelfRow.style.display = DisplayStyle.None;
+            sheet.Add(shelfRow);
             if (FeedbackUI.InTestBuild)
             {
                 var send = new GlassButton("Send feedback", OpenFeedback) { name = "settings-feedback" };
@@ -515,7 +536,7 @@ namespace AquariumCiv.GameUI
         /// <summary>The tools step back behind a sheet: a flat sheet is 96 %, so they would show through it as ghosts.</summary>
         void ToolsBehindSheet()
         {
-            var v = openSheet != null || outsideSheet != null || toolInHand ? Visibility.Hidden : Visibility.Visible;
+            var v = openSheet != null || outsideSheet != null || toolInHand || bannerUp ? Visibility.Hidden : Visibility.Visible;
             bottomRow.style.visibility = v;
             pinRow.style.visibility = peekUp ? Visibility.Hidden : v;
         }
@@ -551,6 +572,19 @@ namespace AquariumCiv.GameUI
             PlaceToast();
         }
 
+        bool bannerUp;
+
+        /// <summary>The visiting banner has the tools' lane (spec §1, §4): the tools and the top row leave, and the toast rides over it as it
+        /// does over a tool's strip. Out of the layout too, so nothing can be tapped behind the banner.</summary>
+        public void SetBannerUp(bool on)
+        {
+            if (bannerUp == on) return;
+            bannerUp = on;
+            bottomRow.style.display = on ? DisplayStyle.None : DisplayStyle.Flex;
+            ToolsBehindSheet();
+            PlaceToast();
+        }
+
         /// <summary>The sheet set by <see cref="SetOutsideSheet"/>, so two owners can't take it from each other.</summary>
         public VisualElement OutsideSheet => outsideSheet;
 
@@ -558,7 +592,20 @@ namespace AquariumCiv.GameUI
         public void SetVisible(bool visible)
         {
             hidden = !visible;
-            if (root != null) root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            if (root == null) return;
+            root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+            if (visible && slidAway) { slidAway = false; GlassMotion.Show(safe, GlassMotion.AwayOff); }
+        }
+
+        bool slidAway;
+
+        /// <summary>A moment starts: the HUD slides away (spec's <c>ui-away</c>) rather than vanishing. It counts as hidden at once.</summary>
+        public void SlideAway()
+        {
+            if (root == null || hidden) return;
+            hidden = true;
+            slidAway = true;
+            GlassMotion.Hide(safe, GlassMotion.AwayOff, GlassMotion.AwayMs, () => { if (hidden) root.style.display = DisplayStyle.None; });
         }
 
         void OpenFeedback()
@@ -593,7 +640,7 @@ namespace AquariumCiv.GameUI
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
             bool firstRun = sim != null && sim.State.firstRun.active;
-            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || toolInHand || firstRun);
+            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || toolInHand || bannerUp || firstRun);
             if (firstRun != toolsWaiting) SetToolsWaiting(firstRun);
         }
 

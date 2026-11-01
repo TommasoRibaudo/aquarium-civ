@@ -26,8 +26,15 @@ namespace AquariumCiv.GameUI
         /// <summary>The one toast queue (hierarchy rule 3). <see cref="GameHud"/> draws it; a <see cref="GlassBigPrompt"/> holds it, since prompts outrank toasts.</summary>
         public static readonly MessageQueue Toasts = new();
 
+        /// <summary>The one word in the world (spec §3): every speech bubble asks here first, so two can't overlap.</summary>
+        public static readonly BubbleHost Bubbles = new();
+
         /// <summary>A lane's place above the safe area's bottom edge. Lanes count from the screen's edge; a home bar taller than 30 pt moves them all up by the difference.</summary>
         public static float Lane(float bottom, float insetBottom) => bottom + Mathf.Max(0f, insetBottom - ToolsBottom) - insetBottom;
+
+        /// <summary>The prompt lane. On a short phone it drops into the toast lane, which a prompt keeps free anyway (it holds the toasts),
+        /// so Watch and Finish don't sit on the bottom of the tank.</summary>
+        public static float PromptLane(float insetBottom) => Lane(GlassSheet.IsShort(Screen.width, Screen.height) ? ToastBottom : PromptBottom, insetBottom);
 
         static PanelSettings settings;
 

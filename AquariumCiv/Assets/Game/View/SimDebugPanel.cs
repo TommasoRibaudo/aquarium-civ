@@ -271,6 +271,7 @@ namespace AquariumCiv.View
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Back to active")) last = BoxCompleteController.DebugBack();
                 if (GUILayout.Button("Shelf view")) last = BoxCompleteController.DebugShelf();
+                if (GUILayout.Button("Setting picker")) last = BoxCompleteController.DebugPicker();
                 GUILayout.EndHorizontal();
             }
 

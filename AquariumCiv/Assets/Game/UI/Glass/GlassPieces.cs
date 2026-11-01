@@ -126,6 +126,7 @@ namespace AquariumCiv.GameUI
     public partial class GlassPlate : VisualElement
     {
         readonly Label title;
+        readonly System.Collections.Generic.List<Label> plateLines = new();
         public GlassPlate() : this("") { }
 
         /// <summary>The box's name on the plate. Empty, the plate keeps its height: blank is a state, not a missing piece.</summary>
@@ -138,11 +139,22 @@ namespace AquariumCiv.GameUI
             title = new Label(name) { pickingMode = PickingMode.Ignore };
             title.AddToClassList("type-head");
             Add(title);
-            foreach (var line in lines)
+            SetLines(lines);
+        }
+
+        /// <summary>The lines under the name: the plate is engraved letter by letter, so they change while it's up.</summary>
+        public void SetLines(params string[] words)
+        {
+            for (int i = 0; i < words.Length; i++)
             {
-                var l = new Label(line) { pickingMode = PickingMode.Ignore };
-                l.AddToClassList("type-note");
-                Add(l);
+                if (i == plateLines.Count)
+                {
+                    var l = new Label { pickingMode = PickingMode.Ignore };
+                    l.AddToClassList("type-note");
+                    Add(l);
+                    plateLines.Add(l);
+                }
+                plateLines[i].text = string.IsNullOrEmpty(words[i]) ? "\u00A0" : words[i];
             }
         }
     }
@@ -447,6 +459,53 @@ namespace AquariumCiv.GameUI
         void Hold(bool on)
         {
             holdKey ??= "prompt-" + GetHashCode();
+            GameUiPanel.Toasts.Hold(holdKey, on);
+        }
+    }
+
+    /// <summary>
+    /// A question and two answers on the flat tint: wipe first, the notification. It sits in the toast lane (question 23), so it keeps
+    /// off the box's corner, and it holds the toasts as a prompt does. The caller picks the buttons' kinds and order.
+    /// </summary>
+    [UxmlElement]
+    public partial class GlassAsk : VisualElement
+    {
+        readonly Label line;
+        string holdKey;
+
+        public GlassAsk() : this("") { }
+
+        public GlassAsk(string question, params GlassButton[] answers)
+        {
+            AddToClassList("kg-ask");
+            line = new Label(question) { pickingMode = PickingMode.Ignore };
+            line.AddToClassList("type-body");
+            line.AddToClassList("kg-ask-line");
+            Add(line);
+            var row = new VisualElement { pickingMode = PickingMode.Ignore };
+            row.AddToClassList("kg-ask-row");
+            for (int i = 0; i < answers.Length; i++)
+            {
+                if (i == answers.Length - 1) answers[i].AddToClassList("kg-ask-last");
+                row.Add(answers[i]);
+            }
+            Add(row);
+            RegisterCallback<DetachFromPanelEvent>(_ => Hold(false));
+        }
+
+        public string Question { get => line.text; set => line.text = value; }
+
+        public bool Ready
+        {
+            get => style.display != DisplayStyle.None;
+            set { style.display = value ? DisplayStyle.Flex : DisplayStyle.None; Hold(value); }
+        }
+
+        public bool Inline { set => EnableInClassList("kg-ask--inline", value); }
+
+        void Hold(bool on)
+        {
+            holdKey ??= "ask-" + GetHashCode();
             GameUiPanel.Toasts.Hold(holdKey, on);
         }
     }

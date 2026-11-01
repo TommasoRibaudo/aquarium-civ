@@ -373,7 +373,8 @@
 .kg-caption--up { top: 275px; }
 .kg-caption--inline { position: relative; left: auto; right: auto; top: auto; }
 .kg-caption--panel { position: relative; left: auto; right: auto; top: auto; padding: 0; background-color: var(--clear); border-radius: 0; align-items: stretch; }
-.kg-caption-line { color: var(--on-primary); -unity-text-outline-color: var(--on-primary); -unity-text-align: middle-center; white-space: normal; }
+/* stretched: measured to its own width, a line that only just fits wraps its last word and the plate stays one line tall */
+.kg-caption-line { align-self: stretch; color: var(--on-primary); -unity-text-outline-color: var(--on-primary); -unity-text-align: middle-center; white-space: normal; }
 .kg-caption-who { color: var(--on-primary); -unity-text-outline-color: var(--on-primary); -unity-text-align: middle-center; margin-top: 5.5px; }
 .kg-caption--panel > .kg-caption-line { color: var(--ink); -unity-text-outline-color: var(--ink); }
 .kg-caption--panel > .kg-caption-who { color: var(--ink); -unity-text-outline-color: var(--ink); }
@@ -402,11 +403,36 @@
     border-width: 0; border-radius: var(--radius-tool);
     background-color: var(--primary);
     color: var(--on-primary); -unity-text-outline-color: var(--on-primary);
-    -unity-text-align: middle-center; white-space: nowrap;
+    -unity-text-align: middle-center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     transition: scale 80ms ease-out, background-color 80ms ease-out, opacity 160ms ease-out;
 }
 .kg-big-prompt:active, .kg-big-prompt--pressed { scale: 0.97 0.97; background-color: var(--primary-pressed); }
 .kg-big-prompt--inline { position: relative; left: auto; right: auto; bottom: auto; }
+
+/* ---------------- ask: a question and two answers, in the toast lane a prompt keeps free (question 23) ---------------- */
+.kg-ask {
+    position: absolute; left: var(--space-16); right: var(--space-16); bottom: 401.5px;
+    padding: 27.5px var(--space-12);
+    border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-peek);
+    background-color: var(--flat-tint);
+}
+.kg-ask--inline { position: relative; left: auto; right: auto; bottom: auto; }
+.kg-ask-line { -unity-text-align: middle-center; white-space: normal; margin-bottom: var(--space-8); }
+.kg-ask-row { flex-direction: row; }
+.kg-ask-row > .kg-btn { flex-grow: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-8); padding: 0 var(--space-8); }
+.kg-ask-row > .kg-ask-last { margin-right: 0; }
+
+/* ---------------- option: one of a few choices on a sheet ---------------- */
+.kg-option {
+    min-height: 154px; margin: 0 0 var(--space-8) 0; padding: 16.5px var(--space-12); flex-shrink: 0; flex-direction: row; align-items: center;
+    border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-tile);
+    background-color: var(--flat-tint); color: var(--ink);
+}
+.kg-option:active { background-color: var(--pressed-fill); }
+.kg-option--on { border-width: 5.5px; border-color: var(--primary); }
+.kg-option-words { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; }
+.kg-option-mark { display: none; width: 55px; height: 55px; }
+.kg-option--on > .kg-option-mark { display: flex; }
 
 /* ---------------- the person card (#165, board 3.4). The lines read these three: a painter can't use a USS variable ---------------- */
 .pc-lines { --tie-line: var(--paper); --tie-inner: var(--moss); --tie-under: rgba(61, 42, 30, 0.35); }
@@ -552,6 +578,23 @@
 .fr-card-scroll { min-height: 0; }
 .fr-card-scroll-pad { width: 100%; padding-right: 24.75px; }
 .fr-card-also { margin-top: var(--space-6); white-space: normal; }
+
+/* ---------------- the moments, the last moment and the shelf (#170, board 3.6) ---------------- */
+.moment-bubble { left: 165px; top: 550px; } /* the board's spot, clear of the top row and of who's being framed */
+.moment-hint { position: absolute; left: 50%; translate: -50% 0; }
+.boxcomplete-plate { position: absolute; }
+.picker-sheet { min-height: 690px; } /* two options and Begin: 33 % of a short phone isn't enough */
+.shelf-chip { position: absolute; right: var(--space-16); margin: 0; }
+.shelf-chip > .kg-icon { -unity-background-image-tint-color: var(--ink-soft); }
+.shelf-row {
+    flex-direction: row; align-items: center; height: var(--hit); margin: 0; padding: 0; flex-shrink: 0;
+    border-width: 0; border-bottom-width: var(--hairline); border-color: rgba(106, 75, 54, 0.2); border-radius: 0;
+    background-color: var(--clear);
+}
+.shelf-row:active { background-color: var(--pressed-fill); }
+.shelf-row-name { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shelf-row-where { flex-shrink: 0; margin-left: var(--space-8); }
+.visit-back { padding: 0 var(--space-12); }
 
 /* the label in a saved snapshot (board 3.5): drawn into the picture, never on the screen */
 .kg-flash {

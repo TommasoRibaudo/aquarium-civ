@@ -93,7 +93,7 @@ namespace AquariumCiv.View.Moments
         RebuildWave,     // lots rebuild one by one from the centre outward (RebuildWave)
         ToolUnlock,      // the shaping slot opens with its hint (MomentBeat.param = the tool id)
         FestivalStart,   // bunting / a fair: the camera is free again
-        AskNotification, // "Want a note when the next one is ready?" Yes / Not now
+        AskNotification, // MomentLibrary.NotifyQuestion, Yes / Not now
         // the last moment (era-moment.md §8, #93)
         LegendLanterns,  // one lantern rises for each legend, settles against the glass like a star
         GatherFounders,  // the founders of box 2 gather at the edge with bundles

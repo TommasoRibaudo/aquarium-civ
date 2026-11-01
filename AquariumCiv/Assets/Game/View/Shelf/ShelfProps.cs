@@ -191,7 +191,7 @@ namespace AquariumCiv.View
             tm.transform.localScale = Vector3.one * PlateTextScale(text);
             var t = tm.AddComponent<TextMesh>();
             t.text = text; t.anchor = TextAnchor.MiddleCenter; t.alignment = TextAlignment.Center;
-            t.fontSize = 48; t.characterSize = 0.6f; t.color = new Color(0.22f, 0.15f, 0.07f);
+            t.fontSize = 48; t.characterSize = 0.6f; t.color = new Color(0.22f, 0.15f, 0.07f).linear; // a vertex colour: the project is Linear and it isn't converted, which read as grey
             t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             tm.GetComponent<MeshRenderer>().sharedMaterial = t.font.material;
             if (main) { plateText = t; plateFull = text; }
@@ -272,11 +272,15 @@ namespace AquariumCiv.View
 
         // ---------------- the new box and the crossing ----------------
         /// <summary>Sets a new empty box down on the shelf to the right of the box on screen; drop 0..1 lowers it from above.</summary>
+        string stagedSetting;
+
         public Transform StageNewBox(string setting, float drop = 1f)
         {
             Root();
+            if (staged != null && stagedSetting != setting) { Destroy(staged.gameObject); staged = null; } // the picker changed it: the box on the shelf follows
             if (staged == null)
             {
+                stagedSetting = setting;
                 staged = new GameObject("NewBox") { hideFlags = HideFlags.DontSave }.transform;
                 staged.SetParent(root, false);
                 BoxBody(staged, setting, 0.9f);

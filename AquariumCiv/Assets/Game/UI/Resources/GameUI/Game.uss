@@ -53,13 +53,6 @@
     --font-serif-bold: url("Fonts/PT_Serif-Web-Bold.asset");
     --font-serif-italic: url("Fonts/PT_Serif-Web-Italic.asset");
 
-    /* ---------------- the old look: screens not yet retrofitted (#165 to #170, #95) use these. Goes with the last of them ---------------- */
-    --plaster: #EFE3CC;
-    --canvas: #E2D3B3;
-    --frame: #2E2A27;
-    --terracotta: #C66F4E;
-    --old-moss: #5E7F43;
-    --thatch: #CFA65E;
     --scrim: rgba(30, 26, 23, 0.45);
 }
 
@@ -70,54 +63,6 @@ Label { white-space: normal; }
 
 
 
-/* round-cornered buttons on the glass */
-.hud-btn {
-    min-width: 230px; height: 150px; padding: 0 36px; margin: 0;
-    border-width: 0; border-radius: 75px;
-    background-color: rgba(239, 227, 204, 0.94);
-    color: var(--timber); font-size: 38px; -unity-font-style: bold;
-    -unity-text-align: middle-center;
-}
-.hud-btn:hover { background-color: rgba(239, 227, 204, 0.94); }
-.hud-btn:active { background-color: var(--canvas); scale: 0.96 0.96; }
-.hud-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
-.hud-btn--primary:hover { background-color: var(--terracotta); }
-.hud-btn--primary:active { background-color: #B5603F; }
-/* Clean mode is on: the button is lit, so the mode is never a silent one */
-.hud-btn--on { background-color: var(--thatch); color: var(--frame); }
-.hud-btn--on:hover { background-color: var(--thatch); }
-
 /* camera mode (#70): everything in the safe area hides except the way back */
 .hud-photo > * { display: none; }
 .hud-photo > .hud-photo-exit { display: flex; }
-
-/* a short hint line above the bottom row */
-.hud-toast {
-    position: absolute; left: 60px; right: 60px; bottom: 240px;
-    padding: 22px 36px; border-radius: 48px;
-    background-color: rgba(46, 42, 39, 0.78); color: var(--plaster);
-    font-size: 36px; -unity-font-style: bold; -unity-text-align: middle-center;
-    white-space: normal; /* long hints wrap inside the safe area (tester batch 2) */
-}
-
-/* test builds only: present but quieter than the title */
-.hud-btn--small { min-width: 0; height: 144px; padding: 0 30px; font-size: 28px; background-color: rgba(46, 42, 39, 0.4); color: var(--plaster); }
-.hud-btn--small:hover { background-color: rgba(46, 42, 39, 0.4); }
-.hud-btn--small:active { background-color: rgba(46, 42, 39, 0.6); }
-
-
-/* a settings row: label left, control right */
-.row {
-    flex-direction: row; align-items: center; justify-content: space-between;
-    min-height: 160px; border-bottom-width: 2px; border-color: rgba(106, 75, 54, 0.15);
-}
-.row-label { font-size: 40px; color: var(--timber); flex-shrink: 1; }
-
-/* an on/off switch drawn as a pill */
-.switch {
-    width: 200px; height: 112px; margin: 0; border-width: 0; border-radius: 56px;
-    background-color: var(--canvas); color: var(--timber);
-    font-size: 34px; -unity-font-style: bold;
-}
-.switch:hover { background-color: var(--canvas); }
-.switch--on, .switch--on:hover { background-color: var(--old-moss); color: var(--plaster); }
