@@ -58,6 +58,8 @@ namespace AquariumCiv.GameUI
         public VisualElement Root => root;
         /// <summary>The box's screenshot goes with the note.</summary>
         public bool ShotOn => shotOn;
+        /// <summary>The last capture (tests).</summary>
+        public byte[] LastShot => shot;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -189,15 +191,12 @@ namespace AquariumCiv.GameUI
         IEnumerator OpenRoutine()
         {
             capturing = true;
-            root.style.display = DisplayStyle.None; // out of the picture, with the HUD
+            root.style.display = DisplayStyle.None; // only the sheet leaves the picture: the HUD and the bubbles are what a UI note is about (#153)
             var hud = GameHud.Instance;
-            bool hudWasVisible = hud != null && hud.IsVisible;
-            if (hudWasVisible) hud.SetVisible(false);
             yield return null;
             yield return new WaitForEndOfFrame();
             shot = ScreenShot.Jpg(ScreenCapture.CaptureScreenshotAsTexture());
             root.style.display = DisplayStyle.Flex;
-            if (hudWasVisible) hud.SetVisible(true);
             capturing = false;
 
             if (shotPreview == null) shotPreview = new Texture2D(2, 2);

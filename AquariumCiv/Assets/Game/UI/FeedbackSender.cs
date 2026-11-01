@@ -15,14 +15,14 @@ namespace AquariumCiv.GameUI
     /// the prototypes: docs/feedback.md). Every note is written to <c>persistentDataPath/feedback_outbox</c> first
     /// (text as the issue payload, screenshot as a .jpg beside it), then sent; it leaves the outbox only once GitHub
     /// accepted it. Offline, without a token, or killed mid-send, it simply goes out on a later launch or resume.
-    /// The screenshot is committed to the <see cref="assetBranch"/> branch (Contents API) and linked from the issue;
-    /// if that is refused the (small) image is embedded in the issue instead, so it is never lost.
+    /// The screenshot goes in the issue itself as base64, shrunk to fit (#153): the token stays Issues-only, it ships in the build.
+    /// A note whose send may have got through (the app paused after GitHub took it, before the file went: #155, #171) is looked for
+    /// by its note id before it's sent again.
     /// </summary>
     [DefaultExecutionOrder(-140)]
     public class FeedbackSender : MonoBehaviour
     {
         public string repo = "TommasoRibaudo/aquarium-civ";
-        public string assetBranch = "feedback-assets";
         /// <summary>A second note inside this window is refused (a stuck finger must not flood the board).</summary>
         public float minSecondsBetween = 4f;
 
@@ -126,10 +126,20 @@ namespace AquariumCiv.GameUI
             if (text.Length > FeedbackReport.MaxTextChars) text = text.Substring(0, FeedbackReport.MaxTextChars);
             lastSubmit = Time.realtimeSinceStartup;
 
-            var body = FeedbackReport.Body(kind, text, jpg != null, TesterId(), Context(buildInfo), LogRing.Last(FeedbackReport.MaxLogLines),
-                TelemetryJson(), GameClock.Tel?.RecentLines(40));
+            var stamp = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{TesterId()}";
+            var stats = TelemetryJson();
+            var events = GameClock.Tel?.RecentLines(40);
+            var log = LogRing.Last(FeedbackReport.MaxLogLines);
+            string body = null;
+            for (int lines = log.Count; ; lines /= 2) // the log gives way first: an issue over the limit is refused outright
+            {
+                var kept = new List<string>(log.GetRange(log.Count - lines, lines));
+                body = FeedbackReport.Body(kind, text, jpg != null, TesterId(), Context(buildInfo), kept, stats, events) + FeedbackReport.NoteIdLine(stamp);
+                if (lines == 0 || body.Length + (jpg != null ? ScreenShot.MaxBase64Chars : 0) <= FeedbackReport.MaxIssueChars) break;
+            }
+            int room = FeedbackReport.MaxIssueChars - body.Length - FeedbackReport.ScreenshotWrapChars;
+            if (jpg != null && ScreenShot.Base64Chars(jpg.Length) > room) jpg = ScreenShot.Shrink(jpg, room / 4 * 3);
             var payload = FeedbackReport.PayloadJson(FeedbackReport.Title(kind, text, EraAndYear()), body, FeedbackReport.Labels(kind));
-            var stamp = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}";
             try
             {
                 Directory.CreateDirectory(OutboxDir);
@@ -205,38 +215,36 @@ namespace AquariumCiv.GameUI
         IEnumerator SendOne(string payload, byte[] jpg, string stamp, Action<long> done)
         {
             if (token.Length == 0) { done(0); yield break; }
-            if (payload.Contains(FeedbackReport.ScreenshotMarker))
+            string sentMark = Path.Combine(OutboxDir, stamp + ".sending");
+            if (File.Exists(sentMark))
             {
-                string md = "_(no screenshot)_";
-                if (jpg != null)
+                // A send began and never heard back: did it land? Look before sending it twice.
+                long look = 0;
+                string found = null;
+                yield return Request("GET", $"https://api.github.com/repos/{repo}/issues?labels=feedback&state=all&sort=created&direction=desc&per_page=30", null, c => look = c, b => found = b);
+                if (look != 200) { done(0); yield break; } // can't tell: try again later
+                if (FeedbackReport.AlreadyFiled(found, stamp))
                 {
-                    string path = $"feedback/{stamp}-{TesterId()}.jpg";
-                    string b64 = Convert.ToBase64String(jpg);
-                    long up = 0;
-                    var json = $"{{\"message\":\"feedback screenshot {stamp}\",\"content\":\"{b64}\",\"branch\":\"{assetBranch}\"}}";
-                    yield return Request("PUT", $"https://api.github.com/repos/{repo}/contents/{path}", json, c => up = c);
-                    if (up == 201 || up == 200)
-                        md = $"![screenshot](https://github.com/{repo}/blob/{assetBranch}/{path}?raw=true)";
-                    else
-                    {
-                        Debug.LogWarning($"[Feedback] screenshot upload refused ({up}); embedding it in the issue");
-                        md = b64.Length <= 40000
-                            ? $"<details><summary>Screenshot (base64 jpg, decode to view)</summary>\n\n```\n{b64}\n```\n</details>"
-                            : "_(screenshot too big to embed; upload refused)_";
-                    }
+                    Debug.Log($"[Feedback] note {stamp} had already landed");
+                    TryDelete(sentMark);
+                    done(201);
+                    yield break;
                 }
-                payload = payload.Replace(FeedbackReport.ScreenshotMarker, FeedbackReport.Escape(md));
             }
+            if (payload.Contains(FeedbackReport.ScreenshotMarker))
+                payload = payload.Replace(FeedbackReport.ScreenshotMarker, FeedbackReport.Escape(FeedbackReport.ScreenshotBlock(jpg != null ? Convert.ToBase64String(jpg) : null)));
+            try { File.WriteAllText(sentMark, ""); } catch { /* at worst a duplicate */ }
             long code = 0;
             yield return Request("POST", $"https://api.github.com/repos/{repo}/issues", payload, c => code = c);
+            if (code == 201 || code == 422 || code == 400) TryDelete(sentMark);
             done(code);
         }
 
-        IEnumerator Request(string method, string url, string json, Action<long> done)
+        IEnumerator Request(string method, string url, string json, Action<long> done, Action<string> body = null)
         {
             using var req = new UnityWebRequest(url, method)
             {
-                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)),
+                uploadHandler = json != null ? new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)) : null,
                 downloadHandler = new DownloadHandlerBuffer(),
                 timeout = 30,
             };
@@ -247,6 +255,7 @@ namespace AquariumCiv.GameUI
             yield return req.SendWebRequest();
             if (req.result != UnityWebRequest.Result.Success)
                 Debug.LogWarning($"[Feedback] {method} {url.Substring(url.IndexOf("/repos/", StringComparison.Ordinal))} failed: {req.responseCode} {req.error}");
+            body?.Invoke(req.downloadHandler?.text);
             done(req.result == UnityWebRequest.Result.Success || req.responseCode > 0 ? req.responseCode : 0);
         }
 
@@ -268,30 +277,61 @@ namespace AquariumCiv.GameUI
     /// <summary>Shrinks a captured screen to a phone-friendly JPG (the issue only needs to show what the tester saw).</summary>
     public static class ScreenShot
     {
-        public const int MaxSide = 960, Quality = 62;
+        /// <summary>The picture's share of an issue: base64 chars, so the bytes it may take (#153). The rest of the 65,536 is the note and its logs.</summary>
+        public const int MaxBase64Chars = 40000, MaxBytes = MaxBase64Chars / 4 * 3;
+        /// <summary>The steps down until it fits: the long side, then the quality at each.</summary>
+        static readonly int[] Sides = { 640, 520, 420, 340, 260 };
+        static readonly int[] Qualities = { 55, 38 };
 
-        /// <summary>Takes ownership of <paramref name="tex"/> (destroyed). Null in, null out.</summary>
-        public static byte[] Jpg(Texture2D tex)
+        public static int Base64Chars(int bytes) => (bytes + 2) / 3 * 4;
+
+        /// <summary>Takes ownership of <paramref name="tex"/> (destroyed). Null in, null out. The largest step within <paramref name="maxBytes"/>,
+        /// or the smallest there is.</summary>
+        public static byte[] Jpg(Texture2D tex, int maxBytes = MaxBytes)
         {
             if (tex == null) return null;
             try
             {
-                float k = Mathf.Min(1f, MaxSide / (float)Mathf.Max(tex.width, tex.height));
-                int w = Mathf.Max(1, Mathf.RoundToInt(tex.width * k)), h = Mathf.Max(1, Mathf.RoundToInt(tex.height * k));
-                var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(tex, rt);
-                var prev = RenderTexture.active;
-                RenderTexture.active = rt;
-                var small = new Texture2D(w, h, TextureFormat.RGB24, false);
-                small.ReadPixels(new Rect(0, 0, w, h), 0, 0);
-                small.Apply();
-                RenderTexture.active = prev;
-                RenderTexture.ReleaseTemporary(rt);
-                var bytes = small.EncodeToJPG(Quality);
-                Destroy(small);
+                byte[] bytes = null;
+                foreach (int side in Sides)
+                {
+                    var small = Scaled(tex, side);
+                    foreach (int q in Qualities)
+                    {
+                        bytes = small.EncodeToJPG(q);
+                        if (bytes.Length <= maxBytes) { Destroy(small); return bytes; }
+                    }
+                    Destroy(small);
+                }
                 return bytes;
             }
             finally { Destroy(tex); }
+        }
+
+        static Texture2D Scaled(Texture2D tex, int side)
+        {
+            float k = Mathf.Min(1f, side / (float)Mathf.Max(tex.width, tex.height));
+            int w = Mathf.Max(1, Mathf.RoundToInt(tex.width * k)), h = Mathf.Max(1, Mathf.RoundToInt(tex.height * k));
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(tex, rt);
+            var prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            var small = new Texture2D(w, h, TextureFormat.RGB24, false);
+            small.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+            small.Apply();
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(rt);
+            return small;
+        }
+
+        /// <summary>A JPG made smaller still, for a note whose logs left less room; null if it still won't fit.</summary>
+        public static byte[] Shrink(byte[] jpg, int maxBytes)
+        {
+            if (jpg == null || maxBytes <= 0) return null;
+            var tex = new Texture2D(2, 2);
+            if (!tex.LoadImage(jpg)) { Destroy(tex); return null; }
+            var bytes = Jpg(tex, maxBytes);
+            return bytes != null && bytes.Length <= maxBytes ? bytes : null;
         }
 
         static void Destroy(UnityEngine.Object o)
