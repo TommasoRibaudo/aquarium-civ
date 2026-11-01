@@ -70,6 +70,13 @@ namespace AquariumCiv.View.PlayTests
             return res;
         }
 
+        /// <summary>The camera sees this doll's head or middle: one behind a roof or in the trees isn't there to tap (tester run 8).</summary>
+        static bool InSight(Vector3 top, Vector3 feet)
+        {
+            var lens = Camera.main.transform.position;
+            return !Box.Blocked(lens, top) || !Box.Blocked(lens, (top + feet) * 0.5f);
+        }
+
         IEnumerator Home()
         {
             Cards.Close(); Cards.CloseCrowd(); Cards.CloseBuilding();
@@ -127,7 +134,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollFeet(a.who, out var feet)) continue;
                 Vector2 s = cam.WorldToScreenPoint((top + feet) * 0.5f);
-                if (!Clear(s) || Cards.PickBuilding(s) < 0) continue;
+                if (!Clear(s) || Cards.PickBuilding(s) < 0 || !InSight(top, feet)) continue;
                 yield return TapAt(s);
                 yield return Frames(2);
                 Assert.IsTrue(Cards.AnyOpen, "the person's card");
@@ -233,7 +240,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollFeet(a.who, out var feet)) continue;
                 Vector2 s = cam.WorldToScreenPoint((top + feet) * 0.5f);
-                if (!Clear(s)) continue;
+                if (!Clear(s) || !InSight(top, feet)) continue;
                 MoveMess(feet);
                 yield return Frames(2);
                 int hints = CareView.Instance.TouchHint.HintsShown;

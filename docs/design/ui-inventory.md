@@ -75,7 +75,8 @@ Three things this shows:
 ### 3.2 In the world
 | Piece | Purpose | Where | States | Serves | Code | Issue | Status |
 |---|---|---|---|---|---|---|---|
-| Ambient bubble | The people speak | Over the speaker | One at a time, rate limited | P | `WorldBubbles`, `showme-bubble` | #76, #143, #144 | part |
+| Ambient bubble | The people speak | As near over the speaker as it fits; the tail stretches to their head and follows them while the words drift slowly | One at a time, rate limited; a speaker gone indoors or off screen ends it | P | `WorldBubbles`, `showme-bubble`, `GlassBubble.TailTo` | #76, #143, #144, #204 | part |
+| Speaker ring | Whose line it is | On the ground under the speaker | Up with any line, world or echo, fades | P | `SpeakerRing` | #204 | built |
 | Name tag, pin tag | Who is open or pinned | Over the person | Card open, pinned gold; no always-on marker | P | `pc-name-tag`, `pc-pin-tag` | #39 | built |
 | Tie lines | Friends, family, rivals | Between people | Colour per tie | P | `ColorOf(TieKind)` | #39 | built |
 | Take back chip | Undo a shaping | Near the shaping | Visible, then gone (#149 timer) | P | `shaping-takeback-` | #84, #149 | built |

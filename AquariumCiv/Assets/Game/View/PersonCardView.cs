@@ -184,13 +184,13 @@ namespace AquariumCiv.View
             foreach (int id in shown)
             {
                 float d = DollDistance(pv, cam, PersonRef.Notable(id), screenPos);
-                if (d < bestD) { bestD = d; who = PersonRef.Notable(id); }
+                if (d < bestD && !Unseen(pv, cam, PersonRef.Notable(id))) { bestD = d; who = PersonRef.Notable(id); } // tester run 8: past the lot's box, the eaves still hide them
             }
             pv.CrowdShown(shownCrowd);
             foreach (var c in shownCrowd)
             {
                 float d = DollDistance(pv, cam, c, screenPos);
-                if (d < bestD) { bestD = d; who = c; }
+                if (d < bestD && !Unseen(pv, cam, c)) { bestD = d; who = c; }
             }
             return who;
         }

@@ -241,6 +241,7 @@ namespace AquariumCiv.View.PlayTests
                 {
                     asked++;
                     var who = Cards.PickDoll(at);
+                    if (who.IsNone && Cards.PickBuilding(at) < 0) who = Cards.PickPerson(at); // the generous reach, past the lot's box
                     if (who.IsNone) continue;
                     seenBehind++;
                     if (Unseen(who)) { bad++; if (first == null) { first = $"{who} at {at} hour {hour}"; badPoint = at; } }

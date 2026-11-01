@@ -23,6 +23,8 @@ namespace AquariumCiv.Life
         /// <summary>How far (world units) someone will go out of their way to meet a friend or rival on a walk, and the share of days a pair does.</summary>
         const float InterceptUnits = 4f, RivalDayChance = 0.34f, FriendDayChance = 0.6f;
         const float MinStayAfter = 0.8f, NearUnits = 0.4f, MinWalkForRunIn = 0.16f, ApartUnits = 0.17f;
+        /// <summary>Walkers meeting stop where they are: closer than this, they'd stop on one spot.</summary>
+        const float NotOnOneSpot = 0.1f;
         const float TieChance = 0.8f, KinChance = 0.5f, RivalChance = 0.7f, StrangerChance = 0.004f;
 
         readonly Dictionary<int, List<Seg>> runInCache = new Dictionary<int, List<Seg>>();
@@ -284,8 +286,8 @@ namespace AquariumCiv.Life
             {
                 a.poly.At((t - a.s.start) / (a.s.end - a.s.start), out float ax, out float az);
                 b.poly.At((t - b.s.start) / (b.s.end - b.s.start), out float bx, out float bz);
-                float dx = ax - bx, dz = az - bz;
-                if (dx * dx + dz * dz < NearUnits * NearUnits) return t;
+                float dx = ax - bx, dz = az - bz, d2 = dx * dx + dz * dz;
+                if (d2 < NearUnits * NearUnits && d2 >= NotOnOneSpot * NotOnOneSpot) return t; // two out of one door are walking together, not meeting
             }
             return -1f;
         }

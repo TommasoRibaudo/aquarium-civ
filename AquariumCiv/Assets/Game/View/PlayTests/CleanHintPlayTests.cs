@@ -47,7 +47,7 @@ namespace AquariumCiv.View.PlayTests
 
             yield return TapAt(OnMess());
             yield return Frames(2);
-            Assert.AreEqual(pulses + 1, Hud.CleanPulses, "no second pulse right away");
+            Assert.AreEqual(pulses + 2, Hud.CleanPulses, "tester run 8: a tap that opened nothing gets its answer, however soon");
             Assert.AreEqual(1, care.TouchHint.HintsShown, "and no second hint");
             AssertNoErrors("clean hint");
         }

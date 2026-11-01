@@ -146,6 +146,32 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(170000)]
         public IEnumerator WalkersStaySmoothAt60Fps() => Run(60f);
 
+        /// <summary>Every walker's drawn point, frame by frame at 30 fps, for a plot to look at.</summary>
+        [UnityTest, Timeout(170000), Explicit]
+        public IEnumerator TheTrackOfAGroupWalking()
+        {
+            yield return Village();
+            var pv = People;
+            pv.HandDriven = true;
+            var sb = new StringBuilder("frame,who,x,z,yaw,walking\n");
+            try
+            {
+                pv.SetHour(10f);
+                StringAssert.Contains("at the glass", GlassVoice.DebugGather(12));
+                for (int f = 0; f < 600; f++)
+                {
+                    pv.Tick(1f / 30f);
+                    foreach (var a in pv.Activities)
+                        if (a.moving && pv.TryGetDollTop(a.who, out _) && pv.TryGetDollPosition(a.who, out var p) && pv.TryGetDollFacing(a.who, out var face))
+                            sb.Append(f).Append(',').Append(a.who.Key).Append(',').Append(p.x.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',').Append(p.y.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                                .Append(',').Append(Mathf.Atan2(face.x, face.y).ToString(System.Globalization.CultureInfo.InvariantCulture)).Append('\n');
+                }
+            }
+            finally { pv.HandDriven = false; }
+            Directory.CreateDirectory(Shots);
+            File.WriteAllText(Shots + "track.csv", sb.ToString());
+        }
+
         // ---------------- #200, #201: what a Village does at its doors ----------------
 
         static bool AtHome(PersonActivity a) => a.place.kind == PlaceKind.Home && !a.moving;

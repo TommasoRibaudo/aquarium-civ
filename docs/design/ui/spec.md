@@ -190,7 +190,7 @@ One component each, per inventory §4. Every element name stays the same: the pl
 | **Toggle** | Settings pills | On, off | Word inside, knob moves |
 | **Slider** | New | Value | Hit strip of 144 px, 4 line, 22 ring |
 | **Row button** | Settings rows that go somewhere | Default, pressed | `GlassRowButton`: icon, words, chevron, the whole row is the target (#95) |
-| **Bubble** | `firstrun-`, `moment-`, `showme-`, `shaping-`, `boxcomplete-bubble` | Who + line, chatter symbols | Tail is a rotated square. One at a time, second waits. Longer lines become a caption |
+| **Bubble** | `firstrun-`, `moment-`, `showme-`, `shaping-`, `boxcomplete-bubble` | Who + line, chatter symbols | A line in the world has a wedge tail that reaches the speaker's head (#204, `TailTo`); a moment's bubble keeps its board spot and the rotated square. One at a time, second waits. Longer lines become a caption |
 | **Label** | `pc-name-tag`, `pc-pin-tag`, tie labels, brass plate | Name, gold + pin mark, tie + mark | Line style and mark per tie |
 | **Badge, dot** | `-dot`, pips | Dot, page dots, charge pips, New tag, ribbon | Dots never count |
 | **Toast** | `hud-toast`, `tl-toast`, `fb-toast` | One at a time, queued | One queue, in `GameUiPanel`. Prompts outrank it |
