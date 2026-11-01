@@ -329,6 +329,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot("9_showme");
                 yield return WaitFor(() => View.CardOpen, 12f);
                 Assert.IsTrue(View.CardOpen, "the card comes back after Show me");
+                yield return new WaitForSecondsRealtime(0.3f); // CardOpen turns true as it opens: Done has no place until the layout has run
                 yield return TapAt(GameUiPanel.ScreenCenter(View.Root, "firstrun-card-done"));
                 for (int i = 0; i < 20; i++) yield return null;
                 Assert.IsFalse(View.Active, "Done ends the run");
