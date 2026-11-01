@@ -172,7 +172,8 @@ namespace AquariumCiv.Life
             public Place target; // where it happens; None = where they stand
             public Seg seg;      // a live scene's segment
             public int order;
-            public bool runIn;
+            public bool runIn, hasPoint;
+            public float mx, mz; // #197: an intercept: walk to this point and stand there
         }
 
         /// <summary>A stretch of a person's position: standing at a point, or walking part of a route.</summary>
@@ -276,7 +277,7 @@ namespace AquariumCiv.Life
                 }
             }
             if (runs != null)
-                foreach (var s in runs) pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = -1, target = Place.None, seg = s, order = pieces.Count, runIn = true });
+                foreach (var s in runs) pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = -1, target = Place.None, seg = s, order = pieces.Count, runIn = true, hasPoint = s.hasPoint, mx = s.mx, mz = s.mz });
             if (pieces.Count == 0) return NoBlocks;
             pieces.Sort((a, b) => a.t0 != b.t0 ? a.t0.CompareTo(b.t0) : a.order.CompareTo(b.order));
 
@@ -316,7 +317,14 @@ namespace AquariumCiv.Life
                 EndPoint(b, out float cx, out float cz, out Place cat);
                 float tx = 0f, tz = 0f;
                 bool goes = !pc.target.IsNone && pc.target != cat && positions.TryGetPosition(pc.target, out tx, out tz) && !Near(cx, cz, tx, tz);
-                if (goes)
+                if (pc.hasPoint)
+                {
+                    var line = Poly.Of(new List<Waypoint> { new Waypoint(cx, cz), new Waypoint(pc.mx, pc.mz) });
+                    float w = Near(cx, cz, pc.mx, pc.mz) ? 0f : LiveWalkHours(dayInfo.day, t0, line.len);
+                    if (w > 0f) b.legs.Add(new Leg { t0 = t0, t1 = t0 + w, poly = line, f0 = 0f, f1 = 1f, at = Place.None });
+                    b.legs.Add(new Leg { t0 = t0 + w, t1 = Math.Max(t1, t0 + w), x = pc.mx, z = pc.mz, at = Place.None });
+                }
+                else if (goes)
                 {
                     var poly = RouteFrom(cx, cz, cat, pc.target);
                     // #92: the walk takes its time at the walking pace, in real seconds (a walk squeezed into half the piece
@@ -477,13 +485,13 @@ namespace AquariumCiv.Life
                         seg.place = seg.from = IsValidPlace(here) ? here : ValidHome(p);
                     }
                     var a = ToActivity(p, seg, t);
-                    a.enRoute = pc.runIn;
                     if (walking && !b.legs[li].tail)
                     {
                         var load = a.prop;
                         WalkLeg(ref a, b, li, h);
                         if (seg.carries) { a.kind = ActivityKind.Carry; a.prop = load; } // #92: a chunk to the fire, the doll to its post
                     }
+                    a.enRoute = pc.runIn && !a.moving;
                     return a;
                 }
             }
@@ -512,8 +520,10 @@ namespace AquariumCiv.Life
             a.kind = ActivityKind.Walk;
             a.moving = true;
             a.place = l.at.IsNone ? a.place : l.at;
+            if (a.place.IsNone) a.place = b.hasAfter ? b.after.place : b.stopPlace; // #197: an intercept leg is not at a place
             a.from = b.stopPlace;
             if (a.from == a.place && !b.stopFrom.IsNone && b.stopFrom != a.place) a.from = b.stopFrom; // stopped past halfway: the walk on to the same place still comes from somewhere
+            if (a.from == a.place) a.moving = false; // #197: an intercept that starts and ends at the same place is a short step, not a trip
             a.prop = Prop.None;
             a.start = l.t0;
             a.end = l.t1;

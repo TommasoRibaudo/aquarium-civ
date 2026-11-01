@@ -26,6 +26,7 @@ namespace AquariumCiv.Life
             public bool still;
             /// <summary>#92: facing the front glass; walking there carrying <see cref="prop"/> (a staged beat); a count (knocks).</summary>
             public bool faces, carries;
+            public bool hasPoint; public float mx, mz; // #197: an intercept
             public int count;
             public bool Moving => ActivityInfo.IsMove(kind) && from != place && !from.IsNone;
         }

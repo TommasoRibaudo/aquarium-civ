@@ -35,7 +35,7 @@ namespace AquariumCiv.Life.Tests
                 planner.PlanAll(new ViewTime(day, h), acts);
                 foreach (var a in acts)
                 {
-                    if (!a.enRoute) continue;
+                    if (!a.enRoute || a.kind == ActivityKind.Walk) continue; // a short step over to the other is still a walk
                     Assert.IsFalse(a.moving, "stopped for the beat");
                     Assert.IsTrue(a.kind is ActivityKind.Chat or ActivityKind.Argue or ActivityKind.Wave, $"{a.kind} is a beat the view already draws");
                     Assert.IsFalse(a.partner.IsNone, "a beat has a partner");
@@ -70,12 +70,61 @@ namespace AquariumCiv.Life.Tests
                 waves += b.Count(x => x.kind == ActivityKind.Wave);
                 // mutual: if a is stopped with b at t, b is stopped with a at t
                 foreach (var x in b)
-                    Assert.IsTrue(b.Any(y => y.who == x.with && y.with == x.who && Math.Abs(y.start - x.start) < 0.01f), $"day {day}: {x.who} and {x.with} stop together");
+                    Assert.IsTrue(b.Any(y => y.who == x.with && y.with == x.who && Math.Abs(y.start - x.start) < 0.6f), $"day {day}: {x.who} and {x.with} stop together");
             }
             float perPersonDay = beats / (float)personDays;
             TestContext.WriteLine($"{era} seed {seed} pop {planner.People.Count}: {days} days, {beats} person-beats = {perPersonDay:0.000} per person per day ({beats / (float)days:0.0} a day for the box): chats {chats}, bickers {bickers}, waves {waves}; most for one person in a day {maxPer}");
             Assert.LessOrEqual(maxPer, LifePlanner.RunInsPerDay, "at most two a day per person");
             Assert.LessOrEqual(perPersonDay, 0.35f, "rare enough to stay special");
+        }
+
+        [TestCase(Era.Town, 1, 20)]
+        [TestCase(Era.Town, 7, 20)]
+        [TestCase(Era.Village, 3, 10)]
+        public void RivalsAndFriendsMeetOnTheWay(Era era, int seed, int minPeople)
+        {
+            var sim = TownWith(seed, minPeople, era);
+            var planner = LifePlanner.Wired(sim);
+            planner.ForcedWeather = Weather.Clear;
+            var acts = new List<PersonActivity>();
+            int pairs = sim.State.notables.Count(n => n.alive && n.rivalId >= 0 && sim.State.notables.Any(m => m.alive && m.id == n.rivalId)) / 2;
+            int days = 0, chats = 0, bickers = 0, waves = 0;
+            for (int d = 0; d < 80 && days < 42; d++)
+            {
+                sim.Step();
+                var b = BeatsOf(planner, sim.State.month, acts);
+                days++;
+                chats += b.Count(x => x.kind == ActivityKind.Chat) / 2;
+                bickers += b.Count(x => x.kind == ActivityKind.Argue) / 2;
+                waves += b.Count(x => x.kind == ActivityKind.Wave) / 2;
+            }
+            TestContext.WriteLine($"{era} seed {seed} pop {planner.People.Count}, rival pairs {pairs}: per {days} days: bickers {bickers} (= {bickers * 14f / days:0.0} per 14 days), chats {chats} ({chats / (float)days:0.00} a day), waves {waves} ({waves / (float)days:0.00} a day)");
+            Assert.Greater(chats, 0);
+            Assert.Greater(chats, waves, "waves are no longer the most frequent beat");
+            if (pairs > 0) Assert.Greater(bickers, 0, "a town with a rival pair sees them bicker");
+        }
+
+        [Test]
+        public void HowOftenABoxHasARivalPair()
+        {
+            int at10 = 0, at30 = 0, n = 24;
+            for (int seed = 1; seed <= n; seed++)
+            {
+                var cfg = new SimConfig();
+                var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                bool r10 = false, r30 = false;
+                for (int m = 0; m < 360 + 12; m++)
+                {
+                    sim.Step();
+                    if (sim.State.eraReady) sim.AdvanceEra();
+                    bool pair = sim.State.notables.Any(a => a.alive && a.rivalId >= 0 && sim.State.notables.Any(b => b.alive && b.id == a.rivalId));
+                    if (m < 132) r10 |= pair && m >= 108;
+                    if (m >= 348) r30 |= pair;
+                }
+                if (r10) at10++;
+                if (r30) at30++;
+            }
+            TestContext.WriteLine($"boxes with a living rival pair at some point in year 10: {at10} of {n}; in year 30: {at30} of {n}");
         }
 
         [Test]

@@ -18,10 +18,12 @@ namespace AquariumCiv.Life
     {
         /// <summary>Beats a day per person at most (ties and strangers together).</summary>
         public const int RunInsPerDay = 2;
-        /// <summary>Real seconds a beat lasts (a wave between strangers is half).</summary>
-        public const float RunInSeconds = 3f;
-        const float MinStayAfter = 0.6f, NearUnits = 0.4f, MinWalkForRunIn = 0.16f;
-        const float TieChance = 0.8f, KinChance = 0.5f, RivalChance = 0.7f, StrangerChance = 0.02f;
+        /// <summary>Real seconds a beat lasts: a bicker, a chat, a wave between strangers.</summary>
+        public const float BickerSeconds = 6f, ChatSeconds = 5f, WaveSeconds = 1.5f;
+        /// <summary>How far (world units) someone will go out of their way to meet a friend or rival on a walk, and the share of days a pair does.</summary>
+        const float InterceptUnits = 4f, RivalDayChance = 0.34f, FriendDayChance = 0.6f;
+        const float MinStayAfter = 0.8f, NearUnits = 0.4f, MinWalkForRunIn = 0.16f;
+        const float TieChance = 0.8f, KinChance = 0.5f, RivalChance = 0.7f, StrangerChance = 0.004f;
 
         readonly Dictionary<int, List<Seg>> runInCache = new Dictionary<int, List<Seg>>();
         long runInDay = long.MinValue;
@@ -88,6 +90,7 @@ namespace AquariumCiv.Life
             runWalks.Sort((a, b) => a.s.start.CompareTo(b.s.start));
             var count = new Dictionary<int, int>();
             var waved = new HashSet<int>();
+            TiePass(count);
             for (int i = 0; i < runWalks.Count; i++)
             {
                 var a = runWalks[i];
@@ -99,37 +102,98 @@ namespace AquariumCiv.Life
                     count.TryGetValue(b.p.key, out int cb);
                     if (ca >= RunInsPerDay || cb >= RunInsPerDay) continue;
                     ActivityKind kind;
-                    float chance, secs = RunInSeconds;
-                    if (a.p.rival == b.p || b.p.rival == a.p)
-                    {
-                        // Rivals argue at most once a day (rule 8): not when the evening argument is on today.
-                        if (R(PairKey(a.p, b.p), day, 60) < 0.35f) continue;
-                        kind = ActivityKind.Argue; chance = RivalChance;
-                    }
-                    else if (a.p.partner == b.p || b.p.partner == a.p || a.p.friend == b.p || b.p.friend == a.p) { kind = ActivityKind.Chat; chance = TieChance; }
+                    float chance, secs = ChatSeconds;
+                    if (a.p.rival == b.p || b.p.rival == a.p || a.p.partner == b.p || b.p.partner == a.p || a.p.friend == b.p || b.p.friend == a.p) continue; // ties: TiePass
                     else if (a.p.mentor == b.p || b.p.mentor == a.p || a.p.parent == b.p || b.p.parent == a.p) { kind = ActivityKind.Chat; chance = KinChance; }
                     else
                     {
                         if (waved.Contains(a.p.key) || waved.Contains(b.p.key)) continue;
-                        kind = ActivityKind.Wave; chance = StrangerChance; secs *= 0.5f;
+                        kind = ActivityKind.Wave; chance = StrangerChance; secs = WaveSeconds;
                     }
                     float lo = Math.Max(a.s.start + (a.s.end - a.s.start) * 0.2f, b.s.start + (b.s.end - b.s.start) * 0.2f);
                     float hi = Math.Min(a.s.end - (a.s.end - a.s.start) * 0.15f, b.s.end - (b.s.end - b.s.start) * 0.15f);
                     float len = secs / LifeClock.RealSecondsPerViewHour(Math.Max(5f, Math.Min(23f, lo)));
-                    hi -= len;
                     if (hi <= lo) continue;
                     if (R(PairKey(a.p, b.p), day, 91) >= chance) continue;
                     float t = Meet(a, b, lo, hi);
                     if (t < 0f) continue;
                     if (Overlaps(a.p, t, len) || Overlaps(b.p, t, len)) continue;
-                    Add(a.p, b.p, kind, t, len);
-                    Add(b.p, a.p, kind, t, len);
+                    Add(a.p, b.p, kind, t, t + len);
+                    Add(b.p, a.p, kind, t, t + len);
                     count[a.p.key] = ca + 1;
                     count[b.p.key] = cb + 1;
                     if (kind == ActivityKind.Wave) { waved.Add(a.p.key); waved.Add(b.p.key); }
                     runInCount++;
                 }
             }
+        }
+
+        /// <summary>Friends, couples and rivals meet on the way (#197): on a day a pair does, one stops on a walk (to or from
+        /// work, to the green) and the other, if a walk or a stay of theirs is within <see cref="InterceptUnits"/>, goes
+        /// over to them and back (an intercept: a straight leg to the spot, then the way back into their day). Rivals bicker
+        /// about one day in three, never on a day with the evening argument (rule 8).</summary>
+        void TiePass(Dictionary<int, int> count)
+        {
+            long day = dayInfo.day;
+            for (int i = 0; i < people.Count; i++)
+            {
+                var a = people[i];
+                if (!a.Grown || EveningBusy(a)) continue;
+                for (int k = 0; k < 3; k++)
+                {
+                    var b = k == 0 ? a.rival : k == 1 ? a.friend : a.partner;
+                    if (b == null || !b.Grown || EveningBusy(b) || b == a) continue;
+                    if (a.key > b.key && (b.rival == a || b.friend == a || b.partner == a)) continue; // once per pair
+                    if (R(PairKey(a, b), day, 93 + k) >= (k == 0 ? RivalDayChance : FriendDayChance)) continue;
+                    if (k == 0 && R(PairKey(a, b), day, 60) < 0.35f) continue;
+                    count.TryGetValue(a.key, out int ca);
+                    count.TryGetValue(b.key, out int cb);
+                    if (ca >= RunInsPerDay || cb >= RunInsPerDay) continue;
+                    var kind = k == 0 ? ActivityKind.Argue : ActivityKind.Chat;
+                    float secs = k == 0 ? BickerSeconds : ChatSeconds;
+                    if (!Intercept(a, b, kind, secs) && !Intercept(b, a, kind, secs)) continue;
+                    count[a.key] = ca + 1;
+                    count[b.key] = cb + 1;
+                    runInCount++;
+                }
+            }
+        }
+        bool Carrying(Seg s) => ActivityInfo.IsMove(s.kind) && s.prop != Prop.None;
+
+        /// <summary><paramref name="stopper"/> stops on one of their walks; <paramref name="goer"/> comes over from where they are.</summary>
+        bool Intercept(Person stopper, Person goer, ActivityKind kind, float secs)
+        {
+            var gsegs = DayOf(goer);
+            foreach (var w in runWalks)
+            {
+                if (w.p != stopper) continue;
+                if (w.poly == null) continue;
+                float dur = w.s.end - w.s.start;
+                float len = secs / LifeClock.RealSecondsPerViewHour(Math.Max(5f, Math.Min(23f, w.s.start)));
+                float hi = w.s.end - dur * 0.15f; // the beat may run past the walk's end: they arrive that much later, to a stay of at least MinStayAfter
+                for (float t = w.s.start + dur * 0.2f; t <= hi; t += 0.05f)
+                {
+                    w.poly.At((t - w.s.start) / dur, out float mx, out float mz);
+                    float t0 = t;
+                    float d = 0f;
+                    for (int it = 0; it < 2; it++) // where they are when they set off, which depends on how far they have to come
+                    {
+                        if (!PlanPos(goer, t0, out float gx, out float gz)) { d = float.MaxValue; break; }
+                        d = (float)Math.Sqrt((gx - mx) * (gx - mx) + (gz - mz) * (gz - mz));
+                        t0 = t - (d > NearUnits ? d / WalkSpeed : 0f);
+                    }
+                    if (d > InterceptUnits) continue;
+                    var g0 = gsegs[Find(gsegs, t0)];
+                    var g1 = gsegs[Find(gsegs, t)];
+                    if (g0.src != ActivitySource.Schedule || g1.src != ActivitySource.Schedule || g0.kind == ActivityKind.Sleep || g1.kind == ActivityKind.Sleep || Carrying(g0) || Carrying(g1)) continue;
+                    float tEnd = t + len;
+                    if (Overlaps(goer, t0, tEnd - t0) || Overlaps(stopper, t, tEnd - t)) continue;
+                    Add(stopper, goer, kind, t, tEnd + 0.02f);
+                    Add(goer, stopper, kind, d > NearUnits ? t0 : t, tEnd, d > NearUnits, mx, mz);
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>When in [lo, hi] the two walkers pass within <see cref="NearUnits"/> of each other along their routes (the
@@ -158,10 +222,10 @@ namespace AquariumCiv.Life
             return false;
         }
 
-        void Add(Person p, Person with, ActivityKind kind, float t, float len)
+        void Add(Person p, Person with, ActivityKind kind, float t, float end, bool point = false, float mx = 0f, float mz = 0f)
         {
             if (!runInCache.TryGetValue(p.key, out var l)) runInCache[p.key] = l = new List<Seg>(2);
-            l.Add(new Seg { kind = kind, start = t, end = t + len, place = Place.None, from = Place.None, partner = with.who, src = ActivitySource.Schedule, trip = TripType.None, chronicleId = -1 });
+            l.Add(new Seg { kind = kind, start = t, end = end, hasPoint = point, mx = mx, mz = mz, place = Place.None, from = Place.None, partner = with.who, src = ActivitySource.Schedule, trip = TripType.None, chronicleId = -1 });
         }
     }
 }
