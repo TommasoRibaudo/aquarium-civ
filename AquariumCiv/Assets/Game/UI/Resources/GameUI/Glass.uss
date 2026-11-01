@@ -376,7 +376,7 @@
 .kg-caption--panel { position: relative; left: auto; right: auto; top: auto; padding: 0; background-color: var(--clear); border-radius: 0; align-items: stretch; }
 /* stretched: measured to its own width, a line that only just fits wraps its last word and the plate stays one line tall */
 .kg-caption-line { align-self: stretch; color: var(--on-primary); -unity-text-outline-color: var(--on-primary); -unity-text-align: middle-center; white-space: normal; }
-.kg-caption-who { color: var(--on-primary); -unity-text-outline-color: var(--on-primary); -unity-text-align: middle-center; margin-top: 5.5px; }
+.kg-caption-who { align-self: stretch; color: var(--on-primary); -unity-text-outline-color: var(--on-primary); -unity-text-align: middle-center; white-space: normal; margin-top: 5.5px; }
 .kg-caption--panel > .kg-caption-line { color: var(--ink); -unity-text-outline-color: var(--ink); }
 .kg-caption--panel > .kg-caption-who { color: var(--ink); -unity-text-outline-color: var(--ink); }
 .kg-hint {

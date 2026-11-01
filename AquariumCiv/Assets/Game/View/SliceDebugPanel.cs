@@ -125,6 +125,26 @@ namespace AquariumCiv.View
                 if (GUILayout.Button(MomentPlayer.DebugHoldHurry ? "Hold: on" : "Hold: off")) MomentPlayer.DebugHoldHurry = !MomentPlayer.DebugHoldHurry;
                 GUILayout.EndHorizontal();
             }
+            // The evening talk (#77): start the close, count the sitting as long, force each teaser kind.
+            GUILayout.Label(EveningTalkView.Status());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Start close")) { last = EveningTalkView.DebugStart(); DebugDock.Active = DebugDock.None; }
+            if (GUILayout.Button("Leave close")) last = EveningTalkView.DebugLeave();
+            if (GUILayout.Button("Long sitting")) last = EveningTalkView.DebugLongSitting();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Era, AquariumCiv.Sim.ThreadSource.Seat, AquariumCiv.Sim.ThreadSource.Couple, AquariumCiv.Sim.ThreadSource.Gift })
+                if (GUILayout.Button(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Rivalry, AquariumCiv.Sim.ThreadSource.Office, AquariumCiv.Sim.ThreadSource.Slice })
+                if (GUILayout.Button(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
+            GUILayout.EndHorizontal();
+            // The small book (#80): earn every page, open it.
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Earn every book page")) last = BookView.DebugEarnAll();
+            if (GUILayout.Button("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
+            GUILayout.EndHorizontal();
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();

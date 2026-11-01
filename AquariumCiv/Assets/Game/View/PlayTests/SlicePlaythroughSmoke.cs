@@ -290,11 +290,39 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("smoke_timelapse");
             // A drag can settle on a pin, and the caption's row then has the play row's place, Close with it.
             if (m.Caption != null) { yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-cap-close")); yield return Frames(3); }
+            // The book, by touch: open, a page, close, and the screen is still there.
+            yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-book"));
+            yield return Frames(6);
+            var book = BookView.Instance;
+            Assert.IsTrue(book.IsOpen, "the Book button opens the book");
+            yield return TapAt(GameUiPanel.ScreenCenter(book.Root, "book-next"));
+            yield return Frames(4);
+            Assert.AreEqual(1, book.At);
+            yield return Shot("smoke_book");
+            yield return TapAt(GameUiPanel.ScreenCenter(book.Root, "book-close"));
+            yield return Frames(4);
+            Assert.IsFalse(book.IsOpen);
+            Assert.IsTrue(screen.IsOpen);
             yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-close"));
             yield return Frames(6);
             Assert.IsFalse(screen.IsOpen);
             Assert.IsFalse(tl.Active, "the replay closes");
             Assert.IsFalse(GameClock.Instance.Held, "and the clock runs again");
+        }
+
+        IEnumerator TheClose()
+        {
+            var talk = EveningTalkView.Instance;
+            var hud = GameHud.Instance;
+            bool hadHud = hud.IsVisible;
+            Assert.IsTrue(talk.Begin(), "the evening talk starts");
+            yield return Until(() => talk.Step == AquariumCiv.View.Moments.CloseStep.Rest, 10f);
+            Assert.That(talk.Line, Is.Not.Empty, "it ends on a line");
+            yield return Shot("smoke_close");
+            yield return TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+            yield return Frames(90); // the camera comes home
+            Assert.IsFalse(talk.Open, "a touch leaves it");
+            Assert.AreEqual(hadHud, hud.IsVisible);
         }
 
         IEnumerator BoxComplete()
@@ -340,6 +368,7 @@ namespace AquariumCiv.View.PlayTests
             yield return ReturnCards(); Step("return cards");
             yield return EraMoment(); Step("era moment");
             yield return TimeLapse(); Step("time-lapse");
+            yield return TheClose(); Step("the close");
             yield return BoxComplete(); Step("box complete");
             float total = Time.realtimeSinceStartup - t0;
             Debug.Log($"[smoke] whole slice in {total:0} s");
