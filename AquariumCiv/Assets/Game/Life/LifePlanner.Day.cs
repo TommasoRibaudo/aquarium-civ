@@ -285,6 +285,7 @@ namespace AquariumCiv.Life
                     var n = list[i + 1];
                     bool nMove = ActivityInfo.IsMove(n.kind);
                     Place to = !nMove ? n.place : !n.from.IsNone && n.from != n.place && !n.resumed ? n.from : Place.None;
+                    if (to == fire && ActivityInfo.GroupOf(s.kind) == ActivityGroup.Carry) to = stash; // #150: never set down in the fire
                     if (to.IsNone || to == cur) continue; // the next thing starts from here: wait here instead
                     float w = WalkHours(cur, to);
                     if (w <= s.end - s.start) s.start = s.end - w; // set off just in time; what came before stretches
@@ -665,8 +666,9 @@ namespace AquariumCiv.Life
                 if (R(k, day, 2) < 0.3f)
                 {
                     var water = wellB != null ? PlaceOf(wellB) : Place.Land(PlaceKind.Stream);
-                    Move(ActivityKind.Walk, water, bt + WalkHours(p.home, water), Prop.Buckets, TripType.HomeToGreen);
-                    At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.Buckets);
+                    // #152: empty on the way out and while they draw; full only once it's drawn.
+                    Move(ActivityKind.Walk, water, bt + WalkHours(p.home, water), Prop.EmptyBucket, TripType.HomeToGreen);
+                    At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.EmptyBucket);
                     Move(ActivityKind.FetchWater, p.home, bt + WalkHours(water, p.home), Prop.Buckets, TripType.Home);
                 }
                 if (work.sweeps && box.sweeperExtraBlocks > 0)
@@ -807,18 +809,19 @@ namespace AquariumCiv.Life
                     // #30: only when the walk back to the site and the carry both fit the block; a squeezed walk back ran
                     // at several times the walking pace (the merchant's cart loop). Else this block is the work loop.
                     var src0 = work.fetchFrom.IsNone ? site : work.fetchFrom;
-                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.fetchFrom.IsNone ? work.dest : site)) +
+                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.dest)) +
                                  (work.fetchFrom.IsNone ? 0f : WalkHours(site, src0));
                     if (end - t < fits) carry = false;
                 }
                 if (carry && (work.dest != site || !work.fetchFrom.IsNone))
                 {
                     var src = work.fetchFrom.IsNone ? site : work.fetchFrom;
-                    var dst = work.fetchFrom.IsNone ? work.dest : site;
+                    var dst = work.dest;
                     float cd = Math.Max(0.35f, WalkHours(src, dst));
                     float workUntil = Math.Max(t, end - cd - (work.fetchFrom.IsNone ? 0f : WalkHours(site, src)));
                     if (workUntil > t + 0.1f) At(loop, workUntil, site, tool);
-                    if (src != bcur) Move(ActivityKind.Walk, src, Math.Min(end - 0.2f, bt + WalkHours(bcur, src)), Prop.None, TripType.Errand);
+                    // #152: off to the water with the empty bucket; any other fetch goes empty-handed.
+                    if (src != bcur) Move(ActivityKind.Walk, src, Math.Min(end - 0.2f, bt + WalkHours(bcur, src)), work.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None, TripType.Errand);
                     Move(work.carryKind, dst, end, work.load, TripType.Carry);
                 }
                 else At(loop, end, site, tool, Ref(work.with));
@@ -924,8 +927,9 @@ namespace AquariumCiv.Life
             {
                 // The era waits: the people prepare (era-moment §2): seed baskets by the fire, timber and stone on the green.
                 var load = era == Era.Camp ? Prop.SeedBag : (p.key & 1) == 0 ? Prop.Log : Prop.Block;
-                Put(list, Mk(ActivityKind.Carry, 15.5f, 15.9f, gather, load, ActivitySource.Schedule, default, Place.None), d);
-                Put(list, Mk(ActivityKind.Prepare, 15.9f, 16.6f, gather, load), d);
+                var pile = era == Era.Camp ? stash : gather; // #150
+                Put(list, Mk(ActivityKind.Carry, 15.5f, 15.9f, pile, load, ActivitySource.Schedule, default, Place.None), d);
+                Put(list, Mk(ActivityKind.Prepare, 15.9f, 16.6f, pile, load), d);
             }
         }
     }

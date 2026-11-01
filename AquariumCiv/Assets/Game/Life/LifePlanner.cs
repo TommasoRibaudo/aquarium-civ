@@ -274,7 +274,7 @@ namespace AquariumCiv.Life
         readonly List<int> sweepOrder = new List<int>(), sweepTargets = new List<int>();
         int sweepersTotal;
         Building campB, wellB, marketB, tavernB, churchB, windmillB, lumberB, guildB, bakeryB, newestB;
-        Place fire, gather, remembering;
+        Place fire, stash, gather, remembering;
         Era era;
         bool eraReady;
         Person leader;
@@ -351,6 +351,7 @@ namespace AquariumCiv.Life
             var any = campB ?? (s.buildings.Count > 0 ? s.buildings[0] : null);
             if (homes.Count == 0 && any != null) homes.Add(any); // tents round the fire
             fire = campB != null ? new Place(PlaceKind.Fire, campB.id) : any != null ? PlaceOf(any) : Place.Land(PlaceKind.Hill);
+            stash = era == Era.Camp && fire.kind == PlaceKind.Fire ? CampStash.Stand : fire; // #150
             gather = era == Era.Camp ? fire
                 : era == Era.Village ? (wellB != null ? PlaceOf(wellB) : fire)
                 : marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : fire;
