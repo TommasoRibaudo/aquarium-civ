@@ -175,6 +175,13 @@ namespace AquariumCiv.Life
 
         PersonActivity PlanPerson(Person p, ViewTime t)
         {
+            var a = PlanBase(p, t);
+            ApplyCarry(p, ref a, t); // #192: a parent carrying a baby, a baby carried
+            return a;
+        }
+
+        PersonActivity PlanBase(Person p, ViewTime t)
+        {
             // 1+2. Keeper reactions (≤ 4 s) and live story scenes (echoes from "Show me", the debug panel, the evening talk),
             // with the walk back into the day after them (#64).
             var blocks = BlocksOf(p);

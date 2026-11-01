@@ -37,7 +37,11 @@ namespace AquariumCiv.View.Shaping
         public const float GrazeRadius = 0.45f, ShoalRadius = 0.5f, GrazeCycle = 14f, GrazeShare = 0.65f, SwimCycle = 8f;
         public const int GrazeSpots = 5;
         /// <summary>How far an animal stands from the herd's focus (deer) or swims round the shoal's centre (fish).</summary>
-        public const float HerdSpread = 0.1f, ShoalSpread = 0.11f;
+        /// <summary>#151: <see cref="HerdSpread"/> is the farthest any grazer stands from the herd's focus (the layout's reach, with a
+        /// little to spare), so a spot is kept that far from the water; <see cref="HerdSpacing"/> is the least gap between two
+        /// of them. The herd was five deer inside 0.1 u of each other on a 6 x 4.4 box.</summary>
+        public const float HerdSpread = 0.42f, ShoalSpread = 0.11f;
+        public static float HerdSpacing(HerdSpecies s) => s switch { HerdSpecies.Deer => 0.22f, HerdSpecies.Goat => 0.19f, HerdSpecies.Sheep => 0.16f, _ => 0.1f };
         /// <summary>Each fish swims this many seconds ahead of the next along the swimming spots, so the shoal strings out
         /// across the pond instead of a tight ball (user 2026-10-30).</summary>
         public const float ShoalLagSeconds = 0.9f, ShoalFanSeconds = 2.5f;

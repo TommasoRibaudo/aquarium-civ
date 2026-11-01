@@ -130,6 +130,7 @@ doesn't move goods). The **full zoom** and **close up** columns say how each one
 | Who | Work loop at the site | Carries | Props | Full zoom | Close up |
 |---|---|---|---|---|---|
 | **Child** (< 16) | No work. Plays near home and the green (§6); at midday carries the meal basket to a parent (village on) | Meal basket | Ball, stick, small basket | Small, fast, in groups | Who they're playing with |
+| **Baby** (< 4) | Not a walker. On most days (9 in 10) a carer has the baby for one to three hours between 8:00 and 17:30: in the arms, or on the back (always on the back while the carer works; a carry or a nap sets the baby down). The carer is a parent, else the other parent; a crowd baby has two crowd adults who take turns. If both are busy or asleep the baby stays in (#192) | — | — | A small bundle on a grown-up | The card says "baby" and who has them |
 | **Apprentice** (a notable's child taken on by a master of 50+) | Works next to the master and copies each stroke a beat late | Half the master's load | A smaller copy of the master's tool | A big and a small doll doing the same thing | The delay; the master's nod |
 | **Elder** (65+, retired) | Sits at the fire or a bench; tells stories to kids in a ring; minds the babies; wanders to look at the work and "advise" | — | Stick, stool | A still doll with a ring of small ones | The talking bob, kids' faces turned up |
 

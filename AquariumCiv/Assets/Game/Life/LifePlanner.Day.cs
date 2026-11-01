@@ -50,13 +50,14 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { dayCache.Clear(); blockCache.Clear(); dayInfo.day = long.MinValue; }
+        void ClearDays() { dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); dayInfo.day = long.MinValue; }
 
         void EnsureDay(long day)
         {
             if (dayInfo.day == day) return;
             dayCache.Clear();
             blockCache.Clear();
+            carryPlans.Clear();
             var d = dayInfo;
             var s = sim.State;
             d.day = day;
