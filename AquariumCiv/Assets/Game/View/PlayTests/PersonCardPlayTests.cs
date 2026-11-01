@@ -331,10 +331,16 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Less(Vector2.Distance(new Vector2(s.x, s.y), cards.PinTagScreen), 4f, "the tag sits on their head");
                 yield return Shot("pc-pin-tag");
 
-                // the chip opens their card
+                // D2: the chip's first tap flies to them, a second opens their card
+                var flyCam = Camera.main.GetComponent<BoxCamera>();
+                yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-pin"));
+                yield return null; yield return null;
+                Assert.IsFalse(cards.IsOpen, "the first tap only flies");
+                Assert.IsTrue(flyCam.IsFlying, "the first tap flies");
+                yield return Until(() => !flyCam.IsFlying, 2f);
                 yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-pin"));
                 yield return Until(() => cards.IsOpen, 1f);
-                Assert.AreEqual(who.id, cards.OpenId, "the pin chip opens the pinned person's card");
+                Assert.AreEqual(who.id, cards.OpenId, "the second tap opens the pinned person's card");
                 cards.Close();
 
                 // save, reload the scene: still pinned, the tag back

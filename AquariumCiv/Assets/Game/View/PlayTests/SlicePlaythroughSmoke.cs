@@ -272,27 +272,15 @@ namespace AquariumCiv.View.PlayTests
         {
             var tl = TimeLapseView.Ensure();
             var hud = GameHud.Instance;
-            // History opens the waiting cards first (the dot stays after "Skip all"); read everything so it is the time-lapse's turn
+            // Hierarchy D1: History is always the time-lapse, whatever stories wait
             Sim.CardsSeenToNow();
             yield return Frames(40);
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
             yield return new WaitForSecondsRealtime(0.6f);
             var stack = CardStackView.Instance;
-            string branch = "direct";
-            if (TimeLapseScreenView.Instance == null || !TimeLapseScreenView.Instance.IsOpen)
-            {   branch = "cards";
-                // the era's cards wait: History shows them first; Skip all, then History is the time-lapse
-                Assert.AreNotEqual(CardStackMode.Hidden, stack.Model.Mode, "History showed the waiting cards");
-                if (stack.Model.Mode == CardStackMode.Peek) { yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek")); yield return Frames(6); }
-                yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
-                yield return Frames(6);
-                Assert.AreEqual(CardStackMode.Hidden, stack.Model.Mode);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
-                yield return new WaitForSecondsRealtime(0.6f);
-            }
             var screen = TimeLapseScreenView.Instance;
-            Assert.IsNotNull(screen, $"the History button made the time-lapse screen (cards {stack.Model.Mode}, dot {stack.Model.HistoryDot}, sheet {GameHud.Instance.OpenSheet}, moment {MomentPlayer.Instance.Playing}, branch {branch})");
-            Assert.IsTrue(screen.IsOpen, "the History button opens the time-lapse when no cards wait");
+            Assert.IsNotNull(screen, $"the History button made the time-lapse screen (cards {stack.Model.Mode}, dot {stack.Model.HistoryDot}, sheet {GameHud.Instance.OpenSheet}, moment {MomentPlayer.Instance.Playing})");
+            Assert.IsTrue(screen.IsOpen, "the History button opens the time-lapse");
             Assert.IsTrue(tl.Active);
             Assert.IsTrue(GameClock.Instance.Held, "the clock holds while replaying");
             var m = screen.Model;

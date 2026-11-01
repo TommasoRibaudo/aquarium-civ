@@ -53,6 +53,15 @@ namespace AquariumCiv.View
                 last = FrostTestPanel.DebugToggle();
                 DebugDock.Active = DebugDock.None; // this panel off the screen: it isn't what's being measured
             }
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(GlassGallery.Instance != null ? "Close gallery" : "UI gallery"))
+            {
+                last = GlassGallery.DebugToggle();
+                DebugDock.Active = DebugDock.None; // the gallery fills the screen
+            }
+            if (GUILayout.Button(FrostSwitch.On ? "Sheets: frost" : "Sheets: flat")) { FrostSwitch.On = !FrostSwitch.On; last = FrostSwitch.On ? "sheets frosted" : "sheets flat, no pass"; }
+            if (GUILayout.Button($"Blur {FrostSwitch.Blur:0.#}")) { FrostSwitch.Blur = FrostSwitch.Blur > FrostSwitch.BlurSmall ? FrostSwitch.BlurSmall : FrostSwitch.BlurLarge; last = $"blur {FrostSwitch.Blur:0.#} panel px"; }
+            GUILayout.EndHorizontal();
             GUILayout.Label(RecallPromptView.Status());
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Day +1")) last = RecallPromptView.DebugAddDays(1);
@@ -71,6 +80,12 @@ namespace AquariumCiv.View
             }
             if (GameHud.Instance != null)
             {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("New tool glow")) { GameHud.Instance.SetShapeNew(!GameHud.Instance.ShapeNew); last = GameHud.Instance.ShapeNew ? "Shape: New tag" : "Shape: tag off"; }
+                if (GUILayout.Button("3 toasts")) { for (int n = 1; n <= 3; n++) GameHud.Instance.Toast($"Toast {n} of 3 in the queue.", 2f); last = "toast queue"; }
+                if (GUILayout.Button("Pin chip")) { GameHud.Instance.SetPinChip(GameHud.Instance.PinChipText == null ? "Piers (remembered)" : null, null); last = "pin chip"; }
+                if (GUILayout.Button("Stories chip")) { GameHud.Instance.ForceStories = !GameHud.Instance.ForceStories; GameHud.Instance.SetHistoryDot(false); last = GameHud.Instance.ForceStories ? "stories chip held up" : "stories chip released"; }
+                GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Camera mode")) { GameHud.Instance.SetCameraMode(true); last = "camera mode on (tap to leave)"; }
                 if (GUILayout.Button("Follow someone")) last = PersonCardView.DebugFollowInCameraMode();

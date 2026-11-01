@@ -30,7 +30,7 @@ Name the USS variables as in the first column, in `Game.uss` `:root`.
 | `--paper` | `#F3E9D6` | Base of every light surface; solid on book pages |
 | `--frost-tint` | paper at 72 % | One surface per screen, over the blur |
 | `--flat-tint` | paper at 92 % | Tools, chips, tags, pin, bubbles, hints, banner |
-| `--flat-sheet` | paper at 94 % | Replaces the frost when the switch is off. No blur |
+| `--flat-sheet` | paper at 96 % | Replaces the frost when the switch is off. No blur. 96 from question 31; #108 |
 | `--quiet-backing` | paper at 72 %, no blur | Behind the box name and top icons once the camera leaves its home view |
 | `--brass` | `#B88A3E` | Portrait ring, slider thumb |
 | `--edge` | `#D3B684`, opaque | Hairline on buttons and tools (the boards' brass at 53 % comes out too pale) |
@@ -38,7 +38,7 @@ Name the USS variables as in the first column, in `Game.uss` `:root`.
 | `--primary` | `#9E5033` | One per moment; selected tab line, armed ring |
 | `--on-primary` | `#EFE3CC` | Text on primary, toast and caption |
 | `--moss` | `#526E3A` | Portrait until real ones exist, toggle on |
-| `--dark-plate` | ink at 91 % | Toast, caption, era card |
+| `--dark-plate` | ink at 96 % | Toast, caption, era card. The boards' 91 % in sRGB; 96 gives the same colour in linear light (#108, measured) |
 
 ### Type
 
@@ -89,6 +89,18 @@ One piece per lane, so nothing collides. `GameUiPanel.PromptBottom` and `ToastBo
 | Prompt | 204 | Watch, Finish, Give them rain, the two asks |
 | Caption | top 52 (100 with the HUD up) | Caption, era card |
 
+### Touch targets
+
+Every target reaches `GameUiPanel.MinTarget` (144 px, 48 dp, 50 pt at 2.88 px/pt on a 375 pt phone; practices §5). The boards draw 44 pt, which is 121 px and
+only 42 pt on that phone, so the drawn sizes here stay and the hit area is larger (#108):
+
+- **Clear pieces that may touch their neighbours are 144 tall:** chip slot, tab, toggle, slider strip, settings row. What
+  shows inside is unchanged, and the tab's underline sits 4 pt lower.
+- **Drawn pieces keep their size and reach 144 with `GlassReach`:** button (46, quiet and icon 44, way back 44), pin chip,
+  Stories chip. Space them apart, because a reach mustn't overlap another target. Tools (56) and big prompts (56) need none.
+
+`GlassUiPlayTests.EveryTargetReachesMinTarget` holds this over the gallery and the HUD.
+
 ### Motion
 
 Only what limits.md allows. Fixed heights, no keyframes, no loops, no filter transition. Show the element, wait one frame,
@@ -126,6 +138,9 @@ Components call a role, which calls `Sfx.Play` with a `CueLibrary` id. Nothing i
 
 ## 2. Surfaces and the one switch
 
+**The switch:** `FrostSwitch.Default` in `Assets/Game/UI/Glass/FrostSurface.cs`. Change that one constant to `false` and every surface is
+flat, with no copy, no filter and no pass. The debug panel flips it for a session (`Sheets: frost`), and trades the blur sizes.
+
 - **Frost** = URP pass copying the frame to 1/4 size, then in the panel, bottom to top: paper, the sharp copy, the blurred
   copy, `--frost-tint`. Without the sharp copy, a light band shows along the sheet's edges. One surface on screen. It
   needs runtime code and is costly (limits.md).
@@ -155,19 +170,23 @@ Components call a role, which calls `Sfx.Play` with a `CueLibrary` id. Nothing i
 
 ## 3. Components
 
+Built in #108: `Assets/Game/UI/Glass/`, one sheet `Resources/GameUI/Glass.uss`, tokens in `Game.uss`. Open the gallery from the debug
+panel (`UI gallery`). Each state is named `gal-<component>-<state>`. Retrofits: build screens from these and drop the old classes as they go.
+Old `Game.uss` tokens that clashed are now `--old-moss` and `--old-ink-soft`.
+
 One component each, per inventory §4. Every element name stays the same: the play tests find controls by name.
 
 | Component | Replaces | States | USS route |
 |---|---|---|---|
 | **Button** | Button classes across views | Primary, secondary, quiet, icon; default, pressed, unavailable | Primary `--primary`. Unavailable is a thin solid `--timber` edge, a paler fill and a lock, with full-strength text, never faded |
-| **Chip** | Tie chips, kind chips | Label; choice off, on (check mark) | Visible 30, inside a transparent 44 tall parent that takes the tap. Slots touch, with no gap between rows. Drawn on Design System, used in the person card |
+| **Chip** | Tie chips, kind chips | Label; choice off, on (check mark) | Visible 30, inside a transparent parent of 144 px that takes the tap. Slots touch, with no gap between rows. Drawn on Design System, used in the person card |
 | **Pin chip** | `hud-pin` | Hidden, pinned, long label | 40 portrait + name, `max-width`, ellipsis only past 220 |
 | **Stories chip** | `hud-history-dot` | Hidden, shown | Dot + word, never a number |
 | **Sheet + scrim** | `GameHud.Sheet`, `cards-sheet`, `recall-sheet`, `shelf-sheet`, `fb-sheet`, naming sheet | Closed, open, scrolled | `.surface`, translate on open, `SafeInsets` as padding |
 | **Card** | Chronicle, person, first-year, recall, feedback cards | Head, body, actions | Content of a sheet, never its own surface |
 | **Tab** | Best, Recent; music frequency | On, off | Selected is bold and underlined |
 | **Toggle** | Settings pills | On, off | Word inside, knob moves |
-| **Slider** | New | Value | 44 hit strip, 4 line, 22 ring |
+| **Slider** | New | Value | Hit strip of 144 px, 4 line, 22 ring |
 | **Bubble** | `firstrun-`, `moment-`, `showme-`, `shaping-`, `boxcomplete-bubble` | Who + line, chatter symbols | Tail is a rotated square. One at a time, second waits. Longer lines become a caption |
 | **Label** | `pc-name-tag`, `pc-pin-tag`, tie labels, brass plate | Name, gold + pin mark, tie + mark | Line style and mark per tie |
 | **Badge, dot** | `-dot`, pips | Dot, page dots, charge pips, New tag, ribbon | Dots never count |

@@ -158,15 +158,21 @@ namespace AquariumCiv.View
             if (sparkleMesh != null) Destroy(sparkleMesh);
         }
 
+        const string NothingToClean = "Nothing to clean right now.", CleanHint = "Drag across the glass to wipe it. Flick junk and weeds out.";
+
         void OnCleanMode(bool on)
         {
             lastTouchTime = Time.unscaledTime;
             spotlessSince = -1f;
-            if (!on) { Cancel(); return; }
+            if (!on)
+            {
+                hud?.WithdrawToast(NothingToClean); // still waiting behind another toast: it no longer applies
+                hud?.WithdrawToast(CleanHint);
+                Cancel();
+                return;
+            }
             var sim = Sim;
-            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f
-                ? "Nothing to clean right now."
-                : "Drag across the glass to wipe it. Flick junk and weeds out.", 5f);
+            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : CleanHint, 5f);
         }
 
         // ---------------- the camera gate ----------------
@@ -538,7 +544,7 @@ namespace AquariumCiv.View
                 if (now - spotlessSince >= spotlessExitSeconds) hud.SetCleanMode(false);
             }
             else spotlessSince = -1f;
-            if (now - lastTouchTime >= idleExitSeconds) { hud.SetCleanMode(false); hud.Toast("Clean mode off.", 2f); }
+            if (now - lastTouchTime >= idleExitSeconds) hud.SetCleanMode(false); // no line: the button changes back (question 11)
         }
 
         // ---------------- sunlight and cheer ----------------

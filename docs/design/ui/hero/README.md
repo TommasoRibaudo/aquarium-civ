@@ -117,14 +117,14 @@ night proves nothing here. The black frame stands in for it.
 
 ## Fonts
 
-On this branch only, with their licences in `Hero/Fonts/`. Both are SIL OFL 1.1.
+Promoted by #108 to `Assets/Game/UI/Resources/GameUI/Fonts/`, with their licences; the proof now reads them from there. Both are SIL OFL 1.1.
 
 | File | Source | Commit |
 |---|---|---|
 | `Lora-Bold.ttf` | github.com/cyrealtype/Lora-Cyrillic, `fonts/ttf/`, v3.021, static | `990d096` |
 | `PT_Serif-Web-Regular.ttf`, `-Bold.ttf` | github.com/google/fonts, `ofl/ptserif/` | `f0f0486` |
 
-`HeroShadow.png` is made in code: rounded rect, sigma 33, white with alpha.
+`GlassShadow.png` (`HeroShadow.png` until #108) is made in code: rounded rect, sigma 33, white with alpha.
 
 ## To repeat
 

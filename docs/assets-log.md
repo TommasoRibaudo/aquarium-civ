@@ -20,7 +20,9 @@ Every third-party pack in the project: where it came from and its license.
 | "Flute & Drums Music Tag", nicholasjudy567 | https://opengameart.org/content/flute-drums-music-tag | CC0 1.0 | `Sfx/Moment/flute_drum_tag.ogg` (mono) | 2026-10-30 |
 | "Guitar" (one strummed chord), antumdeluge | https://opengameart.org/content/guitar-0 | CC0 1.0 | `Sfx/Moment/guitar_chord.ogg` (mono) | 2026-10-30 |
 | "WIP Raw Pan Flute Audio" (D5), pattingthestar | https://opengameart.org/content/wip-raw-pan-flute-audio | CC0 1.0 | `Sfx/Moment/pan_flute_d5.ogg` (mono) | 2026-10-30 |
-| Lora Bold 3.021; PT Serif Regular, Bold (#107 hero proof, in no build) | https://github.com/cyrealtype/Lora-Cyrillic (`fonts/ttf`, 990d096); https://github.com/google/fonts (`ofl/ptserif`, f0f0486) | SIL OFL 1.1, Reserved Font Names "Lora" and "PT Serif" (licence text beside the files) | `Assets/Game/View/PlayTests/Hero/Fonts/` | 2026-10-31 |
+| Lora Bold, Medium 3.021 (static cuts, not instanced); PT Serif Regular, Bold, Italic (#108, the game's UI fonts; from #107) | https://github.com/cyrealtype/Lora-Cyrillic (`fonts/ttf`, 990d096); https://github.com/google/fonts (`ofl/ptserif`, f0f0486) | SIL OFL 1.1, Reserved Font Names "Lora" and "PT Serif" (licence text beside the files, `Lora-OFL.txt`, `PT_Serif-OFL.txt`) | `Assets/Game/UI/Resources/GameUI/Fonts/` | 2026-10-31 |
+| Keeper's Glass icons, 35 SVG (#108) | Drawn for this project on the Design System board (#107), no third-party source | Ours | `Assets/Game/UI/Resources/GameUI/Icons/` | 2026-10-31 |
+| Sheet shadow, `GlassShadow.png` | Made in code (#107): rounded rect, sigma 33, white with alpha | Ours | `Assets/Game/UI/Resources/GameUI/` | 2026-10-31 |
 
 Credits for the published game: see `CREDITS.md` at the repo root.
 Sound effects (#96): sources downloaded 2026-10-30, licenses checked on each page / in each pack's License.txt; only the

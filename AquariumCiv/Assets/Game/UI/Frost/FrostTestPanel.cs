@@ -9,7 +9,7 @@ using UnityEngine.UIElements;
 namespace AquariumCiv.GameUI
 {
     /// <summary>
-    /// Debug-only test of the frosted sheet on a real phone (#178): a 30 % Keeper's Glass sheet over the live tank, four modes,
+    /// Debug-only test of the frosted sheet on a real phone (#178): a 30 % Keeper's Glass sheet over the live tank, five modes,
     /// CPU and GPU time per mode, an automatic run, and a way to send the numbers. Exists only while open: nothing of it is
     /// in the scene or the renderer until the debug panel makes it, and closing destroys it. Styled in code so that it needs
     /// no sheet of its own in the build.
@@ -34,12 +34,12 @@ namespace AquariumCiv.GameUI
         public VisualElement Root => root;
         public FrostWindow Window(FrostMode m) => windows[(int)m];
 
-        readonly FrostWindow[] windows = { new(WindowFrames), new(WindowFrames), new(WindowFrames), new(WindowFrames) };
+        readonly FrostWindow[] windows = { new(WindowFrames), new(WindowFrames), new(WindowFrames), new(WindowFrames), new(WindowFrames) };
         readonly Label[,] cells = new Label[FrostModes.Count, 4];
         readonly Button[] modeButtons = new Button[FrostModes.Count];
         readonly FrameTiming[] timing = new FrameTiming[1];
         UIDocument doc;
-        VisualElement root, sheet, inner, image, tint;
+        VisualElement root, sheet, sharp, inner, image, tint;
         Label status;
         Button capButton;
         float settleUntil, nextRefresh, stepEnd, batteryAtStart;
@@ -76,6 +76,7 @@ namespace AquariumCiv.GameUI
         void OnEnable()
         {
             if (Instance != this) return;
+            FrostSwitch.Suspended = true; // this test owns the copy while it runs
             Build(doc.rootVisualElement);
             UiInput.Add(over);
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result += OnSent;
@@ -88,7 +89,9 @@ namespace AquariumCiv.GameUI
             UiInput.Remove(over);
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result -= OnSent;
             image.style.backgroundImage = new StyleBackground(StyleKeyword.None);
+            sharp.style.backgroundImage = new StyleBackground(StyleKeyword.None);
             FrostBackdrop.Stop();
+            FrostSwitch.Suspended = false;
             Application.targetFrameRate = frameRateWas;
         }
 
@@ -117,9 +120,12 @@ namespace AquariumCiv.GameUI
             settleUntil = Time.realtimeSinceStartup + settleSeconds; // the switch itself isn't what's being measured
             int divisor = FrostModes.Divisor(m);
             image.style.backgroundImage = new StyleBackground(StyleKeyword.None);
+            sharp.style.backgroundImage = new StyleBackground(StyleKeyword.None);
             if (divisor > 0)
             {
-                image.style.backgroundImage = Background.FromRenderTexture(FrostBackdrop.Start(divisor));
+                var copy = Background.FromRenderTexture(FrostBackdrop.Start(divisor));
+                image.style.backgroundImage = copy;
+                sharp.style.backgroundImage = copy; // the production recipe: without it a light band runs down the sheet's sides
                 var blur = new FilterFunction(FilterFunctionType.Blur);
                 blur.AddParameter(new FilterParameter(FrostModes.Blur(m)));
                 inner.style.filter = new List<FilterFunction> { blur };
@@ -130,6 +136,7 @@ namespace AquariumCiv.GameUI
                 inner.style.filter = new List<FilterFunction>();
             }
             inner.style.display = divisor > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            sharp.style.display = divisor > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             sheet.style.display = m == FrostMode.Off ? DisplayStyle.None : DisplayStyle.Flex;
             tint.style.backgroundColor = WithAlpha(Frost, FrostModes.TintAlpha(m));
             // The blur fades to nothing at the copy's own edge, the screen's edge: an opaque sheet keeps the HUD from showing through there.
@@ -273,6 +280,11 @@ namespace AquariumCiv.GameUI
 
             // Reaches above the sheet so the blur has real pixels at its top edge, then the sheet clips it. Not past the screen:
             // a filter region running off-screen left a light band down one side.
+            sharp = new VisualElement { name = "frost-sharp", pickingMode = PickingMode.Ignore };
+            sharp.style.position = Position.Absolute;
+            sharp.style.backgroundSize = new BackgroundSize(Length.Percent(100f), Length.Percent(100f));
+            sheet.Add(sharp);
+
             inner = new VisualElement { name = "frost-inner", pickingMode = PickingMode.Ignore };
             inner.style.position = Position.Absolute;
             inner.style.left = 0; inner.style.right = 0; inner.style.top = -Bleed; inner.style.bottom = 0;
@@ -307,6 +319,10 @@ namespace AquariumCiv.GameUI
         void Align()
         {
             var screen = root.worldBound;
+            sharp.style.left = -sheet.worldBound.x;
+            sharp.style.top = -sheet.worldBound.y;
+            sharp.style.width = screen.width;
+            sharp.style.height = screen.height;
             image.style.left = -sheet.worldBound.x; // from the sheet: the backdrop is hidden in flat mode and has no bounds
             image.style.top = Bleed - sheet.worldBound.y;
             image.style.width = screen.width;

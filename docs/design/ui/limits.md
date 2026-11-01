@@ -127,9 +127,9 @@ Off by default and gone when closed: `FrostBackdrop` (Assets/Game/UI/Frost) hand
 renderer only while a frost mode is on, so neither renderer asset changed. `FrostTestPanel` exists only while open.
 
 1. On a build, hold the top-left corner for 2 s. The `dbg` button appears. Tap it, then **Frost test (phone)**.
-2. The tank stays live under a 30 % Keeper's Glass sheet. Tap **Off**, **Flat**, **1/8 + 6** or **1/4 + 14**. The table shows
+2. The tank stays live under a 30 % Keeper's Glass sheet, in the production recipe (paper, sharp copy, blurred copy, tint; #108). Tap **Off**, **Flat**, **1/8 + 6**, **1/4 + 14** or **1/4 + 38**. The table shows
    frame, CPU and GPU ms as average/worst, and dropped frames, per mode.
-3. **Auto run** gives each mode 20 s, about 80 s in all, skipping the first 2 s of each. Don't touch the phone meanwhile.
+3. **Auto run** gives each mode 20 s, about 100 s in all, skipping the first 2 s of each. Don't touch the phone meanwhile.
 4. **Send** files the table as a feedback note. The numbers are also in the note's game log.
 5. **Cap 30** / **Cap 60** switches the frame cap. A phone defaults to 30; run Auto once at each for "60 where cheap". **Close**
    restores the cap and removes everything.

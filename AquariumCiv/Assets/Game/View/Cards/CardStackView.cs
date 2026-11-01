@@ -95,7 +95,7 @@ namespace AquariumCiv.View
         {
             if (clock != null) clock.CaughtUp -= OnCaughtUp;
             clock = null;
-            if (hud != null) hud.HistoryTapped = null;
+            if (hud != null) { hud.HistoryTapped = null; hud.StoriesTapped = null; }
             hud = null;
         }
 
@@ -110,22 +110,22 @@ namespace AquariumCiv.View
             if (hud != GameHud.Instance)
             {
                 hud = GameHud.Instance;
-                if (hud != null) hud.HistoryTapped = OnHistory;
+                if (hud != null) { hud.HistoryTapped = OnHistory; hud.StoriesTapped = OnStories; }
             }
         }
 
         void OnCaughtUp(CatchUpResult r) => model?.Prepare(r.realHours);
 
-        /// <summary>The History button: the waiting stack if there is one. Until the time-lapse has a screen of its own (#79,
-        /// nothing there lets a player back out yet) the rest stays the History sheet.</summary>
-        /// <summary>Cards waiting: show them. Otherwise the time-lapse screen (#79; its Close is the way out). False (nothing to replay yet,
-        /// a moment is playing, or the first run: first-session §2 keeps the time-lapse out of it): the HUD opens its History sheet.</summary>
+        /// <summary>History is always the time-lapse (hierarchy D1; its Close is the way out). False (nothing to replay yet, a moment is
+        /// playing, or the first run: first-session §2 keeps the time-lapse out of it): the HUD opens its History sheet.</summary>
         bool OnHistory()
         {
             if (bound != null && bound.State.firstRun.active) return false;
-            if (model != null && model.HistoryDot && model.Reopen()) return true;
             return TimeLapseScreenView.Ensure().Open();
         }
+
+        /// <summary>The Stories chip: what's waiting after a peek was swiped away.</summary>
+        void OnStories() => model?.Reopen();
 
         void Bind(SimCore sim)
         {

@@ -131,9 +131,9 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(3);
             Assert.IsTrue(Shown(GameHud.Instance.Root.Q("hud-history-dot")), "a dot, never a number");
             yield return Shot("cards_dot");
-            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history"));
+            yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-history-dot")); // hierarchy D1: the Stories chip, not History
             yield return Frames(6);
-            Assert.AreEqual(CardStackMode.Open, Model.Mode, "the dot opens what's waiting");
+            Assert.AreEqual(CardStackMode.Open, Model.Mode, "the Stories chip opens what's waiting");
             Assert.IsNull(GameHud.Instance.OpenSheet);
         }
 

@@ -4,12 +4,12 @@ using System.Text;
 
 namespace AquariumCiv.GameUI
 {
-    public enum FrostMode { Off, Flat, Eighth, Quarter }
+    public enum FrostMode { Off, Flat, Eighth, Quarter, QuarterLarge }
 
     /// <summary>What each mode of the frost test draws: Keeper's Glass values (docs/design/ui/directions/README.md).</summary>
     public static class FrostModes
     {
-        public const int Count = 4;
+        public const int Count = 5;
         public const float FrostAlpha = 0.72f, FlatAlpha = 0.92f;
 
         public static string Label(FrostMode m) => m switch
@@ -17,12 +17,13 @@ namespace AquariumCiv.GameUI
             FrostMode.Off => "Off",
             FrostMode.Flat => "Flat",
             FrostMode.Eighth => "1/8 + 6",
-            _ => "1/4 + 14",
+            FrostMode.Quarter => "1/4 + 14",
+            _ => "1/4 + 38",
         };
 
         /// <summary>Size of the frame copy as 1/n; 0 = no copy at all.</summary>
-        public static int Divisor(FrostMode m) => m == FrostMode.Eighth ? 8 : m == FrostMode.Quarter ? 4 : 0;
-        public static float Blur(FrostMode m) => m == FrostMode.Eighth ? 6f : m == FrostMode.Quarter ? 14f : 0f;
+        public static int Divisor(FrostMode m) => m == FrostMode.Eighth ? 8 : m >= FrostMode.Quarter ? 4 : 0;
+        public static float Blur(FrostMode m) => m == FrostMode.Eighth ? 6f : m == FrostMode.Quarter ? 14f : m == FrostMode.QuarterLarge ? 38.5f : 0f;
         public static float TintAlpha(FrostMode m) => m == FrostMode.Flat ? FlatAlpha : FrostAlpha;
     }
 
