@@ -260,12 +260,12 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(keep.Available, "Keep is unavailable until the name is edited (question 28)");
                 yield return Shot("4_name_refused");
                 FirstRunView.DebugKeyboard = true;
-                for (int i = 0; i < 6; i++) yield return null;
+                yield return new WaitForSecondsRealtime(0.5f); // it rides up on the sheets' slide, a transition Instant doesn't skip
                 float kbTop = View.Root.panel.visualTree.layout.height - 291f * GlassType.Pt;
                 Assert.LessOrEqual(View.Root.Q("firstrun-name-sheet").worldBound.yMax, kbTop + 1f, "the sheet rides on the keyboard");
                 Assert.LessOrEqual(keep.worldBound.yMax, kbTop, "Keep stays in reach");
                 FirstRunView.DebugKeyboard = false;
-                for (int i = 0; i < 6; i++) yield return null;
+                yield return new WaitForSecondsRealtime(0.5f);
                 field.value = "Mossbarrow";
                 Assert.IsTrue(keep.Available, "an edited name can be kept");
                 yield return TapAt(GameUiPanel.ScreenCenter(View.Root, "firstrun-name-keep"));
