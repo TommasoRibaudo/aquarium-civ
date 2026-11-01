@@ -11,12 +11,23 @@ namespace AquariumCiv.GameUI
     public static class GameUiPanel
     {
         public const float ReferenceWidth = 1080f;
-        /// <summary>The lanes of the bottom of the screen, up from the safe area's edge (panel units). Toasts sit at
-        /// <see cref="ToastBottom"/> (Game.uss .hud-toast, three lines reach about 420); prompts (Watch, Finish, the first run's
-        /// button) sit above them at <see cref="PromptBottom"/>, so a prompt and a toast never share a spot (tester batch 3).</summary>
-        public const float ToastBottom = 240f, PromptBottom = 430f;
+        /// <summary>
+        /// The lanes, up from the bottom edge (spec §1, panel units; 1 pt = 2.75). One piece per lane, so nothing collides: tools or
+        /// banner at 30 pt, pin and Stories at 96, toast at 146, prompts at 204. A home bar taller than 30 pt lifts them all.
+        /// </summary>
+        public const float ToolsBottom = 82.5f, PinBottom = 264f, PeekBottom = 269.5f, ToastBottom = 401.5f, PromptBottom = 561f;
+        /// <summary>The toast sits this far above a sheet when one is up (8 pt).</summary>
+        public const float ToastAboveSheet = 22f;
         /// <summary>48 dp on a 360 dp-wide phone (1080 px at 3×), which also covers 44 pt on a 375 pt iPhone.</summary>
         public const float MinTarget = 144f;
+        /// <summary>44 pt on the boards' 393 pt phone: the size components are drawn to (a <see cref="GlassChip"/>'s slot, a button's height).</summary>
+        public const float Target44 = 121f;
+
+        /// <summary>The one toast queue (hierarchy rule 3). <see cref="GameHud"/> draws it; a <see cref="GlassBigPrompt"/> holds it, since prompts outrank toasts.</summary>
+        public static readonly MessageQueue Toasts = new();
+
+        /// <summary>A lane's place above the safe area's bottom edge. Lanes count from the screen's edge; a home bar taller than 30 pt moves them all up by the difference.</summary>
+        public static float Lane(float bottom, float insetBottom) => bottom + Mathf.Max(0f, insetBottom - ToolsBottom) - insetBottom;
 
         static PanelSettings settings;
 
@@ -97,6 +108,7 @@ namespace AquariumCiv.GameUI
         public static void AcceptInputUnfocused(bool on)
         {
 #if UNITY_EDITOR
+            GlassMotion.Instant = on; // same callers: a test taps a control where it is, so nothing may be on its way there
             var t = typeof(PanelSettings).Assembly.GetType("UnityEngine.UIElements.DefaultEventSystem");
             var f = t?.GetField("IsEditorRemoteConnected", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
             if (f == null || f.FieldType != typeof(System.Func<bool>))

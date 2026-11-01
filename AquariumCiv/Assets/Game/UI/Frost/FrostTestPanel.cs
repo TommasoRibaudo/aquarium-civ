@@ -76,6 +76,7 @@ namespace AquariumCiv.GameUI
         void OnEnable()
         {
             if (Instance != this) return;
+            FrostSwitch.Suspended = true; // this test owns the copy while it runs
             Build(doc.rootVisualElement);
             UiInput.Add(over);
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result += OnSent;
@@ -89,6 +90,7 @@ namespace AquariumCiv.GameUI
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result -= OnSent;
             image.style.backgroundImage = new StyleBackground(StyleKeyword.None);
             FrostBackdrop.Stop();
+            FrostSwitch.Suspended = false;
             Application.targetFrameRate = frameRateWas;
         }
 

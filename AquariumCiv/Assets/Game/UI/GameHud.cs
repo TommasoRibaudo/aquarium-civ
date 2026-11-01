@@ -1,4 +1,3 @@
-using AquariumCiv.Audio;
 using System;
 using System.Globalization;
 using AquariumCiv.Game;
@@ -9,13 +8,14 @@ using UnityEngine.UIElements;
 namespace AquariumCiv.GameUI
 {
     /// <summary>
-    /// The slice's HUD shell (#36, first-session-and-check-in §6): nearly empty, the world is the screen. Top: the box's
-    /// name and year, small; a tap opens Settings. Bottom row, in the thumb zone: History (the chronicle, M4), the pinned
-    /// person's chip (hidden until someone is pinned), Shape (the shaping tray, M5). Each opens a bottom sheet; one sheet
-    /// at a time, closed by its Close button, a tap on the dimmed world, or Back. Everything sits inside the safe area.
-    /// UI Toolkit built in code and styled by Resources/GameUI/Game.uss; every control has a stable name so tests and
-    /// the tester agent find it (<c>hud-title</c>, <c>hud-history</c>, <c>hud-shape</c>, <c>hud-pin</c>,
-    /// <c>hud-feedback</c>, <c>settings</c>/<c>history</c>/<c>shaping</c> + <c>-sheet</c>, <c>-scrim</c>, <c>-close</c>,
+    /// The HUD shell (#36, reworked to Keeper's Glass in #108, hierarchy.md D1 to D6): nearly empty, the world is the screen. Top:
+    /// the box's name and year as quiet text with a settings mark (a tap opens Settings), Photo and a quieter Feedback as small
+    /// icons, Feedback in test builds only. Bottom: three tools of one calm look, History (always the time-lapse), Clean, Shape.
+    /// Above them the pin chip (a portrait and the name) and the Stories chip (unread stories). One sheet at a time, closed by
+    /// its Close, a tap on the world, or Back. Everything sits inside the safe area, in the lanes of <see cref="GameUiPanel"/>.
+    /// Built in code from the components in UI/Glass; every control has a stable name so tests and the tester agent find it
+    /// (<c>hud-title</c>, <c>hud-history</c>, <c>hud-clean</c>, <c>hud-shape</c>, <c>hud-pin</c>, <c>hud-history-dot</c> (the Stories chip),
+    /// <c>hud-feedback</c>, <c>hud-photo</c>, <c>settings</c>/<c>history</c>/<c>shaping</c> + <c>-sheet</c>, <c>-scrim</c>, <c>-close</c>,
     /// <c>settings-sound</c>, <c>settings-haptics</c>, <c>settings-feedback</c>).
     /// </summary>
     public class GameHud : MonoBehaviour
@@ -35,26 +35,31 @@ namespace AquariumCiv.GameUI
         public event Action<bool> CameraModeChanged;
 
         UIDocument doc;
-        VisualElement root, safe, bottomRow, openSheet;
+        VisualElement root, safe, topRow, bottomRow, pinRow;
+        GlassScrim openSheet;
+        readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
         Label nameLabel, yearLabel;
-        Button pinChip, soundSwitch, hapticsSwitch, cleanButton, shapeButton;
+        PinChip pinChip;
+        StoriesChip storiesChip;
+        GlassToggle soundSwitch, hapticsSwitch;
+        GlassButton cleanButton, shapeButton;
         readonly System.Collections.Generic.HashSet<string> toolBlocks = new();
-        Label toastLabel;
-        float toastUntil;
-        bool cleanMode;
+        GlassToast toastLabel;
+        bool cleanMode, shapeNew, offHome;
         Label historyBody;
         Rect lastSafe;
         Vector2Int lastScreen;
         float nextText;
         bool hidden;
         bool cameraMode;
-        Button exitButton;
+        GlassButton exitButton;
         float cameraModeSince, exitFadeAt;
         // The tap that brings the UI back: a short press that stays put, never a drag, never two fingers.
         bool tapDown, tapMoved, tapMulti;
         Vector2 tapStart;
         float tapTime;
         public const float TapSlopFraction = 0.02f, TapMaxSeconds = 0.4f;
+        const float TopRowTop = 110f; // 40 pt
 
         public VisualElement Root => root;
         public string OpenSheet => openSheet?.name.Replace("-scrim", "");
@@ -131,7 +136,7 @@ namespace AquariumCiv.GameUI
             if (cleanButton != null)
             {
                 cleanButton.text = on ? "Done" : "Clean";
-                cleanButton.EnableInClassList("hud-btn--on", on);
+                cleanButton.EnableInClassList("kg-tool--on", on); // the word, a check and a ring: the mode is never a silent one
             }
             CleanModeChanged?.Invoke(on);
         }
@@ -149,7 +154,7 @@ namespace AquariumCiv.GameUI
                 if (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen) return;
                 CloseSheet();
                 SetCleanMode(false);
-                if (toastLabel != null) toastLabel.style.display = DisplayStyle.None;
+                DropToasts();
             }
             cameraMode = on;
             safe.EnableInClassList("hud-photo", on);
@@ -199,7 +204,7 @@ namespace AquariumCiv.GameUI
         /// <summary>Camera mode: the small pill says who the camera follows (null = nobody), so a follow shows even at full view.</summary>
         public void SetCameraNote(string note)
         {
-            if (exitButton != null) exitButton.text = string.IsNullOrEmpty(note) ? "Tap to show the UI" : $"{note} · tap to show the UI";
+            exitButton?.Say(string.IsNullOrEmpty(note) ? "Tap to show the UI" : $"{note} · tap to show the UI");
         }
 
         /// <summary>Clean and Shape don't apply (a museum visit, the time-lapse): hidden while any <paramref name="reason"/> holds
@@ -208,24 +213,28 @@ namespace AquariumCiv.GameUI
         {
             if (!(hide ? toolBlocks.Add(reason) : toolBlocks.Remove(reason))) return;
             bool h = toolBlocks.Count > 0;
-            if (h) { SetCleanMode(false); if (toastLabel != null) toastLabel.style.display = DisplayStyle.None; }
+            if (h) { SetCleanMode(false); DropToasts(); }
             if (cleanButton != null) cleanButton.style.display = h ? DisplayStyle.None : DisplayStyle.Flex;
             if (shapeButton != null) shapeButton.style.display = h ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
         public bool ToolsHidden => toolBlocks.Count > 0;
 
-        /// <summary>The History button asks this first: true = taken care of (the card stack opens what's waiting), else the
-        /// History sheet opens.</summary>
+        /// <summary>History always opens the time-lapse (D1). This does it: false means there is nothing to replay yet, so the
+        /// History sheet opens instead.</summary>
         public Func<bool> HistoryTapped;
 
-        VisualElement historyDot;
+        /// <summary>The Stories chip: opens what's waiting.</summary>
+        public Action StoriesTapped;
 
-        /// <summary>A dot on the History button: stories wait. A dot, never a number.</summary>
+        /// <summary>The Stories chip: unread stories wait after a peek was swiped away. A dot and a word, never a number.</summary>
         public void SetHistoryDot(bool on)
         {
-            if (historyDot != null) historyDot.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            if (storiesChip != null) storiesChip.style.display = on || ForceStories ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
+        /// <summary>Debug: holds the Stories chip up, whatever the stack says.</summary>
+        public bool ForceStories { get; set; }
 
         void OnHistory()
         {
@@ -234,27 +243,77 @@ namespace AquariumCiv.GameUI
 
         Action pinTap;
 
-        /// <summary>#39: the pinned person's chip in the bottom row: <paramref name="text"/> null hides it; a tap calls
-        /// <paramref name="onTap"/> (the person card opens on them).</summary>
+        /// <summary>#39, D2: the pinned person's chip, a portrait and the name, apart from the tools: <paramref name="text"/> null
+        /// hides it; a tap calls <paramref name="onTap"/> (the person card opens on them).</summary>
         public void SetPinChip(string text, Action onTap)
         {
             pinTap = onTap;
-            if (pinChip == null) return;
-            pinChip.text = text ?? "";
-            pinChip.style.display = string.IsNullOrEmpty(text) ? DisplayStyle.None : DisplayStyle.Flex;
+            if (pinChip != null) pinChip.Person = text;
         }
 
         /// <summary>The pin chip's text, or null while it is hidden (tests).</summary>
-        public string PinChipText => pinChip != null && pinChip.style.display != DisplayStyle.None ? pinChip.text : null;
+        public string PinChipText => pinChip != null && pinChip.style.display != DisplayStyle.None ? pinChip.Person : null;
 
-        /// <summary>A short line above the bottom row (hints, "all clean"); replaces the one showing.</summary>
+        /// <summary>A short line in the toast lane (hints, "all clean"). One at a time: it waits for the one showing, and for any prompt.</summary>
         public void Toast(string text, float seconds = 3f)
         {
             if (toastLabel == null || cameraMode) return;
-            toastLabel.text = text;
-            toastLabel.style.display = DisplayStyle.Flex;
-            toastUntil = Time.unscaledTime + seconds;
+            GameUiPanel.Toasts.Post(text, seconds);
+            PumpToast();
         }
+
+        void PumpToast()
+        {
+            var q = GameUiPanel.Toasts;
+            if (!q.Tick(Time.unscaledTime)) return;
+            if (q.Current == null) { GlassMotion.Hide(toastLabel, GlassMotion.FadeOff, GlassMotion.FadeMs); return; }
+            toastLabel.text = q.Current;
+            GlassMotion.Show(toastLabel, GlassMotion.FadeOff);
+        }
+
+        void DropToasts()
+        {
+            GameUiPanel.Toasts.Clear();
+            if (toastLabel != null) toastLabel.style.display = DisplayStyle.None;
+        }
+
+        /// <summary>The toast's lane: its own, or 8 pt above a sheet that's up.</summary>
+        void PlaceToast()
+        {
+            if (toastLabel == null) return;
+            var i = GameUiPanel.SafeInsets(lastSafe, lastScreen.x, lastScreen.y);
+            float lane = GameUiPanel.Lane(GameUiPanel.ToastBottom, i.w);
+            if (openSheet != null)
+            {
+                float h = openSheet.Sheet.layout.height;
+                if (!float.IsNaN(h) && h > 0f) lane = h - i.w + GameUiPanel.ToastAboveSheet;
+            }
+            toastLabel.style.bottom = lane;
+        }
+
+        /// <summary>A new tool waits in Shape: one soft glow, then the New tag stays until the tray is opened.</summary>
+        public void SetShapeNew(bool on)
+        {
+            if (shapeNew == on || shapeButton == null) return;
+            shapeNew = on;
+            shapeButton.EnableInClassList("kg-tool--new", on);
+            if (!on) return;
+            UiSound.Play(UiRole.NewTool);
+            GlassMotion.Glow(shapeButton, "kg-tool--glow");
+        }
+
+        public bool ShapeNew => shapeNew;
+
+        /// <summary>The camera left its home view: ink on the world drops to 1.0:1 over the glass frame, so the name and top icons
+        /// get a quiet backing (spec §4, question 2). On the home view there's none.</summary>
+        public void SetOffHome(bool off)
+        {
+            if (offHome == off) return;
+            offHome = off;
+            topRow?.EnableInClassList("hud-top--backed", off);
+        }
+
+        public bool OffHome => offHome;
 
         bool IsOverUi(Vector2 screenPos) => !hidden && GameUiPanel.Over(root, screenPos);
 
@@ -264,7 +323,7 @@ namespace AquariumCiv.GameUI
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateBlockers();
             if (cameraMode) UpdateCameraMode();
-            if (toastLabel != null && toastLabel.resolvedStyle.display == DisplayStyle.Flex && Time.unscaledTime >= toastUntil) toastLabel.style.display = DisplayStyle.None;
+            if (toastLabel != null) PumpToast();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             // Android Back / Esc closes the open sheet.
             if (openSheet != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) CloseSheet();
@@ -283,41 +342,46 @@ namespace AquariumCiv.GameUI
             safe.AddToClassList("hud-safe");
             root.Add(safe);
 
-            var top = Row("hud-top");
-            var title = new Button(() => { Sfx.Play(CueLibrary.UiOpen); Open(Settings); }) { name = "hud-title" };
+            topRow = Row("hud-top");
+            var title = new GlassButton("", () => Open(Settings), ButtonKind.Quiet, UiRole.Open) { name = "hud-title" };
             title.AddToClassList("hud-title");
-            title.Add(nameLabel = Text("Your box", "hud-title-name"));
-            title.Add(yearLabel = Text("Year 0", "hud-title-year"));
+            var words = new VisualElement { name = "hud-title-text", pickingMode = PickingMode.Ignore };
+            words.AddToClassList("hud-title-text");
+            words.Add(nameLabel = Text("Your box", "hud-title-name", "type-box"));
+            words.Add(yearLabel = Text("Year 0", "hud-title-year", "type-sub"));
             nameLabel.pickingMode = yearLabel.pickingMode = PickingMode.Ignore;
-            top.Add(title);
-            safe.Add(top);
-
+            title.Add(words);
+            title.Add(Disc("settings"));
+            topRow.Add(title);
+            var spacer = new VisualElement { pickingMode = PickingMode.Ignore };
+            spacer.AddToClassList("hud-spacer");
+            topRow.Add(spacer);
             var corner = new VisualElement { name = "hud-corner", pickingMode = PickingMode.Ignore };
             corner.AddToClassList("hud-corner");
-            if (FeedbackUI.InTestBuild) corner.Add(Btn("hud-feedback", "Feedback", OpenFeedback, "hud-btn", "hud-btn--small"));
-            var photo = Btn("hud-photo", "Photo", () => SetCameraMode(true), "hud-btn", "hud-btn--small");
-            photo.style.marginTop = 16;
-            corner.Add(photo);
-            safe.Add(corner);
+            if (FeedbackUI.InTestBuild) corner.Add(IconButton("hud-feedback", "feedback", OpenFeedback, UiRole.Tap, "hud-icon--quiet"));
+            corner.Add(IconButton("hud-photo", "photo", () => SetCameraMode(true), UiRole.Toggle));
+            topRow.Add(corner);
+            safe.Add(topRow);
+
+            pinRow = Row("hud-pins");
+            pinChip = new PinChip(() => pinTap?.Invoke()) { name = "hud-pin" };
+            pinChip.style.display = DisplayStyle.None; // nobody pinned yet
+            pinRow.Add(pinChip);
+            storiesChip = new StoriesChip(() => StoriesTapped?.Invoke()) { name = "hud-history-dot" };
+            storiesChip.style.display = DisplayStyle.None;
+            pinRow.Add(storiesChip);
+            safe.Add(pinRow);
 
             bottomRow = Row("hud-bottom");
-            var history = Btn("hud-history", "History", OnHistory, "hud-btn");
-            historyDot = new VisualElement { name = "hud-history-dot", pickingMode = PickingMode.Ignore };
-            historyDot.AddToClassList("hud-dot");
-            historyDot.style.display = DisplayStyle.None;
-            history.Add(historyDot);
-            bottomRow.Add(history);
-            pinChip = Btn("hud-pin", "", () => pinTap?.Invoke(), "hud-chip");
-            pinChip.style.display = DisplayStyle.None; // nobody pinned yet (person card work)
-            bottomRow.Add(pinChip);
-            cleanButton = Btn("hud-clean", "Clean", () => SetCleanMode(!cleanMode), "hud-btn");
-            bottomRow.Add(cleanButton);
-            bottomRow.Add(shapeButton = Btn("hud-shape", "Shape", () => Open(Shaping), "hud-btn", "hud-btn--primary"));
+            bottomRow.Add(Tool("hud-history", "History", OnHistory, UiRole.Open));
+            bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => SetCleanMode(!cleanMode), UiRole.Toggle));
+            cleanButton.Add(new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
+            bottomRow.Add(shapeButton = Tool("hud-shape", "Shape", () => { SetShapeNew(false); Open(Shaping); }, UiRole.Open));
+            shapeButton.Add(new GlassNewTag());
             safe.Add(bottomRow);
 
-            toastLabel = Text("", "hud-toast");
-            toastLabel.name = "hud-toast";
-            toastLabel.pickingMode = PickingMode.Ignore;
+            GameUiPanel.Toasts.Clear();
+            toastLabel = new GlassToast { name = "hud-toast" };
             toastLabel.style.display = DisplayStyle.None;
             safe.Add(toastLabel);
 
@@ -329,7 +393,10 @@ namespace AquariumCiv.GameUI
                 root.Add(blockers[i]);
             }
             // The way back from camera mode: a small pill at the bottom, inside the safe area, shown only in that mode.
-            exitButton = Btn("hud-photo-exit", "Tap to show the UI", () => SetCameraMode(false), "hud-photo-exit");
+            exitButton = new GlassButton("Tap to show the UI", () => SetCameraMode(false), ButtonKind.Quiet, UiRole.Toggle) { name = "hud-photo-exit" };
+            exitButton.AddToClassList("hud-photo-exit");
+            exitButton.AddToClassList("kg-way-back");
+            exitButton.Mark(new GlassIcon("close", "kg-icon--small", "kg-way-back-mark"));
             exitButton.style.display = DisplayStyle.None;
             safe.Add(exitButton);
             BuildSettings();
@@ -341,20 +408,23 @@ namespace AquariumCiv.GameUI
 
         void BuildSettings()
         {
-            var sheet = Sheet(Settings, "Settings");
+            var sheet = Sheet(Settings, "Settings", SheetHeight.Tall);
             soundSwitch = SwitchRow(sheet, "settings-sound", "Sound", () => GameSettings.Sound, v => GameSettings.Sound = v);
             hapticsSwitch = SwitchRow(sheet, "settings-haptics", "Haptics", () => GameSettings.Haptics, v => GameSettings.Haptics = v);
-            if (FeedbackUI.InTestBuild) sheet.Add(Btn("settings-feedback", "Send feedback", OpenFeedback, "sheet-btn"));
-            var version = Text($"Aquarium Civ {Application.version}", "sheet-note");
-            version.style.marginTop = 24;
-            sheet.Add(version);
+            if (FeedbackUI.InTestBuild)
+            {
+                var send = new GlassButton("Send feedback", OpenFeedback) { name = "settings-feedback" };
+                send.AddToClassList("kg-sheet-action");
+                sheet.Add(send);
+            }
+            sheet.Add(Text($"Aquarium Civ {Application.version}", "type-note", "kg-sheet-note"));
         }
 
         void BuildHistory()
         {
             var sheet = Sheet(History, "History");
-            sheet.Add(historyBody = Text("", "sheet-text"));
-            sheet.Add(Text("The chronicle and the time-lapse of the years will live here.", "sheet-note"));
+            sheet.Add(historyBody = Text("", "type-body"));
+            sheet.Add(Text("The chronicle and the time-lapse of the years will live here.", "type-note", "kg-sheet-note"));
         }
 
         /// <summary>The shaping sheet's body (#84): empty here; the shaping view fills it with the tray when the sheet opens
@@ -363,72 +433,58 @@ namespace AquariumCiv.GameUI
 
         void BuildShaping()
         {
-            var sheet = Sheet(Shaping, "Shape the land");
+            // Content height until #167 gives the tray its low tile row at 30 %.
+            var sheet = Sheet(Shaping, "Shape the land", SheetHeight.Content);
             ShapingBody = new VisualElement { name = "shaping-tray" };
             ShapingBody.AddToClassList("tray");
             sheet.Add(ShapingBody);
         }
 
-        /// <summary>A bottom sheet: a dimmed full-screen scrim (tap closes) holding the sheet with a title and Close.</summary>
-        VisualElement Sheet(string id, string title)
+        /// <summary>A bottom sheet in its clear scrim (a tap outside closes it), with a title and Close.</summary>
+        GlassSheet Sheet(string id, string title, SheetHeight height = SheetHeight.Standard)
         {
-            var scrim = new VisualElement { name = id + "-scrim" };
-            scrim.AddToClassList("hud-fill");
-            scrim.AddToClassList("sheet-scrim");
-            scrim.style.display = DisplayStyle.None;
-            scrim.RegisterCallback<PointerUpEvent>(e => { if (e.target == scrim) { Sfx.Play(CueLibrary.UiClose); CloseSheet(); } });
+            var sheet = new GlassSheet(height);
+            var scrim = new GlassScrim(id, sheet);
+            scrim.TappedOutside += () => { UiSound.Play(UiRole.Close); CloseSheet(); };
             root.Add(scrim);
-
-            var sheet = new VisualElement { name = id + "-sheet" };
-            sheet.AddToClassList("sheet");
-            scrim.Add(sheet);
-
-            var head = new VisualElement();
-            head.AddToClassList("sheet-head");
-            head.Add(Text(title, "sheet-title"));
-            head.Add(Btn(id + "-close", "Close", CloseSheet, "sheet-close"));
-            sheet.Add(head);
+            sheet.Add(GlassSheet.Head(title, id + "-close", CloseSheet));
+            sheet.RegisterCallback<GeometryChangedEvent>(_ => PlaceToast());
+            sheets[id] = scrim;
             return sheet;
         }
 
-        Button SwitchRow(VisualElement sheet, string name, string label, Func<bool> get, Action<bool> set)
+        GlassToggle SwitchRow(VisualElement sheet, string name, string label, Func<bool> get, Action<bool> set)
         {
             var row = new VisualElement();
-            row.AddToClassList("row");
-            row.Add(Text(label, "row-label"));
-            Button sw = null;
-            sw = Btn(name, "", () => { set(!get()); ShowSwitch(sw, get()); }, "switch");
-            ShowSwitch(sw, get());
+            row.AddToClassList("kg-row");
+            row.Add(Text(label, "type-body", "kg-row-label"));
+            var sw = new GlassToggle(get(), set) { name = name };
             row.Add(sw);
             sheet.Add(row);
             return sw;
-        }
-
-        static void ShowSwitch(Button sw, bool on)
-        {
-            sw.text = on ? "On" : "Off";
-            sw.EnableInClassList("switch--on", on);
         }
 
         // ---------------- behaviour ----------------
         /// <summary>Open a sheet by name (<see cref="Settings"/>, <see cref="History"/>, <see cref="Shaping"/>); closes any other.</summary>
         public void Open(string id)
         {
-            var scrim = root.Q(id + "-scrim");
-            if (scrim == null) return;
-            if (openSheet != null) openSheet.style.display = DisplayStyle.None;
+            if (!sheets.TryGetValue(id, out var scrim) || openSheet == scrim) return;
+            if (openSheet != null) { openSheet.style.display = DisplayStyle.None; openSheet.Sheet.Close(); }
             openSheet = scrim;
-            if (id == Settings) { ShowSwitch(soundSwitch, GameSettings.Sound); ShowSwitch(hapticsSwitch, GameSettings.Haptics); }
+            if (id == Settings) { soundSwitch.On = GameSettings.Sound; hapticsSwitch.On = GameSettings.Haptics; }
             if (id == History) RefreshText();
-            scrim.style.display = DisplayStyle.Flex;
+            scrim.Open();
+            PlaceToast();
             SheetChanged?.Invoke(id);
         }
 
         public void CloseSheet()
         {
             if (openSheet == null) return;
-            openSheet.style.display = DisplayStyle.None;
+            var closing = openSheet;
             openSheet = null;
+            closing.Close();
+            PlaceToast();
             SheetChanged?.Invoke(null);
         }
 
@@ -453,13 +509,13 @@ namespace AquariumCiv.GameUI
             var i = GameUiPanel.SafeInsets(lastSafe, Screen.width, Screen.height);
             safe.style.left = i.x; safe.style.top = i.y; safe.style.right = i.z; safe.style.bottom = i.w;
             // Sheets run to the screen's bottom edge but keep their content above the home indicator.
-            foreach (var id in new[] { Settings, History, Shaping })
-            {
-                var sheet = root.Q(id + "-sheet");
-                sheet.style.paddingBottom = 44 + i.w;
-                sheet.style.paddingLeft = 44 + i.x;
-                sheet.style.paddingRight = 44 + i.z;
-            }
+            foreach (var scrim in sheets.Values) scrim.Sheet.SetInsets(i);
+            // The lanes count from the screen's edge; a home bar taller than 30 pt lifts them.
+            bottomRow.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
+            pinRow.style.bottom = GameUiPanel.Lane(GameUiPanel.PinBottom, i.w);
+            exitButton.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
+            topRow.style.top = Mathf.Max(0f, TopRowTop - i.y); // 40 pt down on the boards, or just under the notch
+            PlaceToast();
         }
 
         void RefreshText()
@@ -470,6 +526,7 @@ namespace AquariumCiv.GameUI
             string place = string.IsNullOrEmpty(s.settlementName) ? "Your box" : s.settlementName;
             nameLabel.text = place;
             yearLabel.text = "Year " + Mathf.FloorToInt(s.Year).ToString(CultureInfo.InvariantCulture);
+            topRow.EnableInClassList("hud-top--away", s.firstRun.active); // question 26: the top row arrives when the first run is done
             if (historyBody != null)
                 historyBody.text = $"{place}, year {Mathf.FloorToInt(s.Year)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
         }
@@ -482,29 +539,35 @@ namespace AquariumCiv.GameUI
             return r;
         }
 
-        static Label Text(string s, string cls)
+        static Label Text(string s, params string[] classes)
         {
             var l = new Label(s);
-            l.AddToClassList(cls);
+            foreach (var c in classes) l.AddToClassList(c);
             return l;
         }
 
-        /// <summary>#96: the sound a HUD button makes (same action, same sound): a sheet opening, closing, a switch
-        /// or mode flipping, else a plain tap.</summary>
-        internal static string ButtonCue(string name, string[] classes)
+        static GlassButton Tool(string name, string label, Action onClick, UiRole role)
         {
-            if (name.EndsWith("-close")) return CueLibrary.UiClose;
-            if (name == "hud-history" || name == "hud-shape") return CueLibrary.UiOpen;
-            if (name == "hud-clean" || name == "hud-photo" || name == "hud-photo-exit" || System.Array.IndexOf(classes, "switch") >= 0) return CueLibrary.UiToggle;
-            return CueLibrary.UiTap;
+            var b = new GlassButton(label, onClick, ButtonKind.Secondary, role) { name = name };
+            b.AddToClassList("kg-tool");
+            return b;
         }
 
-        static Button Btn(string name, string label, Action onClick, params string[] classes)
+        /// <summary>The 22 pt icon in its 44 pt disc, which is what the quiet backing fills.</summary>
+        static VisualElement Disc(string icon)
         {
-            string cue = ButtonCue(name, classes);
-            var b = onClick != null ? new Button(() => { Sfx.Play(cue); onClick(); }) : new Button();
-            b.name = name; b.text = label;
+            var d = new VisualElement { pickingMode = PickingMode.Ignore };
+            d.AddToClassList("hud-disc");
+            d.Add(new GlassIcon(icon));
+            return d;
+        }
+
+        static GlassButton IconButton(string name, string icon, Action onClick, UiRole role, params string[] classes)
+        {
+            var b = new GlassButton("", onClick, ButtonKind.Icon, role) { name = name };
+            b.AddToClassList("hud-icon");
             foreach (var c in classes) b.AddToClassList(c);
+            b.Add(Disc(icon));
             return b;
         }
     }

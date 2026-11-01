@@ -81,6 +81,20 @@ namespace AquariumCiv.View
         /// <summary>True while a finger or button is down on the camera.</summary>
         public bool Touching => mode != Mode.None;
 
+        /// <summary>Closer than this share of the fitted view, or panned, and the HUD's ink no longer has a calm background behind it.</summary>
+        const float HomeZoom = 0.92f, HomeOffset = 0.3f;
+        Vector3 homeTarget;
+        bool homeKnown;
+
+        /// <summary>Is the camera off its home view? The HUD backs the box name and top icons while it is (spec §4).</summary>
+        public bool OffHome => homeKnown && (zoom < HomeZoom || (target - homeTarget).magnitude > HomeOffset);
+
+        void TellHud()
+        {
+            if (!homeKnown) { homeTarget = target; homeKnown = true; }
+            AquariumCiv.GameUI.GameHud.Instance?.SetOffHome(OffHome);
+        }
+
         public float FitDistance()
         {
             if (cam == null) cam = GetComponent<Camera>();
@@ -468,6 +482,7 @@ namespace AquariumCiv.View
         public void Apply()
         {
             transform.position = target + Quaternion.Euler(pitch, yaw, 0) * Vector3.back * (FitDistance() * zoom);
+            TellHud();
             transform.LookAt(target);
         }
     }

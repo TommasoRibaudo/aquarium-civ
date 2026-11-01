@@ -29,9 +29,9 @@
     --pt-23: 63.25px;
     --pt-26: 71.5px;
 
-    --lora-bold: url("Fonts/Lora-Bold.ttf");
-    --serif: url("Fonts/PT_Serif-Web-Regular.ttf");
-    --serif-bold: url("Fonts/PT_Serif-Web-Bold.ttf");
+    --lora-bold: url("../../../UI/Resources/GameUI/Fonts/Lora-Bold.ttf");
+    --serif: url("../../../UI/Resources/GameUI/Fonts/PT_Serif-Web-Regular.ttf");
+    --serif-bold: url("../../../UI/Resources/GameUI/Fonts/PT_Serif-Web-Bold.ttf");
 
     position: absolute;
     left: 0; right: 0; top: 0; bottom: 0;
@@ -41,7 +41,7 @@
 .hero-stack { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
 .hero-shadow {
     position: absolute; left: -100px; right: -100px; top: -78px; bottom: -222px;
-    background-image: url("HeroShadow.png");
+    background-image: url("../../../UI/Resources/GameUI/GlassShadow.png");
     -unity-background-image-tint-color: var(--shadow);
     -unity-slice-left: 200; -unity-slice-right: 200; -unity-slice-top: 200; -unity-slice-bottom: 200;
 }

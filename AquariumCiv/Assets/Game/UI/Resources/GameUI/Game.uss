@@ -3,38 +3,72 @@
    space children with one-sided margins (tooling.md §8). */
 
 :root {
+    /* ---------------- Keeper's Glass tokens (docs/design/ui/spec.md section 1). Sizes: 1 pt = 2.75 px of this 1080 wide panel ---------------- */
+    --ink: #3D2A1E;
+    --ink-soft: #4A3324;
+    --timber: #6A4B36;
+    --paper: #F3E9D6;
+    --brass: #B88A3E;
+    --edge: #D3B684;
+    --brass-light: #D9B873;
+    --primary: #9E5033;
+    --primary-pressed: #7F3F28;
+    --on-primary: #EFE3CC;
+    --moss: #526E3A;
+    --pressed-fill: #E2D3B3;
+    /* Translucent tokens: the panel blends in linear light, so these are checked in a render, never copied from the boards' CSS. */
+    --frost-tint: rgba(243, 233, 214, 0.72);
+    --flat-tint: rgba(243, 233, 214, 0.92);
+    --flat-sheet: rgba(243, 233, 214, 0.96); /* 94 on the spec; proposal question 31 asked for 96 */
+    --quiet-backing: rgba(243, 233, 214, 0.72);
+    --off-fill: rgba(243, 233, 214, 0.40);
+    --dot-off: rgba(106, 75, 54, 0.52);
+    --dark-plate: rgba(61, 42, 30, 0.96); /* the boards' 91 % in sRGB comes out at this in linear light */
+    --shadow: rgba(46, 42, 39, 0.45);
+    --clear: rgba(0, 0, 0, 0);
+
+    --space-4: 11px;
+    --space-6: 16.5px;
+    --space-8: 22px;
+    --space-10: 27.5px;
+    --space-12: 33px;
+    --space-16: 44px;
+    --space-24: 66px;
+    --hit: 121px; /* 44 pt */
+    --hairline: 2.75px;
+
+    --radius-chip: 38.5px;
+    --radius-tile: 44px;
+    --radius-toast: 49.5px;
+    --radius-pin: 60.5px;
+    --radius-button: 63.25px;
+    --radius-peek: 66px;
+    --radius-sheet: 71.5px;
+    --radius-tool: 77px;
+
+    --font-lora-bold: url("Fonts/Lora-Bold.asset");
+    --font-lora-medium: url("Fonts/Lora-Medium.asset");
+    --font-serif: url("Fonts/PT_Serif-Web-Regular.asset");
+    --font-serif-bold: url("Fonts/PT_Serif-Web-Bold.asset");
+    --font-serif-italic: url("Fonts/PT_Serif-Web-Italic.asset");
+
+    /* ---------------- the old look: screens not yet retrofitted (#165 to #170, #95) use these. Goes with the last of them ---------------- */
     --plaster: #EFE3CC;
     --canvas: #E2D3B3;
-    --timber: #6A4B36;
     --frame: #2E2A27;
     --terracotta: #C66F4E;
-    --moss: #5E7F43;
+    --old-moss: #5E7F43;
     --thatch: #CFA65E;
     --scrim: rgba(30, 26, 23, 0.45);
-    --ink-soft: rgba(106, 75, 54, 0.7);
+    --old-ink-soft: rgba(106, 75, 54, 0.7);
 }
 
 Label { white-space: normal; }
 
 /* ---------------- HUD shell ---------------- */
 .hud-fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-.hud-safe { justify-content: space-between; }
 
-.hud-top { flex-direction: row; justify-content: center; align-items: flex-start; padding-top: 18px; }
-.hud-bottom { flex-direction: row; justify-content: space-between; align-items: flex-end; padding: 0 32px 32px 32px; }
-.hud-corner { position: absolute; top: 18px; right: 24px; }
 
-/* the box's name and year: small, quiet, a tap opens settings */
-.hud-title {
-    min-height: 144px; min-width: 300px; padding: 0 44px;
-    background-color: rgba(46, 42, 39, 0.62);
-    border-width: 0; border-radius: 72px; margin: 0;
-    justify-content: center; align-items: center;
-}
-.hud-title-name { color: var(--plaster); font-size: 38px; -unity-font-style: bold; -unity-text-align: middle-center; }
-.hud-title-year { color: rgba(239, 227, 204, 0.85); font-size: 30px; -unity-text-align: middle-center; margin-top: -2px; }
-.hud-title:hover { background-color: rgba(46, 42, 39, 0.62); }
-.hud-title:active { background-color: rgba(46, 42, 39, 0.75); }
 
 /* round-cornered buttons on the glass */
 .hud-btn {
@@ -56,13 +90,6 @@ Label { white-space: normal; }
 /* camera mode (#70): everything in the safe area hides except the way back */
 .hud-photo > * { display: none; }
 .hud-photo > .hud-photo-exit { display: flex; }
-.hud-photo-exit {
-    position: absolute; bottom: 36px; left: 50%; translate: -50% 0;
-    height: 110px; padding: 0 44px; margin: 0; border-width: 0; border-radius: 55px;
-    background-color: rgba(46, 42, 39, 0.62); color: var(--plaster);
-    font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
-}
-.hud-photo-exit:hover { background-color: rgba(46, 42, 39, 0.62); }
 
 /* a short hint line above the bottom row */
 .hud-toast {
@@ -78,13 +105,6 @@ Label { white-space: normal; }
 .hud-btn--small:hover { background-color: rgba(46, 42, 39, 0.4); }
 .hud-btn--small:active { background-color: rgba(46, 42, 39, 0.6); }
 
-/* pinned person's chip (filled in by the person card work) */
-.hud-chip {
-    height: 150px; padding: 0 36px; margin: 0 20px; flex-shrink: 1;
-    border-width: 0; border-radius: 75px;
-    background-color: rgba(46, 42, 39, 0.5); color: #FFD98A;
-    font-size: 32px; -unity-font-style: bold; -unity-text-align: middle-center;
-}
 
 /* ---------------- sheets (bottom panels) ---------------- */
 .sheet-scrim { background-color: var(--scrim); justify-content: flex-end; }
@@ -104,7 +124,7 @@ Label { white-space: normal; }
 .sheet-close:hover { background-color: var(--canvas); }
 .sheet-close:active { background-color: #D4C39F; }
 .sheet-text { font-size: 36px; color: var(--timber); margin-bottom: 18px; }
-.sheet-note { font-size: 30px; color: var(--ink-soft); -unity-font-style: italic; margin-top: 8px; }
+.sheet-note { font-size: 30px; color: var(--old-ink-soft); -unity-font-style: italic; margin-top: 8px; }
 
 /* a settings row: label left, control right */
 .row {
@@ -120,7 +140,7 @@ Label { white-space: normal; }
     font-size: 34px; -unity-font-style: bold;
 }
 .switch:hover { background-color: var(--canvas); }
-.switch--on, .switch--on:hover { background-color: var(--moss); color: var(--plaster); }
+.switch--on, .switch--on:hover { background-color: var(--old-moss); color: var(--plaster); }
 
 .sheet-btn {
     height: 144px; margin: 24px 0 0 0; border-width: 0; border-radius: 72px;
@@ -139,8 +159,8 @@ Label { white-space: normal; }
 .tool:hover { background-color: var(--canvas); }
 .tool:active { scale: 0.97 0.97; }
 .tool-name { font-size: 44px; -unity-font-style: bold; color: var(--timber); }
-.tool-level { font-size: 28px; color: var(--ink-soft); margin-top: 2px; }
-.tool-reason { font-size: 28px; color: var(--ink-soft); -unity-font-style: italic; white-space: normal; margin-top: 8px; }
+.tool-level { font-size: 28px; color: var(--old-ink-soft); margin-top: 2px; }
+.tool-reason { font-size: 28px; color: var(--old-ink-soft); -unity-font-style: italic; white-space: normal; margin-top: 8px; }
 .tool--off { opacity: 0.5; }
 .tool--armed { border-width: 4px; border-color: var(--timber); }
 
@@ -148,7 +168,7 @@ Label { white-space: normal; }
 .tray-head { font-size: 34px; -unity-font-style: bold; color: var(--timber); margin: 20px 0 10px 0; }
 .tray-charges { flex-direction: row; align-items: center; min-height: 100px; }
 .tray-charges-label { font-size: 38px; color: var(--timber); margin-right: 24px; }
-.tray-charges-text { font-size: 34px; color: var(--ink-soft); margin-left: 24px; }
+.tray-charges-text { font-size: 34px; color: var(--old-ink-soft); margin-left: 24px; }
 .tray-pips { flex-direction: row; align-items: center; }
 .tray-pip { width: 64px; height: 64px; margin-right: 14px; border-radius: 32px; overflow: hidden; background-color: rgba(106, 75, 54, 0.18); }
 .tray-pip--on { background-color: var(--timber); }
@@ -161,7 +181,7 @@ Label { white-space: normal; }
 /* ---------------- the person card and world tags (#39) ---------------- */
 .pc-sheet { padding-top: 32px; }
 .pc-head { margin-bottom: 12px; align-items: flex-start; }
-.pc-sub { font-size: 32px; color: var(--ink-soft); margin-top: 4px; }
+.pc-sub { font-size: 32px; color: var(--old-ink-soft); margin-top: 4px; }
 .pc-pin {
     height: 144px; min-width: 170px; padding: 0 30px; margin: 0 16px 0 12px;
     border-width: 0; border-radius: 72px;
@@ -177,8 +197,8 @@ Label { white-space: normal; }
     background-color: rgba(226, 211, 179, 0.6); border-radius: 28px; padding: 18px 26px; margin-bottom: 18px;
 }
 .pc-section { margin-bottom: 18px; }
-.pc-label { font-size: 28px; color: var(--ink-soft); -unity-font-style: bold; margin-bottom: 8px; }
-.pc-note { font-size: 30px; color: var(--ink-soft); margin-bottom: 6px; }
+.pc-label { font-size: 28px; color: var(--old-ink-soft); -unity-font-style: bold; margin-bottom: 8px; }
+.pc-note { font-size: 30px; color: var(--old-ink-soft); margin-bottom: 6px; }
 .pc-chips { flex-direction: row; flex-wrap: wrap; }
 .pc-chip {
     height: 112px; padding: 0 28px; margin: 0 14px 14px 0;
@@ -192,7 +212,7 @@ Label { white-space: normal; }
 .pc-toggle { flex-direction: row; margin-bottom: 10px; }
 .pc-tab {
     height: 100px; min-width: 170px; padding: 0 26px; margin: 0 12px 0 0;
-    border-width: 0; border-radius: 50px; background-color: transparent; color: var(--ink-soft);
+    border-width: 0; border-radius: 50px; background-color: transparent; color: var(--old-ink-soft);
     font-size: 30px; -unity-font-style: bold;
 }
 .pc-tab:hover { background-color: transparent; }
@@ -246,10 +266,10 @@ Label { white-space: normal; }
 .card-portrait {
     width: 112px; height: 112px; min-width: 112px; margin: 0 16px 0 0; padding: 0;
     border-width: 0; border-radius: 56px;
-    background-color: var(--moss); color: var(--plaster);
+    background-color: var(--old-moss); color: var(--plaster);
     font-size: 48px; -unity-font-style: bold; -unity-text-align: middle-center;
 }
-.card-portrait:hover { background-color: var(--moss); }
+.card-portrait:hover { background-color: var(--old-moss); }
 .card-portrait:active { background-color: #4E6B38; }
 Button.card-portrait { height: 144px; width: 144px; min-width: 144px; border-radius: 72px; }
 
@@ -261,20 +281,20 @@ Button.card-portrait { height: 144px; width: 144px; min-width: 144px; border-rad
 }
 .card--legend { border-top-width: 10px; border-color: var(--timber); }
 .card--wish { border-top-width: 10px; border-color: var(--thatch); }
-.card--relic { border-top-width: 10px; border-color: var(--moss); }
+.card--relic { border-top-width: 10px; border-color: var(--old-moss); }
 .card--eraready { border-top-width: 10px; border-color: var(--terracotta); }
 
 .card-dots { flex-direction: row; justify-content: center; height: 26px; align-items: center; margin-bottom: 6px; }
 .card-dot { width: 14px; height: 14px; border-radius: 7px; margin: 0 8px; background-color: rgba(106, 75, 54, 0.3); }
 .card-dot--on { width: 24px; height: 24px; border-radius: 12px; background-color: var(--timber); }
 
-.card-teaser { white-space: normal; font-size: 28px; color: var(--ink-soft); -unity-font-style: italic; margin-bottom: 2px; }
+.card-teaser { white-space: normal; font-size: 28px; color: var(--old-ink-soft); -unity-font-style: italic; margin-bottom: 2px; }
 .card-head { flex-direction: row; align-items: center; margin-bottom: 4px; }
 .card-headline { white-space: normal; font-size: 40px; color: var(--timber); -unity-font-style: bold; flex-shrink: 1; flex-grow: 1; margin-right: 12px; }
 .card-body { white-space: normal; font-size: 33px; color: var(--timber); margin-bottom: 4px; }
 .card-quote { white-space: normal; font-size: 30px; color: var(--timber); -unity-font-style: italic; margin-bottom: 4px; }
 .card-note { white-space: normal; font-size: 30px; color: var(--terracotta); -unity-font-style: bold; margin-bottom: 4px; }
-.card-footer { white-space: normal; font-size: 26px; color: var(--ink-soft); margin-bottom: 8px; }
+.card-footer { white-space: normal; font-size: 26px; color: var(--old-ink-soft); margin-bottom: 8px; }
 
 .card-also-head { flex-direction: row; align-items: center; }
 .card-also-line {
@@ -296,7 +316,7 @@ Button.card-portrait { height: 144px; width: 144px; min-width: 144px; border-rad
 .card-btn:hover { background-color: var(--canvas); }
 .card-btn:active { background-color: #D4C39F; }
 .card-btn:disabled { opacity: 0.45; }
-.card-btn--quiet { background-color: transparent; color: var(--ink-soft); min-width: 170px; }
+.card-btn--quiet { background-color: transparent; color: var(--old-ink-soft); min-width: 170px; }
 .card-btn--quiet:hover { background-color: transparent; }
 .card-btn--primary { background-color: var(--terracotta); color: var(--plaster); }
 .card-btn--primary:hover { background-color: var(--terracotta); }

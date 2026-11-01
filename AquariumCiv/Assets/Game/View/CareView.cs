@@ -538,7 +538,7 @@ namespace AquariumCiv.View
                 if (now - spotlessSince >= spotlessExitSeconds) hud.SetCleanMode(false);
             }
             else spotlessSince = -1f;
-            if (now - lastTouchTime >= idleExitSeconds) { hud.SetCleanMode(false); hud.Toast("Clean mode off.", 2f); }
+            if (now - lastTouchTime >= idleExitSeconds) hud.SetCleanMode(false); // no line: the button changes back (question 11)
         }
 
         // ---------------- sunlight and cheer ----------------
