@@ -287,7 +287,7 @@ namespace AquariumCiv.View
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (!a.moving && !hidden)
+            if (!a.moving && !a.enRoute && !hidden) // #197: a run-in stops on the path, it does not take a slot at a place
             {
                 target = SlotSpot(a, spot, out face);
                 target = Standable(target, spot, !InField(a.place));
