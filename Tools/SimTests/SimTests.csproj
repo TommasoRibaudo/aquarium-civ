@@ -62,6 +62,9 @@
     <Compile Include="../../AquariumCiv/Assets/Game/View/Shaping/Core/**/*.cs" />
     <!-- #79: the time-lapse screen model (timeline layout, pins, drag/snap, caption, Now, snapshot data) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/TimeLapse/Core/**/*.cs" />
+    <!-- #113/#146/#162/#175: the light, lamp, glass-night, camera-reach and near-glass-fade logic and its tests -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Light/Core/**/*.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LightTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->
