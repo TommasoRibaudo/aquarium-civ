@@ -114,7 +114,8 @@ namespace AquariumCiv.View
             babyOnBack = onBack;
             var (pos, _) = PegDoll.SlotPose(onBack ? PropSlot.Back : PropSlot.Arms);
             // Arms: held across the chest, the head at the crook. Back: upright in its wrap, looking back over the shoulder.
-            baby.SetLocalPositionAndRotation(pos * scale, onBack ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.Euler(0f, 0f, -68f));
+            var nudge = onBack ? new Vector3(0f, 0.03f, 0.022f) : new Vector3(0f, 0.008f, -0.018f); // the head over the shoulder; out in front of the chest
+            baby.SetLocalPositionAndRotation((pos + nudge) * scale, onBack ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.Euler(0f, 0f, -68f));
             baby.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
         }
 

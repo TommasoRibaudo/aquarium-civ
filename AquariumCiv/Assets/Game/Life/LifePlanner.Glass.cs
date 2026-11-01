@@ -70,7 +70,7 @@ namespace AquariumCiv.Life
             Sync();
             EnsureDay(at.day);
             if (!force && gatheredDay == at.day) return 0;
-            float end = EndAfter(at, GatheringSeconds);
+            float end = EndAfter(at, most > 0 ? DebugGatheringSeconds : GatheringSeconds); // a bigger group comes from further
             var st = new Staging { glass = GlassPlace };
             var glass = GlassPlace;
             var cands = new List<(Person p, float len)>();
@@ -270,7 +270,7 @@ namespace AquariumCiv.Life
 
         /// <summary>Never more than this many at the glass, so work goes on (§3).</summary>
         public const int MaxAtGlass = 6;
-        const float GatheringSeconds = 18f;
+        const float GatheringSeconds = 18f, DebugGatheringSeconds = 44f;
 
         int belief = 1;
         bool beliefLater;

@@ -135,6 +135,8 @@ namespace AquariumCiv.View
             var cam = Camera.main;
             if (pv == null || cam == null || !pv.TryGetDollTop(PersonRef.Notable(id), out var w)) return false;
             var v = cam.WorldToViewportPoint(w);
+            var box = cam.GetComponent<BoxCamera>();
+            if (box != null && box.zoom > BoxCamera.NudgeZoom + 0.02f) return false; // in frame at the whole-box view, but a dozen pixels tall: not easy to spot
             return v.z > 0f && v.x > 0.08f && v.x < 0.92f && v.y > 0.3f && v.y < 0.92f; // over the tools' lane isn't seen
         }
 

@@ -144,13 +144,14 @@ namespace AquariumCiv.View
 
         static Mesh babyMesh;
 
-        /// <summary>#192: a swaddled baby, shared by every carrier: a wrapped body and a head, the middle at the origin, about a third of a doll.</summary>
+        /// <summary>#192: a swaddled baby, shared by every carrier: a wrapped body and a head, the middle at the origin, about a third of a doll, a little big for one so it reads.</summary>
         public static Mesh BabyMesh()
         {
             if (babyMesh != null) return babyMesh;
             var mb = new MeshBuilder(192) { jitter = 0.01f };
-            mb.Prism(new Vector3(0f, -0.03f, 0f), 0.02f, 0.024f, 0.05f, 6, Palette.Plaster, null, true, true, Palette.Plaster);
-            mb.Ico(new Vector3(0f, 0.034f, 0f), 0.022f, Vector3.one, new Color(0.87f, 0.68f, 0.52f), 0.05f);
+            var wrap = Palette.Flowers[2]; // not a tunic's colour and not a stone's: it has to read at phone size on any carrier
+            mb.Prism(new Vector3(0f, -0.042f, 0f), 0.026f, 0.033f, 0.068f, 7, wrap, null, true, true, wrap);
+            mb.Ico(new Vector3(0f, 0.044f, 0f), 0.03f, Vector3.one, Palette.Skins[0], 0.05f);
             babyMesh = mb.ToMesh("DollBaby");
             babyMesh.hideFlags = HideFlags.DontSave;
             return babyMesh;
