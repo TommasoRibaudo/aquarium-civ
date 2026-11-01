@@ -12,6 +12,10 @@ namespace AquariumCiv.View.ShowMe
         public float minGapSeconds = 20f;
         /// <summary>Real seconds of quiet before the first bubble of a session (user 2026-10-30: the player settles in first).</summary>
         public float warmUpSeconds = 8f;
+        /// <summary>Real seconds before the same want line (#181) is said again.</summary>
+        public float wantRepeatSeconds = 300f;
+        /// <summary>Ordinary bubbles that come between two want lines: only some of the talk is about the town.</summary>
+        public int bubblesBetweenWants = 2;
         /// <summary>Real seconds before the same person speaks again.</summary>
         public float speakerGapSeconds = 90f;
         /// <summary>A moment's line (the glass, rain, a return) may come this soon after the last bubble.</summary>
@@ -34,7 +38,15 @@ namespace AquariumCiv.View.ShowMe
     {
         readonly SimCore sim;
         public readonly BubbleRules rules;
+        /// <summary>Keys said, kept in the box's own state (<see cref="SimState.saidBubbles"/>) so a new session doesn't repeat them (#120).</summary>
         readonly HashSet<string> said = new HashSet<string>();
+        /// <summary>How many lines of memory a box keeps (oldest forgotten first).</summary>
+        public const int SaidKept = 400;
+        /// <summary>Want lines (what the town wants, #181) can come back, but not the same one soon, and only every few bubbles.</summary>
+        readonly Dictionary<string, double> wantAt = new Dictionary<string, double>();
+        readonly Dictionary<string, int> wantTold = new Dictionary<string, int>();
+        int sinceWant;
+        double clock;
         readonly Dictionary<int, double> lastBy = new Dictionary<int, double>();
         double last = double.NegativeInfinity, started = double.NaN;
 
@@ -42,13 +54,14 @@ namespace AquariumCiv.View.ShowMe
         {
             this.sim = sim ?? throw new ArgumentNullException(nameof(sim));
             this.rules = rules ?? new BubbleRules();
+            foreach (var k in sim.State.saidBubbles) said.Add(k);
         }
 
         /// <summary>Keys said this session (never said again).</summary>
         public IReadOnlyCollection<string> Said => said;
 
         /// <summary>Forget what was said (a new session, the debug panel).</summary>
-        public void Reset() { said.Clear(); lastBy.Clear(); last = double.NegativeInfinity; started = double.NaN; }
+        public void Reset() { said.Clear(); sim.State.saidBubbles.Clear(); wantAt.Clear(); wantTold.Clear(); sinceWant = 0; lastBy.Clear(); last = double.NegativeInfinity; started = double.NaN; }
 
         /// <summary>The player came back to the box: a fresh warm-up before the next bubble (what was said stays said).</summary>
         public void WarmUp() => started = double.NaN;
@@ -63,6 +76,7 @@ namespace AquariumCiv.View.ShowMe
         public WorldBubble Next(double now, string moment = null, ICollection<int> visible = null, bool quiet = false)
         {
             if (quiet) return null;
+            clock = now;
             if (double.IsNaN(started)) started = now; // the session starts with the first moment the people may speak
             if (now - started < rules.warmUpSeconds) return null;
             double gap = now - last;
@@ -82,15 +96,45 @@ namespace AquariumCiv.View.ShowMe
         /// what this stage may say). Null when everything has been said.</summary>
         public WorldBubble Force(double now, string moment = null, ICollection<int> visible = null)
         {
+            clock = now;
             var b = Candidates(moment, visible).FirstOrDefault();
             if (b != null) Mark(b, now);
             return b;
         }
 
+        /// <summary>Debug panel: say the want line for one case now (#181), ignoring the gaps. Null when the case isn't true now
+        /// (no hungry town, no building short of wood...).</summary>
+        public WorldBubble ForceWant(WantCase c, double now)
+        {
+            clock = now;
+            var l = PeopleVoice.WantLineFor(sim, c, wantTold.TryGetValue(c.ToString(), out var n) ? n : 0);
+            if (l == null) return null;
+            var b = MakeWant(l);
+            Mark(b, now);
+            return b;
+        }
+
+        void Remember(string key)
+        {
+            if (!said.Add(key)) return;
+            var kept = sim.State.saidBubbles;
+            kept.Add(key);
+            while (kept.Count > SaidKept) { said.Remove(kept[0]); kept.RemoveAt(0); }
+        }
+
         void Mark(WorldBubble b, double now)
         {
-            said.Add(b.key);
-            if (b.entryId >= 0) { said.Add($"entry:{b.entryId}:q"); said.Add($"entry:{b.entryId}:v"); } // one bubble a story
+            if (b.source == BubbleSource.Want)
+            {
+                wantAt[b.key] = now; sinceWant = 0;
+                wantTold[b.wantCase.ToString()] = (wantTold.TryGetValue(b.wantCase.ToString(), out var n) ? n : 0) + 1;
+            }
+            else
+            {
+                Remember(b.key);
+                sinceWant++;
+            }
+            if (b.entryId >= 0) { Remember($"entry:{b.entryId}:q"); Remember($"entry:{b.entryId}:v"); } // one bubble a story
             if (b.speakerId >= 0) lastBy[b.speakerId] = now;
             last = now;
         }
@@ -102,6 +146,7 @@ namespace AquariumCiv.View.ShowMe
             foreach (var b in All(moment))
             {
                 if (b == null || said.Contains(b.key) || !seen.Add(b.key)) continue;
+                if (b.source == BubbleSource.Want && wantAt.TryGetValue(b.key, out var wt) && clock - wt < rules.wantRepeatSeconds) continue;
                 if (b.speakerId >= 0 && !Alive(b.speakerId)) continue;
                 if (b.speakerId >= 0 && visible != null && !visible.Contains(b.speakerId)) continue;
                 if (!PeopleVoice.Allowed(b.text, sim)) continue;
@@ -118,6 +163,9 @@ namespace AquariumCiv.View.ShowMe
                 var q = sim.Quote(moment);
                 if (q != null) yield return Make($"bank:{q.lineNo}", q.text, q.speakerId, BubbleSource.Moment, -1, q.lineNo);
             }
+            // What the town wants comes round every few bubbles, ahead of the stories; otherwise it waits behind them.
+            bool wantsFirst = sinceWant >= rules.bubblesBetweenWants;
+            if (wantsFirst) foreach (var w in Wants()) yield return w;
             // 2. Recent stories, newest first: their quote, else the words of the one it's about.
             var chron = sim.State.chronicle;
             long from = sim.State.month - rules.storyMonths;
@@ -134,9 +182,30 @@ namespace AquariumCiv.View.ShowMe
             // 3. The bank's story lines in the speaker's own words.
             foreach (var q in PeopleVoice.BankLinesNow(sim))
                 yield return Make($"bank:{q.lineNo}:me", q.text, q.speakerId, BubbleSource.BankVoice, -1, q.lineNo);
+            foreach (var (tl, who) in PeopleVoice.TraitLinesNow(sim))
+                yield return Make($"voice:{tl.id}", tl.text, who, BubbleSource.TraitVoice, -1, 0);
+            if (!wantsFirst) foreach (var w in Wants()) yield return w;
             // 4. Any-time lines of the bank.
             var any = sim.Quote(PeopleMoment.Any);
             if (any != null) yield return Make($"bank:{any.lineNo}", any.text, any.speakerId, BubbleSource.Ambient, -1, any.lineNo);
+        }
+
+        IEnumerable<WorldBubble> Wants()
+        {
+            foreach (var l in PeopleVoice.WantLines(sim, 0))
+            {
+                // The wording turns with each telling; the same one isn't picked twice running.
+                int told = wantTold.TryGetValue(l.kind.ToString(), out var n) ? n : 0;
+                var l2 = told == 0 ? l : PeopleVoice.WantLines(sim, told).FirstOrDefault(x => x.kind == l.kind) ?? l;
+                yield return MakeWant(l2);
+            }
+        }
+
+        WorldBubble MakeWant(WantLine l)
+        {
+            var b = Make($"want:{l.kind}:{l.building}:{l.variant}", l.text, -1, BubbleSource.Want, -1, 0);
+            b.wantCase = l.kind;
+            return b;
         }
 
         static WorldBubble Make(string key, string text, int speakerId, BubbleSource src, int entryId, int lineNo) => new WorldBubble

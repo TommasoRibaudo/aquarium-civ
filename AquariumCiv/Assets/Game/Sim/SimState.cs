@@ -180,6 +180,24 @@ namespace AquariumCiv.Sim
     /// <summary>The three eras of a box (game definition §8). Saved as an int, so the order is fixed.</summary>
     public enum Era { Camp, Village, Town }
 
+    /// <summary>What stops the town's next building (#181).</summary>
+    public enum WantStop { None, Wood, People, Full, Nothing }
+
+    /// <summary>The answer to "what does the town want next, and what's stopping it?" (SimCore.NextWant): read-only.</summary>
+    public sealed class TownWantInfo
+    {
+        /// <summary>The next building (a <see cref="BuildingType"/>), or null when none is wanted.</summary>
+        public string building;
+        public WantStop stop;
+        /// <summary>For <see cref="WantStop.People"/>: how many people it takes.</summary>
+        public int needPop;
+        public int pop, housing;
+        public float wood, cost, food;
+        /// <summary>The people fill the houses (a hut is next, or already on its way).</summary>
+        public bool crowded;
+        public bool foodLow;
+    }
+
     public static class BuildingType
     {
         public const string Camp = "Camp", Hut = "Hut", Farm = "Farm", Lumbermill = "Lumbermill", Well = "Well",
@@ -330,6 +348,9 @@ namespace AquariumCiv.Sim
         /// <summary>Story events and nudge answers draw only from here, so they never shift the economy's dice.</summary>
         public SimRandom storyRng;
         public List<string> storyFlags = new();
+        /// <summary>Keys of the bubbles the people have said, oldest first, kept with the box so a line isn't repeated in the next
+        /// session (#120). View bookkeeping only: nothing in the sim reads it, no dice.</summary>
+        public List<string> saidBubbles = new();
         public string settlementName = "";
         public List<YearSnapshot> years = new();
         public int pinnedNotableId = -1;
