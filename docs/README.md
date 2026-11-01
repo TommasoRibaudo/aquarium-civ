@@ -21,6 +21,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | 05 | [research/05-github-cicd.md](research/05-github-cicd.md) | GameCI builds, Play/TestFlight deploy, LFS, costs |
 | 06 | [research/06-assets.md](research/06-assets.md) | Asset kits (KayKit/Synty/Quaternius/Kenney), crowd animation, AI asset tools |
 | 11 | [research/11-music-playback.md](research/11-music-playback.md) | When and how background music starts and pauses (Minecraft-style sparse music), proposal for the game |
+| 12 | [research/12-wordless-communication.md](research/12-wordless-communication.md) | How the people talk without words: symbol bubbles, babble, gesture; recommendation for #144 and the knock `!` (#161) |
+| 13 | [research/13-lighting.md](research/13-lighting.md) | Lighting today, a real night and dusk under URP on a phone, glass/frost/UI at night; recommendation and variants for #175 and #113 |
 
 ## Design documents
 | File | Topic |
