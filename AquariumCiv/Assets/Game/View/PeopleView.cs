@@ -80,6 +80,8 @@ namespace AquariumCiv.View
         /// <summary>Pieces standing on open ground (a well by the fire): rings and spreads keep off them.</summary>
         readonly List<(Vector2 c, float r)> blockers = new();
         const float Personal = 0.075f; // closest two standing dolls get, centre to centre
+        /// <summary>#150: past the pile's edge, what rings keep off it; and past that edge, where someone stands to set a load down.</summary>
+        const float StashBlockMargin = 0.02f, StashStandOff = 0.04f;
         readonly Dictionary<int, Lot> lotOfBuilding = new();
         readonly Dictionary<int, Notable> notables = new();
         readonly HashSet<int> seen = new();
@@ -198,6 +200,7 @@ namespace AquariumCiv.View
             foreach (var pc in Box.layout.pieces)
                 if (pc.kind != PieceKind.Fire && pc.kind != PieceKind.LogSeat)
                     blockers.Add((pc.Pos, Mathf.Min(pc.w, pc.d) * 0.5f + 0.05f));
+            if (planner.TryGetStash(out var pile)) blockers.Add((new Vector2(pile.x, pile.z), CampStash.PileExtent + StashBlockMargin)); // #150
             var st = sim.Settlement;
             int lots = st != null ? st.Lots.Count : 0;
             if (sim.State.month != lotsMonth || lots != lotsCount)
@@ -381,6 +384,18 @@ namespace AquariumCiv.View
                     return spot + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
                 }
             }
+            if (a.place.kind == PlaceKind.Stash && planner.Positions.TryGetPosition(CampStash.Pile, out float pileX, out float pileZ))
+            {
+                // #150: a fan on the fire's side of the pile, turning round it as more come, facing it: a load is set down, not walked over.
+                var pile = new Vector2(pileX, pileZ);
+                var toFire = spot - pile;
+                float start = toFire.sqrMagnitude > 1e-6f ? Mathf.Atan2(toFire.y, toFire.x) : 0f;
+                int row = a.slot / StashFan, k = a.slot % StashFan;
+                float r = CampStash.PileExtent + StashStandOff + row * SlotSpots.Gap;
+                float ang = start + ((k + 1) / 2) * ((k & 1) == 1 ? 1f : -1f) * SlotSpots.Gap / r;
+                face = pile;
+                return pile + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
+            }
             if (a.place.IsBuilding && lotOfBuilding.TryGetValue(a.place.buildingId, out var lot) && !lot.open &&
                 lot.kind != LotKind.Farm && lot.kind != LotKind.Pasture && lot.kind != LotKind.Orchard)
             {
@@ -406,6 +421,9 @@ namespace AquariumCiv.View
             face = spot;
             return spot + new Vector2(Mathf.Cos(ga), Mathf.Sin(ga)) * spread * Mathf.Sqrt(a.slot);
         }
+
+        /// <summary>#150: carriers in one row round the pile before the next stands behind it.</summary>
+        const int StashFan = 7;
 
         static bool InField(Place p) => p.kind is PlaceKind.Field or PlaceKind.Pasture;
 
@@ -549,6 +567,7 @@ namespace AquariumCiv.View
                 LifeProp.Sheaf => PropKind.Sheaf,
                 LifeProp.Lantern => PropKind.Lantern,
                 LifeProp.Buckets => PropKind.Bucket,
+                LifeProp.EmptyBucket => PropKind.BucketEmpty,
                 LifeProp.Sack or LifeProp.SeedBag => PropKind.Sack,
                 LifeProp.Block => PropKind.Block,
                 LifeProp.Barrel => PropKind.Barrel,
@@ -563,7 +582,7 @@ namespace AquariumCiv.View
             };
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
             if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
-            else if (kind == PropKind.Bucket) slot = PropSlot.Hand;
+            else if (kind is PropKind.Bucket or PropKind.BucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             else if (kind == PropKind.Slate && activity == ActivityKind.WriteDown) slot = PropSlot.Arms; // hugged, the hand writes
@@ -611,6 +630,14 @@ namespace AquariumCiv.View
             return true;
         }
 
+        /// <summary>#148: everyone in the crowd who has a doll in the box now.</summary>
+        public void CrowdShown(List<PersonRef> into)
+        {
+            into.Clear();
+            foreach (var a in acts)
+                if (a.who.IsCrowd && dolls.TryGetValue(a.who.Key, out var d) && d.placed && d.view != null && d.view.gameObject.activeInHierarchy) into.Add(a.who);
+        }
+
         /// <summary>#39: the notables who have a doll in the box now (ids).</summary>
         public void NotablesShown(List<int> into)
         {
@@ -622,7 +649,7 @@ namespace AquariumCiv.View
         // ---------------- reports and debug ----------------
         string Label(PersonRef who, Notable n, string role)
         {
-            if (n == null) return "Crowd " + who.crowdIndex;
+            if (n == null) return plannerSim?.CrowdName(who.crowdIndex) ?? "Crowd " + who.crowdIndex; // #148
             return n.FullName + (role != null ? " (" + role + ")" : "");
         }
 
@@ -635,7 +662,7 @@ namespace AquariumCiv.View
             string role = n != null && sim != null ? sim.RoleOf(n) : null;
             string job = planner != null ? planner.JobOf(a.who) : null;
             var sb = new StringBuilder();
-            sb.Append(n != null ? n.FullName : "crowd " + a.who.crowdIndex);
+            sb.Append(n != null ? n.FullName : sim?.CrowdName(a.who.crowdIndex) ?? "crowd " + a.who.crowdIndex);
             var tags = new List<string>();
             if (role != null) tags.Add(role);
             if (!string.IsNullOrEmpty(job)) tags.Add(job);

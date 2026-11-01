@@ -6,7 +6,9 @@ namespace AquariumCiv.View
     public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear, Rod, Hammer, Broom, Sack, Stick, Bucket, Block, Barrel,
         // #92: the relics and the glass (a chunk of the Sky Crumb, the Festival Mask worn on the face, the Keeper Doll, the Left
         // Sandal, the Lens's folded tripod, the brass Lens, the scholar's slate, the measuring rod)
-        Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate, MeasuringRod }
+        Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate, MeasuringRod,
+        // #152: a bucket on its way to the water
+        BucketEmpty }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
@@ -260,8 +262,9 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, -0.06f, 0), new Vector3(0.026f, 0.04f, 0.008f), Palette.WoodLight);
                     break;
                 case PropKind.Bucket:
-                    // A wooden bucket (0.05 tall) with an Iron hoop and a handle the hand holds.
-                    mb.Prism(new Vector3(0, -0.06f, 0), 0.026f, 0.032f, 0.05f, 8, Palette.WoodLight, topCol: Palette.Water);
+                case PropKind.BucketEmpty:
+                    // A wooden bucket (0.05 tall) with an Iron hoop and a handle the hand holds; water in it only once it's been drawn (#152).
+                    mb.Prism(new Vector3(0, -0.06f, 0), 0.026f, 0.032f, 0.05f, 8, Palette.WoodLight, topCol: kind == PropKind.Bucket ? Palette.Water : Palette.Door);
                     mb.Prism(new Vector3(0, -0.04f, 0), 0.031f, 0.032f, 0.008f, 8, Palette.Iron, capTop: false);
                     mb.Box(new Vector3(0, -0.005f, 0), new Vector3(0.06f, 0.006f, 0.006f), Palette.Iron);
                     break;

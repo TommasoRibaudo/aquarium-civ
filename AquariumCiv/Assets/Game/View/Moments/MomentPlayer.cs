@@ -567,7 +567,7 @@ namespace AquariumCiv.View
         public static bool PromptsBlocked()
         {
             var card = PersonCardView.Instance;
-            if (card != null && card.IsOpen) return true;
+            if (card != null && card.AnyOpen) return true;
             var stack = CardStackView.Instance;
             if (stack != null && stack.Showing) return true; // the peek holds the same lane, the stack covers it
             var recall = RecallPromptView.Instance;
