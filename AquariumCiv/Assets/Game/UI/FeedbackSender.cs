@@ -312,7 +312,7 @@ namespace AquariumCiv.GameUI
         {
             float k = Mathf.Min(1f, side / (float)Mathf.Max(tex.width, tex.height));
             int w = Mathf.Max(1, Mathf.RoundToInt(tex.width * k)), h = Mathf.Max(1, Mathf.RoundToInt(tex.height * k));
-            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32);
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB); // the default here is linear: the shot came out washed out
             Graphics.Blit(tex, rt);
             var prev = RenderTexture.active;
             RenderTexture.active = rt;
