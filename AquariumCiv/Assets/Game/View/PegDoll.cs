@@ -142,6 +142,20 @@ namespace AquariumCiv.View
         // ---------------- props ----------------
         static readonly Dictionary<PropKind, Mesh> propCache = new();
 
+        static Mesh babyMesh;
+
+        /// <summary>#192: a swaddled baby, shared by every carrier: a wrapped body and a head, the middle at the origin, about a third of a doll.</summary>
+        public static Mesh BabyMesh()
+        {
+            if (babyMesh != null) return babyMesh;
+            var mb = new MeshBuilder(192) { jitter = 0.01f };
+            mb.Prism(new Vector3(0f, -0.03f, 0f), 0.02f, 0.024f, 0.05f, 6, Palette.Plaster, null, true, true, Palette.Plaster);
+            mb.Ico(new Vector3(0f, 0.034f, 0f), 0.022f, Vector3.one, new Color(0.87f, 0.68f, 0.52f), 0.05f);
+            babyMesh = mb.ToMesh("DollBaby");
+            babyMesh.hideFlags = HideFlags.DontSave;
+            return babyMesh;
+        }
+
         /// <summary>A shared prop mesh (palette colours only), built once. The grip is at the origin.</summary>
         public static Mesh PropMesh(PropKind kind)
         {

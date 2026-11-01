@@ -350,11 +350,11 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Debug: a gathering at the glass now (stage 1: a step back; later: the kids look for you).</summary>
-        public static string DebugGather()
+        public static string DebugGather(int most = 0)
         {
             var pv = PeopleView.Find();
             if (pv == null || pv.Planner == null) return "no people";
-            int n = pv.Planner.GatherAtGlass(pv.Now, true);
+            int n = pv.Planner.GatherAtGlass(pv.Now, true, most);
             return n == 0 ? "nobody near enough to come" : $"{n} at the glass";
         }
 

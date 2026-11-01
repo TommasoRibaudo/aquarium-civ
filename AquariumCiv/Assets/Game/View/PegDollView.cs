@@ -24,6 +24,9 @@ namespace AquariumCiv.View
         Material material;
         /// <summary>The hand prop's turn in the fist as built (upright), and whether it's now turned out along the arm.</summary>
         Quaternion propRest = Quaternion.identity;
+        /// <summary>#192: the baby this doll carries: a part of the doll, not a walker, shown in the arms or on the back.</summary>
+        Transform baby;
+        bool babyOnBack;
         bool extended;
         static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
@@ -99,6 +102,20 @@ namespace AquariumCiv.View
             if (kind == PropKind.Bundle && slot == PropSlot.Back) propExtra = Part(transform, "ChestStrap", StrapMesh(scale < 1f), material, Vector3.zero, Quaternion.identity);
             // Something on the head or shoulder is held there by a hand (a mask is worn, not held).
             if (slot == PropSlot.Head && kind != PropKind.Mask) armR.localRotation = Quaternion.Euler(0, 0, 160f);
+        }
+
+        /// <summary>#192: a small baby on this doll, or none. Cheap to call every frame.</summary>
+        public void SetBaby(bool on, bool onBack)
+        {
+            if (!on) { if (baby != null && baby.gameObject.activeSelf) baby.gameObject.SetActive(false); return; }
+            if (baby == null) { baby = Part(transform, "Baby", PegDoll.BabyMesh(), material, Vector3.zero, Quaternion.identity); babyOnBack = !onBack; }
+            if (!baby.gameObject.activeSelf) baby.gameObject.SetActive(true);
+            if (babyOnBack == onBack) return;
+            babyOnBack = onBack;
+            var (pos, _) = PegDoll.SlotPose(onBack ? PropSlot.Back : PropSlot.Arms);
+            // Arms: held across the chest, the head at the crook. Back: upright in its wrap, looking back over the shoulder.
+            baby.SetLocalPositionAndRotation(pos * scale, onBack ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.Euler(0f, 0f, -68f));
+            baby.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
         }
 
         /// <summary>Turns a hand tool out along the arm (a strike: the axe head ends up in front, the rod out over the water)

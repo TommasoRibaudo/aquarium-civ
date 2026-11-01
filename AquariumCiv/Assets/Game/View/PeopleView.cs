@@ -56,6 +56,10 @@ namespace AquariumCiv.View
             public Place slotPlace;
             public int slot = -1;
             public Vector2 lastSpot;
+            /// <summary>#189: the planned point (<see cref="pos"/>) stays the plan's; the doll is drawn at <see cref="drawn"/>, eased aside
+            /// by <see cref="offset"/> and kept off the solids. <see cref="heading"/> is the way the plan walks, its index this frame's in the crowd.</summary>
+            public Vector2 drawn, offset, heading;
+            public int crowdIndex = -1;
         }
 
         BoxView box;
@@ -79,6 +83,13 @@ namespace AquariumCiv.View
         readonly List<Vector2> claimed = new();
         /// <summary>Pieces standing on open ground (a well by the fire): rings and spreads keep off them.</summary>
         readonly List<(Vector2 c, float r)> blockers = new();
+        /// <summary>#189: who stands where this frame, and what nobody walks through (the fire, the stash pile).</summary>
+        readonly CrowdAvoid crowd = new();
+        readonly List<Solid> solids = new();
+        /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
+        const float DrawnSlack = 0.35f;
+        /// <summary>#189: off, walkers go where the plan says (debug panel; the perf test compares the two).</summary>
+        public static bool AvoidCrowds = true;
         const float Personal = 0.075f; // closest two standing dolls get, centre to centre
         /// <summary>#150: past the pile's edge, what rings keep off it; and past that edge, where someone stands to set a load down.</summary>
         const float StashBlockMargin = 0.02f, StashStandOff = 0.04f;
@@ -197,10 +208,18 @@ namespace AquariumCiv.View
             notables.Clear();
             foreach (var n in sim.State.notables) if (n.alive) notables[n.id] = n;
             blockers.Clear();
+            solids.Clear();
             foreach (var pc in Box.layout.pieces)
+            {
+                if (pc.kind == PieceKind.Fire) solids.Add(new Solid(pc.Pos.x, pc.Pos.y, CrowdAvoid.FireRadius));
                 if (pc.kind != PieceKind.Fire && pc.kind != PieceKind.LogSeat)
                     blockers.Add((pc.Pos, Mathf.Min(pc.w, pc.d) * 0.5f + 0.05f));
-            if (planner.TryGetStash(out var pile)) blockers.Add((new Vector2(pile.x, pile.z), CampStash.PileExtent + StashBlockMargin)); // #150
+            }
+            if (planner.TryGetStash(out var pile))
+            {
+                blockers.Add((new Vector2(pile.x, pile.z), CampStash.PileExtent + StashBlockMargin)); // #150
+                solids.Add(new Solid(pile.x, pile.z, CampStash.PileExtent));
+            }
             var st = sim.Settlement;
             int lots = st != null ? st.Lots.Count : 0;
             if (sim.State.month != lotsMonth || lots != lotsCount)
@@ -225,6 +244,12 @@ namespace AquariumCiv.View
             float time = Application.isPlaying ? Time.time : Time.realtimeSinceStartup;
             seen.Clear();
             claimed.Clear();
+            // #189: everyone where they were drawn last frame, for the walkers to keep clear of.
+            crowd.Clear();
+            for (int i = 0; i < acts.Count; i++)
+                if (dolls.TryGetValue(acts[i].who.Key, out var c))
+                    c.crowdIndex = AvoidCrowds && c.placed && !c.wasHidden ? crowd.Add(acts[i].who.Key, c.drawn.x, c.drawn.y, acts[i].moving, c.heading.x, c.heading.y) : -1;
+            crowd.Build();
             for (int i = 0; i < acts.Count; i++)
             {
                 var a = acts[i];
@@ -257,7 +282,7 @@ namespace AquariumCiv.View
         {
             var v = d.view;
             var land = Box.land;
-            bool hidden = stage == LifeStage.Baby || a.kind == ActivityKind.None; // babies stay indoors (§4 "Everyone")
+            bool hidden = stage == LifeStage.Baby || a.kind == ActivityKind.None; // babies are never walkers: a carer's doll shows them (#192, §4 "Everyone")
             if (!planner.PositionAt(a.who, now, out float x, out float z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             var spot = new Vector2(x, z);
             var target = spot;
@@ -275,7 +300,7 @@ namespace AquariumCiv.View
                 if (!a.moving) face = wet; // the fisher faces the water
             }
             if (!a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
-            if (!a.moving && a.facesGlass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave, sitting at the window
+            if (!a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
             target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
@@ -290,7 +315,8 @@ namespace AquariumCiv.View
             float targetSpeed = dt > 0f && d.placed ? (spot - d.lastSpot).magnitude / dt : 0f;
             if (targetSpeed > pace * 3f) targetSpeed = pace;
             d.lastSpot = spot;
-            if (!d.placed || d.wasHidden || dt <= 0f || snapAll) d.pos = target;
+            bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll;
+            if (jump) d.pos = target;
             else
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
@@ -301,6 +327,8 @@ namespace AquariumCiv.View
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
             d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
             d.placed = true;
+            var drawnWas = d.drawn;
+            StepDrawn(d, a, jump, hidden, prev, inst, dt);
 
             bool walking = d.speed > 0.04f;
             var style = DollMotion.StyleOf(a.kind);
@@ -313,7 +341,7 @@ namespace AquariumCiv.View
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
             float want = d.yaw;
-            if (walking && d.pos != prev) want = Yaw(prev, d.pos);
+            if (walking && d.drawn != drawnWas) want = Yaw(drawnWas, d.drawn);
             else if (!walking)
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
@@ -329,17 +357,38 @@ namespace AquariumCiv.View
             // #92: a story told once (the lens look, the tap-back's knocks) runs on real seconds into the activity.
             float since = a.end > a.start ? LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)) : 0f;
             bool holds = kind != PropKind.None && kind != PropKind.Mask; // a mask is worn, the hands stay free
-            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, slot, holds, d.speed, a.progress, since, a.count);
+            // #192: a baby in the arms holds them the way a load does; on the back it rides, and the hands stay on the work.
+            bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !holds;
+            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count);
 
             v.gameObject.SetActive(!pose.hidden);
             if (pose.hidden) return;
+            v.SetBaby(!a.carrying.IsNone, a.carryOnBack);
             float s = v.scale;
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
-            var ground = land.OnGround(d.pos);
+            var ground = land.OnGround(d.drawn);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(1f, pose.squash, 1f);
             v.ApplyArms(pose);
+        }
+
+        /// <summary>#189: from the planned point to the drawn one: the walker's offset eases toward what the crowd presses (it fades when
+        /// nothing does), a point in a solid slides out to its rim, and the doll follows at a walking pace, so a change of side is a walk.</summary>
+        void StepDrawn(Doll d, in PersonActivity a, bool jump, bool hidden, Vector2 prev, float inst, float dt)
+        {
+            d.heading = a.moving ? d.pos - prev : Vector2.zero;
+            float px = 0f, pz = 0f;
+            if (d.crowdIndex >= 0 && !jump && !hidden) crowd.Push(d.crowdIndex, out px, out pz);
+            if (jump || hidden) d.offset = Vector2.zero;
+            else CrowdAvoid.Ease(ref d.offset.x, ref d.offset.y, px, pz, dt);
+            var wanted = d.pos + d.offset;
+            if (Box.land.IsWater(wanted.x, wanted.y)) wanted = d.pos; // eased aside, never into the pond
+            if (hidden) { d.drawn = wanted; return; }
+            CrowdAvoid.KeepOut(ref wanted.x, ref wanted.y, solids, d.heading.x, d.heading.y);
+            if (jump) { d.drawn = wanted; return; }
+            d.drawn = Vector2.MoveTowards(d.drawn, wanted, (inst + DrawnSlack) * dt);
+            CrowdAvoid.KeepOut(ref d.drawn.x, ref d.drawn.y, solids, d.heading.x, d.heading.y);
         }
 
         /// <summary>Where in the place this person stands (rule 6: one doll per slot) and what they face there.</summary>
@@ -353,15 +402,16 @@ namespace AquariumCiv.View
             {
                 case PlaceKind.Glass:
                 {
-                    // #92: a row along the glass, facing it; the wary (stage 1) keep a step back, the kids press right up.
+                    // #190: a loose group, some closer, some behind, a few turned to each other; the wary (stage 1) keep a step
+                    // back, the kids press right up. The group's seed lasts the day, so the spots stay put while they stand there.
                     var n = GlassNormal(planner.GlassSide);
                     var along = new Vector2(-n.y, n.x);
-                    int k = a.slot;
-                    float off = k == 0 ? 0f : ((k & 1) == 1 ? 1f : -1f) * ((k + 1) / 2) * 0.13f;
                     float back = a.kind is ActivityKind.GazeWary or ActivityKind.LookUpWary or ActivityKind.WaveWary ? 0.16f
                         : a.kind is ActivityKind.SitOut ? 0.06f : -0.09f; // the kids' noses on the glass
-                    var p = spot + along * off - n * back;
-                    face = p + n;
+                    var stand = GlassSpots.Spot(unchecked(a.place.GetHashCode() * 31 + (int)now.day), a.slot, a.who.Key);
+                    var p = spot + along * stand.along - n * (back + stand.depth);
+                    float cos = Mathf.Cos(stand.turn), sin = Mathf.Sin(stand.turn);
+                    face = p + n * cos + along * sin;
                     return p;
                 }
                 case PlaceKind.Relic:
@@ -600,12 +650,23 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>Debug (#192): a baby for the first grown notable, and who has them today. Their hours are in the planner's Describe.</summary>
+        public static string DebugBaby()
+        {
+            var pv = Find();
+            var sim = pv != null && pv.Source != null ? pv.Source.Sim : null;
+            var baby = sim?.DebugBirth();
+            if (baby == null) return "no adult to bear";
+            pv.planner?.Invalidate();
+            return $"born: {baby.FullName}";
+        }
+
         /// <summary>Where a person's doll stands now (box-local x, z), false if they have none.</summary>
         public bool TryGetDollPosition(PersonRef who, out Vector2 pos)
         {
             pos = default;
             if (!dolls.TryGetValue(who.Key, out var d) || !d.placed) return false;
-            pos = d.pos;
+            pos = d.drawn;
             return true;
         }
 
