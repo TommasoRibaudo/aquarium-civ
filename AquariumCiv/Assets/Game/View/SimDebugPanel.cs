@@ -193,6 +193,12 @@ namespace AquariumCiv.View
                 foreach (int n in new[] { 1, 3, 5, 7 }) if (GUILayout.Button("Return " + n)) last = CardStackView.DebugReturn(n);
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Clear read cards")) last = CardStackView.DebugClearRead();
+                GUILayout.BeginHorizontal();
+                foreach (CardKind kind in System.Enum.GetValues(typeof(CardKind))) if (GUILayout.Button(kind.ToString())) last = CardStackView.DebugCard(kind);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                foreach (var what in new[] { "payoff", "end", "long" }) if (GUILayout.Button("Text: " + what)) last = CardStackView.DebugText(what);
+                GUILayout.EndHorizontal();
             }
             if (Section("Fire (#65)"))
             {

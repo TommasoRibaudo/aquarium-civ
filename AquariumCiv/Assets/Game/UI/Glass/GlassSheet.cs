@@ -115,6 +115,52 @@ namespace AquariumCiv.GameUI
     }
 
     /// <summary>
+    /// The peek (spec §1, lanes): a small frosted card over the tools, in the lane the pin leaves while it's up. Its own surface, because it
+    /// floats on all four sides. Slides like a sheet. Add children to it and they sit on the frost.
+    /// </summary>
+    [UxmlElement]
+    public partial class GlassPeek : VisualElement
+    {
+        readonly VisualElement content;
+        public FrostSurface Surface { get; }
+        public bool IsOpen { get; private set; }
+        public override VisualElement contentContainer => content ?? this;
+
+        public GlassPeek()
+        {
+            AddToClassList("kg-peek");
+            AddToClassList(GlassMotion.SlideClass);
+            var shadow = new VisualElement { pickingMode = PickingMode.Ignore };
+            shadow.AddToClassList("kg-sheet-shadow");
+            shadow.AddToClassList("kg-peek-shadow");
+            hierarchy.Add(shadow);
+            Surface = new FrostSurface();
+            Surface.AddToClassList("kg-surface--peek");
+            hierarchy.Add(Surface);
+            content = new VisualElement { pickingMode = PickingMode.Ignore };
+            content.AddToClassList("kg-peek-content");
+            hierarchy.Add(content);
+        }
+
+        public void Open()
+        {
+            IsOpen = true;
+            pickingMode = PickingMode.Position;
+            GlassMotion.Show(this, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
+            Surface.Show();
+            Surface.Follow(GlassMotion.SlideMs);
+        }
+
+        public void Close()
+        {
+            IsOpen = false;
+            pickingMode = PickingMode.Ignore; // a leaving peek takes no taps
+            Surface.Follow(GlassMotion.SlideMs);
+            GlassMotion.Hide(this, GlassMotion.SlideOff, GlassMotion.SlideMs, Surface.Hide);
+        }
+    }
+
+    /// <summary>
     /// What sits behind a sheet: a clear full-screen element that takes the tap outside it. It dims only behind a destructive
     /// confirm (<see cref="Dim"/>). Nothing else dims, because panels never hide their subject.
     /// </summary>
@@ -164,6 +210,9 @@ namespace AquariumCiv.GameUI
         /// <summary>Content of mixed heights, where no pitch fits: the view ends under the last element of this class that fits whole.</summary>
         public const string RowClass = "kg-scroll-row";
         public bool SnapToRows { get; set; }
+        /// <summary>Rows are paragraphs: the view may end inside one, on a whole line of it, so room isn't left empty. A row's own pitch is
+        /// its <c>userData</c> (a float), else <see cref="LinePitch"/>.</summary>
+        public bool SplitRows { get; set; }
         public ScrollView View => view;
         public override VisualElement contentContainer => view != null ? view.contentContainer : this;
 
@@ -182,6 +231,7 @@ namespace AquariumCiv.GameUI
             hierarchy.Add(bar);
             RegisterCallback<GeometryChangedEvent>(_ => Snap());
             view.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => Snap());
+            view.RegisterCallback<GeometryChangedEvent>(_ => Bar()); // the height just set lands a layout later
             view.verticalScroller.valueChanged += _ => Bar();
         }
 
@@ -190,18 +240,36 @@ namespace AquariumCiv.GameUI
             float room = layout.height;
             if (float.IsNaN(room) || room <= 0f || LinePitch <= 0f) return;
             float fit = SnapToRows ? LastWholeRow(room) : 0f;
-            view.style.height = fit > 0f ? fit : Mathf.Floor(room / LinePitch) * LinePitch;
+            float lead = SnapToRows ? FirstRowTop() : 0f; // a first row's top margin isn't a line
+            view.style.height = fit > 0f ? fit : lead + Mathf.Floor((room - lead) / LinePitch) * LinePitch;
             Bar();
+        }
+
+        float FirstRowTop()
+        {
+            float top = view.contentContainer.worldBound.yMin, first = float.MaxValue;
+            view.contentContainer.Query(className: RowClass).ForEach(r =>
+            {
+                if (r.resolvedStyle.display != DisplayStyle.None) first = Mathf.Min(first, r.worldBound.yMin - top);
+            });
+            return first == float.MaxValue ? 0f : Mathf.Max(0f, first);
         }
 
         float LastWholeRow(float room)
         {
-            float top = view.contentContainer.worldBound.yMin, fit = 0f;
+            float top = view.contentContainer.worldBound.yMin, fit = 0f, splitTop = float.MaxValue, splitPitch = LinePitch;
             view.contentContainer.Query(className: RowClass).ForEach(r =>
             {
+                if (r.resolvedStyle.display == DisplayStyle.None) return;
                 float bottom = r.worldBound.yMax - top;
-                if (bottom <= room && bottom > fit) fit = bottom;
+                if (bottom <= room) { if (bottom > fit) fit = bottom; return; }
+                float rowTop = r.worldBound.yMin - top;
+                if (rowTop >= splitTop) return;
+                splitTop = rowTop;
+                splitPitch = r.userData is float own ? own : LinePitch;
             });
+            float whole = Mathf.Floor((room - splitTop) / splitPitch);
+            if (SplitRows && whole >= 1f && splitTop >= fit) fit = splitTop + whole * splitPitch;
             return fit;
         }
 
