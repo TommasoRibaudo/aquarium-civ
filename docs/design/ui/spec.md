@@ -158,7 +158,7 @@ flat, with no copy, no filter and no pass. The debug panel flips it for a sessio
   63 %. None of those talk about the world, so rule 5 holds.
 - **Short phones (375 × 667):** the sheet stays 30 %, 200 pt. The card needs about 216 pt at full layout, so under 700 pt
   tall the year joins the dots row and bottom padding drops to 14, which gives 193 pt. Longer text scrolls. Drawn at the
-  end of 3.3. Not yet tried in Unity.
+  end of 3.3, built in #166. A locked Give's reason moves above the body there, so it can't scroll out of sight.
 - **Feedback under 700 pt tall:** its 470 pt doesn't fit 59 % of a 667 pt phone (394 pt). It's test-only, so it grows to full
   height over the box, top under the safe area, with Cancel and Send on the bottom edge. Not drawn.
 - **375 × 667 is drawn for the wish card only.** #165 to #170 and #95 must check it screen by screen.

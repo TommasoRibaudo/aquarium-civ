@@ -215,23 +215,35 @@ namespace AquariumCiv.GameUI
         /// <summary>Longer lines become a caption, not a bigger bubble.</summary>
         public const int MaxChars = 48;
 
+        readonly Label whoLabel, lineLabel;
+        VisualElement tail;
+
         public GlassBubble(string who, string line)
         {
             pickingMode = PickingMode.Ignore;
             AddToClassList("kg-bubble");
-            if (!string.IsNullOrEmpty(who))
-            {
-                var w = new Label(who) { pickingMode = PickingMode.Ignore };
-                w.AddToClassList("type-head");
-                w.AddToClassList("kg-bubble-who");
-                Add(w);
-            }
-            var l = new Label(line) { pickingMode = PickingMode.Ignore };
-            l.AddToClassList("type-sub");
-            l.AddToClassList("kg-bubble-line");
-            Add(l);
+            whoLabel = new Label() { pickingMode = PickingMode.Ignore };
+            whoLabel.AddToClassList("type-head");
+            whoLabel.AddToClassList("kg-bubble-who");
+            Add(whoLabel);
+            lineLabel = new Label() { pickingMode = PickingMode.Ignore };
+            lineLabel.AddToClassList("type-sub");
+            lineLabel.AddToClassList("kg-bubble-line");
+            Add(lineLabel);
             Tail();
+            Set(who, line);
         }
+
+        /// <summary>New words for a bubble that stays on screen: a person's line, with or without their name.</summary>
+        public void Set(string who, string line)
+        {
+            whoLabel.text = who ?? "";
+            whoLabel.style.display = string.IsNullOrEmpty(who) ? DisplayStyle.None : DisplayStyle.Flex;
+            lineLabel.text = line ?? "";
+        }
+
+        /// <summary>Where the tail sits along the bubble (panel px), so it points at whoever speaks.</summary>
+        public void TailAt(float x) => tail.style.left = x;
 
         /// <summary>Chatter: symbols, no words.</summary>
         public GlassBubble(params string[] symbols)
@@ -245,9 +257,9 @@ namespace AquariumCiv.GameUI
 
         void Tail()
         {
-            var t = new VisualElement { pickingMode = PickingMode.Ignore };
-            t.AddToClassList("kg-bubble-tail");
-            Add(t);
+            tail = new VisualElement { pickingMode = PickingMode.Ignore };
+            tail.AddToClassList("kg-bubble-tail");
+            Add(tail);
         }
 
         public static bool TooLong(string line) => line != null && line.Length > MaxChars;
@@ -292,6 +304,14 @@ namespace AquariumCiv.GameUI
             this.who.AddToClassList("kg-caption-who");
             this.who.style.display = string.IsNullOrEmpty(who) ? DisplayStyle.None : DisplayStyle.Flex;
             Add(this.who);
+        }
+
+        /// <summary>New words for a caption that stays on screen.</summary>
+        public void Set(string text, string by = null)
+        {
+            line.text = text ?? "";
+            who.text = by ?? "";
+            who.style.display = string.IsNullOrEmpty(by) ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
         public bool Inline { set => EnableInClassList("kg-caption--inline", value); }

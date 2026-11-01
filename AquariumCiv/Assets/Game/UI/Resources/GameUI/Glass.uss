@@ -87,6 +87,8 @@
     -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--paper);
 }
 .kg-portrait--chip { width: 110px; height: 110px; font-size: 41.25px; }
+.kg-portrait--gone { background-color: var(--timber); }
+.kg-portrait--era { background-color: var(--ink); justify-content: center; align-items: center; }
 
 /* ---------------- reach: the clear child that takes a small piece's hit area out to --hit (GlassReach). Past the edges so
    it covers any border; ContainsPoint draws the exact line ---------------- */
@@ -199,6 +201,7 @@
     border-top-left-radius: var(--radius-peek); border-top-right-radius: var(--radius-peek);
     border-bottom-left-radius: var(--radius-peek); border-bottom-right-radius: var(--radius-peek);
 }
+.kg-surface--peek > .kg-frost-tint { border-width: var(--hairline); }
 
 /* ---------------- sheet: bottom edge, 30 % of the screen, longer content scrolls inside ---------------- */
 .kg-scrim { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: var(--clear); justify-content: flex-end; }
@@ -227,6 +230,15 @@
     background-color: var(--dot-off);
 }
 
+/* ---------------- peek: the pin's lane, 98 pt up, clear of the tools ---------------- */
+.kg-peek { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 269.5px; min-height: 176px; }
+.kg-peek-shadow { top: -78px; bottom: -122px; }
+.kg-peek-content { flex-grow: 1; flex-direction: row; align-items: center; padding: 27.5px 38.5px 27.5px 27.5px; }
+.kg-peek-lines { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-left: var(--space-10); }
+.kg-peek-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kg-peek-teaser { margin-top: 5.5px; white-space: normal; }
+.kg-peek--teaser .kg-peek-line { -unity-font-definition: var(--font-serif-italic); font-size: 38.5px; white-space: normal; }
+
 /* ---------------- card: content of a sheet, never its own surface ---------------- */
 .kg-card { flex-grow: 1; flex-shrink: 1; }
 .kg-card-head { flex-direction: row; align-items: center; margin-top: var(--space-6); flex-shrink: 0; }
@@ -236,7 +248,8 @@
 .kg-card-sub { margin-top: var(--space-6); flex-shrink: 0; }
 .kg-card-acts { flex-direction: row; align-items: center; margin-top: auto; flex-shrink: 0; }
 .kg-card-acts > .kg-btn { margin-right: var(--space-8); }
-.kg-card-acts > .kg-btn--primary { margin: 0 0 0 auto; }
+.kg-card-acts > .kg-btn--primary { margin: 0 0 0 auto; padding: 0 49.5px; } /* the board's 18 pt in a row: Remember has to fit beside Back */
+.kg-card-acts > .kg-btn--off { padding-left: 93.5px; }
 
 /* ---------------- tab, toggle, slider ---------------- */
 .kg-tabs { flex-direction: row; }
@@ -295,6 +308,7 @@
 .kg-bubble--chatter { flex-direction: row; padding: 11px var(--space-12); }
 .kg-bubble--chatter > .kg-icon { margin-right: 5.5px; }
 .kg-bubble-who { font-size: 35.75px; }
+.kg-bubble--world { position: absolute; align-self: auto; }
 .kg-bubble-line { white-space: normal; }
 .kg-bubble-tail {
     position: absolute; left: 60.5px; bottom: -16.5px; width: 27.5px; height: 27.5px; rotate: 45deg;
@@ -411,6 +425,35 @@
 .pc--short .pc-line { margin-bottom: 5.5px; }
 .pc-story { flex-direction: row; align-items: center; margin-bottom: var(--space-8); }
 .pc-story-text { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-8); white-space: normal; }
+
+/* ---------------- the card stack (#166, board 3.3). Lines carry their margin on top, so the last one leaves no scroll ---------------- */
+.cards-dots-row { flex-direction: row; align-items: center; flex-shrink: 0; }
+.cards-dots-row > .kg-dots { flex-grow: 1; flex-shrink: 0; }
+.cards-dots-side { display: none; width: 176px; flex-shrink: 1; }
+.cards-dots-year { width: auto; min-width: 176px; flex-shrink: 0; margin-right: var(--space-8); } /* "Year 1 · the Keeper's gift" pushes the dots, never under them */
+.cards-ports { flex-direction: row; flex-shrink: 0; }
+.cards-portrait { width: 121px; height: 121px; }
+.cards-portrait--second { margin-left: -33px; }
+.cards-head--alone > .cards-ports { display: none; }
+.cards-head--alone > .kg-card-title { margin-left: 0; }
+.cards-head > .kg-portrait { display: none; }
+.cards-scroll { min-height: 0; margin-top: 0; }
+.cards-scroll-pad { width: 100%; padding-right: 24.75px; }
+.cards-line { margin: 16.5px 0 0 0; white-space: normal; }
+.cards-also-line {
+    min-height: var(--hit); margin: 0; padding: 0; border-width: 0; border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2);
+    background-color: var(--clear); border-radius: 0;
+    color: var(--ink); -unity-text-outline-width: 0.3px; -unity-text-outline-color: var(--ink);
+    -unity-font-definition: var(--font-serif); font-size: 41.25px; -unity-text-align: middle-left; white-space: normal;
+}
+.cards-also-line:active { background-color: var(--pressed-fill); }
+/* 375 x 667: the year joins the dots, and 14 pt under the buttons (spec §2) */
+.cards--short .cards-dots-side { display: flex; }
+.cards--short .kg-card-sub { margin: 0; white-space: nowrap; }
+
+/* ---------------- recall (test builds only): every answer the same, none of them primary (rule 4) ---------------- */
+.kg-card-acts > .recall-answer { flex-grow: 1; flex-basis: 0; padding: 0; }
+.kg-card-acts > .recall-answer--last { margin-right: 0; }
 
 /* ---------------- settings row ---------------- */
 .kg-row { flex-direction: row; align-items: center; min-height: var(--hit); border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }

@@ -36,6 +36,7 @@ namespace AquariumCiv.GameUI
 
         UIDocument doc;
         VisualElement root, safe, topRow, bottomRow, pinRow, outsideSheet;
+        bool outsideKeepsTop, peekUp;
         GlassScrim openSheet;
         readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
         Label nameLabel, yearLabel;
@@ -503,17 +504,30 @@ namespace AquariumCiv.GameUI
         {
             var v = openSheet != null || outsideSheet != null ? Visibility.Hidden : Visibility.Visible;
             bottomRow.style.visibility = v;
-            pinRow.style.visibility = v;
+            pinRow.style.visibility = peekUp ? Visibility.Hidden : v;
+        }
+
+        /// <summary>The peek takes the pin's lane while it's up (spec §1), so the pin and Stories chips step aside.</summary>
+        public void SetPeekUp(bool up)
+        {
+            if (peekUp == up) return;
+            peekUp = up;
+            ToolsBehindSheet();
         }
 
         /// <summary>A sheet the HUD doesn't own is up (the person card; null when it goes): the tools and the top row step back, so the
-        /// person has the world to themselves (board 3.4), and a toast rides above it as it does above the HUD's own.</summary>
-        public void SetOutsideSheet(VisualElement sheet)
+        /// person has the world to themselves (board 3.4), and a toast rides above it as it does above the HUD's own.
+        /// <paramref name="keepTop"/>: the top row stays, as it does behind the recall question (board 3.3).</summary>
+        public void SetOutsideSheet(VisualElement sheet, bool keepTop = false)
         {
             outsideSheet = sheet;
+            outsideKeepsTop = keepTop;
             ToolsBehindSheet();
             PlaceToast();
         }
+
+        /// <summary>The sheet set by <see cref="SetOutsideSheet"/>, so two owners can't take it from each other.</summary>
+        public VisualElement OutsideSheet => outsideSheet;
 
         /// <summary>Hide the whole HUD (feedback screenshots, a clean snapshot, the debug toggle).</summary>
         public void SetVisible(bool visible)
@@ -550,7 +564,7 @@ namespace AquariumCiv.GameUI
         void FollowFirstRun()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
-            topRow.EnableInClassList("hud-top--away", outsideSheet != null || (sim != null && sim.State.firstRun.active));
+            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || (sim != null && sim.State.firstRun.active));
         }
 
         void RefreshText()

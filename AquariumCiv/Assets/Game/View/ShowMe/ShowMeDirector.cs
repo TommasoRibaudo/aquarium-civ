@@ -22,7 +22,7 @@ namespace AquariumCiv.View
     /// echo ends and the camera eases back to where it was (<see cref="End"/>: the card stack calls it when it closes; the
     /// debug panel's Show me ends by itself). A death flies to the remembering stone and lays a flower; the weather and the
     /// box's big days fly wide. A touch takes the camera back from it: the flight stops and the camera stays where the
-    /// player puts it.</item>
+    /// player puts it. A line too long for a bubble (<see cref="GlassBubble.MaxChars"/>) or with nobody to carry it is a caption.</item>
     /// <item><b>World bubbles</b> (<see cref="WorldBubbles"/>): now and then a person on screen says a line in their own
     /// words, in a bubble over their head. Quiet while a sheet is open, in camera mode and clean mode, during a moment, the
     /// time-lapse, the last moment, shape mode and Show me.</item>
@@ -319,15 +319,13 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The echo's line goes over the speaker's head like the world bubbles (user 2026-10-30, #76). With nobody to
-        /// put it over (no speaker, no doll) it shows in the moment's bubble.</summary>
+        /// put it over (no speaker, no doll) it shows as a caption.</summary>
         void Say(string text, PersonRef speaker, float seconds)
         {
-            if (SayOverHead(text, speaker, seconds)) return;
-            LastLine = text;
-            var mp = MomentPlayer.Instance;
-            string who = speaker.IsNotable ? Sim?.FindNotable(speaker.notableId)?.name : null;
-            if (mp != null) mp.Say(who != null && !text.Contains(who) ? $"{who}: “{text}”" : $"“{text}”", seconds);
+            if (!SayOverHead(text, speaker, seconds)) ShowCaption(text, NameOf(speaker), seconds);
         }
+
+        static string NameOf(PersonRef who) => who.IsNotable ? Sim?.FindNotable(who.notableId)?.name : null;
 
         /// <summary>A line of a staged scene (an echo, a relic moment) in a bubble that follows the speaker. False if they
         /// have no doll to carry it.</summary>
@@ -337,14 +335,16 @@ namespace AquariumCiv.View
             var cam = Camera.main;
             if (!speaker.IsNone && pv != null && cam != null && pv.TryGetDollPosition(speaker, out _))
             {
+                if (GlassBubble.TooLong(text)) { ShowCaption(text, NameOf(speaker), seconds); return true; } // spec §3: longer lines become a caption
                 LastLine = text;
                 HideBubble(); // a world bubble gives way to the scene's line
+                HideCaption();
                 EnsureUi();
                 echoWho = speaker;
                 echoUntil = Time.unscaledTime + seconds;
-                bubbleEl.text = $"“{text}”";
+                bubbleEl.Set(NameOf(speaker), text);
                 bubbleEl.style.display = DisplayStyle.Flex;
-                bubbleEl.style.fontSize = 34; bubbleEl.style.maxWidth = 640;
+                bubbleEl.style.maxWidth = BubbleWidth;
                 HoldUntilMeasured();
                 if (!Place(pv, cam, speaker)) bubbleEl.style.display = DisplayStyle.None; // shows as soon as they're on screen
                 EchoLinesOverHead++;
@@ -374,8 +374,45 @@ namespace AquariumCiv.View
             return true;
         }
 
+        /// <summary>The line on the caption plate, in the caption lane: under the top row when it's up, one at a time.</summary>
+        void ShowCaption(string text, string who, float seconds)
+        {
+            LastLine = text;
+            HideBubble();
+            EnsureUi();
+            var hud = GameHud.Instance;
+            bool underHud = hud != null && hud.OutsideSheet == null;
+            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            captionEl.UnderHud = underHud;
+            captionEl.style.top = Mathf.Max(underHud ? CaptionUnderHud : CaptionTop, i.y + CaptionUnderNotch);
+            captionEl.Set(text, who);
+            captionUntil = Time.unscaledTime + seconds;
+            GlassMotion.Show(captionEl, GlassMotion.CaptionOff, null, GlassMotion.CaptionInMs);
+        }
+
+        void HideCaption()
+        {
+            if (captionUntil <= 0f) return;
+            captionUntil = 0f;
+            GlassMotion.Hide(captionEl, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
+        }
+
+        /// <summary>The caption shows; ambient bubbles wait for it (one message at a time).</summary>
+        bool StepCaption()
+        {
+            if (captionUntil <= 0f) return false;
+            var hud = GameHud.Instance;
+            var mp = MomentPlayer.Instance;
+            if (Time.unscaledTime >= captionUntil || (mp != null && mp.Playing) || (hud != null && (hud.CameraMode || !hud.IsVisible))) { HideCaption(); return false; }
+            return true;
+        }
+
+        /// <summary>A caption's line up now (tests), or null.</summary>
+        public string ShownCaption => captionUntil > 0f ? LastLine : null;
+
         void ClearEchoBubble()
         {
+            HideCaption();
             if (echoWho.IsNone) return;
             echoWho = PersonRef.None;
             if (bubbleEl != null) bubbleEl.style.display = DisplayStyle.None;
@@ -401,7 +438,9 @@ namespace AquariumCiv.View
         PersonRef bubbleWho;
         GameObject uiGo;
         VisualElement uiRoot;
-        Label bubbleEl;
+        GlassBubble bubbleEl;
+        GlassCaption captionEl;
+        float captionUntil;
         readonly List<int> visibleNotables = new();
         readonly List<PersonRef> visibleCrowd = new();
 
@@ -433,6 +472,7 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             var cam = Camera.main;
             if (pv == null || cam == null || bubbles == null) { HideBubble(); return; }
+            if (StepCaption()) return;
             if (StepEchoBubble(pv, cam)) return;
             string quiet = QuietReason();
             if (bubble != null)
@@ -475,7 +515,7 @@ namespace AquariumCiv.View
             bubble = b;
             bubbleWho = who;
             bubbleUntil = Time.unscaledTime + b.seconds;
-            bubbleEl.text = string.Join("\n", b.lines);
+            bubbleEl.Set(b.speakerId >= 0 ? NameOf(who) : null, string.Join("\n", b.lines));
             bubbleEl.style.display = DisplayStyle.Flex;
             FitToSpeaker(pv, cam, who);
             HoldUntilMeasured();
@@ -517,6 +557,7 @@ namespace AquariumCiv.View
                 }
             bubbleEl.style.left = at.x;
             bubbleEl.style.top = at.y;
+            bubbleEl.TailAt(Mathf.Clamp(q.x - at.x - TailHalf, TailEdge, Mathf.Max(TailEdge, bw - TailEdge - TailHalf * 2f)));
             if (Time.frameCount >= measuredAt) bubbleEl.style.opacity = 1f;
             return true;
         }
@@ -533,6 +574,10 @@ namespace AquariumCiv.View
 
         /// <summary>Under the title pill (panel units).</summary>
         const float TopHudBottom = 190f;
+        /// <summary>The caption lane without and with the HUD's top row, and the least it keeps under a notch (panel units, spec §1).</summary>
+        const float CaptionTop = 143f, CaptionUnderHud = 275f, CaptionUnderNotch = 16f;
+        /// <summary>The widest a bubble goes, half the tail's width, and the rounded corner it stays clear of (panel units).</summary>
+        const float BubbleWidth = 640f, TailHalf = 13.75f, TailEdge = 44f;
         /// <summary>A doll shorter than this on screen (pixels of a 2556 tall frame) is too small to say whose line it is.</summary>
         public const float TinySpeakerPx = 12f;
 
@@ -543,12 +588,12 @@ namespace AquariumCiv.View
             return (cam.WorldToScreenPoint(top) - cam.WorldToScreenPoint(feet)).magnitude * 2556f / Mathf.Max(1f, Screen.height);
         }
 
-        /// <summary>An ambient bubble scales with the speaker: small at the default view, full size close up.</summary>
+        /// <summary>An ambient bubble narrows with the speaker: small at the default view, full width close up. The type stays
+        /// at its own size, which is over the floor (spec §1).</summary>
         void FitToSpeaker(PeopleView pv, Camera cam, PersonRef who)
         {
             float k = Mathf.Clamp01((DollPixels(pv, cam, who) - 30f) / 70f);
-            bubbleEl.style.fontSize = Mathf.Lerp(30f, 34f, k);
-            bubbleEl.style.maxWidth = Mathf.Lerp(470f, 640f, k);
+            bubbleEl.style.maxWidth = Mathf.Lerp(470f, BubbleWidth, k);
         }
 
         void HideBubble()
@@ -569,18 +614,13 @@ namespace AquariumCiv.View
             uiRoot.pickingMode = PickingMode.Ignore;
             uiRoot.style.position = Position.Absolute;
             uiRoot.style.left = uiRoot.style.right = uiRoot.style.top = uiRoot.style.bottom = 0;
-            bubbleEl = new Label { name = "showme-bubble", pickingMode = PickingMode.Ignore };
-            bubbleEl.AddToClassList("hud-toast");
-            bubbleEl.style.position = Position.Absolute;
-            bubbleEl.style.right = StyleKeyword.Auto;
-            bubbleEl.style.bottom = StyleKeyword.Auto;
-            bubbleEl.style.fontSize = 34;
-            bubbleEl.style.maxWidth = 640;
-            bubbleEl.style.backgroundColor = new Color(0.97f, 0.94f, 0.88f, 0.95f); // the people's words: paper, not the HUD's dark pill
-            bubbleEl.style.color = new Color(0.3f, 0.22f, 0.16f);
-            bubbleEl.style.unityTextAlign = TextAnchor.MiddleCenter;
+            bubbleEl = new GlassBubble("", "") { name = "showme-bubble" };
+            bubbleEl.AddToClassList("kg-bubble--world");
             bubbleEl.style.display = DisplayStyle.None;
             uiRoot.Add(bubbleEl);
+            captionEl = new GlassCaption("") { name = "showme-caption" };
+            captionEl.style.display = DisplayStyle.None;
+            uiRoot.Add(captionEl);
         }
 
         // ================================================================== debug
