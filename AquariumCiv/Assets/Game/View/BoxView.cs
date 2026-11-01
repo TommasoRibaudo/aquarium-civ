@@ -66,6 +66,8 @@ namespace AquariumCiv.View
         const int AoLayer = 2; // Ignore Raycast: the AO colliders stay out of everyone else's raycasts
 
         Transform root, peopleRoot;
+        /// <summary>The land's natural colours (#115). Read on the chunk workers; set with the land.</summary>
+        LandColors Co => land.Colors;
         readonly List<Material> panes = new();
         readonly List<MeshRenderer> paneRenderers = new();
         Material frameMat;
@@ -386,6 +388,31 @@ namespace AquariumCiv.View
             return s;
         }
 
+        /// <summary>Debug hook: a hash of every generated mesh of the box, position and colour, per part (#115: is the river valley
+        /// bit for bit what it was? Two builds of one layout must print the same).</summary>
+        public static string DebugFingerprint()
+        {
+            var s = new System.Text.StringBuilder();
+            foreach (var b in FindObjectsByType<BoxView>(FindObjectsSortMode.None))
+            {
+                if (b.root == null) continue;
+                var whole = Hash.New();
+                foreach (Transform t in b.root)
+                {
+                    if (!t.TryGetComponent<MeshFilter>(out var mf) || mf.sharedMesh == null || t.name.StartsWith("Glass") || t.name == "Glows" || t.name == "Smoke") continue;
+                    var m = mf.sharedMesh;
+                    var e = Hash.New();
+                    foreach (var v in m.vertices) { e.Add(Mathf.RoundToInt(v.x * 2048f)); e.Add(Mathf.RoundToInt(v.y * 2048f)); e.Add(Mathf.RoundToInt(v.z * 2048f)); } // past float noise
+                    var ao = Hash.New();
+                    foreach (var c in m.colors32) { e.Add((uint)(c.r | c.g << 8 | c.b << 16)); ao.Add((int)c.a); }
+                    s.Append($"{t.name} {m.vertexCount} {e.h:x8}/{ao.h:x8}; ");
+                    whole.Add(e.h);
+                }
+                s.Append($"box {b.land.preset} {whole.h:x8}\n");
+            }
+            return s.ToString();
+        }
+
         GameObject Spawn(string name, Mesh mesh, Material mat, bool shadows)
         {
             var go = new GameObject(name) { hideFlags = GenFlags };
@@ -528,9 +555,14 @@ namespace AquariumCiv.View
             }
             foreach (var t in layout.trees)
             {
-                var e = Hash.New(); e.Add(t.pos); e.Add(t.scale); e.Add(t.pine);
+                var e = Hash.New(); e.Add(t.pos); e.Add(t.scale); e.Add(t.pine); e.Add((int)t.shape);
                 float r = 0.2f * t.scale;
                 Into(h, t.pos.x - r, t.pos.y - r, t.pos.x + r, t.pos.y + r, e.h);
+            }
+            foreach (var b in layout.boulders)
+            {
+                var e = Hash.New(); e.Add(b.pos); e.Add(b.radius); e.Add(b.shade);
+                Into(h, b.pos.x - b.radius, b.pos.y - b.radius, b.pos.x + b.radius, b.pos.y + b.radius, e.h);
             }
             foreach (var cn in layout.canals)
             {
@@ -545,7 +577,7 @@ namespace AquariumCiv.View
         uint LandHash()
         {
             var e = Hash.New();
-            e.Add(land.mirror); e.Add(land.noiseOffset); e.Add(land.pond); e.Add(land.centre); e.Add(seed); e.Add(NX); e.Add(NZ);
+            e.Add(land.preset); e.Add(land.mirror); e.Add(land.noiseOffset); e.Add(land.pond); e.Add(land.centre); e.Add(seed); e.Add(NX); e.Add(NZ);
             return e.h;
         }
 
@@ -727,6 +759,7 @@ namespace AquariumCiv.View
             taken.Clear();
             foreach (var p in layout.pieces) taken.Add((p.Pos, PieceRadius(p)));
             foreach (var t in layout.trees) taken.Add((t.pos, 0.2f * t.scale));
+            foreach (var b in layout.boulders) taken.Add((b.pos, b.radius));
         }
 
         static bool Grassy(ClearingKind k) => k == ClearingKind.Meadow || k == ClearingKind.Flowers;
@@ -750,24 +783,31 @@ namespace AquariumCiv.View
         }
 
         // ---------------- ground ----------------
-        static Color Cobble(float x, float z, float n)
+        Color Cobble(float x, float z, float n)
         {
+            var co = Co;
             float s = Land.Noise(x * 22f, z * 22f);
             // Stones and darker grout in a staggered grid, so the square reads as cobbles at default zoom (#91).
             float gx = x * 9f, gz = z * 9f + (Mathf.FloorToInt(x * 9f) & 1) * 0.5f;
             float fx = gx - Mathf.Floor(gx), fz = gz - Mathf.Floor(gz);
             bool grout = fx < 0.14f || fz < 0.14f;
-            var stone = Color.Lerp(Color.Lerp(Palette.Stone, Palette.Path, 0.2f), Palette.RockLight, s * 0.5f + (n - 0.5f) * 0.3f);
-            return grout ? Color.Lerp(stone, Palette.RockDark, 0.55f) : stone;
+            var stone = Color.Lerp(Color.Lerp(Palette.Stone, co.path, 0.2f), co.rockLight, s * 0.5f + (n - 0.5f) * 0.3f);
+            return grout ? Color.Lerp(stone, co.rockDark, 0.55f) : stone;
         }
 
-        static Color Grass(float n, float y)
+        Color Grass(float n, float y)
         {
-            var g = n < 0.42f ? Palette.GrassB : n < 0.66f ? Palette.GrassA : Palette.GrassC;
-            return Color.Lerp(g, Palette.Moss, Land.Smooth(Land.G + 0.35f, Land.G + 0.7f, y) * 0.5f);
+            var co = Co;
+            var g = n < 0.42f ? co.grassB : n < 0.66f ? co.grassA : co.grassC;
+            var col = Color.Lerp(g, co.moss, Land.Smooth(Land.G + 0.35f, Land.G + 0.7f, y) * 0.5f);
+            if (!co.Snowy) return col;
+            // The mountain: bare rock on the way up, then the snow cap (#115).
+            float line = co.look.snowLine;
+            col = Color.Lerp(col, Color.Lerp(co.rock, co.rockDark, n), Land.Smooth(line - 0.45f, line - 0.12f, y + (n - 0.5f) * 0.2f));
+            return Color.Lerp(col, co.snow, co.look.SnowAmount(y + (n - 0.5f) * 0.12f));
         }
 
-        static Color Meadow(float n) => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Sprout, 0.35f), Palette.GrassA, n * 0.5f);
+        Color Meadow(float n) => Color.Lerp(Color.Lerp(Co.grassC, Co.sprout, 0.35f), Co.grassA, n * 0.5f);
 
         /// <summary>The ground's colour at a point (pond bed, shore, clearings, fields, canals, paths, grass) and how much
         /// it glows (the warm pool round a fire).</summary>
@@ -775,9 +815,10 @@ namespace AquariumCiv.View
         {
             glowAmount = 0f;
             var p = new Vector2(x, z);
+            var co = Co;
             float sd = ShoreSD(x, z);
-            if (sd < 0f) return y < Land.WaterY - 0.06f ? Palette.PondBed : Color.Lerp(Palette.SandWet, Palette.PondBed, Mathf.Clamp01(-sd / 0.12f));
-            if (sd < 0.05f) return Palette.Sand;
+            if (sd < 0f) return y < Land.WaterY - 0.06f ? co.pondBed : Color.Lerp(co.sandWet, co.pondBed, Mathf.Clamp01(-sd / 0.12f));
+            if (sd < 0.05f) return co.sand;
             float n = Land.Fbm(x * 1.4f, z * 1.4f + 5f);
             var col = Grass(n, y);
             bool painted = false;
@@ -790,20 +831,20 @@ namespace AquariumCiv.View
                 if (d > r + 0.12f) continue;
                 if (d > r)
                 {
-                    if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, Palette.Dirt, 0.35f);
-                    else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Path, 0.6f); // a worn sandy edge round the square
-                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.Path, 0.45f); // a trodden ring round the green
+                    if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, co.dirt, 0.35f);
+                    else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, co.path, 0.6f); // a worn sandy edge round the square
+                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, co.path, 0.45f); // a trodden ring round the green
                     continue;
                 }
                 col = c.kind switch
                 {
                     // The village green: a mown lawn, brighter than the grass round it, so it reads at default zoom (#91).
-                    ClearingKind.Green => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Wheat, 0.3f), Palette.GrassC, n * 0.35f),
+                    ClearingKind.Green => Color.Lerp(Color.Lerp(co.grassC, Palette.Wheat, 0.3f), co.grassC, n * 0.35f),
                     ClearingKind.Cobble => Cobble(x, z, n),
-                    ClearingKind.Yard => Color.Lerp(col, Palette.Dirt, d < r * 0.7f ? 0.55f : 0.3f),
+                    ClearingKind.Yard => Color.Lerp(col, co.dirt, d < r * 0.7f ? 0.55f : 0.3f),
                     ClearingKind.Meadow => Meadow(n),
                     ClearingKind.Flowers => Color.Lerp(Meadow(n), Palette.Flowers[3], 0.15f),
-                    _ => d < r * 0.72f ? Palette.Dirt : Color.Lerp(Palette.Dirt, Palette.GrassB, 0.45f),
+                    _ => d < r * 0.72f ? co.dirt : Color.Lerp(co.dirt, co.grassB, 0.45f),
                 };
                 painted = !Grassy(c.kind);
             }
@@ -812,8 +853,8 @@ namespace AquariumCiv.View
                 {
                     var b = FieldBox(f);
                     if (x < b.xMin || x > b.xMax || z < b.yMin || z > b.yMax || !InPolygon(f.polygon, p)) continue;
-                    if (f.crop == CropKind.Gathering) { col = n < 0.5f ? Color.Lerp(Palette.Dirt, col, 0.55f) : col; break; }
-                    if (f.crop == CropKind.Pasture) { col = Color.Lerp(col, Palette.GrassC, 0.45f); painted = true; break; }
+                    if (f.crop == CropKind.Gathering) { col = n < 0.5f ? Color.Lerp(co.dirt, col, 0.55f) : col; break; }
+                    if (f.crop == CropKind.Pasture) { col = Color.Lerp(col, co.grassC, 0.45f); painted = true; break; }
                     float a = f.rowYaw * Mathf.Deg2Rad;
                     float across = x * Mathf.Cos(a) - z * Mathf.Sin(a);
                     col = (Mathf.FloorToInt(across / 0.08f) & 1) == 0 ? Palette.FieldSoil : Palette.FieldSoilLight;
@@ -821,7 +862,7 @@ namespace AquariumCiv.View
                     break;
                 }
             float dc = CanalDist(x, z);
-            if (dc < 0.05f) { col = Color.Lerp(Palette.WaterDeep, Palette.Water, dc / 0.05f); painted = true; }
+            if (dc < 0.05f) { col = Color.Lerp(co.waterDeep, co.water, dc / 0.05f); painted = true; }
             else if (dc < 0.075f) { col = Color.Lerp(col, Palette.Mud, 0.55f); painted = true; }
             float thrN = (n - 0.5f) * 0.03f;
             bool onPath = false;
@@ -831,16 +872,16 @@ namespace AquariumCiv.View
                 if (d >= w) continue;
                 col = (PathTier)t switch
                 {
-                    PathTier.Trail => Color.Lerp(Grass(n, y), Palette.Dirt, 0.6f),
+                    PathTier.Trail => Color.Lerp(Grass(n, y), co.dirt, 0.6f),
                     PathTier.Road => Cobble(x, z, n),
-                    _ => Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f),
+                    _ => Color.Lerp(co.path, co.dirt, (n - 0.4f) * 0.5f),
                 };
                 if (anyCobbled && (PathTier)t != PathTier.Road && Sample(cobbleField[t], x, z, PathRange) < w) col = Cobble(x, z, n);
                 onPath = true;
             }
             if (!onPath && !painted)
                 for (int t = 0; t < 3; t++)
-                    if (Sample(pathField[t], x, z, PathRange) < PathWidth((PathTier)t) + thrN + 0.035f) { col = Color.Lerp(col, Palette.Dirt, 0.25f); break; }
+                    if (Sample(pathField[t], x, z, PathRange) < PathWidth((PathTier)t) + thrN + 0.035f) { col = Color.Lerp(col, co.dirt, 0.25f); break; }
             foreach (var pc in layout.pieces)
             {
                 if (pc.kind != PieceKind.Fire || Mathf.Abs(pc.x - x) > 0.6f || Mathf.Abs(pc.z - z) > 0.6f) continue;
@@ -931,8 +972,8 @@ namespace AquariumCiv.View
             for (int i = 0; i < n; i++)
             {
                 int k = (i + 1) % n;
-                QuadUp(mb, inner[i], mid[i], mid[k], inner[k], Palette.SandWet);
-                QuadUp(mb, mid[i], outer[i], outer[k], mid[k], Palette.Sand);
+                QuadUp(mb, inner[i], mid[i], mid[k], inner[k], Co.sandWet);
+                QuadUp(mb, mid[i], outer[i], outer[k], mid[k], Co.sand);
             }
             mb.jitter = keep;
         }
@@ -942,7 +983,8 @@ namespace AquariumCiv.View
         {
             float HX = Land.HX, HZ = Land.HZ;
             var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
-            Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, Palette.Moss };
+            var co = Co;
+            Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, co.moss };
             for (int side = 0; side < 4; side++)
             {
                 var p0 = corners[side]; var p1 = corners[(side + 1) % 4];
@@ -954,20 +996,21 @@ namespace AquariumCiv.View
                     var a = Vector2.Lerp(p0, p1, s / (float)segs); var b = Vector2.Lerp(p0, p1, (s + 1) / (float)segs);
                     float[] la = Layers(a), lb = Layers(b);
                     for (int k = 0; k < 4; k++)
-                        mb.Quad(new Vector3(a.x, la[k], a.y), new Vector3(a.x, la[k + 1], a.y), new Vector3(b.x, lb[k + 1], b.y), new Vector3(b.x, lb[k], b.y), cols[k]);
+                        mb.Quad(new Vector3(a.x, la[k], a.y), new Vector3(a.x, la[k + 1], a.y), new Vector3(b.x, lb[k + 1], b.y), new Vector3(b.x, lb[k], b.y),
+                            k == 3 && co.Snowy ? Color.Lerp(cols[3], co.snow, co.look.SnowAmount(la[4])) : cols[k]);
                     if (mb.Range(0f, 1f) < 0.4f)
                     {
                         var at = Vector2.Lerp(a, b, mb.Range(0f, 1f));
                         float r = mb.Range(0.035f, 0.075f);
                         var pos = new Vector3(at.x, mb.Range(0.05f, Layers(at)[1] - 0.02f), at.y) + outward * (-r * 0.45f);
-                        var col = mb.Range(0, 3) switch { 0 => Palette.Rock, 1 => Palette.RockLight, _ => Palette.RockDark };
+                        var col = mb.Range(0, 3) switch { 0 => co.rock, 1 => co.rockLight, _ => co.rockDark };
                         mb.Ico(pos, r, new Vector3(1f, 0.75f, 1f), col, 0.2f);
                     }
                     if (mb.Range(0f, 1f) < 0.12f)
                     {
                         var at = Vector2.Lerp(a, b, mb.Range(0f, 1f));
                         var l = Layers(at);
-                        mb.Ico(new Vector3(at.x, mb.Range(l[1] + 0.04f, l[2] - 0.04f), at.y) + outward * -0.015f, mb.Range(0.02f, 0.035f), Vector3.one, Palette.RockLight, 0.2f);
+                        mb.Ico(new Vector3(at.x, mb.Range(l[1] + 0.04f, l[2] - 0.04f), at.y) + outward * -0.015f, mb.Range(0.02f, 0.035f), Vector3.one, co.rockLight, 0.2f);
                     }
                 }
             }
@@ -1073,7 +1116,7 @@ namespace AquariumCiv.View
             Pieces.Ground ground = q => land.OnGround(q.x, q.z);
             if (f.crop == CropKind.Wheat || f.crop == CropKind.Sprout)
             {
-                var col = f.crop == CropKind.Wheat ? Palette.Wheat : Palette.Sprout;
+                var col = f.crop == CropKind.Wheat ? Palette.Wheat : Co.sprout;
                 float a = f.rowYaw * Mathf.Deg2Rad;
                 var across = new Vector2(Mathf.Cos(a), -Mathf.Sin(a)); var along = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
                 Vector2 min = f.polygon[0], max = f.polygon[0];
@@ -1133,6 +1176,7 @@ namespace AquariumCiv.View
         void Nature(MeshBuilder mb, int k)
         {
             var near = new List<(Vector2 p, float r)>(taken);
+            var co = Co;
             ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
             bool In(Vector2 p) => ChunkOf(p) == k;
             float H(int cat, int i, int c) => Land.Hash3(seed * 977 + k * 131 + cat, i, c);
@@ -1141,8 +1185,15 @@ namespace AquariumCiv.View
                 if (In(t.pos))
                 {
                     var tb = MeshBuilder.Rent(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
-                    Pieces.Tree(tb, land.OnGround(t.pos), t.scale, t.pine);
+                    Pieces.Tree(tb, land.OnGround(t.pos), t, co);
                     mb.AppendFree(tb);
+                }
+            foreach (var b in layout.boulders)
+                if (In(b.pos))
+                {
+                    var bb = MeshBuilder.Rent(Mathf.RoundToInt(b.pos.x * 1000f) * 104729 + Mathf.RoundToInt(b.pos.y * 1000f) + seed);
+                    Pieces.Boulder(bb, land.OnGround(b.pos), b, co);
+                    mb.AppendFree(bb);
                 }
             if (layout.reeds)
                 for (int i = 0; i < reedSpots.Count; i++)
@@ -1153,7 +1204,7 @@ namespace AquariumCiv.View
                     foreach (var (q, qr) in taken) if (Vector2.Distance(at, q) < qr) { clash = true; break; }
                     if (clash || CanalDist(at.x, at.y) < 0.06f) continue;
                     var rb = Item(0, i);
-                    Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
+                    Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? co.sprout : co.leafB);
                     mb.AppendFree(rb);
                 }
             if (!layout.autoNature) return;
@@ -1168,7 +1219,7 @@ namespace AquariumCiv.View
                     float bias = Land.Smooth(-0.6f, 1.8f, p.y) * 0.6f + Land.Smooth(1.5f, -2.5f, xm) * 0.5f + 0.1f;
                     if (H(1, i, 3) > bias || !Free(p, 0.22f, near)) continue;
                     var ib = Item(1, i);
-                    Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f);
+                    Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f, co);
                     mb.AppendFree(ib);
                     near.Add((p, 0.2f));
                 }
@@ -1177,21 +1228,21 @@ namespace AquariumCiv.View
                 var p = Spot(2, i);
                 if (!Free(p, 0.1f, near)) continue;
                 var ib = Item(2, i);
-                Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f);
+                Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f, co);
                 mb.AppendFree(ib);
                 near.Add((p, 0.1f));
             }
-            for (int i = 0, n = Mathf.RoundToInt(8 * kd); i < n; i++)
+            for (int i = 0, n = Mathf.RoundToInt(8 * kd * co.look.boulderDensity); i < n; i++)
             {
                 var p = Spot(3, i);
                 if (!Free(p, 0.08f, near)) continue;
                 float r = Mathf.Lerp(0.05f, 0.14f, H(3, i, 3));
                 var ib = Item(3, i);
-                Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f);
+                Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f, co);
                 mb.AppendFree(ib);
                 near.Add((p, r));
             }
-            for (int i = 0, n = Mathf.RoundToInt(150 * kd); i < n; i++)
+            for (int i = 0, n = Mathf.RoundToInt(150 * kd * co.look.tuftDensity); i < n; i++)
             {
                 var p = Spot(4, i);
                 if (!Free(p, 0.02f, near)) continue;
@@ -1199,7 +1250,7 @@ namespace AquariumCiv.View
                 var g = land.OnGround(p);
                 float h = Mathf.Lerp(0.05f, 0.1f, H(4, i, 3));
                 float c3 = H(4, i, 4);
-                Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? Palette.GrassC : c3 < 0.66f ? Palette.LeafC : Palette.GrassA);
+                Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC);
                 bool flowers = false;
                 foreach (var c in layout.clearings)
                     if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
@@ -1219,8 +1270,8 @@ namespace AquariumCiv.View
                 // A little past the shoreline: the ground and the sand rim cover the edge.
                 Vector2 s0 = shore[i] + (shore[i] - land.pond).normalized * 0.05f, s1 = shore[(i + 1) % n] + (shore[(i + 1) % n] - land.pond).normalized * 0.05f;
                 Vector3 p0 = new(s0.x, Land.WaterY, s0.y), p1 = new(s1.x, Land.WaterY, s1.y);
-                if (Vector3.Cross(p1 - c, p0 - c).y > 0) mb.TriC(c, p1, p0, Palette.WaterDeep, Palette.Water, Palette.Water);
-                else mb.TriC(c, p0, p1, Palette.WaterDeep, Palette.Water, Palette.Water);
+                if (Vector3.Cross(p1 - c, p0 - c).y > 0) mb.TriC(c, p1, p0, Co.waterDeep, Co.water, Co.water);
+                else mb.TriC(c, p0, p1, Co.waterDeep, Co.water, Co.water);
             }
             return mb.ToMesh("Water");
         }

@@ -181,7 +181,8 @@ namespace AquariumCiv.View
                 Pieces.Draw(mb, p, ground);
             }
             mb.M = Matrix4x4.identity;
-            foreach (var t in layout.trees) Pieces.Tree(mb, new Vector3(t.pos.x, y, t.pos.y), t.scale, t.pine); // tester run 7: the woods and the pond it was built beside
+            var colors = LandColors.ForPreset(sim.TerrainPreset);
+            foreach (var t in layout.trees) Pieces.Tree(mb, new Vector3(t.pos.x, y, t.pos.y), t, colors); // tester run 7: the woods and the pond it was built beside
             if (b.setting == BoxSetting.RiverValley)
             {
                 var pond = SimLayout.LandFor(sim.TerrainPreset).pond;

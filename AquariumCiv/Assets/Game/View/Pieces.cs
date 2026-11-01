@@ -622,10 +622,10 @@ namespace AquariumCiv.View
             mb.Box(new Vector3(0, 0.012f, 0.08f), new Vector3(0.4f, 0.02f, 0.26f), Palette.Canvas);
         }
 
-        public static void Bush(MeshBuilder mb, Vector3 g, float r, bool berries)
+        public static void Bush(MeshBuilder mb, Vector3 g, float r, bool berries, LandColors look = null)
         {
             mb.sway = 0.3f;
-            mb.Ico(g + Vector3.up * r * 0.5f, r, new Vector3(1.2f, 0.8f, 1.1f), Palette.LeafB, 0.25f);
+            mb.Ico(g + Vector3.up * r * 0.5f, r, new Vector3(1.2f, 0.8f, 1.1f), (look ?? LandColors.River).leafB, 0.25f);
             mb.sway = 0f;
             if (berries)
                 for (int k = 0; k < 4; k++)
@@ -866,29 +866,131 @@ namespace AquariumCiv.View
         }
 
         // ---------------- nature ----------------
-        public static void Tree(MeshBuilder mb, Vector3 g, float s, bool pine)
+        /// <summary>A tree of the layout, in the box's colours (#115).</summary>
+        public static void Tree(MeshBuilder mb, Vector3 g, TreeData t, LandColors c)
         {
+            switch (t.shape)
+            {
+                case TreeShape.Palm: Palm(mb, g, t.scale, c); break;
+                case TreeShape.Cactus: Cactus(mb, g, t.scale, c); break;
+                case TreeShape.Conifer: Conifer(mb, g, t.scale, c); break;
+                default: Tree(mb, g, t.scale, t.pine, c); break;
+            }
+        }
+
+        public static void Tree(MeshBuilder mb, Vector3 g, float s, bool pine, LandColors look = null)
+        {
+            look ??= LandColors.River;
             g -= Vector3.up * 0.02f;
-            mb.Prism(g, 0.045f * s, 0.032f * s, 0.3f * s, 6, Palette.Bark);
+            mb.Prism(g, 0.045f * s, 0.032f * s, 0.3f * s, 6, look.bark);
             mb.sway = 1f;
             if (pine)
             {
                 for (int i = 0; i < 3; i++)
-                    mb.Prism(g + Vector3.up * (0.2f + i * 0.17f) * s, (0.24f - i * 0.06f) * s, 0f, 0.3f * s, 7, Palette.Pine, Quaternion.Euler(0, i * 20f, 0), false, true);
+                    mb.Prism(g + Vector3.up * (0.2f + i * 0.17f) * s, (0.24f - i * 0.06f) * s, 0f, 0.3f * s, 7, look.pine, Quaternion.Euler(0, i * 20f, 0), false, true);
             }
             else
             {
-                var col = mb.Range(0, 3) switch { 0 => Palette.LeafA, 1 => Palette.LeafB, _ => Palette.LeafC };
-                mb.Ico(g + Vector3.up * 0.42f * s, 0.2f * s, new Vector3(1.1f, 0.95f, 1.1f), col, 0.18f, Palette.LeafB);
+                var col = mb.Range(0, 3) switch { 0 => look.leafA, 1 => look.leafB, _ => look.leafC };
+                mb.Ico(g + Vector3.up * 0.42f * s, 0.2f * s, new Vector3(1.1f, 0.95f, 1.1f), col, 0.18f, look.leafB);
                 mb.Ico(g + new Vector3(0.1f, 0.55f, 0.04f) * s, 0.14f * s, Vector3.one, col, 0.18f);
-                mb.Ico(g + new Vector3(-0.09f, 0.5f, -0.06f) * s, 0.13f * s, Vector3.one, Color.Lerp(col, Palette.LeafC, 0.4f), 0.18f);
+                mb.Ico(g + new Vector3(-0.09f, 0.5f, -0.06f) * s, 0.13f * s, Vector3.one, Color.Lerp(col, look.leafC, 0.4f), 0.18f);
             }
             mb.sway = 0f;
         }
 
-        public static void Rock(MeshBuilder mb, Vector3 g, float r, bool light)
+        /// <summary>A date palm (#115): a thin trunk that leans as it climbs, and a crown of drooping fronds.</summary>
+        public static void Palm(MeshBuilder mb, Vector3 g, float s, LandColors look)
         {
-            mb.Ico(g + Vector3.up * r * 0.2f, r, new Vector3(1.2f, 0.6f, 1f), light ? Palette.RockLight : Palette.Rock, 0.22f, Palette.RockDark);
+            g -= Vector3.up * 0.02f;
+            float lean = mb.Range(0f, Mathf.PI * 2f);
+            var bend = new Vector3(Mathf.Cos(lean), 0f, Mathf.Sin(lean));
+            var p = g;
+            const int Segs = 4;
+            for (int i = 0; i < Segs; i++)
+            {
+                float t = (i + 1f) / Segs;
+                var next = g + Vector3.up * (0.66f * s * t) + bend * (0.13f * s * t * t);
+                var d = next - p;
+                mb.Prism(p, Mathf.Lerp(0.042f, 0.024f, i / (float)Segs) * s, Mathf.Lerp(0.042f, 0.024f, t) * s, d.magnitude, 5, Color.Lerp(look.bark, look.sand, (i & 1) * 0.15f), Quaternion.FromToRotation(Vector3.up, d.normalized));
+                p = next;
+            }
+            mb.sway = 1f;
+            const int Fronds = 7;
+            float turn = mb.Range(0f, 6.28f);
+            for (int f = 0; f < Fronds; f++)
+            {
+                float a = turn + f * Mathf.PI * 2f / Fronds + mb.Range(-0.2f, 0.2f);
+                var o = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                var side = new Vector3(-o.z, 0f, o.x);
+                float len = mb.Range(0.3f, 0.38f) * s, wid = 0.055f * s;
+                var col = f % 3 == 0 ? look.leafA : f % 3 == 1 ? look.leafB : look.leafC;
+                // Up and out, then down: three joints, both faces.
+                Vector3 p0 = p, p1 = p + o * len * 0.4f + Vector3.up * len * 0.2f, p2 = p + o * len * 0.8f + Vector3.up * len * 0.08f, p3 = p + o * len * 1.08f - Vector3.up * len * 0.26f;
+                FrondPart(mb, p0, p1, side, wid * 0.35f, wid, col);
+                FrondPart(mb, p1, p2, side, wid, wid * 0.8f, col);
+                mb.Tri(p2 - side * wid * 0.8f, p2 + side * wid * 0.8f, p3, col);
+                mb.Tri(p2 + side * wid * 0.8f, p2 - side * wid * 0.8f, p3, col);
+            }
+            mb.sway = 0f;
+        }
+
+        static void FrondPart(MeshBuilder mb, Vector3 a, Vector3 b, Vector3 side, float wa, float wb, Color col)
+        {
+            mb.Quad(a - side * wa, a + side * wa, b + side * wb, b - side * wb, col);
+            mb.Quad(b - side * wb, b + side * wb, a + side * wa, a - side * wa, col);
+        }
+
+        /// <summary>A saguaro (#115): a ribbed column and one or two raised arms.</summary>
+        public static void Cactus(MeshBuilder mb, Vector3 g, float s, LandColors look)
+        {
+            g -= Vector3.up * 0.02f;
+            float h = 0.42f * s * mb.Range(0.85f, 1.15f), r = 0.042f * s;
+            var col = look.pine;
+            var light = Color.Lerp(look.pine, look.leafC, 0.35f);
+            mb.Prism(g, r, r * 0.92f, h, 7, col, topCol: light);
+            mb.Ico(g + Vector3.up * h, r * 0.92f, Vector3.one, light, 0.04f);
+            float yaw = mb.Range(0f, 360f);
+            int arms = mb.Range(1, 3);
+            for (int a = 0; a < arms; a++)
+            {
+                var o = Quaternion.Euler(0f, yaw + a * 180f, 0f) * Vector3.right;
+                float y = h * (a == 0 ? 0.5f : 0.62f), reach = r * 2.6f, up = h * mb.Range(0.22f, 0.34f), ar = r * 0.66f;
+                var at = g + Vector3.up * y;
+                mb.Prism(at, ar, ar, reach, 6, col, Quaternion.FromToRotation(Vector3.up, o));
+                mb.Ico(at + o * reach, ar, Vector3.one, col, 0.03f);
+                mb.Prism(at + o * reach, ar, ar * 0.9f, up, 6, col, topCol: light);
+                mb.Ico(at + o * reach + Vector3.up * up, ar * 0.9f, Vector3.one, light, 0.03f);
+            }
+        }
+
+        /// <summary>A high fir (#115): taller and narrower than the valley's pine, four tiers, snow on the tips above the snow line.</summary>
+        public static void Conifer(MeshBuilder mb, Vector3 g, float s, LandColors look)
+        {
+            g -= Vector3.up * 0.02f;
+            mb.Prism(g, 0.036f * s, 0.028f * s, 0.2f * s, 6, look.bark);
+            mb.sway = 1f;
+            float snow = look.look.SnowAmount(g.y + 0.2f);
+            for (int i = 0; i < 4; i++)
+            {
+                var tier = Color.Lerp(look.pine, look.leafB, i * 0.1f);
+                mb.Prism(g + Vector3.up * (0.14f + i * 0.16f) * s, (0.19f - i * 0.036f) * s, 0f, 0.3f * s, 7, tier, Quaternion.Euler(0, i * 26f, 0), false, true, snow > 0f ? Color.Lerp(tier, look.snow, 0.8f * snow) : tier);
+            }
+            mb.sway = 0f;
+        }
+
+        public static void Rock(MeshBuilder mb, Vector3 g, float r, bool light, LandColors look = null)
+        {
+            look ??= LandColors.River;
+            mb.Ico(g + Vector3.up * r * 0.2f, r, new Vector3(1.2f, 0.6f, 1f), light ? look.rockLight : look.rock, 0.22f, look.rockDark);
+        }
+
+        /// <summary>A boulder of the setting's rock (#115): bigger and rougher than the scatter, settled into the ground.</summary>
+        public static void Boulder(MeshBuilder mb, Vector3 g, BoulderData b, LandColors look)
+        {
+            var col = b.shade == 1 ? look.rockDark : b.shade == 2 ? look.rockLight : look.rock;
+            mb.Ico(g + Vector3.up * b.radius * 0.28f, b.radius, new Vector3(1.15f, 0.8f, 1f), col, 0.3f, look.rockDark);
+            if (b.radius > 0.13f) mb.Ico(g + new Vector3(b.radius * 0.9f, b.radius * 0.05f, b.radius * 0.5f), b.radius * 0.5f, new Vector3(1f, 0.7f, 1f), Color.Lerp(col, look.rockDark, 0.4f), 0.3f, look.rockDark);
         }
 
         public static void GrassTuft(MeshBuilder mb, Vector3 g, float h, Color col)
