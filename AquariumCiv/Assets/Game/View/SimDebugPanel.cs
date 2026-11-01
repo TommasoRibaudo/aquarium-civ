@@ -143,6 +143,24 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Back to now")) last = TimeLapseView.DebugClose();
         }
 
+        void FirstRunGui()
+        {
+            GUILayout.Label(FirstRunView.DebugStatus());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Replay")) last = FirstRunView.DebugReplay();
+            if (GUILayout.Button("Skip all")) last = FirstRunView.DebugSkipAll();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            foreach (var step in new[] { FirstRunStep.Patch, FirstRunStep.Name, FirstRunStep.Rain, FirstRunStep.Year, FirstRunStep.Card })
+                if (GUILayout.Button(step.ToString())) last = FirstRunView.DebugSkipTo(step);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            FirstRunView.DebugKeyboard = GUILayout.Toggle(FirstRunView.DebugKeyboard, "Keyboard up", GUI.skin.button);
+            if (GUILayout.Button("Refused name")) last = FirstRunView.DebugRefuseName();
+            if (GUILayout.Button("Reward line")) last = FirstRunView.DebugReward();
+            GUILayout.EndHorizontal();
+        }
+
         // ---------- IMGUI ----------
         void OnGUI()
         {
@@ -188,7 +206,12 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("One story event")) { sim.ForceStory(); last = Done("story forced"); }
             }
 
-            if (Section("Time-lapse")) TimeLapseGui();
+            if (Section("Time-lapse"))
+            {
+                TimeLapseGui();
+                TimeLapseScreenView.BookRibbon = GUILayout.Toggle(TimeLapseScreenView.BookRibbon, "Book: new pages (ribbon)", GUI.skin.button);
+            }
+            if (Section("First run")) FirstRunGui();
             if (Section("Cards (#75)"))
             {
                 GUILayout.Label(CardStackView.Status());

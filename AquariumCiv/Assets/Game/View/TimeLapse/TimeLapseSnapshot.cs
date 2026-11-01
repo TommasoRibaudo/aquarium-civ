@@ -85,17 +85,9 @@ namespace AquariumCiv.View
             go = new GameObject("TimeLapseSnapshotLabel") { hideFlags = HideFlags.HideAndDontSave };
             var d = go.AddComponent<UIDocument>();
             d.panelSettings = ps;
-            var box = new VisualElement { pickingMode = PickingMode.Ignore };
-            box.style.position = Position.Absolute; box.style.left = 0; box.style.right = 0; box.style.bottom = 0; box.style.top = 0;
-            box.style.justifyContent = Justify.FlexEnd; box.style.alignItems = Align.FlexStart;
             var l = new Label(label) { pickingMode = PickingMode.Ignore };
-            l.style.marginLeft = 36; l.style.marginBottom = 36;
-            l.style.paddingLeft = 24; l.style.paddingRight = 24; l.style.paddingTop = 10; l.style.paddingBottom = 10;
-            l.style.fontSize = 38; l.style.color = new Color(0.94f, 0.89f, 0.8f);
-            l.style.backgroundColor = new Color(0.18f, 0.16f, 0.15f, 0.7f);
-            l.style.borderTopLeftRadius = l.style.borderTopRightRadius = l.style.borderBottomLeftRadius = l.style.borderBottomRightRadius = 20;
-            box.Add(l);
-            d.rootVisualElement.Add(box);
+            l.AddToClassList("kg-flash");
+            d.rootVisualElement.Add(l);
             return ps;
         }
     }

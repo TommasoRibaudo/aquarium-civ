@@ -96,7 +96,7 @@ namespace AquariumCiv.View.TimeLapseScreen
             if (Caption != null && Caption.source != CaptionSource.Crossed) Caption.secondsLeft = Opt.captionSeconds; // a card lets go once play moves on
             Version++;
         }
-        public void Pause() { if (!Clock.Playing) return; Clock.Pause(); Version++; }
+        public void Pause() { if (!Clock.Playing) return; Clock.Pause(); EraCard = null; Version++; }
         public void TogglePlay() { if (Clock.Playing) Pause(); else Play(); }
         public void SetSpeed(int index) { Clock.SetSpeed(index); Version++; }
         /// <summary>Tap on the speed chip: next step, wrapping from the fastest back to the slowest.</summary>
@@ -199,6 +199,7 @@ namespace AquariumCiv.View.TimeLapseScreen
         void ShowCaption(PinGroup g, int index, CaptionSource src)
         {
             Caption = new PinCaption { pin = g.pins[index], source = src, groupIndex = index, groupCount = g.pins.Count, secondsLeft = -1f };
+            EraCard = null; // the card is always the era at the playhead, and this just moved it ("Village" over "Year 1 · Camp")
             Version++;
         }
 
@@ -242,8 +243,9 @@ namespace AquariumCiv.View.TimeLapseScreen
             var band = Lapse.EraBands().LastOrDefault(b => Clock.Position >= b.startYear);
             string name = string.IsNullOrWhiteSpace(BoxName) ? "" : BoxName.Trim();
             var d = new SnapshotData { boxName = name, year = YearNumber, eraName = era.ToString(), eraTitle = band != null ? band.title : "", position = Clock.Position };
-            d.label = (name.Length > 0 ? name + " · " : "") + "Year " + d.year + " · " + d.eraName;
-            d.fileName = "aquarium-year-" + d.year + "-" + d.eraName.ToLowerInvariant() + ".png";
+            d.label = (name.Length > 0 ? name + " · " : "") + "Year " + d.year;
+            string file = new string(name.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
+            d.fileName = (file.Length > 0 ? file : "aquarium") + "-year-" + d.year + ".png";
             tel?.SnapshotTaken();
             return d;
         }

@@ -63,6 +63,9 @@ namespace AquariumCiv.Sim.Replay
         public float blend;            // 0 = fully yearA, 1 = fully yearB
         public BoxAtYear a, b;
         public ReplayDiff diff;        // a to b (empty when yearA == yearB)
+        /// <summary>How far the last step has come towards the box as it is now, 0 before it starts and 1 at the end. Records leave out
+        /// what only the live box draws (yards, the Keeper's ground), so the view grows those in by this.</summary>
+        public float liveShare;
         /// <summary>The year to draw as the settled box: the nearer one.</summary>
         public BoxAtYear Nearest => blend < 0.5f ? a : b;
     }
@@ -70,7 +73,8 @@ namespace AquariumCiv.Sim.Replay
     /// <summary>
     /// The replay model over a sim's history records. Frames (the box at a year) are built once and cached; diffs between
     /// years are cached too, so dragging a scrubber back and forth costs a dictionary hit. Frames of finished years never
-    /// change; the open year is rebuilt when the sim moves. Read only: nothing here touches the sim's state.
+    /// change; the open year is rebuilt when the sim moves. The timeline ends on <see cref="Now"/>, the box as it stands, not the
+    /// start of the running year (#196), and reaches it as one more step. Read only: nothing here touches the sim's state.
     /// </summary>
     public class TimeLapse
     {
@@ -80,6 +84,9 @@ namespace AquariumCiv.Sim.Replay
         readonly int maxFrames, maxDiffs;
         long cachedMonth = -1;
         List<EraBand> bands;
+        BoxAtYear now;
+        ReplayDiff nowDiff;
+        int nowStamp;
 
         /// <param name="maxFrames">Frame cache size (a whole 120-year run fits by default).</param>
         public TimeLapse(SimCore sim, int maxFrames = 256, int maxDiffs = 512)
@@ -112,10 +119,21 @@ namespace AquariumCiv.Sim.Replay
             }
             cachedMonth = m;
             bands = null;
+            now = null;
         }
 
         /// <summary>Forget everything (a new game, or the records were rewritten).</summary>
-        public void Invalidate() { frames.Clear(); diffs.Clear(); cachedMonth = -1; bands = null; }
+        public void Invalidate() { frames.Clear(); diffs.Clear(); cachedMonth = -1; bands = null; now = null; }
+
+        /// <summary>The box as it is now: what the end of the timeline shows. Rebuilt when a month passes, or when something is built,
+        /// given or taken back within one.</summary>
+        public BoxAtYear Now()
+        {
+            Sync();
+            int stamp = sim.State.buildings.Count * 8191 + sim.State.nudges.Count;
+            if (now == null || stamp != nowStamp) { now = sim.BoxNow(); nowDiff = null; nowStamp = stamp; }
+            return now;
+        }
 
         /// <summary>The box at the start of a year (cached). Null for a year that has not happened.</summary>
         public BoxAtYear Frame(int year)
@@ -212,13 +230,32 @@ namespace AquariumCiv.Sim.Replay
         {
             Sync();
             int max = MaxYear;
-            position = Math.Max(0f, Math.Min(position, EndPosition));
+            float end = EndPosition;
+            position = Math.Max(0f, Math.Min(position, end));
             int a = Math.Min((int)Math.Floor(position), max);
             int b = Math.Min(a + 1, max);
-            var s = new ScrubState { position = position, yearA = a, yearB = b, a = Frame(a), b = Frame(b) };
-            s.blend = a == b ? 0f : position - a;
-            s.diff = a == b ? new ReplayDiff { fromYear = a, toYear = a } : Diff(a, b);
-            return s;
+            bool openYear = end > max; // months into a year nothing has recorded yet: the last step runs from its start to now
+            if (a == max)
+            {
+                var box = Now();
+                var s = new ScrubState { position = position, yearA = a, yearB = a, b = box, liveShare = 1f };
+                if (openYear)
+                {
+                    s.a = Frame(a);
+                    s.blend = (position - a) / (end - a);
+                    s.diff = nowDiff ??= Compute(s.a, box);
+                    s.liveShare = s.blend;
+                }
+                else
+                {
+                    s.a = box;
+                    s.diff = new ReplayDiff { fromYear = a, toYear = a };
+                }
+                return s;
+            }
+            var step = new ScrubState { position = position, yearA = a, yearB = b, a = Frame(a), b = Frame(b), blend = position - a, diff = Diff(a, b) };
+            if (!openYear && a == max - 1) step.liveShare = step.blend; // the box ends on a year's first month: the last step is the last year
+            return step;
         }
 
         // ---------- the timeline ----------

@@ -43,10 +43,10 @@ namespace AquariumCiv.GameUI
         PinChip pinChip;
         StoriesChip storiesChip;
         GlassToggle soundSwitch, hapticsSwitch;
-        GlassButton cleanButton, shapeButton;
+        GlassButton cleanButton, shapeButton, historyButton;
         readonly System.Collections.Generic.HashSet<string> toolBlocks = new();
         GlassToast toastLabel;
-        bool cleanMode, shapeNew, offHome;
+        bool cleanMode, shapeNew, offHome, toolsWaiting;
         Label historyBody;
         Rect lastSafe;
         Vector2Int lastScreen;
@@ -61,6 +61,9 @@ namespace AquariumCiv.GameUI
         float tapTime;
         public const float TapSlopFraction = 0.02f, TapMaxSeconds = 0.4f;
         const float TopRowTop = 110f; // 40 pt
+        const string WaitingClass = "kg-tool--waiting";
+        const string ArriveClass = "kg-tool--arrive";
+        const int ArriveStepMs = 220;
 
         public VisualElement Root => root;
         public string OpenSheet => openSheet?.name.Replace("-scrim", "");
@@ -132,7 +135,7 @@ namespace AquariumCiv.GameUI
 
         public void SetCleanMode(bool on)
         {
-            if (cleanMode == on) return;
+            if (cleanMode == on || (CleanLocked && !on)) return;
             cleanMode = on;
             if (cleanButton != null)
             {
@@ -141,6 +144,10 @@ namespace AquariumCiv.GameUI
             }
             CleanModeChanged?.Invoke(on);
         }
+
+        /// <summary>The first run's wipe and flick: the hint says to drag, so nothing turns clean mode off under it, not Done (the tool isn't
+        /// here yet) and not the idle timer. Whoever sets this owns it, and clears it before the step ends.</summary>
+        public bool CleanLocked { get; set; }
 
         /// <summary>Camera mode (photo mode, #70): every control, toast and sheet hides (and the IMGUI debug dock, see
         /// DebugDock.Hidden), the camera stays fully usable. A short tap anywhere (not a drag, not a pinch) or the small
@@ -286,7 +293,7 @@ namespace AquariumCiv.GameUI
         {
             if (toastLabel == null) return;
             var i = GameUiPanel.SafeInsets(lastSafe, lastScreen.x, lastScreen.y);
-            float lane = GameUiPanel.Lane(toolInHand ? GameUiPanel.ToastOverStrip : GameUiPanel.ToastBottom, i.w);
+            float lane = GameUiPanel.Lane(toolInHand ? GameUiPanel.ToastOverStrip : toolsWaiting ? GameUiPanel.ToolsBottom : GameUiPanel.ToastBottom, i.w);
             VisualElement up = openSheet != null ? openSheet.Sheet : outsideSheet;
             if (up != null)
             {
@@ -380,7 +387,7 @@ namespace AquariumCiv.GameUI
             safe.Add(pinRow);
 
             bottomRow = Row("hud-bottom");
-            bottomRow.Add(Tool("hud-history", "History", OnHistory, UiRole.Open));
+            bottomRow.Add(historyButton = Tool("hud-history", "History", OnHistory, UiRole.Open));
             bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => SetCleanMode(!cleanMode), UiRole.Toggle));
             cleanButton.Add(new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
             bottomRow.Add(shapeButton = Tool("hud-shape", "Shape", () => { SetShapeNew(false); Open(Shaping); }, UiRole.Open));
@@ -585,7 +592,30 @@ namespace AquariumCiv.GameUI
         void FollowFirstRun()
         {
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
-            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || toolInHand || (sim != null && sim.State.firstRun.active));
+            bool firstRun = sim != null && sim.State.firstRun.active;
+            topRow.EnableInClassList("hud-top--away", (outsideSheet != null && !outsideKeepsTop) || toolInHand || firstRun);
+            if (firstRun != toolsWaiting) SetToolsWaiting(firstRun);
+        }
+
+        /// <summary>Each step of the first run has one primary and no other tools (hierarchy "First run", board 3.7), so History, Clean and
+        /// Shape aren't there to tap. When it ends they arrive one at a time, in the order the run taught them. They take taps at once;
+        /// only the look is staggered, so a tap never waits for the arrival.</summary>
+        void SetToolsWaiting(bool waiting)
+        {
+            toolsWaiting = waiting;
+            var tools = new[] { cleanButton, shapeButton, historyButton };
+            for (int i = 0; i < tools.Length; i++)
+            {
+                var tool = tools[i];
+                tool.pickingMode = waiting ? PickingMode.Ignore : PickingMode.Position;
+                if (waiting || GlassMotion.Instant) tool.EnableInClassList(WaitingClass, waiting);
+                else
+                {
+                    tool.AddToClassList(ArriveClass); // a transition of its own: elsewhere a tool's place is exact at once
+                    tool.schedule.Execute(() => { if (!toolsWaiting) tool.RemoveFromClassList(WaitingClass); }).ExecuteLater(i * ArriveStepMs);
+                }
+            }
+            PlaceToast();
         }
 
         void RefreshText()

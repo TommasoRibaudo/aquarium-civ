@@ -88,14 +88,21 @@ namespace AquariumCiv.View
         /// <summary>Closer than this share of the fitted view, or panned, and the HUD's ink no longer has a calm background behind it.</summary>
         const float HomeZoom = 0.92f, HomeOffset = 0.3f;
         Vector3 homeTarget;
+        float homeYaw, homePitch, homeFit;
         bool homeKnown;
+
+        /// <summary>Eases back to the view the box opened on.</summary>
+        public void GoHome(float seconds = BoxCameraMath.FlyDefaultSeconds)
+        {
+            if (homeKnown) EaseTo(homeTarget, homeYaw, homePitch, homeFit, seconds);
+        }
 
         /// <summary>Is the camera off its home view? The HUD backs the box name and top icons while it is (spec §4).</summary>
         public bool OffHome => homeKnown && (zoom < HomeZoom || (target - homeTarget).magnitude > HomeOffset);
 
         void TellHud()
         {
-            if (!homeKnown) { homeTarget = target; homeKnown = true; }
+            if (!homeKnown) { homeTarget = target; homeYaw = yaw; homePitch = pitch; homeFit = zoom; homeKnown = true; }
             AquariumCiv.GameUI.GameHud.Instance?.SetOffHome(OffHome);
         }
 

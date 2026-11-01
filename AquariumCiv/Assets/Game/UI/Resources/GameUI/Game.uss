@@ -61,7 +61,6 @@
     --old-moss: #5E7F43;
     --thatch: #CFA65E;
     --scrim: rgba(30, 26, 23, 0.45);
-    --old-ink-soft: rgba(106, 75, 54, 0.7);
 }
 
 Label { white-space: normal; }
@@ -107,26 +106,6 @@ Label { white-space: normal; }
 .hud-btn--small:active { background-color: rgba(46, 42, 39, 0.6); }
 
 
-/* ---------------- sheets (bottom panels) ---------------- */
-.sheet-scrim { background-color: var(--scrim); justify-content: flex-end; }
-.sheet {
-    background-color: var(--plaster);
-    border-top-left-radius: 56px; border-top-right-radius: 56px;
-    padding: 40px 44px 44px 44px;
-}
-.sheet-head { flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-.sheet-title { font-size: 54px; color: var(--timber); -unity-font-style: bold; flex-shrink: 1; }
-.sheet-close {
-    height: 144px; min-width: 200px; padding: 0 36px; margin: 0;
-    border-width: 0; border-radius: 72px;
-    background-color: var(--canvas); color: var(--timber);
-    font-size: 36px; -unity-font-style: bold;
-}
-.sheet-close:hover { background-color: var(--canvas); }
-.sheet-close:active { background-color: #D4C39F; }
-.sheet-text { font-size: 36px; color: var(--timber); margin-bottom: 18px; }
-.sheet-note { font-size: 30px; color: var(--old-ink-soft); -unity-font-style: italic; margin-top: 8px; }
-
 /* a settings row: label left, control right */
 .row {
     flex-direction: row; align-items: center; justify-content: space-between;
@@ -142,14 +121,3 @@ Label { white-space: normal; }
 }
 .switch:hover { background-color: var(--canvas); }
 .switch--on, .switch--on:hover { background-color: var(--old-moss); color: var(--plaster); }
-
-.sheet-btn {
-    height: 144px; margin: 24px 0 0 0; border-width: 0; border-radius: 72px;
-    background-color: var(--canvas); color: var(--timber); font-size: 38px; -unity-font-style: bold;
-}
-.sheet-btn:hover { background-color: var(--canvas); }
-.sheet-btn:active { background-color: #D4C39F; }
-
-/* still used by the first-year card, until #169 */
-.pc-label { font-size: 28px; color: var(--old-ink-soft); -unity-font-style: bold; margin-bottom: 8px; }
-

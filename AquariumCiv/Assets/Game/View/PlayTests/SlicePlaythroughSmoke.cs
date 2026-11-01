@@ -288,6 +288,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Drag(new[] { screen.ScreenPointAtBarX(m.Layout.XOf(m.Clock.End) - 2f), screen.ScreenPointAtBarX(m.Layout.XOf(m.Clock.End * 0.5f)) }, 20f);
             Assert.Less(m.Position, m.Clock.End - 0.5f, "a drag by touch moves the playhead");
             yield return Shot("smoke_timelapse");
+            // A drag can settle on a pin, and the caption's row then has the play row's place, Close with it.
+            if (m.Caption != null) { yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-cap-close")); yield return Frames(3); }
             yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-close"));
             yield return Frames(6);
             Assert.IsFalse(screen.IsOpen);

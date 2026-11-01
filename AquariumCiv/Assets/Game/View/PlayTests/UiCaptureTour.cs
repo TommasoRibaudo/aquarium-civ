@@ -545,7 +545,7 @@ namespace AquariumCiv.View.PlayTests
             string fresh = null;
             yield return Until(() => { fresh = Directory.Exists(folderShots) ? Directory.GetFiles(folderShots, "*.png").FirstOrDefault(f => !before.Contains(f)) : null; return fresh != null; }, 6f);
             yield return Frames(4);
-            yield return Cap("3.5-snapshot-toast", fresh != null, screen.Root.Q<Label>("tl-toast")?.text);
+            yield return Cap("3.5-snapshot-toast", fresh != null, GameHud.Instance.Root.Q<Label>("hud-toast")?.text);
             if (fresh != null)
             {
                 yield return new WaitForSecondsRealtime(0.3f);

@@ -172,6 +172,7 @@ namespace AquariumCiv.View
                 return;
             }
             var sim = Sim;
+            if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
             hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : CleanHint, 5f);
         }
 
@@ -589,7 +590,8 @@ namespace AquariumCiv.View
                 Burst(transform.TransformPoint(p), 1, 0.05f, 0.25f);
             }
             people?.Planner?.React(KeeperGesture.FullClean, people.Now);
-            hud?.Toast(everything ? "All tidy. Look at that sky!" : "The glass is sparkling.", 3.5f);
+            if (Sim == null || !Sim.State.firstRun.active) // in the first run the next step's hint comes in here (question 27)
+                hud?.Toast(everything ? "All tidy. Look at that sky!" : "The glass is sparkling.", 3.5f);
         }
 
         // ---------------- sparkles ----------------

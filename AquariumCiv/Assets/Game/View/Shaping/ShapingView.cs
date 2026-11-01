@@ -127,8 +127,9 @@ namespace AquariumCiv.View
 
         // ================================================================== the calls
 
-        /// <summary>Pick a tool (shape mode on) or null (off). Clean mode goes off; a hint says what to do.</summary>
-        public void SetTool(string kind)
+        /// <summary>Pick a tool (shape mode on) or null (off). Clean mode goes off; a hint says what to do, unless <paramref name="quiet"/>:
+        /// the first rain has its own hint, and one message at a time (question 27).</summary>
+        public void SetTool(string kind, bool quiet = false)
         {
             if (kind != null && System.Array.IndexOf(SimCore.SliceTools, kind) < 0) kind = null;
             Tray.Close();
@@ -139,7 +140,7 @@ namespace AquariumCiv.View
             if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
             var sim = Sim;
             string name = sim != null ? sim.ShapingToolName(kind) : kind;
-            hud?.Toast($"Tap the ground to place the {name}.", 4f);
+            if (!quiet) hud?.Toast($"Tap the ground to place the {name}.", 4f);
         }
 
         /// <summary>A wish card's Give (#75): shape mode with the wish's tool, pre-armed at the wished spot, with a banner and a

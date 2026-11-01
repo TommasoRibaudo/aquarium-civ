@@ -456,6 +456,7 @@ namespace AquariumCiv.View
             if (hud != null && hud.SheetOpen) return "a sheet is open";
             if (hud != null && !hud.IsVisible) return "the HUD is hidden";
             if (Busy) return "show me";
+            if (FirstRunView.Instance != null && FirstRunView.Instance.HasTheWord) return "the first run";
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return "a moment";
             var tl = TimeLapseView.Find();

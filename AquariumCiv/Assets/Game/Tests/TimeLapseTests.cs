@@ -187,6 +187,95 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(s.BoxAt(10).buildings.Count, t.Frame(10).buildings.Count);
         }
 
+        // ---------- the end of the replay is the box as it is now (#196) ----------
+        static void Months(SimCore s, int months)
+        {
+            for (int m = 0; m < months; m++)
+            {
+                s.Step();
+                if (s.State.eraReady) s.AdvanceEra();
+            }
+        }
+
+        /// <summary>The frame against the live state, the way HistoryTests reads it.</summary>
+        static void MatchesTheLiveBox(SimCore sim, BoxAtYear f, string why)
+        {
+            var s = sim.State;
+            var standing = s.buildings.Where(b => { var l = s.settle.lots.Find(x => x.id == b.lotId); return l != null && !l.retired; }).Select(b => b.id).OrderBy(i => i);
+            CollectionAssert.AreEqual(standing.ToList(), f.buildings.Select(b => b.id).OrderBy(i => i).ToList(), why + ": buildings");
+            var cells = new List<int>();
+            for (int i = 0; i < s.settle.tier.Length; i++) if ((s.settle.tier[i] & 3) != 0 || (s.settle.flags[i] & AquariumCiv.Sim.Settle.SiteMap.FLaid) != 0) cells.Add(i);
+            CollectionAssert.AreEqual(cells, f.paths.Select(p => p.cell).ToList(), why + ": paths");
+            CollectionAssert.AreEquivalent(s.nudges.Select(n => n.id).ToList(), f.shapings.Where(r => r.nudgeId != 0).Select(r => r.nudgeId).ToList(), why + ": shapings");
+            Assert.AreEqual(s.population, f.population, why + ": head count");
+            Assert.AreEqual(s.era, f.era, why + ": era");
+            Assert.AreEqual(s.month, f.month, why + ": month");
+        }
+
+        [Test]
+        public void ABuildingAddedMidYearShowsAtTheEndOfTheReplay()
+        {
+            var s = NewSim(5);
+            Run(s, 3);
+            Months(s, 7);
+            var t = new TimeLapse(s);
+            var start = t.Frame(3);
+            var b = s.DebugBuild(BuildingType.Hut);
+            var end = t.Scrub(t.EndPosition);
+            Assert.IsFalse(start.buildings.Any(x => x.id == b.id), "the start of the year doesn't have it");
+            Assert.IsTrue(end.Nearest.buildings.Any(x => x.id == b.id), "the end of the replay does");
+            Assert.IsTrue(end.diff.appeared.Any(x => x.id == b.id), "and it comes in like any other step's building");
+            Assert.AreEqual(1f, end.blend, 1e-4f);
+            Assert.AreEqual(1f, end.liveShare, 1e-4f);
+            Assert.AreSame(start, t.Frame(3), "the year's start stays as it is");
+        }
+
+        [Test]
+        public void TheLastStepRunsFromTheYearsStartToNow()
+        {
+            var s = NewSim(5);
+            Run(s, 3);
+            Months(s, 6);
+            var t = new TimeLapse(s);
+            var mid = t.Scrub(3.25f);
+            Assert.AreEqual(3, mid.yearA);
+            Assert.AreSame(t.Frame(3), mid.a);
+            Assert.AreSame(t.Now(), mid.b);
+            Assert.AreEqual(0.5f, mid.blend, 1e-4f, "a quarter year into a half year");
+            Assert.AreEqual(0.5f, mid.liveShare, 1e-4f);
+            Assert.AreEqual(0f, t.Scrub(2.5f).liveShare, "finished years stay as they are");
+            Assert.AreSame(t.Frame(2), t.Scrub(2.25f).a);
+        }
+
+        [Test]
+        public void TheEndMatchesTheLiveBoxAsTheYearGoesOn()
+        {
+            var s = NewSim(7);
+            Run(s, 2);
+            var t = new TimeLapse(s); // one cache, as the months pass under it
+            for (int m = 0; m < 30; m++)
+            {
+                Months(s, 1);
+                if (m == 4) s.DebugBuild(BuildingType.Hut);
+                if (m == 16) s.DebugBuild(BuildingType.Lumbermill);
+                if (m == 9) Assert.IsTrue(s.PlaceFirstRain(0.5f, 0.5f).Ok, "a shaping given mid-year");
+                MatchesTheLiveBox(s, t.Scrub(t.EndPosition).Nearest, "month " + s.State.month);
+            }
+            Assert.AreEqual(s.State.month / (float)Y, t.Scrub(9999f).position, 1e-3f);
+        }
+
+        [Test]
+        public void TheEndKeepsUpWithinAMonth()
+        {
+            var s = NewSim(5);
+            Run(s, 2);
+            Months(s, 3);
+            var t = new TimeLapse(s);
+            int before = t.Now().buildings.Count;
+            s.DebugBuild(BuildingType.Hut);
+            Assert.AreEqual(before + 1, t.Now().buildings.Count, "the same month, a new building");
+        }
+
         [Test]
         public void WarmUpFillsTheCacheWithinABudget()
         {
