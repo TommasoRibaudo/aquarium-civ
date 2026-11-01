@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
+using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Replay;
 using UnityEngine;
@@ -29,6 +30,8 @@ namespace AquariumCiv.View
         int sel;                 // selected notable id (-1 = none)
         float shapeX, shapeZ = 0.8f;
         int shapeKind;
+        readonly List<RelicMomentInfo> reactions = new();
+        string runAhead = "run ahead: not asked yet";
         static readonly string[] Types = { BuildingType.Hut, BuildingType.Farm, BuildingType.Lumbermill, BuildingType.Well,
             BuildingType.Windmill, BuildingType.Market, BuildingType.Tavern, BuildingType.Church, BuildingType.Workshop, BuildingType.Guildhall, BuildingType.Bakery };
         static readonly string[] Jobs = { JobType.Gatherer, JobType.Hunter, JobType.Fisher, JobType.Woodcutter, JobType.Toolmaker,
@@ -197,8 +200,9 @@ namespace AquariumCiv.View
                 foreach (CardKind kind in System.Enum.GetValues(typeof(CardKind))) if (GUILayout.Button(kind.ToString())) last = CardStackView.DebugCard(kind);
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
-                foreach (var what in new[] { "payoff", "end", "long" }) if (GUILayout.Button("Text: " + what)) last = CardStackView.DebugText(what);
+                foreach (var what in new[] { "payoff", "end", "long", "two" }) if (GUILayout.Button("Text: " + what)) last = CardStackView.DebugText(what);
                 GUILayout.EndHorizontal();
+                if (GUILayout.Button("Show me on this card (the bar)")) last = CardStackView.DebugShowMe();
             }
             if (Section("Fire (#65)"))
             {
@@ -223,6 +227,9 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Peak ready")) last = Done(BoxCompleteController.DebugPeak());
                 if (GUILayout.Button("Last moment")) last = BoxCompleteController.DebugMoment();
                 GUILayout.EndHorizontal();
+                // #97: what a close would schedule: the run ahead on a copy, and what it took here.
+                GUILayout.Label(runAhead);
+                if (GUILayout.Button("Run ahead now")) runAhead = RunAheadLine(sim);
                 if (GUILayout.Button("End festival")) { sim.DebugEndFestival(); last = Done("festival ended"); }
                 if (GUILayout.Button("Open teaser")) last = Done(sim.DebugOpenTeaser() ?? "no teaser");
             }
@@ -241,6 +248,24 @@ namespace AquariumCiv.View
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Back to active")) last = BoxCompleteController.DebugBack();
                 if (GUILayout.Button("Shelf view")) last = BoxCompleteController.DebugShelf();
+                GUILayout.EndHorizontal();
+            }
+
+            if (Section("Stash (#150)"))
+            {
+                var stash = PeopleView.Find()?.Planner;
+                GUILayout.Label(stash != null && stash.TryGetStash(out var pile) ? $"logs {pile.stock.logs}, baskets {pile.stock.baskets}, hides {pile.stock.hides}" : "no stash after the camp");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Stock low")) last = Done(StashProps.DebugStock(sim, false));
+                if (GUILayout.Button("Stock high")) last = Done(StashProps.DebugStock(sim, true));
+                GUILayout.EndHorizontal();
+            }
+            if (Section("Crowd (#148)"))
+            {
+                GUILayout.Label($"in the crowd: {sim.CrowdCount}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Open a crowd card")) last = PersonCardView.DebugOpenCrowd();
+                if (GUILayout.Button("One rises")) { var risen = sim.ForceCrowdRise(); last = Done(risen != null ? risen.FullName + " stepped out of the crowd" : "no room for a notable"); }
                 GUILayout.EndHorizontal();
             }
 
@@ -322,6 +347,11 @@ namespace AquariumCiv.View
                     if (GUILayout.Button("Answer last")) last = ShapingView.DebugSkip();
                     GUILayout.EndHorizontal();
                 }
+                // #142: the first reaction to a gift, and who's playing it now.
+                var planner = PeopleView.Find()?.Planner;
+                int reacting = planner != null ? planner.ActiveShapingReactions(PeopleView.Find().Now, reactions) : 0;
+                GUILayout.Label(reacting == 0 ? "reactions: none playing" : $"reactions: {reacting} playing to gift #{reactions[0].nudgeId}");
+                if (GUILayout.Button("People react to the last gift")) last = ShapingView.DebugReact();
                 var waiting = sim.State.nudges.Count(n => !n.credited);
                 if (GUILayout.Button($"People answer the last one ({waiting} waiting)")) last = sv != null ? ShapingView.DebugSkip() : DoSkipToAnswer();
             }
@@ -405,6 +435,15 @@ namespace AquariumCiv.View
             if (Event.current.type == EventType.Repaint) contentH = GUILayoutUtility.GetLastRect().height;
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        static string RunAheadLine(SimCore sim)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var r = sim.RunAhead(s => JsonUtility.FromJson<SimState>(JsonUtility.ToJson(s)));
+            sw.Stop();
+            string found = r.Found ? $"{r.target} {r.era} in {r.realHours:0.0} real h" : r.miss.ToString();
+            return $"run ahead: {found} · {r.monthsRun} months in {sw.ElapsedMilliseconds} ms";
         }
 
         bool Section(string title)

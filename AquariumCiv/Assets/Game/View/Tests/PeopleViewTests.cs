@@ -92,6 +92,23 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
+        public void TheStashHasAPlaceForAFullPileWithinItsExtent()
+        {
+            Assert.AreEqual(CampStash.MaxLogs, StashProps.LogSpots.Length);
+            Assert.AreEqual(CampStash.MaxBaskets, StashProps.BasketSpots.Length);
+            Assert.AreEqual(CampStash.MaxHides, StashProps.HideSpots.Length);
+            void Within(Vector3 p, float dx, float dz, string what)
+            {
+                foreach (float sx in new[] { -1f, 1f })
+                    foreach (float sz in new[] { -1f, 1f })
+                        Assert.LessOrEqual(new Vector2(p.x + sx * dx, p.z + sz * dz).magnitude, CampStash.PileExtent, what);
+            }
+            foreach (var p in StashProps.LogSpots) Within(p, StashProps.LogLength * 0.5f, StashProps.LogRadius, "a log");
+            foreach (var p in StashProps.BasketSpots) Within(p, StashProps.BasketRadius * 0.71f, StashProps.BasketRadius * 0.71f, "a basket");
+            foreach (var p in StashProps.HideSpots) Within(p, StashProps.HideHalfX, StashProps.HideHalfZ, "a hide");
+        }
+
+        [Test]
         public void EveryPlannerProp_MapsToAViewProp_InASlotItFits()
         {
             foreach (Life.Prop p in System.Enum.GetValues(typeof(Life.Prop)))
@@ -105,6 +122,8 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual((PropKind.Rod, PropSlot.Hand), PeopleView.PropOf(Life.Prop.Rod, Life.PropSlot.Hand, ActivityKind.Fish));
             Assert.AreEqual((PropKind.Hammer, PropSlot.Hand), PeopleView.PropOf(Life.Prop.Hammer, Life.PropSlot.Hand, ActivityKind.Hammer));
             Assert.AreEqual((PropKind.Log, PropSlot.Shoulder), PeopleView.PropOf(Life.Prop.Log, Life.PropSlot.Shoulder, ActivityKind.Carry));
+            Assert.AreEqual((PropKind.BucketEmpty, PropSlot.Hand), PeopleView.PropOf(Life.Prop.EmptyBucket, Life.PropSlot.Shoulder, ActivityKind.Walk), "#152: empty to the water");
+            Assert.AreEqual((PropKind.Bucket, PropSlot.Hand), PeopleView.PropOf(Life.Prop.Buckets, Life.PropSlot.Shoulder, ActivityKind.FetchWater), "#152: full on the way back");
             Assert.AreEqual((PropKind.Sheaf, PropSlot.Head), PeopleView.PropOf(Life.Prop.Sheaf, Life.PropSlot.Head, ActivityKind.Carry));
             Assert.AreEqual((PropKind.Bundle, PropSlot.Back), PeopleView.PropOf(Life.Prop.Goods, Life.PropSlot.Back, ActivityKind.Carry));
         }
