@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -8,7 +9,8 @@ namespace AquariumCiv.GameUI
     /// The motion tokens of spec §1 as code, using only what limits.md allows: transitions on opacity, translate, scale and colour,
     /// no keyframes, no loops, no filter transition. <see cref="Show"/> puts an element up, waits a frame and then removes the
     /// off class, because done in one frame it jumps; <see cref="Hide"/> adds the off class and takes the element down after the
-    /// token's time. Each off class goes with a class in Glass.uss that holds the timing.
+    /// token's time. Each off class goes with a class in Glass.uss that holds the timing. The newest call on an element wins: it
+    /// cancels whatever an earlier Show or Hide still has pending there, so a timer never acts on a state it didn't set.
     /// </summary>
     public static class GlassMotion
     {
@@ -28,19 +30,31 @@ namespace AquariumCiv.GameUI
         /// </summary>
         public static bool Instant { get; set; }
 
+        sealed class Turn { public int now; }
+        static readonly ConditionalWeakTable<VisualElement, Turn> turns = new();
+
+        /// <summary>Cancels what's pending on <paramref name="e"/>: returns this call's turn; a timer runs only while its turn is current.</summary>
+        static (Turn turn, int mine) NextTurn(VisualElement e)
+        {
+            var t = turns.GetOrCreateValue(e);
+            return (t, ++t.now);
+        }
+
         /// <summary>Makes <paramref name="e"/> visible, then lets it transition in from <paramref name="offClass"/> a frame later.</summary>
         public static void Show(VisualElement e, string offClass, Action done = null, int ms = 0)
         {
+            var (turn, mine) = NextTurn(e);
             e.style.display = DisplayStyle.Flex;
             if (Instant) { Land(e, offClass); done?.Invoke(); return; }
             e.AddToClassList(offClass);
-            e.schedule.Execute(() => e.RemoveFromClassList(offClass)).ExecuteLater(16);
-            if (done != null) e.schedule.Execute(done).ExecuteLater(ms + 40);
+            e.schedule.Execute(() => { if (turn.now == mine) e.RemoveFromClassList(offClass); }).ExecuteLater(16);
+            if (done != null) e.schedule.Execute(() => { if (turn.now == mine) done(); }).ExecuteLater(ms + 40);
         }
 
         /// <summary>Plays the off transition, then takes <paramref name="e"/> down (display none) after <paramref name="ms"/>.</summary>
         public static void Hide(VisualElement e, string offClass, int ms, Action done = null)
         {
+            var (turn, mine) = NextTurn(e);
             if (Instant || e.panel == null)
             {
                 e.AddToClassList(offClass);
@@ -51,7 +65,7 @@ namespace AquariumCiv.GameUI
             e.AddToClassList(offClass);
             e.schedule.Execute(() =>
             {
-                if (!e.ClassListContains(offClass)) return; // shown again meanwhile
+                if (turn.now != mine) return;
                 e.style.display = DisplayStyle.None;
                 done?.Invoke();
             }).ExecuteLater(ms + 20);

@@ -244,7 +244,7 @@ namespace AquariumCiv.GameUI
         Action pinTap;
 
         /// <summary>#39, D2: the pinned person's chip, a portrait and the name, apart from the tools: <paramref name="text"/> null
-        /// hides it; a tap calls <paramref name="onTap"/> (the person card opens on them).</summary>
+        /// hides it; a tap calls <paramref name="onTap"/> (the first flies to them, a second opens their card).</summary>
         public void SetPinChip(string text, Action onTap)
         {
             pinTap = onTap;
@@ -261,6 +261,9 @@ namespace AquariumCiv.GameUI
             GameUiPanel.Toasts.Post(text, seconds);
             PumpToast();
         }
+
+        /// <summary>Takes back a toast still waiting its turn, a hint that no longer applies.</summary>
+        public void WithdrawToast(string text) => GameUiPanel.Toasts.Withdraw(text);
 
         void PumpToast()
         {
@@ -471,6 +474,7 @@ namespace AquariumCiv.GameUI
         public void Open(string id)
         {
             if (!sheets.TryGetValue(id, out var scrim) || openSheet == scrim) return;
+            if (id == Shaping) SetCleanMode(false); // one mode at a time, and Done would sit hidden behind the tray
             if (openSheet != null) { openSheet.style.display = DisplayStyle.None; openSheet.Sheet.Close(); }
             openSheet = scrim;
             if (id == Settings) { soundSwitch.On = GameSettings.Sound; hapticsSwitch.On = GameSettings.Haptics; }

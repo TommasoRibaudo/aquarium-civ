@@ -32,6 +32,7 @@ namespace AquariumCiv.GameUI
 
         readonly VisualElement content;
         Vector4 insets;
+        readonly System.Collections.Generic.List<VisualElement> stopped = new();
         public FrostSurface Surface { get; }
         public bool IsOpen { get; private set; }
         public override VisualElement contentContainer => content ?? this;
@@ -76,6 +77,8 @@ namespace AquariumCiv.GameUI
         public void Open(Action done = null)
         {
             IsOpen = true;
+            foreach (var e in stopped) e.pickingMode = PickingMode.Position;
+            stopped.Clear();
             GlassMotion.Show(this, GlassMotion.SlideOff, done, GlassMotion.SlideMs);
             Surface.Show();
             Surface.Follow(GlassMotion.SlideMs);
@@ -84,6 +87,9 @@ namespace AquariumCiv.GameUI
         public void Close(Action done = null)
         {
             IsOpen = false;
+            // A leaving sheet takes no taps: what it still covers is free at once. Picking doesn't inherit, so every piece stops.
+            this.Query<VisualElement>().Where(e => e.pickingMode == PickingMode.Position).ForEach(stopped.Add);
+            foreach (var e in stopped) e.pickingMode = PickingMode.Ignore;
             Surface.Follow(GlassMotion.SlideMs);
             GlassMotion.Hide(this, GlassMotion.SlideOff, GlassMotion.SlideMs, () => { Surface.Hide(); done?.Invoke(); });
         }

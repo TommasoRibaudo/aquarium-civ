@@ -50,6 +50,22 @@ namespace AquariumCiv.GameUI.Tests
         }
 
         [Test]
+        public void AHintThatNoLongerAppliesIsTakenBack()
+        {
+            var q = new MessageQueue();
+            q.Post("showing", 3f);
+            q.Tick(0f);
+            q.Post("hint", 3f);
+            q.Post("next", 3f);
+            q.Withdraw("hint");
+            q.Withdraw("showing");
+            Assert.AreEqual(1, q.Waiting, "only the waiting hint goes");
+            Assert.AreEqual("showing", q.Current, "the one on screen stays");
+            q.Tick(3.1f);
+            Assert.AreEqual("next", q.Current);
+        }
+
+        [Test]
         public void APromptHoldsTheToastsAndTheyComeBackAfter()
         {
             var q = new MessageQueue();

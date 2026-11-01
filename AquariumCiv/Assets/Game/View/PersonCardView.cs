@@ -79,6 +79,9 @@ namespace AquariumCiv.View
         Vector2Int lastScreen;
         string chipText;
         int chipId = -2;
+        int chipFlownId = -1;
+        Vector3 chipFlownTo, lastFlight;
+        const float ChipStillThere = 0.1f;
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : SimLayoutSource.Find()?.Sim;
         static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
@@ -201,14 +204,15 @@ namespace AquariumCiv.View
             UpdateChip(sim, true);
         }
 
-        void FlyTo(int id)
+        bool FlyTo(int id)
         {
             var cam = Cam;
             var pv = PeopleView.Find();
-            if (cam == null || pv == null || !pv.TryGetDollFeet(PersonRef.Notable(id), out var feet)) return;
+            if (cam == null || pv == null || !pv.TryGetDollFeet(PersonRef.Notable(id), out var feet)) return false;
             float zoom = Mathf.Min(cam.zoom, BoxCameraMath.FlyPersonZoom);
             var focus = ShowMeDirector.AboveCard(cam, feet, zoom, cam.pitch, CardAnchorY);
-            cam.FlyTo(focus, zoom, BoxCameraMath.FlyDefaultSeconds);
+            lastFlight = cam.FlyTo(focus, zoom, BoxCameraMath.FlyDefaultSeconds);
+            return true;
         }
 
         // ================================================================== frame
@@ -256,7 +260,18 @@ namespace AquariumCiv.View
             int id = p?.id ?? -1;
             if (!force && text == chipText && id == chipId) return;
             chipText = text; chipId = id;
-            hud.SetPinChip(text, id < 0 ? null : () => Open(id, true));
+            hud.SetPinChip(text, id < 0 ? null : () => ChipTapped(id));
+        }
+
+        // D2: a tap flies to the pinned person, a second tap opens the card. "Second" means the camera is still where the first
+        // took it (or on its way): move it off them and a tap flies again. Someone with no doll to fly to gets the card at once.
+        void ChipTapped(int id)
+        {
+            var cam = Cam;
+            bool there = id == chipFlownId && cam != null && (cam.IsFlying || (cam.target - chipFlownTo).sqrMagnitude < ChipStillThere * ChipStillThere);
+            if (!there && FlyTo(id)) { chipFlownId = id; chipFlownTo = lastFlight; return; }
+            chipFlownId = -1;
+            Open(id, there);
         }
 
         void LateUpdate()

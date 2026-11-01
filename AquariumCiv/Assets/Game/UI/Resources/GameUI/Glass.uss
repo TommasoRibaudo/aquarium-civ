@@ -109,12 +109,12 @@
     color: var(--ink); -unity-text-outline-color: var(--ink);
     -unity-font-definition: var(--font-serif); font-size: 38.5px;
 }
-.kg-btn--quiet:active, .kg-btn--quiet.kg-btn--pressed { background-color: var(--clear); }
+.kg-btn--quiet:active, .kg-btn--quiet.kg-btn--pressed { background-color: var(--pressed-fill); }
 .kg-btn--icon {
     width: var(--drawn); height: var(--drawn); padding: 0; border-width: 0; background-color: var(--clear);
     justify-content: center; align-items: center;
 }
-.kg-btn--icon:active, .kg-btn--icon.kg-btn--pressed { background-color: var(--clear); }
+.kg-btn--icon:active, .kg-btn--icon.kg-btn--pressed { background-color: var(--pressed-fill); }
 /* Unavailable: thin solid edge, paler fill, a lock, and full-strength text. Never faded. */
 .kg-btn--off, .kg-btn--off:active {
     padding-left: 93.5px; scale: 1 1;
@@ -411,6 +411,7 @@
 .hud-icon--quiet { opacity: 0.72; }
 .hud-top--backed .hud-title-text { background-color: var(--quiet-backing); }
 .hud-top--backed .hud-disc { background-color: var(--quiet-backing); }
+.hud-icon:active .hud-disc, .hud-title:active .hud-disc, .hud-title:active .hud-title-text { background-color: var(--pressed-fill); }
 
 .hud-bottom { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 82.5px; flex-direction: row; justify-content: space-between; align-items: flex-end; padding: 0; }
 .kg-tool {

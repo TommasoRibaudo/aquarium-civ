@@ -218,7 +218,7 @@ namespace AquariumCiv.GameUI
                 colours.Add(w);
             }
             var translucent = Row(s, "Translucent (pick Tank to see them over the box)");
-            foreach (var (word, cls) in new[] { ("frost tint 72 %", "frost"), ("flat tint 92 %", "flat"), ("flat sheet 96 %", "sheet"), ("quiet backing 72 %", "quiet"), ("dot off 52 %", "dot"), ("dark plate 91 %", "plate") })
+            foreach (var (word, cls) in new[] { ("frost tint 72 %", "frost"), ("flat tint 92 %", "flat"), ("flat sheet 96 %", "sheet"), ("quiet backing 72 %", "quiet"), ("dot off 52 %", "dot"), ("dark plate 96 %", "plate") })
             {
                 var w = new VisualElement();
                 w.AddToClassList("gal-swatch");
