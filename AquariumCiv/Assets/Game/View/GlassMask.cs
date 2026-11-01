@@ -238,8 +238,8 @@ namespace AquariumCiv.View
     public static class GlassPaneNoise
     {
         public static Vector2 Offset(int seed) => new(Land.Hash3(seed, 11, 3), Land.Hash3(seed, 12, 5));
-        /// <summary>Radians.</summary>
-        public static float Rotation(int seed) => Land.Hash3(seed, 13, 7) * Mathf.PI * 2f;
+        /// <summary>Radians, within 20 degrees of upright: the detail's drips run down, and a pane turned further makes them smears across the glass.</summary>
+        public static float Rotation(int seed) => (Land.Hash3(seed, 13, 7) - 0.5f) * 0.7f;
     }
 
     /// <summary>The care layer's pure numbers (unit-tested): how mess dims the sun, and the spotless thresholds.</summary>

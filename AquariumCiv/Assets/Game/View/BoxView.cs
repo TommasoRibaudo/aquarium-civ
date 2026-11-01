@@ -107,6 +107,7 @@ namespace AquariumCiv.View
 
         void OnEnable()
         {
+            frameFadeSent = false;
             sailsApart = false;
             if (Application.isPlaying && WindView.AutoCreate)
             {
@@ -1501,6 +1502,7 @@ namespace AquariumCiv.View
 
         /// <summary>The debug panel's near-glass force: 0..1 stands in for the zoom, negative = off.</summary>
         public static float NearGlassForce = -1f;
+        bool frameFadeSent;
         readonly float[] paneFade = new float[4], frameShown = new float[8], frameFade = new float[8];
         /// <summary>What a pane shows now (1 = there, 0 = gone): tests and the debug read-out.</summary>
         public float PaneOpacity(int pane) => paneFade[pane];
@@ -1539,7 +1541,9 @@ namespace AquariumCiv.View
                 frameFade[i] = 1f - now;
                 changed = true;
             }
-            if (changed) Shader.SetGlobalFloatArray(FrameFadeId, frameFade);
+            // Globals outlive a box: a new one starts from "all shown", so it sends that once, or the last box's fade stays on its frame.
+            if (changed || !frameFadeSent) Shader.SetGlobalFloatArray(FrameFadeId, frameFade);
+            frameFadeSent = true;
         }
 
         /// <summary>Back panes draw first, then the front ones (fixed queues, no per-frame distance sort).</summary>

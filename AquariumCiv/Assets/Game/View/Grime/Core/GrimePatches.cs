@@ -67,7 +67,7 @@ namespace AquariumCiv.View.Grime
                 float ang = MathF.Atan2(v, u);
                 float edge = 1f + p.lobeAmp * MathF.Sin(p.lobeFreq * ang + p.lobePhase);
                 float k = d / edge;                       // 1 = the ragged outline
-                float t = Clamp01((1.05f - k) / 0.45f);   // soft 0.45 band inside the outline
+                float t = Clamp01((1.05f - k) / 0.75f);   // a wide soft band inside the outline: with less, heavy grime cut the patch out like a paper shape
                 best = Math.Max(best, t * t * (3f - 2f * t) * p.clean);
             }
             return best;
