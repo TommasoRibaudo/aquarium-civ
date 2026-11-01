@@ -368,20 +368,38 @@ namespace AquariumCiv.View
 
         /// <summary>
         /// The Keeper Doll (relics-and-glass-voice 1.3): a peg figure with a big round head, one huge open eye, and enormous
-        /// hands, one raised. Feet at <paramref name="at"/>, facing -z. <paramref name="s"/> = 1 is a doll about as tall as a
-        /// person (the one on the post); the carried one is smaller.
+        /// hands, one raised, dressed by people who've only ever guessed at the Keeper (#185): a worn beige suit, painted on the peg,
+        /// lapels, a shirt front and a mismatched patch, and a watch far too big on the raised wrist. Feet at <paramref name="at"/>,
+        /// facing -z. <paramref name="s"/> = 1 is a doll about as tall as a person (the one on the post); the carried one is smaller.
         /// </summary>
         public static void KeeperDoll(MeshBuilder mb, Vector3 at, float s)
         {
-            var wood = Palette.WoodLight;
-            mb.Prism(at, 0.03f * s, 0.022f * s, 0.09f * s, 6, wood, topCol: wood);
+            var suit = SuitBeige;
+            var worn = Color.Lerp(suit, Palette.Door, 0.28f);
+            mb.Prism(at, 0.03f * s, 0.027f * s, 0.04f * s, 6, worn, topCol: worn); // the trousers
+            mb.Box(at + new Vector3(0, 0.018f * s, -0.029f * s), new Vector3(0.003f * s, 0.036f * s, 0.003f * s), Palette.Door); // where they part
+            mb.Prism(at + new Vector3(0, 0.038f * s, 0), 0.0305f * s, 0.022f * s, 0.052f * s, 6, suit, topCol: suit); // the jacket
+            mb.Box(at + new Vector3(0, 0.072f * s, -0.024f * s), new Vector3(0.012f * s, 0.03f * s, 0.003f * s), Palette.Plaster); // the shirt front
+            foreach (int side in new[] { -1, 1 })
+                mb.Box(at + new Vector3(side * 0.011f * s, 0.07f * s, -0.0265f * s), new Vector3(0.009f * s, 0.038f * s, 0.003f * s), worn, Quaternion.Euler(0f, 0f, side * 16f)); // a lapel
+            foreach (float y in new[] { 0.046f, 0.058f })
+                mb.Box(at + new Vector3(0, y * s, -0.029f * s), new Vector3(0.005f * s, 0.005f * s, 0.003f * s), Palette.Door); // the buttons
+            mb.Box(at + new Vector3(0.021f * s, 0.052f * s, -0.019f * s), new Vector3(0.016f * s, 0.014f * s, 0.003f * s), Palette.Hide, Quaternion.Euler(0f, -35f, 0f)); // a patch: someone mended it
             mb.Ico(at + new Vector3(0, 0.118f * s, 0), 0.034f * s, Vector3.one, Palette.Plaster, 0.06f);
             mb.Ico(at + new Vector3(0, 0.122f * s, -0.03f * s), 0.013f * s, new Vector3(1f, 1f, 0.5f), Palette.Plaster, 0.02f); // the eye: always open
             mb.Ico(at + new Vector3(0, 0.122f * s, -0.036f * s), 0.007f * s, new Vector3(1f, 1f, 0.5f), Palette.Iron, 0.02f);
-            mb.Box(at + new Vector3(0.04f * s, 0.11f * s, 0), new Vector3(0.012f * s, 0.07f * s, 0.012f * s), wood); // the raised arm
+            mb.Box(at + new Vector3(0.04f * s, 0.11f * s, 0), new Vector3(0.012f * s, 0.07f * s, 0.012f * s), suit); // the raised arm, in its sleeve
+            mb.Box(at + new Vector3(-0.036f * s, 0.06f * s, 0), new Vector3(0.011f * s, 0.05f * s, 0.011f * s), suit); // the other sleeve
+            mb.Box(at + new Vector3(0.0415f * s, 0.132f * s, 0), new Vector3(0.016f * s, 0.011f * s, 0.016f * s), Palette.Door); // the strap
+            mb.Prism(at + new Vector3(0.0415f * s, 0.1325f * s, -0.008f * s), 0.0125f * s, 0.0125f * s, 0.004f * s, 9, Brass, Quaternion.Euler(-90f, 0, 0), true, true, Palette.Plaster); // the watch: enormous too
+            mb.Box(at + new Vector3(0.0415f * s, 0.136f * s, -0.0125f * s), new Vector3(0.003f * s, 0.008f * s, 0.002f * s), Palette.Door); // its hands
+            mb.Box(at + new Vector3(0.0445f * s, 0.1325f * s, -0.0125f * s), new Vector3(0.007f * s, 0.003f * s, 0.002f * s), Palette.Door);
             mb.Ico(at + new Vector3(0.045f * s, 0.16f * s, 0), 0.028f * s, new Vector3(1f, 1.2f, 0.5f), Palette.Skins[0], 0.08f); // hands: enormous
             mb.Ico(at + new Vector3(-0.045f * s, 0.035f * s, 0), 0.026f * s, new Vector3(1f, 1.2f, 0.5f), Palette.Skins[0], 0.08f);
         }
+
+        /// <summary>#185: the suit: a sun-faded beige. Not a stone's or a tunic's colour.</summary>
+        public static readonly Color SuitBeige = new(0.78f, 0.69f, 0.52f);
 
         /// <summary>Where a slot sits on an adult doll (scale 1), relative to the feet, and how the prop is turned there.</summary>
         public static (Vector3 pos, Quaternion rot) SlotPose(PropSlot slot)

@@ -531,18 +531,24 @@ namespace AquariumCiv.View
         static Mesh GlowDisc()
         {
             const int n = 24;
-            var v = new Vector3[n + 1];
-            var c = new Color[n + 1];
-            var tris = new int[n * 3];
+            var v = new Vector3[n * 2 + 1];
+            var c = new Color[n * 2 + 1];
+            var tris = new int[n * 9];
             var warm = Palette.FireCore;
             v[0] = Vector3.zero;
             c[0] = warm;
             for (int i = 0; i < n; i++)
             {
                 float a = i * Mathf.PI * 2f / n;
-                v[i + 1] = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * GiftGlowRadius;
-                c[i + 1] = new Color(warm.r, warm.g, warm.b, 0f);
-                tris[i * 3] = 0; tris[i * 3 + 1] = i + 1; tris[i * 3 + 2] = (i + 1) % n + 1;
+                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                int next = (i + 1) % n;
+                v[1 + i] = dir * GiftGlowRadius * 0.55f; // full nearly to the middle ring, so it's a pool of light and not a dot
+                c[1 + i] = new Color(warm.r, warm.g, warm.b, 0.8f);
+                v[1 + n + i] = dir * GiftGlowRadius;
+                c[1 + n + i] = new Color(warm.r, warm.g, warm.b, 0f);
+                tris[i * 9] = 0; tris[i * 9 + 1] = 1 + i; tris[i * 9 + 2] = 1 + next;
+                tris[i * 9 + 3] = 1 + i; tris[i * 9 + 4] = 1 + n + i; tris[i * 9 + 5] = 1 + n + next;
+                tris[i * 9 + 6] = 1 + i; tris[i * 9 + 7] = 1 + n + next; tris[i * 9 + 8] = 1 + next;
             }
             var m = new Mesh { name = "GiftGlow", hideFlags = HideFlags.DontSave, vertices = v, colors = c, triangles = tris };
             m.RecalculateBounds();

@@ -36,7 +36,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, v.Stocked, "bare counters");
             var cam = Camera.main.GetComponent<BoxCamera>();
             var first = Object.FindAnyObjectByType<BoxView>().layout.pieces.First(p => p.kind == PieceKind.Stall);
-            cam.EaseTo(Object.FindAnyObjectByType<BoxView>().transform.TransformPoint(new Vector3(first.x, 0f, first.z)), cam.yaw, 50f, 0.32f, 0.2f);
+            cam.EaseTo(Object.FindAnyObjectByType<BoxView>().transform.TransformPoint(new Vector3(first.x, 0f, first.z)), cam.yaw, 72f, 0.3f, 0.2f); // from high up: the town's roofs stand round the square
             yield return new WaitForSecondsRealtime(0.6f);
             yield return Shot("bundle2-154-empty");
             Debug.Log("[stalls] " + StallProps.DebugStock("half"));

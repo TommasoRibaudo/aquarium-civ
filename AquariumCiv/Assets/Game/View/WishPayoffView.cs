@@ -101,7 +101,7 @@ namespace AquariumCiv.View
             Debug.Log($"[Wish] {beat} {wish.kind} for {wish.notableId}, night {night}, says {plan.wisherSaysNow}, fly {plan.flyToWisher}");
             Sfx.Play(plan.cue, 0f, plan.quiet ? QuietVolume : 1f);
             var mp = MomentPlayer.Instance;
-            if (mp != null && plan.effectNow) mp.GiftPuffs(wish.x, wish.z, beat == WishBeat.Given ? 1.7f : 1.1f, beat == WishBeat.Given ? 8 : 0);
+            if (mp != null && plan.effectNow) mp.GiftPuffs(wish.x, wish.z, beat == WishBeat.Given ? 1.4f : 1f, beat == WishBeat.Given ? 8 : 0);
             if (mp != null && night && beat == WishBeat.Given && !plan.wisherSaysNow && plan.witnessLine == null) mp.GiftGlow(wish.x, wish.z); // nobody awake to say it
             if (plan.wisherSaysNow) Tell(pv, now, plan.wisherId, plan.wisherLine);
             else if (plan.wisherLine != null) waking.Add((plan.wisherId, plan.wisherLine, Time.unscaledTime + WakeGiveUpSeconds));

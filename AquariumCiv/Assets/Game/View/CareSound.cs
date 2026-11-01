@@ -54,6 +54,11 @@ namespace AquariumCiv.View
             "pop" => MakePop(),
             "cheer" => MakeCheer(),
             "flies" => MakeFlies(),
+            "bird0" => MakeBird(0),
+            "bird1" => MakeBird(1),
+            "bird2" => MakeBird(2),
+            "bird3" => MakeBird(3),
+            "bird4" => MakeBird(4),
             _ => null,
         };
 
@@ -130,6 +135,50 @@ namespace AquariumCiv.View
                 d[i] = (lp - lp2) * 3.2f * wob;
             }
             return Clip("CareRub", d);
+        }
+
+        /// <summary>#195: how many bird calls <see cref="MakeBird"/> makes.</summary>
+        public const int BirdCalls = 5;
+
+        /// <summary>One sweep of a bird's voice into <paramref name="d"/>: a tone gliding from one pitch to another with a fast warble, soft at both ends.</summary>
+        static void BirdNote(float[] d, float start, float seconds, float fromHz, float toHz, float warbleHz, float warbleDepth, float level)
+        {
+            int s = (int)(start * Rate), n = (int)(seconds * Rate);
+            float phase = 0f;
+            for (int i = 0; i < n && s + i < d.Length; i++)
+            {
+                float u = i / (float)n, t = i / (float)Rate;
+                float hz = Mathf.Lerp(fromHz, toHz, u) + Mathf.Sin(2f * Mathf.PI * warbleHz * t) * warbleDepth;
+                phase += 2f * Mathf.PI * hz / Rate;
+                float env = Mathf.Sin(Mathf.PI * u);
+                d[s + i] += (Mathf.Sin(phase) + 0.18f * Mathf.Sin(2f * phase)) * env * env * level;
+            }
+        }
+
+        /// <summary>#195: five short bird calls made in code, no recording: a chirp, a warble, a two-note whistle, a trill and a falling tee-tee-tee.</summary>
+        static AudioClip MakeBird(int which)
+        {
+            var d = new float[(int)(Rate * 1.2f)];
+            switch (which)
+            {
+                case 0: // chirp-chirp-chirp
+                    for (int i = 0; i < 3; i++) BirdNote(d, i * 0.14f, 0.09f, 2600f, 3800f, 0f, 0f, 0.5f);
+                    break;
+                case 1: // a warble
+                    BirdNote(d, 0f, 0.8f, 2300f, 2700f, 17f, 320f, 0.45f);
+                    break;
+                case 2: // a two-note whistle
+                    BirdNote(d, 0f, 0.26f, 2150f, 2100f, 5f, 15f, 0.5f);
+                    BirdNote(d, 0.34f, 0.36f, 1720f, 1650f, 5f, 15f, 0.5f);
+                    break;
+                case 3: // a trill
+                    for (int i = 0; i < 11; i++) BirdNote(d, i * 0.062f, 0.05f, 3300f, 3000f, 0f, 0f, 0.35f + i * 0.015f);
+                    break;
+                default: // falling tee-tee-tee
+                    for (int i = 0; i < 4; i++) BirdNote(d, i * 0.17f, 0.12f, 3400f - i * 260f, 3000f - i * 260f, 0f, 0f, 0.48f);
+                    break;
+            }
+            return Clip("Bird" + which, d);
         }
 
         static AudioClip MakeChime()

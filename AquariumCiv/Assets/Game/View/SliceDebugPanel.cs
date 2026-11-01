@@ -154,6 +154,7 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Clear said")) last = ShowMeDirector.DebugClearSaid();
             if (GUILayout.Button("Clean hint")) last = CareView.DebugCleanHint();
             if (GUILayout.Button("Stalls")) last = StallProps.DebugStock();
+            if (GUILayout.Button("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
             if (GUILayout.Button("Drop crumb")) last = GlassVoice.DebugDropCrumb();
             if (GUILayout.Button("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
             if (GUILayout.Button("Grant a wish")) last = WishPayoffView.DebugGrant();
@@ -204,6 +205,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Buzz light")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Light);
                 if (GUILayout.Button("Buzz success")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Success);
                 if (GUILayout.Button("Check clips")) last = AudioDirector.DebugCheckClips();
+                if (GUILayout.Button("Bird call")) last = AudioDirector.DebugBirdCall();
                 GUILayout.EndHorizontal();
             }
             // A building's card (#188): the next one round the box, and its builder's three wordings.
