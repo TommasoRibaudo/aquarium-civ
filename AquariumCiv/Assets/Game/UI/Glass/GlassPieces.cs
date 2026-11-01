@@ -174,6 +174,7 @@ namespace AquariumCiv.GameUI
             Sub.style.display = string.IsNullOrEmpty(sub) ? DisplayStyle.None : DisplayStyle.Flex;
             Portrait.Person = person;
             Portrait.style.display = person == null ? DisplayStyle.None : DisplayStyle.Flex;
+            Title.style.marginLeft = person == null ? new StyleLength(0f) : new StyleLength(StyleKeyword.Null);
             return this;
         }
     }

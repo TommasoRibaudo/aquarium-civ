@@ -446,7 +446,7 @@
 .gal-scroll { flex-grow: 1; flex-shrink: 1; }
 .gal-section { padding: var(--space-16); }
 .gal-head { margin-bottom: var(--space-8); }
-.gal-state { margin-top: var(--space-12); margin-bottom: 5.5px; }
+.gal-state { margin-top: var(--space-12); margin-bottom: 5.5px; white-space: normal; }
 .gal-row { flex-direction: row; flex-wrap: wrap; align-items: center; }
 .gal-row > .kg-btn { margin: 0 var(--space-8) var(--space-8) 0; }
 .gal-row > .kg-tag { margin-right: var(--space-8); align-self: center; }

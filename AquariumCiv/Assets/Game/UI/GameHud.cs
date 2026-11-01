@@ -474,6 +474,7 @@ namespace AquariumCiv.GameUI
             if (id == Settings) { soundSwitch.On = GameSettings.Sound; hapticsSwitch.On = GameSettings.Haptics; }
             if (id == History) RefreshText();
             scrim.Open();
+            ToolsBehindSheet(true);
             PlaceToast();
             SheetChanged?.Invoke(id);
         }
@@ -484,8 +485,17 @@ namespace AquariumCiv.GameUI
             var closing = openSheet;
             openSheet = null;
             closing.Close();
+            ToolsBehindSheet(false);
             PlaceToast();
             SheetChanged?.Invoke(null);
+        }
+
+        /// <summary>The tools step back behind a sheet: a flat sheet is 96 %, so they would show through it as ghosts.</summary>
+        void ToolsBehindSheet(bool behind)
+        {
+            var v = behind ? Visibility.Hidden : Visibility.Visible;
+            bottomRow.style.visibility = v;
+            pinRow.style.visibility = v;
         }
 
         /// <summary>Hide the whole HUD (feedback screenshots, a clean snapshot, the debug toggle).</summary>
