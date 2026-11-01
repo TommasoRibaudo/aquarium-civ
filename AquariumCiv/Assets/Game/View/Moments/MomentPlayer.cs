@@ -579,7 +579,9 @@ namespace AquariumCiv.View
         {
             notifyAsk.Ready = false;
             if (Sim != null) MomentContext.MarkNotifyAsked(Sim.State);
-            PlayerPrefs.SetInt("moment.notify", yes ? 1 : 0); // the local notification itself comes with the notification work
+            // The phone's own question comes only after this yes (decisions.md: asked at the first era moment). Its answer is the setting.
+            if (yes && GameClock.Instance != null) GameClock.Instance.AskNotifications();
+            else EraNotifier.Enabled = false;
             if (GameClock.Instance != null) GameClock.Instance.Save();
             overlay.HideCaption();
             if (!Playing && GameHud.Instance != null) GameHud.Instance.SetVisible(hudWasVisible); // the HUD waited for the answer

@@ -437,6 +437,30 @@ namespace AquariumCiv.GameUI
         }
     }
 
+    /// <summary>A settings row that goes somewhere: an icon, the words, a chevron, all of it the target.</summary>
+    [UxmlElement]
+    public partial class GlassRowButton : Button
+    {
+        readonly Label word;
+        public GlassRowButton() : this("next", "", null) { }
+
+        public GlassRowButton(string icon, string label, Action tapped, UiRole role = UiRole.Open)
+        {
+            RemoveFromClassList(ussClassName);
+            AddToClassList("kg-row");
+            AddToClassList("kg-row--link");
+            Add(new GlassIcon(icon, "kg-row-icon"));
+            word = new Label(label) { pickingMode = PickingMode.Ignore };
+            word.AddToClassList("type-body");
+            word.AddToClassList("kg-row-label");
+            Add(word);
+            Add(new GlassIcon("next", "kg-icon--small"));
+            clicked += () => { UiSound.Play(role); tapped?.Invoke(); };
+        }
+
+        public string Label { get => word.text; set => word.text = value; }
+    }
+
     /// <summary>A hit strip of <see cref="GameUiPanel.MinTarget"/>, a 4 pt line, a 22 pt ring. Value 0 to 1. A finger anywhere on the strip takes it.</summary>
     [UxmlElement]
     public partial class GlassSlider : VisualElement
@@ -445,6 +469,8 @@ namespace AquariumCiv.GameUI
         float value;
         int pointer = -1;
         public event Action<float> Changed;
+        /// <summary>The finger is off. With nobody listening the slider ticks by itself; a listener plays its own sample.</summary>
+        public event Action Released;
         public GlassSlider() : this(0f) { }
 
         public GlassSlider(float value, Action<float> changed = null)
@@ -455,9 +481,25 @@ namespace AquariumCiv.GameUI
             thumb = Part("kg-slider-thumb");
             if (changed != null) Changed += changed;
             Value = value;
-            RegisterCallback<PointerDownEvent>(e => { pointer = e.pointerId; this.CapturePointer(pointer); Drag(e.localPosition.x); });
+            RegisterCallback<PointerDownEvent>(e => Grab(e.pointerId, e.position));
             RegisterCallback<PointerMoveEvent>(e => { if (pointer == e.pointerId) Drag(e.localPosition.x); });
-            RegisterCallback<PointerUpEvent>(e => { if (pointer == e.pointerId) { this.ReleasePointer(pointer); pointer = -1; UiSound.Play(UiRole.ScrubTick); } });
+            RegisterCallback<PointerUpEvent>(e => { if (pointer == e.pointerId) Let(); });
+        }
+
+        /// <summary>A finger came down on the strip, at <paramref name="at"/> in panel space. <see cref="GlassScroll"/> calls this too, ahead of its view.</summary>
+        public void Grab(int id, Vector2 at)
+        {
+            pointer = id;
+            this.CapturePointer(id);
+            Drag(this.WorldToLocal(at).x);
+        }
+
+        void Let()
+        {
+            this.ReleasePointer(pointer);
+            pointer = -1;
+            if (Released != null) Released();
+            else UiSound.Play(UiRole.ScrubTick);
         }
 
         VisualElement Part(string cls)
@@ -487,4 +529,4 @@ namespace AquariumCiv.GameUI
             }
         }
     }
-}
+        }

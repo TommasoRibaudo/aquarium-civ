@@ -101,6 +101,22 @@ namespace AquariumCiv.Game
             return session.sim;
         }
 
+        /// <summary>The active box is gone: a new world takes its place on the shelf, with its first run ahead of it. Finished boxes and their
+        /// plinths stay. Saves are the caller's.</summary>
+        public static SimCore ResetActive(ClockStart session, SimConfig config, int seed)
+        {
+            session.shelf ??= ShelfState.Single(session.sim.State);
+            session.sim = new SimCore(config, SimCore.NewWorld(seed, config));
+            var box = session.shelf.Active;
+            if (box != null) { box.state = session.sim.State; box.founders.Clear(); box.fromBox = -1; }
+            session.visit = null;
+            session.visitIndex = -1;
+            session.newWorld = true;
+            session.awayHours = 0;
+            session.catchUp = default;
+            return session.sim;
+        }
+
         /// <summary>Opens a museum box to look at: its people live the time since the last visit
         /// (<see cref="SimCore.MuseumAdvance"/>). The active box is untouched and still what saves. False if there is no such
         /// museum.</summary>

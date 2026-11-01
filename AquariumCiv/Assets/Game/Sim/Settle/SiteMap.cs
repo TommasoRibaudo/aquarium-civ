@@ -186,12 +186,14 @@ namespace AquariumCiv.Sim.Settle
 
         public static float RectGap(Lot a, Lot b) => RectGap(a.x, a.z, a.yaw, a.w, a.d, b.x, b.z, b.yaw, b.w, b.d);
 
-        static readonly float[] acx = new float[4], acz = new float[4], bcx = new float[4], bcz = new float[4];
+        // One set per thread: the run ahead at close (#97) lives a copy of the box off the main thread.
+        [ThreadStatic] static float[] acxT, aczT, bcxT, bczT;
 
         /// <summary>Separating-axis distance between two oriented rects: &lt; 0 overlap, otherwise a lower bound of the
-        /// gap. Not thread-safe (shared scratch arrays): the sim runs on one thread.</summary>
+        /// gap.</summary>
         public static float RectGap(float ax, float az, float ayaw, float aw, float ad, float bx, float bz, float byaw, float bw, float bd)
         {
+            float[] acx = acxT ??= new float[4], acz = aczT ??= new float[4], bcx = bcxT ??= new float[4], bcz = bczT ??= new float[4];
             Corners(ax, az, ayaw, aw, ad, acx, acz);
             Corners(bx, bz, byaw, bw, bd, bcx, bcz);
             float best = float.MinValue;

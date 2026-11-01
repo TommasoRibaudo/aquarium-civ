@@ -253,8 +253,26 @@ namespace AquariumCiv.View
                 // #97: what a close would schedule: the run ahead on a copy, and what it took here.
                 GUILayout.Label(runAhead);
                 if (GUILayout.Button("Run ahead now")) runAhead = RunAheadLine(sim);
+                // #97: the notification by hand: what a close schedules, without leaving.
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Close now")) runAhead = GameClock.DebugClose();
+                if (GUILayout.Button("Notifications: " + (GameSettings.Notifications ? "on" : "off"))) GameSettings.Notifications = !GameSettings.Notifications;
+                if (GUILayout.Button("Ask")) last = MomentPlayer.DebugNotifyAsk();
+                GUILayout.EndHorizontal();
                 if (GUILayout.Button("End festival")) { sim.DebugEndFestival(); last = Done("festival ended"); }
                 if (GUILayout.Button("Open teaser")) last = Done(sim.DebugOpenTeaser() ?? "no teaser");
+            }
+
+            if (Section("Settings (#95)"))
+            {
+                GUILayout.BeginHorizontal();
+                DeviceSilent.DebugForce = GUILayout.Toggle(DeviceSilent.DebugForce, "Phone silent", GUI.skin.button);
+                GlassKeyboard.Debug = GUILayout.Toggle(GlassKeyboard.Debug, "Keyboard up", GUI.skin.button);
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                foreach (var id in new[] { SettingsSheets.Rename, SettingsSheets.Reset, SettingsSheets.Licences })
+                    if (GUILayout.Button(id) && GameHud.Instance != null) GameHud.Instance.Open(id);
+                GUILayout.EndHorizontal();
             }
 
             if (Section("Shelf (#93)"))

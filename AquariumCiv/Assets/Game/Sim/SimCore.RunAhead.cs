@@ -15,6 +15,8 @@ namespace AquariumCiv.Sim
         BoxComplete,
         /// <summary>Nothing becomes ready within <see cref="SimCore.RunAheadMaxAwayHours"/>.</summary>
         NotInTime,
+        /// <summary>The caller stopped it: the player came back first.</summary>
+        Stopped,
     }
 
     /// <summary>When the next era or the peak becomes ready if the player stays away.</summary>
@@ -52,8 +54,10 @@ namespace AquariumCiv.Sim
         /// Runs a copy of this box ahead and says when it becomes ready. <paramref name="deepCopy"/> makes the copy (Sim has no
         /// serialiser: Runtime gives a JsonUtility round trip of the state, the save's own path). This sim and its state
         /// aren't touched and none of its events fire; the copy is dropped after.
+        /// <paramref name="stop"/> is asked before every month. The sim's scratch is per thread, so with a copy function that doesn't read the live box
+        /// (a JSON written before, see EraNotifier) this can run off the main thread.
         /// </summary>
-        public RunAheadResult RunAhead(Func<SimState, SimState> deepCopy)
+        public RunAheadResult RunAhead(Func<SimState, SimState> deepCopy, Func<bool> stop = null)
         {
             if (deepCopy == null) throw new ArgumentNullException(nameof(deepCopy));
             if (State.boxComplete) return new RunAheadResult { miss = RunAheadMiss.BoxComplete };
@@ -66,7 +70,12 @@ namespace AquariumCiv.Sim
             // Like Advance: a month steps when simHours reaches it, and a save can stand part way through a month.
             long last = (long)Math.Floor((s.simHours + Config.OfflineSimHours(RunAheadMaxAwayHours)) / Config.StepHours + 1e-7);
             int months = 0;
-            while (s.month < last && !Ready()) { ahead.Step(); months++; }
+            while (s.month < last && !Ready())
+            {
+                if (stop != null && stop()) return new RunAheadResult { miss = RunAheadMiss.Stopped, monthsRun = months };
+                ahead.Step();
+                months++;
+            }
             if (!Ready()) return new RunAheadResult { miss = RunAheadMiss.NotInTime, monthsRun = months };
             double sim = Math.Max(0, s.month * Config.StepHours - s.simHours);
             return new RunAheadResult

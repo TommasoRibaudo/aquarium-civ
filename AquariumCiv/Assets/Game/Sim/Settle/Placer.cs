@@ -35,7 +35,9 @@ namespace AquariumCiv.Sim.Settle
         readonly bool[] netMark = new bool[SiteMap.N];
         readonly int[] reach = new int[SiteMap.N];
         readonly List<Candidate> cands = new List<Candidate>();
-        static readonly List<int> Scratch = new List<int>();
+        // One per thread: the run ahead at close (#97) lives a copy of the box off the main thread.
+        [ThreadStatic] static List<int> scratch;
+        static List<int> Scratch => scratch ??= new List<int>();
 
         public Placer(Settlement settlement) { w = settlement; }
 

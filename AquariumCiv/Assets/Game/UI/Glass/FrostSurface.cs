@@ -100,6 +100,8 @@ namespace AquariumCiv.GameUI
         float lastBlur = -1f;
 
         public bool IsFrosted { get; private set; }
+        /// <summary>Stays flat whatever the switch says: the reset confirm, over its scrim (question 32).</summary>
+        public bool KeepFlat { get; set; }
 
         public FrostSurface()
         {
@@ -158,7 +160,7 @@ namespace AquariumCiv.GameUI
 
         void Check()
         {
-            bool show = wanted && Displayed();
+            bool show = wanted && !KeepFlat && Displayed();
             if (show == registered) return;
             registered = show;
             if (show) FrostSwitch.Add(this); else FrostSwitch.Remove(this);

@@ -16,10 +16,14 @@ namespace AquariumCiv.GameUI
         static bool cached;
 #endif
 
+        /// <summary>Debug: holds the phone on silent, so the notice and the mix can be seen without one.</summary>
+        public static bool DebugForce { get; set; }
+
         public static bool IsSilent
         {
             get
             {
+                if (DebugForce) return true;
 #if UNITY_ANDROID && !UNITY_EDITOR
                 if (Time.unscaledTime - checkedAt >= RecheckSeconds)
                 {
