@@ -130,6 +130,7 @@ namespace AquariumCiv.Sim
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
             PeakStep(); // no dice: leaders for the book, the town's peak (SimCore.EraMoment.cs)
             HistoryStep(); // no dice: records for the time-lapse and the book (SimCore.History.cs)
+            EnsureCrowdNames(); // no dice: anyone new in the crowd gets a first name (SimCore.Crowd.cs)
         }
 
         void TryBuild()
@@ -271,7 +272,11 @@ namespace AquariumCiv.Sim
                 var n = AddNotable(rng.Range(18f, 30f), -1, null);
                 bool growing = s.era > Era.Camp && adults >= Config.NotablesIn(s.era - 1).min;
                 if (growing) Chronicle("newcomer", $"A newcomer, {n.FullName}, {n.trait}, joined the {EraNoun(s.era)}.", 0.55f, n.id);
-                else Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
+                else
+                {
+                    TakeCrowdName(n); // the name they already had in the crowd (SimCore.Crowd.cs, #148)
+                    Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
+                }
             }
         }
 

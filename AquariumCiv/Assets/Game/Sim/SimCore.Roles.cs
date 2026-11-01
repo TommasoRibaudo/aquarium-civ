@@ -649,6 +649,7 @@ namespace AquariumCiv.Sim
             };
             MakeNameUnique(n, r);
             s.notables.Add(n);
+            TakeCrowdName(n); // the name they already had in the crowd (SimCore.Crowd.cs, #148)
             n.job = ChooseJob(n, null);
             return n;
         }
