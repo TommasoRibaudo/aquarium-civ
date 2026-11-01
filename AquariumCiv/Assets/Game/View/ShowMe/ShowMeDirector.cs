@@ -256,7 +256,39 @@ namespace AquariumCiv.View
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             StepShowMe(dt);
             StepBubbles();
+            StepChatter();
         }
+
+        void LateUpdate() => Chatter.Draw(PeopleView.Find(), Camera.main);
+
+        void OnDestroy() => Chatter.Dispose();
+
+        /// <summary>#144: the wordless talk, driven from here so it shares the bubbles' idea of quiet.</summary>
+        public ChatterView Chatter { get; } = new();
+
+        /// <summary>The people's chatter stays out of it now. "Someone has the word" isn't quiet: it's a real line, which fades only the talk.</summary>
+        bool ChatterQuiet(out bool realLine)
+        {
+            string q = QuietReason();
+            bool word = q == SomeoneSpeaks;
+            realLine = word || bubble != null || !echoWho.IsNone || CaptionUp;
+            return q != null && !word;
+        }
+
+        void StepChatter()
+        {
+            bool quiet = ChatterQuiet(out bool line);
+            var cam = Camera.main;
+            Chatter.Step(PeopleView.Find(), cam != null ? cam.GetComponent<BoxCamera>() : null, Sim, quiet, line);
+        }
+
+        /// <summary>#161: see <see cref="ChatterView.Knock"/>.</summary>
+        public Dictionary<int, float> KnockMarks(LifePlanner planner, ViewTime at, Vector2 screen) =>
+            Chatter.Knock(PeopleView.Find(), Camera.main, Sim, planner, at, screen, ChatterQuiet(out _));
+
+        public void KnockHeard(PersonRef who) => Chatter.KnockHeard(PeopleView.Find(), Sim, who, ChatterQuiet(out _));
+
+        const string SomeoneSpeaks = "someone has the word";
 
         void StepShowMe(float dt)
         {
@@ -460,11 +492,11 @@ namespace AquariumCiv.View
             if (hud != null && hud.CameraMode) return "camera mode";
             if (hud != null && hud.CleanMode) return "clean mode";
             if (hud != null && hud.SheetOpen) return "a sheet is open";
-            if (PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen) return "a person card is open"; // its tie tags stand over the people (tester run 5)
+            if (PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen)) return "a person card is open"; // its tie tags stand over the people (tester run 5)
             if (hud != null && !hud.IsVisible) return "the HUD is hidden";
             if (Busy) return "show me";
             if (FirstRunView.Instance != null && FirstRunView.Instance.HasTheWord) return "the first run";
-            if (!GameUiPanel.Bubbles.Free(BubbleHost.Rank.World) && GameUiPanel.Bubbles.Holder != WorldVoice) return "someone has the word";
+            if (!GameUiPanel.Bubbles.Free(BubbleHost.Rank.World) && GameUiPanel.Bubbles.Holder != WorldVoice) return SomeoneSpeaks;
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return "a moment";
             var tl = TimeLapseView.Find();

@@ -335,9 +335,12 @@ namespace AquariumCiv.View
         /// <summary>One tap on the glass: the people look up (by stage) at once; the count goes to the sim when the taps stop.</summary>
         public void Tap(LifePlanner planner, ViewTime now)
         {
+            bool first = taps == 0;
             taps++;
             lastTapTime = Time.unscaledTime;
-            planner.React(KeeperGesture.TapGlass, now);
+            var sm = ShowMeDirector.Instance;
+            var late = first && sm != null ? sm.KnockMarks(planner, now, pressPos) : null; // #161: a ! first, then the bodies; one set of marks a knock
+            planner.ReactKnock(now, late);
             Sfx.Play(CueLibrary.TapGlass); // #96: a knuckle on glass
         }
 
@@ -371,7 +374,12 @@ namespace AquariumCiv.View
             LastTapBack = planner.AnswerKnock(now, n);
             // #96: a scholar knocks back from inside: as many soft knocks, a little after (the people turn first)
             // #96: the knocks back sound when the scholar's fist reaches the glass (UpdateTapBackSound), not now
-            if (LastTapBack >= 0) { tapBackWho = PersonRef.Notable(LastTapBack); tapBackCount = n; tapBackSince = Time.unscaledTime; NudgeTo(planner, planner.GlassPlace); }
+            if (LastTapBack >= 0)
+            {
+                tapBackWho = PersonRef.Notable(LastTapBack); tapBackCount = n; tapBackSince = Time.unscaledTime;
+                ShowMeDirector.Instance?.KnockHeard(tapBackWho);
+                NudgeTo(planner, planner.GlassPlace);
+            }
         }
 
         // ---------------- debug (the debug panel, `script eval`) ----------------

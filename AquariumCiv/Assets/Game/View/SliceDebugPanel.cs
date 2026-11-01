@@ -165,6 +165,18 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Gather 6")) last = GlassVoice.DebugGather();
             if (GUILayout.Button("Gather 10")) last = GlassVoice.DebugGather(10);
             GUILayout.EndHorizontal();
+            // The wordless chatter (#144), the knock's mark (#161).
+            GUILayout.BeginHorizontal();
+            var chatter = ShowMeDirector.Instance != null ? ShowMeDirector.Instance.Chatter : null;
+            if (GUILayout.Button("Chatter: " + ChatterView.Style)) last = ChatterView.DebugNextStyle();
+            if (chatter != null)
+            {
+                if (GUILayout.Button("Force chat")) last = chatter.DebugForceChat();
+                foreach (var mark in new[] { AquariumCiv.View.ShowMe.ChatterMark.Dots, AquariumCiv.View.ShowMe.ChatterMark.Note, AquariumCiv.View.ShowMe.ChatterMark.Heart, AquariumCiv.View.ShowMe.ChatterMark.Bang, AquariumCiv.View.ShowMe.ChatterMark.Question })
+                    if (GUILayout.Button(mark.ToString())) last = chatter.DebugMark(PeopleView.Find(), mark);
+            }
+            if (GUILayout.Button("Force knock")) last = GlassVoice.DebugKnock();
+            GUILayout.EndHorizontal();
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();

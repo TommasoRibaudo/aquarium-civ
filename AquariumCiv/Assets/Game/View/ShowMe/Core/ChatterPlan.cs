@@ -92,6 +92,15 @@ namespace AquariumCiv.View.ShowMe
 
         public void Reset() { due.Clear(); turn.Clear(); lastSpeaker.Clear(); live.Clear(); }
 
+        bool hurry;
+
+        /// <summary>The debug panel: every group is due now, new ones too, for one tick.</summary>
+        public void Hurry(double now)
+        {
+            foreach (var k in due.Keys.ToList()) due[k] = now;
+            hurry = true;
+        }
+
         /// <summary>Babble volume factor 0..1 for a zoom (0 = whole box, 1 = closest): off at default zoom, full when close.</summary>
         public float BabbleVolume(float zoom01)
         {
@@ -129,8 +138,9 @@ namespace AquariumCiv.View.ShowMe
                 if (awake.Count < 2) { due.Remove(g.id); continue; }
                 if (!due.TryGetValue(g.id, out double d))
                 {
-                    due[g.id] = now + Roll(seed, g.id, -1, 1) * rules.firstWithin;
-                    continue;
+                    due[g.id] = hurry ? now : now + Roll(seed, g.id, -1, 1) * rules.firstWithin;
+                    if (!hurry) continue;
+                    d = now;
                 }
                 if (now < d) continue;
                 if (live.Count(s => !s.reaction) >= cap) continue; // wait for room; stays due
@@ -150,6 +160,7 @@ namespace AquariumCiv.View.ShowMe
                 };
                 live.Add(show); res.show.Add(show);
             }
+            hurry = false;
             return res;
         }
 

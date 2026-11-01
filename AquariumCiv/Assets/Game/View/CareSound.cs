@@ -1,4 +1,5 @@
 using AquariumCiv.Audio;
+using AquariumCiv.View.ShowMe;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -59,8 +60,19 @@ namespace AquariumCiv.View
             "bird2" => MakeBird(2),
             "bird3" => MakeBird(3),
             "bird4" => MakeBird(4),
-            _ => null,
+            _ => name.StartsWith("babble") && name.Length == 8 ? MakeBabble(name[6] - '0', name[7] - '0') : null,
         };
+
+        /// <summary>#144: a babble clip: <see cref="ChatterBabble"/>'s samples, 22.05 kHz mono.</summary>
+        static AudioClip MakeBabble(int voice, int clip)
+        {
+            var d = ChatterBabble.Generate(voice, clip, BabbleSeed);
+            var c = AudioClip.Create($"Babble{voice}{clip}", d.Length, 1, ChatterBabble.SampleRate, false);
+            c.SetData(d, 0);
+            return c;
+        }
+
+        const int BabbleSeed = 144;
 
         /// <summary>The mess ambience (#96): three flies circling, an 8 s seamless loop. Each fly is a buzzy tone (the
         /// fundamental plus odd partials) whose pitch wanders and whose level swells as it passes; every frequency and

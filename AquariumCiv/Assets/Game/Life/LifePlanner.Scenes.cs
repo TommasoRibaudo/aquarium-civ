@@ -313,6 +313,39 @@ namespace AquariumCiv.Life
             public float x, z, radius;
             public PersonRef target;
             public float share;
+            /// <summary>#161: view hours each person's body waits, by <see cref="PersonRef.Key"/>; the rest wait <see cref="lateRest"/>.</summary>
+            public Dictionary<int, float> late;
+            public float lateRest;
+        }
+
+        /// <summary>Would this person react to the gesture now? (#161: the view asks before the reaction starts, so the mark can come first.)</summary>
+        public bool WouldReact(PersonRef who, KeeperGesture gesture, ViewTime at)
+        {
+            Sync();
+            EnsureDay(at.day);
+            if (!byKey.TryGetValue(who.Key, out var p)) return false;
+            float secs = Math.Min(4f, DefaultSeconds(gesture));
+            var r = new Reaction { gesture = gesture, day = at.day, start = at.hour, end = Math.Min(24f, at.hour + LifeClock.ViewHoursFor(at.hour, secs)), near = default, target = default, share = 1f, radius = 1f };
+            return Reacts(p, r, at, out _, out _, out _);
+        }
+
+        /// <summary>#161: the knock, with each body held back <paramref name="lateSeconds"/> real seconds so its <c>!</c> shows first. Those without a mark
+        /// follow after the last one.</summary>
+        public void ReactKnock(ViewTime at, IReadOnlyDictionary<int, float> lateSeconds)
+        {
+            React(KeeperGesture.TapGlass, at);
+            if (lateSeconds == null || lateSeconds.Count == 0) return;
+            var r = reactions[reactions.Count - 1];
+            r.late = new Dictionary<int, float>();
+            float most = 0f;
+            foreach (var kv in lateSeconds)
+            {
+                r.late[kv.Key] = LifeClock.ViewHoursFor(at.hour, kv.Value);
+                most = Math.Max(most, kv.Value);
+            }
+            r.lateRest = LifeClock.ViewHoursFor(at.hour, most);
+            reactions[reactions.Count - 1] = r;
+            LiveChanged();
         }
 
         readonly List<Reaction> reactions = new List<Reaction>();

@@ -198,6 +198,16 @@ namespace AquariumCiv.View
             return c;
         }
 
+        /// <summary>Makes or loads now every clip whose path starts so, so the first play doesn't pay for it (#144's babble).</summary>
+        public int Preload(string prefix)
+        {
+            int n = 0;
+            foreach (var cue in CueLibrary.All.Values)
+                foreach (var p in cue.clips)
+                    if (p.StartsWith(prefix)) { Clip(p); n++; }
+            return n;
+        }
+
         /// <summary>Every clip the cue library names that does not load (empty = all good).</summary>
         public List<string> CheckClips()
         {

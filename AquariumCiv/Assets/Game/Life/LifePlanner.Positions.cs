@@ -244,7 +244,8 @@ namespace AquariumCiv.Life
                 var r = reactions[i];
                 if (r.day != day || r.end <= r.start) continue;
                 if (!Reacts(p, r, new ViewTime(day, r.start), out _, out _, out var to)) continue;
-                pieces.Add(new Piece { t0 = r.start, t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
+                float wait = r.late == null ? 0f : r.late.TryGetValue(p.key, out float late) ? late : r.lateRest; // #161: the mark first
+                pieces.Add(new Piece { t0 = Math.Min(r.start + wait, r.end), t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
             }
             // A tap-back (Choice 9) overrides the scholar's other live scenes while it plays: a beat of a relic moment that
             // starts inside its window (the Lens moment's later beats) would otherwise win and the knock never be seen.

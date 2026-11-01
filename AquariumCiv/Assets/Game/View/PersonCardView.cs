@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.ShowMe;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -497,7 +498,7 @@ namespace AquariumCiv.View
             if (nameOn) nameTag.Word = CrowdOpen ? Crowd.name : Card.name;
             SetTag(nameTag, nameOn);
             // relationship lines
-            drawn.Clear(); drawnTo.Clear();
+            drawn.Clear(); drawnTo.Clear(); leaders.Clear();
             int used = 0;
             placed.Clear();
             if (pinOn) Claim(pinTag);
@@ -506,35 +507,92 @@ namespace AquariumCiv.View
             if (!hide && IsOpen && Card != null && Card.alive && pv.TryGetDollTop(PersonRef.Notable(OpenId), out var meW))
             {
                 var me = ToPanel(cam, meW, out bool meOk);
-                if (meOk)
-                    foreach (var e in edges.OrderBy(x => Rank(x.kind)).ThenBy(x => x.a + x.b))
-                    {
-                        if (drawn.Count >= MaxLines) break;
-                        int other = e.a == OpenId ? e.b : e.a;
-                        if (!pv.TryGetDollTop(PersonRef.Notable(other), out var oW)) continue;
-                        var o = ToPanel(cam, oW, out bool ok);
-                        if (!ok || (o - me).magnitude < 20f) continue;
-                        var mid = (me + o) * 0.5f;
-                        var ctrl = mid + Vector2.down * Mathf.Min(160f, (o - me).magnitude * 0.3f); // an arc, up over the heads
-                        drawn.Add((me, ctrl, o, e.kind));
-                        drawnTo.Add(other);
-                        var label = TieLabel(used);
-                        var ties = Card.family.Concat(Card.friends).Concat(Card.rivals).Concat(Card.mentors).Where(t => t.otherId == other).ToList();
-                        var tie = ties.FirstOrDefault(t => t.kind == e.kind || (e.kind == TieKind.Parent && t.kind == TieKind.Child) || (e.kind == TieKind.Mentor && t.kind == TieKind.Apprentice)) ?? ties.FirstOrDefault(); // the label says what the line's colour says
-                        string first = sim.FindNotable(other)?.name ?? "";
-                        label.Word = tie != null ? $"{first} · {tie.label}" : $"{first} · {e.label}";
-                        label.Mark = MarkOf(tie?.kind ?? e.kind);
-                        var size = new Vector2(Sized(label.resolvedStyle.width, label.Word.Length * 19f + 100f), Sized(label.resolvedStyle.height, 66f));
-                        var at = FarEnd(o, size);
-                        placed.Add(new Vector4(at.x, at.y, size.x, size.y));
-                        label.style.left = at.x;
-                        label.style.top = at.y;
-                        label.style.display = DisplayStyle.Flex;
-                        used++;
-                    }
+                if (meOk) used = LayTies(sim, pv, cam, me);
             }
             for (int i = used; i < tieLabels.Count; i++) tieLabels[i].style.display = DisplayStyle.None;
             linesLayer?.MarkDirtyRepaint();
+        }
+
+        readonly List<RelMarker> ties = new();
+        readonly Dictionary<int, string> tieWords = new();
+        readonly Dictionary<int, TieKind> tieKinds = new();
+        readonly List<(Vector2 a, Vector2 b)> leaders = new();
+        /// <summary>#194: labels drawn at most; the rest are "+N" and every tie is in the card. Labels shown last frame and leader lines (tests).</summary>
+        public const int MaxLabels = 4;
+        public int LeadersDrawn => leaders.Count;
+        public int OverflowShown { get; private set; }
+        const float TieTop = 120f, TieH = 66f, TieMaxW = 470f;
+
+        static RelKind RelOf(TieKind k) => k switch
+        {
+            TieKind.Partner => RelKind.Partner, TieKind.Parent => RelKind.Parent, TieKind.Child => RelKind.Child, TieKind.Sibling => RelKind.Sibling,
+            TieKind.Friend or TieKind.MadeUp => RelKind.Friend, TieKind.Rival => RelKind.Rival, TieKind.Mentor or TieKind.Apprentice => RelKind.Mentor, _ => RelKind.Other,
+        };
+
+        static string GroupWord(RelKind k) => k switch { RelKind.Child => "kids", RelKind.Sibling => "siblings", _ => "friends" };
+
+        /// <summary>#194: the arcs, then the labels through <see cref="MarkerLayout"/>: people close together share one ("kids ×3"), at most <see cref="MaxLabels"/>
+        /// show, none lands on another, and one pushed away from its person gets a thin line back. Returns the labels used.</summary>
+        int LayTies(SimCore sim, PeopleView pv, Camera cam, Vector2 me)
+        {
+            ties.Clear(); tieWords.Clear(); tieKinds.Clear();
+            float widest = 200f;
+            foreach (var e in edges.OrderBy(x => Rank(x.kind)).ThenBy(x => x.a + x.b))
+            {
+                int other = e.a == OpenId ? e.b : e.a;
+                if (!pv.TryGetDollTop(PersonRef.Notable(other), out var oW)) continue;
+                var o = ToPanel(cam, oW, out bool ok);
+                if (!ok || (o - me).magnitude < 20f) continue;
+                if (drawn.Count < MaxLines)
+                {
+                    var mid = (me + o) * 0.5f;
+                    var ctrl = mid + Vector2.down * Mathf.Min(160f, (o - me).magnitude * 0.3f); // an arc, up over the heads
+                    drawn.Add((me, ctrl, o, e.kind));
+                    drawnTo.Add(other);
+                }
+                var all = Card.family.Concat(Card.friends).Concat(Card.rivals).Concat(Card.mentors).Where(t => t.otherId == other).ToList();
+                var tie = all.FirstOrDefault(t => t.kind == e.kind || (e.kind == TieKind.Parent && t.kind == TieKind.Child) || (e.kind == TieKind.Mentor && t.kind == TieKind.Apprentice)) ?? all.FirstOrDefault(); // the label says what the line's colour says
+                string first = sim.FindNotable(other)?.name ?? "";
+                string word = tie != null ? $"{first} · {tie.label}" : $"{first} · {e.label}";
+                tieWords[other] = word;
+                tieKinds[other] = tie?.kind ?? e.kind;
+                widest = Mathf.Max(widest, word.Length * 19f + 100f);
+                ties.Add(new RelMarker(other, RelOf(tieKinds[other]), o.x, o.y - TieTop));
+            }
+            float W = overlayRoot.layout.width, w = Mathf.Min(widest, TieMaxW);
+            float bottom = (IsOpen && sheet.worldBound.height > 0f ? sheet.worldBound.yMin : overlayRoot.layout.height) - 16f;
+            var res = MarkerLayout.Layout(ties, w, TieH, W, Mathf.Max(TieH, bottom - TieTop), MaxLabels);
+            int used = 0;
+            foreach (var p in res.placed)
+            {
+                var label = TieLabel(used++);
+                bool group = p.Count > 1;
+                label.Word = group ? $"{GroupWord(p.kind)} ×{p.Count}" : tieWords[p.ids[0]];
+                label.Mark = MarkOf(tieKinds[p.ids[0]]);
+                var size = new Vector2(Sized(label.resolvedStyle.width, label.Word.Length * 19f + 100f), Sized(label.resolvedStyle.height, TieH));
+                var spot = new Vector2(p.x, p.y + TieTop);
+                var at = Hit(spot, size) >= 0 ? FarEnd(spot, size) : spot; // the name tag and the doll are claimed too
+                placed.Add(new Vector4(at.x, at.y, size.x, size.y));
+                label.style.left = at.x;
+                label.style.top = at.y;
+                label.style.display = DisplayStyle.Flex;
+                var anchor = new Vector2(p.anchorX, p.anchorY + TieTop);
+                if (p.leader || (at - spot).magnitude > TieH * 1.2f) leaders.Add((at + new Vector2(0f, at.y < anchor.y ? size.y * 0.5f : -size.y * 0.5f), anchor));
+            }
+            OverflowShown = res.overflow;
+            if (res.overflow > 0)
+            {
+                var more = TieLabel(used++);
+                more.Word = "+" + res.overflow;
+                more.Mark = "person";
+                var size = new Vector2(Sized(more.resolvedStyle.width, more.Word.Length * 19f + 100f), Sized(more.resolvedStyle.height, TieH));
+                var at = FarEnd(me + new Vector2(0f, -TieH), size);
+                placed.Add(new Vector4(at.x, at.y, size.x, size.y));
+                more.style.left = at.x;
+                more.style.top = at.y;
+                more.style.display = DisplayStyle.Flex;
+            }
+            return used;
         }
 
         static int Rank(TieKind k) => k switch
@@ -638,7 +696,7 @@ namespace AquariumCiv.View
 
         void ClearLines()
         {
-            drawn.Clear(); drawnTo.Clear();
+            drawn.Clear(); drawnTo.Clear(); leaders.Clear(); OverflowShown = 0;
             foreach (var l in tieLabels) l.style.display = DisplayStyle.None;
             linesLayer?.MarkDirtyRepaint();
         }
@@ -657,7 +715,7 @@ namespace AquariumCiv.View
 
         // Board 3.2: paper, with the line telling the tie. Family is a paper line with a moss heart, friends and teachers a plain paper
         // line, rivals dotted, those who only share stories a thin one. A soft under-stroke, so a line reads on grass and on paths alike.
-        const float PlainWidth = 8.25f, FamilyWidth = 13.75f, HeartWidth = 5.5f, SharedWidth = 5.5f, DotLength = 8.25f, DotGap = 16.5f;
+        const float LeaderWidth = 3.5f, PlainWidth = 8.25f, FamilyWidth = 13.75f, HeartWidth = 5.5f, SharedWidth = 5.5f, DotLength = 8.25f, DotGap = 16.5f;
 
         void DrawLines(MeshGenerationContext ctx)
         {
@@ -681,6 +739,13 @@ namespace AquariumCiv.View
                 // a dot at the far end, on the other person
                 p.fillColor = lineCol;
                 p.BeginPath(); p.Arc(d.b, w + 3f, 0f, 360f); p.Fill();
+            }
+            foreach (var (a, b) in leaders) // #194: a label pushed off its person
+            {
+                p.strokeColor = underCol; p.lineWidth = LeaderWidth + 3f;
+                p.BeginPath(); p.MoveTo(a); p.LineTo(b); p.Stroke();
+                p.strokeColor = lineCol; p.lineWidth = LeaderWidth;
+                p.BeginPath(); p.MoveTo(a); p.LineTo(b); p.Stroke();
             }
         }
 
