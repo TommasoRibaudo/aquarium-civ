@@ -125,7 +125,7 @@ namespace AquariumCiv.Sim
             if (!BoxSetting.IsNextBoxSetting(setting)) throw new ArgumentException("not a setting for the next box: " + setting);
             var finished = new SimCore(config, from.state);
             var next = new ShelfBox { index = shelf.NextIndex, setting = setting, fromBox = from.index };
-            var sim = SimCore.SeedNextBox(config, finished, seed, next.index, completion, out var links);
+            var sim = SimCore.SeedNextBox(config, finished, seed, next.index, completion, out var links, Settle.TerrainSpec.PresetFor(setting));
             next.founders = links;
             next.state = sim.State;
             next.lastSeenUtc = Stamp(nowUtc);

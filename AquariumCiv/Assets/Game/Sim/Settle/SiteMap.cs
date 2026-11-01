@@ -62,7 +62,8 @@ namespace AquariumCiv.Sim.Settle
                     // Starting woods: on the hills, in patches, never on the founding flat.
                     float f = Terrain.ForestBias(spec, x, z) + (Terrain.Fbm(x * 1.8f + spec.noiseOff, z * 1.8f + 40f) - 0.5f) * 1.1f;
                     float dc = Terrain.Dist(x, z, greenX, greenZ);
-                    if (!pond[c] && f > 0.62f && dc > 1.3f) Set(c, FForest, true);
+                    if (!pond[c] && Terrain.OutcropAt(spec, x, z, height[c])) Set(c, FRock, true);
+                    else if (!pond[c] && f > spec.forestCut && dc > 1.3f) Set(c, FForest, true);
                 }
             RecomputeWaterDist();
         }
