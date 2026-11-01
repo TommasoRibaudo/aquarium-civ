@@ -243,18 +243,29 @@ namespace AquariumCiv.GameUI
             view.RegisterCallback<GeometryChangedEvent>(_ => Bar()); // the height just set lands a layout later
             view.verticalScroller.valueChanged += _ => Bar();
             // The ScrollView holds the pointer while it drags, so it's the end of that hold that says the finger is off.
+            RegisterCallback<PointerDownEvent>(_ => pressedAt = view.scrollOffset.y, TrickleDown.TrickleDown);
             RegisterCallback<PointerUpEvent>(_ => Settle(), TrickleDown.TrickleDown);
             view.contentContainer.RegisterCallback<PointerCaptureOutEvent>(_ => Settle());
         }
 
-        /// <summary>The finger is off: the view moves to the nearest whole line (the stops are every row's lines), or to the very end.</summary>
+        float pressedAt = float.NaN;
+
+        /// <summary>The finger is off: the view moves on to the next whole line the way it was going (the stops are every row's lines, and
+        /// the very end), so a short drag on a tall row isn't undone. With no drag, the nearest.</summary>
         void Settle()
         {
             if (!SnapToRows) return;
             float all = view.contentContainer.layout.height, shown = view.layout.height;
             if (float.IsNaN(all) || float.IsNaN(shown) || all <= shown + 1f) return;
-            float end = all - shown, at = view.scrollOffset.y, best = end;
-            void Stop(float y) { if (Mathf.Abs(y - at) < Mathf.Abs(best - at)) best = y; }
+            float end = all - shown, at = view.scrollOffset.y;
+            int way = float.IsNaN(pressedAt) || Mathf.Abs(at - pressedAt) < 1f ? 0 : at > pressedAt ? 1 : -1;
+            pressedAt = float.NaN; // the release comes by two routes
+            float best = way < 0 ? 0f : end;
+            void Stop(float y)
+            {
+                if ((way > 0 && y < at - 0.5f) || (way < 0 && y > at + 0.5f)) return;
+                if (Mathf.Abs(y - at) < Mathf.Abs(best - at)) best = y;
+            }
             Stop(0f);
             float top = view.contentContainer.worldBound.yMin;
             view.contentContainer.Query(className: RowClass).ForEach(r =>
