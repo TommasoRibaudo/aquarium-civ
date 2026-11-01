@@ -663,6 +663,24 @@ namespace AquariumCiv.View
             return $"born: {baby.FullName}";
         }
 
+        /// <summary>Debug (#197): a rival bicker or a friend chat now, on the people's own walks and spots.</summary>
+        public static string DebugRunIn(bool bicker)
+        {
+            var pv = Find();
+            if (pv == null || pv.planner == null) return "no people";
+            return pv.planner.ForceRunIn(bicker ? ActivityKind.Argue : ActivityKind.Chat, pv.now);
+        }
+
+        /// <summary>The way a doll faces (box-local, on the ground), for tests.</summary>
+        public bool TryGetDollFacing(PersonRef who, out Vector2 forward)
+        {
+            forward = default;
+            if (!dolls.TryGetValue(who.Key, out var d) || !d.placed) return false;
+            var f = Quaternion.Euler(0f, d.yaw, 0f) * Vector3.back; // a doll faces local -z
+            forward = new Vector2(f.x, f.z);
+            return true;
+        }
+
         /// <summary>Where a person's doll stands now (box-local x, z), false if they have none.</summary>
         public bool TryGetDollPosition(PersonRef who, out Vector2 pos)
         {

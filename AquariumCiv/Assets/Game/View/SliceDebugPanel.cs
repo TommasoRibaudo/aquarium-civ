@@ -155,6 +155,8 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Grant a wish")) last = WishPayoffView.DebugGrant();
             if (GUILayout.Button("Gift glow")) last = WishPayoffView.DebugGlow();
             if (GUILayout.Button("Baby")) last = PeopleView.DebugBaby();
+            if (GUILayout.Button("Bicker")) last = PeopleView.DebugRunIn(true);
+            if (GUILayout.Button("Chat")) last = PeopleView.DebugRunIn(false);
             if (GUILayout.Button("Gather 6")) last = GlassVoice.DebugGather();
             if (GUILayout.Button("Gather 10")) last = GlassVoice.DebugGather(10);
             GUILayout.EndHorizontal();

@@ -22,7 +22,7 @@ namespace AquariumCiv.Life
         public const float BickerSeconds = 6f, ChatSeconds = 5f, WaveSeconds = 1.5f;
         /// <summary>How far (world units) someone will go out of their way to meet a friend or rival on a walk, and the share of days a pair does.</summary>
         const float InterceptUnits = 4f, RivalDayChance = 0.34f, FriendDayChance = 0.6f;
-        const float MinStayAfter = 0.8f, NearUnits = 0.4f, MinWalkForRunIn = 0.16f;
+        const float MinStayAfter = 0.8f, NearUnits = 0.4f, MinWalkForRunIn = 0.16f, ApartUnits = 0.17f;
         const float TieChance = 0.8f, KinChance = 0.5f, RivalChance = 0.7f, StrangerChance = 0.004f;
 
         readonly Dictionary<int, List<Seg>> runInCache = new Dictionary<int, List<Seg>>();
@@ -188,12 +188,87 @@ namespace AquariumCiv.Life
                     if (g0.src != ActivitySource.Schedule || g1.src != ActivitySource.Schedule || g0.kind == ActivityKind.Sleep || g1.kind == ActivityKind.Sleep || Carrying(g0) || Carrying(g1)) continue;
                     float tEnd = t + len;
                     if (Overlaps(goer, t0, tEnd - t0) || Overlaps(stopper, t, tEnd - t)) continue;
+                    PlanPos(goer, t0, out float fx, out float fz);
+                    StopShort(fx, fz, ref mx, ref mz);
                     Add(stopper, goer, kind, t, tEnd + 0.02f);
                     Add(goer, stopper, kind, d > NearUnits ? t0 : t, tEnd, d > NearUnits, mx, mz);
                     return true;
                 }
             }
             return false;
+        }
+
+        /// <summary>The goer stops a step short of the stopper, on the side they came from: two dolls on one spot can't face each other.</summary>
+        static void StopShort(float fromX, float fromZ, ref float x, ref float z)
+        {
+            float dx = fromX - x, dz = fromZ - z, d = (float)Math.Sqrt(dx * dx + dz * dz);
+            if (d < 1e-4f) { dx = 1f; d = 1f; }
+            float step = Math.Min(ApartUnits, d);
+            x += dx / d * step;
+            z += dz / d * step;
+        }
+
+        /// <summary>One beat of today's run-ins (tests, the debug readout). A goer's beat starts at their walk over.</summary>
+        public readonly struct RunInBeat
+        {
+            public readonly PersonRef who, with;
+            public readonly ActivityKind kind;
+            public readonly float start, end;
+            public readonly bool walksOver;
+            public RunInBeat(PersonRef who, PersonRef with, ActivityKind kind, float start, float end, bool walksOver)
+            { this.who = who; this.with = with; this.kind = kind; this.start = start; this.end = end; this.walksOver = walksOver; }
+        }
+
+        /// <summary>Everyone's beats on <paramref name="day"/>.</summary>
+        public List<RunInBeat> RunInBeatsOn(long day)
+        {
+            Sync();
+            EnsureDay(day);
+            EnsureRunIns();
+            var list = new List<RunInBeat>();
+            foreach (var kv in runInCache)
+                foreach (var s in kv.Value)
+                    if (byKey.TryGetValue(kv.Key, out var p)) list.Add(new RunInBeat(p.who, s.partner, s.kind, s.start, s.end, s.hasPoint));
+            list.Sort((a, b) => a.start.CompareTo(b.start));
+            return list;
+        }
+
+        /// <summary>Debug: a rival bicker (<see cref="ActivityKind.Argue"/>) or a friend chat now: the first awake pair with that tie
+        /// (any two grown people if nobody has it): one stops where they are, the other walks over. It lasts the usual beat and goes
+        /// with the day. Returns who.</summary>
+        public string ForceRunIn(ActivityKind kind, ViewTime now)
+        {
+            Sync();
+            EnsureDay(now.day);
+            EnsureRunIns();
+            bool Awake(Person p) => p != null && p.Grown && byKey.ContainsKey(p.who.Key) && PlanPerson(p, now).kind is not (ActivityKind.Sleep or ActivityKind.None) && PositionAt(p.who, now, out _, out _);
+            Person a = null, b = null;
+            foreach (var p in people)
+            {
+                var other = kind == ActivityKind.Argue ? p.rival : p.friend ?? p.partner;
+                if (Awake(p) && other != p && Awake(other)) { a = p; b = other; break; }
+            }
+            bool tied = a != null;
+            if (a == null)
+                foreach (var p in people)
+                {
+                    if (!Awake(p)) continue;
+                    if (a == null) a = p;
+                    else { b = p; break; }
+                }
+            if (a == null || b == null) return "nobody free for a run-in";
+            PositionAt(a.who, now, out float mx, out float mz);
+            PositionAt(b.who, now, out float gx, out float gz);
+            StopShort(gx, gz, ref mx, ref mz);
+            float d = (float)Math.Sqrt((gx - mx) * (gx - mx) + (gz - mz) * (gz - mz));
+            float t = now.hour, walk = d > 1e-3f ? LiveWalkHours(now.day, t, d) : 0f;
+            float end = t + walk + (kind == ActivityKind.Argue ? BickerSeconds : ChatSeconds) / LifeClock.RealSecondsPerViewHour(Math.Max(5f, Math.Min(23f, t)));
+            runInCache.Remove(a.key);
+            runInCache.Remove(b.key);
+            Add(a, b, kind, t, end + 0.02f);
+            Add(b, a, kind, t, end, true, mx, mz);
+            blockCache.Clear();
+            return $"{(kind == ActivityKind.Argue ? "bicker" : "chat")}: {a.who} stops, {b.who} walks over{(tied ? "" : " (no such tie: any two)")}";
         }
 
         /// <summary>When in [lo, hi] the two walkers pass within <see cref="NearUnits"/> of each other along their routes (the
