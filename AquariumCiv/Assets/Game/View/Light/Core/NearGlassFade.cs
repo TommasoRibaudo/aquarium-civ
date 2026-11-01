@@ -1,4 +1,4 @@
-namespace AquariumCiv.Light
+namespace AquariumCiv.Lighting
 {
     /// <summary>
     /// #162: how much a pane (or the frame) fades when the camera is close. Pure and smooth in both inputs, so zooming

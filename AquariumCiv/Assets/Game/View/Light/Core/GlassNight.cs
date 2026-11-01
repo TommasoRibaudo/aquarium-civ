@@ -1,4 +1,4 @@
-namespace AquariumCiv.Light
+namespace AquariumCiv.Lighting
 {
     /// <summary>The glass at night (research 13 section 6/7): frost gets more opaque, the clean tint dims with the day.</summary>
     public static class GlassNight

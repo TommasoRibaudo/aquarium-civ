@@ -1,5 +1,5 @@
 using System;
-using AquariumCiv.Light;
+using AquariumCiv.Lighting;
 using NUnit.Framework;
 
 namespace AquariumCiv.Tests

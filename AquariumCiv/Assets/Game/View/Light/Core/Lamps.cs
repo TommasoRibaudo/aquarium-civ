@@ -1,6 +1,6 @@
 using System;
 
-namespace AquariumCiv.Light
+namespace AquariumCiv.Lighting
 {
     /// <summary>The picked lamps, reused every call so picking allocates nothing.</summary>
     public sealed class LampPick

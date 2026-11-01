@@ -1,6 +1,6 @@
 using System;
 
-namespace AquariumCiv.Light
+namespace AquariumCiv.Lighting
 {
     /// <summary>Engine-free colour (the driver converts to UnityEngine.Color).</summary>
     public readonly struct Rgb

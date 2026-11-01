@@ -1,6 +1,6 @@
 using System;
 
-namespace AquariumCiv.Light
+namespace AquariumCiv.Lighting
 {
     /// <summary>
     /// #146 camera reach, pure floats so it runs outside Unity. The BoxCamera wiring swaps its limits for these

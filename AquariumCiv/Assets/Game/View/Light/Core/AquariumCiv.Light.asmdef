@@ -1,6 +1,6 @@
 {
     "name": "AquariumCiv.Light",
-    "rootNamespace": "AquariumCiv.Light",
+    "rootNamespace": "AquariumCiv.Lighting",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
