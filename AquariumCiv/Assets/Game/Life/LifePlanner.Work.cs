@@ -20,7 +20,7 @@ namespace AquariumCiv.Life
             public Prop load;
             public ActivityKind carryKind;
             public Place dest;
-            public Place fetchFrom;     // set: the carry comes from here back to the site (restocking, water)
+            public Place fetchFrom;     // set: the carry comes from here to dest (restocking, water)
             public float carryShare;
             public bool keepsRestDay, sweeps, chores;
             public Person with;         // a work partner (the two-man saw)
@@ -39,11 +39,11 @@ namespace AquariumCiv.Life
         {
             switch (load)
             {
-                case Prop.Sheaf: return windmillB != null ? PlaceOf(windmillB) : fire;
-                case Prop.Log: case Prop.Handcart: return lumberB != null ? PlaceOf(lumberB) : fire;
+                case Prop.Sheaf: return windmillB != null ? PlaceOf(windmillB) : stash;
+                case Prop.Log: case Prop.Handcart: return lumberB != null ? PlaceOf(lumberB) : stash;
                 case Prop.Block: return newestB != null && era == Era.Town ? new Place(PlaceKind.BuildingSite, newestB.id) : gather;
             }
-            if (era == Era.Camp) return fire;
+            if (era == Era.Camp) return stash; // #150: set down by the fire, not on it
             return marketB != null ? PlaceOf(marketB) : gather;
         }
 
@@ -74,14 +74,14 @@ namespace AquariumCiv.Life
                     var site = !jb.IsNone ? jb : farms.Count > 0 ? PlaceOf(farms[(int)(H(p.key, 0, 72) % (uint)farms.Count)]) : Bushes;
                     w = W(site, ActivityKind.Gather, Prop.Basket, Prop.Basket, Store(Prop.Basket));
                     if (season == Season.Autumn) w = Alt(w, Woods, ActivityKind.Gather, Prop.Basket, 0.5f);       // mushrooms and nuts
-                    else if (season == Season.Winter) { w.site = Woods; w.carryShare = 0.4f; w.load = Prop.Log; w.dest = fire; } // wood carried in
+                    else if (season == Season.Winter) { w.site = Woods; w.carryShare = 0.4f; w.load = Prop.Log; w.dest = stash; } // wood carried in
                     else w = Alt(w, Bushes, ActivityKind.Gather, Prop.Basket, 0.4f);
                     return w;
                 }
                 case JobType.Hunter:
-                    return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, fire, season == Season.Winter ? 0.35f : 0.25f);
+                    return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, stash, season == Season.Winter ? 0.35f : 0.25f);
                 case JobType.Fisher:
-                    return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? fire : Store(Prop.Goods), 0.25f);
+                    return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? stash : Store(Prop.Goods), 0.25f);
                 case JobType.Woodcutter:
                     w = W(Woods, ActivityKind.Chop, Prop.Axe, camp ? Prop.Log : Prop.Handcart, Store(Prop.Log), 0.3f);
                     if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Axe : Prop.Saw, 0.35f);
@@ -151,7 +151,9 @@ namespace AquariumCiv.Life
                 case CrowdCook:
                     w = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
                     w.keepsRestDay = true;
-                    return Fetch(w, wellB != null ? PlaceOf(wellB) : Stream);
+                    w = Fetch(w, wellB != null ? PlaceOf(wellB) : Stream);
+                    w.dest = stash; // #150: the water too is set down by the fire
+                    return w;
                 case CrowdSplitter:
                     return Fetch(W(jb, ActivityKind.StackWood, Prop.Axe, Prop.Log, jb, 0.3f), Woods);
                 case CrowdSawyer:

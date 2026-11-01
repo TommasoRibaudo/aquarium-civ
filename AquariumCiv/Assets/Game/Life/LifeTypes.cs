@@ -45,6 +45,8 @@ namespace AquariumCiv.Life
         // the relics (#92): a chunk of the Sky Crumb, the Festival Mask, the Keeper Doll, the Left Sandal, the Lens's tripod
         // (carried folded) and the Lens itself, the scholar's slate
         Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate,
+        /// <summary>#152: the bucket on the way to the water; <see cref="Buckets"/> is the full one, from the draw on.</summary>
+        EmptyBucket,
     }
 
     /// <summary>Where the prop sits on a peg doll (§9 "Carry").</summary>
@@ -65,6 +67,8 @@ namespace AquariumCiv.Life
         Glass, Relic,
         /// <summary>The bakery (#112); a building place like the rest. Appended last so the saved ints stay.</summary>
         Bakery,
+        /// <summary>#150: the camp's stash by the fire (land; index -1 = where a carrier stands, 1 = the pile, see <see cref="CampStash"/>).</summary>
+        Stash,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -267,7 +271,7 @@ namespace AquariumCiv.Life
             return p switch
             {
                 Prop.Sheaf or Prop.Loaves or Prop.Pots => carrying ? PropSlot.Head : PropSlot.Hand,
-                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
+                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.EmptyBucket or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
                 Prop.Mask => PropSlot.Head,
                 Prop.Wool or Prop.Cloth or Prop.Goods => carrying ? PropSlot.Back : PropSlot.Hand,
                 Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
