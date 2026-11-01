@@ -117,7 +117,7 @@ Three things this shows:
 | Notification ask | Opt-in | Prompt | Yes, Not now; scheduling not built | P | `moment-notify` | #97 | part |
 | Finish the box | Starts the end | Thumb zone | Hidden, ready | P | `complete-prompt` | #87 | built |
 | Last moment | The end | World | Bubble, caption, hint, roll call | P | `boxcomplete-*` | #87 | built |
-| Setting picker | Choose the next box | | No UI: only debug sets it | P | `SettingForNextBox` | #115 | none |
+| Setting picker | Choose the next box | Sheet, 33 % | Waits at the shelf beat of the last moment; desert oasis preselected | P | `picker-*`, `SettingForNextBox` | #170 | built |
 | Shelf | Finished boxes | Sheet + world | List, open, visiting (banner + plate) | P | `shelf-*`, `visit-*` | #87 | built |
 
 ### 3.7 First run

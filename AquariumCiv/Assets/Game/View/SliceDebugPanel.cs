@@ -111,6 +111,12 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Replay last")) last = MomentPlayer.DebugReplay();
             if (GUILayout.Button("Leave")) last = MomentPlayer.DebugLeave();
             GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Wipe ask")) last = MomentPlayer.DebugWipeAsk();
+            if (GUILayout.Button("Notify ask")) last = MomentPlayer.DebugNotifyAsk();
+            if (GUILayout.Button("New tool + hint")) last = MomentPlayer.DebugNewTool();
+            if (GUILayout.Button("Say a line")) last = MomentPlayer.DebugSay();
+            GUILayout.EndHorizontal();
             if (MomentPlayer.Instance != null)
             {
                 GUILayout.BeginHorizontal();

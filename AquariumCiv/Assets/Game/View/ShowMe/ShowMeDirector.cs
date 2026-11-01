@@ -338,6 +338,7 @@ namespace AquariumCiv.View
             if (!speaker.IsNone && pv != null && cam != null && pv.TryGetDollPosition(speaker, out _))
             {
                 if (GlassBubble.TooLong(text)) { ShowCaption(text, NameOf(speaker), seconds); return true; } // spec §3: longer lines become a caption
+                if (!GameUiPanel.Bubbles.Ask(SceneVoice)) return false; // someone else has the word: their caller says it another way
                 LastLine = text;
                 HideBubble(); // a world bubble gives way to the scene's line
                 HideCaption();
@@ -417,6 +418,7 @@ namespace AquariumCiv.View
             HideCaption();
             if (echoWho.IsNone) return;
             echoWho = PersonRef.None;
+            GameUiPanel.Bubbles.Done(SceneVoice);
             if (bubbleEl != null) bubbleEl.style.display = DisplayStyle.None;
         }
 
@@ -457,6 +459,7 @@ namespace AquariumCiv.View
             if (hud != null && !hud.IsVisible) return "the HUD is hidden";
             if (Busy) return "show me";
             if (FirstRunView.Instance != null && FirstRunView.Instance.HasTheWord) return "the first run";
+            if (!GameUiPanel.Bubbles.Free(BubbleHost.Rank.World) && GameUiPanel.Bubbles.Holder != WorldVoice) return "someone has the word";
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return "a moment";
             var tl = TimeLapseView.Find();
@@ -514,6 +517,7 @@ namespace AquariumCiv.View
             if (who.IsNone && visibleNotables.Count > 0) who = PersonRef.Notable(visibleNotables[0]);
             if (who.IsNone) return; // nobody on screen to say it (it's counted said: fine, there are more)
             if (DollPixels(pv, cam, who) < TinySpeakerPx) return; // zoomed far out: a bubble nobody can tie to a person
+            if (!GameUiPanel.Bubbles.Ask(WorldVoice)) return;
             EnsureUi();
             bubble = b;
             bubbleWho = who;
@@ -602,8 +606,13 @@ namespace AquariumCiv.View
         void HideBubble()
         {
             bubble = null;
+            GameUiPanel.Bubbles.Done(WorldVoice);
             if (bubbleEl != null) bubbleEl.style.display = DisplayStyle.None;
         }
+
+        BubbleHost.Voice worldVoice, sceneVoice;
+        BubbleHost.Voice WorldVoice => worldVoice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.World, () => { bubble = null; if (echoWho.IsNone && bubbleEl != null) bubbleEl.style.display = DisplayStyle.None; });
+        BubbleHost.Voice SceneVoice => sceneVoice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line, ClearEchoBubble);
 
         void EnsureUi()
         {

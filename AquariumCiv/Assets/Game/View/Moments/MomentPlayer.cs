@@ -15,7 +15,7 @@ namespace AquariumCiv.View
     /// <summary>
     /// Plays the era moment in the Slice scene (era-moment.md §2–§5, #88): the Unity side of <see cref="MomentDirector"/>.
     /// <list type="bullet">
-    /// <item>While an era waits: a <b>Watch</b> button in the thumb zone (hidden in camera mode, clean mode, with a sheet
+    /// <item>While an era waits: <b>Watch</b> on the prompt lane (hidden in camera mode, clean mode, with a sheet
     /// open), and the piles in the box (<see cref="WaitingProps"/>). Very grimy glass first offers a wipe; never blocks.</item>
     /// <item>Watch: sheets and clean mode close, the HUD hides, the sim clock holds (<see cref="GameClock.Held"/>), the
     /// camera follows the rail (BoxCamera is switched off and posed from here; one finger still orbits on top of the rail
@@ -23,7 +23,10 @@ namespace AquariumCiv.View
     /// <item>The cheer beat calls <c>SimCore.AdvanceEra</c>, then SimLayoutSource's rebuild wave refreshes the box.</item>
     /// <item>Leaving (app paused) before the cheer drops the moment: it replays next time.</item>
     /// </list>
-    /// Beat staging here is placeholder (bubbles, a caption, puffs on the lots, the view clock for the light); #89/#90/#91
+    /// Keeper's Glass (#170, board 3.6): the prompt, the two asks and the moment's hint, bubble and caption are components; the code sets
+    /// only what the safe area moves. At the close of the first era the ask keeps the HUD down, with the caption leading, until it's
+    /// answered; then Shape glows once and the new tool's hint shows. Bubbles go through <see cref="GameUiPanel.Bubbles"/>.
+    /// Beat staging here is placeholder (puffs on the lots, the view clock for the light); #89/#90/#91
     /// do the real staging through <see cref="BeatStarted"/>. Debug: static <c>Debug*</c> methods (also `script eval`).
     /// </summary>
     public partial class MomentPlayer : MonoBehaviour, IMomentAnchors
@@ -59,18 +62,17 @@ namespace AquariumCiv.View
         Vector2 pressStart, lastPos;
         // UI
         UIDocument doc;
-        VisualElement root, wipeOffer, notifyAsk;
-        Button watchButton;
-        Label hint, bubble, caption;
+        VisualElement root, safe;
+        GlassAsk wipeOffer, notifyAsk;
+        GlassBigPrompt watchButton;
+        GlassHint toolHint;
+        MomentOverlay overlay;
         float bubbleUntil;
-        float sayUntil = -1f; // #92: a line said outside an era moment (a relic moment), in unscaled seconds
+        float toolHintAt, toolHintUntil = -1f;
         float nextRead;
         CameraPose fromPose; // where the player had the camera before the moment (it eases back there after)
         bool hadCamera;
-        string toolLine = ""; // the tool beat's hint, said once the moment is over (mid-moment a press hurries)
-        /// <summary>The unlock captions ("Drag from the water") ask for a tool the player can't pick up until the shaping tray
-        /// (#84) exists: off until then, the lines stay in <see cref="MomentLibrary"/> (tester batch 3).</summary>
-        public static bool ToolCaptions = false;
+        string toolLine = ""; // the tool beat's hint: once the moment is over and the HUD is back, Shape glows and this shows (mid-moment a press hurries)
         bool wipingForMoment; // clean mode was opened from the wipe offer
         // puffs
         readonly List<(Transform t, float age, float size)> puffs = new();
@@ -109,6 +111,8 @@ namespace AquariumCiv.View
         {
             if (Instance != this) return;
             UiInput.Remove(IsOverUi);
+            overlay?.Release();
+            GameUiPanel.Toasts.Hold("tool-hint", false);
         }
 
         void OnDestroy()
@@ -137,10 +141,11 @@ namespace AquariumCiv.View
             if (replay && sim.State.era == Era.Camp) return false;
             if (!replay && !skipWipeOffer && EraWaiting.OfferWipeFirst(sim.State.grime))
             {
-                wipeOffer.style.display = DisplayStyle.Flex;
+                if (!wipeOffer.Ready) UiSound.Play(UiRole.Ask);
+                wipeOffer.Ready = true;
                 return false;
             }
-            wipeOffer.style.display = DisplayStyle.None;
+            wipeOffer.Ready = false;
             var def = MomentLibrary.For(replay ? sim.State.era : sim.NextEra);
             momentEra = (int)def.toEra; momentStart = Time.unscaledTime; momentReplay = replay; leftByPlayer = false;
             var ctx = MomentContext.From(sim, replay);
@@ -152,7 +157,7 @@ namespace AquariumCiv.View
                 hud.SetCleanMode(false);
                 hud.SetCameraMode(false);
                 hudWasVisible = hud.IsVisible;
-                hud.SetVisible(false);
+                hud.SlideAway();
             }
             cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
             var from = CameraPose.Default;
@@ -164,7 +169,7 @@ namespace AquariumCiv.View
             }
             fromPose = from; hadCamera = cam != null;
             toolLine = "";
-            sayUntil = -1f; bubble.style.display = DisplayStyle.None; // a relic line still up gives way to the moment
+            overlay.HideBubble(); // a relic line still up gives way to the moment
             if (GameClock.Instance != null) GameClock.Instance.Held = true;
             momentOpen = true;
             Offset.Reset();
@@ -211,18 +216,56 @@ namespace AquariumCiv.View
             if (cam != null && hadCamera) cam.EaseTo(new Vector3(fromPose.target.x, fromPose.target.y, fromPose.target.z), fromPose.yaw, fromPose.pitch, fromPose.zoom, 1.4f);
             hadCamera = false;
             if (GameClock.Instance != null) GameClock.Instance.Held = false;
+            // The close: with the ask up the HUD stays down and the caption leads (spec §4), until it's answered.
+            bool asking = notifyAsk != null && notifyAsk.Ready;
             var hud = GameHud.Instance;
-            if (hud != null) hud.SetVisible(hudWasVisible);
-            hint.style.display = DisplayStyle.None;
-            bubble.style.display = DisplayStyle.None;
-            caption.style.display = DisplayStyle.None;
+            if (hud != null && !asking) hud.SetVisible(hudWasVisible);
+            if (overlay != null)
+            {
+                overlay.SetHint(false);
+                overlay.HideBubble();
+                if (!asking) overlay.HideCaption();
+            }
             wave = null;
             var src = SimLayoutSource.Find();
             if (src != null) src.EndMomentLook();
             Debug.Log($"[Moment] ended ({(crossed ? "crossed" : "left before the cheer: it will replay")})");
             MomentEnded?.Invoke(crossed);
-            if (crossed && toolLine != "" && ToolCaptions) Say(toolLine, 6f);
-            toolLine = "";
+            if (!crossed || momentReplay) toolLine = "";
+            else if (toolLine == "") toolLine = UnlockedLine(); // left after the cheer, before the tool's beat
+        }
+
+        /// <summary>The tool this moment unlocks, if the tray really has it now: the town's outcrop isn't one of the slice's tools.</summary>
+        string UnlockedLine()
+        {
+            var b = Director.Beats.FirstOrDefault(x => x.Has(BeatAction.ToolUnlock));
+            return b != null && Unlocked(b) ? Director.Context.Fill(b.line) : "";
+        }
+
+        bool Unlocked(MomentBeat b) => Sim != null && Sim.ShapingUnlocked(b.param);
+
+        const float ToolHintSeconds = 6f;
+        /// <summary>The hint waits for the glow: 3 steps of 600 ms.</summary>
+        const float GlowSeconds = GlassMotion.GlowSteps * GlassMotion.GlowStepMs / 1000f;
+
+        /// <summary>Back in the box: Shape glows once and keeps its New tag, then the tool's hint. Waits for the HUD, which an ask keeps down.</summary>
+        void UpdateNewTool()
+        {
+            var hud = GameHud.Instance;
+            if (hud == null) return;
+            if (toolLine != "" && !Playing && !notifyAsk.Ready && hud.IsVisible && !hud.CameraMode)
+            {
+                hud.SetShapeNew(true);
+                toolHint.Word = toolLine;
+                toolHintAt = Time.unscaledTime + GlowSeconds;
+                toolHintUntil = toolHintAt + ToolHintSeconds;
+                toolLine = "";
+            }
+            float now = Time.unscaledTime;
+            bool show = now >= toolHintAt && now < toolHintUntil && hud.ShapeNew && !Playing && hud.IsVisible && !hud.CameraMode && !hud.SheetOpen && !hud.CleanMode && !PromptsBlocked();
+            GameUiPanel.Toasts.Hold("tool-hint", show); // the hint has the toast lane: the pin's would run under it
+            var d = show ? DisplayStyle.Flex : DisplayStyle.None;
+            if (toolHint.style.display != d) toolHint.style.display = d;
         }
 
         void ReleaseCamera()
@@ -252,21 +295,35 @@ namespace AquariumCiv.View
             else if (momentOpen && Director.State == MomentDirector.Phase.Finished && (cam != null && !cam.enabled || (GameClock.Instance != null && GameClock.Instance.Held)))
                 EndMoment(true);
             UpdatePuffs(Time.unscaledDeltaTime);
+            ApplySafe();
             UpdateWatchButton();
-            if (sayUntil > 0f && Time.unscaledTime >= sayUntil) { bubble.style.display = DisplayStyle.None; sayUntil = -1f; }
+            UpdateNewTool();
+            overlay.Tick();
+        }
+
+        void ApplySafe()
+        {
+            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            safe.style.left = i.x; safe.style.top = i.y; safe.style.right = i.z; safe.style.bottom = i.w;
+            overlay.ApplySafe(i);
+            float toastLane = GameUiPanel.Lane(GameUiPanel.ToastBottom, i.w);
+            // Question 23: the free toast lane. A short phone's tank reaches that far down, so there the ask takes the pin's lane.
+            float ask = GlassSheet.IsShort(Screen.width, Screen.height) ? GameUiPanel.Lane(GameUiPanel.PinBottom, i.w) : toastLane;
+            wipeOffer.style.bottom = ask;
+            notifyAsk.style.bottom = ask;
+            toolHint.style.bottom = toastLane;
+            watchButton.style.bottom = GameUiPanel.PromptLane(i.w);
         }
 
         /// <summary>#92: the moment's speech bubble for a line said outside an era moment (a relic moment, the people at the
         /// glass), for <paramref name="seconds"/> real seconds. Ignored while an era moment plays (its own lines win) and in
         /// camera mode (no UI).</summary>
-        public bool Say(string text, float seconds = BubbleSeconds)
+        public bool Say(string text, float seconds = BubbleSeconds, string who = null)
         {
-            if (bubble == null || Playing || string.IsNullOrEmpty(text)) return false;
+            if (overlay == null || Playing || string.IsNullOrEmpty(text)) return false;
             var hud = GameHud.Instance;
             if (hud != null && hud.CameraMode) return false;
-            bubble.text = text;
-            bubble.style.display = DisplayStyle.Flex;
-            sayUntil = Time.unscaledTime + Mathf.Max(0.5f, seconds);
+            overlay.SayLine(who, text, Mathf.Max(0.5f, seconds), hud != null && hud.IsVisible);
             LastSaid = text;
             return true;
         }
@@ -274,9 +331,8 @@ namespace AquariumCiv.View
         /// <summary>Takes a <see cref="Say"/> line down now (the shelf opens, a museum visit starts or ends).</summary>
         public void HideSaid()
         {
-            if (bubble == null || Playing || sayUntil < 0f) return;
-            bubble.style.display = DisplayStyle.None;
-            sayUntil = -1f;
+            if (overlay == null || Playing) return;
+            overlay.HideBubble();
         }
 
         /// <summary>The last line <see cref="Say"/> showed (tests).</summary>
@@ -324,8 +380,8 @@ namespace AquariumCiv.View
                 }
                 else ReleaseCamera();
             }
-            hint.style.display = Director.ShowHurryHint ? DisplayStyle.Flex : DisplayStyle.None;
-            if (bubble.resolvedStyle.display == DisplayStyle.Flex && Director.Time >= bubbleUntil) bubble.style.display = DisplayStyle.None;
+            overlay.SetHint(Director.ShowHurryHint);
+            if (overlay.LineUp && Director.Time >= bubbleUntil) overlay.HideBubble();
             if (!Playing) EndMoment(true);
         }
 
@@ -352,20 +408,15 @@ namespace AquariumCiv.View
                 case MomentLight.Evening: PeopleView.SetHourGently(18f); break;
                 case MomentLight.Dusk: PeopleView.SetHourGently(19.5f); break;
             }
-            if (b.Has(BeatAction.AskNotification)) notifyAsk.style.display = DisplayStyle.Flex;
-            else if (b.Has(BeatAction.ToolUnlock)) toolLine = ctx.Fill(b.line); // shown after the moment: a press now only hurries
+            if (b.Has(BeatAction.AskNotification)) OpenNotifyAsk();
+            else if (b.Has(BeatAction.ToolUnlock)) { if (Unlocked(b) && !momentReplay) toolLine = ctx.Fill(b.line); } // shown after the moment: a press now only hurries
             else if (!string.IsNullOrEmpty(b.line))
             {
-                bubble.text = ctx.Fill(b.line);
-                bubble.style.display = DisplayStyle.Flex;
+                overlay.SayMoment(b.Has(BeatAction.LeaderSpeaks) && ctx.leaderPresent ? ctx.leaderName : null, ctx.Fill(b.line));
                 bubbleUntil = Mathf.Min(Director.Time + BubbleSeconds, Director.BeatEnd(index)); // moment time: hurrying shortens it, never spills into the next beat
             }
-            if (!string.IsNullOrEmpty(b.caption))
-            {
-                caption.text = ctx.Fill(b.caption);
-                caption.style.display = DisplayStyle.Flex;
-            }
-            if (b.Has(BeatAction.FestivalStart)) caption.style.display = DisplayStyle.None;
+            if (!string.IsNullOrEmpty(b.caption)) overlay.SetCaption(ctx.Fill(b.caption));
+            if (b.Has(BeatAction.FestivalStart)) overlay.HideCaption();
             if (b.Has(BeatAction.RebuildWave)) StartWave(b, index);
             Stage(b, index);
             BeatStarted?.Invoke(b, index);
@@ -481,85 +532,57 @@ namespace AquariumCiv.View
             parent.Clear();
             root = new VisualElement { name = "moment-root", pickingMode = PickingMode.Ignore };
             root.AddToClassList("hud-fill");
-            root.style.position = Position.Absolute;
-            root.style.left = root.style.right = root.style.top = root.style.bottom = 0;
             parent.Add(root);
+            safe = new VisualElement { name = "moment-safe", pickingMode = PickingMode.Ignore };
+            safe.AddToClassList("hud-fill");
+            root.Add(safe);
 
-            watchButton = new Button(() => Watch()) { name = "moment-watch", text = "Watch" };
-            watchButton.AddToClassList("hud-btn");
-            watchButton.AddToClassList("hud-btn--primary");
-            Pin(watchButton, 330f);
-            root.Add(watchButton);
+            watchButton = new GlassBigPrompt("Watch", () => Watch()) { name = "moment-watch" };
+            watchButton.Ready = false;
+            safe.Add(watchButton);
 
-            hint = Pill("moment-hint", MomentDirector.HurryHint, 120f);
-            bubble = Pill("moment-bubble", "", 0f);
-            bubble.style.bottom = StyleKeyword.Auto;
-            bubble.style.top = new Length(30, LengthUnit.Percent);
-            caption = Pill("moment-caption", "", 0f);
-            caption.style.bottom = StyleKeyword.Auto;
-            caption.style.top = 220f;
-            caption.style.fontSize = 44;
+            wipeOffer = new GlassAsk(EraWaiting.WipeOffer,
+                new GlassButton("Wipe", WipeFirst) { name = "moment-wipe-yes" },
+                new GlassButton(EraWaiting.WatchAnyway, () => Watch(true), ButtonKind.Primary, UiRole.Confirm) { name = "moment-wipe-no" }) { name = "moment-wipe" };
+            wipeOffer.Ready = false;
+            safe.Add(wipeOffer);
+            notifyAsk = new GlassAsk(MomentLibrary.NotifyQuestion,
+                new GlassButton("Not now", () => AnswerNotify(false)) { name = "moment-notify-no" },
+                new GlassButton("Yes", () => AnswerNotify(true), ButtonKind.Secondary, UiRole.Confirm) { name = "moment-notify-yes" }) { name = "moment-notify" };
+            notifyAsk.Ready = false;
+            safe.Add(notifyAsk);
 
-            wipeOffer = Card("moment-wipe", EraWaiting.WipeOffer,
-                ("moment-wipe-yes", "Wipe", () => { wipeOffer.style.display = DisplayStyle.None; wipingForMoment = true; if (GameHud.Instance != null) GameHud.Instance.SetCleanMode(true); }),
-                ("moment-wipe-no", EraWaiting.WatchAnyway, () => Watch(true)));
-            notifyAsk = Card("moment-notify", "Want a note when the next one is ready?",
-                ("moment-notify-yes", "Yes", () => AnswerNotify(true)),
-                ("moment-notify-no", "Not now", () => AnswerNotify(false)));
+            toolHint = new GlassHint("") { name = "moment-tool-hint" };
+            toolHint.AddToClassList("moment-hint");
+            toolHint.style.display = DisplayStyle.None;
+            safe.Add(toolHint);
+
+            overlay = new MomentOverlay(root, safe, "moment");
+            ApplySafe();
+        }
+
+        void WipeFirst()
+        {
+            wipeOffer.Ready = false;
+            wipingForMoment = true;
+            if (GameHud.Instance != null) GameHud.Instance.SetCleanMode(true);
+        }
+
+        void OpenNotifyAsk()
+        {
+            notifyAsk.Ready = true;
+            overlay.SetCaption(EraWaiting.CloseLine);
+            UiSound.Play(UiRole.Ask);
         }
 
         void AnswerNotify(bool yes)
         {
-            notifyAsk.style.display = DisplayStyle.None;
+            notifyAsk.Ready = false;
             if (Sim != null) MomentContext.MarkNotifyAsked(Sim.State);
             PlayerPrefs.SetInt("moment.notify", yes ? 1 : 0); // the local notification itself comes with the notification work
             if (GameClock.Instance != null) GameClock.Instance.Save();
-        }
-
-        static void Pin(VisualElement e, float bottom)
-        {
-            e.style.position = Position.Absolute;
-            e.style.bottom = bottom;
-            e.style.alignSelf = Align.Center;
-            e.style.left = new Length(50, LengthUnit.Percent);
-            e.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0);
-        }
-
-        Label Pill(string name, string text, float bottom)
-        {
-            var l = new Label(text) { name = name, pickingMode = PickingMode.Ignore };
-            l.AddToClassList("hud-toast");
-            l.style.bottom = bottom;
-            l.style.whiteSpace = WhiteSpace.Normal;
-            l.style.display = DisplayStyle.None;
-            root.Add(l);
-            return l;
-        }
-
-        VisualElement Card(string name, string question, params (string name, string label, Action click)[] buttons)
-        {
-            var card = new VisualElement { name = name };
-            card.AddToClassList("hud-toast");
-            card.style.bottom = 330f;
-            card.style.flexDirection = FlexDirection.Column;
-            card.style.alignItems = Align.Center;
-            card.style.display = DisplayStyle.None;
-            var q = new Label(question) { pickingMode = PickingMode.Ignore };
-            q.style.whiteSpace = WhiteSpace.Normal;
-            q.style.marginBottom = 20;
-            card.Add(q);
-            var row = new VisualElement();
-            row.style.flexDirection = FlexDirection.Row;
-            foreach (var (n, label, click) in buttons)
-            {
-                var b = new Button(click) { name = n, text = label };
-                b.AddToClassList("hud-btn");
-                b.style.marginLeft = b.style.marginRight = 12;
-                row.Add(b);
-            }
-            card.Add(row);
-            root.Add(card);
-            return card;
+            overlay.HideCaption();
+            if (!Playing && GameHud.Instance != null) GameHud.Instance.SetVisible(hudWasVisible); // the HUD waited for the answer
         }
 
         /// <summary>The player is inside something else (a person card, the time-lapse, Show me, the first run's sheets):
@@ -590,14 +613,19 @@ namespace AquariumCiv.View
             if (hud == null || !hud.CleanMode) wipingForMoment = false;
             bool wipedEnough = wipingForMoment && Sim != null && !EraWaiting.OfferWipeFirst(Sim.State.grime);
             bool hudFree = hud == null || (hud.IsVisible && !hud.CameraMode && (!hud.CleanMode || wipedEnough) && !hud.SheetOpen);
-            bool show = Waiting.waiting && !Playing && hudFree && !PromptsBlocked() && wipeOffer.resolvedStyle.display == DisplayStyle.None;
-            watchButton.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            bool show = Waiting.waiting && !Playing && hudFree && !PromptsBlocked() && !wipeOffer.Ready;
+            if (watchButton.Ready != show) watchButton.Ready = show;
             if (show && watchButton.text != Waiting.watchLabel) watchButton.text = Waiting.watchLabel;
-            // the safe area: keep the button above the home indicator and the HUD's bottom row
-            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            watchButton.style.bottom = GameUiPanel.PromptBottom + i.w;
-            if (hud != null && (hud.CameraMode || hud.SheetOpen)) wipeOffer.style.display = DisplayStyle.None;
+            if (hud != null && (hud.CameraMode || hud.SheetOpen) && wipeOffer.Ready) wipeOffer.Ready = false;
+            bool pinLane = wipeOffer.Ready && GlassSheet.IsShort(Screen.width, Screen.height);
+            if (pinLane != askInPinLane)
+            {
+                askInPinLane = pinLane;
+                if (hud != null) hud.SetPeekUp(pinLane); // the pin and Stories chips step aside, as they do for the peek
+            }
         }
+
+        bool askInPinLane;
 
         // ---------------- debug (debug panel, `script eval`) ----------------
         public static string Status()
@@ -678,6 +706,38 @@ namespace AquariumCiv.View
             if (Instance != null) { Instance.nextRead = 0f; }
             return $"waited {months} months · piles {EraWaiting.PileLevel(months)}";
         }
+
+        /// <summary>Debug: the wipe-first ask, whatever the glass looks like.</summary>
+        public static string DebugWipeAsk()
+        {
+            if (Instance == null) return "no MomentPlayer";
+            Instance.wipeOffer.Ready = true;
+            return "wipe ask up";
+        }
+
+        /// <summary>Debug: the notification ask at the close: the HUD down, the caption leading, until it's answered.</summary>
+        public static string DebugNotifyAsk()
+        {
+            var m = Instance;
+            if (m == null) return "no MomentPlayer";
+            var hud = GameHud.Instance;
+            if (hud != null) { m.hudWasVisible = hud.IsVisible; hud.SetVisible(false); }
+            m.OpenNotifyAsk();
+            return "notification ask up";
+        }
+
+        /// <summary>Debug: a tool arrives: Shape glows once, then the hint.</summary>
+        public static string DebugNewTool(string line = "Drag from the water")
+        {
+            if (Instance == null) return "no MomentPlayer";
+            Instance.toolLine = line;
+            if (GameHud.Instance != null) GameHud.Instance.SetShapeNew(false);
+            return "new tool: " + line;
+        }
+
+        /// <summary>Debug: a line in the moment's bubble, to see it wait for the one up (two at once can't happen: <see cref="GameUiPanel.Bubbles"/>).</summary>
+        public static string DebugSay(string line = "We remember.", string who = "Greta") =>
+            Instance != null && Instance.Say(line, BubbleSeconds, who) ? "said: " + line : "not said";
 
         public static string DebugWatch(bool skipWipeOffer = true) => Instance == null ? "no MomentPlayer" : Instance.Watch(skipWipeOffer) ? Status() : "nothing to watch";
         public static string DebugReplay() => Instance == null ? "no MomentPlayer" : Instance.Watch(true, replay: true) ? Status() : "no past moment";

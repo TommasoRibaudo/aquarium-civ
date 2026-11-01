@@ -196,8 +196,180 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("first-run shots");
         }
 
+        // ---------------- #170, board 3.6 ----------------
+        static void Hold(bool on) => MomentPlayer.DebugHoldHurry = on;
+
+        static bool Shown(VisualElement e)
+        {
+            for (; e != null; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return false;
+            return true;
+        }
+
+        [UnityTest, Timeout(600000), Category("ShotsEra")]
+        public IEnumerator EraMoments([Values(1179, 750)] int w)
+        {
+            dir = Shots + "retrofit/" + w + "/";
+            yield return OpenSlice(w, w == 750 ? 1334 : 2556, seed: 7531);
+            DebugDock.ForceLocked = true;
+            yield return Grow(6f);
+            var sim = GameClock.Instance.Sim;
+            var mp = MomentPlayer.Instance;
+            var hud = GameHud.Instance;
+            var ui = mp.GetComponent<UIDocument>().rootVisualElement;
+            sim.State.settlementName = "Mossbarrow";
+            sim.State.grime = 0f;
+            yield return Frames(4);
+            yield return Cap("3.6-watch-hidden");
+            Assert.IsTrue(sim.ForceEraReady());
+            MomentPlayer.DebugWaited(100);
+            yield return Seconds(0.8f);
+            yield return Frames(20);
+            yield return Cap("3.6-watch-ready");
+            hud.SetPinChip("Piers (remembered)", null);
+            hud.Toast("Tap the ground to place the grove.", 2f);
+            yield return Frames(4);
+            yield return Cap("3.6-watch-worst");
+            hud.SetPinChip(null, null);
+            GameUiPanel.Toasts.Clear();
+            yield return Frames(4);
+
+            sim.State.grime = 0.9f;
+            mp.Watch();
+            yield return Frames(6);
+            yield return Cap("3.6-wipe-first");
+            yield return Tap(ui, "moment-wipe-no");
+            sim.State.grime = 0f;
+            yield return Seconds(0.6f);
+            yield return Cap("3.6-moment-hint");
+            MomentPlayer.DebugHurry(3f);
+            Hold(true);
+            yield return Until(() => Shown(ui.Q("moment-bubble")) || !mp.Playing, 60f);
+            Hold(false);
+            yield return Frames(4);
+            yield return Cap("3.6-moment-bubble");
+            Hold(true);
+            yield return Until(() => Shown(ui.Q("moment-caption")) || !mp.Playing, 60f);
+            Hold(false);
+            yield return Seconds(0.7f);
+            yield return Cap("3.6-moment-caption");
+            Hold(true);
+            yield return Until(() => Shown(ui.Q("moment-notify")) || !mp.Playing, 60f);
+            yield return Until(() => !mp.Playing, 60f);
+            Hold(false);
+            yield return Frames(8);
+            yield return Cap("3.6-notify-ask");
+            yield return Tap(ui, "moment-notify-no");
+            yield return Seconds(0.9f);
+            yield return Cap("3.6-tool-glow");
+            yield return Seconds(1.5f);
+            yield return Cap("3.6-tool-hint");
+            hud.SetShapeNew(false);
+            AssertNoErrors("era moment shots");
+        }
+
+        [UnityTest, Timeout(600000), Category("ShotsLast")]
+        public IEnumerator LastMomentAndShelf([Values(1179, 750)] int w)
+        {
+            dir = Shots + "retrofit/" + w + "/";
+            yield return OpenSlice(w, w == 750 ? 1334 : 2556, seed: 7531);
+            DebugDock.ForceLocked = true;
+            yield return Grow(60f);
+            var sim = GameClock.Instance.Sim;
+            var clock = GameClock.Instance;
+            var c = BoxCompleteController.Instance;
+            var hud = GameHud.Instance;
+            var ui = c.GetComponent<UIDocument>().rootVisualElement;
+            sim.State.settlementName = "Mossbarrow";
+            if (sim.State.era != Era.Town) { sim.ForceNextEra(); yield return Frames(3); }
+            yield return Frames(4);
+            yield return Cap("3.6-finish-hidden");
+            sim.ForcePeakReady();
+            sim.CleanAll();
+            yield return Seconds(0.8f);
+            yield return Frames(20);
+            yield return Cap("3.6-finish-ready");
+            yield return Tap(ui, "complete-prompt");
+            Assert.IsTrue(c.Playing);
+            yield return Seconds(0.6f);
+            yield return Cap("3.6-last-hint");
+            c.Director.HurryFactor = 3f;
+            Hold(true);
+            yield return Until(() => Shown(ui.Q("boxcomplete-bubble")) || !c.Playing, 60f);
+            Hold(false);
+            yield return Frames(4);
+            yield return Cap("3.6-last-bubble");
+            Hold(true);
+            yield return Until(() => Shown(ui.Q("boxcomplete-caption")) || !c.Playing, 60f);
+            Hold(false);
+            yield return Seconds(0.7f);
+            yield return Cap("3.6-last-caption");
+            Hold(true);
+            yield return Until(() => c.PickerOpen, 60f);
+            Hold(false);
+            yield return Frames(20);
+            yield return Cap("3.6-picker");
+            yield return Tap(ui, "picker-mountain");
+            yield return Frames(10);
+            yield return Cap("3.6-picker-mountain");
+            yield return Tap(ui, "picker-oasis");
+            yield return Tap(ui, "picker-begin");
+            Hold(true);
+            yield return Until(() => c.Director.CurrentBeat?.id == "wipe", 60f);
+            Hold(false);
+            yield return Seconds(0.4f);
+            yield return Cap("3.6-last-wipe");
+            Hold(true);
+            yield return Until(() => c.Director.CurrentBeat?.id == "plate", 60f);
+            yield return Until(() => c.Director.BeatProgress > 0.8f, 20f);
+            Hold(false);
+            yield return Frames(4);
+            yield return Cap("3.6-plate");
+            Hold(true);
+            yield return Until(() => Shown(ui.Q("boxcomplete-roll")), 60f);
+            Hold(false);
+            yield return Frames(6);
+            yield return Cap("3.6-roll-call");
+            Hold(true);
+            yield return Until(() => c.Director.CurrentBeat?.id == "newbox", 60f);
+            Hold(false);
+            yield return Seconds(0.7f);
+            yield return Cap("3.6-newbox-caption");
+            Hold(true);
+            yield return Until(() => !c.Playing, 60f);
+            Hold(false);
+            yield return Frames(30);
+            yield return Cap("3.6-founders-line");
+            yield return Seconds(5.5f);
+            GameClock.Instance.Sim.CardsSeenToNow();
+            yield return Frames(6);
+            yield return Cap("3.6-shelf-chip");
+            hud.ForceStories = true;
+            hud.SetHistoryDot(true);
+            yield return Frames(4);
+            yield return Cap("3.6-stories-wins");
+            hud.Open(GameHud.Settings);
+            yield return Frames(10);
+            yield return Cap("3.6-settings-shelf");
+            yield return Tap(hud.Root, "settings-shelf");
+            yield return Frames(30);
+            Assert.IsTrue(c.ShelfOpen, "Settings' row opens the shelf");
+            yield return Cap("3.6-shelf-list");
+            hud.ForceStories = false;
+            hud.SetHistoryDot(false);
+            yield return Tap(ui, "shelf-box-0");
+            yield return Frames(50);
+            hud.Toast(BoxCompleteController.VisitLine, 6f);
+            yield return Seconds(0.4f);
+            yield return Cap("3.6-visiting");
+            Assert.IsTrue(clock.Visiting);
+            c.Back();
+            yield return Frames(30);
+            AssertNoErrors("last moment shots");
+        }
+
         public override void TearDown()
         {
+            MomentPlayer.DebugHoldHurry = false;
             FirstRunView.DebugKeyboard = false;
             TimeLapseScreenView.BookRibbon = false;
             DebugDock.ResetLock();

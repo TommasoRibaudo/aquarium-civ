@@ -132,6 +132,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(Shown(watch), "Watch shows while the era waits");
                 hud.Toast("A toast long enough to wrap to a second line, to test that Watch stays in its own lane above it.", 2f);
                 yield return null; yield return null; yield return null;
+                Assert.IsNull(GameUiPanel.Toasts.Current, "the toast waits while Watch is up (question 22)");
                 Assert.IsFalse(hud.Root.Q("hud-toast").worldBound.Overlaps(watch.worldBound), "Watch and the toast keep to their lanes");
                 Assert.AreEqual("Watch them become a village", watch.text);
                 var props = UnityEngine.Object.FindAnyObjectByType<WaitingProps>();
@@ -186,9 +187,26 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(month, sim.State.month, "no months passed during the moment");
                 Assert.IsTrue(cam.enabled, "the camera is back in the player's hands");
                 Assert.IsFalse(GameClock.Instance.Held);
-                Assert.IsTrue(hud.IsVisible, "the HUD comes back");
                 Assert.IsFalse(Shown(watch), "nothing waits now");
-                StringAssert.DoesNotContain("Drag from", mp.LastSaid ?? "", "no caption for a tool the player can't pick up yet");
+                StringAssert.DoesNotContain("Drag from", mp.LastSaid ?? "", "the new tool's words are a hint, not a line");
+                // Spec §4: the first era's close keeps the HUD down, the caption leading, until the ask is answered.
+                var ask = mp.GetComponent<UIDocument>().rootVisualElement.Q("moment-notify");
+                var ui = mp.GetComponent<UIDocument>().rootVisualElement;
+                Assert.IsTrue(Shown(ask), "the first moment ends with the notification question");
+                Assert.IsFalse(hud.IsVisible, "the HUD stays down for the ask");
+                Assert.IsTrue(Shown(ui.Q("moment-caption")), "the caption leads");
+                Assert.IsFalse(hud.ShapeNew, "the new tool waits for the HUD");
+                yield return TapAt(GameUiPanel.ScreenCenter(ask.Q("moment-notify-no")));
+                Assert.IsFalse(Shown(ask));
+                Assert.IsTrue(sim.State.storyFlags.Contains(MomentContext.FlagNotifyAsked));
+                Assert.IsTrue(hud.IsVisible, "the HUD comes back");
+                Assert.IsFalse(Shown(ui.Q("moment-caption")));
+                yield return null; yield return null;
+                Assert.IsTrue(hud.ShapeNew, "Shape holds the new tool");
+                yield return new WaitForSecondsRealtime(2.2f);
+                Assert.IsTrue(Shown(ui.Q("moment-tool-hint")), "the glow, then the tool's hint");
+                Assert.AreEqual("Drag from the water", ui.Q<GlassHint>("moment-tool-hint").Word);
+                hud.SetShapeNew(false);
                 // Tester batch 3: the finished moment let go of a clock someone else held afterwards.
                 var lapse = TimeLapseView.Ensure();
                 Assert.IsTrue(lapse.Open());
@@ -197,11 +215,6 @@ namespace AquariumCiv.View.PlayTests
                 lapse.Close();
                 yield return null; yield return null;
                 Assert.IsFalse(GameClock.Instance.Held);
-                var ask = mp.GetComponent<UIDocument>().rootVisualElement.Q("moment-notify");
-                Assert.IsTrue(Shown(ask), "the first moment ends with the notification question");
-                yield return TapAt(GameUiPanel.ScreenCenter(ask.Q("moment-notify-no")));
-                Assert.IsFalse(Shown(ask));
-                Assert.IsTrue(sim.State.storyFlags.Contains(MomentContext.FlagNotifyAsked));
 
                 // the camera answers a drag again
                 float yaw = cam.yaw;
@@ -537,6 +550,7 @@ namespace AquariumCiv.View.PlayTests
                 var offer = mp.GetComponent<UIDocument>().rootVisualElement.Q("moment-wipe");
                 yield return null; yield return null;
                 Assert.IsTrue(Shown(offer));
+                Assert.AreEqual(GameUiPanel.ToastBottom, mp.GetComponent<UIDocument>().rootVisualElement.worldBound.height - offer.worldBound.yMax, 1f, "the ask is in the free toast lane (question 23)");
                 yield return TapAt(GameUiPanel.ScreenCenter(offer.Q("moment-wipe-no")));
                 Assert.IsTrue(mp.Playing, "Watch anyway");
 

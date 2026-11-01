@@ -796,11 +796,14 @@ namespace AquariumCiv.View
             if (bubbleEl != null && bubbleEl.style.display == DisplayStyle.Flex) yield return bubbleEl.worldBound;
         }
 
+        BubbleHost.Voice voice;
+
         void HideUi()
         {
             if (labelEl == null) return;
             labelEl.style.display = DisplayStyle.None;
             bubbleEl.style.display = DisplayStyle.None;
+            if (voice != null) GameUiPanel.Bubbles.Done(voice);
             wishBar.style.display = DisplayStyle.None;
             wishSpot.style.display = DisplayStyle.None;
             foreach (var c in chipEls) c.style.display = DisplayStyle.None;
@@ -848,6 +851,9 @@ namespace AquariumCiv.View
             labelEl.style.display = label ? DisplayStyle.Flex : DisplayStyle.None;
             if (label) { labelEl.text = a.label; labelEl.style.opacity = a.labelAlpha; }
             bool bubble = !noUi && a.active && a.bubbleAlpha > 0.01f && !string.IsNullOrEmpty(a.bubble) && Anchor(bubbleEl, a.x, a.z, 0.35f, -80f);
+            voice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line);
+            if (bubble) bubble = GameUiPanel.Bubbles.Ask(voice); // asked every frame: it waits for whoever has the word
+            else GameUiPanel.Bubbles.Done(voice);
             bubbleEl.style.display = bubble ? DisplayStyle.Flex : DisplayStyle.None;
             if (bubble) { bubbleEl.text = a.bubble; bubbleEl.style.opacity = a.bubbleAlpha; }
 

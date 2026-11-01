@@ -312,6 +312,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(c.Playing, "a tap on Finish starts the last moment");
             c.Director.HurryFactor = 4f;
             MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => c.PickerOpen, 60f);
+            Assert.IsTrue(c.PickerOpen, "the moment asks for the next box");
+            yield return Frames(4);
+            yield return TapAt(GameUiPanel.ScreenCenter(c.GetComponent<UIDocument>().rootVisualElement, "picker-begin"));
             yield return Until(() => !c.Playing, 100f);
             MomentPlayer.DebugHoldHurry = false;
             yield return Frames(20);

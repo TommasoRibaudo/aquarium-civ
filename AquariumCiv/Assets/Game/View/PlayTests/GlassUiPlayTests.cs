@@ -149,7 +149,7 @@ namespace AquariumCiv.View.PlayTests
                 "badge-dot", "badge-page-dots", "badge-pips", "badge-new", "badge-ribbon",
                 "toast-short", "toast-long", "caption-line", "caption-who", "caption-panel",
                 "hint-word", "hint-finger", "hint-ghost", "banner-tool", "banner-visiting",
-                "prompt-ready", "prompt-pressed", "prompt-hidden", "peek-story",
+                "prompt-ready", "prompt-pressed", "prompt-hidden", "peek-story", "ask-wipe", "ask-notify", "option-on", "option-off",
             };
             foreach (var id in required)
                 Assert.Contains("gal-" + id, g.States, id);
@@ -409,6 +409,50 @@ namespace AquariumCiv.View.PlayTests
             host.RemoveFromHierarchy();
             GameUiPanel.Toasts.Clear();
             AssertNoErrors("prompt");
+        }
+
+        /// <summary>Spec §3: one bubble at a time. A moment's line takes the word; a line said outside a moment waits for it; nobody overlaps.</summary>
+        [Test]
+        public void TheBubbleHostGivesOneWordAtATime()
+        {
+            var host = new BubbleHost();
+            bool worldGone = false;
+            var world = host.Join(BubbleHost.Rank.World, () => worldGone = true);
+            var line = host.Join(BubbleHost.Rank.Line);
+            var other = host.Join(BubbleHost.Rank.Line);
+            var moment = host.Join(BubbleHost.Rank.Moment);
+            Assert.IsTrue(host.Ask(world));
+            Assert.IsTrue(host.Ask(world), "asking again keeps it");
+            Assert.IsTrue(host.Ask(line), "a line outranks chatter");
+            Assert.IsTrue(worldGone, "and the chatter goes");
+            Assert.IsFalse(host.Ask(other), "the second waits");
+            Assert.IsFalse(host.Ask(world));
+            Assert.IsTrue(host.Ask(moment));
+            Assert.IsFalse(host.Ask(line));
+            host.Done(line);
+            Assert.AreEqual(moment, host.Holder, "only the holder can give it up");
+            host.Done(moment);
+            Assert.IsTrue(host.Ask(other), "free again");
+        }
+
+        /// <summary>In the game: a line said while someone has the word waits for it, and shows when it's free.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ASaidLineWaitsForTheBubbleUp()
+        {
+            yield return OpenSlice(seed: 7531);
+            var mp = MomentPlayer.Instance;
+            var bubble = mp.GetComponent<UnityEngine.UIElements.UIDocument>().rootVisualElement.Q("moment-bubble");
+            GameUiPanel.Bubbles.Clear();
+            var other = GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line);
+            Assert.IsTrue(GameUiPanel.Bubbles.Ask(other));
+            Assert.IsTrue(mp.Say("We remember.", 3f, "Greta"));
+            yield return Frames(4);
+            Assert.AreEqual(DisplayStyle.None, bubble.resolvedStyle.display, "the second waits");
+            GameUiPanel.Bubbles.Done(other);
+            yield return Frames(4);
+            Assert.AreEqual(DisplayStyle.Flex, bubble.resolvedStyle.display, "and shows once the word is free");
+            mp.HideSaid();
+            AssertNoErrors("bubbles");
         }
 
         [UnityTest, Timeout(120000)]
