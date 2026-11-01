@@ -41,9 +41,10 @@ namespace AquariumCiv.GameUI
             waiting.Enqueue(new Message(text, seconds));
         }
 
-        /// <summary>Takes back a line still waiting: a hint that no longer applies. The one on screen stays.</summary>
+        /// <summary>Takes back a line that no longer applies, waiting or on screen (tester run 6).</summary>
         public void Withdraw(string text)
         {
+            if (showing && Current == text) { Current = null; showing = false; cleared = true; }
             var rest = waiting.ToArray();
             waiting.Clear();
             foreach (var m in rest) if (m.text != text) waiting.Enqueue(m);

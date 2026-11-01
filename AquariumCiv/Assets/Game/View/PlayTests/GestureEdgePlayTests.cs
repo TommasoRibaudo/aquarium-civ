@@ -177,6 +177,68 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("first run done");
         }
 
+        /// <summary>Tester run 6: book-close sits over hud-shape, and the book hides at once.</summary>
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator TheSecondTapOnTheBookCloseStopsThere()
+        {
+            yield return OpenWithMotion();
+            SimLayoutSource.DebugSkipYears(8f);
+            yield return null;
+            var book = BookView.Instance;
+            foreach (float gap in Gaps)
+            {
+                Assert.IsTrue(book.Open(), "the book opens");
+                yield return Wait(0.5f);
+                yield return DoubleTap(GameUiPanel.ScreenCenter(book.Root, "book-close"), gap);
+                yield return Wait(0.5f);
+                Assert.IsFalse(book.IsOpen, "gap " + gap);
+                Assert.IsNull(Open(), "the tray stays shut, gap " + gap);
+            }
+            AssertNoErrors("book close");
+        }
+
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator TheSecondTapOnThePersonCardCloseStopsThere()
+        {
+            yield return OpenWithMotion();
+            SimLayoutSource.DebugSkipYears(8f);
+            yield return null;
+            var card = PersonCardView.Instance;
+            int id = GameClock.Instance.ActiveSim.State.notables.Find(n => n.alive && n.age >= 16f).id;
+            foreach (float gap in Gaps)
+            {
+                Assert.IsTrue(card.Open(id, fly: false), "the card opens");
+                yield return Wait(0.5f);
+                int knocks = GlassVoice.Instance.Knocks;
+                yield return DoubleTap(GameUiPanel.ScreenCenter(Hud.Root.panel.visualTree, "person-card-close"), gap);
+                yield return Wait(GlassVoice.TapGap + 0.3f);
+                Assert.IsFalse(card.AnyOpen, "no card came back, gap " + gap);
+                Assert.IsNull(Open(), "gap " + gap);
+                Assert.AreEqual(knocks, GlassVoice.Instance.Knocks, "no knock, gap " + gap);
+            }
+            AssertNoErrors("person card close");
+        }
+
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator TheSecondTapOnTheTrayCloseStopsThere()
+        {
+            yield return OpenWithMotion();
+            foreach (float gap in Gaps)
+            {
+                Hud.Open(GameHud.Shaping);
+                yield return Wait(0.45f);
+                int knocks = GlassVoice.Instance.Knocks;
+                yield return DoubleTap(GameUiPanel.ScreenCenter(Hud.Root, GameHud.Shaping + "-close"), gap);
+                yield return Wait(GlassVoice.TapGap + 0.3f);
+                Assert.IsNull(Open(), "gap " + gap);
+                Assert.AreEqual(knocks, GlassVoice.Instance.Knocks, "no knock, gap " + gap);
+            }
+            AssertNoErrors("tray close");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator ANewTapElsewhereRightAfterCloseStillWorks()
         {

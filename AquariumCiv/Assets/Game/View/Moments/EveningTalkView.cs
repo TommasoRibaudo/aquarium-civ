@@ -282,13 +282,16 @@ namespace AquariumCiv.View
             LeftEarly = !said;
             homeOnLift = cam != null;
             swallowing = ReadPress();
+            if (cam != null) cam.CancelFlight(); // the touch is the HUD's, so it wouldn't stop the talk's own flight: it stops here and goes home from where it got to
             Finish();
         }
 
         void GoHome()
         {
+            if (cam == null || !cam.isActiveAndEnabled) { homeOnLift = false; return; }
+            if (cam.IsFlying) return; // someone else's flight: home waits for it to stop or land (tester run 6)
             homeOnLift = false;
-            if (cam != null && cam.isActiveAndEnabled && !cam.IsFlying) cam.GoHome(firm: true);
+            cam.GoHome(firm: true);
         }
 
         void Finish()

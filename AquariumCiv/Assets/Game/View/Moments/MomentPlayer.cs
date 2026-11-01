@@ -75,8 +75,10 @@ namespace AquariumCiv.View
         string toolLine = ""; // the tool beat's hint: once the moment is over and the HUD is back, Shape glows and this shows (mid-moment a press hurries)
         bool wipingForMoment; // clean mode was opened from the wipe offer
         // puffs
-        readonly List<(Transform t, float age, float size)> puffs = new();
-        Mesh puffMesh;
+        readonly List<(Transform t, float age, float size, float life, float rise)> puffs = new();
+        readonly List<(MeshRenderer r, float age)> glows = new();
+        MaterialPropertyBlock glowBlock;
+        Mesh puffMesh, giftPuffMesh, glowMesh;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -120,6 +122,8 @@ namespace AquariumCiv.View
             if (Instance != this) return;
             if (Playing) { Director.Leave(); leftByPlayer = true; EndMoment(false); }
             if (puffMesh != null) Destroy(puffMesh);
+            if (giftPuffMesh != null) Destroy(giftPuffMesh);
+            if (glowMesh != null) Destroy(glowMesh);
             Instance = null;
         }
 
@@ -295,6 +299,7 @@ namespace AquariumCiv.View
             else if (momentOpen && Director.State == MomentDirector.Phase.Finished && (cam != null && !cam.enabled || (GameClock.Instance != null && GameClock.Instance.Held)))
                 EndMoment(true);
             UpdatePuffs(Time.unscaledDeltaTime);
+            UpdateGlows(Time.unscaledDeltaTime);
             ApplySafe();
             UpdateWatchButton();
             UpdateNewTool();
@@ -443,18 +448,26 @@ namespace AquariumCiv.View
             WaveKnock(s);
         }
 
-        /// <summary>#191: the gift's arrival, where it lands: one puff and a ring of small ones (<paramref name="ring"/> 0 = just the puff).</summary>
+        /// <summary>Tester run 6: how long a gift's puffs last and how fast they rise: long enough to catch from the whole-box view.</summary>
+        public const float GiftPuffSeconds = 1.2f, GiftPuffRise = 0.35f, PlainPuffSeconds = 0.7f;
+        /// <summary>The soft glow at a gift nobody is awake to see (tester run 6), and how long it stays.</summary>
+        public const float GiftGlowSeconds = 4f, GiftGlowRadius = 0.8f;
+        /// <summary>Puffs and glows still on screen (tests).</summary>
+        public int GiftPuffsLive => puffs.Count;
+        public int GiftGlowsLive => glows.Count;
+
+        /// <summary>#191: the gift's arrival, where it lands: one puff and a ring of small ones (<paramref name="ring"/> 0 = just the puff), warm and slow so they read over trees.</summary>
         public void GiftPuffs(float x, float z, float size, int ring)
         {
-            PuffAt(x, z, size);
+            PuffAt(x, z, size, true);
             for (int i = 0; i < ring; i++)
             {
                 float a = i * Mathf.PI * 2f / ring;
-                PuffAt(x + Mathf.Cos(a) * 0.32f, z + Mathf.Sin(a) * 0.32f, size * 0.5f);
+                PuffAt(x + Mathf.Cos(a) * 0.42f, z + Mathf.Sin(a) * 0.42f, size * 0.55f, true);
             }
         }
 
-        void PuffAt(float x, float z, float size)
+        void PuffAt(float x, float z, float size, bool gift = false)
         {
             var box = FindAnyObjectByType<BoxView>();
             if (box == null) return;
@@ -464,26 +477,89 @@ namespace AquariumCiv.View
                 mb.Ico(Vector3.zero, 0.1f, Vector3.one, Palette.Plaster, 0.2f);
                 puffMesh = mb.ToMesh("MomentPuff");
             }
+            if (gift && giftPuffMesh == null)
+            {
+                var mb = new MeshBuilder(6) { jitter = 0.02f, emission = 0.75f };
+                mb.Ico(Vector3.zero, 0.1f, Vector3.one, Palette.Glow, 0.2f, Palette.FireCore);
+                giftPuffMesh = mb.ToMesh("GiftPuff");
+            }
             var go = new GameObject("MomentPuff") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(box.transform, false);
             go.transform.localPosition = new Vector3(x, box.GroundHeight(x, z) + 0.08f, z);
-            go.AddComponent<MeshFilter>().sharedMesh = puffMesh;
+            go.AddComponent<MeshFilter>().sharedMesh = gift ? giftPuffMesh : puffMesh;
             go.AddComponent<MeshRenderer>().sharedMaterial = box.SolidMaterial;
             go.transform.localScale = Vector3.zero;
-            puffs.Add((go.transform, 0f, size));
+            puffs.Add((go.transform, 0f, size, gift ? GiftPuffSeconds : PlainPuffSeconds, gift ? GiftPuffRise : 0f));
         }
 
         void UpdatePuffs(float dt)
         {
-            const float life = 0.7f;
             for (int i = puffs.Count - 1; i >= 0; i--)
             {
-                var (t, age, size) = puffs[i];
+                var (t, age, size, life, rise) = puffs[i];
                 age += dt;
                 if (t == null || age >= life) { if (t != null) Destroy(t.gameObject); puffs.RemoveAt(i); continue; }
                 float u = age / life;
                 t.localScale = Vector3.one * (Mathf.Sin(u * Mathf.PI) * 2.2f * size);
-                puffs[i] = (t, age, size);
+                if (rise > 0f) t.localPosition += Vector3.up * (rise * dt / life);
+                puffs[i] = (t, age, size, life, rise);
+            }
+        }
+
+        /// <summary>Tester run 6: a gift at night with everyone asleep: a soft warm disc on the ground, so a player at home zoom sees where it landed.</summary>
+        public void GiftGlow(float x, float z)
+        {
+            var box = FindAnyObjectByType<BoxView>();
+            var mat = Resources.Load<Material>("ShapingFx");
+            if (box == null || mat == null) return;
+            if (glowMesh == null) glowMesh = GlowDisc();
+            var go = new GameObject("GiftGlow") { hideFlags = HideFlags.DontSave };
+            go.transform.SetParent(box.transform, false);
+            go.transform.localPosition = new Vector3(x, box.GroundHeight(x, z) + 0.12f, z);
+            go.AddComponent<MeshFilter>().sharedMesh = glowMesh;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            glowBlock ??= new MaterialPropertyBlock();
+            glowBlock.SetColor("_Color", new Color(1f, 1f, 1f, 0f));
+            r.SetPropertyBlock(glowBlock);
+            glows.Add((r, 0f));
+        }
+
+        /// <summary>A flat disc, warm and opaque at the middle, clear at the rim. Unit colour: the alpha comes from the block.</summary>
+        static Mesh GlowDisc()
+        {
+            const int n = 24;
+            var v = new Vector3[n + 1];
+            var c = new Color[n + 1];
+            var tris = new int[n * 3];
+            var warm = Palette.FireCore;
+            v[0] = Vector3.zero;
+            c[0] = warm;
+            for (int i = 0; i < n; i++)
+            {
+                float a = i * Mathf.PI * 2f / n;
+                v[i + 1] = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * GiftGlowRadius;
+                c[i + 1] = new Color(warm.r, warm.g, warm.b, 0f);
+                tris[i * 3] = 0; tris[i * 3 + 1] = i + 1; tris[i * 3 + 2] = (i + 1) % n + 1;
+            }
+            var m = new Mesh { name = "GiftGlow", hideFlags = HideFlags.DontSave, vertices = v, colors = c, triangles = tris };
+            m.RecalculateBounds();
+            return m;
+        }
+
+        void UpdateGlows(float dt)
+        {
+            for (int i = glows.Count - 1; i >= 0; i--)
+            {
+                var (r, age) = glows[i];
+                age += dt;
+                if (r == null || age >= GiftGlowSeconds) { if (r != null) Destroy(r.gameObject); glows.RemoveAt(i); continue; }
+                float u = age / GiftGlowSeconds;
+                glowBlock.SetColor("_Color", new Color(1f, 1f, 1f, 0.85f * Mathf.Min(1f, Mathf.Min(u / 0.2f, (1f - u) / 0.4f))));
+                r.SetPropertyBlock(glowBlock);
+                glows[i] = (r, age);
             }
         }
 

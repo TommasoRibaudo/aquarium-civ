@@ -144,17 +144,27 @@ namespace AquariumCiv.View
 
         static Mesh babyMesh;
 
-        /// <summary>#192: a swaddled baby, shared by every carrier: a wrapped body and a head, the middle at the origin, about a third of a doll, a little big for one so it reads.</summary>
+        /// <summary>#192: the colour of a baby's wrap and straps. Not a tunic's colour, not a stone's or a leaf's: it has to read at phone size on any carrier (tester run 6: pale pink didn't).</summary>
+        public static Color BabyWrap => Palette.Accents[4];
+
+        /// <summary>#192: a swaddled baby, shared by every carrier: a wrapped body and a skin-toned head, the middle at the origin, half a doll tall, far too big for a baby so it reads at default zoom.</summary>
         public static Mesh BabyMesh()
         {
             if (babyMesh != null) return babyMesh;
             var mb = new MeshBuilder(192) { jitter = 0.01f };
-            var wrap = Palette.Flowers[2]; // not a tunic's colour and not a stone's: it has to read at phone size on any carrier
-            mb.Prism(new Vector3(0f, -0.042f, 0f), 0.026f, 0.033f, 0.068f, 7, wrap, null, true, true, wrap);
-            mb.Ico(new Vector3(0f, 0.044f, 0f), 0.03f, Vector3.one, Palette.Skins[0], 0.05f);
+            var wrap = BabyWrap;
+            mb.Prism(new Vector3(0f, -0.056f, 0f), 0.034f, 0.044f, 0.086f, 7, wrap, null, true, true, wrap);
+            mb.Ico(new Vector3(0f, 0.052f, 0f), 0.036f, Vector3.one, Palette.Skins[1], 0.05f);
             babyMesh = mb.ToMesh("DollBaby");
             babyMesh.hideFlags = HideFlags.DontSave;
             return babyMesh;
+        }
+
+        /// <summary>#192: two wide straps crossed over the chest of someone with a baby on their back, in the wrap's colour: what tells the back from the arms when the carrier faces you.</summary>
+        public static void BabyStraps(MeshBuilder mb, float s)
+        {
+            Band(mb, s, BodyH * 0.66f * s, 0.03f * s, 0.008f * s, 0f, Mathf.PI * 2f, 10, BabyWrap, 0.0035f);
+            Band(mb, s, BodyH * 0.66f * s, -0.03f * s, 0.008f * s, 0f, Mathf.PI * 2f, 10, BabyWrap, 0.0035f);
         }
 
         /// <summary>A shared prop mesh (palette colours only), built once. The grip is at the origin.</summary>

@@ -120,7 +120,7 @@ namespace AquariumCiv.View
             pageLabel.AddToClassList("book-page-label");
             nav.Add(pageLabel);
             next = Icon("book-next", "next", () => Turn(1), nav, UiRole.None);
-            var close = Icon("book-close", "close", Close, nav, UiRole.BookClose);
+            var close = Icon("book-close", "close", () => { GlassTapGuard.Arm(root.Q("book-close")); Close(); }, nav, UiRole.BookClose); // the second tap of a double tap stays here: hud-shape sits under it (tester run 6)
             close.AddToClassList("book-nav-close");
             root.Add(nav);
         }

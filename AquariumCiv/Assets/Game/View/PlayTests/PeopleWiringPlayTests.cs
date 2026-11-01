@@ -148,6 +148,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
         public IEnumerator AGrantedWishPlaysItsPayoffByDay()
         {
             yield return Grown(hour: 10.5f);
@@ -174,7 +175,64 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("wish by day");
         }
 
+        /// <summary>Tester run 6: the nudge is dropped, not queued, while a card is up.</summary>
         [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator AWishLeavesTheCameraOnAnOpenCard()
+        {
+            yield return Grown(hour: 10.5f);
+            var view = WishPayoffView.Instance;
+            var cam = Camera.main.GetComponent<BoxCamera>();
+            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
+            Assert.IsNotNull(w);
+            var other = Sim.State.notables.First(n => n.alive && n.age >= 16f && n.id != w.notableId);
+            Assert.IsTrue(PersonCardView.Instance.Open(other.id, fly: false), "a card");
+            yield return Until(() => !cam.IsFlying, 3f);
+            float zoom = cam.zoom, pitch = cam.pitch;
+            StringAssert.Contains("got their", WishPayoffView.DebugGrant());
+            yield return Until(() => view.Played > 0, 2f);
+            Assert.IsTrue(view.LastPlan.flyToWisher, "the camera would have gone");
+            yield return new WaitForSecondsRealtime(1f);
+            Assert.AreEqual(zoom, cam.zoom, 0.005f, "the camera stayed");
+            Assert.AreEqual(pitch, cam.pitch, 0.5f);
+            PersonCardView.Instance.Close();
+            yield return new WaitForSecondsRealtime(1f);
+            Assert.IsFalse(cam.IsFlying, "and nothing was queued");
+            Assert.AreEqual(zoom, cam.zoom, 0.005f, "nothing was queued");
+            AssertNoErrors("wish with a card up");
+        }
+
+        /// <summary>Tester run 6: the payoff line waits for the first run's word to pass, and is then said, not lost.</summary>
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator AWishLineWaitsForTheFirstRunsWord()
+        {
+            yield return OpenSlice(seed: Seed, skipFirstRun: false);
+            var first = FirstRunView.Instance;
+            first.Run.DebugSkipTo(FirstRunStep.Year);
+            yield return Frames(4);
+            Assert.AreEqual(FirstRunStep.Year, first.Step);
+            PeopleView.DebugSetHour(10.5f);
+            yield return Frames(4);
+            var view = WishPayoffView.Instance;
+            var sm = ShowMeDirector.Instance;
+            var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
+            Assert.IsNotNull(w);
+            w.state = WishState.Given; // the first rain is spent, so no second gift can be placed: what the view sees is all that counts
+            w.endMonth = Sim.State.month;
+            yield return Until(() => view.Played > 0, 2f);
+            string line = view.LastPlan.wisherLine.text;
+            Assert.IsTrue(view.LastPlan.wisherSaysNow);
+            Assert.AreNotEqual(line, sm.LastLine, "not under the caption");
+            Assert.IsTrue(first.HasTheWord, "the year has the word");
+            first.Run.DebugSkipTo(FirstRunStep.Done);
+            yield return Until(() => sm.LastLine == line, 6f);
+            Assert.AreEqual(line, sm.LastLine, "said once the word has passed");
+            AssertNoErrors("wish in the first run");
+        }
+
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
         public IEnumerator AWishGrantedAtNightWaitsForTheWisherToWake()
         {
             yield return Grown(hour: 23f);
@@ -201,16 +259,18 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
         public IEnumerator AWantLineGoesThroughTheBubbleHost()
         {
             yield return Grown();
             var pv = People;
             string said = null;
-            foreach (WantCase c in System.Enum.GetValues(typeof(WantCase)))
-            {
-                said = ShowMeDirector.DebugWant(c);
-                if (said.StartsWith("want:")) break;
-            }
+            for (int round = 0; round < 8 && (said == null || !said.StartsWith("want:")); round++) // a wording over the bubble's limit is a caption, and the next telling words it differently
+                foreach (WantCase c in System.Enum.GetValues(typeof(WantCase)))
+                {
+                    said = ShowMeDirector.DebugWant(c);
+                    if (said.StartsWith("want:")) break;
+                }
             StringAssert.StartsWith("want:", said);
             var sm = ShowMeDirector.Instance;
             yield return Frames(4);
@@ -223,11 +283,14 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
         public IEnumerator ASpeakerGoingIndoorsDoesNotCutTheLine()
         {
             yield return Grown();
             var sm = ShowMeDirector.Instance;
-            StringAssert.StartsWith("bubble", ShowMeDirector.DebugBubble());
+            string said = ShowMeDirector.DebugBubble();
+            for (int i = 0; i < 12 && said.StartsWith("caption"); i++) said = ShowMeDirector.DebugBubble(); // a long line is a caption: this one is about the bubble
+            StringAssert.StartsWith("bubble", said);
             yield return Frames(4);
             var b = sm.ShownBubble;
             Assert.IsNotNull(b);
@@ -245,6 +308,22 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(Time.realtimeSinceStartup - start, b.seconds - 1.2f, "at its own time");
             Assert.IsTrue(GameUiPanel.Bubbles.Free(BubbleHost.Rank.World), "the word is free again");
             AssertNoErrors("speaker indoors");
+        }
+
+        /// <summary>Tester run 6: a line over the bubble's limit is a caption here too, so no bubble runs past three lines.</summary>
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator AnAmbientLineOverTheLimitIsACaption()
+        {
+            yield return Grown();
+            var sm = ShowMeDirector.Instance;
+            string said = "";
+            for (int i = 0; i < 40 && !said.StartsWith("caption"); i++) said = ShowMeDirector.DebugBubble();
+            StringAssert.StartsWith("caption", said, "the bank has long lines");
+            Assert.IsTrue(sm.CaptionUp);
+            Assert.IsNull(sm.ShownBubble, "no bubble for it");
+            Assert.IsTrue(GlassBubble.TooLong(sm.LastLine), sm.LastLine);
+            AssertNoErrors("long ambient line");
         }
 
         [UnityTest, Timeout(120000)]
@@ -285,6 +364,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(60000)]
+        [Category("Tester6")]
         public IEnumerator AToolHintStillWaitingGoesWithTheTool()
         {
             yield return OpenSlice(seed: Seed);
@@ -295,6 +375,13 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(1, GameUiPanel.Toasts.Waiting, "the hint waits");
             ShapingView.Instance.SetTool(null);
             Assert.AreEqual(0, GameUiPanel.Toasts.Waiting, "and goes with the tool");
+            hud.WithdrawToast("Something else");
+            ShapingView.Instance.SetTool(SimCore.NudgeKind.Rain);
+            yield return Frames(2);
+            StringAssert.Contains("Tap the ground", GameUiPanel.Toasts.Current ?? "", "on screen now");
+            ShapingView.Instance.SetTool(null);
+            yield return Frames(2);
+            Assert.IsNull(GameUiPanel.Toasts.Current, "and it goes from the screen too (tester run 6)");
             AssertNoErrors("tool hint");
         }
 

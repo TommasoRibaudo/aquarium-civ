@@ -401,6 +401,9 @@ namespace AquariumCiv.View
             GlassMotion.Hide(captionEl, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
         }
 
+        /// <summary>A line in the caption lane now (tests, the debug panel).</summary>
+        public bool CaptionUp => captionUntil > 0f;
+
         /// <summary>The caption shows; ambient bubbles wait for it (one message at a time).</summary>
         bool StepCaption()
         {
@@ -520,6 +523,16 @@ namespace AquariumCiv.View
             if (who.IsNone && visibleNotables.Count > 0) who = PersonRef.Notable(visibleNotables[0]);
             if (who.IsNone) return; // nobody on screen to say it (it's counted said: fine, there are more)
             if (DollPixels(pv, cam, who) < TinySpeakerPx) return; // zoomed far out: a bubble nobody can tie to a person
+            if (GlassBubble.TooLong(b.text))
+            {
+                // Tester run 6: spec §3's rule for every line, so a bubble stays at three lines. The caption has its own lane.
+                if (!GameUiPanel.Bubbles.Free(BubbleHost.Rank.World)) return;
+                ShowCaption(b.text, b.speakerId >= 0 ? NameOf(who) : null, b.seconds);
+                LastBubble = b;
+                BubblesShown++;
+                Debug.Log($"[ShowMe] caption {b} for {who}");
+                return;
+            }
             if (!GameUiPanel.Bubbles.Ask(WorldVoice)) return;
             EnsureUi();
             bubble = b;
@@ -711,11 +724,12 @@ namespace AquariumCiv.View
             string quiet = d.QuietReason();
             if (quiet != null && quiet != "a sheet is open") return "quiet: " + quiet;
             d.HideBubble();
+            d.HideCaption();
             d.Visible(pv, cam);
             var b = d.bubbles.Force(Time.unscaledTime, null, d.visibleNotables);
             if (b == null) return "nothing left to say";
             d.ShowBubble(pv, cam, b);
-            return d.bubble != null ? "bubble: " + b : "nobody on screen to say: " + b.text;
+            return d.bubble != null ? "bubble: " + b : d.CaptionUp ? "caption: " + b.text : "nobody on screen to say: " + b.text;
         }
 
         /// <summary>Debug (#181): the want line for one case now, through the same bubble and word as any other line.</summary>
@@ -731,9 +745,10 @@ namespace AquariumCiv.View
             var b = d.bubbles.ForceWant(c, Time.unscaledTime);
             if (b == null) return c + " isn't true now";
             d.HideBubble();
+            d.HideCaption();
             d.Visible(pv, cam);
             d.ShowBubble(pv, cam, b);
-            return d.bubble != null ? "want: " + b.text : "nobody on screen to say: " + b.text;
+            return d.bubble != null ? "want: " + b.text : d.CaptionUp ? "caption: " + b.text : "nobody on screen to say: " + b.text;
         }
 
         /// <summary>Debug (#120): forget what's been said in this box.</summary>

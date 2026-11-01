@@ -132,7 +132,7 @@ namespace AquariumCiv.View
         public void SetTool(string kind, bool quiet = false)
         {
             if (kind != null && System.Array.IndexOf(SimCore.SliceTools, kind) < 0) kind = null;
-            if (toolHint != null) { hud?.WithdrawToast(toolHint); toolHint = null; } // still waiting behind another toast: it no longer applies
+            if (toolHint != null) { hud?.WithdrawToast(toolHint); toolHint = null; } // waiting or on screen: it no longer applies
             Tray.Close();
             Tool = kind;
             RealTool = false;

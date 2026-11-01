@@ -78,8 +78,8 @@ namespace AquariumCiv.View
         public string ShownHintText => ShownHintId.Length > 0 ? hint.Word : "";
         public bool NameSheetOpen => nameSheet != null && nameSheet.IsOpen;
         public bool CardOpen => cardSheet != null && cardSheet.IsOpen;
-        /// <summary>One bubble at a time: the run's own, or the first card, and the people wait.</summary>
-        public bool HasTheWord => Active && (CardOpen || (bubble != null && bubble.resolvedStyle.display == DisplayStyle.Flex) || Step == FirstRunStep.Rain);
+        /// <summary>One bubble at a time: the run's own, the "Their first year" caption or the first card, and the people wait.</summary>
+        public bool HasTheWord => Active && (CardOpen || (bubble != null && bubble.resolvedStyle.display == DisplayStyle.Flex) || Step == FirstRunStep.Rain || Step == FirstRunStep.Year);
         /// <summary>The reward line showing now (the hint rests under it), or "".</summary>
         public string ShownReward => bubble != null && Time.unscaledTime < rewardUntil ? rewardLine : "";
         public string NameMessage => nameSheet?.Problem ?? "";

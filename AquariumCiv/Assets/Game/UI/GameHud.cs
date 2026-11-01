@@ -283,8 +283,8 @@ namespace AquariumCiv.GameUI
             PumpToast();
         }
 
-        /// <summary>Takes back a toast still waiting its turn, a hint that no longer applies.</summary>
-        public void WithdrawToast(string text) => GameUiPanel.Toasts.Withdraw(text);
+        /// <summary>Takes back a toast, waiting or on screen: a hint that no longer applies.</summary>
+        public void WithdrawToast(string text) { GameUiPanel.Toasts.Withdraw(text); PumpToast(); }
 
         void PumpToast()
         {

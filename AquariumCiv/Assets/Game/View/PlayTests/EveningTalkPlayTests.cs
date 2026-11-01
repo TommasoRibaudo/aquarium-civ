@@ -87,6 +87,36 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("leaving early");
         }
 
+        /// <summary>Tester run 6: a touch in the gather flight left the camera at the fire, by tap and by a held finger.</summary>
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator ATouchInTheGatherFlightStillGoesHome()
+        {
+            yield return Quiet();
+            var cam = Camera.main.GetComponent<BoxCamera>();
+            float zoom = cam.zoom; var target = cam.target;
+            var at = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            foreach (bool held in new[] { false, true })
+            {
+                Assert.IsTrue(Talk.Begin());
+                yield return new WaitForSecondsRealtime(1f);
+                Assert.IsTrue(cam.IsFlying, "the gather flight is under way");
+                int id = touchId++;
+                BeginTouch(id, at, queueEventOnly: true);
+                yield return Frames(3);
+                if (held) yield return new WaitForSecondsRealtime(0.5f);
+                EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true);
+                yield return Frames(4);
+                Assert.IsFalse(Talk.Open, "the touch left");
+                yield return Until(() => !cam.IsFlying, 4f);
+                Assert.IsFalse(cam.IsFlying, "the way home landed");
+                Assert.AreEqual(zoom, cam.zoom, 0.02f, "zoom came home, held " + held);
+                Assert.Less((cam.target - target).magnitude, 0.03f, "target came home, held " + held);
+                yield return Frames(4);
+            }
+            AssertNoErrors("gather flight touch");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator TheNextReturnsPayoffCardShowsTheTeaser()
         {

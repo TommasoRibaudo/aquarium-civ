@@ -25,7 +25,7 @@ namespace AquariumCiv.View
         /// <summary>The hand prop's turn in the fist as built (upright), and whether it's now turned out along the arm.</summary>
         Quaternion propRest = Quaternion.identity;
         /// <summary>#192: the baby this doll carries: a part of the doll, not a walker, shown in the arms or on the back.</summary>
-        Transform baby;
+        Transform baby, babyStraps;
         bool babyOnBack;
         bool extended;
         static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
@@ -64,6 +64,19 @@ namespace AquariumCiv.View
                 r.shadowCastingMode = ShadowCastingMode.On;
             }
             return go.transform;
+        }
+
+        static readonly Mesh[] babyStrapMeshes = new Mesh[2];
+
+        static Mesh BabyStrapMesh(bool kid)
+        {
+            int i = kid ? 1 : 0;
+            if (babyStrapMeshes[i] != null) return babyStrapMeshes[i];
+            var mb = new MeshBuilder(192 + i) { jitter = 0.01f };
+            PegDoll.BabyStraps(mb, kid ? PegDoll.KidScale : 1f);
+            var m = mb.ToMesh("DollBabyStraps");
+            m.hideFlags = HideFlags.DontSave;
+            return babyStrapMeshes[i] = m;
         }
 
         static Mesh StrapMesh(bool kid)
@@ -107,9 +120,16 @@ namespace AquariumCiv.View
         /// <summary>#192: a small baby on this doll, or none. Cheap to call every frame.</summary>
         public void SetBaby(bool on, bool onBack)
         {
-            if (!on) { if (baby != null && baby.gameObject.activeSelf) baby.gameObject.SetActive(false); return; }
+            if (!on)
+            {
+                if (baby != null && baby.gameObject.activeSelf) baby.gameObject.SetActive(false);
+                if (babyStraps != null && babyStraps.gameObject.activeSelf) babyStraps.gameObject.SetActive(false);
+                return;
+            }
             if (baby == null) { baby = Part(transform, "Baby", PegDoll.BabyMesh(), material, Vector3.zero, Quaternion.identity); babyOnBack = !onBack; }
             if (!baby.gameObject.activeSelf) baby.gameObject.SetActive(true);
+            if (onBack && babyStraps == null) babyStraps = Part(transform, "BabyStraps", BabyStrapMesh(scale < 1f), material, Vector3.zero, Quaternion.identity);
+            if (babyStraps != null && babyStraps.gameObject.activeSelf != onBack) babyStraps.gameObject.SetActive(onBack);
             if (babyOnBack == onBack) return;
             babyOnBack = onBack;
             var (pos, _) = PegDoll.SlotPose(onBack ? PropSlot.Back : PropSlot.Arms);

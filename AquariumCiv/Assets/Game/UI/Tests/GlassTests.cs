@@ -59,10 +59,10 @@ namespace AquariumCiv.GameUI.Tests
             q.Post("next", 3f);
             q.Withdraw("hint");
             q.Withdraw("showing");
-            Assert.AreEqual(1, q.Waiting, "only the waiting hint goes");
-            Assert.AreEqual("showing", q.Current, "the one on screen stays");
-            q.Tick(3.1f);
-            Assert.AreEqual("next", q.Current);
+            Assert.AreEqual(1, q.Waiting, "the waiting hint goes");
+            Assert.IsNull(q.Current, "and so does the one on screen");
+            Assert.IsTrue(q.Tick(0.1f), "the lane redraws");
+            Assert.AreEqual("next", q.Current, "what waited takes its place");
         }
 
         [Test]

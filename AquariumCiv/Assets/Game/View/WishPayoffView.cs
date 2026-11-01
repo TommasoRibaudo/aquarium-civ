@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using AquariumCiv.Audio;
 using AquariumCiv.Game;
+using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.View.ShowMe;
@@ -27,6 +28,8 @@ namespace AquariumCiv.View
         readonly HashSet<int> given = new(), met = new();
         readonly List<(int id, PeopleQuote line, float wakeBy)> waking = new();
         readonly List<int> awake = new();
+        readonly List<PeopleQuote> held = new();
+        float nextHeld;
         SimCore bound;
         float nextCheck;
         int flyTo = -1;
@@ -57,6 +60,7 @@ namespace AquariumCiv.View
         void Update()
         {
             StepFly();
+            StepHeld();
             if (Time.unscaledTime < nextCheck) return;
             nextCheck = Time.unscaledTime + CheckSeconds;
             var sim = Sim;
@@ -74,7 +78,7 @@ namespace AquariumCiv.View
         void Bind(SimCore sim)
         {
             bound = sim;
-            given.Clear(); met.Clear(); waking.Clear();
+            given.Clear(); met.Clear(); waking.Clear(); held.Clear();
             flyTo = -1;
             foreach (var w in sim.State.wishes)
             {
@@ -89,7 +93,7 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             var now = pv != null ? pv.Now : new ViewTime(sim.State.month, 10f);
             bool night = now.hour >= NightFrom || now.hour < NightUntil;
-            Awake(pv);
+            ReadAwake(pv);
             var plan = WishPayoff.Plan(sim, wish, beat, night, awake.Contains, awake, OnScreen(pv, wish.notableId));
             if (plan == null) return;
             LastPlan = plan;
@@ -97,7 +101,8 @@ namespace AquariumCiv.View
             Debug.Log($"[Wish] {beat} {wish.kind} for {wish.notableId}, night {night}, says {plan.wisherSaysNow}, fly {plan.flyToWisher}");
             Sfx.Play(plan.cue, 0f, plan.quiet ? QuietVolume : 1f);
             var mp = MomentPlayer.Instance;
-            if (mp != null && plan.effectNow) mp.GiftPuffs(wish.x, wish.z, beat == WishBeat.Given ? 1.2f : 0.8f, beat == WishBeat.Given ? 6 : 0);
+            if (mp != null && plan.effectNow) mp.GiftPuffs(wish.x, wish.z, beat == WishBeat.Given ? 1.7f : 1.1f, beat == WishBeat.Given ? 8 : 0);
+            if (mp != null && night && beat == WishBeat.Given && !plan.wisherSaysNow && plan.witnessLine == null) mp.GiftGlow(wish.x, wish.z); // nobody awake to say it
             if (plan.wisherSaysNow) Tell(pv, now, plan.wisherId, plan.wisherLine);
             else if (plan.wisherLine != null) waking.Add((plan.wisherId, plan.wisherLine, Time.unscaledTime + WakeGiveUpSeconds));
             if (plan.witnessLine != null) Say(plan.witnessLine);
@@ -112,17 +117,35 @@ namespace AquariumCiv.View
             Say(line);
         }
 
-        static void Say(PeopleQuote line)
+        void Say(PeopleQuote line)
         {
             if (line == null) return;
             var show = ShowMeDirector.Instance;
             var mp = MomentPlayer.Instance;
             if (show == null || (mp != null && mp.Playing)) return;
+            var first = FirstRunView.Instance;
+            if (first != null && first.HasTheWord) { held.Add(line); return; } // the first run's words: this waits its turn (tester run 6)
             show.SayOverHead(line.text, PersonRef.Notable(line.speakerId), PeopleVoice.SecondsFor(line.text));
         }
 
+        /// <summary>Lines kept back while the first run had the word. Said one at a time once it's passed, oldest first.</summary>
+        void StepHeld()
+        {
+            if (held.Count == 0) return;
+            var first = FirstRunView.Instance;
+            if (first != null && first.HasTheWord) return;
+            if (Time.unscaledTime < nextHeld || !GameUiPanel.Bubbles.Free(BubbleHost.Rank.World)) return; // someone is speaking: after them
+            var line = held[0];
+            held.RemoveAt(0);
+            nextHeld = Time.unscaledTime + PeopleVoice.SecondsFor(line.text);
+            Say(line);
+        }
+
+        /// <summary>Lines waiting for the first run's word to pass (tests).</summary>
+        public int HeldLines => held.Count;
+
         /// <summary>Who is awake now: the plan's own view of it, not a second idea of bedtime.</summary>
-        void Awake(PeopleView pv)
+        void ReadAwake(PeopleView pv) // not "Awake": Unity takes that name for its own message and logs an error
         {
             awake.Clear();
             if (pv == null) return;
@@ -144,7 +167,7 @@ namespace AquariumCiv.View
         {
             if (waking.Count == 0) return;
             var pv = PeopleView.Find();
-            Awake(pv);
+            ReadAwake(pv);
             for (int i = waking.Count - 1; i >= 0; i--)
             {
                 var (id, line, by) = waking[i];
@@ -161,10 +184,35 @@ namespace AquariumCiv.View
             if (Time.unscaledTime > flyUntil) { flyTo = -1; return; }
             var cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             var pv = PeopleView.Find();
+            if (SomethingOpen()) { flyTo = -1; return; } // the player is reading: dropped, not queued (tester run 6)
             if (cam == null || pv == null || cam.Touching || cam.IsFlying) return; // the finger that gave it may still be down; the show's own flight goes first
             if (pv.TryGetDollPosition(PersonRef.Notable(flyTo), out var p))
                 cam.NudgeToward(pv.transform.TransformPoint(new Vector3(p.x, 0f, p.y)));
             flyTo = -1;
+        }
+
+        /// <summary>A person's card or any sheet is up: the camera stays with what the player is reading.</summary>
+        static bool SomethingOpen()
+        {
+            var card = PersonCardView.Instance;
+            if (card != null && card.AnyOpen) return true;
+            var hud = GameHud.Instance;
+            if (hud != null && hud.SheetOpen) return true;
+            var book = BookView.Instance;
+            if (book != null && book.IsOpen) return true;
+            var lapse = TimeLapseScreenView.Instance;
+            if (lapse != null && lapse.IsOpen) return true;
+            var note = FeedbackUI.Instance;
+            return note != null && note.IsOpen;
+        }
+
+        /// <summary>Debug: the glow a gift leaves when everyone sleeps, at the box's middle, day or night.</summary>
+        public static string DebugGlow()
+        {
+            var mp = MomentPlayer.Instance;
+            if (mp == null) return "no MomentPlayer";
+            mp.GiftGlow(0f, 0f);
+            return "gift glow at the middle";
         }
 
         /// <summary>Debug: a wish now if none is open, and give it. Any tool's charge is spent like a real gift.</summary>

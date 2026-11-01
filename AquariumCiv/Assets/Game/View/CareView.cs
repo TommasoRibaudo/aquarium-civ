@@ -166,7 +166,7 @@ namespace AquariumCiv.View
             spotlessSince = -1f;
             if (!on)
             {
-                hud?.WithdrawToast(NothingToClean); // still waiting behind another toast: it no longer applies
+                hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
                 hud?.WithdrawToast(CleanHint);
                 Cancel();
                 return;
