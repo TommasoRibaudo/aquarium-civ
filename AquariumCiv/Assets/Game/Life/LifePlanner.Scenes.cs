@@ -490,7 +490,13 @@ namespace AquariumCiv.Life
                 ActivityKind.Mourn => $"remembering someone at {where}",
                 _ => $"{Verb(a.kind)} at {where}",
             };
-            return $"{who} is {what}{with}.";
+            // #192: a baby is "being carried" or at home; a carer has the baby in their arms or on their back
+            if (!a.carriedBy.IsNone)
+            {
+                string carer = byKey.TryGetValue(a.carriedBy.Key, out var cp) && cp.n != null ? cp.n.FullName : "a grown-up";
+                return $"{who} is out with {carer}, {(a.carryOnBack ? "on their back" : "in their arms")}.";
+            }
+            return $"{who} is {what}{with}{CarryClause(a)}.";
         }
 
         static string Verb(ActivityKind k) => k switch

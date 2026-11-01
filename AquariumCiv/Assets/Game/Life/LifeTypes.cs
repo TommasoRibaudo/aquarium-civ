@@ -184,6 +184,12 @@ namespace AquariumCiv.Life
         public bool facesGlass;
         /// <summary>#92: how many times (a scholar's <see cref="ActivityKind.TapBack"/> knocks as often as the Keeper tapped).</summary>
         public int count;
+        /// <summary>#192: the baby this parent has on them now (None = nobody). Babies are not walkers: the view draws the
+        /// baby on the carrier (<see cref="carryOnBack"/>: on their back, else in their arms).</summary>
+        public PersonRef carrying;
+        public bool carryOnBack;
+        /// <summary>#192: on a baby, who has them now (None = at home, out of sight).</summary>
+        public PersonRef carriedBy;
 
         public PropSlot PropSlot => ActivityInfo.SlotOf(prop, kind);
         public ActivityGroup Group => ActivityInfo.GroupOf(kind);
