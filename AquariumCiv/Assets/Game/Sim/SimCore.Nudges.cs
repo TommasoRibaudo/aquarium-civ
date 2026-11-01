@@ -231,6 +231,7 @@ namespace AquariumCiv.Sim
             var used = s.buildings.Select(b => b.slot).ToHashSet();
             int slot = SlotNear?.Invoke(nearSlot, used) ?? Enumerable.Range(0, Config.buildingSlots).Where(i => !used.Contains(i)).OrderBy(i => Math.Abs(i - nearSlot)).First();
             var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
+            b.builderId = PickBuilder(b.id);
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type)) s.foundedTypes.Add(type);
             return b;
@@ -242,6 +243,7 @@ namespace AquariumCiv.Sim
             var s = State;
             if (slot < 0 || slot >= Config.buildingSlots || s.buildings.Any(b => b.slot == slot)) return null;
             var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
+            b.builderId = PickBuilder(b.id);
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type)) s.foundedTypes.Add(type);
             return b;

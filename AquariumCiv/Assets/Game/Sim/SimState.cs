@@ -208,6 +208,8 @@ namespace AquariumCiv.Sim
         /// and old views keep working; where the building stands is <see cref="x"/>, <see cref="z"/> and its lot.</summary>
         public int slot;
         public long foundedMonth;
+        /// <summary>#188: the notable who built it (0 = the people together; old saves). Picked without dice (SimCore.BuildingCards.cs).</summary>
+        public int builderId;
         // Placement (Sim/Settle, #32): set when the building gets its lot; lotId 0 = still waiting for a good lot.
         public float x, z, yaw, w, d;   // lot centre, facing (degrees; the front is local −z), size along / back from the front
         public int lotId;
