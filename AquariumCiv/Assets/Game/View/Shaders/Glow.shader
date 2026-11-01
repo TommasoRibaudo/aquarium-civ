@@ -10,8 +10,9 @@
 //   6   a spark (#65): rises fast and slows, stretched along its motion, cools from gold to red; UV2 = (phase, period)
 //   7   a fire's warm wash (#65): a disc pulled TOWARDS the camera, so it lands on the people and logs near the fire; UV2.y
 //       = its height above the ground (fades there), stronger at night
-//   8   a lamp's pool (#113): a flat disc on the ground, on with its lamp (UV2.x = the lamp's phase), UV2.y its own strength;
-//       size and strength follow the look (_AC_LampParams.y, .w: 0 while no look drives the light, so the pools are gone)
+//   8   a lamp's pool (#113): a small grid laid on the ground (POSITION is where it stands), on with its lamp (UV2.x = the lamp's
+//       phase), UV2.y its own strength; size and strength follow the look (_AC_LampParams.y, .w: 0 while no look drives the
+//       light, so the pools are gone)
 // Kind 4's UV2.y is an extra strength (0 = plain): full at night, 40 % by day.
 // Premultiplied blend: the glows return alpha 0, so they stay purely additive; flames and sparks return some alpha, so
 // they hold up against a bright day.
@@ -91,6 +92,7 @@ Shader "AquariumCiv/View/Glow"
                 float kind = v.data.y;
                 float strength = 1.0;
                 float opaque = 0.0;
+                float2 corner = v.corner;
                 half3 tint = v.color.rgb;
                 float3 posWS;
                 o.above = 1;
@@ -129,8 +131,8 @@ Shader "AquariumCiv/View/Glow"
                     // A lamp's pool: comes on with its lamp, at the same threshold, without its sputter: big things must not strobe.
                     float x = saturate((_AC_LampLevel - (0.12 + v.extra.x * 0.6)) / 0.14);
                     strength = _LampPool * v.extra.y * _AC_LampParams.y * x;
-                    posWS = centreWS + float3(v.corner.x, 0, v.corner.y) * radius * _AC_LampParams.w;
-                    o.positionCS = TransformWorldToHClip(posWS);
+                    o.positionCS = TransformWorldToHClip(centreWS);
+                    corner = v.corner / max(_AC_LampParams.w, 0.01);
                 }
                 else if (o.kind == 4)
                 {
@@ -190,7 +192,7 @@ Shader "AquariumCiv/View/Glow"
                     centreVS.xy += v.corner * radius;
                     o.positionCS = TransformWViewToHClip(centreVS);
                 }
-                o.corner = v.corner;
+                o.corner = corner;
                 o.color = half4(tint * strength, opaque);
                 return o;
             }

@@ -1246,6 +1246,27 @@ namespace AquariumCiv.View
                 foreach (var k in corners) { verts.Add(c); cols.Add(col); corner.Add(k); data.Add(new Vector2(radius, kind)); extra.Add(new Vector2(x, y)); }
                 tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
             }
+            // A lamp's pool lies on the land, so a little grid, not a quad: a flat disc on a slope ends in a hard line where the ground comes through it.
+            // The grid reaches past the radius by the largest pool a look asks for; the shader scales the falloff inside it.
+            void AddPool(float x, float z, float radius, float phase, float strength)
+            {
+                const int Cells = 4;
+                const float Reach = 1.35f;
+                int o = verts.Count;
+                for (int j = 0; j <= Cells; j++)
+                    for (int i = 0; i <= Cells; i++)
+                    {
+                        var c = new Vector2(i * 2f / Cells - 1f, j * 2f / Cells - 1f) * Reach;
+                        verts.Add(land.OnGround(x + c.x * radius, z + c.y * radius) + Vector3.up * 0.024f);
+                        cols.Add(Palette.Lamp); corner.Add(c); data.Add(new Vector2(radius, 8f)); extra.Add(new Vector2(phase, strength));
+                    }
+                for (int j = 0; j < Cells; j++)
+                    for (int i = 0; i < Cells; i++)
+                    {
+                        int a = o + j * (Cells + 1) + i;
+                        tris.AddRange(new[] { a, a + Cells + 1, a + Cells + 2, a, a + Cells + 2, a + 1 });
+                    }
+            }
             void AddSmoke(Vector3 c, float phase, float period)
             {
                 int o = sVerts.Count;
@@ -1280,7 +1301,8 @@ namespace AquariumCiv.View
                 {
                     float phase = Pieces.Phase(p.seed);
                     Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + phase, Palette.Lamp);
-                    Add(land.OnGround(frame.MultiplyPoint3x4(new Vector3(0.065f, 0f, 0))) + Vector3.up * 0.018f, LanternPool, 8f, Palette.Lamp, phase, 1f);
+                    var foot = frame.MultiplyPoint3x4(new Vector3(0.065f, 0f, 0));
+                    AddPool(foot.x, foot.z, LanternPool, phase, 1f);
                     spots.Add((frame.MultiplyPoint3x4(new Vector3(0.065f, 0.26f, 0)), LampThreshold01(phase)));
                 }
                 else if (p.era != Era.Camp && HasWindows(p.kind))
@@ -1288,7 +1310,7 @@ namespace AquariumCiv.View
                     // The light from a house's front window on the path, a smaller and softer pool than a lantern's.
                     float phase = Pieces.Phase(p.seed);
                     var step = frame.MultiplyPoint3x4(new Vector3(-p.w * 0.18f, 0f, -p.d * 0.5f - 0.1f));
-                    Add(land.OnGround(step.x, step.z) + Vector3.up * 0.016f, WindowPool, 8f, Palette.Lamp, phase, 0.6f);
+                    AddPool(step.x, step.z, WindowPool, phase, 0.6f);
                     spots.Add((step + Vector3.up * 0.16f, LampThreshold01(phase)));
                 }
             }

@@ -148,9 +148,9 @@ namespace AquariumCiv.View
             RenderSettings.fogColor = C(v.FogColor);
             if (camera != null)
             {
-                // The room beyond the shelf is the camera's clear colour: it follows the sky twice over, or it stays a lit wall under a dark night.
-                float r = v.AmbientSky.R / DaySky.R, g = v.AmbientSky.G / DaySky.G, b = v.AmbientSky.B / DaySky.B;
-                camera.backgroundColor = new Color(sceneClear.r * r * r, sceneClear.g * g * g, sceneClear.b * b * b, sceneClear.a);
+                // The room beyond the shelf is the camera's clear colour: it takes the sky's hue and falls faster than the sky, or it stays a lit wall under a dark night.
+                float l = Mathf.Pow(v.AmbientSky.Luma / DaySky.Luma, 1.5f);
+                camera.backgroundColor = new Color(sceneClear.r * v.AmbientSky.R / DaySky.R * l, sceneClear.g * v.AmbientSky.G / DaySky.G * l, sceneClear.b * v.AmbientSky.B / DaySky.B * l, sceneClear.a);
             }
             Shader.SetGlobalFloat(AmbientBoostId, v.ShaderAmbient - DayLight.DayShaderAmbient);
             Shader.SetGlobalFloat(GlassNightId, 1f - GlassNight.TintFactor(Logic.ShownHour));

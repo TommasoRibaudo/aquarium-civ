@@ -190,7 +190,26 @@ namespace AquariumCiv.View.PlayTests
                     Cam.EaseTo(Vector3.zero, 28f, 34f, 1f, 0.01f);
                     yield return Wait(0.5f);
                 }
+            yield return Hour(22f);
+            yield return Snap("night-default");
+            var who = System.Linq.Enumerable.FirstOrDefault(GameClock.Instance.ActiveSim.State.notables, n => n.alive && n.age >= 16f);
+            if (who != null && PersonCardView.Instance.Open(who.id, false))
+            {
+                yield return Wait(1f);
+                yield return Snap("night-sheet");
+                Debug.Log($"[light] sheet tint alpha {FrostSwitch.TintAlpha:0.00}");
+                PersonCardView.Instance.Close();
+                yield return Wait(0.5f);
+            }
+            Cam.DebugFlyIn(door, 0.2f);
+            yield return Wait(0.2f);
+            GameHud.Instance.Toast("A line on the tank at night.", 3f);
+            yield return Wait(0.6f);
+            yield return Snap("night-toast");
             yield return Hour(12f);
+            Cam.CancelFlight();
+            Cam.EaseTo(Vector3.zero, 28f, 34f, 1f, 0.01f);
+            yield return Wait(0.5f);
             yield return Snap("close-home-doll");
             // The glide: a fly-in at the closest zoom, timed.
             var home = Cam.target; float zoomHome = Cam.zoom;
