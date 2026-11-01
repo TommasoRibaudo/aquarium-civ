@@ -503,7 +503,7 @@ namespace AquariumCiv.View
             wipeOffer = Card("moment-wipe", EraWaiting.WipeOffer,
                 ("moment-wipe-yes", "Wipe", () => { wipeOffer.style.display = DisplayStyle.None; wipingForMoment = true; if (GameHud.Instance != null) GameHud.Instance.SetCleanMode(true); }),
                 ("moment-wipe-no", EraWaiting.WatchAnyway, () => Watch(true)));
-            notifyAsk = Card("moment-notify", "Want a note when the next one is ready?",
+            notifyAsk = Card("moment-notify", MomentLibrary.NotifyQuestion,
                 ("moment-notify-yes", "Yes", () => AnswerNotify(true)),
                 ("moment-notify-no", "Not now", () => AnswerNotify(false)));
         }

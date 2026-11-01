@@ -11,6 +11,9 @@ namespace AquariumCiv.View.Moments
     /// </summary>
     public static class MomentLibrary
     {
+        /// <summary>The first-moment question (#122): the player read "the next one" as nothing in particular. Says what it is about.</summary>
+        public const string NotifyQuestion = "Want a note when your people are ready to grow again?";
+
         public const string CampToVillageId = "camp_to_village", VillageToTownId = "village_to_town", LastMomentId = "last_moment";
 
         /// <summary>The moment into <paramref name="to"/> (null for the camp, which has none).</summary>
@@ -116,7 +119,7 @@ namespace AquariumCiv.View.Moments
             b.Add(festival);
 
             var ask = Beat("notify", 65f, BeatAction.AskNotification);
-            ask.when = BeatCondition.FirstMomentOnly; ask.line = "Want a note when the next one is ready?"; ask.hold = 6f;
+            ask.when = BeatCondition.FirstMomentOnly; ask.line = NotifyQuestion; ask.hold = 6f;
             b.Add(ask);
             return m;
         }
@@ -184,7 +187,7 @@ namespace AquariumCiv.View.Moments
 
             // Only if the first moment ended before its question (the player left after the cheer).
             var ask = Beat("notify", 95f, BeatAction.AskNotification);
-            ask.when = BeatCondition.FirstMomentOnly; ask.line = "Want a note when the next one is ready?"; ask.hold = 6f;
+            ask.when = BeatCondition.FirstMomentOnly; ask.line = NotifyQuestion; ask.hold = 6f;
             b.Add(ask);
             return m;
         }
