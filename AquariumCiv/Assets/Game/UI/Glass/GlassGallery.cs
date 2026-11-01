@@ -284,6 +284,9 @@ namespace AquariumCiv.GameUI
             r = Row(s, "Icon, 44 pt, reaching 144 px: default, pressed");
             State(r, "button", "icon", new GlassButton("", null, ButtonKind.Icon) { Icon = "close" });
             State(r, "button", "icon-pressed", new GlassButton("", null, ButtonKind.Icon) { Icon = "back", ShowPressed = true });
+            r = Row(s, "Compact, 44 pt, in a row with other things: default, with a mark");
+            State(r, "button", "compact", new GlassButton("Pin") { Compact = true });
+            State(r, "button", "compact-marked", new GlassButton("Pinned") { Compact = true }).Marked("pin", true);
         }
 
         void Chips()
@@ -292,6 +295,8 @@ namespace AquariumCiv.GameUI
             var r = Row(s, "Label, 30 pt inside a 144 px slot: default, pressed");
             State(r, "chip", "label", new GlassChip("Dorrit · child"));
             State(r, "chip", "label-pressed", new GlassChip("Hilda · friend") { ShowPressed = true });
+            r = Row(s, "Someone who has died: italic, never faded");
+            State(r, "chip", "label-gone", new GlassChip("Aldo · parent") { Gone = true });
             r = Row(s, "Choice: off, on");
             State(r, "chip", "choice-off", new GlassChip("Confusing", null, true));
             State(r, "chip", "choice-on", new GlassChip("Something broke", null, true) { On = true });
@@ -410,6 +415,8 @@ namespace AquariumCiv.GameUI
             State(r, "label", "name", new GlassTag("Greta"));
             State(r, "label", "pin", new GlassTag("Piers", TagKind.Pin));
             State(r, "label", "tie", new GlassTag("Hilda · friend", TagKind.Tie, "star"));
+            State(r, "label", "tie-rival", new GlassTag("Dorrit · rival", TagKind.Tie, "alert"));
+            State(r, "label", "tie-family", new GlassTag("Eorl · child", TagKind.Tie, "person"));
             s.Add(Text("Brass plate", "type-note", "gal-state"));
             State(s, "label", "plate", new GlassPlate("Mossbarrow", "years 1–61", "camp, village, town"));
         }

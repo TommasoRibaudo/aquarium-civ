@@ -216,7 +216,11 @@ Rules that change today's layout. Everything else is as drawn.
   Remember or Done. Next is never primary. A story card has no filled button; its headline leads. Long cards scroll, snapped to whole
   lines. The last page drops "and 21 more" (`CardStackView.cs:469`): rule 8.
 - **Person card:** name, Pin and Close in one row, the subtitle on its own row below, so it can't run under Pin. Tabs
-  are About, Recent, Best. Tie labels sit at the far end of each tie line, off the name tag.
+  are About, Recent, Best. Tie labels sit at the far end of each tie line, off the name tag. The tools and the top row step
+  back while it's up, as drawn. About ends in a story (question 35), so the sheet is never half empty. The camera follows
+  a person who walks under the sheet, unless the player has moved it. Marks per tie: person for family, star for friends,
+  alert for rivals, book for teachers, scroll for shared stories. Lines: moss heart for family, plain for friends and
+  teachers, dotted for rivals, thin for shared stories. Under 700 pt tall, bottom padding drops to 14 as in §2. Built in #165.
 - **Tray:** a low row of four tiles that fit the width, 30 %, no dim. A fifth tool makes the row scroll. Charges sit in the head. The reason for a locked or capped tool is a note
   under the row. Picking a tool removes the sheet.
 - **Placing:** footprint on the ground, tool in hand, charges, Cancel. **Cancel's place is the user's call, see §7.**

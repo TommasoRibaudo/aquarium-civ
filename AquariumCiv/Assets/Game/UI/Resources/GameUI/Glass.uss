@@ -125,6 +125,11 @@
 .kg-btn-lock { position: absolute; left: 41px; top: 41px; display: none; }
 .kg-btn-measure { visibility: hidden; margin: 0; padding: 0; white-space: nowrap; }
 .kg-btn--off > .kg-btn-lock { display: flex; }
+/* 44 pt, in a row with other things: board 3.4's Pin and Show me */
+.kg-btn--compact { height: var(--drawn); padding: 0 var(--space-12); font-size: 41.25px; }
+.kg-btn-mark { position: absolute; left: 30px; top: 41px; display: none; }
+.kg-btn--marked { padding-left: 77px; }
+.kg-btn--marked > .kg-btn-mark { display: flex; }
 
 /* ---------------- chip: 30 visible inside a clear slot of --hit that takes the tap. Slots touch ---------------- */
 .kg-chip-slot {
@@ -141,6 +146,7 @@
 .kg-chip-mark { display: none; margin-right: var(--space-4); -unity-background-image-tint-color: var(--ink); }
 .kg-chip--on > .kg-chip-mark { display: flex; }
 .kg-chip--on > .type-note { -unity-font-definition: var(--font-serif-bold); }
+.kg-chip--gone > .type-note { -unity-font-definition: var(--font-serif-italic); }
 .kg-chip-slot--pressed > .kg-chip, .kg-chip-slot:active > .kg-chip { background-color: var(--pressed-fill); }
 
 .kg-pin {
@@ -217,7 +223,7 @@
 .kg-sheet-title { flex-grow: 1; flex-shrink: 1; }
 .kg-scroll { flex-grow: 1; flex-shrink: 1; }
 .kg-scroll-bar {
-    position: absolute; right: 2.75px; top: 0; width: 8.25px; height: 46%; border-radius: 4px;
+    position: absolute; right: 2.75px; top: 0; width: 8.25px; height: 46%; min-height: 44px; border-radius: 4px;
     background-color: var(--dot-off);
 }
 
@@ -305,6 +311,8 @@
 .kg-tag--tie { padding: 5.5px 24.75px; border-color: var(--edge); border-radius: 33px; }
 .kg-tag--tie > .kg-tag-word { -unity-font-definition: var(--font-serif); font-size: 35.75px; }
 .kg-tag > .kg-icon { margin-right: 11px; }
+.kg-tag--world { position: absolute; translate: -50% -100%; }
+.kg-tag--world.kg-tag--tie { translate: -50% -50%; }
 .kg-plate {
     width: 544.5px; padding: var(--space-8) var(--space-10); align-items: center;
     border-width: var(--hairline); border-color: var(--timber); border-radius: 11px;
@@ -383,6 +391,26 @@
 }
 .kg-big-prompt:active, .kg-big-prompt--pressed { scale: 0.97 0.97; background-color: var(--primary-pressed); }
 .kg-big-prompt--inline { position: relative; left: auto; right: auto; bottom: auto; }
+
+/* ---------------- the person card (#165, board 3.4). The lines read these three: a painter can't use a USS variable ---------------- */
+.pc-lines { --tie-line: var(--paper); --tie-inner: var(--moss); --tie-under: rgba(61, 42, 30, 0.35); }
+.pc-head { flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: var(--space-6); }
+.pc-name { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-left: var(--space-10); white-space: normal; -unity-text-align: middle-left; }
+.pc-head > .kg-btn--compact { margin-left: var(--space-10); }
+.pc-head > .kg-btn--icon { margin-left: var(--space-6); }
+.pc-sub { flex-shrink: 0; white-space: normal; }
+.pc-tabs { flex-shrink: 0; margin-top: -5.5px; margin-bottom: -5.5px; }
+.pc-scroll { min-height: 0; margin-top: var(--space-4); }
+.pc-scroll-pad { width: 100%; padding-right: 24.75px; }
+.pc-line { white-space: normal; margin-bottom: var(--space-6); }
+.pc-ties { flex-direction: row; flex-wrap: wrap; }
+.pc-chips { flex-direction: row; flex-wrap: wrap; }
+/* 375 x 667: the quote and one row of chips still fit under the tabs */
+.pc--short .pc-tabs { margin-top: -22px; margin-bottom: 0; }
+.pc--short .pc-scroll { margin-top: 0; }
+.pc--short .pc-line { margin-bottom: 5.5px; }
+.pc-story { flex-direction: row; align-items: center; margin-bottom: var(--space-8); }
+.pc-story-text { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-8); white-space: normal; }
 
 /* ---------------- settings row ---------------- */
 .kg-row { flex-direction: row; align-items: center; min-height: var(--hit); border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }

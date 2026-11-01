@@ -462,6 +462,7 @@ namespace AquariumCiv.View
                 var dead = sim.State.notables.LastOrDefault(n => !n.alive);
                 last = dead != null ? PersonCardView.DebugOpen(dead.id) : "nobody has died yet";
             }
+            if (GUILayout.Button("Card: next tab")) last = PersonCardView.DebugNextTab();
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Birth")) last = Done(sim.DebugBirth() is Notable c ? "born: " + c.FullName : "no adult to bear");
