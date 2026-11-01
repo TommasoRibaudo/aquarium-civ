@@ -23,6 +23,26 @@ namespace AquariumCiv.Sim
             "Brand", "Colm", "Drustan", "Eorl", "Gareth", "Hereward", "Jarl", "Lambert", "Oswin", "Perrin", "Stig", "Wystan"
         };
 
+        // First names of the crowd (#148). Kept apart from Given: notables draw from Given and never check the crowd, so a
+        // crowd name can only reach a notable when that person steps out of the crowd. Saves keep the names themselves.
+        public static readonly string[] CrowdGiven =
+        {
+            "Adela", "Aelis", "Alba", "Amice", "Anka", "Annis", "Arla", "Asta", "Bess", "Bethan", "Bette", "Blanche", "Bree",
+            "Briar", "Cass", "Celia", "Ceri", "Dalia", "Della", "Dilys", "Dora", "Dot", "Eda", "Effie", "Eira", "Ella", "Elna",
+            "Elowen", "Enid", "Erma", "Esme", "Eva", "Evie", "Fenna", "Fern", "Fina", "Fleur", "Frida", "Gerda", "Gilda", "Greer",
+            "Hazel", "Heda", "Helga", "Hessa", "Hild", "Holly", "Ida", "Ines", "Inga", "Ivy", "Jana", "Jill", "Jonet", "Kara",
+            "Katla", "Kerra", "Kirsa", "Lark", "Lettie", "Lida", "Lila", "Lottie", "Lys", "Madge", "Maren", "Meg", "Mirren",
+            "Molly", "Nesta", "Nora", "Odile", "Oona", "Opal", "Pearl", "Peg", "Pia", "Posy", "Rilla", "Runa", "Ruth", "Sable",
+            "Sanna", "Senna", "Signe", "Sigrid", "Sorrel", "Tansy", "Tess", "Tova", "Una", "Verity", "Willa", "Wren", "Ynes",
+            "Abel", "Adam", "Ansel", "Arlo", "Arno", "Ash", "Barnaby", "Bart", "Basil", "Ben", "Bennet", "Bevis", "Birk", "Bjorn",
+            "Bran", "Brock", "Burl", "Cade", "Cal", "Carr", "Clem", "Conn", "Crispin", "Cuddy", "Dain", "Davy", "Denzil", "Dirk",
+            "Dob", "Drew", "Duff", "Ebbe", "Edgar", "Edric", "Emil", "Enoch", "Ern", "Ewan", "Felix", "Flint", "Ford", "Fred",
+            "Gerd", "Gil", "Gower", "Grim", "Guy", "Hale", "Hardy", "Hask", "Heath", "Heck", "Hew", "Hodge", "Holm", "Ike", "Jack",
+            "Jago", "Jem", "Jeb", "Jon", "Jude", "Kester", "Kirk", "Knut", "Lars", "Lew", "Luke", "Mack", "Mark", "Matt", "Miles",
+            "Nat", "Ned", "Noll", "Olaf", "Orrin", "Oskar", "Pate", "Perkin", "Pip", "Ralf", "Rand", "Rob", "Rory", "Roth", "Sam",
+            "Saul", "Sim", "Sorley", "Sven", "Tad", "Ted", "Thom", "Tib", "Toby", "Tor", "Trig", "Ulric", "Vik", "Walt", "Ward", "Will"
+        };
+
         public static readonly string[] Families =
         {
             "Lund", "Barrow", "Fernby", "Holt", "Marsh", "Quarry", "Reed", "Stile", "Thorn", "Wick", "Ashby", "Brook",
