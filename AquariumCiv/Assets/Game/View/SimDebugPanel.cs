@@ -335,7 +335,7 @@ namespace AquariumCiv.View
                 var sv = ShapingView.Instance;
                 if (sv != null)
                 {
-                    // #85: until the tray (#84), pick a tool here and tap the ground (one finger; two move the camera).
+                    // #85: pick a free tool here and tap the ground (a drag moves the camera).
                     GUILayout.Label(sv.ShapeMode ? $"shape mode: tap the ground to place {sv.Tool}" : "tap to place: pick a tool");
                     GUILayout.BeginHorizontal();
                     if (GUILayout.Toggle(!sv.ShapeMode, "off", GUI.skin.button)) { if (sv.ShapeMode) sv.SetTool(null); }
@@ -345,6 +345,16 @@ namespace AquariumCiv.View
                     GUILayout.BeginHorizontal();
                     if (GUILayout.Button("Take back last")) last = ShapingView.DebugTakeBack();
                     if (GUILayout.Button("Answer last")) last = ShapingView.DebugSkip();
+                    GUILayout.EndHorizontal();
+                    // #167, #149, #145: a real tool in hand, the refused mark, the Take back chip's timer.
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("In hand:");
+                    foreach (var k in tools) if (GUILayout.Button(k)) last = ShapingView.DebugHand(k);
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Refused spot")) last = ShapingView.DebugRefused();
+                    if (GUILayout.Button("Chip: fading")) last = ShapingView.DebugChipLeft(3f);
+                    if (GUILayout.Button("Chip: gone")) last = ShapingView.DebugChipLeft(0f);
                     GUILayout.EndHorizontal();
                 }
                 // #142: the first reaction to a gift, and who's playing it now.

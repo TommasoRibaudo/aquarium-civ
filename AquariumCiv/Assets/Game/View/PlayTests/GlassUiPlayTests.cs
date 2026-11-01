@@ -530,7 +530,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Pic("sheet-settings-frost");
             hud.CloseSheet();
             hud.Open(GameHud.Shaping);
-            yield return Pic("sheet-shaping-content-height");
+            yield return Pic("sheet-shaping");
             hud.CloseSheet();
             Camera.main.GetComponent<BoxCamera>().FlyTo(new Vector3(0f, 2.2f, 0f), 0.55f, 0.2f);
             yield return new WaitForSecondsRealtime(0.8f);
@@ -608,7 +608,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.8f);
             yield return Frames(20);
             yield return Pic(at + "watch");
-            hud.Toast("Tap the ground to place the Grove. Two fingers move the camera.", 2f);
+            hud.Toast("Tap the ground to place the grove.", 2f);
             yield return Pic(at + "watch-toast");
             GameUiPanel.Toasts.Clear();
             AssertNoErrors("old screens");

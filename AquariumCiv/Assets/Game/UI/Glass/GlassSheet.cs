@@ -15,7 +15,7 @@ namespace AquariumCiv.GameUI
         Licences,
         /// <summary>59 %: settings, feedback.</summary>
         Tall,
-        /// <summary>Its content's height, up to 80 %. Only for a screen not yet retrofitted (the tray until #167).</summary>
+        /// <summary>Its content's height, up to 80 %: the crowd card, which needs less than 30 %.</summary>
         Content,
     }
 

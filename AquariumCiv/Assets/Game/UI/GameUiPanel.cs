@@ -16,6 +16,8 @@ namespace AquariumCiv.GameUI
         /// banner at 30 pt, pin and Stories at 96, toast at 146, prompts at 204. A home bar taller than 30 pt lifts them all.
         /// </summary>
         public const float ToolsBottom = 82.5f, PinBottom = 264f, PeekBottom = 269.5f, ToastBottom = 401.5f, PromptBottom = 561f;
+        /// <summary>The toast's lane while a tool is in hand: 8 pt over the strip at two lines of hint. The pin lane is free then.</summary>
+        public const float ToastOverStrip = 292f;
         /// <summary>The toast sits this far above a sheet when one is up (8 pt).</summary>
         public const float ToastAboveSheet = 22f;
         /// <summary>48 dp on a 360 dp-wide phone (1080 px at 3×), which also covers 44 pt on a 375 pt iPhone. Every tap target reaches this (spec §1); smaller pieces use <see cref="GlassReach"/>.</summary>

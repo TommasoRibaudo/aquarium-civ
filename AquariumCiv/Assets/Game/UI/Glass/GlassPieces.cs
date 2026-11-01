@@ -376,6 +376,9 @@ namespace AquariumCiv.GameUI
 
         public bool Inline { set => EnableInClassList("kg-banner--inline", value); }
 
+        /// <summary>The headline's label, so a screen can give it the name its play tests use.</summary>
+        public Label TitleLabel => title;
+
         /// <summary>The words; an empty line takes no room.</summary>
         public void Set(string headline, string note)
         {

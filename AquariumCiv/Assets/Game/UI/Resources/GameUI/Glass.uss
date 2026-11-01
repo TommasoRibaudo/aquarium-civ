@@ -547,3 +547,46 @@
 .gal-ink { -unity-text-align: middle-center; }
 .gal-sheet-box { height: 500px; }
 .gal-sheet-box--short { height: 340px; }
+
+/* the shaping tray (#167, board 3.4): 30 %, the charges in the head, one row of tiles, a note under them. A tablet is too wide for 30 % to hold it */
+.tray-sheet { min-height: 620px; }
+.tray-sheet--short { min-height: 560px; }
+.tray { flex-grow: 1; flex-shrink: 1; min-height: 0; }
+.tray-charges { flex-direction: row; align-items: center; margin: 0 var(--space-10) 0 var(--space-6); }
+.tray-charges-text { margin-left: var(--space-4); }
+.tray-pip-fill { height: 100%; background-color: var(--dot-off); }
+.tray-tiles { flex-direction: row; flex-shrink: 0; }
+.kg-tile {
+    flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; height: 231px; margin: 0 var(--space-8) 0 0; padding: 16.5px 19.25px;
+    align-items: flex-start; justify-content: flex-start;
+    border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-tile);
+    background-color: var(--flat-tint); color: var(--ink);
+    transition: scale 80ms ease-out, background-color 80ms ease-out;
+}
+.kg-tile:hover { background-color: var(--flat-tint); border-color: var(--edge); }
+.kg-tile:active { scale: 0.97 0.97; background-color: var(--pressed-fill); }
+.kg-tile--last { margin-right: 0; }
+.kg-tile--off, .kg-tile--off:hover, .kg-tile--off:active { background-color: var(--off-fill); border-color: var(--timber); }
+.kg-tile--armed, .kg-tile--armed:hover { border-width: 5.5px; border-color: var(--primary); }
+.kg-tile > .kg-icon { margin-bottom: 2.75px; }
+.kg-tile > Label { margin: 0; padding: 0; white-space: nowrap; }
+.tray-sheet--short .kg-tile { height: 222px; padding-top: 11px; padding-bottom: 11px; }
+.tray-foot { flex-direction: row; align-items: center; flex-shrink: 0; min-height: 121px; margin-top: var(--space-6); }
+.tray-note { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; white-space: normal; margin: 0 var(--space-10) 0 0; padding: 0; }
+.tray-list { flex-basis: 231px; }
+.tray-sheet--short .tray-list { flex-basis: 144px; }
+.tray-row { flex-direction: row; align-items: center; height: 144px; flex-shrink: 0; border-bottom-width: var(--hairline); border-color: rgba(106, 75, 54, 0.2); }
+.tray-row-label { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; padding: 0; }
+
+/* the tool in hand (#167): the strip and Cancel in the tools' lane */
+.tray-bar { position: absolute; left: var(--space-16); right: var(--space-16); flex-direction: row; align-items: center; }
+.tray-bar-strip { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-8); }
+.tray-cancel { width: 297px; height: 154px; border-radius: var(--radius-tool); }
+
+/* near the gift: the Take back chip, and the gift's name and line over the answer */
+.shaping-chip { position: absolute; border-color: var(--brass); }
+.shaping-pill {
+    position: absolute; max-width: 760px; margin: 0; padding: var(--space-4) var(--space-12); white-space: normal; -unity-text-align: middle-center;
+    border-width: var(--hairline); border-color: var(--edge); border-radius: var(--radius-toast);
+    background-color: var(--flat-tint);
+}

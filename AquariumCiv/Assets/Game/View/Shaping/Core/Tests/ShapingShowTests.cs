@@ -18,6 +18,31 @@ namespace AquariumCiv.View.Shaping.Tests
         static ViewTime At(SimCore sim, float hour = 10f) => new ViewTime(sim.State.month, hour);
 
         [Test]
+        public void TheChipFadesAndGoesAfterItsTimerButTheGiftCanStillBeUndoneFromTheTray()
+        {
+            var sim = NewSim(4);
+            var show = new ShapingShow();
+            var tray = new ShapingTray();
+            show.Sync(sim, 0f, At(sim));
+            var (x, z) = OpenLand(sim, 1.2f, 0.6f);
+            var r = show.Place(sim, SimCore.NudgeKind.Rain, x, z);
+            int id = r.nudge.id;
+            show.Sync(sim, 1f, At(sim));
+            Assert.AreEqual(1f, show.ChipFor(sim, id).alpha, 1e-4f, "whole at first");
+            show.Sync(sim, T.ChipSeconds - T.ChipFadeSeconds * 0.5f, At(sim));
+            Assert.AreEqual(0.5f, show.ChipFor(sim, id).alpha, 0.13f, "fading near the end");
+            Assert.IsTrue(show.ChipFor(sim, id).visible);
+            show.Sync(sim, T.ChipSeconds + 0.01f, At(sim));
+            Assert.IsFalse(show.ChipFor(sim, id).visible, "gone after its timer");
+            Assert.IsTrue(sim.CanTakeBack(id));
+            Assert.AreEqual(1, tray.TakeBackList(sim).Count, "the tray's list has no timer");
+
+            var reloaded = new ShapingShow();
+            reloaded.Sync(sim, 5f, At(sim));
+            Assert.IsFalse(reloaded.ChipFor(sim, id).visible, "a gift from a save has no chip");
+        }
+
+        [Test]
         public void APlacedToolArrivesWaitsAndCanBeTakenBack()
         {
             var sim = NewSim(4);

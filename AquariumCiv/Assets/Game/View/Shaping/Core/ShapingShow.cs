@@ -108,12 +108,23 @@ namespace AquariumCiv.View.Shaping
             return true;
         }
 
-        /// <summary>The "Take back" chip for a shaping (research 10 "Undo"): shown while the people haven't used it.</summary>
+        /// <summary>The "Take back" chip for a shaping: shown for <see cref="ShapingTuning.ChipSeconds"/> after the placing (#149), while the
+        /// people haven't used it. The tray's list has no timer. A gift loaded from a save was placed long ago, so it has no chip.</summary>
         public TakeBackChip ChipFor(SimCore s, int nudgeId)
         {
             var e = Find(nudgeId);
-            if (e == null || e.leavingAt >= 0f || !s.CanTakeBack(nudgeId)) return new TakeBackChip { nudgeId = nudgeId };
-            return new TakeBackChip { visible = true, nudgeId = nudgeId, x = e.footprint.x, z = e.footprint.z };
+            float left = e != null ? T.ChipSeconds - (now - e.seenAt) : 0f;
+            if (e == null || e.leavingAt >= 0f || left <= 0f || !s.CanTakeBack(nudgeId)) return new TakeBackChip { nudgeId = nudgeId };
+            return new TakeBackChip { visible = true, nudgeId = nudgeId, x = e.footprint.x, z = e.footprint.z, alpha = Math.Min(1f, left / T.ChipFadeSeconds) };
+        }
+
+        /// <summary>Debug: the chip's timer runs out in this many seconds. False with no such gift.</summary>
+        public bool DebugChipLeft(int nudgeId, float seconds)
+        {
+            var e = Find(nudgeId);
+            if (e == null) return false;
+            e.seenAt = now - T.ChipSeconds + seconds;
+            return true;
         }
 
         // ================================================================== every frame
