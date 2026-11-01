@@ -1283,7 +1283,7 @@ namespace AquariumCiv.View
                     Add(land.OnGround(frame.MultiplyPoint3x4(new Vector3(0.065f, 0f, 0))) + Vector3.up * 0.018f, LanternPool, 8f, Palette.Lamp, phase, 1f);
                     spots.Add((frame.MultiplyPoint3x4(new Vector3(0.065f, 0.26f, 0)), LampThreshold01(phase)));
                 }
-                else if (p.kind == PieceKind.Home && p.era != Era.Camp)
+                else if (p.era != Era.Camp && HasWindows(p.kind))
                 {
                     // The light from a house's front window on the path, a smaller and softer pool than a lantern's.
                     float phase = Pieces.Phase(p.seed);
@@ -1319,6 +1319,9 @@ namespace AquariumCiv.View
                 smokeGo.GetComponent<MeshRenderer>().receiveShadows = false;
             }
         }
+
+        /// <summary>What has lit windows, so a pool on the path at its door (Pieces: the callers with a lamp phase).</summary>
+        static bool HasWindows(PieceKind k) => k is PieceKind.Home or PieceKind.Shop or PieceKind.Tavern or PieceKind.Guildhall or PieceKind.Church or PieceKind.Market or PieceKind.Smithy or PieceKind.Bakery or PieceKind.Workshop;
 
         /// <summary>Pool radii (world units) before the look's own size.</summary>
         public const float LanternPool = 0.62f, WindowPool = 0.36f;

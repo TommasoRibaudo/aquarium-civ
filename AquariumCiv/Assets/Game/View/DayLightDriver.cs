@@ -35,6 +35,8 @@ namespace AquariumCiv.View
         public readonly DayLight Logic = new();
         public LightValues Current => Logic.Current;
         public bool Drives => Logic.Drives;
+        /// <summary>Too dark for the HUD's dark ink to stand bare on the room: it takes the backing it has when the camera is off home (research 13 section 6).</summary>
+        public static bool HudNeedsBacking => Driving && Instance.Logic.Current.Daylight < 0.75f;
         /// <summary><see cref="DayLight.MessAmbientScale"/> of the mess dimming; <see cref="CareView"/> sets it.</summary>
         public float MessAmbient { get; set; } = 1f;
         /// <summary>The time-lapse holds the lamps steady whatever the clock does.</summary>
@@ -59,7 +61,9 @@ namespace AquariumCiv.View
         readonly Vector4[] lampData = new Vector4[Lamps.MaxLamps];
 
         // What the scene has, for look Today.
-        Color sceneSun, sceneSky, sceneEq, sceneGround;
+        Color sceneSun, sceneSky, sceneEq, sceneGround, sceneClear;
+        Camera camera;
+        static readonly Rgb DaySky = DayLight.Table(12f).AmbientSky;
         Quaternion sceneRot;
         float sceneShadow, sceneIntensity, sceneExposure, sceneSaturation, sceneVignette, sceneBloom;
 
@@ -104,6 +108,8 @@ namespace AquariumCiv.View
             sceneRead = true;
             sceneSun = sun.color; sceneRot = sun.transform.rotation; sceneShadow = sun.shadowStrength; sceneIntensity = sun.intensity;
             sceneSky = RenderSettings.ambientSkyColor; sceneEq = RenderSettings.ambientEquatorColor; sceneGround = RenderSettings.ambientGroundColor;
+            camera = Camera.main;
+            if (camera != null) sceneClear = camera.backgroundColor;
             volume = FindAnyObjectByType<Volume>();
             if (volume != null && volume.sharedProfile != null)
             {
@@ -140,6 +146,12 @@ namespace AquariumCiv.View
             RenderSettings.ambientEquatorColor = C(v.AmbientEquator) * MessAmbient;
             RenderSettings.ambientGroundColor = C(v.AmbientGround) * MessAmbient;
             RenderSettings.fogColor = C(v.FogColor);
+            if (camera != null)
+            {
+                // The room beyond the shelf is the camera's clear colour: it follows the sky twice over, or it stays a lit wall under a dark night.
+                float r = v.AmbientSky.R / DaySky.R, g = v.AmbientSky.G / DaySky.G, b = v.AmbientSky.B / DaySky.B;
+                camera.backgroundColor = new Color(sceneClear.r * r * r, sceneClear.g * g * g, sceneClear.b * b * b, sceneClear.a);
+            }
             Shader.SetGlobalFloat(AmbientBoostId, v.ShaderAmbient - DayLight.DayShaderAmbient);
             Shader.SetGlobalFloat(GlassNightId, 1f - GlassNight.TintFactor(Logic.ShownHour));
             if (adjust != null) { adjust.postExposure.value = v.PostExposure; adjust.saturation.value = v.PostSaturation; }
@@ -187,6 +199,7 @@ namespace AquariumCiv.View
                 if (care == null || !care.isActiveAndEnabled) sun.intensity = sceneIntensity;
             }
             RenderSettings.ambientSkyColor = sceneSky; RenderSettings.ambientEquatorColor = sceneEq; RenderSettings.ambientGroundColor = sceneGround;
+            if (camera != null) camera.backgroundColor = sceneClear;
             Shader.SetGlobalFloat(AmbientBoostId, 0f);
             Shader.SetGlobalFloat(GlassNightId, 0f);
             Shader.SetGlobalVector(LampParamsId, Vector4.zero);

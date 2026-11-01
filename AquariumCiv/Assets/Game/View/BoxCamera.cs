@@ -107,7 +107,7 @@ namespace AquariumCiv.View
         void TellHud()
         {
             if (!homeKnown) { homeTarget = target; homeYaw = yaw; homePitch = pitch; homeFit = zoom; homeKnown = true; }
-            AquariumCiv.GameUI.GameHud.Instance?.SetOffHome(OffHome);
+            AquariumCiv.GameUI.GameHud.Instance?.SetOffHome(OffHome || DayLightDriver.HudNeedsBacking);
         }
 
         public float FitDistance()
