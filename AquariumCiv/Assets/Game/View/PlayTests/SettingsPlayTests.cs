@@ -220,12 +220,12 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(keep.Available);
 
             GlassKeyboard.Debug = true;
-            yield return Frames(4);
+            yield return new WaitForSecondsRealtime(0.4f); // it slides up
             float kbTop = Root.worldBound.height - GlassKeyboard.Height();
             Assert.LessOrEqual(Root.Q("rename-sheet").worldBound.yMax, kbTop + 1f, "the sheet rides on the keyboard");
             Assert.LessOrEqual(keep.worldBound.yMax, kbTop, "Keep stays in reach");
             GlassKeyboard.Debug = false;
-            yield return Frames(4);
+            yield return new WaitForSecondsRealtime(0.4f); // it slides back
 
             yield return Tap(Root, "rename-keep");
             yield return new WaitForSecondsRealtime(0.1f);
@@ -308,13 +308,13 @@ namespace AquariumCiv.View.PlayTests
 
             GlassKeyboard.Debug = true;
             fb.Root.Q<TextField>("fb-text").value = "A note.";
-            yield return Frames(4);
+            yield return new WaitForSecondsRealtime(0.4f); // it slides up
             Assert.AreEqual(DisplayStyle.None, fb.Root.Q("fb-kinds").resolvedStyle.display, "the kinds fold away");
             Assert.AreEqual(DisplayStyle.None, fb.Root.Q("fb-shot").resolvedStyle.display, "and the screenshot row");
             Assert.LessOrEqual(send.worldBound.yMax, h - GlassKeyboard.Height(), "Send stays in reach");
             Assert.IsTrue(send.Available);
             GlassKeyboard.Debug = false;
-            yield return Frames(4);
+            yield return new WaitForSecondsRealtime(0.4f);
             Assert.AreEqual(h, sheet.worldBound.height, 1f, "and it comes back");
             yield return Tap(fb.Root, "fb-cancel");
             yield return Frames(3);
