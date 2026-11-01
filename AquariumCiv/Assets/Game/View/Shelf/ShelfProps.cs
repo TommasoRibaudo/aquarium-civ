@@ -181,6 +181,13 @@ namespace AquariumCiv.View
                 Pieces.Draw(mb, p, ground);
             }
             mb.M = Matrix4x4.identity;
+            foreach (var t in layout.trees) Pieces.Tree(mb, new Vector3(t.pos.x, y, t.pos.y), t.scale, t.pine); // tester run 7: the woods and the pond it was built beside
+            if (b.setting == BoxSetting.RiverValley)
+            {
+                var pond = SimLayout.LandFor(sim.TerrainPreset).pond;
+                mb.Prism(new Vector3(pond.x, y - 0.03f, pond.y), 0.98f, 0.98f, 0.035f, 24, Palette.SandWet);
+                mb.Prism(new Vector3(pond.x, y - 0.03f, pond.y), 0.9f, 0.9f, 0.045f, 24, Palette.Water);
+            }
             Part(parent, "Town", mb.ToMesh("ShelfTown"), Vector3.zero);
         }
 

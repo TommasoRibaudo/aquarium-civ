@@ -68,6 +68,7 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(at);
             yield return Frames(3);
             Assert.AreEqual(id, Cards.BuildingId, "a tap opens its card");
+            Assert.IsTrue(Cards.BuildingMarked, "and the building is marked");
             yield return new WaitForSecondsRealtime(GlassVoice.TapGap + 0.2f);
             Assert.AreEqual(knocks, GlassVoice.Instance.Knocks, "and it's no knock");
             var title = Panel.Q<Label>("building-card-title");
@@ -76,6 +77,7 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(Panel, "building-card-close"));
             yield return Frames(3);
             Assert.IsFalse(Cards.BuildingOpen, "Close closes it");
+            Assert.IsFalse(Cards.BuildingMarked, "and the mark goes");
             yield return TapAt(at);
             yield return Frames(2);
             Assert.IsTrue(Cards.BuildingOpen);

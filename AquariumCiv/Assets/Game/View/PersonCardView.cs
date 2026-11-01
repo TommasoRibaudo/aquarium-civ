@@ -138,6 +138,8 @@ namespace AquariumCiv.View
             if (GameHud.Instance != null) { GameHud.Instance.SetPinChip(null, null); GameHud.Instance.SetOutsideSheet(null); }
             if (overlayGo != null) Destroy(overlayGo);
             if (cardGo != null) Destroy(cardGo);
+            if (markGo != null) Destroy(markGo);
+            if (markMesh != null) Destroy(markMesh);
         }
 
         bool IsOverCard(Vector2 screenPos) => (AnyOpen || BuildingOpen) && cardRoot != null && GameUiPanel.Over(cardRoot, screenPos);

@@ -370,7 +370,7 @@ namespace AquariumCiv.View
         {
             if (echoWho.IsNone) return false;
             var mp = MomentPlayer.Instance;
-            if (Time.unscaledTime >= echoUntil || (mp != null && mp.Playing)) { ClearEchoBubble(); return false; } // a line still up gives way to a moment
+            if (Time.unscaledTime >= echoUntil || (mp != null && mp.Playing) || BoxCompleteController.ShelfIsOpen) { ClearEchoBubble(); return false; } // a line still up gives way to a moment, and to the shelf
             var hud = GameHud.Instance;
             bool shown = bubbleEl.resolvedStyle.opacity > 0f && bubbleEl.style.display == DisplayStyle.Flex;
             bool show = (hud == null || (!hud.CameraMode && hud.IsVisible)) && (Place(pv, cam, echoWho) || shown); // #143: a speaker gone in doesn't cut the line
@@ -410,7 +410,7 @@ namespace AquariumCiv.View
             if (captionUntil <= 0f) return false;
             var hud = GameHud.Instance;
             var mp = MomentPlayer.Instance;
-            if (Time.unscaledTime >= captionUntil || (mp != null && mp.Playing) || (hud != null && (hud.CameraMode || !hud.IsVisible))) { HideCaption(); return false; }
+            if (Time.unscaledTime >= captionUntil || (mp != null && mp.Playing) || BoxCompleteController.ShelfIsOpen || (hud != null && (hud.CameraMode || !hud.IsVisible))) { HideCaption(); return false; }
             return true;
         }
 
@@ -471,6 +471,7 @@ namespace AquariumCiv.View
             if (tl != null && tl.Active) return "the time-lapse";
             var bc = BoxCompleteController.Instance;
             if (bc != null && bc.Playing) return "the last moment";
+            if (bc != null && bc.ShelfOpen) return "the shelf";
             var sv = ShapingView.Instance;
             if (sv != null && sv.ShapeMode) return "shape mode";
             var pv = PeopleView.Find();

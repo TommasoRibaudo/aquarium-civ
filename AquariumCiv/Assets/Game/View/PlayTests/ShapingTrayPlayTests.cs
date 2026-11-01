@@ -167,6 +167,36 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("two fingers");
         }
 
+        /// <summary>Tester run 7: chips of two gifts side by side don't overlap, and the shelf has none.</summary>
+        [UnityTest, Timeout(120000), Category("Bundle3")]
+        public IEnumerator TwoGiftsKeepTwoChipsAndTheShelfHasNone()
+        {
+            yield return Start();
+            Sim.State.shapingCharges = 3f;
+            var (x, z) = Spot(1.3f, 0.6f);
+            Assert.IsTrue(Sv.ArmTool(K.Grove));
+            yield return TapAt(Sv.ScreenOf(x, z));
+            yield return Frames(4);
+            Assert.IsTrue(Sv.ArmTool(K.Grove));
+            yield return TapAt(Sv.ScreenOf(x + 0.3f, z));
+            yield return Frames(4);
+            Assert.AreEqual(2, Sim.State.nudges.Count, Sv.LastResult);
+            yield return Until(() => Sv.Chips().Count == 2, 14f);
+            yield return Frames(3);
+            var chips = Sv.Chips();
+            Assert.AreEqual(2, chips.Count, "both show");
+            yield return Shot("bundle3-chips");
+            var r0 = Ui.Q("shaping-takeback-0").worldBound;
+            var r1 = Ui.Q("shaping-takeback-1").worldBound;
+            Assert.IsFalse(r0.Overlaps(r1), $"apart: {r0} {r1}");
+            Assert.IsTrue(BoxCompleteController.Instance.OpenShelf(), "the shelf");
+            yield return Frames(4);
+            Assert.AreEqual(0, Sv.Chips().Count, "none over the shelf");
+            BoxCompleteController.DebugShelf();
+            yield return new WaitForSecondsRealtime(2f); // the camera's way back, before the teardown counts the boxes
+            AssertNoErrors("chips");
+        }
+
         [UnityTest, Timeout(300000)]
         public IEnumerator TakeBackRefundsFromTheChipAndTheList()
         {

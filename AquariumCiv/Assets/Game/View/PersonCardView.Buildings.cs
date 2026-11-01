@@ -114,7 +114,69 @@ namespace AquariumCiv.View
                 buildingSheet.Open();
             }
             if (hud != null) hud.SetOutsideSheet(buildingSheet);
+            ShowMark(buildingId);
             return true;
+        }
+
+        GameObject markGo;
+        Mesh markMesh;
+        /// <summary>The soft mark round the open card's building is up (tests).</summary>
+        public bool BuildingMarked => markGo != null && markGo.activeSelf;
+
+        /// <summary>Tester run 7: a soft pale band on the ground round the lot, so the card says which building it means.</summary>
+        void ShowMark(int buildingId)
+        {
+            var box = FindAnyObjectByType<BoxView>();
+            var lot = Sim?.Settlement?.Lots.FirstOrDefault(l => l.buildingId == buildingId && !l.retired);
+            if (lot == null || box == null) { HideMark(); return; }
+            if (markGo == null)
+            {
+                markGo = new GameObject("BuildingMark") { hideFlags = HideFlags.DontSave };
+                markGo.AddComponent<MeshFilter>().sharedMesh = markMesh = new Mesh { name = "BuildingMark", hideFlags = HideFlags.DontSave };
+                var r = markGo.AddComponent<MeshRenderer>();
+                r.sharedMaterial = ShapingView.LoadFx();
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+            }
+            markGo.transform.SetParent(box.transform, false);
+            markGo.transform.SetLocalPositionAndRotation(new Vector3(lot.x, box.GroundHeight(lot.x, lot.z) + 0.03f, lot.z), Quaternion.Euler(0f, lot.yaw, 0f));
+            FillMark(markMesh, lot.w * 0.5f, lot.d * 0.5f);
+            markGo.SetActive(true);
+        }
+
+        void HideMark() { if (markGo != null) markGo.SetActive(false); }
+
+        /// <summary>Three nested rectangles, clear, then paper, then clear: a soft line round half-sizes (hw, hd).</summary>
+        static void FillMark(Mesh m, float hw, float hd)
+        {
+            const float In = 0.05f, Out = 0.1f, Peak = 0.62f;
+            var v = new Vector3[12];
+            var c = new Color[12];
+            var paper = new Color(1f, 0.96f, 0.86f, 0f);
+            float[] grow = { -In, 0f, Out };
+            float[] alpha = { 0f, Peak, 0f };
+            var sx = new[] { -1f, 1f, 1f, -1f };
+            var sz = new[] { -1f, -1f, 1f, 1f };
+            for (int r = 0; r < 3; r++)
+                for (int i = 0; i < 4; i++)
+                {
+                    v[r * 4 + i] = new Vector3(sx[i] * (hw + grow[r]), 0f, sz[i] * (hd + grow[r]));
+                    c[r * 4 + i] = new Color(paper.r, paper.g, paper.b, alpha[r]);
+                }
+            var t = new int[48];
+            int n = 0;
+            for (int r = 0; r < 2; r++)
+                for (int i = 0; i < 4; i++)
+                {
+                    int a = r * 4 + i, b = r * 4 + (i + 1) % 4, d = (r + 1) * 4 + i, e = (r + 1) * 4 + (i + 1) % 4;
+                    t[n++] = a; t[n++] = d; t[n++] = b;
+                    t[n++] = b; t[n++] = d; t[n++] = e;
+                }
+            m.Clear();
+            m.vertices = v;
+            m.colors = c;
+            m.triangles = t;
+            m.RecalculateBounds();
         }
 
         public void CloseBuilding() => CloseBuilding(true);
@@ -125,6 +187,7 @@ namespace AquariumCiv.View
             if (sound) UiSound.Play(UiRole.Close);
             BuildingId = -1;
             BuildingCard = null;
+            HideMark();
             if (GameHud.Instance != null) GameHud.Instance.SetOutsideSheet(null);
             buildingSheet.Close(() => { if (!AnyOpen && !BuildingOpen) cardRoot.style.display = DisplayStyle.None; });
         }

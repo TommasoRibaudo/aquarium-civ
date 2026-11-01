@@ -30,6 +30,17 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(6);
         }
 
+        [UnityTest, Timeout(60000), Category("Bundle3")]
+        public IEnumerator SomeoneSaysSomethingWhenItLands()
+        {
+            yield return Grown();
+            yield return Drop();
+            yield return Until(() => GlassVoice.Instance.LastCrumbLine != null, 8f);
+            Assert.IsNotNull(GlassVoice.Instance.LastCrumbLine, "a line as it lands");
+            Assert.AreEqual(GlassVoice.Instance.LastCrumbLine, ShowMeDirector.Instance.LastLine);
+            AssertNoErrors("crumb line");
+        }
+
         static IEnumerator Drop()
         {
             StringAssert.Contains("people until", GlassVoice.DebugDropCrumb());

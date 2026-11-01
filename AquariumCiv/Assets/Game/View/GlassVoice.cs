@@ -170,6 +170,35 @@ namespace AquariumCiv.View
 
         float crumbAt = -1f, crumbArrival;
 
+        /// <summary>What someone says as the crumb lands, by belief stage (1, 2, 3). Written by the agent (tester run 7): the user reads them.</summary>
+        public static readonly string[][] CrumbLines =
+        {
+            new[] { "What was that?!", "Back! Get back!" },
+            new[] { "It fell from up there!", "Did you see that?!" },
+            new[] { "Note the hour. Note the spot.", "It came down at noon?" },
+        };
+
+        /// <summary>The line said for the last crumb (tests), or null.</summary>
+        public string LastCrumbLine { get; private set; }
+
+        /// <summary>The lump is down: the first grown-up awake on view says so.</summary>
+        public void CrumbLanded(SimCore sim)
+        {
+            var pv = PeopleView.Find();
+            var show = ShowMeDirector.Instance;
+            if (pv == null || pv.Planner == null || show == null) return;
+            int stage = Mathf.Clamp(pv.Planner.BeliefStageSeen, 1, CrumbLines.Length) - 1;
+            string line = CrumbLines[stage][(sim.State.seed & int.MaxValue) % CrumbLines[stage].Length];
+            foreach (var a in pv.Activities)
+            {
+                if (!a.who.IsNotable || a.kind == ActivityKind.Sleep || a.kind == ActivityKind.None || !pv.TryGetDollTop(a.who, out _)) continue;
+                if (!show.SayOverHead(line, a.who, 3f)) return;
+                LastCrumbLine = line;
+                Debug.Log($"[Crumb] {a.who} says: {line}");
+                return;
+            }
+        }
+
         /// <summary>#147: has the wait after the shaping that made the crumb passed? Starts counting the first time it's asked.</summary>
         bool CrumbDue(SimCore sim)
         {

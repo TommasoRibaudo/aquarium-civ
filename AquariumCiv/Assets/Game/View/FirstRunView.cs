@@ -417,7 +417,7 @@ namespace AquariumCiv.View
             ghost.name = "firstrun-ghost";
             ghost.AddToClassList("fr-ghost");
             ghost.style.display = DisplayStyle.None;
-            ghostRing = new VisualElement { pickingMode = PickingMode.Ignore };
+            ghostRing = new VisualElement { name = "firstrun-ghost-ring", pickingMode = PickingMode.Ignore };
             ghostRing.AddToClassList("fr-ghost-ring");
             ghost.Add(ghostRing);
             safe.Add(ghost);
@@ -780,9 +780,8 @@ namespace AquariumCiv.View
             }
             if (h.gesture != HintGesture.Tap) ghostRing.style.opacity = 0f;
             ghost.style.display = DisplayStyle.Flex;
-            // On the rain's button the finger rests on its corner and the button says the words; on the blank plate it sits in the middle.
+            // The finger taps the rain button's middle (tester run 7), and the button says the words; on the blank plate it sits in the middle too.
             bool onRain = h.anchor == HintAnchor.ShapingButton;
-            if (onRain) at += new Vector2(rainBtn.resolvedStyle.width * 0.5f - 30f, rainBtn.resolvedStyle.height * 0.5f - 6f);
             ghost.style.left = at.x + off.x - GhostHalf; ghost.style.top = at.y + off.y - GhostHalf;
             ghost.style.scale = new Scale(new Vector3(scale, scale, 1f));
             ghost.style.opacity = fade * alpha;

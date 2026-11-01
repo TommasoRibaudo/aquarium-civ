@@ -359,6 +359,7 @@ namespace AquariumCiv.View
         {
             if (box == null || Sim == null) return false;
             if (hud != null && (hud.CleanMode || hud.SheetOpen || hud.ToolsHidden || hud.CameraMode)) return false;
+            if (BoxCompleteController.ShelfIsOpen) return false; // tester run 7: over the shelf they pointed at nothing
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return false;
             var tl = TimeLapseView.Find();
@@ -592,7 +593,7 @@ namespace AquariumCiv.View
             return 1f - Mathf.Clamp01((c.sinceAnswered - T.HerdMoveToLotSeconds) / 1.5f);
         }
 
-        static Material LoadFx()
+        public static Material LoadFx()
         {
             var m = Resources.Load<Material>("ShapingFx");
             if (m != null) return m;
@@ -832,13 +833,37 @@ namespace AquariumCiv.View
             return true;
         }
 
+        /// <summary>A chip under its gift, never over it, and under the chips already placed this frame, so two gifts side by side keep two targets (tester run 7).</summary>
+        bool AnchorChip(int k, float x, float z)
+        {
+            var el = chipEls[k];
+            float w = float.IsNaN(el.resolvedStyle.width) || el.resolvedStyle.width < 1f ? ChipW : el.resolvedStyle.width;
+            float h = float.IsNaN(el.resolvedStyle.height) || el.resolvedStyle.height < 1f ? ChipH : el.resolvedStyle.height;
+            float dy = 40f;
+            for (int tries = 0; tries <= k; tries++)
+            {
+                if (!Anchor(el, x, z, 0f, dy, true)) return false;
+                float at = el.style.left.value.value, top = el.style.top.value.value;
+                bool clash = false;
+                for (int i = 0; i < k; i++)
+                {
+                    float ox = chipEls[i].style.left.value.value, oy = chipEls[i].style.top.value.value;
+                    if (Mathf.Abs(ox - at) < w + 8f && Mathf.Abs(oy - top) < h + 8f) { dy = oy + h + 8f - (top - dy); clash = true; break; }
+                }
+                if (!clash) break;
+            }
+            return true;
+        }
+
+        const float ChipW = 300f, ChipH = 96f;
+
         string bannerHint;
         int pipsOn = -1, pipsAll = -1;
 
         void UpdateUi(SimCore sim)
         {
             if (uiRoot == null) return;
-            bool noUi = hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible);
+            bool noUi = BoxCompleteController.ShelfIsOpen || (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible));
             bool armed = !noUi && RealTool && Tool != null;
             wishBar.style.display = armed ? DisplayStyle.Flex : DisplayStyle.None;
             hud?.SetToolInHand(armed);
@@ -871,7 +896,7 @@ namespace AquariumCiv.View
                     var e = show.Entries[i];
                     var chip = show.ChipFor(sim, e.nudgeId);
                     if (!chip.visible || show.StageOf(e) == ShapingStage.Arriving) continue; // let the arrival be seen first
-                    if (!Anchor(chipEls[k], chip.x, chip.z, 0f, 40f, true)) continue; // under the gift, never over it
+                    if (!AnchorChip(k, chip.x, chip.z)) continue;
                     chipIds[k] = e.nudgeId;
                     chipEls[k].style.opacity = chip.alpha;
                     chipEls[k].style.display = DisplayStyle.Flex;

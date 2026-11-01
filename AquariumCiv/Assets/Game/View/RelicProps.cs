@@ -170,6 +170,7 @@ namespace AquariumCiv.View
             {
                 crumbDrop = -1f;
                 Sfx.Play(CueLibrary.Thump);
+                GlassVoice.Instance?.CrumbLanded(sim); // tester run 7: the fall needed a voice
             }
         }
 

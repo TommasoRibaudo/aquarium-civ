@@ -36,6 +36,8 @@ namespace AquariumCiv.View
         public MomentDirector Director { get; private set; }
         public bool Playing => Director != null && Director.State == MomentDirector.Phase.Playing;
         public bool ShelfOpen { get; private set; }
+        /// <summary>The shelf view is up: what stands in the box has left the screen.</summary>
+        public static bool ShelfIsOpen => Instance != null && Instance.ShelfOpen;
         public string SettingForNextBox = BoxSetting.DesertOasis;
         /// <summary>The last moment's progress for tests: the commit happened (box 2 exists).</summary>
         public bool Committed { get; private set; }

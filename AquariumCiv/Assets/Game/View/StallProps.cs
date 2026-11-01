@@ -104,23 +104,31 @@ namespace AquariumCiv.View
             return meshes[key] = m;
         }
 
-        /// <summary>Produce heaps on the left, pots on the right, loaves along the front edge; a full stall's sacks and baskets spill onto the ground in front.</summary>
+        /// <summary>Produce heaps on the left, pots on the right, loaves hanging over the front edge; a crate per level on the ground before it.
+        /// Sized and set forward to read at default zoom, where a stall is a few dozen pixels (tester run 7): each level adds a clear
+        /// row, so bare, some, plenty and heaped tell apart from the whole-box view.</summary>
         static void Goods(MeshBuilder mb, StallStock s)
         {
             for (int i = 0; i < s.produce * 3; i++)
             {
                 int row = i / 3, n = i % 3;
-                float y = Top + 0.022f + (row == 2 ? 0.034f : row == 1 ? 0.01f : 0f);
-                float z = row == 1 ? 0.026f : row == 2 ? 0.006f : -0.02f;
-                mb.Ico(new Vector3(-0.1f + n * 0.042f, y, z), 0.024f, Vector3.one, n == 1 ? Palette.Wheat : Palette.Ember, 0.1f);
+                float y = Top + 0.034f + (row == 2 ? 0.066f : row == 1 ? 0.03f : 0f);
+                float z = row == 0 ? -0.04f : row == 1 ? -0.008f : -0.024f;
+                mb.Ico(new Vector3(-0.112f + n * 0.05f, y, z), 0.036f, Vector3.one, n == 1 ? Palette.Wheat : Palette.Ember, 0.1f);
             }
             for (int i = 0; i < s.goods; i++)
-                mb.Prism(new Vector3(0.03f + i * 0.04f, Top, 0.016f), 0.024f, 0.017f, 0.05f, 6, Color.Lerp(Palette.Terracotta, Palette.SoilLight, i * 0.25f), topCol: Palette.Door);
+                mb.Prism(new Vector3(0.022f + i * 0.054f, Top, -0.018f), 0.034f, 0.024f, 0.08f, 6, Color.Lerp(Palette.Terracotta, Palette.SoilLight, i * 0.25f), topCol: Palette.Door);
             for (int i = 0; i < s.bread; i++)
-                mb.Ico(new Vector3(0.03f + i * 0.042f, Top + 0.016f, -0.034f), 0.02f, new Vector3(1.3f, 0.75f, 0.9f), new Color(0.73f, 0.45f, 0.2f), 0.08f);
-            if (s.Level < TownStalls.MaxLevel) return;
-            mb.Ico(new Vector3(-0.08f, 0.042f, -0.11f), 0.042f, new Vector3(1f, 1.1f, 0.85f), Color.Lerp(Palette.Canvas, Palette.Hide, 0.35f), 0.08f); // a sack
-            mb.Prism(new Vector3(0.07f, 0f, -0.11f), 0.03f, 0.04f, 0.04f, 8, Palette.Thatch, topCol: Palette.Ember); // a basket
+                mb.Ico(new Vector3(0.022f + i * 0.054f, Top + 0.02f, -0.056f), 0.03f, new Vector3(1.25f, 0.75f, 0.9f), new Color(0.73f, 0.45f, 0.2f), 0.08f);
+            // The awning hides the counter from the camera's usual height, so the level is told out in front of it: a crate of goods per level.
+            var fill = new[] { Palette.Ember, Palette.Wheat, Palette.Terracotta };
+            for (int i = 0; i < s.Level; i++)
+            {
+                float x = -0.09f + i * 0.09f;
+                mb.Box(new Vector3(x, 0.03f, -0.14f), new Vector3(0.076f, 0.06f, 0.07f), Palette.WoodLight);
+                mb.Ico(new Vector3(x - 0.016f, 0.076f, -0.14f), 0.026f, Vector3.one, fill[i % fill.Length], 0.1f);
+                mb.Ico(new Vector3(x + 0.016f, 0.076f, -0.14f), 0.026f, Vector3.one, fill[(i + 1) % fill.Length], 0.1f);
+            }
         }
 
         static int debugStep;
