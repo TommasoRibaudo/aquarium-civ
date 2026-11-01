@@ -130,17 +130,22 @@ namespace AquariumCiv.View.PlayTests
             yield return Home();
             var pv = PeopleView.Find();
             var cam = Camera.main;
-            foreach (var a in pv.Activities)
+            foreach (float hour in new[] { 10f, 7f, 12.2f, 16f, 18.5f }) // since the yards (#200) fewer stand right up against a wall: look through the day
             {
-                if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollFeet(a.who, out var feet)) continue;
-                Vector2 s = cam.WorldToScreenPoint((top + feet) * 0.5f);
-                if (!Clear(s) || Cards.PickBuilding(s) < 0 || !InSight(top, feet)) continue;
-                yield return TapAt(s);
-                yield return Frames(2);
-                Assert.IsTrue(Cards.AnyOpen, "the person's card");
-                Assert.IsFalse(Cards.BuildingOpen, "not the building's");
-                AssertNoErrors("people first");
-                yield break;
+                PeopleView.DebugSetHour(hour);
+                yield return new WaitForSecondsRealtime(1f);
+                foreach (var a in pv.Activities)
+                {
+                    if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollFeet(a.who, out var feet)) continue;
+                    Vector2 s = cam.WorldToScreenPoint((top + feet) * 0.5f);
+                    if (!Clear(s) || Cards.PickBuilding(s) < 0 || !InSight(top, feet)) continue;
+                    yield return TapAt(s);
+                    yield return Frames(2);
+                    Assert.IsTrue(Cards.AnyOpen, "the person's card");
+                    Assert.IsFalse(Cards.BuildingOpen, "not the building's");
+                    AssertNoErrors("people first");
+                    yield break;
+                }
             }
             Assert.Inconclusive("nobody stood in front of a building in this run");
         }

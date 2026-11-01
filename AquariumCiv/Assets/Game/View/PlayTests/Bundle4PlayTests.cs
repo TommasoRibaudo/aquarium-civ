@@ -460,6 +460,7 @@ namespace AquariumCiv.View.PlayTests
         [Category("Mills")]
         public IEnumerator AMillInABoxMadeAfterTheBootstrapHasItsSails([Values(Era.Village, Era.Town)] Era era)
         {
+            if (WindView.Instance != null) { Object.DestroyImmediate(WindView.Instance.gameObject); yield return null; } // the class's last test leaves its scene loaded
             Assert.IsNull(WindView.Instance, "no scene has a wind here");
             var first = MillBox("MillBoxA", era);
             var second = MillBox("MillBoxB", era);
