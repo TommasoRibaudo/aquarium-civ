@@ -47,9 +47,10 @@ namespace AquariumCiv.View
         GameHud hud;
         BoxView box;
         UIDocument doc;
-        VisualElement root, safe, ghost, ghostRing, skipRow, yearFill, nameNoteRow, nameNote, nameAlert;
-        GlassScrim nameScrim, cardScrim;
-        GlassSheet nameSheet, cardSheet;
+        VisualElement root, safe, ghost, ghostRing, skipRow, yearFill;
+        GlassScrim cardScrim;
+        GlassSheet cardSheet;
+        GlassNameSheet nameSheet;
         Button plate;
         GlassPlate plateFace;
         GlassBigPrompt rainBtn;
@@ -58,12 +59,11 @@ namespace AquariumCiv.View
         GlassCaption yearBox;
         GlassCard card;
         GlassBanner showBar;
-        Label nameMsg, cardAlso;
-        TextField nameField;
-        GlassButton showMeBtn, keepBtn;
+        Label cardAlso;
+        GlassButton showMeBtn;
         FirstYearSummary summary;
         bool heldClock, toolsHidden, cardShown, showingMe, rainArmed, runEnded, yearUp;
-        float keyboardShown, plateNamedUntil, rewardUntil;
+        float plateNamedUntil, rewardUntil;
         string rewardLine;
         float hintShownAt = -1f;
         string lastHintId = "";
@@ -82,7 +82,7 @@ namespace AquariumCiv.View
         public bool HasTheWord => Active && (CardOpen || (bubble != null && bubble.resolvedStyle.display == DisplayStyle.Flex) || Step == FirstRunStep.Rain);
         /// <summary>The reward line showing now (the hint rests under it), or "".</summary>
         public string ShownReward => bubble != null && Time.unscaledTime < rewardUntil ? rewardLine : "";
-        public string NameMessage => nameMsg?.text ?? "";
+        public string NameMessage => nameSheet?.Problem ?? "";
         public FirstYearSummary Summary => summary;
 
         SimCore Sim => GameClock.Instance != null ? GameClock.Instance.ActiveSim : null;
@@ -210,7 +210,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Debug: holds the naming sheet as it rides the keyboard, which an Editor never raises.</summary>
-        public static bool DebugKeyboard { get; set; }
+        public static bool DebugKeyboard { get => GlassKeyboard.Debug; set => GlassKeyboard.Debug = value; }
 
         /// <summary>Debug: the reward line that rests the hint.</summary>
         public static string DebugReward()
@@ -227,7 +227,7 @@ namespace AquariumCiv.View
             var v = Instance;
             if (v == null || v.run == null || !v.run.Active) return "no first run active";
             v.OpenName();
-            v.nameField.SetValueWithoutNotify("shit hole");
+            v.nameSheet.Field.SetValueWithoutNotify("shit hole");
             v.OnKeep();
             return "name refused: " + v.NameMessage;
         }
@@ -355,10 +355,8 @@ namespace AquariumCiv.View
         const float RewardSeconds = 3.5f, ToastSeconds = 1.6f, NamedPlateSeconds = 1.7f;
         /// <summary>Half the ghost, and where the skip row starts under the notch, panel px (96 pt).</summary>
         const float GhostHalf = 60.5f, SkipTop = 264f;
-        /// <summary>The panel's top limit for a word over the world, and the keyboard's padding under Keep (12 pt).</summary>
-        const float TopLimit = 190f, KeyboardPad = 33f;
-        /// <summary>A raised keyboard for the debug panel: the board's 291 pt.</summary>
-        const float DebugKeyboardHeight = 291f * GlassType.Pt;
+        /// <summary>The panel's top limit for a word over the world.</summary>
+        const float TopLimit = 190f;
         /// <summary>The plate on the plinth's front face, box units.</summary>
         const float PlateY = -0.12f, PlateZ = -Land.HZ - 0.2f;
 
@@ -439,7 +437,7 @@ namespace AquariumCiv.View
             safe.style.left = i.x; safe.style.top = i.y; safe.style.right = i.z; safe.style.bottom = i.w;
             float pad = GlassSheet.IsShort(Screen.width, Screen.height) ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad;
             cardSheet.SetInsets(i, pad);
-            if (keyboardShown <= 0f) nameSheet.SetInsets(i, pad);
+            if (!nameSheet.Riding) nameSheet.Sheet.SetInsets(i, pad);
             rainBtn.style.bottom = GameUiPanel.Lane(GameUiPanel.PromptBottom, i.w);
             skipRow.style.top = Mathf.Max(0f, SkipTop - i.y);
             showBar.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
@@ -447,34 +445,8 @@ namespace AquariumCiv.View
 
         void BuildNameSheet()
         {
-            nameSheet = new GlassSheet();
-            nameSheet.AddToClassList("fr-name-sheet");
-            nameScrim = new GlassScrim("firstrun-name", nameSheet);
-            nameScrim.TappedOutside += CloseName;
-            root.Add(nameScrim);
-            var head = GlassSheet.Head("Name your box", null, null);
-            head.Add(new GlassButton("Later", CloseName, ButtonKind.Quiet, UiRole.Close) { name = "firstrun-name-close" });
-            nameSheet.Add(head);
-            nameNoteRow = new VisualElement { pickingMode = PickingMode.Ignore };
-            nameNoteRow.AddToClassList("fr-name-note");
-            nameAlert = new GlassIcon("alert", "kg-icon--small", "fr-name-alert");
-            nameAlert.style.display = DisplayStyle.None;
-            nameNoteRow.Add(nameAlert);
-            nameNote = Text(null, "type-note", "It goes on the brass plate.");
-            nameNoteRow.Add(nameNote);
-            nameMsg = (Label)Text("firstrun-name-msg", "type-note", "");
-            nameMsg.style.display = DisplayStyle.None;
-            nameNoteRow.Add(nameMsg);
-            nameSheet.Add(nameNoteRow);
-            nameField = new TextField { name = "firstrun-name-field", maxLength = SettlementNaming.MaxLength + 4 };
-            nameField.AddToClassList("fr-name-field");
-            nameField.RegisterValueChangedCallback(_ => NameEdited());
-            nameSheet.Add(nameField);
-            var row = new VisualElement();
-            row.AddToClassList("kg-card-acts");
-            row.Add(new GlassButton("Another", OnAnother) { name = "firstrun-name-reroll" });
-            row.Add(keepBtn = new GlassButton("Keep", OnKeep, ButtonKind.Primary, UiRole.None) { name = "firstrun-name-keep" });
-            nameSheet.Add(row);
+            nameSheet = new GlassNameSheet("firstrun-name", "Name your box", "Later", CloseName, OnAnother, OnKeep);
+            root.Add(nameSheet.Scrim);
         }
 
         void BuildCard()
@@ -524,91 +496,55 @@ namespace AquariumCiv.View
         }
 
         // ---------------- the plate and the name ----------------
-        void SetFieldFromRun() { if (nameField != null && run != null) nameField.value = run.SuggestedName; }
+        void SetFieldFromRun() { if (nameSheet != null && run != null) nameSheet.Field.value = run.SuggestedName; }
 
         void OpenName()
         {
             if (run == null || !run.Active) return;
             hud?.CloseSheet();
-            if (string.IsNullOrEmpty(nameField.value)) nameField.value = run.SuggestedName;
-            NameEdited();
-            if (!nameSheet.IsOpen) { UiSound.Play(UiRole.Open); nameScrim.Open(); }
-            hud?.SetOutsideSheet(nameSheet);
+            if (string.IsNullOrEmpty(nameSheet.Field.value)) nameSheet.Field.value = run.SuggestedName;
+            nameSheet.Say("");
+            if (!nameSheet.IsOpen) { UiSound.Play(UiRole.Open); nameSheet.Scrim.Open(); }
+            hud?.SetOutsideSheet(nameSheet.Sheet);
         }
 
         void CloseName()
         {
             if (nameSheet == null || !nameSheet.IsOpen) return;
-            nameSheet.style.translate = StyleKeyword.Null;
-            keyboardShown = 0f;
-            nameSheet.RemoveFromClassList(KeyboardClass);
-            ApplySafe();
-            nameScrim.Close();
-            if (hud != null && hud.OutsideSheet == nameSheet) hud.SetOutsideSheet(null);
+            var (i, pad) = NameInsets();
+            nameSheet.Land(i, pad);
+            nameSheet.Scrim.Close();
+            if (hud != null && hud.OutsideSheet == nameSheet.Sheet) hud.SetOutsideSheet(null);
         }
 
-        const string KeyboardClass = "fr-name-sheet--keyboard";
+        static (Vector4, float) NameInsets() => (GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height),
+            GlassSheet.IsShort(Screen.width, Screen.height) ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
 
-        /// <summary>The keyboard's height in panel px, 0 when it's down.</summary>
-        static float KeyboardHeight()
-        {
-            if (DebugKeyboard) return DebugKeyboardHeight;
-            if (!TouchScreenKeyboard.isSupported || !TouchScreenKeyboard.visible) return 0f;
-            return TouchScreenKeyboard.area.height * GameUiPanel.ReferenceWidth / Mathf.Max(1f, Screen.width);
-        }
-
-        /// <summary>Spec §2: the sheet rides on the keyboard by translate, with Keep in reach. It keeps its layout, 12 pt under the buttons.
-        /// That leaves only a corner of the box in view, which question 33 accepts.</summary>
+        /// <summary>Only a corner of the box stays in view over the keyboard, which question 33 accepts.</summary>
         void RideKeyboard()
         {
-            float h = NameSheetOpen ? KeyboardHeight() : 0f;
-            if (Mathf.Abs(h - keyboardShown) < 0.5f) return;
-            keyboardShown = h;
-            nameSheet.EnableInClassList(KeyboardClass, h > 0f);
-            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            if (h > 0f) nameSheet.SetInsets(new Vector4(i.x, i.y, i.z, 0f), KeyboardPad);
-            else ApplySafe();
-            nameSheet.style.translate = h > 0f ? new Translate(0f, -h) : StyleKeyword.Null;
-            nameSheet.Surface.Follow(GlassMotion.SlideMs);
-        }
-
-        /// <summary>The field changed, so what was refused is gone: the note is back and Keep is available (question 28).</summary>
-        void NameEdited() => ShowNameProblem("");
-
-        void ShowNameProblem(string words)
-        {
-            bool problem = !string.IsNullOrEmpty(words);
-            nameMsg.text = words;
-            nameMsg.style.display = problem ? DisplayStyle.Flex : DisplayStyle.None;
-            nameAlert.style.display = problem ? DisplayStyle.Flex : DisplayStyle.None;
-            nameNote.style.display = problem ? DisplayStyle.None : DisplayStyle.Flex;
-            keepBtn.Available = !problem;
+            var (i, pad) = NameInsets();
+            nameSheet.Ride(i, pad);
         }
 
         void OnAnother()
         {
-            if (run != null) nameField.value = run.RerollName();
+            if (run != null) nameSheet.Field.value = run.RerollName();
         }
 
         void OnKeep()
         {
             if (run == null) return;
-            var p = run.CheckName(nameField.value, out string clean);
-            if (p != NameProblem.None) { Refuse(p); return; }
+            var p = run.CheckName(nameSheet.Field.value, out string clean);
+            if (p != NameProblem.None) { nameSheet.Refuse(p); return; }
             var problem = run.KeepName(clean);
-            if (problem != NameProblem.None) { Refuse(problem); return; }
+            if (problem != NameProblem.None) { nameSheet.Refuse(problem); return; }
             CloseName();
             UiSound.Play(UiRole.Confirm);
             plateFace.Title = clean;
             plateNamedUntil = Time.unscaledTime + NamedPlateSeconds;
             hud?.Toast($"Welcome to {clean}.", ToastSeconds);
             GameClock.Instance?.Save();
-        }
-
-        void Refuse(NameProblem p)
-        {
-            ShowNameProblem(SettlementNaming.Message(p));
-            UiSound.Play(UiRole.Refused);
         }
 
         // ---------------- the rain ----------------

@@ -161,7 +161,7 @@ flat, with no copy, no filter and no pass. The debug panel flips it for a sessio
   tall the year joins the dots row and bottom padding drops to 14, which gives 193 pt. Longer text scrolls. Drawn at the
   end of 3.3, built in #166. A locked Give's reason moves above the body there, so it can't scroll out of sight.
 - **Feedback under 700 pt tall:** its 470 pt doesn't fit 59 % of a 667 pt phone (394 pt). It's test-only, so it grows to full
-  height over the box, top under the safe area, with Cancel and Send on the bottom edge. Not drawn.
+  height over the box, top under the safe area, with Cancel and Send on the bottom edge. Not drawn. The test is the screen's shape, not 700 pt: 470 pt needs 797 pt at 59 %, so an 18:9 phone gets it too (#95).
 - **375 × 667 is drawn for the wish card only.** #165 to #170 and #95 must check it screen by screen.
 - **Keyboard:** a text-entry sheet rides on top of the keyboard, by translate, using `TouchScreenKeyboard.area`. Keep and
   Send stay above it. Naming and rename keep their layout, with bottom padding 12. Feedback folds to heading, text and
@@ -189,6 +189,7 @@ One component each, per inventory §4. Every element name stays the same: the pl
 | **Tab** | Best, Recent; music frequency | On, off | Selected is bold and underlined |
 | **Toggle** | Settings pills | On, off | Word inside, knob moves |
 | **Slider** | New | Value | Hit strip of 144 px, 4 line, 22 ring |
+| **Row button** | Settings rows that go somewhere | Default, pressed | `GlassRowButton`: icon, words, chevron, the whole row is the target (#95) |
 | **Bubble** | `firstrun-`, `moment-`, `showme-`, `shaping-`, `boxcomplete-bubble` | Who + line, chatter symbols | Tail is a rotated square. One at a time, second waits. Longer lines become a caption |
 | **Label** | `pc-name-tag`, `pc-pin-tag`, tie labels, brass plate | Name, gold + pin mark, tie + mark | Line style and mark per tie |
 | **Badge, dot** | `-dot`, pips | Dot, page dots, charge pips, New tag, ribbon | Dots never count |
@@ -242,7 +243,7 @@ Rules that change today's layout. Everything else is as drawn.
   Begin goes on; Close leaves the moment, which replays. The box on the shelf follows the choice (#170).
 - **Visiting:** box name and years in the banner, with "Back to your box" beside them. The banner has the tools' lane, so the tools and
   the top row leave.
-- **Reset:** "Reset Mossbarrow?", says what's lost, "Keep playing" is primary, "Reset box" is small, far and marked.
+- **Reset:** "Reset Mossbarrow?", says what's lost, "Keep playing" is primary, "Reset box" is small, far and marked. It's flat over the dim scrim, and takes only the active box: finished boxes stay on the shelf (#95).
 - **Book:** full-screen paper, swipe to turn, Back, Next and Close at the bottom. Era look changes with paper colour and
   type treatment; the stone and bark art doesn't exist yet.
 

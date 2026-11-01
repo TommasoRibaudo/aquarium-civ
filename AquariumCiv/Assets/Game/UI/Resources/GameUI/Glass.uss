@@ -211,6 +211,7 @@
 .kg-sheet--33 { height: 33%; }
 .kg-sheet--35 { height: 35%; }
 .kg-sheet--59 { height: 59%; }
+.kg-sheet--full { height: 100%; }
 .kg-sheet--content { position: relative; max-height: 80%; }
 .kg-sheet--inline { position: relative; bottom: auto; }
 .kg-sheet--inline > .kg-sheet-shadow { display: none; }
@@ -488,8 +489,41 @@
 /* ---------------- settings row ---------------- */
 .kg-row { flex-direction: row; align-items: center; min-height: var(--hit); border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }
 .kg-row-label { flex-grow: 1; flex-shrink: 1; }
-.kg-sheet-action { margin-top: var(--space-12); align-self: flex-start; }
-.kg-sheet-note { margin-top: var(--space-12); }
+.kg-row--link { background-color: var(--clear); border-top-width: 0; border-left-width: 0; border-right-width: 0; border-radius: 0; margin: 0; padding: 0; color: var(--ink); -unity-text-align: middle-left; }
+.kg-row--link:active { background-color: var(--pressed-fill); }
+.kg-row--clear { border-width: 0; background-color: var(--clear); margin: 0; padding: 0; color: var(--ink); -unity-text-align: middle-left; }
+.kg-row-icon { margin-right: var(--space-12); flex-shrink: 0; }
+/* the label's column in front of a slider or tabs: the board's 80 pt, 88 here so "Music plays" stays on a line */
+.kg-row-tag { width: 242px; flex-shrink: 0; }
+/* the thumb hangs past the line at 100 %: it stays clear of the scroll bar */
+.kg-row > .kg-slider { margin-right: var(--space-12); }
+.kg-row-head { margin-top: var(--space-10); margin-bottom: var(--space-4); }
+.kg-row-end { margin-top: var(--space-10); }
+/* the silent notice lives inside the Sound row (question 6), so settings stays at 59 % */
+.kg-row-notice { flex-direction: row; align-items: center; margin-bottom: var(--space-4); }
+.kg-row-notice-mark { margin-right: var(--space-4); flex-shrink: 0; }
+.kg-row-notice-words { flex-grow: 1; flex-shrink: 1; white-space: normal; }
+/* room for the scroll's bar, which sits 1 pt off the sheet's edge */
+.kg-rows { width: 100%; padding-right: 24.75px; }
+.kg-list-row { min-height: 110px; white-space: normal; -unity-text-align: middle-left; border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }
+.kg-reset-body { white-space: normal; flex-shrink: 0; }
+.kg-thumb { width: 121px; height: 121px; flex-shrink: 0; margin-right: var(--space-12); border-radius: 22px; border-width: var(--hairline); border-color: var(--edge); }
+/* a sheet riding the keyboard floats, so every corner rounds (spec §2) */
+.kg-sheet--keyboard .surface, .kg-sheet--keyboard .surface--flat, .kg-sheet--keyboard .kg-frost-tint {
+    border-bottom-left-radius: var(--radius-sheet); border-bottom-right-radius: var(--radius-sheet);
+}
+.kg-sheet--keyboard .kg-card-acts { margin-top: var(--space-6); }
+
+/* ---------------- feedback (board 3.8) ---------------- */
+.fb-line { flex-shrink: 0; white-space: normal; margin-bottom: var(--space-4); }
+.fb-kinds { flex-direction: row; flex-wrap: wrap; flex-shrink: 0; }
+.fb-kinds > .kg-chip-slot { margin-right: var(--space-6); }
+.fb-note { flex-shrink: 0; white-space: normal; margin-top: var(--space-4); }
+.fb-acts > .kg-btn { flex-grow: 1; flex-basis: 0; min-width: 0; margin: 0 var(--space-8) 0 0; padding: 0 var(--space-8); }
+.fb-acts > .kg-btn--primary { margin: 0; padding: 0 var(--space-8); }
+.fb-sheet--keyboard { height: 594px; }
+.fb-sheet--keyboard .fb-fold { display: none; }
+.fb-no-shot { display: none; }
 
 /* ---------------- the HUD (hierarchy D1 to D6) ---------------- */
 .hud-top {
@@ -560,21 +594,18 @@
 .fr-year { left: 154px; right: 154px; top: 264px; align-items: stretch; }
 .fr-year-track { height: 13.75px; margin-top: var(--space-8); border-radius: 8.25px; background-color: rgba(239, 227, 204, 0.33); }
 .fr-year-fill { height: 100%; width: 0; border-radius: 8.25px; background-color: var(--brass-light); }
-.fr-name-note { flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: var(--space-6); }
-.fr-name-alert { margin-right: 13.75px; }
-.fr-name-field { height: 126.5px; margin: 0; padding: 0; flex-shrink: 0; }
-.fr-name-field > .unity-base-text-field__input {
+.kg-name-note { flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: var(--space-6); }
+.kg-name-alert { margin-right: 13.75px; }
+.kg-field { height: 126.5px; margin: 0; padding: 0; flex-shrink: 0; }
+.kg-field > .unity-base-text-field__input {
     height: 126.5px; margin: 0; padding: 0 38.5px;
     border-width: var(--hairline); border-color: var(--timber); border-radius: var(--radius-chip);
     background-color: var(--flat-tint);
     color: var(--ink); -unity-font-definition: var(--font-serif); font-size: 46.75px; -unity-text-align: middle-left;
 }
-/* riding the keyboard (spec §2): floats, so every corner rounds */
-.fr-name-sheet--keyboard { height: 539px; }
-.fr-name-sheet--keyboard .surface, .fr-name-sheet--keyboard .surface--flat, .fr-name-sheet--keyboard .kg-frost-tint {
-    border-bottom-left-radius: var(--radius-sheet); border-bottom-right-radius: var(--radius-sheet);
-}
-.fr-name-sheet--keyboard .kg-card-acts { margin-top: var(--space-6); }
+.kg-field--area { height: 231px; }
+.kg-field--area > .unity-base-text-field__input { height: 231px; padding: 27.5px 38.5px; font-size: 41.25px; -unity-text-align: upper-left; white-space: normal; }
+.kg-sheet--keyboard.kg-sheet--30 { height: 539px; }
 .fr-card-scroll { min-height: 0; }
 .fr-card-scroll-pad { width: 100%; padding-right: 24.75px; }
 .fr-card-also { margin-top: var(--space-6); white-space: normal; }

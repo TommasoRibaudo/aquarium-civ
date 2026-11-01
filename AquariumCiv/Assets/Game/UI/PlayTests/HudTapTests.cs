@@ -106,13 +106,14 @@ namespace AquariumCiv.GameUI.PlayTests
             Assert.AreEqual(before, GameSettings.Sound);
 
             // Settings → Send feedback opens the feedback sheet (Editor = test build); its Cancel closes it.
+            hud.SettingsView.Scroll.View.ScrollTo(root.Q("settings-feedback")); // below the fold
+            for (int i = 0; i < 4; i++) yield return null;
             yield return Tap(root, "settings-feedback");
             Assert.IsNull(hud.OpenSheet, "settings closes when feedback opens");
             for (int i = 0; i < 6 && (FeedbackUI.Instance == null || !FeedbackUI.Instance.IsOpen); i++) yield return null;
             Assert.IsTrue(FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen, "the feedback sheet is open");
             Assert.IsTrue(hud.IsVisible, "the HUD is back after the screenshot");
             yield return null; yield return null; // the sheet's layout
-            Assert.AreEqual(DisplayStyle.None, FeedbackUI.Instance.Root.Q("fb-button").resolvedStyle.display, "the HUD hosts the feedback button");
             yield return Tap(FeedbackUI.Instance.Root, "fb-cancel");
             Assert.IsFalse(FeedbackUI.Instance.IsOpen);
 

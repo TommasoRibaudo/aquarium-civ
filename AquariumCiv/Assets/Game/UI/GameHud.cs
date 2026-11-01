@@ -16,7 +16,7 @@ namespace AquariumCiv.GameUI
     /// Built in code from the components in UI/Glass; every control has a stable name so tests and the tester agent find it
     /// (<c>hud-title</c>, <c>hud-history</c>, <c>hud-clean</c>, <c>hud-shape</c>, <c>hud-pin</c>, <c>hud-history-dot</c> (the Stories chip),
     /// <c>hud-feedback</c>, <c>hud-photo</c>, <c>settings</c>/<c>history</c>/<c>shaping</c> + <c>-sheet</c>, <c>-scrim</c>, <c>-close</c>,
-    /// <c>settings-sound</c>, <c>settings-haptics</c>, <c>settings-feedback</c>).
+    /// and what <see cref="SettingsSheets"/> builds).
     /// </summary>
     public class GameHud : MonoBehaviour
     {
@@ -42,8 +42,8 @@ namespace AquariumCiv.GameUI
         Label nameLabel, yearLabel;
         PinChip pinChip;
         StoriesChip storiesChip;
-        GlassToggle soundSwitch, hapticsSwitch;
-        GlassButton cleanButton, shapeButton, historyButton, shelfRow;
+        SettingsSheets settings;
+        GlassButton cleanButton, shapeButton, historyButton;
         readonly System.Collections.Generic.HashSet<string> toolBlocks = new();
         GlassToast toastLabel;
         bool cleanMode, shapeNew, offHome, toolsWaiting;
@@ -93,14 +93,12 @@ namespace AquariumCiv.GameUI
             if (Instance != this) return;
             Build(doc.rootVisualElement);
             UiInput.Add(IsOverUi);
-            FeedbackUI.HostedByHud = true;
         }
 
         void OnDisable()
         {
             if (Instance != this) return;
             UiInput.Remove(IsOverUi);
-            FeedbackUI.HostedByHud = false;
         }
 
         void OnDestroy()
@@ -245,7 +243,7 @@ namespace AquariumCiv.GameUI
         public void SetShelfRow(bool on)
         {
             var d = on ? DisplayStyle.Flex : DisplayStyle.None;
-            if (shelfRow != null && shelfRow.style.display != d) shelfRow.style.display = d;
+            if (settings != null && settings.ShelfRow.style.display != d) settings.ShelfRow.style.display = d;
         }
 
         public Action ShelfTapped;
@@ -354,6 +352,7 @@ namespace AquariumCiv.GameUI
             if (outsideSheet != null) PlaceToast(); // it has no height until its first layout
             FollowFirstRun();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
+            settings.Tick(SafeNow, BottomPadNow, OpenSheet == Settings);
             // Android Back / Esc closes the open sheet.
             if (openSheet != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) CloseSheet();
         }
@@ -430,30 +429,12 @@ namespace AquariumCiv.GameUI
             exitButton.Mark(new GlassIcon("close", "kg-icon--small", "kg-way-back-mark"));
             exitButton.style.display = DisplayStyle.None;
             safe.Add(exitButton);
-            BuildSettings();
+            settings = new SettingsSheets(this, tightSheets.Add);
             BuildHistory();
             BuildShaping();
             ApplySafeArea();
             RefreshText();
             FollowFirstRun();
-        }
-
-        void BuildSettings()
-        {
-            var sheet = Sheet(Settings, "Settings", SheetHeight.Tall);
-            soundSwitch = SwitchRow(sheet, "settings-sound", "Sound", () => GameSettings.Sound, v => GameSettings.Sound = v);
-            hapticsSwitch = SwitchRow(sheet, "settings-haptics", "Haptics", () => GameSettings.Haptics, v => GameSettings.Haptics = v);
-            shelfRow = new GlassButton("The shelf", () => { CloseSheet(); ShelfTapped?.Invoke(); }) { name = "settings-shelf" };
-            shelfRow.AddToClassList("kg-sheet-action");
-            shelfRow.style.display = DisplayStyle.None;
-            sheet.Add(shelfRow);
-            if (FeedbackUI.InTestBuild)
-            {
-                var send = new GlassButton("Send feedback", OpenFeedback) { name = "settings-feedback" };
-                send.AddToClassList("kg-sheet-action");
-                sheet.Add(send);
-            }
-            sheet.Add(Text($"Aquarium Civ {Application.version}", "type-note", "kg-sheet-note"));
         }
 
         void BuildHistory()
@@ -470,6 +451,12 @@ namespace AquariumCiv.GameUI
         public VisualElement ShapingHead { get; private set; }
 
         GlassSheet shapingSheet;
+        readonly System.Collections.Generic.List<GlassSheet> tightSheets = new();
+        Vector4 SafeNow => GameUiPanel.SafeInsets(lastSafe, lastScreen.x, lastScreen.y);
+        float BottomPadNow => GlassSheet.IsShort(lastScreen.x, lastScreen.y) ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad;
+
+        /// <summary>Settings and what's behind it.</summary>
+        public SettingsSheets SettingsView => settings;
 
         void BuildShaping()
         {
@@ -483,28 +470,25 @@ namespace AquariumCiv.GameUI
         }
 
         /// <summary>A bottom sheet in its clear scrim (a tap outside closes it), with a title and Close.</summary>
-        GlassSheet Sheet(string id, string title, SheetHeight height = SheetHeight.Standard)
+        internal GlassSheet Sheet(string id, string title, SheetHeight height = SheetHeight.Standard, bool close = true)
         {
             var sheet = new GlassSheet(height);
             var scrim = new GlassScrim(id, sheet);
             scrim.TappedOutside += () => { UiSound.Play(UiRole.Close); CloseSheet(); };
-            root.Add(scrim);
-            sheet.Add(GlassSheet.Head(title, id + "-close", CloseSheet));
-            sheet.RegisterCallback<GeometryChangedEvent>(_ => PlaceToast());
-            sheets[id] = scrim;
+            sheet.Add(GlassSheet.Head(title, close ? id + "-close" : null, close ? CloseSheet : null));
+            AddSheet(id, scrim);
             return sheet;
         }
 
-        GlassToggle SwitchRow(VisualElement sheet, string name, string label, Func<bool> get, Action<bool> set)
+        /// <summary>A sheet built elsewhere, opened and closed like the HUD's own.</summary>
+        internal void AddSheet(string id, GlassScrim scrim)
         {
-            var row = new VisualElement();
-            row.AddToClassList("kg-row");
-            row.Add(Text(label, "type-body", "kg-row-label"));
-            var sw = new GlassToggle(get(), set) { name = name };
-            row.Add(sw);
-            sheet.Add(row);
-            return sw;
+            root.Add(scrim);
+            scrim.Sheet.RegisterCallback<GeometryChangedEvent>(_ => PlaceToast());
+            sheets[id] = scrim;
         }
+
+        internal GlassScrim ScrimOf(string id) => sheets[id];
 
         // ---------------- behaviour ----------------
         /// <summary>Open a sheet by name (<see cref="Settings"/>, <see cref="History"/>, <see cref="Shaping"/>); closes any other.</summary>
@@ -514,7 +498,7 @@ namespace AquariumCiv.GameUI
             if (id == Shaping) SetCleanMode(false); // one mode at a time, and Done would sit hidden behind the tray
             if (openSheet != null) { openSheet.style.display = DisplayStyle.None; openSheet.Sheet.Close(); }
             openSheet = scrim;
-            if (id == Settings) { soundSwitch.On = GameSettings.Sound; hapticsSwitch.On = GameSettings.Haptics; }
+            settings.Opening(id);
             if (id == History) RefreshText();
             scrim.Open();
             ToolsBehindSheet();
@@ -527,6 +511,7 @@ namespace AquariumCiv.GameUI
             if (openSheet == null) return;
             var closing = openSheet;
             openSheet = null;
+            settings.Closing(SafeNow, BottomPadNow);
             closing.Close();
             ToolsBehindSheet();
             PlaceToast();
@@ -587,6 +572,7 @@ namespace AquariumCiv.GameUI
 
         /// <summary>The sheet set by <see cref="SetOutsideSheet"/>, so two owners can't take it from each other.</summary>
         public VisualElement OutsideSheet => outsideSheet;
+        public bool OutsideKeepsTop => outsideKeepsTop;
 
         /// <summary>Hide the whole HUD (feedback screenshots, a clean snapshot, the debug toggle).</summary>
         public void SetVisible(bool visible)
@@ -608,7 +594,7 @@ namespace AquariumCiv.GameUI
             GlassMotion.Hide(safe, GlassMotion.AwayOff, GlassMotion.AwayMs, () => { if (hidden) root.style.display = DisplayStyle.None; });
         }
 
-        void OpenFeedback()
+        internal void OpenFeedback()
         {
             CloseSheet();
             var fb = FeedbackUI.Instance != null ? FeedbackUI.Instance : FeedbackUI.Create();
@@ -626,6 +612,7 @@ namespace AquariumCiv.GameUI
             bool tight = GlassSheet.IsShort(Screen.width, Screen.height);
             shapingSheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
             shapingSheet.EnableInClassList("tray-sheet--short", tight);
+            foreach (var s in tightSheets) s.SetInsets(i, BottomPadNow);
             // The lanes count from the screen's edge; a home bar taller than 30 pt lifts them.
             bottomRow.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
             pinRow.style.bottom = GameUiPanel.Lane(GameUiPanel.PinBottom, i.w);
@@ -664,6 +651,9 @@ namespace AquariumCiv.GameUI
             }
             PlaceToast();
         }
+
+        /// <summary>The name just changed: the title shows it at once.</summary>
+        internal void RefreshNow() => RefreshText();
 
         void RefreshText()
         {

@@ -780,14 +780,14 @@ namespace AquariumCiv.View.PlayTests
             yield return Tap(fb.Root, "fb-kind-bug");
             fb.Root.Q<TextField>("fb-text").value = "The peek covers the second line of the toast when I come back.";
             yield return Frames(4);
-            yield return Cap("3.8-feedback-filled", fb.Root.Q<Button>("fb-send").enabledSelf);
+            yield return Cap("3.8-feedback-filled", ((GlassButton)fb.Root.Q("fb-send")).Available);
             yield return Tap(fb.Root, "fb-send");
             yield return Until(() => !fb.IsOpen, 3f);
             yield return Frames(6);
-            var toast = fb.Root.Q<Label>("fb-toast");
+            var toast = Hud.Root.Q<Label>("hud-toast");
             yield return Until(() => Shown(toast), 3f);
             yield return Cap("3.8-feedback-queued", !fb.IsOpen, toast.text);
-            typeof(FeedbackUI).GetMethod("ShowToast", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(fb, new object[] { "Thanks! Sent to the team." });
+            Hud.Toast("Thanks! Sent to the team.", 3.5f);
             yield return Frames(4);
             yield return Cap("3.8-feedback-sent", Shown(toast), toast.text + " (the text forced: a test note must never reach GitHub)");
             if (Directory.Exists(FeedbackSender.OutboxDir)) Directory.Delete(FeedbackSender.OutboxDir, true);

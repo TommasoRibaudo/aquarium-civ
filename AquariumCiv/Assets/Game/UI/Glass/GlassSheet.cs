@@ -21,7 +21,7 @@ namespace AquariumCiv.GameUI
 
     /// <summary>
     /// The one bottom sheet (<c>GameHud.Sheet</c>, <c>cards-sheet</c>, <c>recall-sheet</c>, <c>shelf-sheet</c>, <c>fb-sheet</c> and the
-    /// naming sheet all become this as their tickets land). Sits on the bottom edge, slides by translate, runs under the home bar with
+    /// naming sheet are all this one). Sits on the bottom edge, slides by translate, runs under the home bar with
     /// its content kept above it. Add children to it and they land in the content box. Normally inside a <see cref="GlassScrim"/>.
     /// </summary>
     [UxmlElement]
@@ -31,6 +31,8 @@ namespace AquariumCiv.GameUI
         public const float SidePad = 44f, BottomPad = 82.5f;
         /// <summary>Bottom padding on a short phone (spec §2): 14 pt, under 700 pt tall.</summary>
         public const float ShortBottomPad = 38.5f;
+        /// <summary>Above the content: 12 pt plus the hairline.</summary>
+        const float TopPad = 35.75f;
         /// <summary>700 pt tall on a 375 pt wide phone. The panel only knows the screen's shape, and the shape is what runs out of room.</summary>
         public const float ShortAspect = 700f / 375f;
 
@@ -79,6 +81,13 @@ namespace AquariumCiv.GameUI
         }
 
         public Vector4 Insets => insets;
+
+        /// <summary>Full height over the box, its content under the safe area: the one sheet a short phone can't fit (feedback, spec §2).</summary>
+        public void SetFull(bool on)
+        {
+            EnableInClassList("kg-sheet--full", on);
+            content.style.paddingTop = on ? insets.y + TopPad : StyleKeyword.Null;
+        }
 
         public void Open(Action done = null)
         {
@@ -244,6 +253,13 @@ namespace AquariumCiv.GameUI
             view.verticalScroller.valueChanged += _ => Bar();
             // The ScrollView holds the pointer while it drags, so it's the end of that hold that says the finger is off.
             RegisterCallback<PointerDownEvent>(_ => pressedAt = view.scrollOffset.y, TrickleDown.TrickleDown);
+            // A slider takes its finger before the view can, or a drag that wanders a little moves the sheet instead of the thumb.
+            RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.target is not GlassSlider slider) return;
+                slider.Grab(e.pointerId, e.position);
+                e.StopPropagation();
+            }, TrickleDown.TrickleDown);
             RegisterCallback<PointerUpEvent>(_ => Settle(), TrickleDown.TrickleDown);
             view.contentContainer.RegisterCallback<PointerCaptureOutEvent>(_ => Settle());
         }

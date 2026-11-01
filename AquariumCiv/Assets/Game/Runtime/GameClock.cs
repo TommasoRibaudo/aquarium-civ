@@ -82,6 +82,8 @@ namespace AquariumCiv.Game
             Save();
             Debug.Log("[GameClock] " + Session.Summary());
             StartTelemetry();
+            Notifier = new EraNotifier(PlatformOverride ?? EraNotifier.MakePlatform());
+            Notifier.Open();
         }
 
         void StartTelemetry()
@@ -115,7 +117,11 @@ namespace AquariumCiv.Game
         /// <summary>Seconds since this session (an open, or a return after a real absence) began.</summary>
         public double SessionSeconds => Time.realtimeSinceStartup - sessionStart;
 
-        void OnDestroy() { if (Instance == this) Instance = null; }
+        void OnDestroy()
+        {
+            Notifier?.Stop();
+            if (Instance == this) Instance = null;
+        }
 
         void Update()
         {
@@ -134,7 +140,12 @@ namespace AquariumCiv.Game
 
         void OnApplicationFocus(bool focus) { if (!focus) Save(); }
 
-        void OnApplicationQuit() { Save(); EndTelemetrySession("quit"); }
+        void OnApplicationQuit()
+        {
+            Save();
+            EndTelemetrySession("quit");
+            if (!paused) Notifier?.Close(ActiveSim, DateTime.UtcNow, EraNotifier.Enabled); // a pause before it has done this already
+        }
 
         void GoAway()
         {
@@ -143,12 +154,14 @@ namespace AquariumCiv.Game
             pausedUtc = DateTime.UtcNow;
             Save();
             EndTelemetrySession("pause");
+            Notifier?.Close(ActiveSim, pausedUtc, EraNotifier.Enabled);
         }
 
         void Return()
         {
             if (!paused || ActiveSim == null) return;
             paused = false;
+            Notifier?.Open();
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var back = ClockLogic.Resume(ActiveSim, pausedUtc, DateTime.UtcNow);
             double ms = sw.Elapsed.TotalMilliseconds;
@@ -213,6 +226,35 @@ namespace AquariumCiv.Game
             ViewChanged?.Invoke();
         }
 
+        // ---------- the notification (#97) ----------
+        /// <summary>The era notification (#97): run ahead at close, cancelled at open.</summary>
+        public EraNotifier Notifier { get; private set; }
+        /// <summary>Tests: the phone a new clock talks to (null = the real one, or a log).</summary>
+        public static ILocalNotifications PlatformOverride;
+
+        /// <summary>The player said yes: this asks the phone, the only place that does, and keeps its answer as the setting.</summary>
+        public void AskNotifications(Action<bool> answered = null)
+        {
+            StartCoroutine(Notifier.Phone.Ask(granted =>
+            {
+                EraNotifier.Enabled = granted;
+                answered?.Invoke(granted);
+            }));
+        }
+
+        // ---------- reset (#95) ----------
+        /// <summary>The player confirmed Reset: the active box is gone and a new world takes its place, with its first run. Finished boxes stay on the shelf.</summary>
+        public void ResetBox(int seed = 0)
+        {
+            if (Session == null) return;
+            ClockLogic.ResetActive(Session, config, seed != 0 ? seed : new System.Random().Next(1, int.MaxValue));
+            LastAway = default;
+            Notifier?.Open();
+            Save();
+            ViewChanged?.Invoke();
+            Debug.Log("[GameClock] reset: " + Session.Summary());
+        }
+
         // ---------- debug (callable from `unity command script eval`) ----------
         /// <summary>Live time jump: the civ lives <paramref name="hours"/> at full speed, mess as in live play.</summary>
         public static string DebugSkipHours(double hours)
@@ -222,6 +264,16 @@ namespace AquariumCiv.Game
             int months = c.ActiveSim.Advance(hours);
             c.Save();
             return string.Format(CultureInfo.InvariantCulture, "skipped {0:0.00} h ({1} months) · year {2:0.0} · pop {3}", hours, months, c.Sim.State.Year, c.Sim.State.population);
+        }
+
+        /// <summary>As if the player left now: what a close would schedule. The box goes on living.</summary>
+        public static string DebugClose()
+        {
+            var c = Instance;
+            if (c == null || c.ActiveSim == null) return "no GameClock running";
+            c.Notifier.Close(c.ActiveSim, DateTime.UtcNow, true);
+            c.Notifier.WaitForRun(30000);
+            return c.Notifier.Last?.ToString() ?? "nothing";
         }
 
         /// <summary>As if the player had been away <paramref name="hours"/>: the offline catch-up with the slow tail.</summary>
