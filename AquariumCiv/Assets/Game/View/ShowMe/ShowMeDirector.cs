@@ -636,7 +636,7 @@ namespace AquariumCiv.View
             bubble = null;
             GameUiPanel.Bubbles.Done(WorldVoice);
             if (bubbleEl == null) return;
-            if (!up) { if (echoWho.IsNone) bubbleEl.style.display = DisplayStyle.None; return; }
+            if (!up) { bubbleEl.style.display = DisplayStyle.None; return; }
             bubbleEl.style.opacity = StyleKeyword.Null; // the fade's class can't beat an inline opacity
             GlassMotion.Hide(bubbleEl, GlassMotion.FadeOff, GlassMotion.FadeMs);
         }
