@@ -690,6 +690,7 @@
 .kg-tile--armed, .kg-tile--armed:hover { border-width: 5.5px; border-color: var(--primary); }
 .kg-tile > .kg-icon { margin-bottom: 2.75px; }
 .kg-tile > Label { margin: 0; padding: 0; white-space: nowrap; }
+.kg-tile-name--long { font-size: 33px; letter-spacing: -0.5px; }
 .tray-sheet--short .kg-tile { height: 222px; padding-top: 11px; padding-bottom: 11px; }
 .tray-foot { flex-direction: row; align-items: center; flex-shrink: 0; min-height: 121px; margin-top: var(--space-6); }
 .tray-note { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; white-space: normal; margin: 0 var(--space-10) 0 0; padding: 0; }

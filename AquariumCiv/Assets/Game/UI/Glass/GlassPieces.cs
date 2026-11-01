@@ -256,7 +256,28 @@ namespace AquariumCiv.GameUI
             whoLabel.text = who ?? "";
             whoLabel.style.display = string.IsNullOrEmpty(who) ? DisplayStyle.None : DisplayStyle.Flex;
             lineLabel.text = line ?? "";
+            lineLabel.style.width = StyleKeyword.Auto;
+            schedule.Execute(Balance).ExecuteLater(16); // once the panel has laid the words out at their widest
         }
+
+        /// <summary>The narrowest width that keeps the line count, so the last line isn't one word on its own. A few measures, once a line.</summary>
+        void Balance()
+        {
+            float wide = lineLabel.layout.width;
+            if (float.IsNaN(wide) || wide <= 1f || string.IsNullOrEmpty(lineLabel.text)) return;
+            float Tall(float w) => lineLabel.MeasureTextSize(lineLabel.text, w, MeasureMode.AtMost, 0f, MeasureMode.Undefined).y;
+            float tall = Tall(wide), one = Tall(100000f);
+            if (tall < one * 1.5f) return;
+            float lo = wide * 0.45f, hi = wide;
+            for (int i = 0; i < BalanceSteps; i++)
+            {
+                float mid = (lo + hi) * 0.5f;
+                if (Tall(mid) > tall + 0.5f) lo = mid; else hi = mid;
+            }
+            lineLabel.style.width = Mathf.Ceil(hi) + 1f;
+        }
+
+        const int BalanceSteps = 7;
 
         /// <summary>Where the tail sits along the bubble (panel px), so it points at whoever speaks.</summary>
         public void TailAt(float x) => tail.style.left = x;

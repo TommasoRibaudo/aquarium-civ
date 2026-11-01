@@ -346,7 +346,7 @@ namespace AquariumCiv.View
                 echoWho = speaker;
                 echoUntil = Time.unscaledTime + seconds;
                 bubbleEl.Set(NameOf(speaker), text);
-                bubbleEl.style.display = DisplayStyle.Flex;
+                GlassMotion.Show(bubbleEl, GlassMotion.FadeOff, null, GlassMotion.FadeMs);
                 bubbleEl.style.maxWidth = BubbleWidth;
                 HoldUntilMeasured();
                 if (!Place(pv, cam, speaker)) bubbleEl.style.display = DisplayStyle.None; // shows as soon as they're on screen
@@ -372,7 +372,8 @@ namespace AquariumCiv.View
             var mp = MomentPlayer.Instance;
             if (Time.unscaledTime >= echoUntil || (mp != null && mp.Playing)) { ClearEchoBubble(); return false; } // a line still up gives way to a moment
             var hud = GameHud.Instance;
-            bool show = (hud == null || (!hud.CameraMode && hud.IsVisible)) && Place(pv, cam, echoWho);
+            bool shown = bubbleEl.resolvedStyle.opacity > 0f && bubbleEl.style.display == DisplayStyle.Flex;
+            bool show = (hud == null || (!hud.CameraMode && hud.IsVisible)) && (Place(pv, cam, echoWho) || shown); // #143: a speaker gone in doesn't cut the line
             bubbleEl.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             return true;
         }
@@ -456,6 +457,7 @@ namespace AquariumCiv.View
             if (hud != null && hud.CameraMode) return "camera mode";
             if (hud != null && hud.CleanMode) return "clean mode";
             if (hud != null && hud.SheetOpen) return "a sheet is open";
+            if (PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen) return "a person card is open"; // its tie tags stand over the people (tester run 5)
             if (hud != null && !hud.IsVisible) return "the HUD is hidden";
             if (Busy) return "show me";
             if (FirstRunView.Instance != null && FirstRunView.Instance.HasTheWord) return "the first run";
@@ -483,8 +485,9 @@ namespace AquariumCiv.View
             string quiet = QuietReason();
             if (bubble != null)
             {
-                bool gone = quiet != null || Time.unscaledTime >= bubbleUntil || !Place(pv, cam, bubbleWho);
-                if (gone) HideBubble();
+                // #143: a speaker who walks indoors doesn't cut the line: it stays where it was, finishes, then fades.
+                if (quiet != null || Time.unscaledTime >= bubbleUntil) HideBubble();
+                else Place(pv, cam, bubbleWho);
                 return;
             }
             if (quiet != null || Time.unscaledTime < nextCheck) return;
@@ -522,8 +525,8 @@ namespace AquariumCiv.View
             bubble = b;
             bubbleWho = who;
             bubbleUntil = Time.unscaledTime + b.seconds;
-            bubbleEl.Set(b.speakerId >= 0 ? NameOf(who) : null, string.Join("\n", b.lines));
-            bubbleEl.style.display = DisplayStyle.Flex;
+            bubbleEl.Set(b.speakerId >= 0 ? NameOf(who) : null, string.Join(" ", b.lines)); // the bubble wraps it: a hard break inside a soft one left words alone on a line
+            GlassMotion.Show(bubbleEl, GlassMotion.FadeOff, null, GlassMotion.FadeMs);
             FitToSpeaker(pv, cam, who);
             HoldUntilMeasured();
             if (!Place(pv, cam, who)) { HideBubble(); return; }
@@ -562,12 +565,36 @@ namespace AquariumCiv.View
                     if (!me.Overlaps(r)) continue;
                     at.y = r.yMin - bh - 12f >= topMin ? r.yMin - bh - 12f : r.yMax + 12f;
                 }
+            at = OffTheSpeaker(pv, cam, who, q, at, bw, bh, panelW);
             bubbleEl.style.left = at.x;
             bubbleEl.style.top = at.y;
             bubbleEl.TailAt(Mathf.Clamp(q.x - at.x - TailHalf, TailEdge, Mathf.Max(TailEdge, bw - TailEdge - TailHalf * 2f)));
             if (Time.frameCount >= measuredAt) bubbleEl.style.opacity = 1f;
             return true;
         }
+
+        /// <summary>#143: the clamps above can push a bubble back over its speaker (top of the screen, a label in the way). Then it steps to
+        /// the side with room, and failing that under their feet: the person talking is never hidden by what they say.</summary>
+        Vector2 OffTheSpeaker(PeopleView pv, Camera cam, PersonRef who, Vector2 head, Vector2 at, float bw, float bh, float panelW)
+        {
+            var feet = head;
+            if (pv.TryGetDollFeet(who, out var fw))
+            {
+                var f = cam.WorldToScreenPoint(fw);
+                feet = RuntimePanelUtils.ScreenToPanel(bubbleEl.panel, new Vector2(f.x, Screen.height - f.y));
+            }
+            float half = Mathf.Max(SpeakerHalfWidth, Mathf.Abs(feet.y - head.y) * 0.3f);
+            var body = Rect.MinMaxRect(Mathf.Min(head.x, feet.x) - half, Mathf.Min(head.y, feet.y), Mathf.Max(head.x, feet.x) + half, Mathf.Max(head.y, feet.y));
+            if (!new Rect(at.x, at.y, bw, bh).Overlaps(body)) return at;
+            float right = body.xMax + SpeakerGap, left = body.xMin - SpeakerGap - bw;
+            if (right + bw <= panelW - 24f && (head.x < panelW * 0.5f || left < 24f)) at.x = right;
+            else if (left >= 24f) at.x = left;
+            if (new Rect(at.x, at.y, bw, bh).Overlaps(body)) at.y = body.yMax + SpeakerGap;
+            return at;
+        }
+
+        /// <summary>A speaker's half width at the least, and the air a bubble keeps from them (panel units).</summary>
+        const float SpeakerHalfWidth = 22f, SpeakerGap = 14f;
 
         // New text has no size until the panel lays it out, and clamping a size of 0 would flash the bubble past the edge:
         // it stays invisible for the frame that takes.
@@ -605,9 +632,13 @@ namespace AquariumCiv.View
 
         void HideBubble()
         {
+            bool up = bubble != null;
             bubble = null;
             GameUiPanel.Bubbles.Done(WorldVoice);
-            if (bubbleEl != null) bubbleEl.style.display = DisplayStyle.None;
+            if (bubbleEl == null) return;
+            if (!up) { if (echoWho.IsNone) bubbleEl.style.display = DisplayStyle.None; return; }
+            bubbleEl.style.opacity = StyleKeyword.Null; // the fade's class can't beat an inline opacity
+            GlassMotion.Hide(bubbleEl, GlassMotion.FadeOff, GlassMotion.FadeMs);
         }
 
         BubbleHost.Voice worldVoice, sceneVoice;
@@ -628,6 +659,7 @@ namespace AquariumCiv.View
             uiRoot.style.left = uiRoot.style.right = uiRoot.style.top = uiRoot.style.bottom = 0;
             bubbleEl = new GlassBubble("", "") { name = "showme-bubble" };
             bubbleEl.AddToClassList("kg-bubble--world");
+            bubbleEl.AddToClassList(GlassMotion.FadeClass);
             bubbleEl.style.display = DisplayStyle.None;
             uiRoot.Add(bubbleEl);
             captionEl = new GlassCaption("") { name = "showme-caption" };
@@ -684,6 +716,35 @@ namespace AquariumCiv.View
             if (b == null) return "nothing left to say";
             d.ShowBubble(pv, cam, b);
             return d.bubble != null ? "bubble: " + b : "nobody on screen to say: " + b.text;
+        }
+
+        /// <summary>Debug (#181): the want line for one case now, through the same bubble and word as any other line.</summary>
+        public static string DebugWant(WantCase c)
+        {
+            var d = Instance;
+            if (d == null) return "no ShowMeDirector";
+            d.Bind();
+            var pv = PeopleView.Find(); var cam = Camera.main;
+            if (pv == null || cam == null || d.bubbles == null) return "no people";
+            string quiet = d.QuietReason();
+            if (quiet != null) return "quiet: " + quiet;
+            var b = d.bubbles.ForceWant(c, Time.unscaledTime);
+            if (b == null) return c + " isn't true now";
+            d.HideBubble();
+            d.Visible(pv, cam);
+            d.ShowBubble(pv, cam, b);
+            return d.bubble != null ? "want: " + b.text : "nobody on screen to say: " + b.text;
+        }
+
+        /// <summary>Debug (#120): forget what's been said in this box.</summary>
+        public static string DebugClearSaid()
+        {
+            var d = Instance;
+            if (d == null) return "no ShowMeDirector";
+            d.Bind();
+            if (d.bubbles == null) return "no box";
+            d.bubbles.Reset();
+            return "said list cleared";
         }
 
         public static string DebugEnd() { var d = Instance; if (d == null) return "no ShowMeDirector"; d.End(); return "show me ended"; }

@@ -231,7 +231,7 @@ namespace AquariumCiv.View.ShowMe
         }
 
         /// <summary>Real seconds a bubble stays: about a reading pace, 3–6 s.</summary>
-        public static float SecondsFor(string text) => Math.Max(3f, Math.Min(6f, 2.2f + 0.05f * (text?.Length ?? 0)));
+        public static float SecondsFor(string text) => Math.Max(3.5f, Math.Min(7f, 2.5f + 0.06f * (text?.Length ?? 0))); // #143: "superfast" at the old 3 s
 
         /// <summary>Phone-sized bubble lines: at most <paramref name="perLine"/> characters a line, breaking at spaces.</summary>
         public static List<string> Wrap(string text, int perLine = BubbleLineChars)

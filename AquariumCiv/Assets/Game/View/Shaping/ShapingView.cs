@@ -132,6 +132,7 @@ namespace AquariumCiv.View
         public void SetTool(string kind, bool quiet = false)
         {
             if (kind != null && System.Array.IndexOf(SimCore.SliceTools, kind) < 0) kind = null;
+            if (toolHint != null) { hud?.WithdrawToast(toolHint); toolHint = null; } // still waiting behind another toast: it no longer applies
             Tray.Close();
             Tool = kind;
             RealTool = false;
@@ -140,8 +141,12 @@ namespace AquariumCiv.View
             if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
             var sim = Sim;
             string name = sim != null ? sim.ShapingToolName(kind) : kind;
-            if (!quiet) hud?.Toast($"Tap the ground to place the {name}.", 4f);
+            if (quiet) return;
+            toolHint = $"Tap the ground to place the {name}.";
+            hud?.Toast(toolHint, 4f);
         }
+
+        string toolHint;
 
         /// <summary>A wish card's Give (#75): shape mode with the wish's tool, pre-armed at the wished spot, with a banner and a
         /// Cancel. A tap on the ground gives it, a drag moves the spot first. False, with the reason as a toast, if it can't be.</summary>
@@ -939,6 +944,9 @@ namespace AquariumCiv.View
             body.Add(foot);
         }
 
+        /// <summary>A name this long ("Wool flock", "Blossoming") only fits a tile a size down.</summary>
+        const int LongToolName = 9;
+
         VisualElement Tiles(IReadOnlyList<TrayTool> list)
         {
             var tools = new VisualElement { name = "shaping-tools", pickingMode = PickingMode.Ignore };
@@ -954,7 +962,9 @@ namespace AquariumCiv.View
                 b.EnableInClassList("kg-tile--armed", t.armed);
                 b.EnableInClassList("kg-tile--last", i == list.Count - 1);
                 b.Add(new GlassIcon(t.enabled ? IconOf(kind) : "lock", "kg-icon--small"));
-                b.Add(TrayLabel(Cap(t.name), "type-small-head", "kg-tile-name"));
+                var name = TrayLabel(Cap(t.name), "type-small-head", "kg-tile-name");
+                name.EnableInClassList("kg-tile-name--long", t.name.Length >= LongToolName);
+                b.Add(name);
                 b.Add(TrayLabel($"Level {t.level}", "type-note"));
                 b.Add(TrayLabel($"{t.standing} of {t.cap} out", "type-note"));
                 tools.Add(b);
