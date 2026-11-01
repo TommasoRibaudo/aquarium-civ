@@ -113,7 +113,9 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(20);
                 AssertGroundHolds(setting);
                 AssertPeopleOnTheGround();
-                Debug.Log($"[setting] {setting} {era}: {Box.layout.pieces.Count} pieces, {Box.layout.trees.Count} trees, {Box.layout.boulders.Count} boulders, {Box.layout.paths.Count} paths");
+                Box.Rebuild();
+                yield return null;
+                Debug.Log($"[setting] {setting} {era}: {Box.layout.pieces.Count} pieces, {Box.layout.trees.Count} trees, {Box.layout.boulders.Count} boulders, {Box.layout.paths.Count} paths; {Box.lastBuildInfo}");
             }
             AssertNoErrors(setting);
         }

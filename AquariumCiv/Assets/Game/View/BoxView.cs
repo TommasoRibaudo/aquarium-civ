@@ -1228,7 +1228,9 @@ namespace AquariumCiv.View
                 var p = Spot(2, i);
                 if (!Free(p, 0.1f, near)) continue;
                 var ib = Item(2, i);
-                Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f, co);
+                // The desert's scrub is half cacti: its woods stand round the water, where the shares would make every one a palm.
+                if (co.look.cactusShare > 0f && H(2, i, 5) < 0.55f) Pieces.Cactus(ib, land.OnGround(p), Mathf.Lerp(0.5f, 0.95f, H(2, i, 3)), co);
+                else Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f, co);
                 mb.AppendFree(ib);
                 near.Add((p, 0.1f));
             }

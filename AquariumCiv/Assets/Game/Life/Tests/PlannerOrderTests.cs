@@ -107,7 +107,8 @@ namespace AquariumCiv.Life.Tests
         }
 
         [TestCase(1, 25)]
-        [TestCase(1, 200, Explicit = true, Reason = "#117: the 200-seed order sweep, about 3 minutes")]
+        [TestCase(1, 200, Explicit = true, Reason = "#117: the 200-seed order sweep, about 3 minutes under .NET, 8 in the Editor")]
+        [Timeout(900000)] // #206: Unity's default is 180 s a test, and the 200 seeds take 460 s under Mono
         public void TheSamePlanWhateverIsAskedFirst(int from, int count)
         {
             int diffs = 0;
