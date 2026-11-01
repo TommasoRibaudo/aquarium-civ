@@ -104,7 +104,7 @@ namespace AquariumCiv.View.ShowMe
                 }
                 case "friendship": text = B != null ? Pick(v,
                     $"{B} is the best friend a person could have.",
-                    $"{B} laughs at my jokes. All of them. Even the bad ones.",
+                    $"{B} laughs at my jokes. Even the bad ones.",
                     $"If {B} says it's a good idea, it's at least half a good idea.") : null; break;
                 case "rivalry": text = B != null ? Pick(v,
                     $"{B}? We don't speak. Well. I don't.",
