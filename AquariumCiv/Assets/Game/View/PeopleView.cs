@@ -325,10 +325,11 @@ namespace AquariumCiv.View
             }
             d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
-            d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
-            d.placed = true;
             var drawnWas = d.drawn;
             StepDrawn(d, a, jump, hidden, prev, inst, dt);
+            if (!jump) inst = (d.drawn - drawnWas).magnitude / dt; // the legs follow the doll drawn: one still easing back to its plan walks there
+            d.speed = Mathf.Lerp(d.speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);
+            d.placed = true;
 
             bool walking = d.speed > 0.04f;
             var style = DollMotion.StyleOf(a.kind);
@@ -381,7 +382,8 @@ namespace AquariumCiv.View
             float px = 0f, pz = 0f;
             if (d.crowdIndex >= 0 && !jump && !hidden) crowd.Push(d.crowdIndex, out px, out pz);
             if (jump || hidden) d.offset = Vector2.zero;
-            else CrowdAvoid.Ease(ref d.offset.x, ref d.offset.y, px, pz, dt);
+            else if (a.moving) CrowdAvoid.Ease(ref d.offset.x, ref d.offset.y, px, pz, dt);
+            else d.offset = Vector2.MoveTowards(d.offset, Vector2.zero, DrawnSlack * dt); // arrived: back onto their spot at a stroll, off whatever the walk brushed
             var wanted = d.pos + d.offset;
             if (Box.land.IsWater(wanted.x, wanted.y)) wanted = d.pos; // eased aside, never into the pond
             if (hidden) { d.drawn = wanted; return; }
