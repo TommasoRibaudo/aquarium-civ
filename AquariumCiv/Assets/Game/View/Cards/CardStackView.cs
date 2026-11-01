@@ -15,8 +15,10 @@ namespace AquariumCiv.View
     /// one <see cref="GlassSheet"/> at 30 %, holding a <see cref="GlassCard"/>. All the logic is <see cref="CardStackModel"/>; this file only
     /// draws <see cref="CardStackModel.Face"/> and passes touches on. Order in the row: Back, Next, Show me, then the one primary at the
     /// right (Give, Watch, Remember; Done on Also…). A story has no filled button, its headline leads. Long cards scroll inside the sheet
-    /// in whole lines. Stable names for tests and the tester agent: <c>cards-peek</c>, <c>cards-sheet</c>, <c>cards-next</c>,
-    /// <c>cards-back</c>, <c>cards-skip</c>, <c>cards-showme</c>, <c>cards-action</c>, <c>cards-portrait-0/1</c>, <c>cards-also-0/1/2</c>.
+    /// in whole lines. During Show me the sheet slides off so the place stays clear, and a bar in the tools' lane brings it back: at a tap,
+    /// or when the echo is over (board S33Return). Stable names for tests and the tester agent: <c>cards-peek</c>, <c>cards-sheet</c>,
+    /// <c>cards-next</c>, <c>cards-back</c>, <c>cards-skip</c>, <c>cards-showme</c>, <c>cards-action</c>, <c>cards-portrait-0/1</c>,
+    /// <c>cards-also-0/1/2</c>, <c>cards-showme-bar</c>, <c>cards-showme-back</c>.
     /// </summary>
     public class CardStackView : MonoBehaviour
     {
@@ -33,6 +35,7 @@ namespace AquariumCiv.View
         VisualElement root, head, ports, eraMark, alsoBox, yearSide;
         GlassPeek peek;
         GlassSheet sheet;
+        GlassBanner showBar;
         GlassCard card;
         GlassScroll scroll;
         GlassPortrait peekPortrait;
@@ -49,7 +52,7 @@ namespace AquariumCiv.View
         CardStackModel model;
         Rect lastSafe;
         Vector2Int lastScreen;
-        bool personOpen, watchingFlight, pressedLast, toolsHidden, peekUp, tight;
+        bool personOpen, watchingFlight, pressedLast, toolsHidden, peekUp, tight, showingPlace, barUp;
         Vector2 swipeFrom;
         int swipePointer = -1;
         bool swipeInScroll;
@@ -90,7 +93,7 @@ namespace AquariumCiv.View
         {
             if (Instance != this) return;
             UiInput.Remove(IsOverUi);
-            if (hud != null && hud.OutsideSheet == sheet) hud.SetOutsideSheet(null);
+            if (hud != null && (hud.OutsideSheet == sheet || hud.OutsideSheet == showBar)) hud.SetOutsideSheet(null);
             SetPeekUp(false);
             Unhook();
             SetToolsHidden(false);
@@ -180,7 +183,7 @@ namespace AquariumCiv.View
             if (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return true;
             if (clock != null && clock.Visiting) return true;
             var person = PersonCardView.Instance;
-            if (person != null && person.IsOpen) return true;
+            if (person != null && person.AnyOpen) return true;
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var mp = MomentPlayer.Instance;
@@ -198,7 +201,9 @@ namespace AquariumCiv.View
             if (hud != null) hud.SetHistoryDot(dot && model.Mode == CardStackMode.Hidden); // spec §4: after a swipe, never beside the peek
             bool covered = model == null || Covered();
             bool open = model != null && model.Mode == CardStackMode.Open, peeking = model != null && model.Mode == CardStackMode.Peek;
-            ShowSheet(open && !covered);
+            if (showingPlace && (!open || ShowMeDirector.Instance == null || ShowMeDirector.Instance.Settled)) showingPlace = false;
+            ShowSheet(open && !covered && !showingPlace);
+            ShowBar(open && !covered && showingPlace);
             ShowPeek(peeking && !covered);
             if (model == null) return;
             SetToolsHidden(open);
@@ -206,8 +211,9 @@ namespace AquariumCiv.View
             if (hud != null)
             {
                 bool mine = open && !covered;
-                if (mine && hud.OutsideSheet != sheet) hud.SetOutsideSheet(sheet);
-                else if (!mine && hud.OutsideSheet == sheet) hud.SetOutsideSheet(null);
+                VisualElement up = showingPlace ? showBar : sheet;
+                if (mine && hud.OutsideSheet != up) hud.SetOutsideSheet(up);
+                else if (!mine && (hud.OutsideSheet == sheet || hud.OutsideSheet == showBar)) hud.SetOutsideSheet(null);
             }
 
             if (personOpen && (PersonCardView.Instance == null || !PersonCardView.Instance.IsOpen)) { personOpen = false; model.PersonClosed(); }
@@ -227,6 +233,15 @@ namespace AquariumCiv.View
             if (on == sheet.IsOpen) return;
             UiSound.Play(on ? UiRole.CardIn : UiRole.CardOut);
             if (on) sheet.Open(); else sheet.Close();
+        }
+
+        void ShowBar(bool on)
+        {
+            if (on == barUp) return;
+            barUp = on;
+            showBar.pickingMode = on ? PickingMode.Position : PickingMode.Ignore; // a leaving bar takes no taps
+            if (on) GlassMotion.Show(showBar, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
+            else GlassMotion.Hide(showBar, GlassMotion.SlideOff, GlassMotion.SlideMs);
         }
 
         void ShowPeek(bool on)
@@ -256,6 +271,9 @@ namespace AquariumCiv.View
             peek.style.bottom = i.w + GameUiPanel.Lane(GameUiPanel.PeekBottom, i.w);
             peek.style.left = GlassSheet.SidePad + i.x;
             peek.style.right = GlassSheet.SidePad + i.z;
+            showBar.style.bottom = i.w + GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
+            showBar.style.left = GlassSheet.SidePad + i.x;
+            showBar.style.right = GlassSheet.SidePad + i.z;
             bool shortPhone = GlassSheet.IsShort(Screen.width, Screen.height);
             sheet.SetInsets(i, shortPhone ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
             sheet.EnableInClassList("cards--short", shortPhone);
@@ -331,6 +349,11 @@ namespace AquariumCiv.View
             sheet.RegisterCallback<PointerUpEvent>(SheetLifted, TrickleDown.TrickleDown);
             sheet.RegisterCallback<PointerUpEvent>(SheetLifted);
             root.Add(sheet);
+
+            showBar = new GlassBanner { name = "cards-showme-bar", pickingMode = PickingMode.Ignore };
+            showBar.style.display = DisplayStyle.None;
+            showBar.End.Add(new GlassButton("Back to the story", () => showingPlace = false, ButtonKind.Secondary, UiRole.Back) { name = "cards-showme-back", Compact = true });
+            root.Add(showBar);
 
             card = new GlassCard();
             sheet.Add(card);
@@ -489,7 +512,13 @@ namespace AquariumCiv.View
             var sm = ShowMeDirector.Instance;
             if (sm == null || model == null) return;
             watchingFlight = shown != null && sm.Show(shown) != null;
-            if (watchingFlight) return;
+            if (watchingFlight)
+            {
+                var f = model.Face;
+                showBar.Set(f?.headline, f?.footer);
+                showingPlace = true;
+                return;
+            }
             model.ShowMeLanded();
             GameHud.Instance?.Toast(CantGoThere, 2.5f); // the card stays, one line says why (board 3.3)
         }
@@ -678,17 +707,30 @@ namespace AquariumCiv.View
             return m.Face != null && m.Face.kind == kind ? Status() : "no such card came up";
         }
 
-        /// <summary>This page drawn as a card with a teaser it pays off (<c>payoff</c>), an end line (<c>end</c>) or too much to fit (<c>long</c>).</summary>
+        /// <summary>Show me on the open page, as its button: the sheet leaves and the bar comes up.</summary>
+        public static string DebugShowMe()
+        {
+            var v = Instance;
+            if (v?.model == null || v.model.Mode != CardStackMode.Open || v.model.Face == null || v.model.Face.isAlso) return "open a card first";
+            v.ShowMe();
+            return v.showingPlace ? "show me: the bar is up" : "no place to show";
+        }
+
+        /// <summary>This page drawn as a card with a teaser it pays off (<c>payoff</c>), an end line (<c>end</c>), too much to fit
+        /// (<c>long</c>) or two people (<c>two</c>).</summary>
         public static string DebugText(string what)
         {
             var v = Instance;
             var face = v?.model?.Face;
             if (face == null || face.isAlso) return "open a card first";
+            var pair = Sim.State.notables.FindAll(n => n.alive);
+            if (what == "two" && pair.Count < 2) return "two people needed";
             v.debugFace = face.id;
             v.debugEdit = what switch
             {
                 "payoff" => f => f.teaserLine = "At the fire: The craftsfolk talk of guilds, and of a bigger market.",
                 "end" => f => { f.teaserLine = "At the fire: Edmund and Hal aren't speaking again."; f.endLine = "They never did make up."; },
+                "two" => f => { f.portraits.Clear(); f.portraits.Add(pair[0].id); f.portraits.Add(pair[1].id); },
                 _ => f =>
                 {
                     f.body = "A piece of bread the size of a hut fell from the sky the year the Keeper shaped the land. They tasted it first, and then everyone did. The village ate well all winter, and the old folk still tell it.";

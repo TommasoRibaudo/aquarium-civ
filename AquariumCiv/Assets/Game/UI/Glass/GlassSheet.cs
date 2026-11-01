@@ -142,6 +142,8 @@ namespace AquariumCiv.GameUI
             hierarchy.Add(content);
         }
 
+        public bool Inline { set => EnableInClassList("kg-peek--inline", value); }
+
         public void Open()
         {
             IsOpen = true;
@@ -199,7 +201,8 @@ namespace AquariumCiv.GameUI
 
     /// <summary>
     /// Scrolling inside a sheet: the view's height snaps to whole lines so no line is ever cut (questions 3), with a thin bar that
-    /// shows there's more. Set <see cref="LinePitch"/> to the content's line height in panel px.
+    /// shows there's more, and with <see cref="SnapToRows"/> a release settles the text on a whole line too. Set
+    /// <see cref="LinePitch"/> to the content's line height in panel px.
     /// </summary>
     [UxmlElement]
     public partial class GlassScroll : VisualElement
@@ -209,7 +212,13 @@ namespace AquariumCiv.GameUI
         public float LinePitch { get; set; } = GlassType.BodyPitch;
         /// <summary>Content of mixed heights, where no pitch fits: the view ends under the last element of this class that fits whole.</summary>
         public const string RowClass = "kg-scroll-row";
-        public bool SnapToRows { get; set; }
+        public bool SnapToRows
+        {
+            get => snapToRows;
+            set { snapToRows = value; view.scrollDecelerationRate = value ? 0f : DefaultDeceleration; } // it stops where it's let go, or the settle would fight the glide
+        }
+        bool snapToRows;
+        const float DefaultDeceleration = 0.135f;
         /// <summary>Rows are paragraphs: the view may end inside one, on a whole line of it, so room isn't left empty. A row's own pitch is
         /// its <c>userData</c> (a float), else <see cref="LinePitch"/>.</summary>
         public bool SplitRows { get; set; }
@@ -233,6 +242,28 @@ namespace AquariumCiv.GameUI
             view.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => Snap());
             view.RegisterCallback<GeometryChangedEvent>(_ => Bar()); // the height just set lands a layout later
             view.verticalScroller.valueChanged += _ => Bar();
+            // The ScrollView holds the pointer while it drags, so it's the end of that hold that says the finger is off.
+            RegisterCallback<PointerUpEvent>(_ => Settle(), TrickleDown.TrickleDown);
+            view.contentContainer.RegisterCallback<PointerCaptureOutEvent>(_ => Settle());
+        }
+
+        /// <summary>The finger is off: the view moves to the nearest whole line (the stops are every row's lines), or to the very end.</summary>
+        void Settle()
+        {
+            if (!SnapToRows) return;
+            float all = view.contentContainer.layout.height, shown = view.layout.height;
+            if (float.IsNaN(all) || float.IsNaN(shown) || all <= shown + 1f) return;
+            float end = all - shown, at = view.scrollOffset.y, best = end;
+            void Stop(float y) { if (Mathf.Abs(y - at) < Mathf.Abs(best - at)) best = y; }
+            Stop(0f);
+            float top = view.contentContainer.worldBound.yMin;
+            view.contentContainer.Query(className: RowClass).ForEach(r =>
+            {
+                if (r.resolvedStyle.display == DisplayStyle.None) return;
+                float pitch = r.userData is float own && own > 0f ? own : LinePitch, bottom = r.worldBound.yMax - top;
+                for (float y = r.worldBound.yMin - top; y < bottom - 1f && y < end; y += pitch) Stop(y);
+            });
+            view.scrollOffset = new Vector2(view.scrollOffset.x, best);
         }
 
         void Snap()

@@ -149,7 +149,7 @@ namespace AquariumCiv.View.PlayTests
                 "badge-dot", "badge-page-dots", "badge-pips", "badge-new", "badge-ribbon",
                 "toast-short", "toast-long", "caption-line", "caption-who", "caption-panel",
                 "hint-word", "hint-finger", "hint-ghost", "banner-tool", "banner-visiting",
-                "prompt-ready", "prompt-pressed", "prompt-hidden",
+                "prompt-ready", "prompt-pressed", "prompt-hidden", "peek-story",
             };
             foreach (var id in required)
                 Assert.Contains("gal-" + id, g.States, id);
@@ -213,7 +213,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         static VisualElement[] Targets(VisualElement root) =>
-            root.Query<Button>().ToList().Cast<VisualElement>().Concat(root.Query<GlassSlider>().ToList()).Where(Displayed).ToArray();
+            root.Query<Button>().ToList().Cast<VisualElement>().Concat(root.Query<GlassSlider>().ToList()).Concat(root.Query<GlassPeek>().ToList()).Where(Displayed).ToArray();
 
         [UnityTest, Timeout(120000)]
         public IEnumerator EveryTargetReachesMinTarget()

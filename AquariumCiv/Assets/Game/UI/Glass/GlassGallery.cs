@@ -379,6 +379,16 @@ namespace AquariumCiv.GameUI
             box2.style.height = 500f;
             States.Add("gal-card-story");
             story.name = "gal-card-story";
+            s.Add(Text("The peek: over the tools, a tap opens the stack, a swipe puts it away", "type-note", "gal-state"));
+            var peek = new GlassPeek { Inline = true };
+            var lines = new VisualElement { pickingMode = PickingMode.Ignore };
+            lines.AddToClassList("kg-peek-lines");
+            lines.Add(Text("Mabel has a wish", "type-head", "kg-peek-line"));
+            lines.Add(Text("At the fire: rain on the west fields.", "type-quote", "kg-peek-teaser"));
+            peek.Add(new GlassPortrait("Mabel"));
+            peek.Add(lines);
+            State(s, "peek", "story", peek);
+            peek.Open();
         }
 
         void TabsToggles()
