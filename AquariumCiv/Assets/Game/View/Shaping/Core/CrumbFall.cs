@@ -20,7 +20,7 @@ namespace AquariumCiv.View.Shaping
         /// <summary>The drop from the top of the box to the wall, and from the wall down to the spot (heavy: short and sharp).</summary>
         public const float FallSeconds = 0.55f, BounceSeconds = 0.7f;
         /// <summary>Where on the wall it hits, as a fraction of the box height, and the smudge it leaves (a pane's uv radius and grime strength).</summary>
-        public const float HitMin = 0.35f, HitMax = 0.6f, SmudgeRadius = 0.05f, SmudgeStrength = 0.8f;
+        public const float HitMin = 0.35f, HitMax = 0.6f, SmudgeRadius = 0.08f, SmudgeStrength = 0.8f;
         /// <summary>How far from the wall the crumb starts, as a fraction of the half width (it drops towards the wall).</summary>
         public const float StartInset = 0.4f;
         /// <summary>The big lump is eaten over this many game months; only then the last piece shows (#138).</summary>
@@ -51,11 +51,11 @@ namespace AquariumCiv.View.Shaping
             if (Math.Abs(spotX) < halfW * 0.15f && (h & 3u) == 0u) wall = CrumbWall.Back; // dead centre: sometimes the back
             float hitFrac = HitMin + (HitMax - HitMin) * ((h >> 8 & 255u) / 255f);
             float wx = wall == CrumbWall.Left ? -halfW : wall == CrumbWall.Right ? halfW : spotX;
-            float wz = wall == CrumbWall.Back ? -halfD : spotZ;
+            float wz = wall == CrumbWall.Back ? halfD : spotZ; // the camera stands on the -z side: that pane is the player's own view
             float dirX = wall == CrumbWall.Left ? -1f : wall == CrumbWall.Right ? 1f : 0f;
-            float dirZ = wall == CrumbWall.Back ? -1f : 0f;
+            float dirZ = wall == CrumbWall.Back ? 1f : 0f;
             float inset = wall == CrumbWall.Back ? halfD : halfW;
-            float distToWall = wall == CrumbWall.Back ? spotZ + halfD : Math.Abs(wx - spotX);
+            float distToWall = wall == CrumbWall.Back ? halfD - spotZ : Math.Abs(wx - spotX);
             // It starts up and part of the way to the wall, so the fall carries it onto the glass and it comes back to the spot.
             float run = Math.Min(distToWall * 0.6f, inset * StartInset);
             var p = new Plan
@@ -67,7 +67,7 @@ namespace AquariumCiv.View.Shaping
                 smudgeRadius = SmudgeRadius, smudgeStrength = SmudgeStrength,
                 hitAt = FallSeconds, landAt = FallSeconds + BounceSeconds,
             };
-            if (wall == CrumbWall.Back) { p.hitX = spotX; p.hitZ = -halfD; p.smudgeU = Clamp01((spotX + halfW) / (2f * halfW)); }
+            if (wall == CrumbWall.Back) { p.hitX = spotX; p.hitZ = halfD; p.smudgeU = Clamp01((spotX + halfW) / (2f * halfW)); }
             else { p.hitX = wx; p.hitZ = spotZ; p.smudgeU = Clamp01((spotZ + halfD) / (2f * halfD)); }
             p.smudgeV = Clamp01(p.hitY / height);
             return p;

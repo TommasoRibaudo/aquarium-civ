@@ -53,6 +53,8 @@ namespace AquariumCiv.View
 
         /// <summary>The tracker (tests, the debug panel, #84's tray).</summary>
         public ShapingShow Show => show;
+        /// <summary>#147: how long the newest shaping's arrival plays, real seconds (0 = none).</summary>
+        public float LastArrivalSeconds => show.Entries.Count > 0 ? ShapingShow.ArrivalSeconds(show.Entries[show.Entries.Count - 1].footprint) : 0f;
         /// <summary>The tray's model. Until #84 gives it a screen only a wish arms it (<see cref="ArmWish"/>).</summary>
         public ShapingTray Tray { get; } = new();
         /// <summary>A wish card's Give put the tool in hand at the wish's spot.</summary>

@@ -4,6 +4,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.Shaping;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -269,6 +270,49 @@ namespace AquariumCiv.View
                 masks[i].ResetTo(sim.State.grime);
             }
             synced = sim.State.grime;
+        }
+
+        /// <summary>The glass box in box space: half width, half depth, and the top of the panes. False before the panes are bound.</summary>
+        public bool Walls(out float halfW, out float halfD, out float top)
+        {
+            halfW = Land.HX; halfD = Land.HZ; top = 1.6f;
+            if (cols.Length == 0) return false;
+            for (int i = 0; i < cols.Length; i++)
+            {
+                var t = cols[i].transform;
+                if (zAxis[i]) halfW = Mathf.Abs(t.localPosition.x); else halfD = Mathf.Abs(t.localPosition.z);
+                top = t.localPosition.y + t.localScale.y * 0.5f;
+            }
+            return true;
+        }
+
+        /// <summary>A pane's transform (tests).</summary>
+        public Transform PaneOf(int i) => cols[i].transform;
+
+        /// <summary>#147: grime the sim counts for a crumb's smudge. Small: the mark itself is drawn on the one pane.</summary>
+        public const float CrumbGrime = 0.01f;
+        /// <summary>The last smudge: its pane (-1 = none yet), its uv and its radius, world units (tests).</summary>
+        public int LastSmudgePane { get; private set; } = -1;
+        public Vector2 LastSmudgeUv { get; private set; }
+        public float LastSmudgeRadius { get; private set; }
+
+        /// <summary>#147: the Sky Crumb hit a wall at <paramref name="boxPoint"/> (box space): a smudge on that pane, real grime the Keeper wipes off like any other.</summary>
+        public void Smudge(CrumbWall wall, Vector3 boxPoint, float radiusUv, float strength)
+        {
+            var sim = Sim;
+            for (int i = 0; i < cols.Length; i++)
+            {
+                var p = cols[i].transform.localPosition;
+                bool it = wall switch { CrumbWall.Left => zAxis[i] && p.x < 0f, CrumbWall.Right => zAxis[i] && p.x > 0f, _ => !zAxis[i] && p.z > 0f };
+                if (!it) continue;
+                var uv = Uv(i, box.transform.TransformPoint(boxPoint));
+                uv = new Vector2(Mathf.Clamp01(uv.x), Mathf.Clamp01(uv.y));
+                float r = radiusUv * masks[i].size.x;
+                masks[i].Smudge(uv, r, strength);
+                LastSmudgePane = i; LastSmudgeUv = uv; LastSmudgeRadius = r;
+                if (sim != null) { sim.AddMess(CrumbGrime, 0f, 0); synced = sim.State.grime; } // no Grow: this grime is drawn here
+                return;
+            }
         }
 
         /// <summary>The sim's grime is the source over time: it grows the masks unevenly, or fades them when something else

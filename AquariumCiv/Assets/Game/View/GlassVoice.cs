@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.Shaping;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -145,6 +146,7 @@ namespace AquariumCiv.View
         // ---------------- relic moments ----------------
         void PlayPending(SimCore sim, LifePlanner planner, ViewTime now)
         {
+            if (props != null) props.CrumbHeld = pending.Contains(RelicId.SkyCrumb);
             if (pending.Count == 0) return;
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return; // the era moment first
@@ -155,10 +157,25 @@ namespace AquariumCiv.View
                 if (def == null || !sim.HasRelic(id)) { pending.RemoveAt(i--); continue; }
                 // The Lens at dusk (§1.5): it waits for its hour (any time from then until night).
                 if (def.preferredHour >= 0f && (now.hour < def.preferredHour - 0.25f || now.hour > LifeClock.Night + 1f)) continue;
+                if (id == RelicId.SkyCrumb && !CrumbDue(sim)) continue; // #147: after what made it has landed, so the two don't read as one event
                 pending.RemoveAt(i--);
+                crumbAt = -1f;
                 Play(planner, id, now);
                 return; // one at a time
             }
+        }
+
+        float crumbAt = -1f, crumbArrival;
+
+        /// <summary>#147: has the wait after the shaping that made the crumb passed? Starts counting the first time it's asked.</summary>
+        bool CrumbDue(SimCore sim)
+        {
+            if (crumbAt < 0f)
+            {
+                crumbArrival = ShapingView.Instance != null ? ShapingView.Instance.LastArrivalSeconds : 0f;
+                crumbAt = Time.unscaledTime + CrumbFall.Delay(sim.FindRelic(RelicId.SkyCrumb)?.cause, crumbArrival);
+            }
+            return Time.unscaledTime >= crumbAt;
         }
 
         RelicMomentInfo Play(LifePlanner planner, string id, ViewTime now)
@@ -167,7 +184,7 @@ namespace AquariumCiv.View
             if (info != null)
             {
                 LastMoment = info;
-                if (props != null) props.MomentStarted(id);
+                if (props != null) props.MomentStarted(id, crumbArrival);
                 Sfx.Play(CueLibrary.Discovery); // #96: a relic's moment begins ("look at this")
                 NudgeTo(planner, info.spot);
                 Debug.Log($"[GlassVoice] the {SimCore.RelicName(id)} moment: {info.cast.Count} people, {now.hour:0.00}h to {info.end:0.00}h");
@@ -335,6 +352,26 @@ namespace AquariumCiv.View
             return string.Format(CultureInfo.InvariantCulture, "glass: belief {0} {1} · side {2} · waiting {3} · knocks {4} (last {5}, back {6})",
                 p.BeliefStageSeen, p.BeliefLaterSeen ? "later" : "early", p.GlassSide, g.pending.Count == 0 ? "none" : string.Join(",", g.pending),
                 g.Knocks, g.LastTaps, g.LastTapBack);
+        }
+
+        /// <summary>Debug (#147): the Sky Crumb falls now, bounce and smudge, found or not.</summary>
+        public static string DebugDropCrumb()
+        {
+            var sim = Sim;
+            if (sim == null) return "glass: not running";
+            if (!sim.HasRelic(RelicId.SkyCrumb) && sim.DebugGiveRelic(RelicId.SkyCrumb) == null) return "no crumb";
+            sim.FindRelic(RelicId.SkyCrumb).foundMonth = sim.State.month;
+            return DebugPlayMoment(RelicId.SkyCrumb);
+        }
+
+        /// <summary>Debug (#147, #138): the big lump is eaten: its last piece on the stone by the fire.</summary>
+        public static string DebugCrumbEaten()
+        {
+            var sim = Sim;
+            if (sim == null) return "glass: not running";
+            if (!sim.HasRelic(RelicId.SkyCrumb) && sim.DebugGiveRelic(RelicId.SkyCrumb) == null) return "no crumb";
+            sim.FindRelic(RelicId.SkyCrumb).foundMonth = sim.State.month - CrumbFall.EatenMonths;
+            return "the crumb is eaten";
         }
 
         /// <summary>Debug: give the relic if it isn't found yet, then play its moment now (whatever the hour).</summary>

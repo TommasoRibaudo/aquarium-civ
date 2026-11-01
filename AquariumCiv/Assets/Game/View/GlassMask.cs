@@ -127,6 +127,21 @@ namespace AquariumCiv.View
             return removed;
         }
 
+        /// <summary>#147: dirties a disc (something hit the pane here): up to <paramref name="strength"/> more grime at the centre, none below the ground.</summary>
+        public void Smudge(Vector2 uv, float radius, float strength)
+        {
+            double added = 0;
+            ForDisc(uv, radius, (i, f) =>
+            {
+                float before = grime[i];
+                float after = Mathf.Min(1f, before + strength * f * weight[i]);
+                grime[i] = after;
+                added += after - before;
+            });
+            sum += added;
+            if (added > 0) dirty = true;
+        }
+
         /// <summary>Wipes along a segment (stamps a third of the radius apart).</summary>
         public double BrushLine(Vector2 fromUv, Vector2 toUv, float radius, float strength)
         {

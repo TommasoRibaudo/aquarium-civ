@@ -153,6 +153,8 @@ namespace AquariumCiv.View
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Clear said")) last = ShowMeDirector.DebugClearSaid();
             if (GUILayout.Button("Clean hint")) last = CareView.DebugCleanHint();
+            if (GUILayout.Button("Drop crumb")) last = GlassVoice.DebugDropCrumb();
+            if (GUILayout.Button("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
             if (GUILayout.Button("Grant a wish")) last = WishPayoffView.DebugGrant();
             if (GUILayout.Button("Gift glow")) last = WishPayoffView.DebugGlow();
             if (GUILayout.Button("Baby")) last = PeopleView.DebugBaby();

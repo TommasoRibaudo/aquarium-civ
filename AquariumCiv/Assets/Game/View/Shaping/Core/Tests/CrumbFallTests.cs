@@ -30,7 +30,7 @@ namespace AquariumCiv.View.Shaping.Tests
                     Assert.IsTrue(System.Math.Abs(p.hitX) <= HW + 1e-3f && System.Math.Abs(p.hitZ) <= HD + 1e-3f, "the hit is on the glass");
                     if (p.wall == CrumbWall.Left) Assert.AreEqual(-HW, p.hitX, 1e-4f);
                     if (p.wall == CrumbWall.Right) Assert.AreEqual(HW, p.hitX, 1e-4f);
-                    if (p.wall == CrumbWall.Back) Assert.AreEqual(-HD, p.hitZ, 1e-4f);
+                    if (p.wall == CrumbWall.Back) Assert.AreEqual(HD, p.hitZ, 1e-4f); // the far pane: -z is the one the player looks through
                     Assert.AreEqual(x, p.landX); Assert.AreEqual(z, p.landZ, "it lands at its spot");
                     Assert.Greater(p.smudgeStrength, 0f);
                     Assert.Greater(p.landAt, p.hitAt);
