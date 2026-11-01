@@ -36,14 +36,14 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             foreach (float at in new[] { 6f, 12f, 17.5f, 19.5f, 22f })
-                if (GUILayout.Button(at.ToString("0.#"))) last = PeopleView.DebugSetHour(at);
+                if (GUILayout.Button(at.ToString("0.#"), GUILayout.Width(46))) last = PeopleView.DebugSetHour(at);
             GUILayout.EndHorizontal();
             if (GUILayout.Button(day.ClockPaused ? "Clock: paused" : "Clock: runs")) last = DayLightDriver.DebugPauseClock(!day.ClockPaused);
             GUILayout.BeginHorizontal();
             foreach (AquariumCiv.Lighting.LightLook look in System.Enum.GetValues(typeof(AquariumCiv.Lighting.LightLook)))
             {
                 string name = look == AquariumCiv.Lighting.LightLook.SoftBlueDusk ? "Dusk" : look == AquariumCiv.Lighting.LightLook.SoftBlueMoon ? "Moon" : look == AquariumCiv.Lighting.LightLook.Lamplight ? "Lamp" : "Today";
-                if (GUILayout.Button((day.Logic.Look == look ? ">" : "") + name)) last = DayLightDriver.DebugLook(look);
+                if (GUILayout.Button((day.Logic.Look == look ? ">" : "") + name, GUILayout.Width(58))) last = DayLightDriver.DebugLook(look);
             }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
@@ -86,6 +86,20 @@ namespace AquariumCiv.View
             return "closest, at a door";
         }
 
+        int rowCount;
+        bool inRow;
+
+        void Row() { GUILayout.BeginHorizontal(); inRow = true; rowCount = 0; }
+        void EndRow() { GUILayout.EndHorizontal(); inRow = false; }
+
+        /// <summary>A button in the current row, which wraps after three: one long row used to stretch the whole panel past its width, and every other row with it.</summary>
+        bool Btn(string text, params GUILayoutOption[] options)
+        {
+            if (inRow && rowCount == 3) { GUILayout.EndHorizontal(); GUILayout.BeginHorizontal(); rowCount = 0; }
+            rowCount++;
+            return GUILayout.Button(text, options);
+        }
+
         void OnGUI()
         {
             var safe = DebugDock.Begin(out float sc);
@@ -99,161 +113,161 @@ namespace AquariumCiv.View
             scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label(src != null ? src.Status() : "no SimLayoutSource");
             DrawLight(PeopleView.Find());
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
-            if (GUILayout.Button("+10 yr")) last = SimLayoutSource.DebugSkipYears(10);
-            if (GUILayout.Button("+40 yr")) last = SimLayoutSource.DebugSkipYears(40);
-            GUILayout.EndHorizontal();
-            if (GUILayout.Button("Next era (wave)")) last = SimLayoutSource.DebugNextEra(true);
-            if (GUILayout.Button("Replay era wave")) last = SimLayoutSource.DebugReplayWave();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Build hut")) last = SimLayoutSource.DebugBuild("Hut");
-            if (GUILayout.Button("Build farm")) last = SimLayoutSource.DebugBuild("Farm");
-            GUILayout.EndHorizontal();
-            if (GUILayout.Button(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
-            if (GUILayout.Button("Send test feedback")) last = FeedbackSender.DebugSendTest();
-            if (GUILayout.Button(FrostTestPanel.Instance != null ? "Close frost test" : "Frost test (phone)"))
+            Row();
+            if (Btn("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
+            if (Btn("+10 yr")) last = SimLayoutSource.DebugSkipYears(10);
+            if (Btn("+40 yr")) last = SimLayoutSource.DebugSkipYears(40);
+            EndRow();
+            if (Btn("Next era (wave)")) last = SimLayoutSource.DebugNextEra(true);
+            if (Btn("Replay era wave")) last = SimLayoutSource.DebugReplayWave();
+            Row();
+            if (Btn("Build hut")) last = SimLayoutSource.DebugBuild("Hut");
+            if (Btn("Build farm")) last = SimLayoutSource.DebugBuild("Farm");
+            EndRow();
+            if (Btn(NightLamps.Level > 0.5f ? "Day" : "Night")) last = NightLamps.DebugSetLevel(NightLamps.Level > 0.5f ? 0f : 1f);
+            if (Btn("Send test feedback")) last = FeedbackSender.DebugSendTest();
+            if (Btn(FrostTestPanel.Instance != null ? "Close frost test" : "Frost test (phone)"))
             {
                 last = FrostTestPanel.DebugToggle();
                 DebugDock.Active = DebugDock.None; // this panel off the screen: it isn't what's being measured
             }
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button(GlassGallery.Instance != null ? "Close gallery" : "UI gallery"))
+            Row();
+            if (Btn(GlassGallery.Instance != null ? "Close gallery" : "UI gallery"))
             {
                 last = GlassGallery.DebugToggle();
                 DebugDock.Active = DebugDock.None; // the gallery fills the screen
             }
-            if (GUILayout.Button(FrostSwitch.On ? "Sheets: frost" : "Sheets: flat")) { FrostSwitch.On = !FrostSwitch.On; last = FrostSwitch.On ? "sheets frosted" : "sheets flat, no pass"; }
-            if (GUILayout.Button($"Blur {FrostSwitch.Blur:0.#}")) { FrostSwitch.Blur = FrostSwitch.Blur > FrostSwitch.BlurSmall ? FrostSwitch.BlurSmall : FrostSwitch.BlurLarge; last = $"blur {FrostSwitch.Blur:0.#} panel px"; }
-            GUILayout.EndHorizontal();
+            if (Btn(FrostSwitch.On ? "Sheets: frost" : "Sheets: flat")) { FrostSwitch.On = !FrostSwitch.On; last = FrostSwitch.On ? "sheets frosted" : "sheets flat, no pass"; }
+            if (Btn($"Blur {FrostSwitch.Blur:0.#}")) { FrostSwitch.Blur = FrostSwitch.Blur > FrostSwitch.BlurSmall ? FrostSwitch.BlurSmall : FrostSwitch.BlurLarge; last = $"blur {FrostSwitch.Blur:0.#} panel px"; }
+            EndRow();
             GUILayout.Label(RecallPromptView.Status());
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Day +1")) last = RecallPromptView.DebugAddDays(1);
-            if (GUILayout.Button("Day 3")) last = RecallPromptView.DebugSetDay(3);
-            if (GUILayout.Button("Day 0")) last = RecallPromptView.DebugSetDay(0);
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Ask recall")) last = RecallPromptView.DebugForce();
-            if (GUILayout.Button("Reset recall")) last = RecallPromptView.DebugReset();
-            if (GUILayout.Button("Week report")) last = RecallPromptView.DebugReport();
-            GUILayout.EndHorizontal();
-            if (GameHud.Instance != null && GUILayout.Button(GameHud.Instance.IsVisible ? "Hide HUD" : "Show HUD"))
+            Row();
+            if (Btn("Day +1")) last = RecallPromptView.DebugAddDays(1);
+            if (Btn("Day 3")) last = RecallPromptView.DebugSetDay(3);
+            if (Btn("Day 0")) last = RecallPromptView.DebugSetDay(0);
+            EndRow();
+            Row();
+            if (Btn("Ask recall")) last = RecallPromptView.DebugForce();
+            if (Btn("Reset recall")) last = RecallPromptView.DebugReset();
+            if (Btn("Week report")) last = RecallPromptView.DebugReport();
+            EndRow();
+            if (GameHud.Instance != null && Btn(GameHud.Instance.IsVisible ? "Hide HUD" : "Show HUD"))
             {
                 GameHud.Instance.SetVisible(!GameHud.Instance.IsVisible);
                 last = GameHud.Instance.IsVisible ? "HUD shown" : "HUD hidden";
             }
             if (GameHud.Instance != null)
             {
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("New tool glow")) { GameHud.Instance.SetShapeNew(!GameHud.Instance.ShapeNew); last = GameHud.Instance.ShapeNew ? "Shape: New tag" : "Shape: tag off"; }
-                if (GUILayout.Button("3 toasts")) { for (int n = 1; n <= 3; n++) GameHud.Instance.Toast($"Toast {n} of 3 in the queue.", 2f); last = "toast queue"; }
-                if (GUILayout.Button("Pin chip")) { GameHud.Instance.SetPinChip(GameHud.Instance.PinChipText == null ? "Piers (remembered)" : null, null); last = "pin chip"; }
-                if (GUILayout.Button("Stories chip")) { GameHud.Instance.ForceStories = !GameHud.Instance.ForceStories; GameHud.Instance.SetHistoryDot(false); last = GameHud.Instance.ForceStories ? "stories chip held up" : "stories chip released"; }
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Camera mode")) { GameHud.Instance.SetCameraMode(true); last = "camera mode on (tap to leave)"; }
-                if (GUILayout.Button("Follow someone")) last = PersonCardView.DebugFollowInCameraMode();
-                if (GUILayout.Button("Auto-orbit: " + (BoxCamera.AutoOrbitInCameraMode ? "on" : "off")))
+                Row();
+                if (Btn("New tool glow")) { GameHud.Instance.SetShapeNew(!GameHud.Instance.ShapeNew); last = GameHud.Instance.ShapeNew ? "Shape: New tag" : "Shape: tag off"; }
+                if (Btn("3 toasts")) { for (int n = 1; n <= 3; n++) GameHud.Instance.Toast($"Toast {n} of 3 in the queue.", 2f); last = "toast queue"; }
+                if (Btn("Pin chip")) { GameHud.Instance.SetPinChip(GameHud.Instance.PinChipText == null ? "Piers (remembered)" : null, null); last = "pin chip"; }
+                if (Btn("Stories chip")) { GameHud.Instance.ForceStories = !GameHud.Instance.ForceStories; GameHud.Instance.SetHistoryDot(false); last = GameHud.Instance.ForceStories ? "stories chip held up" : "stories chip released"; }
+                EndRow();
+                Row();
+                if (Btn("Camera mode")) { GameHud.Instance.SetCameraMode(true); last = "camera mode on (tap to leave)"; }
+                if (Btn("Follow someone")) last = PersonCardView.DebugFollowInCameraMode();
+                if (Btn("Auto-orbit: " + (BoxCamera.AutoOrbitInCameraMode ? "on" : "off")))
                     BoxCamera.AutoOrbitInCameraMode = !BoxCamera.AutoOrbitInCameraMode;
-                GUILayout.EndHorizontal();
+                EndRow();
             }
             // The era moment (#88): era ready now, the wait's pile size, watch / replay / leave, hurry speed.
             GUILayout.Label(MomentPlayer.Status());
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Grow 12y")) last = MomentPlayer.DebugGrow(12f);
-            if (GUILayout.Button("Village +40y")) last = MomentPlayer.DebugGrowVillage(40f);
-            if (GUILayout.Button("Era ready")) last = MomentPlayer.DebugEraReady();
-            if (GUILayout.Button("Waited 1y")) last = MomentPlayer.DebugWaited(12);
-            if (GUILayout.Button("Waited 1d")) last = MomentPlayer.DebugWaited(288);
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Festival")) last = MomentPlayer.DebugFestival();
-            if (GUILayout.Button("End festival")) last = MomentPlayer.DebugEndFestival();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Watch")) last = MomentPlayer.DebugWatch(false);
-            if (GUILayout.Button("Replay last")) last = MomentPlayer.DebugReplay();
-            if (GUILayout.Button("Leave")) last = MomentPlayer.DebugLeave();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Wipe ask")) last = MomentPlayer.DebugWipeAsk();
-            if (GUILayout.Button("Notify ask")) last = MomentPlayer.DebugNotifyAsk();
-            if (GUILayout.Button("New tool + hint")) last = MomentPlayer.DebugNewTool();
-            if (GUILayout.Button("Say a line")) last = MomentPlayer.DebugSay();
-            GUILayout.EndHorizontal();
+            Row();
+            if (Btn("Grow 12y")) last = MomentPlayer.DebugGrow(12f);
+            if (Btn("Village +40y")) last = MomentPlayer.DebugGrowVillage(40f);
+            if (Btn("Era ready")) last = MomentPlayer.DebugEraReady();
+            if (Btn("Waited 1y")) last = MomentPlayer.DebugWaited(12);
+            if (Btn("Waited 1d")) last = MomentPlayer.DebugWaited(288);
+            EndRow();
+            Row();
+            if (Btn("Festival")) last = MomentPlayer.DebugFestival();
+            if (Btn("End festival")) last = MomentPlayer.DebugEndFestival();
+            EndRow();
+            Row();
+            if (Btn("Watch")) last = MomentPlayer.DebugWatch(false);
+            if (Btn("Replay last")) last = MomentPlayer.DebugReplay();
+            if (Btn("Leave")) last = MomentPlayer.DebugLeave();
+            EndRow();
+            Row();
+            if (Btn("Wipe ask")) last = MomentPlayer.DebugWipeAsk();
+            if (Btn("Notify ask")) last = MomentPlayer.DebugNotifyAsk();
+            if (Btn("New tool + hint")) last = MomentPlayer.DebugNewTool();
+            if (Btn("Say a line")) last = MomentPlayer.DebugSay();
+            EndRow();
             if (MomentPlayer.Instance != null)
             {
-                GUILayout.BeginHorizontal();
+                Row();
                 float hf = MomentPlayer.Instance.Director.HurryFactor;
-                if (GUILayout.Button("Hurry ×" + (hf > 2f ? "4" : "2"))) last = MomentPlayer.DebugHurry(hf > 2f ? 2f : 4f);
-                if (GUILayout.Button(MomentPlayer.DebugHoldHurry ? "Hold: on" : "Hold: off")) MomentPlayer.DebugHoldHurry = !MomentPlayer.DebugHoldHurry;
-                GUILayout.EndHorizontal();
+                if (Btn("Hurry ×" + (hf > 2f ? "4" : "2"))) last = MomentPlayer.DebugHurry(hf > 2f ? 2f : 4f);
+                if (Btn(MomentPlayer.DebugHoldHurry ? "Hold: on" : "Hold: off")) MomentPlayer.DebugHoldHurry = !MomentPlayer.DebugHoldHurry;
+                EndRow();
             }
             // The evening talk (#77): start the close, count the sitting as long, force each teaser kind.
             GUILayout.Label(EveningTalkView.Status());
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Start close")) { last = EveningTalkView.DebugStart(); DebugDock.Active = DebugDock.None; }
-            if (GUILayout.Button("Leave close")) last = EveningTalkView.DebugLeave();
-            if (GUILayout.Button("Long sitting")) last = EveningTalkView.DebugLongSitting();
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
+            Row();
+            if (Btn("Start close")) { last = EveningTalkView.DebugStart(); DebugDock.Active = DebugDock.None; }
+            if (Btn("Leave close")) last = EveningTalkView.DebugLeave();
+            if (Btn("Long sitting")) last = EveningTalkView.DebugLongSitting();
+            EndRow();
+            Row();
             foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Era, AquariumCiv.Sim.ThreadSource.Seat, AquariumCiv.Sim.ThreadSource.Couple, AquariumCiv.Sim.ThreadSource.Gift })
-                if (GUILayout.Button(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
+                if (Btn(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
+            EndRow();
+            Row();
             foreach (var kind in new[] { AquariumCiv.Sim.ThreadSource.Rivalry, AquariumCiv.Sim.ThreadSource.Office, AquariumCiv.Sim.ThreadSource.Slice })
-                if (GUILayout.Button(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
-            GUILayout.EndHorizontal();
+                if (Btn(kind)) { last = EveningTalkView.DebugTeaser(kind); DebugDock.Active = DebugDock.None; }
+            EndRow();
             // The small book (#80): earn every page, open it.
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Earn every book page")) last = BookView.DebugEarnAll();
-            if (GUILayout.Button("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
-            GUILayout.EndHorizontal();
+            Row();
+            if (Btn("Earn every book page")) last = BookView.DebugEarnAll();
+            if (Btn("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
+            EndRow();
             // What the town wants (#181), the said list (#120), a wish granted (#191), a baby (#192), a gathering (#190).
-            GUILayout.BeginHorizontal();
+            Row();
             foreach (AquariumCiv.View.ShowMe.WantCase want in System.Enum.GetValues(typeof(AquariumCiv.View.ShowMe.WantCase)))
-                if (GUILayout.Button(want.ToString())) last = ShowMeDirector.DebugWant(want);
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Clear said")) last = ShowMeDirector.DebugClearSaid();
-            if (GUILayout.Button("Clean hint")) last = CareView.DebugCleanHint();
-            if (GUILayout.Button("Ground tap")) last = GlassVoice.DebugRipple();
-            if (GUILayout.Button("Wind")) last = WindView.DebugNext();
-            if (GUILayout.Button("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
-            if (GUILayout.Button("Stalls")) last = StallProps.DebugStock();
-            if (GUILayout.Button("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
-            if (GUILayout.Button("Drop crumb")) last = GlassVoice.DebugDropCrumb();
-            if (GUILayout.Button("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
-            if (GUILayout.Button("Grant a wish")) last = WishPayoffView.DebugGrant();
-            if (GUILayout.Button("Gift glow")) last = WishPayoffView.DebugGlow();
-            if (GUILayout.Button("Baby")) last = PeopleView.DebugBaby();
-            if (GUILayout.Button("Bicker")) last = PeopleView.DebugRunIn(true);
-            if (GUILayout.Button("Chat")) last = PeopleView.DebugRunIn(false);
-            if (GUILayout.Button("Gather 6")) last = GlassVoice.DebugGather();
-            if (GUILayout.Button("Gather 10")) last = GlassVoice.DebugGather(10);
-            GUILayout.EndHorizontal();
+                if (Btn(want.ToString())) last = ShowMeDirector.DebugWant(want);
+            EndRow();
+            Row();
+            if (Btn("Clear said")) last = ShowMeDirector.DebugClearSaid();
+            if (Btn("Clean hint")) last = CareView.DebugCleanHint();
+            if (Btn("Ground tap")) last = GlassVoice.DebugRipple();
+            if (Btn("Wind")) last = WindView.DebugNext();
+            if (Btn("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
+            if (Btn("Stalls")) last = StallProps.DebugStock();
+            if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
+            if (Btn("Drop crumb")) last = GlassVoice.DebugDropCrumb();
+            if (Btn("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
+            if (Btn("Grant a wish")) last = WishPayoffView.DebugGrant();
+            if (Btn("Gift glow")) last = WishPayoffView.DebugGlow();
+            if (Btn("Baby")) last = PeopleView.DebugBaby();
+            if (Btn("Bicker")) last = PeopleView.DebugRunIn(true);
+            if (Btn("Chat")) last = PeopleView.DebugRunIn(false);
+            if (Btn("Gather 6")) last = GlassVoice.DebugGather();
+            if (Btn("Gather 10")) last = GlassVoice.DebugGather(10);
+            EndRow();
             // The wordless chatter (#144), the knock's mark (#161).
-            GUILayout.BeginHorizontal();
+            Row();
             var chatter = ShowMeDirector.Instance != null ? ShowMeDirector.Instance.Chatter : null;
-            if (GUILayout.Button("Chatter: " + ChatterView.Style)) last = ChatterView.DebugNextStyle();
+            if (Btn("Chatter: " + ChatterView.Style)) last = ChatterView.DebugNextStyle();
             if (chatter != null)
             {
-                if (GUILayout.Button("Force chat")) last = chatter.DebugForceChat();
+                if (Btn("Force chat")) last = chatter.DebugForceChat();
                 foreach (var mark in new[] { AquariumCiv.View.ShowMe.ChatterMark.Dots, AquariumCiv.View.ShowMe.ChatterMark.Note, AquariumCiv.View.ShowMe.ChatterMark.Heart, AquariumCiv.View.ShowMe.ChatterMark.Bang, AquariumCiv.View.ShowMe.ChatterMark.Question })
-                    if (GUILayout.Button(mark.ToString())) last = chatter.DebugMark(PeopleView.Find(), mark);
+                    if (Btn(mark.ToString())) last = chatter.DebugMark(PeopleView.Find(), mark);
             }
-            if (GUILayout.Button("Force knock")) last = GlassVoice.DebugKnock();
-            GUILayout.EndHorizontal();
+            if (Btn("Force knock")) last = GlassVoice.DebugKnock();
+            EndRow();
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();
-            if (GUILayout.Button("Stop music")) last = MusicDirector.DebugStop();
-            if (GUILayout.Button("Music: " + GameSettings.MusicFrequency))
+            Row();
+            if (Btn("Music now")) last = MusicDirector.DebugPlayNow();
+            if (Btn("Stop music")) last = MusicDirector.DebugStop();
+            if (Btn("Music: " + GameSettings.MusicFrequency))
             {
                 GameSettings.MusicFrequency = (MusicFrequency)(((int)GameSettings.MusicFrequency + 1) % 3);
                 last = "music frequency " + GameSettings.MusicFrequency;
             }
-            GUILayout.EndHorizontal();
+            EndRow();
             // Sound (#96): bus levels, play any cue, force ambience layers, the switches, a test buzz.
             soundOpen = GUILayout.Toggle(soundOpen, soundOpen ? "▼ Sound" : "► Sound", "button");
             if (soundOpen)
@@ -261,53 +275,53 @@ namespace AquariumCiv.View
                 GUILayout.Label(AudioDirector.Status());
                 var ids = CueIds;
                 cueIndex = (cueIndex + ids.Length) % ids.Length;
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("◀", GUILayout.Width(36))) cueIndex--;
-                if (GUILayout.Button("Play " + ids[(cueIndex + ids.Length) % ids.Length])) last = AudioDirector.DebugPlay(ids[(cueIndex + ids.Length) % ids.Length]);
-                if (GUILayout.Button("▶", GUILayout.Width(36))) cueIndex++;
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
+                Row();
+                if (Btn("◀", GUILayout.Width(36))) cueIndex--;
+                if (Btn("Play " + ids[(cueIndex + ids.Length) % ids.Length])) last = AudioDirector.DebugPlay(ids[(cueIndex + ids.Length) % ids.Length]);
+                if (Btn("▶", GUILayout.Width(36))) cueIndex++;
+                EndRow();
+                Row();
                 for (int i = 0; i < AquariumCiv.Audio.AmbienceLevels.Count; i++)
                 {
                     var ad = AudioDirector.Instance;
                     string n = AquariumCiv.Audio.AmbienceLevels.CueIds[i].Substring(4);
-                    if (GUILayout.Button(n + ":" + (ad != null ? AudioDirector.LayerForceName(ad.LayerForce[i]) : "-"))) last = AudioDirector.DebugCycleLayer(i);
+                    if (Btn(n + ":" + (ad != null ? AudioDirector.LayerForceName(ad.LayerForce[i]) : "-"))) last = AudioDirector.DebugCycleLayer(i);
                 }
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Sound: " + (GameSettings.Sound ? "on" : "off"))) { GameSettings.Sound = !GameSettings.Sound; last = "sound " + (GameSettings.Sound ? "on" : "off"); }
-                if (GUILayout.Button("Haptics: " + (GameSettings.Haptics ? "on" : "off"))) { GameSettings.Haptics = !GameSettings.Haptics; last = "haptics " + (GameSettings.Haptics ? "on" : "off"); }
-                if (GUILayout.Button("SFX " + GameSettings.SfxVolume.ToString("0.0"))) GameSettings.SfxVolume = GameSettings.SfxVolume > 0.05f ? Mathf.Round((GameSettings.SfxVolume - 0.25f) * 4f) / 4f : 1f;
-                if (GUILayout.Button("Amb " + GameSettings.AmbienceVolume.ToString("0.0"))) GameSettings.AmbienceVolume = GameSettings.AmbienceVolume > 0.05f ? Mathf.Round((GameSettings.AmbienceVolume - 0.25f) * 4f) / 4f : 1f;
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Buzz light")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Light);
-                if (GUILayout.Button("Buzz success")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Success);
-                if (GUILayout.Button("Check clips")) last = AudioDirector.DebugCheckClips();
-                if (GUILayout.Button("Bird call")) last = AudioDirector.DebugBirdCall();
-                GUILayout.EndHorizontal();
+                EndRow();
+                Row();
+                if (Btn("Sound: " + (GameSettings.Sound ? "on" : "off"))) { GameSettings.Sound = !GameSettings.Sound; last = "sound " + (GameSettings.Sound ? "on" : "off"); }
+                if (Btn("Haptics: " + (GameSettings.Haptics ? "on" : "off"))) { GameSettings.Haptics = !GameSettings.Haptics; last = "haptics " + (GameSettings.Haptics ? "on" : "off"); }
+                if (Btn("SFX " + GameSettings.SfxVolume.ToString("0.0"))) GameSettings.SfxVolume = GameSettings.SfxVolume > 0.05f ? Mathf.Round((GameSettings.SfxVolume - 0.25f) * 4f) / 4f : 1f;
+                if (Btn("Amb " + GameSettings.AmbienceVolume.ToString("0.0"))) GameSettings.AmbienceVolume = GameSettings.AmbienceVolume > 0.05f ? Mathf.Round((GameSettings.AmbienceVolume - 0.25f) * 4f) / 4f : 1f;
+                EndRow();
+                Row();
+                if (Btn("Buzz light")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Light);
+                if (Btn("Buzz success")) last = AudioDirector.DebugBuzz(AquariumCiv.Audio.HapticKind.Success);
+                if (Btn("Check clips")) last = AudioDirector.DebugCheckClips();
+                if (Btn("Bird call")) last = AudioDirector.DebugBirdCall();
+                EndRow();
             }
             // A building's card (#188): the next one round the box, and its builder's three wordings.
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Building card")) last = PersonCardView.DebugBuildingCard();
-            if (GUILayout.Button("Builder ⇄")) last = PersonCardView.DebugBuilder();
-            GUILayout.EndHorizontal();
+            Row();
+            if (Btn("Building card")) last = PersonCardView.DebugBuildingCard();
+            if (Btn("Builder ⇄")) last = PersonCardView.DebugBuilder();
+            EndRow();
             // The people's view clock (#30): jump to a time of day, speed the day up, list what people are doing.
             var people = PeopleView.Find();
             if (people != null)
             {
                 GUILayout.Label(people.Status());
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button("8h")) last = PeopleView.DebugSetHour(8f);
-                if (GUILayout.Button("12h")) last = PeopleView.DebugSetHour(12.2f);
-                if (GUILayout.Button("18h")) last = PeopleView.DebugSetHour(18f);
-                if (GUILayout.Button("22h")) last = PeopleView.DebugSetHour(22f);
-                if (GUILayout.Button("+1h")) last = PeopleView.DebugSkipHours(1f);
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button(people.timeScale > 1f ? "Day ×1" : "Day ×10")) last = PeopleView.DebugSpeed(people.timeScale > 1f ? 1f : 10f);
-                if (GUILayout.Button("Who's doing what")) last = PeopleView.DebugReport(6);
-                GUILayout.EndHorizontal();
+                Row();
+                if (Btn("8h")) last = PeopleView.DebugSetHour(8f);
+                if (Btn("12h")) last = PeopleView.DebugSetHour(12.2f);
+                if (Btn("18h")) last = PeopleView.DebugSetHour(18f);
+                if (Btn("22h")) last = PeopleView.DebugSetHour(22f);
+                if (Btn("+1h")) last = PeopleView.DebugSkipHours(1f);
+                EndRow();
+                Row();
+                if (Btn(people.timeScale > 1f ? "Day ×1" : "Day ×10")) last = PeopleView.DebugSpeed(people.timeScale > 1f ? 1f : 10f);
+                if (Btn("Who's doing what")) last = PeopleView.DebugReport(6);
+                EndRow();
             }
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);

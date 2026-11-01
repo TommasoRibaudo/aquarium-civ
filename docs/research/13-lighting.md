@@ -171,6 +171,19 @@ black levels. I cannot judge those from a desktop capture, so the user's phone i
 time is the other thing only a phone answers: measure Today vs Soft Blue Dusk vs Lamplight on the phone profile; I expect
 the difference to be within noise [I, not measured].
 
+## As built (2026-11-01, branch vs/light-camera; measured in the Editor on `Mobile_RPAsset`, not on a phone)
+
+The safe version in section 7 is in, Soft Blue Dusk the default, and `LightLook` on the debug panel. What differs from the note:
+
+- **Sun and moon:** the keys swap them at 20.7 to 20.9 h and 03:00 to 03:12, at intensity 0.06 with no shadow, so nothing sweeps.
+- **Ambient:** the trilight does follow at runtime (open risk 1: SH L0 logged at each hour). No `_AC_AmbientTint`.
+- **`_Ambient`:** a global added to it (`_AC_AmbientBoost`), because the solid material is an asset.
+- **Lamp reach:** 1.25 box units, not 1.6 to 2.2: more lit the whole box. Pool radii 0.62 (lantern) and 0.36 (a building's door), on a 5x5 grid laid on the land, in the Glows mesh: no extra draw.
+- **The room:** the camera's clear colour falls with the sky, or the floor stays lit under a dark night.
+- **HUD at night:** the name and icons take the backing they have off home when Daylight < 0.75. Dark ink on the night wall was unreadable.
+- **Readability rule (section 5):** the whole frame at 22 h is 0.48 of 12 h (Town, 1080x1920), or 0.33 at night floor 0.45. Rule of thumb 0.30 holds. The 1.5:1 person-to-ground ratio was not measured, only looked at.
+- **Risk 2 (vertex lamps on faceted ground):** it reads as low-poly facets at zoom 0.2. Looks fine in the shots; the user's call.
+
 ## Open risks to check first
 
 1. Does changing `RenderSettings` trilight colours update the SH ambient at runtime in 6000.3? (§7.3)
