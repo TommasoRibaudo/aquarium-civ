@@ -47,6 +47,7 @@ namespace AquariumCiv.View
         BoxView box;
         RelicProps props;
         StashProps stash;
+        StallProps stalls;
         SimCore boundSim;
         long lastDay = long.MinValue, lastMonth;
         readonly List<string> pending = new();
@@ -84,6 +85,7 @@ namespace AquariumCiv.View
             box = GetComponent<BoxView>();
             if (!TryGetComponent(out props)) props = gameObject.AddComponent<RelicProps>();
             if (!TryGetComponent(out stash)) stash = gameObject.AddComponent<StashProps>();
+            if (!TryGetComponent(out stalls)) stalls = gameObject.AddComponent<StallProps>();
         }
 
         void OnDisable()
@@ -141,6 +143,7 @@ namespace AquariumCiv.View
             SayLines(planner, now);
             if (props != null) props.Sync(sim, planner, Time.unscaledDeltaTime);
             if (stash != null) stash.Sync(planner);
+            if (stalls != null) stalls.Sync(sim);
         }
 
         // ---------------- relic moments ----------------
