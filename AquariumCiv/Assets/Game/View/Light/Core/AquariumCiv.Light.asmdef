@@ -1,0 +1,14 @@
+{
+    "name": "AquariumCiv.Light",
+    "rootNamespace": "AquariumCiv.Light",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
