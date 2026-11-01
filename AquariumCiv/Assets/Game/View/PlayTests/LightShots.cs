@@ -211,6 +211,10 @@ namespace AquariumCiv.View.PlayTests
             Cam.EaseTo(Vector3.zero, 28f, 34f, 1f, 0.01f);
             yield return Wait(0.5f);
             yield return Snap("close-home-doll");
+            DebugDock.Active = DebugDock.Dbg;
+            yield return Wait(0.5f);
+            yield return Snap("debug-panel");
+            DebugDock.Active = DebugDock.None;
             // The glide: a fly-in at the closest zoom, timed.
             var home = Cam.target; float zoomHome = Cam.zoom;
             Cam.DebugFlyIn(fire, 0.2f);

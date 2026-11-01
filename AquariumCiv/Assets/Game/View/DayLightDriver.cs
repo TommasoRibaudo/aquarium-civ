@@ -236,6 +236,7 @@ namespace AquariumCiv.View
             HoldFlicker = true; // a picture of a steady lamp, not one caught mid-sputter
             Apply();
             HoldFlicker = held;
+            WriteSun();
         }
 
         public void EndStill()
@@ -244,6 +245,14 @@ namespace AquariumCiv.View
             inStill = false;
             Logic.Restore(stillWas, stillShown);
             Apply();
+            WriteSun();
+        }
+
+        /// <summary>The care view owns the sun's intensity, but a still is rendered before it runs again: write what it would.</summary>
+        void WriteSun()
+        {
+            if (care == null) care = CareView.Instance;
+            sun.intensity = Logic.Current.SunIntensity * (care != null && care.isActiveAndEnabled ? care.SunFactor : 1f);
         }
 
         // ---------------- debug ----------------

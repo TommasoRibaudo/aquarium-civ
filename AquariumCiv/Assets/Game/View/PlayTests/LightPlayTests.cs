@@ -232,8 +232,10 @@ namespace AquariumCiv.View.PlayTests
             day.BeginStill(DayLightDriver.StillHour);
             Assert.AreEqual(DayLight.Table(17.5f).SunPitch, day.Current.SunPitch, 1e-3f, "the golden hour");
             Assert.Greater(day.Current.SunIntensity, inten);
+            Assert.AreEqual(day.Current.SunIntensity, sun.intensity, 0.02f, "the sun itself, though the care view owns it: the picture is rendered before it runs again");
             day.EndStill();
             Assert.AreEqual(inten, day.Current.SunIntensity, 1e-4f);
+            Assert.AreEqual(inten, sun.intensity, 0.02f);
             Assert.AreEqual(shown, day.Logic.ShownHour, 1e-4f);
             Assert.AreEqual(sky, RenderSettings.ambientSkyColor);
             EraStills.DebugClear(Sim.State.seed);
@@ -246,6 +248,53 @@ namespace AquariumCiv.View.PlayTests
             EraStills.DebugClear(Sim.State.seed);
             DayLightDriver.DebugPauseClock(false);
             AssertNoErrors("still");
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator WipingWorksAtCloseZoom()
+        {
+            yield return Open();
+            Sim.State.grime = 0.7f;
+            yield return Frames(6);
+            Cam.EaseTo(Vector3.zero, 28f, 40f, 0.3f, 0.01f);
+            yield return Wait(0.8f);
+            var box = Object.FindAnyObjectByType<BoxView>();
+            Assert.Less(box.PaneOpacity(0), 0.5f, "the near glass is fading at this zoom");
+            GameHud.Instance.SetCleanMode(true);
+            yield return Wait(0.8f);
+            Assert.Greater(box.PaneOpacity(0), 0.9f, "clean mode brings it back");
+            float grime = Sim.State.grime;
+            var a = new Vector2(Screen.width * 0.3f, Screen.height * 0.5f);
+            for (float fy = 0.35f; fy <= 0.7f && !CareView.Instance.GlassAt(a); fy += 0.05f) a = new Vector2(Screen.width * 0.3f, Screen.height * fy);
+            Assume.That(CareView.Instance.GlassAt(a), "glass under the finger");
+            yield return Drag(new[] { a, a + new Vector2(Screen.width * 0.4f, 0f), a + new Vector2(0f, 30f), a + new Vector2(Screen.width * 0.4f, 30f) }, 18f);
+            yield return Frames(3);
+            Debug.Log($"[light] wipe at zoom {Cam.zoom:0.00}: grime {grime:0.000} -> {Sim.State.grime:0.000}");
+            Assert.Less(Sim.State.grime, grime - 0.002f, "it wiped");
+            GameHud.Instance.SetCleanMode(false);
+            DayLightDriver.DebugPauseClock(false);
+            AssertNoErrors("wipe close");
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator TheTimeLapseHoldsTheFlicker()
+        {
+            yield return Open(22f);
+            SimLayoutSource.DebugSkipYears(3f);
+            Sim.CleanAll();
+            yield return Frames(4);
+            var day = DayLightDriver.Instance;
+            Assert.IsFalse(day.FlickerHeld, "lamps flicker on a still clock");
+            var tl = TimeLapseView.Ensure();
+            Assume.That(tl.Open(), "a replay to open");
+            yield return Frames(4);
+            Assert.IsTrue(day.FlickerHeld, "steady under the time-lapse");
+            Assert.Greater(RenderSettings.sun.intensity, 0.2f, "and the sun is the driver's with the care view off");
+            tl.Close();
+            yield return Frames(3);
+            Assert.IsFalse(day.FlickerHeld);
+            DayLightDriver.DebugPauseClock(false);
+            AssertNoErrors("time-lapse");
         }
 
         [UnityTest, Timeout(60000)]

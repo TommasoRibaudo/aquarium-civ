@@ -37,11 +37,14 @@ namespace AquariumCiv.View
             GUILayout.BeginHorizontal();
             foreach (float at in new[] { 6f, 12f, 17.5f, 19.5f, 22f })
                 if (GUILayout.Button(at.ToString("0.#"))) last = PeopleView.DebugSetHour(at);
-            if (GUILayout.Button(day.ClockPaused ? "Clock: paused" : "Clock: runs")) last = DayLightDriver.DebugPauseClock(!day.ClockPaused);
             GUILayout.EndHorizontal();
+            if (GUILayout.Button(day.ClockPaused ? "Clock: paused" : "Clock: runs")) last = DayLightDriver.DebugPauseClock(!day.ClockPaused);
             GUILayout.BeginHorizontal();
             foreach (AquariumCiv.Lighting.LightLook look in System.Enum.GetValues(typeof(AquariumCiv.Lighting.LightLook)))
-                if (GUILayout.Button((day.Logic.Look == look ? "> " : "") + look)) last = DayLightDriver.DebugLook(look);
+            {
+                string name = look == AquariumCiv.Lighting.LightLook.SoftBlueDusk ? "Dusk" : look == AquariumCiv.Lighting.LightLook.SoftBlueMoon ? "Moon" : look == AquariumCiv.Lighting.LightLook.Lamplight ? "Lamp" : "Today";
+                if (GUILayout.Button((day.Logic.Look == look ? ">" : "") + name)) last = DayLightDriver.DebugLook(look);
+            }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             GUILayout.Label($"Floor {day.Logic.NightFloor:0.00}", GUILayout.Width(80));
@@ -95,6 +98,7 @@ namespace AquariumCiv.View
             GUILayout.BeginVertical();
             scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label(src != null ? src.Status() : "no SimLayoutSource");
+            DrawLight(PeopleView.Find());
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
             if (GUILayout.Button("+10 yr")) last = SimLayoutSource.DebugSkipYears(10);
@@ -305,7 +309,6 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Who's doing what")) last = PeopleView.DebugReport(6);
                 GUILayout.EndHorizontal();
             }
-            DrawLight(people);
             GUILayout.Label(last);
             if (src != null && !string.IsNullOrEmpty(src.lastWaveInfo)) GUILayout.Label(src.lastWaveInfo);
             GUILayout.EndScrollView();
