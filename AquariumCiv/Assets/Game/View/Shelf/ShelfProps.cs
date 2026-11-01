@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using AquariumCiv.Game;
 using AquariumCiv.Sim;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -110,7 +111,7 @@ namespace AquariumCiv.View
             t.SetParent(root, false);
             t.localPosition = new Vector3(x, 0f, 0f);
             BoxBody(t, b.setting, 1f);
-            if (b.museum) Dress(shelf, b, 0f, lampOn, false, t);
+            if (b.museum) { Town(t, b); Dress(shelf, b, 0f, lampOn, false, t); }
             return t;
         }
 
@@ -156,6 +157,31 @@ namespace AquariumCiv.View
             go.AddComponent<MeshFilter>().sharedMesh = mb.ToMesh("ShelfBoxBody");
             go.AddComponent<MeshRenderer>().sharedMaterial = box.SolidMaterial;
             return go.transform;
+        }
+
+        /// <summary>#198: a finished box on the shelf shows what it became: its buildings on the slab, drawn from its saved state, once.</summary>
+        void Town(Transform parent, ShelfBox b)
+        {
+            var live = GameClock.Instance != null ? GameClock.Instance.ActiveSim : null;
+            if (b.state == null || live == null) return;
+            var sim = new SimCore(live.Config, b.state);
+            var layout = new BoxLayout();
+            SimLayout.Fill(layout, sim);
+            const float y = 0.12f + 0.9f + 0.03f; // the slab's top (BoxBody)
+            var mb = new MeshBuilder(41 + b.index) { jitter = 0.02f };
+            Pieces.Ground ground = local =>
+            {
+                var w = mb.M.MultiplyPoint3x4(local);
+                w.y = y;
+                return mb.M.inverse.MultiplyPoint3x4(w);
+            };
+            foreach (var p in layout.pieces)
+            {
+                mb.M = Matrix4x4.TRS(new Vector3(p.x, y, p.z), Quaternion.Euler(0f, p.yaw, 0f), Vector3.one);
+                Pieces.Draw(mb, p, ground);
+            }
+            mb.M = Matrix4x4.identity;
+            Part(parent, "Town", mb.ToMesh("ShelfTown"), Vector3.zero);
         }
 
         // ---------------- the museum dressing ----------------
@@ -230,16 +256,23 @@ namespace AquariumCiv.View
         {
             switch (id)
             {
-                case RelicId.SkyCrumb: mb.Ico(new Vector3(0, y + 0.1f, 0), 0.13f, new Vector3(1.25f, 0.8f, 1f), Palette.Wheat, 0.2f, Palette.Thatch); break;
-                case RelicId.KeeperDoll:
-                    mb.Prism(new Vector3(0, y, 0), 0.07f, 0.05f, 0.2f, 6, Palette.Tunics[1]);
-                    mb.Ico(new Vector3(0, y + 0.26f, 0), 0.06f, Vector3.one, Palette.Skins[1], 0f); break;
+                case RelicId.SkyCrumb: mb.Ico(new Vector3(0, y + 0.1f, 0), 0.13f, new Vector3(1.25f, 0.8f, 1f), new Color(0.58f, 0.33f, 0.14f), 0.2f, Palette.Canvas); break; // the nibbled heel
+                case RelicId.KeeperDoll: PegDoll.KeeperDoll(mb, new Vector3(0, y, 0), 2.1f); break; // #185: one doll, three places
                 case RelicId.Lens:
                     mb.Prism(new Vector3(0, y + 0.06f, 0), 0.04f, 0.04f, 0.3f, 8, PegDoll.Brass, Quaternion.Euler(-70f, 0, 0), true, true, Palette.GlassEdge); break;
                 case RelicId.LeftSandal:
                     mb.Box(new Vector3(0, y + 0.02f, 0), new Vector3(0.14f, 0.04f, 0.22f), Palette.Accents[0]); break;
                 case RelicId.FestivalMask:
-                    mb.Prism(new Vector3(0, y + 0.02f, 0), 0.13f, 0.13f, 0.03f, 10, Palette.Accents[1], Quaternion.Euler(-80f, 0, 0), true, true, Palette.Accents[4]); break;
+                {
+                    // #198: this was the plinth's "pink dome": a disc lying nearly flat, its top rose. It's the mask, standing up, as it's worn: half a pale smile, half bare bark.
+                    var c = new Vector3(0, y + 0.17f, 0);
+                    mb.Box(new Vector3(0, y + 0.03f, 0.02f), new Vector3(0.05f, 0.06f, 0.05f), Palette.Timber);
+                    mb.Prism(c, 0.14f, 0.14f, 0.02f, 10, Palette.Plaster, Quaternion.Euler(90f, 0f, 0f), true, true, Palette.Plaster);
+                    mb.Box(c + new Vector3(0.07f, 0f, -0.012f), new Vector3(0.13f, 0.25f, 0.012f), Palette.Bark);
+                    mb.Box(c + new Vector3(-0.065f, -0.05f, -0.016f), new Vector3(0.1f, 0.02f, 0.012f), Palette.Ember);
+                    mb.Box(c + new Vector3(-0.065f, 0.04f, -0.016f), new Vector3(0.03f, 0.03f, 0.012f), Palette.Iron);
+                    break;
+                }
                 default: mb.Ico(new Vector3(0, y + 0.1f, 0), 0.1f, Vector3.one, Palette.Stone, 0.2f); break;
             }
         }

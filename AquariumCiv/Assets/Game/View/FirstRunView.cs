@@ -143,7 +143,7 @@ namespace AquariumCiv.View
             var f = sim.State.firstRun;
             bool never = !f.active && f.step == 0 && f.playSeconds <= 0 && !f.skipped;
             if (f.active) run = FirstRun.Resume(sim);
-            else if (never && clock.Session != null && clock.Session.newWorld) run = FirstRun.Begin(sim);
+            else if (never && clock.Session != null && (clock.Session.newWorld || (sim.State.boxIndex > 0 && sim.State.nudges.Count == 0 && !clock.Visiting))) run = FirstRun.Begin(sim); // a new box too: its short run (#198)
             else run = null;
             if (run != null) Hook();
         }

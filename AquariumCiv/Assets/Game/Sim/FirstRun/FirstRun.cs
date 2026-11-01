@@ -82,7 +82,7 @@ namespace AquariumCiv.Sim
             dx /= len; dz /= len;
             var f = new FirstRunState
             {
-                active = true, beganMonth = s.month, step = (int)FirstRunStep.Arrive,
+                active = true, beganMonth = s.month, step = (int)FirstRunStep.Arrive, shortRun = s.boxIndex > 0,
                 patchX = ClampX(spec.centreX + dz * 1.2f), patchZ = ClampZ(spec.centreZ - dx * 1.2f),
                 rainX = ClampX(spec.pondX + dx * 1.1f), rainZ = ClampZ(spec.pondZ + dz * 1.1f),
                 suggestedName = SettlementNaming.Suggest(s.seed),
@@ -243,6 +243,7 @@ namespace AquariumCiv.Sim
         {
             var f = F;
             f.step++;
+            if (f.shortRun) while (Step is FirstRunStep.Name or FirstRunStep.Year or FirstRunStep.Card) f.step++; // §9: named on its plate, no year, no card for it
             f.stepSeconds = 0; f.untouchedSeconds = 0; f.hintPhase = 0; f.hintReturns = 0; f.hintIdle = 0; f.hintSubstep = false;
             if (Step == FirstRunStep.Rain) RaiseRainWish();
             if (Step == FirstRunStep.Year) BeginYear();
