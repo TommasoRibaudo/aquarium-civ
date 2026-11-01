@@ -111,7 +111,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                 Assert.IsTrue(PeopleVoice.Allowed(b.text, sim), $"{b}: allowed in stage {stage}");
                 Assert.IsFalse(b.text.Contains("{"), $"{b}: filled in");
                 if (b.speakerId >= 0) Assert.IsTrue(sim.FindNotable(b.speakerId).alive, "the living speak");
-                Assert.That(b.seconds, Is.InRange(3f, 6f));
+                Assert.That(b.seconds, Is.InRange(3.5f, 7f));
                 Assert.LessOrEqual(b.lines.Count, PeopleVoice.BubbleMaxLines, "fits a phone bubble");
                 string lower = b.text.ToLowerInvariant();
                 if (stage < 3 || !later) Assert.IsFalse(lower.Contains("glass"), $"{b}: no 'glass' before the Lens");
