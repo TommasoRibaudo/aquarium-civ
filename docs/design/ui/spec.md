@@ -226,8 +226,8 @@ Rules that change today's layout. Everything else is as drawn.
   under the row. Picking a tool removes the sheet.
 - **Placing:** footprint on the ground, tool in hand, charges, Cancel. **Cancel's place is the user's call, see §7.**
 - **Time-lapse:** the HUD leaves, so the only year is the tag on the playhead. A hairline band with era names as text, a
-  44 pt hit strip, pin marks. The caption lives inside the panel (27 %), and its controls replace the play row once the
-  replay is paused: while it plays the row stays, so a caption the playhead crossed never takes Pause away (#168). The
+  44 pt hit strip, pin marks. The caption lives inside the panel (27 %), and its controls replace the play row when the player stopped on a
+  story: the row stays for a caption the playhead crossed, which goes by itself, so it never takes Pause or Now away (#168). The
   panel's height follows its content. The replay ends on the box as it is now, not the start of the running year (#196).
 - **First run:** History, Clean and Shape wait for Done, then arrive one at a time. Clean mode holds through the wipe and
   the flick, so the hint's drag always wipes. The welcome toast takes the empty tools' lane, and the rain's prompt waits for it.
