@@ -498,6 +498,7 @@ namespace AquariumCiv.Life
         /// </summary>
         void PaceNightWalks(List<Seg> list)
         {
+            const float RushPace = 1.9f; // just under the 2x the rush tests allow
             float speed = RealWalkSpeed;
             for (int i = 1; i < list.Count; i++)
             {
@@ -506,7 +507,9 @@ namespace AquariumCiv.Life
                 var route = RouteBetween(s.from, s.place);
                 if (route == null || route.len <= 1e-4f) continue;
                 float need = Math.Min(route.len / speed, MaxWalk * LifeClock.RealSecondsPerViewHour(LifeClock.WorkStart));
-                if (LifeClock.RealSecondsBetween(s.start, s.end) >= need * 0.6f) continue;
+                // #206: the floor is 60 % of the time, but a long walk's time is capped: one trimmed a little under the cap is over twice the pace while it still passes the 60 %.
+                float enough = Math.Max(need * 0.6f, Math.Min(need, route.len / speed / RushPace));
+                if (LifeClock.RealSecondsBetween(s.start, s.end) >= enough) continue;
                 // The stays before it (the evening on the green, in slivers of chat and listening): set off within their
                 // later half.
                 int first = i;
@@ -533,7 +536,7 @@ namespace AquariumCiv.Life
                         }
                     }
                 }
-                if (LifeClock.RealSecondsBetween(s.start, s.end) >= need * 0.6f) continue;
+                if (LifeClock.RealSecondsBetween(s.start, s.end) >= enough) continue;
                 // Nothing to set off earlier from (it follows another walk, a night round): arrive later instead, within the
                 // first half of the stays after it (usually sleep).
                 int last = i;
