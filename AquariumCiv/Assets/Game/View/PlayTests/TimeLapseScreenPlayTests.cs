@@ -89,7 +89,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("tl-pin");
 
             // The caption's controls have the play row's place (spec §4), so a story is put away before play
-            Assert.AreEqual(DisplayStyle.None, screen.Root.Q("tl-play").resolvedStyle.display, "the caption's row replaces the play row");
+            Assert.AreEqual(DisplayStyle.None, screen.Root.Q(className: "tl-controls").resolvedStyle.display, "the caption's row replaces the play row");
             Assert.AreEqual(screen.Bar.resolvedStyle.width, 992f, 1f, "the timeline keeps the full width at a pin");
             yield return TapName("tl-cap-close");
             yield return Frames(3);
@@ -211,6 +211,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
             Assert.IsFalse(box.layout.pieces.Any(p => p.seed == seed), "the year's start stays as it was");
             m.Clock.Seek(yearStart + (m.Clock.End - yearStart) * 0.8f);
+            m.SetSpeed(m.SpeedIndex); // a seek from here doesn't bump the model's version, and Now reads as unavailable until it's redrawn
             yield return Frames(4);
             var part = box.layout.pieces.FirstOrDefault(p => p.seed == seed);
             Assert.IsNotNull(part, "on the way to now it grows in");
