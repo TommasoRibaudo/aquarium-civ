@@ -289,6 +289,7 @@ namespace AquariumCiv.Life
             polyCache.Clear();
             Snapshot();
             ClearDays();
+            DropReactionsToGoneGifts();
         }
 
         /// <summary>Cheap check that the sim moved: month, counts, era, role holders.</summary>

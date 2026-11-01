@@ -139,6 +139,8 @@ namespace AquariumCiv.Life
         Relic, GlassGathering, TapBack,
         // #85: the people's answer to a Keeper's shaping (LifePlanner.StartShapingAnswer)
         ShapingAnswer,
+        // #142: the people's first reaction to a gift (LifePlanner.StartShapingReaction)
+        ShapingReaction,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>
