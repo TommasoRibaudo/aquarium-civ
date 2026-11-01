@@ -101,5 +101,84 @@ namespace AquariumCiv.Life
                     into.Add(sc.staging.Info(sc.day));
             return into.Count;
         }
+
+        // ---------------------------------------------------------------- the first reaction to a gift (#142)
+
+        /// <summary>
+        /// The people react to a gift that just landed, within seconds (<see cref="ShapingReactions"/>): the nearest who are
+        /// up look up and walk over for a look, the far ones look up and point from where they stand. Only staging: no sim
+        /// dice, no sim writes, and the credited answer, its timing and its line stay as they were.
+        /// <para>Null means nobody can react yet: everyone is asleep (nobody is woken for it) or in a moment. Call it again,
+        /// every frame if you like: it starts as soon as someone is up, and while a reaction to this gift plays it returns
+        /// that one. Also null, for good, once the gift is answered or gone: stop asking then (the view: drop
+        /// <c>Entry.react</c> when the nudge is credited, and the moment this returns a reaction).</para>
+        /// After dark nobody walks over, as with the answers: someone awake looks up from where they stand.
+        /// </summary>
+        public RelicMomentInfo StartShapingReaction(int nudgeId, ViewTime at)
+        {
+            Sync();
+            EnsureDay(at.day);
+            Nudge n = null;
+            foreach (var x in sim.State.nudges) if (x.id == nudgeId) { n = x; break; }
+            if (n == null || n.credited) return null;
+            foreach (var sc in live)
+                if (sc.kind == SceneKind.ShapingReaction && sc.staging.nudgeId == nudgeId && sc.day == at.day && at.hour < sc.end)
+                    return sc.staging.Info(sc.day);
+            var spot = Place.Land(PlaceKind.Nudge, n.id);
+            if (!IsValidPlace(spot)) return null;
+            bool anyone = false;
+            foreach (var q in people) if (FreeToReact(q, at)) { anyone = true; break; }
+            if (!anyone) return null;
+
+            Staging st = null;
+            for (float s = ShapingReactions.Seconds; st == null && s <= ShapingReactions.MaxSeconds + 0.01f && ShapingReactions.CanWalkAt(at, s); s += ShapingReactions.StretchStep)
+            {
+                st = StageReaction(n, spot, s, true, at);
+                if (st != null && !st.HasWalker) st = null; // too far for this length: a longer one, or looks from afar
+            }
+            st ??= StageReaction(n, spot, ShapingReactions.FromAfar, false, at);
+            if (st == null || LifeClock.RealSecondsBetween(st.start, st.end) < ShapingReactions.MinSeconds) return null;
+            AddLive(SceneKind.ShapingReaction, at, st.end, st);
+            return st.Info(at.day);
+        }
+
+        /// <summary>Cast the reaction lasting <paramref name="seconds"/>; null when nobody can play it.</summary>
+        Staging StageReaction(Nudge n, Place spot, float seconds, bool walk, ViewTime at)
+        {
+            var def = ShapingReactions.For(n.kind, belief, seconds, walk);
+            var st = new Staging { nudgeId = n.id, def = def, glass = GlassPlace, spot = spot, start = at.hour, end = EndAfter(at, seconds) };
+            var used = new HashSet<int>();
+            bool Comes(Person q) => FreeToReact(q, at) && DayOf(q)[Find(DayOf(q), at.hour)].src != ActivitySource.Scene; // a wedding's guests look, they don't leave
+            CastCrowd(st, RelicCast.Owner, at, used, 1, q => q.Grown && Comes(q));
+            CastCrowd(st, RelicCast.Grown, at, used, def.maxGrown, q => q.Grown && Comes(q));
+            CastCrowd(st, RelicCast.Kids, at, used, def.maxKids, q => q.stage == LifeStage.Kid && Comes(q));
+            CastCrowd(st, RelicCast.Onlookers, at, used, def.maxQueue, q => q.stage != LifeStage.Baby && FreeToReact(q, at));
+            return st.segs.Count == 0 ? null : st;
+        }
+
+        /// <summary>Up and not caught up in a moment or another reaction: not a sleeper, a napper or a baby.</summary>
+        bool FreeToReact(Person q, ViewTime at)
+        {
+            if (q.stage == LifeStage.Baby || ShapingReactions.Asleep(DayOf(q)[Find(DayOf(q), at.hour)].kind)) return false;
+            foreach (var b in BlocksOf(q)) if (at.hour >= b.bs && at.hour < b.ie) return false;
+            return true;
+        }
+
+        /// <summary>The reactions to gifts playing at <paramref name="t"/> (the view's highlight, the debug readout).</summary>
+        public int ActiveShapingReactions(ViewTime t, List<RelicMomentInfo> into)
+        {
+            into.Clear();
+            foreach (var sc in live)
+                if (sc.kind == SceneKind.ShapingReaction && sc.day == t.day && t.hour >= sc.start && t.hour < sc.end)
+                    into.Add(sc.staging.Info(sc.day));
+            return into.Count;
+        }
+
+        /// <summary>A gift taken back mid-reaction has no place any more: the reaction ends, they go back to their day (the
+        /// view walks them there, a plan changed under them).</summary>
+        void DropReactionsToGoneGifts()
+        {
+            if (live.RemoveAll(sc => sc.kind == SceneKind.ShapingReaction && !nudgeIds.Contains(sc.staging.nudgeId)) > 0) LiveChanged();
+        }
     }
 }
