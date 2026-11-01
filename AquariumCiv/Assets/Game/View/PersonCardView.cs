@@ -155,7 +155,7 @@ namespace AquariumCiv.View
         {
             if (OpenWho(PickDoll(screenPos))) return true;
             bool cardUp = AnyOpen || BuildingOpen;
-            if (!cardUp && CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos)) return true;
+            if (!cardUp && CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos)) { CareView.Instance.AnswerMessTap(); return true; }
             int building = PickBuilding(screenPos);
             if (building < 0 && OpenWho(PickPerson(screenPos))) return true;
             if (IsOpen) { Close(); return true; }
@@ -207,7 +207,7 @@ namespace AquariumCiv.View
             void Try(PersonRef p)
             {
                 float d = DollDistance(pv, cam, p, screenPos);
-                if (d >= TightReach(pv, cam, p) || d >= best || HiddenByABuilding(pv, cam, p)) return;
+                if (d >= TightReach(pv, cam, p) || d >= best || Unseen(pv, cam, p)) return;
                 best = d;
                 who = p;
             }
@@ -516,7 +516,9 @@ namespace AquariumCiv.View
         readonly List<RelMarker> ties = new();
         readonly Dictionary<int, string> tieWords = new();
         readonly Dictionary<int, TieKind> tieKinds = new();
-        readonly List<(Vector2 a, Vector2 b)> leaders = new();
+        readonly List<LeaderRoute> leaders = new();
+        readonly List<(int label, Vector2 at, Vector2 size, Vector2 anchor)> leadersWanted = new();
+        readonly List<LabelBox> otherLabels = new();
         /// <summary>#194: labels drawn at most; the rest are "+N" and every tie is in the card. Labels shown last frame and leader lines (tests).</summary>
         public const int MaxLabels = 4;
         public int LeadersDrawn => leaders.Count;
@@ -577,7 +579,7 @@ namespace AquariumCiv.View
                 label.style.top = at.y;
                 label.style.display = DisplayStyle.Flex;
                 var anchor = new Vector2(p.anchorX, p.anchorY + TieTop);
-                if (p.leader || (at - spot).magnitude > TieH * 1.2f) leaders.Add((at + new Vector2(0f, at.y < anchor.y ? size.y * 0.5f : -size.y * 0.5f), anchor));
+                if (p.leader || (at - spot).magnitude > TieH * 1.2f) leadersWanted.Add((placed.Count - 1, at, size, anchor));
             }
             OverflowShown = res.overflow;
             if (res.overflow > 0)
@@ -592,6 +594,15 @@ namespace AquariumCiv.View
                 more.style.top = at.y;
                 more.style.display = DisplayStyle.Flex;
             }
+            // Tester run 8: once every label has its place, each leader goes round the others.
+            foreach (var (label, at, size, anchor) in leadersWanted)
+            {
+                otherLabels.Clear();
+                for (int k = 0; k < placed.Count; k++)
+                    if (k != label) otherLabels.Add(new LabelBox(placed[k].x, placed[k].y, placed[k].z, placed[k].w));
+                leaders.Add(MarkerLayout.RouteLeader(new LabelBox(at.x, at.y, size.x, size.y), anchor.x, anchor.y, otherLabels));
+            }
+            leadersWanted.Clear();
             return used;
         }
 
@@ -740,12 +751,19 @@ namespace AquariumCiv.View
                 p.fillColor = lineCol;
                 p.BeginPath(); p.Arc(d.b, w + 3f, 0f, 360f); p.Fill();
             }
-            foreach (var (a, b) in leaders) // #194: a label pushed off its person
+            foreach (var l in leaders) // #194: a label pushed off its person
             {
+                void Line()
+                {
+                    p.BeginPath(); p.MoveTo(new Vector2(l.ax, l.ay));
+                    if (l.bends) p.LineTo(new Vector2(l.vx, l.vy));
+                    if (l.twice) p.LineTo(new Vector2(l.wx, l.wy));
+                    p.LineTo(new Vector2(l.bx, l.by)); p.Stroke();
+                }
                 p.strokeColor = underCol; p.lineWidth = LeaderWidth + 3f;
-                p.BeginPath(); p.MoveTo(a); p.LineTo(b); p.Stroke();
+                Line();
                 p.strokeColor = lineCol; p.lineWidth = LeaderWidth;
-                p.BeginPath(); p.MoveTo(a); p.LineTo(b); p.Stroke();
+                Line();
             }
         }
 

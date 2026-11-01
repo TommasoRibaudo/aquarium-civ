@@ -451,9 +451,25 @@ namespace AquariumCiv.View
             if (c == null) return;
             var cards = PersonCardView.Instance;
             if (cards != null && (cards.AnyOpen || cards.BuildingOpen || !cards.PickDoll(pos).IsNone)) return; // that tap closes the card, or opens this person's
-            var r = TouchHint.Touch(false, props.Pick(c, pos, pickRadius * Screen.height) != null, Time.unscaledTime);
+            var r = TouchHint.Touch(false, UnderFinger(c, pos) != null, Time.unscaledTime);
+            Say(r);
+            pressAnswered = r.pulse || r.hint;
+        }
+
+        void Say(AquariumCiv.Sim.CleanHintResult r)
+        {
             if (r.pulse) hud.PulseClean();
-            if (r.hint) hud.Toast(AquariumCiv.Sim.CleanHint.Text, 3f);
+            if (r.hint) hud.Toast(AquariumCiv.Sim.CleanHint.Text, 3f, through: true); // it answers a touch: a waiting prompt doesn't hold it back
+        }
+
+        bool pressAnswered;
+
+        /// <summary>Tester run 8: a tap that <see cref="MessSaysSo"/> kept is answered, whatever the gaps say: the tap would otherwise do nothing at all.</summary>
+        public void AnswerMessTap()
+        {
+            if (hud == null) return;
+            Say(TouchHint.Tapped(pressAnswered, Time.unscaledTime));
+            pressAnswered = false;
         }
 
         /// <summary>#160: a tap here is about the mess, so it opens nothing: there's mess under the finger and the Keeper hasn't learned to
@@ -461,7 +477,21 @@ namespace AquariumCiv.View
         public bool MessSaysSo(Vector2 pos)
         {
             var c = Cam;
-            return c != null && !TouchHint.Learned && !CleanMode && props.Pick(c, pos, pickRadius * Screen.height) != null;
+            return c != null && !TouchHint.Learned && !CleanMode && UnderFinger(c, pos) != null;
+        }
+
+        /// <summary>Tester run 8: how near a tap outside clean mode has to be to a piece of mess to be on it, in pixels. <see cref="pickRadius"/> is for cleaning, where
+        /// a generous reach helps: for a tap it was bigger than a house at the default zoom.</summary>
+        public float TapReachPixels => TapReach * Screen.width / AquariumCiv.GameUI.GameUiPanel.ReferenceWidth;
+        const float TapReach = 30f;
+
+        MessProps.Piece UnderFinger(Camera c, Vector2 pos) => props.PickUnder(c, pos, TapReachPixels);
+
+        /// <summary>Where the mess is on screen now (tests).</summary>
+        public void MessOnScreen(System.Collections.Generic.List<Vector2> into)
+        {
+            var c = Cam;
+            if (c != null) props.OnScreen(c, into);
         }
 
         /// <summary>#160: what's been said about Clean this session.</summary>

@@ -35,7 +35,7 @@ namespace AquariumCiv.View
 
         public readonly ChatterPlan Plan = new();
 
-        sealed class Live { public ChatterShow show; public double fadeFrom = -1; }
+        sealed class Live { public ChatterShow show; public double fadeFrom = -1; public int order; public Vector2 spread; }
 
         readonly List<Live> live = new();
         readonly List<ChatterGroup> groups = new();
@@ -51,6 +51,9 @@ namespace AquariumCiv.View
         bool clipsMade;
         GameObject go;
         Mesh mesh;
+        Material material;
+        /// <summary>After the glass, the smoke and the glow.</summary>
+        const int MarksQueue = 3010;
 
         sealed class Shape { public Vector3[] v; public Color[] c; public int[] t; }
 
@@ -106,7 +109,7 @@ namespace AquariumCiv.View
             }
             foreach (var s in tick.show)
             {
-                live.Add(new Live { show = s });
+                live.Add(new Live { show = s, order = ++lastOrder });
                 if (s.babble <= 0f) continue;
                 int clip = ChatterBabble.ClipFor(s.mark, ChatterPlan.Roll(sim.State.seed, s.groupId, (int)(s.startAt * 10), 7));
                 Sfx.Play(CueLibrary.Babble(s.voice, clip), 0f, s.babble);
@@ -255,7 +258,7 @@ namespace AquariumCiv.View
         {
             var s = Plan.React(at, id, voice, mark, Effective, quiet, seconds);
             if (s == null) return false;
-            live.Add(new Live { show = s });
+            live.Add(new Live { show = s, order = ++lastOrder });
             return true;
         }
 
@@ -276,6 +279,8 @@ namespace AquariumCiv.View
             var right = cam.transform.right;
             var up = cam.transform.up;
             var forward = cam.transform.forward;
+            Spread(pv, cam, px, now);
+            DrawnAt.Clear();
             for (int i = live.Count - 1; i >= 0; i--)
             {
                 var d = live[i];
@@ -291,7 +296,9 @@ namespace AquariumCiv.View
                 if (depth <= 0f) continue;
                 float perPx = cam.orthographic ? 2f * cam.orthographicSize / Screen.height : 2f * depth * tan / Screen.height;
                 float size = px * perPx;
-                Append(Shapes(d.show.mark), top + up * (size * 0.72f), right * (size * pop), up * (size * pop), alpha);
+                var at = top + up * (size * 0.72f) + (right * d.spread.x + up * d.spread.y) * perPx;
+                Append(Shapes(d.show.mark), at, right * (size * pop), up * (size * pop), alpha);
+                DrawnAt.Add(cam.WorldToScreenPoint(at));
                 DrawnOver.Add(who);
                 DrawnMarks.Add(d.show.mark);
             }
@@ -300,6 +307,38 @@ namespace AquariumCiv.View
             watch.Stop();
             Note(t0);
         }
+
+        /// <summary>Tester run 8: marks over a tight group sat on each other. When the marks up change they're laid out with <see cref="MarkerLayout"/>, oldest first, so a
+        /// mark that's up stays where it is and only a newcomer moves to a free spot beside it. <see cref="Live.spread"/> is in pixels.</summary>
+        void Spread(PeopleView pv, Camera cam, float px, double now)
+        {
+            int key = 0;
+            foreach (var d in live) if (now >= d.show.startAt) key = key * 31 + d.order;
+            if (key == spreadKey) return;
+            spreadKey = key;
+            spreadInput.Clear();
+            foreach (var d in live)
+            {
+                d.spread = Vector2.zero;
+                if (now < d.show.startAt || !pv.TryGetDollTop(RefOf(d.show.speakerId), out var top)) continue;
+                var s = cam.WorldToScreenPoint(top);
+                spreadInput.Add(new RelMarker(d.order, RelKind.Other, s.x, Screen.height - s.y));
+            }
+            if (spreadInput.Count < 2) return;
+            float w = px * MarkGap;
+            var res = MarkerLayout.Layout(spreadInput, w, w, Screen.width, Screen.height, spreadInput.Count, 0.001f, float.MaxValue);
+            foreach (var p in res.placed)
+            {
+                var d = live.Find(l => l.order == p.ids[0]);
+                if (d != null) d.spread = new Vector2(p.x - p.anchorX, -(p.y - (p.anchorY - w)));
+            }
+        }
+
+        const float MarkGap = 1.12f;
+        int lastOrder, spreadKey;
+        readonly List<RelMarker> spreadInput = new();
+        /// <summary>Where each mark was drawn last frame, in pixels (tests).</summary>
+        public readonly List<Vector3> DrawnAt = new();
 
         void Append(Shape s, Vector3 at, Vector3 right, Vector3 up, float alpha)
         {
@@ -335,7 +374,10 @@ namespace AquariumCiv.View
             mesh.MarkDynamic();
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             Renderer = go.AddComponent<MeshRenderer>();
-            Renderer.sharedMaterial = ShapingView.LoadFx();
+            // Tester run 8: a mark says who, so no roof or frame cuts it. Its own copy of the material: everything else in the box keeps its depth test.
+            material = new Material(ShapingView.LoadFx()) { name = "ChatterMarks", hideFlags = HideFlags.DontSave, renderQueue = MarksQueue };
+            material.SetFloat("_ZTest", (float)CompareFunction.Always);
+            Renderer.sharedMaterial = material;
             Renderer.shadowCastingMode = ShadowCastingMode.Off;
             Renderer.receiveShadows = false;
         }
@@ -345,7 +387,8 @@ namespace AquariumCiv.View
         {
             if (go != null) UnityEngine.Object.Destroy(go);
             if (mesh != null) UnityEngine.Object.Destroy(mesh);
-            go = null; mesh = null; Renderer = null;
+            if (material != null) UnityEngine.Object.Destroy(material);
+            go = null; mesh = null; material = null; Renderer = null;
             live.Clear(); Plan.Reset();
         }
 

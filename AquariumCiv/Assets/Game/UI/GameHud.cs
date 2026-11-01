@@ -276,10 +276,10 @@ namespace AquariumCiv.GameUI
         public string PinChipText => pinChip != null && pinChip.style.display != DisplayStyle.None ? pinChip.Person : null;
 
         /// <summary>A short line in the toast lane (hints, "all clean"). One at a time: it waits for the one showing, and for any prompt.</summary>
-        public void Toast(string text, float seconds = 3f)
+        public void Toast(string text, float seconds = 3f, bool through = false)
         {
             if (toastLabel == null || cameraMode) return;
-            GameUiPanel.Toasts.Post(text, seconds);
+            if (through) GameUiPanel.Toasts.PostThrough(text, seconds); else GameUiPanel.Toasts.Post(text, seconds);
             PumpToast();
         }
 
@@ -313,7 +313,17 @@ namespace AquariumCiv.GameUI
                 float h = up.layout.height;
                 if (!float.IsNaN(h) && h > 0f) lane = h - i.w + GameUiPanel.ToastAboveSheet;
             }
-            toastLabel.style.bottom = lane;
+            toastLabel.style.bottom = Mathf.Max(lane, toastClear > 0f ? GameUiPanel.Lane(toastClear, i.w) : 0f);
+        }
+
+        float toastClear;
+
+        /// <summary>Tester run 8: a prompt in the toast's own lane (short screens) hid the words under it: toasts go over <paramref name="bottom"/> while it's up, 0 lets them back.</summary>
+        public void SetToastClear(float bottom)
+        {
+            if (Mathf.Approximately(toastClear, bottom)) return;
+            toastClear = bottom;
+            PlaceToast();
         }
 
         /// <summary>A new tool waits in Shape: one soft glow, then the New tag stays until the tray is opened.</summary>

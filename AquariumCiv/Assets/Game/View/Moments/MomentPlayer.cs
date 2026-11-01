@@ -272,6 +272,12 @@ namespace AquariumCiv.View
             if (toolHint.style.display != d) toolHint.style.display = d;
         }
 
+        /// <summary>How much of the toast lane the Watch pill takes, its gap included (panel units).</summary>
+        const float WatchPillTall = 176f;
+
+        /// <summary>The Watch pill's box on the panel while it's up, else empty (tests).</summary>
+        public Rect WatchPillRect => watchButton != null && watchButton.Ready ? watchButton.worldBound : default;
+
         void ReleaseCamera()
         {
             if (cam != null && !cam.enabled) cam.enabled = true; // BoxCamera re-syncs its targets from the pose on enable
@@ -729,6 +735,7 @@ namespace AquariumCiv.View
             bool show = Waiting.waiting && !Playing && hudFree && !PromptsBlocked() && !wipeOffer.Ready;
             if (watchButton.Ready != show) watchButton.Ready = show;
             if (show && watchButton.text != Waiting.watchLabel) watchButton.text = Waiting.watchLabel;
+            if (hud != null) hud.SetToastClear(show && GlassSheet.IsShort(Screen.width, Screen.height) ? GameUiPanel.ToastBottom + WatchPillTall : 0f); // the pill is in the toast's lane there
             if (hud != null && (hud.CameraMode || hud.SheetOpen) && wipeOffer.Ready) wipeOffer.Ready = false;
             bool pinLane = wipeOffer.Ready && GlassSheet.IsShort(Screen.width, Screen.height);
             if (pinLane != askInPinLane)

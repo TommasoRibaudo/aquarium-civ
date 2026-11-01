@@ -385,5 +385,49 @@ namespace AquariumCiv.View.ShowMe.Tests
             var b = MarkerLayout.Layout(Enumerable.Reverse(FireFamily()), 60, 24, 400, 700);
             Assert.AreEqual(a.placed.Select(p => (p.kind, p.x, p.y)).ToList(), b.placed.Select(p => (p.kind, p.x, p.y)).ToList());
         }
+
+        // ---------------- tester run 8: leaders
+
+        static bool Behind(LeaderRoute r, LabelBox o)
+        {
+            if (!r.bends) return MarkerLayout.Crosses(r.ax, r.ay, r.bx, r.by, o);
+            if (!r.twice) return MarkerLayout.Crosses(r.ax, r.ay, r.vx, r.vy, o) || MarkerLayout.Crosses(r.vx, r.vy, r.bx, r.by, o);
+            return MarkerLayout.Crosses(r.ax, r.ay, r.vx, r.vy, o) || MarkerLayout.Crosses(r.vx, r.vy, r.wx, r.wy, o) || MarkerLayout.Crosses(r.wx, r.wy, r.bx, r.by, o);
+        }
+
+        [Test]
+        public void ALeaderWithAClearWayGoesStraight()
+        {
+            var r = MarkerLayout.RouteLeader(new LabelBox(100f, 100f, 80f, 30f), 100f, 300f, new[] { new LabelBox(400f, 100f, 80f, 30f) });
+            Assert.IsFalse(r.bends);
+            Assert.AreEqual(115f, r.ay, 0.01f, "from the edge facing the person");
+        }
+
+        [Test]
+        public void ALeaderDoesNotRunBehindAnotherLabel()
+        {
+            var other = new LabelBox(100f, 200f, 200f, 40f);
+            var r = MarkerLayout.RouteLeader(new LabelBox(100f, 100f, 80f, 30f), 100f, 300f, new[] { other });
+            Assert.IsFalse(Behind(r, other), "it goes round the label in the way");
+            Assert.IsTrue(r.bends);
+        }
+
+        [Test]
+        public void ManyLabelsInTheWayStillFindAWayRound()
+        {
+            // Labels dropped anywhere can wall a person in: real layouts have at most four, so one in fifty may stay straight.
+            var rng = new System.Random(3);
+            int stuck = 0;
+            for (int k = 0; k < 200; k++)
+            {
+                var others = new List<LabelBox>();
+                for (int i = 0; i < 3; i++) others.Add(new LabelBox(rng.Next(100, 900), rng.Next(300, 900), 180f, 40f));
+                var me = new LabelBox(500f, 200f, 180f, 40f);
+                float toX = rng.Next(100, 900), toY = 1000f;
+                var r = MarkerLayout.RouteLeader(me, toX, toY, others);
+                foreach (var o in others) if (Behind(r, o)) { stuck++; break; }
+            }
+            Assert.LessOrEqual(stuck, 4);
+        }
     }
 }

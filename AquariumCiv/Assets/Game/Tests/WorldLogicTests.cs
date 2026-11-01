@@ -183,6 +183,22 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void EveryTapOnMessIsAnsweredOnce()
+        {
+            var h = new CleanHint();
+            Assert.IsTrue(h.Touch(false, true, 0f).pulse);
+            var same = h.Tapped(true, 0.1f);
+            Assert.IsFalse(same.pulse || same.hint, "the press said it: one tap, one answer");
+            Assert.IsFalse(h.Touch(false, true, 1f).pulse, "a press inside the gap is quiet");
+            var soon = h.Tapped(false, 1.1f);
+            Assert.IsTrue(soon.pulse, "but the tap that opened nothing still gets the pulse");
+            Assert.IsFalse(soon.hint, "the words keep their own gap");
+            Assert.IsTrue(h.Tapped(false, CleanHint.HintGap + 1f).hint);
+            h.Cleaned();
+            Assert.IsFalse(h.Tapped(false, 500f).pulse, "they know how to clean");
+        }
+
+        [Test]
         public void TheCleanHintIsRateLimitedAndStopsOnceTheyHaveCleaned()
         {
             var h = new CleanHint();

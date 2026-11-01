@@ -9,6 +9,28 @@ namespace AquariumCiv.GameUI.Tests
     public class GlassTests
     {
         [Test]
+        public void AnAnswerToATouchGoesPastAHoldAndTheHoldComesBack()
+        {
+            var q = new MessageQueue();
+            q.Hold("prompt", true);
+            q.Post("a pin", 3f);
+            q.Tick(0f);
+            Assert.IsNull(q.Current, "the hold keeps an ordinary line back");
+            q.PostThrough("tap clean", 3f);
+            q.Tick(1f);
+            Assert.AreEqual("tap clean", q.Current, "not the answer to a touch");
+            q.Tick(2f);
+            Assert.AreEqual("tap clean", q.Current, "and it stays its time");
+            q.Tick(10f);
+            q.Tick(10.1f);
+            Assert.IsNull(q.Current, "then the hold has the lane again");
+            Assert.AreEqual(1, q.Waiting, "with the line it kept back");
+            q.Hold("prompt", false);
+            q.Tick(11f);
+            Assert.AreEqual("a pin", q.Current);
+        }
+
+        [Test]
         public void OneMessageAtATimeAndTheNextWaits()
         {
             var q = new MessageQueue();

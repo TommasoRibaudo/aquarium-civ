@@ -36,6 +36,18 @@ namespace AquariumCiv.Sim
             return r;
         }
 
+        /// <summary>Tester run 8: a tap that stopped on mess and opened nothing never goes unanswered, however soon after the last: the pulse at least, the words
+        /// as they'd come anyway. The press may have answered already (<paramref name="pressAnswered"/>): one tap, one answer.</summary>
+        public CleanHintResult Tapped(bool pressAnswered, float now)
+        {
+            var r = new CleanHintResult();
+            if (learned || pressAnswered) return r;
+            r.pulse = true;
+            lastPulse = now;
+            if (hints < MaxHints && now - lastHint >= HintGap) { r.hint = true; lastHint = now; hints++; }
+            return r;
+        }
+
         /// <summary>The Keeper cleaned something in clean mode: no more hints this session.</summary>
         public void Cleaned() => learned = true;
 

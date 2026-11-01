@@ -53,22 +53,14 @@ namespace AquariumCiv.View
             return core >= 0 ? core : best; // the air round a house's eaves doesn't take a tap from the well behind it
         }
 
-        /// <summary>A doll the camera can't see for a house: a tap on that roof is for the house. A doll in the yard in front stands outside
-        /// the lot's solid middle, so it stays a doll.</summary>
-        bool HiddenByABuilding(PeopleView pv, Camera cam, PersonRef who)
+        /// <summary>A doll the camera can't see: a roof, a wall or the eaves stand between the lens and both its head and its middle, by the box's real
+        /// meshes (tester run 8: a lot's core box let through dolls behind the eaves and just past the lot). A tap there is for what's in front.</summary>
+        static bool Unseen(PeopleView pv, Camera cam, PersonRef who)
         {
-            var sim = Sim;
             var box = FindAnyObjectByType<BoxView>();
-            if (sim?.Settlement == null || box == null || !pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return false;
-            var o = box.transform.InverseTransformPoint(cam.transform.position);
-            var v = box.transform.InverseTransformPoint((top + feet) * 0.5f) - o; // the doll is at t = 1
-            foreach (var l in sim.Settlement.Lots)
-            {
-                if (l.retired || l.buildingId <= 0 || l.kind is LotKind.Farm or LotKind.Pasture or LotKind.Orchard) continue;
-                float y0 = box.GroundHeight(l.x, l.z);
-                if (HitsLot(l, o, v, y0, y0 + TallPiece, CoreShare, out float t) && t < 0.98f) return true;
-            }
-            return false;
+            if (box == null || !pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return false;
+            var lens = cam.transform.position;
+            return box.Blocked(lens, top) && box.Blocked(lens, (top + feet) * 0.5f);
         }
 
         /// <summary>The ray (box space) against the lot's upright box. Pure slab test, in the lot's own axes (<see cref="SimLayout.Corners"/>).</summary>

@@ -19,7 +19,8 @@ namespace AquariumCiv.GameUI
         {
             public readonly string text;
             public readonly float seconds;
-            public Message(string text, float seconds) { this.text = text; this.seconds = seconds; }
+            public readonly bool through;
+            public Message(string text, float seconds, bool through = false) { this.text = text; this.seconds = seconds; this.through = through; }
         }
 
         readonly Queue<Message> waiting = new();
@@ -39,6 +40,18 @@ namespace AquariumCiv.GameUI
             foreach (var m in waiting) if (m.text == text) return;
             if (waiting.Count >= MaxWaiting) waiting.Dequeue();
             waiting.Enqueue(new Message(text, seconds));
+        }
+
+        /// <summary>Tester run 8: the answer to something the player just did goes ahead of what's waiting and past a hold. A prompt held the Clean hint back until it was
+        /// over, by when nobody remembered the tap.</summary>
+        public void PostThrough(string text, float seconds)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            if (text == Current) { until = -1f; return; }
+            var rest = waiting.ToArray();
+            waiting.Clear();
+            waiting.Enqueue(new Message(text, seconds, true));
+            foreach (var m in rest) if (m.text != text) waiting.Enqueue(m);
         }
 
         /// <summary>Takes back a line that no longer applies, waiting or on screen (tester run 6).</summary>
@@ -70,7 +83,7 @@ namespace AquariumCiv.GameUI
             bool wiped = cleared;
             cleared = false;
             if (showing && until < 0f) until = now + current.seconds;
-            if (Held)
+            if (Held && !(showing && current.through) && !(waiting.Count > 0 && waiting.Peek().through))
             {
                 if (!showing) return wiped;
                 // Down for the prompt; what was left comes back after it.
@@ -85,7 +98,7 @@ namespace AquariumCiv.GameUI
             }
             if (showing && now < (waiting.Count > 0 ? System.Math.Min(until, shownAt + MinSeconds) : until)) return false;
             bool had = showing;
-            if (waiting.Count == 0)
+            if (waiting.Count == 0 || (Held && !waiting.Peek().through))
             {
                 Current = null;
                 showing = false;

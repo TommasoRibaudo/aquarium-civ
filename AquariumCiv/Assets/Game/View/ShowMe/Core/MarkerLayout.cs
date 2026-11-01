@@ -32,6 +32,20 @@ namespace AquariumCiv.View.ShowMe
         public readonly List<int> overflowIds = new List<int>();
     }
 
+    /// <summary>A label's box: its centre and size.</summary>
+    public struct LabelBox
+    {
+        public float x, y, w, h;
+        public LabelBox(float x, float y, float w, float h) { this.x = x; this.y = y; this.w = w; this.h = h; }
+    }
+
+    /// <summary>A leader line: from a label's edge (ax, ay) to the person (bx, by), by way of (vx, vy) when it has to bend, and then (wx, wy) if twice.</summary>
+    public struct LeaderRoute
+    {
+        public float ax, ay, vx, vy, wx, wy, bx, by;
+        public bool bends, twice;
+    }
+
     /// <summary>
     /// Relationship markers that stay readable when the people stand close together (#194). The rule, in order:
     /// 1. Markers of the same mergeable kind (children, siblings, friends) whose anchors are within <c>mergeDist</c> collapse
@@ -99,6 +113,69 @@ namespace AquariumCiv.View.ShowMe
                 res.placed.Add(g);
             }
             return res;
+        }
+
+        /// <summary>Tester run 8: a leader that ran behind another label read as ending there. The way from a label to its person that stays out from under every
+        /// other label: straight from whichever edge can, else round the corner of what's in the way, else (the person is under a label) straight.</summary>
+        public static LeaderRoute RouteLeader(LabelBox me, float toX, float toY, IList<LabelBox> others, float air = 6f)
+        {
+            float halfW = me.w / 2f, halfH = me.h / 2f;
+            var starts = new[] { (me.x, me.y + halfH), (me.x, me.y - halfH), (me.x + halfW, me.y), (me.x - halfW, me.y) };
+            System.Array.Sort(starts, (a, b) => Dist(a.Item1, a.Item2, toX, toY).CompareTo(Dist(b.Item1, b.Item2, toX, toY)));
+            foreach (var s in starts)
+                if (Clear(s.Item1, s.Item2, toX, toY, others, air)) return new LeaderRoute { ax = s.Item1, ay = s.Item2, bx = toX, by = toY };
+            var best = new LeaderRoute { ax = starts[0].Item1, ay = starts[0].Item2, bx = toX, by = toY };
+            float bestLen = float.MaxValue;
+            foreach (var s in starts)
+                foreach (var o in others)
+                {
+                    float cx = o.w / 2f + air * 2f, cy = o.h / 2f + air * 2f;
+                    var corners = new[] { (o.x - cx, o.y - cy), (o.x + cx, o.y - cy), (o.x + cx, o.y + cy), (o.x - cx, o.y + cy) };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        var (vx, vy) = corners[i];
+                        if (!Clear(s.Item1, s.Item2, vx, vy, others, air)) continue;
+                        float there = Dist(s.Item1, s.Item2, vx, vy);
+                        float len = there + Dist(vx, vy, toX, toY);
+                        if (len < bestLen && Clear(vx, vy, toX, toY, others, air))
+                        {
+                            bestLen = len;
+                            best = new LeaderRoute { ax = s.Item1, ay = s.Item2, vx = vx, vy = vy, bx = toX, by = toY, bends = true };
+                        }
+                        // A wide label square in the way: along its side, corner to corner.
+                        for (int step = 1; step <= 3; step += 2)
+                        {
+                            var (wx, wy) = corners[(i + step) % 4];
+                            len = there + Dist(vx, vy, wx, wy) + Dist(wx, wy, toX, toY);
+                            if (len >= bestLen || !Clear(vx, vy, wx, wy, others, air * 0.5f) || !Clear(wx, wy, toX, toY, others, air)) continue;
+                            bestLen = len;
+                            best = new LeaderRoute { ax = s.Item1, ay = s.Item2, vx = vx, vy = vy, wx = wx, wy = wy, bx = toX, by = toY, bends = true, twice = true };
+                        }
+                    }
+                }
+            return best;
+        }
+
+        static bool Clear(float ax, float ay, float bx, float by, IList<LabelBox> others, float air)
+        {
+            foreach (var o in others) if (Crosses(ax, ay, bx, by, o, air)) return false;
+            return true;
+        }
+
+        /// <summary>Does the segment pass through the box, grown by <paramref name="air"/>?</summary>
+        public static bool Crosses(float ax, float ay, float bx, float by, LabelBox o, float air = 0f)
+        {
+            float x0 = o.x - o.w / 2f - air, x1 = o.x + o.w / 2f + air, y0 = o.y - o.h / 2f - air, y1 = o.y + o.h / 2f + air;
+            float lo = 0f, hi = 1f, dx = bx - ax, dy = by - ay;
+            bool Clip(float p, float q)
+            {
+                if (Math.Abs(p) < 1e-6f) return q >= 0f;
+                float r = q / p;
+                if (p < 0f) { if (r > hi) return false; if (r > lo) lo = r; }
+                else { if (r < lo) return false; if (r < hi) hi = r; }
+                return true;
+            }
+            return Clip(-dx, ax - x0) && Clip(dx, x1 - ax) && Clip(-dy, ay - y0) && Clip(dy, y1 - ay);
         }
 
         /// <summary>True if two placed labels overlap.</summary>
