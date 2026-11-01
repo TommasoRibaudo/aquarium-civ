@@ -30,7 +30,7 @@ Name the USS variables as in the first column, in `Game.uss` `:root`.
 | `--paper` | `#F3E9D6` | Base of every light surface; solid on book pages |
 | `--frost-tint` | paper at 72 % | One surface per screen, over the blur |
 | `--flat-tint` | paper at 92 % | Tools, chips, tags, pin, bubbles, hints, banner |
-| `--flat-sheet` | paper at 94 % | Replaces the frost when the switch is off. No blur |
+| `--flat-sheet` | paper at 96 % | Replaces the frost when the switch is off. No blur. 96 from question 31; #108 |
 | `--quiet-backing` | paper at 72 %, no blur | Behind the box name and top icons once the camera leaves its home view |
 | `--brass` | `#B88A3E` | Portrait ring, slider thumb |
 | `--edge` | `#D3B684`, opaque | Hairline on buttons and tools (the boards' brass at 53 % comes out too pale) |
@@ -38,7 +38,7 @@ Name the USS variables as in the first column, in `Game.uss` `:root`.
 | `--primary` | `#9E5033` | One per moment; selected tab line, armed ring |
 | `--on-primary` | `#EFE3CC` | Text on primary, toast and caption |
 | `--moss` | `#526E3A` | Portrait until real ones exist, toggle on |
-| `--dark-plate` | ink at 91 % | Toast, caption, era card |
+| `--dark-plate` | ink at 96 % | Toast, caption, era card. The boards' 91 % in sRGB; 96 gives the same colour in linear light (#108, measured) |
 
 ### Type
 
@@ -126,6 +126,9 @@ Components call a role, which calls `Sfx.Play` with a `CueLibrary` id. Nothing i
 
 ## 2. Surfaces and the one switch
 
+**The switch:** `FrostSwitch.Default` in `Assets/Game/UI/Glass/FrostSurface.cs`. Change that one constant to `false` and every surface is
+flat, with no copy, no filter and no pass. The debug panel flips it for a session (`Sheets: frost`), and trades the blur sizes.
+
 - **Frost** = URP pass copying the frame to 1/4 size, then in the panel, bottom to top: paper, the sharp copy, the blurred
   copy, `--frost-tint`. Without the sharp copy, a light band shows along the sheet's edges. One surface on screen. It
   needs runtime code and is costly (limits.md).
@@ -154,6 +157,10 @@ Components call a role, which calls `Sfx.Play` with a `CueLibrary` id. Nothing i
   drawn. Nothing dims before Watch.
 
 ## 3. Components
+
+Built in #108: `Assets/Game/UI/Glass/`, one sheet `Resources/GameUI/Glass.uss`, tokens in `Game.uss`. Open the gallery from the debug
+panel (`UI gallery`). Each state is named `gal-<component>-<state>`. Retrofits: build screens from these and drop the old classes as they go.
+Old `Game.uss` tokens that clashed are now `--old-moss` and `--old-ink-soft`.
 
 One component each, per inventory §4. Every element name stays the same: the play tests find controls by name.
 

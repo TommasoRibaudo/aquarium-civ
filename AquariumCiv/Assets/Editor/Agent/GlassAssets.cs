@@ -37,7 +37,7 @@ namespace AquariumCiv.EditorTools
                 var target = p.Replace(".ttf", ".asset");
                 if (AssetDatabase.LoadAssetAtPath<FontAsset>(target) != null) continue;
                 var font = AssetDatabase.LoadAssetAtPath<Font>(p);
-                var asset = FontAsset.CreateFontAsset(font, 90, 9, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
+                var asset = FontAsset.CreateFontAsset(font, 90, 18, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
                 asset.name = Path.GetFileNameWithoutExtension(p);
                 AssetDatabase.CreateAsset(asset, target);
                 asset.material.name = asset.name + " Material";

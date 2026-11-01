@@ -125,7 +125,7 @@ namespace AquariumCiv.GameUI
             {
                 available = value;
                 EnableInClassList(OffClass, !value);
-                if (!value && Q(className: "kg-btn-lock") == null) Mark(new GlassIcon("lock", "kg-icon--small", "kg-btn-lock"));
+                if (!value && this.Q(className: "kg-btn-lock") == null) Mark(new GlassIcon("lock", "kg-icon--small", "kg-btn-lock"));
             }
         }
 
