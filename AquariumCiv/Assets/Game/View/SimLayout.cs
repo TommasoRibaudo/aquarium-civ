@@ -139,25 +139,32 @@ namespace AquariumCiv.View
             if (greenEra >= Era.Village && !HasOpenWell(st))
                 L.Add(PieceKind.Well, green.x + FirstWellDX, green.y + FirstWellDZ, 0f, 0.3f, 0.3f, greenEra, 19000);
 
-            // ---- ground: yards, commons, the Keeper's shapings ----
-            foreach (var y in replay != null ? NoYards : st.Yards)
-                if (y.count > 0) L.Clearing(new Vector2(y.x, y.z), Mathf.Clamp(y.r * 0.85f, 0.16f, 0.35f), ClearingKind.Yard);
-            foreach (var f in replay != null ? NoFeatures : st.Features())
+            // ---- ground: yards, commons, the Keeper's shapings. A replay's finished years leave them out; its last step grows them in (#196) ----
+            float live = replay != null ? replay.liveShare : 1f;
+            foreach (var y in live > 0f ? st.Yards : NoYards)
+                if (y.count > 0) L.Clearing(new Vector2(y.x, y.z), Mathf.Clamp(y.r * 0.85f, 0.16f, 0.35f) * live, ClearingKind.Yard);
+            foreach (var f in live > 0f ? st.Features() : NoFeatures)
             {
                 var at = new Vector2(f.x, f.z);
                 switch (f.kind)
                 {
-                    case "commons": L.Clearing(at, f.r, ClearingKind.Meadow); break;
-                    case SimCore.NudgeKind.DyeMeadow: L.Clearing(at, f.r, ClearingKind.Flowers); break;
+                    case "commons": L.Clearing(at, f.r * live, ClearingKind.Meadow); break;
+                    case SimCore.NudgeKind.DyeMeadow: L.Clearing(at, f.r * live, ClearingKind.Flowers); break;
                     case SimCore.NudgeKind.Outcrop:
                     {
                         var p = L.Add(PieceKind.Outcrop, f.x, f.z, 0f, f.r * 2f, f.r * 2f, S.era, 30000 + f.nudgeId);
                         p.variant = f.deposit == "clay" ? 1 : f.deposit == "ore" ? 2 : 0;
+                        p.grow = live;
                         break;
                     }
                     case SimCore.NudgeKind.Herd:
                         // An answered herd lives on its pasture or jetty; until then the animals graze at the spot.
-                        if (f.lotId == 0 && !(KeeperOverlays && replay == null)) L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId).variant = 4;
+                        if (f.lotId == 0 && !(KeeperOverlays && replay == null))
+                        {
+                            var herd = L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId);
+                            herd.variant = 4;
+                            herd.grow = live;
+                        }
                         break;
                 }
             }

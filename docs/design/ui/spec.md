@@ -164,7 +164,8 @@ flat, with no copy, no filter and no pass. The debug panel flips it for a sessio
 - **375 × 667 is drawn for the wish card only.** #165 to #170 and #95 must check it screen by screen.
 - **Keyboard:** a text-entry sheet rides on top of the keyboard, by translate, using `TouchScreenKeyboard.area`. Keep and
   Send stay above it. Naming and rename keep their layout, with bottom padding 12. Feedback folds to heading, text and
-  buttons, because its full layout wouldn't fit. Drawn on 3.7 and 3.8. Check Unity's mobile input bar on a device.
+  buttons, because its full layout wouldn't fit. Drawn on 3.7 and 3.8. Only a corner of the box stays in view over a keyboard,
+  and that's accepted (question 33). Check Unity's mobile input bar on a device.
 - A scrim appears only behind the reset confirm, and the URP copy won't include it, so that sheet comes out lighter than
   drawn. Nothing dims before Watch.
 
@@ -225,7 +226,11 @@ Rules that change today's layout. Everything else is as drawn.
   under the row. Picking a tool removes the sheet.
 - **Placing:** footprint on the ground, tool in hand, charges, Cancel. **Cancel's place is the user's call, see §7.**
 - **Time-lapse:** the HUD leaves, so the only year is the tag on the playhead. A hairline band with era names as text, a
-  44 pt hit strip, pin marks. The caption lives inside the panel (27 %), and its controls replace the play row.
+  44 pt hit strip, pin marks. The caption lives inside the panel (27 %), and its controls replace the play row once the
+  replay is paused: while it plays the row stays, so a caption the playhead crossed never takes Pause away (#168). The
+  panel's height follows its content. The replay ends on the box as it is now, not the start of the running year (#196).
+- **First run:** History, Clean and Shape wait for Done, then arrive one at a time. Clean mode holds through the wipe and
+  the flick, so the hint's drag always wipes. The welcome toast takes the empty tools' lane, and the rain's prompt waits for it.
 - **Era card:** always the era at the playhead. Check the timing bug in captures/README.md when building it.
 - **Feedback, recall:** sheets from the bottom edge. Feedback's Send is unavailable until there's text.
 - **Notification ask:** at the close, first era only. The HUD stays down, the caption leads, and both buttons are

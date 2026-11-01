@@ -7,7 +7,8 @@ namespace AquariumCiv.View
     /// <summary>
     /// A past year (or the moment between two) to draw instead of the live sim (#78): <see cref="SimLayout.Fill"/> keeps every
     /// lot, path and dressing rule but shows only the lots standing then, the paths worn then, and each lot's look of then.
-    /// Lots never move, so the live settlement gives their spots. Yards, shapings and standing people are left out.
+    /// Lots never move, so the live settlement gives their spots. Yards, shapings and standing people are left out of finished
+    /// years; <see cref="liveShare"/> brings the yards and the Keeper's ground in over the step that ends on the box as it is now (#196).
     /// While two years blend, the lots of both show and <see cref="grow"/> says how far each one's piece has come (0 = not
     /// there, 1 = whole): a lot only in the later year grows in, one only in the earlier shrinks away, one that changed
     /// look dips as it changes.
@@ -22,6 +23,8 @@ namespace AquariumCiv.View
         readonly Dictionary<int, Era> lookOfLot = new();
         /// <summary>Piece seed (<see cref="SimLayout.SeedOf"/>) to 0..1 growth, for lots that are mid-change.</summary>
         public readonly Dictionary<int, float> grow = new();
+        /// <summary>0: a year from the records. 1: the box as it is now, with its yards and shapings. Between, they grow in.</summary>
+        public float liveShare;
 
         /// <summary>The year to draw (<paramref name="shown"/>), blending towards <paramref name="other"/> by
         /// <paramref name="blend"/> (null/0 = settled).</summary>
@@ -32,11 +35,11 @@ namespace AquariumCiv.View
             foreach (var p in shown.paths) if (p.cell < cells) tiers[p.cell] = (byte)p.tier;
             foreach (var b in shown.buildings) if (b.lotId > 0) { lotIds.Add(b.lotId); lookOfLot[b.lotId] = b.look; }
             if (other == null || other == shown) return;
-            // blend is measured from the earlier year to the later; "shown" is whichever is nearer, so work in a -> b terms.
-            var earlier = shown.year < other.year ? shown : other;
+            // blend is measured from the earlier frame to the later, whichever of them "shown" is. By month: the box as it is now
+            // shares its year with that year's start.
+            var earlier = shown.month < other.month ? shown : other;
             var later = earlier == shown ? other : shown;
-            float t = earlier == shown ? blend : 1f - blend;       // 0 at the earlier year, 1 at the later
-            t = System.Math.Min(1f, System.Math.Max(0f, t));
+            float t = System.Math.Min(1f, System.Math.Max(0f, blend)); // 0 at the earlier frame, 1 at the later
             float q = (float)System.Math.Round(t * steps) / steps;
             var inEarlier = new Dictionary<int, BuildingAt>();
             foreach (var b in earlier.buildings) if (b.lotId > 0) inEarlier[b.lotId] = b;

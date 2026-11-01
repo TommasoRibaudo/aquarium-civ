@@ -329,7 +329,7 @@
 .kg-tag--world { position: absolute; translate: -50% -100%; }
 .kg-tag--world.kg-tag--tie { translate: -50% -50%; }
 .kg-plate {
-    width: 544.5px; padding: var(--space-8) var(--space-10); align-items: center;
+    width: 544.5px; min-height: 99px; padding: var(--space-8) var(--space-10); align-items: center; justify-content: center;
     border-width: var(--hairline); border-color: var(--timber); border-radius: 11px;
     background-color: var(--brass-light);
 }
@@ -492,7 +492,10 @@
 .kg-tool {
     width: 31.85%; height: 154px; min-width: 0; padding: 0; border-radius: var(--radius-tool);
     -unity-font-definition: var(--font-lora-bold); font-size: 46.75px;
+    transition: scale 80ms ease-out, background-color 80ms ease-out, translate 280ms ease-out-cubic, opacity 280ms ease-out;
 }
+/* the first run has one primary and no other tools; they arrive one at a time at the end of it */
+.kg-tool--waiting { translate: 0 60px; opacity: 0; }
 .kg-tool-mark { position: absolute; left: 50%; top: 52px; margin-left: -96px; display: none; }
 .kg-tool--on { padding-left: 49.5px; border-width: 5.5px; border-color: var(--primary); }
 .kg-tool--on > .kg-tool-mark { display: flex; }
@@ -513,6 +516,49 @@
     -unity-font-definition: var(--font-serif-bold); font-size: 41.25px; -unity-text-align: middle-center; white-space: nowrap;
 }
 .kg-way-back-mark { position: absolute; left: 38.5px; top: 38.5px; }
+
+/* ---------------- the first run (#169, board 3.7) ---------------- */
+.fr-ghost, .fr-hint { position: absolute; }
+.fr-ghost-ring {
+    position: absolute; left: -33px; top: -33px; right: -33px; bottom: -33px;
+    border-width: 5.5px; border-color: var(--paper); border-radius: 50%;
+}
+.fr-plate-slot {
+    position: absolute; width: 544.5px; height: var(--hit); margin: 0; padding: 0;
+    border-width: 0; background-color: var(--clear); justify-content: center;
+}
+.fr-plate-slot:active > .kg-plate { background-color: var(--brass); }
+/* plain quiet text, the quietest thing on screen (rule 4, question 29). Two reaches of --hit, so they stand that far apart */
+.fr-skip { position: absolute; left: var(--space-16); align-items: flex-start; }
+.fr-skip > .kg-btn { margin-bottom: 23px; }
+.fr-year { left: 154px; right: 154px; top: 264px; align-items: stretch; }
+.fr-year-track { height: 13.75px; margin-top: var(--space-8); border-radius: 8.25px; background-color: rgba(239, 227, 204, 0.33); }
+.fr-year-fill { height: 100%; width: 0; border-radius: 8.25px; background-color: var(--brass-light); }
+.fr-name-note { flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: var(--space-6); }
+.fr-name-alert { margin-right: 13.75px; }
+.fr-name-field { height: 126.5px; margin: 0; padding: 0; flex-shrink: 0; }
+.fr-name-field > .unity-base-text-field__input {
+    height: 126.5px; margin: 0; padding: 0 38.5px;
+    border-width: var(--hairline); border-color: var(--timber); border-radius: var(--radius-chip);
+    background-color: var(--flat-tint);
+    color: var(--ink); -unity-font-definition: var(--font-serif); font-size: 46.75px; -unity-text-align: middle-left;
+}
+/* riding the keyboard (spec §2): floats, so every corner rounds */
+.fr-name-sheet--keyboard { height: 539px; }
+.fr-name-sheet--keyboard .surface, .fr-name-sheet--keyboard .surface--flat, .fr-name-sheet--keyboard .kg-frost-tint {
+    border-bottom-left-radius: var(--radius-sheet); border-bottom-right-radius: var(--radius-sheet);
+}
+.fr-name-sheet--keyboard .kg-card-acts { margin-top: var(--space-6); }
+.fr-card-scroll { min-height: 0; }
+.fr-card-scroll-pad { width: 100%; padding-right: 24.75px; }
+.fr-card-also { margin-top: var(--space-6); white-space: normal; }
+
+/* the label in a saved snapshot (board 3.5): drawn into the picture, never on the screen */
+.kg-flash {
+    position: absolute; left: var(--space-16); bottom: 82.5px; margin: 0; padding: 8.25px 27.5px;
+    border-radius: 16.5px; background-color: var(--dark-plate);
+    color: var(--on-primary); -unity-font-definition: var(--font-lora-bold); font-size: 38.5px; white-space: nowrap;
+}
 
 /* ---------------- gallery: for the tester, not a game screen ---------------- */
 .gal-root { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: #D8C8A8; }

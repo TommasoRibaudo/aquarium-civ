@@ -166,13 +166,14 @@ namespace AquariumCiv.View
             var near = s.Nearest;
             var other = near == s.a ? s.b : s.a;
             float q = Mathf.Round(s.blend * growSteps) / growSteps;
-            int key = s.yearA * 1000 + Mathf.RoundToInt(q * growSteps);
+            float live = Mathf.Round(s.liveShare * growSteps) / growSteps;
+            int key = s.yearA * 10000 + Mathf.RoundToInt(live * growSteps) * 100 + Mathf.RoundToInt(q * growSteps);
             if (!force && key == shownKey) { LastStepMs = 0; LastChunks = 0; return; }
             shownKey = key;
             shownPos = position;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             int cells = Src.Sim.Settlement.Map.tier.Length;
-            Src.Replay = new ReplayFrame(near, cells, s.diff.IsEmpty ? null : other, s.blend, growSteps);
+            Src.Replay = new ReplayFrame(near, cells, s.diff.IsEmpty ? null : other, s.blend, growSteps) { liveShare = live };
             Box.Refresh();
             LastStepMs = sw.Elapsed.TotalMilliseconds;
             LastChunks = Box.lastChunks.Count;

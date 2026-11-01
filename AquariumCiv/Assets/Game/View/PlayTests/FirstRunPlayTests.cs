@@ -215,15 +215,24 @@ namespace AquariumCiv.View.PlayTests
                 Assert.LessOrEqual(View.ShownHintText.Split(' ').Length, 3);
                 Assert.IsTrue(hud.CleanMode, "one finger wipes: clean mode is on for the player");
                 yield return Shot("1_wipe_hint");
-                // No dot and no time-lapse in the first run (first-session §2): History is the plain sheet.
+                // No dot, no time-lapse and no tools in the first run (first-session §2, board 3.7): a tap where they'll be is a tap on the world.
                 var dot = hud.Root.Q("hud-history-dot");
                 Assert.AreEqual(DisplayStyle.None, dot.resolvedStyle.display, "the founding stories light no dot");
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
-                for (int i = 0; i < 4; i++) yield return null;
+                foreach (var tool in new[] { "hud-history", "hud-shape", "hud-clean" })
+                {
+                    yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, tool));
+                    for (int i = 0; i < 4; i++) yield return null;
+                    Assert.IsNull(hud.OpenSheet, tool + " isn't there yet");
+                    Assert.IsTrue(hud.CleanMode, tool + ": Clean can't be switched off mid-step");
+                }
                 Assert.IsFalse(TimeLapseScreenView.Ensure().IsOpen, "no time-lapse in the first run");
-                Assert.AreEqual(GameHud.History, hud.OpenSheet);
-                hud.CloseSheet();
-                for (int i = 0; i < 4; i++) yield return null;
+                Assert.AreEqual(DisplayStyle.None, hud.Root.Q("hud-top").resolvedStyle.display, "the top row waits for Done");
+                // The #108 tester's bug: clean mode went off under the hint, and the next drag turned the camera.
+                float idle = CareView.Instance.idleExitSeconds;
+                CareView.Instance.idleExitSeconds = 0f;
+                for (int i = 0; i < 6; i++) yield return null;
+                Assert.IsTrue(hud.CleanMode, "the idle timer doesn't switch it off in the wipe step either");
+                CareView.Instance.idleExitSeconds = idle;
                 yield return WipeTheGlass();
                 for (int i = 0; i < 20; i++) yield return null;
                 Assert.AreEqual(FirstRunStep.Patch, View.Step, "the clear glass moves the run to the patch");
@@ -247,8 +256,18 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(View.Root, "firstrun-name-keep"));
                 Assert.AreEqual(FirstRunStep.Name, View.Step, "a refused name keeps the run at the plate");
                 Assert.IsFalse(string.IsNullOrEmpty(View.NameMessage), "and says why");
+                var keep = (GlassButton)View.Root.Q("firstrun-name-keep");
+                Assert.IsFalse(keep.Available, "Keep is unavailable until the name is edited (question 28)");
                 yield return Shot("4_name_refused");
+                FirstRunView.DebugKeyboard = true;
+                for (int i = 0; i < 6; i++) yield return null;
+                float kbTop = View.Root.panel.visualTree.layout.height - 291f * GlassType.Pt;
+                Assert.LessOrEqual(View.Root.Q("firstrun-name-sheet").worldBound.yMax, kbTop + 1f, "the sheet rides on the keyboard");
+                Assert.LessOrEqual(keep.worldBound.yMax, kbTop, "Keep stays in reach");
+                FirstRunView.DebugKeyboard = false;
+                for (int i = 0; i < 6; i++) yield return null;
                 field.value = "Mossbarrow";
+                Assert.IsTrue(keep.Available, "an edited name can be kept");
                 yield return TapAt(GameUiPanel.ScreenCenter(View.Root, "firstrun-name-keep"));
                 for (int i = 0; i < 10; i++) yield return null;
                 Assert.AreEqual("Mossbarrow", sim.PlaceName);
@@ -301,6 +320,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(0.8f);
                 Assert.IsTrue(View.CardOpen);
                 Assert.IsTrue(View.Summary.rainAnswered, "the rain was answered inside the year");
+                Assert.AreEqual(DisplayStyle.None, hud.Root.Q("hud-top").resolvedStyle.display, "the top row still waits");
                 yield return Shot("8_card");
                 float run = Time.realtimeSinceStartup - t0;
 
@@ -314,6 +334,9 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(View.Active, "Done ends the run");
                 Assert.IsFalse(View.CardOpen);
                 Assert.IsFalse(hud.ToolsHidden, "the tools are back");
+                Assert.AreNotEqual(DisplayStyle.None, hud.Root.Q("hud-top").resolvedStyle.display, "the top row arrives");
+                foreach (var tool in new[] { "hud-history", "hud-shape", "hud-clean" })
+                    Assert.AreEqual(1f, hud.Root.Q(tool).resolvedStyle.opacity, tool + " arrived");
                 Assert.IsFalse(GameClock.Instance.Held);
                 Assert.AreEqual("", View.ShownHintId);
                 Assert.AreEqual(DisplayStyle.None, dot.resolvedStyle.display, "the run told its stories: no dot after it");
@@ -324,6 +347,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 Assert.IsFalse(hud.CleanMode);
                 yield return new WaitForSecondsRealtime(1f);
+                yield return new WaitForSecondsRealtime(1f);
+                Assert.IsFalse(Cam.GetComponent<BoxCamera>().OffHome, "Done: the camera went home");
                 yield return Shot("10_normal_play");
                 Assert.AreEqual(FirstRunStep.Done, (FirstRunStep)sim.State.firstRun.step);
                 Debug.Log($"[firstrun] whole run by touch, {run:0} s of play here (hints and waits included)");
@@ -375,11 +400,10 @@ namespace AquariumCiv.View.PlayTests
             {
                 var sim = Sim;
                 yield return WaitFor(() => View.Step == FirstRunStep.Wipe, 6f);
-                // Do something else instead: the HUD works, sheets open, nothing is locked.
+                // The step's one thing is the only thing here, so a tap where History will be does nothing and costs nothing.
                 var hud = GameHud.Instance;
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
-                Assert.AreEqual(GameHud.History, hud.OpenSheet, "the HUD still opens its sheets mid-run");
-                hud.CloseSheet();
+                Assert.IsNull(hud.OpenSheet, "History isn't reachable before the run ends");
                 View.Run.DebugSkipTo(FirstRunStep.Name);
                 for (int i = 0; i < 6; i++) yield return null;
                 Assert.AreEqual(FirstRunStep.Name, View.Step);
@@ -389,6 +413,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(3f);
                 Assert.AreEqual(FirstRunStep.Rain, View.Step, "an untouched plate does not hold the run up");
                 Assert.AreEqual(suggestion, sim.PlaceName);
+                Assert.IsFalse(hud.CleanLocked, "the lock ended with its step");
                 yield return Shot("12_auto_kept");
                 // Skip all.
                 yield return TapAt(GameUiPanel.ScreenCenter(View.Root, "firstrun-skip-all"));

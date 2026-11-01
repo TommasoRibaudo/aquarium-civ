@@ -17,9 +17,14 @@ namespace AquariumCiv.View
     /// <see cref="FirstRun"/> director in a brand-new box (no save) or resumes it from the save. Wipe and the overgrown patch
     /// use the care layer (clean mode is switched on for the player); the plate is a brass pill that opens the naming sheet;
     /// the rain is the ordinary shape mode (the director adopts it); "Their first year" is the 15 s live skip with the clock
-    /// held; then the first card. Gesture hints are an animated ghost finger with at most three words. It never blocks:
-    /// everything else in the game keeps working, every step has Skip, and an untouched plate keeps its suggested name.
-    /// UI Toolkit built in code (styled by Game.uss, the #36 sheets); every control has a stable <c>firstrun-*</c> name.
+    /// held; then the first card. Gesture hints are an animated ghost finger with at most three words. It never blocks: the
+    /// step's own gesture is always there, test builds have Skip, and an untouched plate keeps its suggested name.
+    /// Keeper's Glass (#169, board 3.7): one primary per step and no other tools, so the HUD's tools and top row wait for Done
+    /// (<see cref="GameHud"/> reads the run's state), and clean mode holds through the wipe and the flick
+    /// (<see cref="GameHud.CleanLocked"/>). One message at a time: the hint rests while a reward line shows.
+    /// Built in code from the components in UI/Glass, styled in Glass.uss; the code sets only what depends on the world or the
+    /// clock (where a hint or a bubble sits, the ghost's motion, the year's bar, the keyboard's height). Every control has a stable
+    /// <c>firstrun-*</c> name.
     /// </summary>
     [DefaultExecutionOrder(-5)]
     public class FirstRunView : MonoBehaviour
@@ -42,14 +47,24 @@ namespace AquariumCiv.View
         GameHud hud;
         BoxView box;
         UIDocument doc;
-        VisualElement root, safe, ghost, ghostRing, nameScrim, cardScrim, skipRow, yearBox, plate;
-        Button rainBtn;
-        Label hintLabel, bubble, yearBar, nameMsg, cardPlace, cardCounts, cardBody, cardAlso, cardCaption;
-        VisualElement yearFill;
+        VisualElement root, safe, ghost, ghostRing, skipRow, yearFill, nameNoteRow, nameNote, nameAlert;
+        GlassScrim nameScrim, cardScrim;
+        GlassSheet nameSheet, cardSheet;
+        Button plate;
+        GlassPlate plateFace;
+        GlassBigPrompt rainBtn;
+        GlassBubble bubble;
+        GlassHint hint;
+        GlassCaption yearBox;
+        GlassCard card;
+        GlassBanner showBar;
+        Label nameMsg, cardAlso;
         TextField nameField;
-        Button showMeBtn;
+        GlassButton showMeBtn, keepBtn;
         FirstYearSummary summary;
-        bool heldClock, toolsHidden, cardShown, showingMe, rainArmed, runEnded;
+        bool heldClock, toolsHidden, cardShown, showingMe, rainArmed, runEnded, yearUp;
+        float keyboardShown, plateNamedUntil, rewardUntil;
+        string rewardLine;
         float hintShownAt = -1f;
         string lastHintId = "";
         bool prevHintVisible;
@@ -60,9 +75,13 @@ namespace AquariumCiv.View
         public FirstRunStep Step => run != null ? run.Step : FirstRunStep.Done;
         public VisualElement Root => root;
         public string ShownHintId => root != null && ghost != null && ghost.resolvedStyle.display == DisplayStyle.Flex ? lastHintId : "";
-        public string ShownHintText => ShownHintId.Length > 0 ? hintLabel.text : "";
-        public bool NameSheetOpen => nameScrim != null && nameScrim.resolvedStyle.display == DisplayStyle.Flex;
-        public bool CardOpen => cardScrim != null && cardScrim.resolvedStyle.display == DisplayStyle.Flex;
+        public string ShownHintText => ShownHintId.Length > 0 ? hint.Word : "";
+        public bool NameSheetOpen => nameSheet != null && nameSheet.IsOpen;
+        public bool CardOpen => cardSheet != null && cardSheet.IsOpen;
+        /// <summary>One bubble at a time: the run's own, or the first card, and the people wait.</summary>
+        public bool HasTheWord => Active && (CardOpen || (bubble != null && bubble.resolvedStyle.display == DisplayStyle.Flex) || Step == FirstRunStep.Rain);
+        /// <summary>The reward line showing now (the hint rests under it), or "".</summary>
+        public string ShownReward => bubble != null && Time.unscaledTime < rewardUntil ? rewardLine : "";
         public string NameMessage => nameMsg?.text ?? "";
         public FirstYearSummary Summary => summary;
 
@@ -104,6 +123,7 @@ namespace AquariumCiv.View
             heldClock = false;
             if (toolsHidden && GameHud.Instance != null) GameHud.Instance.HideTools("firstrun", false);
             toolsHidden = false;
+            if (GameHud.Instance != null) GameHud.Instance.CleanLocked = false;
             SetSoftDays(false);
             MessProps.PatchCentre = null;
         }
@@ -188,6 +208,29 @@ namespace AquariumCiv.View
             return $"first run {(v.run.Active ? "active" : "over")} · step {v.run.Step} · {f.stepSeconds:0}s in step · hint returns {f.hintReturns}";
         }
 
+        /// <summary>Debug: holds the naming sheet as it rides the keyboard, which an Editor never raises.</summary>
+        public static bool DebugKeyboard { get; set; }
+
+        /// <summary>Debug: the reward line that rests the hint.</summary>
+        public static string DebugReward()
+        {
+            var v = Instance;
+            if (v == null || v.run == null || !v.run.Active) return "no first run active";
+            v.OnCue(FirstRunCue.ChildSmiley);
+            return "reward line up";
+        }
+
+        /// <summary>Debug: the naming sheet in its refused state, with Keep unavailable until the name is edited.</summary>
+        public static string DebugRefuseName()
+        {
+            var v = Instance;
+            if (v == null || v.run == null || !v.run.Active) return "no first run active";
+            v.OpenName();
+            v.nameField.SetValueWithoutNotify("shit hole");
+            v.OnKeep();
+            return "name refused: " + v.NameMessage;
+        }
+
         // ================================================================== frame
         void Update()
         {
@@ -211,6 +254,7 @@ namespace AquariumCiv.View
             ReadPointer(out bool touching);
             run.Tick(dt, touching && !year);
             if (!run.Active) { EndRun(); HideAll(); return; }
+            hud.CleanLocked = run.Step == FirstRunStep.Wipe || run.Step == FirstRunStep.Patch; // before EnterStep, which turns it off for the next step
             if (run.Step != shownStep) EnterStep();
             UpdateUi();
         }
@@ -241,10 +285,13 @@ namespace AquariumCiv.View
             if (heldClock && GameClock.Instance != null) GameClock.Instance.Held = false;
             heldClock = false;
             SetToolsHidden(false);
+            if (hud != null) hud.CleanLocked = false;
             MessProps.PatchCentre = null;
             CloseSheets();
             if (ShapingView.Instance != null) { ShapingView.Instance.SetTool(null); ShapingView.Instance.Free = true; }
             if (cardShown) { cardShown = false; if (ShowMeDirector.Instance != null) ShowMeDirector.Instance.End(); }
+            var cam = FindAnyObjectByType<BoxCamera>();
+            if (cam != null && cam.OffHome) cam.GoHome(ShowMeDirector.ReturnSeconds); // Done: the camera goes home and the HUD arrives (board 3.7)
         }
 
         void OnStep(FirstRunStep s)
@@ -253,15 +300,18 @@ namespace AquariumCiv.View
             if (GameClock.Instance != null) GameClock.Instance.Save(); // a kill resumes at this step
             rainArmed = false;
             if (s != FirstRunStep.Rain && ShapingView.Instance != null) { ShapingView.Instance.SetTool(null); ShapingView.Instance.Free = true; }
-            if (s != FirstRunStep.Name) { if (nameScrim != null) nameScrim.style.display = DisplayStyle.None; }
+            if (s != FirstRunStep.Name) CloseName();
             if (box != null && s == FirstRunStep.Year) box.Refresh();
         }
 
         void OnCue(FirstRunCue c)
         {
             // The child's smiley in the mist is a view staging beat that is not built yet (see the issue's open questions);
-            // for now the line says what the child does.
-            if (c == FirstRunCue.ChildSmiley && hud != null) { hud.Toast("A child draws a smiley in the mist.", 3.5f); Sfx.Play(CueLibrary.Discovery); }
+            // for now the line says what the child does, in a bubble over the glass, and the hint rests under it.
+            if (c != FirstRunCue.ChildSmiley) return;
+            rewardLine = "A child draws a smiley in the mist.";
+            rewardUntil = Time.unscaledTime + RewardSeconds;
+            Sfx.Play(CueLibrary.Discovery);
         }
 
         void EnterStep()
@@ -276,8 +326,7 @@ namespace AquariumCiv.View
                     if (!hud.CleanMode && !hud.SheetOpen) hud.SetCleanMode(true); // one finger wipes and flicks
                     break;
                 case FirstRunStep.Name:
-                    hud.SetCleanMode(false);
-                    hud.Toast("The glass is clear. Give the box a name.", 4f);
+                    hud.SetCleanMode(false); // the hint says it: one message, no toast (question 27)
                     break;
                 case FirstRunStep.Rain:
                     hud.SetCleanMode(false);
@@ -302,6 +351,16 @@ namespace AquariumCiv.View
         }
 
         // ================================================================== UI
+        const float RewardSeconds = 3.5f, ToastSeconds = 1.6f, NamedPlateSeconds = 1.7f;
+        /// <summary>Half the ghost, and where the skip row starts under the notch, panel px (96 pt).</summary>
+        const float GhostHalf = 60.5f, SkipTop = 264f;
+        /// <summary>The panel's top limit for a word over the world, and the keyboard's padding under Keep (12 pt).</summary>
+        const float TopLimit = 190f, KeyboardPad = 33f;
+        /// <summary>A raised keyboard for the debug panel: the board's 291 pt.</summary>
+        const float DebugKeyboardHeight = 291f * GlassType.Pt;
+        /// <summary>The plate on the plinth's front face, box units.</summary>
+        const float PlateY = -0.12f, PlateZ = -Land.HZ - 0.2f;
+
         void Build(VisualElement parent)
         {
             parent.Clear();
@@ -312,103 +371,61 @@ namespace AquariumCiv.View
             safe.AddToClassList("hud-fill");
             root.Add(safe);
 
-            // the brass plate: tap to name the box
-            plate = Btn("firstrun-plate", "Name your box", OpenName);
-            plate.style.position = Position.Absolute;
-            plate.style.top = 190;
-            plate.style.alignSelf = Align.Center;
-            plate.style.width = 560; plate.style.height = 132;
-            plate.style.backgroundColor = new Color(0.81f, 0.65f, 0.37f);
-            plate.style.color = new Color(0.18f, 0.16f, 0.15f);
-            plate.style.fontSize = 40; plate.style.unityFontStyleAndWeight = FontStyle.Bold;
-            plate.style.borderTopWidth = plate.style.borderBottomWidth = plate.style.borderLeftWidth = plate.style.borderRightWidth = 6;
-            var rim = new Color(0.42f, 0.29f, 0.21f);
-            plate.style.borderTopColor = plate.style.borderBottomColor = plate.style.borderLeftColor = plate.style.borderRightColor = rim;
-            plate.style.borderTopLeftRadius = plate.style.borderTopRightRadius = plate.style.borderBottomLeftRadius = plate.style.borderBottomRightRadius = 30;
+            // the brass plate: tap to name the box. A clear slot takes the tap; what shows is the plate
+            plate = new Button(OpenName) { name = "firstrun-plate" };
+            plate.RemoveFromClassList(Button.ussClassName);
+            plate.AddToClassList("fr-plate-slot");
+            plateFace = new GlassPlate();
+            plateFace.Title = "";
+            plate.Add(plateFace);
             plate.style.display = DisplayStyle.None;
             safe.Add(plate);
 
-            // the rain button, in the thumb zone
-            rainBtn = Btn("firstrun-rain", "Give them rain", OnRainButton, "hud-btn", "hud-btn--primary");
-            rainBtn.style.position = Position.Absolute;
-            rainBtn.style.bottom = GameUiPanel.PromptBottom;
-            rainBtn.style.alignSelf = Align.Center;
-            rainBtn.style.width = 560;
-            rainBtn.style.display = DisplayStyle.None;
+            // the rain: the step's one primary, in the prompt lane
+            rainBtn = new GlassBigPrompt("Give them rain", OnRainButton) { name = "firstrun-rain", Role = UiRole.Toggle };
+            rainBtn.Ready = false;
             safe.Add(rainBtn);
 
-            // the wish bubble over the wisher
-            bubble = new Label { name = "firstrun-bubble", pickingMode = PickingMode.Ignore };
-            bubble.AddToClassList("hud-toast");
-            bubble.style.position = Position.Absolute;
-            bubble.style.right = StyleKeyword.Auto; bubble.style.bottom = StyleKeyword.Auto;
-            bubble.style.fontSize = 34; bubble.style.maxWidth = 640;
-            bubble.style.unityTextAlign = TextAnchor.MiddleCenter;
-            bubble.style.backgroundColor = new Color(0.94f, 0.89f, 0.8f, 0.96f);
-            bubble.style.color = new Color(0.42f, 0.29f, 0.21f);
+            // one bubble: the wish over the wisher, or the reward line over the glass
+            bubble = new GlassBubble("", "") { name = "firstrun-bubble" };
+            bubble.AddToClassList("kg-bubble--world");
             bubble.style.display = DisplayStyle.None;
             safe.Add(bubble);
 
-            // skip row: small, quiet, never in the way
+            // skip row: test builds only, the quietest thing on screen
             skipRow = new VisualElement { name = "firstrun-skip-row", pickingMode = PickingMode.Ignore };
-            skipRow.style.position = Position.Absolute;
-            skipRow.style.left = 24; skipRow.style.top = 190;
-            skipRow.Add(SmallBtn("firstrun-skip-step", "Skip step", () => { run?.SkipStep(); }));
-            var all = SmallBtn("firstrun-skip-all", "Skip all", () => { run?.SkipAll(); });
-            all.style.marginTop = 12;
-            skipRow.Add(all);
+            skipRow.AddToClassList("fr-skip");
+            skipRow.Add(new GlassButton("Skip step", () => run?.SkipStep(), ButtonKind.Quiet) { name = "firstrun-skip-step" });
+            skipRow.Add(new GlassButton("Skip all", () => run?.SkipAll(), ButtonKind.Quiet) { name = "firstrun-skip-all" });
+            skipRow.style.display = DisplayStyle.None;
             safe.Add(skipRow);
 
-            // "Their first year": a caption and a thin bar
-            yearBox = new VisualElement { name = "firstrun-year", pickingMode = PickingMode.Ignore };
-            yearBox.style.position = Position.Absolute;
-            yearBox.style.left = 0; yearBox.style.right = 0; yearBox.style.top = 330;
-            yearBox.style.alignItems = Align.Center;
-            var cap = new Label("Their first year") { name = "firstrun-year-caption", pickingMode = PickingMode.Ignore };
-            cap.style.fontSize = 72; cap.style.unityFontStyleAndWeight = FontStyle.Bold;
-            cap.style.color = new Color(0.94f, 0.89f, 0.8f);
-            cap.style.backgroundColor = new Color(0.18f, 0.16f, 0.15f, 0.62f);
-            cap.style.paddingLeft = cap.style.paddingRight = 56; cap.style.paddingTop = cap.style.paddingBottom = 24;
-            cap.style.borderTopLeftRadius = cap.style.borderTopRightRadius = cap.style.borderBottomLeftRadius = cap.style.borderBottomRightRadius = 60;
-            yearBar = cap;
-            yearBox.Add(cap);
+            // "Their first year": the caption and a thin bar in it
+            yearBox = new GlassCaption("Their first year") { name = "firstrun-year" };
+            yearBox.AddToClassList("fr-year");
+            yearBox.Line.name = "firstrun-year-caption";
             var track = new VisualElement { pickingMode = PickingMode.Ignore };
-            track.style.width = 520; track.style.height = 14; track.style.marginTop = 24;
-            track.style.backgroundColor = new Color(0.18f, 0.16f, 0.15f, 0.5f);
-            track.style.borderTopLeftRadius = track.style.borderTopRightRadius = track.style.borderBottomLeftRadius = track.style.borderBottomRightRadius = 7;
+            track.AddToClassList("fr-year-track");
             yearFill = new VisualElement { name = "firstrun-year-fill", pickingMode = PickingMode.Ignore };
-            yearFill.style.height = 14; yearFill.style.width = 0;
-            yearFill.style.backgroundColor = new Color(0.81f, 0.65f, 0.37f);
-            yearFill.style.borderTopLeftRadius = yearFill.style.borderBottomLeftRadius = 7;
+            yearFill.AddToClassList("fr-year-fill");
             track.Add(yearFill);
             yearBox.Add(track);
             yearBox.style.display = DisplayStyle.None;
             safe.Add(yearBox);
 
             // the ghost finger and its words
-            ghost = new VisualElement { name = "firstrun-ghost", pickingMode = PickingMode.Ignore };
-            ghost.style.position = Position.Absolute;
-            ghost.style.width = 96; ghost.style.height = 96;
-            ghost.style.backgroundColor = new Color(1f, 1f, 1f, 0.55f);
-            ghost.style.borderTopLeftRadius = ghost.style.borderTopRightRadius = ghost.style.borderBottomLeftRadius = ghost.style.borderBottomRightRadius = 48;
-            ghost.style.borderTopWidth = ghost.style.borderBottomWidth = ghost.style.borderLeftWidth = ghost.style.borderRightWidth = 5;
-            ghost.style.borderTopColor = ghost.style.borderBottomColor = ghost.style.borderLeftColor = ghost.style.borderRightColor = new Color(0.42f, 0.29f, 0.21f, 0.8f);
+            ghost = GlassHint.Ghost();
+            ghost.name = "firstrun-ghost";
+            ghost.AddToClassList("fr-ghost");
             ghost.style.display = DisplayStyle.None;
             ghostRing = new VisualElement { pickingMode = PickingMode.Ignore };
-            ghostRing.style.position = Position.Absolute;
-            ghostRing.style.left = -26; ghostRing.style.top = -26; ghostRing.style.right = -26; ghostRing.style.bottom = -26;
-            ghostRing.style.borderTopWidth = ghostRing.style.borderBottomWidth = ghostRing.style.borderLeftWidth = ghostRing.style.borderRightWidth = 4;
-            ghostRing.style.borderTopColor = ghostRing.style.borderBottomColor = ghostRing.style.borderLeftColor = ghostRing.style.borderRightColor = new Color(1f, 1f, 1f, 0.5f);
-            ghostRing.style.borderTopLeftRadius = ghostRing.style.borderTopRightRadius = ghostRing.style.borderBottomLeftRadius = ghostRing.style.borderBottomRightRadius = 74;
+            ghostRing.AddToClassList("fr-ghost-ring");
             ghost.Add(ghostRing);
             safe.Add(ghost);
-            hintLabel = new Label { name = "firstrun-hint", pickingMode = PickingMode.Ignore };
-            hintLabel.AddToClassList("hud-toast");
-            hintLabel.style.position = Position.Absolute;
-            hintLabel.style.right = StyleKeyword.Auto; hintLabel.style.bottom = StyleKeyword.Auto;
-            hintLabel.style.fontSize = 42; hintLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-            hintLabel.style.display = DisplayStyle.None;
-            safe.Add(hintLabel);
+            hint = new GlassHint { name = "firstrun-hint" };
+            hint.AddToClassList("fr-hint");
+            hint.style.display = DisplayStyle.None;
+            safe.Add(hint);
 
             BuildNameSheet();
             BuildCard();
@@ -419,94 +436,90 @@ namespace AquariumCiv.View
         {
             var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
             safe.style.left = i.x; safe.style.top = i.y; safe.style.right = i.z; safe.style.bottom = i.w;
-        }
-
-        VisualElement MakeSheet(string name, out VisualElement scrim)
-        {
-            scrim = new VisualElement { name = name + "-scrim" };
-            scrim.AddToClassList("hud-fill");
-            scrim.AddToClassList("sheet-scrim");
-            scrim.style.display = DisplayStyle.None;
-            root.Add(scrim);
-            var sheet = new VisualElement { name = name + "-sheet" };
-            sheet.AddToClassList("sheet");
-            scrim.Add(sheet);
-            return sheet;
+            float pad = GlassSheet.IsShort(Screen.width, Screen.height) ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad;
+            cardSheet.SetInsets(i, pad);
+            if (keyboardShown <= 0f) nameSheet.SetInsets(i, pad);
+            rainBtn.style.bottom = GameUiPanel.Lane(GameUiPanel.PromptBottom, i.w);
+            skipRow.style.top = Mathf.Max(0f, SkipTop - i.y);
+            showBar.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
         }
 
         void BuildNameSheet()
         {
-            var sheet = MakeSheet("firstrun-name", out nameScrim);
-            var scrim = nameScrim;
-            scrim.RegisterCallback<PointerUpEvent>(e => { if (e.target == scrim) scrim.style.display = DisplayStyle.None; });
-            var head = new VisualElement();
-            head.AddToClassList("sheet-head");
-            head.Add(Lbl("Name your box", "sheet-title"));
-            head.Add(Btn("firstrun-name-close", "Later", () => scrim.style.display = DisplayStyle.None, "sheet-close"));
-            sheet.Add(head);
-            sheet.Add(Lbl("It goes on the brass plate.", "sheet-note"));
+            nameSheet = new GlassSheet();
+            nameSheet.AddToClassList("fr-name-sheet");
+            nameScrim = new GlassScrim("firstrun-name", nameSheet);
+            nameScrim.TappedOutside += CloseName;
+            root.Add(nameScrim);
+            var head = GlassSheet.Head("Name your box", null, null);
+            head.Add(new GlassButton("Later", CloseName, ButtonKind.Quiet, UiRole.Close) { name = "firstrun-name-close" });
+            nameSheet.Add(head);
+            nameNoteRow = new VisualElement { pickingMode = PickingMode.Ignore };
+            nameNoteRow.AddToClassList("fr-name-note");
+            nameAlert = new GlassIcon("alert", "kg-icon--small", "fr-name-alert");
+            nameAlert.style.display = DisplayStyle.None;
+            nameNoteRow.Add(nameAlert);
+            nameNote = Text(null, "type-note", "It goes on the brass plate.");
+            nameNoteRow.Add(nameNote);
+            nameMsg = (Label)Text("firstrun-name-msg", "type-note", "");
+            nameMsg.style.display = DisplayStyle.None;
+            nameNoteRow.Add(nameMsg);
+            nameSheet.Add(nameNoteRow);
             nameField = new TextField { name = "firstrun-name-field", maxLength = SettlementNaming.MaxLength + 4 };
-            nameField.style.marginTop = 24; nameField.style.height = 136;
-            nameField.RegisterValueChangedCallback(e => { if (nameMsg != null) nameMsg.text = ""; });
-            nameField.RegisterCallback<GeometryChangedEvent>(_ => StyleInput());
-            sheet.Add(nameField);
-            nameMsg = Lbl("", "sheet-note");
-            nameMsg.name = "firstrun-name-msg";
-            nameMsg.style.color = new Color(0.65f, 0.3f, 0.2f);
-            nameMsg.style.minHeight = 44;
-            sheet.Add(nameMsg);
-            var row = new VisualElement { style = { flexDirection = FlexDirection.Row, marginTop = 12 } };
-            var again = Btn("firstrun-name-reroll", "Another", () => { if (run != null) { nameField.value = run.RerollName(); nameMsg.text = ""; } }, "sheet-btn");
-            again.style.flexGrow = 1; again.style.marginRight = 24;
-            var keep = Btn("firstrun-name-keep", "Keep", OnKeep, "sheet-btn");
-            keep.style.flexGrow = 1.4f;
-            keep.style.backgroundColor = new Color(0.78f, 0.44f, 0.31f);
-            keep.style.color = new Color(0.94f, 0.89f, 0.8f);
-            row.Add(again); row.Add(keep);
-            sheet.Add(row);
-        }
-
-        void StyleInput()
-        {
-            var input = nameField.Q(className: "unity-text-field__input") ?? nameField.Q(className: "unity-base-text-field__input");
-            if (input == null) return;
-            input.style.fontSize = 52; input.style.height = 136;
-            input.style.color = new Color(0.42f, 0.29f, 0.21f);
-            input.style.backgroundColor = new Color(0.98f, 0.95f, 0.88f);
-            input.style.borderTopLeftRadius = input.style.borderTopRightRadius = input.style.borderBottomLeftRadius = input.style.borderBottomRightRadius = 40;
-            input.style.paddingLeft = input.style.paddingRight = 36;
-            input.style.unityTextAlign = TextAnchor.MiddleLeft;
+            nameField.AddToClassList("fr-name-field");
+            nameField.RegisterValueChangedCallback(_ => NameEdited());
+            nameSheet.Add(nameField);
+            var row = new VisualElement();
+            row.AddToClassList("kg-card-acts");
+            row.Add(new GlassButton("Another", OnAnother) { name = "firstrun-name-reroll" });
+            row.Add(keepBtn = new GlassButton("Keep", OnKeep, ButtonKind.Primary, UiRole.None) { name = "firstrun-name-keep" });
+            nameSheet.Add(row);
         }
 
         void BuildCard()
         {
-            var sheet = MakeSheet("firstrun-card", out cardScrim);
-            cardCaption = Lbl("Their first year", "pc-label");
-            sheet.Add(cardCaption);
-            cardPlace = Lbl("", "sheet-title");
-            cardPlace.style.marginBottom = 8;
-            sheet.Add(cardPlace);
-            cardCounts = Lbl("", "sheet-note");
-            cardCounts.style.marginBottom = 24;
-            sheet.Add(cardCounts);
-            cardBody = Lbl("", "sheet-text");
-            cardBody.name = "firstrun-card-text";
-            cardBody.style.fontSize = 44;
-            cardBody.style.whiteSpace = WhiteSpace.Normal; cardBody.style.flexShrink = 1; cardBody.style.maxWidth = Length.Percent(100);
-            sheet.Add(cardBody);
-            cardAlso = Lbl("", "sheet-note");
-            cardAlso.name = "firstrun-card-also";
-            cardAlso.style.whiteSpace = WhiteSpace.Normal; cardAlso.style.maxWidth = Length.Percent(100);
-            sheet.Add(cardAlso);
-            var row = new VisualElement { style = { flexDirection = FlexDirection.Row, marginTop = 12 } };
-            showMeBtn = Btn("firstrun-card-showme", "Show me", OnShowMe, "sheet-btn");
-            showMeBtn.style.flexGrow = 1; showMeBtn.style.marginRight = 24;
-            var done = Btn("firstrun-card-done", "Done", OnDone, "sheet-btn");
-            done.style.flexGrow = 1;
-            done.style.backgroundColor = new Color(0.78f, 0.44f, 0.31f);
-            done.style.color = new Color(0.94f, 0.89f, 0.8f);
-            row.Add(showMeBtn); row.Add(done);
-            sheet.Add(row);
+            cardSheet = new GlassSheet();
+            cardScrim = new GlassScrim("firstrun-card", cardSheet);
+            root.Add(cardScrim);
+            card = new GlassCard();
+            card.Dots.style.display = DisplayStyle.None;
+            cardSheet.Add(card);
+            // head, then the sub line, then the words: the year's numbers go with the name (board 3.7)
+            card.Remove(card.Sub);
+            card.Insert(card.IndexOf(card.Head) + 1, card.Sub);
+            var scroll = new GlassScroll { SnapToRows = true, SplitRows = true };
+            scroll.AddToClassList("fr-card-scroll");
+            scroll.View.contentContainer.AddToClassList("fr-card-scroll-pad");
+            card.Insert(card.IndexOf(card.Actions), scroll);
+            card.Body.name = "firstrun-card-text";
+            card.Body.AddToClassList(GlassScroll.RowClass);
+            card.Body.userData = GlassType.BodyPitch;
+            scroll.Add(card.Body);
+            cardAlso = (Label)Text("firstrun-card-also", "type-note", "");
+            cardAlso.enableRichText = true;
+            cardAlso.AddToClassList("fr-card-also");
+            cardAlso.AddToClassList(GlassScroll.RowClass);
+            cardAlso.userData = NotePitch;
+            scroll.Add(cardAlso);
+            showMeBtn = new GlassButton("Show me", OnShowMe, ButtonKind.Secondary, UiRole.ShowMe) { name = "firstrun-card-showme" };
+            card.Actions.Add(showMeBtn);
+            card.Actions.Add(new GlassButton("Done", OnDone, ButtonKind.Primary, UiRole.None) { name = "firstrun-card-done" });
+
+            // Show me leaves the land clear; the way back is fixed, in the tools' lane
+            showBar = new GlassBanner { name = "firstrun-showme-bar", pickingMode = PickingMode.Ignore };
+            showBar.style.display = DisplayStyle.None;
+            showBar.End.Add(new GlassButton("Back to the story", BackToCard, ButtonKind.Secondary, UiRole.Back) { name = "firstrun-showme-back", Compact = true });
+            safe.Add(showBar);
+        }
+
+        const float NotePitch = 13f * 1.3f * GlassType.Pt;
+
+        static TextElement Text(string name, string cls, string words)
+        {
+            var l = new Label(words) { pickingMode = PickingMode.Ignore };
+            if (name != null) l.name = name;
+            l.AddToClassList(cls);
+            return l;
         }
 
         // ---------------- the plate and the name ----------------
@@ -517,22 +530,84 @@ namespace AquariumCiv.View
             if (run == null || !run.Active) return;
             hud?.CloseSheet();
             if (string.IsNullOrEmpty(nameField.value)) nameField.value = run.SuggestedName;
-            nameMsg.text = "";
-            if (nameScrim.style.display != DisplayStyle.Flex) Sfx.Play(CueLibrary.UiOpen); // #96
-            nameScrim.style.display = DisplayStyle.Flex;
+            NameEdited();
+            if (!nameSheet.IsOpen) { UiSound.Play(UiRole.Open); nameScrim.Open(); }
+            hud?.SetOutsideSheet(nameSheet);
+        }
+
+        void CloseName()
+        {
+            if (nameSheet == null || !nameSheet.IsOpen) return;
+            nameSheet.style.translate = StyleKeyword.Null;
+            keyboardShown = 0f;
+            nameSheet.RemoveFromClassList(KeyboardClass);
+            ApplySafe();
+            nameScrim.Close();
+            if (hud != null && hud.OutsideSheet == nameSheet) hud.SetOutsideSheet(null);
+        }
+
+        const string KeyboardClass = "fr-name-sheet--keyboard";
+
+        /// <summary>The keyboard's height in panel px, 0 when it's down.</summary>
+        static float KeyboardHeight()
+        {
+            if (DebugKeyboard) return DebugKeyboardHeight;
+            if (!TouchScreenKeyboard.isSupported || !TouchScreenKeyboard.visible) return 0f;
+            return TouchScreenKeyboard.area.height * GameUiPanel.ReferenceWidth / Mathf.Max(1f, Screen.width);
+        }
+
+        /// <summary>Spec §2: the sheet rides on the keyboard by translate, with Keep in reach. It keeps its layout, 12 pt under the buttons.
+        /// That leaves only a corner of the box in view, which question 33 accepts.</summary>
+        void RideKeyboard()
+        {
+            float h = NameSheetOpen ? KeyboardHeight() : 0f;
+            if (Mathf.Abs(h - keyboardShown) < 0.5f) return;
+            keyboardShown = h;
+            nameSheet.EnableInClassList(KeyboardClass, h > 0f);
+            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            if (h > 0f) nameSheet.SetInsets(new Vector4(i.x, i.y, i.z, 0f), KeyboardPad);
+            else ApplySafe();
+            nameSheet.style.translate = h > 0f ? new Translate(0f, -h) : StyleKeyword.Null;
+            nameSheet.Surface.Follow(GlassMotion.SlideMs);
+        }
+
+        /// <summary>The field changed, so what was refused is gone: the note is back and Keep is available (question 28).</summary>
+        void NameEdited() => ShowNameProblem("");
+
+        void ShowNameProblem(string words)
+        {
+            bool problem = !string.IsNullOrEmpty(words);
+            nameMsg.text = words;
+            nameMsg.style.display = problem ? DisplayStyle.Flex : DisplayStyle.None;
+            nameAlert.style.display = problem ? DisplayStyle.Flex : DisplayStyle.None;
+            nameNote.style.display = problem ? DisplayStyle.None : DisplayStyle.Flex;
+            keepBtn.Available = !problem;
+        }
+
+        void OnAnother()
+        {
+            if (run != null) nameField.value = run.RerollName();
         }
 
         void OnKeep()
         {
             if (run == null) return;
             var p = run.CheckName(nameField.value, out string clean);
-            if (p != NameProblem.None) { nameMsg.text = SettlementNaming.Message(p); return; }
+            if (p != NameProblem.None) { Refuse(p); return; }
             var problem = run.KeepName(clean);
-            if (problem != NameProblem.None) { nameMsg.text = SettlementNaming.Message(problem); return; }
-            nameScrim.style.display = DisplayStyle.None;
-            Sfx.Play(CueLibrary.UiConfirm); // #96: the name is kept
-            hud?.Toast($"Welcome to {clean}.", 3.5f);
+            if (problem != NameProblem.None) { Refuse(problem); return; }
+            CloseName();
+            UiSound.Play(UiRole.Confirm);
+            plateFace.Title = clean;
+            plateNamedUntil = Time.unscaledTime + NamedPlateSeconds;
+            hud?.Toast($"Welcome to {clean}.", ToastSeconds);
             GameClock.Instance?.Save();
+        }
+
+        void Refuse(NameProblem p)
+        {
+            ShowNameProblem(SettlementNaming.Message(p));
+            UiSound.Play(UiRole.Refused);
         }
 
         // ---------------- the rain ----------------
@@ -541,32 +616,26 @@ namespace AquariumCiv.View
             if (run == null || run.Step != FirstRunStep.Rain) return;
             var sv = ShapingView.Instance;
             if (sv == null) { var (x, z) = run.SuggestedRainSpot; run.PlaceRain(x, z); return; }
-            rainArmed = !rainArmed;
-            Sfx.Play(CueLibrary.UiToggle); // #96
-            if (rainArmed)
-            {
-                sv.Free = false;
-                sv.SetTool(SimCore.NudgeKind.Rain);
-                run.NoteTrayOpened();
-            }
-            else sv.SetTool(null);
+            rainArmed = true;
+            sv.Free = false;
+            sv.SetTool(SimCore.NudgeKind.Rain, true);
+            run.NoteTrayOpened();
         }
 
         // ---------------- the card ----------------
         void OpenCard()
         {
             summary = run.Summary();
-            cardPlace.text = summary.place;
             int dp = summary.populationEnd - summary.populationStart, db = summary.buildingsEnd - summary.buildingsStart;
-            var sb = new StringBuilder();
-            sb.Append(Plural(summary.populationEnd, "person", "people")).Append(dp > 0 ? $" (+{dp})" : "");
-            if (db > 0) sb.Append("  ·  ").Append(Plural(db, "new building", "new buildings"));
-            cardCounts.text = sb.ToString();
-            cardBody.text = summary.cardText;
-            cardAlso.text = summary.alsoHeadlines.Count > 0 ? "Also: " + string.Join("  ·  ", summary.alsoHeadlines) : "";
-            cardAlso.style.display = summary.alsoHeadlines.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            var sb = new StringBuilder(summary.caption).Append(" · ").Append(Plural(summary.populationEnd, "person", "people"));
+            if (dp > 0) sb.Append(" (+").Append(dp.ToString(CultureInfo.InvariantCulture)).Append(')');
+            if (db > 0) sb.Append(" · ").Append(Plural(db, "new building", "new buildings"));
+            card.Set(summary.place, summary.cardText, sb.ToString());
+            bool also = summary.alsoHeadlines.Count > 0;
+            cardAlso.text = also ? GlassType.Lines("Also: " + string.Join(" · ", summary.alsoHeadlines), 13f, 1.3f) : "";
+            cardAlso.style.display = also ? DisplayStyle.Flex : DisplayStyle.None;
             showMeBtn.style.display = summary.card != null && summary.flyToBuildingId >= 0 ? DisplayStyle.Flex : DisplayStyle.None;
-            cardScrim.style.display = DisplayStyle.Flex;
+            cardScrim.Open();
             Sfx.Play(CueLibrary.CardArrive); // #96: "Their first year" arrives
             cardShown = true; showingMe = false;
         }
@@ -578,15 +647,26 @@ namespace AquariumCiv.View
             var d = ShowMeDirector.Instance;
             if (d == null || summary?.card == null) return;
             d.Show(summary.card, true);
-            cardScrim.style.display = DisplayStyle.None;
+            cardScrim.Close();
+            showBar.Set(summary.caption, summary.place);
+            GlassMotion.Show(showBar, GlassMotion.SlideOff);
             showingMe = true;
+        }
+
+        /// <summary>The land was looked at: the card comes back, at a tap or when the echo is over.</summary>
+        void BackToCard()
+        {
+            if (!showingMe) return;
+            showingMe = false;
+            GlassMotion.Hide(showBar, GlassMotion.SlideOff, GlassMotion.SlideMs);
+            if (run != null && run.Step == FirstRunStep.Card) cardScrim.Open();
         }
 
         void OnDone()
         {
             if (run == null) return;
             ShowMeDirector.Instance?.End();
-            cardScrim.style.display = DisplayStyle.None;
+            cardScrim.Close();
             Sfx.Play(CueLibrary.CardDismiss); // #96
             showingMe = false;
             run.AcknowledgeCard();
@@ -595,16 +675,28 @@ namespace AquariumCiv.View
 
         void CloseSheets()
         {
-            if (nameScrim != null) nameScrim.style.display = DisplayStyle.None;
-            if (cardScrim != null) cardScrim.style.display = DisplayStyle.None;
+            CloseName();
+            if (cardSheet != null && cardSheet.IsOpen) cardScrim.Close();
+            if (showBar != null) showBar.style.display = DisplayStyle.None;
+            showingMe = false;
         }
 
         // ================================================================== per frame UI
         void HideAll()
         {
             if (root == null) return;
-            foreach (var e in new VisualElement[] { plate, rainBtn, bubble, skipRow, yearBox, ghost, hintLabel }) if (e != null) e.style.display = DisplayStyle.None;
+            foreach (var e in new VisualElement[] { plate, bubble, skipRow, ghost, hint }) if (e != null) e.style.display = DisplayStyle.None;
+            rainBtn.Ready = false;
+            Fade(yearBox, ref yearUp, false, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
             if (shownStep != (FirstRunStep)(-1) && (run == null || !run.Active)) { shownStep = (FirstRunStep)(-1); }
+        }
+
+        static void Fade(VisualElement e, ref bool up, bool on, string off, int ms)
+        {
+            if (on == up) return;
+            up = on;
+            if (on) GlassMotion.Show(e, off);
+            else GlassMotion.Hide(e, off, ms);
         }
 
         void UpdateUi()
@@ -612,46 +704,79 @@ namespace AquariumCiv.View
             var step = run.Step;
             bool quiet = hud.CameraMode || !hud.IsVisible || (hud.SheetOpen && !NameSheetOpen);
             ApplySafe();
+            RideKeyboard();
             // The card comes back after a Show me.
             if (showingMe)
             {
                 var d = ShowMeDirector.Instance;
-                if (d == null || !d.Busy) { showingMe = false; if (step == FirstRunStep.Card) cardScrim.style.display = DisplayStyle.Flex; }
+                if (d == null || d.Settled) BackToCard();
             }
-            plate.style.display = !quiet && step == FirstRunStep.Name && !NameSheetOpen ? DisplayStyle.Flex : DisplayStyle.None;
-            rainBtn.style.display = !quiet && step == FirstRunStep.Rain ? DisplayStyle.Flex : DisplayStyle.None;
-            if (rainBtn.resolvedStyle.display == DisplayStyle.Flex) rainBtn.text = rainArmed ? "Tap the ground" : "Give them rain";
-            skipRow.style.display = !quiet && step != FirstRunStep.Card && step != FirstRunStep.Year && step != FirstRunStep.Arrive && !NameSheetOpen ? DisplayStyle.Flex : DisplayStyle.None;
-            yearBox.style.display = !quiet && step == FirstRunStep.Year ? DisplayStyle.Flex : DisplayStyle.None;
-            if (step == FirstRunStep.Year) yearFill.style.width = 520f * run.YearProgress;
-            UpdateBubble(step, quiet);
-            UpdateHint(quiet || NameSheetOpen);
+            bool named = Time.unscaledTime < plateNamedUntil;
+            bool plateUp = !quiet && (step == FirstRunStep.Name && !NameSheetOpen || named);
+            plate.style.display = plateUp ? DisplayStyle.Flex : DisplayStyle.None;
+            if (plateUp) PlacePlate();
+            plate.pickingMode = named ? PickingMode.Ignore : PickingMode.Position;
+            // The prompt waits for the welcome: it would take the toast down (question 22), and the name deserves its moment.
+            bool rainUp = !quiet && step == FirstRunStep.Rain && !rainArmed && !named;
+            if (rainBtn.Ready != rainUp) rainBtn.Ready = rainUp;
+            bool skips = FeedbackUI.InTestBuild && !quiet && step != FirstRunStep.Card && step != FirstRunStep.Year && step != FirstRunStep.Arrive && !NameSheetOpen;
+            skipRow.style.display = skips ? DisplayStyle.Flex : DisplayStyle.None;
+            Fade(yearBox, ref yearUp, !quiet && step == FirstRunStep.Year, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
+            if (step == FirstRunStep.Year) yearFill.style.width = Length.Percent(100f * run.YearProgress);
+            bool reward = !quiet && Time.unscaledTime < rewardUntil;
+            UpdateBubble(step, quiet, reward);
+            UpdateHint(quiet || NameSheetOpen || reward);
         }
 
-        void UpdateBubble(FirstRunStep step, bool quiet)
+        /// <summary>The plate sits on the plinth, under the glass, where it stays in the world.</summary>
+        void PlacePlate()
         {
-            var w = step == FirstRunStep.Rain ? run.RainWish : null;
-            bool show = !quiet && w != null && w.state == WishState.Open;
-            if (show)
+            if (!ToPanel(box.transform.TransformPoint(new Vector3(0f, PlateY, PlateZ)), out var p)) return;
+            float w = plate.resolvedStyle.width, h = plate.resolvedStyle.height;
+            var q = GameUiPanel.KeepOnScreen(plate, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - (float.IsNaN(h) ? 0f : h) * 0.5f), TopLimit);
+            plate.style.left = q.x; plate.style.top = q.y;
+        }
+
+        void UpdateBubble(FirstRunStep step, bool quiet, bool reward)
+        {
+            bool show = false;
+            if (reward)
             {
-                var pv = PeopleView.Find();
-                var sim = Sim;
-                var n = sim?.FindNotable(w.notableId);
-                if (pv != null && n != null && pv.TryGetDollTop(PersonRef.Notable(w.notableId), out var top) && ToPanel(top, out var p))
+                show = ToPanel(box.transform.TransformPoint(new Vector3(0f, 1.5f, Land.HZ)), out var p);
+                if (show) { bubble.Set("", rewardLine); PlaceBubble(p); }
+            }
+            else
+            {
+                var w = step == FirstRunStep.Rain ? run.RainWish : null;
+                if (!quiet && w != null && w.state == WishState.Open)
                 {
-                    bubble.text = $"{n.name} hopes for rain.";
-                    PlaceOver(bubble, p, 24f);
+                    var pv = PeopleView.Find();
+                    var n = Sim?.FindNotable(w.notableId);
+                    if (pv != null && n != null && pv.TryGetDollTop(PersonRef.Notable(w.notableId), out var top) && ToPanel(top, out var p))
+                    {
+                        bubble.Set("", $"{n.name} hopes for rain.");
+                        PlaceBubble(p);
+                        show = true;
+                    }
                 }
-                else show = false;
             }
             bubble.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
+        void PlaceBubble(Vector2 p)
+        {
+            float w = bubble.resolvedStyle.width;
+            PlaceOver(bubble, p, 24f);
+            if (!float.IsNaN(w)) bubble.TailAt(Mathf.Clamp(p.x - bubble.style.left.value.value - TailHalf, TailEnd, Mathf.Max(TailEnd, w - TailEnd - TailHalf * 2f)));
+        }
+
+        const float TailHalf = 13.75f, TailEnd = 44f;
 
         /// <summary>Centres a label over a panel point, on screen whatever its size (one frame late on new text).</summary>
         static void PlaceOver(VisualElement e, Vector2 p, float gap)
         {
             float w = e.resolvedStyle.width, h = e.resolvedStyle.height;
-            var q = GameUiPanel.KeepOnScreen(e, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - gap - (float.IsNaN(h) ? 0f : h)), 190f);
+            var q = GameUiPanel.KeepOnScreen(e, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - gap - (float.IsNaN(h) ? 0f : h)), TopLimit);
             e.style.left = q.x; e.style.top = q.y;
         }
 
@@ -673,21 +798,16 @@ namespace AquariumCiv.View
         {
             var h = run.Hint;
             bool visible = h.visible && !suppress;
-            if (visible && !prevHintVisible)
-            {
-                hintShownAt = Time.unscaledTime;
-                // The finger is about to show a wipe or a flick: make sure one finger does that.
-                if ((h.id == "wipe" || h.id == "patch") && !hud.CleanMode && !hud.SheetOpen) hud.SetCleanMode(true);
-            }
+            if (visible && !prevHintVisible) hintShownAt = Time.unscaledTime;
             prevHintVisible = visible;
             if (!visible)
             {
                 ghost.style.display = DisplayStyle.None;
-                hintLabel.style.display = DisplayStyle.None;
+                hint.style.display = DisplayStyle.None;
                 return;
             }
             lastHintId = h.id;
-            if (!Anchor(h, out var at, out var labelBelow)) { ghost.style.display = DisplayStyle.None; hintLabel.style.display = DisplayStyle.None; return; }
+            if (!Anchor(h, out var at, out var labelBelow)) { ghost.style.display = DisplayStyle.None; hint.style.display = DisplayStyle.None; return; }
             float t = Time.unscaledTime - hintShownAt;
             float k = Mathf.Repeat(t, 2.2f) / 2.2f;
             float fade = Mathf.Clamp01(t / 0.35f);
@@ -717,20 +837,19 @@ namespace AquariumCiv.View
             }
             if (h.gesture != HintGesture.Tap) ghostRing.style.opacity = 0f;
             ghost.style.display = DisplayStyle.Flex;
-            // on a button the finger rests on its corner, so the word stays readable; the button already says it
-            bool onButton = h.anchor == HintAnchor.ShapingButton || h.anchor == HintAnchor.Plate;
-            var anchorEl = h.anchor == HintAnchor.Plate ? plate : rainBtn;
-            if (onButton) at += new Vector2(anchorEl.resolvedStyle.width * 0.5f - 30f, anchorEl.resolvedStyle.height * 0.5f - 6f);
-            ghost.style.left = at.x + off.x - 48; ghost.style.top = at.y + off.y - 48;
+            // On the rain's button the finger rests on its corner and the button says the words; on the blank plate it sits in the middle.
+            bool onRain = h.anchor == HintAnchor.ShapingButton;
+            if (onRain) at += new Vector2(rainBtn.resolvedStyle.width * 0.5f - 30f, rainBtn.resolvedStyle.height * 0.5f - 6f);
+            ghost.style.left = at.x + off.x - GhostHalf; ghost.style.top = at.y + off.y - GhostHalf;
             ghost.style.scale = new Scale(new Vector3(scale, scale, 1f));
             ghost.style.opacity = fade * alpha;
-            hintLabel.text = h.text;
-            hintLabel.style.display = onButton && h.anchor == HintAnchor.ShapingButton ? DisplayStyle.None : DisplayStyle.Flex;
-            hintLabel.style.opacity = fade;
-            var hl = hintLabel.resolvedStyle;
+            hint.Word = h.text;
+            hint.style.display = onRain ? DisplayStyle.None : DisplayStyle.Flex;
+            hint.style.opacity = fade;
+            var hl = hint.resolvedStyle;
             float hw = float.IsNaN(hl.width) ? 0f : hl.width, hh = float.IsNaN(hl.height) ? 0f : hl.height;
-            var spot = GameUiPanel.KeepOnScreen(hintLabel, new Vector2(at.x - hw * 0.5f, labelBelow ? at.y + 96f : at.y - 90f - hh), 190f);
-            hintLabel.style.left = spot.x; hintLabel.style.top = spot.y;
+            var spot = GameUiPanel.KeepOnScreen(hint, new Vector2(at.x - hw * 0.5f, labelBelow ? at.y + 96f : at.y - 90f - hh), TopLimit);
+            hint.style.left = spot.x; hint.style.top = spot.y;
         }
 
         bool Anchor(FirstRunHint h, out Vector2 at, out bool labelBelow)
@@ -766,21 +885,5 @@ namespace AquariumCiv.View
             return true;
         }
 
-        // ---------------- element helpers ----------------
-        static Label Lbl(string s, string cls) { var l = new Label(s); l.AddToClassList(cls); return l; }
-
-        static Button Btn(string name, string text, System.Action click, params string[] classes)
-        {
-            var b = new Button(click) { name = name, text = text };
-            foreach (var c in classes) b.AddToClassList(c);
-            return b;
-        }
-
-        static Button SmallBtn(string name, string text, System.Action click)
-        {
-            var b = Btn(name, text, click, "hud-btn", "hud-btn--small");
-            b.style.height = 100; b.style.fontSize = 28;
-            return b;
-        }
     }
 }

@@ -125,15 +125,19 @@ namespace AquariumCiv.GameUI
     [UxmlElement]
     public partial class GlassPlate : VisualElement
     {
+        readonly Label title;
         public GlassPlate() : this("") { }
+
+        /// <summary>The box's name on the plate. Empty, the plate keeps its height: blank is a state, not a missing piece.</summary>
+        public string Title { get => title.text; set => title.text = string.IsNullOrEmpty(value) ? "\u00A0" : value; }
 
         public GlassPlate(string name, params string[] lines)
         {
             pickingMode = PickingMode.Ignore;
             AddToClassList("kg-plate");
-            var n = new Label(name) { pickingMode = PickingMode.Ignore };
-            n.AddToClassList("type-head");
-            Add(n);
+            title = new Label(name) { pickingMode = PickingMode.Ignore };
+            title.AddToClassList("type-head");
+            Add(title);
             foreach (var line in lines)
             {
                 var l = new Label(line) { pickingMode = PickingMode.Ignore };
@@ -314,6 +318,8 @@ namespace AquariumCiv.GameUI
             who.style.display = string.IsNullOrEmpty(by) ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
+        /// <summary>The line's label, so a screen can give it the name its play tests use.</summary>
+        public Label Line => line;
         public bool Inline { set => EnableInClassList("kg-caption--inline", value); }
         /// <summary>Plain text, for the time-lapse panel.</summary>
         public bool InPanel { set => EnableInClassList("kg-caption--panel", value); }
@@ -326,8 +332,11 @@ namespace AquariumCiv.GameUI
     public partial class GlassHint : VisualElement
     {
         public const int MaxWords = 3;
+        readonly Label label;
 
         public GlassHint() : this("") { }
+
+        public string Word { get => label.text; set => label.text = value; }
 
         public GlassHint(string word, string icon = null)
         {
@@ -335,9 +344,9 @@ namespace AquariumCiv.GameUI
             AddToClassList("kg-hint");
             AddToClassList(GlassMotion.FadeClass);
             if (icon != null) Add(new GlassIcon(icon));
-            var l = new Label(word) { pickingMode = PickingMode.Ignore };
-            l.AddToClassList("type-small-head");
-            Add(l);
+            label = new Label(word) { pickingMode = PickingMode.Ignore };
+            label.AddToClassList("type-small-head");
+            Add(label);
         }
 
         /// <summary>The ghost finger that sits on the thing itself.</summary>

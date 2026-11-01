@@ -422,6 +422,44 @@ namespace AquariumCiv.Sim
             return r;
         }
 
+        /// <summary>The box as it stands this month, for the end of the replay (#196): <see cref="BoxAt"/> only knows the start of a year,
+        /// so a year still running would end on what stood when it began. Read off the live state, with the same fields as a
+        /// record: all that's been built, the paths worn so far, the shapings not taken back, today's head count.</summary>
+        public BoxAtYear BoxNow()
+        {
+            var s = State;
+            var h = Hist;
+            HistoryEras(h);
+            var r = new BoxAtYear
+            {
+                year = (int)(s.month / SimConfig.MonthsPerYear), month = s.month, era = s.era,
+                population = s.population, notables = s.notables.Count(n => n.alive), mood = s.mood,
+            };
+            var lots = s.settle?.lots;
+            foreach (var b in s.buildings)
+            {
+                var lot = b.lotId > 0 ? lots?.Find(l => l.id == b.lotId) : null;
+                long appeared = lot != null ? lot.foundedMonth : (lots == null || s.settle.version == 0 ? b.foundedMonth : long.MaxValue);
+                if (appeared > s.month || (lot != null && lot.retired) || h.ends.Exists(e => e.buildingId == b.id)) continue;
+                r.buildings.Add(new BuildingAt
+                {
+                    id = b.id, type = b.type, lotId = b.lotId, x = b.x, z = b.z, yaw = b.yaw, w = b.w, d = b.d,
+                    look = s.era, foundedMonth = appeared, // the records give every standing building the era's look
+                });
+            }
+            var paths = CurrentPaths();
+            if (paths != null)
+                for (int i = 0; i < paths.Length; i++)
+                    if (paths[i] != 0) r.paths.Add(new PathCellAt { cell = i, tier = paths[i] & 3, laid = (paths[i] & 4) != 0 });
+            foreach (var sh in h.shapes)
+                if (sh.endMonth < 0 && (sh.nudgeId == 0 || s.nudges.Exists(n => n.id == sh.nudgeId))) r.shapings.Add(sh);
+            foreach (var n in s.nudges) // given this month: the records catch up at the month's end
+                if (!h.shapes.Exists(x => x.nudgeId == n.id)) r.shapings.Add(new ShapeRec { nudgeId = n.id, kind = n.kind, x = n.x, z = n.z, month = n.month, era = n.eraAtPlace });
+            r.leaderRole = LeaderOf(s.era);
+            r.leaderId = RoleHolderAt(r.leaderRole, s.month);
+            return r;
+        }
+
         // ---------- pruning a long chronicle ----------
         static bool IsTermLine(ChronicleEntry e) => e.id >= TermLineIdBase && e.id < RelicLineIdBase;
 
