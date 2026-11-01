@@ -188,6 +188,8 @@ namespace AquariumCiv.Life
         /// baby on the carrier (<see cref="carryOnBack"/>: on their back, else in their arms).</summary>
         public PersonRef carrying;
         public bool carryOnBack;
+        /// <summary>#197: a run-in on the way (a chat, a bicker, a wave): stopped on the route where PositionAt says, not at the place.</summary>
+        public bool enRoute;
         /// <summary>#192: on a baby, who has them now (None = at home, out of sight).</summary>
         public PersonRef carriedBy;
 

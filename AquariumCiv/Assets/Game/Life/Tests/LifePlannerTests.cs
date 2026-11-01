@@ -127,6 +127,7 @@ namespace AquariumCiv.Life.Tests
                 for (float h = 7.1f; h < 17f; h += 0.4f)
                 {
                     if (!LifeClock.IsWorkHour(h, planner.SeasonOn(day))) continue;
+                    if (h < 8f || (h >= 11.5f && h < 13.8f)) continue; // #197: shifts are staggered, so the edges (7-8 starts, the lunch window) are not a whole box at work
                     planner.PlanAll(new ViewTime(day, h), acts);
                     foreach (var a in acts)
                     {
@@ -530,7 +531,9 @@ namespace AquariumCiv.Life.Tests
                     Assert.Greater(tr.end, tr.start);
                     last = tr.end;
                 }
-                Assert.IsTrue(trips.Any(t => t.type == TripType.HomeToWork || t.type == TripType.HomeToGreen), $"{who}: the morning walk to work is a wear-pass trip");
+                // #197: one whose work is at the door and who spends the evening at home has no wear-pass trip at all
+                bool atDoor = planner.Plan(who, new ViewTime(day, 10f)).place.kind == PlaceKind.Home;
+                Assert.IsTrue(atDoor || trips.Any(t => t.type == TripType.HomeToWork || t.type == TripType.HomeToGreen), $"{who}: the morning walk to work is a wear-pass trip");
             }
             Assert.Greater(withTrips, 0);
         }
