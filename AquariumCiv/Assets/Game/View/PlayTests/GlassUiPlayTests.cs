@@ -182,7 +182,7 @@ namespace AquariumCiv.View.PlayTests
             var off = g.Root.Q<GlassButton>("gal-button-secondary-off");
             Assert.AreEqual(1f, off.resolvedStyle.opacity, "unavailable is never faded");
             Assert.AreEqual(ColorOf("#3D2A1E"), off.resolvedStyle.color, "and keeps full-strength text");
-            Assert.AreEqual(GameUiPanel.MinTarget, g.Root.Q("gal-slider-value").layout.height, 0.6f, "slider hit strip");
+            Assert.AreEqual(GameUiPanel.MinTarget, g.Root.Q("gal-slider-value").layout.height, 1f, "slider hit strip"); // layout snaps to device pixels
 
             Assert.AreEqual("gallery closed", GlassGallery.DebugToggle());
             yield return Frames(3);
