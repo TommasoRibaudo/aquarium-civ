@@ -172,6 +172,124 @@ namespace AquariumCiv.View.PlayTests
             File.WriteAllText(Shots + "track.csv", sb.ToString());
         }
 
+        // ---------------- tester run 9: a Town's crowds ----------------
+
+        /// <summary>What a crowd's walkers came to: hard brakes (a walker on their way loses 0.3 u/s or more in 0.2 s from over 0.4), the body turning at the cap while nearly stopped, and how often they stand in each other.</summary>
+        sealed class Crowd
+        {
+            public int walkerFrames, brakes, overlap, spins;
+            public readonly List<string> events = new();
+            public float BrakesPerWalkerMinute(float dt) => walkerFrames == 0 ? 0f : brakes / (walkerFrames * dt / 60f);
+            public float OverlapShare => walkerFrames == 0 ? 0f : 100f * overlap / walkerFrames;
+            public float SpinsPerWalkerMinute(float dt) => walkerFrames == 0 ? 0f : spins / (walkerFrames * dt / 60f);
+            public string Say(string name, float dt) => $"{name}: {walkerFrames} walker-frames, brakes {brakes} = {BrakesPerWalkerMinute(dt):0.0}/walker-min, overlap under 0.07 {OverlapShare:0.0} %, slow spins {SpinsPerWalkerMinute(dt):0.0}/walker-min";
+        }
+
+        const float OverlapUnder = 0.07f;
+
+        sealed class Walked { public readonly List<float> speed = new(); public Vector2 at, face; public bool has; public int lastBrake = -100, moved; }
+
+        static void MeasureCrowd(PeopleView pv, int frames, float dt, Crowd c, Crowd all)
+        {
+            var seen = new Dictionary<int, Walked>();
+            var where = new List<(int key, Vector2 at)>();
+            for (int f = 0; f < frames; f++)
+            {
+                pv.Tick(dt);
+                where.Clear();
+                foreach (var a in pv.Activities)
+                    if (pv.TryGetDollTop(a.who, out _) && pv.TryGetDollPosition(a.who, out var at)) where.Add((a.who.Key, at));
+                foreach (var a in pv.Activities)
+                {
+                    if (!seen.TryGetValue(a.who.Key, out var t)) seen[a.who.Key] = t = new Walked();
+                    if (!a.moving || !pv.TryGetDollTop(a.who, out _) || !pv.TryGetDollPosition(a.who, out var p)) { t.has = false; t.speed.Clear(); t.moved = 0; continue; }
+                    pv.TryGetDollFacing(a.who, out var face);
+                    if (t.has)
+                    {
+                        float v = (p - t.at).magnitude / dt;
+                        if (v > 2.5f) t.speed.Clear(); // a jump of the plan, not a walk
+                        else t.speed.Add(v);
+                        c.walkerFrames++; all.walkerFrames++; t.moved++;
+                        float near = float.MaxValue; int nearKey = 0;
+                        foreach (var o in where) if (o.key != a.who.Key && (o.at - p).magnitude < near) { near = (o.at - p).magnitude; nearKey = o.key; }
+                        if (near < OverlapUnder) { c.overlap++; all.overlap++; }
+                        float rate = Mathf.Abs(Vector2.SignedAngle(t.face, face)) / dt;
+                        if (v < 0.15f && rate > 280f) { c.spins++; all.spins++; }
+                        int n = t.speed.Count;
+                        if (n >= 7 && t.speed[n - 7] > 0.4f && t.speed[n - 1] < t.speed[n - 7] - 0.3f && f - t.lastBrake > 15)
+                        {
+                            t.lastBrake = f; c.brakes++; all.brakes++;
+                            if (c.events.Count < 40) c.events.Add($"f{f} key {a.who.Key} {t.speed[n - 7]:0.00}->{t.speed[n - 1]:0.00} walked {t.moved} frames, near {near:0.00} ({nearKey}) {a.kind} to {a.place.kind}");
+                        }
+                    }
+                    t.at = p; t.face = face; t.has = true;
+                }
+            }
+        }
+
+        IEnumerator GrownTown(int seed = Seed)
+        {
+            yield return OpenSlice(1080, 1920, seed);
+            ShowMeDirector.BubblesOn = false;
+            MomentPlayer.DebugGrowVillage(14f);
+            yield return Frames(3);
+            MomentPlayer.DebugGrowVillage(30f);
+            yield return Frames(3);
+            Sim.ForceNextEra();
+            yield return Frames(3);
+            SimLayoutSource.DebugSkipYears(10f);
+            yield return Frames(6);
+            Sim.CleanAll();
+            yield return Frames(4);
+        }
+
+        /// <summary>Tester run 9: morning, noon, evening and a gathering, by the same count, with the numbers kept. Most of the Town's walk.</summary>
+        IEnumerator CrowdRun(bool town)
+        {
+            yield return town ? GrownTown() : Village();
+            var pv = People;
+            pv.HandDriven = true;
+            float dt = 1f / 30f;
+            var all = new Crowd();
+            var lines = new StringBuilder();
+            string where = town ? "Town" : "Village";
+            try
+            {
+                foreach (var (name, hour) in new[] { ("morning", 6.6f), ("noon", 12.2f), ("evening", 17.4f) })
+                {
+                    var c = new Crowd();
+                    pv.SetHour(hour);
+                    MeasureCrowd(pv, 540, dt, c, all);
+                    lines.AppendLine("[run9] " + c.Say($"{where} {name}", dt));
+                    foreach (var e in c.events) lines.AppendLine("    " + e);
+                }
+                var g = new Crowd();
+                pv.SetHour(10f);
+                StringAssert.Contains("at the glass", GlassVoice.DebugGather(12));
+                MeasureCrowd(pv, 600, dt, g, all);
+                lines.AppendLine("[run9] " + g.Say($"{where} gather", dt));
+                foreach (var e in g.events) lines.AppendLine("    " + e);
+            }
+            finally { pv.HandDriven = false; }
+            string report = lines + "[run9] " + all.Say(where + " all", dt);
+            Debug.Log(report);
+            File.AppendAllText(Look5 + "walkcrowd.txt", report + "\n");
+            Assert.Greater(all.walkerFrames, 300, "walkers walked");
+            Assert.Less(all.BrakesPerWalkerMinute(dt), 2.5f, "no hard braking: " + report);
+            Assert.Less(all.SpinsPerWalkerMinute(dt), 2f, "no spinning on the spot: " + report);
+            AssertNoErrors("crowds");
+        }
+
+        const string Look5 = "C:/Users/User/AppData/Local/Temp/claude/F--GameDev/0b07151d-6b1f-42ed-8a84-5cd49b334010/scratchpad/bundle5-shots/";
+
+        [UnityTest, Timeout(170000)]
+        [Category("WalkCrowd")]
+        public IEnumerator CrowdsEaseAroundEachOtherInTheTown() => CrowdRun(true);
+
+        [UnityTest, Timeout(170000)]
+        [Category("WalkCrowd")]
+        public IEnumerator CrowdsEaseAroundEachOtherInTheVillage() => CrowdRun(false);
+
         // ---------------- #200, #201: what a Village does at its doors ----------------
 
         static bool AtHome(PersonActivity a) => a.place.kind == PlaceKind.Home && !a.moving;

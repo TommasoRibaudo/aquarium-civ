@@ -84,7 +84,7 @@ namespace AquariumCiv.Life
                     return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? stash : Store(Prop.Goods), 0.25f);
                 case JobType.Woodcutter:
                     w = W(Woods, ActivityKind.Chop, Prop.Axe, camp ? Prop.Log : Prop.Handcart, Store(Prop.Log), 0.3f);
-                    if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Axe : Prop.Saw, 0.35f);
+                    if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Log : Prop.Saw, 0.35f);
                     return w;
                 case JobType.Toolmaker:
                     w = W(fire, ActivityKind.Knap, Prop.Hammerstone, Prop.Spear, ForestEdge, 0.15f); // hands tools to the hunters
@@ -98,7 +98,7 @@ namespace AquariumCiv.Life
                         case Season.Summer: return Alt(W(field, ActivityKind.Weed, Prop.Hoe, Prop.None, field, 0f), field, ActivityKind.Hoe, Prop.Hoe, 0.3f);
                         case Season.Autumn: return W(field, ActivityKind.Harvest, Prop.Scythe, Prop.Sheaf, Store(Prop.Sheaf), 0.4f);
                         default: // winter: wood. #201: no hammer at a finished house, nothing here has a site under way to hammer at.
-                            return Fetch(Alt(W(p.home, ActivityKind.StackWood, Prop.Axe, Prop.Log, fire, 0.25f), p.home, ActivityKind.ChopKindling, Prop.Axe, 0.4f), Woods);
+                            return Fetch(Alt(W(p.home, ActivityKind.StackWood, Prop.Log, Prop.Log, fire, 0.25f), p.home, ActivityKind.ChopKindling, Prop.Axe, 0.4f), Woods); // tester run 9: the axe is for chopping: stacking is logs
                     }
                 }
                 case JobType.Shepherd:
@@ -155,7 +155,7 @@ namespace AquariumCiv.Life
                     w.dest = stash; // #150: the water too is set down by the fire
                     return w;
                 case CrowdSplitter:
-                    return Fetch(W(jb, ActivityKind.StackWood, Prop.Axe, Prop.Log, jb, 0.3f), Woods);
+                    return Fetch(W(jb, ActivityKind.StackWood, Prop.Log, Prop.Log, jb, 0.3f), Woods);
                 case CrowdSawyer:
                     w = W(jb, ActivityKind.Saw, Prop.Saw, Prop.Handcart, newestB != null && era == Era.Town ? new Place(PlaceKind.BuildingSite, newestB.id) : Store(Prop.Goods), 0.1f);
                     w.with = p.coworker;

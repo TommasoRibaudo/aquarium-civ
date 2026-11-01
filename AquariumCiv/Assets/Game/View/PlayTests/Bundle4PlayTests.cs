@@ -178,21 +178,30 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("walker");
         }
 
+        /// <summary>#143 over #204: the line finishes its read time. With nobody to point at, the tail and the ring go and the bubble holds its last place.</summary>
         [UnityTest, Timeout(120000)]
-        public IEnumerator ASpeakerGoneIndoorsEndsTheLineAndNothingPointsAtNothing()
+        public IEnumerator ASpeakerGoneIndoorsFinishesTheLineAndNothingPointsAtNothing()
         {
             yield return Village(30f);
             PeopleView.DebugSetHour(10f);
             yield return new WaitForSecondsRealtime(1f);
             var who = Shown()[0].who;
             yield return Say(who);
-            Assert.IsNotNull(Director.ShownBubble);
+            var line = Director.ShownBubble;
+            Assert.IsNotNull(line);
             Assert.IsTrue(Director.SpeakerRingUp, "the speaker has their ring while the line is up");
+            Assert.IsTrue(Director.TailReaching, "and the tail");
+            float start = Time.realtimeSinceStartup;
             PeopleView.DebugSetHour(23.5f); // everyone goes in at once
-            yield return Frames(2);
+            yield return Frames(3);
+            var held = Director.BubbleRect;
             yield return new WaitForSecondsRealtime(1f);
-            Assert.IsNull(Director.ShownBubble, "the line ends with the speaker gone");
-            Assert.IsFalse(Director.SpeakerRingUp, "and the ring with it");
+            Assert.AreSame(line, Director.ShownBubble, "the line isn't cut");
+            Assert.IsFalse(Director.TailReaching, "no tail pointing at nobody");
+            Assert.IsFalse(Director.SpeakerRingUp, "and no ring");
+            Assert.Less((Director.BubbleRect.position - held.position).magnitude, 1f, "the bubble holds its last place");
+            yield return Until(() => Director.ShownBubble == null, line.seconds + 2f);
+            Assert.GreaterOrEqual(Time.realtimeSinceStartup - start, line.seconds - 1.2f, "it finishes at its own time");
             Assert.IsTrue(GameUiPanel.Bubbles.Free(BubbleHost.Rank.World), "the word is free again");
             AssertNoErrors("indoors");
         }

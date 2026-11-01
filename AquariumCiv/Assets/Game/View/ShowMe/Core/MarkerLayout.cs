@@ -115,6 +115,16 @@ namespace AquariumCiv.View.ShowMe
             return res;
         }
 
+        /// <summary>Tester run 9: from its nearest edge, how far a label (x, y its middle) is from the person it names. Past <see cref="LeaderGap"/> it needs a line back.</summary>
+        public static float GapTo(LabelBox me, float toX, float toY)
+        {
+            float dx = Math.Max(0f, Math.Abs(toX - me.x) - me.w / 2f), dy = Math.Max(0f, Math.Abs(toY - me.y) - me.h / 2f);
+            return (float)Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        /// <summary>The widest gap (panel units) a label keeps from its person with no line: about one label's height and a half.</summary>
+        public const float LeaderGap = 100f;
+
         /// <summary>Tester run 8: a leader that ran behind another label read as ending there. The way from a label to its person that stays out from under every
         /// other label: straight from whichever edge can, else round the corner of what's in the way, else (the person is under a label) straight.</summary>
         public static LeaderRoute RouteLeader(LabelBox me, float toX, float toY, IList<LabelBox> others, float air = 6f)

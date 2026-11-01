@@ -195,7 +195,9 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(soon.hint, "the words keep their own gap");
             Assert.IsTrue(h.Tapped(false, CleanHint.HintGap + 1f).hint);
             h.Cleaned();
-            Assert.IsFalse(h.Tapped(false, 500f).pulse, "they know how to clean");
+            var after = h.Tapped(false, 500f);
+            Assert.IsTrue(after.pulse, "tester run 9: a tap on mess answers after the first clean too");
+            Assert.IsFalse(after.hint, "the words are for the first times");
         }
 
         [Test]

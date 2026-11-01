@@ -354,7 +354,7 @@ namespace AquariumCiv.View
         // ================================================================== UI
         const float RewardSeconds = 3.5f, ToastSeconds = 1.6f, NamedPlateSeconds = 1.7f;
         /// <summary>Half the ghost, and where the skip row starts under the notch, panel px (96 pt).</summary>
-        const float GhostHalf = 60.5f, SkipTop = 264f;
+        const float GhostHalf = 60.5f, SkipTop = 264f, CaptionAir = 16f;
         /// <summary>The panel's top limit for a word over the world.</summary>
         const float TopLimit = 190f;
         /// <summary>The plate on the plinth's front face, box units.</summary>
@@ -439,7 +439,10 @@ namespace AquariumCiv.View
             cardSheet.SetInsets(i, pad);
             if (!nameSheet.Riding) nameSheet.Sheet.SetInsets(i, pad);
             rainBtn.style.bottom = GameUiPanel.Lane(GameUiPanel.PromptBottom, i.w);
-            skipRow.style.top = Mathf.Max(0f, SkipTop - i.y);
+            // Tester run 9: a caption (a founder's line) comes down the same top lane: the test row steps under it.
+            var line = ShowMeDirector.Instance != null ? ShowMeDirector.Instance.CaptionBound : default;
+            float under = line.height > 1f ? safe.WorldToLocal(new Vector2(0f, line.yMax)).y + CaptionAir : 0f;
+            skipRow.style.top = Mathf.Max(Mathf.Max(0f, SkipTop - i.y), under);
             showBar.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
         }
 
@@ -709,6 +712,7 @@ namespace AquariumCiv.View
         void PlaceBubble(Vector2 p)
         {
             PlaceOver(bubble, p, 24f);
+            wishHead = p;
             bubble.TailTo(p - new Vector2(bubble.style.left.value.value, bubble.style.top.value.value)); // #204: on them, even pushed off by the edge
         }
 
@@ -789,7 +793,29 @@ namespace AquariumCiv.View
             float hw = float.IsNaN(hl.width) ? 0f : hl.width, hh = float.IsNaN(hl.height) ? 0f : hl.height;
             var spot = GameUiPanel.KeepOnScreen(hint, new Vector2(at.x - hw * 0.5f, labelBelow ? at.y + 96f : at.y - 90f - hh), TopLimit);
             hint.style.left = spot.x; hint.style.top = spot.y;
+            KeepWishOffTheFinger(at);
         }
+
+        /// <summary>Tester run 9: on "Tap a spot" the finger and its pill could sit on the wish's words. The wish steps up over the finger, and its tail still reaches the wisher.</summary>
+        void KeepWishOffTheFinger(Vector2 finger)
+        {
+            if (bubble.style.display != DisplayStyle.Flex || run.Hint.anchor != HintAnchor.RainSpot) return;
+            float w = bubble.resolvedStyle.width, h = bubble.resolvedStyle.height;
+            if (float.IsNaN(w) || float.IsNaN(h)) return;
+            var me = new Rect(bubble.style.left.value.value, bubble.style.top.value.value, w, h);
+            var hand = Rect.MinMaxRect(finger.x - GhostHalf, finger.y - GhostHalf, finger.x + GhostHalf, finger.y + GhostHalf + 96f);
+            if (!me.Overlaps(hand)) return;
+            var q = GameUiPanel.KeepOnScreen(bubble, new Vector2(me.x, hand.yMin - WishAir - h), TopLimit);
+            bubble.style.top = q.y; bubble.style.left = q.x;
+            if (wishHead.HasValue) bubble.TailTo(wishHead.Value - q);
+            WishSteps++;
+        }
+
+        /// <summary>Frames the wish had to step off the finger (tests).</summary>
+        public int WishSteps { get; private set; }
+
+        Vector2? wishHead;
+        const float WishAir = 18f;
 
         bool Anchor(FirstRunHint h, out Vector2 at, out bool labelBelow)
         {

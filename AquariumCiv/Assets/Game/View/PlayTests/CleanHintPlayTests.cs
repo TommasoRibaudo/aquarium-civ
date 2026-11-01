@@ -86,7 +86,7 @@ namespace AquariumCiv.View.PlayTests
             CareView.Instance.TouchHint.Touch(false, true, Time.unscaledTime + 100f);
             yield return TapAt(OnMess());
             yield return Frames(2);
-            Assert.AreEqual(pulses + 1, Hud.CleanPulses, "once they've cleaned, they know");
+            Assert.AreEqual(pulses + 2, Hud.CleanPulses, "tester run 9: a tap on mess answers, cleaned or not");
             AssertNoErrors("drag");
         }
     }

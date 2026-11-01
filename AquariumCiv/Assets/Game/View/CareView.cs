@@ -165,6 +165,7 @@ namespace AquariumCiv.View
         {
             lastTouchTime = Time.unscaledTime;
             spotlessSince = -1f;
+            hud?.WithdrawToast(AquariumCiv.Sim.CleanHint.Text); // Clean was tapped: the line asking for that is done, and the wipe hint needs the lane
             if (!on)
             {
                 hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
@@ -444,6 +445,7 @@ namespace AquariumCiv.View
         /// hint shows. The drag goes on to move the camera.</summary>
         void PointToClean(SimCore sim, Vector2 pos)
         {
+            pressAnswered = false;
             if (hud == null || CleanMode || !hud.IsVisible || hud.CameraMode || hud.SheetOpen || sim.State.firstRun.active || UiInput.Over(pos)) return;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return;
@@ -472,12 +474,12 @@ namespace AquariumCiv.View
             pressAnswered = false;
         }
 
-        /// <summary>#160: a tap here is about the mess, so it opens nothing: there's mess under the finger and the Keeper hasn't learned to
-        /// clean yet. Once they have, mess no longer holds a tap back from what's behind it.</summary>
+        /// <summary>#160: a tap here is about the mess, so it opens nothing: there's mess under the finger. Tester run 9: that goes on after the first clean, when it
+        /// used to let the tap through to whatever was near, mostly nothing: every tap on mess answers, always.</summary>
         public bool MessSaysSo(Vector2 pos)
         {
             var c = Cam;
-            return c != null && !TouchHint.Learned && !CleanMode && UnderFinger(c, pos) != null;
+            return c != null && !CleanMode && UnderFinger(c, pos) != null;
         }
 
         /// <summary>Tester run 8: how near a tap outside clean mode has to be to a piece of mess to be on it, in pixels. <see cref="pickRadius"/> is for cleaning, where

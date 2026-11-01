@@ -285,6 +285,34 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("want line");
         }
 
+        [UnityTest, Timeout(120000)]
+        [Category("Tester6")]
+        public IEnumerator ASpeakerGoingIndoorsDoesNotCutTheLine()
+        {
+            yield return Grown();
+            var sm = ShowMeDirector.Instance;
+            string said = ShowMeDirector.DebugBubble();
+            for (int i = 0; i < 12 && said.StartsWith("caption"); i++) said = ShowMeDirector.DebugBubble(); // a long line is a caption: this one is about the bubble
+            StringAssert.StartsWith("bubble", said);
+            yield return Frames(4);
+            var b = sm.ShownBubble;
+            Assert.IsNotNull(b);
+            var el = sm.GetComponentsInChildren<UIDocument>().Select(d => d.rootVisualElement.Q("showme-bubble")).First(e => e != null);
+            var head = new Vector2(sm.BubbleScreen.x, Screen.height - sm.BubbleScreen.y);
+            var panelHead = RuntimePanelUtils.ScreenToPanel(el.panel, head);
+            Assert.IsFalse(el.worldBound.Contains(panelHead), "the bubble isn't on the speaker");
+            Assert.GreaterOrEqual(b.seconds, 3.5f, "long enough to read");
+            float start = Time.realtimeSinceStartup;
+            PeopleView.DebugSetHour(23.5f); // everyone goes in at once
+            yield return Frames(2);
+            yield return new WaitForSecondsRealtime(1f);
+            Assert.AreSame(b, sm.ShownBubble, "it finishes");
+            yield return Until(() => sm.ShownBubble == null, b.seconds + 2f);
+            Assert.GreaterOrEqual(Time.realtimeSinceStartup - start, b.seconds - 1.2f, "at its own time");
+            Assert.IsTrue(GameUiPanel.Bubbles.Free(BubbleHost.Rank.World), "the word is free again");
+            AssertNoErrors("speaker indoors");
+        }
+
         /// <summary>Tester run 6: a line over the bubble's limit is a caption here too, so no bubble runs past three lines.</summary>
         [UnityTest, Timeout(120000)]
         [Category("Tester6")]

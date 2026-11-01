@@ -12,7 +12,7 @@ namespace AquariumCiv.Sim
     /// without nagging. Pure C#: the view calls <see cref="Touch"/> at touch start (the drag still moves the camera) and
     /// <see cref="Cleaned"/> when the Keeper has cleaned anything. The pulse repeats after <see cref="PulseGap"/> seconds,
     /// the words after <see cref="HintGap"/>, at most <see cref="MaxHints"/> times a session, and never again once the
-    /// Keeper has cleaned: they know. Times are real seconds on any steady clock.
+    /// Keeper has cleaned: they know. A tap is another matter: it always answers, see <see cref="Tapped"/>. Times are real seconds on any steady clock.
     /// </summary>
     public sealed class CleanHint
     {
@@ -37,14 +37,14 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>Tester run 8: a tap that stopped on mess and opened nothing never goes unanswered, however soon after the last: the pulse at least, the words
-        /// as they'd come anyway. The press may have answered already (<paramref name="pressAnswered"/>): one tap, one answer.</summary>
+        /// as they'd come anyway. Tester run 9: that holds after the first clean too; only the words stop. The press may have answered already (<paramref name="pressAnswered"/>): one tap, one answer.</summary>
         public CleanHintResult Tapped(bool pressAnswered, float now)
         {
             var r = new CleanHintResult();
-            if (learned || pressAnswered) return r;
+            if (pressAnswered) return r;
             r.pulse = true;
             lastPulse = now;
-            if (hints < MaxHints && now - lastHint >= HintGap) { r.hint = true; lastHint = now; hints++; }
+            if (!learned && hints < MaxHints && now - lastHint >= HintGap) { r.hint = true; lastHint = now; hints++; }
             return r;
         }
 

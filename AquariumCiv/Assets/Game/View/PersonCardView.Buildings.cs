@@ -18,6 +18,8 @@ namespace AquariumCiv.View
     {
         /// <summary>How tall a lot's building is, for a tap: a roof takes the tap, and a field or a yard only near the ground.</summary>
         const float TallPiece = 0.55f, LowPiece = 0.12f;
+        /// <summary>Tester run 9: a mill stands far over a house, and its sails turn out past its lot: the top of the tower, and a band of air (a share of the lot) round the hub.</summary>
+        const float MillTop = 0.82f, MillSailsFrom = 0.25f, MillSailsTop = 1.1f, MillSailsWide = 2.2f;
         /// <summary>The solid middle of a lot's box: a ray through it beats one that only clips another lot's corner.</summary>
         const float CoreShare = 0.7f;
 
@@ -45,10 +47,12 @@ namespace AquariumCiv.View
             foreach (var l in sim.Settlement.Lots)
             {
                 if (l.retired || l.buildingId <= 0 || !sim.State.buildings.Exists(b => b.id == l.buildingId)) continue;
-                float tall = l.kind is LotKind.Farm or LotKind.Pasture or LotKind.Orchard ? LowPiece : TallPiece;
+                bool mill = l.kind == LotKind.Windmill;
+                float tall = l.kind is LotKind.Farm or LotKind.Pasture or LotKind.Orchard ? LowPiece : mill ? MillTop : TallPiece;
                 float y0 = box.GroundHeight(l.x, l.z);
                 if (HitsLot(l, o, v, y0, y0 + tall, 1f, out float t) && t < bestT) { bestT = t; best = l.buildingId; }
                 if (HitsLot(l, o, v, y0, y0 + tall * CoreShare, CoreShare, out float tc) && tc < coreT) { coreT = tc; core = l.buildingId; }
+                if (mill && HitsLot(l, o, v, y0 + MillSailsFrom, y0 + MillSailsTop, MillSailsWide, out float ts) && ts < bestT) { bestT = ts; best = l.buildingId; }
             }
             return core >= 0 ? core : best; // the air round a house's eaves doesn't take a tap from the well behind it
         }

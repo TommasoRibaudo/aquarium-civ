@@ -34,6 +34,16 @@ namespace AquariumCiv.View.ShowMe.Tests
         }
 
         [Test]
+        public void ALabelFarFromItsPersonIsTheOneThatGetsALine()
+        {
+            var label = new LabelBox(0f, 0f, 200f, 60f);
+            Assert.AreEqual(0f, MarkerLayout.GapTo(label, 50f, 10f), 1e-3f, "on it");
+            Assert.AreEqual(50f, MarkerLayout.GapTo(label, 0f, 80f), 1e-3f, "from its edge, not its middle");
+            Assert.Greater(MarkerLayout.GapTo(label, 0f, 150f), MarkerLayout.LeaderGap, "Gwen, 150 px off");
+            Assert.Less(MarkerLayout.GapTo(label, 90f, 110f), MarkerLayout.LeaderGap, "a label at its usual height");
+        }
+
+        [Test]
         public void OneSpeakerPerGroupEveryThreeToSixSeconds()
         {
             var plan = new ChatterPlan();

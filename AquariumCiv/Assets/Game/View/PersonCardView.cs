@@ -155,9 +155,10 @@ namespace AquariumCiv.View
         {
             if (OpenWho(PickDoll(screenPos))) return true;
             bool cardUp = AnyOpen || BuildingOpen;
-            if (!cardUp && CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos)) { CareView.Instance.AnswerMessTap(); return true; }
+            bool onMess = CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos);
+            if (!cardUp && onMess) { CareView.Instance.AnswerMessTap(); return true; }
             int building = PickBuilding(screenPos);
-            if (building < 0 && OpenWho(PickPerson(screenPos))) return true;
+            if (building < 0 && !onMess && OpenWho(PickPerson(screenPos))) return true; // tester run 9: mess under the finger beats a doll merely near it
             if (IsOpen) { Close(); return true; }
             if (CrowdOpen) { CloseCrowd(); return true; }
             if (BuildingOpen) { CloseBuilding(); return true; }
@@ -579,7 +580,7 @@ namespace AquariumCiv.View
                 label.style.top = at.y;
                 label.style.display = DisplayStyle.Flex;
                 var anchor = new Vector2(p.anchorX, p.anchorY + TieTop);
-                if (p.leader || (at - spot).magnitude > TieH * 1.2f) leadersWanted.Add((placed.Count - 1, at, size, anchor));
+                if (p.leader || (at - spot).magnitude > TieH * 1.2f || MarkerLayout.GapTo(new LabelBox(at.x, at.y, size.x, size.y), anchor.x, anchor.y) > MarkerLayout.LeaderGap) leadersWanted.Add((placed.Count - 1, at, size, anchor));
             }
             OverflowShown = res.overflow;
             if (res.overflow > 0)

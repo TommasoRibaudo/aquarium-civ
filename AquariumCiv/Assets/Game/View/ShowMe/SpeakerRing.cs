@@ -11,12 +11,13 @@ namespace AquariumCiv.View
     /// </summary>
     public sealed class SpeakerRing
     {
-        const int Sides = 32;
+        const int Sides = 32, RingQueue = 3005;
         /// <summary>Inside clear, the bright line, outside clear (box units), how far over the ground, and how long it takes to fade (real seconds).</summary>
         const float Inner = 0.075f, Mid = 0.125f, Outer = 0.18f, Lift = 0.025f, FadeSeconds = 0.18f, Peak = 0.8f;
 
         GameObject go;
         Mesh mesh;
+        Material material;
         MeshRenderer renderer;
         MaterialPropertyBlock block;
         float alpha;
@@ -25,6 +26,7 @@ namespace AquariumCiv.View
         /// <summary>The ring is under someone now, and where (tests).</summary>
         public bool Up { get; private set; }
         public Vector3 At => at;
+        public MeshRenderer Renderer => renderer;
 
         /// <summary>One frame: under <paramref name="who"/>'s feet, or fading out with nobody to be under.</summary>
         public void Draw(PeopleView pv, PersonRef who, float dt)
@@ -42,13 +44,28 @@ namespace AquariumCiv.View
         void Make()
         {
             go = new GameObject("SpeakerRing") { hideFlags = HideFlags.DontSave };
-            mesh = new Mesh { name = "SpeakerRing", hideFlags = HideFlags.DontSave };
+            mesh = RingMesh("SpeakerRing", Inner, Mid, Outer, new Color(1f, 0.95f, 0.78f), Peak);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            renderer = go.AddComponent<MeshRenderer>();
+            // Tester run 9: a speaker walks behind trees for seconds at a time. The ring says who has the word, so nothing cuts it, like the marks. Its own copy of
+            // the material: everything else in the box keeps its depth test.
+            material = new Material(ShapingView.LoadFx()) { name = "SpeakerRing", hideFlags = HideFlags.DontSave, renderQueue = RingQueue };
+            material.SetFloat("_ZTest", (float)CompareFunction.Always);
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            block = new MaterialPropertyBlock();
+        }
+
+        /// <summary>A flat ring on the ground: clear inside, bright at <paramref name="mid"/>, clear outside.</summary>
+        public static Mesh RingMesh(string name, float inner, float mid, float outer, Color col, float peak)
+        {
+            var mesh = new Mesh { name = name, hideFlags = HideFlags.DontSave };
             var v = new Vector3[Sides * 3];
             var c = new Color[Sides * 3];
             var t = new int[Sides * 12];
-            var col = new Color(1f, 0.95f, 0.78f, 0f);
-            float[] radii = { Inner, Mid, Outer };
-            float[] alphas = { 0f, Peak, 0f };
+            float[] radii = { inner, mid, outer };
+            float[] alphas = { 0f, peak, 0f };
             int n = 0;
             for (int r = 0; r < 3; r++)
                 for (int i = 0; i < Sides; i++)
@@ -68,12 +85,7 @@ namespace AquariumCiv.View
             mesh.colors = c;
             mesh.triangles = t;
             mesh.RecalculateBounds();
-            go.AddComponent<MeshFilter>().sharedMesh = mesh;
-            renderer = go.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = ShapingView.LoadFx();
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            block = new MaterialPropertyBlock();
+            return mesh;
         }
 
         /// <summary>The director is going: nothing outlives it.</summary>
@@ -81,7 +93,8 @@ namespace AquariumCiv.View
         {
             if (go != null) Object.Destroy(go);
             if (mesh != null) Object.Destroy(mesh);
-            go = null; mesh = null;
+            if (material != null) Object.Destroy(material);
+            go = null; mesh = null; material = null;
         }
     }
 }

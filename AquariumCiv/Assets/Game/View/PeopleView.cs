@@ -57,6 +57,8 @@ namespace AquariumCiv.View
             /// <summary>The place this person holds a slot at, and which (stable while they stay, rule 6).</summary>
             public Place slotPlace;
             public int slot = -1;
+            /// <summary>Their place in line at this kind of spot at a home (<see cref="SlotSpots.Home"/>).</summary>
+            public int homeRank;
             public Vector2 lastSpot;
             /// <summary>#189: the planned point (<see cref="pos"/>) stays the plan's; the doll is drawn at <see cref="drawn"/>, eased aside
             /// by <see cref="offset"/> and kept off the solids. <see cref="heading"/> is the way the plan walks, its index this frame's in the crowd.</summary>
@@ -91,6 +93,7 @@ namespace AquariumCiv.View
         readonly Dictionary<int, Doll> dolls = new();
         readonly Dictionary<Place, int> countAt = new();
         readonly HashSet<(Place, int)> taken = new();
+        readonly Dictionary<(Place, SlotSpots.HomeSpot), int> homeRanks = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
         /// <summary>Pieces standing on open ground (a well by the fire): rings and spreads keep off them.</summary>
@@ -100,6 +103,10 @@ namespace AquariumCiv.View
         readonly List<Solid> solids = new();
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
+        /// <summary>Tester run 9: catching up with the plan: the least extra speed, and how it grows with the gap (per second) on the way and into a slot.</summary>
+        const float CatchLeast = 0.03f, CatchWalking = 1f, CatchArriving = 3f;
+        /// <summary>Tester run 9: under this speed a doll hasn't really got a way to face, and turns at <see cref="SlowTurn"/> at the most (degrees a second).</summary>
+        const float FaceFrom = 0.2f, SlowTurn = 110f;
         /// <summary>#203: how fast the way a walker goes settles (per second), how fast a doll turns to face it, and the fastest it turns (degrees a second).</summary>
         const float HeadingRate = 8f, VelocityRate = 10f, TurnRate = 9f, MostTurn = 300f;
         /// <summary>#203: slower than this a doll isn't walking, faster than that it is: a doll easing onto its spot doesn't flick between the two.</summary>
@@ -224,6 +231,17 @@ namespace AquariumCiv.View
                 countAt.TryGetValue(a.place, out int c);
                 countAt[a.place] = Mathf.Max(c, d.slot + 1);
             }
+            // #200: who's where round each home. Only those on view count: someone indoors holds no spot at the door.
+            homeRanks.Clear();
+            for (int i = 0; i < acts.Count; i++)
+            {
+                var a = acts[i];
+                if (a.moving || a.place.kind != PlaceKind.Home || DollMotion.StyleOf(a.kind) == DollStyle.Hidden || !dolls.TryGetValue(a.who.Key, out var d)) continue;
+                var at = (a.place, SlotSpots.SpotFor(a.kind));
+                homeRanks.TryGetValue(at, out int rank);
+                homeRanks[at] = rank + 1;
+                d.homeRank = rank;
+            }
             notables.Clear();
             foreach (var n in sim.State.notables) if (n.alive) notables[n.id] = n;
             blockers.Clear();
@@ -309,9 +327,15 @@ namespace AquariumCiv.View
             Vector2? face = null;
             if (!a.moving && !a.enRoute && !hidden) // #197: a run-in stops on the path, it does not take a slot at a place
             {
-                target = SlotSpot(a, spot, out face);
-                target = Standable(target, spot, !InField(a.place));
+                target = SlotSpot(d, a, spot, out face);
+                bool yard = a.place.kind == PlaceKind.Home && (target - spot).sqrMagnitude > SlotSpots.AtDoorReach * SlotSpots.AtDoorReach;
+                target = Standable(target, spot, !InField(a.place), yard);
                 claimed.Add(target);
+                if (yard && lotOfBuilding.TryGetValue(a.place.buildingId, out var yardLot))
+                {
+                    var from = new Vector2(yardLot.x, yardLot.z);
+                    face = target + (target - from).normalized; // moved round a corner, still looking away from the house
+                }
             }
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(target.x, target.y))
             {
@@ -341,7 +365,10 @@ namespace AquariumCiv.View
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
                 var goal = a.moving || Clear(d.pos, target) ? target : spot;
-                d.pos = Vector2.MoveTowards(d.pos, goal, (targetSpeed + 0.35f) * dt);
+                float gap = (goal - d.pos).magnitude;
+                // Tester run 9: most of a town's hard brakes were this, not the crowd. Off a slot a walker ran at twice the walk to reach the plan's point, then dropped to the walk
+                // on reaching it. Now the catching up fades as they near it, and they settle into the walk.
+                d.pos = Vector2.MoveTowards(d.pos, goal, (targetSpeed + Mathf.Min(DrawnSlack, CatchLeast + gap * (a.moving ? CatchWalking : CatchArriving))) * dt);
             }
             d.wasHidden = hidden;
             float inst = dt > 0f && d.placed ? (d.pos - prev).magnitude / dt : 0f;
@@ -365,14 +392,15 @@ namespace AquariumCiv.View
             float want = d.yaw;
             if (jump || dt <= 0f) d.velocity = Vector2.zero;
             else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
-            if (walking) { if (d.velocity.sqrMagnitude > 1e-4f) want = Yaw(Vector2.zero, d.velocity); }
+            if (walking) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
                     want = Yaw(d.pos, p.pos);
                 else if (face.HasValue && (face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value);
             }
-            d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * TurnRate)), -MostTurn * dt, MostTurn * dt) : want;
+            float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, d.speed / FaceFrom) : MostTurn; // nearly stopped in a crowd, a body doesn't spin
+            d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * TurnRate)), -most * dt, most * dt) : want;
 
             // Pose: the apprentice copies the master a beat late (§4).
             float phase = time + d.phase - (a.copiesPartner ? 0.35f : 0f);
@@ -432,7 +460,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Where in the place this person stands (rule 6: one doll per slot) and what they face there.</summary>
-        Vector2 SlotSpot(PersonActivity a, Vector2 spot, out Vector2? face)
+        Vector2 SlotSpot(Doll d, PersonActivity a, Vector2 spot, out Vector2? face)
         {
             face = null;
             countAt.TryGetValue(a.place, out int count);
@@ -493,7 +521,8 @@ namespace AquariumCiv.View
                 var centre = new Vector2(lot.x, lot.z);
                 var outDir = (spot - centre).sqrMagnitude > 1e-6f ? (spot - centre).normalized : Vector2.down;
                 float baseAng = Mathf.Atan2(outDir.y, outDir.x);
-                var (dx, dz) = SlotSpots.Door(a.slot, baseAng); // a fan outside the door, no two closer than SlotSpots.Gap
+                var (dx, dz) = a.place.kind == PlaceKind.Home ? SlotSpots.Home(SlotSpots.SpotFor(a.kind), d.homeRank, baseAng) // #200: at most two at the door, the rest in the yard
+                    : SlotSpots.Door(a.slot, baseAng); // a fan outside the door, no two closer than SlotSpots.Gap
                 var at = spot + new Vector2(dx, dz);
                 // #200: at home they look out over the town. Facing their own wall, a sitter or a chopper looks as if they're building it.
                 face = a.place.kind == PlaceKind.Home ? at + (at - centre).normalized : centre;
@@ -526,7 +555,7 @@ namespace AquariumCiv.View
         /// walkable ground: round the same ring first, then closer to the middle. The spot itself if nothing is free.</summary>
         static readonly float[] Rings = { 1f, 1.4f, 0.75f, 1.8f, 0.5f };
 
-        Vector2 Standable(Vector2 p, Vector2 centre, bool offLots)
+        Vector2 Standable(Vector2 p, Vector2 centre, bool offLots, bool noCloser = false)
         {
             var st = offLots && plannerSim != null ? plannerSim.Settlement : null;
             bool Free(Vector2 q)
@@ -542,14 +571,14 @@ namespace AquariumCiv.View
             var off = p - centre;
             float r = Mathf.Max(off.magnitude, Personal), a0 = Mathf.Atan2(off.y, off.x);
             foreach (float shrink in Rings)
-                for (int k = 0; k <= 12; k++)
+                for (int k = 0; k <= 12 && (!noCloser || shrink >= 1f); k++) // #200: a yard spot never slides back to the door
                     for (int sgn = -1; sgn <= 1; sgn += 2)
                     {
                         float a = a0 + sgn * k * 15f * Mathf.Deg2Rad;
                         var q = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r * shrink;
                         if (Free(q)) return q;
                     }
-            return centre;
+            return noCloser ? p : centre;
         }
 
         /// <summary>Is the straight line between two points on walkable ground (no lot, no pond)? A line that starts on a

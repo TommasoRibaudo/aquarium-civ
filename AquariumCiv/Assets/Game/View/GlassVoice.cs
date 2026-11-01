@@ -39,6 +39,8 @@ namespace AquariumCiv.View
 
         /// <summary>Taps closer together than this (real seconds) are one knock of several taps.</summary>
         public const float TapGap = 0.6f;
+        /// <summary>Tester run 9: the answer of a tap on bare land.</summary>
+        public GroundRipple Ripple { get; } = new();
         /// <summary>A press longer than this, or moving more than <see cref="TapSlop"/> of the screen height, is no tap.</summary>
         public const float TapMaxSeconds = 0.35f, TapSlop = 0.02f;
         /// <summary>A sim that moved on more months than this in a frame was catching up: its relics' moments aren't played.</summary>
@@ -116,8 +118,11 @@ namespace AquariumCiv.View
         static Camera MainCam => Camera.main;
         static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
 
+        void OnDestroy() => Ripple.Dispose();
+
         void Update()
         {
+            Ripple.Step(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
             var sim = Sim;
             Bind(sim);
             var people = PeopleView.Find();
@@ -312,6 +317,25 @@ namespace AquariumCiv.View
             return mp == null || !mp.Playing;
         }
 
+        /// <summary>Tester run 9: the land answers a tap with a soft ring and a small sound, and nothing more.</summary>
+        void AnswerGround(Vector2 pos)
+        {
+            var shaping = ShapingView.Instance;
+            if (shaping == null || box == null || !shaping.GroundPoint(pos, out float x, out float z)) return;
+            Ripple.Start(box, x, z);
+            Sfx.Play(CueLibrary.MessDrop, 7f, 0.22f);
+        }
+
+        /// <summary>Debug: a tap's answer on the land under the middle of the screen, or the box's middle.</summary>
+        public static string DebugRipple()
+        {
+            var g = Instance;
+            if (g == null || g.box == null) return "no glass voice";
+            g.Ripple.Start(g.box, 0f, 0f);
+            Sfx.Play(CueLibrary.MessDrop, 7f, 0.22f);
+            return $"ground ripple {g.Ripple.Count}";
+        }
+
         void HandleTaps(SimCore sim, LifePlanner planner, ViewTime now)
         {
             int n = ReadPointer(out var pos);
@@ -328,6 +352,7 @@ namespace AquariumCiv.View
                 var cards = PersonCardView.Instance;
                 if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
                 else if (pressValid && quick) Tap(planner, now);
+                else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
             }
             if (taps > 0 && t - lastTapTime > TapGap) FinishKnock(sim, planner, now);
         }
