@@ -733,7 +733,7 @@ namespace AquariumCiv.Life
 
         void Midday(Person p, DayInfo d, Work work, bool napAfter, Shift sh)
         {
-            var meal = MealPlace(p, d);
+            var meal = MealPlace(p, d, work.site);
             var with = p.partner != null && p.partner.Adult ? p.partner : null;
             // The walk back to work takes its route's time: from a far inn they finish eating earlier, and arrive late if
             // they got there late (a 0.2 h walk back across the town rushed at 2x, #109).
@@ -747,16 +747,36 @@ namespace AquariumCiv.Life
 
         /// <summary>Where a person eats (§3 midday): the fire in the camp; the field edge or the doorstep in the village; the
         /// market and the inn's benches in the town. A couple eats where the first of them does.</summary>
-        Place MealPlace(Person p, DayInfo d)
+        Place MealPlace(Person p, DayInfo d, Place workSite = default)
         {
             if (p.partner != null && p.partner.key < p.key && p.partner.Grown) p = p.partner;
             if (era == Era.Camp) return fire;
             if (era == Era.Village)
             {
                 var f = p.Adult ? FieldOf(p, d) : Place.None;
-                return f.IsNone ? p.home : f;
+                return f.IsNone ? VillageLunch(p, d, workSite) : f;
             }
             return tavernB != null && R(p.key, d.day, 40) < 0.5f ? PlaceOf(tavernB) : marketB != null ? PlaceOf(marketB) : p.home;
+        }
+
+        /// <summary>#197: a village lunch away from the field. The doorstep alone put nine of fourteen people at their own doors at
+        /// midday, which read as one schedule. Now per person (a couple by the first of them) and day: about three in ten eat at
+        /// their own door, two in ten by the well, one in ten on the green, one in ten at a neighbour's (a friend's) door, and the
+        /// rest, if single, keep to their chore outside at the work site and eat there. Same activities as before, only the places.</summary>
+        Place VillageLunch(Person p, DayInfo d, Place workSite)
+        {
+            float r = R(p.key, d.day, 41);
+            var well = wellB != null ? PlaceOf(wellB) : gather;
+            if (r < 0.30f) return p.home;
+            if (r < 0.50f) return well;
+            if (r < 0.60f) return gather;
+            if (r < 0.72f)
+            {
+                var f = p.friend;
+                return f != null && f.Grown && !f.home.IsNone && f.home != p.home ? f.home : well;
+            }
+            bool single = p.partner == null || !p.partner.Grown;
+            return single && p.Adult && !workSite.IsNone ? workSite : well;
         }
 
         Place FieldOf(Person p, DayInfo d)

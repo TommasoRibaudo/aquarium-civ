@@ -25,7 +25,7 @@ namespace AquariumCiv.Life.Tests
             return sim;
         }
 
-        struct Spread { public List<float> shares; public float p90, maxPlace, maxWork, maxGroup; public string where, what; public int people, samples; public float lowWork; }
+        struct Spread { public List<float> shares; public float p90, maxPlace, maxWork, maxGroup; public string where, what; public int people, samples; public float lowWork; public float homeSum, homeMax; public int homeN; public float HomeMean => homeN > 0 ? homeSum / homeN : 0f; }
 
         /// <summary>Over the plain days of a few months (clear weather, no rest day, no scene): at each quarter hour from 5 to
         /// 24, the biggest share of the awake people at one place, and the biggest share doing one group of things.</summary>
@@ -69,6 +69,13 @@ namespace AquariumCiv.Life.Tests
                         r.shares.Add(s2);
                         if (s2 > r.maxPlace) { r.maxPlace = s2; r.where = $"day {day} {h:0.00}h {(open != null ? open.Key.ToString() : "home")}"; r.what = string.Join(",", awake.GroupBy(a => a.kind + "/" + a.source).Select(g => g.Key + ":" + g.Count())); }
                     }
+                    if (h >= 11.5f && h <= 13.5f)
+                    {
+                        // all doors together: nine of fourteen at their own doors reads as everyone at home, however many doors
+                        float atHome = awake.Count(a => !a.moving && a.place.kind == PlaceKind.Home) / (float)awake.Count;
+                        r.homeSum += atHome; r.homeN++;
+                        if (atHome > r.homeMax) r.homeMax = atHome;
+                    }
                     if (h >= 8f && h < 16.5f)
                     {
                         // 'all at work' in the work hours is the other complaint
@@ -104,6 +111,10 @@ namespace AquariumCiv.Life.Tests
 
         // Measured 2026-11-01 (see the MeasureTheSpread output): before #197 the evening put 90-100 % of the awake people at one place
         // (p90 60-92 %); after, the evening splits between the green, the tavern, friends' doors and home.
+        // Measured 2026-11-01, midday 11.5-13.5, all doors together. Before the village lunch varied: Village mean 25 %, max 77 % / 70 %; Town mean 7 %, max 41 % / 50 %.
+        // After: Village mean 14-15 %, max 62 % / 50 %. Limits sit between (mean 20 %, max 65 %).
+        const float HomeMeanLimit = 0.20f, HomeMaxLimit = 0.65f;
+
         [TestCase(1, 10, Era.Village)]
         [TestCase(3, 10, Era.Village)]
         [TestCase(1, 10, Era.Town)]
@@ -112,7 +123,9 @@ namespace AquariumCiv.Life.Tests
         {
             var sim = TownWith(seed, minPeople, era);
             var a = Measure(sim, 6);
-            TestContext.WriteLine($"{era} seed {seed} pop {a.people}: samples {a.samples}, p90 one place {a.p90:P0}, max {a.maxPlace:P0} ({a.where}) {a.what}, max work+carry {a.maxWork:P0}, max one group {a.maxGroup:P0}");
+            TestContext.WriteLine($"{era} seed {seed} pop {a.people}: samples {a.samples}, p90 one place {a.p90:P0}, max {a.maxPlace:P0} ({a.where}) {a.what}, max work+carry {a.maxWork:P0}, max one group {a.maxGroup:P0}, midday 11.5-13.5 at any home: mean {a.HomeMean:P0}, max {a.homeMax:P0}");
+            Assert.LessOrEqual(a.HomeMean, HomeMeanLimit, "at midday not everyone is at a door");
+            Assert.LessOrEqual(a.homeMax, HomeMaxLimit, "and no quarter hour of it has most of the people at home");
             Assert.LessOrEqual(a.p90, 0.65f, "no place holds more than 65 % of the awake people for nine in ten quarter hours of an ordinary day");
             Assert.LessOrEqual(a.maxPlace, era == Era.Town ? 0.75f : 0.95f, "and never (a village of ten has its story hour on the green)");
             Assert.LessOrEqual(a.maxWork, 0.85f, "the work hours are never all at work");
