@@ -229,8 +229,11 @@ namespace AquariumCiv.View.PlayTests
                     if (c.echo && !string.IsNullOrEmpty(plan.echo.line))
                     {
                         StringAssert.Contains(plan.echo.line, d.LastLine, $"{c.name}: the echo's line is said");
-                        Assert.Greater(d.EchoLinesOverHead, linesOver, $"{c.name}: over the speaker's head, not at the fixed spot");
-                        Assert.IsTrue(overHead, $"{c.name}: and it showed");
+                        if (!GlassBubble.TooLong(d.LastLine)) // spec §3: a longer line is a caption (#120's bank has plenty)
+                        {
+                            Assert.Greater(d.EchoLinesOverHead, linesOver, $"{c.name}: over the speaker's head, not at the fixed spot");
+                            Assert.IsTrue(overHead, $"{c.name}: and it showed");
+                        }
                     }
                     if (!c.echo) Assert.IsTrue(flower, "a flower at the stone");
                     Assert.IsTrue(d.Returned, $"{c.name}: the camera comes back");
