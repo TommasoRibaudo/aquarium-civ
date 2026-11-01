@@ -288,6 +288,23 @@ namespace AquariumCiv.View
         }
         public static string DebugSkip(int id = -1) { var v = Instance; if (v == null) return "no ShapingView"; v.SkipToAnswer(id); return v.LastResult; }
 
+        /// <summary>Debug: the people react to the last gift not answered yet, now (#142): the same staging a landing gift gets.
+        /// While one plays this says so; with everyone asleep it says that, and nobody is woken.</summary>
+        public static string DebugReact()
+        {
+            var sim = Instance?.Sim;
+            var pv = PeopleView.Find();
+            if (sim == null || pv == null || pv.Planner == null) return "no ShapingView";
+            for (int i = sim.State.nudges.Count - 1; i >= 0; i--)
+            {
+                var n = sim.State.nudges[i];
+                if (n.credited || System.Array.IndexOf(SimCore.SliceTools, n.kind) < 0) continue;
+                var info = pv.Planner.StartShapingReaction(n.id, pv.Now);
+                return info != null ? $"people react to the {n.kind}" : "nobody is up to see it: the reaction waits";
+            }
+            return "no gift waiting: place one first";
+        }
+
         // ================================================================== the camera gate and the tap
 
         bool Usable() => ShapeMode && UiUsable();
