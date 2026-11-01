@@ -343,6 +343,8 @@ namespace AquariumCiv.Sim
         public List<StoryThread> threads = new(); // teaser threads and story links (SimCore.Cards.cs, #59)
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
+        public List<string> bookSeen = new(); // the book's pages the player has opened (SimCore.Book.cs, #80): no ribbon on these
+        public List<int> bookKept = new();    // legends whose page has been read: it stays, so a page never leaves the book
         public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
         public bool dollDue;                  // the Keeper Doll's trigger fired while the player was away: made on the first live month
         public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)

@@ -45,11 +45,14 @@ namespace AquariumCiv.View
         /// <summary>Set by whoever can share a file (a native share plugin later). Null: the screen just says it saved.</summary>
         public static System.Action<string> ShareHandler;
 
-        /// <summary>#80's hook: the book opens from here. Until it's built, a tap says so in a toast.</summary>
-        public static System.Action BookHandler;
+        /// <summary>#80's hook: the book opens from here, on the box on screen.</summary>
+        public static System.Action<SimCore> BookHandler;
 
         /// <summary>#80's hook: new pages wait, so the Book button wears its ribbon.</summary>
         public static bool BookRibbon { get; set; }
+
+        /// <summary>#80's hook: asked each time the screen opens, for the ribbon.</summary>
+        public static System.Func<SimCore, bool> BookHasNew;
 
         public static TimeLapseScreenView Ensure()
         {
@@ -105,6 +108,7 @@ namespace AquariumCiv.View
             view.externalTick = true;
             model = new TimeLapseScreenModel(view.Lapse, view.Clock, GameClock.Tel, sim.PlaceName, ScaledOptions());
             EnsureUi();
+            if (BookHasNew != null) BookRibbon = BookHasNew(sim);
             root.style.display = DisplayStyle.Flex;
             IsOpen = true;
             drawnVersion = -1; shownPosition = float.NaN; builtWidth = -1f; wasPlaying = false;
@@ -163,6 +167,7 @@ namespace AquariumCiv.View
                 shownPosition = model.Position;
                 view.Show(shownPosition, false);
             }
+            ribbon.style.display = BookRibbon ? DisplayStyle.Flex : DisplayStyle.None; // the book can take it off at any time
             if (wasPlaying && !model.Playing) view.Settle();     // paused (or ran out): bake the AO
             wasPlaying = model.Playing;
             if (model.Version != drawnVersion) Redraw();
@@ -433,7 +438,7 @@ namespace AquariumCiv.View
 
         void OnBook()
         {
-            if (BookHandler != null) BookHandler();
+            if (BookHandler != null) BookHandler(view.Lapse.Sim);
             else GameHud.Instance?.Toast("The book isn't written yet.", 3f);
         }
 

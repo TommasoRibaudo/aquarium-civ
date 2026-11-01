@@ -110,9 +110,6 @@ namespace AquariumCiv.View.PlayTests
             }
             m.DismissCaption();
             yield return Frames(4);
-            yield return Tap(screen.Root, "tl-book");
-            yield return Seconds(0.4f);
-            yield return Cap("3.5-book-toast");
             m.GoNow();
             yield return Seconds(3f);
             if (Directory.Exists(TimeLapseSnapshot.Folder)) Directory.Delete(TimeLapseSnapshot.Folder, true);

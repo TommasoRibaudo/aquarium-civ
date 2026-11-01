@@ -100,6 +100,32 @@ namespace AquariumCiv.View
             }
         }
 
+        /// <summary>The box as the camera sees it now, with no UI, as a texture the caller owns (the book's cover before the first still).</summary>
+        public static Texture2D Render(Camera cam, int w, int h)
+        {
+            var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            var prevTarget = cam.targetTexture;
+            try
+            {
+                var req = new RenderPipeline.StandardRequest { destination = rt };
+                if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
+                else { cam.targetTexture = rt; cam.Render(); cam.targetTexture = prevTarget; }
+                var prev = RenderTexture.active;
+                RenderTexture.active = rt;
+                var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+                tex.Apply();
+                RenderTexture.active = prev;
+                return tex;
+            }
+            catch (Exception e) { Debug.LogWarning("[EraStills] could not render: " + e.Message); return null; }
+            finally
+            {
+                cam.targetTexture = prevTarget;
+                RenderTexture.ReleaseTemporary(rt);
+            }
+        }
+
         /// <summary>Debug / tests: forget a box's stills.</summary>
         public static void DebugClear(int seed)
         {

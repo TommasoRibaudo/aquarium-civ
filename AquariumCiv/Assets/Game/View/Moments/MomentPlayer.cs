@@ -575,6 +575,22 @@ namespace AquariumCiv.View
             UiSound.Play(UiRole.Ask);
         }
 
+        /// <summary>The caption the evening talk shares with the moments: one plate, one line.</summary>
+        public MomentOverlay Overlay => overlay;
+
+        /// <summary>The notification ask is up, waiting for an answer.</summary>
+        public bool NotifyAskUp => notifyAsk != null && notifyAsk.Ready;
+
+        /// <summary>The evening talk reached the shelf with an era waiting, the first time (first-session §4): the ask, under its caption.
+        /// The caption is already there; the close keeps the HUD down until it's answered.</summary>
+        public bool AskAtClose()
+        {
+            if (notifyAsk == null || notifyAsk.Ready) return false;
+            notifyAsk.Ready = true;
+            UiSound.Play(UiRole.Ask);
+            return true;
+        }
+
         void AnswerNotify(bool yes)
         {
             notifyAsk.Ready = false;
@@ -584,6 +600,8 @@ namespace AquariumCiv.View
             else EraNotifier.Enabled = false;
             if (GameClock.Instance != null) GameClock.Instance.Save();
             overlay.HideCaption();
+            var talk = EveningTalkView.Instance;
+            if (talk != null && talk.Open) return; // the close hands the HUD back itself
             if (!Playing && GameHud.Instance != null) GameHud.Instance.SetVisible(hudWasVisible); // the HUD waited for the answer
         }
 

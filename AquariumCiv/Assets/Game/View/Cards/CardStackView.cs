@@ -547,7 +547,10 @@ namespace AquariumCiv.View
                     break;
                 case CardAction.Remember:
                     int id = model.Remember();
-                    var cards = PersonCardView.Instance; // the book's page, once the book exists (#80)
+                    // Their page in the book (#80), and until they have one, their card.
+                    var book = BookView.Instance;
+                    if (id >= 0 && book != null && book.OpenAtLegend(id, model.PersonClosed)) break;
+                    var cards = PersonCardView.Instance;
                     if (id >= 0 && cards != null) personOpen = cards.Open(id, true, false);
                     if (!personOpen) model.PersonClosed();
                     break;

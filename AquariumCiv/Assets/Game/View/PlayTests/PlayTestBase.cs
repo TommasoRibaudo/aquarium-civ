@@ -99,6 +99,7 @@ namespace AquariumCiv.View.PlayTests
 #endif
             for (int i = 0; i < 90; i++) yield return null; // build, layout, the Game view size lands
             if (GameClock.Instance != null) bootstrapsRun = Bootstraps.All();
+            EveningTalkView.AutoStart = false; // a test that stands still mustn't lose its HUD to the close; its own tests turn it on
             yield return null; yield return null;
             if (skipFirstRun && FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll();
             yield return null; yield return null;
