@@ -145,6 +145,18 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Earn every book page")) last = BookView.DebugEarnAll();
             if (GUILayout.Button("Open book")) { last = BookView.DebugOpen(); DebugDock.Active = DebugDock.None; }
             GUILayout.EndHorizontal();
+            // What the town wants (#181), the said list (#120), a wish granted (#191), a baby (#192), a gathering (#190).
+            GUILayout.BeginHorizontal();
+            foreach (AquariumCiv.View.ShowMe.WantCase want in System.Enum.GetValues(typeof(AquariumCiv.View.ShowMe.WantCase)))
+                if (GUILayout.Button(want.ToString())) last = ShowMeDirector.DebugWant(want);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Clear said")) last = ShowMeDirector.DebugClearSaid();
+            if (GUILayout.Button("Grant a wish")) last = WishPayoffView.DebugGrant();
+            if (GUILayout.Button("Baby")) last = PeopleView.DebugBaby();
+            if (GUILayout.Button("Gather 6")) last = GlassVoice.DebugGather();
+            if (GUILayout.Button("Gather 10")) last = GlassVoice.DebugGather(10);
+            GUILayout.EndHorizontal();
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Music now")) last = MusicDirector.DebugPlayNow();

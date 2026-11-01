@@ -49,6 +49,7 @@ namespace AquariumCiv.View
         {
             "rub" => MakeRub(),
             "chime" => MakeChime(),
+            "gift" => MakeGift(),
             "swish" => MakeSwish(),
             "pop" => MakePop(),
             "cheer" => MakeCheer(),
@@ -163,6 +164,27 @@ namespace AquariumCiv.View
                 d[i] = lp * Mathf.Sin(t * Mathf.PI) * 1.6f;
             }
             return Clip("CareSwish", d);
+        }
+
+        /// <summary>#191: a wish answered: four notes rising, the last one held, with a thin shimmer over it.</summary>
+        static AudioClip MakeGift()
+        {
+            float[] notes = { 523f, 659f, 784f, 1047f };
+            int n = (int)(Rate * 1.25f);
+            var d = new float[n];
+            for (int k = 0; k < notes.Length; k++)
+            {
+                int start = (int)(Rate * 0.09f * k);
+                float decay = k == notes.Length - 1 ? 3f : 6.5f;
+                for (int i = start; i < n; i++)
+                {
+                    float t = (i - start) / (float)Rate;
+                    float attack = Mathf.Clamp01(t / 0.006f);
+                    d[i] += attack * (Mathf.Sin(2f * Mathf.PI * notes[k] * t) * Mathf.Exp(-t * decay) * 0.24f
+                          + Mathf.Sin(2f * Mathf.PI * notes[k] * 3.01f * t) * Mathf.Exp(-t * decay * 2.2f) * 0.05f);
+                }
+            }
+            return Clip("CareGift", d);
         }
 
         static AudioClip MakePop()

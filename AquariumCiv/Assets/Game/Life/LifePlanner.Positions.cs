@@ -245,6 +245,13 @@ namespace AquariumCiv.Life
             // A tap-back (Choice 9) overrides the scholar's other live scenes while it plays: a beat of a relic moment that
             // starts inside its window (the Lens moment's later beats) would otherwise win and the knock never be seen.
             float tbStart = float.MaxValue, tbEnd = float.MinValue;
+            // The same for a wish's cheer (#191): the gift's own reaction scene mustn't take the wisher away from it.
+            float wishStart = float.MaxValue, wishEnd = float.MinValue;
+            for (int i = 0; i < reactions.Count; i++)
+                if (reactions[i].gesture == KeeperGesture.WishAnswered && reactions[i].day == day && reactions[i].target == p.who)
+                {
+                    wishStart = Math.Min(wishStart, reactions[i].start); wishEnd = Math.Max(wishEnd, reactions[i].end);
+                }
             for (int i = 0; i < live.Count; i++)
             {
                 var sc = live[i];
@@ -261,6 +268,7 @@ namespace AquariumCiv.Life
                 foreach (var s in liveScratch)
                 {
                     if (!tapBack && s.start >= tbStart && s.start < tbEnd) continue;
+                    if (s.start >= wishStart && s.start < wishEnd) continue;
                     pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = i, target = s.place, seg = s, order = pieces.Count });
                 }
             }

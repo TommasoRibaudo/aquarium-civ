@@ -91,7 +91,7 @@ namespace AquariumCiv.Audio
             Add(new CueDef(TapGlass, SoundBus.Care, 0.45f, Care + "impactGlass_light_000", Care + "impactGlass_light_001", Care + "impactGlass_light_002").Jitter(1f).Limit(0.12f, 2, true).Prio(50).Len(0.4f).Buzz(HapticKind.Light));
             Add(new CueDef(TapPerson, SoundBus.Care, 0.4f, Care + "pluck_001", Care + "pluck_002").Jitter(2f).Limit(0.15f, 1, true).Prio(50).Len(0.3f).Buzz(HapticKind.Light));
             // #191: a wish given. Reuses the discovery clip as a stand-in (a small bright rise, world bus, the wisher's cheer follows).
-            Add(new CueDef(WishGiven, SoundBus.World, 0.5f, Care + "maximize_003").Limit(1f, 1).Prio(75).Len(0.8f).Buzz(HapticKind.Success));
+            Add(new CueDef(WishGiven, SoundBus.World, 0.5f, "proc:gift").Limit(1f, 1).Prio(75).Len(1.2f).Buzz(HapticKind.Success));
             Add(new CueDef(Discovery, SoundBus.Care, 0.55f, Care + "maximize_003").Limit(1f, 1).Prio(80).Len(0.8f).Buzz(HapticKind.Success));
 
             // The glass and show-me: a knock back from inside (soft, lower, World bus so it doesn't duck), the camera's

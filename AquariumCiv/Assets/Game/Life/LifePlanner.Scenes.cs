@@ -321,7 +321,7 @@ namespace AquariumCiv.Life
         {
             KeeperGesture.Return => 2.5f, KeeperGesture.Wipe => 2f, KeeperGesture.FullClean => 3f, KeeperGesture.FlickTrash => 1.5f,
             KeeperGesture.Prune => 2.5f, KeeperGesture.Rain => 4f, KeeperGesture.Shape => 3f, KeeperGesture.HoldFinger => 4f,
-            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, _ => 1.5f,
+            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, _ => 1.5f,
         };
 
         /// <summary>
@@ -346,6 +346,9 @@ namespace AquariumCiv.Life
             if ((gesture == KeeperGesture.Wipe && belief == 1) || (gesture == KeeperGesture.Return && belief >= 2))
                 GatherAtGlass(at);
         }
+
+        /// <summary>#191: the wisher's own reaction to their wish coming true. View only, like any reaction: they pick up their day after.</summary>
+        public void WisherReacts(int notableId, ViewTime at) => React(KeeperGesture.WishAnswered, at, default, PersonRef.Notable(notableId));
 
         /// <summary>A gesture at a world point (needs <see cref="Positions"/>): those within <paramref name="radius"/> react.</summary>
         public void ReactAt(KeeperGesture gesture, ViewTime at, float x, float z, float radius = 1f, float share = 1f, float seconds = 0f)
@@ -376,7 +379,7 @@ namespace AquariumCiv.Life
             float roll = R(p.key, (long)(r.start * 1000) + r.day * 100000, 140 + (int)r.gesture);
             float f = r.end > r.start ? Math.Max(0f, Math.Min(1f, (t.hour - r.start) / (r.end - r.start))) : 0f;
             if (!ReactsPlain(p, r, t, under, asleep, kid, roll, out kind, out prop, out to)) return false;
-            if (prop == Prop.Lantern) return true; // stepping out of the door at night with a lantern
+            if (prop == Prop.Lantern || r.gesture == KeeperGesture.WishAnswered) return true; // stepping out of the door at night with a lantern; a wish's cheer is theirs at any stage
             kind = StagedReaction(r.gesture, p, f, kind, out var staged);
             if (staged != Prop.None) prop = staged;
             return true;
@@ -385,6 +388,12 @@ namespace AquariumCiv.Life
         bool ReactsPlain(Person p, Reaction r, ViewTime t, Seg under, bool asleep, bool kid, float roll, out ActivityKind kind, out Prop prop, out Place to)
         {
             kind = ActivityKind.LookUp; prop = Prop.None; to = Place.None;
+            if (r.gesture == KeeperGesture.WishAnswered)
+            {
+                if (r.target != p.who || asleep) return false;
+                kind = ActivityKind.Cheer; // #191: they asked and it came: it's clear who it was for
+                return true;
+            }
             if (r.gesture == KeeperGesture.TapPerson || r.gesture == KeeperGesture.Glance)
             {
                 if (r.target != p.who) return false;
