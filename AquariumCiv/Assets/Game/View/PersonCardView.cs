@@ -39,7 +39,7 @@ namespace AquariumCiv.View
     /// <see cref="AnyOpen"/> is either.</para>
     /// </summary>
     [DefaultExecutionOrder(100)]
-    public class PersonCardView : MonoBehaviour
+    public partial class PersonCardView : MonoBehaviour
     {
         public static bool AutoCreate = true;
         public static PersonCardView Instance { get; private set; }
@@ -138,7 +138,7 @@ namespace AquariumCiv.View
             if (cardGo != null) Destroy(cardGo);
         }
 
-        bool IsOverCard(Vector2 screenPos) => AnyOpen && cardRoot != null && GameUiPanel.Over(cardRoot, screenPos);
+        bool IsOverCard(Vector2 screenPos) => (AnyOpen || BuildingOpen) && cardRoot != null && GameUiPanel.Over(cardRoot, screenPos);
 
         // ================================================================== the API
 
@@ -151,7 +151,9 @@ namespace AquariumCiv.View
             if (who.IsCrowd) { OpenCrowd(who.crowdIndex, true); return true; }
             if (IsOpen) { Close(); return true; }
             if (CrowdOpen) { CloseCrowd(); return true; }
-            return false;
+            if (BuildingOpen) { CloseBuilding(); return true; }
+            int building = PickBuilding(screenPos); // #188: people win, an open card closes first, and the rest of the world is a knock
+            return building >= 0 && OpenBuilding(building);
         }
 
         /// <summary>The person whose doll is under a screen point (nearest within <see cref="PickRadius"/>, a notable on a tie),
@@ -274,7 +276,7 @@ namespace AquariumCiv.View
             Crowd = null;
             flownForCard = false;
             if (GameHud.Instance != null) GameHud.Instance.SetOutsideSheet(null);
-            crowdSheet.Close(() => { if (!AnyOpen) cardRoot.style.display = DisplayStyle.None; });
+            crowdSheet.Close(() => { if (!AnyOpen && !BuildingOpen) cardRoot.style.display = DisplayStyle.None; });
         }
 
         /// <summary>The small card of a crowd person, as the planner has them now; null if nobody stands at that index.</summary>
@@ -348,12 +350,13 @@ namespace AquariumCiv.View
         void Update()
         {
             var sim = Sim;
-            if (sim == null) { Close(); CloseCrowd(); SetTag(pinTag, false); return; }
+            if (sim == null) { Close(); CloseCrowd(); CloseBuilding(); SetTag(pinTag, false); return; }
             if (IsOpen && Blocked()) Close();
             if (CrowdOpen && Blocked()) CloseCrowd();
+            if (BuildingOpen && (Blocked() || sim.BuildingCardOf(BuildingId) == null)) CloseBuilding();
             if (IsOpen && (Time.unscaledTime >= nextRefresh)) { nextRefresh = Time.unscaledTime + 1f; Refresh(false); }
             if (CrowdOpen && Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + 1f; RefreshCrowd(); }
-            if (AnyOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); CloseCrowd(); }
+            if ((AnyOpen || BuildingOpen) && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); CloseCrowd(); CloseBuilding(); }
             if (AnyOpen) KeepInView();
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateChip(sim, false);
@@ -726,6 +729,7 @@ namespace AquariumCiv.View
             body.contentContainer.AddToClassList("pc-scroll-pad");
             sheet.Add(scroll);
             BuildCrowdUi();
+            BuildBuildingUi();
             ApplySafeArea();
         }
 
@@ -775,6 +779,7 @@ namespace AquariumCiv.View
             sheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
             sheet.EnableInClassList("pc--short", tight);
             crowdSheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
+            buildingSheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
         }
 
         void Refresh(bool force)

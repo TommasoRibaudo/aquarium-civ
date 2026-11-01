@@ -165,6 +165,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
+        [Category("Part3")]
         public IEnumerator TapADollOpensTheirCardAndTheirLines()
         {
             yield return Open();
@@ -234,7 +235,10 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(cards.LinesDrawn, 0, "lines run to their friend and rival");
                 Assert.LessOrEqual(cards.LinesDrawn, PersonCardView.MaxLines);
                 var n0 = sim.FindNotable(id);
-                if (DollScreen(n0.friendId, out _)) CollectionAssert.Contains(cards.LinesTo, n0.friendId);
+                // #118: a tie within 20 panel px is skipped by design and the top MaxLines come first, so the friend's line is only owed when it's far enough
+                float apart = 60f * Screen.width / Mathf.Max(1f, cards.CardRoot.panel.visualTree.layout.width);
+                if (cards.LinesDrawn < PersonCardView.MaxLines && DollScreen(n0.friendId, out var fp) && DollScreen(id, out var mp) && (fp - mp).magnitude > apart)
+                    CollectionAssert.Contains(cards.LinesTo, n0.friendId);
                 yield return Shot("pc-lines");
 
                 // tap-through to a tie: their card opens

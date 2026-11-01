@@ -95,6 +95,7 @@ Three things this shows:
 | Piece | Purpose | Where | States | Serves | Code | Issue | Status |
 |---|---|---|---|---|---|---|---|
 | Person card | Who this is | Lower sheet | Notable, no stories, legend, pinned, Best or Recent | P | `person-card` | #39, #148 | built, crowd none |
+| Building card | What a building is, the year it went up, who built it | Lower sheet, crowd card's shape | Named builder (their name opens their card, dead too), or "the people, together" (old saves) | P | `building-card` | #188 | built; a tap on a roof, people first, not in clean or shape mode |
 | Shaping tray | Pick a tool | Sheet | Tools, charges, locked, capped, empty, Take back list | P | `shaping-tray`, `-tools`, `-pips` | #84 | built, landscaping row is a note |
 | Shaping mode | Place a tool | Banner + Cancel | Armed, wish-armed, placed, refused | P | `shaping-banner`, `-cancel`, `-wish-bar` | #84, #145 | built |
 | Clean mode | Wipe | Glass | On, idle off, spotless | P | `CareView` | one-handed doc | built |

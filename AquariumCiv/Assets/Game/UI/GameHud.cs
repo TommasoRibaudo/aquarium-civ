@@ -329,6 +329,17 @@ namespace AquariumCiv.GameUI
 
         public bool ShapeNew => shapeNew;
 
+        /// <summary>#160: the Clean button draws the eye, the way the new tool's glow does, and asks for nothing.</summary>
+        public void PulseClean()
+        {
+            if (cleanButton == null) return;
+            CleanPulses++;
+            GlassMotion.Glow(cleanButton, "kg-tool--glow");
+        }
+
+        /// <summary>How many times <see cref="PulseClean"/> ran (tests).</summary>
+        public int CleanPulses { get; private set; }
+
         /// <summary>The camera left its home view: ink on the world drops to 1.0:1 over the glass frame, so the name and top icons
         /// get a quiet backing (spec §4, question 2). On the home view there's none.</summary>
         public void SetOffHome(bool off)

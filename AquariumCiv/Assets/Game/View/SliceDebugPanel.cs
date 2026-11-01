@@ -152,6 +152,7 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Clear said")) last = ShowMeDirector.DebugClearSaid();
+            if (GUILayout.Button("Clean hint")) last = CareView.DebugCleanHint();
             if (GUILayout.Button("Grant a wish")) last = WishPayoffView.DebugGrant();
             if (GUILayout.Button("Gift glow")) last = WishPayoffView.DebugGlow();
             if (GUILayout.Button("Baby")) last = PeopleView.DebugBaby();
@@ -202,6 +203,11 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Check clips")) last = AudioDirector.DebugCheckClips();
                 GUILayout.EndHorizontal();
             }
+            // A building's card (#188): the next one round the box, and its builder's three wordings.
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Building card")) last = PersonCardView.DebugBuildingCard();
+            if (GUILayout.Button("Builder ⇄")) last = PersonCardView.DebugBuilder();
+            GUILayout.EndHorizontal();
             // The people's view clock (#30): jump to a time of day, speed the day up, list what people are doing.
             var people = PeopleView.Find();
             if (people != null)

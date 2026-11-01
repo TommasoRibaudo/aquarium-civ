@@ -195,7 +195,7 @@ namespace AquariumCiv.View
         static bool SomethingOpen()
         {
             var card = PersonCardView.Instance;
-            if (card != null && card.AnyOpen) return true;
+            if (card != null && (card.AnyOpen || card.BuildingOpen)) return true;
             var hud = GameHud.Instance;
             if (hud != null && hud.SheetOpen) return true;
             var book = BookView.Instance;

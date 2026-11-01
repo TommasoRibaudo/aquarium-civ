@@ -158,7 +158,7 @@ namespace AquariumCiv.View
             if (sparkleMesh != null) Destroy(sparkleMesh);
         }
 
-        const string NothingToClean = "Nothing to clean right now.", CleanHint = "Drag across the glass to wipe it. Flick junk and weeds out.";
+        const string NothingToClean = "Nothing to clean right now.", WipeHint = "Drag across the glass to wipe it. Flick junk and weeds out.";
 
         void OnCleanMode(bool on)
         {
@@ -167,13 +167,13 @@ namespace AquariumCiv.View
             if (!on)
             {
                 hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
-                hud?.WithdrawToast(CleanHint);
+                hud?.WithdrawToast(WipeHint);
                 Cancel();
                 return;
             }
             var sim = Sim;
             if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
-            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : CleanHint, 5f);
+            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : WipeHint, 5f);
         }
 
         // ---------------- the camera gate ----------------
@@ -382,6 +382,7 @@ namespace AquariumCiv.View
             {
                 pressSeen = true;
                 stroke = n == 1 ? Begin(a) : Stroke.Ignored;
+                if (n == 1) PointToClean(sim, a);
                 lastPos = a;
                 return;
             }
@@ -393,6 +394,31 @@ namespace AquariumCiv.View
                 while (samples.Count > 2 && Time.unscaledTime - samples[0].t > 0.1f) samples.RemoveAt(0);
             }
             lastPos = a;
+        }
+
+        /// <summary>#160: a touch on mess outside clean mode doesn't clean, and says why: the Clean button pulses and, now and then, a short
+        /// hint shows. The drag goes on to move the camera.</summary>
+        void PointToClean(SimCore sim, Vector2 pos)
+        {
+            if (hud == null || CleanMode || !hud.IsVisible || hud.CameraMode || hud.SheetOpen || sim.State.firstRun.active || UiInput.Over(pos)) return;
+            var shaping = ShapingView.Instance;
+            if (shaping != null && shaping.ShapeMode) return;
+            var c = Cam;
+            if (c == null) return;
+            var r = TouchHint.Touch(false, props.Pick(c, pos, pickRadius * Screen.height) != null, Time.unscaledTime);
+            if (r.pulse) hud.PulseClean();
+            if (r.hint) hud.Toast(AquariumCiv.Sim.CleanHint.Text, 3f);
+        }
+
+        /// <summary>#160: what's been said about Clean this session.</summary>
+        public AquariumCiv.Sim.CleanHint TouchHint { get; } = new();
+
+        /// <summary>Debug: forget the Clean hint, so the next touch on mess shows it.</summary>
+        public static string DebugCleanHint()
+        {
+            if (Instance == null) return "no CareView";
+            Instance.TouchHint.Reset();
+            return "Clean hint forgotten: touch a weed or trash";
         }
 
         Stroke Begin(Vector2 pos)
@@ -473,7 +499,7 @@ namespace AquariumCiv.View
         void EndWipe(SimCore sim)
         {
             System.Array.Clear(hasLast, 0, hasLast.Length);
-            if (strokeRemoved > 0.0005f) { strokes++; GameClock.Tel.Cleaned("wipe", true); }
+            if (strokeRemoved > 0.0005f) { strokes++; GameClock.Tel.Cleaned("wipe", true); TouchHint.Cleaned(); }
             strokeRemoved = 0f;
         }
 
@@ -500,6 +526,7 @@ namespace AquariumCiv.View
         public void Toss(SimCore sim, MessProps.Piece piece, Vector2 releaseSpeed)
         {
             GameClock.Tel.Cleaned(piece.weed ? "prune" : "flick", true);
+            TouchHint.Cleaned();
             var c = Cam;
             var dir = (c.transform.right * releaseSpeed.x + c.transform.up * releaseSpeed.y).normalized;
             float s = WorldPerScreen(piece.Center);
