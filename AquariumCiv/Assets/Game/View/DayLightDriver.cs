@@ -124,10 +124,18 @@ namespace AquariumCiv.View
 
         float ViewHour => people != null ? people.ViewHour : 12f;
 
+        /// <summary>The scene's room in the box's setting, before the hour (#115): the hour's hue and fall multiply this, so a setting's tint holds at every hour.</summary>
+        Color Room => box != null ? box.land.Colors.Room(sceneClear) : sceneClear;
+
         void Update()
         {
             if (!Bind()) return;
-            if (!Logic.Drives) { ReleaseToScene(); return; }
+            if (!Logic.Drives)
+            {
+                ReleaseToScene();
+                if (camera != null) camera.backgroundColor = Room; // the setting's room stays under look Today
+                return;
+            }
             Logic.Update(Mathf.Min(Time.unscaledDeltaTime, 0.1f), ViewHour);
             Apply();
         }
@@ -145,12 +153,13 @@ namespace AquariumCiv.View
             RenderSettings.ambientSkyColor = C(v.AmbientSky) * MessAmbient;
             RenderSettings.ambientEquatorColor = C(v.AmbientEquator) * MessAmbient;
             RenderSettings.ambientGroundColor = C(v.AmbientGround) * MessAmbient;
-            RenderSettings.fogColor = C(v.FogColor);
+            RenderSettings.fogColor = box != null ? box.land.Colors.Fog(C(v.FogColor)) : C(v.FogColor);
             if (camera != null)
             {
                 // The room beyond the shelf is the camera's clear colour: it takes the sky's hue and falls faster than the sky, or it stays a lit wall under a dark night.
                 float l = Mathf.Pow(v.AmbientSky.Luma / DaySky.Luma, 1.5f);
-                camera.backgroundColor = new Color(sceneClear.r * v.AmbientSky.R / DaySky.R * l, sceneClear.g * v.AmbientSky.G / DaySky.G * l, sceneClear.b * v.AmbientSky.B / DaySky.B * l, sceneClear.a);
+                var room = Room;
+                camera.backgroundColor = new Color(room.r * v.AmbientSky.R / DaySky.R * l, room.g * v.AmbientSky.G / DaySky.G * l, room.b * v.AmbientSky.B / DaySky.B * l, room.a);
             }
             Shader.SetGlobalFloat(AmbientBoostId, v.ShaderAmbient - DayLight.DayShaderAmbient);
             Shader.SetGlobalFloat(GlassNightId, 1f - GlassNight.TintFactor(Logic.ShownHour));
@@ -199,7 +208,7 @@ namespace AquariumCiv.View
                 if (care == null || !care.isActiveAndEnabled) sun.intensity = sceneIntensity;
             }
             RenderSettings.ambientSkyColor = sceneSky; RenderSettings.ambientEquatorColor = sceneEq; RenderSettings.ambientGroundColor = sceneGround;
-            if (camera != null) camera.backgroundColor = sceneClear;
+            if (camera != null) camera.backgroundColor = Room;
             Shader.SetGlobalFloat(AmbientBoostId, 0f);
             Shader.SetGlobalFloat(GlassNightId, 0f);
             Shader.SetGlobalVector(LampParamsId, Vector4.zero);

@@ -12,6 +12,9 @@ Shader "AquariumCiv/View/Glass"
         _MaskTex ("Grime mask (R)", 2D) = "black" {}
         _NoiseTex ("Grime detail", 2D) = "white" {}
         _NoiseDensity ("Detail tiles per unit", Float) = 0.6
+        _NoiseDensity2 ("Second detail layer, tiles per unit", Float) = 0.37
+        _NoiseOffset ("Detail offset (per pane)", Vector) = (0, 0, 0, 0)
+        _NoiseRot ("Detail turn, radians (per pane)", Float) = 0
         _Axis ("UV axis (0 = XY pane, 1 = ZY pane)", Float) = 0
         _PaneSize ("Pane size (u, v) in world units", Vector) = (1, 1, 0, 0)
         _CleanColor ("Clean glass", Color) = (0.85, 0.95, 1, 0.10)
@@ -53,6 +56,9 @@ Shader "AquariumCiv/View/Glass"
                 float4 _MaskTex_ST;
                 float4 _NoiseTex_ST;
                 float _NoiseDensity;
+                float _NoiseDensity2;
+                float2 _NoiseOffset;
+                float _NoiseRot;
                 float _Axis;
                 float4 _PaneSize;
                 half4 _CleanColor;
@@ -97,7 +103,16 @@ Shader "AquariumCiv/View/Glass"
             half4 frag(Varyings i) : SV_Target
             {
                 half mask = SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, i.uv).r;
-                half4 n = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, i.uv * _PaneSize.xy * _NoiseDensity);
+                // Two layers of the detail tile (#121), each pane turned and offset its own way: the second is coarser and turned 37 degrees
+                // more, so the 1.67 u tile never lines up with itself and no grid of smudges shows. One more sample on the glass.
+                float2 world = i.uv * _PaneSize.xy;
+                float cr = cos(_NoiseRot), sr = sin(_NoiseRot);
+                float2 turned = float2(world.x * cr - world.y * sr, world.x * sr + world.y * cr);
+                const float C37 = 0.7986, S37 = 0.6018;
+                float2 turned2 = float2(turned.x * C37 - turned.y * S37, turned.x * S37 + turned.y * C37);
+                half4 n1 = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, turned * _NoiseDensity + _NoiseOffset);
+                half4 n2 = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, turned2 * _NoiseDensity2 + _NoiseOffset.yx);
+                half4 n = saturate((n1 + n2) * 0.5 + (n1 - 0.5) * 0.3 + (n2 - 0.5) * 0.3); // the mean of the two, its contrast put back
 
                 // Detail noise breaks the mask into smudges and drip streaks; heavier grime fills in the gaps.
                 half cover = saturate(mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15);

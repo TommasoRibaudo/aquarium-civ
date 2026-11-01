@@ -1080,7 +1080,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 8; i++)
             {
                 float y0 = Mathf.Lerp(wy0, wy1, i / 8f), y1 = Mathf.Lerp(wy0, wy1, (i + 1) / 8f);
-                var c0 = Color.Lerp(Palette.WallBottom, Palette.WallTop, i / 8f); var c1 = Color.Lerp(Palette.WallBottom, Palette.WallTop, (i + 1) / 8f);
+                var c0 = Co.Room(Color.Lerp(Palette.WallBottom, Palette.WallTop, i / 8f)); var c1 = Co.Room(Color.Lerp(Palette.WallBottom, Palette.WallTop, (i + 1) / 8f));
                 Vector3 a = new(sx0 * 2f, y0, wz), b = new(sx0 * 2f, y1, wz), c = new(sx1 * 2f, y1, wz), d = new(sx1 * 2f, y0, wz);
                 mb.TriC(a, b, c, c0, c1, c1); mb.TriC(a, c, d, c0, c1, c0);
             }

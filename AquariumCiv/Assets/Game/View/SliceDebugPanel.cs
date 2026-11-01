@@ -120,6 +120,11 @@ namespace AquariumCiv.View
             EndRow();
             if (Btn("Next era (wave)")) last = SimLayoutSource.DebugNextEra(true);
             if (Btn("Replay era wave")) last = SimLayoutSource.DebugReplayWave();
+            // The next box in either setting (#115): completes this one at once (ClockLogic.StartNextBox) and shows box 2 at its camp.
+            Row();
+            if (Btn("Box 2: desert")) last = BoxCompleteController.DebugComplete(AquariumCiv.Sim.BoxSetting.DesertOasis);
+            if (Btn("Box 2: mountain")) last = BoxCompleteController.DebugComplete(AquariumCiv.Sim.BoxSetting.MountainVillage);
+            EndRow();
             Row();
             if (Btn("Build hut")) last = SimLayoutSource.DebugBuild("Hut");
             if (Btn("Build farm")) last = SimLayoutSource.DebugBuild("Farm");

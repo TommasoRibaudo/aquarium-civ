@@ -22,6 +22,25 @@ namespace AquariumCiv.View
         public static LandColors For(SettingLook l) => l == SettingLook.DesertOasis ? Desert : l == SettingLook.MountainVillage ? Mountain : River;
         public static LandColors ForPreset(int preset) => For(SettingLook.ForPreset(preset));
 
+        /// <summary>The room behind the box in this setting, before the hour: the sky tint goes on first, and the day's light then
+        /// scales the result (<see cref="DayLightDriver"/>, the wall by the sun). So a tint shifts the room's hue at every hour and never
+        /// adds light to a night. At skyAmount 0 this is <paramref name="room"/> itself.</summary>
+        public Color Room(Color room)
+        {
+            if (look.skyAmount <= 0f) return room;
+            var c = Color.Lerp(room, C(look.skyTint), look.skyAmount);
+            c.a = room.a;
+            return c;
+        }
+
+        /// <summary>The day's fog colour in this setting: multiplied, so it falls with the hour's. At fogAmount 0 this is <paramref name="fog"/> itself.</summary>
+        public Color Fog(Color fog)
+        {
+            if (look.fogAmount <= 0f) return fog;
+            var t = C(look.fogTint);
+            return Color.Lerp(fog, new Color(fog.r * t.r, fog.g * t.g, fog.b * t.b, fog.a), look.fogAmount);
+        }
+
         /// <summary>sRGB 0xRRGGBB as a Color, as Palette's hex strings are.</summary>
         public static Color C(uint hex) => new Color32((byte)(hex >> 16), (byte)(hex >> 8), (byte)hex, 255);
 

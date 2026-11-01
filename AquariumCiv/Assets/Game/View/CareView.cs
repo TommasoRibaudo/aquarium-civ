@@ -254,7 +254,8 @@ namespace AquariumCiv.View
                 var s = t.localScale;
                 zAxis[i] = s.x < s.z;
                 var size = new Vector2(zAxis[i] ? s.z : s.x, s.y);
-                masks[i] = new GlassMask(size, texelsPerUnit, i);
+                int paneSeed = sim.State.seed * 31 + i * 7 + 1; // every pane of every box its own grime (#121)
+                masks[i] = new GlassMask(size, texelsPerUnit, paneSeed);
                 var pos = t.localPosition;
                 bool zz = zAxis[i];
                 float w = size.x;
@@ -267,6 +268,8 @@ namespace AquariumCiv.View
                 mats[i] = t.GetComponent<MeshRenderer>().sharedMaterial;
                 mats[i].SetTexture("_MaskTex", textures[i]);
                 mats[i].SetTexture("_NoiseTex", noise);
+                mats[i].SetVector("_NoiseOffset", GlassPaneNoise.Offset(paneSeed));
+                mats[i].SetFloat("_NoiseRot", GlassPaneNoise.Rotation(paneSeed));
                 t.gameObject.layer = GlassLayer;
                 if (!t.TryGetComponent(out cols[i])) cols[i] = t.gameObject.AddComponent<BoxCollider>();
                 masks[i].ResetTo(sim.State.grime);

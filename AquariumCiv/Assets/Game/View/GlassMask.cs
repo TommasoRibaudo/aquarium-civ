@@ -1,4 +1,5 @@
 using System;
+using AquariumCiv.View.Grime;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -19,21 +20,14 @@ namespace AquariumCiv.View
         public bool dirty;
         public float glint, peakMean;
 
-        public GlassMask(Vector2 size, float texelsPerUnit, int index)
+        /// <summary><paramref name="seed"/> picks this pane's pattern (<see cref="GrimePatches"/>, #121): no two panes share one.</summary>
+        public GlassMask(Vector2 size, float texelsPerUnit, int seed)
         {
             this.size = size;
             width = Mathf.Clamp(Mathf.RoundToInt(size.x * texelsPerUnit), 8, 512);
             height = Mathf.Clamp(Mathf.RoundToInt(size.y * texelsPerUnit), 8, 512);
             grime = new float[width * height];
-            weight = new float[width * height];
-            float ox = index * 13.7f;
-            for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-            {
-                float u = x / (float)width * size.x, v = y / (float)height;
-                float n = Mathf.PerlinNoise(ox + u * 1.3f, v * size.y * 1.3f);
-                weight[y * width + x] = Mathf.Lerp(0.55f, 1.45f, n) * (1.2f - 0.4f * v);
-            }
+            weight = GrimePatches.Weights(seed, width, height, size.x, size.y);
             Renormalise();
         }
 
@@ -189,7 +183,7 @@ namespace AquariumCiv.View
     /// Pure, so it is the same on every run.</summary>
     public static class GlassNoise
     {
-        public const int Size = 128;
+        public const int Size = 256;
 
         public static byte[] Bytes(int seed = 11)
         {
@@ -237,6 +231,15 @@ namespace AquariumCiv.View
             h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
             return (h & 0xFFFFFF) / (float)0xFFFFFF;
         }
+    }
+
+    /// <summary>Where a pane's detail noise sits (#121): its own offset into the tile and its own turn, from the same seed as its mask,
+    /// so the panes never show the same smudges side by side.</summary>
+    public static class GlassPaneNoise
+    {
+        public static Vector2 Offset(int seed) => new(Land.Hash3(seed, 11, 3), Land.Hash3(seed, 12, 5));
+        /// <summary>Radians.</summary>
+        public static float Rotation(int seed) => Land.Hash3(seed, 13, 7) * Mathf.PI * 2f;
     }
 
     /// <summary>The care layer's pure numbers (unit-tested): how mess dims the sun, and the spotless thresholds.</summary>

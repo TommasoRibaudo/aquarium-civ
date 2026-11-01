@@ -318,6 +318,7 @@ namespace AquariumCiv.View
                                           SiteMap.CZ(j) + 0.05f + (STerrain.Hash3(seed, i, j * 3 + 2) - 0.5f) * 0.08f);
                     if (!TreeSpot(map, pos)) continue;
                     int c0 = SiteMap.CellAt(pos.x, pos.y);
+                    if (setting.SnowAmount(map.height[c0]) > 0.25f) continue; // #115: the snow cap stays bare, or the firs hide it
                     float high = map.height[c0] - STerrain.G;
                     float pick = STerrain.Hash3(seed, i, j * 3 + 4);
                     var tree = new TreeData

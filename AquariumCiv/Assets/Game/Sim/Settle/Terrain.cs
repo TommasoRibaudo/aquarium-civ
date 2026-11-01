@@ -65,7 +65,7 @@ namespace AquariumCiv.Sim.Settle
                 // A high meadow: steep slopes at the back and left, rock outcrops, dense pines, a stream across the front.
                 return new TerrainSpec
                 {
-                    name = "mountain_village", mirror = true, noiseOff = 57.3f, pondX = 0.2f, pondZ = -1.4f, centreX = 0.5f, centreZ = -0.15f,
+                    name = "mountain_village", mirror = true, noiseOff = 57.3f, pondX = 0.2f, pondZ = -1.6f, centreX = 0.5f, centreZ = -0.15f,
                     groundNoise = 0.09f, hillAmp = 1.25f, hillBase = 0.45f, hillLeft = 0.55f, hillMixA = 0.6f, hillMixB = 0.9f,
                     pondDepth = 0.22f, pondR0 = 0.2f, pondR1 = 0.55f, pondSX = 0.4f, pondSZ = 1f,
                     forestBackW = 0.7f, forestLeftW = 0.6f, forestScale = 1.25f, forestCut = 0.55f, outcropCut = 0.56f,
