@@ -405,7 +405,7 @@ namespace AquariumCiv.View.PlayTests
 
         // ================================================================== every state of board 3.8, at both phones
         [UnityTest, Explicit, Category("SettingsShots"), Timeout(300000)]
-        public IEnumerator Shots([Values(1179, 750)] int w)
+        public IEnumerator EveryState([Values(1179, 750)] int w)
         {
             int h = w == 1179 ? 2556 : 1334;
             string at = $"s38-{w}-";
