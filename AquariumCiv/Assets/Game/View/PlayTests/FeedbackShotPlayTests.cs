@@ -45,6 +45,55 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("feedback shot");
         }
 
+        static Color MeanOf(Texture2D t, Rect r)
+        {
+            var c = t.GetPixels32();
+            long a = 0, b = 0, d = 0, n = 0;
+            for (int y = (int)r.yMin; y < (int)r.yMax; y++)
+                for (int x = (int)r.xMin; x < (int)r.xMax; x++)
+                {
+                    var p = c[y * t.width + x];
+                    a += p.r; b += p.g; d += p.b; n++;
+                }
+            return new Color(a / (255f * n), b / (255f * n), d / (255f * n));
+        }
+
+        static float Mean(Color c) => (c.r + c.g + c.b) / 3f;
+
+        /// <summary>Tester run 7: the JPG read 0.881 where the screen read 0.766, and caught the icon pressed.</summary>
+        [UnityTest, Timeout(60000), Category("Bundle3"), Category("ShotBright")]
+        public IEnumerator TheShotHasTheScreensBrightnessAndNoPressedIcon()
+        {
+            yield return OpenSlice(1179, 2556, 1234);
+            ShowMeDirector.BubblesOn = false;
+            GameClock.Instance.ActiveSim.CleanAll();
+            yield return new WaitForSecondsRealtime(0.6f);
+            var hud = GameHud.Instance;
+            var fb = FeedbackUI.Instance;
+            var icon = GameUiPanel.ScreenCenter(hud.Root, "hud-feedback");
+            yield return new WaitForEndOfFrame();
+            var screen = ScreenCapture.CaptureScreenshotAsTexture();
+            float k = 1f / screen.height;
+            var iconAt = new Vector2(icon.x * k, icon.y * k); // in shares of the height
+            var whole = MeanOf(screen, new Rect(0f, 0f, screen.width, screen.height));
+            var ring = MeanOf(screen, new Rect(icon.x + 44f, icon.y + 40f, 12f, 12f)); // a corner of the pressed disc, clear of the glyph
+            Object.Destroy(screen);
+            yield return TapAt(icon);
+            yield return Until(() => fb.IsOpen, 3f);
+            Assert.IsTrue(fb.IsOpen);
+            var jpg = new Texture2D(2, 2);
+            Assert.IsTrue(jpg.LoadImage(fb.LastShot));
+            var wholeJ = MeanOf(jpg, new Rect(0f, 0f, jpg.width, jpg.height));
+            float s = jpg.height;
+            var ringJ = MeanOf(jpg, new Rect((iconAt.x + 44f * k) * s, (iconAt.y + 40f * k) * s, Mathf.Max(2f, 12f * k * s), Mathf.Max(2f, 12f * k * s)));
+            Object.Destroy(jpg);
+            File.WriteAllBytes(Shots + "bundle3-fb-shot.jpg", fb.LastShot);
+            Debug.Log($"[feedback] screen {Mean(whole):0.000} jpg {Mean(wholeJ):0.000}; over the icon: {Mean(ring):0.000} jpg {Mean(ringJ):0.000}");
+            Assert.AreEqual(Mean(whole), Mean(wholeJ), 0.02f, "as bright as the screen");
+            Assert.AreEqual(Mean(ring), Mean(ringJ), 0.03f, "the icon at rest");
+            AssertNoErrors("shot brightness");
+        }
+
         [Test]
         public void ANoteAtTheLimitStaysUnderIt()
         {

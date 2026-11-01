@@ -308,19 +308,33 @@ namespace AquariumCiv.GameUI
             finally { Destroy(tex); }
         }
 
+        /// <summary>A box average on the CPU, bytes in and bytes out. Never through a shader: a screen capture's texture is read as linear in this
+        /// Linear project and a loaded JPG as sRGB, so a blit that suits one adds or drops a gamma curve on the other (tester run 7: 0.766 came
+        /// out 0.881, one encode too many).</summary>
         static Texture2D Scaled(Texture2D tex, int side)
         {
             float k = Mathf.Min(1f, side / (float)Mathf.Max(tex.width, tex.height));
             int w = Mathf.Max(1, Mathf.RoundToInt(tex.width * k)), h = Mathf.Max(1, Mathf.RoundToInt(tex.height * k));
-            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB); // the default here is linear: the shot came out washed out
-            Graphics.Blit(tex, rt);
-            var prev = RenderTexture.active;
-            RenderTexture.active = rt;
+            var from = tex.GetPixels32();
+            var to = new Color32[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                int y0 = y * tex.height / h, y1 = Mathf.Max(y0 + 1, (y + 1) * tex.height / h);
+                for (int x = 0; x < w; x++)
+                {
+                    int x0 = x * tex.width / w, x1 = Mathf.Max(x0 + 1, (x + 1) * tex.width / w);
+                    int r = 0, g = 0, b = 0, n = (x1 - x0) * (y1 - y0);
+                    for (int j = y0; j < y1; j++)
+                    {
+                        int row = j * tex.width;
+                        for (int i = x0; i < x1; i++) { var c = from[row + i]; r += c.r; g += c.g; b += c.b; }
+                    }
+                    to[y * w + x] = new Color32((byte)(r / n), (byte)(g / n), (byte)(b / n), 255);
+                }
+            }
             var small = new Texture2D(w, h, TextureFormat.RGB24, false);
-            small.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+            small.SetPixels32(to);
             small.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
             return small;
         }
 

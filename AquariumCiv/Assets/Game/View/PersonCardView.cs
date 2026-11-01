@@ -46,6 +46,8 @@ namespace AquariumCiv.View
 
         /// <summary>How close to a doll (panel units, 1080 wide) a tap must land to pick it: about half a 48 dp target.</summary>
         public const float PickRadius = 64f;
+        /// <summary>#188: on a doll means within this share of its height on screen, and at least <see cref="TightMin"/> panel units.</summary>
+        public const float TightShare = 0.33f, TightMin = 14f;
         /// <summary>Relationship lines drawn at most (never clutter).</summary>
         public const int MaxLines = 6;
         /// <summary>Where the person stands on screen after the fly-to (fraction of the height from the bottom): above the card.</summary>
@@ -142,18 +144,28 @@ namespace AquariumCiv.View
 
         // ================================================================== the API
 
-        /// <summary>A short tap reached the world at <paramref name="screenPos"/> (pixels, y up). A doll there opens that person's
-        /// card; otherwise an open card closes. True if the tap was used (no knock).</summary>
+        /// <summary>A short tap reached the world at <paramref name="screenPos"/> (pixels, y up). One thing wins (#188, #160): a doll the finger
+        /// is really on; then, with no card up, mess (the hint is what that tap says, see <see cref="CareView"/>); then the building under the
+        /// finger; then a doll near it on open ground (the generous <see cref="PickRadius"/>). An open card closes rather than opens a building.
+        /// True if the tap was used (no knock).</summary>
         public bool WorldTap(Vector2 screenPos)
         {
-            var who = PickPerson(screenPos);
-            if (who.IsNotable) { Open(who.notableId, true); return true; }
-            if (who.IsCrowd) { OpenCrowd(who.crowdIndex, true); return true; }
+            if (OpenWho(PickDoll(screenPos))) return true;
+            bool cardUp = AnyOpen || BuildingOpen;
+            if (!cardUp && CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos)) return true;
+            int building = PickBuilding(screenPos);
+            if (building < 0 && OpenWho(PickPerson(screenPos))) return true;
             if (IsOpen) { Close(); return true; }
             if (CrowdOpen) { CloseCrowd(); return true; }
             if (BuildingOpen) { CloseBuilding(); return true; }
-            int building = PickBuilding(screenPos); // #188: people win, an open card closes first, and the rest of the world is a knock
-            return building >= 0 && OpenBuilding(building);
+            return building >= 0 && OpenBuilding(building); // the rest of the world is a knock
+        }
+
+        bool OpenWho(PersonRef who)
+        {
+            if (who.IsNotable) { Open(who.notableId, true); return true; }
+            if (who.IsCrowd) { OpenCrowd(who.crowdIndex, true); return true; }
+            return false;
         }
 
         /// <summary>The person whose doll is under a screen point (nearest within <see cref="PickRadius"/>, a notable on a tie),
@@ -178,6 +190,46 @@ namespace AquariumCiv.View
                 if (d < bestD) { bestD = d; who = c; }
             }
             return who;
+        }
+
+        /// <summary>#188: the person whose doll the finger is really on or right next to (tighter than <see cref="PickRadius"/>, which covers
+        /// most of a small town at default zoom), or <see cref="PersonRef.None"/>. The reach follows the doll's size on screen.</summary>
+        public PersonRef PickDoll(Vector2 screenPos)
+        {
+            var who = PersonRef.None;
+            var pv = PeopleView.Find();
+            var cam = Camera.main;
+            if (pv == null || cam == null || Sim == null) return who;
+            float best = float.MaxValue;
+            void Try(PersonRef p)
+            {
+                float d = DollDistance(pv, cam, p, screenPos);
+                if (d >= TightReach(pv, cam, p) || d >= best || HiddenByABuilding(pv, cam, p)) return;
+                best = d;
+                who = p;
+            }
+            pv.NotablesShown(shown);
+            foreach (int id in shown) Try(PersonRef.Notable(id));
+            pv.CrowdShown(shownCrowd);
+            foreach (var c in shownCrowd) Try(c);
+            return who;
+        }
+
+        /// <summary>How near a doll counts as on it, in pixels: <see cref="TightShare"/> of its height on screen, at least <see cref="TightMin"/>
+        /// panel units so a far doll can still be hit, and never past <see cref="PickRadius"/>.</summary>
+        static float TightReach(PeopleView pv, Camera cam, PersonRef who)
+        {
+            float scale = Screen.width / GameUiPanel.ReferenceWidth;
+            if (!pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return 0f;
+            float tall = (((Vector2)cam.WorldToScreenPoint(top)) - (Vector2)cam.WorldToScreenPoint(feet)).magnitude;
+            return Mathf.Clamp(tall * TightShare, TightMin * scale, PickRadius * scale);
+        }
+
+        /// <summary>Debug: how far a point is from a doll, against its reach.</summary>
+        public string DebugDollReach(PersonRef who, Vector2 screenPos)
+        {
+            var pv = PeopleView.Find();
+            return pv == null ? "" : $"d {DollDistance(pv, Camera.main, who, screenPos):0} reach {TightReach(pv, Camera.main, who):0}";
         }
 
         /// <summary>How far a screen point is from a doll, feet to head, in pixels.</summary>

@@ -449,9 +449,19 @@ namespace AquariumCiv.View
             if (shaping != null && shaping.ShapeMode) return;
             var c = Cam;
             if (c == null) return;
+            var cards = PersonCardView.Instance;
+            if (cards != null && (cards.AnyOpen || cards.BuildingOpen || !cards.PickDoll(pos).IsNone)) return; // that tap closes the card, or opens this person's
             var r = TouchHint.Touch(false, props.Pick(c, pos, pickRadius * Screen.height) != null, Time.unscaledTime);
             if (r.pulse) hud.PulseClean();
             if (r.hint) hud.Toast(AquariumCiv.Sim.CleanHint.Text, 3f);
+        }
+
+        /// <summary>#160: a tap here is about the mess, so it opens nothing: there's mess under the finger and the Keeper hasn't learned to
+        /// clean yet. Once they have, mess no longer holds a tap back from what's behind it.</summary>
+        public bool MessSaysSo(Vector2 pos)
+        {
+            var c = Cam;
+            return c != null && !TouchHint.Learned && !CleanMode && props.Pick(c, pos, pickRadius * Screen.height) != null;
         }
 
         /// <summary>#160: what's been said about Clean this session.</summary>

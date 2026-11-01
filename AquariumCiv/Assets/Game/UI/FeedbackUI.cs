@@ -92,6 +92,8 @@ namespace AquariumCiv.GameUI
             if (FeedbackSender.Instance != null) FeedbackSender.Instance.Result += OnResult;
         }
 
+        const string ShotClass = "hud-icon--shot";
+
         void OnDisable()
         {
             if (Instance != this) return;
@@ -193,9 +195,12 @@ namespace AquariumCiv.GameUI
             capturing = true;
             root.style.display = DisplayStyle.None; // only the sheet leaves the picture: the HUD and the bubbles are what a UI note is about (#153)
             var hud = GameHud.Instance;
+            hud?.Root.Q("hud-feedback")?.AddToClassList(ShotClass); // the finger just left it: the shot shows it at rest
             yield return null;
+            yield return null; // a style change lands the frame after
             yield return new WaitForEndOfFrame();
             shot = ScreenShot.Jpg(ScreenCapture.CaptureScreenshotAsTexture());
+            hud?.Root.Q("hud-feedback")?.RemoveFromClassList(ShotClass);
             root.style.display = DisplayStyle.Flex;
             capturing = false;
 

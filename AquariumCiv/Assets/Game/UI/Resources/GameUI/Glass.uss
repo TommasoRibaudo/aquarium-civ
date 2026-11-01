@@ -547,6 +547,8 @@
 .hud-top--backed .hud-title-text { background-color: var(--quiet-backing); }
 .hud-top--backed .hud-disc { background-color: var(--quiet-backing); }
 .hud-icon:active .hud-disc, .hud-title:active .hud-disc, .hud-title:active .hud-title-text { background-color: var(--pressed-fill); }
+.hud-icon--shot { transition-duration: 0s; }
+.hud-icon.hud-icon--shot:active { background-color: rgba(0, 0, 0, 0); scale: 1 1; }
 
 .hud-bottom { position: absolute; left: var(--space-16); right: var(--space-16); bottom: 82.5px; flex-direction: row; justify-content: space-between; align-items: flex-end; padding: 0; }
 .kg-tool {

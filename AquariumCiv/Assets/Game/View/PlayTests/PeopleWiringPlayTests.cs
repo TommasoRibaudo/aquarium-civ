@@ -205,6 +205,7 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>Tester run 6: the payoff line waits for the first run's word to pass, and is then said, not lost.</summary>
         [UnityTest, Timeout(120000)]
         [Category("Tester6")]
+        [Category("Bundle3")]
         public IEnumerator AWishLineWaitsForTheFirstRunsWord()
         {
             yield return OpenSlice(seed: Seed, skipFirstRun: false);
@@ -216,18 +217,20 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
             var view = WishPayoffView.Instance;
             var sm = ShowMeDirector.Instance;
+            int before = view.Played;
             var w = Sim.DebugForceWish(SimCore.NudgeKind.Rain);
             Assert.IsNotNull(w);
             w.state = WishState.Given; // the first rain is spent, so no second gift can be placed: what the view sees is all that counts
             w.endMonth = Sim.State.month;
-            yield return Until(() => view.Played > 0, 2f);
+            yield return Until(() => view.Played > before, 2f);
+            Assert.Greater(view.Played, before, "this wish played, not the last test's");
             string line = view.LastPlan.wisherLine.text;
             Assert.IsTrue(view.LastPlan.wisherSaysNow);
             Assert.AreNotEqual(line, sm.LastLine, "not under the caption");
             Assert.IsTrue(first.HasTheWord, "the year has the word");
             first.Run.DebugSkipTo(FirstRunStep.Done);
-            yield return Until(() => sm.LastLine == line, 6f);
-            Assert.AreEqual(line, sm.LastLine, "said once the word has passed");
+            yield return Until(() => sm.LastLine == line, 14f); // held lines go one at a time: the first run's own wish may speak first
+            Assert.AreEqual(line, sm.LastLine, $"said once the word has passed (held {view.HeldLines}, word {first.HasTheWord}, free {GameUiPanel.Bubbles.Free(BubbleHost.Rank.World)}, holder {GameUiPanel.Bubbles.Holder}, played {view.Played}, before {before}, moment {MomentPlayer.Instance?.Playing})");
             AssertNoErrors("wish in the first run");
         }
 

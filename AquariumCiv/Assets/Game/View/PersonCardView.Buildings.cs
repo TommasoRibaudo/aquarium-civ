@@ -1,6 +1,7 @@
 using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
+using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
 using UnityEngine;
@@ -17,6 +18,8 @@ namespace AquariumCiv.View
     {
         /// <summary>How tall a lot's building is, for a tap: a roof takes the tap, and a field or a yard only near the ground.</summary>
         const float TallPiece = 0.55f, LowPiece = 0.12f;
+        /// <summary>The solid middle of a lot's box: a ray through it beats one that only clips another lot's corner.</summary>
+        const float CoreShare = 0.7f;
 
         GlassSheet buildingSheet;
         Label buildingTitle, buildingWhat, buildingYear, buildingBy;
@@ -37,26 +40,45 @@ namespace AquariumCiv.View
             var ray = cam.ScreenPointToRay(screenPos);
             var o = box.transform.InverseTransformPoint(ray.origin);
             var v = box.transform.InverseTransformDirection(ray.direction);
-            int best = -1;
-            float bestT = float.PositiveInfinity;
+            int best = -1, core = -1;
+            float bestT = float.PositiveInfinity, coreT = float.PositiveInfinity;
             foreach (var l in sim.Settlement.Lots)
             {
                 if (l.retired || l.buildingId <= 0 || !sim.State.buildings.Exists(b => b.id == l.buildingId)) continue;
                 float tall = l.kind is LotKind.Farm or LotKind.Pasture or LotKind.Orchard ? LowPiece : TallPiece;
                 float y0 = box.GroundHeight(l.x, l.z);
-                if (HitsLot(l, o, v, y0, y0 + tall, out float t) && t < bestT) { bestT = t; best = l.buildingId; }
+                if (HitsLot(l, o, v, y0, y0 + tall, 1f, out float t) && t < bestT) { bestT = t; best = l.buildingId; }
+                if (HitsLot(l, o, v, y0, y0 + tall * CoreShare, CoreShare, out float tc) && tc < coreT) { coreT = tc; core = l.buildingId; }
             }
-            return best;
+            return core >= 0 ? core : best; // the air round a house's eaves doesn't take a tap from the well behind it
+        }
+
+        /// <summary>A doll the camera can't see for a house: a tap on that roof is for the house. A doll in the yard in front stands outside
+        /// the lot's solid middle, so it stays a doll.</summary>
+        bool HiddenByABuilding(PeopleView pv, Camera cam, PersonRef who)
+        {
+            var sim = Sim;
+            var box = FindAnyObjectByType<BoxView>();
+            if (sim?.Settlement == null || box == null || !pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return false;
+            var o = box.transform.InverseTransformPoint(cam.transform.position);
+            var v = box.transform.InverseTransformPoint((top + feet) * 0.5f) - o; // the doll is at t = 1
+            foreach (var l in sim.Settlement.Lots)
+            {
+                if (l.retired || l.buildingId <= 0 || l.kind is LotKind.Farm or LotKind.Pasture or LotKind.Orchard) continue;
+                float y0 = box.GroundHeight(l.x, l.z);
+                if (HitsLot(l, o, v, y0, y0 + TallPiece, CoreShare, out float t) && t < 0.98f) return true;
+            }
+            return false;
         }
 
         /// <summary>The ray (box space) against the lot's upright box. Pure slab test, in the lot's own axes (<see cref="SimLayout.Corners"/>).</summary>
-        static bool HitsLot(Lot l, Vector3 o, Vector3 v, float y0, float y1, out float t)
+        static bool HitsLot(Lot l, Vector3 o, Vector3 v, float y0, float y1, float share, out float t)
         {
             float r = l.yaw * Mathf.Deg2Rad, c = Mathf.Cos(r), s = Mathf.Sin(r);
             float dx = o.x - l.x, dz = o.z - l.z;
             var po = new Vector3(dx * c - dz * s, o.y, dx * s + dz * c);
             var pv = new Vector3(v.x * c - v.z * s, v.y, v.x * s + v.z * c);
-            float hw = l.w / 2f, hd = l.d / 2f, lo = 0f, hi = float.PositiveInfinity;
+            float hw = l.w / 2f * share, hd = l.d / 2f * share, lo = 0f, hi = float.PositiveInfinity;
             t = 0f;
             bool Slab(float start, float dir, float a, float b, ref float n, ref float f)
             {
