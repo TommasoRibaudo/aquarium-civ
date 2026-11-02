@@ -191,10 +191,12 @@ namespace AquariumCiv.View.Shaping
             float lag = Terrain.Hash3(f.seed, i, 11) * 1.5f;
             float wander = Math.Max(0f, c.sinceSeen - lag);
             GrazeFocus(f, wander, out float fx, out float fz, out bool walking, out float hx, out float hz);
-            float ang = Terrain.Hash3(f.seed, i, 12) * 6.2831853f;
-            float rad = T.HerdSpread * (0.35f + 0.65f * Terrain.Hash3(f.seed, i, 13));
-            float gx = ShapingFootprint.ClampX(fx + ox + (float)Math.Cos(ang) * rad);
-            float gz = ShapingFootprint.ClampZ(fz + oz + (float)Math.Sin(ang) * rad);
+            // #151: each animal keeps its own place in the herd (a loose spiral, nobody closer than the species' spacing), so the
+            // herd moves as one and nobody overlaps.
+            var sp = f.SpeciesAt(c.era);
+            HerdLayout.Offset(f.seed, i, T.HerdCount(sp), T.HerdSpacing(sp), out float lx, out float lz);
+            float gx = ShapingFootprint.ClampX(fx + ox + lx);
+            float gz = ShapingFootprint.ClampZ(fz + oz + lz);
             // The run-in: from the box edge to the first grazing spot, each a stagger apart.
             float start = i * T.RunInStagger;
             float runEnd = start + T.RunInSeconds;
@@ -204,7 +206,7 @@ namespace AquariumCiv.View.Shaping
             if (c.sinceSeen < runEnd)
             {
                 float t = Smooth(Ramp(c.sinceSeen, start, runEnd));
-                float ex = ShapingFootprint.ClampX(f.entryX + (float)Math.Cos(ang) * rad), ez = ShapingFootprint.ClampZ(f.entryZ + (float)Math.Sin(ang) * rad);
+                float ex = ShapingFootprint.ClampX(f.entryX + lx), ez = ShapingFootprint.ClampZ(f.entryZ + lz);
                 x = ex + (gx - ex) * t; z = ez + (gz - ez) * t;
                 pose = c.sinceSeen < start ? AnimalPose.Hidden : AnimalPose.Run;
                 heading = Heading(gx - ex, gz - ez);

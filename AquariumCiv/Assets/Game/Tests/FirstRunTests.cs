@@ -42,6 +42,48 @@ namespace AquariumCiv.Tests
         }
 
         // ---------- start ----------
+        /// <summary>#198, era-moment.md §9: box 2 has the first-run rhythm, minus naming and "Their first year".</summary>
+        [Test]
+        public void BoxTwoGetsTheShortRun()
+        {
+            var s = SimCore.NewWorld(5, new SimConfig());
+            s.boxIndex = 1;
+            var sim = new SimCore(new SimConfig(), s);
+            var run = FirstRun.Begin(sim);
+            Assert.IsTrue(sim.State.firstRun.shortRun);
+            var seen = new System.Collections.Generic.List<FirstRunStep>();
+            run.StepChanged += seen.Add;
+            for (int i = 0; i < 12 && run.Active; i++) run.SkipStep();
+            CollectionAssert.DoesNotContain(seen, FirstRunStep.Name);
+            CollectionAssert.DoesNotContain(seen, FirstRunStep.Year);
+            CollectionAssert.DoesNotContain(seen, FirstRunStep.Card);
+            CollectionAssert.Contains(seen, FirstRunStep.Rain);
+            Assert.IsFalse(run.Active, "and it ends");
+            Assert.IsFalse(sim.State.firstRun.yearDone, "no year was played");
+        }
+
+        /// <summary>A box that has just opened has lightly smudged glass, box 1 and every box after it: no more than this.</summary>
+        const float MostGrimeOnANewBox = 0.5f;
+
+        [Test]
+        public void ANewBoxStartsWithLightlySmudgedGlass([Values(0, 1, 2)] int boxIndex)
+        {
+            var s = SimCore.NewWorld(5, new SimConfig());
+            s.boxIndex = boxIndex;
+            var sim = new SimCore(new SimConfig(), s);
+            FirstRun.Begin(sim);
+            Assert.LessOrEqual(sim.State.grime, MostGrimeOnANewBox);
+            Assert.Greater(sim.State.grime, FirstRun.WipedGrime, "there is still a first wipe to make");
+        }
+
+        [Test]
+        public void TheFirstBoxKeepsTheFullRun()
+        {
+            var sim = new SimCore(new SimConfig(), SimCore.NewWorld(5, new SimConfig()));
+            FirstRun.Begin(sim);
+            Assert.IsFalse(sim.State.firstRun.shortRun);
+        }
+
         [Test]
         public void NoFirstRunUnlessBegun()
         {

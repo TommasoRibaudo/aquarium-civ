@@ -90,26 +90,14 @@ namespace AquariumCiv.View
                 float x = (i - (n - 1) / 2f) * 0.075f;
                 mb.Box(at + new Vector3(x, 0.29f, -0.005f), new Vector3(0.075f, 0.012f, 0.2f), i % 2 == 0 ? stripe : Palette.Plaster, Quaternion.Euler(-16f, 0, 0), true);
             }
-            // Goods by seed: produce, cloth bolts or pots.
-            switch (Mathf.Abs(seed / 7) % 3)
-            {
-                case 0:
-                    for (int i = 0; i < 4; i++) mb.Ico(at + new Vector3(-0.09f + i * 0.06f, 0.115f, 0f), 0.024f, Vector3.one, i % 2 == 0 ? Palette.Ember : Palette.Wheat, 0.1f);
-                    break;
-                case 1:
-                    for (int i = 0; i < 3; i++) Log(mb, at + new Vector3(-0.07f + i * 0.07f, 0.12f, 0f), 0.02f, 0.09f, 0f, Palette.Tunics[Mathf.Abs(seed + i * 2) % Palette.Tunics.Length]);
-                    break;
-                default:
-                    for (int i = 0; i < 3; i++) mb.Prism(at + new Vector3(-0.08f + i * 0.08f, 0.1f, 0f), 0.022f, 0.016f, 0.045f, 6, Color.Lerp(Palette.Terracotta, Palette.SoilLight, i * 0.25f));
-                    break;
-            }
+            // The goods on it are <see cref="StallProps"/>: they follow the stock (#154).
             Crates(mb, at + new Vector3(0.05f, 0, 0.13f)); // stock behind the counter, inside the stall's width
         }
 
         // ---------------- mills ----------------
         /// <summary>The town's tower mill: a tapering stone tower with a timber gallery, a turning cap and four big
         /// lattice sails (the village's post mill is plaster and smaller): the tallest silhouette in the box.</summary>
-        public static void TowerMill(MeshBuilder mb, Vector3 at, float yaw, float lampPhase)
+        public static void TowerMill(MeshBuilder mb, Vector3 at, float yaw, float lampPhase, bool sails = true)
         {
             const float h = 0.66f;
             mb.Prism(at, 0.16f, 0.105f, h, 8, Palette.Stone, topCol: Palette.Stone);
@@ -128,9 +116,15 @@ namespace AquariumCiv.View
             LampBox(mb, at + new Vector3(0, 0.5f, -0.125f), new Vector3(0.04f, 0.045f, 0.02f), lampPhase + 0.3f);
             var hub = at + new Vector3(0, h + 0.03f, -0.15f);
             mb.Box(hub, new Vector3(0.045f, 0.045f, 0.06f), Palette.Timber);
+            if (sails) TowerSails(mb, hub, yaw * 0.13f);
+        }
+
+        /// <summary>The tower mill's four big lattice sails about <paramref name="hub"/>.</summary>
+        public static void TowerSails(MeshBuilder mb, Vector3 hub, float turn)
+        {
             for (int k = 0; k < 4; k++)
             {
-                var r = Quaternion.Euler(0, 0, 30f + k * 90f + yaw * 0.13f);
+                var r = Quaternion.Euler(0, 0, 30f + k * 90f + turn);
                 mb.Box(hub + r * new Vector3(0, 0.26f, 0) - new Vector3(0, 0, 0.03f), new Vector3(0.018f, 0.52f, 0.012f), Palette.Timber, r);
                 mb.Box(hub + r * new Vector3(0.045f, 0.3f, 0) - new Vector3(0, 0, 0.034f), new Vector3(0.075f, 0.4f, 0.005f), Palette.Canvas, r);
                 for (int b = 1; b <= 3; b++) // lattice bars over the canvas

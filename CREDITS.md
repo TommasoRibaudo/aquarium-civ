@@ -39,3 +39,8 @@ nicholasjudy567, antumdeluge and pattingthestar (OpenGameArt.org, CC0).
 ## 3D models
 
 - KayKit Medieval Hexagon Pack, City Builder Bits and Adventurers Character Pack by Kay Lousberg (CC0 1.0, credit appreciated): https://kaylousberg.itch.io/
+
+## Fonts
+
+- Lora by Cyreal, SIL Open Font License 1.1: https://github.com/cyrealtype/Lora-Cyrillic
+- PT Serif by Omnibus-Type, SIL Open Font License 1.1: https://github.com/google/fonts/tree/main/ofl/ptserif

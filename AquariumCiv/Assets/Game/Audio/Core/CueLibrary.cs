@@ -9,6 +9,10 @@ namespace AquariumCiv.Audio
     /// </summary>
     public static class CueLibrary
     {
+        public const int BabbleVoices = 4, BabbleClips = 6;
+        /// <summary>#144: one babble clip's cue, by voice and clip.</summary>
+        public static string Babble(int voice, int clip) => "babble_" + voice + "_" + clip;
+
         // ---------- ids: UI (the HUD, panels, cards, the book) ----------
         public const string UiTap = "ui_tap", UiToggle = "ui_toggle", UiOpen = "ui_open", UiClose = "ui_close",
             UiBack = "ui_back", UiConfirm = "ui_confirm", UiQuestion = "ui_question", UiScroll = "ui_scroll",
@@ -19,7 +23,7 @@ namespace AquariumCiv.Audio
         public const string WipeRub = "wipe_rub", WipeStart = "wipe_start", PaneClean = "pane_clean", FullClean = "full_clean",
             MessGrab = "mess_grab", MessDrop = "mess_drop", MessFlick = "mess_flick", Prune = "prune", Rain = "rain_start",
             ShapeChannel = "shape_channel", ShapeOutcrop = "shape_outcrop", ShapeFail = "shape_fail", TapGlass = "tap_glass",
-            TapPerson = "tap_person", Discovery = "discovery";
+            TapPerson = "tap_person", Discovery = "discovery", WishGiven = "wish_given"; // #191: a wish answered
 
         // ---------- ids: the glass and show-me (#92, #76) ----------
         public const string KnockBack = "knock_back", ShowMe = "show_me", Flower = "flower", Thump = "thump";
@@ -90,10 +94,16 @@ namespace AquariumCiv.Audio
             Add(new CueDef(ShapeFail, SoundBus.Care, 0.3f, Care + "tick_002").Limit(0.6f, 1).Prio(40).Len(0.2f).Buzz(HapticKind.Warning));
             Add(new CueDef(TapGlass, SoundBus.Care, 0.45f, Care + "impactGlass_light_000", Care + "impactGlass_light_001", Care + "impactGlass_light_002").Jitter(1f).Limit(0.12f, 2, true).Prio(50).Len(0.4f).Buzz(HapticKind.Light));
             Add(new CueDef(TapPerson, SoundBus.Care, 0.4f, Care + "pluck_001", Care + "pluck_002").Jitter(2f).Limit(0.15f, 1, true).Prio(50).Len(0.3f).Buzz(HapticKind.Light));
+            // #191: a wish given. Reuses the discovery clip as a stand-in (a small bright rise, world bus, the wisher's cheer follows).
+            Add(new CueDef(WishGiven, SoundBus.World, 0.5f, "proc:gift").Limit(1f, 1).Prio(75).Len(1.2f).Buzz(HapticKind.Success));
             Add(new CueDef(Discovery, SoundBus.Care, 0.55f, Care + "maximize_003").Limit(1f, 1).Prio(80).Len(0.8f).Buzz(HapticKind.Success));
 
             // The glass and show-me: a knock back from inside (soft, lower, World bus so it doesn't duck), the camera's
             // "look at this", the show-me flower set down.
+            // #144: the babble, made in code (ChatterBabble). Low, and it never ducks the music: it's a murmur in the room.
+            for (int v = 0; v < BabbleVoices; v++)
+                for (int c = 0; c < BabbleClips; c++)
+                    Add(new CueDef(Babble(v, c), SoundBus.World, 0.25f, "proc:babble" + v + c).Jitter(1f).Limit(0.4f, 2).Prio(20).Len(1.5f));
             Add(new CueDef(KnockBack, SoundBus.World, 0.4f, Moment + "impactWood_light_000").Jitter(0.3f).Limit(0.15f, 2).Prio(70).Len(0.4f).Buzz(HapticKind.Selection));
             Add(new CueDef(ShowMe, SoundBus.Ui, 0.45f, Ui + "maximize_001").Limit(0.5f, 1).Prio(60).Len(0.4f));
             Add(new CueDef(Flower, SoundBus.World, 0.3f, Care + "pluck_001").Limit(0.5f, 1).Prio(40).Len(0.3f));

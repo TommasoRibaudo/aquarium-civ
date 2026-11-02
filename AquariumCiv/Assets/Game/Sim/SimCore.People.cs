@@ -274,7 +274,7 @@ namespace AquariumCiv.Sim
             void Add(Notable o, TieKind k)
             {
                 if (o == null || o.id == n.id || !seen.Add((o.id, k))) return;
-                ties.Add(new PersonTie { otherId = o.id, otherName = o.FullName, kind = k, otherAlive = o.alive, sharedStories = SharedStories(n.id, o.id), label = TieLabel(k, o.alive) });
+                ties.Add(new PersonTie { otherId = o.id, otherName = o.FullName, kind = k, otherAlive = o.alive, sharedStories = SharedStories(n.id, o.id), label = k == TieKind.Child && o.alive && o.age < 4f ? "baby" : TieLabel(k, o.alive) });
             }
             Add(FindNotable(n.partnerId), TieKind.Partner);
             foreach (int p in ParentsOf(n)) Add(FindNotable(p), TieKind.Parent);

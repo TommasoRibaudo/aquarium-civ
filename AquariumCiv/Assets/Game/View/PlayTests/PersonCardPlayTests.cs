@@ -18,7 +18,8 @@ namespace AquariumCiv.View.PlayTests
     /// <summary>
     /// Notables in the view (#39) in the real Slice scene at 1179x2556, by touch: a tap on a notable's doll opens their card
     /// (and is no knock), their ties' lines draw and clear when the card closes, a tap on empty glass still knocks, the pin's
-    /// gold tag follows the doll and survives a save and reload, and no doll jumps while a card opens. Screenshots go to
+    /// gold tag follows the doll and survives a save and reload, no doll jumps while a card opens, and the Keeper's Glass card (#165)
+    /// holds the board at both phone sizes. Screenshots go to
     /// Temp/agent (pc-*.png). Run alone: <c>--filter PersonCardPlay --filter_type category</c>. Backs up and restores the save.
     /// </summary>
     [Category("PersonCardPlay")]
@@ -135,6 +136,41 @@ namespace AquariumCiv.View.PlayTests
             yield return null; yield return null;
         }
 
+        /// <summary>#207: how each shown doll moved, frame by frame, while the card opened: the longest step in one frame, the fastest, and the whole way.</summary>
+        sealed class DollStepWatch : MonoBehaviour
+        {
+            PeopleView pv;
+            readonly Dictionary<int, Vector3> last = new(), first = new();
+            readonly Dictionary<int, (float step, float speed, float frameDt)> worst = new();
+            float started;
+            public void Begin(PeopleView view, List<int> ids)
+            {
+                pv = view; started = Time.realtimeSinceStartup;
+                foreach (int n in ids) if (pv.TryGetDollFeet(PersonRef.Notable(n), out var w)) { last[n] = w; first[n] = w; }
+            }
+            void LateUpdate()
+            {
+                if (pv == null) return;
+                float dt = Mathf.Max(1e-4f, Time.unscaledDeltaTime);
+                foreach (int n in new List<int>(last.Keys))
+                {
+                    if (!pv.TryGetDollFeet(PersonRef.Notable(n), out var w)) continue;
+                    float step = Vector3.Distance(w, last[n]);
+                    last[n] = w;
+                    if (!worst.TryGetValue(n, out var had) || step > had.step) worst[n] = (step, step / dt, dt);
+                }
+            }
+            public float Elapsed => Time.realtimeSinceStartup - started;
+            public float WorstStep { get { float m = 0f; foreach (var v in worst.Values) m = Mathf.Max(m, v.step); return m; } }
+            public string Report()
+            {
+                var s = new System.Text.StringBuilder($"over {Elapsed:0.00} s: ");
+                foreach (var (n, v) in worst)
+                    if (v.step > 0.002f) s.Append($"doll {n} way {Vector3.Distance(first[n], last[n]):0.000} worst step {v.step:0.000} in {v.frameDt:0.000} s; ");
+                return s.ToString();
+            }
+        }
+
         /// <summary>Screen point (pixels, y up) at the middle of a notable's doll; false if it isn't shown on screen.</summary>
         static bool DollScreen(int id, out Vector2 p)
         {
@@ -164,6 +200,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
+        [Category("Part3")]
         public IEnumerator TapADollOpensTheirCardAndTheirLines()
         {
             yield return Open();
@@ -192,15 +229,21 @@ namespace AquariumCiv.View.PlayTests
                 var before = new Dictionary<int, Vector3>();
                 foreach (int n in shownIds) if (pv.TryGetDollFeet(PersonRef.Notable(n), out var w)) before[n] = w;
 
+                var watch = new GameObject("doll step watch").AddComponent<DollStepWatch>();
+                watch.Begin(pv, shownIds);
                 yield return TapAt(at);
                 yield return Until(() => cards.IsOpen, 2f);
                 Assert.IsTrue(cards.IsOpen, "a tap on a doll opens the card");
                 Assert.AreEqual(expect, cards.OpenId, "the card is the tapped person's");
                 yield return new WaitForSecondsRealtime(GlassVoice.TapGap + 0.2f);
                 Assert.AreEqual(knocks, glass.Knocks, "a tap on a person is no knock");
+                // #207: a jump is a long step in one frame. The whole way was never the measure: the window is a second, and a doll gliding into its slot at the
+                // walk's pace with the catch-up covers 0.3 u in it (doll 21: 0.298 u in 1.02 s, longest step 0.071 u in a 0.16 s frame).
+                Assert.Less(watch.WorstStep, 0.12f, "a doll jumped when the card opened: " + watch.Report());
                 foreach (int n in shownIds)
                     if (before.TryGetValue(n, out var b0) && pv.TryGetDollFeet(PersonRef.Notable(n), out var b1))
-                        Assert.Less(Vector3.Distance(b0, b1), 0.25f, $"doll {n} didn't jump when the card opened");
+                        Assert.Less(Vector3.Distance(b0, b1), 0.05f + 2f * LifePlanner.RealWalkSpeed * watch.Elapsed, $"doll {n} outran a walk while the card opened; {watch.Report()}");
+                UnityEngine.Object.Destroy(watch.gameObject);
 
                 var card = cards.CardRoot.Q("person-card");
                 Assert.AreEqual(sim.FindNotable(expect).FullName, (cards.CardRoot.Q<Label>("person-card-name")).text);
@@ -208,9 +251,10 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(1.2f); // the flight lands
                 Assert.IsTrue(DollScreen(expect, out var after) && after.y > Screen.height * 0.5f, "the person stands above the card");
                 yield return Shot("pc-card");
-                // the stories at the bottom of the card, and one "Show me"
+                // the stories under their tab, and one "Show me"
                 var scroll = cards.CardRoot.Q<ScrollView>("person-card-body");
-                scroll.scrollOffset = new Vector2(0f, 99999f);
+                yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-recent")));
+                Assert.AreEqual(CardTab.Recent, cards.Tab, "a tap on Recent");
                 yield return null; yield return null;
                 yield return Shot("pc-card-stories");
                 var show = cards.CardRoot.Q<Button>("person-card-story-0-show");
@@ -222,9 +266,9 @@ namespace AquariumCiv.View.PlayTests
                     Debug.Log("[PersonCardPlay] show me: " + ShowMeDirector.Status());
                     yield return Shot("pc-showme");
                 }
-                scroll.scrollOffset = Vector2.zero;
 
                 // lines to the ties: zoom out so their dolls are in view
+                yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-about")));
                 cards.Open(id, false);
                 cam.FlyTo(Vector3.zero, 1f, 0.2f);
                 yield return new WaitForSecondsRealtime(0.5f);
@@ -232,13 +276,18 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(cards.LinesDrawn, 0, "lines run to their friend and rival");
                 Assert.LessOrEqual(cards.LinesDrawn, PersonCardView.MaxLines);
                 var n0 = sim.FindNotable(id);
-                if (DollScreen(n0.friendId, out _)) CollectionAssert.Contains(cards.LinesTo, n0.friendId);
+                // #118: a tie within 20 panel px is skipped by design and the top MaxLines come first, so the friend's line is only owed when it's far enough
+                float apart = 60f * Screen.width / Mathf.Max(1f, cards.CardRoot.panel.visualTree.layout.width);
+                if (cards.LinesDrawn < PersonCardView.MaxLines && DollScreen(n0.friendId, out var fp) && DollScreen(id, out var mp) && (fp - mp).magnitude > apart)
+                    CollectionAssert.Contains(cards.LinesTo, n0.friendId);
                 yield return Shot("pc-lines");
 
                 // tap-through to a tie: their card opens
                 var chip = cards.CardRoot.Q<Button>("person-card-tie-" + n0.friendId);
-                if (chip != null && chip.worldBound.yMax < card.worldBound.yMax)
+                if (chip != null)
                 {
+                    scroll.ScrollTo(chip);
+                    yield return null; yield return null;
                     yield return TapAt(GameUiPanel.ScreenCenter(chip));
                     yield return Until(() => cards.OpenId == n0.friendId, 1.5f);
                     Assert.AreEqual(n0.friendId, cards.OpenId, "a tie chip opens that person's card");
@@ -250,6 +299,65 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(cards.IsOpen, "Close closes it");
                 Assert.AreEqual(0, cards.LinesDrawn, "the lines clear with the card");
                 Assert.IsEmpty(errors, string.Join("\n", errors));
+            }
+            finally { Close(); }
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator TapACrowdDollOpensTheirSmallCard()
+        {
+            yield return Open();
+            try
+            {
+                yield return Grow(20f);
+                var sim = GameClock.Instance.Sim;
+                var cards = PersonCardView.Instance;
+                var pv = PeopleView.Find();
+                pv.timeScale = 0.05f;
+                yield return null;
+                var crowd = new List<PersonRef>();
+                pv.CrowdShown(crowd);
+                PersonRef who = PersonRef.None;
+                var cam = Camera.main;
+                var at = Vector2.zero;
+                foreach (var c in crowd)
+                {
+                    if (!pv.TryGetDollTop(c, out var top) || !pv.TryGetDollFeet(c, out var feet)) continue;
+                    var s = cam.WorldToScreenPoint((top + feet) * 0.5f);
+                    var p = new Vector2(s.x, s.y);
+                    if (s.z <= 0f || s.x < 60f || s.x > Screen.width - 60f || s.y < Screen.height * 0.25f || s.y > Screen.height * 0.85f) continue;
+                    if (!cards.PickPerson(p).IsCrowd) continue; // a notable in front of them is a notable's tap
+                    who = cards.PickPerson(p); at = p;
+                    break;
+                }
+                Assume.That(who.IsCrowd, "a crowd doll on screen with nobody in front");
+                int knocks = GlassVoice.Instance.Knocks;
+                yield return TapAt(at);
+                yield return null; yield return null;
+                Assert.IsTrue(cards.CrowdOpen, "a tap on a crowd doll opens their card");
+                Assert.IsFalse(cards.IsOpen, "and no notable's");
+                Assert.AreEqual(who.crowdIndex, cards.CrowdIndex);
+                Assert.AreEqual(knocks, GlassVoice.Instance.Knocks, "it is no knock");
+                yield return new WaitForSecondsRealtime(0.5f);
+
+                var root = cards.CardRoot;
+                Assert.AreEqual(sim.CrowdName(who.crowdIndex), root.Q<Label>("crowd-card-name").text, "their own first name");
+                Assert.IsNotEmpty(root.Q<Label>("crowd-card-job").text);
+                Assert.That(root.Q<Label>("crowd-card-doing").text, Does.Contain(cards.Crowd.name));
+                Assert.AreEqual(DisplayStyle.None, root.Q("person-card").resolvedStyle.display, "no stories, family or pin: the big card stays away");
+                var sheet = root.Q("crowd-card");
+                Assert.Less(sheet.worldBound.height / root.worldBound.height, 0.3f, "smaller than a person's");
+                Assert.LessOrEqual(sheet.worldBound.yMax, root.worldBound.height + 0.5f, "on the bottom edge");
+                Assert.AreEqual("crowd " + who.crowdIndex, who.ToString());
+                Assert.AreEqual(who.crowdIndex, cards.CrowdIndex);
+                Assert.IsTrue(MomentPlayer.PromptsBlocked(), "prompts wait for it");
+                yield return Shot("pc-crowd");
+
+                yield return TapAt(GameUiPanel.ScreenCenter(root.Q("crowd-card-close")));
+                yield return new WaitForSecondsRealtime(0.5f);
+                Assert.IsFalse(cards.CrowdOpen, "Close closes it");
+                Assert.AreEqual(DisplayStyle.None, root.Q("crowd-card").resolvedStyle.display);
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }
@@ -331,10 +439,16 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Less(Vector2.Distance(new Vector2(s.x, s.y), cards.PinTagScreen), 4f, "the tag sits on their head");
                 yield return Shot("pc-pin-tag");
 
-                // the chip opens their card
+                // D2: the chip's first tap flies to them, a second opens their card
+                var flyCam = Camera.main.GetComponent<BoxCamera>();
+                yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-pin"));
+                yield return null; yield return null;
+                Assert.IsFalse(cards.IsOpen, "the first tap only flies");
+                Assert.IsTrue(flyCam.IsFlying, "the first tap flies");
+                yield return Until(() => !flyCam.IsFlying, 2f);
                 yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root, "hud-pin"));
                 yield return Until(() => cards.IsOpen, 1f);
-                Assert.AreEqual(who.id, cards.OpenId, "the pin chip opens the pinned person's card");
+                Assert.AreEqual(who.id, cards.OpenId, "the second tap opens the pinned person's card");
                 cards.Close();
 
                 // save, reload the scene: still pinned, the tag back
@@ -352,6 +466,216 @@ namespace AquariumCiv.View.PlayTests
             }
             finally { Close(); }
         }
+
+        /// <summary>A person with a doll in view, ties forced, for the checks at each phone size. They stay in view at the sheet's 30 %.</summary>
+        IEnumerator CardUp(int w, int h, Action<int> done)
+        {
+            yield return Open(true, w, h);
+            yield return Grow();
+            var sim = GameClock.Instance.Sim;
+            int id = PickSubject(sim);
+            PeopleView.Find().timeScale = 0.05f;
+            var cards = PersonCardView.Instance;
+            Assert.IsTrue(cards.Open(id, true));
+            yield return new WaitForSecondsRealtime(1.2f);
+            done(id);
+        }
+
+        IEnumerator HoldsTheBoard(int w, int h)
+        {
+            int id = -1;
+            yield return CardUp(w, h, i => id = i);
+            try
+            {
+                var cards = PersonCardView.Instance;
+                var root = cards.CardRoot;
+                var sheet = root.Q<GlassSheet>("person-card");
+                float H = root.worldBound.height;
+                Assert.AreEqual(H * 0.3f, sheet.worldBound.height, H * 0.005f, "the sheet is 30 % of the screen");
+                Assert.AreEqual(H, sheet.worldBound.yMax, 1f, "on the bottom edge");
+                Assert.IsTrue(FrostSwitch.Frosted == sheet.Surface, "the card holds the frost");
+
+                // the person stands clear above it, with their tag
+                var pv = PeopleView.Find();
+                Assert.IsTrue(pv.TryGetDollFeet(PersonRef.Notable(id), out var feet));
+                float feetY = Screen.height - Camera.main.WorldToScreenPoint(feet).y;
+                float sheetTop = sheet.worldBound.yMin * Screen.height / H;
+                Assert.Less(feetY, sheetTop, "the card doesn't cover their feet");
+                Assert.AreEqual(DisplayStyle.Flex, root.panel.visualTree.Q("pc-name-tag").resolvedStyle.display, "their name tag shows");
+
+                // the subtitle has its own row: nothing runs under Pin
+                var pin = root.Q("person-card-pin");
+                var close = root.Q("person-card-close");
+                var name = root.Q("person-card-name");
+                var sub = root.Q("person-card-sub");
+                Assert.GreaterOrEqual(sub.worldBound.yMin, pin.worldBound.yMax - 1f, "the subtitle is under Pin's row");
+                Assert.LessOrEqual(name.worldBound.xMax, pin.worldBound.xMin + 1f, "the name stops before Pin");
+                Assert.LessOrEqual(pin.worldBound.xMax, close.worldBound.xMin + 1f, "Pin before Close");
+                Assert.LessOrEqual(close.worldBound.xMax, root.worldBound.xMax - GlassSheet.SidePad + 1f, "on the sheet's margin");
+
+                // the first view shows a line and the ties, with nothing cut
+                var view = root.Q<ScrollView>("person-card-body");
+                Assert.GreaterOrEqual(view.worldBound.yMin, root.Q("person-card-tabs").worldBound.yMax - 1f, "the tab line clears the text");
+                var face = root.Query<GlassChip>().First()?.Face;
+                if (face != null) Assert.LessOrEqual(face.worldBound.yMax, view.worldBound.yMax + 1f, "a row of chips shows under the line");
+
+                // every control reaches a thumb
+                foreach (var tab in root.Query<Button>(className: "kg-tab").ToList()) Assert.GreaterOrEqual(tab.worldBound.height, GameUiPanel.MinTarget - 1f, tab.name);
+                foreach (var chip in root.Query<GlassChip>().ToList()) Assert.GreaterOrEqual(chip.worldBound.height, GameUiPanel.MinTarget - 1f, chip.name);
+                Assert.IsTrue(((GlassButton)close).ContainsPoint(new Vector2(close.layout.width * 0.5f, -10f)), "Close reaches past its drawn edge");
+
+                // tie labels: on the screen, above the card, never on the name tag, for as long as they show
+                var cam = Camera.main.GetComponent<BoxCamera>();
+                cards.Open(id, false);
+                cam.FlyTo(Vector3.zero, 1f, 0.2f);
+                yield return new WaitForSecondsRealtime(0.5f);
+                yield return Until(() => cards.LinesDrawn > 0, 2f);
+                Assert.Greater(cards.LinesDrawn, 0, "lines run to their ties");
+                var overlay = root.panel.visualTree.Q("pc-overlay");
+                var tag = overlay.Q("pc-name-tag");
+                int seen = 0;
+                for (int f = 0; f < 30; f++)
+                {
+                    yield return null;
+                    foreach (var l in overlay.Query<GlassTag>(className: "kg-tag--tie").ToList())
+                    {
+                        if (l.resolvedStyle.display == DisplayStyle.None) continue;
+                        seen++;
+                        Assert.IsFalse(l.worldBound.Overlaps(tag.worldBound), $"{l.name} sits on the name tag");
+                        Assert.LessOrEqual(l.worldBound.yMax, sheet.worldBound.yMin + 1f, $"{l.name} is above the card");
+                        Assert.GreaterOrEqual(l.worldBound.xMin, 0f, $"{l.name} is on screen");
+                        Assert.LessOrEqual(l.worldBound.xMax, root.worldBound.xMax, $"{l.name} is on screen");
+                    }
+                }
+                Assert.Greater(seen, 0, "labels were on screen");
+                Assert.IsEmpty(errors, string.Join("\n", errors));
+            }
+            finally { Close(); }
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator HoldsTheBoardOnATallPhone() => HoldsTheBoard(1179, 2556);
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator HoldsTheBoardOnAShortPhone() => HoldsTheBoard(750, 1334);
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator TabsSwitchAndANewPersonStartsOnAbout()
+        {
+            int id = -1;
+            yield return CardUp(1179, 2556, i => id = i);
+            try
+            {
+                var cards = PersonCardView.Instance;
+                var root = cards.CardRoot;
+                var hud = GameHud.Instance;
+                Assert.AreEqual(CardTab.About, cards.Tab, "About first");
+                Assert.AreEqual(hud.Root.Q("hud-history").resolvedStyle.visibility, Visibility.Hidden, "the tools step back");
+                Assert.IsTrue(root.Q("person-card-portrait").resolvedStyle.width > 0f, "the portrait");
+                Assert.IsTrue(root.Q("person-card-about").ClassListContains("kg-tab--on"));
+                Assert.IsNotNull(root.Q("person-card-about-stories"), "question 35: About ends in a story");
+                Assert.IsNull(root.Q("person-card-stories"), "the story lists wait under their tabs");
+
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-recent"));
+                Assert.AreEqual(CardTab.Recent, cards.Tab);
+                Assert.IsTrue(root.Q("person-card-recent").ClassListContains("kg-tab--on"));
+                Assert.IsNotNull(root.Q("person-card-stories"));
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-best"));
+                Assert.IsTrue(cards.ShowingBest);
+                Assert.AreEqual("card tab: About", PersonCardView.DebugNextTab(), "the cheat goes round");
+
+                // the toast rides above the card, the pin mark shows
+                cards.ShowTab(CardTab.Recent);
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-pin"));
+                yield return null; yield return null;
+                Assert.IsTrue(root.Q("person-card-pin").ClassListContains("kg-btn--marked"), "Pinned has its mark");
+                var toast = hud.Root.Q("hud-toast");
+                yield return Until(() => toast.resolvedStyle.display == DisplayStyle.Flex, 1f);
+                yield return null; yield return null;
+                Assert.LessOrEqual(toast.worldBound.yMax, root.Q("person-card").worldBound.yMin, "the toast is above the card");
+                Assert.AreEqual(CardTab.Recent, cards.Tab, "pinning stays on the tab");
+
+                int other = GameClock.Instance.Sim.State.notables.First(n => n.alive && n.id != id).id;
+                cards.Open(other, false);
+                yield return null;
+                Assert.AreEqual(CardTab.About, cards.Tab, "a new person starts on About");
+
+                cards.Close();
+                yield return null; yield return null;
+                Assert.AreEqual(Visibility.Visible, hud.Root.Q("hud-history").resolvedStyle.visibility, "the tools come back with the card gone");
+                Assert.IsEmpty(errors, string.Join("\n", errors));
+            }
+            finally { Close(); }
+        }
+
+        IEnumerator CardShots(int w, int h)
+        {
+            int id = -1;
+            yield return CardUp(w, h, i => id = i);
+            try
+            {
+                string at = $"-{w}";
+                var cards = PersonCardView.Instance;
+                var sim = GameClock.Instance.Sim;
+                yield return new WaitForSecondsRealtime(0.4f);
+                yield return Shot("pc165-about" + at);
+                cards.ShowTab(CardTab.Recent);
+                yield return new WaitForSecondsRealtime(0.2f);
+                yield return Shot("pc165-recent" + at);
+                cards.ShowTab(CardTab.Best);
+                yield return new WaitForSecondsRealtime(0.2f);
+                yield return Shot("pc165-best" + at);
+                cards.TogglePin();
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return Shot("pc165-pinned" + at);
+                cards.TogglePin();
+                yield return new WaitForSecondsRealtime(3.5f);
+                cards.ShowTab(CardTab.About);
+                var cam = Camera.main.GetComponent<BoxCamera>();
+                cards.Open(id, false);
+                cam.FlyTo(Vector3.zero, 0.75f, 0.2f);
+                yield return new WaitForSecondsRealtime(0.8f);
+                yield return Shot("pc165-lines" + at);
+                FrostSwitch.On = false;
+                yield return new WaitForSecondsRealtime(0.2f);
+                yield return Shot("pc165-flat" + at);
+                FrostSwitch.On = true;
+                cards.Close();
+                yield return new WaitForSecondsRealtime(0.1f);
+
+                int blank = sim.DebugBirth()?.id ?? -1; // a birth is their one story, so it goes
+                if (blank >= 0) sim.State.chronicle.RemoveAt(sim.State.chronicle.Count - 1);
+                if (blank >= 0)
+                {
+                    cards.Open(blank, true);
+                    yield return new WaitForSecondsRealtime(1.2f);
+                    yield return Shot("pc165-no-stories-about" + at);
+                    cards.ShowTab(CardTab.Recent);
+                    yield return new WaitForSecondsRealtime(0.2f);
+                    yield return Shot("pc165-no-stories" + at);
+                    cards.Close();
+                }
+                for (int i = 0; i < 8; i++) { SimLayoutSource.DebugSkipYears(10f); yield return null; }
+                var dead = sim.State.notables.Where(n => !n.alive).OrderByDescending(n => sim.PersonCardOf(n.id).memorial?.legendReasons.Count ?? 0).FirstOrDefault();
+                if (dead != null)
+                {
+                    cards.Open(dead.id, true);
+                    yield return new WaitForSecondsRealtime(1.2f);
+                    yield return Shot("pc165-legend" + at);
+                    cards.Close();
+                }
+                yield return new WaitForSecondsRealtime(0.1f);
+                Debug.Log("[PersonCardPlay] shots done, blank " + blank + ", dead " + (dead?.id ?? -1));
+            }
+            finally { FrostSwitch.On = FrostSwitch.Default; Close(); }
+        }
+
+        /// <summary>Every state at both phone sizes, for eyes. Temp/agent/pc165-*.png.</summary>
+        [UnityTest, Explicit, Timeout(180000)]
+        public IEnumerator ShotsTall() => CardShots(1179, 2556);
+
+        [UnityTest, Explicit, Timeout(180000)]
+        public IEnumerator ShotsShort() => CardShots(750, 1334);
 
         [UnityTest]
         public IEnumerator TheDeadGetAMemorialCard()

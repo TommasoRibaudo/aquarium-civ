@@ -3,6 +3,7 @@
     "rootNamespace": "AquariumCiv.GameUI.Tests",
     "references": [
         "AquariumCiv.Game.UI",
+        "AquariumCiv.Audio",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

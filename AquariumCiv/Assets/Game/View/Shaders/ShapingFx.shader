@@ -6,6 +6,7 @@ Shader "AquariumCiv/View/ShapingFx"
     Properties
     {
         _Color ("Tint (alpha = opacity)", Color) = (1, 1, 1, 1)
+        [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest ("Depth test (8 = always: the marks over a head, which nothing may cut)", Float) = 4
     }
     SubShader
     {
@@ -16,6 +17,7 @@ Shader "AquariumCiv/View/ShapingFx"
             Tags { "LightMode" = "UniversalForward" }
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
+            ZTest [_ZTest]
             Cull Off
 
             HLSLPROGRAM

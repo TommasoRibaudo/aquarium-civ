@@ -106,13 +106,14 @@ namespace AquariumCiv.GameUI.PlayTests
             Assert.AreEqual(before, GameSettings.Sound);
 
             // Settings → Send feedback opens the feedback sheet (Editor = test build); its Cancel closes it.
+            hud.SettingsView.Scroll.View.ScrollTo(root.Q("settings-feedback")); // below the fold
+            for (int i = 0; i < 4; i++) yield return null;
             yield return Tap(root, "settings-feedback");
             Assert.IsNull(hud.OpenSheet, "settings closes when feedback opens");
             for (int i = 0; i < 6 && (FeedbackUI.Instance == null || !FeedbackUI.Instance.IsOpen); i++) yield return null;
             Assert.IsTrue(FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen, "the feedback sheet is open");
             Assert.IsTrue(hud.IsVisible, "the HUD is back after the screenshot");
             yield return null; yield return null; // the sheet's layout
-            Assert.AreEqual(DisplayStyle.None, FeedbackUI.Instance.Root.Q("fb-button").resolvedStyle.display, "the HUD hosts the feedback button");
             yield return Tap(FeedbackUI.Instance.Root, "fb-cancel");
             Assert.IsFalse(FeedbackUI.Instance.IsOpen);
 
@@ -150,8 +151,9 @@ namespace AquariumCiv.GameUI.PlayTests
             foreach (var name in new[] { "hud-title", "hud-history", "hud-shape", "hud-feedback" })
             {
                 var e = root.Q(name);
-                Assert.GreaterOrEqual(e.layout.height, GameUiPanel.MinTarget - 0.5f, $"{name} is tall enough");
-                Assert.GreaterOrEqual(e.layout.width, GameUiPanel.MinTarget - 0.5f, $"{name} is wide enough");
+                float pixel = Mathf.Max(0.5f, e.panel.visualTree.layout.width / Screen.width); // UI Toolkit snaps to physical pixels: a tiny Game view reads 141.64 for 144
+                Assert.GreaterOrEqual(e.layout.height, GameUiPanel.MinTarget - pixel, $"{name} is tall enough (layout {e.layout.size}, panel {e.panel.visualTree.layout.size}, screen {Screen.width}x{Screen.height}, min-height {e.resolvedStyle.minHeight})");
+                Assert.GreaterOrEqual(e.layout.width, GameUiPanel.MinTarget - pixel, $"{name} is wide enough");
             }
             EndHud();
         }

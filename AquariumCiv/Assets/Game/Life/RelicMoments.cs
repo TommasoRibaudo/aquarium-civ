@@ -23,6 +23,8 @@ namespace AquariumCiv.Life
         Grown,
         /// <summary>The Lens's queue: each takes a turn to look (the beat is split into one turn each).</summary>
         Queue,
+        /// <summary>#142: those who see a gift land from where they stand (at most <see cref="RelicMomentDef.maxQueue"/>).</summary>
+        Onlookers,
     }
 
     /// <summary>Where a beat happens.</summary>

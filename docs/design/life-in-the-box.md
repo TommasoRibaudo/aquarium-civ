@@ -130,6 +130,7 @@ doesn't move goods). The **full zoom** and **close up** columns say how each one
 | Who | Work loop at the site | Carries | Props | Full zoom | Close up |
 |---|---|---|---|---|---|
 | **Child** (< 16) | No work. Plays near home and the green (§6); at midday carries the meal basket to a parent (village on) | Meal basket | Ball, stick, small basket | Small, fast, in groups | Who they're playing with |
+| **Baby** (< 4) | Not a walker. On most days (9 in 10) a carer has the baby for one to three hours between 8:00 and 17:30: in the arms, or on the back (always on the back while the carer works; a carry or a nap sets the baby down). The carer is a parent, else the other parent; a crowd baby has two crowd adults who take turns. If both are busy or asleep the baby stays in (#192) | — | — | A small bundle on a grown-up | The card says "baby" and who has them |
 | **Apprentice** (a notable's child taken on by a master of 50+) | Works next to the master and copies each stroke a beat late | Half the master's load | A smaller copy of the master's tool | A big and a small doll doing the same thing | The delay; the master's nod |
 | **Elder** (65+, retired) | Sits at the fire or a bench; tells stories to kids in a ring; minds the babies; wanders to look at the work and "advise" | — | Stick, stool | A still doll with a ring of small ones | The talking bob, kids' faces turned up |
 
@@ -279,7 +280,7 @@ then the person picks up where they left off.
 | **Wipes** grime off the glass | People under the clearing patch stop and **look up** (whole-body lean back), shade their eyes; at a full clean, everyone **cheers** (a jump) and someone says "Look at that sky!" |
 | **Flicks trash** away | Those nearby clap (a quick double bob); kids run to where it vanished |
 | **Prunes** a vine off a roof | The family steps out of the door and waves |
-| **Rains** (rub) | People stop, look up, hold their hands out; some run under the eaves with baskets over their heads; **kids splash**; later the gatherers or farmers walk over (the tool's "who reacts", research 10) |
+| **Rains** (tap) | People stop, look up, hold their hands out; some run under the eaves with baskets over their heads; **kids splash**; later the gatherers or farmers walk over (the tool's "who reacts", research 10) |
 | **Other shapings** (grove, herd, channel, lamp, hill, outcrop, spring, dye meadow, decorate) | The nearest look and **point**; a few walk over to look (that doesn't count as "used", research 10); then the tool's job or role arrives (the chief leads the hunt, the captain lights the night round from the lamp) |
 | **Holds a finger on clean glass** (Choice 8) | People under it look up; kids run to stand under it, point and jump; they scatter when you lift |
 | **Taps a person** | They stop, look up and wave; the one-line job report shows ("Ivo Lund is taking logs to the woodpile") |
@@ -322,6 +323,13 @@ hand, head, back, shoulder or pulled behind (a cart). Kids are the same at 0.68 
 
 **Ambient signs of life** (as cheap as a doll, often cheaper): chimney and fire smoke, lit windows, doors open by
 day, washing on lines, the windmill's sails, cloth drying, sparks at the forge, sheep and goats, ducks.
+
+**Smooth walking (#203):** nothing a walker's drawn point depends on changes in a step, at 30 or 60 fps. The crowd's push grows from zero, the
+sidestep eases through the middle, the offset grows and fades on one law, and the doll follows its point about 70 ms behind, so a route's corner is a
+curve. The stride is added up frame by frame, facing follows the smoothed way the doll goes, and one move blends into the next over 0.16 s.
+
+**The mill's sails (#202)** are the one thing the wind turns: a slow seeded value (`WindDrift`) holds spells of still, gentle and brisk for about 16 s each
+and eases between them, both for the post mill and the tower mill. The watermill's wheel is the stream's; the festival's bunting is built into the box and hangs still.
 
 **Budget [est, to measure on the TestFlight build]:** up to ~60 dolls drawn (town: ~45 people, plus animals) in
 one or two instanced draws; ≤ 20 prop meshes, all code-built in the palette; the planner runs once per view hour per
@@ -368,7 +376,10 @@ phone. Practices §7: steady 30 fps minimum.
 14. **Seasons and weather** switch the schedule, as in Stardew: the planner reads the season from the month and the
     weather from the month's story flags (snow, storm, fog) and the Keeper's rain.
 15. **Night** keeps a few night owls (Choice 2) so an open at night still has life.
-16. **The debug panel** (CLAUDE.md): set the view hour, skip a view day, force a season and weather, start each scene
+16. **Doors (#200, #201).** At most three people a day sit out at their doors (`LifePlanner.DoorSitters`, elders first, then the day's hash); anyone else
+    who would is indoors. Nobody hammers at a finished house: there's no site under way in the sim, so a winter farmer stacks wood at home. At a home people
+    face out over the town: facing their own wall, a sitter or a chopper looks as if they're building it.
+17. **The debug panel** (CLAUDE.md): set the view hour, skip a view day, force a season and weather, start each scene
     (wedding, festival, mourning, argument, chat), "make everyone wave", show each person's job report.
 
 ### What the sim must expose

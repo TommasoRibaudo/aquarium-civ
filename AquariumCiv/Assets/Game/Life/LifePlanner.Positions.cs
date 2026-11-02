@@ -42,6 +42,21 @@ namespace AquariumCiv.Life
             return PlanPos(p, t.hour, out x, out z);
         }
 
+        /// <summary>#150: what a view needs to draw the camp's stash: where the pile stands and what's in it (read fresh, so a
+        /// cheat that sets the stock shows at once). False outside the camp, or without positions.</summary>
+        public bool TryGetStash(out StashLook look)
+        {
+            look = default;
+            Sync();
+            if (stash.kind != PlaceKind.Stash) return false;
+            if (!positions.TryGetPosition(CampStash.Pile, out look.x, out look.z)) return false;
+            if (!positions.TryGetPosition(fire, out float fx, out float fz)) return false;
+            look.faceX = fx - look.x;
+            look.faceZ = fz - look.z;
+            look.stock = CampStash.StockOf(sim.State.food, sim.State.wood);
+            return true;
+        }
+
         // ======================================================================== routes as polylines
 
         sealed class Poly
@@ -157,6 +172,8 @@ namespace AquariumCiv.Life
             public Place target; // where it happens; None = where they stand
             public Seg seg;      // a live scene's segment
             public int order;
+            public bool runIn, hasPoint;
+            public float mx, mz; // #197: an intercept: walk to this point and stand there
         }
 
         /// <summary>A stretch of a person's position: standing at a point, or walking part of a route.</summary>
@@ -181,6 +198,7 @@ namespace AquariumCiv.Life
             public float sx, sz;      // where they stopped
             public Place stopAt;      // the place they stopped at (None = halfway along a walk)
             public Place stopPlace;   // abstract: the place they were at or nearest to (for the activity)
+            public Place stopFrom;    // #197: the walk they stopped on started here (None = they were standing)
             public Seg after;         // the stop in their day they head for afterwards
             public bool hasAfter;
         }
@@ -208,14 +226,15 @@ namespace AquariumCiv.Life
 
         Block[] BlocksOf(Person p)
         {
-            if (reactions.Count == 0 && live.Count == 0) return NoBlocks;
+            var runs = RunInsOf(p);
+            if (reactions.Count == 0 && live.Count == 0 && runs == null) return NoBlocks;
             if (blockCache.TryGetValue(p.key, out var bl)) return bl;
-            bl = BuildBlocks(p);
+            bl = BuildBlocks(p, runs);
             blockCache[p.key] = bl;
             return bl;
         }
 
-        Block[] BuildBlocks(Person p)
+        Block[] BuildBlocks(Person p, List<Seg> runs)
         {
             long day = dayInfo.day;
             var pieces = pieceScratch;
@@ -225,11 +244,19 @@ namespace AquariumCiv.Life
                 var r = reactions[i];
                 if (r.day != day || r.end <= r.start) continue;
                 if (!Reacts(p, r, new ViewTime(day, r.start), out _, out _, out var to)) continue;
-                pieces.Add(new Piece { t0 = r.start, t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
+                float wait = r.late == null ? 0f : r.late.TryGetValue(p.key, out float late) ? late : r.lateRest; // #161: the mark first
+                pieces.Add(new Piece { t0 = Math.Min(r.start + wait, r.end), t1 = r.end, reaction = true, index = i, target = to, order = pieces.Count });
             }
             // A tap-back (Choice 9) overrides the scholar's other live scenes while it plays: a beat of a relic moment that
             // starts inside its window (the Lens moment's later beats) would otherwise win and the knock never be seen.
             float tbStart = float.MaxValue, tbEnd = float.MinValue;
+            // The same for a wish's cheer (#191): the gift's own reaction scene mustn't take the wisher away from it.
+            float wishStart = float.MaxValue, wishEnd = float.MinValue;
+            for (int i = 0; i < reactions.Count; i++)
+                if (reactions[i].gesture == KeeperGesture.WishAnswered && reactions[i].day == day && reactions[i].target == p.who)
+                {
+                    wishStart = Math.Min(wishStart, reactions[i].start); wishEnd = Math.Max(wishEnd, reactions[i].end);
+                }
             for (int i = 0; i < live.Count; i++)
             {
                 var sc = live[i];
@@ -246,9 +273,12 @@ namespace AquariumCiv.Life
                 foreach (var s in liveScratch)
                 {
                     if (!tapBack && s.start >= tbStart && s.start < tbEnd) continue;
+                    if (s.start >= wishStart && s.start < wishEnd) continue;
                     pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = i, target = s.place, seg = s, order = pieces.Count });
                 }
             }
+            if (runs != null)
+                foreach (var s in runs) pieces.Add(new Piece { t0 = s.start, t1 = s.end, index = -1, target = Place.None, seg = s, order = pieces.Count, runIn = true, hasPoint = s.hasPoint, mx = s.mx, mz = s.mz });
             if (pieces.Count == 0) return NoBlocks;
             pieces.Sort((a, b) => a.t0 != b.t0 ? a.t0.CompareTo(b.t0) : a.order.CompareTo(b.order));
 
@@ -272,6 +302,7 @@ namespace AquariumCiv.Life
             var s = segs[Find(segs, t0)];
             var b = new Block { bs = t0, ie = t0, be = t0 };
             b.stopPlace = s.Moving && (t0 - s.start) < (s.end - s.start) * 0.5f ? s.from : s.place;
+            b.stopFrom = s.Moving ? s.from : Place.None;
             b.stopAt = s.Moving ? Place.None : IsValidPlace(s.place) ? s.place : ValidHome(p);
             b.placed = PlanPos(p, t0, out b.sx, out b.sz);
             return b;
@@ -287,7 +318,14 @@ namespace AquariumCiv.Life
                 EndPoint(b, out float cx, out float cz, out Place cat);
                 float tx = 0f, tz = 0f;
                 bool goes = !pc.target.IsNone && pc.target != cat && positions.TryGetPosition(pc.target, out tx, out tz) && !Near(cx, cz, tx, tz);
-                if (goes)
+                if (pc.hasPoint)
+                {
+                    var line = Poly.Of(new List<Waypoint> { new Waypoint(cx, cz), new Waypoint(pc.mx, pc.mz) });
+                    float w = Near(cx, cz, pc.mx, pc.mz) ? 0f : LiveWalkHours(dayInfo.day, t0, line.len);
+                    if (w > 0f) b.legs.Add(new Leg { t0 = t0, t1 = t0 + w, poly = line, f0 = 0f, f1 = 1f, at = Place.None });
+                    b.legs.Add(new Leg { t0 = t0 + w, t1 = Math.Max(t1, t0 + w), x = pc.mx, z = pc.mz, at = Place.None });
+                }
+                else if (goes)
                 {
                     var poly = RouteFrom(cx, cz, cat, pc.target);
                     // #92: the walk takes its time at the walking pace, in real seconds (a walk squeezed into half the piece
@@ -454,6 +492,7 @@ namespace AquariumCiv.Life
                         WalkLeg(ref a, b, li, h);
                         if (seg.carries) { a.kind = ActivityKind.Carry; a.prop = load; } // #92: a chunk to the fire, the doll to its post
                     }
+                    a.enRoute = pc.runIn && !a.moving;
                     return a;
                 }
             }
@@ -465,7 +504,12 @@ namespace AquariumCiv.Life
                     WalkLeg(ref a, b, li, h);
                     return a;
                 }
-                if (b.hasAfter) return ToActivity(p, b.after, t); // arrived early: waiting where the day goes next
+                if (b.hasAfter)
+                {
+                    var wait = ToActivity(p, b.after, t); // arrived early: the stay has not started yet, so it starts for them now
+                    wait.start = Math.Min(wait.start, h);
+                    return wait;
+                } // arrived early: waiting where the day goes next
             }
             var segs = DayOf(p);
             return ToActivity(p, segs[Find(segs, h)], t);
@@ -477,7 +521,10 @@ namespace AquariumCiv.Life
             a.kind = ActivityKind.Walk;
             a.moving = true;
             a.place = l.at.IsNone ? a.place : l.at;
+            if (a.place.IsNone) a.place = b.hasAfter ? b.after.place : b.stopPlace; // #197: an intercept leg is not at a place
             a.from = b.stopPlace;
+            if (a.from == a.place && !b.stopFrom.IsNone && b.stopFrom != a.place) a.from = b.stopFrom; // stopped past halfway: the walk on to the same place still comes from somewhere
+            if (a.from == a.place) a.moving = false; // #197: an intercept that starts and ends at the same place is a short step, not a trip
             a.prop = Prop.None;
             a.start = l.t0;
             a.end = l.t1;

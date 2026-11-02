@@ -75,6 +75,18 @@ namespace AquariumCiv.View
         /// <summary>Makes one now if there is none (tests that build their own scene).</summary>
         public static AudioDirector Ensure() => Instance != null ? Instance : new GameObject("AudioDirector").AddComponent<AudioDirector>();
 
+        // #195: the day's birds: the loop swells and thins, and separate calls come at random times on one pooled source.
+        BirdSong birdSong;
+        AudioSource birdSource;
+        AudioClip[] birdClips;
+        float birdVolume;
+        int birdLayer = -1;
+        /// <summary>A call's level against the loop's cue volume: over the bed, not on top of everything.</summary>
+        const float BirdCallGain = 0.9f;
+        /// <summary>Calls played so far, the loop's swell, and how the last one sounded (tests, the debug panel).</summary>
+        public int BirdCallsPlayed { get; private set; }
+        public float BirdSwell => birdSong != null ? birdSong.Swell : 1f;
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -90,6 +102,11 @@ namespace AquariumCiv.View
                 amb[i].clip = Clip(c.clips[0]);
                 if (AmbienceLevels.CueIds[i] == CueLibrary.AmbWind) amb[i].pitch = 0.8f; // the storm's wind: the calm loop, lower and louder
             }
+            birdLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbBirds);
+            birdSource = Source("BirdCalls", false);
+            birdClips = new AudioClip[CareSound.BirdCalls];
+            for (int i = 0; i < birdClips.Length; i++) birdClips[i] = Clip("proc:bird" + i);
+            birdSong = new BirdSong(Environment.TickCount, birdClips.Length);
             eraWatch = new MomentWatch(this, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Director : null, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Wave : null);
             lastWatch = new MomentWatch(this, () => BoxCompleteController.Instance != null ? BoxCompleteController.Instance.Director : null, () => null);
             var missing = CheckClips();
@@ -181,6 +198,16 @@ namespace AquariumCiv.View
             return c;
         }
 
+        /// <summary>Makes or loads now every clip whose path starts so, so the first play doesn't pay for it (#144's babble).</summary>
+        public int Preload(string prefix)
+        {
+            int n = 0;
+            foreach (var cue in CueLibrary.All.Values)
+                foreach (var p in cue.clips)
+                    if (p.StartsWith(prefix)) { Clip(p); n++; }
+            return n;
+        }
+
         /// <summary>Every clip the cue library names that does not load (empty = all good).</summary>
         public List<string> CheckClips()
         {
@@ -258,6 +285,7 @@ namespace AquariumCiv.View
                 var src = amb[i];
                 if (src.clip == null) continue;
                 float v = fader.Level(i) * CueLibrary.Get(AmbienceLevels.CueIds[i]).volume * bus;
+                if (i == birdLayer) v *= birdSong.Swell;
                 src.volume = v;
                 if (v > 0.001f && !src.isPlaying)
                 {
@@ -266,6 +294,35 @@ namespace AquariumCiv.View
                 }
                 else if (v <= 0.001f && src.isPlaying) src.Pause();
             }
+            UpdateBirds(dt, inMoment, bus);
+        }
+
+        void UpdateBirds(float dt, bool inMoment, float bus)
+        {
+            float level = birdLayer >= 0 ? fader.Level(birdLayer) : 0f;
+            if (birdSong.Tick(dt, inMoment ? 0f : level, out var call)) PlayBird(call, level);
+            birdSource.volume = birdVolume * bus; // a call under way follows the settings
+        }
+
+        void PlayBird(in BirdCall call, float level)
+        {
+            birdSource.clip = birdClips[call.clip];
+            birdSource.pitch = call.pitch;
+            birdSource.panStereo = call.pan;
+            birdVolume = call.volume * level * CueLibrary.Get(CueLibrary.AmbBirds).volume * BirdCallGain;
+            birdSource.volume = birdVolume * Gain(SoundBus.Ambience);
+            birdSource.Play();
+            BirdCallsPlayed++;
+        }
+
+        /// <summary>Debug (#195): one of the five calls now, at full day level.</summary>
+        public static string DebugBirdCall(int clip = -1)
+        {
+            var a = Instance;
+            if (a == null) return "no AudioDirector";
+            int c = clip >= 0 ? clip : a.BirdCallsPlayed % a.birdClips.Length;
+            a.PlayBird(new BirdCall { clip = c, volume = 1f, pitch = 1f, pan = 0f }, 1f);
+            return $"bird call {c}, loop swell {a.BirdSwell:0.00}";
         }
 
         /// <summary>A layer's source is sounding (tests).</summary>

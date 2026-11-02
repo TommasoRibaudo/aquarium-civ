@@ -1,4 +1,3 @@
-using AquariumCiv.Audio;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,12 +5,15 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.ShowMe;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace AquariumCiv.View
 {
+    public enum CardTab { About, Recent, Best }
+
     /// <summary>
     /// Notables in the view (#39; game definition §4, first-session §5 "Person card", notable-roles §6). Added to the box at
     /// start-up (like <see cref="GlassVoice"/>):
@@ -19,39 +21,48 @@ namespace AquariumCiv.View
     /// <item><b>Tap a person.</b> A tap on a notable's doll (<see cref="WorldTap"/>, called by <see cref="GlassVoice"/> before
     /// it hears a knock) opens their card and flies the camera so they stand above it. A tap on the world with a card open
     /// closes it. A tap that hits nobody is still the Keeper's knock.</item>
-    /// <item><b>The person card</b> (<see cref="SimCore.PersonCardOf"/>): a bottom sheet over at most ~46 % of the screen, the
-    /// person in view above it. Name, job and role, age, trait, their line for the belief stage, their wish; family, friends,
-    /// rivals and mentors as chips (a tap opens that person's card); their stories (Recent / Best) each with "Show me"
-    /// (<see cref="ShowMeDirector"/>); their relics; Pin. The dead get a memorial (when, how old, the death line, why they are
-    /// a legend, who remembers them).</item>
+    /// <item><b>The person card</b> (<see cref="SimCore.PersonCardOf"/>, spec §4, board 3.4): a <see cref="GlassSheet"/> at 30 % of the
+    /// screen, the person in view above it and kept there while they walk. Portrait, name, Pin and Close in one row, the subtitle
+    /// on its own row, then About, Recent, Best. About holds their line for the belief stage, their wish, family, friends, rivals
+    /// and mentors as chips (a tap opens that person's card), their roles and relics, and a story (question 35: never half empty).
+    /// Recent and Best hold stories, each with "Show me" (<see cref="ShowMeDirector"/>). The dead get a memorial (when, how old,
+    /// why they are a legend, who remembers them) and no Pin.</item>
     /// <item><b>Relationships visible.</b> While a card is open, light arcs run from the person's doll to the dolls of their
-    /// ties (<see cref="SimCore.RelationshipGraph"/>), coloured by kind, with a small label at the far end: at most
-    /// <see cref="MaxLines"/>, strongest first. They clear when the card closes.</item>
+    /// ties (<see cref="SimCore.RelationshipGraph"/>), each kind with its own line and mark, its label over the far end and off
+    /// the name tag: at most <see cref="MaxLines"/>, strongest first. They clear when the card closes.</item>
     /// <item><b>The pin.</b> One pinned notable (<see cref="SimCore.Pin"/>): a gold name tag follows their doll; the HUD's pin
     /// chip shows their name and opens their card. Saved with the box (<see cref="SimState.pinnedNotableId"/>).</item>
     /// </list>
     /// The card closes itself when the world isn't the player's to touch (a HUD sheet, camera mode, shape mode, a moment, the
     /// time-lapse, the last moment). Debug: static <c>Debug*</c> methods (the debug panel).
+    /// <para><b>The crowd (#148, board S34Acting).</b> A tap on a crowd doll opens a small sheet of its own: first name, job and what
+    /// they're doing now (<see cref="SimCore.CrowdCardOf"/>), no stories, family or pin. <see cref="IsOpen"/> stays the notables' card;
+    /// <see cref="AnyOpen"/> is either.</para>
     /// </summary>
     [DefaultExecutionOrder(100)]
-    public class PersonCardView : MonoBehaviour
+    public partial class PersonCardView : MonoBehaviour
     {
         public static bool AutoCreate = true;
         public static PersonCardView Instance { get; private set; }
 
         /// <summary>How close to a doll (panel units, 1080 wide) a tap must land to pick it: about half a 48 dp target.</summary>
         public const float PickRadius = 64f;
+        /// <summary>#188: on a doll means within this share of its height on screen, and at least <see cref="TightMin"/> panel units.</summary>
+        public const float TightShare = 0.33f, TightMin = 14f;
         /// <summary>Relationship lines drawn at most (never clutter).</summary>
         public const int MaxLines = 6;
         /// <summary>Where the person stands on screen after the fly-to (fraction of the height from the bottom): above the card.</summary>
-        public const float CardAnchorY = 0.74f;
-        /// <summary>The card's height at most (share of the screen).</summary>
-        public const float CardMaxShare = 0.46f;
+        public const float CardAnchorY = 0.6f;
+        /// <summary>The card's height (share of the screen): the sheet's 30 %, so the box stays in view (spec §2).</summary>
+        public const float CardMaxShare = 0.3f;
+        /// <summary>A person this close to the card's top edge (panel px) has walked under it, and the camera moves.</summary>
+        public const float KeepClear = 40f;
 
         public int OpenId { get; private set; } = -1;
         public bool IsOpen => OpenId >= 0;
         public PersonCard Card { get; private set; }
-        public bool ShowingBest { get; private set; }
+        public CardTab Tab { get; private set; }
+        public bool ShowingBest => Tab == CardTab.Best;
         /// <summary>Lines drawn last frame, and to whom (tests).</summary>
         public int LinesDrawn => drawn.Count;
         public IReadOnlyList<int> LinesTo => drawnTo;
@@ -59,15 +70,30 @@ namespace AquariumCiv.View
         public bool PinTagShown { get; private set; }
         public Vector2 PinTagScreen { get; private set; }
         public VisualElement CardRoot => cardRoot;
+        /// <summary>#148: the crowd person whose small card is open (-1 = none), and that card.</summary>
+        public int CrowdIndex { get; private set; } = -1;
+        public bool CrowdOpen => CrowdIndex >= 0;
+        public CrowdCard Crowd { get; private set; }
+        /// <summary>A card is up, of either kind.</summary>
+        public bool AnyOpen => IsOpen || CrowdOpen;
+
+        PersonRef Who => IsOpen ? PersonRef.Notable(OpenId) : CrowdOpen ? PersonRef.Crowd(CrowdIndex) : PersonRef.None;
+        GlassSheet ShownSheet => CrowdOpen ? crowdSheet : sheet;
 
         GameObject overlayGo, cardGo;
-        VisualElement overlayRoot, linesLayer, cardRoot, sheet, pinTag, nameTag;
-        Label pinTagText, nameTagText;
+        VisualElement overlayRoot, linesLayer, cardRoot;
+        GlassSheet sheet, crowdSheet;
+        GlassPortrait crowdPortrait;
+        Label crowdName, crowdJob, crowdDoing;
+        readonly List<PersonRef> shownCrowd = new();
+        GlassTag pinTag, nameTag;
         ScrollView body;
+        GlassPortrait portrait;
+        GlassTabs tabs;
         Label title, subtitle;
-        Button pinButton;
-        readonly List<Label> tieLabels = new();
-        readonly List<(Vector2 a, Vector2 c, Vector2 b, Color col, float w)> drawn = new();
+        GlassButton pinButton;
+        readonly List<GlassTag> tieLabels = new();
+        readonly List<(Vector2 a, Vector2 c, Vector2 b, TieKind kind)> drawn = new();
         readonly List<int> drawnTo = new();
         readonly List<Vector4> placed = new();
         readonly List<int> shown = new();
@@ -79,6 +105,13 @@ namespace AquariumCiv.View
         Vector2Int lastScreen;
         string chipText;
         int chipId = -2;
+        int chipFlownId = -1;
+        Vector3 chipFlownTo, lastFlight;
+        const float ChipStillThere = 0.1f;
+        bool flownForCard;
+        float nextKeep;
+        static readonly CustomStyleProperty<Color> LineProp = new("--tie-line"), InnerProp = new("--tie-inner"), UnderProp = new("--tie-under");
+        Color lineCol = Color.white, innerCol = Color.green, underCol = new(0f, 0f, 0f, 0.35f);
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : SimLayoutSource.Find()?.Sim;
         static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
@@ -103,23 +136,113 @@ namespace AquariumCiv.View
             if (Instance != this) return;
             Instance = null;
             UiInput.Remove(IsOverCard);
-            if (GameHud.Instance != null) GameHud.Instance.SetPinChip(null, null);
+            if (GameHud.Instance != null) { GameHud.Instance.SetPinChip(null, null); GameHud.Instance.SetOutsideSheet(null); }
             if (overlayGo != null) Destroy(overlayGo);
             if (cardGo != null) Destroy(cardGo);
+            if (markGo != null) Destroy(markGo);
+            if (markMesh != null) Destroy(markMesh);
         }
 
-        bool IsOverCard(Vector2 screenPos) => IsOpen && cardRoot != null && GameUiPanel.Over(cardRoot, screenPos);
+        bool IsOverCard(Vector2 screenPos) => (AnyOpen || BuildingOpen) && cardRoot != null && GameUiPanel.Over(cardRoot, screenPos);
 
         // ================================================================== the API
 
-        /// <summary>A short tap reached the world at <paramref name="screenPos"/> (pixels, y up). A notable's doll there opens
-        /// their card; otherwise an open card closes. True if the tap was used (no knock).</summary>
+        /// <summary>A short tap reached the world at <paramref name="screenPos"/> (pixels, y up). One thing wins (#188, #160): a doll the finger
+        /// is really on; then, with no card up, mess (the hint is what that tap says, see <see cref="CareView"/>); then the building under the
+        /// finger; then a doll near it on open ground (the generous <see cref="PickRadius"/>). An open card closes rather than opens a building.
+        /// True if the tap was used (no knock).</summary>
         public bool WorldTap(Vector2 screenPos)
         {
-            int id = Pick(screenPos);
-            if (id >= 0) { Open(id, true); return true; }
+            if (OpenWho(PickDoll(screenPos))) return true;
+            bool cardUp = AnyOpen || BuildingOpen;
+            bool onMess = CareView.Instance != null && CareView.Instance.MessSaysSo(screenPos);
+            if (!cardUp && onMess) { CareView.Instance.AnswerMessTap(); return true; }
+            int building = PickBuilding(screenPos);
+            if (building < 0 && !onMess && OpenWho(PickPerson(screenPos))) return true; // tester run 9: mess under the finger beats a doll merely near it
             if (IsOpen) { Close(); return true; }
+            if (CrowdOpen) { CloseCrowd(); return true; }
+            if (BuildingOpen) { CloseBuilding(); return true; }
+            return building >= 0 && OpenBuilding(building); // the rest of the world is a knock
+        }
+
+        bool OpenWho(PersonRef who)
+        {
+            if (who.IsNotable) { Open(who.notableId, true); return true; }
+            if (who.IsCrowd) { OpenCrowd(who.crowdIndex, true); return true; }
             return false;
+        }
+
+        /// <summary>The person whose doll is under a screen point (nearest within <see cref="PickRadius"/>, a notable on a tie),
+        /// or <see cref="PersonRef.None"/>.</summary>
+        public PersonRef PickPerson(Vector2 screenPos)
+        {
+            var who = PersonRef.None;
+            var pv = PeopleView.Find();
+            var cam = Camera.main;
+            if (pv == null || cam == null || Sim == null) return who;
+            float bestD = PickRadius * Screen.width / GameUiPanel.ReferenceWidth;
+            pv.NotablesShown(shown);
+            foreach (int id in shown)
+            {
+                float d = DollDistance(pv, cam, PersonRef.Notable(id), screenPos);
+                if (d < bestD && !Unseen(pv, cam, PersonRef.Notable(id))) { bestD = d; who = PersonRef.Notable(id); } // tester run 8: past the lot's box, the eaves still hide them
+            }
+            pv.CrowdShown(shownCrowd);
+            foreach (var c in shownCrowd)
+            {
+                float d = DollDistance(pv, cam, c, screenPos);
+                if (d < bestD && !Unseen(pv, cam, c)) { bestD = d; who = c; }
+            }
+            return who;
+        }
+
+        /// <summary>#188: the person whose doll the finger is really on or right next to (tighter than <see cref="PickRadius"/>, which covers
+        /// most of a small town at default zoom), or <see cref="PersonRef.None"/>. The reach follows the doll's size on screen.</summary>
+        public PersonRef PickDoll(Vector2 screenPos)
+        {
+            var who = PersonRef.None;
+            var pv = PeopleView.Find();
+            var cam = Camera.main;
+            if (pv == null || cam == null || Sim == null) return who;
+            float best = float.MaxValue;
+            void Try(PersonRef p)
+            {
+                float d = DollDistance(pv, cam, p, screenPos);
+                if (d >= TightReach(pv, cam, p) || d >= best || Unseen(pv, cam, p)) return;
+                best = d;
+                who = p;
+            }
+            pv.NotablesShown(shown);
+            foreach (int id in shown) Try(PersonRef.Notable(id));
+            pv.CrowdShown(shownCrowd);
+            foreach (var c in shownCrowd) Try(c);
+            return who;
+        }
+
+        /// <summary>How near a doll counts as on it, in pixels: <see cref="TightShare"/> of its height on screen, at least <see cref="TightMin"/>
+        /// panel units so a far doll can still be hit, and never past <see cref="PickRadius"/>.</summary>
+        static float TightReach(PeopleView pv, Camera cam, PersonRef who)
+        {
+            float scale = Screen.width / GameUiPanel.ReferenceWidth;
+            if (!pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return 0f;
+            float tall = (((Vector2)cam.WorldToScreenPoint(top)) - (Vector2)cam.WorldToScreenPoint(feet)).magnitude;
+            return Mathf.Clamp(tall * TightShare, TightMin * scale, PickRadius * scale);
+        }
+
+        /// <summary>Debug: how far a point is from a doll, against its reach.</summary>
+        public string DebugDollReach(PersonRef who, Vector2 screenPos)
+        {
+            var pv = PeopleView.Find();
+            return pv == null ? "" : $"d {DollDistance(pv, Camera.main, who, screenPos):0} reach {TightReach(pv, Camera.main, who):0}";
+        }
+
+        /// <summary>How far a screen point is from a doll, feet to head, in pixels.</summary>
+        static float DollDistance(PeopleView pv, Camera cam, PersonRef who, Vector2 screenPos)
+        {
+            if (!pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) return float.MaxValue;
+            var a = cam.WorldToScreenPoint(feet);
+            var b = cam.WorldToScreenPoint(top);
+            return a.z <= 0f || b.z <= 0f ? float.MaxValue : SegmentDistance(screenPos, a, b);
         }
 
         /// <summary>The notable whose doll is under a screen point (nearest within <see cref="PickRadius"/>), or -1.</summary>
@@ -135,12 +258,7 @@ namespace AquariumCiv.View
             float bestD = r;
             foreach (int id in shown)
             {
-                var who = PersonRef.Notable(id);
-                if (!pv.TryGetDollTop(who, out var top) || !pv.TryGetDollFeet(who, out var feet)) continue;
-                var a = cam.WorldToScreenPoint(feet);
-                var b = cam.WorldToScreenPoint(top);
-                if (a.z <= 0f || b.z <= 0f) continue;
-                float d = SegmentDistance(screenPos, a, b);
+                float d = DollDistance(pv, cam, PersonRef.Notable(id), screenPos);
                 if (d < bestD) { bestD = d; best = id; }
             }
             return best;
@@ -161,27 +279,101 @@ namespace AquariumCiv.View
             var card = sim?.PersonCardOf(notableId);
             if (card == null) return false;
             EnsureUi();
+            CloseCrowd(false);
+            CloseBuilding(false); // one card at a time (tester run 10)
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
-            if (OpenId != notableId) { ShowingBest = false; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
+            if (OpenId != notableId) { Tab = CardTab.About; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
             OpenId = notableId;
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);
             Build(card);
-            if (cardRoot.resolvedStyle.display != DisplayStyle.Flex || OpenId != notableId || Card != card) Sfx.Play(CueLibrary.UiOpen); // #96
-            cardRoot.style.display = DisplayStyle.Flex;
-            if (fly) FlyTo(notableId);
+            if (!sheet.IsOpen)
+            {
+                UiSound.Play(UiRole.Open); // #96
+                cardRoot.style.display = DisplayStyle.Flex;
+                sheet.Open();
+            }
+            if (hud != null) hud.SetOutsideSheet(sheet);
+            flownForCard = fly && FlyTo(Who);
             return true;
+        }
+
+        /// <summary>#148: open a crowd person's small card. <paramref name="fly"/>: the camera brings their doll above it, as for a notable.</summary>
+        public bool OpenCrowd(int index, bool fly = true)
+        {
+            var card = CrowdCardFor(index);
+            if (card == null) return false;
+            EnsureUi();
+            if (IsOpen) Close();
+            CloseBuilding(false);
+            var hud = GameHud.Instance;
+            if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
+            if (CrowdIndex != index) GameClock.Tel.CardOpened("crowd", index);
+            CrowdIndex = index;
+            Crowd = card;
+            BuildCrowd(card);
+            if (!crowdSheet.IsOpen)
+            {
+                UiSound.Play(UiRole.Open);
+                cardRoot.style.display = DisplayStyle.Flex;
+                crowdSheet.Open();
+            }
+            if (hud != null) hud.SetOutsideSheet(crowdSheet);
+            flownForCard = fly && FlyTo(Who);
+            return true;
+        }
+
+        public void CloseCrowd() => CloseCrowd(true);
+
+        void CloseCrowd(bool sound)
+        {
+            if (!CrowdOpen) return;
+            if (sound) UiSound.Play(UiRole.Close);
+            CrowdIndex = -1;
+            Crowd = null;
+            flownForCard = false;
+            if (GameHud.Instance != null) GameHud.Instance.SetOutsideSheet(null);
+            crowdSheet.Close(() => { if (!AnyOpen && !BuildingOpen) cardRoot.style.display = DisplayStyle.None; });
+        }
+
+        /// <summary>The small card of a crowd person, as the planner has them now; null if nobody stands at that index.</summary>
+        static CrowdCard CrowdCardFor(int index)
+        {
+            var sim = Sim;
+            var pv = PeopleView.Find();
+            var planner = pv != null ? pv.Planner : null;
+            if (sim == null || planner == null) return null;
+            var r = PersonRef.Crowd(index);
+            return sim.CrowdCardOf(r.crowdIndex, planner.JobOf(r), planner.StageOf(r).ToString(), planner.Describe(planner.Plan(r, pv.Now)));
+        }
+
+        void BuildCrowd(CrowdCard c)
+        {
+            crowdName.text = c.name;
+            crowdPortrait.Person = c.name;
+            crowdJob.text = Cap(c.jobLine);
+            crowdDoing.text = GlassType.Lines(c.doing, 15f, 1.35f);
+        }
+
+        void RefreshCrowd()
+        {
+            var card = CrowdCardFor(CrowdIndex);
+            if (card == null) { CloseCrowd(); return; }
+            Crowd = card;
+            BuildCrowd(card);
         }
 
         public void Close()
         {
             if (!IsOpen) return;
-            Sfx.Play(CueLibrary.UiClose); // #96
+            UiSound.Play(UiRole.Close); // #96
             OpenId = -1;
             Card = null;
             edges.Clear();
-            if (cardRoot != null) cardRoot.style.display = DisplayStyle.None;
+            flownForCard = false;
+            if (GameHud.Instance != null) GameHud.Instance.SetOutsideSheet(null);
+            if (sheet != null) sheet.Close(() => { if (!AnyOpen && !BuildingOpen) cardRoot.style.display = DisplayStyle.None; });
             ClearLines();
             // Camera mode keeps the view it took over (it follows this person, #70): no easing back.
             if (showMeFromCard && ShowMeDirector.Instance != null) ShowMeDirector.Instance.End(GameHud.Instance == null || !GameHud.Instance.CameraMode);
@@ -195,32 +387,53 @@ namespace AquariumCiv.View
             if (sim == null || !IsOpen) return;
             bool on = sim.TogglePin(OpenId);
             if (on) GameClock.Tel.PinTapped(OpenId);
-            Sfx.Play(CueLibrary.UiToggle); // #96
+            UiSound.Play(UiRole.Toggle); // #96
             if (on && GameHud.Instance != null) GameHud.Instance.Toast($"Following {sim.FindNotable(OpenId)?.name}. Their stories come first.", 3f);
             Refresh(true);
             UpdateChip(sim, true);
         }
 
-        void FlyTo(int id)
+        bool FlyTo(PersonRef who)
         {
             var cam = Cam;
             var pv = PeopleView.Find();
-            if (cam == null || pv == null || !pv.TryGetDollFeet(PersonRef.Notable(id), out var feet)) return;
+            if (cam == null || pv == null || !pv.TryGetDollFeet(who, out var feet)) return false;
             float zoom = Mathf.Min(cam.zoom, BoxCameraMath.FlyPersonZoom);
             var focus = ShowMeDirector.AboveCard(cam, feet, zoom, cam.pitch, CardAnchorY);
-            cam.FlyTo(focus, zoom, BoxCameraMath.FlyDefaultSeconds);
+            cam.ReturnAfterFlight(); // back to the player's view once the card is closed (#146)
+            lastFlight = cam.FlyTo(focus, zoom, BoxCameraMath.FlyDefaultSeconds);
+            return true;
         }
 
         // ================================================================== frame
         void Update()
         {
             var sim = Sim;
-            if (sim == null) { Close(); SetTag(pinTag, false); return; }
+            if (sim == null) { Close(); CloseCrowd(); CloseBuilding(); SetTag(pinTag, false); return; }
             if (IsOpen && Blocked()) Close();
+            if (CrowdOpen && Blocked()) CloseCrowd();
+            if (BuildingOpen && (Blocked() || sim.BuildingCardOf(BuildingId) == null)) CloseBuilding();
             if (IsOpen && (Time.unscaledTime >= nextRefresh)) { nextRefresh = Time.unscaledTime + 1f; Refresh(false); }
-            if (IsOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) Close();
+            if (CrowdOpen && Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + 1f; RefreshCrowd(); }
+            if ((AnyOpen || BuildingOpen) && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); CloseCrowd(); CloseBuilding(); }
+            if (AnyOpen) KeepInView();
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateChip(sim, false);
+        }
+
+        /// <summary>Rule 5: the card never covers its person. If they walk under it the camera follows, unless the player has moved it since.</summary>
+        void KeepInView()
+        {
+            if (!flownForCard || Time.unscaledTime < nextKeep || overlayRoot?.panel == null) return;
+            var cam = Cam;
+            var pv = PeopleView.Find();
+            if (cam == null || pv == null || cam.IsFlying) return;
+            if ((cam.target - lastFlight).sqrMagnitude > ChipStillThere * ChipStillThere) { flownForCard = false; return; }
+            if (!pv.TryGetDollTop(Who, out var top)) return;
+            var at = ToPanel(Camera.main, top, out bool ok);
+            if (ok && at.y < ShownSheet.worldBound.yMin - KeepClear) return;
+            nextKeep = Time.unscaledTime + 2f;
+            FlyTo(Who);
         }
 
         /// <summary>The world isn't the player's to touch now: the card closes and world labels hide.</summary>
@@ -256,7 +469,18 @@ namespace AquariumCiv.View
             int id = p?.id ?? -1;
             if (!force && text == chipText && id == chipId) return;
             chipText = text; chipId = id;
-            hud.SetPinChip(text, id < 0 ? null : () => Open(id, true));
+            hud.SetPinChip(text, id < 0 ? null : () => ChipTapped(id));
+        }
+
+        // D2: a tap flies to the pinned person, a second tap opens the card. "Second" means the camera is still where the first
+        // took it (or on its way): move it off them and a tap flies again. Someone with no doll to fly to gets the card at once.
+        void ChipTapped(int id)
+        {
+            var cam = Cam;
+            bool there = id == chipFlownId && cam != null && (cam.IsFlying || (cam.target - chipFlownTo).sqrMagnitude < ChipStillThere * ChipStillThere);
+            if (!there && FlyTo(PersonRef.Notable(id))) { chipFlownId = id; chipFlownTo = lastFlight; return; }
+            chipFlownId = -1;
+            Open(id, there);
         }
 
         void LateUpdate()
@@ -268,56 +492,122 @@ namespace AquariumCiv.View
             bool hide = sim == null || pv == null || cam == null || overlayRoot.panel == null || LabelsHidden();
             // the pin's gold tag over their head
             var pinned = hide ? null : sim.Pinned;
-            bool pinOn = pinned != null && pinned.alive && Place(pinTag, pv, cam, pinned.id);
-            if (pinOn) pinTagText.text = pinned.name;
+            bool pinOn = pinned != null && pinned.alive && Place(pinTag, pv, cam, PersonRef.Notable(pinned.id));
+            if (pinOn) pinTag.Word = pinned.name;
             SetTag(pinTag, pinOn);
             PinTagShown = pinOn;
             // the open card's person (when not the pin): a paper tag
-            bool nameOn = !hide && IsOpen && Card != null && Card.alive && (pinned == null || pinned.id != OpenId) && Place(nameTag, pv, cam, OpenId);
-            if (nameOn) nameTagText.text = Card.name;
+            bool named = CrowdOpen || (IsOpen && Card != null && Card.alive && (pinned == null || pinned.id != OpenId));
+            bool nameOn = !hide && named && Place(nameTag, pv, cam, Who);
+            if (nameOn) nameTag.Word = CrowdOpen ? Crowd.name : Card.name;
             SetTag(nameTag, nameOn);
             // relationship lines
-            drawn.Clear(); drawnTo.Clear();
+            drawn.Clear(); drawnTo.Clear(); leaders.Clear();
             int used = 0;
             placed.Clear();
+            if (pinOn) Claim(pinTag);
+            if (nameOn) Claim(nameTag);
+            ClaimDoll(pv, cam);
             if (!hide && IsOpen && Card != null && Card.alive && pv.TryGetDollTop(PersonRef.Notable(OpenId), out var meW))
             {
                 var me = ToPanel(cam, meW, out bool meOk);
-                if (meOk)
-                    foreach (var e in edges.OrderBy(x => Rank(x.kind)).ThenBy(x => x.a + x.b))
-                    {
-                        if (drawn.Count >= MaxLines) break;
-                        int other = e.a == OpenId ? e.b : e.a;
-                        if (!pv.TryGetDollTop(PersonRef.Notable(other), out var oW)) continue;
-                        var o = ToPanel(cam, oW, out bool ok);
-                        if (!ok || (o - me).magnitude < 20f) continue;
-                        var mid = (me + o) * 0.5f;
-                        var ctrl = mid + Vector2.down * Mathf.Min(160f, (o - me).magnitude * 0.3f); // an arc, up over the heads
-                        var col = ColorOf(e.kind);
-                        drawn.Add((me, ctrl, o, col, e.kind == TieKind.Shared ? 4f : 7f));
-                        drawnTo.Add(other);
-                        var label = TieLabel(used);
-                        var ties = Card.family.Concat(Card.friends).Concat(Card.rivals).Concat(Card.mentors).Where(t => t.otherId == other).ToList();
-                        var tie = ties.FirstOrDefault(t => t.kind == e.kind || (e.kind == TieKind.Parent && t.kind == TieKind.Child) || (e.kind == TieKind.Mentor && t.kind == TieKind.Apprentice)) ?? ties.FirstOrDefault(); // the label says what the line's colour says
-                        string first = sim.FindNotable(other)?.name ?? "";
-                        label.text = tie != null ? $"{first} · {tie.label}" : $"{first} · {e.label}";
-                        label.style.borderBottomColor = col; label.style.borderTopColor = col; label.style.borderLeftColor = col; label.style.borderRightColor = col;
-                        const float along = 0.72f; // on the arc, near the other person (their own tag sits over their head)
-                        var at = (1f - along) * (1f - along) * me + 2f * (1f - along) * along * ctrl + along * along * o;
-                        // labels never pile up: a label that would sit on an earlier one moves down below it
-                        var size = new Vector2(label.text.Length * 15f + 40f, 46f);
-                        for (int k = 0; k < placed.Count; k++)
-                            if (Mathf.Abs(placed[k].x - at.x) < (placed[k].z + size.x) * 0.5f && Mathf.Abs(placed[k].y - at.y) < (placed[k].w + size.y) * 0.5f)
-                            { at.y = placed[k].y + (placed[k].w + size.y) * 0.5f + 2f; k = -1; }
-                        placed.Add(new Vector4(at.x, at.y, size.x, size.y));
-                        label.style.left = at.x;
-                        label.style.top = at.y;
-                        label.style.display = DisplayStyle.Flex;
-                        used++;
-                    }
+                if (meOk) used = LayTies(sim, pv, cam, me);
             }
             for (int i = used; i < tieLabels.Count; i++) tieLabels[i].style.display = DisplayStyle.None;
             linesLayer?.MarkDirtyRepaint();
+        }
+
+        readonly List<RelMarker> ties = new();
+        readonly Dictionary<int, string> tieWords = new();
+        readonly Dictionary<int, TieKind> tieKinds = new();
+        readonly List<LeaderRoute> leaders = new();
+        readonly List<(int label, Vector2 at, Vector2 size, Vector2 anchor)> leadersWanted = new();
+        readonly List<LabelBox> otherLabels = new();
+        /// <summary>#194: labels drawn at most; the rest are "+N" and every tie is in the card. Labels shown last frame and leader lines (tests).</summary>
+        public const int MaxLabels = 4;
+        public int LeadersDrawn => leaders.Count;
+        public int OverflowShown { get; private set; }
+        const float TieTop = 120f, TieH = 66f, TieMaxW = 470f;
+
+        static RelKind RelOf(TieKind k) => k switch
+        {
+            TieKind.Partner => RelKind.Partner, TieKind.Parent => RelKind.Parent, TieKind.Child => RelKind.Child, TieKind.Sibling => RelKind.Sibling,
+            TieKind.Friend or TieKind.MadeUp => RelKind.Friend, TieKind.Rival => RelKind.Rival, TieKind.Mentor or TieKind.Apprentice => RelKind.Mentor, _ => RelKind.Other,
+        };
+
+        static string GroupWord(RelKind k) => k switch { RelKind.Child => "kids", RelKind.Sibling => "siblings", _ => "friends" };
+
+        /// <summary>#194: the arcs, then the labels through <see cref="MarkerLayout"/>: people close together share one ("kids ×3"), at most <see cref="MaxLabels"/>
+        /// show, none lands on another, and one pushed away from its person gets a thin line back. Returns the labels used.</summary>
+        int LayTies(SimCore sim, PeopleView pv, Camera cam, Vector2 me)
+        {
+            ties.Clear(); tieWords.Clear(); tieKinds.Clear();
+            float widest = 200f;
+            foreach (var e in edges.OrderBy(x => Rank(x.kind)).ThenBy(x => x.a + x.b))
+            {
+                int other = e.a == OpenId ? e.b : e.a;
+                if (!pv.TryGetDollTop(PersonRef.Notable(other), out var oW)) continue;
+                var o = ToPanel(cam, oW, out bool ok);
+                if (!ok || (o - me).magnitude < 20f) continue;
+                if (drawn.Count < MaxLines)
+                {
+                    var mid = (me + o) * 0.5f;
+                    var ctrl = mid + Vector2.down * Mathf.Min(160f, (o - me).magnitude * 0.3f); // an arc, up over the heads
+                    drawn.Add((me, ctrl, o, e.kind));
+                    drawnTo.Add(other);
+                }
+                var all = Card.family.Concat(Card.friends).Concat(Card.rivals).Concat(Card.mentors).Where(t => t.otherId == other).ToList();
+                var tie = all.FirstOrDefault(t => t.kind == e.kind || (e.kind == TieKind.Parent && t.kind == TieKind.Child) || (e.kind == TieKind.Mentor && t.kind == TieKind.Apprentice)) ?? all.FirstOrDefault(); // the label says what the line's colour says
+                string first = sim.FindNotable(other)?.name ?? "";
+                string word = tie != null ? $"{first} · {tie.label}" : $"{first} · {e.label}";
+                tieWords[other] = word;
+                tieKinds[other] = tie?.kind ?? e.kind;
+                widest = Mathf.Max(widest, word.Length * 19f + 100f);
+                ties.Add(new RelMarker(other, RelOf(tieKinds[other]), o.x, o.y - TieTop));
+            }
+            float W = overlayRoot.layout.width, w = Mathf.Min(widest, TieMaxW);
+            float bottom = (IsOpen && sheet.worldBound.height > 0f ? sheet.worldBound.yMin : overlayRoot.layout.height) - 16f;
+            var res = MarkerLayout.Layout(ties, w, TieH, W, Mathf.Max(TieH, bottom - TieTop), MaxLabels);
+            int used = 0;
+            foreach (var p in res.placed)
+            {
+                var label = TieLabel(used++);
+                bool group = p.Count > 1;
+                label.Word = group ? $"{GroupWord(p.kind)} ×{p.Count}" : tieWords[p.ids[0]];
+                label.Mark = MarkOf(tieKinds[p.ids[0]]);
+                var size = new Vector2(Sized(label.resolvedStyle.width, label.Word.Length * 19f + 100f), Sized(label.resolvedStyle.height, TieH));
+                var spot = new Vector2(p.x, p.y + TieTop);
+                var at = Hit(spot, size) >= 0 ? FarEnd(spot, size) : spot; // the name tag and the doll are claimed too
+                placed.Add(new Vector4(at.x, at.y, size.x, size.y));
+                label.style.left = at.x;
+                label.style.top = at.y;
+                label.style.display = DisplayStyle.Flex;
+                var anchor = new Vector2(p.anchorX, p.anchorY + TieTop);
+                if (p.leader || (at - spot).magnitude > TieH * 1.2f || MarkerLayout.GapTo(new LabelBox(at.x, at.y, size.x, size.y), anchor.x, anchor.y) > MarkerLayout.LeaderGap) leadersWanted.Add((placed.Count - 1, at, size, anchor));
+            }
+            OverflowShown = res.overflow;
+            if (res.overflow > 0)
+            {
+                var more = TieLabel(used++);
+                more.Word = "+" + res.overflow;
+                more.Mark = "person";
+                var size = new Vector2(Sized(more.resolvedStyle.width, more.Word.Length * 19f + 100f), Sized(more.resolvedStyle.height, TieH));
+                var at = FarEnd(me + new Vector2(0f, -TieH), size);
+                placed.Add(new Vector4(at.x, at.y, size.x, size.y));
+                more.style.left = at.x;
+                more.style.top = at.y;
+                more.style.display = DisplayStyle.Flex;
+            }
+            // Tester run 8: once every label has its place, each leader goes round the others.
+            foreach (var (label, at, size, anchor) in leadersWanted)
+            {
+                otherLabels.Clear();
+                for (int k = 0; k < placed.Count; k++)
+                    if (k != label) otherLabels.Add(new LabelBox(placed[k].x, placed[k].y, placed[k].z, placed[k].w));
+                leaders.Add(MarkerLayout.RouteLeader(new LabelBox(at.x, at.y, size.x, size.y), anchor.x, anchor.y, otherLabels));
+            }
+            leadersWanted.Clear();
+            return used;
         }
 
         static int Rank(TieKind k) => k switch
@@ -326,16 +616,72 @@ namespace AquariumCiv.View
             TieKind.Sibling => 4, TieKind.Mentor or TieKind.Apprentice => 5, TieKind.MadeUp => 6, _ => 7,
         };
 
-        public static Color ColorOf(TieKind k) => k switch
+        /// <summary>The mark on a tie's label: the line says it too, so colour never carries it alone (board 3.2).</summary>
+        public static string MarkOf(TieKind k) => k switch
         {
-            TieKind.Partner => new Color(0.86f, 0.44f, 0.52f),
-            TieKind.Parent or TieKind.Child or TieKind.Sibling => new Color(0.86f, 0.68f, 0.36f),
-            TieKind.Friend => new Color(0.50f, 0.74f, 0.36f),
-            TieKind.Rival => new Color(0.82f, 0.30f, 0.24f),
-            TieKind.Mentor or TieKind.Apprentice => new Color(0.42f, 0.64f, 0.82f),
-            TieKind.MadeUp => new Color(0.66f, 0.56f, 0.80f),
-            _ => new Color(0.92f, 0.90f, 0.85f, 0.7f),
+            TieKind.Rival => "alert",
+            TieKind.Friend or TieKind.MadeUp => "star",
+            TieKind.Mentor or TieKind.Apprentice => "book",
+            TieKind.Shared => "scroll",
+            _ => "person",
         };
+
+        static float Sized(float measured, float estimate) => float.IsNaN(measured) || measured < 1f ? estimate : measured;
+
+        /// <summary>Holds a tag's room so no tie label lands on it. A tag hangs from its point: its bottom edge is at <c>top</c>.</summary>
+        void Claim(GlassTag tag)
+        {
+            float w = Sized(tag.resolvedStyle.width, tag.Word.Length * 22f + 80f), h = Sized(tag.resolvedStyle.height, 72f);
+            placed.Add(new Vector4(tag.style.left.value.value, tag.style.top.value.value - h * 0.5f, w, h));
+        }
+
+        /// <summary>No tie label on the person the card is about.</summary>
+        void ClaimDoll(PeopleView pv, Camera cam)
+        {
+            if (!IsOpen || pv == null || cam == null || overlayRoot.panel == null) return;
+            if (!pv.TryGetDollTop(PersonRef.Notable(OpenId), out var top) || !pv.TryGetDollFeet(PersonRef.Notable(OpenId), out var feet)) return;
+            var a = ToPanel(cam, top, out bool okA);
+            var b = ToPanel(cam, feet, out bool okB);
+            if (okA && okB) placed.Add(new Vector4((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f, 80f, Mathf.Abs(b.y - a.y) + 8f));
+        }
+
+        int Hit(Vector2 at, Vector2 size)
+        {
+            for (int k = 0; k < placed.Count; k++)
+                if (Mathf.Abs(placed[k].x - at.x) < (placed[k].z + size.x) * 0.5f + 4f && Mathf.Abs(placed[k].y - at.y) < (placed[k].w + size.y) * 0.5f + 4f) return k;
+            return -1;
+        }
+
+        /// <summary>A label's centre: touching the far end of its line (over it first, then around it), on screen, above the card, and clear of
+        /// the name tag and of every earlier label. Only in a crowd does it leave the end, downward, then upward once the card is in the way.</summary>
+        Vector2 FarEnd(Vector2 end, Vector2 size)
+        {
+            const float Edge = 16f, Off = 14f, TopMin = 120f;
+            float halfW = size.x * 0.5f, halfH = size.y * 0.5f, W = overlayRoot.layout.width;
+            float bottom = (IsOpen && sheet.worldBound.height > 0f ? sheet.worldBound.yMin : overlayRoot.layout.height) - halfH - Edge;
+            float top = TopMin + halfH;
+            Vector2 Keep(Vector2 p) => new(Mathf.Clamp(p.x, halfW + Edge, Mathf.Max(halfW + Edge, W - halfW - Edge)), Mathf.Clamp(p.y, top, Mathf.Max(top, bottom)));
+            float dy = halfH + Off, dx = halfW + Off;
+            var at = Keep(end + new Vector2(0f, -dy));
+            if (Hit(at, size) < 0) return at;
+            foreach (var near in new[] { new Vector2(dx, -dy), new Vector2(-dx, -dy), new Vector2(0f, dy), new Vector2(dx, dy), new Vector2(-dx, dy), new Vector2(dx, 0f), new Vector2(-dx, 0f) })
+            {
+                var p = Keep(end + near);
+                if (Hit(p, size) < 0) return p;
+            }
+            float dir = 1f;
+            for (int tries = 0; tries < 2 * MaxLines + 4; tries++)
+            {
+                int hit = Hit(at, size);
+                if (hit < 0) break;
+                float step = (placed[hit].w + size.y) * 0.5f + 8f;
+                float next = placed[hit].y + dir * step;
+                if (dir > 0f && next > bottom) { dir = -1f; next = placed[hit].y - step; }
+                if (next < top) break;
+                at.y = next;
+            }
+            return at;
+        }
 
         Vector2 ToPanel(Camera cam, Vector3 world, out bool ok)
         {
@@ -344,13 +690,13 @@ namespace AquariumCiv.View
             return RuntimePanelUtils.ScreenToPanel(overlayRoot.panel, new Vector2(s.x, Screen.height - s.y));
         }
 
-        bool Place(VisualElement tag, PeopleView pv, Camera cam, int id)
+        bool Place(VisualElement tag, PeopleView pv, Camera cam, PersonRef who)
         {
-            if (!pv.TryGetDollTop(PersonRef.Notable(id), out var w)) return false;
+            if (!pv.TryGetDollTop(who, out var w)) return false;
             var p = ToPanel(cam, w, out bool ok);
             if (!ok) return false;
             // keep clear of the card: a person under it has no tag
-            if (IsOpen && sheet != null && sheet.worldBound.height > 0f && p.y > sheet.worldBound.yMin) return false;
+            if (AnyOpen && ShownSheet != null && ShownSheet.worldBound.height > 0f && p.y > ShownSheet.worldBound.yMin) return false;
             // the tag hangs from its point (Game.uss translates it): keep its half width on screen
             float half = tag.resolvedStyle.width * 0.5f;
             float W = overlayRoot.layout.width;
@@ -365,17 +711,16 @@ namespace AquariumCiv.View
 
         void ClearLines()
         {
-            drawn.Clear(); drawnTo.Clear();
+            drawn.Clear(); drawnTo.Clear(); leaders.Clear(); OverflowShown = 0;
             foreach (var l in tieLabels) l.style.display = DisplayStyle.None;
             linesLayer?.MarkDirtyRepaint();
         }
 
-        Label TieLabel(int i)
+        GlassTag TieLabel(int i)
         {
             while (tieLabels.Count <= i)
             {
-                var l = new Label { name = "pc-tie-" + tieLabels.Count, pickingMode = PickingMode.Ignore };
-                l.AddToClassList("pc-tie");
+                var l = new GlassTag("", TagKind.Tie, "person") { name = "pc-tie-" + tieLabels.Count, InWorld = true };
                 l.style.display = DisplayStyle.None;
                 overlayRoot.Add(l);
                 tieLabels.Add(l);
@@ -383,23 +728,74 @@ namespace AquariumCiv.View
             return tieLabels[i];
         }
 
+        // Board 3.2: paper, with the line telling the tie. Family is a paper line with a moss heart, friends and teachers a plain paper
+        // line, rivals dotted, those who only share stories a thin one. A soft under-stroke, so a line reads on grass and on paths alike.
+        const float LeaderWidth = 3.5f, PlainWidth = 8.25f, FamilyWidth = 13.75f, HeartWidth = 5.5f, SharedWidth = 5.5f, DotLength = 8.25f, DotGap = 16.5f;
+
         void DrawLines(MeshGenerationContext ctx)
         {
             var p = ctx.painter2D;
             p.lineCap = LineCap.Round;
             foreach (var d in drawn)
             {
-                // a soft dark under-stroke, so a line reads on grass and on paths alike
-                p.strokeColor = new Color(0.12f, 0.1f, 0.08f, 0.35f);
-                p.lineWidth = d.w + 5f;
-                p.BeginPath(); p.MoveTo(d.a); p.QuadraticCurveTo(d.c, d.b); p.Stroke();
-                p.strokeColor = new Color(d.col.r, d.col.g, d.col.b, 0.9f * d.col.a);
-                p.lineWidth = d.w;
-                p.BeginPath(); p.MoveTo(d.a); p.QuadraticCurveTo(d.c, d.b); p.Stroke();
+                bool family = d.kind is TieKind.Partner or TieKind.Parent or TieKind.Child or TieKind.Sibling;
+                float w = family ? FamilyWidth : d.kind == TieKind.Shared ? SharedWidth : PlainWidth;
+                if (d.kind == TieKind.Rival)
+                {
+                    Dotted(p, d.a, d.c, d.b, underCol, w + 5f);
+                    Dotted(p, d.a, d.c, d.b, lineCol, w);
+                }
+                else
+                {
+                    Solid(p, d.a, d.c, d.b, underCol, w + 5f);
+                    Solid(p, d.a, d.c, d.b, lineCol, w);
+                    if (family) Solid(p, d.a, d.c, d.b, innerCol, HeartWidth);
+                }
                 // a dot at the far end, on the other person
-                p.fillColor = p.strokeColor;
-                p.BeginPath(); p.Arc(d.b, d.w + 3f, 0f, 360f); p.Fill();
+                p.fillColor = lineCol;
+                p.BeginPath(); p.Arc(d.b, w + 3f, 0f, 360f); p.Fill();
             }
+            foreach (var l in leaders) // #194: a label pushed off its person
+            {
+                void Line()
+                {
+                    p.BeginPath(); p.MoveTo(new Vector2(l.ax, l.ay));
+                    if (l.bends) p.LineTo(new Vector2(l.vx, l.vy));
+                    if (l.twice) p.LineTo(new Vector2(l.wx, l.wy));
+                    p.LineTo(new Vector2(l.bx, l.by)); p.Stroke();
+                }
+                p.strokeColor = underCol; p.lineWidth = LeaderWidth + 3f;
+                Line();
+                p.strokeColor = lineCol; p.lineWidth = LeaderWidth;
+                Line();
+            }
+        }
+
+        static void Solid(Painter2D p, Vector2 a, Vector2 c, Vector2 b, Color col, float w)
+        {
+            p.strokeColor = col;
+            p.lineWidth = w;
+            p.BeginPath(); p.MoveTo(a); p.QuadraticCurveTo(c, b); p.Stroke();
+        }
+
+        /// <summary>A painter has no dash, so the dots are walked along the curve.</summary>
+        static void Dotted(Painter2D p, Vector2 a, Vector2 c, Vector2 b, Color col, float w)
+        {
+            const int Steps = 64;
+            p.strokeColor = col;
+            p.lineWidth = w;
+            var prev = a;
+            float along = 0f, period = DotLength + DotGap;
+            p.BeginPath();
+            for (int i = 1; i <= Steps; i++)
+            {
+                float t = i / (float)Steps, u = 1f - t;
+                var at = u * u * a + 2f * u * t * c + t * t * b;
+                if (along % period < DotLength) { p.MoveTo(prev); p.LineTo(at); }
+                along += (at - prev).magnitude;
+                prev = at;
+            }
+            p.Stroke();
         }
 
         // ================================================================== building the UI
@@ -416,10 +812,18 @@ namespace AquariumCiv.View
             od.rootVisualElement.Add(overlayRoot);
             linesLayer = new VisualElement { name = "pc-lines", pickingMode = PickingMode.Ignore };
             linesLayer.AddToClassList("hud-fill");
+            linesLayer.AddToClassList("pc-lines");
             linesLayer.generateVisualContent += DrawLines;
+            linesLayer.RegisterCallback<CustomStyleResolvedEvent>(e =>
+            {
+                if (e.customStyle.TryGetValue(LineProp, out var line)) lineCol = line;
+                if (e.customStyle.TryGetValue(InnerProp, out var inner)) innerCol = inner;
+                if (e.customStyle.TryGetValue(UnderProp, out var under)) underCol = under;
+                linesLayer.MarkDirtyRepaint();
+            });
             overlayRoot.Add(linesLayer);
-            pinTag = Tag("pc-pin-tag", "pc-tag--pin", out pinTagText);
-            nameTag = Tag("pc-name-tag", "pc-tag--name", out nameTagText);
+            pinTag = Tag("pc-pin-tag", TagKind.Pin);
+            nameTag = Tag("pc-name-tag", TagKind.Name);
 
             cardGo = new GameObject("PersonCard") { hideFlags = HideFlags.DontSave };
             cardGo.transform.SetParent(transform, false);
@@ -428,52 +832,80 @@ namespace AquariumCiv.View
             cd.sortingOrder = 12; // over the HUD's bottom row
             cardRoot = new VisualElement { name = "person-card-root", pickingMode = PickingMode.Ignore };
             cardRoot.AddToClassList("hud-fill");
-            cardRoot.style.justifyContent = Justify.FlexEnd;
             cardRoot.style.display = DisplayStyle.None;
             cd.rootVisualElement.Add(cardRoot);
-            sheet = new VisualElement { name = "person-card" };
-            sheet.AddToClassList("sheet");
-            sheet.AddToClassList("pc-sheet");
-            sheet.style.maxHeight = Length.Percent(CardMaxShare * 100f);
+            sheet = new GlassSheet { name = "person-card" };
+            sheet.style.display = DisplayStyle.None;
             cardRoot.Add(sheet);
 
             var head = new VisualElement();
-            head.AddToClassList("sheet-head");
             head.AddToClassList("pc-head");
-            head.style.flexShrink = 0; // the scroll area gives way, never the name row
-            var names = new VisualElement();
-            names.style.flexShrink = 1; names.style.flexGrow = 1; names.style.flexBasis = 0; names.style.minWidth = 0; // wrap the line, never run under Pin
-            names.Add(title = Text("", "sheet-title"));
-            title.name = "person-card-name";
-            names.Add(subtitle = Text("", "pc-sub"));
-            subtitle.name = "person-card-sub";
-            head.Add(names);
-            pinButton = Btn("person-card-pin", "Pin", TogglePin, "pc-pin");
+            portrait = new GlassPortrait("") { name = "person-card-portrait" };
+            head.Add(portrait);
+            title = new Label { name = "person-card-name", pickingMode = PickingMode.Ignore };
+            title.AddToClassList("type-sheet");
+            title.AddToClassList("pc-name");
+            head.Add(title);
+            pinButton = new GlassButton("Pin", TogglePin, ButtonKind.Secondary, UiRole.None) { name = "person-card-pin", Compact = true };
             head.Add(pinButton);
-            head.Add(Btn("person-card-close", "Close", Close, "sheet-close"));
+            head.Add(new GlassButton("", Close, ButtonKind.Icon, UiRole.None) { name = "person-card-close", Icon = "close" });
             sheet.Add(head);
+            subtitle = new Label { name = "person-card-sub", pickingMode = PickingMode.Ignore };
+            subtitle.AddToClassList("type-sub");
+            subtitle.AddToClassList("pc-sub");
+            sheet.Add(subtitle);
 
-            body = new ScrollView(ScrollViewMode.Vertical) { name = "person-card-body" };
-            body.AddToClassList("pc-body");
-            body.verticalScrollerVisibility = ScrollerVisibility.Hidden;
-            body.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
-            body.contentContainer.style.width = Length.Percent(100); // lines wrap at the card's width, never run off it
-            sheet.Add(body);
+            tabs = new GlassTabs("About", "Recent", "Best") { name = "person-card-tabs" };
+            tabs.AddToClassList("pc-tabs");
+            tabs.Tab(0).name = "person-card-about";
+            tabs.Tab(1).name = "person-card-recent";
+            tabs.Tab(2).name = "person-card-best";
+            tabs.Changed += i => { Tab = (CardTab)i; if (Card != null) Build(Card); body.scrollOffset = Vector2.zero; };
+            sheet.Add(tabs);
+
+            var scroll = new GlassScroll { SnapToRows = true };
+            scroll.AddToClassList("pc-scroll");
+            body = scroll.View;
+            body.name = "person-card-body";
+            body.contentContainer.AddToClassList("pc-scroll-pad");
+            sheet.Add(scroll);
+            BuildCrowdUi();
+            BuildBuildingUi();
             ApplySafeArea();
         }
 
-        VisualElement Tag(string name, string cls, out Label text)
+        /// <summary>Board S34Acting: portrait, first name and Close in one row, the job under them, then what they're doing. As tall as
+        /// that takes, so the person stands clear of it.</summary>
+        void BuildCrowdUi()
         {
-            var t = new VisualElement { name = name, pickingMode = PickingMode.Ignore };
-            t.AddToClassList("pc-tag");
-            t.AddToClassList(cls);
+            crowdSheet = new GlassSheet(SheetHeight.Content) { name = "crowd-card" };
+            crowdSheet.AddToClassList("pc-crowd");
+            crowdSheet.style.display = DisplayStyle.None;
+            cardRoot.Add(crowdSheet);
+            var head = new VisualElement();
+            head.AddToClassList("pc-head");
+            crowdPortrait = new GlassPortrait("") { name = "crowd-card-portrait" };
+            head.Add(crowdPortrait);
+            crowdName = new Label { name = "crowd-card-name", pickingMode = PickingMode.Ignore };
+            crowdName.AddToClassList("type-sheet");
+            crowdName.AddToClassList("pc-name");
+            head.Add(crowdName);
+            head.Add(new GlassButton("", CloseCrowd, ButtonKind.Icon, UiRole.None) { name = "crowd-card-close", Icon = "close" });
+            crowdSheet.Add(head);
+            crowdJob = new Label { name = "crowd-card-job", pickingMode = PickingMode.Ignore };
+            crowdJob.AddToClassList("type-sub");
+            crowdJob.AddToClassList("pc-sub");
+            crowdSheet.Add(crowdJob);
+            crowdDoing = new Label { name = "crowd-card-doing", pickingMode = PickingMode.Ignore, enableRichText = true };
+            crowdDoing.AddToClassList("type-body");
+            crowdDoing.AddToClassList("pc-line");
+            crowdSheet.Add(crowdDoing);
+        }
+
+        GlassTag Tag(string name, TagKind kind)
+        {
+            var t = new GlassTag("", kind) { name = name, InWorld = true };
             t.style.display = DisplayStyle.None;
-            text = new Label { pickingMode = PickingMode.Ignore };
-            text.AddToClassList("pc-tag-text");
-            t.Add(text);
-            var point = new VisualElement { pickingMode = PickingMode.Ignore };
-            point.AddToClassList("pc-tag-point");
-            t.Add(point);
             overlayRoot.Add(t);
             return t;
         }
@@ -484,9 +916,11 @@ namespace AquariumCiv.View
             lastScreen = new Vector2Int(Screen.width, Screen.height);
             if (sheet == null) return;
             var i = GameUiPanel.SafeInsets(lastSafe, Screen.width, Screen.height);
-            sheet.style.paddingBottom = 32 + i.w;
-            sheet.style.paddingLeft = 44 + i.x;
-            sheet.style.paddingRight = 44 + i.z;
+            bool tight = GlassSheet.IsShort(Screen.width, Screen.height);
+            sheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
+            sheet.EnableInClassList("pc--short", tight);
+            crowdSheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
+            buildingSheet.SetInsets(i, tight ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
         }
 
         void Refresh(bool force)
@@ -518,119 +952,119 @@ namespace AquariumCiv.View
         {
             sig = Signature(c);
             title.text = c.fullName;
+            portrait.Person = c.name;
             var sub = new List<string>();
             if (!string.IsNullOrEmpty(c.roleLine)) sub.Add(Cap(c.roleLine));
             sub.Add(c.alive ? $"{c.age} years" : $"{c.bornYear}–{c.diedYear}");
             if (!string.IsNullOrEmpty(c.trait)) sub.Add(c.trait);
             subtitle.text = string.Join(" · ", sub);
             pinButton.text = c.pinned ? "Pinned" : "Pin";
-            pinButton.EnableInClassList("pc-pin--on", c.pinned);
+            pinButton.Marked("pin", c.pinned);
             pinButton.style.display = c.alive || c.pinned ? DisplayStyle.Flex : DisplayStyle.None;
-            pinButton.SetEnabled(c.alive || c.pinned);
+            tabs.Select((int)Tab, false);
 
             body.Clear();
-            var sim = Sim;
+            if (Tab == CardTab.About) BuildAbout(c);
+            else BuildStories(Tab == CardTab.Best ? c.bestStories : c.recentStories);
+        }
+
+        void BuildAbout(PersonCard c)
+        {
             if (c.memorial != null)
             {
                 var m = c.memorial;
-                var box = Section("person-card-memorial", "Remembered");
-                box.Add(Text($"Died in year {m.diedYear}, aged {m.ageAtDeath}{(m.diedInOffice ? ", still in office" : "")}.", "sheet-text"));
-                if (m.legendReasons.Count > 0) box.Add(Text("A legend of the box: " + string.Join(", ", m.legendReasons) + ".", "pc-note"));
+                var box = Section("person-card-memorial");
+                box.Add(Body($"Died in year {m.diedYear}, aged {m.ageAtDeath}{(m.diedInOffice ? ", still in office" : "")}."));
+                var note = new List<string>();
+                if (m.legendReasons.Count > 0) note.Add("A legend of the box: " + string.Join(", ", m.legendReasons) + ".");
                 if (m.rememberedBy.Count > 0) // a line, not chips: the family and friends rows below hold the chips
                 {
                     var names = m.rememberedBy.Select(t => t.otherName.Split(' ')[0]).ToList();
                     if (names.Distinct().Count() < names.Count) names = m.rememberedBy.Select(t => t.otherName).ToList(); // two Tildas: full names
                     string who = names.Count == 1 ? names[0] : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[names.Count - 1];
-                    box.Add(Text("Remembered by " + who + ".", "pc-note"));
+                    note.Add("Remembered by " + who + ".");
                 }
+                if (note.Count > 0) box.Add(Note(string.Join(" ", note)));
             }
             if (c.quote != null && !string.IsNullOrEmpty(c.quote.text))
             {
-                var q = Text($"“{c.quote.text}”", "pc-quote");
+                var q = Para($"“{c.quote.text}”", "type-quote", 14f, 1.3f);
                 q.name = "person-card-quote";
                 body.Add(q);
             }
-            if (c.wish != null && !string.IsNullOrEmpty(c.wishText))
-            {
-                var w = Section("person-card-wish", "Wishes for");
-                w.Add(Text(c.wishText, "sheet-text"));
-            }
-            if (c.role != null || c.terms.Count > 0)
-            {
-                var r = Section("person-card-roles", "Roles");
-                if (c.role != null)
-                    r.Add(Text(Cap(c.role) + $" since year {c.roleSinceYear}" + (c.termEndsYear > 0 ? $", next vote in year {c.termEndsYear}" : ""), "sheet-text"));
-                foreach (var t in c.terms.Where(x => x.toYear >= 0))
-                    r.Add(Text($"{Cap(t.role)}, years {t.fromYear}–{t.toYear}", "pc-note"));
-            }
+            if (c.wish != null && !string.IsNullOrEmpty(c.wishText)) Section("person-card-wish").Add(Body(c.wishText));
             // one chip per person, strongest tie first (a partner who was once a friend shows as the partner); rivals always
             // show, even in the family (the drama)
+            var ties = new VisualElement();
+            ties.AddToClassList("pc-ties");
+            body.Add(ties);
             var listed = new HashSet<int>();
             List<PersonTie> Fresh(IEnumerable<PersonTie> ts) => ts.Where(t => listed.Add(t.otherId)).ToList();
-            AddTies("person-card-family", "Family", Fresh(c.family));
-            AddTies("person-card-rivals", "Rivals", c.rivals);
+            AddTies(ties, "person-card-family", Fresh(c.family));
+            AddTies(ties, "person-card-rivals", c.rivals);
             foreach (var t in c.rivals) listed.Add(t.otherId);
-            AddTies("person-card-friends", "Friends", Fresh(c.friends.OrderBy(t => t.kind == TieKind.Friend ? 0 : 1)));
-            AddTies("person-card-mentors", "Teaching", Fresh(c.mentors));
-
-            var stories = Section("person-card-stories", "Stories");
-            var toggle = new VisualElement();
-            toggle.AddToClassList("pc-toggle");
-            var recent = Btn("person-card-recent", "Recent", () => { ShowingBest = false; Build(Card); }, "pc-tab");
-            var best = Btn("person-card-best", "Best", () => { ShowingBest = true; Build(Card); }, "pc-tab");
-            recent.EnableInClassList("pc-tab--on", !ShowingBest);
-            best.EnableInClassList("pc-tab--on", ShowingBest);
-            toggle.Add(recent); toggle.Add(best);
-            stories.Add(toggle);
-            var list = ShowingBest ? c.bestStories : c.recentStories;
-            if (list.Count == 0) stories.Add(Text("Nothing told about them yet.", "pc-note"));
-            int i = 0;
-            foreach (var st in list)
+            AddTies(ties, "person-card-friends", Fresh(c.friends.OrderBy(t => t.kind == TieKind.Friend ? 0 : 1)));
+            AddTies(ties, "person-card-mentors", Fresh(c.mentors));
+            if (c.role != null || c.terms.Count > 0)
             {
-                var row = new VisualElement { name = "person-card-story-" + i++ };
-                row.AddToClassList("pc-story");
-                var tx = Text($"Year {st.year}. {st.text}", "pc-story-text");
-                row.Add(tx);
-                int entryId = st.entryId;
-                var show = Btn("", "Show me", () => ShowMe(entryId), "pc-showme");
-                show.name = row.name + "-show";
-                row.Add(show);
-                stories.Add(row);
+                var r = Section("person-card-roles");
+                if (c.role != null)
+                    r.Add(Body(Cap(c.role) + $" since year {c.roleSinceYear}" + (c.termEndsYear > 0 ? $", next vote in year {c.termEndsYear}" : "")));
+                foreach (var t in c.terms.Where(x => x.toYear >= 0))
+                    r.Add(Note($"{Cap(t.role)}, years {t.fromYear}–{t.toYear}"));
             }
             if (c.relics.Count > 0)
             {
-                var rl = Section("person-card-relics", "Relics");
-                foreach (var r in c.relics) rl.Add(Text($"{r.name}. {r.label}", "sheet-text"));
+                var rl = Section("person-card-relics");
+                foreach (var r in c.relics) rl.Add(Body($"{r.name}. {r.label}"));
             }
+            // question 35: the sheet is never half empty, because a story follows
+            var story = c.bestStories.FirstOrDefault() ?? c.recentStories.FirstOrDefault();
+            if (story != null) StoryRow(Section("person-card-about-stories"), "person-card-about-story-0", story);
+            else Section("person-card-about-stories").Add(Note(NoStories));
         }
 
-        void AddTies(string name, string head, List<PersonTie> ties)
+        const string NoStories = "Nothing told about them yet.";
+
+        void BuildStories(List<PersonStory> list)
+        {
+            var stories = Section("person-card-stories");
+            if (list.Count == 0) stories.Add(Note(NoStories));
+            int i = 0;
+            foreach (var st in list) StoryRow(stories, "person-card-story-" + i++, st);
+        }
+
+        void StoryRow(VisualElement parent, string name, PersonStory st)
+        {
+            var row = new VisualElement { name = name };
+            row.AddToClassList("pc-story");
+            row.AddToClassList(GlassScroll.RowClass);
+            var tx = Para($"Year {st.year}. {st.text}", "type-sub", 14f, 1.3f);
+            tx.AddToClassList("pc-story-text");
+            row.Add(tx);
+            int entryId = st.entryId;
+            row.Add(new GlassButton("Show me", () => ShowMe(entryId), ButtonKind.Secondary, UiRole.ShowMe) { name = name + "-show", Compact = true });
+            parent.Add(row);
+        }
+
+        void AddTies(VisualElement parent, string name, List<PersonTie> ties)
         {
             if (ties.Count == 0) return;
-            var s = Section(name, head);
-            s.Add(Chips(ties));
-        }
-
-        VisualElement Chips(List<PersonTie> ties)
-        {
-            var wrap = new VisualElement();
+            var wrap = new VisualElement { name = name };
             wrap.AddToClassList("pc-chips");
             foreach (var t in ties)
             {
                 int id = t.otherId;
-                var b = Btn("person-card-tie-" + id, $"{t.otherName} · {t.label}", () => Open(id, true), "pc-chip");
-                b.EnableInClassList("pc-chip--dead", !t.otherAlive);
-                b.style.borderLeftColor = ColorOf(t.kind);
-                wrap.Add(b);
+                var chip = new GlassChip($"{t.otherName} · {t.label}", () => Open(id, true)) { name = "person-card-tie-" + id, Gone = !t.otherAlive };
+                chip.Face.AddToClassList(GlassScroll.RowClass); // what shows: the slot's clear edges may run past the view
+                wrap.Add(chip);
             }
-            return wrap;
+            parent.Add(wrap);
         }
 
-        VisualElement Section(string name, string head)
+        VisualElement Section(string name)
         {
             var s = new VisualElement { name = name };
-            s.AddToClassList("pc-section");
-            s.Add(Text(head, "pc-label"));
             body.Add(s);
             return s;
         }
@@ -647,18 +1081,17 @@ namespace AquariumCiv.View
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
-        static Label Text(string s, string cls)
-        {
-            var l = new Label(s);
-            l.AddToClassList(cls);
-            return l;
-        }
+        static Label Body(string s) => Para(s, "type-body", 15f, 1.35f);
+        static Label Note(string s) => Para(s, "type-note", 13f, 1.3f);
 
-        static Button Btn(string name, string label, System.Action onClick, params string[] classes)
+        /// <summary>A paragraph at its type's px line height (spec §1): the tag, because USS has no such property.</summary>
+        static Label Para(string s, string type, float pt, float ratio)
         {
-            var b = new Button(onClick) { name = name, text = label };
-            foreach (var c in classes) b.AddToClassList(c);
-            return b;
+            var l = new Label(GlassType.Lines(s, pt, ratio)) { pickingMode = PickingMode.Ignore, enableRichText = true };
+            l.AddToClassList(type);
+            l.AddToClassList("pc-line");
+            l.AddToClassList(GlassScroll.RowClass);
+            return l;
         }
 
         // ================================================================== debug (the debug panel, `script eval`)
@@ -667,6 +1100,28 @@ namespace AquariumCiv.View
             var v = Instance;
             if (v == null) return "no person card";
             return v.Open(notableId, true) ? "card: " + v.Card.fullName : "no notable #" + notableId;
+        }
+
+        /// <summary>Debug: the small card of the first crowd person on view (#148).</summary>
+        public static string DebugOpenCrowd()
+        {
+            var v = Instance;
+            var pv = PeopleView.Find();
+            if (v == null || pv == null) return "no person card";
+            pv.CrowdShown(v.shownCrowd);
+            return v.shownCrowd.Count > 0 && v.OpenCrowd(v.shownCrowd[0].crowdIndex, true) ? "crowd card: " + v.Crowd.name : "nobody in the crowd on view";
+        }
+
+        /// <summary>Selects a tab by hand, or by the debug panel.</summary>
+        public void ShowTab(CardTab tab) { if (IsOpen) tabs.Select((int)tab); }
+
+        /// <summary>Debug: the open card's next tab (About, Recent, Best).</summary>
+        public static string DebugNextTab()
+        {
+            var v = Instance;
+            if (v == null || !v.IsOpen) return "open a card first";
+            v.ShowTab((CardTab)(((int)v.Tab + 1) % 3));
+            return "card tab: " + v.Tab;
         }
 
         /// <summary>Debug: open the first living notable's card, then camera mode: the camera follows their doll (#70).</summary>
@@ -692,7 +1147,7 @@ namespace AquariumCiv.View
         {
             var v = Instance; var sim = Sim;
             if (v == null || sim == null) return "person card: not running";
-            return $"card: {(v.IsOpen ? v.Card?.fullName : "closed")} · lines {v.LinesDrawn} · pin {(sim.Pinned != null ? sim.Pinned.FullName : "none")}{(v.PinTagShown ? " (tag shown)" : "")}";
+            return $"card: {(v.IsOpen ? v.Card?.fullName : v.CrowdOpen ? v.Crowd.name + " (crowd)" : "closed")} · lines {v.LinesDrawn} · pin {(sim.Pinned != null ? sim.Pinned.FullName : "none")}{(v.PinTagShown ? " (tag shown)" : "")}";
         }
     }
 }

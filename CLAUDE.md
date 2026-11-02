@@ -4,7 +4,7 @@ Mobile (iOS/Android) idle civilization builder: a tiny 3D civ in a glass terrari
 Design and research docs: `docs/` (start at `docs/README.md`; decisions in `docs/decisions.md`).
 
 ## Layout
-- `F:\GameDev` = git root (private GitHub repo `aquarium-civ`, Git LFS for binaries)
+- `F:\GameDev` = git root (public GitHub repo `aquarium-civ`, Git LFS for binaries)
 - `AquariumCiv/` = Unity project, **Unity 6000.3.27f1 (6.3 LTS)**, URP, `com.unity.pipeline` installed
 - `docs/` = research, decisions, design
 

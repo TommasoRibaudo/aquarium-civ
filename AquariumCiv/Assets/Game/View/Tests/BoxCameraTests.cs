@@ -31,8 +31,8 @@ namespace AquariumCiv.View.Tests
         {
             Assert.AreEqual(24f, BoxCameraMath.PitchFloor(1f), 1e-4f);
             Assert.AreEqual(24f, BoxCameraMath.PitchFloor(1.3f), 1e-4f, "zoomed out past the full box keeps the 24 degree floor");
-            Assert.AreEqual(14f, BoxCameraMath.PitchFloor(0.3f), 1e-4f);
-            Assert.AreEqual(19f, BoxCameraMath.PitchFloor(0.65f), 1e-3f);
+            Assert.AreEqual(14f, BoxCameraMath.PitchFloor(AquariumCiv.Lighting.CameraReach.MinZoom), 1e-4f);
+            Assert.AreEqual(19f, BoxCameraMath.PitchFloor(0.6f), 1e-3f);
             Assert.AreEqual(68f, BoxCameraMath.PitchCeiling);
         }
 
@@ -103,17 +103,68 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
-        public void PanBounds_ByZoom_FullBoxStaysCentred()
+        public void PanBounds_ByZoom_ALittleAtTheFullBoxAndNeverLosesIt()
         {
-            Assert.AreEqual(Vector2.zero, BoxCameraMath.PanBounds(1f), "no pan at the full box");
-            Assert.AreEqual(Vector2.zero, BoxCameraMath.PanBounds(1.3f));
-            var closest = BoxCameraMath.PanBounds(0.3f);
-            Assert.AreEqual(Land.HX - 0.3f, closest.x, 1e-4f);
-            Assert.AreEqual(Land.HZ - 0.3f, closest.y, 1e-4f);
-            Assert.AreEqual(0.5f, BoxCameraMath.PanK(0.65f), 1e-4f);
-            var mid = BoxCameraMath.PanBounds(0.65f);
-            Assert.AreEqual((Land.HX - 0.3f) * 0.5f, mid.x, 1e-4f);
+            var full = BoxCameraMath.PanBounds(1f);
+            Assert.Greater(full.x, 0.2f, "#146: a little pan at the full box");
+            Assert.Less(full.x, 0.5f, "only a little");
+            Assert.Less(BoxCameraMath.PanBounds(1.3f).x, full.x, "less past it");
+            var closest = BoxCameraMath.PanBounds(AquariumCiv.Lighting.CameraReach.MinZoom);
+            Assert.Greater(closest.x, Land.HX - 0.9f, "the land's edge stays in reach of the view");
+            Assert.Less(closest.x, Land.HX - 0.3f, "tester run 10: the focus stays on the land, the wall was 80 % of the view");
+            Assert.Less(closest.y, Land.HZ - 0.3f);
+            Assert.AreEqual(1f, BoxCameraMath.PanK(0.5f), 1e-4f, "fully open by 0.5");
             Assert.Greater(BoxCameraMath.PanBounds(0.5f).x, BoxCameraMath.PanBounds(0.8f).x, "closer = more room to pan");
+        }
+
+        [Test]
+        public void Pan_TheFocusNeverLeavesTheLand_AtAnyZoomOrAspect()
+        {
+            for (float z = AquariumCiv.Lighting.CameraReach.MinZoom; z <= 1.3f; z += 0.02f)
+            {
+                var b = BoxCameraMath.PanBounds(z);
+                Assert.Less(b.x, Land.HX, "x at zoom " + z);
+                Assert.Less(b.y, Land.HZ, "z at zoom " + z);
+            }
+            Assert.Less(BoxCameraMath.PanHardStop.x, Land.HX, "the rubber band stops at the edge: this is what BoxCamera clamps to");
+            Assert.Less(BoxCameraMath.PanHardStop.y, Land.HZ);
+        }
+
+        /// <summary>The user saw "only a piece of the tank": for every pose, the moments' included, nothing of the box or the shelf row on screen is in front of the near plane.</summary>
+        [Test]
+        public void Near_NeverCutsTheBoxOrTheShelf_AtAnyPose()
+        {
+            float tan = Mathf.Tan(11f * Mathf.Deg2Rad);
+            foreach (float dist in new[] { 8f, 12f, 16.5f, 24f, 41f, 53f, 90f })
+                foreach (float yaw in new[] { -55f, -30f, 0f, 28f, 55f })
+                    foreach (float pitch in new[] { 5f, 14f, 24f, 34f, 50f, 68f })
+                        foreach (var at in new[] { new Vector3(0f, 1f, 0f), new Vector3(2.9f, 1f, 2.1f), new Vector3(-2.9f, 1f, -2.1f), new Vector3(-7.6f, 1f, 0.6f), new Vector3(7.6f, 1f, 0f) })
+                        {
+                            var rot = Quaternion.Euler(pitch, yaw, 0f);
+                            Vector3 fwd = rot * Vector3.forward, up = rot * Vector3.up, pos = at - fwd * dist;
+                            float near = BoxCameraMath.FitNear(pos, fwd, up, tan, 3f);
+                            Assert.GreaterOrEqual(near, BoxCameraMath.NearestPlane);
+                            for (float x = -16f; x <= 16f; x += 0.8f)
+                                for (float y = -0.3f; y <= 3f; y += 0.55f)
+                                    for (float z = -4.2f; z <= 3.6f; z += 0.65f)
+                                    {
+                                        var p = new Vector3(x, y, z) - pos;
+                                        float depth = Vector3.Dot(p, fwd);
+                                        if (depth <= BoxCameraMath.NearestPlane) continue; // the lens itself among the boxes: no plane helps there
+                                        float vy = Vector3.Dot(p, up) / depth;
+                                        if (Mathf.Abs(vy) > tan) continue; // above or below the screen
+                                        Assert.GreaterOrEqual(depth, near - 1e-3f, $"({x}, {y}, {z}) from dist {dist} yaw {yaw} pitch {pitch} focus {at}");
+                                    }
+                        }
+        }
+
+        [Test]
+        public void Near_StaysTightAroundTheBoxAtTheHomeView()
+        {
+            var rot = Quaternion.Euler(34f, 28f, 0f);
+            Vector3 fwd = rot * Vector3.forward, pos = new Vector3(0f, 1f, 0f) - fwd * 41f;
+            float near = BoxCameraMath.FitNear(pos, fwd, rot * Vector3.up, Mathf.Tan(11f * Mathf.Deg2Rad));
+            Assert.Greater(near, 32f, "#193: the shadow map isn't spread over the air in front of the box");
         }
 
         [Test]

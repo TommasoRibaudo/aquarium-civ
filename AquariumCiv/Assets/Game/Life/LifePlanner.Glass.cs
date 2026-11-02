@@ -65,19 +65,19 @@ namespace AquariumCiv.Life
         /// walking pace come, at most 6. <see cref="React"/> starts one by itself (a wipe in stage 1, a return later), at most
         /// once a view day; <paramref name="force"/> (debug) ignores that. Returns how many come.
         /// </summary>
-        public int GatherAtGlass(ViewTime at, bool force = false)
+        public int GatherAtGlass(ViewTime at, bool force = false, int most = 0)
         {
             Sync();
             EnsureDay(at.day);
             if (!force && gatheredDay == at.day) return 0;
-            float end = EndAfter(at, GatheringSeconds);
+            float end = EndAfter(at, most > 0 ? DebugGatheringSeconds : GatheringSeconds); // a bigger group comes from further
             var st = new Staging { glass = GlassPlace };
             var glass = GlassPlace;
             var cands = new List<(Person p, float len)>();
             foreach (var p in people)
             {
                 if (p.stage == LifeStage.Baby) continue;
-                if (belief >= 2 && p.stage != LifeStage.Kid) continue; // later stages: the kids run to look for you
+                if (belief >= 2 && p.stage != LifeStage.Kid && most <= 0) continue; // later stages: the kids run to look for you
                 if (DayOf(p)[Find(DayOf(p), at.hour)].kind == ActivityKind.Sleep) continue;
                 var from = StopPlace(p, at.hour);
                 float len = WalkLen(from, glass);
@@ -85,7 +85,7 @@ namespace AquariumCiv.Life
                 cands.Add((p, len));
             }
             cands.Sort((a, b) => a.len != b.len ? a.len.CompareTo(b.len) : a.p.key.CompareTo(b.p.key));
-            int max = belief >= 2 ? 3 : MaxAtGlass;
+            int max = most > 0 ? most : belief >= 2 ? 3 : MaxAtGlass; // most: the debug panel's bigger group
             for (int i = 0; i < cands.Count && st.segs.Count < max; i++)
             {
                 var p = cands[i].p;
@@ -270,7 +270,7 @@ namespace AquariumCiv.Life
 
         /// <summary>Never more than this many at the glass, so work goes on (§3).</summary>
         public const int MaxAtGlass = 6;
-        const float GatheringSeconds = 18f;
+        const float GatheringSeconds = 18f, DebugGatheringSeconds = 44f;
 
         int belief = 1;
         bool beliefLater;
@@ -401,6 +401,16 @@ namespace AquariumCiv.Life
             public readonly List<int> order = new List<int>();
 
             public float T(float f) => start + f * (end - start);
+
+            /// <summary>#142: someone in it comes over, rather than looking from where they stand.</summary>
+            public bool HasWalker
+            {
+                get
+                {
+                    foreach (int k in order) if (roles[k] != RelicCast.Onlookers) return true;
+                    return false;
+                }
+            }
 
             public RelicMomentInfo Info(long day)
             {

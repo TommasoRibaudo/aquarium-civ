@@ -429,6 +429,26 @@ namespace AquariumCiv.View.TimeLapseScreen.Tests
             Assert.IsNull(m.Caption);
         }
 
+        /// <summary>captures/README: "Village" over "Year 1 · Camp". The card is always the era at the playhead.</summary>
+        [Test]
+        public void ATappedPinOrAPauseTakesTheEraCardDown()
+        {
+            var m = Real();
+            var bands = m.Lapse.EraBands();
+            m.Clock.Seek(bands[1].startYear - 0.1f);
+            m.Play();
+            m.Tick(0.1f);
+            Assert.IsNotNull(m.EraCard);
+            m.Pause();
+            Assert.IsNull(m.EraCard, "a pause");
+            m.Clock.Seek(bands[1].startYear - 0.1f);
+            m.Play();
+            m.Tick(0.1f);
+            Assert.IsNotNull(m.EraCard);
+            m.TapPin(m.Layout.Groups.First(), 0);
+            Assert.IsNull(m.EraCard, "a pin somewhere else");
+        }
+
         [Test]
         public void CrossingAnEraStartShowsTheEraCardForAboutASecond()
         {
@@ -456,8 +476,8 @@ namespace AquariumCiv.View.TimeLapseScreen.Tests
             Assert.AreEqual("Reef", s.boxName);
             Assert.AreEqual(1, s.year);
             Assert.AreEqual("Camp", s.eraName);
-            Assert.AreEqual("Reef · Year 1 · Camp", s.label);
-            Assert.AreEqual("aquarium-year-1-camp.png", s.fileName);
+            Assert.AreEqual("Reef · Year 1", s.label);
+            Assert.AreEqual("Reef-year-1.png", s.fileName);
             Assert.AreEqual(1, Events(log).Count(e => e.name == Ev.Snapshot));
         }
 
@@ -466,7 +486,8 @@ namespace AquariumCiv.View.TimeLapseScreen.Tests
         {
             var m = Real(name: "");
             m.Clock.Seek(0f);
-            Assert.AreEqual("Year 1 · Camp", m.TakeSnapshot().label);
+            Assert.AreEqual("Year 1", m.TakeSnapshot().label);
+            Assert.AreEqual("aquarium-year-1.png", m.TakeSnapshot().fileName);
         }
 
         // ---------- telemetry ----------

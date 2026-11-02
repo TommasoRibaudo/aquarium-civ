@@ -31,6 +31,8 @@ namespace AquariumCiv.Life
         // the relic moments (§1): staged by RelicMoments
         TurnLens, LookThroughLens, Queue, Freeze, StepBack, Watch, Poke, Taste, Deliver, SetUp, Bow, CopyPose, PickUp, HoldUp,
         Give, PutOn, LopsidedDance,
+        /// <summary>#200: at home with the door shut, awake: nothing to draw. Appended so the older values keep their numbers.</summary>
+        Indoors,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -45,6 +47,8 @@ namespace AquariumCiv.Life
         // the relics (#92): a chunk of the Sky Crumb, the Festival Mask, the Keeper Doll, the Left Sandal, the Lens's tripod
         // (carried folded) and the Lens itself, the scholar's slate
         Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate,
+        /// <summary>#152: the bucket on the way to the water; <see cref="Buckets"/> is the full one, from the draw on.</summary>
+        EmptyBucket,
     }
 
     /// <summary>Where the prop sits on a peg doll (§9 "Carry").</summary>
@@ -65,6 +69,8 @@ namespace AquariumCiv.Life
         Glass, Relic,
         /// <summary>The bakery (#112); a building place like the rest. Appended last so the saved ints stay.</summary>
         Bakery,
+        /// <summary>#150: the camp's stash by the fire (land; index -1 = where a carrier stands, 1 = the pile, see <see cref="CampStash"/>).</summary>
+        Stash,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -127,7 +133,7 @@ namespace AquariumCiv.Life
     public enum TripType { None, HomeToGreen, HomeToWork, HomeToMarket, Carry, Errand, Home }
 
     /// <summary>What the Keeper did (life-in-the-box §8; decisions 2026-10-29: hold a finger and tap the glass).</summary>
-    public enum KeeperGesture { Return, Wipe, FullClean, FlickTrash, Prune, Rain, Shape, HoldFinger, TapGlass, TapPerson, Glance }
+    public enum KeeperGesture { Return, Wipe, FullClean, FlickTrash, Prune, Rain, Shape, HoldFinger, TapGlass, TapPerson, Glance, WishAnswered }
 
     /// <summary>Story scenes (§6) and the era's gathering. Started from this month's chronicle, by "Show me" (an echo), or by
     /// the debug panel.</summary>
@@ -139,6 +145,8 @@ namespace AquariumCiv.Life
         Relic, GlassGathering, TapBack,
         // #85: the people's answer to a Keeper's shaping (LifePlanner.StartShapingAnswer)
         ShapingAnswer,
+        // #142: the people's first reaction to a gift (LifePlanner.StartShapingReaction)
+        ShapingReaction,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>
@@ -178,6 +186,14 @@ namespace AquariumCiv.Life
         public bool facesGlass;
         /// <summary>#92: how many times (a scholar's <see cref="ActivityKind.TapBack"/> knocks as often as the Keeper tapped).</summary>
         public int count;
+        /// <summary>#192: the baby this parent has on them now (None = nobody). Babies are not walkers: the view draws the
+        /// baby on the carrier (<see cref="carryOnBack"/>: on their back, else in their arms).</summary>
+        public PersonRef carrying;
+        public bool carryOnBack;
+        /// <summary>#197: a run-in on the way (a chat, a bicker, a wave): stopped on the route where PositionAt says, not at the place.</summary>
+        public bool enRoute;
+        /// <summary>#192: on a baby, who has them now (None = at home, out of sight).</summary>
+        public PersonRef carriedBy;
 
         public PropSlot PropSlot => ActivityInfo.SlotOf(prop, kind);
         public ActivityGroup Group => ActivityInfo.GroupOf(kind);
@@ -216,7 +232,7 @@ namespace AquariumCiv.Life
                 case ActivityKind.LopsidedDance:
                     return ActivityGroup.Social;
                 case ActivityKind.Sleep: case ActivityKind.Nap: case ActivityKind.SitOut: case ActivityKind.Stretch:
-                case ActivityKind.Eat: case ActivityKind.Toddle:
+                case ActivityKind.Eat: case ActivityKind.Toddle: case ActivityKind.Indoors:
                     return ActivityGroup.Rest;
                 case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;
@@ -267,7 +283,7 @@ namespace AquariumCiv.Life
             return p switch
             {
                 Prop.Sheaf or Prop.Loaves or Prop.Pots => carrying ? PropSlot.Head : PropSlot.Hand,
-                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
+                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.EmptyBucket or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
                 Prop.Mask => PropSlot.Head,
                 Prop.Wool or Prop.Cloth or Prop.Goods => carrying ? PropSlot.Back : PropSlot.Hand,
                 Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,

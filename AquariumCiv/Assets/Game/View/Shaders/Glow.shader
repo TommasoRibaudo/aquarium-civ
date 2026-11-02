@@ -10,6 +10,9 @@
 //   6   a spark (#65): rises fast and slows, stretched along its motion, cools from gold to red; UV2 = (phase, period)
 //   7   a fire's warm wash (#65): a disc pulled TOWARDS the camera, so it lands on the people and logs near the fire; UV2.y
 //       = its height above the ground (fades there), stronger at night
+//   8   a lamp's pool (#113): a small grid laid on the ground (POSITION is where it stands), on with its lamp (UV2.x = the lamp's
+//       phase), UV2.y its own strength; size and strength follow the look (_AC_LampParams.y, .w: 0 while no look drives the
+//       light, so the pools are gone)
 // Kind 4's UV2.y is an extra strength (0 = plain): full at night, 40 % by day.
 // Premultiplied blend: the glows return alpha 0, so they stay purely additive; flames and sparks return some alpha, so
 // they hold up against a bright day.
@@ -36,6 +39,7 @@ Shader "AquariumCiv/View/Glow"
         _SparkOpacity ("Spark opacity", Range(0, 1)) = 0.8
         _SparkRise ("Spark rise (u)", Float) = 0.5
         _WashIntensity ("Warm wash intensity", Float) = 0.1
+        _LampPool ("Lamp pool alpha at full lamp level", Float) = 0.35
     }
     SubShader
     {
@@ -56,10 +60,11 @@ Shader "AquariumCiv/View/Glow"
             CBUFFER_START(UnityPerMaterial)
                 half _Intensity, _Breath, _HaloIntensity, _HaloHole, _HaloCore, _PoolIntensity, _EmberIntensity;
                 half4 _FlameCore, _FlameMid, _FlameEdge;
-                half _FlameBoost, _FlameOpacity, _FlameSoft, _SparkIntensity, _SparkOpacity, _WashIntensity;
+                half _FlameBoost, _FlameOpacity, _FlameSoft, _SparkIntensity, _SparkOpacity, _WashIntensity, _LampPool;
                 float _SparkRise;
             CBUFFER_END
             float _AC_LampLevel;
+            float4 _AC_LampParams;
 
             struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; float2 corner : TEXCOORD0; float2 data : TEXCOORD1; float2 extra : TEXCOORD2; };
             struct Varyings { float4 positionCS : SV_POSITION; float2 corner : TEXCOORD0; half4 color : COLOR; half kind : TEXCOORD1; half above : TEXCOORD2; half3 flame : TEXCOORD3; };
@@ -87,11 +92,12 @@ Shader "AquariumCiv/View/Glow"
                 float kind = v.data.y;
                 float strength = 1.0;
                 float opaque = 0.0;
+                float2 corner = v.corner;
                 half3 tint = v.color.rgb;
                 float3 posWS;
                 o.above = 1;
                 o.flame = half3(0, 0, 0);
-                o.kind = kind < 0.5 ? 0 : kind < 2.0 ? 1 : kind < 3.5 ? 3 : kind < 4.5 ? 4 : kind < 5.5 ? 5 : kind < 6.5 ? 6 : 7;
+                o.kind = kind < 0.5 ? 0 : kind < 2.0 ? 1 : kind < 3.5 ? 3 : kind < 4.5 ? 4 : kind < 5.5 ? 5 : kind < 6.5 ? 6 : kind < 7.5 ? 7 : 8;
                 if (o.kind == 5)
                 {
                     // Billboard flame: stands on its foot, leans a little to the camera's up so a steep view doesn't flatten it.
@@ -119,6 +125,14 @@ Shader "AquariumCiv/View/Glow"
                     strength = _SparkIntensity;
                     tint *= lerp(half3(1.2, 0.8, 0.4), half3(1.0, 0.3, 0.15), (half)u);
                     opaque = _SparkOpacity;
+                }
+                else if (o.kind == 8)
+                {
+                    // A lamp's pool: comes on with its lamp, at the same threshold, without its sputter: big things must not strobe.
+                    float x = saturate((_AC_LampLevel - (0.12 + v.extra.x * 0.6)) / 0.14);
+                    strength = _LampPool * v.extra.y * _AC_LampParams.y * x;
+                    o.positionCS = TransformWorldToHClip(centreWS);
+                    corner = v.corner / max(_AC_LampParams.w, 0.01);
                 }
                 else if (o.kind == 4)
                 {
@@ -171,14 +185,14 @@ Shader "AquariumCiv/View/Glow"
                         float t0 = 0.12 + phase * 0.6;
                         float x = saturate((_AC_LampLevel - t0) / 0.14);
                         float n = Hash11(floor(_Time.y * 13.0) + phase * 917.0);
-                        strength = _Intensity * ((x > 0.0 && x < 1.0) ? step(1.0 - x * x, n) * x : x);
+                        strength = _Intensity * ((x > 0.0 && x < 1.0 && _AC_LampParams.z < 0.5) ? step(1.0 - x * x, n) * x : x);
                         // Pull the quad a little towards the camera so it isn't cut by the ground it sits on.
                         centreVS.z += radius * 0.6;
                     }
                     centreVS.xy += v.corner * radius;
                     o.positionCS = TransformWViewToHClip(centreVS);
                 }
-                o.corner = v.corner;
+                o.corner = corner;
                 o.color = half4(tint * strength, opaque);
                 return o;
             }

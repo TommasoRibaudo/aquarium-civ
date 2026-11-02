@@ -55,7 +55,11 @@ safe area) opens a sheet: kind (bug / confusing / idea / feel / praise), text, o
 Issues get `feedback`, `fb:<kind>`, `proto:slice`, with the box's key numbers, full device info and the last 150 game-log lines attached.
 Notes go to `persistentDataPath/feedback_outbox` first and leave it only after GitHub accepts them (offline, no token or a kill mid-send: sent on a
 later launch or resume). The same `FeedbackToken.txt` is used.
-- **Screenshot hosting:** committed to the `feedback-assets` branch via the Contents API and linked from the issue. That needs the token to have
-  **Contents: read and write** and the branch to exist; if refused, the small JPEG is embedded in the issue as base64 instead.
+- **Screenshot (#153):** the sheet leaves the picture; the HUD and the bubbles stay in it. It goes in the issue itself, base64 in a folded block
+  (decode to view: `base64 -d > shot.jpg`). `ScreenShot.Jpg` steps the size and quality down until it's within 40,000 base64 characters; a note with long logs
+  drops log lines first and shrinks the picture further, so the body stays under GitHub's 65,536. There is no upload: the token keeps **Issues** only, because it
+  ships in the build, and the `feedback-assets` branch was never needed.
+- **Duplicates (#155, #171):** each note carries `<!-- note-id ... -->`. A `.sending` file beside it marks a send under way; at the next flush a note with that
+  mark is looked for in the latest 30 feedback issues before it goes again, and if GitHub can't say, it waits.
 - Debug panel: "Send test feedback". The Settings page of the HUD shell (#36) should call `FeedbackUI.Instance.Open()`.
 - Before any public build, replace the shipped token with a relay (see Security trade-off).

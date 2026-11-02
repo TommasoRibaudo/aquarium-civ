@@ -37,7 +37,11 @@ namespace AquariumCiv.View.Shaping
         public const float GrazeRadius = 0.45f, ShoalRadius = 0.5f, GrazeCycle = 14f, GrazeShare = 0.65f, SwimCycle = 8f;
         public const int GrazeSpots = 5;
         /// <summary>How far an animal stands from the herd's focus (deer) or swims round the shoal's centre (fish).</summary>
-        public const float HerdSpread = 0.1f, ShoalSpread = 0.11f;
+        /// <summary>#151: <see cref="HerdSpread"/> is the farthest any grazer stands from the herd's focus (the layout's reach, with a
+        /// little to spare), so a spot is kept that far from the water; <see cref="HerdSpacing"/> is the least gap between two
+        /// of them. The herd was five deer inside 0.1 u of each other on a 6 x 4.4 box.</summary>
+        public const float HerdSpread = 0.42f, ShoalSpread = 0.11f;
+        public static float HerdSpacing(HerdSpecies s) => s switch { HerdSpecies.Deer => 0.22f, HerdSpecies.Goat => 0.19f, HerdSpecies.Sheep => 0.16f, _ => 0.1f };
         /// <summary>Each fish swims this many seconds ahead of the next along the swimming spots, so the shoal strings out
         /// across the pond instead of a tight ball (user 2026-10-30).</summary>
         public const float ShoalLagSeconds = 0.9f, ShoalFanSeconds = 2.5f;
@@ -48,6 +52,9 @@ namespace AquariumCiv.View.Shaping
 
         // the take-back
         public const float LeaveSeconds = 1.2f, HerdLeaveSeconds = 1.6f;
+
+        /// <summary>The Take back chip goes this many real seconds after the placing (#149), fading over the last <see cref="ChipFadeSeconds"/>.</summary>
+        public const float ChipSeconds = 20f, ChipFadeSeconds = 4f;
 
         // the answer
         public const float HighlightIn = 0.4f, HighlightHold = 6f, HighlightOut = 1f;
@@ -109,6 +116,38 @@ namespace AquariumCiv.View.Shaping
                 case SimCore.NudgeKind.Herd: f.HerdSpots(map); break;
             }
             return f;
+        }
+
+        /// <summary>How wide the tool's mark on the ground is drawn while it's in hand (box units).</summary>
+        public static float PreviewRadius(string kind) => kind switch
+        {
+            SimCore.NudgeKind.Rain => ShapingTuning.RainCellRadius,
+            SimCore.NudgeKind.Grove => ShapingTuning.GroveRadius,
+            SimCore.NudgeKind.Herd => ShapingTuning.GrazeRadius,
+            _ => 0.25f,
+        };
+
+        /// <summary>Why this ground won't take the tool, in the player's words (question 16), or empty when it will. Only what the gift
+        /// itself would waste: the charge and cap reasons are the sim's. No map, no opinion.</summary>
+        public static string GroundReason(SiteMap map, string kind, float x, float z)
+        {
+            if (map == null) return "";
+            int own = SiteMap.CellAt(x, z);
+            bool wet = own >= 0 && map.Water(own);
+            switch (kind)
+            {
+                case SimCore.NudgeKind.Rain:
+                    foreach (int c in Disc(x, z, ShapingTuning.RainCellRadius)) if (!map.Water(c)) return "";
+                    return "That's all water. Try over the land";
+                case SimCore.NudgeKind.Grove:
+                    if (wet) return "Trees won't root in the water";
+                    foreach (int c in Disc(x, z, ShapingTuning.GroveRadius)) if (!map.Water(c) && map.lot[c] == 0) return "";
+                    return "No room for trees here";
+                case SimCore.NudgeKind.Channel:
+                    return wet ? "A channel needs dry land to run through" : "";
+                default:
+                    return "";
+            }
         }
 
         void RainCells(SiteMap map)

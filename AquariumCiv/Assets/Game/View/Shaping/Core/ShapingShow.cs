@@ -31,7 +31,7 @@ namespace AquariumCiv.View.Shaping
             public int buildingId = -1;
             /// <summary>Answered, waiting for its turn to be shown.</summary>
             public bool answerQueued;
-            /// <summary>The people near it still have to react (placed since the last sync).</summary>
+            /// <summary>The people still have to react to it (#142): placed since the last sync, and nobody has been up to see it yet.</summary>
             public bool react;
             /// <summary>Its answer moment in the world (the planner's), when one was staged.</summary>
             public RelicMomentInfo moment;
@@ -56,8 +56,6 @@ namespace AquariumCiv.View.Shaping
         public static bool ShowHour(float hour) => hour >= LifeClock.WorkStart && hour < LifeClock.Night;
         /// <summary>Real seconds between two queued answer shows.</summary>
         public const float AnswerGap = 1.5f;
-        /// <summary>Box units round a new shaping within which the people react.</summary>
-        public const float ReactRadius = 1.2f;
 
         /// <summary>The shapings on screen, in placing order.</summary>
         public IReadOnlyList<Entry> Entries => entries;
@@ -110,20 +108,31 @@ namespace AquariumCiv.View.Shaping
             return true;
         }
 
-        /// <summary>The "Take back" chip for a shaping (research 10 "Undo"): shown while the people haven't used it.</summary>
+        /// <summary>The "Take back" chip for a shaping: shown for <see cref="ShapingTuning.ChipSeconds"/> after the placing (#149), while the
+        /// people haven't used it. The tray's list has no timer. A gift loaded from a save was placed long ago, so it has no chip.</summary>
         public TakeBackChip ChipFor(SimCore s, int nudgeId)
         {
             var e = Find(nudgeId);
-            if (e == null || e.leavingAt >= 0f || !s.CanTakeBack(nudgeId)) return new TakeBackChip { nudgeId = nudgeId };
-            return new TakeBackChip { visible = true, nudgeId = nudgeId, x = e.footprint.x, z = e.footprint.z };
+            float left = e != null ? T.ChipSeconds - (now - e.seenAt) : 0f;
+            if (e == null || e.leavingAt >= 0f || left <= 0f || !s.CanTakeBack(nudgeId)) return new TakeBackChip { nudgeId = nudgeId };
+            return new TakeBackChip { visible = true, nudgeId = nudgeId, x = e.footprint.x, z = e.footprint.z, alpha = Math.Min(1f, left / T.ChipFadeSeconds) };
+        }
+
+        /// <summary>Debug: the chip's timer runs out in this many seconds. False with no such gift.</summary>
+        public bool DebugChipLeft(int nudgeId, float seconds)
+        {
+            var e = Find(nudgeId);
+            if (e == null) return false;
+            e.seenAt = now - T.ChipSeconds + seconds;
+            return true;
         }
 
         // ================================================================== every frame
 
         /// <summary>
         /// Catch up with the sim. <paramref name="realNow"/> is the view's real clock in seconds; <paramref name="view"/> the
-        /// view time (its day is the sim month). With a <paramref name="planner"/>, a new shaping makes the people near it
-        /// react (<see cref="LifePlanner.ReactAt"/>) and an answer is staged in the world (<see cref="LifePlanner.StartShapingAnswer"/>).
+        /// view time (its day is the sim month). With a <paramref name="planner"/>, the people react to a new shaping as soon as
+        /// someone is up (<see cref="LifePlanner.StartShapingReaction"/>) and an answer is staged in the world (<see cref="LifePlanner.StartShapingAnswer"/>).
         /// Fills <paramref name="events"/> (cleared first) with what happened: the view plays each event's cue.
         /// </summary>
         public void Sync(SimCore s, float realNow, ViewTime view, LifePlanner planner = null, List<ShapingEvent> events = null)
@@ -142,9 +151,10 @@ namespace AquariumCiv.View.Shaping
                 if (e == null) e = Track(s, n, first);
                 if (e.react)
                 {
-                    // The people near it look (a rain: hands out, kids splash; a shaping: they point).
-                    e.react = false;
-                    planner?.ReactAt(n.kind == SimCore.NudgeKind.Rain ? KeeperGesture.Rain : KeeperGesture.Shape, view, n.x, n.z, ReactRadius);
+                    // Someone up looks and walks over; asked again every frame while everyone sleeps (nobody is woken for it).
+                    // Not ReactAt as well: a person in that reaction counts as busy, and nobody would be free to walk over.
+                    if (n.credited || planner == null) e.react = false;
+                    else if (planner.StartShapingReaction(n.id, view) != null) e.react = false;
                 }
                 if (n.credited && e.answerMonth < 0)
                 {

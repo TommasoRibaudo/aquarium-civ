@@ -85,8 +85,16 @@ namespace AquariumCiv.View.ShowMe.Tests
             var got = Play(wb);
             foreach (var (t, b) in got) TestContext.WriteLine($"{t,5}s {b}");
             Assert.IsNotEmpty(got, "the people say something");
-            Assert.AreEqual(got.Count, got.Select(x => x.b.key).Distinct().Count(), "never the same line twice");
-            Assert.AreEqual(got.Count, got.Select(x => x.b.text).Distinct().Count(), "never the same words twice");
+            // What the town wants (#181) describes how things stand now, so it may come round again; it never says the same words
+            // twice running for one case, and it only repeats after a pause. Everything else is never said twice.
+            var told = got.Where(x => x.b.source != BubbleSource.Want).ToList();
+            Assert.AreEqual(told.Count, told.Select(x => x.b.key).Distinct().Count(), "never the same line twice");
+            Assert.AreEqual(told.Count, told.Select(x => x.b.text).Distinct().Count(), "never the same words twice");
+            foreach (var g in got.Where(x => x.b.source == BubbleSource.Want).GroupBy(x => x.b.wantCase))
+            {
+                var l = g.ToList();
+                for (int i = 1; i < l.Count; i++) Assert.AreNotEqual(l[i - 1].b.text, l[i].b.text, $"{g.Key}: not the same words twice running");
+            }
             for (int i = 1; i < got.Count; i++)
             {
                 double gap = got[i].t - got[i - 1].t;
@@ -103,12 +111,14 @@ namespace AquariumCiv.View.ShowMe.Tests
                 Assert.IsTrue(PeopleVoice.Allowed(b.text, sim), $"{b}: allowed in stage {stage}");
                 Assert.IsFalse(b.text.Contains("{"), $"{b}: filled in");
                 if (b.speakerId >= 0) Assert.IsTrue(sim.FindNotable(b.speakerId).alive, "the living speak");
-                Assert.That(b.seconds, Is.InRange(3f, 6f));
+                Assert.That(b.seconds, Is.InRange(3.5f, 7f));
                 Assert.LessOrEqual(b.lines.Count, PeopleVoice.BubbleMaxLines, "fits a phone bubble");
                 string lower = b.text.ToLowerInvariant();
                 if (stage < 3 || !later) Assert.IsFalse(lower.Contains("glass"), $"{b}: no 'glass' before the Lens");
                 if (stage == 1) Assert.IsFalse(lower.Contains("window"), $"{b}: the camp has no window");
             }
+            Assert.IsNotEmpty(sim.State.saidBubbles, "what was said is kept with the box (#120)");
+            sim.State.saidBubbles.Clear(); // the one thing they write: the memory of what was said
             Assert.AreEqual(before, JsonUtility.ToJson(sim.State), "bubbles never touch the sim");
         }
 
@@ -148,7 +158,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             Assert.AreEqual(BubbleSource.StoryVoice, b.source);
             Assert.AreEqual(live[0].id, b.speakerId, "by the one it's about");
             StringAssert.Contains(live[1].name, b.text);
-            StringAssert.StartsWith("I married", b.text);
+            Assert.IsTrue(b.text.Contains("arried") || b.text.Contains("said yes"), "the wedding, in the first person: " + b.text); // #120: a few wordings
             wb.Force(0);
             Assert.IsFalse(wb.Candidates().Any(x => x.entryId == e.id), "one bubble a story");
         }

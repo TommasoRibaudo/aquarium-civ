@@ -3,7 +3,8 @@
     "rootNamespace": "AquariumCiv.View.ShowMe",
     "references": [
         "AquariumCiv.Sim",
-        "AquariumCiv.Life"
+        "AquariumCiv.Life",
+        "AquariumCiv.Audio"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

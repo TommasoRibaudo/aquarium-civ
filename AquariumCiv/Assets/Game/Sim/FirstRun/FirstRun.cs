@@ -5,7 +5,7 @@ using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
-    public enum HintGesture { None, Wipe, Flick, Tap, Rub }
+    public enum HintGesture { None, Wipe, Flick, Tap }
     public enum HintAnchor { None, Glass, Patch, Plate, ShapingButton, RainSpot }
     /// <summary>One-off moments the view stages (a child's smiley in the mist).</summary>
     public enum FirstRunCue { None, ChildSmiley }
@@ -14,7 +14,7 @@ namespace AquariumCiv.Sim
     public struct FirstRunHint
     {
         public bool visible;
-        public string id;              // stable, for telemetry and tests ("wipe", "patch", "name", "rain-tap", "rain-rub")
+        public string id;              // stable, for telemetry and tests ("wipe", "patch", "name", "rain-tap", "rain-tap-spot")
         public string text;            // at most 3 words
         public HintGesture gesture;
         public HintAnchor anchor;
@@ -58,7 +58,7 @@ namespace AquariumCiv.Sim
         public const double YearSeconds = 15.0;             // the live skip, one game year
         public const float WipedGrime = 0.08f;              // the glass counts as wiped at or below this
         public const float ClearedOvergrowth = 0.06f;       // the patch counts as cleared at or below this
-        public const float StartGrime = 0.8f, StartOvergrowth = 0.5f;
+        public const float StartGrime = 0.45f, StartOvergrowth = 0.5f; // light smudges: enough to give the first wipe something to do, never enough to hide the camp
 
         readonly SimCore sim;
         FirstRunState F => sim.State.firstRun;
@@ -82,7 +82,7 @@ namespace AquariumCiv.Sim
             dx /= len; dz /= len;
             var f = new FirstRunState
             {
-                active = true, beganMonth = s.month, step = (int)FirstRunStep.Arrive,
+                active = true, beganMonth = s.month, step = (int)FirstRunStep.Arrive, shortRun = s.boxIndex > 0,
                 patchX = ClampX(spec.centreX + dz * 1.2f), patchZ = ClampZ(spec.centreZ - dx * 1.2f),
                 rainX = ClampX(spec.pondX + dx * 1.1f), rainZ = ClampZ(spec.pondZ + dz * 1.1f),
                 suggestedName = SettlementNaming.Suggest(s.seed),
@@ -202,7 +202,7 @@ namespace AquariumCiv.Sim
             _ => default,
         };
 
-        /// <summary>The player opened the shaping tray: the rain hint moves on to "rub a spot" and shows at once.</summary>
+        /// <summary>The player opened the shaping tray: the rain hint moves on to "tap a spot" and shows at once.</summary>
         public void NoteTrayOpened()
         {
             if (!F.active || Step != FirstRunStep.Rain || F.hintSubstep) return;
@@ -243,6 +243,7 @@ namespace AquariumCiv.Sim
         {
             var f = F;
             f.step++;
+            if (f.shortRun) while (Step is FirstRunStep.Name or FirstRunStep.Year or FirstRunStep.Card) f.step++; // §9: named on its plate, no year, no card for it
             f.stepSeconds = 0; f.untouchedSeconds = 0; f.hintPhase = 0; f.hintReturns = 0; f.hintIdle = 0; f.hintSubstep = false;
             if (Step == FirstRunStep.Rain) RaiseRainWish();
             if (Step == FirstRunStep.Year) BeginYear();

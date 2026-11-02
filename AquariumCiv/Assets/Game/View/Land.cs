@@ -1,4 +1,5 @@
 using System;
+using AquariumCiv.Sim.Settle;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -14,28 +15,25 @@ namespace AquariumCiv.View
         // Box interior half-size, the ground's base height, the glass top and the pond's water level.
         public const float HX = 3f, HZ = 2.2f, G = 1f, GlassTop = 2.95f, WaterY = G - 0.08f;
 
+        /// <summary>The sim's terrain preset this land is drawn from (<see cref="AquariumCiv.Sim.Settle.TerrainSpec.Preset"/>).</summary>
+        public int preset;
         public bool mirror;
         public float noiseOffset;
         public Vector2 pond = new(1.75f, -1.15f);
         public Vector2 centre = new(-0.35f, -0.25f);
 
         public static Land StyleKit() => new();
-        public static Land Mirrored() => new() { mirror = true, noiseOffset = 13.7f, pond = new Vector2(-1.75f, -1.15f), centre = new Vector2(0.35f, -0.2f) };
-        public static Land BackPond() => new() { noiseOffset = 29.3f, pond = new Vector2(1.85f, 0.7f), centre = new Vector2(-0.45f, -0.5f) };
+        public static Land Mirrored() => SimLayout.LandFor(1);
+        public static Land BackPond() => SimLayout.LandFor(2);
 
-        public float Height(float x, float z)
-        {
-            float xm = mirror ? -x : x;
-            float nx = xm + noiseOffset, nz = z + noiseOffset * 0.7f;
-            float h = G + 0.07f * Fbm(nx * 0.9f, nz * 0.9f);
-            float back = Smooth(0.1f, 2.1f, z), left = Smooth(2.6f, -2.8f, xm);
-            h += 0.62f * back * (0.3f + 0.7f * left) * (0.7f + 0.6f * Fbm(nx * 0.6f, nz * 0.6f + 11f));
-            float dp = Vector2.Distance(new Vector2(x, z), pond);
-            h -= 0.24f * (1f - Smooth(0.45f, 0.98f, dp));
-            float dc = Vector2.Distance(new Vector2(x, z), centre);
-            h = Mathf.Lerp(h, G + 0.03f, (1f - Smooth(0.9f, 1.75f, dc)) * 0.92f);
-            return h;
-        }
+        [NonSerialized] TerrainSpec spec;
+        [NonSerialized] LandColors colors;
+        /// <summary>The sim's description of this land: one function draws it and places on it, for every setting (#115).</summary>
+        public TerrainSpec Spec => spec ??= TerrainSpec.Preset(preset);
+        /// <summary>This land's natural colours (#115).</summary>
+        public LandColors Colors => colors ??= LandColors.ForPreset(preset);
+
+        public float Height(float x, float z) => Sim.Settle.Terrain.Height(Spec, x, z);
 
         public Vector3 OnGround(float x, float z) => new(x, Height(x, z), z);
         public Vector3 OnGround(Vector2 p) => OnGround(p.x, p.y);
@@ -52,6 +50,7 @@ namespace AquariumCiv.View
         public Vector2[] Shoreline(int segments = 64)
         {
             var pts = new Vector2[segments];
+            var t = Spec; // past the dip's stretched radius (a stream runs long one way) the ground can't be water
             for (int i = 0; i < segments; i++)
             {
                 float a = i / (float)segments * Mathf.PI * 2f;
@@ -60,7 +59,7 @@ namespace AquariumCiv.View
                 for (float r = 0.02f; r < 2.5f; r += 0.02f)
                 {
                     var p = pond + dir * r;
-                    if (!Inside(p, 0.02f) || Height(p.x, p.y) >= WaterY) { hi = r; break; }
+                    if (!Inside(p, 0.02f) || t.PondDist(p.x, p.y) >= t.pondR1 || Height(p.x, p.y) >= WaterY) { hi = r; break; }
                     lo = r;
                     hi = r;
                 }

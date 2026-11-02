@@ -16,6 +16,7 @@ namespace AquariumCiv.Sim
     {
         public bool active;
         public bool skipped;               // the player skipped the whole run (never asked twice)
+        public bool shortRun;              // box 2 on (era-moment.md §9, #198): the same rhythm, minus naming, the year and its card
         public int step;                   // FirstRunStep
         public double playSeconds;         // total play time in the run
         public double stepSeconds;         // time in the current step

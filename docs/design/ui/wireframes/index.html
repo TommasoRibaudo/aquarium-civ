@@ -1,0 +1,186 @@
+<title>Aquarium Civ Wireframes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: a control bar, then every moment as a phone, wrapping to one column. Deliberately grey: structure only. */
+:root {
+  --bg: #e9e9e6; --panel: #f6f6f4; --ink: #232321; --ink-2: #5c5c58; --line: #c9c9c4;
+  --primary: #1e1e1c; --on-primary: #ffffff; --second: #ffffffea; --quiet: #ffffffa8; --test: #ffffff66;
+  --sheet: #f3f3f0f5; --world: #ffffff; --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1 { font-size: 26px; margin: 0; text-wrap: balance; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 0; line-height: 1.45; color: var(--ink-2); max-width: 65ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 14px 22px; position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); padding-block: 10px; z-index: 5; border-bottom: 1px solid var(--line); }
+.seg { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.seg span { font-size: 12px; color: var(--ink-2); letter-spacing: .03em; }
+.seg div { display: flex; flex-wrap: wrap; gap: 4px; }
+button { font: inherit; font-size: 14px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 13px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 22px; height: 14px; vertical-align: -2px; margin-right: 6px; border-radius: 3px; }
+.grid { display: flex; flex-wrap: wrap; gap: 28px 24px; justify-content: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; max-width: 100%; }
+figcaption { display: flex; flex-direction: column; gap: 3px; }
+figcaption b { font-size: 15px; }
+figcaption span { font-size: 13px; color: var(--ink-2); line-height: 1.35; }
+.frame { position: relative; overflow: hidden; border-radius: 16px; outline: 1px solid var(--line); background: #ddd; max-width: 100%; }
+.screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.b { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; line-height: 1.2; padding: 2px 6px; border-radius: 10px; overflow: hidden; }
+.primary { background: var(--primary); color: var(--on-primary); font-weight: 600; }
+.second { background: var(--second); color: var(--ink); border: 1px solid #0000002e; }
+.quiet { background: var(--quiet); color: #3a3a37; }
+.test { background: var(--test); color: #3a3a37; border: 1px dashed #00000080; font-size: 11px; }
+.sheet { background: var(--sheet); border-radius: 18px 18px 0 0; }
+.world { background: transparent; color: #111; border: 2px dashed #111; }
+.text { background: transparent; justify-content: flex-start; text-align: left; color: var(--ink); padding: 0; }
+.text.head { font-size: 16px; font-weight: 700; }
+.blur .screen > * { filter: blur(7px); }
+ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); line-height: 1.4; max-width: 70ch; }
+ol b { color: var(--ink); }
+section { display: flex; flex-direction: column; gap: 10px; }
+@media (prefers-reduced-motion: no-preference) { .frame { transition: outline-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Aquarium Civ wireframes</h1>
+    <p>Where each thing goes and how loud it is, in every moment. Grey on purpose: colour, type and icons come later. Each screen assumes the recommended answers listed at the bottom.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="View options">
+    <div class="seg"><span>Phone</span><div id="dev"></div></div>
+    <div class="seg"><span>World</span><div id="world"></div></div>
+    <div class="seg"><span>Blur test</span><div id="blur"></div></div>
+  </div>
+
+  <div class="legend">
+    <span><i class="primary"></i>Primary: the one loudest thing</span>
+    <span><i class="second" style="background:#fff"></i>Secondary</span>
+    <span><i class="quiet" style="background:#d9d9d6"></i>Quiet</span>
+    <span><i class="test" style="background:none"></i>Test builds only</span>
+    <span><i style="border:2px dashed #111;box-sizing:border-box"></i>Shown by the world</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <section>
+    <h2>What to check</h2>
+    <ol>
+      <li><b>Hold your phone one-handed.</b> Open this page at full size and try to reach the bottom row.</li>
+      <li><b>Turn the blur test on.</b> The dark primary should be the first thing you see on every screen.</li>
+      <li><b>Switch the world to Dirty</b> and the phone to Small. Anything hard to read there is a problem now, not later.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Decisions drawn here</h2>
+    <ol>
+      <li><b>History</b> always opens the time-lapse. Unread stories live on the peek.</li>
+      <li><b>Pin chip</b> becomes a small portrait and name, apart from the tools.</li>
+      <li><b>Box name and year</b> are quiet text, with a small settings mark.</li>
+      <li><b>Photo and Feedback</b> become small icons. Feedback appears in test builds only.</li>
+      <li><b>Year stays on</b>, quietly. Era gets no sign in the HUD.</li>
+      <li><b>Shape loses its strong look.</b> The strongest look belongs to each moment's main thing.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+(() => {
+const DEV = {
+  tall: { name: 'Tall', w: 390, h: 844, st: 47, sb: 34, show: 330 },
+  small: { name: 'Small', w: 375, h: 667, st: 20, sb: 8, show: 330 },
+  tablet: { name: 'Tablet', w: 820, h: 1180, st: 24, sb: 20, show: 520 },
+};
+const WORLD = { clean: ['Clean', 'world-clean.jpg'], village: ['Village', 'world-village.jpg'], dirty: ['Dirty', 'world-dirty.jpg'] };
+let state = { dev: 'tall', world: 'clean', blur: false };
+try { state = Object.assign(state, JSON.parse(localStorage.getItem('wf') || '{}')); } catch (e) {}
+
+const inset = d => d.w > 600 ? (d.w - 520) / 2 : 16;
+const top = d => [
+  { k: 'quiet', t: 'Box name · Year', top: 0, l: 16, w: 152, h: 44 },
+  { k: 'quiet', t: 'Set', top: 0, l: 172, w: 44, h: 44 },
+  { k: 'quiet', t: 'Photo', top: 0, r: 16, w: 44, h: 44 },
+  { k: 'test', t: 'Note', top: 0, r: 66, w: 44, h: 44 },
+];
+const tools = d => {
+  const i = inset(d), w = (d.w - i * 2 - 16) / 3;
+  return ['History', 'Clean', 'Shape'].map((t, n) => ({ k: 'second', t, bottom: 0, l: i + n * (w + 8), w, h: 56 }));
+};
+const pin = d => [{ k: 'second', t: 'Portrait · Name', bottom: 66, l: inset(d), w: 136, h: 44 }];
+const sheet = (d, share) => {
+  const h = Math.round(d.h * share), i = d.w > 600 ? inset(d) : 0;
+  return { h, i, block: { k: 'sheet', t: '', edge: 0, l: i, r: i, h: h + 0 } };
+};
+const box = (d, t) => ({ k: 'world', t, pct: .58, cx: .5, w: 150, h: 54 });
+
+const MOMENTS = [
+  { n: 'Glance', q: 'What is new, in one look?', f: d => [...top(d), box(d, 'People wave'), { k: 'primary', t: 'Portrait · Top story, one line', bottom: 96, l: inset(d), r: inset(d), h: 56 }, { k: 'quiet', t: 'Teaser line', bottom: 64, l: inset(d), r: inset(d), h: 28 }, ...tools(d)] },
+  { n: 'Check-in: a story', q: 'What happened?', f: d => { const s = sheet(d, .3), i = s.i + 16; return [{ k: 'world', t: 'The story\'s place', pct: .36, cx: .5, w: 170, h: 54 }, s.block,
+      { k: 'quiet', t: 'Page dots', edgeUp: s.h - 12, l: i + 60, r: i + 60, h: 16 }, { k: 'primary', t: 'Headline', edgeUp: s.h - 34, l: i, r: i + 76, h: 44 }, { k: 'quiet', t: 'Skip all', edgeUp: s.h - 34, r: i, w: 68, h: 44 },
+      { k: 'text', t: 'Body and quote, two or three short lines', edgeUp: s.h - 84, l: i, r: i, h: 40 }, { k: 'second', t: 'Show me', bottom: 0, l: i, w: 110, h: 48 }, { k: 'second', t: 'Next', bottom: 0, r: i, w: 110, h: 48 }]; } },
+  { n: 'Check-in: Give or Watch', q: 'One action on this card takes the lead.', f: d => { const s = sheet(d, .3), i = s.i + 16; return [{ k: 'world', t: 'The wish\'s spot', pct: .36, cx: .5, w: 170, h: 54 }, s.block,
+      { k: 'quiet', t: 'Page dots', edgeUp: s.h - 12, l: i + 60, r: i + 60, h: 16 }, { k: 'text head', t: 'Mabel has a wish', edgeUp: s.h - 34, l: i, r: i + 76, h: 44 }, { k: 'quiet', t: 'Skip all', edgeUp: s.h - 34, r: i, w: 68, h: 44 },
+      { k: 'text', t: 'One line', edgeUp: s.h - 84, l: i, r: i, h: 30 }, { k: 'quiet', t: 'Next', bottom: 0, l: i, w: 90, h: 48 }, { k: 'primary', t: 'Give', bottom: 0, r: i, w: 140, h: 48 }]; } },
+  { n: 'Free play', q: 'What is going on in there?', f: d => [...top(d), box(d, 'People, bubbles, mess'), ...pin(d), ...tools(d)] },
+  { n: 'Person card', q: 'Who is this? The person stays in view.', f: d => { const s = sheet(d, .3), i = s.i + 16; return [{ k: 'world', t: 'The person, framed', pct: .34, cx: .5, w: 170, h: 54 }, s.block,
+      { k: 'primary', t: 'Name, job, role', edgeUp: s.h - 14, l: i, r: i + 112, h: 48 }, { k: 'second', t: 'Pin', edgeUp: s.h - 14, r: i + 56, w: 48, h: 48 }, { k: 'quiet', t: 'Close', edgeUp: s.h - 14, r: i, w: 48, h: 48 },
+      { k: 'text', t: 'Trait · age', edgeUp: s.h - 68, l: i, r: i, h: 22 }, { k: 'text', t: 'Best stories preview. Family, friends and rivals scroll below.', bottom: 4, l: i, r: i, h: 56 }]; } },
+  { n: 'Tray', q: 'Pick a tool. The box stays visible.', f: d => { const s = sheet(d, .3), i = s.i + 16, w = (d.w - i * 2 - 24) / 4; return [box(d, 'Box stays clear'), s.block,
+      { k: 'text head', t: 'Charges: 3 of 3', edgeUp: s.h - 14, l: i, r: i + 60, h: 44 }, { k: 'quiet', t: 'Close', edgeUp: s.h - 14, r: i, w: 56, h: 44 },
+      ...['Shower', 'Grove', 'Herd', 'Locked'].map((t, n) => ({ k: n < 3 ? 'second' : 'quiet', t, edgeUp: s.h - 68, l: i + n * (w + 8), w, h: 64 })), { k: 'quiet', t: 'Take back · one tap', bottom: 0, l: i, r: i, h: 44 }]; } },
+  { n: 'Placing a tool', q: 'Where will it land?', f: d => [...top(d), { k: 'primary', t: 'Footprint under the finger', pct: .58, cx: .5, w: 180, h: 54 }, { k: 'second', t: 'Tool · Charges', bottom: 0, l: inset(d), r: inset(d) + 112, h: 56 }, { k: 'second', t: 'Cancel', bottom: 0, r: inset(d), w: 104, h: 56 }] },
+  { n: 'Clean mode', q: 'Am I wiping? How do I stop?', f: d => [...top(d), { k: 'world', t: 'Grime under the finger', pct: .58, cx: .5, w: 170, h: 54 }, { k: 'second', t: 'Clean mode on', bottom: 0, l: inset(d), r: inset(d) + 112, h: 56 }, { k: 'primary', t: 'Done', bottom: 0, r: inset(d), w: 104, h: 56 }] },
+  { n: 'The close', q: 'Why come back?', f: d => [{ k: 'world', t: 'Gather, then shelf view', pct: .5, cx: .5, w: 170, h: 54 }, { k: 'primary', t: 'Teaser caption, or "They\'ll wait for you"', bottom: 80, l: inset(d), r: inset(d), h: 72 }] },
+  { n: 'Era waiting', q: 'They are ready when you are.', f: d => [...top(d), box(d, 'Baskets, leader waits'), { k: 'primary', t: 'Watch them become a village', bottom: 72, l: inset(d) + 30, r: inset(d) + 30, h: 56 }, ...tools(d)] },
+  { n: 'Era moment', q: 'The UI slides away.', f: d => [{ k: 'primary', t: 'The rebuild, the cheer', pct: .55, cx: .5, w: 180, h: 54 }, { k: 'quiet', t: 'Caption at the cheer', top: 40, l: inset(d), r: inset(d), h: 48 }, { k: 'quiet', t: 'Hold to hurry · first 3 s', bottom: 16, l: inset(d) + 50, r: inset(d) + 50, h: 36 }] },
+  { n: 'History', q: 'The box at that year. One year on screen.', f: d => { const s = sheet(d, .3), i = s.i + 16; return [{ k: 'primary', t: 'The box at that year', pct: .36, cx: .5, w: 170, h: 54 }, { k: 'quiet', t: 'Book', top: 0, l: 16, w: 64, h: 44 }, { k: 'quiet', t: 'Pin caption, one line', edgeUp: s.h + 54, l: i - 16 + 16, r: i, h: 44 }, s.block,
+      { k: 'text head', t: 'Year · Name · Era', edgeUp: s.h - 12, l: i, r: i + 122, h: 44 }, { k: 'quiet', t: 'Snap', edgeUp: s.h - 12, r: i + 60, w: 54, h: 44 }, { k: 'quiet', t: 'Close', edgeUp: s.h - 12, r: i, w: 54, h: 44 },
+      { k: 'second', t: 'Timeline: era bands, pins, playhead', edgeUp: s.h - 62, l: i, r: i, h: 56 }, { k: 'second', t: 'Play', bottom: 0, l: i, r: i + 136, h: 48 }, { k: 'quiet', t: 'Speed', bottom: 0, r: i + 68, w: 60, h: 48 }, { k: 'quiet', t: 'Now', bottom: 0, r: i, w: 60, h: 48 }]; } },
+  { n: 'First run', q: 'One thing at a time. The HUD arrives piece by piece.', f: d => [{ k: 'test', t: 'Skip', top: 0, l: 16, w: 44, h: 44 }, { k: 'primary', t: 'Ghost finger · Wipe the glass', pct: .55, cx: .5, w: 190, h: 54 }] },
+];
+
+function place(b, d) {
+  const s = [];
+  if (b.pct != null) { s.push(`top:${d.h * b.pct - b.h / 2}px`); s.push(`left:${d.w * b.cx - b.w / 2}px`); s.push(`width:${b.w}px`); s.push(`height:${b.h}px`); return s.join(';'); }
+  if (b.top != null) s.push(`top:${d.st + b.top}px`);
+  if (b.bottom != null) s.push(`bottom:${d.sb + 8 + b.bottom}px`);
+  if (b.edge != null) s.push(`bottom:${b.edge}px`);
+  if (b.edgeUp != null) s.push(`top:${d.h - b.edgeUp}px`);
+  if (b.l != null) s.push(`left:${b.l}px`);
+  if (b.r != null) s.push(`right:${b.r}px`);
+  if (b.w != null) s.push(`width:${b.w}px`);
+  if (b.h != null) s.push(`height:${b.h}px`);
+  return s.join(';');
+}
+const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function seg(id, opts, key) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  opts.forEach(([v, label]) => {
+    const b = document.createElement('button');
+    b.textContent = label; b.setAttribute('aria-pressed', String(state[key] === v));
+    b.onclick = () => { state[key] = v; try { localStorage.setItem('wf', JSON.stringify(state)); } catch (e) {} draw(); };
+    el.append(b);
+  });
+}
+
+function draw() {
+  seg('dev', Object.entries(DEV).map(([k, d]) => [k, d.name]), 'dev');
+  seg('world', Object.entries(WORLD).map(([k, w]) => [k, w[0]]), 'world');
+  seg('blur', [[false, 'Off'], [true, 'On']], 'blur');
+  const d = DEV[state.dev], show = Math.min(d.show, document.documentElement.clientWidth - 32), sc = show / d.w;
+  document.getElementById('grid').innerHTML = MOMENTS.map(m => `<figure style="width:${show}px"><figcaption><b>${esc(m.n)}</b><span>${esc(m.q)}</span></figcaption>
+    <div class="frame${state.blur ? ' blur' : ''}" style="width:${show}px;height:${d.h * sc}px"><div class="screen" style="width:${d.w}px;height:${d.h}px;transform:scale(${sc})">
+    <img src="${WORLD[state.world][1]}" alt="">${m.f(d).map(b => `<div class="b ${b.k}" style="${place(b, d)}">${esc(b.t)}</div>`).join('')}</div></div></figure>`).join('');
+}
+window.addEventListener('resize', draw);
+draw();
+})();
+</script>

@@ -25,7 +25,7 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>The box's land preset: the save's once settled, else the config's.</summary>
-        public int TerrainPreset => State.settle != null && State.settle.version > 0 ? State.settle.terrain : Config.terrainPreset;
+        public int TerrainPreset => State.settle != null && (State.settle.version > 0 || State.settle.terrain != 0) ? State.settle.terrain : Config.terrainPreset;
 
         void SettleStep()
         {
@@ -59,6 +59,7 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             var b = new Building { id = s.NextId(), type = type, slot = -1, foundedMonth = s.month };
+            b.builderId = PickBuilder(b.id);
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type)) s.foundedTypes.Add(type);
             Settlement?.PlacePending();

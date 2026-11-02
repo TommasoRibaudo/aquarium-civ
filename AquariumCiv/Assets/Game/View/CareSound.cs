@@ -1,4 +1,5 @@
 using AquariumCiv.Audio;
+using AquariumCiv.View.ShowMe;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -49,12 +50,29 @@ namespace AquariumCiv.View
         {
             "rub" => MakeRub(),
             "chime" => MakeChime(),
+            "gift" => MakeGift(),
             "swish" => MakeSwish(),
             "pop" => MakePop(),
             "cheer" => MakeCheer(),
             "flies" => MakeFlies(),
-            _ => null,
+            "bird0" => MakeBird(0),
+            "bird1" => MakeBird(1),
+            "bird2" => MakeBird(2),
+            "bird3" => MakeBird(3),
+            "bird4" => MakeBird(4),
+            _ => name.StartsWith("babble") && name.Length == 8 ? MakeBabble(name[6] - '0', name[7] - '0') : null,
         };
+
+        /// <summary>#144: a babble clip: <see cref="ChatterBabble"/>'s samples, 22.05 kHz mono.</summary>
+        static AudioClip MakeBabble(int voice, int clip)
+        {
+            var d = ChatterBabble.Generate(voice, clip, BabbleSeed);
+            var c = AudioClip.Create($"Babble{voice}{clip}", d.Length, 1, ChatterBabble.SampleRate, false);
+            c.SetData(d, 0);
+            return c;
+        }
+
+        const int BabbleSeed = 144;
 
         /// <summary>The mess ambience (#96): three flies circling, an 8 s seamless loop. Each fly is a buzzy tone (the
         /// fundamental plus odd partials) whose pitch wanders and whose level swells as it passes; every frequency and
@@ -131,6 +149,50 @@ namespace AquariumCiv.View
             return Clip("CareRub", d);
         }
 
+        /// <summary>#195: how many bird calls <see cref="MakeBird"/> makes.</summary>
+        public const int BirdCalls = 5;
+
+        /// <summary>One sweep of a bird's voice into <paramref name="d"/>: a tone gliding from one pitch to another with a fast warble, soft at both ends.</summary>
+        static void BirdNote(float[] d, float start, float seconds, float fromHz, float toHz, float warbleHz, float warbleDepth, float level)
+        {
+            int s = (int)(start * Rate), n = (int)(seconds * Rate);
+            float phase = 0f;
+            for (int i = 0; i < n && s + i < d.Length; i++)
+            {
+                float u = i / (float)n, t = i / (float)Rate;
+                float hz = Mathf.Lerp(fromHz, toHz, u) + Mathf.Sin(2f * Mathf.PI * warbleHz * t) * warbleDepth;
+                phase += 2f * Mathf.PI * hz / Rate;
+                float env = Mathf.Sin(Mathf.PI * u);
+                d[s + i] += (Mathf.Sin(phase) + 0.18f * Mathf.Sin(2f * phase)) * env * env * level;
+            }
+        }
+
+        /// <summary>#195: five short bird calls made in code, no recording: a chirp, a warble, a two-note whistle, a trill and a falling tee-tee-tee.</summary>
+        static AudioClip MakeBird(int which)
+        {
+            var d = new float[(int)(Rate * 1.2f)];
+            switch (which)
+            {
+                case 0: // chirp-chirp-chirp
+                    for (int i = 0; i < 3; i++) BirdNote(d, i * 0.14f, 0.09f, 2600f, 3800f, 0f, 0f, 0.5f);
+                    break;
+                case 1: // a warble
+                    BirdNote(d, 0f, 0.8f, 2300f, 2700f, 17f, 320f, 0.45f);
+                    break;
+                case 2: // a two-note whistle
+                    BirdNote(d, 0f, 0.26f, 2150f, 2100f, 5f, 15f, 0.5f);
+                    BirdNote(d, 0.34f, 0.36f, 1720f, 1650f, 5f, 15f, 0.5f);
+                    break;
+                case 3: // a trill
+                    for (int i = 0; i < 11; i++) BirdNote(d, i * 0.062f, 0.05f, 3300f, 3000f, 0f, 0f, 0.35f + i * 0.015f);
+                    break;
+                default: // falling tee-tee-tee
+                    for (int i = 0; i < 4; i++) BirdNote(d, i * 0.17f, 0.12f, 3400f - i * 260f, 3000f - i * 260f, 0f, 0f, 0.48f);
+                    break;
+            }
+            return Clip("Bird" + which, d);
+        }
+
         static AudioClip MakeChime()
         {
             float[] notes = { 784f, 988f, 1175f };
@@ -163,6 +225,27 @@ namespace AquariumCiv.View
                 d[i] = lp * Mathf.Sin(t * Mathf.PI) * 1.6f;
             }
             return Clip("CareSwish", d);
+        }
+
+        /// <summary>#191: a wish answered: four notes rising, the last one held, with a thin shimmer over it.</summary>
+        static AudioClip MakeGift()
+        {
+            float[] notes = { 523f, 659f, 784f, 1047f };
+            int n = (int)(Rate * 1.25f);
+            var d = new float[n];
+            for (int k = 0; k < notes.Length; k++)
+            {
+                int start = (int)(Rate * 0.09f * k);
+                float decay = k == notes.Length - 1 ? 3f : 6.5f;
+                for (int i = start; i < n; i++)
+                {
+                    float t = (i - start) / (float)Rate;
+                    float attack = Mathf.Clamp01(t / 0.006f);
+                    d[i] += attack * (Mathf.Sin(2f * Mathf.PI * notes[k] * t) * Mathf.Exp(-t * decay) * 0.24f
+                          + Mathf.Sin(2f * Mathf.PI * notes[k] * 3.01f * t) * Mathf.Exp(-t * decay * 2.2f) * 0.05f);
+                }
+            }
+            return Clip("CareGift", d);
         }
 
         static AudioClip MakePop()

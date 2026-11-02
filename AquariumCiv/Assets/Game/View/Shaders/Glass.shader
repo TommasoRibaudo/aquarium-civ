@@ -12,6 +12,9 @@ Shader "AquariumCiv/View/Glass"
         _MaskTex ("Grime mask (R)", 2D) = "black" {}
         _NoiseTex ("Grime detail", 2D) = "white" {}
         _NoiseDensity ("Detail tiles per unit", Float) = 0.6
+        _NoiseDensity2 ("Second detail layer, tiles per unit", Float) = 0.37
+        _NoiseOffset ("Detail offset (per pane)", Vector) = (0, 0, 0, 0)
+        _NoiseRot ("Detail turn, radians (per pane)", Float) = 0
         _Axis ("UV axis (0 = XY pane, 1 = ZY pane)", Float) = 0
         _PaneSize ("Pane size (u, v) in world units", Vector) = (1, 1, 0, 0)
         _CleanColor ("Clean glass", Color) = (0.85, 0.95, 1, 0.10)
@@ -27,6 +30,7 @@ Shader "AquariumCiv/View/Glass"
         _RimColor ("Rim highlight", Color) = (0.95, 1, 0.97, 0.75)
         _RimWidth ("Rim highlight width (world)", Float) = 0.035
         _RimSide ("Rim highlight on the sides", Range(0, 1)) = 0.35
+        _Fade ("Opacity (near glass, #162)", Range(0, 1)) = 1
     }
     SubShader
     {
@@ -52,6 +56,9 @@ Shader "AquariumCiv/View/Glass"
                 float4 _MaskTex_ST;
                 float4 _NoiseTex_ST;
                 float _NoiseDensity;
+                float _NoiseDensity2;
+                float2 _NoiseOffset;
+                float _NoiseRot;
                 float _Axis;
                 float4 _PaneSize;
                 half4 _CleanColor;
@@ -67,7 +74,10 @@ Shader "AquariumCiv/View/Glass"
                 half4 _RimColor;
                 float _RimWidth;
                 half _RimSide;
+                half _Fade;
             CBUFFER_END
+            // 0 by day and in edit mode, up to 0.65 at night: the white-ish tint would haze a dark world, so it follows the day (GlassNight).
+            float _AC_GlassNight;
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
             struct Varyings
@@ -93,11 +103,21 @@ Shader "AquariumCiv/View/Glass"
             half4 frag(Varyings i) : SV_Target
             {
                 half mask = SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, i.uv).r;
-                half4 n = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, i.uv * _PaneSize.xy * _NoiseDensity);
+                // Two layers of the detail tile (#121), each pane turned and offset its own way: the second is coarser and turned 37 degrees
+                // more, so the 1.67 u tile never lines up with itself and no grid of smudges shows. One more sample on the glass.
+                float2 world = i.uv * _PaneSize.xy;
+                float cr = cos(_NoiseRot), sr = sin(_NoiseRot);
+                float2 turned = float2(world.x * cr - world.y * sr, world.x * sr + world.y * cr);
+                const float C37 = 0.7986, S37 = 0.6018;
+                float2 turned2 = float2(turned.x * C37 - turned.y * S37, turned.x * S37 + turned.y * C37);
+                half4 n1 = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, turned * _NoiseDensity + _NoiseOffset);
+                half4 n2 = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, turned2 * _NoiseDensity2 + _NoiseOffset.yx);
+                half4 n = saturate((n1 + n2) * 0.5 + (n1 - 0.5) * 0.3 + (n2 - 0.5) * 0.3); // the mean of the two, its contrast put back
 
-                // Detail noise breaks the mask into smudges and drip streaks; heavier grime fills in the gaps.
-                half cover = saturate(mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15);
-                cover = smoothstep(0.02, 0.9, cover);
+                // Detail noise breaks the mask into smudges and drip streaks; heavier grime fills in the gaps. The curve tops out above
+                // what a full mask gives on average, so the noise still shows on heavy grime: with a top of 0.9 the mask flattened into one
+                // plateau with hard outlines (cow hide).
+                half cover = smoothstep(0.02, 1.05, mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15);
 
                 float3 viewDir = normalize(GetWorldSpaceViewDir(i.positionWS));
                 float3 normal = normalize(i.normalWS);
@@ -106,13 +126,16 @@ Shader "AquariumCiv/View/Glass"
 
                 Light light = GetMainLight();
                 half lambert = saturate(dot(normal, light.direction)) * 0.35 + 0.65;
-                half3 grime = _GrimeColor.rgb * (0.85 + 0.3 * n.r) * light.color * lambert;
+                half night = (half)_AC_GlassNight;
+                half dim = 1 - night; // 1 by day, 0.35 at night: what was white in the clean glass
+                half3 grime = _GrimeColor.rgb * (0.85 + 0.3 * n.r) * (light.color * lambert + night * half3(0.27, 0.29, 0.33)); // grime catches a little of the night's light: it stays the box's state, but it is never brighter than the dimmed world behind it
 
-                half3 rgb = lerp(_CleanColor.rgb, grime, cover);
                 half alpha = lerp(_CleanColor.a, _DirtyAlpha, cover);
+                // Mixed by how much of each is on the glass, not by cover alone: that kept the pale clean tint in every thin smear, a milky wash once the mask stopped sitting at full.
+                half3 rgb = (_CleanColor.rgb * dim * _CleanColor.a * (1 - cover) + grime * _DirtyAlpha * cover) / max(alpha, 0.001);
                 // Clean glass gets a faint sheen and, right after a wipe, a sparkle that fades.
                 half sheen = fresnel * (1 - cover) + _Glint * (1 - cover) * 0.35;
-                rgb = lerp(rgb, 1, saturate(sheen * 2));
+                rgb = lerp(rgb, dim, saturate(sheen * 2));
                 alpha = saturate(alpha + sheen);
 
                 // Thickness edge: real glass shows its green-blue body where you look along it.
@@ -128,12 +151,12 @@ Shader "AquariumCiv/View/Glass"
                 half s2 = smoothstep(0.0, 0.03, frac(d + 0.42)) * (1 - smoothstep(0.03, 0.08, frac(d + 0.42)));
                 // Only on the upper half of the pane, fading out toward the bottom.
                 half streak = (s1 + s2 * 0.6) * _StreakAlpha * (0.35 + fresnel * 3) * (1 - cover) * smoothstep(0.9, 2.2, w.y);
-                rgb = lerp(rgb, 1, saturate(streak * 2));
+                rgb = lerp(rgb, 1 - night * 0.5, saturate(streak * 2));
                 alpha = saturate(alpha + streak);
 
                 // Condensation: a faint misty band just above the soil line (the ground sits at about 1 unit).
                 half mist = smoothstep(0.8, 1.0, w.y) * (1 - smoothstep(1.05, 1.6, w.y)) * _Condensation * (0.6 + 0.4 * n.g) * (1 - cover);
-                rgb = lerp(rgb, half3(0.92, 0.96, 0.97), mist * 0.6);
+                rgb = lerp(rgb, half3(0.92, 0.96, 0.97) * dim, mist * 0.6);
                 alpha = saturate(alpha + mist * 0.25);
                 // Rim highlight: a crisp bright line just under the top edge (brightest), fainter down both sides; a touch
                 // stronger at grazing angles, like light running along the glass.
@@ -143,7 +166,7 @@ Shader "AquariumCiv/View/Glass"
                 half rim = saturate(max(rimTop, rimSide) * (0.75 + fresnel * 2.0)) * (1 - cover * 0.7);
                 rgb = lerp(rgb, _RimColor.rgb, rim);
                 alpha = max(alpha, rim * _RimColor.a);
-                return half4(rgb, alpha);
+                return half4(rgb, alpha * _Fade);
             }
             ENDHLSL
         }

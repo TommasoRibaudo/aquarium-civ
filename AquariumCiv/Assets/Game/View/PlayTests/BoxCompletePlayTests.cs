@@ -125,6 +125,12 @@ namespace AquariumCiv.View.PlayTests
 
         static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
 
+        static IEnumerator Until(Func<bool> done, float seconds)
+        {
+            float t = 0f;
+            while (!done() && t < seconds) { t += Time.unscaledDeltaTime; yield return null; }
+        }
+
         static IEnumerator Grow(int years)
         {
             for (int i = 0; i < years; i++)
@@ -186,7 +192,15 @@ namespace AquariumCiv.View.PlayTests
             yield return WaitBeat(c, "lookback", "bc_2_lookback", 40);
             yield return WaitBeat(c, "lanterns", "bc_3_lanterns", 150);
             yield return WaitBeat(c, "founders", "bc_4_founders", 30);
-            yield return WaitBeat(c, "shelf", "bc_5_shelf", 120);
+            yield return WaitBeat(c, "shelf", null, 5);
+            yield return Until(() => c.PickerOpen, 30f);
+            Assert.IsTrue(c.PickerOpen, "the moment waits for the next box's setting");
+            yield return Frames(20);
+            yield return Shot("bc_5_shelf");
+            Assert.AreEqual("shelf", c.Director.CurrentBeat?.id, "and holds there");
+            Assert.AreEqual(BoxSetting.DesertOasis, c.SettingForNextBox, "desert oasis is preselected (question 7)");
+            yield return Tap(ui, "picker-begin");
+            Assert.IsFalse(c.PickerOpen);
             Assert.IsFalse(c.Committed);
             yield return WaitBeat(c, "crossing", null, 5);
             Assert.IsTrue(c.Committed, "the box completed at the crossing");
@@ -280,6 +294,45 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(clock.Held);
             Assert.IsTrue(c.Begin(), "it plays again");
             c.Leave();
+            Assert.IsEmpty(errors, string.Join("\n", errors));
+            Close();
+        }
+
+        /// <summary>#170: the setting picker's choice reaches the next box, and its Close leaves the moment, which replays.</summary>
+        [UnityTest]
+        public IEnumerator ThePickerChoosesTheNextBoxAndItsCloseLeaves()
+        {
+            yield return Open();
+            yield return ToTown();
+            var clock = GameClock.Instance;
+            var c = BoxCompleteController.Instance ?? BoxCompleteController.Create();
+            var ui = UiOf(c);
+            Assert.IsTrue(c.Begin());
+            c.Director.HurryFactor = 6f;
+            MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => c.PickerOpen, 60f);
+            Assert.IsTrue(c.PickerOpen);
+            yield return Frames(4);
+            yield return Tap(ui, "picker-close");
+            MomentPlayer.DebugHoldHurry = false;
+            yield return Frames(4);
+            Assert.IsFalse(c.Playing, "Close leaves the moment");
+            Assert.IsFalse(c.Committed);
+            Assert.AreEqual(1, clock.Shelf.boxes.Count);
+
+            Assert.IsTrue(c.Begin(), "it replays");
+            c.Director.HurryFactor = 6f;
+            MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => c.PickerOpen, 60f);
+            yield return Frames(4);
+            yield return Tap(ui, "picker-mountain");
+            Assert.AreEqual(BoxSetting.MountainVillage, c.SettingForNextBox);
+            yield return Tap(ui, "picker-begin");
+            yield return Until(() => !c.Playing, 90f);
+            MomentPlayer.DebugHoldHurry = false;
+            Assert.IsTrue(c.Committed);
+            Assert.AreEqual(BoxSetting.MountainVillage, clock.Shelf.Active.setting, "box 2 is in the setting chosen");
+            c.SettingForNextBox = BoxSetting.DesertOasis;
             Assert.IsEmpty(errors, string.Join("\n", errors));
             Close();
         }

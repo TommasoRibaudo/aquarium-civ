@@ -2,8 +2,10 @@ using AquariumCiv.Audio;
 using System.Collections.Generic;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
+using AquariumCiv.Lighting;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.Shaping;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -87,7 +89,7 @@ namespace AquariumCiv.View
 
         // sun and cheer
         Light sun;
-        float sunBase = 1f, sunScale = 1f;
+        float sunBase = 1f, sceneSun = 1f, sunScale = 1f;
         float prevGrime = -1f, prevMess = -1f;
         readonly List<Transform> sparkles = new();
         readonly List<(Vector3 v, float life)> sparkleState = new();
@@ -158,15 +160,23 @@ namespace AquariumCiv.View
             if (sparkleMesh != null) Destroy(sparkleMesh);
         }
 
+        const string NothingToClean = "Nothing to clean right now.", WipeHint = "Drag across the glass to wipe it. Flick junk and weeds out.";
+
         void OnCleanMode(bool on)
         {
             lastTouchTime = Time.unscaledTime;
             spotlessSince = -1f;
-            if (!on) { Cancel(); return; }
+            hud?.WithdrawToast(AquariumCiv.Sim.CleanHint.Text); // Clean was tapped: the line asking for that is done, and the wipe hint needs the lane
+            if (!on)
+            {
+                hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
+                hud?.WithdrawToast(WipeHint);
+                Cancel();
+                return;
+            }
             var sim = Sim;
-            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f
-                ? "Nothing to clean right now."
-                : "Drag across the glass to wipe it. Flick junk and weeds out.", 5f);
+            if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
+            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : WipeHint, 5f);
         }
 
         // ---------------- the camera gate ----------------
@@ -244,7 +254,8 @@ namespace AquariumCiv.View
                 var s = t.localScale;
                 zAxis[i] = s.x < s.z;
                 var size = new Vector2(zAxis[i] ? s.z : s.x, s.y);
-                masks[i] = new GlassMask(size, texelsPerUnit, i);
+                int paneSeed = sim.State.seed * 31 + i * 7 + 1; // every pane of every box its own grime (#121)
+                masks[i] = new GlassMask(size, texelsPerUnit, paneSeed);
                 var pos = t.localPosition;
                 bool zz = zAxis[i];
                 float w = size.x;
@@ -257,11 +268,58 @@ namespace AquariumCiv.View
                 mats[i] = t.GetComponent<MeshRenderer>().sharedMaterial;
                 mats[i].SetTexture("_MaskTex", textures[i]);
                 mats[i].SetTexture("_NoiseTex", noise);
+                mats[i].SetVector("_NoiseOffset", GlassPaneNoise.Offset(paneSeed));
+                mats[i].SetFloat("_NoiseRot", GlassPaneNoise.Rotation(paneSeed));
+                mats[i].SetFloat("_DirtyAlpha", CareMath.PatchAlpha);
+                mats[i].SetColor("_GrimeColor", CareMath.GrimeColor);
                 t.gameObject.layer = GlassLayer;
                 if (!t.TryGetComponent(out cols[i])) cols[i] = t.gameObject.AddComponent<BoxCollider>();
                 masks[i].ResetTo(sim.State.grime);
             }
             synced = sim.State.grime;
+        }
+
+        /// <summary>The glass box in box space: half width, half depth, and the top of the panes. False before the panes are bound.</summary>
+        public bool Walls(out float halfW, out float halfD, out float top)
+        {
+            halfW = Land.HX; halfD = Land.HZ; top = 1.6f;
+            if (cols.Length == 0) return false;
+            for (int i = 0; i < cols.Length; i++)
+            {
+                var t = cols[i].transform;
+                if (zAxis[i]) halfW = Mathf.Abs(t.localPosition.x); else halfD = Mathf.Abs(t.localPosition.z);
+                top = t.localPosition.y + t.localScale.y * 0.5f;
+            }
+            return true;
+        }
+
+        /// <summary>A pane's transform (tests).</summary>
+        public Transform PaneOf(int i) => cols[i].transform;
+
+        /// <summary>#147: grime the sim counts for a crumb's smudge. Small: the mark itself is drawn on the one pane.</summary>
+        public const float CrumbGrime = 0.01f;
+        /// <summary>The last smudge: its pane (-1 = none yet), its uv and its radius, world units (tests).</summary>
+        public int LastSmudgePane { get; private set; } = -1;
+        public Vector2 LastSmudgeUv { get; private set; }
+        public float LastSmudgeRadius { get; private set; }
+
+        /// <summary>#147: the Sky Crumb hit a wall at <paramref name="boxPoint"/> (box space): a smudge on that pane, real grime the Keeper wipes off like any other.</summary>
+        public void Smudge(CrumbWall wall, Vector3 boxPoint, float radiusUv, float strength)
+        {
+            var sim = Sim;
+            for (int i = 0; i < cols.Length; i++)
+            {
+                var p = cols[i].transform.localPosition;
+                bool it = wall switch { CrumbWall.Left => zAxis[i] && p.x < 0f, CrumbWall.Right => zAxis[i] && p.x > 0f, _ => !zAxis[i] && p.z > 0f };
+                if (!it) continue;
+                var uv = Uv(i, box.transform.TransformPoint(boxPoint));
+                uv = new Vector2(Mathf.Clamp01(uv.x), Mathf.Clamp01(uv.y));
+                float r = radiusUv * masks[i].size.x;
+                masks[i].Smudge(uv, r, strength);
+                LastSmudgePane = i; LastSmudgeUv = uv; LastSmudgeRadius = r;
+                if (sim != null) { sim.AddMess(CrumbGrime, 0f, 0); synced = sim.State.grime; } // no Grow: this grime is drawn here
+                return;
+            }
         }
 
         /// <summary>The sim's grime is the source over time: it grows the masks unevenly, or fades them when something else
@@ -375,6 +433,7 @@ namespace AquariumCiv.View
             {
                 pressSeen = true;
                 stroke = n == 1 ? Begin(a) : Stroke.Ignored;
+                if (n == 1) PointToClean(sim, a);
                 lastPos = a;
                 return;
             }
@@ -386,6 +445,72 @@ namespace AquariumCiv.View
                 while (samples.Count > 2 && Time.unscaledTime - samples[0].t > 0.1f) samples.RemoveAt(0);
             }
             lastPos = a;
+        }
+
+        /// <summary>#160: a touch on mess outside clean mode doesn't clean, and says why: the Clean button pulses and, now and then, a short
+        /// hint shows. The drag goes on to move the camera.</summary>
+        void PointToClean(SimCore sim, Vector2 pos)
+        {
+            pressAnswered = false;
+            if (hud == null || CleanMode || !hud.IsVisible || hud.CameraMode || hud.SheetOpen || sim.State.firstRun.active || UiInput.Over(pos)) return;
+            var shaping = ShapingView.Instance;
+            if (shaping != null && shaping.ShapeMode) return;
+            var c = Cam;
+            if (c == null) return;
+            var cards = PersonCardView.Instance;
+            if (cards != null && (cards.AnyOpen || cards.BuildingOpen || !cards.PickDoll(pos).IsNone)) return; // that tap closes the card, or opens this person's
+            var r = TouchHint.Touch(false, UnderFinger(c, pos) != null, Time.unscaledTime);
+            Say(r);
+            pressAnswered = r.pulse || r.hint;
+        }
+
+        void Say(AquariumCiv.Sim.CleanHintResult r)
+        {
+            if (r.pulse) hud.PulseClean();
+            if (r.hint) hud.Toast(AquariumCiv.Sim.CleanHint.Text, 3f, through: true); // it answers a touch: a waiting prompt doesn't hold it back
+        }
+
+        bool pressAnswered;
+
+        /// <summary>Tester run 8: a tap that <see cref="MessSaysSo"/> kept is answered, whatever the gaps say: the tap would otherwise do nothing at all.</summary>
+        public void AnswerMessTap()
+        {
+            if (hud == null) return;
+            Say(TouchHint.Tapped(pressAnswered, Time.unscaledTime));
+            pressAnswered = false;
+        }
+
+        /// <summary>#160: a tap here is about the mess, so it opens nothing: there's mess under the finger. Tester run 9: that goes on after the first clean, when it
+        /// used to let the tap through to whatever was near, mostly nothing: every tap on mess answers, always.</summary>
+        public bool MessSaysSo(Vector2 pos)
+        {
+            var c = Cam;
+            return c != null && !CleanMode && UnderFinger(c, pos) != null;
+        }
+
+        /// <summary>Tester run 8: how near a tap outside clean mode has to be to a piece of mess to be on it, in pixels. <see cref="pickRadius"/> is for cleaning, where
+        /// a generous reach helps: for a tap it was bigger than a house at the default zoom.</summary>
+        public float TapReachPixels => TapReach * Screen.width / AquariumCiv.GameUI.GameUiPanel.ReferenceWidth;
+        const float TapReach = 30f;
+
+        MessProps.Piece UnderFinger(Camera c, Vector2 pos) => props.PickUnder(c, pos, TapReachPixels);
+
+        /// <summary>Where the mess is on screen now (tests).</summary>
+        public void MessOnScreen(System.Collections.Generic.List<Vector2> into)
+        {
+            var c = Cam;
+            if (c != null) props.OnScreen(c, into);
+        }
+
+        /// <summary>#160: what's been said about Clean this session.</summary>
+        public AquariumCiv.Sim.CleanHint TouchHint { get; } = new();
+
+        /// <summary>Debug: forget the Clean hint, so the next touch on mess shows it.</summary>
+        public static string DebugCleanHint()
+        {
+            if (Instance == null) return "no CareView";
+            Instance.TouchHint.Reset();
+            return "Clean hint forgotten: touch a weed or trash";
         }
 
         Stroke Begin(Vector2 pos)
@@ -436,12 +561,12 @@ namespace AquariumCiv.View
             }
             if (hitPanes == 0) { sound.SetRub(0f, 0f); return; }
             long texels = 0;
-            foreach (var m in masks) texels += m.Texels;
+            foreach (var m in masks) texels += m.LiveTexels;
             float share = total / Mathf.Max(1L, texels);
             strokeRemoved += share;
             if (share > 0f)
             {
-                // the sim's grime follows the masks in proportion (the masks have no grime under the soil, so their mean runs lower)
+                // the sim's grime follows the masks in proportion
                 float after = CareMath.WeightedMean(masks);
                 sim.CleanGrime(sim.State.grime - sim.State.grime * after / (after + share));
                 synced = sim.State.grime;
@@ -466,7 +591,7 @@ namespace AquariumCiv.View
         void EndWipe(SimCore sim)
         {
             System.Array.Clear(hasLast, 0, hasLast.Length);
-            if (strokeRemoved > 0.0005f) { strokes++; GameClock.Tel.Cleaned("wipe", true); }
+            if (strokeRemoved > 0.0005f) { strokes++; GameClock.Tel.Cleaned("wipe", true); TouchHint.Cleaned(); }
             strokeRemoved = 0f;
         }
 
@@ -493,6 +618,7 @@ namespace AquariumCiv.View
         public void Toss(SimCore sim, MessProps.Piece piece, Vector2 releaseSpeed)
         {
             GameClock.Tel.Cleaned(piece.weed ? "prune" : "flick", true);
+            TouchHint.Cleaned();
             var c = Cam;
             var dir = (c.transform.right * releaseSpeed.x + c.transform.up * releaseSpeed.y).normalized;
             float s = WorldPerScreen(piece.Center);
@@ -538,7 +664,7 @@ namespace AquariumCiv.View
                 if (now - spotlessSince >= spotlessExitSeconds) hud.SetCleanMode(false);
             }
             else spotlessSince = -1f;
-            if (now - lastTouchTime >= idleExitSeconds) { hud.SetCleanMode(false); hud.Toast("Clean mode off.", 2f); }
+            if (now - lastTouchTime >= idleExitSeconds) hud.SetCleanMode(false); // no line: the button changes back (question 11)
         }
 
         // ---------------- sunlight and cheer ----------------
@@ -549,12 +675,16 @@ namespace AquariumCiv.View
                 sun = RenderSettings.sun;
                 if (sun == null) foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) if (l.type == LightType.Directional) { sun = l; break; }
                 if (sun == null) return;
-                sunBase = sun.intensity;
+                sunBase = sceneSun = sun.intensity;
             }
             float target = CareMath.SunScale(sim.MessLevel);
             sunScale = Mathf.Lerp(sunScale, target, 1f - Mathf.Exp(-sunFollowRate * dt));
             if (Mathf.Abs(sunScale - target) < 0.0005f) sunScale = target;
+            // The day sets the sun, the mess takes its share of it; at night the sun is too weak for that to show, so the ambient goes down too.
+            var day = DayLightDriver.Instance;
+            sunBase = DayLightDriver.Driving ? day.Current.SunIntensity : sceneSun;
             sun.intensity = sunBase * sunScale;
+            if (day != null) day.MessAmbient = DayLight.MessAmbientScale(sunScale);
         }
 
         void UpdateCheer(SimCore sim)
@@ -583,7 +713,8 @@ namespace AquariumCiv.View
                 Burst(transform.TransformPoint(p), 1, 0.05f, 0.25f);
             }
             people?.Planner?.React(KeeperGesture.FullClean, people.Now);
-            hud?.Toast(everything ? "All tidy. Look at that sky!" : "The glass is sparkling.", 3.5f);
+            if (Sim == null || !Sim.State.firstRun.active) // in the first run the next step's hint comes in here (question 27)
+                hud?.Toast(everything ? "All tidy. Look at that sky!" : "The glass is sparkling.", 3.5f);
         }
 
         // ---------------- sparkles ----------------

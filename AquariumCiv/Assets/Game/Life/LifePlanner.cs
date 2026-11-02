@@ -175,6 +175,13 @@ namespace AquariumCiv.Life
 
         PersonActivity PlanPerson(Person p, ViewTime t)
         {
+            var a = PlanBase(p, t);
+            ApplyCarry(p, ref a, t); // #192: a parent carrying a baby, a baby carried
+            return a;
+        }
+
+        PersonActivity PlanBase(Person p, ViewTime t)
+        {
             // 1+2. Keeper reactions (≤ 4 s) and live story scenes (echoes from "Show me", the debug panel, the evening talk),
             // with the walk back into the day after them (#64).
             var blocks = BlocksOf(p);
@@ -274,7 +281,7 @@ namespace AquariumCiv.Life
         readonly List<int> sweepOrder = new List<int>(), sweepTargets = new List<int>();
         int sweepersTotal;
         Building campB, wellB, marketB, tavernB, churchB, windmillB, lumberB, guildB, bakeryB, newestB;
-        Place fire, gather, remembering;
+        Place fire, stash, gather, remembering;
         Era era;
         bool eraReady;
         Person leader;
@@ -289,6 +296,7 @@ namespace AquariumCiv.Life
             polyCache.Clear();
             Snapshot();
             ClearDays();
+            DropReactionsToGoneGifts();
         }
 
         /// <summary>Cheap check that the sim moved: month, counts, era, role holders.</summary>
@@ -350,6 +358,7 @@ namespace AquariumCiv.Life
             var any = campB ?? (s.buildings.Count > 0 ? s.buildings[0] : null);
             if (homes.Count == 0 && any != null) homes.Add(any); // tents round the fire
             fire = campB != null ? new Place(PlaceKind.Fire, campB.id) : any != null ? PlaceOf(any) : Place.Land(PlaceKind.Hill);
+            stash = era == Era.Camp && fire.kind == PlaceKind.Fire ? CampStash.Stand : fire; // #150
             gather = era == Era.Camp ? fire
                 : era == Era.Village ? (wellB != null ? PlaceOf(wellB) : fire)
                 : marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : fire;

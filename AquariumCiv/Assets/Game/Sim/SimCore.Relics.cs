@@ -177,7 +177,7 @@ namespace AquariumCiv.Sim
         {
             switch (id)
             {
-                case RelicId.SkyCrumb: return "Sky Bread. Fell when the Bright One made the trees. Delicious.";
+                case RelicId.SkyCrumb: return $"Sky Bread. Fell when the Bright One {KeeperDid(FindRelic(id)?.cause)}. It fed us all winter. Delicious.";
                 case RelicId.FestivalMask: return "The Sky's Face. Worn at the first village dance. Smiles on one side; the other side was still drying.";
                 case RelicId.KeeperDoll: return "The Keeper. Hands: very large. Eye: always open.";
                 case RelicId.LeftSandal:

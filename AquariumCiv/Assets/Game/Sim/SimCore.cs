@@ -130,6 +130,7 @@ namespace AquariumCiv.Sim
             SettleStep(); // no dice: where the new buildings go, paths wear in (SimCore.Settle.cs, Sim/Settle)
             PeakStep(); // no dice: leaders for the book, the town's peak (SimCore.EraMoment.cs)
             HistoryStep(); // no dice: records for the time-lapse and the book (SimCore.History.cs)
+            EnsureCrowdNames(); // no dice: anyone new in the crowd gets a first name (SimCore.Crowd.cs)
         }
 
         void TryBuild()
@@ -138,24 +139,62 @@ namespace AquariumCiv.Sim
             if (s.buildings.Count >= Config.buildingSlots) return;
             float cost = NextBuildingCost;
             if (s.wood < cost) return;
-            int pop = s.population;
-            string type;
-            // Types from a later era are skipped: a camp waiting at its threshold keeps building, but only camp things.
-            // The twenty slots can't hold every farm a growing town would sow plus its own buildings: from the third farm on, a
-            // farm waits while the town's workshop, guildhall or shops are still wanted (#114), so the box keeps room for them.
-            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < Math.Min(MaxFarms, 1 + pop / 8) && !(Count(BuildingType.Farm) >= 3 && TownWant(pop) != null))) type = BuildingType.Farm;
-            else if (Wants(BuildingType.Hut, pop >= Housing - 1)) type = BuildingType.Hut;
-            else if (Wants(BuildingType.Lumbermill, pop >= 6 && Count(BuildingType.Lumbermill) == 0)) type = BuildingType.Lumbermill;
-            else if (Wants(BuildingType.Well, pop >= 8 && Count(BuildingType.Well) == 0)) type = BuildingType.Well;
-            else if (Wants(BuildingType.Windmill, pop >= 12 && Count(BuildingType.Windmill) == 0)) type = BuildingType.Windmill;
-            else if (Wants(BuildingType.Market, pop >= 15 && Count(BuildingType.Market) == 0)) type = BuildingType.Market;
-            else if (Wants(BuildingType.Tavern, pop >= 18 && Count(BuildingType.Tavern) == 0)) type = BuildingType.Tavern;
-            else if (Wants(BuildingType.Church, pop >= 24 && Count(BuildingType.Church) == 0)) type = BuildingType.Church;
-            else if (TownWant(pop) is string town) type = town;
-            else return; // nothing needed: save wood
+            string type = PickBuilding(s.population); // nothing needed: save wood
+            if (type == null) return;
             s.wood -= cost;
             AddBuilding(type);
         }
+
+        /// <summary>
+        /// The building the town would raise next at <paramref name="pop"/> people, wood and free slots aside (null = nothing
+        /// is needed). Read-only and dice-free: <see cref="TryBuild"/> builds exactly this once the wood is there, and the
+        /// people's talk (<see cref="NextWant"/>) asks the same question, so they can't disagree (#181).
+        /// </summary>
+        string PickBuilding(int pop)
+        {
+            // Types from a later era are skipped: a camp waiting at its threshold keeps building, but only camp things.
+            // The twenty slots can't hold every farm a growing town would sow plus its own buildings: from the third farm on, a
+            // farm waits while the town's workshop, guildhall or shops are still wanted (#114), so the box keeps room for them.
+            if (Wants(BuildingType.Farm, Count(BuildingType.Farm) < Math.Min(MaxFarms, 1 + pop / 8) && !(Count(BuildingType.Farm) >= 3 && TownWant(pop) != null))) return BuildingType.Farm;
+            if (Wants(BuildingType.Hut, pop >= Housing - 1)) return BuildingType.Hut;
+            if (Wants(BuildingType.Lumbermill, pop >= 6 && Count(BuildingType.Lumbermill) == 0)) return BuildingType.Lumbermill;
+            if (Wants(BuildingType.Well, pop >= 8 && Count(BuildingType.Well) == 0)) return BuildingType.Well;
+            if (Wants(BuildingType.Windmill, pop >= 12 && Count(BuildingType.Windmill) == 0)) return BuildingType.Windmill;
+            if (Wants(BuildingType.Market, pop >= 15 && Count(BuildingType.Market) == 0)) return BuildingType.Market;
+            if (Wants(BuildingType.Tavern, pop >= 18 && Count(BuildingType.Tavern) == 0)) return BuildingType.Tavern;
+            if (Wants(BuildingType.Church, pop >= 24 && Count(BuildingType.Church) == 0)) return BuildingType.Church;
+            return TownWant(pop);
+        }
+
+        /// <summary>What the town wants next, and what stops it (#181). Read-only: no dice, no writes.</summary>
+        public TownWantInfo NextWant()
+        {
+            var s = State;
+            var info = new TownWantInfo { pop = s.population, wood = s.wood, cost = NextBuildingCost, food = s.food, housing = Housing };
+            info.crowded = s.population >= Housing - 1;
+            info.foodLow = s.food < s.population * FoodLowPerPerson;
+            if (s.buildings.Count >= Config.buildingSlots) { info.stop = WantStop.Full; return info; }
+            string now = PickBuilding(s.population);
+            if (now != null)
+            {
+                info.building = now;
+                info.stop = s.wood < info.cost ? WantStop.Wood : WantStop.None;
+                return info;
+            }
+            // Nothing is wanted at this size: what is the first thing a few more people would bring?
+            for (int p = s.population + 1; p <= s.population + 30; p++)
+            {
+                string later = PickBuilding(p);
+                if (later == null) continue;
+                info.building = later; info.needPop = p; info.stop = WantStop.People;
+                return info;
+            }
+            info.stop = WantStop.Nothing;
+            return info;
+        }
+
+        /// <summary>Food under this many months' of the town's mouths is "running low" (births need 1.5 per person, mood dips at 0).</summary>
+        public const float FoodLowPerPerson = 0.75f;
 
         /// <summary>Slots the town's own buildings leave free for shaping answers (#114). None: a full box is the goal, and a shaping in a full town becomes a harvest line.</summary>
         const int TownSlotsKept = 0;
@@ -271,7 +310,11 @@ namespace AquariumCiv.Sim
                 var n = AddNotable(rng.Range(18f, 30f), -1, null);
                 bool growing = s.era > Era.Camp && adults >= Config.NotablesIn(s.era - 1).min;
                 if (growing) Chronicle("newcomer", $"A newcomer, {n.FullName}, {n.trait}, joined the {EraNoun(s.era)}.", 0.55f, n.id);
-                else Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
+                else
+                {
+                    TakeCrowdName(n); // the name they already had in the crowd (SimCore.Crowd.cs, #148)
+                    Chronicle("rise", $"{n.FullName}, {n.trait}, rose to prominence among the people.", 0.55f, n.id);
+                }
             }
         }
 
@@ -373,6 +416,7 @@ namespace AquariumCiv.Sim
             }
             int slot = Enumerable.Range(0, Config.buildingSlots).First(i => !used.Contains(i));
             var b = new Building { id = s.NextId(), type = type, slot = slot, foundedMonth = s.month };
+            b.builderId = PickBuilder(b.id);
             s.buildings.Add(b);
             if (!s.foundedTypes.Contains(type))
             {

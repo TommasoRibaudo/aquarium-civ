@@ -1,0 +1,148 @@
+/* #107 hero piece: the wish card of Keeper's Glass, tokens and sizes from docs/design/ui/spec.md and KeeperGlass.dc.html.
+   1 pt = 2.75 panel px. Never in a build: only HeroWishProof loads it. No :first-child, :nth-child or :not here. */
+.hero-root {
+    --ink: #3D2A1E;
+    --ink-soft: #4A3324;
+    --timber: #6A4B36;
+    --paper: #F3E9D6;
+    --frost-tint: rgba(243, 233, 214, 0.72);
+    --flat-tint: rgba(243, 233, 214, 0.92);
+    --flat-sheet: rgba(243, 233, 214, 0.94);
+        --brass: #B88A3E;
+    --brass-light: #D9B873;
+    --primary: #9E5033;
+    --on-primary: #EFE3CC;
+    --moss: #526E3A;
+    /* The panel blends in linear light (a Linear project); CSS blends in sRGB. Dark over light comes out paler, so these
+       three are not the board's numbers: they're what gives the board's colour. Board: 40 %, 53 % over the fill, 20 %. */
+    --dot-off: rgba(106, 75, 54, 0.52);
+    --button-edge: #D3B684;
+    --shadow: rgba(46, 42, 39, 0.45);
+
+    --pt-1: 2.75px;
+    --pt-2: 5.5px;
+    --pt-6: 16.5px;
+    --pt-8: 22px;
+    --pt-10: 27.5px;
+    --pt-12: 33px;
+    --pt-16: 44px;
+    --pt-23: 63.25px;
+    --pt-26: 71.5px;
+
+    --lora-bold: url("../../../UI/Resources/GameUI/Fonts/Lora-Bold.ttf");
+    --serif: url("../../../UI/Resources/GameUI/Fonts/PT_Serif-Web-Regular.ttf");
+    --serif-bold: url("../../../UI/Resources/GameUI/Fonts/PT_Serif-Web-Bold.ttf");
+
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+/* The stack is the 30 % box; the shadow reaches 100 px past it on every side and sits 8 pt lower. */
+.hero-stack { position: absolute; left: 0; right: 0; bottom: 0; height: 30%; }
+.hero-shadow {
+    position: absolute; left: -100px; right: -100px; top: -78px; bottom: -222px;
+    background-image: url("../../../UI/Resources/GameUI/GlassShadow.png");
+    -unity-background-image-tint-color: var(--shadow);
+    -unity-slice-left: 200; -unity-slice-right: 200; -unity-slice-top: 200; -unity-slice-bottom: 200;
+}
+
+/* Opaque paper at the very back so the HUD can't show through; then the sharp copy (hero-frost-base), then the blurred one.
+   A blur fades to nothing at its element's edge, which here is the screen's: without the sharp copy under it the sheet
+   goes light along both sides and the bottom. */
+.surface {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    background-color: var(--paper);
+    border-top-left-radius: var(--pt-26); border-top-right-radius: var(--pt-26);
+    overflow: hidden;
+}
+.surface--flat { background-color: var(--flat-sheet); }
+.hero-frost-inner { position: absolute; left: 0; right: 0; top: -48px; bottom: 0; overflow: hidden; filter: blur(14px); }
+.hero-frost-image { position: absolute; }
+.hero-tint {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    background-color: var(--frost-tint);
+    border-top-left-radius: var(--pt-26); border-top-right-radius: var(--pt-26);
+    border-top-width: var(--pt-1); border-top-color: var(--brass-light);
+}
+.surface--flat > .hero-tint { background-color: rgba(0, 0, 0, 0); }
+.surface--flat > .hero-frost-inner { display: none; }
+.surface--flat > .hero-frost-image { display: none; }
+
+.hero-words {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    padding: 35.75px var(--pt-16) 82.5px var(--pt-16); /* 12 pt + the 1 pt hairline, which CSS counts inside the box */
+    color: var(--ink);
+}
+
+.hero-dots { flex-direction: row; justify-content: center; flex-shrink: 0; }
+.hero-dot {
+    width: 19.25px; height: 19.25px; margin: 0 8.25px;
+    border-top-left-radius: 50%; border-top-right-radius: 50%; border-bottom-left-radius: 50%; border-bottom-right-radius: 50%;
+    background-color: var(--dot-off);
+}
+.hero-dot--on { background-color: var(--timber); }
+
+.hero-head { flex-direction: row; align-items: center; margin-top: var(--pt-6); flex-shrink: 0; }
+.hero-portrait {
+    width: 121px; height: 121px; flex-shrink: 0;
+    border-width: var(--pt-2); border-color: var(--brass);
+    border-top-left-radius: 50%; border-top-right-radius: 50%; border-bottom-left-radius: 50%; border-bottom-right-radius: 50%;
+    background-color: var(--moss);
+    color: var(--paper);
+    font-size: 49.5px;
+    -unity-font-definition: var(--lora-bold);
+    -unity-text-align: middle-center;
+    padding: 0; margin: 0;
+}
+.hero-title {
+    flex-grow: 1; flex-shrink: 1; margin: 0 0 0 var(--pt-10); padding: 0;
+    color: var(--ink);
+    font-size: 57.75px;
+    -unity-font-definition: var(--lora-bold);
+    -unity-text-align: middle-left;
+    white-space: normal;
+}
+.hero-quiet {
+    min-height: 121px; min-width: 121px; margin: 0 0 0 var(--pt-10); padding: 0 var(--pt-6);
+    background-color: rgba(0, 0, 0, 0); border-width: 0;
+    color: var(--ink);
+    font-size: 38.5px;
+    -unity-font-definition: var(--serif);
+    -unity-text-align: middle-center;
+    flex-shrink: 0;
+}
+.hero-body {
+    margin: var(--pt-6) 0 0 0; padding: 0;
+    color: var(--ink);
+    font-size: 41.25px;
+    -unity-font-definition: var(--serif);
+    white-space: normal;
+    flex-shrink: 0;
+}
+.hero-sub {
+    margin: var(--pt-6) 0 0 0; padding: 0;
+    color: var(--ink);
+    font-size: 38.5px;
+    -unity-font-definition: var(--serif);
+    flex-shrink: 0;
+}
+
+.hero-acts { flex-direction: row; align-items: center; margin-top: auto; flex-shrink: 0; }
+.hero-btn {
+    height: 126.5px; min-width: 121px; margin: 0 var(--pt-8) 0 0; padding: 0 var(--pt-16);
+    border-width: var(--pt-1); border-color: var(--button-edge);
+    border-top-left-radius: var(--pt-23); border-top-right-radius: var(--pt-23);
+    border-bottom-left-radius: var(--pt-23); border-bottom-right-radius: var(--pt-23);
+    background-color: var(--flat-tint);
+    color: var(--ink-soft);
+    font-size: 44px;
+    -unity-font-definition: var(--serif-bold);
+    -unity-text-align: middle-center;
+    flex-shrink: 0;
+}
+.hero-btn--primary {
+    margin: 0 0 0 auto; padding: 0 71.5px;
+    border-width: 0;
+    background-color: var(--primary);
+    color: var(--on-primary);
+}
