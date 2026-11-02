@@ -257,6 +257,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(mp.Playing, "a tap on Watch starts the moment");
             MomentPlayer.DebugHurry(6f);
             MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => mp.Director.Time >= 8f, 20f);
+            yield return Shot("smoke_moment_close");
             yield return Until(() => !mp.Playing, 60f);
             MomentPlayer.DebugHoldHurry = false;
             Assert.IsFalse(mp.Playing, "the moment ends");
@@ -342,6 +344,7 @@ namespace AquariumCiv.View.PlayTests
             MomentPlayer.DebugHoldHurry = true;
             yield return Until(() => c.PickerOpen, 60f);
             Assert.IsTrue(c.PickerOpen, "the moment asks for the next box");
+            yield return Shot("smoke_last_moment");
             yield return Frames(4);
             yield return TapAt(GameUiPanel.ScreenCenter(c.GetComponent<UIDocument>().rootVisualElement, "picker-begin"));
             yield return Until(() => !c.Playing, 100f);

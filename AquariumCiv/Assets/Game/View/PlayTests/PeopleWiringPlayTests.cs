@@ -407,13 +407,14 @@ namespace AquariumCiv.View.PlayTests
                 float wide = name.MeasureTextSize(word, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
                 Assert.LessOrEqual(wide, room, word + " in a tile of " + room);
             }
-            // Tester run 10: "Blossoming grove" ran out of its tile: it takes two lines, and its tile and its neighbours grow to match.
+            // Tester run 10: "Blossoming grove" ran out of its tile: it takes two lines, in the icon's place.
             name.text = "Blossoming grove";
             name.AddToClassList("kg-tile-name--wrap");
+            tile.AddToClassList("kg-tile--wrap");
             yield return Frames(3);
             Assert.LessOrEqual(name.layout.width, tile.contentRect.width + 0.5f, "inside its tile");
             Assert.Greater(name.layout.height, 50f, "on two lines");
-            Assert.LessOrEqual(name.worldBound.yMax + name.parent.Children().Last().layout.height, tile.worldBound.yMax + 60f);
+            Assert.LessOrEqual(tile.Children().Last().worldBound.yMax, tile.worldBound.yMax + 0.5f, "and the rest of the tile stays in it");
             yield return Shot("tile-two-lines");
             hud.CloseSheet();
             AssertNoErrors("tile names");

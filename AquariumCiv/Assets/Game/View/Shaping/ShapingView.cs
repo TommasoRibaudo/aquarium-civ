@@ -995,6 +995,7 @@ namespace AquariumCiv.View
                 b.EnableInClassList("kg-tile--off", !t.enabled);
                 b.EnableInClassList("kg-tile--armed", t.armed);
                 b.EnableInClassList("kg-tile--last", i == list.Count - 1);
+                b.EnableInClassList("kg-tile--wrap", t.name.Length >= WrapToolName);
                 b.Add(new GlassIcon(t.enabled ? IconOf(kind) : "lock", "kg-icon--small"));
                 var name = TrayLabel(Cap(t.name), "type-small-head", "kg-tile-name");
                 name.EnableInClassList("kg-tile-name--long", t.name.Length >= LongToolName);

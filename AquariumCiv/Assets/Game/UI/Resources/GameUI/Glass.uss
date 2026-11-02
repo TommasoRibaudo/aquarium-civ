@@ -694,6 +694,7 @@
 .kg-tile > Label { margin: 0; padding: 0; white-space: nowrap; }
 .kg-tile-name--long { font-size: 33px; letter-spacing: -0.5px; }
 .kg-tile > Label.kg-tile-name--wrap { white-space: normal; -unity-text-align: upper-left; }
+.kg-tile--wrap > .kg-icon { display: none; } /* two lines of name take the icon's place: the tile is a fixed height */
 .tray-sheet--short .kg-tile { height: 222px; padding-top: 11px; padding-bottom: 11px; }
 .tray-foot { flex-direction: row; align-items: center; flex-shrink: 0; min-height: 121px; margin-top: var(--space-6); }
 .tray-note { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; white-space: normal; margin: 0 var(--space-10) 0 0; padding: 0; }
