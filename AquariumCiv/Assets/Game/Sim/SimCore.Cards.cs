@@ -8,7 +8,7 @@ namespace AquariumCiv.Sim
     public static class ThreadSource
     {
         public const string Era = "era", Seat = "seat", Couple = "couple", Gift = "gift", Rivalry = "rivalry", Office = "office",
-            Slice = "slice", Link = "link";
+            Slice = "slice", Link = "link", Dilemma = "dilemma"; // Dilemma: a callback paying off an old question (#221)
     }
 
     public enum ThreadState { Open, PaidOff, Died }
@@ -394,6 +394,7 @@ namespace AquariumCiv.Sim
         {
             var e = State.chronicle[index];
             e.threadId = 0;
+            if (e.kind == "dilemma_callback") e.threadId = CallbackThread(e); // the old question is the teaser it pays off (#221)
             // Teasers first: the payoff links back to the evening talk's thread.
             foreach (var t in State.threads)
             {

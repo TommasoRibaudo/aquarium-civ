@@ -408,6 +408,7 @@ namespace AquariumCiv.Sim
         public int dilemmaNextId = 1;
         public long dilemmaNextMonth = -1;   // the next one is due from this month (-1 = not scheduled yet)
         public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
+        public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
         public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book
 
         public float Year => month / (float)SimConfig.MonthsPerYear;

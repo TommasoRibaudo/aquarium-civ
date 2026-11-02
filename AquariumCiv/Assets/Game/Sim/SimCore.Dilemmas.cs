@@ -97,6 +97,7 @@ namespace AquariumCiv.Sim
             var s = State;
             s.dilemmas ??= new List<Dilemma>();
             s.dilemmaLeans ??= new List<DilemmaLean>();
+            s.dilemmaCallbacks ??= new List<DilemmaCallback>();
             s.customs ??= new List<string>();
             if (s.dilemmaNextId < 1) s.dilemmaNextId = 1;
         }
@@ -148,6 +149,7 @@ namespace AquariumCiv.Sim
         {
             if (!Config.dilemmas) return;
             var s = State;
+            CallbackStep(); // no dice: one due callback per month
             var open = OpenDilemma;
             if (open != null)
             {
@@ -307,6 +309,7 @@ namespace AquariumCiv.Sim
             e.keeper = true;
             d.answerEntryId = e.id;
             ApplyDilemmaEffects(d, def, option);
+            ScheduleCallbacks(d, def, option);
             return true;
         }
 
@@ -348,6 +351,7 @@ namespace AquariumCiv.Sim
             var e = Record("dilemma_result", $"The people chose {label} themselves.", 0.55f, d.PersonOf(d.option), d.PersonOf(1 - d.option));
             d.resultEntryId = e.id;
             ApplyDilemmaEffects(d, def, d.option);
+            ScheduleCallbacks(d, def, d.option);
         }
 
         // ---------- effects ----------
