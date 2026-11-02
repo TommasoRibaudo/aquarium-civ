@@ -19,13 +19,24 @@ namespace AquariumCiv.View
         public const float BarH = 32f, Gap = 8f;
         static Rect bar, panel;
 
-        // ---- long-press unlock (#98): the first slice build ships with the panels hidden. Hold the top-left corner for 2 s
-        // and the "dbg" toggle appears for the rest of the session. The Editor shows it from the start.
+        // ---- long-press unlock (#98): the first slice build ships with the panels hidden. Hold three fingers down anywhere, or
+        // the top-left corner (under the town name now), for 2 s and the "dbg" toggle appears for the rest of the session. The Editor shows it from the start.
         public const float UnlockSeconds = 2f, CornerSize = 96f;
         /// <summary>Tests set this to true to exercise the lock inside the Editor; null = locked outside the Editor only.</summary>
         public static bool? ForceLocked;
         static bool unlocked;
-        static float pressStart = -1f;
+        static float pressStart = -1f, fingersStart = -1f;
+        public const int UnlockFingers = 3;
+
+        /// <summary>The second way in: three fingers down together for 2 s, anywhere. The top-left corner holds the town name now, so a
+        /// hold there lands on a button; three fingers touch no UI and nothing in the world uses them.</summary>
+        public static bool HoldFingers(int fingers, float now)
+        {
+            if (fingers < UnlockFingers) { fingersStart = -1f; return !Locked; }
+            if (fingersStart < 0f) fingersStart = now;
+            if (now - fingersStart >= UnlockSeconds) unlocked = true;
+            return !Locked;
+        }
 
         public static bool Locked => !unlocked && (ForceLocked ?? !Application.isEditor);
 
@@ -43,7 +54,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Back to the first-launch state (tests).</summary>
-        public static void ResetLock() { unlocked = false; pressStart = -1f; ForceLocked = null; Active = None; }
+        public static void ResetLock() { unlocked = false; pressStart = -1f; fingersStart = -1f; ForceLocked = null; Active = None; }
 
         /// <summary>Once a frame (not from OnGUI): the long-press reads the pointer, so it needs no IMGUI input at all.</summary>
         public static void WatchCorner()
@@ -53,6 +64,10 @@ namespace AquariumCiv.View
             var p = Pointer.current;
             bool down = p != null && p.press.isPressed;
             Hold(down, down ? ToGui(p.position.ReadValue(), sc) : default, CornerRect(safe), Time.realtimeSinceStartup);
+            int fingers = 0;
+            var screen = Touchscreen.current;
+            if (screen != null) foreach (var t in screen.touches) if (t.press.isPressed) fingers++;
+            HoldFingers(fingers, Time.realtimeSinceStartup);
         }
 
         /// <summary>A pointer position (pixels, y up) in IMGUI units (y down).</summary>

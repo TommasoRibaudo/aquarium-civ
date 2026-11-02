@@ -9,7 +9,7 @@ namespace AquariumCiv.GameUI
 {
     /// <summary>
     /// The HUD shell (#36, reworked to Keeper's Glass in #108, hierarchy.md D1 to D6): nearly empty, the world is the screen. Top:
-    /// the box's name and year as quiet text with a settings mark (a tap opens Settings), Photo and a quieter Feedback as small
+    /// the box's name and year as quiet text with a settings mark beside it (the name opens the Offices list, the mark opens Settings), Photo and a quieter Feedback as small
     /// icons, Feedback in test builds only. Bottom: three tools of one calm look, History (always the time-lapse), Clean, Shape.
     /// Above them the pin chip (a portrait and the name) and the Stories chip (unread stories). One sheet at a time, closed by
     /// its Close, a tap on the world, or Back. Everything sits inside the safe area, in the lanes of <see cref="GameUiPanel"/>.
@@ -20,7 +20,7 @@ namespace AquariumCiv.GameUI
     /// </summary>
     public class GameHud : MonoBehaviour
     {
-        public const string Settings = "settings", History = "history", Shaping = "shaping";
+        public const string Settings = "settings", History = "history", Shaping = "shaping", Offices = "offices";
 
         public static GameHud Instance { get; private set; }
         /// <summary>Set false (tests) to keep the bootstrap from adding the HUD to the scene.</summary>
@@ -393,7 +393,8 @@ namespace AquariumCiv.GameUI
             root.Add(safe);
 
             topRow = Row("hud-top");
-            var title = new GlassButton("", () => Open(Settings), ButtonKind.Quiet, UiRole.Open) { name = "hud-title" };
+            // The name chip opens the offices list (#215); the settings mark to its right opens Settings.
+            var title = new GlassButton("", () => Open(Offices), ButtonKind.Quiet, UiRole.Open) { name = "hud-title" };
             title.AddToClassList("hud-title");
             var words = new VisualElement { name = "hud-title-text", pickingMode = PickingMode.Ignore };
             words.AddToClassList("hud-title-text");
@@ -401,8 +402,8 @@ namespace AquariumCiv.GameUI
             words.Add(yearLabel = Text("Year 0", "hud-title-year", "type-sub"));
             nameLabel.pickingMode = yearLabel.pickingMode = PickingMode.Ignore;
             title.Add(words);
-            title.Add(Disc("settings"));
             topRow.Add(title);
+            topRow.Add(IconButton("hud-settings", "settings", () => Open(Settings), UiRole.Open));
             var spacer = new VisualElement { pickingMode = PickingMode.Ignore };
             spacer.AddToClassList("hud-spacer");
             topRow.Add(spacer);
@@ -452,6 +453,7 @@ namespace AquariumCiv.GameUI
             safe.Add(exitButton);
             settings = new SettingsSheets(this, tightSheets.Add);
             BuildHistory();
+            BuildOffices();
             BuildShaping();
             ApplySafeArea();
             RefreshText();
@@ -463,6 +465,39 @@ namespace AquariumCiv.GameUI
             var sheet = Sheet(History, "History");
             sheet.Add(historyBody = Text("", "type-body"));
             sheet.Add(Text("The chronicle and the time-lapse of the years will live here.", "type-note", "kg-sheet-note"));
+        }
+
+        /// <summary>#215: who holds each office of this era. Rebuilt every time the sheet opens, so it is never stale.</summary>
+        void BuildOffices()
+        {
+            var sheet = Sheet(Offices, "Offices");
+            officesList = new VisualElement { name = "offices-list", pickingMode = PickingMode.Ignore };
+            sheet.Add(officesList);
+        }
+
+        VisualElement officesList;
+
+        void RefreshOffices()
+        {
+            officesList.Clear();
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            int rows = 0;
+            if (sim != null)
+                foreach (var role in AquariumCiv.Sim.SimCore.RolesOf(sim.State.era))
+                {
+                    if (!sim.RoleOpen(role)) continue;
+                    var holder = sim.HolderOf(role);
+                    var row = new VisualElement { name = "office-" + role.Replace(' ', '-'), pickingMode = PickingMode.Ignore };
+                    row.AddToClassList("kg-row");
+                    var label = Text(char.ToUpperInvariant(role[0]) + role.Substring(1), "type-body", "kg-row-label");
+                    var who = Text(holder != null ? holder.name : "Vacant", "type-body", "office-holder");
+                    if (holder == null) who.AddToClassList("office-vacant");
+                    row.Add(label);
+                    row.Add(who);
+                    officesList.Add(row);
+                    rows++;
+                }
+            if (rows == 0) officesList.Add(Text("No offices yet.", "type-note", "kg-sheet-note"));
         }
 
         /// <summary>The shaping sheet's body (#84): empty here; the shaping view fills it with the tray when the sheet opens
@@ -512,7 +547,7 @@ namespace AquariumCiv.GameUI
         internal GlassScrim ScrimOf(string id) => sheets[id];
 
         // ---------------- behaviour ----------------
-        /// <summary>Open a sheet by name (<see cref="Settings"/>, <see cref="History"/>, <see cref="Shaping"/>); closes any other.</summary>
+        /// <summary>Open a sheet by name (<see cref="Settings"/>, <see cref="History"/>, <see cref="Shaping"/>, <see cref="Offices"/>); closes any other.</summary>
         public void Open(string id)
         {
             if (!sheets.TryGetValue(id, out var scrim) || openSheet == scrim) return;
@@ -521,6 +556,7 @@ namespace AquariumCiv.GameUI
             openSheet = scrim;
             settings.Opening(id);
             if (id == History) RefreshText();
+            if (id == Offices) RefreshOffices();
             scrim.Open();
             ToolsBehindSheet();
             PlaceToast();

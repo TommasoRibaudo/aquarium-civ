@@ -336,7 +336,7 @@ namespace AquariumCiv.View.PlayTests
             // D3, D4: quiet name, settings mark, small icons
             var title = root.Q<GlassButton>("hud-title");
             Assert.AreEqual(ColorOf("#00000000"), title.resolvedStyle.backgroundColor, "no pill");
-            Assert.IsNotNull(title.Q<GlassIcon>(), "a settings mark");
+            Assert.IsNotNull(root.Q("hud-settings").Q<GlassIcon>(), "a settings mark, beside the name");
             Assert.Less(root.Q("hud-feedback").resolvedStyle.opacity, 1f, "Feedback is quieter");
 
             // Rule 7: Clean's state shows, and clean mode ends with the word back

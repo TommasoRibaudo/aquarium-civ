@@ -85,14 +85,14 @@ namespace AquariumCiv.View.PlayTests
                 for (int pass = 0; pass < 3 && (pass == 0 || gaps.Count(g => g >= WindowFrom && g <= WindowTo) < 3); pass++)
                     for (float want = 0.24f; want <= 0.3401f; want += 0.005f)
                     {
-                        yield return Tap("hud-title");
+                        yield return Tap("hud-settings");
                         yield return Until(() => hud.OpenSheet == GameHud.Settings, 1f);
                         yield return Wait(0.4f);
                         yield return Tap("settings-close");
                         yield return Until(() => hud.OpenSheet == null, 1f);
                         while (Now < closedAt + want - lead) yield return null;
                         float pressed = Now;
-                        yield return Tap("hud-title");
+                        yield return Tap("hud-settings");
                         yield return Until(() => hud.OpenSheet == GameHud.Settings, 1f);
                         lead = Mathf.Lerp(lead, openedAt - pressed, 0.5f);
                         float gap = openedAt - closedAt;
@@ -164,7 +164,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 foreach (float gap in new[] { 0.04f, 0.12f, 0.2f })
                 {
-                    yield return Tap("hud-title");
+                    yield return Tap("hud-settings");
                     yield return Until(() => hud.OpenSheet == GameHud.Settings, 1f);
                     yield return Wait(0.45f);
                     Assert.AreEqual(GameHud.Settings, hud.OpenSheet, "the sheet is up");
@@ -185,7 +185,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsEmpty(bad, "a tool tap dropped after Close");
 
             // and the sheet takes taps again the next time it's up
-            yield return Tap("hud-title");
+            yield return Tap("hud-settings");
             yield return Until(() => hud.OpenSheet == GameHud.Settings, 1f);
             yield return Wait(0.45f);
             bool sound = GameSettings.Sound;

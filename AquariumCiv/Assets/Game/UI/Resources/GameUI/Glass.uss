@@ -541,6 +541,8 @@
 .hud-title-year { white-space: nowrap; -unity-text-align: middle-left; }
 .hud-disc { width: 121px; height: 121px; border-radius: 50%; justify-content: center; align-items: center; }
 .hud-spacer { flex-grow: 1; }
+.office-holder { flex-shrink: 0; -unity-text-align: middle-right; }
+.office-vacant { opacity: 0.55; -unity-font-style: italic; }
 .hud-corner { flex-direction: row; align-items: center; flex-shrink: 0; }
 .hud-icon { width: 144px; height: 144px; min-width: 144px; }
 .hud-icon--quiet { opacity: 0.72; }
