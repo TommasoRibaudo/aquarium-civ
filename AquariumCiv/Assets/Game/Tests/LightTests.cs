@@ -280,34 +280,31 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void Lamps_FlickerStutterThenBurnSteady()
+        public void Lamps_FadeOnThenBreatheSlowly()
         {
             int seed = 5, id = 2;
             float th = Lamps.Threshold(seed, id);
-            int off = 0, on = 0;
-            for (int i = 0; i < 400; i++)
-            {
-                float b = Lamps.Brightness(th + 0.02f, seed, id, i * 0.013f);
-                if (b < 0.45f) off++; else if (b > 0.7f) on++;
-            }
-            Assert.Greater(off, 20, "just after ignition the lamp dims sometimes");
-            Assert.Greater(on, 20, "and catches sometimes");
-            float prev = Lamps.Brightness(th + 0.02f, seed, id, 0f), jump = 0f;
+            // No flicker (#214): a lamp just past its threshold is on, steady but for the slow breathing, never dropping out.
+            float prev = Lamps.Brightness(th + 0.06f, seed, id, 0f), jump = 0f, low = 1f;
             for (int i = 1; i < 2000; i++)
             {
-                float b = Lamps.Brightness(th + 0.02f, seed, id, i * 0.005f);
-                jump = Math.Max(jump, Math.Abs(b - prev)); prev = b;
+                float b = Lamps.Brightness(th + 0.06f, seed, id, i * 0.005f);
+                jump = Math.Max(jump, Math.Abs(b - prev)); prev = b; low = Math.Min(low, b);
             }
-            Assert.Less(jump, 0.1f, "it eases between dim and bright, 5 ms apart it never jumps (#214)");
+            Assert.Less(jump, 0.01f, "5 ms apart it barely moves: no strobing, no pulses");
+            Assert.Greater(low, 0.5f, "and it never drops out once it has come on");
+            float f0 = Lamps.Brightness(th + 0.005f, seed, id, 3f), f1 = Lamps.Brightness(th + 0.05f, seed, id, 3f), f2 = Lamps.Brightness(th + 0.09f, seed, id, 3f);
+            Assert.Less(f0, f1, "it fades on as the level rises");
+            Assert.Less(f1, f2);
             float lo = 1f, hi = 0f;
             for (int i = 0; i < 400; i++)
             {
                 float b = Lamps.Brightness(th + 0.5f, seed, id, i * 0.05f);
                 lo = Math.Min(lo, b); hi = Math.Max(hi, b);
             }
-            Assert.Greater(lo, 0.88f, "burning steady it only shimmers a little");
+            Assert.Greater(lo, 0.88f, "burning steady it only breathes a little");
             Assert.LessOrEqual(hi, 1f);
-            Assert.Greater(hi - lo, 0.01f, "but it does shimmer");
+            Assert.Greater(hi - lo, 0.03f, "but it does breathe");
         }
 
         [Test]
