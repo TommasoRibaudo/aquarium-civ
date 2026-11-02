@@ -47,6 +47,9 @@ namespace AquariumCiv.View.Cards
         public string actionLabel = "";
         public bool actionEnabled = true;
         public string actionNote = "";  // why the action can't happen now, said on the card (practices §4)
+        public DilemmaView dilemma;     // a dilemma card: the question, the two options and who/what they point at (null elsewhere)
+        public int dilemmaChosen = -1;  // the option taken (answered from anywhere, or by the people on a lapse); -1 = still open
+        public bool dilemmaLapsed;      // the people chose it themselves: the card says so and nothing lifts
     }
 
     /// <summary>What Give did: the wish to arm the tool for, or why not (<see cref="line"/> is ready to show).</summary>
@@ -405,6 +408,38 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
+        // ------------------------------------------------------------------ the dilemma card (#223)
+
+        /// <summary>The fallback answer: the two buttons on the dilemma card. Takes the card's own dilemma (not the box's open one), is
+        /// final (no undo) and writes the Keeper's entry. False if the card isn't a dilemma, the option is not 0 or 1, or it was answered
+        /// already. The card stays up so it can say what was chosen; Next moves on.</summary>
+        public bool AnswerDilemma(int option)
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.state != DilemmaState.Open) return false;
+            if (!sim.AnswerDilemma(d.id, option, DilemmaPath.Card)) return false;
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>The hook for #224: Show me on a dilemma card flies to the choice scene instead of a place. Set by the in-box scene;
+        /// returns true if it took the tap (the card then waits behind it), false to fall back to the normal Show me.</summary>
+        public Func<DilemmaView, bool> DilemmaShowMeHook;
+
+        /// <summary>Show me on a dilemma card: offers the open dilemma to <see cref="DilemmaShowMeHook"/>. True if the hook took it.</summary>
+        public bool DilemmaShowMe()
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.state != DilemmaState.Open || DilemmaShowMeHook == null) return false;
+            var v = sim.ViewOfDilemma(d);
+            if (v == null || !DilemmaShowMeHook(v)) return false;
+            sim.MarkCardRead(Shown);
+            return true;
+        }
+
+        Dilemma DilemmaOnCard() => Mode == CardStackMode.Open && Shown?.kind == CardKind.Dilemma ? sim.DilemmaOfEntry(Shown.lead.id) : null;
+
         // ------------------------------------------------------------------ what to draw
 
         /// <summary>The page on screen as data (null when closed).</summary>
@@ -428,6 +463,7 @@ namespace AquariumCiv.View.Cards
                     case CardKind.Legend: f.action = CardAction.Remember; f.actionLabel = "Remember"; break;
                     case CardKind.EraReady: f.action = CardAction.Watch; f.actionLabel = "Watch"; break;
                     case CardKind.Wish: FillGive(f, sim.WishOfEntry(c.lead.id)); break;
+                    case CardKind.Dilemma: FillDilemma(f, sim.DilemmaOfEntry(c.lead.id)); break;
                 }
                 return f;
             }
@@ -439,6 +475,20 @@ namespace AquariumCiv.View.Cards
             string text = c.lead.text ?? "", head = c.headline ?? "";
             if (head.Length == 0 || !text.StartsWith(head, StringComparison.Ordinal)) return text;
             return text.Substring(head.Length).TrimStart('.', ':', ';', '!', ' ');
+        }
+
+        void FillDilemma(CardFace f, Dilemma d)
+        {
+            var v = d == null ? null : sim.ViewOfDilemma(d);
+            if (v == null) return;
+            f.dilemma = v;
+            f.headline = v.question; // the people's ask leads; the entry's headline is clipped
+            f.body = "";
+            f.portraits.Clear();
+            f.canShowMe = f.canShowMe || DilemmaShowMeHook != null;
+            if (d.state == DilemmaState.Open) return;
+            f.dilemmaChosen = d.option;
+            f.dilemmaLapsed = d.state == DilemmaState.Lapsed;
         }
 
         void FillGive(CardFace f, Wish w)

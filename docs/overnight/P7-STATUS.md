@@ -2,8 +2,8 @@
 
 Orchestrator memory across compaction. One line per finished step: what, commit, anything odd.
 
-- [ ] Branch `p7/dilemmas` from `origin/dev`; the P7 docs committed
-- [ ] #220 merged, closed
+- [x] Branch `p7/dilemmas` from `origin/dev`; the P7 docs committed
+- [x] #220 merged, closed
 - [ ] #221 merged, closed
 - [ ] #223 merged, closed
 - [ ] #222 merged (open for the user's tone review)
@@ -17,3 +17,7 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - [ ] Final report
 
 ## Log
+- 16:20 branch p7/dilemmas from origin/dev b7ca9fe; docs commit dda11b0. Next: #220 worker (Sonnet, wt F:/GameDev-wt/220); Editor baseline meanwhile.
+- 16:31 #220 worker done (dotnet 1063 green, 21 DilemmaTests); sent back: don't lapse an open wish for a due dilemma. Baseline EditMode suite running since ~16:21.
+- 16:47 baseline full EditMode on dda11b0: 1283 pass, 0 fail, 8 skip, 1 inconclusive (14 min). #220 merged 0004bfb, Unity Sim 598/600 green, closed. #221 worker running (wt/221). Next: #223 Editor worker.
+- 16:47 #221 merged 661aa21 (dotnet 1072 green, 8 callback tests; Unity Sim run pending, batch with #223). #223 Editor worker started 16:48 (main checkout, branch vs/223-dilemma-card). #222 writer (Opus) starting in wt/222. Integration merges happen in wt/p7int.

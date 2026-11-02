@@ -46,6 +46,13 @@ namespace AquariumCiv.View
         readonly GlassPortrait[] faces = new GlassPortrait[2];
         readonly int[] portraitIds = { -1, -1 };
         readonly Button[] alsoLines = new Button[3];
+        // The dilemma card (#223): two columns, each an answer button (face + label) over the hint in the people's voice.
+        VisualElement dilBox;
+        readonly VisualElement[] dilCols = new VisualElement[2];
+        readonly GlassButton[] dilAnswers = new GlassButton[2];
+        readonly GlassPortrait[] dilFaces = new GlassPortrait[2];
+        readonly GlassIcon[] dilPlaces = new GlassIcon[2];
+        readonly Label[] dilLabels = new Label[2], dilHints = new Label[2];
         GameClock clock;
         GameHud hud;
         SimCore bound;
@@ -153,6 +160,7 @@ namespace AquariumCiv.View
                 model = new CardStackModel(sim, () => Time.realtimeSinceStartupAsDouble, GameClock.Tel);
                 model.Changed += Draw;
                 model.ShowMeEnd += OnShowMeEnd;
+                model.DilemmaShowMeHook = v => DilemmaShowMeHook != null && DilemmaShowMeHook(v);
                 var session = clock != null ? clock.Session : null;
                 if (session != null && !session.newWorld && session.sim == sim && session.awayHours > 0) model.Prepare(session.awayHours);
             }
@@ -360,8 +368,48 @@ namespace AquariumCiv.View
             BuildDots();
             BuildHead();
             BuildScroll();
+            BuildDilemma();
             BuildActions();
             ApplySafeArea();
+        }
+
+        /// <summary>The dilemma's two options sit between the question (the headline) and the buttons row. Names for tests and the tester:
+        /// <c>cards-dilemma</c>, <c>cards-dil-0/1</c> (the column), <c>cards-dil-answer-0/1</c> (the button), <c>cards-dil-hint-0/1</c>.</summary>
+        void BuildDilemma()
+        {
+            dilBox = new VisualElement { name = "cards-dilemma", pickingMode = PickingMode.Ignore };
+            dilBox.AddToClassList("cards-dilemma");
+            card.hierarchy.Insert(card.hierarchy.IndexOf(scroll), dilBox);
+            for (int i = 0; i < 2; i++)
+            {
+                int k = i;
+                var col = new VisualElement { name = "cards-dil-" + i, pickingMode = PickingMode.Ignore };
+                col.AddToClassList("cards-dil");
+                if (i == 1) col.AddToClassList("cards-dil--second");
+                dilBox.Add(col);
+                dilCols[i] = col;
+                var b = Press("cards-dil-answer-" + i, "", () => AnswerDilemma(k), col, ButtonKind.Secondary, UiRole.Confirm);
+                b.AddToClassList("cards-dil-btn");
+                dilFaces[i] = new GlassPortrait("");
+                dilFaces[i].AddToClassList("cards-dil-face");
+                dilPlaces[i] = new GlassIcon("pin", "kg-icon--light");
+                dilFaces[i].Add(dilPlaces[i]);
+                b.Add(dilFaces[i]);
+                dilLabels[i] = Text("cards-dil-label-" + i, b, "type-btn", "cards-dil-label");
+                dilAnswers[i] = b;
+                dilHints[i] = Text("cards-dil-hint-" + i, col, "type-note", "cards-dil-hint");
+                dilHints[i].enableRichText = true;
+            }
+            dilBox.style.display = DisplayStyle.None;
+        }
+
+        /// <summary>The hook #224's choice scene implements: Show me on an open dilemma card offers the dilemma to it. Return true to take the
+        /// tap (the scene flies in and the card waits behind it); false, or no hook, and Show me frames the two people or places as before.</summary>
+        public static System.Func<DilemmaView, bool> DilemmaShowMeHook;
+
+        void AnswerDilemma(int option)
+        {
+            if (model == null || !model.AnswerDilemma(option)) return; // Changed redraws: the chosen face lifts, the other dims
         }
 
         void BuildDots()
@@ -508,6 +556,7 @@ namespace AquariumCiv.View
 
         void ShowMe()
         {
+            if (model != null && model.DilemmaShowMe()) return; // the choice scene (#224) took it
             var shown = model?.ShowMe();
             var sm = ShowMeDirector.Instance;
             if (sm == null || model == null) return;
@@ -618,6 +667,7 @@ namespace AquariumCiv.View
             Show(backBtn, model.CanGoBack);
             Show(showMeBtn, !f.isAlso);
             Show(actionBtn, f.action != CardAction.None);
+            if (f.dilemma != null && f.dilemmaChosen >= 0) Show(showMeBtn, false); // answered: nothing left to look at, Next is the way on
             actionBtn.text = f.actionLabel;
             actionBtn.Available = f.actionEnabled;
             bool done = model.OnLastPage;
@@ -629,6 +679,10 @@ namespace AquariumCiv.View
         void DrawAlso(CardFace f)
         {
             foreach (var l in new[] { teaser, body, endLine, quote, note, footer }) Show(l, false);
+            Show(dilBox, false);
+            Show(scroll, true);
+            headline.RemoveFromClassList("cards-ask");
+            card.RemoveFromClassList("cards-dilcard");
             head.EnableInClassList("cards-head--alone", true);
             // Every headline stays reachable by scrolling; what's past them is never counted (rule 8).
             for (int i = 0; i < alsoLines.Length; i++)
@@ -639,8 +693,56 @@ namespace AquariumCiv.View
             }
         }
 
+        /// <summary>The dilemma card: the people's ask as the headline, two options under it. Answered, the chosen one lifts and the other
+        /// dims, and the headline says what the Keeper chose (the people chose, on a lapse).</summary>
+        void DrawDilemma(CardFace f)
+        {
+            var v = f.dilemma;
+            Show(scroll, false);
+            Show(dilBox, true);
+            Show(eraMark, false);
+            head.EnableInClassList("cards-head--alone", true);
+            headline.AddToClassList("cards-ask");
+            card.AddToClassList("cards-dilcard");
+            string words = f.dilemmaChosen < 0 ? v.question
+                : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
+                : $"The Keeper chose {v.options[f.dilemmaChosen].label}.";
+            headline.text = GlassType.Lines(words, 16f, 1.25f);
+            for (int i = 0; i < 2; i++)
+            {
+                var o = i < v.options.Length ? v.options[i] : null;
+                Show(dilCols[i], o != null);
+                if (o == null) continue;
+                bool person = o.personId >= 0;
+                if (person) Paint(dilFaces[i], o.personId); else dilFaces[i].Person = "";
+                dilFaces[i].EnableInClassList("kg-portrait--era", !person); // a place or a way wears an icon on the same disc
+                Show(dilPlaces[i], !person);
+                if (!person) dilPlaces[i].Shape = PlaceIcon(v, o);
+                dilLabels[i].text = o.label;
+                Set(dilHints[i], o.hint, NotePt, tight ? 1.1f : QuoteRatio);
+                bool open = f.dilemmaChosen < 0, chosen = f.dilemmaChosen == i;
+                dilAnswers[i].pickingMode = open ? PickingMode.Position : PickingMode.Ignore;
+                dilAnswers[i].Kind = chosen ? ButtonKind.Primary : ButtonKind.Secondary;
+                dilCols[i].EnableInClassList("cards-dil--chosen", chosen && !f.dilemmaLapsed);
+                dilCols[i].EnableInClassList("cards-dil--dim", !open && !chosen);
+            }
+        }
+
+        static string PlaceIcon(DilemmaView v, DilemmaOptionView o) =>
+            !string.IsNullOrEmpty(o.buildingType) ? "hill" : v.kind switch
+            {
+                DilemmaKind.Tradition => "scroll",
+                DilemmaKind.Strangers => "herd",
+                _ => "pin",
+            };
+
         void DrawStory(CardFace f)
         {
+            if (f.dilemma != null) { DrawDilemma(f); return; }
+            Show(dilBox, false);
+            Show(scroll, true);
+            headline.RemoveFromClassList("cards-ask");
+            card.RemoveFromClassList("cards-dilcard");
             Set(teaser, f.teaserLine, QuotePt, QuoteRatio);
             headline.text = GlassType.Lines(f.headline, TitlePt, TitleRatio);
             Set(body, f.body);
@@ -700,6 +802,7 @@ namespace AquariumCiv.View
                 case CardKind.EraReady: sim.ForceEraReady(); break;
                 case CardKind.Relic: sim.DebugGiveRelic(RelicId.All[0]); break;
                 case CardKind.Legend: sim.DebugKillOldest(); break;
+                case CardKind.Dilemma: sim.DebugRaiseDilemma(); break;
                 case CardKind.Keeper: sim.Chronicle("keeper", $"After the Keeper's rain, {who?.FullName} staked out new ground.", 0.9f, who?.id ?? -1); break;
                 default: sim.Chronicle("story", $"{who?.FullName} found a way across the stream.", 0.9f, who?.id ?? -1); break;
             }
