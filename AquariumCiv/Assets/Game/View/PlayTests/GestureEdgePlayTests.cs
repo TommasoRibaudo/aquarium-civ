@@ -67,7 +67,7 @@ namespace AquariumCiv.View.PlayTests
             yield return OpenWithMotion();
             foreach (float gap in Gaps)
             {
-                yield return TapAt(GameUiPanel.ScreenCenter(Hud.Root, "hud-title"));
+                yield return TapAt(GameUiPanel.ScreenCenter(Hud.Root, "hud-settings"));
                 yield return Until(() => Hud.OpenSheet == GameHud.Settings, 1f);
                 yield return Wait(0.45f);
                 int knocks = GlassVoice.Instance.Knocks;
@@ -245,7 +245,7 @@ namespace AquariumCiv.View.PlayTests
             yield return OpenWithMotion();
             foreach (float gap in Gaps)
             {
-                yield return TapAt(GameUiPanel.ScreenCenter(Hud.Root, "hud-title"));
+                yield return TapAt(GameUiPanel.ScreenCenter(Hud.Root, "hud-settings"));
                 yield return Until(() => Hud.OpenSheet == GameHud.Settings, 1f);
                 yield return Wait(0.45f);
                 var close = GameUiPanel.ScreenCenter(Hud.Root, "settings-close");

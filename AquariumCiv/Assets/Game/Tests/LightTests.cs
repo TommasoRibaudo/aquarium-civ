@@ -288,10 +288,17 @@ namespace AquariumCiv.Tests
             for (int i = 0; i < 400; i++)
             {
                 float b = Lamps.Brightness(th + 0.02f, seed, id, i * 0.013f);
-                if (b <= 0f) off++; else on++;
+                if (b < 0.45f) off++; else if (b > 0.7f) on++;
             }
-            Assert.Greater(off, 20, "just after ignition the lamp drops out sometimes");
+            Assert.Greater(off, 20, "just after ignition the lamp dims sometimes");
             Assert.Greater(on, 20, "and catches sometimes");
+            float prev = Lamps.Brightness(th + 0.02f, seed, id, 0f), jump = 0f;
+            for (int i = 1; i < 2000; i++)
+            {
+                float b = Lamps.Brightness(th + 0.02f, seed, id, i * 0.005f);
+                jump = Math.Max(jump, Math.Abs(b - prev)); prev = b;
+            }
+            Assert.Less(jump, 0.1f, "it eases between dim and bright, 5 ms apart it never jumps (#214)");
             float lo = 1f, hi = 0f;
             for (int i = 0; i < 400; i++)
             {

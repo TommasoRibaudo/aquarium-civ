@@ -68,7 +68,7 @@ namespace AquariumCiv.GameUI.PlayTests
         {
             yield return StartHud();
             var root = hud.Root;
-            var openers = new[] { ("hud-title", GameHud.Settings), ("hud-history", GameHud.History), ("hud-shape", GameHud.Shaping) };
+            var openers = new[] { ("hud-title", GameHud.Offices), ("hud-settings", GameHud.Settings), ("hud-history", GameHud.History), ("hud-shape", GameHud.Shaping) };
             foreach (var (opener, id) in openers)
             {
                 yield return Tap(root, opener);
@@ -92,11 +92,27 @@ namespace AquariumCiv.GameUI.PlayTests
         }
 
         [UnityTest]
-        public IEnumerator SettingsSwitchesAndFeedbackWorkByTouch()
+        public IEnumerator TheNameOpensTheOfficesListAndTheMarkOpensSettings()
         {
             yield return StartHud();
             var root = hud.Root;
             yield return Tap(root, "hud-title");
+            Assert.AreEqual(GameHud.Offices, hud.OpenSheet, "the town's name opens the offices");
+            var list = root.Q("offices-list");
+            Assert.IsNotNull(list, "the list is there");
+            Assert.Greater(list.childCount, 0, "it says something: a row per office, or that there are none yet");
+            yield return Tap(root, "offices-close");
+            yield return Tap(root, "hud-settings");
+            Assert.AreEqual(GameHud.Settings, hud.OpenSheet, "the mark beside it opens Settings");
+            EndHud();
+        }
+
+        [UnityTest]
+        public IEnumerator SettingsSwitchesAndFeedbackWorkByTouch()
+        {
+            yield return StartHud();
+            var root = hud.Root;
+            yield return Tap(root, "hud-settings");
             bool before = GameSettings.Sound;
             yield return Tap(root, "settings-sound");
             Assert.AreEqual(!before, GameSettings.Sound, "the Sound switch flips the setting");
@@ -148,7 +164,7 @@ namespace AquariumCiv.GameUI.PlayTests
 
             // Every tappable control is at least a 48 dp / 44 pt target.
             yield return null;
-            foreach (var name in new[] { "hud-title", "hud-history", "hud-shape", "hud-feedback" })
+            foreach (var name in new[] { "hud-title", "hud-settings", "hud-history", "hud-shape", "hud-feedback" })
             {
                 var e = root.Q(name);
                 float pixel = Mathf.Max(0.5f, e.panel.visualTree.layout.width / Screen.width); // UI Toolkit snaps to physical pixels: a tiny Game view reads 141.64 for 144

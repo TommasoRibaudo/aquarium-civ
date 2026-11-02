@@ -49,14 +49,21 @@ namespace AquariumCiv.Lighting
             float over = level - th;
             if (steady) return Smooth01(over / IgniteWindow);
             float phase = Unit(Hash(unchecked((uint)lampId * 9781U + (uint)seed))) * 6.2831853f;
-            float shimmer = 1f - 0.05f * (0.5f + 0.5f * (float)Math.Sin(time * 7.3f + phase)) - 0.03f * (0.5f + 0.5f * (float)Math.Sin(time * 17.1f + phase * 2f));
+            float shimmer = 1f - 0.03f * (0.5f + 0.5f * (float)Math.Sin(time * 2.1f + phase)) - 0.015f * (0.5f + 0.5f * (float)Math.Sin(time * 3.3f + phase * 2f));
             if (over >= IgniteWindow) return shimmer;
             float u = over / IgniteWindow;
-            float slot = 0.05f + 0.15f * u;                 // pulses get longer as it catches
-            uint bucket = (uint)Math.Max(0f, time / slot);
-            bool on = Unit(Hash(unchecked(bucket * 31U + (uint)lampId * 7U + (uint)seed))) < 0.25f + 0.75f * u;
-            return on ? Smooth01(u * 2f + 0.3f) * shimmer : 0f;
+            // #214: it wavers, it does not strobe. Slots of 0.4 to 0.9 s, each either "caught" or dim (0.4, never black), eased
+            // into the next over the last 40 % of the slot.
+            float slot = 0.4f + 0.5f * u;                   // pulses get longer as it catches
+            float f = Math.Max(0f, time / slot);
+            uint bucket = (uint)f;
+            float w = Smooth01((f - bucket - 0.6f) / 0.4f);
+            float a = Pulse(bucket, lampId, seed, u), b = Pulse(bucket + 1, lampId, seed, u);
+            return Smooth01(u * 2f + 0.3f) * shimmer * (a + (b - a) * w);
         }
+
+        static float Pulse(uint bucket, int lampId, int seed, float u)
+            => Unit(Hash(unchecked(bucket * 31U + (uint)lampId * 7U + (uint)seed))) < 0.25f + 0.75f * u ? 1f : 0.4f;
 
         static float Smooth01(float t) { t = t < 0f ? 0f : t > 1f ? 1f : t; return t * t * (3f - 2f * t); }
 

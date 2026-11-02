@@ -91,7 +91,7 @@ The first build of the vertical slice, for the user alone on their iPhone.
   enabled scenes: nothing in `ios-testflight.yml` needs to change. CI's EditMode/PlayMode tests open scenes by path and don't
   depend on the list.
 - **Version:** 0.4.0 (App Store versions are numeric). The build number is still the workflow run number.
-- **Debug panels:** present, hidden. The "dbg" toggle (and the sim tab behind it) appears after a **2 s press on the top-left
+- **Debug panels:** present, hidden. The "dbg" toggle (and the sim tab behind it) appears after **three fingers held down for 2 s anywhere**, or a **2 s press on the top-left
   corner** (a 96-unit square at the safe-area corner; moving out of it or letting go starts over; it stays for the session).
   The Editor shows it from the start. Code: `DebugDock.cs`, tests `DebugDockLockTests`.
 - **Feedback button:** shown in this build. `FeedbackUI.InTestBuild` is now true in the Editor, in development builds and in any

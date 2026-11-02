@@ -16,7 +16,7 @@
 // Kind 4's UV2.y is an extra strength (0 = plain): full at night, 40 % by day.
 // Premultiplied blend: the glows return alpha 0, so they stay purely additive; flames and sparks return some alpha, so
 // they hold up against a bright day.
-// The flicker n() is the Stylized shader's FlameNoise: the same two sines at 7.3 and 11.9 Hz. SlowFlicker is the calmer
+// The flicker n() is the Stylized shader's FlameNoise: the same two slow sines at 1.9 and 3.1 Hz (#214: it jittered at 7 and 12). SlowFlicker is the calmer
 // one kinds 5 to 7 use (and a boosted pool): big bright things must not strobe (practices section 12).
 Shader "AquariumCiv/View/Glow"
 {
@@ -74,7 +74,7 @@ Shader "AquariumCiv/View/Glow"
             float FlameNoise(float phase)
             {
                 float t = _Time.y;
-                return 0.5 * (sin(6.2832 * 7.3 * t + phase * 6.2832) + sin(6.2832 * 11.9 * t + phase * 17.0));
+                return 0.5 * (sin(6.2832 * 1.9 * t + phase * 6.2832) + sin(6.2832 * 3.1 * t + phase * 17.0));
             }
 
             // Under 4 Hz, for what is big or bright on screen. -1..1.
@@ -103,11 +103,11 @@ Shader "AquariumCiv/View/Glow"
                     // Billboard flame: stands on its foot, leans a little to the camera's up so a steep view doesn't flatten it.
                     float phase = v.extra.x, t = _Time.y;
                     float3 up = normalize(float3(0, 1, 0) + UNITY_MATRIX_V[1].xyz);
-                    float tall = v.extra.y * (1.0 + 0.14 * SlowFlicker(phase));
+                    float tall = v.extra.y * (1.0 + 0.05 * SlowFlicker(phase));
                     posWS = centreWS + UNITY_MATRIX_V[0].xyz * (v.corner.x * radius) + up * ((v.corner.y * 0.5 + 0.5) * tall);
                     o.positionCS = TransformWorldToHClip(posWS);
                     // x: the whole flame leaning; y: how far the licks bend it; z: the licks' phase, running up it.
-                    o.flame = half3(0.16 * sin(t * 2.3 + phase * 6.2832), 0.14, frac(t * 1.6 + phase) * 6.2832);
+                    o.flame = half3(0.08 * sin(t * 1.4 + phase * 6.2832), 0.07, frac(t * 0.9 + phase) * 6.2832);
                     opaque = _FlameOpacity;
                 }
                 else if (o.kind == 6)
@@ -138,9 +138,9 @@ Shader "AquariumCiv/View/Glow"
                 {
                     // Warm pool: lies flat on the ground and flickers a little with the flame.
                     if (v.extra.y > 0.0)
-                        strength = _PoolIntensity * (1.0 + 0.2 * SlowFlicker(v.extra.x)) * (1.0 + v.extra.y * lerp(0.4, 1.0, saturate(_AC_LampLevel)));
+                        strength = _PoolIntensity * (1.0 + 0.06 * SlowFlicker(v.extra.x)) * (1.0 + v.extra.y * lerp(0.4, 1.0, saturate(_AC_LampLevel)));
                     else
-                        strength = _PoolIntensity * (1.0 + 0.2 * FlameNoise(v.extra.x));
+                        strength = _PoolIntensity * (1.0 + 0.06 * FlameNoise(v.extra.x));
                     posWS = centreWS + float3(v.corner.x, 0, v.corner.y) * radius;
                     o.positionCS = TransformWorldToHClip(posWS);
                 }
@@ -164,7 +164,7 @@ Shader "AquariumCiv/View/Glow"
                     if (o.kind == 0)
                     {
                         // A fire's halo: behind the flame, breathing with its flicker.
-                        strength = _HaloIntensity * (1.0 + 0.2 * FlameNoise(v.extra.x));
+                        strength = _HaloIntensity * (1.0 + 0.06 * FlameNoise(v.extra.x));
                         centreVS.z -= radius * 0.3;
                         // How far above the ground (the fire's foot, v.extra.y below the centre) this corner of the quad is, so the
                         // part of the quad that dips into the terrain fades out instead of ending in a hard line.
@@ -174,7 +174,7 @@ Shader "AquariumCiv/View/Glow"
                     else if (o.kind == 7)
                     {
                         // Warm wash: in front of what stands near the fire, fading where it meets the ground like the halo.
-                        strength = _WashIntensity * lerp(0.3, 1.0, saturate(_AC_LampLevel)) * (1.0 + 0.2 * SlowFlicker(v.extra.x));
+                        strength = _WashIntensity * lerp(0.3, 1.0, saturate(_AC_LampLevel)) * (1.0 + 0.06 * SlowFlicker(v.extra.x));
                         centreVS.z += radius * 0.8;
                         float3 corner3 = centreVS; corner3.xy += v.corner * radius;
                         o.above = TransformViewToWorld(corner3).y - (centreWS.y - v.extra.y);
@@ -184,8 +184,11 @@ Shader "AquariumCiv/View/Glow"
                         float phase = kind - 1.0;
                         float t0 = 0.12 + phase * 0.6;
                         float x = saturate((_AC_LampLevel - t0) / 0.14);
-                        float n = Hash11(floor(_Time.y * 13.0) + phase * 917.0);
-                        strength = _Intensity * ((x > 0.0 && x < 1.0 && _AC_LampParams.z < 0.5) ? step(1.0 - x * x, n) * x : x);
+                        // #214: slow and soft, like the window it belongs to (Stylized LampOn): no black frames, no steps.
+                        float tt = _Time.y * 2.0;
+                        float fr = frac(tt);
+                        float n = lerp(Hash11(floor(tt) + phase * 917.0), Hash11(floor(tt) + 1.0 + phase * 917.0), fr * fr * (3.0 - 2.0 * fr));
+                        strength = _Intensity * ((x > 0.0 && x < 1.0 && _AC_LampParams.z < 0.5) ? x * (0.45 + 0.55 * smoothstep(1.0 - x, 1.0 - x + 0.5, n)) : x);
                         // Pull the quad a little towards the camera so it isn't cut by the ground it sits on.
                         centreVS.z += radius * 0.6;
                     }
