@@ -42,6 +42,14 @@ namespace AquariumCiv.Game
         public const string RecallShown = "recall_shown";     // day
         public const string RecallAnswered = "recall_answered"; // count (stories recalled, a number; never free text)
         public const string RecallDismissed = "recall_dismissed";
+        // P7 (#225): Keeper's dilemmas. Every dilemma event carries "box" and the sim "id"; the variant lives in the session record.
+        public const string Variant = "variant";                  // v (A = dilemmas off, B = on); a mid-session change, e.g. the debug toggle
+        public const string DilemmaRaised = "dilemma_raised";     // id, def, month
+        public const string DilemmaShown = "dilemma_shown";       // id, def
+        public const string DilemmaAnswered = "dilemma_answered"; // id, option, path(box|card), secs (from shown; omitted if never shown), years_open
+        public const string DilemmaLapsed = "dilemma_lapsed";     // id, option (the default the people took), years_open
+        public const string CallbackShown = "callback_shown";     // id (the dilemma), option, years_since
+        public const string CallbackShowMe = "callback_showme";   // id (the dilemma)
     }
 
     /// <summary>One logged event: when, which session, what, plus flat properties (string / number / bool).</summary>
