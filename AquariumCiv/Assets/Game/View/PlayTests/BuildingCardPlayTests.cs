@@ -2,6 +2,7 @@ using System.Collections;
 using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
+using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
 using AquariumCiv.View.ShowMe;
@@ -85,6 +86,43 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(3);
             Assert.IsFalse(Cards.BuildingOpen, "a tap on the world closes it, as a person's card");
             AssertNoErrors("building card");
+        }
+
+        /// <summary>Tester run 10: with a building's card up, a tap on a doll opened the person's card under it and both stayed up.</summary>
+        [Category("Tester10")]
+        [UnityTest, Timeout(60000)]
+        public IEnumerator OneCardAtATime()
+        {
+            yield return Grown();
+            var pv = PeopleView.Find();
+            var cam = Camera.main;
+            PeopleView.DebugSetHour(23.5f); // indoors: nobody between the finger and the roof
+            yield return new WaitForSecondsRealtime(0.4f);
+            Assert.IsTrue(FindTarget(out _, out var at), "a building in the clear");
+            yield return TapAt(at);
+            yield return Frames(3);
+            Assert.IsTrue(Cards.BuildingOpen, "the building's card is up");
+            PeopleView.DebugSetHour(10f); // and out they come
+            yield return new WaitForSecondsRealtime(0.6f);
+            PersonRef who = PersonRef.None;
+            Vector2 doll = default;
+            foreach (var a in pv.Activities)
+            {
+                if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollFeet(a.who, out var feet)) continue;
+                doll = cam.WorldToScreenPoint((top + feet) * 0.5f);
+                if (doll.x < 30f || doll.x > Screen.width - 30f || doll.y > Screen.height * 0.9f || UiInput.Over(doll)) continue;
+                if (Cards.PickDoll(doll) == a.who) { who = a.who; break; }
+            }
+            Assume.That(!who.IsNone, "a doll clear of the card");
+            yield return TapAt(doll);
+            yield return Frames(3);
+            Assert.IsTrue(Cards.AnyOpen, "the tap on the doll opens their card");
+            Assert.IsFalse(Cards.BuildingOpen, "and the building's card gives way");
+            Assert.IsFalse(Cards.BuildingMarked, "with its mark");
+            yield return new WaitForSecondsRealtime(1.2f);
+            Assert.IsTrue(Cards.AnyOpen, "the card that won stays shown");
+            yield return Shot("one-card");
+            AssertNoErrors("one card");
         }
 
         [UnityTest, Timeout(60000)]

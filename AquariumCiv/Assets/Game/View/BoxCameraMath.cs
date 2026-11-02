@@ -23,8 +23,41 @@ namespace AquariumCiv.View
         public const float InertiaTau = 0.2f, InertiaStop = 3f, InertiaCap = 200f, VelocityWindow = 0.08f;
         /// <summary>The shown angles follow the target angles with 1 - exp(-FollowRate dt).</summary>
         public const float FollowRate = 18f;
-        /// <summary>#193: the depth the camera keeps around the box: near plane and shadow range both follow it (about 15 units, wherever the zoom has the camera).</summary>
-        public const float DepthFront = 7f, DepthBack = 8f, NearestPlane = 0.3f;
+        /// <summary>#193: how far past the box the shadows reach, the air kept in front of what's nearest, and the closest the near plane goes.</summary>
+        public const float DepthBack = 8f, NearMargin = 0.5f, NearestPlane = 0.3f;
+        /// <summary>The box's hull and the shelf under it (the plane everything stands on).</summary>
+        public const float HullSide = 0.3f, ShelfY = -0.3f;
+        /// <summary>The far plane is never closer than this past the camera's focus: the shelf view backs away as the row of boxes grows.</summary>
+        public const float FarPastFocus = 80f;
+
+        /// <summary>The view depth at which the bottom edge of the screen comes down to <paramref name="height"/>. Nothing on screen at or below that height is
+        /// nearer than this, wherever it stands: the screen's lowest ray is the first to reach it. 0 when the camera is below it, or looks up.</summary>
+        public static float DepthAtHeight(Vector3 pos, Vector3 forward, Vector3 up, float tanHalfFov, float height)
+        {
+            float drop = tanHalfFov * up.y - forward.y;
+            return drop <= 1e-4f || pos.y <= height ? 0f : (pos.y - height) / drop;
+        }
+
+        /// <summary>The nearest of the box's corners along the view.</summary>
+        public static float BoxDepth(Vector3 pos, Vector3 forward)
+        {
+            float best = float.MaxValue, hx = Land.HX + HullSide, hz = Land.HZ + HullSide;
+            for (int i = 0; i < 8; i++)
+            {
+                var c = new Vector3((i & 1) == 0 ? -hx : hx, (i & 2) == 0 ? ShelfY : Land.GlassTop + 0.1f, (i & 4) == 0 ? -hz : hz);
+                best = Mathf.Min(best, Vector3.Dot(c - pos, forward));
+            }
+            return best;
+        }
+
+        /// <summary>Tester run 10, and the user's "only a piece of the tank": the near plane comes from the geometry, not from a margin round the box. It sits just in front of
+        /// the box and the shelf on screen, as tight as #193's shadows want. <paramref name="rowTop"/> &gt;= 0: other boxes stand on the shelf too, up to that height, anywhere along it.</summary>
+        public static float FitNear(Vector3 pos, Vector3 forward, Vector3 up, float tanHalfFov, float rowTop = -1f)
+        {
+            float d = Mathf.Min(BoxDepth(pos, forward), DepthAtHeight(pos, forward, up, tanHalfFov, ShelfY));
+            if (rowTop >= 0f) d = Mathf.Min(d, DepthAtHeight(pos, forward, up, tanHalfFov, rowTop));
+            return Mathf.Max(NearestPlane, d - NearMargin);
+        }
 
         /// <summary>Fly-to: default duration, and the zoom a flight to a person / a place ends at (< 1 = closer).</summary>
         public const float FlyDefaultSeconds = 0.9f, FlyPersonZoom = 0.45f, FlyPlaceZoom = 0.6f;
@@ -111,6 +144,9 @@ namespace AquariumCiv.View
             CameraReach.PanBounds(zoom, Land.HX, Land.HZ, out float x, out float z);
             return new Vector2(x, z);
         }
+
+        /// <summary>A pan's hard stop, rubber band included: the screen's centre never leaves the land.</summary>
+        public static Vector2 PanHardStop => new(Land.HX - 0.02f, Land.HZ - 0.02f);
 
         /// <summary>Zoom towards a point: the target moves (1 - z1/z0) of the way to the ground point under the fingers.</summary>
         public static Vector3 ZoomTarget(Vector3 target, Vector3 ground, float z0, float z1) => target + (ground - target) * (1f - z1 / z0);

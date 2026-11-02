@@ -8,6 +8,37 @@ namespace AquariumCiv.GameUI.Tests
     /// <summary>Keeper's Glass, the parts with no pixels in them (#108): the one-message queue, the lanes, the line tag, the role table.</summary>
     public class GlassTests
     {
+        /// <summary>Tester run 10: a hold on every card put one line back with its full time, five cards in a row.</summary>
+        [Test]
+        public void ALinePutBackByAHoldKeepsOnlyTheTimeItHadLeft()
+        {
+            var q = new MessageQueue();
+            q.Post("a line", 3f);
+            q.Tick(0f);
+            Assert.AreEqual("a line", q.Current);
+            q.Tick(2f);
+            q.Hold("card", true);
+            q.Tick(2.1f);
+            Assert.IsNull(q.Current, "the hold takes it down");
+            q.Hold("card", false);
+            q.Tick(10f);
+            Assert.AreEqual("a line", q.Current, "back when it lifts");
+            q.Tick(10.8f);
+            Assert.AreEqual("a line", q.Current);
+            q.Tick(11f);
+            Assert.IsNull(q.Current, "for the 0.9 s it had left, not another 3 s");
+
+            q.Post("nearly over", 1f);
+            q.Tick(20f);
+            q.Tick(20.8f);
+            q.Hold("card", true);
+            q.Tick(20.9f);
+            q.Hold("card", false);
+            q.Tick(30f);
+            Assert.IsNull(q.Current, "seen: it doesn't come back");
+            Assert.AreEqual(0, q.Waiting);
+        }
+
         [Test]
         public void AnAnswerToATouchGoesPastAHoldAndTheHoldComesBack()
         {

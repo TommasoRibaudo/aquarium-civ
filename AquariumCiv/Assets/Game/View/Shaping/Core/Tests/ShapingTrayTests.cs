@@ -14,6 +14,14 @@ namespace AquariumCiv.View.Shaping.Tests
         static TrayTool Tool(ShapingTray t, SimCore sim, string kind) => t.Tools(sim).Single(x => x.kind == kind);
 
         [Test]
+        public void TheWatersOneShoalHasItsOwnLine()
+        {
+            Assert.AreEqual(ShapingTray.OneShoal, ShapingTray.ReasonText(SimCore.NudgeKind.Herd, SimCore.ShapeFail.AtCap, 1), "tester run 10: one out, and the box was said to hold 2");
+            StringAssert.Contains("holds 2", ShapingTray.ReasonText(SimCore.NudgeKind.Herd, SimCore.ShapeFail.AtCap, 2));
+            Assert.AreEqual(ShapingTray.ReasonText(SimCore.NudgeKind.Rain, SimCore.ShapeFail.AtCap), ShapingTray.ReasonText(SimCore.NudgeKind.Rain, SimCore.ShapeFail.AtCap, 0));
+        }
+
+        [Test]
         public void ToolsShowPerEraWithNamesAndLevels()
         {
             var tray = new ShapingTray();

@@ -6,6 +6,7 @@ namespace AquariumCiv.GameUI
     /// One message at a time (hierarchy rule 3): the toast lane and the speech bubble each run on one of these. Pure, so EditMode
     /// tests cover it: the owner passes unscaled seconds to <see cref="Tick"/> and draws <see cref="Current"/>. A hold (a prompt on
     /// screen, the first run's moment) keeps new messages waiting, and takes down the one showing, which comes back when it lifts.
+    /// A line taken down keeps only the time it had left, and one nearly over is dropped: seen is seen (tester run 10 met one line on five cards).
     /// The same text twice in a row is one message, and at most <see cref="MaxWaiting"/> wait: the oldest goes first, so a
     /// repeated hint can't queue up a minute of stale lines.
     /// </summary>
@@ -14,6 +15,8 @@ namespace AquariumCiv.GameUI
         public const int MaxWaiting = 3;
         /// <summary>With something waiting, the one showing gets this long at least and then gives way, so a queue can't lag the game.</summary>
         public const float MinSeconds = 1.5f;
+        /// <summary>A line taken down with less than this left doesn't come back.</summary>
+        public const float SeenSeconds = 0.5f;
 
         public readonly struct Message
         {
@@ -92,11 +95,14 @@ namespace AquariumCiv.GameUI
             {
                 if (!showing) return wiped;
                 // Down for the prompt; what was left comes back after it.
-                var back = new Message(Current, current.seconds);
-                var rest = waiting.ToArray();
-                waiting.Clear();
-                waiting.Enqueue(back);
-                foreach (var m in rest) waiting.Enqueue(m);
+                float left = until < 0f ? current.seconds : until - now;
+                if (left >= SeenSeconds)
+                {
+                    var rest = waiting.ToArray();
+                    waiting.Clear();
+                    waiting.Enqueue(new Message(Current, left));
+                    foreach (var m in rest) waiting.Enqueue(m);
+                }
                 Current = null;
                 showing = false;
                 return true;

@@ -8,6 +8,7 @@ using AquariumCiv.Sim;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 namespace AquariumCiv.View.PlayTests
 {
@@ -146,8 +147,9 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("glide");
         }
 
+        [Category("Tester10")]
         [UnityTest, Timeout(120000)]
-        public IEnumerator ACardHoldsTheViewAndTheCloseGlidesHome()
+        public IEnumerator ACardHoldsTheViewAndTheCloseGlidesHome([Values("code", "the X", "box", "room")] string how)
         {
             yield return Open();
             SimLayoutSource.DebugSkipYears(12f);
@@ -164,11 +166,191 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less(Cam.zoom, zoom - 0.1f, "the card flew in");
             yield return Wait(GlideBack.Hold + 0.8f);
             Assert.Less(Cam.zoom, zoom - 0.1f, "still there while the card is up");
-            PersonCardView.Instance.Close();
+            var cards = PersonCardView.Instance;
+            if (how == "code") cards.Close();
+            else if (how == "the X") yield return TapAt(GameUiPanel.ScreenCenter(GameHud.Instance.Root.panel.visualTree, "person-card-close"));
+            else
+            {
+                // Tester run 10: the press cancelled the glide before its lift closed the card, and the view stayed cropped for good.
+                Assert.IsTrue(FreeSpot(how == "box", out var spot), "a clear spot on the " + how);
+                yield return TapAt(spot);
+                yield return Frames(2);
+            }
+            Assert.IsFalse(cards.AnyOpen, "closed by " + how);
+            Assert.IsTrue(Cam.GlideArmed, "the close keeps the way home: " + how);
             yield return Until(() => !Cam.GlideArmed, GlideBack.Hold + GlideBack.Duration + 1f);
-            Assert.AreEqual(zoom, Cam.zoom, 1e-3f, "closed: it glides back");
+            Assert.AreEqual(zoom, Cam.zoom, 1e-3f, "closed: it glides back, " + how);
+
+            // A real drag with the card up is the player taking the camera: no way home after that.
+            Assert.IsTrue(cards.Open(who.notableId));
+            yield return Until(() => !Cam.IsFlying, 2f);
+            Assert.IsTrue(Cam.GlideArmed);
+            Assert.IsTrue(FreeSpot(true, out var from), "a clear spot to drag from");
+            yield return Drag(new[] { from, from + new Vector2(0f, Screen.height * 0.2f) }, 20f);
+            Assert.IsFalse(Cam.GlideArmed, "a deliberate drag cancels it");
+            float kept = Cam.zoom;
+            cards.Close();
+            yield return Wait(GlideBack.Hold + 0.5f);
+            Assert.AreEqual(kept, Cam.zoom, 1e-3f, "and the view stays");
             DayLightDriver.DebugPauseClock(false);
-            AssertNoErrors("card glide");
+            AssertNoErrors("card glide " + how);
+        }
+
+        /// <summary>A screen point above the card, on the land or off it, with no doll, building or UI under it.</summary>
+        static bool FreeSpot(bool onLand, out Vector2 spot)
+        {
+            var cards = PersonCardView.Instance;
+            var cam = Camera.main;
+            for (float y = 0.85f; y > 0.2f; y -= 0.03f)
+                for (float x = 0.1f; x < 0.95f; x += 0.05f)
+                {
+                    spot = new Vector2(Screen.width * x, Screen.height * y);
+                    if (UiInput.Over(spot) || !cards.PickDoll(spot).IsNone || !cards.PickPerson(spot).IsNone || cards.PickBuilding(spot) >= 0) continue;
+                    if (!BoxCameraMath.GroundPoint(cam.ScreenPointToRay(spot), Land.G, out var g)) continue;
+                    if ((Mathf.Abs(g.x) < Land.HX - 0.2f && Mathf.Abs(g.z) < Land.HZ - 0.2f) == onLand) return true;
+                }
+            spot = default;
+            return false;
+        }
+
+        /// <summary>The user saw only a piece of the tank: at no pose the player can reach may the planes cut what's on screen.</summary>
+        [Category("Tester10")]
+        [UnityTest, Timeout(180000)]
+        public IEnumerator NoPoseCutsTheBox()
+        {
+            yield return Open();
+            using var watch = new DepthWatch();
+            var rig = Cam;
+            int poses = 0;
+            foreach (float zoom in new[] { 0.2f, 0.3f, 0.45f, 0.6f, 0.8f, 1f, 1.3f })
+                foreach (float yaw in new[] { rig.minYaw, 28f, rig.maxYaw })
+                    foreach (float pitch in new[] { BoxCameraMath.PitchFloor(zoom), 34f, BoxCameraMath.PitchCeiling })
+                    {
+                        var b = BoxCameraMath.PanBounds(zoom);
+                        foreach (var off in new[] { Vector2.zero, new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(-1f, 1f), new Vector2(1f, 1f) })
+                        {
+                            rig.CancelFlight();
+                            rig.zoom = zoom; rig.yaw = yaw; rig.pitch = pitch;
+                            rig.target = new Vector3(b.x * off.x, Land.G, b.y * off.y);
+                            rig.Apply();
+                            poses++;
+                            yield return null;
+                        }
+                    }
+            Debug.Log($"[light] {poses} poses, {watch.Frames} frames seen, {watch.Faults} cut; closest: {watch.Worst}; first: {watch.First}");
+            Assert.Greater(watch.Frames, poses / 2);
+            Assert.AreEqual(0, watch.Faults, watch.First);
+
+            // In motion: the nudges (a wish, a crumb), the glide back, a pinned overshoot by real fingers.
+            rig.CancelFlight();
+            rig.EaseTo(Vector3.zero, 28f, 34f, 1f, 0.01f);
+            yield return Wait(0.4f);
+            watch.Reset();
+            Assert.IsTrue(rig.NudgeToward(new Vector3(2.6f, 1f, 1.8f), BoxCamera.NudgeZoom, 0.3f));
+            yield return Until(() => !rig.IsFlying, 2f);
+            yield return Until(() => !rig.GlideArmed, GlideBack.Hold + GlideBack.Duration + 1f);
+            rig.GoHome(0.2f);
+            yield return Wait(0.4f);
+            Assert.Greater(watch.Frames, 10);
+            Assert.AreEqual(0, watch.Faults, "nudge and glide: " + watch.First);
+            DayLightDriver.DebugPauseClock(false);
+            AssertNoErrors("depth");
+        }
+
+        /// <summary>Tester run 10: at zoom 0.2 the view rested about 80 % on the wall, more in the rubber band.</summary>
+        [Category("Tester10")]
+        [UnityTest, Timeout(180000)]
+        public IEnumerator PanStaysOnTheLand([Values(0.46f, 0.5625f, 0.75f)] float aspect)
+        {
+            yield return Open();
+            var rig = Cam;
+            var cam = Camera.main;
+            cam.aspect = aspect;
+            float worstShare = 1f, worstRest = 1f;
+            foreach (float zoom in new[] { CameraReach.MinZoom, 0.3f, 0.5f })
+                foreach (var dir in new[] { new Vector2(1f, 1f), new Vector2(-1f, 1f), new Vector2(1f, -1f), new Vector2(-1f, -1f) })
+                {
+                    rig.EaseTo(Vector3.zero, 28f, 34f, zoom, 0.01f);
+                    yield return Wait(0.2f);
+                    Vector2 a = new(Screen.width * 0.3f, Screen.height * 0.5f), b = new(Screen.width * 0.7f, Screen.height * 0.5f);
+                    int ida = touchId++, idb = touchId++;
+                    BeginTouch(ida, a, queueEventOnly: true);
+                    BeginTouch(idb, b, queueEventOnly: true);
+                    yield return Frames(2);
+                    for (int i = 0; i < 40; i++)
+                    {
+                        // far past the land's edge: the drag runs well into the rubber band
+                        var step = dir * Screen.height * 0.05f;
+                        a += step; b += step;
+                        MoveTouch(ida, a, delta: Vector2.zero, queueEventOnly: true);
+                        MoveTouch(idb, b, delta: Vector2.zero, queueEventOnly: true);
+                        yield return null;
+                        Assert.IsTrue(CentreOnLand(cam), $"the screen's centre left the land at zoom {zoom}, frame {i}, target {rig.target}");
+                        worstShare = Mathf.Min(worstShare, LandShare(cam));
+                    }
+                    EndTouch(ida, a, delta: Vector2.zero, queueEventOnly: true);
+                    EndTouch(idb, b, delta: Vector2.zero, queueEventOnly: true);
+                    yield return Wait(0.6f);
+                    Assert.IsTrue(CentreOnLand(cam), $"at rest at zoom {zoom}: {rig.target}");
+                    float share = LandShare(cam);
+                    if (zoom <= CameraReach.MinZoom) worstRest = Mathf.Min(worstRest, share);
+                    if (zoom <= CameraReach.MinZoom && dir == new Vector2(1f, 1f) && aspect == 0.5625f) yield return Shot("pan-closest-" + (int)(aspect * 100));
+                }
+            Debug.Log($"[light] aspect {aspect}: land share at zoom 0.2 at rest {worstRest:0.00}, in the band anywhere {worstShare:0.00}");
+            Assert.Greater(worstRest, 0.35f, "enough of the land stays on screen at the closest zoom");
+            cam.ResetAspect();
+            DayLightDriver.DebugPauseClock(false);
+            AssertNoErrors("pan");
+        }
+
+        static bool CentreOnLand(Camera cam)
+        {
+            var ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            return BoxCameraMath.GroundPoint(ray, Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Mathf.Abs(g.z) <= Land.HZ;
+        }
+
+        /// <summary>How much of the screen shows the land's top.</summary>
+        static float LandShare(Camera cam)
+        {
+            int on = 0, n = 0;
+            for (float y = 0.05f; y < 1f; y += 0.1f)
+                for (float x = 0.05f; x < 1f; x += 0.1f)
+                {
+                    n++;
+                    if (BoxCameraMath.GroundPoint(cam.ViewportPointToRay(new Vector3(x, y, 0f)), Land.G, out var g) && Mathf.Abs(g.x) <= Land.HX && Mathf.Abs(g.z) <= Land.HZ) on++;
+                }
+            return on / (float)n;
+        }
+
+        /// <summary>The moment end to end, with the depth watch on: this rendered blank with every counter green (tester run 10).</summary>
+        [Category("Tester10")]
+        [UnityTest, Timeout(120000)]
+        public IEnumerator AMomentKeepsTheBoxInDepthAtEveryBeat()
+        {
+            yield return Open();
+            using var watch = new DepthWatch();
+            var mp = MomentPlayer.Instance;
+            var sim = Sim;
+            sim.State.grime = 0f;
+            Assert.IsTrue(sim.ForceEraReady(), "the next era is ready");
+            MomentPlayer.DebugWaited(100);
+            yield return Wait(0.7f);
+            var watchPill = mp.GetComponent<UIDocument>().rootVisualElement.Q<Button>("moment-watch");
+            yield return TapAt(GameUiPanel.ScreenCenter(watchPill));
+            Assert.IsTrue(mp.Playing, "a tap on Watch starts the moment");
+            watch.Reset();
+            MomentPlayer.DebugHurry(6f);
+            MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => !mp.Playing, 60f);
+            MomentPlayer.DebugHoldHurry = false;
+            Assert.IsFalse(mp.Playing, "the moment ends");
+            Debug.Log($"[light] moment: {watch.Frames} frames, {watch.Faults} cut, {watch.OffScreen} off screen; closest {watch.Worst}");
+            Assert.Greater(watch.Frames, 50);
+            Assert.AreEqual(0, watch.Faults, watch.First);
+            Assert.AreEqual(0, watch.OffScreen, "the box is on screen at every beat");
+            Assert.IsNotNull(mp.StillTaken, "the still was taken");
+            DayLightDriver.DebugPauseClock(false);
+            AssertNoErrors("moment depth");
         }
 
         [UnityTest, Timeout(120000)]
@@ -221,10 +403,12 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("near glass");
         }
 
+        [Category("Tester10")]
         [UnityTest, Timeout(120000)]
         public IEnumerator AnEraStillTakesItsHourAndPutsTheLightBack()
         {
             yield return Open(22f);
+            yield return Frames(4);
             var day = DayLightDriver.Instance;
             var sun = RenderSettings.sun;
             float inten = day.Current.SunIntensity, shown = day.Logic.ShownHour;
@@ -239,13 +423,31 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(shown, day.Logic.ShownHour, 1e-4f);
             Assert.AreEqual(sky, RenderSettings.ambientSkyColor);
             EraStills.DebugClear(Sim.State.seed);
+            // As the game takes it (tester run 10): at the cheer the moment holds the camera, close in, with the rig off.
+            Cam.enabled = false;
+            Cam.target = new Vector3(0f, 1f, 0f); Cam.zoom = 0.4f; Cam.yaw = 28f; Cam.pitch = 34f;
+            Cam.Apply();
             var info = EraStills.Take(Camera.main, Cam, Sim);
-            Assert.IsNotNull(info);
+            Cam.enabled = true;
+            Assert.IsNotNull(info, "the still was taken, and it isn't blank");
             Assert.AreEqual(shown, day.Logic.ShownHour, 1e-3f, "the still changed nothing");
             string png = EraStills.PngPath(info);
             Assert.IsTrue(File.Exists(png));
             Directory.CreateDirectory(Shots + "light-shots/"); // a fresh checkout has no Temp/agent/light-shots
             File.Copy(png, Shots + "light-shots/era-still.png", true);
+            var still = new Texture2D(2, 2, TextureFormat.RGB24, false);
+            Assert.IsTrue(still.LoadImage(File.ReadAllBytes(png)));
+            Assert.IsFalse(EraStills.LooksBlank(still), "a real picture of the box, not the grey of a camera past it");
+            var grey = new Texture2D(72, 128, TextureFormat.RGB24, false);
+            for (int y = 0; y < grey.height; y++)
+                for (int x = 0; x < grey.width; x++)
+                {
+                    float v = 0.65f - 0.2f * new Vector2(x / 72f - 0.5f, y / 128f - 0.5f).magnitude; // the failure's look: a soft vignette, nothing else
+                    grey.SetPixel(x, y, new Color(v, v * 0.97f, v * 0.98f));
+                }
+            grey.Apply();
+            Assert.IsTrue(EraStills.LooksBlank(grey), "and the failure's grey is caught");
+            Object.Destroy(still); Object.Destroy(grey);
             EraStills.DebugClear(Sim.State.seed);
             DayLightDriver.DebugPauseClock(false);
             AssertNoErrors("still");

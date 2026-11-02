@@ -151,8 +151,9 @@ namespace AquariumCiv.GameUI.PlayTests
             foreach (var name in new[] { "hud-title", "hud-history", "hud-shape", "hud-feedback" })
             {
                 var e = root.Q(name);
-                Assert.GreaterOrEqual(e.layout.height, GameUiPanel.MinTarget - 0.5f, $"{name} is tall enough (layout {e.layout.size}, panel {e.panel.visualTree.layout.size}, screen {Screen.width}x{Screen.height}, min-height {e.resolvedStyle.minHeight})");
-                Assert.GreaterOrEqual(e.layout.width, GameUiPanel.MinTarget - 0.5f, $"{name} is wide enough");
+                float pixel = Mathf.Max(0.5f, e.panel.visualTree.layout.width / Screen.width); // UI Toolkit snaps to physical pixels: a tiny Game view reads 141.64 for 144
+                Assert.GreaterOrEqual(e.layout.height, GameUiPanel.MinTarget - pixel, $"{name} is tall enough (layout {e.layout.size}, panel {e.panel.visualTree.layout.size}, screen {Screen.width}x{Screen.height}, min-height {e.resolvedStyle.minHeight})");
+                Assert.GreaterOrEqual(e.layout.width, GameUiPanel.MinTarget - pixel, $"{name} is wide enough");
             }
             EndHud();
         }

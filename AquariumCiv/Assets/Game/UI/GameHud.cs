@@ -570,6 +570,9 @@ namespace AquariumCiv.GameUI
 
         /// <summary>A tool is in hand: its strip takes the tools' lane, the rest of the HUD leaves the ground to the finger (board 3.4), and a
         /// refusal's toast drops into the free pin lane, right over the strip (<see cref="GameUiPanel.ToastOverStrip"/>).</summary>
+        /// <summary>The strip over the tools is taken, by a tool in hand or a banner: the toast drops into the chips' lane, so the Shelf chip steps aside with them (tester run 10).</summary>
+        public bool ChipLaneTaken => toolInHand || bannerUp;
+
         public void SetToolInHand(bool on)
         {
             if (toolInHand == on) return;

@@ -260,7 +260,7 @@ namespace AquariumCiv.View
             var shelf = Clock.Shelf;
             bool hasShelf = shelf != null && shelf.boxes.Count > 1 && !Clock.Visiting;
             bool stories = hud != null && hud.StoriesUp;
-            var d = free && hasShelf && !stories ? DisplayStyle.Flex : DisplayStyle.None;
+            var d = free && hasShelf && !stories && !(hud != null && hud.ChipLaneTaken) ? DisplayStyle.Flex : DisplayStyle.None;
             if (shelfBtn.style.display != d) shelfBtn.style.display = d;
             if (hud != null)
             {

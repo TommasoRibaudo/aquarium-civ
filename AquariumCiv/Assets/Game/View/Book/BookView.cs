@@ -508,6 +508,7 @@ namespace AquariumCiv.View
             if (!System.IO.File.Exists(path)) return null;
             tex = new Texture2D(2, 2, TextureFormat.RGB24, false);
             if (!tex.LoadImage(System.IO.File.ReadAllBytes(path))) { Destroy(tex); return null; }
+            if (EraStills.LooksBlank(tex)) { Destroy(tex); EraStills.Forget(info); return PictureOf(p); } // a grey still from before the depth fix
             pictures[info.png] = tex;
             return tex;
         }

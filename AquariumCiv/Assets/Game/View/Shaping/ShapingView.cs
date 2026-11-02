@@ -245,7 +245,7 @@ namespace AquariumCiv.View
                 var r = show.Place(sim, kind, x, z);
                 if (!r.Ok)
                 {
-                    LastResult = FailText(kind, r.fail);
+                    LastResult = ShapingTray.ReasonText(kind, r.fail, sim.ShapingStanding(kind));
                     Sfx.Play(ShapingShow.FailCue); // soft: "not now", the text says why
                     hud?.Toast(LastResult, 3f);
                     return LastResult;
@@ -256,7 +256,6 @@ namespace AquariumCiv.View
             return LastResult;
         }
 
-        static string FailText(string kind, SimCore.ShapeFail f) => ShapingTray.ReasonText(kind, f);
 
         /// <summary>Take a shaping back (the chip). False once the people have used it.</summary>
         public bool TakeBack(int nudgeId)
@@ -819,7 +818,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Puts an element centred over a box point (panel units); false when the point is behind the camera.</summary>
-        bool Anchor(VisualElement e, float x, float z, float up, float dyPanel = 0f, bool below = false)
+        bool Anchor(VisualElement e, float x, float z, float up, float dyPanel = 0f, bool below = false, bool inFrame = false)
         {
             var c = Cam;
             if (c == null || e.panel == null) return false;
@@ -827,10 +826,18 @@ namespace AquariumCiv.View
             var s = c.WorldToScreenPoint(w);
             if (s.z <= 0f) return false;
             var p = RuntimePanelUtils.ScreenToPanel(e.panel, new Vector2(s.x, Screen.height - s.y));
+            if (inFrame) p.x = KeepInFrame(e, p.x); // tester run 10: close in, a caption ran off the left edge
             e.style.left = p.x;
             e.style.top = p.y + dyPanel;
             e.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(below ? 0 : -100, LengthUnit.Percent));
             return true;
+        }
+
+        /// <summary>The middle of a label moved just far enough for all of it to be on screen.</summary>
+        static float KeepInFrame(VisualElement e, float x)
+        {
+            float half = e.resolvedStyle.width * 0.5f, wide = e.panel.visualTree.layout.width, side = half + 24f;
+            return float.IsNaN(half) || float.IsNaN(wide) ? x : Mathf.Clamp(x, side, Mathf.Max(side, wide - side));
         }
 
         /// <summary>A chip under its gift, never over it, and under the chips already placed this frame, so two gifts side by side keep two targets (tester run 7).</summary>
@@ -879,10 +886,10 @@ namespace AquariumCiv.View
             }
             RefreshTray(sim, false);
             var a = show.Answer;
-            bool label = !noUi && a.active && a.labelAlpha > 0.01f && Anchor(labelEl, a.x, a.z, 0.35f);
+            bool label = !noUi && a.active && a.labelAlpha > 0.01f && Anchor(labelEl, a.x, a.z, 0.35f, inFrame: true);
             labelEl.style.display = label ? DisplayStyle.Flex : DisplayStyle.None;
             if (label) { labelEl.text = a.label; labelEl.style.opacity = a.labelAlpha; }
-            bool bubble = !noUi && a.active && a.bubbleAlpha > 0.01f && !string.IsNullOrEmpty(a.bubble) && Anchor(bubbleEl, a.x, a.z, 0.35f, -80f);
+            bool bubble = !noUi && a.active && a.bubbleAlpha > 0.01f && !string.IsNullOrEmpty(a.bubble) && Anchor(bubbleEl, a.x, a.z, 0.35f, -80f, inFrame: true);
             voice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line);
             if (bubble) bubble = GameUiPanel.Bubbles.Ask(voice); // asked every frame: it waits for whoever has the word
             else GameUiPanel.Bubbles.Done(voice);
@@ -972,7 +979,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>A name this long ("Wool flock", "Blossoming") only fits a tile a size down.</summary>
-        const int LongToolName = 9;
+        const int LongToolName = 9, WrapToolName = 14;
 
         VisualElement Tiles(IReadOnlyList<TrayTool> list)
         {
@@ -991,6 +998,7 @@ namespace AquariumCiv.View
                 b.Add(new GlassIcon(t.enabled ? IconOf(kind) : "lock", "kg-icon--small"));
                 var name = TrayLabel(Cap(t.name), "type-small-head", "kg-tile-name");
                 name.EnableInClassList("kg-tile-name--long", t.name.Length >= LongToolName);
+                name.EnableInClassList("kg-tile-name--wrap", t.name.Length >= WrapToolName); // "Blossoming grove": no size of type fits it on one line
                 b.Add(name);
                 b.Add(TrayLabel($"Level {t.level}", "type-note"));
                 b.Add(TrayLabel($"{t.standing} of {t.cap} out", "type-note"));

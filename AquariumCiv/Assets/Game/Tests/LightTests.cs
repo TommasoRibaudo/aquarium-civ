@@ -406,19 +406,27 @@ namespace AquariumCiv.Tests
             CameraReach.PanBounds(0.5f, 3f, 2.2f, out float xh, out float zh);
             Assert.GreaterOrEqual(xh, 3f - CameraReach.Margin - 1e-3f, "fully open by zoom 0.5 (was by 0.3)");
             CameraReach.PanBounds(CameraReach.MinZoom, 3f, 2.2f, out float xc, out float zc);
-            Assert.Greater(xc, 3f, "may pan past the wall at the closest zoom");
-            Assert.Less(xc, 3f + CameraReach.CloseOvershoot, "but the box never leaves");
-            Assert.Greater(zc, 2.2f);
+            Assert.Less(xc, 3f - CameraReach.Margin, "tester run 10: close in the focus stays well on the land");
+            Assert.Greater(xc, 2f, "and the land's edge is still in reach of the view");
+            Assert.Less(zc, 2.2f - CameraReach.Margin);
+            Assert.Greater(zc, 1.3f);
         }
 
         [Test]
         public void Reach_PanIsMonotonicAndContinuousInZoom()
         {
             float prev = -1f, prevK = CameraReach.PanK(0.2f);
-            for (float z = 1f; z >= 0.2f; z -= 0.005f)
+            for (float z = 1f; z >= CameraReach.FullPanZoom; z -= 0.005f)
             {
                 CameraReach.PanBounds(z, 3f, 2.2f, out float bx, out _);
-                Assert.GreaterOrEqual(bx, prev - 1e-5f, "closer never narrows the pan, at " + z);
+                Assert.GreaterOrEqual(bx, prev - 1e-5f, "closer opens the pan, at " + z);
+                prev = bx;
+            }
+            for (float z = CameraReach.FullPanZoom; z >= 0.2f; z -= 0.005f)
+            {
+                CameraReach.PanBounds(z, 3f, 2.2f, out float bx, out _);
+                Assert.LessOrEqual(bx, prev + 1e-5f, "past 0.5 the view is so small the focus draws in, at " + z);
+                Assert.Less(prev - bx, 0.02f, "with no jump");
                 prev = bx;
             }
             float last = CameraReach.PanK(1.3f);

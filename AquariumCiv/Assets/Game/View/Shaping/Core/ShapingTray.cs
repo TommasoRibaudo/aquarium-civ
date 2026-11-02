@@ -138,6 +138,13 @@ namespace AquariumCiv.View.Shaping
             _ => $"Tap the ground to place the {name}.",
         };
 
+        /// <summary>As below, for a place the player tried: a herd flicked at the water can be refused with the box's cap not reached, since the water holds one shoal
+        /// (<see cref="SimCore.CanShape"/>). Tester run 10 read "The box holds 2 at once" with one out.</summary>
+        public static string ReasonText(string kind, SimCore.ShapeFail fail, int standing)
+            => kind == SimCore.NudgeKind.Herd && fail == SimCore.ShapeFail.AtCap && standing < SimCore.ShapingCap(kind) ? OneShoal : ReasonText(kind, fail);
+
+        public const string OneShoal = "The water holds one shoal at a time";
+
         /// <summary>Short player text for why a tool is disabled (practices §4: say why, in the player's words).</summary>
         public static string ReasonText(string kind, SimCore.ShapeFail fail)
         {

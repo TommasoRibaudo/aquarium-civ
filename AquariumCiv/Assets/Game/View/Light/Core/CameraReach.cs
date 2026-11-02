@@ -14,8 +14,9 @@ namespace AquariumCiv.Lighting
         public const float FullBoxPan = 0.12f;
         /// <summary>Zoom at which the pan range is fully open (was 0.3).</summary>
         public const float FullPanZoom = 0.5f;
-        /// <summary>Margin kept from the box edge (was 0.3) and how far past the edge the focus may go at the closest zoom.</summary>
-        public const float Margin = 0.1f, CloseOvershoot = 0.35f;
+        /// <summary>Margin kept from the box edge (was 0.3), and how much further in the focus stays at the closest zoom, where the view is only about 1.8 units wide:
+        /// tester run 10 rested on 80 % wall with the focus past the edge.</summary>
+        public const float Margin = 0.1f, CloseInset = 0.7f;
         /// <summary>The pitch floor is 24 at zoom 1 and out, down to 14 at <see cref="MinZoom"/>.</summary>
         public const float PitchFloorFull = 24f, PitchFloorClose = 14f;
 
@@ -39,9 +40,9 @@ namespace AquariumCiv.Lighting
         public static void PanBounds(float zoom, float halfX, float halfZ, out float boundX, out float boundZ)
         {
             float k = PanK(zoom);
-            float over = CloseOvershoot * Smooth((FullPanZoom - zoom) / (FullPanZoom - MinZoom));
-            boundX = (halfX - Margin) * k + over * k;
-            boundZ = (halfZ - Margin) * k + over * k;
+            float inset = CloseInset * Smooth((FullPanZoom - zoom) / (FullPanZoom - MinZoom));
+            boundX = (halfX - Margin - inset) * k;
+            boundZ = (halfZ - Margin - inset) * k;
         }
 
         public static float PitchFloor(float zoom)

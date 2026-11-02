@@ -280,6 +280,7 @@ namespace AquariumCiv.View
             if (card == null) return false;
             EnsureUi();
             CloseCrowd(false);
+            CloseBuilding(false); // one card at a time (tester run 10)
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
             if (OpenId != notableId) { Tab = CardTab.About; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
@@ -305,6 +306,7 @@ namespace AquariumCiv.View
             if (card == null) return false;
             EnsureUi();
             if (IsOpen) Close();
+            CloseBuilding(false);
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
             if (CrowdIndex != index) GameClock.Tel.CardOpened("crowd", index);
@@ -371,7 +373,7 @@ namespace AquariumCiv.View
             edges.Clear();
             flownForCard = false;
             if (GameHud.Instance != null) GameHud.Instance.SetOutsideSheet(null);
-            if (sheet != null) sheet.Close(() => { if (!AnyOpen) cardRoot.style.display = DisplayStyle.None; });
+            if (sheet != null) sheet.Close(() => { if (!AnyOpen && !BuildingOpen) cardRoot.style.display = DisplayStyle.None; });
             ClearLines();
             // Camera mode keeps the view it took over (it follows this person, #70): no easing back.
             if (showMeFromCard && ShowMeDirector.Instance != null) ShowMeDirector.Instance.End(GameHud.Instance == null || !GameHud.Instance.CameraMode);

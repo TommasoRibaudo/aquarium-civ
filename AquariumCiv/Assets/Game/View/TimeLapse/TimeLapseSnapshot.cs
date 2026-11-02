@@ -39,6 +39,7 @@ namespace AquariumCiv.View
             Exception failed = null;
             try
             {
+                EraStills.FitDepth(cam);
                 var req = new RenderPipeline.StandardRequest { destination = rt };
                 if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
                 else { cam.targetTexture = rt; cam.Render(); cam.targetTexture = prevTarget; }

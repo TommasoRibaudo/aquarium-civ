@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using AquariumCiv.Lighting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace AquariumCiv.View
@@ -126,7 +127,18 @@ namespace AquariumCiv.View
             glide.Cancel(); glideNext = false;
         }
 
-        void OnDisable() { RestoreDepth(); }
+        void Awake()
+        {
+            if (!Application.isPlaying) return;
+            cam = GetComponent<Camera>();
+            RenderPipelineManager.beginCameraRendering += FitDepthBeforeRender;
+        }
+
+        void OnDestroy()
+        {
+            RenderPipelineManager.beginCameraRendering -= FitDepthBeforeRender;
+            RestoreDepth();
+        }
 
         // ---------------- fly-to ----------------
         /// <summary>
@@ -247,8 +259,10 @@ namespace AquariumCiv.View
         bool StepGlide(float dt, int touches, float scroll)
         {
             if (!glide.Armed) return false;
-            if (touches > 0 || Mathf.Abs(scroll) > 0.01f) { glide.Cancel(); return false; }
-            if (GlideHeld()) { glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch); return false; }
+            // Tester run 10: with a card up a press may be the tap that closes it, so only a real drag or pinch forgets the way home.
+            bool held = GlideHeld();
+            if (Mathf.Abs(scroll) > 0.01f || (touches > 0 && (!held || moved || touches >= 2))) { glide.Cancel(); return false; }
+            if (held) { glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch); return false; }
             float x = target.x, z = target.z, zm = zoom, y = yaw, p = pitch;
             if (!glide.Step(dt, ref x, ref z, ref zm, ref y, ref p)) return false;
             target.x = x; target.z = z; zoom = zm;
@@ -269,19 +283,40 @@ namespace AquariumCiv.View
         // ---------------- the depth around the box (#193) ----------------
         float shadowWas = -1f;
 
-        /// <summary>The camera sits 8 to 53 units from the box (a 22 degree lens), so no one shadow distance fits, and a fixed one spreads the shadow map over
-        /// all the empty air in front of the box: that is the saw-tooth. Near plane and shadow distance follow the camera instead: the shadow map covers
-        /// about 15 units of depth around the box, at every zoom, and the far edge of the box always gets shadows. The asset's own value is put back on disable.</summary>
-        void FitDepth()
+        /// <summary>Tester run 10: this hangs off the render, not off this component's own LateUpdate. Moments, the last moment and the shelf turn the rig off and move the
+        /// camera themselves, and the near plane stayed where the rig left it, in front of the whole box. Now whoever moves the camera, the frame it draws is fitted.</summary>
+        void FitDepthBeforeRender(ScriptableRenderContext context, Camera rendering)
         {
+            if (rendering == cam) FitDepthNow();
+        }
+
+        /// <summary>The camera sits 8 to 53 units from the box (a 22 degree lens), so no one shadow distance fits, and a fixed one spreads the shadow map over
+        /// all the empty air in front of the box: that is the saw-tooth. Near plane and shadow distance follow the camera instead (<see cref="BoxCameraMath.FitNear"/>).
+        /// The asset's own value is put back when the camera goes. A render request (a still, a snapshot, the book's cover) raises no begin-camera event: call this first.</summary>
+        public void FitDepthNow()
+        {
+            if (cam == null) cam = GetComponent<Camera>();
             if (cam == null) return;
-            float d = Vector3.Distance(transform.position, new Vector3(0f, 1f, 0f));
-            cam.nearClipPlane = Mathf.Max(BoxCameraMath.NearestPlane, d - BoxCameraMath.DepthFront);
+            var t = transform;
+            cam.nearClipPlane = BoxCameraMath.FitNear(t.position, t.forward, t.up, Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad), ShelfRowTop());
+            float d = Mathf.Max(Vector3.Distance(t.position, new Vector3(0f, 1f, 0f)), Vector3.Distance(t.position, target));
+            cam.farClipPlane = Mathf.Max(cam.farClipPlane, d + BoxCameraMath.FarPastFocus);
             var urp = UniversalRenderPipeline.asset;
             if (urp == null) return;
             if (shadowWas < 0f) shadowWas = urp.shadowDistance;
             urp.shadowDistance = d + BoxCameraMath.DepthBack;
         }
+
+        /// <summary>How tall what stands along the shelf gets, or -1 with only this box there. The new box comes down from above in the last moment.</summary>
+        static float ShelfRowTop()
+        {
+            var done = BoxCompleteController.Instance;
+            if (done != null && done.Playing) return Land.GlassTop + StagedDrop;
+            var shelf = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Shelf : null;
+            return (done != null && done.ShelfOpen) || (shelf != null && shelf.boxes.Count > 1) ? Land.GlassTop + 0.1f : -1f;
+        }
+
+        const float StagedDrop = 2.4f;
 
         void RestoreDepth()
         {
@@ -290,8 +325,6 @@ namespace AquariumCiv.View
             if (urp != null) urp.shadowDistance = shadowWas;
             shadowWas = -1f;
         }
-
-        void LateUpdate() { if (Application.isPlaying) FitDepth(); }
 
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
@@ -571,8 +604,9 @@ namespace AquariumCiv.View
                 var d = g0 - g1;
                 target.x = BoxCameraMath.SoftStep(target.x, d.x, -bound.x, bound.x, BoxCameraMath.PanSoftRange);
                 target.z = BoxCameraMath.SoftStep(target.z, d.z, -bound.y, bound.y, BoxCameraMath.PanSoftRange);
-                Apply();
             }
+            StayOnLand();
+            Apply();
             prevMid = mid; prevDist = dist;
         }
 
@@ -583,7 +617,16 @@ namespace AquariumCiv.View
             if (Mathf.Approximately(z0, z1)) return;
             if (GroundAt(screenPoint, out var g)) target = BoxCameraMath.ZoomTarget(target, new Vector3(g.x, target.y, g.z), z0, z1);
             zoom = z1;
+            StayOnLand();
             Apply();
+        }
+
+        /// <summary>The rubber band and a pinch towards the wall both stop at the land's edge.</summary>
+        void StayOnLand()
+        {
+            var stop = BoxCameraMath.PanHardStop;
+            target.x = Mathf.Clamp(target.x, -stop.x, stop.x);
+            target.z = Mathf.Clamp(target.z, -stop.y, stop.y);
         }
 
         bool GroundAt(Vector2 screenPoint, out Vector3 p)

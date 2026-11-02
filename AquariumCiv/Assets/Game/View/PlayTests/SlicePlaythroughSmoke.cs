@@ -354,6 +354,16 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("smoke_box2");
         }
 
+        IEnumerator ShelfView()
+        {
+            var c = BoxCompleteController.Instance;
+            Assert.IsTrue(c.OpenShelf(), "the shelf opens with a box on it");
+            yield return Frames(20);
+            yield return Shot("smoke_shelf");
+            c.CloseShelf();
+            yield return Frames(20);
+        }
+
         [UnityTest, Timeout(420000)]
         public IEnumerator FreshBoxToBoxComplete_NoConsoleErrors()
         {
@@ -366,10 +376,17 @@ namespace AquariumCiv.View.PlayTests
             yield return PersonCardByTouch(); Step("person card");
             yield return CleanByTouch(); Step("clean");
             yield return ReturnCards(); Step("return cards");
+            using var depth = new DepthWatch(); // tester run 10: passing moments rendered blank
             yield return EraMoment(); Step("era moment");
+            Assert.Greater(depth.Frames, 100, "the watch saw the moment");
+            Assert.AreEqual(0, depth.Faults, "the era moment never cuts the box: " + depth.First);
+            Assert.AreEqual(0, depth.OffScreen, "and keeps it on screen at every beat");
             yield return TimeLapse(); Step("time-lapse");
             yield return TheClose(); Step("the close");
             yield return BoxComplete(); Step("box complete");
+            yield return ShelfView(); Step("shelf");
+            Debug.Log($"[smoke] depth watch: {depth.Frames} frames, closest {depth.Worst}");
+            Assert.AreEqual(0, depth.Faults, "the time-lapse, the close, the last moment and the shelf never cut the box: " + depth.First);
             float total = Time.realtimeSinceStartup - t0;
             Debug.Log($"[smoke] whole slice in {total:0} s");
             Assert.Less(total, 240f, "the smoke test stays under 4 minutes");
