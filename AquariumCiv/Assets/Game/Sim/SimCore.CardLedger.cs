@@ -35,7 +35,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>Stays in the stack, read or not, until it's resolved.</summary>
         bool CardWaits(ChronicleEntry e) =>
-            (e.kind == "wish" && WishOfEntry(e.id)?.state == WishState.Open) || (e.kind == "era-ready" && EraReadyLive(e));
+            (e.kind == "wish" && WishOfEntry(e.id)?.state == WishState.Open) || (e.kind == "dilemma" && DilemmaCardLive(e)) || (e.kind == "era-ready" && EraReadyLive(e));
 
         bool CardUnread(ChronicleEntry e, HashSet<int> read) =>
             e.month > State.cards.since && !read.Contains(e.id) && ShownAsCard(e) && WishCardLive(e) && EraReadyLive(e);
