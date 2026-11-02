@@ -18,7 +18,7 @@ namespace AquariumCiv.Lighting
     public static class Lamps
     {
         public const int MaxLamps = 8;
-        /// <summary>How far above its threshold the lamp level must climb before a lamp stops stuttering and burns steadily.</summary>
+        /// <summary>How far above its threshold the lamp level must climb before a lamp has finished fading on.</summary>
         public const float IgniteWindow = 0.10f;
         /// <summary>A lamp already picked counts this much closer (squared 0.85) so the set does not swap while the camera drifts.</summary>
         const float KeepBias = 0.7225f;
@@ -35,9 +35,9 @@ namespace AquariumCiv.Lighting
         public static float Threshold(int seed, int lampId) => 0.05f + 0.9f * Unit(Hash(unchecked((uint)seed * 2654435761U ^ (uint)(lampId + 1) * 40503U)));
 
         /// <summary>
-        /// Brightness 0..1 of one lamp. Below its threshold: 0. In the ignite window just above it: a stutter (hashed on/off
-        /// pulses that get longer). After that a faint steady shimmer. <paramref name="steady"/> (time-lapse) drops the
-        /// stutter and the shimmer: the lamp just fades on.
+        /// Brightness 0..1 of one lamp. Below its threshold: 0. In the ignite window just above it: a smooth fade on. After
+        /// that a slow breathing (0.89..1, a few seconds a cycle), never a flicker (#214). <paramref name="steady"/> (time-lapse) drops
+        /// the breathing: the lamp just fades on.
         /// </summary>
         public static float Brightness(float level, int seed, int lampId, float time, bool steady = false)
             => BrightnessAt(level, Threshold(seed, lampId), seed, lampId, time, steady);
@@ -49,21 +49,11 @@ namespace AquariumCiv.Lighting
             float over = level - th;
             if (steady) return Smooth01(over / IgniteWindow);
             float phase = Unit(Hash(unchecked((uint)lampId * 9781U + (uint)seed))) * 6.2831853f;
-            float shimmer = 1f - 0.03f * (0.5f + 0.5f * (float)Math.Sin(time * 2.1f + phase)) - 0.015f * (0.5f + 0.5f * (float)Math.Sin(time * 3.3f + phase * 2f));
+            // #214: no flicker. The light breathes: two slow sines (0.33 and 0.53 Hz, rad/s below), 0.89..1, and it fades on smoothly.
+            float shimmer = 1f - 0.07f * (0.5f + 0.5f * (float)Math.Sin(time * 2.1f + phase)) - 0.04f * (0.5f + 0.5f * (float)Math.Sin(time * 3.3f + phase * 2f));
             if (over >= IgniteWindow) return shimmer;
-            float u = over / IgniteWindow;
-            // #214: it wavers, it does not strobe. Slots of 0.4 to 0.9 s, each either "caught" or dim (0.4, never black), eased
-            // into the next over the last 40 % of the slot.
-            float slot = 0.4f + 0.5f * u;                   // pulses get longer as it catches
-            float f = Math.Max(0f, time / slot);
-            uint bucket = (uint)f;
-            float w = Smooth01((f - bucket - 0.6f) / 0.4f);
-            float a = Pulse(bucket, lampId, seed, u), b = Pulse(bucket + 1, lampId, seed, u);
-            return Smooth01(u * 2f + 0.3f) * shimmer * (a + (b - a) * w);
+            return Smooth01(over / IgniteWindow) * shimmer;
         }
-
-        static float Pulse(uint bucket, int lampId, int seed, float u)
-            => Unit(Hash(unchecked(bucket * 31U + (uint)lampId * 7U + (uint)seed))) < 0.25f + 0.75f * u ? 1f : 0.4f;
 
         static float Smooth01(float t) { t = t < 0f ? 0f : t > 1f ? 1f : t; return t * t * (3f - 2f * t); }
 
