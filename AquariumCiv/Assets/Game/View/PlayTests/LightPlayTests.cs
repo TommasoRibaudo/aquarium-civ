@@ -244,6 +244,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(shown, day.Logic.ShownHour, 1e-3f, "the still changed nothing");
             string png = EraStills.PngPath(info);
             Assert.IsTrue(File.Exists(png));
+            Directory.CreateDirectory(Shots + "light-shots/"); // a fresh checkout has no Temp/agent/light-shots
             File.Copy(png, Shots + "light-shots/era-still.png", true);
             EraStills.DebugClear(Sim.State.seed);
             DayLightDriver.DebugPauseClock(false);

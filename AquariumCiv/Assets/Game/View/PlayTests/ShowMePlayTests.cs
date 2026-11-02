@@ -41,6 +41,7 @@ namespace AquariumCiv.View.PlayTests
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            ShowMeDirector.BubblesOn = true; // a static: earlier fixtures switch it off (many leave it off), and this one tests the normal-play default
             savePath = GameClock.DefaultSavePath;
             backup = savePath + ".showme-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }

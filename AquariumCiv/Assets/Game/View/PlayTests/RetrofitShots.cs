@@ -347,6 +347,8 @@ namespace AquariumCiv.View.PlayTests
             hud.Open(GameHud.Settings);
             yield return Frames(10);
             yield return Cap("3.6-settings-shelf");
+            hud.SettingsView.Scroll.View.ScrollTo(hud.Root.Q("settings-shelf")); // the row sits below the fold, as for a player: scroll to it first
+            yield return Frames(6);
             yield return Tap(hud.Root, "settings-shelf");
             yield return Frames(30);
             Assert.IsTrue(c.ShelfOpen, "Settings' row opens the shelf");

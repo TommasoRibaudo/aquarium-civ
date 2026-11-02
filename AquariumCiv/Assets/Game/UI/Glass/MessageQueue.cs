@@ -32,6 +32,8 @@ namespace AquariumCiv.GameUI
         public string Current { get; private set; }
         public int Waiting => waiting.Count;
         public bool Held => holds.Count > 0;
+        /// <summary>The reasons now holding the queue (for a test or log to say who).</summary>
+        public string Holders => string.Join(", ", holds);
 
         public void Post(string text, float seconds)
         {
@@ -68,6 +70,9 @@ namespace AquariumCiv.GameUI
         {
             if (on) holds.Add(reason); else holds.Remove(reason);
         }
+
+        /// <summary>Drops every hold. A scene reload destroys the prompt or peek that held the lane without releasing it; the queue is static and keeps the reason.</summary>
+        public void ClearHolds() => holds.Clear();
 
         public void Clear()
         {

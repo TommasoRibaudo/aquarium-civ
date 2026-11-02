@@ -664,3 +664,21 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - `test status` stayed `running` again after a 12 s EditMode run (see 2026-10-31): `TestResults.xml` had the result. A bounded wait on that file's mtime is the safer end signal for EditMode.
   - `test run` sent while `unity recompile` reports a compile error runs the old assemblies; and a `test cancel` mid PlayMode leaves `Assets/InitTestScene*.unity` as the open scene: reopen Slice and delete it with `AssetDatabase.DeleteAsset`.
   - Shader globals outlive a scene in the Editor: a test that ended mid fade left `_AC_FrameFade` on every later box (the frames looked faded in shots of other tests). `BoxView` now sends it once on enable.
+
+- **2026-11-01 · Why `AquariumCiv.View.Tests` stalled in the Editor (final checks).** [verified] "Run started: 1285 test(s)" is the whole
+  tree's count, not a missing filter: the assembly filter worked (119 ran in 13 s). The stall was `BoxLeakTests.AfterADomainReload_OneBoxAndNoOrphans`,
+  which calls `EditorUtility.RequestScriptReload()`; the reload drops the Pipeline's `TestResultCollector`, so `RunFinished` never arrives, `test status`
+  stays `running` for ever and a synchronous call dies with "socket hang up" (results are still written to `TestResults.xml`). Fix: the test skips itself
+  (Assume, shows as 1 inconclusive, 118/119 passed) unless `Application.isBatchMode` (CI) or `AQ_RELOAD_TEST=1`. Recover a stuck run with `test cancel`.
+  Any EditMode test that reloads the domain will do the same.
+- **2026-11-01 · `test run --filter` takes one pattern.** `--filter` twice is refused; `A;B` runs 0 tests. One test or class per run.
+  `[Explicit]` shots need `--include_explicit true`, with `--async_tests true`. `unity recompile` returns before the Editor is `ready`: run
+  `unity status --until-ready` before the next `test run`, or the run uses the old assembly. [verified]
+- **2026-11-01 · Static test state that leaks between PlayMode classes.** `ShowMeDirector.BubblesOn` (many fixtures set it false and never restore it;
+  `ShowMePlayTests.Open` now sets it true) and `GameUiPanel.Toasts` holds (`OpenSlice` now calls `ClearHolds()`; `Toasts.Holders` names them).
+  After a swipe the peek only has to give up its own "peek" hold: the era's Watch prompt or the Finish prompt may hold the lane too. [verified]
+- **2026-11-01 · `Tools/watch-editor-stall.sh`.** Run it from the orchestrator, in the background, while an agent holds `.agent-editor.lock`:
+  `bash Tools/watch-editor-stall.sh [quiet_seconds=600] [max_seconds=14400]`. It exits (waking the orchestrator) when the lock is released (0), when nothing has
+  moved for 10 minutes (3: test status and Editor.log size unchanged) or at the max (4). It is read-only against the Editor. [verified from the script]
+- **2026-11-01 · `HudBlocksTheCameraOnlyWhereItIs` (hud-title 141.64 < 143.5) did not reproduce** alone, in `HudTapTests` as a class, or with the Game view at
+  750x1334, 1536x2048 and 2556x1179. The assert message now carries the layout, panel and screen size and the resolved min-height for the next time. [verified]

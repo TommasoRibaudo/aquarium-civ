@@ -410,7 +410,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(CardStackMode.Hidden, Model.Mode, "a swipe down puts it away");
             Assert.IsTrue(Shown(hud.Root.Q("hud-history-dot")), "and the chip comes up");
             Assert.AreEqual(Visibility.Visible, hud.Root.Q("hud-pins").resolvedStyle.visibility);
-            Assert.IsFalse(GameUiPanel.Toasts.Held);
+            // The peek lets go of the lane. Not "nothing holds it": the era's Watch prompt or the Finish prompt may legitimately be up by then (they hold it too).
+            StringAssert.DoesNotContain("peek", GameUiPanel.Toasts.Holders, "the peek gave the toast lane back");
             hud.SetPinChip(null, null);
             AssertNoErrors("peek lane");
         }

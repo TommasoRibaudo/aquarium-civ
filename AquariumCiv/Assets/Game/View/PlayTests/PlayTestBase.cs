@@ -90,6 +90,7 @@ namespace AquariumCiv.View.PlayTests
             if (freshSave)
                 foreach (var ext in new[] { "", ".bak" })
                     if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
+            GameUiPanel.Toasts.ClearHolds(); // static: a prompt or peek an earlier test left up still holds the lane after its scene went
             if (seed != 0) GameClock.DebugNextSeed = seed;
             SetSize(w, h);
             float waited = 0f;

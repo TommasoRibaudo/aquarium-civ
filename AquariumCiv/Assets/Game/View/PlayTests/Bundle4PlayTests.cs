@@ -497,7 +497,8 @@ namespace AquariumCiv.View.PlayTests
             {
                 foreach (var era in new[] { Era.Village, Era.Town })
                 {
-                    for (int i = 0; i < 12 && clock.Sim.State.era < era; i++) { clock.Sim.ForceNextEra(); yield return Frames(3); SimLayoutSource.DebugSkipYears(10f); yield return Frames(3); }
+                    for (int i = 0; i < 12 && clock.Sim.State.era < era; i++) { clock.Sim.ForceNextEra(); yield return Frames(3); yield return Until(() => { var src = SimLayoutSource.Find(); return (MomentPlayer.Instance == null || !MomentPlayer.Instance.Playing) && (src == null || (!src.MomentLook && !src.WaveRunning)); }, 90f); // the era moment shows the old look until it ends: a mill built meanwhile is in the old era
+                         SimLayoutSource.DebugSkipYears(10f); yield return Frames(3); }
                     for (int i = 0; i < 20 && !box.layout.pieces.Any(p => p.kind == PieceKind.Windmill && p.era == era); i++) { if (i % 5 == 0) SimLayoutSource.DebugSkipYears(15f); yield return Frames(12); }
                     yield return Frames(3);
                     var mill = box.layout.pieces.FirstOrDefault(p => p.kind == PieceKind.Windmill && p.era == era);
