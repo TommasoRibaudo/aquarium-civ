@@ -107,6 +107,7 @@ namespace AquariumCiv.Tests
             Assert.Greater(a.Average(), 0.5f, "grime still grows over most of the glass");
         }
 
+#if UNITY_5_3_OR_NEWER // Tools/SimTests compiles this file without Unity, and GlassMask is a Unity type
         /// <summary>The cow-hide bug: with the soil's texels counted in the level, 0.8 on the sim was 0.9 above the ground and 73% of the glass sat pinned at 1.</summary>
         [Test]
         public void TheLevelIsTheGrimeOnTheGlassAboveTheGroundAndOnlyTheWorstOfItPins()
@@ -131,6 +132,7 @@ namespace AquariumCiv.Tests
                 Assert.Less(m.grime.Count(g => g >= 0.98f) / (float)live, 0.02f, "a new box's light smudges pin nothing");
             }
         }
+#endif
 
         static float Sd(IEnumerable<float> v)
         {
