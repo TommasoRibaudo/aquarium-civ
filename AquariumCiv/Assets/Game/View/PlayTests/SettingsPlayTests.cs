@@ -71,7 +71,7 @@ namespace AquariumCiv.View.PlayTests
 
         IEnumerator OpenSettings()
         {
-            yield return Tap(Root, "hud-title");
+            yield return Tap(Root, "hud-settings");
             yield return Until(() => Hud.OpenSheet == GameHud.Settings, 1f);
             yield return new WaitForSecondsRealtime(0.4f); // the slide
         }

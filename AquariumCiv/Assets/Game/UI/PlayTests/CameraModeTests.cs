@@ -82,7 +82,7 @@ namespace AquariumCiv.GameUI.PlayTests
             Assert.IsFalse(hud.CleanMode, "clean mode is closed first");
             Assert.IsNull(hud.OpenSheet);
             yield return null; yield return null;
-            foreach (var n in new[] { "hud-title", "hud-history", "hud-shape", "hud-clean", "hud-photo", "hud-feedback", "hud-toast" })
+            foreach (var n in new[] { "hud-title", "hud-settings", "hud-history", "hud-shape", "hud-clean", "hud-photo", "hud-feedback", "hud-toast" })
             {
                 var e = root.Q(n);
                 Assert.IsNotNull(e, n);

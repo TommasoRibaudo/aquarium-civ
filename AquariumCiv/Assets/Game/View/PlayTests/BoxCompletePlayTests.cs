@@ -247,7 +247,7 @@ namespace AquariumCiv.View.PlayTests
             var hudRoot = GameHud.Instance.Root;
             var bannerRect = ui.Q("visit-banner").worldBound;
             Assert.IsTrue(Shown(ui.Q("visit-banner")));
-            foreach (var n in new[] { "hud-title", "hud-feedback", "hud-photo", "hud-history", "shelf-open" })
+            foreach (var n in new[] { "hud-title", "hud-settings", "hud-feedback", "hud-photo", "hud-history", "shelf-open" })
             {
                 var h = hudRoot.Q(n) ?? ui.Q(n);
                 if (h == null || !Shown(h)) continue;
