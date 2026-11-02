@@ -56,28 +56,23 @@ Shader "AquariumCiv/View/Stylized"
 
         float Hash11(float n) { return frac(sin(n * 12.9898) * 43758.5453); }
 
-        // Smooth value noise, 0..1: a hash per whole second of t, eased between neighbours, so nothing steps.
-        float SoftNoise(float t, float seed)
+        // A light's slow breathing, 0.89..1: two sines a few seconds long (0.31 and 0.53 Hz), each lamp on its own phase. A fire
+        // burns unevenly, but the walls, people and things round it bounce the light and smooth that out to a slow rise and fall.
+        float Breath(float seed)
         {
-            float i = floor(t);
-            float f = frac(t);
-            return lerp(Hash11(i + seed), Hash11(i + 1.0 + seed), f * f * (3.0 - 2.0 * f));
+            float t = _Time.y;
+            return 1.0 - 0.07 * (0.5 + 0.5 * sin(6.2832 * 0.31 * t + seed * 6.2832)) - 0.04 * (0.5 + 0.5 * sin(6.2832 * 0.53 * t + seed * 17.0));
         }
 
-        // How lit a lamp is (0..1). Each lamp has a threshold in the dusk set by its phase; while the level crosses it
-        // the lamp sputters (random on/off, more often on as it warms); once on, it dips now and then for a moment.
+        // How lit a lamp is (0..1). Each lamp has a threshold in the dusk set by its phase; it fades on smoothly as the dusk
+        // crosses it, then breathes. No flicker (#214).
         half LampOn(float2 lamp)
         {
             if (lamp.x < 0.5 || lamp.x > 1.5) return 0; // 2 and up is a flame, not a lamp
             float t0 = 0.12 + lamp.y * 0.6;
             float x = saturate((_AC_LampLevel - t0) / 0.14);
-            // #214: slow and soft. The catch-on wavers about twice a second between dim and bright (it never goes black), and
-            // an established lamp dips a little, rarely, over half a second; neither is a step.
-            float n = SoftNoise(_Time.y * 2.0, lamp.y * 917.0);
-            float sputter = (x > 0.0 && x < 1.0) ? x * (0.45 + 0.55 * smoothstep(1.0 - x, 1.0 - x + 0.5, n)) : x;
-            float dip = smoothstep(0.55, 1.0, SoftNoise(_Time.y * 0.5, lamp.y * 571.0 + 3.0)) * step(0.999, x);
-            if (_AC_LampParams.z > 0.5) return (half)x; // the clock runs fast (time-lapse): no strobing
-            return (half)(sputter * (1.0 - 0.2 * dip));
+            if (_AC_LampParams.z > 0.5) return (half)x; // the clock runs fast (time-lapse): no breathing either
+            return (half)(smoothstep(0.0, 1.0, x) * Breath(lamp.y));
         }
 
         // The lamps' light on what stands near them, per vertex: at most 8 loops of a few instructions, no URP additional light, no
@@ -104,12 +99,12 @@ Shader "AquariumCiv/View/Stylized"
         }
 
         // Flame flicker (the fire pit): UV1.x = 2 + height weight (0 at the flame's foot, 1 at its tip), UV1.y = the fire's
-        // phase. Stretch +-6 % and wobble sideways 0.004 u, both scaled by the weight; two slow sines at 1.9 and 3.1 Hz (a fire breathes, it doesn't jitter: #214).
+        // phase. Stretch +-6 % and wobble sideways 0.004 u, both scaled by the weight; two slow sines at 0.37 and 0.61 Hz (periods of about 2 s and 3 s: a fire breathes, it doesn't jitter: #214).
         // The glow shader's halo and ground pool use the same n(), so they breathe with the flames.
         float FlameNoise(float phase)
         {
             float t = _Time.y;
-            return 0.5 * (sin(6.2832 * 1.9 * t + phase * 6.2832) + sin(6.2832 * 3.1 * t + phase * 17.0));
+            return 0.5 * (sin(6.2832 * 0.37 * t + phase * 6.2832) + sin(6.2832 * 0.61 * t + phase * 17.0));
         }
 
         float3 Displace(float3 positionWS, float swayWeight, float2 lamp)
@@ -121,7 +116,7 @@ Shader "AquariumCiv/View/Stylized"
                 float ph = lamp.y * 6.2832 + positionWS.x * 23.0 + positionWS.z * 17.0;
                 float t = _Time.y;
                 positionWS.y += w * 0.3 * 0.06 * n; // height weight x flame height x stretch
-                positionWS.xz += 0.004 * w * float2(sin(t * 2.4 + ph), cos(t * 1.9 + ph * 1.3));
+                positionWS.xz += 0.004 * w * float2(sin(t * 0.8 + ph), cos(t * 0.6 + ph * 1.3));
                 return positionWS;
             }
             return Sway(positionWS, swayWeight);
