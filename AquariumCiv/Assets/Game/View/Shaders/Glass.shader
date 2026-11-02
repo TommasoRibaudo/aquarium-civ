@@ -114,9 +114,10 @@ Shader "AquariumCiv/View/Glass"
                 half4 n2 = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, turned2 * _NoiseDensity2 + _NoiseOffset.yx);
                 half4 n = saturate((n1 + n2) * 0.5 + (n1 - 0.5) * 0.3 + (n2 - 0.5) * 0.3); // the mean of the two, its contrast put back
 
-                // Detail noise breaks the mask into smudges and drip streaks; heavier grime fills in the gaps.
-                half cover = saturate(mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15);
-                cover = smoothstep(0.02, 0.9, cover);
+                // Detail noise breaks the mask into smudges and drip streaks; heavier grime fills in the gaps. The curve tops out above
+                // what a full mask gives on average, so the noise still shows on heavy grime: with a top of 0.9 the mask flattened into one
+                // plateau with hard outlines (cow hide).
+                half cover = smoothstep(0.02, 1.05, mask * (0.55 + 0.9 * n.a) - (1 - mask) * 0.15);
 
                 float3 viewDir = normalize(GetWorldSpaceViewDir(i.positionWS));
                 float3 normal = normalize(i.normalWS);
@@ -127,10 +128,11 @@ Shader "AquariumCiv/View/Glass"
                 half lambert = saturate(dot(normal, light.direction)) * 0.35 + 0.65;
                 half night = (half)_AC_GlassNight;
                 half dim = 1 - night; // 1 by day, 0.35 at night: what was white in the clean glass
-                half3 grime = _GrimeColor.rgb * (0.85 + 0.3 * n.r) * (light.color * lambert + night * half3(0.34, 0.38, 0.5)); // grime catches the night's light: it stays the box's state
+                half3 grime = _GrimeColor.rgb * (0.85 + 0.3 * n.r) * (light.color * lambert + night * half3(0.27, 0.29, 0.33)); // grime catches a little of the night's light: it stays the box's state, but it is never brighter than the dimmed world behind it
 
-                half3 rgb = lerp(_CleanColor.rgb * dim, grime, cover);
                 half alpha = lerp(_CleanColor.a, _DirtyAlpha, cover);
+                // Mixed by how much of each is on the glass, not by cover alone: that kept the pale clean tint in every thin smear, a milky wash once the mask stopped sitting at full.
+                half3 rgb = (_CleanColor.rgb * dim * _CleanColor.a * (1 - cover) + grime * _DirtyAlpha * cover) / max(alpha, 0.001);
                 // Clean glass gets a faint sheen and, right after a wipe, a sparkle that fades.
                 half sheen = fresnel * (1 - cover) + _Glint * (1 - cover) * 0.35;
                 rgb = lerp(rgb, dim, saturate(sheen * 2));

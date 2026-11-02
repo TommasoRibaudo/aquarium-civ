@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AquariumCiv.View;
 using AquariumCiv.View.Grime;
 using NUnit.Framework;
 
@@ -104,6 +105,31 @@ namespace AquariumCiv.Tests
             TestContext.Progress.WriteLine("[grime] clean share pane 3: " + clean);
             Assert.That(clean, Is.InRange(0.03f, 0.5f), "open spaces exist but do not take over");
             Assert.Greater(a.Average(), 0.5f, "grime still grows over most of the glass");
+        }
+
+        /// <summary>The cow-hide bug: with the soil's texels counted in the level, 0.8 on the sim was 0.9 above the ground and 73% of the glass sat pinned at 1.</summary>
+        [Test]
+        public void TheLevelIsTheGrimeOnTheGlassAboveTheGroundAndOnlyTheWorstOfItPins()
+        {
+            foreach (int seed in new[] { 1, 7, 2026 })
+            {
+                var m = new GlassMask(new UnityEngine.Vector2(W, H), PX, seed);
+                m.NoGrimeBelow(u => 1f);
+                m.ResetTo(0.8f);
+                Assert.AreEqual(0.8f, m.Mean, 0.1f, "the mean over the glass that can hold grime");
+                int live = 0, pinned = 0;
+                for (int i = 0; i < m.grime.Length; i++)
+                {
+                    if (m.weight[i] <= 0.01f) continue;
+                    live++;
+                    if (m.grime[i] >= 0.98f) pinned++;
+                }
+                Assert.AreEqual(live, m.LiveTexels);
+                TestContext.Progress.WriteLine($"[grime] seed {seed}: mean {m.Mean:0.00}, pinned {pinned / (float)live:0.00}");
+                Assert.Less(pinned / (float)live, 0.35f, "most of a dirty pane keeps its gradient");
+                m.ResetTo(0.45f);
+                Assert.Less(m.grime.Count(g => g >= 0.98f) / (float)live, 0.02f, "a new box's light smudges pin nothing");
+            }
         }
 
         static float Sd(IEnumerable<float> v)

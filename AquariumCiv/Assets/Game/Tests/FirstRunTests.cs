@@ -62,6 +62,20 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(sim.State.firstRun.yearDone, "no year was played");
         }
 
+        /// <summary>A box that has just opened has lightly smudged glass, box 1 and every box after it: no more than this.</summary>
+        const float MostGrimeOnANewBox = 0.5f;
+
+        [Test]
+        public void ANewBoxStartsWithLightlySmudgedGlass([Values(0, 1, 2)] int boxIndex)
+        {
+            var s = SimCore.NewWorld(5, new SimConfig());
+            s.boxIndex = boxIndex;
+            var sim = new SimCore(new SimConfig(), s);
+            FirstRun.Begin(sim);
+            Assert.LessOrEqual(sim.State.grime, MostGrimeOnANewBox);
+            Assert.Greater(sim.State.grime, FirstRun.WipedGrime, "there is still a first wipe to make");
+        }
+
         [Test]
         public void TheFirstBoxKeepsTheFullRun()
         {

@@ -270,6 +270,8 @@ namespace AquariumCiv.View
                 mats[i].SetTexture("_NoiseTex", noise);
                 mats[i].SetVector("_NoiseOffset", GlassPaneNoise.Offset(paneSeed));
                 mats[i].SetFloat("_NoiseRot", GlassPaneNoise.Rotation(paneSeed));
+                mats[i].SetFloat("_DirtyAlpha", CareMath.PatchAlpha);
+                mats[i].SetColor("_GrimeColor", CareMath.GrimeColor);
                 t.gameObject.layer = GlassLayer;
                 if (!t.TryGetComponent(out cols[i])) cols[i] = t.gameObject.AddComponent<BoxCollider>();
                 masks[i].ResetTo(sim.State.grime);
@@ -559,12 +561,12 @@ namespace AquariumCiv.View
             }
             if (hitPanes == 0) { sound.SetRub(0f, 0f); return; }
             long texels = 0;
-            foreach (var m in masks) texels += m.Texels;
+            foreach (var m in masks) texels += m.LiveTexels;
             float share = total / Mathf.Max(1L, texels);
             strokeRemoved += share;
             if (share > 0f)
             {
-                // the sim's grime follows the masks in proportion (the masks have no grime under the soil, so their mean runs lower)
+                // the sim's grime follows the masks in proportion
                 float after = CareMath.WeightedMean(masks);
                 sim.CleanGrime(sim.State.grime - sim.State.grime * after / (after + share));
                 synced = sim.State.grime;

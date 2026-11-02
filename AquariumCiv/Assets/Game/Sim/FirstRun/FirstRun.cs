@@ -58,7 +58,7 @@ namespace AquariumCiv.Sim
         public const double YearSeconds = 15.0;             // the live skip, one game year
         public const float WipedGrime = 0.08f;              // the glass counts as wiped at or below this
         public const float ClearedOvergrowth = 0.06f;       // the patch counts as cleared at or below this
-        public const float StartGrime = 0.8f, StartOvergrowth = 0.5f;
+        public const float StartGrime = 0.45f, StartOvergrowth = 0.5f; // light smudges: enough to give the first wipe something to do, never enough to hide the camp
 
         readonly SimCore sim;
         FirstRunState F => sim.State.firstRun;

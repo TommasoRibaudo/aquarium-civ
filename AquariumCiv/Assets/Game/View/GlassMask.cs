@@ -16,7 +16,7 @@ namespace AquariumCiv.View
         public readonly Vector2 size;
         public readonly float[] grime, weight;
         public double sum;
-        float norm = 1f;   // the mean growth weight, so the mask's mean follows the level it is given
+        float norm = 1f;   // the mean growth weight of the glass that can hold grime, so that glass's mean follows the level it is given
         public bool dirty;
         public float glint, peakMean;
 
@@ -48,15 +48,23 @@ namespace AquariumCiv.View
             Renormalise();
         }
 
+        /// <summary>The level is about the glass that can get dirty. Counting the texels under the soil (a third of a pane) here
+        /// scaled the level by 1.5: 0.8 on the sim was 0.9 above the ground with 73% of it pinned at 1, and 1.0 looked the same as 0.8.</summary>
         void Renormalise()
         {
             double s = 0;
-            for (int i = 0; i < weight.Length; i++) s += weight[i];
-            norm = Mathf.Max(0.05f, (float)(s / weight.Length));
+            int live = 0;
+            for (int i = 0; i < weight.Length; i++) { s += weight[i]; if (weight[i] > LiveWeight) live++; }
+            LiveTexels = Mathf.Max(1, live);
+            norm = Mathf.Max(0.05f, (float)(s / LiveTexels));
         }
 
+        const float LiveWeight = 0.01f;
         public int Texels => grime.Length;
-        public float Mean => (float)(sum / grime.Length);
+        /// <summary>The texels that can hold grime: all but the glass below the ground.</summary>
+        public int LiveTexels { get; private set; }
+        /// <summary>Mean grime over the glass that can hold it.</summary>
+        public float Mean => (float)(sum / LiveTexels);
 
         /// <summary>Fresh, even grime at this level (a new session, a loaded save).</summary>
         public void ResetTo(float level)
@@ -253,11 +261,17 @@ namespace AquariumCiv.View
         /// <summary>The sun's intensity factor for a mess level 0..1: 1 when clean, 0.75 at full mess.</summary>
         public static float SunScale(float messLevel) => 1f - MaxSunDim * Mathf.Clamp01(messLevel);
 
-        /// <summary>Mean grime over several panes, weighted by their texel counts.</summary>
+        /// <summary>The panes' opacity at full cover. Grime is a film you look through: at 0.8 (with the shader's old curve) it read as
+        /// opaque blotches that hid the people, day or night. The dirtiest glass stays see-through, and it is the same at every hour.</summary>
+        public const float PatchAlpha = 0.66f;
+        /// <summary>The film's colour: a brown drab, because the olive it was disappears on a green box once the film is see-through.</summary>
+        public static readonly Color GrimeColor = new(0.29f, 0.26f, 0.17f, 1f);
+
+        /// <summary>Mean grime over several panes, weighted by their texels that can hold grime.</summary>
         public static float WeightedMean(GlassMask[] panes)
         {
             double s = 0; long n = 0;
-            foreach (var p in panes) { s += p.sum; n += p.Texels; }
+            foreach (var p in panes) { s += p.sum; n += p.LiveTexels; }
             return n == 0 ? 0f : (float)(s / n);
         }
     }
