@@ -21,7 +21,7 @@ namespace AquariumCiv.Sim
         public int option = -1;             // the option chosen (answered) or picked by the people (lapsed); -1 while open
         public DilemmaPath path;            // how it was answered (meaningful when state is Answered)
         public int personA = -1, personB = -1;       // the two people the options point at (-1 = none)
-        public int askerId = -1;            // who put the question (the era's leader when raised; -1 = the people at large): voices it by trait
+        public int askerId = -1;            // who put the question (the era's leader when raised, or the eldest other adult; -1 = the people at large): voices it by trait
         public int buildingA = -1, buildingB = -1;   // the place each option points at (-1 = none)
         public int entryId = -1;            // its chronicle entry (kind "dilemma"): the card
         public int answerEntryId = -1;      // the Keeper line an answer wrote (kind "keeper"); -1 for a lapse
@@ -188,6 +188,14 @@ namespace AquariumCiv.Sim
             if (State.dilemmas.Any(d => d.defId == def.id)) return false;           // never repeats in a box
             if (State.era < def.minEra || State.era > def.maxEra) return false;
             if (!string.IsNullOrEmpty(def.needs) && !Has(def.needs)) return false;
+            if (def.leaderElder || def.termEndingMonths > 0)
+            {
+                var lseat = SeatOf(LeaderOf(State.era));
+                var leader = Alive(lseat?.holderId ?? -1);
+                if (leader == null) return false;
+                if (def.leaderElder && leader.age < Config.elderAge) return false;
+                if (def.termEndingMonths > 0 && (lseat.termEndsMonth < State.month || lseat.termEndsMonth - State.month > def.termEndingMonths)) return false;
+            }
             string role = RoleOfDef(def);
             if (!string.IsNullOrEmpty(role))
             {
@@ -304,7 +312,10 @@ namespace AquariumCiv.Sim
             int id = s.dilemmaNextId++;
             var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b };
             var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
-            if (leader != null && leader.id != a && leader.id != b) d.askerId = leader.id;
+            if (def.askerNotLeader)
+                d.askerId = s.notables.Where(n => n.alive && n.age >= AdultAge && n.id != (leader?.id ?? -1) && n.id != a && n.id != b)
+                    .OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault()?.id ?? -1;
+            else if (leader != null && leader.id != a && leader.id != b) d.askerId = leader.id;
             for (int i = 0; i < 2 && i < def.options.Length; i++)
             {
                 var bt = def.options[i].buildingType;
@@ -466,7 +477,7 @@ namespace AquariumCiv.Sim
             if (made.Count > 1) { made[0].partnerId = made[1].id; made[1].partnerId = made[0].id; }
             s.population += made.Count;
             string names = string.Join(" and ", made.Select(n => n.name));
-            Chronicle("newcomer", $"The {family} family, {names}, came from beyond and joined the {EraNoun(s.era)}.", 0.7f, made[0].id);
+            Chronicle("newcomer", $"The {family} family, {names}, came in from the far woods and joined the {EraNoun(s.era)}.", 0.7f, made[0].id);
         }
 
         // ---------- debug ----------

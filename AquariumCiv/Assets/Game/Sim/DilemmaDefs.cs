@@ -69,6 +69,9 @@ namespace AquariumCiv.Sim
         public DilemmaCast cast;
         public string role;                 // RoleType (or Leader) the people are choosing for; null = an honour with no seat
         public bool replacesHolder;         // a held seat is open to the pick: the holder steps aside (false: the seat must be empty)
+        public bool leaderElder;            // the era's leader must be an elder (SimConfig.elderAge): the people are thinking about who comes next
+        public int termEndingMonths;        // > 0: the leader's term must end within this many months (an election is coming)
+        public bool askerNotLeader;         // the eldest other adult asks, not the leader (a leader doesn't ask who replaces them)
         public string question = "";        // the people's ask, {a}/{b}/{place}
         /// <summary>The question in the asker's voice, by their trait (the asker is the era's leader when it is raised, if they are
         /// not one of the two). A trait not listed, or no asker, gets <see cref="question"/>. Optional.</summary>
@@ -94,62 +97,63 @@ namespace AquariumCiv.Sim
 
         // ---------- camp ----------
 
-        /// <summary>Who: the chief hands on the fire. The chosen one takes the chief's seat (the old chief steps aside).</summary>
+        /// <summary>Who: the chief is an elder, and the people are thinking about who leads next. An elder asks (never the chief).
+        /// The chosen one becomes chief now (the old chief steps down).</summary>
         static readonly DilemmaDef CampFire = new DilemmaDef
         {
             id = "camp_fire", kind = DilemmaKind.Who, minEra = Era.Camp, maxEra = Era.Camp,
-            cast = DilemmaCast.TwoCandidates, role = DilemmaDef.Leader, replacesHolder = true,
-            question = "Who keeps the fire now: {a} or {b}?",
+            cast = DilemmaCast.TwoCandidates, role = DilemmaDef.Leader, replacesHolder = true, leaderElder = true, askerNotLeader = true,
+            question = "The chief is getting old. Who leads next: {a} or {b}?",
             askedBy = new Dictionary<string, string>
             {
-                ["the lazy"] = "I'd like a long sit. Who keeps the fire: {a} or {b}?",
-                ["the stubborn"] = "Not tired. Resting. Who keeps the fire: {a} or {b}?",
-                ["the grump"] = "My knees are done. Who keeps the fire: {a} or {b}?",
-                ["the joker"] = "I'm handing on the fire. It's hot. {a} or {b}?",
-                ["the dreamer"] = "The clouds need watching. The fire: {a} or {b}?",
-                ["the worrier"] = "Someone must mind the fire, properly. {a} or {b}?",
+                ["the gossip"] = "Chief's slowing down. Everyone says {a} or {b}. Which?",
+                ["the worrier"] = "The chief is old. Who will lead us next: {a} or {b}?",
+                ["the kind"] = "Let the chief rest at last. Who leads next: {a} or {b}?",
+                ["the grump"] = "Chief's past it. Don't tell them I said so. {a} or {b}?",
+                ["the joker"] = "The chief fell asleep mid-speech again. {a} or {b}?",
+                ["the stubborn"] = "The chief won't say it, so I will. Next: {a} or {b}?",
             },
             traitHints = new Dictionary<string, string>
             {
-                ["the stubborn"] = "{p} will keep the fire exactly where it is. Forever.",
-                ["the dreamer"] = "{p} will tell stories by the fire till the stars go out.",
-                ["the kind"] = "{p} will feed anyone who sits down by the fire.",
-                ["the loud"] = "{p} will call everyone to supper. Everyone, everywhere.",
-                ["the clever"] = "{p} will build a cleverer fire. It may need explaining.",
-                ["the lazy"] = "{p} will keep the fire low and the naps long.",
-                ["the brave"] = "{p} will lead the hunt farther out, to see what's there.",
-                ["the gossip"] = "{p} will know everyone's business by the first night.",
-                ["the gardener"] = "{p} will plant something round the fire. Probably beans.",
-                ["the grump"] = "{p} will keep the fire, and keep everyone off the good log.",
-                ["the singer"] = "{p} will sing by the fire every night. Every night.",
-                ["the tinkerer"] = "{p} will fiddle with the fire until it does something new.",
-                ["the worrier"] = "{p} will check the fire all night, so the rest can sleep.",
-                ["the joker"] = "{p} will keep the fire, and keep everyone laughing round it.",
+                ["the stubborn"] = "{p} will lead one way, and never turn back.",
+                ["the dreamer"] = "{p} will lead with big ideas, and some of them will work.",
+                ["the kind"] = "{p} will lead gently, and nobody will go hungry.",
+                ["the loud"] = "{p} will lead from the front, and everyone will hear it.",
+                ["the clever"] = "{p} will lead with a plan for everything. Twice.",
+                ["the lazy"] = "{p} will lead calmly. Very calmly. Mostly sitting down.",
+                ["the brave"] = "{p} will lead the hunts farther out, and come back first.",
+                ["the gossip"] = "{p} will lead by knowing everything about everyone.",
+                ["the gardener"] = "{p} will lead {place} toward planting and tending.",
+                ["the grump"] = "{p} will lead fairly, and complain the whole way.",
+                ["the singer"] = "{p} will lead with a song for every job.",
+                ["the tinkerer"] = "{p} will lead by fixing things nobody knew were broken.",
+                ["the worrier"] = "{p} will lead carefully, with a plan for every storm.",
+                ["the joker"] = "{p} will lead with a laugh, and {place} will follow.",
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
-                    label = "{a}", hint = "{a} will keep the fire their own way, and {b} will watch.",
-                    done = "The people asked who should keep the fire, and the Keeper chose {a}.",
+                    label = "{a}", hint = "{a} will lead {place} their own way, and {b} will watch.",
+                    done = "The old chief stepped down, and the Keeper chose {a} to lead.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     callbacks = new[]
                     {
-                        Cb("fire_a_kept", "the fire at {place} has not gone out once. {a} sleeps beside it, one eye open.",
-                            "the fire at {place} is still laid the way {a} liked it, big logs at the back.", aliveA: true),
-                        Cb("fire_a_other", "{b} started a little fire of their own at the far end of {place}. The young ones like it better.", aliveB: true, minYears: 5),
+                        Cb("fire_a_kept", "{place} still does things {a}'s way, down to who sits where at supper.",
+                            "{place} still does things the way {a} did, down to who sits where at supper.", aliveA: true),
+                        Cb("fire_a_other", "{b} never got to lead, but has given {a} advice every day since. Some of it was good.", aliveA: true, aliveB: true, minYears: 5),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    label = "{b}", hint = "{b} will keep the fire their own way, and {a} will watch.",
-                    done = "The people asked who should keep the fire, and the Keeper chose {b}.",
+                    label = "{b}", hint = "{b} will lead {place} their own way, and {a} will watch.",
+                    done = "The old chief stepped down, and the Keeper chose {b} to lead.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     callbacks = new[]
                     {
-                        Cb("fire_b_kept", "the fire at {place} has not gone out once. {b} sleeps beside it, one eye open.",
-                            "the fire at {place} is still laid the way {b} liked it, big logs at the back.", aliveB: true),
-                        Cb("fire_b_other", "{a} started a little fire of their own at the far end of {place}. The young ones like it better.", aliveA: true, minYears: 5),
+                        Cb("fire_b_kept", "{place} still does things {b}'s way, down to who sits where at supper.",
+                            "{place} still does things the way {b} did, down to who sits where at supper.", aliveB: true),
+                        Cb("fire_b_other", "{a} never got to lead, but has given {b} advice every day since. Some of it was good.", aliveA: true, aliveB: true, minYears: 5),
                     },
                 },
             },
@@ -239,7 +243,8 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Strangers: lost travellers. Two join (a couple), or they go on and leave their axe trick behind (a wood lean).</summary>
+        /// <summary>Strangers: lost travellers from the far woods (inside the box). Two join (a couple), or they camp in the far woods and leave
+        /// their axe trick behind (a wood lean).</summary>
         static readonly DilemmaDef CampTravellers = new DilemmaDef
         {
             id = "camp_travellers", kind = DilemmaKind.Strangers, minEra = Era.Camp, maxEra = Era.Camp,
@@ -268,14 +273,14 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "full packs", hint = "They'll go on with full packs, and leave us their trick with an axe.",
+                    label = "full packs", hint = "They'll camp in the far woods, and leave us their trick with an axe.",
                     done = "The Keeper sent the travellers on with full packs. They showed everyone a thing or two with an axe first.",
                     lean = SimCore.Lean.Craft, custom = "travellers:sent",
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the clever", "the tinkerer", "the lazy" },
                     callbacks = new[]
                     {
                         Cb("travellers_notch", "every axe in {place} still has the travellers' little notch in the handle. Nobody knows why it helps. It helps."),
-                        Cb("travellers_wave", "the travellers came back through once, years later, and waved from the edge of the woods. All of {place} waved back.", minYears: 6),
+                        Cb("travellers_wave", "the travellers still live wild in the far woods. Some evenings you can see their fire, and all of {place} waves at it.", minYears: 6),
                     },
                 },
             },
@@ -283,19 +288,20 @@ namespace AquariumCiv.Sim
 
         // ---------- village ----------
 
-        /// <summary>Who: the village is split over its headman. The chosen one takes the seat (the headman steps aside).</summary>
+        /// <summary>Who: the headman's term is nearly up and the village is split over the next one. An elder asks (never the
+        /// headman). The chosen one takes the seat now (the headman hands over early).</summary>
         static readonly DilemmaDef VillageHeadman = new DilemmaDef
         {
             id = "village_headman", kind = DilemmaKind.Who, minEra = Era.Village, maxEra = Era.Village,
-            cast = DilemmaCast.TwoCandidates, role = DilemmaDef.Leader, replacesHolder = true,
-            question = "{place} is split down the middle. Headman: {a} or {b}?",
+            cast = DilemmaCast.TwoCandidates, role = DilemmaDef.Leader, replacesHolder = true, termEndingMonths = 24, askerNotLeader = true,
+            question = "A vote soon, and {place} is split. Headman: {a} or {b}?",
             askedBy = new Dictionary<string, string>
             {
-                ["the lazy"] = "Headman's a lot of talking. Could {a} or {b} do it?",
-                ["the kind"] = "I've had my turn. Headman next: {a} or {b}?",
-                ["the grump"] = "I'm done being argued at. Headman: {a} or {b}?",
-                ["the gossip"] = "Everyone's whispering. Headman: {a} or {b}?",
-                ["the dreamer"] = "I'd rather be dreaming. Headman next: {a} or {b}?",
+                ["the gossip"] = "Everyone's whispering about the vote. {a} or {b}?",
+                ["the grump"] = "Another vote, another row. Headman: {a} or {b}?",
+                ["the kind"] = "Let's not fall out over the vote. {a} or {b}?",
+                ["the lazy"] = "Counting votes is hard. Just pick: {a} or {b}?",
+                ["the worrier"] = "What if the vote comes out even? {a} or {b}?",
             },
             traitHints = new Dictionary<string, string>
             {
@@ -319,7 +325,7 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     label = "{a}", hint = "{a} will run {place} their way, and {b} will watch.",
-                    done = "{place} was split, and the Keeper chose {a} as headman.",
+                    done = "The vote was split, and the Keeper chose {a} as headman.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     callbacks = new[]
                     {
@@ -331,7 +337,7 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     label = "{b}", hint = "{b} will run {place} their way, and {a} will watch.",
-                    done = "{place} was split, and the Keeper chose {b} as headman.",
+                    done = "The vote was split, and the Keeper chose {b} as headman.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     callbacks = new[]
                     {
@@ -343,44 +349,45 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Which way: the mill wants grain, the roofs want timber (a food lean or a wood lean).</summary>
+        /// <summary>Which way: the miller and the roofers both want the young ones' hands this year (a food lean or a wood lean).</summary>
         static readonly DilemmaDef VillageSpring = new DilemmaDef
         {
             id = "village_spring", kind = DilemmaKind.WhichWay, minEra = Era.Village, maxEra = Era.Village, needs = BuildingType.Windmill,
-            question = "The mill wants grain, the roofs want timber. Which?",
+            question = "Miller or roofers: who gets the young ones this year?",
             askedBy = new Dictionary<string, string>
             {
-                ["the gardener"] = "The fields are begging, and so are the roofs. Which?",
-                ["the tinkerer"] = "Grain for the mill, or timber for my next idea?",
-                ["the worrier"] = "Grain or timber this year? We can't do both. Can we?",
-                ["the loud"] = "GRAIN OR TIMBER? Sorry. Grain or timber?",
-                ["the lazy"] = "Grain or timber. Pick the easy one. Which is that?",
+                ["the gardener"] = "The miller and the roofers both want the young ones. Who?",
+                ["the tinkerer"] = "Miller or roofers? I made a ladder for either. Who?",
+                ["the worrier"] = "Roofs leaking, grain ripe. Who gets the young ones?",
+                ["the loud"] = "MILLER OR ROOFERS? Sorry. Who gets the young ones?",
+                ["the lazy"] = "Everyone wants the young ones but me. Miller or roofers?",
+                ["the grump"] = "The miller's shouting and the roofers are shouting. Who?",
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
-                    label = "the grain", hint = "Fuller bins and busier hearths, and the timber can wait.",
-                    done = "The Keeper chose the grain. The mill sang all summer.",
-                    lean = SimCore.Lean.Food, custom = "spring:grain", buildingType = BuildingType.Windmill,
+                    label = "the miller", hint = "Full sacks and fresh bread, and the roofs drip a while longer.",
+                    done = "The Keeper sent the young ones to the miller. The mill sang all summer.",
+                    lean = SimCore.Lean.Food, custom = "spring:miller", buildingType = BuildingType.Windmill,
                     favouredBy = new[] { "the gardener", "the kind", "the singer", "the lazy", "the worrier" },
                     callbacks = new[]
                     {
-                        Cb("spring_grain_mill", "the mill at {place} still turns from dawn to dark, and the miller has stopped complaining about it.",
+                        Cb("spring_grain_mill", "the miller still calls them \"my young ones\", though they're all grown and one has a beard.",
                             "{place} still bakes the best bread anyone remembers, and says so to everyone.", needsBuilding: BuildingType.Windmill),
                         Cb("spring_grain_flour", "{place} had so much flour one autumn that the children had a flour fight. There was no winner.", minYears: 5),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    label = "the timber", hint = "New roofs and new building, and plainer bread for a while.",
-                    done = "The Keeper chose the timber. Sawdust got into everything, including the soup.",
-                    lean = SimCore.Lean.Craft, custom = "spring:timber", buildingType = BuildingType.Lumbermill,
+                    label = "the roofers", hint = "Dry roofs and new rafters, and the bread a little thin.",
+                    done = "The Keeper sent the young ones up the ladders. Sawdust got into everything, including the soup.",
+                    lean = SimCore.Lean.Craft, custom = "spring:roofers", buildingType = BuildingType.Hut,
                     favouredBy = new[] { "the tinkerer", "the clever", "the stubborn", "the brave", "the loud" },
                     callbacks = new[]
                     {
-                        Cb("spring_timber_birds", "there's hardly a roof in {place} without a carved bird on the ridge. It started as a joke."),
-                        Cb("spring_timber_squirrels", "the sawpit is still the busiest place in {place}. The squirrels have moved out in protest.", minYears: 5),
+                        Cb("spring_timber_birds", "every roof the young ones mended that year has a little carved bird on the ridge. Now every new roof gets one."),
+                        Cb("spring_timber_squirrels", "the young roofers of that year still climb up to watch the sunset. Nobody can get them down for supper.", minYears: 5),
                     },
                 },
             },
@@ -429,43 +436,44 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Strangers: a family from over the hill. Three join, or they stay neighbours and trade their spare grain (a food lean).</summary>
+        /// <summary>Strangers: a family living wild across the pond, inside the box. Three join, or they stay on their own shore and
+        /// trade their catch (a food lean).</summary>
         static readonly DilemmaDef VillageHillFamily = new DilemmaDef
         {
             id = "village_hill_family", kind = DilemmaKind.Strangers, minEra = Era.Village, maxEra = Era.Village,
-            question = "A family from over the hill asks for a home. Here, or there?",
+            question = "The family across the pond asks for a home. Here, or there?",
             askedBy = new Dictionary<string, string>
             {
-                ["the kind"] = "A whole family from over the hill. Where shall they live?",
-                ["the stubborn"] = "A family wants a home. Here, or on their own hill?",
-                ["the joker"] = "New family over the hill. Here, or near enough to wave?",
-                ["the loud"] = "A FAMILY! From over the hill! Where do they live?",
-                ["the gossip"] = "I've met the hill family already. Here, or there?",
+                ["the kind"] = "The family across the pond wants a home. Where?",
+                ["the stubborn"] = "A family wants a home. Here, or on their own shore?",
+                ["the joker"] = "A family across the pond. Here, or near enough to wave?",
+                ["the loud"] = "A FAMILY! Across the pond! Where do they live?",
+                ["the gossip"] = "I've met the pond family already. Here, or there?",
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
                     label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
-                    done = "The Keeper gave the hill family a home here. They moved in with a goat.",
-                    strangers = 3, custom = "hill:joined",
+                    done = "The Keeper gave the pond family a home here. They moved in with a goat.",
+                    strangers = 3, custom = "pond:joined",
                     favouredBy = new[] { "the kind", "the gossip", "the singer", "the loud", "the joker" },
                     callbacks = new[]
                     {
-                        Cb("hill_joined_songs", "the hill family still sing their hill songs at supper. Half of {place} knows the words now."),
-                        Cb("hill_joined_goat", "the hill family's goat has eaten its way through every garden in {place}. It is much loved anyway.", minYears: 5),
+                        Cb("hill_joined_songs", "the pond family still sing their shore songs at supper. Half of {place} knows the words now."),
+                        Cb("hill_joined_goat", "the pond family's goat has eaten its way through every garden in {place}. It is much loved anyway.", minYears: 5),
                     },
                 },
                 new DilemmaOptionDef
                 {
-                    label = "a home over the hill", hint = "They'll keep their own hill, and trade us their spare grain.",
-                    done = "The Keeper left the hill family on their hill. They waved, and sent eggs.",
-                    lean = SimCore.Lean.Food, custom = "hill:neighbours",
+                    label = "a home across the pond", hint = "They'll keep their own shore, and trade us their catch.",
+                    done = "The Keeper left the pond family on their shore. They waved, and sent fish.",
+                    lean = SimCore.Lean.Food, custom = "pond:neighbours",
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the gardener", "the lazy" },
                     callbacks = new[]
                     {
-                        Cb("hill_neighbours_eggs", "the family over the hill still comes down every spring with eggs. Far too many eggs."),
-                        Cb("hill_neighbours_path", "there's a path worn over the hill now, from {place} to the neighbours and back. Nobody built it. Everyone walked it.", minYears: 6),
+                        Cb("hill_neighbours_eggs", "the family across the pond still rows over every spring with fish. Far too many fish."),
+                        Cb("hill_neighbours_path", "there's a path worn round the pond now, from {place} to the neighbours and back. Nobody built it. Everyone walked it.", minYears: 6),
                     },
                 },
             },
