@@ -157,15 +157,13 @@ namespace AquariumCiv.Sim
             if (s.firstRun.active) { s.dilemmaNextMonth = -1; return; } // none during the first run; the clock restarts after it
             if (s.dilemmaNextMonth < 0) s.dilemmaNextMonth = DilemmaScheduleFrom(s.month, s.dilemmas.Count == 0);
             if (s.month < s.dilemmaNextMonth) return;
-            // The gap counts from whatever ended last (an open wish has not ended: it gives way below).
-            long lastWish = s.wishes.Where(w => w.state != WishState.Open).Select(w => w.endMonth >= 0 ? w.endMonth : w.month).DefaultIfEmpty(long.MinValue / 2).Max();
+            // A due dilemma never ends a wish: it waits for the open one to end (new wishes already wait for it), then the 8-month gap
+            // runs from that end.
+            if (OpenWish != null) return;
+            long lastWish = s.wishes.Count == 0 ? long.MinValue / 2 : s.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
             if (s.month - Math.Max(lastWish, DilemmaLastEnd) < DilemmaGapMonths) return;
             var pick = PickDilemmaDef(out int a, out int b);
             if (pick == null) return;
-            // A dilemma that is due takes the shared slot: an open wish lapses quietly (as an ignored one does), so the lab's
-            // "first at year 2" and normal play's 6-10 years are not held back by a wish that happens to be open.
-            var wish = OpenWish;
-            if (wish != null) CloseWish(wish, WishState.Lapsed);
             RaiseDilemma(pick, a, b);
         }
 

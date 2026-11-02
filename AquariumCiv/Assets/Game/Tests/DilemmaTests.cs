@@ -72,12 +72,12 @@ namespace AquariumCiv.Tests
             for (int seed = 1; seed <= 20; seed++)
             {
                 var sim = NewSim(seed, Cfg());
-                Years(sim, 14);
+                Years(sim, 20);
                 var first = sim.State.dilemmas.FirstOrDefault();
                 Assert.IsNotNull(first, $"seed {seed}: none in 14 years");
                 // due 6 to 10 years on
                 Assert.GreaterOrEqual(first.month, 6 * 12, $"seed {seed}");
-                Assert.LessOrEqual(first.month, 10 * 12 + 8, $"seed {seed}"); // an open wish gives way; only the 8-month gap can hold it back
+                Assert.LessOrEqual(first.month, 10 * 12 + 24 + 8, $"seed {seed}"); // a wish open at the time is waited out (at most 24 months), then the gap
             }
         }
 
@@ -109,16 +109,16 @@ namespace AquariumCiv.Tests
             {
                 var sim = NewSim(seed, Cfg(true));
                 sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
-                Years(sim, 14);
+                Years(sim, 20);
                 var ds = sim.State.dilemmas;
                 Assert.GreaterOrEqual(ds.Count, 3, $"seed {seed}");
                 Assert.GreaterOrEqual(ds[0].month, 24, $"seed {seed}");
-                Assert.LessOrEqual(ds[0].month, 24 + 8, $"seed {seed}: year 2, or soon after if a wish ended just before");
+                Assert.LessOrEqual(ds[0].month, 24 + 24 + 8, $"seed {seed}: year 2, or by year 4 when a wish was open");
                 for (int i = 1; i < ds.Count; i++)
                 {
                     long gap = ds[i].month - ds[i - 1].month;
                     Assert.GreaterOrEqual(gap, 30, $"seed {seed} #{i}");
-                    Assert.LessOrEqual(gap, 36 + 6 + 8, $"seed {seed} #{i}");
+                    Assert.LessOrEqual(gap, 36 + 6 + 24 + 8, $"seed {seed} #{i}");
                 }
             }
         }
@@ -152,6 +152,34 @@ namespace AquariumCiv.Tests
                         }
                     }
                 }
+            }
+        }
+
+        [Test]
+        public void ADueDilemmaNeverLapsAnOpenWishButWaitsForItsEnd()
+        {
+            for (int seed = 1; seed <= 12; seed++)
+            {
+                var sim = NewSim(seed, Cfg(true));
+                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
+                Years(sim, 1);
+                var w = sim.DebugForceWish();
+                Assert.IsNotNull(w);
+                sim.State.dilemmaNextMonth = sim.State.month + 1; // due while the wish is open
+                for (int m = 0; m < 20; m++)
+                {
+                    sim.Advance(1.0 / 12);
+                    if (w.state != WishState.Open) { Assert.IsTrue(sim.FindNotable(w.notableId)?.alive != true || sim.State.nudges.Any(), $"seed {seed}: the wish ended without cause"); break; }
+                    Assert.IsNull(sim.OpenDilemma, $"seed {seed}: raised beside the open wish");
+                }
+
+                if (w.state == WishState.Open) { w.state = WishState.Given; w.endMonth = sim.State.month; } // the player gives the gift
+                long ended = w.endMonth;
+                Years(sim, 2);
+                var first = sim.State.dilemmas.FirstOrDefault();
+                Assert.IsNotNull(first, $"seed {seed}");
+                Assert.GreaterOrEqual(first.month - ended, SimCore.DilemmaGapMonths, $"seed {seed}: the gap runs from the wish's end");
+                Assert.IsFalse(sim.State.wishes.Any(x => x.id != w.id && x.month >= ended && x.month < first.month), $"seed {seed}: no new wish jumps the queue");
             }
         }
 
@@ -472,7 +500,7 @@ namespace AquariumCiv.Tests
         {
             var on = NewSim(13, Cfg(true));
             var off = NewSim(13, new SimConfig());
-            Years(on, 3); Years(off, 3);
+            Years(on, 6); Years(off, 6);
             Assert.GreaterOrEqual(on.State.dilemmas.Count, 1);
             Assert.AreEqual(off.State.rng.state, on.State.rng.state);
             Assert.AreEqual(off.State.econRng.state, on.State.econRng.state);
@@ -501,7 +529,7 @@ namespace AquariumCiv.Tests
         {
             var sim = NewSim(15, Cfg(true));
             Years(sim, 2.5);
-            var d = sim.OpenDilemma;
+            var d = sim.OpenDilemma ?? sim.DebugRaiseDilemma();
             Assert.IsNotNull(d);
             sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
             var json = JsonUtility.ToJson(sim.State);
