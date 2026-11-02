@@ -41,6 +41,19 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [Test]
+        public void ThreeFingersHeldTwoSecondsUnlockItAnywhere()
+        {
+            Assert.IsFalse(DebugDock.HoldFingers(2, 10f), "two fingers are a pinch");
+            Assert.IsFalse(DebugDock.HoldFingers(3, 10.5f));
+            Assert.IsFalse(DebugDock.HoldFingers(3, 12.4f), "1.9 s is not enough");
+            Assert.IsFalse(DebugDock.HoldFingers(2, 12.5f), "a finger lifting starts over");
+            Assert.IsFalse(DebugDock.HoldFingers(3, 12.6f));
+            Assert.IsFalse(DebugDock.HoldFingers(3, 14.5f));
+            Assert.IsTrue(DebugDock.HoldFingers(3, 14.61f), "2 s with three fingers unlocks");
+            Assert.IsFalse(DebugDock.Locked);
+        }
+
+        [Test]
         public void TheEditorShowsItFromTheStart()
         {
             DebugDock.ForceLocked = null;
