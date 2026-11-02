@@ -7,6 +7,11 @@ how can you favour its growth?), then bigger storms make ponds where the land is
 From a barren dirt plane to a full ecosystem."* The user wants to **understand it fully before committing**: this is
 research, not a plan.
 
+**Update 2026-11-02:** the user reshaped this into [design/keepers-hands.md](../design/keepers-hands.md): the Keeper
+**mists** the box (no rain, **no storms**: the water table rises with misting and surfaces in the lowlands), the people
+are there from the start, care is rebuilt on the land (humidity, water level, weeds, the forest's edge), and the tree's
+care is water + light + weeding + seasons + the people learning (**no nibbling**). Where they differ, that draft wins.
+
 Markers: **[V]** read in the source, **[S]** secondary or search summary, **[K]** a game as I know it, not
 re-checked, **[code]** read in the repo, **[est]** my guess to test. Recommendations are marked ★.
 
