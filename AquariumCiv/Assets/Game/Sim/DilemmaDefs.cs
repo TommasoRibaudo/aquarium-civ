@@ -16,8 +16,7 @@ namespace AquariumCiv.Sim
     /// One option of a dilemma: what the player reads (label, one-line hint in the people's voice, no numbers) and what choosing it does.
     /// Text may use {a} and {b} (the two people's first names) and {place} (the settlement's name).
     /// Effects (all optional, any mix): <see cref="takesRole"/>, <see cref="lean"/>, <see cref="ties"/>, <see cref="custom"/>, <see cref="strangers"/>.
-    /// TODO(#221): per-option callbacks (a storylet gated on "this option was chosen N years ago and the people in it are still around")
-    /// go here as a <c>callbacks</c> array; nothing reads one yet.
+    /// <see cref="callbacks"/>: what comes back years later because this option was taken (P7 rule 4; at least one per option).
     /// </summary>
     public sealed class DilemmaOptionDef
     {
@@ -30,7 +29,28 @@ namespace AquariumCiv.Sim
         public string custom = "";          // a stored custom ("burial:stone"), see SimCore.HasCustom
         public int strangers;               // a family of this many adults joins (0 = none)
         public string buildingType = "";    // the place this option refers to ("Well"): its first building is the dilemma's place for the option
+        public DilemmaCallbackDef[] callbacks;  // storylets that fire 4-15 years after this option was taken (answered or lapsed); null = none
         public string[] favouredBy;         // traits (NameData.Traits) that tilt a lapse toward this option, when the role-holder has one
+    }
+
+    /// <summary>
+    /// A callback (P7 rule 4, #221): a storylet gated on "this option was taken N years ago". Scheduled when the dilemma ends (the Keeper
+    /// answered, or the people did after a lapse), by a hash of the seed and the dilemma, fired in the monthly step when due.
+    /// Text placeholders: {a} {b} (the two people's names, dead or alive), {place}, {chosen} (the taken option's label) and
+    /// {credit}: "Because the Keeper chose {chosen}" for an answer, "Because they chose {chosen}" for a lapse. A text without
+    /// {credit} gets it put in front ("Because the Keeper chose the woods, the granary filled."), so write the text to read after a comma.
+    /// If a condition fails the <see cref="fallback"/> is told instead (same placeholders), or nothing at all if there is none.
+    /// </summary>
+    public sealed class DilemmaCallbackDef
+    {
+        public string id = "";              // unique within the option, for tests and telemetry
+        public int minYears = 4, maxYears = 15;   // the delay window in game years, after the dilemma ended
+        public bool aliveA, aliveB;         // person a (b) of the dilemma must be alive
+        public string needsBuilding;        // building types that must stand ("a|b" = either); null = none
+        public string needsCustom;          // a custom (SimCore.HasCustom) that must be set; null = none
+        public string text = "";
+        public string fallback = "";        // told when a condition fails; empty = drop the callback quietly
+        public float salience = 0.7f;
     }
 
     /// <summary>
@@ -64,8 +84,10 @@ namespace AquariumCiv.Sim
                 question = "The people cannot agree who should lead: {a} or {b}?",
                 options = new[]
                 {
-                    new DilemmaOptionDef { label = "{a}", hint = "{a} will lead their way, and {b} will mind it.", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "leader:a" },
-                    new DilemmaOptionDef { label = "{b}", hint = "{b} will lead their way, and {a} will mind it.", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "leader:b" },
+                    new DilemmaOptionDef { label = "{a}", hint = "{a} will lead their way, and {b} will mind it.", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "leader:a",
+                        callbacks = new[] { new DilemmaCallbackDef { id = "ph_a", aliveA = true, text = "{a} still runs {place} their way, and it shows.", fallback = "{place} still remembers when it chose {a}." } } },
+                    new DilemmaOptionDef { label = "{b}", hint = "{b} will lead their way, and {a} will mind it.", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "leader:b",
+                        callbacks = new[] { new DilemmaCallbackDef { id = "ph_b", aliveB = true, text = "{b} still runs {place} their way, and it shows.", fallback = "{place} still remembers when it chose {b}." } } },
                 },
             },
             new DilemmaDef
@@ -74,8 +96,10 @@ namespace AquariumCiv.Sim
                 question = "Where should {place} put its hands this year: the fields, or the woods?",
                 options = new[]
                 {
-                    new DilemmaOptionDef { label = "the fields", hint = "More to eat, and the woods will grow wild.", lean = SimCore.Lean.Food, favouredBy = new[] { "the kind", "the gardener", "the worrier" } },
-                    new DilemmaOptionDef { label = "the woods", hint = "More to build with, and the fields will wait.", lean = SimCore.Lean.Craft, favouredBy = new[] { "the tinkerer", "the clever", "the brave" } },
+                    new DilemmaOptionDef { label = "the fields", hint = "More to eat, and the woods will grow wild.", lean = SimCore.Lean.Food, favouredBy = new[] { "the kind", "the gardener", "the worrier" },
+                        callbacks = new[] { new DilemmaCallbackDef { id = "ph_fields", text = "the fields still feed {place} well." } } },
+                    new DilemmaOptionDef { label = "the woods", hint = "More to build with, and the fields will wait.", lean = SimCore.Lean.Craft, favouredBy = new[] { "the tinkerer", "the clever", "the brave" },
+                        callbacks = new[] { new DilemmaCallbackDef { id = "ph_woods", text = "the woods still give {place} its timber." } } },
                 },
             },
         };
