@@ -122,6 +122,18 @@ namespace AquariumCiv.Tests
             }
         }
 
+        /// <summary>The people live inside the box: nobody comes from, or goes back to, anywhere outside it (user, 2026-11-02).</summary>
+        static readonly string[] OutsideWords = { "over the hill", "beyond", "outside", "far away", "faraway", "abroad", "other lands", "the road", "came back through", "the world" };
+
+        [Test]
+        public void NothingComesFromOrGoesOutsideTheBox()
+        {
+            foreach (var d in Defs)
+                foreach (var t in AllText(d).Where(x => !string.IsNullOrEmpty(x)))
+                    foreach (var w in OutsideWords)
+                        StringAssert.DoesNotContain(w, t.ToLowerInvariant(), $"{d.id}: \"{t}\"");
+        }
+
         [Test]
         public void NoTwoQuestionsAreTheSame()
         {
@@ -219,6 +231,8 @@ namespace AquariumCiv.Tests
                     int people = box.State.notables.Count;
                     Assert.IsTrue(box.AnswerDilemma(dd.id, opt, DilemmaPath.Card), def.id);
                     var line = box.State.chronicle.Single(e => e.id == dd.answerEntryId).text;
+                    foreach (var told in box.State.chronicle.Where(x => x.month == box.State.month))
+                        foreach (var w in OutsideWords) StringAssert.DoesNotContain(w, told.text.ToLowerInvariant(), $"{def.id}: what the answer told");
                     StringAssert.DoesNotContain("{", line, def.id);
                     if (o.takesRole) Assert.AreEqual(dd.PersonOf(opt), box.HolderOf(SimCore.LeaderOf(box.State.era))?.id, $"{def.id}: the pick holds the seat");
                     if (!string.IsNullOrEmpty(o.custom)) Assert.IsTrue(box.HasCustom(o.custom), def.id);

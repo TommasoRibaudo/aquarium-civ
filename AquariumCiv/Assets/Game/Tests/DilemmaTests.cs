@@ -425,6 +425,51 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void AnElderLeaderGateAndAnElderAsksInsteadOfTheLeader()
+        {
+            int checkedCount = 0;
+            var def = WhoDef("w");
+            def.leaderElder = true;
+            def.askerNotLeader = true;
+            foreach (var sim in Camps(Cfg(), def, 4))
+            {
+                var chief = sim.HolderOf(RoleType.Chief);
+                if (chief == null) continue;
+                chief.age = sim.Config.elderAge - 1f;
+                Assert.IsNull(sim.DebugRaiseDilemma("w"), "a chief in their prime: nobody asks who comes next");
+                chief.age = sim.Config.elderAge + 1f;
+                var d = sim.DebugRaiseDilemma("w");
+                Assert.IsNotNull(d, "an old chief: the people ask");
+                Assert.AreNotEqual(chief.id, d.askerId, "the chief doesn't ask who replaces them");
+                Assert.AreNotEqual(d.personA, d.askerId);
+                Assert.AreNotEqual(d.personB, d.askerId);
+                var eldest = sim.State.notables.Where(n => n.alive && n.age >= 16f && n.id != chief.id && n.id != d.personA && n.id != d.personB)
+                    .OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
+                Assert.AreEqual(eldest?.id ?? -1, d.askerId, "the eldest other adult asks");
+                checkedCount++;
+            }
+            Assert.Greater(checkedCount, 0);
+        }
+
+        [Test]
+        public void ATermEndingGateHoldsOnlyWhenTheLeadersTermIsNearlyUp()
+        {
+            var def = WhoDef("w");
+            def.termEndingMonths = 24;
+            foreach (var sim in Camps(Cfg(), def, 2))
+            {
+                var seat = sim.SeatOf(RoleType.Chief);
+                if (seat.holderId < 0) continue;
+                seat.termEndsMonth = -1;
+                Assert.IsNull(sim.DebugRaiseDilemma("w"), "no term: no election coming");
+                seat.termEndsMonth = sim.State.month + 60;
+                Assert.IsNull(sim.DebugRaiseDilemma("w"), "the vote is years off");
+                seat.termEndsMonth = sim.State.month + 12;
+                Assert.IsNotNull(sim.DebugRaiseDilemma("w"), "the vote is within two years");
+            }
+        }
+
+        [Test]
         public void ADilemmaWithNoRoleLapsesByTheAskersTrait()
         {
             int checkedCount = 0;
