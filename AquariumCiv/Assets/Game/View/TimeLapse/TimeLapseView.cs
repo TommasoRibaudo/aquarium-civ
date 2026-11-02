@@ -82,6 +82,7 @@ namespace AquariumCiv.View
             care = GetComponent<CareView>();
             hadCare = care != null && care.enabled;
             if (hadCare) care.enabled = false;
+            if (DayLightDriver.Instance != null) DayLightDriver.Instance.HoldFlicker = true; // lamps must not strobe under a running clock (practices section 12)
             Active = true;
             GameClock.Tel.TimelapseOpened(false);
             scrubFrom = float.NaN;
@@ -118,6 +119,7 @@ namespace AquariumCiv.View
             if (clock != null) clock.Held = heldBefore;
             if (hadPeople && people != null) people.enabled = true;
             if (hadCare && care != null) care.enabled = true;
+            if (DayLightDriver.Instance != null) DayLightDriver.Instance.HoldFlicker = false;
             if (AquariumCiv.GameUI.GameHud.Instance != null) AquariumCiv.GameUI.GameHud.Instance.HideTools("timelapse", false);
             if (refresh) Box.Refresh();
             Lapse = null; Clock = null;
@@ -166,13 +168,14 @@ namespace AquariumCiv.View
             var near = s.Nearest;
             var other = near == s.a ? s.b : s.a;
             float q = Mathf.Round(s.blend * growSteps) / growSteps;
-            int key = s.yearA * 1000 + Mathf.RoundToInt(q * growSteps);
+            float live = Mathf.Round(s.liveShare * growSteps) / growSteps;
+            int key = s.yearA * 10000 + Mathf.RoundToInt(live * growSteps) * 100 + Mathf.RoundToInt(q * growSteps);
             if (!force && key == shownKey) { LastStepMs = 0; LastChunks = 0; return; }
             shownKey = key;
             shownPos = position;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             int cells = Src.Sim.Settlement.Map.tier.Length;
-            Src.Replay = new ReplayFrame(near, cells, s.diff.IsEmpty ? null : other, s.blend, growSteps);
+            Src.Replay = new ReplayFrame(near, cells, s.diff.IsEmpty ? null : other, s.blend, growSteps) { liveShare = live };
             Box.Refresh();
             LastStepMs = sw.Elapsed.TotalMilliseconds;
             LastChunks = Box.lastChunks.Count;

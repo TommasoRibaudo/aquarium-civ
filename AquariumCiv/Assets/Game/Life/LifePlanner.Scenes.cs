@@ -313,6 +313,39 @@ namespace AquariumCiv.Life
             public float x, z, radius;
             public PersonRef target;
             public float share;
+            /// <summary>#161: view hours each person's body waits, by <see cref="PersonRef.Key"/>; the rest wait <see cref="lateRest"/>.</summary>
+            public Dictionary<int, float> late;
+            public float lateRest;
+        }
+
+        /// <summary>Would this person react to the gesture now? (#161: the view asks before the reaction starts, so the mark can come first.)</summary>
+        public bool WouldReact(PersonRef who, KeeperGesture gesture, ViewTime at)
+        {
+            Sync();
+            EnsureDay(at.day);
+            if (!byKey.TryGetValue(who.Key, out var p)) return false;
+            float secs = Math.Min(4f, DefaultSeconds(gesture));
+            var r = new Reaction { gesture = gesture, day = at.day, start = at.hour, end = Math.Min(24f, at.hour + LifeClock.ViewHoursFor(at.hour, secs)), near = default, target = default, share = 1f, radius = 1f };
+            return Reacts(p, r, at, out _, out _, out _);
+        }
+
+        /// <summary>#161: the knock, with each body held back <paramref name="lateSeconds"/> real seconds so its <c>!</c> shows first. Those without a mark
+        /// follow after the last one.</summary>
+        public void ReactKnock(ViewTime at, IReadOnlyDictionary<int, float> lateSeconds)
+        {
+            React(KeeperGesture.TapGlass, at);
+            if (lateSeconds == null || lateSeconds.Count == 0) return;
+            var r = reactions[reactions.Count - 1];
+            r.late = new Dictionary<int, float>();
+            float most = 0f;
+            foreach (var kv in lateSeconds)
+            {
+                r.late[kv.Key] = LifeClock.ViewHoursFor(at.hour, kv.Value);
+                most = Math.Max(most, kv.Value);
+            }
+            r.lateRest = LifeClock.ViewHoursFor(at.hour, most);
+            reactions[reactions.Count - 1] = r;
+            LiveChanged();
         }
 
         readonly List<Reaction> reactions = new List<Reaction>();
@@ -321,7 +354,7 @@ namespace AquariumCiv.Life
         {
             KeeperGesture.Return => 2.5f, KeeperGesture.Wipe => 2f, KeeperGesture.FullClean => 3f, KeeperGesture.FlickTrash => 1.5f,
             KeeperGesture.Prune => 2.5f, KeeperGesture.Rain => 4f, KeeperGesture.Shape => 3f, KeeperGesture.HoldFinger => 4f,
-            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, _ => 1.5f,
+            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, _ => 1.5f,
         };
 
         /// <summary>
@@ -346,6 +379,9 @@ namespace AquariumCiv.Life
             if ((gesture == KeeperGesture.Wipe && belief == 1) || (gesture == KeeperGesture.Return && belief >= 2))
                 GatherAtGlass(at);
         }
+
+        /// <summary>#191: the wisher's own reaction to their wish coming true. View only, like any reaction: they pick up their day after.</summary>
+        public void WisherReacts(int notableId, ViewTime at) => React(KeeperGesture.WishAnswered, at, default, PersonRef.Notable(notableId));
 
         /// <summary>A gesture at a world point (needs <see cref="Positions"/>): those within <paramref name="radius"/> react.</summary>
         public void ReactAt(KeeperGesture gesture, ViewTime at, float x, float z, float radius = 1f, float share = 1f, float seconds = 0f)
@@ -376,7 +412,7 @@ namespace AquariumCiv.Life
             float roll = R(p.key, (long)(r.start * 1000) + r.day * 100000, 140 + (int)r.gesture);
             float f = r.end > r.start ? Math.Max(0f, Math.Min(1f, (t.hour - r.start) / (r.end - r.start))) : 0f;
             if (!ReactsPlain(p, r, t, under, asleep, kid, roll, out kind, out prop, out to)) return false;
-            if (prop == Prop.Lantern) return true; // stepping out of the door at night with a lantern
+            if (prop == Prop.Lantern || r.gesture == KeeperGesture.WishAnswered) return true; // stepping out of the door at night with a lantern; a wish's cheer is theirs at any stage
             kind = StagedReaction(r.gesture, p, f, kind, out var staged);
             if (staged != Prop.None) prop = staged;
             return true;
@@ -385,6 +421,12 @@ namespace AquariumCiv.Life
         bool ReactsPlain(Person p, Reaction r, ViewTime t, Seg under, bool asleep, bool kid, float roll, out ActivityKind kind, out Prop prop, out Place to)
         {
             kind = ActivityKind.LookUp; prop = Prop.None; to = Place.None;
+            if (r.gesture == KeeperGesture.WishAnswered)
+            {
+                if (r.target != p.who || asleep) return false;
+                kind = ActivityKind.Cheer; // #191: they asked and it came: it's clear who it was for
+                return true;
+            }
             if (r.gesture == KeeperGesture.TapPerson || r.gesture == KeeperGesture.Glance)
             {
                 if (r.target != p.who) return false;
@@ -482,6 +524,7 @@ namespace AquariumCiv.Life
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
+                ActivityKind.Indoors => "indoors",
                 ActivityKind.Toddle => "toddling about at home",
                 ActivityKind.Speech => $"speaking to everyone at {where}",
                 ActivityKind.Listen => $"listening at {where}",
@@ -490,7 +533,13 @@ namespace AquariumCiv.Life
                 ActivityKind.Mourn => $"remembering someone at {where}",
                 _ => $"{Verb(a.kind)} at {where}",
             };
-            return $"{who} is {what}{with}.";
+            // #192: a baby is "being carried" or at home; a carer has the baby in their arms or on their back
+            if (!a.carriedBy.IsNone)
+            {
+                string carer = byKey.TryGetValue(a.carriedBy.Key, out var cp) && cp.n != null ? cp.n.FullName : "a grown-up";
+                return $"{who} is out with {carer}, {(a.carryOnBack ? "on their back" : "in their arms")}.";
+            }
+            return $"{who} is {what}{with}{CarryClause(a)}.";
         }
 
         static string Verb(ActivityKind k) => k switch

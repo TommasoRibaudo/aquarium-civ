@@ -20,6 +20,43 @@ namespace AquariumCiv.Life
             return Ring(slot, outAngle, span);
         }
 
+        /// <summary>#200, tester run 9: where a home's people stand. A whole household knotted at the door read as a queue, and an axe against the wall as
+        /// building the house: the door holds <see cref="AtDoor"/>, wood is split out to one side, washing hangs on the other, and the rest are out in front.</summary>
+        public enum HomeSpot { Door, Block, Line, Front }
+
+        public const int AtDoor = 2;
+        /// <summary>Nearer than this to a door is standing at it.</summary>
+        public const float AtDoorReach = 0.2f;
+        /// <summary>The block and the line: along the wall from the door, and out from it. Then the front: how far out, and the fan's step (radians).</summary>
+        public const float YardSide = 0.3f, YardOut = 0.1f, FrontOut = 0.36f, FrontStep = 0.75f;
+
+        public static HomeSpot SpotFor(ActivityKind k) => k switch
+        {
+            ActivityKind.ChopKindling or ActivityKind.StackWood => HomeSpot.Block,
+            ActivityKind.HangWashing => HomeSpot.Line,
+            ActivityKind.Play or ActivityKind.Toddle or ActivityKind.Snowball => HomeSpot.Front,
+            _ => HomeSpot.Door,
+        };
+
+        /// <summary>The <paramref name="rank"/>th person at this kind of spot at one home, from the door: the first two of <see cref="HomeSpot.Door"/> at it, anyone after them out in front.</summary>
+        public static (float dx, float dz) Home(HomeSpot spot, int rank, float outAngle)
+        {
+            float ox = (float)Math.Cos(outAngle), oz = (float)Math.Sin(outAngle), sx = -oz, sz = ox;
+            switch (spot)
+            {
+                case HomeSpot.Door when rank < AtDoor: return Door(rank, outAngle);
+                case HomeSpot.Block:
+                case HomeSpot.Line:
+                {
+                    float side = spot == HomeSpot.Block ? YardSide : -YardSide, o = YardOut + rank * Gap;
+                    return (ox * o + sx * side, oz * o + sz * side);
+                }
+            }
+            if (spot == HomeSpot.Door) rank -= AtDoor;
+            float a = outAngle + ((rank + 1) / 2) * ((rank & 1) == 1 ? FrontStep : -FrontStep), r = FrontOut + (rank / 4) * Gap;
+            return ((float)Math.Cos(a) * r, (float)Math.Sin(a) * r);
+        }
+
         /// <summary>On open ground (a heap, the pond's edge, a doorstep with no building): rings all the way round.</summary>
         public static (float dx, float dz) Open(int slot, float startAngle) => Ring(slot, startAngle, 2f * (float)Math.PI);
 

@@ -23,7 +23,7 @@ Recommended option first, marked ★.
    a puff, one after another · everything at once (P6; the change was too small to notice at phone size) · scaffolding
    that finishes over the next game years, after a short moment.
 4. **When the notification question comes.** ★ **At the end of the first era moment**, as its last beat ("Want a note
-   when the next one is ready?") · when you first see the waiting state, before watching.
+   when your people are ready to grow again?") · when you first see the waiting state, before watching.
 5. **What the era festival does.** ★ **As research 09's Era Festival: bunting and a party, plus one game year of
    slightly higher mood** [est: +5 %] · a party only (story and view, no effect on the sim).
 6. **When the town has reached its peak.** ★ **The box is full** (no good lot left for 3 game years) **and the town is
@@ -128,7 +128,7 @@ The first moment is shorter: fewer lots, and the player hasn't seen one before.
 | 0:46 | **The cheer** (the sim moves the era here) | Everyone turns to the glass, waves and cheers. Hats in the air, a few petals (not confetti) | Light swells to warm midday. A full chord. Caption: **"Glasswick · a farming village · year 14"** |
 | 0:53 | **The new tool** | The shaping button glows; the **channel** slot opens with its hint: "Drag from the water" (research 10: the era's first tool comes with the moment) | A bright chime |
 | 0:58 | **The festival begins** (§6) | Bunting goes up on the green | Camera free again |
-| ~1:05 | **First time only: the notification question** (Choice 4) | "Want a note when the next one is ready?" Yes / Not now | — |
+| ~1:05 | **First time only: the notification question** (Choice 4) | "Want a note when your people are ready to grow again?" Yes / Not now | — |
 
 **What carries over:** every person, every lot, every path; the chief (now headman); jobs change where the era
 needs it (hunter → shepherd, gatherer → farmer; `JobsOnEraChange`, built). The miller and priest seats open later,

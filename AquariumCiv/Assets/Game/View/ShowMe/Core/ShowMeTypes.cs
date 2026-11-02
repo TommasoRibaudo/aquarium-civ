@@ -99,6 +99,8 @@ namespace AquariumCiv.View.ShowMe
         public int speakerId = -1;
         public BubbleSource source;
         public int entryId = -1, lineNo;
+        /// <summary>For a <see cref="BubbleSource.Want"/> line: which case of what the town wants (#181).</summary>
+        public WantCase wantCase;
         /// <summary>How long it stays (real seconds, from its length).</summary>
         public float seconds;
         /// <summary>The text broken for a phone-sized bubble (<see cref="PeopleVoice.Wrap"/>).</summary>
@@ -119,5 +121,9 @@ namespace AquariumCiv.View.ShowMe
         BankVoice,
         /// <summary>An any-time line of the bank.</summary>
         Ambient,
+        /// <summary>Someone with a trait, in their own words (#120).</summary>
+        TraitVoice,
+        /// <summary>What the town wants to build or lacks (#181); can come round again, a new wording each time.</summary>
+        Want,
     }
 }

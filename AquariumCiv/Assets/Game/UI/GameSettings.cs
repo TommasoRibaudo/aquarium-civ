@@ -3,8 +3,8 @@ using UnityEngine;
 namespace AquariumCiv.GameUI
 {
     /// <summary>
-    /// The player's settings (first-session-and-check-in §6): sound and haptics for now, kept in PlayerPrefs. Sound is
-    /// applied through the listener volume; haptics is only remembered until something buzzes.
+    /// The player's settings (first-session-and-check-in §6, #95), kept in PlayerPrefs, so they stand after a restart. Sound
+    /// is applied through the listener volume; the volumes through the mixer's groups (AudioDirector) and the music's source.
     /// </summary>
     public static class GameSettings
     {
@@ -32,22 +32,32 @@ namespace AquariumCiv.GameUI
         public static float MusicVolume
         {
             get => PlayerPrefs.GetFloat("set_music_vol", 0.6f);
-            set { PlayerPrefs.SetFloat("set_music_vol", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+            set { PlayerPrefs.SetFloat("set_music_vol", Mathf.Clamp01(value)); }
         }
 
         /// <summary>#96: the sound effects (UI, care, world, moment cues) and the ambience loops, 0..1 each; the mixer's
-        /// SFX and Ambience groups follow them (AquariumCiv.Audio.MixLevels). #95 shows them in the settings.</summary>
+        /// SFX and Ambience groups follow them (AquariumCiv.Audio.MixLevels). The sliders write these at every step of a drag, so the disk waits for <see cref="Commit"/>.</summary>
         public static float SfxVolume
         {
             get => PlayerPrefs.GetFloat("set_sfx_vol", 1f);
-            set { PlayerPrefs.SetFloat("set_sfx_vol", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+            set { PlayerPrefs.SetFloat("set_sfx_vol", Mathf.Clamp01(value)); }
         }
 
         public static float AmbienceVolume
         {
             get => PlayerPrefs.GetFloat("set_amb_vol", 0.8f);
-            set { PlayerPrefs.SetFloat("set_amb_vol", Mathf.Clamp01(value)); PlayerPrefs.Save(); }
+            set { PlayerPrefs.SetFloat("set_amb_vol", Mathf.Clamp01(value)); }
         }
+
+        /// <summary>The era notification (#97): one value with the answer to the first era's ask. The phone's own permission is the clock's to ask.</summary>
+        public static bool Notifications
+        {
+            get => AquariumCiv.Game.EraNotifier.Enabled;
+            set => AquariumCiv.Game.EraNotifier.Enabled = value;
+        }
+
+        /// <summary>The finger is off a slider: the volumes go to disk.</summary>
+        public static void Commit() => PlayerPrefs.Save();
 
         public static void Apply() => AudioListener.volume = Sound ? 1f : 0f;
     }

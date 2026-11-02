@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using AquariumCiv.Lighting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace AquariumCiv.View
 {
@@ -36,7 +39,7 @@ namespace AquariumCiv.View
         [Tooltip("Orbit stays in front of the box, so the shelf and wall behind it stay in view (tester #31).")]
         public float minYaw = -30f, maxYaw = 55f;
         [Tooltip("Zoom: 1 = the whole box fits the width; < 1 is closer.")]
-        public float zoom = 1f, minZoom = 0.3f, maxZoom = 1.3f;
+        public float zoom = 1f, minZoom = CameraReach.MinZoom, maxZoom = CameraReach.MaxZoom;
         [Tooltip("How much of the screen width the box takes at zoom 1 (about).")]
         public float fill = 1f;
 
@@ -60,6 +63,8 @@ namespace AquariumCiv.View
         Vector3 flyFrom, flyTo;
         float flyZoomFrom, flyZoomTo, flyT, flyDur;
         public bool IsFlying { get; private set; }
+        /// <summary>A flight no touch or scroll stops (<see cref="EaseTo"/>'s firm): the way back from a moment, which the player can't redo by hand.</summary>
+        bool firmFlight;
         /// <summary>Raised when a flight ends: true = it arrived, false = a touch (or a new flight / Cancel) interrupted it.</summary>
         public event System.Action<bool> FlightEnded;
 
@@ -75,11 +80,36 @@ namespace AquariumCiv.View
         /// <summary>True while a press is owned by a gate (a tool) and the camera ignores it.</summary>
         public bool PressClaimed => pressClaimed;
 
+        /// <summary>A one-finger press doesn't start orbiting before this <c>Time.unscaledTime</c>: a tool that tells a flick from a drag
+        /// by its speed (the herd, #145) gets that long to see which it is, and a drag then orbits from where the finger is.</summary>
+        public float HoldOrbitUntil { get; set; }
+
         /// <summary>True from the moment a press has moved past the slop (or a second finger came down) until all fingers lift:
         /// selection should ignore the release as a tap.</summary>
         public bool GestureMoved => moved;
         /// <summary>True while a finger or button is down on the camera.</summary>
         public bool Touching => mode != Mode.None;
+
+        /// <summary>Closer than this share of the fitted view, or panned, and the HUD's ink no longer has a calm background behind it.</summary>
+        const float HomeZoom = 0.92f, HomeOffset = 0.3f;
+        Vector3 homeTarget;
+        float homeYaw, homePitch, homeFit;
+        bool homeKnown;
+
+        /// <summary>Eases back to the view the box opened on.</summary>
+        public void GoHome(float seconds = BoxCameraMath.FlyDefaultSeconds, bool firm = false)
+        {
+            if (homeKnown) EaseTo(homeTarget, homeYaw, homePitch, homeFit, seconds, firm);
+        }
+
+        /// <summary>Is the camera off its home view? The HUD backs the box name and top icons while it is (spec §4).</summary>
+        public bool OffHome => homeKnown && (zoom < HomeZoom || (target - homeTarget).magnitude > HomeOffset);
+
+        void TellHud()
+        {
+            if (!homeKnown) { homeTarget = target; homeYaw = yaw; homePitch = pitch; homeFit = zoom; homeKnown = true; }
+            AquariumCiv.GameUI.GameHud.Instance?.SetOffHome(OffHome || DayLightDriver.HudNeedsBacking);
+        }
 
         public float FitDistance()
         {
@@ -90,7 +120,25 @@ namespace AquariumCiv.View
             return new Vector3(Land.HX + 0.3f, 1.7f, Land.HZ + 0.3f).magnitude / Mathf.Tan(halfH) / Mathf.Max(0.1f, fill);
         }
 
-        void OnEnable() { synced = false; mode = Mode.None; velocity = Vector2.zero; IsFlying = false; pressClaimed = false; }
+        void OnEnable()
+        {
+            synced = false; mode = Mode.None; velocity = Vector2.zero; IsFlying = firmFlight = false; pressClaimed = false;
+            minZoom = CameraReach.MinZoom; maxZoom = CameraReach.MaxZoom; // the scene file still holds the old limits
+            glide.Cancel(); glideNext = false;
+        }
+
+        void Awake()
+        {
+            if (!Application.isPlaying) return;
+            cam = GetComponent<Camera>();
+            RenderPipelineManager.beginCameraRendering += FitDepthBeforeRender;
+        }
+
+        void OnDestroy()
+        {
+            RenderPipelineManager.beginCameraRendering -= FitDepthBeforeRender;
+            RestoreDepth();
+        }
 
         // ---------------- fly-to ----------------
         /// <summary>
@@ -102,10 +150,13 @@ namespace AquariumCiv.View
         public Vector3 FlyTo(Vector3 worldPoint, float zoomTo = -1f, float seconds = BoxCameraMath.FlyDefaultSeconds)
         {
             if (IsFlying) EndFlight(false);
+            if (!glideNext) glide.Cancel(); // a flight of its own, the way back or a moment's: it has the camera now
+            glideNext = false;
             float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, minZoom, maxZoom) : zoom;
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
             flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), z1);
             flyDur = Mathf.Max(0f, seconds); flyT = 0f;
+            firmFlight = false;
             velocity = Vector2.zero;
             if (flyDur <= 1e-4f) { target = flyTo; zoom = z1; Apply(); return flyTo; }
             IsFlying = true;
@@ -135,10 +186,12 @@ namespace AquariumCiv.View
             => buildingId >= 0 && FlyToPlace(new AquariumCiv.Life.Place(AquariumCiv.Life.PlaceKind.Home, buildingId), zoomTo, seconds);
 
         /// <summary>Eases back to a whole pose (target, yaw, pitch, zoom) over <paramref name="seconds"/>: the end of an era
-        /// moment hands the camera back where the player had it (tester batch 2). Touch interrupts it like any flight.</summary>
-        public void EaseTo(Vector3 worldPoint, float yawTo, float pitchTo, float zoomTo, float seconds = BoxCameraMath.FlyDefaultSeconds)
+        /// moment hands the camera back where the player had it (tester batch 2). Touch interrupts it like any flight, unless it's
+        /// <paramref name="firm"/>: then only a new flight or a Cancel does, and a finger held through it starts fresh once it lands.</summary>
+        public void EaseTo(Vector3 worldPoint, float yawTo, float pitchTo, float zoomTo, float seconds = BoxCameraMath.FlyDefaultSeconds, bool firm = false)
         {
             FlyTo(worldPoint, zoomTo, seconds);
+            firmFlight = firm && IsFlying;
             targetYaw = Mathf.Clamp(yawTo, minYaw, maxYaw);
             targetPitch = pitchTo;
             lastYaw = yaw; lastPitch = pitch;
@@ -155,6 +208,7 @@ namespace AquariumCiv.View
             var v = cam.WorldToViewportPoint(worldPoint);
             bool framed = v.z > 0f && v.x > 0.15f && v.x < 0.85f && v.y > 0.2f && v.y < 0.85f;
             if (framed && zoom <= zoomTo + 0.02f && pitch >= NudgePitch - 3f) return false;
+            ReturnAfterFlight(); // tester run 9: a wish's or a crumb's nudge used to leave the camera there
             EaseTo(worldPoint, yaw, Mathf.Max(pitch, NudgePitch), Mathf.Min(zoom, zoomTo), seconds);
             return true;
         }
@@ -163,17 +217,126 @@ namespace AquariumCiv.View
         /// front pane is lost in its haze (Show me does the same).</summary>
         public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f, NudgePitch = 50f;
 
+        // ---------------- the glide back (#146) ----------------
+        readonly GlideBack glide = new();
+        bool glideNext;
+        Vector3 glideTarget;
+        float glideZoom, glideYaw, glidePitch;
+
+        /// <summary>True from a fly-in until the camera has glided back or a touch cancelled it.</summary>
+        public bool GlideArmed => glide.Armed;
+        public bool Gliding => glide.Gliding;
+
+        /// <summary>Call just before a fly-in the player didn't ask to keep (a person's card, a nudge): when it ends and nothing holds the view,
+        /// the camera waits <see cref="GlideBack.Hold"/> s and glides to where it is now. Chained fly-ins keep the first place to come back to.</summary>
+        public void ReturnAfterFlight()
+        {
+            if (!glide.Armed) { glideTarget = target; glideZoom = zoom; glideYaw = yaw; glidePitch = pitch; }
+            glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch);
+            glideNext = true;
+        }
+
+        /// <summary>Something is using the view the flight went to: its card is up, a moment plays, camera mode. The wait restarts when that ends.</summary>
+        bool GlideHeld()
+        {
+            var hud = AquariumCiv.GameUI.GameHud.Instance;
+            if (IsFollowing || (hud != null && (hud.CameraMode || hud.CleanMode || hud.SheetOpen))) return true;
+            var card = PersonCardView.Instance;
+            if (card != null && (card.AnyOpen || card.BuildingOpen)) return true;
+            var show = ShowMeDirector.Instance;
+            if (show != null && show.Busy) return true;
+            var moment = MomentPlayer.Instance;
+            if (moment != null && moment.Playing) return true;
+            var box = BoxCompleteController.Instance;
+            if (box != null && box.Playing) return true;
+            var lapse = TimeLapseView.Find();
+            if (lapse != null && lapse.Active) return true;
+            var shape = ShapingView.Instance;
+            return shape != null && shape.ShapeMode;
+        }
+
+        /// <summary>One frame of the glide; true while it has the camera.</summary>
+        bool StepGlide(float dt, int touches, float scroll)
+        {
+            if (!glide.Armed) return false;
+            // Tester run 10: with a card up a press may be the tap that closes it, so only a real drag or pinch forgets the way home.
+            bool held = GlideHeld();
+            if (Mathf.Abs(scroll) > 0.01f || (touches > 0 && (!held || moved || touches >= 2))) { glide.Cancel(); return false; }
+            if (held) { glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch); return false; }
+            float x = target.x, z = target.z, zm = zoom, y = yaw, p = pitch;
+            if (!glide.Step(dt, ref x, ref z, ref zm, ref y, ref p)) return false;
+            target.x = x; target.z = z; zoom = zm;
+            yaw = targetYaw = lastYaw = y;
+            pitch = targetPitch = lastPitch = p;
+            velocity = Vector2.zero;
+            Apply();
+            return true;
+        }
+
+        /// <summary>Debug: a fly-in to a world point at this zoom, gliding back after, for the look at the closest zoom (#146).</summary>
+        public void DebugFlyIn(Vector3 worldPoint, float zoomTo)
+        {
+            ReturnAfterFlight();
+            FlyTo(worldPoint, zoomTo);
+        }
+
+        // ---------------- the depth around the box (#193) ----------------
+        float shadowWas = -1f;
+
+        /// <summary>Tester run 10: this hangs off the render, not off this component's own LateUpdate. Moments, the last moment and the shelf turn the rig off and move the
+        /// camera themselves, and the near plane stayed where the rig left it, in front of the whole box. Now whoever moves the camera, the frame it draws is fitted.</summary>
+        void FitDepthBeforeRender(ScriptableRenderContext context, Camera rendering)
+        {
+            if (rendering == cam) FitDepthNow();
+        }
+
+        /// <summary>The camera sits 8 to 53 units from the box (a 22 degree lens), so no one shadow distance fits, and a fixed one spreads the shadow map over
+        /// all the empty air in front of the box: that is the saw-tooth. Near plane and shadow distance follow the camera instead (<see cref="BoxCameraMath.FitNear"/>).
+        /// The asset's own value is put back when the camera goes. A render request (a still, a snapshot, the book's cover) raises no begin-camera event: call this first.</summary>
+        public void FitDepthNow()
+        {
+            if (cam == null) cam = GetComponent<Camera>();
+            if (cam == null) return;
+            var t = transform;
+            cam.nearClipPlane = BoxCameraMath.FitNear(t.position, t.forward, t.up, Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad), ShelfRowTop());
+            float d = Mathf.Max(Vector3.Distance(t.position, new Vector3(0f, 1f, 0f)), Vector3.Distance(t.position, target));
+            cam.farClipPlane = Mathf.Max(cam.farClipPlane, d + BoxCameraMath.FarPastFocus);
+            var urp = UniversalRenderPipeline.asset;
+            if (urp == null) return;
+            if (shadowWas < 0f) shadowWas = urp.shadowDistance;
+            urp.shadowDistance = d + BoxCameraMath.DepthBack;
+        }
+
+        /// <summary>How tall what stands along the shelf gets, or -1 with only this box there. The new box comes down from above in the last moment.</summary>
+        static float ShelfRowTop()
+        {
+            var done = BoxCompleteController.Instance;
+            if (done != null && done.Playing) return Land.GlassTop + StagedDrop;
+            var shelf = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Shelf : null;
+            return (done != null && done.ShelfOpen) || (shelf != null && shelf.boxes.Count > 1) ? Land.GlassTop + 0.1f : -1f;
+        }
+
+        const float StagedDrop = 2.4f;
+
+        void RestoreDepth()
+        {
+            if (shadowWas < 0f) return;
+            var urp = UniversalRenderPipeline.asset;
+            if (urp != null) urp.shadowDistance = shadowWas;
+            shadowWas = -1f;
+        }
+
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
 
-        void EndFlight(bool arrived) { IsFlying = false; FlightEnded?.Invoke(arrived); }
+        void EndFlight(bool arrived) { IsFlying = false; firmFlight = false; FlightEnded?.Invoke(arrived); }
 
         /// <summary>One frame of flight (public for tests): <paramref name="touches"/> fingers or buttons down, or a scroll, interrupt it.
         /// Returns true while the camera is still flying after this frame.</summary>
         public bool TickFlight(float dt, int touches = 0, float scroll = 0f)
         {
             if (!IsFlying) return false;
-            if (touches > 0 || Mathf.Abs(scroll) > 0.01f) { EndFlight(false); return false; }
+            if (!firmFlight && (touches > 0 || Mathf.Abs(scroll) > 0.01f)) { EndFlight(false); return false; }
             flyT += dt;
             float k = BoxCameraMath.FlyEase(flyDur > 0f ? flyT / flyDur : 1f);
             target = Vector3.Lerp(flyFrom, flyTo, k);
@@ -209,20 +372,18 @@ namespace AquariumCiv.View
             if (n == 0) pressClaimed = false;
             else if (mode == Mode.None && !pressClaimed && ClaimedByGate(a)) pressClaimed = true;
             float scrollY = Mouse.current != null && n == 0 ? Mouse.current.scroll.ReadValue().y : 0f;
+            // A firm flight has the camera: the finger's press counts from where the camera lands, so nothing jumps.
+            if (firmFlight && n > 0) { mode = Mode.None; orbiting = moved = false; velocity = Vector2.zero; samples.Clear(); }
             if (pressClaimed)
             {
                 // The tool keeps the touch; a flight still gives way to it.
-                if (IsFlying) TickFlight(dt, n, scrollY);
+                if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
                 n = 0; mode = Mode.None; orbiting = false; velocity = Vector2.zero;
+                glide.Cancel();
                 return;
             }
-            if (IsFlying && TickFlight(dt, n, scrollY))
-            {
-                float ff = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
-                yaw += (targetYaw - yaw) * ff; pitch += (targetPitch - pitch) * ff;
-                lastYaw = yaw; lastPitch = pitch;
-                return;
-            }
+            if (IsFlying && TickFlight(dt, n, scrollY)) { FollowAngles(dt); return; }
+            if (!IsFlying && StepGlide(dt, n, scrollY)) return;
             float H = Mathf.Max(1f, Screen.height);
 
             if (n == 0) EndPress(now);
@@ -256,6 +417,13 @@ namespace AquariumCiv.View
             pitch += (targetPitch - pitch) * f;
             lastYaw = yaw; lastPitch = pitch;
             zoom = Mathf.Clamp(zoom, minZoom, maxZoom);
+        }
+
+        void FollowAngles(float dt)
+        {
+            float f = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
+            yaw += (targetYaw - yaw) * f; pitch += (targetPitch - pitch) * f;
+            lastYaw = yaw; lastPitch = pitch;
         }
 
         void AutoOrbit(int touches, bool dragging, float dt, float now)
@@ -405,7 +573,7 @@ namespace AquariumCiv.View
             }
             if (!orbiting)
             {
-                if (!BoxCameraMath.PastSlop(pos - pressPos, H)) return;
+                if (!BoxCameraMath.PastSlop(pos - pressPos, H) || now < HoldOrbitUntil) return;
                 orbiting = moved = true; lastPos = pos; // the slop itself is swallowed: no jump when it is crossed
                 return;
             }
@@ -436,8 +604,9 @@ namespace AquariumCiv.View
                 var d = g0 - g1;
                 target.x = BoxCameraMath.SoftStep(target.x, d.x, -bound.x, bound.x, BoxCameraMath.PanSoftRange);
                 target.z = BoxCameraMath.SoftStep(target.z, d.z, -bound.y, bound.y, BoxCameraMath.PanSoftRange);
-                Apply();
             }
+            StayOnLand();
+            Apply();
             prevMid = mid; prevDist = dist;
         }
 
@@ -448,7 +617,16 @@ namespace AquariumCiv.View
             if (Mathf.Approximately(z0, z1)) return;
             if (GroundAt(screenPoint, out var g)) target = BoxCameraMath.ZoomTarget(target, new Vector3(g.x, target.y, g.z), z0, z1);
             zoom = z1;
+            StayOnLand();
             Apply();
+        }
+
+        /// <summary>The rubber band and a pinch towards the wall both stop at the land's edge.</summary>
+        void StayOnLand()
+        {
+            var stop = BoxCameraMath.PanHardStop;
+            target.x = Mathf.Clamp(target.x, -stop.x, stop.x);
+            target.z = Mathf.Clamp(target.z, -stop.y, stop.y);
         }
 
         bool GroundAt(Vector2 screenPoint, out Vector3 p)
@@ -468,6 +646,7 @@ namespace AquariumCiv.View
         public void Apply()
         {
             transform.position = target + Quaternion.Euler(pitch, yaw, 0) * Vector3.back * (FitDistance() * zoom);
+            TellHud();
             transform.LookAt(target);
         }
     }

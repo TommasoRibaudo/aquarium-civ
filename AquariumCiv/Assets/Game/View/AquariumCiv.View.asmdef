@@ -10,6 +10,7 @@
         "AquariumCiv.Shaping",
         "AquariumCiv.TimeLapseScreen",
         "AquariumCiv.Audio",
+        "AquariumCiv.Light",
         "AquariumCiv.Game",
         "AquariumCiv.Game.UI",
         "Unity.InputSystem",

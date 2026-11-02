@@ -48,6 +48,8 @@ Card bodies are the narrator (may say "glass"); labels, hints and quotes are the
 
 ### 1.1 The Sky Crumb (camp, stage 1)
 - **Trigger:** the box's **second shaping** of any kind (first session: usually the grove). Box 1 only in the slice.
+- **The fall (#147):** a few seconds after what made it has landed (`CrumbFall`) it drops from the top of the box, hits a side or the
+  far wall with a thud, leaves a smudge the Keeper wipes off like any grime, and lands at its spot. A heel of bread, not a biscuit.
 - **The moment:** a biscuit crumb the size of a hut drops in from the top of the box with a soft thud and a puff of
   flour, next to the shaping. Everyone freezes and steps back. The kids creep up first, the bravest notable pokes it,
   the chief tastes it, then a cheer, and people carry chunks to the fire. It shrinks over the next game months as it
@@ -80,6 +82,9 @@ Card bodies are the narrator (may say "glass"); labels, hints and quotes are the
 - **The moment:** the maker sets the doll on a post by the shrine (or the green), facing the glass. People gather;
   some bow, kids copy its pose (one hand raised, very big). The doll **holds what you do most** in this box: a cloth
   (wipes), a watering can (rain), a sapling (grove), a spade (channel), a lantern (lamp).
+- **Look (#185):** a peg with the big head, the one open eye and the enormous hands, in a worn beige suit painted on (lapels, a shirt
+  front, two buttons, a mended patch) and a watch too big for the raised wrist: their best guess at someone from outside. The same
+  mesh is carried, on the post and on the shelf. Whether the card mentions the watch is the user's call.
 - **Card** (0.85): "{0} carved the Keeper and stood them by the shrine. Hands: enormous. Eye: open. Everyone agrees
   it's a good likeness."
 - **Label:** "The Keeper. Hands: very large. Eye: always open." (as chronicle §5.3)

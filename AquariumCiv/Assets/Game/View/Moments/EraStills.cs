@@ -61,13 +61,16 @@ namespace AquariumCiv.View
             if (cam == null || sim == null) return null;
             var s = sim.State;
             var existing = Find(s.seed, s.era);
-            if (existing != null) return existing;
+            if (existing != null && !IsBlank(existing)) return existing; // once per era, but a grey one from before the depth fix doesn't get to stay
             int w = Width, h = Mathf.RoundToInt(Width * Screen.height / (float)Mathf.Max(1, Screen.width));
             var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB); // sRGB, or the PNG comes out washed
             var prevTarget = cam.targetTexture;
             Texture2D tex = null;
+            var day = DayLightDriver.Instance;
             try
             {
+                day?.BeginStill(DayLightDriver.StillHour); // every era's picture has the same light
+                FitDepth(cam);
                 var req = new RenderPipeline.StandardRequest { destination = rt };
                 if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
                 else { cam.targetTexture = rt; cam.Render(); cam.targetTexture = prevTarget; }
@@ -77,6 +80,7 @@ namespace AquariumCiv.View
                 tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
                 tex.Apply();
                 RenderTexture.active = prev;
+                if (LooksBlank(tex)) { Debug.LogWarning("[EraStills] the still came out blank: not kept"); return null; }
                 Directory.CreateDirectory(Folder);
                 string stem = Stem(s.seed, s.era);
                 File.WriteAllBytes(Path.Combine(Folder, stem + ".png"), tex.EncodeToPNG());
@@ -94,11 +98,89 @@ namespace AquariumCiv.View
             catch (Exception e) { Debug.LogWarning("[EraStills] could not take the still: " + e.Message); return null; }
             finally
             {
+                day?.EndStill();
                 cam.targetTexture = prevTarget;
                 RenderTexture.ReleaseTemporary(rt);
                 if (tex != null) UnityEngine.Object.Destroy(tex);
             }
         }
+
+        /// <summary>The box as the camera sees it now, with no UI, as a texture the caller owns (the book's cover before the first still).</summary>
+        public static Texture2D Render(Camera cam, int w, int h)
+        {
+            var rt = RenderTexture.GetTemporary(w, h, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            var prevTarget = cam.targetTexture;
+            try
+            {
+                FitDepth(cam);
+                var req = new RenderPipeline.StandardRequest { destination = rt };
+                if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
+                else { cam.targetTexture = rt; cam.Render(); cam.targetTexture = prevTarget; }
+                var prev = RenderTexture.active;
+                RenderTexture.active = rt;
+                var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+                tex.Apply();
+                RenderTexture.active = prev;
+                return tex;
+            }
+            catch (Exception e) { Debug.LogWarning("[EraStills] could not render: " + e.Message); return null; }
+            finally
+            {
+                cam.targetTexture = prevTarget;
+                RenderTexture.ReleaseTemporary(rt);
+            }
+        }
+
+        /// <summary>A render request raises no camera event, so the box camera's depth is fitted by hand first, whoever holds the camera.</summary>
+        public static void FitDepth(Camera cam)
+        {
+            if (cam != null && cam.TryGetComponent(out BoxCamera rig)) rig.FitDepthNow();
+        }
+
+        /// <summary>The still on disk is a blank.</summary>
+        static bool IsBlank(EraStillInfo info)
+        {
+            string path = PngPath(info);
+            if (!File.Exists(path)) return true;
+            var tex = new Texture2D(2, 2, TextureFormat.RGB24, false);
+            try { return !tex.LoadImage(File.ReadAllBytes(path)) || LooksBlank(tex); }
+            finally { UnityEngine.Object.Destroy(tex); }
+        }
+
+        /// <summary>Forgets one still: a blank found on disk, so the book falls back to what it does with none.</summary>
+        public static void Forget(EraStillInfo info)
+        {
+            if (info == null) return;
+            string png = PngPath(info), json = Path.ChangeExtension(png, ".json");
+            if (File.Exists(png)) File.Delete(png);
+            if (File.Exists(json)) File.Delete(json);
+        }
+
+        /// <summary>A picture with nothing in it (tester run 10: a camera past its near plane drew only the soft grey of the post stack, and a still is
+        /// taken once per era): over a coarse grid, next to no neighbouring cells differ. A vignette changes slowly; any real box has edges.</summary>
+        public static bool LooksBlank(Texture2D tex)
+        {
+            if (tex == null) return true;
+            const int N = 48;
+            var px = tex.GetPixels32();
+            int w = tex.width, h = tex.height, edges = 0;
+            float Luma(int cx, int cy)
+            {
+                var c = px[Mathf.Min(h - 1, cy * h / N) * w + Mathf.Min(w - 1, cx * w / N)];
+                return 0.3f * c.r + 0.59f * c.g + 0.11f * c.b;
+            }
+            for (int y = 0; y < N - 1; y++)
+                for (int x = 0; x < N - 1; x++)
+                {
+                    float l = Luma(x, y);
+                    if (Mathf.Abs(l - Luma(x + 1, y)) > BlankStep || Mathf.Abs(l - Luma(x, y + 1)) > BlankStep) edges++;
+                }
+            return edges < (N - 1) * (N - 1) / 50;
+        }
+
+        /// <summary>A step between grid cells that a soft gradient doesn't make (out of 255).</summary>
+        const float BlankStep = 8f;
 
         /// <summary>Debug / tests: forget a box's stills.</summary>
         public static void DebugClear(int seed)

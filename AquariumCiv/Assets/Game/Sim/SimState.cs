@@ -99,6 +99,15 @@ namespace AquariumCiv.Sim
 
         public double OfflineSimHours(double realHoursAway) => OfflineSimHours(realHoursAway, fullSpeedHours, slowSpeed);
 
+        /// <summary>The other way round: the real hours away that give the civ this many sim hours. Infinite when the slow tail
+        /// stands still and the hours lie past the full-speed part.</summary>
+        public double RealHoursFor(double simHours)
+        {
+            if (simHours <= 0) return 0;
+            if (simHours <= fullSpeedHours) return simHours;
+            return slowSpeed > 0 ? fullSpeedHours + (simHours - fullSpeedHours) / slowSpeed : double.PositiveInfinity;
+        }
+
         /// <summary>How many living notables an era wants.</summary>
         public NotableBand NotablesIn(Era era) => era switch
         {
@@ -171,6 +180,24 @@ namespace AquariumCiv.Sim
     /// <summary>The three eras of a box (game definition §8). Saved as an int, so the order is fixed.</summary>
     public enum Era { Camp, Village, Town }
 
+    /// <summary>What stops the town's next building (#181).</summary>
+    public enum WantStop { None, Wood, People, Full, Nothing }
+
+    /// <summary>The answer to "what does the town want next, and what's stopping it?" (SimCore.NextWant): read-only.</summary>
+    public sealed class TownWantInfo
+    {
+        /// <summary>The next building (a <see cref="BuildingType"/>), or null when none is wanted.</summary>
+        public string building;
+        public WantStop stop;
+        /// <summary>For <see cref="WantStop.People"/>: how many people it takes.</summary>
+        public int needPop;
+        public int pop, housing;
+        public float wood, cost, food;
+        /// <summary>The people fill the houses (a hut is next, or already on its way).</summary>
+        public bool crowded;
+        public bool foodLow;
+    }
+
     public static class BuildingType
     {
         public const string Camp = "Camp", Hut = "Hut", Farm = "Farm", Lumbermill = "Lumbermill", Well = "Well",
@@ -199,6 +226,8 @@ namespace AquariumCiv.Sim
         /// and old views keep working; where the building stands is <see cref="x"/>, <see cref="z"/> and its lot.</summary>
         public int slot;
         public long foundedMonth;
+        /// <summary>#188: the notable who built it (0 = the people together; old saves). Picked without dice (SimCore.BuildingCards.cs).</summary>
+        public int builderId;
         // Placement (Sim/Settle, #32): set when the building gets its lot; lotId 0 = still waiting for a good lot.
         public float x, z, yaw, w, d;   // lot centre, facing (degrees; the front is local −z), size along / back from the front
         public int lotId;
@@ -321,6 +350,9 @@ namespace AquariumCiv.Sim
         /// <summary>Story events and nudge answers draw only from here, so they never shift the economy's dice.</summary>
         public SimRandom storyRng;
         public List<string> storyFlags = new();
+        /// <summary>Keys of the bubbles the people have said, oldest first, kept with the box so a line isn't repeated in the next
+        /// session (#120). View bookkeeping only: nothing in the sim reads it, no dice.</summary>
+        public List<string> saidBubbles = new();
         public string settlementName = "";
         public List<YearSnapshot> years = new();
         public int pinnedNotableId = -1;
@@ -334,6 +366,8 @@ namespace AquariumCiv.Sim
         public List<StoryThread> threads = new(); // teaser threads and story links (SimCore.Cards.cs, #59)
         public int threadNextId = 1;    // threads' own ids, so the shared ids never shift
         public int teaserThreadId = -1; // the evening talk's latest teaser (-1 = none yet)
+        public List<string> bookSeen = new(); // the book's pages the player has opened (SimCore.Book.cs, #80): no ribbon on these
+        public List<int> bookKept = new();    // legends whose page has been read: it stays, so a page never leaves the book
         public List<Relic> relics = new();               // the slice relics, found and the Sandal still lost (SimCore.Relics.cs, #74)
         public bool dollDue;                  // the Keeper Doll's trigger fired while the player was away: made on the first live month
         public List<KeeperActionCount> keeperActions = new(); // what the Keeper did how often (the Keeper Doll's prop)
@@ -359,6 +393,8 @@ namespace AquariumCiv.Sim
         public FirstRunState firstRun = new(); // the first run's progress; inactive unless FirstRun.Begin ran (#94)
         public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
         public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
+        public List<string> crowdNames = new(); // first names of the crowd, by crowd index (SimCore.Crowd.cs, #148); old saves fill it from the seed
+        public int crowdNameNext;            // how far the box has read the shuffled crowd name table
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

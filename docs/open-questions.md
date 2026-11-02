@@ -24,4 +24,4 @@ None of these block the build. ★ = file it and do it after the PR to dev.
 - **Skip all and History:** the dot stays and History reopens the stack, so a skipper never reaches the time-lapse. ★ Skip all clears the dot.
 - **Two years on the time-lapse screen:** HUD 70, panel 71. ★ Hide the HUD year there.
 - **Small UI tidy:** targets under 44 pt, pin numbers under the playhead, tray toast behind the sheet, faint grey text, tray margin, tablet hint overlap, stacked labels at the end of the first run, lone word in a bubble, snapshot toast over the town, "Next 1/7". ★ One ticket.
-- **Tall sheets:** tray 60-80%, time-lapse caption about 45%. ★ Leave for the UI rework (#108).
+- **Tall sheets:** the tray is 30 % since #167; time-lapse caption about 45%. ★ Leave for the UI rework (#108).

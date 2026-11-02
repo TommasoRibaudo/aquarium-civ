@@ -164,6 +164,8 @@ namespace AquariumCiv.View.Shaping
         public bool visible;
         public int nudgeId;
         public float x, z;
+        /// <summary>1 until the last seconds of its timer, then down to 0 (question 13: the arrow fades).</summary>
+        public float alpha;
     }
 
     /// <summary>What happened in a <see cref="ShapingShow.Sync"/>: the view plays the cue and starts the effect.</summary>

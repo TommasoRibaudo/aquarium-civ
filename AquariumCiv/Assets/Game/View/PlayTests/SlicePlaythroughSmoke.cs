@@ -257,6 +257,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(mp.Playing, "a tap on Watch starts the moment");
             MomentPlayer.DebugHurry(6f);
             MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => mp.Director.Time >= 8f, 20f);
+            yield return Shot("smoke_moment_close");
             yield return Until(() => !mp.Playing, 60f);
             MomentPlayer.DebugHoldHurry = false;
             Assert.IsFalse(mp.Playing, "the moment ends");
@@ -272,27 +274,15 @@ namespace AquariumCiv.View.PlayTests
         {
             var tl = TimeLapseView.Ensure();
             var hud = GameHud.Instance;
-            // History opens the waiting cards first (the dot stays after "Skip all"); read everything so it is the time-lapse's turn
+            // Hierarchy D1: History is always the time-lapse, whatever stories wait
             Sim.CardsSeenToNow();
             yield return Frames(40);
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
             yield return new WaitForSecondsRealtime(0.6f);
             var stack = CardStackView.Instance;
-            string branch = "direct";
-            if (TimeLapseScreenView.Instance == null || !TimeLapseScreenView.Instance.IsOpen)
-            {   branch = "cards";
-                // the era's cards wait: History shows them first; Skip all, then History is the time-lapse
-                Assert.AreNotEqual(CardStackMode.Hidden, stack.Model.Mode, "History showed the waiting cards");
-                if (stack.Model.Mode == CardStackMode.Peek) { yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-peek")); yield return Frames(6); }
-                yield return TapAt(GameUiPanel.ScreenCenter(stack.Root, "cards-skip"));
-                yield return Frames(6);
-                Assert.AreEqual(CardStackMode.Hidden, stack.Model.Mode);
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
-                yield return new WaitForSecondsRealtime(0.6f);
-            }
             var screen = TimeLapseScreenView.Instance;
-            Assert.IsNotNull(screen, $"the History button made the time-lapse screen (cards {stack.Model.Mode}, dot {stack.Model.HistoryDot}, sheet {GameHud.Instance.OpenSheet}, moment {MomentPlayer.Instance.Playing}, branch {branch})");
-            Assert.IsTrue(screen.IsOpen, "the History button opens the time-lapse when no cards wait");
+            Assert.IsNotNull(screen, $"the History button made the time-lapse screen (cards {stack.Model.Mode}, dot {stack.Model.HistoryDot}, sheet {GameHud.Instance.OpenSheet}, moment {MomentPlayer.Instance.Playing})");
+            Assert.IsTrue(screen.IsOpen, "the History button opens the time-lapse");
             Assert.IsTrue(tl.Active);
             Assert.IsTrue(GameClock.Instance.Held, "the clock holds while replaying");
             var m = screen.Model;
@@ -300,11 +290,41 @@ namespace AquariumCiv.View.PlayTests
             yield return Drag(new[] { screen.ScreenPointAtBarX(m.Layout.XOf(m.Clock.End) - 2f), screen.ScreenPointAtBarX(m.Layout.XOf(m.Clock.End * 0.5f)) }, 20f);
             Assert.Less(m.Position, m.Clock.End - 0.5f, "a drag by touch moves the playhead");
             yield return Shot("smoke_timelapse");
+            // A drag can settle on a pin, and the caption's row then has the play row's place, Close with it.
+            if (m.Caption != null) { yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-cap-close")); yield return Frames(3); }
+            // The book, by touch: open, a page, close, and the screen is still there.
+            yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-book"));
+            yield return Frames(6);
+            var book = BookView.Instance;
+            Assert.IsTrue(book.IsOpen, "the Book button opens the book");
+            yield return TapAt(GameUiPanel.ScreenCenter(book.Root, "book-next"));
+            yield return Frames(4);
+            Assert.AreEqual(1, book.At);
+            yield return Shot("smoke_book");
+            yield return TapAt(GameUiPanel.ScreenCenter(book.Root, "book-close"));
+            yield return Frames(4);
+            Assert.IsFalse(book.IsOpen);
+            Assert.IsTrue(screen.IsOpen);
             yield return TapAt(GameUiPanel.ScreenCenter(screen.Root, "tl-close"));
             yield return Frames(6);
             Assert.IsFalse(screen.IsOpen);
             Assert.IsFalse(tl.Active, "the replay closes");
             Assert.IsFalse(GameClock.Instance.Held, "and the clock runs again");
+        }
+
+        IEnumerator TheClose()
+        {
+            var talk = EveningTalkView.Instance;
+            var hud = GameHud.Instance;
+            bool hadHud = hud.IsVisible;
+            Assert.IsTrue(talk.Begin(), "the evening talk starts");
+            yield return Until(() => talk.Step == AquariumCiv.View.Moments.CloseStep.Rest, 10f);
+            Assert.That(talk.Line, Is.Not.Empty, "it ends on a line");
+            yield return Shot("smoke_close");
+            yield return TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+            yield return Frames(90); // the camera comes home
+            Assert.IsFalse(talk.Open, "a touch leaves it");
+            Assert.AreEqual(hadHud, hud.IsVisible);
         }
 
         IEnumerator BoxComplete()
@@ -322,6 +342,11 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(c.Playing, "a tap on Finish starts the last moment");
             c.Director.HurryFactor = 4f;
             MomentPlayer.DebugHoldHurry = true;
+            yield return Until(() => c.PickerOpen, 60f);
+            Assert.IsTrue(c.PickerOpen, "the moment asks for the next box");
+            yield return Shot("smoke_last_moment");
+            yield return Frames(4);
+            yield return TapAt(GameUiPanel.ScreenCenter(c.GetComponent<UIDocument>().rootVisualElement, "picker-begin"));
             yield return Until(() => !c.Playing, 100f);
             MomentPlayer.DebugHoldHurry = false;
             yield return Frames(20);
@@ -330,6 +355,16 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(2, GameClock.Instance.Shelf.boxes.Count, "the old box is on the shelf");
             Assert.AreEqual(1, GameClock.Instance.Shelf.activeIndex, "box 2 is on screen");
             yield return Shot("smoke_box2");
+        }
+
+        IEnumerator ShelfView()
+        {
+            var c = BoxCompleteController.Instance;
+            Assert.IsTrue(c.OpenShelf(), "the shelf opens with a box on it");
+            yield return Frames(20);
+            yield return Shot("smoke_shelf");
+            c.CloseShelf();
+            yield return Frames(20);
         }
 
         [UnityTest, Timeout(420000)]
@@ -344,9 +379,17 @@ namespace AquariumCiv.View.PlayTests
             yield return PersonCardByTouch(); Step("person card");
             yield return CleanByTouch(); Step("clean");
             yield return ReturnCards(); Step("return cards");
+            using var depth = new DepthWatch(); // tester run 10: passing moments rendered blank
             yield return EraMoment(); Step("era moment");
+            Assert.Greater(depth.Frames, 100, "the watch saw the moment");
+            Assert.AreEqual(0, depth.Faults, "the era moment never cuts the box: " + depth.First);
+            Assert.AreEqual(0, depth.OffScreen, "and keeps it on screen at every beat");
             yield return TimeLapse(); Step("time-lapse");
+            yield return TheClose(); Step("the close");
             yield return BoxComplete(); Step("box complete");
+            yield return ShelfView(); Step("shelf");
+            Debug.Log($"[smoke] depth watch: {depth.Frames} frames, closest {depth.Worst}");
+            Assert.AreEqual(0, depth.Faults, "the time-lapse, the close, the last moment and the shelf never cut the box: " + depth.First);
             float total = Time.realtimeSinceStartup - t0;
             Debug.Log($"[smoke] whole slice in {total:0} s");
             Assert.Less(total, 240f, "the smoke test stays under 4 minutes");

@@ -88,8 +88,11 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(0f, m.GrimeAt(new Vector2(0.5f, 0.1f), 0.2f), 1e-4f, "nothing under the ground");
             Assert.Greater(m.GrimeAt(new Vector2(0.5f, 0.8f), 0.2f), 0.2f, "grime above it");
             Assert.AreEqual(0.5f, m.Mean, 0.1f, "and the mean follows the level it was given");
+            float was = m.Mean;
             m.Grow(0.2f);
-            Assert.AreEqual(0.7f, m.Mean, 0.1f);
+            // #121: the clean patches hold little grime, so the dirty ground fills towards 1 first and the mean lags the level past the middle.
+            Assert.Greater(m.Mean, was + 0.08f, "it grows");
+            Assert.LessOrEqual(m.Mean, 0.7f + 0.1f);
         }
 
         [Test]

@@ -1,0 +1,74 @@
+/* The small book (#80, board 3.5). Look only: the pages are SimCore.BookPages, the code places only the family tree's cells and lines.
+   Solid paper, never frost (spec §2). The era look is paper colour and type (spec §4): bark paper for the camp, the priest's italic for the
+   village, rules and centred type for the town. Same limits as Glass.uss: one-sided margins, and no gap, :first-child, :last-child,
+   :nth-child or :not. */
+
+.book-root { background-color: var(--paper); }
+
+.book-page {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    padding: 121px 66px 0 66px; background-color: var(--paper);
+}
+.book-page--right { translate: 100% 0; }
+.book-page--bark { background-color: #E2D3B3; }
+.book-scroll { flex-grow: 1; flex-shrink: 1; margin-bottom: 248px; }
+
+.book-ribbon { position: absolute; right: 82.5px; top: 0; width: 38.5px; height: 82.5px; }
+
+/* the nav: Back, where you are, Next, Close. On the root, so a page turns under it */
+.book-nav { position: absolute; left: 66px; right: 66px; bottom: 93.5px; height: 126.5px; flex-direction: row; align-items: center; }
+.book-nav-btn { width: 126.5px; min-width: 126.5px; padding: 0; margin: 0; justify-content: center; align-items: center; }
+.book-nav-close { margin-left: 22px; }
+.book-page-label { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; padding: 0; -unity-text-align: middle-center; color: var(--ink); }
+
+/* words */
+.book-title { margin: 0 0 16.5px 0; white-space: normal; color: var(--ink); }
+.book-sub { margin: 0 0 27.5px 0; white-space: normal; color: var(--ink); }
+.book-head { margin: 27.5px 0 11px 0; color: var(--ink); }
+.book-line { margin: 0 0 22px 0; white-space: normal; color: var(--ink); }
+.book-caption { margin-top: 27.5px; }
+
+/* the picture */
+.book-picture {
+    height: 577.5px; flex-shrink: 0; margin-bottom: 27.5px;
+    border-width: 2.75px; border-color: var(--timber); border-radius: 22px;
+    background-size: cover; background-position: center;
+}
+.book-picture--tall { height: 825px; }
+.book--short .book-picture { height: 385px; }
+.book--short .book-picture--tall { height: 550px; }
+
+/* the priest's hand */
+.book-page--hand .book-line { -unity-font-definition: var(--font-serif-italic); font-size: 44px; -unity-text-outline-color: var(--ink); }
+.book-page--hand .book-title { -unity-font-style: normal; }
+.book-page--hand .book-row-text { -unity-font-definition: var(--font-serif-italic); font-size: 41.25px; }
+
+/* the town's press */
+.book-page--print .book-title { -unity-text-align: middle-center; margin: 11px 0 11px 0; }
+.book-page--print .book-sub { -unity-text-align: middle-center; margin-top: 16.5px; }
+.book-rule { height: 11px; flex-shrink: 0; border-top-width: 2.75px; border-bottom-width: 2.75px; border-color: var(--ink); }
+
+/* rows: a person, a story. The whole row is the target */
+.book-row {
+    min-height: var(--hit); padding: 16.5px 0 16.5px 0; flex-direction: row; align-items: center; flex-shrink: 0;
+    border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2);
+}
+.book-row > .kg-portrait { margin-right: var(--space-10); }
+.book-row > .kg-icon { margin-left: var(--space-8); flex-shrink: 0; -unity-background-image-tint-color: var(--timber); }
+.book-row-text { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; white-space: normal; color: var(--ink); }
+.book-head-row { min-height: var(--hit); flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: 16.5px; margin-right: 110px; }
+.book-head-name { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0 0 0 var(--space-10); white-space: normal; color: var(--ink); }
+
+/* the family tree: cells and connectors are placed by the code */
+.book-tree { width: 948px; align-self: center; flex-shrink: 0; margin-top: 27.5px; }
+.book-who { position: absolute; width: 237px; height: 232px; align-items: center; }
+.book-who-name { margin: 11px 0 0 0; padding: 0 8px; white-space: normal; -unity-text-align: upper-center; color: var(--ink); }
+.book-who-star { position: absolute; left: 150px; top: -8px; -unity-background-image-tint-color: var(--primary); }
+.book-tree-line { position: absolute; background-color: var(--timber); }
+
+/* relics: found, with the people's label; unfound, a dark silhouette with a paper "?" */
+.book-relic { flex-direction: row; align-items: flex-start; flex-shrink: 0; margin-top: 22px; min-height: var(--hit); }
+.book-relic > .kg-portrait { margin-right: var(--space-10); }
+.book-relic-words { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+.book-relic-owner { margin: -11px 0 0 0; color: var(--ink); }
+.book-relic-icon { -unity-background-image-tint-color: var(--paper); }

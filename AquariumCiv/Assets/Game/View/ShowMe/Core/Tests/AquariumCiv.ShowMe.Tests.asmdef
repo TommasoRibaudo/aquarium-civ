@@ -5,6 +5,8 @@
         "AquariumCiv.Sim",
         "AquariumCiv.Life",
         "AquariumCiv.ShowMe",
+        "AquariumCiv.Audio",
+        "AquariumCiv.Moments",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

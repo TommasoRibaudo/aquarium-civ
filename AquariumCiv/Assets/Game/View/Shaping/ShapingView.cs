@@ -18,9 +18,9 @@ namespace AquariumCiv.View
     /// channel and the herd drawn in the style kit from <see cref="ShapingShow"/>'s looks every frame, the people's answer
     /// shown (the planner stages it, a glow ring on the new building, a world label and the chronicle line as a bubble),
     /// and a take-back that plays each in reverse.
-    /// <para>Until the shaping tray (#84) the way in is the debug panel: pick a tool and shape mode is on, then one finger
-    /// on the ground places it (<see cref="ICameraGate"/>: two fingers stay the camera's; clean mode, the glass knock and
-    /// the HUD never see that press). In shape mode each shaping the people haven't used has a "Take back" chip.</para>
+    /// <para>Pick a tool (the tray, a wish, the debug panel) and shape mode is on. A tap on the ground places it; a one-finger drag moves
+    /// the camera and places nothing (#145), except the two that are the tool's own: a wish's spot and the channel's drag
+    /// (<see cref="ICameraGate"/>). A herd goes in with a real flick. After a placing the gift has a "Take back" chip for a while (#149).</para>
     /// Added to the box at start-up like <see cref="CareView"/>.
     /// </summary>
     [DefaultExecutionOrder(-15)]
@@ -35,6 +35,10 @@ namespace AquariumCiv.View
         /// <summary>Animals a little larger than life next to the dolls (Choice 5's big props): a herd reads at phone size.</summary>
         public const float AnimalScale = 1.35f, FishScale = 1.7f;
         const int MaxChips = 4;
+        /// <summary>A herd's flick lifts within this many seconds, and the camera waits that long before it orbits with the herd in hand.</summary>
+        public const float FlickSeconds = 0.25f;
+        /// <summary>...over at least this share of the screen height, and at least this fast (screen heights a second).</summary>
+        public const float FlickMinTravel = 0.04f, FlickMinSpeed = 0.4f;
 
         ShapingShow show = new();
         readonly Dictionary<int, Vis> vis = new();
@@ -49,6 +53,8 @@ namespace AquariumCiv.View
 
         /// <summary>The tracker (tests, the debug panel, #84's tray).</summary>
         public ShapingShow Show => show;
+        /// <summary>#147: how long the newest shaping's arrival plays, real seconds (0 = none).</summary>
+        public float LastArrivalSeconds => show.Entries.Count > 0 ? ShapingShow.ArrivalSeconds(show.Entries[show.Entries.Count - 1].footprint) : 0f;
         /// <summary>The tray's model. Until #84 gives it a screen only a wish arms it (<see cref="ArmWish"/>).</summary>
         public ShapingTray Tray { get; } = new();
         /// <summary>A wish card's Give put the tool in hand at the wish's spot.</summary>
@@ -123,19 +129,26 @@ namespace AquariumCiv.View
 
         // ================================================================== the calls
 
-        /// <summary>Pick a tool (shape mode on) or null (off). Clean mode goes off; a hint says what to do.</summary>
-        public void SetTool(string kind)
+        /// <summary>Pick a tool (shape mode on) or null (off). Clean mode goes off; a hint says what to do, unless <paramref name="quiet"/>:
+        /// the first rain has its own hint, and one message at a time (question 27).</summary>
+        public void SetTool(string kind, bool quiet = false)
         {
             if (kind != null && System.Array.IndexOf(SimCore.SliceTools, kind) < 0) kind = null;
+            if (toolHint != null) { hud?.WithdrawToast(toolHint); toolHint = null; } // waiting or on screen: it no longer applies
             Tray.Close();
             Tool = kind;
             RealTool = false;
+            restKnown = false;
             if (kind == null) return;
             if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
             var sim = Sim;
             string name = sim != null ? sim.ShapingToolName(kind) : kind;
-            hud?.Toast($"Tap the ground to place the {name}. Two fingers move the camera.", 4f);
+            if (quiet) return;
+            toolHint = $"Tap the ground to place the {name}.";
+            hud?.Toast(toolHint, 4f);
         }
+
+        string toolHint;
 
         /// <summary>A wish card's Give (#75): shape mode with the wish's tool, pre-armed at the wished spot, with a banner and a
         /// Cancel. A tap on the ground gives it, a drag moves the spot first. False, with the reason as a toast, if it can't be.</summary>
@@ -198,6 +211,7 @@ namespace AquariumCiv.View
             LastResult = f.text ?? "";
             if (!r.Ok && !string.IsNullOrEmpty(f.cue)) Sfx.Play(f.cue); // on success the placing's own cue plays from the show
             hud?.Toast(LastResult, 3f);
+            if (Tray.Mode == TrayMode.Armed) return; // the ground refused it: still in hand
             SetTool(null);
             Changed();
         }
@@ -220,6 +234,8 @@ namespace AquariumCiv.View
                 // The tray's tool: the tray places it, says what happened, and the tool leaves the hand.
                 var r = Tray.PlaceAt(sim, show, x, z);
                 Say(Tray.Feedback);
+                restX = x; restZ = z; restKnown = true;
+                if (Tray.Mode == TrayMode.Armed) return LastResult; // the ground refused it: still in hand, with the mark on the spot
                 SetTool(null);
                 if (r.Ok) Changed();
                 return LastResult;
@@ -229,7 +245,7 @@ namespace AquariumCiv.View
                 var r = show.Place(sim, kind, x, z);
                 if (!r.Ok)
                 {
-                    LastResult = FailText(kind, r.fail);
+                    LastResult = ShapingTray.ReasonText(kind, r.fail, sim.ShapingStanding(kind));
                     Sfx.Play(ShapingShow.FailCue); // soft: "not now", the text says why
                     hud?.Toast(LastResult, 3f);
                     return LastResult;
@@ -240,7 +256,6 @@ namespace AquariumCiv.View
             return LastResult;
         }
 
-        static string FailText(string kind, SimCore.ShapeFail f) => ShapingTray.ReasonText(kind, f);
 
         /// <summary>Take a shaping back (the chip). False once the people have used it.</summary>
         public bool TakeBack(int nudgeId)
@@ -288,6 +303,52 @@ namespace AquariumCiv.View
         }
         public static string DebugSkip(int id = -1) { var v = Instance; if (v == null) return "no ShapingView"; v.SkipToAnswer(id); return v.LastResult; }
 
+        /// <summary>Debug: the newest gift's Take back chip has this many seconds left (0 = gone now).</summary>
+        public static string DebugChipLeft(float seconds)
+        {
+            var v = Instance; if (v == null) return "no ShapingView";
+            var es = v.show.Entries;
+            return es.Count > 0 && v.show.DebugChipLeft(es[es.Count - 1].nudgeId, seconds) ? $"chip: {seconds:0} s left" : "no gift out there";
+        }
+
+        /// <summary>Debug: a real tool in hand, with the strip, Cancel and the mark on the ground.</summary>
+        public static string DebugHand(string kind)
+        {
+            var v = Instance; if (v == null) return "no ShapingView";
+            v.Sim?.DebugRefillShaping();
+            return v.ArmTool(kind) ? $"{kind} in hand" : v.LastResult;
+        }
+
+        /// <summary>Debug: the refused state: a grove in hand, tapped on the pond (the mark, the cross, the ground's reason).</summary>
+        public static string DebugRefused()
+        {
+            var v = Instance; var sim = v?.Sim; var map = sim?.Settlement?.Map;
+            if (map == null) return "no map";
+            float sx = 0f, sz = 0f;
+            int n = 0;
+            for (int c = 0; c < SiteMap.N; c++) if (map.Water(c)) { sx += SiteMap.CXc(c); sz += SiteMap.CZc(c); n++; }
+            if (n == 0) return "no water in this box";
+            DebugHand(SimCore.NudgeKind.Grove);
+            return v.PlaceAt(sx / n, sz / n); // the middle of the pond
+        }
+
+        /// <summary>Debug: the people react to the last gift not answered yet, now (#142): the same staging a landing gift gets.
+        /// While one plays this says so; with everyone asleep it says that, and nobody is woken.</summary>
+        public static string DebugReact()
+        {
+            var sim = Instance?.Sim;
+            var pv = PeopleView.Find();
+            if (sim == null || pv == null || pv.Planner == null) return "no ShapingView";
+            for (int i = sim.State.nudges.Count - 1; i >= 0; i--)
+            {
+                var n = sim.State.nudges[i];
+                if (n.credited || System.Array.IndexOf(SimCore.SliceTools, n.kind) < 0) continue;
+                var info = pv.Planner.StartShapingReaction(n.id, pv.Now);
+                return info != null ? $"people react to the {n.kind}" : "nobody is up to see it: the reaction waits";
+            }
+            return "no gift waiting: place one first";
+        }
+
         // ================================================================== the camera gate and the tap
 
         bool Usable() => ShapeMode && UiUsable();
@@ -297,17 +358,21 @@ namespace AquariumCiv.View
         {
             if (box == null || Sim == null) return false;
             if (hud != null && (hud.CleanMode || hud.SheetOpen || hud.ToolsHidden || hud.CameraMode)) return false;
+            if (BoxCompleteController.ShelfIsOpen) return false; // tester run 7: over the shelf they pointed at nothing
             var mp = MomentPlayer.Instance;
             if (mp != null && mp.Playing) return false;
             var tl = TimeLapseView.Find();
             return tl == null || !tl.Active;
         }
 
-        /// <summary>In shape mode a one-finger press on the ground is the tool's (not on the UI, not in clean mode).</summary>
-        public bool ClaimsPress(Vector2 screenPos) => Usable() && !UiInput.Over(screenPos) && GroundPoint(screenPos, out _, out _);
+        /// <summary>The tool keeps the drag from the camera only where the drag is what it does: a wish's spot and the channel. Every other
+        /// tool leaves it to the camera, so moving around never places anything (#145).</summary>
+        public bool ClaimsPress(Vector2 screenPos) => Usable() && RealTool && (WishArmed || StrokeTool) && !UiInput.Over(screenPos) && GroundPoint(screenPos, out _, out _);
+
+        /// <summary>A herd's flick comes in from the box's edge, so it may start off the land; everything else starts on the ground.</summary>
+        bool ToolPress(Vector2 screenPos) => Usable() && !UiInput.Over(screenPos) && (Flicked || GroundPoint(screenPos, out _, out _));
 
         bool pressDown, pressOk, pressDrag, pressStroke;
-        int pressChip;
         Vector2 pressPos, lastPos;
         float pressTime;
 
@@ -332,12 +397,18 @@ namespace AquariumCiv.View
             return m.leftButton.isPressed ? 1 : (m.rightButton.isPressed || m.middleButton.isPressed) ? 2 : 0;
         }
 
-        /// <summary>The tray's tool is a stroke tool (rain rubbed, channel dragged, herd flicked): a drag ends in one point, where the
-        /// finger lifts. The grove, and the debug mode's tools, are taps only.</summary>
-        bool StrokeTool => RealTool && !WishArmed && Tool != null && ShapingTray.GestureOf(Tool) != ToolGesture.Tap;
+        /// <summary>The tray's channel: a drag ends in one point, where the finger lifts.</summary>
+        bool StrokeTool => RealTool && !WishArmed && Tool != null && ShapingTray.GestureOf(Tool) == ToolGesture.Drag;
 
-        /// <summary>Two seconds of rubbing or dragging is still one gesture.</summary>
+        /// <summary>The tray's herd: only a real flick places it (<see cref="IsFlick"/>).</summary>
+        bool Flicked => RealTool && !WishArmed && Tool != null && ShapingTray.GestureOf(Tool) == ToolGesture.FlickFromEdge;
+
+        /// <summary>Two seconds of dragging is still one gesture.</summary>
         const float StrokeMaxSeconds = 6f;
+
+        /// <summary>Quick, short and fast enough to be a throw and not the start of a look around.</summary>
+        public static bool IsFlick(float seconds, float travelShare) =>
+            seconds <= FlickSeconds && travelShare >= FlickMinTravel && travelShare >= FlickMinSpeed * Mathf.Max(seconds, 1e-3f);
 
         void HandleInput()
         {
@@ -346,33 +417,39 @@ namespace AquariumCiv.View
             if (RealTool) Tray.RouteFingers(n); // two fingers hand the gesture to the camera
             if (n == 0)
             {
-                bool tap = pressDown && now - pressTime <= TapMaxSeconds;
-                bool stroke = pressDown && pressStroke && now - pressTime <= StrokeMaxSeconds;
                 bool tool = !RealTool || Tray.EndGesture();
-                if (tap && pressChip > 0) TakeBack(pressChip); // the chip's own click may have done it already: then this is a no-op
-                else if (tap && pressOk && WishArmed) ConfirmWish();
-                else if (pressOk && tool && (tap || stroke) && GroundPoint(stroke ? lastPos : pressPos, out float x, out float z)) PlaceAt(x, z);
+                if (pressDown && pressOk && tool) Release(now - pressTime);
                 pressDown = pressDrag = pressStroke = false;
                 return;
             }
             if (!pressDown)
             {
                 pressDown = true; pressPos = lastPos = a; pressTime = now;
-                pressChip = n == 1 ? ChipAt(a) : 0;
-                pressOk = n == 1 && pressChip == 0 && ClaimsPress(a);
+                pressOk = n == 1 && ToolPress(a);
                 if (pressOk && RealTool) Tray.BeginGesture();
+                if (pressOk && Flicked && cam != null) cam.HoldOrbitUntil = now + FlickSeconds;
                 return;
             }
             if (n == 1) lastPos = a;
-            if (n >= 2 || (a - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height))
+            bool moved = (a - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height);
+            if (n >= 2) pressOk = pressDrag = false;
+            else if (cam != null && cam.GestureMoved) pressOk = false; // the camera has it: this press is a look around
+            else if (moved && pressOk)
             {
-                bool stroke = pressOk && n == 1 && StrokeTool;
-                pressDrag = (pressDrag || pressOk) && n == 1 && WishArmed; // a wish's spot follows the finger
-                if (stroke) pressStroke = true;
-                else pressOk = false;
-                pressChip = 0;
+                if (WishArmed) pressDrag = true; // a wish's spot follows the finger
+                else if (StrokeTool) pressStroke = true;
+                else if (!Flicked) pressOk = false;
             }
             if (pressDrag && GroundPoint(a, out float dx, out float dz)) Tray.MovePending(dx, dz);
+        }
+
+        /// <summary>The finger lifted on a press that's still the tool's: what it was decides what happens.</summary>
+        void Release(float held)
+        {
+            float travel = (lastPos - pressPos).magnitude / Mathf.Max(1f, Screen.height);
+            if (WishArmed) { if (held <= TapMaxSeconds && !pressDrag) ConfirmWish(); return; }
+            bool place = pressStroke ? held <= StrokeMaxSeconds : Flicked ? IsFlick(held, travel) : held <= TapMaxSeconds;
+            if (place && GroundPoint(pressStroke || Flicked ? lastPos : pressPos, out float x, out float z)) PlaceAt(x, z);
         }
 
         /// <summary>The ground under a screen point, in box coordinates (a march along the ray over the land's height).</summary>
@@ -484,6 +561,7 @@ namespace AquariumCiv.View
             foreach (var kv in vis) if (!seen.Contains(kv.Key)) gone.Add(kv.Key);
             foreach (int id in gone) { vis[id].Destroy(); vis.Remove(id); }
             DrawAnswer(show.Answer, t);
+            DrawFootprint(sim);
             UpdateUi(sim);
         }
 
@@ -514,7 +592,7 @@ namespace AquariumCiv.View
             return 1f - Mathf.Clamp01((c.sinceAnswered - T.HerdMoveToLotSeconds) / 1.5f);
         }
 
-        static Material LoadFx()
+        public static Material LoadFx()
         {
             var m = Resources.Load<Material>("ShapingFx");
             if (m != null) return m;
@@ -527,6 +605,7 @@ namespace AquariumCiv.View
             foreach (var v in vis.Values) v.Destroy();
             vis.Clear();
             if (answerGo != null) { Destroy(answerGo); answerGo = null; }
+            if (footGo != null) { Destroy(footGo); footGo = null; }
         }
 
         Vector3 Ground(float x, float z) => new(x, box.GroundHeight(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ)), z);
@@ -567,13 +646,76 @@ namespace AquariumCiv.View
             answerR.SetPropertyBlock(answerMpb);
         }
 
+        // ================================================================== the mark on the ground
+
+        GameObject footGo;
+        ShapingMeshes.FxMesh footFx;
+        MeshRenderer footR;
+        float footX = float.NaN, footZ, restX, restZ;
+        string footKind;
+        bool restKnown, footValid;
+
+        /// <summary>The tool's mark is on the ground (tests).</summary>
+        public bool FootprintShown => footGo != null && footGo.activeSelf;
+        /// <summary>The ground under the mark takes the tool (tests).</summary>
+        public bool FootprintValid => footValid;
+
+        /// <summary>Where the mark sits: a wish's spot, under the finger, or where it last was; a tool just picked starts in the middle of
+        /// the view. The first run's rain has its own hint, so its mark only follows the finger.</summary>
+        bool FootprintSpot(out float x, out float z)
+        {
+            x = z = 0f;
+            if (!Usable()) return false;
+            if (WishArmed) { x = Tray.PendingX; z = Tray.PendingZ; return true; }
+            if (pressDown && pressOk && GroundPoint(lastPos, out x, out z)) { restX = x; restZ = z; restKnown = true; return true; }
+            if (!RealTool) return false;
+            restKnown = restKnown || GroundPoint(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out restX, out restZ);
+            x = restX; z = restZ;
+            return restKnown;
+        }
+
+        /// <summary>The ground, or the water lying over it, so a mark on the pond shows.</summary>
+        Vector3 OnTop(float x, float z)
+        {
+            var p = Ground(x, z);
+            p.y = Mathf.Max(p.y, Land.WaterY);
+            return p;
+        }
+
+        void DrawFootprint(SimCore sim)
+        {
+            bool on = FootprintSpot(out float x, out float z) && fxMat != null;
+            if (!on)
+            {
+                if (footGo != null) footGo.SetActive(false);
+                return;
+            }
+            if (footGo == null)
+            {
+                footFx = new ShapingMeshes.FxMesh("Shaping_Footprint");
+                footR = ShapingMeshes.FxRenderer(root, "Footprint", footFx, fxMat);
+                footGo = footR.gameObject;
+                var mpb = new MaterialPropertyBlock();
+                mpb.SetColor("_Color", Color.white);
+                footR.SetPropertyBlock(mpb);
+                footX = float.NaN;
+            }
+            footGo.SetActive(true);
+            if (footKind == Tool && Mathf.Abs(x - footX) < 0.01f && Mathf.Abs(z - footZ) < 0.01f) return;
+            footKind = Tool; footX = x; footZ = z;
+            footValid = ShapingFootprint.GroundReason(sim.Settlement?.Map, Tool, x, z).Length == 0;
+            footFx.Clear();
+            ShapingMeshes.Footprint(footFx, OnTop, x, z, ShapingFootprint.PreviewRadius(Tool), footValid);
+            footFx.Apply();
+        }
+
         // ================================================================== the UI: the world label, the bubble, the chips
 
         GameObject uiGo;
         UIDocument doc;
         VisualElement uiRoot;
         Label labelEl, bubbleEl;
-        readonly List<Button> chipEls = new();
+        readonly List<GlassButton> chipEls = new();
         readonly int[] chipIds = new int[MaxChips];
 
         /// <summary>The world label and bubble showing now (tests).</summary>
@@ -600,21 +742,14 @@ namespace AquariumCiv.View
             uiRoot.style.position = Position.Absolute;
             uiRoot.style.left = uiRoot.style.right = uiRoot.style.top = uiRoot.style.bottom = 0;
             BuildWishBar();
-            labelEl = Pill("shaping-label", 30);
-            labelEl.style.backgroundColor = new Color(0.94f, 0.89f, 0.8f, 0.94f); // the HUD's plaster pill: the gift's name
-            labelEl.style.color = new Color(0.42f, 0.29f, 0.21f);
-            bubbleEl = Pill("shaping-bubble", 34);
-            bubbleEl.style.maxWidth = 760;
-            bubbleEl.style.whiteSpace = WhiteSpace.Normal;
+            labelEl = Pill("shaping-label", "type-small-head");
+            bubbleEl = Pill("shaping-bubble", "type-sub");
             for (int i = 0; i < MaxChips; i++)
             {
                 int k = i;
-                var b = new Button(() => { if (chipIds[k] > 0) TakeBack(chipIds[k]); }) { name = "shaping-takeback-" + i, text = "Take back" };
-                b.AddToClassList("hud-btn");
-                b.style.position = Position.Absolute;
-                b.style.height = GameUiPanel.MinTarget * 0.8f;
-                b.style.minWidth = 0;
-                b.style.fontSize = 32;
+                var b = new GlassButton("Take back", () => { if (chipIds[k] > 0) TakeBack(chipIds[k]); }, ButtonKind.Secondary, UiRole.None) { name = "shaping-takeback-" + i, Compact = true };
+                b.Marked("undo", true);
+                b.AddToClassList("shaping-chip");
                 b.style.display = DisplayStyle.None;
                 uiRoot.Add(b);
                 chipEls.Add(b);
@@ -622,37 +757,38 @@ namespace AquariumCiv.View
         }
 
         VisualElement wishBar;
-        Label wishBanner, wishSpot;
+        GlassBanner toolBanner;
+        GlassPips toolPips;
+        GlassTag wishSpot;
 
-        /// <summary>A wish's tool in hand: the banner and Cancel in the prompts' lane, and a pin on the spot. #84 skins this.</summary>
+        /// <summary>The tool in hand: the strip (name, what the finger does, charges) and Cancel in the tools' lane, spec §7 option A. The strip
+        /// takes no taps, so the ground under it stays the tool's; only Cancel is a target. A wish adds a tag on the spot.</summary>
         void BuildWishBar()
         {
-            wishBar = new VisualElement { name = "shaping-wish-bar" };
-            wishBar.AddToClassList("wish-bar");
+            wishBar = new VisualElement { name = "shaping-wish-bar", pickingMode = PickingMode.Ignore };
+            wishBar.AddToClassList("tray-bar");
             wishBar.style.display = DisplayStyle.None;
-            wishBanner = new Label { name = "shaping-banner", pickingMode = PickingMode.Ignore };
-            wishBanner.AddToClassList("wish-banner");
-            wishBar.Add(wishBanner);
-            var cancel = new Button(() => { Sfx.Play(CueLibrary.UiClose); CancelWish(); }) { name = "shaping-cancel", text = "Cancel" };
-            cancel.AddToClassList("hud-btn");
-            cancel.AddToClassList("wish-cancel");
+            toolBanner = new GlassBanner("Tool", "Hint") { Inline = true, pickingMode = PickingMode.Ignore };
+            toolBanner.AddToClassList("tray-bar-strip");
+            toolBanner.TitleLabel.name = "shaping-banner";
+            toolBanner.End.pickingMode = PickingMode.Ignore;
+            toolPips = new GlassPips(0, 0) { name = "shaping-banner-pips" };
+            toolBanner.End.Add(toolPips);
+            wishBar.Add(toolBanner);
+            var cancel = new GlassButton("Cancel", CancelWish, ButtonKind.Secondary, UiRole.Close) { name = "shaping-cancel" };
+            cancel.AddToClassList("tray-cancel");
             wishBar.Add(cancel);
             uiRoot.Add(wishBar);
-            wishSpot = new Label { name = "shaping-wish-spot", text = "Here", pickingMode = PickingMode.Ignore };
-            wishSpot.AddToClassList("wish-spot");
+            wishSpot = new GlassTag("Here") { name = "shaping-wish-spot", InWorld = true };
             wishSpot.style.display = DisplayStyle.None;
             uiRoot.Add(wishSpot);
         }
 
-        Label Pill(string name, int fontSize)
+        Label Pill(string name, string type)
         {
             var l = new Label { name = name, pickingMode = PickingMode.Ignore };
-            l.AddToClassList("hud-toast");
-            l.style.position = Position.Absolute;
-            l.style.right = StyleKeyword.Auto; // hud-toast stretches across the bottom; this one sits on its anchor
-            l.style.bottom = StyleKeyword.Auto;
-            l.style.fontSize = fontSize;
-            l.style.unityTextAlign = TextAnchor.MiddleCenter;
+            l.AddToClassList("shaping-pill");
+            l.AddToClassList(type);
             l.style.display = DisplayStyle.None;
             uiRoot.Add(l);
             return l;
@@ -667,31 +803,22 @@ namespace AquariumCiv.View
             if (bubbleEl != null && bubbleEl.style.display == DisplayStyle.Flex) yield return bubbleEl.worldBound;
         }
 
-        /// <summary>The nudge whose take-back chip is under a screen point (0 = none).</summary>
-        int ChipAt(Vector2 screenPos)
-        {
-            for (int i = 0; i < chipEls.Count; i++)
-            {
-                var c = chipEls[i];
-                if (c.style.display != DisplayStyle.Flex || c.panel == null || chipIds[i] <= 0) continue;
-                var p = RuntimePanelUtils.ScreenToPanel(c.panel, new Vector2(screenPos.x, Screen.height - screenPos.y));
-                if (c.worldBound.Contains(p)) return chipIds[i];
-            }
-            return 0;
-        }
+        BubbleHost.Voice voice;
 
         void HideUi()
         {
             if (labelEl == null) return;
             labelEl.style.display = DisplayStyle.None;
             bubbleEl.style.display = DisplayStyle.None;
+            if (voice != null) GameUiPanel.Bubbles.Done(voice);
             wishBar.style.display = DisplayStyle.None;
             wishSpot.style.display = DisplayStyle.None;
             foreach (var c in chipEls) c.style.display = DisplayStyle.None;
+            hud?.SetToolInHand(false);
         }
 
         /// <summary>Puts an element centred over a box point (panel units); false when the point is behind the camera.</summary>
-        bool Anchor(VisualElement e, float x, float z, float up, float dyPanel = 0f, bool below = false)
+        bool Anchor(VisualElement e, float x, float z, float up, float dyPanel = 0f, bool below = false, bool inFrame = false)
         {
             var c = Cam;
             if (c == null || e.panel == null) return false;
@@ -699,32 +826,73 @@ namespace AquariumCiv.View
             var s = c.WorldToScreenPoint(w);
             if (s.z <= 0f) return false;
             var p = RuntimePanelUtils.ScreenToPanel(e.panel, new Vector2(s.x, Screen.height - s.y));
+            if (inFrame) p.x = KeepInFrame(e, p.x); // tester run 10: close in, a caption ran off the left edge
             e.style.left = p.x;
             e.style.top = p.y + dyPanel;
             e.style.translate = new Translate(new Length(-50, LengthUnit.Percent), new Length(below ? 0 : -100, LengthUnit.Percent));
             return true;
         }
 
+        /// <summary>The middle of a label moved just far enough for all of it to be on screen.</summary>
+        static float KeepInFrame(VisualElement e, float x)
+        {
+            float half = e.resolvedStyle.width * 0.5f, wide = e.panel.visualTree.layout.width, side = half + 24f;
+            return float.IsNaN(half) || float.IsNaN(wide) ? x : Mathf.Clamp(x, side, Mathf.Max(side, wide - side));
+        }
+
+        /// <summary>A chip under its gift, never over it, and under the chips already placed this frame, so two gifts side by side keep two targets (tester run 7).</summary>
+        bool AnchorChip(int k, float x, float z)
+        {
+            var el = chipEls[k];
+            float w = float.IsNaN(el.resolvedStyle.width) || el.resolvedStyle.width < 1f ? ChipW : el.resolvedStyle.width;
+            float h = float.IsNaN(el.resolvedStyle.height) || el.resolvedStyle.height < 1f ? ChipH : el.resolvedStyle.height;
+            float dy = 40f;
+            for (int tries = 0; tries <= k; tries++)
+            {
+                if (!Anchor(el, x, z, 0f, dy, true)) return false;
+                float at = el.style.left.value.value, top = el.style.top.value.value;
+                bool clash = false;
+                for (int i = 0; i < k; i++)
+                {
+                    float ox = chipEls[i].style.left.value.value, oy = chipEls[i].style.top.value.value;
+                    if (Mathf.Abs(ox - at) < w + 8f && Mathf.Abs(oy - top) < h + 8f) { dy = oy + h + 8f - (top - dy); clash = true; break; }
+                }
+                if (!clash) break;
+            }
+            return true;
+        }
+
+        const float ChipW = 300f, ChipH = 96f;
+
+        string bannerHint;
+        int pipsOn = -1, pipsAll = -1;
+
         void UpdateUi(SimCore sim)
         {
             if (uiRoot == null) return;
-            bool noUi = hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible);
+            bool noUi = BoxCompleteController.ShelfIsOpen || (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible));
             bool armed = !noUi && RealTool && Tool != null;
             wishBar.style.display = armed ? DisplayStyle.Flex : DisplayStyle.None;
-            bool spot = armed && WishArmed && Anchor(wishSpot, Tray.PendingX, Tray.PendingZ, 0.1f);
+            hud?.SetToolInHand(armed);
+            bool spot = armed && WishArmed && Anchor(wishSpot, Tray.PendingX, Tray.PendingZ, ShapingFootprint.PreviewRadius(Tool) * 0.8f); // over the mark
             wishSpot.style.display = spot ? DisplayStyle.Flex : DisplayStyle.None;
             if (armed)
             {
-                string banner = Tray.Banner(sim);
-                if (wishBanner.text != banner) wishBanner.text = banner;
-                wishBar.style.bottom = GameUiPanel.PromptBottom + GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w;
+                string title = Tray.BannerTitle(sim), hint = Tray.BannerHint(sim);
+                if (toolBanner.TitleLabel.text != title || bannerHint != hint) toolBanner.Set(title, bannerHint = hint);
+                var c = Tray.Charges(sim);
+                if (c.whole != pipsOn || c.max != pipsAll) toolPips.Set(pipsAll = c.max, pipsOn = c.whole);
+                wishBar.style.bottom = Mathf.Max(GameUiPanel.ToolsBottom, GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height).w);
             }
             RefreshTray(sim, false);
             var a = show.Answer;
-            bool label = !noUi && a.active && a.labelAlpha > 0.01f && Anchor(labelEl, a.x, a.z, 0.35f);
+            bool label = !noUi && a.active && a.labelAlpha > 0.01f && Anchor(labelEl, a.x, a.z, 0.35f, inFrame: true);
             labelEl.style.display = label ? DisplayStyle.Flex : DisplayStyle.None;
             if (label) { labelEl.text = a.label; labelEl.style.opacity = a.labelAlpha; }
-            bool bubble = !noUi && a.active && a.bubbleAlpha > 0.01f && !string.IsNullOrEmpty(a.bubble) && Anchor(bubbleEl, a.x, a.z, 0.35f, -80f);
+            bool bubble = !noUi && a.active && a.bubbleAlpha > 0.01f && !string.IsNullOrEmpty(a.bubble) && Anchor(bubbleEl, a.x, a.z, 0.35f, -80f, inFrame: true);
+            voice ??= GameUiPanel.Bubbles.Join(BubbleHost.Rank.Line);
+            if (bubble) bubble = GameUiPanel.Bubbles.Ask(voice); // asked every frame: it waits for whoever has the word
+            else GameUiPanel.Bubbles.Done(voice);
             bubbleEl.style.display = bubble ? DisplayStyle.Flex : DisplayStyle.None;
             if (bubble) { bubbleEl.text = a.bubble; bubbleEl.style.opacity = a.bubbleAlpha; }
 
@@ -735,111 +903,178 @@ namespace AquariumCiv.View
                     var e = show.Entries[i];
                     var chip = show.ChipFor(sim, e.nudgeId);
                     if (!chip.visible || show.StageOf(e) == ShapingStage.Arriving) continue; // let the arrival be seen first
-                    if (!Anchor(chipEls[k], chip.x, chip.z, 0f, 40f, true)) continue; // under the gift, never over it
+                    if (!AnchorChip(k, chip.x, chip.z)) continue;
                     chipIds[k] = e.nudgeId;
+                    chipEls[k].style.opacity = chip.alpha;
                     chipEls[k].style.display = DisplayStyle.Flex;
                     k++;
                 }
             for (; k < MaxChips; k++) { chipEls[k].style.display = DisplayStyle.None; chipIds[k] = 0; }
         }
 
-        // ================================================================== the tray's sheet (#84)
-        // Plain #36 look: every element carries a class from Game.uss (tray-*, tool*), and a name the tests and the tester find
-        // (shaping-charges, shaping-tool-<kind>, shaping-tray-takeback-<id>). The model is ShapingTray; this only draws it.
+        // ================================================================== the tray's sheet (#84, #167)
+        // Board 3.4: a sheet of 30 %, the charges in its head, one row of four tiles, a note with the reason under them, and the Take back
+        // list in the row's place. Every element has the name the tests and the tester find. The model is ShapingTray; this only draws it.
 
         string traySig = "";
+        /// <summary>The Take back list is showing instead of the tiles.</summary>
+        bool trayList;
+        /// <summary>The unavailable tile tapped last: the note gives its reason.</summary>
+        string trayAsked;
+        VisualElement trayRefill;
 
         void OnSheet(string id)
         {
             var sim = Sim;
-            if (id == GameHud.Shaping && sim != null) { Tray.Open(); RefreshTray(sim, true); }
+            if (id == GameHud.Shaping && sim != null) { trayList = false; trayAsked = null; Tray.Open(); RefreshTray(sim, true); }
         }
 
         void RefreshTray(SimCore sim, bool force)
         {
             if (hud == null || hud.ShapingBody == null || hud.OpenSheet != GameHud.Shaping) return;
             var charges = Tray.Charges(sim);
+            float refill = Mathf.Clamp01(charges.refill) * 100f;
+            if (trayRefill != null) trayRefill.style.width = Length.Percent(refill); // every frame, without pulling the tiles from under a finger
+            var tools = Tray.Tools(sim);
+            var list = Tray.TakeBackList(sim);
             var sig = new System.Text.StringBuilder();
-            sig.Append(charges.text).Append(charges.refill.ToString("0.00")).Append(sim.State.era);
-            foreach (var t in Tray.Tools(sim)) sig.Append(t.kind).Append(t.fail).Append(t.standing).Append(t.name);
-            foreach (var i in Tray.TakeBackList(sim)) sig.Append('#').Append(i.nudgeId);
+            sig.Append(charges.text).Append(sim.State.era).Append(trayList).Append(trayAsked);
+            foreach (var t in tools) sig.Append(t.kind).Append(t.fail).Append(t.standing).Append(t.name);
+            foreach (var i in list) sig.Append('#').Append(i.nudgeId);
             if (!force && sig.ToString() == traySig) return;
             traySig = sig.ToString();
-            var body = hud.ShapingBody;
-            body.Clear();
 
-            var row = new VisualElement { name = "shaping-charges" };
+            hud.ShapingHead.Clear();
+            var row = new VisualElement { name = "shaping-charges", pickingMode = PickingMode.Ignore };
             row.AddToClassList("tray-charges");
-            row.Add(TrayLabel("Charges", "tray-charges-label"));
-            var pips = new VisualElement { name = "shaping-pips" };
-            pips.AddToClassList("tray-pips");
-            for (int i = 0; i < charges.max; i++)
+            var pips = new GlassPips(charges.max, charges.whole) { name = "shaping-pips" };
+            trayRefill = null;
+            if (!charges.full)
             {
-                var pip = new VisualElement();
-                pip.AddToClassList("tray-pip");
-                if (i < charges.whole) pip.AddToClassList("tray-pip--on");
-                else if (i == charges.whole && !charges.full)
-                {
-                    var fill = new VisualElement { name = "shaping-refill" };
-                    fill.AddToClassList("tray-pip-fill");
-                    fill.style.width = Length.Percent(Mathf.Clamp01(charges.refill) * 100f);
-                    pip.Add(fill);
-                }
-                pips.Add(pip);
+                trayRefill = new VisualElement { name = "shaping-refill", pickingMode = PickingMode.Ignore };
+                trayRefill.AddToClassList("tray-pip-fill");
+                trayRefill.style.width = Length.Percent(refill);
+                pips[charges.whole].Add(trayRefill);
             }
             row.Add(pips);
-            var ct = TrayLabel(charges.text, "tray-charges-text");
+            var ct = TrayLabel(charges.text, "type-sub", "tray-charges-text");
             ct.name = "shaping-charges-text";
             row.Add(ct);
-            body.Add(row);
-            if (!charges.full && charges.whole < charges.max)
-                body.Add(TrayLabel("The next one comes back as the people are happy, or when you clean the glass.", "sheet-note"));
+            hud.ShapingHead.Add(row);
 
-            body.Add(TrayLabel("Gifts", "tray-head"));
-            var tools = new VisualElement { name = "shaping-tools" };
-            tools.AddToClassList("tools");
-            foreach (var t in Tray.Tools(sim))
+            var body = hud.ShapingBody;
+            body.Clear();
+            if (trayList) body.Add(TakeBackList(list));
+            else body.Add(Tiles(tools));
+
+            var foot = new VisualElement { pickingMode = PickingMode.Ignore };
+            foot.AddToClassList("tray-foot");
+            var note = TrayLabel(trayList ? (list.Count == 0 ? "Nothing waiting. A gift can be taken back until the people use it." : "A gift can be taken back until the people use it.") : TrayNote(tools, charges),
+                "type-note", "tray-note");
+            note.name = "shaping-tray-note";
+            foot.Add(note);
+            if (trayList) foot.Add(new GlassButton("Back", () => { trayList = false; }, ButtonKind.Secondary, UiRole.Back) { name = "shaping-takeback-back", Compact = true });
+            else if (charges.whole > 0 || list.Count > 0) foot.Add(new GlassButton("Take back", () => { trayList = true; }, ButtonKind.Secondary, UiRole.Open) { name = "shaping-takeback-open", Compact = true });
+            body.Add(foot);
+        }
+
+        /// <summary>A name this long ("Wool flock", "Blossoming") only fits a tile a size down.</summary>
+        const int LongToolName = 9, WrapToolName = 14;
+
+        VisualElement Tiles(IReadOnlyList<TrayTool> list)
+        {
+            var tools = new VisualElement { name = "shaping-tools", pickingMode = PickingMode.Ignore };
+            tools.AddToClassList("tray-tiles");
+            for (int i = 0; i < list.Count; i++)
             {
+                var t = list[i];
                 string kind = t.kind;
                 var b = new Button(() => OnToolButton(kind)) { name = "shaping-tool-" + kind };
-                b.AddToClassList("tool");
-                if (!t.enabled) b.AddToClassList("tool--off");
-                if (t.armed) b.AddToClassList("tool--armed");
-                b.Add(TrayLabel(Cap(t.name), "tool-name"));
-                b.Add(TrayLabel($"Level {t.level}  ·  {t.standing} of {t.cap}", "tool-level"));
-                if (!t.enabled) b.Add(TrayLabel(t.reason, "tool-reason"));
+                b.RemoveFromClassList(Button.ussClassName); // every state comes from Glass.uss
+                b.AddToClassList("kg-tile");
+                b.EnableInClassList("kg-tile--off", !t.enabled);
+                b.EnableInClassList("kg-tile--armed", t.armed);
+                b.EnableInClassList("kg-tile--last", i == list.Count - 1);
+                b.EnableInClassList("kg-tile--wrap", t.name.Length >= WrapToolName);
+                b.Add(new GlassIcon(t.enabled ? IconOf(kind) : "lock", "kg-icon--small"));
+                var name = TrayLabel(Cap(t.name), "type-small-head", "kg-tile-name");
+                name.EnableInClassList("kg-tile-name--long", t.name.Length >= LongToolName);
+                name.EnableInClassList("kg-tile-name--wrap", t.name.Length >= WrapToolName); // "Blossoming grove": no size of type fits it on one line
+                b.Add(name);
+                b.Add(TrayLabel($"Level {t.level}", "type-note"));
+                b.Add(TrayLabel($"{t.standing} of {t.cap} out", "type-note"));
                 tools.Add(b);
             }
-            body.Add(tools);
+            return tools;
+        }
 
-            body.Add(TrayLabel("Landscaping", "tray-head"));
-            body.Add(TrayLabel("Hill and hollow come later.", "sheet-note"));
-
-            body.Add(TrayLabel("Take back", "tray-head"));
-            var list = Tray.TakeBackList(sim);
-            if (list.Count == 0) body.Add(TrayLabel("Nothing waiting. A gift can be taken back until the people use it.", "sheet-note"));
+        VisualElement TakeBackList(IReadOnlyList<TakeBackItem> list)
+        {
+            var scroll = new GlassScroll { SnapToRows = true };
+            scroll.AddToClassList("tray-list");
             foreach (var item in list)
             {
                 int id = item.nudgeId;
-                var b = new Button(() => { TakeBack(id); traySig = ""; }) { name = "shaping-tray-takeback-" + id, text = item.label };
+                var row = new VisualElement { pickingMode = PickingMode.Ignore };
+                row.AddToClassList("tray-row");
+                row.AddToClassList(GlassScroll.RowClass);
+                row.Add(TrayLabel(item.label, "type-body", "tray-row-label"));
+                var b = new GlassButton("Take back", () => { TakeBack(id); traySig = ""; }, ButtonKind.Secondary, UiRole.None) { name = "shaping-tray-takeback-" + id, Compact = true };
                 b.AddToClassList("tray-takeback");
-                body.Add(b);
+                row.Add(b);
+                scroll.Add(row);
             }
+            return scroll;
         }
+
+        /// <summary>The one line under the tiles: why the tile just tapped can't be used, else why the tools are down, a capped one before a
+        /// locked one. The later tools get the last word when nothing's wrong.</summary>
+        string TrayNote(IReadOnlyList<TrayTool> tools, ChargeDisplay charges)
+        {
+            foreach (var t in tools) if (t.kind == trayAsked && !t.enabled) return ToolNote(t);
+            if (charges.whole < 1) return "The next one comes back as the people are happy, or when you clean the glass.";
+            foreach (var t in tools) if (t.fail == SimCore.ShapeFail.AtCap) return ToolNote(t);
+            foreach (var t in tools) if (t.fail == SimCore.ShapeFail.Locked) return ToolNote(t);
+            return "Hill and hollow come later.";
+        }
+
+        static string ToolNote(TrayTool t) => t.fail == SimCore.ShapeFail.NoCharge ? t.reason + "."
+            : t.fail == SimCore.ShapeFail.Locked ? $"{Cap(t.name)} {char.ToLowerInvariant(t.reason[0])}{t.reason.Substring(1)}."
+            : $"{Cap(t.name)}: {t.reason}.";
+
+        static string IconOf(string kind) => kind switch
+        {
+            SimCore.NudgeKind.Rain => "drop",
+            SimCore.NudgeKind.Grove => "tree",
+            SimCore.NudgeKind.Herd => "herd",
+            SimCore.NudgeKind.Channel => "channel",
+            _ => "gift",
+        };
 
         static string Cap(string s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s.Substring(1);
 
-        static Label TrayLabel(string text, string cls)
+        static Label TrayLabel(string text, params string[] classes)
         {
             var l = new Label(text) { pickingMode = PickingMode.Ignore };
-            l.AddToClassList(cls);
+            foreach (var c in classes) l.AddToClassList(c);
             return l;
         }
 
-        /// <summary>A tool button: picks the tool and closes the sheet so the world is free for the finger; a greyed tool says why.</summary>
+        /// <summary>A tile: picks the tool and closes the sheet so the world is free for the finger. An unavailable one stays down and the note
+        /// says why.</summary>
         void OnToolButton(string kind)
         {
-            Sfx.Play(CueLibrary.UiTap);
+            var sim = Sim;
+            if (sim == null) return;
+            var t = Tray.ToolOf(sim, kind);
+            if (!t.enabled)
+            {
+                UiSound.Play(UiRole.Refused);
+                LastResult = t.reason;
+                trayAsked = kind;
+                return;
+            }
+            UiSound.Play(UiRole.Tap);
             if (ArmTool(kind)) hud?.CloseSheet();
             else traySig = "";
         }

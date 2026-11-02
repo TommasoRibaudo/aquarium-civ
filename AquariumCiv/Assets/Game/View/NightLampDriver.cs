@@ -10,7 +10,7 @@ namespace AquariumCiv.View
         [Range(0, 1)] public float level;
 
         void OnEnable() => NightLamps.SetLevel(level);
-        void OnDisable() => NightLamps.SetLevel(0f);
-        void Update() { if (!Mathf.Approximately(level, NightLamps.Level)) NightLamps.SetLevel(level); }
+        void OnDisable() { if (!DayLightDriver.Driving) NightLamps.SetLevel(0f); }
+        void Update() { if (!DayLightDriver.Driving && !Mathf.Approximately(level, NightLamps.Level)) NightLamps.SetLevel(level); } // in play the day drives it (#113)
     }
 }

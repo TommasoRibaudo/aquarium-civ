@@ -316,6 +316,69 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.IsTrue(gone.animals.All(a => Terrain.Dist(a.x, a.z, f.entryX, f.entryZ) < 1e-3f), "out at the edge");
         }
 
+        /// <summary>#151: the herd is spread out. Whatever the species, nobody grazes (or stands on the move) closer than the
+        /// species' spacing to another, the shape stays the same as the herd moves on, and it still reads as one herd.</summary>
+        [TestCase(1, Era.Camp)]
+        [TestCase(3, Era.Camp)]
+        [TestCase(1234, Era.Camp)]
+        [TestCase(1, Era.Village)]
+        [TestCase(1, Era.Town)]
+        public void TheHerdIsSpreadOutAndNobodyOverlapsWhileGrazing(int seed, Era era)
+        {
+            var sim = NewSim(seed);
+            var (x, z) = OpenLand(sim, 1.3f, 0.7f);
+            var f = Shaped(sim, SimCore.NudgeKind.Herd, x, z);
+            var species = f.SpeciesAt(era);
+            float gap = T.HerdSpacing(species);
+            float arrive = T.RunInSeconds + T.RunInStagger * T.HerdCount(species) + 1.6f;
+            float closest = float.MaxValue, widest = 0f;
+            int grazingFrames = 0;
+            for (float s = arrive; s < 140f; s += 0.1f)
+            {
+                var h = ShapingLooks.Herd(f, Clock(s, 0f, era));
+                for (int i = 0; i < h.animals.Count; i++)
+                {
+                    for (int j = i + 1; j < h.animals.Count; j++)
+                    {
+                        // Clamped to the box edge the gap can shrink; a herd at the edge of the box is not what this checks.
+                        var a = h.animals[i]; var b = h.animals[j];
+                        if (Math.Abs(a.x) > ShapingFootprint.MaxX - 0.01f || Math.Abs(b.x) > ShapingFootprint.MaxX - 0.01f ||
+                            Math.Abs(a.z) > ShapingFootprint.MaxZ - 0.01f || Math.Abs(b.z) > ShapingFootprint.MaxZ - 0.01f) continue;
+                        if (a.pose == AnimalPose.Graze && b.pose == AnimalPose.Graze) { closest = Math.Min(closest, Terrain.Dist(a.x, a.z, b.x, b.z)); grazingFrames++; }
+                        widest = Math.Max(widest, Terrain.Dist(a.x, a.z, b.x, b.z));
+                    }
+                }
+            }
+            Assert.Greater(grazingFrames, 100, "they graze for a good while");
+            Assert.GreaterOrEqual(closest, gap, $"seed {seed} {species}: nobody overlaps while grazing");
+            Assert.Less(widest, 2f * HerdLayout.Reach(T.HerdCount(species), gap) + 0.2f, "and it is still one herd");
+        }
+
+        [Test]
+        public void TheHerdsLayoutKeepsItsSpacingForEverySeedAndSpecies()
+        {
+            foreach (var sp in new[] { HerdSpecies.Deer, HerdSpecies.Goat, HerdSpecies.Sheep })
+            {
+                int n = T.HerdCount(sp);
+                float gap = T.HerdSpacing(sp);
+                float reach = 0f;
+                for (int seed = 1; seed <= 400; seed++)
+                {
+                    var pts = new (float x, float z)[n];
+                    for (int i = 0; i < n; i++)
+                    {
+                        HerdLayout.Offset(seed, i, n, gap, out pts[i].x, out pts[i].z);
+                        reach = Math.Max(reach, Terrain.Dist(0f, 0f, pts[i].x, pts[i].z));
+                    }
+                    for (int i = 0; i < n; i++)
+                        for (int j = i + 1; j < n; j++)
+                            Assert.GreaterOrEqual(Terrain.Dist(pts[i].x, pts[i].z, pts[j].x, pts[j].z), gap, $"{sp} seed {seed}: {i} and {j}");
+                }
+                Assert.LessOrEqual(reach, HerdLayout.Reach(n, gap) + 1e-4f, $"{sp}: the reach is honest");
+                Assert.LessOrEqual(HerdLayout.Reach(n, gap), T.HerdSpread, $"{sp}: HerdSpread covers it, so the shore margin does");
+            }
+        }
+
         /// <summary>User 2026-10-30: the shoal is spread out across the pond, not a tight ball.</summary>
         [TestCase(1)]
         [TestCase(2)]

@@ -33,7 +33,7 @@ namespace AquariumCiv.View
         public static Land LandFor(int preset)
         {
             var t = TerrainSpec.Preset(preset);
-            return new Land { mirror = t.mirror, noiseOffset = t.noiseOff, pond = new Vector2(t.pondX, t.pondZ), centre = new Vector2(t.centreX, t.centreZ) };
+            return new Land { preset = preset, mirror = t.mirror, noiseOffset = t.noiseOff, pond = new Vector2(t.pondX, t.pondZ), centre = new Vector2(t.centreX, t.centreZ) };
         }
 
         /// <summary>The piece kind a lot kind stands as (before era dressing). Farms, orchards and pastures are fields
@@ -93,6 +93,24 @@ namespace AquariumCiv.View
         /// <summary>Where the sim puts the first well, from the green's centre (Settlement.TryPlace, "first on green").</summary>
         public const float FirstWellDX = 0.17f, FirstWellDZ = -0.1f;
 
+        /// <summary>#115: which tree a forest cell of a setting grows, by the look's shares. A cactus wants dry ground: by the water it is a palm.</summary>
+        static void PickTree(TreeData t, SettingLook look, float pick, float pondDist)
+        {
+            t.pine = false;
+            if (pick < look.palmShare) t.shape = TreeShape.Palm;
+            else if (pick < look.palmShare + look.pineShare) t.shape = TreeShape.Conifer;
+            else if (pick >= look.palmShare + look.pineShare + look.broadleafShare) t.shape = pondDist < 1.3f ? TreeShape.Palm : TreeShape.Cactus;
+        }
+
+        /// <summary>A rock cell the Keeper's outcrop painted: that piece stands there already.</summary>
+        static bool NudgedRock(Settlement st, int c)
+        {
+            float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
+            foreach (var f in st.Features())
+                if (f.kind == SimCore.NudgeKind.Outcrop && (f.x - x) * (f.x - x) + (f.z - z) * (f.z - z) < 0.3f * 0.3f) return true;
+            return false;
+        }
+
         static bool HasOpenWell(Settlement st)
         {
             foreach (var l in st.Lots) if (l.kind == LotKind.Well && l.open && !l.retired) return true;
@@ -120,6 +138,8 @@ namespace AquariumCiv.View
             Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
             int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
             var map = st.Map;
+            var setting = SettingLook.ForPreset(sim.TerrainPreset);
+            var spec = TerrainSpec.Preset(sim.TerrainPreset);
             var green = new Vector2(st.GreenX, st.GreenZ);
             Lot camp = null;
             foreach (var l in st.Lots) if (l.kind == LotKind.Camp) { camp = l; break; }
@@ -139,25 +159,32 @@ namespace AquariumCiv.View
             if (greenEra >= Era.Village && !HasOpenWell(st))
                 L.Add(PieceKind.Well, green.x + FirstWellDX, green.y + FirstWellDZ, 0f, 0.3f, 0.3f, greenEra, 19000);
 
-            // ---- ground: yards, commons, the Keeper's shapings ----
-            foreach (var y in replay != null ? NoYards : st.Yards)
-                if (y.count > 0) L.Clearing(new Vector2(y.x, y.z), Mathf.Clamp(y.r * 0.85f, 0.16f, 0.35f), ClearingKind.Yard);
-            foreach (var f in replay != null ? NoFeatures : st.Features())
+            // ---- ground: yards, commons, the Keeper's shapings. A replay's finished years leave them out; its last step grows them in (#196) ----
+            float live = replay != null ? replay.liveShare : 1f;
+            foreach (var y in live > 0f ? st.Yards : NoYards)
+                if (y.count > 0) L.Clearing(new Vector2(y.x, y.z), Mathf.Clamp(y.r * 0.85f, 0.16f, 0.35f) * live, ClearingKind.Yard);
+            foreach (var f in live > 0f ? st.Features() : NoFeatures)
             {
                 var at = new Vector2(f.x, f.z);
                 switch (f.kind)
                 {
-                    case "commons": L.Clearing(at, f.r, ClearingKind.Meadow); break;
-                    case SimCore.NudgeKind.DyeMeadow: L.Clearing(at, f.r, ClearingKind.Flowers); break;
+                    case "commons": L.Clearing(at, f.r * live, ClearingKind.Meadow); break;
+                    case SimCore.NudgeKind.DyeMeadow: L.Clearing(at, f.r * live, ClearingKind.Flowers); break;
                     case SimCore.NudgeKind.Outcrop:
                     {
                         var p = L.Add(PieceKind.Outcrop, f.x, f.z, 0f, f.r * 2f, f.r * 2f, S.era, 30000 + f.nudgeId);
                         p.variant = f.deposit == "clay" ? 1 : f.deposit == "ore" ? 2 : 0;
+                        p.grow = live;
                         break;
                     }
                     case SimCore.NudgeKind.Herd:
                         // An answered herd lives on its pasture or jetty; until then the animals graze at the spot.
-                        if (f.lotId == 0 && !(KeeperOverlays && replay == null)) L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId).variant = 4;
+                        if (f.lotId == 0 && !(KeeperOverlays && replay == null))
+                        {
+                            var herd = L.Add(PieceKind.Herd, f.x, f.z, 0f, 0.45f, 0.45f, S.era, 31000 + f.nudgeId);
+                            herd.variant = 4;
+                            herd.grow = live;
+                        }
                         break;
                 }
             }
@@ -291,12 +318,30 @@ namespace AquariumCiv.View
                                           SiteMap.CZ(j) + 0.05f + (STerrain.Hash3(seed, i, j * 3 + 2) - 0.5f) * 0.08f);
                     if (!TreeSpot(map, pos)) continue;
                     int c0 = SiteMap.CellAt(pos.x, pos.y);
+                    if (setting.SnowAmount(map.height[c0]) > 0.25f) continue; // #115: the snow cap stays bare, or the firs hide it
                     float high = map.height[c0] - STerrain.G;
-                    L.trees.Add(new TreeData
+                    float pick = STerrain.Hash3(seed, i, j * 3 + 4);
+                    var tree = new TreeData
                     {
                         pos = pos,
                         scale = 0.75f + 0.45f * STerrain.Hash3(seed, i, j * 3 + 3),
-                        pine = STerrain.Hash3(seed, i, j * 3 + 4) < (high > 0.35f ? 0.6f : 0.3f),
+                        pine = pick < (high > 0.35f ? 0.6f : 0.3f),
+                    };
+                    if (setting != SettingLook.RiverValley) PickTree(tree, setting, pick, spec.PondDist(pos.x, pos.y));
+                    L.trees.Add(tree);
+                }
+
+            // ---- boulders: the setting's rock outcrops (#115); the Keeper's outcrops are their own pieces ----
+            if (setting != SettingLook.RiverValley)
+                for (int c = 0; c < SiteMap.N; c++)
+                {
+                    if (!map.Rock(c) || map.lot[c] != 0 || NudgedRock(st, c)) continue;
+                    if (STerrain.Hash3(seed, c, 81) > 0.28f * setting.boulderDensity) continue;
+                    L.boulders.Add(new BoulderData
+                    {
+                        pos = new Vector2(SiteMap.CXc(c) + (STerrain.Hash3(seed, c, 82) - 0.5f) * 0.1f, SiteMap.CZc(c) + (STerrain.Hash3(seed, c, 83) - 0.5f) * 0.1f),
+                        radius = 0.07f + 0.13f * STerrain.Hash3(seed, c, 84),
+                        shade = (int)(STerrain.Hash3(seed, c, 85) * 3f),
                     });
                 }
 

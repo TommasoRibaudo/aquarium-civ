@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AquariumCiv.Lighting;
 using AquariumCiv.Sim;
 using Unity.Collections;
 using Unity.Jobs;
@@ -65,7 +66,11 @@ namespace AquariumCiv.View
         const int AoLayer = 2; // Ignore Raycast: the AO colliders stay out of everyone else's raycasts
 
         Transform root, peopleRoot;
+        /// <summary>The land's natural colours (#115). Read on the chunk workers; set with the land.</summary>
+        LandColors Co => land.Colors;
         readonly List<Material> panes = new();
+        readonly List<MeshRenderer> paneRenderers = new();
+        Material frameMat;
         Vector2[] shore;
         readonly List<(Vector2 p, float r)> taken = new();
         readonly List<(Vector2 p, bool sprout)> reedSpots = new();
@@ -93,8 +98,23 @@ namespace AquariumCiv.View
         /// <summary>The style kit's shared solid material (the one every generated mesh and doll uses).</summary>
         public Material SolidMaterial => Solid;
 
+        /// <summary>#202: the chunks leave the sails out only when an enabled <see cref="WindView"/> on this box has them: asking if a wind is allowed left any box
+        /// nothing had bootstrapped with bare mills. Read here, on the main thread: chunks build on workers.</summary>
+        bool sailsApart;
+
+        /// <summary>Times the chunks have been rebuilt: a mill's sails go up with the chunk it stands in.</summary>
+        public int ChunkBuilds { get; private set; }
+
         void OnEnable()
         {
+            frameFadeSent = false;
+            sailsApart = false;
+            if (Application.isPlaying && WindView.AutoCreate)
+            {
+                var wind = GetComponent<WindView>();
+                if (wind == null) wind = gameObject.AddComponent<WindView>();
+                sailsApart = wind.enabled; // a second box stays out of it: the wind is one a scene
+            }
 #if UNITY_EDITOR
             SweepOrphans();
 #endif
@@ -124,6 +144,9 @@ namespace AquariumCiv.View
             }
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
+            paneRenderers.Clear();
+            if (frameMat != null) DestroyImmediate(frameMat);
+            frameMat = null;
             dolls.Clear();
             dollByKey.Clear();
             root = peopleRoot = null;
@@ -185,10 +208,14 @@ namespace AquariumCiv.View
             var bm = new MeshBuilder(seed);
             PondRim(bm);
             Substrate(bm);
-            BoxAndRoom(bm);
+            var fm = new MeshBuilder(seed + 1);
+            BoxAndRoom(bm, fm);
             var baseMesh = bm.ToMesh("BoxBase");
             Spawn("Base", baseMesh, Solid, true);
             AoCollider("AO Base", baseMesh);
+            var frameMesh = fm.ToMesh("BoxFrame");
+            Spawn("Frame", frameMesh, FrameMaterial(), true);
+            AoCollider("AO Frame", frameMesh);
 
             var builders = new MeshBuilder[ChunkCount];
             var terrainVerts = new int[ChunkCount];
@@ -207,7 +234,7 @@ namespace AquariumCiv.View
             {
                 var t = System.Diagnostics.Stopwatch.StartNew();
                 Physics.SyncTransforms();
-                var all = new List<(MeshBuilder, int, Mesh)> { (bm, 0, baseMesh) };
+                var all = new List<(MeshBuilder, int, Mesh)> { (bm, 0, baseMesh), (fm, 0, frameMesh) };
                 for (int k = 0; k < ChunkCount; k++) all.Add((builders[k], terrainVerts[k], meshes[k]));
                 BakeAO(all);
                 aoMs = t.Elapsed.TotalMilliseconds;
@@ -218,6 +245,7 @@ namespace AquariumCiv.View
             Glass();
             aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
+            ChunkBuilds++;
             ChunkHashes(chunkHash);
             System.Array.Copy(chunkHash, wantHash, ChunkCount);
             landHash = LandHash();
@@ -316,6 +344,7 @@ namespace AquariumCiv.View
                 Kill(old);
                 builders.Add((k, mb, tv, mesh));
                 chunkHash[k] = wantHash[k];
+                ChunkBuilds++;
                 chunkWaited[k] = 0;
             }
             meshMs = sw.Elapsed.TotalMilliseconds;
@@ -360,6 +389,31 @@ namespace AquariumCiv.View
             return s;
         }
 
+        /// <summary>Debug hook: a hash of every generated mesh of the box, position and colour, per part (#115: is the river valley
+        /// bit for bit what it was? Two builds of one layout must print the same).</summary>
+        public static string DebugFingerprint()
+        {
+            var s = new System.Text.StringBuilder();
+            foreach (var b in FindObjectsByType<BoxView>(FindObjectsSortMode.None))
+            {
+                if (b.root == null) continue;
+                var whole = Hash.New();
+                foreach (Transform t in b.root)
+                {
+                    if (!t.TryGetComponent<MeshFilter>(out var mf) || mf.sharedMesh == null || t.name.StartsWith("Glass") || t.name == "Glows" || t.name == "Smoke") continue;
+                    var m = mf.sharedMesh;
+                    var e = Hash.New();
+                    foreach (var v in m.vertices) { e.Add(Mathf.RoundToInt(v.x * 2048f)); e.Add(Mathf.RoundToInt(v.y * 2048f)); e.Add(Mathf.RoundToInt(v.z * 2048f)); } // past float noise
+                    var ao = Hash.New();
+                    foreach (var c in m.colors32) { e.Add((uint)(c.r | c.g << 8 | c.b << 16)); ao.Add((int)c.a); }
+                    s.Append($"{t.name} {m.vertexCount} {e.h:x8}/{ao.h:x8}; ");
+                    whole.Add(e.h);
+                }
+                s.Append($"box {b.land.preset} {whole.h:x8}\n");
+            }
+            return s.ToString();
+        }
+
         GameObject Spawn(string name, Mesh mesh, Material mat, bool shadows)
         {
             var go = new GameObject(name) { hideFlags = GenFlags };
@@ -369,6 +423,19 @@ namespace AquariumCiv.View
             r.sharedMaterial = mat;
             r.shadowCastingMode = shadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
             return go;
+        }
+
+        /// <summary>Is anything solid of the box (a roof, a wall, a tree, a rise of the land) on the straight line between two world points, short of its
+        /// end? The real meshes, so what it says is what the camera sees.</summary>
+        public bool Blocked(Vector3 from, Vector3 to)
+        {
+            var d = to - from;
+            float len = d.magnitude;
+            if (len < 1e-4f) return false;
+            var ray = new Ray(from, d / len);
+            foreach (var c in chunkColliders)
+                if (c != null && c.sharedMesh != null && c.Raycast(ray, out _, len)) return true;
+            return false;
         }
 
         MeshCollider AoCollider(string name, Mesh mesh)
@@ -489,9 +556,14 @@ namespace AquariumCiv.View
             }
             foreach (var t in layout.trees)
             {
-                var e = Hash.New(); e.Add(t.pos); e.Add(t.scale); e.Add(t.pine);
+                var e = Hash.New(); e.Add(t.pos); e.Add(t.scale); e.Add(t.pine); e.Add((int)t.shape);
                 float r = 0.2f * t.scale;
                 Into(h, t.pos.x - r, t.pos.y - r, t.pos.x + r, t.pos.y + r, e.h);
+            }
+            foreach (var b in layout.boulders)
+            {
+                var e = Hash.New(); e.Add(b.pos); e.Add(b.radius); e.Add(b.shade);
+                Into(h, b.pos.x - b.radius, b.pos.y - b.radius, b.pos.x + b.radius, b.pos.y + b.radius, e.h);
             }
             foreach (var cn in layout.canals)
             {
@@ -506,7 +578,7 @@ namespace AquariumCiv.View
         uint LandHash()
         {
             var e = Hash.New();
-            e.Add(land.mirror); e.Add(land.noiseOffset); e.Add(land.pond); e.Add(land.centre); e.Add(seed); e.Add(NX); e.Add(NZ);
+            e.Add(land.preset); e.Add(land.mirror); e.Add(land.noiseOffset); e.Add(land.pond); e.Add(land.centre); e.Add(seed); e.Add(NX); e.Add(NZ);
             return e.h;
         }
 
@@ -688,6 +760,7 @@ namespace AquariumCiv.View
             taken.Clear();
             foreach (var p in layout.pieces) taken.Add((p.Pos, PieceRadius(p)));
             foreach (var t in layout.trees) taken.Add((t.pos, 0.2f * t.scale));
+            foreach (var b in layout.boulders) taken.Add((b.pos, b.radius));
         }
 
         static bool Grassy(ClearingKind k) => k == ClearingKind.Meadow || k == ClearingKind.Flowers;
@@ -711,24 +784,31 @@ namespace AquariumCiv.View
         }
 
         // ---------------- ground ----------------
-        static Color Cobble(float x, float z, float n)
+        Color Cobble(float x, float z, float n)
         {
+            var co = Co;
             float s = Land.Noise(x * 22f, z * 22f);
             // Stones and darker grout in a staggered grid, so the square reads as cobbles at default zoom (#91).
             float gx = x * 9f, gz = z * 9f + (Mathf.FloorToInt(x * 9f) & 1) * 0.5f;
             float fx = gx - Mathf.Floor(gx), fz = gz - Mathf.Floor(gz);
             bool grout = fx < 0.14f || fz < 0.14f;
-            var stone = Color.Lerp(Color.Lerp(Palette.Stone, Palette.Path, 0.2f), Palette.RockLight, s * 0.5f + (n - 0.5f) * 0.3f);
-            return grout ? Color.Lerp(stone, Palette.RockDark, 0.55f) : stone;
+            var stone = Color.Lerp(Color.Lerp(Palette.Stone, co.path, 0.2f), co.rockLight, s * 0.5f + (n - 0.5f) * 0.3f);
+            return grout ? Color.Lerp(stone, co.rockDark, 0.55f) : stone;
         }
 
-        static Color Grass(float n, float y)
+        Color Grass(float n, float y)
         {
-            var g = n < 0.42f ? Palette.GrassB : n < 0.66f ? Palette.GrassA : Palette.GrassC;
-            return Color.Lerp(g, Palette.Moss, Land.Smooth(Land.G + 0.35f, Land.G + 0.7f, y) * 0.5f);
+            var co = Co;
+            var g = n < 0.42f ? co.grassB : n < 0.66f ? co.grassA : co.grassC;
+            var col = Color.Lerp(g, co.moss, Land.Smooth(Land.G + 0.35f, Land.G + 0.7f, y) * 0.5f);
+            if (!co.Snowy) return col;
+            // The mountain: bare rock on the way up, then the snow cap (#115).
+            float line = co.look.snowLine;
+            col = Color.Lerp(col, Color.Lerp(co.rock, co.rockDark, n), Land.Smooth(line - 0.45f, line - 0.12f, y + (n - 0.5f) * 0.2f));
+            return Color.Lerp(col, co.snow, co.look.SnowAmount(y + (n - 0.5f) * 0.12f));
         }
 
-        static Color Meadow(float n) => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Sprout, 0.35f), Palette.GrassA, n * 0.5f);
+        Color Meadow(float n) => Color.Lerp(Color.Lerp(Co.grassC, Co.sprout, 0.35f), Co.grassA, n * 0.5f);
 
         /// <summary>The ground's colour at a point (pond bed, shore, clearings, fields, canals, paths, grass) and how much
         /// it glows (the warm pool round a fire).</summary>
@@ -736,9 +816,10 @@ namespace AquariumCiv.View
         {
             glowAmount = 0f;
             var p = new Vector2(x, z);
+            var co = Co;
             float sd = ShoreSD(x, z);
-            if (sd < 0f) return y < Land.WaterY - 0.06f ? Palette.PondBed : Color.Lerp(Palette.SandWet, Palette.PondBed, Mathf.Clamp01(-sd / 0.12f));
-            if (sd < 0.05f) return Palette.Sand;
+            if (sd < 0f) return y < Land.WaterY - 0.06f ? co.pondBed : Color.Lerp(co.sandWet, co.pondBed, Mathf.Clamp01(-sd / 0.12f));
+            if (sd < 0.05f) return co.sand;
             float n = Land.Fbm(x * 1.4f, z * 1.4f + 5f);
             var col = Grass(n, y);
             bool painted = false;
@@ -751,20 +832,20 @@ namespace AquariumCiv.View
                 if (d > r + 0.12f) continue;
                 if (d > r)
                 {
-                    if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, Palette.Dirt, 0.35f);
-                    else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, Palette.Path, 0.6f); // a worn sandy edge round the square
-                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, Palette.Path, 0.45f); // a trodden ring round the green
+                    if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, co.dirt, 0.35f);
+                    else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, co.path, 0.6f); // a worn sandy edge round the square
+                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, co.path, 0.45f); // a trodden ring round the green
                     continue;
                 }
                 col = c.kind switch
                 {
                     // The village green: a mown lawn, brighter than the grass round it, so it reads at default zoom (#91).
-                    ClearingKind.Green => Color.Lerp(Color.Lerp(Palette.GrassC, Palette.Wheat, 0.3f), Palette.GrassC, n * 0.35f),
+                    ClearingKind.Green => Color.Lerp(Color.Lerp(co.grassC, Palette.Wheat, 0.3f), co.grassC, n * 0.35f),
                     ClearingKind.Cobble => Cobble(x, z, n),
-                    ClearingKind.Yard => Color.Lerp(col, Palette.Dirt, d < r * 0.7f ? 0.55f : 0.3f),
+                    ClearingKind.Yard => Color.Lerp(col, co.dirt, d < r * 0.7f ? 0.55f : 0.3f),
                     ClearingKind.Meadow => Meadow(n),
                     ClearingKind.Flowers => Color.Lerp(Meadow(n), Palette.Flowers[3], 0.15f),
-                    _ => d < r * 0.72f ? Palette.Dirt : Color.Lerp(Palette.Dirt, Palette.GrassB, 0.45f),
+                    _ => d < r * 0.72f ? co.dirt : Color.Lerp(co.dirt, co.grassB, 0.45f),
                 };
                 painted = !Grassy(c.kind);
             }
@@ -773,8 +854,8 @@ namespace AquariumCiv.View
                 {
                     var b = FieldBox(f);
                     if (x < b.xMin || x > b.xMax || z < b.yMin || z > b.yMax || !InPolygon(f.polygon, p)) continue;
-                    if (f.crop == CropKind.Gathering) { col = n < 0.5f ? Color.Lerp(Palette.Dirt, col, 0.55f) : col; break; }
-                    if (f.crop == CropKind.Pasture) { col = Color.Lerp(col, Palette.GrassC, 0.45f); painted = true; break; }
+                    if (f.crop == CropKind.Gathering) { col = n < 0.5f ? Color.Lerp(co.dirt, col, 0.55f) : col; break; }
+                    if (f.crop == CropKind.Pasture) { col = Color.Lerp(col, co.grassC, 0.45f); painted = true; break; }
                     float a = f.rowYaw * Mathf.Deg2Rad;
                     float across = x * Mathf.Cos(a) - z * Mathf.Sin(a);
                     col = (Mathf.FloorToInt(across / 0.08f) & 1) == 0 ? Palette.FieldSoil : Palette.FieldSoilLight;
@@ -782,7 +863,7 @@ namespace AquariumCiv.View
                     break;
                 }
             float dc = CanalDist(x, z);
-            if (dc < 0.05f) { col = Color.Lerp(Palette.WaterDeep, Palette.Water, dc / 0.05f); painted = true; }
+            if (dc < 0.05f) { col = Color.Lerp(co.waterDeep, co.water, dc / 0.05f); painted = true; }
             else if (dc < 0.075f) { col = Color.Lerp(col, Palette.Mud, 0.55f); painted = true; }
             float thrN = (n - 0.5f) * 0.03f;
             bool onPath = false;
@@ -792,16 +873,16 @@ namespace AquariumCiv.View
                 if (d >= w) continue;
                 col = (PathTier)t switch
                 {
-                    PathTier.Trail => Color.Lerp(Grass(n, y), Palette.Dirt, 0.6f),
+                    PathTier.Trail => Color.Lerp(Grass(n, y), co.dirt, 0.6f),
                     PathTier.Road => Cobble(x, z, n),
-                    _ => Color.Lerp(Palette.Path, Palette.Dirt, (n - 0.4f) * 0.5f),
+                    _ => Color.Lerp(co.path, co.dirt, (n - 0.4f) * 0.5f),
                 };
                 if (anyCobbled && (PathTier)t != PathTier.Road && Sample(cobbleField[t], x, z, PathRange) < w) col = Cobble(x, z, n);
                 onPath = true;
             }
             if (!onPath && !painted)
                 for (int t = 0; t < 3; t++)
-                    if (Sample(pathField[t], x, z, PathRange) < PathWidth((PathTier)t) + thrN + 0.035f) { col = Color.Lerp(col, Palette.Dirt, 0.25f); break; }
+                    if (Sample(pathField[t], x, z, PathRange) < PathWidth((PathTier)t) + thrN + 0.035f) { col = Color.Lerp(col, co.dirt, 0.25f); break; }
             foreach (var pc in layout.pieces)
             {
                 if (pc.kind != PieceKind.Fire || Mathf.Abs(pc.x - x) > 0.6f || Mathf.Abs(pc.z - z) > 0.6f) continue;
@@ -892,8 +973,8 @@ namespace AquariumCiv.View
             for (int i = 0; i < n; i++)
             {
                 int k = (i + 1) % n;
-                QuadUp(mb, inner[i], mid[i], mid[k], inner[k], Palette.SandWet);
-                QuadUp(mb, mid[i], outer[i], outer[k], mid[k], Palette.Sand);
+                QuadUp(mb, inner[i], mid[i], mid[k], inner[k], Co.sandWet);
+                QuadUp(mb, mid[i], outer[i], outer[k], mid[k], Co.sand);
             }
             mb.jitter = keep;
         }
@@ -903,7 +984,8 @@ namespace AquariumCiv.View
         {
             float HX = Land.HX, HZ = Land.HZ;
             var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
-            Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, Palette.Moss };
+            var co = Co;
+            Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, co.moss };
             for (int side = 0; side < 4; side++)
             {
                 var p0 = corners[side]; var p1 = corners[(side + 1) % 4];
@@ -915,20 +997,21 @@ namespace AquariumCiv.View
                     var a = Vector2.Lerp(p0, p1, s / (float)segs); var b = Vector2.Lerp(p0, p1, (s + 1) / (float)segs);
                     float[] la = Layers(a), lb = Layers(b);
                     for (int k = 0; k < 4; k++)
-                        mb.Quad(new Vector3(a.x, la[k], a.y), new Vector3(a.x, la[k + 1], a.y), new Vector3(b.x, lb[k + 1], b.y), new Vector3(b.x, lb[k], b.y), cols[k]);
+                        mb.Quad(new Vector3(a.x, la[k], a.y), new Vector3(a.x, la[k + 1], a.y), new Vector3(b.x, lb[k + 1], b.y), new Vector3(b.x, lb[k], b.y),
+                            k == 3 && co.Snowy ? Color.Lerp(cols[3], co.snow, co.look.SnowAmount(la[4])) : cols[k]);
                     if (mb.Range(0f, 1f) < 0.4f)
                     {
                         var at = Vector2.Lerp(a, b, mb.Range(0f, 1f));
                         float r = mb.Range(0.035f, 0.075f);
                         var pos = new Vector3(at.x, mb.Range(0.05f, Layers(at)[1] - 0.02f), at.y) + outward * (-r * 0.45f);
-                        var col = mb.Range(0, 3) switch { 0 => Palette.Rock, 1 => Palette.RockLight, _ => Palette.RockDark };
+                        var col = mb.Range(0, 3) switch { 0 => co.rock, 1 => co.rockLight, _ => co.rockDark };
                         mb.Ico(pos, r, new Vector3(1f, 0.75f, 1f), col, 0.2f);
                     }
                     if (mb.Range(0f, 1f) < 0.12f)
                     {
                         var at = Vector2.Lerp(a, b, mb.Range(0f, 1f));
                         var l = Layers(at);
-                        mb.Ico(new Vector3(at.x, mb.Range(l[1] + 0.04f, l[2] - 0.04f), at.y) + outward * -0.015f, mb.Range(0.02f, 0.035f), Vector3.one, Palette.RockLight, 0.2f);
+                        mb.Ico(new Vector3(at.x, mb.Range(l[1] + 0.04f, l[2] - 0.04f), at.y) + outward * -0.015f, mb.Range(0.02f, 0.035f), Vector3.one, co.rockLight, 0.2f);
                     }
                 }
             }
@@ -941,31 +1024,48 @@ namespace AquariumCiv.View
             return new[] { 0f, 0.18f + 0.06f * n1, 0.46f + 0.08f * n2, Mathf.Max(0.5f, top - 0.08f - 0.04f * n3), Mathf.Max(top, Land.WaterY) };
         }
 
-        void BoxAndRoom(MeshBuilder mb)
+        /// <summary>The solid material with blending on, for the frame alone: it stays its colour at alpha 1, and its near parts fade (#162).
+        /// Blending, not a dither: a <c>clip()</c> in the one shader would cost every fragment in the box its early depth test on a tiler.</summary>
+        Material FrameMaterial()
+        {
+            frameMat = new Material(Solid) { hideFlags = HideFlags.DontSave, name = "Frame" };
+            frameMat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            frameMat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            frameMat.renderQueue = 2900; // after the opaque world, before the glass
+            return frameMat;
+        }
+
+        void BoxAndRoom(MeshBuilder mb, MeshBuilder frame)
         {
             float HX = Land.HX, HZ = Land.HZ, GlassTop = Land.GlassTop;
             const float lip = 0.2f, plinthH = 0.3f;
             mb.Box(new Vector3(0, -plinthH / 2f, 0), new Vector3(2 * HX + 2 * lip, plinthH, 2 * HZ + 2 * lip), Palette.Plinth);
             mb.Box(new Vector3(0, 0.012f, 0), new Vector3(2 * HX + 2 * lip - 0.04f, 0.024f, 2 * HZ + 2 * lip - 0.04f), Palette.PlinthTop);
             float gx = HX + 0.075f, gz = HZ + 0.075f, t = 0.07f;
+            // Parts 0..3 are the sides (front, back, left, right: the glass's order), 4..7 the corner posts: each fades by itself (#162).
+            int post = 4;
             foreach (var (x, z) in new[] { (-gx, -gz), (gx, -gz), (gx, gz), (-gx, gz) })
-                mb.Box(new Vector3(x, GlassTop / 2f, z), new Vector3(t, GlassTop, t), Palette.Frame);
+            {
+                frame.frameSide = post++;
+                frame.Box(new Vector3(x, GlassTop / 2f, z), new Vector3(t, GlassTop, t), Palette.Frame);
+            }
             foreach (float y in new[] { 0.05f, GlassTop })
             {
-                mb.Box(new Vector3(0, y, -gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
-                mb.Box(new Vector3(0, y, gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
-                mb.Box(new Vector3(-gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
-                mb.Box(new Vector3(gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
+                frame.frameSide = 0; frame.Box(new Vector3(0, y, -gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
+                frame.frameSide = 1; frame.Box(new Vector3(0, y, gz), new Vector3(2 * gx + t, t, t), Palette.Frame);
+                frame.frameSide = 2; frame.Box(new Vector3(-gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
+                frame.frameSide = 3; frame.Box(new Vector3(gx, y, 0), new Vector3(t, t, 2 * gz), Palette.Frame);
             }
             // The glass's cut edge along the top of the frame: a pale, faintly glowing line (polish note: the glass read
             // only by its dark frame). Together with the shader's rim highlight it says "glass" at full view.
             float ey = GlassTop + t / 2f + 0.004f, ew = 0.022f;
-            mb.emission = 0.12f;
-            mb.Box(new Vector3(0, ey, -gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
-            mb.Box(new Vector3(0, ey, gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
-            mb.Box(new Vector3(-gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
-            mb.Box(new Vector3(gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
-            mb.emission = 0f;
+            frame.emission = 0.12f;
+            frame.frameSide = 0; frame.Box(new Vector3(0, ey, -gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
+            frame.frameSide = 1; frame.Box(new Vector3(0, ey, gz), new Vector3(2 * gx + t, 0.008f, ew), Palette.GlassEdge);
+            frame.frameSide = 2; frame.Box(new Vector3(-gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
+            frame.frameSide = 3; frame.Box(new Vector3(gx, ey, 0), new Vector3(ew, 0.008f, 2 * gz - t), Palette.GlassEdge);
+            frame.emission = 0f;
+            frame.frameSide = -1;
             // The shelf: a grid top so the baked AO can draw the box's contact shadow on it.
             float sy = -plinthH, sx0 = -16f, sx1 = 16f, sz0 = -4.2f, sz1 = 3.6f, cell = 0.3f;
             var keep = mb.jitter; mb.jitter = 0f;
@@ -981,7 +1081,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 8; i++)
             {
                 float y0 = Mathf.Lerp(wy0, wy1, i / 8f), y1 = Mathf.Lerp(wy0, wy1, (i + 1) / 8f);
-                var c0 = Color.Lerp(Palette.WallBottom, Palette.WallTop, i / 8f); var c1 = Color.Lerp(Palette.WallBottom, Palette.WallTop, (i + 1) / 8f);
+                var c0 = Co.Room(Color.Lerp(Palette.WallBottom, Palette.WallTop, i / 8f)); var c1 = Co.Room(Color.Lerp(Palette.WallBottom, Palette.WallTop, (i + 1) / 8f));
                 Vector3 a = new(sx0 * 2f, y0, wz), b = new(sx0 * 2f, y1, wz), c = new(sx1 * 2f, y1, wz), d = new(sx1 * 2f, y0, wz);
                 mb.TriC(a, b, c, c0, c1, c1); mb.TriC(a, c, d, c0, c1, c0);
             }
@@ -1005,7 +1105,9 @@ namespace AquariumCiv.View
             var lb = MeshBuilder.Rent(p.seed * 7919 + (int)p.era * 31 + seed);
             float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
             lb.M = Matrix4x4.TRS(land.OnGround(p.x, p.z) - Vector3.up * sink, Quaternion.Euler(0, p.yaw, 0), Vector3.one * Mathf.Max(0.02f, p.grow));
+            Pieces.LiveSails = sailsApart; // #202: this may be a worker thread
             Pieces.Draw(lb, p, LotGround(lb));
+            Pieces.LiveSails = false;
             mb.AppendFree(lb);
         }
 
@@ -1015,7 +1117,7 @@ namespace AquariumCiv.View
             Pieces.Ground ground = q => land.OnGround(q.x, q.z);
             if (f.crop == CropKind.Wheat || f.crop == CropKind.Sprout)
             {
-                var col = f.crop == CropKind.Wheat ? Palette.Wheat : Palette.Sprout;
+                var col = f.crop == CropKind.Wheat ? Palette.Wheat : Co.sprout;
                 float a = f.rowYaw * Mathf.Deg2Rad;
                 var across = new Vector2(Mathf.Cos(a), -Mathf.Sin(a)); var along = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
                 Vector2 min = f.polygon[0], max = f.polygon[0];
@@ -1075,6 +1177,7 @@ namespace AquariumCiv.View
         void Nature(MeshBuilder mb, int k)
         {
             var near = new List<(Vector2 p, float r)>(taken);
+            var co = Co;
             ChunkBounds(k, out float x0, out float x1, out float z0, out float z1);
             bool In(Vector2 p) => ChunkOf(p) == k;
             float H(int cat, int i, int c) => Land.Hash3(seed * 977 + k * 131 + cat, i, c);
@@ -1083,8 +1186,15 @@ namespace AquariumCiv.View
                 if (In(t.pos))
                 {
                     var tb = MeshBuilder.Rent(Mathf.RoundToInt(t.pos.x * 1000f) * 7919 + Mathf.RoundToInt(t.pos.y * 1000f) + seed);
-                    Pieces.Tree(tb, land.OnGround(t.pos), t.scale, t.pine);
+                    Pieces.Tree(tb, land.OnGround(t.pos), t, co);
                     mb.AppendFree(tb);
+                }
+            foreach (var b in layout.boulders)
+                if (In(b.pos))
+                {
+                    var bb = MeshBuilder.Rent(Mathf.RoundToInt(b.pos.x * 1000f) * 104729 + Mathf.RoundToInt(b.pos.y * 1000f) + seed);
+                    Pieces.Boulder(bb, land.OnGround(b.pos), b, co);
+                    mb.AppendFree(bb);
                 }
             if (layout.reeds)
                 for (int i = 0; i < reedSpots.Count; i++)
@@ -1095,7 +1205,7 @@ namespace AquariumCiv.View
                     foreach (var (q, qr) in taken) if (Vector2.Distance(at, q) < qr) { clash = true; break; }
                     if (clash || CanalDist(at.x, at.y) < 0.06f) continue;
                     var rb = Item(0, i);
-                    Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? Palette.Sprout : Palette.LeafB);
+                    Pieces.Reed(rb, new Vector3(at.x, Mathf.Max(land.Height(at.x, at.y), Land.WaterY), at.y), sprout ? co.sprout : co.leafB);
                     mb.AppendFree(rb);
                 }
             if (!layout.autoNature) return;
@@ -1110,7 +1220,7 @@ namespace AquariumCiv.View
                     float bias = Land.Smooth(-0.6f, 1.8f, p.y) * 0.6f + Land.Smooth(1.5f, -2.5f, xm) * 0.5f + 0.1f;
                     if (H(1, i, 3) > bias || !Free(p, 0.22f, near)) continue;
                     var ib = Item(1, i);
-                    Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f);
+                    Pieces.Tree(ib, land.OnGround(p), Mathf.Lerp(0.75f, 1.2f, H(1, i, 4)), H(1, i, 5) < 0.35f, co);
                     mb.AppendFree(ib);
                     near.Add((p, 0.2f));
                 }
@@ -1119,21 +1229,23 @@ namespace AquariumCiv.View
                 var p = Spot(2, i);
                 if (!Free(p, 0.1f, near)) continue;
                 var ib = Item(2, i);
-                Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f);
+                // The desert's scrub is half cacti: its woods stand round the water, where the shares would make every one a palm.
+                if (co.look.cactusShare > 0f && H(2, i, 5) < 0.55f) Pieces.Cactus(ib, land.OnGround(p), Mathf.Lerp(0.5f, 0.95f, H(2, i, 3)), co);
+                else Pieces.Bush(ib, land.OnGround(p), Mathf.Lerp(0.07f, 0.12f, H(2, i, 3)), H(2, i, 4) < 0.33f, co);
                 mb.AppendFree(ib);
                 near.Add((p, 0.1f));
             }
-            for (int i = 0, n = Mathf.RoundToInt(8 * kd); i < n; i++)
+            for (int i = 0, n = Mathf.RoundToInt(8 * kd * co.look.boulderDensity); i < n; i++)
             {
                 var p = Spot(3, i);
                 if (!Free(p, 0.08f, near)) continue;
                 float r = Mathf.Lerp(0.05f, 0.14f, H(3, i, 3));
                 var ib = Item(3, i);
-                Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f);
+                Pieces.Rock(ib, land.OnGround(p), r, H(3, i, 4) < 0.33f, co);
                 mb.AppendFree(ib);
                 near.Add((p, r));
             }
-            for (int i = 0, n = Mathf.RoundToInt(150 * kd); i < n; i++)
+            for (int i = 0, n = Mathf.RoundToInt(150 * kd * co.look.tuftDensity); i < n; i++)
             {
                 var p = Spot(4, i);
                 if (!Free(p, 0.02f, near)) continue;
@@ -1141,7 +1253,7 @@ namespace AquariumCiv.View
                 var g = land.OnGround(p);
                 float h = Mathf.Lerp(0.05f, 0.1f, H(4, i, 3));
                 float c3 = H(4, i, 4);
-                Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? Palette.GrassC : c3 < 0.66f ? Palette.LeafC : Palette.GrassA);
+                Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC);
                 bool flowers = false;
                 foreach (var c in layout.clearings)
                     if (c.kind == ClearingKind.Flowers && Vector2.Distance(p, c.centre) < c.radius) { flowers = true; break; }
@@ -1161,8 +1273,8 @@ namespace AquariumCiv.View
                 // A little past the shoreline: the ground and the sand rim cover the edge.
                 Vector2 s0 = shore[i] + (shore[i] - land.pond).normalized * 0.05f, s1 = shore[(i + 1) % n] + (shore[(i + 1) % n] - land.pond).normalized * 0.05f;
                 Vector3 p0 = new(s0.x, Land.WaterY, s0.y), p1 = new(s1.x, Land.WaterY, s1.y);
-                if (Vector3.Cross(p1 - c, p0 - c).y > 0) mb.TriC(c, p1, p0, Palette.WaterDeep, Palette.Water, Palette.Water);
-                else mb.TriC(c, p0, p1, Palette.WaterDeep, Palette.Water, Palette.Water);
+                if (Vector3.Cross(p1 - c, p0 - c).y > 0) mb.TriC(c, p1, p0, Co.waterDeep, Co.water, Co.water);
+                else mb.TriC(c, p0, p1, Co.waterDeep, Co.water, Co.water);
             }
             return mb.ToMesh("Water");
         }
@@ -1180,12 +1292,34 @@ namespace AquariumCiv.View
             if (smokeGo != null) { Kill(smokeGo.GetComponent<MeshFilter>().sharedMesh); Kill(smokeGo); smokeGo = null; }
             var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var extra = new List<Vector2>(); var tris = new List<int>();
             var sVerts = new List<Vector3>(); var sCols = new List<Color>(); var sCorner = new List<Vector2>(); var sData = new List<Vector2>(); var sTris = new List<int>();
+            var spots = new List<(Vector3 at, float threshold)>();
             var corners = new[] { new Vector2(-1, -1), new Vector2(-1, 1), new Vector2(1, 1), new Vector2(1, -1) };
             void Add(Vector3 c, float radius, float kind, Color col, float x = 0f, float y = 0f)
             {
                 int o = verts.Count;
                 foreach (var k in corners) { verts.Add(c); cols.Add(col); corner.Add(k); data.Add(new Vector2(radius, kind)); extra.Add(new Vector2(x, y)); }
                 tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
+            }
+            // A lamp's pool lies on the land, so a little grid, not a quad: a flat disc on a slope ends in a hard line where the ground comes through it.
+            // The grid reaches past the radius by the largest pool a look asks for; the shader scales the falloff inside it.
+            void AddPool(float x, float z, float radius, float phase, float strength)
+            {
+                const int Cells = 4;
+                const float Reach = 1.35f;
+                int o = verts.Count;
+                for (int j = 0; j <= Cells; j++)
+                    for (int i = 0; i <= Cells; i++)
+                    {
+                        var c = new Vector2(i * 2f / Cells - 1f, j * 2f / Cells - 1f) * Reach;
+                        verts.Add(land.OnGround(x + c.x * radius, z + c.y * radius) + Vector3.up * 0.024f);
+                        cols.Add(Palette.Lamp); corner.Add(c); data.Add(new Vector2(radius, 8f)); extra.Add(new Vector2(phase, strength));
+                    }
+                for (int j = 0; j < Cells; j++)
+                    for (int i = 0; i < Cells; i++)
+                    {
+                        int a = o + j * (Cells + 1) + i;
+                        tris.AddRange(new[] { a, a + Cells + 1, a + Cells + 2, a, a + Cells + 2, a + 1 });
+                    }
             }
             void AddSmoke(Vector3 c, float phase, float period)
             {
@@ -1201,6 +1335,7 @@ namespace AquariumCiv.View
                     var foot = frame.MultiplyPoint3x4(Vector3.zero);
                     float phase = Pieces.Phase(p.seed);
                     var look = FireLooks.Spec(FireLooks.Active);
+                    spots.Add((frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), 0.05f));                                         // a fire lights its neighbours from the first dusk
                     Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), look.haloRadius, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
                     Add(foot + Vector3.up * 0.02f, look.poolRadius, 4f, Palette.FirePool, phase, look.poolBoost);                 // warm pool on the ground
                     if (look.washRadius > 0f) Add(frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), look.washRadius, 7f, Palette.FlameBodyA, phase, 0.16f); // warm wash over the neighbours
@@ -1217,7 +1352,28 @@ namespace AquariumCiv.View
                         AddSmoke(foot + Vector3.up * 0.3f, (s + Land.Hash3(p.seed, s, 13) * 0.4f) / look.smokePuffs, 4f);
                 }
                 else if (p.kind == PieceKind.Lantern)
-                    Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + Pieces.Phase(p.seed), Palette.Lamp);
+                {
+                    float phase = Pieces.Phase(p.seed);
+                    Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + phase, Palette.Lamp);
+                    var foot = frame.MultiplyPoint3x4(new Vector3(0.065f, 0f, 0));
+                    AddPool(foot.x, foot.z, LanternPool, phase, 1f);
+                    spots.Add((frame.MultiplyPoint3x4(new Vector3(0.065f, 0.26f, 0)), LampThreshold01(phase)));
+                }
+                else if (p.era != Era.Camp && HasWindows(p.kind))
+                {
+                    // The light from a house's front window on the path, a smaller and softer pool than a lantern's.
+                    float phase = Pieces.Phase(p.seed);
+                    var step = frame.MultiplyPoint3x4(new Vector3(-p.w * 0.18f, 0f, -p.d * 0.5f - 0.1f));
+                    AddPool(step.x, step.z, WindowPool, phase, 0.6f);
+                    spots.Add((step + Vector3.up * 0.16f, LampThreshold01(phase)));
+                }
+            }
+            lampCount = spots.Count;
+            if (LampX.Length < lampCount) { LampX = new float[lampCount]; LampY = new float[lampCount]; LampZ = new float[lampCount]; LampThreshold = new float[lampCount]; }
+            for (int i = 0; i < lampCount; i++)
+            {
+                var w = transform.TransformPoint(spots[i].at);
+                LampX[i] = w.x; LampY[i] = w.y; LampZ[i] = w.z; LampThreshold[i] = spots[i].threshold;
             }
             var bounds = new Bounds(new Vector3(0, 1.5f, 0), new Vector3(2 * Land.HX + 1f, 3f, 2 * Land.HZ + 1f));
             if (verts.Count > 0)
@@ -1239,6 +1395,23 @@ namespace AquariumCiv.View
                 smokeGo.GetComponent<MeshRenderer>().receiveShadows = false;
             }
         }
+
+        /// <summary>What has lit windows, so a pool on the path at its door (Pieces: the callers with a lamp phase).</summary>
+        static bool HasWindows(PieceKind k) => k is PieceKind.Home or PieceKind.Shop or PieceKind.Tavern or PieceKind.Guildhall or PieceKind.Church or PieceKind.Market or PieceKind.Smithy or PieceKind.Bakery or PieceKind.Workshop;
+
+        /// <summary>Pool radii (world units) before the look's own size.</summary>
+        public const float LanternPool = 0.62f, WindowPool = 0.36f;
+        /// <summary>The level a lamp's mesh lights at, as the Stylized and Glow shaders' LampOn work it out from its phase.</summary>
+        static float LampThreshold01(float phase) => 0.12f + phase * 0.6f;
+
+        // The lamps of this layout for the driver (world space): filled when the glows are built, read every frame without allocating.
+        int lampCount;
+        public int LampCount => lampCount;
+        public float[] LampX { get; private set; } = new float[0];
+        public float[] LampY { get; private set; } = new float[0];
+        public float[] LampZ { get; private set; } = new float[0];
+        public float[] LampThreshold { get; private set; } = new float[0];
+        public int LampSeed => seed;
 
         // ---------------- people ----------------
         static uint LookSig(VillagerData v)
@@ -1308,9 +1481,69 @@ namespace AquariumCiv.View
                 var go = Spawn("Glass" + name, cube, mat, false);
                 go.transform.localPosition = pos;
                 go.transform.localScale = size;
-                go.GetComponent<MeshRenderer>().receiveShadows = false;
+                var r = go.GetComponent<MeshRenderer>();
+                r.receiveShadows = false;
+                paneRenderers.Add(r);
             }
+            System.Array.Fill(paneFade, 1f);
+            System.Array.Clear(frameFade, 0, frameFade.Length);
+            System.Array.Fill(frameShown, 1f);
             SortPanes();
+            FadeNearGlass(1f);
+        }
+
+        // Front, back, left, right, then the corner posts: the outward direction on the ground, box space.
+        static readonly Vector3[] PartOut =
+        {
+            Vector3.back, Vector3.forward, Vector3.left, Vector3.right,
+            new(-0.7071f, 0f, -0.7071f), new(0.7071f, 0f, -0.7071f), new(0.7071f, 0f, 0.7071f), new(-0.7071f, 0f, 0.7071f),
+        };
+        static readonly int FadeId = Shader.PropertyToID("_Fade"), FrameFadeId = Shader.PropertyToID("_AC_FrameFade");
+
+        /// <summary>The debug panel's near-glass force: 0..1 stands in for the zoom, negative = off.</summary>
+        public static float NearGlassForce = -1f;
+        bool frameFadeSent;
+        readonly float[] paneFade = new float[4], frameShown = new float[8], frameFade = new float[8];
+        /// <summary>What a pane shows now (1 = there, 0 = gone): tests and the debug read-out.</summary>
+        public float PaneOpacity(int pane) => paneFade[pane];
+        /// <summary>A part of the frame now (0..3 the sides, 4..7 the posts).</summary>
+        public float FrameOpacity(int part) => frameShown[part];
+
+        /// <summary>#162: panes and frame between the camera and the people fade as it comes close, and follow as it orbits; the back of the box never does, and clean mode brings everything back.</summary>
+        void FadeNearGlass(float dt)
+        {
+            var cam = Camera.main;
+            if (cam == null || root == null || paneRenderers.Count != 4 || !Application.isPlaying) return;
+            var rig = cam.GetComponent<BoxCamera>();
+            float ratio = rig != null ? rig.zoom : 1f;
+            var care = CareView.Instance;
+            bool clean = care != null && care.CleanMode;
+            var to = transform.InverseTransformDirection(cam.transform.position - transform.position);
+            to.y = 0f;
+            to.Normalize();
+            for (int i = 0; i < 4; i++)
+            {
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), false, clean, NearGlassForce);
+                float now = NearGlassFade.Follow(paneFade[i], want, dt);
+                if (Mathf.Abs(want - now) < 0.002f) now = want;
+                if (now == paneFade[i]) continue;
+                paneFade[i] = now;
+                panes[i].SetFloat(FadeId, now);
+            }
+            bool changed = false;
+            for (int i = 0; i < 8; i++)
+            {
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), true, clean, NearGlassForce);
+                float now = NearGlassFade.Follow(frameShown[i], want, dt);
+                if (Mathf.Abs(want - now) < 0.002f) now = want;
+                if (now == frameShown[i]) continue;
+                frameShown[i] = now;
+                frameFade[i] = 1f - now;
+                changed = true;
+            }
+            // Globals outlive a box: a new one starts from "all shown", so it sends that once, or the last box's fade stays on its frame.
+            if (changed || !frameFadeSent) Shader.SetGlobalFloatArray(FrameFadeId, frameFade);
+            frameFadeSent = true;
         }
 
         /// <summary>Back panes draw first, then the front ones (fixed queues, no per-frame distance sort).</summary>
@@ -1318,17 +1551,17 @@ namespace AquariumCiv.View
         {
             var cam = Camera.main;
             if (cam == null || root == null) return;
-            foreach (Transform t in root)
+            foreach (var r in paneRenderers)
             {
-                if (!t.name.StartsWith("Glass")) continue;
-                var r = t.GetComponent<MeshRenderer>();
+                if (r == null) continue;
+                var t = r.transform;
                 var outward = new Vector3(Mathf.Sign(t.localPosition.x) * (t.localScale.x < 0.1f ? 1 : 0), 0, Mathf.Sign(t.localPosition.z) * (t.localScale.z < 0.1f ? 1 : 0));
                 bool facing = Vector3.Dot(transform.TransformDirection(outward), cam.transform.position - t.position) > 0;
                 r.sharedMaterial.renderQueue = facing ? 3010 : 3000;
             }
         }
 
-        void LateUpdate() { BuildWaitingChunk(); SortPanes(); }
+        void LateUpdate() { BuildWaitingChunk(); SortPanes(); FadeNearGlass(Mathf.Min(Time.unscaledDeltaTime, 0.1f)); }
 
         // ---------------- ambient occlusion ----------------
         /// <summary>The last AO bake's breakdown (keys, timings), for profiling.</summary>

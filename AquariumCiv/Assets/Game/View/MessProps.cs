@@ -214,6 +214,34 @@ namespace AquariumCiv.View
             return best;
         }
 
+        /// <summary>The piece really under a finger: within <paramref name="leastPx"/> of its middle, or inside its own size on screen when it's bigger than that.</summary>
+        public Piece PickUnder(Camera cam, Vector2 screenPos, float leastPx)
+        {
+            Piece best = null;
+            float bestD = float.MaxValue, tan = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            foreach (var p in all)
+            {
+                if (p.leaving || p.t == null) continue;
+                var sp = cam.WorldToScreenPoint(p.Center);
+                if (sp.z <= 0f) continue;
+                float reach = Mathf.Max(leastPx, PieceRadius * p.t.lossyScale.y * Screen.height / (2f * sp.z * tan));
+                float d = Vector2.Distance(screenPos, sp);
+                if (d < reach && d < bestD) { bestD = d; best = p; }
+            }
+            return best;
+        }
+
+        /// <summary>About how far a piece of mess reaches from its middle at scale 1 (box units).</summary>
+        const float PieceRadius = 0.1f;
+
+        /// <summary>Every piece's screen point (tests).</summary>
+        public void OnScreen(Camera cam, List<Vector2> into)
+        {
+            into.Clear();
+            foreach (var p in all)
+                if (!p.leaving && p.t != null) into.Add(cam.WorldToScreenPoint(p.Center));
+        }
+
         public void Wobble(Piece p) { if (p != null) p.wobble = 1f; }
         public void SetHeld(Piece p, bool held) { if (p != null) p.held = held; }
 

@@ -47,7 +47,7 @@ namespace AquariumCiv.View
         public static DollStyle StyleOf(ActivityKind k) => k switch
         {
             ActivityKind.None => DollStyle.Stand,
-            ActivityKind.Sleep => DollStyle.Hidden,
+            ActivityKind.Sleep or ActivityKind.Indoors => DollStyle.Hidden,
             ActivityKind.Nap => DollStyle.Lie,
             ActivityKind.SitOut or ActivityKind.Eat or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or
                 ActivityKind.Drink or ActivityKind.SitWithOld or ActivityKind.MindBabies or ActivityKind.Meeting => DollStyle.Sit,
@@ -108,6 +108,24 @@ namespace AquariumCiv.View
             _ => DollStyle.Stand, // watching, sheltering, a walk waiting to start
         };
 
+        /// <summary>#203: steps a second at a ground speed. The stride is added up frame by frame from this: as a factor on the time, any change
+        /// of speed threw the legs to another part of the swing.</summary>
+        public static float Cadence(DollStyle style, float speed) => style == DollStyle.Run ? 3.2f : Mathf.Clamp(speed / 0.11f, 1.3f, 2.6f);
+
+        /// <summary>A pose part way from one move to the next (<paramref name="k"/> 0 to 1): how a walker's arms come down when they stop.</summary>
+        public static DollPose Blend(in DollPose a, in DollPose b, float k)
+        {
+            var p = b;
+            p.offset = Vector3.Lerp(a.offset, b.offset, k);
+            p.yaw = Mathf.LerpAngle(a.yaw, b.yaw, k);
+            p.lean = Mathf.Lerp(a.lean, b.lean, k);
+            p.roll = Mathf.Lerp(a.roll, b.roll, k);
+            p.squash = Mathf.Lerp(a.squash, b.squash, k);
+            p.armL = Vector3.Lerp(a.armL, b.armL, k);
+            p.armR = Vector3.Lerp(a.armR, b.armR, k);
+            return p;
+        }
+
         /// <summary>Does this move swing a hand tool out along the arm (axe, hammer, hoe, rod, stirring stick)?</summary>
         public static bool Extends(DollStyle s) => s is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.Fish or DollStyle.Stir;
 
@@ -122,9 +140,10 @@ namespace AquariumCiv.View
         /// </summary>
         /// <para><paramref name="progress"/> (0..1 through the activity), <paramref name="since"/> (real seconds into it) and
         /// <paramref name="count"/> drive the moves that tell a story once rather than loop (#92): the lens look (look, lean
-        /// back startled, laugh) and the tap-back's knocks (exactly <paramref name="count"/> of them, then still).</para>
+        /// back startled, laugh) and the tap-back's knocks (exactly <paramref name="count"/> of them, then still). <paramref name="stride"/>: the walk's
+        /// own phase in radians, for a doll that adds it up (<see cref="Cadence"/>); without it the walk runs on <paramref name="t"/>.</para>
         public static DollPose Evaluate(DollStyle style, float t, float pace, int step, int steps, PropSlot slot, bool hasProp, float speed = 0.25f,
-                                        float progress = 0f, float since = 0f, int count = 0)
+                                        float progress = 0f, float since = 0f, int count = 0, float stride = float.NaN)
         {
             var p = DollPose.Rest;
             pace = Mathf.Clamp(pace <= 0f ? 1f : pace, 0.5f, 1.5f);
@@ -144,8 +163,7 @@ namespace AquariumCiv.View
                 case DollStyle.Run:
                 {
                     bool run = style == DollStyle.Run;
-                    float cadence = run ? 3.2f : Mathf.Clamp(speed / 0.11f, 1.3f, 2.6f);
-                    float w = Mathf.Sin(t * cadence * Mathf.PI);
+                    float w = Mathf.Sin(float.IsNaN(stride) ? t * Cadence(style, speed) * Mathf.PI : stride);
                     p.offset.y = Mathf.Abs(w) * (run ? 0.022f : 0.011f);
                     p.roll = w * (run ? 3f : 4.5f);
                     p.lean = run ? 12f : 3f;

@@ -61,7 +61,7 @@ namespace AquariumCiv.Sim.Settle
         {
             this.core = core;
             bool fresh = St.version == 0;
-            if (fresh) St.terrain = core.Config.terrainPreset;
+            if (fresh && St.terrain == 0) St.terrain = core.Config.terrainPreset; // a next box's setting preset is seeded first (SeedNextBox)
             Map = new SiteMap(St, fresh);
             Net = new PathNet(Map);
             placer = new Placer(this);

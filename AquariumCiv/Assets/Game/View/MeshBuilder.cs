@@ -28,6 +28,8 @@ namespace AquariumCiv.View
         /// the global night level (<see cref="NightLamps"/>), each lamp at its own moment, flickering as it comes on.
         /// </summary>
         public float lamp = -1f;
+        /// <summary>0..7: this face belongs to a part of the box's frame, which fades by itself near the camera (#162): UV1.x = -1 - part.</summary>
+        public int frameSide = -1;
         /// <summary>
         /// Flame vertices (the fire pit): with <see cref="flameHeight"/> above 0 every new vertex gets UV1 = (2 + height
         /// weight, <see cref="flamePhase"/>); the weight is 0 at <see cref="flameBaseY"/> and ~1 at flameBaseY + flameHeight.
@@ -57,7 +59,7 @@ namespace AquariumCiv.View
         {
             verts.Clear(); normals.Clear(); colors.Clear(); uvs.Clear(); lamps.Clear(); tris.Clear();
             M = Matrix4x4.identity;
-            jitter = 0.035f; sway = emission = 0f; lamp = -1f;
+            jitter = 0.035f; sway = emission = 0f; lamp = -1f; frameSide = -1;
             flameBaseY = flameHeight = flamePhase = 0f;
             if (Pool.Count < PoolMax) Pool.Add(this);
         }
@@ -78,6 +80,7 @@ namespace AquariumCiv.View
             verts.Add(p); normals.Add(n); colors.Add(linear);
             uvs.Add(new Vector2(sway, emission));
             if (flameHeight > 0f) lamps.Add(new Vector2(2f + Mathf.Clamp01((p.y - flameBaseY) / flameHeight) * 0.99f, flamePhase));
+            else if (frameSide >= 0) lamps.Add(new Vector2(-1f - frameSide, 0f));
             else lamps.Add(lamp < 0f ? Vector2.zero : new Vector2(1f, lamp));
         }
 
@@ -101,7 +104,7 @@ namespace AquariumCiv.View
             a = M.MultiplyPoint3x4(a); b = M.MultiplyPoint3x4(b); c = M.MultiplyPoint3x4(c);
             var n = Vector3.Cross(b - a, c - a);
             if (n.sqrMagnitude < 1e-12f) return;
-            n.Normalize();
+            n /= n.magnitude; // not Normalize(): it gives zero under a length of 1e-5, a tiny face's normal, and a zero normal is a NaN pixel that blooms over the screen
             float j = 1f + ((float)rng.NextDouble() * 2f - 1f) * jitter;
             var lin = Linear(new Color(col.r * j, col.g * j, col.b * j));
             lin.a = 1f;
@@ -116,7 +119,7 @@ namespace AquariumCiv.View
             a = M.MultiplyPoint3x4(a); b = M.MultiplyPoint3x4(b); c = M.MultiplyPoint3x4(c);
             var n = Vector3.Cross(b - a, c - a);
             if (n.sqrMagnitude < 1e-12f) return;
-            n.Normalize();
+            n /= n.magnitude;
             int i = verts.Count;
             var la = Linear(ca); la.a = 1f; var lb = Linear(cb); lb.a = 1f; var lc = Linear(cc); lc.a = 1f;
             Add(a, n, la); Add(b, n, lb); Add(c, n, lc);

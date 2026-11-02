@@ -9,16 +9,13 @@ namespace AquariumCiv.View
 {
     /// <summary>
     /// The day-3 recall question (#100, vertical-slice-plan §5.4): "Which stories from your box do you remember?" with a number
-    /// to tap. A small sheet in the #36 style (Plaster card, Timber text, Terracotta action). When to ask is
+    /// to tap. A <see cref="GlassSheet"/> on the bottom edge, in the thumb zone, with no scrim (#166, board 3.3). When to ask is
     /// <see cref="RecallPrompt.ShouldAsk"/>; this class only gathers the context, shows the sheet, and saves the
     /// <see cref="RecallState"/> next to the telemetry files. The answer is logged as a number only (never free text).
     /// Stable element names for tests: <c>recall-sheet</c>, <c>recall-0</c> .. <c>recall-4</c>, <c>recall-dismiss</c>.
     /// </summary>
     public class RecallPromptView : MonoBehaviour
     {
-        static readonly Color Plaster = Hex("#EFE3CC"), Timber = Hex("#6A4B36"), Terracotta = Hex("#C66F4E"), Frame = Hex("#2E2A27"), Canvas = Hex("#E2D3B3");
-        static Color Hex(string h) { ColorUtility.TryParseHtmlString(h, out var c); return c; }
-
         public static RecallPromptView Instance { get; private set; }
         /// <summary>Tests: set false to keep the bootstrap from adding the view to the scene.</summary>
         public static bool AutoCreate = true;
@@ -26,11 +23,14 @@ namespace AquariumCiv.View
         public float checkSeconds = 2f;
 
         public RecallState State { get; private set; } = new RecallState();
-        public bool IsOpen => sheet != null && sheet.style.display == DisplayStyle.Flex;
+        public bool IsOpen => sheet != null && sheet.IsOpen;
         public VisualElement Root => root;
 
         UIDocument doc;
-        VisualElement root, sheet;
+        VisualElement root;
+        GlassSheet sheet;
+        Rect lastSafe;
+        Vector2Int lastScreen;
         float nextCheck;
         bool loaded;
 
@@ -93,9 +93,10 @@ namespace AquariumCiv.View
         {
             var hud = GameHud.Instance;
             if (hud != null && !string.IsNullOrEmpty(hud.OpenSheet)) return true;
+            if (CardStackView.Instance != null && CardStackView.Instance.Showing) return true; // same place on the screen, and the story comes first
             if (FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen) return true;
             if (MomentPlayer.Instance != null && (MomentPlayer.Instance.Playing || GameClock.Instance != null && GameClock.Instance.Held)) return true;
-            if (PersonCardView.Instance != null && PersonCardView.Instance.IsOpen) return true;
+            if (PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen) return true;
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var sm = ShowMeDirector.Instance;
@@ -126,6 +127,7 @@ namespace AquariumCiv.View
 
         void Update()
         {
+            if (sheet != null && (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y)) ApplySafeArea();
             if (Time.unscaledTime < nextCheck || GameClock.Tel == null) return;
             nextCheck = Time.unscaledTime + checkSeconds;
             if (!loaded) LoadState();
@@ -146,12 +148,29 @@ namespace AquariumCiv.View
             RecallPrompt.Shown(State, day);
             SaveState();
             GameClock.Tel.RecallShown(day);
-            sheet.style.display = DisplayStyle.Flex;
+            root.style.display = DisplayStyle.Flex;
+            sheet.Open();
+            GameHud.Instance?.SetOutsideSheet(sheet, true); // the tools step back and a toast rides above it; the name stays
+        }
+
+        void Close()
+        {
+            var hud = GameHud.Instance;
+            if (hud != null && hud.OutsideSheet == sheet) hud.SetOutsideSheet(null);
+            sheet.Close(() => { if (!sheet.IsOpen) root.style.display = DisplayStyle.None; });
+        }
+
+        void ApplySafeArea()
+        {
+            lastSafe = Screen.safeArea;
+            lastScreen = new Vector2Int(Screen.width, Screen.height);
+            var i = GameUiPanel.SafeInsets(lastSafe, Screen.width, Screen.height);
+            sheet.SetInsets(i, GlassSheet.IsShort(Screen.width, Screen.height) ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad);
         }
 
         void Answer(int count)
         {
-            sheet.style.display = DisplayStyle.None;
+            Close();
             RecallPrompt.Answered(State);
             SaveState();
             GameClock.Tel.RecallAnswered(count);
@@ -161,7 +180,7 @@ namespace AquariumCiv.View
 
         void Dismiss()
         {
-            sheet.style.display = DisplayStyle.None;
+            Close();
             RecallPrompt.Dismissed(State);
             SaveState();
             GameClock.Tel.RecallDismissed();
@@ -171,71 +190,29 @@ namespace AquariumCiv.View
         {
             parent.Clear();
             root = new VisualElement { name = "recall-root", pickingMode = PickingMode.Ignore };
-            Fill(root);
+            root.AddToClassList("hud-fill");
+            root.style.display = DisplayStyle.None;
             parent.Add(root);
 
-            sheet = new VisualElement { name = "recall-sheet", pickingMode = PickingMode.Position };
-            Fill(sheet);
-            sheet.style.backgroundColor = new Color(0.12f, 0.1f, 0.09f, 0.55f);
+            sheet = new GlassSheet { name = "recall-sheet" };
             sheet.style.display = DisplayStyle.None;
             root.Add(sheet);
 
-            float scale = 1080f / Mathf.Max(1, Screen.width);
-            float topInset = (Screen.height - Screen.safeArea.yMax) * scale;
-            var card = new VisualElement { name = "recall-card" };
-            card.style.position = Position.Absolute;
-            card.style.left = 40; card.style.right = 40; card.style.top = 300 + topInset;
-            Pad(card, 36); Round(card, 36);
-            card.style.backgroundColor = Plaster;
-            sheet.Add(card);
-
-            card.Add(Label("A quick question", 52, Timber, FontStyle.Bold));
-            var hint = Label("Without looking: how many stories from your box can you remember? Tap a number.", 34, Timber, FontStyle.Normal);
-            hint.style.marginTop = 8; hint.style.marginBottom = 26; hint.style.whiteSpace = WhiteSpace.Normal;
-            card.Add(hint);
-
-            var row = new VisualElement { name = "recall-answers" };
-            row.style.flexDirection = FlexDirection.Row;
+            var card = new GlassCard { name = "recall-card" };
+            card.Dots.style.display = DisplayStyle.None;
+            card.Set("A quick question", "Without looking: how many stories from your box can you remember? Tap a number.");
+            card.Head.Add(new GlassButton("Not now", Dismiss, ButtonKind.Quiet, UiRole.Close) { name = "recall-dismiss" });
+            card.Actions.name = "recall-answers";
             for (int i = 0; i <= 4; i++)
             {
                 int n = i;
-                var b = Pill("recall-" + i, i == 4 ? "4+" : i.ToString(), Terracotta, Plaster, 48);
-                b.style.flexGrow = 1; b.style.height = 124; b.style.marginRight = i < 4 ? 14 : 0;
-                b.clicked += () => Answer(n);
-                row.Add(b);
+                var b = new GlassButton(i == 4 ? "4+" : i.ToString(), () => Answer(n), ButtonKind.Secondary, UiRole.Confirm) { name = "recall-" + i };
+                b.AddToClassList("recall-answer");
+                if (i == 4) b.AddToClassList("recall-answer--last");
+                card.Actions.Add(b);
             }
-            card.Add(row);
-
-            var no = Pill("recall-dismiss", "Not now", Canvas, Timber, 40);
-            no.style.height = 112; no.style.marginTop = 22;
-            no.clicked += Dismiss;
-            card.Add(no);
-        }
-
-        // ---------------- tiny UI helpers (this sheet's own; the HUD's are private to its assembly) ----------------
-        static void Fill(VisualElement e)
-        {
-            e.style.position = Position.Absolute; e.style.left = 0; e.style.right = 0; e.style.top = 0; e.style.bottom = 0;
-        }
-        static void Pad(VisualElement e, float v) { e.style.paddingLeft = e.style.paddingRight = e.style.paddingTop = e.style.paddingBottom = v; }
-        static void Round(VisualElement e, float r)
-        {
-            e.style.borderTopLeftRadius = e.style.borderTopRightRadius = e.style.borderBottomLeftRadius = e.style.borderBottomRightRadius = r;
-        }
-        static Label Label(string t, float size, Color c, FontStyle style)
-        {
-            var l = new Label(t);
-            l.style.fontSize = size; l.style.color = c; l.style.unityFontStyleAndWeight = style;
-            return l;
-        }
-        static Button Pill(string name, string text, Color bg, Color fg, float size)
-        {
-            var b = new Button { name = name, text = text };
-            b.style.backgroundColor = bg; b.style.color = fg; b.style.fontSize = size;
-            b.style.unityFontStyleAndWeight = FontStyle.Bold;
-            b.style.borderTopWidth = b.style.borderBottomWidth = b.style.borderLeftWidth = b.style.borderRightWidth = 0;
-            Round(b, 40);
-            return b;
+            sheet.Add(card);
+            ApplySafeArea();
         }
 
         // ---------------- debug (the dbg panel, `script eval`) ----------------
@@ -267,7 +244,7 @@ namespace AquariumCiv.View
             var v = Instance;
             if (v == null) return "no RecallPromptView";
             v.State = new RecallState(); v.loaded = true; v.SaveState();
-            if (v.sheet != null) v.sheet.style.display = DisplayStyle.None;
+            if (v.IsOpen) v.Close();
             return "recall state cleared";
         }
 

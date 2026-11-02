@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A: Keeper's Notebook</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@500;700&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+body{margin:0}
+a{color:#4a3324}a:hover{color:#2e2a27}
+.board{width:1760px;height:960px;box-sizing:border-box;padding:28px 40px;background:#2e2a27;color:#efe3cc;font-family:'PT Serif',Georgia,serif;display:flex;flex-direction:column;gap:18px}
+.head{display:flex;align-items:baseline;gap:18px}.head h1{margin:0;font:700 30px Lora,Georgia,serif}.head p{margin:0;font-size:16px;color:#d9ccb4}
+.row{display:flex;gap:40px}
+.cell{display:flex;flex-direction:column;gap:8px}.cap{font-size:14px;color:#d9ccb4}
+.ph{position:relative;width:390px;height:790px;overflow:hidden;border-radius:26px;background:#d8c8a8}
+.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+button{font-family:inherit;border:0;margin:0;cursor:pointer}
+.top{position:absolute;left:16px;right:16px;top:40px;display:flex;align-items:center;gap:6px}
+.name{display:flex;flex-direction:column;min-width:0;color:#3d2a1e;line-height:1.15;text-shadow:0 1px 0 #f5ecd9}
+.name b{font:700 18px Lora,Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.name span{font-size:14px}
+.ic{width:44px;height:44px;flex:none;background:transparent;color:#3d2a1e;display:flex;align-items:center;justify-content:center;padding:0}
+.ic.fb{opacity:.72}.sp{flex:1}
+.tools{position:absolute;left:16px;right:16px;bottom:30px;display:flex;gap:8px}
+.t{flex:1;height:56px;border-radius:10px;background:#efe3cc;color:#4a3324;font-size:17px;font-weight:700;border:1px solid #b88a3e;box-shadow:0 3px 8px #2e2a2755}
+.t.on{background:#e2d3b3}
+.peek{position:absolute;left:16px;right:16px;bottom:98px;background:#efe3cc;border:1px solid #b88a3e;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;color:#4a3324;box-shadow:0 4px 12px #2e2a2766}
+.peek:after{content:"";position:absolute;left:30px;bottom:-8px;width:14px;height:14px;background:#efe3cc;border-right:1px solid #b88a3e;border-bottom:1px solid #b88a3e;transform:rotate(45deg)}
+.por{width:44px;height:44px;flex:none;border-radius:50%;background:#5e7f43;color:#efe3cc;font:700 18px Lora,serif;display:flex;align-items:center;justify-content:center;border:3px solid #b88a3e;box-sizing:border-box}
+.peek b{display:block;font:700 16px/1.2 Lora,Georgia,serif}.peek span{display:block;font-size:13px;line-height:1.25;font-style:italic;margin-top:2px}
+.sheet{position:absolute;left:0;right:0;bottom:0;box-sizing:border-box;background:#efe3cc;border-top:3px solid #b88a3e;color:#4a3324;padding:14px 16px 30px;display:flex;flex-direction:column;gap:6px;box-shadow:0 -6px 16px #2e2a2755}
+.dots{display:flex;gap:6px;justify-content:center}.dots i{width:7px;height:7px;border-radius:50%;background:#c7b48e}.dots i.c{background:#6a4b36}
+.hd{display:flex;align-items:center;gap:10px}.hd h2{margin:0;flex:1;font:700 21px/1.15 Lora,Georgia,serif;color:#3d2a1e}
+.ghost{min-height:44px;padding:0 6px;background:transparent;color:#6a4b36;font-size:14px}
+.body{margin:0;font-size:15px;line-height:1.35}.sub{margin:0;font-size:14px;color:#6a4b36}
+.q{margin:0;font-style:italic;font-size:14px;line-height:1.3}
+.acts{display:flex;gap:8px;margin-top:auto;align-items:center}
+.b2{height:46px;padding:0 16px;border-radius:9px;background:#e2d3b3;color:#4a3324;font-size:16px;font-weight:700}
+.b1{height:46px;padding:0 24px;border-radius:9px;background:#9e5033;color:#efe3cc;font-size:16px;font-weight:700;margin-left:auto;border:1px solid #6a3a24}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:13px;padding:5px 9px;border-radius:7px;background:#e2d3b3;border-left:3px solid #5e7f43}
+.tag{position:absolute;background:#efe3cc;color:#3d2a1e;border:1px solid #b88a3e;border-radius:7px;padding:3px 9px;font:700 14px Lora,serif;box-shadow:0 2px 5px #2e2a2755}
+.pin{position:absolute;left:16px;bottom:96px;height:44px;display:flex;align-items:center;gap:8px;padding:0 12px 0 0;border-radius:22px;background:#efe3cc;border:1px solid #b88a3e;color:#4a3324;font-size:15px;font-weight:700;max-width:220px;box-shadow:0 3px 8px #2e2a2755}
+.pin .por{width:40px;height:40px;font-size:15px}.pin span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.watch{position:absolute;left:44px;right:44px;bottom:204px;height:56px;border-radius:10px;background:#9e5033;color:#efe3cc;font:700 17px Lora,serif;border:1px solid #6a3a24;box-shadow:0 4px 10px #2e2a2766}
+.toast{position:absolute;left:16px;right:16px;bottom:146px;box-sizing:border-box;padding:9px 12px;border-radius:9px;background:#3d2a1ee8;color:#efe3cc;font-size:14px;line-height:1.3;text-align:center}
+</style>
+</helmet>
+<div class="board">
+<div class="head"><h1>A · Keeper's Notebook</h1><p>Lora + PT Serif. Paper sheets, a brass edge, ink text. Works today with no new render code.</p></div>
+<div class="row">
+
+<div class="cell"><div class="cap">HUD + peek</div><div class="ph"><img class="bg" src="/_blob/825a8be3fe83193ea2532b748d9a23f1" alt="The glass box on its shelf">
+<div class="top"><div class="name"><b>Mossbarrow</b><span>Year 8</span></div><button class="ic" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"></path></svg></button><div class="sp"></div><button class="ic fb" aria-label="Send feedback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg></button><button class="ic" aria-label="Photo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></button></div>
+<div class="peek"><div class="por">P</div><div><b>Piers married Avis</b><span>At the fire: Edmund and Hal aren't speaking.</span></div></div>
+<div class="tools"><button class="t">History</button><button class="t">Clean</button><button class="t">Shape</button></div>
+</div></div>
+
+<div class="cell"><div class="cap">Card stack: a wish</div><div class="ph"><img class="bg" src="/_blob/b2883df4395870da842bb0caca5dc046" alt="The village in the box">
+<div class="sheet" style="height:237px"><div class="dots"><i></i><i></i><i class="c"></i><i></i><i></i></div>
+<div class="hd"><div class="por">M</div><h2>Mabel has a wish</h2><button class="ghost">Skip all</button></div>
+<p class="body">Mabel the woodcutter would love rain on the west fields.</p><p class="sub">Year 70</p>
+<div class="acts"><button class="b2">Next</button><button class="b2">Show me</button><button class="b1">Give</button></div></div>
+</div></div>
+
+<div class="cell"><div class="cap">Person card</div><div class="ph"><img class="bg" src="/_blob/b2883df4395870da842bb0caca5dc046" alt="The village in the box">
+<div class="tag" style="left:150px;top:300px">Greta</div>
+<div class="sheet" style="height:237px"><div class="hd"><div class="por">G</div><h2>Greta Pike</h2><button class="b2" style="padding:0 12px">Pin</button><button class="ghost">Close</button></div>
+<p class="sub">Woodcutter, miller · 52 years · the grump</p><p class="q">"Everyone to the window! The Keeper's looking in."</p>
+<div class="chips"><span class="chip">Dorrit, child</span><span class="chip">Hilda, friend</span><span class="chip" style="border-left-color:#9e5033">Dorrit, rival</span></div></div>
+</div></div>
+
+<div class="cell"><div class="cap">Worst case: dirty glass, long name, Watch + toast</div><div class="ph"><img class="bg" src="/_blob/b386ff9aa568d0470f46d7552fb1ebd9" alt="The box behind dirty glass">
+<div class="top"><div class="name" style="max-width:190px"><b>Hollowmere-by-the-Stream</b><span>Year 118</span></div><button class="ic" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3.5"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"></path></svg></button><div class="sp"></div><button class="ic fb" aria-label="Send feedback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg></button><button class="ic" aria-label="Photo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></button></div>
+<button class="watch">Watch them become a village</button>
+<div class="toast">Tap the ground to place the Grove. Two fingers move the camera.</div>
+<div class="pin"><div class="por">P</div><span>Piers (remembered)</span></div>
+<div class="tools"><button class="t">History</button><button class="t">Clean</button><button class="t">Shape</button></div>
+</div></div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1760,"height":960}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

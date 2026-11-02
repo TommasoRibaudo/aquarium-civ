@@ -166,6 +166,7 @@ namespace AquariumCiv.View.PlayTests
 
         // ---------------- tests ----------------
         [UnityTest]
+        [Category("Tester6")]
         public IEnumerator FullCleanByTouch_IsUnderAMinute_AndTheMessGoesAway()
         {
             yield return Open();
@@ -206,7 +207,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(hud.CleanMode);
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 Assert.IsTrue(hud.CleanMode, "the Clean button switches clean mode on");
-                for (int i = 0; i < 40; i++) yield return null;
+                for (float t = 0f; t < 3f && care.SunFactor >= 0.80f; t += Time.unscaledDeltaTime) yield return null; // #183: the sun eases in seconds, not frames
                 Assert.Less(care.SunFactor, 0.80f, "full mess: the sun is at about -25 %");
 
                 // Wipe the whole glass by finger: sweeps across the box, fingertip-and-a-half rows.

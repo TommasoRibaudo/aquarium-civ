@@ -5,6 +5,7 @@
         "AquariumCiv.Sim",
         "AquariumCiv.Game",
         "AquariumCiv.Moments",
+        "AquariumCiv.Light",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

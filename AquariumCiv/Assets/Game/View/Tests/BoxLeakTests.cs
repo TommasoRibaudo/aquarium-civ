@@ -33,6 +33,10 @@ namespace AquariumCiv.View.Tests
         [UnityTest]
         public IEnumerator AfterADomainReload_OneBoxAndNoOrphans()
         {
+            // The reload outlives the Pipeline's run collector, so a run driven from the Editor (unity command test run) never gets its RunFinished:
+            // the status stays "running" and a synchronous call dies with "socket hang up". Batch mode (CI) runs it; by hand: AQ_RELOAD_TEST=1.
+            Assume.That(Application.isBatchMode || System.Environment.GetEnvironmentVariable("AQ_RELOAD_TEST") == "1",
+                "skipped in an interactive Editor: the domain reload loses the Pipeline test collector (docs/tooling.md)");
             OpenSlice();
             yield return null;
             EditorUtility.RequestScriptReload();

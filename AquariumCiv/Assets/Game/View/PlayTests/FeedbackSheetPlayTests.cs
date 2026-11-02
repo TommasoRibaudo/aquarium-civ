@@ -48,12 +48,12 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(fb.IsOpen, "the HUD button opens the sheet");
                 yield return Shot("feedback_sheet_open");
 
-                var send = fb.Root.Q<Button>("fb-send");
-                Assert.IsFalse(send.enabledSelf, "Send waits for a kind and a text");
+                var send = (GlassButton)fb.Root.Q("fb-send");
+                Assert.IsFalse(send.Available, "Send waits for text (spec §4)");
                 yield return Tap(fb.Root, "fb-kind-bug");
                 fb.Root.Q<TextField>("fb-text").value = "[TEST #55] Please ignore: automated check of the feedback sheet. Safe to close.";
                 yield return Frames(3);
-                Assert.IsTrue(send.enabledSelf, "Send enabled");
+                Assert.IsTrue(send.Available, "Send is ready");
                 yield return Tap(fb.Root, "fb-send");
                 yield return Until(() => !fb.IsOpen, 3f);
                 Assert.IsFalse(fb.IsOpen, "the sheet closes after Send");

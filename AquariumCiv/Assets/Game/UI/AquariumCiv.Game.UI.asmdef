@@ -7,7 +7,9 @@
         "Unity.InputSystem",
         "AquariumCiv.Life",
         "AquariumCiv.Moments",
-        "AquariumCiv.Audio"
+        "AquariumCiv.Audio",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

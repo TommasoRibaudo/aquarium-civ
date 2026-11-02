@@ -88,6 +88,19 @@ namespace AquariumCiv.View
         public Vector2 pos;
         public float scale = 1f;
         public bool pine;
+        /// <summary>#115: Auto is the valley's broadleaf or pine (<see cref="pine"/>).</summary>
+        public TreeShape shape;
+    }
+
+    public enum TreeShape { Auto, Palm, Cactus, Conifer }
+
+    /// <summary>#115: a boulder of the setting's rock (shade 0 rock, 1 dark, 2 light).</summary>
+    [Serializable]
+    public class BoulderData
+    {
+        public Vector2 pos;
+        public float radius = 0.1f;
+        public int shade;
     }
 
     /// <summary>A peg doll to place (until the activity planner, #29/#30, moves them).</summary>
@@ -118,6 +131,7 @@ namespace AquariumCiv.View
         public List<PathData> paths = new();
         public List<ClearingData> clearings = new();
         public List<TreeData> trees = new();
+        public List<BoulderData> boulders = new();
         public List<VillagerData> villagers = new();
         /// <summary>Dug channels: short polylines (cell centre to cell centre) carved into the ground as water strips.</summary>
         public List<Vector2[]> canals = new();
@@ -130,7 +144,7 @@ namespace AquariumCiv.View
 
         public void Clear()
         {
-            pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); villagers.Clear(); canals.Clear();
+            pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); boulders.Clear(); villagers.Clear(); canals.Clear();
             autoNature = true; autoTrees = true;
         }
 

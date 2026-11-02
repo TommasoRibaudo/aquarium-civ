@@ -21,9 +21,12 @@ namespace AquariumCiv.View
     /// box completes there: <see cref="GameClock.CompleteBox"/> writes both boxes in one atomic save), the last wipe and the lamp,
     /// the plate engraved, the roll call, and the camera on the new box. Left before the crossing nothing moved and it replays;
     /// left after, box 2 is the active box and the rest is skipped.
-    /// Afterwards a Shelf button opens a simple shelf view (the boxes side by side, tap one or pick it from the list to visit
-    /// it read-only: its people live the time away, the plate and plinths show); "Back" returns to the active box.
-    /// Debug: the static Debug* methods (debug panel, `script eval`).
+    /// When the camera reaches the shelf the moment waits for the setting picker ("The next box", desert oasis preselected, proposal
+    /// question 7): the crossing needs the setting, and its Close leaves the moment, which replays.
+    /// Afterwards a Shelf chip opens the shelf view (the boxes side by side, tap one or pick it from the list to visit
+    /// it read-only: its people live the time away, the plate and plinths show); the banner's exit returns to the active box. Stories
+    /// wins the chip's slot, and Shelf moves into Settings while it's up (question 5).
+    /// Keeper's Glass (#170, board 3.6). Debug: the static Debug* methods (debug panel, `script eval`).
     /// </summary>
     public class BoxCompleteController : MonoBehaviour, IMomentAnchors
     {
@@ -33,6 +36,8 @@ namespace AquariumCiv.View
         public MomentDirector Director { get; private set; }
         public bool Playing => Director != null && Director.State == MomentDirector.Phase.Playing;
         public bool ShelfOpen { get; private set; }
+        /// <summary>The shelf view is up: what stands in the box has left the screen.</summary>
+        public static bool ShelfIsOpen => Instance != null && Instance.ShelfOpen;
         public string SettingForNextBox = BoxSetting.DesertOasis;
         /// <summary>The last moment's progress for tests: the commit happened (box 2 exists).</summary>
         public bool Committed { get; private set; }
@@ -42,12 +47,20 @@ namespace AquariumCiv.View
         ShelfProps props;
         BoxCamera cam;
         UIDocument doc;
-        VisualElement root, sheet, sheetList, banner;
-        Button prompt, shelfBtn, backBtn, closeShelf;
-        Label hint, bubble, caption, bannerText, roll;
+        VisualElement root, safe, sheetList;
+        GlassBigPrompt prompt;
+        ShelfChip shelfBtn;
+        GlassButton backBtn;
+        GlassBanner banner;
+        GlassCaption roll;
+        GlassPlate plateTag;
+        GlassSheet sheet, pickerSheet;
+        GlassScrim shelfScrim, pickerScrim;
+        GlassOption oasisOption, mountainOption;
+        MomentOverlay overlay;
+        bool bannerUp, plateUp, rollUp;
         bool hudWasVisible = true;
         float nextRead, bubbleUntil;
-        float lastToast = -1f;
         bool pressDown, pressMoved;
         Vector2 pressStart;
         float pressTime;
@@ -59,13 +72,21 @@ namespace AquariumCiv.View
         float shelfDrop = -1f;
         string stageSetting = BoxSetting.DesertOasis;
         float beatStartTime;
-        int plateFirstLen;
-        bool engravedLamp;
+        int plateFirstLen, lookbackAt;
+        string wipeLine;
+        bool engravedLamp, picking, picked, pickerInMoment;
         bool momentActive;
         CameraPose shelfPose;
 
-        /// <summary>The banner's top in panel units, under the HUD's top row (the title pill and Photo end near 330).</summary>
-        public const float VisitBannerTop = 350f;
+        /// <summary>Moment seconds into the shelf beat: the camera has arrived and the new box is down, so the picker has its view.</summary>
+        public const float PickAfter = 6f;
+        /// <summary>The visit's one warm line: no numbers (question 24).</summary>
+        public const string VisitLine = "Life went on here while you were away.";
+        /// <summary>A name longer than this makes the banner's exit too wide to leave the box's own name room.</summary>
+        const int BackNameMax = 12;
+
+        /// <summary>The setting picker is up.</summary>
+        public bool PickerOpen => pickerSheet != null && pickerSheet.IsOpen;
 
         /// <summary>A box's name as the HUD says it: the settlement's name, else <paramref name="unnamed"/> ("Your box").</summary>
         public static string BoxName(SimCore sim, string unnamed) => sim != null && !string.IsNullOrEmpty(sim.State.settlementName) ? sim.State.settlementName : unnamed;
@@ -75,6 +96,13 @@ namespace AquariumCiv.View
             BoxSetting.DesertOasis => "Desert oasis",
             BoxSetting.MountainVillage => "Mountain village",
             _ => "River valley",
+        };
+
+        /// <summary>The picker's sub-line for a setting.</summary>
+        public static string SettingLine(string setting) => setting switch
+        {
+            BoxSetting.MountainVillage => "The founders climb to a high meadow",
+            _ => "The founders unpack by a fire",
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -120,6 +148,7 @@ namespace AquariumCiv.View
             if (Instance != this) return;
             UiInput.Remove(IsOverUi);
             if (Clock != null) Clock.ViewChanged -= OnViewChanged;
+            overlay?.Release();
         }
 
         void OnDestroy()
@@ -169,6 +198,7 @@ namespace AquariumCiv.View
         void Update()
         {
             if (root == null || Clock == null || Clock.Session == null) return;
+            ApplySafe();
             if (Time.unscaledTime >= nextRead)
             {
                 nextRead = Time.unscaledTime + 0.5f;
@@ -179,7 +209,7 @@ namespace AquariumCiv.View
             else if (momentActive && Director.State == MomentDirector.Phase.Finished) Finish();
             else if (ShelfOpen) ShelfInput();
             UpdateButtons();
-            if (lastToast > 0f && Time.unscaledTime > lastToast) { bubble.style.display = DisplayStyle.None; lastToast = -1f; }
+            overlay.Tick();
             // a museum visit: Clean and Shape don't apply there (tester batch 2)
             var hudNow = GameHud.Instance;
             if (hudNow != null) hudNow.HideTools("museum", Clock.Visiting && !Playing);
@@ -202,24 +232,41 @@ namespace AquariumCiv.View
             }
         }
 
+        void ApplySafe()
+        {
+            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            safe.style.left = i.x; safe.style.top = i.y; safe.style.right = i.z; safe.style.bottom = i.w;
+            float pad = GlassSheet.IsShort(Screen.width, Screen.height) ? GlassSheet.ShortBottomPad : GlassSheet.BottomPad;
+            sheet.SetInsets(i, pad);
+            pickerSheet.SetInsets(i, pad);
+            overlay.ApplySafe(i);
+            prompt.style.bottom = GameUiPanel.PromptLane(i.w);
+            shelfBtn.style.bottom = GameUiPanel.Lane(GameUiPanel.PinBottom, i.w);
+            banner.style.bottom = GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
+            roll.style.top = Mathf.Max(143f, i.y + 16f); // the caption's lane, under a notch
+        }
+
         void UpdateButtons()
         {
             bool free = HudFree() && !MomentPlayer.PromptsBlocked() && !Playing && !ShelfOpen && !(MomentPlayer.Instance != null && MomentPlayer.Instance.Playing);
-            prompt.style.display = free && PeakWaiting ? DisplayStyle.Flex : DisplayStyle.None;
-            if (prompt.resolvedStyle.display == DisplayStyle.Flex || free)
+            bool peak = free && PeakWaiting;
+            if (prompt.Ready != peak) prompt.Ready = peak;
+            if (peak)
             {
                 string t = "Finish " + (Clock.ActiveSim?.PlaceName ?? "the box");
                 if (prompt.text != t) prompt.text = t;
             }
+            var hud = GameHud.Instance;
             var shelf = Clock.Shelf;
-            bool hasShelf = shelf != null && shelf.boxes.Count > 1;
-            shelfBtn.style.display = free && hasShelf ? DisplayStyle.Flex : DisplayStyle.None;
-            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            prompt.style.bottom = GameUiPanel.PromptBottom + i.w;
-            shelfBtn.style.bottom = GameUiPanel.PromptBottom + i.w;
-            banner.style.top = VisitBannerTop + i.y; // under the title pill and the Feedback / Photo corner
-            bool hud = GameHud.Instance != null && GameHud.Instance.CameraMode;
-            if (hud) banner.style.display = DisplayStyle.None;
+            bool hasShelf = shelf != null && shelf.boxes.Count > 1 && !Clock.Visiting;
+            bool stories = hud != null && hud.StoriesUp;
+            var d = free && hasShelf && !stories && !(hud != null && hud.ChipLaneTaken) ? DisplayStyle.Flex : DisplayStyle.None;
+            if (shelfBtn.style.display != d) shelfBtn.style.display = d;
+            if (hud != null)
+            {
+                hud.ShelfTapped ??= () => OpenShelf();
+                hud.SetShelfRow(hasShelf && stories);
+            }
         }
 
         void UpdateBanner()
@@ -228,16 +275,27 @@ namespace AquariumCiv.View
             bool visiting = clock != null && clock.Visiting && !Playing;
             var hud = GameHud.Instance;
             bool hide = hud != null && (hud.CameraMode || !hud.IsVisible);
-            banner.style.display = visiting && !ShelfOpen && !hide ? DisplayStyle.Flex : DisplayStyle.None;
+            bool show = visiting && !ShelfOpen && !hide;
+            if (show != bannerUp)
+            {
+                bannerUp = show;
+                if (show) GlassMotion.Show(banner, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
+                else GlassMotion.Hide(banner, GlassMotion.SlideOff, GlassMotion.SlideMs);
+            }
+            if (hud != null) hud.SetBannerUp(visiting && !ShelfOpen);
             if (!visiting) return;
             var b = clock.Shelf.Box(clock.Session.visitIndex);
             if (b == null) return;
-            string t = ShelfProps.PlateLines(b).Replace("\n", " · ");
-            t = SettingLabel(b.setting) + " · " + t;
-            if (bannerText.text != t) bannerText.text = t;
-            string back = "Back to " + BoxName(clock.ActiveSim, "your box");
+            // Box name and years, with the way back beside them (spec §4). The plate reads "name, years 1-118, the eras".
+            var lines = ShelfProps.PlateLines(b).Split('\n');
+            string years = lines.Length > 1 && lines[1].Length > 0 ? char.ToUpperInvariant(lines[1][0]) + lines[1].Substring(1) : "";
+            if (banner.TitleLabel.text != lines[0] || bannerYears != years) { banner.Set(lines[0], years); bannerYears = years; }
+            string name = BoxName(clock.ActiveSim, "your box");
+            string back = "Back to " + (name.Length > BackNameMax ? "your box" : name);
             if (backBtn.text != back) backBtn.text = back;
         }
+
+        string bannerYears;
 
         // ---------------- the last moment ----------------
         /// <summary>Starts the last moment. False if the peak is not ready, a moment is playing, or a visit is open.</summary>
@@ -251,7 +309,7 @@ namespace AquariumCiv.View
             if (hud != null)
             {
                 hud.CloseSheet(); hud.SetCleanMode(false); hud.SetCameraMode(false);
-                hudWasVisible = hud.IsVisible; hud.SetVisible(false);
+                hudWasVisible = hud.IsVisible; hud.SlideAway();
             }
             cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : FindAnyObjectByType<BoxCamera>();
             var from = CameraPose.Default;
@@ -278,6 +336,7 @@ namespace AquariumCiv.View
             lookback.Add("It was a good glass to live in.");
             stageSetting = SettingForNextBox;
             Committed = false; engravedLamp = false; shelfDrop = -1f;
+            picking = picked = false; lookbackAt = -1;
             ClearLanterns();
             Props.ClearStage();
             Props.HideIndex = -2;
@@ -335,19 +394,27 @@ namespace AquariumCiv.View
                 if (clock.Visiting && Committed) clock.ShowActive(); // box 2 on screen
             }
             engravedLamp = true;
+            ClosePicker();
             var hud = GameHud.Instance;
             if (hud != null) hud.SetVisible(hudWasVisible);
-            hint.style.display = bubble.style.display = caption.style.display = roll.style.display = DisplayStyle.None;
+            overlay.Clear();
+            ShowRoll(false);
+            ShowPlate(false);
             if (cam != null) { cam.enabled = true; }
             OnViewChanged();
             if (Committed && clock != null && clock.Session.sim != null)
-                Say($"{SettingLabel(clock.Shelf.Active?.setting)} · the founders unpack by a fire.", 5f);
+            {
+                string setting = clock.Shelf.Active?.setting;
+                string line = SettingLine(setting);
+                overlay.SayLine(null, $"{SettingLabel(setting)} · {char.ToLowerInvariant(line[0])}{line.Substring(1)}.", 5f, hudWasVisible);
+            }
             LastInfo = crossed ? "last moment done: box 2 is on" : "last moment left before the crossing (replays)";
             Debug.Log("[LastMoment] ended: " + LastInfo);
         }
 
         void Play(float dt)
         {
+            if (picking) { Stage(dt); overlay.SetHint(false); return; } // the moment waits for the setting
             ReadPointer(out bool down, out Vector2 pos);
             if (down && !pressDown && !GameUiPanel.Over(root, pos)) { pressDown = true; pressMoved = false; pressStart = pos; }
             if (!down) pressDown = false;
@@ -363,8 +430,9 @@ namespace AquariumCiv.View
                 cam.yaw = p.yaw; cam.pitch = p.pitch; cam.zoom = p.zoom;
                 cam.Apply();
             }
-            hint.style.display = Director.ShowHurryHint ? DisplayStyle.Flex : DisplayStyle.None;
-            if (bubble.resolvedStyle.display == DisplayStyle.Flex && Director.Time >= bubbleUntil) bubble.style.display = DisplayStyle.None;
+            bool wipe = Director.CurrentBeat != null && Director.CurrentBeat.Has(BeatAction.LastWipe);
+            overlay.SetHint(wipe || Director.ShowHurryHint, wipe ? wipeLine : MomentDirector.HurryHint);
+            if (overlay.LineUp && Director.Time >= bubbleUntil) overlay.HideBubble();
         }
 
         void OnBeat(MomentBeat b, int index)
@@ -372,16 +440,16 @@ namespace AquariumCiv.View
             var ctx = Director.Context;
             Debug.Log($"[LastMoment] beat {b.id} at {Director.Time:0.0} s");
             beatStartTime = Director.Time;
-            if (string.IsNullOrEmpty(b.line)) { bubble.style.display = DisplayStyle.None; bubbleUntil = 0f; }
+            if (string.IsNullOrEmpty(b.line)) { overlay.HideBubble(); bubbleUntil = 0f; }
             switch (b.light)
             {
                 case MomentLight.Morning: PeopleView.SetHourGently(8.5f); break;
                 case MomentLight.Dusk: PeopleView.SetHourGently(19.5f); break;
             }
-            if (!string.IsNullOrEmpty(b.line) && !b.line.Contains("{lookback}"))
+            if (b.Has(BeatAction.LastWipe)) { overlay.HideBubble(); wipeLine = ctx.Fill(b.line); } // three words, on the hint
+            else if (!string.IsNullOrEmpty(b.line) && !b.line.Contains("{lookback}"))
             {
-                bubble.text = ctx.Fill(b.line);
-                bubble.style.display = DisplayStyle.Flex;
+                overlay.SayMoment(null, ctx.Fill(b.line));
                 bubbleUntil = Mathf.Min(Director.Time + 6f, Director.BeatEnd(index));
             }
             if (b.Has(BeatAction.LegendLanterns)) MakeLanterns();
@@ -398,13 +466,92 @@ namespace AquariumCiv.View
                 Props.ClearStage();
                 if (Clock.Visiting && Committed) Clock.ShowActive();
                 Props.HideIndex = -1;
-                caption.text = SettingLabel(stageSetting);
-                caption.style.display = DisplayStyle.Flex;
-                roll.style.display = DisplayStyle.None;
+                overlay.SetCaption(SettingLabel(stageSetting));
             }
-            if (b.Has(BeatAction.RollCall)) roll.style.display = DisplayStyle.Flex;
-            else roll.style.display = DisplayStyle.None;
-            if (b.id != "newbox") caption.style.display = DisplayStyle.None;
+            ShowRoll(b.Has(BeatAction.RollCall));
+            ShowPlate(b.id == "plate");
+            if (b.id != "newbox") overlay.HideCaption();
+        }
+
+        void ShowRoll(bool on)
+        {
+            if (on == rollUp) return;
+            rollUp = on;
+            if (on) GlassMotion.Show(roll, GlassMotion.CaptionOff, null, GlassMotion.CaptionInMs);
+            else GlassMotion.Hide(roll, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
+        }
+
+        void ShowPlate(bool on)
+        {
+            if (on == plateUp) return;
+            plateUp = on;
+            plateTag.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>The plate on its component, over the plate in the world, as it's engraved: the moment's words are read here.</summary>
+        void DrawPlate(string engraved)
+        {
+            var lines = engraved.Split('\n');
+            plateTag.Title = lines[0];
+            plateTag.SetLines(lines.Length > 1 ? lines[1] : "", lines.Length > 2 ? lines[2] : "");
+            var c = Camera.main;
+            if (c == null || root.panel == null || Props.PlateText == null) return;
+            var at = Props.PlateText.transform;
+            var s = c.WorldToScreenPoint(at.position);
+            if (s.z <= 0f) return;
+            var p = RuntimePanelUtils.ScreenToPanel(root.panel, new Vector2(s.x, Screen.height - s.y));
+            // It covers the plate in the world, whatever the camera's distance, so there are never two plates on screen.
+            float k = root.panel.visualTree.layout.width / Mathf.Max(1f, Screen.width);
+            float across = Vector2.Distance(c.WorldToScreenPoint(at.position - at.right * ShelfProps.PlateW * 0.5f), c.WorldToScreenPoint(at.position + at.right * ShelfProps.PlateW * 0.5f)) * k;
+            float tall = Vector2.Distance(c.WorldToScreenPoint(at.position - at.up * ShelfProps.PlateH * 0.5f), c.WorldToScreenPoint(at.position + at.up * ShelfProps.PlateH * 0.5f)) * k;
+            plateTag.style.width = Mathf.Max(544.5f, across + PlateCover);
+            plateTag.style.minHeight = tall + PlateCover;
+            float w = plateTag.resolvedStyle.width, h = plateTag.resolvedStyle.height;
+            var q = GameUiPanel.KeepOnScreen(plateTag, new Vector2(p.x - (float.IsNaN(w) ? 0f : w) * 0.5f, p.y - (float.IsNaN(h) ? 0f : h) * 0.5f), 190f);
+            plateTag.style.left = q.x; plateTag.style.top = q.y;
+        }
+
+        const float PlateCover = 48f;
+
+        // ---------------- the setting picker ----------------
+        void OpenPicker(bool inMoment)
+        {
+            pickerInMoment = inMoment;
+            picking = inMoment;
+            picked = true;
+            ShowChoice(SettingForNextBox);
+            overlay.HideBubble();
+            UiSound.Play(UiRole.Open);
+            pickerScrim.Open();
+        }
+
+        void ClosePicker()
+        {
+            picking = false;
+            if (PickerOpen) pickerScrim.Close();
+        }
+
+        void ShowChoice(string setting)
+        {
+            oasisOption.On = setting != BoxSetting.MountainVillage;
+            mountainOption.On = setting == BoxSetting.MountainVillage;
+        }
+
+        void Choose(string setting)
+        {
+            SettingForNextBox = setting;
+            ShowChoice(setting);
+            if (!picking) return;
+            stageSetting = setting;
+            Props.StageNewBox(setting, Mathf.Clamp01(shelfDrop)); // the box on the shelf is the one chosen
+        }
+
+        void PickerBegin() => ClosePicker();
+
+        void PickerClose()
+        {
+            if (pickerInMoment && Playing) Leave(); // nothing has moved yet: the moment replays from the top
+            else ClosePicker();
         }
 
         // per-frame staging that depends on where we are in a beat
@@ -416,8 +563,13 @@ namespace AquariumCiv.View
             if (b.id == "lookback" && lookback.Count > 0)
             {
                 int i = Mathf.Min(lookback.Count - 1, Mathf.FloorToInt(t / 7f));
-                if (bubble.text != lookback[i]) { bubble.text = lookback[i]; }
-                bubble.style.display = DisplayStyle.Flex; bubbleUntil = float.MaxValue;
+                if (i != lookbackAt)
+                {
+                    lookbackAt = i;
+                    bubbleUntil = float.MaxValue;
+                    if (i == lookback.Count - 1) { overlay.HideBubble(); overlay.SetCaption(lookback[i]); } // the look back's last line is a caption (board 3.6)
+                    else overlay.SayMoment(Director.Context.leaderPresent ? Director.Context.leaderName : null, lookback[i]);
+                }
             }
             UpdateLanterns(dt);
             if (shelfDrop >= 0f && shelfDrop < 1f && Props != null)
@@ -425,6 +577,7 @@ namespace AquariumCiv.View
                 shelfDrop = Mathf.Min(1f, shelfDrop + dt / 1.2f);
                 Props.StageNewBox(stageSetting, shelfDrop);
             }
+            if (b.Has(BeatAction.SetDownBox) && !picked && t >= PickAfter) OpenPicker(true);
             if (b.id == "crossing" && Props != null)
             {
                 Props.LayRuler(Mathf.Clamp01(t / 4f));
@@ -437,11 +590,13 @@ namespace AquariumCiv.View
                 int full = Props.PlateFull.Length;
                 int n = Mathf.Clamp(Mathf.RoundToInt(plateFirstLen + (full - plateFirstLen) * u), 0, full);
                 Props.PlateText.text = Props.PlateFull.Substring(0, n);
+                DrawPlate(Props.PlateText.text);
             }
             if (b.id == "rollcall" && names.Count > 0)
             {
                 int start = Mathf.Min(Mathf.FloorToInt(t / 1.2f), Mathf.Max(0, names.Count - 1));
-                roll.text = string.Join("\n", names.Skip(start).Take(5));
+                var shown = names.Skip(start).Take(5).ToList();
+                roll.Set(shown[0], string.Join("\n", shown.Skip(1)));
             }
         }
 
@@ -534,8 +689,9 @@ namespace AquariumCiv.View
             }
             SyncShelf();
             RebuildSheet();
-            sheet.style.display = DisplayStyle.Flex;
-            Sfx.Play(CueLibrary.UiOpen); // #96
+            UiSound.Play(UiRole.Open);
+            shelfScrim.Open();
+            shelfScrim.pickingMode = PickingMode.Ignore; // the boxes behind the sheet take taps: its Close is the way out
             return true;
         }
 
@@ -543,8 +699,7 @@ namespace AquariumCiv.View
         {
             if (!ShelfOpen) return;
             ShelfOpen = false;
-            Sfx.Play(CueLibrary.UiClose); // #96
-            sheet.style.display = DisplayStyle.None;
+            shelfScrim.Close();
             if (cam != null) { cam.enabled = true; OnViewChanged(); }
         }
 
@@ -558,12 +713,13 @@ namespace AquariumCiv.View
             {
                 var bx = b;
                 string place = bx.state != null && !string.IsNullOrEmpty(bx.state.settlementName) ? bx.state.settlementName : "Box " + (bx.index + 1);
-                string label = place + " · " + SettingLabel(bx.setting) + (bx.museum ? " · museum" : " · playing") + (bx.index == shown ? " · here" : "");
-                var btn = new Button(() => PickBox(bx.index)) { name = "shelf-box-" + bx.index, text = label };
-                btn.AddToClassList("hud-btn");
-                btn.style.marginBottom = 14;
-                btn.style.whiteSpace = WhiteSpace.Normal;
-                sheetList.Add(btn);
+                string where = SettingLabel(bx.setting) + (bx.museum ? " · museum" : " · playing") + (bx.index == shown ? " · here" : "");
+                var row = new Button(() => { UiSound.Play(UiRole.Tap); PickBox(bx.index); }) { name = "shelf-box-" + bx.index };
+                row.RemoveFromClassList(Button.ussClassName);
+                row.AddToClassList("shelf-row");
+                row.Add(Text(place, "type-small-head", "shelf-row-name"));
+                row.Add(Text(where, "type-sub", "shelf-row-where"));
+                sheetList.Add(row);
             }
         }
 
@@ -589,11 +745,10 @@ namespace AquariumCiv.View
             if (clock == null || Playing) return false;
             if (!clock.VisitBox(index, out var r)) return false;
             HideLines();
-            string away = r.months > 0
-                ? $"While you were away: {r.months / SimConfig.MonthsPerYear} years, {r.births} born, {r.deaths} gone."
-                : "";
-            if (away != "") Say(away, 6f);
-            LastInfo = "visiting box " + index + (away != "" ? " · " + away : "");
+            var hud = GameHud.Instance;
+            if (hud != null) hud.HideTools("museum", true); // before the line: hiding them drops any toast
+            if (r.months > 0 && hud != null) hud.Toast(VisitLine, VisitLineSeconds); // a warm line, no numbers (question 24)
+            LastInfo = "visiting box " + index + (r.months > 0 ? $" · away {r.months} months, {r.births} born, {r.deaths} gone" : "");
             return true;
         }
 
@@ -602,18 +757,11 @@ namespace AquariumCiv.View
         /// <summary>Takes any said line down (this one's and the era moment's), e.g. "the founders unpack by a fire".</summary>
         void HideLines()
         {
-            if (bubble != null) bubble.style.display = DisplayStyle.None;
-            lastToast = -1f;
+            overlay?.HideBubble();
             if (MomentPlayer.Instance != null) MomentPlayer.Instance.HideSaid();
         }
 
-        void Say(string text, float seconds)
-        {
-            if (bubble == null || string.IsNullOrEmpty(text)) return;
-            bubble.text = text;
-            bubble.style.display = DisplayStyle.Flex;
-            lastToast = Time.unscaledTime + seconds;
-        }
+        const float VisitLineSeconds = 4f;
 
         // taps on a box in the shelf view
         bool tapDown; Vector2 tapStart; float tapTime;
@@ -662,72 +810,68 @@ namespace AquariumCiv.View
             parent.Clear();
             root = new VisualElement { name = "boxcomplete-root", pickingMode = PickingMode.Ignore };
             root.AddToClassList("hud-fill");
-            root.style.position = Position.Absolute;
-            root.style.left = root.style.right = root.style.top = root.style.bottom = 0;
             parent.Add(root);
+            safe = new VisualElement { name = "boxcomplete-safe", pickingMode = PickingMode.Ignore };
+            safe.AddToClassList("hud-fill");
+            root.Add(safe);
 
-            prompt = new Button(() => Begin()) { name = "complete-prompt", text = "Finish the box" };
-            prompt.AddToClassList("hud-btn"); prompt.AddToClassList("hud-btn--primary");
-            CenterPin(prompt, GameUiPanel.PromptBottom);
-            root.Add(prompt);
+            prompt = new GlassBigPrompt("Finish the box", () => Begin()) { name = "complete-prompt" };
+            prompt.Ready = false;
+            safe.Add(prompt);
 
-            shelfBtn = new Button(() => OpenShelf()) { name = "shelf-open", text = "Shelf" };
-            shelfBtn.AddToClassList("hud-btn"); shelfBtn.AddToClassList("hud-btn--small");
-            shelfBtn.style.position = Position.Absolute; shelfBtn.style.left = 24; shelfBtn.style.bottom = GameUiPanel.PromptBottom;
-            root.Add(shelfBtn);
+            shelfBtn = new ShelfChip(() => OpenShelf()) { name = "shelf-open" };
+            shelfBtn.style.display = DisplayStyle.None;
+            safe.Add(shelfBtn);
 
-            hint = Pill("boxcomplete-hint", MomentDirector.HurryHint, 120f, false);
-            bubble = Pill("boxcomplete-bubble", "", 0f, true);
-            caption = Pill("boxcomplete-caption", "", 0f, true);
-            caption.style.top = 220f; caption.style.fontSize = 44;
-            roll = Pill("boxcomplete-roll", "", 0f, true);
-            roll.style.top = 360f; roll.style.fontSize = 36;
+            roll = new GlassCaption("") { name = "boxcomplete-roll" };
+            roll.style.display = DisplayStyle.None;
+            root.Add(roll);
+            overlay = new MomentOverlay(root, safe, "boxcomplete");
 
-            banner = new VisualElement { name = "visit-banner" };
-            banner.AddToClassList("hud-toast");
-            banner.style.top = VisitBannerTop; banner.style.bottom = StyleKeyword.Auto;
-            banner.style.flexDirection = FlexDirection.Column; banner.style.alignItems = Align.Center;
+            plateTag = new GlassPlate("", "", "") { name = "boxcomplete-plate" };
+            plateTag.AddToClassList("boxcomplete-plate");
+            plateTag.style.display = DisplayStyle.None;
+            root.Add(plateTag);
+
+            banner = new GlassBanner(" ", null) { name = "visit-banner" };
+            banner.TitleLabel.name = "visit-plate";
             banner.style.display = DisplayStyle.None;
-            bannerText = new Label("") { name = "visit-plate", pickingMode = PickingMode.Ignore };
-            bannerText.style.whiteSpace = WhiteSpace.Normal; bannerText.style.marginBottom = 14; bannerText.style.fontSize = 30;
-            banner.Add(bannerText);
-            backBtn = new Button(Back) { name = "shelf-back", text = "Back" };
-            backBtn.AddToClassList("hud-btn");
-            banner.Add(backBtn);
-            root.Add(banner);
+            backBtn = new GlassButton("Back", Back, ButtonKind.Primary, UiRole.Back) { name = "shelf-back" };
+            backBtn.AddToClassList("visit-back");
+            banner.End.Add(backBtn);
+            safe.Add(banner);
 
-            sheet = new VisualElement { name = "shelf-sheet" };
-            sheet.AddToClassList("hud-toast");
-            sheet.style.bottom = 250f; sheet.style.flexDirection = FlexDirection.Column; sheet.style.alignItems = Align.Stretch;
-            sheet.style.display = DisplayStyle.None; sheet.style.width = new Length(88, LengthUnit.Percent);
-            var title = new Label("The shelf") { pickingMode = PickingMode.Ignore };
-            title.style.marginBottom = 14; title.style.unityTextAlign = TextAnchor.MiddleCenter;
-            sheet.Add(title);
-            sheetList = new VisualElement { name = "shelf-list" };
-            sheet.Add(sheetList);
-            closeShelf = new Button(CloseShelf) { name = "shelf-close", text = "Close" };
-            closeShelf.AddToClassList("hud-btn");
-            sheet.Add(closeShelf);
-            root.Add(sheet);
+            sheet = new GlassSheet();
+            shelfScrim = new GlassScrim("shelf", sheet);
+            root.Add(shelfScrim);
+            sheet.Add(GlassSheet.Head("The shelf", "shelf-close", CloseShelf));
+            var scroll = new GlassScroll { LinePitch = GameUiPanel.MinTarget };
+            scroll.AddToClassList("shelf-scroll");
+            sheet.Add(scroll);
+            sheetList = new VisualElement { name = "shelf-list", pickingMode = PickingMode.Ignore };
+            scroll.Add(sheetList);
+
+            pickerSheet = new GlassSheet(SheetHeight.Picker);
+            pickerSheet.AddToClassList("picker-sheet");
+            pickerScrim = new GlassScrim("picker", pickerSheet);
+            root.Add(pickerScrim);
+            pickerSheet.Add(GlassSheet.Head("The next box", "picker-close", PickerClose));
+            oasisOption = new GlassOption(SettingLabel(BoxSetting.DesertOasis), SettingLine(BoxSetting.DesertOasis), () => Choose(BoxSetting.DesertOasis)) { name = "picker-oasis" };
+            pickerSheet.Add(oasisOption);
+            mountainOption = new GlassOption(SettingLabel(BoxSetting.MountainVillage), SettingLine(BoxSetting.MountainVillage), () => Choose(BoxSetting.MountainVillage)) { name = "picker-mountain" };
+            pickerSheet.Add(mountainOption);
+            var acts = new VisualElement { pickingMode = PickingMode.Ignore };
+            acts.AddToClassList("kg-card-acts");
+            acts.Add(new GlassButton("Begin", PickerBegin, ButtonKind.Primary, UiRole.Confirm) { name = "picker-begin" });
+            pickerSheet.Add(acts);
+
+            ApplySafe();
         }
 
-        static void CenterPin(VisualElement e, float bottom)
+        static Label Text(string words, params string[] classes)
         {
-            e.style.position = Position.Absolute;
-            e.style.bottom = bottom;
-            e.style.left = new Length(50, LengthUnit.Percent);
-            e.style.translate = new Translate(new Length(-50, LengthUnit.Percent), 0);
-        }
-
-        Label Pill(string name, string text, float bottom, bool top)
-        {
-            var l = new Label(text) { name = name, pickingMode = PickingMode.Ignore };
-            l.AddToClassList("hud-toast");
-            l.style.bottom = bottom;
-            l.style.whiteSpace = WhiteSpace.Normal;
-            l.style.display = DisplayStyle.None;
-            if (top) { l.style.bottom = StyleKeyword.Auto; l.style.top = new Length(30, LengthUnit.Percent); }
-            root.Add(l);
+            var l = new Label(words) { pickingMode = PickingMode.Ignore };
+            foreach (var c in classes) l.AddToClassList(c);
             return l;
         }
 
@@ -772,6 +916,15 @@ namespace AquariumCiv.View
             if (next == null) return "could not complete";
             clock.ShowActive();
             return "box completed · box 2 in " + SettingLabel(setting) + " · " + Status();
+        }
+
+        /// <summary>Debug: the setting picker on its own, outside the moment. Begin keeps what's chosen for the next box.</summary>
+        public static string DebugPicker()
+        {
+            if (Instance == null) return "no controller";
+            if (Instance.PickerOpen) { Instance.ClosePicker(); return "picker closed: " + Instance.SettingForNextBox; }
+            Instance.OpenPicker(false);
+            return "picker open";
         }
 
         public static string DebugVisit(int index = 0) => Instance != null && Instance.Visit(index) ? Status() : "cannot visit box " + index;

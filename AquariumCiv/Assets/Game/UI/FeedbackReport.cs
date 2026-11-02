@@ -11,8 +11,20 @@ namespace AquariumCiv.GameUI
     /// </summary>
     public static class FeedbackReport
     {
-        /// <summary>In the body where the uploaded screenshot goes; the sender swaps it at send time (so a queued note can still upload later).</summary>
+        /// <summary>In the body where the screenshot goes; the sender swaps it at send time.</summary>
         public const string ScreenshotMarker = "@@SCREENSHOT@@";
+        /// <summary>GitHub's limit on an issue body, and what <see cref="ScreenshotBlock"/> adds round the picture.</summary>
+        public const int MaxIssueChars = 65536, ScreenshotWrapChars = 96;
+
+        /// <summary>The picture in the issue: base64, folded, so the note stays readable (#153). A person or an agent decodes it. Null: none.</summary>
+        public static string ScreenshotBlock(string base64) => base64 == null ? "_(no screenshot)_"
+            : $"<details><summary>Screenshot (base64 jpg, decode to view)</summary>\n\n```\n{base64}\n```\n</details>";
+
+        /// <summary>The comment that tells this note from any other (#155, #171: the same note sent again at the next launch).</summary>
+        public static string NoteIdLine(string id) => $"<!-- note-id {id} -->\n";
+
+        /// <summary>Is the note in a reply from GitHub's issue list? (The list's JSON holds the bodies, comment and all.)</summary>
+        public static bool AlreadyFiled(string issuesJson, string id) => !string.IsNullOrEmpty(issuesJson) && issuesJson.Contains("note-id " + id + " ");
         public const int MaxLogLines = 150;
         public const int MaxTextChars = 600;
 

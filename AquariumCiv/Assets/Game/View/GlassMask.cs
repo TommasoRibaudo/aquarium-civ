@@ -1,4 +1,5 @@
 using System;
+using AquariumCiv.View.Grime;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -15,25 +16,18 @@ namespace AquariumCiv.View
         public readonly Vector2 size;
         public readonly float[] grime, weight;
         public double sum;
-        float norm = 1f;   // the mean growth weight, so the mask's mean follows the level it is given
+        float norm = 1f;   // the mean growth weight of the glass that can hold grime, so that glass's mean follows the level it is given
         public bool dirty;
         public float glint, peakMean;
 
-        public GlassMask(Vector2 size, float texelsPerUnit, int index)
+        /// <summary><paramref name="seed"/> picks this pane's pattern (<see cref="GrimePatches"/>, #121): no two panes share one.</summary>
+        public GlassMask(Vector2 size, float texelsPerUnit, int seed)
         {
             this.size = size;
             width = Mathf.Clamp(Mathf.RoundToInt(size.x * texelsPerUnit), 8, 512);
             height = Mathf.Clamp(Mathf.RoundToInt(size.y * texelsPerUnit), 8, 512);
             grime = new float[width * height];
-            weight = new float[width * height];
-            float ox = index * 13.7f;
-            for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-            {
-                float u = x / (float)width * size.x, v = y / (float)height;
-                float n = Mathf.PerlinNoise(ox + u * 1.3f, v * size.y * 1.3f);
-                weight[y * width + x] = Mathf.Lerp(0.55f, 1.45f, n) * (1.2f - 0.4f * v);
-            }
+            weight = GrimePatches.Weights(seed, width, height, size.x, size.y);
             Renormalise();
         }
 
@@ -54,15 +48,23 @@ namespace AquariumCiv.View
             Renormalise();
         }
 
+        /// <summary>The level is about the glass that can get dirty. Counting the texels under the soil (a third of a pane) here
+        /// scaled the level by 1.5: 0.8 on the sim was 0.9 above the ground with 73% of it pinned at 1, and 1.0 looked the same as 0.8.</summary>
         void Renormalise()
         {
             double s = 0;
-            for (int i = 0; i < weight.Length; i++) s += weight[i];
-            norm = Mathf.Max(0.05f, (float)(s / weight.Length));
+            int live = 0;
+            for (int i = 0; i < weight.Length; i++) { s += weight[i]; if (weight[i] > LiveWeight) live++; }
+            LiveTexels = Mathf.Max(1, live);
+            norm = Mathf.Max(0.05f, (float)(s / LiveTexels));
         }
 
+        const float LiveWeight = 0.01f;
         public int Texels => grime.Length;
-        public float Mean => (float)(sum / grime.Length);
+        /// <summary>The texels that can hold grime: all but the glass below the ground.</summary>
+        public int LiveTexels { get; private set; }
+        /// <summary>Mean grime over the glass that can hold it.</summary>
+        public float Mean => (float)(sum / LiveTexels);
 
         /// <summary>Fresh, even grime at this level (a new session, a loaded save).</summary>
         public void ResetTo(float level)
@@ -127,6 +129,21 @@ namespace AquariumCiv.View
             return removed;
         }
 
+        /// <summary>#147: dirties a disc (something hit the pane here): up to <paramref name="strength"/> more grime at the centre, none below the ground.</summary>
+        public void Smudge(Vector2 uv, float radius, float strength)
+        {
+            double added = 0;
+            ForDisc(uv, radius, (i, f) =>
+            {
+                float before = grime[i];
+                float after = Mathf.Min(1f, before + strength * f * weight[i]);
+                grime[i] = after;
+                added += after - before;
+            });
+            sum += added;
+            if (added > 0) dirty = true;
+        }
+
         /// <summary>Wipes along a segment (stamps a third of the radius apart).</summary>
         public double BrushLine(Vector2 fromUv, Vector2 toUv, float radius, float strength)
         {
@@ -174,7 +191,7 @@ namespace AquariumCiv.View
     /// Pure, so it is the same on every run.</summary>
     public static class GlassNoise
     {
-        public const int Size = 128;
+        public const int Size = 256;
 
         public static byte[] Bytes(int seed = 11)
         {
@@ -224,6 +241,15 @@ namespace AquariumCiv.View
         }
     }
 
+    /// <summary>Where a pane's detail noise sits (#121): its own offset into the tile and its own turn, from the same seed as its mask,
+    /// so the panes never show the same smudges side by side.</summary>
+    public static class GlassPaneNoise
+    {
+        public static Vector2 Offset(int seed) => new(Land.Hash3(seed, 11, 3), Land.Hash3(seed, 12, 5));
+        /// <summary>Radians, within 20 degrees of upright: the detail's drips run down, and a pane turned further makes them smears across the glass.</summary>
+        public static float Rotation(int seed) => (Land.Hash3(seed, 13, 7) - 0.5f) * 0.7f;
+    }
+
     /// <summary>The care layer's pure numbers (unit-tested): how mess dims the sun, and the spotless thresholds.</summary>
     public static class CareMath
     {
@@ -235,11 +261,17 @@ namespace AquariumCiv.View
         /// <summary>The sun's intensity factor for a mess level 0..1: 1 when clean, 0.75 at full mess.</summary>
         public static float SunScale(float messLevel) => 1f - MaxSunDim * Mathf.Clamp01(messLevel);
 
-        /// <summary>Mean grime over several panes, weighted by their texel counts.</summary>
+        /// <summary>The panes' opacity at full cover. Grime is a film you look through: at 0.8 (with the shader's old curve) it read as
+        /// opaque blotches that hid the people, day or night. The dirtiest glass stays see-through, and it is the same at every hour.</summary>
+        public const float PatchAlpha = 0.66f;
+        /// <summary>The film's colour: a brown drab, because the olive it was disappears on a green box once the film is see-through.</summary>
+        public static readonly Color GrimeColor = new(0.29f, 0.26f, 0.17f, 1f);
+
+        /// <summary>Mean grime over several panes, weighted by their texels that can hold grime.</summary>
         public static float WeightedMean(GlassMask[] panes)
         {
             double s = 0; long n = 0;
-            foreach (var p in panes) { s += p.sum; n += p.Texels; }
+            foreach (var p in panes) { s += p.sum; n += p.LiveTexels; }
             return n == 0 ? 0f : (float)(s / n);
         }
     }

@@ -95,7 +95,7 @@ namespace AquariumCiv.Sim
         /// (<see cref="SimState.founderIds"/>) copied in as grown people with a link back, the leader first and chief, and the
         /// relics that crossed (<see cref="Relic.carriedFromBox"/>). Fresh dice from <paramref name="seed"/>; nothing of the
         /// old box's economy crosses.</summary>
-        public static SimCore SeedNextBox(SimConfig config, SimCore from, int seed, int boxIndex, BoxCompletion completion, out List<FounderLink> links)
+        public static SimCore SeedNextBox(SimConfig config, SimCore from, int seed, int boxIndex, BoxCompletion completion, out List<FounderLink> links, int terrainPreset = 0)
         {
             links = new List<FounderLink>();
             var old = from.State;
@@ -104,6 +104,7 @@ namespace AquariumCiv.Sim
             {
                 seed = seed, rng = new SimRandom(seed), econRng = new SimRandom(seed ^ 0x2C1B3C6D), storyRng = new SimRandom(seed ^ 0x51ED270B),
                 population = 5, food = 20, wood = 4, mood = 0.7f, boxIndex = boxIndex,
+                settle = new Settle.SettleState { terrain = terrainPreset }, // the setting's land (#115); 0 = the config's
             };
             var core = new SimCore(config, s);
             core.AddBuilding(BuildingType.Camp);

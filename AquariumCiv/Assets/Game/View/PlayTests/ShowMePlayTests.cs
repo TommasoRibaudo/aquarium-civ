@@ -41,6 +41,7 @@ namespace AquariumCiv.View.PlayTests
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             GameUiPanel.AcceptInputUnfocused(true); // UI Toolkit drops taps while the Editor is behind another window
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            ShowMeDirector.BubblesOn = true; // a static: earlier fixtures switch it off (many leave it off), and this one tests the normal-play default
             savePath = GameClock.DefaultSavePath;
             backup = savePath + ".showme-test-backup";
             if (File.Exists(savePath)) { File.Copy(savePath, backup, true); File.Delete(savePath); }
@@ -229,8 +230,11 @@ namespace AquariumCiv.View.PlayTests
                     if (c.echo && !string.IsNullOrEmpty(plan.echo.line))
                     {
                         StringAssert.Contains(plan.echo.line, d.LastLine, $"{c.name}: the echo's line is said");
-                        Assert.Greater(d.EchoLinesOverHead, linesOver, $"{c.name}: over the speaker's head, not at the fixed spot");
-                        Assert.IsTrue(overHead, $"{c.name}: and it showed");
+                        if (!GlassBubble.TooLong(d.LastLine)) // spec §3: a longer line is a caption (#120's bank has plenty)
+                        {
+                            Assert.Greater(d.EchoLinesOverHead, linesOver, $"{c.name}: over the speaker's head, not at the fixed spot");
+                            Assert.IsTrue(overHead, $"{c.name}: and it showed");
+                        }
                     }
                     if (!c.echo) Assert.IsTrue(flower, "a flower at the stone");
                     Assert.IsTrue(d.Returned, $"{c.name}: the camera comes back");

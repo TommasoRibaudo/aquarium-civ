@@ -23,7 +23,7 @@ namespace AquariumCiv.View.PlayTests
     [Category("GlassPlay")]
     public class GlassPlayTests : PlayTestBase
     {
-        IEnumerator Open(int w = 1179, int h = 2556) => OpenSlice(w, h);
+        IEnumerator Open(int w = 1179, int h = 2556, int seed = 0) => OpenSlice(w, h, seed);
         void Close() => CloseSlice();
 
         /// <summary>Grow the fresh box into <paramref name="era"/> (no relic moments: a skip is a catch-up).</summary>
@@ -105,7 +105,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest]
         public IEnumerator Stage2KidsComeToTheWindow()
         {
-            yield return Open();
+            yield return Open(seed: 1234); // a random box can have no kids in reach of the window at that hour
             try
             {
                 var sim = GameClock.Instance.Sim;

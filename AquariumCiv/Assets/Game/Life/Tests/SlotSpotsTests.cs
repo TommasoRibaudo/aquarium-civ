@@ -34,6 +34,32 @@ namespace AquariumCiv.Life.Tests
             }
         }
 
+        [Test]
+        public void AHomeHoldsTwoAtTheDoorAndTheAxeAwayFromIt()
+        {
+            foreach (float outAngle in new[] { 0f, 1.1f, -2.4f, 3.1f })
+            {
+                for (int rank = 0; rank < 8; rank++)
+                {
+                    var (dx, dz) = SlotSpots.Home(SlotSpots.HomeSpot.Door, rank, outAngle);
+                    float d = (float)Math.Sqrt(dx * dx + dz * dz);
+                    if (rank < SlotSpots.AtDoor) Assert.Less(d, 0.2f, "at the door");
+                    else Assert.Greater(d, 0.2f, "past two, out in front");
+                    (dx, dz) = SlotSpots.Home(SlotSpots.HomeSpot.Block, rank, outAngle);
+                    Assert.Greater((float)Math.Sqrt(dx * dx + dz * dz), 0.25f, "the block isn't at the door");
+                    Assert.Greater(dx * Math.Cos(outAngle) + dz * Math.Sin(outAngle), 0.05f, "and it's off the wall");
+                }
+                var (ax, az) = SlotSpots.Home(SlotSpots.HomeSpot.Block, 0, outAngle);
+                var (bx, bz) = SlotSpots.Home(SlotSpots.HomeSpot.Line, 0, outAngle);
+                Assert.Greater(Math.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz)), 0.4f, "the block and the line are on either side");
+            }
+            Assert.AreEqual(SlotSpots.HomeSpot.Block, SlotSpots.SpotFor(ActivityKind.ChopKindling));
+            Assert.AreEqual(SlotSpots.HomeSpot.Block, SlotSpots.SpotFor(ActivityKind.StackWood));
+            Assert.AreEqual(SlotSpots.HomeSpot.Line, SlotSpots.SpotFor(ActivityKind.HangWashing));
+            Assert.AreEqual(SlotSpots.HomeSpot.Front, SlotSpots.SpotFor(ActivityKind.Play));
+            Assert.AreEqual(SlotSpots.HomeSpot.Door, SlotSpots.SpotFor(ActivityKind.SweepStep));
+        }
+
         [TestCase(3)]
         [TestCase(9)]
         [TestCase(30)]
