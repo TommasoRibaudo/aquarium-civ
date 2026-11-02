@@ -23,6 +23,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | 11 | [research/11-music-playback.md](research/11-music-playback.md) | When and how background music starts and pauses (Minecraft-style sparse music), proposal for the game |
 | 12 | [research/12-wordless-communication.md](research/12-wordless-communication.md) | How the people talk without words: symbol bubbles, babble, gesture; recommendation for #144 and the knock `!` (#161) |
 | 13 | [research/13-lighting.md](research/13-lighting.md) | Lighting today, a real night and dusk under URP on a phone, glass/frost/UI at night; recommendation and variants for #175 and #113 |
+| 14 | [research/14-dilemmas-and-living-land.md](research/14-dilemmas-and-living-land.md) | Meaningful play: the Keeper's dilemmas, and a living land (biomes, species, generation, expansion); prototypes P7/P8 |
+| 15 | [research/15-barren-to-living-box.md](research/15-barren-to-living-box.md) | P8 groundwork: a box that starts barren and grows (rain → grass → rabbits → wood → ponds), real-ecology rules, the Ecology Lab spike |
 
 ## Design documents
 | File | Topic |
