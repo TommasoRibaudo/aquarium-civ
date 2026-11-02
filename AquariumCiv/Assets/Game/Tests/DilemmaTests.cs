@@ -20,7 +20,7 @@ namespace AquariumCiv.Tests
 
         static void Years(SimCore sim, double years) { for (int m = 0; m < (int)(years * 12 + 0.5); m++) sim.Advance(1.0 / 12); }
 
-        /// <summary>Two defs of every effect kind, so the tests don't depend on the placeholder text.</summary>
+        /// <summary>Defs of every effect kind, test-local, so the tests don't depend on the content's text (#222).</summary>
         static DilemmaDef WhoDef(string id, string lapseTraitA = null, string lapseTraitB = null) => new DilemmaDef
         {
             id = id, kind = DilemmaKind.Who, cast = DilemmaCast.TwoCandidates, role = DilemmaDef.Leader, replacesHolder = true,
@@ -29,6 +29,17 @@ namespace AquariumCiv.Tests
             {
                 new DilemmaOptionDef { label = "{a}", hint = "h", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "who:a", favouredBy = lapseTraitA == null ? null : new[] { lapseTraitA } },
                 new DilemmaOptionDef { label = "{b}", hint = "h", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "who:b", favouredBy = lapseTraitB == null ? null : new[] { lapseTraitB } },
+            },
+        };
+
+        /// <summary>A which-way def with no role: food or wood, a lapse picked by the asker's trait (favouredBy) or a hash.</summary>
+        static DilemmaDef WayDef(string id, bool favoured = true) => new DilemmaDef
+        {
+            id = id, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "The fields, or the woods?",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "the fields", hint = "h", lean = SimCore.Lean.Food, favouredBy = favoured ? new[] { "the kind" } : null },
+                new DilemmaOptionDef { label = "the woods", hint = "h", lean = SimCore.Lean.Craft, favouredBy = favoured ? new[] { "the brave" } : null },
             },
         };
 
@@ -280,12 +291,12 @@ namespace AquariumCiv.Tests
         public void AWayDilemmaLeansForThirtySixMonthsAndMovesTheFood()
         {
             var cfg = Cfg();
-            var def = DilemmaDefs.All.First(x => x.id == "ph_way");
+            var def = WayDef("way");
             var withLean = NewSim(7, cfg); withLean.DilemmaCatalog = new[] { def };
             var without = NewSim(7, cfg); without.DilemmaCatalog = new[] { def };
             Years(withLean, 1); Years(without, 1);
-            var d = withLean.DebugRaiseDilemma("ph_way");
-            without.DebugRaiseDilemma("ph_way");
+            var d = withLean.DebugRaiseDilemma("way");
+            without.DebugRaiseDilemma("way");
             Assert.IsTrue(withLean.AnswerDilemma(d.id, 0, DilemmaPath.Card)); // the fields: a food lean
             var lean = withLean.State.dilemmaLeans.Single();
             Assert.AreEqual((int)SimCore.Lean.Food, lean.lean);
@@ -364,9 +375,9 @@ namespace AquariumCiv.Tests
         [Test]
         public void ViewGivesTheQuestionOptionsHintsAndPeople()
         {
-            foreach (var sim in Camps(Cfg(), DilemmaDefs.All.First(x => x.id == "ph_leader"), 2))
+            foreach (var sim in Camps(Cfg(), WhoDef("who"), 2))
             {
-                var d = sim.DebugRaiseDilemma("ph_leader");
+                var d = sim.DebugRaiseDilemma("who");
                 var v = sim.OpenDilemmaView;
                 Assert.AreSame(d, v.dilemma);
                 Assert.AreEqual(DilemmaKind.Who, v.kind);
@@ -383,15 +394,84 @@ namespace AquariumCiv.Tests
             }
         }
 
+        // ---------- the asker's voice (#222) ----------
+
+        [Test]
+        public void TheLeaderAsksInTheirVoiceAndEachPersonsTraitVoicesTheirHint()
+        {
+            int checkedCount = 0;
+            var def = WhoDef("w");
+            def.askedBy = new Dictionary<string, string> { ["the lazy"] = "Nap time. {a} or {b}?" };
+            def.traitHints = new Dictionary<string, string> { ["the singer"] = "{p} will sing, and {q} will hum." };
+            foreach (var sim in Camps(Cfg(), def, 4))
+            {
+                var chief = sim.HolderOf(RoleType.Chief);
+                if (chief == null) continue;
+                chief.trait = "the lazy";
+                var d = sim.DebugRaiseDilemma("w");
+                Assert.AreEqual(chief.id, d.askerId, "the leader asks");
+                var a = sim.FindNotable(d.personA); var b = sim.FindNotable(d.personB);
+                a.trait = "the singer"; b.trait = "the grump";
+                var v = sim.OpenDilemmaView;
+                Assert.AreEqual($"Nap time. {a.name} or {b.name}?", v.question);
+                Assert.AreEqual(v.question, sim.State.chronicle.Single(e => e.id == d.entryId).text, "the card's entry says it the same way");
+                Assert.AreEqual($"{a.name} will sing, and {b.name} will hum.", v.options[0].hint, "A's trait has a line");
+                Assert.AreEqual("H", v.options[1].hint, "B's trait has none: the option's own hint");
+                chief.trait = "the kind";
+                Assert.AreEqual($"{a.name} or {b.name}?", sim.QuestionOf(d), "a trait with no line gets the plain question");
+                checkedCount++;
+            }
+            Assert.Greater(checkedCount, 0);
+        }
+
+        [Test]
+        public void ADilemmaWithNoRoleLapsesByTheAskersTrait()
+        {
+            int checkedCount = 0;
+            foreach (var kind in new[] { true, false })
+                for (int seed = 1; seed < 12; seed++)
+                {
+                    var sim = WithCandidates(seed, Cfg(), WayDef("way"));
+                    var chief = sim.HolderOf(RoleType.Chief);
+                    if (chief == null) continue;
+                    chief.trait = kind ? "the kind" : "the brave";
+                    var d = sim.DebugRaiseDilemma("way");
+                    Assert.AreEqual(chief.id, d.askerId);
+                    Assert.IsTrue(sim.DebugLapseDilemma());
+                    Assert.AreEqual(kind ? 0 : 1, d.option, "the asker's trait leans the people");
+                    checkedCount++;
+                }
+            Assert.Greater(checkedCount, 2);
+        }
+
+        [Test]
+        public void AnUnnamedPlaceIsTheCampAndALineStartingWithItIsCapitalised()
+        {
+            var def = StrangersDef("s");
+            def.question = "{place} asks: in or out?";
+            def.options[0].done = "{place} let them in.";
+            var sim = NewSim(4, Cfg());
+            sim.DilemmaCatalog = new[] { def };
+            Years(sim, 1);
+            sim.State.settlementName = "";
+            var d = sim.DebugRaiseDilemma("s");
+            Assert.AreEqual(Era.Camp, sim.State.era);
+            Assert.AreEqual("The camp asks: in or out?", sim.OpenDilemmaView.question);
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
+            Assert.AreEqual("The camp let them in.", sim.State.chronicle.Single(e => e.id == d.answerEntryId).text);
+            sim.State.settlementName = "Dewmoor";
+            Assert.AreEqual("Dewmoor asks: in or out?", sim.QuestionOf(d));
+        }
+
         // ---------- the lapse ----------
 
         [Test]
         public void SilenceLapsesAfter24MonthsWithANeutralLineAndTheEffectsApply()
         {
             var sim = NewSim(9, Cfg());
-            sim.DilemmaCatalog = new[] { DilemmaDefs.All.First(x => x.id == "ph_way") };
+            sim.DilemmaCatalog = new[] { WayDef("way") };
             Years(sim, 1);
-            var d = sim.DebugRaiseDilemma("ph_way");
+            var d = sim.DebugRaiseDilemma("way");
             long raised = d.month;
             sim.Advance(23.0 / 12);
             Assert.AreEqual(DilemmaState.Open, d.state, "still open at 23 months");
@@ -440,9 +520,9 @@ namespace AquariumCiv.Tests
                 for (int seed = 1; seed <= 20; seed++)
                 {
                     var sim = NewSim(seed, Cfg());
-                    sim.DilemmaCatalog = new[] { DilemmaDefs.All.First(x => x.id == "ph_way") };
+                    sim.DilemmaCatalog = new[] { WayDef("way", favoured: false) };
                     Years(sim, 1);
-                    var d = sim.DebugRaiseDilemma("ph_way");
+                    var d = sim.DebugRaiseDilemma("way");
                     sim.Advance(2.0);
                     Assert.AreEqual(DilemmaState.Lapsed, d.state);
                     picks.Add(d.option);

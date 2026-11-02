@@ -182,7 +182,7 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void EveryPlaceholderOptionHasACallbackAndSwitchOffSchedulesNone()
+        public void EveryOptionHasACallbackAndSwitchOffSchedulesNone()
         {
             foreach (var def in DilemmaDefs.All)
                 foreach (var o in def.options)

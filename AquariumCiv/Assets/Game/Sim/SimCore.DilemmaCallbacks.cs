@@ -121,7 +121,7 @@ namespace AquariumCiv.Sim
             var c = State.dilemmaCallbacks.FirstOrDefault(x => x.entryId == e.id);
             var d = c == null ? null : FindDilemma(c.dilemmaId);
             if (d == null) return 0;
-            var t = NewThread(ThreadSource.Dilemma, DilemmaText(DilemmaDefOf(d)?.question, d), e.notableId, e.otherNotableId);
+            var t = NewThread(ThreadSource.Dilemma, QuestionOf(d), e.notableId, e.otherNotableId);
             t.month = d.month;
             t.state = ThreadState.PaidOff;
             t.payoffEntryId = e.id;

@@ -696,7 +696,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void ADilemmaCardComesRightAfterTheEraCardBeforeTheStories()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             AddMany(sim, 3);
             sim.ForceEraReady();
             var m = Opened(Model(sim));
@@ -710,13 +710,13 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void ADilemmaCardReadsTheQuestionAndBothOptionsAndHasNoPrimaryAction()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             var m = Opened(Model(sim));
             var f = m.Face;
             Assert.AreEqual(CardKind.Dilemma, f.kind);
             Assert.AreEqual(sim.ViewOfDilemma(d).question, f.headline);
             Assert.AreEqual(2, f.dilemma.options.Length);
-            Assert.AreEqual("the fields", f.dilemma.options[0].label);
+            Assert.AreEqual("a place by the fire", f.dilemma.options[0].label);
             Assert.That(f.dilemma.options[1].hint, Is.Not.Empty);
             Assert.AreEqual(-1, f.dilemmaChosen);
             Assert.AreEqual(CardAction.None, f.action);
@@ -725,7 +725,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void AnsweringByButtonCallsAnswerDilemmaOnTheCardPathAndTheCardSaysWhatWasChosen()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             var m = Opened(Model(sim));
             Assert.IsTrue(m.AnswerDilemma(1));
             Assert.AreEqual(DilemmaState.Answered, d.state);
@@ -740,7 +740,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void ADilemmaAnswerIsFinalNoSecondAnswerNoOtherOption()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             var m = Opened(Model(sim));
             Assert.IsFalse(m.AnswerDilemma(2), "only options 0 and 1");
             Assert.IsTrue(m.AnswerDilemma(0));
@@ -751,7 +751,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void AnsweringReadsTheCardNextMovesOnAndTheDilemmaCardIsGoneNextTime()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             AddMany(sim, 2);
             var m = Opened(Model(sim));
             Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
@@ -769,7 +769,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void ALapsedDilemmaOnAnOpenCardShowsThePeoplesChoiceAndAnswerIsRefused()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             var m = Opened(Model(sim));
             Assert.IsTrue(sim.DebugLapseDilemma());
             Assert.IsFalse(m.AnswerDilemma(0));
@@ -780,7 +780,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void ADilemmaStaysUntilAnsweredEvenWhenTheStackIsSkipped()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             var m = Opened(Model(sim));
             m.Next();
             Assert.IsTrue(m.Prepare(Day), "unanswered: it keeps coming back");
@@ -791,7 +791,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void ShowMeOnADilemmaCardGoesToTheHookAndOnlyWhenOneIsSet()
         {
-            var sim = WithDilemma("ph_way", out var d);
+            var sim = WithDilemma("camp_travellers", out var d);
             var m = Opened(Model(sim));
             Assert.IsFalse(m.DilemmaShowMe(), "no choice scene yet: the normal Show me stays");
             DilemmaView got = null;

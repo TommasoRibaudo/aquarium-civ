@@ -21,6 +21,7 @@ namespace AquariumCiv.Sim
         public int option = -1;             // the option chosen (answered) or picked by the people (lapsed); -1 while open
         public DilemmaPath path;            // how it was answered (meaningful when state is Answered)
         public int personA = -1, personB = -1;       // the two people the options point at (-1 = none)
+        public int askerId = -1;            // who put the question (the era's leader when raised; -1 = the people at large): voices it by trait
         public int buildingA = -1, buildingB = -1;   // the place each option points at (-1 = none)
         public int entryId = -1;            // its chronicle entry (kind "dilemma"): the card
         public int answerEntryId = -1;      // the Keeper line an answer wrote (kind "keeper"); -1 for a lapse
@@ -230,7 +231,36 @@ namespace AquariumCiv.Sim
             if (string.IsNullOrEmpty(t)) return "";
             if (t.IndexOf('{') < 0) return t;
             return t.Replace("{a}", FindNotable(d.personA)?.name ?? "someone").Replace("{b}", FindNotable(d.personB)?.name ?? "someone")
-                    .Replace("{place}", Place);
+                    .Replace("{place}", DilemmaPlace);
+        }
+
+        /// <summary>{place}: the settlement's name, or "the camp" / "the village" before it has one (it is named at 12 people), so a
+        /// line reads the same mid-sentence. A line that starts with it is capitalised by <see cref="DilemmaCap"/>.</summary>
+        string DilemmaPlace => string.IsNullOrEmpty(State.settlementName) ? "the " + EraNoun(State.era) : State.settlementName;
+
+        static string DilemmaCap(string t) => string.IsNullOrEmpty(t) || !char.IsLower(t[0]) ? t : char.ToUpperInvariant(t[0]) + t.Substring(1);
+
+        /// <summary>The question as the asker puts it: the def's line for the asker's trait (<see cref="DilemmaDef.askedBy"/>), else
+        /// the plain question. Raw (placeholders left in).</summary>
+        string RawQuestion(DilemmaDef def, Dilemma d)
+        {
+            if (def == null) return "";
+            var asker = d == null ? null : FindNotable(d.askerId);
+            return asker != null && def.askedBy != null && def.askedBy.TryGetValue(asker.trait ?? "", out var q) && !string.IsNullOrEmpty(q) ? q : def.question;
+        }
+
+        /// <summary>The question with names in, as the card and the old-question thread show it.</summary>
+        public string QuestionOf(Dilemma d) => DilemmaCap(DilemmaText(RawQuestion(DilemmaDefOf(d), d), d));
+
+        /// <summary>Option <paramref name="i"/>'s hint: for a person, the def's line for that person's trait (<see cref="DilemmaDef.traitHints"/>,
+        /// {p} = them, {q} = the other one), else the option's own hint.</summary>
+        string HintOf(DilemmaDef def, Dilemma d, int i)
+        {
+            var o = def.options[i];
+            var p = FindNotable(d.PersonOf(i));
+            if (p != null && def.traitHints != null && def.traitHints.TryGetValue(p.trait ?? "", out var h) && !string.IsNullOrEmpty(h))
+                return DilemmaCap(DilemmaText(h.Replace("{p}", i == 0 ? "{a}" : "{b}").Replace("{q}", i == 0 ? "{b}" : "{a}"), d));
+            return DilemmaCap(DilemmaText(o.hint, d));
         }
 
         /// <summary>The words and the people and places of a dilemma, for the card and the choice scene.</summary>
@@ -238,13 +268,13 @@ namespace AquariumCiv.Sim
         {
             var def = DilemmaDefOf(d);
             if (d == null || def == null) return null;
-            var v = new DilemmaView { dilemma = d, def = def, kind = def.kind, question = DilemmaText(def.question, d), options = new DilemmaOptionView[def.options.Length] };
+            var v = new DilemmaView { dilemma = d, def = def, kind = def.kind, question = QuestionOf(d), options = new DilemmaOptionView[def.options.Length] };
             for (int i = 0; i < v.options.Length; i++)
             {
                 var o = def.options[i];
                 v.options[i] = new DilemmaOptionView
                 {
-                    index = i, label = DilemmaText(o.label, d), hint = DilemmaText(o.hint, d),
+                    index = i, label = DilemmaText(o.label, d), hint = HintOf(def, d, i),
                     personId = d.PersonOf(i), buildingId = d.BuildingOf(i), buildingType = o.buildingType ?? "",
                 };
             }
@@ -257,7 +287,7 @@ namespace AquariumCiv.Sim
         string DilemmaHeadline(ChronicleEntry e)
         {
             var d = DilemmaOfEntry(e.id);
-            return d == null ? "The people ask the Keeper" : Clip(DilemmaText(DilemmaDefOf(d)?.question, d));
+            return d == null ? "The people ask the Keeper" : Clip(QuestionOf(d));
         }
 
         string DilemmaAnswerHeadline(ChronicleEntry e)
@@ -273,13 +303,15 @@ namespace AquariumCiv.Sim
             var s = State;
             int id = s.dilemmaNextId++;
             var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b };
+            var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
+            if (leader != null && leader.id != a && leader.id != b) d.askerId = leader.id;
             for (int i = 0; i < 2 && i < def.options.Length; i++)
             {
                 var bt = def.options[i].buildingType;
                 var bld = string.IsNullOrEmpty(bt) ? null : s.buildings.FirstOrDefault(x => x.type == bt);
                 if (i == 0) d.buildingA = bld?.id ?? -1; else d.buildingB = bld?.id ?? -1;
             }
-            var e = new ChronicleEntry { id = DilemmaIdBase + id, month = s.month, kind = "dilemma", text = DilemmaText(def.question, d), salience = 0.6f, notableId = a, otherNotableId = b };
+            var e = new ChronicleEntry { id = DilemmaIdBase + id, month = s.month, kind = "dilemma", text = QuestionOf(d), salience = 0.6f, notableId = a, otherNotableId = b };
             s.chronicle.Add(e);
             Chronicled?.Invoke(e);
             d.entryId = e.id;
@@ -304,7 +336,7 @@ namespace AquariumCiv.Sim
             d.path = path;
             d.endMonth = State.month;
             var o = def.options[option];
-            string text = string.IsNullOrEmpty(o.done) ? $"The people asked, and the Keeper chose {DilemmaText(o.label, d)}." : DilemmaText(o.done, d);
+            string text = string.IsNullOrEmpty(o.done) ? $"The people asked, and the Keeper chose {DilemmaText(o.label, d)}." : DilemmaCap(DilemmaText(o.done, d));
             var e = Record("keeper", text, 0.8f, d.PersonOf(option), d.PersonOf(1 - option));
             e.keeper = true;
             d.answerEntryId = e.id;
@@ -314,13 +346,15 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- lapse ----------
-        /// <summary>Which option the people take when the Keeper says nothing: the role-holder's trait (and who they favour), else a seeded hash.</summary>
+        /// <summary>Which option the people take when the Keeper says nothing: the role-holder's trait (and who they favour; for a dilemma
+        /// with no role, the asker's), else a seeded hash.</summary>
         public int DilemmaDefaultOption(Dilemma d)
         {
             var def = DilemmaDefOf(d);
             if (def == null) return 0;
             string role = RoleOfDef(def);
-            var holder = string.IsNullOrEmpty(role) ? null : Alive(SeatOf(role)?.holderId ?? -1);
+            // The role-holder decides; a dilemma about no role is decided by the one who asked (the leader when it was raised).
+            var holder = string.IsNullOrEmpty(role) ? Alive(d.askerId) : Alive(SeatOf(role)?.holderId ?? -1);
             float[] score = new float[def.options.Length];
             for (int i = 0; i < score.Length; i++)
             {
