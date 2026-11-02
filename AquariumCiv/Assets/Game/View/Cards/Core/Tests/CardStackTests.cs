@@ -683,5 +683,124 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(m.DebugPrepare(1));
             Assert.AreEqual(1, m.CardCount);
         }
+
+        // ---------- the dilemma card (#223) ----------
+        static SimCore WithDilemma(string defId, out Dilemma d)
+        {
+            var sim = Quiet();
+            d = sim.DebugRaiseDilemma(defId);
+            Assert.IsNotNull(d, defId);
+            return sim;
+        }
+
+        [Test]
+        public void ADilemmaCardComesRightAfterTheEraCardBeforeTheStories()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            AddMany(sim, 3);
+            sim.ForceEraReady();
+            var m = Opened(Model(sim));
+            var kinds = new List<CardKind>();
+            do kinds.Add(m.Face.kind); while (m.Next());
+            Assert.AreEqual(CardKind.EraReady, kinds[0]);
+            Assert.AreEqual(CardKind.Dilemma, kinds[1]);
+            Assert.AreEqual(1, kinds.Count(k => k == CardKind.Dilemma));
+        }
+
+        [Test]
+        public void ADilemmaCardReadsTheQuestionAndBothOptionsAndHasNoPrimaryAction()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            var m = Opened(Model(sim));
+            var f = m.Face;
+            Assert.AreEqual(CardKind.Dilemma, f.kind);
+            Assert.AreEqual(sim.ViewOfDilemma(d).question, f.headline);
+            Assert.AreEqual(2, f.dilemma.options.Length);
+            Assert.AreEqual("the fields", f.dilemma.options[0].label);
+            Assert.That(f.dilemma.options[1].hint, Is.Not.Empty);
+            Assert.AreEqual(-1, f.dilemmaChosen);
+            Assert.AreEqual(CardAction.None, f.action);
+        }
+
+        [Test]
+        public void AnsweringByButtonCallsAnswerDilemmaOnTheCardPathAndTheCardSaysWhatWasChosen()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsTrue(m.AnswerDilemma(1));
+            Assert.AreEqual(DilemmaState.Answered, d.state);
+            Assert.AreEqual(1, d.option);
+            Assert.AreEqual(DilemmaPath.Card, d.path);
+            Assert.AreEqual(1, m.Face.dilemmaChosen, "the card stays up and says so");
+            Assert.IsFalse(m.Face.dilemmaLapsed);
+            Assert.IsNotNull(sim.State.chronicle.Find(e => e.id == d.answerEntryId), "the Keeper's line is written");
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind, "still this card until Next");
+        }
+
+        [Test]
+        public void ADilemmaAnswerIsFinalNoSecondAnswerNoOtherOption()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsFalse(m.AnswerDilemma(2), "only options 0 and 1");
+            Assert.IsTrue(m.AnswerDilemma(0));
+            Assert.IsFalse(m.AnswerDilemma(1), "no undo");
+            Assert.AreEqual(0, d.option);
+        }
+
+        [Test]
+        public void AnsweringReadsTheCardNextMovesOnAndTheDilemmaCardIsGoneNextTime()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            AddMany(sim, 2);
+            var m = Opened(Model(sim));
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+            m.AnswerDilemma(0);
+            Assert.IsTrue(m.Next());
+            Assert.AreNotEqual(CardKind.Dilemma, m.Face.kind);
+            m.SkipAll();
+            Assert.IsTrue(m.Prepare(Day));
+            m.TapPeek();
+            var kinds = new List<CardKind>();
+            do kinds.Add(m.Face.kind); while (m.Next());
+            Assert.IsFalse(kinds.Contains(CardKind.Dilemma), "an answered dilemma's question is gone; the keeper card tells it");
+        }
+
+        [Test]
+        public void ALapsedDilemmaOnAnOpenCardShowsThePeoplesChoiceAndAnswerIsRefused()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsTrue(sim.DebugLapseDilemma());
+            Assert.IsFalse(m.AnswerDilemma(0));
+            Assert.IsTrue(m.Face.dilemmaLapsed);
+            Assert.AreEqual(d.option, m.Face.dilemmaChosen);
+        }
+
+        [Test]
+        public void ADilemmaStaysUntilAnsweredEvenWhenTheStackIsSkipped()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            var m = Opened(Model(sim));
+            m.Next();
+            Assert.IsTrue(m.Prepare(Day), "unanswered: it keeps coming back");
+            m.TapPeek();
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+        }
+
+        [Test]
+        public void ShowMeOnADilemmaCardGoesToTheHookAndOnlyWhenOneIsSet()
+        {
+            var sim = WithDilemma("ph_way", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsFalse(m.DilemmaShowMe(), "no choice scene yet: the normal Show me stays");
+            DilemmaView got = null;
+            m.DilemmaShowMeHook = v => { got = v; return true; };
+            Assert.IsTrue(m.Face.canShowMe);
+            Assert.IsTrue(m.DilemmaShowMe());
+            Assert.AreSame(d, got.dilemma);
+            m.AnswerDilemma(0);
+            Assert.IsFalse(m.DilemmaShowMe(), "answered: nothing to show");
+        }
     }
 }
