@@ -12,7 +12,7 @@ No Unity, no edits under `AquariumCiv/Assets/**` or `Tools/SimTests/**`.
 - [x] Tests green
 - [x] Write-up done
 - [x] Pushed, PR open, CI green, merged; results on #228
-- [ ] Final report
+- [x] Final report
 
 ## Log
 - 2026-11-02 16:50 started. Read the prompt, keepers-hands, research 15, #228, growth-lab, Terrain/SiteMap.
@@ -26,3 +26,4 @@ No Unity, no edits under `AquariumCiv/Assets/**` or `Tools/SimTests/**`.
   seeds land near trees, fewer bushes, pond keeps growing; seed at first bushes, table starts deeper. Final: arc in order
   for (c) on all 3 seeds; (b) tree 2.7× slower; (a) village Y68-91.
 - Tests: 20/20 green first time (`dotnet test Tools/EcologyLab/Tests`). Commit 06ffe79 + write-up commit.
+- 17:44 PR #230 CI green (Unity tests 35 min), merged into dev as 764baf2. Results commented on #228 (left open). Final report sent.
