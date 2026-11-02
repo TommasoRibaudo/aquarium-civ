@@ -1,0 +1,5 @@
+bin/
+obj/
+out/
+Tests/bin/
+Tests/obj/
