@@ -78,7 +78,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(180000)]
         public IEnumerator TappingAWayOnTheCardAnswersOnTheCardPathAndNextMovesOn()
         {
-            yield return ToTheDilemma("ph_way", 1170, 2532);
+            yield return ToTheDilemma("camp_travellers", 1170, 2532);
             yield return Shot("223-way-open");
             AssertLayout("way");
             var d = Sim.OpenDilemma;
@@ -104,7 +104,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(180000)]
         public IEnumerator TheWhoCardShowsTwoPortraitsOnASmallPhoneAndAnAnswerLiftsOne()
         {
-            yield return ToTheDilemma("ph_leader", 750, 1334);
+            yield return ToTheDilemma("camp_fire", 750, 1334);
             yield return Shot("223-who-open-750");
             AssertLayout("who small");
             var d = Sim.OpenDilemma;
@@ -121,7 +121,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(180000)]
         public IEnumerator TheWhoCardOnATallPhone()
         {
-            yield return ToTheDilemma("ph_leader", 1170, 2532);
+            yield return ToTheDilemma("camp_fire", 1170, 2532);
             yield return Shot("223-who-open");
             AssertLayout("who tall");
             AssertNoErrors("who tall");
