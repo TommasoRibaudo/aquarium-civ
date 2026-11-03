@@ -18,6 +18,10 @@ namespace AquariumCiv.Sim.Eco
 
         public byte[] cover;            // EcoCover per cell
         public float[] soil, moisture;
+        /// <summary>#266, per cell, 0..1. wet = how wet the ground LOOKS (the mist's wet area; dries within a few game months);
+        /// puddle = water standing on soaked low ground (a drinking source while there is no pond); sprout = first shoots on
+        /// bare ground, 1 = it turns to grass. Null in an old save (EcoModel makes them).</summary>
+        public float[] wet, puddle, sprout;
         public float humidity, grime, droplets;
         /// <summary>The water table (terrain height units), its peak so far, and the pond's level (-1000 = no pond yet).</summary>
         public float table, tablePeak, pondLevel = -1000f;

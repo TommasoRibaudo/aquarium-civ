@@ -27,6 +27,15 @@ namespace AquariumCiv.Sim.Eco
         public EcoModel(EcoState state, EcoLand land, EcoTuning tuning)
         {
             st = state; this.land = land; t = tuning;
+            if (st.on && st.cover != null) EnsureLayers();
+        }
+
+        /// <summary>An old save has no wet, puddle or sprout layers: start them empty.</summary>
+        void EnsureLayers()
+        {
+            if (st.wet == null || st.wet.Length != EcoLand.N) st.wet = new float[EcoLand.N];
+            if (st.puddle == null || st.puddle.Length != EcoLand.N) st.puddle = new float[EcoLand.N];
+            if (st.sprout == null || st.sprout.Length != EcoLand.N) st.sprout = new float[EcoLand.N];
         }
 
         /// <summary>The barren start: bare ground, a thin soil, the table below the lowest ground, no tree.</summary>
@@ -36,6 +45,7 @@ namespace AquariumCiv.Sim.Eco
             st.cover = new byte[EcoLand.N];
             st.soil = new float[EcoLand.N];
             st.moisture = new float[EcoLand.N];
+            st.wet = new float[EcoLand.N]; st.puddle = new float[EcoLand.N]; st.sprout = new float[EcoLand.N];
             for (int c = 0; c < EcoLand.N; c++)
             {
                 st.cover[c] = (byte)EcoCover.Bare;
@@ -115,9 +125,12 @@ namespace AquariumCiv.Sim.Eco
         /// Fills <paramref name="greened"/> with the cells that turned to grass.</summary>
         public void Mist(float x, float z, float amount, long month, List<int> greened)
         {
-            float r = t.mistRadius;
+            EnsureLayers();
+            float r = MistRadius(amount);
             int i0 = Math.Max(0, (int)((x - r - SiteMap.X0) / SiteMap.Cell)), i1 = Math.Min(SiteMap.NX - 1, (int)((x + r - SiteMap.X0) / SiteMap.Cell));
             int j0 = Math.Max(0, (int)((z - r - SiteMap.Z0) / SiteMap.Cell)), j1 = Math.Min(SiteMap.NZ - 1, (int)((z + r - SiteMap.Z0) / SiteMap.Cell));
+            int nearGreen = 0;
+            var bare = new List<(float d, int c)>();
             for (int j = j0; j <= j1; j++)
                 for (int i = i0; i <= i1; i++)
                 {
@@ -126,16 +139,143 @@ namespace AquariumCiv.Sim.Eco
                     if (d > r) continue;
                     float f = 1f - d / r;
                     st.moisture[c] = MathF.Min(1f, st.moisture[c] + t.mistWet * amount * f);
-                    if (f >= t.mistGreensAt && Cv(c) == EcoCover.Bare)
+                    if (Cv(c) == EcoCover.Water) continue;
+                    st.wet[c] = MathF.Min(1f, MathF.Max(st.wet[c], t.mistShow * MathF.Sqrt(f) * Terrain.Clamp01(0.5f + amount * 0.5f)));
+                    float soak = amount * f - t.puddleAt;
+                    if (soak > 0f && land.slope[c] <= t.puddleMaxSlope && !land.yard[c])
+                        st.puddle[c] = MathF.Min(1f, st.puddle[c] + soak * t.puddleGain);
+                    if (Cv(c) == EcoCover.Bare)
                     {
-                        st.cover[c] = (byte)EcoCover.Grass;
-                        greened?.Add(c);
-                        Reach(EcoMilestones.FirstGreen, month);
+                        if (f >= t.mistGreensAt) { st.cover[c] = (byte)EcoCover.Grass; greened?.Add(c); st.sprout[c] = 0f; Reach(EcoMilestones.FirstGreen, month); }
+                        else
+                        {
+                            bare.Add((d, c));
+                            if (f >= t.mistSproutAt) st.sprout[c] = MathF.Max(st.sprout[c], t.sproutCommit + (t.mistSprout - t.sproutCommit) * (f - t.mistSproutAt) / (t.mistGreensAt - t.mistSproutAt));
+                        }
                     }
+                    else if (d <= r * 0.5f) nearGreen++;
                 }
+            // Every mist shows a little green at once: if the heart of this one is bare, its nearest bare cells turn now.
+            int have = nearGreen + (greened?.Count ?? 0);
+            if (have < t.mistMinGreen && bare.Count > 0)
+            {
+                bare.Sort((p, q) => p.d.CompareTo(q.d));
+                for (int k = 0; k < bare.Count && have < t.mistMinGreen; k++)
+                {
+                    int c = bare[k].c;
+                    st.cover[c] = (byte)EcoCover.Grass; st.sprout[c] = 0f; greened?.Add(c); have++;
+                    Reach(EcoMilestones.FirstGreen, month);
+                }
+            }
             st.humidity = MathF.Min(1f, st.humidity + t.mistAir * amount);
             st.soaked += t.mistDeep * amount;
             if (st.treeCell >= 0 && Terrain.Dist(SiteMap.CXc(st.treeCell), SiteMap.CZc(st.treeCell), x, z) < r * 0.5f) st.keeperMistings++;
+        }
+
+        /// <summary>How far a mist reaches after being held this much (<paramref name="amount"/>: 1 = the lab's "spot", capped at
+        /// <see cref="EcoTuning.mistMaxAmount"/>). A short mist reaches mistRadius; a full hold, mistRadiusMax.</summary>
+        public float MistRadius(float amount)
+        {
+            float k = t.mistMaxAmount <= 0f ? 1f : Terrain.Clamp01(amount / t.mistMaxAmount);
+            return t.mistRadius + (t.mistRadiusMax - t.mistRadius) * k;
+        }
+
+        // ---------------------------------------------------------------- the wet area, the shoots, the puddles (monthly)
+        float ChanceM(int kind, int cell, long month) => Terrain.Hash3(st.seed * 7919 + kind * 977, cell, (int)(month & 0x7fffffff));
+
+        /// <summary>One game month of the surface: the wet area dries, puddles dry or sink, shoots grow where it is wet and
+        /// along a green edge, and an odd sprout follows dew. <paramref name="s"/> is the season this month is in.</summary>
+        public void Month(int s, long month)
+        {
+            EnsureLayers();
+            var wet = st.wet; var pud = st.puddle; var sp = st.sprout;
+            float keep = 1f - t.wetDry * (1f - t.wetDryHumid * st.humidity);
+            float dryS = t.drySeason[s] / 0.2f;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                var cv = Cv(c);
+                if (cv == EcoCover.Water) { wet[c] = 0f; pud[c] = 0f; sp[c] = 0f; continue; }
+                float w = wet[c] * keep;
+                if (w < t.wetGone) w = 0f;
+                float p = pud[c];
+                if (p > 0f)
+                {
+                    float lost = MathF.Min(p, t.puddleDry * dryS);
+                    float sunk = MathF.Min(p - lost, p * t.puddleSink);
+                    p -= lost + sunk;
+                    w = MathF.Max(w, MathF.Min(1f, 0.4f + p)); // a puddle's edge stays dark
+                    st.moisture[c] = MathF.Min(1f, st.moisture[c] + sunk * 0.2f);
+                    if (p < t.puddleGone) p = 0f;
+                }
+                wet[c] = w; pud[c] = p;
+                if (cv != EcoCover.Bare) { sp[c] = 0f; continue; }
+                // Bare ground: shoots come where it is wet, along a green edge, and the odd one after dew.
+                float prog = sp[c] * t.sproutKeep;
+                int n = EcoLand.Neighbours8(c, nb), green = 0;
+                for (int k = 0; k < n; k++) { var o = Cv(nb[k]); if (o != EcoCover.Bare && o != EcoCover.Water) green++; }
+                float m = st.moisture[c];
+                if (prog >= t.sproutCommit && m >= t.grassAt) prog += t.sproutRate * (1f + 0.5f * MathF.Min(1f, green / 2f)); // shoots that came up grow on
+                else if (w >= t.sproutWetAt && m >= t.grassAt) prog += t.sproutWetRate * w;                       // wet ground alone, slowly
+                if (green > 0 && m >= t.creepMoist && ChanceM(1, c, month) < t.creepChance * t.growSeason[s] * MathF.Min(1f, green / 2f + 0.5f)) prog += t.creepStep;
+                if (m >= t.dewSproutMoist && ChanceM(2, c, month) < t.dewSprout * t.growSeason[s]) prog += t.creepStep;
+                if (prog >= 1f)
+                {
+                    st.cover[c] = (byte)EcoCover.Grass; prog = 0f;
+                    Reach(EcoMilestones.FirstGreen, month);
+                }
+                sp[c] = MathF.Min(prog, 1f);
+            }
+        }
+
+        /// <summary>The cells holding a puddle of at least <paramref name="minStrength"/>, strongest first (into <paramref name="into"/>).</summary>
+        public void PuddleCells(List<int> into, float minStrength = 0.05f)
+        {
+            into.Clear();
+            if (st.puddle == null) return;
+            for (int c = 0; c < EcoLand.N; c++) if (st.puddle[c] >= minStrength) into.Add(c);
+            var p = st.puddle;
+            into.Sort((a, b) => p[b].CompareTo(p[a]));
+        }
+
+        /// <summary>The nearest puddle strong enough to drink from, within <paramref name="reach"/> of (x, z), or -1.</summary>
+        public int NearestPuddle(float x, float z, float reach)
+        {
+            if (st.puddle == null) return -1;
+            int best = -1; float bd = reach;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if (st.puddle[c] < t.puddleDrinkAt) continue;
+                float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z);
+                if (d <= bd) { bd = d; best = c; }
+            }
+            return best;
+        }
+
+        /// <summary>Someone drinks from a puddle: it shrinks by <paramref name="amount"/>. Returns what was drawn.</summary>
+        public float DrawPuddle(int c, float amount)
+        {
+            if (st.puddle == null || c < 0 || c >= EcoLand.N) return 0f;
+            float d = MathF.Min(amount, st.puddle[c]);
+            st.puddle[c] -= d;
+            return d;
+        }
+
+        /// <summary>Debug: soak the ground round (x, z) now: a wide wet area and puddles on the low ground in it.</summary>
+        public int DebugPuddles(float x, float z, float radius)
+        {
+            EnsureLayers();
+            int made = 0;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if (Cv(c) == EcoCover.Water) continue;
+                float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z);
+                if (d > radius) continue;
+                float f = 1f - d / radius;
+                st.wet[c] = MathF.Max(st.wet[c], MathF.Sqrt(f));
+                st.moisture[c] = MathF.Max(st.moisture[c], 0.5f + 0.4f * f);
+                if (land.slope[c] <= t.puddleMaxSlope && !land.yard[c] && f > 0.25f) { st.puddle[c] = MathF.Max(st.puddle[c], 0.35f + 0.65f * f); made++; }
+            }
+            return made;
         }
 
         /// <summary>The seed goes into open ground (not the hollow, not the water), once the seed is unlocked.</summary>
@@ -174,7 +314,12 @@ namespace AquariumCiv.Sim.Eco
                 for (int c = 0; c < EcoLand.N; c++)
                 {
                     float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z);
-                    if (d < t.showerRadius) m[c] = MathF.Min(1f, m[c] + t.showerAmount * (1f - d / t.showerRadius));
+                    if (d < t.showerRadius)
+                    {
+                        float f = 1f - d / t.showerRadius;
+                        m[c] = MathF.Min(1f, m[c] + t.showerAmount * f);
+                        if (Cv(c) != EcoCover.Water && st.wet != null) st.wet[c] = MathF.Max(st.wet[c], t.showerWet * f);
+                    }
                 }
                 st.humidity = MathF.Min(1f, st.humidity + 0.08f);
             }
@@ -477,7 +622,7 @@ namespace AquariumCiv.Sim.Eco
             {
                 ulong h = 1469598103934665603UL;
                 void Mix(ulong v) { h ^= v; h *= 1099511628211UL; }
-                for (int c = 0; c < EcoLand.N; c++) { Mix(st.cover[c]); Mix((ulong)BitConverter.SingleToInt32Bits(st.moisture[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.soil[c])); }
+                for (int c = 0; c < EcoLand.N; c++) { Mix(st.cover[c]); Mix((ulong)BitConverter.SingleToInt32Bits(st.moisture[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.soil[c])); if (st.sprout != null) { Mix((ulong)BitConverter.SingleToInt32Bits(st.sprout[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.puddle[c])); } }
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.table)); Mix((ulong)BitConverter.SingleToInt32Bits(st.humidity));
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.rabbits)); Mix((ulong)BitConverter.SingleToInt32Bits(st.treeProgress));
                 Mix((ulong)st.season); Mix((ulong)(long)st.campGateMonth); Mix((ulong)(long)st.villageGateMonth);
