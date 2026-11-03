@@ -177,8 +177,63 @@ namespace AquariumCiv.Tests
             Assert.That(a.sessions, Is.EqualTo(1)); Assert.That(a.raised + a.shown + a.answered, Is.EqualTo(0)); Assert.That(a.AnsweredShare, Is.Null);
             Assert.That(r.dilemmas.answered, Is.EqualTo(3)); Assert.That(r.dilemmas.sessions, Is.EqualTo(2));
             Assert.That(r.counts[Ev.DilemmaShown], Is.EqualTo(6), "raw event counts include the repeat");
-            Assert.That(r.ToText(), Does.Contain("Dilemmas [B]").And.Contain("answered share 75%").And.Contain("Dilemmas [A]"));
+            Assert.That(r.ToText(), Does.Contain("Dilemmas [B]").And.Contain("answered of shown 75%").And.Contain("answered of raised 60%").And.Contain("Dilemmas [A]"));
             Assert.That(r.ToJson(), Does.Contain("\"dilemma_b_answered\":3").And.Contain("\"dilemma_answered_share\":0.75"));
+        }
+
+        [Test] public void AnsweredShareIsReportedOfShownAndOfRaised()
+        {
+            var r = TelemetryAnalyzer.Analyze(HandBuilt(), T0.AddHours(1));
+            var b = r.dilemmasByVariant["B"];
+            Assert.That(b.AnsweredShare.Value, Is.EqualTo(0.75).Within(1e-9), "3 of the 4 settled that were shown");
+            Assert.That(b.AnsweredShareOfRaised.Value, Is.EqualTo(0.6).Within(1e-9), "3 of 5 settled: the unseen lapse counts as not answered");
+            Assert.That(b.ToText(), Does.Contain("answered of shown 75%").And.Contain("answered of raised 60%"));
+            Assert.That(r.ToJson(), Does.Contain("\"dilemma_b_answered_of_raised\":0.6"));
+        }
+
+        [Test] public void ASessionCountsUnderEveryVariantItWasIn()
+        {
+            var l = new List<string>();
+            Put(l, 0, "s", Ev.SessionStart, "reason", "open", "tz_min", 0, "variant", "A");
+            Put(l, 5, "s", Ev.Variant, "v", "B");
+            Put(l, 6, "s", Ev.Variant, "v", "B"); // the same again: still once
+            Put(l, 600, "t", Ev.SessionStart, "reason", "open", "tz_min", 0, "variant", "B");
+            var r = TelemetryAnalyzer.Analyze(l, T0.AddHours(1));
+            Assert.That(r.dilemmasByVariant["A"].sessions, Is.EqualTo(1));
+            Assert.That(r.dilemmasByVariant["B"].sessions, Is.EqualTo(2), "the A-then-B session and the B one");
+            Assert.That(r.opens, Is.EqualTo(2));
+        }
+
+        [Test] public void CheatEventsAreLeftOutAndCountedSeparately()
+        {
+            var l = HandBuilt();
+            Put(l, 900, "b1", Ev.DilemmaRaised, "box", "main", "id", 7, "def", "d7", "month", 200, "debug", 1);
+            Put(l, 901, "b1", Ev.DilemmaShown, "box", "main", "id", 7, "def", "d7", "debug", 1);
+            Put(l, 902, "b1", Ev.DilemmaAnswered, "box", "main", "id", 7, "option", 0, "path", "card", "secs", 1.0, "years_open", 0.1, "debug", 1);
+            Put(l, 903, "b1", Ev.CallbackShown, "box", "main", "id", 7, "option", 0, "years_since", 5.0);
+            var r = TelemetryAnalyzer.Analyze(l, T0.AddHours(1));
+            var b = r.dilemmasByVariant["B"];
+            Assert.That(b.raised, Is.EqualTo(6)); Assert.That(b.shown, Is.EqualTo(5)); Assert.That(b.answered, Is.EqualTo(3));
+            Assert.That(b.answeredCard, Is.EqualTo(2)); Assert.That(b.secondsToAnswer.Count, Is.EqualTo(3)); Assert.That(b.callbacksShown, Is.EqualTo(2));
+            Assert.That(b.cheatEvents, Is.EqualTo(4), "its raised, shown, answered and callback events");
+            Assert.That(r.dilemmas.cheatEvents, Is.EqualTo(4));
+            Assert.That(b.ToText(), Does.Contain("cheat events: 4, not counted"));
+            Assert.That(TelemetryAnalyzer.Analyze(HandBuilt(), T0.AddHours(1)).dilemmas.cheatEvents, Is.EqualTo(0), "old logs without the field read as before");
+        }
+
+        [Test] public void TrackerMarksCheatDilemmasDebugInTheLog()
+        {
+            var log = NewLog();
+            var tr = new DilemmaTelemetryTracker();
+            var d = D(5, 24, 36, DilemmaState.Answered, 1, DilemmaPath.Card);
+            tr.MarkCheat(d.id);
+            tr.Shown(log, d, 0); tr.Answered(log, d, 2);
+            var plain = D(6, 24, 36, DilemmaState.Answered, 0);
+            tr.Shown(log, plain, 0); tr.Answered(log, plain, 2);
+            var ev = Events(log).Where(e => e.name.StartsWith("dilemma_")).ToList();
+            Assert.That(ev.Count(e => (int)e.Num("id") == 5), Is.EqualTo(2));
+            Assert.That(ev.Where(e => (int)e.Num("id") == 5).All(e => e.Num("debug") == 1), Is.True);
+            Assert.That(ev.Where(e => (int)e.Num("id") == 6).All(e => !e.TryGet("debug", out _)), Is.True);
         }
 
         [Test] public void MedianOfAnEvenCountAveragesTheMiddle()

@@ -9,22 +9,25 @@ namespace AquariumCiv.Game
     public class DilemmaStats
     {
         public string variant;                 // "A", "B", or "?" when the log has no variant
-        public int sessions;                   // opens that ran in this variant
+        public int sessions;                   // opens that ran in this variant (a session counts under every variant it was in)
         public int raised, shown;              // distinct dilemmas raised / put in front of the player
         public int answered, lapsed;           // of those shown: answered by the player / left to lapse
         public int lapsedUnseen;               // lapsed without ever being shown (not in the pass share)
         public int answeredBox, answeredCard;  // the path split, over every answer
         public List<double> secondsToAnswer = new List<double>(); // answer minus shown, in real seconds
         public int callbacksShown, callbackShowMe;
+        public int cheatEvents;                // dilemma events caused by debug cheats (debug=1): left out of every number here
 
         /// <summary>The pass criterion (>= 0.70): of the shown dilemmas that are settled, the share the player answered. Null when none is settled.</summary>
+        /// <summary>Of every settled dilemma that was raised (shown or not): the share the player answered. Unseen lapses count as not answered.</summary>
+        public double? AnsweredShareOfRaised => answered + lapsed + lapsedUnseen > 0 ? answered / (double)(answered + lapsed + lapsedUnseen) : (double?)null;
         public double? AnsweredShare => answered + lapsed > 0 ? answered / (double)(answered + lapsed) : (double?)null;
         public double? MedianSeconds => Median(secondsToAnswer);
         public double? MinSeconds => secondsToAnswer.Count > 0 ? System.Linq.Enumerable.Min(secondsToAnswer) : (double?)null;
         public double? MaxSeconds => secondsToAnswer.Count > 0 ? System.Linq.Enumerable.Max(secondsToAnswer) : (double?)null;
         /// <summary>Callbacks opened with Show me, as a share of callbacks shown. Null when none were shown.</summary>
         public double? ShowMeShare => callbacksShown > 0 ? callbackShowMe / (double)callbacksShown : (double?)null;
-        public bool Any => sessions > 0 || raised > 0 || shown > 0 || answered > 0 || lapsed > 0 || callbacksShown > 0;
+        public bool Any => cheatEvents > 0 || sessions > 0 || raised > 0 || shown > 0 || answered > 0 || lapsed > 0 || callbacksShown > 0;
 
         public static double? Median(List<double> v)
         {
@@ -38,10 +41,11 @@ namespace AquariumCiv.Game
         {
             var c = CultureInfo.InvariantCulture;
             string P(double? x, string f) => x.HasValue ? string.Format(c, f, x.Value) : "-";
-            return string.Format(c, "Dilemmas [{0}] · {1} session(s) · raised {2} · shown {3} · answered {4} · lapsed {5} ({6} unseen) · answered share {7} · path box {8} / card {9} · seconds to answer median {10} (range {11}-{12}) · callbacks shown {13}, Show me {14}",
+            return string.Format(c, "Dilemmas [{0}] · {1} session(s) · raised {2} · shown {3} · answered {4} · lapsed {5} ({6} unseen) · answered of shown {7} · answered of raised {15} · path box {8} / card {9} · seconds to answer median {10} (range {11}-{12}) · callbacks shown {13}, Show me {14} · cheat events: {16}, not counted",
                 variant, sessions, raised, shown, answered, lapsed, lapsedUnseen,
                 AnsweredShare.HasValue ? string.Format(c, "{0:0}%", AnsweredShare.Value * 100) : "-",
-                answeredBox, answeredCard, P(MedianSeconds, "{0:0.#} s"), P(MinSeconds, "{0:0.#}"), P(MaxSeconds, "{0:0.#}"), callbacksShown, callbackShowMe);
+                answeredBox, answeredCard, P(MedianSeconds, "{0:0.#} s"), P(MinSeconds, "{0:0.#}"), P(MaxSeconds, "{0:0.#}"), callbacksShown, callbackShowMe,
+                AnsweredShareOfRaised.HasValue ? string.Format(c, "{0:0}%", AnsweredShareOfRaised.Value * 100) : "-", cheatEvents);
         }
     }
 
@@ -143,7 +147,7 @@ namespace AquariumCiv.Game
                 void D(string pre, DilemmaStats s)
                 {
                     N(pre + "raised", s.raised); N(pre + "shown", s.shown); N(pre + "answered", s.answered); N(pre + "lapsed", s.lapsed);
-                    O(pre + "answered_share", s.AnsweredShare); N(pre + "answered_box", s.answeredBox); N(pre + "answered_card", s.answeredCard);
+                    O(pre + "answered_share", s.AnsweredShare); O(pre + "answered_of_raised", s.AnsweredShareOfRaised); N(pre + "cheat_events", s.cheatEvents); N(pre + "answered_box", s.answeredBox); N(pre + "answered_card", s.answeredCard);
                     O(pre + "secs_median", s.MedianSeconds); O(pre + "secs_min", s.MinSeconds); O(pre + "secs_max", s.MaxSeconds);
                     N(pre + "callbacks_shown", s.callbacksShown); N(pre + "callbacks_showme", s.callbackShowMe);
                 }
@@ -154,7 +158,7 @@ namespace AquariumCiv.Game
         }
     }
 
-    class DilemmaTrack { public DilemmaStats stats; public bool raised, shown, answered, lapsed; }
+    class DilemmaTrack { public DilemmaStats stats; public bool raised, shown, answered, lapsed, debug; public int events, answeredBox, answeredCard, callbacksShown, callbackShowMe; public List<double> secs = new List<double>(); }
 
     public static class TelemetryAnalyzer
     {
@@ -204,6 +208,8 @@ namespace AquariumCiv.Game
             string curSession = null;
             bool cleaned = false;
             var sessVariant = new Dictionary<string, string>();
+            var sessVariants = new HashSet<string>(); // "session|variant": a session counts once under each variant it was in
+            void CountSession(string session, string v) { if (v != null && sessVariants.Add((session ?? "") + "|" + v)) VariantStats(v).sessions++; }
             string lastVariant = null;
             var tracks = new Dictionary<string, DilemmaTrack>();
 
@@ -215,6 +221,13 @@ namespace AquariumCiv.Game
             }
             string VariantOf(TelemetryEvent e) => sessVariant.TryGetValue(e.session ?? "", out var v) ? v : lastVariant;
             DilemmaTrack TrackOf(TelemetryEvent e)
+            {
+                var t = TrackOf0(e);
+                t.events++;
+                if (e.Num("debug") != 0) t.debug = true;
+                return t;
+            }
+            DilemmaTrack TrackOf0(TelemetryEvent e)
             {
                 string key = e.Str("box", "") + "|" + (int)e.Num("id", -1);
                 if (!tracks.TryGetValue(key, out var t)) tracks[key] = t = new DilemmaTrack { stats = VariantStats(VariantOf(e)) };
@@ -229,6 +242,7 @@ namespace AquariumCiv.Game
                     case Ev.Variant:
                         sessVariant[e.session ?? ""] = lastVariant = e.Str("v");
                         VariantStats(lastVariant);
+                        CountSession(e.session, lastVariant);
                         break;
                     case Ev.DilemmaRaised: TrackOf(e).raised = true; break;
                     case Ev.DilemmaShown: TrackOf(e).shown = true; break;
@@ -237,15 +251,15 @@ namespace AquariumCiv.Game
                         {
                             var t = TrackOf(e);
                             t.answered = true;
-                            if (e.Str("path") == "card") t.stats.answeredCard++; else t.stats.answeredBox++;
-                            if (e.TryGet("secs", out _)) t.stats.secondsToAnswer.Add(e.Num("secs"));
+                            if (e.Str("path") == "card") t.answeredCard++; else t.answeredBox++;
+                            if (e.TryGet("secs", out _)) t.secs.Add(e.Num("secs"));
                             break;
                         }
-                    case Ev.CallbackShown: TrackOf(e).stats.callbacksShown++; break;
-                    case Ev.CallbackShowMe: TrackOf(e).stats.callbackShowMe++; break;
+                    case Ev.CallbackShown: TrackOf(e).callbacksShown++; break;
+                    case Ev.CallbackShowMe: TrackOf(e).callbackShowMe++; break;
                     case Ev.SessionStart:
-                        if (e.Str("variant") != null) { sessVariant[e.session ?? ""] = lastVariant = e.Str("variant"); VariantStats(lastVariant).sessions++; }
-                        else if (lastVariant != null && !sessVariant.ContainsKey(e.session ?? "")) { sessVariant[e.session ?? ""] = lastVariant; VariantStats(lastVariant).sessions++; }
+                        if (e.Str("variant") != null) { sessVariant[e.session ?? ""] = lastVariant = e.Str("variant"); VariantStats(lastVariant); CountSession(e.session, lastVariant); }
+                        else if (lastVariant != null && !sessVariant.ContainsKey(e.session ?? "")) { sessVariant[e.session ?? ""] = lastVariant; CountSession(e.session, lastVariant); }
                         r.opens++;
                         int d = DayOf(e);
                         openDays.Add(d);
@@ -293,6 +307,9 @@ namespace AquariumCiv.Game
             foreach (var t in tracks.Values)
             {
                 var s = t.stats;
+                if (t.debug) { s.cheatEvents += t.events; continue; } // a cheat touched it: not a lab number
+                s.answeredBox += t.answeredBox; s.answeredCard += t.answeredCard; s.secondsToAnswer.AddRange(t.secs);
+                s.callbacksShown += t.callbacksShown; s.callbackShowMe += t.callbackShowMe;
                 if (t.raised) s.raised++;
                 if (t.shown) s.shown++;
                 if (t.answered) { if (t.shown) s.answered++; }
@@ -303,7 +320,7 @@ namespace AquariumCiv.Game
                 var a = r.dilemmas;
                 a.sessions += s.sessions; a.raised += s.raised; a.shown += s.shown; a.answered += s.answered; a.lapsed += s.lapsed;
                 a.lapsedUnseen += s.lapsedUnseen; a.answeredBox += s.answeredBox; a.answeredCard += s.answeredCard;
-                a.secondsToAnswer.AddRange(s.secondsToAnswer); a.callbacksShown += s.callbacksShown; a.callbackShowMe += s.callbackShowMe;
+                a.cheatEvents += s.cheatEvents; a.secondsToAnswer.AddRange(s.secondsToAnswer); a.callbacksShown += s.callbacksShown; a.callbackShowMe += s.callbackShowMe;
             }
             r.daysPlayed = openDays.Count;
             r.bookPagesSeen = pages.Count;

@@ -15,6 +15,13 @@ namespace AquariumCiv.Game
         readonly HashSet<int> raised = new HashSet<int>(), lapsed = new HashSet<int>(), answered = new HashSet<int>(), shownIds = new HashSet<int>();
         readonly Dictionary<int, double> shownAt = new Dictionary<int, double>();
 
+        readonly HashSet<int> cheatIds = new HashSet<int>();
+
+        /// <summary>#239: the debug cheats call this for a dilemma they raise, answer or lapse. Every event logged for that dilemma from now
+        /// on carries <c>debug=1</c>, and the analyzer leaves the whole dilemma out of the lab numbers.</summary>
+        public void MarkCheat(int dilemmaId) => cheatIds.Add(dilemmaId);
+        public bool IsCheat(int dilemmaId) => cheatIds.Contains(dilemmaId);
+
         public DilemmaTelemetryTracker(SimCore sim = null)
         {
             if (sim?.State?.dilemmas == null) return;
@@ -33,8 +40,8 @@ namespace AquariumCiv.Game
             int n = 0;
             foreach (var d in sim.State.dilemmas)
             {
-                if (raised.Add(d.id)) { log.DilemmaRaised(d); n++; }
-                if (d.state == DilemmaState.Lapsed && lapsed.Add(d.id)) { log.DilemmaLapsed(d); n++; }
+                if (raised.Add(d.id)) { log.DilemmaRaised(d, IsCheat(d.id)); n++; }
+                if (d.state == DilemmaState.Lapsed && lapsed.Add(d.id)) { log.DilemmaLapsed(d, IsCheat(d.id)); n++; }
             }
             return n;
         }
@@ -44,7 +51,7 @@ namespace AquariumCiv.Game
         {
             if (d == null || !shownIds.Add(d.id)) return false;
             shownAt[d.id] = now;
-            log.DilemmaShown(d);
+            log.DilemmaShown(d, IsCheat(d.id));
             return true;
         }
 
@@ -53,7 +60,7 @@ namespace AquariumCiv.Game
         {
             if (d == null || d.state != DilemmaState.Answered || !answered.Add(d.id)) return false;
             double? secs = shownAt.TryGetValue(d.id, out var t) ? Math.Max(0, now - t) : (double?)null;
-            log.DilemmaAnswered(d, secs);
+            log.DilemmaAnswered(d, secs, IsCheat(d.id));
             return true;
         }
 

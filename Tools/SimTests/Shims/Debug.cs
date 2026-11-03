@@ -5,5 +5,6 @@ namespace UnityEngine
     {
         public static void Log(object message) => System.Console.WriteLine(message);
         public static void LogWarning(object message) => System.Console.WriteLine("warning: " + message);
+        public static void LogError(object message) => System.Console.WriteLine("error: " + message);
     }
 }

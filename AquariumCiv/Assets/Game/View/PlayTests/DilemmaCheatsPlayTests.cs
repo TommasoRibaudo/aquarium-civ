@@ -160,10 +160,14 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, r.badLines, "every line parses");
             Assert.IsTrue(r.dilemmasByVariant.TryGetValue("B", out var b), "a B summary");
             Debug.Log("[DilemmaCheats] " + b.ToText());
-            Assert.AreEqual(3, b.raised); Assert.AreEqual(3, b.shown, "the cheats open each on its card"); Assert.AreEqual(2, b.answered); Assert.AreEqual(1, b.lapsed);
-            Assert.AreEqual(1, b.answeredCard); Assert.AreEqual(1, b.answeredBox);
-            Assert.AreEqual(1, b.callbacksShown);
-            Assert.GreaterOrEqual(b.secondsToAnswer.Count, 2);
+            // #239: every dilemma here was raised by a cheat, so its events carry debug=1 and stay out of the lab numbers
+            foreach (int id in ids)
+                foreach (var ev in evs.Where(e => e.name.StartsWith("dilemma_") && (int)e.Num("id", -1) == id))
+                    Assert.AreEqual(1, (int)ev.Num("debug"), $"{ev.name} #{id} is a cheat event");
+            Assert.AreEqual(0, b.raised); Assert.AreEqual(0, b.shown); Assert.AreEqual(0, b.answered); Assert.AreEqual(0, b.lapsed);
+            Assert.AreEqual(0, b.callbacksShown, "the callback is the cheat-raised dilemma's");
+            Assert.GreaterOrEqual(b.cheatEvents, 3 + 3 + 2 + 1 + 1, "raised, shown, answered, lapsed and callback events counted as cheat events");
+            StringAssert.Contains("not counted", b.ToText());
             Assert.IsNotEmpty(DilemmaCheats.Report());
 
             // and back to A

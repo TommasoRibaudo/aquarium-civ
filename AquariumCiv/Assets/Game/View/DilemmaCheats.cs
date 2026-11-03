@@ -53,6 +53,7 @@ namespace AquariumCiv.View
             if (why != null) return id + " can't be raised here: " + why;
             var d = sim.DebugRaiseDilemma(id);
             if (d == null) return id + " can't be raised here";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id); // #239: its events carry debug=1
             GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel); // the raise is logged now, not on the next frame
             string card = CardStackView.DebugOpenEntry(d.entryId);
             return Saved($"raised {id} (#{d.id}); {card}");
@@ -65,6 +66,7 @@ namespace AquariumCiv.View
             var sim = Sim;
             var d = sim?.OpenDilemma;
             if (d == null) return "no open dilemma";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
             var m = CardStackView.Instance != null ? CardStackView.Instance.Model : null;
             bool onCard = m != null && m.Face != null && m.Face.kind == CardKind.Dilemma && m.Shown != null && m.Shown.lead.id == d.entryId;
             bool ok = onCard ? m.AnswerDilemma(option) : sim.AnswerDilemma(d.id, option, DilemmaPath.Card);
@@ -74,7 +76,7 @@ namespace AquariumCiv.View
         }
 
         public static string StageInBox() => ChoiceSceneView.DebugStage();
-        public static string AnswerInBox(int option) { var r = ChoiceSceneView.DebugAnswer(option); return Saved(r); }
+        public static string AnswerInBox(int option) { var od = Sim?.OpenDilemma; if (od != null) GameClock.Instance?.DilemmaTracker()?.MarkCheat(od.id); var r = ChoiceSceneView.DebugAnswer(option); return Saved(r); }
         public static string LeaveBox() => ChoiceSceneView.DebugLeave();
         public static string BoxStatus() => ChoiceSceneView.DebugStatus();
 
@@ -83,6 +85,7 @@ namespace AquariumCiv.View
         {
             var sim = Sim;
             var d = sim?.OpenDilemma;
+            if (d != null) GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
             if (d == null || !sim.DebugLapseDilemma()) return "no open dilemma";
             GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
             return Saved($"{d.defId} lapsed: the people chose option {d.option + 1}");
