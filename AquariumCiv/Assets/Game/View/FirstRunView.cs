@@ -68,6 +68,8 @@ namespace AquariumCiv.View
         float hintShownAt = -1f;
         string lastHintId = "";
         bool prevHintVisible;
+        /// <summary>The hint is on screen right now (tests).</summary>
+        public bool HintShowing => hint != null && hint.resolvedStyle.display != DisplayStyle.None;
         FirstRunStep shownStep = (FirstRunStep)(-1);
 
         public FirstRun Run => run;
