@@ -9,7 +9,7 @@ namespace AquariumCiv.Tests
 {
     /// <summary>The eight dilemmas' content (P7, #222): four camp and four village, two of each kind; every def is raised in some seed
     /// within 40 game years; every option changes something and comes back (1-2 callbacks, 4-15 years); the words fit a phone, carry no
-    /// numbers in the people's mouths and never say "glass"; no two questions are the same; every text resolves with no placeholder
+    /// numbers or the player's words for the box ("glass", "tank"...) in the people's mouths; no two questions are the same; every text resolves with no placeholder
     /// left. Pure C#, so it also runs in Tools/SimTests.</summary>
     public class DilemmaContentTests
     {
@@ -111,14 +111,18 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void NoNumbersInThePeoplesWordsAndNoGlassAnywhere()
+        public void NoNumbersAndNoPlayersWordsInThePeoplesMouths()
         {
             foreach (var d in Defs)
             {
                 foreach (var t in PeoplesWords(d))
+                {
                     Assert.IsFalse(Regex.IsMatch(t, "[0-9]"), $"{d.id}: never how much: \"{t}\"");
-                foreach (var t in AllText(d).Where(x => !string.IsNullOrEmpty(x)))
-                    StringAssert.DoesNotContain("glass", t.ToLowerInvariant(), $"{d.id}: \"{t}\""); // Choice 10 (raw text: a place may be Glasswick)
+                    // chronicle-and-history Choice 10 / §5.1: the people never name the box in the player's words; they say what their
+                    // era believes (camp: the sky wall, the Bright One; village: the Keeper's window). Narrator lines may say "tank".
+                    var m = Regex.Match(t.ToLowerInvariant(), @"\b(glass|tank|box|aquarium|player|phone|game)\b");
+                    Assert.IsFalse(m.Success, $"{d.id}: the people never say \"{m.Value}\": \"{t}\"");
+                }
                 foreach (var q in Questions(d)) Assert.IsTrue(q.TrimEnd().EndsWith("?"), $"{d.id}: a question: \"{q}\"");
             }
         }
@@ -143,9 +147,6 @@ namespace AquariumCiv.Tests
             foreach (var d in Defs)
                 foreach (var t in AllText(d).Where(x => !string.IsNullOrEmpty(x)))
                     Assert.IsFalse(GoesOutside(t, out var w), $"{d.id}: \"{w}\" in \"{t}\"");
-            // the people's own words never name the box (Choice 10: no "glass"; and no "tank" either, only the narrator says it)
-            foreach (var d in Defs)
-                foreach (var t in PeoplesWords(d)) StringAssert.DoesNotContain("tank", t.ToLowerInvariant(), $"{d.id}: \"{t}\"");
         }
 
         [Test]

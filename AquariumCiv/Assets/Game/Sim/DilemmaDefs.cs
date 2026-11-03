@@ -88,7 +88,8 @@ namespace AquariumCiv.Sim
     /// The eight dilemmas of P7 (#222): four in the camp, four in the village, two of each kind (who, which way, tradition, strangers).
     /// The full text, for review in one place: docs/design/results/P7.md, "Dilemmas". Both options are good: a different history,
     /// never a better economy (a lean builds a different thing, food or wood, not more). Hints say what changes, never how much.
-    /// The people's words (questions, hints, labels) never say "glass" (chronicle-and-history Choice 10). Callback texts are told after
+    /// The people's words (questions, hints, labels) never say "glass", "tank" or "box" (chronicle-and-history Choice 10, §5.1): they
+    /// say what their era believes (camp: the sky wall; village: the Keeper's window). The narrator may say "a far-away tank". Callback texts are told after
     /// "Because the Keeper chose X, " (or "Because they chose X, "), so they read on from a comma; labels read after "chose".
     /// </summary>
     public static class DilemmaDefs
@@ -255,7 +256,7 @@ namespace AquariumCiv.Sim
             {
                 ["the kind"] = "Two lost travellers, cold and hungry. Can they stay?",
                 ["the worrier"] = "Strangers! Two of them. Probably fine? Can they stay?",
-                ["the gossip"] = "Strangers in the woods! I saw them first. Can they stay?",
+                ["the gossip"] = "Travellers! From past the sky wall, they say. Can they stay?",
                 ["the brave"] = "I found two travellers in the woods. Can they stay?",
                 ["the grump"] = "Two more mouths at the edge of the woods. Can they stay?",
             },
@@ -452,6 +453,7 @@ namespace AquariumCiv.Sim
                 ["the joker"] = "A family across the pond. Here, or near enough to wave?",
                 ["the loud"] = "A FAMILY! Across the pond! Where do they live?",
                 ["the gossip"] = "I've met the pond family already. Here, or there?",
+                ["the dreamer"] = "They came from behind the Keeper's window! Here, or there?",
             },
             options = new[]
             {
