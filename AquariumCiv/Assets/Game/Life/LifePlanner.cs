@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 
 namespace AquariumCiv.Life
 {
@@ -164,6 +165,7 @@ namespace AquariumCiv.Life
                 case PlaceKind.None: return false;
                 case PlaceKind.TrashHeap: return trashIds.Contains(p.index);
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
+                case PlaceKind.BushCell: return sim.EcologyOn && EcoBushes.IsBush(sim.State.eco, p.index); // P8 #288
                 case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
             }
             return !p.IsBuilding || buildingIds.Contains(p.buildingId);
