@@ -57,6 +57,8 @@ namespace AquariumCiv.Sim
         public const double NameAutoKeepSeconds = 75.0;     // untouched at the plate: the suggested name is kept and the run goes on
         public const double YearSeconds = 15.0;             // the live skip, one game year
         public const float WipedGrime = 0.08f;              // the glass counts as wiped at or below this
+        public const float WipedEnoughGrime = 0.25f;        // ... or at or below this, once the wipe has gone on a while
+        public const double WipedEnoughSeconds = 20.0;
         public const float ClearedOvergrowth = 0.06f;       // the patch counts as cleared at or below this
         public const float StartGrime = 0.45f, StartOvergrowth = 0.5f; // light smudges: enough to give the first wipe something to do, never enough to hide the camp
 
@@ -171,7 +173,7 @@ namespace AquariumCiv.Sim
                     f.hintIdle += dt;
                     if (f.hintIdle >= HintIdleSeconds)
                     {
-                        if (f.hintReturns < HintMaxReturns) { f.hintReturns++; f.hintPhase = 1; }
+                        if (f.hintReturns < HintMaxReturns || Step == FirstRunStep.Name) { f.hintReturns++; f.hintPhase = 1; } // the name's hint always comes back: the plate is the only way on (build 15)
                         else f.hintPhase = 3; // spent: never again
                     }
                     break;
@@ -254,7 +256,7 @@ namespace AquariumCiv.Sim
             switch (s)
             {
                 case FirstRunStep.Arrive: return f.stepSeconds >= ArriveSeconds;
-                case FirstRunStep.Wipe: return st.grime <= WipedGrime;
+                case FirstRunStep.Wipe: return st.grime <= WipedGrime || (st.grime <= WipedEnoughGrime && f.stepSeconds >= WipedEnoughSeconds); // build 15: a pane the finger can't fully reach never blocks the run
                 case FirstRunStep.Patch: return st.overgrowth <= ClearedOvergrowth;
                 case FirstRunStep.Name: return f.nameKept;
                 case FirstRunStep.Rain: return sim.EcologyOn ? sim.EcoMilestoneMonth(Eco.EcoMilestones.FirstGreen) >= 0 : f.rainNudgeId >= 0;

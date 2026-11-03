@@ -306,7 +306,7 @@ namespace AquariumCiv.View
         static bool WorldFree()
         {
             var hud = GameHud.Instance;
-            if (hud != null && (hud.CleanMode || hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return false;
+            if (hud != null && (hud.CleanMode || hud.Hand != GameHud.KitTool.None || hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return false; // a kit tool in hand owns the taps (build 15: the seed opened a card)
             var shaping = ShapingView.Instance; // #85: in shape mode a tap places the tool
             if (shaping != null && shaping.ShapeMode) return false;
             var tl = TimeLapseView.Find(); // the time-lapse replays the past: the live people can't hear a knock (tester batch 2)

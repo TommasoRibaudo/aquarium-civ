@@ -42,7 +42,7 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheRiverValleyLandIsBitForBitUnchanged()
         {
-            foreach (int preset in new[] { 0, 1, 2, 3, 4, 5, -1, -2, 99, 102 })
+            foreach (int preset in new[] { 0, 1, 2, 3, 4, 5, -1, -2, 99, 103 })
             {
                 var t = TerrainSpec.Preset(preset);
                 for (float x = -3f; x <= 3f; x += 0.1f)
