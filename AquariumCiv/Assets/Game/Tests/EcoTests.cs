@@ -416,6 +416,9 @@ namespace AquariumCiv.Tests
         {
             var care = Play(true, Seasons30);
             var none = Play(false, 34 * 4);
+            TestContext.Out.WriteLine($"care: camp Y{care.CampYear:0.0} green Y{care.Year(EcoMilestones.FirstGreen):0.0} bush Y{care.Year(EcoMilestones.FirstBush):0.0} " +
+                $"planted Y{care.Year(EcoMilestones.TreePlanted):0.0} grown Y{care.Year(EcoMilestones.TreeGrown):0.0} water Y{care.Year(EcoMilestones.WaterSurfaced):0.0} village Y{care.VillageYear:0.0}; " +
+                $"none: camp Y{none.CampYear:0.0}; runs {care.ms:0} + {none.ms:0} ms");
             // The lab, seed 7 on the first terrain: care camp Y4.3, village Y25.3; no player camp Y25.3.
             Assert.That(care.CampYear, Is.InRange(4.3f * 0.75f, 4.3f * 1.25f), "care: camp");
             Assert.That(care.VillageYear, Is.InRange(25.3f * 0.75f, 25.3f * 1.25f), "care: village");
@@ -425,9 +428,6 @@ namespace AquariumCiv.Tests
             Assert.That(care.VillageYear, Is.InRange(19f, 31.6f));
             Assert.That(none.CampYear, Is.InRange(18f, 31.6f));
             Assert.IsFalse(none.sim.State.eco.Reached(EcoMilestones.TreePlanted), "no player plants nothing");
-            TestContext.Out.WriteLine($"care: camp Y{care.CampYear:0.0} green Y{care.Year(EcoMilestones.FirstGreen):0.0} bush Y{care.Year(EcoMilestones.FirstBush):0.0} " +
-                $"planted Y{care.Year(EcoMilestones.TreePlanted):0.0} grown Y{care.Year(EcoMilestones.TreeGrown):0.0} water Y{care.Year(EcoMilestones.WaterSurfaced):0.0} village Y{care.VillageYear:0.0}; " +
-                $"none: camp Y{none.CampYear:0.0}; runs {care.ms:0} + {none.ms:0} ms");
         }
 
         [Test]

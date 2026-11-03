@@ -23,9 +23,24 @@ namespace AquariumCiv.Sim.Eco
         public float capillaryWet = 0.05f, capillaryDamp = 0.14f; // depth to the table that keeps the soil wet / damp
 
         // Misting
-        public float mistRadius = 0.45f, mistWet = 0.6f, mistAir = 0.05f, mistDeep = 0.15f; // deep = straight to the table
-        public float mistGreensAt = 0.6f;                         // the core of a mist greens at once
+        public float mistRadius = 0.7f, mistRadiusMax = 1.0f;     // a short mist's reach; a full hold (mistMaxAmount) reaches mistRadiusMax
+        public float mistWet = 0.35f, mistAir = 0.05f, mistDeep = 0.15f; // deep = straight to the table
+        public float mistGreensAt = 0.82f;                        // only the very middle of a mist greens at once (#266: a little green, not the whole core)
+        public int mistMinGreen = 3;                              // ... but every mist leaves at least this many green cells at its heart
+        public float mistSproutAt = 0.6f, mistSprout = 0.8f;     // shoots (they start at sproutCommit and up to mistSprout): bare ground in the wet area (f above this) starts sprouting
+        public float mistShow = 1.0f;                             // how wet the surface looks per unit of mist at the middle (EcoState.wet)
+        public float puddleAt = 0.85f, puddleGain = 1.0f;         // amount * falloff above this soaks to a puddle (low ground only)
+        public float puddleMaxSlope = 0.3f;
         public float mistSecondsPerUnit = 2f, mistMaxAmount = 2f; // seconds of mist for one lab "spot"; a long press is capped
+
+        // The wet area and the first shoots (#266, #271). All per MONTH (the land's weather steps a season; these step monthly).
+        public float wetDry = 0.20f, wetDryHumid = 0.5f, wetGone = 0.03f;   // share of the surface wetness lost a month (slower in humid air)
+        public float puddleDry = 0.22f, puddleSink = 0.35f, puddleGone = 0.04f; // strength lost a month (x season dryness); share that sinks into wet
+        public float puddleDrinkAt = 0.25f;                       // a puddle this strong can be drunk from (the water source while there is no pond)
+        public float sproutWetAt = 0.3f, sproutRate = 0.2f, sproutWetRate = 0.05f; // shoots grow on a month at sproutRate (more beside green); wet ground alone adds sproutWetRate * wetness
+        public float sproutKeep = 0.97f, sproutCommit = 0.5f; // shoots past sproutCommit grow on by themselves;                          // shoots linger a little when the wet leaves
+        public float creepChance = 0.014f, creepStep = 0.5f, creepMoist = 0.10f; // a green edge nudges a bare neighbour on, if the ground has any damp
+        public float dewSprout = 0.002f, dewSproutMoist = 0.14f, showerWet = 0.9f; // an odd sprout after dew; a shower's wet area
 
         // Humidity (one value for the box's air) and the glass
         public float humidBase = 0.20f, humidVeg = 0.20f, humidPond = 0.9f, humidToRoom = 0.35f;
@@ -42,7 +57,7 @@ namespace AquariumCiv.Sim.Eco
         public int pondGateCells = 20;                            // "water at the surface" for the village gate
 
         // Cover succession
-        public float grassAt = 0.18f, grassFull = 0.55f, grassRate = 0.5f, grassAlone = 0.12f; // alone = no green neighbour
+        public float grassAt = 0.18f, grassFull = 0.55f, grassRate = 0.1f, grassAlone = 0.12f; // alone = no green neighbour
         public float tallAt = 0.35f, tallSoil = 0.25f, tallRate = 0.12f;
         public float bushAt = 0.30f, bushSoil = 0.28f, bushRate = 0.008f, bushNeighbour = 2f;
         public float soilGrass = 0.012f, soilTall = 0.02f, soilBush = 0.025f, soilTree = 0.03f, soilStart = 0.08f, soilStartBase = 0.15f;
@@ -72,7 +87,7 @@ namespace AquariumCiv.Sim.Eco
         public float seedUnlockBush = 0.003f;                     // the seed comes after the first bushes
 
         // Gates
-        public float campMeadow = 0.15f;
+        public float campMeadow = 0.20f;
         public int campRabbits = 2;
         public int villageTrees = 8;
     }
