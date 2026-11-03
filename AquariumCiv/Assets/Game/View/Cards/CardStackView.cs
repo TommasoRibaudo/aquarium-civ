@@ -65,6 +65,9 @@ namespace AquariumCiv.View
         bool swipeInScroll;
         string debugFace;
         System.Action<CardFace> debugEdit;
+        // #238: the open dilemma last seen, the card of one raised live still waiting to be peeked, the month the dot was worked out at.
+        int liveSeen = -1, livePending = -1;
+        long dotMonth = -1;
 
         public CardStackModel Model => model;
         public VisualElement Root => root;
@@ -161,6 +164,9 @@ namespace AquariumCiv.View
             if (model != null) { model.Changed -= Draw; model.ShowMeEnd -= OnShowMeEnd; }
             bound = sim;
             model = null;
+            liveSeen = sim?.OpenDilemma?.id ?? -1; // one open already was raised before this session: the return tells it
+            livePending = -1;
+            dotMonth = -1;
             if (sim != null)
             {
                 model = new CardStackModel(sim, () => Time.realtimeSinceStartupAsDouble, GameClock.Tel) { DilemmaTel = GameClock.DilemmaTrackerFor(sim) };
@@ -197,7 +203,7 @@ namespace AquariumCiv.View
             if (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return true;
             if (clock != null && clock.Visiting) return true;
             var person = PersonCardView.Instance;
-            if (person != null && person.AnyOpen) return true;
+            if (person != null && (person.AnyOpen || person.BuildingOpen)) return true; // #241: a building card too, or the cards open under it
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var mp = MomentPlayer.Instance;
@@ -221,6 +227,7 @@ namespace AquariumCiv.View
             ShowBar(open && !covered && showingPlace);
             ShowPeek(peeking && !covered);
             if (model == null) return;
+            WatchLive();
             SetToolsHidden(open);
             SetPeekUp(peeking && !covered);
             if (hud != null)
@@ -242,6 +249,37 @@ namespace AquariumCiv.View
             pressedLast = pressed;
             if (open && !covered && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) model.Close();
         }
+
+        /// <summary>#238: with dilemmas on, a dilemma the people raise while the player watches brings the peek up with it on top, as a
+        /// return does, once nothing else holds the screen; and the history dot follows the unread stories month by month. With dilemmas
+        /// off nothing here runs (variant A stays as it was).</summary>
+        void WatchLive()
+        {
+            if (bound == null || !bound.Config.dilemmas) return;
+            if (bound.State.month != dotMonth) { dotMonth = bound.State.month; model.RefreshDot(); }
+            var open = bound.OpenDilemma;
+            int id = open?.id ?? -1;
+            if (id != liveSeen) { liveSeen = id; livePending = open != null ? open.entryId : -1; }
+            if (livePending < 0) return;
+            var d = bound.DilemmaOfEntry(livePending);
+            if (d == null || d.state != DilemmaState.Open || model.Holds(livePending)) { livePending = -1; return; } // gone, or a stack has it
+            if (model.Mode != CardStackMode.Hidden || !LiveFree()) return; // wait until the other thing closes
+            if (model.ShowLive(livePending)) livePending = -1;
+        }
+
+        /// <summary>Nothing else holds the screen: no sheet or card, no moment, Show me, choice scene, evening talk or clean mode.</summary>
+        bool LiveFree()
+        {
+            if (Covered() || MomentPlayer.PromptsBlocked()) return false;
+            if (hud != null && hud.CleanMode) return false;
+            var talk = EveningTalkView.Instance;
+            if (talk != null && talk.Open) return false;
+            var choice = ChoiceSceneView.Instance;
+            return choice == null || choice.State == ChoiceSceneView.Phase.Idle;
+        }
+
+        /// <summary>Debug and tests (#238): the card of a dilemma raised live that waits for the screen to be free (-1 = none).</summary>
+        public int LivePending => livePending;
 
         void ShowSheet(bool on)
         {
@@ -479,6 +517,8 @@ namespace AquariumCiv.View
             scroll = new GlassScroll { name = "cards-scroll", SnapToRows = true, SplitRows = true };
             scroll.AddToClassList("cards-scroll");
             scroll.View.contentContainer.AddToClassList("cards-scroll-pad");
+            scroll.View.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => FitStory());
+            scroll.View.RegisterCallback<GeometryChangedEvent>(_ => FitStory());
             card.hierarchy.Insert(card.hierarchy.IndexOf(card.Actions), scroll);
             teaser = Line("cards-teaser", "type-quote");
             body = card.Body;
@@ -666,6 +706,30 @@ namespace AquariumCiv.View
 
         bool wasOpen;
 
+        /// <summary>#240: a callback is a story that comes back years later, and it is the whole card: the sheet grows (up to
+        /// <see cref="StoryMaxShare"/> of the screen) until the grey question, the headline and the story fit without a scroll.</summary>
+        bool fitStory;
+        const float StoryMaxShare = 0.5f, StoryMinShare = 0.3f;
+
+        void SetFitStory(bool on)
+        {
+            fitStory = on;
+            if (!on) sheet.style.height = StyleKeyword.Null;
+            else FitStory();
+        }
+
+        void FitStory()
+        {
+            if (!fitStory || root == null) return;
+            var view = scroll.View;
+            float panelH = root.layout.height, cur = sheet.layout.height;
+            if (float.IsNaN(panelH) || panelH <= 0f || float.IsNaN(cur) || cur <= 0f) return;
+            float over = view.contentContainer.layout.height - view.layout.height;
+            if (float.IsNaN(over) || Mathf.Abs(over) < 1f) return;
+            float want = Mathf.Clamp(cur + over + 2f, panelH * StoryMinShare, panelH * StoryMaxShare);
+            if (Mathf.Abs(want - cur) > 1f) sheet.style.height = want;
+        }
+
         void DrawPeek()
         {
             var p = model.Peek;
@@ -703,6 +767,7 @@ namespace AquariumCiv.View
 
         void DrawAlso(CardFace f)
         {
+            SetFitStory(false);
             foreach (var l in new[] { teaser, body, endLine, quote, note, footer }) Show(l, false);
             Show(dilBox, false);
             Show(scroll, true);
@@ -723,6 +788,7 @@ namespace AquariumCiv.View
         void DrawDilemma(CardFace f)
         {
             var v = f.dilemma;
+            SetFitStory(false);
             Show(scroll, false);
             Show(dilBox, true);
             Show(eraMark, false);
@@ -787,6 +853,7 @@ namespace AquariumCiv.View
             bool era = f.kind == CardKind.EraReady || (f.portraits.Count == 0 && f.card?.lead.kind == "era");
             Show(eraMark, era);
             head.EnableInClassList("cards-head--alone", !era && f.portraits.Count == 0);
+            SetFitStory(f.card != null && f.card.lead.kind == SimCore.CallbackKind);
         }
 
         string Quoted(CardFace f)

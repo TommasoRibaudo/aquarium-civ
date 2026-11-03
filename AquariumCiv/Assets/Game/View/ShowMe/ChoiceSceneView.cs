@@ -236,12 +236,15 @@ namespace AquariumCiv.View
 
         // ================================================================== a touch
 
-        /// <summary>A short tap reached the world (<see cref="GlassVoice"/>, before the person card): true if it answered the people.</summary>
+        /// <summary>A short tap reached the world (<see cref="GlassVoice"/>, before the person card): true if the scene took it. While the
+        /// people wait on a touch every world tap is the scene's: one on a side answers, a near miss does nothing (#241: it opened the
+        /// building card over the options, and every later tap missed).</summary>
         public bool WorldTap(Vector2 screenPos)
         {
             if (!Answerable || Stage == null) return false;
             int side = SideAt(screenPos, out _);
-            return side >= 0 && Answer(Stage.sides[side].option);
+            if (side >= 0) Answer(Stage.sides[side].option);
+            return true;
         }
 
         /// <summary>The side whose figure is under a screen point (pixels, y up): the nearest within <see cref="PickRadius"/>, or -1.</summary>

@@ -802,5 +802,71 @@ namespace AquariumCiv.View.Cards.Tests
             m.AnswerDilemma(0);
             Assert.IsFalse(m.DilemmaShowMe(), "answered: nothing to show");
         }
+
+        // ---------- #238: a dilemma raised while the player watches ----------
+        [Test]
+        public void ALiveDilemmaPeeksOnTopAndATapOpensOnItsCardOnly()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            AddMany(sim, 4); // other unread stories wait for the return
+            var m = Model(sim);
+            Assert.IsTrue(m.ShowLive(d.entryId));
+            Assert.AreEqual(CardStackMode.Peek, m.Mode);
+            Assert.AreEqual(sim.Headline(sim.State.chronicle.First(e => e.id == d.entryId)), m.Peek.text);
+            Assert.IsTrue(m.Holds(d.entryId));
+            Assert.IsFalse(m.ShowLive(d.entryId), "not twice while it is up");
+            Assert.IsTrue(m.TapPeek());
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+            Assert.AreEqual(1, m.PageCount, "only the dilemma: the stories wait for the return");
+            m.Close();
+            Assert.IsTrue(m.HistoryDot, "the rest wait: the dot");
+        }
+
+        [Test]
+        public void NoLivePeekInTheFirstRunOrForAnAnsweredDilemma()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Model(sim);
+            sim.State.firstRun.active = true;
+            Assert.IsFalse(m.ShowLive(d.entryId), "the first run tells its own cards");
+            sim.State.firstRun.active = false;
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
+            Assert.IsFalse(m.ShowLive(d.entryId), "answered: nothing to ask");
+            Assert.AreEqual(CardStackMode.Hidden, m.Mode);
+        }
+
+        [Test]
+        public void TheDotIsWorkedOutAgainLive()
+        {
+            var sim = Quiet();
+            var m = Model(sim);
+            Assert.IsFalse(m.HistoryDot);
+            Add(sim, "wedding", 0.8f);
+            Assert.IsFalse(m.HistoryDot, "not until it is worked out");
+            m.RefreshDot();
+            Assert.IsTrue(m.HistoryDot);
+        }
+
+        // ---------- #240: the callback card ----------
+        [Test]
+        public void ACallbacksHeadlineIsItsCreditAndTheBodyGoesOnWithoutRepeatingIt()
+        {
+            var sim = Quiet();
+            sim.State.month += 3; // past the founding months the test box counts as seen
+            var d = sim.DebugRaiseDilemma("camp_remember");
+            Assert.IsNotNull(d);
+            sim.AnswerDilemma(d.id, 1, DilemmaPath.Card);
+            var e = sim.DebugFireCallbackNow();
+            Assert.IsNotNull(e);
+            var m = Model(sim);
+            Assert.IsTrue(m.DebugPrepare(16) && m.TapPeek());
+            for (int i = 0; i < 16 && m.Shown?.lead.id != e.id; i++) m.Next();
+            var f = m.Face;
+            Assert.AreEqual(e.id, f.card.lead.id);
+            Assert.AreEqual("Because the Keeper chose the tree", f.headline);
+            Assert.IsFalse(f.body.StartsWith("Because"), f.body);
+            Assert.IsTrue(char.IsUpper(f.body[0]), "the body reads as a sentence: " + f.body);
+            StringAssert.StartsWith("At the fire: ", f.teaserLine, "the question stays as the grey line");
+        }
     }
 }

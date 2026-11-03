@@ -227,6 +227,87 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(600000)]
         public IEnumerator EveryKindOnASmallPhone() => EveryKindAt(750, 1334);
 
+        // ================================================================== #241
+
+        /// <summary>A target's drawn height in points on this screen (a 375 pt wide phone).</summary>
+        static float Pt(VisualElement e) => e.worldBound.height / Cards.Root.worldBound.height * Screen.height * 375f / Screen.width;
+
+        static bool AnyWorldCard => PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen);
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator ATapBetweenTheSidesOpensNothingAndDoesNotAnswer()
+        {
+            yield return OpenBox(750, 1334);
+            yield return ToTheCard("camp_fire");
+            foreach (var n in new[] { "cards-dil-answer-0", "cards-dil-answer-1" })
+                Assert.GreaterOrEqual(Pt(Cards.Root.Q(n)), 44f, n + " is 44 pt or more at 750x1334");
+            var d = Sim.OpenDilemma;
+            yield return ShowTheChoice("near miss");
+            Assert.GreaterOrEqual(Pt(Cards.Root.Q("cards-showme-back")), 44f, "Back to the story is 44 pt or more at 750x1334");
+            AssertApart("near miss", out _);
+            Assert.IsTrue(Choice.TryScreenOf(0, out var a));
+            Assert.IsTrue(Choice.TryScreenOf(1, out var b));
+            int tapped = 0;
+            foreach (float t in new[] { 0.5f, 0.35f, 0.65f })
+            {
+                var p = Vector2.Lerp(a, b, t);
+                if (Choice.SideAt(p, out _) >= 0) continue; // on a side's reach: that is a real touch, not a miss
+                yield return TapAt(p);
+                yield return Frames(8);
+                tapped++;
+                Assert.AreEqual(DilemmaState.Open, d.state, $"a tap at {p} between the sides does not answer");
+                Assert.IsFalse(AnyWorldCard, $"a tap at {p} between the sides opens no person or building card");
+                Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, "the people still wait");
+                Assert.IsTrue(Cards.ShowingChoice, "the bar is still up");
+            }
+            Assert.Greater(tapped, 0, "at least one point between the sides is a miss");
+            // A building in the frame, tapped while they wait: still nothing opens (it opened the building card before #241).
+            var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            int onBuilding = 0;
+            foreach (var lot in Sim.Settlement.Lots)
+            {
+                if (lot.retired || lot.buildingId <= 0 || onBuilding >= 2) continue;
+                var w = box.transform.TransformPoint(new Vector3(lot.x, box.GroundHeight(lot.x, lot.z) + 0.05f, lot.z));
+                var s = Camera.main.WorldToScreenPoint(w);
+                var p = new Vector2(s.x, s.y);
+                if (s.z <= 0f || p.x < 0f || p.x > Screen.width || p.y < Screen.height * 0.3f || p.y > Screen.height) continue;
+                if (Choice.SideAt(p, out _) >= 0 || PersonCardView.Instance.PickBuilding(p) < 0) continue;
+                yield return TapAt(p);
+                yield return Frames(8);
+                onBuilding++;
+                Assert.IsFalse(AnyWorldCard, "a tap on a building while they wait opens no card");
+                Assert.AreEqual(DilemmaState.Open, d.state);
+            }
+            Debug.Log("[241] building taps while waiting: " + onBuilding);
+            yield return Shot("241-near-miss-750x1334");
+            // A real touch still answers.
+            Assert.IsTrue(Choice.TryScreenOf(0, out var at));
+            yield return TapAt(at);
+            yield return Frames(3);
+            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch on a side still answers");
+            AssertNoErrors("near miss");
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator AnOpenBuildingCardHoldsTheDilemmaCardBack()
+        {
+            yield return OpenBox(750, 1334);
+            yield return ToTheCard("camp_fire");
+            var sheet = Cards.Root.Q<GlassSheet>("cards-sheet");
+            Assert.IsTrue(sheet.IsOpen, "the dilemma card is up");
+            var person = PersonCardView.Instance;
+            int building = Sim.State.buildings.Select(x => x.id).FirstOrDefault(id => Sim.BuildingCardOf(id) != null);
+            Assert.IsTrue(person.OpenBuilding(building), "a building card opens");
+            yield return Frames(10);
+            Assert.IsFalse(sheet.IsOpen, "the dilemma card waits behind the building card");
+            yield return Shot("241-building-over-750x1334");
+            person.CloseBuilding();
+            yield return Frames(10);
+            Assert.IsTrue(sheet.IsOpen, "back once the building card closes");
+            Assert.AreEqual(CardKind.Dilemma, Model.Face.kind);
+            AssertNoErrors("building over");
+        }
+
         public override void TearDown()
         {
             ChoiceSceneView.DebugWatch = false;

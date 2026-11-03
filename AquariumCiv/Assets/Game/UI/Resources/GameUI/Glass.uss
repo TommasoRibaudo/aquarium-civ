@@ -474,7 +474,7 @@
 .cards-dilemma { flex-direction: row; flex-shrink: 0; margin-top: var(--space-8); }
 .cards-dil { flex-grow: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-12); transition: translate 160ms ease-out, opacity 160ms ease-out; }
 .cards-dil--second { margin-right: 0; }
-.cards-dilemma .cards-dil-btn { height: auto; min-height: 126.5px; padding: 0 var(--space-8) 0 11px; flex-direction: row; align-items: center; justify-content: flex-start; white-space: normal; }
+.cards-dilemma .cards-dil-btn { height: auto; min-height: 128px; padding: 0 var(--space-8) 0 11px; flex-direction: row; align-items: center; justify-content: flex-start; white-space: normal; }
 .cards-dil-face { width: 99px; height: 99px; margin-right: var(--space-8); font-size: 41.25px; }
 .cards-dil-label { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; white-space: normal; -unity-text-align: middle-left; }
 .cards-dil-hint { margin: 8px 0 0 0; white-space: normal; flex-shrink: 0; }
@@ -483,8 +483,9 @@
 /* a short phone has no room for the dots row on this card: the question, two options and the buttons are the moment */
 .cards--short .cards-dilcard .cards-dots-row { display: none; }
 .cards--short .cards-dilcard .cards-dilemma { margin-top: 0; }
-.cards--short .cards-dilcard .cards-dilemma .cards-dil-btn { min-height: 121px; }
 .cards--short .cards-dilcard .cards-dil-hint { margin-top: 0; font-size: 33px; }
+/* #241: 44 pt measured on screen at 750 and 1170 wide (121 and 126.5 read 42 and 43.9) */
+#cards-showme-back { height: 128px; }
 .cards-scroll-pad { width: 100%; padding-right: 24.75px; }
 .cards-line { margin: 16.5px 0 0 0; white-space: normal; }
 .cards-also-line {

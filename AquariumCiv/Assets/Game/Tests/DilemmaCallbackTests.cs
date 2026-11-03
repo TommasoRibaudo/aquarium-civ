@@ -132,6 +132,28 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheHeadlineIsTheCreditAndTheLapseLineKeepsItsFullStopAndTheQuestion()
+        {
+            // #240: the callback's headline is its credit only, so the card never says the opening twice.
+            var sim = Raised(5, Def("h", Plain("every roof the young ones mended has a carved bird.")));
+            sim.AnswerDilemma(sim.OpenDilemma.id, 1, DilemmaPath.Card);
+            var e = sim.DebugFireCallbackNow();
+            Assert.AreEqual("Because the Keeper chose the woods", sim.Headline(e));
+            StringAssert.StartsWith(sim.Headline(e) + ", every roof", e.text);
+
+            // The lapse line: the whole sentence as headline, and the question grey above it like a callback.
+            var lapsed = Raised(6, Def("l", Plain()));
+            Assert.IsTrue(lapsed.DebugLapseDilemma());
+            var d = lapsed.State.dilemmas[0];
+            var line = lapsed.State.chronicle.Single(x => x.id == d.resultEntryId);
+            StringAssert.EndsWith(" themselves.", lapsed.Headline(line));
+            var stack = lapsed.ReturnCardsCapped(0, 50);
+            var card = stack.cards.Concat(stack.also).FirstOrDefault(c => c.lead == line || c.entries.Contains(line));
+            Assert.IsNotNull(card, "the lapse line is a card");
+            StringAssert.Contains("fields, or the woods", card.teaser, "the question is the grey line");
+        }
+
+        [Test]
         public void TheKeeperIsCreditedForAnAnswerAndThePeopleForALapse()
         {
             var answered = Raised(6, Def("c", Plain("the fields feed us.")));
