@@ -106,8 +106,11 @@ namespace AquariumCiv.View.PlayTests
             left = a.x <= b.x ? 0 : 1;
         }
 
+        // Others' lazy one-offs (the speaker ring, the chatter marks) appear on first use: not ours, not a leak (as in AssertNoNewRoots).
+        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks" };
         static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
-            .Count(r => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null);
+            .Count(r => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
+                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0);
         static int Roots() => RootNames().Count;
         static System.Collections.Generic.List<string> RootNames()
         {
@@ -180,8 +183,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(ChoiceSceneView.Phase.Drifting, Choice.State, "left without a touch");
             Assert.IsFalse(Choice.Answerable, "a touch no longer answers");
             Assert.AreEqual(DilemmaState.Open, d.state, "it stays open");
-            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, ChoiceScenes.DriftSeconds + 5f);
+            // The scene's clock caps a frame at 0.1 s, so on a slow Editor its 20 s take longer in real time: allow for it.
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, ChoiceScenes.DriftSeconds * 3f + 5f);
             Assert.AreEqual(ChoiceSceneView.Phase.Idle, Choice.State, "after ~20 s they drift back to work");
+            yield return Frames(2); // End() destroys at the end of its frame: look after it
             Assert.AreEqual(DilemmaState.Open, d.state, "still open");
             Assert.AreEqual(0, ChoiceObjects(), "nothing left behind");
             Assert.AreEqual(0, PeopleView.Find().PinCount);
