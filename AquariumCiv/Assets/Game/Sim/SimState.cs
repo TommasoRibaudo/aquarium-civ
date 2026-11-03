@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
@@ -50,6 +51,10 @@ namespace AquariumCiv.Sim
         // tests that compare the economy with and without it. terrainPreset picks the box's land (0 = the style kit's).
         public bool settle = true;
         public int terrainPreset = 0;
+        // The Keeper's hands on the land (keepers-hands.md; Sim/Eco, #243): a barren box that the mister greens, a tree, a
+        // pond, and two gates (the camp, the village). Off by default: with it off the slice plays exactly as before.
+        public bool ecology = false;
+        public EcoTuning eco = new EcoTuning();
         // Named notables per era (game definition §4, #26): about 2–4 in the camp, 4–8 in the village, up to 12 in the
         // town. The band counts adults (16+). Births pause while the adults are at the era's max; children under 16 don't
         // count against it, up to familyRoom of them over the max, so notable families go on across generations (user,
@@ -383,6 +388,8 @@ namespace AquariumCiv.Sim
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        /// <summary>The land's own layers when the ecology is on (Sim/Eco, #243); an old save has none and loads with it off.</summary>
+        public EcoState eco = new();
         public List<Wish> wishes = new();   // notables' wishes for a gift (SimCore.Wishes.cs, #83)
         public int wishNextId = 1;
         public float shapingCharges = -1f; // the Keeper's shared shaping charges (SimCore.Shaping.cs, #82); -1 = not started (old saves)

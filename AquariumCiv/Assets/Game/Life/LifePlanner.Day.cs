@@ -1017,7 +1017,8 @@ namespace AquariumCiv.Life
             if (p.job == CrowdServer && tavernB != null) Put(list, Mk(ActivityKind.Serve, 18f, 22f, PlaceOf(tavernB), Prop.Mug), d);
             else if (p.job == JobType.Brewer && tavernB != null) Put(list, Mk(ActivityKind.Serve, 18f, 20f, PlaceOf(tavernB), Prop.Mug), d);
             else if (tavernB != null && !EveningBusy(p) && R(k, d.day, 70) < 0.15f) Put(list, Mk(ActivityKind.Drink, 18.3f, 21.8f, PlaceOf(tavernB), Prop.Mug), d);
-            else if (p.job == JobType.Fisher && R(k, d.day, 71) < 0.3f) Put(list, Mk(ActivityKind.Fish, 19.7f, 22f, Place.Land(PlaceKind.Pond), Prop.Lantern), d);
+            else if (p.job == JobType.Fisher && !(sim != null && sim.EcologyOn && sim.EcoPondCells == 0) && R(k, d.day, 71) < 0.3f) // P8: no evening fishing in a dry hollow
+                Put(list, Mk(ActivityKind.Fish, 19.7f, 22f, Place.Land(PlaceKind.Pond), Prop.Lantern), d);
         }
 
         // ---------------------------------------------------------------- weather (rule 14)

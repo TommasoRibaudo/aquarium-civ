@@ -39,6 +39,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaContentTests.cs" /><!-- P7 #222 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- P8 #243: the ecology layer -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- P8 #248 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShelfTests.cs" />

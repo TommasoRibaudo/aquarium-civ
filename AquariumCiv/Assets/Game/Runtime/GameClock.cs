@@ -76,6 +76,7 @@ namespace AquariumCiv.Game
             int seed = DebugNextSeed != 0 ? DebugNextSeed : new System.Random().Next(1, int.MaxValue);
             DebugNextSeed = 0; // one box only
             LoadLabSwitches();
+            if (EcologyPref) config.ecology = true; // P8: the living land, switched on from the debug panel (kept across restarts)
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, seed);
             startMs = sw.Elapsed.TotalMilliseconds;
@@ -247,6 +248,26 @@ namespace AquariumCiv.Game
                 EraNotifier.Enabled = granted;
                 answered?.Invoke(granted);
             }));
+        }
+
+        // ---------- P8: the living land (off by default) ----------
+        const string EcologyKey = "p8.ecology";
+        /// <summary>New boxes start barren and grow (P8, keepers-hands.md). A prototype switch: kept across restarts in builds.</summary>
+        public static bool EcologyPref
+        {
+            get => PlayerPrefs.GetInt(EcologyKey, 0) == 1;
+            set { PlayerPrefs.SetInt(EcologyKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Debug: switches the living land for new boxes and starts a new one now (barren when on).</summary>
+        public static string DebugEcologyBox(bool on)
+        {
+            var c = Instance;
+            if (c == null) return "no clock";
+            EcologyPref = on;
+            c.config.ecology = on;
+            c.ResetBox();
+            return on ? "a new barren box (living land on)" : "a new box (living land off)";
         }
 
         // ---------- reset (#95) ----------

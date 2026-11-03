@@ -367,6 +367,80 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(20);
         }
 
+        /// <summary>P8 (#248): the living land's first run by touch on a barren box (wipe, hold to mist, name; no year), then
+        /// cheats to the camp gate, where the tents may go up. Every bootstrap, no console errors, one Generated root.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator BarrenBoxFirstRunToCampGate_NoConsoleErrors()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true; // GameClock.Awake reads it: the fresh box starts barren
+            try
+            {
+                yield return OpenSlice(seed: Seed, skipFirstRun: false);
+                t0 = Time.realtimeSinceStartup;
+                Assert.IsTrue(Sim.EcologyOn, "a barren box");
+                Assert.IsTrue(Sim.BeforeCamp);
+                Assert.IsNotNull(EcoMistView.Instance, "the mist view bootstrapped");
+                Assert.IsTrue(Run.Active, "a fresh box starts the first run");
+                var care = CareView.Instance;
+                yield return Until(() => Run.Step == FirstRunStep.Wipe, 6f);
+                yield return Shot("smoke_eco_misted_glass");
+                var rows = RowStrokes(care);
+                for (int round = 0; round < 5 && Run.Step == FirstRunStep.Wipe; round++)
+                    foreach (var row in rows)
+                    {
+                        if (Run.Step != FirstRunStep.Wipe) break;
+                        yield return Drag(row, 0.03f * Screen.height);
+                    }
+                yield return Frames(20);
+                Assert.AreEqual(FirstRunStep.Rain, Run.Step, "no patch on a barren box: the first mist");
+                yield return Shot("smoke_eco_barren");
+                Step("eco wipe");
+
+                yield return new WaitForSecondsRealtime(1.5f);
+                var (rx, rz) = Run.Run.SuggestedRainSpot;
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var w = box.transform.TransformPoint(box.land.OnGround(rx, rz));
+                var at = (Vector2)Camera.main.WorldToScreenPoint(w);
+                int id = touchId++;
+                BeginTouch(id, at, queueEventOnly: true);
+                float h0 = Time.unscaledTime;
+                while (Time.unscaledTime - h0 < 2f && Run.Step == FirstRunStep.Rain) { MoveTouch(id, at, delta: Vector2.zero, queueEventOnly: true); yield return null; }
+                yield return Shot("smoke_eco_first_mist");
+                EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true);
+                yield return Frames(20);
+                Assert.AreEqual(FirstRunStep.Name, Run.Step, "the held finger misted and the ground greened");
+                Assert.That(Sim.State.month, Is.LessThanOrEqualTo(1), "no time skip (the live clock only)");
+                Step("eco first mist");
+
+                yield return new WaitForSecondsRealtime(1.5f);
+                yield return Shot("smoke_eco_after_mist");
+                Assert.AreEqual("name", Run.Run.Hint.id, "the Name it hint shows after the misting finger lifts (tester P8)");
+                yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-plate"));
+                yield return new WaitForSecondsRealtime(0.3f);
+                Assert.IsTrue(Run.NameSheetOpen, "a tap on the plate opens the naming sheet");
+                Run.Root.Q<TextField>("firstrun-name-field").value = "Dusthollow";
+                yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-name-keep"));
+                yield return Frames(20);
+                Assert.AreEqual("Dusthollow", Sim.PlaceName);
+                Assert.IsFalse(Run.Active, "named: the run is done, with no year skip");
+                Step("eco name");
+
+                int before = Sim.State.buildings.Count;
+                EcoDebug.SkipSeasons(8);
+                Assert.AreEqual(before, Sim.State.buildings.Count, "no new tent before the camp gate");
+                EcoDebug.CampGate();
+                EcoDebug.SkipSeasons(48); // no fields before the village: the first new tent waits for the people to fill the old one
+                yield return Frames(30);
+                Assert.Greater(Sim.State.buildings.Count, before, "the tents go up after the camp gate");
+                yield return Shot("smoke_eco_camp");
+                Step("eco camp gate");
+                Assert.AreEqual(1, LeakCheck.GeneratedRoots(), "exactly one Generated root");
+                Debug.Log($"[smoke] barren box run in {Time.realtimeSinceStartup - t0:0} s");
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
         [UnityTest, Timeout(420000)]
         public IEnumerator FreshBoxToBoxComplete_NoConsoleErrors()
         {

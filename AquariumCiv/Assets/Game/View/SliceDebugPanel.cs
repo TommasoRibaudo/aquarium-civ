@@ -100,6 +100,32 @@ namespace AquariumCiv.View
             return GUILayout.Button(text, options);
         }
 
+        /// <summary>P8, the living land (#244–#248): a barren box, mists, seasons, the gates, the water and the tree.</summary>
+        void DrawEco()
+        {
+            GUILayout.Label("Living land (P8): " + EcoDebug.Status());
+            Row();
+            if (Btn("Barren box")) last = EcoDebug.NewBox(true);
+            if (Btn("Old box")) last = EcoDebug.NewBox(false);
+            if (Btn("Mist")) last = EcoDebug.MistRandom();
+            if (Btn("Mist camp")) last = EcoDebug.MistCamp();
+            EndRow();
+            Row();
+            if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
+            if (Btn("+1 yr")) last = EcoDebug.SkipSeasons(4);
+            if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);
+            if (Btn("Camp gate")) last = EcoDebug.CampGate();
+            if (Btn("Village gate")) last = EcoDebug.VillageGate();
+            EndRow();
+            Row();
+            if (Btn("Water up")) last = EcoDebug.Table(0.004f);
+            if (Btn("Dry air")) last = EcoDebug.Humidity(0.1f);
+            if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
+            if (Btn("Plant tree")) last = EcoDebug.PlantHere();
+            for (int i = 0; i <= 4; i++) if (Btn("T" + i)) last = EcoDebug.TreeStage(i);
+            EndRow();
+        }
+
         void OnGUI()
         {
             var safe = DebugDock.Begin(out float sc);
@@ -112,6 +138,7 @@ namespace AquariumCiv.View
             GUILayout.BeginVertical();
             scroll = GUILayout.BeginScrollView(scroll);
             GUILayout.Label(src != null ? src.Status() : "no SimLayoutSource");
+            DrawEco();
             DrawLight(PeopleView.Find());
             Row();
             if (Btn("+1 yr")) last = SimLayoutSource.DebugSkipYears(1);
