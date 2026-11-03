@@ -708,3 +708,5 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   with its own `[SetUpFixture]` setting `GameClock.SaveFolderOverride`. To know why a hold didn't mist, log
   `PersonCardView.Instance.AnyOpen` and `PickDoll(pos).IsNone`: an open person card and a doll under the finger both
   block the mist silently. `EcoMistView.MistPulses` / `Misting` and `SimCore.EcoBareShare` give the per-hold answer.
+
+- **2026-11-03 TestFlight: "Your account has reached the maximum number of certificates".** The archive step signed with automatic development signing, so every fresh macOS runner made a new Apple Development certificate until Apple refused (build 14). Fix (#253): archive with `CODE_SIGNING_ALLOWED=NO`; only `-exportArchive` signs, with the cloud-managed distribution certificate. Build 15 uploaded. Also: `AWeekAwayCatchesUpQuickly` flaked twice the same day on CI (wall-clock limit); a rerun of the failed job passes.
