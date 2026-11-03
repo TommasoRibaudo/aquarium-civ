@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AquariumCiv.Sim.Eco;
 
 namespace AquariumCiv.Sim
 {
@@ -27,7 +28,7 @@ namespace AquariumCiv.Sim
         static readonly (Era era, string job, string[] needs)[] JobTable =
         {
             (Era.Camp, JobType.Gatherer, new string[0]),
-            (Era.Camp, JobType.Hunter, new[] { "forest" }),
+            (Era.Camp, JobType.Hunter, new[] { "rabbits" }), // P8 (#285): a living land opens it with the first rabbit; without the ecology it is always there
             (Era.Camp, JobType.Fisher, new[] { "pond" }),
             (Era.Camp, JobType.Woodcutter, new[] { "trees" }),
             (Era.Camp, JobType.Toolmaker, new[] { BuildingType.Camp }),
@@ -91,7 +92,12 @@ namespace AquariumCiv.Sim
         /// (research 10 "Decision"), which the sim doesn't have yet, so their jobs stay closed for now.</summary>
         bool HasFeature(string f) => f switch
         {
-            "pond" or "trees" or "forest" => true,
+            // P8 (#285): on a living land a job exists only when the land offers its work. The milestones are never taken
+            // back (pillar 4: the land never dies back), so a job that opened never closes. Off, the old always-there box.
+            "pond" => !EcologyOn || State.eco.Reached(EcoMilestones.WaterSurfaced),
+            "trees" => !EcologyOn || TreesGrow,
+            "rabbits" => !EcologyOn || State.eco.Reached(EcoMilestones.FirstRabbit),
+            "forest" => true,
             "grove" => State.nudges.Any(n => n.kind == NudgeKind.Grove && n.credited),
             // The later shaping tools (research 10, #32): an answered shaping opens its trade. Read from the shaping and
             // the terrain only, never from placement.
@@ -102,6 +108,35 @@ namespace AquariumCiv.Sim
             "ore" or "smithy" => State.nudges.Any(n => n.kind == NudgeKind.Outcrop && n.credited && Deposit(n) == "ore"),
             _ => false,
         };
+
+        /// <summary>P8 (#285): berries grow (a bush came up). Without the ecology there is always something to gather.</summary>
+        public bool BerriesGrow => !EcologyOn || State.eco.Reached(EcoMilestones.FirstBush);
+        /// <summary>P8 (#285): trees stand, wild or the Keeper's own grown one. Without the ecology there is a forest.</summary>
+        public bool TreesGrow => !EcologyOn || State.eco.Reached(EcoMilestones.FirstWoodTree) || State.eco.Reached(EcoMilestones.TreeGrown);
+        /// <summary>P8 (#285): rabbits have been seen (the hunter's job opens).</summary>
+        public bool RabbitsSeen => !EcologyOn || State.eco.Reached(EcoMilestones.FirstRabbit);
+
+        /// <summary>The job as the person card shows it. On a living land with no bushes yet the gatherer digs roots, and
+        /// says so; everything else is the job's own name.</summary>
+        public string JobLabel(string job) => job == JobType.Gatherer && EcologyOn && !BerriesGrow ? "root digger" : job;
+
+        /// <summary>The bucket's water (P8 #267): with no open water the dawn trip scoops muddy water from the wet low
+        /// ground; once the pond has water it is the pond's, clean. Off the ecology it is always clean. Hook: the mist's
+        /// puddles (#266) can be a muddy source while there is no pond, once they exist.</summary>
+        public bool OpenWater => !EcologyOn || EcoPondCells > 0;
+
+        /// <summary>Debug panel (#285): every job on the era's list, open or closed, and for a closed one what is missing.</summary>
+        public string DebugJobsReadout()
+        {
+            var lines = new List<string>();
+            if (EcologyOn) lines.Add($"land: {(BeforeCamp ? "tribe, before the camp" : "camp gate open")}; bushes {(BerriesGrow ? "yes" : "no")}, trees {(TreesGrow ? "yes" : "no")}, rabbits {(RabbitsSeen ? "yes" : "no")}, pond {(OpenWater ? "yes" : "no")}");
+            foreach (var j in JobTable.Where(x => x.era == State.era))
+            {
+                var missing = j.needs.Where(x => !Has(x)).ToList();
+                lines.Add(missing.Count == 0 ? $"{j.job}: open" : $"{j.job}: closed, needs {string.Join(" + ", missing)}");
+            }
+            return string.Join("\n", lines);
+        }
 
         bool Has(string need) => need.Split('|').Any(x => Count(x) > 0 || HasFeature(x));
 

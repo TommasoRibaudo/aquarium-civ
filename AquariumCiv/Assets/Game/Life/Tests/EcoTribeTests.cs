@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 using NUnit.Framework;
 
 namespace AquariumCiv.Life.Tests
@@ -49,8 +50,12 @@ namespace AquariumCiv.Life.Tests
 
             sim.DebugOpenCampGate();
             Assert.IsFalse(sim.BeforeCamp);
+            // #285: the camp's own jobs come back as the land offers them, not with the gate alone
+            foreach (var key in new[] { EcoMilestones.FirstBush, EcoMilestones.WaterSurfaced, EcoMilestones.FirstWoodTree })
+            { sim.State.eco.milestoneKeys.Add(key); sim.State.eco.milestoneMonths.Add(sim.State.month); }
+            sim.DebugRedrawJobs();
             Assert.IsFalse(Work(sim).All(a => a.place.kind == PlaceKind.Stream || a.place.kind == PlaceKind.Fire || a.place == CampStash.Stand),
-                "after the gate the camp's own jobs come back");
+                "once the land offers it the camp's own jobs come back");
         }
     }
 }

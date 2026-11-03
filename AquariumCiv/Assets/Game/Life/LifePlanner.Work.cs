@@ -50,6 +50,19 @@ namespace AquariumCiv.Life
         static readonly Place Woods = Place.Land(PlaceKind.Woods), Pond = Place.Land(PlaceKind.Pond), ForestEdge = Place.Land(PlaceKind.ForestEdge),
             Bushes = Place.Land(PlaceKind.Bushes), Stream = Place.Land(PlaceKind.Stream);
 
+        // ---- P8 (#285, #267): the land decides the work and the water
+        bool OnLiving => sim != null && sim.EcologyOn;
+        bool WoodsStand => !OnLiving || sim.TreesGrow;
+        /// <summary>Where berries are gathered: the bushes once one has come up, else roots in the dry hollow (the stream bed).</summary>
+        Place BerryPlace => OnLiving && !sim.BerriesGrow ? Stream : Bushes;
+        /// <summary>The tribe's own work, for anyone whose job the land hasn't opened (or whose hunt isn't built yet): digging roots
+        /// or gathering berries and bringing them to the fire.</summary>
+        Work TribeWork() => W(BerryPlace, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
+        /// <summary>Where the water is drawn: the well; else the pond once it has water; else the wet low ground (the stream bed).</summary>
+        Place WaterPlace => wellB != null ? PlaceOf(wellB) : OnLiving && sim.OpenWater ? Pond : Stream;
+        /// <summary>What the bucket holds from <see cref="WaterPlace"/>: muddy from the wet low ground while the pond is dry.</summary>
+        WaterKind WaterNow => wellB == null && OnLiving && !sim.OpenWater ? WaterKind.Muddy : WaterKind.Clean;
+
         /// <summary>The day's work for a working adult: the role's work first, then the job (notable-roles §2).</summary>
         Work WorkOf(Person p, DayInfo d, bool morning)
         {
@@ -75,20 +88,22 @@ namespace AquariumCiv.Life
             {
                 case JobType.Gatherer:
                 {
-                    var site = !jb.IsNone ? jb : farms.Count > 0 ? PlaceOf(farms[(int)(H(p.key, 0, 72) % (uint)farms.Count)]) : Bushes;
+                    var site = !jb.IsNone ? jb : farms.Count > 0 ? PlaceOf(farms[(int)(H(p.key, 0, 72) % (uint)farms.Count)]) : BerryPlace; // P8 (#285): roots in the dry hollow until a bush comes up
                     w = W(site, ActivityKind.Gather, Prop.Basket, Prop.Basket, Store(Prop.Basket));
-                    if (season == Season.Autumn) w = Alt(w, Woods, ActivityKind.Gather, Prop.Basket, 0.5f);       // mushrooms and nuts
-                    else if (season == Season.Winter) { w.site = Woods; w.carryShare = 0.4f; w.load = Prop.Log; w.dest = stash; } // wood carried in
-                    else w = Alt(w, Bushes, ActivityKind.Gather, Prop.Basket, 0.4f);
+                    if (season == Season.Autumn && WoodsStand) w = Alt(w, Woods, ActivityKind.Gather, Prop.Basket, 0.5f);       // mushrooms and nuts
+                    else if (season == Season.Winter && WoodsStand) { w.site = Woods; w.carryShare = 0.4f; w.load = Prop.Log; w.dest = stash; } // wood carried in
+                    else w = Alt(w, BerryPlace, ActivityKind.Gather, Prop.Basket, 0.4f);
                     return w;
                 }
                 case JobType.Hunter:
+                    if (sim != null && sim.EcologyOn) return TribeWork(); // P8 (#285): the job opens with the first rabbit, the hunt itself is #283: until then the tribe's work
                     return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, stash, season == Season.Winter ? 0.35f : 0.25f);
                 case JobType.Fisher:
                     if (sim != null && sim.EcologyOn && sim.EcoPondCells == 0) // P8: no water yet: the hollow is dug for roots, not fished
                         return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
                     return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? stash : Store(Prop.Goods), 0.25f);
                 case JobType.Woodcutter:
+                    if (sim != null && sim.EcologyOn && !sim.TreesGrow) return TribeWork(); // P8 (#285): no trees, no chopping
                     w = W(Woods, ActivityKind.Chop, Prop.Axe, camp ? Prop.Log : Prop.Handcart, Store(Prop.Log), 0.3f);
                     if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Log : Prop.Saw, 0.35f);
                     return w;
@@ -157,7 +172,7 @@ namespace AquariumCiv.Life
                 case CrowdCook:
                     w = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
                     w.keepsRestDay = true;
-                    w = Fetch(w, wellB != null ? PlaceOf(wellB) : Stream);
+                    w = Fetch(w, WaterPlace);
                     w.dest = stash; // #150: the water too is set down by the fire
                     return w;
                 case CrowdSplitter:
@@ -180,7 +195,7 @@ namespace AquariumCiv.Life
                 return W(PlaceOf(farms[(int)(H(p.key, d.day, 75) % (uint)farms.Count)]), ActivityKind.Harvest, Prop.Scythe, Prop.Sheaf, Store(Prop.Sheaf), 0.35f);
             w = W(p.home, ActivityKind.SweepStep, Prop.Broom, marketB != null ? Prop.Basket : Prop.Buckets, p.home, 0.3f);
             w.chores = true;
-            return Fetch(w, marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : Stream);
+            return Fetch(w, marketB != null ? PlaceOf(marketB) : WaterPlace);
         }
 
         /// <summary>The <paramref name="block"/>-th heap a sweeper sweeps today, or -1 for the streets. A town sweeper i takes
