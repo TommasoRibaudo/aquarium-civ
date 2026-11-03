@@ -42,6 +42,13 @@ namespace AquariumCiv.Sim.Eco
         // Gates: the game month each opened (-1 = closed).
         public int campGateMonth = -1, villageGateMonth = -1;
 
+        // P8 #288: the bushes. The first one that came up (a sign the people notice; -1 = none yet) and what has been picked:
+        // parallel lists, cell / the view day of the last pick / berries left (0..1) at that day (see EcoBushes).
+        public int firstBushCell = -1;
+        public List<int> bushPickCell = new List<int>();
+        public List<long> bushPickDay = new List<long>();
+        public List<float> bushPickLeft = new List<float>();
+
         /// <summary>Milestones reached and the game month of each (parallel lists; see EcoMilestones).</summary>
         public List<string> milestoneKeys = new List<string>();
         public List<long> milestoneMonths = new List<long>();
