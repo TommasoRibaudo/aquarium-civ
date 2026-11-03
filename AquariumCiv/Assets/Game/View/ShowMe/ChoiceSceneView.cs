@@ -153,6 +153,7 @@ namespace AquariumCiv.View
             phaseT = 0f;
             watchedSeen = false;
             Sfx.Play(CueLibrary.ShowMe);
+            GameClock.DilemmaShown(v.dilemma); // #225: the box scene counts as shown (once per dilemma; the card usually came first)
             Debug.Log($"[Choice] {st.defId} ({st.kind}) staged: {Describe(st)}");
             return true;
         }
@@ -295,7 +296,7 @@ namespace AquariumCiv.View
             if (Stage == null || sim == null || State == Phase.Reacting) return false;
             var cards = CardStackView.Instance;
             bool ok = cards != null && cards.Model != null && cards.Model.AnswerDilemmaInBox(Stage.dilemmaId, option);
-            if (!ok) ok = sim.AnswerDilemma(Stage.dilemmaId, option, DilemmaPath.Box);
+            if (!ok && sim.AnswerDilemma(Stage.dilemmaId, option, DilemmaPath.Box)) { ok = true; GameClock.DilemmaAnswered(sim.FindDilemma(Stage.dilemmaId)); }
             if (!ok) return false;
             Chosen = option;
             Unsay();
@@ -561,12 +562,13 @@ namespace AquariumCiv.View
                     }
                     else
                     {
-                        // Full packs: a wave, then on their way out to the wall.
+                        // Full packs: a wave, then on their way: to the home they will make in the box (#231: the far woods, the far
+                        // shore, where ApartGroupsView draws them after), else out to the wall.
                         style = phaseT < 1.8f ? DollStyle.Wave : DollStyle.Walk;
                         if (phaseT >= 1.8f)
                         {
                             var away = (t.home - fire).normalized;
-                            goal = t.home + away * 2f;
+                            goal = Stage.hasHome && Chosen == Stage.homeOption ? new Vector2(Stage.homeX, Stage.homeZ) + (t.home - new Vector2(Stage.sides[1].x, Stage.sides[1].z)) : t.home + away * 2f;
                         }
                     }
                 }

@@ -21,6 +21,10 @@ namespace AquariumCiv.Game
         public float autosaveSeconds = 30f;
         /// <summary>A hitch or a debugger stop never fast-forwards the live world by more than this.</summary>
         public float maxFrameSeconds = 1f;
+        /// <summary>How many times faster than real time the live box runs (1 = an hour a year). The P7 lab runs at
+        /// <see cref="LabSpeed"/> (debug panel, #225). Only the live clock: the catch-up after an absence is unchanged.</summary>
+        public float speed = 1f;
+        public const float LabSpeed = 60f;
 
         /// <summary>The box on screen: a visited museum, else the active box.</summary>
         public SimCore Sim => Session?.ViewSim;
@@ -104,6 +108,7 @@ namespace AquariumCiv.Game
         void BeginSession(string reason, double awayHours)
         {
             sessionStart = Time.realtimeSinceStartup;
+            Telemetry.SetVariant(DilemmaSurvey.VariantOf(config.dilemmas)); // P7 (#225): A = dilemmas off, B = on, in every session_start
             Telemetry.StartSession(reason, awayHours, Application.version, Application.platform.ToString(),
                 (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalMinutes);
         }
@@ -126,7 +131,8 @@ namespace AquariumCiv.Game
         void Update()
         {
             if (ActiveSim == null) return;
-            if (!Held) ActiveSim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) / 3600.0);
+            if (!Held) ActiveSim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) * Math.Max(0f, speed) / 3600.0);
+            if (Telemetry != null) DilemmaTracker()?.Observe(ActiveSim, Telemetry);
             sinceSave += Time.unscaledDeltaTime;
             if (sinceSave >= autosaveSeconds) Save();
             Telemetry?.Tick();
@@ -254,6 +260,59 @@ namespace AquariumCiv.Game
             ViewChanged?.Invoke();
             Debug.Log("[GameClock] reset: " + Session.Summary());
         }
+
+        // ---------- P7 dilemma telemetry (#225) ----------
+        DilemmaTelemetryTracker dilemmaTel;
+        SimCore dilemmaTelSim;
+
+        /// <summary>The dilemma event tracker of the active box (a new one when the active box changes; null with no box). A visited museum
+        /// box has none: its dilemmas are history.</summary>
+        public DilemmaTelemetryTracker DilemmaTracker()
+        {
+            var sim = ActiveSim;
+            if (sim == null) return null;
+            if (dilemmaTel == null || dilemmaTelSim != sim) { dilemmaTel = new DilemmaTelemetryTracker(sim); dilemmaTelSim = sim; }
+            return dilemmaTel;
+        }
+
+        /// <summary>The tracker for <paramref name="sim"/> when it is the active box, else null (the card stack asks with its own box).</summary>
+        public static DilemmaTelemetryTracker DilemmaTrackerFor(SimCore sim) =>
+            Instance != null && sim != null && Instance.ActiveSim == sim ? Instance.DilemmaTracker() : null;
+
+        static double RealNow => Time.realtimeSinceStartupAsDouble;
+
+        /// <summary>The question is in front of the player (the box scene opened, or a cheat staged it). Once per dilemma.</summary>
+        public static void DilemmaShown(Dilemma d) { var t = Instance != null ? Instance.DilemmaTracker() : null; t?.Shown(Tel, d, RealNow); }
+
+        /// <summary>Call right after a successful <see cref="SimCore.AnswerDilemma"/> made outside the card stack (the box scene's own
+        /// fallback, a cheat). Once per dilemma.</summary>
+        public static void DilemmaAnswered(Dilemma d) { var t = Instance != null ? Instance.DilemmaTracker() : null; t?.Answered(Tel, d, RealNow); }
+
+        /// <summary>Debug (#225): dilemmas on (variant B) or off (A). Logged as a variant change. Off leaves an open dilemma open (it waits).</summary>
+        public static string DebugDilemmas(bool on)
+        {
+            var c = Instance;
+            if (c == null) return "no GameClock running";
+            c.config.dilemmas = on;
+            c.Telemetry?.SetVariant(DilemmaSurvey.VariantOf(on));
+            return c.DilemmaStatus();
+        }
+
+        /// <summary>Debug (#225): the P7 lab preset: the lab schedule (the first at year 2, then about every 3 years) and the live clock at
+        /// <see cref="LabSpeed"/>. Off: the normal schedule (6 to 10 years) at real time. The next dilemma is scheduled afresh.</summary>
+        public static string DebugLab(bool on)
+        {
+            var c = Instance;
+            if (c == null) return "no GameClock running";
+            c.config.dilemmaLab = on;
+            c.speed = on ? LabSpeed : 1f;
+            if (c.ActiveSim != null && c.ActiveSim.OpenDilemma == null) c.ActiveSim.State.dilemmaNextMonth = -1;
+            return c.DilemmaStatus();
+        }
+
+        public string DilemmaStatus() => string.Format(CultureInfo.InvariantCulture, "dilemmas {0} (variant {1}) · {2} · clock x{3:0} · next due month {4} (now {5})",
+            config.dilemmas ? "on" : "off", DilemmaSurvey.VariantOf(config.dilemmas), config.dilemmaLab ? "lab schedule" : "normal schedule", speed,
+            ActiveSim?.State.dilemmaNextMonth ?? -1, ActiveSim?.State.month ?? 0);
 
         // ---------- debug (callable from `unity command script eval`) ----------
         /// <summary>Live time jump: the civ lives <paramref name="hours"/> at full speed, mess as in live play.</summary>

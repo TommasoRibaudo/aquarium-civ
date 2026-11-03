@@ -117,6 +117,10 @@ namespace AquariumCiv.View.Cards
         /// <summary>A card opened from "Also…" (null = none): it covers that page until <see cref="Back"/>.</summary>
         public ChronicleCard Detail { get; private set; }
 
+        /// <summary>P7 (#225): the dilemma events (shown, answered, callback shown) go through this tracker; null = not logged (tests,
+        /// a visited museum box). The view sets it to the active box's (<see cref="GameClock.DilemmaTrackerFor"/>).</summary>
+        public DilemmaTelemetryTracker DilemmaTel;
+
         /// <summary>Anything on screen changed.</summary>
         public event Action Changed;
         /// <summary>The stack closed after a Show me: the echo ends and the camera goes back (§2.5).</summary>
@@ -249,7 +253,16 @@ namespace AquariumCiv.View.Cards
             flying = false;
             dwell.EndAndLog(log, now());
             dwell.Show(CurrentId, now());
-            if (shown.Add(CurrentId)) log.CardShown(CurrentId, Shown?.lead.kind ?? AlsoId, Index, PageCount);
+            if (shown.Add(CurrentId))
+            {
+                log.CardShown(CurrentId, Shown?.lead.kind ?? AlsoId, Index, PageCount);
+                if (Shown != null && Shown.lead.kind == SimCore.CallbackKind) log.CallbackShown(sim.CallbackInfoOf(Shown.lead));
+            }
+            if (Shown != null && Shown.kind == CardKind.Dilemma)
+            {
+                var d = sim.DilemmaOfEntry(Shown.lead.id);
+                if (d != null && d.state == DilemmaState.Open) DilemmaTel?.Shown(log, d, now());
+            }
             Changed?.Invoke();
         }
 
@@ -344,6 +357,7 @@ namespace AquariumCiv.View.Cards
             var card = Shown;
             if (card == null || !CanShowMe(card)) return null;
             sim.MarkCardRead(card);
+            if (card.lead.kind == SimCore.CallbackKind) log.CallbackShowMe(sim.CallbackInfoOf(card.lead));
             showMeUsed = true; // ShowMeDirector logs show_me and card_flown_to, for every Show me
             if (!flying) { flying = true; dwell.Cover(now()); }
             return card;
@@ -418,6 +432,7 @@ namespace AquariumCiv.View.Cards
             var d = DilemmaOnCard();
             if (d == null || d.state != DilemmaState.Open) return false;
             if (!sim.AnswerDilemma(d.id, option, DilemmaPath.Card)) return false;
+            DilemmaTel?.Answered(log, d, now());
             sim.MarkCardRead(Shown);
             Changed?.Invoke();
             return true;
@@ -445,6 +460,7 @@ namespace AquariumCiv.View.Cards
             var d = DilemmaOnCard();
             if (d == null || d.id != dilemmaId || d.state != DilemmaState.Open) return false;
             if (!sim.AnswerDilemma(d.id, option, DilemmaPath.Box)) return false;
+            DilemmaTel?.Answered(log, d, now());
             sim.MarkCardRead(Shown);
             Changed?.Invoke();
             return true;

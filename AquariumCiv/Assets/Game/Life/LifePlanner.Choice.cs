@@ -116,6 +116,20 @@ namespace AquariumCiv.Life
                     var anchor = IsValidPlace(fire) ? fire : gather;
                     if (!Pos(anchor, out var c)) return null;
                     var edge = ChoiceScenes.EdgePoint(c, r, hx, hz, out _);
+                    // #231: when one option keeps them apart in the box, they wait towards the home they would make (far woods, far shore).
+                    if (v.def?.options != null)
+                        for (int i = 0; i < v.def.options.Length; i++)
+                        {
+                            var o = v.def.options[i];
+                            if (o == null || o.strangers <= 0 || string.IsNullOrEmpty(o.apart)) continue;
+                            var spot = sim.ApartSpotPreview(o.apart);
+                            var home = ApartLife.FreeSpot(sim.Settlement?.Map, spot.x, spot.z, out _); // where ApartGroupsView will draw their camp
+                            var toward = ChoiceScenes.HomeWard(c, home, hx, hz, out bool homeOk);
+                            if (!homeOk) break;
+                            edge = toward;
+                            st.hasHome = true; st.homeX = home.x; st.homeZ = home.z; st.homeOption = i;
+                            break;
+                        }
                     var chiefAt = ChoiceScenes.Along(c, t, ChoiceScenes.ChiefForward);
                     Side(st, 0, anchor, chiefAt);
                     if (asker != null) { st.sides[0].people.Add((asker.who, chiefAt.x, chiefAt.z)); used.Add(asker.key); }

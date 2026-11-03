@@ -163,7 +163,7 @@ namespace AquariumCiv.View
             model = null;
             if (sim != null)
             {
-                model = new CardStackModel(sim, () => Time.realtimeSinceStartupAsDouble, GameClock.Tel);
+                model = new CardStackModel(sim, () => Time.realtimeSinceStartupAsDouble, GameClock.Tel) { DilemmaTel = GameClock.DilemmaTrackerFor(sim) };
                 model.Changed += Draw;
                 model.ShowMeEnd += OnShowMeEnd;
                 model.DilemmaShowMeHook = v => DilemmaShowMeHook != null && DilemmaShowMeHook(v);
@@ -836,6 +836,18 @@ namespace AquariumCiv.View
             if (!m.DebugPrepare(7) || !m.TapPeek()) return "nothing to tell";
             for (int guard = 0; guard < 8 && m.Face != null && (m.Face.isAlso || m.Face.kind != kind); guard++) if (!m.Next()) return "no such card came up";
             return m.Face != null && m.Face.kind == kind ? Status() : "no such card came up";
+        }
+
+        /// <summary>The stack open on the card of this chronicle entry (a raised dilemma, a callback just fired), as on a return. #225.</summary>
+        public static string DebugOpenEntry(int entryId)
+        {
+            var v = Instance;
+            if (v == null || v.model == null) return "no card stack";
+            var m = v.model;
+            if (m.Mode == CardStackMode.Open) m.Close();
+            if (!m.DebugPrepare(16) || !m.TapPeek()) return "nothing to tell";
+            for (int guard = 0; guard < 16 && (m.Shown == null || m.Shown.lead.id != entryId); guard++) if (!m.Next()) return "that card did not come up";
+            return m.Shown != null && m.Shown.lead.id == entryId ? Status() : "that card did not come up";
         }
 
         /// <summary>Show me on the open page, as its button: the sheet leaves and the bar comes up.</summary>

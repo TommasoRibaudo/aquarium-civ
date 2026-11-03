@@ -29,6 +29,14 @@ namespace AquariumCiv.View
         UIDocument doc;
         VisualElement root;
         GlassSheet sheet;
+        GlassCard card;
+        VisualElement storyAnswers, choiceAnswers;
+
+        /// <summary>P7 (#225): with dilemmas on (variant B) the question is the dilemma diary's, asked on day 2 (window 2 to 4):
+        /// <see cref="DilemmaSurvey.RecallQuestion"/>, answered "I can" (1) or "Not really" (0). Off, the day-3 story count.</summary>
+        public static bool AsksAboutChoices => GameClock.Instance != null && GameClock.Instance.config.dilemmas;
+        static int FirstDay => AsksAboutChoices ? RecallPrompt.DilemmaFirstDay : RecallPrompt.FirstDay;
+        static int LastDay => AsksAboutChoices ? RecallPrompt.DilemmaLastDay : RecallPrompt.LastDay;
         Rect lastSafe;
         Vector2Int lastScreen;
         float nextCheck;
@@ -133,8 +141,8 @@ namespace AquariumCiv.View
             if (!loaded) LoadState();
             if (IsOpen) return;
             // cheap checks first; reading the log (stories seen) only when everything else says yes
-            if (!RecallPrompt.ShouldAsk(State, Context(false))) return;
-            if (!RecallPrompt.ShouldAsk(State, Context(true))) return;
+            if (!RecallPrompt.ShouldAsk(State, Context(false), FirstDay, LastDay)) return;
+            if (!RecallPrompt.ShouldAsk(State, Context(true), FirstDay, LastDay)) return;
             Show();
         }
 
@@ -148,6 +156,7 @@ namespace AquariumCiv.View
             RecallPrompt.Shown(State, day);
             SaveState();
             GameClock.Tel.RecallShown(day);
+            Fill(AsksAboutChoices);
             root.style.display = DisplayStyle.Flex;
             sheet.Open();
             GameHud.Instance?.SetOutsideSheet(sheet, true); // the tools step back and a toast rides above it; the name stays
@@ -175,7 +184,8 @@ namespace AquariumCiv.View
             SaveState();
             GameClock.Tel.RecallAnswered(count);
             GameClock.Tel?.Flush();
-            GameHud.Instance?.Toast("Thank you. That helps a lot.", 3f);
+            GameHud.Instance?.Toast(choiceAnswers != null && choiceAnswers.style.display == DisplayStyle.Flex && count > 0
+                ? "Thank you. Jot it down for us, and what came of it." : "Thank you. That helps a lot.", 3f);
         }
 
         void Dismiss()
@@ -198,21 +208,46 @@ namespace AquariumCiv.View
             sheet.style.display = DisplayStyle.None;
             root.Add(sheet);
 
-            var card = new GlassCard { name = "recall-card" };
+            card = new GlassCard { name = "recall-card" };
             card.Dots.style.display = DisplayStyle.None;
-            card.Set("A quick question", "Without looking: how many stories from your box can you remember? Tap a number.");
             card.Head.Add(new GlassButton("Not now", Dismiss, ButtonKind.Quiet, UiRole.Close) { name = "recall-dismiss" });
             card.Actions.name = "recall-answers";
+            storyAnswers = new VisualElement { name = "recall-stories", pickingMode = PickingMode.Ignore };
+            storyAnswers.style.flexDirection = FlexDirection.Row;
+            storyAnswers.style.flexGrow = 1;
             for (int i = 0; i <= 4; i++)
             {
                 int n = i;
                 var b = new GlassButton(i == 4 ? "4+" : i.ToString(), () => Answer(n), ButtonKind.Secondary, UiRole.Confirm) { name = "recall-" + i };
                 b.AddToClassList("recall-answer");
                 if (i == 4) b.AddToClassList("recall-answer--last");
-                card.Actions.Add(b);
+                storyAnswers.Add(b);
             }
+            card.Actions.Add(storyAnswers);
+            // P7's diary question (#225): a yes or no in the game, the words themselves on the tester's sheet (never in the log)
+            choiceAnswers = new VisualElement { name = "recall-choices", pickingMode = PickingMode.Ignore };
+            choiceAnswers.style.flexDirection = FlexDirection.Row;
+            choiceAnswers.style.flexGrow = 1;
+            var yes = new GlassButton("I can", () => Answer(1), ButtonKind.Secondary, UiRole.Confirm) { name = "recall-choice-yes" };
+            var no = new GlassButton("Not really", () => Answer(0), ButtonKind.Secondary, UiRole.Confirm) { name = "recall-choice-no" };
+            yes.AddToClassList("recall-answer");
+            no.AddToClassList("recall-answer"); no.AddToClassList("recall-answer--last");
+            choiceAnswers.Add(yes); choiceAnswers.Add(no);
+            card.Actions.Add(choiceAnswers);
+            Fill(false);
             sheet.Add(card);
             ApplySafeArea();
+        }
+
+        /// <summary>The words and answers: the day-3 story count, or P7's choice recall (variant B).</summary>
+        void Fill(bool choices)
+        {
+            if (card == null) return;
+            card.Set("A quick question", choices
+                ? "Without looking: " + char.ToLowerInvariant(DilemmaSurvey.RecallQuestion[0]) + DilemmaSurvey.RecallQuestion.Substring(1) + " Can you?"
+                : "Without looking: how many stories from your box can you remember? Tap a number.");
+            storyAnswers.style.display = choices ? DisplayStyle.None : DisplayStyle.Flex;
+            choiceAnswers.style.display = choices ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         // ---------------- debug (the dbg panel, `script eval`) ----------------
@@ -262,8 +297,8 @@ namespace AquariumCiv.View
         {
             var v = Instance;
             var s = v?.State;
-            return string.Format(CultureInfo.InvariantCulture, "recall: day {0} · {1} · shown {2} dismissed {3} answered {4}",
-                DayIndex(), v != null && v.IsOpen ? "OPEN" : "closed", s?.shown, s?.dismissed, s?.answered);
+            return string.Format(CultureInfo.InvariantCulture, "recall: day {0} · {1} · shown {2} dismissed {3} answered {4} · asks {5} (days {6}-{7})",
+                DayIndex(), v != null && v.IsOpen ? "OPEN" : "closed", s?.shown, s?.dismissed, s?.answered, AsksAboutChoices ? "P7 choice" : "stories", FirstDay, LastDay);
         }
     }
 }
