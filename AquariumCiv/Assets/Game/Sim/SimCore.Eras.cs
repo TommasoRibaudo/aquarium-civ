@@ -37,7 +37,8 @@ namespace AquariumCiv.Sim
             get
             {
                 var t = NextEraThreshold;
-                return t != null && State.population >= t.population && State.buildings.Count >= t.buildings && YearsInEra >= t.years;
+                return t != null && State.population >= t.population && State.buildings.Count >= t.buildings && YearsInEra >= t.years
+                       && EcoAllowsNextEra; // with the ecology on, the village also needs its pond and its wood (SimCore.Eco.cs)
             }
         }
 
