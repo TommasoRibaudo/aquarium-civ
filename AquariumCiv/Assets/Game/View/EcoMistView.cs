@@ -83,6 +83,8 @@ namespace AquariumCiv.View
             hud ??= GameHud.Instance;
             // The first run hides the HUD until it's done, and its first mist is this gesture (#248): hidden only blocks outside it.
             if (hud != null && ((!hud.IsVisible && !sim.State.firstRun.active) || hud.CleanMode || hud.CameraMode || hud.SheetOpen)) return false;
+            // In the first run the mist is its own step's: not while wiping or naming (build 15: misting on the name step hid "Name it").
+            if (sim.State.firstRun.active && sim.State.firstRun.step != (int)FirstRunStep.Rain) return false;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return false;
             var cards = PersonCardView.Instance;
