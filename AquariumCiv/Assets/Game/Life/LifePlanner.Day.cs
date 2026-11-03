@@ -13,6 +13,8 @@ namespace AquariumCiv.Life
             public ActivityKind kind;
             public Place place, from;
             public Prop prop;
+            /// <summary>P8 (#267): what a bucket holds (Clean or Muddy); None when the prop is no bucket.</summary>
+            public WaterKind water;
             public PersonRef partner;
             public ActivitySource src;
             public TripType trip;
@@ -204,7 +206,7 @@ namespace AquariumCiv.Life
         void Push(ActivityKind k, float start, float end, Place place, Place from, Prop prop, PersonRef partner, TripType trip, ActivitySource src = ActivitySource.Schedule, int chronicle = -1, bool copies = false, bool still = false)
         {
             if (end <= start + 1e-4f) return;
-            b.Add(new Seg { start = start, end = end, kind = k, place = place, from = from, prop = prop, partner = partner, trip = trip, src = src, chronicleId = chronicle, copies = copies, still = still });
+            b.Add(new Seg { start = start, end = end, kind = k, place = place, from = from, prop = prop, water = prop == Prop.Buckets || prop == Prop.EmptyBucket ? WaterNow : WaterKind.None, partner = partner, trip = trip, src = src, chronicleId = chronicle, copies = copies, still = still });
         }
 
         /// <summary>Stay at a place doing <paramref name="k"/> until <paramref name="until"/>; walks there first if needed
@@ -708,7 +710,7 @@ namespace AquariumCiv.Life
                 // Dawn: water from the well or the stream, a chore at the door, then off to work.
                 if (R(k, day, 2) < 0.3f)
                 {
-                    var water = wellB != null ? PlaceOf(wellB) : Place.Land(PlaceKind.Stream);
+                    var water = WaterPlace; // P8 (#267): the pond once it has water, else the wet low ground
                     // #152: empty on the way out and while they draw; full only once it's drawn.
                     Move(ActivityKind.Walk, water, bt + WalkHours(p.home, water), Prop.EmptyBucket, TripType.HomeToGreen);
                     At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.EmptyBucket);

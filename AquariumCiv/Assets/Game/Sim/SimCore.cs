@@ -341,7 +341,8 @@ namespace AquariumCiv.Sim
             return bp < bq ? p.family : bq < bp ? q.family : (p.id < q.id ? p.family : q.family);
         }
 
-        static string EraNoun(Era era) => era switch { Era.Camp => "camp", Era.Village => "village", _ => "town" };
+        string EraNoun(Era era) => era switch { Era.Camp => BeforeCamp ? "tribe" : "camp", // P8 (#285): before the camp gate the group is the tribe
+             Era.Village => "village", _ => "town" };
 
         void NarrativeChecks(bool winter, float festivalRoll)
         {
