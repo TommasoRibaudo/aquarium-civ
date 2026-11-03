@@ -11,8 +11,8 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - [x] #225 merged, closed
 - [x] Full EditMode suite + `SlicePlaythroughSmoke` green on `p7/dilemmas`; dilemmas off = the slice is unchanged
 - [x] Self-play done, screenshots looked at
-- [ ] Tester run; [real] findings fixed; [polish] listed
-- [ ] `P7.md` results + the human test steps + the build command
+- [x] Tester run; [real] findings fixed; [polish] listed
+- [x] `P7.md` results + the human test steps + the build command
 - [ ] PR `p7/dilemmas` → `dev`, CI green, merged (the feature is off by default)
 - [ ] Final report
 
@@ -29,3 +29,4 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - 20:27 50bed20: suite green on p7/dilemmas with dilemmas off (default): Sim 635/637, Life 207/207, Cards 45/45, Smoke 1/1, ChoiceScene 4/4 (3 test-timing fixes), DilemmaCard 3/3, ApartGroups 4/4, DilemmaCheats 1/1; dotnet 1118. #225, #231 closed. Next: self-play.
 - 20:54 self-play (P7SelfPlayTests, real Slice, fresh box, first run kept, lab schedule, month-by-month to the village): no dilemma in first run, 0 wish+dilemma overlaps; camp_travellers answered on card by touch (y3.1), camp_winter in box by touch (y6.8), village_harvest lapsed (y11.1), callback by the clock. Shots looked at. Polish: bar truncates 'The Keeper chose the…'; callback headline repeats the body's opening; same placeholder icon both options. Question: a dilemma raised while watching shows only the history dot (stack opens on return ≥0.25 h) — lab at ×60 may miss it. Next: restart Editor, tester (#226).
 - 21:21 tester (#226) verdict fail: 4 [real] → #238 live dilemma no signal + lapses in 2 min at x60; #239 analyzer hides unseen lapses / B sessions / cheat events; #240 callback story below fold (+ lapse card context); #241 near-miss tap opens building card in choice scene (+44pt). Polish: apart camps don't read at default zoom, toast under choice bar, page dots overflow at 17, anonymous 'I' on trait-worded card, stone prop reads as firewood. Pass: first run, overlaps, both paths, lapse, callbacks, variant A, panel. Smoke flaky (2 runs, different steps). Workers: #239 Sonnet lane A (wt/239), #238/240/241 Opus Editor (vs/238-240-241).
+- 22:13 #238–#241 merged (db45419) + switches persist in builds (3d1d4f1). Verify on merged: DilemmaCheats 1/1, DilemmaCard 9/9, Smoke 1/1, Cards 49/49, Sim 641/643, dotnet 1133. #226 closed. P7.md results + human steps + build cmd written; open-questions updated. Next: PR to dev.
