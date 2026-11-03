@@ -34,6 +34,15 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 ## Log (one line per finished step, with wall clock)
 - 2026-11-03 17:20 · branch p8/polish from origin/dev 86c9176; prompt + status + missing EcoPhonePlaythrough.cs.meta committed.
 
+- 17:55 · #287 phase 1 merged (fbb298b → 2646a08), dotnet 1166/1166. Phase 2 (View/TimeLapse drawing) still to do, lane B. No thinning added: 625–956 B/yr.
+- PENDING: full EditMode suite after sim merges (Editor busy with item 1).
+
 ## Calls made without the user (→ docs/open-questions.md at the end)
 
 ## Agents running
+- 17:35 item 1 (#268 #278 #272) Opus, lane B, F:\GameDev on vs/268-278-272-first-run-ui, id a8a20f9fb742ccfce; stall watcher b3b3dfect
+- 17:35 item 2 (#271 + #266 sim) Sonnet, lane A, F:\GameDev-wt\271 vs/271-266-grass-pace, id aaf0f485ec25db2b6
+- 17:35 item 3 phase 1 (#285 → #267 sim) Sonnet, lane A, F:\GameDev-wt\285 vs/285-267-jobs-land, id a7a1dabd6294a00bb
+- 17:35 item 4 phase 1 (#287 records) Sonnet, lane A, F:\GameDev-wt\287 vs/287-history-land, id a329be9e7ff9375f1
+- Worker rules: C:\Users\User\AppData\Local\Temp\claude\9364ab10143f1cb1\682069c3-67cc-4488-a463-4ee8f046dedc\scratchpad\WORKER-RULES.md
+- Lane B order: 1 → 5 → 6 → 8 → 9 → 10 → 11 → 7 → 12 → 13 → 14 → 3B → 4B → 15 → 16 → 17 → 18. Tester after 6 lane B items / 4 h.
