@@ -337,6 +337,101 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(notables, sim2.State.notables.Count);
         }
 
+        // ---------- strangers who live apart (#231) ----------
+
+        static DilemmaDef ApartDef(string id, string kind, int count = 2) => new DilemmaDef
+        {
+            id = id, kind = DilemmaKind.Strangers, cast = DilemmaCast.None, question = "Travellers: in or apart?",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "in", hint = "h", strangers = count },
+                new DilemmaOptionDef { label = "apart", hint = "h", strangers = count, apart = kind, lean = SimCore.Lean.Craft,
+                    callbacks = new[] { new DilemmaCallbackDef { id = "c", text = "their fire still burns.", fallback = "their fire is out.", needsApart = true } } },
+            },
+        };
+
+        [Test]
+        public void AnApartAnswerMakesAGroupAtItsSpotThatIsNotTheSettlements()
+        {
+            foreach (var kind in new[] { ApartKind.WoodsCamp, ApartKind.ShoreHut })
+                for (int seed = 1; seed <= 6; seed++)
+                {
+                    var sim = NewSim(seed, Cfg());
+                    sim.DilemmaCatalog = new[] { ApartDef("a", kind, 3) };
+                    Years(sim, 4);
+                    int notables = sim.State.notables.Count, pop = sim.State.population;
+                    var d = sim.DebugRaiseDilemma("a");
+                    Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
+                    var g = sim.ApartOf(d);
+                    Assert.IsNotNull(g);
+                    Assert.AreSame(g, sim.ApartGroups.Single());
+                    Assert.AreEqual(kind, g.kind);
+                    Assert.AreEqual(3, g.members.Count);
+                    Assert.AreEqual(1, g.members.Select(n => n.family).Distinct().Count());
+                    Assert.AreEqual(g.family, g.members[0].family);
+                    Assert.IsTrue(g.members.All(n => n.alive && !string.IsNullOrEmpty(n.name) && !string.IsNullOrEmpty(n.trait)));
+                    Assert.AreEqual(notables, sim.State.notables.Count, "not the settlement's people");
+                    Assert.AreEqual(pop, sim.State.population, "not counted");
+                    Assert.IsFalse(sim.State.notables.Any(n => g.members.Any(m => m.id == n.id)));
+                    Assert.IsNull(sim.RoleCandidates().FirstOrDefault(n => g.members.Contains(n)), "never stand for a role");
+                    Assert.IsTrue(sim.State.chronicle.Any(e => e.kind == "newcomer" && e.text.Contains("far-away tank")), "they wandered in from a far-away tank");
+                    var map = sim.Settlement.Map;
+                    Assert.GreaterOrEqual(g.cell, 0, $"seed {seed} {kind}: a spot on the map");
+                    Assert.AreEqual(AquariumCiv.Sim.Settle.SiteMap.CellAt(g.x, g.z), g.cell);
+                    Assert.IsFalse(map.pond[g.cell], "not in the water");
+                    Assert.AreEqual(0, map.lot[g.cell], "not on a lot");
+                    float gd = (float)System.Math.Sqrt((g.x - map.greenX) * (g.x - map.greenX) + (g.z - map.greenZ) * (g.z - map.greenZ));
+                    Assert.Greater(gd, 0.8f, $"seed {seed} {kind}: well away from the green");
+                    if (kind == ApartKind.ShoreHut)
+                    {
+                        int c = g.cell, nx = AquariumCiv.Sim.Settle.SiteMap.NX;
+                        bool anyPond = Enumerable.Range(0, AquariumCiv.Sim.Settle.SiteMap.N).Any(k => map.pond[k]);
+                        if (anyPond) Assert.IsTrue(map.pond[c - 1] || map.pond[c + 1] || map.pond[c - nx] || map.pond[c + nx], $"seed {seed}: on the shore");
+                    }
+                    // a month on, the economy and the jobs never see them
+                    sim.Advance(1.0 / 12);
+                    Assert.IsTrue(g.members.All(n => string.IsNullOrEmpty(n.job)), "no jobs");
+                }
+        }
+
+        [Test]
+        public void ThePeopleApartAgeAndDieAndTheCallbackFallsBack()
+        {
+            var sim = NewSim(3, Cfg());
+            sim.DilemmaCatalog = new[] { ApartDef("a", ApartKind.WoodsCamp) };
+            Years(sim, 2);
+            var d = sim.DebugRaiseDilemma("a");
+            sim.AnswerDilemma(d.id, 1, DilemmaPath.Card);
+            var g = sim.ApartOf(d);
+            float age = g.members[0].age;
+            Years(sim, 1);
+            Assert.AreEqual(age + 1f, g.members[0].age, 0.01f, "they age with the calendar");
+            foreach (var n in g.members) n.lifespan = n.age + 0.05f;
+            Years(sim, 0.25);
+            Assert.IsTrue(g.members.All(n => !n.alive && n.diedMonth > 0));
+            Assert.AreEqual(2, sim.State.chronicle.Count(e => e.kind == "death" && e.text.Contains("of the far woods")));
+            var e = sim.DebugFireCallbackNow();
+            StringAssert.Contains("their fire is out", e.text, "needsApart: nobody left, the fallback");
+        }
+
+        [Test]
+        public void ApartGroupsSurviveASaveAndCatchUpEqualsLiveStepping()
+        {
+            var a = NewSim(8, Cfg()); var b = NewSim(8, Cfg());
+            foreach (var sim in new[] { a, b }) { sim.DilemmaCatalog = new[] { ApartDef("a", ApartKind.ShoreHut) }; Years(sim, 2); var d = sim.DebugRaiseDilemma("a"); sim.AnswerDilemma(d.id, 1, DilemmaPath.Box); }
+            Years(a, 5); b.Advance(5);
+            Assert.AreEqual(JsonUtility.ToJson(a.State.apartGroups[0]), JsonUtility.ToJson(b.State.apartGroups[0]));
+            Assert.AreEqual(Fingerprint(a.State), Fingerprint(b.State));
+            var json = JsonUtility.ToJson(a.State);
+            var back = JsonUtility.FromJson<SimState>(json);
+            Assert.AreEqual(json, JsonUtility.ToJson(back));
+            Assert.AreEqual(2, back.apartGroups[0].members.Count);
+            var old = JsonUtility.FromJson<SimState>("{\"seed\":7,\"month\":5}");
+            _ = new SimCore(new SimConfig(), old);
+            Assert.IsNotNull(old.apartGroups);
+            Assert.AreEqual(0, old.apartGroups.Count);
+        }
+
         // ---------- the card ----------
 
         [Test]
@@ -641,6 +736,7 @@ namespace AquariumCiv.Tests
             Years(plain, 30); Years(labButOff, 30);
             Assert.AreEqual(0, labButOff.State.dilemmas.Count);
             Assert.AreEqual(0, labButOff.State.dilemmaLeans.Count);
+            Assert.AreEqual(0, labButOff.State.apartGroups.Count);
             Assert.AreEqual(-1, labButOff.State.dilemmaNextMonth);
             Assert.AreEqual(Fingerprint(plain.State), Fingerprint(labButOff.State));
             Assert.AreEqual(plain.State.chronicle.Count, labButOff.State.chronicle.Count);

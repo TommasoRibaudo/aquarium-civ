@@ -87,6 +87,7 @@ namespace AquariumCiv.Sim
             if (def.aliveB && Alive(d.personB) == null) return false;
             if (!string.IsNullOrEmpty(def.needsBuilding) && !Has(def.needsBuilding)) return false;
             if (!string.IsNullOrEmpty(def.needsCustom) && !HasCustom(def.needsCustom)) return false;
+            if (def.needsApart && (ApartOf(d)?.members.All(n => !n.alive) ?? true)) return false;
             return true;
         }
 

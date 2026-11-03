@@ -100,6 +100,7 @@ namespace AquariumCiv.Sim
             s.dilemmaLeans ??= new List<DilemmaLean>();
             s.dilemmaCallbacks ??= new List<DilemmaCallback>();
             s.customs ??= new List<string>();
+            s.apartGroups ??= new List<ApartGroup>();
             if (s.dilemmaNextId < 1) s.dilemmaNextId = 1;
         }
 
@@ -148,6 +149,7 @@ namespace AquariumCiv.Sim
         /// <summary>Every month: lapse what is old, and raise the next when it is due. No dice. Nothing at all when off.</summary>
         void DilemmaStep()
         {
+            ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
             if (!Config.dilemmas) return;
             var s = State;
             CallbackStep(); // no dice: one due callback per month
@@ -428,7 +430,8 @@ namespace AquariumCiv.Sim
 
             if (!string.IsNullOrEmpty(o.custom) && !s.customs.Contains(o.custom)) s.customs.Add(o.custom);
 
-            if (o.strangers > 0) StrangersJoin(d, o.strangers);
+            if (o.strangers > 0 && !string.IsNullOrEmpty(o.apart)) StrangersApart(d, o.strangers, o.apart);
+            else if (o.strangers > 0) StrangersJoin(d, o.strangers);
         }
 
         /// <summary>The unchosen: by trait either a grudge (a rivalry, sometimes) or grace (a friendship, or just good will).</summary>
@@ -455,7 +458,18 @@ namespace AquariumCiv.Sim
         void StrangersJoin(Dilemma d, int count)
         {
             var s = State;
-            string family = NameData.Families[(int)(DilemmaRoll(50, d.id, d.month) * NameData.Families.Length) % NameData.Families.Length];
+            var made = MakeStrangers(d, count, out string family);
+            s.population += made.Count;
+            string names = string.Join(" and ", made.Select(n => n.name));
+            Chronicle("newcomer", $"The {family} family, {names}, wandered in from a far-away tank and joined the {EraNoun(s.era)}.", 0.7f, made[0].id);
+        }
+
+        /// <summary>The strangers' people, named and traited from hashes (no dice); a couple when there are two or more. Added to the
+        /// notables as they are named (so no two share a name); <see cref="StrangersApart"/> takes them out again.</summary>
+        List<Notable> MakeStrangers(Dilemma d, int count, out string family)
+        {
+            var s = State;
+            family = NameData.Families[(int)(DilemmaRoll(50, d.id, d.month) * NameData.Families.Length) % NameData.Families.Length];
             var local = new SimRandom((int)(DilemmaRoll(51, d.id, d.month) * 1_000_000f) + 1); // only for the name retries
             var made = new List<Notable>();
             for (int i = 0; i < count; i++)
@@ -475,9 +489,7 @@ namespace AquariumCiv.Sim
                 made.Add(n);
             }
             if (made.Count > 1) { made[0].partnerId = made[1].id; made[1].partnerId = made[0].id; }
-            s.population += made.Count;
-            string names = string.Join(" and ", made.Select(n => n.name));
-            Chronicle("newcomer", $"The {family} family, {names}, came in from the far woods and joined the {EraNoun(s.era)}.", 0.7f, made[0].id);
+            return made;
         }
 
         // ---------- debug ----------
