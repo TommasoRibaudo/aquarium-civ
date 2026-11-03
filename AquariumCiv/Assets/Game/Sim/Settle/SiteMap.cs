@@ -23,6 +23,11 @@ namespace AquariumCiv.Sim.Settle
         public readonly bool[] pond = new bool[N];
         public readonly SettleState st;
         public float greenX, greenZ;
+        /// <summary>The ecology is on (Sim/Eco): the static pond and the starting woods are not drawn here; the land's own cover
+        /// and water come in through <see cref="Settlement.SyncEco"/>.</summary>
+        public readonly bool eco;
+        /// <summary>Cells no lot may take (the ecology's flood line, below the main hollow's spill level); null when the ecology is off.</summary>
+        public bool[] noBuild;
 
         public byte[] flags => st.flags;
         public byte[] tier => st.tier;
@@ -34,9 +39,9 @@ namespace AquariumCiv.Sim.Settle
 
         /// <summary>Builds the static layers; with <paramref name="fresh"/>, also the starting live layers (green,
         /// starting woods) into <paramref name="state"/>'s arrays.</summary>
-        public SiteMap(SettleState state, bool fresh)
+        public SiteMap(SettleState state, bool fresh, bool eco = false)
         {
-            st = state;
+            st = state; this.eco = eco;
             spec = TerrainSpec.Preset(state.terrain);
             greenX = spec.centreX; greenZ = spec.centreZ;
             if (fresh)
@@ -54,7 +59,7 @@ namespace AquariumCiv.Sim.Settle
                     float gx = (Terrain.Height(spec, x + e, z) - Terrain.Height(spec, x - e, z)) / (2 * e);
                     float gz = (Terrain.Height(spec, x, z + e) - Terrain.Height(spec, x, z - e)) / (2 * e);
                     slope[c] = MathF.Sqrt(gx * gx + gz * gz);
-                    pond[c] = height[c] < Terrain.WaterY;
+                    pond[c] = !eco && height[c] < Terrain.WaterY;
                     float n = Terrain.Fbm(x * 1.3f + spec.noiseOff + 7f, z * 1.3f + 3f);
                     baseFert[c] = Terrain.Clamp01(0.25f + 0.6f * n - slope[c] * 0.8f);
                     if (!fresh) continue;
@@ -63,7 +68,7 @@ namespace AquariumCiv.Sim.Settle
                     float f = Terrain.ForestBias(spec, x, z) + (Terrain.Fbm(x * 1.8f + spec.noiseOff, z * 1.8f + 40f) - 0.5f) * 1.1f;
                     float dc = Terrain.Dist(x, z, greenX, greenZ);
                     if (!pond[c] && Terrain.OutcropAt(spec, x, z, height[c])) Set(c, FRock, true);
-                    else if (!pond[c] && f > spec.forestCut && dc > 1.3f) Set(c, FForest, true);
+                    else if (!eco && !pond[c] && f > spec.forestCut && dc > 1.3f) Set(c, FForest, true);
                 }
             RecomputeWaterDist();
         }
@@ -83,6 +88,8 @@ namespace AquariumCiv.Sim.Settle
         public bool YardAt(int c) => (st.flags[c] & FYard) != 0;
         public bool Rock(int c) => (st.flags[c] & FRock) != 0;
         public bool Water(int c) => pond[c] || (st.flags[c] & FCanal) != 0;
+        /// <summary>No lot here: below the ecology's flood line (always false with the ecology off).</summary>
+        public bool NoBuild(int c) => noBuild != null && noBuild[c];
 
         public static int Index(int i, int j) => j * NX + i;
         public static int I(int c) => c % NX;
