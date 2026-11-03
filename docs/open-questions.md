@@ -3,7 +3,22 @@
 Everything waiting on a decision by the user, in one place. Answered items move to [decisions.md](decisions.md) and are
 deleted here. Recommended options come first and are marked ★. On GitHub: issues labelled `needs:user`.
 
-_Last updated 2026-10-31._
+_Last updated 2026-11-02._
+
+## P7 Keeper's dilemmas (2026-11-02)
+Details and screenshots: [design/results/P7.md](design/results/P7.md) ("Dilemmas", "Agent playtest", "Polish").
+- **#222 text review.** The 8 dilemmas after your first review (1, 5, 6, 8 rewritten; 4 patched; the people never say
+  tank). ★ Read them in P7.md "Dilemmas" and mark what still reads wrong. Check: `village_harvest`'s offering hint says
+  "left on the hill for the Keeper" (a hill inside the box).
+- **#224 look sign-off** (and #231's camps). ★ Look at the choice-scene and camp shots. The points to judge: do the halos
+  and tags read as a moment or a menu; the question caption sits over the box the whole wait; the which-way framing; the
+  chief half hidden by the fire props; the tradition offerings small among the baskets ("the stone" reads as firewood);
+  the woods camp lost in the trees and the shore hut reading as part of the village at default zoom.
+- **Survey Q4/Q6.** No in-game survey form exists. ★ Paper/online form for the lab; build one in-game later if P7 goes on.
+- **Small polish** (★ one ticket after the lab): the bar truncates "The Keeper chose the…"; the same placeholder icon on
+  both options; page dots overflow at 17 cards on a small phone; no speaker on trait-worded questions on the card; the
+  taller callback sheet covers the bottom of the box on a small phone; a toast slides under the choice-scene bar.
+- **Go / reshape / drop** after the lab and the 3-day diary, against P7.md "Pass".
 
 ## Still open (2026-10-30)
 

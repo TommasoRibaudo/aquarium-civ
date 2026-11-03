@@ -87,6 +87,14 @@ namespace AquariumCiv.Sim
         public float historyPositionMinSalience = 0.5f; // entries below this get no stored x, z (worked out when asked)
         public float pinLegendHours = 24f;          // "pinned for a day": the legend rule
 
+        // Keeper's dilemmas (P7, #220; SimCore.Dilemmas.cs). Off: no dilemma is ever raised and nothing else changes.
+        public bool dilemmas = false;
+        public bool dilemmaLab = false;             // the lab schedule: the first at dilemmaLabFirstYear, then about every dilemmaLabEveryYears
+        public int dilemmaMinYears = 6;             // normal play: one dilemma per this many game years ...
+        public int dilemmaMaxYears = 10;            // ... up to this many [est]
+        public int dilemmaLabFirstYear = 2;
+        public int dilemmaLabEveryYears = 3;
+
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
 
@@ -395,6 +403,14 @@ namespace AquariumCiv.Sim
         public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
         public List<string> crowdNames = new(); // first names of the crowd, by crowd index (SimCore.Crowd.cs, #148); old saves fill it from the seed
         public int crowdNameNext;            // how far the box has read the shuffled crowd name table
+        // Keeper's dilemmas (SimCore.Dilemmas.cs, #220). All default-safe: an old save loads with none.
+        public List<Dilemma> dilemmas = new();
+        public int dilemmaNextId = 1;
+        public long dilemmaNextMonth = -1;   // the next one is due from this month (-1 = not scheduled yet)
+        public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
+        public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
+        public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book
+        public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

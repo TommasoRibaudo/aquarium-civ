@@ -40,10 +40,16 @@ namespace AquariumCiv.Game
         public const double MinSessionSeconds = 20;
         public const int MinCardsShown = 1;
 
-        public static bool ShouldAsk(RecallState s, RecallContext c)
+        /// <summary>P7 (#225): the dilemma diary asks on day 2 ("a choice and what came of it"), until day 4.</summary>
+        public const int DilemmaFirstDay = 2, DilemmaLastDay = 4;
+
+        public static bool ShouldAsk(RecallState s, RecallContext c) => ShouldAsk(s, c, FirstDay, LastDay);
+
+        /// <summary>Same decision with the day window set by the caller (P7 passes <see cref="DilemmaFirstDay"/> / <see cref="DilemmaLastDay"/>).</summary>
+        public static bool ShouldAsk(RecallState s, RecallContext c, int firstDay, int lastDay)
         {
             if (s == null || s.answered) return false;
-            if (c.dayIndex < FirstDay || c.dayIndex > LastDay) return false;
+            if (c.dayIndex < firstDay || c.dayIndex > lastDay) return false;
             if (s.dismissed > MaxDismissals) return false;
             if (s.lastShownDay == c.dayIndex) return false;
             if (c.busy || c.sessionSeconds < MinSessionSeconds) return false;

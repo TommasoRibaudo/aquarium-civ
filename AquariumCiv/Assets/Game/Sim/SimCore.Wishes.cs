@@ -74,6 +74,7 @@ namespace AquariumCiv.Sim
         /// <summary>A wish entry is shown as a card only while its wish is open (a given or lapsed wish stops).</summary>
         bool WishCardLive(ChronicleEntry e)
         {
+            if (e.kind == "dilemma") return DilemmaCardLive(e);
             if (e.kind != "wish") return true;
             var w = WishOfEntry(e.id);
             return w == null || w.state == WishState.Open;
@@ -120,7 +121,9 @@ namespace AquariumCiv.Sim
                 return;
             }
             if (!WishesOn) return;
+            if (DilemmaHoldsSlot) return; // the slot is shared with the Keeper's dilemmas (SimCore.Dilemmas.cs): one or the other
             long last = State.wishes.Count == 0 ? long.MinValue / 2 : State.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
+            last = Math.Max(last, DilemmaLastEnd);
             if (State.month - last < WishGapMonths) return;
             if (WishRoll(1, 0) >= WishChancePerMonth) return;
             TryMakeWish(null, null, false);
@@ -201,6 +204,7 @@ namespace AquariumCiv.Sim
         {
             var open = OpenWish;
             if (open != null) CloseWish(open, WishState.Lapsed);
+            if (OpenDilemma != null) LapseDilemma(OpenDilemma); // never a wish and a dilemma together
             Notable only = notableId >= 0 ? FindNotable(notableId) : null;
             if (notableId >= 0 && only == null) return null;
             if (only != null && (kind != null || string.IsNullOrEmpty(only.job) || !WishTools.ContainsKey(only.job)))

@@ -47,6 +47,9 @@ namespace AquariumCiv.View.Cards
         public string actionLabel = "";
         public bool actionEnabled = true;
         public string actionNote = "";  // why the action can't happen now, said on the card (practices §4)
+        public DilemmaView dilemma;     // a dilemma card: the question, the two options and who/what they point at (null elsewhere)
+        public int dilemmaChosen = -1;  // the option taken (answered from anywhere, or by the people on a lapse); -1 = still open
+        public bool dilemmaLapsed;      // the people chose it themselves: the card says so and nothing lifts
     }
 
     /// <summary>What Give did: the wish to arm the tool for, or why not (<see cref="line"/> is ready to show).</summary>
@@ -113,6 +116,10 @@ namespace AquariumCiv.View.Cards
         public int Index { get; private set; }
         /// <summary>A card opened from "Also…" (null = none): it covers that page until <see cref="Back"/>.</summary>
         public ChronicleCard Detail { get; private set; }
+
+        /// <summary>P7 (#225): the dilemma events (shown, answered, callback shown) go through this tracker; null = not logged (tests,
+        /// a visited museum box). The view sets it to the active box's (<see cref="GameClock.DilemmaTrackerFor"/>).</summary>
+        public DilemmaTelemetryTracker DilemmaTel;
 
         /// <summary>Anything on screen changed.</summary>
         public event Action Changed;
@@ -186,6 +193,36 @@ namespace AquariumCiv.View.Cards
             return CardCount > 0;
         }
 
+        /// <summary>#238: a dilemma the people raised while the player watches. The peek comes up with it on top, as on a return, and a
+        /// tap opens on its card; the rest of the unread stories wait for the next return (the dot says so). False when the stack is up
+        /// already, in the first run or a museum, or when the entry is not an open dilemma's card.</summary>
+        public bool ShowLive(int entryId)
+        {
+            if (Mode != CardStackMode.Hidden || Quiet) return false;
+            var d = sim.DilemmaOfEntry(entryId);
+            if (d == null || d.state != DilemmaState.Open) return false;
+            var all = sim.UnreadCardsCapped(64, viewed);
+            var card = all.cards.Concat(all.also).FirstOrDefault(c => c.lead.id == entryId);
+            if (card == null) return false;
+            stack = new ReturnStack { cap = 1 };
+            stack.cards.Add(card);
+            HistoryDot = sim.HasUnreadCards;
+            Peek = new CardPeek { visible = true, text = card.headline, notableId = card.people.Count > 0 ? card.people[0] : -1 };
+            Mode = CardStackMode.Peek;
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>The stack built now holds this entry's card (on a page or in "Also…").</summary>
+        public bool Holds(int entryId) =>
+            Mode != CardStackMode.Hidden && stack != null && stack.cards.Concat(stack.also).Any(c => c.lead.id == entryId);
+
+        /// <summary>#238: live play keeps the history button's dot current (it was only worked out on a return).</summary>
+        public void RefreshDot()
+        {
+            if (Mode == CardStackMode.Hidden) HistoryDot = sim.HasUnreadCards;
+        }
+
         void Build()
         {
             stack = sim.UnreadCardsCapped(cap, viewed);
@@ -246,7 +283,16 @@ namespace AquariumCiv.View.Cards
             flying = false;
             dwell.EndAndLog(log, now());
             dwell.Show(CurrentId, now());
-            if (shown.Add(CurrentId)) log.CardShown(CurrentId, Shown?.lead.kind ?? AlsoId, Index, PageCount);
+            if (shown.Add(CurrentId))
+            {
+                log.CardShown(CurrentId, Shown?.lead.kind ?? AlsoId, Index, PageCount);
+                if (Shown != null && Shown.lead.kind == SimCore.CallbackKind) log.CallbackShown(sim.CallbackInfoOf(Shown.lead));
+            }
+            if (Shown != null && Shown.kind == CardKind.Dilemma)
+            {
+                var d = sim.DilemmaOfEntry(Shown.lead.id);
+                if (d != null && d.state == DilemmaState.Open) DilemmaTel?.Shown(log, d, now());
+            }
             Changed?.Invoke();
         }
 
@@ -341,6 +387,7 @@ namespace AquariumCiv.View.Cards
             var card = Shown;
             if (card == null || !CanShowMe(card)) return null;
             sim.MarkCardRead(card);
+            if (card.lead.kind == SimCore.CallbackKind) log.CallbackShowMe(sim.CallbackInfoOf(card.lead));
             showMeUsed = true; // ShowMeDirector logs show_me and card_flown_to, for every Show me
             if (!flying) { flying = true; dwell.Cover(now()); }
             return card;
@@ -405,6 +452,52 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
+        // ------------------------------------------------------------------ the dilemma card (#223)
+
+        /// <summary>The fallback answer: the two buttons on the dilemma card. Takes the card's own dilemma (not the box's open one), is
+        /// final (no undo) and writes the Keeper's entry. False if the card isn't a dilemma, the option is not 0 or 1, or it was answered
+        /// already. The card stays up so it can say what was chosen; Next moves on.</summary>
+        public bool AnswerDilemma(int option)
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.state != DilemmaState.Open) return false;
+            if (!sim.AnswerDilemma(d.id, option, DilemmaPath.Card)) return false;
+            DilemmaTel?.Answered(log, d, now());
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>The hook for #224: Show me on a dilemma card flies to the choice scene instead of a place. Set by the in-box scene;
+        /// returns true if it took the tap (the card then waits behind it), false to fall back to the normal Show me.</summary>
+        public Func<DilemmaView, bool> DilemmaShowMeHook;
+
+        /// <summary>Show me on a dilemma card: offers the open dilemma to <see cref="DilemmaShowMeHook"/>. True if the hook took it.</summary>
+        public bool DilemmaShowMe()
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.state != DilemmaState.Open || DilemmaShowMeHook == null) return false;
+            var v = sim.ViewOfDilemma(d);
+            if (v == null || !DilemmaShowMeHook(v)) return false;
+            sim.MarkCardRead(Shown);
+            return true;
+        }
+
+        /// <summary>#224: the answer by touch in the box (the choice scene, after Show me on this card): final like the buttons, on the Box path.
+        /// False unless the card on screen is this dilemma and it is still open.</summary>
+        public bool AnswerDilemmaInBox(int dilemmaId, int option)
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.id != dilemmaId || d.state != DilemmaState.Open) return false;
+            if (!sim.AnswerDilemma(d.id, option, DilemmaPath.Box)) return false;
+            DilemmaTel?.Answered(log, d, now());
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
+        Dilemma DilemmaOnCard() => Mode == CardStackMode.Open && Shown?.kind == CardKind.Dilemma ? sim.DilemmaOfEntry(Shown.lead.id) : null;
+
         // ------------------------------------------------------------------ what to draw
 
         /// <summary>The page on screen as data (null when closed).</summary>
@@ -428,6 +521,7 @@ namespace AquariumCiv.View.Cards
                     case CardKind.Legend: f.action = CardAction.Remember; f.actionLabel = "Remember"; break;
                     case CardKind.EraReady: f.action = CardAction.Watch; f.actionLabel = "Watch"; break;
                     case CardKind.Wish: FillGive(f, sim.WishOfEntry(c.lead.id)); break;
+                    case CardKind.Dilemma: FillDilemma(f, sim.DilemmaOfEntry(c.lead.id)); break;
                 }
                 return f;
             }
@@ -438,7 +532,23 @@ namespace AquariumCiv.View.Cards
         {
             string text = c.lead.text ?? "", head = c.headline ?? "";
             if (head.Length == 0 || !text.StartsWith(head, StringComparison.Ordinal)) return text;
-            return text.Substring(head.Length).TrimStart('.', ':', ';', '!', ' ');
+            // #240: a callback's headline is its credit and the body goes on after the comma, as a sentence of its own.
+            string rest = text.Substring(head.Length).TrimStart('.', ',', ':', ';', '!', ' ');
+            return rest.Length > 0 && char.IsLower(rest[0]) ? char.ToUpperInvariant(rest[0]) + rest.Substring(1) : rest;
+        }
+
+        void FillDilemma(CardFace f, Dilemma d)
+        {
+            var v = d == null ? null : sim.ViewOfDilemma(d);
+            if (v == null) return;
+            f.dilemma = v;
+            f.headline = v.question; // the people's ask leads; the entry's headline is clipped
+            f.body = "";
+            f.portraits.Clear();
+            f.canShowMe = f.canShowMe || DilemmaShowMeHook != null;
+            if (d.state == DilemmaState.Open) return;
+            f.dilemmaChosen = d.option;
+            f.dilemmaLapsed = d.state == DilemmaState.Lapsed;
         }
 
         void FillGive(CardFace f, Wish w)
