@@ -101,6 +101,8 @@ namespace AquariumCiv.View
 
         /// <summary>The style kit's shared solid material (the one every generated mesh and doll uses).</summary>
         public Material SolidMaterial => Solid;
+        /// <summary>The fires' glow material (the Glow shader), for fires drawn outside the layout (#231's apart camps).</summary>
+        public Material GlowMaterial => glow != null ? glow : glowMat != null ? glowMat : glowMat = new Material(Shader.Find("AquariumCiv/View/Glow")) { hideFlags = HideFlags.DontSave };
 
         /// <summary>#202: the chunks leave the sails out only when an enabled <see cref="WindView"/> on this box has them: asking if a wind is allowed left any box
         /// nothing had bootstrapped with bare mills. Read here, on the main thread: chunks build on workers.</summary>

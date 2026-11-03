@@ -370,6 +370,12 @@ namespace AquariumCiv.View
             if (!SayOverHead(text, speaker, seconds)) ShowCaption(text, NameOf(speaker), seconds);
         }
 
+        /// <summary>#224: a staged line from outside (the choice scene's ask): over the speaker's head, else on the caption plate.</summary>
+        public void SayLine(string text, PersonRef speaker, float seconds) => Say(text, speaker, seconds);
+
+        /// <summary>#224: take down a staged line (the choice scene was left or answered).</summary>
+        public void ClearLine() => ClearEchoBubble();
+
         static string NameOf(PersonRef who) => who.IsNotable ? Sim?.FindNotable(who.notableId)?.name : null;
 
         /// <summary>A line of a staged scene (an echo, a relic moment) in a bubble that follows the speaker. False if they
@@ -526,6 +532,7 @@ namespace AquariumCiv.View
             if (PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen)) return "a person card is open"; // its tie tags stand over the people (tester run 5)
             if (hud != null && !hud.IsVisible) return "the HUD is hidden";
             if (Busy) return "show me";
+            if (ChoiceSceneView.Instance != null && ChoiceSceneView.Instance.Holding) return "the people ask the Keeper"; // #224
             if (FirstRunView.Instance != null && FirstRunView.Instance.HasTheWord) return "the first run";
             if (!GameUiPanel.Bubbles.Free(BubbleHost.Rank.World) && GameUiPanel.Bubbles.Holder != WorldVoice) return SomeoneSpeaks;
             var mp = MomentPlayer.Instance;

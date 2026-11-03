@@ -20,6 +20,7 @@ namespace AquariumCiv.Sim
             // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
             if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;
             StartCardLedger();
+            EnsureDilemmaState();
         }
 
         public static SimState NewWorld(int seed, SimConfig config)
@@ -126,6 +127,7 @@ namespace AquariumCiv.Sim
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
             WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
+            DilemmaStep(); // no dice, and nothing at all unless Config.dilemmas: the Keeper's dilemmas (SimCore.Dilemmas.cs, P7)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)

@@ -16,7 +16,7 @@ namespace AquariumCiv.View
     /// state without waiting. A "sim" button (top right, inside the safe area) opens it; <see cref="SliceDebugPanel"/> keeps
     /// the camp/era/box/music tools. IMGUI, drawn on the safe area, scrollable by drag. Every action also goes through the
     /// static <c>Do*</c> methods, so `script eval` can call them (SimDebugPanel.DoRelic("lens")).
-    /// Sections: Time, Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Wishes, Relics and belief, Care.
+    /// Sections: Time, Dilemmas (P7, <see cref="DilemmaCheats"/>), Fire, Era and box, Notables (selected one), Roles, Buildings, Shaping, Wishes, Relics and belief, Care.
     /// </summary>
     [AddComponentMenu("AquariumCiv/TEMPORARY Sim Debug Panel")]
     public class SimDebugPanel : MonoBehaviour
@@ -227,6 +227,7 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Show me on this card (the bar)")) last = CardStackView.DebugShowMe();
             }
+            if (Section("Dilemmas (P7)")) { var line = DilemmaCheats.Gui(); if (line != null) last = line; }
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

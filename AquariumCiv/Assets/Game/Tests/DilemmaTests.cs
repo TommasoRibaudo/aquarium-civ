@@ -1,0 +1,793 @@
+using System.Collections.Generic;
+using System.Linq;
+using AquariumCiv.Sim;
+using NUnit.Framework;
+using UnityEngine;
+using static AquariumCiv.Tests.SimCoreTests;
+
+namespace AquariumCiv.Tests
+{
+    /// <summary>The Keeper's dilemmas (P7, #220): raised in the expected window and never beside a wish or in the first run, each effect
+    /// kind applies, a lapse picks by trait and by hash the same way every time, catch-up equals live stepping, and with the switch
+    /// off nothing changes. Pure C# (JsonUtility only), so it also runs in Tools/SimTests.</summary>
+    public class DilemmaTests
+    {
+        static SimConfig Cfg(bool lab = false)
+        {
+            var c = new SimConfig { dilemmas = true, dilemmaLab = lab };
+            return c;
+        }
+
+        static void Years(SimCore sim, double years) { for (int m = 0; m < (int)(years * 12 + 0.5); m++) sim.Advance(1.0 / 12); }
+
+        /// <summary>Defs of every effect kind, test-local, so the tests don't depend on the content's text (#222).</summary>
+        static DilemmaDef WhoDef(string id, string lapseTraitA = null, string lapseTraitB = null) => new DilemmaDef
+        {
+            id = id, kind = DilemmaKind.Who, cast = DilemmaCast.TwoCandidates, role = DilemmaDef.Leader, replacesHolder = true,
+            question = "{a} or {b}?",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "{a}", hint = "h", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "who:a", favouredBy = lapseTraitA == null ? null : new[] { lapseTraitA } },
+                new DilemmaOptionDef { label = "{b}", hint = "h", takesRole = true, ties = DilemmaTies.RivalOrGrace, custom = "who:b", favouredBy = lapseTraitB == null ? null : new[] { lapseTraitB } },
+            },
+        };
+
+        /// <summary>A which-way def with no role: food or wood, a lapse picked by the asker's trait (favouredBy) or a hash.</summary>
+        static DilemmaDef WayDef(string id, bool favoured = true) => new DilemmaDef
+        {
+            id = id, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "The fields, or the woods?",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "the fields", hint = "h", lean = SimCore.Lean.Food, favouredBy = favoured ? new[] { "the kind" } : null },
+                new DilemmaOptionDef { label = "the woods", hint = "h", lean = SimCore.Lean.Craft, favouredBy = favoured ? new[] { "the brave" } : null },
+            },
+        };
+
+        static DilemmaDef StrangersDef(string id) => new DilemmaDef
+        {
+            id = id, kind = DilemmaKind.Strangers, cast = DilemmaCast.None, question = "Travellers ask to join.",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "let them in", hint = "h", strangers = 3 },
+                new DilemmaOptionDef { label = "send them on", hint = "h" },
+            },
+        };
+
+        /// <summary>A camp with two free adults who could take the lead, found by looking over seeds.</summary>
+        static SimCore WithCandidates(int seed, SimConfig cfg, params DilemmaDef[] defs)
+        {
+            var sim = NewSim(seed, cfg);
+            sim.DilemmaCatalog = defs;
+            Years(sim, 3);
+            return sim;
+        }
+
+        static IEnumerable<SimCore> Camps(SimConfig cfg, DilemmaDef def, int want = 8)
+        {
+            int found = 0;
+            for (int seed = 1; seed < 60 && found < want; seed++)
+            {
+                var sim = WithCandidates(seed, cfg, def);
+                if (sim.State.era != Era.Camp || sim.RoleCandidates(RoleType.Chief).Count < 2) continue;
+                found++;
+                yield return sim;
+            }
+            Assert.GreaterOrEqual(found, 1, "no seed gave a camp with two candidates");
+        }
+
+        // ---------- pacing ----------
+
+        [Test]
+        public void NormalPlayRaisesTheFirstWithinTheWindowOver20Seeds()
+        {
+            for (int seed = 1; seed <= 20; seed++)
+            {
+                var sim = NewSim(seed, Cfg());
+                Years(sim, 20);
+                var first = sim.State.dilemmas.FirstOrDefault();
+                Assert.IsNotNull(first, $"seed {seed}: none in 14 years");
+                // due 6 to 10 years on
+                Assert.GreaterOrEqual(first.month, 6 * 12, $"seed {seed}");
+                Assert.LessOrEqual(first.month, 10 * 12 + 24 + 8, $"seed {seed}"); // a wish open at the time is waited out (at most 24 months), then the gap
+            }
+        }
+
+        [Test]
+        public void NormalPlayIsAboutOnePerSixToTenYears()
+        {
+            int total = 0;
+            for (int seed = 1; seed <= 10; seed++)
+            {
+                var sim = NewSim(seed, Cfg());
+                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => new DilemmaDef
+                {
+                    id = "w" + i, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "q",
+                    options = new[] { new DilemmaOptionDef { label = "x", hint = "h" }, new DilemmaOptionDef { label = "y", hint = "h" } },
+                }).ToArray();
+                Years(sim, 40);
+                int n = sim.State.dilemmas.Count;
+                Assert.GreaterOrEqual(n, 3, $"seed {seed}: {n} in 40 years");
+                Assert.LessOrEqual(n, 7, $"seed {seed}: {n} in 40 years");
+                total += n;
+            }
+            Assert.Greater(total, 0);
+        }
+
+        [Test]
+        public void LabScheduleStartsAtYearTwoThenEveryAboutThree()
+        {
+            for (int seed = 1; seed <= 6; seed++)
+            {
+                var sim = NewSim(seed, Cfg(true));
+                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
+                Years(sim, 20);
+                var ds = sim.State.dilemmas;
+                Assert.GreaterOrEqual(ds.Count, 3, $"seed {seed}");
+                Assert.GreaterOrEqual(ds[0].month, 24, $"seed {seed}");
+                Assert.LessOrEqual(ds[0].month, 24 + 24 + 8, $"seed {seed}: year 2, or by year 4 when a wish was open");
+                for (int i = 1; i < ds.Count; i++)
+                {
+                    long gap = ds[i].month - ds[i - 1].month;
+                    Assert.GreaterOrEqual(gap, 30, $"seed {seed} #{i}");
+                    Assert.LessOrEqual(gap, 36 + 6 + 24 + 8, $"seed {seed} #{i}");
+                }
+            }
+        }
+
+        [Test]
+        public void NeverBesideAWishAndAGapFollowsEach()
+        {
+            for (int seed = 1; seed <= 8; seed++)
+            {
+                var sim = NewSim(seed, Cfg(true));
+                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
+                for (int m = 0; m < 16 * 12; m++)
+                {
+                    sim.Advance(1.0 / 12);
+                    Assert.IsFalse(sim.OpenWish != null && sim.OpenDilemma != null, $"seed {seed} month {sim.State.month}: a wish and a dilemma together");
+                    Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.state == DilemmaState.Open), 1);
+                }
+                Assert.Greater(sim.State.wishes.Count, 0, $"seed {seed}: wishes still come");
+                foreach (var d in sim.State.dilemmas)
+                {
+                    long dEnd = d.endMonth >= 0 ? d.endMonth : sim.State.month;
+                    foreach (var w in sim.State.wishes)
+                    {
+                        long wEnd = w.endMonth >= 0 ? w.endMonth : sim.State.month;
+                        Assert.IsFalse(w.month < dEnd && d.month < wEnd, $"seed {seed}: dilemma {d.id} and wish {w.id} overlap");
+                        if (w.month >= dEnd) // the next wish after a dilemma waits the gap
+                        {
+                            var between = sim.State.wishes.Where(x => x.month >= dEnd && x.month < w.month).Count();
+                            var nextDilemma = sim.State.dilemmas.Where(x => x.month > d.month).Select(x => x.month).DefaultIfEmpty(long.MaxValue).Min();
+                            if (between == 0 && w.month < nextDilemma) Assert.GreaterOrEqual(w.month - dEnd, SimCore.WishGapMonths, $"seed {seed}: wish {w.id} after dilemma {d.id}");
+                        }
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void ADueDilemmaNeverLapsAnOpenWishButWaitsForItsEnd()
+        {
+            for (int seed = 1; seed <= 12; seed++)
+            {
+                var sim = NewSim(seed, Cfg(true));
+                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
+                Years(sim, 1);
+                var w = sim.DebugForceWish();
+                Assert.IsNotNull(w);
+                sim.State.dilemmaNextMonth = sim.State.month + 1; // due while the wish is open
+                for (int m = 0; m < 20; m++)
+                {
+                    sim.Advance(1.0 / 12);
+                    if (w.state != WishState.Open) { Assert.IsTrue(sim.FindNotable(w.notableId)?.alive != true || sim.State.nudges.Any(), $"seed {seed}: the wish ended without cause"); break; }
+                    Assert.IsNull(sim.OpenDilemma, $"seed {seed}: raised beside the open wish");
+                }
+
+                if (w.state == WishState.Open) { w.state = WishState.Given; w.endMonth = sim.State.month; } // the player gives the gift
+                long ended = w.endMonth;
+                Years(sim, 2);
+                var first = sim.State.dilemmas.FirstOrDefault();
+                Assert.IsNotNull(first, $"seed {seed}");
+                Assert.GreaterOrEqual(first.month - ended, SimCore.DilemmaGapMonths, $"seed {seed}: the gap runs from the wish's end");
+                Assert.IsFalse(sim.State.wishes.Any(x => x.id != w.id && x.month >= ended && x.month < first.month), $"seed {seed}: no new wish jumps the queue");
+            }
+        }
+
+        [Test]
+        public void NeverDuringTheFirstRun()
+        {
+            var sim = NewSim(3, Cfg(true));
+            sim.State.firstRun.active = true;
+            Years(sim, 8);
+            Assert.AreEqual(0, sim.State.dilemmas.Count, "none while the first run is active");
+            long endedAt = sim.State.month;
+            sim.State.firstRun.active = false;
+            Years(sim, 6);
+            Assert.GreaterOrEqual(sim.State.dilemmas.Count, 1);
+            Assert.GreaterOrEqual(sim.State.dilemmas[0].month, endedAt);
+        }
+
+        // ---------- answering and effects ----------
+
+        [Test]
+        public void AnsweringAWhoDilemmaSeatsThePersonAndWritesAKeeperLine()
+        {
+            foreach (var sim in Camps(Cfg(), WhoDef("w")))
+            {
+                var d = sim.DebugRaiseDilemma("w");
+                Assert.IsNotNull(d);
+                Assert.AreEqual(DilemmaState.Open, d.state);
+                int chosen = d.personB, unchosen = d.personA;
+                Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Box));
+                Assert.AreEqual(DilemmaState.Answered, d.state);
+                Assert.AreEqual(1, d.option);
+                Assert.AreEqual(DilemmaPath.Box, d.path);
+                Assert.AreEqual(chosen, sim.HolderOf(RoleType.Chief).id, "the pick bypasses the succession roll");
+                Assert.IsNull(sim.OpenDilemma);
+                Assert.IsTrue(sim.HasCustom("who:b"));
+                Assert.IsFalse(sim.HasCustom("who:a"));
+                var line = sim.State.chronicle.Single(e => e.id == d.answerEntryId);
+                Assert.AreEqual("keeper", line.kind);
+                Assert.IsTrue(line.keeper);
+                Assert.AreEqual(chosen, line.notableId);
+                Assert.AreEqual(unchosen, line.otherNotableId);
+                Assert.IsFalse(sim.AnswerDilemma(d.id, 0, DilemmaPath.Card), "no undo, no second answer");
+                Assert.AreEqual(1, d.option);
+            }
+        }
+
+        [Test]
+        public void AnswerRejectsABadIdOptionOrAClosedDilemma()
+        {
+            var sim = NewSim(2, Cfg());
+            sim.DilemmaCatalog = new[] { StrangersDef("s") };
+            Years(sim, 1);
+            var d = sim.DebugRaiseDilemma("s");
+            Assert.IsNotNull(d);
+            Assert.IsFalse(sim.AnswerDilemma(999, 0, DilemmaPath.Card));
+            Assert.IsFalse(sim.AnswerDilemma(d.id, 2, DilemmaPath.Card));
+            Assert.IsFalse(sim.AnswerDilemma(d.id, -1, DilemmaPath.Card));
+            Assert.AreEqual(DilemmaState.Open, d.state);
+            Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
+            Assert.AreEqual(DilemmaPath.Card, d.path);
+        }
+
+        [Test]
+        public void TheUnchosenGetsAGrudgeOrGraceByTrait()
+        {
+            int rivals = 0, graceful = 0, runs = 0;
+            foreach (var proud in new[] { true, false })
+                for (int seed = 1; seed < 40; seed++)
+                {
+                    var sim = WithCandidates(seed, Cfg(), WhoDef("w"));
+                    if (sim.State.era != Era.Camp || sim.RoleCandidates(RoleType.Chief).Count < 2) continue;
+                    var d = sim.DebugRaiseDilemma("w");
+                    var chosen = sim.FindNotable(d.personA);
+                    var other = sim.FindNotable(d.personB);
+                    other.trait = proud ? "the stubborn" : "the kind";
+                    other.rivalId = other.friendId = chosen.rivalId = chosen.friendId = -1;
+                    other.partnerId = chosen.partnerId = -1;
+                    Assert.IsTrue(sim.AnswerDilemma(d.id, 0, DilemmaPath.Box));
+                    runs++;
+                    if (other.rivalId == chosen.id)
+                    {
+                        Assert.IsTrue(proud, "only the proud hold a grudge");
+                        Assert.AreEqual(other.id, chosen.rivalId);
+                        rivals++;
+                    }
+                    else
+                    {
+                        graceful++;
+                        Assert.IsTrue(other.friendId == chosen.id || sim.State.chronicle.Any(e => e.kind == "dilemma_grace" && e.notableId == other.id), "grace leaves a tie or a line");
+                    }
+                }
+            Assert.Greater(runs, 4);
+            Assert.Greater(rivals, 0, "a proud one sometimes becomes a rival");
+            Assert.Greater(graceful, 0);
+        }
+
+        [Test]
+        public void AWayDilemmaLeansForThirtySixMonthsAndMovesTheFood()
+        {
+            var cfg = Cfg();
+            var def = WayDef("way");
+            var withLean = NewSim(7, cfg); withLean.DilemmaCatalog = new[] { def };
+            var without = NewSim(7, cfg); without.DilemmaCatalog = new[] { def };
+            Years(withLean, 1); Years(without, 1);
+            var d = withLean.DebugRaiseDilemma("way");
+            without.DebugRaiseDilemma("way");
+            Assert.IsTrue(withLean.AnswerDilemma(d.id, 0, DilemmaPath.Card)); // the fields: a food lean
+            var lean = withLean.State.dilemmaLeans.Single();
+            Assert.AreEqual((int)SimCore.Lean.Food, lean.lean);
+            Assert.AreEqual(SimCore.NudgeMonths, lean.untilMonth - lean.fromMonth);
+            float before = withLean.State.food, beforeNo = without.State.food;
+            Assert.AreEqual(beforeNo, before, 1e-4f);
+            withLean.Advance(1.0 / 12); without.Advance(1.0 / 12);
+            Assert.Greater(withLean.State.food - before, without.State.food - beforeNo, "the lean moves what gets made");
+            // the same lean expires: after 36 months a month's food matches the box with no lean
+            Years(withLean, 3.2); Years(without, 3.2);
+            float f1 = withLean.State.food, f2 = without.State.food;
+            withLean.Advance(1.0 / 12); without.Advance(1.0 / 12);
+            Assert.Greater(withLean.State.month, lean.untilMonth);
+            Assert.AreEqual(withLean.State.food - f1, without.State.food - f2, 1e-3f * System.Math.Max(1f, f1), "no lean after its 36 months");
+        }
+
+        [Test]
+        public void AStrangersDilemmaBringsAFamily()
+        {
+            var sim = NewSim(4, Cfg());
+            sim.DilemmaCatalog = new[] { StrangersDef("s") };
+            Years(sim, 2);
+            int notables = sim.State.notables.Count, pop = sim.State.population, ids = sim.State.nextId;
+            var d = sim.DebugRaiseDilemma("s");
+            Assert.IsTrue(sim.AnswerDilemma(d.id, 0, DilemmaPath.Box));
+            var fresh = sim.State.notables.Skip(notables).ToList();
+            Assert.AreEqual(3, fresh.Count);
+            Assert.AreEqual(1, fresh.Select(n => n.family).Distinct().Count(), "one family");
+            Assert.IsTrue(fresh.All(n => n.alive && n.age >= 16f));
+            Assert.AreEqual(pop + 3, sim.State.population);
+            Assert.AreEqual(fresh.Select(n => n.name).Distinct().Count(), 3);
+            Assert.IsTrue(sim.State.chronicle.Any(e => e.kind == "newcomer" && e.notableId == fresh[0].id));
+            // the other option brings nobody
+            var sim2 = NewSim(4, Cfg()); sim2.DilemmaCatalog = new[] { StrangersDef("s") };
+            Years(sim2, 2);
+            var d2 = sim2.DebugRaiseDilemma("s");
+            sim2.AnswerDilemma(d2.id, 1, DilemmaPath.Box);
+            Assert.AreEqual(notables, sim2.State.notables.Count);
+        }
+
+        // ---------- strangers who live apart (#231) ----------
+
+        static DilemmaDef ApartDef(string id, string kind, int count = 2) => new DilemmaDef
+        {
+            id = id, kind = DilemmaKind.Strangers, cast = DilemmaCast.None, question = "Travellers: in or apart?",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "in", hint = "h", strangers = count },
+                new DilemmaOptionDef { label = "apart", hint = "h", strangers = count, apart = kind, lean = SimCore.Lean.Craft,
+                    callbacks = new[] { new DilemmaCallbackDef { id = "c", text = "their fire still burns.", fallback = "their fire is out.", needsApart = true } } },
+            },
+        };
+
+        [Test]
+        public void AnApartAnswerMakesAGroupAtItsSpotThatIsNotTheSettlements()
+        {
+            foreach (var kind in new[] { ApartKind.WoodsCamp, ApartKind.ShoreHut })
+                for (int seed = 1; seed <= 6; seed++)
+                {
+                    var sim = NewSim(seed, Cfg());
+                    sim.DilemmaCatalog = new[] { ApartDef("a", kind, 3) };
+                    Years(sim, 4);
+                    int notables = sim.State.notables.Count, pop = sim.State.population;
+                    var d = sim.DebugRaiseDilemma("a");
+                    Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
+                    var g = sim.ApartOf(d);
+                    Assert.IsNotNull(g);
+                    Assert.AreSame(g, sim.ApartGroups.Single());
+                    Assert.AreEqual(kind, g.kind);
+                    Assert.AreEqual(3, g.members.Count);
+                    Assert.AreEqual(1, g.members.Select(n => n.family).Distinct().Count());
+                    Assert.AreEqual(g.family, g.members[0].family);
+                    Assert.IsTrue(g.members.All(n => n.alive && !string.IsNullOrEmpty(n.name) && !string.IsNullOrEmpty(n.trait)));
+                    Assert.AreEqual(notables, sim.State.notables.Count, "not the settlement's people");
+                    Assert.AreEqual(pop, sim.State.population, "not counted");
+                    Assert.IsFalse(sim.State.notables.Any(n => g.members.Any(m => m.id == n.id)));
+                    Assert.IsNull(sim.RoleCandidates().FirstOrDefault(n => g.members.Contains(n)), "never stand for a role");
+                    Assert.IsTrue(sim.State.chronicle.Any(e => e.kind == "newcomer" && e.text.Contains("far-away tank")), "they wandered in from a far-away tank");
+                    var map = sim.Settlement.Map;
+                    Assert.GreaterOrEqual(g.cell, 0, $"seed {seed} {kind}: a spot on the map");
+                    Assert.AreEqual(AquariumCiv.Sim.Settle.SiteMap.CellAt(g.x, g.z), g.cell);
+                    Assert.IsFalse(map.pond[g.cell], "not in the water");
+                    Assert.AreEqual(0, map.lot[g.cell], "not on a lot");
+                    float gd = (float)System.Math.Sqrt((g.x - map.greenX) * (g.x - map.greenX) + (g.z - map.greenZ) * (g.z - map.greenZ));
+                    Assert.Greater(gd, 0.8f, $"seed {seed} {kind}: well away from the green");
+                    if (kind == ApartKind.ShoreHut)
+                    {
+                        int c = g.cell, nx = AquariumCiv.Sim.Settle.SiteMap.NX;
+                        bool anyPond = Enumerable.Range(0, AquariumCiv.Sim.Settle.SiteMap.N).Any(k => map.pond[k]);
+                        if (anyPond) Assert.IsTrue(map.pond[c - 1] || map.pond[c + 1] || map.pond[c - nx] || map.pond[c + nx], $"seed {seed}: on the shore");
+                    }
+                    // a month on, the economy and the jobs never see them
+                    sim.Advance(1.0 / 12);
+                    Assert.IsTrue(g.members.All(n => string.IsNullOrEmpty(n.job)), "no jobs");
+                }
+        }
+
+        [Test]
+        public void ThePeopleApartAgeAndDieAndTheCallbackFallsBack()
+        {
+            var sim = NewSim(3, Cfg());
+            sim.DilemmaCatalog = new[] { ApartDef("a", ApartKind.WoodsCamp) };
+            Years(sim, 2);
+            var d = sim.DebugRaiseDilemma("a");
+            sim.AnswerDilemma(d.id, 1, DilemmaPath.Card);
+            var g = sim.ApartOf(d);
+            float age = g.members[0].age;
+            Years(sim, 1);
+            Assert.AreEqual(age + 1f, g.members[0].age, 0.01f, "they age with the calendar");
+            foreach (var n in g.members) n.lifespan = n.age + 0.05f;
+            Years(sim, 0.25);
+            Assert.IsTrue(g.members.All(n => !n.alive && n.diedMonth > 0));
+            Assert.AreEqual(2, sim.State.chronicle.Count(e => e.kind == "death" && e.text.Contains("of the far woods")));
+            var e = sim.DebugFireCallbackNow();
+            StringAssert.Contains("their fire is out", e.text, "needsApart: nobody left, the fallback");
+        }
+
+        [Test]
+        public void ApartGroupsSurviveASaveAndCatchUpEqualsLiveStepping()
+        {
+            var a = NewSim(8, Cfg()); var b = NewSim(8, Cfg());
+            foreach (var sim in new[] { a, b }) { sim.DilemmaCatalog = new[] { ApartDef("a", ApartKind.ShoreHut) }; Years(sim, 2); var d = sim.DebugRaiseDilemma("a"); sim.AnswerDilemma(d.id, 1, DilemmaPath.Box); }
+            Years(a, 5); b.Advance(5);
+            Assert.AreEqual(JsonUtility.ToJson(a.State.apartGroups[0]), JsonUtility.ToJson(b.State.apartGroups[0]));
+            Assert.AreEqual(Fingerprint(a.State), Fingerprint(b.State));
+            var json = JsonUtility.ToJson(a.State);
+            var back = JsonUtility.FromJson<SimState>(json);
+            Assert.AreEqual(json, JsonUtility.ToJson(back));
+            Assert.AreEqual(2, back.apartGroups[0].members.Count);
+            var old = JsonUtility.FromJson<SimState>("{\"seed\":7,\"month\":5}");
+            _ = new SimCore(new SimConfig(), old);
+            Assert.IsNotNull(old.apartGroups);
+            Assert.AreEqual(0, old.apartGroups.Count);
+        }
+
+        // ---------- the card ----------
+
+        [Test]
+        public void ARaisedDilemmaIsACardOfItsOwnKindWhileOpen()
+        {
+            var sim = NewSim(5, Cfg());
+            sim.DilemmaCatalog = new[] { StrangersDef("s") };
+            Years(sim, 2);
+            var d = sim.DebugRaiseDilemma("s");
+            var stack = sim.ReturnCardsCapped(sim.State.month - 1, 5);
+            Assert.AreEqual(1, stack.cards.Count(c => c.kind == CardKind.Dilemma));
+            Assert.AreEqual(d.entryId, stack.cards.First(c => c.kind == CardKind.Dilemma).lead.id);
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
+            var after = sim.ReturnCardsCapped(sim.State.month - 1, 5);
+            Assert.AreEqual(0, after.cards.Count(c => c.kind == CardKind.Dilemma), "an answered dilemma stops being a card");
+            Assert.IsTrue(after.cards.Any(c => c.kind == CardKind.Keeper), "its answer is a Keeper card");
+        }
+
+        [Test]
+        public void TheDilemmaCardComesAfterTheEraCardAndNeverWithAWish()
+        {
+            var sim = NewSim(5, Cfg());
+            sim.DilemmaCatalog = new[] { StrangersDef("s") };
+            Years(sim, 2);
+            sim.DebugForceWish();
+            Assert.IsNotNull(sim.OpenWish);
+            var d = sim.DebugRaiseDilemma("s"); // closes the wish
+            Assert.IsNull(sim.OpenWish);
+            sim.DebugForceWish();               // lapses the dilemma
+            Assert.IsNull(sim.OpenDilemma);
+            Assert.AreEqual(DilemmaState.Lapsed, d.state);
+            var stack = sim.ReturnCardsCapped(sim.State.month - 1, 7);
+            Assert.IsFalse(stack.cards.Any(c => c.kind == CardKind.Dilemma) && stack.cards.Any(c => c.kind == CardKind.Wish));
+        }
+
+        [Test]
+        public void ViewGivesTheQuestionOptionsHintsAndPeople()
+        {
+            foreach (var sim in Camps(Cfg(), WhoDef("who"), 2))
+            {
+                var d = sim.DebugRaiseDilemma("who");
+                var v = sim.OpenDilemmaView;
+                Assert.AreSame(d, v.dilemma);
+                Assert.AreEqual(DilemmaKind.Who, v.kind);
+                Assert.AreEqual(2, v.options.Length);
+                var a = sim.FindNotable(d.personA);
+                var b = sim.FindNotable(d.personB);
+                Assert.AreEqual(a.id, v.options[0].personId);
+                Assert.AreEqual(b.id, v.options[1].personId);
+                StringAssert.Contains(a.name, v.options[0].label);
+                StringAssert.Contains(b.name, v.options[1].label);
+                Assert.IsFalse(string.IsNullOrEmpty(v.options[0].hint));
+                StringAssert.Contains(a.name, v.question);
+                StringAssert.DoesNotContain("{", v.question + v.options[0].hint + v.options[1].label);
+            }
+        }
+
+        // ---------- the asker's voice (#222) ----------
+
+        [Test]
+        public void TheLeaderAsksInTheirVoiceAndEachPersonsTraitVoicesTheirHint()
+        {
+            int checkedCount = 0;
+            var def = WhoDef("w");
+            def.askedBy = new Dictionary<string, string> { ["the lazy"] = "Nap time. {a} or {b}?" };
+            def.traitHints = new Dictionary<string, string> { ["the singer"] = "{p} will sing, and {q} will hum." };
+            foreach (var sim in Camps(Cfg(), def, 4))
+            {
+                var chief = sim.HolderOf(RoleType.Chief);
+                if (chief == null) continue;
+                chief.trait = "the lazy";
+                var d = sim.DebugRaiseDilemma("w");
+                Assert.AreEqual(chief.id, d.askerId, "the leader asks");
+                var a = sim.FindNotable(d.personA); var b = sim.FindNotable(d.personB);
+                a.trait = "the singer"; b.trait = "the grump";
+                var v = sim.OpenDilemmaView;
+                Assert.AreEqual($"Nap time. {a.name} or {b.name}?", v.question);
+                Assert.AreEqual(v.question, sim.State.chronicle.Single(e => e.id == d.entryId).text, "the card's entry says it the same way");
+                Assert.AreEqual($"{a.name} will sing, and {b.name} will hum.", v.options[0].hint, "A's trait has a line");
+                Assert.AreEqual("H", v.options[1].hint, "B's trait has none: the option's own hint");
+                chief.trait = "the kind";
+                Assert.AreEqual($"{a.name} or {b.name}?", sim.QuestionOf(d), "a trait with no line gets the plain question");
+                checkedCount++;
+            }
+            Assert.Greater(checkedCount, 0);
+        }
+
+        [Test]
+        public void AnElderLeaderGateAndAnElderAsksInsteadOfTheLeader()
+        {
+            int checkedCount = 0;
+            var def = WhoDef("w");
+            def.leaderElder = true;
+            def.askerNotLeader = true;
+            foreach (var sim in Camps(Cfg(), def, 4))
+            {
+                var chief = sim.HolderOf(RoleType.Chief);
+                if (chief == null) continue;
+                chief.age = sim.Config.elderAge - 1f;
+                Assert.IsNull(sim.DebugRaiseDilemma("w"), "a chief in their prime: nobody asks who comes next");
+                chief.age = sim.Config.elderAge + 1f;
+                var d = sim.DebugRaiseDilemma("w");
+                Assert.IsNotNull(d, "an old chief: the people ask");
+                Assert.AreNotEqual(chief.id, d.askerId, "the chief doesn't ask who replaces them");
+                Assert.AreNotEqual(d.personA, d.askerId);
+                Assert.AreNotEqual(d.personB, d.askerId);
+                var eldest = sim.State.notables.Where(n => n.alive && n.age >= 16f && n.id != chief.id && n.id != d.personA && n.id != d.personB)
+                    .OrderByDescending(n => n.age).ThenBy(n => n.id).FirstOrDefault();
+                Assert.AreEqual(eldest?.id ?? -1, d.askerId, "the eldest other adult asks");
+                checkedCount++;
+            }
+            Assert.Greater(checkedCount, 0);
+        }
+
+        [Test]
+        public void ATermEndingGateHoldsOnlyWhenTheLeadersTermIsNearlyUp()
+        {
+            var def = WhoDef("w");
+            def.termEndingMonths = 24;
+            foreach (var sim in Camps(Cfg(), def, 2))
+            {
+                var seat = sim.SeatOf(RoleType.Chief);
+                if (seat.holderId < 0) continue;
+                seat.termEndsMonth = -1;
+                Assert.IsNull(sim.DebugRaiseDilemma("w"), "no term: no election coming");
+                seat.termEndsMonth = sim.State.month + 60;
+                Assert.IsNull(sim.DebugRaiseDilemma("w"), "the vote is years off");
+                seat.termEndsMonth = sim.State.month + 12;
+                Assert.IsNotNull(sim.DebugRaiseDilemma("w"), "the vote is within two years");
+            }
+        }
+
+        [Test]
+        public void ADilemmaWithNoRoleLapsesByTheAskersTrait()
+        {
+            int checkedCount = 0;
+            foreach (var kind in new[] { true, false })
+                for (int seed = 1; seed < 12; seed++)
+                {
+                    var sim = WithCandidates(seed, Cfg(), WayDef("way"));
+                    var chief = sim.HolderOf(RoleType.Chief);
+                    if (chief == null) continue;
+                    chief.trait = kind ? "the kind" : "the brave";
+                    var d = sim.DebugRaiseDilemma("way");
+                    Assert.AreEqual(chief.id, d.askerId);
+                    Assert.IsTrue(sim.DebugLapseDilemma());
+                    Assert.AreEqual(kind ? 0 : 1, d.option, "the asker's trait leans the people");
+                    checkedCount++;
+                }
+            Assert.Greater(checkedCount, 2);
+        }
+
+        [Test]
+        public void AnUnnamedPlaceIsTheCampAndALineStartingWithItIsCapitalised()
+        {
+            var def = StrangersDef("s");
+            def.question = "{place} asks: in or out?";
+            def.options[0].done = "{place} let them in.";
+            var sim = NewSim(4, Cfg());
+            sim.DilemmaCatalog = new[] { def };
+            Years(sim, 1);
+            sim.State.settlementName = "";
+            var d = sim.DebugRaiseDilemma("s");
+            Assert.AreEqual(Era.Camp, sim.State.era);
+            Assert.AreEqual("The camp asks: in or out?", sim.OpenDilemmaView.question);
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
+            Assert.AreEqual("The camp let them in.", sim.State.chronicle.Single(e => e.id == d.answerEntryId).text);
+            sim.State.settlementName = "Dewmoor";
+            Assert.AreEqual("Dewmoor asks: in or out?", sim.QuestionOf(d));
+        }
+
+        // ---------- the lapse ----------
+
+        [Test]
+        public void SilenceLapsesAfter24MonthsWithANeutralLineAndTheEffectsApply()
+        {
+            var sim = NewSim(9, Cfg());
+            sim.DilemmaCatalog = new[] { WayDef("way") };
+            Years(sim, 1);
+            var d = sim.DebugRaiseDilemma("way");
+            long raised = d.month;
+            sim.Advance(23.0 / 12);
+            Assert.AreEqual(DilemmaState.Open, d.state, "still open at 23 months");
+            sim.Advance(1.0 / 12);
+            Assert.AreEqual(raised + SimCore.DilemmaLapseMonths, sim.State.month);
+            Assert.AreEqual(DilemmaState.Lapsed, d.state);
+            Assert.AreEqual(-1, d.answerEntryId);
+            var line = sim.State.chronicle.Single(e => e.id == d.resultEntryId);
+            StringAssert.StartsWith("The people chose ", line.text);
+            StringAssert.EndsWith(" themselves.", line.text);
+            Assert.IsFalse(line.keeper);
+            Assert.AreEqual(1, sim.State.dilemmaLeans.Count, "the people's pick still leans the box");
+        }
+
+        [Test]
+        public void TheLabLapsesAfter48MonthsAndNormalPlayAfter24()
+        {
+            // #238: a lab tester watching at x60 gets 4 real minutes; normal play is unchanged.
+            foreach (var lab in new[] { false, true })
+            {
+                var sim = NewSim(9, Cfg(lab));
+                sim.DilemmaCatalog = new[] { WayDef("way") };
+                Years(sim, 1);
+                var d = sim.DebugRaiseDilemma("way");
+                int window = lab ? 48 : 24;
+                Assert.AreEqual(window, sim.DilemmaLapseAfter);
+                for (int m = 1; m < window; m++) sim.Advance(1.0 / 12);
+                Assert.AreEqual(DilemmaState.Open, d.state, $"still open at {window - 1} months (lab {lab})");
+                sim.Advance(1.0 / 12);
+                Assert.AreEqual(DilemmaState.Lapsed, d.state, $"lapsed at {window} months (lab {lab})");
+                Assert.AreEqual(d.month + window, d.endMonth);
+            }
+        }
+
+        [Test]
+        public void TheRoleHoldersTraitPicksTheLapse()
+        {
+            int checkedCount = 0;
+            foreach (var kind in new[] { true, false })
+                foreach (var sim in Camps(Cfg(), WhoDef("w", "the kind", "the brave"), 4))
+                {
+                    var chief = sim.HolderOf(RoleType.Chief);
+                    if (chief == null) continue;
+                    var d = sim.DebugRaiseDilemma("w");
+                    var a = sim.FindNotable(d.personA); var b = sim.FindNotable(d.personB);
+                    chief.trait = kind ? "the kind" : "the brave";
+                    // strip the family and friend ties so the trait is what decides
+                    foreach (var n in new[] { a, b }) { chief.friendId = chief.rivalId = chief.partnerId = -1; n.family = "Other"; n.parentId = -1; }
+                    chief.family = "Mine"; chief.parentId = -1;
+                    Assert.AreEqual(kind ? 0 : 1, sim.DilemmaDefaultOption(d), "the holder's trait leans the people");
+                    Assert.IsTrue(sim.DebugLapseDilemma());
+                    Assert.AreEqual(DilemmaState.Lapsed, d.state);
+                    Assert.AreEqual(kind ? 0 : 1, d.option);
+                    checkedCount++;
+                }
+            Assert.Greater(checkedCount, 2);
+        }
+
+        [Test]
+        public void WithoutAHolderTheLapseIsASeededHashTheSameEveryTime()
+        {
+            var picks = new List<int>();
+            for (int run = 0; run < 2; run++)
+            {
+                picks.Clear();
+                for (int seed = 1; seed <= 20; seed++)
+                {
+                    var sim = NewSim(seed, Cfg());
+                    sim.DilemmaCatalog = new[] { WayDef("way", favoured: false) };
+                    Years(sim, 1);
+                    var d = sim.DebugRaiseDilemma("way");
+                    sim.Advance(2.0);
+                    Assert.AreEqual(DilemmaState.Lapsed, d.state);
+                    picks.Add(d.option);
+                }
+                if (run == 0) first = picks.ToList();
+            }
+            CollectionAssert.AreEqual(first, picks, "the same seeds pick the same options");
+            Assert.IsTrue(picks.Contains(0) && picks.Contains(1), "the hash goes both ways over 20 seeds");
+        }
+        static List<int> first;
+
+        [Test]
+        public void ADeadCandidateLapsesItAtOnceTowardTheLivingOne()
+        {
+            foreach (var sim in Camps(Cfg(), WhoDef("w"), 2))
+            {
+                var d = sim.DebugRaiseDilemma("w");
+                sim.FindNotable(d.personA).alive = false;
+                sim.Advance(1.0 / 12);
+                Assert.AreEqual(DilemmaState.Lapsed, d.state);
+                Assert.AreEqual(1, d.option, "the one who died cannot be chosen");
+            }
+        }
+
+        // ---------- determinism and the switch ----------
+
+        [Test]
+        public void CatchUpEqualsLiveSteppingWithADilemmaOpen()
+        {
+            var a = NewSim(11, Cfg(true));
+            var b = NewSim(11, Cfg(true));
+            Years(a, 2.5);                 // live: month by month
+            b.Advance(2.5);                // catch-up: in one go
+            Assert.AreEqual(a.State.month, b.State.month);
+            Assert.IsNotNull(a.OpenDilemma, "the lab's first is open by month 30");
+            Assert.AreEqual(a.OpenDilemma.id, b.OpenDilemma.id);
+            Assert.AreEqual(a.OpenDilemma.defId, b.OpenDilemma.defId);
+            Assert.AreEqual(a.OpenDilemma.personA, b.OpenDilemma.personA);
+            Assert.AreEqual(Fingerprint(a.State), Fingerprint(b.State));
+            Assert.IsTrue(a.AnswerDilemma(a.OpenDilemma.id, 0, DilemmaPath.Box));
+            Assert.IsTrue(b.AnswerDilemma(b.OpenDilemma.id, 0, DilemmaPath.Box));
+            Years(a, 9); b.Advance(9);
+            Assert.AreEqual(Fingerprint(a.State), Fingerprint(b.State));
+            Assert.AreEqual(JsonUtility.ToJson(a.State.dilemmas), JsonUtility.ToJson(b.State.dilemmas));
+            // and a lapse the same way
+            var c = NewSim(12, Cfg(true)); var e = NewSim(12, Cfg(true));
+            Years(c, 8); e.Advance(8); // the lab lapses after 48 months (#238)
+            Assert.AreEqual(Fingerprint(c.State), Fingerprint(e.State));
+            Assert.AreEqual(string.Join("|", c.State.dilemmas.Select(x => x.defId + x.month + x.option + x.state)), string.Join("|", e.State.dilemmas.Select(x => x.defId + x.month + x.option + x.state)));
+            Assert.IsTrue(c.State.dilemmas.Any(x => x.state == DilemmaState.Lapsed));
+        }
+
+        [Test]
+        public void DilemmasNeverDrawFromTheDiceStreams()
+        {
+            var on = NewSim(13, Cfg(true));
+            var off = NewSim(13, new SimConfig());
+            Years(on, 6); Years(off, 6);
+            Assert.GreaterOrEqual(on.State.dilemmas.Count, 1);
+            Assert.AreEqual(off.State.rng.state, on.State.rng.state);
+            Assert.AreEqual(off.State.econRng.state, on.State.econRng.state);
+            Assert.AreEqual(off.State.storyRng.state, on.State.storyRng.state);
+        }
+
+        [Test]
+        public void OffByDefaultChangesNothing()
+        {
+            Assert.IsFalse(new SimConfig().dilemmas);
+            var plain = NewSim(21);
+            var labButOff = NewSim(21, new SimConfig { dilemmas = false, dilemmaLab = true });
+            Years(plain, 30); Years(labButOff, 30);
+            Assert.AreEqual(0, labButOff.State.dilemmas.Count);
+            Assert.AreEqual(0, labButOff.State.dilemmaLeans.Count);
+            Assert.AreEqual(0, labButOff.State.apartGroups.Count);
+            Assert.AreEqual(-1, labButOff.State.dilemmaNextMonth);
+            Assert.AreEqual(Fingerprint(plain.State), Fingerprint(labButOff.State));
+            Assert.AreEqual(plain.State.chronicle.Count, labButOff.State.chronicle.Count);
+            Assert.AreEqual(0, plain.ReturnCardsCapped(-1, 7).cards.Count(c => c.kind == CardKind.Dilemma));
+        }
+
+        // ---------- the save ----------
+
+        [Test]
+        public void TheSaveRoundTripsAndAnOldSaveLoadsWithNone()
+        {
+            var sim = NewSim(15, Cfg(true));
+            Years(sim, 2.5);
+            var d = sim.OpenDilemma ?? sim.DebugRaiseDilemma();
+            Assert.IsNotNull(d);
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
+            var json = JsonUtility.ToJson(sim.State);
+            var back = JsonUtility.FromJson<SimState>(json);
+            Assert.AreEqual(json, JsonUtility.ToJson(back));
+            Assert.AreEqual(1, back.dilemmas.Count);
+            Assert.AreEqual(DilemmaState.Answered, back.dilemmas[0].state);
+            Assert.AreEqual(DilemmaPath.Card, back.dilemmas[0].path);
+
+            var old = JsonUtility.FromJson<SimState>("{\"seed\":7,\"month\":5}");
+            _ = new SimCore(new SimConfig(), old); // the constructor makes sure the new lists exist
+            Assert.IsNotNull(old.dilemmas);
+            Assert.AreEqual(0, old.dilemmas.Count);
+            Assert.IsNotNull(old.dilemmaLeans);
+            Assert.IsNotNull(old.customs);
+            Assert.AreEqual(1, old.dilemmaNextId);
+            Assert.AreEqual(-1, old.dilemmaNextMonth);
+        }
+    }
+}

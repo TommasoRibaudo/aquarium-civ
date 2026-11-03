@@ -350,7 +350,9 @@ namespace AquariumCiv.View
                 // that reaches neither is the Keeper's knock.
                 bool quick = t - pressTime <= TapMaxSeconds;
                 var cards = PersonCardView.Instance;
-                if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
+                var choice = ChoiceSceneView.Instance; // #224: a touch on one of the two choices answers the people
+                if (quick && pressWorld && choice != null && choice.WorldTap(pressPos)) { }
+                else if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
                 else if (pressValid && quick) Tap(planner, now);
                 else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
             }

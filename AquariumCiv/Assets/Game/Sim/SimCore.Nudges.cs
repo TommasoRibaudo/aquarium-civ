@@ -32,7 +32,7 @@ namespace AquariumCiv.Sim
         public const int NudgeMonths = 36;
 
         public IEnumerable<Nudge> ActiveNudges => State.nudges.Where(n => State.month - n.month < NudgeMonths);
-        bool Leaning(Lean l) => State.nudges.Count > 0 && ActiveNudges.Any(n => LeanOf(n.kind) == l);
+        bool Leaning(Lean l) => (State.nudges.Count > 0 && ActiveNudges.Any(n => LeanOf(n.kind) == l)) || DilemmaLeaning(l);
 
         /// <summary>Shape the land near a building slot (the prototypes' call). The spot is the slot's old hex position.</summary>
         public Nudge PlaceNudge(string kind, int slot)

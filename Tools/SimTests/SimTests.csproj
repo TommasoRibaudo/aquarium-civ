@@ -36,6 +36,11 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SettingTerrainTests.cs" /><!-- #115 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WishTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaContentTests.cs" /><!-- P7 #222 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- P8 #243: the ecology layer -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- P8 #248 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShelfTests.cs" />
@@ -43,8 +48,6 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RunAheadTests.cs" /><!-- #97 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CrowdNameTests.cs" /><!-- #148 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WorldLogicTests.cs" /><!-- #188, #147, #154, #160 -->
-    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" />
-    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- #243: the ecology layer -->
     <!-- #87: the save and the clock's decisions are pure C# on a JsonUtility shim, so their tests run here too -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/SaveStore.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />
@@ -55,6 +58,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTelemetryTests.cs" /><!-- P7 #225 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TownEconomyTests.cs" />
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />

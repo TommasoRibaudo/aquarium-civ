@@ -1,3 +1,4 @@
+using AquariumCiv.Sim;
 using System;
 using System.Collections.Generic;
 
@@ -95,6 +96,43 @@ namespace AquariumCiv.Game
         {
             var r = End(now);
             if (r.HasValue) log.CardRead(r.Value.card, r.Value.seconds);
+        }
+    }
+}
+
+namespace AquariumCiv.Game
+{
+    /// <summary>P7 dilemma calls (#225). Same rules as <see cref="TelemetryHooks"/>: only build events, safe with a null log.</summary>
+    public static class DilemmaTelemetryHooks
+    {
+        static string PathName(DilemmaPath p) => p == DilemmaPath.Card ? "card" : "box";
+        /// <summary>#239: cheat-caused dilemma events carry debug=1; real ones leave the prop out (old logs have none).</summary>
+        static object Dbg(bool debug) => debug ? (object)1 : null;
+        static double YearsOpen(Dilemma d) => d.endMonth < 0 ? 0 : Math.Round((d.endMonth - d.month) / (double)SimConfig.MonthsPerYear, 2);
+
+        /// <summary>The sim raised a dilemma (usually written by <see cref="DilemmaTelemetryTracker.Observe"/>).</summary>
+        public static void DilemmaRaised(this TelemetryLog l, Dilemma d, bool debug = false) =>
+            l?.Log(Ev.DilemmaRaised, "box", l.BoxId, "id", d.id, "def", d.defId, "month", d.month, "debug", Dbg(debug));
+        /// <summary>The question is in front of the player (card on the stack, or the box scene).</summary>
+        public static void DilemmaShown(this TelemetryLog l, Dilemma d, bool debug = false) => l?.Log(Ev.DilemmaShown, "box", l.BoxId, "id", d.id, "def", d.defId, "debug", Dbg(debug));
+        /// <summary>Answered. <paramref name="secondsFromShown"/> is null when it was never shown (a cheat): the prop is left out.</summary>
+        public static void DilemmaAnswered(this TelemetryLog l, Dilemma d, double? secondsFromShown, bool debug = false) =>
+            l?.Log(Ev.DilemmaAnswered, "box", l.BoxId, "id", d.id, "option", d.option, "path", PathName(d.path),
+                "secs", secondsFromShown.HasValue ? (object)Math.Round(secondsFromShown.Value, 2) : null, "years_open", YearsOpen(d), "debug", Dbg(debug));
+        /// <summary>Left to lapse: the people took <see cref="Dilemma.option"/>, the default.</summary>
+        public static void DilemmaLapsed(this TelemetryLog l, Dilemma d, bool debug = false) =>
+            l?.Log(Ev.DilemmaLapsed, "box", l.BoxId, "id", d.id, "option", d.option, "years_open", YearsOpen(d), "debug", Dbg(debug));
+        /// <summary>A callback card (what came of an answer) is in front of the player.</summary>
+        public static void CallbackShown(this TelemetryLog l, CallbackInfo info)
+        {
+            if (info?.dilemma == null) return;
+            l?.Log(Ev.CallbackShown, "box", l.BoxId, "id", info.dilemma.id, "option", info.option, "years_since", Math.Round(info.yearsSinceAnswer, 2));
+        }
+        /// <summary>Show me was tapped on a callback card.</summary>
+        public static void CallbackShowMe(this TelemetryLog l, CallbackInfo info)
+        {
+            if (info?.dilemma == null) return;
+            l?.Log(Ev.CallbackShowMe, "box", l.BoxId, "id", info.dilemma.id);
         }
     }
 }
