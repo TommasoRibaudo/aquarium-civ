@@ -556,5 +556,38 @@ namespace AquariumCiv.Tests
             var care = Play(true, Seasons30);
             Assert.Less(care.ms, 8000, "30 years of care, whole sim included");
         }
+
+        // ---------------------------------------------------------------- P7 and P8 together (the phone build)
+
+        /// <summary>The phone build ships the dilemmas (P7) and the living land (P8) on together. A barren box with the dilemmas on:
+        /// the Keeper mists by the camp each season and answers every question; dilemmas come once the camp stands, the gates open,
+        /// and a save round-trips and catch-up equals live stepping.</summary>
+        [Test]
+        public void DilemmasAndTheLivingLandRunTogether()
+        {
+            SimCore Make() => EcoWorld(5, new SimConfig { dilemmas = true, dilemmaLab = true });
+            var sim = Make();
+            Assert.IsTrue(sim.EcologyOn && sim.BeforeCamp);
+            var map = sim.Settlement.Map;
+            int answered = 0;
+            for (int m = 0; m < 30 * 12; m++)
+            {
+                if (m % 3 == 0) sim.Mist(map.greenX + 0.6f + (m % 7) * 0.08f, map.greenZ - 0.2f, 2f);
+                sim.Advance(1.0 / 12);
+                var d = sim.OpenDilemma;
+                if (d != null && sim.AnswerDilemma(d.id, m % 2, DilemmaPath.Box)) answered++;
+            }
+            Assert.IsTrue(sim.CampGateOpen, "the camp gate opened under a misting Keeper");
+            Assert.Greater(sim.State.dilemmas.Count, 0, "dilemmas come on a living land");
+            Assert.Greater(answered, 0);
+            var json = JsonUtility.ToJson(sim.State);
+            Assert.AreEqual(json, JsonUtility.ToJson(JsonUtility.FromJson<SimState>(json)), "the save round-trips");
+
+            var live = Make(); var away = Make();
+            for (int k = 0; k < 2; k++) { live.Mist(map.greenX + 0.6f, map.greenZ - 0.2f, 2f); away.Mist(map.greenX + 0.6f, map.greenZ - 0.2f, 2f); }
+            for (int m = 0; m < 6 * 12; m++) live.Advance(1.0 / 12);
+            away.Advance(6);
+            Assert.AreEqual(Fingerprint(live.State), Fingerprint(away.State), "a week away equals live stepping with both on");
+        }
     }
 }
