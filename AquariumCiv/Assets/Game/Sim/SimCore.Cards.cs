@@ -333,9 +333,20 @@ namespace AquariumCiv.Sim
                 "lost" => $"{A} got lost in the hills",
                 "relic" => RelicHeadline(e),
                 "wish" when e.notableId >= 0 => $"{A} has a wish",
+                CallbackKind => CallbackHeadline(e.text),
+                "dilemma_result" when e.text != null && e.text.Length <= 60 => e.text, // #240: the whole line, full stop and all
                 _ => null,
             };
-            return Clip(h ?? FirstSentence(e.text));
+            return h != null && e.kind == "dilemma_result" ? h : Clip(h ?? FirstSentence(e.text));
+        }
+
+        /// <summary>#240: a callback's headline is its credit ("Because the Keeper chose the roofers") and the body goes on from there,
+        /// so the card never says the opening twice. Null when the text has no credit up front.</summary>
+        static string CallbackHeadline(string text)
+        {
+            if (string.IsNullOrEmpty(text) || !text.StartsWith("Because ", StringComparison.Ordinal)) return null;
+            int comma = text.IndexOf(", ", StringComparison.Ordinal);
+            return comma > 0 && comma <= 50 ? text.Substring(0, comma) : null;
         }
 
         string Who(int id) => id < 0 ? "someone" : FindNotable(id)?.name ?? "someone";
@@ -395,6 +406,7 @@ namespace AquariumCiv.Sim
             var e = State.chronicle[index];
             e.threadId = 0;
             if (e.kind == "dilemma_callback") e.threadId = CallbackThread(e); // the old question is the teaser it pays off (#221)
+            else if (e.kind == "dilemma_result") e.threadId = ResultThread(e); // #240: a lapse card shows the question it answers, too
             // Teasers first: the payoff links back to the evening talk's thread.
             foreach (var t in State.threads)
             {

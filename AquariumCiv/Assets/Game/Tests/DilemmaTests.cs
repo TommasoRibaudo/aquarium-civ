@@ -627,6 +627,26 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheLabLapsesAfter48MonthsAndNormalPlayAfter24()
+        {
+            // #238: a lab tester watching at x60 gets 4 real minutes; normal play is unchanged.
+            foreach (var lab in new[] { false, true })
+            {
+                var sim = NewSim(9, Cfg(lab));
+                sim.DilemmaCatalog = new[] { WayDef("way") };
+                Years(sim, 1);
+                var d = sim.DebugRaiseDilemma("way");
+                int window = lab ? 48 : 24;
+                Assert.AreEqual(window, sim.DilemmaLapseAfter);
+                for (int m = 1; m < window; m++) sim.Advance(1.0 / 12);
+                Assert.AreEqual(DilemmaState.Open, d.state, $"still open at {window - 1} months (lab {lab})");
+                sim.Advance(1.0 / 12);
+                Assert.AreEqual(DilemmaState.Lapsed, d.state, $"lapsed at {window} months (lab {lab})");
+                Assert.AreEqual(d.month + window, d.endMonth);
+            }
+        }
+
+        [Test]
         public void TheRoleHoldersTraitPicksTheLapse()
         {
             int checkedCount = 0;
@@ -709,7 +729,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(JsonUtility.ToJson(a.State.dilemmas), JsonUtility.ToJson(b.State.dilemmas));
             // and a lapse the same way
             var c = NewSim(12, Cfg(true)); var e = NewSim(12, Cfg(true));
-            Years(c, 6); e.Advance(6);
+            Years(c, 8); e.Advance(8); // the lab lapses after 48 months (#238)
             Assert.AreEqual(Fingerprint(c.State), Fingerprint(e.State));
             Assert.AreEqual(string.Join("|", c.State.dilemmas.Select(x => x.defId + x.month + x.option + x.state)), string.Join("|", e.State.dilemmas.Select(x => x.defId + x.month + x.option + x.state)));
             Assert.IsTrue(c.State.dilemmas.Any(x => x.state == DilemmaState.Lapsed));

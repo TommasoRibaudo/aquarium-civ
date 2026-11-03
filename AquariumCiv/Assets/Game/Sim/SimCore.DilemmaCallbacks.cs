@@ -120,7 +120,15 @@ namespace AquariumCiv.Sim
         int CallbackThread(ChronicleEntry e)
         {
             var c = State.dilemmaCallbacks.FirstOrDefault(x => x.entryId == e.id);
-            var d = c == null ? null : FindDilemma(c.dilemmaId);
+            return QuestionThread(e, c == null ? null : FindDilemma(c.dilemmaId));
+        }
+
+        /// <summary>Annotation (#240): a lapse's line ("The people chose the tree themselves.") pays off the question as well, so its
+        /// card shows the question grey above, like a callback.</summary>
+        int ResultThread(ChronicleEntry e) => QuestionThread(e, State.dilemmas.FirstOrDefault(x => x.resultEntryId == e.id));
+
+        int QuestionThread(ChronicleEntry e, Dilemma d)
+        {
             if (d == null) return 0;
             var t = NewThread(ThreadSource.Dilemma, QuestionOf(d), e.notableId, e.otherNotableId);
             t.month = d.month;

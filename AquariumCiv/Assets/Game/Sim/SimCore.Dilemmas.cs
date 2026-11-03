@@ -72,6 +72,11 @@ namespace AquariumCiv.Sim
     public partial class SimCore
     {
         public const int DilemmaGapMonths = 8, DilemmaLapseMonths = 24;
+        /// <summary>#238: in the lab (×60) the people wait 48 game months, 4 real minutes, so a tester who is watching has time to see and
+        /// answer one. Normal play keeps <see cref="DilemmaLapseMonths"/> (P7.md, Pacing).</summary>
+        public const int DilemmaLabLapseMonths = 48;
+        /// <summary>How long an open dilemma waits before the people decide, for this box's config.</summary>
+        public int DilemmaLapseAfter => Config.dilemmaLab ? DilemmaLabLapseMonths : DilemmaLapseMonths;
         /// <summary>Dilemma entries take their own ids (above the wishes'), so the shared ids never shift.</summary>
         public const int DilemmaIdBase = 1_200_000_000;
 
@@ -156,7 +161,7 @@ namespace AquariumCiv.Sim
             var open = OpenDilemma;
             if (open != null)
             {
-                if (s.month - open.month >= DilemmaLapseMonths || CastGone(open)) LapseDilemma(open);
+                if (s.month - open.month >= DilemmaLapseAfter || CastGone(open)) LapseDilemma(open);
                 return;
             }
             if (s.firstRun.active) { s.dilemmaNextMonth = -1; return; } // none during the first run; the clock restarts after it
@@ -394,7 +399,7 @@ namespace AquariumCiv.Sim
             return (int)(DilemmaRoll(30, d.id, d.month) * score.Length) % score.Length;
         }
 
-        /// <summary>The people decide (24 months of silence, or a person in it died): the default option's effects apply and the
+        /// <summary>The people decide (24 months of silence, 48 in the lab, or a person in it died): the default option's effects apply and the
         /// chronicle says so neutrally. No blame, nothing credited to the Keeper.</summary>
         void LapseDilemma(Dilemma d)
         {

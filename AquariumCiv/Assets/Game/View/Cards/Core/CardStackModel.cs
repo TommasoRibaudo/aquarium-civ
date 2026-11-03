@@ -193,6 +193,36 @@ namespace AquariumCiv.View.Cards
             return CardCount > 0;
         }
 
+        /// <summary>#238: a dilemma the people raised while the player watches. The peek comes up with it on top, as on a return, and a
+        /// tap opens on its card; the rest of the unread stories wait for the next return (the dot says so). False when the stack is up
+        /// already, in the first run or a museum, or when the entry is not an open dilemma's card.</summary>
+        public bool ShowLive(int entryId)
+        {
+            if (Mode != CardStackMode.Hidden || Quiet) return false;
+            var d = sim.DilemmaOfEntry(entryId);
+            if (d == null || d.state != DilemmaState.Open) return false;
+            var all = sim.UnreadCardsCapped(64, viewed);
+            var card = all.cards.Concat(all.also).FirstOrDefault(c => c.lead.id == entryId);
+            if (card == null) return false;
+            stack = new ReturnStack { cap = 1 };
+            stack.cards.Add(card);
+            HistoryDot = sim.HasUnreadCards;
+            Peek = new CardPeek { visible = true, text = card.headline, notableId = card.people.Count > 0 ? card.people[0] : -1 };
+            Mode = CardStackMode.Peek;
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>The stack built now holds this entry's card (on a page or in "Also…").</summary>
+        public bool Holds(int entryId) =>
+            Mode != CardStackMode.Hidden && stack != null && stack.cards.Concat(stack.also).Any(c => c.lead.id == entryId);
+
+        /// <summary>#238: live play keeps the history button's dot current (it was only worked out on a return).</summary>
+        public void RefreshDot()
+        {
+            if (Mode == CardStackMode.Hidden) HistoryDot = sim.HasUnreadCards;
+        }
+
         void Build()
         {
             stack = sim.UnreadCardsCapped(cap, viewed);
@@ -502,7 +532,9 @@ namespace AquariumCiv.View.Cards
         {
             string text = c.lead.text ?? "", head = c.headline ?? "";
             if (head.Length == 0 || !text.StartsWith(head, StringComparison.Ordinal)) return text;
-            return text.Substring(head.Length).TrimStart('.', ':', ';', '!', ' ');
+            // #240: a callback's headline is its credit and the body goes on after the comma, as a sentence of its own.
+            string rest = text.Substring(head.Length).TrimStart('.', ',', ':', ';', '!', ' ');
+            return rest.Length > 0 && char.IsLower(rest[0]) ? char.ToUpperInvariant(rest[0]) + rest.Substring(1) : rest;
         }
 
         void FillDilemma(CardFace f, Dilemma d)
