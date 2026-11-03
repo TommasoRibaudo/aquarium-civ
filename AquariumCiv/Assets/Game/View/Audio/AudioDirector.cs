@@ -81,6 +81,7 @@ namespace AquariumCiv.View
         AudioClip[] birdClips;
         float birdVolume;
         int birdLayer = -1;
+        float ecoBare = 1f;
         /// <summary>A call's level against the loop's cue volume: over the bed, not on top of everything.</summary>
         const float BirdCallGain = 0.9f;
         /// <summary>Calls played so far, the loop's swell, and how the last one sounded (tests, the debug panel).</summary>
@@ -273,6 +274,17 @@ namespace AquariumCiv.View
                 inMoment = inMoment,
                 festival = sim != null && sim.FestivalOn && pv != null && pv.Now.hour >= LifeClock.Evening,
             };
+            if (sim != null && sim.EcologyOn)
+            {
+                // P8 (#247): the barren bed follows the bare land and never comes back (nothing dies back): keep the lowest seen.
+                ecoBare = Mathf.Min(ecoBare, sim.EcoBareShare);
+                input.eco = true;
+                input.bare01 = ecoBare;
+                input.ecoGreen = sim.EcoMilestoneMonth(AquariumCiv.Sim.Eco.EcoMilestones.FirstGreen) >= 0;
+                input.ecoBirds = sim.EcoMilestoneMonth(AquariumCiv.Sim.Eco.EcoMilestones.FirstBird) >= 0;
+                input.ecoWater = sim.EcoPondCells > 0;
+            }
+            else ecoBare = 1f;
             ambTarget = Ambience.Targets(input);
             var target = ambTarget;
             for (int i = 0; i < LayerForce.Length; i++)

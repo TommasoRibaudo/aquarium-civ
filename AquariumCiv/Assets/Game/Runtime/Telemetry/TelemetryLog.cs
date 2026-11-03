@@ -42,6 +42,16 @@ namespace AquariumCiv.Game
         public int WriteErrors { get; private set; }
         public int Dropped { get; private set; }
         public int PendingCount => pending.Count;
+        /// <summary>The A/B variant of this run (P7: "A" = dilemmas off, "B" = on); null = not an experiment. Written into every session_start.</summary>
+        public string Variant { get; private set; }
+
+        /// <summary>Sets the variant and logs it (so a mid-session change, like the debug toggle, is in the record). Same value again: no line.</summary>
+        public void SetVariant(string variant)
+        {
+            if (variant == Variant) return;
+            Variant = variant;
+            if (variant != null) Log(Ev.Variant, "v", variant);
+        }
 
         public TelemetryLog(ITelemetryStorage storage, Func<DateTime> utcNow, string boxId, TelemetryOptions options = null)
         {
@@ -84,7 +94,7 @@ namespace AquariumCiv.Game
         {
             SessionId = NewId();
             Log(Ev.SessionStart, "reason", reason, "build", build, "platform", platform, "tz_min", tzMinutes,
-                "away_h", awayHours, "install_utc", InstallUtc.ToString("o", CultureInfo.InvariantCulture));
+                "away_h", awayHours, "install_utc", InstallUtc.ToString("o", CultureInfo.InvariantCulture), "variant", Variant);
             Flush();
         }
 

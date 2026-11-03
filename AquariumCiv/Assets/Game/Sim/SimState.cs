@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
@@ -50,6 +51,10 @@ namespace AquariumCiv.Sim
         // tests that compare the economy with and without it. terrainPreset picks the box's land (0 = the style kit's).
         public bool settle = true;
         public int terrainPreset = 0;
+        // The Keeper's hands on the land (keepers-hands.md; Sim/Eco, #243): a barren box that the mister greens, a tree, a
+        // pond, and two gates (the camp, the village). Off by default: with it off the slice plays exactly as before.
+        public bool ecology = false;
+        public EcoTuning eco = new EcoTuning();
         // Named notables per era (game definition §4, #26): about 2–4 in the camp, 4–8 in the village, up to 12 in the
         // town. The band counts adults (16+). Births pause while the adults are at the era's max; children under 16 don't
         // count against it, up to familyRoom of them over the max, so notable families go on across generations (user,
@@ -86,6 +91,14 @@ namespace AquariumCiv.Sim
         public float historyPruneBelow = 0.5f;
         public float historyPositionMinSalience = 0.5f; // entries below this get no stored x, z (worked out when asked)
         public float pinLegendHours = 24f;          // "pinned for a day": the legend rule
+
+        // Keeper's dilemmas (P7, #220; SimCore.Dilemmas.cs). Off: no dilemma is ever raised and nothing else changes.
+        public bool dilemmas = false;
+        public bool dilemmaLab = false;             // the lab schedule: the first at dilemmaLabFirstYear, then about every dilemmaLabEveryYears
+        public int dilemmaMinYears = 6;             // normal play: one dilemma per this many game years ...
+        public int dilemmaMaxYears = 10;            // ... up to this many [est]
+        public int dilemmaLabFirstYear = 2;
+        public int dilemmaLabEveryYears = 3;
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -375,6 +388,8 @@ namespace AquariumCiv.Sim
         public int glassStage = 1;      // how the people understand the glass, 1–3 (never below the era's own; SimCore.Cards.cs)
         /// <summary>Where everything stands: lots, family yards, paths, the Keeper's marks on the land (Sim/Settle, #32).</summary>
         public SettleState settle = new();
+        /// <summary>The land's own layers when the ecology is on (Sim/Eco, #243); an old save has none and loads with it off.</summary>
+        public EcoState eco = new();
         public List<Wish> wishes = new();   // notables' wishes for a gift (SimCore.Wishes.cs, #83)
         public int wishNextId = 1;
         public float shapingCharges = -1f; // the Keeper's shared shaping charges (SimCore.Shaping.cs, #82); -1 = not started (old saves)
@@ -395,6 +410,14 @@ namespace AquariumCiv.Sim
         public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
         public List<string> crowdNames = new(); // first names of the crowd, by crowd index (SimCore.Crowd.cs, #148); old saves fill it from the seed
         public int crowdNameNext;            // how far the box has read the shuffled crowd name table
+        // Keeper's dilemmas (SimCore.Dilemmas.cs, #220). All default-safe: an old save loads with none.
+        public List<Dilemma> dilemmas = new();
+        public int dilemmaNextId = 1;
+        public long dilemmaNextMonth = -1;   // the next one is due from this month (-1 = not scheduled yet)
+        public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
+        public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
+        public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book
+        public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

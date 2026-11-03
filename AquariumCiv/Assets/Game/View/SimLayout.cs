@@ -102,6 +102,26 @@ namespace AquariumCiv.View
             else if (pick >= look.palmShare + look.pineShare + look.broadleafShare) t.shape = pondDist < 1.3f ? TreeShape.Palm : TreeShape.Cactus;
         }
 
+        /// <summary>P8: copies the sim's ecology layer into the view's snapshot (#244).</summary>
+        public static void FillEco(EcoLayer e, SimCore sim)
+        {
+            var s = sim.State.eco;
+            e.on = true;
+            if (s.cover != null) System.Array.Copy(s.cover, e.cover, Mathf.Min(s.cover.Length, e.cover.Length));
+            if (s.moisture != null) System.Array.Copy(s.moisture, e.moist, Mathf.Min(s.moisture.Length, e.moist.Length));
+            e.pondCells = sim.EcoPondCells;
+            e.waterY = sim.EcoPondLevel;
+            e.tableY = sim.EcoTable;
+            e.floodY = sim.EcoFloodLine;
+            e.humidity = sim.EcoHumidity;
+            e.droplets = sim.EcoDroplets;
+            var t = sim.EcoTree;
+            e.treeCell = t.planted ? t.cell : -1;
+            e.treeStage = t.stage;
+            // One need at a time (keepers-hands §4): thirst first, then weeds, then light.
+            e.treeNeed = !t.planted ? 0 : t.water < 0.35f ? 1 : t.weeds > 0.5f ? 3 : t.light < 0.6f ? 2 : 0;
+        }
+
         /// <summary>A rock cell the Keeper's outcrop painted: that piece stands there already.</summary>
         static bool NudgedRock(Settlement st, int c)
         {
@@ -138,6 +158,8 @@ namespace AquariumCiv.View
             Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
             int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
             var map = st.Map;
+            bool eco = replay == null && sim.EcologyOn; // P8: the living land (the time-lapse keeps the old look: no eco history yet)
+            if (eco) FillEco(L.eco, sim);
             var setting = SettingLook.ForPreset(sim.TerrainPreset);
             var spec = TerrainSpec.Preset(sim.TerrainPreset);
             var green = new Vector2(st.GreenX, st.GreenZ);
@@ -308,7 +330,7 @@ namespace AquariumCiv.View
                         foreach (int c in AquariumCiv.View.Shaping.ShapingFootprint.Of(n, map, seed).cells) keeperGrove.Add(c);
                     }
             bool Woods(int c) => map.Forest(c) && (keeperGrove == null || !keeperGrove.Contains(c));
-            for (int j = 0; j + 1 < SiteMap.NZ; j += 2)
+            for (int j = 0; j + 1 < SiteMap.NZ && !eco; j += 2) // P8: with the living land the view grows trees from the cover itself
                 for (int i = 0; i + 1 < SiteMap.NX; i += 2)
                 {
                     int cnt = 0;

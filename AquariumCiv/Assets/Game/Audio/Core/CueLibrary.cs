@@ -35,7 +35,7 @@ namespace AquariumCiv.Audio
 
         // ---------- ids: ambience loops (see Ambience) ----------
         public const string AmbCalm = "amb_calm", AmbBirds = "amb_birds", AmbCrickets = "amb_crickets", AmbRain = "amb_rain",
-            AmbWind = "amb_wind", AmbFlies = "amb_flies";
+            AmbWind = "amb_wind", AmbFlies = "amb_flies", AmbBarren = "amb_barren", AmbFrogs = "amb_frogs";
 
         const string Ui = "Sfx/Ui/", Care = "Sfx/Care/", Moment = "Sfx/Moment/", Amb = "Ambience/";
 
@@ -133,6 +133,10 @@ namespace AquariumCiv.Audio
             Add(new CueDef(AmbWind, SoundBus.Ambience, 0.5f, Amb + "calm_wind_loop").Looped().Prio(10).Len(40f));
             // A few flies circling (made in code: no CC0 fly buzz found on Kenney/OpenGameArt). Subtle even at full.
             Add(new CueDef(AmbFlies, SoundBus.Ambience, 0.18f, "proc:flies").Looped().Prio(10).Len(8f));
+            // P8 (#247): made in code for the gray-box (Tools-free numpy synth: dry wind, sand hiss, crackling dirt, a loose
+            // stone; frogs over a soft lap). Ours, so CC0; replace with recorded ones once the look is approved.
+            Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.4f, Amb + "barren_dry_loop").Looped().Prio(10).Len(32f));
+            Add(new CueDef(AmbFrogs, SoundBus.Ambience, 0.3f, Amb + "frogs_pond_loop").Looped().Prio(10).Len(28f));
             return d;
         }
     }

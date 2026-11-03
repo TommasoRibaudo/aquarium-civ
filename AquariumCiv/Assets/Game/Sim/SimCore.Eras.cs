@@ -30,14 +30,25 @@ namespace AquariumCiv.Sim
         /// <summary>Whether the box builds this type in its current era.</summary>
         public bool Allowed(string type) => BuildingType.EraOf(type) <= State.era;
 
-        bool Wants(string type, bool need) => need && Allowed(type);
+        bool Wants(string type, bool need) => need && Allowed(type) && EcoAllows(type);
+
+        /// <summary>P8 (keepers-hands §2): the land decides what a camp can raise. Fields wait for the village (beat 7), a lumber
+        /// mill for a wood to cut (beat 5). Always true with the living land off. Tester P8: a mill and two farms on a bare camp.</summary>
+        bool EcoAllows(string type)
+        {
+            if (!EcologyOn || State.era >= Era.Village) return true;
+            if (type == BuildingType.Farm) return VillageGateOpen;
+            if (type == BuildingType.Lumbermill) return State.eco.cTrees >= Config.eco.villageTrees / 2;
+            return true;
+        }
 
         public bool MeetsNextEraThreshold
         {
             get
             {
                 var t = NextEraThreshold;
-                return t != null && State.population >= t.population && State.buildings.Count >= t.buildings && YearsInEra >= t.years;
+                return t != null && State.population >= t.population && State.buildings.Count >= t.buildings && YearsInEra >= t.years
+                       && EcoAllowsNextEra; // with the ecology on, the village also needs its pond and its wood (SimCore.Eco.cs)
             }
         }
 

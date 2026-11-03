@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Ecology Lab spike (#228): a sim-only lab that grows a barren box under four scripted players and writes
+    top-down time-lapse frames. Outside Assets/, so Unity never imports it. Reads the game's terrain read-only.
+    Run:  dotnet run -c Release (from Tools/EcologyLab)
+    Test: dotnet test Tools/EcologyLab/Tests
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>EcologyLab</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Tests/**" />
+    <Compile Remove="out/**" />
+    <!-- The game's land, read-only: the real terrain function and its hashes. -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Sim/Settle/Terrain.cs" Link="Game/Terrain.cs" />
+  </ItemGroup>
+</Project>

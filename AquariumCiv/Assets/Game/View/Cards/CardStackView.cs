@@ -46,21 +46,37 @@ namespace AquariumCiv.View
         readonly GlassPortrait[] faces = new GlassPortrait[2];
         readonly int[] portraitIds = { -1, -1 };
         readonly Button[] alsoLines = new Button[3];
+        // The dilemma card (#223): two columns, each an answer button (face + label) over the hint in the people's voice.
+        VisualElement dilBox;
+        readonly VisualElement[] dilCols = new VisualElement[2];
+        readonly GlassButton[] dilAnswers = new GlassButton[2];
+        readonly GlassPortrait[] dilFaces = new GlassPortrait[2];
+        readonly GlassIcon[] dilPlaces = new GlassIcon[2];
+        readonly Label[] dilLabels = new Label[2], dilHints = new Label[2];
         GameClock clock;
         GameHud hud;
         SimCore bound;
         CardStackModel model;
         Rect lastSafe;
         Vector2Int lastScreen;
-        bool personOpen, watchingFlight, pressedLast, toolsHidden, peekUp, tight, showingPlace, barUp;
+        bool personOpen, watchingFlight, pressedLast, toolsHidden, peekUp, tight, showingPlace, barUp, choiceUp;
         Vector2 swipeFrom;
         int swipePointer = -1;
         bool swipeInScroll;
         string debugFace;
         System.Action<CardFace> debugEdit;
+        // #238: the open dilemma last seen, the card of one raised live still waiting to be peeked, the month the dot was worked out at.
+        int liveSeen = -1, livePending = -1;
+        long dotMonth = -1;
 
         public CardStackModel Model => model;
         public VisualElement Root => root;
+        /// <summary>#224: the choice scene is on screen for this card (the sheet is down, the bar is up): its touches answer.</summary>
+        public bool ShowingChoice => choiceUp && showingPlace;
+        /// <summary>The choice scene holds the bar up while it waits or reacts (#224).</summary>
+        bool ChoiceHolds => choiceUp && ChoiceSceneView.Instance != null && ChoiceSceneView.Instance.Holding;
+        /// <summary>The bar's second line while the people wait on a touch (#224).</summary>
+        public const string ChoiceNote = "Touch one.";
         /// <summary>The peek or the stack is up: prompts over the world wait (MomentPlayer.PromptsBlocked).</summary>
         public bool Showing => model != null && model.Mode != CardStackMode.Hidden;
 
@@ -148,11 +164,15 @@ namespace AquariumCiv.View
             if (model != null) { model.Changed -= Draw; model.ShowMeEnd -= OnShowMeEnd; }
             bound = sim;
             model = null;
+            liveSeen = sim?.OpenDilemma?.id ?? -1; // one open already was raised before this session: the return tells it
+            livePending = -1;
+            dotMonth = -1;
             if (sim != null)
             {
-                model = new CardStackModel(sim, () => Time.realtimeSinceStartupAsDouble, GameClock.Tel);
+                model = new CardStackModel(sim, () => Time.realtimeSinceStartupAsDouble, GameClock.Tel) { DilemmaTel = GameClock.DilemmaTrackerFor(sim) };
                 model.Changed += Draw;
                 model.ShowMeEnd += OnShowMeEnd;
+                model.DilemmaShowMeHook = v => DilemmaShowMeHook != null && DilemmaShowMeHook(v);
                 var session = clock != null ? clock.Session : null;
                 if (session != null && !session.newWorld && session.sim == sim && session.awayHours > 0) model.Prepare(session.awayHours);
             }
@@ -183,7 +203,7 @@ namespace AquariumCiv.View
             if (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible)) return true;
             if (clock != null && clock.Visiting) return true;
             var person = PersonCardView.Instance;
-            if (person != null && person.AnyOpen) return true;
+            if (person != null && (person.AnyOpen || person.BuildingOpen)) return true; // #241: a building card too, or the cards open under it
             var tl = TimeLapseView.Find();
             if (tl != null && tl.Active) return true;
             var mp = MomentPlayer.Instance;
@@ -201,11 +221,13 @@ namespace AquariumCiv.View
             if (hud != null) hud.SetHistoryDot(dot && model.Mode == CardStackMode.Hidden); // spec §4: after a swipe, never beside the peek
             bool covered = model == null || Covered();
             bool open = model != null && model.Mode == CardStackMode.Open, peeking = model != null && model.Mode == CardStackMode.Peek;
-            if (showingPlace && (!open || ShowMeDirector.Instance == null || ShowMeDirector.Instance.Settled)) showingPlace = false;
+            if (showingPlace && (!open || (!ChoiceHolds && (ShowMeDirector.Instance == null || ShowMeDirector.Instance.Settled)))) showingPlace = false;
+            if (!showingPlace) choiceUp = false;
             ShowSheet(open && !covered && !showingPlace);
             ShowBar(open && !covered && showingPlace);
             ShowPeek(peeking && !covered);
             if (model == null) return;
+            WatchLive();
             SetToolsHidden(open);
             SetPeekUp(peeking && !covered);
             if (hud != null)
@@ -227,6 +249,37 @@ namespace AquariumCiv.View
             pressedLast = pressed;
             if (open && !covered && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) model.Close();
         }
+
+        /// <summary>#238: with dilemmas on, a dilemma the people raise while the player watches brings the peek up with it on top, as a
+        /// return does, once nothing else holds the screen; and the history dot follows the unread stories month by month. With dilemmas
+        /// off nothing here runs (variant A stays as it was).</summary>
+        void WatchLive()
+        {
+            if (bound == null || !bound.Config.dilemmas) return;
+            if (bound.State.month != dotMonth) { dotMonth = bound.State.month; model.RefreshDot(); }
+            var open = bound.OpenDilemma;
+            int id = open?.id ?? -1;
+            if (id != liveSeen) { liveSeen = id; livePending = open != null ? open.entryId : -1; }
+            if (livePending < 0) return;
+            var d = bound.DilemmaOfEntry(livePending);
+            if (d == null || d.state != DilemmaState.Open || model.Holds(livePending)) { livePending = -1; return; } // gone, or a stack has it
+            if (model.Mode != CardStackMode.Hidden || !LiveFree()) return; // wait until the other thing closes
+            if (model.ShowLive(livePending)) livePending = -1;
+        }
+
+        /// <summary>Nothing else holds the screen: no sheet or card, no moment, Show me, choice scene, evening talk or clean mode.</summary>
+        bool LiveFree()
+        {
+            if (Covered() || MomentPlayer.PromptsBlocked()) return false;
+            if (hud != null && hud.CleanMode) return false;
+            var talk = EveningTalkView.Instance;
+            if (talk != null && talk.Open) return false;
+            var choice = ChoiceSceneView.Instance;
+            return choice == null || choice.State == ChoiceSceneView.Phase.Idle;
+        }
+
+        /// <summary>Debug and tests (#238): the card of a dilemma raised live that waits for the screen to be free (-1 = none).</summary>
+        public int LivePending => livePending;
 
         void ShowSheet(bool on)
         {
@@ -360,8 +413,58 @@ namespace AquariumCiv.View
             BuildDots();
             BuildHead();
             BuildScroll();
+            BuildDilemma();
             BuildActions();
             ApplySafeArea();
+        }
+
+        /// <summary>The dilemma's two options sit between the question (the headline) and the buttons row. Names for tests and the tester:
+        /// <c>cards-dilemma</c>, <c>cards-dil-0/1</c> (the column), <c>cards-dil-answer-0/1</c> (the button), <c>cards-dil-hint-0/1</c>.</summary>
+        void BuildDilemma()
+        {
+            dilBox = new VisualElement { name = "cards-dilemma", pickingMode = PickingMode.Ignore };
+            dilBox.AddToClassList("cards-dilemma");
+            card.hierarchy.Insert(card.hierarchy.IndexOf(scroll), dilBox);
+            for (int i = 0; i < 2; i++)
+            {
+                int k = i;
+                var col = new VisualElement { name = "cards-dil-" + i, pickingMode = PickingMode.Ignore };
+                col.AddToClassList("cards-dil");
+                if (i == 1) col.AddToClassList("cards-dil--second");
+                dilBox.Add(col);
+                dilCols[i] = col;
+                var b = Press("cards-dil-answer-" + i, "", () => AnswerDilemma(k), col, ButtonKind.Secondary, UiRole.Confirm);
+                b.AddToClassList("cards-dil-btn");
+                dilFaces[i] = new GlassPortrait("");
+                dilFaces[i].AddToClassList("cards-dil-face");
+                dilPlaces[i] = new GlassIcon("pin", "kg-icon--light");
+                dilFaces[i].Add(dilPlaces[i]);
+                b.Add(dilFaces[i]);
+                dilLabels[i] = Text("cards-dil-label-" + i, b, "type-btn", "cards-dil-label");
+                dilAnswers[i] = b;
+                dilHints[i] = Text("cards-dil-hint-" + i, col, "type-note", "cards-dil-hint");
+                dilHints[i].enableRichText = true;
+            }
+            dilBox.style.display = DisplayStyle.None;
+        }
+
+        /// <summary>The hook #224's choice scene implements: Show me on an open dilemma card offers the dilemma to it. Return true to take the
+        /// tap (the scene flies in and the card waits behind it); false, or no hook, and Show me frames the two people or places as before.</summary>
+        public static System.Func<DilemmaView, bool> DilemmaShowMeHook;
+
+        /// <summary>#224: answered by a touch in the box: the bar says what the Keeper chose while the people react; the card comes back
+        /// after, answered.</summary>
+        public void ChoiceAnswered()
+        {
+            var f = model?.Face;
+            var v = f?.dilemma;
+            if (v == null || f.dilemmaChosen < 0 || f.dilemmaChosen >= v.options.Length) return;
+            showBar.Set($"The Keeper chose {v.options[f.dilemmaChosen].label}.", null);
+        }
+
+        void AnswerDilemma(int option)
+        {
+            if (model == null || !model.AnswerDilemma(option)) return; // Changed redraws: the chosen face lifts, the other dims
         }
 
         void BuildDots()
@@ -414,6 +517,8 @@ namespace AquariumCiv.View
             scroll = new GlassScroll { name = "cards-scroll", SnapToRows = true, SplitRows = true };
             scroll.AddToClassList("cards-scroll");
             scroll.View.contentContainer.AddToClassList("cards-scroll-pad");
+            scroll.View.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => FitStory());
+            scroll.View.RegisterCallback<GeometryChangedEvent>(_ => FitStory());
             card.hierarchy.Insert(card.hierarchy.IndexOf(card.Actions), scroll);
             teaser = Line("cards-teaser", "type-quote");
             body = card.Body;
@@ -508,6 +613,15 @@ namespace AquariumCiv.View
 
         void ShowMe()
         {
+            if (model != null && model.DilemmaShowMe())
+            {
+                // The choice scene (#224) took it: the sheet slides off so the people can be touched, the bar keeps the ask.
+                showBar.Set(ChoiceNote, null); // the ask itself is said in the box, by the one who asks
+                showingPlace = true;
+                choiceUp = true;
+                return;
+            }
+            choiceUp = false;
             var shown = model?.ShowMe();
             var sm = ShowMeDirector.Instance;
             if (sm == null || model == null) return;
@@ -592,6 +706,30 @@ namespace AquariumCiv.View
 
         bool wasOpen;
 
+        /// <summary>#240: a callback is a story that comes back years later, and it is the whole card: the sheet grows (up to
+        /// <see cref="StoryMaxShare"/> of the screen) until the grey question, the headline and the story fit without a scroll.</summary>
+        bool fitStory;
+        const float StoryMaxShare = 0.5f, StoryMinShare = 0.3f;
+
+        void SetFitStory(bool on)
+        {
+            fitStory = on;
+            if (!on) sheet.style.height = StyleKeyword.Null;
+            else FitStory();
+        }
+
+        void FitStory()
+        {
+            if (!fitStory || root == null) return;
+            var view = scroll.View;
+            float panelH = root.layout.height, cur = sheet.layout.height;
+            if (float.IsNaN(panelH) || panelH <= 0f || float.IsNaN(cur) || cur <= 0f) return;
+            float over = view.contentContainer.layout.height - view.layout.height;
+            if (float.IsNaN(over) || Mathf.Abs(over) < 1f) return;
+            float want = Mathf.Clamp(cur + over + 2f, panelH * StoryMinShare, panelH * StoryMaxShare);
+            if (Mathf.Abs(want - cur) > 1f) sheet.style.height = want;
+        }
+
         void DrawPeek()
         {
             var p = model.Peek;
@@ -618,6 +756,7 @@ namespace AquariumCiv.View
             Show(backBtn, model.CanGoBack);
             Show(showMeBtn, !f.isAlso);
             Show(actionBtn, f.action != CardAction.None);
+            if (f.dilemma != null && f.dilemmaChosen >= 0) Show(showMeBtn, false); // answered: nothing left to look at, Next is the way on
             actionBtn.text = f.actionLabel;
             actionBtn.Available = f.actionEnabled;
             bool done = model.OnLastPage;
@@ -628,7 +767,12 @@ namespace AquariumCiv.View
 
         void DrawAlso(CardFace f)
         {
+            SetFitStory(false);
             foreach (var l in new[] { teaser, body, endLine, quote, note, footer }) Show(l, false);
+            Show(dilBox, false);
+            Show(scroll, true);
+            headline.RemoveFromClassList("cards-ask");
+            card.RemoveFromClassList("cards-dilcard");
             head.EnableInClassList("cards-head--alone", true);
             // Every headline stays reachable by scrolling; what's past them is never counted (rule 8).
             for (int i = 0; i < alsoLines.Length; i++)
@@ -639,8 +783,57 @@ namespace AquariumCiv.View
             }
         }
 
+        /// <summary>The dilemma card: the people's ask as the headline, two options under it. Answered, the chosen one lifts and the other
+        /// dims, and the headline says what the Keeper chose (the people chose, on a lapse).</summary>
+        void DrawDilemma(CardFace f)
+        {
+            var v = f.dilemma;
+            SetFitStory(false);
+            Show(scroll, false);
+            Show(dilBox, true);
+            Show(eraMark, false);
+            head.EnableInClassList("cards-head--alone", true);
+            headline.AddToClassList("cards-ask");
+            card.AddToClassList("cards-dilcard");
+            string words = f.dilemmaChosen < 0 ? v.question
+                : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
+                : $"The Keeper chose {v.options[f.dilemmaChosen].label}.";
+            headline.text = GlassType.Lines(words, 16f, 1.25f);
+            for (int i = 0; i < 2; i++)
+            {
+                var o = i < v.options.Length ? v.options[i] : null;
+                Show(dilCols[i], o != null);
+                if (o == null) continue;
+                bool person = o.personId >= 0;
+                if (person) Paint(dilFaces[i], o.personId); else dilFaces[i].Person = "";
+                dilFaces[i].EnableInClassList("kg-portrait--era", !person); // a place or a way wears an icon on the same disc
+                Show(dilPlaces[i], !person);
+                if (!person) dilPlaces[i].Shape = PlaceIcon(v, o);
+                dilLabels[i].text = o.label;
+                Set(dilHints[i], o.hint, NotePt, tight ? 1.1f : QuoteRatio);
+                bool open = f.dilemmaChosen < 0, chosen = f.dilemmaChosen == i;
+                dilAnswers[i].pickingMode = open ? PickingMode.Position : PickingMode.Ignore;
+                dilAnswers[i].Kind = chosen ? ButtonKind.Primary : ButtonKind.Secondary;
+                dilCols[i].EnableInClassList("cards-dil--chosen", chosen && !f.dilemmaLapsed);
+                dilCols[i].EnableInClassList("cards-dil--dim", !open && !chosen);
+            }
+        }
+
+        static string PlaceIcon(DilemmaView v, DilemmaOptionView o) =>
+            !string.IsNullOrEmpty(o.buildingType) ? "hill" : v.kind switch
+            {
+                DilemmaKind.Tradition => "scroll",
+                DilemmaKind.Strangers => "herd",
+                _ => "pin",
+            };
+
         void DrawStory(CardFace f)
         {
+            if (f.dilemma != null) { DrawDilemma(f); return; }
+            Show(dilBox, false);
+            Show(scroll, true);
+            headline.RemoveFromClassList("cards-ask");
+            card.RemoveFromClassList("cards-dilcard");
             Set(teaser, f.teaserLine, QuotePt, QuoteRatio);
             headline.text = GlassType.Lines(f.headline, TitlePt, TitleRatio);
             Set(body, f.body);
@@ -660,6 +853,7 @@ namespace AquariumCiv.View
             bool era = f.kind == CardKind.EraReady || (f.portraits.Count == 0 && f.card?.lead.kind == "era");
             Show(eraMark, era);
             head.EnableInClassList("cards-head--alone", !era && f.portraits.Count == 0);
+            SetFitStory(f.card != null && f.card.lead.kind == SimCore.CallbackKind);
         }
 
         string Quoted(CardFace f)
@@ -700,6 +894,7 @@ namespace AquariumCiv.View
                 case CardKind.EraReady: sim.ForceEraReady(); break;
                 case CardKind.Relic: sim.DebugGiveRelic(RelicId.All[0]); break;
                 case CardKind.Legend: sim.DebugKillOldest(); break;
+                case CardKind.Dilemma: sim.DebugRaiseDilemma(); break;
                 case CardKind.Keeper: sim.Chronicle("keeper", $"After the Keeper's rain, {who?.FullName} staked out new ground.", 0.9f, who?.id ?? -1); break;
                 default: sim.Chronicle("story", $"{who?.FullName} found a way across the stream.", 0.9f, who?.id ?? -1); break;
             }
@@ -708,6 +903,18 @@ namespace AquariumCiv.View
             if (!m.DebugPrepare(7) || !m.TapPeek()) return "nothing to tell";
             for (int guard = 0; guard < 8 && m.Face != null && (m.Face.isAlso || m.Face.kind != kind); guard++) if (!m.Next()) return "no such card came up";
             return m.Face != null && m.Face.kind == kind ? Status() : "no such card came up";
+        }
+
+        /// <summary>The stack open on the card of this chronicle entry (a raised dilemma, a callback just fired), as on a return. #225.</summary>
+        public static string DebugOpenEntry(int entryId)
+        {
+            var v = Instance;
+            if (v == null || v.model == null) return "no card stack";
+            var m = v.model;
+            if (m.Mode == CardStackMode.Open) m.Close();
+            if (!m.DebugPrepare(16) || !m.TapPeek()) return "nothing to tell";
+            for (int guard = 0; guard < 16 && (m.Shown == null || m.Shown.lead.id != entryId); guard++) if (!m.Next()) return "that card did not come up";
+            return m.Shown != null && m.Shown.lead.id == entryId ? Status() : "that card did not come up";
         }
 
         /// <summary>Show me on the open page, as its button: the sheet leaves and the bar comes up.</summary>

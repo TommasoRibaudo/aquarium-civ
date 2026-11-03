@@ -27,6 +27,7 @@ Shader "AquariumCiv/View/Glass"
         _StreakAlpha ("Reflection streaks", Range(0, 1)) = 0.16
         _StreakOffset ("Streak offset", Float) = 0
         _Condensation ("Condensation", Range(0, 1)) = 0.35
+        _Droplets ("Droplets and fog (P8 humidity)", Range(0, 1)) = 0
         _RimColor ("Rim highlight", Color) = (0.95, 1, 0.97, 0.75)
         _RimWidth ("Rim highlight width (world)", Float) = 0.035
         _RimSide ("Rim highlight on the sides", Range(0, 1)) = 0.35
@@ -71,6 +72,7 @@ Shader "AquariumCiv/View/Glass"
                 half _StreakAlpha;
                 float _StreakOffset;
                 half _Condensation;
+                half _Droplets;
                 half4 _RimColor;
                 float _RimWidth;
                 half _RimSide;
@@ -158,6 +160,24 @@ Shader "AquariumCiv/View/Glass"
                 half mist = smoothstep(0.8, 1.0, w.y) * (1 - smoothstep(1.05, 1.6, w.y)) * _Condensation * (0.6 + 0.4 * n.g) * (1 - cover);
                 rgb = lerp(rgb, half3(0.92, 0.96, 0.97) * dim, mist * 0.6);
                 alpha = saturate(alpha + mist * 0.25);
+                // P8 (keepers-hands §5.1): the box's humidity on the glass. Fog climbs from the soil line and beads of water
+                // gather in it as the air gets wetter; the cloth wipes them off with the grime.
+                if (_Droplets > 0.001)
+                {
+                    float topY = 1.0 + 1.7 * _Droplets;
+                    half band = smoothstep(0.85, 1.0, w.y) * (1 - smoothstep(topY - 0.5, topY, w.y)) * (1 - cover);
+                    half fog = band * _Droplets;
+                    float2 g = w * 22.0;
+                    float2 cellId = floor(g);
+                    float2 f = frac(g) - 0.5;
+                    float h = frac(sin(dot(cellId, float2(12.9898, 78.233))) * 43758.5453);
+                    float h2 = frac(h * 17.13);
+                    half drop = (h < _Droplets * 0.6 ? 1.0 : 0.0) * (1 - smoothstep(0.1 + 0.15 * h2, 0.18 + 0.18 * h2, length(f + (h2 - 0.5) * 0.3))) * band;
+                    rgb = lerp(rgb, half3(0.93, 0.96, 0.98) * dim, fog * 0.5);
+                    alpha = saturate(alpha + fog * 0.35);
+                    rgb = lerp(rgb, dim, drop * 0.7);
+                    alpha = saturate(alpha + drop * 0.45);
+                }
                 // Rim highlight: a crisp bright line just under the top edge (brightest), fainter down both sides; a touch
                 // stronger at grazing angles, like light running along the glass.
                 float topDist = _PaneSize.y - w.y;

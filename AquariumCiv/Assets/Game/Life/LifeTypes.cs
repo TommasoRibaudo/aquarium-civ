@@ -147,6 +147,8 @@ namespace AquariumCiv.Life
         ShapingAnswer,
         // #142: the people's first reaction to a gift (LifePlanner.StartShapingReaction)
         ShapingReaction,
+        // #224: the choice scene: the people wait on the Keeper's touch, then react to it (LifePlanner.StageChoice)
+        Choice,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>

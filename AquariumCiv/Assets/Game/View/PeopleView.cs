@@ -334,7 +334,13 @@ namespace AquariumCiv.View
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (!a.moving && !a.enRoute && !hidden) // #197: a run-in stops on the path, it does not take a slot at a place
+            if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
+            {
+                target = pin; // the scene chose it clear of the others
+                face = target + GlassNormal(planner.GlassSide);
+                claimed.Add(target);
+            }
+            else if (!a.moving && !a.enRoute && !hidden) // #197: a run-in stops on the path, it does not take a slot at a place
             {
                 target = SlotSpot(d, a, spot, out face);
                 bool yard = a.place.kind == PlaceKind.Home && (target - spot).sqrMagnitude > SlotSpots.AtDoorReach * SlotSpots.AtDoorReach;
@@ -720,6 +726,17 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Is this person's doll walking (on a route, or gliding into its slot)?</summary>
+        readonly Dictionary<int, Vector2> pins = new();
+
+        /// <summary>#224: stand this person on their own spot (box units) while they are at a place, instead of a slot there: the choice
+        /// scene puts its two candidates either side of the fire. A walk is still the planner's; the pin holds once they arrive.</summary>
+        public void Pin(PersonRef who, Vector2 at) => pins[who.Key] = at;
+
+        /// <summary>#224: everyone back to their slots.</summary>
+        public void ClearPins() => pins.Clear();
+
+        public int PinCount => pins.Count;
+
         public bool IsWalking(PersonRef who) => dolls.TryGetValue(who.Key, out var d) && d.walking;
 
         /// <summary>The activity a doll is showing (tests, reports).</summary>

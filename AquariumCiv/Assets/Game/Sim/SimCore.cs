@@ -20,6 +20,7 @@ namespace AquariumCiv.Sim
             // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
             if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;
             StartCardLedger();
+            EnsureDilemmaState();
         }
 
         public static SimState NewWorld(int seed, SimConfig config)
@@ -30,6 +31,7 @@ namespace AquariumCiv.Sim
                 population = 5, food = 20, wood = 4, mood = 0.7f,
             };
             var core = new SimCore(config, s);
+            if (config.ecology) core.StartEcology(); // a barren land; the camp waits for its gate (SimCore.Eco.cs)
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
             // Clamped into the camp's band (#26): a scene saved before the bands may still carry the old 5.
@@ -93,6 +95,7 @@ namespace AquariumCiv.Sim
             s.month++;
             int season = (int)(s.month % SimConfig.MonthsPerYear);
             bool winter = season == 11 || season == 0 || season == 1;
+            EcoStep(); // the land, once a season; hash dice only, nothing off the sim's streams (SimCore.Eco.cs)
             float mult = OutputMultiplier;
             int pop = s.population;
 
@@ -124,6 +127,7 @@ namespace AquariumCiv.Sim
             OfficeStep(); // no dice: the holders' traits colour their terms, story only (SimCore.Office.cs)
             ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
             WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
+            DilemmaStep(); // no dice, and nothing at all unless Config.dilemmas: the Keeper's dilemmas (SimCore.Dilemmas.cs, P7)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
@@ -152,6 +156,7 @@ namespace AquariumCiv.Sim
         /// </summary>
         string PickBuilding(int pop)
         {
+            if (BeforeCamp) return null; // the land is still barren: one tent and a fire (SimCore.Eco.cs)
             // Types from a later era are skipped: a camp waiting at its threshold keeps building, but only camp things.
             // The twenty slots can't hold every farm a growing town would sow plus its own buildings: from the third farm on, a
             // farm waits while the town's workshop, guildhall or shops are still wanted (#114), so the box keeps room for them.
@@ -371,6 +376,7 @@ namespace AquariumCiv.Sim
             float was = State.grime;
             if (amount > 0f && was > 0f) CountKeeperAction(KeeperAction.Wipe, true); // the Keeper Doll's prop (SimCore.Relics.cs)
             State.grime = Math.Max(0f, was - amount);
+            if (amount > 0f) EcoWipe(amount); // the glass over the land clears too (no-op with the ecology off)
             CleaningRefill((was - State.grime) * Config.shapingPerGrime);
         }
 
@@ -378,6 +384,7 @@ namespace AquariumCiv.Sim
         {
             float was = State.overgrowth;
             State.overgrowth = Math.Max(0f, was - amount);
+            if (amount > 0f) EcoSnip(amount); // weeds at the Keeper's tree (no-op with the ecology off)
             CleaningRefill((was - State.overgrowth) * Config.shapingPerOvergrowth);
             RelicsOnPrune(was - State.overgrowth); // the Left Sandal turns up under the weeds (SimCore.Relics.cs)
         }
@@ -400,6 +407,7 @@ namespace AquariumCiv.Sim
         public void CleanAll()
         {
             CleaningRefill(State.grime * Config.shapingPerGrime + State.overgrowth * Config.shapingPerOvergrowth + State.trash.Count * Config.shapingPerTrash);
+            EcoWipe(1f); EcoSnip(1f);
             State.grime = 0; State.overgrowth = 0; State.trash.Clear();
         }
 

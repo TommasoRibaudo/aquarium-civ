@@ -141,11 +141,13 @@ namespace AquariumCiv.View
         public bool autoTrees = true;
         public float natureDensity = 1f;
         public bool reeds = true;
+        /// <summary>P8: the living land (cover, the pond, the Keeper's tree). Off = the old static land.</summary>
+        public EcoLayer eco = new();
 
         public void Clear()
         {
             pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); boulders.Clear(); villagers.Clear(); canals.Clear();
-            autoNature = true; autoTrees = true;
+            autoNature = true; autoTrees = true; eco.on = false;
         }
 
         // Builders, so callers can write layout.House(...).Fire(...) without object initialisers.

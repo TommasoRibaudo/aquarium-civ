@@ -62,7 +62,8 @@ namespace AquariumCiv.Sim.Settle
             this.core = core;
             bool fresh = St.version == 0;
             if (fresh && St.terrain == 0) St.terrain = core.Config.terrainPreset; // a next box's setting preset is seeded first (SeedNextBox)
-            Map = new SiteMap(St, fresh);
+            Map = new SiteMap(St, fresh, core.State.eco != null && core.State.eco.on);
+            if (Map.eco) SyncEco(); // the land's own water, woods and meadow instead of the static pond (Sim/Eco)
             Net = new PathNet(Map);
             placer = new Placer(this);
             cluster = new ClusterPlacer(this, placer);
@@ -103,6 +104,43 @@ namespace AquariumCiv.Sim.Settle
             if (S.month % 3 == 0) WearPass();
             wearTicks += Stopwatch.GetTimestamp() - t1;
             monthsStepped++;
+        }
+
+        /// <summary>The ecology (Sim/Eco) writes into the land after each of its steps: the pond is the ecology's water, the
+        /// woods are its young and grown trees, the meadow its grass; no lot may take a cell below the flood line. The ecology
+        /// owns these flags on the cells it covers (a lumber mill's cut or a grove's paint on other cells stays). No dice.</summary>
+        public void SyncEco()
+        {
+            var eco = S.eco;
+            if (eco == null || !eco.on || eco.cover == null) return;
+            var land = Eco.EcoLand.For(St.terrain);
+            Map.noBuild = land.noBuild;
+            bool wet = false;
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                var cv = (Eco.EcoCover)eco.cover[c];
+                bool water = cv == Eco.EcoCover.Water;
+                if (Map.pond[c] != water) { Map.pond[c] = water; wet = true; }
+                if (Map.lot[c] != 0) continue;
+                switch (cv)
+                {
+                    case Eco.EcoCover.Young: case Eco.EcoCover.Tree:
+                        if (!Map.Rock(c)) Map.Set(c, SiteMap.FForest, true);
+                        Map.Set(c, SiteMap.FMeadow, false);
+                        break;
+                    case Eco.EcoCover.Grass: case Eco.EcoCover.Tall:
+                        Map.Set(c, SiteMap.FMeadow, true);
+                        break;
+                    case Eco.EcoCover.Bush:
+                        Map.Set(c, SiteMap.FMeadow, false);
+                        break;
+                    case Eco.EcoCover.Water:
+                        Map.Set(c, SiteMap.FForest, false);
+                        Map.Set(c, SiteMap.FMeadow, false);
+                        break;
+                }
+            }
+            if (wet) Map.RecomputeWaterDist();
         }
 
         /// <summary>Offer a lot to buildings added since the last month (debug builds) without stepping time.</summary>

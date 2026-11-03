@@ -683,5 +683,190 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(m.DebugPrepare(1));
             Assert.AreEqual(1, m.CardCount);
         }
+
+        // ---------- the dilemma card (#223) ----------
+        static SimCore WithDilemma(string defId, out Dilemma d)
+        {
+            var sim = Quiet();
+            d = sim.DebugRaiseDilemma(defId);
+            Assert.IsNotNull(d, defId);
+            return sim;
+        }
+
+        [Test]
+        public void ADilemmaCardComesRightAfterTheEraCardBeforeTheStories()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            AddMany(sim, 3);
+            sim.ForceEraReady();
+            var m = Opened(Model(sim));
+            var kinds = new List<CardKind>();
+            do kinds.Add(m.Face.kind); while (m.Next());
+            Assert.AreEqual(CardKind.EraReady, kinds[0]);
+            Assert.AreEqual(CardKind.Dilemma, kinds[1]);
+            Assert.AreEqual(1, kinds.Count(k => k == CardKind.Dilemma));
+        }
+
+        [Test]
+        public void ADilemmaCardReadsTheQuestionAndBothOptionsAndHasNoPrimaryAction()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Opened(Model(sim));
+            var f = m.Face;
+            Assert.AreEqual(CardKind.Dilemma, f.kind);
+            Assert.AreEqual(sim.ViewOfDilemma(d).question, f.headline);
+            Assert.AreEqual(2, f.dilemma.options.Length);
+            Assert.AreEqual("a place by the fire", f.dilemma.options[0].label);
+            Assert.That(f.dilemma.options[1].hint, Is.Not.Empty);
+            Assert.AreEqual(-1, f.dilemmaChosen);
+            Assert.AreEqual(CardAction.None, f.action);
+        }
+
+        [Test]
+        public void AnsweringByButtonCallsAnswerDilemmaOnTheCardPathAndTheCardSaysWhatWasChosen()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsTrue(m.AnswerDilemma(1));
+            Assert.AreEqual(DilemmaState.Answered, d.state);
+            Assert.AreEqual(1, d.option);
+            Assert.AreEqual(DilemmaPath.Card, d.path);
+            Assert.AreEqual(1, m.Face.dilemmaChosen, "the card stays up and says so");
+            Assert.IsFalse(m.Face.dilemmaLapsed);
+            Assert.IsNotNull(sim.State.chronicle.Find(e => e.id == d.answerEntryId), "the Keeper's line is written");
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind, "still this card until Next");
+        }
+
+        [Test]
+        public void ADilemmaAnswerIsFinalNoSecondAnswerNoOtherOption()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsFalse(m.AnswerDilemma(2), "only options 0 and 1");
+            Assert.IsTrue(m.AnswerDilemma(0));
+            Assert.IsFalse(m.AnswerDilemma(1), "no undo");
+            Assert.AreEqual(0, d.option);
+        }
+
+        [Test]
+        public void AnsweringReadsTheCardNextMovesOnAndTheDilemmaCardIsGoneNextTime()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            AddMany(sim, 2);
+            var m = Opened(Model(sim));
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+            m.AnswerDilemma(0);
+            Assert.IsTrue(m.Next());
+            Assert.AreNotEqual(CardKind.Dilemma, m.Face.kind);
+            m.SkipAll();
+            Assert.IsTrue(m.Prepare(Day));
+            m.TapPeek();
+            var kinds = new List<CardKind>();
+            do kinds.Add(m.Face.kind); while (m.Next());
+            Assert.IsFalse(kinds.Contains(CardKind.Dilemma), "an answered dilemma's question is gone; the keeper card tells it");
+        }
+
+        [Test]
+        public void ALapsedDilemmaOnAnOpenCardShowsThePeoplesChoiceAndAnswerIsRefused()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsTrue(sim.DebugLapseDilemma());
+            Assert.IsFalse(m.AnswerDilemma(0));
+            Assert.IsTrue(m.Face.dilemmaLapsed);
+            Assert.AreEqual(d.option, m.Face.dilemmaChosen);
+        }
+
+        [Test]
+        public void ADilemmaStaysUntilAnsweredEvenWhenTheStackIsSkipped()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Opened(Model(sim));
+            m.Next();
+            Assert.IsTrue(m.Prepare(Day), "unanswered: it keeps coming back");
+            m.TapPeek();
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+        }
+
+        [Test]
+        public void ShowMeOnADilemmaCardGoesToTheHookAndOnlyWhenOneIsSet()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Opened(Model(sim));
+            Assert.IsFalse(m.DilemmaShowMe(), "no choice scene yet: the normal Show me stays");
+            DilemmaView got = null;
+            m.DilemmaShowMeHook = v => { got = v; return true; };
+            Assert.IsTrue(m.Face.canShowMe);
+            Assert.IsTrue(m.DilemmaShowMe());
+            Assert.AreSame(d, got.dilemma);
+            m.AnswerDilemma(0);
+            Assert.IsFalse(m.DilemmaShowMe(), "answered: nothing to show");
+        }
+
+        // ---------- #238: a dilemma raised while the player watches ----------
+        [Test]
+        public void ALiveDilemmaPeeksOnTopAndATapOpensOnItsCardOnly()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            AddMany(sim, 4); // other unread stories wait for the return
+            var m = Model(sim);
+            Assert.IsTrue(m.ShowLive(d.entryId));
+            Assert.AreEqual(CardStackMode.Peek, m.Mode);
+            Assert.AreEqual(sim.Headline(sim.State.chronicle.First(e => e.id == d.entryId)), m.Peek.text);
+            Assert.IsTrue(m.Holds(d.entryId));
+            Assert.IsFalse(m.ShowLive(d.entryId), "not twice while it is up");
+            Assert.IsTrue(m.TapPeek());
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+            Assert.AreEqual(1, m.PageCount, "only the dilemma: the stories wait for the return");
+            m.Close();
+            Assert.IsTrue(m.HistoryDot, "the rest wait: the dot");
+        }
+
+        [Test]
+        public void NoLivePeekInTheFirstRunOrForAnAnsweredDilemma()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            var m = Model(sim);
+            sim.State.firstRun.active = true;
+            Assert.IsFalse(m.ShowLive(d.entryId), "the first run tells its own cards");
+            sim.State.firstRun.active = false;
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Card);
+            Assert.IsFalse(m.ShowLive(d.entryId), "answered: nothing to ask");
+            Assert.AreEqual(CardStackMode.Hidden, m.Mode);
+        }
+
+        [Test]
+        public void TheDotIsWorkedOutAgainLive()
+        {
+            var sim = Quiet();
+            var m = Model(sim);
+            Assert.IsFalse(m.HistoryDot);
+            Add(sim, "wedding", 0.8f);
+            Assert.IsFalse(m.HistoryDot, "not until it is worked out");
+            m.RefreshDot();
+            Assert.IsTrue(m.HistoryDot);
+        }
+
+        // ---------- #240: the callback card ----------
+        [Test]
+        public void ACallbacksHeadlineIsItsCreditAndTheBodyGoesOnWithoutRepeatingIt()
+        {
+            var sim = Quiet();
+            sim.State.month += 3; // past the founding months the test box counts as seen
+            var d = sim.DebugRaiseDilemma("camp_remember");
+            Assert.IsNotNull(d);
+            sim.AnswerDilemma(d.id, 1, DilemmaPath.Card);
+            var e = sim.DebugFireCallbackNow();
+            Assert.IsNotNull(e);
+            var m = Model(sim);
+            Assert.IsTrue(m.DebugPrepare(16) && m.TapPeek());
+            for (int i = 0; i < 16 && m.Shown?.lead.id != e.id; i++) m.Next();
+            var f = m.Face;
+            Assert.AreEqual(e.id, f.card.lead.id);
+            Assert.AreEqual("Because the Keeper chose the tree", f.headline);
+            Assert.IsFalse(f.body.StartsWith("Because"), f.body);
+            Assert.IsTrue(char.IsUpper(f.body[0]), "the body reads as a sentence: " + f.body);
+            StringAssert.StartsWith("At the fire: ", f.teaserLine, "the question stays as the grey line");
+        }
     }
 }
