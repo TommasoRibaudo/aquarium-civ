@@ -702,3 +702,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   hours earlier). It measures wall-clock time on a shared GitHub runner, so it can fail with no code change. Fix:
   `gh run rerun <run-id> --failed` and check the time in the log (`But was:`). If it keeps failing, raise the limit or
   time a smaller catch-up rather than loosening the sim.
+- **2026-11-02 · Tester P8 touch playtest notes.** [verified] `EcoDebug.NewBox(true)` from a play test restarts a barren
+  box with its first run, so one `[UnityTest]` can play two first runs back to back (a player who holds, then one who
+  taps). A throwaway test class in `_AgentPlaytest` can derive `PlayTestBase` (reference `AquariumCiv.View.PlayTests`)
+  with its own `[SetUpFixture]` setting `GameClock.SaveFolderOverride`. To know why a hold didn't mist, log
+  `PersonCardView.Instance.AnyOpen` and `PickDoll(pos).IsNone`: an open person card and a doll under the finger both
+  block the mist silently. `EcoMistView.MistPulses` / `Misting` and `SimCore.EcoBareShare` give the per-hold answer.
