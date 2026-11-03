@@ -217,5 +217,66 @@ namespace AquariumCiv.View
             if (old != null) { if (Application.isPlaying) Destroy(old); else DestroyImmediate(old); }
             waterHash = layout.eco.WaterHash();
         }
+
+        // ---------------- droplets on the glass (keepers-hands §5.1, #245) ----------------
+        static readonly int DropletsId = Shader.PropertyToID("_Droplets");
+        /// <summary>The droplets and fog drawn on the panes, 0..1 (the sim's droplets; the mist view eases it live).</summary>
+        public float Droplets { get; private set; }
+
+        public void SetDroplets(float v)
+        {
+            Droplets = Mathf.Clamp01(v);
+            foreach (var m in panes) if (m != null) m.SetFloat(DropletsId, Droplets);
+        }
+
+        // ---------------- the water table in the soil cut (keepers-hands §5.2, #245) ----------------
+        MeshFilter tableFilter;
+        int tableKey = int.MinValue;
+
+        /// <summary>The table's level as drawn, in steps of 2 mm of height (the band is rebuilt only when it moves a step).</summary>
+        int TableKey => Eco ? Mathf.RoundToInt(layout.eco.tableY * 500f) : int.MinValue;
+
+        /// <summary>The water table seen through the glass: below it the soil cut is wet and dark-blue, with a bright line where
+        /// the water stands; it rises as the Keeper's mists soak down, and meets the ground where the pond surfaces.</summary>
+        Mesh EcoTableMesh()
+        {
+            var mb = new MeshBuilder(seed + 5) { jitter = 0f };
+            float HX = Land.HX, HZ = Land.HZ, y = layout.eco.tableY;
+            var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
+            var wet = Color.Lerp(Palette.Loam, Co.waterDeep, 0.4f);
+            var line = Color.Lerp(Co.water, Color.white, 0.25f);
+            for (int side = 0; side < 4; side++)
+            {
+                var p0 = corners[side]; var p1 = corners[(side + 1) % 4];
+                int segs = Mathf.RoundToInt(Vector2.Distance(p0, p1) / 0.0625f);
+                var o = new Vector3(p1.y - p0.y, 0, -(p1.x - p0.x)).normalized * 0.003f; // just proud of the soil cut
+                for (int s = 0; s < segs; s++)
+                {
+                    var a = Vector2.Lerp(p0, p1, s / (float)segs); var b = Vector2.Lerp(p0, p1, (s + 1) / (float)segs);
+                    float[] la = Layers(a), lb = Layers(b);
+                    float ta = Mathf.Min(y, la[4] - 0.004f), tb = Mathf.Min(y, lb[4] - 0.004f);
+                    float ba = la[1], bb = lb[1];
+                    if (ta <= ba + 0.002f && tb <= bb + 0.002f) continue;
+                    ta = Mathf.Max(ta, ba); tb = Mathf.Max(tb, bb);
+                    Vector3 A(float h) => new Vector3(a.x, h, a.y) + o;
+                    Vector3 B(float h) => new Vector3(b.x, h, b.y) + o;
+                    mb.Quad(A(ba), A(Mathf.Max(ba, ta - 0.012f)), B(Mathf.Max(bb, tb - 0.012f)), B(bb), wet);
+                    mb.Quad(A(Mathf.Max(ba, ta - 0.012f)), A(ta), B(tb), B(Mathf.Max(bb, tb - 0.012f)), line);
+                }
+            }
+            return mb.ToMesh("WaterTable");
+        }
+
+        /// <summary>Called on every refresh: (re)draws the band when the living land is on and the table moved a step.</summary>
+        void SyncEcoTable()
+        {
+            int key = TableKey;
+            if (key == tableKey && (tableFilter != null || key == int.MinValue)) return;
+            tableKey = key;
+            if (tableFilter != null) { var oldm = tableFilter.sharedMesh; if (oldm != null) { if (Application.isPlaying) Destroy(oldm); else DestroyImmediate(oldm); } }
+            if (!Eco) { if (tableFilter != null) { if (Application.isPlaying) Destroy(tableFilter.gameObject); else DestroyImmediate(tableFilter.gameObject); } tableFilter = null; return; }
+            if (tableFilter == null) tableFilter = Spawn("WaterTable", EcoTableMesh(), Solid, false).GetComponent<MeshFilter>();
+            else tableFilter.sharedMesh = EcoTableMesh();
+        }
     }
 }

@@ -81,6 +81,13 @@ namespace AquariumCiv.Sim
             {
                 if (key == EcoMilestones.WaterSurfaced)
                     Chronicle("eco_water", "Water rose in the hollow and stayed. The people came to look at it.", 0.8f);
+                // The signs between the gates (keepers-hands §2.1): small, in the people's words.
+                else if (key == EcoMilestones.FirstGreen)
+                    Chronicle("eco_green", "Water fell from above onto the dry ground, and green came up where it fell. The people stood in it.", 0.8f);
+                else if (key == EcoMilestones.FirstRabbit)
+                    Chronicle("eco_rabbit", "A rabbit was seen in the grass. Nobody had seen one before.", 0.6f);
+                else if (key == EcoMilestones.FirstBird)
+                    Chronicle("eco_bird", "A bird came down onto the bushes and sang. The children copied it all day.", 0.6f);
                 EcoMilestone?.Invoke(key);
             }
             foreach (var g in gates)

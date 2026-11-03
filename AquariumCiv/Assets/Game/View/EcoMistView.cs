@@ -93,6 +93,12 @@ namespace AquariumCiv.View
             var sim = Sim;
             float dt = Time.unscaledDeltaTime;
             Grow(dt);
+            // The glass shows the air's humidity (keepers-hands §5.1): eased, so a wipe clears it over a moment, not a frame.
+            if (box != null)
+            {
+                float want = sim != null && sim.EcologyOn ? sim.EcoDroplets : 0f;
+                if (Mathf.Abs(want - box.Droplets) > 0.001f) box.SetDroplets(Mathf.MoveTowards(box.Droplets, want, dt * 0.8f));
+            }
             int n = ReadPointer(out var pos);
             if (n != 1 || !Usable(sim))
             {

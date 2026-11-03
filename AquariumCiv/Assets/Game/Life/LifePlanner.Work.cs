@@ -63,6 +63,10 @@ namespace AquariumCiv.Life
 
         Work JobWork(Person p, DayInfo d)
         {
+            // P8, before the camp (keepers-hands §2.1): the land is dead, so there is one job for everyone who works: digging
+            // roots in the dry hollow (the stream bed) and bringing them to the fire. The toolmaker still knaps by the fire.
+            if (sim != null && sim.BeforeCamp && p.job != JobType.Toolmaker)
+                return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
             var season = d.season;
             bool camp = era == Era.Camp;
             var jb = p.jobBuilding != null ? PlaceOf(p.jobBuilding) : Place.None;
