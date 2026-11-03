@@ -78,7 +78,7 @@ namespace AquariumCiv.View
 
         bool Usable(SimCore sim)
         {
-            if (sim == null || !sim.State.eco.on || box == null) return false;
+            if (sim == null || !sim.EcologyOn || box == null) return false;
             hud ??= GameHud.Instance;
             if (hud != null && (!hud.IsVisible || hud.CleanMode || hud.CameraMode || hud.SheetOpen)) return false;
             var shaping = Shaping.ShapingView.Instance;
@@ -136,13 +136,24 @@ namespace AquariumCiv.View
         /// <summary>Mists the ground at a box-local point for this long (also the debug panel's "mist here" and tests).</summary>
         public void Pulse(SimCore sim, Vector3 at, float seconds)
         {
-            if (sim == null || !sim.State.eco.on) return;
-            int greened = sim.Mist(at.x, at.z, seconds);
+            if (sim == null || !sim.EcologyOn) return;
+            int greened = sim.Mist(at.x, at.z, seconds).Count;
             MistPulses++;
             LastMist = at;
             dirty = true;
             if (greened > 0) AddBloom(at, Mathf.Sqrt(greened) * AquariumCiv.Sim.Settle.SiteMap.Cell * 0.6f + 0.05f);
+            // keepers-hands §2.1: every early mist gets an answer. Those near it stand in it, hands out and faces up; the
+            // kids splash about (the rain's reaction, at the mist's spot). Once every couple of seconds while it runs.
+            if (Time.unscaledTime - lastReact > 2f)
+            {
+                var pv = PeopleView.Find();
+                if (pv != null && pv.Planner != null) { pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, at.x, at.z, 1.4f); lastReact = Time.unscaledTime; Reactions++; }
+            }
         }
+
+        float lastReact = -99f;
+        /// <summary>Times the people were asked to react to a mist (tests).</summary>
+        public int Reactions { get; private set; }
 
         // ---------------- the mist itself ----------------
         void Puff(Vector3 at)
