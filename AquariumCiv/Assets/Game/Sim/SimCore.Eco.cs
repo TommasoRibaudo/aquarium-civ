@@ -86,6 +86,8 @@ namespace AquariumCiv.Sim
                     Chronicle("eco_green", "Water fell from above onto the dry ground, and green came up where it fell. The people stood in it.", 0.8f);
                 else if (key == EcoMilestones.FirstRabbit)
                     Chronicle("eco_rabbit", "A rabbit was seen in the grass. Nobody had seen one before.", 0.6f);
+                else if (key == EcoMilestones.FirstBush)
+                    FirstBushTell(); // P8 #288: the chronicle line and the sign
                 else if (key == EcoMilestones.FirstBird)
                     Chronicle("eco_bird", "A bird came down onto the bushes and sang. The children copied it all day.", 0.6f);
                 EcoMilestone?.Invoke(key);

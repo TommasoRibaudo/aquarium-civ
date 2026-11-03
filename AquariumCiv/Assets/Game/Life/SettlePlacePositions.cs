@@ -236,6 +236,10 @@ namespace AquariumCiv.Life
                 case PlaceKind.Market:
                     st.MarketCentre(out x, out z);
                     return true;
+                case PlaceKind.BushCell: // P8 #288
+                    if (p.index < 0 || p.index >= SiteMap.N) return false;
+                    x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
+                    return true;
                 case PlaceKind.Glass: return GlassSpot(p.index, out x, out z);
                 case PlaceKind.Relic: return RelicSpot(p.index, out x, out z);
             }

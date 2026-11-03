@@ -74,6 +74,8 @@ namespace AquariumCiv.Life
         Bakery,
         /// <summary>#150: the camp's stash by the fire (land; index -1 = where a carrier stands, 1 = the pile, see <see cref="CampStash"/>).</summary>
         Stash,
+        /// <summary>P8 #288: one grown bush on a living land (index = the site cell, <see cref="Sim.Settle.SiteMap"/>); where berries are picked.</summary>
+        BushCell,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
