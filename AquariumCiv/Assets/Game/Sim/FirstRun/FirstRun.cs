@@ -87,9 +87,15 @@ namespace AquariumCiv.Sim
                 rainX = ClampX(spec.pondX + dx * 1.1f), rainZ = ClampZ(spec.pondZ + dz * 1.1f),
                 suggestedName = SettlementNaming.Suggest(s.seed),
             };
+            if (sim.EcologyOn)
+            {
+                // P8 (keepers-hands §2.1): a barren box. Nothing has grown yet, so there is no patch to flick; the first mist
+                // falls next to the camp, where the people will see it.
+                f.rainX = ClampX(spec.centreX - dx * 0.75f); f.rainZ = ClampZ(spec.centreZ - dz * 0.75f);
+            }
             s.firstRun = f;
             s.grime = Math.Max(s.grime, StartGrime);
-            s.overgrowth = Math.Max(s.overgrowth, StartOvergrowth);
+            if (!sim.EcologyOn) s.overgrowth = Math.Max(s.overgrowth, StartOvergrowth);
             s.trash.Clear();
             return new FirstRun(sim);
         }
@@ -177,6 +183,7 @@ namespace AquariumCiv.Sim
             {
                 var f = F;
                 if (!f.active || f.hintPhase != 1) return default;
+                if (Step == FirstRunStep.Rain && sim.EcologyOn) return MistHint;
                 return HintFor(Step, f.hintSubstep);
             }
         }
@@ -200,6 +207,20 @@ namespace AquariumCiv.Sim
                 ? new FirstRunHint { visible = true, id = "rain-tap-spot", text = "Tap a spot", gesture = HintGesture.Tap, anchor = HintAnchor.RainSpot }
                 : new FirstRunHint { visible = true, id = "rain-tap", text = "Give them rain", gesture = HintGesture.Tap, anchor = HintAnchor.ShapingButton },
             _ => default,
+        };
+
+        /// <summary>P8: the first mist. A held finger on the land, next to the camp (no tray, no button).</summary>
+        public static readonly FirstRunHint MistHint = new FirstRunHint { visible = true, id = "mist-hold", text = "Hold to mist", gesture = HintGesture.Tap, anchor = HintAnchor.RainSpot };
+
+        /// <summary>The living land's run (P8): no time skip (the user, 2026-11-02), so the year and its card go; the name
+        /// comes after the first green, when there's something to name.</summary>
+        static FirstRunStep EcoNext(FirstRunStep s) => s switch
+        {
+            FirstRunStep.Arrive => FirstRunStep.Wipe,
+            FirstRunStep.Wipe => FirstRunStep.Patch,
+            FirstRunStep.Patch => FirstRunStep.Rain,
+            FirstRunStep.Rain => FirstRunStep.Name,
+            _ => FirstRunStep.Done,
         };
 
         /// <summary>The player opened the shaping tray: the rain hint moves on to "tap a spot" and shows at once.</summary>
@@ -232,7 +253,7 @@ namespace AquariumCiv.Sim
                 case FirstRunStep.Wipe: return st.grime <= WipedGrime;
                 case FirstRunStep.Patch: return st.overgrowth <= ClearedOvergrowth;
                 case FirstRunStep.Name: return f.nameKept;
-                case FirstRunStep.Rain: return f.rainNudgeId >= 0;
+                case FirstRunStep.Rain: return sim.EcologyOn ? sim.EcoMilestoneMonth(Eco.EcoMilestones.FirstGreen) >= 0 : f.rainNudgeId >= 0;
                 case FirstRunStep.Year: return f.yearDone;
                 case FirstRunStep.Card: return f.cardAcknowledged;
                 default: return false;
@@ -242,10 +263,15 @@ namespace AquariumCiv.Sim
         void Advance()
         {
             var f = F;
-            f.step++;
-            if (f.shortRun) while (Step is FirstRunStep.Name or FirstRunStep.Year or FirstRunStep.Card) f.step++; // §9: named on its plate, no year, no card for it
+            if (sim.EcologyOn)
+            {
+                f.step = (int)EcoNext(Step);
+                if (f.shortRun && Step == FirstRunStep.Name) f.step = (int)FirstRunStep.Done;
+            }
+            else f.step++;
+            if (f.shortRun && !sim.EcologyOn) while (Step is FirstRunStep.Name or FirstRunStep.Year or FirstRunStep.Card) f.step++; // §9: named on its plate, no year, no card for it
             f.stepSeconds = 0; f.untouchedSeconds = 0; f.hintPhase = 0; f.hintReturns = 0; f.hintIdle = 0; f.hintSubstep = false;
-            if (Step == FirstRunStep.Rain) RaiseRainWish();
+            if (Step == FirstRunStep.Rain && !sim.EcologyOn) RaiseRainWish(); // P8: the land asks, not a person
             if (Step == FirstRunStep.Year) BeginYear();
             if (Step == FirstRunStep.Done) { f.active = false; sim.CardsSeenToNow(); }
             StepChanged?.Invoke(Step);
@@ -403,7 +429,10 @@ namespace AquariumCiv.Sim
                 case FirstRunStep.Wipe:
                 case FirstRunStep.Patch: Advance(); return;
                 case FirstRunStep.Name: KeepName(null); break;
-                case FirstRunStep.Rain: if (f.rainNudgeId < 0) PlaceRain(f.rainX, f.rainZ); break;
+                case FirstRunStep.Rain:
+                    if (sim.EcologyOn) sim.Mist(f.rainX, f.rainZ, 2f);
+                    else if (f.rainNudgeId < 0) PlaceRain(f.rainX, f.rainZ);
+                    break;
                 case FirstRunStep.Year: AdvanceYear((float)YearSeconds); break;
                 case FirstRunStep.Card: f.cardAcknowledged = true; break;
             }

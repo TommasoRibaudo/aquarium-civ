@@ -303,6 +303,13 @@ namespace AquariumCiv.View
             if (s != FirstRunStep.Rain && ShapingView.Instance != null) { ShapingView.Instance.SetTool(null); ShapingView.Instance.Free = true; }
             if (s != FirstRunStep.Name) CloseName();
             if (box != null && s == FirstRunStep.Year) box.Refresh();
+            if (s == FirstRunStep.Name && Sim != null && Sim.EcologyOn)
+            {
+                // P8 (keepers-hands §2.1): the first green gets its answer before the name is asked for.
+                rewardLine = "Green, where the mist fell. They come to stand in it.";
+                rewardUntil = Time.unscaledTime + RewardSeconds;
+                Sfx.Play(CueLibrary.Discovery);
+            }
         }
 
         void OnCue(FirstRunCue c)
@@ -658,7 +665,7 @@ namespace AquariumCiv.View
             if (plateUp) PlacePlate();
             plate.pickingMode = named ? PickingMode.Ignore : PickingMode.Position;
             // The prompt waits for the welcome: it would take the toast down (question 22), and the name deserves its moment.
-            bool rainUp = !quiet && step == FirstRunStep.Rain && !rainArmed && !named;
+            bool rainUp = !quiet && step == FirstRunStep.Rain && !rainArmed && !named && !(Sim != null && Sim.EcologyOn); // P8: a held finger mists, no button
             if (rainBtn.Ready != rainUp) rainBtn.Ready = rainUp;
             bool skips = FeedbackUI.InTestBuild && !quiet && step != FirstRunStep.Card && step != FirstRunStep.Year && step != FirstRunStep.Arrive && !NameSheetOpen;
             skipRow.style.display = skips ? DisplayStyle.Flex : DisplayStyle.None;

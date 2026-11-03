@@ -43,7 +43,8 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RunAheadTests.cs" /><!-- #97 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CrowdNameTests.cs" /><!-- #148 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WorldLogicTests.cs" /><!-- #188, #147, #154, #160 -->
-    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- #243: the ecology layer -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- #243: the ecology layer -->
     <!-- #87: the save and the clock's decisions are pure C# on a JsonUtility shim, so their tests run here too -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/SaveStore.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/ClockLogic.cs" />

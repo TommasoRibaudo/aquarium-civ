@@ -80,7 +80,8 @@ namespace AquariumCiv.View
         {
             if (sim == null || !sim.EcologyOn || box == null) return false;
             hud ??= GameHud.Instance;
-            if (hud != null && (!hud.IsVisible || hud.CleanMode || hud.CameraMode || hud.SheetOpen)) return false;
+            // The first run hides the HUD until it's done, and its first mist is this gesture (#248): hidden only blocks outside it.
+            if (hud != null && ((!hud.IsVisible && !sim.State.firstRun.active) || hud.CleanMode || hud.CameraMode || hud.SheetOpen)) return false;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return false;
             var cards = PersonCardView.Instance;
