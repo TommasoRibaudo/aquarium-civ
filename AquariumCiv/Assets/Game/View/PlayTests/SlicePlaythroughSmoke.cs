@@ -414,6 +414,8 @@ namespace AquariumCiv.View.PlayTests
                 Step("eco first mist");
 
                 yield return new WaitForSecondsRealtime(1.5f);
+                yield return Shot("smoke_eco_after_mist");
+                Assert.AreEqual("name", Run.Run.Hint.id, "the Name it hint shows after the misting finger lifts (tester P8)");
                 yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-plate"));
                 yield return new WaitForSecondsRealtime(0.3f);
                 Assert.IsTrue(Run.NameSheetOpen, "a tap on the plate opens the naming sheet");
@@ -428,7 +430,7 @@ namespace AquariumCiv.View.PlayTests
                 EcoDebug.SkipSeasons(8);
                 Assert.AreEqual(before, Sim.State.buildings.Count, "no new tent before the camp gate");
                 EcoDebug.CampGate();
-                EcoDebug.SkipSeasons(16);
+                EcoDebug.SkipSeasons(48); // no fields before the village: the first new tent waits for the people to fill the old one
                 yield return Frames(30);
                 Assert.Greater(Sim.State.buildings.Count, before, "the tents go up after the camp gate");
                 yield return Shot("smoke_eco_camp");

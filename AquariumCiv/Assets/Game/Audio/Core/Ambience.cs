@@ -90,7 +90,7 @@ namespace AquariumCiv.Audio
                 birds = a.ecoBirds ? birds * (0.35f + 0.65f * Clamp01(life * 1.5f)) : 0f;
                 // Crickets come with the first green: at night as always, and a faint chirr by day until the birds take the day.
                 if (!a.ecoGreen) crickets = 0f;
-                else if (!a.ecoBirds && a.season != Season.Winter) crickets = Math.Max(crickets, 0.3f * day * Clamp01(life * 4f));
+                else if (!a.ecoBirds && a.season != Season.Winter) crickets = Math.Max(crickets, day * (0.18f + 0.17f * Clamp01(life * 4f))); // audible from the first green (tester: 0 by day)
                 if (a.ecoWater && a.season != Season.Winter) frogs = (0.25f + 0.75f * night) * (a.weather == Weather.Storm ? 0.3f : 1f);
             }
 

@@ -21,7 +21,7 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         public static EcoMistView Instance { get; private set; }
 
-        [Tooltip("A press that stays within the slop this long starts the mist (seconds).")] public float holdDelay = 0.3f;
+        [Tooltip("A press that stays within the slop this long starts the mist (seconds).")] public float holdDelay = 0.4f; // longer than a tap (GlassVoice.TapMaxSeconds 0.35): a hold never also opens a card
         [Tooltip("How far a finger may wander before the hold is a drag (share of screen height).")] public float slop = 0.02f;
         [Tooltip("The sim is told about the mist this often while it runs (seconds).")] public float pulseSeconds = 0.25f;
         [Tooltip("The box refreshes (rebuilds the greened chunk) this often while misting, and when it ends (seconds).")] public float refreshSeconds = 1.2f;
@@ -118,8 +118,7 @@ namespace AquariumCiv.View
             {
                 if ((pos - pressPos).magnitude > slop * Mathf.Max(1, Screen.height)) { pressT = float.PositiveInfinity; return; } // a drag: the camera's
                 if (now - pressT < holdDelay) return;
-                if (cards(pos)) { pressT = float.PositiveInfinity; return; }
-                misting = true; pulseT = pulseSeconds; refreshT = 0f;
+                misting = true; pulseT = pulseSeconds; refreshT = 0f; // on a person too: they get wet (tester: a hold there did nothing)
             }
             var bc = Cam; if (bc != null) bc.HoldOrbitUntil = now + 0.25f;
             if (!Ground(pos, out var at)) return;
@@ -128,7 +127,6 @@ namespace AquariumCiv.View
             if (pulseT >= pulseSeconds) { Pulse(sim, at, pulseT); pulseT = 0f; }
             if (refreshT >= refreshSeconds && dirty) { refreshT = 0f; dirty = false; box.Refresh(); }
 
-            static bool cards(Vector2 p) { var pc = PersonCardView.Instance; return pc != null && !pc.PickDoll(p).IsNone; } // a hold on a person isn't a mist
         }
 
         BoxCamera Cam => cam != null ? cam : cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
@@ -148,7 +146,14 @@ namespace AquariumCiv.View
             MistPulses++;
             LastMist = at;
             dirty = true;
-            if (greened > 0) AddBloom(at, Mathf.Sqrt(greened) * AquariumCiv.Sim.Settle.SiteMap.Cell * 0.6f + 0.05f);
+            if (greened > 0) AddBloom(at, Mathf.Max(0.32f, Mathf.Sqrt(greened) * AquariumCiv.Sim.Settle.SiteMap.Cell * 0.7f + 0.12f));
+            // The first mist of a box is its first answer (tester: too small at the default zoom): the camera leans in on it.
+            if (greened > 0 && !leaned && sim.State.firstRun.active)
+            {
+                leaned = true;
+                var bc = Cam;
+                if (bc != null && !bc.IsFlying) bc.FlyTo(box.transform.TransformPoint(at), 0.62f, 1.4f);
+            }
             // keepers-hands §2.1: every early mist gets an answer. Those near it stand in it, hands out and faces up; the
             // kids splash about (the rain's reaction, at the mist's spot). Once every couple of seconds while it runs.
             if (Time.unscaledTime - lastReact > 2f)
@@ -159,6 +164,7 @@ namespace AquariumCiv.View
         }
 
         float lastReact = -99f;
+        bool leaned;
         /// <summary>Times the people were asked to react to a mist (tests).</summary>
         public int Reactions { get; private set; }
 
@@ -181,14 +187,14 @@ namespace AquariumCiv.View
             main.loop = true; main.duration = 1f;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.15f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.11f);
             main.startColor = new Color(0.92f, 0.96f, 1f, 0.55f);
             main.gravityModifier = 0.08f;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
             main.maxParticles = 400;
-            var em = ps.emission; em.rateOverTime = 160f;
-            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 18f; sh.radius = 0.06f;
+            var em = ps.emission; em.rateOverTime = 220f;
+            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 22f; sh.radius = 0.12f;
             sh.rotation = new Vector3(90f, 0f, 0f); // pointing down
             var col = ps.colorOverLifetime; col.enabled = true;
             var g = new Gradient();
@@ -216,7 +222,7 @@ namespace AquariumCiv.View
             blooms.Add(new Bloom { at = at, radius = radius, go = go, mesh = new Mesh { name = "Bloom" } });
         }
 
-        const float BloomGrow = 0.8f, BloomLife = 3.5f;
+        const float BloomGrow = 1.2f, BloomLife = 4.5f;
 
         void Grow(float dt)
         {

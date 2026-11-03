@@ -5,7 +5,7 @@ using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
-    public enum HintGesture { None, Wipe, Flick, Tap }
+    public enum HintGesture { None, Wipe, Flick, Tap, Hold }
     public enum HintAnchor { None, Glass, Patch, Plate, ShapingButton, RainSpot }
     /// <summary>One-off moments the view stages (a child's smiley in the mist).</summary>
     public enum FirstRunCue { None, ChildSmiley }
@@ -91,7 +91,8 @@ namespace AquariumCiv.Sim
             {
                 // P8 (keepers-hands §2.1): a barren box. Nothing has grown yet, so there is no patch to flick; the first mist
                 // falls next to the camp, where the people will see it.
-                f.rainX = ClampX(spec.centreX - dx * 0.75f); f.rainZ = ClampZ(spec.centreZ - dz * 0.75f);
+                // Out past the people round the fire (tester: the finger sat on them), still in plain view of the camp.
+                f.rainX = ClampX(spec.centreX - dx * 1.15f + dz * 0.25f); f.rainZ = ClampZ(spec.centreZ - dz * 1.15f - dx * 0.25f);
             }
             s.firstRun = f;
             s.grime = Math.Max(s.grime, StartGrime);
@@ -154,14 +155,17 @@ namespace AquariumCiv.Sim
             if (Step == FirstRunStep.Name && f.untouchedSeconds >= NameAutoKeepSeconds) KeepName(null);
         }
 
+        bool liftedSinceStep = true;
+
         void UpdateHint(float dt, bool touching)
         {
             var f = F;
+            if (!touching) liftedSinceStep = true;
             if (!HasHint(Step)) { f.hintPhase = 0; return; }
             switch (f.hintPhase)
             {
                 case 0: if (f.stepSeconds >= HintDelaySeconds) f.hintPhase = 1; break;
-                case 1: if (touching) { f.hintPhase = 2; f.hintIdle = 0; } break;
+                case 1: if (touching && liftedSinceStep) { f.hintPhase = 2; f.hintIdle = 0; } break; // a finger still down from the last step doesn't count (tester: the hold that misted hid "Name it")
                 case 2:
                     if (touching) { f.hintIdle = 0; break; }
                     f.hintIdle += dt;
@@ -210,7 +214,7 @@ namespace AquariumCiv.Sim
         };
 
         /// <summary>P8: the first mist. A held finger on the land, next to the camp (no tray, no button).</summary>
-        public static readonly FirstRunHint MistHint = new FirstRunHint { visible = true, id = "mist-hold", text = "Hold to mist", gesture = HintGesture.Tap, anchor = HintAnchor.RainSpot };
+        public static readonly FirstRunHint MistHint = new FirstRunHint { visible = true, id = "mist-hold", text = "Hold to mist", gesture = HintGesture.Hold, anchor = HintAnchor.RainSpot };
 
         /// <summary>The living land's run (P8): no time skip (the user, 2026-11-02), so the year and its card go; the name
         /// comes after the first green, when there's something to name.</summary>
@@ -271,6 +275,7 @@ namespace AquariumCiv.Sim
             else f.step++;
             if (f.shortRun && !sim.EcologyOn) while (Step is FirstRunStep.Name or FirstRunStep.Year or FirstRunStep.Card) f.step++; // §9: named on its plate, no year, no card for it
             f.stepSeconds = 0; f.untouchedSeconds = 0; f.hintPhase = 0; f.hintReturns = 0; f.hintIdle = 0; f.hintSubstep = false;
+            liftedSinceStep = false;
             if (Step == FirstRunStep.Rain && !sim.EcologyOn) RaiseRainWish(); // P8: the land asks, not a person
             if (Step == FirstRunStep.Year) BeginYear();
             if (Step == FirstRunStep.Done) { f.active = false; sim.CardsSeenToNow(); }

@@ -231,6 +231,7 @@ namespace AquariumCiv.View
 
         // ---------------- the water table in the soil cut (keepers-hands §5.2, #245) ----------------
         MeshFilter tableFilter;
+        const float WetFringe = 0.14f;
         int tableKey = int.MinValue;
 
         /// <summary>The table's level as drawn, in steps of 2 mm of height (the band is rebuilt only when it moves a step).</summary>
@@ -255,7 +256,7 @@ namespace AquariumCiv.View
                     var a = Vector2.Lerp(p0, p1, s / (float)segs); var b = Vector2.Lerp(p0, p1, (s + 1) / (float)segs);
                     float[] la = Layers(a), lb = Layers(b);
                     float ta = Mathf.Min(y, la[4] - 0.004f), tb = Mathf.Min(y, lb[4] - 0.004f);
-                    float ba = la[1], bb = lb[1];
+                    float ba = Mathf.Max(la[1], ta - WetFringe), bb = Mathf.Max(lb[1], tb - WetFringe); // a wet fringe under the line, not a slab (tester)
                     if (ta <= ba + 0.002f && tb <= bb + 0.002f) continue;
                     ta = Mathf.Max(ta, ba); tb = Mathf.Max(tb, bb);
                     Vector3 A(float h) => new Vector3(a.x, h, a.y) + o;

@@ -38,6 +38,37 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheNameHintShowsAfterTheMistingFingerLifts()
+        {
+            var cfg = new SimConfig { ecology = true };
+            var sim = new SimCore(cfg, SimCore.NewWorld(7, cfg));
+            var run = FirstRun.Begin(sim);
+            run.DebugSkipTo(FirstRunStep.Rain);
+            var (x, z) = run.SuggestedRainSpot;
+            sim.Mist(x, z, 2f);
+            run.Tick(0.1f, true);                       // the finger that misted is still down
+            Assert.AreEqual(FirstRunStep.Name, run.Step);
+            for (int i = 0; i < 20; i++) run.Tick(0.1f, true);
+            for (int i = 0; i < 20; i++) run.Tick(0.1f, false); // lifted
+            Assert.AreEqual("name", run.Hint.id, "Name it shows (tester P8: the held finger used it up)");
+            Assert.AreEqual(HintGesture.Hold, FirstRun.MistHint.gesture, "the mist hint shows a hold, not a tap");
+        }
+
+        [Test]
+        public void TheCampRaisesNoFieldsOrMillOnABareLand()
+        {
+            var cfg = new SimConfig { ecology = true };
+            var sim = new SimCore(cfg, SimCore.NewWorld(7, cfg));
+            sim.DebugOpenCampGate();
+            for (int m = 0; m < 12 * 12; m++) { sim.Step(); if (sim.State.eraReady) break; }
+            int farms = 0, mills = 0;
+            foreach (var b in sim.State.buildings) { if (b.type == BuildingType.Farm) farms++; if (b.type == BuildingType.Lumbermill) mills++; }
+            Assert.That(sim.State.buildings.Count, Is.GreaterThan(2), "tents went up after the gate");
+            Assert.AreEqual(0, farms, "no fields before the village gate (tester P8)");
+            if (sim.State.eco.cTrees < cfg.eco.villageTrees / 2) Assert.AreEqual(0, mills, "no lumber mill without a wood to cut");
+        }
+
+        [Test]
         public void SkippingTheMistStepMistsForThePlayer()
         {
             var cfg = new SimConfig { ecology = true };

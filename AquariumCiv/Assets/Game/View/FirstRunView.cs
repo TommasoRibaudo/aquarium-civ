@@ -778,6 +778,15 @@ namespace AquariumCiv.View
                     if (k > 0.5f) alpha = 0f;
                     break;
                 }
+                case HintGesture.Hold: // P8: press and stay down while the mist's ring grows, then lift
+                {
+                    float press = Mathf.Clamp01(k / 0.12f) * (1f - Mathf.Clamp01((k - 0.82f) / 0.1f));
+                    scale = 1f - 0.2f * press;
+                    ghostRing.style.opacity = press * Mathf.Clamp01((k - 0.15f) / 0.6f);
+                    float ring = 0.6f + 0.8f * Mathf.Clamp01((k - 0.15f) / 0.67f);
+                    ghostRing.style.scale = new Scale(new Vector3(ring, ring, 1f));
+                    break;
+                }
                 default: // tap: press, release, ring
                 {
                     float press = Mathf.Clamp01(k / 0.2f) * (1f - Mathf.Clamp01((k - 0.35f) / 0.15f));
@@ -786,7 +795,8 @@ namespace AquariumCiv.View
                     break;
                 }
             }
-            if (h.gesture != HintGesture.Tap) ghostRing.style.opacity = 0f;
+            if (h.gesture != HintGesture.Tap && h.gesture != HintGesture.Hold) ghostRing.style.opacity = 0f;
+            if (h.gesture != HintGesture.Hold) ghostRing.style.scale = new Scale(Vector3.one);
             ghost.style.display = DisplayStyle.Flex;
             // The finger taps the rain button's middle (tester run 7), and the button says the words; on the blank plate it sits in the middle too.
             bool onRain = h.anchor == HintAnchor.ShapingButton;
