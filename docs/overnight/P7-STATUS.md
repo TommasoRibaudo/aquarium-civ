@@ -10,7 +10,7 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - [x] #224 merged (open for the user's look sign-off)
 - [x] #225 merged, closed
 - [x] Full EditMode suite + `SlicePlaythroughSmoke` green on `p7/dilemmas`; dilemmas off = the slice is unchanged
-- [ ] Self-play done, screenshots looked at
+- [x] Self-play done, screenshots looked at
 - [ ] Tester run; [real] findings fixed; [polish] listed
 - [ ] `P7.md` results + the human test steps + the build command
 - [ ] PR `p7/dilemmas` → `dev`, CI green, merged (the feature is off by default)
@@ -27,3 +27,4 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - 18:26 #224 merged 565513c. Batch on it: Sim 635/637, Life 200/202 (camp_fire now needs an elder chief: test fixed, dotnet 9/9), Cards 45/45, ChoiceScene 4/4, DilemmaCard 3/3, Smoke 1/1. #231 era-words merged. User: P7 keeps the Editor till done; P8 waits. Next: Editor worker for #225 + #231 phase 2.
 - 19:55 #225 ph2 + #231 ph2 merged ad86052 (cheats, telemetry wiring, ×60 lab clock, recall prompt; apart camps drawn). Worker saw Smoke + 2 ChoiceScene PlayMode fails also on 9c999e2 (suspects unfocused Editor). Editor restarted; full batch running with Unity focused. Survey Q4/Q6 have no in-game form (open question).
 - 20:27 50bed20: suite green on p7/dilemmas with dilemmas off (default): Sim 635/637, Life 207/207, Cards 45/45, Smoke 1/1, ChoiceScene 4/4 (3 test-timing fixes), DilemmaCard 3/3, ApartGroups 4/4, DilemmaCheats 1/1; dotnet 1118. #225, #231 closed. Next: self-play.
+- 20:54 self-play (P7SelfPlayTests, real Slice, fresh box, first run kept, lab schedule, month-by-month to the village): no dilemma in first run, 0 wish+dilemma overlaps; camp_travellers answered on card by touch (y3.1), camp_winter in box by touch (y6.8), village_harvest lapsed (y11.1), callback by the clock. Shots looked at. Polish: bar truncates 'The Keeper chose the…'; callback headline repeats the body's opening; same placeholder icon both options. Question: a dilemma raised while watching shows only the history dot (stack opens on return ≥0.25 h) — lab at ×60 may miss it. Next: restart Editor, tester (#226).
