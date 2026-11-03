@@ -68,6 +68,17 @@ namespace AquariumCiv.Sim.Replay
         public float liveShare;
         /// <summary>The year to draw as the settled box: the nearer one.</summary>
         public BoxAtYear Nearest => blend < 0.5f ? a : b;
+        /// <summary>#287: the living land between the two years, to draw and fade by <see cref="blend"/>. Null when neither year has land
+        /// records (ecology off, or a box saved before them: it plays as before). If only one has, that one holds still.</summary>
+        public LandBlend Land
+        {
+            get
+            {
+                var la = a?.land; var lb = b?.land;
+                if (la == null && lb == null) return null;
+                return new LandBlend { A = la ?? lb, B = lb ?? la, t = la == null || lb == null ? 0f : blend };
+            }
+        }
     }
 
     /// <summary>
