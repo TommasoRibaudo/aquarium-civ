@@ -56,3 +56,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 18:50 · running: #288 agent aa18817aba416ed2b resumed to merge p8/polish (EcoState conflicts) + fix metas.
 - 18:50 · running: item 8 phase 1 (#282 rabbits sim) Sonnet a4a935b344f8b5417, wt/282 vs/282-rabbits.
 - 18:50 · running: item 14 phase A (#246/#248/#249 check + fire to first green) Opus a03318bf658dcd2c7, wt/246 vs/246-248-249-leftovers.
+- 19:10 · #288 phase 1 merged (e321875), dotnet 1203/1203. Unity save round-trip of new EcoState fields unchecked → next Editor batch (EcoTests). Phase 2 = lane B item 11.
+- 19:30 · #282 phase 1 merged (79092a9, conflict in SimCore.Eco.cs EcoTell resolved by me), dotnet 1217/1217.
