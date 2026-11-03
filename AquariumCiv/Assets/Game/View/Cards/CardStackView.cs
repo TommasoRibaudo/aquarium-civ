@@ -59,7 +59,7 @@ namespace AquariumCiv.View
         CardStackModel model;
         Rect lastSafe;
         Vector2Int lastScreen;
-        bool personOpen, watchingFlight, pressedLast, toolsHidden, peekUp, tight, showingPlace, barUp;
+        bool personOpen, watchingFlight, pressedLast, toolsHidden, peekUp, tight, showingPlace, barUp, choiceUp;
         Vector2 swipeFrom;
         int swipePointer = -1;
         bool swipeInScroll;
@@ -68,6 +68,12 @@ namespace AquariumCiv.View
 
         public CardStackModel Model => model;
         public VisualElement Root => root;
+        /// <summary>#224: the choice scene is on screen for this card (the sheet is down, the bar is up): its touches answer.</summary>
+        public bool ShowingChoice => choiceUp && showingPlace;
+        /// <summary>The choice scene holds the bar up while it waits or reacts (#224).</summary>
+        bool ChoiceHolds => choiceUp && ChoiceSceneView.Instance != null && ChoiceSceneView.Instance.Holding;
+        /// <summary>The bar's second line while the people wait on a touch (#224).</summary>
+        public const string ChoiceNote = "Touch one.";
         /// <summary>The peek or the stack is up: prompts over the world wait (MomentPlayer.PromptsBlocked).</summary>
         public bool Showing => model != null && model.Mode != CardStackMode.Hidden;
 
@@ -209,7 +215,8 @@ namespace AquariumCiv.View
             if (hud != null) hud.SetHistoryDot(dot && model.Mode == CardStackMode.Hidden); // spec §4: after a swipe, never beside the peek
             bool covered = model == null || Covered();
             bool open = model != null && model.Mode == CardStackMode.Open, peeking = model != null && model.Mode == CardStackMode.Peek;
-            if (showingPlace && (!open || ShowMeDirector.Instance == null || ShowMeDirector.Instance.Settled)) showingPlace = false;
+            if (showingPlace && (!open || (!ChoiceHolds && (ShowMeDirector.Instance == null || ShowMeDirector.Instance.Settled)))) showingPlace = false;
+            if (!showingPlace) choiceUp = false;
             ShowSheet(open && !covered && !showingPlace);
             ShowBar(open && !covered && showingPlace);
             ShowPeek(peeking && !covered);
@@ -407,6 +414,16 @@ namespace AquariumCiv.View
         /// tap (the scene flies in and the card waits behind it); false, or no hook, and Show me frames the two people or places as before.</summary>
         public static System.Func<DilemmaView, bool> DilemmaShowMeHook;
 
+        /// <summary>#224: answered by a touch in the box: the bar says what the Keeper chose while the people react; the card comes back
+        /// after, answered.</summary>
+        public void ChoiceAnswered()
+        {
+            var f = model?.Face;
+            var v = f?.dilemma;
+            if (v == null || f.dilemmaChosen < 0 || f.dilemmaChosen >= v.options.Length) return;
+            showBar.Set($"The Keeper chose {v.options[f.dilemmaChosen].label}.", null);
+        }
+
         void AnswerDilemma(int option)
         {
             if (model == null || !model.AnswerDilemma(option)) return; // Changed redraws: the chosen face lifts, the other dims
@@ -556,7 +573,15 @@ namespace AquariumCiv.View
 
         void ShowMe()
         {
-            if (model != null && model.DilemmaShowMe()) return; // the choice scene (#224) took it
+            if (model != null && model.DilemmaShowMe())
+            {
+                // The choice scene (#224) took it: the sheet slides off so the people can be touched, the bar keeps the ask.
+                showBar.Set(ChoiceNote, null); // the ask itself is said in the box, by the one who asks
+                showingPlace = true;
+                choiceUp = true;
+                return;
+            }
+            choiceUp = false;
             var shown = model?.ShowMe();
             var sm = ShowMeDirector.Instance;
             if (sm == null || model == null) return;
