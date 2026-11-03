@@ -75,6 +75,7 @@ namespace AquariumCiv.Game
             SavePath = DefaultSavePath;
             int seed = DebugNextSeed != 0 ? DebugNextSeed : new System.Random().Next(1, int.MaxValue);
             DebugNextSeed = 0; // one box only
+            LoadLabSwitches();
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, seed);
             startMs = sw.Elapsed.TotalMilliseconds;
@@ -295,6 +296,7 @@ namespace AquariumCiv.Game
             if (c == null) return "no GameClock running";
             c.config.dilemmas = on;
             c.Telemetry?.SetVariant(DilemmaSurvey.VariantOf(on));
+            SaveLabSwitch(DilemmasKey, on);
             return c.DilemmaStatus();
         }
 
@@ -307,7 +309,24 @@ namespace AquariumCiv.Game
             c.config.dilemmaLab = on;
             c.speed = on ? LabSpeed : 1f;
             if (c.ActiveSim != null && c.ActiveSim.OpenDilemma == null) c.ActiveSim.State.dilemmaNextMonth = -1;
+            SaveLabSwitch(LabKey, on);
             return c.DilemmaStatus();
+        }
+
+        // The P7 switches outlast an app restart in a player build (the 3-day diary keeps B through iOS killing the app). Never in the
+        // Editor: play tests toggle them and must not leak into the next test's box.
+        const string DilemmasKey = "p7.dilemmas", LabKey = "p7.lab";
+        static void SaveLabSwitch(string key, bool on)
+        {
+            if (Application.isEditor) return;
+            PlayerPrefs.SetInt(key, on ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+        void LoadLabSwitches()
+        {
+            if (Application.isEditor) return;
+            if (PlayerPrefs.GetInt(DilemmasKey, 0) == 1) config.dilemmas = true;
+            if (PlayerPrefs.GetInt(LabKey, 0) == 1) { config.dilemmaLab = true; speed = LabSpeed; }
         }
 
         public string DilemmaStatus() => string.Format(CultureInfo.InvariantCulture, "dilemmas {0} (variant {1}) · {2} · clock x{3:0} · next due month {4} (now {5})",
