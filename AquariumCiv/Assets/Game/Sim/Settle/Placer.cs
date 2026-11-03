@@ -302,6 +302,7 @@ namespace AquariumCiv.Sim.Settle
             foreach (int k in cells)
             {
                 if (map.Water(k)) return "water";
+                if (map.NoBuild(k)) return "flood"; // below the ecology's flood line (Sim/Eco)
                 if (map.CommonsAt(k) || map.YardAt(k)) return "commons";
                 if (map.ring[k] != 0 && map.ring[k] != c.yard) return "family";
                 if (map.lot[k] != 0) return "lot";

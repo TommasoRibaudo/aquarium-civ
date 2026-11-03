@@ -107,6 +107,7 @@ namespace AquariumCiv.Sim
                 settle = new Settle.SettleState { terrain = terrainPreset }, // the setting's land (#115); 0 = the config's
             };
             var core = new SimCore(config, s);
+            if (config.ecology) core.StartEcology(); // the next box starts barren too (SimCore.Eco.cs)
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
             var crossed = old.founderIds.Select(from.FindNotable).Where(n => n != null && n.alive).ToList();

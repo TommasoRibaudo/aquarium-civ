@@ -286,7 +286,7 @@ namespace AquariumCiv.Sim.Settle
             const byte blockFlags = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FLaid | SiteMap.FRock;
             for (int c = 0; c < SiteMap.N; c++)
             {
-                bool blocked = map.lot[c] != 0 || map.pond[c] || (map.flags[c] & blockFlags) != 0 || map.ring[c] != 0
+                bool blocked = map.lot[c] != 0 || map.pond[c] || map.NoBuild(c) || (map.flags[c] & blockFlags) != 0 || map.ring[c] != 0
                                || map.tier[c] >= PathNet.PathTier
                                || MathF.Abs(SiteMap.CXc(c)) > mx || MathF.Abs(SiteMap.CZc(c)) > mz;
                 clear[c] = blocked ? 0f : 99f;
@@ -357,7 +357,7 @@ namespace AquariumCiv.Sim.Settle
             SiteMap.RectCells(x, z, 0f, r * 1.6f, r * 1.6f, 0f, cells);
             const byte blockFlags = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
             foreach (int c in cells)
-                if (map.pond[c] || (map.flags[c] & blockFlags) != 0 || map.ring[c] != 0 || map.lot[c] != 0 || map.slope[c] > 0.5f) return false;
+                if (map.pond[c] || map.NoBuild(c) || (map.flags[c] & blockFlags) != 0 || map.ring[c] != 0 || map.lot[c] != 0 || map.slope[c] > 0.5f) return false;
             return true;
         }
 
@@ -492,6 +492,7 @@ namespace AquariumCiv.Sim.Settle
             foreach (int q in cells)
             {
                 if (map.Water(q)) return "water";
+                if (map.NoBuild(q)) return "flood";
                 if (map.CommonsAt(q) || map.YardAt(q) || map.Green(q) || map.Rock(q)) return "commons";
                 if (map.ring[q] != 0 && map.ring[q] != k.id) return "family";
                 if (map.lot[q] != 0) return "lot";
