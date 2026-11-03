@@ -30,7 +30,7 @@ namespace AquariumCiv.View
     /// </para>
     /// </summary>
     [ExecuteAlways]
-    public class BoxView : MonoBehaviour
+    public partial class BoxView : MonoBehaviour
     {
         public Land land = new();
         /// <summary>Filled by an <see cref="IBoxLayoutSource"/> on enable and on <see cref="Refresh"/> (not saved with the
@@ -66,6 +66,10 @@ namespace AquariumCiv.View
         const int AoLayer = 2; // Ignore Raycast: the AO colliders stay out of everyone else's raycasts
 
         Transform root, peopleRoot;
+        MeshFilter waterFilter;
+        uint waterHash;
+        /// <summary>P8: the layout carries the living land (cover, the pond, the Keeper's tree): see BoxView.Eco.cs.</summary>
+        bool Eco => layout.eco.on;
         /// <summary>The land's natural colours (#115). Read on the chunk workers; set with the land.</summary>
         LandColors Co => land.Colors;
         readonly List<Material> panes = new();
@@ -206,7 +210,7 @@ namespace AquariumCiv.View
             Reserve();
 
             var bm = new MeshBuilder(seed);
-            PondRim(bm);
+            if (!Eco) PondRim(bm); // P8: the living land's pond rises and spreads; it gets no fixed rim
             Substrate(bm);
             var fm = new MeshBuilder(seed + 1);
             BoxAndRoom(bm, fm);
@@ -239,7 +243,8 @@ namespace AquariumCiv.View
                 BakeAO(all);
                 aoMs = t.Elapsed.TotalMilliseconds;
             }
-            Spawn("Water", WaterMesh(), water != null ? water : Solid, false);
+            waterFilter = Spawn("Water", Eco ? EcoWaterMesh() : WaterMesh(), water != null ? water : Solid, false).GetComponent<MeshFilter>();
+            waterHash = Eco ? layout.eco.WaterHash() : 0;
             Glows();
             SyncPeople();
             Glass();
@@ -281,6 +286,7 @@ namespace AquariumCiv.View
             PickChunks(deferAO ? ScrubChunksPerFrame : ChunkCount);
             double prepMs = sw.Elapsed.TotalMilliseconds;
             RebuildChunks(sw, out double buildMs, out double meshMs, out double aoMs);
+            if (Eco && layout.eco.WaterHash() != waterHash) RefreshEcoWater();
             Glows();
             int made = SyncPeople();
             lastRefreshMs = sw.Elapsed.TotalMilliseconds;
@@ -521,6 +527,12 @@ namespace AquariumCiv.View
             g.Add(seed); g.Add(NX); g.Add(NZ); g.Add(layout.autoNature); g.Add(layout.autoTrees); g.Add(layout.natureDensity);
             g.Add(layout.reeds); g.Add(bakeAO); g.Add(aoRays); g.Add(aoDistance);
             for (int k = 0; k < ChunkCount; k++) h[k] = g.h + (uint)k;
+            if (Eco)
+                for (int k = 0; k < ChunkCount; k++)
+                {
+                    ChunkBounds(k, out float ex0, out float ex1, out float ez0, out float ez1);
+                    unchecked { h[k] = (h[k] ^ layout.eco.HashRect(ex0 - 0.25f, ex1 + 0.25f, ez0 - 0.25f, ez1 + 0.25f)) * 16777619u; }
+                }
             foreach (var p in layout.pieces)
             {
                 var e = Hash.New();
@@ -579,6 +591,7 @@ namespace AquariumCiv.View
         {
             var e = Hash.New();
             e.Add(land.preset); e.Add(land.mirror); e.Add(land.noiseOffset); e.Add(land.pond); e.Add(land.centre); e.Add(seed); e.Add(NX); e.Add(NZ);
+            e.Add(layout.eco.on); // P8: the living land swaps the base (no fixed pond rim): switching it rebuilds the box
             return e.h;
         }
 
@@ -609,7 +622,7 @@ namespace AquariumCiv.View
                 }
         }
 
-        float ShoreSD(float x, float z) => Sample(shoreField, x, z, ShoreRange);
+        float ShoreSD(float x, float z) => Eco ? EcoShoreSD(x, z) : Sample(shoreField, x, z, ShoreRange);
 
         /// <summary>Stamps every path (by tier) and canal into distance grids, so painting the ground and finding free
         /// spots don't walk every polyline for every triangle.</summary>
@@ -735,7 +748,7 @@ namespace AquariumCiv.View
         /// <summary>Open ground for a small prop here (not water, a path, a field, a building or a tree)? For the care layer's weeds (#37).</summary>
         public bool FreeForProp(Vector2 p, float r) => Free(p, r, taken);
 
-        public bool InPond(Vector2 p) => shore != null && InPolygon(shore, p);
+        public bool InPond(Vector2 p) => Eco ? layout.eco.WaterCell(Sim.Settle.SiteMap.CellAt(p.x, p.y)) : shore != null && InPolygon(shore, p);
 
         /// <summary>Signed distance to the shoreline: negative in the pond.</summary>
         public float ShoreDistance(Vector2 p)
@@ -817,11 +830,20 @@ namespace AquariumCiv.View
             glowAmount = 0f;
             var p = new Vector2(x, z);
             var co = Co;
-            float sd = ShoreSD(x, z);
-            if (sd < 0f) return y < Land.WaterY - 0.06f ? co.pondBed : Color.Lerp(co.sandWet, co.pondBed, Mathf.Clamp01(-sd / 0.12f));
-            if (sd < 0.05f) return co.sand;
             float n = Land.Fbm(x * 1.4f, z * 1.4f + 5f);
-            var col = Grass(n, y);
+            Color col;
+            if (Eco)
+            {
+                if (EcoPondBed(x, z, y, out var bed)) return bed;
+                col = EcoGround(x, z, y, n);
+            }
+            else
+            {
+                float sd = ShoreSD(x, z);
+                if (sd < 0f) return y < Land.WaterY - 0.06f ? co.pondBed : Color.Lerp(co.sandWet, co.pondBed, Mathf.Clamp01(-sd / 0.12f));
+                if (sd < 0.05f) return co.sand;
+                col = Grass(n, y);
+            }
             bool painted = false;
 
             foreach (var c in layout.clearings)
@@ -873,7 +895,7 @@ namespace AquariumCiv.View
                 if (d >= w) continue;
                 col = (PathTier)t switch
                 {
-                    PathTier.Trail => Color.Lerp(Grass(n, y), co.dirt, 0.6f),
+                    PathTier.Trail => Color.Lerp(Eco ? EcoGround(x, z, y, n) : Grass(n, y), co.dirt, 0.6f),
                     PathTier.Road => Cobble(x, z, n),
                     _ => Color.Lerp(co.path, co.dirt, (n - 0.4f) * 0.5f),
                 };
@@ -1196,6 +1218,7 @@ namespace AquariumCiv.View
                     Pieces.Boulder(bb, land.OnGround(b.pos), b, co);
                     mb.AppendFree(bb);
                 }
+            if (Eco) { EcoNature(mb, k, near); return; } // P8: what grows comes from the sim's cover, cell by cell
             if (layout.reeds)
                 for (int i = 0; i < reedSpots.Count; i++)
                 {

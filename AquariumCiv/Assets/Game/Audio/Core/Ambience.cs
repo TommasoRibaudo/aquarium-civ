@@ -15,25 +15,36 @@ namespace AquariumCiv.Audio
         public float mess01;      // 0 clean .. 1 the worst the box gets (grime/overgrowth/trash, whichever is worst)
         public bool inMoment;     // an era moment plays: the ambience thins so the moment's cues carry
         public bool festival;     // a festival evening: the crickets give way to the people (the fiddle cue carries it)
+        // P8, the living land (keepers-hands §2.1, #247): the barren bed follows the bare share of the land; the life
+        // sounds come in as the land earns them (crickets with the first green, birds with the first bird, frogs once
+        // the water surfaces). Off (eco false) the mix is the slice's.
+        public bool eco;
+        public float bare01;      // the share of the land still bare, 0..1 (the view keeps its lowest: it never comes back)
+        public bool ecoGreen, ecoBirds, ecoWater;
     }
 
     /// <summary>The six ambience layers' levels, 0..1 of each layer's cue volume.</summary>
     public struct AmbienceLevels
     {
-        public float calm, birds, crickets, rain, wind, flies;
+        public float calm, birds, crickets, rain, wind, flies, barren, frogs;
 
-        public float this[int i] => i switch { 0 => calm, 1 => birds, 2 => crickets, 3 => rain, 4 => wind, _ => flies };
+        public float this[int i] => i switch { 0 => calm, 1 => birds, 2 => crickets, 3 => rain, 4 => wind, 5 => flies, 6 => barren, _ => frogs };
         public static readonly string[] CueIds =
-            { CueLibrary.AmbCalm, CueLibrary.AmbBirds, CueLibrary.AmbCrickets, CueLibrary.AmbRain, CueLibrary.AmbWind, CueLibrary.AmbFlies };
-        public const int Count = 6;
+            { CueLibrary.AmbCalm, CueLibrary.AmbBirds, CueLibrary.AmbCrickets, CueLibrary.AmbRain, CueLibrary.AmbWind, CueLibrary.AmbFlies,
+              CueLibrary.AmbBarren, CueLibrary.AmbFrogs };
+        public const int Count = 8;
 
         public void Set(int i, float v)
         {
-            switch (i) { case 0: calm = v; break; case 1: birds = v; break; case 2: crickets = v; break; case 3: rain = v; break; case 4: wind = v; break; default: flies = v; break; }
+            switch (i)
+            {
+                case 0: calm = v; break; case 1: birds = v; break; case 2: crickets = v; break; case 3: rain = v; break; case 4: wind = v; break;
+                case 5: flies = v; break; case 6: barren = v; break; default: frogs = v; break;
+            }
         }
 
         public override string ToString() =>
-            $"calm {calm:0.00} birds {birds:0.00} crickets {crickets:0.00} rain {rain:0.00} wind {wind:0.00} flies {flies:0.00}";
+            $"calm {calm:0.00} birds {birds:0.00} crickets {crickets:0.00} rain {rain:0.00} wind {wind:0.00} flies {flies:0.00} barren {barren:0.00} frogs {frogs:0.00}";
     }
 
     /// <summary>
@@ -67,8 +78,24 @@ namespace AquariumCiv.Audio
             if (a.season == Season.Winter) flies *= 0.5f;
             flies *= 0.6f + 0.4f * day; // a little quieter at night
 
-            var l = new AmbienceLevels { calm = calm, birds = birds, crickets = crickets, rain = rain, wind = wind, flies = flies };
-            if (a.inMoment) { l.calm *= 0.6f; l.birds *= 0.4f; l.crickets *= 0.4f; l.rain *= 0.7f; l.wind *= 0.6f; l.flies *= 0.3f; }
+            float barren = 0f, frogs = 0f;
+            if (a.eco)
+            {
+                float bare = Clamp01(a.bare01);
+                // The barren bed: full on a dead box, eased out as the green takes over; quieter at night, gone below 15 % bare.
+                float u = Clamp01((bare - BarrenGoneBelow) / (1f - BarrenGoneBelow));
+                barren = u * u * (3f - 2f * u) * (0.75f + 0.25f * day);
+                calm *= 1f - 0.5f * barren;                      // the dry wind carries the room on a dead box
+                float life = 1f - bare;
+                birds = a.ecoBirds ? birds * (0.35f + 0.65f * Clamp01(life * 1.5f)) : 0f;
+                // Crickets come with the first green: at night as always, and a faint chirr by day until the birds take the day.
+                if (!a.ecoGreen) crickets = 0f;
+                else if (!a.ecoBirds && a.season != Season.Winter) crickets = Math.Max(crickets, 0.3f * day * Clamp01(life * 4f));
+                if (a.ecoWater && a.season != Season.Winter) frogs = (0.25f + 0.75f * night) * (a.weather == Weather.Storm ? 0.3f : 1f);
+            }
+
+            var l = new AmbienceLevels { calm = calm, birds = birds, crickets = crickets, rain = rain, wind = wind, flies = flies, barren = barren, frogs = frogs };
+            if (a.inMoment) { l.calm *= 0.6f; l.birds *= 0.4f; l.crickets *= 0.4f; l.rain *= 0.7f; l.wind *= 0.6f; l.flies *= 0.3f; l.barren *= 0.4f; l.frogs *= 0.4f; }
             return l;
         }
 
@@ -76,6 +103,9 @@ namespace AquariumCiv.Audio
         // after the evening. Crickets: the mirror, starting in the evening.
         static readonly float[] DayCurve = { 0f, 0f, 4.5f, 0f, 6f, 1f, 8f, 0.8f, 12f, 0.5f, 16f, 0.65f, 19f, 0.3f, 20.5f, 0f, 24f, 0f };
         static readonly float[] NightCurve = { 0f, 1f, 4.5f, 1f, 6f, 0f, 18f, 0f, 20.5f, 1f, 24f, 1f };
+
+        /// <summary>P8: below this share of bare land the barren bed is silent [est].</summary>
+        public const float BarrenGoneBelow = 0.15f;
 
         /// <summary>Below this much mess there are no flies at all [est].</summary>
         public const float FliesFrom = 0.15f;

@@ -282,6 +282,55 @@ namespace AquariumCiv.Audio.Tests
             Assert.That(AmbienceLevels.CueIds.Length, Is.EqualTo(AmbienceLevels.Count));
         }
 
+        static AmbienceInput Eco(float hour, float bare, bool green = false, bool birds = false, bool water = false)
+        {
+            var a = At(hour); a.eco = true; a.bare01 = bare; a.ecoGreen = green; a.ecoBirds = birds; a.ecoWater = water;
+            return a;
+        }
+
+        [Test]
+        public void BarrenBedFadesAsTheLandGreens()
+        {
+            Assert.That(Ambience.Targets(At(10f)).barren, Is.EqualTo(0f), "the slice (no living land): no barren bed");
+            Assert.That(Ambience.Targets(At(23f)).frogs, Is.EqualTo(0f), "... and no frogs");
+            var dead = Ambience.Targets(Eco(10f, 1f));
+            Assert.That(dead.barren, Is.GreaterThan(0.9f), "a dead box: the barren bed full");
+            Assert.That(dead.birds, Is.EqualTo(0f), "no birds before the first bird");
+            Assert.That(dead.crickets, Is.EqualTo(0f), "no crickets before the first green");
+            Assert.That(Ambience.Targets(Eco(23f, 1f)).crickets, Is.EqualTo(0f), "not even at night");
+            Assert.That(dead.calm, Is.LessThan(Ambience.Targets(At(10f)).calm), "the dry wind carries the room");
+            float prev = 2f;
+            for (float b = 1f; b >= 0f; b -= 0.05f)
+            {
+                float v = Ambience.Targets(Eco(10f, b, true)).barren;
+                Assert.That(v, Is.LessThanOrEqualTo(prev + 1e-5f), "it only fades as the bare share falls");
+                prev = v;
+            }
+            Assert.That(Ambience.Targets(Eco(10f, Ambience.BarrenGoneBelow)).barren, Is.EqualTo(0f), "gone below the threshold");
+            Assert.That(Ambience.Targets(Eco(23f, 1f)).barren, Is.LessThan(dead.barren), "quieter at night");
+        }
+
+        [Test]
+        public void LifeSoundsComeAsTheLandEarnsThem()
+        {
+            var green = Ambience.Targets(Eco(10f, 0.9f, green: true));
+            Assert.That(green.crickets, Is.GreaterThan(0f), "the first green brings a chirr by day");
+            Assert.That(Ambience.Targets(Eco(23f, 0.9f, green: true)).crickets, Is.GreaterThan(0.9f), "and the night's crickets");
+            Assert.That(green.birds, Is.EqualTo(0f), "still no birds");
+            var birds = Ambience.Targets(Eco(10f, 0.5f, true, true));
+            Assert.That(birds.birds, Is.GreaterThan(0f), "the first bird: birdsong");
+            Assert.That(birds.crickets, Is.EqualTo(0f), "the birds take the day");
+            Assert.That(Ambience.Targets(Eco(10f, 0.2f, true, true)).birds, Is.GreaterThan(birds.birds), "more birds as it greens");
+            Assert.That(birds.frogs, Is.EqualTo(0f), "no frogs before the water");
+            var pond = Ambience.Targets(Eco(23f, 0.2f, true, true, true));
+            Assert.That(pond.frogs, Is.GreaterThan(0.5f), "frogs at the pond at night");
+            Assert.That(Ambience.Targets(Eco(10f, 0.2f, true, true, true)).frogs, Is.LessThan(pond.frogs), "fewer by day");
+            var winter = Eco(23f, 0.2f, true, true, true); winter.season = Season.Winter;
+            Assert.That(Ambience.Targets(winter).frogs, Is.EqualTo(0f), "frogs sleep in winter");
+            Assert.That(AmbienceLevels.CueIds, Does.Contain(CueLibrary.AmbBarren).And.Contain(CueLibrary.AmbFrogs));
+            Assert.That(CueLibrary.Get(CueLibrary.AmbBarren).loop, Is.True);
+        }
+
         [Test]
         public void FaderFadesNotCuts()
         {
