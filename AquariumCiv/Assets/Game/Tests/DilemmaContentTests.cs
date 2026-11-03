@@ -74,7 +74,8 @@ namespace AquariumCiv.Tests
                     if (d.kind != DilemmaKind.Who) Assert.IsTrue(o.favouredBy != null && o.favouredBy.Length > 0, $"{at}: a lapse can lean to it by the asker's trait");
                 }
                 // Both good: neither option stacks two economy effects over the other (a lean is food or wood: different, not more).
-                var econ = d.options.Select(o => (o.lean.HasValue ? 1 : 0) + (o.strangers > 0 ? 1 : 0)).ToArray();
+                // (strangers who live apart are not the settlement's people: no economy effect)
+                var econ = d.options.Select(o => (o.lean.HasValue ? 1 : 0) + (o.strangers > 0 && string.IsNullOrEmpty(o.apart) ? 1 : 0)).ToArray();
                 Assert.LessOrEqual(System.Math.Abs(econ[0] - econ[1]), 1, d.id);
                 Assert.IsTrue(econ.All(x => x <= 1), $"{d.id}: one economy effect at most per option");
                 if (d.options.All(o => o.lean.HasValue)) Assert.AreNotEqual(d.options[0].lean, d.options[1].lean, $"{d.id}: the two ways lean differently");
@@ -123,15 +124,28 @@ namespace AquariumCiv.Tests
         }
 
         /// <summary>The people live inside the box: nobody comes from, or goes back to, anywhere outside it (user, 2026-11-02).</summary>
-        static readonly string[] OutsideWords = { "over the hill", "beyond", "outside", "far away", "faraway", "abroad", "other lands", "the road", "came back through", "the world" };
+        /// The one way in is the user's fiction (#231): newcomers wandered in from a far-away tank, so "far-away" is allowed only before "tank".
+        static readonly string[] OutsideWords = { "over the hill", "beyond", "outside", "abroad", "other lands", "the road", "came back through", "the world" };
+
+        static bool GoesOutside(string text, out string word)
+        {
+            string t = text.ToLowerInvariant();
+            word = OutsideWords.FirstOrDefault(t.Contains);
+            if (word != null) return true;
+            var m = Regex.Match(t, "far[- ]?away(?! tank)");
+            word = m.Success ? m.Value : null;
+            return m.Success;
+        }
 
         [Test]
         public void NothingComesFromOrGoesOutsideTheBox()
         {
             foreach (var d in Defs)
                 foreach (var t in AllText(d).Where(x => !string.IsNullOrEmpty(x)))
-                    foreach (var w in OutsideWords)
-                        StringAssert.DoesNotContain(w, t.ToLowerInvariant(), $"{d.id}: \"{t}\"");
+                    Assert.IsFalse(GoesOutside(t, out var w), $"{d.id}: \"{w}\" in \"{t}\"");
+            // the people's own words never name the box (Choice 10: no "glass"; and no "tank" either, only the narrator says it)
+            foreach (var d in Defs)
+                foreach (var t in PeoplesWords(d)) StringAssert.DoesNotContain("tank", t.ToLowerInvariant(), $"{d.id}: \"{t}\"");
         }
 
         [Test]
@@ -228,15 +242,24 @@ namespace AquariumCiv.Tests
                     var box = opt == 0 ? sim : RaisedWithin40Years(def, seed);
                     var dd = box.State.dilemmas[0];
                     var o = def.options[opt];
-                    int people = box.State.notables.Count;
+                    int people = box.State.notables.Count, pop = box.State.population;
                     Assert.IsTrue(box.AnswerDilemma(dd.id, opt, DilemmaPath.Card), def.id);
                     var line = box.State.chronicle.Single(e => e.id == dd.answerEntryId).text;
                     foreach (var told in box.State.chronicle.Where(x => x.month == box.State.month))
-                        foreach (var w in OutsideWords) StringAssert.DoesNotContain(w, told.text.ToLowerInvariant(), $"{def.id}: what the answer told");
+                        Assert.IsFalse(GoesOutside(told.text, out var w), $"{def.id}: what the answer told: \"{told.text}\"");
                     StringAssert.DoesNotContain("{", line, def.id);
                     if (o.takesRole) Assert.AreEqual(dd.PersonOf(opt), box.HolderOf(SimCore.LeaderOf(box.State.era))?.id, $"{def.id}: the pick holds the seat");
                     if (!string.IsNullOrEmpty(o.custom)) Assert.IsTrue(box.HasCustom(o.custom), def.id);
-                    if (o.strangers > 0) Assert.AreEqual(people + o.strangers, box.State.notables.Count, $"{def.id}: the strangers arrive");
+                    if (o.strangers > 0 && string.IsNullOrEmpty(o.apart)) Assert.AreEqual(people + o.strangers, box.State.notables.Count, $"{def.id}: the strangers arrive");
+                    if (!string.IsNullOrEmpty(o.apart))
+                    {
+                        var g = box.ApartOf(dd);
+                        Assert.IsNotNull(g, $"{def.id}: they live apart");
+                        Assert.AreEqual(o.apart, g.kind);
+                        Assert.AreEqual(o.strangers, g.members.Count);
+                        Assert.AreEqual(people, box.State.notables.Count, $"{def.id}: not the settlement's people");
+                        Assert.AreEqual(pop, box.State.population, def.id);
+                    }
                     if (o.lean.HasValue) Assert.IsTrue(box.State.dilemmaLeans.Any(l => l.lean == (int)o.lean.Value), def.id);
                     Assert.AreEqual(o.callbacks.Length, box.PendingCallbacks().Count, def.id);
                     ChronicleEntry e;

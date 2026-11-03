@@ -410,6 +410,7 @@ namespace AquariumCiv.Sim
         public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
         public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
         public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book
+        public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;

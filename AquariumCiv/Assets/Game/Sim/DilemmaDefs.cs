@@ -29,6 +29,7 @@ namespace AquariumCiv.Sim
         public DilemmaTies ties;            // the unchosen person: a rival chance or grace, by trait
         public string custom = "";          // a stored custom ("burial:stone"), see SimCore.HasCustom
         public int strangers;               // a family of this many adults joins (0 = none)
+        public string apart = "";           // with strangers: they live apart instead of joining (ApartKind: "woods_camp", "shore_hut"; #231)
         public string buildingType = "";    // the place this option refers to ("Well"): its first building is the dilemma's place for the option
         public DilemmaCallbackDef[] callbacks;  // storylets that fire 4-15 years after this option was taken (answered or lapsed); null = none
         public string[] favouredBy;         // traits (NameData.Traits) that tilt a lapse toward this option, when the role-holder has one
@@ -49,6 +50,7 @@ namespace AquariumCiv.Sim
         public bool aliveA, aliveB;         // person a (b) of the dilemma must be alive
         public string needsBuilding;        // building types that must stand ("a|b" = either); null = none
         public string needsCustom;          // a custom (SimCore.HasCustom) that must be set; null = none
+        public bool needsApart;             // the dilemma's apart group (#231) must have someone alive
         public string text = "";
         public string fallback = "";        // told when a condition fails; empty = drop the callback quietly
         public float salience = 0.7f;
@@ -92,8 +94,8 @@ namespace AquariumCiv.Sim
     public static class DilemmaDefs
     {
         static DilemmaCallbackDef Cb(string id, string text, string fallback = "", bool aliveA = false, bool aliveB = false, string needsBuilding = null,
-            int minYears = 4, int maxYears = 15) =>
-            new DilemmaCallbackDef { id = id, text = text, fallback = fallback, aliveA = aliveA, aliveB = aliveB, needsBuilding = needsBuilding, minYears = minYears, maxYears = maxYears };
+            int minYears = 4, int maxYears = 15, bool needsApart = false) =>
+            new DilemmaCallbackDef { id = id, text = text, fallback = fallback, aliveA = aliveA, aliveB = aliveB, needsBuilding = needsBuilding, minYears = minYears, maxYears = maxYears, needsApart = needsApart };
 
         // ---------- camp ----------
 
@@ -243,8 +245,8 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Strangers: lost travellers from the far woods (inside the box). Two join (a couple), or they camp in the far woods and leave
-        /// their axe trick behind (a wood lean).</summary>
+        /// <summary>Strangers: lost travellers who wandered in from a far-away tank. Two join (a couple), or they camp apart in the far
+        /// woods (#231: an apart group the player can see) and leave their axe trick behind (a wood lean).</summary>
         static readonly DilemmaDef CampTravellers = new DilemmaDef
         {
             id = "camp_travellers", kind = DilemmaKind.Strangers, minEra = Era.Camp, maxEra = Era.Camp,
@@ -262,7 +264,7 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     label = "a place by the fire", hint = "Two new faces round the fire, and new ways of doing things.",
-                    done = "The Keeper let the travellers stay. They slept by the fire the first night and never left.",
+                    done = "The Keeper let the travellers from a far-away tank stay. They slept by the fire and never left.",
                     strangers = 2, custom = "travellers:stayed",
                     favouredBy = new[] { "the kind", "the singer", "the gossip", "the dreamer", "the joker", "the loud" },
                     callbacks = new[]
@@ -274,13 +276,14 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     label = "full packs", hint = "They'll camp in the far woods, and leave us their trick with an axe.",
-                    done = "The Keeper sent the travellers on with full packs. They showed everyone a thing or two with an axe first.",
-                    lean = SimCore.Lean.Craft, custom = "travellers:sent",
+                    done = "The Keeper sent the travellers from a far-away tank to the far woods, with full packs.",
+                    lean = SimCore.Lean.Craft, custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the clever", "the tinkerer", "the lazy" },
                     callbacks = new[]
                     {
                         Cb("travellers_notch", "every axe in {place} still has the travellers' little notch in the handle. Nobody knows why it helps. It helps."),
-                        Cb("travellers_wave", "the travellers still live wild in the far woods. Some evenings you can see their fire, and all of {place} waves at it.", minYears: 6),
+                        Cb("travellers_wave", "the travellers still live wild in the far woods. Some evenings you can see their fire, and all of {place} waves at it.",
+                            "the travellers' fire in the far woods has gone cold, but {place} still waves at the spot some evenings.", needsApart: true, minYears: 6),
                     },
                 },
             },
@@ -436,8 +439,8 @@ namespace AquariumCiv.Sim
             },
         };
 
-        /// <summary>Strangers: a family living wild across the pond, inside the box. Three join, or they stay on their own shore and
-        /// trade their catch (a food lean).</summary>
+        /// <summary>Strangers: a family who wandered in from a far-away tank, camped across the pond. Three join, or they keep a hut on
+        /// the far shore (#231: an apart group) and trade their catch (a food lean).</summary>
         static readonly DilemmaDef VillageHillFamily = new DilemmaDef
         {
             id = "village_hill_family", kind = DilemmaKind.Strangers, minEra = Era.Village, maxEra = Era.Village,
@@ -455,7 +458,7 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
-                    done = "The Keeper gave the pond family a home here. They moved in with a goat.",
+                    done = "The Keeper gave the family from a far-away tank a home here. They moved in with a goat.",
                     strangers = 3, custom = "pond:joined",
                     favouredBy = new[] { "the kind", "the gossip", "the singer", "the loud", "the joker" },
                     callbacks = new[]
@@ -467,12 +470,13 @@ namespace AquariumCiv.Sim
                 new DilemmaOptionDef
                 {
                     label = "a home across the pond", hint = "They'll keep their own shore, and trade us their catch.",
-                    done = "The Keeper left the pond family on their shore. They waved, and sent fish.",
-                    lean = SimCore.Lean.Food, custom = "pond:neighbours",
+                    done = "The Keeper left the family from a far-away tank on their shore. They waved, and sent fish.",
+                    lean = SimCore.Lean.Food, custom = "pond:neighbours", strangers = 3, apart = ApartKind.ShoreHut,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the gardener", "the lazy" },
                     callbacks = new[]
                     {
-                        Cb("hill_neighbours_eggs", "the family across the pond still rows over every spring with fish. Far too many fish."),
+                        Cb("hill_neighbours_eggs", "the family across the pond still rows over every spring with fish. Far too many fish.",
+                            "the hut across the pond stands empty now, but {place} still leaves a fish on its step each spring.", needsApart: true),
                         Cb("hill_neighbours_path", "there's a path worn round the pond now, from {place} to the neighbours and back. Nobody built it. Everyone walked it.", minYears: 6),
                     },
                 },
