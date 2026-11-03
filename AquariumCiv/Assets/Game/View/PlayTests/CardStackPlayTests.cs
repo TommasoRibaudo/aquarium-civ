@@ -229,7 +229,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator ALongCardStopsOnAWholeLine()
+        public IEnumerator ALongCardScrollsByAFinger()
         {
             yield return Returned();
             yield return Tap("cards-peek");
@@ -241,9 +241,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Drag(new[] { from, from + Vector2.up * 60f }, 8f);
             yield return Frames(4);
             float y = view.scrollOffset.y, end = view.contentContainer.layout.height - view.layout.height;
-            float lines = (y - View.Root.Q("cards-body").layout.y) / GlassType.BodyPitch;
             Assert.Greater(y, 0f, "it moved");
-            Assert.IsTrue(Mathf.Abs(lines - Mathf.Round(lines)) < 0.02f || Mathf.Abs(y - end) < 1f, $"stopped at {y:0.0}, {lines:0.00} lines down, end {end:0.0}");
+            Assert.LessOrEqual(y, end + 1f, $"within the text (at {y:0.0}, end {end:0.0}); #272: it glides and stops where it stops, no snap to a line");
             AssertNoErrors("long card");
         }
 

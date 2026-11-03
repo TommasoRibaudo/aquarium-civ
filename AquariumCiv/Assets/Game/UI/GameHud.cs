@@ -554,15 +554,20 @@ namespace AquariumCiv.GameUI
             sheet.Add(Text("The chronicle and the time-lapse of the years will live here.", "type-note", "kg-sheet-note"));
         }
 
-        /// <summary>#215: who holds each office of this era. Rebuilt every time the sheet opens, so it is never stale.</summary>
+        /// <summary>#215: who holds each office of this era. Rebuilt every time the sheet opens, so it is never stale. #272: in a
+        /// scroll, so a long town's list scrolls and the view ends on a whole row.</summary>
         void BuildOffices()
         {
             var sheet = Sheet(Offices, "Offices");
+            OfficesScroll = new GlassScroll { name = "offices-scroll", WholeRows = true };
             officesList = new VisualElement { name = "offices-list", pickingMode = PickingMode.Ignore };
-            sheet.Add(officesList);
+            OfficesScroll.Add(officesList);
+            sheet.Add(OfficesScroll);
         }
 
         VisualElement officesList;
+        /// <summary>The Offices sheet's scroll (tests).</summary>
+        public GlassScroll OfficesScroll { get; private set; }
 
         void RefreshOffices()
         {
@@ -576,6 +581,7 @@ namespace AquariumCiv.GameUI
                     var holder = sim.HolderOf(role);
                     var row = new VisualElement { name = "office-" + role.Replace(' ', '-'), pickingMode = PickingMode.Ignore };
                     row.AddToClassList("kg-row");
+                    row.AddToClassList(GlassScroll.RowClass);
                     var label = Text(char.ToUpperInvariant(role[0]) + role.Substring(1), "type-body", "kg-row-label");
                     var who = Text(holder != null ? holder.name : "Vacant", "type-body", "office-holder");
                     if (holder == null) who.AddToClassList("office-vacant");

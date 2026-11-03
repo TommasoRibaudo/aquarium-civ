@@ -154,6 +154,8 @@ namespace AquariumCiv.View
         void Hook()
         {
             runEnded = false;
+            glassCleared = false;
+            run.GlassGrime = () => CareView.Instance != null ? CareView.Instance.WorstPane : -1f; // #268: every pane clear, not the mean
             run.StepChanged += OnStep;
             run.Cue += OnCue;
             shownStep = (FirstRunStep)(-1);
@@ -260,6 +262,7 @@ namespace AquariumCiv.View
             if (!run.Active) { EndRun(); HideAll(); return; }
             hud.CleanLocked = run.Step == FirstRunStep.Wipe || run.Step == FirstRunStep.Patch; // before EnterStep, which turns it off for the next step
             if (run.Step != shownStep) EnterStep();
+            if (run.Step == FirstRunStep.Wipe) KeepGlassReachable();
             UpdateUi();
         }
 
@@ -351,6 +354,34 @@ namespace AquariumCiv.View
                     break;
             }
         }
+
+        // ---------------- #268: every fogged pane can be wiped ----------------
+        Vector3 camAt, clearedAt;
+        Quaternion camRot, clearedRot;
+        float camStillSince;
+        bool glassCleared;
+        /// <summary>The camera must rest this long before the glass it can't reach is cleared (the arrival may still be flying it in).</summary>
+        const float CamRestSeconds = 0.3f;
+
+        /// <summary>The wipe step counts all the glass, so only the glass a finger can reach from where the camera rests stays fogged
+        /// (#268, playtest #260: the far right pane couldn't be finished at the portrait camera). Again whenever the camera comes to
+        /// rest somewhere new.</summary>
+        void KeepGlassReachable()
+        {
+            var c = Cam;
+            var care = CareView.Instance;
+            if (c == null || care == null || care.Masks.Length == 0) return;
+            var t = c.transform;
+            if (t.position != camAt || t.rotation != camRot) { camAt = t.position; camRot = t.rotation; camStillSince = Time.unscaledTime; return; }
+            if (Time.unscaledTime - camStillSince < CamRestSeconds || care.IsWiping) return;
+            if (glassCleared && clearedAt == camAt && clearedRot == camRot) return;
+            glassCleared = true; clearedAt = camAt; clearedRot = camRot;
+            float gone = care.ClearUnreachable();
+            if (gone > 0.001f) Debug.Log($"[FirstRun] cleared {gone:P1} of the grime no finger can reach from here");
+        }
+
+        /// <summary>The glass out of the finger's reach has been cleared in this run's wipe (tests).</summary>
+        public bool GlassMadeReachable => glassCleared;
 
         // ================================================================== input
         static void ReadPointer(out bool down)
@@ -473,7 +504,7 @@ namespace AquariumCiv.View
             // head, then the sub line, then the words: the year's numbers go with the name (board 3.7)
             card.Remove(card.Sub);
             card.Insert(card.IndexOf(card.Head) + 1, card.Sub);
-            var scroll = new GlassScroll { SnapToRows = true, SplitRows = true };
+            var scroll = new GlassScroll { WholeRows = true, SplitRows = true };
             scroll.AddToClassList("fr-card-scroll");
             scroll.View.contentContainer.AddToClassList("fr-card-scroll-pad");
             card.Insert(card.IndexOf(card.Actions), scroll);

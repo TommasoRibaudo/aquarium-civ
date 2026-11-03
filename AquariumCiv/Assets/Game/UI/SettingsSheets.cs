@@ -70,7 +70,7 @@ namespace AquariumCiv.GameUI
         void BuildSettings()
         {
             var sheet = hud.Sheet(GameHud.Settings, "Settings", SheetHeight.Tall);
-            Scroll = new GlassScroll { name = "settings-scroll", SnapToRows = true };
+            Scroll = new GlassScroll { name = "settings-scroll", WholeRows = true };
             Scroll.View.contentContainer.AddToClassList("kg-rows");
             sheet.Add(Scroll);
 
@@ -189,7 +189,7 @@ namespace AquariumCiv.GameUI
             var sheet = hud.Sheet(Licences, "Licences", SheetHeight.Licences, false);
             var back = new GlassButton("", () => hud.Open(GameHud.Settings), ButtonKind.Icon, UiRole.Back) { name = "licences-back", Icon = "back" };
             sheet.Q(className: "kg-sheet-head").Add(back);
-            var scroll = new GlassScroll { name = "licences-list", SnapToRows = true };
+            var scroll = new GlassScroll { name = "licences-list", WholeRows = true };
             scroll.View.contentContainer.AddToClassList("kg-rows");
             foreach (var line in LicenceRows)
             {

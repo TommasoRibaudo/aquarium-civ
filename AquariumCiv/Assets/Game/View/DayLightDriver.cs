@@ -26,6 +26,12 @@ namespace AquariumCiv.View
 
         /// <summary>A share still (research 13 section 7.7): the golden hour.</summary>
         public const float StillHour = 17.5f;
+        /// <summary>#278: the first run (wipe, mist, name) is held at this hour, whatever the clock says, so the approved opening always
+        /// reads in daylight. When the run ends the light chases the real hour at its usual rate (<see cref="DayLight.MaxHourRate"/>):
+        /// a soft blend, never a jump.</summary>
+        public const float FirstRunHour = 11f;
+        /// <summary>#278: the light is held at <see cref="FirstRunHour"/> now.</summary>
+        public bool HeldForFirstRun { get; private set; }
         /// <summary>How far a lamp reaches on what stands near it, and how strong (research: 1.6 to 2.2 was tuned down by eye: at 6 x 4.4 it lit the whole box). The pool's size multiplies its own radius.</summary>
         public const float LampReach = 1.25f, LampStrength = 0.9f;
 
@@ -136,9 +142,14 @@ namespace AquariumCiv.View
                 if (camera != null) camera.backgroundColor = Room; // the setting's room stays under look Today
                 return;
             }
-            Logic.Update(Mathf.Min(Time.unscaledDeltaTime, 0.1f), ViewHour);
+            bool hold = FirstRunHolds;
+            if (hold && !HeldForFirstRun) Logic.Snap(FirstRunHour); // a first run starting (or replayed) opens in the day at once
+            HeldForFirstRun = hold;
+            Logic.Update(Mathf.Min(Time.unscaledDeltaTime, 0.1f), hold ? FirstRunHour : ViewHour);
             Apply();
         }
+
+        static bool FirstRunHolds => FirstRunView.Instance != null && FirstRunView.Instance.Active;
 
         /// <summary>Writes the current light out.</summary>
         void Apply()
@@ -226,7 +237,7 @@ namespace AquariumCiv.View
         public void Snap(float hour)
         {
             if (!Bind()) return;
-            Logic.Snap(hour);
+            Logic.Snap(FirstRunHolds ? FirstRunHour : hour); // #278: a jump of the clock during the first run doesn't take the day away
             if (Logic.Drives) Apply();
         }
 
@@ -300,7 +311,7 @@ namespace AquariumCiv.View
             if (Instance == null) return "no DayLightDriver";
             var v = Instance.Logic.Current;
             return Instance.Logic.Drives
-                ? $"light {Instance.Logic.Look}: shown {Instance.Logic.ShownHour:0.0} h, sun {v.SunIntensity:0.00}, lamps {v.Lamp:0.00} ({Instance.box?.LampCount} spots{(Instance.FlickerHeld ? ", held" : "")}), floor {Instance.Logic.NightFloor:0.00}"
+                ? $"light {Instance.Logic.Look}{(Instance.HeldForFirstRun ? " (held at day for the first run)" : "")}: shown {Instance.Logic.ShownHour:0.0} h, sun {v.SunIntensity:0.00}, lamps {v.Lamp:0.00} ({Instance.box?.LampCount} spots{(Instance.FlickerHeld ? ", held" : "")}), floor {Instance.Logic.NightFloor:0.00}"
                 : "light Today: the scene's own";
         }
     }
