@@ -514,7 +514,7 @@ namespace AquariumCiv.View
 
         void BuildScroll()
         {
-            scroll = new GlassScroll { name = "cards-scroll", SnapToRows = true, SplitRows = true };
+            scroll = new GlassScroll { name = "cards-scroll", WholeRows = true, SplitRows = true };
             scroll.AddToClassList("cards-scroll");
             scroll.View.contentContainer.AddToClassList("cards-scroll-pad");
             scroll.View.contentContainer.RegisterCallback<GeometryChangedEvent>(_ => FitStory());
