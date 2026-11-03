@@ -51,6 +51,9 @@ namespace AquariumCiv.Life
         EmptyBucket,
     }
 
+    /// <summary>P8 (#267): the water in a bucket. None = not a bucket; Muddy = scooped from the wet low ground while the pond is dry.</summary>
+    public enum WaterKind { None, Clean, Muddy }
+
     /// <summary>Where the prop sits on a peg doll (§9 "Carry").</summary>
     public enum PropSlot { None, Hand, Head, Shoulder, Back, Arms, Pulled, Rolled }
 
@@ -169,6 +172,8 @@ namespace AquariumCiv.Life
         /// <summary>Who they're doing it with (friend, rival, partner, master, the lord for the heir), or None.</summary>
         public PersonRef partner;
         public Prop prop;
+        /// <summary>P8 (#267): what the bucket holds, for the view to colour (Muddy while the pond is dry).</summary>
+        public WaterKind water;
         /// <summary>View hours of this activity [start, end); a move goes from <see cref="from"/> to <see cref="place"/> over it.</summary>
         public float start, end;
         public float progress;
@@ -209,6 +214,8 @@ namespace AquariumCiv.Life
         public Place from, to;
         public float start, end;
         public Prop prop;
+        /// <summary>P8 (#267): what the bucket holds, for the view to colour (Muddy while the pond is dry).</summary>
+        public WaterKind water;
         public TripType type;
     }
 

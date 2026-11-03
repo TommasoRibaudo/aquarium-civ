@@ -108,7 +108,7 @@ namespace AquariumCiv.Life
             {
                 var s = segs[i];
                 if (s.end <= t.hour || !s.Moving) continue;
-                into.Add(new Trip { kind = s.kind, from = s.from, to = s.place, start = s.start, end = s.end, prop = s.prop, type = s.trip });
+                into.Add(new Trip { kind = s.kind, from = s.from, to = s.place, start = s.start, end = s.end, prop = s.prop, water = s.water, type = s.trip });
             }
             return into.Count;
         }
@@ -221,7 +221,7 @@ namespace AquariumCiv.Life
             return new PersonActivity
             {
                 who = p.who, kind = kind, place = place, from = from, moving = s.Moving && from != place, partner = s.partner,
-                prop = s.prop, start = s.start, end = s.end, progress = Math.Min(1f, into / len),
+                prop = s.prop, water = s.water, start = s.start, end = s.end, progress = Math.Min(1f, into / len),
                 step = steps <= 1 ? 0 : (int)(into / StepHours) % steps, source = s.src, trip = s.trip, pace = dayInfo.pace,
                 chronicleId = s.chronicleId, copiesPartner = s.copies, facesGlass = s.faces, count = s.count,
             };

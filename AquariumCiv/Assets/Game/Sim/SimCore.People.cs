@@ -455,7 +455,7 @@ namespace AquariumCiv.Sim
         {
             if (n == null) return "";
             if (role == null && !n.alive) role = TermsOf(n.id).OrderBy(t => t.fromMonth).LastOrDefault()?.role;
-            string job = n.age < AdultAge ? (n.age < 4f ? "baby" : "child") : string.IsNullOrEmpty(n.job) ? "" : n.job;
+            string job = n.age < AdultAge ? (n.age < 4f ? "baby" : "child") : string.IsNullOrEmpty(n.job) ? "" : JobLabel(n.job);
             if (string.IsNullOrEmpty(role)) return job;
             string r = role == RoleType.Chief || role == RoleType.Headman || role == RoleType.Lord ? $"{role} of the {EraNoun(State.era)}" : role;
             return string.IsNullOrEmpty(job) ? r : $"{job}, {r}";
