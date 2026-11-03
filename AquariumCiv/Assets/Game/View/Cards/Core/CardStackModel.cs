@@ -438,6 +438,18 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
+        /// <summary>#224: the answer by touch in the box (the choice scene, after Show me on this card): final like the buttons, on the Box path.
+        /// False unless the card on screen is this dilemma and it is still open.</summary>
+        public bool AnswerDilemmaInBox(int dilemmaId, int option)
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.id != dilemmaId || d.state != DilemmaState.Open) return false;
+            if (!sim.AnswerDilemma(d.id, option, DilemmaPath.Box)) return false;
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
         Dilemma DilemmaOnCard() => Mode == CardStackMode.Open && Shown?.kind == CardKind.Dilemma ? sim.DilemmaOfEntry(Shown.lead.id) : null;
 
         // ------------------------------------------------------------------ what to draw
