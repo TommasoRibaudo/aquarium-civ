@@ -271,7 +271,7 @@ namespace AquariumCiv.View
         bool LiveFree()
         {
             if (Covered() || MomentPlayer.PromptsBlocked()) return false;
-            if (hud != null && hud.CleanMode) return false;
+            if (hud != null && (hud.CleanMode || hud.Hand != GameHud.KitTool.None)) return false;
             var talk = EveningTalkView.Instance;
             if (talk != null && talk.Open) return false;
             var choice = ChoiceSceneView.Instance;

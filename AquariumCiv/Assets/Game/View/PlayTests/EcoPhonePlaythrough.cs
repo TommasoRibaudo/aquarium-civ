@@ -108,6 +108,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual("name", Run.Run.Hint.id);
                 Assert.IsTrue(Run.HintShowing, "the Name it hint is on screen, pointing at the plate");
                 Assert.AreNotEqual("mist-hold", Run.Run.Hint.id, "never the mist and the name at once");
+                StringAssert.Contains("Tap to name", Run.Root.Q("firstrun-plate").Q<Label>().text, "the plate says what to do");
 
                 yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-plate"));
                 yield return new WaitForSecondsRealtime(0.4f);
@@ -180,6 +181,8 @@ namespace AquariumCiv.View.PlayTests
                 Debug.Log("[phone] seed: " + EcoMistView.Instance.LastSeed);
                 Assert.GreaterOrEqual(Sim.EcoTree.cell, 0, "one tap planted the tree: " + EcoMistView.Instance.LastSeed);
                 Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "the seed leaves the hand");
+                var cards = PersonCardView.Instance;
+                Assert.IsFalse(cards != null && (cards.AnyOpen || cards.BuildingOpen), "the seed's tap is the seed's: no person card");
                 yield return new WaitForSecondsRealtime(1.5f);
                 yield return Shot("phone_11_planted");
                 AssertNoErrors("kit");

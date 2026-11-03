@@ -190,8 +190,10 @@ namespace AquariumCiv.GameUI
             acts.Add(kitCloth = new GlassButton("Cloth", () => { CloseSheet(); SetCleanMode(true); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-cloth" });
             acts.Add(kitMister = new GlassButton("Mister", () => SetHand(KitTool.Mister), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-mister" });
             acts.Add(kitSeed = new GlassButton("Seed", () => SetHand(KitTool.Seed), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-seed" });
-            sheet.Add(acts);
+            kitNote.style.whiteSpace = WhiteSpace.Normal; // the phone's width: the note wraps, never runs off the sheet
+            kitNote.style.marginBottom = 12;
             sheet.Add(kitNote);
+            sheet.Add(acts);
             kitSeed.style.display = DisplayStyle.None;
         }
 
