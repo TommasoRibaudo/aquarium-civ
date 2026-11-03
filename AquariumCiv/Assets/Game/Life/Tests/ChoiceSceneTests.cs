@@ -136,8 +136,13 @@ namespace AquariumCiv.Life.Tests
             foreach (int seed in new[] { 1, 2, 6, 7, 10, 16, 18, 33, 1234, 7531 })
             {
                 var sim = Grown(seed, months);
-                var d = sim.DebugRaiseDilemma(defId);
-                if (d != null) return (sim, d);
+                // Some defs wait on the box (camp_fire needs an elder chief, #222 revision): look a little later too.
+                for (int tries = 0; tries < 16; tries++)
+                {
+                    var d = sim.DebugRaiseDilemma(defId);
+                    if (d != null) return (sim, d);
+                    for (int m = 0; m < 12; m++) sim.Step();
+                }
             }
             return (null, null);
         }
