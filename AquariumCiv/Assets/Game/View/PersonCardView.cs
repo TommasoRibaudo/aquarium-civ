@@ -440,7 +440,7 @@ namespace AquariumCiv.View
         static bool Blocked()
         {
             var hud = GameHud.Instance;
-            if (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible || hud.CleanMode)) return true;
+            if (hud != null && (hud.CameraMode || hud.SheetOpen || !hud.IsVisible || hud.CleanMode || hud.Hand != GameHud.KitTool.None)) return true;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return true;
             // (the time-lapse screen's Who opens a card over the past on purpose: #79)

@@ -16,7 +16,7 @@ namespace AquariumCiv.View
     /// land is on, outside the other tools' modes and sheets.
     /// </summary>
     [DefaultExecutionOrder(-15)]
-    public class EcoMistView : MonoBehaviour
+    public class EcoMistView : MonoBehaviour, ICameraGate
     {
         public static bool AutoCreate = true;
         public static EcoMistView Instance { get; private set; }
@@ -71,6 +71,7 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (Instance == this) Instance = null;
+            cam?.RemoveGate(this);
             foreach (var b in blooms) Drop(b);
             blooms.Clear();
             if (mist != null) Destroy(mist.gameObject);
@@ -82,6 +83,8 @@ namespace AquariumCiv.View
             hud ??= GameHud.Instance;
             // The first run hides the HUD until it's done, and its first mist is this gesture (#248): hidden only blocks outside it.
             if (hud != null && ((!hud.IsVisible && !sim.State.firstRun.active) || hud.CleanMode || hud.CameraMode || hud.SheetOpen)) return false;
+            // In the first run the mist is its own step's: not while wiping or naming (build 15: misting on the name step hid "Name it").
+            if (sim.State.firstRun.active && sim.State.firstRun.step != (int)FirstRunStep.Rain) return false;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return false;
             var cards = PersonCardView.Instance;
@@ -92,6 +95,7 @@ namespace AquariumCiv.View
         void Update()
         {
             var sim = Sim;
+            _ = Cam; // registers the camera gate
             float dt = Time.unscaledDeltaTime;
             Grow(dt);
             // The glass shows the air's humidity (keepers-hands §5.1): eased, so a wipe clears it over a moment, not a frame.
@@ -101,6 +105,9 @@ namespace AquariumCiv.View
                 if (Mathf.Abs(want - box.Droplets) > 0.001f) box.SetDroplets(Mathf.MoveTowards(box.Droplets, want, dt * 0.8f));
             }
             int n = ReadPointer(out var pos);
+            hud ??= GameHud.Instance;
+            var hand = hud != null ? hud.Hand : GameHud.KitTool.None;
+            if (hand == GameHud.KitTool.Seed) { SeedHand(sim, n, pos); return; }
             if (n != 1 || !Usable(sim))
             {
                 if (misting) EndMist();
@@ -108,6 +115,7 @@ namespace AquariumCiv.View
                 return;
             }
             float now = Time.unscaledTime;
+            bool inHand = hand == GameHud.KitTool.Mister; // the mister in hand: one finger mists at once and a drag mists along (keepers-hands 3.1)
             if (!pressed)
             {
                 pressed = true; pressT = now; pressPos = pos;
@@ -116,8 +124,9 @@ namespace AquariumCiv.View
             }
             if (!misting)
             {
-                if ((pos - pressPos).magnitude > slop * Mathf.Max(1, Screen.height)) { pressT = float.PositiveInfinity; return; } // a drag: the camera's
-                if (now - pressT < holdDelay) return;
+                if (float.IsPositiveInfinity(pressT)) return;
+                if (!inHand && (pos - pressPos).magnitude > slop * Mathf.Max(1, Screen.height)) { pressT = float.PositiveInfinity; return; } // a drag: the camera's
+                if (!inHand && now - pressT < holdDelay) return;
                 misting = true; pulseT = pulseSeconds; refreshT = 0f; // on a person too: they get wet (tester: a hold there did nothing)
             }
             var bc = Cam; if (bc != null) bc.HoldOrbitUntil = now + 0.25f;
@@ -129,7 +138,63 @@ namespace AquariumCiv.View
 
         }
 
-        BoxCamera Cam => cam != null ? cam : cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+        BoxCamera Cam
+        {
+            get
+            {
+                if (cam == null && Camera.main != null) { cam = Camera.main.GetComponent<BoxCamera>(); cam?.AddGate(this); }
+                return cam;
+            }
+        }
+
+        /// <summary>The camera leaves one finger to the kit's mister and seed while one is in hand (two fingers still move the view).</summary>
+        public bool ClaimsPress(Vector2 screenPos)
+        {
+            hud ??= GameHud.Instance;
+            if (hud == null || hud.Hand == GameHud.KitTool.None || UiInput.Over(screenPos)) return false;
+            var sim = Sim;
+            return sim != null && sim.EcologyOn && Ground(screenPos, out _);
+        }
+
+        // ---------- the seed in hand: a tap on the land plants the one tree ----------
+        bool seedDown;
+        float seedT;
+        Vector2 seedAt, seedLast;
+        /// <summary>The last seed tap's answer (tests and the debug panel).</summary>
+        public string LastSeed { get; private set; } = "";
+
+        void SeedHand(SimCore sim, int n, Vector2 pos)
+        {
+            if (misting) EndMist();
+            pressed = false;
+            if (sim == null || !sim.EcologyOn) return;
+            if (n == 1)
+            {
+                if (!seedDown) { seedDown = !UiInput.Over(pos); seedT = Time.unscaledTime; seedAt = pos; }
+                seedLast = pos;
+                return;
+            }
+            if (!seedDown) return;
+            seedDown = false;
+            if (n > 1) return; // two fingers: the camera's
+            if ((seedLast - seedAt).magnitude > slop * 2f * Mathf.Max(1, Screen.height)) return; // a drag isn't a tap
+            if (!Ground(seedLast, out var at)) return;
+            if (!sim.CanPlantTree) { LastSeed = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; }
+            if (!sim.PlantTree(at.x, at.z))
+            {
+                LastSeed = "refused";
+                hud?.Toast("Not there: the seed needs dry ground above the hollow.", 3f);
+                return;
+            }
+            LastSeed = $"planted at ({at.x:0.00}, {at.z:0.00})";
+            AddBloom(at, 0.2f);
+            box.Refresh();
+            GameClock.Instance?.Save();
+            hud?.SetHand(GameHud.KitTool.None);
+            hud?.Toast("The seed is in the ground. Mist it, and keep its weeds back.", 4f);
+            var pv = PeopleView.Find();
+            if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, at.x, at.z, 1.4f);
+        }
 
         void EndMist()
         {

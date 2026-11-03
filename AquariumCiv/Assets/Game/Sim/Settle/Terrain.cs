@@ -21,6 +21,10 @@ namespace AquariumCiv.Sim.Settle
         public float duneAmp = 0f, duneFreq = 1.6f;           // 0 = off: low ridged dunes
         public float pondDepth = 0.24f, pondR0 = 0.45f, pondR1 = 0.98f; // the dip that holds the water
         public float pondSX = 1f, pondSZ = 1f;                // water shape: a scale on x and z distance (below 1 = long that way: a stream)
+        /// <summary>P8's living land: no round dip; the land falls into the front corner opposite the back hills, the hill's mirror
+        /// image as a hollow (the user, 2026-11-03), with a low bank along the glass so the hollow holds its water.</summary>
+        public bool cornerPond;
+        public float cornerDepth = 0.28f;
         public float forestBackW = 0.6f, forestLeftW = 0.5f, forestScale = 1f, forestRing = 0f; // starting woods (ring = palms round the pond)
         public float forestCut = 0.62f;                       // SiteMap plants a tree where the bias passes this: higher = fewer
         public float outcropCut = 99f;                        // SiteMap puts rock where the rock noise passes this (99 = none)
@@ -38,6 +42,8 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>The land presets of box 2's settings. Kept out of 0..2 so no old value changes meaning; stored in
         /// <c>SettleState.terrain</c> as before (an int), so no save change.</summary>
         public const int DesertOasisPreset = 100, MountainVillagePreset = 101;
+        /// <summary>P8: a living-land box's land (the river valley's, with the corner hollow instead of the round pond).</summary>
+        public const int LivingLandPreset = 102;
 
         /// <summary>The preset for a box's setting; <paramref name="fallback"/> (the config's) for the river valley and anything unknown.</summary>
         public static int PresetFor(string setting, int fallback = 0) => setting switch
@@ -52,6 +58,8 @@ namespace AquariumCiv.Sim.Settle
 
         public static TerrainSpec Preset(int i)
         {
+            if (i == LivingLandPreset)
+                return new TerrainSpec { name = "living_land", mirror = false, noiseOff = 0f, pondX = 2.05f, pondZ = -1.45f, centreX = -0.45f, centreZ = 0.05f, cornerPond = true };
             if (i == DesertOasisPreset)
                 // Furthest from the valley: low dunes, hardly any hills, a small round oasis ringed with palms, little forest.
                 return new TerrainSpec
@@ -96,11 +104,25 @@ namespace AquariumCiv.Sim.Settle
             float back = Smooth(0.1f, 2.1f, z), left = Smooth(2.6f, -2.8f, xm);
             h += t.hillAmp * back * (t.hillBase + t.hillLeft * left) * (t.hillMixA + t.hillMixB * Fbm(nx * 0.6f, nz * 0.6f + 11f));
             if (t.duneAmp != 0f) h += t.duneAmp * Dunes(t, nx, nz);
-            float dp = t.PondDist(x, z);
-            h -= t.pondDepth * (1f - Smooth(t.pondR0, t.pondR1, dp));
+            if (t.cornerPond) h -= t.cornerDepth * CornerHollow(xm, z);
+            else
+            {
+                float dp = t.PondDist(x, z);
+                h -= t.pondDepth * (1f - Smooth(t.pondR0, t.pondR1, dp));
+            }
             float dc = Dist(x, z, t.centreX, t.centreZ);
             h = Lerp(h, G + 0.03f, (1f - Smooth(0.9f, 1.75f, dc)) * 0.92f);
             return h;
+        }
+
+        /// <summary>The front-right hollow, 0..1: the back-left hill turned over. It deepens towards the corner and rises again in
+        /// a bank about a cell wide at the glass (the glass never holds the water back; the bank does).</summary>
+        public static float CornerHollow(float xm, float z)
+        {
+            float front = Smooth(-0.15f, -1.55f, z) * Smooth(-HZ + 0.06f, -HZ + 0.42f, z);
+            float right = Smooth(0.45f, 2.05f, xm) * Smooth(HX - 0.06f, HX - 0.42f, xm);
+            float d = front * right;
+            return d * (0.85f + 0.15f * Fbm(xm * 0.8f + 3.1f, z * 0.8f - 1.7f));
         }
 
         /// <summary>Where trees grow at the start: the back and the "left" hills (as StyleBox's nature bias).</summary>

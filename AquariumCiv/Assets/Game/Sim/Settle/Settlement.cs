@@ -61,7 +61,7 @@ namespace AquariumCiv.Sim.Settle
         {
             this.core = core;
             bool fresh = St.version == 0;
-            if (fresh && St.terrain == 0) St.terrain = core.Config.terrainPreset; // a next box's setting preset is seeded first (SeedNextBox)
+            if (fresh && St.terrain == 0) St.terrain = core.Config.ecology ? TerrainSpec.LivingLandPreset : core.Config.terrainPreset; // a next box's setting preset is seeded first (SeedNextBox); P8: the corner hollow
             Map = new SiteMap(St, fresh, core.State.eco != null && core.State.eco.on);
             if (Map.eco) SyncEco(); // the land's own water, woods and meadow instead of the static pond (Sim/Eco)
             Net = new PathNet(Map);

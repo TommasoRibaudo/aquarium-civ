@@ -68,6 +68,9 @@ namespace AquariumCiv.View
         float hintShownAt = -1f;
         string lastHintId = "";
         bool prevHintVisible;
+        const string PlateAsk = "Tap to name your box";
+        /// <summary>The hint is on screen right now (tests).</summary>
+        public bool HintShowing => hint != null && hint.resolvedStyle.display != DisplayStyle.None;
         FirstRunStep shownStep = (FirstRunStep)(-1);
 
         public FirstRun Run => run;
@@ -661,6 +664,7 @@ namespace AquariumCiv.View
             }
             bool named = Time.unscaledTime < plateNamedUntil;
             bool plateUp = !quiet && (step == FirstRunStep.Name && !NameSheetOpen || named);
+            if (step == FirstRunStep.Name && !named && plateFace.Title != PlateAsk) plateFace.Title = PlateAsk; // build 15: a blank plate said nothing
             plate.style.display = plateUp ? DisplayStyle.Flex : DisplayStyle.None;
             if (plateUp) PlacePlate();
             plate.pickingMode = named ? PickingMode.Ignore : PickingMode.Position;

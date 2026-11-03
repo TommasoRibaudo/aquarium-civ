@@ -66,6 +66,8 @@ namespace AquariumCiv.View
         // glass
         Transform boundRoot;
         GlassMask[] masks = new GlassMask[0];
+        /// <summary>Each pane's grime left, 0..1 (tests: which pane a wipe can't finish).</summary>
+        public string DebugPaneGrime() => string.Join(" ", System.Linq.Enumerable.Select(masks, m => m == null ? "-" : m.Mean.ToString("0.000")));
         Texture2D[] textures = new Texture2D[0];
         Texture2D noise;
         Material[] mats = new Material[0];
