@@ -252,10 +252,13 @@ namespace AquariumCiv.Game
 
         // ---------- P8: the living land (off by default) ----------
         const string EcologyKey = "p8.ecology";
+        /// <summary>Phone builds ship P7 and P8 on (the user, 2026-11-03): a phone build defaults both switches on until the debug
+        /// panel turns them off (kept). The Editor and the tests keep them off by default.</summary>
+        static int OnInBuilds => Application.isEditor ? 0 : 1;
         /// <summary>New boxes start barren and grow (P8, keepers-hands.md). A prototype switch: kept across restarts in builds.</summary>
         public static bool EcologyPref
         {
-            get => PlayerPrefs.GetInt(EcologyKey, 0) == 1;
+            get => PlayerPrefs.GetInt(EcologyKey, OnInBuilds) == 1;
             set { PlayerPrefs.SetInt(EcologyKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
@@ -346,7 +349,7 @@ namespace AquariumCiv.Game
         void LoadLabSwitches()
         {
             if (Application.isEditor) return;
-            if (PlayerPrefs.GetInt(DilemmasKey, 0) == 1) config.dilemmas = true;
+            if (PlayerPrefs.GetInt(DilemmasKey, OnInBuilds) == 1) config.dilemmas = true; // B by default in a build (P7 and P8 on)
             if (PlayerPrefs.GetInt(LabKey, 0) == 1) { config.dilemmaLab = true; speed = LabSpeed; }
         }
 
