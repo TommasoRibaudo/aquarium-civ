@@ -5,8 +5,8 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 
 ## Checklist
 - [x] Branch `p8/polish` from `origin/dev`; this prompt committed
-- [ ] 1 · #268 #278 #272 (Opus bundle) merged, closed
-- [ ] 2 · #271 + #266 sim merged
+- [x] 1 · #268 #278 #272 (Opus bundle) merged, closed
+- [x] 2 · #271 + #266 sim merged
 - [ ] 3 · #285 → #267 merged, closed
 - [ ] 4 · #287 merged, closed
 - [ ] 5 · #266 → #277 merged (#266 open for sign-off)
@@ -35,6 +35,8 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 2026-11-03 17:20 · branch p8/polish from origin/dev 86c9176; prompt + status + missing EcoPhonePlaythrough.cs.meta committed.
 
 - 17:55 · #287 phase 1 merged (fbb298b → 2646a08), dotnet 1166/1166. Phase 2 (View/TimeLapse drawing) still to do, lane B. No thinning added: 625–956 B/yr.
+- 18:05 · #285+#267 phase 1 merged (532ca34 → a4e6c92), dotnet 1171/1171. Phase 2 (cards JobLabel/tribe text, muddy bucket colour, DebugJobsReadout in panel) = lane B item 3B. Agent a7a1dabd6294a00bb can be resumed for it.
+- 18:06 · started #288 phase 1 (planner) Sonnet, F:\GameDev-wt\288 vs/288-berries, id aa18817aba416ed2b
 - PENDING: full EditMode suite after sim merges (Editor busy with item 1).
 
 ## Calls made without the user (→ docs/open-questions.md at the end)
@@ -46,3 +48,11 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 17:35 item 4 phase 1 (#287 records) Sonnet, lane A, F:\GameDev-wt\287 vs/287-history-land, id a329be9e7ff9375f1
 - Worker rules: C:\Users\User\AppData\Local\Temp\claude\9364ab10143f1cb1\682069c3-67cc-4488-a463-4ee8f046dedc\scratchpad\WORKER-RULES.md
 - Lane B order: 1 → 5 → 6 → 8 → 9 → 10 → 11 → 7 → 12 → 13 → 14 → 3B → 4B → 15 → 16 → 17 → 18. Tester after 6 lane B items / 4 h.
+
+### 18:50 update
+- 18:35 · item 1 merged f89ab41 (7d7d373). Closed #268 #278 #272 + feedback #260 #259 #234. Unrun at review: SettingsPlayTests, HudTapTests, PersonCard, Shaping (scroll change) → include in next full PlayMode batch. Polish: founder caption on screen during naming step.
+- 18:45 · item 2 merged cabafe5 (#271+#266 sim; dotnet 1193/1193 on merged). Camp with care Y3.3–3.8 (lab 4.3); grassRate 0.5→0.1, campMeadow 0.15→0.20. #271 stays open until item 5's view shows the spread. Lab project keeps old numbers.
+- 18:50 · running: item 5 lane B (#266 view → #277) Sonnet id a527ae9174550758a, F:\GameDev vs/266-277-misting, watcher bksoajjvr, runs full EditMode baseline first.
+- 18:50 · running: #288 agent aa18817aba416ed2b resumed to merge p8/polish (EcoState conflicts) + fix metas.
+- 18:50 · running: item 8 phase 1 (#282 rabbits sim) Sonnet a4a935b344f8b5417, wt/282 vs/282-rabbits.
+- 18:50 · running: item 14 phase A (#246/#248/#249 check + fire to first green) Opus a03318bf658dcd2c7, wt/246 vs/246-248-249-leftovers.
