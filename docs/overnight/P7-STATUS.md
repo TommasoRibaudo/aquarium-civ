@@ -7,7 +7,7 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - [x] #221 merged, closed
 - [x] #223 merged, closed
 - [x] #222 merged (open for the user's tone review)
-- [ ] #224 merged (open for the user's look sign-off)
+- [x] #224 merged (open for the user's look sign-off)
 - [ ] #225 merged, closed
 - [ ] Full EditMode suite + `SlicePlaythroughSmoke` green on `p7/dilemmas`; dilemmas off = the slice is unchanged
 - [ ] Self-play done, screenshots looked at
@@ -24,3 +24,4 @@ Orchestrator memory across compaction. One line per finished step: what, commit,
 - 17:13 Unity Sim 606/608 after #221+#223 → #221 closed. #222 merged b064f4e (dotnet 1082; card tests moved to real defs). Batch running: Sim+Cards EditMode, DilemmaCard+SmokePlay PlayMode. #225 phase 1 (telemetry, lane A, Sonnet) in wt/225. Next: Editor restart, then #224 (Opus).
 - 17:21 batch on b064f4e green: Sim 616/618, Cards 45/45, DilemmaCard 3/3, Smoke 1/1. #223 closed, #222 open for tone. Restarting Editor, then #224 (Opus).
 - 18:03 user tone review of #222: 1,5,6,8 rewritten, 4 patched (dc1e692). New #231 (apart strangers visible; far-away-tank fiction, narrator only): phase 1 merged. #225 phase 1 merged f50ceaa. #224 (Opus) in Editor since 17:22.
+- 18:26 #224 merged 565513c. Batch on it: Sim 635/637, Life 200/202 (camp_fire now needs an elder chief: test fixed, dotnet 9/9), Cards 45/45, ChoiceScene 4/4, DilemmaCard 3/3, Smoke 1/1. #231 era-words merged. User: P7 keeps the Editor till done; P8 waits. Next: Editor worker for #225 + #231 phase 2.
