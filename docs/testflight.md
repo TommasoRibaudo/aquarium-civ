@@ -178,3 +178,7 @@ Lab session (sitting with a tester): hold the top-left info box for 2 s until "L
 - Debug panels: hidden behind a 2 s top-left long-press in every non-Editor build (see Slice build 0.4.0). Lab tests that need the away buttons still run in the Editor.
 - If the macOS job fails on signing, check that the API key has **Admin** access and that the bundle ID is
   registered under the same team.
+- **"Your account has reached the maximum number of certificates"** (build 14, 2026-11-03): the archive used to sign with automatic
+  development signing, which made a new "Apple Development" certificate on every fresh runner. The archive is now unsigned
+  (`CODE_SIGNING_ALLOWED=NO`) and only the export signs, with the cloud-managed distribution certificate. If it still hits the
+  limit, revoke the old CI-made "Apple Development" certificates in developer.apple.com → Certificates.
