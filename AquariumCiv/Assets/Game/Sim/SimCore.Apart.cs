@@ -37,6 +37,15 @@ namespace AquariumCiv.Sim
         /// <summary>For the view (#231 phase 2): every apart group, with its people (alive or not), its spot and its kind of camp.</summary>
         public IReadOnlyList<ApartGroup> ApartGroups => State.apartGroups;
 
+        /// <summary>Where a group of <paramref name="kind"/> would make its home if it settled now (the same pick as <see cref="ApartSpot"/>).
+        /// Read-only: the choice scene (#231 phase 2) stands the strangers facing it before the Keeper answers.</summary>
+        public (float x, float z) ApartSpotPreview(string kind)
+        {
+            var g = new ApartGroup { kind = kind ?? ApartKind.WoodsCamp };
+            ApartSpot(g);
+            return (g.x, g.z);
+        }
+
         /// <summary>The apart group a dilemma's answer made, or null.</summary>
         public ApartGroup ApartOf(Dilemma d) => d == null ? null : State.apartGroups.FirstOrDefault(g => g.dilemmaId == d.id);
 

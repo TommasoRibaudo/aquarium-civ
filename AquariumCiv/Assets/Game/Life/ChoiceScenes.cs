@@ -149,6 +149,24 @@ namespace AquariumCiv.Life
             return Along(fire, onRight ? r : (-r.x, -r.z), d);
         }
 
+        /// <summary>#231: where the strangers wait when the option that keeps them apart gives them a home in the box (the far woods, the far
+        /// shore): out from the fire towards that home, so "full packs" points where they would live; at most <see cref="EdgeMax"/> off (both
+        /// sides in one look), at least <see cref="EdgeMin"/> unless the home is nearer, and inside the walls. <paramref name="ok"/> is false
+        /// when that leaves them too close to the fire to read as apart (then the caller uses <see cref="EdgePoint"/>).</summary>
+        public static (float x, float z) HomeWard((float x, float z) fire, (float x, float z) home, float hx, float hz, out bool ok)
+        {
+            float dx = home.x - fire.x, dz = home.z - fire.z;
+            float dist = (float)Math.Sqrt(dx * dx + dz * dz);
+            var dir = Unit(dx, dz);
+            float room = RoomAlong(fire, dir, hx, hz, EdgeMargin);
+            float d = Math.Min(Math.Min(dist, room), Math.Min(EdgeMax, Math.Max(EdgeMin, dist * 0.8f)));
+            ok = d >= HomeWardMin;
+            return Along(fire, dir, d);
+        }
+
+        /// <summary>Box units: nearer the fire than this, a homeward stand doesn't read as apart (<see cref="HomeWard"/>).</summary>
+        public const float HomeWardMin = 0.5f;
+
         /// <summary>The strangers' own spots around <paramref name="c"/>, a little group (<paramref name="n"/> of them), facing the glass.</summary>
         public static List<(float x, float z)> TravellerSpots((float x, float z) c, (float x, float z) r, (float x, float z) t, int n)
         {
@@ -259,6 +277,11 @@ namespace AquariumCiv.Life
         public float rx = 1f, rz, tx, tz = -1f;
         /// <summary>The answer it is reacting to (-1 while it waits).</summary>
         public int chosen = -1;
+        /// <summary>#231, strangers: the option that keeps them apart has a home in the box (<see cref="homeX"/>, <see cref="homeZ"/>, where
+        /// the sim would settle them now): the travellers wait towards it and, sent on, walk off to it.</summary>
+        public bool hasHome;
+        public float homeX, homeZ;
+        public int homeOption = -1;
 
         /// <summary>Everyone standing in it, with their point (the sides' people, then the asker).</summary>
         public IEnumerable<(PersonRef who, float x, float z)> Pins()

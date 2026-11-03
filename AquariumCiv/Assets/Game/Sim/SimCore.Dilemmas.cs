@@ -184,37 +184,47 @@ namespace AquariumCiv.Sim
         string RoleOfDef(DilemmaDef def) => def.role == DilemmaDef.Leader ? LeaderOf(State.era) : def.role;
 
         /// <summary>Does the def hold now? On success the two people (or -1).</summary>
-        bool DefHolds(DilemmaDef def, out int a, out int b)
+        bool DefHolds(DilemmaDef def, out int a, out int b) => DefWhyNot(def, out a, out b) == null;
+
+        /// <summary>Debug (#225): why this def can't be raised in this box now, in a few words; null when it can. Read-only.</summary>
+        public string DilemmaWhyNot(string defId)
+        {
+            var def = DilemmaCatalog.FirstOrDefault(x => x.id == defId);
+            return def == null ? "no such dilemma" : DefWhyNot(def, out _, out _);
+        }
+
+        /// <summary><see cref="DefHolds"/> with the reason it fails (null = it holds). Constant strings: it runs monthly, so no garbage.</summary>
+        string DefWhyNot(DilemmaDef def, out int a, out int b)
         {
             a = b = -1;
-            if (State.dilemmas.Any(d => d.defId == def.id)) return false;           // never repeats in a box
-            if (State.era < def.minEra || State.era > def.maxEra) return false;
-            if (!string.IsNullOrEmpty(def.needs) && !Has(def.needs)) return false;
+            if (State.dilemmas.Any(d => d.defId == def.id)) return "asked already in this box";  // never repeats in a box
+            if (State.era < def.minEra || State.era > def.maxEra) return "not in this era";
+            if (!string.IsNullOrEmpty(def.needs) && !Has(def.needs)) return "a building it needs is missing";
             if (def.leaderElder || def.termEndingMonths > 0)
             {
                 var lseat = SeatOf(LeaderOf(State.era));
                 var leader = Alive(lseat?.holderId ?? -1);
-                if (leader == null) return false;
-                if (def.leaderElder && leader.age < Config.elderAge) return false;
-                if (def.termEndingMonths > 0 && (lseat.termEndsMonth < State.month || lseat.termEndsMonth - State.month > def.termEndingMonths)) return false;
+                if (leader == null) return "no leader";
+                if (def.leaderElder && leader.age < Config.elderAge) return "the leader isn't old yet";
+                if (def.termEndingMonths > 0 && (lseat.termEndsMonth < State.month || lseat.termEndsMonth - State.month > def.termEndingMonths)) return "the leader's term isn't ending";
             }
             string role = RoleOfDef(def);
             if (!string.IsNullOrEmpty(role))
             {
                 var seat = SeatOf(role);
-                if (seat == null) return false;
-                if (seat.holderId >= 0 && !def.replacesHolder) return false;
+                if (seat == null) return "no seat for its role";
+                if (seat.holderId >= 0 && !def.replacesHolder) return "its role's seat is filled";
             }
             if (def.cast == DilemmaCast.TwoCandidates)
             {
                 var pool = RoleCandidates(role);
-                if (pool.Count < 2) return false;
+                if (pool.Count < 2) return "fewer than two candidates";
                 var ranked = string.IsNullOrEmpty(role)
                     ? pool.OrderByDescending(n => DilemmaRoll(5, n.id, 0)).ThenBy(n => n.id).ToList()
                     : pool.OrderByDescending(n => Standing(n, role)).ThenBy(n => n.id).ToList();
                 a = ranked[0].id; b = ranked[1].id;
             }
-            return true;
+            return null;
         }
 
         List<(DilemmaDef def, int a, int b)> EligibleDefs()
