@@ -39,9 +39,9 @@ glass-voice stages: a little scared in the camp, curious in the village, studyin
 
 | # | Beat | What the player does | What grows | The people | Era |
 |---|---|---|---|---|---|
-| 0 | **Barren land** | Wipe the misted glass (first run) | Dry, cracked dirt; hollows; a dry stream bed | **A few wanderers are already there**, huddled by a cold fire, scraping by | — (before the camp) |
-| 1 | **The first mist** | **Mist** a spot | Green spreads from where it fell, over seconds | They stand in it, faces up, astonished | — |
-| 2 | **Meadows and bunnies** | Keep misting, here and there | Meadow spreads; **rabbits** arrive with enough grass | They hunt; hides become **tents** | **Camp starts here, officially** (an era moment, small) |
+| 0 | **Barren land** | Wipe the misted glass (first run) | Dry, cracked dirt; hollows; a dry stream bed | **The tribe is already there**: one tent and a fire, nothing more. Slow life: they dig roots in the dry stream bed, sit and sleep by the fire, watch the sky (§2.1) | **Tribe** (before the camp) |
+| 1 | **The first mist** | **Mist** a spot | Green spreads from where it fell, over seconds; crickets start with the first green | They react **at once**: they stand in it, faces up, astonished; a child plays in the mist; they move their fire next to the green; the glass voice's first line. Every early mist is a small moment (§2.1) | Tribe |
+| 2 | **Meadows and bunnies** | Keep misting, here and there | Meadow spreads; rabbit tracks first, then **rabbits** arrive with enough grass | They hunt; hides become **new tents** (none are built before this) | **Camp starts here, officially** (an era moment, small) |
 | 3 | **Bushes** | (nothing new) | Bushes appear in the meadow over time | **Gatherers** (berries) | Camp |
 | 4 | **The one seed** | **Plant** the seed (once); care for it (§4) | Seed → sprout → sapling → young → grown, through seasons | Watch it; later they carry water to it | Camp |
 | 5 | **The forest** | (nothing new; keep tending) | Birds spread its seeds; wild trees grow without care | **Woodcutters**, more gathering (mushrooms, nuts) | Camp |
@@ -54,6 +54,26 @@ What gates each era [est, the spike measures it]: the **camp** starts with meado
 the **village** needs the forest (≥ N grown trees) **and** water at the surface, plus today's population and
 building rules (`SimConfig.villageAt`). Natural moisture keeps all of this moving slowly without the player (§5.4), so
 an era always comes eventually, only later.
+
+### 2.1 Before the camp: the tribe (decided 2026-11-02)
+The user's answers after the Ecology Lab (#228), which showed that with care the camp gate opens about 3–4 game
+years in (3–4 real hours), and 18–30 without the player:
+- **The tribe phase is the start.** The people are there from the first frame with **one tent and a fire**, and
+  they build **no new tent until the camp starts**. So the camp gate (meadow + rabbits) is the moment they can
+  build, not the moment they arrive. **No time skip** in the first run: the tribe's hours are played, not skipped.
+- **Slow life before the first green.** They scrape by: dig roots in the dry stream bed, carry them back, sit and
+  sleep by the fire, look up at the glass. Quiet and slow, but never still.
+- **The first mist is an event for them, at once.** They stand in it, faces up; a child plays in the drifting mist;
+  they move their fire next to the first green; the glass voice says its first line ("the sky wept"). Every early
+  mist is a small moment of its own, so the player is answered before any gate.
+- **The land shows progress between the gates**, so a return always finds something new: crickets with the first
+  green, rabbit tracks before the rabbits, birds landing on the first bushes, later frogs at the pond.
+- **The barren box has its own sound, and the green takes it over.** Dry wind, sand hissing along the ground,
+  the tick of cracking dirt, a loose stone. Its volume follows the share of bare land, so each mist, each meadow and
+  each tree makes it a little quieter, while the living sounds (crickets, then birds, then water and frogs) rise in
+  its place. Nobody needs a bar: the box sounds more alive as it is. Pillar 4 holds: nothing ever brings the barren
+  sound back, because the land never dies back.
+- Debug panel: cheats to skip to each gate and to trigger each of these signs.
 
 ---
 
