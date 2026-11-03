@@ -171,13 +171,15 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"             || /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" -c "Print :CFBundleVersion" "$PLIST"
 
+      # Archive unsigned: a signed archive made a new "Apple Development" certificate on every fresh runner until the account hit
+      # Apple's limit (build 14, 2026-11-03). The export below signs once, with the cloud-managed distribution certificate.
       - name: Archive
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          xcodebuild archive             -project "$XCODE_DIR/Unity-iPhone.xcodeproj" -scheme Unity-iPhone -configuration Release             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/AquariumCiv.xcarchive"             -allowProvisioningUpdates -authenticationKeyPath "$KEY_DIR/AuthKey_$APPSTORE_KEY_ID.p8"             -authenticationKeyID "$APPSTORE_KEY_ID" -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic -quiet
+          xcodebuild archive             -project "$XCODE_DIR/Unity-iPhone.xcodeproj" -scheme Unity-iPhone -configuration Release             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/AquariumCiv.xcarchive"             -allowProvisioningUpdates -authenticationKeyPath "$KEY_DIR/AuthKey_$APPSTORE_KEY_ID.p8"             -authenticationKeyID "$APPSTORE_KEY_ID" -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -quiet
 
       - name: Export and upload to TestFlight
         env:
