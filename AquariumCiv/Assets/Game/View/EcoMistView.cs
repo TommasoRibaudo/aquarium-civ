@@ -81,7 +81,7 @@ namespace AquariumCiv.View
             if (sim == null || !sim.EcologyOn || box == null) return false;
             hud ??= GameHud.Instance;
             if (hud != null && (!hud.IsVisible || hud.CleanMode || hud.CameraMode || hud.SheetOpen)) return false;
-            var shaping = Shaping.ShapingView.Instance;
+            var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return false;
             var cards = PersonCardView.Instance;
             if (cards != null && (cards.AnyOpen || cards.BuildingOpen)) return false;

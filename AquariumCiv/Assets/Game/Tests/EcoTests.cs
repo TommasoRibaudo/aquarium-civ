@@ -9,6 +9,7 @@ using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 using NUnit.Framework;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 using static AquariumCiv.Tests.SimCoreTests;
 
 namespace AquariumCiv.Tests

@@ -848,6 +848,7 @@ namespace AquariumCiv.View
 
             foreach (var c in layout.clearings)
             {
+                if (Eco && Grassy(c.kind)) continue; // P8: the living land's own cover says where it's green
                 float dx = x - c.centre.x, dz = z - c.centre.y, reach = c.radius + 0.2f;
                 if (dx * dx + dz * dz > reach * reach) continue;
                 float d = Vector2.Distance(p, c.centre), r = c.radius + 0.08f * (n - 0.5f);
@@ -856,13 +857,13 @@ namespace AquariumCiv.View
                 {
                     if (c.kind == ClearingKind.Dirt) col = Color.Lerp(col, co.dirt, 0.35f);
                     else if (c.kind == ClearingKind.Cobble) col = Color.Lerp(col, co.path, 0.6f); // a worn sandy edge round the square
-                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, co.path, 0.45f); // a trodden ring round the green
+                    else if (c.kind == ClearingKind.Green) col = Color.Lerp(col, co.path, Eco ? 0.15f : 0.45f); // a trodden ring round the green
                     continue;
                 }
                 col = c.kind switch
                 {
                     // The village green: a mown lawn, brighter than the grass round it, so it reads at default zoom (#91).
-                    ClearingKind.Green => Color.Lerp(Color.Lerp(co.grassC, Palette.Wheat, 0.3f), co.grassC, n * 0.35f),
+                    ClearingKind.Green => Eco ? Color.Lerp(col, co.dirt, 0.3f) : Color.Lerp(Color.Lerp(co.grassC, Palette.Wheat, 0.3f), co.grassC, n * 0.35f),
                     ClearingKind.Cobble => Cobble(x, z, n),
                     ClearingKind.Yard => Color.Lerp(col, co.dirt, d < r * 0.7f ? 0.55f : 0.3f),
                     ClearingKind.Meadow => Meadow(n),
@@ -1007,7 +1008,7 @@ namespace AquariumCiv.View
             float HX = Land.HX, HZ = Land.HZ;
             var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
             var co = Co;
-            Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, co.moss };
+            Color[] cols = { Palette.Gravel, Palette.Loam, Palette.SoilLight, Eco ? DirtWet : co.moss }; // P8: no moss lip on a barren box
             for (int side = 0; side < 4; side++)
             {
                 var p0 = corners[side]; var p1 = corners[(side + 1) % 4];

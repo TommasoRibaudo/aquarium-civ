@@ -406,6 +406,16 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Debug (edit mode): grow a new preview box from <paramref name="seed"/> for <paramref name="years"/>.</summary>
+        /// <summary>Edit mode: show this sim as the preview (P8 shots of a living-land box grown by a script).</summary>
+        public static string DebugPreviewSim(SimCore core)
+        {
+            var s = Need(out var err); if (s == null) return err;
+            if (s.IsLive) return "play mode shows the live sim";
+            s.preview = core;
+            s.WorldChanged();
+            return s.Status();
+        }
+
         public static string DebugPreview(int seed, float years)
         {
             var s = Need(out var err); if (s == null) return err;

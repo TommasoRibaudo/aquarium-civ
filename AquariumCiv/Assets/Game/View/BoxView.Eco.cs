@@ -54,8 +54,8 @@ namespace AquariumCiv.View
             var dry = Color.Lerp(DirtDry, DirtWet, Mathf.Clamp01(m * 1.4f));
             dry = Color.Lerp(dry, DirtWet, (n - 0.5f) * 0.25f);
             // Cracks: where two noises cross, a thin dark line; they close up as the ground gets wet.
-            float cr = Mathf.Abs(Land.Noise(x * 11f, z * 11f) - Land.Noise(x * 11f + 7.3f, z * 11f - 3.1f));
-            if (cr < 0.035f && m < 0.35f) dry = Color.Lerp(dry, DirtCrack, 0.65f * (1f - m / 0.35f));
+            float cr = Mathf.Abs(Land.Noise(x * 6f, z * 6f) - Land.Noise(x * 6f + 7.3f, z * 6f - 3.1f));
+            if (cr < 0.02f && m < 0.35f) dry = Color.Lerp(dry, DirtCrack, 0.35f * (1f - m / 0.35f));
             float g = ec.GreenAt(x, z);
             if (g <= 0.001f) return dry;
             var grass = Grass(n, y);
