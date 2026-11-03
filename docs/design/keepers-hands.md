@@ -75,6 +75,30 @@ years in (3–4 real hours), and 18–30 without the player:
   sound back, because the land never dies back.
 - Debug panel: cheats to skip to each gate and to trigger each of these signs.
 
+### 2.2 The pace of green: a little at once, the wet area over time (decided 2026-11-03; #266 sim half, #271)
+The mist no longer greens its whole core at once, and green no longer waits for the next visit. What the sim does now
+(`Sim/Eco`; numbers in `EcoTuning`, all [est]):
+- **Every mist shows a little green at once**, not only the first: the middle of the mist turns to grass now, and if
+  that is bare, at least 3 cells do (`mistMinGreen`). A few shoots come up round them (bare cells with a `sprout`
+  value; the view draws them as shoots).
+- **The mist is bigger and grows with the hold:** radius 0.45 to 0.7 for a short mist, up to 1.0 at the full hold
+  (4 s, `EcoMistRadius(seconds)`). The wetness it leaves is per cell (`EcoWetAt`, 0..1): a **wet area** that dries
+  by itself (about a fifth to a third a game month, slower in humid air), so it is nearly gone within a game year.
+- **The wet area greens over the following months:** shoots in the inner part of the wet area (the inner ~40 % of the
+  radius) grow into grass in about 6 game months (30 real minutes at 1 h = 1 game year). The rim only wets the
+  ground; its moisture still greens it slowly.
+- **Puddles:** where a mist is long enough to soak flat ground (amount x falloff over 0.85, so a held mist's middle),
+  a puddle stands (`EcoPuddleAt`, `EcoPuddleCells`). It dries and sinks in within about a game year. A puddle of 0.25
+  or more can be drunk from: **the water source while there is no pond** (`EcoNearestPuddle`, `EcoDrawPuddle`; #267
+  wires the planner).
+- **Spreading on its own (#271):** a misted patch creeps outward between visits (a green edge nudges a bare neighbour
+  on, if the ground has a little damp), and bare ground gets the odd sprout after dew or a shower. It is slow: three
+  unvisited years add a few dozen cells. **The mister stays the fast way**, many times faster.
+- **Pace kept:** the camp gate wants 20 % meadow (was 15 %) plus rabbits, and the plain bare-ground grass chance fell
+  (`grassRate` 0.5 to 0.1) while the creep took its place. Seed 7: camp with care Y3.3-3.8 (lab Y4.3; the issue's
+  range is 3-5.4), no player Y20.3 (lab Y25.3; range 18-30), village with care Y24.5 (lab Y25.3).
+- Debug: "mist big here" (`SimCore.DebugMistBig`) and "puddles now" (`SimCore.DebugPuddlesNow`).
+
 ---
 
 ## 3. The Keeper's kit (replaces Clean and Shape)

@@ -863,7 +863,7 @@ namespace AquariumCiv.View
             tabs.Changed += i => { Tab = (CardTab)i; if (Card != null) Build(Card); body.scrollOffset = Vector2.zero; };
             sheet.Add(tabs);
 
-            var scroll = new GlassScroll { SnapToRows = true };
+            var scroll = new GlassScroll { WholeRows = true };
             scroll.AddToClassList("pc-scroll");
             body = scroll.View;
             body.name = "person-card-body";
