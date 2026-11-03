@@ -20,7 +20,7 @@ namespace AquariumCiv.GameUI
     /// </summary>
     public class GameHud : MonoBehaviour
     {
-        public const string Settings = "settings", History = "history", Shaping = "shaping", Offices = "offices";
+        public const string Settings = "settings", History = "history", Shaping = "shaping", Offices = "offices", Kit = "kit";
 
         public static GameHud Instance { get; private set; }
         /// <summary>Set false (tests) to keep the bootstrap from adding the HUD to the scene.</summary>
@@ -137,10 +137,90 @@ namespace AquariumCiv.GameUI
             cleanMode = on;
             if (cleanButton != null)
             {
-                cleanButton.text = on ? "Done" : "Clean";
+                cleanButton.text = on ? "Done" : KitBox ? "Kit" : "Clean";
                 cleanButton.EnableInClassList("kg-tool--on", on); // the word, a check and a ring: the mode is never a silent one
             }
+            if (on && hand != KitTool.None) SetHand(KitTool.None);
             CleanModeChanged?.Invoke(on);
+        }
+
+        // ---------------- P8: the Keeper's kit (keepers-hands.md section 3) ----------------
+        /// <summary>The kit's tools besides the cloth (the cloth is clean mode). One in hand at a time; one finger is the tool, two the camera.</summary>
+        public enum KitTool { None, Mister, Seed }
+        KitTool hand;
+        bool kitBox, kitSeedShown;
+        GlassButton kitCloth, kitMister, kitSeed;
+        Label kitNote;
+        /// <summary>The tool in hand (the mister or the seed), or None. The cloth is <see cref="CleanMode"/>.</summary>
+        public KitTool Hand => hand;
+        /// <summary>A living-land box: Clean and Shape become one Kit button with the cloth, the mister and (once it comes) the seed.</summary>
+        public bool KitBox => kitBox;
+        public event Action<KitTool> HandChanged;
+
+        /// <summary>Put a kit tool in hand (None puts it down). Clean mode ends; the Kit button reads Done and stays lit while it's held.</summary>
+        public void SetHand(KitTool t)
+        {
+            if (hand == t) return;
+            if (t != KitTool.None) { SetCleanMode(false); CloseSheet(); }
+            hand = t;
+            if (cleanButton != null)
+            {
+                bool on = t != KitTool.None || cleanMode;
+                cleanButton.text = on ? "Done" : KitBox ? "Kit" : "Clean";
+                cleanButton.EnableInClassList("kg-tool--on", on);
+            }
+            if (t == KitTool.Mister) Toast("Hold a finger over the land to mist it. Two fingers move the view.", 4f);
+            if (t == KitTool.Seed) Toast("Tap a spot on the land to plant the seed.", 4f);
+            HandChanged?.Invoke(t);
+        }
+
+        void OnKitButton()
+        {
+            if (cleanMode || hand != KitTool.None) { SetCleanMode(false); SetHand(KitTool.None); return; }
+            SetShapeNew(false);
+            Open(Kit);
+        }
+
+        void BuildKit()
+        {
+            var sheet = Sheet(Kit, "The Keeper's kit");
+            kitNote = Text("", "type-note", "kg-sheet-note");
+            var acts = new VisualElement();
+            acts.AddToClassList("kg-card-acts");
+            acts.Add(kitCloth = new GlassButton("Cloth", () => { CloseSheet(); SetCleanMode(true); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-cloth" });
+            acts.Add(kitMister = new GlassButton("Mister", () => SetHand(KitTool.Mister), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-mister" });
+            acts.Add(kitSeed = new GlassButton("Seed", () => SetHand(KitTool.Seed), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-seed" });
+            sheet.Add(acts);
+            sheet.Add(kitNote);
+            kitSeed.style.display = DisplayStyle.None;
+        }
+
+        /// <summary>Each frame: a living-land box shows Kit (not Clean and Shape); the seed joins the kit when the land is ready for it
+        /// and leaves once it's planted.</summary>
+        void FollowKit()
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            bool eco = sim != null && sim.EcologyOn;
+            if (eco != kitBox)
+            {
+                kitBox = eco;
+                if (!eco) SetHand(KitTool.None);
+                if (cleanButton != null) cleanButton.text = cleanMode || hand != KitTool.None ? "Done" : eco ? "Kit" : "Clean";
+                if (shapeButton != null) shapeButton.style.display = eco || toolBlocks.Count > 0 ? DisplayStyle.None : DisplayStyle.Flex;
+            }
+            if (!eco || kitSeed == null) return;
+            bool seed = sim.CanPlantTree;
+            if (seed != kitSeedShown)
+            {
+                kitSeedShown = seed;
+                kitSeed.style.display = seed ? DisplayStyle.Flex : DisplayStyle.None;
+                if (seed && !sim.State.firstRun.active) { SetShapeNew(true); Toast("A seed has come. It's in your kit.", 4f); }
+                if (!seed && hand == KitTool.Seed) SetHand(KitTool.None);
+            }
+            if (kitNote != null)
+                kitNote.text = seed ? "Cloth wipes the glass. Mister wets the land. Seed: plant the one tree."
+                    : sim.EcoTree.cell >= 0 ? "Cloth wipes the glass. Mister wets the land and the tree."
+                    : "Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree.";
         }
 
         /// <summary>The first run's wipe and flick: the hint says to drag, so nothing turns clean mode off under it, not Done (the tool isn't
@@ -219,9 +299,9 @@ namespace AquariumCiv.GameUI
         {
             if (!(hide ? toolBlocks.Add(reason) : toolBlocks.Remove(reason))) return;
             bool h = toolBlocks.Count > 0;
-            if (h) { SetCleanMode(false); DropToasts(); }
+            if (h) { SetCleanMode(false); SetHand(KitTool.None); DropToasts(); }
             if (cleanButton != null) cleanButton.style.display = h ? DisplayStyle.None : DisplayStyle.Flex;
-            if (shapeButton != null) shapeButton.style.display = h ? DisplayStyle.None : DisplayStyle.Flex;
+            if (shapeButton != null) shapeButton.style.display = h || kitBox ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
         public bool ToolsHidden => toolBlocks.Count > 0;
@@ -331,10 +411,12 @@ namespace AquariumCiv.GameUI
         {
             if (shapeNew == on || shapeButton == null) return;
             shapeNew = on;
-            shapeButton.EnableInClassList("kg-tool--new", on);
+            var b = kitBox ? cleanButton : shapeButton;
+            shapeButton.EnableInClassList("kg-tool--new", on && !kitBox);
+            cleanButton?.EnableInClassList("kg-tool--new", on && kitBox);
             if (!on) return;
             UiSound.Play(UiRole.NewTool);
-            GlassMotion.Glow(shapeButton, "kg-tool--glow");
+            GlassMotion.Glow(b, "kg-tool--glow");
         }
 
         public bool ShapeNew => shapeNew;
@@ -372,6 +454,7 @@ namespace AquariumCiv.GameUI
             if (toastLabel != null) PumpToast();
             if (outsideSheet != null) PlaceToast(); // it has no height until its first layout
             FollowFirstRun();
+            FollowKit();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             settings.Tick(SafeNow, BottomPadNow, OpenSheet == Settings);
             // Android Back / Esc closes the open sheet.
@@ -425,8 +508,9 @@ namespace AquariumCiv.GameUI
 
             bottomRow = Row("hud-bottom");
             bottomRow.Add(historyButton = Tool("hud-history", "History", OnHistory, UiRole.Open));
-            bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => SetCleanMode(!cleanMode), UiRole.Toggle));
+            bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => { if (kitBox) OnKitButton(); else SetCleanMode(!cleanMode); }, UiRole.Toggle));
             cleanButton.Add(new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
+            cleanButton.Add(new GlassNewTag());
             bottomRow.Add(shapeButton = Tool("hud-shape", "Shape", () => { SetShapeNew(false); Open(Shaping); }, UiRole.Open));
             shapeButton.Add(new GlassNewTag());
             safe.Add(bottomRow);
@@ -455,6 +539,7 @@ namespace AquariumCiv.GameUI
             BuildHistory();
             BuildOffices();
             BuildShaping();
+            BuildKit();
             ApplySafeArea();
             RefreshText();
             FollowFirstRun();
@@ -551,7 +636,10 @@ namespace AquariumCiv.GameUI
         public void Open(string id)
         {
             if (!sheets.TryGetValue(id, out var scrim) || openSheet == scrim) return;
-            if (id == Shaping) SetCleanMode(false); // one mode at a time, and Done would sit hidden behind the tray
+            if (id == Shaping && kitBox) id = Kit; // a living-land box has no Shape tray: the kit is the Keeper's hands
+            if (id == Shaping || id == Kit) SetCleanMode(false); // one mode at a time, and Done would sit hidden behind the tray
+            if (id == Kit) SetHand(KitTool.None);
+            if (!sheets.TryGetValue(id, out scrim) || openSheet == scrim) return;
             if (openSheet != null) { openSheet.style.display = DisplayStyle.None; openSheet.Sheet.Close(); }
             openSheet = scrim;
             settings.Opening(id);

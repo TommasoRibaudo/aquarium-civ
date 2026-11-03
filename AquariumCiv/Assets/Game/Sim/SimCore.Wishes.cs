@@ -121,6 +121,7 @@ namespace AquariumCiv.Sim
                 return;
             }
             if (!WishesOn) return;
+            if (EcologyOn) return; // P8: a wish's Give puts an old shaping tool in hand (grove, herd); the kit has no wishes yet (keepers-hands 3.2)
             if (DilemmaHoldsSlot) return; // the slot is shared with the Keeper's dilemmas (SimCore.Dilemmas.cs): one or the other
             long last = State.wishes.Count == 0 ? long.MinValue / 2 : State.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
             last = Math.Max(last, DilemmaLastEnd);
