@@ -103,7 +103,7 @@ namespace AquariumCiv.Sim
             }
             foreach (var g in gates)
             {
-                if (g == "camp") Chronicle("eco_camp", "Rabbits ran in the new grass. The people said they could stay and raise more tents.", 0.9f);
+                if (g == "camp") { Chronicle("eco_camp", "Rabbits ran in the new grass. The people said they could stay and raise more tents.", 0.9f); ArmFirstTent(); }
                 else if (g == "village") Chronicle("eco_village", "There was water to stand by and trees to build with. The people began to talk of a village.", 0.9f);
                 EcoGateOpened?.Invoke(g);
             }
