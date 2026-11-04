@@ -1105,8 +1105,11 @@ namespace AquariumCiv.View
         {
             float top = land.Height(p.x, p.y);
             float n1 = Land.Noise(p.x * 2.1f + p.y * 1.3f, 3.7f), n2 = Land.Noise(p.x * 1.7f - p.y * 2.2f, 8.1f), n3 = Land.Noise(p.x * 3.1f + p.y, 1.9f);
-            return new[] { 0f, 0.18f + 0.06f * n1, 0.46f + 0.08f * n2, Mathf.Max(0.5f, top - 0.08f - 0.04f * n3), Mathf.Max(top, Land.WaterY) };
+            return new[] { 0f, 0.18f + 0.06f * n1, 0.46f + 0.08f * n2, Mathf.Max(0.5f, top - 0.08f - 0.04f * n3), Eco ? top : Mathf.Max(top, Land.WaterY) }; // P8 (#297): a living land's cut ends at its own ground, not the old pond's level
         }
+
+        /// <summary>Where the soil cut's top edge stands at a point on the box's edge, for the tests.</summary>
+        public float DebugCutTop(Vector2 p) => Layers(p)[4];
 
         /// <summary>The solid material with blending on, for the frame alone: it stays its colour at alpha 1, and its near parts fade (#162).
         /// Blending, not a dither: a <c>clip()</c> in the one shader would cost every fragment in the box its early depth test on a tiler.</summary>
