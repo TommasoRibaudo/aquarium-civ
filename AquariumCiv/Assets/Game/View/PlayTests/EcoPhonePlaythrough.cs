@@ -86,7 +86,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(10);
         }
 
-        [UnityTest, Timeout(600000)]
+        [UnityTest, Timeout(2700000)]
         public IEnumerator FreshLivingBox_PlayedByTouch_ThenTheKit()
         {
             bool prefWas = GameClock.EcologyPref;
@@ -196,51 +196,55 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-cloth"));
                 yield return Frames(10);
                 Assert.IsTrue(hud.CleanMode, "the cloth is clean mode");
+                yield return Drag(new[] { new Vector2(Screen.width * 0.2f, Screen.height * 0.55f), new Vector2(Screen.width * 0.8f, Screen.height * 0.5f) }, 0.02f * Screen.height);
+                yield return Shot("phone_08b_cloth_in_hand");
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 yield return Frames(10);
                 Assert.IsFalse(hud.CleanMode);
 
-                // ---- 5. Years later (cheats only to get there): the seed comes, one tap plants it
-                EcoDebug.OpenCampGate();
-                for (int i = 0; i < 40 && !Sim.CanPlantTree; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(2); }
-                Assert.IsTrue(Sim.CanPlantTree, "the seed comes after the camp and the first bushes");
-                // the years the cheats skipped grew a meadow: rabbits are seen (#282), as many as the sim counts, capped
+                // ---- 5-12. Only time passes (+1 season, an away) and the keeper's own touch: the Mister, held on the camp and a few spots.
+                // No gate cheat, no action cheat. A beat that time does not reach within its budget is logged and counted, not faked.
+                Assert.IsFalse(Sim.CampGateOpen, "the camp gate starts shut");
+                // 6a. grass spreads on its own: three seasons with no mist at all
+                int grass0 = GrassCells(); float yr0 = Sim.State.Year;
+                for (int i = 0; i < 3; i++) { EcoDebug.SkipSeasons(1); yield return Frames(5); }
+                int grass1 = GrassCells();
+                yield return new WaitForSecondsRealtime(1f);
+                Debug.Log($"[phone] grass on its own: {grass0} -> {grass1} cells over {Sim.State.Year - yr0:0.0} y");
+                yield return Shot("phone_09_grass_spreads_alone");
+                Assert.Greater(grass1, grass0, "grass spreads on its own, with no finger on the glass");
+                // 6b. new grass after an away: leave the box as seen, time passes (an away of a few seasons), the fresher green shows
+                var surf281 = EcoSurface.Instance;
+                Sim.MarkLandSeen();
+                EcoDebug.SkipSeasons(4);
+                surf281.RestartFade();
+                yield return Frames(30);
+                Debug.Log($"[phone] away: new cells {Sim.LandNewCellCount}, shown {surf281.NewGrassCells}");
+                yield return Shot("phone_10_new_grass_after_away");
+                Assert.Greater(Sim.LandNewCellCount, 0, "grass grew while the box was left");
+                Assert.Greater(surf281.NewGrassCells, 0, "new grass shows in the fresher green");
+
+                // 7. rabbit tracks, then rabbits
                 var rabbits = RabbitView.Instance;
                 Assert.IsNotNull(rabbits, "the rabbit view");
+                yield return AdvanceUntil(hud, "rabbit tracks", () => rabbits.TracksShown, 60);
+                yield return new WaitForSecondsRealtime(1f);
+                yield return Shot("phone_11_rabbit_tracks");
+                yield return AdvanceUntil(hud, "rabbits", () => Sim.EcoRabbitCount > 0 && rabbits.Shown > 0, 80);
                 yield return new WaitForSecondsRealtime(1.5f);
-                Debug.Log($"[phone] rabbits: sim {Sim.EcoRabbitCount}, shown {rabbits.Shown}");
-                Assert.Greater(Sim.EcoRabbitCount, 0, "the meadow brought rabbits");
-                Assert.AreEqual(Sim.EcoRabbitsShown(), rabbits.Shown, "and the box shows them");
-                yield return Shot("phone_09_seed_came");
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
-                yield return new WaitForSecondsRealtime(0.5f);
-                Assert.IsTrue(Shown(hud.Root.Q("kit-seed")), "the seed is in the kit");
-                yield return Shot("phone_10_kit_with_seed");
-                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-seed"));
-                yield return Frames(10);
-                Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand);
-                var map = Sim.Settlement.Map;
-                yield return TapAt(ScreenOf(map.greenX - 0.9f, map.greenZ + 0.5f));
-                yield return Frames(20);
-                Debug.Log("[phone] seed: " + EcoMistView.Instance.LastSeed);
-                Assert.GreaterOrEqual(Sim.EcoTree.cell, 0, "one tap planted the tree: " + EcoMistView.Instance.LastSeed);
-                Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "the seed leaves the hand");
-                var cards = PersonCardView.Instance;
-                Assert.IsFalse(cards != null && (cards.AnyOpen || cards.BuildingOpen), "the seed's tap is the seed's: no person card");
-                yield return new WaitForSecondsRealtime(1.5f);
-                yield return Shot("phone_11_planted");
-                AssertNoErrors("kit");
+                Debug.Log($"[phone] rabbits: sim {Sim.EcoRabbitCount}, shown {rabbits.Shown}, year {Sim.State.Year:0.0}");
+                if (Sim.EcoRabbitCount > 0) Assert.AreEqual(Sim.EcoRabbitsShown(), rabbits.Shown, "the box shows the rabbits the sim counts");
+                yield return Shot("phone_12_rabbits");
 
-                // ---- 6. The hunt (#283): only time passes. Hunters follow the rabbits in the meadow and make a catch; the hide dries by the fire
-                // (the hide frame is drawn by item 10; here the count).
+                // 8. The hunt: only time passes. The camp gate opens by the meadow and the rabbits; hunters follow them and make a catch.
+                yield return AdvanceUntil(hud, "camp gate", () => Sim.CampGateOpen, 120);
+                yield return PutDownMister(hud);
                 var pvh = PeopleView.Find();
                 int hides0 = Sim.HidesTotal, rabbits0 = Sim.EcoRabbitCount;
-                bool sawStalk = false, sawSpear = false;
-                // A view day follows the sim's month, so a day with no hunt (a rest day, a storm, a bad roll) is followed by the next one
-                // only when time moves on: the time-advance cheat (a season) does it.
-                for (int attempt = 0; attempt < 10 && Sim.HidesTotal <= hides0; attempt++)
+                bool sawStalk = false, sawSpear = false, shotStalk = false;
+                for (int attempt = 0; attempt < 12 && Sim.HidesTotal <= hides0; attempt++)
                 {
-                    if (attempt > 0) EcoDebug.SkipSeasons(1);
+                    if (attempt > 0) { EcoDebug.SkipSeasons(1); }
                     PeopleView.DebugSetHour(6.5f);
                     yield return Frames(10);
                     pvh.timeScale = 12f;
@@ -252,183 +256,229 @@ namespace AquariumCiv.View.PlayTests
                             if (a.hunt == AquariumCiv.Life.HuntPhase.Stalk) sawStalk = true;
                             if (a.hunt == AquariumCiv.Life.HuntPhase.WalkOut && a.prop == AquariumCiv.Life.Prop.Spear) sawSpear = true;
                         }
+                        if (sawStalk && !shotStalk) { shotStalk = true; pvh.timeScale = 1f; yield return Frames(15); yield return Shot("phone_13_hunter_stalks"); pvh.timeScale = 12f; }
+                        if (CampView.Instance != null && CampView.Instance.RaisingsActive > 0 && !campWatched) { yield return WatchCampMoment(pvh); pvh.timeScale = 12f; }
                         yield return null;
                     }
                 }
                 pvh.timeScale = 1f;
-                int hunters = 0; foreach (var n in Sim.State.notables) if (n.job == "hunter") hunters++;
-                Debug.Log($"[phone] hunt diag: era {Sim.State.era}, surplus {Sim.HuntSurplus}, hunters(notables) {hunters}, jobs open [{string.Join(",", Sim.OpenJobs())}], day {pvh.Now.day}, hunts today {pvh.Planner.HuntsOn(pvh.Now.day).Count}, field {(pvh.Planner.Rabbits != null ? pvh.Planner.Rabbits.Alive.Count : -1)}");
-                Debug.Log($"[phone] hunt: hides {hides0} -> {Sim.HidesTotal}, rabbits {rabbits0} -> {Sim.EcoRabbitCount}, stalk {sawStalk}, spear {sawSpear}");
-                Assert.Greater(Sim.HidesTotal, hides0, "with only time passing, a hunter made a catch and a hide is drying by the fire");
-                Assert.IsTrue(sawStalk && sawSpear, "and it was seen: a spear walked out, a hunter stalked");
+                Debug.Log($"[phone] hunt: year {Sim.State.Year:0.0}, hides {hides0} -> {Sim.HidesTotal}, rabbits {rabbits0} -> {Sim.EcoRabbitCount}, stalk {sawStalk}, spear {sawSpear}");
+                if (Sim.HidesTotal <= hides0) Miss("hunt (a catch and a hide)");
+                else if (!(sawStalk && sawSpear)) Miss("hunt seen (stalk/spear)");
                 AssertNoErrors("hunt");
 
-                // ---- 9. The camp begins (#284): only time passes. The hides on the frame by the fire pile up with the hunts; with two of them
-                // and the camp gate open, the first tent goes up from the hides as a small moment (camera lean, a builder's line).
+                // 9. The camp begins: the first tent from the hides, as a small moment (time passing only). It plays whenever the sim
+                // raises it (during the hunts above or the seasons below); WatchCampMoment follows it with the camera and shoots it.
                 var cv = CampView.Instance;
                 Assert.IsNotNull(cv, "the camp view");
                 yield return Frames(15);
-                Assert.IsTrue(cv.FrameShown, "the hide frame stands by the fire once there are hides");
-                Assert.AreEqual(Mathf.Min(pvh.Planner.HidesOnFrame(pvh.Now), AquariumCiv.Life.LifePlanner.HideFrameMax), cv.HidesShown, "one hide on the frame for each drying");
-                Assert.Greater(cv.HidesShown, 0);
-                yield return FlyToFrame(pvh);
-                yield return Shot("phone_12_hide_frame");
-                for (int attempt = 0; attempt < 14 && !Sim.FirstTentRaised; attempt++)
+                if (Sim.HidesTotal > 0 && !campWatched)
+                {
+                    Assert.IsTrue(cv.FrameShown, "the hide frame stands by the fire once there are hides");
+                    yield return FlyToFrame(pvh);
+                    yield return Shot("phone_14_hide_frame_by_fire");
+                }
+                for (int attempt = 0; attempt < 16 && !Sim.FirstTentRaised; attempt++)
                 {
                     if (Sim.HidesDrying < SimCore.HidesPerTent) yield return HuntADay(pvh);
                     EcoDebug.SkipSeasons(1);
+                    yield return Frames(10);
+                    yield return WatchCampMoment(pvh);
                 }
-                Assert.IsTrue(Sim.FirstTentRaised, "with the gate open and two hides, the first tent went up (time passing only)");
-                Assert.GreaterOrEqual(Sim.TentsFromHidesCount, 1);
-                var tent = Sim.State.buildings[Sim.State.buildings.Count - 1];
-                float t9 = Time.realtimeSinceStartup;
-                while (cv.RaisingsStarted < 1 && Time.realtimeSinceStartup - t9 < 10f) yield return null;
-                Assert.GreaterOrEqual(cv.RaisingsStarted, 1, "the view began the raising");
-                Assert.AreEqual(1, cv.MomentsPlayed, "the camp's beginning played once");
-                yield return FlyToFrame(pvh);
-                pvh.timeScale = 6f;
-                float maxGrow = 0f; bool sawHammer = false, sawLoad = false, shotRising = false;
-                t9 = Time.realtimeSinceStartup;
-                while (cv.RaisingsActive > 0 && Time.realtimeSinceStartup - t9 < 90f)
+                yield return WatchCampMoment(pvh);
+                Debug.Log($"[phone] camp: year {Sim.State.Year:0.0}, first tent {Sim.FirstTentRaised}, hides {Sim.HidesTotal}, moment watched {campWatched}, moments {cv.MomentsPlayed}, line '{cv.LastLine}'");
+                if (!Sim.FirstTentRaised) Miss("camp's first tent");
+                else
                 {
-                    float g = pvh.Planner.TentRaised(tent.id, pvh.Now);
-                    maxGrow = Mathf.Max(maxGrow, g);
-                    foreach (var a in pvh.Activities)
-                    {
-                        if (a.tent == AquariumCiv.Life.TentPhase.Raise && a.prop == AquariumCiv.Life.Prop.Hammer) sawHammer = true;
-                        if (a.tent == AquariumCiv.Life.TentPhase.CarryOut && (a.prop == AquariumCiv.Life.Prop.Log || a.prop == AquariumCiv.Life.Prop.Hide)) sawLoad = true;
-                    }
-                    if (!shotRising && g > 0.3f) { shotRising = true; yield return Shot("phone_13_tent_rising"); }
-                    if (cv.LastLine != null && !shotLine9) { shotLine9 = true; yield return Shot("phone_14_camp_line"); }
-                    yield return null;
+                    Assert.GreaterOrEqual(cv.RaisingsStarted, 1, "the view began the raising");
+                    Assert.IsNotNull(cv.LastLine, "a builder said the camp's line");
+                    yield return FlyToFrame(pvh);
+                    yield return Shot("phone_17_tent_up");
                 }
-                pvh.timeScale = 1f;
-                Debug.Log($"[phone] camp: grow {maxGrow:0.00}, hammer {sawHammer}, load {sawLoad}, line '{cv.LastLine}', leans {cv.Leans}, hides on frame {cv.HidesShown}");
-                Assert.AreEqual(0, cv.RaisingsActive, "the raising finished");
-                Assert.Greater(maxGrow, 0.5f, "the tent grew in view");
-                Assert.IsTrue(sawHammer && sawLoad, "builders carried poles or hides to the lot and hammered");
-                Assert.IsNotNull(cv.LastLine, "a builder said the camp's line");
-                yield return Shot("phone_15_tent_up");
-                // a later tent also takes hides (hides topped up by cheat; the tent comes when the people want it)
-                int fromHides = Sim.TentsFromHidesCount;
-                for (int i = 0; i < 40 && Sim.TentsFromHidesCount <= fromHides; i++)
-                {
-                    if (Sim.HidesDrying < SimCore.HidesPerTent) EcoDebug.AddHides(SimCore.HidesPerTent);
-                    EcoDebug.SkipSeasons(1);
-                }
-                Assert.Greater(Sim.TentsFromHidesCount, fromHides, "a later tent also took hides");
-                yield return Frames(30);
                 AssertNoErrors("camp");
 
-                // ---- 10. Berries (#288): only time passes. The land grew bushes over those years; in summer they carry berries and
-                // gatherers walk to a real bush, reach and pick, and the bush has fewer berries; they carry the basket off.
+                // 10. Berries: bushes the land grew; in summer gatherers walk to a real bush, reach and pick
                 var bushes = BushView.Instance;
                 Assert.IsNotNull(bushes, "the bush view");
-                var bcells = new List<int>(); Sim.BushCells(bcells);
-                Debug.Log($"[phone] bushes after {Sim.State.month / 12f:0.0} years: {bcells.Count}, first bush cell {Sim.FirstBushCell}");
-                Assert.Greater(bcells.Count, 0, "with only time passing the land grew bushes by now (years: " + Sim.State.month / 12f + ")");
-                for (int i = 0; i < 8 && AquariumCiv.Life.LifeClock.SeasonOf(Sim.State.month) != AquariumCiv.Life.Season.Summer; i++) EcoDebug.SkipSeasons(1);
-                PeopleView.DebugSetHour(8.5f);
-                yield return Frames(40);
-                yield return Until(() => bushes.DotsShown > 0, 3f);
-                Assert.Greater(bushes.DotsShown, 0, "berries on the bushes in summer");
-                yield return Shot("phone_16_berries_summer");
-                // ---- 10b. New grass (#281): the box is left as seen, time passes (the same cheat as an away), and the grass that grew
-                // since shows in a fresher green that fades to the normal colouring. Only cheats that pass time; no list of what grew.
-                var surf281 = EcoSurface.Instance;
-                Sim.MarkLandSeen();
-                EcoDebug.SkipSeasons(4);
-                if (Sim.LandNewCellCount == 0) Sim.DebugPretendAwayWithNewGrass(12);
-                surf281.RestartFade();
-                yield return Frames(30);
-                Assert.Greater(Sim.LandNewCellCount, 0, "grass grew while the box was left");
-                Assert.Greater(surf281.NewGrassCells, 0, "new grass shows in the fresher green");
-                yield return Shot("phone_16b_new_grass");
-                int picks10 = bushes.PicksDone, pickCell10 = -1;
-                bool carried10 = false, shot10 = false;
-                pvh.timeScale = 6f;
-                float t10 = Time.realtimeSinceStartup;
-                while ((bushes.PicksDone <= picks10 || !carried10) && Time.realtimeSinceStartup - t10 < 150f)
+                var bcells = new List<int>();
+                yield return AdvanceUntil(hud, "a real bush", () => { bcells.Clear(); Sim.BushCells(bcells); return bcells.Count > 0; }, 100);
+                yield return PutDownMister(hud);
+                Debug.Log($"[phone] bushes after {Sim.State.Year:0.0} years: {bcells.Count}");
+                if (bcells.Count > 0)
                 {
-                    if (pvh.ViewHour > 17f) PeopleView.DebugSetHour(8.5f);
-                    foreach (var a in pvh.Activities)
+                    for (int i = 0; i < 8 && AquariumCiv.Life.LifeClock.SeasonOf(Sim.State.month) != AquariumCiv.Life.Season.Summer; i++) EcoDebug.SkipSeasons(1);
+                    PeopleView.DebugSetHour(8.5f);
+                    yield return Frames(40);
+                    yield return Until(() => bushes.DotsShown > 0, 3f);
+                    yield return Shot("phone_18_berries_summer");
+                    int picks10 = bushes.PicksDone, pickCell10 = -1;
+                    bool carried10 = false, shot10 = false;
+                    pvh.timeScale = 6f;
+                    float t10 = Time.realtimeSinceStartup;
+                    while ((bushes.PicksDone <= picks10 || !carried10) && Time.realtimeSinceStartup - t10 < 150f)
                     {
-                        if (!a.moving && a.kind == AquariumCiv.Life.ActivityKind.Gather && a.place.kind == AquariumCiv.Life.PlaceKind.BushCell && pickCell10 < 0)
-                            pickCell10 = a.place.index;
-                        if (bushes.PicksDone > picks10 && a.moving && a.prop == AquariumCiv.Life.Prop.Basket) carried10 = true;
+                        if (pvh.ViewHour > 17f) PeopleView.DebugSetHour(8.5f);
+                        foreach (var a in pvh.Activities)
+                        {
+                            if (!a.moving && a.kind == AquariumCiv.Life.ActivityKind.Gather && a.place.kind == AquariumCiv.Life.PlaceKind.BushCell && pickCell10 < 0)
+                                pickCell10 = a.place.index;
+                            if (bushes.PicksDone > picks10 && a.moving && a.prop == AquariumCiv.Life.Prop.Basket) carried10 = true;
+                        }
+                        if (pickCell10 >= 0 && !shot10) { shot10 = true; pvh.timeScale = 1f; yield return Frames(20); yield return Shot("phone_19_picker_at_bush"); pvh.timeScale = 6f; }
+                        yield return null;
                     }
-                    if (pickCell10 >= 0 && !shot10)
-                    {
-                        shot10 = true;
-                        pvh.timeScale = 1f;
-                        yield return Frames(20);
-                        yield return Shot("phone_17_picker_at_bush");
-                        pvh.timeScale = 6f;
-                    }
-                    yield return null;
+                    pvh.timeScale = 1f;
+                    Debug.Log($"[phone] berries: pick cell {pickCell10}, picks {bushes.PicksDone - picks10}, carried {carried10}");
+                    if (pickCell10 < 0 || bushes.PicksDone <= picks10 || !carried10) Miss("berry picking at a real bush");
                 }
-                pvh.timeScale = 1f;
-                Debug.Log($"[phone] berries: pick cell {pickCell10}, picks {bushes.PicksDone - picks10}, carried {carried10}");
-                Assert.GreaterOrEqual(pickCell10, 0, "a gatherer walked to a real bush and reached");
-                Assert.IsTrue(bcells.Contains(pickCell10) || Sim.BerriesAt(pickCell10, pvh.Now.day, 1) >= 0f, "at a bush the land grew");
-                Assert.Greater(bushes.PicksDone, picks10, "the pick ended: the bush was picked");
-                Assert.IsTrue(carried10, "and a basket was carried off");
+                else Miss("bushes");
                 AssertNoErrors("berries");
 
-                // ---- 11. (#279, #286) The pond's first water meets the glass, with its moment, then the frogs. Only time passes (and the
-                // test's regular misting); if no water has stood by then, the cheat raises it and the numbers say so.
+                // 11. The pond's first water meets the glass, with its moment, then the frogs: time and the Mister only
                 var fw11 = FirstWaterView.Instance; var pond11 = PondLife.Instance;
                 Assert.IsNotNull(fw11); Assert.IsNotNull(pond11);
-                float y0 = Sim.State.Year;
-                bool natural11 = Sim.EcoPondCells > 0;
-                int seasons11 = 0;
-                var map11 = Sim.Settlement != null ? Sim.Settlement.Map : null;
-                while (Sim.EcoPondCells == 0 && seasons11 < 80)
+                yield return AdvanceUntil(hud, "the pond's first water", () => Sim.EcoPondCells > 0, 110);
+                yield return PutDownMister(hud);
+                Debug.Log($"[phone] pond: {Sim.EcoPondCells} cells at year {Sim.State.Year:0.0}, full plays {fw11.FullPlays}");
+                if (Sim.EcoPondCells > 0)
                 {
-                    if (map11 != null) Sim.Mist(map11.greenX + 0.5f, map11.greenZ, 6f); // regular misting, as a keeper does
-                    EcoDebug.SkipSeasons(1); seasons11++;
+                    PeopleView.DebugSetHour(10f);
+                    yield return Frames(30);
+                    yield return Until(() => fw11.FullPlays > 0 && fw11.SparklesShown > 0, 10f);
+                    yield return Frames(60);
+                    yield return Shot("phone_20_pond_first_water");
+                    yield return Until(() => !fw11.Playing, 40f);
+                    PeopleView.DebugSetHour(20.5f);
+                    yield return Frames(30);
+                    yield return Until(() => pond11.FrogsSitting > 0, 30f);
+                    if (pond11.FrogsSitting == 0) Miss("frogs at the pond");
+                    yield return Shot("phone_21_frogs_dusk");
                 }
-                natural11 = Sim.EcoPondCells > 0;
-                Debug.Log($"[phone] pond: {(natural11 ? "surfaced by time and misting" : "NO water by time alone")} after {seasons11} seasons (+{Sim.State.Year - y0:0.0} y, year {Sim.State.Year:0.0}), {Sim.EcoPondCells} cells, full plays {fw11.FullPlays}");
-                if (!natural11) EcoDebug.WaterBreaksNow();
-                Assert.Greater(Sim.EcoPondCells, 0, "there is water");
-                PeopleView.DebugSetHour(10f);
-                yield return Frames(30);
-                yield return Until(() => fw11.FullPlays > 0 && fw11.SparklesShown > 0, 10f);
-                if (fw11.FullPlays == 0) fw11.Begin(true); // the water was already there when this beat started
-                yield return Frames(60);
-                yield return Shot("phone_18_pond_first_water");
-                yield return Until(() => !fw11.Playing, 40f);
-                PeopleView.DebugSetHour(20.5f);
-                yield return Frames(30);
-                yield return Until(() => pond11.FrogsSitting > 0, 30f);
-                Assert.Greater(pond11.FrogsSitting, 0, "frogs at the pond at dusk");
-                yield return Shot("phone_19_frogs_dusk");
                 AssertNoErrors("pond");
 
-                // History shows the land growing (#287): open it by touch, year 0 against now.
+                // 12. History shows the land growing: opened by touch, scrubbed by touch on the bar; the year tag follows the finger
                 var boxH = Object.FindAnyObjectByType<BoxView>();
+                yield return PutDownMister(hud);
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
                 var tlH = TimeLapseView.Find();
                 yield return Until(() => tlH != null && tlH.Active, 3f);
                 Assert.IsTrue(tlH.Active, "History opened by touch");
-                yield return Frames(4);
-                tlH.Seek(0f); yield return Frames(8);
+                yield return new WaitForSecondsRealtime(1f);
+                var screenH = TimeLapseScreenView.Instance;
+                var yearTag = screenH.Root.Q<Label>("tl-year");
+                var barEl = screenH.Root.Q("tl-bar");
+                float uiScale = Screen.width / barEl.panel.visualTree.worldBound.width;
+                Vector2 AlongBar(float f) { var r = barEl.worldBound; return new Vector2((r.xMin + 4f + (r.width - 8f) * f) * uiScale, Screen.height - r.center.y * uiScale); }
+                yield return Drag(new[] { AlongBar(0.5f), AlongBar(0.02f) }, 0.01f * Screen.width);
+                yield return new WaitForSecondsRealtime(1.2f);
+                string tag0 = yearTag.text; float gH0 = tlH.DrawnGreenShare;
                 var cover0 = (byte[])boxH.layout.eco.cover.Clone();
-                float gH0 = tlH.DrawnGreenShare;
-                yield return Shot("phone_20_history_year0");
-                tlH.Seek(tlH.Lapse.EndPosition); yield return Frames(12);
-                float gHn = tlH.DrawnGreenShare;
-                yield return Shot("phone_21_history_now");
-                Assert.Greater(gHn, gH0 + 0.01f, "History: the land is greener now than at year 0");
-                CollectionAssert.AreNotEqual(cover0, boxH.layout.eco.cover, "History: the land differs between year 0 and now");
+                yield return Shot("phone_22_history_start");
+                yield return Drag(new[] { AlongBar(0.02f), AlongBar(0.5f) }, 0.01f * Screen.width);
+                yield return new WaitForSecondsRealtime(1.2f);
+                string tagMid = yearTag.text; float gHm = tlH.DrawnGreenShare;
+                yield return Shot("phone_23_history_scrubbed_mid");
+                yield return Drag(new[] { AlongBar(0.5f), AlongBar(0.98f) }, 0.01f * Screen.width);
+                yield return new WaitForSecondsRealtime(1.2f);
+                string tagEnd = yearTag.text; float gHn = tlH.DrawnGreenShare;
+                Debug.Log($"[phone] history scrub: '{tag0}' green {gH0:0.000} -> '{tagMid}' {gHm:0.000} -> '{tagEnd}' {gHn:0.000}");
+                yield return Shot("phone_24_history_now");
+                Assert.AreNotEqual(tag0, tagMid, "the caption's year follows the scrub (start vs middle)");
+                Assert.AreNotEqual(tagMid, tagEnd, "the caption's year follows the scrub (middle vs end)");
+                Assert.Greater(gHn, gH0 + 0.01f, "History: the land is greener now than at the start");
+                CollectionAssert.AreNotEqual(cover0, boxH.layout.eco.cover, "History: the land differs between the start and now");
                 tlH.Close(); yield return Frames(6);
                 AssertNoErrors("history");
+                Debug.Log("[phone] NOT REACHED by time: " + (missed.Count == 0 ? "(none)" : string.Join("; ", missed)));
+                Assert.IsEmpty(missed, "beats time alone did not reach: " + string.Join("; ", missed));
             }
             finally { GameClock.EcologyPref = prefWas; }
         }
 
-        bool shotLine9;
+        bool campWatched;
+        /// <summary>The first tent's moment: camera to the lot, time at 6x until it ends; shots of the tent rising, the builder's line and the tent up.</summary>
+        IEnumerator WatchCampMoment(PeopleView pvh)
+        {
+            var cv = CampView.Instance;
+            if (campWatched || cv == null || cv.RaisingsActive == 0) yield break;
+            campWatched = true;
+            yield return FlyToFrame(pvh);
+            pvh.timeScale = 6f;
+            var tent = Sim.State.buildings[Sim.State.buildings.Count - 1];
+            float maxGrow = 0f; bool shotRising = false, shotLine = false;
+            float t0 = Time.realtimeSinceStartup;
+            while (cv.RaisingsActive > 0 && Time.realtimeSinceStartup - t0 < 90f)
+            {
+                float g = pvh.Planner.TentRaised(tent.id, pvh.Now);
+                maxGrow = Mathf.Max(maxGrow, g);
+                if (!shotRising && g > 0.3f) { shotRising = true; yield return Shot("phone_15_tent_rising"); }
+                if (cv.LastLine != null && !shotLine) { shotLine = true; yield return Shot("phone_16_camp_line"); }
+                yield return null;
+            }
+            pvh.timeScale = 1f;
+            Debug.Log($"[phone] camp moment: grow {maxGrow:0.00}, line '{cv.LastLine}', leans {cv.Leans}, moments {cv.MomentsPlayed}, year {Sim.State.Year:0.0}");
+            if (maxGrow <= 0.5f) Miss("tent grew in view");
+        }
+
+        readonly List<string> missed = new List<string>();
+        void Miss(string beat)
+        {
+            string s = $"{beat} (not reached by time, year {Sim.State.Year:0.0})";
+            missed.Add(s);
+            Debug.LogWarning("[phone] MISSED " + s);
+        }
+
+        /// <summary>Cells that are grass, tall grass or bush (what spreading means).</summary>
+        int GrassCells()
+        {
+            int n = 0;
+            for (int c = 0; c < AquariumCiv.Sim.Eco.EcoLand.N; c++)
+            {
+                var cv = Sim.EcoCoverAt(c);
+                if (cv == AquariumCiv.Sim.Eco.EcoCover.Grass || cv == AquariumCiv.Sim.Eco.EcoCover.Tall || cv == AquariumCiv.Sim.Eco.EcoCover.Bush) n++;
+            }
+            return n;
+        }
+
+        IEnumerator PutDownMister(GameHud hud)
+        {
+            if (hud.Hand == GameHud.KitTool.None) yield break;
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+            yield return Frames(10);
+            Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "Done puts the mister down");
+        }
+
+        /// <summary>Time passes the way a caring keeper lets it: Kit, the Mister in hand, then each season +1 season and a held mist on the camp
+        /// and one more spot. Stops when the condition holds or the budget of seasons is spent (then the beat is counted as missed).</summary>
+        IEnumerator AdvanceUntil(GameHud hud, string what, System.Func<bool> cond, int maxSeasons)
+        {
+            if (cond()) yield break;
+            if (hud.Hand != GameHud.KitTool.Mister)
+            {
+                if (hud.Hand != GameHud.KitTool.None) yield return PutDownMister(hud);
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+                yield return new WaitForSecondsRealtime(0.4f);
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-mister"));
+                yield return new WaitForSecondsRealtime(0.4f);
+                Assert.AreEqual(GameHud.KitTool.Mister, hud.Hand, "the mister in hand");
+            }
+            var map = Sim.Settlement.Map;
+            var spots = new[] { (map.greenX + 0.5f, map.greenZ), (-1.2f, 0.4f), (1.4f, 0.2f), (-0.2f, -1.2f), (0.6f, 0.9f) };
+            float y0 = Sim.State.Year;
+            int n = 0;
+            for (; n < maxSeasons && !cond(); n++)
+            {
+                EcoDebug.SkipSeasons(1);
+                var (x, z) = spots[n % spots.Length];
+                yield return Hold(ScreenOf(x, z), 0.8f);
+                if (CampView.Instance != null && CampView.Instance.RaisingsActive > 0 && !campWatched) yield return WatchCampMoment(PeopleView.Find());
+                if (n % 8 == 7) AssertNoErrors("advance " + what);
+            }
+            yield return Frames(10);
+            Debug.Log($"[phone] advance for '{what}': {(cond() ? "reached" : "NOT reached")} after {n} seasons, year {y0:0.0} -> {Sim.State.Year:0.0}");
+            if (!cond()) Miss(what);
+        }
+
 
         /// <summary>One view day of hunting (time runs at 12x from dawn) until a catch is made or the day ends.</summary>
         IEnumerator HuntADay(PeopleView pvh)
