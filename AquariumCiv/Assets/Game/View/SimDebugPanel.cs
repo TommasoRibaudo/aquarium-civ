@@ -455,6 +455,7 @@ namespace AquariumCiv.View
                         if (GUILayout.Button("Play " + RelicId.All[j])) last = GlassVoice.DebugPlayMoment(RelicId.All[j]);
                     GUILayout.EndHorizontal();
                 }
+                if (GUILayout.Button("Start a ritual now (Keeper Doll)")) last = GlassVoice.DebugStartRitual();
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Gather at glass")) last = GlassVoice.DebugGather();
                 if (GUILayout.Button("Knock x3")) last = GlassVoice.DebugKnock(3);

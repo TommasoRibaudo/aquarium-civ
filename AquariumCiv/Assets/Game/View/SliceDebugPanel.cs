@@ -311,6 +311,7 @@ namespace AquariumCiv.View
             if (Btn("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
+            if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
             if (Btn("Drop crumb")) last = GlassVoice.DebugDropCrumb();
             if (Btn("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
             if (Btn("Grant a wish")) last = WishPayoffView.DebugGrant();
