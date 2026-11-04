@@ -33,6 +33,11 @@ namespace AquariumCiv.Sim.Eco
         public int rabbitArrivalCell = -1;
         public bool rabbitArrivalSeen;
         public int rabbitsCaught;
+        /// <summary>#283: hides drying by the fire (one per catch; #284 turns them into tents and takes them with TakeHides), all hides ever
+        /// taken, and the hunt resolver's mark: on view day <see cref="huntDay"/> the first <see cref="huntDone"/> hunts are settled.</summary>
+        public int hidesDrying, hidesTotal;
+        public long huntDay = -1;
+        public int huntDone;
         public int wildSeeds;
         // The cover counts taken at the end of the last step. The model reads these mid-step (as the lab's did), so they
         // are saved rather than recounted: a mist between steps must not change what the next step sees.
