@@ -7,8 +7,8 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] Branch `p8/polish` from `origin/dev`; this prompt committed
 - [x] 1 · #268 #278 #272 (Opus bundle) merged, closed
 - [x] 2 · #271 + #266 sim merged
-- [ ] 3 · #285 → #267 merged, closed
-- [ ] 4 · #287 merged, closed
+- [x] 3 · #285 → #267 merged, closed
+- [x] 4 · #287 merged, closed
 - [x] 5 · #266 → #277 merged (#266 open for sign-off)
 - [x] 6 · #269 → #270 merged (open for sign-off)
 - [x] 7 · #279 → #286 merged
@@ -97,3 +97,6 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 02:19 · item 13 (#280 wiring) Sonnet a8e25e9a8a5f327d9; watcher br3yrzb48. Remaining lane B: 3B (#285 cards, #267 bucket colour + puddle source, jobs readout), 4B (#287 replay), 15 (#273 phase B on vs/273-camera-glass), 16 (#274), 17B (#275/#276 view), 18 (#208 look, #209 #210 #211). Then tester 3, final play-through, P8.md, PR.
 - 11-04 02:32 · item 13 merged f8fc846 (open for a listen). Item 3B Sonnet ab715776317f14915 (watcher bf43q4nea).
 - 11-04 02:37 · MY SLIP: merged #280 with a SimTests build break (AudioCueTests used UnityEngine.Resources); fixed with #if UNITY_2017_1_OR_NEWER, dotnet 1272/1272. Rule for me: read the test output BEFORE merging, never chain merge after test.
+- 11-04 03:13 · item 3B merged 9bcdea3; closed #285 #267 #262. Polish: day-0 dawn trip may drop the full-bucket walk home. Item 4B Sonnet a4e2281e451242117 (watcher b3sqnb1mf).
+- 11-04 03:21 · item 4B merged 0991e13, #287 closed. Check: time-lapse caption showed 'Year 15 · Camp' at year 0 (tester 3). Next: item 15 (#273 phase B).
+- 11-04 03:21 · item 15 phase B Sonnet acb8c6c71efd97b0f (watcher bizaw3ezc).
