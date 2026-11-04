@@ -85,8 +85,16 @@ namespace AquariumCiv.Sim
                 // The signs between the gates (keepers-hands §2.1): small, in the people's words.
                 else if (key == EcoMilestones.FirstGreen)
                     Chronicle("eco_green", "Water fell from above onto the dry ground, and green came up where it fell. The people stood in it.", 0.8f);
+                else if (key == EcoMilestones.RabbitTracks)
+                {
+                    PickRabbitTracks();
+                    Chronicle("eco_tracks", "Small prints crossed the edge of the grass, and stopped at the green. The people crouched over them.", 0.5f);
+                }
                 else if (key == EcoMilestones.FirstRabbit)
+                {
+                    PickRabbitArrival();
                     Chronicle("eco_rabbit", "A rabbit was seen in the grass. Nobody had seen one before.", 0.6f);
+                }
                 else if (key == EcoMilestones.FirstBush)
                     FirstBushTell(); // P8 #288: the chronicle line and the sign
                 else if (key == EcoMilestones.FirstBird)
