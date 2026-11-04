@@ -41,7 +41,7 @@ namespace AquariumCiv.View
         Mesh wetMesh, pudMesh, spMesh, frMesh, ngMesh;
         MeshFilter wetF, sheenF, pudF, spF, frF, ngF;
         MeshRenderer wetR, sheenR, pudR, spR, frR, ngR;
-        Material wetMat, sheenMat, pudMat, tintMat;
+        Material wetMat, sheenMat, pudMat, tintMat, freshMat;
         bool pudTuned;
 
         // reusable builders
@@ -62,6 +62,8 @@ namespace AquariumCiv.View
         /// <summary>Tests: how much faster than real time the new-grass fade runs.</summary>
         public static float FadeSpeed = 1f;
         public float NewGrassShown(int c) => c >= 0 && c < N ? ngS[c] : 0f;
+        /// <summary>The new-grass overlay's renderer (tests: #300 compares the land with and without it).</summary>
+        public Renderer NewGrassRenderer => ngR;
         float ngPoll;
         bool landMarkChecked;
         /// <summary>The player has just come back (or the debug cheat pretended so): the fade starts over from now.</summary>
@@ -138,11 +140,13 @@ namespace AquariumCiv.View
 
         bool EnsureMaterials()
         {
-            const int Zero = 0, One = 1, DstColor = 2, SrcAlpha = 5, OneMinusSrcAlpha = 10;
+            const int Zero = 0, One = 1, DstColor = 2, SrcColor = 3, SrcAlpha = 5, OneMinusSrcAlpha = 10;
             wetMat ??= MakeMaterial("EcoWet", 0, DstColor, Zero);
             sheenMat ??= MakeMaterial("EcoSheen", 1, One, One);
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
+            // #300: the new grass tints the land it lies on, so it is lit like the land at every hour (the plain tint glowed at night)
+            if (freshMat == null) { freshMat = MakeMaterial("EcoTint", 5, DstColor, SrcColor); if (freshMat != null) freshMat.name = "EcoNewGrass"; if (freshMat != null) freshMat.SetFloat("_FreshLift", 0.7f); }
             if (pudMat != null && !pudTuned)
             {
                 // water, not slate (tester run 1): a dark wet-blue/brown bed under the sky's reflection
@@ -153,7 +157,7 @@ namespace AquariumCiv.View
                 pudMat.SetColor("_WetColor", new Color(0.46f, 0.37f, 0.31f)); // the puddle's mud rim
                 if (sheenMat != null) sheenMat.SetFloat("_WetBoost", 1.9f);
             }
-            return wetMat != null && sheenMat != null && pudMat != null && tintMat != null;
+            return wetMat != null && sheenMat != null && pudMat != null && tintMat != null && freshMat != null;
         }
 
         MeshFilter Part(string name, ref MeshRenderer r, Material mat, Mesh mesh)
@@ -197,7 +201,7 @@ namespace AquariumCiv.View
                 rootSeen = box.Root;
                 wetMesh = NewMesh("EcoWet"); pudMesh = NewMesh("EcoPuddles"); spMesh = NewMesh("EcoShoots"); frMesh = NewMesh("EcoFresh"); ngMesh = NewMesh("EcoNewGrass");
                 Warm(wetMesh); Warm(pudMesh); Warm(frMesh); Warm(ngMesh);
-                ngF = Part("EcoNewGrass", ref ngR, tintMat, ngMesh);
+                ngF = Part("EcoNewGrass", ref ngR, freshMat, ngMesh);
                 frF = Part("EcoFresh", ref frR, tintMat, frMesh);
                 wetF = Part("EcoWet", ref wetR, wetMat, wetMesh);
                 sheenF = Part("EcoSheen", ref sheenR, sheenMat, wetMesh);
@@ -258,6 +262,8 @@ namespace AquariumCiv.View
                 landMarkChecked = true;
                 if (!sim.HasLandSeenMask) sim.MarkLandSeen(); // a fresh box, or an old save: nothing is new yet
             }
+            // #300: the lift to a lighter green is a daytime thing; at night the tint only shifts the hue of the land's own light
+            if (freshMat != null) freshMat.SetFloat("_FreshDay", DayLightDriver.Driving ? DayLightDriver.Instance.Current.Daylight : 1f);
             LandSeconds += dt * FadeSpeed;
             ngPoll += dt;
             if (ngPoll < 0.2f) return;
@@ -278,7 +284,7 @@ namespace AquariumCiv.View
 
         static bool Changed(float[] now, float[] built, float eps)
         {
-            for (int c = 0; c < now.Length; c++) if (Mathf.Abs(now[c] - built[c]) > eps) return true;
+            for (int c = 0; c < now.Length; c++) if (Mathf.Abs(now[c] - built[c]) > eps || (now[c] == 0f && built[c] != 0f)) return true; // gone is always a change: no faint leftover
             return false;
         }
 

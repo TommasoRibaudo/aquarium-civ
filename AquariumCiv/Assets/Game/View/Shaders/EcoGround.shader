@@ -5,6 +5,9 @@
 //            glint and a soft window highlight, a dark wet-mud rim with a thin bright meniscus, the odd ripple
 //   3 Tint   a plain soft-edged colour (the green that shows at once under the mister, until the chunk has caught up)
 //   4 Drop   a round, soft particle (the mister's droplets; stretched billboards make them streaks)
+//   5 Fresh  the new grass since the last look (#281, #300): tints the ground it lies on (2x multiply, Blend DstColor SrcColor),
+//            so it keeps the land's own light at every hour. Vertex colour = the hue (scaled so no channel brightens), vertex
+//            alpha = how much; by day it also lifts a touch (fresh, lighter green), at night it never shows brighter than the land.
 // Vertex colour = colour, vertex alpha = how much of it (Wet and Sheen boost it by _WetBoost: one short mist already reads
 // as damp soil, #295). Puddle vertex colour rg = where in the puddle (0..1 across, 0.5 the middle). Puddle UV0 = (distance from the middle in cells, 0), UV1 = (ripple
 // phase 0..1, ripple strength 0..1). No textures; the day's light comes from the main light and the ambient probe.
@@ -12,7 +15,7 @@ Shader "AquariumCiv/View/EcoGround"
 {
     Properties
     {
-        [Enum(Wet,0,Sheen,1,Puddle,2,Tint,3,Drop,4)] _Mode ("Mode", Float) = 0
+        [Enum(Wet,0,Sheen,1,Puddle,2,Tint,3,Drop,4,Fresh,5)] _Mode ("Mode", Float) = 0
         _WetColor ("Wet soil multiplier", Color) = (0.46, 0.37, 0.31, 1)
         _WetBoost ("Wet look per unit of wet", Range(1, 3)) = 1.9
         _SheenAmount ("Sheen", Range(0, 1)) = 0.22
@@ -21,6 +24,8 @@ Shader "AquariumCiv/View/EcoGround"
         _PuddleDeep ("Puddle bed", Color) = (0.07, 0.055, 0.045, 1)
         _Gloss ("Reflection at grazing angles", Range(0, 1)) = 0.85
         _Ripple ("Ripple", Range(0, 1)) = 0.6
+        _FreshLift ("Fresh green lift by day", Range(0, 1)) = 0.7
+        _FreshDay ("Daylight 0..1 (set by EcoSurface from the day's light)", Range(0, 1)) = 1
         [HideInInspector] _SrcBlend ("Src blend", Float) = 5
         [HideInInspector] _DstBlend ("Dst blend", Float) = 10
     }
@@ -45,7 +50,7 @@ Shader "AquariumCiv/View/EcoGround"
             CBUFFER_START(UnityPerMaterial)
                 float _Mode;
                 half4 _WetColor, _SkyHigh, _SkyLow, _PuddleDeep;
-                half _SheenAmount, _Gloss, _Ripple, _WetBoost;
+                half _SheenAmount, _Gloss, _Ripple, _WetBoost, _FreshLift, _FreshDay;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; };
@@ -117,6 +122,13 @@ Shader "AquariumCiv/View/EcoGround"
                     return half4(col, a * see * lerp(1.0, 0.8, mud));
                 }
                 if (_Mode < 3.5) return half4(i.color.rgb * (0.35 + day * 0.65), a); // the cheap lit tint
+                if (_Mode > 4.5)
+                {
+                    half3 hue = i.color.rgb / max(1e-3, max(i.color.r, max(i.color.g, i.color.b))); // no channel above 1: never brighter by itself
+                    half lift = 1.0 + _FreshLift * smoothstep(0.55, 0.9, _FreshDay); // by day only: the night stays as dark as the land
+                    half3 f = lerp(half3(1, 1, 1), hue * lift, a);
+                    return half4(f * 0.5, 1); // 2x multiply: 0.5 leaves the ground as it is
+                }
                 // a droplet: round and soft from the quad's UV, a touch brighter in the middle
                 float2 q = i.uv * 2.0 - 1.0;
                 half m = saturate(1.0 - dot(q, q));

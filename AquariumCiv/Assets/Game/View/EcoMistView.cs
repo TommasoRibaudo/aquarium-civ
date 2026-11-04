@@ -277,6 +277,7 @@ namespace AquariumCiv.View
             int greened = sim.Mist(at.x, at.z, seconds, hold < 0f ? seconds : hold).Count;
             MistPulses++;
             LastMist = at;
+            if (hud != null && hud.Hand == GameHud.KitTool.Mister) GameHud.NoteMisterUsed(); // its hint has done its job
             dirty = true;
             // The first mist of a box is its first answer (tester: too small at the default zoom): the camera leans in on it.
             if (greened > 0 && !leaned && sim.State.firstRun.active)

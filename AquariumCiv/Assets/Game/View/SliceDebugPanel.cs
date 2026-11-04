@@ -288,6 +288,7 @@ namespace AquariumCiv.View
             Row();
             if (Btn("Clear said")) last = ShowMeDirector.DebugClearSaid();
             if (Btn("Clean hint")) last = CareView.DebugCleanHint();
+            if (Btn("Mister hint")) last = GameHud.DebugForgetMisterHint();
             if (Btn("Ground tap")) last = GlassVoice.DebugRipple();
             if (Btn("Wind")) last = WindView.DebugNext();
             if (Btn("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
