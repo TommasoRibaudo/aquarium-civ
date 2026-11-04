@@ -155,7 +155,7 @@ namespace AquariumCiv.View
             float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, minZoom, maxZoom) : zoom;
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
             // #273: the end pose's own range (the flight keeps yaw and pitch), so a flight never ends where the spring would pull it back or the camera sits in a pane.
-            flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * z1, target.y));
+            flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), ViewBounds(z1));
             flyDur = Mathf.Max(0f, seconds); flyT = 0f;
             firmFlight = false;
             velocity = Vector2.zero;
@@ -520,7 +520,7 @@ namespace AquariumCiv.View
             }
             followMissing = 0;
             var w = followPeople.transform.TransformPoint(new Vector3(p.x, 0f, p.y));
-            var bound = BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * zoom, target.y); // #273: the same range the spring holds, so follow and spring never fight
+            var bound = ViewBounds(zoom); // #273: the same range the spring holds, so follow and spring never fight
             float gx = Mathf.Clamp(w.x, -bound.x, bound.x), gz = Mathf.Clamp(w.z, -bound.y, bound.y);
             float k = 1f - Mathf.Exp(-FollowRate * dt);
             target.x += (gx - target.x) * k;
@@ -601,7 +601,7 @@ namespace AquariumCiv.View
             if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, minZoom, maxZoom), mid);
             if (GroundAt(prevMid, out var g0) && GroundAt(mid, out var g1))
             {
-                var bound = BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * zoom, target.y);
+                var bound = ViewBounds(zoom);
                 var d = g0 - g1;
                 target.x = BoxCameraMath.GlassStep(target.x, d.x, -bound.x, bound.x);
                 target.z = BoxCameraMath.GlassStep(target.z, d.z, -bound.y, bound.y);
@@ -639,9 +639,17 @@ namespace AquariumCiv.View
         /// <summary>Whatever the target is past the pan bounds (they shrink as you zoom out) eases back.</summary>
         void SpringPan(float dt)
         {
-            var bound = BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * zoom, target.y);
+            var bound = ViewBounds(zoom);
             target.x = BoxCameraMath.Spring(target.x, -bound.x, bound.x, dt);
             target.z = BoxCameraMath.Spring(target.z, -bound.y, bound.y, dt);
+        }
+
+        /// <summary>#273: the pan range at a zoom, from the frustum at this camera's fov and aspect.</summary>
+        Vector2 ViewBounds(float z)
+        {
+            if (cam == null) cam = GetComponent<Camera>();
+            float fov = cam != null ? cam.fieldOfView : 22f, aspect = cam != null ? cam.aspect : 9f / 16f;
+            return BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * z, target.y, Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad), aspect);
         }
 
         public void Apply()

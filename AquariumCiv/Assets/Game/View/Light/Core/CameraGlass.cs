@@ -101,5 +101,41 @@ namespace AquariumCiv.Lighting
             float s = PanScale(yawDeg, pitchDeg, distance, pivotY, boundX, boundZ, hullX, hullZ, bottom, top);
             boundX *= s; boundZ *= s;
         }
+
+        /// <summary>
+        /// #273 (user 2026-11-04): how far from the pivot the visible ground reaches in x and z for a pose (a screen's left, right, bottom and
+        /// upper-middle (0.5 down, 0.3 up from the centre: the HUD bands and the horizon don't count) edge points, cast to the pivot's height). The pan's limit is on the VIEW: the pivot may move until this edge reaches the glass.
+        /// </summary>
+        public static void VisibleExtent(float yawDeg, float pitchDeg, float distance, float tanHalfV, float aspect, out float extX, out float extZ)
+        {
+            float y = yawDeg * (float)Math.PI / 180f, p = pitchDeg * (float)Math.PI / 180f;
+            float sy = (float)Math.Sin(y), cy = (float)Math.Cos(y), sp = (float)Math.Sin(p), cp = (float)Math.Cos(p);
+            float fx = cp * sy, fy = -sp, fz = cp * cy;          // forward
+            float rx = cy, rz = -sy;                              // right
+            float ux = sp * sy, uy = cp, uz = sp * cy;            // up
+            float ox = -cp * sy * distance, oy = sp * distance, oz = -cp * cy * distance; // camera relative to the pivot
+            float tx = tanHalfV * aspect;
+            extX = extZ = 0f;
+            for (int i = 0; i < 5; i++)
+            {
+                float nx = i == 0 ? -1f : i == 1 ? 1f : 0f, ny = i == 2 ? -0.5f : i == 3 ? 0.3f : 0f;
+                float dx = fx + nx * tx * rx + ny * tanHalfV * ux, dy = fy + ny * tanHalfV * uy, dz = fz + nx * tx * rz + ny * tanHalfV * uz;
+                float t = dy < -0.02f ? -oy / dy : 4f * distance;
+                t = Math.Min(t, 4f * distance);
+                extX = Math.Max(extX, Math.Abs(ox + t * dx)); extZ = Math.Max(extZ, Math.Abs(oz + t * dz));
+            }
+        }
+
+        /// <summary>The view-limited rest bounds: the glass's inner face less the visible extent (never more than <see cref="PanBounds"/>, 0 when the whole box fits), then drawn in by <see cref="PanScale"/>.</summary>
+        public static void PanBoundsFor(float yawDeg, float pitchDeg, float distance, float pivotY, float tanHalfV, float aspect, float halfX, float halfZ,
+            float hullX, float hullZ, float bottom, float top, out float boundX, out float boundZ)
+        {
+            PanBounds(halfX, halfZ, out float maxX, out float maxZ);
+            VisibleExtent(yawDeg, pitchDeg, distance, tanHalfV, aspect, out float ex, out float ez);
+            boundX = Math.Min(maxX, Math.Max(0f, halfX - ex));
+            boundZ = Math.Min(maxZ, Math.Max(0f, halfZ - ez));
+            float s = PanScale(yawDeg, pitchDeg, distance, pivotY, boundX, boundZ, hullX, hullZ, bottom, top);
+            boundX *= s; boundZ *= s;
+        }
     }
 }

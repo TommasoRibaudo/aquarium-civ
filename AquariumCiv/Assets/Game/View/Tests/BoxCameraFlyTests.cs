@@ -25,6 +25,13 @@ namespace AquariumCiv.View.Tests
             for (int i = 1; i <= 20; i++) { float e = BoxCameraMath.FlyEase(i / 20f); Assert.GreaterOrEqual(e, prev); prev = e; }
         }
 
+        /// <summary>#273: the camera's own pan range at a zoom (the view's limit at the current pose, fov and aspect): a flight ends inside it.</summary>
+        Vector2 B(float z)
+        {
+            var c = cam.GetComponent<Camera>();
+            return BoxCameraMath.PanBoundsFor(cam.yaw, cam.pitch, cam.FitDistance() * z, cam.target.y, Mathf.Tan(c.fieldOfView * 0.5f * Mathf.Deg2Rad), c.aspect);
+        }
+
         [Test]
         public void FlyTo_Arrives_AtPointAndZoom_AndReportsIt()
         {
@@ -36,7 +43,7 @@ namespace AquariumCiv.View.Tests
             Run(cam, 0.5f);
             Assert.IsFalse(cam.IsFlying); Assert.IsTrue(arrived);
             Assert.AreEqual(0.5f, cam.zoom, 1e-4f);
-            Assert.AreEqual(1.5f, cam.target.x, 1e-4f); Assert.AreEqual(-1f, cam.target.z, 1e-4f);
+            var eb = B(0.5f); Assert.AreEqual(Mathf.Min(1.5f, eb.x), cam.target.x, 1e-4f); Assert.AreEqual(-Mathf.Min(1f, eb.y), cam.target.z, 1e-4f);
             Assert.AreEqual(1f, cam.target.y, "stays on the ground plane");
         }
 
@@ -62,12 +69,12 @@ namespace AquariumCiv.View.Tests
         {
             cam.FlyTo(new Vector3(50f, 0f, -50f), 0.3f, 0.2f);
             Run(cam, 0.3f);
-            var b = BoxCameraMath.PanBounds(0.3f);
+            var b = B(0.3f);
             Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(-b.y, cam.target.z, 1e-4f);
             // Zooming out to the full box: the flight still ends at its bound.
             cam.FlyTo(new Vector3(50f, 0f, 50f), 1f, 0.2f);
             Run(cam, 0.3f);
-            b = BoxCameraMath.PanBounds(1f);
+            b = B(1f);
             Assert.AreEqual(b.x, cam.target.x, 1e-4f); Assert.AreEqual(b.y, cam.target.z, 1e-4f);
             // Zoom is clamped to the camera's range.
             cam.FlyTo(Vector3.zero, 0.01f, 0.1f); Run(cam, 0.2f);
@@ -83,9 +90,10 @@ namespace AquariumCiv.View.Tests
             cam.FlyTo(new Vector3(-1f, 0f, 0f), 0.6f, 0.4f);
             Assert.AreEqual(1, ended); Assert.IsFalse(last.Value, "the first flight was replaced");
             Run(cam, 0.6f);
-            Assert.AreEqual(-1f, cam.target.x, 1e-4f);
+            float e = B(0.6f).x;
+            Assert.AreEqual(-Mathf.Min(1f, e), cam.target.x, 1e-4f);
             cam.FlyTo(new Vector3(0.5f, 0f, 0f), 0.6f, 0f);
-            Assert.IsFalse(cam.IsFlying); Assert.AreEqual(0.5f, cam.target.x, 1e-4f);
+            Assert.IsFalse(cam.IsFlying); Assert.AreEqual(Mathf.Min(0.5f, e), cam.target.x, 1e-4f);
         }
 
         sealed class Gate : ICameraGate { public bool claim; public bool ClaimsPress(Vector2 p) => claim; }

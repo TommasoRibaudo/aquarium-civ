@@ -130,5 +130,69 @@ namespace AquariumCiv.Tests
                 prev = s;
             }
         }
+
+        // ---- #273 (user 2026-11-04): the limit is on the view ----
+        const float TanV = 0.19438f;
+
+        static float FitDist(float aspect) => (float)Math.Sqrt((HX + 0.3f) * (HX + 0.3f) + 1.7f * 1.7f + (HZ + 0.3f) * (HZ + 0.3f)) / (TanV * Math.Min(1f, aspect));
+
+        /// <summary>Screen position (NDC, -1..1 is on screen) of a world point, the camera orbiting the pivot like BoxCamera.</summary>
+        static void Project(float yaw, float pitch, float dist, float aspect, float pvx, float pvy, float pvz, float x, float y, float z, out float nx, out float ny)
+        {
+            float yr = yaw * (float)Math.PI / 180f, pr = pitch * (float)Math.PI / 180f;
+            float sy = (float)Math.Sin(yr), cy = (float)Math.Cos(yr), sp = (float)Math.Sin(pr), cp = (float)Math.Cos(pr);
+            float cx = pvx - cp * sy * dist, cyy = pvy + sp * dist, cz = pvz - cp * cy * dist;
+            float dx = x - cx, dy = y - cyy, dz = z - cz;
+            float depth = dx * cp * sy + dy * -sp + dz * cp * cy;
+            float right = dx * cy + dz * -sy, up = dx * sp * sy + dy * cp + dz * sp * cy;
+            nx = right / (depth * TanV * aspect); ny = up / (depth * TanV);
+        }
+
+        [Test]
+        public void FarZoom_TheWholeBoxStaysOnScreen_AtEveryHeldLimit()
+        {
+            foreach (float aspect in new[] { 1179f / 2556f, 1080f / 1920f })
+                foreach (float yaw in new[] { -30f, 0f, 28f, 55f })
+                    foreach (float pitch in new[] { 24f, 34f, 50f })
+                    {
+                        float dist = FitDist(aspect);
+                        CameraGlass.PanBoundsFor(yaw, pitch, dist, 1f, TanV, aspect, HX, HZ, HullX, HullZ, Bottom, Top, out float bx, out float bz);
+                        foreach (float sx in new[] { -1f, 1f }) foreach (float sz in new[] { -1f, 1f })
+                        {
+                            float px = sx * (bx + CameraGlass.Gap), pz = sz * (bz + CameraGlass.Gap); // the held end: the soft band's reach
+                            for (int c = 0; c < 8; c++)
+                            {
+                                Project(yaw, pitch, dist, aspect, px, 1f, pz, (c & 1) == 0 ? -HX : HX, (c & 2) == 0 ? Bottom + 1f : Top, (c & 4) == 0 ? -HZ : HZ, out float nx, out float ny);
+                                Assert.LessOrEqual(Math.Abs(nx), 1.03f, $"x on screen: yaw {yaw} pitch {pitch} aspect {aspect} corner {c} pivot {px},{pz}");
+                                Assert.LessOrEqual(Math.Abs(ny), 1.03f, $"y on screen: yaw {yaw} pitch {pitch} aspect {aspect} corner {c} pivot {px},{pz}");
+                            }
+                        }
+                    }
+        }
+
+        [Test]
+        public void CloseZoom_TheGlassEdgeReachesTheScreenEdge_OnEachSide()
+        {
+            foreach (float aspect in new[] { 1179f / 2556f, 1080f / 1920f })
+            {
+                float dist = FitDist(aspect) * 0.2f;
+                CameraGlass.PanBoundsFor(0f, 24f, dist, 1f, TanV, aspect, HX, HZ, HullX, HullZ, Bottom, Top, out float bx, out float bz);
+                CameraGlass.PanBounds(HX, HZ, out float maxX, out float maxZ);
+                Assert.Greater(bx, 0.5f * HX, "a long way: close up the view can go most of the way to the wall");
+                foreach (float sx in new[] { -1f, 1f })
+                {
+                    // pivot at the limit: the glass wall (at the pivot's height, centre row) is at or just past the screen's side edge
+                    Project(0f, 24f, dist, aspect, sx * bx, 1f, 0f, sx * HX, 1f, 0f, out float nx, out _);
+                    Console.WriteLine($"close aspect {aspect}: bx {bx:F3} bz {bz:F3} maxX {maxX:F3} nx {nx:F3}");
+                    if (bx < maxX - 1e-4f) Assert.AreEqual(1f, Math.Abs(nx), 0.03f, $"x side {sx} aspect {aspect}");
+                    else Assert.LessOrEqual(Math.Abs(nx), 1.03f, $"clamped at the rest limit: the glass is still on screen, side {sx}");
+                }
+                Assert.Greater(bz, 0.2f, "front to back too, if less: the screen is tall and the box shallow");
+                Assert.LessOrEqual(bz, maxZ + 1e-4f);
+                // the near and far edges of the middle of the screen reach the front and back glass at the limit
+                CameraGlass.VisibleExtent(0f, 24f, dist, TanV, aspect, out _, out float ez);
+                Assert.AreEqual(HZ, bz + ez, 1e-3f);
+            }
+        }
     }
 }

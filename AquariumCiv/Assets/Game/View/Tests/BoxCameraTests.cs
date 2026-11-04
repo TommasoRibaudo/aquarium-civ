@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using AquariumCiv.Lighting;
 using UnityEngine;
 
 namespace AquariumCiv.View.Tests
@@ -122,9 +123,12 @@ namespace AquariumCiv.View.Tests
         {
             var open = BoxCameraMath.PanBounds(1f);
             var far = BoxCameraMath.PanBoundsFor(28f, 34f, 41f, 0f);
-            Assert.AreEqual(open.x, far.x, 1e-4f, "far out the camera is far outside the box: the whole range");
-            var near = BoxCameraMath.PanBoundsFor(55f, 14f, 8.2f, 0f);
-            Assert.LessOrEqual(near.x, open.x); Assert.LessOrEqual(near.y, open.y);
+            Assert.LessOrEqual(far.x, 0.4f, "far out the whole box fits: the tank stays on screen (user 2026-11-04)");
+            var close = BoxCameraMath.PanBoundsFor(0f, 24f, 8.2f, 0f);
+            Assert.Greater(close.x, 1.5f, "close up the view goes a long way towards the wall");
+            Assert.LessOrEqual(close.x, open.x + 1e-4f);
+            var corner = BoxCameraMath.PanBoundsFor(55f, 14f, 8.2f, 0f);
+            Assert.LessOrEqual(corner.x, close.x + 1e-4f);
         }
 
         /// <summary>The user saw "only a piece of the tank": for every pose, the moments' included, nothing of the box or the shelf row on screen is in front of the near plane.</summary>
@@ -169,7 +173,8 @@ namespace AquariumCiv.View.Tests
                                                       new Vector3(stop.x, 0f, stop.y), new Vector3(-stop.x, 0f, -stop.y), new Vector3(stop.x, 0f, -stop.y), new Vector3(-stop.x, 0f, stop.y) })
                         {
                             // the camera's own range: the pivot is drawn in to where the pose allows
-                            var b = BoxCameraMath.PanBoundsFor(yaw, pitch, dist, 0f);
+                            CameraGlass.PanBoundsFor(yaw, pitch, dist, 0f, Land.HX, Land.HZ, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, out float bbx, out float bbz); // the glass-only range: the worst case
+                            var b = new Vector2(bbx, bbz);
                             var at = new Vector3(Mathf.Clamp(pivot.x, -b.x, b.x), 0f, Mathf.Clamp(pivot.z, -b.y, b.y));
                             var rot = Quaternion.Euler(pitch, yaw, 0f);
                             Vector3 fwd = rot * Vector3.forward, up = rot * Vector3.up, pos = at - fwd * dist;

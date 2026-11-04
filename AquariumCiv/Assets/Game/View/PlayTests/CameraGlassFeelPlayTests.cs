@@ -76,7 +76,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator Pan_ReachesTheGlassOnEverySide_NeverPastIt_CloseAndFar()
         {
             yield return Open();
-            var rest = BoxCameraMath.PanBounds(1f); var stop = BoxCameraMath.PanHardStop;
+            
             var log = new StringBuilder();
             foreach (var (zoomName, zoom) in new[] { ("close", CameraReach.MinZoom), ("far", 1f) })
                 foreach (var w in Walls)
@@ -87,7 +87,21 @@ namespace AquariumCiv.View.PlayTests
                     yield return Pan(w.dir * (Screen.height * 1.2f), 45, trace, inBox, release: false);
                     for (int i = 0; i < 15; i++) { yield return null; trace.Add(Rig.target); inBox.Add(CameraInBox(Rig)); }
                     float held = w.axis == 0 ? Rig.target.x * w.sign : Rig.target.z * w.sign;
-                    float restLim = w.axis == 0 ? rest.x : rest.y, stopLim = w.axis == 0 ? stop.x : stop.y;
+                    var cam = Camera.main;
+                    var vb = BoxCameraMath.PanBoundsFor(Rig.yaw, Rig.pitch, Rig.FitDistance() * Rig.zoom, Rig.target.y, Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad), cam.aspect);
+                    float restLim = w.axis == 0 ? vb.x : vb.y, stopLim = restLim + CameraGlass.Gap;
+                    // the tank on screen at far zoom: every corner of the box inside the viewport; the glass at the screen edge at close zoom
+                    float worstOut = 0f;
+                    for (int c = 0; c < 8; c++)
+                    {
+                        var v = cam.WorldToViewportPoint(new Vector3((c & 1) == 0 ? -Land.HX : Land.HX, (c & 2) == 0 ? 0f : Land.GlassTop, (c & 4) == 0 ? -Land.HZ : Land.HZ));
+                        worstOut = Mathf.Max(worstOut, -v.x, v.x - 1f, -v.y, v.y - 1f);
+                    }
+                    float wallX = -1f;
+                    if (w.axis == 0) wallX = cam.WorldToViewportPoint(new Vector3(w.sign * Land.HX, Rig.target.y, Rig.target.z)).x;
+                    log.AppendLine($"   limit {restLim:F3} worst corner outside screen {worstOut:F3} wall viewport x {wallX:F3}");
+                    if (zoom >= 1f) Assert.LessOrEqual(worstOut, 0.03f, $"{zoomName} {w.name}: the tank stays on screen");
+                    else if (w.axis == 0) Assert.AreEqual(w.sign > 0 ? 1f : 0f, wallX, 0.15f, $"{zoomName} {w.name}: the glass wall is at the screen's edge");
                     yield return Shot($"{zoomName}_{w.name}_held");
                     var maxAbs = 0f; foreach (var p in trace) maxAbs = Mathf.Max(maxAbs, (w.axis == 0 ? p.x : p.z) * w.sign);
                     log.AppendLine($"{zoomName} {w.name}: held {held:F3} max {maxAbs:F3} rest {restLim:F3} stop {stopLim:F3} glass {(w.axis == 0 ? Land.HX : Land.HZ):F3}");
@@ -98,8 +112,8 @@ namespace AquariumCiv.View.PlayTests
                     float settled = w.axis == 0 ? Rig.target.x * w.sign : Rig.target.z * w.sign;
                     log.AppendLine($"   settled {settled:F3}");
                     File.WriteAllText(Dir + $"trace_{zoomName}_{w.name}.csv", "x,y,z\n" + string.Join("\n", trace.ConvertAll(p => $"{p.x:F4},{p.y:F4},{p.z:F4}")));
-                    Assert.LessOrEqual(maxAbs, stopLim + 1e-3f, $"{zoomName} {w.name}: never past the hard stop");
-                    Assert.GreaterOrEqual(held, restLim - 0.02f, $"{zoomName} {w.name}: reaches the glass");
+                    Assert.LessOrEqual(maxAbs, stopLim + 1e-3f, $"{zoomName} {w.name}: never past the soft band's end");
+                    Assert.GreaterOrEqual(held, restLim - 0.02f, $"{zoomName} {w.name}: reaches the limit of the view");
                     Assert.LessOrEqual(settled, restLim + 0.03f, $"{zoomName} {w.name}: settles at the rest limit");
                     Assert.IsFalse(inBox.Contains(true), $"{zoomName} {w.name}: the camera never sits inside the box");
                 }

@@ -149,10 +149,11 @@ namespace AquariumCiv.View
             return new Vector2(x, z);
         }
 
-        /// <summary>#273: the same, drawn in when the pose (yaw, pitch, the camera's distance to the pivot) would put the camera inside the box's hull.</summary>
-        public static Vector2 PanBoundsFor(float yaw, float pitch, float distance, float pivotY)
+        /// <summary>#273 (user 2026-11-04): the pan range for a pose, limited by the VIEW: the pivot may move until the visible ground's edge reaches the glass (a long way close up,
+        /// nothing once the whole box fits), and drawn in where the camera would enter the box's hull. Portrait phone by default.</summary>
+        public static Vector2 PanBoundsFor(float yaw, float pitch, float distance, float pivotY, float tanHalfV = 0.19438f, float aspect = 0.5625f)
         {
-            CameraGlass.PanBoundsFor(yaw, pitch, distance, pivotY, Land.HX, Land.HZ, Land.HX + HullSide, Land.HZ + HullSide, ShelfY, Land.GlassTop, out float x, out float z);
+            CameraGlass.PanBoundsFor(yaw, pitch, distance, pivotY, tanHalfV, aspect, Land.HX, Land.HZ, Land.HX + HullSide, Land.HZ + HullSide, ShelfY, Land.GlassTop, out float x, out float z);
             return new Vector2(x, z);
         }
 
