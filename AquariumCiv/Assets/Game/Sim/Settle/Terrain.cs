@@ -115,12 +115,13 @@ namespace AquariumCiv.Sim.Settle
             return h;
         }
 
-        /// <summary>The front-right hollow, 0..1: the back-left hill turned over. It deepens towards the corner and rises again in
-        /// a bank about a cell wide at the glass (the glass never holds the water back; the bank does).</summary>
+        /// <summary>The front-right hollow, 0..1: the back-left hill turned over. It deepens towards the corner and runs right up to
+        /// the two glass walls (#269): the glass holds the water back, so the pond meets it with no strip of land between
+        /// (<see cref="EcoLand"/> treats those two walls as closed).</summary>
         public static float CornerHollow(float xm, float z)
         {
-            float front = Smooth(-0.15f, -1.55f, z) * Smooth(-HZ + 0.06f, -HZ + 0.42f, z);
-            float right = Smooth(0.45f, 2.05f, xm) * Smooth(HX - 0.06f, HX - 0.42f, xm);
+            float front = Smooth(-0.15f, -1.55f, z);
+            float right = Smooth(0.45f, 2.05f, xm);
             float d = front * right;
             return d * (0.85f + 0.15f * Fbm(xm * 0.8f + 3.1f, z * 0.8f - 1.7f));
         }

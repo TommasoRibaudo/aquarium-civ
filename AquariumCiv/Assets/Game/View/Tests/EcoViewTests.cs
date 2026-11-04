@@ -93,5 +93,91 @@ namespace AquariumCiv.View.Tests
             for (int c = 0; c < SiteMap.N; c++) if (L.eco.WaterCell(c)) water++;
             Assert.AreEqual(L.eco.pondCells, water, "the pond's cells are the water cells");
         }
+
+        [Test]
+        public void TheFullPondMeetsBothGlassWalls()
+        {
+            var sim = EcoSim();
+            sim.DebugSetTable(sim.EcoFloodLine - 0.005f);
+            sim.DebugSkipSeasons(8);
+            var go = new GameObject("EcoPondBox");
+            go.SetActive(false);
+            try
+            {
+                var box = go.AddComponent<BoxView>();
+                box.bakeAO = false;
+                box.land = SimLayout.LandFor(sim.TerrainPreset);
+                SimLayout.Fill(box.layout, sim);
+                go.SetActive(true);
+                var ec = box.layout.eco;
+                Assert.That(ec.pondCells, Is.GreaterThan(20), "a real pond");
+                // The hollow's water stands in the very corner cell, against both walls.
+                Assert.IsTrue(ec.WaterCell(SiteMap.Index(SiteMap.NX - 1, 0)), "water in the front-right corner cell");
+                var b = box.DebugWaterMesh.bounds;
+                Assert.That(b.max.x, Is.EqualTo(Land.HX + BoxView.GlassInner).Within(0.001f), "the sheet runs to the right glass");
+                Assert.That(b.min.z, Is.EqualTo(-Land.HZ - BoxView.GlassInner).Within(0.001f), "and to the front glass");
+                Assert.That(b.max.x, Is.LessThanOrEqualTo(Land.HX + BoxView.GlassInner + 1e-4f), "clamped there, never through it");
+                Assert.That(b.min.z, Is.GreaterThanOrEqualTo(-Land.HZ - BoxView.GlassInner - 1e-4f));
+                // A wall of water stands at the glass, from the ground up to the level.
+                var v = box.DebugWaterMesh.vertices;
+                float low = float.MaxValue;
+                foreach (var p in v) if (Mathf.Abs(p.x - (Land.HX + BoxView.GlassInner)) < 1e-4f && p.y < low) low = p.y;
+                Assert.That(low, Is.LessThan(ec.waterY - 0.05f), "water is seen below the level through the side pane");
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test]
+        public void TheDampEarthHasNoLineOrEdgeAtTheTable()
+        {
+            // Smooth in height for any table and any spot along the glass: no step bigger than a hair per 2 mm,
+            // dry well above, damp well below.
+            for (int side = 0; side < 4; side++)
+                foreach (float table in new[] { 0.3f, 0.6f, 0.85f, 0.97f })
+                    for (float along = -2.9f; along < 2.9f; along += 0.37f)
+                    {
+                        float prev = BoxView.DampAmount(along, side, 0f, table), maxStep = 0f;
+                        for (float y = 0.002f; y < 2f; y += 0.002f)
+                        {
+                            float a = BoxView.DampAmount(along, side, y, table);
+                            maxStep = Mathf.Max(maxStep, Mathf.Abs(a - prev)); prev = a;
+                        }
+                        Assert.That(maxStep, Is.LessThan(0.03f), $"side {side} table {table} at {along:0.00}: a step of {maxStep:0.000} in 2 mm");
+                        Assert.That(BoxView.DampAmount(along, side, table + 0.3f, table), Is.EqualTo(0f).Within(1e-4f), "dry well above");
+                        if (table > 0.5f) Assert.That(BoxView.DampAmount(along, side, table - 0.3f, table), Is.GreaterThan(0.7f), "damp well below");
+                    }
+        }
+
+        [Test]
+        public void TheDampMeshRisesWithTheTable_AndItsVertexAlphaIsSmooth()
+        {
+            var sim = EcoSim();
+            var go = new GameObject("EcoDampBox");
+            go.SetActive(false);
+            try
+            {
+                var box = go.AddComponent<BoxView>();
+                box.bakeAO = false;
+                box.land = SimLayout.LandFor(sim.TerrainPreset);
+                float last = -1f;
+                foreach (float above in new[] { -0.5f, -0.3f, -0.1f })
+                {
+                    sim.DebugSetTable(sim.EcoFloodLine + above);
+                    SimLayout.Fill(box.layout, sim);
+                    if (!go.activeSelf) go.SetActive(true); else box.Refresh();
+                    var m = box.DebugDampMesh;
+                    Assert.IsNotNull(m, "the damp earth is drawn");
+                    var v = m.vertices; var c = m.colors;
+                    float top = 0f, maxA = 0f;
+                    for (int i = 0; i < v.Length; i++) if (c[i].a > 0.05f) top = Mathf.Max(top, v[i].y);
+                    for (int i = 0; i < c.Length; i++) maxA = Mathf.Max(maxA, c[i].a);
+                    Assert.That(top, Is.GreaterThan(last), "the damp top rises with the table");
+                    Assert.That(top, Is.LessThanOrEqualTo(box.layout.eco.tableY + 0.13f), "and stops within a hand of the table");
+                    Assert.That(maxA, Is.GreaterThan(0.6f), "the earth under the table is clearly damp");
+                    last = top;
+                }
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
     }
 }

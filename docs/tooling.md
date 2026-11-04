@@ -719,3 +719,5 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
 - **2026-11-03 · PlayMode tests run far faster than real time per frame.** Loops of `for (i<600) yield return null` last only
   a few seconds of game time; wait on `Time.realtimeSinceStartup` or `Until(cond, seconds)` instead (the #282 sign test failed on this).
   Also: `unity recompile` right after a test run needs ~8 s of settle, or "Pipeline server returned 400".
+
+- **2026-11-03 · `unity test <path>` (top-level) needs the Editor closed** ("project is already open in a running Editor"), and takes the project as an argument, not `--project-path`. With the Editor up use `unity command test run --mode editor|playmode --filter <partial name> --async_tests true`, then `test status` (a partial name like `Eco` batches several classes in one run). [verified]
