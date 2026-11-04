@@ -330,10 +330,11 @@ namespace AquariumCiv.View.PlayTests
                 for (int i = 0; i < 8 && AquariumCiv.Life.LifeClock.SeasonOf(Sim.State.month) != AquariumCiv.Life.Season.Summer; i++) EcoDebug.SkipSeasons(1);
                 PeopleView.DebugSetHour(8.5f);
                 yield return Frames(40);
+                yield return Until(() => bushes.DotsShown > 0, 3f);
                 Assert.Greater(bushes.DotsShown, 0, "berries on the bushes in summer");
                 yield return Shot("phone_16_berries_summer");
                 int picks10 = bushes.PicksDone, pickCell10 = -1;
-                bool carried10 = false;
+                bool carried10 = false, shot10 = false;
                 pvh.timeScale = 6f;
                 float t10 = Time.realtimeSinceStartup;
                 while ((bushes.PicksDone <= picks10 || !carried10) && Time.realtimeSinceStartup - t10 < 150f)
@@ -342,14 +343,16 @@ namespace AquariumCiv.View.PlayTests
                     foreach (var a in pvh.Activities)
                     {
                         if (!a.moving && a.kind == AquariumCiv.Life.ActivityKind.Gather && a.place.kind == AquariumCiv.Life.PlaceKind.BushCell && pickCell10 < 0)
-                        {
                             pickCell10 = a.place.index;
-                            pvh.timeScale = 1f;
-                            yield return Frames(20);
-                            yield return Shot("phone_17_picker_at_bush");
-                            pvh.timeScale = 6f;
-                        }
                         if (bushes.PicksDone > picks10 && a.moving && a.prop == AquariumCiv.Life.Prop.Basket) carried10 = true;
+                    }
+                    if (pickCell10 >= 0 && !shot10)
+                    {
+                        shot10 = true;
+                        pvh.timeScale = 1f;
+                        yield return Frames(20);
+                        yield return Shot("phone_17_picker_at_bush");
+                        pvh.timeScale = 6f;
                     }
                     yield return null;
                 }

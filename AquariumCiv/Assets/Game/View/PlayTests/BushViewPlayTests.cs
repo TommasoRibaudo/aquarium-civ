@@ -36,6 +36,18 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(10);
         }
 
+        /// <summary>The view day turns at midnight, not when the sim's month ticks: run the clock over midnight so the view shows the new season.</summary>
+        static IEnumerator TurnDay(PeopleView pv)
+        {
+            long d0 = pv.Now.day;
+            PeopleView.DebugSetHour(23.7f);
+            pv.timeScale = 20f;
+            float t = Time.realtimeSinceStartup;
+            while (pv.Now.day == d0 && Time.realtimeSinceStartup - t < 20f) yield return null;
+            pv.timeScale = 1f;
+            yield return Frames(40);
+        }
+
         [UnityTest, Timeout(900000)]
         public IEnumerator Seasons_FirstBushSign_Picking()
         {
@@ -98,6 +110,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(bv.DotsShown, 0, "flowers on the first bush in spring");
 
                 // ---- summer: berries; more bushes; a gatherer picks
+                EcoDebug.OpenCampGate(); // before the camp everyone digs roots in the hollow (#285): the bushes are for the camp's gatherers
                 EcoDebug.AddBushes(8);
                 ToSeason(Season.Summer);
                 PeopleView.DebugSetHour(8.5f);
@@ -117,6 +130,12 @@ namespace AquariumCiv.View.PlayTests
                 while (bv.PicksDone <= picks0 && Time.realtimeSinceStartup - t0 < 120f)
                 {
                     if (pv.ViewHour > 17f) PeopleView.DebugSetHour(8.5f);
+                    if (Time.frameCount % 120 == 0)
+                    {
+                        var sb = new System.Text.StringBuilder();
+                        foreach (var a in pv.Activities) if (a.kind is ActivityKind.Gather or ActivityKind.Eat or ActivityKind.Inspect) sb.Append($"{a.kind}@{a.place}{(a.moving ? "~" : "")} ");
+                        Debug.Log($"[bush] diag h{pv.ViewHour:0.0} season {LifeClock.SeasonOf(pv.Now.day)} bushes {cells.Count} berries? {Sim.BerriesGrow} jobs [{string.Join(",", Sim.OpenJobs())}] :: {sb}");
+                    }
                     foreach (var a in pv.Activities)
                         if (!a.moving && a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.BushCell && pickCell < 0)
                         {
@@ -156,10 +175,12 @@ namespace AquariumCiv.View.PlayTests
 
                 // ---- winter: bare; next spring: flowers again
                 ToSeason(Season.Winter);
-                yield return Frames(40);
-                Assert.AreEqual(0, bv.DotsShown, "bare in winter");
+                yield return TurnDay(pv);
+                yield return Until(() => bv.DotsShown == 0, 3f);
+                Assert.AreEqual(0, bv.DotsShown, $"bare in winter (month {Sim.State.month}, sim season {LifeClock.SeasonOf(Sim.State.month)}, view day {pv.Now.day}, state {Sim.BerryStateOf((int)LifeClock.SeasonOf(Sim.State.month))})");
                 ToSeason(Season.Spring);
-                yield return Frames(40);
+                yield return TurnDay(pv);
+                yield return Until(() => bv.DotsShown > 0, 3f);
                 Assert.Greater(bv.DotsShown, 0, "flowers in spring");
             }
             finally { if (pv != null) pv.timeScale = 1f; GameClock.EcologyPref = prefWas; }

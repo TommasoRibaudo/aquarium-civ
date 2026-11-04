@@ -179,7 +179,7 @@ namespace AquariumCiv.View
         void UpdateBerries(SimCore sim, PeopleView pv)
         {
             long day = pv.Now.day;
-            int season = (int)LifeClock.SeasonOf(day);
+            int season = (int)LifeClock.SeasonOf(sim.State.month); // the land's season, not the view day's (which turns at midnight)
             var state = sim.BerryStateOf(season);
             long key = 17 + season * 131 + (state == BerryState.Berries ? 1 : 0);
             var items = new List<(int cell, Vector3 pos, float r, int n)>();
@@ -267,6 +267,7 @@ namespace AquariumCiv.View
             if (cam != null) cam.NudgeToward(box.transform.TransformPoint(bushTop));
             EnsureBird();
             bird.SetActive(true);
+            bird.transform.localScale = Vector3.one * 1.8f; // a gray box bird, big enough to read at the default zoom
             bird.transform.localPosition = flyFrom;
         }
 
