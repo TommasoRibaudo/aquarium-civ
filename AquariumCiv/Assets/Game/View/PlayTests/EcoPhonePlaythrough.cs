@@ -52,6 +52,30 @@ namespace AquariumCiv.View.PlayTests
             return list;
         }
 
+        /// <summary>Cells within 0.9 u of a point that are grass or have shoots (the little green a mist leaves).</summary>
+        int GreenNear(float x, float z)
+        {
+            int n = 0;
+            for (int c = 0; c < AquariumCiv.Sim.Eco.EcoLand.N; c++)
+            {
+                float dx = AquariumCiv.Sim.Settle.SiteMap.CXc(c) - x, dz = AquariumCiv.Sim.Settle.SiteMap.CZc(c) - z;
+                if (dx * dx + dz * dz > 0.81f) continue;
+                if (Sim.EcoCoverAt(c) != AquariumCiv.Sim.Eco.EcoCover.Bare || Sim.EcoSproutAt(c) > 0f) n++;
+            }
+            return n;
+        }
+
+        int WetNear(float x, float z)
+        {
+            int n = 0;
+            for (int c = 0; c < AquariumCiv.Sim.Eco.EcoLand.N; c++)
+            {
+                float dx = AquariumCiv.Sim.Settle.SiteMap.CXc(c) - x, dz = AquariumCiv.Sim.Settle.SiteMap.CZc(c) - z;
+                if (dx * dx + dz * dz <= 0.81f && Sim.EcoWetAt(c) > 0.05f) n++;
+            }
+            return n;
+        }
+
         IEnumerator Hold(Vector2 at, float seconds, System.Func<bool> until = null)
         {
             int id = touchId++;
@@ -136,7 +160,21 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual("Done", kitBtn.text);
                 float bare0 = Sim.EcoBareShare;
                 var spots = new[] { (-1.2f, 0.4f), (0.6f, 0.9f), (-0.2f, -1.2f), (1.4f, 0.2f) };
-                foreach (var (x, z) in spots) yield return Hold(ScreenOf(x, z), 1.2f);
+                // The mist shows a wet area and a little green at once; the rest greens over time (#266, #271). Per stroke: the wet area under
+                // the finger is up, new green or shoots stand near it, and the bare share does not rise.
+                foreach (var (x, z) in spots)
+                {
+                    int cell = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z);
+                    float bareBefore = Sim.EcoBareShare;
+                    int greenBefore = GreenNear(x, z), wetBefore = WetNear(x, z);
+                    yield return Hold(ScreenOf(x, z), 1.2f);
+                    float wetHere = 0f;
+                    for (int dj = -1; dj <= 1; dj++) for (int di = -1; di <= 1; di++) wetHere = Mathf.Max(wetHere, Sim.EcoWetAt(AquariumCiv.Sim.Settle.SiteMap.Index(AquariumCiv.Sim.Settle.SiteMap.I(cell) + di, AquariumCiv.Sim.Settle.SiteMap.J(cell) + dj)));
+                    Assert.That(wetHere, Is.GreaterThan(0.2f), $"the wet area is up under the stroke at ({x:0.0}, {z:0.0})");
+                    Assert.That(WetNear(x, z), Is.GreaterThan(wetBefore + 5), "and it reaches out round it");
+                    Assert.That(GreenNear(x, z), Is.GreaterThan(greenBefore), $"a little green or shoots appeared near ({x:0.0}, {z:0.0})");
+                    Assert.That(Sim.EcoBareShare, Is.LessThanOrEqualTo(bareBefore), "the bare share does not rise");
+                }
                 // and a drag mists along its path
                 {
                     var a = ScreenOf(-2f, -0.6f); var b = ScreenOf(-0.4f, 0.6f);
@@ -146,7 +184,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot("phone_08_misted_many");
                 var mist = EcoMistView.Instance;
                 Debug.Log($"[phone] bare {bare0:0.000} -> {Sim.EcoBareShare:0.000}, pulses {mist.MistPulses}");
-                Assert.That(Sim.EcoBareShare, Is.LessThan(bare0 - 0.01f), "the mister greens again and again, not once");
+                Assert.That(Sim.EcoBareShare, Is.LessThan(bare0), "the mister greened ground over the kit session, not nothing");
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 yield return Frames(10);
                 Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "Done puts it down");
