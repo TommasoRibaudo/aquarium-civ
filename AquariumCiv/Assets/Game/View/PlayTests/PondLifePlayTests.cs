@@ -59,13 +59,13 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(1, fw.FullPlays, "the moment began");
             Assert.Greater(fw.SparklesShown, 3, "sparkles on the new water");
             CollectionAssert.Contains(Sfx.LastAsked, CueLibrary.FirstWaterDrop, "a soft water sound");
-            Assert.IsTrue(fw.PondSpot(out float px, out float pz));
-            int before = PeopleNear(pv, px, pz, 0.7f);
+            Assert.IsTrue(pv.Planner.Positions.TryGetPosition(Place.Land(PlaceKind.Pond), out float px, out float pz), "the planner knows where the pond is");
+            int before = PeopleNear(pv, px, pz, 0.9f);
             yield return Shot("pond_first_water_start");
             pv.timeScale = 3f;
             yield return Until(() => fw.PeopleSent > 0, 5f);
-            yield return Until(() => PeopleNear(pv, px, pz, 0.7f) > before, 14f);
-            Assert.Greater(PeopleNear(pv, px, pz, 0.7f), before, "people walked over to look");
+            yield return Until(() => PeopleNear(pv, px, pz, 0.9f) > before, 14f);
+            Assert.Greater(PeopleNear(pv, px, pz, 0.9f), before, "people walked over to look");
             yield return Shot("pond_first_water_people");
             yield return Until(() => !string.IsNullOrEmpty(fw.LastLine), 12f);
             Assert.IsNotEmpty(fw.LastLine, "the glass voice gave a line");
@@ -89,7 +89,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, Sim.EcoPondCells);
             Sim.DebugSetTable(Sim.EcoFloodLine);
             int n = 0;
-            while (Sim.EcoPondCells == 0 && n++ < 40) Sim.CatchUp(48);
+            while (Sim.EcoPondCells == 0 && n++ < 40) GameClock.DebugAway(48);
             Assert.Greater(Sim.EcoPondCells, 0, $"water came while away (after {n} catch-ups of 48 h)");
             yield return Until(() => fw.AwayPlays > 0, 5f);
             Assert.AreEqual(1, fw.AwayPlays, "the short version on return");

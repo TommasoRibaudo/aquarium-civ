@@ -121,7 +121,7 @@ namespace AquariumCiv.View
                             Pieces.Bush(ib, bg, r, false, co);
                             mb.AppendFree(ib);
                             near.Add((p, r));
-                            BushSpots[c] = (bg, r);
+                            lock (BushSpots) BushSpots[c] = (bg, r); // chunks build in parallel (#279: a big pond rebuilt several at once and corrupted the dictionary)
                         }
                         else
                         {

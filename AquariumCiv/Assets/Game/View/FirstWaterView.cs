@@ -61,7 +61,7 @@ namespace AquariumCiv.View
         static Mesh sparkMesh;
         bool awayPending;
         float t = -1f, length, reactT, lineAt = -1f, waitPond;
-        bool full, lined;
+        bool full, lined, leanPending;
         readonly List<PersonRef> whoBuf = new(); readonly List<float> px = new(), pz = new();
 
         /// <summary>For tests and the panel: how many times each version played, the last line, the camera leans.</summary>
@@ -136,6 +136,7 @@ namespace AquariumCiv.View
                 if (waitPond < 4f) return;
             }
             t += dt;
+            if (leanPending) { if (Lean() || t > 3f) leanPending = false; }
             UpdatePeople(dt);
             UpdateSparkles(eco, dt);
             if (t >= length + FadeSeconds) { t = -1f; Hide(); }
@@ -155,7 +156,7 @@ namespace AquariumCiv.View
             float vol = fullVersion ? 1f : 0.6f;
             Sfx.Play(CueLibrary.FirstWaterDrop, 0f, vol);
             Sfx.Play(CueLibrary.FirstWaterBubble, 0f, vol, 0.7f);
-            if (fullVersion) Lean();
+            leanPending = fullVersion; // once the water is drawn
         }
 
         /// <summary>The pond's middle: the water cell nearest the water cells' centre, in box units. False when none is drawn.</summary>
@@ -179,12 +180,13 @@ namespace AquariumCiv.View
             return true;
         }
 
-        void Lean()
+        bool Lean()
         {
             var cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
-            if (cam == null || !GlassVoice.CameraFree() || !PondSpot(out float x, out float z)) return;
+            if (cam == null || !GlassVoice.CameraFree() || !PondSpot(out float x, out float z)) return false;
             var at = new Vector3(x, box.layout.eco.waterY, z);
-            if (cam.NudgeToward(box.Root.TransformPoint(at))) Leans++;
+            if (cam.NudgeToward(box.Root.TransformPoint(at))) { Leans++; return true; }
+            return false;
         }
 
         void UpdatePeople(float dt)
