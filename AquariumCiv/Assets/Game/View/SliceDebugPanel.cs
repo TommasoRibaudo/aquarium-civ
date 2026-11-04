@@ -110,6 +110,7 @@ namespace AquariumCiv.View
             if (Btn("Old box")) last = EcoDebug.NewBox(false);
             if (Btn("Mist")) last = EcoDebug.MistRandom();
             if (Btn("Mist camp")) last = EcoDebug.MistCamp();
+            if (Btn("Mist sound A/B")) { var ms = EcoMistView.Instance != null ? EcoMistView.Instance.Sound : null; last = ms != null ? ms.ToggleSource() : "no mister"; }
             EndRow();
             Row();
             if (Btn("Mist big here")) last = EcoDebug.MistBigCamp();
@@ -342,6 +343,7 @@ namespace AquariumCiv.View
                 Row();
                 for (int i = 0; i < AquariumCiv.Audio.AmbienceLevels.Count; i++)
                 {
+                    if (i == 6 || i == 9) { EndRow(); Row(); }
                     var ad = AudioDirector.Instance;
                     string n = AquariumCiv.Audio.AmbienceLevels.CueIds[i].Substring(4);
                     if (Btn(n + ":" + (ad != null ? AudioDirector.LayerForceName(ad.LayerForce[i]) : "-"))) last = AudioDirector.DebugCycleLayer(i);

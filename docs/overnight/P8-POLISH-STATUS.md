@@ -17,7 +17,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] 10 · #284 merged
 - [x] 11 · #288 merged
 - [x] 12 · #281 merged (open for shade sign-off)
-- [ ] 13 · #280 merged (open for a listen)
+- [x] 13 · #280 merged (open for a listen)
 - [x] 14 · DROPPED by the user 20:07 ("bringing the fire where?"): no fire move. #248 closed earlier; #246/#249 check comments posted, left open
 - [ ] 15 · #273 merged (open for sign-off)
 - [ ] 16 · #274 merged
@@ -95,3 +95,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
   [polish] puddles still stones/scorch halo; wording: harvest festival in a tribe, "another hut" in a tent camp, History "Year 1 made camp" vs gate y4.8; cloth toast mentions junk/weeds; first-mist wet area faint; Mister hint every pickup; night tent moment dark; first pond hard-edged rectangle; pond pacing 24.5 y.
 - 11-04 02:19 · #300 #301 merged bf8f3b9, closed (+ cloth toast, mister hint once). Next lane B: item 13 (#280 sound, on vs/280-opening-sound).
 - 11-04 02:19 · item 13 (#280 wiring) Sonnet a8e25e9a8a5f327d9; watcher br3yrzb48. Remaining lane B: 3B (#285 cards, #267 bucket colour + puddle source, jobs readout), 4B (#287 replay), 15 (#273 phase B on vs/273-camera-glass), 16 (#274), 17B (#275/#276 view), 18 (#208 look, #209 #210 #211). Then tester 3, final play-through, P8.md, PR.
+- 11-04 02:32 · item 13 merged f8fc846 (open for a listen). Item 3B Sonnet ab715776317f14915 (watcher bf43q4nea).
+- 11-04 02:37 · MY SLIP: merged #280 with a SimTests build break (AudioCueTests used UnityEngine.Resources); fixed with #if UNITY_2017_1_OR_NEWER, dotnet 1272/1272. Rule for me: read the test output BEFORE merging, never chain merge after test.
