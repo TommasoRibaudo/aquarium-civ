@@ -106,3 +106,4 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 04:29 · item 16 merged cc9202a (open for look sign-off). Next: item 17B.
 - 11-04 04:58 · item 17 merged b04bfc3; #275 closed, #276 open for sign-off (+#236). Next: item 18 Opus bundle (#208 look, #209 #210 #211).
 - 11-04 05:41 · item 18 merged 2359ec9, dotnet 1286. Call to confirm: #210 read as 'add crumbs', the hut-sized Sky Crumb lump kept. Next: tester 3.
+- 11-04 05:56 · TESTER 3 part A (living land, seed 6161): all pass (#301 #300 #285 card, hunt, tent moment, hint once, cloth). No pond by Y23 with yearly misting (tester2: Y24.5) → pacing open question (lab: water ~Y20 with care). Polish: name-step ring over plate words; old caption lines linger across an away; dolls/rabbits tiny at default zoom. Part B (old slice, History caption) not run → tester 3b.
