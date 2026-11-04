@@ -333,12 +333,13 @@ namespace AquariumCiv.View
             float x = 0f, z = 0f;
             Vector2? huntFace = null;
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
-            if (hunting) hidden = false;
+            bool tenting = !hunting && a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace); // #284: the planned walk to the frame and the lot
+            if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (hunting) { face = huntFace; claimed.Add(target); }
+            if (hunting || tenting) { face = huntFace; claimed.Add(target); }
             else if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
             {
                 target = pin; // the scene chose it clear of the others
@@ -363,9 +364,9 @@ namespace AquariumCiv.View
                 target = Ashore(land, target);
                 if (!a.moving) face = wet; // the fisher faces the water
             }
-            if (!hunting && !a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
-            if (!hunting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
-            if (!hunting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
+            if (!hunting && !tenting && !a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
+            if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
             target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
@@ -413,7 +414,7 @@ namespace AquariumCiv.View
             float want = d.yaw;
             if (jump || dt <= 0f) d.velocity = Vector2.zero;
             else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
-            if (walking && !(hunting && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
+            if (walking && !((hunting || tenting) && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
@@ -476,6 +477,23 @@ namespace AquariumCiv.View
             x = p.x; z = p.y;
             if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
             else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
+            return true;
+        }
+
+        /// <summary>#284: where a tent builder (or the kid who watches) is now, from the raising plan's coordinates, and what they face
+        /// (the frame while they take a load, the lot while they raise it).</summary>
+        bool TentSpot(in PersonActivity a, out float x, out float z, out Vector2? face)
+        {
+            x = z = 0f; face = null;
+            if (!planner.TentStepAt(a.who, now, out var st, out var plan)) return false;
+            float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
+            if (st.phase == TentPhase.ToFrame && !planner.Positions.TryGetPosition(st.from, out x0, out z0)) { x0 = x1; z0 = z1; }
+            if (st.phase == TentPhase.Return && !planner.Positions.TryGetPosition(st.to, out x1, out z1)) { x1 = x0; z1 = z0; }
+            float f = Mathf.Clamp01((float)((now.Absolute - plan.StartAbsolute - st.start) / Mathf.Max(1e-4f, st.end - st.start)));
+            var p = Vector2.Lerp(new Vector2(x0, z0), new Vector2(x1, z1), f);
+            x = p.x; z = p.y;
+            if (st.phase is TentPhase.TakeLoad) face = new Vector2(plan.frameX, plan.frameZ);
+            else if (st.phase is TentPhase.Raise or TentPhase.Stand or TentPhase.KidWatch or TentPhase.KidCheer) face = new Vector2(plan.lotX, plan.lotZ);
             return true;
         }
 

@@ -201,7 +201,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(hud.CleanMode);
 
                 // ---- 5. Years later (cheats only to get there): the seed comes, one tap plants it
-                EcoDebug.CampGate();
+                EcoDebug.OpenCampGate();
                 for (int i = 0; i < 40 && !Sim.CanPlantTree; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(2); }
                 Assert.IsTrue(Sim.CanPlantTree, "the seed comes after the camp and the first bushes");
                 // the years the cheats skipped grew a meadow: rabbits are seen (#282), as many as the sim counts, capped
@@ -262,8 +262,91 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(Sim.HidesTotal, hides0, "with only time passing, a hunter made a catch and a hide is drying by the fire");
                 Assert.IsTrue(sawStalk && sawSpear, "and it was seen: a spear walked out, a hunter stalked");
                 AssertNoErrors("hunt");
+
+                // ---- 9. The camp begins (#284): only time passes. The hides on the frame by the fire pile up with the hunts; with two of them
+                // and the camp gate open, the first tent goes up from the hides as a small moment (camera lean, a builder's line).
+                var cv = CampView.Instance;
+                Assert.IsNotNull(cv, "the camp view");
+                yield return Frames(15);
+                Assert.IsTrue(cv.FrameShown, "the hide frame stands by the fire once there are hides");
+                Assert.AreEqual(Mathf.Min(pvh.Planner.HidesOnFrame(pvh.Now), AquariumCiv.Life.LifePlanner.HideFrameMax), cv.HidesShown, "one hide on the frame for each drying");
+                Assert.Greater(cv.HidesShown, 0);
+                yield return FlyToFrame(pvh);
+                yield return Shot("phone_12_hide_frame");
+                for (int attempt = 0; attempt < 14 && !Sim.FirstTentRaised; attempt++)
+                {
+                    if (Sim.HidesDrying < SimCore.HidesPerTent) yield return HuntADay(pvh);
+                    EcoDebug.SkipSeasons(1);
+                }
+                Assert.IsTrue(Sim.FirstTentRaised, "with the gate open and two hides, the first tent went up (time passing only)");
+                Assert.GreaterOrEqual(Sim.TentsFromHidesCount, 1);
+                var tent = Sim.State.buildings[Sim.State.buildings.Count - 1];
+                float t9 = Time.realtimeSinceStartup;
+                while (cv.RaisingsStarted < 1 && Time.realtimeSinceStartup - t9 < 10f) yield return null;
+                Assert.GreaterOrEqual(cv.RaisingsStarted, 1, "the view began the raising");
+                Assert.AreEqual(1, cv.MomentsPlayed, "the camp's beginning played once");
+                yield return FlyToFrame(pvh);
+                pvh.timeScale = 6f;
+                float maxGrow = 0f; bool sawHammer = false, sawLoad = false, shotRising = false;
+                t9 = Time.realtimeSinceStartup;
+                while (cv.RaisingsActive > 0 && Time.realtimeSinceStartup - t9 < 90f)
+                {
+                    float g = pvh.Planner.TentRaised(tent.id, pvh.Now);
+                    maxGrow = Mathf.Max(maxGrow, g);
+                    foreach (var a in pvh.Activities)
+                    {
+                        if (a.tent == AquariumCiv.Life.TentPhase.Raise && a.prop == AquariumCiv.Life.Prop.Hammer) sawHammer = true;
+                        if (a.tent == AquariumCiv.Life.TentPhase.CarryOut && (a.prop == AquariumCiv.Life.Prop.Log || a.prop == AquariumCiv.Life.Prop.Hide)) sawLoad = true;
+                    }
+                    if (!shotRising && g > 0.3f) { shotRising = true; yield return Shot("phone_13_tent_rising"); }
+                    if (cv.LastLine != null && !shotLine9) { shotLine9 = true; yield return Shot("phone_14_camp_line"); }
+                    yield return null;
+                }
+                pvh.timeScale = 1f;
+                Debug.Log($"[phone] camp: grow {maxGrow:0.00}, hammer {sawHammer}, load {sawLoad}, line '{cv.LastLine}', leans {cv.Leans}, hides on frame {cv.HidesShown}");
+                Assert.AreEqual(0, cv.RaisingsActive, "the raising finished");
+                Assert.Greater(maxGrow, 0.5f, "the tent grew in view");
+                Assert.IsTrue(sawHammer && sawLoad, "builders carried poles or hides to the lot and hammered");
+                Assert.IsNotNull(cv.LastLine, "a builder said the camp's line");
+                yield return Shot("phone_15_tent_up");
+                // a later tent also takes hides (hides topped up by cheat; the tent comes when the people want it)
+                int fromHides = Sim.TentsFromHidesCount;
+                for (int i = 0; i < 40 && Sim.TentsFromHidesCount <= fromHides; i++)
+                {
+                    if (Sim.HidesDrying < SimCore.HidesPerTent) EcoDebug.AddHides(SimCore.HidesPerTent);
+                    EcoDebug.SkipSeasons(1);
+                }
+                Assert.Greater(Sim.TentsFromHidesCount, fromHides, "a later tent also took hides");
+                yield return Frames(30);
+                AssertNoErrors("camp");
             }
             finally { GameClock.EcologyPref = prefWas; }
+        }
+
+        bool shotLine9;
+
+        /// <summary>One view day of hunting (time runs at 12x from dawn) until a catch is made or the day ends.</summary>
+        IEnumerator HuntADay(PeopleView pvh)
+        {
+            int was = Sim.HidesTotal;
+            PeopleView.DebugSetHour(6.5f);
+            yield return Frames(10);
+            pvh.timeScale = 12f;
+            float tH = Time.realtimeSinceStartup;
+            while (Sim.HidesTotal <= was && pvh.ViewHour < 20f && Time.realtimeSinceStartup - tH < 90f) yield return null;
+            pvh.timeScale = 1f;
+        }
+
+        /// <summary>Bring the camera to the hide frame (the player would pan there) for the screenshots.</summary>
+        IEnumerator FlyToFrame(PeopleView pv)
+        {
+            var box = Object.FindAnyObjectByType<BoxView>();
+            var cam = Camera.main.GetComponent<BoxCamera>();
+            if (pv.Planner.HideFrame(out float x, out float z, out _, out _))
+            {
+                cam.FlyTo(box.transform.TransformPoint(box.land.OnGround(x, z)), 1.8f, 0.3f);
+                yield return new WaitForSecondsRealtime(0.8f);
+            }
         }
 
         static bool Shown(VisualElement e)

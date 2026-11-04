@@ -146,6 +146,9 @@ namespace AquariumCiv.View
         /// for an answer, animated; while it does, the live layout leaves them out (the time-lapse keeps them).</summary>
         public static bool KeeperOverlays;
 
+        /// <summary>#284: how much of a building stands, 0..1, while its tent is being raised (the camp view sets it; null = all of them stand).</summary>
+        public static Func<int, float> BuildingGrow;
+
         public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null, ReplayFrame replay = null)
         {
             L.Clear();
@@ -225,7 +228,12 @@ namespace AquariumCiv.View
                     case LotKind.Cottage:
                     {
                         bool cottage = l.kind == LotKind.Cottage;
-                        if (e == Era.Camp) { P(PieceKind.Home, l.w, l.d); break; }
+                        if (e == Era.Camp)
+                        {
+                            var tent = P(PieceKind.Home, l.w, l.d);
+                            if (replay == null && BuildingGrow != null && l.buildingId > 0) tent.grow = Mathf.Clamp(BuildingGrow(l.buildingId), 0.02f, 1f); // #284
+                            break;
+                        }
                         int tier = st.Tier(l.door);
                         float dg = Vector2.Distance(new Vector2(l.x, l.z), green);
                         bool big = !cottage && (tier >= PathNet.PathTier || e == Era.Town);
