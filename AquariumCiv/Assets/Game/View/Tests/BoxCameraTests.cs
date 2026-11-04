@@ -155,6 +155,41 @@ namespace AquariumCiv.View.Tests
                         }
         }
 
+        /// <summary>#273: with the pivot at each wall (the hard stop, every corner too) the near plane never cuts a pane, at close, mid and far distance and the whole yaw / pitch range.</summary>
+        [Test]
+        public void Near_NeverCutsAPane_WithThePivotAtEachWall()
+        {
+            float tan = Mathf.Tan(11f * Mathf.Deg2Rad), hx = Land.HX + BoxCameraMath.HullSide, hz = Land.HZ + BoxCameraMath.HullSide;
+            var stop = BoxCameraMath.PanHardStop;
+            int checkedPoints = 0;
+            foreach (float dist in new[] { 8.2f, 12f, 20f, 41f })
+                foreach (float yaw in new[] { -30f, -10f, 0f, 28f, 55f })
+                    foreach (float pitch in new[] { 14f, 24f, 34f, 60f })
+                        foreach (var pivot in new[] { new Vector3(stop.x, 0f, 0f), new Vector3(-stop.x, 0f, 0f), new Vector3(0f, 0f, stop.y), new Vector3(0f, 0f, -stop.y),
+                                                      new Vector3(stop.x, 0f, stop.y), new Vector3(-stop.x, 0f, -stop.y), new Vector3(stop.x, 0f, -stop.y), new Vector3(-stop.x, 0f, stop.y) })
+                        {
+                            // the camera's own range: the pivot is drawn in to where the pose allows
+                            var b = BoxCameraMath.PanBoundsFor(yaw, pitch, dist, 0f);
+                            var at = new Vector3(Mathf.Clamp(pivot.x, -b.x, b.x), 0f, Mathf.Clamp(pivot.z, -b.y, b.y));
+                            var rot = Quaternion.Euler(pitch, yaw, 0f);
+                            Vector3 fwd = rot * Vector3.forward, up = rot * Vector3.up, pos = at - fwd * dist;
+                            float near = BoxCameraMath.FitNear(pos, fwd, up, tan);
+                            // every point of the four panes, sampled
+                            for (float u = -1f; u <= 1.001f; u += 0.1f)
+                                for (float y = BoxCameraMath.ShelfY; y <= Land.GlassTop + 0.1f; y += 0.4f)
+                                    foreach (var w in new[] { new Vector3(u * hx, y, -hz), new Vector3(u * hx, y, hz), new Vector3(-hx, y, u * hz), new Vector3(hx, y, u * hz) })
+                                    {
+                                        var d = w - pos;
+                                        float depth = Vector3.Dot(d, fwd);
+                                        if (depth <= BoxCameraMath.NearestPlane) continue;
+                                        if (Mathf.Abs(Vector3.Dot(d, up) / depth) > tan) continue;
+                                        checkedPoints++;
+                                        Assert.GreaterOrEqual(depth, near - 1e-3f, $"pane point {w} dist {dist} yaw {yaw} pitch {pitch} pivot {at}");
+                                    }
+                        }
+            Assert.Greater(checkedPoints, 1000);
+        }
+
         [Test]
         public void Near_StaysTightAroundTheBoxAtTheHomeView()
         {

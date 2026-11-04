@@ -72,6 +72,10 @@ namespace AquariumCiv.View
             return new Vector3(Mathf.Clamp(target.x, -b.x, b.x), target.y, Mathf.Clamp(target.z, -b.y, b.y));
         }
 
+        /// <summary>#273: the same, against bounds the caller already drew in for its pose (<see cref="PanBoundsFor"/>).</summary>
+        public static Vector3 ClampFocus(Vector3 target, Vector2 bound)
+            => new Vector3(Mathf.Clamp(target.x, -bound.x, bound.x), target.y, Mathf.Clamp(target.z, -bound.y, bound.y));
+
         public static float YawDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * YawPerScreen;
         public static float PitchDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * PitchPerScreen;
 

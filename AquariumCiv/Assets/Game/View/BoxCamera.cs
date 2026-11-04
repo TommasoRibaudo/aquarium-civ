@@ -154,7 +154,8 @@ namespace AquariumCiv.View
             glideNext = false;
             float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, minZoom, maxZoom) : zoom;
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
-            flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), z1);
+            // #273: the end pose's own range (the flight keeps yaw and pitch), so a flight never ends where the spring would pull it back or the camera sits in a pane.
+            flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * z1, target.y));
             flyDur = Mathf.Max(0f, seconds); flyT = 0f;
             firmFlight = false;
             velocity = Vector2.zero;
@@ -519,7 +520,7 @@ namespace AquariumCiv.View
             }
             followMissing = 0;
             var w = followPeople.transform.TransformPoint(new Vector3(p.x, 0f, p.y));
-            var bound = BoxCameraMath.PanBounds(zoom);
+            var bound = BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * zoom, target.y); // #273: the same range the spring holds, so follow and spring never fight
             float gx = Mathf.Clamp(w.x, -bound.x, bound.x), gz = Mathf.Clamp(w.z, -bound.y, bound.y);
             float k = 1f - Mathf.Exp(-FollowRate * dt);
             target.x += (gx - target.x) * k;
