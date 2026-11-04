@@ -18,7 +18,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [ ] 11 · #288 merged
 - [ ] 12 · #281 merged, closed
 - [ ] 13 · #280 merged (open for a listen)
-- [ ] 14 · #246 #248 #249 checked and closed; the fire moves to the first green
+- [x] 14 · DROPPED by the user 20:07 ("bringing the fire where?"): no fire move. #248 closed earlier; #246/#249 check comments posted, left open
 - [ ] 15 · #273 merged (open for sign-off)
 - [ ] 16 · #274 merged
 - [ ] 17 · #275 → #276 merged
@@ -66,3 +66,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 19:28 · item 6 (#269 → #270) Sonnet lane B id ac165c58ab99e4649, F:\GameDev vs/269-270-water, restart first; watcher bap3n2wpt.
 - Item 14 phase A agent a03318bf658dcd2c7 still merging p8/polish (will hit LifeTypes enum: OldFire must go AFTER BushCell, Puddle).
 - Lane B items done: 1, 5 (2 of 6 before tester).
+- 20:07 · USER: "drop item 14, bringing the fire where?" → item 14 agent stopped, branch vs/246-248-249-leftovers NOT merged (fire move dropped). keepers-hands §2/§2.1 struck. #246/#249 keep their check comments; #249 waits for sign-off.
+- 20:07 · item 6 merged (dd15044 via resolved merge), dotnet 1252/1252; #269 #270 open for sign-off (+#261 #258).

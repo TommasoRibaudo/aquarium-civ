@@ -40,7 +40,7 @@ glass-voice stages: a little scared in the camp, curious in the village, studyin
 | # | Beat | What the player does | What grows | The people | Era |
 |---|---|---|---|---|---|
 | 0 | **Barren land** | Wipe the misted glass (first run) | Dry, cracked dirt; hollows; a dry stream bed | **The tribe is already there**: one tent and a fire, nothing more. Slow life: they dig roots in the dry stream bed, sit and sleep by the fire, watch the sky (§2.1) | **Tribe** (before the camp) |
-| 1 | **The first mist** | **Mist** a spot | Green spreads from where it fell, over seconds; crickets start with the first green | They react **at once**: they stand in it, faces up, astonished; a child plays in the mist; they move their fire next to the green; the glass voice's first line. Every early mist is a small moment (§2.1) | Tribe |
+| 1 | **The first mist** | **Mist** a spot | Green spreads from where it fell, over seconds; crickets start with the first green | They react **at once**: they stand in it, faces up, astonished; a child plays in the mist; ~~they move their fire next to the green~~ (dropped, user 2026-11-03); the glass voice's first line. Every early mist is a small moment (§2.1) | Tribe |
 | 2 | **Meadows and bunnies** | Keep misting, here and there | Meadow spreads; rabbit tracks first, then **rabbits** arrive with enough grass | They hunt; hides become **new tents** (none are built before this) | **Camp starts here, officially** (an era moment, small) |
 | 3 | **Bushes** | (nothing new) | Bushes appear in the meadow over time | **Gatherers** (berries) | Camp |
 | 4 | **The one seed** | **Plant** the seed (once); care for it (§4) | Seed → sprout → sapling → young → grown, through seasons | Watch it; later they carry water to it | Camp |
@@ -64,7 +64,7 @@ years in (3–4 real hours), and 18–30 without the player:
 - **Slow life before the first green.** They scrape by: dig roots in the dry stream bed, carry them back, sit and
   sleep by the fire, look up at the glass. Quiet and slow, but never still.
 - **The first mist is an event for them, at once.** They stand in it, faces up; a child plays in the drifting mist;
-  they move their fire next to the first green; the glass voice says its first line ("the sky wept"). Every early
+  ~~they move their fire next to the first green~~ (dropped by the user, 2026-11-03: the fire stays put); the glass voice says its first line ("the sky wept"). Every early
   mist is a small moment of its own, so the player is answered before any gate.
 - **The land shows progress between the gates**, so a return always finds something new: crickets with the first
   green, rabbit tracks before the rabbits, birds landing on the first bushes, later frogs at the pond.
