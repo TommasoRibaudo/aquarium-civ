@@ -168,6 +168,16 @@ namespace AquariumCiv.Sim
 
         /// <summary>The water table, in terrain height units (0 when the ecology is off).</summary>
         public float EcoTable => EcologyOn ? State.eco.table : 0f;
+        /// <summary>The water table scaled for sound: 0 at its start (below the lowest ground) to 1 at the flood line (the main hollow's spill); 0 when off.</summary>
+        public float EcoTable01
+        {
+            get
+            {
+                if (!EcologyOn) return 0f;
+                float start = EcoM.land.minHeight - (Config.eco ?? new EcoTuning()).tableStartBelow, top = EcoM.land.FloodLine;
+                return top > start ? Math.Max(0f, Math.Min(1f, (State.eco.table - start) / (top - start))) : 0f;
+            }
+        }
         /// <summary>The pond's level (the water table's peak, capped at the spill); -1000 until water surfaces.</summary>
         public float EcoPondLevel => EcologyOn ? State.eco.pondLevel : -1000f;
         /// <summary>The flood line: the main hollow's spill level (the people never build below it).</summary>

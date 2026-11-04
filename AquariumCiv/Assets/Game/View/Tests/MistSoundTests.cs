@@ -33,6 +33,39 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
+        public void DumpCodeMadeForTheAB()
+        {
+            // The A/B (#280) decodes both loops in python; the code-made one is written out raw (float32 mono, 24 kHz).
+            var d = MistSound.Generate();
+            var bytes = new byte[d.Length * 4]; System.Buffer.BlockCopy(d, 0, bytes, 0, bytes.Length);
+            System.IO.File.WriteAllBytes("F:/GameDev/AquariumCiv/Temp/agent/mist_codemade.f32", bytes);
+            Assert.IsNotNull(Resources.Load<AudioClip>(MistSound.RecordedPath), "the recorded mist loop loads");
+        }
+
+        [Test]
+        public void TheMisterLoopPlaysWhileHeldAndFadesOut()
+        {
+            var go = new GameObject("MistSoundTest");
+            try
+            {
+                var m = go.AddComponent<MistSound>();
+                typeof(MistSound).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(m, null); // edit mode does not run Awake
+                Assert.IsNotNull(m.Clip, "a clip is set");
+                Assert.AreEqual(32000, m.Clip.frequency, "the recorded loop is the one that plays");
+                Assert.AreEqual(0f, m.Level);
+                m.SetSpray(1f);
+                m.Tick(0.05f); Assert.That(m.Level, Is.GreaterThan(0f).And.LessThan(1f), "fades in");
+                m.Tick(0.2f); Assert.AreEqual(1f, m.Level, 1e-4f, "full while held");
+                Assert.That(m.Volume, Is.GreaterThan(0f), "audible while held");
+                m.SetSpray(0f);
+                m.Tick(0.1f); Assert.That(m.Level, Is.GreaterThan(0f), "still fading a tenth of a second after the lift");
+                m.Tick(0.4f); Assert.AreEqual(0f, m.Level, 1e-4f, "silent after a third of a second or so");
+                Assert.AreEqual(0f, m.Volume, 1e-3f);
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test]
         public void PuddleActivities_HaveMovesAndAGroup()
         {
             Assert.AreEqual(DollStyle.Stomp, DollMotion.StyleOf(ActivityKind.Stomp));
