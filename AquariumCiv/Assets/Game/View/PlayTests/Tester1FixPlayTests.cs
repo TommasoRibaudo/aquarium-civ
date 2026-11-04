@@ -75,6 +75,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(mist.WarmedUp, "the spray was made and drawn once at load (#296)");
                 var (rx, rz) = run.Run.SuggestedRainSpot;
                 var at = ScreenOf(rx, rz);
+                yield return new WaitForSecondsRealtime(0.5f); // the screenshot's own long frame is not the spray's
 
                 int id = touchId++;
                 var ms = new List<double>();
