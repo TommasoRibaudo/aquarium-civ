@@ -1,3 +1,4 @@
+using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using UnityEngine;
 
@@ -60,6 +61,7 @@ namespace AquariumCiv.View
             GUILayout.Label($"Doll +{PeopleView.DollScaleAmount * 100f:0} %", GUILayout.Width(80));
             PeopleView.DollScaleAmount = GUILayout.HorizontalSlider(PeopleView.DollScaleAmount, 0f, 0.4f);
             GUILayout.EndHorizontal();
+            if (GUILayout.Button("Canal across a path (bridge)")) last = DebugCanalAcrossPath();
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig == null) return;
             GUILayout.BeginHorizontal();
@@ -67,6 +69,19 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Fly in: door")) last = DebugFlyDoor(people, rig);
             if (GUILayout.Button("Go home")) rig.GoHome();
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>
+        public static string DebugCanalAcrossPath()
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            var st = sim?.Settlement;
+            if (st == null) return "no sim";
+            int c = st.DebugCanalAcrossPath();
+            if (c < 0) return "no path to cross yet";
+            var src = SimLayoutSource.Find();
+            if (src != null) src.GetComponent<BoxView>().Refresh();
+            return $"canal dug across the path at cell {c}";
         }
 
         static string DebugFlyFire(PeopleView people, BoxCamera rig)

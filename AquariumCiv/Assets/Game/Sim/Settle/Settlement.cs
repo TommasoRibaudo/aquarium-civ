@@ -527,6 +527,38 @@ namespace AquariumCiv.Sim.Settle
             return true;
         }
 
+        /// <summary>Debug (#274): digs a short canal straight across the worn or laid path nearest the green, and lays the crossing
+        /// (a bridge). Returns the crossing's cell, or -1 if there is no path to cross.</summary>
+        public int DebugCanalAcrossPath()
+        {
+            int best = -1; float bd = float.MaxValue;
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                int i = SiteMap.I(c), j = SiteMap.J(c);
+                if (i < 5 || j < 5 || i >= SiteMap.NX - 5 || j >= SiteMap.NZ - 5) continue;
+                if (Map.lot[c] != 0 || Map.Water(c) || Map.Green(c) || !(Map.Laid(c) || Map.tier[c] >= PathNet.PathTier)) continue;
+                float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), Map.greenX, Map.greenZ);
+                if (d < 0.6f) continue; // not on the green itself
+                if (d < bd) { bd = d; best = c; }
+            }
+            if (best < 0) return -1;
+            int bi = SiteMap.I(best), bj = SiteMap.J(best);
+            bool P(int i, int j) { int c = SiteMap.Index(i, j); return Map.Laid(c) || Map.tier[c] >= PathNet.Trail; }
+            int along = (P(bi + 1, bj) ? 1 : 0) + (P(bi - 1, bj) ? 1 : 0), alongZ = (P(bi, bj + 1) ? 1 : 0) + (P(bi, bj - 1) ? 1 : 0);
+            bool pathRunsX = along >= alongZ; // the canal runs across it, along z
+            for (int k = -3; k <= 3; k++)
+            {
+                int c = pathRunsX ? SiteMap.Index(bi, bj + k) : SiteMap.Index(bi + k, bj);
+                if (Map.lot[c] != 0 || Map.Green(c) || Map.pond[c]) continue;
+                if (Map.Laid(c) || Map.tier[c] >= PathNet.Trail) Map.Set(c, SiteMap.FLaid, true);
+                Map.Set(c, SiteMap.FCanal, true);
+                Map.Set(c, SiteMap.FForest, false);
+            }
+            Map.Set(best, SiteMap.FLaid, true);
+            Map.RecomputeWaterDist();
+            return best;
+        }
+
         /// <summary>The nearest point to (x, z) on dry land, inside the glass margin, with no lot or green within r
         /// (what a player's finger lands on when they shape open ground).</summary>
         public bool OpenSpotNear(ref float x, ref float z, float r)
