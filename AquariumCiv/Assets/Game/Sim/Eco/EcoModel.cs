@@ -123,10 +123,11 @@ namespace AquariumCiv.Sim.Eco
         // ---------------------------------------------------------------- the Keeper's hands
         /// <summary>The mister: wets a spot (green follows at once), the air, and some of it soaks to the water table.
         /// Fills <paramref name="greened"/> with the cells that turned to grass.</summary>
-        public void Mist(float x, float z, float amount, long month, List<int> greened)
+        public void Mist(float x, float z, float amount, long month, List<int> greened, float holdAmount = -1f)
         {
             EnsureLayers();
-            float r = MistRadius(amount);
+            float rAmt = holdAmount >= 0f ? Math.Max(amount, holdAmount) : amount; // the reach and the puddles go by the hold, the wetting by this pulse
+            float r = MistRadius(rAmt);
             int i0 = Math.Max(0, (int)((x - r - SiteMap.X0) / SiteMap.Cell)), i1 = Math.Min(SiteMap.NX - 1, (int)((x + r - SiteMap.X0) / SiteMap.Cell));
             int j0 = Math.Max(0, (int)((z - r - SiteMap.Z0) / SiteMap.Cell)), j1 = Math.Min(SiteMap.NZ - 1, (int)((z + r - SiteMap.Z0) / SiteMap.Cell));
             int nearGreen = 0;
@@ -141,7 +142,7 @@ namespace AquariumCiv.Sim.Eco
                     st.moisture[c] = MathF.Min(1f, st.moisture[c] + t.mistWet * amount * f);
                     if (Cv(c) == EcoCover.Water) continue;
                     st.wet[c] = MathF.Min(1f, MathF.Max(st.wet[c], t.mistShow * MathF.Sqrt(f) * Terrain.Clamp01(0.5f + amount * 0.5f)));
-                    float soak = amount * f - t.puddleAt;
+                    float soak = rAmt * f - t.puddleAt;
                     if (soak > 0f && land.slope[c] <= t.puddleMaxSlope && !land.yard[c])
                         st.puddle[c] = MathF.Min(1f, st.puddle[c] + soak * t.puddleGain);
                     if (Cv(c) == EcoCover.Bare)

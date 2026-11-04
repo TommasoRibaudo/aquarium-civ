@@ -44,6 +44,30 @@ namespace AquariumCiv.View
             return Refresh($"misted ({x:0.0}, {z:0.0})");
         }
 
+        /// <summary>"Mist big here": a full-length mist at a point, with the wet area and the puddles it leaves (#266).</summary>
+        public static string MistBig(float x, float z)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var n = s.DebugMistBig(x, z).Count;
+            return Refresh($"big mist at ({x:0.0}, {z:0.0}), {n} cells green");
+        }
+
+        public static string MistBigCamp() { var st = Sim?.Settlement; return st != null ? MistBig(st.Map.greenX + 0.5f, st.Map.greenZ) : "no sim"; }
+
+        /// <summary>"Puddles now": soak the ground round the camp so wet ground and puddles show at once (#266).</summary>
+        public static string PuddlesNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var st = s.Settlement;
+            int n = st != null ? s.DebugPuddlesNow(st.Map.greenX + 0.5f, st.Map.greenZ) : 0;
+            return Refresh($"{n} puddle cells");
+        }
+
+        /// <summary>"Puddle visit": the people near a puddle come over now, and a rabbit hops up to drink.</summary>
+        public static string PuddleVisit() { var p = PuddleLife.Instance; return p != null ? p.VisitNow() : "no puddle life"; }
+
         public static string MistCamp()
         {
             var st = Sim?.Settlement;

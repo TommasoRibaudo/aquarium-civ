@@ -111,6 +111,11 @@ namespace AquariumCiv.View
             if (Btn("Mist camp")) last = EcoDebug.MistCamp();
             EndRow();
             Row();
+            if (Btn("Mist big here")) last = EcoDebug.MistBigCamp();
+            if (Btn("Puddles now")) last = EcoDebug.PuddlesNow();
+            if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
+            EndRow();
+            Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
             if (Btn("+1 yr")) last = EcoDebug.SkipSeasons(4);
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);

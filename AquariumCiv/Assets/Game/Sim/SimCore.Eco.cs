@@ -112,15 +112,16 @@ namespace AquariumCiv.Sim
         // ---------- the Keeper's hands ----------
         /// <summary>Mist a spot for <paramref name="seconds"/> (x, z in box units). The land reacts at once: the ground wets,
         /// the air gets a little humid, and every cell the core of the mist reaches turns to grass now. Returns those cells
-        /// (also raised as <see cref="EcoGreened"/>); empty when the ecology is off. Counts as a Keeper action.</summary>
-        public IReadOnlyList<int> Mist(float x, float z, float seconds)
+        /// (also raised as <see cref="EcoGreened"/>); empty when the ecology is off. Counts as a Keeper action. <paramref name="holdSeconds"/> (#266 view): how long a finger has lingered there, when the mist comes in short pulses; it sets the reach and the puddles while <paramref name="seconds"/> sets the wetting (default: the same as seconds).</summary>
+        public IReadOnlyList<int> Mist(float x, float z, float seconds, float holdSeconds = -1f)
         {
             var none = Array.Empty<int>();
             if (!EcologyOn || seconds <= 0f) return none;
             var cfg = Config.eco ?? (Config.eco = new EcoTuning());
             float amount = Math.Min(cfg.mistMaxAmount, seconds / cfg.mistSecondsPerUnit);
             var greened = new List<int>();
-            EcoM.Mist(x, z, amount, State.month, greened);
+            float holdAmount = holdSeconds < 0f ? -1f : Math.Min(cfg.mistMaxAmount, holdSeconds / cfg.mistSecondsPerUnit);
+            EcoM.Mist(x, z, amount, State.month, greened, holdAmount);
             CountKeeperAction(KeeperAction.Mist, true);
             EcoTell();
             if (greened.Count > 0) EcoGreened?.Invoke(greened);

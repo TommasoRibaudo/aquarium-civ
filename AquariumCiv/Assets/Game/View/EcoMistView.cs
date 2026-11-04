@@ -1,3 +1,4 @@
+using AquariumCiv.Audio;
 using System.Collections.Generic;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
@@ -29,23 +30,29 @@ namespace AquariumCiv.View
         BoxView box;
         BoxCamera cam;
         GameHud hud;
-        ParticleSystem mist;
+        ParticleSystem mist, splash;
+        Material dropMat;
+        MistSound sound;
         bool pressed, misting;
         float pressT, pulseT, refreshT;
         Vector2 pressPos;
         bool dirty;
-        readonly List<Bloom> blooms = new();
+        // How long the finger has stayed about one spot (seconds): the mist reaches further the longer it lingers and only a long
+        // dwell soaks the ground to puddles. Sliding on resets it.
+        float dwell;
+        Vector3 dwellAt;
+        bool dwellOn;
+        [Tooltip("While the mister is held, chunk rebuilds skip the AO bake and go one a frame; AO catches up when the finger lifts (#277).")] public bool cheapStrokes = true;
+        /// <summary>The nozzle's height over the ground (box units).</summary>
+        public const float NozzleHeight = 0.5f;
 
-        /// <summary>The live green: a disc on the ground that spreads out from where the mist fell, until the box's own
-        /// chunk (rebuilt with the new cover) takes over.</summary>
-        sealed class Bloom
-        {
-            public Vector3 at;
-            public float t, radius;
-            public GameObject go;
-            public Mesh mesh;
-        }
-
+        /// <summary>How long the finger has lingered about one spot (seconds), for tests and the debug panel.</summary>
+        public float Dwell => dwell;
+        /// <summary>How far the spray reaches now (box units), from the sim's radius for this dwell.</summary>
+        public float SprayRadius { get; private set; }
+        public MistSound Sound => sound;
+        /// <summary>The droplets are flying (tests).</summary>
+        public bool Spraying => mist != null && mist.isEmitting;
         public bool Misting => misting;
         public int MistPulses { get; private set; }
         /// <summary>The last point misted on the ground (box-local), for tests and the debug panel.</summary>
@@ -66,15 +73,19 @@ namespace AquariumCiv.View
             if (Instance != null && Instance != this) { enabled = false; return; }
             Instance = this;
             box = GetComponent<BoxView>();
+            EcoSurface.Ensure(box); // the wet ground, shoots, green patch and puddles this mist leaves
+            PuddleLife.Ensure(box); // and the people and rabbit who use its puddles
+            sound = GetComponent<MistSound>() ?? gameObject.AddComponent<MistSound>();
         }
 
         void OnDisable()
         {
             if (Instance == this) Instance = null;
             cam?.RemoveGate(this);
-            foreach (var b in blooms) Drop(b);
-            blooms.Clear();
+            if (box != null && box.deferAO) { box.deferAO = false; box.FlushAo(); }
+            sound?.SetSpray(0f);
             if (mist != null) Destroy(mist.gameObject);
+            if (splash != null) Destroy(splash.gameObject);
         }
 
         bool Usable(SimCore sim)
@@ -97,7 +108,6 @@ namespace AquariumCiv.View
             var sim = Sim;
             _ = Cam; // registers the camera gate
             float dt = Time.unscaledDeltaTime;
-            Grow(dt);
             // The glass shows the air's humidity (keepers-hands §5.1): eased, so a wipe clears it over a moment, not a frame.
             if (box != null)
             {
@@ -127,15 +137,30 @@ namespace AquariumCiv.View
                 if (float.IsPositiveInfinity(pressT)) return;
                 if (!inHand && (pos - pressPos).magnitude > slop * Mathf.Max(1, Screen.height)) { pressT = float.PositiveInfinity; return; } // a drag: the camera's
                 if (!inHand && now - pressT < holdDelay) return;
-                misting = true; pulseT = pulseSeconds; refreshT = 0f; // on a person too: they get wet (tester: a hold there did nothing)
+                BeginMist();
             }
             var bc = Cam; if (bc != null) bc.HoldOrbitUntil = now + 0.25f;
             if (!Ground(pos, out var at)) return;
-            Puff(at);
+            // Lingering: the same spot (within a quarter unit) keeps adding to the dwell; moving on starts it again.
+            if (!dwellOn || (at - dwellAt).sqrMagnitude > DwellSlop * DwellSlop) { dwellAt = at; dwell = 0f; dwellOn = true; }
+            dwell += dt;
+            SprayRadius = sim.EcoMistRadius(dwell);
+            Spray(at);
             pulseT += dt; refreshT += dt;
-            if (pulseT >= pulseSeconds) { Pulse(sim, at, pulseT); pulseT = 0f; }
-            if (refreshT >= refreshSeconds && dirty) { refreshT = 0f; dirty = false; box.Refresh(); }
+            if (pulseT >= pulseSeconds) { Pulse(sim, at, pulseT, dwell); pulseT = 0f; }
+            if (refreshT >= (cheapStrokes ? StrokeRefreshSeconds : refreshSeconds) && dirty) { refreshT = 0f; dirty = false; box.Refresh(); }
+        }
 
+        const float DwellSlop = 0.25f, StrokeRefreshSeconds = 0.35f;
+
+        void BeginMist()
+        {
+            misting = true; pulseT = pulseSeconds; refreshT = 0f; // on a person too: they get wet (tester: a hold there did nothing)
+            dwell = 0f; dwellOn = false;
+            // #277: while the finger is down the chunks rebuild without the AO bake, one a frame; the tint under the finger comes
+            // first (EcoSurface) and the mesh follows. The AO catches up when the finger lifts.
+            if (cheapStrokes && box != null) box.deferAO = true;
+            Sfx.Haptic(HapticKind.Light); // one soft tick as the spray starts
         }
 
         BoxCamera Cam
@@ -187,7 +212,6 @@ namespace AquariumCiv.View
                 return;
             }
             LastSeed = $"planted at ({at.x:0.00}, {at.z:0.00})";
-            AddBloom(at, 0.2f);
             box.Refresh();
             GameClock.Instance?.Save();
             hud?.SetHand(GameHud.KitTool.None);
@@ -199,19 +223,25 @@ namespace AquariumCiv.View
         void EndMist()
         {
             misting = false;
+            dwellOn = false; dwell = 0f;
             if (mist != null) mist.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            if (splash != null) splash.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            sound?.SetSpray(0f);
+            // The finger is up: the AO the stroke skipped is baked now, a chunk a frame (BoxView.CatchUp).
+            if (box != null && box.deferAO) { box.deferAO = false; box.FlushAo(); box.CatchUp(); dirty = true; }
             if (dirty) { dirty = false; box.Refresh(); }
         }
 
-        /// <summary>Mists the ground at a box-local point for this long (also the debug panel's "mist here" and tests).</summary>
-        public void Pulse(SimCore sim, Vector3 at, float seconds)
+        /// <summary>Mists the ground at a box-local point for this long (also the debug panel's "mist here" and tests).
+        /// <paramref name="hold"/> is how long the finger has lingered there: it sets the reach and what soaks to puddles
+        /// (default: the same as <paramref name="seconds"/>, a whole hold in one go).</summary>
+        public void Pulse(SimCore sim, Vector3 at, float seconds, float hold = -1f)
         {
             if (sim == null || !sim.EcologyOn) return;
-            int greened = sim.Mist(at.x, at.z, seconds).Count;
+            int greened = sim.Mist(at.x, at.z, seconds, hold < 0f ? seconds : hold).Count;
             MistPulses++;
             LastMist = at;
             dirty = true;
-            if (greened > 0) AddBloom(at, Mathf.Max(0.32f, Mathf.Sqrt(greened) * AquariumCiv.Sim.Settle.SiteMap.Cell * 0.7f + 0.12f));
             // The first mist of a box is its first answer (tester: too small at the default zoom): the camera leans in on it.
             if (greened > 0 && !leaned && sim.State.firstRun.active)
             {
@@ -233,108 +263,75 @@ namespace AquariumCiv.View
         /// <summary>Times the people were asked to react to a mist (tests).</summary>
         public int Reactions { get; private set; }
 
-        // ---------------- the mist itself ----------------
-        void Puff(Vector3 at)
+        // ---------------- the spray itself: droplets from a nozzle above the finger down to the ground ----------------
+        void Spray(Vector3 at)
         {
-            if (mist == null) mist = MakeMist();
-            var w = box.transform.TransformPoint(at + Vector3.up * 0.55f);
-            mist.transform.position = w;
-            if (!mist.isEmitting) mist.Play();
+            if (mist == null) { mist = MakeSpray(false); splash = MakeSpray(true); }
+            var nozzle = box.transform.TransformPoint(at + Vector3.up * NozzleHeight);
+            mist.transform.position = nozzle;
+            splash.transform.position = box.transform.TransformPoint(at + Vector3.up * 0.01f);
+            // The droplets land across most of the reach: the cone opens as the mist widens with the dwell.
+            float spread = Mathf.Max(0.2f, SprayRadius * 0.62f);
+            var sh = mist.shape; sh.angle = Mathf.Clamp(Mathf.Atan(spread / NozzleHeight) * Mathf.Rad2Deg, 8f, 55f);
+            var sp = splash.shape; sp.radius = spread * 0.9f;
+            if (!mist.isEmitting) { mist.Play(); splash.Play(); }
+            sound?.SetSpray(Mathf.Lerp(0.7f, 1f, Mathf.InverseLerp(0.7f, 1f, SprayRadius)));
         }
 
-        ParticleSystem MakeMist()
+        /// <summary>The droplets: small, quick, stretched into streaks along their fall, pale blue-white and soft (not smoke), or
+        /// the ground-level flecks where they land.</summary>
+        ParticleSystem MakeSpray(bool ground)
         {
-            var go = new GameObject("Mist") { hideFlags = HideFlags.DontSave };
+            var go = new GameObject(ground ? "MistSplash" : "MistSpray") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(transform, false);
             var ps = go.AddComponent<ParticleSystem>();
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = ps.main;
             main.loop = true; main.duration = 1f;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(0.7f, 1.1f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.05f, 0.15f);
-            main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.11f);
-            main.startColor = new Color(0.92f, 0.96f, 1f, 0.55f);
-            main.gravityModifier = 0.08f;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
-            main.maxParticles = 400;
-            var em = ps.emission; em.rateOverTime = 220f;
-            var sh = ps.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 22f; sh.radius = 0.12f;
-            sh.rotation = new Vector3(90f, 0f, 0f); // pointing down
+            var em = ps.emission;
+            var sh = ps.shape;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            dropMat ??= EcoSurface.MakeMaterial("EcoDrop", 4, 5, 10);
+            r.sharedMaterial = dropMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            if (!ground)
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.30f, 0.38f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(1.25f, 1.7f);   // down: a half-unit fall in a third of a second
+                main.startSize = new ParticleSystem.MinMaxCurve(0.010f, 0.018f);
+                main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.72f, 0.88f, 1f, 0.9f), new Color(0.9f, 0.97f, 1f, 0.95f));
+                main.gravityModifier = 0.25f;
+                main.maxParticles = 600;
+                em.rateOverTime = 260f;
+                sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 30f; sh.radius = 0.03f;
+                sh.rotation = new Vector3(90f, 0f, 0f); // pointing down
+                r.renderMode = ParticleSystemRenderMode.Stretch;
+                r.velocityScale = 0.05f; r.lengthScale = 2.2f;
+            }
+            else
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.16f, 0.26f);
+                main.startSpeed = new ParticleSystem.MinMaxCurve(0.04f, 0.16f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.012f, 0.022f);
+                main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.78f, 0.9f, 1f, 0.7f), new Color(1f, 1f, 1f, 0.8f));
+                main.gravityModifier = 0.4f;
+                main.maxParticles = 300;
+                em.rateOverTime = 120f;
+                sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.4f; sh.radiusThickness = 1f;
+                sh.rotation = new Vector3(-90f, 0f, 0f); // the circle lies flat; the fleck hops up
+                var vel = ps.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
+                vel.y = new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
+                r.renderMode = ParticleSystemRenderMode.Billboard;
+            }
             var col = ps.colorOverLifetime; col.enabled = true;
             var g = new Gradient();
             g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.6f, 0.2f), new GradientAlphaKey(0f, 1f) });
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(ground ? 0f : 0.85f, 1f) });
             col.color = g;
-            var size = ps.sizeOverLifetime; size.enabled = true; size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
-            var r = go.GetComponent<ParticleSystemRenderer>();
-            r.sharedMaterial = box.smoke != null ? box.smoke : new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            r.receiveShadows = false;
             return ps;
-        }
-
-        // ---------------- the live green ----------------
-        void AddBloom(Vector3 at, float radius)
-        {
-            foreach (var b in blooms) if ((b.at - at).sqrMagnitude < 0.0025f) { b.radius = Mathf.Max(b.radius, radius); b.t = Mathf.Min(b.t, 0.3f); return; }
-            var go = new GameObject("Bloom") { hideFlags = HideFlags.DontSave };
-            go.transform.SetParent(box.Root != null ? box.Root : transform, false);
-            go.AddComponent<MeshFilter>();
-            var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = box.SolidMaterial;
-            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            blooms.Add(new Bloom { at = at, radius = radius, go = go, mesh = new Mesh { name = "Bloom" } });
-        }
-
-        const float BloomGrow = 1.2f, BloomLife = 4.5f;
-
-        void Grow(float dt)
-        {
-            for (int i = blooms.Count - 1; i >= 0; i--)
-            {
-                var b = blooms[i];
-                b.t += dt;
-                if (b.t > BloomLife || b.go == null) { Drop(b); blooms.RemoveAt(i); continue; }
-                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(b.t / BloomGrow));
-                Disc(b, b.radius * k);
-            }
-        }
-
-        /// <summary>A ground-hugging disc with a ragged edge, in the box's grass colours; rebuilt as it spreads (tiny).</summary>
-        void Disc(Bloom b, float r)
-        {
-            const int Seg = 20, Rings = 3;
-            var land = box.land;
-            var co = land.Colors;
-            var verts = new List<Vector3>(); var cols = new List<Color>(); var tris = new List<int>();
-            verts.Add(land.OnGround(b.at.x, b.at.z) + Vector3.up * 0.006f); cols.Add(co.grassC);
-            for (int ring = 1; ring <= Rings; ring++)
-                for (int s = 0; s < Seg; s++)
-                {
-                    float a = s / (float)Seg * Mathf.PI * 2f;
-                    float rr = r * ring / Rings * (ring == Rings ? 0.75f + 0.5f * Land.Hash(s, (int)(b.at.x * 100)) : 1f);
-                    float x = b.at.x + Mathf.Cos(a) * rr, z = b.at.z + Mathf.Sin(a) * rr;
-                    verts.Add(land.OnGround(x, z) + Vector3.up * 0.006f);
-                    cols.Add(Color.Lerp(co.grassC, co.grassA, ring / (float)Rings));
-                }
-            for (int s = 0; s < Seg; s++) { tris.Add(0); tris.Add(1 + (s + 1) % Seg); tris.Add(1 + s); }
-            for (int ring = 1; ring < Rings; ring++)
-                for (int s = 0; s < Seg; s++)
-                {
-                    int a0 = 1 + (ring - 1) * Seg + s, a1 = 1 + (ring - 1) * Seg + (s + 1) % Seg;
-                    int b0 = a0 + Seg, b1 = a1 + Seg;
-                    tris.Add(a0); tris.Add(a1); tris.Add(b1); tris.Add(a0); tris.Add(b1); tris.Add(b0);
-                }
-            b.mesh.Clear();
-            b.mesh.SetVertices(verts); b.mesh.SetColors(cols); b.mesh.SetTriangles(tris, 0); b.mesh.RecalculateNormals();
-            b.go.GetComponent<MeshFilter>().sharedMesh = b.mesh;
-        }
-
-        static void Drop(Bloom b)
-        {
-            if (b.go != null) Destroy(b.go);
-            if (b.mesh != null) Destroy(b.mesh);
         }
 
         // ---------------- input ----------------

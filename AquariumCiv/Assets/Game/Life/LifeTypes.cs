@@ -33,6 +33,8 @@ namespace AquariumCiv.Life
         Give, PutOn, LopsidedDance,
         /// <summary>#200: at home with the door shut, awake: nothing to draw. Appended so the older values keep their numbers.</summary>
         Indoors,
+        /// <summary>P8 #266: stamping about in a mist puddle (a kid), and kneeling at one to wash hands or cup the water. Appended so the older values keep their numbers.</summary>
+        Stomp, WashHands,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -87,6 +89,8 @@ namespace AquariumCiv.Life
         Stash,
         /// <summary>P8 #288: one grown bush on a living land (index = the site cell, <see cref="Sim.Settle.SiteMap"/>); where berries are picked.</summary>
         BushCell,
+        /// <summary>P8 #266: a mist puddle (index = the site cell).</summary>
+        Puddle,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -149,7 +153,7 @@ namespace AquariumCiv.Life
     public enum TripType { None, HomeToGreen, HomeToWork, HomeToMarket, Carry, Errand, Home }
 
     /// <summary>What the Keeper did (life-in-the-box §8; decisions 2026-10-29: hold a finger and tap the glass).</summary>
-    public enum KeeperGesture { Return, Wipe, FullClean, FlickTrash, Prune, Rain, Shape, HoldFinger, TapGlass, TapPerson, Glance, WishAnswered }
+    public enum KeeperGesture { Return, Wipe, FullClean, FlickTrash, Prune, Rain, Shape, HoldFinger, TapGlass, TapPerson, Glance, WishAnswered, Puddle }
 
     /// <summary>Story scenes (§6) and the era's gathering. Started from this month's chronicle, by "Show me" (an echo), or by
     /// the debug panel.</summary>

@@ -354,7 +354,7 @@ namespace AquariumCiv.Life
         {
             KeeperGesture.Return => 2.5f, KeeperGesture.Wipe => 2f, KeeperGesture.FullClean => 3f, KeeperGesture.FlickTrash => 1.5f,
             KeeperGesture.Prune => 2.5f, KeeperGesture.Rain => 4f, KeeperGesture.Shape => 3f, KeeperGesture.HoldFinger => 4f,
-            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, _ => 1.5f,
+            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, _ => 1.5f,
         };
 
         /// <summary>
@@ -452,6 +452,11 @@ namespace AquariumCiv.Life
                 case KeeperGesture.Rain:
                     if (!(near || global) || roll >= r.share) return false;
                     kind = kid ? ActivityKind.Splash : roll < 0.3f * r.share ? ActivityKind.Shelter : ActivityKind.HandsOut;
+                    return true;
+                case KeeperGesture.Puddle:
+                    // P8 #266: a mist puddle draws the people near it: kids stamp in it, now and then a grown-up kneels to wash their hands.
+                    if (r.near.IsNone || !near || roll >= r.share * (kid ? 1f : 0.85f)) return false;
+                    kind = kid ? ActivityKind.Stomp : ActivityKind.WashHands; to = r.near;
                     return true;
                 case KeeperGesture.Wipe:
                     if (!(near || (global && roll < 0.5f * r.share))) return false;
@@ -567,7 +572,7 @@ namespace AquariumCiv.Life
             ActivityKind.Search => "searching with a lantern", ActivityKind.Explore => "wandering the hills", ActivityKind.Shelter => "sheltering from the weather",
             ActivityKind.Wave => "waving", ActivityKind.LookUp => "looking up", ActivityKind.LookUpWary => "peering up warily", ActivityKind.Clap => "clapping",
             ActivityKind.Point => "pointing", ActivityKind.RunOver => "running over", ActivityKind.JumpAndPoint => "jumping and pointing",
-            ActivityKind.HandsOut => "holding out their hands", ActivityKind.Splash => "splashing", ActivityKind.Study => "studying the glass",
+            ActivityKind.HandsOut => "holding out their hands", ActivityKind.Splash => "splashing", ActivityKind.Stomp => "stamping in a puddle", ActivityKind.WashHands => "washing their hands in a puddle", ActivityKind.Study => "studying the glass",
             ActivityKind.Gaze => "looking up", ActivityKind.GazeWary => "looking up from a step back", ActivityKind.PressHands => "pressing their hands to it",
             ActivityKind.WaveWary => "waving, a little warily", ActivityKind.Flinch => "flinching", ActivityKind.Peek => "peeking up",
             ActivityKind.CreepUp => "creeping closer", ActivityKind.HopBack => "hopping back", ActivityKind.LaughPoint => "laughing and pointing",

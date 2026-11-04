@@ -227,6 +227,10 @@ namespace AquariumCiv.Life
                 case PlaceKind.TrashHeap:
                     foreach (var t in sim.State.trash) if (t.id == p.index) { x = t.x; z = t.z; return true; }
                     return false;
+                case PlaceKind.Puddle:
+                    if (p.index < 0 || p.index >= SiteMap.N) return false;
+                    x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
+                    return true;
                 case PlaceKind.Nudge:
                     foreach (var n in sim.State.nudges) if (n.id == p.index) { x = n.x; z = n.z; return true; }
                     return false;
