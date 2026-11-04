@@ -62,6 +62,24 @@ namespace AquariumCiv.View
 
         public const float GlassMargin = 0.1f;
         public const int ChunkCount = 4;
+        /// <summary>Bumped on every full <see cref="Rebuild"/> (the land may have changed shape): overlays cache ground heights by it.</summary>
+        public int LandVersion { get; private set; }
+        /// <summary>The cover each ground cell was last drawn with (set when its chunk builds): the mist view shows a patch of green on cells the sim has turned to grass but the chunk has not drawn yet (#266, #277).</summary>
+        public readonly byte[] BakedCover = new byte[AquariumCiv.Sim.Settle.SiteMap.N];
+        public bool BakedValid { get; private set; }
+        /// <summary>Milliseconds spent building chunks since the start (Refresh and the catch-up frames), and how many chunk builds: tests diff them per frame (#277).</summary>
+        public double RebuildMsTotal { get; private set; }
+        bool spreadCatchUp;
+        /// <summary>After a stroke with <see cref="deferAO"/>: the chunks still waiting rebuild (with AO) one a frame instead of together.</summary>
+        public void CatchUp() { spreadCatchUp = true; }
+        bool Spread => deferAO || spreadCatchUp;
+        void SnapBaked(int only = -1)
+        {
+            var c = layout.eco.cover;
+            for (int i = 0; i < AquariumCiv.Sim.Settle.SiteMap.N; i++)
+                if (only < 0 || ChunkOf(AquariumCiv.Sim.Settle.SiteMap.CXc(i), AquariumCiv.Sim.Settle.SiteMap.CZc(i)) == only) BakedCover[i] = c[i];
+            BakedValid = true;
+        }
         public static float PathWidth(PathTier t) => t switch { PathTier.Trail => 0.055f, PathTier.Road => 0.13f, _ => 0.085f };
         const int AoLayer = 2; // Ignore Raycast: the AO colliders stay out of everyone else's raycasts
 
@@ -135,6 +153,8 @@ namespace AquariumCiv.View
 
         void Clear()
         {
+            foreach (var q in aoQueue) q.mb.Free();
+            aoQueue.Clear();
             if (root != null)
             {
                 // The box's own generated meshes (not the built-in cube of the panes, nor the dolls' shared prop meshes).
@@ -252,6 +272,7 @@ namespace AquariumCiv.View
             SyncPeople();
             Glass();
             SetDroplets(Eco ? layout.eco.droplets : 0f);
+            LandVersion++; SnapBaked();
             aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
             ChunkBuilds++;
@@ -287,7 +308,7 @@ namespace AquariumCiv.View
             Reserve();
             System.Array.Clear(wantHash, 0, ChunkCount);
             ChunkHashes(wantHash);
-            PickChunks(deferAO ? ScrubChunksPerFrame : ChunkCount);
+            PickChunks(Spread ? ScrubChunksPerFrame : ChunkCount);
             double prepMs = sw.Elapsed.TotalMilliseconds;
             RebuildChunks(sw, out double buildMs, out double meshMs, out double aoMs);
             if (Eco && layout.eco.WaterHash() != waterHash) RefreshEcoWater();
@@ -296,6 +317,7 @@ namespace AquariumCiv.View
             Glows();
             int made = SyncPeople();
             lastRefreshMs = sw.Elapsed.TotalMilliseconds;
+            RebuildMsTotal += lastRefreshMs;
             lastAoMs = aoMs;
             lastRefreshInfo = lastChunks.Count == 0
                 ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
@@ -356,12 +378,20 @@ namespace AquariumCiv.View
                 Kill(old);
                 builders.Add((k, mb, tv, mesh));
                 chunkHash[k] = wantHash[k];
+                SnapBaked(k);
                 ChunkBuilds++;
                 chunkWaited[k] = 0;
             }
             meshMs = sw.Elapsed.TotalMilliseconds;
             aoMs = 0;
             if (defer) foreach (var (k, _, _, _) in builders) aoPending.Add(k);
+            else if (bakeAO && builders.Count > 0 && spreadCatchUp)
+            {
+                // Catching up after a stroke (#277): the chunk is drawn now, its AO is baked next frame from the builder kept here, so no
+                // frame pays for both the build and the bake.
+                foreach (var b in builders) { aoPending.Remove(b.k); DropQueuedAo(b.k); aoQueue.Add(b); }
+                return;
+            }
             else if (bakeAO && builders.Count > 0)
             {
                 foreach (var (k, _, _, _) in builders) aoPending.Remove(k);
@@ -375,14 +405,39 @@ namespace AquariumCiv.View
             foreach (var (_, mb, _, _) in builders) mb.Free();
         }
 
+        readonly List<(int k, MeshBuilder mb, int tv, Mesh mesh)> aoQueue = new();
+
+        void DropQueuedAo(int k)
+        {
+            for (int i = aoQueue.Count - 1; i >= 0; i--) if (aoQueue[i].k == k) { aoQueue[i].mb.Free(); aoQueue.RemoveAt(i); }
+        }
+
+        void BakeQueuedAo()
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var (k, mb, tv, mesh) = aoQueue[0];
+            aoQueue.RemoveAt(0);
+            if (chunkFilters[k] != null && chunkFilters[k].sharedMesh == mesh)
+            {
+                Physics.SyncTransforms();
+                BakeAO(new List<(MeshBuilder, int, Mesh)> { (mb, tv, mesh) });
+            }
+            mb.Free();
+            lastWaitingMs = sw.Elapsed.TotalMilliseconds;
+            RebuildMsTotal += lastWaitingMs;
+        }
+
         /// <summary>A frame without a refresh: the next waiting chunk (the layout has not moved on since it was hashed).</summary>
         void BuildWaitingChunk()
         {
-            if (root == null || !deferAO || refreshFrame == Time.frameCount || ChunksWaiting == 0) return;
+            if (root != null && aoQueue.Count > 0 && refreshFrame != Time.frameCount) { BakeQueuedAo(); return; }
+            if (root == null || !Spread || refreshFrame == Time.frameCount) return;
+            if (ChunksWaiting == 0) { spreadCatchUp = false; return; }
             var sw = System.Diagnostics.Stopwatch.StartNew();
             PickChunks(ScrubChunksPerFrame);
             RebuildChunks(sw, out _, out _, out _);
             lastWaitingMs = sw.Elapsed.TotalMilliseconds;
+            RebuildMsTotal += lastWaitingMs;
         }
 
         /// <summary>Debug hook: rebuild every box in the scene (after editing a layout from `script eval`).</summary>

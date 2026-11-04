@@ -31,6 +31,8 @@ clips the cue library (`Assets/Game/Audio/Core/CueLibrary.cs`) uses are in the r
 No CC0 fly buzz was found on Kenney or OpenGameArt (2026-10-30), so the mess layer's flies are made in code
 (`CareSound.MakeFlies`), like the cheer, the wipe rub and the swish: no third-party asset.
 
+The mister's spray (#266, "fsss") is made in code, ours: `MistSound.Generate` filters white noise to a 2-7 kHz band with a slow swell and cross-fades the loop seam (2.4 s, 24 kHz mono). No third-party asset. The droplets, wet soil and puddles (`Shaders/EcoGround.shader`) are code and vertex colours too.
+
 The chatter babble (#144) is made in code, ours: `ChatterBabble` synthesizes 4 voices x 6 clips at start-up, 22.05 kHz mono. No third-party asset.
 
 ## Still to get (free, itch.io only)
