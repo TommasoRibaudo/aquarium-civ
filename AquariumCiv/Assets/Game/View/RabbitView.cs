@@ -269,6 +269,7 @@ namespace AquariumCiv.View
             Field.Sync(sim.EcoRabbitsShown());
             double t = FieldNow;
             var pv = People;
+            var hunts = HookHunts(pv, sim);
             if (pv != null && pv.Planner != null) pv.StandingNow(whoBuf, px, pz); else { whoBuf.Clear(); px.Clear(); pz.Clear(); }
 
             foreach (var sc in Scarers) { px.Add(sc.x); pz.Add(sc.y); }
@@ -289,7 +290,17 @@ namespace AquariumCiv.View
                 var basePose = Field.Sample(id, t);
                 RabbitPose p;
                 if (sign != null && sign.id == id) p = SignPose(basePose, dt, pv);
-                else p = s.scare.Step(dt, basePose, px, pz, Field);
+                else
+                {
+                    var hunt = hunts != null ? HuntOn(hunts, id, pv.Now.hour) : null;
+                    if (hunt != null)
+                    {   // #283: the rabbit the hunter stalks does not mind the hunter (nor the kid behind) until the strike
+                        FilterOut(hunt);
+                        p = s.scare.Step(dt, basePose, fpx, fpz, Field);
+                        if (p.act == RabbitAct.Graze && NearAnyone(p.x, p.z, hunt, pv, StalkAlertRange)) p.act = RabbitAct.SitUp; // it looks up, and does not see
+                    }
+                    else p = s.scare.Step(dt, basePose, px, pz, Field);
+                }
                 var d = s.doll;
                 d.gameObject.SetActive(true);
                 var tr = d.transform;
@@ -298,6 +309,59 @@ namespace AquariumCiv.View
                 d.Show(p.act, p.phase, (float)t, s.grow);
             }
             if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);
+        }
+
+        // ---------------------------------------------------------------- the hunt (#283)
+        /// <summary>The hunter looks like a threat to the stalked rabbit only from the strike on; this near it sits up and looks about.</summary>
+        const float StalkAlertRange = 0.8f;
+        readonly List<float> fpx = new(), fpz = new();
+
+        /// <summary>Gives the planner this view's field, settles the hunts whose strike is over (a catch takes the rabbit out of the
+        /// field and the sim count) and returns the day's hunts (null when there is nothing to hunt with).</summary>
+        IReadOnlyList<HuntPlan> HookHunts(PeopleView pv, SimCore sim)
+        {
+            if (pv == null || pv.Planner == null) return null;
+            var pl = pv.Planner;
+            if (!ReferenceEquals(pl.Rabbits, Field))
+            {
+                if (Field.Alive.Count == 0) return null; // a day planned with no rabbits would stay without a hunt
+                pl.Rabbits = Field;
+            }
+            pl.ResolveHunts(pv.Now);
+            return pl.HuntsOn(pv.Now.day);
+        }
+
+        static HuntPlan HuntOn(IReadOnlyList<HuntPlan> hunts, int id, float hour)
+        {
+            for (int i = 0; i < hunts.Count; i++)
+            {
+                var h = hunts[i];
+                if (h.rabbitId != id || h.resolved || h.steps.Count < 3) continue;
+                if (hour >= h.steps[2].start && hour < h.resolveHour) return h;
+            }
+            return null;
+        }
+
+        void FilterOut(HuntPlan hunt)
+        {
+            fpx.Clear(); fpz.Clear();
+            for (int i = 0; i < whoBuf.Count && i < px.Count; i++)
+            {
+                if (whoBuf[i] == hunt.hunter || (!hunt.kid.IsNone && whoBuf[i] == hunt.kid)) continue;
+                fpx.Add(px[i]); fpz.Add(pz[i]);
+            }
+            for (int i = whoBuf.Count; i < px.Count; i++) { fpx.Add(px[i]); fpz.Add(pz[i]); } // the ghost scarers
+        }
+
+        bool NearAnyone(float x, float z, HuntPlan hunt, PeopleView pv, float range)
+        {
+            for (int i = 0; i < whoBuf.Count && i < px.Count; i++)
+            {
+                if (whoBuf[i] != hunt.hunter) continue;
+                float dx = px[i] - x, dz = pz[i] - z;
+                return dx * dx + dz * dz < range * range;
+            }
+            return false;
         }
 
         bool IsAlive(int id) { var a = Field.Alive; for (int i = 0; i < a.Count; i++) if (a[i] == id) return true; return false; }

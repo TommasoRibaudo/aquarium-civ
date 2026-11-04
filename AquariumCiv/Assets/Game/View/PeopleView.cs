@@ -330,11 +330,16 @@ namespace AquariumCiv.View
             var v = d.view;
             var land = Box.land;
             bool hidden = stage == LifeStage.Baby || a.kind == ActivityKind.None; // babies are never walkers: a carer's doll shows them (#192, §4 "Everyone")
-            if (!planner.PositionAt(a.who, now, out float x, out float z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
+            float x = 0f, z = 0f;
+            Vector2? huntFace = null;
+            bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
+            if (hunting) hidden = false;
+            else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
+            if (hunting) { face = huntFace; claimed.Add(target); }
+            else if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
             {
                 target = pin; // the scene chose it clear of the others
                 face = target + GlassNormal(planner.GlassSide);
@@ -358,9 +363,9 @@ namespace AquariumCiv.View
                 target = Ashore(land, target);
                 if (!a.moving) face = wet; // the fisher faces the water
             }
-            if (!a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
-            if (!a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
-            if (!a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
+            if (!hunting && !a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            if (!hunting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
+            if (!hunting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
             target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
@@ -408,7 +413,7 @@ namespace AquariumCiv.View
             float want = d.yaw;
             if (jump || dt <= 0f) d.velocity = Vector2.zero;
             else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
-            if (walking) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
+            if (walking && !(hunting && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
@@ -440,6 +445,7 @@ namespace AquariumCiv.View
                 d.blendT += dt;
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
+            if (hunting) HuntPose(ref pose, a);
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             if (pose.hidden) return;
@@ -451,6 +457,61 @@ namespace AquariumCiv.View
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
+        }
+
+        // ---------------------------------------------------------------- #283: the hunt
+
+        /// <summary>Where a hunter (or the kid who follows) is now, from the hunt plan's own coordinates (box units), and what they face
+        /// (the rabbit while they stalk). False when the plan has no step for them now.</summary>
+        bool HuntSpot(in PersonActivity a, out float x, out float z, out Vector2? face)
+        {
+            x = z = 0f; face = null;
+            if (!planner.HuntStepAt(a.who, now, out var st, out var plan)) return false;
+            float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
+            bool startOpen = st.phase is HuntPhase.ToFire or HuntPhase.KidFollow, endOpen = st.phase is HuntPhase.Return or HuntPhase.KidBack;
+            if (startOpen && !planner.Positions.TryGetPosition(st.from, out x0, out z0)) { x0 = plan.fireX; z0 = plan.fireZ; }
+            if (endOpen && !planner.Positions.TryGetPosition(st.to, out x1, out z1)) { x1 = plan.fireX; z1 = plan.fireZ; }
+            float f = Mathf.Clamp01((now.hour - st.start) / Mathf.Max(1e-4f, st.end - st.start));
+            var p = Vector2.Lerp(AtFire(plan, x0, z0, a.who.Key), AtFire(plan, x1, z1, a.who.Key), f);
+            x = p.x; z = p.y;
+            if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
+            else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
+            return true;
+        }
+
+        /// <summary>A point on the fire itself becomes a spot on the ring round it, so nobody stands in the flames.</summary>
+        static Vector2 AtFire(HuntPlan plan, float x, float z, int key)
+        {
+            float dx = x - plan.fireX, dz = z - plan.fireZ;
+            if (dx * dx + dz * dz > 0.05f * 0.05f) return new Vector2(x, z);
+            float ang = Hash01(key, 283) * Mathf.PI * 2f;
+            return new Vector2(plan.fireX + Mathf.Cos(ang) * 0.34f, plan.fireZ + Mathf.Sin(ang) * 0.34f);
+        }
+
+        /// <summary>The throw (wind up, then thrust the spear out), the shrug after a miss and the kid's cheer ride on top of the crouch
+        /// the stalk already is.</summary>
+        static void HuntPose(ref DollPose pose, in PersonActivity a)
+        {
+            switch (a.hunt)
+            {
+                case HuntPhase.Strike:
+                {
+                    float u = Mathf.Clamp01(a.progress);
+                    float thrust = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.35f) / 0.3f));
+                    pose.squash = Mathf.Lerp(0.72f, 1f, Mathf.SmoothStep(0f, 1f, u / 0.35f));
+                    pose.lean = Mathf.Lerp(-8f, 34f, thrust);
+                    pose.armR = new Vector3(Mathf.Lerp(165f, 55f, thrust), 0f, 8f);
+                    pose.armL = new Vector3(Mathf.Lerp(20f, 70f, thrust), 0f, -12f);
+                    pose.extend = true;
+                    pose.hit = u > 0.6f && u < 0.8f ? 1f : 0f;
+                    break;
+                }
+                case HuntPhase.Bolt: // it got away: arms out, a step back
+                    pose.squash = 1f; pose.lean = -6f;
+                    pose.armL = new Vector3(0f, 0f, -70f); pose.armR = new Vector3(0f, 0f, 70f);
+                    pose.extend = false;
+                    break;
+            }
         }
 
         /// <summary>#189: from the planned point to the drawn one: the walker's offset eases toward what the crowd presses (it fades when
@@ -710,6 +771,7 @@ namespace AquariumCiv.View
                 LifeProp.Barrel => PropKind.Barrel,
                 LifeProp.Axe => PropKind.Axe,
                 LifeProp.Spear => PropKind.Spear,
+                LifeProp.Rabbit => PropKind.Rabbit, // #283
                 LifeProp.Pots or LifeProp.Honey => PropKind.Pot,
                 LifeProp.Hoe or LifeProp.Scythe => PropKind.Hoe,
                 LifeProp.Hammer or LifeProp.Hammerstone or LifeProp.Pick => PropKind.Hammer,
