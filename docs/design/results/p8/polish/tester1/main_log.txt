@@ -1,0 +1,148 @@
+8,0	opened: eco True step Arrive screen 1179x2556 safe (x:0.00, y:0.00, width:1179.00, height:2556.00) hour 9,07 amb RGBA(0.736, 0.796, 0.915, 0.995) Sun:1,28/RGBA(1.000, 0.950, 0.850, 1.000)
+11,2	arrive texts: Skip step | Skip all | Their first year | Wipe the glass | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done
+11,4	shot m01_fogged
+11,8	m wipe pass 0: step Rain grime 0,000 panes 0,000 0,000 0,000 0,000 hour 9,31 amb RGBA(0.721, 0.780, 0.897, 0.975) Sun:1,25/RGBA(1.000, 0.950, 0.850, 1.000)
+11,9	shot m_wipe_pass0
+11,9	m after wipes: step Rain, panes 0,000 0,000 0,000 0,000
+11,9	yaw during wipe 28,0 -> 28,0
+12,1	after wipe step Rain hint  texts: Skip step | Skip all | Their first year | Wipe the glass | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done hour 9,32 amb RGBA(0.726, 0.785, 0.903, 0.982) Sun:1,26/RGBA(1.000, 0.950, 0.850, 1.000)
+13,7	shot m02_mist_step
+13,7	mist step texts: Skip step | Skip all | Their first year | Hold to mist | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done
+15,9	mid-hold m03_first_mist_mid: spraying False misting False sound False lvl 0,00
+16,0	shot m03_first_mist_mid
+17,2	first mist at (0,7,-0,3): green 0->24 wet 0->161 bare 1,000->0,998 puddles 0 step Name maxDt idle 7ms hold 122ms
+17,3	shot m04_first_mist_after
+21,8	name step: step Name hint name texts: Tap to name your box | Green, where the mist fell. They come to stand in it. | Skip step | Skip all | Their first year | Name it | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done hour 9,93 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+21,9	shot m05_name_step
+22,6	name sheet open True
+22,8	shot m06_name_sheet
+23,6	after name +0,8s: active False hour 10,05 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+24,4	after name +1,6s: active False hour 10,10 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+24,6	shot m07_after_name_1
+25,4	after name +2,4s: active False hour 10,15 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+26,2	after name +3,2s: active False hour 10,21 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+27,0	after name +4,0s: active False hour 10,26 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+27,8	after name +4,8s: active False hour 10,31 amb RGBA(0.740, 0.800, 0.920, 1.000) Sun:1,30/RGBA(1.000, 0.950, 0.850, 1.000)
+27,9	shot m07_after_name_5
+27,9	hud texts: Glasswick | Year 0 | Stories | History | Kit | Shape | Tap to show the UI | Settings | Sound | Your phone is on silent, so you won't hear this. | On | Music | Effects | Ambience | Music plays | Haptics | On | Notifications | Off | Your box | Rename your box | Reset your box | The shelf | About | Licences | Send feedback | Aquarium Civ 0.4.0 | Licences | KayKit assets, Kay Lousberg, CC0 | Kenney assets, CC0 | Calm Piano 1, The Cynic Project, CC0 | Forget Me Not, Kistol, CC0 | Rain, birds, crickets and wind: kresiek-the-furry, isaiah658, wolfgang, thimras, CC0 | Flute, guitar and pan flute: nicholasjudy567, antumdeluge, pattingthestar, CC0 | Lora, SIL OFL 1.1 | PT Serif, SIL OFL 1.1 | Rename your box | It goes on the brass plate. | Another | Keep | Reset your box? | Reset box | Keep playing | History | Glasswick, year 0. 5 people live here. | The chronicle and the time-lapse of the years will live here. | Offices | Shape the land | The Keeper's kit | Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree. | Cloth | Mister | Seed
+27,9	era Camp open[gatherer,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:toolmaker]
+29,0	m08_person0: tapped Aveline (gatherer) at (799.39, 1266.96) -> open True/3 card: A | Aveline Harrow | Pin | Root digger · 34 years · the lazy | <line-height=50.05px>“Not too close. Nobody knows what the sky does when it's poked.” | <line-height=46.48px>Nothing told about them yet.
+29,1	shot m08_person0
+31,4	m08_person1: tapped Esk (toolmaker) at (502.76, 1252.72) -> open True/4 card: E | Esk Ridley | Pin | Toolmaker · 23 years · the gossip | <line-height=50.05px>“The sky knocked!” | <line-height=46.48px>Nothing told about them yet.
+31,6	shot m08_person1
+33,9	m08_person2: tapped Harl (toolmaker) at (529.57, 1240.75) -> open True/5 card: H | Harl Fernby | Pin | Toolmaker, chief of the tribe · 30 years · the brave | <line-height=50.05px>“Dance facing the sky tonight. Let it see us.” | <line-height=55.69px>Chief since year 1 | <line-height=50.05px>Year 1. Harl Fernby the toolmaker became chief of the tribe. First act: moving the fire closer to their tent. | Show me
+34,0	shot m08_person2
+36,1	offices open offices: Chief | Harl
+36,2	shot m09_offices
+36,9	offices closed: 
+37,5	kit sheet kit: (none)
+37,6	shot m10_kit
+38,3	hand Mister
+39,0	mid-hold m11_mister_mid: spraying True misting True sound True lvl 0,75
+39,1	shot m11_mister_mid
+39,6	mister (-1,2,0,4) 1.2s: green 0->32 wet 0->190 maxDt 135ms
+40,8	mister (0,6,0,9) 1.2s: green 0->32 wet 30->201 maxDt 19ms
+42,1	mister (-0,2,-1,2) 1.2s: green 0->32 wet 27->202 maxDt 11ms
+43,4	mister (1,4,0,2) 1.2s: green 15->47 wet 112->219 maxDt 19ms
+43,5	shot m12_mister_spots
+47,0	mid-hold m13_long_hold_mid: spraying True misting True sound True lvl 0,96
+47,1	shot m13_long_hold_mid
+49,5	long hold 6s: puddles 0->57 hasPuddles True maxDt 133ms
+51,1	shot m14_after_long_hold
+51,2	done: hand None
+57,6	puddle visits 1 -> 2 after 6s, last cell 1528
+59,7	shot m15_puddle_visit
+60,3	cloth: cleanMode True grime 0,000 panes 0,000 0,000 0,000 0,000
+60,8	cloth after: grime 0,000 panes 0,000 0,000 0,000 0,000 yaw 28,0
+60,9	shot m16_cloth
+61,0	cloth done: cleanMode False
+62,5	rotate drag: yaw 28,0 -> 55,7, misting False
+62,7	shot m17_rotated_right
+63,7	rotate back: yaw -8,5
+63,8	shot m18_rotated_left
+64,8	pinch in: zoom 1,30 (min 0,20 max 1,30)
+64,9	shot m19_zoomed_out
+65,9	shot m20_home
+65,9	errors at first session: 0 
+66,7	season 1: bare 0,938 tracks False/False rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+67,6	season 2: bare 0,936 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+68,2	shot t_tracks_default
+68,2	toasts/hud at tracks: Glasswick | Year 0 | Stories | History | Kit | Shape | Tap to show the UI | Settings | Sound | Your phone is on silent, so you won't hear this. | On | Music | Effects | Ambience | Music plays | Haptics | On | Notifications | Off | Your box | Rename your box | Reset your box | The shelf | About | Licences | Send feedback | Aquarium Civ 0.4.0 | Licences | KayKit assets, Kay Lousberg, CC0 | Kenney assets, CC0 | Calm Piano 1, The Cynic Project, CC0 | Forget Me Not, Kistol, CC0 | Rain, birds, crickets and wind: kresiek-the-furry, isaiah658, wolfgang, thimras, CC0 | Flute, guitar and pan flute: nicholasjudy567, antumdeluge, pattingthestar, CC0 | Lora, SIL OFL 1.1 | PT Serif, SIL OFL 1.1 | Rename your box | It goes on the brass plate. | Another | Keep | Reset your box? | Reset box | Keep playing | History | Glasswick, year 0. 5 people live here. | The chronicle and the time-lapse of the years will live here. | Offices | Chief | Harl | Shape the land | The Keeper's kit | Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree. | Cloth | Mister | Seed
+69,0	season 3: bare 0,934 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+69,9	season 4: bare 0,933 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+69,9	era Camp open[gatherer,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:toolmaker]
+70,0	shot t_y01
+70,8	season 5: bare 0,931 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+71,7	season 6: bare 0,929 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+72,5	season 7: bare 0,926 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+73,3	season 8: bare 0,924 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+73,3	era Camp open[gatherer,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:toolmaker]
+73,5	shot t_y02
+74,3	season 9: bare 0,920 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+75,1	season 10: bare 0,917 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+76,0	season 11: bare 0,914 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+76,8	season 12: bare 0,913 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+76,8	era Camp open[gatherer,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:toolmaker]
+77,0	shot t_y03
+77,8	season 13: bare 0,911 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+78,6	season 14: bare 0,906 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+79,5	season 15: bare 0,904 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+80,3	season 16: bare 0,901 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+80,3	era Camp open[gatherer,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:toolmaker, Vera:]
+80,4	shot t_y04
+81,3	season 17: bare 0,898 tracks True/True rabbits 0 shown 0 hides 0/0 gate False tent False era Camp pop 5
+82,1	season 18: bare 0,895 tracks True/True rabbits 3 shown 3 hides 0/0 gate False tent False era Camp pop 5
+82,2	first rabbits: sign playing True played 1 pointer notable 4
+83,3	shot t_first_rabbit_default
+83,4	texts at sign: Glasswick | Year 4 | Stories | History | Kit | Shape | Tap to show the UI | Settings | Sound | Your phone is on silent, so you won't hear this. | On | Music | Effects | Ambience | Music plays | Haptics | On | Notifications | Off | Your box | Rename your box | Reset your box | The shelf | About | Licences | Send feedback | Aquarium Civ 0.4.0 | Licences | KayKit assets, Kay Lousberg, CC0 | Kenney assets, CC0 | Calm Piano 1, The Cynic Project, CC0 | Forget Me Not, Kistol, CC0 | Rain, birds, crickets and wind: kresiek-the-furry, isaiah658, wolfgang, thimras, CC0 | Flute, guitar and pan flute: nicholasjudy567, antumdeluge, pattingthestar, CC0 | Lora, SIL OFL 1.1 | PT Serif, SIL OFL 1.1 | Rename your box | It goes on the brass plate. | Another | Keep | Reset your box? | Reset box | Keep playing | History | Glasswick, year 4. 5 people live here. | The chronicle and the time-lapse of the years will live here. | Offices | Chief | Harl | Shape the land | The Keeper's kit | Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree. | Cloth | Mister | Seed
+84,2	season 19: bare 0,894 tracks True/True rabbits 4 shown 4 hides 0/0 gate False tent False era Camp pop 5
+104,3	hunt day s18: hides 0->0 spearOut False stalk False strike False bolt False carry False skin False
+105,1	season 20: bare 0,889 tracks True/False rabbits 4 shown 4 hides 1/1 gate False tent False era Camp pop 5
+105,1	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:]
+105,2	shot t_y05
+105,8	shot t_hide_frame_default
+105,8	frame: hides shown 1
+106,7	season 21: bare 0,885 tracks True/False rabbits 4 shown 4 hides 2/2 gate False tent False era Camp pop 5
+107,5	season 22: bare 0,880 tracks True/False rabbits 5 shown 5 hides 2/2 gate False tent False era Camp pop 6
+108,4	season 23: bare 0,874 tracks True/False rabbits 5 shown 5 hides 3/3 gate False tent False era Camp pop 6
+109,2	season 24: bare 0,871 tracks True/False rabbits 6 shown 6 hides 3/3 gate False tent False era Camp pop 7
+109,2	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:, Juna:]
+109,3	shot t_y06
+110,2	season 25: bare 0,866 tracks True/False rabbits 6 shown 6 hides 3/3 gate False tent False era Camp pop 7
+111,0	season 26: bare 0,861 tracks True/False rabbits 7 shown 7 hides 3/3 gate False tent False era Camp pop 7
+111,8	season 27: bare 0,859 tracks True/False rabbits 8 shown 8 hides 3/3 gate False tent False era Camp pop 7
+112,7	season 28: bare 0,857 tracks True/False rabbits 8 shown 8 hides 3/3 gate False tent False era Camp pop 7
+112,7	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:, Juna:]
+112,8	shot t_y07
+113,6	season 29: bare 0,849 tracks True/False rabbits 9 shown 9 hides 3/3 gate False tent False era Camp pop 7
+114,5	season 30: bare 0,844 tracks True/False rabbits 9 shown 9 hides 3/3 gate False tent False era Camp pop 7
+115,3	season 31: bare 0,839 tracks True/False rabbits 10 shown 10 hides 3/3 gate False tent False era Camp pop 7
+116,2	season 32: bare 0,835 tracks True/False rabbits 10 shown 10 hides 3/3 gate False tent False era Camp pop 8
+116,2	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:, Juna:]
+116,3	shot t_y08
+117,1	season 33: bare 0,832 tracks True/False rabbits 11 shown 11 hides 3/3 gate False tent False era Camp pop 8
+117,9	season 34: bare 0,827 tracks True/False rabbits 11 shown 11 hides 3/3 gate False tent False era Camp pop 8
+118,8	season 35: bare 0,825 tracks True/False rabbits 12 shown 12 hides 3/3 gate False tent False era Camp pop 8
+119,6	season 36: bare 0,821 tracks True/False rabbits 12 shown 12 hides 3/3 gate False tent False era Camp pop 8
+119,6	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:, Juna:]
+119,8	shot t_y09
+120,6	season 37: bare 0,818 tracks True/False rabbits 12 shown 12 hides 3/3 gate False tent False era Camp pop 8
+121,4	season 38: bare 0,816 tracks True/False rabbits 12 shown 12 hides 3/3 gate False tent False era Camp pop 8
+122,3	season 39: bare 0,809 tracks True/False rabbits 13 shown 12 hides 3/3 gate False tent False era Camp pop 8
+123,1	season 40: bare 0,804 tracks True/False rabbits 12 shown 12 hides 4/4 gate False tent False era Camp pop 8
+123,1	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:, Juna:, Wim:]
+123,3	shot t_y10
+124,1	season 41: bare 0,801 tracks True/False rabbits 12 shown 12 hides 5/5 gate False tent False era Camp pop 8
+125,0	season 42: bare 0,795 tracks True/False rabbits 12 shown 12 hides 3/5 gate True tent True era Camp pop 9
+125,0	raising started season 42: moments 1 leans 1
+126,6	shot t_tent_up
+127,5	shot t_tent_up_home
+127,5	tent: raised True fromHides 1 line '' moments 1
+127,5	time phase ended after 42 seasons: bare 0,987->0,795 tracksShot True rabbitShot True sign True frame True tent True gate True
+127,5	era Camp open[gatherer,hunter,toolmaker] notables[Aveline:gatherer, Esk:toolmaker, Harl:hunter, Vera:, Juna:, Wim:]
+127,5	t_person0: no doll for Aveline
+127,5	t_person1: no doll for Esk
+128,4	offices late offices: Chief | Harl
+128,5	shot t_offices
+129,1	leak: generated roots 1 orphans 0 meshes 348
+129,1	errors at time: 0 
