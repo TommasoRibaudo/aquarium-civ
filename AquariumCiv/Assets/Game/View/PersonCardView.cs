@@ -483,6 +483,9 @@ namespace AquariumCiv.View
             Open(id, there);
         }
 
+        /// <summary>#320: the pinned name's opacity now (0 when hidden or zoomed out), for tests.</summary>
+        public float PinTagOpacity { get; private set; }
+
         void LateUpdate()
         {
             var sim = Sim;
@@ -494,7 +497,13 @@ namespace AquariumCiv.View
             var pinned = hide ? null : sim.Pinned;
             bool pinOn = pinned != null && pinned.alive && Place(pinTag, pv, cam, PersonRef.Notable(pinned.id));
             if (pinOn) pinTag.Word = pinned.name;
-            SetTag(pinTag, pinOn);
+            // #320: zoomed out, the pinned name fades away (the pin, the follow and the chip stay)
+            var rig = pinOn ? cam.GetComponent<BoxCamera>() : null;
+            float pinFade = rig != null ? BoxCameraMath.PinTagOpacity(rig.zoom) : 1f;
+            PinTagOpacity = pinOn ? pinFade : 0f;
+            if (pinOn) pinTag.style.opacity = pinFade;
+            bool pinDrawn = pinOn && pinFade > 0.01f;
+            SetTag(pinTag, pinDrawn);
             PinTagShown = pinOn;
             // the open card's person (when not the pin): a paper tag
             bool named = CrowdOpen || (IsOpen && Card != null && Card.alive && (pinned == null || pinned.id != OpenId));
@@ -505,7 +514,7 @@ namespace AquariumCiv.View
             drawn.Clear(); drawnTo.Clear(); leaders.Clear();
             int used = 0;
             placed.Clear();
-            if (pinOn) Claim(pinTag);
+            if (pinDrawn) Claim(pinTag);
             if (nameOn) Claim(nameTag);
             ClaimDoll(pv, cam);
             if (!hide && IsOpen && Card != null && Card.alive && pv.TryGetDollTop(PersonRef.Notable(OpenId), out var meW))
