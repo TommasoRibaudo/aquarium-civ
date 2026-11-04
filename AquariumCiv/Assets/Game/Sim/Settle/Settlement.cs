@@ -531,15 +531,24 @@ namespace AquariumCiv.Sim.Settle
         /// (a bridge). Returns the crossing's cell, or -1 if there is no path to cross.</summary>
         public int DebugCanalAcrossPath()
         {
-            int best = -1; float bd = float.MaxValue;
+            int best = -1, bestClear = -1; float bd = float.MaxValue;
             for (int c = 0; c < SiteMap.N; c++)
             {
                 int i = SiteMap.I(c), j = SiteMap.J(c);
                 if (i < 5 || j < 5 || i >= SiteMap.NX - 5 || j >= SiteMap.NZ - 5) continue;
                 if (Map.lot[c] != 0 || Map.Water(c) || Map.Green(c) || !(Map.Laid(c) || Map.tier[c] >= PathNet.PathTier)) continue;
                 float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), Map.greenX, Map.greenZ);
-                if (d < 0.6f) continue; // not on the green itself
-                if (d < bd) { bd = d; best = c; }
+                if (d < 0.9f) continue; // clear of the square: houses hide the bridge there
+                int clear = 0; // the most open spot (no lot within this many cells), so the canal and the bridge show
+                for (; clear < 4; clear++)
+                {
+                    bool hit = false;
+                    for (int di = -clear - 1; di <= clear + 1 && !hit; di++)
+                        for (int dj = -clear - 1; dj <= clear + 1; dj++)
+                            if (Map.lot[SiteMap.Index(i + di, j + dj)] != 0) { hit = true; break; }
+                    if (hit) break;
+                }
+                if (clear > bestClear || (clear == bestClear && d < bd)) { bestClear = clear; bd = d; best = c; }
             }
             if (best < 0) return -1;
             int bi = SiteMap.I(best), bj = SiteMap.J(best);
