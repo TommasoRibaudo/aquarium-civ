@@ -600,10 +600,10 @@ namespace AquariumCiv.View
             if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, minZoom, maxZoom), mid);
             if (GroundAt(prevMid, out var g0) && GroundAt(mid, out var g1))
             {
-                var bound = BoxCameraMath.PanBounds(zoom);
+                var bound = BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * zoom, target.y);
                 var d = g0 - g1;
-                target.x = BoxCameraMath.SoftStep(target.x, d.x, -bound.x, bound.x, BoxCameraMath.PanSoftRange);
-                target.z = BoxCameraMath.SoftStep(target.z, d.z, -bound.y, bound.y, BoxCameraMath.PanSoftRange);
+                target.x = BoxCameraMath.GlassStep(target.x, d.x, -bound.x, bound.x);
+                target.z = BoxCameraMath.GlassStep(target.z, d.z, -bound.y, bound.y);
             }
             StayOnLand();
             Apply();
@@ -638,7 +638,7 @@ namespace AquariumCiv.View
         /// <summary>Whatever the target is past the pan bounds (they shrink as you zoom out) eases back.</summary>
         void SpringPan(float dt)
         {
-            var bound = BoxCameraMath.PanBounds(zoom);
+            var bound = BoxCameraMath.PanBoundsFor(yaw, pitch, FitDistance() * zoom, target.y);
             target.x = BoxCameraMath.Spring(target.x, -bound.x, bound.x, dt);
             target.z = BoxCameraMath.Spring(target.z, -bound.y, bound.y, dt);
         }

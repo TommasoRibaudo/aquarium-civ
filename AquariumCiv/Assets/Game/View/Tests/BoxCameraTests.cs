@@ -103,31 +103,28 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
-        public void PanBounds_ByZoom_ALittleAtTheFullBoxAndNeverLosesIt()
+        public void PanBounds_Glass_ReachTheGlassAtEveryZoom_NeverPastIt()
         {
-            var full = BoxCameraMath.PanBounds(1f);
-            Assert.Greater(full.x, 0.2f, "#146: a little pan at the full box");
-            Assert.Less(full.x, 0.5f, "only a little");
-            Assert.Less(BoxCameraMath.PanBounds(1.3f).x, full.x, "less past it");
-            var closest = BoxCameraMath.PanBounds(AquariumCiv.Lighting.CameraReach.MinZoom);
-            Assert.Greater(closest.x, Land.HX - 0.9f, "the land's edge stays in reach of the view");
-            Assert.Less(closest.x, Land.HX - 0.3f, "tester run 10: the focus stays on the land, the wall was 80 % of the view");
-            Assert.Less(closest.y, Land.HZ - 0.3f);
-            Assert.AreEqual(1f, BoxCameraMath.PanK(0.5f), 1e-4f, "fully open by 0.5");
-            Assert.Greater(BoxCameraMath.PanBounds(0.5f).x, BoxCameraMath.PanBounds(0.8f).x, "closer = more room to pan");
-        }
-
-        [Test]
-        public void Pan_TheFocusNeverLeavesTheLand_AtAnyZoomOrAspect()
-        {
+            // #273: the pivot rests up to the glass's inner face, close or far, and the hard stop stays inside it.
             for (float z = AquariumCiv.Lighting.CameraReach.MinZoom; z <= 1.3f; z += 0.02f)
             {
                 var b = BoxCameraMath.PanBounds(z);
-                Assert.Less(b.x, Land.HX, "x at zoom " + z);
-                Assert.Less(b.y, Land.HZ, "z at zoom " + z);
+                Assert.Greater(b.x, Land.HX - 0.3f, "x reaches the glass at zoom " + z);
+                Assert.Greater(b.y, Land.HZ - 0.3f, "z reaches the glass at zoom " + z);
+                Assert.Less(b.x, BoxCameraMath.PanHardStop.x); Assert.Less(b.y, BoxCameraMath.PanHardStop.y);
             }
-            Assert.Less(BoxCameraMath.PanHardStop.x, Land.HX, "the rubber band stops at the edge: this is what BoxCamera clamps to");
+            Assert.Less(BoxCameraMath.PanHardStop.x, Land.HX, "the soft band ends inside the glass: this is what BoxCamera clamps to");
             Assert.Less(BoxCameraMath.PanHardStop.y, Land.HZ);
+        }
+
+        [Test]
+        public void PanBoundsFor_DrawsInOnlyWhereTheCameraWouldEnterTheBox()
+        {
+            var open = BoxCameraMath.PanBounds(1f);
+            var far = BoxCameraMath.PanBoundsFor(28f, 34f, 41f, 0f);
+            Assert.AreEqual(open.x, far.x, 1e-4f, "far out the camera is far outside the box: the whole range");
+            var near = BoxCameraMath.PanBoundsFor(55f, 14f, 8.2f, 0f);
+            Assert.LessOrEqual(near.x, open.x); Assert.LessOrEqual(near.y, open.y);
         }
 
         /// <summary>The user saw "only a piece of the tank": for every pose, the moments' included, nothing of the box or the shelf row on screen is in front of the near plane.</summary>
@@ -170,15 +167,13 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void Pan_RubberBand_PastTheBound()
         {
-            float b = BoxCameraMath.PanBounds(0.3f).x;
-            Assert.AreEqual(1f, BoxCameraMath.SoftStep(0f, 1f, -b, b, BoxCameraMath.PanSoftRange), 1e-5f, "inside the bound it follows the fingers");
-            float over = BoxCameraMath.SoftStep(b, 0.5f, -b, b, BoxCameraMath.PanSoftRange);
-            Assert.Greater(over, b); Assert.Less(over, b + 0.5f, "past the bound it gives less than the fingers moved");
-            // At the full box (bound 0) a long pan only stretches the band a little.
-            float v = 0f;
-            for (int i = 0; i < 60; i++) v = BoxCameraMath.SoftStep(v, 0.05f, 0f, 0f, BoxCameraMath.PanSoftRange);
-            Assert.Less(v, 1.2f, "3 units of drag move it by about one");
-            Assert.Greater(v, 0f);
+            float b = BoxCameraMath.PanBounds(0.3f).x, stop = BoxCameraMath.PanHardStop.x;
+            Assert.AreEqual(1f, BoxCameraMath.GlassStep(0f, 1f, -b, b), 1e-5f, "inside the bound it follows the fingers");
+            float over = BoxCameraMath.GlassStep(b, 0.05f, -b, b);
+            Assert.Greater(over, b); Assert.Less(over, b + 0.05f, "past the bound it gives less than the fingers moved");
+            float v = b;
+            for (int i = 0; i < 200; i++) v = BoxCameraMath.GlassStep(v, 0.05f, -b, b);
+            Assert.Less(v, stop, "a long drag never reaches the glass");
         }
 
         [Test]
