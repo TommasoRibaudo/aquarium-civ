@@ -19,6 +19,9 @@ namespace AquariumCiv.View
             return what + " · " + Status();
         }
 
+        /// <summary>#285: which jobs are open on this land and why (one line each).</summary>
+        public static string Jobs() { var s = Sim; return s == null ? "no sim" : s.EcologyOn ? s.DebugJobsReadout() : "living land off"; }
+
         public static string Status()
         {
             var s = Sim;
@@ -44,6 +47,112 @@ namespace AquariumCiv.View
             return Refresh($"misted ({x:0.0}, {z:0.0})");
         }
 
+        /// <summary>"Mist big here": a full-length mist at a point, with the wet area and the puddles it leaves (#266).</summary>
+        public static string MistBig(float x, float z)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var n = s.DebugMistBig(x, z).Count;
+            return Refresh($"big mist at ({x:0.0}, {z:0.0}), {n} cells green");
+        }
+
+        public static string MistBigCamp() { var st = Sim?.Settlement; return st != null ? MistBig(st.Map.greenX + 0.5f, st.Map.greenZ) : "no sim"; }
+
+        /// <summary>"Puddles now": soak the ground round the camp so wet ground and puddles show at once (#266).</summary>
+        public static string PuddlesNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var st = s.Settlement;
+            int n = st != null ? s.DebugPuddlesNow(st.Map.greenX + 0.5f, st.Map.greenZ) : 0;
+            return Refresh($"{n} puddle cells");
+        }
+
+        /// <summary>"Puddle visit": the people near a puddle come over now, and a rabbit hops up to drink.</summary>
+        public static string PuddleVisit() { var p = PuddleLife.Instance; return p != null ? p.VisitNow() : "no puddle life"; }
+
+        /// <summary>"Rabbit tracks now": the tracks show at the meadow's edge at once (#282).</summary>
+        public static string RabbitTracksNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            return s.DebugRabbitTracksNow() ? Refresh($"rabbit tracks at {s.EcoRabbitTrackCells.Count} cells") : "no change (tracks already there)";
+        }
+
+        /// <summary>"+N rabbits": add rabbits to the sim count; the first ones go through the tracks and the first-rabbit sign (#282).</summary>
+        public static string AddRabbits(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugAddRabbits(n);
+            return Refresh($"+{n} rabbits: {c} (shown {s.EcoRabbitsShown()})");
+        }
+
+        /// <summary>"Water breaks the surface now" (#279): with no pond, the water table rises to the flood line and seasons pass until
+        /// water stands (the moment plays as it would in play); with a pond, the moment replays.</summary>
+        public static string WaterBreaksNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var fw = FirstWaterView.Instance;
+            if (s.EcoPondCells > 0)
+            {
+                if (fw == null) return "no first-water view";
+                fw.Begin(true); return "first water moment replayed";
+            }
+            s.DebugSetTable(s.EcoFloodLine);
+            int n = 0;
+            while (s.EcoPondCells == 0 && n < 4) { s.DebugSkipSeasons(1); n++; }
+            return Refresh(s.EcoPondCells > 0 ? $"water broke the surface after {n} season(s): {s.EcoPondCells} cells" : "no water after 4 seasons");
+        }
+
+        /// <summary>"Frogs now" (#286): the night's frogs show for a minute.</summary>
+        public static string FrogsNow() { var p = PondLife.Instance; return p != null ? p.FrogsNow() : "no pond life"; }
+
+        /// <summary>"Ducks now" (#286): the ducks show for a minute.</summary>
+        public static string DucksNow() { var p = PondLife.Instance; return p != null ? p.DucksNow() : "no pond life"; }
+
+        /// <summary>"First bush now" (#288): the first bush comes up at once (a bush is made on the grass nearest the camp if none
+        /// stands); the bird lands on it and the people notice.</summary>
+        public static string FirstBushNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugFirstBushNow();
+            return c < 0 ? "no bush: no ground for it" : Refresh($"first bush at cell {c}");
+        }
+
+        /// <summary>"+N bushes" (#288): bushes on the grass nearest the camp (every third cell).</summary>
+        public static string AddBushes(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugAddBushes(n);
+            return Refresh($"+{n} bushes: {c} came up");
+        }
+
+        /// <summary>"Start a hunt now" (#283): a hunter takes a spear and goes after the nearest rabbit, starting now.</summary>
+        public static string StartHunt()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            if (!pv.Planner.DebugStartHunt(pv.Now, out var plan)) return "no hunt: no rabbit shown, or nobody free";
+            return $"hunt started: rabbit {plan.rabbitId}, {(plan.catches ? "will catch" : "will miss")}, strike in {(plan.strikeStart - pv.Now.hour):0.0} h";
+        }
+
+        /// <summary>"Next hunt succeeds / misses" (#283): fixes how the next hunt that has not struck yet ends.</summary>
+        public static string ForceHunt(bool catches)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            bool ok = pv.Planner.DebugForceHunt(catches);
+            return catches ? (ok ? "next hunt catches" : "refused: the herd is at its floor, it stays a miss") : "next hunt misses";
+        }
+
         public static string MistCamp()
         {
             var st = Sim?.Settlement;
@@ -64,7 +173,26 @@ namespace AquariumCiv.View
             return Refresh($"+{n} seasons");
         }
 
-        public static string CampGate() { var s = Sim; return s != null && s.DebugOpenCampGate() ? Refresh("camp gate open") : "no change"; }
+        /// <summary>"Open the camp gate now" (#284): gives hides if short, opens the gate and plays the camp moment (the first tent goes up from the hides).</summary>
+        public static string CampGate()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var b = s.DebugCampMoment();
+            return Refresh(b != null ? $"camp gate open: the first tent (building {b.id}) goes up" : "camp gate: no room for a tent");
+        }
+
+        /// <summary>Only the gate (no hides, no tent): for tests that bring the hides themselves.</summary>
+        public static string OpenCampGate() { var s = Sim; return s != null && s.DebugOpenCampGate() ? Refresh("camp gate open") : "no change"; }
+
+        /// <summary>"+N hides" (#284): hides drying by the fire, on the frame.</summary>
+        public static string AddHides(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugAddHides(n);
+            return Refresh($"+{n} hides: {c} on the frame");
+        }
         public static string VillageGate() { var s = Sim; return s != null && s.DebugOpenVillageGate() ? Refresh("village gate open") : "no change"; }
 
         public static string Table(float aboveFlood)

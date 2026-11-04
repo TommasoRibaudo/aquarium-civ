@@ -1,0 +1,107 @@
+8,1	opened eco True bare 1,000
+17,6	misted, hand None bare 0,992
+18,2	s1 y0,25: hour 7,0 bare 0,939 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+18,7	s2 y0,50: hour 7,0 bare 0,938 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+19,3	s3 y0,75: hour 7,0 bare 0,938 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+19,9	s4 y1,00: hour 7,0 bare 0,937 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+20,5	s5 y1,25: hour 7,0 bare 0,936 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+21,0	s6 y1,50: hour 7,0 bare 0,934 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+21,6	s7 y1,75: hour 7,0 bare 0,932 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+22,2	s8 y2,00: hour 7,0 bare 0,931 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+22,9	shot h_noon_y02
+22,9	noon rabbits shown 0 fleeing 0
+23,5	s9 y2,25: hour 7,0 bare 0,928 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+24,0	s10 y2,50: hour 7,0 bare 0,924 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+24,6	s11 y2,75: hour 7,0 bare 0,922 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+25,2	s12 y3,00: hour 7,0 bare 0,920 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+25,7	s13 y3,25: hour 7,0 bare 0,919 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+26,3	s14 y3,50: hour 7,0 bare 0,916 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+26,9	s15 y3,75: hour 7,0 bare 0,914 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+27,5	s16 y4,00: hour 7,0 bare 0,911 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+28,2	shot h_noon_y04
+28,2	noon rabbits shown 0 fleeing 0
+28,8	s17 y4,25: hour 7,0 bare 0,910 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+29,3	s18 y4,50: hour 7,0 bare 0,906 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+29,9	s19 y4,75: hour 7,0 bare 0,905 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+30,5	s20 y5,00: hour 7,0 bare 0,900 rabbits 0/0 fleeing 0 hunter False hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+31,1	s21 y5,25: hour 7,0 bare 0,897 rabbits 3/3 fleeing 0 hunter True hides 0/0 gate False tent False raisings 0/0 gaveUp 0
+37,1	shot h_s21_00_WalkOut
+37,3	shot h_s21_01_Stalk
+37,9	shot h_s21_02_Strike
+38,1	shot h_s21_03_CarryBack
+38,5	shot h_s21_04_Skin
+58,3	day s21: phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return] hides 0->1 rabbits fleeing max? 0
+58,9	s22 y5,50: hour 7,0 bare 0,892 rabbits 3/3 fleeing 0 hunter True hides 1/1 gate False tent False raisings 0/0 gaveUp 0
+65,2	shot h_s22_05_WalkOut
+65,4	shot h_s22_06_Stalk
+66,0	shot h_s22_07_Strike
+66,2	shot h_s22_08_Bolt
+86,1	day s22: phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,Bolt,WalkBack,Return] hides 1->1 rabbits fleeing max? 0
+86,6	s23 y5,75: hour 7,0 bare 0,886 rabbits 4/4 fleeing 0 hunter True hides 1/1 gate False tent False raisings 0/0 gaveUp 0
+90,3	shot h_s23_09_WalkOut
+90,5	shot h_s23_10_Stalk
+91,1	shot h_s23_11_Strike
+91,3	shot h_s23_12_Bolt
+96,1	shot h_s23_13_CarryBack
+113,9	day s23: phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,Bolt,WalkBack,Return,CarryBack,Skin,Cook] hides 1->2 rabbits fleeing max? 0
+114,4	s24 y6,00: hour 7,0 bare 0,884 rabbits 4/4 fleeing 1 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+115,2	shot h_noon_y06
+115,2	noon rabbits shown 4 fleeing 1
+115,7	s25 y6,25: hour 7,0 bare 0,880 rabbits 5/5 fleeing 1 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+143,0	day s25: phases [] hides 2->2 rabbits fleeing max? 0
+143,5	s26 y6,50: hour 7,0 bare 0,875 rabbits 6/6 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+144,1	s27 y6,75: hour 7,0 bare 0,873 rabbits 7/7 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+144,7	s28 y7,00: hour 7,0 bare 0,872 rabbits 7/7 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+171,9	day s28: phases [] hides 2->2 rabbits fleeing max? 0
+172,5	s29 y7,25: hour 7,0 bare 0,866 rabbits 8/8 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+173,0	s30 y7,50: hour 7,0 bare 0,860 rabbits 8/8 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+173,6	s31 y7,75: hour 7,0 bare 0,857 rabbits 9/9 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+200,8	day s31: phases [] hides 2->2 rabbits fleeing max? 0
+201,4	s32 y8,00: hour 7,0 bare 0,855 rabbits 9/9 fleeing 4 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+202,2	shot h_noon_y08
+202,2	noon rabbits shown 9 fleeing 4
+202,7	s33 y8,25: hour 7,0 bare 0,853 rabbits 9/9 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+203,3	s34 y8,50: hour 7,0 bare 0,850 rabbits 10/10 fleeing 0 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+230,5	day s34: phases [] hides 2->2 rabbits fleeing max? 0
+231,1	s35 y8,75: hour 7,0 bare 0,848 rabbits 10/10 fleeing 2 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+231,7	s36 y9,00: hour 7,0 bare 0,842 rabbits 10/10 fleeing 3 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+232,2	s37 y9,25: hour 7,0 bare 0,840 rabbits 11/11 fleeing 3 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+259,5	day s37: phases [] hides 2->2 rabbits fleeing max? 0
+260,0	s38 y9,50: hour 7,0 bare 0,836 rabbits 11/11 fleeing 2 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+260,6	s39 y9,75: hour 7,0 bare 0,832 rabbits 11/11 fleeing 3 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+261,2	s40 y10,00: hour 7,0 bare 0,827 rabbits 12/12 fleeing 1 hunter True hides 2/2 gate False tent False raisings 0/0 gaveUp 0
+288,4	day s40: phases [ToFire,TakeSpear,KidFollow,WalkOut,Stalk,KidWatch,CarryBack,KidCheer,KidBack,Skin,Cook,Return] hides 2->3 rabbits fleeing max? 0
+289,1	shot h_noon_y10
+289,1	noon rabbits shown 11 fleeing 0
+289,7	s41 y10,25: hour 7,0 bare 0,823 rabbits 11/11 fleeing 3 hunter True hides 3/3 gate False tent False raisings 0/0 gaveUp 0
+290,3	s42 y10,50: hour 7,0 bare 0,818 rabbits 10/10 fleeing 5 hunter True hides 4/4 gate False tent False raisings 0/0 gaveUp 0
+290,9	s43 y10,75: hour 7,0 bare 0,813 rabbits 11/11 fleeing 2 hunter True hides 4/4 gate False tent False raisings 0/0 gaveUp 0
+318,1	day s43: phases [ToFire,TakeSpear,KidFollow,WalkOut,Stalk,KidWatch,Strike,Bolt,KidBack,WalkBack,Return] hides 4->4 rabbits fleeing max? 0
+318,7	s44 y11,00: hour 7,0 bare 0,803 rabbits 12/12 fleeing 2 hunter True hides 4/4 gate False tent False raisings 0/0 gaveUp 0
+319,2	s45 y11,25: hour 7,0 bare 0,802 rabbits 10/10 fleeing 2 hunter True hides 6/6 gate False tent False raisings 0/0 gaveUp 0
+319,8	s46 y11,50: hour 7,0 bare 0,795 rabbits 10/10 fleeing 2 hunter True hides 5/7 gate True tent True raisings 1/1 gaveUp 0
+319,8	raising: started 1 active 1 moments 1 leans 1 gaveUp 0 hour 7,0
+319,9	shot h_tent_0
+319,9	tent t+0s hour 7,0 active 1 carry False raise False line '' zoom 0,96
+325,9	shot h_tent_1
+325,9	tent t+6s hour 7,4 active 1 carry True raise False line '' zoom 1,00
+331,9	shot h_tent_2
+331,9	tent t+12s hour 7,8 active 1 carry False raise True line '' zoom 1,00
+337,9	shot h_tent_3
+337,9	tent t+18s hour 8,2 active 1 carry False raise True line 'Poles and hides. A roof, our own.' zoom 1,00
+343,9	shot h_tent_4
+343,9	tent t+24s hour 8,5 active 1 carry False raise False line 'Poles and hides. A roof, our own.' zoom 1,00
+350,0	shot h_tent_5
+350,0	tent t+30s hour 8,9 active 1 carry False raise False line 'Poles and hides. A roof, our own.' zoom 1,00
+352,1	raising over: active 0 line 'Poles and hides. A roof, our own.' gaveUp 0 hour 9,1
+352,3	shot h_tent_end
+354,0	shot h_side_0
+354,0	side 0: yaw 56
+355,1	shot h_side_1
+355,1	side 1: yaw 56
+356,1	shot h_side_2
+356,2	side 2: yaw 56
+357,2	shot h_side_3
+357,2	side 3: yaw 56
+357,2	pond cells? water surfaced False
+357,2	leak: generated roots 1 orphans 0 meshes 366 errors 0 

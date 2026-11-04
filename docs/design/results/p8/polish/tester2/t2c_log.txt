@@ -1,0 +1,18 @@
+01:46:14 [y0.00 m0 Winter h9.3] wiped: step Rain
+01:46:16 [y0.00 m0 Winter h9.4] hold 0.3 s: spraying False misting False step Rain wet shown 0
+01:46:16 [y0.00 m0 Winter h9.4] SHOT t2c_01_firstmist_hold_03
+01:46:17 [y0.00 m0 Winter h9.4] hold 1.0 s: spraying True misting True step Name wet shown 242
+01:46:17 [y0.00 m0 Winter h9.4] SHOT t2c_02_firstmist_hold_10
+01:46:18 [y0.00 m0 Winter h9.5] hold 2.0 s: spraying True misting True step Name wet shown 271 pulses 7
+01:46:18 [y0.00 m0 Winter h9.5] SHOT t2c_03_firstmist_hold_20
+01:46:18 [y0.00 m0 Winter h9.5] FRAMES first-run 2.5 s hold (first spray, screenshots excluded): 244 frames, median 8.5, p95 12.3, max 26.9 at #47, >33ms 0
+01:46:19 [y0.00 m0 Winter h9.6] SHOT t2c_04_firstmist_lift_05
+01:46:20 [y0.00 m0 Winter h9.7] close: wet shown 306 shoots 31 fresh 9
+01:46:20 [y0.00 m0 Winter h9.7] SHOT t2c_05_firstmist_close
+01:46:31 [y0.00 m0 Winter h10.3] SHOT t2c_06_kit_spray_close
+01:46:35 [y0.00 m0 Winter h10.6] FRAMES kit close 6 s hold, first puddle at frame 1: 785 frames, median 6.8, p95 11.3, max 25.3 at #414, >33ms 0
+01:46:37 [y0.00 m0 Winter h10.7] SHOT t2c_07_puddles_close_real
+01:46:40 [y0.00 m0 Winter h10.9] SHOT t2c_08_home_1080x1920
+01:46:41 [y0.00 m0 Winter h10.9] SHOT t2c_09_kit_1080x1920
+01:46:43 [y0.00 m0 Winter h11.1] SHOT t2c_10_home_1640x2360
+01:46:44 [y0.00 m0 Winter h11.2] END C generated 1 errors 0

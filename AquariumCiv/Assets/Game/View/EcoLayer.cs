@@ -27,6 +27,8 @@ namespace AquariumCiv.View
         /// <summary>The Keeper's tree: its cell (-1 = not planted), stage 0–4 and the need it shows (0 none, 1 water, 2 light, 3 weeds).</summary>
         public int treeCell = -1, treeStage, treeNeed;
         public float humidity, droplets;
+        /// <summary>#287: while the time-lapse blends two years, each cell's greenness already lerped (null live = Greenness of the cover).</summary>
+        [NonSerialized] public float[] greenMix;
 
         public static bool Wooded(byte c) => c == Seedling || c == Young || c == Tree;
 
@@ -47,7 +49,11 @@ namespace AquariumCiv.View
             float fx = (x - SiteMap.X0) / SiteMap.Cell - 0.5f, fz = (z - SiteMap.Z0) / SiteMap.Cell - 0.5f;
             int i = Mathf.FloorToInt(fx), j = Mathf.FloorToInt(fz);
             float u = fx - i, v = fz - j;
-            float G(int a, int b) => Greenness(At(SiteMap.Index(Mathf.Clamp(a, 0, SiteMap.NX - 1), Mathf.Clamp(b, 0, SiteMap.NZ - 1))));
+            float G(int a, int b)
+            {
+                int c = SiteMap.Index(Mathf.Clamp(a, 0, SiteMap.NX - 1), Mathf.Clamp(b, 0, SiteMap.NZ - 1));
+                return greenMix != null ? greenMix[c] : Greenness(At(c));
+            }
             return Mathf.Lerp(Mathf.Lerp(G(i, j), G(i + 1, j), u), Mathf.Lerp(G(i, j + 1), G(i + 1, j + 1), u), v);
         }
 
@@ -91,6 +97,7 @@ namespace AquariumCiv.View
                         h = (h ^ (uint)(cover[c] * 5 + Mathf.Clamp((int)(moist[c] * 4f), 0, 4))) * 16777619u;
                     }
                 if (pondCells > 0) h = (h ^ (uint)Mathf.RoundToInt(waterY * 400f)) * 16777619u;
+                if (greenMix != null) for (int j = j0; j <= j1; j++) for (int i = i0; i <= i1; i++) h = (h ^ (uint)Mathf.RoundToInt(greenMix[SiteMap.Index(i, j)] * 12f)) * 16777619u;
                 h = (h ^ (uint)(treeCell + 7)) * 16777619u;
                 h = (h ^ (uint)(treeStage * 4 + treeNeed)) * 16777619u;
             }

@@ -169,9 +169,35 @@ namespace AquariumCiv.GameUI
                 cleanButton.text = on ? "Done" : KitBox ? "Kit" : "Clean";
                 cleanButton.EnableInClassList("kg-tool--on", on);
             }
-            if (t == KitTool.Mister) Toast("Hold a finger over the land to mist it. Two fingers move the view.", 4f);
+            if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
             if (t == KitTool.Seed) Toast("Tap a spot on the land to plant the seed.", 4f);
             HandChanged?.Invoke(t);
+        }
+
+        // Tester run 2: the Mister's hint is for the first meeting. It shows the first time the mister is picked up, once more if the
+        // player put it down without misting, then never again (PlayerPrefs: it is about the player, not the box).
+        public const string MisterHint = "Hold a finger over the land to mist it. Two fingers move the view.";
+        const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
+        public static bool MisterHintDue
+        {
+            get
+            {
+                int shown = PlayerPrefs.GetInt(MisterShownKey, 0);
+                return shown == 0 || (shown == 1 && PlayerPrefs.GetInt(MisterUsedKey, 0) == 0);
+            }
+        }
+        static void NoteMisterHintShown() { PlayerPrefs.SetInt(MisterShownKey, PlayerPrefs.GetInt(MisterShownKey, 0) + 1); PlayerPrefs.Save(); }
+        /// <summary>The mister in hand misted the land: the second showing of its hint is not needed.</summary>
+        public static void NoteMisterUsed()
+        {
+            if (PlayerPrefs.GetInt(MisterUsedKey, 0) == 1) return;
+            PlayerPrefs.SetInt(MisterUsedKey, 1); PlayerPrefs.Save();
+        }
+        /// <summary>Debug panel and tests: forget the Mister's hint, so the next pick-up shows it.</summary>
+        public static string DebugForgetMisterHint()
+        {
+            PlayerPrefs.DeleteKey(MisterShownKey); PlayerPrefs.DeleteKey(MisterUsedKey); PlayerPrefs.Save();
+            return "Mister hint forgotten: pick up the Mister";
         }
 
         void OnKitButton()
@@ -554,15 +580,20 @@ namespace AquariumCiv.GameUI
             sheet.Add(Text("The chronicle and the time-lapse of the years will live here.", "type-note", "kg-sheet-note"));
         }
 
-        /// <summary>#215: who holds each office of this era. Rebuilt every time the sheet opens, so it is never stale.</summary>
+        /// <summary>#215: who holds each office of this era. Rebuilt every time the sheet opens, so it is never stale. #272: in a
+        /// scroll, so a long town's list scrolls and the view ends on a whole row.</summary>
         void BuildOffices()
         {
             var sheet = Sheet(Offices, "Offices");
+            OfficesScroll = new GlassScroll { name = "offices-scroll", WholeRows = true };
             officesList = new VisualElement { name = "offices-list", pickingMode = PickingMode.Ignore };
-            sheet.Add(officesList);
+            OfficesScroll.Add(officesList);
+            sheet.Add(OfficesScroll);
         }
 
         VisualElement officesList;
+        /// <summary>The Offices sheet's scroll (tests).</summary>
+        public GlassScroll OfficesScroll { get; private set; }
 
         void RefreshOffices()
         {
@@ -576,6 +607,7 @@ namespace AquariumCiv.GameUI
                     var holder = sim.HolderOf(role);
                     var row = new VisualElement { name = "office-" + role.Replace(' ', '-'), pickingMode = PickingMode.Ignore };
                     row.AddToClassList("kg-row");
+                    row.AddToClassList(GlassScroll.RowClass);
                     var label = Text(char.ToUpperInvariant(role[0]) + role.Substring(1), "type-body", "kg-row-label");
                     var who = Text(holder != null ? holder.name : "Vacant", "type-body", "office-holder");
                     if (holder == null) who.AddToClassList("office-vacant");

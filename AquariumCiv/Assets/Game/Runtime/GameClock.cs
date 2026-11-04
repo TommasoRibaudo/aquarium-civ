@@ -146,10 +146,11 @@ namespace AquariumCiv.Game
             else Return(); // also fires once at startup (tooling.md): Return() ignores it unless we went away
         }
 
-        void OnApplicationFocus(bool focus) { if (!focus) Save(); }
+        void OnApplicationFocus(bool focus) { if (!focus) { ActiveSim?.MarkLandSeen(); Save(); } }
 
         void OnApplicationQuit()
         {
+            ActiveSim?.MarkLandSeen(); // #281: what grew is seen now
             Save();
             EndTelemetrySession("quit");
             if (!paused) Notifier?.Close(ActiveSim, DateTime.UtcNow, EraNotifier.Enabled); // a pause before it has done this already
@@ -160,6 +161,7 @@ namespace AquariumCiv.Game
             if (paused) return;
             paused = true;
             pausedUtc = DateTime.UtcNow;
+            ActiveSim?.MarkLandSeen(); // #281: the player has looked at the land; what grows while away is new
             Save();
             EndTelemetrySession("pause");
             Notifier?.Close(ActiveSim, pausedUtc, EraNotifier.Enabled);
@@ -176,6 +178,7 @@ namespace AquariumCiv.Game
             if (Telemetry != null && Telemetry.ShouldStartNewSession((DateTime.UtcNow - pausedUtc).TotalSeconds)) BeginSession("return", back.realHours);
             Telemetry.CaughtUp(back.realHours, back.simHours, back.months, ms);
             Report(back, "back from the background");
+            LandReturned?.Invoke();
             Save();
         }
 
@@ -379,12 +382,27 @@ namespace AquariumCiv.Game
         }
 
         /// <summary>As if the player had been away <paramref name="hours"/>: the offline catch-up with the slow tail.</summary>
+        /// <summary>Debug (#281): pretend I was away and new grass grew: some green cells become unseen and the fade starts.</summary>
+        /// <summary>#281: the player is back (a return, or a debug away): the view restarts the new-grass fade.</summary>
+        public static event Action LandReturned;
+
+        public static string DebugPretendAwayNewGrass(int count = 12)
+        {
+            var c = Instance;
+            if (c == null || c.Sim == null || !c.Sim.EcologyOn) return "no living land";
+            int n = c.Sim.DebugPretendAwayWithNewGrass(count);
+            LandReturned?.Invoke();
+            return n + " cells of new grass";
+        }
+
         public static string DebugAway(double hours)
         {
             var c = Instance;
             if (c == null || c.Sim == null) return "no GameClock running";
+            c.Sim.MarkLandSeen(); // like a pause: the land as it is now has been seen
             var r = c.Sim.CatchUp(Math.Clamp(hours, 0, SaveStore.MaxAwayHours));
             c.Report(r, "debug away");
+            LandReturned?.Invoke();
             c.Save();
             return string.Format(CultureInfo.InvariantCulture, "away {0:0.00} h → lived {1:0.00} h ({2} months) · year {3:0.0} · mess {4:0.00}", r.realHours, r.simHours, r.months, c.Sim.State.Year, c.Sim.MessLevel);
         }

@@ -3,7 +3,46 @@
 Everything waiting on a decision by the user, in one place. Answered items move to [decisions.md](decisions.md) and are
 deleted here. Recommended options come first and are marked ★. On GitHub: issues labelled `needs:user`.
 
-_Last updated 2026-11-02._
+_Last updated 2026-11-04._
+
+## P8 polish run (2026-11-04)
+Details: [design/results/P8.md](design/results/P8.md) "The polish run"; shots in `design/results/p8/polish/`.
+
+### Sign-offs on the phone (built, merged, issue open)
+- **#266 misting** (+#263, #265): spray, recorded "fsss" (debug "Mist sound A/B" flips to the code-made one), wet area, a little green at once. ★ Judge the puddles: they still read as grey-blue stones with a dark halo.
+- **#269 / #270 / #297 the pond and the soil cut**: the pond meets the glass; damp earth with no line. A faint stair-step where the green cover ends (the 10 cm grid).
+- **#279 the pond's first water** and **#286 frogs and ducks**: frogs are small at default zoom; ducks need ≥ 20 water cells (a natural first pond had 11–25).
+- **#281 fresh green on return**: subtle by day with few new cells (`_FreshLift` 0.7 is the knob); grass tufts keep their colour.
+- **#282 rabbits** (size 2.2×, tracks subtle), **#283 the hunt** (a few pixels at default zoom), **#284 hides and the first tent** (dark if the gate opens at night), **#288 berries** (cheat bushes sit by the fire; natural ones come in the meadow).
+- **#280 sound**: a listen. The recorded spray is brighter (7.9 kHz centroid); birds are faint against the wind on a half-green day; no recorded dirt-crackle exists in CC0, so the barren bed has none.
+- **#273 camera**: close zoom reaches each wall; far zoom keeps the box on screen; the front/back reach at close zoom is small on a tall phone.
+- **#274 bridges**, **#276 ritual symbols**, **#208 dawn lane**, **#210/#211 crumbs**: look sign-offs. #210: ★ I read it as "add falling crumbs" and kept the hut-sized Sky Crumb lump; say if the lump itself should become crumbs.
+- **#249 the kit button**: built after build 15 as a sheet with three tools, not the fanned rail of keepers-hands §3.3; snips and the stick aren't in it.
+
+### Decisions needed
+- **#292 kit wishes**: a living-land box has no wishes; what is the first wish, if any?
+- **Pacing of the pond.** With misting every season or year, the pond's first water came at about year 17–25 (and not by year 23 in one run). The lab's figure is about year 20 with care. ★ Keep (it's the long goal), or speed up the water table so a player sees the pond in the first weeks of real time.
+- **Camp timing with care** is about year 3.3–3.8 after the retune (lab 4.3). ★ Keep; `campMeadow` 0.20 → 0.22 brings it nearer 4.3.
+- **#246 leftovers**: the glass voice's first line on the first mist ("the sky wept") isn't built; birds on the first bushes are a small grey bird. ★ Close #246 and track the line in a small issue.
+
+### Calls I made without you
+- Dropped the fire move to the first green, as you asked (keepers-hands §2/§2.1 struck).
+- The mist greens ≥ 3 cells at once every time; `grassRate` 0.5 → 0.1, `campMeadow` 0.15 → 0.20 to hold the gates.
+- Tents cost 2 hides on a living land (first tent soon after the gate).
+- The hunt: 62 % catch chance, the herd never hunted below 2 rabbits.
+- Fresh green fades over 180 s.
+- The recorded mister spray is the default, the code-made one is kept as a fallback.
+- The camera limit is on the view, not the pivot (far zoom: almost no pan).
+- Play tests turn the living land off around every test; the Editor's own switch is now off.
+
+### Polish noted, not fixed
+- The name step's touch ring covers the plate's words; at 1080×1920 "Skip all" sits on the box rim.
+- Old caption lines linger across an away (the return can open on a year-old line); a founder's caption covers the box during naming.
+- People and rabbits are a few pixels tall at the default zoom.
+- History's timeline says "Year 1 · made camp" while the camp gate opens later; Year 0 on the HUD vs "chief since year 1".
+- The mister's instant green still uses the old tint mode (could glow if misted at night, for a few seconds).
+- On day 0 a dawn water trip can drop its full-bucket walk home.
+- A tie label can sit on another person in a crowded village card.
 
 ## P7 Keeper's dilemmas (2026-11-02)
 Details and screenshots: [design/results/P7.md](design/results/P7.md) ("Dilemmas", "Agent playtest", "Polish").

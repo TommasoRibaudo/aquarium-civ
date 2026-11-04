@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using AquariumCiv.Lighting;
 using UnityEngine;
 
 namespace AquariumCiv.View.Tests
@@ -103,31 +104,31 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
-        public void PanBounds_ByZoom_ALittleAtTheFullBoxAndNeverLosesIt()
+        public void PanBounds_Glass_ReachTheGlassAtEveryZoom_NeverPastIt()
         {
-            var full = BoxCameraMath.PanBounds(1f);
-            Assert.Greater(full.x, 0.2f, "#146: a little pan at the full box");
-            Assert.Less(full.x, 0.5f, "only a little");
-            Assert.Less(BoxCameraMath.PanBounds(1.3f).x, full.x, "less past it");
-            var closest = BoxCameraMath.PanBounds(AquariumCiv.Lighting.CameraReach.MinZoom);
-            Assert.Greater(closest.x, Land.HX - 0.9f, "the land's edge stays in reach of the view");
-            Assert.Less(closest.x, Land.HX - 0.3f, "tester run 10: the focus stays on the land, the wall was 80 % of the view");
-            Assert.Less(closest.y, Land.HZ - 0.3f);
-            Assert.AreEqual(1f, BoxCameraMath.PanK(0.5f), 1e-4f, "fully open by 0.5");
-            Assert.Greater(BoxCameraMath.PanBounds(0.5f).x, BoxCameraMath.PanBounds(0.8f).x, "closer = more room to pan");
-        }
-
-        [Test]
-        public void Pan_TheFocusNeverLeavesTheLand_AtAnyZoomOrAspect()
-        {
+            // #273: the pivot rests up to the glass's inner face, close or far, and the hard stop stays inside it.
             for (float z = AquariumCiv.Lighting.CameraReach.MinZoom; z <= 1.3f; z += 0.02f)
             {
                 var b = BoxCameraMath.PanBounds(z);
-                Assert.Less(b.x, Land.HX, "x at zoom " + z);
-                Assert.Less(b.y, Land.HZ, "z at zoom " + z);
+                Assert.Greater(b.x, Land.HX - 0.3f, "x reaches the glass at zoom " + z);
+                Assert.Greater(b.y, Land.HZ - 0.3f, "z reaches the glass at zoom " + z);
+                Assert.Less(b.x, BoxCameraMath.PanHardStop.x); Assert.Less(b.y, BoxCameraMath.PanHardStop.y);
             }
-            Assert.Less(BoxCameraMath.PanHardStop.x, Land.HX, "the rubber band stops at the edge: this is what BoxCamera clamps to");
+            Assert.Less(BoxCameraMath.PanHardStop.x, Land.HX, "the soft band ends inside the glass: this is what BoxCamera clamps to");
             Assert.Less(BoxCameraMath.PanHardStop.y, Land.HZ);
+        }
+
+        [Test]
+        public void PanBoundsFor_DrawsInOnlyWhereTheCameraWouldEnterTheBox()
+        {
+            var open = BoxCameraMath.PanBounds(1f);
+            var far = BoxCameraMath.PanBoundsFor(28f, 34f, 41f, 0f);
+            Assert.LessOrEqual(far.x, 0.4f, "far out the whole box fits: the tank stays on screen (user 2026-11-04)");
+            var close = BoxCameraMath.PanBoundsFor(0f, 24f, 8.2f, 0f);
+            Assert.Greater(close.x, 1.5f, "close up the view goes a long way towards the wall");
+            Assert.LessOrEqual(close.x, open.x + 1e-4f);
+            var corner = BoxCameraMath.PanBoundsFor(55f, 14f, 8.2f, 0f);
+            Assert.LessOrEqual(corner.x, close.x + 1e-4f);
         }
 
         /// <summary>The user saw "only a piece of the tank": for every pose, the moments' included, nothing of the box or the shelf row on screen is in front of the near plane.</summary>
@@ -158,6 +159,42 @@ namespace AquariumCiv.View.Tests
                         }
         }
 
+        /// <summary>#273: with the pivot at each wall (the hard stop, every corner too) the near plane never cuts a pane, at close, mid and far distance and the whole yaw / pitch range.</summary>
+        [Test]
+        public void Near_NeverCutsAPane_WithThePivotAtEachWall()
+        {
+            float tan = Mathf.Tan(11f * Mathf.Deg2Rad), hx = Land.HX + BoxCameraMath.HullSide, hz = Land.HZ + BoxCameraMath.HullSide;
+            var stop = BoxCameraMath.PanHardStop;
+            int checkedPoints = 0;
+            foreach (float dist in new[] { 8.2f, 12f, 20f, 41f })
+                foreach (float yaw in new[] { -30f, -10f, 0f, 28f, 55f })
+                    foreach (float pitch in new[] { 14f, 24f, 34f, 60f })
+                        foreach (var pivot in new[] { new Vector3(stop.x, 0f, 0f), new Vector3(-stop.x, 0f, 0f), new Vector3(0f, 0f, stop.y), new Vector3(0f, 0f, -stop.y),
+                                                      new Vector3(stop.x, 0f, stop.y), new Vector3(-stop.x, 0f, -stop.y), new Vector3(stop.x, 0f, -stop.y), new Vector3(-stop.x, 0f, stop.y) })
+                        {
+                            // the camera's own range: the pivot is drawn in to where the pose allows
+                            CameraGlass.PanBoundsFor(yaw, pitch, dist, 0f, Land.HX, Land.HZ, Land.HX + BoxCameraMath.HullSide, Land.HZ + BoxCameraMath.HullSide, BoxCameraMath.ShelfY, Land.GlassTop, out float bbx, out float bbz); // the glass-only range: the worst case
+                            var b = new Vector2(bbx, bbz);
+                            var at = new Vector3(Mathf.Clamp(pivot.x, -b.x, b.x), 0f, Mathf.Clamp(pivot.z, -b.y, b.y));
+                            var rot = Quaternion.Euler(pitch, yaw, 0f);
+                            Vector3 fwd = rot * Vector3.forward, up = rot * Vector3.up, pos = at - fwd * dist;
+                            float near = BoxCameraMath.FitNear(pos, fwd, up, tan);
+                            // every point of the four panes, sampled
+                            for (float u = -1f; u <= 1.001f; u += 0.1f)
+                                for (float y = BoxCameraMath.ShelfY; y <= Land.GlassTop + 0.1f; y += 0.4f)
+                                    foreach (var w in new[] { new Vector3(u * hx, y, -hz), new Vector3(u * hx, y, hz), new Vector3(-hx, y, u * hz), new Vector3(hx, y, u * hz) })
+                                    {
+                                        var d = w - pos;
+                                        float depth = Vector3.Dot(d, fwd);
+                                        if (depth <= BoxCameraMath.NearestPlane) continue;
+                                        if (Mathf.Abs(Vector3.Dot(d, up) / depth) > tan) continue;
+                                        checkedPoints++;
+                                        Assert.GreaterOrEqual(depth, near - 1e-3f, $"pane point {w} dist {dist} yaw {yaw} pitch {pitch} pivot {at}");
+                                    }
+                        }
+            Assert.Greater(checkedPoints, 1000);
+        }
+
         [Test]
         public void Near_StaysTightAroundTheBoxAtTheHomeView()
         {
@@ -170,15 +207,13 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void Pan_RubberBand_PastTheBound()
         {
-            float b = BoxCameraMath.PanBounds(0.3f).x;
-            Assert.AreEqual(1f, BoxCameraMath.SoftStep(0f, 1f, -b, b, BoxCameraMath.PanSoftRange), 1e-5f, "inside the bound it follows the fingers");
-            float over = BoxCameraMath.SoftStep(b, 0.5f, -b, b, BoxCameraMath.PanSoftRange);
-            Assert.Greater(over, b); Assert.Less(over, b + 0.5f, "past the bound it gives less than the fingers moved");
-            // At the full box (bound 0) a long pan only stretches the band a little.
-            float v = 0f;
-            for (int i = 0; i < 60; i++) v = BoxCameraMath.SoftStep(v, 0.05f, 0f, 0f, BoxCameraMath.PanSoftRange);
-            Assert.Less(v, 1.2f, "3 units of drag move it by about one");
-            Assert.Greater(v, 0f);
+            float b = BoxCameraMath.PanBounds(0.3f).x, stop = BoxCameraMath.PanHardStop.x;
+            Assert.AreEqual(1f, BoxCameraMath.GlassStep(0f, 1f, -b, b), 1e-5f, "inside the bound it follows the fingers");
+            float over = BoxCameraMath.GlassStep(b, 0.05f, -b, b);
+            Assert.Greater(over, b); Assert.Less(over, b + 0.05f, "past the bound it gives less than the fingers moved");
+            float v = b;
+            for (int i = 0; i < 200; i++) v = BoxCameraMath.GlassStep(v, 0.05f, -b, b);
+            Assert.Less(v, stop, "a long drag never reaches the glass");
         }
 
         [Test]

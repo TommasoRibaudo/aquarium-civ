@@ -1,0 +1,2 @@
+[budget] BEFORE (all dirty chunks + AO per refresh): frames 1069, frames with a rebuild 4, worst 23,1 ms (while the finger was down 23,1), p95 0,0 ms, p99 0,0 ms, total 72 ms, ChunkBuilds 12
+[budget] AFTER (deferred AO, 1 chunk a frame): frames 1041, frames with a rebuild 52, worst 6,7 ms (while the finger was down 6,2), p95 0,0 ms, p99 5,6 ms, total 245 ms, ChunkBuilds 60

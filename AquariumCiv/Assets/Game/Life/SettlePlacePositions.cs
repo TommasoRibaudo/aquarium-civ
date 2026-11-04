@@ -227,6 +227,10 @@ namespace AquariumCiv.Life
                 case PlaceKind.TrashHeap:
                     foreach (var t in sim.State.trash) if (t.id == p.index) { x = t.x; z = t.z; return true; }
                     return false;
+                case PlaceKind.Puddle:
+                    if (p.index < 0 || p.index >= SiteMap.N) return false;
+                    x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
+                    return true;
                 case PlaceKind.Nudge:
                     foreach (var n in sim.State.nudges) if (n.id == p.index) { x = n.x; z = n.z; return true; }
                     return false;
@@ -235,6 +239,10 @@ namespace AquariumCiv.Life
                     return true;
                 case PlaceKind.Market:
                     st.MarketCentre(out x, out z);
+                    return true;
+                case PlaceKind.BushCell: // P8 #288
+                    if (p.index < 0 || p.index >= SiteMap.N) return false;
+                    x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
                     return true;
                 case PlaceKind.Glass: return GlassSpot(p.index, out x, out z);
                 case PlaceKind.Relic: return RelicSpot(p.index, out x, out z);
@@ -413,8 +421,10 @@ namespace AquariumCiv.Life
             if (r.id == RelicId.FestivalMask) { st.Fire(out x, out z, out _); return true; }
             if (r.id == RelicId.KeeperDoll && r.buildingId >= 0 && lotOfBuilding.TryGetValue(r.buildingId, out var lot) && !lot.open)
             {
-                x = lot.doorX; z = lot.doorZ; // by the shrine's door
-                return true;
+                // By the shrine's door, but a step out in front of it, not against the wall: the doll in the arms must not clip the
+                // roof or a neighbour's stall (#275).
+                lot.Front(out float fx, out float fz);
+                return ClearPost(lot.doorX + fx * RitualClearance.Margin, lot.doorZ + fz * RitualClearance.Margin, out x, out z);
             }
             float rx = r.x, rz = r.z;
             // No spot of its own, or one in the middle of the green / at the fire (the doll before a shrine, a lens with no
@@ -429,6 +439,18 @@ namespace AquariumCiv.Life
             }
             int c = Walkable(rx, rz);
             if (c < 0) return false;
+            x = SiteMap.CXc(c); z = SiteMap.CZc(c);
+            if (r.id == RelicId.KeeperDoll) return ClearPost(x, z, out x, out z); // #275
+            return true;
+        }
+
+        /// <summary>#275: the nearest walkable post to a point that keeps <see cref="RitualClearance.Margin"/> from every
+        /// building; the point itself (on walkable ground) when there is none (a packed town: better a snug post than none).</summary>
+        bool ClearPost(float wx, float wz, out float x, out float z)
+        {
+            if (RitualClearance.FindPost(st, wx, wz, (px, pz) => { int k = SiteMap.CellAt(px, pz); return k >= 0 && st.WalkCost(k) > 0; }, out x, out z)) return true;
+            int c = Walkable(wx, wz);
+            if (c < 0) { x = z = 0f; return false; }
             x = SiteMap.CXc(c); z = SiteMap.CZc(c);
             return true;
         }

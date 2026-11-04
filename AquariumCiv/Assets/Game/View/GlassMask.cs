@@ -162,6 +162,34 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>#268: marks the texels a wipe stamp here would reach (where it takes a real share off).</summary>
+        public void MarkReach(Vector2 uv, float radius, bool[] reach) => ForDisc(uv, radius, (i, f) => { if (f > 0.1f) reach[i] = true; });
+
+        /// <summary>#268: the grime on texels no stamp reaches, in texel units.</summary>
+        public double GrimeOutside(bool[] reach)
+        {
+            double s = 0;
+            for (int i = 0; i < grime.Length; i++) if (!reach[i]) s += grime[i];
+            return s;
+        }
+
+        /// <summary>#268: clears the grime no stamp reaches (glass off the screen or out of the finger's way), so all the fog left can be
+        /// wiped. Returns what it took, in texel units.</summary>
+        public double ClearOutside(bool[] reach)
+        {
+            double removed = 0;
+            for (int i = 0; i < grime.Length; i++)
+            {
+                if (reach[i] || grime[i] <= 0f) continue;
+                removed += grime[i];
+                grime[i] = 0f;
+            }
+            if (removed <= 0) return 0;
+            sum -= removed;
+            dirty = true;
+            return removed;
+        }
+
         /// <summary>The 8-bit mask bytes for the texture (R8).</summary>
         public void ToBytes(byte[] bytes)
         {

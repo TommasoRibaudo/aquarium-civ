@@ -63,8 +63,9 @@ namespace AquariumCiv.Sim
             var e = State.eco;
             if (e == null || !e.on) return;
             var s = State;
-            if (s.month % 3 != 0) return;
             int season = (int)((s.month / 3 + 3) % 4);
+            EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
+            if (s.month % 3 != 0) return;
             EcoM.Step(season, s.month);
             if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
             EcoTell();
@@ -84,15 +85,25 @@ namespace AquariumCiv.Sim
                 // The signs between the gates (keepers-hands §2.1): small, in the people's words.
                 else if (key == EcoMilestones.FirstGreen)
                     Chronicle("eco_green", "Water fell from above onto the dry ground, and green came up where it fell. The people stood in it.", 0.8f);
+                else if (key == EcoMilestones.RabbitTracks)
+                {
+                    PickRabbitTracks();
+                    Chronicle("eco_tracks", "Small prints crossed the edge of the grass, and stopped at the green. The people crouched over them.", 0.5f);
+                }
                 else if (key == EcoMilestones.FirstRabbit)
+                {
+                    PickRabbitArrival();
                     Chronicle("eco_rabbit", "A rabbit was seen in the grass. Nobody had seen one before.", 0.6f);
+                }
+                else if (key == EcoMilestones.FirstBush)
+                    FirstBushTell(); // P8 #288: the chronicle line and the sign
                 else if (key == EcoMilestones.FirstBird)
                     Chronicle("eco_bird", "A bird came down onto the bushes and sang. The children copied it all day.", 0.6f);
                 EcoMilestone?.Invoke(key);
             }
             foreach (var g in gates)
             {
-                if (g == "camp") Chronicle("eco_camp", "Rabbits ran in the new grass. The people said they could stay and raise more tents.", 0.9f);
+                if (g == "camp") { Chronicle("eco_camp", "Rabbits ran in the new grass. The people said they could stay and raise more tents.", 0.9f); ArmFirstTent(); }
                 else if (g == "village") Chronicle("eco_village", "There was water to stand by and trees to build with. The people began to talk of a village.", 0.9f);
                 EcoGateOpened?.Invoke(g);
             }
@@ -101,19 +112,28 @@ namespace AquariumCiv.Sim
         // ---------- the Keeper's hands ----------
         /// <summary>Mist a spot for <paramref name="seconds"/> (x, z in box units). The land reacts at once: the ground wets,
         /// the air gets a little humid, and every cell the core of the mist reaches turns to grass now. Returns those cells
-        /// (also raised as <see cref="EcoGreened"/>); empty when the ecology is off. Counts as a Keeper action.</summary>
-        public IReadOnlyList<int> Mist(float x, float z, float seconds)
+        /// (also raised as <see cref="EcoGreened"/>); empty when the ecology is off. Counts as a Keeper action. <paramref name="holdSeconds"/> (#266 view): how long a finger has lingered there, when the mist comes in short pulses; it sets the reach and the puddles while <paramref name="seconds"/> sets the wetting (default: the same as seconds).</summary>
+        public IReadOnlyList<int> Mist(float x, float z, float seconds, float holdSeconds = -1f)
         {
             var none = Array.Empty<int>();
             if (!EcologyOn || seconds <= 0f) return none;
             var cfg = Config.eco ?? (Config.eco = new EcoTuning());
             float amount = Math.Min(cfg.mistMaxAmount, seconds / cfg.mistSecondsPerUnit);
             var greened = new List<int>();
-            EcoM.Mist(x, z, amount, State.month, greened);
+            float holdAmount = holdSeconds < 0f ? -1f : Math.Min(cfg.mistMaxAmount, holdSeconds / cfg.mistSecondsPerUnit);
+            EcoM.Mist(x, z, amount, State.month, greened, holdAmount);
             CountKeeperAction(KeeperAction.Mist, true);
             EcoTell();
             if (greened.Count > 0) EcoGreened?.Invoke(greened);
             return greened;
+        }
+
+        /// <summary>How far a mist held for <paramref name="seconds"/> reaches (box units): about 0.7 for a short one, growing to
+        /// 1.0 at the full hold. The view sizes its spray by this.</summary>
+        public float EcoMistRadius(float seconds)
+        {
+            var cfg = Config.eco ?? (Config.eco = new EcoTuning());
+            return EcologyOn ? EcoM.MistRadius(Math.Min(cfg.mistMaxAmount, Math.Max(0f, seconds) / cfg.mistSecondsPerUnit)) : 0f;
         }
 
         /// <summary>The seed is unlocked (the first bushes came after the camp) and no tree stands yet.</summary>
@@ -148,6 +168,16 @@ namespace AquariumCiv.Sim
 
         /// <summary>The water table, in terrain height units (0 when the ecology is off).</summary>
         public float EcoTable => EcologyOn ? State.eco.table : 0f;
+        /// <summary>The water table scaled for sound: 0 at its start (below the lowest ground) to 1 at the flood line (the main hollow's spill); 0 when off.</summary>
+        public float EcoTable01
+        {
+            get
+            {
+                if (!EcologyOn) return 0f;
+                float start = EcoM.land.minHeight - (Config.eco ?? new EcoTuning()).tableStartBelow, top = EcoM.land.FloodLine;
+                return top > start ? Math.Max(0f, Math.Min(1f, (State.eco.table - start) / (top - start))) : 0f;
+            }
+        }
         /// <summary>The pond's level (the water table's peak, capped at the spill); -1000 until water surfaces.</summary>
         public float EcoPondLevel => EcologyOn ? State.eco.pondLevel : -1000f;
         /// <summary>The flood line: the main hollow's spill level (the people never build below it).</summary>
@@ -176,6 +206,23 @@ namespace AquariumCiv.Sim
         /// <summary>The game month a milestone was reached (an <see cref="EcoMilestones"/> key), or -1.</summary>
         public long EcoMilestoneMonth(string key) => EcologyOn ? State.eco.MonthOf(key) : -1;
 
+        // ---- the wet area, shoots and puddles (#266 sim half; the view draws them) ----
+        /// <summary>How wet the ground looks at a site cell, 0..1 (the mist's wet area; dries over a few game months). 0 when off.</summary>
+        public float EcoWetAt(int cell) => EcologyOn && State.eco.wet != null && cell >= 0 && cell < EcoLand.N ? State.eco.wet[cell] : 0f;
+        /// <summary>The whole wet layer (site cells, 0..1), or null when the ecology is off. Read only.</summary>
+        public IReadOnlyList<float> EcoWet => EcologyOn ? State.eco.wet : null;
+        /// <summary>Shoots on bare ground at a cell, 0..1 (1 turns to grass); 0 where the ground is covered.</summary>
+        public float EcoSproutAt(int cell) => EcologyOn && State.eco.sprout != null && cell >= 0 && cell < EcoLand.N ? State.eco.sprout[cell] : 0f;
+        /// <summary>Water standing at a cell, 0..1.</summary>
+        public float EcoPuddleAt(int cell) => EcologyOn && State.eco.puddle != null && cell >= 0 && cell < EcoLand.N ? State.eco.puddle[cell] : 0f;
+        /// <summary>Fills <paramref name="into"/> with the cells holding a puddle of at least <paramref name="minStrength"/>, strongest first.</summary>
+        public void EcoPuddleCells(List<int> into, float minStrength = 0.05f) { if (EcologyOn) EcoM.PuddleCells(into, minStrength); else into.Clear(); }
+        public bool EcoHasPuddles { get { if (!EcologyOn || State.eco.puddle == null) return false; foreach (var p in State.eco.puddle) if (p >= Config.eco.puddleDrinkAt) return true; return false; } }
+        /// <summary>The nearest puddle worth drinking from (a water source while there is no pond; #267 uses it), or -1.</summary>
+        public int EcoNearestPuddle(float x, float z, float reach = 99f) => EcologyOn ? EcoM.NearestPuddle(x, z, reach) : -1;
+        /// <summary>Someone drinks from a puddle: it shrinks. Returns what was drawn.</summary>
+        public float EcoDrawPuddle(int cell, float amount) => EcologyOn ? EcoM.DrawPuddle(cell, amount) : 0f;
+
         /// <summary>The Keeper's tree and what it needs.</summary>
         public EcoTreeInfo EcoTree
         {
@@ -196,6 +243,16 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- debug (for the debug panel; CLAUDE.md "debug panel stays current") ----------
+        /// <summary>Debug ("mist big here"): a full-length mist at (x, z), through the same path as a held finger.</summary>
+        public IReadOnlyList<int> DebugMistBig(float x, float z)
+        {
+            var cfg = Config.eco ?? (Config.eco = new EcoTuning());
+            return Mist(x, z, cfg.mistMaxAmount * cfg.mistSecondsPerUnit);
+        }
+
+        /// <summary>Debug ("puddles now"): soak the ground round (x, z) so wet ground and puddles show. Returns the puddle cells made.</summary>
+        public int DebugPuddlesNow(float x, float z, float radius = 0.9f) => EcologyOn ? EcoM.DebugPuddles(x, z, radius) : 0;
+
         /// <summary>Debug: open the camp gate now, whatever the meadow says.</summary>
         public bool DebugOpenCampGate()
         {

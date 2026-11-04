@@ -1,8 +1,10 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Sim;
+using AquariumCiv.View.Shaping;
 using AquariumCiv.View.ShowMe;
 using NUnit.Framework;
 using UnityEngine;
@@ -73,6 +75,71 @@ namespace AquariumCiv.View.PlayTests
             StringAssert.Contains("Bright One", Sim.RelicLabel(RelicId.SkyCrumb));
             Assert.IsFalse(Sim.FindRelic(RelicId.SkyCrumb).cause == "rain" && Sim.RelicLabel(RelicId.SkyCrumb).Contains("trees"), "the label names the real shaping");
             AssertNoErrors("crumb drop");
+        }
+
+        /// <summary>#210 #211: small square bits of cookie (dough, a few choc chips) break off where the lump hits the glass, fall off it
+        /// speeding up, scatter on the ground, flatten a little, rest, and are gone. Shots at default zoom and close.</summary>
+        [UnityTest, Timeout(90000)]
+        public IEnumerator TheBitsFallOffTheGlassScatterAndGo()
+        {
+            yield return Grown();
+            var cam = Camera.main.GetComponent<BoxCamera>();
+            yield return Drop();
+            yield return Until(() => Props.CrumbBitsSeconds >= 0f, 3f);
+            Assert.GreaterOrEqual(Props.CrumbBitsSeconds, 0f, "bits break off at the hit");
+            var bits = Props.CrumbBits;
+            var parts = Props.CrumbBitParts;
+            Assert.AreEqual(CrumbFall.BitCount, parts.Length);
+            int chips = bits.Count(b => b.kind == CrumbFall.BitKind.Chip);
+            Assert.That(chips, Is.InRange(1, bits.Length / 2 - 1), "a few choc chips, mostly dough");
+            // Every chip's mesh is darker than every dough bit's: two kinds you can tell apart.
+            float Dark(int i) { var c = parts[i].GetComponent<MeshFilter>().sharedMesh.colors; return c.Length == 0 ? 1f : c.Average(x => x.r + x.g + x.b); }
+            float chipMax = Enumerable.Range(0, bits.Length).Where(i => bits[i].kind == CrumbFall.BitKind.Chip).Max(Dark);
+            float doughMin = Enumerable.Range(0, bits.Length).Where(i => bits[i].kind == CrumbFall.BitKind.Dough).Min(Dark);
+            Assert.Less(chipMax, doughMin * 0.5f, "choc chips read dark against the dough");
+            yield return Shot("210-bits-on-glass-default");
+            // The fall: sample one bit's height while it drops; it drops faster at the end than at the start.
+            int k = Enumerable.Range(0, bits.Length).OrderByDescending(i => bits[i].cling).First();
+            var heights = new List<(float t, float y)>();
+            float until = Time.realtimeSinceStartup + 2f;
+            while (Time.realtimeSinceStartup < until && Props.CrumbBitsSeconds >= 0f && Props.CrumbBitsSeconds < bits[k].landAt + 0.05f)
+            {
+                heights.Add((Props.CrumbBitsSeconds, parts[k].localPosition.y));
+                yield return null;
+            }
+            var falling = heights.Where(h => h.t > bits[k].cling && h.t < bits[k].landAt).ToList();
+            Debug.Log($"[crumb bits] bit {k}: {falling.Count} frames falling, {string.Join(" ", falling.Select(h => $"{h.t:0.00}:{h.y:0.000}"))}");
+            Assert.GreaterOrEqual(falling.Count, 4, "seen falling over a few frames");
+            float v0 = (falling[0].y - falling[1].y) / Mathf.Max(1e-4f, falling[1].t - falling[0].t);
+            float v1 = (falling[falling.Count - 2].y - falling[falling.Count - 1].y) / Mathf.Max(1e-4f, falling[falling.Count - 1].t - falling[falling.Count - 2].t);
+            Assert.Greater(v1, v0 * 1.5f, "it speeds up as it falls: gravity, not a constant drift");
+            // Down: they scatter from where they landed, and sit flattened on the ground.
+            float last = bits.Max(b => b.landAt);
+            yield return Until(() => Props.CrumbBitsSeconds > last + 0.1f, 3f);
+            var landed = parts.Select(p => new Vector2(p.localPosition.x, p.localPosition.z)).ToList();
+            yield return Shot("210-bits-scatter-default");
+            yield return Until(() => Props.CrumbBitsSeconds > last + 1f, 3f);
+            var rest = parts.Select(p => new Vector2(p.localPosition.x, p.localPosition.z)).ToList();
+            var box = Object.FindAnyObjectByType<BoxView>();
+            int moved = 0;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if ((rest[i] - landed[i]).magnitude > 0.01f) moved++;
+                Assert.Less(parts[i].localScale.y, parts[i].localScale.x * 0.8f, "flattened where it landed: its smear");
+                float ground = box.land.OnGround(parts[i].localPosition.x, parts[i].localPosition.z).y;
+                Assert.AreEqual(ground + parts[i].localScale.y * 0.5f, parts[i].localPosition.y, 0.01f, "on the ground");
+            }
+            Assert.GreaterOrEqual(moved, parts.Length / 2, "they scatter after landing");
+            yield return Shot("210-bits-rest-default");
+            var mid = parts.Aggregate(Vector3.zero, (s, p) => s + p.localPosition) / parts.Length;
+            cam.EaseTo(box.transform.TransformPoint(mid), cam.yaw, 40f, cam.minZoom, 0.05f);
+            yield return new WaitForSecondsRealtime(0.4f);
+            yield return Shot("210-bits-rest-close");
+            // Rest, fade, gone: nothing left over.
+            yield return Until(() => Props.CrumbBitsSeconds < 0f, CrumbFall.RestSeconds + CrumbFall.FadeSeconds + 3f);
+            Assert.Less(Props.CrumbBitsSeconds, 0f, "the bits are done");
+            Assert.IsTrue(parts.All(p => !p.gameObject.activeSelf), "and gone");
+            AssertNoErrors("crumb bits");
         }
 
         [UnityTest, Timeout(60000)]

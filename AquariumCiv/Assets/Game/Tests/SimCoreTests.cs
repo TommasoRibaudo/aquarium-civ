@@ -210,7 +210,9 @@ namespace AquariumCiv.Tests
             sw.Stop();
             TestContext.WriteLine($"a week away: {sim.State.month} months in {sw.ElapsedMilliseconds} ms");
             // Shared CI runners are slow and noisy (it took 2.15 s there twice on 2026-11-03): a looser bound on CI, the real one here.
-            bool ci = System.Environment.GetEnvironmentVariable("CI") == "true" || System.Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true";
+            // The Unity container on CI doesn't get CI/GITHUB_ACTIONS: its working folder (/github/workspace) gives it away.
+            bool ci = System.Environment.GetEnvironmentVariable("CI") == "true" || System.Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true"
+                || System.Environment.CurrentDirectory.StartsWith("/github/");
             Assert.Less(sw.ElapsedMilliseconds, ci ? 8000 : 2000);
         }
     }

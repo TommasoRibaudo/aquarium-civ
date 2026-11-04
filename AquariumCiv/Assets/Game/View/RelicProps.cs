@@ -35,6 +35,16 @@ namespace AquariumCiv.View
         float crumbDrop = -1f, crumbArrival, lensYaw;
         bool crumbPlanned, crumbHit;
         CrumbFall.Plan crumbPlan;
+        // #210 #211: the bits knocked off at the glass: they fall off it, scatter, rest and go.
+        CrumbFall.Bit[] crumbBits;
+        Transform[] crumbBitParts;
+        float crumbBitsT = -1f, crumbBitGround;
+        static Mesh doughMesh, chipMesh;
+        /// <summary>Seconds since the lump hit the glass while its bits are out, or -1 (tests).</summary>
+        public float CrumbBitsSeconds => crumbBitsT;
+        /// <summary>The bits' plan and their transforms while they're out (tests).</summary>
+        public CrumbFall.Bit[] CrumbBits => crumbBits;
+        public Transform[] CrumbBitParts => crumbBitParts;
         /// <summary>Tester-free clock of the drop: seconds in, or -1 when nothing's falling (tests, the debug panel).</summary>
         public float CrumbDropSeconds => crumbDrop;
         public CrumbFall.Plan CrumbPlan => crumbPlan;
@@ -54,6 +64,7 @@ namespace AquariumCiv.View
             root = null;
             made.Clear();
             crumbPiece = null;
+            crumbBitParts = null; crumbBits = null; crumbBitsT = -1f;
         }
 
         static void Kill(Object o) { if (o == null) return; if (Application.isPlaying) Destroy(o); else DestroyImmediate(o); }
@@ -88,6 +99,7 @@ namespace AquariumCiv.View
                 var at = box.land.OnGround(cx, cz);
                 bool falling = crumbDrop >= 0f;
                 if (falling) Fall(sim, crumb, cx, cz, dt, ref at);
+                Bits(dt);
                 big.localPosition = at;
                 big.localScale = new Vector3(s, s * (falling ? 1f : 0.92f), s) * CrumbScale;
                 if (crumbPiece == null) crumbPiece = Part("SkyCrumb_LastPiece", BuildCrumbPiece);
@@ -165,6 +177,11 @@ namespace AquariumCiv.View
                 crumbHit = true;
                 Sfx.Play(CueLibrary.Thump);
                 care?.Smudge(crumbPlan.wall, new Vector3(crumbPlan.hitX, ground + crumbPlan.hitY, crumbPlan.hitZ), crumbPlan.smudgeRadius, crumbPlan.smudgeStrength);
+                // #210: bits break off where it hit; they cling to the glass, fall off it and scatter.
+                crumbBits = CrumbFall.Bits(crumbPlan, sim.State.seed);
+                crumbBitsT = crumbDrop - crumbPlan.hitAt;
+                crumbBitGround = ground;
+                MakeBits();
             }
             if (crumbDrop >= crumbPlan.landAt)
             {
@@ -176,6 +193,67 @@ namespace AquariumCiv.View
 
         /// <summary>How far the falling lump's middle keeps from the glass.</summary>
         const float CrumbClear = 0.3f;
+
+        void MakeBits()
+        {
+            if (crumbBitParts == null)
+            {
+                if (doughMesh == null) doughMesh = BitMesh("CrumbBit_Dough", BuildDoughBit);
+                if (chipMesh == null) chipMesh = BitMesh("CrumbBit_Chip", BuildChipBit);
+                crumbBitParts = new Transform[CrumbFall.BitCount];
+                for (int i = 0; i < crumbBitParts.Length; i++)
+                {
+                    var go = new GameObject("SkyCrumb_Bit" + i) { hideFlags = HideFlags.DontSave };
+                    go.transform.SetParent(root, false);
+                    go.AddComponent<MeshFilter>();
+                    var r = go.AddComponent<MeshRenderer>();
+                    r.sharedMaterial = box.SolidMaterial;
+                    r.shadowCastingMode = ShadowCastingMode.Off; // a few pixels: a shadow only adds noise
+                    crumbBitParts[i] = go.transform;
+                }
+            }
+            for (int i = 0; i < crumbBitParts.Length; i++)
+            {
+                crumbBitParts[i].GetComponent<MeshFilter>().sharedMesh = crumbBits[i].kind == CrumbFall.BitKind.Chip ? chipMesh : doughMesh;
+                crumbBitParts[i].gameObject.SetActive(true);
+            }
+        }
+
+        /// <summary>#210: one frame of the bits: off the glass with gravity, the scatter and the smear, the rest, the fade.</summary>
+        void Bits(float dt)
+        {
+            if (crumbBitsT < 0f || crumbBits == null || crumbBitParts == null) return;
+            crumbBitsT += dt;
+            float halfW = Land.HX, halfD = Land.HZ;
+            if (CareView.Instance != null) CareView.Instance.Walls(out halfW, out halfD, out _);
+            bool done = crumbBitsT >= CrumbFall.BitsDone(crumbBits);
+            for (int i = 0; i < crumbBitParts.Length; i++)
+            {
+                var t = crumbBitParts[i];
+                CrumbFall.BitAt(crumbBits[i], crumbBitsT, halfW, halfD, out float x, out float y, out float z, out float flat, out float scale, out float yaw);
+                bool on = !done && scale > 0.01f;
+                if (t.gameObject.activeSelf != on) t.gameObject.SetActive(on);
+                if (!on) continue;
+                float s = crumbBits[i].size * scale;
+                bool down = crumbBitsT >= crumbBits[i].landAt;
+                // On the glass and falling it counts from the lump's ground; once down it sits on the ground where it is.
+                float here = box.land.OnGround(x, z).y;
+                float gy = down ? here : Mathf.Max(crumbBitGround, here);
+                t.localPosition = new Vector3(x, gy + y + s * flat * 0.5f, z);
+                t.localRotation = Quaternion.Euler(down ? 0f : yaw * 0.5f, yaw, 0f);
+                t.localScale = new Vector3(s, s * flat, s);
+            }
+            if (done) crumbBitsT = -1f;
+        }
+
+        static Mesh BitMesh(string name, System.Action<MeshBuilder> build)
+        {
+            var mb = new MeshBuilder(name.GetHashCode()) { jitter = 0.06f };
+            build(mb);
+            var mesh = mb.ToMesh(name);
+            mesh.hideFlags = HideFlags.DontSave;
+            return mesh;
+        }
 
         Transform Ensure(string id, System.Action<MeshBuilder> build)
         {
@@ -203,6 +281,22 @@ namespace AquariumCiv.View
         // ---------------- meshes ----------------
         /// <summary>The bread's colours: a baked crust, its darker top, and the pale torn inside.</summary>
         static readonly Color Crust = new(0.73f, 0.45f, 0.2f), CrustTop = new(0.58f, 0.33f, 0.14f);
+        /// <summary>#211: a cookie's dough and its choc chips.</summary>
+        static readonly Color Dough = new(0.86f, 0.64f, 0.36f), DoughLight = new(0.93f, 0.76f, 0.5f), Choc = new(0.23f, 0.13f, 0.08f);
+
+        /// <summary>#210 #211: a crumb of dough, a unit cube knocked a little out of square (a corner chipped off another way).</summary>
+        static void BuildDoughBit(MeshBuilder mb)
+        {
+            mb.Box(Vector3.zero, new Vector3(1f, 1f, 0.92f), Dough, null, true);
+            mb.Box(new Vector3(0.28f, 0.3f, -0.22f), new Vector3(0.5f, 0.42f, 0.5f), DoughLight, Quaternion.Euler(0f, 18f, 0f), true);
+        }
+
+        /// <summary>#211: a choc chip, a dark square chunk.</summary>
+        static void BuildChipBit(MeshBuilder mb)
+        {
+            mb.Box(Vector3.zero, new Vector3(1f, 0.9f, 1f), Choc, null, true);
+            mb.Box(new Vector3(0f, 0.45f, 0f), new Vector3(0.6f, 0.2f, 0.6f), Choc, Quaternion.Euler(0f, 45f, 0f), true);
+        }
 
         /// <summary>A heel of bread the size of a hut (#147): a domed crust over a flat foot, three slashes in the top, and the torn pale end where it broke off, with loose crumbs round it.</summary>
         static void BuildCrumb(MeshBuilder mb)
@@ -213,9 +307,12 @@ namespace AquariumCiv.View
             var slash = Quaternion.Euler(0f, 24f, 0f);
             foreach (float x in new[] { -0.12f, 0f, 0.12f })
                 mb.Box(new Vector3(x, 0.214f, 0f), new Vector3(0.022f, 0.012f, 0.17f), Palette.Canvas, slash, true);
-            mb.Ico(new Vector3(0.3f, 0.015f, 0.08f), 0.025f, Vector3.one, Palette.Canvas, 0.3f);
-            mb.Ico(new Vector3(-0.26f, 0.012f, -0.15f), 0.02f, Vector3.one, Crust, 0.3f);
-            mb.Ico(new Vector3(0.28f, 0.01f, -0.11f), 0.016f, Vector3.one, Crust, 0.3f);
+            // #211: choc chips set in the crust; the loose crumbs round it are square bits of dough and chip (#210)
+            foreach (var (x, z) in new[] { (-0.2f, 0.07f), (0.05f, -0.08f), (-0.05f, 0.1f), (0.14f, 0.06f) })
+                mb.Box(new Vector3(x, 0.205f - 0.6f * x * x, z), new Vector3(0.03f, 0.022f, 0.03f), Choc, Quaternion.Euler(0f, 370f * x, 0f));
+            mb.Box(new Vector3(0.3f, 0.012f, 0.08f), new Vector3(0.026f, 0.024f, 0.026f), Dough, Quaternion.Euler(0f, 20f, 0f), true);
+            mb.Box(new Vector3(-0.26f, 0.01f, -0.15f), new Vector3(0.022f, 0.02f, 0.022f), Dough, Quaternion.Euler(0f, 55f, 0f), true);
+            mb.Box(new Vector3(0.28f, 0.009f, -0.11f), new Vector3(0.018f, 0.018f, 0.018f), Choc, Quaternion.Euler(0f, 10f, 0f), true);
         }
 
         /// <summary>The last piece of sky bread on a flat stone by the fire.</summary>

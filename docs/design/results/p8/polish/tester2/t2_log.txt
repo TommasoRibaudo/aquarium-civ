@@ -1,0 +1,189 @@
+01:22:20 [y0.00 m0 Winter h9.1] OPEN ecology True step Arrive roots AudioDirector,Book,Box,BoxCompleteController,CardStackView,EveningTalk,FeedbackUI,FirstRunView,GameClock,GameHud,Main Camera,MomentPlayer,MusicDirector,PostFX,RecallPromptView,Sun meshes 390 generated 1
+01:22:23 [y0.00 m0 Winter h9.3] SHOT t2_01_fogged_glass
+01:22:24 [y0.00 m0 Winter h9.3] wipe pass 0: grime 0.000 panes 0,000 0,000 0,000 0,000 yaw 28.0->28.0 pitch 34.0->34.0
+01:22:24 [y0.00 m0 Winter h9.3] SHOT t2_02_wipe_pass0
+01:22:24 [y0.00 m0 Winter h9.4] after wipe step Rain hint 
+01:22:26 [y0.00 m0 Winter h9.5] SHOT t2_03_mist_step_barren
+01:22:26 [y0.00 m0 Winter h9.5] mist warmed up True
+01:22:27 [y0.00 m0 Winter h9.5] FRAMES first-run mist hold (first spray): 60 frames, median 6.6 ms, p95 7.7, max 30.1 at #59, >33ms 0, >50ms 0
+01:22:27 [y0.00 m0 Winter h9.5] first mist: step Name, green near 0->26, wet near 0->159, pulses 1, wet cells shown 225, audio: [Audio] discovery: Sfx/Care/maximize_003 vol 0,25 pitch 1,00
+01:22:28 [y0.00 m0 Winter h9.5] SHOT t2_04_first_mist_after
+01:22:31 [y0.00 m0 Winter h9.8] SHOT t2_05_name_step
+01:22:32 [y0.00 m0 Winter h9.8] name sheet open True
+01:22:32 [y0.00 m0 Winter h9.8] SHOT t2_06_name_sheet
+01:22:32 [y0.00 m0 Winter h9.8] TEXT toast: Welcome to Sunnyglen.
+01:22:35 [y0.00 m0 Winter h10.0] named 'Sunnyglen', run active False, kit True | era Camp pop 5 bare 1.00 bushes 0 tree -1 rabbits sim 0/shown 0 tracks False hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[gatherer,toolmaker] open[gatherer,toolmaker] puddles 0 newgrass 22
+01:22:35 [y0.00 m0 Winter h10.0] SHOT t2_07_after_first_run
+01:22:35 [y0.00 m0 Winter h10.0] SHOT t2_08_kit_sheet
+01:22:35 [y0.00 m0 Winter h10.0] TEXT toast: Hold a finger over the land to mist it. Two fingers move the view.
+01:22:36 [y0.00 m0 Winter h10.1] hand Mister kit button 'Done'
+01:22:37 [y0.00 m0 Winter h10.2] kit mist (-1.2,0.4): green 0->32 wet 0->187
+01:22:38 [y0.00 m0 Winter h10.2] kit mist (0.6,0.9): green 0->32 wet 29->201
+01:22:40 [y0.00 m0 Winter h10.3] kit mist (-0.2,-1.2): green 0->32 wet 26->201
+01:22:41 [y0.00 m0 Winter h10.4] kit mist (1.4,0.2): green 16->48 wet 112->219
+01:22:42 [y0.00 m0 Winter h10.4] SHOT t2_09_kit_spray_mid
+01:22:47 [y0.00 m0 Winter h10.8] FRAMES kit 6 s hold (puddles 0->10): 717 frames, median 7.4 ms, p95 12.4, max 22.0 at #22, >33ms 0, >50ms 0
+01:22:48 [y0.00 m0 Winter h10.8] SHOT t2_10_kit_after_puddles_default
+01:22:50 [y0.00 m0 Winter h10.9] SHOT t2_11_puddles_close
+01:22:51 [y0.00 m0 Winter h11.0] TEXT toast: Nothing to clean right now.
+01:22:51 [y0.00 m0 Winter h11.0] cloth: clean mode True grime 0.000 panes 0,000 0,000 0,000 0,000
+01:22:51 [y0.00 m0 Winter h11.0] SHOT t2_12_cloth_in_hand
+01:22:52 [y0.00 m0 Winter h11.1] cloth after strokes: grime 0.000 panes 0,000 0,000 0,000 0,000 yaw 28.0->28.0
+01:22:52 [y0.00 m0 Winter h11.1] SHOT t2_13_cloth_after
+01:22:52 [y0.00 m0 Winter h11.1] cloth down: clean mode False
+01:22:52 [y0.00 m0 Winter h11.1] errors at first session: 0 
+01:22:52 [y0.00 m0 Winter h11.1] TIME START meshes 393 roots AudioDirector,Book,Box,BoxCompleteController,CardStackView,ChatterMarks,EveningTalk,FeedbackUI,FirstRunView,GameClock,GameHud,Main Camera,MomentPlayer,MusicDirector,PostFX,RecallPromptView,Sun | era Camp pop 5 bare 0.99 bushes 0 tree -1 rabbits sim 0/shown 0 tracks False hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[gatherer,toolmaker] open[gatherer,toolmaker] puddles 10 newgrass 118
+01:22:59 [y0.50 m6 Summer h11.5] season 2: era Camp pop 5 bare 0.91 bushes 0 tree -1 rabbits sim 0/shown 0 tracks True hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[gatherer,toolmaker] open[gatherer,toolmaker] puddles 8 newgrass 413
+01:22:59 [y0.50 m6 Summer h11.5] BEAT tracks | era Camp pop 5 bare 0.91 bushes 0 tree -1 rabbits sim 0/shown 0 tracks True hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[gatherer,toolmaker] open[gatherer,toolmaker] puddles 8 newgrass 413
+01:23:00 [y0.50 m6 Summer h11.6] SHOT t2_14_tracks_default
+01:23:07 [y1.00 m12 Winter h12.0] season 4: era Camp pop 5 bare 0.90 bushes 0 tree -1 rabbits sim 0/shown 0 tracks True hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[gatherer,toolmaker] open[gatherer,toolmaker] puddles 8 newgrass 418
+01:23:14 [y1.50 m18 Summer h12.3] season 6: era Camp pop 5 bare 0.89 bushes 0 tree -1 rabbits sim 3/shown 3 tracks True hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 491
+01:23:14 [y1.50 m18 Summer h12.3] BEAT rabbits shown 3 sign True | era Camp pop 5 bare 0.89 bushes 0 tree -1 rabbits sim 3/shown 3 tracks True hides 0/0 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 491
+01:23:16 [y1.50 m18 Summer h9.1] SHOT t2_15_rabbits_default
+01:23:17 [y1.50 m18 Summer h9.2] SHOT t2_16_rabbit_close
+01:23:17 [y2.50 m30 Summer h9.2] AWAY 1h for fresh green: away 1.00 h → lived 1.00 h (12 months) · year 2.5 · mess 0.04
+01:23:18 [y2.50 m30 Summer h9.2] BEAT fresh green: new cells sim 27 shown 194
+01:23:18 [y2.50 m30 Summer h9.2] SHOT t2_17_fresh_green_t0
+01:24:18 [y2.50 m30 Summer h12.6] fresh green +60s: shown 194 landSeconds 61
+01:24:18 [y2.50 m30 Summer h12.6] SHOT t2_18_fresh_green_t60
+01:26:18 [y2.50 m30 Summer h18.9] fresh green +180s: shown 194 landSeconds 181
+01:26:18 [y2.50 m30 Summer h18.9] SHOT t2_19_fresh_green_t180
+01:26:36 [y2.50 m30 Summer h16.4] SHOT t2_20_hunt_stalk_default
+01:26:40 [y2.50 m30 Summer h19.0] HUNT watch: hides 1->1, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:26:47 [y3.00 m36 Winter h19.4] season 8: era Camp pop 5 bare 0.86 bushes 0 tree -1 rabbits sim 4/shown 4 tracks False hides 4/4 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:27:00 [y3.00 m36 Winter h13.9] SHOT t2_21_hunt_stalk_default
+01:27:10 [y3.00 m36 Winter h19.0] HUNT watch: hides 4->4, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:27:17 [y3.50 m42 Summer h19.4] season 10: era Camp pop 5 bare 0.84 bushes 0 tree -1 rabbits sim 5/shown 5 tracks False hides 6/6 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:27:19 [y3.58 m43 Summer h8.3] SHOT t2_22_hunt_stalk_default
+01:27:39 [y3.58 m43 Summer h19.0] HUNT watch: hides 6->6, stalk True, spear True, phases [ToFire,WalkOut,Stalk,CarryBack,Skin,Cook,Return], hunts today 1
+01:27:43 [y3.83 m46 Autumn h8.6] BEAT berries: dots 7 bushes with berries 1 | era Camp pop 5 bare 0.83 bushes 1 tree -1 rabbits sim 6/shown 6 tracks False hides 6/6 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:27:44 [y3.83 m46 Autumn h8.6] SHOT t2_23_berries_default
+01:28:44 [y3.83 m46 Autumn h11.0] berries picks 0 pick cell -1 is a bush False last pick cell -1
+01:28:47 [y4.08 m49 Winter h11.2] season 12: era Camp pop 5 bare 0.83 bushes 1 tree -1 rabbits sim 7/shown 7 tracks False hides 7/7 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:28:47 [y4.08 m49 Winter h11.2] BEAT first bush sign: playing False pointer crowd 1 | era Camp pop 5 bare 0.83 bushes 1 tree -1 rabbits sim 7/shown 7 tracks False hides 7/7 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:28:47 [y4.08 m49 Winter h11.2] SHOT t2_24_first_bush_bird
+01:28:49 [y4.08 m49 Winter h7.7] SHOT t2_25_hunt_stalk_default
+01:29:10 [y4.08 m49 Winter h19.0] HUNT watch: hides 7->7, stalk True, spear True, phases [TakeSpear,WalkOut,Stalk,CarryBack,Skin,Cook,Return,Bolt,WalkBack], hunts today 2
+01:29:11 [y4.08 m49 Winter h11.1] winter berries dots 0 with berries 0
+01:29:11 [y4.08 m49 Winter h11.1] SHOT t2_26_winter_bushes
+01:29:18 [y4.58 m55 Summer h11.5] season 14: era Camp pop 6 bare 0.80 bushes 1 tree -1 rabbits sim 9/shown 9 tracks False hides 7/7 gate False tent1 False bldg 2 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:29:33 [y4.58 m55 Summer h15.0] SHOT t2_27_hunt_stalk_default
+01:29:40 [y4.58 m55 Summer h19.0] HUNT watch: hides 7->7, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Bolt,WalkBack,Return], hunts today 1
+01:29:43 [y4.83 m58 Autumn h19.2] BEAT first tent raised (sim) raisings started 1 moments 1 | era Camp pop 6 bare 0.80 bushes 2 tree -1 rabbits sim 10/shown 10 tracks False hides 5/7 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:29:43 [y4.83 m58 Autumn h19.2] tent raising started at view hour 19.2
+01:29:47 [y4.83 m58 Autumn h19.9] SHOT t2_28_tent_rising
+01:29:47 [y4.83 m58 Autumn h20.3] TEXT camp line: Poles and hides. A roof, our own.
+01:29:47 [y4.83 m58 Autumn h20.3] SHOT t2_29_tent_line
+01:29:48 [y4.83 m58 Autumn h20.7] tent done: active 0 moments 1 leans 1 line 'Poles and hides. A roof, our own.' hour 20.7
+01:29:48 [y4.83 m58 Autumn h20.7] SHOT t2_30_tent_up
+01:29:48 [y4.83 m58 Autumn h20.9] SHOT t2_31_fog_before_cloth
+01:29:49 [y4.83 m58 Autumn h21.0] TEXT toast: Drag across the glass to wipe it. Flick junk and weeds out.
+01:29:50 [y4.83 m58 Autumn h21.1] SHOT t2_32_fog_after_cloth
+01:29:50 [y4.83 m58 Autumn h21.1] TEXT toast: The glass is sparkling.
+01:29:50 [y4.83 m58 Autumn h21.2] CLOTH later: grime 0.101 -> 0.000 panes 0,000 0,000 0,000 0,000
+01:29:51 [y5.08 m61 Winter h21.4] season 16: era Camp pop 6 bare 0.79 bushes 2 tree -1 rabbits sim 10/shown 10 tracks False hides 6/8 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 194
+01:30:04 [y5.08 m61 Winter h14.2] SHOT t2_33_hunt_stalk_default
+01:30:13 [y5.08 m61 Winter h19.0] HUNT watch: hides 8->8, stalk True, spear True, phases [TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:30:17 [y6.33 m76 Spring h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 6.3 · mess 0.05
+01:30:17 [y6.33 m76 Spring h19.2] season 18: era Camp pop 8 bare 0.76 bushes 5 tree -1 rabbits sim 13/shown 12 tracks False hides 8/10 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 355
+01:30:31 [y6.33 m76 Spring h14.1] SHOT t2_34_hunt_stalk_default
+01:30:40 [y6.33 m76 Spring h19.0] HUNT watch: hides 10->10, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,CarryBack,Skin,Cook,Return,Strike], hunts today 2
+01:30:44 [y6.83 m82 Autumn h19.3] season 20: era Camp pop 8 bare 0.75 bushes 7 tree -1 rabbits sim 13/shown 12 tracks False hides 10/12 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 550
+01:31:01 [y6.83 m82 Autumn h15.8] SHOT t2_35_hunt_stalk_default
+01:31:06 [y6.83 m82 Autumn h19.0] HUNT watch: hides 12->12, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:31:10 [y7.33 m88 Spring h19.2] TEXT toast: A seed has come. It's in your kit.
+01:31:10 [y7.33 m88 Spring h19.2] season 22: era Camp pop 8 bare 0.74 bushes 8 tree -1 rabbits sim 13/shown 12 tracks False hides 12/14 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 659
+01:31:33 [y7.33 m88 Spring h19.0] HUNT watch: hides 14->14, stalk False, spear True, phases [], hunts today 0
+01:31:36 [y8.58 m103 Summer h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 8.6 · mess 0.10
+01:31:37 [y8.58 m103 Summer h19.2] season 24: era Camp pop 8 bare 0.70 bushes 9 tree -1 rabbits sim 18/shown 12 tracks False hides 13/15 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 489
+01:31:55 [y8.58 m103 Summer h16.3] SHOT t2_36_hunt_stalk_default
+01:31:59 [y8.58 m103 Summer h19.0] HUNT watch: hides 15->15, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,Bolt,WalkBack,Return], hunts today 1
+01:32:03 [y9.08 m109 Winter h19.2] season 26: era Camp pop 8 bare 0.69 bushes 10 tree -1 rabbits sim 18/shown 12 tracks False hides 15/17 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 660
+01:32:05 [y9.08 m109 Winter h7.5] SHOT t2_37_hunt_stalk_default
+01:32:26 [y9.17 m110 Spring h19.0] HUNT watch: hides 17->17, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 2
+01:32:30 [y9.67 m116 Autumn h19.2] season 28: era Camp pop 9 bare 0.68 bushes 16 tree -1 rabbits sim 20/shown 12 tracks False hides 15/17 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 818
+01:32:46 [y9.67 m116 Autumn h15.7] SHOT t2_38_hunt_stalk_default
+01:32:52 [y9.67 m116 Autumn h19.0] HUNT watch: hides 17->17, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,Bolt,WalkBack,Return], hunts today 1
+01:32:56 [y10.92 m131 Winter h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 10.9 · mess 0.14
+01:32:56 [y10.92 m131 Winter h19.2] season 30: era Camp pop 10 bare 0.64 bushes 21 tree -1 rabbits sim 23/shown 12 tracks False hides 15/17 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 508
+01:33:19 [y10.92 m131 Winter h19.0] HUNT watch: hides 17->17, stalk False, spear False, phases [], hunts today 0
+01:33:23 [y11.42 m137 Summer h19.3] season 32: era Camp pop 10 bare 0.63 bushes 22 tree -1 rabbits sim 24/shown 12 tracks False hides 16/18 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 717
+01:33:45 [y11.42 m137 Summer h19.0] HUNT watch: hides 18->18, stalk False, spear False, phases [], hunts today 0
+01:33:49 [y11.92 m143 Winter h19.2] season 34: era Camp pop 10 bare 0.61 bushes 23 tree -1 rabbits sim 24/shown 12 tracks False hides 17/19 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 908
+01:34:12 [y11.92 m143 Winter h19.0] HUNT watch: hides 19->19, stalk False, spear False, phases [], hunts today 0
+01:34:15 [y13.17 m158 Spring h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 13.2 · mess 0.18
+01:34:16 [y13.17 m158 Spring h19.2] season 36: era Camp pop 10 bare 0.58 bushes 25 tree -1 rabbits sim 27/shown 12 tracks False hides 19/21 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 576
+01:34:18 [y13.17 m158 Spring h7.9] SHOT t2_39_hunt_stalk_default
+01:34:38 [y13.17 m158 Spring h19.0] HUNT watch: hides 21->21, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:34:42 [y13.67 m164 Autumn h19.2] season 38: era Camp pop 9 bare 0.56 bushes 26 tree -1 rabbits sim 27/shown 12 tracks False hides 20/22 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 862
+01:34:45 [y13.67 m164 Autumn h8.4] SHOT t2_40_hunt_stalk_default
+01:35:05 [y13.67 m164 Autumn h19.0] HUNT watch: hides 22->22, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:35:09 [y14.17 m170 Spring h19.2] season 40: era Camp pop 9 bare 0.55 bushes 26 tree -1 rabbits sim 28/shown 12 tracks False hides 21/23 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 990
+01:35:13 [y14.17 m170 Spring h9.3] SHOT t2_41_hunt_stalk_default
+01:35:31 [y14.17 m170 Spring h19.0] HUNT watch: hides 23->23, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:35:35 [y15.42 m185 Summer h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 15.4 · mess 0.23
+01:35:35 [y15.42 m185 Summer h19.2] season 42: era Camp pop 10 bare 0.51 bushes 30 tree -1 rabbits sim 32/shown 12 tracks False hides 21/23 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 569
+01:35:58 [y15.42 m185 Summer h19.0] HUNT watch: hides 23->23, stalk False, spear False, phases [], hunts today 0
+01:36:02 [y15.92 m191 Winter h19.2] season 44: era Camp pop 10 bare 0.49 bushes 32 tree -1 rabbits sim 33/shown 12 tracks False hides 22/24 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 851
+01:36:24 [y15.92 m191 Winter h19.0] HUNT watch: hides 24->24, stalk False, spear False, phases [], hunts today 0
+01:36:28 [y16.42 m197 Summer h19.3] season 46: era Camp pop 10 bare 0.48 bushes 35 tree -1 rabbits sim 34/shown 12 tracks False hides 23/25 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 981
+01:36:51 [y16.42 m197 Summer h19.0] HUNT watch: hides 25->25, stalk False, spear False, phases [], hunts today 0
+01:36:54 [y17.67 m212 Autumn h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 17.7 · mess 0.27
+01:36:55 [y17.67 m212 Autumn h19.3] season 48: era Camp pop 10 bare 0.44 bushes 42 tree -1 rabbits sim 37/shown 12 tracks False hides 24/26 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 549
+01:37:07 [y17.67 m212 Autumn h13.7] SHOT t2_42_hunt_stalk_default
+01:37:17 [y17.75 m213 Autumn h19.0] HUNT watch: hides 26->26, stalk True, spear True, phases [ToFire,TakeSpear,KidFollow,WalkOut,Stalk,KidWatch,Bolt,KidBack,WalkBack,Return,CarryBack,Skin,Cook], hunts today 2
+01:37:21 [y18.25 m219 Spring h19.3] season 50: era Camp pop 10 bare 0.43 bushes 48 tree -1 rabbits sim 37/shown 12 tracks False hides 26/28 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 747
+01:37:39 [y18.25 m219 Spring h16.0] SHOT t2_43_hunt_stalk_default
+01:37:44 [y18.25 m219 Spring h19.0] HUNT watch: hides 28->28, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:37:48 [y18.75 m225 Autumn h19.3] season 52: era Camp pop 10 bare 0.41 bushes 50 tree -1 rabbits sim 38/shown 12 tracks False hides 27/29 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 1048
+01:37:54 [y18.75 m225 Autumn h10.5] SHOT t2_44_hunt_stalk_default
+01:38:10 [y18.75 m225 Autumn h19.0] HUNT watch: hides 29->29, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,CarryBack,Skin,Cook,Return], hunts today 1
+01:38:14 [y20.00 m240 Winter h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 20.0 · mess 0.32
+01:38:15 [y20.00 m240 Winter h19.2] season 54: era Camp pop 10 bare 0.37 bushes 56 tree -1 rabbits sim 41/shown 12 tracks False hides 30/32 gate True tent1 True bldg 3 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 636
+01:38:20 [y20.00 m240 Winter h9.7] SHOT t2_45_hunt_stalk_default
+01:38:37 [y20.00 m240 Winter h19.0] HUNT watch: hides 32->32, stalk True, spear True, phases [ToFire,TakeSpear,KidFollow,WalkOut,Stalk,Strike,KidWatch,Bolt,KidBack,WalkBack,Return,CarryBack,KidCheer,Skin,Cook], hunts today 2
+01:38:41 [y20.50 m246 Summer h19.3] season 56: era Camp pop 11 bare 0.35 bushes 62 tree -1 rabbits sim 42/shown 12 tracks False hides 29/33 gate True tent1 True bldg 4 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 869
+01:38:55 [y20.50 m246 Summer h14.2] SHOT t2_46_hunt_stalk_default
+01:39:04 [y20.50 m246 Summer h19.0] HUNT watch: hides 33->33, stalk True, spear True, phases [ToFire,TakeSpear,KidFollow,WalkOut,Stalk,KidWatch,Bolt,KidBack,WalkBack,Return], hunts today 1
+01:39:08 [y21.00 m252 Winter h19.3] season 58: era Camp pop 11 bare 0.33 bushes 63 tree -1 rabbits sim 42/shown 12 tracks False hides 32/36 gate True tent1 True bldg 4 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 1032
+01:39:13 [y21.00 m252 Winter h10.1] SHOT t2_47_hunt_stalk_default
+01:39:30 [y21.00 m252 Winter h19.0] HUNT watch: hides 36->36, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return], hunts today 1
+01:39:34 [y22.25 m267 Spring h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 22.3 · mess 0.36
+01:39:34 [y22.25 m267 Spring h19.3] season 60: era Camp pop 12 bare 0.30 bushes 75 tree -1 rabbits sim 46/shown 12 tracks False hides 34/38 gate True tent1 True bldg 4 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 514
+01:39:39 [y22.25 m267 Spring h9.3] SHOT t2_48_hunt_stalk_default
+01:39:57 [y22.25 m267 Spring h19.0] HUNT watch: hides 38->38, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,CarryBack,Skin,Cook,Return,Bolt,WalkBack], hunts today 2
+01:40:01 [y22.75 m273 Autumn h19.3] season 62: era Camp pop 13 bare 0.29 bushes 81 tree -1 rabbits sim 44/shown 12 tracks False hides 38/42 gate True tent1 True bldg 4 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 691
+01:40:04 [y22.75 m273 Autumn h8.3] SHOT t2_49_hunt_stalk_default
+01:40:23 [y22.75 m273 Autumn h19.0] HUNT watch: hides 42->42, stalk True, spear True, phases [WalkOut,Stalk,Strike,CarryBack,Skin,Cook,Return,ToFire,TakeSpear,Bolt,WalkBack], hunts today 4
+01:40:27 [y23.25 m279 Spring h19.3] season 64: era Camp pop 13 bare 0.28 bushes 85 tree -1 rabbits sim 45/shown 12 tracks False hides 40/44 gate True tent1 True bldg 4 pond 0 frogs 0 ducks 0 jobs[hunter,toolmaker,gatherer] open[gatherer,hunter,toolmaker] puddles 0 newgrass 812
+01:40:33 [y23.25 m279 Spring h10.1] SHOT t2_50_hunt_stalk_default
+01:40:50 [y23.25 m279 Spring h19.0] HUNT watch: hides 44->44, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,Strike,Bolt,WalkBack,Return,CarryBack,Skin,Cook], hunts today 3
+01:40:53 [y24.50 m294 Summer h19.2] AWAY 1h: away 1.00 h → lived 1.00 h (12 months) · year 24.5 · mess 0.42
+01:40:54 [y24.50 m294 Summer h19.3] season 66: era Camp pop 13 bare 0.25 bushes 96 tree -1 rabbits sim 48/shown 12 tracks False hides 44/48 gate True tent1 True bldg 4 pond 25 frogs 1 ducks 1 jobs[hunter,toolmaker,gatherer,fisher] open[gatherer,hunter,fisher,toolmaker] puddles 0 newgrass 551
+01:40:56 [y24.50 m294 Summer h7.5] SHOT t2_51_hunt_stalk_default
+01:40:56 [y24.50 m294 Summer h7.8] TEXT first-water line: While nobody watched, the hollow filled.
+01:41:16 [y24.50 m294 Summer h19.0] HUNT watch: hides 48->48, stalk True, spear True, phases [ToFire,TakeSpear,WalkOut,Stalk,KidFollow,Skin,KidWatch,Bolt,Cook,KidBack,WalkBack,Strike,Return], hunts today 3
+01:41:16 [y24.50 m294 Summer h19.0] BEAT pond water | full plays 0 away plays 1 | era Camp pop 13 bare 0.25 bushes 96 tree -1 rabbits sim 48/shown 12 tracks False hides 44/48 gate True tent1 True bldg 4 pond 25 frogs 4 ducks 1 jobs[hunter,toolmaker,gatherer,fisher] open[gatherer,hunter,fisher,toolmaker] puddles 0 newgrass 551
+01:41:18 [y24.50 m294 Summer h10.1] first water playing False sparkles 0 sent 2 leans 0
+01:41:18 [y24.50 m294 Summer h10.1] SHOT t2_52_first_water_t1
+01:41:22 [y24.50 m294 Summer h10.3] SHOT t2_53_first_water_t5
+01:41:22 [y24.50 m294 Summer h10.3] first water after: full 0 away 1 line 'While nobody watched, the hollow filled.' audio: [Audio] first_water_drop: Sfx/Eco/first_water_drop vol 0,14 pitch 1,00 | [Audio] first_water_bubble: Sfx/Eco/first_water_bubble vol 0,11 pitch 1,00
+01:41:22 [y24.50 m294 Summer h10.3] TIME END after 66 seasons | sawTracks True rabbit True bushSign True hunt False tent True berries True pond True
+01:41:23 [y24.50 m294 Summer h10.4] SHOT t2_54_pond_corner_close_first
+01:41:26 [y24.50 m294 Summer h20.9] dusk: frogs shown 5 sitting 5 wanted 6 hops 0
+01:41:27 [y24.50 m294 Summer h20.9] SHOT t2_55_pond_dusk_default
+01:41:31 [y24.50 m294 Summer h21.7] dusk close: frogs sitting 6 hops 0 shore visits 0
+01:41:31 [y24.50 m294 Summer h21.7] SHOT t2_56_pond_dusk_close
+01:41:34 [y24.50 m294 Summer h10.2] pond later: cells 25 ducks shown 1 wanted 1 frogs 2 | era Camp pop 13 bare 0.25 bushes 96 tree -1 rabbits sim 48/shown 12 tracks False hides 44/48 gate True tent1 True bldg 4 pond 25 frogs 2 ducks 1 jobs[hunter,toolmaker,gatherer,fisher] open[gatherer,hunter,fisher,toolmaker] puddles 0 newgrass 551
+01:41:35 [y24.50 m294 Summer h10.3] SHOT t2_57_pond_later_close
+01:41:35 [y24.75 m297 Autumn h10.3] FULL pond cheat: table at flood line +0,35 · Y24,8 bare 20 % meadow 61 % · rabbits 49,5 birds 6,1 · pond 424 trees 0 · humid 0,42 · gates camp/- · seed ready
+01:41:38 [y24.75 m297 Autumn h10.5] full: cells 424 ducks 2 wanted 2
+01:41:38 [y24.75 m297 Autumn h10.5] SHOT t2_58_pond_full_close
+01:41:39 [y24.75 m297 Autumn h10.5] SHOT t2_59_pond_full_default
+01:41:41 [y24.75 m297 Autumn h10.6] history open sheet 
+01:41:41 [y24.75 m297 Autumn h10.6] history labels: Stories || History
+01:41:41 [y24.75 m297 Autumn h10.6] SHOT t2_60_history_1179
+01:41:43 [y24.75 m297 Autumn h10.6] SHOT t2_61_history_1080x1920
+01:41:44 [y24.75 m297 Autumn h10.6] SHOT t2_62_home_1080x1920
+01:41:44 [y24.75 m297 Autumn h10.6] SHOT t2_63_kit_1080x1920
+01:41:46 [y24.75 m297 Autumn h10.6] END meshes 393 -> 539 roots now AudioDirector,Book,Box,BoxCompleteController,CardStackView,ChatterMarks,EveningTalk,FeedbackUI,FirstRunView,GameClock,GameHud,Main Camera,MomentPlayer,MusicDirector,PostFX,RecallPromptView,SpeakerRing,Sun,TimeLapseScreen (CHANGED from AudioDirector,Book,Box,BoxCompleteController,CardStackView,ChatterMarks,EveningTalk,FeedbackUI,FirstRunView,GameClock,GameHud,Main Camera,MomentPlayer,MusicDirector,PostFX,RecallPromptView,Sun) generated 1 errors 0: 

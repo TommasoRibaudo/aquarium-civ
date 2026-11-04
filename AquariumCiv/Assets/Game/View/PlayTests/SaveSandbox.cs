@@ -24,10 +24,18 @@ namespace AquariumCiv.View.PlayTests
             if (Directory.Exists(Folder)) Directory.Delete(Folder, true);
             Directory.CreateDirectory(Folder);
             GameClock.SaveFolderOverride = Folder;
+            ecologyWas = GameClock.EcologyPref; // #298: the run plays the old slice unless a test turns the living land on
+            GameClock.EcologyPref = false;
         }
 
+        bool ecologyWas;
+
         [OneTimeTearDown]
-        public void Leave() => GameClock.SaveFolderOverride = null;
+        public void Leave()
+        {
+            GameClock.SaveFolderOverride = null;
+            GameClock.EcologyPref = ecologyWas; // the Editor's own switch (debug panel) comes back after the run
+        }
     }
 
     [Category("SaveSandbox")]

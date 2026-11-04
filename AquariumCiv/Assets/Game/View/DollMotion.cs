@@ -12,6 +12,8 @@ namespace AquariumCiv.View
         // #92: at the glass and in the relic moments
         LookUpWary, PressHands, WaveSmall, Flinch, Peek, HopBack, Laugh, Measure, Knock, Write, Peer, Freeze, Bow, PoseBig,
         Lopsided, Taste, HoldUp,
+        // P8 #266: stamping in a puddle
+        Stomp,
     }
 
     /// <summary>
@@ -100,6 +102,8 @@ namespace AquariumCiv.View
             ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit => DollStyle.Talk,
             ActivityKind.Argue => DollStyle.Argue,
             ActivityKind.Swim or ActivityKind.Splash => DollStyle.Swim,
+            ActivityKind.Stomp => DollStyle.Stomp,
+            ActivityKind.WashHands => DollStyle.Crouch,
             ActivityKind.Mourn or ActivityKind.Service => DollStyle.Mourn,
             ActivityKind.Cheer or ActivityKind.Clap => DollStyle.Cheer,
             ActivityKind.Wave => DollStyle.Wave,
@@ -392,6 +396,16 @@ namespace AquariumCiv.View
                     p.lean = 16f;
                     p.armL = new Vector3(15f, 0, -6f); p.armR = new Vector3(15f, 0, 6f);
                     break;
+
+                case DollStyle.Stomp:
+                {
+                    // Stamping in place: a foot-to-foot bounce, arms out for balance, a little splash of a lean.
+                    float s = Mathf.Sin(t * 7f);
+                    p.offset.y = Mathf.Abs(s) * 0.022f;
+                    p.roll = s * 6f;
+                    p.armL = new Vector3(10f, 0, -50f - s * 18f); p.armR = new Vector3(10f, 0, 50f - s * 18f);
+                    break;
+                }
 
                 case DollStyle.Swim:
                 {

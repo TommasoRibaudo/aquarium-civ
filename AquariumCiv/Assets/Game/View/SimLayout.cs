@@ -122,6 +122,35 @@ namespace AquariumCiv.View
             e.treeNeed = !t.planted ? 0 : t.water < 0.35f ? 1 : t.weeds > 0.5f ? 3 : t.light < 0.6f ? 2 : 0;
         }
 
+        /// <summary>#287: the land of a scrubbed year (or the blend of two): cover from the records, the pond at the recorded level, the
+        /// table, the tree's stage. Cells that change between the two years get a cross-tint (<see cref="EcoLayer.greenMix"/>) so the
+        /// ground greens gradually instead of snapping at half way. Moisture is not recorded: green ground reads a little damp.</summary>
+        public static void FillEcoReplay(EcoLayer e, SimCore sim, LandBlend lb)
+        {
+            e.on = true;
+            int n = Mathf.Min(lb.CellCount, e.cover.Length);
+            e.greenMix ??= new float[e.cover.Length];
+            int pond = 0;
+            for (int c = 0; c < n; c++)
+            {
+                byte cv = (byte)lb.CoverAt(c);
+                e.cover[c] = cv;
+                if (cv == EcoLayer.Water) pond++;
+                float ga = EcoLayer.Greenness(lb.A.cover[c]), gb = EcoLayer.Greenness(lb.B.cover[c]);
+                e.greenMix[c] = lb.Changes(c) ? ga + (gb - ga) * lb.t : ga;
+                e.moist[c] = cv == EcoLayer.Water ? 1f : e.greenMix[c] * 0.3f;
+            }
+            e.pondCells = pond;
+            float py = lb.PondLevel;
+            e.waterY = py > LandAt.NoPond + 1f ? py : 0f;
+            if (e.waterY == 0f) { e.pondCells = 0; }
+            e.tableY = lb.A.table + (lb.B.table - lb.A.table) * lb.t;
+            e.floodY = sim.EcoFloodLine;
+            e.humidity = 0f; e.droplets = 0f;
+            e.treeCell = lb.TreePlanted ? sim.EcoTree.cell : -1;
+            e.treeStage = lb.TreeStage; e.treeNeed = 0;
+        }
+
         /// <summary>A rock cell the Keeper's outcrop painted: that piece stands there already.</summary>
         static bool NudgedRock(Settlement st, int c)
         {
@@ -137,6 +166,62 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>#274: each run of canal cells that a path crosses (laid, or worn to path tier) gets a bridge along the path.</summary>
+        public static void FillBridges(BoxLayout L, SiteMap map, Era era)
+        {
+            bool Cross(int c) => map.Canal(c) && map.lot[c] == 0 && (map.Laid(c) || map.tier[c] >= PathNet.PathTier);
+            var seen = new bool[SiteMap.N];
+            for (int c0 = 0; c0 < SiteMap.N; c0++)
+            {
+                if (seen[c0] || !Cross(c0)) continue;
+                var stack = new Stack<int>(); stack.Push(c0); seen[c0] = true;
+                var sum = Vector2.zero; int n = 0; float tier = 0;
+                var cells = new List<int>();
+                while (stack.Count > 0)
+                {
+                    int c = stack.Pop(); cells.Add(c);
+                    int i = SiteMap.I(c), j = SiteMap.J(c);
+                    sum += new Vector2(SiteMap.CX(i), SiteMap.CZ(j)); n++; tier = Mathf.Max(tier, map.tier[c]);
+                    for (int di = -1; di <= 1; di++)
+                        for (int dj = -1; dj <= 1; dj++)
+                        {
+                            int ni = i + di, nj = j + dj;
+                            if ((di == 0 && dj == 0) || ni < 0 || nj < 0 || ni >= SiteMap.NX || nj >= SiteMap.NZ) continue;
+                            int nc = SiteMap.Index(ni, nj);
+                            if (!seen[nc] && Cross(nc)) { seen[nc] = true; stack.Push(nc); }
+                        }
+                }
+                var centre = sum / n;
+                // The span runs along the nearest path; failing that, across the canal (against its neighbours' spread).
+                Vector2 dir = Vector2.zero; float best = 0.35f;
+                foreach (var p in L.paths)
+                {
+                    if (p.points == null) continue;
+                    for (int k = 0; k + 1 < p.points.Length; k++)
+                    {
+                        Vector2 a = p.points[k], b = p.points[k + 1], ab = b - a;
+                        float len2 = ab.sqrMagnitude; if (len2 < 1e-8f) continue;
+                        float d = (centre - (a + ab * Mathf.Clamp01(Vector2.Dot(centre - a, ab) / len2))).magnitude;
+                        if (d < best) { best = d; dir = ab.normalized; }
+                    }
+                }
+                if (dir == Vector2.zero)
+                {
+                    var axis = Vector2.zero;
+                    foreach (int c in cells)
+                        for (int k = 0; k < 4; k++)
+                        {
+                            int ni = SiteMap.I(c) + (k == 0 ? 1 : k == 1 ? -1 : 0), nj = SiteMap.J(c) + (k == 2 ? 1 : k == 3 ? -1 : 0);
+                            if (ni < 0 || nj < 0 || ni >= SiteMap.NX || nj >= SiteMap.NZ) continue;
+                            if (map.Canal(SiteMap.Index(ni, nj)) || map.pond[SiteMap.Index(ni, nj)]) axis += new Vector2(Mathf.Abs(ni - SiteMap.I(c)), Mathf.Abs(nj - SiteMap.J(c)));
+                        }
+                    dir = axis.x > axis.y ? Vector2.up : Vector2.right;
+                }
+                float width = Mathf.Max(0.1f, 2f * BoxView.PathWidth(TierOf(tier)) + 0.02f);
+                L.bridges.Add(new BridgeData { centre = centre, dir = dir, length = 0.34f, width = width, era = era });
+            }
+        }
+
         static PathTier TierOf(float t) => (PathTier)(Mathf.Clamp(Mathf.RoundToInt(t), 1, 3) - 1);
 
         /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
@@ -145,6 +230,9 @@ namespace AquariumCiv.View
         /// <summary>#85: <see cref="ShapingView"/> draws the Keeper's groves (saplings growing into trees) and the herds waiting
         /// for an answer, animated; while it does, the live layout leaves them out (the time-lapse keeps them).</summary>
         public static bool KeeperOverlays;
+
+        /// <summary>#284: how much of a building stands, 0..1, while its tent is being raised (the camp view sets it; null = all of them stand).</summary>
+        public static Func<int, float> BuildingGrow;
 
         public static void Fill(BoxLayout L, SimCore sim, Func<Lot, Era> eraOf = null, Func<int, bool> cobbled = null, ReplayFrame replay = null)
         {
@@ -158,8 +246,9 @@ namespace AquariumCiv.View
             Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
             int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
             var map = st.Map;
-            bool eco = replay == null && sim.EcologyOn; // P8: the living land (the time-lapse keeps the old look: no eco history yet)
-            if (eco) FillEco(L.eco, sim);
+            // P8: the living land. A replay of a box with land records draws each year's land (#287); one without keeps the old look.
+            bool eco = sim.EcologyOn && (replay == null || replay.land != null);
+            if (eco) { if (replay == null) { L.eco.greenMix = null; FillEco(L.eco, sim); } else FillEcoReplay(L.eco, sim, replay.land); }
             var setting = SettingLook.ForPreset(sim.TerrainPreset);
             var spec = TerrainSpec.Preset(sim.TerrainPreset);
             var green = new Vector2(st.GreenX, st.GreenZ);
@@ -225,7 +314,12 @@ namespace AquariumCiv.View
                     case LotKind.Cottage:
                     {
                         bool cottage = l.kind == LotKind.Cottage;
-                        if (e == Era.Camp) { P(PieceKind.Home, l.w, l.d); break; }
+                        if (e == Era.Camp)
+                        {
+                            var tent = P(PieceKind.Home, l.w, l.d);
+                            if (replay == null && BuildingGrow != null && l.buildingId > 0) tent.grow = Mathf.Clamp(BuildingGrow(l.buildingId), 0.02f, 1f); // #284
+                            break;
+                        }
                         int tier = st.Tier(l.door);
                         float dg = Vector2.Distance(new Vector2(l.x, l.z), green);
                         bool big = !cottage && (tier >= PathNet.PathTier || e == Era.Town);
@@ -318,6 +412,9 @@ namespace AquariumCiv.View
                 }
                 if (!joined) L.canals.Add(new[] { a });
             }
+
+            // ---- bridges (#274): one where a laid or worn path crosses a dug channel ----
+            FillBridges(L, map, now);
 
             // ---- trees from the forest layer ----
             // (#85: the cells of the Keeper's groves are ShapingView's, which grows them from saplings)
