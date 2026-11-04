@@ -39,7 +39,7 @@ namespace AquariumCiv.Sim
     /// A callback (P7 rule 4, #221): a storylet gated on "this option was taken N years ago". Scheduled when the dilemma ends (the Keeper
     /// answered, or the people did after a lapse), by a hash of the seed and the dilemma, fired in the monthly step when due.
     /// Text placeholders: {a} {b} (the two people's names, dead or alive), {place}, {chosen} (the taken option's label) and
-    /// {credit}: "Because the Keeper chose {chosen}" for an answer, "Because they chose {chosen}" for a lapse. A text without
+    /// {credit}: "Because the Keeper chose {chosen}" for an answer, "Because the people chose {chosen}" for a lapse. A text without
     /// {credit} gets it put in front ("Because the Keeper chose the woods, the granary filled."), so write the text to read after a comma.
     /// If a condition fails the <see cref="fallback"/> is told instead (same placeholders), or nothing at all if there is none.
     /// </summary>
@@ -90,7 +90,7 @@ namespace AquariumCiv.Sim
     /// never a better economy (a lean builds a different thing, food or wood, not more). Hints say what changes, never how much.
     /// The people's words (questions, hints, labels) never say "glass", "tank" or "box" (chronicle-and-history Choice 10, §5.1): they
     /// say what their era believes (camp: the sky wall; village: the Keeper's window). The narrator may say "a far-away tank". Callback texts are told after
-    /// "Because the Keeper chose X, " (or "Because they chose X, "), so they read on from a comma; labels read after "chose".
+    /// "Because the Keeper chose X, " (or "Because the people chose X, "), so they read on from a comma; labels read after "chose".
     /// </summary>
     public static class DilemmaDefs
     {
