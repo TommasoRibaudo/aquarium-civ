@@ -8,7 +8,9 @@ namespace AquariumCiv.View
         // Sandal, the Lens's folded tripod, the brass Lens, the scholar's slate, the measuring rod)
         Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate, MeasuringRod,
         // #152: a bucket on its way to the water
-        BucketEmpty }
+        BucketEmpty,
+        // #283: a caught rabbit over the shoulder
+        Rabbit }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
@@ -216,6 +218,24 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.008f, 0.22f, 0.008f), Palette.WoodLight);
                     mb.Prism(new Vector3(0, 0.17f, 0), 0.012f, 0f, 0.035f, 4, Palette.RockLight);
                     break;
+                case PropKind.Rabbit:
+                {
+                    // #283: a caught rabbit slung across the shoulders (the shoulder slot turns local z across the body): fur body,
+                    // head and hanging ears at +z, white tail and haunch at -z, dangling feet. Drawn big so it reads at phone size.
+                    var fur = new Color(0.66f, 0.47f, 0.30f); var belly = Color.Lerp(fur, Color.white, 0.55f);
+                    var dark = new Color(0.20f, 0.14f, 0.12f); var white = new Color(0.98f, 0.97f, 0.94f);
+                    mb.M = Matrix4x4.Scale(Vector3.one * 1.45f); // bigger than life: it has to read on a phone
+                    mb.Ico(new Vector3(0f, -0.010f, -0.020f), 0.044f, new Vector3(0.85f, 0.85f, 1.35f), fur, 0.05f, belly);
+                    mb.Ico(new Vector3(0f, -0.016f, 0.050f), 0.030f, new Vector3(0.9f, 0.9f, 1.2f), fur, 0.05f, belly);
+                    mb.Ico(new Vector3(0f, -0.030f, 0.098f), 0.024f, new Vector3(0.85f, 0.9f, 1.2f), fur, 0.05f, belly);       // head, hanging
+                    mb.Ico(new Vector3(0.012f, -0.062f, 0.088f), 0.010f, new Vector3(0.4f, 2.2f, 0.5f), dark, 0.03f);         // ears hang down
+                    mb.Ico(new Vector3(-0.012f, -0.062f, 0.088f), 0.010f, new Vector3(0.4f, 2.2f, 0.5f), dark, 0.03f);
+                    mb.Ico(new Vector3(0f, -0.004f, -0.082f), 0.019f, Vector3.one, white, 0.05f);                             // the white tail
+                    mb.Ico(new Vector3(0.020f, -0.050f, -0.050f), 0.011f, new Vector3(0.7f, 1.8f, 0.9f), belly, 0.04f);       // feet hang
+                    mb.Ico(new Vector3(-0.020f, -0.050f, -0.050f), 0.011f, new Vector3(0.7f, 1.8f, 0.9f), belly, 0.04f);
+                    mb.M = Matrix4x4.identity;
+                    break;
+                }
                 case PropKind.Basket:
                     mb.Prism(new Vector3(0, -0.01f, 0), 0.032f, 0.042f, 0.04f, 8, Palette.Thatch, topCol: Palette.Ember);
                     break;

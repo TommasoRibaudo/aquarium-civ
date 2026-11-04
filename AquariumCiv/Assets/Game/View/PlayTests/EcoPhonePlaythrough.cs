@@ -93,7 +93,7 @@ namespace AquariumCiv.View.PlayTests
             GameClock.EcologyPref = true;
             try
             {
-                yield return OpenSlice(skipFirstRun: false);
+                yield return OpenSlice(seed: 4242, skipFirstRun: false);
                 Assert.IsTrue(Sim.EcologyOn, "a barren box");
                 var care = CareView.Instance;
                 var hud = GameHud.Instance;
@@ -230,6 +230,38 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(1.5f);
                 yield return Shot("phone_11_planted");
                 AssertNoErrors("kit");
+
+                // ---- 6. The hunt (#283): only time passes. Hunters follow the rabbits in the meadow and make a catch; the hide dries by the fire
+                // (the hide frame is drawn by item 10; here the count).
+                var pvh = PeopleView.Find();
+                int hides0 = Sim.HidesTotal, rabbits0 = Sim.EcoRabbitCount;
+                bool sawStalk = false, sawSpear = false;
+                // A view day follows the sim's month, so a day with no hunt (a rest day, a storm, a bad roll) is followed by the next one
+                // only when time moves on: the time-advance cheat (a season) does it.
+                for (int attempt = 0; attempt < 10 && Sim.HidesTotal <= hides0; attempt++)
+                {
+                    if (attempt > 0) EcoDebug.SkipSeasons(1);
+                    PeopleView.DebugSetHour(6.5f);
+                    yield return Frames(10);
+                    pvh.timeScale = 12f;
+                    float tH = Time.realtimeSinceStartup;
+                    while (Sim.HidesTotal <= hides0 && pvh.ViewHour < 20f && Time.realtimeSinceStartup - tH < 90f)
+                    {
+                        foreach (var a in pvh.Activities)
+                        {
+                            if (a.hunt == AquariumCiv.Life.HuntPhase.Stalk) sawStalk = true;
+                            if (a.hunt == AquariumCiv.Life.HuntPhase.WalkOut && a.prop == AquariumCiv.Life.Prop.Spear) sawSpear = true;
+                        }
+                        yield return null;
+                    }
+                }
+                pvh.timeScale = 1f;
+                int hunters = 0; foreach (var n in Sim.State.notables) if (n.job == "hunter") hunters++;
+                Debug.Log($"[phone] hunt diag: era {Sim.State.era}, surplus {Sim.HuntSurplus}, hunters(notables) {hunters}, jobs open [{string.Join(",", Sim.OpenJobs())}], day {pvh.Now.day}, hunts today {pvh.Planner.HuntsOn(pvh.Now.day).Count}, field {(pvh.Planner.Rabbits != null ? pvh.Planner.Rabbits.Alive.Count : -1)}");
+                Debug.Log($"[phone] hunt: hides {hides0} -> {Sim.HidesTotal}, rabbits {rabbits0} -> {Sim.EcoRabbitCount}, stalk {sawStalk}, spear {sawSpear}");
+                Assert.Greater(Sim.HidesTotal, hides0, "with only time passing, a hunter made a catch and a hide is drying by the fire");
+                Assert.IsTrue(sawStalk && sawSpear, "and it was seen: a spear walked out, a hunter stalked");
+                AssertNoErrors("hunt");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }

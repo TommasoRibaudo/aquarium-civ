@@ -121,6 +121,11 @@ namespace AquariumCiv.View
             if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);
             EndRow();
             Row();
+            if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
+            if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
+            if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
+            EndRow();
+            Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
             if (Btn("+1 yr")) last = EcoDebug.SkipSeasons(4);
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);

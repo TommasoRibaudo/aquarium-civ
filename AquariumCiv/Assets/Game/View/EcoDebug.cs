@@ -85,6 +85,28 @@ namespace AquariumCiv.View
             return Refresh($"+{n} rabbits: {c} (shown {s.EcoRabbitsShown()})");
         }
 
+        /// <summary>"Start a hunt now" (#283): a hunter takes a spear and goes after the nearest rabbit, starting now.</summary>
+        public static string StartHunt()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            if (!pv.Planner.DebugStartHunt(pv.Now, out var plan)) return "no hunt: no rabbit shown, or nobody free";
+            return $"hunt started: rabbit {plan.rabbitId}, {(plan.catches ? "will catch" : "will miss")}, strike in {(plan.strikeStart - pv.Now.hour):0.0} h";
+        }
+
+        /// <summary>"Next hunt succeeds / misses" (#283): fixes how the next hunt that has not struck yet ends.</summary>
+        public static string ForceHunt(bool catches)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            bool ok = pv.Planner.DebugForceHunt(catches);
+            return catches ? (ok ? "next hunt catches" : "refused: the herd is at its floor, it stays a miss") : "next hunt misses";
+        }
+
         public static string MistCamp()
         {
             var st = Sim?.Settlement;

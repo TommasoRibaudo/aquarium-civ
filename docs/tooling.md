@@ -721,3 +721,8 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   Also: `unity recompile` right after a test run needs ~8 s of settle, or "Pipeline server returned 400".
 
 - **2026-11-03 · `unity test <path>` (top-level) needs the Editor closed** ("project is already open in a running Editor"), and takes the project as an argument, not `--project-path`. With the Editor up use `unity command test run --mode editor|playmode --filter <partial name> --async_tests true`, then `test status` (a partial name like `Eco` batches several classes in one run). [verified]
+
+- **2026-11-03 · #283 phase 2 (hunt view) notes.** [verified]
+  - `Monitor` is a deferred tool: load it with `ToolSearch select:Monitor` before the first test run, then arm one monitor that loops `unity command test status` (stop on anything but `running`). `PlayMode` batches go one category per `test run`.
+  - A hunt's coordinates are the plan's own (`planner.HuntStepAt`), not `PositionAt` (that is the day without the overlay): `PeopleView.HuntSpot` lerps the step's x/z and puts fire points on a ring round the fire.
+  - `EcoPhonePlaythrough` needs a fixed seed for the hunt beat: with a random seed the tribe may have no hunter notable (the job is a personality pick), and then only time passing makes no hunt.
