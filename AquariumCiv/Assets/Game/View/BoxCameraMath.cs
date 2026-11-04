@@ -60,6 +60,15 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Fly-to: default duration, and the zoom a flight to a person / a place ends at (< 1 = closer).</summary>
+        /// <summary>#320: the pinned name's opacity by zoom: full up to <see cref="PinTagFadeStart"/>, gone from <see cref="PinTagFadeEnd"/> out, smooth between.</summary>
+        public const float PinTagFadeStart = 0.9f, PinTagFadeEnd = 1.1f;
+        public static float PinTagOpacity(float zoom)
+        {
+            float t = (PinTagFadeEnd - zoom) / (PinTagFadeEnd - PinTagFadeStart);
+            t = t < 0f ? 0f : t > 1f ? 1f : t;
+            return t * t * (3f - 2f * t);
+        }
+
         public const float FlyDefaultSeconds = 0.9f, FlyPersonZoom = 0.45f, FlyPlaceZoom = 0.6f;
 
         /// <summary>Smoother-step ease in and out, t clamped to 0..1.</summary>
