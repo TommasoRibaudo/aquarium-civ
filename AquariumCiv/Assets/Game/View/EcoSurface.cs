@@ -41,6 +41,7 @@ namespace AquariumCiv.View
         MeshFilter wetF, sheenF, pudF, spF, frF;
         MeshRenderer wetR, sheenR, pudR, spR, frR;
         Material wetMat, sheenMat, pudMat, tintMat;
+        bool pudTuned;
 
         // reusable builders
         readonly List<Vector3> pos = new(4096);
@@ -129,6 +130,16 @@ namespace AquariumCiv.View
             sheenMat ??= MakeMaterial("EcoSheen", 1, One, One);
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
+            if (pudMat != null && !pudTuned)
+            {
+                // water, not slate (tester run 1): a dark wet-blue/brown bed under the sky's reflection
+                pudTuned = true;
+                pudMat.SetColor("_PuddleDeep", new Color(0.10f, 0.09f, 0.08f)); // a brown-dark bed
+                pudMat.SetFloat("_Gloss", 0.9f);
+                if (wetMat != null) { wetMat.SetFloat("_WetBoost", 1.9f); wetMat.SetColor("_WetColor", new Color(0.80f, 0.72f, 0.62f)); } // damp sand, not soot
+                pudMat.SetColor("_WetColor", new Color(0.46f, 0.37f, 0.31f)); // the puddle's mud rim
+                if (sheenMat != null) sheenMat.SetFloat("_WetBoost", 1.9f);
+            }
             return wetMat != null && sheenMat != null && pudMat != null && tintMat != null;
         }
 
@@ -147,6 +158,20 @@ namespace AquariumCiv.View
 
         static Mesh NewMesh(string n) { var m = new Mesh { name = n }; m.MarkDynamic(); return m; }
 
+        /// <summary>#296: an overlay with nothing to show still draws one invisible, zero-area triangle in the middle of the land,
+        /// so each ground-look material's first real use (the first spray, the first puddle) costs no first-draw work.</summary>
+        void Warm(Mesh m)
+        {
+            float y = box != null ? box.land.Height(0f, 0f) + Lift : 0f;
+            var p = new Vector3(0f, y, 0f);
+            m.SetVertices(new List<Vector3> { p, p, p });
+            m.SetColors(new List<Color32> { default, default, default });
+            m.SetUVs(0, new List<Vector2> { Vector2.zero, Vector2.zero, Vector2.zero });
+            m.SetUVs(1, new List<Vector2> { Vector2.zero, Vector2.zero, Vector2.zero });
+            m.SetTriangles(new[] { 0, 1, 2 }, 0, false);
+            m.bounds = new Bounds(p, Vector3.one * 0.2f);
+        }
+
         void Update()
         {
             var sim = Sim;
@@ -158,6 +183,7 @@ namespace AquariumCiv.View
             {
                 rootSeen = box.Root;
                 wetMesh = NewMesh("EcoWet"); pudMesh = NewMesh("EcoPuddles"); spMesh = NewMesh("EcoShoots"); frMesh = NewMesh("EcoFresh");
+                Warm(wetMesh); Warm(pudMesh); Warm(frMesh);
                 frF = Part("EcoFresh", ref frR, tintMat, frMesh);
                 wetF = Part("EcoWet", ref wetR, wetMat, wetMesh);
                 sheenF = Part("EcoSheen", ref sheenR, sheenMat, wetMesh);
@@ -292,7 +318,7 @@ namespace AquariumCiv.View
         void Upload(Mesh m)
         {
             m.Clear();
-            if (pos.Count == 0) return;
+            if (pos.Count == 0) { Warm(m); return; }
             m.SetVertices(pos); m.SetColors(col); m.SetUVs(0, uv0); m.SetUVs(1, uv1); m.SetTriangles(tri, 0, true);
         }
 
@@ -364,7 +390,7 @@ namespace AquariumCiv.View
             foreach (int c in pudCells)
             {
                 float s = Mathf.Min(1.6f, mass[c]);
-                float R = 0.034f + 0.05f * Mathf.Sqrt(s); // small: about a cell across, up to a little over
+                float R = 0.03f + 0.044f * Mathf.Sqrt(s); // small: about a cell across, up to a little over
                 float cx = Site.CXc(c) + (Hash(c, 3) - 0.5f) * 0.03f, cz = Site.CZc(c) + (Hash(c, 4) - 0.5f) * 0.03f;
                 float y = CenterY(c);
                 for (int k = 0; k < Seg; k++)
@@ -375,7 +401,7 @@ namespace AquariumCiv.View
                 y += 0.004f;
                 float phase = Hash(c, 9), strength = Hash(c, 10) < 0.55f ? 1f : 0.35f;
                 int b = pos.Count;
-                var white = new Color32(255, 255, 255, 255);
+                var white = new Color32(128, 128, 255, 255); // rg: the middle
                 pos.Add(new Vector3(cx, y, cz)); col.Add(white); uv0.Add(new Vector2(0f, 0f)); uv1.Add(new Vector2(phase, strength));
                 for (int ring = 0; ring < 2; ring++)
                     for (int k = 0; k < Seg; k++)
@@ -384,6 +410,9 @@ namespace AquariumCiv.View
                         float rr = R * (0.8f + 0.4f * Hash(c * 13 + k, 5)) * (ring == 0 ? 0.72f : 1f);
                         pos.Add(new Vector3(cx + Mathf.Cos(a) * rr, y, cz + Mathf.Sin(a) * rr));
                         var cc = white; cc.a = (byte)(ring == 0 ? 255 : 0);
+                        float u = rr / (R * 1.2f); // where in the puddle, for the shader's far-side sky and glint
+                        cc.r = (byte)Mathf.Clamp(Mathf.RoundToInt(128f + Mathf.Cos(a) * u * 127f), 0, 255);
+                        cc.g = (byte)Mathf.Clamp(Mathf.RoundToInt(128f + Mathf.Sin(a) * u * 127f), 0, 255);
                         col.Add(cc);
                         uv0.Add(new Vector2(ring == 0 ? 0.72f : 1f, 0f)); uv1.Add(new Vector2(phase, strength));
                     }

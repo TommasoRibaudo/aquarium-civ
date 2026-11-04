@@ -46,6 +46,13 @@ namespace AquariumCiv.View
         readonly HashSet<int> lineSaid = new();
         readonly List<int> doneBuf = new();
         readonly List<(float x, float z)> points = new();
+        double lastAbs = double.NaN;
+
+        /// <summary>A view-clock step bigger than this in one frame (hours) is a jump (a day catching up at midnight after a season
+        /// step, a debug hour, a return to the box), not time passing: raisings under way are moved with it (#294).</summary>
+        public const double JumpHours = 1.5;
+        /// <summary>Raisings carried over a view-clock jump (tests, debug).</summary>
+        public int Carried { get; private set; }
 
         /// <summary>Hides drawn on the frame now, raisings under way, moments played and the last line said (tests, debug).</summary>
         public int HidesShown { get; private set; }
@@ -88,7 +95,7 @@ namespace AquariumCiv.View
             if (SimLayout.BuildingGrow == (System.Func<int, float>)GrowOf) SimLayout.BuildingGrow = null;
             Bind(null);
             if (holder != null) Destroy(holder.gameObject);
-            holder = null; frame = null; pending.Clear(); active.Clear(); shownStep.Clear();
+            holder = null; frame = null; pending.Clear(); active.Clear(); shownStep.Clear(); lastAbs = double.NaN;
         }
 
         void Bind(SimCore sim)
@@ -134,6 +141,17 @@ namespace AquariumCiv.View
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             bool refresh = false;
 
+            // #294: the view clock can jump (the day catches up with the sim's month at midnight after a season step; a debug
+            // hour; a return at night). A raising planned before the jump would read as long over (or not begun) and the tent
+            // would just stand: it is carried over instead, so it plays from where it was, whatever the hour.
+            double clockStep = double.IsNaN(lastAbs) ? 0.0 : now.Absolute - lastAbs;
+            lastAbs = now.Absolute;
+            if (active.Count > 0 && (clockStep > JumpHours || clockStep < -0.01))
+            {
+                foreach (var plan in active.Values) Shift(plan, clockStep);
+                Carried++;
+            }
+
             // raisings waiting for their lot
             for (int i = 0; i < pending.Count; i++)
             {
@@ -169,6 +187,14 @@ namespace AquariumCiv.View
             if (refresh) box.Refresh();
 
             UpdateFrame(sim, planner, now);
+        }
+
+        /// <summary>Moves a raising by <paramref name="hours"/> (a view-clock jump): its people and the tent are where they were.</summary>
+        static void Shift(TentPlan plan, double hours)
+        {
+            double abs = plan.StartAbsolute + hours;
+            long day = (long)System.Math.Floor(abs / 24.0);
+            plan.startTime = new ViewTime(day, (float)(abs - day * 24.0));
         }
 
         // ---------------------------------------------------------------- the moment
