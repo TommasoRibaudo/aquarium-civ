@@ -1,0 +1,16 @@
+close xPlus: held 2,960 max 2,960 rest 2,860 stop 2,960 glass 3,000
+   settled 2,861
+close xMinus: held 2,960 max 2,960 rest 2,860 stop 2,960 glass 3,000
+   settled 2,861
+close zPlus: held 2,160 max 2,160 rest 2,060 stop 2,160 glass 2,200
+   settled 2,061
+close zMinus: held 2,160 max 2,160 rest 2,060 stop 2,160 glass 2,200
+   settled 2,061
+far xPlus: held 2,960 max 2,960 rest 2,860 stop 2,960 glass 3,000
+   settled 2,861
+far xMinus: held 2,960 max 2,960 rest 2,860 stop 2,960 glass 3,000
+   settled 2,861
+far zPlus: held 2,160 max 2,160 rest 2,060 stop 2,160 glass 2,200
+   settled 2,061
+far zMinus: held 2,160 max 2,160 rest 2,060 stop 2,160 glass 2,200
+   settled 2,061
