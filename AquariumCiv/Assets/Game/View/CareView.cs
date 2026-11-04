@@ -87,6 +87,7 @@ namespace AquariumCiv.View
         readonly List<(float t, Vector2 p)> samples = new();
         float strokeStart, lastReact = -10f, lastTouchTime, spotlessSince = -1f, glintBudget;
         float strokeRemoved;
+        bool startCue;
         int strokes;
 
         // sun and cheer
@@ -173,7 +174,8 @@ namespace AquariumCiv.View
             if (sparkleMesh != null) Destroy(sparkleMesh);
         }
 
-        const string NothingToClean = "Nothing to clean right now.", WipeHint = "Drag across the glass to wipe it. Flick junk and weeds out.";
+        const string NothingToClean = "Nothing to clean right now.", WipeHint = "Drag across the glass to wipe it. Flick junk and weeds out.",
+            WipeHintLand = "Drag across the glass to wipe it."; // a living land has no junk or weeds to flick (tester run 2)
 
         void OnCleanMode(bool on)
         {
@@ -183,18 +185,23 @@ namespace AquariumCiv.View
             if (!on)
             {
                 hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
-                hud?.WithdrawToast(WipeHint);
+                hud?.WithdrawToast(WipeHint); hud?.WithdrawToast(WipeHintLand);
                 Cancel();
                 return;
             }
             var sim = Sim;
             if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
-            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : WipeHint, 5f);
+            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : sim != null && sim.EcologyOn ? WipeHintLand : WipeHint, 5f);
         }
 
         // ---------------- the camera gate ----------------
         /// <summary>A press is ours in clean mode when it starts on the glass or on mess that is within reach.</summary>
         public bool ClaimsPress(Vector2 screenPos) => Classify(screenPos, out _) != Stroke.Ignored;
+
+        /// <summary>#301 (tester run 2): in the first run's wipe step one finger always wipes. A stroke that starts off the glass (the
+        /// natural edge-to-edge swipe) wipes the panes it crosses from where it reaches one, and never turns the camera. Two fingers
+        /// still move the view; after the step the normal rule (a press is ours only on glass or mess) is back.</summary>
+        public static bool WipeAnywhere => FirstRunView.Instance != null && FirstRunView.Instance.Step == AquariumCiv.Sim.FirstRunStep.Wipe;
 
         Stroke Classify(Vector2 pos, out MessProps.Piece piece)
         {
@@ -205,7 +212,7 @@ namespace AquariumCiv.View
             piece = props.Pick(c, pos, pickRadius * Screen.height);
             if (piece != null && !BehindDirtyGlass(c, piece)) return Stroke.Grab;
             piece = null;
-            return GlassHit(c.ScreenPointToRay(pos), out _, out _, out _) ? Stroke.Wipe : Stroke.Ignored;
+            return GlassHit(c.ScreenPointToRay(pos), out _, out _, out _) || WipeAnywhere ? Stroke.Wipe : Stroke.Ignored;
         }
 
         // ---------------- frame ----------------
@@ -615,7 +622,7 @@ namespace AquariumCiv.View
             {
                 strokeRemoved = 0f;
                 strokeStart = Time.unscaledTime;
-                Sfx.Play(CueLibrary.WipeStart);
+                startCue = true; // played when the stroke first touches a pane (#301: it may start off the glass)
                 System.Array.Clear(hasLast, 0, hasLast.Length);
                 ContinueWipe(Sim, pos, 0.016f, true);
             }
@@ -646,6 +653,7 @@ namespace AquariumCiv.View
                 if (masks[i].CheckCleared()) { Sfx.Play(CueLibrary.PaneClean); Burst(cols[i].bounds.center, 8, 0.5f); }
             }
             if (hitPanes == 0) { sound.SetRub(0f, 0f); return; }
+            if (startCue) { startCue = false; Sfx.Play(CueLibrary.WipeStart); }
             long texels = 0;
             foreach (var m in masks) texels += m.LiveTexels;
             float share = total / Mathf.Max(1L, texels);

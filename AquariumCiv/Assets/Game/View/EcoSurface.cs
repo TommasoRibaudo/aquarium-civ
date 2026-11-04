@@ -41,7 +41,7 @@ namespace AquariumCiv.View
         Mesh wetMesh, pudMesh, spMesh, frMesh, ngMesh;
         MeshFilter wetF, sheenF, pudF, spF, frF, ngF;
         MeshRenderer wetR, sheenR, pudR, spR, frR, ngR;
-        Material wetMat, sheenMat, pudMat, tintMat;
+        Material wetMat, sheenMat, pudMat, tintMat, freshMat;
         bool pudTuned;
 
         // reusable builders
@@ -138,11 +138,13 @@ namespace AquariumCiv.View
 
         bool EnsureMaterials()
         {
-            const int Zero = 0, One = 1, DstColor = 2, SrcAlpha = 5, OneMinusSrcAlpha = 10;
+            const int Zero = 0, One = 1, DstColor = 2, SrcColor = 3, SrcAlpha = 5, OneMinusSrcAlpha = 10;
             wetMat ??= MakeMaterial("EcoWet", 0, DstColor, Zero);
             sheenMat ??= MakeMaterial("EcoSheen", 1, One, One);
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
+            // #300: the new grass tints the land it lies on, so it is lit like the land at every hour (the plain tint glowed at night)
+            if (freshMat == null) { freshMat = MakeMaterial("EcoTint", 5, DstColor, SrcColor); if (freshMat != null) freshMat.name = "EcoNewGrass"; }
             if (pudMat != null && !pudTuned)
             {
                 // water, not slate (tester run 1): a dark wet-blue/brown bed under the sky's reflection
@@ -153,7 +155,7 @@ namespace AquariumCiv.View
                 pudMat.SetColor("_WetColor", new Color(0.46f, 0.37f, 0.31f)); // the puddle's mud rim
                 if (sheenMat != null) sheenMat.SetFloat("_WetBoost", 1.9f);
             }
-            return wetMat != null && sheenMat != null && pudMat != null && tintMat != null;
+            return wetMat != null && sheenMat != null && pudMat != null && tintMat != null && freshMat != null;
         }
 
         MeshFilter Part(string name, ref MeshRenderer r, Material mat, Mesh mesh)
@@ -197,7 +199,7 @@ namespace AquariumCiv.View
                 rootSeen = box.Root;
                 wetMesh = NewMesh("EcoWet"); pudMesh = NewMesh("EcoPuddles"); spMesh = NewMesh("EcoShoots"); frMesh = NewMesh("EcoFresh"); ngMesh = NewMesh("EcoNewGrass");
                 Warm(wetMesh); Warm(pudMesh); Warm(frMesh); Warm(ngMesh);
-                ngF = Part("EcoNewGrass", ref ngR, tintMat, ngMesh);
+                ngF = Part("EcoNewGrass", ref ngR, freshMat, ngMesh);
                 frF = Part("EcoFresh", ref frR, tintMat, frMesh);
                 wetF = Part("EcoWet", ref wetR, wetMat, wetMesh);
                 sheenF = Part("EcoSheen", ref sheenR, sheenMat, wetMesh);
