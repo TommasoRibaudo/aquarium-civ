@@ -354,7 +354,7 @@ namespace AquariumCiv.Life
         {
             KeeperGesture.Return => 2.5f, KeeperGesture.Wipe => 2f, KeeperGesture.FullClean => 3f, KeeperGesture.FlickTrash => 1.5f,
             KeeperGesture.Prune => 2.5f, KeeperGesture.Rain => 4f, KeeperGesture.Shape => 3f, KeeperGesture.HoldFinger => 4f,
-            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, _ => 1.5f,
+            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, KeeperGesture.Sighting => 5f, _ => 1.5f,
         };
 
         /// <summary>
@@ -425,6 +425,12 @@ namespace AquariumCiv.Life
             {
                 if (r.target != p.who || asleep) return false;
                 kind = ActivityKind.Cheer; // #191: they asked and it came: it's clear who it was for
+                return true;
+            }
+            if (r.gesture == KeeperGesture.Sighting)
+            {
+                if (r.target != p.who || asleep) return false;
+                kind = ActivityKind.Point; // #282: the first rabbit; PeopleView.LookAt turns them to it
                 return true;
             }
             if (r.gesture == KeeperGesture.TapPerson || r.gesture == KeeperGesture.Glance)

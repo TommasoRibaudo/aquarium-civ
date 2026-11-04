@@ -153,7 +153,9 @@ namespace AquariumCiv.Life
     public enum TripType { None, HomeToGreen, HomeToWork, HomeToMarket, Carry, Errand, Home }
 
     /// <summary>What the Keeper did (life-in-the-box §8; decisions 2026-10-29: hold a finger and tap the glass).</summary>
-    public enum KeeperGesture { Return, Wipe, FullClean, FlickTrash, Prune, Rain, Shape, HoldFinger, TapGlass, TapPerson, Glance, WishAnswered, Puddle }
+    public enum KeeperGesture { Return, Wipe, FullClean, FlickTrash, Prune, Rain, Shape, HoldFinger, TapGlass, TapPerson, Glance, WishAnswered, Puddle,
+        /// <summary>P8 #282: the first rabbit hops in; the one person it names (the target) stops and points at it.</summary>
+        Sighting }
 
     /// <summary>Story scenes (§6) and the era's gathering. Started from this month's chronicle, by "Show me" (an echo), or by
     /// the debug panel.</summary>
