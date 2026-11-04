@@ -10,11 +10,11 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [ ] 3 · #285 → #267 merged, closed
 - [ ] 4 · #287 merged, closed
 - [x] 5 · #266 → #277 merged (#266 open for sign-off)
-- [ ] 6 · #269 → #270 merged (open for sign-off)
+- [x] 6 · #269 → #270 merged (open for sign-off)
 - [ ] 7 · #279 → #286 merged
-- [ ] 8 · #282 merged
-- [ ] 9 · #283 merged
-- [ ] 10 · #284 merged
+- [x] 8 · #282 merged
+- [x] 9 · #283 merged
+- [x] 10 · #284 merged
 - [ ] 11 · #288 merged
 - [ ] 12 · #281 merged, closed
 - [ ] 13 · #280 merged (open for a listen)
@@ -72,3 +72,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 20:17 · item 9 (#283 view) Sonnet lane B id a23d23b27c3512583, F:\GameDev vs/283-hunt-view (restart first); watcher bb8uc23jj.
 - 20:58 · item 9 merged (668d017), dotnet 1252, HuntView 1/1, EcoPhonePlaythrough 1/1 (hunt beat), #283 open for sign-off. Polish: hunter tiny at default zoom; founder caption covers the box in default view. Lane B done: 1,5,6,8,9 (5/6).
 - 21:08 · item 10: first worker ab97127 handed back twice unverified (stopped). EcoPhonePlaythrough with beat 9 PASSED 21:01 on its working tree. Finisher a1a9b165b4b30ce8f took the lock; watcher bij0k17v0. Polish: camera far in phone_12-15.
+- 21:35 · item 10 merged (04f543b, a706ee0). Smoke 2/2, HuntView 2/2, EcoPhone 1/1. #284 open for sign-off. Lane B done: 1,5,6,8,9,10 → tester now.
+- 21:36 · TESTER run 1 started, id a8f04d15562b0c3c8, watcher b9a4x0bwv. Lane A: #280 sound sourcing ab248ccd3f95ff33e (wt/280). Next lane B after tester: 11 (#288 view), then 7, 12, 13, 3B, 4B, 15, 16, 17, 18.
