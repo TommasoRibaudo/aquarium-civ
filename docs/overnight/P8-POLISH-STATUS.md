@@ -16,7 +16,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] 9 · #283 merged
 - [x] 10 · #284 merged
 - [x] 11 · #288 merged
-- [ ] 12 · #281 merged, closed
+- [x] 12 · #281 merged (open for shade sign-off)
 - [ ] 13 · #280 merged (open for a listen)
 - [x] 14 · DROPPED by the user 20:07 ("bringing the fire where?"): no fire move. #248 closed earlier; #246/#249 check comments posted, left open
 - [ ] 15 · #273 merged (open for sign-off)
@@ -88,3 +88,4 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 00:10 · item 7 (#279 → #286) Sonnet a6cb1c9440194e928, full EditMode baseline first; watcher bj5f3yz45.
 - 11-04 01:01 · item 7 merged 0cbed7d. EditMode full baseline green (12 assemblies). Pond surfaced Y17 at 11 cells by time; #279 #286 open for sign-off. Next: item 12 (#281 view).
 - 11-04 01:01 · item 12 (#281 view) Sonnet a61ce24ece69d3a38; watcher b35o4tu81. Lane B since tester1: fixes, #297, 11, #298/9, 7, 12 → tester 2 after 12.
+- 11-04 01:14 · item 12 merged 031bc28. Next: tester run 2.
