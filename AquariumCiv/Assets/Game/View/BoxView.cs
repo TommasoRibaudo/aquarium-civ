@@ -536,6 +536,8 @@ namespace AquariumCiv.View
                 if (f.polygon != null && f.polygon.Length >= 3 && ChunkOf(Centroid(f.polygon)) == k) FieldMesh(mb, f);
             foreach (var p in layout.pieces)
                 if (ChunkOf(p.x, p.z) == k) PieceMesh(mb, p);
+            foreach (var br in layout.bridges)
+                if (ChunkOf(br.centre.x, br.centre.y) == k) Bridges.Build(mb, br, land.Height);
             Nature(mb, k);
             return mb;
         }
@@ -637,6 +639,11 @@ namespace AquariumCiv.View
             {
                 var e = Hash.New(); e.Add(b.pos); e.Add(b.radius); e.Add(b.shade);
                 Into(h, b.pos.x - b.radius, b.pos.y - b.radius, b.pos.x + b.radius, b.pos.y + b.radius, e.h);
+            }
+            foreach (var br in layout.bridges)
+            {
+                var e = Hash.New(); e.Add(br.centre); e.Add(br.dir); e.Add(br.length); e.Add(br.width); e.Add((int)br.era);
+                Into(h, br.centre.x - 0.3f, br.centre.y - 0.3f, br.centre.x + 0.3f, br.centre.y + 0.3f, e.h);
             }
             foreach (var cn in layout.canals)
             {
@@ -766,6 +773,16 @@ namespace AquariumCiv.View
             float h = land.Height(x, z);
             float d = CanalDist(x, z);
             return d >= CanalRange ? h : h - 0.045f * (1f - Land.Smooth(0.035f, 0.085f, d));
+        }
+
+        /// <summary>#274: where people stand: the land, or the deck of a bridge when the point is on one.</summary>
+        public float SurfaceHeight(float x, float z)
+        {
+            float h = land.Height(x, z);
+            if (layout != null)
+                foreach (var b in layout.bridges)
+                    if ((b.centre - new Vector2(x, z)).sqrMagnitude < 0.36f * 0.36f && Bridges.Deck(b, land.Height, new Vector2(x, z), out float y)) return Mathf.Max(h, y);
+            return h;
         }
 
         // ---------------- queries ----------------

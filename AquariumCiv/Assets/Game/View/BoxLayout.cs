@@ -73,6 +73,18 @@ namespace AquariumCiv.View
         public bool cobbled;
     }
 
+    /// <summary>#274: a bridge where a path crosses a canal: centre, the span's direction (unit, x/z), its length across the
+    /// water and the deck's width. Planks in the camp and the village, stone from the town.</summary>
+    [Serializable]
+    public class BridgeData
+    {
+        public Vector2 centre;
+        public Vector2 dir = Vector2.up;
+        public float length = 0.34f, width = 0.12f;
+        public Era era = Era.Village;
+        public bool Stone => era == Era.Town;
+    }
+
     /// <summary>An open patch of ground: the camp's trodden circle, a village green, a town square.</summary>
     [Serializable]
     public class ClearingData
@@ -135,6 +147,8 @@ namespace AquariumCiv.View
         public List<VillagerData> villagers = new();
         /// <summary>Dug channels: short polylines (cell centre to cell centre) carved into the ground as water strips.</summary>
         public List<Vector2[]> canals = new();
+        /// <summary>#274: bridges where laid or worn paths cross the dug channels.</summary>
+        public List<BridgeData> bridges = new();
         /// <summary>Scatter trees, bushes, rocks, grass and flowers into the free ground (away from pieces, fields, paths).</summary>
         public bool autoNature = true;
         /// <summary>With <see cref="autoNature"/>: also scatter trees. Off when the sim's forest gives the trees.</summary>
@@ -146,7 +160,7 @@ namespace AquariumCiv.View
 
         public void Clear()
         {
-            pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); boulders.Clear(); villagers.Clear(); canals.Clear();
+            pieces.Clear(); fields.Clear(); paths.Clear(); clearings.Clear(); trees.Clear(); boulders.Clear(); villagers.Clear(); canals.Clear(); bridges.Clear();
             autoNature = true; autoTrees = true; eco.on = false;
         }
 

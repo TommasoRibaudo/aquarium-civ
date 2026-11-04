@@ -166,6 +166,62 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>#274: each run of canal cells that a path crosses (laid, or worn to path tier) gets a bridge along the path.</summary>
+        public static void FillBridges(BoxLayout L, SiteMap map, Era era)
+        {
+            bool Cross(int c) => map.Canal(c) && map.lot[c] == 0 && (map.Laid(c) || map.tier[c] >= PathNet.PathTier);
+            var seen = new bool[SiteMap.N];
+            for (int c0 = 0; c0 < SiteMap.N; c0++)
+            {
+                if (seen[c0] || !Cross(c0)) continue;
+                var stack = new Stack<int>(); stack.Push(c0); seen[c0] = true;
+                var sum = Vector2.zero; int n = 0; float tier = 0;
+                var cells = new List<int>();
+                while (stack.Count > 0)
+                {
+                    int c = stack.Pop(); cells.Add(c);
+                    int i = SiteMap.I(c), j = SiteMap.J(c);
+                    sum += new Vector2(SiteMap.CX(i), SiteMap.CZ(j)); n++; tier = Mathf.Max(tier, map.tier[c]);
+                    for (int di = -1; di <= 1; di++)
+                        for (int dj = -1; dj <= 1; dj++)
+                        {
+                            int ni = i + di, nj = j + dj;
+                            if ((di == 0 && dj == 0) || ni < 0 || nj < 0 || ni >= SiteMap.NX || nj >= SiteMap.NZ) continue;
+                            int nc = SiteMap.Index(ni, nj);
+                            if (!seen[nc] && Cross(nc)) { seen[nc] = true; stack.Push(nc); }
+                        }
+                }
+                var centre = sum / n;
+                // The span runs along the nearest path; failing that, across the canal (against its neighbours' spread).
+                Vector2 dir = Vector2.zero; float best = 0.35f;
+                foreach (var p in L.paths)
+                {
+                    if (p.points == null) continue;
+                    for (int k = 0; k + 1 < p.points.Length; k++)
+                    {
+                        Vector2 a = p.points[k], b = p.points[k + 1], ab = b - a;
+                        float len2 = ab.sqrMagnitude; if (len2 < 1e-8f) continue;
+                        float d = (centre - (a + ab * Mathf.Clamp01(Vector2.Dot(centre - a, ab) / len2))).magnitude;
+                        if (d < best) { best = d; dir = ab.normalized; }
+                    }
+                }
+                if (dir == Vector2.zero)
+                {
+                    var axis = Vector2.zero;
+                    foreach (int c in cells)
+                        for (int k = 0; k < 4; k++)
+                        {
+                            int ni = SiteMap.I(c) + (k == 0 ? 1 : k == 1 ? -1 : 0), nj = SiteMap.J(c) + (k == 2 ? 1 : k == 3 ? -1 : 0);
+                            if (ni < 0 || nj < 0 || ni >= SiteMap.NX || nj >= SiteMap.NZ) continue;
+                            if (map.Canal(SiteMap.Index(ni, nj)) || map.pond[SiteMap.Index(ni, nj)]) axis += new Vector2(Mathf.Abs(ni - SiteMap.I(c)), Mathf.Abs(nj - SiteMap.J(c)));
+                        }
+                    dir = axis.x > axis.y ? Vector2.up : Vector2.right;
+                }
+                float width = Mathf.Max(0.1f, 2f * BoxView.PathWidth(TierOf(tier)) + 0.02f);
+                L.bridges.Add(new BridgeData { centre = centre, dir = dir, length = 0.34f, width = width, era = era });
+            }
+        }
+
         static PathTier TierOf(float t) => (PathTier)(Mathf.Clamp(Mathf.RoundToInt(t), 1, 3) - 1);
 
         /// <summary>Fills <paramref name="L"/> from the sim. <paramref name="cobbled"/> (site cell index → laid with
@@ -356,6 +412,9 @@ namespace AquariumCiv.View
                 }
                 if (!joined) L.canals.Add(new[] { a });
             }
+
+            // ---- bridges (#274): one where a laid or worn path crosses a dug channel ----
+            FillBridges(L, map, now);
 
             // ---- trees from the forest layer ----
             // (#85: the cells of the Keeper's groves are ShapingView's, which grows them from saplings)
