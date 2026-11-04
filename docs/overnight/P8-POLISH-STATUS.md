@@ -19,7 +19,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] 12 · #281 merged (open for shade sign-off)
 - [x] 13 · #280 merged (open for a listen)
 - [x] 14 · DROPPED by the user 20:07 ("bringing the fire where?"): no fire move. #248 closed earlier; #246/#249 check comments posted, left open
-- [ ] 15 · #273 merged (open for sign-off)
+- [x] 15 · #273 merged (open for sign-off)
 - [ ] 16 · #274 merged
 - [ ] 17 · #275 → #276 merged
 - [ ] 18 · #208–#211 (Opus bundle) merged, closed
@@ -101,3 +101,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 03:21 · item 4B merged 0991e13, #287 closed. Check: time-lapse caption showed 'Year 15 · Camp' at year 0 (tester 3). Next: item 15 (#273 phase B).
 - 11-04 03:21 · item 15 phase B Sonnet acb8c6c71efd97b0f (watcher bizaw3ezc).
 - 11-04 03:38 · item 15 phase B back (df3bb02) but far zoom slid the tank half off screen (pivot-limited). Sent back: limit the VIEW edge at the glass (far zoom ≈ no pan; close zoom reaches each wall). Watcher b61uu1m2m. NOTE for phase A brief: my brief said 'pivot may move until frustum near edge meets the glass' — ambiguous.
+- 11-04 04:07 · item 15 merged 927125a (dotnet 1281; open for feel sign-off). Next: item 16 (#274 bridges).
+- 11-04 04:08 · item 16 (#274) Sonnet a2e653f75d0e65d7c (watcher bieu2cnd7). Then 17B, 18, tester 3, final play-through, P8.md, PR.
