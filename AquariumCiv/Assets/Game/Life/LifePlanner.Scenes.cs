@@ -354,7 +354,7 @@ namespace AquariumCiv.Life
         {
             KeeperGesture.Return => 2.5f, KeeperGesture.Wipe => 2f, KeeperGesture.FullClean => 3f, KeeperGesture.FlickTrash => 1.5f,
             KeeperGesture.Prune => 2.5f, KeeperGesture.Rain => 4f, KeeperGesture.Shape => 3f, KeeperGesture.HoldFinger => 4f,
-            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, KeeperGesture.Sighting => 5f, _ => 1.5f,
+            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, KeeperGesture.Sighting => 5f, KeeperGesture.Marvel => 4f, _ => 1.5f,
         };
 
         /// <summary>
@@ -463,6 +463,11 @@ namespace AquariumCiv.Life
                     // P8 #266: a mist puddle draws the people near it: kids stamp in it, now and then a grown-up kneels to wash their hands.
                     if (r.near.IsNone || !near || roll >= r.share * (kid ? 1f : 0.85f)) return false;
                     kind = kid ? ActivityKind.Stomp : ActivityKind.WashHands; to = r.near;
+                    return true;
+                case KeeperGesture.Marvel:
+                    // P8 #279: the first water: those near the hollow walk over and stand at the water's edge to look; kids cheer.
+                    if (r.near.IsNone || !near || roll >= r.share) return false;
+                    kind = kid ? ActivityKind.Cheer : ActivityKind.Inspect; to = r.near;
                     return true;
                 case KeeperGesture.Wipe:
                     if (!(near || (global && roll < 0.5f * r.share))) return false;

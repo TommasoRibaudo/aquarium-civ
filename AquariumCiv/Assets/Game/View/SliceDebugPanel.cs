@@ -116,6 +116,11 @@ namespace AquariumCiv.View
             if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
             EndRow();
             Row();
+            if (Btn("Water breaks the surface now")) last = EcoDebug.WaterBreaksNow();
+            if (Btn("Frogs now")) last = EcoDebug.FrogsNow();
+            if (Btn("Ducks now")) last = EcoDebug.DucksNow();
+            EndRow();
+            Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
             if (Btn("+3 bushes")) last = EcoDebug.AddBushes(3);
             EndRow();

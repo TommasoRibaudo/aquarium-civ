@@ -34,6 +34,7 @@ No CC0 fly buzz was found on Kenney or OpenGameArt (2026-10-30), so the mess lay
 The mister's spray (#266, "fsss") is made in code, ours: `MistSound.Generate` filters white noise to a 2-7 kHz band with a slow swell and cross-fades the loop seam (2.4 s, 24 kHz mono). No third-party asset. The droplets, wet soil and puddles (`Shaders/EcoGround.shader`) are code and vertex colours too.
 
 The chatter babble (#144) is made in code, ours: `ChatterBabble` synthesizes 4 voices x 6 clips at start-up, 22.05 kHz mono. No third-party asset.
+The first-water sounds (#279) are two CC0 one-shots, the same files as #280's branch (`origin/vs/280-opening-sound`; whichever merges first logs the table rows, this is the second record): `Sfx/Eco/first_water_drop.ogg` from "Drops of water #2" (#1385), Joseph Sardin, BigSoundBank, https://bigsoundbank.com/detail-1385-drops-of-water-2.html, CC0 1.0 (one drop cut out, 0.9 s); `Sfx/Eco/first_water_bubble.ogg` from "Bubbles" in "40 CC0 water / splash / slime SFX", rubberduck, https://opengameart.org/content/40-cc0-water-splash-slime-sfx, CC0 1.0 (`bubble_01`, trimmed, faded, mono). Added 2026-11-04.
 
 ## Still to get (free, itch.io only)
 - KayKit Forest Nature Pack, KayKit Resource Bits: https://kaylousberg.itch.io/
