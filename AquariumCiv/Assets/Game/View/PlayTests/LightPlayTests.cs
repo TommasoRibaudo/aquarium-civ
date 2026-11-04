@@ -297,7 +297,8 @@ namespace AquariumCiv.View.PlayTests
                     if (zoom <= CameraReach.MinZoom && dir == new Vector2(1f, 1f) && aspect == 0.5625f) yield return Shot("pan-closest-" + (int)(aspect * 100));
                 }
             Debug.Log($"[light] aspect {aspect}: land share at zoom 0.2 at rest {worstRest:0.00}, in the band anywhere {worstShare:0.00}");
-            Assert.Greater(worstRest, 0.35f, "enough of the land stays on screen at the closest zoom");
+            // #273: the pivot now rests at the glass on every side (user 2026-11-04), so at a corner about a quarter of the view is the wall and the room: 0.14 at 9:16. The centre stays on the land (asserted above).
+            Assert.Greater(worstRest, 0.1f, "some of the land stays on screen at the closest zoom, even at a corner");
             cam.ResetAspect();
             DayLightDriver.DebugPauseClock(false);
             AssertNoErrors("pan");
