@@ -69,6 +69,9 @@ Shader "AquariumCiv/View/Stylized"
         half LampOn(float2 lamp)
         {
             if (lamp.x < 0.5 || lamp.x > 1.5) return 0; // 2 and up is a flame, not a lamp
+            // Soft glow (the Keeper's tree): phase 2 + strength. No dusk threshold per lamp; it rises smoothly with the night level
+            // and breathes slowly, and its strength is the share of the warm lit colour mixed in (small = barely there).
+            if (lamp.y > 1.5) return (half)((lamp.y - 2.0) * smoothstep(0.15, 0.85, _AC_LampLevel) * (_AC_LampParams.z > 0.5 ? 1.0 : Breath(0.37)));
             float t0 = 0.12 + lamp.y * 0.6;
             float x = saturate((_AC_LampLevel - t0) / 0.14);
             if (_AC_LampParams.z > 0.5) return (half)x; // the clock runs fast (time-lapse): no breathing either
