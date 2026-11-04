@@ -267,7 +267,7 @@ namespace AquariumCiv.View
             }
             waterFilter = Spawn("Water", Eco ? EcoWaterMesh() : WaterMesh(), water != null ? water : Solid, false).GetComponent<MeshFilter>();
             waterHash = Eco ? layout.eco.WaterHash() : 0;
-            tableFilter = null; tableKey = int.MinValue; SyncEcoTable(); // P8: the water table in the soil cut
+            tableFilter = null; sheenFilter = null; tableKey = int.MinValue; SyncEcoTable(); // P8: the water table in the soil cut
             Glows();
             SyncPeople();
             Glass();
