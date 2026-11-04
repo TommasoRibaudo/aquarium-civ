@@ -88,6 +88,37 @@ namespace AquariumCiv.View
         public int BirdCallsPlayed { get; private set; }
         public float BirdSwell => birdSong != null ? birdSong.Swell : 1f;
 
+        // #315: the pond's frogs: single croaks on one pooled source (never two at once), not the recorded chorus loop.
+        FrogCroaker frogCroak;
+        AudioSource frogSource;
+        AudioLowPassFilter frogLowPass;
+        AudioClip[] frogClips;
+        float frogVolume;
+        int frogLayer = -1;
+        BoxCamera zoomCam;
+        float zoomCamLook;
+        /// <summary>Croaks played so far and how the last one was set (tests, the debug panel).</summary>
+        public int FrogCroaksPlayed { get; private set; }
+        public string LastFrogCall { get; private set; } = "none yet";
+        /// <summary>Debug: the zoom (0 whole box .. 1 closest) the frogs and voices hear, or -1 for the camera's own.</summary>
+        public static float ForcedZoom01 = -1f;
+
+        /// <summary>0 whole box .. 1 closest, from the box camera (or <see cref="ForcedZoom01"/>); looked up twice a second.</summary>
+        public float Zoom01
+        {
+            get
+            {
+                if (ForcedZoom01 >= 0f) return ForcedZoom01;
+                if (zoomCam == null && Time.unscaledTime >= zoomCamLook)
+                {
+                    zoomCamLook = Time.unscaledTime + 0.5f;
+                    var cam = Camera.main;
+                    zoomCam = cam != null ? cam.GetComponent<BoxCamera>() : null;
+                }
+                return ChatterView.Zoom01Of(zoomCam);
+            }
+        }
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -108,6 +139,13 @@ namespace AquariumCiv.View
             birdClips = new AudioClip[CareSound.BirdCalls];
             for (int i = 0; i < birdClips.Length; i++) birdClips[i] = Clip("proc:bird" + i);
             birdSong = new BirdSong(Environment.TickCount, birdClips.Length);
+            frogLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbFrogs);
+            frogSource = Source("FrogCroaks", false);
+            frogLowPass = frogSource.gameObject.AddComponent<AudioLowPassFilter>();
+            frogLowPass.cutoffFrequency = FrogCroaker.NearCutoff;
+            frogClips = new AudioClip[FrogCroaker.ClipCount];
+            for (int i = 0; i < frogClips.Length; i++) frogClips[i] = Clip("proc:frog" + i);
+            frogCroak = new FrogCroaker(Environment.TickCount + 315);
             eraWatch = new MomentWatch(this, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Director : null, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Wave : null);
             lastWatch = new MomentWatch(this, () => BoxCompleteController.Instance != null ? BoxCompleteController.Instance.Director : null, () => null);
             var missing = CheckClips();
@@ -299,6 +337,7 @@ namespace AquariumCiv.View
                 if (src.clip == null) continue;
                 float v = fader.Level(i) * CueLibrary.Get(AmbienceLevels.CueIds[i]).volume * bus;
                 if (i == birdLayer) v *= birdSong.Swell;
+                if (i == frogLayer && LayerForce[i] != 1) v = 0f; // #315: no chorus loop, only single croaks (UpdateFrogs)
                 src.volume = v;
                 if (v > 0.001f && !src.isPlaying)
                 {
@@ -308,6 +347,7 @@ namespace AquariumCiv.View
                 else if (v <= 0.001f && src.isPlaying) src.Pause();
             }
             UpdateBirds(dt, inMoment, bus);
+            UpdateFrogs(dt, inMoment, bus);
             UpdateStones(dt, inMoment);
         }
 
@@ -331,6 +371,53 @@ namespace AquariumCiv.View
             float level = birdLayer >= 0 ? fader.Level(birdLayer) : 0f;
             if (birdSong.Tick(dt, inMoment ? 0f : level, out var call)) PlayBird(call, level);
             birdSource.volume = birdVolume * bus; // a call under way follows the settings
+        }
+
+        void UpdateFrogs(float dt, bool inMoment, float bus)
+        {
+            frogSource.volume = frogVolume * bus; // a croak under way follows the settings
+            float level = frogLayer >= 0 && !inMoment ? fader.Level(frogLayer) : 0f;
+            if (inMoment) level *= 0.4f;
+            // A croak goes with a frog on the bank or a pad: with none sitting there is nothing to call, so none sounds.
+            var pond = PondLife.Instance;
+            Vector3 at = default;
+            bool frogSits = pond != null && pond.FrogsSitting > 0;
+            bool busy = frogSource.isPlaying || !frogSits;
+            if (!frogCroak.Tick(dt, level, Zoom01, busy, out var call)) return;
+            if (!pond.TryCroak(out at)) return;
+            PlayFrog(call, level, at);
+        }
+
+        void PlayFrog(in FrogCall call, float level, Vector3 at)
+        {
+            frogSource.clip = frogClips[call.clip];
+            frogSource.pitch = call.pitch;
+            frogSource.panStereo = call.pan;
+            frogLowPass.cutoffFrequency = call.cutoffHz;
+            float away = 1f;
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                var vp = cam.WorldToViewportPoint(at);
+                if (vp.z <= 0f || vp.x < 0f || vp.x > 1f || vp.y < 0f || vp.y > 1f) away = 0.6f; // a frog off screen is farther
+            }
+            frogVolume = call.volume * away * Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(level)) * CueLibrary.Get(CueLibrary.AmbFrogs).volume * FrogCroaker.Gain;
+            frogSource.volume = frogVolume * Gain(SoundBus.Ambience);
+            frogSource.Play();
+            FrogCroaksPlayed++;
+            LastFrogCall = $"clip {call.clip} vol {frogSource.volume:0.000} cutoff {call.cutoffHz:0} Hz pitch {call.pitch:0.00} zoom {Zoom01:0.00}";
+        }
+
+        /// <summary>Debug (#315): a croak now from a frog on view (none sitting: says so). Never over one still sounding.</summary>
+        public static string DebugFrog()
+        {
+            var a = Instance;
+            if (a == null) return "no AudioDirector";
+            if (a.frogSource.isPlaying) return "a croak is still sounding (one at a time)";
+            var pond = PondLife.Instance;
+            if (pond == null || !pond.TryCroak(out var at)) return "no frog sits on the bank yet (try 'Frogs now')";
+            a.PlayFrog(a.frogCroak.Now(a.Zoom01), 1f, at);
+            return "frog: " + a.LastFrogCall;
         }
 
         void PlayBird(in BirdCall call, float level)

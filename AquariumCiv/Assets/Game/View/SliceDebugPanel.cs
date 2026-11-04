@@ -334,6 +334,17 @@ namespace AquariumCiv.View
             }
             if (Btn("Force knock")) last = GlassVoice.DebugKnock();
             EndRow();
+            // #315/#316: the frogs and the voices by distance.
+            Row();
+            if (Btn("Frog now")) last = AudioDirector.DebugFrog();
+            if (chatter != null)
+            {
+                if (Btn("Voice exchange here")) last = chatter.DebugExchange();
+                if (Btn("Far shout now")) last = chatter.DebugLoneVoice();
+                if (Btn("Voice band: " + ChatterView.BandLabel())) last = ChatterView.DebugCycleBand();
+                if (Btn("Voice status")) last = chatter.VoiceStatus();
+            }
+            EndRow();
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
             Row();
             if (Btn("Music now")) last = MusicDirector.DebugPlayNow();

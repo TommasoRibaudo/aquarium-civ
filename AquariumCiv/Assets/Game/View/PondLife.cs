@@ -106,6 +106,27 @@ namespace AquariumCiv.View
             return $"ducks: {MaxDucks} for a minute (pond is {box.layout.eco.pondCells} cells; they come by themselves from {DuckPondCells})";
         }
 
+        /// <summary>
+        /// #315: a croak is about to sound: one sitting frog puffs its throat with it (a sound goes with something on screen) and its
+        /// world position comes back. False when no frog sits on the bank or a pad, so no croak plays.
+        /// </summary>
+        public bool TryCroak(out Vector3 world)
+        {
+            world = default;
+            int n = 0;
+            foreach (var f in frogs) if (f.state == 1) n++;
+            if (n == 0) return false;
+            int k = Random.Range(0, n);
+            foreach (var f in frogs)
+            {
+                if (f.state != 1 || k-- > 0) continue;
+                f.puff = 1f; f.timer = Mathf.Max(f.timer, 3f); // the call is the puff: its next idle puff is not right behind it
+                world = f.root.position;
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>Where the sitting frogs are (box-local), and the ducks (x, z), for tests.</summary>
         public void FrogSpots(List<Vector3> into) { into.Clear(); foreach (var f in frogs) if (f.state == 1) into.Add(f.at); }
         public void DuckSpots(List<Vector2> into) { into.Clear(); foreach (var d in ducks) if (d.state != 0) into.Add(d.at); }

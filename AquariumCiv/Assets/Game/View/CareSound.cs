@@ -60,19 +60,44 @@ namespace AquariumCiv.View
             "bird2" => MakeBird(2),
             "bird3" => MakeBird(3),
             "bird4" => MakeBird(4),
-            _ => name.StartsWith("babble") && name.Length == 8 ? MakeBabble(name[6] - '0', name[7] - '0') : null,
+            _ => TryBabble(name, out int bv, out int bc, out bool muffled) ? MakeBabble(bv, bc, muffled)
+                : name.StartsWith("frog") && name.Length == 5 ? MakeFrog(name[4] - '0') : null,
         };
 
         /// <summary>#144: a babble clip: <see cref="ChatterBabble"/>'s samples, 22.05 kHz mono.</summary>
-        static AudioClip MakeBabble(int voice, int clip)
+        static AudioClip MakeBabble(int voice, int clip, bool muffled = false)
         {
             var d = ChatterBabble.Generate(voice, clip, BabbleSeed);
-            var c = AudioClip.Create($"Babble{voice}{clip}", d.Length, 1, ChatterBabble.SampleRate, false);
+            if (muffled) d = ChatterBabble.Muffle(d);
+            var c = AudioClip.Create($"{(muffled ? "M" : "")}Babble{voice}_{clip}", d.Length, 1, ChatterBabble.SampleRate, false);
             c.SetData(d, 0);
             return c;
         }
 
         const int BabbleSeed = 144;
+
+        /// <summary>"babble{voice}_{clip}" or "mbabble{voice}_{clip}" (#316: the clips are 0..11 now).</summary>
+        static bool TryBabble(string name, out int voice, out int clip, out bool muffled)
+        {
+            voice = clip = 0; muffled = false;
+            string s = name;
+            if (s.StartsWith("mbabble")) { muffled = true; s = s.Substring(7); }
+            else if (s.StartsWith("babble")) s = s.Substring(6);
+            else return false;
+            int us = s.IndexOf('_');
+            return us > 0 && int.TryParse(s.Substring(0, us), out voice) && int.TryParse(s.Substring(us + 1), out clip)
+                && voice >= 0 && voice < ChatterBabble.Voices && clip >= 0 && clip < ChatterBabble.Clips;
+        }
+
+        /// <summary>#315: one soft croak (<see cref="FrogCroaker.Generate"/>), 22.05 kHz mono.</summary>
+        static AudioClip MakeFrog(int clip)
+        {
+            if (clip < 0 || clip >= FrogCroaker.ClipCount) return null;
+            var d = FrogCroaker.Generate(clip, 315);
+            var c = AudioClip.Create("Frog" + clip, d.Length, 1, FrogCroaker.SampleRate, false);
+            c.SetData(d, 0);
+            return c;
+        }
 
         /// <summary>The mess ambience (#96): three flies circling, an 8 s seamless loop. Each fly is a buzzy tone (the
         /// fundamental plus odd partials) whose pitch wanders and whose level swells as it passes; every frequency and
