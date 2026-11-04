@@ -85,6 +85,25 @@ namespace AquariumCiv.View
             return Refresh($"+{n} rabbits: {c} (shown {s.EcoRabbitsShown()})");
         }
 
+        /// <summary>"First bush now" (#288): the first bush comes up at once (a bush is made on the grass nearest the camp if none
+        /// stands); the bird lands on it and the people notice.</summary>
+        public static string FirstBushNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugFirstBushNow();
+            return c < 0 ? "no bush: no ground for it" : Refresh($"first bush at cell {c}");
+        }
+
+        /// <summary>"+N bushes" (#288): bushes on the grass nearest the camp (every third cell).</summary>
+        public static string AddBushes(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugAddBushes(n);
+            return Refresh($"+{n} bushes: {c} came up");
+        }
+
         /// <summary>"Start a hunt now" (#283): a hunter takes a spear and goes after the nearest rabbit, starting now.</summary>
         public static string StartHunt()
         {

@@ -623,6 +623,13 @@ namespace AquariumCiv.View
                 face = a.place.kind == PlaceKind.Home ? at + (at - centre).normalized : centre;
                 return at;
             }
+            if (a.place.kind == PlaceKind.BushCell)
+            {
+                // P8 #288: at a real bush (a berry bush, the cell's centre): each picker at their own side of it, an arm's reach off, facing it.
+                float ba = h + a.slot * 2.39996f;
+                face = spot;
+                return spot + new Vector2(Mathf.Cos(ba), Mathf.Sin(ba)) * (0.17f + 0.03f * (a.slot / 3));
+            }
             // Open ground (a field, the woods, the pond, a heap): a loose spiral round the spot, facing it.
             float spread = a.place.kind is PlaceKind.Field or PlaceKind.Pasture or PlaceKind.Meadow or PlaceKind.Woods or PlaceKind.ForestEdge or PlaceKind.Bushes ? 0.2f : 0.12f;
             if (spread <= SlotSpots.Gap)

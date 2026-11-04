@@ -319,6 +319,47 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(Sim.TentsFromHidesCount, fromHides, "a later tent also took hides");
                 yield return Frames(30);
                 AssertNoErrors("camp");
+
+                // ---- 10. Berries (#288): only time passes. The land grew bushes over those years; in summer they carry berries and
+                // gatherers walk to a real bush, reach and pick, and the bush has fewer berries; they carry the basket off.
+                var bushes = BushView.Instance;
+                Assert.IsNotNull(bushes, "the bush view");
+                var bcells = new List<int>(); Sim.BushCells(bcells);
+                Debug.Log($"[phone] bushes after {Sim.State.month / 12f:0.0} years: {bcells.Count}, first bush cell {Sim.FirstBushCell}");
+                Assert.Greater(bcells.Count, 0, "with only time passing the land grew bushes by now (years: " + Sim.State.month / 12f + ")");
+                for (int i = 0; i < 8 && AquariumCiv.Life.LifeClock.SeasonOf(Sim.State.month) != AquariumCiv.Life.Season.Summer; i++) EcoDebug.SkipSeasons(1);
+                PeopleView.DebugSetHour(8.5f);
+                yield return Frames(40);
+                Assert.Greater(bushes.DotsShown, 0, "berries on the bushes in summer");
+                yield return Shot("phone_16_berries_summer");
+                int picks10 = bushes.PicksDone, pickCell10 = -1;
+                bool carried10 = false;
+                pvh.timeScale = 6f;
+                float t10 = Time.realtimeSinceStartup;
+                while ((bushes.PicksDone <= picks10 || !carried10) && Time.realtimeSinceStartup - t10 < 150f)
+                {
+                    if (pvh.ViewHour > 17f) PeopleView.DebugSetHour(8.5f);
+                    foreach (var a in pvh.Activities)
+                    {
+                        if (!a.moving && a.kind == AquariumCiv.Life.ActivityKind.Gather && a.place.kind == AquariumCiv.Life.PlaceKind.BushCell && pickCell10 < 0)
+                        {
+                            pickCell10 = a.place.index;
+                            pvh.timeScale = 1f;
+                            yield return Frames(20);
+                            yield return Shot("phone_17_picker_at_bush");
+                            pvh.timeScale = 6f;
+                        }
+                        if (bushes.PicksDone > picks10 && a.moving && a.prop == AquariumCiv.Life.Prop.Basket) carried10 = true;
+                    }
+                    yield return null;
+                }
+                pvh.timeScale = 1f;
+                Debug.Log($"[phone] berries: pick cell {pickCell10}, picks {bushes.PicksDone - picks10}, carried {carried10}");
+                Assert.GreaterOrEqual(pickCell10, 0, "a gatherer walked to a real bush and reached");
+                Assert.IsTrue(bcells.Contains(pickCell10) || Sim.BerriesAt(pickCell10, pvh.Now.day, 1) >= 0f, "at a bush the land grew");
+                Assert.Greater(bushes.PicksDone, picks10, "the pick ended: the bush was picked");
+                Assert.IsTrue(carried10, "and a basket was carried off");
+                AssertNoErrors("berries");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }
