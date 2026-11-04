@@ -85,6 +85,30 @@ namespace AquariumCiv.View
             return Refresh($"+{n} rabbits: {c} (shown {s.EcoRabbitsShown()})");
         }
 
+        /// <summary>"Water breaks the surface now" (#279): with no pond, the water table rises to the flood line and seasons pass until
+        /// water stands (the moment plays as it would in play); with a pond, the moment replays.</summary>
+        public static string WaterBreaksNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var fw = FirstWaterView.Instance;
+            if (s.EcoPondCells > 0)
+            {
+                if (fw == null) return "no first-water view";
+                fw.Begin(true); return "first water moment replayed";
+            }
+            s.DebugSetTable(s.EcoFloodLine);
+            int n = 0;
+            while (s.EcoPondCells == 0 && n < 4) { s.DebugSkipSeasons(1); n++; }
+            return Refresh(s.EcoPondCells > 0 ? $"water broke the surface after {n} season(s): {s.EcoPondCells} cells" : "no water after 4 seasons");
+        }
+
+        /// <summary>"Frogs now" (#286): the night's frogs show for a minute.</summary>
+        public static string FrogsNow() { var p = PondLife.Instance; return p != null ? p.FrogsNow() : "no pond life"; }
+
+        /// <summary>"Ducks now" (#286): the ducks show for a minute.</summary>
+        public static string DucksNow() { var p = PondLife.Instance; return p != null ? p.DucksNow() : "no pond life"; }
+
         /// <summary>"First bush now" (#288): the first bush comes up at once (a bush is made on the grass nearest the camp if none
         /// stands); the bird lands on it and the people notice.</summary>
         public static string FirstBushNow()

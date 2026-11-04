@@ -37,7 +37,10 @@ namespace AquariumCiv.Audio
         public const string AmbCalm = "amb_calm", AmbBirds = "amb_birds", AmbCrickets = "amb_crickets", AmbRain = "amb_rain",
             AmbWind = "amb_wind", AmbFlies = "amb_flies", AmbBarren = "amb_barren", AmbFrogs = "amb_frogs";
 
-        const string Ui = "Sfx/Ui/", Care = "Sfx/Care/", Moment = "Sfx/Moment/", Amb = "Ambience/";
+        // ---------- ids: the land's one-shots (P8 #279) ----------
+        public const string FirstWaterDrop = "first_water_drop", FirstWaterBubble = "first_water_bubble";
+
+        const string Eco = "Sfx/Eco/", Ui = "Sfx/Ui/", Care = "Sfx/Care/", Moment = "Sfx/Moment/", Amb = "Ambience/";
 
         static Dictionary<string, CueDef> all;
 
@@ -137,6 +140,9 @@ namespace AquariumCiv.Audio
             // stone; frogs over a soft lap). Ours, so CC0; replace with recorded ones once the look is approved.
             Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.4f, Amb + "barren_dry_loop").Looped().Prio(10).Len(32f));
             Add(new CueDef(AmbFrogs, SoundBus.Ambience, 0.3f, Amb + "frogs_pond_loop").Looped().Prio(10).Len(28f));
+            // P8 #279: the first water in the hollow: a drop, then a bubble (CC0 recordings, see docs/assets-log.md).
+            Add(new CueDef(FirstWaterDrop, SoundBus.World, 0.5f, Eco + "first_water_drop").Limit(1f, 1).Prio(70).Len(1f));
+            Add(new CueDef(FirstWaterBubble, SoundBus.World, 0.4f, Eco + "first_water_bubble").Limit(1f, 1).Prio(70).Len(1f));
             return d;
         }
     }
