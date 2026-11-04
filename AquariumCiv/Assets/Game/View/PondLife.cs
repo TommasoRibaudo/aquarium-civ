@@ -214,6 +214,7 @@ namespace AquariumCiv.View
             var f = new Frog();
             f.go = new GameObject("Frog") { hideFlags = HideFlags.DontSave };
             f.root = f.go.transform; f.root.SetParent(holder, false);
+            f.root.localScale = Vector3.one * 1.8f; // small animals must still read at the default zoom
             Part(f.root, "Body", frogBody, box.SolidMaterial, Vector3.zero);
             f.throat = Part(f.root, "Throat", frogThroat, box.SolidMaterial, new Vector3(0f, 0.012f, 0.022f)).transform;
             f.throat.localScale = Vector3.zero;

@@ -363,6 +363,37 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(bushes.PicksDone, picks10, "the pick ended: the bush was picked");
                 Assert.IsTrue(carried10, "and a basket was carried off");
                 AssertNoErrors("berries");
+
+                // ---- 11. (#279, #286) The pond's first water meets the glass, with its moment, then the frogs. Only time passes (and the
+                // test's regular misting); if no water has stood by then, the cheat raises it and the numbers say so.
+                var fw11 = FirstWaterView.Instance; var pond11 = PondLife.Instance;
+                Assert.IsNotNull(fw11); Assert.IsNotNull(pond11);
+                float y0 = Sim.State.Year;
+                bool natural11 = Sim.EcoPondCells > 0;
+                int seasons11 = 0;
+                var map11 = Sim.Settlement != null ? Sim.Settlement.Map : null;
+                while (Sim.EcoPondCells == 0 && seasons11 < 80)
+                {
+                    if (map11 != null) Sim.Mist(map11.greenX + 0.5f, map11.greenZ, 6f); // regular misting, as a keeper does
+                    EcoDebug.SkipSeasons(1); seasons11++;
+                }
+                natural11 = Sim.EcoPondCells > 0;
+                Debug.Log($"[phone] pond: {(natural11 ? "surfaced by time and misting" : "NO water by time alone")} after {seasons11} seasons (+{Sim.State.Year - y0:0.0} y, year {Sim.State.Year:0.0}), {Sim.EcoPondCells} cells, full plays {fw11.FullPlays}");
+                if (!natural11) EcoDebug.WaterBreaksNow();
+                Assert.Greater(Sim.EcoPondCells, 0, "there is water");
+                PeopleView.DebugSetHour(10f);
+                yield return Frames(30);
+                yield return Until(() => fw11.FullPlays > 0 && fw11.SparklesShown > 0, 10f);
+                if (fw11.FullPlays == 0) fw11.Begin(true); // the water was already there when this beat started
+                yield return Frames(60);
+                yield return Shot("phone_18_pond_first_water");
+                yield return Until(() => !fw11.Playing, 40f);
+                PeopleView.DebugSetHour(20.5f);
+                yield return Frames(30);
+                yield return Until(() => pond11.FrogsSitting > 0, 30f);
+                Assert.Greater(pond11.FrogsSitting, 0, "frogs at the pond at dusk");
+                yield return Shot("phone_19_frogs_dusk");
+                AssertNoErrors("pond");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }
