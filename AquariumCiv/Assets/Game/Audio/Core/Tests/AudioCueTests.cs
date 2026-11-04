@@ -409,6 +409,7 @@ namespace AquariumCiv.Audio.Tests
 
         static AmbienceInput WithWater(AmbienceInput a, float w) { a.water01 = w; return a; }
 
+#if UNITY_2017_1_OR_NEWER // needs UnityEngine.Resources: Unity only, not Tools/SimTests
         [Test]
         public void EveryAmbienceAndLandClipLoads()
         {
@@ -418,6 +419,7 @@ namespace AquariumCiv.Audio.Tests
             Assert.IsNotNull(UnityEngine.Resources.Load<UnityEngine.AudioClip>("Ambience/mist_spray_loop"));
             Assert.That(CueLibrary.Get(CueLibrary.LooseStone).clips.Count, Is.EqualTo(3));
         }
+#endif
 
         [Test]
         public void FaderFadesNotCuts()
