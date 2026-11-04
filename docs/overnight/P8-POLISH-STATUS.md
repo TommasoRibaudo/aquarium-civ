@@ -58,3 +58,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 18:50 · running: item 14 phase A (#246/#248/#249 check + fire to first green) Opus a03318bf658dcd2c7, wt/246 vs/246-248-249-leftovers.
 - 19:10 · #288 phase 1 merged (e321875), dotnet 1203/1203. Unity save round-trip of new EcoState fields unchecked → next Editor batch (EcoTests). Phase 2 = lane B item 11.
 - 19:30 · #282 phase 1 merged (79092a9, conflict in SimCore.Eco.cs EcoTell resolved by me), dotnet 1217/1217.
+- 19:45 · #248 closed; kit-wish design gap filed as https://github.com/TommasoRibaudo/aquarium-civ/issues/292
+- 19:50 · #281 phase 1 merged (5ac42e9), dotnet 1224 expected; FadeSeconds 180 s.
