@@ -29,7 +29,7 @@ namespace AquariumCiv.View.Tests
         Vector2 B(float z)
         {
             var c = cam.GetComponent<Camera>();
-            return BoxCameraMath.PanBoundsFor(cam.yaw, cam.pitch, cam.FitDistance() * z, cam.target.y, Mathf.Tan(c.fieldOfView * 0.5f * Mathf.Deg2Rad), c.aspect);
+            return BoxCameraMath.PanBoundsGlassFor(cam.yaw, cam.pitch, cam.FitDistance() * z, cam.target.y);
         }
 
         [Test]

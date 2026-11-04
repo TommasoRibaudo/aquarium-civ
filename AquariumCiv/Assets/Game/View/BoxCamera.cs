@@ -155,7 +155,8 @@ namespace AquariumCiv.View
             float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, minZoom, maxZoom) : zoom;
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
             // #273: the end pose's own range (the flight keeps yaw and pitch), so a flight never ends where the spring would pull it back or the camera sits in a pane.
-            flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), ViewBounds(z1));
+            flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), GlassBounds(z1));
+            HoldByCode(z1);
             flyDur = Mathf.Max(0f, seconds); flyT = 0f;
             firmFlight = false;
             velocity = Vector2.zero;
@@ -520,7 +521,8 @@ namespace AquariumCiv.View
             }
             followMissing = 0;
             var w = followPeople.transform.TransformPoint(new Vector3(p.x, 0f, p.y));
-            var bound = ViewBounds(zoom); // #273: the same range the spring holds, so follow and spring never fight
+            var bound = GlassBounds(zoom); // #273: a follow may centre anyone inside the glass; the spring stands down while code holds the camera
+            HoldByCode(zoom);
             float gx = Mathf.Clamp(w.x, -bound.x, bound.x), gz = Mathf.Clamp(w.z, -bound.y, bound.y);
             float k = 1f - Mathf.Exp(-FollowRate * dt);
             target.x += (gx - target.x) * k;
@@ -593,7 +595,7 @@ namespace AquariumCiv.View
             float dist = n >= 2 ? Vector2.Distance(a, b) : 0f;
             if (mode != Mode.TwoFinger)
             {
-                mode = Mode.TwoFinger; orbiting = false; moved = true; velocity = Vector2.zero; samples.Clear();
+                mode = Mode.TwoFinger; codeHold = false; orbiting = false; moved = true; velocity = Vector2.zero; samples.Clear();
                 prevMid = mid; prevDist = dist; panTravel = 0f;
                 return;
             }
@@ -639,10 +641,16 @@ namespace AquariumCiv.View
         /// <summary>Whatever the target is past the pan bounds (they shrink as you zoom out) eases back.</summary>
         void SpringPan(float dt)
         {
-            var bound = ViewBounds(zoom);
+            if (codeHold && zoom > holdZoom + 0.05f) codeHold = false;
+            var bound = codeHold ? GlassBounds(zoom) : ViewBounds(zoom); // held by a flight or a follow: only the glass and the hull limit it
             target.x = BoxCameraMath.Spring(target.x, -bound.x, bound.x, dt);
             target.z = BoxCameraMath.Spring(target.z, -bound.y, bound.y, dt);
         }
+
+        // #273: a flight or a follow may put the pivot past the view's limit (a person near a wall is centred); the spring waits until the player pans or zooms out.
+        bool codeHold; float holdZoom;
+        void HoldByCode(float z) { if (!codeHold) { codeHold = true; holdZoom = z; } else holdZoom = Mathf.Max(holdZoom, z); }
+        Vector2 GlassBounds(float z) => BoxCameraMath.PanBoundsGlassFor(yaw, pitch, FitDistance() * z, target.y);
 
         /// <summary>#273: the pan range at a zoom, from the frustum at this camera's fov and aspect.</summary>
         Vector2 ViewBounds(float z)

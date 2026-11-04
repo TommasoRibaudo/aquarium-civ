@@ -157,6 +157,13 @@ namespace AquariumCiv.View
             return new Vector2(x, z);
         }
 
+        /// <summary>#273: the range a flight or a follow may end in (a person or a place near a wall is still centred): the glass's range, drawn in only for the hull, not limited by the view.</summary>
+        public static Vector2 PanBoundsGlassFor(float yaw, float pitch, float distance, float pivotY)
+        {
+            CameraGlass.PanBoundsFor(yaw, pitch, distance, pivotY, Land.HX, Land.HZ, Land.HX + HullSide, Land.HZ + HullSide, ShelfY, Land.GlassTop, out float x, out float z);
+            return new Vector2(x, z);
+        }
+
         /// <summary>#273: a pan drag with a soft band at the glass: full speed up to the rest limit, slower through the band, never past the hard stop.</summary>
         public static float GlassStep(float value, float delta, float lo, float hi) => CameraGlass.Step(value, delta, lo, hi);
 
