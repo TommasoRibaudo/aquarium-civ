@@ -11,7 +11,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [ ] 4 · #287 merged, closed
 - [x] 5 · #266 → #277 merged (#266 open for sign-off)
 - [x] 6 · #269 → #270 merged (open for sign-off)
-- [ ] 7 · #279 → #286 merged
+- [x] 7 · #279 → #286 merged
 - [x] 8 · #282 merged
 - [x] 9 · #283 merged
 - [x] 10 · #284 merged
@@ -86,3 +86,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 23:41 · item 11 merged cb0e376 (#288 open for sign-off; 13 natural bushes at Y12.5). New bugs: #298 old smoke Patch→Rain on base (ecology leak?), #299 particle velocity curves error. Hunt both next (90-min box).
 - 11-04 00:09 · #298 #299 merged 5f91bc2, closed. Editor p8.ecology pref now 0. Next lane B: item 7 (#279 → #286).
 - 11-04 00:10 · item 7 (#279 → #286) Sonnet a6cb1c9440194e928, full EditMode baseline first; watcher bj5f3yz45.
+- 11-04 01:01 · item 7 merged 0cbed7d. EditMode full baseline green (12 assemblies). Pond surfaced Y17 at 11 cells by time; #279 #286 open for sign-off. Next: item 12 (#281 view).
+- 11-04 01:01 · item 12 (#281 view) Sonnet a61ce24ece69d3a38; watcher b35o4tu81. Lane B since tester1: fixes, #297, 11, #298/9, 7, 12 → tester 2 after 12.
