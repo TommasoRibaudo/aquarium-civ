@@ -1,0 +1,32 @@
+01:43:00 [y0.00 m0 Winter h9.7] hold 0.3 s: spraying False misting False step Wipe wet shown 0
+01:43:00 [y0.00 m0 Winter h9.7] SHOT t2b_01_firstmist_hold_03
+01:43:01 [y0.00 m0 Winter h9.8] hold 1.0 s: spraying False misting False step Wipe wet shown 0
+01:43:01 [y0.00 m0 Winter h9.8] SHOT t2b_02_firstmist_hold_10
+01:43:02 [y0.00 m0 Winter h9.8] hold 2.0 s: spraying False misting False step Wipe wet shown 0 pulses 0
+01:43:02 [y0.00 m0 Winter h9.8] SHOT t2b_03_firstmist_hold_20
+01:43:02 [y0.00 m0 Winter h9.8] FRAMES first-run 2.5 s hold (first spray, screenshots excluded): 232 frames, median 6.3, p95 7.4, max 302.4 at #47, >33ms 2
+01:43:03 [y0.00 m0 Winter h9.9] SHOT t2b_04_firstmist_lift_05
+01:43:04 [y0.00 m0 Winter h9.9] close: wet shown 0 shoots 0 fresh 0
+01:43:04 [y0.00 m0 Winter h9.9] SHOT t2b_05_firstmist_close
+01:43:15 [y0.00 m0 Winter h10.6] SHOT t2b_06_kit_spray_close
+01:43:19 [y0.00 m0 Winter h10.9] FRAMES kit close 6 s hold, first puddle at frame -1: 876 frames, median 6.5, p95 7.5, max 27.5 at #0, >33ms 0
+01:43:21 [y0.00 m0 Winter h11.0] SHOT t2b_07_puddles_close_real
+01:43:24 [y0.00 m0 Winter h11.2] SHOT t2b_08_home_1080x1920
+01:43:24 [y0.00 m0 Winter h11.2] SHOT t2b_09_kit_1080x1920
+01:43:27 [y0.00 m0 Winter h11.3] SHOT t2b_10_home_1640x2360
+01:43:30 [y5.75 m69 Autumn h11.6] first bush sign playing, bird cell 1412 pointer crowd 2
+01:43:33 [y5.75 m69 Autumn h11.7] SHOT t2b_11_bush_bird_close
+01:43:34 [y5.75 m69 Autumn h11.8] SHOT t2b_12_bush_bird_close2
+01:44:21 [y8.50 m102 Summer h11.5] berry watch: season Summer, dots 49, bushes 7, picks 0, last pick cell 1412 (bush True), pickers seen False, jobs [hunter,toolmaker,gatherer,]
+01:44:21 [y9.50 m114 Summer h11.6] pond after 38 seasons: cells 6 full plays 1
+01:44:24 [y9.50 m114 Summer h10.2] SHOT t2b_13_corner_first_water_close
+01:44:40 [y9.50 m114 Summer h21.1] dusk frogs sitting 3 shown 3 hops 0
+01:44:40 [y9.50 m114 Summer h21.1] SHOT t2b_14_frogs_dusk_close
+01:44:40 [y9.75 m117 Autumn h10.0] half: table at flood line +0,15 · Y9,8 bare 65 % meadow 18 % · rabbits 13,0 birds 0,6 · pond 424 trees 0 · humid 0,40 · gates camp/- · seed ready
+01:44:44 [y9.75 m117 Autumn h10.2] half: cells 424 ducks 2/2
+01:44:44 [y9.75 m117 Autumn h10.2] SHOT t2b_15_corner_half_close
+01:44:44 [y10.00 m120 Winter h10.2] full: table at flood line +0,40 · Y10,0 bare 64 % meadow 19 % · rabbits 13,2 birds 0,7 · pond 424 trees 0 · humid 0,41 · gates camp/- · seed ready
+01:44:49 [y10.00 m120 Winter h10.6] full: cells 424 ducks 2/2
+01:44:49 [y10.00 m120 Winter h10.6] SHOT t2b_16_corner_full_close
+01:44:50 [y10.00 m120 Winter h10.6] SHOT t2b_17_corner_full_default
+01:44:50 [y10.00 m120 Winter h10.6] END generated 1 errors 0: 
