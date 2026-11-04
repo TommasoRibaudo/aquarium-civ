@@ -20,9 +20,9 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] 13 · #280 merged (open for a listen)
 - [x] 14 · DROPPED by the user 20:07 ("bringing the fire where?"): no fire move. #248 closed earlier; #246/#249 check comments posted, left open
 - [x] 15 · #273 merged (open for sign-off)
-- [ ] 16 · #274 merged
-- [ ] 17 · #275 → #276 merged
-- [ ] 18 · #208–#211 (Opus bundle) merged, closed
+- [x] 16 · #274 merged
+- [x] 17 · #275 → #276 merged
+- [x] 18 · #208–#211 merged (#209 closed; #208 #210 #211 open for look sign-off)
 - [ ] Linked player feedback closed for every closed work issue
 - [ ] Tester runs on cadence; [real] findings fixed; [polish] listed
 - [ ] Full EditMode suite + `SlicePlaythroughSmoke` + `EcoPhonePlaythrough` green on `p8/polish`; ecology off = the slice is unchanged
@@ -103,3 +103,6 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 03:38 · item 15 phase B back (df3bb02) but far zoom slid the tank half off screen (pivot-limited). Sent back: limit the VIEW edge at the glass (far zoom ≈ no pan; close zoom reaches each wall). Watcher b61uu1m2m. NOTE for phase A brief: my brief said 'pivot may move until frustum near edge meets the glass' — ambiguous.
 - 11-04 04:07 · item 15 merged 927125a (dotnet 1281; open for feel sign-off). Next: item 16 (#274 bridges).
 - 11-04 04:08 · item 16 (#274) Sonnet a2e653f75d0e65d7c (watcher bieu2cnd7). Then 17B, 18, tester 3, final play-through, P8.md, PR.
+- 11-04 04:29 · item 16 merged cc9202a (open for look sign-off). Next: item 17B.
+- 11-04 04:58 · item 17 merged b04bfc3; #275 closed, #276 open for sign-off (+#236). Next: item 18 Opus bundle (#208 look, #209 #210 #211).
+- 11-04 05:41 · item 18 merged 2359ec9, dotnet 1286. Call to confirm: #210 read as 'add crumbs', the hut-sized Sky Crumb lump kept. Next: tester 3.
