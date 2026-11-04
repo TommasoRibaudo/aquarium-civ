@@ -116,6 +116,10 @@ namespace AquariumCiv.View
             if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
             EndRow();
             Row();
+            if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
+            if (Btn("+3 bushes")) last = EcoDebug.AddBushes(3);
+            EndRow();
+            Row();
             if (Btn("Rabbit tracks now")) last = EcoDebug.RabbitTracksNow();
             if (Btn("+1 rabbit")) last = EcoDebug.AddRabbits(1);
             if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);

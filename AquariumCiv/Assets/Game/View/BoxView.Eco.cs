@@ -66,6 +66,9 @@ namespace AquariumCiv.View
             return Color.Lerp(dry, grass, g);
         }
 
+        /// <summary>P8 #288: where each bush was drawn (site cell -> ground point, radius), filled as the chunks build; BushView hangs the berries on them.</summary>
+        public readonly Dictionary<int, (Vector3 pos, float r)> BushSpots = new();
+
         /// <summary>What grows in this chunk, from the cover cell by cell (deterministic per cell, so a rebuild never shuffles it).</summary>
         void EcoNature(MeshBuilder mb, int k, List<(Vector2 p, float r)> near)
         {
@@ -110,13 +113,15 @@ namespace AquariumCiv.View
                     {
                         if (cv == EcoLayer.Bush)
                         {
-                            if (H(c, 3) > 0.6f) continue;
+                            // P8 #288: every bush cell has its bush (the gatherers walk to cells, so none may be missing); its berries are
+                            // not in this mesh: BushView draws them by season and by what was picked.
                             float r = Mathf.Lerp(0.05f, 0.1f, H(c, 4));
-                            if (!Free(p, r * 0.8f, near)) continue;
                             var ib = Item(c, 2);
-                            Pieces.Bush(ib, land.OnGround(p), r, H(c, 5) < 0.2f, co);
+                            var bg = land.OnGround(p);
+                            Pieces.Bush(ib, bg, r, false, co);
                             mb.AppendFree(ib);
                             near.Add((p, r));
+                            BushSpots[c] = (bg, r);
                         }
                         else
                         {
