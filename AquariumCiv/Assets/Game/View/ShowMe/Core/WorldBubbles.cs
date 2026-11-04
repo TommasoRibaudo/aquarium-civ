@@ -24,6 +24,8 @@ namespace AquariumCiv.View.ShowMe
         public int storyMonths = 12;
         /// <summary>Stories below this salience aren't talked about.</summary>
         public float storyMinSalience = 0.4f;
+        /// <summary>Ordinary bubbles that come between two tree lines (#318): the tree is one topic among several.</summary>
+        public int bubblesBetweenTree = 2;
     }
 
     /// <summary>
@@ -46,6 +48,7 @@ namespace AquariumCiv.View.ShowMe
         readonly Dictionary<string, double> wantAt = new Dictionary<string, double>();
         readonly Dictionary<string, int> wantTold = new Dictionary<string, int>();
         int sinceWant;
+        int sinceTree = int.MaxValue / 2;
         double clock;
         readonly Dictionary<int, double> lastBy = new Dictionary<int, double>();
         double last = double.NegativeInfinity, started = double.NaN;
@@ -61,7 +64,7 @@ namespace AquariumCiv.View.ShowMe
         public IReadOnlyCollection<string> Said => said;
 
         /// <summary>Forget what was said (a new session, the debug panel).</summary>
-        public void Reset() { said.Clear(); sim.State.saidBubbles.Clear(); wantAt.Clear(); wantTold.Clear(); sinceWant = 0; lastBy.Clear(); last = double.NegativeInfinity; started = double.NaN; }
+        public void Reset() { said.Clear(); sim.State.saidBubbles.Clear(); wantAt.Clear(); wantTold.Clear(); sinceWant = 0; sinceTree = int.MaxValue / 2; lastBy.Clear(); last = double.NegativeInfinity; started = double.NaN; }
 
         /// <summary>The player came back to the box: a fresh warm-up before the next bubble (what was said stays said).</summary>
         public void WarmUp() => started = double.NaN;
@@ -114,6 +117,22 @@ namespace AquariumCiv.View.ShowMe
             return b;
         }
 
+        /// <summary>Debug panel (#318): the next tree line ignoring the gaps (a line already said is skipped). Null when the tree
+        /// isn't tended yet, or every line that fits its stage has been said.</summary>
+        public WorldBubble ForceTree(double now)
+        {
+            clock = now;
+            var b = TreeBubbles().FirstOrDefault(x => !said.Contains(x.key));
+            if (b != null) Mark(b, now);
+            return b;
+        }
+
+        IEnumerable<WorldBubble> TreeBubbles()
+        {
+            foreach (var (l, who, text) in PeopleVoice.TreeLinesNow(sim))
+                yield return Make($"tree:{l.id}", text, who, BubbleSource.Tree, -1, 0);
+        }
+
         void Remember(string key)
         {
             if (!said.Add(key)) return;
@@ -134,6 +153,7 @@ namespace AquariumCiv.View.ShowMe
                 Remember(b.key);
                 sinceWant++;
             }
+            if (b.source == BubbleSource.Tree) sinceTree = 0; else sinceTree++;
             if (b.entryId >= 0) { Remember($"entry:{b.entryId}:q"); Remember($"entry:{b.entryId}:v"); } // one bubble a story
             if (b.speakerId >= 0) lastBy[b.speakerId] = now;
             last = now;
@@ -166,6 +186,9 @@ namespace AquariumCiv.View.ShowMe
             // What the town wants comes round every few bubbles, ahead of the stories; otherwise it waits behind them.
             bool wantsFirst = sinceWant >= rules.bubblesBetweenWants;
             if (wantsFirst) foreach (var w in Wants()) yield return w;
+            // The tree, once tended (#318): comes round every few bubbles ahead of the stories; otherwise it waits behind the trait lines.
+            bool treeFirst = sinceTree >= rules.bubblesBetweenTree;
+            if (treeFirst) foreach (var tb in TreeBubbles()) yield return tb;
             // 2. Recent stories, newest first: their quote, else the words of the one it's about.
             var chron = sim.State.chronicle;
             long from = sim.State.month - rules.storyMonths;
@@ -184,6 +207,7 @@ namespace AquariumCiv.View.ShowMe
                 yield return Make($"bank:{q.lineNo}:me", q.text, q.speakerId, BubbleSource.BankVoice, -1, q.lineNo);
             foreach (var (tl, who) in PeopleVoice.TraitLinesNow(sim))
                 yield return Make($"voice:{tl.id}", tl.text, who, BubbleSource.TraitVoice, -1, 0);
+            if (!treeFirst) foreach (var tb in TreeBubbles()) yield return tb;
             if (!wantsFirst) foreach (var w in Wants()) yield return w;
             // 4. Any-time lines of the bank.
             var any = sim.Quote(PeopleMoment.Any);
