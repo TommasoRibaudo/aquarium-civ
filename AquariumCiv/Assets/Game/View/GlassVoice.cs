@@ -88,6 +88,7 @@ namespace AquariumCiv.View
             if (!TryGetComponent(out props)) props = gameObject.AddComponent<RelicProps>();
             if (!TryGetComponent(out stash)) stash = gameObject.AddComponent<StashProps>();
             if (!TryGetComponent(out stalls)) stalls = gameObject.AddComponent<StallProps>();
+            if (!TryGetComponent<RitualBubbleView>(out _)) gameObject.AddComponent<RitualBubbleView>(); // #276: the symbols over a ritual's people
         }
 
         void OnDisable()
@@ -451,6 +452,22 @@ namespace AquariumCiv.View
             pv.Planner.Invalidate();
             var info = g.Play(pv.Planner, id, pv.Now);
             return info == null ? $"nobody can play the {SimCore.RelicName(id)}" : $"the {SimCore.RelicName(id)}: {info.cast.Count} people until {info.end:0.00}h";
+        }
+
+        /// <summary>Debug (#276): start a ritual now (the Keeper Doll's by default), whatever the hour: gives the relic if the box
+        /// hasn't found it, stages its moment through <see cref="RitualBubbles.StartNow"/>, and the people show their symbols.</summary>
+        public static string DebugStartRitual(string id = RelicId.KeeperDoll)
+        {
+            var g = Instance; var sim = Sim; var pv = PeopleView.Find();
+            if (g == null || sim == null || pv == null || pv.Planner == null) return "glass: not running";
+            pv.Planner.Invalidate();
+            var r = RitualBubbles.StartNow(sim, pv.Planner, pv.Now, id);
+            g.pending.Remove(id); // after: giving the relic queues its own moment, and this one is it
+            if (r == null) return $"nobody can play the {SimCore.RelicName(id)}";
+            g.LastMoment = r.moment;
+            if (g.props != null) g.props.MomentStarted(id, g.crumbArrival);
+            g.NudgeTo(pv.Planner, r.moment.spot);
+            return $"ritual: the {SimCore.RelicName(id)}, {r.moment.cast.Count} people, {r.bubbles.Count} symbol bubbles until {r.moment.end:0.00}h";
         }
 
         /// <summary>Debug: a gathering at the glass now (stage 1: a step back; later: the kids look for you).</summary>
