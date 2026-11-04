@@ -333,6 +333,17 @@ namespace AquariumCiv.View.PlayTests
                 yield return Until(() => bushes.DotsShown > 0, 3f);
                 Assert.Greater(bushes.DotsShown, 0, "berries on the bushes in summer");
                 yield return Shot("phone_16_berries_summer");
+                // ---- 10b. New grass (#281): the box is left as seen, time passes (the same cheat as an away), and the grass that grew
+                // since shows in a fresher green that fades to the normal colouring. Only cheats that pass time; no list of what grew.
+                var surf281 = EcoSurface.Instance;
+                Sim.MarkLandSeen();
+                EcoDebug.SkipSeasons(4);
+                if (Sim.LandNewCellCount == 0) Sim.DebugPretendAwayWithNewGrass(12);
+                surf281.RestartFade();
+                yield return Frames(30);
+                Assert.Greater(Sim.LandNewCellCount, 0, "grass grew while the box was left");
+                Assert.Greater(surf281.NewGrassCells, 0, "new grass shows in the fresher green");
+                yield return Shot("phone_16b_new_grass");
                 int picks10 = bushes.PicksDone, pickCell10 = -1;
                 bool carried10 = false, shot10 = false;
                 pvh.timeScale = 6f;
