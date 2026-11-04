@@ -204,7 +204,13 @@ namespace AquariumCiv.View.PlayTests
                 EcoDebug.CampGate();
                 for (int i = 0; i < 40 && !Sim.CanPlantTree; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(2); }
                 Assert.IsTrue(Sim.CanPlantTree, "the seed comes after the camp and the first bushes");
+                // the years the cheats skipped grew a meadow: rabbits are seen (#282), as many as the sim counts, capped
+                var rabbits = RabbitView.Instance;
+                Assert.IsNotNull(rabbits, "the rabbit view");
                 yield return new WaitForSecondsRealtime(1.5f);
+                Debug.Log($"[phone] rabbits: sim {Sim.EcoRabbitCount}, shown {rabbits.Shown}");
+                Assert.Greater(Sim.EcoRabbitCount, 0, "the meadow brought rabbits");
+                Assert.AreEqual(Sim.EcoRabbitsShown(), rabbits.Shown, "and the box shows them");
                 yield return Shot("phone_09_seed_came");
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                 yield return new WaitForSecondsRealtime(0.5f);

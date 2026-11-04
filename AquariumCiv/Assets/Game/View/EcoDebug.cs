@@ -68,6 +68,23 @@ namespace AquariumCiv.View
         /// <summary>"Puddle visit": the people near a puddle come over now, and a rabbit hops up to drink.</summary>
         public static string PuddleVisit() { var p = PuddleLife.Instance; return p != null ? p.VisitNow() : "no puddle life"; }
 
+        /// <summary>"Rabbit tracks now": the tracks show at the meadow's edge at once (#282).</summary>
+        public static string RabbitTracksNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            return s.DebugRabbitTracksNow() ? Refresh($"rabbit tracks at {s.EcoRabbitTrackCells.Count} cells") : "no change (tracks already there)";
+        }
+
+        /// <summary>"+N rabbits": add rabbits to the sim count; the first ones go through the tracks and the first-rabbit sign (#282).</summary>
+        public static string AddRabbits(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugAddRabbits(n);
+            return Refresh($"+{n} rabbits: {c} (shown {s.EcoRabbitsShown()})");
+        }
+
         public static string MistCamp()
         {
             var st = Sim?.Settlement;

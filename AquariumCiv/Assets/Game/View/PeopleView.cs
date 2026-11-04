@@ -359,6 +359,7 @@ namespace AquariumCiv.View
                 if (!a.moving) face = wet; // the fisher faces the water
             }
             if (!a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            if (!a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
@@ -727,6 +728,21 @@ namespace AquariumCiv.View
 
         /// <summary>Is this person's doll walking (on a route, or gliding into its slot)?</summary>
         readonly Dictionary<int, Vector2> pins = new();
+        readonly Dictionary<int, Vector2> lookAt = new();
+
+        /// <summary>#282: turn this person (while they stand) to face a spot (box units); the first rabbit's sign sets it for whoever points.</summary>
+        public void LookAt(PersonRef who, Vector2 at) => lookAt[who.Key] = at;
+        public void ClearLookAt(PersonRef who) => lookAt.Remove(who.Key);
+
+        /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
+        /// and who is nearest to a sign.</summary>
+        public void StandingNow(List<PersonRef> who, List<float> xs, List<float> zs)
+        {
+            who.Clear(); xs.Clear(); zs.Clear();
+            foreach (var a in acts)
+                if (dolls.TryGetValue(a.who.Key, out var d) && d.placed && !d.pose.hidden && d.view != null && d.view.gameObject.activeInHierarchy)
+                { who.Add(a.who); xs.Add(d.drawn.x); zs.Add(d.drawn.y); }
+        }
 
         /// <summary>#224: stand this person on their own spot (box units) while they are at a place, instead of a slot there: the choice
         /// scene puts its two candidates either side of the fire. A walk is still the planner's; the pin holds once they arrive.</summary>

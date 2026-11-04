@@ -1,0 +1,390 @@
+using System.Collections.Generic;
+using AquariumCiv.Game;
+using AquariumCiv.Life;
+using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
+using AquariumCiv.Sim.Settle;
+using UnityEngine;
+
+namespace AquariumCiv.View
+{
+    /// <summary>
+    /// Rabbits in the box (#282 phase 2; keepers-hands §2 beat 2): before the first rabbit, tracks in the grass at the meadow's
+    /// edge; then the first rabbit hops in from the edge and a person nearby stops and points; then rabbits live in the meadow,
+    /// as many as the sim counts (capped, <see cref="RabbitHerd.DefaultCap"/>). They graze, sit up and hop between green cells
+    /// (<see cref="RabbitHerd.Field"/>), keep to the green, and scatter when someone comes close (<see cref="RabbitHerd.Scare"/>).
+    /// <para><see cref="Field"/> and <see cref="FieldNow"/> are what the hunt planner shares (#283: <c>planner.Rabbits = Field</c>,
+    /// sampled with <see cref="HuntClock.FieldSeconds"/>). Dolls are pooled.</para>
+    /// </summary>
+    [DefaultExecutionOrder(5)]
+    public class RabbitView : MonoBehaviour
+    {
+        public static bool AutoCreate = true;
+        public static RabbitView Instance { get; private set; }
+
+        /// <summary>The first rabbit's sign lasts this many seconds (it hops in, the person points).</summary>
+        public const float SignSeconds = 6f;
+        /// <summary>The sign waits for daylight (view hours): nobody stands out pointing in the dark.</summary>
+        public const float SignFromHour = 6.5f, SignToHour = 19f;
+
+        /// <summary>The rabbits' shared field: the hunt planner takes this one (never its own).</summary>
+        public RabbitHerd.Field Field { get; } = new RabbitHerd.Field();
+
+        BoxView box;
+        PeopleView people;
+        Transform holder;
+        Transform rootSeen;
+        readonly List<RabbitDoll> pool = new();
+        sealed class Slot { public RabbitDoll doll; public RabbitHerd.Scare scare = new(); public float grow; public int id; }
+        readonly Dictionary<int, Slot> slots = new();
+        readonly List<int> gone = new();
+        readonly List<PersonRef> whoBuf = new();
+        readonly List<float> px = new(), pz = new();
+        double ownClock;
+        float refreshT;
+        int fieldSeason = int.MinValue, greenHash;
+        bool fieldReady;
+
+        // tracks
+        GameObject tracks;
+        int tracksKey;
+        // the first rabbit's sign
+        sealed class Sign { public int id; public float t; public Vector2 from; public PersonRef pointer; }
+        Sign sign;
+
+        /// <summary>Rabbit dolls shown now, and how many are fleeing, for tests and the debug panel.</summary>
+        public int Shown { get { int n = 0; foreach (var s in slots.Values) if (s.doll != null && s.doll.gameObject.activeSelf) n++; return n; } }
+        public int Fleeing { get { int n = 0; foreach (var s in slots.Values) if (s.scare.Fleeing) n++; return n; } }
+        public bool TracksShown => tracks != null && tracks.activeSelf;
+        public bool SignPlaying => sign != null;
+        public int SignsPlayed { get; private set; }
+        /// <summary>Who pointed at the first rabbit (none before it), and whether they were really in the pointing activity.</summary>
+        public PersonRef LastPointer { get; private set; }
+        public int SignRabbitId => sign != null ? sign.id : -1;
+
+        /// <summary>Extra spots (box-local x, z) that scare the rabbits like a person would: for tests and the debug panel.</summary>
+        public readonly List<Vector2> Scarers = new();
+
+        SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
+
+        /// <summary>The field's clock in seconds: the people's view day clock (what the hunt planner samples with).</summary>
+        public double FieldNow
+        {
+            get
+            {
+                var pv = People;
+                if (pv != null && pv.Planner != null) return HuntClock.FieldSeconds(pv.Now.day, pv.Now.hour);
+                return ownClock;
+            }
+        }
+
+        PeopleView People => people != null ? people : people = PeopleView.Find();
+
+        public static RabbitView Ensure(BoxView b)
+        {
+            if (b == null) return null;
+            var v = b.GetComponent<RabbitView>();
+            return v != null ? v : b.gameObject.AddComponent<RabbitView>();
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Bootstrap()
+        {
+            if (!AutoCreate || Instance != null || FindAnyObjectByType<GameClock>() == null) return;
+            Ensure(FindAnyObjectByType<BoxView>());
+        }
+
+        void OnEnable()
+        {
+            if (Instance != null && Instance != this) { enabled = false; return; }
+            Instance = this;
+            box = GetComponent<BoxView>();
+        }
+
+        void OnDisable()
+        {
+            if (Instance == this) Instance = null;
+            if (holder != null) Destroy(holder.gameObject);
+            if (tracks != null) Destroy(tracks);
+            holder = null; tracks = null; slots.Clear(); pool.Clear();
+        }
+
+        void Update()
+        {
+            var sim = Sim;
+            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            ownClock += dt;
+            if (sim == null || !sim.EcologyOn || box == null || box.Root == null) { HideAll(); return; }
+            if (rootSeen != box.Root) { ForgetDolls(); rootSeen = box.Root; } // the box was rebuilt: its children went with the old root
+            EnsureField(sim, dt);
+            UpdateTracks(sim);
+            TryStartSign(sim);
+            UpdateRabbits(sim, dt);
+        }
+
+        // ---------------------------------------------------------------- the field
+        void EnsureField(SimCore sim, float dt)
+        {
+            refreshT -= dt;
+            int season = (int)(sim.State.month / 3);
+            if (fieldReady && season == fieldSeason && refreshT > 0f) return;
+            refreshT = 0.8f;
+            // the green changes with the mists too, not only at the season: refresh when the mask changed
+            int h = 17;
+            var cover = sim.State.eco.cover;
+            for (int c = 0; c < cover.Length; c++) h = h * 31 + (RabbitHerd.IsGreen((EcoCover)cover[c]) ? c + 1 : 0);
+            if (fieldReady && season == fieldSeason && h == greenHash) return;
+            fieldReady = true; fieldSeason = season; greenHash = h;
+            sim.EcoRabbitsRefresh(Field);
+        }
+
+        void HideAll()
+        {
+            foreach (var s in slots.Values) if (s.doll != null) { s.doll.gameObject.SetActive(false); pool.Add(s.doll); }
+            slots.Clear();
+            if (tracks != null) tracks.SetActive(false);
+            sign = null;
+        }
+
+        void ForgetDolls() { slots.Clear(); pool.Clear(); holder = null; tracks = null; tracksKey = 0; }
+
+        Transform Holder()
+        {
+            if (holder == null)
+            {
+                holder = new GameObject("Rabbits") { hideFlags = HideFlags.DontSave }.transform;
+                holder.SetParent(box.Root, false);
+            }
+            return holder;
+        }
+
+        // ---------------------------------------------------------------- tracks
+        void UpdateTracks(SimCore sim)
+        {
+            var cells = sim.EcoRabbitTrackCells;
+            if (cells.Count == 0) { if (tracks != null) tracks.SetActive(false); return; }
+            int key = 7;
+            foreach (int c in cells) key = key * 31 + c;
+            if (tracks == null || key != tracksKey)
+            {
+                if (tracks != null) Destroy(tracks);
+                tracks = BuildTracks(sim, cells);
+                tracksKey = key;
+            }
+            tracks.SetActive(true);
+        }
+
+        GameObject BuildTracks(SimCore sim, IReadOnlyList<int> cells)
+        {
+            var mb = new MeshBuilder(box.seed + 77) { jitter = 0f };
+            var land = box.land;
+            var soil = new Color(0.22f, 0.14f, 0.07f);
+            var flat = new Color(0.50f, 0.46f, 0.20f); // trodden, pale grass under the prints
+            foreach (int cell in cells)
+            {
+                float cx = SiteMap.CXc(cell), cz = SiteMap.CZc(cell);
+                uint r = RabbitHerd.H((uint)sim.State.eco.seed, (uint)cell, 77);
+                float a = RabbitHerd.F(r, 1, 2) * Mathf.PI * 2f;
+                var dir = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
+                var side = new Vector2(dir.y, -dir.x);
+                for (int g = 0; g < 3; g++)
+                {
+                    var at = new Vector2(cx, cz) + dir * ((g - 1) * 0.15f);
+                    Print(mb, land, at, flat, 0.055f, 0.085f, a, 0.004f);
+                    // the hind feet side by side, the forefeet one behind the other ahead of them
+                    foreach (float s in new[] { -1f, 1f })
+                        Print(mb, land, at - dir * 0.02f + side * (s * 0.026f), soil, 0.017f, 0.038f, a, 0.007f);
+                    Print(mb, land, at + dir * 0.045f + side * 0.005f, soil, 0.012f, 0.02f, a, 0.007f);
+                    Print(mb, land, at + dir * 0.075f - side * 0.005f, soil, 0.012f, 0.02f, a, 0.007f);
+                }
+            }
+            var go = new GameObject("RabbitTracks") { hideFlags = HideFlags.DontSave };
+            go.transform.SetParent(Holder(), false);
+            go.AddComponent<MeshFilter>().sharedMesh = mb.ToMesh("RabbitTracks");
+            var rend = go.AddComponent<MeshRenderer>();
+            rend.sharedMaterial = box.SolidMaterial;
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return go;
+        }
+
+        static void Print(MeshBuilder mb, Land land, Vector2 at, Color col, float rx, float rz, float yawRad, float lift)
+        {
+            var g = land.OnGround(at.x, at.y);
+            mb.M = Matrix4x4.TRS(g + Vector3.up * lift, Quaternion.Euler(0f, yawRad * Mathf.Rad2Deg, 0f), Vector3.one);
+            mb.Ico(Vector3.zero, 1f, new Vector3(rx, Mathf.Max(0.003f, rx * 0.25f), rz), col, 0.05f);
+            mb.M = Matrix4x4.identity;
+        }
+
+        // ---------------------------------------------------------------- the first rabbit's sign
+        void TryStartSign(SimCore sim)
+        {
+            if (sign != null || !sim.EcoRabbitArrivalPending || Field.Alive.Count == 0 || !Field.HasGreen) return;
+            var pv = People;
+            if (pv == null || pv.Planner == null) return;
+            float hour = pv.ViewHour;
+            if (hour < SignFromHour || hour > SignToHour) return; // waits for the day
+            if (!sim.AckRabbitArrival()) return;
+            int id = Field.Alive[0];
+            var sp = Field.Sample(id, FieldNow);
+            Vector2 from = SignStart(sp.x, sp.z);
+            sign = new Sign { id = id, from = from };
+            SignsPlayed++;
+            // whoever stands nearest points at it
+            pv.StandingNow(whoBuf, px, pz);
+            int n = RabbitHerd.Nearest(px, pz, sp.x, sp.z);
+            if (n >= 0)
+            {
+                sign.pointer = whoBuf[n]; LastPointer = sign.pointer;
+                pv.Planner.React(KeeperGesture.Sighting, pv.Now, default, sign.pointer, 1f, SignSeconds);
+                pv.LookAt(sign.pointer, new Vector2(sp.x, sp.z));
+            }
+            else LastPointer = PersonRef.None;
+            var cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+            if (cam != null) cam.NudgeToward(box.transform.TransformPoint(box.land.OnGround(sp.x, sp.z)));
+        }
+
+        /// <summary>Where the first rabbit comes in from: just past the meadow's edge, on the side where the grass ends.</summary>
+        Vector2 SignStart(float x, float z)
+        {
+            float best = float.MaxValue; var bestAt = new Vector2(x + 0.5f, z);
+            for (int k = 0; k < 16; k++)
+            {
+                float a = k / 16f * Mathf.PI * 2f; var d = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
+                for (float r = 0.1f; r <= 0.9f; r += 0.05f)
+                {
+                    var p = new Vector2(x, z) + d * r;
+                    if (Mathf.Abs(p.x) > Land.HX - 0.1f || Mathf.Abs(p.y) > Land.HZ - 0.1f) break;
+                    if (!Field.IsGreenAt(p.x, p.y)) { if (r < best) { best = r; bestAt = new Vector2(x, z) + d * Mathf.Min(0.9f, r + 0.35f); } break; }
+                }
+            }
+            bestAt.x = Mathf.Clamp(bestAt.x, -Land.HX + 0.1f, Land.HX - 0.1f);
+            bestAt.y = Mathf.Clamp(bestAt.y, -Land.HZ + 0.1f, Land.HZ - 0.1f);
+            return bestAt;
+        }
+
+        // ---------------------------------------------------------------- the rabbits
+        void UpdateRabbits(SimCore sim, float dt)
+        {
+            if (!Field.HasGreen) { HideRabbitsOnly(); return; }
+            Field.Sync(sim.EcoRabbitsShown());
+            double t = FieldNow;
+            var pv = People;
+            if (pv != null && pv.Planner != null) pv.StandingNow(whoBuf, px, pz); else { whoBuf.Clear(); px.Clear(); pz.Clear(); }
+
+            foreach (var sc in Scarers) { px.Add(sc.x); pz.Add(sc.y); }
+
+            // leavers
+            gone.Clear();
+            foreach (var kv in slots) if (!IsAlive(kv.Key)) gone.Add(kv.Key);
+            foreach (int id in gone) { Release(slots[id]); slots.Remove(id); }
+
+            foreach (int id in Field.Alive)
+            {
+                if (!slots.TryGetValue(id, out var s))
+                {
+                    s = new Slot { id = id, doll = Rent(id) };
+                    slots[id] = s;
+                }
+                s.grow = Mathf.MoveTowards(s.grow, 1f, dt / 0.7f);
+                var basePose = Field.Sample(id, t);
+                RabbitPose p;
+                if (sign != null && sign.id == id) p = SignPose(basePose, dt, pv);
+                else p = s.scare.Step(dt, basePose, px, pz, Field);
+                var d = s.doll;
+                d.gameObject.SetActive(true);
+                var tr = d.transform;
+                tr.localPosition = box.land.OnGround(p.x, p.z) + Vector3.up * p.y;
+                tr.localRotation = Quaternion.Euler(0f, p.yaw * Mathf.Rad2Deg, 0f);
+                d.Show(p.act, p.phase, (float)t, s.grow);
+            }
+            if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);
+        }
+
+        bool IsAlive(int id) { var a = Field.Alive; for (int i = 0; i < a.Count; i++) if (a[i] == id) return true; return false; }
+
+        RabbitPose SignPose(RabbitPose basePose, float dt, PeopleView pv)
+        {
+            sign.t += dt;
+            float u = Mathf.Clamp01(sign.t / SignSeconds);
+            float e = u * u * (3f - 2f * u);
+            var to = new Vector2(basePose.x, basePose.z);
+            var at = Vector2.Lerp(sign.from, to, e);
+            var p = basePose;
+            p.x = at.x; p.z = at.y;
+            float dist = (to - sign.from).magnitude;
+            int hops = Mathf.Max(4, Mathf.CeilToInt(dist / RabbitHerd.HopLen));
+            float h = u * hops; float ph = h - Mathf.Floor(h);
+            if (u < 0.97f)
+            {
+                p.act = RabbitAct.Hop; p.phase = ph; p.y = Mathf.Sin(Mathf.PI * ph) * RabbitHerd.HopArc;
+                var dir = to - sign.from; p.yaw = Mathf.Atan2(dir.x, dir.y);
+            }
+            if (pv != null && !sign.pointer.IsNone) pv.LookAt(sign.pointer, at);
+            if (sign.t >= SignSeconds) EndSign(pv);
+            return p;
+        }
+
+        void EndSign(PeopleView pv)
+        {
+            if (pv != null && sign != null && !sign.pointer.IsNone) pv.ClearLookAt(sign.pointer);
+            sign = null;
+        }
+
+        void HideRabbitsOnly()
+        {
+            foreach (var s in slots.Values) Release(s);
+            slots.Clear();
+        }
+
+        RabbitDoll Rent(int id)
+        {
+            int variant = (int)(RabbitHerd.H((uint)Field.Seed, (uint)id, 5) % RabbitDoll.Variants);
+            for (int i = pool.Count - 1; i >= 0; i--)
+            {
+                if (pool[i] == null) { pool.RemoveAt(i); continue; }
+                if (pool[i].Variant != variant) continue;
+                var d = pool[i]; pool.RemoveAt(i);
+                d.transform.SetParent(Holder(), false);
+                return d;
+            }
+            return RabbitDoll.Create(box, Holder(), variant);
+        }
+
+        void Release(Slot s)
+        {
+            if (s.doll == null) return;
+            s.doll.gameObject.SetActive(false);
+            pool.Add(s.doll);
+        }
+
+        // ---------------------------------------------------------------- tests and the debug panel
+        /// <summary>Where a rabbit doll stands now (box-local), false when it isn't shown.</summary>
+        public bool TryGetPosition(int id, out Vector3 local)
+        {
+            local = default;
+            if (!slots.TryGetValue(id, out var s) || s.doll == null || !s.doll.gameObject.activeSelf) return false;
+            local = s.doll.transform.localPosition; return true;
+        }
+
+        public bool TryGetAct(int id, out bool fleeing)
+        {
+            fleeing = false;
+            if (!slots.TryGetValue(id, out var s)) return false;
+            fleeing = s.scare.Fleeing; return true;
+        }
+
+        /// <summary>The nearest shown rabbit to a box-local spot, or -1.</summary>
+        public int NearestShown(float x, float z)
+        {
+            int best = -1; float bd = float.MaxValue;
+            foreach (var kv in slots)
+            {
+                if (kv.Value.doll == null || !kv.Value.doll.gameObject.activeSelf) continue;
+                var p = kv.Value.doll.transform.localPosition;
+                float d = (p.x - x) * (p.x - x) + (p.z - z) * (p.z - z);
+                if (d < bd) { bd = d; best = kv.Key; }
+            }
+            return best;
+        }
+    }
+}

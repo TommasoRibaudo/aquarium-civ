@@ -1,6 +1,7 @@
 using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -9,7 +10,7 @@ namespace AquariumCiv.View
     /// People and animals use the mist's puddles (#266): from time to time, while a puddle that is deep enough to drink from
     /// stands, the people near it come over (kids stomp in it, now and then a grown-up kneels to wash their hands or cup the
     /// water), they draw a little from it (it shrinks), and a rabbit hops up to drink. While there is no pond the same puddle is
-    /// the source of the muddy bucket water (LifePlanner.WaterNow, #267). Gray-box rabbit: a few blobs.
+    /// the source of the muddy bucket water (LifePlanner.WaterNow, #267). The rabbit is the meadow's doll (<see cref="RabbitDoll"/>).
     /// </summary>
     public class PuddleLife : MonoBehaviour
     {
@@ -26,7 +27,7 @@ namespace AquariumCiv.View
 
         // the rabbit
         GameObject rabbit;
-        Transform head;
+        RabbitDoll doll;
         Vector3 from, to;
         float hopT, drinkT;
         int rabbitCell = -1;
@@ -112,33 +113,11 @@ namespace AquariumCiv.View
 
         void MakeRabbit()
         {
-            rabbit = new GameObject("PuddleRabbit") { hideFlags = HideFlags.DontSave };
-            rabbit.transform.SetParent(box.Root != null ? box.Root : transform, false);
-            var co = box.land.Colors;
-            var mb = new MeshBuilder(box.seed + 21) { jitter = 0f };
-            var fur = new Color(0.62f, 0.52f, 0.42f);
-            mb.Ico(new Vector3(0f, 0.022f, 0f), 0.024f, new Vector3(1.35f, 1f, 1f), fur, 0.1f);          // body
-            mb.Ico(new Vector3(-0.026f, 0.014f, 0f), 0.011f, Vector3.one, Color.white, 0.1f);            // tail (behind: -x)
-            var body = mb.ToMesh("RabbitBody");
-            var hb = new MeshBuilder(box.seed + 22) { jitter = 0f };
-            hb.Ico(Vector3.zero, 0.014f, new Vector3(1.2f, 1f, 1f), fur, 0.1f);
-            hb.Ico(new Vector3(-0.002f, 0.022f, 0.006f), 0.005f, new Vector3(0.6f, 2.6f, 0.6f), fur, 0.1f);
-            hb.Ico(new Vector3(-0.002f, 0.022f, -0.006f), 0.005f, new Vector3(0.6f, 2.6f, 0.6f), fur, 0.1f);
-            var headMesh = hb.ToMesh("RabbitHead");
-            var bg = new GameObject("Body"); bg.transform.SetParent(rabbit.transform, false);
-            bg.AddComponent<MeshFilter>().sharedMesh = body; Rend(bg);
-            var hg = new GameObject("Head"); hg.transform.SetParent(rabbit.transform, false);
-            hg.transform.localPosition = new Vector3(0.03f, 0.03f, 0f);
-            hg.AddComponent<MeshFilter>().sharedMesh = headMesh; Rend(hg);
-            head = hg.transform;
+            // the same doll as the meadow's rabbits (#282)
+            doll = RabbitDoll.Create(box, box.Root != null ? box.Root : transform, 1);
+            rabbit = doll.gameObject;
+            rabbit.name = "PuddleRabbit";
             rabbit.SetActive(false);
-        }
-
-        void Rend(GameObject g)
-        {
-            var r = g.AddComponent<MeshRenderer>();
-            r.sharedMaterial = box.SolidMaterial;
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         void UpdateRabbit(SimCore sim, float dt)
@@ -154,7 +133,9 @@ namespace AquariumCiv.View
                     float u = Mathf.Clamp01(hopT);
                     var a = rstate == RState.Hopping ? from : to; var b = rstate == RState.Hopping ? to : from;
                     flat = Vector3.Lerp(a, b, u);
-                    y = Mathf.Abs(Mathf.Sin(u * 9f * Mathf.PI)) * 0.03f; // hops
+                    float hp = u * 9f; hp -= Mathf.Floor(hp);
+                    y = Mathf.Sin(hp * Mathf.PI) * RabbitHerd.HopArc; // hops
+                    doll.Show(RabbitAct.Hop, hp, Time.time);
                     Face(b - a);
                     if (u >= 1f)
                     {
@@ -165,11 +146,10 @@ namespace AquariumCiv.View
                     break;
                 default:
                     flat = to; drinkT += dt;
-                    head.localPosition = new Vector3(0.03f, 0.03f - 0.014f * Mathf.Abs(Mathf.Sin(drinkT * 5f)), 0f); // dips to the water
+                    doll.Show(RabbitAct.Graze, 0f, Time.time); // dips to the water
                     if (drinkT > 4f)
                     {
                         sim.EcoDrawPuddle(rabbitCell, 0.02f); RabbitDrinks++;
-                        head.localPosition = new Vector3(0.03f, 0.03f, 0f);
                         rstate = RState.Leaving; hopT = 0f;
                     }
                     break;
@@ -180,7 +160,7 @@ namespace AquariumCiv.View
         void Face(Vector3 d)
         {
             if (d.sqrMagnitude < 1e-6f) return;
-            rabbit.transform.localRotation = Quaternion.Euler(0f, -Mathf.Atan2(d.z, d.x) * Mathf.Rad2Deg, 0f);
+            rabbit.transform.localRotation = Quaternion.Euler(0f, RabbitDoll.YawOf(d.x, d.z), 0f);
         }
 
         /// <summary>Where the rabbit is now, or null when it is away (tests).</summary>
