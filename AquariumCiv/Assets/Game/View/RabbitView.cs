@@ -179,7 +179,6 @@ namespace AquariumCiv.View
             var mb = new MeshBuilder(box.seed + 77) { jitter = 0f };
             var land = box.land;
             var soil = new Color(0.22f, 0.14f, 0.07f);
-            var flat = new Color(0.50f, 0.46f, 0.20f); // trodden, pale grass under the prints
             foreach (int cell in cells)
             {
                 float cx = SiteMap.CXc(cell), cz = SiteMap.CZc(cell);
@@ -187,15 +186,15 @@ namespace AquariumCiv.View
                 float a = RabbitHerd.F(r, 1, 2) * Mathf.PI * 2f;
                 var dir = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
                 var side = new Vector2(dir.y, -dir.x);
-                for (int g = 0; g < 3; g++)
+                // prints sized for the doll (RabbitDoll.Scale 1.2): a trail of small dark prints (no trodden patch: raised, it read as beetles)
+                for (int g = 0; g < 4; g++)
                 {
-                    var at = new Vector2(cx, cz) + dir * ((g - 1) * 0.15f);
-                    Print(mb, land, at, flat, 0.055f, 0.085f, a, 0.004f);
+                    var at = new Vector2(cx, cz) + dir * ((g - 1.5f) * 0.075f) + side * (((g & 1) == 0 ? 1f : -1f) * 0.006f);
                     // the hind feet side by side, the forefeet one behind the other ahead of them
                     foreach (float s in new[] { -1f, 1f })
-                        Print(mb, land, at - dir * 0.02f + side * (s * 0.026f), soil, 0.017f, 0.038f, a, 0.007f);
-                    Print(mb, land, at + dir * 0.045f + side * 0.005f, soil, 0.012f, 0.02f, a, 0.007f);
-                    Print(mb, land, at + dir * 0.075f - side * 0.005f, soil, 0.012f, 0.02f, a, 0.007f);
+                        Print(mb, land, at - dir * 0.01f + side * (s * 0.012f), soil, 0.007f, 0.016f, a, 0.005f);
+                    Print(mb, land, at + dir * 0.02f + side * 0.003f, soil, 0.005f, 0.008f, a, 0.005f);
+                    Print(mb, land, at + dir * 0.033f - side * 0.003f, soil, 0.005f, 0.008f, a, 0.005f);
                 }
             }
             var go = new GameObject("RabbitTracks") { hideFlags = HideFlags.DontSave };
@@ -305,7 +304,7 @@ namespace AquariumCiv.View
                 d.gameObject.SetActive(true);
                 var tr = d.transform;
                 tr.localPosition = box.land.OnGround(p.x, p.z) + Vector3.up * p.y;
-                tr.localRotation = Quaternion.Euler(0f, p.yaw * Mathf.Rad2Deg, 0f);
+                d.Face(p.yaw * Mathf.Rad2Deg, dt, p.act == RabbitAct.Flee);
                 d.Show(p.act, p.phase, (float)t, s.grow);
             }
             if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);

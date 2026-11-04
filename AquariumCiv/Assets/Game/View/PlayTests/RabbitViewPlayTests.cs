@@ -159,6 +159,21 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(2f);
                 Assert.AreEqual(6, rv.Shown);
                 yield return Shot("rabbit_06_herd_1080");
+                // close up, next to a person if one is near: the look and the size against the people
+                var box = Object.FindAnyObjectByType<BoxView>();
+                int r0 = rv.Field.Alive[0];
+                Assert.IsTrue(rv.TryGetPosition(r0, out var at0));
+                yield return Fly(box, at0.x, at0.z, 1f);
+                yield return Shot("rabbit_07_close_a");
+                yield return new WaitForSecondsRealtime(1.3f);
+                yield return Shot("rabbit_08_close_b");
+                rv.TryGetPosition(r0, out at0);
+                rv.Scarers.Add(new Vector2(at0.x + 0.2f, at0.z));
+                yield return new WaitForSecondsRealtime(0.15f);
+                yield return Shot("rabbit_09_startled");
+                yield return new WaitForSecondsRealtime(0.35f);
+                yield return Shot("rabbit_10_bolting");
+                rv.Scarers.Clear();
                 AssertNoErrors("small phone");
             }
             finally { GameClock.EcologyPref = prefWas; }

@@ -246,13 +246,17 @@ namespace AquariumCiv.Sim.Eco
 
         // ---------------------------------------------------------------- scattering from people
         /// <summary>One rabbit's flee state, kept by the view next to the doll. <see cref="Step"/> turns the scheduled pose into the
-        /// shown one: when a person is inside <see cref="AlertRadius"/> the rabbit bolts directly away (sliding along the green),
-        /// and when they have gone it drifts back to what its schedule says. It never ends off the green.</summary>
+        /// shown one: when a person is inside <see cref="AlertRadius"/> the rabbit freezes, then bounds directly away (along the green),
+        /// and when they have gone it hops back to what its schedule says. It never ends off the green.</summary>
         public sealed class Scare
         {
             public const float AlertRadius = 0.55f, FleeSpeed = 1.6f, ReturnSpeed = 0.5f;
+            /// <summary>A startled rabbit freezes this long, sitting up, before it bolts: the beat that tells you it noticed.</summary>
+            public const float FreezeSeconds = 0.3f;
+            /// <summary>One flee bound covers this much ground (box units).</summary>
+            public const float BoundLen = 0.17f;
             public float offX, offZ;
-            float calm, lastYaw;
+            float calm, lastYaw, freeze, stride, back;
             public bool Fleeing { get; private set; }
 
             /// <summary>The direction (unit) a rabbit at (rx, rz) runs from the people: away from the closest one inside
@@ -271,25 +275,37 @@ namespace AquariumCiv.Sim.Eco
 
             static readonly float[] Turns = { 0f, 0.785f, -0.785f, 1.571f, -1.571f };
 
-            /// <summary>Advance by <paramref name="dt"/> seconds. The scheduled pose in, the shown one out (base + offset, on the green).</summary>
+            /// <summary>Advance by <paramref name="dt"/> seconds. The scheduled pose in, the shown one out (base + offset, on the green).
+            /// Startled, the rabbit freezes sitting up for <see cref="FreezeSeconds"/>, then bounds away; once calm it hops back to
+            /// its schedule (it never slides).</summary>
             public RabbitPose Step(float dt, RabbitPose basePose, IReadOnlyList<float> px, IReadOnlyList<float> pz, Field field)
             {
                 float cx = basePose.x + offX, cz = basePose.z + offZ;
+                bool bolting = false, hoppingBack = false;
                 if (FleeDirection(cx, cz, px, pz, AlertRadius, out float dx, out float dz))
                 {
+                    if (!Fleeing) { freeze = FreezeSeconds; stride = 0f; lastYaw = MathF.Atan2(-dx, -dz); } // it turns to look at what's coming
                     calm = 0f; Fleeing = true;
-                    float step = FleeSpeed * dt;
-                    // straight away first, then 45 and 90 degrees either side: the first that stays on green
-                    foreach (float a in Turns)
+                    if (freeze > 0f) freeze -= dt;
+                    else
                     {
-                        float ca = MathF.Cos(a), sa = MathF.Sin(a);
-                        float tx = dx * ca - dz * sa, tz = dx * sa + dz * ca;
-                        if (field.IsGreenAt(cx + tx * step, cz + tz * step)) { offX += tx * step; offZ += tz * step; lastYaw = MathF.Atan2(tx, tz); break; }
+                        bolting = true;
+                        float step = FleeSpeed * dt;
+                        // straight away first, then 45 and 90 degrees either side: the first that stays on green
+                        foreach (float a in Turns)
+                        {
+                            float ca = MathF.Cos(a), sa = MathF.Sin(a);
+                            float tx = dx * ca - dz * sa, tz = dx * sa + dz * ca;
+                            if (field.IsGreenAt(cx + tx * step, cz + tz * step)) { offX += tx * step; offZ += tz * step; lastYaw = MathF.Atan2(tx, tz); break; }
+                        }
+                        stride += step / BoundLen;
                     }
                 }
                 else
                 {
                     calm += dt;
+                    freeze = 0f;
+                    if (Fleeing && calm < 1.5f) bolting = true; // still running out its last bounds
                     if (calm > 1.5f)
                     {
                         Fleeing = false;
@@ -297,8 +313,12 @@ namespace AquariumCiv.Sim.Eco
                         if (d > 0f)
                         {
                             float m = MathF.Min(d, ReturnSpeed * dt);
+                            lastYaw = MathF.Atan2(-offX, -offZ);
                             if (m >= d) { offX = offZ = 0f; } else { offX -= offX / d * m; offZ -= offZ / d * m; }
+                            back += m / HopLen;
+                            hoppingBack = true;
                         }
+                        else back = 0f;
                     }
                 }
                 var p = basePose;
@@ -306,10 +326,26 @@ namespace AquariumCiv.Sim.Eco
                 // never off the green: pull the offset in until it is back on it
                 for (int k = 0; k < 4 && !field.IsGreenAt(p.x, p.z); k++) { offX *= 0.5f; offZ *= 0.5f; p.x = basePose.x + offX; p.z = basePose.z + offZ; }
                 if (!field.IsGreenAt(p.x, p.z)) { offX = offZ = 0f; p.x = basePose.x; p.z = basePose.z; }
-                if (Fleeing)
+                if (Fleeing && !bolting)
+                {   // frozen: up on the haunches, facing the danger
+                    p.act = RabbitAct.SitUp; p.yaw = lastYaw; p.y = 0f; p.phase = 0f;
+                }
+                else if (Fleeing)
                 {
-                    p.act = RabbitAct.Flee; p.yaw = lastYaw;
-                    p.y = MathF.Abs(MathF.Sin(calm * 20f + offX * 30f)) * HopArc;
+                    if (calm > 0f && stride - MathF.Floor(stride) > 0.02f) stride = MathF.Min(MathF.Ceiling(stride), stride + dt / HopTime); // lands the bound it is in
+                    float ph = stride - MathF.Floor(stride);
+                    if (calm > 0f && ph <= 0.02f) { p.act = RabbitAct.SitUp; p.yaw = lastYaw; p.y = 0f; p.phase = 0f; } // landed: up, checking it's safe
+                    else
+                    {
+                        p.act = RabbitAct.Flee; p.yaw = lastYaw; p.phase = ph;
+                        p.y = MathF.Sin(MathF.PI * ph) * HopArc * 1.4f;
+                    }
+                }
+                else if (hoppingBack)
+                {
+                    float ph = back - MathF.Floor(back);
+                    p.act = RabbitAct.Hop; p.yaw = lastYaw; p.phase = ph;
+                    p.y = MathF.Sin(MathF.PI * ph) * HopArc;
                 }
                 return p;
             }
