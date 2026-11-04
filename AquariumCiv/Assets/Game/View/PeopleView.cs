@@ -407,7 +407,7 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
 
             // Props.
-            var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind);
+            var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
@@ -759,7 +759,7 @@ namespace AquariumCiv.View
 
         /// <summary>The planner's prop (one of ~40) as one of the view's code-built props, and where it rides. Small things
         /// that wouldn't read at phone size (a mug, a flower, a bell) aren't drawn.</summary>
-        public static (PropKind kind, PropSlot slot) PropOf(LifeProp prop, LifeSlot lifeSlot, ActivityKind activity)
+        public static (PropKind kind, PropSlot slot) PropOf(LifeProp prop, LifeSlot lifeSlot, ActivityKind activity, WaterKind water = WaterKind.None)
         {
             var slot = lifeSlot switch
             {
@@ -789,7 +789,7 @@ namespace AquariumCiv.View
                 LifeProp.Slate or LifeProp.Notebook => PropKind.Slate,
                 LifeProp.Sheaf => PropKind.Sheaf,
                 LifeProp.Lantern => PropKind.Lantern,
-                LifeProp.Buckets => PropKind.Bucket,
+                LifeProp.Buckets => water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket,
                 LifeProp.EmptyBucket => PropKind.BucketEmpty,
                 LifeProp.Sack or LifeProp.SeedBag => PropKind.Sack,
                 LifeProp.Block => PropKind.Block,
@@ -806,7 +806,7 @@ namespace AquariumCiv.View
             };
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
             if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
-            else if (kind is PropKind.Bucket or PropKind.BucketEmpty) slot = PropSlot.Hand;
+            else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             else if (kind == PropKind.Slate && activity == ActivityKind.WriteDown) slot = PropSlot.Arms; // hugged, the hand writes
@@ -959,7 +959,7 @@ namespace AquariumCiv.View
             sb.Append(a.kind);
             sb.Append(a.moving ? " to " : " at ").Append(a.place);
             if (a.moving && a.from != a.place) sb.Append(" from ").Append(a.from);
-            var (pk, ps) = PropOf(a.prop, a.PropSlot, a.kind);
+            var (pk, ps) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
             if (pk != PropKind.None) sb.Append(" with ").Append(pk).Append(" (").Append(ps).Append(')');
             if (!a.partner.IsNone) sb.Append(" with ").Append(a.partner);
             if (dolls.TryGetValue(a.who.Key, out var d) && d.view != null)

@@ -368,8 +368,8 @@ namespace AquariumCiv.Sim
                 // A festival makes the chronicle at most every 6 years (they still happen and lift the mood).
                 if (!Fresh("festival", -1, 6)) return;
                 Chronicle("festival", host != null
-                    ? string.Format(Nth(FestivalLines, Told("festival", host.id) + host.id), host.FullName) // told in turn (#61)
-                    : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
+                    ? string.Format(Nth(EcologyOn && s.era == Era.Camp ? CampFestivalLines : FestivalLines, Told("festival", host.id) + host.id), host.FullName) // told in turn (#61); a living-land camp has no harvest yet
+                    : EcologyOn && s.era == Era.Camp ? "The people gathered round the fire for a feast." : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
         }
 
