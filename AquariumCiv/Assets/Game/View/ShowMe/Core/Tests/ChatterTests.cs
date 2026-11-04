@@ -439,5 +439,49 @@ namespace AquariumCiv.View.ShowMe.Tests
             }
             Assert.LessOrEqual(stuck, 4);
         }
+
+        /// <summary>#209: labels stacked in a column (FarEnd puts them 8 apart) read as one block, so a leader goes round the
+        /// whole stack, not through the gaps between its labels, and never back across its own label.</summary>
+        [Test]
+        public void ALeaderGoesRoundTheLabelStackNotAcrossIt()
+        {
+            const float w = 300f, h = 44f, gap = 8f;
+            int crossed = 0, cases = 0;
+            string first = null;
+            foreach (float shift in new[] { 20f, 70f, -110f })
+            foreach (int count in new[] { 2, 3, 4 })
+                foreach (int mine in new[] { 0, 1, 2, 3 })
+                {
+                    if (mine >= count) continue;
+                    foreach (var (dx, dy) in new[] { (0f, -300f), (0f, 400f), (420f, -60f), (-420f, 30f), (250f, 300f), (-200f, -260f), (380f, 0f), (60f, -40f) })
+                    {
+                        var all = new List<LabelBox>();
+                        for (int i = 0; i < count; i++) all.Add(new LabelBox(540f + (i % 2) * shift, 300f + i * (h + gap), w + (i % 3) * 30f, h));
+                        var me = all[mine];
+                        var others = all.Where((_, i) => i != mine).ToList();
+                        float toX = 540f + dx, toY = 300f + (count - 1) * (h + gap) * 0.5f + dy;
+                        float x0 = all.Min(b => b.x - b.w / 2f), x1 = all.Max(b => b.x + b.w / 2f), y0 = all.Min(b => b.y - b.h / 2f), y1 = all.Max(b => b.y + b.h / 2f);
+                        if (toX > x0 - 10f && toX < x1 + 10f && toY > y0 - 10f && toY < y1 + 10f) continue; // the person is under the stack: nothing to go round
+                        var r = MarkerLayout.RouteLeader(me, toX, toY, others);
+                        cases++;
+                        // Off its own label, every leg stays out of the stack's block (its own label included: no line back across it).
+                        var legs = new List<(float, float, float, float)>();
+                        if (!r.bends) legs.Add((r.ax, r.ay, r.bx, r.by));
+                        else if (!r.twice) { legs.Add((r.ax, r.ay, r.vx, r.vy)); legs.Add((r.vx, r.vy, r.bx, r.by)); }
+                        else { legs.Add((r.ax, r.ay, r.vx, r.vy)); legs.Add((r.vx, r.vy, r.wx, r.wy)); legs.Add((r.wx, r.wy, r.bx, r.by)); }
+                        bool bad = false;
+                        for (int l = 0; l < legs.Count; l++)
+                        {
+                            var (ax, ay, bx, by) = legs[l];
+                            // not through another label, nor through the 8-point gap between two of them
+                            foreach (var o in others) if (MarkerLayout.Crosses(ax, ay, bx, by, o, gap / 2f + 1f)) bad = true;
+                            if (l > 0 && MarkerLayout.Crosses(ax, ay, bx, by, me, -1f)) bad = true;
+                        }
+                        if (bad) { crossed++; first ??= $"shift {shift}, {count} labels, mine {mine}, person at ({toX:0}, {toY:0}): {r.ax:0},{r.ay:0} -> {(r.bends ? $"{r.vx:0},{r.vy:0} -> " : "")}{(r.twice ? $"{r.wx:0},{r.wy:0} -> " : "")}{r.bx:0},{r.by:0}"; }
+                    }
+                }
+            Assert.Greater(cases, 120);
+            Assert.AreEqual(0, crossed, $"{crossed} of {cases} leaders cross the stack; first: {first}");
+        }
     }
 }

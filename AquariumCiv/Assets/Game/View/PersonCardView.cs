@@ -526,6 +526,8 @@ namespace AquariumCiv.View
         /// <summary>#194: labels drawn at most; the rest are "+N" and every tie is in the card. Labels shown last frame and leader lines (tests).</summary>
         public const int MaxLabels = 4;
         public int LeadersDrawn => leaders.Count;
+        /// <summary>#209: the leader lines drawn last frame, in overlay points (tests).</summary>
+        public IReadOnlyList<LeaderRoute> Leaders => leaders;
         public int OverflowShown { get; private set; }
         const float TieTop = 120f, TieH = 66f, TieMaxW = 470f;
 

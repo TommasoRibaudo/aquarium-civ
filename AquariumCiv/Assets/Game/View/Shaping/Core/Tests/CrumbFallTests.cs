@@ -69,5 +69,102 @@ namespace AquariumCiv.View.Shaping.Tests
             Assert.IsTrue(CrumbFall.ShowLastPiece(true, 10, 10 + CrumbFall.EatenMonths));
             Assert.AreEqual(1f, CrumbFall.Left(10, 10)); Assert.AreEqual(0f, CrumbFall.Left(10, 500));
         }
+
+        // ---------------- #210 #211: the bits knocked off on the glass ----------------
+
+        static CrumbFall.Bit[] BitsAt(float x, float z, int seed, out CrumbFall.Plan p)
+        {
+            p = CrumbFall.For("rain", 2f, x, z, HW, HD, H, seed);
+            return CrumbFall.Bits(p, seed);
+        }
+
+        [Test]
+        public void TheBitsAreSmallAndStartOnTheGlassWhereTheLumpHit()
+        {
+            foreach (var (x, z) in new[] { (-2.2f, 0.4f), (2.5f, -1f), (0f, 0f) })
+                for (int seed = 1; seed <= 20; seed++)
+                {
+                    var bits = BitsAt(x, z, seed, out var p);
+                    Assert.AreEqual(CrumbFall.BitCount, bits.Length);
+                    foreach (var b in bits)
+                    {
+                        Assert.That(b.size, Is.InRange(CrumbFall.BitMin * 0.79f, CrumbFall.BitMax + 1e-4f), "a crumb, not a lump");
+                        Assert.Less(System.Math.Abs(b.startY - p.hitY), 0.06f, "at the hit's height");
+                        float off = p.wall == CrumbWall.Back ? System.Math.Abs(b.startZ - p.hitZ) : System.Math.Abs(b.startX - p.hitX);
+                        Assert.Less(off, b.size, "against the glass");
+                        CrumbFall.BitAt(b, 0f, HW, HD, out _, out float y, out _, out _, out _, out _);
+                        Assert.AreEqual(b.startY, y, 1e-4f, "it clings first");
+                    }
+                }
+        }
+
+        [Test]
+        public void TheyFallWithGravitySpeedingUp()
+        {
+            var bits = BitsAt(2.5f, -1f, 4, out _);
+            foreach (var b in bits)
+            {
+                float dt = (b.landAt - b.cling) / 6f, lastDrop = 0f, lastY = b.startY;
+                for (int k = 1; k <= 5; k++)
+                {
+                    CrumbFall.BitAt(b, b.cling + k * dt, HW, HD, out _, out float y, out _, out _, out _, out _);
+                    float drop = lastY - y;
+                    Assert.Greater(drop, lastDrop, "each step falls further than the last: accelerating, not constant");
+                    lastDrop = drop; lastY = y;
+                }
+                CrumbFall.BitAt(b, b.landAt, HW, HD, out _, out float yl, out _, out _, out _, out _);
+                Assert.AreEqual(0f, yl, 1e-3f, "down at landAt");
+            }
+        }
+
+        [Test]
+        public void OnLandingTheyScatterFlattenRestAndGo()
+        {
+            var bits = BitsAt(-2.2f, 0.4f, 9, out var p);
+            float spreadLand = 0f, spreadRest = 0f;
+            var land = new System.Collections.Generic.List<(float, float)>();
+            var rest = new System.Collections.Generic.List<(float, float)>();
+            foreach (var b in bits)
+            {
+                CrumbFall.BitAt(b, b.landAt, HW, HD, out float lx, out _, out float lz, out float f0, out _, out _);
+                CrumbFall.BitAt(b, b.landAt + 2f, HW, HD, out float rx, out float ry, out float rz, out float f1, out float s1, out _);
+                Assert.Greater((rx - lx) * (rx - lx) + (rz - lz) * (rz - lz), 0.03f * 0.03f, "it slides out from where it landed");
+                Assert.AreEqual(0f, ry, 1e-4f, "and settles on the ground");
+                Assert.AreEqual(1f, f0, 1e-3f); Assert.AreEqual(CrumbFall.Squashed, f1, 1e-3f, "a little flattened: its smear");
+                Assert.AreEqual(1f, s1, 1e-4f, "still there while it rests");
+                Assert.Greater(rx, -HW, "inside the glass");
+                CrumbFall.BitAt(b, CrumbFall.BitsDone(bits), HW, HD, out _, out _, out _, out _, out float gone, out _);
+                Assert.AreEqual(0f, gone, 1e-4f, "gone in the end");
+                land.Add((lx, lz)); rest.Add((rx, rz));
+            }
+            spreadLand = Spread(land); spreadRest = Spread(rest);
+            Assert.Greater(spreadRest, spreadLand * 1.3f, $"they scatter: spread {spreadLand:0.000} on landing, {spreadRest:0.000} at rest");
+        }
+
+        static float Spread(System.Collections.Generic.List<(float x, float z)> pts)
+        {
+            float mx = 0f, mz = 0f;
+            foreach (var q in pts) { mx += q.x; mz += q.z; }
+            mx /= pts.Count; mz /= pts.Count;
+            float s = 0f;
+            foreach (var q in pts) s += (float)System.Math.Sqrt((q.x - mx) * (q.x - mx) + (q.z - mz) * (q.z - mz));
+            return s / pts.Count;
+        }
+
+        [Test]
+        public void MostlyDoughWithAFewChocChips()
+        {
+            for (int seed = 1; seed <= 10; seed++)
+            {
+                var bits = BitsAt(1.5f, 0.3f, seed, out _);
+                int chips = 0;
+                foreach (var b in bits) if (b.kind == CrumbFall.BitKind.Chip) chips++;
+                Assert.AreEqual(CrumbFall.ChipCount, chips);
+                Assert.Less(chips * 2, bits.Length, "chips are the minority");
+                Assert.Greater(chips, 0, "but there are some");
+            }
+            var a = BitsAt(1.5f, 0.3f, 3, out _); var c = BitsAt(1.5f, 0.3f, 3, out _);
+            Assert.AreEqual(a[5].scatterX, c[5].scatterX, "same plan, same bits");
+        }
     }
 }

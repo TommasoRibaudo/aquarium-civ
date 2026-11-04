@@ -126,44 +126,76 @@ namespace AquariumCiv.View.ShowMe
         public const float LeaderGap = 100f;
 
         /// <summary>Tester run 8: a leader that ran behind another label read as ending there. The way from a label to its person that stays out from under every
-        /// other label: straight from whichever edge can, else round the corner of what's in the way, else (the person is under a label) straight.</summary>
+        /// other label: straight from whichever edge can, else round the corner of what's in the way, else (the person is under a label) straight.
+        /// #209: labels stacked close together (FarEnd puts them 8 apart, its own label among them) are one block to go round, so no leg runs
+        /// through the gaps of a stack and none runs back across its own label: every leg keeps <paramref name="air"/> off every label.</summary>
         public static LeaderRoute RouteLeader(LabelBox me, float toX, float toY, IList<LabelBox> others, float air = 6f)
         {
             float halfW = me.w / 2f, halfH = me.h / 2f;
             var starts = new[] { (me.x, me.y + halfH), (me.x, me.y - halfH), (me.x + halfW, me.y), (me.x - halfW, me.y) };
             System.Array.Sort(starts, (a, b) => Dist(a.Item1, a.Item2, toX, toY).CompareTo(Dist(b.Item1, b.Item2, toX, toY)));
+            var inner = new LabelBox(me.x, me.y, Math.Max(0f, me.w - 2f), Math.Max(0f, me.h - 2f)); // its own label: a leg may leave its edge, never cross it
+            bool First(float ax, float ay, float bx, float by) => Clear(ax, ay, bx, by, others, air) && !Crosses(ax, ay, bx, by, inner);
+            bool Later(float ax, float ay, float bx, float by) => Clear(ax, ay, bx, by, others, air) && !Crosses(ax, ay, bx, by, me, air);
             foreach (var s in starts)
-                if (Clear(s.Item1, s.Item2, toX, toY, others, air)) return new LeaderRoute { ax = s.Item1, ay = s.Item2, bx = toX, by = toY };
+                if (First(s.Item1, s.Item2, toX, toY)) return new LeaderRoute { ax = s.Item1, ay = s.Item2, bx = toX, by = toY };
             var best = new LeaderRoute { ax = starts[0].Item1, ay = starts[0].Item2, bx = toX, by = toY };
             float bestLen = float.MaxValue;
+            var blocks = new List<LabelBox>(others);
+            foreach (var b in Stacks(me, others, air)) if (!blocks.Contains(b)) blocks.Add(b);
             foreach (var s in starts)
-                foreach (var o in others)
+                foreach (var o in blocks)
                 {
                     float cx = o.w / 2f + air * 2f, cy = o.h / 2f + air * 2f;
                     var corners = new[] { (o.x - cx, o.y - cy), (o.x + cx, o.y - cy), (o.x + cx, o.y + cy), (o.x - cx, o.y + cy) };
                     for (int i = 0; i < 4; i++)
                     {
                         var (vx, vy) = corners[i];
-                        if (!Clear(s.Item1, s.Item2, vx, vy, others, air)) continue;
+                        if (!First(s.Item1, s.Item2, vx, vy)) continue;
                         float there = Dist(s.Item1, s.Item2, vx, vy);
                         float len = there + Dist(vx, vy, toX, toY);
-                        if (len < bestLen && Clear(vx, vy, toX, toY, others, air))
+                        if (len < bestLen && Later(vx, vy, toX, toY))
                         {
                             bestLen = len;
                             best = new LeaderRoute { ax = s.Item1, ay = s.Item2, vx = vx, vy = vy, bx = toX, by = toY, bends = true };
                         }
-                        // A wide label square in the way: along its side, corner to corner.
+                        // A wide label (or a stack) in the way: along its side, corner to corner.
                         for (int step = 1; step <= 3; step += 2)
                         {
                             var (wx, wy) = corners[(i + step) % 4];
                             len = there + Dist(vx, vy, wx, wy) + Dist(wx, wy, toX, toY);
-                            if (len >= bestLen || !Clear(vx, vy, wx, wy, others, air * 0.5f) || !Clear(wx, wy, toX, toY, others, air)) continue;
+                            if (len >= bestLen || !Later(vx, vy, wx, wy) || !Later(wx, wy, toX, toY)) continue;
                             bestLen = len;
                             best = new LeaderRoute { ax = s.Item1, ay = s.Item2, vx = vx, vy = vy, wx = wx, wy = wy, bx = toX, by = toY, bends = true, twice = true };
                         }
                     }
                 }
             return best;
+        }
+
+        /// <summary>#209: the stacks: labels (its own among them) whose gaps are under two airs, merged into the box round them all.
+        /// Only stacks of two or more come back.</summary>
+        public static List<LabelBox> Stacks(LabelBox me, IList<LabelBox> others, float air = 6f)
+        {
+            var boxes = new List<(LabelBox box, int n)> { (me, 1) };
+            foreach (var o in others) boxes.Add((o, 1));
+            for (bool merged = true; merged;)
+            {
+                merged = false;
+                for (int i = 0; i < boxes.Count && !merged; i++)
+                    for (int j = i + 1; j < boxes.Count && !merged; j++)
+                    {
+                        var a = boxes[i].box; var b = boxes[j].box;
+                        float gx = Math.Abs(a.x - b.x) - (a.w + b.w) / 2f, gy = Math.Abs(a.y - b.y) - (a.h + b.h) / 2f;
+                        if (gx >= air * 2f || gy >= air * 2f) continue;
+                        float x0 = Math.Min(a.x - a.w / 2f, b.x - b.w / 2f), x1 = Math.Max(a.x + a.w / 2f, b.x + b.w / 2f);
+                        float y0 = Math.Min(a.y - a.h / 2f, b.y - b.h / 2f), y1 = Math.Max(a.y + a.h / 2f, b.y + b.h / 2f);
+                        boxes[i] = (new LabelBox((x0 + x1) / 2f, (y0 + y1) / 2f, x1 - x0, y1 - y0), boxes[i].n + boxes[j].n);
+                        boxes.RemoveAt(j);
+                        merged = true;
+                    }
+            }
+            return boxes.Where(b => b.n > 1).Select(b => b.box).ToList();
         }
 
         static bool Clear(float ax, float ay, float bx, float by, IList<LabelBox> others, float air)
