@@ -341,6 +341,7 @@ namespace AquariumCiv.View
                 }
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Force a bubble")) last = ShowMeDirector.DebugBubble();
+                if (GUILayout.Button("Tree line")) last = ShowMeDirector.DebugTreeLine(); // #318
                 if (GUILayout.Button("End show me")) last = ShowMeDirector.DebugEnd();
                 GUILayout.EndHorizontal();
             }

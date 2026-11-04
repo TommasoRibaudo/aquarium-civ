@@ -869,6 +869,35 @@ namespace AquariumCiv.View
             return d.bubble != null ? "want: " + b.text : d.CaptionUp ? "caption: " + b.text : "nobody on screen to say: " + b.text;
         }
 
+        /// <summary>Debug (#318): a tree line now, through the same bubble and word as any other. A tree that isn't tended yet is
+        /// planted at the sprout stage and counted as misted once first (the cheat's own doing, said in the result).</summary>
+        public static string DebugTreeLine()
+        {
+            var d = Instance;
+            if (d == null) return "no ShowMeDirector";
+            d.Bind();
+            var pv = PeopleView.Find(); var cam = Camera.main;
+            if (pv == null || cam == null || d.bubbles == null || d.bubblesSim == null) return "no people";
+            string quiet = d.QuietReason();
+            if (quiet != null) return "quiet: " + quiet;
+            var sim = d.bubblesSim;
+            string prep = "";
+            if (!PeopleVoice.TreeTended(sim))
+            {
+                if (!sim.EcologyOn) return "no ecology in this box";
+                if (!sim.DebugTreeStage(Mathf.Max(1, sim.EcoTree.stage))) return "no tree can be planted";
+                sim.State.eco.keeperMistings = Mathf.Max(1, sim.State.eco.keeperMistings);
+                prep = "(tree tended by the cheat) ";
+            }
+            var b = d.bubbles.ForceTree(Time.unscaledTime);
+            if (b == null) return prep + "every tree line for this stage is said (Clear said)";
+            d.HideBubble();
+            d.HideCaption();
+            d.Visible(pv, cam);
+            d.ShowBubble(pv, cam, b);
+            return prep + (d.bubble != null ? "tree: " + b.text : d.CaptionUp ? "caption: " + b.text : "nobody on screen to say: " + b.text);
+        }
+
         /// <summary>Debug (#120): forget what's been said in this box.</summary>
         public static string DebugClearSaid()
         {
