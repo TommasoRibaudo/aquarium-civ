@@ -104,6 +104,7 @@ namespace AquariumCiv.View
         void DrawEco()
         {
             GUILayout.Label("Living land (P8): " + EcoDebug.Status());
+            GUILayout.Label("Jobs: " + EcoDebug.Jobs());
             Row();
             if (Btn("Barren box")) last = EcoDebug.NewBox(true);
             if (Btn("Old box")) last = EcoDebug.NewBox(false);

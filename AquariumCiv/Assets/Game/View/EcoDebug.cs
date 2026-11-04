@@ -19,6 +19,9 @@ namespace AquariumCiv.View
             return what + " · " + Status();
         }
 
+        /// <summary>#285: which jobs are open on this land and why (one line each).</summary>
+        public static string Jobs() { var s = Sim; return s == null ? "no sim" : s.EcologyOn ? s.DebugJobsReadout() : "living land off"; }
+
         public static string Status()
         {
             var s = Sim;

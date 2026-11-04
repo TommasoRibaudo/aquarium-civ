@@ -98,7 +98,14 @@ namespace AquariumCiv.Life
             return d.lookerKey == p.key;
         }
         /// <summary>Where the water is drawn: the well; else the pond once it has water; else the wet low ground (the stream bed).</summary>
-        Place WaterPlace => wellB != null ? PlaceOf(wellB) : OnLiving && sim.OpenWater ? Pond : Stream;
+        Place WaterPlace => wellB != null ? PlaceOf(wellB) : OnLiving && sim.OpenWater ? Pond : OnLiving ? PuddleOr(Stream) : Stream;
+        /// <summary>P8 (#267/#266): with no pond, a drinkable mist puddle (the nearest to the camp) is where the muddy water is scooped; else the wet low ground.</summary>
+        Place PuddleOr(Place fallback)
+        {
+            if (!sim.EcoHasPuddles) return fallback;
+            int cell = sim.EcoNearestPuddle(0f, 0f, 99f);
+            return cell >= 0 ? Place.Land(PlaceKind.Puddle, cell) : fallback;
+        }
         /// <summary>What the bucket holds from <see cref="WaterPlace"/>: muddy from the wet low ground while the pond is dry.</summary>
         WaterKind WaterNow => wellB == null && OnLiving && !sim.OpenWater ? WaterKind.Muddy : WaterKind.Clean;
 

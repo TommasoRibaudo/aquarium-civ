@@ -111,7 +111,7 @@ namespace AquariumCiv.View.ShowMe
             bool camp = sim.State.era == Era.Camp, town = sim.State.era == Era.Town;
             switch (type)
             {
-                case BuildingType.Hut: return town ? "a new house" : "another hut";
+                case BuildingType.Hut: return town ? "a new house" : sim.EcologyOn && camp ? "another tent" : "another hut";
                 case BuildingType.Farm: return camp ? "the new gathering grounds" : "the new field";
                 case BuildingType.Lumbermill: return camp ? "the woodpile" : "the lumbermill";
                 case BuildingType.Well: return "the well";
@@ -132,7 +132,7 @@ namespace AquariumCiv.View.ShowMe
         /// <summary>The wordings of a case (each with {thing}, {Thing}, {place}, {n} to fill). A few buildings have their own.</summary>
         static string[] WantWordings(SimCore sim, WantCase c, string building)
         {
-            bool town = sim.State.era == Era.Town;
+            bool town = sim.State.era == Era.Town, tent = sim.EcologyOn && sim.State.era == Era.Camp;
             switch (c)
             {
                 case WantCase.Wood:
@@ -165,7 +165,7 @@ namespace AquariumCiv.View.ShowMe
                         "I know everyone's feet by now. We could use another hut.",
                         "Somebody's elbow is in my ear every night. A new hut would be lovely.",
                         "We're a tight bunch. Tighter every spring. A new hut wouldn't hurt.",
-                    }.Select(t => town ? t.Replace("hut", "house") : t).ToArray();
+                    }.Select(t => town ? t.Replace("hut", "house") : tent ? t.Replace("hut", "tent") : t).ToArray();
                 case WantCase.FoodLow:
                     return town
                         ? new[] { "I've started counting the loaves. There aren't many.", "Lean week. We've had worse. Probably.", "The soup's very clear today. You can see the bottom of the pot." }
