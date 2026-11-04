@@ -90,3 +90,6 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 01:01 · item 12 (#281 view) Sonnet a61ce24ece69d3a38; watcher b35o4tu81. Lane B since tester1: fixes, #297, 11, #298/9, 7, 12 → tester 2 after 12.
 - 11-04 01:14 · item 12 merged 031bc28. Next: tester run 2.
 - 11-04 01:15 · TESTER 2 a65afbea3fc615d29 (watcher btng4qup8). Lane A: #273 phase A a796a3ff9b3123878 (wt/273), #275/#276 phase A a5d1b8d7eecf3fbb5 (wt/275).
+- 11-04 01:30 · #275/#276 phase A merged c99c89b, dotnet 1268/1268. #273 phase A on vs/273-camera-glass (3f66925, dotnet 1263) NOT merged: phase B must run BoxCameraTests/FlyTests/CameraMode/Light + feel.
+- 11-04 01:49 · TESTER 2 fail: [real] #300 (fresh green glows at night), #301 (first-run wipe: off-glass swipe turns camera). Passes: #294 #295 #296 #297 #288 #279 #286 #281(day) + run1 passes. Beats seed 5150: tracks y0.5, rabbits y1.5, hunts y2.5, bush/berries ~y4, camp+tent y4.8, seed y7.3, pond y24.5 (away), ducks 25 cells.
+  [polish] puddles still stones/scorch halo; wording: harvest festival in a tribe, "another hut" in a tent camp, History "Year 1 made camp" vs gate y4.8; cloth toast mentions junk/weeds; first-mist wet area faint; Mister hint every pickup; night tent moment dark; first pond hard-edged rectangle; pond pacing 24.5 y.
