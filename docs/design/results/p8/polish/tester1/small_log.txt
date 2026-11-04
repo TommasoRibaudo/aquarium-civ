@@ -1,0 +1,41 @@
+7,9	opened: eco True step Arrive screen 1080x1920
+11,3	shot s01_fogged
+11,8	s wipe pass 0: step Rain grime 0,044 panes 0,074 0,017 0,076 0,003 hour 9,31 amb RGBA(0.722, 0.781, 0.898, 0.976) Sun:1,25/RGBA(1.000, 0.950, 0.850, 1.000)
+11,9	shot s_wipe_pass0
+11,9	s after wipes: step Rain, panes 0,074 0,017 0,076 0,003
+13,5	shot s02_mist_step
+13,5	mist step texts: Skip step | Skip all | Their first year | Hold to mist | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done
+14,9	mid-hold s03_mist_mid: spraying False misting False sound False lvl 0,00
+15,0	shot s03_mist_mid
+20,6	shot s04_name_step
+20,6	name step Name texts: Tap to name your box | Green, where the mist fell. They come to stand in it. | Skip step | Skip all | Their first year | Name it | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done
+21,4	shot s05_name_sheet
+24,1	shot s06_after_name
+24,1	after name active False; hud: Larkspur | Year 0 | Stories | History | Kit | Shape | Tap to show the UI | Settings | Sound | Your phone is on silent, so you won't hear this. | On | Music | Effects | Ambience | Music plays | Haptics | On | Notifications | Off | Your box | Rename your box | Reset your box | The shelf | About | Licences | Send feedback | Aquarium Civ 0.4.0 | Licences | KayKit assets, Kay Lousberg, CC0 | Kenney assets, CC0 | Calm Piano 1, The Cynic Project, CC0 | Forget Me Not, Kistol, CC0 | Rain, birds, crickets and wind: kresiek-the-furry, isaiah658, wolfgang, thimras, CC0 | Flute, guitar and pan flute: nicholasjudy567, antumdeluge, pattingthestar, CC0 | Lora, SIL OFL 1.1 | PT Serif, SIL OFL 1.1 | Rename your box | It goes on the brass plate. | Another | Keep | Reset your box? | Reset box | Keep playing | History | Larkspur, year 0. 5 people live here. | The chronicle and the time-lapse of the years will live here. | Offices | Shape the land | The Keeper's kit | Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree. | Cloth | Mister | Seed
+24,1	era Camp open[gatherer,toolmaker] notables[Sigurd:toolmaker, Brita:gatherer, Dag:toolmaker]
+25,2	s07_person0: tapped Sigurd (toolmaker) at (528.92, 930.14) -> open True/3 card: S | Sigurd Reed | Pin | Toolmaker · 31 years · the lazy | <line-height=50.05px>“Not too close. Nobody knows what the sky does when it's poked.” | <line-height=46.48px>Nothing told about them yet.
+25,3	shot s07_person0
+27,7	settings flick: release 230,4 -> 684,5 (content 1865 view 735)
+27,8	shot s08_settings_flicked
+30,0	era Camp open[gatherer,toolmaker] notables[Sigurd:toolmaker, Brita:gatherer, Dag:toolmaker, Ingo:, Berta:]
+30,9	offices offices: rows 1 content 144 view 144 texts Chief | Brita
+31,0	shot s09_offices
+31,5	offices flick: release 0,0 -> 0,0
+31,6	shot s10_offices_flicked
+32,3	shot s11_after5y
+32,3	errors eco: 0 
+32,5	old box: a new box (living land off)
+35,5	old: eco False active True step Wipe
+35,6	shot o01_fogged
+36,1	o wipe pass 0: step Patch grime 0,000 panes 0,000 0,000 0,000 0,000 hour 10,81 amb RGBA(0.709, 0.766, 0.881, 0.958) Sun:1,21/RGBA(1.000, 0.950, 0.850, 1.000)
+36,2	shot o_wipe_pass0
+36,2	o after wipes: step Patch, panes 0,000 0,000 0,000 0,000
+38,2	old after wipe: step Patch hint patch texts Larkspur | Green, where the mist fell. They come to stand in it. | Skip step | Skip all | Their first year | Flick the weeds | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done
+38,3	shot o02_after_wipe
+38,3	old step Patch hint patch: Larkspur | Green, where the mist fell. They come to stand in it. | Skip step | Skip all | Their first year | Flick the weeds | Back to the story | Name your box | Later | It goes on the brass plate. | Another | Keep | Show me | Done
+43,9	shot o03_step0_Patch
+43,9	old step Patch did not advance by touch; skipping
+46,0	shot o04_old_done
+46,0	old done: active False hud Hearthmere | Year 0 | Stories | History | Done | Shape | Tap to show the UI | Settings | Sound | Your phone is on silent, so you won't hear this. | On | Music | Effects | Ambience | Music plays | Haptics | On | Notifications | Off | Your box | Rename Larkspur | Reset Larkspur | The shelf | About | Licences | Send feedback | Aquarium Civ 0.4.0 | Licences | KayKit assets, Kay Lousberg, CC0 | Kenney assets, CC0 | Calm Piano 1, The Cynic Project, CC0 | Forget Me Not, Kistol, CC0 | Rain, birds, crickets and wind: kresiek-the-furry, isaiah658, wolfgang, thimras, CC0 | Flute, guitar and pan flute: nicholasjudy567, antumdeluge, pattingthestar, CC0 | Lora, SIL OFL 1.1 | PT Serif, SIL OFL 1.1 | Rename your box | It goes on the brass plate. | Another | Keep | Reset your box? | Reset box | Keep playing | History | Hearthmere, year 0. 5 people live here. | The chronicle and the time-lapse of the years will live here. | Offices | Chief | Brita | Shape the land | The Keeper's kit | Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree. | Cloth | Mister | Seed kitbox False clean text Done
+46,0	leak: generated roots 1 orphans 0 meshes 337
+46,0	errors: 0 

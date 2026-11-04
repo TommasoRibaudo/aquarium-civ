@@ -1,0 +1,24 @@
+   limit 2,105 worst corner outside screen 3,556 wall viewport x 0,944
+close xPlus: held 2,205 max 2,205 rest 2,105 stop 2,205 glass 3,000
+   settled 2,106
+   limit 2,105 worst corner outside screen 3,559 wall viewport x 0,056
+close xMinus: held 2,205 max 2,205 rest 2,105 stop 2,205 glass 3,000
+   settled 2,106
+   limit 0,354 worst corner outside screen 1,981 wall viewport x -1,000
+close zPlus: held 0,454 max 0,454 rest 0,354 stop 0,454 glass 2,200
+   settled 0,355
+   limit 0,354 worst corner outside screen 1,713 wall viewport x -1,000
+close zMinus: held 0,454 max 0,454 rest 0,354 stop 0,454 glass 2,200
+   settled 0,355
+   limit 0,000 worst corner outside screen 0,000 wall viewport x 0,824
+far xPlus: held 0,100 max 0,100 rest 0,000 stop 0,100 glass 3,000
+   settled 0,001
+   limit 0,000 worst corner outside screen 0,000 wall viewport x 0,176
+far xMinus: held 0,100 max 0,100 rest 0,000 stop 0,100 glass 3,000
+   settled 0,001
+   limit 0,000 worst corner outside screen 0,000 wall viewport x -1,000
+far zPlus: held 0,100 max 0,100 rest 0,000 stop 0,100 glass 2,200
+   settled 0,001
+   limit 0,000 worst corner outside screen 0,000 wall viewport x -1,000
+far zMinus: held 0,100 max 0,100 rest 0,000 stop 0,100 glass 2,200
+   settled 0,001

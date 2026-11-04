@@ -65,6 +65,8 @@ namespace AquariumCiv.Sim
         public List<ShapeRec> shapes = new();
         public List<PathStep> paths = new();
         public int lastPathYear = -1;
+        public List<LandStep> land = new();      // #287: the living land per year (Sim/Replay/LandRecords.cs); empty with the ecology off
+        public int lastLandYear = -1;
         public List<RoleTerm> roleTerms = new();
         public List<long> eraStarts = new();     // month each era began, by Era index
         public List<string> eraTitles = new();   // by Era index, written when the era ends and never changed
@@ -103,6 +105,8 @@ namespace AquariumCiv.Sim
         public List<ShapeRec> shapings = new();
         public int leaderId = -1;
         public string leaderRole;
+        /// <summary>#287: the living land at this year; null with the ecology off or for a box saved before land records.</summary>
+        [NonSerialized] public LandAt land;
     }
 
     /// <summary>
@@ -133,6 +137,7 @@ namespace AquariumCiv.Sim
             HistoryRoles(h);
             HistoryPin(h);
             if (s.month % SimConfig.MonthsPerYear == 0 || h.lastPathYear < 0) HistoryPaths(h);
+            if (s.month % SimConfig.MonthsPerYear == 0) HistoryLand(h);
             HistoryPositions(h);
             if (s.month % SimConfig.MonthsPerYear == 0 && s.month > 0) PruneChronicle();
         }
@@ -419,6 +424,7 @@ namespace AquariumCiv.Sim
             string role = LeaderOf((Era)era);
             int holder = RoleHolderAt(role, month);
             r.leaderRole = role; r.leaderId = holder;
+            r.land = LandAtYear(h, year);
             return r;
         }
 
@@ -457,6 +463,7 @@ namespace AquariumCiv.Sim
                 if (!h.shapes.Exists(x => x.nudgeId == n.id)) r.shapings.Add(new ShapeRec { nudgeId = n.id, kind = n.kind, x = n.x, z = n.z, month = n.month, era = n.eraAtPlace });
             r.leaderRole = LeaderOf(s.era);
             r.leaderId = RoleHolderAt(r.leaderRole, s.month);
+            r.land = LandNow();
             return r;
         }
 

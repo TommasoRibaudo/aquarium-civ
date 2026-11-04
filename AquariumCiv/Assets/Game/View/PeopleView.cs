@@ -330,11 +330,17 @@ namespace AquariumCiv.View
             var v = d.view;
             var land = Box.land;
             bool hidden = stage == LifeStage.Baby || a.kind == ActivityKind.None; // babies are never walkers: a carer's doll shows them (#192, §4 "Everyone")
-            if (!planner.PositionAt(a.who, now, out float x, out float z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
+            float x = 0f, z = 0f;
+            Vector2? huntFace = null;
+            bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
+            bool tenting = !hunting && a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace); // #284: the planned walk to the frame and the lot
+            if (hunting || tenting) hidden = false;
+            else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             var spot = new Vector2(x, z);
             var target = spot;
             Vector2? face = null;
-            if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
+            if (hunting || tenting) { face = huntFace; claimed.Add(target); }
+            else if (!a.moving && !a.enRoute && !hidden && pins.TryGetValue(a.who.Key, out var pin)) // #224: the choice scene stands them on their own spot
             {
                 target = pin; // the scene chose it clear of the others
                 face = target + GlassNormal(planner.GlassSide);
@@ -358,8 +364,9 @@ namespace AquariumCiv.View
                 target = Ashore(land, target);
                 if (!a.moving) face = wet; // the fisher faces the water
             }
-            if (!a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
-            if (!a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
+            if (!hunting && !tenting && !a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
+            if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
             target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
@@ -400,14 +407,14 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
 
             // Props.
-            var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind);
+            var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
             float want = d.yaw;
             if (jump || dt <= 0f) d.velocity = Vector2.zero;
             else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
-            if (walking) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
+            if (walking && !((hunting || tenting) && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
@@ -439,17 +446,90 @@ namespace AquariumCiv.View
                 d.blendT += dt;
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
+            if (hunting) HuntPose(ref pose, a);
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             if (pose.hidden) return;
             v.SetBaby(!a.carrying.IsNone, a.carryOnBack);
             float s = v.scale;
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
-            var ground = land.OnGround(d.drawn);
+            var ground = new Vector3(d.drawn.x, Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y), d.drawn.y);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
+        }
+
+        // ---------------------------------------------------------------- #283: the hunt
+
+        /// <summary>Where a hunter (or the kid who follows) is now, from the hunt plan's own coordinates (box units), and what they face
+        /// (the rabbit while they stalk). False when the plan has no step for them now.</summary>
+        bool HuntSpot(in PersonActivity a, out float x, out float z, out Vector2? face)
+        {
+            x = z = 0f; face = null;
+            if (!planner.HuntStepAt(a.who, now, out var st, out var plan)) return false;
+            float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
+            bool startOpen = st.phase is HuntPhase.ToFire or HuntPhase.KidFollow, endOpen = st.phase is HuntPhase.Return or HuntPhase.KidBack;
+            if (startOpen && !planner.Positions.TryGetPosition(st.from, out x0, out z0)) { x0 = plan.fireX; z0 = plan.fireZ; }
+            if (endOpen && !planner.Positions.TryGetPosition(st.to, out x1, out z1)) { x1 = plan.fireX; z1 = plan.fireZ; }
+            float f = Mathf.Clamp01((now.hour - st.start) / Mathf.Max(1e-4f, st.end - st.start));
+            var p = Vector2.Lerp(AtFire(plan, x0, z0, a.who.Key), AtFire(plan, x1, z1, a.who.Key), f);
+            x = p.x; z = p.y;
+            if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
+            else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
+            return true;
+        }
+
+        /// <summary>#284: where a tent builder (or the kid who watches) is now, from the raising plan's coordinates, and what they face
+        /// (the frame while they take a load, the lot while they raise it).</summary>
+        bool TentSpot(in PersonActivity a, out float x, out float z, out Vector2? face)
+        {
+            x = z = 0f; face = null;
+            if (!planner.TentStepAt(a.who, now, out var st, out var plan)) return false;
+            float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
+            if (st.phase == TentPhase.ToFrame && !planner.Positions.TryGetPosition(st.from, out x0, out z0)) { x0 = x1; z0 = z1; }
+            if (st.phase == TentPhase.Return && !planner.Positions.TryGetPosition(st.to, out x1, out z1)) { x1 = x0; z1 = z0; }
+            float f = Mathf.Clamp01((float)((now.Absolute - plan.StartAbsolute - st.start) / Mathf.Max(1e-4f, st.end - st.start)));
+            var p = Vector2.Lerp(new Vector2(x0, z0), new Vector2(x1, z1), f);
+            x = p.x; z = p.y;
+            if (st.phase is TentPhase.TakeLoad) face = new Vector2(plan.frameX, plan.frameZ);
+            else if (st.phase is TentPhase.Raise or TentPhase.Stand or TentPhase.KidWatch or TentPhase.KidCheer) face = new Vector2(plan.lotX, plan.lotZ);
+            return true;
+        }
+
+        /// <summary>A point on the fire itself becomes a spot on the ring round it, so nobody stands in the flames.</summary>
+        static Vector2 AtFire(HuntPlan plan, float x, float z, int key)
+        {
+            float dx = x - plan.fireX, dz = z - plan.fireZ;
+            if (dx * dx + dz * dz > 0.05f * 0.05f) return new Vector2(x, z);
+            float ang = Hash01(key, 283) * Mathf.PI * 2f;
+            return new Vector2(plan.fireX + Mathf.Cos(ang) * 0.34f, plan.fireZ + Mathf.Sin(ang) * 0.34f);
+        }
+
+        /// <summary>The throw (wind up, then thrust the spear out), the shrug after a miss and the kid's cheer ride on top of the crouch
+        /// the stalk already is.</summary>
+        static void HuntPose(ref DollPose pose, in PersonActivity a)
+        {
+            switch (a.hunt)
+            {
+                case HuntPhase.Strike:
+                {
+                    float u = Mathf.Clamp01(a.progress);
+                    float thrust = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.35f) / 0.3f));
+                    pose.squash = Mathf.Lerp(0.72f, 1f, Mathf.SmoothStep(0f, 1f, u / 0.35f));
+                    pose.lean = Mathf.Lerp(-8f, 34f, thrust);
+                    pose.armR = new Vector3(Mathf.Lerp(165f, 55f, thrust), 0f, 8f);
+                    pose.armL = new Vector3(Mathf.Lerp(20f, 70f, thrust), 0f, -12f);
+                    pose.extend = true;
+                    pose.hit = u > 0.6f && u < 0.8f ? 1f : 0f;
+                    break;
+                }
+                case HuntPhase.Bolt: // it got away: arms out, a step back
+                    pose.squash = 1f; pose.lean = -6f;
+                    pose.armL = new Vector3(0f, 0f, -70f); pose.armR = new Vector3(0f, 0f, 70f);
+                    pose.extend = false;
+                    break;
+            }
         }
 
         /// <summary>#189: from the planned point to the drawn one: the walker's offset eases toward what the crowd presses (it fades when
@@ -542,6 +622,13 @@ namespace AquariumCiv.View
                 // #200: at home they look out over the town. Facing their own wall, a sitter or a chopper looks as if they're building it.
                 face = a.place.kind == PlaceKind.Home ? at + (at - centre).normalized : centre;
                 return at;
+            }
+            if (a.place.kind == PlaceKind.BushCell)
+            {
+                // P8 #288: at a real bush (a berry bush, the cell's centre): each picker at their own side of it, an arm's reach off, facing it.
+                float ba = h + a.slot * 2.39996f;
+                face = spot;
+                return spot + new Vector2(Mathf.Cos(ba), Mathf.Sin(ba)) * (0.17f + 0.03f * (a.slot / 3));
             }
             // Open ground (a field, the woods, the pond, a heap): a loose spiral round the spot, facing it.
             float spread = a.place.kind is PlaceKind.Field or PlaceKind.Pasture or PlaceKind.Meadow or PlaceKind.Woods or PlaceKind.ForestEdge or PlaceKind.Bushes ? 0.2f : 0.12f;
@@ -672,7 +759,7 @@ namespace AquariumCiv.View
 
         /// <summary>The planner's prop (one of ~40) as one of the view's code-built props, and where it rides. Small things
         /// that wouldn't read at phone size (a mug, a flower, a bell) aren't drawn.</summary>
-        public static (PropKind kind, PropSlot slot) PropOf(LifeProp prop, LifeSlot lifeSlot, ActivityKind activity)
+        public static (PropKind kind, PropSlot slot) PropOf(LifeProp prop, LifeSlot lifeSlot, ActivityKind activity, WaterKind water = WaterKind.None)
         {
             var slot = lifeSlot switch
             {
@@ -702,13 +789,14 @@ namespace AquariumCiv.View
                 LifeProp.Slate or LifeProp.Notebook => PropKind.Slate,
                 LifeProp.Sheaf => PropKind.Sheaf,
                 LifeProp.Lantern => PropKind.Lantern,
-                LifeProp.Buckets => PropKind.Bucket,
+                LifeProp.Buckets => water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket,
                 LifeProp.EmptyBucket => PropKind.BucketEmpty,
                 LifeProp.Sack or LifeProp.SeedBag => PropKind.Sack,
                 LifeProp.Block => PropKind.Block,
                 LifeProp.Barrel => PropKind.Barrel,
                 LifeProp.Axe => PropKind.Axe,
                 LifeProp.Spear => PropKind.Spear,
+                LifeProp.Rabbit => PropKind.Rabbit, // #283
                 LifeProp.Pots or LifeProp.Honey => PropKind.Pot,
                 LifeProp.Hoe or LifeProp.Scythe => PropKind.Hoe,
                 LifeProp.Hammer or LifeProp.Hammerstone or LifeProp.Pick => PropKind.Hammer,
@@ -718,7 +806,7 @@ namespace AquariumCiv.View
             };
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
             if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
-            else if (kind is PropKind.Bucket or PropKind.BucketEmpty) slot = PropSlot.Hand;
+            else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             else if (kind == PropKind.Slate && activity == ActivityKind.WriteDown) slot = PropSlot.Arms; // hugged, the hand writes
@@ -727,6 +815,21 @@ namespace AquariumCiv.View
 
         /// <summary>Is this person's doll walking (on a route, or gliding into its slot)?</summary>
         readonly Dictionary<int, Vector2> pins = new();
+        readonly Dictionary<int, Vector2> lookAt = new();
+
+        /// <summary>#282: turn this person (while they stand) to face a spot (box units); the first rabbit's sign sets it for whoever points.</summary>
+        public void LookAt(PersonRef who, Vector2 at) => lookAt[who.Key] = at;
+        public void ClearLookAt(PersonRef who) => lookAt.Remove(who.Key);
+
+        /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
+        /// and who is nearest to a sign.</summary>
+        public void StandingNow(List<PersonRef> who, List<float> xs, List<float> zs)
+        {
+            who.Clear(); xs.Clear(); zs.Clear();
+            foreach (var a in acts)
+                if (dolls.TryGetValue(a.who.Key, out var d) && d.placed && !d.pose.hidden && d.view != null && d.view.gameObject.activeInHierarchy)
+                { who.Add(a.who); xs.Add(d.drawn.x); zs.Add(d.drawn.y); }
+        }
 
         /// <summary>#224: stand this person on their own spot (box units) while they are at a place, instead of a slot there: the choice
         /// scene puts its two candidates either side of the fire. A walk is still the planner's; the pin holds once they arrive.</summary>
@@ -856,7 +959,7 @@ namespace AquariumCiv.View
             sb.Append(a.kind);
             sb.Append(a.moving ? " to " : " at ").Append(a.place);
             if (a.moving && a.from != a.place) sb.Append(" from ").Append(a.from);
-            var (pk, ps) = PropOf(a.prop, a.PropSlot, a.kind);
+            var (pk, ps) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
             if (pk != PropKind.None) sb.Append(" with ").Append(pk).Append(" (").Append(ps).Append(')');
             if (!a.partner.IsNone) sb.Append(" with ").Append(a.partner);
             if (dolls.TryGetValue(a.who.Key, out var d) && d.view != null)

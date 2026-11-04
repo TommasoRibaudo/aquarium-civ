@@ -1,0 +1,63 @@
+[8s y0,00] eco True, generated roots 1, meshes 15
+[11s y0,00] wipe step texts: :'Wipe the glass' @275,828,562,881
+[12s y0,00] wipe pass 0: grime 0,000 panes 0,000 0,000 0,000 0,000 step Rain turn 0,00
+[12s y0,00] #301 wipe: 8 strokes, 8 started off glass, max camera turn 0,00 deg, zoom 1,00->1,00, step now Rain
+[14s y0,00] mist step texts: :'Hold to mist' @507,1281,751,1334 | toast 
+[16s y0,00] after mist hold: step Name
+[20s y0,00] name step texts: :'Tap to name your box' @453,1403,906,1460 | :'Name it' @602,1550,757,1603
+[21s y0,00] first run active False, name 'Mossjar'
+[23s y0,00] toast after run: 
+[24s y0,00] kit texts: :'Mossjar' @44,123,244,190 | :'Year 0' @44,190,244,241 | kg-sheet-title:'The Keeper's kit' @44,1698,915,1773 | :'Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree.' @44,1812,1036,1907
+[27s y0,00] mister #1: hand Mister, toast 'Hold a finger over the land to mist it. Two fingers move the view.'
+[35s y0,00] mister: bare 0,997 -> 0,990, pulses 28
+[35s y0,00] Done: hand None, button 'Kit'
+[36s y0,00] cloth: clean mode True, toast 'Nothing to clean right now.'
+[37s y0,00] mister #2 (after misting): toast '' (hint shown again: False)
+[42s y0,00] mist by touch: 4 spots, pulses +16, bare 0,984
+[42s y0,25] BEAT grass spreading (meadow > 5%) at year 0,25 (era Camp)
+[42s y0,25] BEAT era Camp at year 0,25 (era Camp)
+[43s y1,25] away: away 1.00 h → lived 1.00 h (12 months) · year 1.3 · mess 0.02
+[45s y1,25] after away: new cells 26, shown fresh 179, toast ''
+[45s y2,25] away 2: away 1.00 h → lived 1.00 h (12 months) · year 2.3 · mess 0.04
+[46s y2,25] evening: new cells 12, fresh shown 86
+[47s y2,25] tribe card: person-card-portrait:'D' @44,1675,165,1795 | person-card-name:'Dulcie Mason' @192,1698,733,1773 | person-card-sub:'Toolmaker, chief of the tribe · 27 years · the singer' @44,1812,1036,1863 | person-card-quote:'<line-height=50.05px>“Dance facing the sky tonight. Let it see us.”' @44,2007,1011,2058 | :'<line-height=55.69px>Chief since year 1' @44,2075,1011,2130 | :'<line-height=50.05px>Year 1. Dulcie Mason and Dunstan Brook both wanted to be chief. The tribe chose Dulcie Mason; Dunstan Brook stomped off to their tent and stayed there until supper.' @44,2146,740,2398
+[50s y2,25] card closed by touch: True
+[50s y2,50] BEAT rabbit tracks at year 2,50 (era Camp)
+[52s y3,50] BEAT rabbits at year 3,50 (era Camp)
+[54s y3,50] rabbits sim 3 shown 3
+[74s y3,50] hunt try 1: hides 0->0, stalk seen False
+[79s y3,75] mist by touch: 4 spots, pulses +16, bare 0,891
+[91s y4,00] hunt try 2: hides 0->1, stalk seen True
+[91s y4,00] BEAT hunt catch at year 4,00 (era Camp)
+[92s y4,00] hide frame shown True, hides on frame 1
+[93s y5,50] BEAT first bush at year 5,50 (era Camp)
+[93s y5,50] summer berries dots 7, bushes 1
+[154s y5,50] gatherer at real bush: cell -1 (is bush False), picks +0
+[154s y5,50] status: meadow 0,14 bare 0,86 rabbits 8 hides 2 bushes 1 pond 0 tent False era Camp pop 5 errors 0
+[160s y5,50] mist by touch: 4 spots, pulses +16, bare 0,862
+[166s y7,25] mist by touch: 4 spots, pulses +16, bare 0,822
+[167s y8,75] BEAT first tent raised at year 8,75 (era Camp)
+[171s y8,75] tent moment: started 1, moments 1, line 'Look. A tent, from the rabbits' hides.', leans 1
+[172s y9,00] status: meadow 0,21 bare 0,78 rabbits 14 hides 2 bushes 11 pond 0 tent True era Camp pop 6 errors 0
+[177s y9,00] mist by touch: 4 spots, pulses +16, bare 0,781
+[183s y10,75] mist by touch: 4 spots, pulses +16, bare 0,736
+[184s y12,50] status: meadow 0,30 bare 0,70 rabbits 18 hides 4 bushes 20 pond 0 tent True era Camp pop 5 errors 0
+[190s y12,50] mist by touch: 4 spots, pulses +16, bare 0,695
+[196s y14,25] mist by touch: 4 spots, pulses +16, bare 0,645
+[197s y16,00] status: meadow 0,39 bare 0,59 rabbits 25 hides 10 bushes 34 pond 0 tent True era Camp pop 7 errors 0
+[202s y16,00] mist by touch: 4 spots, pulses +16, bare 0,595
+[208s y17,75] mist by touch: 4 spots, pulses +16, bare 0,531
+[209s y18,25] buckets seen: muddy 1, clean 0, pond cells 0
+[209s y19,50] status: meadow 0,51 bare 0,47 rabbits 34 hides 13 bushes 51 pond 0 tent True era Camp pop 8 errors 0
+[215s y19,50] mist by touch: 4 spots, pulses +16, bare 0,470
+[221s y21,25] mist by touch: 4 spots, pulses +16, bare 0,411
+[222s y23,00] status: meadow 0,61 bare 0,35 rabbits 44 hides 15 bushes 79 pond 0 tent True era Camp pop 5 errors 0
+
+BEATS:
+grass spreading (meadow > 5%): year 0,25
+era Camp: year 0,25
+rabbit tracks: year 2,50
+rabbits: year 3,50
+hunt catch: year 4,00
+first bush: year 5,50
+first tent raised: year 8,75

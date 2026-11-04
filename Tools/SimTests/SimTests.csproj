@@ -40,6 +40,10 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaContentTests.cs" /><!-- P7 #222 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- P8 #243: the ecology layer -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoMistHoldTests.cs" /><!-- P8 polish 266 view half: the hold -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- P8 #248 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraMomentTests.cs" />
@@ -54,6 +58,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SaveStoreTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ClockLogicTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/HistoryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/LandHistoryTests.cs" /><!-- #287 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/PersonCardTests.cs" /><!-- #39 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
@@ -77,6 +82,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/GrimePatchTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
+    <Compile Include="CameraGlassTests.cs" /><!-- #273: the glass limits of the camera -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->
   </ItemGroup>
   <ItemGroup>

@@ -141,10 +141,12 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             if (s.buildings.Count >= Config.buildingSlots) return;
+            if (TentsFromHides && TryTentFromHides()) return; // #284: a camp's tents are made of hides, not wood (SimCore.Tents.cs)
             float cost = NextBuildingCost;
             if (s.wood < cost) return;
             string type = PickBuilding(s.population); // nothing needed: save wood
             if (type == null) return;
+            if (type == BuildingType.Hut && TentsFromHides) return; // a tent waits for its hides
             s.wood -= cost;
             AddBuilding(type);
         }
@@ -341,7 +343,8 @@ namespace AquariumCiv.Sim
             return bp < bq ? p.family : bq < bp ? q.family : (p.id < q.id ? p.family : q.family);
         }
 
-        static string EraNoun(Era era) => era switch { Era.Camp => "camp", Era.Village => "village", _ => "town" };
+        string EraNoun(Era era) => era switch { Era.Camp => BeforeCamp ? "tribe" : "camp", // P8 (#285): before the camp gate the group is the tribe
+             Era.Village => "village", _ => "town" };
 
         void NarrativeChecks(bool winter, float festivalRoll)
         {
@@ -365,8 +368,8 @@ namespace AquariumCiv.Sim
                 // A festival makes the chronicle at most every 6 years (they still happen and lift the mood).
                 if (!Fresh("festival", -1, 6)) return;
                 Chronicle("festival", host != null
-                    ? string.Format(Nth(FestivalLines, Told("festival", host.id) + host.id), host.FullName) // told in turn (#61)
-                    : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
+                    ? string.Format(Nth(EcologyOn && s.era == Era.Camp ? CampFestivalLines : FestivalLines, Told("festival", host.id) + host.id), host.FullName) // told in turn (#61); a living-land camp has no harvest yet
+                    : EcologyOn && s.era == Era.Camp ? "The people gathered round the fire for a feast." : "The people held a harvest festival.", 0.65f, host?.id ?? -1);
             }
         }
 

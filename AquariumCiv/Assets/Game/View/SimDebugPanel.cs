@@ -203,6 +203,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("+8h")) last = GameClock.DebugAway(8);
                 if (GUILayout.Button("+48h")) last = GameClock.DebugAway(48);
                 GUILayout.EndHorizontal();
+                if (sim.EcologyOn && GUILayout.Button("Pretend I was away, with new grass")) last = GameClock.DebugPretendAwayNewGrass();
                 if (GUILayout.Button("One story event")) { sim.ForceStory(); last = Done("story forced"); }
             }
 
@@ -454,6 +455,7 @@ namespace AquariumCiv.View
                         if (GUILayout.Button("Play " + RelicId.All[j])) last = GlassVoice.DebugPlayMoment(RelicId.All[j]);
                     GUILayout.EndHorizontal();
                 }
+                if (GUILayout.Button("Start a ritual now (Keeper Doll)")) last = GlassVoice.DebugStartRitual();
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Gather at glass")) last = GlassVoice.DebugGather();
                 if (GUILayout.Button("Knock x3")) last = GlassVoice.DebugKnock(3);

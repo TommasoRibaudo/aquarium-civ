@@ -13,6 +13,8 @@ namespace AquariumCiv.Life
             public ActivityKind kind;
             public Place place, from;
             public Prop prop;
+            /// <summary>P8 (#267): what a bucket holds (Clean or Muddy); None when the prop is no bucket.</summary>
+            public WaterKind water;
             public PersonRef partner;
             public ActivitySource src;
             public TripType trip;
@@ -47,6 +49,9 @@ namespace AquariumCiv.Life
             /// <summary>#200: the few who may sit out at their door today, and the day that list is for.</summary>
             public readonly HashSet<int> doorSitters = new HashSet<int>();
             public long doorSittersDay = long.MinValue;
+            /// <summary>P8 #288: who walks over to look at the first bush today (<see cref="IsFirstBushLooker"/>).</summary>
+            public long lookerDay = long.MinValue;
+            public int lookerKey = int.MinValue;
         }
 
         /// <summary>#200: the most people who sit out at their doors in a day. A whole Village sat in front of its houses each morning, facing them.</summary>
@@ -204,7 +209,7 @@ namespace AquariumCiv.Life
         void Push(ActivityKind k, float start, float end, Place place, Place from, Prop prop, PersonRef partner, TripType trip, ActivitySource src = ActivitySource.Schedule, int chronicle = -1, bool copies = false, bool still = false)
         {
             if (end <= start + 1e-4f) return;
-            b.Add(new Seg { start = start, end = end, kind = k, place = place, from = from, prop = prop, partner = partner, trip = trip, src = src, chronicleId = chronicle, copies = copies, still = still });
+            b.Add(new Seg { start = start, end = end, kind = k, place = place, from = from, prop = prop, water = prop == Prop.Buckets || prop == Prop.EmptyBucket ? WaterNow : WaterKind.None, partner = partner, trip = trip, src = src, chronicleId = chronicle, copies = copies, still = still });
         }
 
         /// <summary>Stay at a place doing <paramref name="k"/> until <paramref name="until"/>; walks there first if needed
@@ -586,7 +591,9 @@ namespace AquariumCiv.Life
             {
                 At(PlayKind(p, d, 10), 10f, PlayPlace(p, d, 10, near: true), PlayProp(p, d, 10));
                 if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, 11f, gather, Prop.None, Ref(d.teller));
-                At(PlayKind(p, d, 11), 12f, PlayPlace(p, d, 11, near: false), PlayProp(p, d, 11));
+                var snack = KidBerryPlace(p, d);
+                if (!snack.IsNone) At(ActivityKind.Eat, 12f, snack, Prop.None); // P8 #288: a few berries straight from the bush
+                else At(PlayKind(p, d, 11), 12f, PlayPlace(p, d, 11, near: false), PlayProp(p, d, 11));
             }
             float lunchEnd = 12.5f + R(k, day, 83) * 0.7f; // #197: kids do not all sit down at once
             // Midday (village on): carry the meal basket out to a parent in the field.
@@ -708,7 +715,7 @@ namespace AquariumCiv.Life
                 // Dawn: water from the well or the stream, a chore at the door, then off to work.
                 if (R(k, day, 2) < 0.3f)
                 {
-                    var water = wellB != null ? PlaceOf(wellB) : Place.Land(PlaceKind.Stream);
+                    var water = WaterPlace; // P8 (#267): the pond once it has water, else the wet low ground
                     // #152: empty on the way out and while they draw; full only once it's drawn.
                     Move(ActivityKind.Walk, water, bt + WalkHours(p.home, water), Prop.EmptyBucket, TripType.HomeToGreen);
                     At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.EmptyBucket);
@@ -724,9 +731,27 @@ namespace AquariumCiv.Life
                 }
                 else
                 {
-                    At(Chore(p, d, 3), Math.Min(6.6f + (sh.start - LifeClock.WorkStart), sh.start - 0.4f), p.home, ChoreProp(Chore(p, d, 3)));
+                    // #208: the chore used to run from the stretch to its end, so everyone was out at the door together and
+                    // knotted the lane between two homes at ~06:30. Each person now stays in until their own start, spread
+                    // over the stretch between waking and the old end, and does a short chore (0.35-0.55 h).
+                    float choreEnd = Math.Min(6.6f + (sh.start - LifeClock.WorkStart), sh.start - 0.4f);
+                    float choreLen = 0.35f + 0.2f * R(k, day, 130);
+                    float choreFrom = bt + 0.1f;
+                    float slack = choreEnd - choreLen - choreFrom;
+                    float choreUntil = choreEnd;
+                    if (slack > 0.05f)
+                    {
+                        float choreStart = choreFrom + slack * R(k, day, 131);
+                        At(ActivityKind.Indoors, choreStart, p.home);
+                        choreUntil = choreStart + choreLen;
+                    }
+                    At(Chore(p, d, 3), choreUntil, p.home, ChoreProp(Chore(p, d, 3)));
                     float walk = WalkHours(p.home, work.site);
-                    At(ActivityKind.SitOut, sh.start - walk, p.home);
+                    // #208 phase B: in the Editor the lane still knotted (worst 8 -> 10 in the Village), as the short chore was
+                    // followed by sitting out at the door until work. After the chore they go back in, and step out only just before leaving.
+                    float leave = sh.start - walk;
+                    if (leave - 0.12f > choreUntil + 0.05f) At(ActivityKind.Indoors, leave - 0.12f, p.home);
+                    At(ActivityKind.SitOut, leave, p.home);
                 }
                 // The walk to work takes as long as the route does: a late start (the water came first) arrives late.
                 Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);

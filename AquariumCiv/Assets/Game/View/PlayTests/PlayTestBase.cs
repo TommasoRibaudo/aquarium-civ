@@ -124,9 +124,22 @@ namespace AquariumCiv.View.PlayTests
             GameSettings.Sound = soundWas;
         }
 
+        /// <summary>#298: every play test starts on the old slice. The living-land switch is a PlayerPrefs value kept across
+        /// runs (a cancelled run or the debug panel can leave it on), and <see cref="GameClock"/> reads it at Awake, so a test
+        /// that inherits it plays a barren box. A living-land test turns it on with <see cref="UseLivingLand"/>.</summary>
+        public override void Setup()
+        {
+            base.Setup();
+            GameClock.EcologyPref = false;
+        }
+
+        /// <summary>Turns the living land (P8) on for the boxes this test opens; <see cref="TearDown"/> turns it off again.</summary>
+        protected static void UseLivingLand(bool on = true) => GameClock.EcologyPref = on;
+
         /// <summary>Whatever a test did, the settings go back and no box may have leaked.</summary>
         public override void TearDown()
         {
+            GameClock.EcologyPref = false; // #298: never left on for the next class
             CloseSlice();
             base.TearDown();
             LeakCheck.AssertClean();

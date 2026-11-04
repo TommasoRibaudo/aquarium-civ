@@ -177,6 +177,13 @@ namespace AquariumCiv.Sim
             "{0} and {1} are friends again. Nobody is sure who said sorry first.",
             "{0} and {1} made peace while looking for the same lost goat. They found it together.",
         };
+        /// <summary>P8: a living-land camp has no harvest to celebrate yet; the feast is at the fire.</summary>
+        internal static readonly string[] CampFestivalLines =
+        {
+            "{0} called everyone to the fire for a feast. There was dancing until dawn.",
+            "{0} stoked the fire high for a feast. The food ran out long before the singing did.",
+            "{0} gathered the tribe round the fire. Someone danced with a goat, and the goat led.",
+        };
         internal static readonly string[] FestivalLines =
         {
             "{0} threw a harvest festival. There was dancing until dawn.",

@@ -65,6 +65,10 @@ namespace AquariumCiv.Sim
         readonly SimCore sim;
         FirstRunState F => sim.State.firstRun;
 
+        /// <summary>#268: the dirtiest pane's grime, from the view that draws the panes. The wipe asks for every pane to be clear, not
+        /// the glass on average: by the mean the step ended with a pane still fogged. Null (no view, sim tests): the sim's grime.</summary>
+        public Func<float> GlassGrime { get; set; }
+
         /// <summary>The step changed (the new step; also fired for each step a skip passes).</summary>
         public event Action<FirstRunStep> StepChanged;
         public event Action<FirstRunCue> Cue;
@@ -256,7 +260,12 @@ namespace AquariumCiv.Sim
             switch (s)
             {
                 case FirstRunStep.Arrive: return f.stepSeconds >= ArriveSeconds;
-                case FirstRunStep.Wipe: return st.grime <= WipedGrime || (st.grime <= WipedEnoughGrime && f.stepSeconds >= WipedEnoughSeconds); // build 15: a pane the finger can't fully reach never blocks the run
+                case FirstRunStep.Wipe:
+                {
+                    float g = GlassGrime != null ? GlassGrime() : st.grime;
+                    if (g < 0f) g = st.grime; // the panes aren't drawn yet
+                    return g <= WipedGrime || (g <= WipedEnoughGrime && f.stepSeconds >= WipedEnoughSeconds); // build 15: a pane the finger can't fully reach never blocks the run
+                }
                 case FirstRunStep.Patch: return st.overgrowth <= ClearedOvergrowth;
                 case FirstRunStep.Name: return f.nameKept;
                 case FirstRunStep.Rain: return sim.EcologyOn ? sim.EcoMilestoneMonth(Eco.EcoMilestones.FirstGreen) >= 0 : f.rainNudgeId >= 0;

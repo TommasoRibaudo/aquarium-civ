@@ -111,7 +111,7 @@ namespace AquariumCiv.Life
         /// any of those but a carry. Never asleep, in the water or in the snow.</summary>
         static bool CanHold(ActivityKind k, bool onBack) =>
             (!ActivityInfo.IsBusy(k) || (onBack && ActivityInfo.GroupOf(k) != ActivityGroup.Carry)) && k != ActivityKind.None && k != ActivityKind.Sleep && k != ActivityKind.Nap &&
-            k != ActivityKind.Swim && k != ActivityKind.Splash && k != ActivityKind.Snowball;
+            k != ActivityKind.Swim && k != ActivityKind.Splash && k != ActivityKind.Stomp && k != ActivityKind.Snowball;
 
         void ApplyCarry(Person p, ref PersonActivity a, ViewTime t)
         {

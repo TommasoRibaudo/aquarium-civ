@@ -87,6 +87,7 @@ namespace AquariumCiv.View
         readonly List<(float t, Vector2 p)> samples = new();
         float strokeStart, lastReact = -10f, lastTouchTime, spotlessSince = -1f, glintBudget;
         float strokeRemoved;
+        bool startCue;
         int strokes;
 
         // sun and cheer
@@ -100,6 +101,17 @@ namespace AquariumCiv.View
         // ---------------- test and debug read-outs ----------------
         public GlassMask[] Masks => masks;
         public MessProps Props => props;
+        /// <summary>#268: the dirtiest pane's mean grime, or -1 before the panes are bound.</summary>
+        public float WorstPane
+        {
+            get
+            {
+                if (masks.Length == 0) return -1f;
+                float w = 0f;
+                foreach (var m in masks) w = Mathf.Max(w, m.Mean);
+                return w;
+            }
+        }
         /// <summary>Mean grime on the glass as drawn (0 clean .. 1).</summary>
         public float GlassMean => CareMath.WeightedMean(masks);
         public float SunFactor => sunScale;
@@ -162,7 +174,8 @@ namespace AquariumCiv.View
             if (sparkleMesh != null) Destroy(sparkleMesh);
         }
 
-        const string NothingToClean = "Nothing to clean right now.", WipeHint = "Drag across the glass to wipe it. Flick junk and weeds out.";
+        const string NothingToClean = "Nothing to clean right now.", WipeHint = "Drag across the glass to wipe it. Flick junk and weeds out.",
+            WipeHintLand = "Drag across the glass to wipe it."; // a living land has no junk or weeds to flick (tester run 2)
 
         void OnCleanMode(bool on)
         {
@@ -172,18 +185,23 @@ namespace AquariumCiv.View
             if (!on)
             {
                 hud?.WithdrawToast(NothingToClean); // waiting or on screen: it no longer applies
-                hud?.WithdrawToast(WipeHint);
+                hud?.WithdrawToast(WipeHint); hud?.WithdrawToast(WipeHintLand);
                 Cancel();
                 return;
             }
             var sim = Sim;
             if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
-            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : WipeHint, 5f);
+            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : sim != null && sim.EcologyOn ? WipeHintLand : WipeHint, 5f);
         }
 
         // ---------------- the camera gate ----------------
         /// <summary>A press is ours in clean mode when it starts on the glass or on mess that is within reach.</summary>
         public bool ClaimsPress(Vector2 screenPos) => Classify(screenPos, out _) != Stroke.Ignored;
+
+        /// <summary>#301 (tester run 2): in the first run's wipe step one finger always wipes. A stroke that starts off the glass (the
+        /// natural edge-to-edge swipe) wipes the panes it crosses from where it reaches one, and never turns the camera. Two fingers
+        /// still move the view; after the step the normal rule (a press is ours only on glass or mess) is back.</summary>
+        public static bool WipeAnywhere => FirstRunView.Instance != null && FirstRunView.Instance.Step == AquariumCiv.Sim.FirstRunStep.Wipe;
 
         Stroke Classify(Vector2 pos, out MessProps.Piece piece)
         {
@@ -194,7 +212,7 @@ namespace AquariumCiv.View
             piece = props.Pick(c, pos, pickRadius * Screen.height);
             if (piece != null && !BehindDirtyGlass(c, piece)) return Stroke.Grab;
             piece = null;
-            return GlassHit(c.ScreenPointToRay(pos), out _, out _, out _) ? Stroke.Wipe : Stroke.Ignored;
+            return GlassHit(c.ScreenPointToRay(pos), out _, out _, out _) || WipeAnywhere ? Stroke.Wipe : Stroke.Ignored;
         }
 
         // ---------------- frame ----------------
@@ -351,6 +369,65 @@ namespace AquariumCiv.View
             return l.y >= box.GroundHeight(Mathf.Clamp(l.x, -Land.HX, Land.HX), Mathf.Clamp(l.z, -Land.HZ, Land.HZ)) - 0.005f;
         }
 
+        // ---------------- #268: what a finger can reach ----------------
+        /// <summary>Per pane, the texels a wipe from this camera can reach: a stroke anywhere on the screen where there's glass and no UI,
+        /// stamped as <see cref="ContinueWipe"/> stamps (every pane the ray crosses, the far ones only above the ground).</summary>
+        bool[][] Reach()
+        {
+            var c = Cam;
+            var reach = new bool[masks.Length][];
+            for (int i = 0; i < masks.Length; i++) reach[i] = new bool[masks[i].Texels];
+            if (c == null) return reach;
+            float W = Screen.width, H = Screen.height;
+            float step = Mathf.Max(6f, wipeRadius * H * 0.25f);
+            for (float y = step * 0.5f; y < H; y += step)
+            for (float x = step * 0.5f; x < W; x += step)
+            {
+                var p = new Vector2(x, y);
+                if (UiInput.Over(p)) continue;
+                var ray = c.ScreenPointToRay(p);
+                for (int i = 0; i < cols.Length; i++)
+                {
+                    if (cols[i] == null || !cols[i].Raycast(ray, out var hit, 200f) || !Visible(i, hit.point)) continue;
+                    masks[i].MarkReach(Uv(i, hit.point), StampRadius(ray, i, hit.point), reach[i]);
+                }
+            }
+            return reach;
+        }
+
+        /// <summary>#268: per pane, the share of its grime no finger can reach from this camera (tests, debug). "-" before the panes are bound.</summary>
+        public float[] UnreachableShare()
+        {
+            var reach = Reach();
+            var r = new float[masks.Length];
+            for (int i = 0; i < masks.Length; i++)
+            {
+                double all = masks[i].Mean * masks[i].LiveTexels;
+                r[i] = all <= 1e-6 ? 0f : (float)(masks[i].GrimeOutside(reach[i]) / all);
+            }
+            return r;
+        }
+
+        /// <summary>#268: the first run's wipe asks for the glass to be clear, so only the glass a finger can reach from here stays fogged:
+        /// the rest (off the screen, behind the soil's edge, under the UI) is cleared and the sim's grime follows, as a wipe would.
+        /// Returns the share of the glass's grime that went.</summary>
+        public float ClearUnreachable()
+        {
+            var sim = Sim;
+            if (sim == null || masks.Length == 0) return 0f;
+            float before = CareMath.WeightedMean(masks);
+            if (before <= 0f) return 0f;
+            var reach = Reach();
+            for (int i = 0; i < masks.Length; i++) masks[i].ClearOutside(reach[i]);
+            float after = CareMath.WeightedMean(masks);
+            if (after < before && sim.State.grime > 0f)
+            {
+                sim.State.grime *= after / before; // not CleanGrime: nobody wiped, so no Keeper's action or shaping charge counts it
+                synced = sim.State.grime;
+            }
+            return 1f - after / before;
+        }
+
         /// <summary>Is there wipeable glass under this screen position (for tests and hints)?</summary>
         public bool GlassAt(Vector2 screenPos) => Cam != null && masks.Length > 0 && GlassHit(Cam.ScreenPointToRay(screenPos), out _, out _, out _);
 
@@ -370,6 +447,20 @@ namespace AquariumCiv.View
         {
             var os = cols[i].transform.InverseTransformPoint(world);
             return new Vector2((zAxis[i] ? os.z : os.x) + 0.5f, os.y + 0.5f);
+        }
+
+        /// <summary>#268: the most a slanted pane's stamp grows. A pane seen at a slant (a side pane from the default camera, the far
+        /// right one in playtest #260) is foreshortened: a fingertip covers a longer stretch of it than of a pane facing the camera, so
+        /// a stamp the size of a face-on fingertip left stripes between a player's strokes that no stroke finished.</summary>
+        public const float MaxSlantGrowth = 3f;
+
+        /// <summary>The wipe's stamp on pane <paramref name="i"/> where <paramref name="ray"/> meets it, world units: the finger's
+        /// footprint on the glass, grown by the pane's slant to the view.</summary>
+        float StampRadius(Ray ray, int i, Vector3 point)
+        {
+            var normal = box.transform.TransformDirection(zAxis[i] ? Vector3.right : Vector3.forward);
+            float facing = Mathf.Abs(Vector3.Dot(ray.direction.normalized, normal.normalized));
+            return wipeRadius * WorldPerScreen(point) * Mathf.Min(MaxSlantGrowth, 1f / Mathf.Max(facing, 1f / MaxSlantGrowth));
         }
 
         /// <summary>World units per screen height at a point (what a share of the screen height is in the box).</summary>
@@ -531,7 +622,7 @@ namespace AquariumCiv.View
             {
                 strokeRemoved = 0f;
                 strokeStart = Time.unscaledTime;
-                Sfx.Play(CueLibrary.WipeStart);
+                startCue = true; // played when the stroke first touches a pane (#301: it may start off the glass)
                 System.Array.Clear(hasLast, 0, hasLast.Length);
                 ContinueWipe(Sim, pos, 0.016f, true);
             }
@@ -553,7 +644,7 @@ namespace AquariumCiv.View
             {
                 if (cols[i] == null || !cols[i].Raycast(ray, out var hit, 200f) || !Visible(i, hit.point)) { hasLast[i] = false; continue; }
                 var uv = Uv(i, hit.point);
-                float radius = wipeRadius * WorldPerScreen(hit.point);
+                float radius = StampRadius(ray, i, hit.point);
                 dirtUnder = Mathf.Max(dirtUnder, masks[i].GrimeAt(uv, radius));
                 double removed = hasLast[i] ? masks[i].BrushLine(lastUv[i], uv, radius, wipeStrength) : masks[i].Brush(uv, radius, wipeStrength);
                 total += (float)removed;
@@ -562,6 +653,7 @@ namespace AquariumCiv.View
                 if (masks[i].CheckCleared()) { Sfx.Play(CueLibrary.PaneClean); Burst(cols[i].bounds.center, 8, 0.5f); }
             }
             if (hitPanes == 0) { sound.SetRub(0f, 0f); return; }
+            if (startCue) { startCue = false; Sfx.Play(CueLibrary.WipeStart); }
             long texels = 0;
             foreach (var m in masks) texels += m.LiveTexels;
             float share = total / Mathf.Max(1L, texels);

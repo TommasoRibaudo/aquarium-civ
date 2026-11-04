@@ -1,3 +1,4 @@
+using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using UnityEngine;
 
@@ -60,6 +61,7 @@ namespace AquariumCiv.View
             GUILayout.Label($"Doll +{PeopleView.DollScaleAmount * 100f:0} %", GUILayout.Width(80));
             PeopleView.DollScaleAmount = GUILayout.HorizontalSlider(PeopleView.DollScaleAmount, 0f, 0.4f);
             GUILayout.EndHorizontal();
+            if (GUILayout.Button("Canal across a path (bridge)")) last = DebugCanalAcrossPath();
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig == null) return;
             GUILayout.BeginHorizontal();
@@ -67,6 +69,19 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Fly in: door")) last = DebugFlyDoor(people, rig);
             if (GUILayout.Button("Go home")) rig.GoHome();
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>
+        public static string DebugCanalAcrossPath()
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            var st = sim?.Settlement;
+            if (st == null) return "no sim";
+            int c = st.DebugCanalAcrossPath();
+            if (c < 0) return "no path to cross yet";
+            var src = SimLayoutSource.Find();
+            if (src != null) src.GetComponent<BoxView>().Refresh();
+            return $"canal dug across the path at cell {c}";
         }
 
         static string DebugFlyFire(PeopleView people, BoxCamera rig)
@@ -104,17 +119,44 @@ namespace AquariumCiv.View
         void DrawEco()
         {
             GUILayout.Label("Living land (P8): " + EcoDebug.Status());
+            GUILayout.Label("Jobs: " + EcoDebug.Jobs());
             Row();
             if (Btn("Barren box")) last = EcoDebug.NewBox(true);
             if (Btn("Old box")) last = EcoDebug.NewBox(false);
             if (Btn("Mist")) last = EcoDebug.MistRandom();
             if (Btn("Mist camp")) last = EcoDebug.MistCamp();
+            if (Btn("Mist sound A/B")) { var ms = EcoMistView.Instance != null ? EcoMistView.Instance.Sound : null; last = ms != null ? ms.ToggleSource() : "no mister"; }
+            EndRow();
+            Row();
+            if (Btn("Mist big here")) last = EcoDebug.MistBigCamp();
+            if (Btn("Puddles now")) last = EcoDebug.PuddlesNow();
+            if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
+            EndRow();
+            Row();
+            if (Btn("Water breaks the surface now")) last = EcoDebug.WaterBreaksNow();
+            if (Btn("Frogs now")) last = EcoDebug.FrogsNow();
+            if (Btn("Ducks now")) last = EcoDebug.DucksNow();
+            EndRow();
+            Row();
+            if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
+            if (Btn("+3 bushes")) last = EcoDebug.AddBushes(3);
+            EndRow();
+            Row();
+            if (Btn("Rabbit tracks now")) last = EcoDebug.RabbitTracksNow();
+            if (Btn("+1 rabbit")) last = EcoDebug.AddRabbits(1);
+            if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);
+            EndRow();
+            Row();
+            if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
+            if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
+            if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
             EndRow();
             Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
             if (Btn("+1 yr")) last = EcoDebug.SkipSeasons(4);
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);
             if (Btn("Camp gate")) last = EcoDebug.CampGate();
+            if (Btn("+2 hides")) last = EcoDebug.AddHides(2);
             if (Btn("Village gate")) last = EcoDebug.VillageGate();
             EndRow();
             Row();
@@ -263,11 +305,13 @@ namespace AquariumCiv.View
             Row();
             if (Btn("Clear said")) last = ShowMeDirector.DebugClearSaid();
             if (Btn("Clean hint")) last = CareView.DebugCleanHint();
+            if (Btn("Mister hint")) last = GameHud.DebugForgetMisterHint();
             if (Btn("Ground tap")) last = GlassVoice.DebugRipple();
             if (Btn("Wind")) last = WindView.DebugNext();
             if (Btn("Line on walker")) last = ShowMeDirector.DebugSayOverWalker();
             if (Btn("Stalls")) last = StallProps.DebugStock();
             if (Btn("Keeper Doll")) last = GlassVoice.DebugPlayMoment(AquariumCiv.Sim.RelicId.KeeperDoll);
+            if (Btn("Start a ritual now")) last = GlassVoice.DebugStartRitual();
             if (Btn("Drop crumb")) last = GlassVoice.DebugDropCrumb();
             if (Btn("Crumb eaten")) last = GlassVoice.DebugCrumbEaten();
             if (Btn("Grant a wish")) last = WishPayoffView.DebugGrant();
@@ -315,6 +359,7 @@ namespace AquariumCiv.View
                 Row();
                 for (int i = 0; i < AquariumCiv.Audio.AmbienceLevels.Count; i++)
                 {
+                    if (i == 6 || i == 9) { EndRow(); Row(); }
                     var ad = AudioDirector.Instance;
                     string n = AquariumCiv.Audio.AmbienceLevels.CueIds[i].Substring(4);
                     if (Btn(n + ":" + (ad != null ? AudioDirector.LayerForceName(ad.LayerForce[i]) : "-"))) last = AudioDirector.DebugCycleLayer(i);

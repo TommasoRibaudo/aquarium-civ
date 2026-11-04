@@ -72,6 +72,10 @@ namespace AquariumCiv.View
             return new Vector3(Mathf.Clamp(target.x, -b.x, b.x), target.y, Mathf.Clamp(target.z, -b.y, b.y));
         }
 
+        /// <summary>#273: the same, against bounds the caller already drew in for its pose (<see cref="PanBoundsFor"/>).</summary>
+        public static Vector3 ClampFocus(Vector3 target, Vector2 bound)
+            => new Vector3(Mathf.Clamp(target.x, -bound.x, bound.x), target.y, Mathf.Clamp(target.z, -bound.y, bound.y));
+
         public static float YawDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * YawPerScreen;
         public static float PitchDegrees(float pixels, float screenHeight) => pixels / Mathf.Max(1f, screenHeight) * PitchPerScreen;
 
@@ -138,15 +142,36 @@ namespace AquariumCiv.View
         /// <summary>k: a little at full-box zoom (#146), fully open by zoom 0.5.</summary>
         public static float PanK(float zoom) => CameraReach.PanK(zoom);
 
-        /// <summary>The most the target may be off the box centre in x and z at this zoom.</summary>
+        /// <summary>#273: the most the target may be off the box centre in x and z. The same at every zoom: the pivot rests up to the glass's inner face.</summary>
         public static Vector2 PanBounds(float zoom)
         {
-            CameraReach.PanBounds(zoom, Land.HX, Land.HZ, out float x, out float z);
+            CameraGlass.PanBounds(Land.HX, Land.HZ, out float x, out float z);
             return new Vector2(x, z);
         }
 
-        /// <summary>A pan's hard stop, rubber band included: the screen's centre never leaves the land.</summary>
-        public static Vector2 PanHardStop => new(Land.HX - 0.02f, Land.HZ - 0.02f);
+        /// <summary>#273 (user 2026-11-04): the pan range for a pose, limited by the VIEW: the pivot may move until the visible ground's edge reaches the glass (a long way close up,
+        /// nothing once the whole box fits), and drawn in where the camera would enter the box's hull. Portrait phone by default.</summary>
+        public static Vector2 PanBoundsFor(float yaw, float pitch, float distance, float pivotY, float tanHalfV = 0.19438f, float aspect = 0.5625f)
+        {
+            CameraGlass.PanBoundsFor(yaw, pitch, distance, pivotY, tanHalfV, aspect, Land.HX, Land.HZ, Land.HX + HullSide, Land.HZ + HullSide, ShelfY, Land.GlassTop, out float x, out float z);
+            return new Vector2(x, z);
+        }
+
+        /// <summary>#273: the range a flight or a follow may end in (a person or a place near a wall is still centred): the glass's range, drawn in only for the hull, not limited by the view.</summary>
+        public static Vector2 PanBoundsGlassFor(float yaw, float pitch, float distance, float pivotY)
+        {
+            CameraGlass.PanBoundsFor(yaw, pitch, distance, pivotY, Land.HX, Land.HZ, Land.HX + HullSide, Land.HZ + HullSide, ShelfY, Land.GlassTop, out float x, out float z);
+            return new Vector2(x, z);
+        }
+
+        /// <summary>#273: a pan drag with a soft band at the glass: full speed up to the rest limit, slower through the band, never past the hard stop.</summary>
+        public static float GlassStep(float value, float delta, float lo, float hi) => CameraGlass.Step(value, delta, lo, hi);
+
+        /// <summary>A pan's hard stop, the soft band's end: the pivot never reaches the glass.</summary>
+        public static Vector2 PanHardStop
+        {
+            get { CameraGlass.HardStop(Land.HX, Land.HZ, out float x, out float z); return new Vector2(x, z); }
+        }
 
         /// <summary>Zoom towards a point: the target moves (1 - z1/z0) of the way to the ground point under the fingers.</summary>
         public static Vector3 ZoomTarget(Vector3 target, Vector3 ground, float z0, float z1) => target + (ground - target) * (1f - z1 / z0);

@@ -59,6 +59,7 @@ namespace AquariumCiv.Tests
         {
             var cfg = new SimConfig { ecology = true };
             var sim = new SimCore(cfg, SimCore.NewWorld(7, cfg));
+            sim.DebugAddHides(SimCore.HidesPerTent); // #284: a tent is made of hides
             sim.DebugOpenCampGate();
             for (int m = 0; m < 12 * 12; m++) { sim.Step(); if (sim.State.eraReady) break; }
             int farms = 0, mills = 0;

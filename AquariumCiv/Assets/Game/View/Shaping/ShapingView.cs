@@ -1010,7 +1010,7 @@ namespace AquariumCiv.View
 
         VisualElement TakeBackList(IReadOnlyList<TakeBackItem> list)
         {
-            var scroll = new GlassScroll { SnapToRows = true };
+            var scroll = new GlassScroll { WholeRows = true };
             scroll.AddToClassList("tray-list");
             foreach (var item in list)
             {

@@ -27,6 +27,9 @@ namespace AquariumCiv.Sim.Eco
         public float minHeight = float.MaxValue, maxHeight = float.MinValue;
         /// <summary>The largest basin: the one the water table surfaces in first.</summary>
         public Basin main;
+        /// <summary>The corner hollow runs to the front and right glass (#269): along its stretch of those walls the glass holds
+        /// the water, so those cells are not outlets for the priority flood.</summary>
+        readonly bool glassWalls;
 
         public sealed class Basin
         {
@@ -38,8 +41,9 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>The flood line: the main hollow's spill level.</summary>
         public float FloodLine => main != null ? main.spill : -1000f;
 
-        public EcoLand(SiteMap map)
+        public EcoLand(SiteMap map, bool glassWalls = false)
         {
+            this.glassWalls = glassWalls;
             height = map.height; slope = map.slope; baseSoil = map.baseFert;
             campX = map.greenX; campZ = map.greenZ;
             for (int c = 0; c < N; c++)
@@ -63,7 +67,7 @@ namespace AquariumCiv.Sim.Eco
                 if (!cache.TryGetValue(preset, out var l))
                 {
                     // Static layers only: the live arrays and the flag for the eco pond don't matter to them.
-                    cache[preset] = l = new EcoLand(new SiteMap(new SettleState { terrain = preset, flags = new byte[N] }, false, true));
+                    cache[preset] = l = new EcoLand(new SiteMap(new SettleState { terrain = preset, flags = new byte[N] }, false, true), TerrainSpec.Preset(preset).cornerPond);
                 }
                 return l;
             }
@@ -119,7 +123,11 @@ namespace AquariumCiv.Sim.Eco
             for (int c = 0; c < N; c++)
             {
                 int i = SiteMap.I(c), j = SiteMap.J(c);
-                if (i == 0 || j == 0 || i == NX - 1 || j == NZ - 1) { fill[c] = height[c]; done[c] = true; pq.Push(c, height[c]); }
+                if (i == 0 || j == 0 || i == NX - 1 || j == NZ - 1)
+                {
+                    if (glassWalls && (j == 0 || i == NX - 1) && Terrain.CornerHollow(SiteMap.CXc(c), SiteMap.CZc(c)) > 0.01f) continue; // a glass wall, not an outlet
+                    fill[c] = height[c]; done[c] = true; pq.Push(c, height[c]);
+                }
             }
             var nb = new int[4];
             while (pq.Count > 0)
