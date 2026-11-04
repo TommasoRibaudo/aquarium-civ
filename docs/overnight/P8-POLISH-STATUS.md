@@ -15,7 +15,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] 8 · #282 merged
 - [x] 9 · #283 merged
 - [x] 10 · #284 merged
-- [ ] 11 · #288 merged
+- [x] 11 · #288 merged
 - [ ] 12 · #281 merged, closed
 - [ ] 13 · #280 merged (open for a listen)
 - [x] 14 · DROPPED by the user 20:07 ("bringing the fire where?"): no fire move. #248 closed earlier; #246/#249 check comments posted, left open
@@ -83,3 +83,6 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 22:41 · #294-296 merged 73c3880, closed. Puddles still grey-blue (sign-off on #266). Smoke flake once on card-stack 'Skip all' tap.
 - 22:46 · #297 merged c72338a, closed. Next lane B: item 11 (#288 view).
 - 22:46 · item 11 (#288 view) Sonnet a5a9e0ed5dd98b13a, F:\GameDev vs/288-berries-view; watcher bs1bj4li2. Lane B since tester1: fixes, #297, 11.
+- 23:41 · item 11 merged cb0e376 (#288 open for sign-off; 13 natural bushes at Y12.5). New bugs: #298 old smoke Patch→Rain on base (ecology leak?), #299 particle velocity curves error. Hunt both next (90-min box).
+- 11-04 00:09 · #298 #299 merged 5f91bc2, closed. Editor p8.ecology pref now 0. Next lane B: item 7 (#279 → #286).
+- 11-04 00:10 · item 7 (#279 → #286) Sonnet a6cb1c9440194e928, full EditMode baseline first; watcher bj5f3yz45.
