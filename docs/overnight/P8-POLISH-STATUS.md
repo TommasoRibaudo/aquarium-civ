@@ -100,3 +100,4 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 11-04 03:13 · item 3B merged 9bcdea3; closed #285 #267 #262. Polish: day-0 dawn trip may drop the full-bucket walk home. Item 4B Sonnet a4e2281e451242117 (watcher b3sqnb1mf).
 - 11-04 03:21 · item 4B merged 0991e13, #287 closed. Check: time-lapse caption showed 'Year 15 · Camp' at year 0 (tester 3). Next: item 15 (#273 phase B).
 - 11-04 03:21 · item 15 phase B Sonnet acb8c6c71efd97b0f (watcher bizaw3ezc).
+- 11-04 03:38 · item 15 phase B back (df3bb02) but far zoom slid the tank half off screen (pivot-limited). Sent back: limit the VIEW edge at the glass (far zoom ≈ no pan; close zoom reaches each wall). Watcher b61uu1m2m. NOTE for phase A brief: my brief said 'pivot may move until frustum near edge meets the glass' — ambiguous.
