@@ -451,7 +451,9 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(420000)]
         public IEnumerator FreshBoxToBoxComplete_NoConsoleErrors()
         {
+            UseLivingLand(false); // #298: the old slice, whatever switch an earlier run left on
             yield return OpenSlice(seed: Seed, skipFirstRun: false);
+            Assert.IsFalse(GameClock.Instance.Sim.EcologyOn, "the old slice: the living land is off");
             t0 = Time.realtimeSinceStartup;
             Assert.GreaterOrEqual(bootstrapsRun, 12, "every bootstrap ran");
             AudioDirector.Ensure();

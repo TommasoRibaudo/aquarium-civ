@@ -361,8 +361,13 @@ namespace AquariumCiv.View
                 em.rateOverTime = 110f;
                 sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 0.4f; sh.radiusThickness = 1f;
                 sh.rotation = new Vector3(-90f, 0f, 0f); // the circle lies flat; the fleck hops up
-                var vel = ps.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
+                var vel = ps.velocityOverLifetime; vel.space = ParticleSystemSimulationSpace.World;
+                // #299: every axis in the same mode (two constants), set before the module turns on, or Unity logs "Particle
+                // Velocity curves must all be in the same mode" when y alone is a range and x/z keep their default single constant.
+                vel.x = new ParticleSystem.MinMaxCurve(0f, 0f);
                 vel.y = new ParticleSystem.MinMaxCurve(0.1f, 0.3f);
+                vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+                vel.enabled = true;
                 r.renderMode = ParticleSystemRenderMode.Billboard;
             }
             var col = ps.colorOverLifetime; col.enabled = true;
