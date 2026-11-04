@@ -9,7 +9,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - [x] 2 · #271 + #266 sim merged
 - [ ] 3 · #285 → #267 merged, closed
 - [ ] 4 · #287 merged, closed
-- [ ] 5 · #266 → #277 merged (#266 open for sign-off)
+- [x] 5 · #266 → #277 merged (#266 open for sign-off)
 - [ ] 6 · #269 → #270 merged (open for sign-off)
 - [ ] 7 · #279 → #286 merged
 - [ ] 8 · #282 merged
@@ -62,3 +62,7 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 19:50 · #281 phase 1 merged (5ac42e9), dotnet 1224 expected; FadeSeconds 180 s.
 - 20:15 · #283 phase 1 merged (ab6882e), dotnet 1240/1240. 62% catch, floor 2, hides saved (HidesDrying/TakeHides).
 - 20:40 · #284 phase 1 merged (ed5c436), dotnet 1249/1249. HidesPerTent=2. PlayTests may expect a tent w/o hides → phase 2 must check EcoPhonePlaythrough/Smoke camp step.
+- (real clock from here; earlier times ran ahead) 19:26 · item 5 merged b492e23 (6000f64+71e9103, resolved PlaceKind: BushCell then Puddle). dotnet 1252/1252; EditMode all green on item 5; EcoPhonePlaythrough rewritten to wet/green-at-once checks (was failing after the #271 retune). Closed #277, #271, #264; #266 open for sign-off (+#263 #265). Fsss is code-made (→ #280). Puddle as muddy bucket source not wired (→ 3B).
+- 19:28 · item 6 (#269 → #270) Sonnet lane B id ac165c58ab99e4649, F:\GameDev vs/269-270-water, restart first; watcher bap3n2wpt.
+- Item 14 phase A agent a03318bf658dcd2c7 still merging p8/polish (will hit LifeTypes enum: OldFire must go AFTER BushCell, Puddle).
+- Lane B items done: 1, 5 (2 of 6 before tester).
