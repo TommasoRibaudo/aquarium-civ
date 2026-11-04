@@ -27,6 +27,21 @@ namespace AquariumCiv.Sim.Eco
         public float table, tablePeak, pondLevel = -1000f;
         public float soaked;            // water the Keeper's mist has sent down since the last step
         public float rabbits, birds;
+        /// <summary>#282: the cells where rabbit tracks show (chosen once, at the meadow's edge, when the tracks come), the cell
+        /// the first rabbit hops in at (-1 = none yet), whether the view has played that arrival, and rabbits caught so far.</summary>
+        public int[] trackCells;
+        public int rabbitArrivalCell = -1;
+        public bool rabbitArrivalSeen;
+        public int rabbitsCaught;
+        /// <summary>#283: hides drying by the fire (one per catch; #284 turns them into tents and takes them with TakeHides), all hides ever
+        /// taken, and the hunt resolver's mark: on view day <see cref="huntDay"/> the first <see cref="huntDone"/> hunts are settled.</summary>
+        public int hidesDrying, hidesTotal;
+        public long huntDay = -1;
+        /// <summary>#284: the camp's first tent. 0 = not armed (the gate has not opened, or an old save where it already had), 1 = the gate
+        /// opened and the first tent waits for its hides, 2 = it was raised (the moment was played). <see cref="tentsFromHides"/> counts tents raised from hides.</summary>
+        public int campTentState;
+        public int tentsFromHides;
+        public int huntDone;
         public int wildSeeds;
         // The cover counts taken at the end of the last step. The model reads these mid-step (as the lab's did), so they
         // are saved rather than recounted: a mist between steps must not change what the next step sees.
@@ -41,6 +56,17 @@ namespace AquariumCiv.Sim.Eco
 
         // Gates: the game month each opened (-1 = closed).
         public int campGateMonth = -1, villageGateMonth = -1;
+
+        // P8 #288: the bushes. The first one that came up (a sign the people notice; -1 = none yet) and what has been picked:
+        // parallel lists, cell / the view day of the last pick / berries left (0..1) at that day (see EcoBushes).
+        public int firstBushCell = -1;
+        public List<int> bushPickCell = new List<int>();
+        public List<long> bushPickDay = new List<long>();
+        public List<float> bushPickLeft = new List<float>();
+
+        /// <summary>P8 #281: bit per site cell, set = it was green when the player last looked (EcoSeen). Null = never recorded
+        /// (an old save): nothing shows as fresh.</summary>
+        public byte[] seen;
 
         /// <summary>Milestones reached and the game month of each (parallel lists; see EcoMilestones).</summary>
         public List<string> milestoneKeys = new List<string>();
@@ -58,7 +84,7 @@ namespace AquariumCiv.Sim.Eco
     /// <summary>The milestone keys of <see cref="SimCore.EcoMilestone"/>: one beat each of the land's arc.</summary>
     public static class EcoMilestones
     {
-        public const string FirstGreen = "first_green", FirstBush = "first_bush", FirstRabbit = "first_rabbit", FirstBird = "first_bird",
+        public const string FirstGreen = "first_green", FirstBush = "first_bush", FirstRabbit = "first_rabbit", RabbitTracks = "rabbit_tracks", FirstBird = "first_bird",
             SeedUnlocked = "seed_unlocked", TreePlanted = "tree_planted", PeopleWater = "people_water",
             TreeSprout = "tree_sprout", TreeSapling = "tree_sapling", TreeYoung = "tree_young", TreeGrown = "tree_grown",
             FirstWoodTree = "first_grown_tree", WaterSurfaced = "water_surfaced", CampGate = "camp_gate", VillageGate = "village_gate";

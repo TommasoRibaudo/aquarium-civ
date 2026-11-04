@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 
 namespace AquariumCiv.Life
 {
@@ -164,6 +165,7 @@ namespace AquariumCiv.Life
                 case PlaceKind.None: return false;
                 case PlaceKind.TrashHeap: return trashIds.Contains(p.index);
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
+                case PlaceKind.BushCell: return sim.EcologyOn && EcoBushes.IsBush(sim.State.eco, p.index); // P8 #288
                 case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
             }
             return !p.IsBuilding || buildingIds.Contains(p.buildingId);
@@ -187,6 +189,10 @@ namespace AquariumCiv.Life
             var blocks = BlocksOf(p);
             for (int b = 0; b < blocks.Length; b++)
                 if (t.hour >= blocks[b].bs && t.hour < blocks[b].be) return BlockActivity(p, blocks[b], t);
+            // #283: a hunt in the meadow (a hunter, or a kid who follows) takes the person until it is over.
+            if (HuntActivityAt(p, t, out var hunting)) return hunting;
+            // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
+            if (TentActivityAt(p, t, out var raising)) return raising;
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);

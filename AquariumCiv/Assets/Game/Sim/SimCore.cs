@@ -141,10 +141,12 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             if (s.buildings.Count >= Config.buildingSlots) return;
+            if (TentsFromHides && TryTentFromHides()) return; // #284: a camp's tents are made of hides, not wood (SimCore.Tents.cs)
             float cost = NextBuildingCost;
             if (s.wood < cost) return;
             string type = PickBuilding(s.population); // nothing needed: save wood
             if (type == null) return;
+            if (type == BuildingType.Hut && TentsFromHides) return; // a tent waits for its hides
             s.wood -= cost;
             AddBuilding(type);
         }

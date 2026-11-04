@@ -543,7 +543,10 @@ namespace AquariumCiv.Sim.Eco
         void Animals(long month)
         {
             float meadow = st.cGrass + st.cTall + 0.3f * st.cBush;
-            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow) { st.rabbits = 2f; Reach(EcoMilestones.FirstRabbit, month); }
+            // #282: tracks come first, at half the meadow the first rabbit needs; the rabbit follows at least a season later.
+            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow * 0.5f) Reach(EcoMilestones.RabbitTracks, month);
+            long tracksAt = st.MonthOf(EcoMilestones.RabbitTracks);
+            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow && tracksAt >= 0 && month - tracksAt >= 3) { st.rabbits = 2f; Reach(EcoMilestones.FirstRabbit, month); }
             if (st.rabbits > 0f)
             {
                 float k = meadow / t.meadowPerRabbit;

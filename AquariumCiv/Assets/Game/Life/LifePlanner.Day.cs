@@ -49,6 +49,9 @@ namespace AquariumCiv.Life
             /// <summary>#200: the few who may sit out at their door today, and the day that list is for.</summary>
             public readonly HashSet<int> doorSitters = new HashSet<int>();
             public long doorSittersDay = long.MinValue;
+            /// <summary>P8 #288: who walks over to look at the first bush today (<see cref="IsFirstBushLooker"/>).</summary>
+            public long lookerDay = long.MinValue;
+            public int lookerKey = int.MinValue;
         }
 
         /// <summary>#200: the most people who sit out at their doors in a day. A whole Village sat in front of its houses each morning, facing them.</summary>
@@ -588,7 +591,9 @@ namespace AquariumCiv.Life
             {
                 At(PlayKind(p, d, 10), 10f, PlayPlace(p, d, 10, near: true), PlayProp(p, d, 10));
                 if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, 11f, gather, Prop.None, Ref(d.teller));
-                At(PlayKind(p, d, 11), 12f, PlayPlace(p, d, 11, near: false), PlayProp(p, d, 11));
+                var snack = KidBerryPlace(p, d);
+                if (!snack.IsNone) At(ActivityKind.Eat, 12f, snack, Prop.None); // P8 #288: a few berries straight from the bush
+                else At(PlayKind(p, d, 11), 12f, PlayPlace(p, d, 11, near: false), PlayProp(p, d, 11));
             }
             float lunchEnd = 12.5f + R(k, day, 83) * 0.7f; // #197: kids do not all sit down at once
             // Midday (village on): carry the meal basket out to a parent in the field.

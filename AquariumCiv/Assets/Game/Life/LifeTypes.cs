@@ -51,6 +51,17 @@ namespace AquariumCiv.Life
         Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate,
         /// <summary>#152: the bucket on the way to the water; <see cref="Buckets"/> is the full one, from the draw on.</summary>
         EmptyBucket,
+        /// <summary>#283: a caught rabbit, carried over the shoulder to the fire. Appended last so the saved ints stay.</summary>
+        Rabbit,
+    }
+
+    /// <summary>#283: which beat of a hunt a <see cref="PersonActivity"/> is (None = not a hunt). The hunter's beats come in this order:
+    /// ToFire, TakeSpear, WalkOut, Stalk, Strike, then Bolt + WalkBack (a miss) or CarryBack, Skin, Cook (a catch), then Return.
+    /// A kid who follows plays KidFollow, KidWatch, KidCheer (a catch only), KidBack.</summary>
+    public enum HuntPhase : byte
+    {
+        None, ToFire, TakeSpear, WalkOut, Stalk, Strike, Bolt, WalkBack, CarryBack, Skin, Cook, Return,
+        KidFollow, KidWatch, KidCheer, KidBack,
     }
 
     /// <summary>P8 (#267): the water in a bucket. None = not a bucket; Muddy = scooped from the wet low ground while the pond is dry.</summary>
@@ -76,6 +87,8 @@ namespace AquariumCiv.Life
         Bakery,
         /// <summary>#150: the camp's stash by the fire (land; index -1 = where a carrier stands, 1 = the pile, see <see cref="CampStash"/>).</summary>
         Stash,
+        /// <summary>P8 #288: one grown bush on a living land (index = the site cell, <see cref="Sim.Settle.SiteMap"/>); where berries are picked.</summary>
+        BushCell,
         /// <summary>P8 #266: a mist puddle (index = the site cell).</summary>
         Puddle,
     }
@@ -205,6 +218,11 @@ namespace AquariumCiv.Life
         public bool enRoute;
         /// <summary>#192: on a baby, who has them now (None = at home, out of sight).</summary>
         public PersonRef carriedBy;
+        /// <summary>#283: the beat of a hunt this is (None = not a hunt). The step's coordinates come from
+        /// <see cref="LifePlanner.HuntStepAt"/>.</summary>
+        public HuntPhase hunt;
+        /// <summary>#284: the beat of a tent raising this is (None = not one). See <see cref="LifePlanner.TentStepAt"/>.</summary>
+        public TentPhase tent;
 
         public PropSlot PropSlot => ActivityInfo.SlotOf(prop, kind);
         public ActivityGroup Group => ActivityInfo.GroupOf(kind);
@@ -296,7 +314,7 @@ namespace AquariumCiv.Life
             return p switch
             {
                 Prop.Sheaf or Prop.Loaves or Prop.Pots => carrying ? PropSlot.Head : PropSlot.Hand,
-                Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.EmptyBucket or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
+                Prop.Log or Prop.Sack or Prop.Hide or Prop.Rabbit or Prop.Buckets or Prop.EmptyBucket or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
                 Prop.Mask => PropSlot.Head,
                 Prop.Wool or Prop.Cloth or Prop.Goods => carrying ? PropSlot.Back : PropSlot.Hand,
                 Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
