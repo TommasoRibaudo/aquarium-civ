@@ -24,7 +24,8 @@ Shader "AquariumCiv/View/EcoGround"
         _PuddleDeep ("Puddle bed", Color) = (0.07, 0.055, 0.045, 1)
         _Gloss ("Reflection at grazing angles", Range(0, 1)) = 0.85
         _Ripple ("Ripple", Range(0, 1)) = 0.6
-        _FreshLift ("Fresh green lift by day", Range(0, 1)) = 0.3
+        _FreshLift ("Fresh green lift by day", Range(0, 1)) = 0.7
+        _FreshDay ("Daylight 0..1 (set by EcoSurface from the day's light)", Range(0, 1)) = 1
         [HideInInspector] _SrcBlend ("Src blend", Float) = 5
         [HideInInspector] _DstBlend ("Dst blend", Float) = 10
     }
@@ -49,7 +50,7 @@ Shader "AquariumCiv/View/EcoGround"
             CBUFFER_START(UnityPerMaterial)
                 float _Mode;
                 half4 _WetColor, _SkyHigh, _SkyLow, _PuddleDeep;
-                half _SheenAmount, _Gloss, _Ripple, _WetBoost, _FreshLift;
+                half _SheenAmount, _Gloss, _Ripple, _WetBoost, _FreshLift, _FreshDay;
             CBUFFER_END
 
             struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; };
@@ -124,7 +125,7 @@ Shader "AquariumCiv/View/EcoGround"
                 if (_Mode > 4.5)
                 {
                     half3 hue = i.color.rgb / max(1e-3, max(i.color.r, max(i.color.g, i.color.b))); // no channel above 1: never brighter by itself
-                    half lift = 1.0 + _FreshLift * smoothstep(0.45, 0.85, day); // by day only: the night stays as dark as the land
+                    half lift = 1.0 + _FreshLift * smoothstep(0.55, 0.9, _FreshDay); // by day only: the night stays as dark as the land
                     half3 f = lerp(half3(1, 1, 1), hue * lift, a);
                     return half4(f * 0.5, 1); // 2x multiply: 0.5 leaves the ground as it is
                 }

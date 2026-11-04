@@ -62,6 +62,8 @@ namespace AquariumCiv.View
         /// <summary>Tests: how much faster than real time the new-grass fade runs.</summary>
         public static float FadeSpeed = 1f;
         public float NewGrassShown(int c) => c >= 0 && c < N ? ngS[c] : 0f;
+        /// <summary>The new-grass overlay's renderer (tests: #300 compares the land with and without it).</summary>
+        public Renderer NewGrassRenderer => ngR;
         float ngPoll;
         bool landMarkChecked;
         /// <summary>The player has just come back (or the debug cheat pretended so): the fade starts over from now.</summary>
@@ -144,7 +146,7 @@ namespace AquariumCiv.View
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
             // #300: the new grass tints the land it lies on, so it is lit like the land at every hour (the plain tint glowed at night)
-            if (freshMat == null) { freshMat = MakeMaterial("EcoTint", 5, DstColor, SrcColor); if (freshMat != null) freshMat.name = "EcoNewGrass"; }
+            if (freshMat == null) { freshMat = MakeMaterial("EcoTint", 5, DstColor, SrcColor); if (freshMat != null) freshMat.name = "EcoNewGrass"; if (freshMat != null) freshMat.SetFloat("_FreshLift", 0.7f); }
             if (pudMat != null && !pudTuned)
             {
                 // water, not slate (tester run 1): a dark wet-blue/brown bed under the sky's reflection
@@ -260,6 +262,8 @@ namespace AquariumCiv.View
                 landMarkChecked = true;
                 if (!sim.HasLandSeenMask) sim.MarkLandSeen(); // a fresh box, or an old save: nothing is new yet
             }
+            // #300: the lift to a lighter green is a daytime thing; at night the tint only shifts the hue of the land's own light
+            if (freshMat != null) freshMat.SetFloat("_FreshDay", DayLightDriver.Driving ? DayLightDriver.Instance.Current.Daylight : 1f);
             LandSeconds += dt * FadeSpeed;
             ngPoll += dt;
             if (ngPoll < 0.2f) return;
@@ -280,7 +284,7 @@ namespace AquariumCiv.View
 
         static bool Changed(float[] now, float[] built, float eps)
         {
-            for (int c = 0; c < now.Length; c++) if (Mathf.Abs(now[c] - built[c]) > eps) return true;
+            for (int c = 0; c < now.Length; c++) if (Mathf.Abs(now[c] - built[c]) > eps || (now[c] == 0f && built[c] != 0f)) return true; // gone is always a change: no faint leftover
             return false;
         }
 
