@@ -30,6 +30,7 @@ namespace AquariumCiv.View
         float[] pudT = new float[N], pudS = new float[N], pudB = new float[N];
         float[] spT = new float[N], spS = new float[N], spB = new float[N];
         float[] frT = new float[N], frS = new float[N], frB = new float[N];
+        float[] ngS = new float[N], ngB = new float[N];  // #281: new grass since the last visit (0..1 freshness, from the sim)
         float[] cornerY = new float[(NX + 1) * (NZ + 1)], cellY = new float[N];
         int landVersion = -1;
         bool snap = true;
@@ -37,9 +38,9 @@ namespace AquariumCiv.View
         float buildT;
         Transform rootSeen;
 
-        Mesh wetMesh, pudMesh, spMesh, frMesh;
-        MeshFilter wetF, sheenF, pudF, spF, frF;
-        MeshRenderer wetR, sheenR, pudR, spR, frR;
+        Mesh wetMesh, pudMesh, spMesh, frMesh, ngMesh;
+        MeshFilter wetF, sheenF, pudF, spF, frF, ngF;
+        MeshRenderer wetR, sheenR, pudR, spR, frR, ngR;
         Material wetMat, sheenMat, pudMat, tintMat;
         bool pudTuned;
 
@@ -55,6 +56,16 @@ namespace AquariumCiv.View
         public int PuddleCount { get; private set; }
         public int ShootCells { get; private set; }
         public int FreshCells { get; private set; }
+        /// <summary>#281: cells drawn in the fresher spring green, and the real seconds (times <see cref="FadeSpeed"/>) since the player came back.</summary>
+        public int NewGrassCells { get; private set; }
+        public float LandSeconds { get; private set; }
+        /// <summary>Tests: how much faster than real time the new-grass fade runs.</summary>
+        public static float FadeSpeed = 1f;
+        public float NewGrassShown(int c) => c >= 0 && c < N ? ngS[c] : 0f;
+        float ngPoll;
+        bool landMarkChecked;
+        /// <summary>The player has just come back (or the debug cheat pretended so): the fade starts over from now.</summary>
+        public void RestartFade() { LandSeconds = 0f; ngPoll = 1f; }
         public int Builds { get; private set; }
         /// <summary>How long the last overlay rebuild took (ms), for the frame-budget test.</summary>
         public double LastBuildMs { get; private set; }
@@ -84,21 +95,23 @@ namespace AquariumCiv.View
         {
             if (Instance != null && Instance != this) { enabled = false; return; }
             Instance = this;
+            GameClock.LandReturned += RestartFade;
             box = GetComponent<BoxView>();
         }
 
         void OnDisable()
         {
+            GameClock.LandReturned -= RestartFade;
             if (Instance == this) Instance = null;
             Clear();
         }
 
         void Clear()
         {
-            foreach (var go in new[] { wetF, sheenF, pudF, spF, frF }) if (go != null) Destroy(go.gameObject);
-            wetF = sheenF = pudF = spF = frF = null;
-            foreach (var m in new[] { wetMesh, pudMesh, spMesh, frMesh }) if (m != null) Destroy(m);
-            wetMesh = pudMesh = spMesh = frMesh = null;
+            foreach (var go in new[] { wetF, sheenF, pudF, spF, frF, ngF }) if (go != null) Destroy(go.gameObject);
+            wetF = sheenF = pudF = spF = frF = ngF = null;
+            foreach (var m in new[] { wetMesh, pudMesh, spMesh, frMesh, ngMesh }) if (m != null) Destroy(m);
+            wetMesh = pudMesh = spMesh = frMesh = ngMesh = null;
         }
 
         SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
@@ -182,8 +195,9 @@ namespace AquariumCiv.View
             if (wetF == null)
             {
                 rootSeen = box.Root;
-                wetMesh = NewMesh("EcoWet"); pudMesh = NewMesh("EcoPuddles"); spMesh = NewMesh("EcoShoots"); frMesh = NewMesh("EcoFresh");
-                Warm(wetMesh); Warm(pudMesh); Warm(frMesh);
+                wetMesh = NewMesh("EcoWet"); pudMesh = NewMesh("EcoPuddles"); spMesh = NewMesh("EcoShoots"); frMesh = NewMesh("EcoFresh"); ngMesh = NewMesh("EcoNewGrass");
+                Warm(wetMesh); Warm(pudMesh); Warm(frMesh); Warm(ngMesh);
+                ngF = Part("EcoNewGrass", ref ngR, tintMat, ngMesh);
                 frF = Part("EcoFresh", ref frR, tintMat, frMesh);
                 wetF = Part("EcoWet", ref wetR, wetMat, wetMesh);
                 sheenF = Part("EcoSheen", ref sheenR, sheenMat, wetMesh);
@@ -191,8 +205,8 @@ namespace AquariumCiv.View
                 spF = Part("EcoShoots", ref spR, box.SolidMaterial, spMesh);
             }
             SetVisible(true);
-            if (!ReferenceEquals(simSeen, sim)) { simSeen = sim; snap = true; }
-            if (landVersion != box.LandVersion) { landVersion = box.LandVersion; System.Array.Fill(cornerY, float.NaN); System.Array.Fill(cellY, float.NaN); wetB[0] = -1; pudB[0] = -1; spB[0] = -1; frB[0] = -1; }
+            if (!ReferenceEquals(simSeen, sim)) { simSeen = sim; snap = true; landMarkChecked = false; LandSeconds = 0f; ngPoll = 1f; }
+            if (landVersion != box.LandVersion) { landVersion = box.LandVersion; System.Array.Fill(cornerY, float.NaN); System.Array.Fill(cellY, float.NaN); wetB[0] = -1; pudB[0] = -1; spB[0] = -1; frB[0] = -1; ngB[0] = -1; }
             Read(sim);
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             Ease(wetS, wetT, snap ? 1e9f : 4f, snap ? 1e9f : 0.22f, dt);
@@ -200,6 +214,7 @@ namespace AquariumCiv.View
             Ease(spS, spT, snap ? 1e9f : 1.5f, snap ? 1e9f : 0.4f, dt);
             Ease(frS, frT, snap ? 1e9f : 3f, snap ? 1e9f : 1.6f, dt);
             snap = false;
+            UpdateNewGrass(sim, dt);
             buildT += dt;
             if (buildT < 0.06f) return; // at most ~16 rebuilds a second, and none unless something moved
             bool built = false;
@@ -208,12 +223,13 @@ namespace AquariumCiv.View
             if (Changed(pudS, pudB, 0.012f)) { BuildPuddles(); built = true; }
             if (Changed(spS, spB, 0.02f)) { BuildShoots(); built = true; }
             if (Changed(frS, frB, 0.02f)) { BuildFresh(); built = true; }
+            if (Changed(ngS, ngB, 0.02f)) { BuildNewGrass(); built = true; }
             if (built) { buildT = 0f; Builds++; LastBuildMs = sw.Elapsed.TotalMilliseconds; }
         }
 
         void SetVisible(bool on)
         {
-            foreach (var r in new[] { wetR, sheenR, pudR, spR, frR }) if (r != null && r.enabled != on) r.enabled = on;
+            foreach (var r in new[] { wetR, sheenR, pudR, spR, frR, ngR }) if (r != null && r.enabled != on) r.enabled = on;
         }
 
         void Read(SimCore sim)
@@ -231,6 +247,23 @@ namespace AquariumCiv.View
                 // green now, but the chunk has not drawn it yet: a soft green patch stands in
                 frT[c] = green && box.BakedValid && baked[c] != cv && baked[c] == (byte)AquariumCiv.Sim.Eco.EcoCover.Bare ? 1f : 0f;
             }
+        }
+
+        /// <summary>#281: grass new since the player last looked is a light spring green that fades to the normal colouring over
+        /// <see cref="AquariumCiv.Sim.Eco.EcoSeen.FadeSeconds"/>. Polled five times a second; only the small overlay is rebuilt (the chunks never are).</summary>
+        void UpdateNewGrass(SimCore sim, float dt)
+        {
+            if (!landMarkChecked)
+            {
+                landMarkChecked = true;
+                if (!sim.HasLandSeenMask) sim.MarkLandSeen(); // a fresh box, or an old save: nothing is new yet
+            }
+            LandSeconds += dt * FadeSpeed;
+            ngPoll += dt;
+            if (ngPoll < 0.2f) return;
+            ngPoll = 0f;
+            if (sim.CommitLandSeenIfFaded(LandSeconds)) System.Array.Clear(ngS, 0, N);
+            else sim.FillLandFreshness(LandSeconds, ngS);
         }
 
         static void Ease(float[] shown, float[] target, float up, float down, float dt)
@@ -335,6 +368,14 @@ namespace AquariumCiv.View
             var g = box.land.Colors.grassC;
             FreshCells = SoftPatch(frS, (Color32)Color.Lerp(g, box.land.Colors.grassA, 0.25f), 0.2f, 0.92f, N);
             Upload(frMesh);
+        }
+
+        void BuildNewGrass()
+        {
+            System.Array.Copy(ngS, ngB, N);
+            // a light, fresh spring green over the normal grass: the more it is new, the more of it shows
+            NewGrassCells = SoftPatch(ngS, new Color32(175, 245, 85, 255), 0.15f, 0.9f, N);
+            Upload(ngMesh);
         }
 
         void BuildShoots()
