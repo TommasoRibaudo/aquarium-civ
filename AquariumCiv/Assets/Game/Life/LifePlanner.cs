@@ -191,6 +191,8 @@ namespace AquariumCiv.Life
                 if (t.hour >= blocks[b].bs && t.hour < blocks[b].be) return BlockActivity(p, blocks[b], t);
             // #283: a hunt in the meadow (a hunter, or a kid who follows) takes the person until it is over.
             if (HuntActivityAt(p, t, out var hunting)) return hunting;
+            // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
+            if (TentActivityAt(p, t, out var raising)) return raising;
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);

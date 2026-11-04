@@ -217,6 +217,8 @@ namespace AquariumCiv.Life
         /// <summary>#283: the beat of a hunt this is (None = not a hunt). The step's coordinates come from
         /// <see cref="LifePlanner.HuntStepAt"/>.</summary>
         public HuntPhase hunt;
+        /// <summary>#284: the beat of a tent raising this is (None = not one). See <see cref="LifePlanner.TentStepAt"/>.</summary>
+        public TentPhase tent;
 
         public PropSlot PropSlot => ActivityInfo.SlotOf(prop, kind);
         public ActivityGroup Group => ActivityInfo.GroupOf(kind);

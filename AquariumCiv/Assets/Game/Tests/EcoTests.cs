@@ -241,6 +241,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(2, sim.State.buildings.Count, "nothing is built while the land is barren");
             Assert.IsNull(sim.NextWant().building, "nothing is wanted either");
             // The gate opens: the same box builds on.
+            sim.DebugAddHides(SimCore.HidesPerTent); // #284: a tent is made of hides
             Assert.IsTrue(sim.DebugOpenCampGate());
             Assert.IsFalse(sim.BeforeCamp);
             for (int m = 0; m < 12; m++) { sim.State.wood = 500; sim.State.food = 200; sim.Advance(1.0 / 12); }

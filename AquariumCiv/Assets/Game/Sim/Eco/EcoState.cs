@@ -37,6 +37,10 @@ namespace AquariumCiv.Sim.Eco
         /// taken, and the hunt resolver's mark: on view day <see cref="huntDay"/> the first <see cref="huntDone"/> hunts are settled.</summary>
         public int hidesDrying, hidesTotal;
         public long huntDay = -1;
+        /// <summary>#284: the camp's first tent. 0 = not armed (the gate has not opened, or an old save where it already had), 1 = the gate
+        /// opened and the first tent waits for its hides, 2 = it was raised (the moment was played). <see cref="tentsFromHides"/> counts tents raised from hides.</summary>
+        public int campTentState;
+        public int tentsFromHides;
         public int huntDone;
         public int wildSeeds;
         // The cover counts taken at the end of the last step. The model reads these mid-step (as the lab's did), so they
