@@ -74,3 +74,6 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 21:08 · item 10: first worker ab97127 handed back twice unverified (stopped). EcoPhonePlaythrough with beat 9 PASSED 21:01 on its working tree. Finisher a1a9b165b4b30ce8f took the lock; watcher bij0k17v0. Polish: camera far in phone_12-15.
 - 21:35 · item 10 merged (04f543b, a706ee0). Smoke 2/2, HuntView 2/2, EcoPhone 1/1. #284 open for sign-off. Lane B done: 1,5,6,8,9,10 → tester now.
 - 21:36 · TESTER run 1 started, id a8f04d15562b0c3c8, watcher b9a4x0bwv. Lane A: #280 sound sourcing ab248ccd3f95ff33e (wt/280). Next lane B after tester: 11 (#288 view), then 7, 12, 13, 3B, 4B, 15, 16, 17, 18.
+- 21:37 · #280 phase 1 done on vs/280-opening-sound c710609 (BigSoundBank + OGA rubberduck, all CC0; no .meta; no cracking-dirt CC0 found; mist_spray 4 s). NOT merged: item 13 lane B builds on this branch, commits metas.
+- 21:46 · NOTE: subagents stop at a 120-turn limit (tester1 hit it; likely item 10's first worker too). Resume with SendMessage; brief workers to batch and write partial reports.
+- 21:50 · #208 phase A merged (46cd2cc), dotnet 1256/1256. Phase B (look + smoke) with item 18.
