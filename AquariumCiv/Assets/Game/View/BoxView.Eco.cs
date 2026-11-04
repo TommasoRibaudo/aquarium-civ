@@ -85,7 +85,7 @@ namespace AquariumCiv.View
                 var ib = Item(ec.treeCell, 9);
                 KeeperTree(ib, land.OnGround(p), ec.treeStage, ec.treeNeed, co);
                 mb.AppendFree(ib);
-                near.Add((p, 0.08f + 0.06f * ec.treeStage));
+                near.Add((p, 0.12f + 0.06f * ec.treeStage));
             }
             // Then the trees, big to small, then bushes, then the grass (which claims nothing).
             for (int pass = 0; pass < 3; pass++)
@@ -169,28 +169,7 @@ namespace AquariumCiv.View
 
         /// <summary>The Keeper's one tree, by stage (0 seed in a mound, 1 sprout, 2 sapling, 3 young, 4 grown, larger than the
         /// forest's), showing one need at a time: 1 thirst (fallen leaves at its foot), 3 weeds (tufts crowding it).</summary>
-        static void KeeperTree(MeshBuilder mb, Vector3 g, int stage, int need, LandColors co)
-        {
-            if (stage <= 1)
-            {
-                mb.Ico(g + Vector3.up * 0.004f, 0.035f, new Vector3(1.2f, 0.35f, 1.2f), Palette.Mud, 0.2f);
-                if (stage == 1) Pieces.GrassTuft(mb, g + Vector3.up * 0.01f, 0.05f, co.sprout);
-            }
-            else Pieces.Tree(mb, g, stage == 2 ? 0.32f : stage == 3 ? 0.65f : 1.35f, false, co);
-            float foot = 0.05f + 0.05f * stage;
-            if (need == 1)
-                for (int i = 0; i < 5; i++)
-                {
-                    float a = i * 1.3f;
-                    mb.Ico(g + new Vector3(Mathf.Cos(a) * foot, 0.006f, Mathf.Sin(a) * foot), 0.014f, new Vector3(1f, 0.3f, 1f), Palette.Ember, 0.1f);
-                }
-            else if (need == 3)
-                for (int i = 0; i < 5; i++)
-                {
-                    float a = i * 1.25f + 0.4f;
-                    Pieces.GrassTuft(mb, g + new Vector3(Mathf.Cos(a) * foot, 0f, Mathf.Sin(a) * foot), 0.07f, co.tuftC);
-                }
-        }
+        static void KeeperTree(MeshBuilder mb, Vector3 g, int stage, int need, LandColors co) => KeeperTreeKit.Build(mb, g, stage, need, co);
 
         /// <summary>How far past the land's edge the glass stands inside (the water meets the pane, #269): the panes sit 7.5 cm out
         /// and are 2 cm thick.</summary>
