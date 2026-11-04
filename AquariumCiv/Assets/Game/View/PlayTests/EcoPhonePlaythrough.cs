@@ -405,6 +405,25 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(pond11.FrogsSitting, 0, "frogs at the pond at dusk");
                 yield return Shot("phone_19_frogs_dusk");
                 AssertNoErrors("pond");
+
+                // History shows the land growing (#287): open it by touch, year 0 against now.
+                var boxH = Object.FindAnyObjectByType<BoxView>();
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-history"));
+                var tlH = TimeLapseView.Find();
+                yield return Until(() => tlH != null && tlH.Active, 3f);
+                Assert.IsTrue(tlH.Active, "History opened by touch");
+                yield return Frames(4);
+                tlH.Seek(0f); yield return Frames(8);
+                var cover0 = (byte[])boxH.layout.eco.cover.Clone();
+                float gH0 = tlH.DrawnGreenShare;
+                yield return Shot("phone_20_history_year0");
+                tlH.Seek(tlH.Lapse.EndPosition); yield return Frames(12);
+                float gHn = tlH.DrawnGreenShare;
+                yield return Shot("phone_21_history_now");
+                Assert.Greater(gHn, gH0 + 0.01f, "History: the land is greener now than at year 0");
+                CollectionAssert.AreNotEqual(cover0, boxH.layout.eco.cover, "History: the land differs between year 0 and now");
+                tlH.Close(); yield return Frames(6);
+                AssertNoErrors("history");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }
