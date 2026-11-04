@@ -60,3 +60,4 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 19:30 · #282 phase 1 merged (79092a9, conflict in SimCore.Eco.cs EcoTell resolved by me), dotnet 1217/1217.
 - 19:45 · #248 closed; kit-wish design gap filed as https://github.com/TommasoRibaudo/aquarium-civ/issues/292
 - 19:50 · #281 phase 1 merged (5ac42e9), dotnet 1224 expected; FadeSeconds 180 s.
+- 20:15 · #283 phase 1 merged (ab6882e), dotnet 1240/1240. 62% catch, floor 2, hides saved (HidesDrying/TakeHides).
