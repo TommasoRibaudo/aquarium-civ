@@ -1,0 +1,14 @@
+21:59:50 [t1 frames] first-run mist (first spray of the session): 362 frames, worst 27,4 ms at frame 65; over 20 ms: #65:27 
+21:59:59 [t1 frames] kit hold 6 s (first puddle at frame 317): 938 frames, worst 13,5 ms at frame 316; over 20 ms: 
+22:06:00 [t1 frames] first-run mist (first spray of the session): 357 frames, worst 28,3 ms at frame 61; over 20 ms: #61:28 
+22:06:09 [t1 frames] kit hold 6 s (first puddle at frame 299): 893 frames, worst 22,2 ms at frame 153; over 20 ms: #153:22 
+22:09:45 [t1 frames] first-run mist (first spray of the session): 368 frames, worst 31,3 ms at frame 61; over 20 ms: #0:24 #61:31 
+22:09:55 [t1 frames] kit hold 6 s (first puddle at frame 320): 934 frames, worst 23,1 ms at frame 892; over 20 ms: #156:20 #892:23 
+22:11:29 [t1 frames] first-run mist (first spray of the session): 370 frames, worst 26,9 ms at frame 66; over 20 ms: #0:20 #64:23 #66:27 
+22:11:38 [t1 frames] kit hold 6 s (first puddle at frame 321): 947 frames, worst 12,6 ms at frame 476; over 20 ms: 
+22:13:00 [t1 frames] first-run mist (first spray of the session): 373 frames, worst 23,7 ms at frame 64; over 20 ms: #0:21 #64:24 
+22:13:09 [t1 frames] kit hold 6 s (first puddle at frame 329): 956 frames, worst 14,3 ms at frame 377; over 20 ms: 
+22:14:16 [t1 frames] first-run mist (first spray of the session): 379 frames, worst 24,1 ms at frame 67; over 20 ms: #67:24 
+22:14:25 [t1 frames] kit hold 6 s (first puddle at frame 330): 964 frames, worst 14,4 ms at frame 593; over 20 ms: 
+22:15:28 [t1 frames] first-run mist (first spray of the session): 368 frames, worst 22,5 ms at frame 64; over 20 ms: #0:20 #64:23 
+22:15:38 [t1 frames] kit hold 6 s (first puddle at frame 316): 939 frames, worst 13,6 ms at frame 55; over 20 ms: 

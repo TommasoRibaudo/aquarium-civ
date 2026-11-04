@@ -34,6 +34,7 @@ namespace AquariumCiv.View
             src.playOnAwake = false; src.loop = true; src.spatialBlend = 0f;
             src.clip = MakeClip();
             src.volume = 0f;
+            src.Play(); // #296: the clip goes to the mixer now, silent (Update pauses it next frame), not on the first spray
         }
 
         void Update()
