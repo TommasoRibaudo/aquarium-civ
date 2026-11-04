@@ -122,6 +122,35 @@ namespace AquariumCiv.View
             e.treeNeed = !t.planted ? 0 : t.water < 0.35f ? 1 : t.weeds > 0.5f ? 3 : t.light < 0.6f ? 2 : 0;
         }
 
+        /// <summary>#287: the land of a scrubbed year (or the blend of two): cover from the records, the pond at the recorded level, the
+        /// table, the tree's stage. Cells that change between the two years get a cross-tint (<see cref="EcoLayer.greenMix"/>) so the
+        /// ground greens gradually instead of snapping at half way. Moisture is not recorded: green ground reads a little damp.</summary>
+        public static void FillEcoReplay(EcoLayer e, SimCore sim, LandBlend lb)
+        {
+            e.on = true;
+            int n = Mathf.Min(lb.CellCount, e.cover.Length);
+            e.greenMix ??= new float[e.cover.Length];
+            int pond = 0;
+            for (int c = 0; c < n; c++)
+            {
+                byte cv = (byte)lb.CoverAt(c);
+                e.cover[c] = cv;
+                if (cv == EcoLayer.Water) pond++;
+                float ga = EcoLayer.Greenness(lb.A.cover[c]), gb = EcoLayer.Greenness(lb.B.cover[c]);
+                e.greenMix[c] = lb.Changes(c) ? ga + (gb - ga) * lb.t : ga;
+                e.moist[c] = cv == EcoLayer.Water ? 1f : e.greenMix[c] * 0.3f;
+            }
+            e.pondCells = pond;
+            float py = lb.PondLevel;
+            e.waterY = py > LandAt.NoPond + 1f ? py : 0f;
+            if (e.waterY == 0f) { e.pondCells = 0; }
+            e.tableY = lb.A.table + (lb.B.table - lb.A.table) * lb.t;
+            e.floodY = sim.EcoFloodLine;
+            e.humidity = 0f; e.droplets = 0f;
+            e.treeCell = lb.TreePlanted ? sim.EcoTree.cell : -1;
+            e.treeStage = lb.TreeStage; e.treeNeed = 0;
+        }
+
         /// <summary>A rock cell the Keeper's outcrop painted: that piece stands there already.</summary>
         static bool NudgedRock(Settlement st, int c)
         {
@@ -161,8 +190,9 @@ namespace AquariumCiv.View
             Era EraOf(Lot l) => eraOf != null ? eraOf(l) : now;
             int year = replay != null ? replay.year : (int)(S.month / SimConfig.MonthsPerYear);
             var map = st.Map;
-            bool eco = replay == null && sim.EcologyOn; // P8: the living land (the time-lapse keeps the old look: no eco history yet)
-            if (eco) FillEco(L.eco, sim);
+            // P8: the living land. A replay of a box with land records draws each year's land (#287); one without keeps the old look.
+            bool eco = sim.EcologyOn && (replay == null || replay.land != null);
+            if (eco) { if (replay == null) { L.eco.greenMix = null; FillEco(L.eco, sim); } else FillEcoReplay(L.eco, sim, replay.land); }
             var setting = SettingLook.ForPreset(sim.TerrainPreset);
             var spec = TerrainSpec.Preset(sim.TerrainPreset);
             var green = new Vector2(st.GreenX, st.GreenZ);

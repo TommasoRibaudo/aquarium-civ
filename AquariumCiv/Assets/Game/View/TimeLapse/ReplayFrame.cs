@@ -25,6 +25,8 @@ namespace AquariumCiv.View
         public readonly Dictionary<int, float> grow = new();
         /// <summary>0: a year from the records. 1: the box as it is now, with its yards and shapings. Between, they grow in.</summary>
         public float liveShare;
+        /// <summary>#287: the land of this year (or the blend of two), null when the box has no land records.</summary>
+        public AquariumCiv.Sim.LandBlend land;
 
         /// <summary>The year to draw (<paramref name="shown"/>), blending towards <paramref name="other"/> by
         /// <paramref name="blend"/> (null/0 = settled).</summary>

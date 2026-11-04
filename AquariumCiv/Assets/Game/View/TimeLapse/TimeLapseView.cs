@@ -175,7 +175,7 @@ namespace AquariumCiv.View
             shownPos = position;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             int cells = Src.Sim.Settlement.Map.tier.Length;
-            Src.Replay = new ReplayFrame(near, cells, s.diff.IsEmpty ? null : other, s.blend, growSteps) { liveShare = live };
+            Src.Replay = new ReplayFrame(near, cells, s.diff.IsEmpty ? null : other, s.blend, growSteps) { liveShare = live, land = QuantLand(s.Land, q) };
             Box.Refresh();
             LastStepMs = sw.Elapsed.TotalMilliseconds;
             LastChunks = Box.lastChunks.Count;
@@ -183,6 +183,13 @@ namespace AquariumCiv.View
             LastInfo = string.Format(CultureInfo.InvariantCulture, "year {0:0.00} ({1}) · {2} buildings · {3:0.0} ms, {4} chunk(s), {5} waiting",
                 position + 1f, near.era, near.buildings.Count, LastStepMs, LastChunks, Box.ChunksWaiting);
         }
+
+        /// <summary>The scrub's land with its blend snapped to the same steps as the buildings' (#287): the view redraws a few times
+        /// between two years, not on every frame (BoxView also caps rebuilds per frame while scrubbing).</summary>
+        static LandBlend QuantLand(LandBlend l, float q) => l == null ? null : new LandBlend { A = l.A, B = l.B, t = l.A == l.B ? 0f : q };
+
+        /// <summary>How green the drawn land is now, 0..1 (tests read it; -1 when the box shows no replayed land).</summary>
+        public float DrawnGreenShare => Src != null && Src.Replay != null && Src.Replay.land != null ? Src.Replay.land.GreenShare : -1f;
 
         // ---------------- debug (SimDebugPanel, `script eval`) ----------------
         public static string DebugOpen()
