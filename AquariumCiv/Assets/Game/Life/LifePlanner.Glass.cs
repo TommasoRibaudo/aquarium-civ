@@ -481,6 +481,7 @@ namespace AquariumCiv.Life
             RelicWhere.Gather => gather,
             RelicWhere.Glass => st.glass,
             RelicWhere.Remembering => remembering,
+            RelicWhere.OldFire => OldFirePlace,
             _ => Place.None,
         };
 

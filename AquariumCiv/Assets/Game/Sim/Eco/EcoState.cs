@@ -42,6 +42,18 @@ namespace AquariumCiv.Sim.Eco
         // Gates: the game month each opened (-1 = closed).
         public int campGateMonth = -1, villageGateMonth = -1;
 
+        // The tribe's fire (keepers-hands §2.1, #246): with the Keeper's first green the tribe carries its fire to the green's
+        // edge, once (SimCore.EcoFire.cs).
+        /// <summary>True on a box started with the fire move: its fire goes to the first green. An older save loads false and
+        /// keeps its fire where it is.</summary>
+        public bool fireMoveArmed;
+        /// <summary>The game month the fire was carried (-1 = not yet), and from where to where (box units).</summary>
+        public long fireMovedMonth = -1;
+        public float fireFromX, fireFromZ, fireToX, fireToZ;
+        /// <summary>How many times the fire was carried (once in play; the debug panel may carry it again). The planner's and the
+        /// view's caches watch it.</summary>
+        public int fireMoves;
+
         /// <summary>Milestones reached and the game month of each (parallel lists; see EcoMilestones).</summary>
         public List<string> milestoneKeys = new List<string>();
         public List<long> milestoneMonths = new List<long>();

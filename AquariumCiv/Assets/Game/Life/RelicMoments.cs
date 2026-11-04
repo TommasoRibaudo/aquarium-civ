@@ -42,6 +42,8 @@ namespace AquariumCiv.Life
         Glass,
         /// <summary>The remembering stone (the cairn, later the churchyard).</summary>
         Remembering,
+        /// <summary>#246: where the fire stood before the tribe carried it to the first green (<see cref="PlaceKind.OldFire"/>).</summary>
+        OldFire,
     }
 
     /// <summary>One beat of a relic moment: a cast group does one thing at one place over a part of the moment.</summary>

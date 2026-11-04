@@ -150,7 +150,12 @@ namespace AquariumCiv.Sim.Settle
         public void OnEraChange()
         {
             if (S.era >= Era.Village)
-                foreach (var l in Lots) if (l.kind == LotKind.Camp) l.retired = true;
+                foreach (var l in Lots)
+                    if (l.kind == LotKind.Camp)
+                    {
+                        if (!l.retired && Terrain.Dist(l.x, l.z, Map.greenX, Map.greenZ) > 1e-3f) KeepHearth(l.x, l.z, false); // #246: a moved hearth frees its ground
+                        l.retired = true;
+                    }
             Outbuildings();
         }
 
@@ -647,6 +652,43 @@ namespace AquariumCiv.Sim.Settle
             x = Map.greenX; z = Map.greenZ; lit = false;
             foreach (var l in Lots)
                 if (l.kind == LotKind.Camp) { x = l.x; z = l.z; lit = !l.retired; return; }
+        }
+
+        /// <summary>#246: how far round a moved fire the ground stays free of new lots (its log seats at 0.4 and the stash at
+        /// 0.46, Life/CampStash).</summary>
+        public const float HearthKeep = 0.5f;
+
+        /// <summary>
+        /// #246 (keepers-hands §2.1): the tribe carries its fire to (<paramref name="x"/>, <paramref name="z"/>), next to the
+        /// Keeper's first green. The hearth is the one lot that ever moves: it stays open (it claims no cells), and the ground
+        /// round it is kept free of new lots (commons flags), so the tents the camp raises later leave its seats and stash
+        /// clear. Its first spot, the green's middle, stays the village green. False when there is no burning hearth.
+        /// </summary>
+        public bool MoveFire(float x, float z)
+        {
+            Lot camp = null;
+            foreach (var l in Lots) if (l.kind == LotKind.Camp && !l.retired) { camp = l; break; }
+            if (camp == null) return false;
+            if (Terrain.Dist(camp.x, camp.z, Map.greenX, Map.greenZ) > 1e-3f) KeepHearth(camp.x, camp.z, false); // moved before (the debug panel)
+            camp.x = x; camp.z = z;
+            camp.door = SiteMap.CellAt(x, z);
+            camp.doorX = x; camp.doorZ = z;
+            KeepHearth(x, z, true);
+            return true;
+        }
+
+        /// <summary>Keep (or free) the ground round a moved hearth; cells under a lot, water and the box's own commons are left alone.</summary>
+        void KeepHearth(float x, float z, bool keep)
+        {
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                float cx = SiteMap.CXc(c), cz = SiteMap.CZc(c);
+                if (Terrain.Dist(cx, cz, x, z) >= HearthKeep || Map.lot[c] != 0 || Map.Water(c)) continue;
+                if (keep) { Map.Set(c, SiteMap.FCommons, true); continue; }
+                bool common = false;
+                foreach (var k in St.commons) if (Terrain.Dist(cx, cz, k.x, k.z) < k.r) { common = true; break; }
+                if (!common) Map.Set(c, SiteMap.FCommons, false);
+            }
         }
 
         /// <summary>The village's centre for gatherings: the market's door once there is a market, else the green.</summary>

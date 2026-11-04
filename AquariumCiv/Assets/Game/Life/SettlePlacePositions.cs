@@ -54,6 +54,7 @@ namespace AquariumCiv.Life
             h = h * 31 + S.trash.Count;
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
+            h = h * 31 + (S.eco != null ? S.eco.fireMoves : 0); // #246: the hearth moved to the first green
             if (h == sig && s == st) return true;
             bool newSettlement = s != st;
             sig = h; st = s;
@@ -233,6 +234,14 @@ namespace AquariumCiv.Life
                 case PlaceKind.Fire:
                     st.Fire(out x, out z, out _);
                     return true;
+                case PlaceKind.OldFire:
+                {
+                    // #246: where the fire stood before the tribe carried it to the first green.
+                    var m = sim.EcoFireMove;
+                    if (!m.moved) return false;
+                    x = m.fromX; z = m.fromZ;
+                    return true;
+                }
                 case PlaceKind.Market:
                     st.MarketCentre(out x, out z);
                     return true;

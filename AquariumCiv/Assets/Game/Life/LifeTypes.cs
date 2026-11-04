@@ -49,6 +49,8 @@ namespace AquariumCiv.Life
         Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate,
         /// <summary>#152: the bucket on the way to the water; <see cref="Buckets"/> is the full one, from the draw on.</summary>
         EmptyBucket,
+        /// <summary>#246: the fire's embers, carried in a pot to the first green (LifePlanner.StartFireMove). Appended.</summary>
+        Embers,
     }
 
     /// <summary>P8 (#267): the water in a bucket. None = not a bucket; Muddy = scooped from the wet low ground while the pond is dry.</summary>
@@ -74,6 +76,9 @@ namespace AquariumCiv.Life
         Bakery,
         /// <summary>#150: the camp's stash by the fire (land; index -1 = where a carrier stands, 1 = the pile, see <see cref="CampStash"/>).</summary>
         Stash,
+        /// <summary>#246: where the tribe's fire stood before they carried it to the first green (<see cref="AquariumCiv.Sim.SimCore.EcoFireMove"/>).
+        /// Appended last so the saved ints stay.</summary>
+        OldFire,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -152,6 +157,8 @@ namespace AquariumCiv.Life
         ShapingReaction,
         // #224: the choice scene: the people wait on the Keeper's touch, then react to it (LifePlanner.StageChoice)
         Choice,
+        // #246: the tribe carries its fire to the first green (LifePlanner.StartFireMove)
+        FireMove,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>
@@ -295,7 +302,7 @@ namespace AquariumCiv.Life
                 Prop.Log or Prop.Sack or Prop.Hide or Prop.Buckets or Prop.EmptyBucket or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
                 Prop.Mask => PropSlot.Head,
                 Prop.Wool or Prop.Cloth or Prop.Goods => carrying ? PropSlot.Back : PropSlot.Hand,
-                Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
+                Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll or Prop.Embers => PropSlot.Arms,
                 Prop.Handcart => PropSlot.Pulled,
                 Prop.Barrel => PropSlot.Rolled,
                 _ => PropSlot.Hand,

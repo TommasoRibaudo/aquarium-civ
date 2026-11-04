@@ -312,6 +312,7 @@ namespace AquariumCiv.Life
             h = h * 31 + s.nudges.Count;
             h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
             h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
+            h = h * 31 + (s.eco != null ? s.eco.fireMoves : 0); // #246: the fire was carried to the green: its walks change
             if (s.roles != null)
                 for (int i = 0; i < s.roles.Count; i++) h = h * 31 + s.roles[i].holderId * (i + 7);
             return h;

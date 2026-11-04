@@ -51,6 +51,7 @@ namespace AquariumCiv.Sim
             Config.eco ??= new EcoTuning();
             State.eco ??= new EcoState();
             EcoModel.Init(State.eco, EcoLand.For(TerrainPreset), Config.eco, State.seed);
+            State.eco.fireMoveArmed = true; // the fire goes to the Keeper's first green (SimCore.EcoFire.cs, #246)
             ecoModel = null;
         }
 
@@ -114,6 +115,7 @@ namespace AquariumCiv.Sim
             CountKeeperAction(KeeperAction.Mist, true);
             EcoTell();
             if (greened.Count > 0) EcoGreened?.Invoke(greened);
+            if (greened.Count > 0) EcoFireToTheGreen(greened, false); // #246: the tribe carries its fire to the first green, once
             return greened;
         }
 
