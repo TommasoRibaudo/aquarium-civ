@@ -55,6 +55,10 @@ namespace AquariumCiv.Sim.Eco
         public List<long> bushPickDay = new List<long>();
         public List<float> bushPickLeft = new List<float>();
 
+        /// <summary>P8 #281: bit per site cell, set = it was green when the player last looked (EcoSeen). Null = never recorded
+        /// (an old save): nothing shows as fresh.</summary>
+        public byte[] seen;
+
         /// <summary>Milestones reached and the game month of each (parallel lists; see EcoMilestones).</summary>
         public List<string> milestoneKeys = new List<string>();
         public List<long> milestoneMonths = new List<long>();
