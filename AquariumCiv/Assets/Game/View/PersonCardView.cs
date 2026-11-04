@@ -526,6 +526,10 @@ namespace AquariumCiv.View
         /// <summary>#194: labels drawn at most; the rest are "+N" and every tie is in the card. Labels shown last frame and leader lines (tests).</summary>
         public const int MaxLabels = 4;
         public int LeadersDrawn => leaders.Count;
+        /// <summary>#209: the leader lines drawn last frame, in overlay points (tests).</summary>
+        public IReadOnlyList<LeaderRoute> Leaders => leaders;
+        /// <summary>Tests: when set, each frame's routing inputs are added here.</summary>
+        public static List<string> DebugRoutes;
         public int OverflowShown { get; private set; }
         const float TieTop = 120f, TieH = 66f, TieMaxW = 470f;
 
@@ -599,12 +603,14 @@ namespace AquariumCiv.View
                 more.style.display = DisplayStyle.Flex;
             }
             // Tester run 8: once every label has its place, each leader goes round the others.
+            LabelBox Drawn(int k) => new LabelBox(placed[k].x, placed[k].y, placed[k].z, placed[k].w);
             foreach (var (label, at, size, anchor) in leadersWanted)
             {
                 otherLabels.Clear();
                 for (int k = 0; k < placed.Count; k++)
-                    if (k != label) otherLabels.Add(new LabelBox(placed[k].x, placed[k].y, placed[k].z, placed[k].w));
-                leaders.Add(MarkerLayout.RouteLeader(new LabelBox(at.x, at.y, size.x, size.y), anchor.x, anchor.y, otherLabels));
+                    if (k != label) otherLabels.Add(Drawn(k));
+                leaders.Add(MarkerLayout.RouteLeader(Drawn(label), anchor.x, anchor.y, otherLabels));
+                if (DebugRoutes != null) DebugRoutes.Add($"me {Drawn(label).x:0},{Drawn(label).y:0} {size.x:0}x{size.y:0} to {anchor} others " + string.Join(" ", otherLabels.Select(o => $"[{o.x:0},{o.y:0} {o.w:0}x{o.h:0}]")));
             }
             leadersWanted.Clear();
             return used;
