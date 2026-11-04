@@ -46,12 +46,12 @@ namespace AquariumCiv.Life
 
         /// <summary>The post nearest to (<paramref name="x"/>, <paramref name="z"/>) that keeps <see cref="Margin"/> from every
         /// building and that <paramref name="ok"/> accepts (walkable ground): the point itself when it is clear, else the
-        /// nearest on rings round it. False when none is found within a metre or so.</summary>
+        /// nearest on rings round it. False when none is found within about two metres.</summary>
         public static bool FindPost(Settlement st, float x, float z, Func<float, float, bool> ok, out float px, out float pz)
         {
             px = x; pz = z;
             if (IsClear(st, x, z) && ok(x, z)) return true;
-            for (float rad = 0.1f; rad <= 1.2f; rad += 0.1f)
+            for (float rad = 0.1f; rad <= 2.4f; rad += 0.1f)
             {
                 int n = Math.Max(8, (int)(rad * 40f));
                 float bestD = float.MaxValue; bool found = false;

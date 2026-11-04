@@ -290,6 +290,8 @@ namespace AquariumCiv.Sim.Eco
             return true;
         }
 
+        public void WipeDroplets(float amount) { st.droplets = MathF.Max(0f, st.droplets - amount); }
+
         /// <summary>Wiping the glass: grime and droplets come off.</summary>
         public void Wipe(float amount)
         {

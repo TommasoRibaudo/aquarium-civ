@@ -41,6 +41,7 @@ namespace AquariumCiv.View
 
         [Header("Wipe")]
         [Tooltip("Wipe radius as a share of screen height (about a fingertip and a half).")] public float wipeRadius = 0.065f;
+        [Tooltip("Fog (droplets) taken off per wipe update while the finger is on the glass.")] public float FogPerStamp = 0.01f;
         [Tooltip("Share of grime removed per stamp at the centre (stamps overlap along a stroke).")] public float wipeStrength = 0.5f;
         public float texelsPerUnit = 32f;
         [Header("Toss")]
@@ -654,6 +655,7 @@ namespace AquariumCiv.View
             }
             if (hitPanes == 0) { sound.SetRub(0f, 0f); return; }
             if (startCue) { startCue = false; Sfx.Play(CueLibrary.WipeStart); }
+            sim.WipeFog(FogPerStamp); // the cloth clears the fog on the glass even where there is no grime to lift (final play-through, beat 5)
             long texels = 0;
             foreach (var m in masks) texels += m.LiveTexels;
             float share = total / Mathf.Max(1L, texels);

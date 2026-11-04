@@ -150,6 +150,8 @@ namespace AquariumCiv.Sim
             return true;
         }
 
+        /// <summary>The cloth over fogged glass: droplets come off (grime or not).</summary>
+        public void WipeFog(float amount) { if (EcologyOn && amount > 0f) EcoM.WipeDroplets(amount); }
         void EcoWipe(float amount) { if (EcologyOn) EcoM.Wipe(amount); }
         void EcoSnip(float amount) { if (EcologyOn) EcoM.Snip(amount); }
 
