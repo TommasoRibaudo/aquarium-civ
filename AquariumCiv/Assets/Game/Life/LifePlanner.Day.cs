@@ -731,7 +731,21 @@ namespace AquariumCiv.Life
                 }
                 else
                 {
-                    At(Chore(p, d, 3), Math.Min(6.6f + (sh.start - LifeClock.WorkStart), sh.start - 0.4f), p.home, ChoreProp(Chore(p, d, 3)));
+                    // #208: the chore used to run from the stretch to its end, so everyone was out at the door together and
+                    // knotted the lane between two homes at ~06:30. Each person now stays in until their own start, spread
+                    // over the stretch between waking and the old end, and does a short chore (0.35-0.55 h).
+                    float choreEnd = Math.Min(6.6f + (sh.start - LifeClock.WorkStart), sh.start - 0.4f);
+                    float choreLen = 0.35f + 0.2f * R(k, day, 130);
+                    float choreFrom = bt + 0.1f;
+                    float slack = choreEnd - choreLen - choreFrom;
+                    float choreUntil = choreEnd;
+                    if (slack > 0.05f)
+                    {
+                        float choreStart = choreFrom + slack * R(k, day, 131);
+                        At(ActivityKind.Indoors, choreStart, p.home);
+                        choreUntil = choreStart + choreLen;
+                    }
+                    At(Chore(p, d, 3), choreUntil, p.home, ChoreProp(Chore(p, d, 3)));
                     float walk = WalkHours(p.home, work.site);
                     At(ActivityKind.SitOut, sh.start - walk, p.home);
                 }
