@@ -179,5 +179,41 @@ namespace AquariumCiv.View.Tests
             }
             finally { Object.DestroyImmediate(go); }
         }
+
+        [Test]
+        public void TheSoilCutEndsAtTheGroundAlongTheHollow_AndTheWaterFaceOnlyUpToTheLevel()
+        {
+            foreach (bool pond in new[] { false, true })
+            {
+                var sim = EcoSim();
+                if (pond) { sim.DebugSetTable(sim.EcoFloodLine - 0.005f); sim.DebugSkipSeasons(8); }
+                var go = new GameObject("EcoCutBox");
+                go.SetActive(false);
+                try
+                {
+                    var box = go.AddComponent<BoxView>();
+                    box.bakeAO = false;
+                    box.land = SimLayout.LandFor(sim.TerrainPreset);
+                    SimLayout.Fill(box.layout, sim);
+                    go.SetActive(true);
+                    // Along both glass walls where the hollow runs: the cut's top edge is the ground, not the old bank's height.
+                    int checkedPts = 0;
+                    for (float t = 0.6f; t < 2.9f; t += 0.1f)
+                        foreach (var p in new[] { new Vector2(t, -Land.HZ), new Vector2(Land.HX, -2.0f + (t - 0.6f) * 0.8f) })
+                        {
+                            float g = box.land.Height(p.x, p.y);
+                            Assert.That(box.DebugCutTop(p), Is.EqualTo(g).Within(1e-4f), $"cut top at {p}");
+                            checkedPts++;
+                        }
+                    Assert.Greater(checkedPts, 20);
+                    var wm = box.DebugWaterMesh;
+                    var ec = box.layout.eco;
+                    if (!pond) { Assert.AreEqual(0, wm.vertexCount, "no water, no water face"); continue; }
+                    foreach (var v in wm.vertices)
+                        Assert.That(v.y, Is.LessThanOrEqualTo(ec.waterY + 1e-4f), "no water face above the level");
+                }
+                finally { Object.DestroyImmediate(go); }
+            }
+        }
     }
 }
