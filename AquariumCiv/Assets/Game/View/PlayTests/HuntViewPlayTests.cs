@@ -141,7 +141,7 @@ namespace AquariumCiv.View.PlayTests
                 var rv = RabbitView.Instance;
                 PeopleView.DebugSetHour(9f);
                 Meadow();
-                EcoDebug.CampGate();
+                EcoDebug.OpenCampGate();
                 for (int i = 0; i < 12 && Sim.State.era != Era.Camp; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(1); }
                 Debug.Log($"[hunt] era {Sim.State.era}, rabbits {Sim.EcoRabbitCount}");
                 EcoDebug.AddRabbits(6);
@@ -156,6 +156,52 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(30);
                 yield return OneHunt(pv, rv, false, "miss");
                 AssertNoErrors("hunt");
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
+        [UnityTest, Timeout(900000)]
+        public IEnumerator Camp_HidesOnFrame_ThenTheFirstTentRises()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            try
+            {
+                yield return OpenSlice(seed: 4242);
+                Assert.IsTrue(Sim.EcologyOn);
+                var cv = CampView.Instance;
+                Assert.IsNotNull(cv);
+                PeopleView.DebugSetHour(9f);
+                Meadow();
+                EcoDebug.AddRabbits(4);
+                EcoDebug.AddHides(3);
+                PeopleView.DebugSetHour(9f);
+                yield return Frames(30);
+                Assert.IsTrue(cv.FrameShown, "the frame stands by the fire");
+                Assert.Greater(cv.HidesShown, 0, "with hides on it");
+                Assert.IsFalse(Sim.FirstTentRaised, "no tent before the gate");
+                yield return Shot("284_hide_frame_default");
+                EcoDebug.OpenCampGate();
+                for (int i = 0; i < 14 && !Sim.FirstTentRaised; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(1); }
+                Assert.IsTrue(Sim.FirstTentRaised, "the first tent rose from the hides");
+                float t = Time.realtimeSinceStartup;
+                while (cv.RaisingsStarted < 1 && Time.realtimeSinceStartup - t < 10f) yield return null;
+                { var tb = Sim.State.buildings[Sim.State.buildings.Count - 1]; Debug.Log($"[camp] lot {tb.lotId} bld {tb.id} builder {tb.builderId} people {PeopleView.Find().Activities.Count} era {Sim.State.era}"); } Debug.Log($"[camp] started {cv.RaisingsStarted} gaveUp {cv.GaveUp} hour {PeopleView.Find().ViewHour}"); Assert.GreaterOrEqual(cv.RaisingsStarted, 1);
+                Assert.AreEqual(1, cv.MomentsPlayed);
+                var pv = PeopleView.Find();
+                var tent = Sim.State.buildings[Sim.State.buildings.Count - 1];
+                pv.timeScale = 4f;
+                bool shotRise = false, shotLine = false;
+                t = Time.realtimeSinceStartup;
+                while (cv.RaisingsActive > 0 && Time.realtimeSinceStartup - t < 90f)
+                {
+                    if (!shotRise && pv.Planner.TentRaised(tent.id, pv.Now) > 0.3f) { shotRise = true; yield return Shot("284_tent_rising_default"); }
+                    if (!shotLine && cv.LastLine != null) { shotLine = true; yield return Shot("284_camp_line_default"); }
+                    yield return null;
+                }
+                pv.timeScale = 1f;
+                yield return Shot("284_tent_up_default");
+                AssertNoErrors("camp");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }

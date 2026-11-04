@@ -127,7 +127,26 @@ namespace AquariumCiv.View
             return Refresh($"+{n} seasons");
         }
 
-        public static string CampGate() { var s = Sim; return s != null && s.DebugOpenCampGate() ? Refresh("camp gate open") : "no change"; }
+        /// <summary>"Open the camp gate now" (#284): gives hides if short, opens the gate and plays the camp moment (the first tent goes up from the hides).</summary>
+        public static string CampGate()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var b = s.DebugCampMoment();
+            return Refresh(b != null ? $"camp gate open: the first tent (building {b.id}) goes up" : "camp gate: no room for a tent");
+        }
+
+        /// <summary>Only the gate (no hides, no tent): for tests that bring the hides themselves.</summary>
+        public static string OpenCampGate() { var s = Sim; return s != null && s.DebugOpenCampGate() ? Refresh("camp gate open") : "no change"; }
+
+        /// <summary>"+N hides" (#284): hides drying by the fire, on the frame.</summary>
+        public static string AddHides(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugAddHides(n);
+            return Refresh($"+{n} hides: {c} on the frame");
+        }
         public static string VillageGate() { var s = Sim; return s != null && s.DebugOpenVillageGate() ? Refresh("village gate open") : "no change"; }
 
         public static string Table(float aboveFlood)

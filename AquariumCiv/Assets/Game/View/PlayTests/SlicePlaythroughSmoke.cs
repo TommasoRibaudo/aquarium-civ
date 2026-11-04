@@ -429,10 +429,17 @@ namespace AquariumCiv.View.PlayTests
                 int before = Sim.State.buildings.Count;
                 EcoDebug.SkipSeasons(8);
                 Assert.AreEqual(before, Sim.State.buildings.Count, "no new tent before the camp gate");
-                EcoDebug.CampGate();
-                EcoDebug.SkipSeasons(48); // no fields before the village: the first new tent waits for the people to fill the old one
+                EcoDebug.OpenCampGate();
+                EcoDebug.SkipSeasons(1);
+                Assert.AreEqual(before, Sim.State.buildings.Count, "the gate is open but there are no hides: the first tent waits (#284)");
+                Assert.IsTrue(Sim.FirstTentWaiting, "and it is waiting for hides");
+                EcoDebug.AddHides(SimCore.HidesPerTent); // the hunt's hides (the real path is EcoPhonePlaythrough beat 9)
+                EcoDebug.SkipSeasons(1);
                 yield return Frames(30);
-                Assert.Greater(Sim.State.buildings.Count, before, "the tents go up after the camp gate");
+                Assert.Greater(Sim.State.buildings.Count, before, "the first tent goes up from the hides after the camp gate");
+                Assert.IsTrue(Sim.FirstTentRaised, "it is the camp's first tent");
+                Assert.GreaterOrEqual(Sim.TentsFromHidesCount, 1, "built from hides");
+                EcoDebug.SkipSeasons(46); // no fields before the village: later tents wait for the people to fill the old one
                 yield return Shot("smoke_eco_camp");
                 Step("eco camp gate");
                 Assert.AreEqual(1, LeakCheck.GeneratedRoots(), "exactly one Generated root");

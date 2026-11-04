@@ -184,7 +184,7 @@ namespace AquariumCiv.Life
             float ux = dl > 0.001f ? ddx / dl : 0f, uz = dl > 0.001f ? ddz / dl : 1f;
             float sx = plan.doorX - uz * side, sz = plan.doorZ + ux * side;
             var lot = new Place(PlaceKind.Home, plan.buildingId);
-            AddT(w, ref t, HuntWalkHours(w.baseStart, fx, fz), TentPhase.ToFrame, ActivityKind.Walk, Prop.None, w.baseStart, fire, true, false, true, fx, fz);
+            AddT(w, ref t, HuntWalkHours(w.baseStart, fx, fz), TentPhase.ToFrame, ActivityKind.Walk, Prop.None, w.baseStart, fire, true, false, false, fx, fz);
             AddT(w, ref t, TentTakeHours, TentPhase.TakeLoad, ActivityKind.Prepare, w.load, fire, fire, false, true, true, fx, fz, fx, fz);
             if (index == 0) plan.takeAt = t;
             AddT(w, ref t, WalkH(Dist(fx, fz, sx, sz), WalkSpeed * 0.8f), TentPhase.CarryOut, ActivityKind.Carry, w.load, fire, lot, true, true, true, fx, fz, sx, sz);
