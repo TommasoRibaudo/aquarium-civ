@@ -61,3 +61,4 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 19:45 · #248 closed; kit-wish design gap filed as https://github.com/TommasoRibaudo/aquarium-civ/issues/292
 - 19:50 · #281 phase 1 merged (5ac42e9), dotnet 1224 expected; FadeSeconds 180 s.
 - 20:15 · #283 phase 1 merged (ab6882e), dotnet 1240/1240. 62% catch, floor 2, hides saved (HidesDrying/TakeHides).
+- 20:40 · #284 phase 1 merged (ed5c436), dotnet 1249/1249. HidesPerTent=2. PlayTests may expect a tent w/o hides → phase 2 must check EcoPhonePlaythrough/Smoke camp step.
