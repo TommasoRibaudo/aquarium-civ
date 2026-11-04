@@ -13,6 +13,8 @@ namespace AquariumCiv.Life
     {
         /// <summary>Room between a prop's post and any building's footprint (body + doll in the arms + the roof's overhang).</summary>
         public const float Margin = 0.3f;
+        /// <summary>FindPost searches rings 0.1 apart out to this many tenths of a metre.</summary>
+        public const int Rings = 16;
 
         /// <summary>Signed distance from a point to a lot's oriented box (negative inside), on the ground plane.</summary>
         public static float Gap(Lot l, float x, float z)
@@ -46,13 +48,15 @@ namespace AquariumCiv.Life
 
         /// <summary>The post nearest to (<paramref name="x"/>, <paramref name="z"/>) that keeps <see cref="Margin"/> from every
         /// building and that <paramref name="ok"/> accepts (walkable ground): the point itself when it is clear, else the
-        /// nearest on rings round it. False when none is found within a metre or so.</summary>
+        /// nearest on rings round it. False when none is found within 1.6 m.</summary>
         public static bool FindPost(Settlement st, float x, float z, Func<float, float, bool> ok, out float px, out float pz)
         {
             px = x; pz = z;
             if (IsClear(st, x, z) && ok(x, z)) return true;
-            for (float rad = 0.1f; rad <= 1.2f; rad += 0.1f)
+            // Integer rings: summing 0.1f twelve times overshoots 1.2 and dropped the last ring (a packed Town on Mono found no post).
+            for (int ring = 1; ring <= Rings; ring++)
             {
+                float rad = ring * 0.1f;
                 int n = Math.Max(8, (int)(rad * 40f));
                 float bestD = float.MaxValue; bool found = false;
                 for (int i = 0; i < n; i++)

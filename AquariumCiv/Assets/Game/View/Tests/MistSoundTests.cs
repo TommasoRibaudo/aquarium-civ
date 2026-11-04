@@ -38,7 +38,9 @@ namespace AquariumCiv.View.Tests
             // The A/B (#280) decodes both loops in python; the code-made one is written out raw (float32 mono, 24 kHz).
             var d = MistSound.Generate();
             var bytes = new byte[d.Length * 4]; System.Buffer.BlockCopy(d, 0, bytes, 0, bytes.Length);
-            System.IO.File.WriteAllBytes("F:/GameDev/AquariumCiv/Temp/agent/mist_codemade.f32", bytes);
+            var dir = System.IO.Path.Combine(Application.dataPath, "../Temp/agent"); // the project's Temp: on CI too, not a hard F: path
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(dir, "mist_codemade.f32"), bytes);
             Assert.IsNotNull(Resources.Load<AudioClip>(MistSound.RecordedPath), "the recorded mist loop loads");
         }
 
