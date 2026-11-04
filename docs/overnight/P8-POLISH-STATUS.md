@@ -71,3 +71,4 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - 20:15 · item 8 merged (699edf7), dotnet 1252/1252, RabbitView 2/2, EcoPhonePlaythrough 1/1 (sees rabbits). #282 open for sign-off. Lane B done: 1,5,6,8 (4/6 before tester).
 - 20:17 · item 9 (#283 view) Sonnet lane B id a23d23b27c3512583, F:\GameDev vs/283-hunt-view (restart first); watcher bb8uc23jj.
 - 20:58 · item 9 merged (668d017), dotnet 1252, HuntView 1/1, EcoPhonePlaythrough 1/1 (hunt beat), #283 open for sign-off. Polish: hunter tiny at default zoom; founder caption covers the box in default view. Lane B done: 1,5,6,8,9 (5/6).
+- 21:08 · item 10: first worker ab97127 handed back twice unverified (stopped). EcoPhonePlaythrough with beat 9 PASSED 21:01 on its working tree. Finisher a1a9b165b4b30ce8f took the lock; watcher bij0k17v0. Polish: camera far in phone_12-15.
