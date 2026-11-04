@@ -10,10 +10,17 @@ namespace AquariumCiv.View
     /// </summary>
     public class MistSound : MonoBehaviour
     {
+        /// <summary>The recorded loop (CC0, #280); <see cref="Generate"/> is the fallback if it is ever missing.</summary>
+        public const string RecordedPath = "Ambience/mist_spray_loop";
         public const int Rate = 24000;
         public const float LoopSeconds = 2.4f;
         /// <summary>The level at full spray before the bus gain (soft: it is heard hundreds of times).</summary>
         public const float Peak = 0.32f;
+        /// <summary>The recorded loop is quieter (about -24 dBFS RMS against the code-made loop's -11.5), so it plays at full.</summary>
+        public const float RecordedPeak = 1f;
+        /// <summary>True: the recorded CC0 spray (the A/B pick, #280); false: the code-made one. A debug toggle flips it to compare by ear.</summary>
+        public static bool UseRecording = true;
+        bool usingRecording;
 
         AudioSource src;
         float level, target;
@@ -32,16 +39,22 @@ namespace AquariumCiv.View
             go.transform.SetParent(transform, false);
             src = go.AddComponent<AudioSource>();
             src.playOnAwake = false; src.loop = true; src.spatialBlend = 0f;
-            src.clip = MakeClip();
+            src.clip = MakeClip(out usingRecording);
             src.volume = 0f;
             src.Play(); // #296: the clip goes to the mixer now, silent (Update pauses it next frame), not on the first spray
         }
 
-        void Update()
+        void Update() => Tick(Time.unscaledDeltaTime);
+
+        /// <summary>The source's volume now (tests).</summary>
+        public float Volume => src != null ? src.volume : 0f;
+
+        /// <summary>Advances the fade by dt seconds (Update calls it; tests step it).</summary>
+        public void Tick(float dt)
         {
             float rate = target > level ? 10f : 3f; // in over ~0.1 s, out over ~0.33 s
-            level = Mathf.MoveTowards(level, target, Time.unscaledDeltaTime * rate);
-            src.volume = level * Peak * Sfx.Gain(SoundBus.Care);
+            level = Mathf.MoveTowards(level, target, dt * rate);
+            src.volume = level * (usingRecording ? RecordedPeak : Peak) * Sfx.Gain(SoundBus.Care);
             if (level > 0.001f && !src.isPlaying) src.Play();
             else if (level <= 0.001f && src.isPlaying) src.Pause();
         }
@@ -85,8 +98,21 @@ namespace AquariumCiv.View
             return d;
         }
 
-        static AudioClip MakeClip()
+        /// <summary>Debug: swaps between the recorded and the code-made spray (A/B by ear); returns which one plays now.</summary>
+        public string ToggleSource()
         {
+            UseRecording = !UseRecording;
+            bool was = src.isPlaying;
+            src.clip = MakeClip(out usingRecording);
+            if (was) src.Play();
+            return usingRecording ? "mist: recorded" : "mist: code-made";
+        }
+
+        static AudioClip MakeClip(out bool recorded)
+        {
+            var rec = UseRecording ? Resources.Load<AudioClip>(RecordedPath) : null;
+            recorded = rec != null;
+            if (rec != null) return rec;
             var d = Generate();
             var c = AudioClip.Create("MistSpray", d.Length, 1, Rate, false);
             c.SetData(d, 0);

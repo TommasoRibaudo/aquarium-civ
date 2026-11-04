@@ -26,7 +26,7 @@ namespace AquariumCiv.Audio.Tests
                 Assert.That(c.maxVoices, Is.GreaterThanOrEqualTo(1), c.id);
                 Assert.That(c.pitchJitter, Is.InRange(0f, 3f), c.id);
                 if (c.bus == SoundBus.Ui) Assert.That(c.volume, Is.LessThanOrEqualTo(0.6f), $"{c.id}: UI stays under the world");
-                if (c.bus == SoundBus.Ambience) Assert.That(c.loop, Is.True, c.id);
+                if (c.bus == SoundBus.Ambience && c.id != CueLibrary.LooseStone) Assert.That(c.loop, Is.True, c.id); // the loose stone is the barren bed's one-shot (#280)
             }
         }
 
@@ -329,6 +329,94 @@ namespace AquariumCiv.Audio.Tests
             Assert.That(Ambience.Targets(winter).frogs, Is.EqualTo(0f), "frogs sleep in winter");
             Assert.That(AmbienceLevels.CueIds, Does.Contain(CueLibrary.AmbBarren).And.Contain(CueLibrary.AmbFrogs));
             Assert.That(CueLibrary.Get(CueLibrary.AmbBarren).loop, Is.True);
+        }
+
+        [Test]
+        public void BarrenLayersFollowTheBareShareAndNeverReturn()
+        {
+            var latch = new BareLatch();
+            float prevWind = 2f, prevHiss = 2f;
+            foreach (float b in new[] { 1f, 0.8f, 0.5f, 0.3f, 0.16f, 0.1f, 0.4f, 0.9f, 0.05f })
+            {
+                float low = latch.Update(b);
+                var l = Ambience.Targets(Eco(10f, low, true));
+                Assert.That(l.barren, Is.LessThanOrEqualTo(prevWind + 1e-5f), "wind only falls (bare " + b + ")");
+                Assert.That(l.sandHiss, Is.LessThanOrEqualTo(prevHiss + 1e-5f), "the sand's hiss only falls");
+                prevWind = l.barren; prevHiss = l.sandHiss;
+                if (low < Ambience.BarrenGoneBelow) { Assert.AreEqual(0f, l.barren); Assert.AreEqual(0f, l.sandHiss); }
+            }
+            Assert.AreEqual(0.05f, latch.Low, 1e-6f, "the latch keeps the lowest");
+            Assert.AreEqual(0f, Ambience.Targets(Eco(10f, latch.Update(1f), true)).barren, "a bare reading later does not bring the bed back");
+            Assert.That(Ambience.Targets(Eco(10f, 1f)).sandHiss, Is.GreaterThan(0.5f), "full hiss on a dead box");
+            Assert.AreEqual(0f, Ambience.Targets(At(10f)).sandHiss, "none in the old slice");
+        }
+
+        [Test]
+        public void TheSoilTrickleFollowsTheWaterTable()
+        {
+            float prev = -1f, prevDrips = -1f;
+            for (float w = 0f; w <= 1.0001f; w += 0.1f)
+            {
+                var a = Eco(10f, 0.5f, true); a.water01 = w;
+                var l = Ambience.Targets(a);
+                Assert.That(l.trickle, Is.GreaterThanOrEqualTo(prev - 1e-5f), "rises with the table");
+                Assert.That(l.drips, Is.GreaterThanOrEqualTo(prevDrips - 1e-5f));
+                prev = l.trickle; prevDrips = l.drips;
+            }
+            var dry = Eco(10f, 0.5f, true); Assert.AreEqual(0f, Ambience.Targets(dry).trickle, "nothing below the table's start");
+            var full = Eco(10f, 0.5f, true); full.water01 = 1f;
+            Assert.That(Ambience.Targets(full).trickle, Is.GreaterThan(0.9f));
+            var off = full; off.eco = false; Assert.AreEqual(0f, Ambience.Targets(off).trickle, "not in the old slice");
+            full.water01 = 0.2f; Assert.AreEqual(0f, Ambience.Targets(full).drips, "the drips wait for a well-fed table");
+        }
+
+        [Test]
+        public void FrogsOnlyWithWaterAndTheBoxGetsLouderAsItGreens()
+        {
+            Assert.AreEqual(0f, Ambience.Targets(Eco(23f, 0.3f, true, true, false)).frogs, "no pond, no frogs");
+            Assert.That(Ambience.Targets(Eco(23f, 0.3f, true, true, true)).frogs, Is.GreaterThan(0f));
+            Assert.That(Ambience.Targets(Eco(23f, 0.1f, true, true, true)).frogs, Is.GreaterThanOrEqualTo(Ambience.Targets(Eco(23f, 0.9f, true, true, true)).frogs), "more frogs on a greener box");
+            Assert.That(Ambience.Targets(Eco(23f, 0.1f, true)).crickets, Is.GreaterThan(Ambience.Targets(Eco(23f, 0.95f, true)).crickets), "fuller crickets on a greener box");
+        }
+
+        // File RMS in dBFS (ffmpeg volumedetect, #280), in AmbienceLevels order.
+        static readonly float[] FileRmsDb = { -34.8f, -28.8f, -33.8f, float.NaN, -34.8f, float.NaN, -26.2f, -26.2f, -30.1f, -32.2f, -30.1f };
+
+        [Test]
+        public void LogTheLayerLevelsForThreeBoxes()
+        {
+            var boxes = new (string name, AmbienceInput a)[]
+            {
+                ("barren day", Eco(10f, 1f)),
+                ("half green day", WithWater(Eco(10f, 0.5f, true, true), 0.3f)),
+                ("pond night", WithWater(Eco(23f, 0.2f, true, true, true), 0.8f)),
+            };
+            foreach (var (name, a) in boxes)
+            {
+                var l = Ambience.Targets(a); var sb = new System.Text.StringBuilder("[sound levels] " + name + ":");
+                double power = 0;
+                for (int i = 0; i < AmbienceLevels.Count; i++)
+                {
+                    if (float.IsNaN(FileRmsDb[i]) || l[i] <= 0.001f) continue;
+                    double db = FileRmsDb[i] + 20 * System.Math.Log10(l[i] * CueLibrary.Get(AmbienceLevels.CueIds[i]).volume);
+                    power += System.Math.Pow(10, db / 10);
+                    sb.Append($" {AmbienceLevels.CueIds[i].Substring(4)} {db:0.0}");
+                }
+                sb.Append($" | sum {10 * System.Math.Log10(power + 1e-12):0.0} dB");
+                UnityEngine.Debug.Log(sb.ToString());
+            }
+        }
+
+        static AmbienceInput WithWater(AmbienceInput a, float w) { a.water01 = w; return a; }
+
+        [Test]
+        public void EveryAmbienceAndLandClipLoads()
+        {
+            foreach (var kv in CueLibrary.All)
+                foreach (var c in kv.Value.clips)
+                    if (!c.StartsWith("proc:")) Assert.IsNotNull(UnityEngine.Resources.Load<UnityEngine.AudioClip>(c), kv.Key + " -> " + c);
+            Assert.IsNotNull(UnityEngine.Resources.Load<UnityEngine.AudioClip>("Ambience/mist_spray_loop"));
+            Assert.That(CueLibrary.Get(CueLibrary.LooseStone).clips.Count, Is.EqualTo(3));
         }
 
         [Test]

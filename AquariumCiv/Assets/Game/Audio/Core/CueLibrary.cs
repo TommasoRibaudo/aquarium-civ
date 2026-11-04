@@ -35,10 +35,11 @@ namespace AquariumCiv.Audio
 
         // ---------- ids: ambience loops (see Ambience) ----------
         public const string AmbCalm = "amb_calm", AmbBirds = "amb_birds", AmbCrickets = "amb_crickets", AmbRain = "amb_rain",
-            AmbWind = "amb_wind", AmbFlies = "amb_flies", AmbBarren = "amb_barren", AmbFrogs = "amb_frogs";
+            AmbWind = "amb_wind", AmbFlies = "amb_flies", AmbBarren = "amb_barren", AmbFrogs = "amb_frogs",
+            AmbSandHiss = "amb_sandhiss", AmbTrickle = "amb_trickle", AmbDrips = "amb_drips";
 
         // ---------- ids: the land's one-shots (P8 #279) ----------
-        public const string FirstWaterDrop = "first_water_drop", FirstWaterBubble = "first_water_bubble";
+        public const string FirstWaterDrop = "first_water_drop", FirstWaterBubble = "first_water_bubble", LooseStone = "eco_loose_stone";
 
         const string Eco = "Sfx/Eco/", Ui = "Sfx/Ui/", Care = "Sfx/Care/", Moment = "Sfx/Moment/", Amb = "Ambience/";
 
@@ -138,8 +139,14 @@ namespace AquariumCiv.Audio
             Add(new CueDef(AmbFlies, SoundBus.Ambience, 0.18f, "proc:flies").Looped().Prio(10).Len(8f));
             // P8 (#247): made in code for the gray-box (Tools-free numpy synth: dry wind, sand hiss, crackling dirt, a loose
             // stone; frogs over a soft lap). Ours, so CC0; replace with recorded ones once the look is approved.
-            Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.4f, Amb + "barren_dry_loop").Looped().Prio(10).Len(32f));
-            Add(new CueDef(AmbFrogs, SoundBus.Ambience, 0.3f, Amb + "frogs_pond_loop").Looped().Prio(10).Len(28f));
+            // #280: recorded CC0 (docs/assets-log.md). Levels set against the old code-made beds (barren -26 dB, frogs -32 dB effective):
+            // wind is the recording at about -27 dB, the sand's hiss under it, frogs a touch under the old bed, the soil faint.
+            Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.9f, Amb + "barren_wind_loop").Looped().Prio(10).Len(30f));
+            Add(new CueDef(AmbSandHiss, SoundBus.Ambience, 0.6f, Amb + "barren_sand_hiss_loop").Looped().Prio(10).Len(30f));
+            Add(new CueDef(AmbFrogs, SoundBus.Ambience, 0.55f, Amb + "frogs_pond_rec_loop").Looped().Prio(10).Len(28f));
+            Add(new CueDef(AmbTrickle, SoundBus.Ambience, 0.5f, Amb + "soil_trickle_loop").Looped().Prio(10).Len(30f));
+            Add(new CueDef(AmbDrips, SoundBus.Ambience, 0.35f, Amb + "soil_drips_loop").Looped().Prio(10).Len(30f));
+            Add(new CueDef(LooseStone, SoundBus.Ambience, 0.5f, Eco + "loose_stone_a", Eco + "loose_stone_b", Eco + "loose_stone_c").Jitter(1.5f, 0.2f).Limit(2f, 1).Prio(15).Len(1f));
             // P8 #279: the first water in the hollow: a drop, then a bubble (CC0 recordings, see docs/assets-log.md).
             Add(new CueDef(FirstWaterDrop, SoundBus.World, 0.5f, Eco + "first_water_drop").Limit(1f, 1).Prio(70).Len(1f));
             Add(new CueDef(FirstWaterBubble, SoundBus.World, 0.4f, Eco + "first_water_bubble").Limit(1f, 1).Prio(70).Len(1f));

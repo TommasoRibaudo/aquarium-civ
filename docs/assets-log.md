@@ -38,7 +38,7 @@ clips the cue library (`Assets/Game/Audio/Core/CueLibrary.cs`) uses are in the r
 No CC0 fly buzz was found on Kenney or OpenGameArt (2026-10-30), so the mess layer's flies are made in code
 (`CareSound.MakeFlies`), like the cheer, the wipe rub and the swish: no third-party asset.
 
-#280 phase 1: recorded candidates for the opening (barren wind and sand hiss, frogs, soil trickle and drips, mister spray, loose stone, first water) are in `Ambience/` and `Sfx/Eco/`, not wired yet. No CC0 recording of drying dirt ticking/crackling was found (BigSoundBank, OpenGameArt searched 2026-11-03), so there is none.
+#280 phase 1: recorded candidates for the opening (barren wind and sand hiss, frogs, soil trickle and drips, mister spray, loose stone, first water) are in `Ambience/` and `Sfx/Eco/`. Phase 2 (2026-11-04) wired them in and removed the code-made `barren_dry_loop.ogg` and `frogs_pond_loop.ogg`; the mister plays the recorded `mist_spray_loop` (the code-made `MistSound.Generate` stays as the fallback and a debug A/B). No CC0 recording of drying dirt ticking/crackling was found (BigSoundBank, OpenGameArt searched 2026-11-03), so there is none.
 
 The mister's spray (#266, "fsss") is made in code, ours: `MistSound.Generate` filters white noise to a 2-7 kHz band with a slow swell and cross-fades the loop seam (2.4 s, 24 kHz mono). No third-party asset. The droplets, wet soil and puddles (`Shaders/EcoGround.shader`) are code and vertex colours too.
 

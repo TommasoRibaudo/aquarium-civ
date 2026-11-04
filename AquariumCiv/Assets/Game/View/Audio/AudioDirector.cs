@@ -81,7 +81,7 @@ namespace AquariumCiv.View
         AudioClip[] birdClips;
         float birdVolume;
         int birdLayer = -1;
-        float ecoBare = 1f;
+        readonly BareLatch bareLatch = new();
         /// <summary>A call's level against the loop's cue volume: over the bed, not on top of everything.</summary>
         const float BirdCallGain = 0.9f;
         /// <summary>Calls played so far, the loop's swell, and how the last one sounded (tests, the debug panel).</summary>
@@ -277,14 +277,15 @@ namespace AquariumCiv.View
             if (sim != null && sim.EcologyOn)
             {
                 // P8 (#247): the barren bed follows the bare land and never comes back (nothing dies back): keep the lowest seen.
-                ecoBare = Mathf.Min(ecoBare, sim.EcoBareShare);
+                float ecoBare = bareLatch.Update(sim.EcoBareShare);
                 input.eco = true;
                 input.bare01 = ecoBare;
                 input.ecoGreen = sim.EcoMilestoneMonth(AquariumCiv.Sim.Eco.EcoMilestones.FirstGreen) >= 0;
                 input.ecoBirds = sim.EcoMilestoneMonth(AquariumCiv.Sim.Eco.EcoMilestones.FirstBird) >= 0;
                 input.ecoWater = sim.EcoPondCells > 0;
+                input.water01 = sim.EcoTable01;
             }
-            else ecoBare = 1f;
+            else bareLatch.Reset();
             ambTarget = Ambience.Targets(input);
             var target = ambTarget;
             for (int i = 0; i < LayerForce.Length; i++)
@@ -307,6 +308,22 @@ namespace AquariumCiv.View
                 else if (v <= 0.001f && src.isPlaying) src.Pause();
             }
             UpdateBirds(dt, inMoment, bus);
+            UpdateStones(dt, inMoment);
+        }
+
+        // #280: loose stones, rare one-shots on the barren bed. The gap is long when the bed is faint and about 14 s when it is full;
+        // none once the bed is gone (it never comes back), none while a moment plays or a layer is forced off.
+        float stoneTimer = 9f;
+        public int StonesPlayed { get; private set; }
+        void UpdateStones(float dt, bool inMoment)
+        {
+            int bi = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbBarren);
+            float level = fader.Level(bi);
+            if (level < 0.05f || inMoment || LayerForce[bi] == 2) { stoneTimer = Mathf.Max(stoneTimer, 6f); return; }
+            stoneTimer -= dt * level;
+            if (stoneTimer > 0f) return;
+            stoneTimer = UnityEngine.Random.Range(11f, 22f);
+            if (PlayNow(CueLibrary.LooseStone, 0f, 1f)) StonesPlayed++;
         }
 
         void UpdateBirds(float dt, bool inMoment, float bus)

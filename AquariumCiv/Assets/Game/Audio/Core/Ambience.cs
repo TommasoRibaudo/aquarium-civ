@@ -21,30 +21,32 @@ namespace AquariumCiv.Audio
         public bool eco;
         public float bare01;      // the share of the land still bare, 0..1 (the view keeps its lowest: it never comes back)
         public bool ecoGreen, ecoBirds, ecoWater;
+        public float water01;     // the water table, 0 (below the lowest ground, the start) .. 1 (at the pond's spill); the soil's trickle follows it (#280)
     }
 
     /// <summary>The six ambience layers' levels, 0..1 of each layer's cue volume.</summary>
     public struct AmbienceLevels
     {
-        public float calm, birds, crickets, rain, wind, flies, barren, frogs;
+        public float calm, birds, crickets, rain, wind, flies, barren, frogs, sandHiss, trickle, drips;
 
-        public float this[int i] => i switch { 0 => calm, 1 => birds, 2 => crickets, 3 => rain, 4 => wind, 5 => flies, 6 => barren, _ => frogs };
+        public float this[int i] => i switch { 0 => calm, 1 => birds, 2 => crickets, 3 => rain, 4 => wind, 5 => flies, 6 => barren, 7 => frogs, 8 => sandHiss, 9 => trickle, _ => drips };
         public static readonly string[] CueIds =
             { CueLibrary.AmbCalm, CueLibrary.AmbBirds, CueLibrary.AmbCrickets, CueLibrary.AmbRain, CueLibrary.AmbWind, CueLibrary.AmbFlies,
-              CueLibrary.AmbBarren, CueLibrary.AmbFrogs };
-        public const int Count = 8;
+              CueLibrary.AmbBarren, CueLibrary.AmbFrogs, CueLibrary.AmbSandHiss, CueLibrary.AmbTrickle, CueLibrary.AmbDrips };
+        public const int Count = 11;
 
         public void Set(int i, float v)
         {
             switch (i)
             {
                 case 0: calm = v; break; case 1: birds = v; break; case 2: crickets = v; break; case 3: rain = v; break; case 4: wind = v; break;
-                case 5: flies = v; break; case 6: barren = v; break; default: frogs = v; break;
+                case 5: flies = v; break; case 6: barren = v; break; case 7: frogs = v; break;
+                case 8: sandHiss = v; break; case 9: trickle = v; break; default: drips = v; break;
             }
         }
 
         public override string ToString() =>
-            $"calm {calm:0.00} birds {birds:0.00} crickets {crickets:0.00} rain {rain:0.00} wind {wind:0.00} flies {flies:0.00} barren {barren:0.00} frogs {frogs:0.00}";
+            $"calm {calm:0.00} birds {birds:0.00} crickets {crickets:0.00} rain {rain:0.00} wind {wind:0.00} flies {flies:0.00} barren {barren:0.00} frogs {frogs:0.00} sandHiss {sandHiss:0.00} trickle {trickle:0.00} drips {drips:0.00}";
     }
 
     /// <summary>
@@ -78,24 +80,30 @@ namespace AquariumCiv.Audio
             if (a.season == Season.Winter) flies *= 0.5f;
             flies *= 0.6f + 0.4f * day; // a little quieter at night
 
-            float barren = 0f, frogs = 0f;
+            float barren = 0f, frogs = 0f, sandHiss = 0f, trickle = 0f, drips = 0f;
             if (a.eco)
             {
                 float bare = Clamp01(a.bare01);
                 // The barren bed: full on a dead box, eased out as the green takes over; quieter at night, gone below 15 % bare.
                 float u = Clamp01((bare - BarrenGoneBelow) / (1f - BarrenGoneBelow));
                 barren = u * u * (3f - 2f * u) * (0.75f + 0.25f * day);
+                sandHiss = barren;                               // the sand's hiss rides the same share (its own recording, the high band)
                 calm *= 1f - 0.5f * barren;                      // the dry wind carries the room on a dead box
                 float life = 1f - bare;
                 birds = a.ecoBirds ? birds * (0.35f + 0.65f * Clamp01(life * 1.5f)) : 0f;
                 // Crickets come with the first green: at night as always, and a faint chirr by day until the birds take the day.
                 if (!a.ecoGreen) crickets = 0f;
                 else if (!a.ecoBirds && a.season != Season.Winter) crickets = Math.Max(crickets, day * (0.18f + 0.17f * Clamp01(life * 4f))); // audible from the first green (tester: 0 by day)
-                if (a.ecoWater && a.season != Season.Winter) frogs = (0.25f + 0.75f * night) * (a.weather == Weather.Storm ? 0.3f : 1f);
+                if (a.ecoGreen && a.season != Season.Winter) crickets *= 0.9f + 0.1f * Clamp01(life * 2f); // a little fuller as the land greens
+                if (a.ecoWater && a.season != Season.Winter) frogs = (0.25f + 0.75f * night) * (a.weather == Weather.Storm ? 0.3f : 1f) * (0.6f + 0.4f * Clamp01(life * 2f));
+                // The soil's seep rises with the water table, faint; the drips come in once it is well up (#280).
+                float w = Clamp01(a.water01);
+                trickle = w * w * (3f - 2f * w);
+                drips = Clamp01((w - 0.35f) / 0.65f) * 0.8f;
             }
 
-            var l = new AmbienceLevels { calm = calm, birds = birds, crickets = crickets, rain = rain, wind = wind, flies = flies, barren = barren, frogs = frogs };
-            if (a.inMoment) { l.calm *= 0.6f; l.birds *= 0.4f; l.crickets *= 0.4f; l.rain *= 0.7f; l.wind *= 0.6f; l.flies *= 0.3f; l.barren *= 0.4f; l.frogs *= 0.4f; }
+            var l = new AmbienceLevels { calm = calm, birds = birds, crickets = crickets, rain = rain, wind = wind, flies = flies, barren = barren, frogs = frogs, sandHiss = sandHiss, trickle = trickle, drips = drips };
+            if (a.inMoment) { l.calm *= 0.6f; l.birds *= 0.4f; l.crickets *= 0.4f; l.rain *= 0.7f; l.wind *= 0.6f; l.flies *= 0.3f; l.barren *= 0.4f; l.frogs *= 0.4f; l.sandHiss *= 0.4f; l.trickle *= 0.6f; l.drips *= 0.4f; }
             return l;
         }
 
@@ -143,6 +151,15 @@ namespace AquariumCiv.Audio
 
         static float Wrap24(float h) { h %= 24f; return h < 0f ? h + 24f : h; }
         static float Clamp01(float x) => x < 0f ? 0f : x > 1f ? 1f : x;
+    }
+
+    /// <summary>Keeps the lowest bare share seen: the barren bed follows the land greening and never comes back (nothing dies back, #280).</summary>
+    public sealed class BareLatch
+    {
+        float low = 1f;
+        public float Low => low;
+        public float Update(float bare01) { if (bare01 < low) low = bare01 < 0f ? 0f : bare01; return low; }
+        public void Reset() => low = 1f;
     }
 
     /// <summary>Moves the playing levels toward the targets at a set speed, so a weather change or the hour fades
