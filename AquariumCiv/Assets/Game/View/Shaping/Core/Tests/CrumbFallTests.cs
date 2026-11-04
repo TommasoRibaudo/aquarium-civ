@@ -89,7 +89,7 @@ namespace AquariumCiv.View.Shaping.Tests
                     foreach (var b in bits)
                     {
                         Assert.That(b.size, Is.InRange(CrumbFall.BitMin * 0.79f, CrumbFall.BitMax + 1e-4f), "a crumb, not a lump");
-                        Assert.Less(System.Math.Abs(b.startY - p.hitY), 0.06f, "at the hit's height");
+                        Assert.LessOrEqual(System.Math.Abs(b.startY - p.hitY), CrumbFall.SpreadUp / 2f + 1e-4f, "at the hit's height");
                         float off = p.wall == CrumbWall.Back ? System.Math.Abs(b.startZ - p.hitZ) : System.Math.Abs(b.startX - p.hitX);
                         Assert.Less(off, b.size, "against the glass");
                         CrumbFall.BitAt(b, 0f, HW, HD, out _, out float y, out _, out _, out _, out _);

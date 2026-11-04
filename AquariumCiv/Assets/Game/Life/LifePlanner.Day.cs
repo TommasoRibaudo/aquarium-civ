@@ -747,7 +747,11 @@ namespace AquariumCiv.Life
                     }
                     At(Chore(p, d, 3), choreUntil, p.home, ChoreProp(Chore(p, d, 3)));
                     float walk = WalkHours(p.home, work.site);
-                    At(ActivityKind.SitOut, sh.start - walk, p.home);
+                    // #208 phase B: in the Editor the lane still knotted (worst 8 -> 10 in the Village), as the short chore was
+                    // followed by sitting out at the door until work. After the chore they go back in, and step out only just before leaving.
+                    float leave = sh.start - walk;
+                    if (leave - 0.12f > choreUntil + 0.05f) At(ActivityKind.Indoors, leave - 0.12f, p.home);
+                    At(ActivityKind.SitOut, leave, p.home);
                 }
                 // The walk to work takes as long as the route does: a late start (the water came first) arrives late.
                 Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);

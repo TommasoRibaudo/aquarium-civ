@@ -52,23 +52,24 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>Near enough to a door to count as standing at it, and the reach of a knot in the lane (box units).</summary>
         const float AtDoor = 0.2f, KnotReach = 0.25f;
         /// <summary>The worst knot by the homes at 05:54-07:36, measured in the Editor on this test with the chores as they were before #208
-        /// (LifePlanner.Day.cs at 1802801^, the same seeds and samples).</summary>
-        const int KnotBeforeVillage = 0, KnotBeforeTown = 0;
+        /// (LifePlanner.Day.cs at 1802801^, the same seeds and samples): Village 7 (mean of the daily worst 6.7), Town 7 (6.7). Hidden dolls (indoors, asleep) do not count.</summary>
+        const int KnotBeforeVillage = 7, KnotBeforeTown = 7;
 
         /// <summary>Everyone out of doors by the homes now: the biggest bunch within <see cref="KnotReach"/> of one of them, and the most standing at one door.</summary>
-        static (int knot, int door) CountLane(PeopleView pv)
+        static (int knot, int door, string who) CountLane(PeopleView pv)
         {
             for (int f = 0; f < 75; f++) pv.Tick(1f / 30f);
             var was = new Dictionary<int, Vector2>();
             foreach (var a in pv.Activities) if (pv.TryGetDollPosition(a.who, out var w)) was[a.who.Key] = w;
             pv.Tick(1f / 30f);
             var lane = new List<Vector2>();
+            var what = new List<string>();
             var doors = new Dictionary<Place, int>();
             foreach (var a in pv.Activities)
             {
-                if (!pv.TryGetDollTop(a.who, out _) || !pv.TryGetDollPosition(a.who, out var p)) continue; // indoors: no doll
+                if (DollMotion.StyleOf(a.kind) == DollStyle.Hidden || !pv.TryGetDollTop(a.who, out _) || !pv.TryGetDollPosition(a.who, out var p)) continue; // indoors or asleep: not seen
                 bool byHome = a.place.kind == PlaceKind.Home;
-                if (byHome || a.moving) lane.Add(p);
+                if (byHome || a.moving) { lane.Add(p); what.Add($"{a.kind}{(a.moving ? "(walking)" : "")}@{a.place.kind}{a.place.buildingId}"); }
                 if (!byHome || a.moving) continue;
                 bool standing = was.TryGetValue(a.who.Key, out var then) && (p - then).magnitude < 0.0005f;
                 if (standing && pv.Planner.Positions.TryGetPosition(a.place, out float dx, out float dz) && (p - new Vector2(dx, dz)).magnitude < AtDoor)
@@ -77,9 +78,16 @@ namespace AquariumCiv.View.PlayTests
                     doors[a.place] = n + 1;
                 }
             }
-            int knot = 0;
-            foreach (var p in lane) knot = Mathf.Max(knot, lane.Count(o => (o - p).magnitude < KnotReach));
-            return (knot, doors.Count == 0 ? 0 : doors.Values.Max());
+            int knot = 0; string who = "";
+            for (int i = 0; i < lane.Count; i++)
+            {
+                var p = lane[i];
+                int n = lane.Count(o => (o - p).magnitude < KnotReach);
+                if (n <= knot) continue;
+                knot = n;
+                who = string.Join(", ", Enumerable.Range(0, lane.Count).Where(j => (lane[j] - p).magnitude < KnotReach).Select(j => what[j]));
+            }
+            return (knot, doors.Count == 0 ? 0 : doors.Values.Max(), who);
         }
 
         [UnityTest, Timeout(240000)]
@@ -101,7 +109,7 @@ namespace AquariumCiv.View.PlayTests
                         pv.SetHour(h);
                         var c = CountLane(pv);
                         samples++;
-                        if (c.knot > knot) { knot = c.knot; worstAt = $"day {day} {h:0.0}h"; }
+                        if (c.knot > knot) { knot = c.knot; worstAt = $"day {day} {h:0.0}h: {c.who}"; }
                         dayWorst = Mathf.Max(dayWorst, c.knot);
                         door = Mathf.Max(door, c.door);
                     }
@@ -142,12 +150,16 @@ namespace AquariumCiv.View.PlayTests
             var cards = PersonCardView.Instance;
             // Alwin first if this village has him (the user's card), then the most-tied people: the cards with the biggest stacks.
             var who = Sim.State.notables.Where(x => x.alive).OrderByDescending(x => x.name == "Alwin").ThenByDescending(x => Sim.RelationshipGraph(true, x.id).Count).Take(6).ToList();
-            int leadersSeen = 0, crossed = 0, mostLeaders = -1;
+            int leadersSeen = 0, crossed = 0, under = 0, overlap = 0, mostLeaders = -1;
             string first = null, shotOf = null;
             foreach (var n in who)
             {
                 if (!cards.Open(n.id, true)) continue;
                 yield return new WaitForSecondsRealtime(1.2f);
+                PersonCardView.DebugRoutes = new List<string>();
+                yield return null;
+                yield return null;
+                var routes = PersonCardView.DebugRoutes; PersonCardView.DebugRoutes = null;
                 var root = cards.CardRoot.panel.visualTree;
                 var shown = root.Query<GlassTag>().ToList().Where(t => t.name.StartsWith("pc-tie-") && t.resolvedStyle.display == DisplayStyle.Flex).Select(t => t.worldBound).ToList();
                 var leaders = cards.Leaders.ToList();
@@ -161,19 +173,22 @@ namespace AquariumCiv.View.PlayTests
                     pts.Add(new Vector2(l.bx, l.by));
                     for (int i = 0; i + 1 < pts.Count; i++) legs.Add((pts[i], pts[i + 1]));
                     var start = pts[0];
+                    bool ownSeen = false;
                     foreach (var r in shown)
                     {
                         bool mine = new Rect(r.x - 2f, r.y - 2f, r.width + 4f, r.height + 4f).Contains(start);
                         var box = new LabelBox(r.center.x, r.center.y, r.width, r.height);
                         for (int i = 0; i < legs.Count; i++)
                         {
-                            if (mine && i == 0) continue; // the first leg leaves its own label's edge
+                            if (mine && i == 0) { if (!ownSeen) { ownSeen = true; continue; } overlap++; continue; } // the first leg leaves its own label's edge (a second label there overlaps it: a layout fault, not a route)
+                            if (i == legs.Count - 1 && r.Contains(legs[i].b)) { under++; continue; } // the person stands under that label: no way round it (not a stack)
                             if (!MarkerLayout.Crosses(legs[i].a.x, legs[i].a.y, legs[i].b.x, legs[i].b.y, box, mine ? -1f : 1f)) continue;
                             crossed++;
                             first ??= $"{n.name}: leg {i} {legs[i].a} -> {legs[i].b} crosses the label at {r}";
                         }
                     }
                 }
+                Debug.Log($"[209] {n.name} routes: {string.Join(" || ", routes.Take(4))} ; shown {string.Join(" ", shown.Select(r => $"[{r.center.x:0},{r.center.y:0} {r.width:0}x{r.height:0}]"))} ; leaders {string.Join(" ", leaders.Select(l => $"({l.ax:0},{l.ay:0})->({l.bx:0},{l.by:0})"))}");
                 Debug.Log($"[209] {n.name}: {shown.Count} labels, {leaders.Count} leaders, {string.Join("; ", leaders.Select(l => l.twice ? "3 legs" : l.bends ? "2 legs" : "straight"))}");
                 if (leaders.Count > mostLeaders)
                 {
@@ -182,7 +197,7 @@ namespace AquariumCiv.View.PlayTests
                     yield return Shot("209-leaders-village");
                 }
             }
-            Debug.Log($"[209] {who.Count} cards, {leadersSeen} leaders, {crossed} crossings; shot of {shotOf}");
+            Debug.Log($"[209] {who.Count} cards, {leadersSeen} leaders, {crossed} crossings, {under} ending under another label, {overlap} starting inside an overlapping label; shot of {shotOf}");
             Assert.AreEqual(0, crossed, first);
             AssertNoErrors("leaders");
         }

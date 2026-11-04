@@ -117,7 +117,9 @@ namespace AquariumCiv.View.Shaping
         public const int BitCount = 14, ChipCount = 3;
         /// <summary>Box units/s²: a crumb falls the lower half of the box in about half a second.</summary>
         public const float Gravity = 6f;
-        public const float BitMin = 0.026f, BitMax = 0.05f, ClingMax = 0.35f;
+        public const float BitMin = 0.06f, BitMax = 0.1f, ClingMax = 0.35f;
+        /// <summary>How far round the hit the bits start, along the glass and up/down (box units).</summary>
+        public const float SpreadSide = 0.3f, SpreadUp = 0.16f;
         /// <summary>The landing: how fast the slide dies away, how long the hop lasts, how flat it ends, then the rest and the fade.</summary>
         public const float ScatterTau = 0.2f, HopSeconds = 0.26f, SquashSeconds = 0.12f, Squashed = 0.6f, RestSeconds = 5f, FadeSeconds = 1.5f;
 
@@ -137,9 +139,9 @@ namespace AquariumCiv.View.Shaping
                 float R2(int k) => ((h2 >> (k * 5)) & 31u) / 31f;
                 bool chip = i % every == 2 && i / every < ChipCount;
                 float size = (BitMin + (BitMax - BitMin) * R(0)) * (chip ? 0.8f : 1f);
-                float side = (R(1) - 0.5f) * 0.16f, up = (R(2) - 0.5f) * 0.1f, inset = size * 0.5f + 0.004f;
+                float side = (R(1) - 0.5f) * SpreadSide, up = (R(2) - 0.5f) * SpreadUp, inset = size * 0.5f + 0.004f;
                 float fan = (R2(0) - 0.5f) * 1.6f;                    // the slide fans out along the glass
-                float speed = 0.3f + 0.45f * R2(1);
+                float speed = 0.45f + 0.6f * R2(1);
                 float ox = nx + tx * fan, oz = nz + tz * fan, len = (float)Math.Sqrt(ox * ox + oz * oz);
                 float y0 = Math.Max(0.05f, p.hitY + up);
                 float drift = 0.04f + 0.1f * R(4);

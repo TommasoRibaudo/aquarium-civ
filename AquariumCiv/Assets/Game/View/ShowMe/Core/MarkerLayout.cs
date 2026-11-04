@@ -134,6 +134,9 @@ namespace AquariumCiv.View.ShowMe
             float halfW = me.w / 2f, halfH = me.h / 2f;
             var starts = new[] { (me.x, me.y + halfH), (me.x, me.y - halfH), (me.x + halfW, me.y), (me.x - halfW, me.y) };
             System.Array.Sort(starts, (a, b) => Dist(a.Item1, a.Item2, toX, toY).CompareTo(Dist(b.Item1, b.Item2, toX, toY)));
+            // A label over the person itself (the open card's name tag, when the two stand side by side) can't be gone round:
+            // the line has to end under it, so it doesn't block the way to the others.
+            others = others.Where(o => !Crosses(toX, toY, toX, toY, o, air)).ToList();
             var inner = new LabelBox(me.x, me.y, Math.Max(0f, me.w - 2f), Math.Max(0f, me.h - 2f)); // its own label: a leg may leave its edge, never cross it
             bool First(float ax, float ay, float bx, float by) => Clear(ax, ay, bx, by, others, air) && !Crosses(ax, ay, bx, by, inner);
             bool Later(float ax, float ay, float bx, float by) => Clear(ax, ay, bx, by, others, air) && !Crosses(ax, ay, bx, by, me, air);
