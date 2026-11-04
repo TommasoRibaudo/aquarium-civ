@@ -123,11 +123,11 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator TheBabbleIsHeardCloseAndNotAtDefaultZoom()
         {
             yield return AtTheFire(1f);
-            Assert.That(View.Zoom01, Is.GreaterThan(View.Plan.rules.zoomedOut).And.LessThan(View.Plan.rules.babbleFrom), "default zoom shows marks and stays silent");
+            Assert.That(View.Zoom01, Is.GreaterThan(View.Plan.rules.zoomedOut).And.LessThan(View.Plan.rules.babbleFrom), "default zoom shows marks and (almost) stays silent");
             int before = View.Babbles;
             yield return UntilMarks();
             Assert.Greater(View.MarksDrawn, 0, "marks at default zoom");
-            Assert.AreEqual(before, View.Babbles, "no babble at default zoom");
+            Assert.LessOrEqual(View.Babbles - before, 1, "default zoom: a rare muffled line at most (#316)");
             yield return new WaitForSecondsRealtime(2.6f);
             Cam.EaseTo(Vector3.up, Cam.yaw, 45f, BoxCameraMath.FlyPersonZoom, 0.05f);
             yield return new WaitForSecondsRealtime(0.3f);
@@ -135,7 +135,7 @@ namespace AquariumCiv.View.PlayTests
             View.DebugForceChat();
             yield return Until(() => View.Babbles > before, 8f);
             Assert.Greater(View.Babbles, before, "heard close up");
-            Assert.IsEmpty(AudioDirector.Instance.CheckClips().Where(c => c.StartsWith("proc:babble")), "the 24 clips");
+            Assert.IsEmpty(AudioDirector.Instance.CheckClips().Where(c => c.StartsWith("proc:babble")), "the 48 clips");
             AssertNoErrors("babble");
         }
 

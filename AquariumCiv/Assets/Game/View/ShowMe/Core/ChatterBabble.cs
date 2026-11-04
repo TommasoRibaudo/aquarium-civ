@@ -11,7 +11,9 @@ namespace AquariumCiv.View.ShowMe
     /// </summary>
     public static class ChatterBabble
     {
-        public const int SampleRate = 22050, Voices = 4, Clips = 6;
+        public const int SampleRate = 22050, Voices = 4, Clips = 12;
+        /// <summary>#316: the clip kinds beyond the marks' five (murmur 0 and 5, held notes 1, soft falling pair 2, short and sharp 3, rising end 4).</summary>
+        public const int Laugh = 6, Call = 7, Shout = 8, Hum = 9, Giggle = 10, Chat = 11;
         /// <summary>Peak of the output (headroom: the cue sits at 0.2 to 0.3 volume on the World bus).</summary>
         public const float Peak = 0.7f;
         static readonly float[] VoicePitch = { 150f, 210f, 290f, 400f }; // low adult, adult, young, kid
@@ -48,18 +50,20 @@ namespace AquariumCiv.View.ShowMe
             if (clip < 0 || clip >= Clips) throw new ArgumentOutOfRangeException(nameof(clip));
             var rng = new Random(unchecked(seed * 7919 + voice * 131 + clip * 17 + 1));
             float basePitch = VoicePitch[voice] * (0.97f + 0.06f * (float)rng.NextDouble());
-            int words = clip == 3 ? 1 : 1 + rng.Next(3);
+            int words = clip == 3 || clip == 6 || clip == 8 || clip == 9 || clip == 10 ? 1 : clip == 7 ? 1 + rng.Next(2) : clip == 11 ? 3 : 1 + rng.Next(3);
             var syl = new List<(float ms, int vowel, bool wordEnd)>();
             for (int w = 0; w < words; w++)
             {
-                int count = clip == 3 ? 1 + rng.Next(2) : clip == 1 ? 2 + rng.Next(2) : 2 + rng.Next(4);
+                int count = clip == 3 ? 1 + rng.Next(2) : clip == 1 ? 2 + rng.Next(2) : clip == 6 ? 4 + rng.Next(3) : clip == 7 ? 2 : clip == 8 ? 1 + rng.Next(2) : clip == 9 ? 2 + rng.Next(2) : clip == 10 ? 5 + rng.Next(3) : clip == 11 ? 2 + rng.Next(3) : 2 + rng.Next(4);
                 for (int i = 0; i < count; i++)
                 {
-                    float ms = clip == 1 ? 130f + 40f * (float)rng.NextDouble() : clip == 3 ? 60f + 20f * (float)rng.NextDouble() : 60f + 50f * (float)rng.NextDouble();
-                    syl.Add((ms, rng.Next(Vowels.Length), i == count - 1));
+                    float ms = clip == 1 ? 130f + 40f * (float)rng.NextDouble() : clip == 3 ? 60f + 20f * (float)rng.NextDouble()
+                        : clip == 6 ? 70f + 20f * (float)rng.NextDouble() : clip == 7 ? 260f + 80f * (float)rng.NextDouble() : clip == 8 ? 380f + 100f * (float)rng.NextDouble()
+                        : clip == 9 ? 200f + 60f * (float)rng.NextDouble() : clip == 10 ? 50f + 12f * (float)rng.NextDouble() : 60f + 50f * (float)rng.NextDouble();
+                    syl.Add((ms, clip == 6 ? 0 : clip == 9 ? 3 : clip == 10 ? 1 : rng.Next(Vowels.Length), i == count - 1));
                 }
             }
-            const float WordGap = 0.07f, SylGap = 0.012f;
+            float WordGap = 0.07f, SylGap = clip == 6 ? 0.06f : clip == 10 ? 0.035f : 0.012f;
             double total = 0.02;
             foreach (var s in syl) total += s.ms / 1000.0 + (s.wordEnd ? WordGap : SylGap);
             var d = new float[(int)(total * SampleRate) + 1];
@@ -76,6 +80,11 @@ namespace AquariumCiv.View.ShowMe
                     case 2: step = prog < 0.5f ? 1.2f : 1f; glide = 0.92f; break; // soft falling pair
                     case 3: step = 1.35f; glide = 0.85f; break; // short and sharp
                     case 4: step = 1f + 0.35f * prog * prog; glide = 1f + 0.2f * prog; break; // rising end
+                    case 6: step = 1.15f - 0.06f * i; glide = 0.9f; break; // a laugh: ha-ha-ha, sinking
+                    case 7: step = i == 0 ? 1.05f : 1.3f; glide = i == 0 ? 1.1f : 0.9f; break; // a call: up, then over
+                    case 8: step = 1.5f; glide = 0.95f + 0.1f * prog; break; // a shout: high and long
+                    case 9: step = 0.85f + 0.05f * (float)Math.Sin(i * 1.3); glide = 0.97f; break; // a hum: low and steady
+                    case 10: step = 1.1f + 0.25f * (i % 2); glide = 1.1f; break; // a giggle: quick and bright
                     default: step = 1f + 0.08f * (float)Math.Cos(i * 2.3); glide = 0.95f; break;
                 }
                 Syllable(d, pos, len, basePitch * step, glide, Vowels[syl[i].vowel], clip == 1 ? 1.5f : 4f, clip == 3 ? 0.9f : 0.75f + 0.25f * (1f - 0.4f * prog));
@@ -86,6 +95,27 @@ namespace AquariumCiv.View.ShowMe
             if (max > 0f) { float k = Peak / max; for (int i = 0; i < d.Length; i++) d[i] *= k; }
             return d;
         }
+
+        /// <summary>#316: the same phrase heard from far away: three one-pole low-passes at <see cref="MuffleHz"/> (the vowels' second
+        /// resonance and the edge of every syllable go, a dull voice through a wall of glass), normalised to <see cref="Peak"/>.
+        /// Pure and deterministic. The view makes these the first time a far or mid voice is heard.</summary>
+        public static float[] Muffle(float[] src)
+        {
+            var d = (float[])src.Clone();
+            float a = 1f - (float)Math.Exp(-2.0 * Math.PI * MuffleHz / SampleRate);
+            for (int pass = 0; pass < 3; pass++)
+            {
+                float y = 0f;
+                for (int i = 0; i < d.Length; i++) { y += a * (d[i] - y); d[i] = y; }
+            }
+            float max = 0f;
+            for (int i = 0; i < d.Length; i++) max = Math.Max(max, Math.Abs(d[i]));
+            if (max > 0f) { float k = Peak / max; for (int i = 0; i < d.Length; i++) d[i] *= k; }
+            return d;
+        }
+
+        /// <summary>The muffled voice's cutoff (Hz).</summary>
+        public const float MuffleHz = 620f;
 
         static void Syllable(float[] d, int at, float len, float f0, float glide, float[] formants, float decay, float amp)
         {

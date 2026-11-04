@@ -9,9 +9,11 @@ namespace AquariumCiv.Audio
     /// </summary>
     public static class CueLibrary
     {
-        public const int BabbleVoices = 4, BabbleClips = 6;
+        public const int BabbleVoices = 4, BabbleClips = 12;
         /// <summary>#144: one babble clip's cue, by voice and clip.</summary>
         public static string Babble(int voice, int clip) => "babble_" + voice + "_" + clip;
+        /// <summary>#316: the same clip heard from far away (low-passed, see ChatterBabble.Muffle).</summary>
+        public static string BabbleMuffled(int voice, int clip) => "mbabble_" + voice + "_" + clip;
 
         // ---------- ids: UI (the HUD, panels, cards, the book) ----------
         public const string UiTap = "ui_tap", UiToggle = "ui_toggle", UiOpen = "ui_open", UiClose = "ui_close",
@@ -107,7 +109,11 @@ namespace AquariumCiv.Audio
             // #144: the babble, made in code (ChatterBabble). Low, and it never ducks the music: it's a murmur in the room.
             for (int v = 0; v < BabbleVoices; v++)
                 for (int c = 0; c < BabbleClips; c++)
-                    Add(new CueDef(Babble(v, c), SoundBus.World, 0.25f, "proc:babble" + v + c).Jitter(1f).Limit(0.4f, 2).Prio(20).Len(1.5f));
+                {
+                    // #316: little pitch jitter of its own (each person's pitch comes in with the play); the muffled take is made on first use.
+                    Add(new CueDef(Babble(v, c), SoundBus.World, 0.25f, "proc:babble" + v + "_" + c).Jitter(0.4f).Limit(0.4f, 2).Prio(20).Len(1.5f));
+                    Add(new CueDef(BabbleMuffled(v, c), SoundBus.World, 0.3f, "proc:mbabble" + v + "_" + c).Jitter(0.4f).Limit(0.4f, 2).Prio(20).Len(1.5f));
+                }
             Add(new CueDef(KnockBack, SoundBus.World, 0.4f, Moment + "impactWood_light_000").Jitter(0.3f).Limit(0.15f, 2).Prio(70).Len(0.4f).Buzz(HapticKind.Selection));
             Add(new CueDef(ShowMe, SoundBus.Ui, 0.45f, Ui + "maximize_001").Limit(0.5f, 1).Prio(60).Len(0.4f));
             Add(new CueDef(Flower, SoundBus.World, 0.3f, Care + "pluck_001").Limit(0.5f, 1).Prio(40).Len(0.3f));
@@ -143,6 +149,8 @@ namespace AquariumCiv.Audio
             // wind is the recording at about -27 dB, the sand's hiss under it, frogs a touch under the old bed, the soil faint.
             Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.9f, Amb + "barren_wind_loop").Looped().Prio(10).Len(30f));
             Add(new CueDef(AmbSandHiss, SoundBus.Ambience, 0.6f, Amb + "barren_sand_hiss_loop").Looped().Prio(10).Len(30f));
+            // #315: the recorded chorus loop is no longer played (the view makes single croaks, see FrogCroaker); the layer's level
+            // still says how frog-filled the hour is, and its cue volume is the croaks' full level.
             Add(new CueDef(AmbFrogs, SoundBus.Ambience, 0.55f, Amb + "frogs_pond_rec_loop").Looped().Prio(10).Len(28f));
             Add(new CueDef(AmbTrickle, SoundBus.Ambience, 0.5f, Amb + "soil_trickle_loop").Looped().Prio(10).Len(30f));
             Add(new CueDef(AmbDrips, SoundBus.Ambience, 0.35f, Amb + "soil_drips_loop").Looped().Prio(10).Len(30f));

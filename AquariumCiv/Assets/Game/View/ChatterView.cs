@@ -39,7 +39,11 @@ namespace AquariumCiv.View
 
         readonly List<Live> live = new();
         readonly List<ChatterGroup> groups = new();
-        readonly List<(PersonRef who, Vector2 at)> standing = new();
+        readonly List<(PersonRef who, Vector2 at, ActivityKind kind, bool on)> standing = new();
+        readonly List<VoiceMember> lone = new();
+        /// <summary>#316: the voices by distance (far: a rare muffled shout; mid: more; near: exchanges). See <see cref="VoicePlan"/>.</summary>
+        public readonly VoicePlan Voice = new();
+        float hour = 12f;
         readonly Dictionary<long, Rapport> rapport = new();
         readonly Dictionary<ChatterMark, Shape> shapes = new();
         readonly List<Vector3> verts = new();
@@ -101,6 +105,7 @@ namespace AquariumCiv.View
                 ReadGroups(pv, sim);
             }
             Zoom01 = Zoom01Of(cam);
+            hour = pv.Now.hour;
             var tick = Plan.Tick(now, groups, sim.State.seed, Zoom01, realLine, quiet, Effective);
             foreach (var s in tick.fade)
             {
@@ -110,14 +115,39 @@ namespace AquariumCiv.View
             foreach (var s in tick.show)
             {
                 live.Add(new Live { show = s, order = ++lastOrder });
-                if (s.babble <= 0f) continue;
-                int clip = ChatterBabble.ClipFor(s.mark, ChatterPlan.Roll(sim.State.seed, s.groupId, (int)(s.startAt * 10), 7));
-                Sfx.Play(CueLibrary.Babble(s.voice, clip), 0f, s.babble);
-                Babbles++;
+                if (Effective != ChatterStyle.MarksBabble || s.reaction || quiet) continue;
+                Speak(s, now, quiet);
             }
+            if (Effective == ChatterStyle.MarksBabble && !quiet && !realLine && Voice.TickLone(now, VoiceZoom, hour, lone, out var lv))
+                Say(lv, now, quiet, true);
             watch.Stop();
             Note(t0);
         }
+
+        /// <summary>The zoom the voices hear: the camera's, or the debug panel's forced one.</summary>
+        public float VoiceZoom => AudioDirector.ForcedZoom01 >= 0f ? AudioDirector.ForcedZoom01 : Zoom01;
+
+        /// <summary>#316: a group's turn started: the voice plan says whether it is a line, an exchange or nothing (far, resting).</summary>
+        void Speak(ChatterShow s, double now, bool quiet, bool force = false)
+        {
+            var g = groups.Find(x => x.id == s.groupId);
+            if (g == null || (!g.onScreen && !force)) return;
+            var vg = new VoiceGroup { id = g.id, nearFire = g.nearFire, working = g.working };
+            foreach (var m in g.members) if (!m.asleep) vg.members.Add(new VoiceMember { id = m.id, voice = m.voice, kid = m.kid });
+            foreach (var t in Voice.OnTurn(now, VoiceZoom, hour, vg, s.speakerId, s.listenerId, s.mark, force))
+                Say(t, now, quiet, false, t.delay > 0.0);
+        }
+
+        /// <summary>Plays one voice turn (a delayed one also gets its own mark over the speaker, so a reply shows who answers).</summary>
+        void Say(VoiceTurn t, double now, bool quiet, bool markIt, bool reply = false)
+        {
+            string cue = t.muffled ? CueLibrary.BabbleMuffled(t.voice, t.clip) : CueLibrary.Babble(t.voice, t.clip);
+            Sfx.Play(cue, t.semitones, t.volume, (float)t.delay);
+            Babbles++;
+            if (markIt || reply) Mark(now + t.delay, t.speakerId, t.voice, t.mark, quiet, VoiceMarkSeconds);
+        }
+
+        const float VoiceMarkSeconds = 1.6f;
 
         void Note(long t0)
         {
@@ -168,8 +198,8 @@ namespace AquariumCiv.View
             {
                 var a = acts[i];
                 if (a.moving || a.kind == ActivityKind.Sleep || a.kind == ActivityKind.None || pv.IsWalking(a.who)) continue;
-                if (!pv.TryGetDollTop(a.who, out _) || !pv.TryGetDollPosition(a.who, out var at)) continue;
-                standing.Add((a.who, at));
+                if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollPosition(a.who, out var at)) continue;
+                standing.Add((a.who, at, a.kind, OnScreen(top)));
             }
             int n = standing.Count;
             var group = new int[n];
@@ -186,7 +216,9 @@ namespace AquariumCiv.View
                 if (!byRoot.TryGetValue(r, out var g)) byRoot[r] = g = new ChatterGroup { id = int.MaxValue };
                 var who = standing[i].who;
                 g.id = Mathf.Min(g.id, who.Key + 1000000); // the same people keep their turn order; crowd keys are negative
-                g.members.Add(new ChatterPerson { id = who.Key, voice = VoiceOf(pv, sim, who) });
+                g.members.Add(new ChatterPerson { id = who.Key, voice = VoiceOf(pv, sim, who), kid = IsKid(pv, sim, who) });
+                g.onScreen |= standing[i].on;
+                g.working |= standing[i].kind >= ActivityKind.Gather && standing[i].kind <= ActivityKind.Prepare;
             }
             foreach (var kv in byRoot)
             {
@@ -198,6 +230,39 @@ namespace AquariumCiv.View
                 g.nearFire = NearFire(box, kv.Key);
                 groups.Add(g);
             }
+            ReadLone(pv, sim);
+        }
+
+        /// <summary>#316: people on screen, awake and not in a group: who a far or mid voice may come from.</summary>
+        void ReadLone(PeopleView pv, SimCore sim)
+        {
+            lone.Clear();
+            var inGroup = new HashSet<int>();
+            foreach (var g in groups) foreach (var m in g.members) inGroup.Add(m.id);
+            var acts = pv.Activities;
+            for (int i = 0; i < acts.Count; i++)
+            {
+                var a = acts[i];
+                if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap || a.kind == ActivityKind.None || inGroup.Contains(a.who.Key)) continue;
+                if (!pv.TryGetDollTop(a.who, out var top) || !OnScreen(top)) continue;
+                lone.Add(new VoiceMember { id = a.who.Key, voice = VoiceOf(pv, sim, a.who), kid = IsKid(pv, sim, a.who) });
+            }
+        }
+
+        /// <summary>Inside the camera's view, with a small margin.</summary>
+        static bool OnScreen(Vector3 world)
+        {
+            var cam = Camera.main;
+            if (cam == null) return true;
+            var v = cam.WorldToViewportPoint(world);
+            return v.z > 0f && v.x > -0.02f && v.x < 1.02f && v.y > -0.02f && v.y < 1.02f;
+        }
+
+        static bool IsKid(PeopleView pv, SimCore sim, PersonRef who)
+        {
+            var n = who.IsNotable ? sim.FindNotable(who.notableId) : null;
+            if (n != null) return n.age < 16f * 0.6f;
+            return pv.Planner.StageOf(who) == LifeStage.Kid;
         }
 
         bool NearFire(BoxView box, int root)
@@ -483,6 +548,42 @@ namespace AquariumCiv.View
             }
             return "nobody on view";
         }
+
+        // ================================================================== debug (#316)
+        /// <summary>Debug: a lone voice now from somebody on view, at the zoom the voices hear (far: muffled, quiet).</summary>
+        public string DebugLoneVoice()
+        {
+            if (lone.Count == 0 && groups.Count > 0) foreach (var m in groups[0].members) lone.Add(new VoiceMember { id = m.id, voice = m.voice, kid = m.kid });
+            if (lone.Count == 0) return "voices: nobody on view";
+            var who = lone[Voice.Lone % lone.Count];
+            var t = Voice.LoneNow(VoiceZoom, who);
+            Say(t, Now, false, true);
+            return $"voices: lone {(t.muffled ? "muffled " : "")}clip {t.clip} vol {t.volume:0.00} band {Voice.BandOf(VoiceZoom)}";
+        }
+
+        /// <summary>Debug: the first group has an exchange now (turns with pauses), whatever the zoom or its rest.</summary>
+        public string DebugExchange()
+        {
+            if (groups.Count == 0) return "voices: nobody stands together (try Gather 6)";
+            var g = groups[0];
+            var first = g.members[0];
+            var show = new ChatterShow { groupId = g.id, speakerId = first.id, listenerId = g.members[1].id, voice = first.voice, mark = ChatterMark.Dots, startAt = Now, endAt = Now + 2.2 };
+            int before = Babbles;
+            Speak(show, Now, false, true);
+            return $"voices: exchange in group {g.id} ({g.members.Count} people), {Babbles - before} turns, band {Voice.BandOf(VoiceZoom)}";
+        }
+
+        /// <summary>Debug: the band the voices hear: the camera's own, or forced to far, mid or near.</summary>
+        public static string DebugCycleBand()
+        {
+            float z = AudioDirector.ForcedZoom01;
+            AudioDirector.ForcedZoom01 = z < 0f ? 0.1f : z < 0.2f ? 0.4f : z < 0.5f ? 0.9f : -1f;
+            return "voice band: " + BandLabel();
+        }
+
+        public static string BandLabel() => AudioDirector.ForcedZoom01 < 0f ? "auto" : AudioDirector.ForcedZoom01 < 0.2f ? "far (forced)" : AudioDirector.ForcedZoom01 < 0.5f ? "mid (forced)" : "near (forced)";
+
+        public string VoiceStatus() => $"voices: {Voice.BandOf(VoiceZoom)} (zoom {VoiceZoom:0.00}, {BandLabel()}), vol {Voice.VolumeAt(VoiceZoom):0.00}{(Voice.Muffled(VoiceZoom) ? " muffled" : "")}, lone {Voice.Lone}, exchanges {Voice.Exchanges}, lines {Voice.Singles}, {lone.Count} on view";
 
         public string Status() => $"chatter: {Style}, {groups.Count} groups, {MarksDrawn} marks, zoom {Zoom01:0.00}, babbles {Babbles}";
     }
