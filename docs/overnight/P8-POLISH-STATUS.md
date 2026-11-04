@@ -68,3 +68,5 @@ Lane B (Editor) work happens in `F:\GameDev` on `vs/<n>-<slug>` branches cut fro
 - Lane B items done: 1, 5 (2 of 6 before tester).
 - 20:07 · USER: "drop item 14, bringing the fire where?" → item 14 agent stopped, branch vs/246-248-249-leftovers NOT merged (fire move dropped). keepers-hands §2/§2.1 struck. #246/#249 keep their check comments; #249 waits for sign-off.
 - 20:07 · item 6 merged (dd15044 via resolved merge), dotnet 1252/1252; #269 #270 open for sign-off (+#261 #258).
+- 20:15 · item 8 merged (699edf7), dotnet 1252/1252, RabbitView 2/2, EcoPhonePlaythrough 1/1 (sees rabbits). #282 open for sign-off. Lane B done: 1,5,6,8 (4/6 before tester).
+- 20:17 · item 9 (#283 view) Sonnet lane B id a23d23b27c3512583, F:\GameDev vs/283-hunt-view (restart first); watcher bb8uc23jj.
