@@ -716,3 +716,5 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   - Never start the same background test loop twice (a `nohup ... &` inside `run_in_background` survives and runs beside the second copy). Kill strays with `Get-CimInstance Win32_Process | ? CommandLine -like '*runtests*'`.
   - `--filter <TestName>` without `--filter_type` runs one named PlayMode test; `--filter_type category` works for `[Category("EcoMistView")]`.
   - Overlay shaders (`AquariumCiv/View/EcoGround`) need material assets under a `Resources/` folder (`EcoGroundMaterials.Make()` in Assets/Editor/Agent): `Shader.Find` alone drops them from a build. Property defaults changed in the shader only reach a material when it is recreated.
+
+- **2026-11-03 · `unity test <path>` (top-level) needs the Editor closed** ("project is already open in a running Editor"), and takes the project as an argument, not `--project-path`. With the Editor up use `unity command test run --mode editor|playmode --filter <partial name> --async_tests true`, then `test status` (a partial name like `Eco` batches several classes in one run). [verified]

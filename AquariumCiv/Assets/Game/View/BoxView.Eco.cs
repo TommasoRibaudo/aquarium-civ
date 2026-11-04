@@ -187,8 +187,14 @@ namespace AquariumCiv.View
                 }
         }
 
+        /// <summary>How far past the land's edge the glass stands inside (the water meets the pane, #269): the panes sit 7.5 cm out
+        /// and are 2 cm thick.</summary>
+        public const float GlassInner = 0.062f;
+
         /// <summary>The pond: a flat sheet at the water level over the water cells and their neighbours; the ground above the
-        /// water hides the sheet's square edge, so the shoreline is where the land meets the level.</summary>
+        /// water hides the sheet's square edge, so the shoreline is where the land meets the level. Where the water reaches the
+        /// box's edge the sheet runs on to the glass (clamped there) and a wall of water stands from the ground up to the level,
+        /// so you see the pond through the side pane (#269).</summary>
         Mesh EcoWaterMesh()
         {
             var mb = new MeshBuilder(seed + 3) { jitter = 0f };
@@ -197,17 +203,56 @@ namespace AquariumCiv.View
             if (ec.pondCells > 0)
             {
                 float y = ec.waterY, h = Site.Cell * 0.5f + 0.003f;
+                float HX = Land.HX, HZ = Land.HZ;
                 for (int c = 0; c < Site.N; c++)
                 {
                     if (!ec.NearWater(c)) continue;
                     float x = Site.CXc(c), z = Site.CZc(c);
                     float depth = ec.waterY - land.Height(x, z);
                     var col = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01(depth / 0.12f));
-                    QuadUp(mb, new Vector3(x - h, y, z - h), new Vector3(x - h, y, z + h), new Vector3(x + h, y, z + h), new Vector3(x + h, y, z - h), col);
+                    float x0 = x - h, x1 = x + h, z0 = z - h, z1 = z + h;
+                    int i = Site.I(c), j = Site.J(c);
+                    // At the box's edge the sheet goes on to the glass where the ground there is under the water, and no further.
+                    bool eL = i == 0 && land.Height(-HX + 0.001f, z) < y, eR = i == Site.NX - 1 && land.Height(HX - 0.001f, z) < y;
+                    bool eF = j == 0 && land.Height(x, -HZ + 0.001f) < y, eB = j == Site.NZ - 1 && land.Height(x, HZ - 0.001f) < y;
+                    if (eL) x0 = -HX - GlassInner; if (eR) x1 = HX + GlassInner;
+                    if (eF) z0 = -HZ - GlassInner; if (eB) z1 = HZ + GlassInner;
+                    x0 = Mathf.Max(x0, -HX - GlassInner); x1 = Mathf.Min(x1, HX + GlassInner);
+                    z0 = Mathf.Max(z0, -HZ - GlassInner); z1 = Mathf.Min(z1, HZ + GlassInner);
+                    QuadUp(mb, new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0), col);
+                    // The wall at the glass, seen through the pane: from the ground at the edge up to the level.
+                    if (eL) WaterWall(mb, new Vector2(-HX, z0), new Vector2(-HX, z1), -HX - GlassInner, new Vector3(-1, 0, 0), y, co);
+                    if (eR) WaterWall(mb, new Vector2(HX, z0), new Vector2(HX, z1), HX + GlassInner, new Vector3(1, 0, 0), y, co);
+                    if (eF) WaterWall(mb, new Vector2(x0, -HZ), new Vector2(x1, -HZ), -HZ - GlassInner, new Vector3(0, 0, -1), y, co);
+                    if (eB) WaterWall(mb, new Vector2(x0, HZ), new Vector2(x1, HZ), HZ + GlassInner, new Vector3(0, 0, 1), y, co);
                 }
             }
             return mb.ToMesh("Water");
         }
+
+        /// <summary>One cell's face of the pond against a pane: its top edge at the water level, its foot on the soil cut's top,
+        /// lighter at the top and deeper below, drawn facing out (to the eye behind the glass). <paramref name="a"/>/<paramref name="b"/>
+        /// are the points on the land's edge (their height gives the foot); the wall stands at <paramref name="glassAt"/> on its axis.</summary>
+        void WaterWall(MeshBuilder mb, Vector2 a, Vector2 b, float glassAt, Vector3 outward, float y, LandColors co)
+        {
+            bool alongX = outward.x != 0f;
+            Vector3 P(Vector2 q, float h) => alongX ? new Vector3(glassAt, h, q.y) : new Vector3(q.x, h, glassAt);
+            // The foot sits just under the soil cut's top so no gap shows between the ground and the wall.
+            float ha = land.Height(a.x, a.y) - 0.03f, hb = land.Height(b.x, b.y) - 0.03f;
+            if (ha >= y && hb >= y) return;
+            ha = Mathf.Min(ha, y - 0.01f); hb = Mathf.Min(hb, y - 0.01f);
+            var top = Color.Lerp(co.water, Color.white, 0.12f);
+            var da = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - ha) / 0.3f));
+            var db = Color.Lerp(co.water, co.waterDeep, Mathf.Clamp01((y - hb) / 0.3f));
+            Vector3 fa = P(a, ha), fb = P(b, hb), ta = P(a, y), tb = P(b, y);
+            // Front faces are the ones whose cross product points at the viewer (as QuadUp has it).
+            if (Vector3.Dot(Vector3.Cross(ta - fa, tb - fa), outward) > 0f) { mb.TriC(fa, ta, tb, da, top, top); mb.TriC(fa, tb, fb, da, top, db); }
+            else { mb.TriC(fa, tb, ta, da, top, top); mb.TriC(fa, fb, tb, da, db, top); }
+        }
+
+        /// <summary>The meshes as drawn, for the tests and the shots (#269, #270).</summary>
+        public Mesh DebugWaterMesh => waterFilter != null ? waterFilter.sharedMesh : null;
+        public Mesh DebugDampMesh => tableFilter != null ? tableFilter.sharedMesh : null;
 
         void RefreshEcoWater()
         {
@@ -229,55 +274,111 @@ namespace AquariumCiv.View
             foreach (var m in panes) if (m != null) m.SetFloat(DropletsId, Droplets);
         }
 
-        // ---------------- the water table in the soil cut (keepers-hands §5.2, #245) ----------------
+        // ---------------- the water table in the soil cut (keepers-hands §5.2, #245, #270) ----------------
         MeshFilter tableFilter;
-        const float WetFringe = 0.14f;
+        MeshFilter sheenFilter;
+        Material dampMat, sheenMat;
         int tableKey = int.MinValue;
 
-        /// <summary>The table's level as drawn, in steps of 2 mm of height (the band is rebuilt only when it moves a step).</summary>
+        /// <summary>The table's level as drawn, in steps of 2 mm of height (the damp earth is rebuilt only when it moves a step).</summary>
         int TableKey => Eco ? Mathf.RoundToInt(layout.eco.tableY * 500f) : int.MinValue;
 
-        /// <summary>The water table seen through the glass: below it the soil cut is wet and dark-blue, with a bright line where
-        /// the water stands; it rises as the Keeper's mists soak down, and meets the ground where the pond surfaces.</summary>
+        /// <summary>How damp the soil cut is at a height, 0 (dry) to 1: full under the water table, fading out over about 20 cm
+        /// above it, the fade's height wobbling along the glass and darker streaks running down inside (#270). Smooth in
+        /// <paramref name="y"/> everywhere: there is no line or edge to the damp earth.</summary>
+        public static float DampAmount(float along, int side, float y, float table)
+        {
+            float w = (Land.Noise(along * 2.3f + side * 7f, 1.1f) - 0.5f) * 0.09f + (Land.Noise(along * 9f + side * 3f, 5.3f) - 0.5f) * 0.05f;
+            float t = Mathf.Clamp01((y - (table - 0.11f + w)) / 0.2f);
+            float damp = 1f - t * t * (3f - 2f * t);
+            float streak = 0.8f + 0.2f * Land.Noise(along * 17f + side * 5f, y * 2.2f + 9f); // a few darker damp streaks
+            return damp * streak;
+        }
+
+        /// <summary>The water table seen through the glass as damp earth: the soil cut below it is darker and a little wet, and
+        /// fades into the dry layers above with no line. The mesh carries only an amount in its vertex alpha; the EcoWet material
+        /// multiplies the soil by a darker, warmer colour and EcoSheen adds a faint glint. It rises as the Keeper's mists soak
+        /// down, and reaches the top of the cut where the pond surfaces.</summary>
         Mesh EcoTableMesh()
         {
-            var mb = new MeshBuilder(seed + 5) { jitter = 0f };
-            float HX = Land.HX, HZ = Land.HZ, y = layout.eco.tableY;
+            float HX = Land.HX, HZ = Land.HZ, table = layout.eco.tableY;
             var corners = new[] { new Vector2(-HX, -HZ), new Vector2(HX, -HZ), new Vector2(HX, HZ), new Vector2(-HX, HZ) };
-            var wet = Color.Lerp(Palette.Loam, Co.waterDeep, 0.4f);
-            var line = Color.Lerp(Co.water, Color.white, 0.25f);
+            // The heights the damp is sampled at: coarse far under the table, fine around the fade.
+            var ys = new List<float> { 0f };
+            float lo = Mathf.Max(0.05f, table - 0.3f), hi = table + 0.12f;
+            for (float y = 0.15f; y < lo; y += 0.15f) ys.Add(y);
+            for (float y = lo; y < hi; y += 0.03f) ys.Add(y);
+            ys.Add(hi);
+            int rows = ys.Count;
+            var verts = new List<Vector3>(); var cols = new List<Color>(); var tris = new List<int>();
             for (int side = 0; side < 4; side++)
             {
                 var p0 = corners[side]; var p1 = corners[(side + 1) % 4];
                 int segs = Mathf.RoundToInt(Vector2.Distance(p0, p1) / 0.0625f);
-                var o = new Vector3(p1.y - p0.y, 0, -(p1.x - p0.x)).normalized * 0.003f; // just proud of the soil cut
-                for (int s = 0; s < segs; s++)
+                var o = new Vector3(p1.y - p0.y, 0, -(p1.x - p0.x)).normalized * 0.004f; // just proud of the soil cut
+                int first = verts.Count;
+                for (int s = 0; s <= segs; s++)
                 {
-                    var a = Vector2.Lerp(p0, p1, s / (float)segs); var b = Vector2.Lerp(p0, p1, (s + 1) / (float)segs);
-                    float[] la = Layers(a), lb = Layers(b);
-                    float ta = Mathf.Min(y, la[4] - 0.004f), tb = Mathf.Min(y, lb[4] - 0.004f);
-                    float ba = Mathf.Max(la[1], ta - WetFringe), bb = Mathf.Max(lb[1], tb - WetFringe); // a wet fringe under the line, not a slab (tester)
-                    if (ta <= ba + 0.002f && tb <= bb + 0.002f) continue;
-                    ta = Mathf.Max(ta, ba); tb = Mathf.Max(tb, bb);
-                    Vector3 A(float h) => new Vector3(a.x, h, a.y) + o;
-                    Vector3 B(float h) => new Vector3(b.x, h, b.y) + o;
-                    mb.Quad(A(ba), A(Mathf.Max(ba, ta - 0.012f)), B(Mathf.Max(bb, tb - 0.012f)), B(bb), wet);
-                    mb.Quad(A(Mathf.Max(ba, ta - 0.012f)), A(ta), B(tb), B(Mathf.Max(bb, tb - 0.012f)), line);
+                    var a = Vector2.Lerp(p0, p1, s / (float)segs);
+                    float top = Layers(a)[4] - 0.004f;
+                    float along = side < 2 ? a.x : a.y;
+                    for (int k = 0; k < rows; k++)
+                    {
+                        float y = Mathf.Min(ys[k], top);
+                        verts.Add(new Vector3(a.x, y, a.y) + o);
+                        cols.Add(new Color(1f, 1f, 1f, DampAmount(along, side, y, table)));
+                    }
                 }
+                for (int s = 0; s < segs; s++)
+                    for (int k = 0; k < rows - 1; k++)
+                    {
+                        int v = first + s * rows + k, w = v + rows;
+                        tris.Add(v); tris.Add(v + 1); tris.Add(w + 1);
+                        tris.Add(v); tris.Add(w + 1); tris.Add(w);
+                    }
             }
-            return mb.ToMesh("WaterTable");
+            var m = new Mesh { name = "DampEarth", indexFormat = verts.Count > 65000 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16 };
+            m.SetVertices(verts); m.SetColors(cols); m.SetTriangles(tris, 0);
+            m.RecalculateBounds();
+            return m;
         }
 
-        /// <summary>Called on every refresh: (re)draws the band when the living land is on and the table moved a step.</summary>
+        MeshFilter SpawnDamp(string name, Material mat)
+        {
+            var go = new GameObject(name) { hideFlags = GenFlags };
+            go.transform.SetParent(root, false);
+            var f = go.AddComponent<MeshFilter>();
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            return f;
+        }
+
+        /// <summary>Called on every refresh: (re)draws the damp earth when the living land is on and the table moved a step.</summary>
         void SyncEcoTable()
         {
             int key = TableKey;
             if (key == tableKey && (tableFilter != null || key == int.MinValue)) return;
             tableKey = key;
-            if (tableFilter != null) { var oldm = tableFilter.sharedMesh; if (oldm != null) { if (Application.isPlaying) Destroy(oldm); else DestroyImmediate(oldm); } }
-            if (!Eco) { if (tableFilter != null) { if (Application.isPlaying) Destroy(tableFilter.gameObject); else DestroyImmediate(tableFilter.gameObject); } tableFilter = null; return; }
-            if (tableFilter == null) tableFilter = Spawn("WaterTable", EcoTableMesh(), Solid, false).GetComponent<MeshFilter>();
-            else tableFilter.sharedMesh = EcoTableMesh();
+            if (tableFilter != null) Kill(tableFilter.sharedMesh);
+            if (!Eco)
+            {
+                if (tableFilter != null) Kill(tableFilter.gameObject);
+                if (sheenFilter != null) Kill(sheenFilter.gameObject);
+                tableFilter = sheenFilter = null;
+                return;
+            }
+            if (tableFilter == null)
+            {
+                dampMat ??= EcoSurface.MakeMaterial("EcoWet", 0, 2, 0);       // multiply: DstColor Zero
+                sheenMat ??= EcoSurface.MakeMaterial("EcoSheen", 1, 1, 1);    // add
+                if (sheenMat != null) sheenMat.SetFloat("_SheenAmount", 0.16f);
+                tableFilter = SpawnDamp("DampEarth", dampMat);
+                sheenFilter = SpawnDamp("DampSheen", sheenMat);
+            }
+            var mesh = EcoTableMesh();
+            tableFilter.sharedMesh = mesh; sheenFilter.sharedMesh = mesh;
         }
     }
 }
