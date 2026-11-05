@@ -10,7 +10,7 @@ namespace AquariumCiv.Sim.Eco
     /// every chance is a hash of (seed, cell, season). The Keeper's hands (<see cref="Mist"/>, <see cref="Plant"/>,
     /// <see cref="Wipe"/>, <see cref="Snip"/>) act at once, between steps; the next step carries them on.
     /// </summary>
-    public sealed class EcoModel
+    public sealed partial class EcoModel
     {
         public readonly EcoState st;
         public readonly EcoLand land;
@@ -115,6 +115,7 @@ namespace AquariumCiv.Sim.Eco
             GrowTree(s, month);
             Birds(s);
             Animals(month);
+            Vines(s);
             st.season++;
             Count();
             Gates(month);

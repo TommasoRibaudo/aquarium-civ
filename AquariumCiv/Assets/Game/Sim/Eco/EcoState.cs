@@ -52,6 +52,8 @@ namespace AquariumCiv.Sim.Eco
         public float treeProgress, treeWeeds;
         public int treeStage;           // 0 seed, 1 sprout, 2 sapling, 3 young, 4 grown
         public int keeperMistings;      // the people learn from these
+        /// <summary>#314: the creeping vine, as site cells (a strand grows one cell a season at its tip; see EcoModel.Vines). Empty until the camp has a shaded, damp edge.</summary>
+        public List<int> vine = new List<int>();
         public bool treeWilting;
 
         // Gates: the game month each opened (-1 = closed).
