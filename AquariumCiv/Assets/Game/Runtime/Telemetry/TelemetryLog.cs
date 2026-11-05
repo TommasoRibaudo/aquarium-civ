@@ -45,12 +45,12 @@ namespace AquariumCiv.Game
         /// <summary>The A/B variant of this run (P7: "A" = dilemmas off, "B" = on); null = not an experiment. Written into every session_start.</summary>
         public string Variant { get; private set; }
 
-        /// <summary>Sets the variant and logs it (so a mid-session change, like the debug toggle, is in the record). Same value again: no line.</summary>
-        public void SetVariant(string variant)
+        /// <summary>Sets the variant and logs it (so a mid-session change, like the debug toggle, is in the record). Same value again: no line. announce=false sets it silently (session start: the session_start line carries it).</summary>
+        public void SetVariant(string variant, bool announce = true)
         {
             if (variant == Variant) return;
             Variant = variant;
-            if (variant != null) Log(Ev.Variant, "v", variant);
+            if (announce && variant != null) Log(Ev.Variant, "v", variant);
         }
 
         public TelemetryLog(ITelemetryStorage storage, Func<DateTime> utcNow, string boxId, TelemetryOptions options = null)

@@ -88,6 +88,17 @@ namespace AquariumCiv.View
         public int BirdCallsPlayed { get; private set; }
         public float BirdSwell => birdSong != null ? birdSong.Swell : 1f;
 
+        // #331: the sand's hiss as occasional gusts (SandGusts) on one pooled source: a random offset into one of four cuts, faded in and out.
+        SandGusts sandGusts;
+        AudioSource gustSource;
+        AudioClip[] gustClips;
+        int hissLayer = -1;
+        float gustT, gustDur, gustIn, gustOut, gustVolume;
+        /// <summary>Gusts played so far and how the last one was set (tests, the debug panel).</summary>
+        public int SandGustsPlayed { get; private set; }
+        public string LastSandGust { get; private set; } = "none yet";
+        public bool GustSounding => gustSource != null && gustSource.isPlaying;
+
         // #315: the pond's frogs: single croaks on one pooled source (never two at once), not the recorded chorus loop.
         FrogCroaker frogCroak;
         AudioSource frogSource;
@@ -146,6 +157,12 @@ namespace AquariumCiv.View
             frogClips = new AudioClip[FrogCroaker.ClipCount];
             for (int i = 0; i < frogClips.Length; i++) frogClips[i] = Clip("proc:frog" + i);
             frogCroak = new FrogCroaker(Environment.TickCount + 315);
+            hissLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbSandHiss);
+            gustSource = Source("SandGusts", false);
+            var gustCue = CueLibrary.Get(CueLibrary.AmbSandHiss);
+            gustClips = new AudioClip[Math.Min(SandGusts.ClipCount, gustCue.clips.Count)];
+            for (int i = 0; i < gustClips.Length; i++) gustClips[i] = Clip(gustCue.clips[i]);
+            sandGusts = new SandGusts(Environment.TickCount + 331);
             eraWatch = new MomentWatch(this, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Director : null, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Wave : null);
             lastWatch = new MomentWatch(this, () => BoxCompleteController.Instance != null ? BoxCompleteController.Instance.Director : null, () => null);
             var missing = CheckClips();
@@ -338,6 +355,7 @@ namespace AquariumCiv.View
                 float v = fader.Level(i) * CueLibrary.Get(AmbienceLevels.CueIds[i]).volume * bus;
                 if (i == birdLayer) v *= birdSong.Swell;
                 if (i == frogLayer && LayerForce[i] != 1) v = 0f; // #315: no chorus loop, only single croaks (UpdateFrogs)
+                if (i == hissLayer) v = 0f;                        // #331: no constant hiss, only gusts (UpdateGusts)
                 src.volume = v;
                 if (v > 0.001f && !src.isPlaying)
                 {
@@ -348,7 +366,52 @@ namespace AquariumCiv.View
             }
             UpdateBirds(dt, inMoment, bus);
             UpdateFrogs(dt, inMoment, bus);
+            UpdateGusts(dt, inMoment, bus);
             UpdateStones(dt, inMoment);
+        }
+
+        // #331: the gust rate and level come from the hiss layer (the bare share); one gust at a time, its envelope here.
+        void UpdateGusts(float dt, bool inMoment, float bus)
+        {
+            if (gustSource.isPlaying)
+            {
+                gustT += dt;
+                float env = gustT >= gustDur ? 0f : Mathf.Min(1f, gustT / Mathf.Max(0.01f, gustIn), (gustDur - gustT) / Mathf.Max(0.01f, gustOut));
+                gustSource.volume = gustVolume * env * bus; // a gust under way follows the settings
+                if (gustT >= gustDur) gustSource.Stop();
+            }
+            if (hissLayer < 0 || inMoment || LayerForce[hissLayer] == 2) return;
+            if (!sandGusts.Tick(dt, fader.Level(hissLayer), out var gust)) return;
+            PlayGust(gust, fader.Level(hissLayer));
+        }
+
+        void PlayGust(in SandGust g, float level)
+        {
+            var clip = gustClips[Mathf.Clamp(g.clip, 0, gustClips.Length - 1)];
+            if (clip == null) return;
+            gustSource.clip = clip;
+            gustSource.pitch = g.pitch;
+            gustSource.panStereo = g.pan;
+            // A random offset into the cut, leaving room for the whole gust (pitch shortens or lengthens it a little).
+            float room = Mathf.Max(0f, clip.length - g.duration * g.pitch - 0.1f);
+            gustSource.time = g.startFrac * room;
+            gustT = 0f; gustDur = Mathf.Min(g.duration, (clip.length - gustSource.time) / g.pitch); gustIn = g.fadeIn; gustOut = g.fadeOut;
+            gustVolume = g.gain * Mathf.Clamp01(level) * CueLibrary.Get(CueLibrary.AmbSandHiss).volume;
+            gustSource.volume = 0f;
+            gustSource.Play();
+            SandGustsPlayed++;
+            LastSandGust = $"clip {g.clip} at {gustSource.time:0.0}s for {gustDur:0.0}s gain {g.gain:0.00} level {level:0.00} pitch {g.pitch:0.00} pan {g.pan:0.00}";
+        }
+
+        /// <summary>Debug (#331): a sand gust now, at the hiss level (full when the layer is forced on, at least 0.5 otherwise so it can be heard on a green box).</summary>
+        public static string DebugSandGust()
+        {
+            var a = Instance;
+            if (a == null) return "no AudioDirector";
+            if (a.gustSource.isPlaying) return "a gust is still sounding (one at a time)";
+            float level = Mathf.Max(0.5f, a.fader.Level(a.hissLayer));
+            a.PlayGust(a.sandGusts.Now(), level);
+            return "sand gust: " + a.LastSandGust;
         }
 
         // #280: loose stones, rare one-shots on the barren bed. The gap is long when the bed is faint and about 14 s when it is full;
@@ -518,11 +581,11 @@ namespace AquariumCiv.View
             var s = a.settings;
             var t = a.ambTarget;
             return string.Format(CultureInfo.InvariantCulture,
-                "audio: sound {0}{1} · sfx {2:0.00} amb {3:0.00} music {4:0.00} · duck {5:0.00}\nbuses: ui/care/world {6:0.00} amb {7:0.00} music {8:0.00}\namb now: calm {9:0.00} birds {10:0.00} crickets {11:0.00} rain {12:0.00} wind {13:0.00} flies {19:0.00}\nplayed {14} (muted {15}, dropped {16}) · buzzes {17} · last {18}",
+                "audio: sound {0}{1} · sfx {2:0.00} amb {3:0.00} music {4:0.00} · duck {5:0.00}\nbuses: ui/care/world {6:0.00} amb {7:0.00} music {8:0.00}\namb now: calm {9:0.00} birds {10:0.00} crickets {11:0.00} rain {12:0.00} wind {13:0.00} flies {19:0.00} sand-gust rate {20:0.00} (gusts {21}, next in {22:0}s)\nplayed {14} (muted {15}, dropped {16}) · buzzes {17} · last {18}",
                 s.sound ? "on" : "OFF", s.deviceSilent ? " (phone silent)" : "", s.sfx, s.ambience, s.music, a.ducker.Gain,
                 a.Gain(SoundBus.Care), a.Gain(SoundBus.Ambience), a.Gain(SoundBus.Music),
                 a.fader.Level(0), a.fader.Level(1), a.fader.Level(2), a.fader.Level(3), a.fader.Level(4),
-                a.PlayedCount, a.MutedCount, a.DroppedCount, a.HapticsFired, a.LastPlayed, a.fader.Level(5));
+                a.PlayedCount, a.MutedCount, a.DroppedCount, a.HapticsFired, a.LastPlayed, a.fader.Level(5), a.fader.Level(a.hissLayer), a.SandGustsPlayed, a.sandGusts.SecondsToNext);
         }
 
         public static string DebugPlay(string cue)

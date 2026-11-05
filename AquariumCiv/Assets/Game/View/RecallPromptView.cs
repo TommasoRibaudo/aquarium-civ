@@ -41,6 +41,11 @@ namespace AquariumCiv.View
         Vector2Int lastScreen;
         float nextCheck;
         bool loaded;
+        // #328: the calm-moment tracking (per frame, so a short tap between two checks still counts)
+        float lastTouchTime, lastBusyTime;
+        bool askWhenCalm; // debug: show at the next calm moment, whatever the day and story count say
+        /// <summary>Real seconds with nothing on screen and no touch before the question may show (tests shorten it).</summary>
+        public float calmSeconds = (float)RecallCalm.CalmSeconds;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -114,6 +119,49 @@ namespace AquariumCiv.View
             return false;
         }
 
+        /// <summary>#328: the HUD's state as the pure rule wants it (read only). Timers come from the per-frame tracking.</summary>
+        public RecallCalmState CalmState()
+        {
+            var hud = GameHud.Instance;
+            var sm = ShowMeDirector.Instance;
+            var fr = FindAnyObjectByType<FirstRunView>();
+            var tl = TimeLapseView.Find();
+            float now = Time.unscaledTime;
+            return new RecallCalmState
+            {
+                sheetOpen = hud != null && (!string.IsNullOrEmpty(hud.OpenSheet) || hud.OutsideSheet != null && hud.OutsideSheet != sheet),
+                toolInHand = hud != null && (hud.Hand != GameHud.KitTool.None || hud.CleanMode || hud.ChipLaneTaken)
+                    || CareView.Instance != null && (CareView.Instance.IsWiping || CareView.Instance.IsGrabbing),
+                firstRunStep = fr != null && fr.Step != AquariumCiv.Sim.FirstRunStep.Done,
+                momentPlaying = MomentPlayer.Instance != null && (MomentPlayer.Instance.Playing || GameClock.Instance != null && GameClock.Instance.Held)
+                    || sm != null && (sm.State != ShowMeDirector.Phase.Idle || sm.CaptionUp)
+                    || CardStackView.Instance != null && CardStackView.Instance.Showing
+                    || PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen
+                    || tl != null && tl.Active,
+                captionOrToast = GameUiPanel.Toasts.Current != null || GameUiPanel.Toasts.Waiting > 0,
+                anotherPromptUp = IsOpen || FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen,
+                secondsSinceTouch = now - lastTouchTime,
+                secondsSinceBusy = now - lastBusyTime,
+            };
+        }
+
+        /// <summary>Per frame: note a finger on the screen, and the last frame anything was in the way.</summary>
+        void TrackCalm()
+        {
+            float now = Time.unscaledTime;
+            bool touching = false;
+            var ts = UnityEngine.InputSystem.Touchscreen.current;
+            if (ts != null) foreach (var t in ts.touches) if (t.isInProgress) { touching = true; break; }
+            var m = UnityEngine.InputSystem.Mouse.current;
+            if (!touching && m != null && (m.leftButton.isPressed || m.rightButton.isPressed || m.middleButton.isPressed)) touching = true;
+            if (touching) lastTouchTime = now;
+            // the HUD read does two scene finds: sample it 4x a second, not every frame (an idle game is left open)
+            if (now < nextBusySample) return;
+            nextBusySample = now + 0.25f;
+            if (RecallCalm.Busy(CalmState())) lastBusyTime = now;
+        }
+        float nextBusySample;
+
         /// <summary>Stories the tester has had a chance to recall: cards, Show me, person cards, history opened.</summary>
         static int StoryTouches(TelemetryLog log)
         {
@@ -135,15 +183,24 @@ namespace AquariumCiv.View
 
         void Update()
         {
+            if (Instance == this && GameClock.Tel != null) TrackCalm();
             if (sheet != null && (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y)) ApplySafeArea();
             if (Time.unscaledTime < nextCheck || GameClock.Tel == null) return;
             nextCheck = Time.unscaledTime + checkSeconds;
             if (!loaded) LoadState();
             if (IsOpen) return;
+            if (askWhenCalm) { if (CalmFor()) { askWhenCalm = false; Show(); } return; }
             // cheap checks first; reading the log (stories seen) only when everything else says yes
             if (!RecallPrompt.ShouldAsk(State, Context(false), FirstDay, LastDay)) return;
             if (!RecallPrompt.ShouldAsk(State, Context(true), FirstDay, LastDay)) return;
+            if (!CalmFor()) return; // #328: wait for a calm moment, ask again at the next check
             Show();
+        }
+
+        bool CalmFor()
+        {
+            var s = CalmState();
+            return !RecallCalm.Busy(s) && s.secondsSinceTouch >= calmSeconds && s.secondsSinceBusy >= calmSeconds;
         }
 
         // ---------------- the sheet ----------------
@@ -272,6 +329,15 @@ namespace AquariumCiv.View
             if (v == null) return "no RecallPromptView";
             v.Show();
             return v.IsOpen ? "recall question shown" : "could not show";
+        }
+
+        /// <summary>#328: the question at the next calm moment (not over the Kit, a tool, a step, a toast), ignoring the day and story count.</summary>
+        public static string DebugAskWhenCalm()
+        {
+            var v = Instance;
+            if (v == null) return "no RecallPromptView";
+            v.askWhenCalm = true;
+            return "recall question waits for a calm moment";
         }
 
         public static string DebugReset()

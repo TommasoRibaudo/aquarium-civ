@@ -87,7 +87,9 @@ namespace AquariumCiv.Audio
                 // The barren bed: full on a dead box, eased out as the green takes over; quieter at night, gone below 15 % bare.
                 float u = Clamp01((bare - BarrenGoneBelow) / (1f - BarrenGoneBelow));
                 barren = u * u * (3f - 2f * u) * (0.75f + 0.25f * day);
-                sandHiss = barren;                               // the sand's hiss rides the same share (its own recording, the high band)
+                // #331: the sand's hiss is the gust rate and level (SandGusts), not a bed: lower, and gone by 40 % bare, well before the wind bed's 15 %.
+                float uh = Clamp01((bare - SandHissGoneBelow) / (1f - SandHissGoneBelow));
+                sandHiss = SandHissMax * uh * uh * (3f - 2f * uh);
                 calm *= 1f - 0.5f * barren;                      // the dry wind carries the room on a dead box
                 float life = 1f - bare;
                 birds = a.ecoBirds ? birds * (0.35f + 0.65f * Clamp01(life * 1.5f)) : 0f;
@@ -114,6 +116,9 @@ namespace AquariumCiv.Audio
 
         /// <summary>P8: below this share of bare land the barren bed is silent [est].</summary>
         public const float BarrenGoneBelow = 0.15f;
+
+        /// <summary>#331: below this share of bare land the sand's gusts are silent, and the gust level on a dead box [est].</summary>
+        public const float SandHissGoneBelow = 0.4f, SandHissMax = 0.55f;
 
         /// <summary>Below this much mess there are no flies at all [est].</summary>
         public const float FliesFrom = 0.15f;

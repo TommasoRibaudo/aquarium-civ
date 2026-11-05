@@ -214,6 +214,60 @@ forest edge (gardeners, woodcutters), and you see them doing it. The glass and t
 The trash heaps go. The land gives enough to tend, and the people's own mark on the land comes back in the town as
 felling, smoke and fouled water (§8), which belong to the land model instead of being litter.
 
+### 5.7 Open: what the tweezers tend in a forest (#330, discussion 2026-11-04, no build until you pick)
+**The question.** #311 made the tweezers pluck wild seedlings and saplings at the forest's edge, never a grown tree and
+never a "heart" (a cell with 3+ grown trees beside it, `EcoTuning.heartTrees`). You asked why the Keeper would remove
+trees at all, and pictured the trees as **bonsai**: the Keeper takes back the tall shoots that search for the top of
+the box, and the tree stays.
+
+**How it works today (from the code).**
+- `EcoModel.CanPluckSapling(c)`: the cell is a seedling or a young tree, is not the Keeper's tree, and is not in a heart.
+  `NearestSapling` finds one within `SaplingReach` (0.16 box units) of the finger; the pluck leaves grass (damp) or bare ground.
+- Forest trees are not objects. Each grown tree is one cell of cover, drawn into the ecology mesh in `BoxView.Eco.cs`
+  (`Pieces.Tree`, seeded by the cell). The Keeper's tree is the one hand-built model (`KeeperTreeKit`, stages 0-4).
+- There is no growth state per tree beyond its stage, and nothing a finger can pick on a crown.
+- A sapling pluck is a **removal**. It only takes a weed-sized tree, but it can read as the Keeper felling, which sits
+  badly with pillar 3 and with §5.4's "nothing dies back".
+
+**What not pruning must look like, in every option that adds shoots.** It never punishes and no tree dies (§5.4,
+`game-design-practices.md` §9). A shoot left alone does soft things, never a number or a warning: (1) its tip presses
+on the glass and leaves a **leaf print** that the cloth wipes off; (2) the crown grows **lopsided**, leaning toward the
+glass (the tree already leans for light, §4); (3) a long limb **shades a yard** a little, and the people work round
+it. Each caps at a mild value after a few game years, and shoots stop growing while you are away (like grime at 48 h).
+
+**The three options.**
+
+| | A. Keep the pluck as is | B. Pluck only in the people's space | C. Bonsai pruning (shoots) |
+|---|---|---|---|
+| **What the tweezers tend** | Weeds, the vine and edge saplings, anywhere outside a heart | Weeds, the vine, and saplings **on paths and in yards** only; a sapling in the meadow or the wood is left to grow | Weeds and the vine as now, plus **reach shoots** on trees. C1: the Keeper's tree only, 1-3 shoots. C2: later, forest trees too. The sapling pluck is dropped (C alone) or limited as in B (C with B) |
+| **Reads as** | Weeding the meadow's edge | Keeping the paths open: the people's space is yours to clear, the wood's is not | Shaping a bonsai: the tree stays and keeps its shape; nothing leaves |
+| **Pros** | Built and tested, no new art. Already answers "the forest eats the meadow" | Small edit. Answers your doubt for the wood and keeps the pluck where the people need it. Removes the "Keeper fells trees" reading in the forest | Matches your picture. Nothing is removed. The first real use of the tweezers on the tree you care for; a visible, charming act, and a reason to look up |
+| **Cons** | Still a removal. No answer to "trees reaching for the glass" | The rule needs a hint (pluck on a path, not beside it). Nothing holds the forest back from the meadow, so the meadow slowly loses ground (a land story, not a loss card, but a change) | New sim state, a new mesh part and a pick target. C2 is the expensive half. Dropping the pluck (C alone) has the same meadow cost as B |
+| **Sim** | none | **S**, about 1-2 h: `CanPluckSapling` gains "cell is path or yard" (those layers exist); `NearestSapling` follows; update `EcoTweezersTests` | C1 **M**, about 4-6 h: a `reach` count (0-3) and length on the Keeper's tree, grown on a clock in its own seeded stream (not the main stream), capped, paused in absence; `PluckShoot`; the soft effects (print age on the pane, a lean value, a shade flag for the cell the limb covers). C2 **L**, about 10-14 h more: a sparse per-tree shoot map (a byte per grown tree), save format, the shade rule on yards |
+| **View** | none | none (the pop exists) | C1 **M**, about 4-6 h: shoot meshes in `KeeperTreeKit.Grown` (a thin limb with a leaf cluster, length by growth, `mb.sway`), rebuilt when the count changes; the shoot tip as a pick piece like the weed patches that `PickUnder` already finds; a leaf-print on the near pane (reuse the grime path), wiped by the cloth; a snip pop. C2 **L**, about 12-16 h: wood trees are baked cell by cell into one mesh, so shoots need per-tree pieces (instanced or a second mesh layer), and picking among many small shoots on a phone needs a wider reach or a drag-along snip |
+| **Tests** | none | S: the path/yard rule; a meadow sapling stays | M: growth, cap, absence pause, snip, seed determinism, save round trip, print and cloth, pick by touch (PlayMode), a tester pass. C2 adds the dense-wood case |
+| **Size** | **S** (nothing) | **S** (about 2-3 h) | **C1: M** (about 10-14 h with tests and a tester pass); **C2: L** on top (about 25-30 h); C with B is C1 plus 2-3 h |
+| **Debug panel** | as is | as is | "grow shoots on the tree", "shoots to full", "leaf print now" (CLAUDE.md rule) |
+| **Risk** | The complaint stands | Low | The Keeper's tree is one tree in one place, so its shoots are easy to find. In the wood they are small and many: a chore in what must stay a toy (practices §9). Keep C2 off until C1 has been played |
+
+Hours are [est] for one worker including tests, not the Editor verification pass.
+
+**Recommendation (yours to accept or not): B now, then C1.**
+1. **B now** (about 2-3 h). The cheapest honest answer: the Keeper clears the people's paths and yards and leaves
+   the wood alone. A forest left to itself is the land's business, and later the people (woodcutters, §8.3) manage it.
+2. **Then C1**: bonsai shoots on the Keeper's tree only, 1-3 of them, with the soft consequences above (leaf print,
+   lopsided crown, a little shade). The snip makes the tree neater and removes nothing. It gives the tweezers a
+   reason to touch the tree you love, which is the part of your idea that adds something new.
+3. **Decide C2 after C1 has been played.** If one tree's shoots are fun, extend them to a few old forest trees at a
+   time (a reaching limb now and then), not to every tree. If they are a chore, leave them on the Keeper's tree.
+
+Why not A: it keeps the one gesture that reads as felling. Why not C alone: with no pluck at all the forest's spread
+has no hand against it, which is a quiet, permanent change to the meadow that you did not choose.
+
+**Question for you.** Do you want **B now, then C1** (shoots on the Keeper's tree)? Or something else: A, B alone, C1
+alone (accepting that the forest takes meadow), or C2 as well? And is a leaf print on the pane, a lopsided crown and a
+little shade in a yard enough for "if you don't prune", or should one of them go?
+
 ---
 
 ## 6. What it changes, and the order

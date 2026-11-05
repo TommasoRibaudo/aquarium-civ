@@ -347,7 +347,7 @@ namespace AquariumCiv.Audio.Tests
             }
             Assert.AreEqual(0.05f, latch.Low, 1e-6f, "the latch keeps the lowest");
             Assert.AreEqual(0f, Ambience.Targets(Eco(10f, latch.Update(1f), true)).barren, "a bare reading later does not bring the bed back");
-            Assert.That(Ambience.Targets(Eco(10f, 1f)).sandHiss, Is.GreaterThan(0.5f), "full hiss on a dead box");
+            Assert.That(Ambience.Targets(Eco(10f, 1f)).sandHiss, Is.GreaterThan(0.4f), "gusts at their fullest on a dead box");
             Assert.AreEqual(0f, Ambience.Targets(At(10f)).sandHiss, "none in the old slice");
         }
 

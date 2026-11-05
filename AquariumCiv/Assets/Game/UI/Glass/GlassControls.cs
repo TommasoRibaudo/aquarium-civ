@@ -5,7 +5,7 @@ using UnityEngine.UIElements;
 
 namespace AquariumCiv.GameUI
 {
-    public enum ButtonKind { Primary, Secondary, Quiet, Icon }
+    public enum ButtonKind { Primary, Secondary, Quiet, Icon, Ghost }
 
     /// <summary>
     /// A hit area that reaches <see cref="GameUiPanel.MinTarget"/> around a piece drawn smaller. UI Toolkit picks an element only inside
@@ -155,6 +155,7 @@ namespace AquariumCiv.GameUI
                 EnableInClassList("kg-btn--primary", value == ButtonKind.Primary);
                 EnableInClassList("kg-btn--quiet", value == ButtonKind.Quiet);
                 EnableInClassList("kg-btn--icon", value == ButtonKind.Icon);
+                EnableInClassList("kg-btn--ghost", value == ButtonKind.Ghost);
             }
         }
 

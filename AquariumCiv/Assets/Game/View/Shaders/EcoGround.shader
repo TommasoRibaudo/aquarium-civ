@@ -24,7 +24,7 @@ Shader "AquariumCiv/View/EcoGround"
         _PuddleDeep ("Puddle bed", Color) = (0.07, 0.055, 0.045, 1)
         _Gloss ("Reflection at grazing angles", Range(0, 1)) = 0.85
         _Ripple ("Ripple", Range(0, 1)) = 0.6
-        _FreshLift ("Fresh green lift by day", Range(0, 1)) = 0.7
+        _FreshLift ("Fresh green lift by day", Range(0, 1)) = 0.25
         _FreshDay ("Daylight 0..1 (set by EcoSurface from the day's light)", Range(0, 1)) = 1
         [HideInInspector] _SrcBlend ("Src blend", Float) = 5
         [HideInInspector] _DstBlend ("Dst blend", Float) = 10
