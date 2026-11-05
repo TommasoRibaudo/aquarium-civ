@@ -86,6 +86,12 @@ namespace AquariumCiv.Sim.Eco
         public float peopleWater = 0.18f, ringSlowsWeeds = 0.5f;
         public float seedUnlockBush = 0.003f;                     // the seed comes after the first bushes
 
+        // #314: the creeping vine (slower than the weeds: a strand grows a cell a season, a new one starts now and then)
+        public int vineCap = 30;
+        public float vineSeedChance = 0.3f, vineGrowChance = 0.5f, vineDamp = 0.4f;
+        // #311: a wild sapling inside a wood (this many grown trees round it) is the forest's own heart, not its edge
+        public int heartTrees = 3;
+
         // Gates
         public float campMeadow = 0.20f;
         public int campRabbits = 2;

@@ -48,7 +48,7 @@ namespace AquariumCiv.Sim
 
         // ---------- derived values ----------
         /// <summary>0..1. The glass is half of it: it's what the player sees first and wipes most.</summary>
-        public float MessLevel => State.grime * (2f / 3f) + State.overgrowth * (1f / 3f); // glass and weeds only: the trash heaps are gone (#313)
+        public float MessLevel => State.grime * (2f / 3f) + Math.Min(1f, State.overgrowth + VineLoad) * (1f / 3f); // glass, weeds and vine: the trash heaps are gone (#313); the vine counts as overgrowth (#314)
         /// <summary>Gate 1: the work-pace drop, linear in mess (shown to the player as sunlight and work pace).</summary>
         public float OutputPenalty => Config.outputPenaltyMax * MessLevel;
         public float OutputMultiplier => (0.8f + 0.4f * State.mood) * (1f - OutputPenalty);

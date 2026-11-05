@@ -484,6 +484,25 @@ namespace AquariumCiv.View
                 if (hud != null && GUILayout.Button(hud.CleanMode ? "Clean mode: on (tap = off)" : "Clean mode: off (tap = on)")) { hud.SetCleanMode(!hud.CleanMode); last = Done("clean mode " + (hud.CleanMode ? "on" : "off")); }
                 var care = CareView.Instance;
                 if (care != null) GUILayout.Label($"sun x{care.SunFactor:0.00} · glass drawn {care.GlassMean:0.00} · weeds {care.Props.WeedCount} · strokes {care.StrokeCount}");
+                if (sim.EcologyOn)
+                {
+                    // #311 / #314: what the tweezers take
+                    GUILayout.Label($"vine {sim.EcoVine.Count} cells · tree weeds {sim.EcoTreeWeedPieces}/3 · plucks {(care != null ? care.Plucks : 0)}");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Weeds round tree")) last = Done(sim.DebugGrowTreeWeeds() ? "weeds round the tree" : "no tree planted yet");
+                    if (GUILayout.Button("Creep forest edge")) last = Done(sim.DebugCreepForestEdge(6) + " saplings crept in");
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Grow vines here"))
+                    {
+                        var at = new Vector3(sim.EcoGround.campX + 0.8f, 0f, sim.EcoGround.campZ);
+                        var mist = EcoMistView.Instance;
+                        if (mist != null && mist.GroundPoint(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out var g)) at = g;
+                        last = Done(sim.DebugGrowVine(at.x, at.z, 8) + " vine cells");
+                    }
+                    if (hud != null && GUILayout.Button(hud.Hand == GameHud.KitTool.Tweezers ? "Tweezers: in hand" : "Give tweezers")) { hud.SetHand(GameHud.KitTool.Tweezers); last = Done("tweezers in hand"); }
+                    GUILayout.EndHorizontal();
+                }
             }
 
             GUILayout.EndVertical();

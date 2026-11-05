@@ -17,7 +17,7 @@ Details: [design/results/P8.md](design/results/P8.md) "The polish run"; shots in
 - **#280 sound**: a listen. The recorded spray is brighter (7.9 kHz centroid); birds are faint against the wind on a half-green day; no recorded dirt-crackle exists in CC0, so the barren bed has none.
 - **#273 camera**: close zoom reaches each wall; far zoom keeps the box on screen; the front/back reach at close zoom is small on a tall phone.
 - **#274 bridges**, **#276 ritual symbols**, **#208 dawn lane**, **#210/#211 crumbs**: look sign-offs. #210: ★ I read it as "add falling crumbs" and kept the hut-sized Sky Crumb lump; say if the lump itself should become crumbs.
-- **#249 the kit button**: built after build 15 as a sheet with three tools, not the fanned rail of keepers-hands §3.3; snips and the stick aren't in it.
+- **#249 the kit button**: built after build 15 as a sheet with three tools, not the fanned rail of keepers-hands §3.3; the stick isn't in it; the tweezers are (#311).
 
 ### Decisions needed
 - **#292 kit wishes**: a living-land box has no wishes; what is the first wish, if any?

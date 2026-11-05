@@ -23,7 +23,7 @@ namespace AquariumCiv.Audio
 
         // ---------- ids: care (the keeper's hands) ----------
         public const string WipeRub = "wipe_rub", WipeStart = "wipe_start", PaneClean = "pane_clean", FullClean = "full_clean",
-            MessGrab = "mess_grab", MessDrop = "mess_drop", MessFlick = "mess_flick", Prune = "prune", Rain = "rain_start",
+            MessGrab = "mess_grab", MessDrop = "mess_drop", MessFlick = "mess_flick", Prune = "prune", Pluck = "pluck", Rain = "rain_start",
             ShapeChannel = "shape_channel", ShapeOutcrop = "shape_outcrop", ShapeFail = "shape_fail", TapGlass = "tap_glass",
             TapPerson = "tap_person", Discovery = "discovery", WishGiven = "wish_given"; // #191: a wish answered
 
@@ -94,6 +94,7 @@ namespace AquariumCiv.Audio
             Add(new CueDef(MessDrop, SoundBus.Care, 0.45f, Care + "dropLeather").Jitter(1.5f).Limit(0.1f, 2).Prio(50).Len(0.4f));
             Add(new CueDef(MessFlick, SoundBus.Care, 0.6f, "proc:swish").Jitter(1f).Limit(0.08f, 3).Prio(60).Len(0.4f).Buzz(HapticKind.Medium));
             Add(new CueDef(Prune, SoundBus.Care, 0.45f, Care + "knifeSlice", Care + "knifeSlice2").Jitter(1.5f).Limit(0.12f, 2).Prio(55).Len(0.4f).Buzz(HapticKind.Selection));
+            Add(new CueDef(Pluck, SoundBus.Care, 0.5f, "proc:pop").Jitter(3f).Limit(0.07f, 3).Prio(55).Len(0.25f).Buzz(HapticKind.Light)); // #311: the tweezers lift a weed, a vine or a sapling out
             Add(new CueDef(Rain, SoundBus.Care, 0.35f, Care + "drop_002", Care + "drop_003").Jitter(2f).Limit(0.15f, 3).Prio(45).Len(0.3f));
             Add(new CueDef(ShapeChannel, SoundBus.Care, 0.5f, Care + "footstep_grass_000", Care + "footstep_grass_001", Care + "footstep_grass_002").Jitter(1.5f, 0.12f).Limit(0.09f, 3).Prio(55).Len(0.3f).Buzz(HapticKind.Selection));
             Add(new CueDef(ShapeOutcrop, SoundBus.Care, 0.55f, Care + "impactMining_000", Care + "impactMining_001", Care + "impactMining_002").Jitter(1f).Limit(0.2f, 2).Prio(60).Len(0.5f).Buzz(HapticKind.Medium));

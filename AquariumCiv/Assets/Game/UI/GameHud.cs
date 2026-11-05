@@ -146,10 +146,10 @@ namespace AquariumCiv.GameUI
 
         // ---------------- P8: the Keeper's kit (keepers-hands.md section 3) ----------------
         /// <summary>The kit's tools besides the cloth (the cloth is clean mode). One in hand at a time; one finger is the tool, two the camera.</summary>
-        public enum KitTool { None, Mister, Seed }
+        public enum KitTool { None, Mister, Seed, Tweezers }
         KitTool hand;
         bool kitBox, kitSeedShown;
-        GlassButton kitCloth, kitMister, kitSeed;
+        GlassButton kitCloth, kitMister, kitSeed, kitTweezers;
         Label kitNote;
         /// <summary>The tool in hand (the mister or the seed), or None. The cloth is <see cref="CleanMode"/>.</summary>
         public KitTool Hand => hand;
@@ -171,12 +171,15 @@ namespace AquariumCiv.GameUI
             }
             if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
             if (t == KitTool.Seed) Toast("Tap a spot on the land to plant the seed.", 4f);
+            if (t == KitTool.Tweezers) Toast(TweezersHint, 4f);
             HandChanged?.Invoke(t);
         }
 
         // Tester run 2: the Mister's hint is for the first meeting. It shows the first time the mister is picked up, once more if the
         // player put it down without misting, then never again (PlayerPrefs: it is about the player, not the box).
         public const string MisterHint = "Hold a finger over the land to mist it. Two fingers move the view.";
+        /// <summary>#311: the tweezers pluck what overgrows; the cloth keeps the glass.</summary>
+        public const string TweezersHint = "Tap or drag over weeds, vines and saplings to pluck them. Two fingers move the view.";
         const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
         public static bool MisterHintDue
         {
@@ -215,6 +218,7 @@ namespace AquariumCiv.GameUI
             acts.AddToClassList("kg-card-acts");
             acts.Add(kitCloth = new GlassButton("Cloth", () => { CloseSheet(); SetCleanMode(true); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-cloth" });
             acts.Add(kitMister = new GlassButton("Mister", () => SetHand(KitTool.Mister), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-mister" });
+            acts.Add(kitTweezers = new GlassButton("Tweezers", () => SetHand(KitTool.Tweezers), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-tweezers" });
             acts.Add(kitSeed = new GlassButton("Seed", () => SetHand(KitTool.Seed), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-seed" });
             kitNote.style.whiteSpace = WhiteSpace.Normal; // the phone's width: the note wraps, never runs off the sheet
             kitNote.style.marginBottom = 12;
@@ -246,9 +250,9 @@ namespace AquariumCiv.GameUI
                 if (!seed && hand == KitTool.Seed) SetHand(KitTool.None);
             }
             if (kitNote != null)
-                kitNote.text = seed ? "Cloth wipes the glass. Mister wets the land. Seed: plant the one tree."
-                    : sim.EcoTree.cell >= 0 ? "Cloth wipes the glass. Mister wets the land and the tree."
-                    : "Cloth wipes the glass. Mister wets the land. A seed comes when the land can hold a tree.";
+                kitNote.text = seed ? "Cloth wipes the glass. Mister wets the land. Tweezers pluck what overgrows. Seed: plant the one tree."
+                    : sim.EcoTree.cell >= 0 ? "Cloth wipes the glass. Mister wets the land and the tree. Tweezers pluck what overgrows."
+                    : "Cloth wipes the glass. Mister wets the land. Tweezers pluck what overgrows. A seed comes when the land can hold a tree.";
         }
 
         /// <summary>The first run's wipe and flick: the hint says to drag, so nothing turns clean mode off under it, not Done (the tool isn't
