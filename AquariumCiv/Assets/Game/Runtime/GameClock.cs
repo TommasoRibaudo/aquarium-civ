@@ -110,7 +110,7 @@ namespace AquariumCiv.Game
         void BeginSession(string reason, double awayHours)
         {
             sessionStart = Time.realtimeSinceStartup;
-            Telemetry.SetVariant(DilemmaSurvey.VariantOf(config.dilemmas)); // P7 (#225): A = dilemmas off, B = on, in every session_start
+            Telemetry.SetVariant(DilemmaSurvey.VariantOf(config.dilemmas), false); // P7 (#225): A = dilemmas off, B = on, in every session_start
             Telemetry.StartSession(reason, awayHours, Application.version, Application.platform.ToString(),
                 (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalMinutes);
         }
