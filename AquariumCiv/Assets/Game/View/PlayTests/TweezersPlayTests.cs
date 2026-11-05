@@ -180,7 +180,7 @@ namespace AquariumCiv.View.PlayTests
                 if (tuft != null)
                 {
                     yield return TapAt(ScreenOf(tuft));
-                    Assert.AreEqual(2, sim.EcoTreeWeedPieces, "one tuft round the tree came out");
+                    Assert.AreEqual(2, sim.EcoTreeWeedPieces, "one tuft round the tree came out (last pluck: " + care.LastPluck + ")");
                     Assert.AreEqual("treeweed", care.LastPluck);
                 }
 
@@ -204,7 +204,7 @@ namespace AquariumCiv.View.PlayTests
                 if (OnScreen(sp))
                 {
                     yield return TapAt(sp);
-                    Assert.AreNotEqual((byte)EcoCover.Seedling, e.cover[cell], "the sapling came out");
+                    Assert.AreNotEqual((byte)EcoCover.Seedling, e.cover[cell], "the sapling came out (last pluck: " + care.LastPluck + ")");
                     Assert.AreEqual("sapling", care.LastPluck);
                 }
                 // The Keeper's own tree never comes out

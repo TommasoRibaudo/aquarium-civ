@@ -579,6 +579,7 @@ namespace AquariumCiv.View
             {
                 pressSeen = true;
                 tweezing = n == 1 && !UiInput.Over(pos) && sim.EcologyOn && hud.IsVisible && !hud.SheetOpen && !hud.CameraMode;
+                lastPluckAt = -9f; // the throttle paces a drag; a fresh tap always gets its pluck
             }
             if (n >= 2) tweezing = false; // two fingers are the camera's
             if (!tweezing) return;
@@ -593,8 +594,22 @@ namespace AquariumCiv.View
             var c = Cam;
             if (c == null || sim == null || !sim.EcologyOn) return false;
             var piece = props.PickUnder(c, screenPos, TapReachPixels * 1.2f);
-            if (piece != null && !BehindDirtyGlass(c, piece)) return PluckPiece(sim, piece);
-            if (LandPoint(screenPos, out var at))
+            if (piece != null && BehindDirtyGlass(c, piece)) piece = null;
+            bool onLand = LandPoint(screenPos, out var at);
+            if (piece != null && onLand)
+            {
+                // A wild sapling nearer the finger than the drawn piece wins (a weed patch's reach must not hide the sapling you tapped).
+                int near = sim.EcoNearestSapling(at.x, at.z, SaplingReach);
+                if (near >= 0)
+                {
+                    var sw = box.transform.TransformPoint(new Vector3(Sim_X(near), box.GroundHeight(Sim_X(near), Sim_Z(near)), Sim_Z(near)));
+                    var ss = c.WorldToScreenPoint(sw);
+                    var ps = c.WorldToScreenPoint(piece.Center);
+                    if (Vector2.Distance(screenPos, ss) < Vector2.Distance(screenPos, ps)) piece = null;
+                }
+            }
+            if (piece != null) return PluckPiece(sim, piece);
+            if (onLand)
             {
                 int cell = sim.EcoPluckSapling(at.x, at.z, SaplingReach);
                 if (cell >= 0)

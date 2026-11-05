@@ -181,6 +181,9 @@ namespace AquariumCiv.Sim
             return c;
         }
 
+        /// <summary>The wild sapling the tweezers could take nearest a point (within <paramref name="radius"/>), without plucking it; -1 if none.</summary>
+        public int EcoNearestSapling(float x, float z, float radius) => EcologyOn ? EcoM.NearestSapling(x, z, radius) : -1;
+
         /// <summary>A wild sapling the tweezers could take stands on this cell.</summary>
         public bool EcoCanPluckSapling(int cell) => EcologyOn && EcoM.CanPluckSapling(cell);
 
