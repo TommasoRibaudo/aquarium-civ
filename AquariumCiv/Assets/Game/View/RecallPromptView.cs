@@ -155,8 +155,12 @@ namespace AquariumCiv.View
             var m = UnityEngine.InputSystem.Mouse.current;
             if (!touching && m != null && (m.leftButton.isPressed || m.rightButton.isPressed || m.middleButton.isPressed)) touching = true;
             if (touching) lastTouchTime = now;
+            // the HUD read does two scene finds: sample it 4x a second, not every frame (an idle game is left open)
+            if (now < nextBusySample) return;
+            nextBusySample = now + 0.25f;
             if (RecallCalm.Busy(CalmState())) lastBusyTime = now;
         }
+        float nextBusySample;
 
         /// <summary>Stories the tester has had a chance to recall: cards, Show me, person cards, history opened.</summary>
         static int StoryTouches(TelemetryLog log)
