@@ -187,7 +187,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(1f);
                 yield return Shot("t2fix_newgrass_fade0");
                 EcoSurface.FadeSpeed = 45f;
-                yield return Until(() => surf.LandSeconds >= 90f, 8f);
+                yield return Until(() => surf.LandSeconds >= EcoSeen.FadeSeconds * 0.5f, 8f);
                 EcoSurface.FadeSpeed = 0f;
                 yield return Frames(20);
                 yield return Compare(overlay, res);
