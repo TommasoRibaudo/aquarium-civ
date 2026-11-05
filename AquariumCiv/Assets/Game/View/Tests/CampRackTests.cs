@@ -34,14 +34,14 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void HideRack_StaysInsideItsFootprint_AndGrowsWithItsPile()
         {
-            var zs = new List<float> { -0.1f, 0f, 0.1f };
-            var a = new MeshBuilder(1); Pieces.HideRack(a, 0.2f, zs, 0, 1);
-            var b = new MeshBuilder(1); Pieces.HideRack(b, 0.2f, zs, 3, 1);
+            
+            var a = new MeshBuilder(1); Pieces.HideRack(a, 3, 0, 1);
+            var b = new MeshBuilder(1); Pieces.HideRack(b, 3, 3, 1);
             Assert.Greater(b.VertexCount, a.VertexCount, "the folded hides add geometry");
             foreach (var v in b.verts)
             {
                 Assert.LessOrEqual(Mathf.Abs(v.x), Pieces.RackHalfDepth + 1e-3f, "across the bar");
-                Assert.LessOrEqual(Mathf.Abs(v.z), 0.2f + 0.04f, "along the bar");
+                Assert.LessOrEqual(Mathf.Abs(v.z), Pieces.RackHalfLength(2) + 0.05f, "along the bar");
                 Assert.GreaterOrEqual(v.y, -0.01f);
             }
         }
@@ -52,8 +52,8 @@ namespace AquariumCiv.View.Tests
             float nearest = LifePlanner.HideFrameDistance - Pieces.RackHalfDepth;
             Assert.Greater(nearest, CrowdAvoid.FireRadius + 0.08f, "room to walk and sit between the fire and the rack");
             Assert.AreEqual(0, CampView.PileFor(2));
-            Assert.AreEqual(2, CampView.PileFor(8));
-            Assert.AreEqual(3, CampView.PileFor(9));
+            Assert.AreEqual(1, CampView.PileFor(3));
+            Assert.AreEqual(3, CampView.PileFor(8));
         }
     }
 }

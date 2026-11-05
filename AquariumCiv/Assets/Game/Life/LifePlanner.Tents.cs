@@ -62,7 +62,7 @@ namespace AquariumCiv.Life
         /// <summary>Hours of the beats; the walk beats follow the distances.</summary>
         public const float TentTakeHours = 0.15f, TentRaiseHours = 0.6f, TentStandHours = 0.2f;
         /// <summary>How far from the fire the hide frame stands (world units) and how far apart its hides hang.</summary>
-        public const float HideFrameDistance = 0.46f, HideFrameSpacing = 0.075f;
+        public const float HideFrameDistance = 0.5f, HideFrameSpacing = 0.075f;
         /// <summary>The frame shows this many hides at most.</summary>
         public const int HideFrameMax = 8;
         /// <summary>The builders of a tent: the builder named by the sim, then others, up to this many grown-ups.</summary>

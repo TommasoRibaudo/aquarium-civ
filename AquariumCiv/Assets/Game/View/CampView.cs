@@ -268,14 +268,13 @@ namespace AquariumCiv.View
         {
             var mb = new MeshBuilder(box.seed + 284) { jitter = 0f };
             var land = box.land;
-            float halfLen = Mathf.Max(0.12f, HideFrameSpan(hides.Count) * 0.5f + 0.06f);
+            
             float yaw = Mathf.Atan2(dx, dz) * Mathf.Rad2Deg; // local +z runs along the bar, +x away from the fire
             var centre = land.OnGround(cx, cz);
             mb.M = Matrix4x4.TRS(centre, Quaternion.Euler(0f, yaw, 0f), Vector3.one);
-            var inv = mb.M.inverse;
-            var zs = new List<float>(hides.Count);
-            foreach (var p in hides) zs.Add(inv.MultiplyPoint3x4(land.OnGround(p.x, p.z)).z);
-            Pieces.HideRack(mb, halfLen, zs, PileFor(hides.Count), box.seed + 284);
+
+
+            Pieces.HideRack(mb, hides.Count, PileFor(hides.Count), box.seed + 284);
             mb.M = Matrix4x4.identity;
             var go = new GameObject("HideFrame") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(Holder(), false);
@@ -286,9 +285,9 @@ namespace AquariumCiv.View
             return go;
         }
 
-        /// <summary>Folded hides at the rack's foot for the hides on it: one for every three, at most three.</summary>
-        public static int PileFor(int hidesOnFrame) => Mathf.Clamp(hidesOnFrame / 3, 0, 3);
+        /// <summary>Folded hides at the rack's foot: the hides beyond the two stretched on it, at most three.</summary>
+        public static int PileFor(int hidesOnFrame) => Mathf.Clamp(hidesOnFrame - Pieces.RackMaxOnFrame, 0, 3);
 
-        static float HideFrameSpan(int n) => Mathf.Max(3, n) * LifePlanner.HideFrameSpacing;
+        
     }
 }
