@@ -392,7 +392,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(3);
             yield return FrameCost("blur 14");
 
-            Sim.AddMess(0.7f, 0.5f, 6);
+            Sim.AddMess(0.7f, 0.5f);
             yield return Frames(60);
             Debug.Log($"[Hero] grime {Sim.State.grime:0.00}");
             yield return Cap("close-dirty");

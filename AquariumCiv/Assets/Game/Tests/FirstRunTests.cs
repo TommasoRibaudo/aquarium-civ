@@ -107,7 +107,6 @@ namespace AquariumCiv.Tests
                 Assert.AreEqual(FirstRunStep.Arrive, run.Step);
                 Assert.GreaterOrEqual(sim.State.grime, FirstRun.StartGrime);
                 Assert.GreaterOrEqual(sim.State.overgrowth, FirstRun.StartOvergrowth);
-                Assert.AreEqual(0, sim.State.trash.Count);
                 var (px, pz) = run.PatchSpot; var (rx, rz) = run.SuggestedRainSpot;
                 Assert.LessOrEqual(Math.Abs(px), 3f); Assert.LessOrEqual(Math.Abs(pz), 2.2f);
                 Assert.LessOrEqual(Math.Abs(rx), 3f); Assert.LessOrEqual(Math.Abs(rz), 2.2f);

@@ -162,7 +162,6 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(buildings, s.buildings.Count, "nothing is built");
             Assert.AreEqual(era, s.era, "no eras");
             Assert.AreEqual(0f, s.grime, "the glass doesn't get dirty");
-            Assert.AreEqual(0, s.trash.Count);
             Assert.AreEqual(relics, s.relics.Count, "no relic is made");
             Assert.IsTrue(s.boxComplete);
             Assert.LessOrEqual(maxLate, SimCore.MuseumChronicleMax);

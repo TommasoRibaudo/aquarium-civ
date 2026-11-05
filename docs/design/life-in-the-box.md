@@ -32,9 +32,9 @@ Recommended option first, marked ★.
    icon over every busy person · icons only when zoomed in.
 5. **Prop size.** ★ **Props 1.5–2× real size** (an axe, a basket, a sheaf on the head), so they read at full-box zoom
    (Kingdom's lesson: the tool is the job) · true scale.
-6. **Sweepers and gardeners in the town** (decided: "you see people cleaning"). ★ **They really clear trash heaps and
-   trim overgrowth, slowly** (the sim removes the items; you can still flick faster; the glass stays yours) · cosmetic
-   only (they sweep paths and weed the green; the trash heaps stay yours) · they carry heaps to a midden that you empty.
+6. **Sweepers and gardeners in the town** (decided: "you see people cleaning"). ★ **They really trim
+   overgrowth, slowly** (the sim removes it; the glass stays yours) · cosmetic only (they sweep paths and weed the green).
+   *Update 2026-11-04 (#313): the trash heaps are gone (keepers-hands §5.6), so there is nothing to carry to a midden.*
 7. **Mourning.** ★ **One quiet evening at a remembering place** (a cairn in the camp, a churchyard by the shrine
    later): people stand still, someone leaves a flower; a small stone stays · the chronicle card only, nothing in the
    box.
@@ -176,7 +176,7 @@ smithy, watch house: notable-roles §1–§2).
 | **Weaver / dyer** | Works a loom by an open door (shuttle back and forth); dips cloth in vats; hangs it on lines | Bolts of cloth → the market | Loom, cloth, drying lines | **Coloured cloth on lines** (dye meadow colours) | The shuttle |
 | **Baker** | At dawn carries loaves to the market; kneads; the oven glows | Loaf board on the head | Board, loaves | The dawn walk to the market | Steam from the loaves |
 | **Stallholder** | Stands at a stall, calls out (a jump-bob), hands goods over | Restocks from the carts | Stall, goods | Dolls behind stall awnings, shoppers in front | The call, the trade |
-| **Sweeper / gardener** (care, §7) | Mornings: sweeps the streets and takes trash heaps to the cart. Afternoons: weeds the green, trims vines | Handcart of rubbish → the midden; cuttings basket | Broom, cart, shears | A doll with a cart stopping at each heap | The broom strokes |
+| **Sweeper / gardener** (care, §7) | Mornings: sweeps the streets. Afternoons: weeds the green, trims vines | Cuttings basket → the midden | Broom, cart, shears | A doll sweeping the lanes, one with shears at the green | The broom strokes |
 | **Lord** (role, inherited) | Morning round of the market and workshops with the heir trailing behind; holds court on the market steps (sits; people come up, bow, leave); **speaks from the steps** in the evening; leads the yearly procession; answers the Keeper's spring | — | A chair on the steps; accent cloak | A seated doll at the steps, a small one behind them on the round | The bow, the heir copying the lord |
 | **Priest** (role) | As the village; blesses the storm's new pond | — | As village | As village | As village |
 | **Innkeeper** (role) | Sweeps the inn's doorstep, rolls barrels in; **at dusk carries tables out** (more under the Keeper's lamp); serves; takes the orchard's cider | Barrels, tables, cider jugs | Tables, mugs, lantern | Tables appearing outside at dusk, a crowd round them | The serve, the laugh |
@@ -212,7 +212,7 @@ never get roles. A building's slots fill in the order below, so a small settleme
 | **Church / shrine** | 0 (a place) | The rest-day service, weddings, mourning |
 | **Workshop** (town) | 2 | Weaving, dyeing, whatever its craft is |
 | **Guildhall** (town) | 0 (a place) | Guild meetings, the banner |
-| **Town care** | 1 sweeper per ~12 people [est] | Sweeping, trash to the cart, weeding (§7) |
+| **Town care** | 1 sweeper per ~12 people [est] | Sweeping, weeding (§7) |
 | **Keeper's shaping** | as it says | The tools' "who reacts" column (research 10): a herd brings hunters, a dye meadow beekeepers |
 
 If a building has more slots than the crowd can fill, the slots are left empty in that order (the field gets its
@@ -247,24 +247,22 @@ card's "Show me" plays a short **echo** (Choice 9).
 
 ## 7. Care workers in later eras
 
-Decided (2026-10-29, "Care moves up"): in later eras the people handle their own trash and gardens, **visibly**; the
+Decided (2026-10-29, "Care moves up"): in later eras the people handle their own gardens, **visibly** (the trash heaps were removed in #313); the
 glass is always the Keeper's (game definition §5 rule 5).
 
 | Era | Who cares | What you see | What stays the Keeper's |
 |---|---|---|---|
-| **Camp** | Nobody | The trash heaps are the Keeper's to flick away | Glass, trash, overgrowth |
-| **Village** | Everyone a little, cosmetically | People sweep their own doorsteps and weed their crofts; a spring tidy | Glass, trash heaps, overgrowth (the people can't reach the roofs yet) |
-| **Town** | The **sweeper/gardener** job (notables) plus crowd sweepers (§5) | Morning: a sweeper with a broom and a handcart stops at each heap and wheels it to the midden. Afternoon: weeding the green, trimming vines off roofs with shears. Under a grump or a worrier in office, busier | **The glass, always.** Under Choice 6 ★ you can still flick heaps faster than the sweepers get there, and they cheer when you do |
+| **Camp** | Nobody | Nothing to see | Glass, overgrowth |
+| **Village** | Everyone a little, cosmetically | People sweep their own doorsteps and weed their crofts; a spring tidy | Glass, overgrowth (the people can't reach the roofs yet) |
+| **Town** | The **sweeper/gardener** job (notables) plus crowd sweepers (§5) | Morning: a sweeper with a broom sweeps the streets. Afternoon: weeding the green, trimming vines off roofs with shears. Under a grump or a worrier in office, busier | **The glass, always.** |
 
-Under Choice 6 ★ the sim needs a small change: in the town, the oldest trash item and a little overgrowth go away
-every N real hours per sweeper [est], so the view has something real to show them doing. That touches care state, not
-the economy.
+Under Choice 6 ★ the sim needs a small change: in the town, a little overgrowth goes away every N real hours per
+sweeper [est], so the view has something real to show them doing. That touches care state, not the economy.
 
 **Built (#60, `SimCore.Care.cs`):** sweepers = notables with the sweeper job + one from the crowd per 12 people, town
-only. Each clears a heap every 10 real hours (oldest first) and trims 0.005 overgrowth an hour (mess brings 1/48);
-together never more than half of what comes in, so mess still grows and a day of neglect still leaves about 6–7 heaps
-(vs 11–12) and half the weeds. Grime is never touched. `SweeperTarget(i)` / `SweeperTargets()` give the heap each
-sweeper is heading to, `SweepProgress` how close the next one is. It does touch the economy a little (less mess, quicker
+only. Each trims 0.005 overgrowth an hour (mess brings 1/48);
+together never more than half of what comes in, so mess still grows and a day of neglect still leaves half the weeds.
+Grime is never touched. (Heap clearing, `SweeperTarget(i)` and `SweepProgress` went with the trash, #313.) It does touch the economy a little (less mess, quicker
 work pace in the town); camp and village are unchanged.
 
 ---
@@ -278,7 +276,7 @@ then the person picks up where they left off.
 |---|---|
 | **Returns** (> ~15 min away, decided) | Everyone outdoors turns to the camera and **waves** for 2–3 s, more of them the longer you were away [est]. At night they step out with lanterns (Choice 2) |
 | **Wipes** grime off the glass | People under the clearing patch stop and **look up** (whole-body lean back), shade their eyes; at a full clean, everyone **cheers** (a jump) and someone says "Look at that sky!" |
-| **Flicks trash** away | Those nearby clap (a quick double bob); kids run to where it vanished |
+| ~~Flicks trash away~~ | Removed with the trash heaps (#313). The Prune row below covers the weeds (the Tweezers tool will come later) |
 | **Prunes** a vine off a roof | The family steps out of the door and waves |
 | **Rains** (tap) | People stop, look up, hold their hands out; some run under the eaves with baskets over their heads; **kids splash**; later the gatherers or farmers walk over (the tool's "who reacts", research 10) |
 | **Other shapings** (grove, herd, channel, lamp, hill, outcrop, spring, dye meadow, decorate) | The nearest look and **point**; a few walk over to look (that doesn't count as "used", research 10); then the tool's job or role arrives (the chief leads the hunt, the captain lights the night round from the lamp) |
@@ -395,14 +393,14 @@ phone. Practices §7: steady 30 fps minimum.
 | Who lives where | — | A home per family (a hut id): the sim or a planner rule ("each family's home is its founder's hut") |
 | Population and kids | `population` (a count) | Nothing: the planner splits it (~25 % kids [est]) |
 | Story events this month | `chronicle` (kind, month, notable ids, building id) | Fine as is; a festival's month is already a chronicle entry |
-| Mess and pace | `grime`, `overgrowth`, `trash` (slot, offset), `OutputMultiplier` | Trash x, z (Growth Lab gap 6); under Choice 6 ★, town sweepers clearing items |
+| Mess and pace | `grime`, `overgrowth`, `OutputMultiplier` | Town sweepers trimming overgrowth (the trash items were removed, #313) |
 | The era waiting | `eraReady` | — |
 
 **Wired (#62, `Assets/Game/Life`):** `LifePlanner.Wired(sim)` plugs in `TermLifeHints` (#28: a role-holder's
 `TermFlavorOf` above 0.5 becomes naps, songs, visits to the old, hill walks and an early night for the holder; box-wide,
 the leader in full and other offices at half, early nights, extra sweeping blocks, feast evenings and announcements) and
 `SettlePlacePositions` (#32: lot doors and field middles, the fire and market centre, the nearest pond shore, forest edge,
-woods, meadow, rock and hill to the green, the Keeper's shapings and their answers' lots, trash and nudge spots; walks
+woods, meadow, rock and hill to the green, the Keeper's shapings and their answers' lots and nudge spots; walks
 cost the traced Settle route at the path net's walking cost and `RouteOf` returns that route; homes are
 `Settlement.HomeOf`, so children live with a parent and partners share a home). Town sweepers are numbered notables
 first, then the crowd's, and sweeper i heads to `SweeperTarget(i)` first (#60). With settling off the planner keeps its

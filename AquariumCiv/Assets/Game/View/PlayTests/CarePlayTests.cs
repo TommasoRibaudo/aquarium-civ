@@ -14,7 +14,7 @@ namespace AquariumCiv.View.PlayTests
 {
     /// <summary>
     /// The care layer (#37) driven by touch in the real Slice scene at a portrait phone size: the Clean button, a wipe by
-    /// finger until the glass is spotless (timed), a flick of every heap and weed patch, the camera gate (a stroke on the
+    /// finger until the glass is spotless (timed), a flick of every weed patch, the camera gate (a stroke on the
     /// glass in clean mode never orbits; off the glass or with the mode off it does), the cheer and the auto-exit.
     /// Run alone (one InputTestFixture class per run); it backs up and restores the slice's save file.
     /// </summary>
@@ -178,12 +178,11 @@ namespace AquariumCiv.View.PlayTests
                 var sim = Sim;
                 var care = CareView.Instance;
                 var hud = GameHud.Instance;
-                sim.AddMess(1f, 1f, sim.Config.trashMax);
+                sim.AddMess(1f, 1f);
                 for (int i = 0; i < 20; i++) yield return null;
                 Assert.Greater(care.GlassMean, 0.5f, "the glass shows the grime");
-                Assert.Greater(care.Props.HeapCount, 0, "heaps are drawn");
                 Assert.Greater(care.Props.WeedCount, 0, "weeds are drawn");
-                // User 2026-10-30: bigger trash and weeds, clearly visible at default zoom (each at least 3 % of the screen
+                // User 2026-10-30: bigger weeds, clearly visible at default zoom (each at least 3 % of the screen
                 // height on a phone in portrait).
                 yield return new WaitForSecondsRealtime(0.6f); // done popping in
                 var cam = Camera.main;
@@ -231,12 +230,12 @@ namespace AquariumCiv.View.PlayTests
                 Assert.GreaterOrEqual(care.CheerCount, 1, "the people cheer when the glass goes spotless");
                 yield return Shot("care_glass_clean");
 
-                // Flick every heap and weed patch out (a fast release); behind clean glass they are in reach.
-                int before = sim.State.trash.Count;
+                // Flick every weed patch out (a fast release); behind clean glass they are in reach.
+                int before = care.Props.WeedCount;
                 int guard = 0;
                 float flickT0 = Time.realtimeSinceStartup;
                 float flickLen = 0f;
-                while ((sim.State.trash.Count > 0 || sim.State.overgrowth >= 0.03f) && guard++ < 24)
+                while (sim.State.overgrowth >= 0.03f && guard++ < 24)
                 {
                     var piece = care.Props.AllPieces.FirstOrDefault(p => !p.leaving);
                     if (piece == null) break;
@@ -244,15 +243,14 @@ namespace AquariumCiv.View.PlayTests
                     if (sp.x < 40 || sp.x > Screen.width - 40 || sp.y < 0.16f * Screen.height || sp.y > Screen.height - 0.15f * Screen.height)
                     {
                         // out of the comfortable area: skip it by wiping it through the sim (the test only needs the rest)
-                        if (piece.weed) sim.Prune(MessProps.WeedUnit); else sim.RemoveTrash(piece.key);
+                        sim.Prune(MessProps.WeedUnit);
                         yield return null; yield return null;
                         continue;
                     }
                     yield return Drag(new[] { sp, sp + new Vector2(0.01f, 0.08f) * Screen.height }, 0.045f * Screen.height, (l, f) => flickLen += l);
                     for (int i = 0; i < 3; i++) yield return null;
                 }
-                Debug.Log($"[care] flicked the mess out: {before} heaps first, {Time.realtimeSinceStartup - flickT0:0.0} s real, {flickLen / Screen.height:0.0} screen heights of path, trash left {sim.State.trash.Count}, overgrowth {sim.State.overgrowth:0.00}");
-                Assert.AreEqual(0, sim.State.trash.Count, "every heap is thrown out");
+                Debug.Log($"[care] flicked the mess out: {before} weed patches first, {Time.realtimeSinceStartup - flickT0:0.0} s real, {flickLen / Screen.height:0.0} screen heights of path, overgrowth {sim.State.overgrowth:0.00}");
                 Assert.Less(sim.State.overgrowth, 0.03f, "and the weeds");
                 Assert.Less(sim.MessLevel, 0.001f, "all tidy");
                 // In seconds: the sun takes about 4 s to recover, whatever the frame rate.
@@ -278,7 +276,7 @@ namespace AquariumCiv.View.PlayTests
                 var sim = Sim;
                 var hud = GameHud.Instance;
                 var rig = Rig;
-                sim.AddMess(1f, 0f, 0);
+                sim.AddMess(1f, 0f);
                 for (int i = 0; i < 10; i++) yield return null;
                 var rows = RowStrokes(CareView.Instance);
                 Assert.GreaterOrEqual(rows.Count, 2);
@@ -418,7 +416,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
-        public IEnumerator SlowDragOnMess_DropsItBack_AndAFastFlickThrowsItOut()
+        public IEnumerator SlowDragOnAWeed_DropsItBack_AndAFastFlickThrowsItOut()
         {
             yield return Open();
             try
@@ -429,20 +427,20 @@ namespace AquariumCiv.View.PlayTests
                 var sim = Sim;
                 var care = CareView.Instance;
                 var hud = GameHud.Instance;
-                sim.AddMess(0f, 0f, 3);
+                sim.AddMess(0f, 0.5f);
                 for (int i = 0; i < 20; i++) yield return null;
                 hud.SetCleanMode(true);
                 yield return null;
-                var piece = care.Props.AllPieces.First(p => !p.leaving && !p.weed);
+                var piece = care.Props.AllPieces.First(p => !p.leaving && p.weed);
                 var sp = (Vector2)Cam.WorldToScreenPoint(piece.Center);
-                // A slow drag only wobbles the heap and drops it back.
-                Assert.IsTrue(care.ClaimsPress(sp), "a heap in reach is ours");
+                // A slow drag only wobbles the weed patch and drops it back.
+                Assert.IsTrue(care.ClaimsPress(sp), "a weed patch in reach is ours");
                 yield return Drag(new[] { sp, sp + new Vector2(0.0f, 0.05f) * Screen.height }, 0.002f * Screen.height);
                 for (int i = 0; i < 5; i++) yield return null;
-                Assert.AreEqual(3, sim.State.trash.Count, "a slow drag drops it back");
+                Assert.AreEqual(0.5f, sim.State.overgrowth, 1e-4f, "a slow drag drops it back");
                 yield return Drag(new[] { sp, sp + new Vector2(0.01f, 0.1f) * Screen.height }, 0.05f * Screen.height);
                 for (int i = 0; i < 5; i++) yield return null;
-                Assert.AreEqual(2, sim.State.trash.Count, "a fast flick throws it out");
+                Assert.Less(sim.State.overgrowth, 0.5f, "a fast flick throws it out");
             }
             finally { Close(); }
         }

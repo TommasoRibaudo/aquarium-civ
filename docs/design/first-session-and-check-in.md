@@ -106,7 +106,7 @@ look, wipe or shape. Mess never gets a card; it shows on the glass only (pillar 
 |---|---|---|---|
 | **The wave** | 0:00–0:05 | As in the glance | Good news first starts here: the wave is happy, never worried |
 | **Chronicle cards** | 0:05–1:15 | 3–7 cards, slim, at the bottom, **good news first**, then the rest by salience; pinned person +0.15. "Show me" flies to it; "Skip all" | Sad news (an old notable's death) comes after the good, warm, with a line for the legends roster. Unread cards wait for the next open, never lost |
-| **Care** | 1:15–2:00 | Wipe the glass, toss 1–3 bits of junk, prune a vine. The cheer when spotless | Under a minute for a full clean (§5 rule 3). Never a card or a number about mess |
+| **Care** | 1:15–2:00 | Wipe the glass, prune a vine or two of weeds (no trash heaps any more, #313). The cheer when spotless | Under a minute for a full clean (§5 rule 3). Never a card or a number about mess |
 | **A shaping or a wish** | 2:00–2:45 | At most one wish card per return (research 10); its "Give" opens the tray with that tool chosen and the spot marked. Or open the tray yourself. The people react at once; the answer comes in 1–3 game years and is credited later | No timer on a wish; it just stops once given. A shaping can be taken back until it's used |
 | **Optional** | any time | Tap a person, pin one, open the history | — |
 | **The close** | 2:45–3:00 | The evening talk (§4) | Never blocks you: you can leave at any beat |

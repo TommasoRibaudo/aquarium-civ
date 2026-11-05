@@ -290,7 +290,7 @@ namespace AquariumCiv.View.Tests
         }
 
         /// <summary>#30: the sim's month ticks in the middle of a view day. The view keeps its day till midnight, and a plan
-        /// the month did change (a heap swept away, a new home) is walked to, not jumped to.</summary>
+        /// the month did change (a new home) is walked to, not jumped to.</summary>
         [Test]
         public void AMonthTick_MidDay_NoDollJumps()
         {

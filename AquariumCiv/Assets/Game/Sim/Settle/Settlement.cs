@@ -72,7 +72,7 @@ namespace AquariumCiv.Sim.Settle
         }
 
         /// <summary>A new box, or a save from before placement (slots only): reserve the commons, find a spot for every
-        /// shaping and piece of trash from its old slot, then place every building in the order it was built.</summary>
+        /// shaping from its old slot, then place every building in the order it was built.</summary>
         void Found()
         {
             ClusterPlacer.ReserveCommons(Map, St, Seed);
@@ -83,7 +83,6 @@ namespace AquariumCiv.Sim.Settle
                 ApplyShaping(n);
             }
             ProcessNewBuildings(migrating: S.buildings.Count > 2);
-            foreach (var t in S.trash) TrashSpot(t);
             if (S.era >= Era.Village) Outbuildings();
             WearPass();
         }
@@ -599,30 +598,7 @@ namespace AquariumCiv.Sim.Settle
             return true;
         }
 
-        // ---------------- trash and old slots ----------------
-        /// <summary>Where a piece of trash lies: by the door of the lot its (economy-drawn) slot picks, offset by its
-        /// (economy-drawn) offsets. Draws nothing.</summary>
-        public void TrashSpot(TrashItem t)
-        {
-            Lot at = null;
-            int count = 0;
-            foreach (var l in Lots) if (!l.retired) count++;
-            if (count > 0)
-            {
-                int pick = ((t.slot % count) + count) % count;
-                foreach (var l in Lots)
-                {
-                    if (l.retired) continue;
-                    if (pick-- == 0) { at = l; break; }
-                }
-            }
-            float bx = at?.doorX ?? Map.greenX, bz = at?.doorZ ?? Map.greenZ;
-            float x = bx + t.offsetX * 0.6f, z = bz + t.offsetZ * 0.6f;
-            int c = SiteMap.CellAt(x, z);
-            if (c < 0 || Map.Water(c) || Map.lot[c] != 0) { x = bx; z = bz; }
-            t.x = Terrain.Clamp(x, -Terrain.HX + 0.1f, Terrain.HX - 0.1f);
-            t.z = Terrain.Clamp(z, -Terrain.HZ + 0.1f, Terrain.HZ - 0.1f);
-        }
+        // ---------------- old slots ----------------
 
         /// <summary>The position of an old building slot (the prototypes' hex slots, centre-out round the green), used
         /// to migrate saves and for callers that still pass a slot.</summary>

@@ -48,7 +48,7 @@ namespace AquariumCiv.Sim
 
         // ---------- derived values ----------
         /// <summary>0..1. The glass is half of it: it's what the player sees first and wipes most.</summary>
-        public float MessLevel => State.grime * 0.5f + State.overgrowth * 0.25f + State.trash.Count / (float)Config.trashMax * 0.25f;
+        public float MessLevel => State.grime * (2f / 3f) + State.overgrowth * (1f / 3f); // glass and weeds only: the trash heaps are gone (#313)
         /// <summary>Gate 1: the work-pace drop, linear in mess (shown to the player as sunlight and work pace).</summary>
         public float OutputPenalty => Config.outputPenaltyMax * MessLevel;
         public float OutputMultiplier => (0.8f + 0.4f * State.mood) * (1f - OutputPenalty);
@@ -230,26 +230,6 @@ namespace AquariumCiv.Sim
             float trim = TrimPerHour; // town sweepers weed and trim (SimCore.Care.cs); 0 outside the town
             if (trim > 0f) s.overgrowth = Math.Clamp(s.overgrowth + (1f / Config.messFullHours - trim) * h, 0f, 1f);
             else s.overgrowth = Math.Min(1f, s.overgrowth + h / Config.messFullHours);
-            if (Sweepers > 0) Sweep(h); // ... and take the oldest heaps to the midden; never the glass
-            if (s.trash.Count >= Config.trashMax) { s.trashAccum = 0; return; }
-            s.trashAccum += s.population * Config.trashPerPersonHour * h;
-            while (s.trashAccum >= 1f && s.trash.Count < Config.trashMax)
-            {
-                s.trashAccum -= 1f;
-                AddTrash();
-            }
-        }
-
-        void AddTrash()
-        {
-            var s = State;
-            var t = new TrashItem
-            {
-                id = s.NextId(), slot = s.rng.Range(0, Config.buildingSlots),
-                offsetX = s.rng.Range(-0.35f, 0.35f), offsetZ = s.rng.Range(-0.35f, 0.35f), month = s.month
-            };
-            s.trash.Add(t);
-            Settlement?.TrashSpot(t); // where it lies: from the drawn slot and offsets, no new dice
         }
 
         /// <summary>The adult-notable band of the current era (#26).</summary>
@@ -392,26 +372,18 @@ namespace AquariumCiv.Sim
             RelicsOnPrune(was - State.overgrowth); // the Left Sandal turns up under the weeds (SimCore.Relics.cs)
         }
 
-        public bool RemoveTrash(int id)
-        {
-            bool gone = State.trash.RemoveAll(t => t.id == id) > 0;
-            if (gone) { CleaningRefill(Config.shapingPerTrash); CountKeeperAction(KeeperAction.Trash, true); }
-            return gone;
-        }
-
         /// <summary>Debug / lab: add mess directly (capped like natural mess).</summary>
-        public void AddMess(float grime, float overgrowth, int trashCount)
+        public void AddMess(float grime, float overgrowth)
         {
             State.grime = Math.Clamp(State.grime + grime, 0f, 1f);
             State.overgrowth = Math.Clamp(State.overgrowth + overgrowth, 0f, 1f);
-            for (int i = 0; i < trashCount && State.trash.Count < Config.trashMax; i++) AddTrash();
         }
 
         public void CleanAll()
         {
-            CleaningRefill(State.grime * Config.shapingPerGrime + State.overgrowth * Config.shapingPerOvergrowth + State.trash.Count * Config.shapingPerTrash);
+            CleaningRefill(State.grime * Config.shapingPerGrime + State.overgrowth * Config.shapingPerOvergrowth);
             EcoWipe(1f); EcoSnip(1f);
-            State.grime = 0; State.overgrowth = 0; State.trash.Clear();
+            State.grime = 0; State.overgrowth = 0;
         }
 
         // ---------- helpers ----------

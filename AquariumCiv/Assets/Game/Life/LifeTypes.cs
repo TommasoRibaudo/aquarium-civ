@@ -79,7 +79,7 @@ namespace AquariumCiv.Life
         Home, Fire, Green, Market, Field, LumberMill, Windmill, Tavern, Shrine, Workshop, Guildhall, BuildingSite,
         // land and placeholders (no building yet; the view places them)
         Pond, Stream, Woods, ForestEdge, Bushes, Pasture, Meadow, ClayBank, Outcrop, Smithy, Kiln, Hill, Remembering,
-        Midden, TrashHeap, Nudge, Road,
+        Midden, Nudge, Road,
         // #92: the front glass (index = the wall: 0 = -z, 1 = +x, 2 = +z, 3 = -x; LifePlanner.GlassSide) and a relic's spot
         // (index = its place in RelicId.All)
         Glass, Relic,
@@ -94,7 +94,7 @@ namespace AquariumCiv.Life
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
-    /// family for a home, the trash item for a heap, the nudge for a shaping (−1 otherwise). default(Place) is None.</summary>
+    /// family for a home, the nudge for a shaping (−1 otherwise). default(Place) is None.</summary>
     public readonly struct Place : IEquatable<Place>
     {
         public readonly PlaceKind kind;

@@ -146,7 +146,7 @@ namespace AquariumCiv.View.PlayTests
 
                 // a wipe by finger in clean mode
                 var sim = GameClock.Instance.Sim;
-                sim.AddMess(1f, 1f, sim.Config.trashMax);
+                sim.AddMess(1f, 1f);
                 var hud = GameHud.Instance;
                 hud.SetCleanMode(true);
                 for (int i = 0; i < 20; i++) yield return null;
