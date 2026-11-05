@@ -48,6 +48,19 @@ namespace AquariumCiv.Tests
 
         // ---- the writer ----
 
+        [Test] public void SilentVariantKeepsSessionStartFirst_MidSessionChangeLogsVariant()
+        {
+            var log = NewLog();
+            log.SetVariant("A", false);
+            Open(log);
+            var lines = log.ReadAllLines();
+            Assert.That(lines.Count, Is.EqualTo(1));
+            Assert.That(TelemetryEvent.Parse(lines[0]).name, Is.EqualTo(Ev.SessionStart));
+            log.SetVariant("B");
+            log.EndSession("pause", 1);
+            Assert.That(disk.ReadAll("box-main.jsonl"), Does.Contain("\"" + Ev.Variant + "\""));
+        }
+
         [Test] public void SessionStartIsOnDiskAtOnce_OthersWaitForFlush()
         {
             var log = NewLog();
