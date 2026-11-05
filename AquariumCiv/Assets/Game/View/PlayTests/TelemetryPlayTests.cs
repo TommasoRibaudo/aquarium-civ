@@ -245,5 +245,58 @@ namespace AquariumCiv.View.PlayTests
             }
             finally { Close(); }
         }
+
+        /// <summary>#328: the question never opens over the Kit, a tool in hand, a first-run step or a toast; it opens once things are calm.</summary>
+        [UnityTest]
+        public IEnumerator TheRecallQuestionWaitsForACalmMoment()
+        {
+            yield return Open();
+            try
+            {
+                SkipFirstRun();
+                var view = RecallPromptView.Instance;
+                view.checkSeconds = 0.2f; view.calmSeconds = 1f;
+                var hud = GameHud.Instance;
+                GameClock.Tel.ShowMe("1"); GameClock.Tel.CardOpened("person", 1);
+                RecallPromptView.DebugReset();
+                RecallPromptView.DebugSetDay(3);
+                yield return Until(() => GameClock.Instance.SessionSeconds > RecallPrompt.MinSessionSeconds + 1, 40f);
+
+                // the Kit (or the cloth) opened by a tap on the bottom row: it waits
+                var tapAt = GameUiPanel.ScreenCenter(hud.Root, "hud-clean");
+                BeginTouch(touchId, tapAt, queueEventOnly: true); yield return null; yield return null;
+                EndTouch(touchId, tapAt, delta: Vector2.zero, queueEventOnly: true); yield return null; yield return null;
+                yield return new WaitForSecondsRealtime(2.5f);
+                Assert.IsTrue(hud.CleanMode || !string.IsNullOrEmpty(hud.OpenSheet), "the Kit or the cloth is up");
+                Assert.IsFalse(view.IsOpen, "never over the Kit");
+
+                // a tool in hand: still waits
+                hud.SetCleanMode(false); hud.CloseSheet();
+                hud.SetHand(GameHud.KitTool.Mister);
+                yield return new WaitForSecondsRealtime(2.5f);
+                Assert.IsFalse(view.IsOpen, "never with a tool in hand");
+
+                // a first-run step: still waits
+                hud.SetHand(GameHud.KitTool.None);
+                var fr = UnityEngine.Object.FindAnyObjectByType<FirstRunView>();
+                if (fr != null)
+                {
+                    FirstRunView.DebugSkipTo(AquariumCiv.Sim.FirstRunStep.Wipe);
+                    yield return new WaitForSecondsRealtime(2.5f);
+                    Assert.IsFalse(view.IsOpen, "never over a first-run step");
+                    FirstRunView.DebugSkipAll();
+                }
+
+                // a toast: still waits
+                hud.Toast("Hold still.", 4f);
+                yield return new WaitForSecondsRealtime(1.5f);
+                Assert.IsFalse(view.IsOpen, "never under a toast");
+
+                // calm: it opens
+                yield return Until(() => view.IsOpen, 12f);
+                Assert.IsTrue(view.IsOpen, "calm again: the question shows");
+            }
+            finally { Close(); }
+        }
     }
 }

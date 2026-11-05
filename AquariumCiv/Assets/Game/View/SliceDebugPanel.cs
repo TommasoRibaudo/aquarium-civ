@@ -222,6 +222,7 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Ask recall")) last = RecallPromptView.DebugForce();
+            if (Btn("Ask recall (when calm)")) last = RecallPromptView.DebugAskWhenCalm(); // #328
             if (Btn("Reset recall")) last = RecallPromptView.DebugReset();
             if (Btn("Week report")) last = RecallPromptView.DebugReport();
             EndRow();
