@@ -251,28 +251,28 @@ namespace AquariumCiv.View.PlayTests
                 // ---- 5b. (#328) the recall question made due: it waits while the Kit is open and while a tool is in hand (both by real taps),
                 // then shows at the next calm moment, and a tap on "Not now" closes it
                 {
-                    var rv = RecallPromptView.Instance;
-                    Assert.IsNotNull(rv, "the recall view");
-                    rv.checkSeconds = 0.2f; rv.calmSeconds = 1f;
+                    var recall = RecallPromptView.Instance;
+                    Assert.IsNotNull(recall, "the recall view");
+                    recall.checkSeconds = 0.2f; recall.calmSeconds = 1f;
                     RecallPromptView.DebugAskWhenCalm();
                     yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
                     yield return new WaitForSecondsRealtime(0.3f);
                     Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "a tap on Kit opens the kit");
-                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; ) { Assert.IsFalse(rv.IsOpen, "never over the open Kit"); yield return null; }
+                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; ) { Assert.IsFalse(recall.IsOpen, "never over the open Kit"); yield return null; }
                     yield return Shot("f2_04b_kit_open_question_waits");
                     yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-mister"));
                     yield return new WaitForSecondsRealtime(0.3f);
                     Assert.AreEqual(GameHud.KitTool.Mister, hud.Hand, "the mister in hand");
-                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; ) { Assert.IsFalse(rv.IsOpen, "never with a tool in hand"); yield return null; }
+                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; ) { Assert.IsFalse(recall.IsOpen, "never with a tool in hand"); yield return null; }
                     yield return PutDownTool(hud);
-                    yield return Until(() => rv.IsOpen, 10f);
+                    yield return Until(() => recall.IsOpen, 10f);
                     yield return Shot("f2_04c_question_when_calm");
-                    Debug.Log($"[f2] 5b recall: open after calm = {rv.IsOpen}");
-                    Assert.IsTrue(rv.IsOpen, "once the kit is down and nothing is touched, the question shows");
-                    yield return TapAt(GameUiPanel.ScreenCenter(rv.Root.Q("recall-dismiss")));
+                    Debug.Log($"[f2] 5b recall: open after calm = {recall.IsOpen}");
+                    Assert.IsTrue(recall.IsOpen, "once the kit is down and nothing is touched, the question shows");
+                    yield return TapAt(GameUiPanel.ScreenCenter(recall.Root.Q("recall-dismiss")));
                     yield return new WaitForSecondsRealtime(0.5f);
-                    Assert.IsFalse(rv.IsOpen, "Not now closes it");
-                    rv.checkSeconds = 2f; rv.calmSeconds = (float)RecallCalm.CalmSeconds;
+                    Assert.IsFalse(recall.IsOpen, "Not now closes it");
+                    recall.checkSeconds = 2f; recall.calmSeconds = (float)RecallCalm.CalmSeconds;
                 }
 
                 // ---- 2c. Kit -> Tweezers: the targets are made with state cheats, plucked by a tap at their screen position
