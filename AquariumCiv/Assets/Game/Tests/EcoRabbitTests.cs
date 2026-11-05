@@ -296,5 +296,185 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(0UL, sim.EcoFingerprint);
             Assert.AreEqual(0, sim.EcoRabbitCount);
         }
+
+        // ---------------------------------------------------------------- #333: a tap startles, they roam and spread
+
+        static RabbitHerd.Field Herd(out SimCore sim, int rabbits = 8, int seed = 7)
+        {
+            sim = Meadow(seed);
+            if (rabbits > 8) sim.DebugAddRabbits(rabbits - 8);
+            var f = new RabbitHerd.Field();
+            sim.EcoRabbitsRefresh(f);
+            f.Sync(rabbits);
+            return f;
+        }
+
+        static float Dist(float ax, float az, float bx, float bz) => (float)Math.Sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
+
+        /// <summary>Mean distance from each rabbit to its nearest neighbour at time t.</summary>
+        static float MeanNearest(RabbitHerd.Field f, double t)
+        {
+            var ids = new List<int>(f.Alive); float sum = 0f;
+            foreach (int a in ids)
+            {
+                var pa = f.Sample(a, t); float best = float.MaxValue;
+                foreach (int b in ids) if (b != a) { var pb = f.Sample(b, t); best = Math.Min(best, Dist(pa.x, pa.z, pb.x, pb.z)); }
+                sum += best;
+            }
+            return sum / ids.Count;
+        }
+
+        [Test]
+        public void Tap_StartlesTheRabbitAndTheNearOnes_ToFarAway_AndTheyDoNotComeBack()
+        {
+            foreach (int seed in new[] { 7, 11, 23 })
+            {
+                var f = Herd(out var sim, 10, seed);
+                double t0 = 30.0;
+                var victim = f.Sample(f.Alive[0], t0);
+                float tx = victim.x + 0.08f, tz = victim.z;
+                int near = 0;
+                foreach (int id in f.Alive) { var p = f.Sample(id, t0); if (Dist(p.x, p.z, tx, tz) <= RabbitHerd.NearRadius) near++; }
+                var started = new List<RabbitHerd.Field.Startled>();
+                int n = f.Startle(tx, tz, t0, null, started);
+                Assert.AreEqual(near, n, "the rabbit and those near the tap, no others");
+                Assert.AreEqual(f.Alive[0], started[0].id, "the one tapped first");
+                for (int i = 1; i < n; i++) Assert.GreaterOrEqual(started[i].until, started[0].until, "the near ones go later");
+                Assert.AreEqual(10, f.Alive.Count, "a tap removes nobody");
+                foreach (var s in started)
+                {
+                    Assert.GreaterOrEqual(s.until, t0 + RabbitHerd.Scare.FreezeSeconds - 1e-6, "a beat to freeze first");
+                    float far = 0f; int back = 0, samples = 0;
+                    for (double t = s.until + 5; t < t0 + 150; t += 0.5)
+                    {
+                        var p = f.Sample(s.id, t); samples++;
+                        float d = Dist(p.x, p.z, tx, tz); far += d;
+                        if (d < 0.3f) back++;
+                        Assert.IsTrue(f.IsGreenAt(p.x, p.z), "settles on green");
+                    }
+                    Assert.AreEqual(0, back, $"seed {seed} rabbit {s.id} never returns to the tap's spot");
+                    Assert.Greater(far / samples, 0.45f, $"seed {seed} rabbit {s.id} lives far from the tap");
+                }
+            }
+        }
+
+        [Test]
+        public void Tap_FarFromEveryRabbit_DoesNothing_AndSkippedRabbitsStay()
+        {
+            var f = Herd(out _, 6);
+            double t0 = 12.0;
+            var p0 = f.Sample(f.Alive[0], t0);
+            var list = new List<RabbitHerd.Field.Startled>();
+            Assert.AreEqual(0, f.Startle(-9f, -9f, t0, null, list), "no rabbit near the tap");
+            var before = f.Sample(f.Alive[0], t0 + 60);
+            Assert.AreEqual(0, f.Startle(p0.x, p0.z, t0, id => true, list), "rabbits a hunter is stalking are left alone");
+            var after = f.Sample(f.Alive[0], t0 + 60);
+            Assert.AreEqual(before.x, after.x, 1e-4f);
+            Assert.AreEqual(before.z, after.z, 1e-4f);
+        }
+
+        [Test]
+        public void Startle_TouchesNoSimRandomStream_AndIsRepeatable()
+        {
+            var a = Herd(out var sa, 8); var b = Herd(out var sb, 8);
+            ulong fpA = sa.EcoFingerprint;
+            var la = new List<RabbitHerd.Field.Startled>(); var lb = new List<RabbitHerd.Field.Startled>();
+            var p = a.Sample(a.Alive[0], 20);
+            a.Startle(p.x, p.z, 20, null, la); b.Startle(p.x, p.z, 20, null, lb);
+            Assert.Greater(la.Count, 0);
+            Assert.AreEqual(la.Count, lb.Count);
+            for (int i = 0; i < la.Count; i++) Assert.AreEqual(la[i].refuge, lb[i].refuge);
+            Assert.AreEqual(fpA, sa.EcoFingerprint, "the sim never saw it");
+            sa.Advance(1.0 / 12); sb.Advance(1.0 / 12);
+            Assert.AreEqual(sa.EcoFingerprint, sb.EcoFingerprint);
+        }
+
+        [Test]
+        public void ManyTaps_RemoveNoRabbit_AndTheHerdStaysOnGreen()
+        {
+            var f = Herd(out _, 12);
+            var list = new List<RabbitHerd.Field.Startled>();
+            double t = 10;
+            for (int k = 0; k < 40; k++)
+            {
+                t += 7;
+                var p = f.Sample(f.Alive[k % f.Alive.Count], t);
+                f.Startle(p.x, p.z, t, null, list);
+                Assert.AreEqual(12, f.Alive.Count);
+                foreach (int id in f.Alive) { var q = f.Sample(id, t + 3); Assert.IsTrue(f.IsGreenAt(q.x, q.z), $"k {k} id {id} at {q.x},{q.z} act {q.act} cell {SiteMap.CellAt(q.x, q.z)}"); }
+            }
+        }
+
+        const float SpreadFloor = 0.25f;
+
+        [Test]
+        public void Herd_IsSpreadOut_OverALongRun_AndRoamsWide()
+        {
+            foreach (int seed in new[] { 7, 11, 23 })
+            {
+                var f = Herd(out _, 8, seed);
+                float sum = 0f; int n = 0, wide = 0;
+                var ids = new List<int>(f.Alive);
+                var x0 = new float[ids.Count]; var x1 = new float[ids.Count]; var z0 = new float[ids.Count]; var z1 = new float[ids.Count];
+                for (int i = 0; i < ids.Count; i++) { x0[i] = z0[i] = float.MaxValue; x1[i] = z1[i] = float.MinValue; }
+                for (double t = 0; t < 3600; t += 5)
+                {
+                    sum += MeanNearest(f, t); n++;
+                    for (int i = 0; i < ids.Count; i++)
+                    {
+                        var p = f.Sample(ids[i], t);
+                        x0[i] = Math.Min(x0[i], p.x); x1[i] = Math.Max(x1[i], p.x); z0[i] = Math.Min(z0[i], p.z); z1[i] = Math.Max(z1[i], p.z);
+                    }
+                }
+                for (int i = 0; i < ids.Count; i++) if (Dist(x0[i], z0[i], x1[i], z1[i]) > 0.7f) wide++;
+                Assert.Greater(sum / n, SpreadFloor, $"seed {seed}: mean nearest-neighbour distance over an hour");
+                Assert.GreaterOrEqual(wide, ids.Count - 1, $"seed {seed}: most rabbits roam over more than 0.7 of the box");
+            }
+        }
+
+        [Test]
+        public void Scare_Hold_FreezesThenRunsToTheNewPlace_OnGreen()
+        {
+            var f = Herd(out _, 3);
+            double t0 = 40;
+            var p = f.Sample(f.Alive[0], t0);
+            var list = new List<RabbitHerd.Field.Startled>();
+            f.Startle(p.x + 0.1f, p.z, t0, null, list);
+            var s = list[0];
+            var sc = new RabbitHerd.Scare();
+            sc.Hold(p.x, p.z, p.x + 0.1f, p.z, s.until, RabbitHerd.Scare.FreezeSeconds);
+            Assert.IsTrue(sc.Fleeing);
+            var none = new float[0];
+            double now = t0; bool sat = false, ran = false; RabbitPose last = default;
+            for (int i = 0; i < 600; i++)
+            {
+                now += 0.05;
+                var b = f.Sample(s.id, now);
+                last = sc.Step(0.05f, b, none, none, f, now);
+                Assert.IsTrue(f.IsGreenAt(last.x, last.z));
+                if (now < s.until - 0.06) { Assert.AreEqual(RabbitAct.SitUp, last.act); Assert.AreEqual(p.x, last.x, 1e-4f); sat = true; }
+                else if (sc.Running) ran = true;
+                if (!sc.Fleeing) break;
+            }
+            Assert.IsTrue(sat && ran, "froze, then ran");
+            Assert.IsFalse(sc.Fleeing, "and settled");
+            var home = f.Sample(s.id, now);
+            Assert.AreEqual(home.x, last.x, 0.05f);
+            Assert.Greater(Dist(last.x, last.z, p.x + 0.1f, p.z), 0.5f, "far from the tap");
+        }
+
+        [Test]
+        public void Hunt_StillFindsARabbit_AfterTaps()
+        {
+            var f = Herd(out _, 6);
+            var list = new List<RabbitHerd.Field.Startled>();
+            var p = f.Sample(f.Alive[0], 20);
+            f.Startle(p.x, p.z, 20, null, list);
+            int id = f.NearestTo(0f, 0f, 60.0, out float hx, out float hz);
+            Assert.GreaterOrEqual(id, 0);
+            Assert.IsTrue(f.PositionOf(id, 60.0, out float qx, out float qz));
+            Assert.AreEqual(hx, qx); Assert.AreEqual(hz, qz);
+            Assert.IsTrue(f.Remove(id), "a catch still takes it out");
+        }
     }
 }

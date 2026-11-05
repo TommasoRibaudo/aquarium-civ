@@ -146,6 +146,10 @@ namespace AquariumCiv.View
             if (Btn("+1 rabbit")) last = EcoDebug.AddRabbits(1);
             if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);
             EndRow();
+            Row(); // #333
+            if (Btn("Spawn rabbits here")) last = RabbitView.Instance != null ? RabbitView.Instance.DebugSpawnHere(4) : "no rabbit view";
+            if (Btn("Startle all")) last = RabbitView.Instance != null ? "startled " + RabbitView.Instance.DebugStartleAll() : "no rabbit view";
+            EndRow();
             Row();
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
