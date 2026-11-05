@@ -310,62 +310,80 @@ namespace AquariumCiv.View
             if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);
         }
 
-        // ---------------------------------------------------------------- a tap startles (#333)
+        // ---------------------------------------------------------------- a knock on the glass startles (#333)
         readonly List<RabbitHerd.Field.Startled> startleBuf = new();
 
-        /// <summary>#333: a tap on the land at a screen spot (called by GlassVoice for a tap no person card took). Returns how many rabbits
-        /// it startled (0 when no rabbit is near, or the spot is not on the land). Never removes one.</summary>
-        /// <summary>Tester (batch 2): a rabbit's doll is right under the finger (within a fingertip on screen, about 0.03 of the screen's
-        /// height). Then the tap is the rabbit's, before a piece's or a person's card (a rabbit by the fire opened "The fire").</summary>
-        public bool RabbitUnderScreen(Vector2 screenPos)
+        /// <summary>On screen, a finger this close to a rabbit's doll is ON it (a fraction of the screen's height, about a fingertip).</summary>
+        public const float OnRabbitScreen = 0.025f;
+        /// <summary>On screen, the rabbits within this of a knock on the glass hear it and run (a fraction of the screen's height).</summary>
+        public const float KnockScreenReach = 0.10f;
+        readonly List<int> knockIds = new();
+
+        /// <summary>#333 (the user, 2026-11-05): a knock on the GLASS close to rabbits makes the close ones run off; a tap ON a rabbit
+        /// does nothing to it (nor does a tap on the land through the open top: GlassVoice only calls this for a knock). "Close" is what
+        /// the player sees: the rabbits near the finger on screen. They run away from the land the finger points at. Returns how many.</summary>
+        public int KnockAtScreen(Vector2 screenPos)
         {
             var cam = Camera.main;
-            if (cam == null) return false;
-            float r = 0.03f * Screen.height;
+            if (cam == null || box == null) return 0;
+            float on = OnRabbitScreen * Screen.height, reach = KnockScreenReach * Screen.height;
+            knockIds.Clear();
             foreach (var kv in slots)
             {
                 var d = kv.Value.doll;
                 if (d == null || !d.gameObject.activeInHierarchy) continue;
                 var sp = cam.WorldToScreenPoint(d.transform.position);
-                if (sp.z > 0f && ((Vector2)sp - screenPos).sqrMagnitude <= r * r) return true;
+                if (sp.z <= 0f) continue;
+                float dist = ((Vector2)sp - screenPos).magnitude;
+                if (dist <= on) return 0; // the finger is on a rabbit: nothing
+                if (dist <= reach) knockIds.Add(kv.Key);
             }
-            return false;
-        }
-
-        public int TapAtScreen(Vector2 screenPos)
-        {
+            if (knockIds.Count == 0) return 0;
+            float fx, fz;
             var shaping = ShapingView.Instance;
-            if (shaping == null || !shaping.GroundPoint(screenPos, out float x, out float z)) return 0;
-            return TapAtGround(x, z);
+            if (shaping == null || !shaping.GroundPoint(screenPos, out fx, out fz))
+            {
+                var care = CareView.Instance;
+                if (care == null || !care.GlassPointAt(screenPos, out var world)) return 0;
+                var local = box.transform.InverseTransformPoint(world);
+                fx = local.x; fz = local.z;
+            }
+            return Scatter(fx, fz, knockIds);
         }
 
-        /// <summary>#333: the tap, in box-local ground coordinates. The rabbit tapped (and the ones near) freeze with their ears up, then
-        /// bolt to another part of the meadow and settle there (<see cref="RabbitHerd.Field.Startle"/> picks where). A rabbit the hunter
-        /// is stalking and the first rabbit during its sign are left alone.</summary>
-        public int TapAtGround(float x, float z)
+        /// <summary>#333: a knock whose spot on the glass is above (x, z) (box-local ground). The rabbits within
+        /// <see cref="RabbitHerd.KnockRadius"/> freeze with their ears up, then bolt to another part of the meadow and settle there
+        /// (<see cref="RabbitHerd.Field.Knock"/> picks where). A rabbit the hunter is stalking and the first rabbit during its sign are
+        /// left alone.</summary>
+        public int KnockAtGround(float x, float z) => Scatter(x, z, null, true);
+
+        int Scatter(float x, float z, List<int> ids) => Scatter(x, z, ids, true);
+
+        int Scatter(float x, float z, List<int> ids, bool knock)
         {
             var sim = Sim;
             if (sim == null || !sim.EcologyOn || !Field.HasGreen || slots.Count == 0) return 0;
             var pv = People;
             var hunts = pv != null && pv.Planner != null ? pv.Planner.HuntsOn(pv.Now.day) : null;
             float hour = pv != null ? pv.Now.hour : 0f;
-            int n = Field.Startle(x, z, FieldNow, id => (sign != null && sign.id == id) || (hunts != null && HuntOn(hunts, id, hour) != null), startleBuf);
+            System.Func<int, bool> skip = id => (sign != null && sign.id == id) || (hunts != null && HuntOn(hunts, id, hour) != null);
+            int n = ids != null ? Field.StartleThese(ids, x, z, FieldNow, skip, startleBuf) : knock ? Field.Knock(x, z, FieldNow, skip, startleBuf) : Field.Startle(x, z, FieldNow, skip, startleBuf);
             foreach (var st in startleBuf)
             {
                 if (!slots.TryGetValue(st.id, out var s) || s.doll == null) continue;
                 var at = s.doll.transform.localPosition;
-                s.scare.Hold(at.x, at.z, x, z, st.until, RabbitHerd.Scare.FreezeSeconds);
+                s.scare.Hold(at.x, at.z, x, z, st.until, RabbitHerd.Scare.NoticeSeconds, SiteMap.CXc(st.refuge), SiteMap.CZc(st.refuge));
             }
             return n;
         }
 
-        /// <summary>Debug ("Startle all"): every rabbit freezes and runs to a new place, as if tapped one after the other.</summary>
+        /// <summary>Debug ("Startle all"): every rabbit freezes and runs to a new place, one after the other.</summary>
         public int DebugStartleAll()
         {
             int total = 0;
             var ids = new List<int>(Field.Alive);
             foreach (int id in ids)
-                if (TryGetPosition(id, out var p)) total += TapAtGround(p.x - 0.05f, p.z);
+                if (TryGetPosition(id, out var p)) total += Scatter(p.x - 0.05f, p.z, null, false);
             return total;
         }
 
@@ -413,7 +431,7 @@ namespace AquariumCiv.View
             {
                 var h = hunts[i];
                 if (h.rabbitId != id || h.resolved || h.steps.Count < 3) continue;
-                if (hour >= h.steps[2].start && hour < h.resolveHour) return h;
+                if (hour >= h.steps[0].start && hour < h.resolveHour) return h; // from the walk-out on: spooked by a passer-by then, it was gone before the stalk
             }
             return null;
         }
@@ -502,6 +520,20 @@ namespace AquariumCiv.View
             if (!slots.TryGetValue(id, out var s) || s.doll == null || !s.doll.gameObject.activeSelf) return false;
             local = s.doll.transform.localPosition; return true;
         }
+
+        /// <summary>Debug: a rabbit's scare state and its scheduled (home) pose.</summary>
+        public string DebugScare(int id)
+        {
+            if (!slots.TryGetValue(id, out var s)) return "none";
+            var b = Field.Sample(id, FieldNow);
+            return $"{s.scare.Debug} base ({b.x:0.00},{b.z:0.00}) {b.act}";
+        }
+
+        /// <summary>The rabbit is on its way somewhere (a run, or hopping back into its day), so it may be crossing bare earth.</summary>
+        /// <summary>Startled by a knock (frozen to run, or running), not just shy of a passer-by.</summary>
+        public bool IsStartled(int id) => slots.TryGetValue(id, out var s) && (s.scare.Holding || s.scare.Running);
+
+        public bool InTransit(int id) => slots.TryGetValue(id, out var s) && s.scare.InTransit;
 
         public bool TryGetAct(int id, out bool fleeing)
         {

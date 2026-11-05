@@ -332,7 +332,7 @@ namespace AquariumCiv.Tests
                 var f = Herd(out var sim, 10, seed);
                 double t0 = 30.0;
                 var victim = f.Sample(f.Alive[0], t0);
-                float tx = victim.x + 0.08f, tz = victim.z;
+                float tx = victim.x, tz = victim.z; // right on it (0.08 off, another rabbit can be nearer)
                 int near = 0;
                 foreach (int id in f.Alive) { var p = f.Sample(id, t0); if (Dist(p.x, p.z, tx, tz) <= RabbitHerd.NearRadius) near++; }
                 var started = new List<RabbitHerd.Field.Startled>();
@@ -356,6 +356,72 @@ namespace AquariumCiv.Tests
                     Assert.Greater(far / samples, 0.45f, $"seed {seed} rabbit {s.id} lives far from the tap");
                 }
             }
+        }
+
+        /// <summary>The user (2026-11-05): a knock on the glass startles the rabbits close to the knocked spot; no rabbit has to be at
+        /// the spot, and the ones farther off stay.</summary>
+        [Test]
+        public void Knock_StartlesTheRabbitsNearTheKnockedSpot_NotTheFarOnes_AndTheyDoNotComeBack()
+        {
+            foreach (int seed in new[] { 7, 11, 23 })
+            {
+                var f = Herd(out _, 10, seed);
+                double t0 = 30.0;
+                var p0 = f.Sample(f.Alive[0], t0);
+                // the knock lands a little way off the nearest rabbit (as the glass is), never on it
+                float kx = p0.x + 0.6f, kz = p0.z;
+                var near = new List<int>();
+                foreach (int id in f.Alive) { var p = f.Sample(id, t0); if (Dist(p.x, p.z, kx, kz) <= RabbitHerd.KnockRadius) near.Add(id); }
+                Assume.That(near.Count, Is.GreaterThan(0));
+                var started = new List<RabbitHerd.Field.Startled>();
+                int n = f.Knock(kx, kz, t0, null, started);
+                Assert.AreEqual(near.Count, n, $"seed {seed}: every rabbit within reach of the knock, and no others");
+                CollectionAssert.AreEquivalent(near, started.ConvertAll(s => s.id));
+                Assert.AreEqual(10, f.Alive.Count, "a knock removes nobody");
+                foreach (var s in started)
+                {
+                    Assert.GreaterOrEqual(s.until, t0 + RabbitHerd.Scare.FreezeSeconds - 1e-6, "a beat to freeze first");
+                    int back = 0;
+                    for (double t = s.until + 5; t < t0 + 150; t += 0.5)
+                    {
+                        var p = f.Sample(s.id, t);
+                        if (Dist(p.x, p.z, kx, kz) < 0.35f) back++;
+                        Assert.IsTrue(f.IsGreenAt(p.x, p.z), "settles on green");
+                    }
+                    Assert.AreEqual(0, back, $"seed {seed} rabbit {s.id} doesn't come back to the knocked spot");
+                }
+            }
+        }
+
+        /// <summary>The user (2026-11-05, "the running around sucks"): a scheduled spot that jumps (the green round its home changed)
+        /// must not pop the rabbit across the box; it hops over.</summary>
+        [Test]
+        public void Scare_AJumpInTheSchedule_IsHoppedOver_NotAPop()
+        {
+            var f = Herd(out _, 3);
+            var sc = new RabbitHerd.Scare();
+            var none = new float[0];
+            var a = new RabbitPose { x = -1.0f, z = 0.0f, act = RabbitAct.Graze };
+            var b = new RabbitPose { x = -0.3f, z = 0.0f, act = RabbitAct.Graze };
+            var last = sc.Step(0.03f, a, none, none, f);
+            float maxStep = 0f;
+            for (int i = 0; i < 200; i++)
+            {
+                var p = sc.Step(0.03f, b, none, none, f);
+                maxStep = Math.Max(maxStep, Dist(p.x, p.z, last.x, last.z));
+                last = p;
+            }
+            Assert.Less(maxStep, 0.05f, "no pop: at most a hop's worth a step");
+            Assert.AreEqual(b.x, last.x, 0.02f, "and it gets there");
+        }
+
+        [Test]
+        public void Knock_FarFromEveryRabbit_DoesNothing()
+        {
+            var f = Herd(out _, 6);
+            var list = new List<RabbitHerd.Field.Startled>();
+            Assert.AreEqual(0, f.Knock(-9f, -9f, 12.0, null, list));
+            Assert.IsEmpty(list);
         }
 
         [Test]
@@ -442,7 +508,7 @@ namespace AquariumCiv.Tests
             f.Startle(p.x + 0.1f, p.z, t0, null, list);
             var s = list[0];
             var sc = new RabbitHerd.Scare();
-            sc.Hold(p.x, p.z, p.x + 0.1f, p.z, s.until, RabbitHerd.Scare.FreezeSeconds);
+            sc.Hold(p.x, p.z, p.x + 0.1f, p.z, s.until, RabbitHerd.Scare.FreezeSeconds, SiteMap.CXc(s.refuge), SiteMap.CZc(s.refuge));
             Assert.IsTrue(sc.Fleeing);
             var none = new float[0];
             double now = t0; bool sat = false, ran = false; RabbitPose last = default;
@@ -451,16 +517,20 @@ namespace AquariumCiv.Tests
                 now += 0.05;
                 var b = f.Sample(s.id, now);
                 last = sc.Step(0.05f, b, none, none, f, now);
-                Assert.IsTrue(f.IsGreenAt(last.x, last.z));
+                if (!sc.Running) Assert.IsTrue(f.IsGreenAt(last.x, last.z), "on green when not running (the run may cross a strip of bare earth: no more jumps back onto the green)");
                 if (now < s.until - 0.06) { Assert.AreEqual(RabbitAct.SitUp, last.act); Assert.AreEqual(p.x, last.x, 1e-4f); sat = true; }
                 else if (sc.Running) ran = true;
                 if (!sc.Fleeing) break;
             }
             Assert.IsTrue(sat && ran, "froze, then ran");
             Assert.IsFalse(sc.Fleeing, "and settled");
+            Assert.Greater(Dist(last.x, last.z, p.x + 0.1f, p.z), 0.5f, "it ran far from the tap");
+            Assert.AreEqual(SiteMap.CXc(s.refuge), last.x, 0.05f, "to its refuge");
+            // then it sits looking back a moment and hops into its new home's day
+            for (int i = 0; i < 600; i++) { now += 0.05; last = sc.Step(0.05f, f.Sample(s.id, now), none, none, f, now); }
             var home = f.Sample(s.id, now);
-            Assert.AreEqual(home.x, last.x, 0.05f);
-            Assert.Greater(Dist(last.x, last.z, p.x + 0.1f, p.z), 0.5f, "far from the tap");
+            Assert.AreEqual(home.x, last.x, 0.05f, "back in its day at the new home");
+            Assert.AreEqual(home.z, last.z, 0.05f);
         }
 
         [Test]

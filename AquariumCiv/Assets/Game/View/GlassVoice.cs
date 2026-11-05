@@ -353,13 +353,9 @@ namespace AquariumCiv.View
                 var cards = PersonCardView.Instance;
                 var choice = ChoiceSceneView.Instance; // #224: a touch on one of the two choices answers the people
                 if (quick && pressWorld && choice != null && choice.WorldTap(pressPos)) { }
-                // #333 (tester): a tap right on a rabbit is the rabbit's, before a piece's card (a rabbit by the fire opened "The fire")
-                else if (quick && pressWorld && RabbitView.Instance != null && RabbitView.Instance.RabbitUnderScreen(pressPos) && RabbitView.Instance.TapAtScreen(pressPos) > 0) { }
                 else if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
                 else
                 {
-                    // #333: a tap on the land near a rabbit startles it; the knock or the ripple still happens as before
-                    if (quick && pressWorld && RabbitView.Instance != null) RabbitView.Instance.TapAtScreen(pressPos);
                     if (pressValid && quick) Tap(planner, now);
                     else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
                 }
@@ -377,6 +373,7 @@ namespace AquariumCiv.View
             var late = first && sm != null ? sm.KnockMarks(planner, now, pressPos) : null; // #161: a ! first, then the bodies; one set of marks a knock
             planner.ReactKnock(now, late);
             Sfx.Play(CueLibrary.TapGlass); // #96: a knuckle on glass
+            RabbitView.Instance?.KnockAtScreen(pressPos); // #333: the rabbits close to the knocked spot startle and run (a tap on a rabbit does nothing)
         }
 
         /// <summary>#96: the knocks back line up with the doll's Knock (one every half second, the hit mid-swing); a

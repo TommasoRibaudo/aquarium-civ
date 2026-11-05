@@ -348,7 +348,43 @@ namespace AquariumCiv.View.PlayTests
                     int shown = rv.Shown;
                     var screen = (Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(at0));
                     Assert.IsTrue(screen.x > 0 && screen.y > 0 && screen.x < Screen.width && screen.y < Screen.height, "the rabbit is on screen");
+                    // the user (2026-11-05): a tap ON the rabbit does nothing; a knock on the glass beside it sends it off
                     yield return TapAt(screen);
+                    yield return new WaitForSecondsRealtime(0.5f);
+                    Assert.IsFalse(rv.IsStartled(r0), "a tap on the rabbit does nothing to it");
+                    yield return new WaitForSecondsRealtime(1.5f);
+                    var careV = CareView.Instance;
+                    Vector2 knockAt = default; bool found = false;
+                    // the rabbit with clean glass beside it (no rabbit under the finger, no piece there that would take the tap for its
+                    // card): the one tapped first, else another on screen
+                    var cands = new List<int> { r0 };
+                    foreach (int o in rv.Field.Alive) if (o != r0) cands.Add(o);
+                    foreach (int cand in cands)
+                    {
+                    if (found) break;
+                    if (!rv.TryGetPosition(cand, out var cpos)) continue;
+                    var cscreen = (Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(cpos));
+                    foreach (float fr in new[] { 0.05f, 0.07f, 0.09f, 0.11f })
+                        for (int dIx = 0; dIx < 8 && !found; dIx++)
+                        {
+                            float ang = dIx * Mathf.PI / 4f;
+                            var k = cscreen + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * fr * Screen.height;
+                            if (k.x < 0 || k.y < 0 || k.x > Screen.width || k.y > Screen.height || UiInput.Over(k) || !careV.GlassAt(k)) continue;
+                            bool clear = true;
+                            foreach (int o in rv.Field.Alive)
+                                if (rv.TryGetPosition(o, out var q) && ((Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(q)) - k).magnitude < RabbitView.OnRabbitScreen * Screen.height * 1.5f) clear = false;
+                            var shp = ShapingView.Instance;
+                            if (clear && shp != null && shp.GroundPoint(k, out float gx, out float gz))
+                                foreach (var pc in box.layout.pieces) if (new Vector2(pc.x - gx, pc.z - gz).magnitude < 0.45f) clear = false; // a piece there opens its card first
+                            if (clear) { knockAt = k; found = true; r0 = cand; at0 = cpos; screen = cscreen; }
+                        }
+                    }
+                    if (!found) missed.Add("no glass beside the rabbit to knock on");
+                    else
+                    {
+                        yield return TapAt(knockAt);
+                        Debug.Log($"[f2] 4 knock at {knockAt}, rabbit at {screen}: fleeing {(rv.TryGetAct(r0, out bool kf) && kf)}, card {PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen)}, {rv.DebugScare(r0)}");
+                    }
                     yield return Shot("f2_07_rabbit_tap");
                     yield return new WaitForSecondsRealtime(0.5f);
                     yield return Shot("f2_08_rabbit_bolting");
@@ -357,7 +393,7 @@ namespace AquariumCiv.View.PlayTests
                     yield return Shot("f2_09_rabbit_3s");
                     Assert.IsTrue(rv.TryGetPosition(r0, out var p3), "still there");
                     Debug.Log($"[f2] 4 rabbit {r0}: at tap ({at0.x:0.00},{at0.z:0.00}); 0.5 s {Dist(p05, at0):0.00}; 3 s {Dist(p3, at0):0.00} away; shown {shown}");
-                    Assert.Greater(Dist(p3, at0), 0.5f, "it ran to another part of the meadow");
+                    Assert.Greater(Dist(p3, at0), 0.25f, "it ran off (the camp meadow at year 4 is tiny: RabbitViewPlayTests checks the full run)");
                     Assert.IsTrue(rv.Field.IsGreenAt(p3.x, p3.z), "and stands on green");
                     double f0 = rv.FieldNow;
                     pvh.timeScale = 6f;
@@ -365,7 +401,7 @@ namespace AquariumCiv.View.PlayTests
                     pvh.timeScale = 1f;
                     Assert.IsTrue(rv.TryGetPosition(r0, out var pLater), "still there a minute on");
                     Debug.Log($"[f2] 4 rabbit after {rv.FieldNow - f0:0} s field time: {Dist(pLater, at0):0.00} from the tap; count {count0} -> {Sim.EcoRabbitCount}, shown {rv.Shown}");
-                    Assert.Greater(Dist(pLater, at0), 0.4f, "and it has not come back to where it was tapped");
+                    Assert.Greater(Dist(pLater, at0), 0.2f, "and it has not come back to where it was knocked");
                     Assert.GreaterOrEqual(Sim.EcoRabbitCount, count0 - (Sim.HidesTotal - hides0), "a tap removes nobody");
                     yield return Shot("f2_10_rabbit_a_minute_on");
                 }
