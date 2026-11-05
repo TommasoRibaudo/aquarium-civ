@@ -125,5 +125,7 @@ namespace AquariumCiv.View.ShowMe
         TraitVoice,
         /// <summary>What the town wants to build or lacks (#181); can come round again, a new wording each time.</summary>
         Want,
+        /// <summary>The Keeper's tree, once tended (#318): its stage and the speaker's trait colour the line.</summary>
+        Tree,
     }
 }

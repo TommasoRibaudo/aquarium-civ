@@ -3,7 +3,32 @@
 Everything waiting on a decision by the user, in one place. Answered items move to [decisions.md](decisions.md) and are
 deleted here. Recommended options come first and are marked ★. On GitHub: issues labelled `needs:user`.
 
-_Last updated 2026-11-04._
+_Last updated 2026-11-05._
+
+## Playtest-feedback batch 2 (2026-11-04/05)
+Shots in `design/results/p8/feedback2/`. Run log: `overnight/FEEDBACK-2-STATUS.md`.
+
+### Sign-offs on the phone (built, merged, issue open)
+- **#331 sand gusts**: a listen. The constant hiss is gone; 2–6 s gusts every 8–25 s, each a bit different (cut, pitch, pan, level), lower than before, silent below 40 % bare. The four cuts come from the same recording as the old loop. The barren wind loop (40 s, random start) is unchanged: say if you still hear a repeat.
+- **#332 camp**: the logs round the fire are gone; the rack is a compact A-frame with up to two laced pelts, the rest in a folded pile (`332_*.jpg`). At the default camera it's small, like everything in the camp. ★ Accept, or make the rack bigger / the pelts larger.
+- **#329 Skip step / Skip all**: hairline pills, faint fill, 44 pt (`329_*.jpg`).
+- **#281 fresh green**: toned down to a faint pale hint (noon light vs the land 1.034 → 1.012), fades in 100 s (was 180) (`281_newgrass_after_noon.jpg`). ★ Accept, or fainter still.
+
+### Decisions needed
+- **#327 people's words**: three options with mock-ups (`327_today.jpg`, `327_option_A/B/C.jpg`, design note `design/people-talk.md`). ★ **A**: at the default zoom lines go to the top caption with the speaker's name and a ring under them; zoomed in (doll ≥ 45 px, about zoom 0.62) over the head. Also: should a line have its own short voice; crowd lines as "someone, by the fire" or always a named person; drop the silent far-zoom group marks?
+- **#330 tweezers in a forest**: options in `design/keepers-hands.md` §5.7. ★ **B now** (pluck saplings only on paths and yards, ~2–3 h), **then C1** (1–3 bonsai shoots on the Keeper's tree, ~10–14 h); decide C2 (forest trees) after playing C1. And: are a leaf print on the pane, a lopsided crown and a little shade enough for "if you don't prune"?
+
+### Calls I made without you
+- The tapped rabbit freezes 0.3 s, then runs (2.2 units/s); the tap spot and its old spot are avoided for 180 s of field time; rabbits within 0.75 follow. The knock or ripple still plays with the startle. A tap right on a rabbit wins over a piece's card (a rabbit by the fire opened "The fire").
+- The hunted rabbit now ignores everyone until the strike (it used to ignore only the hunter and the kid): with rabbits spread over the meadow, a passer-by sent it off mid-stalk.
+- The recall question waits for 2 s of calm with nothing up; a missed day just tries again next session.
+- The rack sits 0.5 from the fire (was 0.34); pelts lean 12° (40° went edge-on at the camera's pitch).
+
+### Polish noted, not fixed
+- Rabbits cluster when the meadow is one small patch (year 8 in the tester's run, meadow ~2 %): they only live on green.
+- A small log stack beside a sitter at the fire (likely the firewood stash) still reads a little like a seat.
+- "Not now" on the recall sheet is bare text about 35 px tall: under 44 pt.
+- The camp, rack included, is a few pixels at the default camera.
 
 ## P8 polish run (2026-11-04)
 Details: [design/results/P8.md](design/results/P8.md) "The polish run"; shots in `design/results/p8/polish/`.
@@ -17,7 +42,7 @@ Details: [design/results/P8.md](design/results/P8.md) "The polish run"; shots in
 - **#280 sound**: a listen. The recorded spray is brighter (7.9 kHz centroid); birds are faint against the wind on a half-green day; no recorded dirt-crackle exists in CC0, so the barren bed has none.
 - **#273 camera**: close zoom reaches each wall; far zoom keeps the box on screen; the front/back reach at close zoom is small on a tall phone.
 - **#274 bridges**, **#276 ritual symbols**, **#208 dawn lane**, **#210/#211 crumbs**: look sign-offs. #210: ★ I read it as "add falling crumbs" and kept the hut-sized Sky Crumb lump; say if the lump itself should become crumbs.
-- **#249 the kit button**: built after build 15 as a sheet with three tools, not the fanned rail of keepers-hands §3.3; snips and the stick aren't in it.
+- **#249 the kit button**: built after build 15 as a sheet with three tools, not the fanned rail of keepers-hands §3.3; the stick isn't in it; the tweezers are (#311).
 
 ### Decisions needed
 - **#292 kit wishes**: a living-land box has no wishes; what is the first wish, if any?

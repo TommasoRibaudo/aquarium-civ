@@ -103,7 +103,6 @@ namespace AquariumCiv.Sim
             s.firstRun = f;
             s.grime = Math.Max(s.grime, StartGrime);
             if (!sim.EcologyOn) s.overgrowth = Math.Max(s.overgrowth, StartOvergrowth);
-            s.trash.Clear();
             return new FirstRun(sim);
         }
 

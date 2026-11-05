@@ -39,8 +39,8 @@ namespace AquariumCiv.Sim
         public bool Found => foundMonth >= 0;
     }
 
-    /// <summary>How often the Keeper did one thing in this box (the Keeper Doll holds the most-done one). Wipes, prunes and
-    /// trash count at most once per game month (a wipe is many strokes); every shaping counts.</summary>
+    /// <summary>How often the Keeper did one thing in this box (the Keeper Doll holds the most-done one). Wipes and
+    /// prunes count at most once per game month (a wipe is many strokes); every shaping counts.</summary>
     [Serializable]
     public class KeeperActionCount
     {
@@ -52,7 +52,7 @@ namespace AquariumCiv.Sim
     /// <summary>The Keeper's actions the sim counts (<see cref="SimCore.KeeperActionsDone"/>). Shapings use their NudgeKind.</summary>
     public static class KeeperAction
     {
-        public const string Wipe = "wipe", Prune = "prune", Trash = "trash", Mist = "mist", Plant = "plant"; // Mist, Plant: the ecology (SimCore.Eco.cs)
+        public const string Wipe = "wipe", Prune = "prune", Mist = "mist", Plant = "plant"; // Mist, Plant: the ecology (SimCore.Eco.cs)
 
         /// <summary>The Keeper Doll's prop for an action, or null if the doll has none for it (§1.3).</summary>
         public static string PropOf(string action) => action switch
@@ -213,7 +213,7 @@ namespace AquariumCiv.Sim
             TraitStories.SelectMany(kv => kv.Value.lines.Select(l => (kv.Key, l, TraitLineEra(l), TownOnlyLines.TryGetValue(l, out var s) ? s : null)));
 
         // ---------- hooks from the rest of the sim ----------
-        /// <summary>A Keeper's action (SimCore.cs: wipe, prune, trash; Nudges: every shaping). Counted for the doll.</summary>
+        /// <summary>A Keeper's action (SimCore.cs: wipe, prune; Nudges: every shaping). Counted for the doll.</summary>
         void CountKeeperAction(string action, bool oncePerMonth)
         {
             if (!RelicsOn) return;

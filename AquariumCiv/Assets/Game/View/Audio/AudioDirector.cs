@@ -88,6 +88,48 @@ namespace AquariumCiv.View
         public int BirdCallsPlayed { get; private set; }
         public float BirdSwell => birdSong != null ? birdSong.Swell : 1f;
 
+        // #331: the sand's hiss as occasional gusts (SandGusts) on one pooled source: a random offset into one of four cuts, faded in and out.
+        SandGusts sandGusts;
+        AudioSource gustSource;
+        AudioClip[] gustClips;
+        int hissLayer = -1;
+        float gustT, gustDur, gustIn, gustOut, gustVolume;
+        /// <summary>Gusts played so far and how the last one was set (tests, the debug panel).</summary>
+        public int SandGustsPlayed { get; private set; }
+        public string LastSandGust { get; private set; } = "none yet";
+        public bool GustSounding => gustSource != null && gustSource.isPlaying;
+
+        // #315: the pond's frogs: single croaks on one pooled source (never two at once), not the recorded chorus loop.
+        FrogCroaker frogCroak;
+        AudioSource frogSource;
+        AudioLowPassFilter frogLowPass;
+        AudioClip[] frogClips;
+        float frogVolume;
+        int frogLayer = -1;
+        BoxCamera zoomCam;
+        float zoomCamLook;
+        /// <summary>Croaks played so far and how the last one was set (tests, the debug panel).</summary>
+        public int FrogCroaksPlayed { get; private set; }
+        public string LastFrogCall { get; private set; } = "none yet";
+        /// <summary>Debug: the zoom (0 whole box .. 1 closest) the frogs and voices hear, or -1 for the camera's own.</summary>
+        public static float ForcedZoom01 = -1f;
+
+        /// <summary>0 whole box .. 1 closest, from the box camera (or <see cref="ForcedZoom01"/>); looked up twice a second.</summary>
+        public float Zoom01
+        {
+            get
+            {
+                if (ForcedZoom01 >= 0f) return ForcedZoom01;
+                if (zoomCam == null && Time.unscaledTime >= zoomCamLook)
+                {
+                    zoomCamLook = Time.unscaledTime + 0.5f;
+                    var cam = Camera.main;
+                    zoomCam = cam != null ? cam.GetComponent<BoxCamera>() : null;
+                }
+                return ChatterView.Zoom01Of(zoomCam);
+            }
+        }
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -108,6 +150,19 @@ namespace AquariumCiv.View
             birdClips = new AudioClip[CareSound.BirdCalls];
             for (int i = 0; i < birdClips.Length; i++) birdClips[i] = Clip("proc:bird" + i);
             birdSong = new BirdSong(Environment.TickCount, birdClips.Length);
+            frogLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbFrogs);
+            frogSource = Source("FrogCroaks", false);
+            frogLowPass = frogSource.gameObject.AddComponent<AudioLowPassFilter>();
+            frogLowPass.cutoffFrequency = FrogCroaker.NearCutoff;
+            frogClips = new AudioClip[FrogCroaker.ClipCount];
+            for (int i = 0; i < frogClips.Length; i++) frogClips[i] = Clip("proc:frog" + i);
+            frogCroak = new FrogCroaker(Environment.TickCount + 315);
+            hissLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbSandHiss);
+            gustSource = Source("SandGusts", false);
+            var gustCue = CueLibrary.Get(CueLibrary.AmbSandHiss);
+            gustClips = new AudioClip[Math.Min(SandGusts.ClipCount, gustCue.clips.Count)];
+            for (int i = 0; i < gustClips.Length; i++) gustClips[i] = Clip(gustCue.clips[i]);
+            sandGusts = new SandGusts(Environment.TickCount + 331);
             eraWatch = new MomentWatch(this, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Director : null, () => MomentPlayer.Instance != null ? MomentPlayer.Instance.Wave : null);
             lastWatch = new MomentWatch(this, () => BoxCompleteController.Instance != null ? BoxCompleteController.Instance.Director : null, () => null);
             var missing = CheckClips();
@@ -299,6 +354,8 @@ namespace AquariumCiv.View
                 if (src.clip == null) continue;
                 float v = fader.Level(i) * CueLibrary.Get(AmbienceLevels.CueIds[i]).volume * bus;
                 if (i == birdLayer) v *= birdSong.Swell;
+                if (i == frogLayer && LayerForce[i] != 1) v = 0f; // #315: no chorus loop, only single croaks (UpdateFrogs)
+                if (i == hissLayer) v = 0f;                        // #331: no constant hiss, only gusts (UpdateGusts)
                 src.volume = v;
                 if (v > 0.001f && !src.isPlaying)
                 {
@@ -308,7 +365,53 @@ namespace AquariumCiv.View
                 else if (v <= 0.001f && src.isPlaying) src.Pause();
             }
             UpdateBirds(dt, inMoment, bus);
+            UpdateFrogs(dt, inMoment, bus);
+            UpdateGusts(dt, inMoment, bus);
             UpdateStones(dt, inMoment);
+        }
+
+        // #331: the gust rate and level come from the hiss layer (the bare share); one gust at a time, its envelope here.
+        void UpdateGusts(float dt, bool inMoment, float bus)
+        {
+            if (gustSource.isPlaying)
+            {
+                gustT += dt;
+                float env = gustT >= gustDur ? 0f : Mathf.Min(1f, gustT / Mathf.Max(0.01f, gustIn), (gustDur - gustT) / Mathf.Max(0.01f, gustOut));
+                gustSource.volume = gustVolume * env * bus; // a gust under way follows the settings
+                if (gustT >= gustDur) gustSource.Stop();
+            }
+            if (hissLayer < 0 || inMoment || LayerForce[hissLayer] == 2) return;
+            if (!sandGusts.Tick(dt, fader.Level(hissLayer), out var gust)) return;
+            PlayGust(gust, fader.Level(hissLayer));
+        }
+
+        void PlayGust(in SandGust g, float level)
+        {
+            var clip = gustClips[Mathf.Clamp(g.clip, 0, gustClips.Length - 1)];
+            if (clip == null) return;
+            gustSource.clip = clip;
+            gustSource.pitch = g.pitch;
+            gustSource.panStereo = g.pan;
+            // A random offset into the cut, leaving room for the whole gust (pitch shortens or lengthens it a little).
+            float room = Mathf.Max(0f, clip.length - g.duration * g.pitch - 0.1f);
+            gustSource.time = g.startFrac * room;
+            gustT = 0f; gustDur = Mathf.Min(g.duration, (clip.length - gustSource.time) / g.pitch); gustIn = g.fadeIn; gustOut = g.fadeOut;
+            gustVolume = g.gain * Mathf.Clamp01(level) * CueLibrary.Get(CueLibrary.AmbSandHiss).volume;
+            gustSource.volume = 0f;
+            gustSource.Play();
+            SandGustsPlayed++;
+            LastSandGust = $"clip {g.clip} at {gustSource.time:0.0}s for {gustDur:0.0}s gain {g.gain:0.00} level {level:0.00} pitch {g.pitch:0.00} pan {g.pan:0.00}";
+        }
+
+        /// <summary>Debug (#331): a sand gust now, at the hiss level (full when the layer is forced on, at least 0.5 otherwise so it can be heard on a green box).</summary>
+        public static string DebugSandGust()
+        {
+            var a = Instance;
+            if (a == null) return "no AudioDirector";
+            if (a.gustSource.isPlaying) return "a gust is still sounding (one at a time)";
+            float level = Mathf.Max(0.5f, a.fader.Level(a.hissLayer));
+            a.PlayGust(a.sandGusts.Now(), level);
+            return "sand gust: " + a.LastSandGust;
         }
 
         // #280: loose stones, rare one-shots on the barren bed. The gap is long when the bed is faint and about 14 s when it is full;
@@ -331,6 +434,53 @@ namespace AquariumCiv.View
             float level = birdLayer >= 0 ? fader.Level(birdLayer) : 0f;
             if (birdSong.Tick(dt, inMoment ? 0f : level, out var call)) PlayBird(call, level);
             birdSource.volume = birdVolume * bus; // a call under way follows the settings
+        }
+
+        void UpdateFrogs(float dt, bool inMoment, float bus)
+        {
+            frogSource.volume = frogVolume * bus; // a croak under way follows the settings
+            float level = frogLayer >= 0 && !inMoment ? fader.Level(frogLayer) : 0f;
+            if (inMoment) level *= 0.4f;
+            // A croak goes with a frog on the bank or a pad: with none sitting there is nothing to call, so none sounds.
+            var pond = PondLife.Instance;
+            Vector3 at = default;
+            bool frogSits = pond != null && pond.FrogsSitting > 0;
+            bool busy = frogSource.isPlaying || !frogSits;
+            if (!frogCroak.Tick(dt, level, Zoom01, busy, out var call)) return;
+            if (!pond.TryCroak(out at)) return;
+            PlayFrog(call, level, at);
+        }
+
+        void PlayFrog(in FrogCall call, float level, Vector3 at)
+        {
+            frogSource.clip = frogClips[call.clip];
+            frogSource.pitch = call.pitch;
+            frogSource.panStereo = call.pan;
+            frogLowPass.cutoffFrequency = call.cutoffHz;
+            float away = 1f;
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                var vp = cam.WorldToViewportPoint(at);
+                if (vp.z <= 0f || vp.x < 0f || vp.x > 1f || vp.y < 0f || vp.y > 1f) away = 0.6f; // a frog off screen is farther
+            }
+            frogVolume = call.volume * away * Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(level)) * CueLibrary.Get(CueLibrary.AmbFrogs).volume * FrogCroaker.Gain;
+            frogSource.volume = frogVolume * Gain(SoundBus.Ambience);
+            frogSource.Play();
+            FrogCroaksPlayed++;
+            LastFrogCall = $"clip {call.clip} vol {frogSource.volume:0.000} cutoff {call.cutoffHz:0} Hz pitch {call.pitch:0.00} zoom {Zoom01:0.00}";
+        }
+
+        /// <summary>Debug (#315): a croak now from a frog on view (none sitting: says so). Never over one still sounding.</summary>
+        public static string DebugFrog()
+        {
+            var a = Instance;
+            if (a == null) return "no AudioDirector";
+            if (a.frogSource.isPlaying) return "a croak is still sounding (one at a time)";
+            var pond = PondLife.Instance;
+            if (pond == null || !pond.TryCroak(out var at)) return "no frog sits on the bank yet (try 'Frogs now')";
+            a.PlayFrog(a.frogCroak.Now(a.Zoom01), 1f, at);
+            return "frog: " + a.LastFrogCall;
         }
 
         void PlayBird(in BirdCall call, float level)
@@ -431,11 +581,11 @@ namespace AquariumCiv.View
             var s = a.settings;
             var t = a.ambTarget;
             return string.Format(CultureInfo.InvariantCulture,
-                "audio: sound {0}{1} · sfx {2:0.00} amb {3:0.00} music {4:0.00} · duck {5:0.00}\nbuses: ui/care/world {6:0.00} amb {7:0.00} music {8:0.00}\namb now: calm {9:0.00} birds {10:0.00} crickets {11:0.00} rain {12:0.00} wind {13:0.00} flies {19:0.00}\nplayed {14} (muted {15}, dropped {16}) · buzzes {17} · last {18}",
+                "audio: sound {0}{1} · sfx {2:0.00} amb {3:0.00} music {4:0.00} · duck {5:0.00}\nbuses: ui/care/world {6:0.00} amb {7:0.00} music {8:0.00}\namb now: calm {9:0.00} birds {10:0.00} crickets {11:0.00} rain {12:0.00} wind {13:0.00} flies {19:0.00} sand-gust rate {20:0.00} (gusts {21}, next in {22:0}s)\nplayed {14} (muted {15}, dropped {16}) · buzzes {17} · last {18}",
                 s.sound ? "on" : "OFF", s.deviceSilent ? " (phone silent)" : "", s.sfx, s.ambience, s.music, a.ducker.Gain,
                 a.Gain(SoundBus.Care), a.Gain(SoundBus.Ambience), a.Gain(SoundBus.Music),
                 a.fader.Level(0), a.fader.Level(1), a.fader.Level(2), a.fader.Level(3), a.fader.Level(4),
-                a.PlayedCount, a.MutedCount, a.DroppedCount, a.HapticsFired, a.LastPlayed, a.fader.Level(5));
+                a.PlayedCount, a.MutedCount, a.DroppedCount, a.HapticsFired, a.LastPlayed, a.fader.Level(5), a.fader.Level(a.hissLayer), a.SandGustsPlayed, a.sandGusts.SecondsToNext);
         }
 
         public static string DebugPlay(string cue)

@@ -9,6 +9,23 @@ namespace AquariumCiv.View.Tests
     public class BoxCameraTests
     {
         [Test]
+        public void PinTagOpacity_FullClose_GoneZoomedOut_SmoothBetween()
+        {
+            Assert.AreEqual(1f, BoxCameraMath.PinTagOpacity(0.3f), 1e-6f);
+            Assert.AreEqual(1f, BoxCameraMath.PinTagOpacity(BoxCameraMath.PinTagFadeStart), 1e-6f);
+            Assert.AreEqual(0f, BoxCameraMath.PinTagOpacity(BoxCameraMath.PinTagFadeEnd), 1e-6f);
+            Assert.AreEqual(0f, BoxCameraMath.PinTagOpacity(1.3f), 1e-6f);
+            float prev = 1f;
+            for (float z = 0.5f; z <= 1.3f; z += 0.002f)
+            {
+                float o = BoxCameraMath.PinTagOpacity(z);
+                Assert.LessOrEqual(o, prev + 1e-6f, "zooming out never brings it back, at " + z);
+                Assert.Less(prev - o, 0.03f, "no pop, at " + z);
+                prev = o;
+            }
+        }
+
+        [Test]
         public void Drag_SpeedIsAFractionOfScreenHeight_NotPixels()
         {
             Assert.AreEqual(110f, BoxCameraMath.YawDegrees(2556f, 2556f), 1e-3f, "a full-height drag is 110 degrees of yaw");

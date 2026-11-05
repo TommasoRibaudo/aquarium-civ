@@ -146,6 +146,10 @@ namespace AquariumCiv.View
             if (Btn("+1 rabbit")) last = EcoDebug.AddRabbits(1);
             if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);
             EndRow();
+            Row(); // #333
+            if (Btn("Spawn rabbits here")) last = RabbitView.Instance != null ? RabbitView.Instance.DebugSpawnHere(4) : "no rabbit view";
+            if (Btn("Startle all")) last = RabbitView.Instance != null ? "startled " + RabbitView.Instance.DebugStartleAll() : "no rabbit view";
+            EndRow();
             Row();
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
@@ -157,6 +161,8 @@ namespace AquariumCiv.View
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);
             if (Btn("Camp gate")) last = EcoDebug.CampGate();
             if (Btn("+2 hides")) last = EcoDebug.AddHides(2);
+            if (Btn("Rack 1 hide")) last = EcoDebug.ShowRack(1); // #332
+            if (Btn("Rack 6 hides")) last = EcoDebug.ShowRack(6); // #332
             if (Btn("Village gate")) last = EcoDebug.VillageGate();
             EndRow();
             Row();
@@ -222,6 +228,7 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Ask recall")) last = RecallPromptView.DebugForce();
+            if (Btn("Ask recall (when calm)")) last = RecallPromptView.DebugAskWhenCalm(); // #328
             if (Btn("Reset recall")) last = RecallPromptView.DebugReset();
             if (Btn("Week report")) last = RecallPromptView.DebugReport();
             EndRow();
@@ -333,6 +340,18 @@ namespace AquariumCiv.View
                     if (Btn(mark.ToString())) last = chatter.DebugMark(PeopleView.Find(), mark);
             }
             if (Btn("Force knock")) last = GlassVoice.DebugKnock();
+            EndRow();
+            // #315/#316: the frogs and the voices by distance.
+            Row();
+            if (Btn("Frog now")) last = AudioDirector.DebugFrog();
+            if (Btn("Sand gust now")) last = AudioDirector.DebugSandGust(); // #331 (the gust rate: "Audio status" amb line)
+            if (chatter != null)
+            {
+                if (Btn("Voice exchange here")) last = chatter.DebugExchange();
+                if (Btn("Far shout now")) last = chatter.DebugLoneVoice();
+                if (Btn("Voice band: " + ChatterView.BandLabel())) last = ChatterView.DebugCycleBand();
+                if (Btn("Voice status")) last = chatter.VoiceStatus();
+            }
             EndRow();
             GUILayout.Label(MusicDirector.Instance != null ? MusicDirector.Instance.Status : "no MusicDirector");
             Row();

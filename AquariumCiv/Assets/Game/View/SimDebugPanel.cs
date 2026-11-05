@@ -341,6 +341,7 @@ namespace AquariumCiv.View
                 }
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Force a bubble")) last = ShowMeDirector.DebugBubble();
+                if (GUILayout.Button("Tree line")) last = ShowMeDirector.DebugTreeLine(); // #318
                 if (GUILayout.Button("End show me")) last = ShowMeDirector.DebugEnd();
                 GUILayout.EndHorizontal();
             }
@@ -469,21 +470,39 @@ namespace AquariumCiv.View
 
             if (Section("Care"))
             {
-                GUILayout.Label($"mess {sim.MessLevel:0.00} · grime {sim.State.grime:0.00} · overgrowth {sim.State.overgrowth:0.00} · trash {sim.State.trash.Count}");
-                if (GUILayout.Button("Sweepers clear a heap")) last = Done(sim.DebugSweep() ? "swept" : "no sweepers (town)");
+                GUILayout.Label($"mess {sim.MessLevel:0.00} · grime {sim.State.grime:0.00} · overgrowth {sim.State.overgrowth:0.00}");
+                if (GUILayout.Button("Sweepers trim weeds")) last = Done(sim.DebugSweep() ? "trimmed" : "no sweepers (town)");
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("+grime .3")) { sim.AddMess(0.3f, 0f, 0); last = Done("grime +0.3"); }
-                if (GUILayout.Button("+trash 3")) { sim.AddMess(0f, 0f, 3); last = Done("trash +3"); }
-                if (GUILayout.Button("+weeds .3")) { sim.AddMess(0f, 0.3f, 0); last = Done("overgrowth +0.3"); }
+                if (GUILayout.Button("+grime .3")) { sim.AddMess(0.3f, 0f); last = Done("grime +0.3"); }
+                if (GUILayout.Button("+weeds .3")) { sim.AddMess(0f, 0.3f); last = Done("overgrowth +0.3"); }
                 GUILayout.EndHorizontal();
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Full mess")) { sim.AddMess(1f, 1f, sim.Config.trashMax); last = Done("full mess"); }
+                if (GUILayout.Button("Full mess")) { sim.AddMess(1f, 1f); last = Done("full mess"); }
                 if (GUILayout.Button("Clean all")) { sim.CleanAll(); last = Done("cleaned all"); }
                 GUILayout.EndHorizontal();
                 var hud = GameHud.Instance;
                 if (hud != null && GUILayout.Button(hud.CleanMode ? "Clean mode: on (tap = off)" : "Clean mode: off (tap = on)")) { hud.SetCleanMode(!hud.CleanMode); last = Done("clean mode " + (hud.CleanMode ? "on" : "off")); }
                 var care = CareView.Instance;
-                if (care != null) GUILayout.Label($"sun x{care.SunFactor:0.00} · glass drawn {care.GlassMean:0.00} · heaps {care.Props.HeapCount} · weeds {care.Props.WeedCount} · strokes {care.StrokeCount}");
+                if (care != null) GUILayout.Label($"sun x{care.SunFactor:0.00} · glass drawn {care.GlassMean:0.00} · weeds {care.Props.WeedCount} · strokes {care.StrokeCount}");
+                if (sim.EcologyOn)
+                {
+                    // #311 / #314: what the tweezers take
+                    GUILayout.Label($"vine {sim.EcoVine.Count} cells · tree weeds {sim.EcoTreeWeedPieces}/3 · plucks {(care != null ? care.Plucks : 0)}");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Weeds round tree")) last = Done(sim.DebugGrowTreeWeeds() ? "weeds round the tree" : "no tree planted yet");
+                    if (GUILayout.Button("Creep forest edge")) last = Done(sim.DebugCreepForestEdge(6) + " saplings crept in");
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Grow vines here"))
+                    {
+                        var at = new Vector3(sim.EcoGround.campX + 0.8f, 0f, sim.EcoGround.campZ);
+                        var mist = EcoMistView.Instance;
+                        if (mist != null && mist.GroundPoint(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out var g)) at = g;
+                        last = Done(sim.DebugGrowVine(at.x, at.z, 8) + " vine cells");
+                    }
+                    if (hud != null && GUILayout.Button(hud.Hand == GameHud.KitTool.Tweezers ? "Tweezers: in hand" : "Give tweezers")) { hud.SetHand(GameHud.KitTool.Tweezers); last = Done("tweezers in hand"); }
+                    GUILayout.EndHorizontal();
+                }
             }
 
             GUILayout.EndVertical();

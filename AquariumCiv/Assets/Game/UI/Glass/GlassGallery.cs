@@ -282,6 +282,9 @@ namespace AquariumCiv.GameUI
             State(r, "button", "quiet", new GlassButton("Skip all", null, ButtonKind.Quiet));
             State(r, "button", "quiet-pressed", new GlassButton("Skip all", null, ButtonKind.Quiet) { ShowPressed = true });
             State(r, "button", "quiet-off", new GlassButton("Skip all", null, ButtonKind.Quiet) { Available = false });
+            r = Row(s, "Ghost (first run skip): default, pressed");
+            State(r, "button", "ghost", new GlassButton("Skip step", null, ButtonKind.Ghost));
+            State(r, "button", "ghost-pressed", new GlassButton("Skip all", null, ButtonKind.Ghost) { ShowPressed = true });
             r = Row(s, "Icon, 44 pt, reaching 144 px: default, pressed");
             State(r, "button", "icon", new GlassButton("", null, ButtonKind.Icon) { Icon = "close" });
             State(r, "button", "icon-pressed", new GlassButton("", null, ButtonKind.Icon) { Icon = "back", ShowPressed = true });

@@ -295,10 +295,10 @@ namespace AquariumCiv.View
                     if (hunt != null)
                     {   // #283: the rabbit the hunter stalks does not mind the hunter (nor the kid behind) until the strike
                         FilterOut(hunt);
-                        p = s.scare.Step(dt, basePose, fpx, fpz, Field);
+                        p = s.scare.Step(dt, basePose, fpx, fpz, Field, t);
                         if (p.act == RabbitAct.Graze && NearAnyone(p.x, p.z, hunt, pv, StalkAlertRange)) p.act = RabbitAct.SitUp; // it looks up, and does not see
                     }
-                    else p = s.scare.Step(dt, basePose, px, pz, Field);
+                    else p = s.scare.Step(dt, basePose, px, pz, Field, t);
                 }
                 var d = s.doll;
                 d.gameObject.SetActive(true);
@@ -308,6 +308,83 @@ namespace AquariumCiv.View
                 d.Show(p.act, p.phase, (float)t, s.grow);
             }
             if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);
+        }
+
+        // ---------------------------------------------------------------- a tap startles (#333)
+        readonly List<RabbitHerd.Field.Startled> startleBuf = new();
+
+        /// <summary>#333: a tap on the land at a screen spot (called by GlassVoice for a tap no person card took). Returns how many rabbits
+        /// it startled (0 when no rabbit is near, or the spot is not on the land). Never removes one.</summary>
+        /// <summary>Tester (batch 2): a rabbit's doll is right under the finger (within a fingertip on screen, about 0.03 of the screen's
+        /// height). Then the tap is the rabbit's, before a piece's or a person's card (a rabbit by the fire opened "The fire").</summary>
+        public bool RabbitUnderScreen(Vector2 screenPos)
+        {
+            var cam = Camera.main;
+            if (cam == null) return false;
+            float r = 0.03f * Screen.height;
+            foreach (var kv in slots)
+            {
+                var d = kv.Value.doll;
+                if (d == null || !d.gameObject.activeInHierarchy) continue;
+                var sp = cam.WorldToScreenPoint(d.transform.position);
+                if (sp.z > 0f && ((Vector2)sp - screenPos).sqrMagnitude <= r * r) return true;
+            }
+            return false;
+        }
+
+        public int TapAtScreen(Vector2 screenPos)
+        {
+            var shaping = ShapingView.Instance;
+            if (shaping == null || !shaping.GroundPoint(screenPos, out float x, out float z)) return 0;
+            return TapAtGround(x, z);
+        }
+
+        /// <summary>#333: the tap, in box-local ground coordinates. The rabbit tapped (and the ones near) freeze with their ears up, then
+        /// bolt to another part of the meadow and settle there (<see cref="RabbitHerd.Field.Startle"/> picks where). A rabbit the hunter
+        /// is stalking and the first rabbit during its sign are left alone.</summary>
+        public int TapAtGround(float x, float z)
+        {
+            var sim = Sim;
+            if (sim == null || !sim.EcologyOn || !Field.HasGreen || slots.Count == 0) return 0;
+            var pv = People;
+            var hunts = pv != null && pv.Planner != null ? pv.Planner.HuntsOn(pv.Now.day) : null;
+            float hour = pv != null ? pv.Now.hour : 0f;
+            int n = Field.Startle(x, z, FieldNow, id => (sign != null && sign.id == id) || (hunts != null && HuntOn(hunts, id, hour) != null), startleBuf);
+            foreach (var st in startleBuf)
+            {
+                if (!slots.TryGetValue(st.id, out var s) || s.doll == null) continue;
+                var at = s.doll.transform.localPosition;
+                s.scare.Hold(at.x, at.z, x, z, st.until, RabbitHerd.Scare.FreezeSeconds);
+            }
+            return n;
+        }
+
+        /// <summary>Debug ("Startle all"): every rabbit freezes and runs to a new place, as if tapped one after the other.</summary>
+        public int DebugStartleAll()
+        {
+            int total = 0;
+            var ids = new List<int>(Field.Alive);
+            foreach (int id in ids)
+                if (TryGetPosition(id, out var p)) total += TapAtGround(p.x - 0.05f, p.z);
+            return total;
+        }
+
+        /// <summary>Debug ("Spawn rabbits here"): adds n rabbits (sim count) and sets them down around the ground under the middle of the
+        /// screen. Returns a status line.</summary>
+        public string DebugSpawnHere(int n)
+        {
+            var sim = Sim;
+            if (sim == null || !sim.EcologyOn) return "living land off";
+            sim.DebugAddRabbits(n);
+            Field.Sync(sim.EcoRabbitsShown());
+            var shaping = ShapingView.Instance;
+            float x = 0f, z = 0f;
+            if (shaping == null || !shaping.GroundPoint(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out x, out z)) return "no ground under the screen's middle";
+            int cell = SiteMap.CellAt(x, z);
+            if (!Field.IsGreenAt(x, z)) return "no green under the screen's middle";
+            int k = 0;
+            for (int i = Field.Alive.Count - 1; i >= 0 && k < n; i--, k++) Field.Rehome(Field.Alive[i], cell, FieldNow);
+            return $"{k} rabbits set down here (shown {Field.Alive.Count})";
         }
 
         // ---------------------------------------------------------------- the hunt (#283)
@@ -343,12 +420,9 @@ namespace AquariumCiv.View
 
         void FilterOut(HuntPlan hunt)
         {
+            // #333 review: the hunted rabbit minds nobody (not only the hunter and the kid) until the strike: the hunt is planned on its spot,
+            // and since rabbits spread over the whole meadow, a passer-by near it would send it off and leave the hunter striking at grass.
             fpx.Clear(); fpz.Clear();
-            for (int i = 0; i < whoBuf.Count && i < px.Count; i++)
-            {
-                if (whoBuf[i] == hunt.hunter || (!hunt.kid.IsNone && whoBuf[i] == hunt.kid)) continue;
-                fpx.Add(px[i]); fpz.Add(pz[i]);
-            }
             for (int i = whoBuf.Count; i < px.Count; i++) { fpx.Add(px[i]); fpz.Add(pz[i]); } // the ghost scarers
         }
 

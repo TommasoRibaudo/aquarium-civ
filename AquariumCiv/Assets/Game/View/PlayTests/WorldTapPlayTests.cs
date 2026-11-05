@@ -200,7 +200,7 @@ namespace AquariumCiv.View.PlayTests
 
         IEnumerator WithMess()
         {
-            Sim.AddMess(0f, 0f, 1);
+            Sim.AddMess(0f, 0.5f);
             yield return Frames(8);
             Assert.IsNotEmpty(CareView.Instance.Props.AllPieces, "mess to touch");
             CareView.Instance.TouchHint.Reset();

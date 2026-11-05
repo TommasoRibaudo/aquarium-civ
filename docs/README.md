@@ -34,6 +34,7 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | [design/keepers-hands.md](design/keepers-hands.md) | The Keeper's hands: a box that starts barren, misting/planting/snipping/digging, care rebuilt on the land, the kit button (draft) |
 | [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (built) |
 | [design/ui-inventory.md](design/ui-inventory.md) | Every UI piece: objects, connections, states, flows, docs against code (#105) |
+| [design/people-talk.md](design/people-talk.md) | Where the people's words show: every line, caption, bubble and mark today, and the options for one rule (#327, for the user to pick) |
 | [game-design-practices.md](game-design-practices.md) | Mobile/idle design checklist the tester agent judges against (draft) |
 
 ## Working docs

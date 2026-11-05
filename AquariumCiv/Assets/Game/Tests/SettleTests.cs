@@ -537,11 +537,11 @@ namespace AquariumCiv.Tests
         [Test]
         public void AnOldSaveIsMigratedFromSlotsOnce()
         {
-            // A box saved before placement: buildings with slots only, shapings and trash with slots.
+            // A box saved before placement: buildings with slots only, shapings with slots.
             var old = NewBox(13, settle: false);
             ToYear(old, 25);
             old.PlaceNudge(SimCore.NudgeKind.Grove, 4);
-            old.AddMess(0.2f, 0.2f, 5);
+            old.AddMess(0.2f, 0.2f);
             ToYear(old, 45);
             var json = JsonUtility.ToJson(old.State);
             Assert.AreEqual(0, old.State.settle.version);
@@ -556,7 +556,6 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(0, s.overlaps);
             Assert.AreEqual(0, s.unconnected);
             Assert.IsTrue(a.State.nudges.All(n => n.x != 0f || n.z != 0f), "shapings have a spot");
-            Assert.IsTrue(a.State.trash.All(t => t.x != 0f || t.z != 0f), "trash has a spot");
             Assert.AreEqual(JsonUtility.ToJson(old.State.buildings.Select(b => b.type + b.slot).ToList()),
                 JsonUtility.ToJson(a.State.buildings.Select(b => b.type + b.slot).ToList()), "slots are kept");
             // Deterministic and only once: the same old save migrates the same way, and a migrated box doesn't migrate again.

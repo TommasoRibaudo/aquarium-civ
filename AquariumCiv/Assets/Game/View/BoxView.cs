@@ -1626,9 +1626,19 @@ namespace AquariumCiv.View
             var to = transform.InverseTransformDirection(cam.transform.position - transform.position);
             to.y = 0f;
             to.Normalize();
+            // #319: how close the camera is to each pane itself (plane distance over the fit distance), on top of the zoom.
+            var camLocal = transform.InverseTransformPoint(cam.transform.position);
+            float fit = rig != null ? Mathf.Max(0.01f, rig.FitDistance()) : 10f;
+            float gx = Land.HX + 0.075f, gz = Land.HZ + 0.075f;
             for (int i = 0; i < 4; i++)
             {
-                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), false, clean, NearGlassForce);
+                // Distance to the pane itself (its nearest point), not to its infinite plane: a far camera sees a side pane
+                // edge-on with a small plane distance, and must not fade it (the default view faded the left pane to 0.17).
+                var near = i < 2
+                    ? new Vector3(Mathf.Clamp(camLocal.x, -gx, gx), Mathf.Clamp(camLocal.y, 0f, Land.GlassTop), i == 0 ? -gz : gz)
+                    : new Vector3(i == 2 ? -gx : gx, Mathf.Clamp(camLocal.y, 0f, Land.GlassTop), Mathf.Clamp(camLocal.z, -gz, gz));
+                float pd = Vector3.Dot(PartOut[i], camLocal) < (i < 2 ? gz : gx) ? float.MaxValue : Vector3.Distance(camLocal, near) / fit;
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), false, clean, NearGlassForce, pd);
                 float now = NearGlassFade.Follow(paneFade[i], want, dt);
                 if (Mathf.Abs(want - now) < 0.002f) now = want;
                 if (now == paneFade[i]) continue;
@@ -1638,7 +1648,8 @@ namespace AquariumCiv.View
             bool changed = false;
             for (int i = 0; i < 8; i++)
             {
-                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), true, clean, NearGlassForce);
+                float pd = i < 4 ? (Vector3.Dot(PartOut[i], camLocal) - (i < 2 ? gz : gx)) / fit : float.MaxValue;
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), true, clean, NearGlassForce, pd);
                 float now = NearGlassFade.Follow(frameShown[i], want, dt);
                 if (Mathf.Abs(want - now) < 0.002f) now = want;
                 if (now == frameShown[i]) continue;

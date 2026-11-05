@@ -205,12 +205,11 @@ namespace AquariumCiv.Life
                 }
                 case JobType.Sweeper:
                 {
-                    // Town care (§7): mornings the streets and the trash heaps to the midden; afternoons the green and the vines.
+                    // Town care (§7): mornings the streets (the trash heaps are gone, #313); afternoons the green and the vines.
                     bool morning = R(p.key, d.day, 80) < 0.5f || box.sweeperExtraBlocks > 0;
-                    if (morning || trashList.Count > 0)
+                    if (morning)
                     {
-                        int first = SweepHeap(p, d.day, 0);
-                        w = W(first >= 0 ? Place.Land(PlaceKind.TrashHeap, first) : gather, ActivityKind.Sweep, Prop.Broom, Prop.Handcart, Place.Land(PlaceKind.Midden), 0.35f);
+                        w = W(StreetOf(p, d.day), ActivityKind.Sweep, Prop.Broom, Prop.Handcart, Place.Land(PlaceKind.Midden), 0.35f);
                         w.sweeps = true;
                         return Alt(w, gather, ActivityKind.Trim, Prop.Shears, box.sweeperExtraBlocks > 0 ? 0.1f : 0.3f);
                     }
@@ -246,18 +245,9 @@ namespace AquariumCiv.Life
             return Fetch(w, marketB != null ? PlaceOf(marketB) : WaterPlace);
         }
 
-        /// <summary>The <paramref name="block"/>-th heap a sweeper sweeps today, or -1 for the streets. A town sweeper i takes
-        /// <see cref="SimCore.SweeperTarget"/>(i) first, then every sweepersTotal-th heap after it, oldest first (one heap
-        /// per sweeper, as the sim clears them); anyone else sweeping goes round the heaps in a hashed order.</summary>
-        int SweepHeap(Person p, long day, int block)
-        {
-            if (trashList.Count == 0) return -1;
-            if (p.sweeper < 0 || sweepOrder.Count == 0)
-                return trashList[(int)((H(p.key, day, 77) + (uint)block) % (uint)trashList.Count)];
-            if (block == 0 && p.sweeper < sweepTargets.Count) return sweepTargets[p.sweeper];
-            long i = p.sweeper + (long)block * sweepersTotal;
-            return i < sweepOrder.Count ? sweepOrder[(int)i] : -1;
-        }
+        /// <summary>Where a sweeper sweeps the streets today: the door of one of the homes (hashed per person and day), so the
+        /// sweepers spread through the town instead of all standing at the market; the gathering place with no homes.</summary>
+        Place StreetOf(Person p, long day) => homes.Count > 0 ? PlaceOf(homes[(int)(H(p.key, day, 77) % (uint)homes.Count)]) : gather;
 
         static Work Fetch(Work w, Place from)
         {

@@ -90,7 +90,7 @@ First run, glance and check-in beat by beat, and how a check-in ends (Q13): [fir
 | Mess | Source | Look | Clean |
 |---|---|---|---|
 | **Glass grime** | time | smudges and film on the panes | drag to wipe (P1) |
-| **Trash** | the people's activity (grows with population) | crates, heaps | tap / flick (P1) |
+| ~~Trash~~ | removed 2026-11-04 (#313; keepers-hands §5.6) | | |
 | **Overgrowth** | the terrarium itself | weeds, vines over roofs | prune |
 
 **Rules**
@@ -100,7 +100,7 @@ First run, glance and check-in beat by beat, and how a check-in ends (Q13): [fir
 2. **Capped.** After 48 h nothing gets worse.
 3. **Recovery is fast and juicy.** A full clean takes under a minute, with sound and the people cheering.
 4. **Welcome back.** The chronicle opens on good news first.
-5. **Care moves up.** In later eras the people handle their own trash and gardens, and you **see them doing it**
+5. **Care moves up.** In later eras the people handle their own gardens, and you **see them doing it**
    (sweepers, gardeners at work in the box). **The glass is always yours.**
 6. **Never monetized.** Cleaning is never sold, sped up or ad-gated.
 

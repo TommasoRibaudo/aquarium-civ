@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
@@ -137,6 +138,94 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(rv.Field.IsGreenAt(at1.x, at1.z), "onto green");
                 yield return Frames(200);
                 AssertNoErrors("rabbits");
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
+        /// <summary>#333: a real touch on a rabbit: it freezes a beat, then bolts to another part of the meadow and stays there; none is lost.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Touch_StartlesARabbit_ItRunsToAnotherPartOfTheMeadow_AndStaysThere()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            try
+            {
+                yield return OpenSlice(seed: 4242);
+                var box = Object.FindAnyObjectByType<BoxView>();
+                var rv = RabbitView.Instance;
+                PeopleView.DebugSetHour(11f);
+                Meadow();
+                EcoDebug.AddRabbits(6);
+                yield return Frames(30);
+                yield return Until(() => rv.SignsPlayed > 0, 10f);
+                yield return Until(() => !rv.SignPlaying, 10f);
+                yield return Frames(30);
+                int r0 = rv.Field.Alive[1];
+                Assert.IsTrue(rv.TryGetPosition(r0, out var at0));
+                yield return Fly(box, at0.x, at0.z, 1.6f);
+                Assert.IsTrue(rv.TryGetPosition(r0, out at0));
+                int shown = rv.Shown;
+                var screen = (Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(at0));
+                Assert.IsTrue(screen.x > 0 && screen.y > 0 && screen.x < Screen.width && screen.y < Screen.height, "the rabbit is on screen");
+                yield return TapAt(screen);
+                yield return new WaitForSecondsRealtime(0.15f);
+                Assert.IsTrue(rv.TryGetAct(r0, out bool fleeing) && fleeing, "startled: it freezes");
+                yield return new WaitForSecondsRealtime(1.0f);
+                rv.TryGetPosition(r0, out var mid);
+                yield return new WaitForSecondsRealtime(6f);
+                Assert.IsTrue(rv.TryGetPosition(r0, out var end), "still there");
+                Assert.AreEqual(shown, rv.Shown, "a tap removes nobody");
+                float away = new Vector2(end.x - at0.x, end.z - at0.z).magnitude;
+                Assert.Greater(away, 0.5f, "it ran to another part of the meadow");
+                Assert.IsTrue(rv.Field.IsGreenAt(end.x, end.z), "and stands on green");
+                Assert.Greater(new Vector2(mid.x - at0.x, mid.z - at0.z).magnitude, 0.15f, "fast: a second in, it is already well away");
+                yield return new WaitForSecondsRealtime(4f);
+                rv.TryGetPosition(r0, out var later);
+                Assert.Greater(new Vector2(later.x - at0.x, later.z - at0.z).magnitude, 0.4f, "and it does not drift back");
+                AssertNoErrors("rabbit tap");
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
+        /// <summary>Tester (batch 2): a rabbit by the campfire opened "The fire" card instead of startling. A tap right on the rabbit is the rabbit's.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Touch_ARabbitByTheFire_IsStartled_NotTheFireCard()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            try
+            {
+                yield return OpenSlice(seed: 4242);
+                var box = Object.FindAnyObjectByType<BoxView>();
+                var rv = RabbitView.Instance;
+                PeopleView.DebugSetHour(11f);
+                var fire = box.layout.pieces.FirstOrDefault(p => p.kind == PieceKind.Fire);
+                Assert.IsNotNull(fire, "the camp has a fire");
+                Meadow();
+                EcoDebug.MistBig(fire.x, fire.z);
+                EcoDebug.SkipSeasons(1);
+                EcoDebug.AddRabbits(4);
+                yield return Frames(30);
+                yield return Until(() => rv.SignsPlayed > 0, 10f);
+                yield return Until(() => !rv.SignPlaying, 10f);
+                int r0 = rv.Field.Alive[0];
+                int cell = SiteMap.CellAt(fire.x + 0.12f, fire.z);
+                rv.Field.Rehome(r0, cell, rv.FieldNow);
+                yield return new WaitForSecondsRealtime(6f); // it hops over and settles by the fire
+                Assert.IsTrue(rv.TryGetPosition(r0, out var at0));
+                Debug.Log($"[rabbit-fire] fire ({fire.x:0.00},{fire.z:0.00}) rabbit ({at0.x:0.00},{at0.z:0.00})");
+                yield return Fly(box, at0.x, at0.z, 1.6f);
+                Assert.IsTrue(rv.TryGetPosition(r0, out at0));
+                var screen = (Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(at0));
+                yield return TapAt(screen);
+                yield return new WaitForSecondsRealtime(0.15f);
+                var cards = PersonCardView.Instance;
+                Assert.IsFalse(cards != null && (cards.BuildingOpen || cards.AnyOpen), "the tap on the rabbit opened no card");
+                Assert.IsTrue(rv.TryGetAct(r0, out bool fleeing) && fleeing, "the rabbit by the fire is startled");
+                yield return new WaitForSecondsRealtime(4f);
+                Assert.IsTrue(rv.TryGetPosition(r0, out var end));
+                Assert.Greater(new Vector2(end.x - at0.x, end.z - at0.z).magnitude, 0.5f, "and runs off");
+                AssertNoErrors("rabbit by the fire");
             }
             finally { GameClock.EcologyPref = prefWas; }
         }

@@ -193,6 +193,17 @@ namespace AquariumCiv.View
             int c = s.DebugAddHides(n);
             return Refresh($"+{n} hides: {c} on the frame");
         }
+        // #332: "show the drying rack with N hides": sets the hides drying by the fire to exactly N (the rack draws one pelt each, a pile at its foot).
+        public static string ShowRack(int n)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var e = s.State.eco;
+            e.hidesDrying = Mathf.Max(0, n);
+            if (e.hidesTotal < e.hidesDrying) e.hidesTotal = e.hidesDrying;
+            return Refresh($"rack with {n} hides");
+        }
+
         public static string VillageGate() { var s = Sim; return s != null && s.DebugOpenVillageGate() ? Refresh("village gate open") : "no change"; }
 
         public static string Table(float aboveFlood)

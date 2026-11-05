@@ -373,7 +373,7 @@ namespace AquariumCiv.View
 
             // Chase the target: walks are continuous already (the planner's route); taking a slot on arrival glides at a
             // walking pace, never faster than the walk itself. Unseen (indoors) or a clock jump: just be there. A plan that
-            // changed under them (the month ticked: a heap swept away, a new home) is walked to at the walking pace, never
+            // changed under them (the month ticked: a new home) is walked to at the walking pace, never
             // jumped (#30): the planner's point moving faster than any walk is such a change, not a walk to keep up with.
             var prev = d.pos;
             // How fast the planner's own point moves (the walk), not the slot target, which steps on arrival.
@@ -630,11 +630,11 @@ namespace AquariumCiv.View
                 face = spot;
                 return spot + new Vector2(Mathf.Cos(ba), Mathf.Sin(ba)) * (0.17f + 0.03f * (a.slot / 3));
             }
-            // Open ground (a field, the woods, the pond, a heap): a loose spiral round the spot, facing it.
+            // Open ground (a field, the woods, the pond): a loose spiral round the spot, facing it.
             float spread = a.place.kind is PlaceKind.Field or PlaceKind.Pasture or PlaceKind.Meadow or PlaceKind.Woods or PlaceKind.ForestEdge or PlaceKind.Bushes ? 0.2f : 0.12f;
             if (spread <= SlotSpots.Gap)
             {
-                // A heap, a bare doorstep: rings round the spot, nobody closer than the gap.
+                // A bare doorstep: rings round the spot, nobody closer than the gap.
                 var (ox, oz) = SlotSpots.Open(a.slot, h);
                 face = a.slot == 0 ? spot + new Vector2(Mathf.Cos(h), Mathf.Sin(h)) * 0.1f : spot;
                 return spot + new Vector2(ox, oz);

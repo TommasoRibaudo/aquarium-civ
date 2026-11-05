@@ -8,15 +8,14 @@ using static AquariumCiv.Tests.SimCoreTests;
 
 namespace AquariumCiv.Tests
 {
-    /// <summary>Care moves up (#60, life-in-the-box §7, choice 6 ★): town sweepers really clear trash heaps and trim
-    /// overgrowth, slowly; never the glass; the Keeper always has care left; nothing changes in the camp or the village.</summary>
+    /// <summary>Care moves up (#60, life-in-the-box §7, choice 6 ★): town sweepers really trim overgrowth, slowly
+    /// (no trash heaps any more, #313); never the glass; the Keeper always has care left; nothing changes in the camp or the village.</summary>
     public class SweeperTests
     {
         /// <summary>The sim before #60: nobody sweeps (the rates are 0, so every number follows the old code path).</summary>
         internal static SimConfig NoSweepers()
         {
             var c = new SimConfig();
-            c.sweepHeapsPerHour = 0f;
             c.trimPerHour = 0f;
             return c;
         }
@@ -51,29 +50,17 @@ namespace AquariumCiv.Tests
         {
             var (with, without) = CleanTown(seed);
             Assert.Greater(with.Sweepers, 0, "a town has sweepers");
-            float trashHoursWith = 0, trashHoursWithout = 0;
             for (int h = 1; h <= 48; h++)
             {
                 with.Advance(1); without.Advance(1);
                 var a = with.State; var b = without.State;
-                trashHoursWith += a.trash.Count; trashHoursWithout += b.trash.Count;
                 Assert.Less(a.overgrowth, b.overgrowth, $"seed {seed} h{h}: weeded");
                 Assert.Greater(a.overgrowth, 0f, $"seed {seed} h{h}: the weeds keep coming");
-                if (h >= 4) Assert.Greater(a.trash.Count, 0, $"seed {seed} h{h}: the heaps keep coming");
                 Assert.LessOrEqual(with.MessLevel, without.MessLevel, $"seed {seed} h{h}");
-                if (h == 24)
-                {
-                    Assert.Less(a.trash.Count, b.trash.Count, $"seed {seed}: a day in, fewer heaps");
-                    TestContext.WriteLine($"seed {seed} 24 h: trash {a.trash.Count} vs {b.trash.Count}, overgrowth {a.overgrowth:0.000} vs {b.overgrowth:0.000}");
-                }
             }
-            // Back to 0.85 (#109): after #67/#83 the seeds sit at 0.75-0.77 (#86 had briefly moved seed 1 to 0.852).
-            Assert.Less(trashHoursWith, trashHoursWithout * 0.85f, $"seed {seed}: fewer heaps lying about over the two days");
             Assert.LessOrEqual(with.State.overgrowth, 1f);
-            Assert.LessOrEqual(with.State.trash.Count, with.Config.trashMax);
-            TestContext.WriteLine($"seed {seed} 48 h: trash {with.State.trash.Count} vs {without.State.trash.Count}, overgrowth " +
-                                  $"{with.State.overgrowth:0.000} vs {without.State.overgrowth:0.000}, mess {with.MessLevel:0.000} vs {without.MessLevel:0.000}, " +
-                                  $"heap-hours {trashHoursWith} vs {trashHoursWithout}");
+            TestContext.WriteLine($"seed {seed} 48 h: overgrowth {with.State.overgrowth:0.000} vs {without.State.overgrowth:0.000}, " +
+                                  $"mess {with.MessLevel:0.000} vs {without.MessLevel:0.000}");
         }
 
         [Test]
@@ -94,7 +81,7 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheKeeperAlwaysHasCareLeft()
         {
-            var tireless = new SimConfig { sweepHeapsPerHour = 5f, trimPerHour = 0.5f }; // 50x and 100x the real rates
+            var tireless = new SimConfig { trimPerHour = 0.5f }; // 100x the real rate
             var town = Copy(ToTown(1234), tireless);
             foreach (var n in town.State.notables.Where(n => n.alive && n.age >= 16f && n.age < town.Config.retireAge))
                 town.DebugSetJob(n, JobType.Sweeper); // every working notable sweeps
@@ -104,15 +91,12 @@ namespace AquariumCiv.Tests
             for (int h = 1; h <= 48; h++)
             {
                 Assert.Greater(town.Sweepers, 0);
-                Assert.AreEqual(town.Config.careMaxShare * town.State.population * town.Config.trashPerPersonHour, town.SweepHeapsPerHour, 1e-6f, $"h{h}: heaps capped at half the inflow");
                 Assert.AreEqual(town.Config.careMaxShare / town.Config.messFullHours, town.TrimPerHour, 1e-6f, $"h{h}: weeds capped at half the inflow");
                 town.Advance(1);
-                if (h >= 3) Assert.Greater(town.State.trash.Count, 0, $"h{h}");
             }
             Assert.AreEqual(0.5f, town.State.overgrowth, 0.01f, "half the weeds still grow");
-            Assert.GreaterOrEqual(town.State.trash.Count, 8, "plenty of heaps to flick");
             Assert.GreaterOrEqual(town.MessLevel, 0.75f, "most of the mess is still the Keeper's");
-            TestContext.WriteLine($"{town.Sweepers} sweepers, 48 h: trash {town.State.trash.Count}, overgrowth {town.State.overgrowth:0.000}, mess {town.MessLevel:0.000}");
+            TestContext.WriteLine($"{town.Sweepers} sweepers, 48 h: overgrowth {town.State.overgrowth:0.000}, mess {town.MessLevel:0.000}");
         }
 
         /// <summary>Nobody sweeps in the camp or the village: with sweepers 100× busier, both are bit-for-bit the sim before
@@ -120,7 +104,7 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheCampAndTheVillageAreUnchanged()
         {
-            var busy = new SimConfig { sweepHeapsPerHour = 10f, trimPerHour = 0.5f, careMaxShare = 1f };
+            var busy = new SimConfig { trimPerHour = 0.5f, careMaxShare = 1f };
             var camp = NewSim(1234, busy); var campBefore = NewSim(1234, NoSweepers());
             camp.Advance(48); campBefore.Advance(48);
             Assert.AreEqual(Era.Camp, camp.State.era);
@@ -135,7 +119,6 @@ namespace AquariumCiv.Tests
             }
             Assert.AreEqual(Era.Village, village.State.era);
             Assert.AreEqual(0, village.Sweepers);
-            Assert.Greater(village.State.trash.Count, 0);
             Assert.AreEqual(JsonUtility.ToJson(villageBefore.State), JsonUtility.ToJson(village.State), "village");
             Assert.IsFalse(village.State.chronicle.Any(e => e.kind == "sweepers"));
         }
@@ -150,8 +133,7 @@ namespace AquariumCiv.Tests
         }
 
         static string Care(SimState s) => s.population + "|" + s.grime.ToString("R") + "|" + s.overgrowth.ToString("R") + "|" +
-                                         s.sweepAccum.ToString("R") + "|" + s.trashAccum.ToString("R") + "|" +
-                                         string.Join(",", s.trash.Select(t => t.id)) + "|" + string.Join("/", s.chronicle.Select(c => c.text));
+                                         string.Join("/", s.chronicle.Select(c => c.text));
 
         [Test]
         public void CatchUpSweepsLikeLivePlay()
@@ -173,40 +155,19 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(awayBefore.State.grime, away.State.grime, "the glass is the Keeper's");
             Assert.Less(away.State.overgrowth, awayBefore.State.overgrowth);
             Assert.Greater(away.State.overgrowth, 0.3f);
-            Assert.Greater(away.State.trash.Count, 0);
-            Assert.LessOrEqual(away.State.trash.Count, away.Config.trashMax);
         }
 
+        /// <summary>#313: the trash heaps are gone. An old save that still carries the field loads (JsonUtility drops it) and
+        /// no heap ever turns up, whatever the box does.</summary>
         [Test]
-        public void SweepersHeadForTheOldestHeaps()
+        public void OldSavesWithTrashLoadAndNoTrashAppears()
         {
-            var camp = NewSim(3);
-            camp.Advance(10);
-            Assert.Greater(camp.State.trash.Count, 0);
-            Assert.AreEqual(-1, camp.SweeperTarget(), "nobody sweeps in the camp");
-            CollectionAssert.IsEmpty(camp.SweeperTargets());
-
-            var town = ToTown(7);
-            town.CleanAll();
-            Assert.AreEqual(-1, town.SweeperTarget(), "nothing to sweep");
-            int removedSeen = 0;
-            for (int m = 0; m < 12 * 20; m++)
-            {
-                var targets = town.SweeperTargets();
-                Assert.AreEqual(Math.Min(town.Sweepers, town.State.trash.Count), targets.Count);
-                var oldestFirst = town.State.trash.OrderBy(t => t.month).ThenBy(t => t.id).Select(t => t.id).Take(targets.Count).ToList();
-                CollectionAssert.AreEqual(oldestFirst, targets, $"month {m}");
-                Assert.AreEqual(targets.Count > 0 ? targets[0] : -1, town.SweeperTarget(0));
-                Assert.AreEqual(-1, town.SweeperTarget(town.Sweepers), "one heap per sweeper");
-                Assert.That(town.SweepProgress, Is.InRange(0f, 1f));
-                var before = town.State.trash.Select(t => t.id).ToList();
-                town.Step();
-                var gone = before.Except(town.State.trash.Select(t => t.id)).ToList();
-                if (gone.Count == 0) continue;
-                removedSeen++;
-                CollectionAssert.AreEqual(targets.Take(gone.Count).ToList(), gone, $"month {m}: the heap they were heading to went");
-            }
-            Assert.GreaterOrEqual(removedSeen, 2, "the sweepers cleared heaps");
+            var sim = ToTown(7);
+            string json = JsonUtility.ToJson(sim.State).TrimEnd('}') +
+                          ",\"trash\":[{\"id\":99,\"slot\":1,\"offsetX\":0.1,\"offsetZ\":0.1,\"month\":3,\"x\":1.0,\"z\":1.0}],\"trashAccum\":0.5,\"sweepAccum\":0.5}";
+            var loaded = new SimCore(new SimConfig(), JsonUtility.FromJson<SimState>(json));
+            loaded.Advance(48);
+            StringAssert.DoesNotContain("trash", JsonUtility.ToJson(loaded.State), "nothing of the old heaps is kept or saved again");
         }
 
         [Test]
@@ -223,20 +184,16 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void DebugSweepClearsAHeapInTheTownOnly()
+        public void DebugSweepTrimsWeedsInTheTownOnly()
         {
             var camp = NewSim(3);
             camp.Advance(10);
             Assert.IsFalse(camp.DebugSweep());
             var town = ToTown(7);
             town.Advance(5);
-            int heaps = town.State.trash.Count;
-            int target = town.SweeperTarget();
             float weeds = town.State.overgrowth;
             float grime = town.State.grime;
             Assert.IsTrue(town.DebugSweep());
-            Assert.AreEqual(heaps - 1, town.State.trash.Count);
-            Assert.IsFalse(town.State.trash.Any(t => t.id == target));
             Assert.Less(town.State.overgrowth, weeds);
             Assert.AreEqual(grime, town.State.grime);
         }

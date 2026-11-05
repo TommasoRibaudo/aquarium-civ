@@ -112,6 +112,14 @@
     -unity-font-definition: var(--font-serif); font-size: 38.5px;
 }
 .kg-btn--quiet:active, .kg-btn--quiet.kg-btn--pressed { background-color: var(--pressed-fill); }
+/* Ghost: a quiet link that reads as touchable: hairline pill, a very faint glass fill, the quiet serif at low weight (#329) */
+.kg-btn--ghost {
+    height: var(--drawn); padding: 0 var(--space-12);
+    border-width: var(--hairline); border-color: rgba(211, 182, 132, 0.8); background-color: rgba(243, 233, 214, 0.34);
+    color: var(--ink); -unity-text-outline-color: var(--ink);
+    -unity-font-definition: var(--font-serif); font-size: 38.5px;
+}
+.kg-btn--ghost:active, .kg-btn--ghost.kg-btn--pressed { background-color: var(--pressed-fill); }
 .kg-btn--icon {
     width: var(--drawn); height: var(--drawn); padding: 0; border-width: 0; background-color: var(--clear);
     justify-content: center; align-items: center;
@@ -123,7 +131,7 @@
     background-color: var(--off-fill); border-width: var(--hairline); border-color: var(--timber);
     color: var(--ink); -unity-text-outline-color: var(--ink);
 }
-.kg-btn--quiet.kg-btn--off { padding-right: var(--space-16); }
+.kg-btn--quiet.kg-btn--off, .kg-btn--ghost.kg-btn--off { padding-right: var(--space-16); }
 .kg-btn-lock { position: absolute; left: 41px; top: 41px; display: none; }
 .kg-btn-measure { visibility: hidden; margin: 0; padding: 0; white-space: nowrap; }
 .kg-btn--off > .kg-btn-lock { display: flex; }
@@ -609,7 +617,7 @@
     border-width: 0; background-color: var(--clear); justify-content: center;
 }
 .fr-plate-slot:active > .kg-plate { background-color: var(--brass); }
-/* plain quiet text, the quietest thing on screen (rule 4, question 29). Two reaches of --hit, so they stand that far apart */
+/* ghost pills, the quietest buttons on screen (rule 4, question 29). Two reaches of --hit, so they stand that far apart */
 .fr-skip { position: absolute; left: var(--space-16); align-items: flex-start; }
 .fr-skip > .kg-btn { margin-bottom: 23px; }
 .fr-year { left: 154px; right: 154px; top: 264px; align-items: stretch; }

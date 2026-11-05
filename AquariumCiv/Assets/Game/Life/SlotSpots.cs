@@ -3,7 +3,7 @@ using System;
 namespace AquariumCiv.Life
 {
     /// <summary>
-    /// Where the n-th person at a place stands, pure (no engine types): so the tavern, the doorsteps and the heaps don't
+    /// Where the n-th person at a place stands, pure (no engine types): so the tavern and the doorsteps don't
     /// pile people on one spot (the tester's "9 dolls within 0.12 u at the tavern, 3-4 on one spot at homes", 2026-10-30).
     /// The view numbers the slots (rule 6: one doll per slot) and asks here for the offset from the place's spot.
     /// Slot 0 stands on the spot; the rest fill rings round it, each ring's people at least <see cref="Gap"/> apart.
@@ -57,7 +57,7 @@ namespace AquariumCiv.Life
             return ((float)Math.Cos(a) * r, (float)Math.Sin(a) * r);
         }
 
-        /// <summary>On open ground (a heap, the pond's edge, a doorstep with no building): rings all the way round.</summary>
+        /// <summary>On open ground (the pond's edge, a doorstep with no building): rings all the way round.</summary>
         public static (float dx, float dz) Open(int slot, float startAngle) => Ring(slot, startAngle, 2f * (float)Math.PI);
 
         /// <summary>Slot -> (ring, index); each ring is <see cref="Gap"/> further out and holds as many as fit its arc.</summary>

@@ -153,6 +153,55 @@ namespace AquariumCiv.Sim
         void EcoWipe(float amount) { if (EcologyOn) EcoM.Wipe(amount); }
         void EcoSnip(float amount) { if (EcologyOn) EcoM.Snip(amount); }
 
+        // ---------- the tweezers: what overgrows (#311, #314; EcoModel.Overgrowth.cs) ----------
+        /// <summary>Each cell of vine counts this much as overgrowth in <see cref="MessLevel"/> (at most <see cref="VineLoadMax"/> together).</summary>
+        public const float VineLoadPerCell = 0.02f, VineLoadMax = 0.5f;
+        /// <summary>The creeping vine's share of the overgrowth (0 with no vine).</summary>
+        public float VineLoad => EcologyOn && State.eco.vine != null ? Math.Min(VineLoadMax, State.eco.vine.Count * VineLoadPerCell) : 0f;
+        /// <summary>The cells the vine covers (empty with the ecology off).</summary>
+        public IReadOnlyList<int> EcoVine => EcologyOn && State.eco.vine != null ? State.eco.vine : (IReadOnlyList<int>)Array.Empty<int>();
+        /// <summary>Tufts of weed round the Keeper's tree, 0..3.</summary>
+        public int EcoTreeWeedPieces => EcologyOn ? EcoM.TreeWeedPieces : 0;
+
+        /// <summary>Plucks one tuft of the weeds round the Keeper's tree. The people nearby react as to a prune (the view asks them).</summary>
+        public bool EcoPluckTreeWeed()
+        {
+            if (!EcologyOn || !EcoM.PluckTreeWeed()) return false;
+            CountKeeperAction(KeeperAction.Prune, true);
+            return true;
+        }
+
+        /// <summary>Plucks the wild sapling nearest a point (within <paramref name="radius"/> box units); never the Keeper's tree, a grown tree or the heart of a wood. The cell, or -1.</summary>
+        public int EcoPluckSapling(float x, float z, float radius)
+        {
+            if (!EcologyOn) return -1;
+            int c = EcoM.NearestSapling(x, z, radius);
+            if (c < 0 || !EcoM.PluckSapling(c)) return -1;
+            CountKeeperAction(KeeperAction.Prune, true);
+            return c;
+        }
+
+        /// <summary>The wild sapling the tweezers could take nearest a point (within <paramref name="radius"/>), without plucking it; -1 if none.</summary>
+        public int EcoNearestSapling(float x, float z, float radius) => EcologyOn ? EcoM.NearestSapling(x, z, radius) : -1;
+
+        /// <summary>A wild sapling the tweezers could take stands on this cell.</summary>
+        public bool EcoCanPluckSapling(int cell) => EcologyOn && EcoM.CanPluckSapling(cell);
+
+        /// <summary>Plucks the vine on a cell.</summary>
+        public bool EcoPluckVine(int cell)
+        {
+            if (!EcologyOn || !EcoM.PluckVine(cell)) return false;
+            CountKeeperAction(KeeperAction.Prune, true);
+            return true;
+        }
+
+        /// <summary>Debug: thick weeds round the tree. False when no tree stands.</summary>
+        public bool DebugGrowTreeWeeds() => EcologyOn && EcoM.GrowTreeWeeds();
+        /// <summary>Debug: seedlings creep in near the trees and the yard. How many came.</summary>
+        public int DebugCreepForestEdge(int count = 5) => EcologyOn ? EcoM.CreepEdge(count) : 0;
+        /// <summary>Debug: a strand of vine from a point. Cells added.</summary>
+        public int DebugGrowVine(float x, float z, int len = 6) => EcologyOn ? EcoM.GrowVineAt(x, z, len) : 0;
+
         // ---------- what the view and the sound read ----------
         public EcoCell EcoAt(float x, float z)
         {

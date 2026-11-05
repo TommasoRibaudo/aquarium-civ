@@ -744,3 +744,18 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   A before/after look at a `Life/` change in the Editor: swap the one file from the parent commit, recompile, run, restore.
 
 - **2026-11-04 · Full regression batch from one script (final verify).** `AquariumCiv/Temp/agent/batch.sh`-style loop: per line `mode|filter|type`, delete `TestResults.xml`, `test run --async_tests true`, wait for the file, parse `<test-run total/passed/failed>` plus failed `fullname`s. EditMode by assembly took ~70 min (Life.Tests alone ~25 min, 1548-test log line is the whole-project count, not the assembly's); the 15 PlayMode classes ~25 min. A foreground wait over 180 s is moved to the background by the harness: use `ping -n 110 127.0.0.1` (about 110 s) between checks. [verified]
+- **2026-11-04 · Unity's NUnit has no `Is.AnyOf`; parallel workers + one final Editor run.** [verified] `Tools/SimTests` builds against a newer NUnit,
+  so a test using `Is.AnyOf(...)` passed `dotnet test` but sent the Editor to "Enter Safe Mode?" (CS0117) when it opened. Use
+  `CollectionAssert.Contains(new[] { ... }, value, msg)`. Answer the dialog with `dismiss-dialogs.ps1 -Click` (Ignore) and recompile after the fix.
+  Seven no-Editor workers (offline csc + dotnet tests) and one batched Editor pass at the end (10 EditMode assemblies, 14 PlayMode classes,
+  smoke) worked. The Editor pass still found 3 bugs that offline checks can't see (a side pane faded at the default view, a tap swallowed by a
+  drag throttle, a weed's reach hiding a sapling), so keep that pass. A runner that waits on `test status` until `completed`, then reads the JSON
+  (`data.result.summary` / `results[].Status`), lives in the session scratchpad; copy the pattern into `Tools/` if it's needed again.
+- **2026-11-04 · Feedback batch 2 (hybrid run) notes.** [verified]
+  - `Tools/run-tests.sh` is the batched runner (one filter per run, bounded waits). An `[Explicit]` class matches 0 tests unless `--include_explicit true` (`EXPLICIT=1 bash Tools/run-tests.sh ...`); a 0-test run leaves `test status` unchanged, and the first version of the runner then waited its whole 40-min limit (an Editor worker lost ~30 min to it). It now gives up after 90 s.
+  - EditMode runs block the Editor's main thread, so `test status` polls time out until the run ends; a runner must not need to see `running` (it compares the status with the one before the run). The 10 EditMode assemblies took ~25 min after a fresh restart (Life 272, Sim 738).
+  - A play test that turns on the cloth on a spotless box loses it after 2.2 s (`CareView.spotlessExitSeconds`); watch frame by frame instead of checking after a wait.
+  - A prompt test that makes a question due at a calm moment sees it open before the test's own taps, and the next tap lands on the sheet. Hold a tool (or a sheet) while the question becomes due.
+  - `HideFlags.DontSave` view meshes (the hide rack, overlays) aren't listed by `FindObjectsByType`; use `Resources.FindObjectsOfTypeAll<T>()` + `activeInHierarchy`, and `DestroyImmediate` a DontSave helper object in a test's `finally` (the teardown's leak check runs before a deferred `Destroy`).
+  - Killing stray runners with `Get-CimInstance ... -like '*run-tests.sh*'` from Bash matched the calling shell's own command line and killed it: run the filter from the PowerShell tool, or exclude `Get-CimInstance` in the match.
+  - A before/after for a view regression: `git show <base>:<file> > <file>` for the ticket's files (plus any debug-panel line that calls new API), recompile, run the class, `git checkout --` them. HuntViewPlayTests: 2/2 on the pre-#333 rabbits, 1/2 after: the ticket's.

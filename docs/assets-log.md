@@ -21,6 +21,7 @@ Every third-party pack in the project: where it came from and its license.
 | "Guitar" (one strummed chord), antumdeluge | https://opengameart.org/content/guitar-0 | CC0 1.0 | `Sfx/Moment/guitar_chord.ogg` (mono) | 2026-10-30 |
 | "WIP Raw Pan Flute Audio" (D5), pattingthestar | https://opengameart.org/content/wip-raw-pan-flute-audio | CC0 1.0 | `Sfx/Moment/pan_flute_d5.ogg` (mono) | 2026-10-30 |
 | "Strong wind #4" (#0154), Joseph Sardin, BigSoundBank | https://bigsoundbank.com/strong-wind-4-s0154.html | CC0 1.0 (page states it) | `Audio/Resources/Ambience/barren_wind_loop.ogg` (#280: first 43 s, 120 Hz high-pass + 7 kHz low-pass, 3 s equal-power crossfade loop, level -26 dB RMS, mono 32 kHz ogg q3) and `Ambience/barren_sand_hiss_loop.ogg` (same wind, 2.5-9 kHz band only, so it reads as sand hissing along the ground; -30 dB RMS) | 2026-11-03 |
+| "Strong wind #4" (#0154), Joseph Sardin, BigSoundBank (same recording as the row above) | https://bigsoundbank.com/strong-wind-4-s0154.html | CC0 1.0 (page states it) | `Audio/Resources/Ambience/barren_sand_gust_1..4.ogg` (#331: four 8 s cuts from 0 s, 10 s, 20 s and 30 s of the 2.5-9 kHz sand-hiss band, cut from the repo's `barren_sand_hiss_loop.ogg`, which they replace; 0.25 s fades at both ends, mono 32 kHz ogg q3; played as 2-6 s gusts at random offsets by `SandGusts`) | 2026-11-04 |
 | "Frogs #2" (#0998), Joseph Sardin, BigSoundBank | https://bigsoundbank.com/frogs-2-s0998.html | CC0 1.0 (page states it) | `Ambience/frogs_pond_rec_loop.ogg` (#280: 48 s from 0:30, 250 Hz-6.5 kHz, 3 s crossfade loop, -26 dB RMS; `_rec` so it does not overwrite the code-made `frogs_pond_loop.ogg` until phase 2 swaps it) | 2026-11-03 |
 | "Brooklet" (#0864), Joseph Sardin, BigSoundBank | https://bigsoundbank.com/brooklet-s0864.html | CC0 1.0 (page states it) | `Ambience/soil_trickle_loop.ogg` (#280: 42 s from 0:10, 200 Hz-4.5 kHz, 3 s crossfade loop, -32 dB RMS, faint) | 2026-11-03 |
 | "Drops of water #2" (#1385), Joseph Sardin, BigSoundBank | https://bigsoundbank.com/detail-1385-drops-of-water-2.html | CC0 1.0 (page states it) | `Ambience/soil_drips_loop.ogg` (#280: 22 s, 150 Hz high-pass, 0.6 s crossfade, -30 dB RMS) and `Sfx/Eco/first_water_drop.ogg` (one drop cut out, 0.9 s) | 2026-11-03 |
@@ -49,3 +50,9 @@ The first-water sounds (#279) are two CC0 one-shots, the same files as #280's br
 - KayKit Forest Nature Pack, KayKit Resource Bits: https://kaylousberg.itch.io/
 - Kenney City Kit Industrial + Factory Kit (industrial era): https://kenney.nl/assets
 - Kenney Mini Characters (civilian citizens): https://kenney.nl/assets/mini-characters
+
+#315/#316 (2026-11-04): the frogs and the voices are code-made, no new third-party file. The pond's frogs are single soft croaks
+(`FrogCroaker.Generate`, 4 takes) instead of the recorded chorus: `Ambience/frogs_pond_rec_loop.ogg` (BigSoundBank "Frogs #2", CC0, see above)
+stays in the repo but the game no longer plays it (the frog layer's level only drives how often a croak comes). The voices' new kinds
+(laugh, call, shout, hum, giggle, chat; clips 6 to 11 of `ChatterBabble`) and their muffled takes (`ChatterBabble.Muffle`) are made in code like
+the old babble. No CC0 voice or frog sample was searched for or downloaded in this pass (the Editor-free worktree run); recorded voices or a recorded soft croak stay an option once the code-made ones are heard on a phone.

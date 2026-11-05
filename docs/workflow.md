@@ -79,3 +79,78 @@ fight over compiles, domain reloads and the open scene.
 ## 6. Pilot (first run)
 Two lane A items in parallel (M3b: notable jobs and roles; trait-coloured time in office) while lane B is busy
 (Growth Lab holds the Editor). Compare wall-clock and review findings against single-agent work, then adjust this doc.
+
+## 7. Two ways to run a batch: pick one per batch (2026-11-04)
+Both follow §4–§5. They differ in **when the Editor sees the work**. Choose before you brief anyone, and write the
+choice and the reason in the run's status file.
+
+### Mode 1: the Editor queue (one Editor worker per ticket)
+Each ticket's worker takes the Editor lock, builds, looks at its screenshots, runs its own tests and the smoke test,
+and hands back verified. Lane A (sim) work runs beside it. The tester runs on cadence. A touch play-through comes at
+the end.
+- **Used for:** the P8 polish run (PR #302): 18 work items (~25 issues) in ~14 h, plus ~2.5 h of CI fixes. About
+  35–40 min per issue. The Editor was the bottleneck: one ticket at a time, restarts every 3 tickets.
+- **Why it works:** every view change is seen, played and fixed while its author still has the context. Look and feel
+  problems surface per ticket, not all at the end. Mistakes don't pile up.
+
+### Mode 2: parallel offline workers, then one batched Editor pass
+Every worker runs at once in its own worktree and **never touches the Editor**. Each one compile-checks offline (csc
+against the Unity DLLs, §4 / tooling.md 2026-10-29), runs `dotnet test Tools/SimTests`, commits and reports exactly what
+to verify. The orchestrator merges each branch as it lands and runs the sim suite on the merge. Then it does **one**
+Editor pass:
+1. Recompile and read the console.
+2. EditMode, one assembly at a time.
+3. The affected PlayMode classes, plus the smoke test.
+4. Fix the failures and re-run only those.
+5. Screenshots, the tester, the touch play-through.
+- **Used for:** the playtest-feedback batch (PR #326): 10 issues in **2 h 45 m** from issue creation to merge.
+  - 7 Sonnet workers finished in ~45 min, in parallel.
+  - The Editor pass took ~1 h, fixes ~30 min, two tester passes ~35 min, CI 33 min.
+  - About 17 min per issue.
+- **Why it works:** Editor time is the scarce resource (§4: busy 97 % of a 19 h run, mostly waiting on reloads), and
+  this mode spends it once: one domain reload and one test batch instead of one per ticket.
+  - Offline csc catches compile errors in seconds, and the sim and planner logic is fully tested by `dotnet test`. So
+    what's left for Unity is integration, and integration is cheapest checked all together.
+  - It also matches the user's rule to bunch tests and avoid reruns.
+- **What it costs:**
+  - Nobody sees a view change until the end. PR #326's pass found 3 bugs no offline check could see: a side pane faded
+    at the default view, a fresh tap swallowed by a drag throttle, and a weed's tap area hiding a sapling.
+  - The young tree stages were invisible at the default zoom, and only the second tester pass caught it.
+  - Unity-only APIs slip through: Unity's NUnit has no `Is.AnyOf`, and that put the Editor in Safe Mode.
+  - Seed-pinned tests move when merged branches shift the random stream.
+  - Worker claims are unchecked until the pass. One worker reported a failure as already there when it wasn't; another
+    said it had saved screenshots without running Unity.
+
+### Choosing
+| Use **Mode 2** (parallel, one Editor pass) when… | Use **Mode 1** (Editor queue) when… |
+|---|---|
+| The issues are small to medium, and logic-heavy or rules-heavy (sim, planner, audio scheduling, ordering, input rules, text) | The issues are judged by eye, ear or feel: a new asset or model, a moment, a camera feel, a UI look, a mix |
+| The issues have separate `Touches`, so their merges don't fight | Several issues touch the same view files, or one feature is built across many tickets |
+| You can say what "right" means in a test or a number | "Right" is a screenshot the user signs off on, and it will take a few iterations |
+| Feedback batches, bug batches, cleanups, removals | New systems that need playing to tune (a hunt, a pond, the opening) |
+| You want wall-clock speed, and the user is waiting | Correctness per step matters more than speed, or the Editor is already free and nobody else waits |
+
+**Mixed batches (the usual case): use a hybrid.**
+- Run the logic parts as Mode 2 workers, in parallel.
+- Give each look item its own short Editor worker that iterates on screenshots, one at a time.
+- Finish with the one batched pass over everything.
+
+`docs/prompts/feedback-batch-2-run.md` is written this way.
+
+### Mode 2 rules (learned in PR #326)
+- **Briefs:**
+  - Brief every worker from one shared rules file: no Editor, offline csc, tests, cheats in one block in
+    `SimDebugPanel.cs` / `SliceDebugPanel.cs`, commit without push, and a final report under 400 words.
+  - The report must name the exact Unity checks: classes to run, and what each screenshot should show.
+  - Tell each worker what the others are touching right now.
+- **Order of the pass:** merge as branches land, and run `dotnet test` on every merge. When one fails, run the class on
+  each branch to find which one moved it. Don't take "it was already there" on trust.
+- **Chains:** sequence workers that share files instead of running them together. For example, removing trash came
+  before the tweezers, and the tweezers worker started from the merged branch.
+- **The pass itself** is one test runner loop: start with `--async_tests true`, poll `test status` until `completed`,
+  read the JSON. One assembly per EditMode run.
+- **Never skip the touch play-through** at the end (memory: "playable, not green"). PR #326 skipped it, which was its
+  biggest gap.
+- **Sign-offs:** issues waiting for the user's look or listen stay open after the merge. The feedback notes they answer
+  close only when their issue closes.
+- **Testers:** give them narrow briefs with a time budget (about 45 min). A broad brief covered half the batch.

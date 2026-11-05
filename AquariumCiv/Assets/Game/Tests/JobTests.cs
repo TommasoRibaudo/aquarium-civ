@@ -21,7 +21,7 @@ namespace AquariumCiv.Tests
             string fp = s.population + "|" + s.month + "|" + Bits(s.food) + "|" + Bits(s.wood) + "|" + Bits(s.mood) + "|" +
                         Bits(s.grime) + "|" + Bits(s.overgrowth) + "|" +
                         s.rng.state + "|" + s.econRng.state + "|" + s.storyRng.state + "|" + s.era + "|" + s.eraReadyMonth + "|" +
-                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" + string.Join(",", s.trash.Select(t => t.slot)) + "|" +
+                        string.Join(",", s.buildings.Select(b => b.type + b.slot)) + "|" +
                         string.Join(",", s.notables.Select(n => n.FullName + n.trait + n.alive + Bits(n.age))) + "|" + s.settlementName;
             return Fnv(fp);
         }
@@ -48,18 +48,18 @@ namespace AquariumCiv.Tests
             var town = NewSim(7, SweeperTests.NoSweepers()); // #60 changed the town on purpose: compared without its sweepers
             Watched(town, 150);
             Assert.AreEqual(Era.Town, town.State.era);
-            Assert.AreEqual(366032956u, Economy(camp.State), "camp"); // #61: weddings of an age and shared family names move the story stream (RoleTests' pins say how)
+            Assert.AreEqual(3259616139u, Economy(camp.State), "camp"); // #61: weddings of an age and shared family names move the story stream (RoleTests' pins say how)
             // #27: at the town's era moment no one is free to be captain of the watch, so a notable steps out of the crowd
             // (Yara Brook, year 30). One more notable shifts the story dice from then on, as #26's rise does; roles draw no
             // dice themselves (RoleTests.TheEconomyIsWhatItWasBeforeRoles: runs without a crowd pull keep the old hash).
-            Assert.AreEqual(4278442210u, Economy(town.State), "town"); // re-measured for the bakery (#112), #114 (the town builds a workshop, guildhall and shops by itself) and earlier for #67 + #74 + #86 + the village well built at the era change (user 2026-10-30; its building id shifts the hashed rolls): a job that opens gets a notable, craft holders shift the contests, so who steps out of the crowd (not food or wood) #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
+            Assert.AreEqual(2053785252u, Economy(town.State), "town"); // re-measured for the bakery (#112), #114 (the town builds a workshop, guildhall and shops by itself) and earlier for #67 + #74 + #86 + the village well built at the era change (user 2026-10-30; its building id shifts the hashed rolls): a job that opens gets a notable, craft holders shift the contests, so who steps out of the crowd (not food or wood) #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
             // #60: town sweepers clear heaps and trim the weeds, so the town has less mess, a quicker work pace (more food
             // and wood, more births), and every heap they clear lets a new one draw its spot from the main stream.
             var swept = NewSim(7);
             Watched(swept, 150);
             // #86: the era moment's new lines (festival, cleared hearth, the leader vote) take ids, which seed the crowd's
             // risers, and the festival year lifts the mood; #67 fills open jobs: re-measured.
-            Assert.AreEqual(3842115095u, Economy(swept.State), "town with its sweepers (#60)"); // #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
+            Assert.AreEqual(2053785252u, Economy(swept.State), "town with its sweepers (#60)"); // #148: a riser carries their crowd name; only the name text moved, dice and economy unchanged.
         }
 
         /// <summary>Every adult has an open job of the era, children none, the retired are elders.</summary>

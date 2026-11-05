@@ -43,6 +43,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTweezersTests.cs" /><!-- 311, 314 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoMistHoldTests.cs" /><!-- P8 polish 266 view half: the hold -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- P8 #248 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ReadthroughTests.cs" />
@@ -63,6 +64,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TimeLapseTests.cs" /><!-- #78 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/RecallCalmTests.cs" /><!-- #328 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTelemetryTests.cs" /><!-- P7 #225 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TownEconomyTests.cs" />
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->

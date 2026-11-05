@@ -121,14 +121,6 @@ namespace AquariumCiv.Life
         /// <summary>The walk from one place to another along the path network (false without positions).</summary>
         public bool RouteOf(Place from, Place to, List<Waypoint> into) => positions.TryRoute(from, to, into);
 
-        /// <summary>The trash heap this sweeper heads to first (<see cref="SimCore.SweeperTargets"/>: one heap per sweeper,
-        /// the oldest first), or -1 (not a town sweeper, or no heap left for them: they sweep the streets).</summary>
-        public int SweeperTargetOf(PersonRef who)
-        {
-            Sync();
-            return byKey.TryGetValue(who.Key, out var p) && p.sweeper >= 0 ? SweepHeap(p, 0, 0) : -1;
-        }
-
         /// <summary>The whole planned day of a person (debug panel, tests).</summary>
         public int DaySchedule(PersonRef who, long day, List<PersonActivity> into)
         {
@@ -156,14 +148,13 @@ namespace AquariumCiv.Life
         /// <summary>The sim changed outside a month step (debug cheats, a load): re-read it on the next query.</summary>
         public void Invalidate() { snapSig = long.MinValue; ClearDays(); }
 
-        /// <summary>Whether a place exists in the box now (building, trash heap, nudge; land always exists).</summary>
+        /// <summary>Whether a place exists in the box now (building, nudge; land always exists).</summary>
         public bool IsValidPlace(Place p)
         {
             Sync();
             switch (p.kind)
             {
                 case PlaceKind.None: return false;
-                case PlaceKind.TrashHeap: return trashIds.Contains(p.index);
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
                 case PlaceKind.BushCell: return sim.EcologyOn && EcoBushes.IsBush(sim.State.eco, p.index); // P8 #288
                 case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
@@ -258,7 +249,6 @@ namespace AquariumCiv.Life
             public Place home;
             public Person partner, friend, rival, mentor, parent, trails, coworker;
             public PersonHints hints;
-            public int sweeper = -1;    // the town sweeper's number (SimCore.SweeperTarget), -1 = not a sweeper
             public bool reconciledWithSomeone;
             public Person reconciled;
             public bool Adult => stage == LifeStage.Adult;
@@ -276,16 +266,11 @@ namespace AquariumCiv.Life
         readonly List<PersonRef> peopleRefs = new List<PersonRef>();
         readonly Dictionary<int, Person> byKey = new Dictionary<int, Person>();
         readonly HashSet<int> buildingIds = new HashSet<int>();
-        readonly HashSet<int> trashIds = new HashSet<int>();
         readonly HashSet<int> nudgeIds = new HashSet<int>();
-        readonly List<int> trashList = new List<int>();
         readonly List<Building> farms = new List<Building>(), homes = new List<Building>(), workshops = new List<Building>();
         readonly Dictionary<int, Building> buildingById = new Dictionary<int, Building>();
         readonly Dictionary<int, Notable> notableById = new Dictionary<int, Notable>();
         readonly List<int> tmpIds = new List<int>();
-        // Town care (#60): the heaps in the sweepers' order (oldest first) and each sweeper's first one.
-        readonly List<int> sweepOrder = new List<int>(), sweepTargets = new List<int>();
-        int sweepersTotal;
         Building campB, wellB, marketB, tavernB, churchB, windmillB, lumberB, guildB, bakeryB, newestB;
         Place fire, stash, gather, remembering;
         Era era;
@@ -314,7 +299,6 @@ namespace AquariumCiv.Life
             h = h * 31 + s.notables.Count;
             h = h * 31 + s.population;
             h = h * 31 + s.chronicle.Count;
-            h = h * 31 + s.trash.Count;
             h = h * 31 + s.nudges.Count;
             h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
             h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
@@ -370,8 +354,6 @@ namespace AquariumCiv.Life
                 : marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : fire;
             remembering = Place.Land(PlaceKind.Remembering, churchB != null ? 1 : 0); // a cairn, later the churchyard
 
-            trashIds.Clear(); trashList.Clear();
-            foreach (var t in s.trash) { trashIds.Add(t.id); trashList.Add(t.id); }
             nudgeIds.Clear();
             foreach (var n in s.nudges) nudgeIds.Add(n.id);
 
@@ -483,24 +465,6 @@ namespace AquariumCiv.Life
                     foreach (var q in people)
                         if (q != p && q.job == CrowdSawyer && q.coworker == null && q.jobBuilding == p.jobBuilding) { p.coworker = q; q.coworker = p; break; }
 
-            // ---- town care (#60): sweepers are numbered notables first (by id), then the crowd's; sweeper i heads to
-            // SimCore.SweeperTarget(i), then to every sweepersTotal-th heap after it in the sweeping order.
-            sweepOrder.Clear(); sweepTargets.Clear(); sweepersTotal = 0;
-            if (era == Era.Town)
-            {
-                int idx = 0;
-                tmpIds.Clear();
-                foreach (var p in people) if (p.n != null && p.job == JobType.Sweeper && p.Grown) tmpIds.Add(p.key);
-                tmpIds.Sort();
-                foreach (int key in tmpIds) byKey[key].sweeper = idx++;
-                foreach (var p in people) if (p.n == null && p.job == JobType.Sweeper) p.sweeper = idx++;
-                sweepTargets.AddRange(sim.SweeperTargets());
-                var heaps = new List<TrashItem>(s.trash);
-                heaps.Sort((a, c) => a.month != c.month ? a.month.CompareTo(c.month) : a.id.CompareTo(c.id));
-                foreach (var t in heaps) sweepOrder.Add(t.id);
-                sweepersTotal = Math.Max(1, Math.Max(sim.Sweepers, idx));
-            }
-
             dayFireKeeper = null;
             SnapshotGlass(); // #92
         }
@@ -535,7 +499,7 @@ namespace AquariumCiv.Life
             if (tavernB != null) Slots(tavernB, 5, 1, CrowdServer);
             foreach (var w in workshops) Slots(w, 6, 2, JobType.Weaver);
             if (era == Era.Town) Slots(null, 7, sim.CrowdSweepers, JobType.Sweeper); // the sim's crowd sweepers (#60): 1 per 12 people
-            // The sim's crowd sweepers come first: they are counted in the sim (its sweep rate, SweeperTargets), so a crowd
+            // The sim's crowd sweepers come first: they are counted in the sim (its trim rate), so a crowd
             // that runs out of adults must still show every one of them (#109). Then rank, priority, order.
             list.Sort((a, b) =>
             {

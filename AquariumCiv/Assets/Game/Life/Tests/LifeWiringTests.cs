@@ -500,53 +500,29 @@ namespace AquariumCiv.Life.Tests
                                   $"{couples} couples together, {children} children with a parent");
         }
 
+        /// <summary>#313: the trash heaps are gone; the town sweepers still show (every one the sim counts) and sweep the streets.</summary>
         [TestCase(7)]
         [TestCase(1234)]
-        public void SweepersHeadToTheTargetedHeap(int seed)
+        public void SweepersShowAndSweepTheStreets(int seed)
         {
             var sim = SimIn(Era.Town, seed);
-            for (int h = 0; h < 48 && sim.State.trash.Count < sim.Sweepers + 2; h++) sim.Advance(1);
             if (sim.State.era != Era.Town) Assert.Inconclusive("left the town");
             Assume.That(sim.Sweepers, Is.GreaterThan(0));
-            Assume.That(sim.State.trash.Count, Is.GreaterThan(0), "some trash to sweep");
-            var targets = sim.SweeperTargets();
             var planner = LifePlanner.Wired(sim);
             var sweepers = planner.People.Where(p => planner.JobOf(p) == JobType.Sweeper && planner.StageOf(p) != LifeStage.Kid).ToList();
             // Every sim sweeper shows: the notables with the broom and the crowd's (CrowdSlots fills theirs first, #109).
             Assert.AreEqual(sim.Sweepers, sweepers.Count, "the planner shows every sweeper the sim counts");
-            var firsts = sweepers.Select(planner.SweeperTargetOf).Where(t => t >= 0).ToList();
-            Assert.AreEqual(Math.Min(sweepers.Count, targets.Count), firsts.Count, "every sweeper with a heap left has one");
-            CollectionAssert.AreEquivalent(targets.Take(firsts.Count), firsts, "the sweepers head to the heaps SweeperTargets names, one each");
-
             var segs = new List<PersonActivity>();
-            var trips = new List<Trip>();
-            int verified = 0;
+            int sweeping = 0;
             foreach (var who in sweepers)
-            {
-                int target = planner.SweeperTargetOf(who);
-                if (target < 0) continue;
-                // A role holder's day starts at their office (a beat first): the walk to the heap is not the morning's.
-                if (who.IsNotable && sim.RoleOf(sim.FindNotable(who.notableId)) != null) continue;
-                var heap = Place.Land(PlaceKind.TrashHeap, target);
                 for (long d = sim.State.month; d < sim.State.month + 12; d++)
                 {
                     if (planner.IsRestDay(d) || planner.WeatherOn(d) == Weather.Storm || HasScene(planner, who, d)) continue;
                     planner.DaySchedule(who, d, segs);
-                    var firstSweep = segs.FirstOrDefault(a => a.kind == ActivityKind.Sweep && a.place.kind == PlaceKind.TrashHeap);
-                    if (firstSweep.kind == ActivityKind.None) continue;
-                    Assert.AreEqual(heap, firstSweep.place, $"{who}: the first heap swept is the targeted one");
-                    planner.UpcomingTrips(who, new ViewTime(d, 0f), trips, 12);
-                    // The walk to work that leads into the sweeping: the morning's, or after lunch for a role holder whose
-                    // morning goes to the role (#109: seed 7's master builder took the broom in #67's job filling).
-                    var toWork = trips.LastOrDefault(t => t.type == TripType.HomeToWork && t.start < firstSweep.start);
-                    Assert.AreEqual(heap, toWork.to, $"{who}: the walk to work heads to the targeted heap");
-                    Assert.IsTrue(planner.RouteOf(toWork, new List<Waypoint>()), "along a Settle route");
-                    verified++;
-                    break;
+                    if (segs.Any(a => a.kind == ActivityKind.Sweep || a.kind == ActivityKind.Trim)) { sweeping++; break; }
                 }
-            }
-            TestContext.WriteLine($"seed {seed}: {sweepers.Count} sweepers planned ({sim.Sweepers} in the sim), {sim.State.trash.Count} heaps, {verified} seen heading to their heap");
-            Assert.Greater(verified, 0);
+            TestContext.WriteLine($"seed {seed}: {sweepers.Count} sweepers planned, {sweeping} seen sweeping or trimming");
+            Assert.Greater(sweeping, 0);
         }
 
         // ------------------------------------------------------------------ the plain planner's rules still hold
