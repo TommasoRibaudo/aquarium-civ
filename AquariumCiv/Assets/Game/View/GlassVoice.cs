@@ -360,7 +360,7 @@ namespace AquariumCiv.View
                     if (quick && pressWorld && RabbitView.Instance != null) RabbitView.Instance.TapAtScreen(pressPos);
                     if (pressValid && quick) Tap(planner, now);
                     else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
-                } // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
+                }
             }
             if (taps > 0 && t - lastTapTime > TapGap) FinishKnock(sim, planner, now);
         }
