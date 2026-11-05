@@ -354,8 +354,13 @@ namespace AquariumCiv.View
                 var choice = ChoiceSceneView.Instance; // #224: a touch on one of the two choices answers the people
                 if (quick && pressWorld && choice != null && choice.WorldTap(pressPos)) { }
                 else if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
-                else if (pressValid && quick) Tap(planner, now);
-                else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
+                else
+                {
+                    // #333: a tap on the land near a rabbit startles it; the knock or the ripple still happens as before
+                    if (quick && pressWorld && RabbitView.Instance != null) RabbitView.Instance.TapAtScreen(pressPos);
+                    if (pressValid && quick) Tap(planner, now);
+                    else if (quick && pressWorld) AnswerGround(pressPos); // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
+                } // tester run 9: through the open top there's no glass to knock, and a tap on the land did nothing at all
             }
             if (taps > 0 && t - lastTapTime > TapGap) FinishKnock(sim, planner, now);
         }
