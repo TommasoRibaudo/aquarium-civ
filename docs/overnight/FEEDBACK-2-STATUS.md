@@ -13,7 +13,7 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - [x] 2 · #328 merged
 - [x] 3 · #331 merged (open for a listen)
 - [x] 4 · #333 merged
-- [ ] 5 · #332 merged (open for look sign-off)
+- [x] 5 · #332 merged (open for look sign-off)
 - [ ] 6+7 · #329 and the #281 tint merged (open for sign-off)
 - [ ] 8 · #327 proposal written, shots taken (open, `needs:user`)
 - [x] 9 · #330 options written (open, `needs:user`)
@@ -39,3 +39,4 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - dotnet SimTests on the #325 merge: 1327/1327.
 - 21:20 dotnet SimTests on 7f56286 (all lane A merged): 1345/1345.
 - 21:34 #332 first pass (e305b66): logs gone, A-frame rack; I reviewed the shots: pelts small/edge-on, read as a clothesline, tan on tan, default shot staged on a barren Y0 box. Sent back for one iteration (≤2 big tilted hides, rest in a visible pile, darker hide, real camp state, JPG shots). Stall watcher exit 3 was the idle review gap (no dialog, ready); restarted.
+- 21:50 5 · #332 round 2 accepted (2986a75), merged d6f886f: ≤2 laced pelts on stretching frames (lean 12°: 40° goes edge-on at the 52° camera pitch), the rest in a folded pile (clamp(n-2,0,3)), darker hides; LifePlanner.HideFrameDistance 0.34→0.5 (outside fence, one constant). Shots JPG in docs/design/results/p8/feedback2/332_*. Open for look sign-off. Editor recompile on d6f886f (all lane A + #332): 0 errors, 4 old warnings. 6+7 Editor worker started on vs/329-281-skip-tint.
