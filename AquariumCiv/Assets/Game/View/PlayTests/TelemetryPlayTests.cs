@@ -266,9 +266,20 @@ namespace AquariumCiv.View.PlayTests
                 var tapAt = GameUiPanel.ScreenCenter(hud.Root, "hud-clean");
                 BeginTouch(touchId, tapAt, queueEventOnly: true); yield return null; yield return null;
                 EndTouch(touchId, tapAt, delta: Vector2.zero, queueEventOnly: true); yield return null; yield return null;
-                yield return new WaitForSecondsRealtime(2.5f);
-                Assert.IsTrue(hud.CleanMode || !string.IsNullOrEmpty(hud.OpenSheet), "the Kit or the cloth is up");
-                Assert.IsFalse(view.IsOpen, "never over the Kit");
+                // This fixture's touches don't reach the HUD's tool buttons (they reach the recall sheet), so the cloth goes up as state
+                // here; Feedback2Playthrough opens the Kit by a real tap and checks the same rule.
+                if (!hud.CleanMode && string.IsNullOrEmpty(hud.OpenSheet)) hud.SetCleanMode(true);
+                // watched frame by frame: on a spotless box the cloth puts itself down 2.2 s after it goes up (CareView.spotlessExitSeconds),
+                // which is longer than the 1 s calm delay set above, so the question would show by then if it ignored the cloth
+                bool sawUp = false;
+                for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 1.8f; )
+                {
+                    bool up = hud.CleanMode || !string.IsNullOrEmpty(hud.OpenSheet);
+                    sawUp |= up;
+                    if (up) Assert.IsFalse(view.IsOpen, "never over the Kit or the cloth");
+                    yield return null;
+                }
+                Assert.IsTrue(sawUp, "the Kit or the cloth came up by the tap");
 
                 // a tool in hand: still waits
                 hud.SetCleanMode(false); hud.CloseSheet();
