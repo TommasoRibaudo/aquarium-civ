@@ -404,7 +404,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot("f2_12_rack_close");
                 int logSeats = box.layout.pieces.Count(p => p.kind == PieceKind.LogSeat);
                 int seatObjects = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Count(t => t.name.Contains("LogSeat"));
-                var rackFilters = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Where(m => m.name == "HideFrame").ToList();
+                var rackFilters = Resources.FindObjectsOfTypeAll<MeshFilter>().Where(m => m.name == "HideFrame" && m.gameObject.activeInHierarchy).ToList(); // DontSave: FindObjectsByType skips it
                 Debug.Log($"[f2] 3 log-seat pieces {logSeats}, log-seat objects {seatObjects}, rack meshes {rackFilters.Count} ({(rackFilters.Count > 0 ? rackFilters[0].sharedMesh.vertexCount : 0)} verts)");
                 Assert.AreEqual(0, logSeats, "no log seats in the camp");
                 Assert.AreEqual(0, seatObjects, "nothing named for a log seat is drawn");
@@ -421,7 +421,7 @@ namespace AquariumCiv.View.PlayTests
             }
             finally
             {
-                if (watch != null) Object.Destroy(watch.gameObject);
+                if (watch != null) Object.DestroyImmediate(watch.gameObject); // the teardown checks for leaked DontSave roots at once
                 var pv = PeopleView.Find();
                 if (pv != null) pv.timeScale = 1f;
                 UseLivingLand(false);
