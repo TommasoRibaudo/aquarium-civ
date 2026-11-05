@@ -259,16 +259,32 @@ namespace AquariumCiv.View.PlayTests
                 var hud = GameHud.Instance;
                 GameClock.Tel.ShowMe("1"); GameClock.Tel.CardOpened("person", 1);
                 RecallPromptView.DebugReset();
+                // a tool in hand from the start: the question is due (day 3, the stories, the session time) but must wait. Without this it
+                // shows at the first calm moment, before the Kit is opened, and the Kit tap below would land on its answer row.
+                hud.SetHand(GameHud.KitTool.Mister);
                 RecallPromptView.DebugSetDay(3);
                 yield return Until(() => GameClock.Instance.SessionSeconds > RecallPrompt.MinSessionSeconds + 1, 40f);
+                Assert.IsFalse(view.IsOpen, "never with a tool in hand");
 
-                // the Kit (or the cloth) opened by a tap on the bottom row: it waits
+                // put down, and straight away the Kit (or the cloth) by a tap on the bottom row: it waits
+                hud.SetHand(GameHud.KitTool.None);
                 var tapAt = GameUiPanel.ScreenCenter(hud.Root, "hud-clean");
                 BeginTouch(touchId, tapAt, queueEventOnly: true); yield return null; yield return null;
                 EndTouch(touchId, tapAt, delta: Vector2.zero, queueEventOnly: true); yield return null; yield return null;
-                yield return new WaitForSecondsRealtime(2.5f);
-                Assert.IsTrue(hud.CleanMode || !string.IsNullOrEmpty(hud.OpenSheet), "the Kit or the cloth is up");
-                Assert.IsFalse(view.IsOpen, "never over the Kit");
+                touchId++;
+                Debug.Log($"[recall-calm] after the tap: clean {hud.CleanMode} sheet '{hud.OpenSheet}'");
+                if (!hud.CleanMode && string.IsNullOrEmpty(hud.OpenSheet)) hud.SetCleanMode(true); // fallback if this fixture's tap missed the HUD
+                // watched frame by frame: on a spotless box the cloth puts itself down 2.2 s after it goes up (CareView.spotlessExitSeconds),
+                // which is longer than the 1 s calm delay set above, so the question would show by then if it ignored the cloth
+                bool sawUp = false;
+                for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 1.8f; )
+                {
+                    bool up = hud.CleanMode || !string.IsNullOrEmpty(hud.OpenSheet);
+                    sawUp |= up;
+                    if (up) Assert.IsFalse(view.IsOpen, "never over the Kit or the cloth");
+                    yield return null;
+                }
+                Assert.IsTrue(sawUp, "the Kit or the cloth was up");
 
                 // a tool in hand: still waits
                 hud.SetCleanMode(false); hud.CloseSheet();

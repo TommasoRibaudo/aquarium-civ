@@ -121,12 +121,15 @@ namespace AquariumCiv.View.Tests
         public void EveryPieceKind_DrawsInEveryEra()
         {
             foreach (PieceKind k in System.Enum.GetValues(typeof(PieceKind)))
+            {
+                if (k == PieceKind.LogSeat) continue; // retired (#332): kept for old saves, draws nothing (CampRackTests checks that)
                 foreach (Era e in System.Enum.GetValues(typeof(Era)))
                 {
                     var mb = new MeshBuilder();
                     Pieces.Draw(mb, new PieceData { kind = k, era = e, w = 0.5f, d = 0.45f, seed = 3 }, q => q);
                     Assert.Greater(mb.VertexCount, 0, $"{k} in {e}");
                 }
+            }
         }
 
         [Test]

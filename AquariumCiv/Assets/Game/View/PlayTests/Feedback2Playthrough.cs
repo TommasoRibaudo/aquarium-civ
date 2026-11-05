@@ -248,6 +248,33 @@ namespace AquariumCiv.View.PlayTests
                 Debug.Log($"[f2] 2b cloth in hand, grime {Sim.State.grime:0.000}");
                 yield return PutDownTool(hud);
 
+                // ---- 5b. (#328) the recall question made due: it waits while the Kit is open and while a tool is in hand (both by real taps),
+                // then shows at the next calm moment, and a tap on "Not now" closes it
+                {
+                    var recall = RecallPromptView.Instance;
+                    Assert.IsNotNull(recall, "the recall view");
+                    recall.checkSeconds = 0.2f; recall.calmSeconds = 1f;
+                    RecallPromptView.DebugAskWhenCalm();
+                    yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+                    yield return new WaitForSecondsRealtime(0.3f);
+                    Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "a tap on Kit opens the kit");
+                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; ) { Assert.IsFalse(recall.IsOpen, "never over the open Kit"); yield return null; }
+                    yield return Shot("f2_04b_kit_open_question_waits");
+                    yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-mister"));
+                    yield return new WaitForSecondsRealtime(0.3f);
+                    Assert.AreEqual(GameHud.KitTool.Mister, hud.Hand, "the mister in hand");
+                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 3f; ) { Assert.IsFalse(recall.IsOpen, "never with a tool in hand"); yield return null; }
+                    yield return PutDownTool(hud);
+                    yield return Until(() => recall.IsOpen, 10f);
+                    yield return Shot("f2_04c_question_when_calm");
+                    Debug.Log($"[f2] 5b recall: open after calm = {recall.IsOpen}");
+                    Assert.IsTrue(recall.IsOpen, "once the kit is down and nothing is touched, the question shows");
+                    yield return TapAt(GameUiPanel.ScreenCenter(recall.Root.Q("recall-dismiss")));
+                    yield return new WaitForSecondsRealtime(0.5f);
+                    Assert.IsFalse(recall.IsOpen, "Not now closes it");
+                    recall.checkSeconds = 2f; recall.calmSeconds = (float)RecallCalm.CalmSeconds;
+                }
+
                 // ---- 2c. Kit -> Tweezers: the targets are made with state cheats, plucked by a tap at their screen position
                 var sim = Sim;
                 var e = sim.State.eco;
@@ -377,7 +404,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot("f2_12_rack_close");
                 int logSeats = box.layout.pieces.Count(p => p.kind == PieceKind.LogSeat);
                 int seatObjects = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None).Count(t => t.name.Contains("LogSeat"));
-                var rackFilters = Object.FindObjectsByType<MeshFilter>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Where(m => m.name == "HideFrame").ToList();
+                var rackFilters = Resources.FindObjectsOfTypeAll<MeshFilter>().Where(m => m.name == "HideFrame" && m.gameObject.activeInHierarchy).ToList(); // DontSave: FindObjectsByType skips it
                 Debug.Log($"[f2] 3 log-seat pieces {logSeats}, log-seat objects {seatObjects}, rack meshes {rackFilters.Count} ({(rackFilters.Count > 0 ? rackFilters[0].sharedMesh.vertexCount : 0)} verts)");
                 Assert.AreEqual(0, logSeats, "no log seats in the camp");
                 Assert.AreEqual(0, seatObjects, "nothing named for a log seat is drawn");
@@ -394,7 +421,7 @@ namespace AquariumCiv.View.PlayTests
             }
             finally
             {
-                if (watch != null) Object.Destroy(watch.gameObject);
+                if (watch != null) Object.DestroyImmediate(watch.gameObject); // the teardown checks for leaked DontSave roots at once
                 var pv = PeopleView.Find();
                 if (pv != null) pv.timeScale = 1f;
                 UseLivingLand(false);

@@ -403,12 +403,9 @@ namespace AquariumCiv.View
 
         void FilterOut(HuntPlan hunt)
         {
+            // #333 review: the hunted rabbit minds nobody (not only the hunter and the kid) until the strike: the hunt is planned on its spot,
+            // and since rabbits spread over the whole meadow, a passer-by near it would send it off and leave the hunter striking at grass.
             fpx.Clear(); fpz.Clear();
-            for (int i = 0; i < whoBuf.Count && i < px.Count; i++)
-            {
-                if (whoBuf[i] == hunt.hunter || (!hunt.kid.IsNone && whoBuf[i] == hunt.kid)) continue;
-                fpx.Add(px[i]); fpz.Add(pz[i]);
-            }
             for (int i = whoBuf.Count; i < px.Count; i++) { fpx.Add(px[i]); fpz.Add(pz[i]); } // the ghost scarers
         }
 
