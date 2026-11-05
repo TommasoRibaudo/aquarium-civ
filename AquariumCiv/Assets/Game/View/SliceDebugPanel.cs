@@ -337,6 +337,7 @@ namespace AquariumCiv.View
             // #315/#316: the frogs and the voices by distance.
             Row();
             if (Btn("Frog now")) last = AudioDirector.DebugFrog();
+            if (Btn("Sand gust now")) last = AudioDirector.DebugSandGust(); // #331 (the gust rate: "Audio status" amb line)
             if (chatter != null)
             {
                 if (Btn("Voice exchange here")) last = chatter.DebugExchange();
