@@ -22,8 +22,8 @@ namespace AquariumCiv.View
     /// <item><b>Clean mode</b> (design/one-handed-controls.md; the HUD's Clean button): only then does one finger wipe.
     /// This is the <see cref="ICameraGate"/> the camera asks at touch-down: a press that starts on the glass or on a piece of
     /// mess is ours, a press anywhere else stays the camera's, and two fingers are always the camera.</item>
-    /// <item><b>Mess.</b> <see cref="MessProps"/> draws the heaps and weed patches; a stroke that starts on one is a toss: a fast
-    /// flick (release speed and a minimum travel) throws it out through <see cref="SimCore.RemoveTrash"/> or
+    /// <item><b>Mess.</b> <see cref="MessProps"/> draws the weed patches (the trash heaps are gone, #313); a stroke that starts on
+    /// one is a toss: a fast flick (release speed and a minimum travel) throws it out through
     /// <see cref="SimCore.Prune"/>, a slow one drops it back with a hint. Mess behind dirty glass is out of reach.</item>
     /// <item><b>Sunlight.</b> The sun's intensity follows the mess (<see cref="CareMath.SunScale"/>, at most -25 %).</item>
     /// <item><b>Cheer.</b> When the glass goes spotless (or all the mess is gone) there is a chime, sparkles and the people
@@ -337,7 +337,7 @@ namespace AquariumCiv.View
                 float r = radiusUv * masks[i].size.x;
                 masks[i].Smudge(uv, r, strength);
                 LastSmudgePane = i; LastSmudgeUv = uv; LastSmudgeRadius = r;
-                if (sim != null) { sim.AddMess(CrumbGrime, 0f, 0); synced = sim.State.grime; } // no Grow: this grime is drawn here
+                if (sim != null) { sim.AddMess(CrumbGrime, 0f); synced = sim.State.grime; } // no Grow: this grime is drawn here
                 return;
             }
         }
@@ -603,7 +603,7 @@ namespace AquariumCiv.View
         {
             if (Instance == null) return "no CareView";
             Instance.TouchHint.Reset();
-            return "Clean hint forgotten: touch a weed or trash";
+            return "Clean hint forgotten: touch a weed";
         }
 
         Stroke Begin(Vector2 pos)
@@ -711,7 +711,7 @@ namespace AquariumCiv.View
         /// <summary>Throws a piece out (the flick, or a test): the sim loses it, the people react, the piece flies off.</summary>
         public void Toss(SimCore sim, MessProps.Piece piece, Vector2 releaseSpeed)
         {
-            GameClock.Tel.Cleaned(piece.weed ? "prune" : "flick", true);
+            GameClock.Tel.Cleaned("prune", true);
             TouchHint.Cleaned();
             var c = Cam;
             var dir = (c.transform.right * releaseSpeed.x + c.transform.up * releaseSpeed.y).normalized;
@@ -719,16 +719,10 @@ namespace AquariumCiv.View
             float strength = Mathf.InverseLerp(flickSpeed, flickSpeed * 4f, releaseSpeed.magnitude);
             var vel = (dir * 0.5f + Vector3.up * 0.4f) * s * Mathf.Lerp(0.6f, 1.2f, strength);
             var at = piece.t.localPosition;
-            if (piece.weed)
             {
                 float og = sim.State.overgrowth, cut = og - MessProps.WeedUnit < 0.03f ? og : MessProps.WeedUnit;
                 sim.Prune(cut);
                 people?.Planner?.ReactAt(KeeperGesture.Prune, people.Now, at.x, at.z, 1.4f);
-            }
-            else
-            {
-                sim.RemoveTrash(piece.key);
-                people?.Planner?.React(KeeperGesture.FlickTrash, people.Now, Place.Land(PlaceKind.TrashHeap, piece.key));
             }
             props.Throw(piece, vel);
             // #96: the swish of the throw, a snip for a weed; a harder flick swishes higher

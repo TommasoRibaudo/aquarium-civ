@@ -102,7 +102,7 @@ namespace AquariumCiv.Tests
             sim.State.shapingCharges = 0f;
             sim.CleanAll(); sim.CleanGrime(1f); sim.Prune(1f); // nothing to clean: nothing to farm
             float baseline = sim.ShapingCharges;
-            sim.State.grime = 1f; sim.State.overgrowth = 0f; sim.State.trash.Clear();
+            sim.State.grime = 1f; sim.State.overgrowth = 0f;
             sim.CleanGrime(1f);
             Assert.AreEqual(baseline + sim.Config.shapingPerGrime, sim.ShapingCharges, 1e-3f);
             sim.CleanGrime(1f);
@@ -110,12 +110,6 @@ namespace AquariumCiv.Tests
             sim.State.overgrowth = 1f;
             sim.Prune(1f);
             Assert.AreEqual(baseline + sim.Config.shapingPerGrime + sim.Config.shapingPerOvergrowth, sim.ShapingCharges, 1e-3f);
-            sim.AddMess(0f, 0f, 2);
-            int before = sim.State.trash.Count;
-            float c = sim.ShapingCharges;
-            Assert.IsTrue(sim.RemoveTrash(sim.State.trash[0].id));
-            Assert.AreEqual(c + sim.Config.shapingPerTrash, sim.ShapingCharges, 1e-3f);
-            Assert.AreEqual(before - 1, sim.State.trash.Count);
         }
 
         [Test]

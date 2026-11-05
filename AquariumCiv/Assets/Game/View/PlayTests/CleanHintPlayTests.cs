@@ -22,7 +22,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return OpenSlice(seed: Seed);
             yield return Until(() => GameUiPanel.Toasts.Current == null && GameUiPanel.Toasts.Waiting == 0, 6f);
-            Sim.AddMess(0f, 0f, 3);
+            Sim.AddMess(0f, 0.5f);
             yield return Frames(8);
             Assert.IsNotEmpty(CareView.Instance.Props.AllPieces, "mess to touch");
         }

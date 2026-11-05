@@ -8,7 +8,7 @@ namespace AquariumCiv.Sim
     }
 
     /// <summary>
-    /// #160: a touch that starts on a weed or trash while the Keeper is not in clean mode points to the Clean button,
+    /// #160: a touch that starts on a weed while the Keeper is not in clean mode points to the Clean button,
     /// without nagging. Pure C#: the view calls <see cref="Touch"/> at touch start (the drag still moves the camera) and
     /// <see cref="Cleaned"/> when the Keeper has cleaned anything. The pulse repeats after <see cref="PulseGap"/> seconds,
     /// the words after <see cref="HintGap"/>, at most <see cref="MaxHints"/> times a session, and never again once the

@@ -191,7 +191,6 @@ namespace AquariumCiv.Life
         List<Seg> b = new List<Seg>(48);
         float bt;
         Place bcur;
-        int sweepBlock; // the sweeper's heaps so far today
 
         /// <summary>The shortest stay worth walking to, in view hours (#109).</summary>
         const float MinStay = 0.05f;
@@ -204,7 +203,7 @@ namespace AquariumCiv.Life
         /// long walk to a quarrel on the green still rushed at 2x).</summary>
         const float LateShare = 0.75f;
 
-        void Begin(Place at) { b = new List<Seg>(48); bt = 0f; bcur = at; sweepBlock = 0; }
+        void Begin(Place at) { b = new List<Seg>(48); bt = 0f; bcur = at; }
 
         void Push(ActivityKind k, float start, float end, Place place, Place from, Prop prop, PersonRef partner, TripType trip, ActivitySource src = ActivitySource.Schedule, int chronicle = -1, bool copies = false, bool still = false)
         {
@@ -760,7 +759,7 @@ namespace AquariumCiv.Life
                 WorkBlocks(p, d, work, sh.start, sh.lunch, 10, false);
                 bool nap = p.hints.napChance > 0f && R(k, day, 4) < p.hints.napChance; // the lazy, after lunch
                 // After lunch they walk to the afternoon's work: a role holder's morning duty (the master builder at the
-                // mill) may differ from the job they go back to (sweeping their heap, #109).
+                // mill) may differ from the job they go back to (sweeping the streets, #109).
                 var after = WorkOf(p, d, morning: false);
                 Midday(p, d, after, nap, sh);
                 if (nap) At(ActivityKind.Nap, Math.Max(14f, bt + 0.5f), gather); // straight from lunch to the green (#64)
@@ -882,13 +881,6 @@ namespace AquariumCiv.Life
                 var site = alt ? work.altSite : work.site;
                 var loop = alt ? work.altLoop : work.loop;
                 var tool = alt ? work.altTool : work.tool;
-                if (work.sweeps && !alt)
-                {
-                    // The sweeper stops at their heaps in turn (§7, #60: the one SimCore.SweeperTargets names first); with no
-                    // heap left for them, the streets.
-                    int heapId = SweepHeap(p, day, sweepBlock++);
-                    site = heapId >= 0 ? Place.Land(PlaceKind.TrashHeap, heapId) : gather;
-                }
                 if (work.chores) { loop = Chore(p, d, salt + i); tool = ChoreProp(loop); if (loop == ActivityKind.SitOut) { loop = ActivityKind.SweepStep; tool = Prop.Broom; } }
                 bool carry = work.load != Prop.None && (i > 0 || from > LifeClock.WorkStart) && R(k, day, salt + 200 + i) < work.carryShare;
                 if (lastCarries && end >= to && work.load != Prop.None) carry = true;

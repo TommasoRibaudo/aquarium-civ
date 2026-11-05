@@ -54,16 +54,16 @@ namespace AquariumCiv.Tests
             sim.Advance(48);
             Assert.AreEqual(Era.Camp, sim.State.era);
             Assert.IsTrue(sim.State.eraReady, "the camp waits at the village threshold");
-            Assert.AreEqual(3198244750u, Fingerprint(sim.State), "slice world fingerprint"); // #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
+            Assert.AreEqual(15765895u, Fingerprint(sim.State), "slice world fingerprint"); // #82fix: quarrels gated on the box (text only); #67: job_fill lines; #74: the first "lost" story is the Left Sandal's (text only)
             var noRelics = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             noRelics.RelicsOn = false;
             noRelics.Advance(48);
-            Assert.AreEqual(1589955187u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
+            Assert.AreEqual(3505774568u, Fingerprint(noRelics.State), "the same world without #74's relics: only the text moved");
             var before = NewSim(1234, new SimConfig { historyPruneYears = 0 });
             before.CardsOn = false;
             before.RelicsOn = false;
             before.Advance(48);
-            Assert.AreEqual(964360791u, Fingerprint(before.State), "the same world with #59's text swaps off");
+            Assert.AreEqual(3038621092u, Fingerprint(before.State), "the same world with #59's text swaps off");
         }
 
         [Test]
@@ -97,12 +97,10 @@ namespace AquariumCiv.Tests
         public void AddMessIsCappedLikeNaturalMess()
         {
             var sim = NewSim();
-            sim.AddMess(0.7f, 0.7f, 8);
-            sim.AddMess(0.7f, 0.7f, 8);
+            sim.AddMess(0.7f, 0.7f);
+            sim.AddMess(0.7f, 0.7f);
             Assert.AreEqual(1f, sim.State.grime);
             Assert.AreEqual(1f, sim.State.overgrowth);
-            Assert.AreEqual(sim.Config.trashMax, sim.State.trash.Count);
-            Assert.AreEqual(sim.State.trash.Count, sim.State.trash.Select(t => t.id).Distinct().Count());
             sim.CleanAll();
             Assert.AreEqual(0f, sim.MessLevel);
         }
@@ -116,7 +114,6 @@ namespace AquariumCiv.Tests
             sim.Advance(24 * 30); // a month of neglect
             Assert.LessOrEqual(sim.State.grime, 1f);
             Assert.LessOrEqual(sim.State.overgrowth, 1f);
-            Assert.LessOrEqual(sim.State.trash.Count, sim.Config.trashMax);
             Assert.GreaterOrEqual(sim.State.buildings.Count, buildings, "neglect must never remove buildings");
             Assert.GreaterOrEqual(sim.State.population, 5, "the civ never collapses");
         }
@@ -125,31 +122,28 @@ namespace AquariumCiv.Tests
         public void WorkPaceDropIsLinearAndCappedAtAQuarter()
         {
             var sim = NewSim();
-            sim.State.trash.Clear();
-            for (int i = 0; i < sim.Config.trashMax / 2; i++) sim.State.trash.Add(new TrashItem { id = 1000 + i });
             sim.State.grime = sim.State.overgrowth = 0.5f; // mess level 0.5
             Assert.AreEqual(0.125f, sim.OutputPenalty, 1e-5f);
-            sim.AddMess(1f, 1f, sim.Config.trashMax);
+            sim.AddMess(1f, 1f);
             Assert.AreEqual(0.25f, sim.OutputPenalty, 1e-5f);
             Assert.AreEqual(75, CareConfig.WorkPacePercent(sim));
             Assert.AreEqual(0, CareConfig.SunlightPercent(sim));
         }
 
         [Test]
-        public void GlassIsHalfTheMess()
+        public void GlassIsTwoThirdsOfTheMess()
         {
             var sim = NewSim();
-            sim.State.trash.Clear();
             sim.State.overgrowth = 0f;
             sim.State.grime = 1f;
-            Assert.AreEqual(0.5f, sim.MessLevel, 1e-5f);
+            Assert.AreEqual(2f / 3f, sim.MessLevel, 1e-5f);
         }
 
         [Test]
         public void MessNeverTouchesMood()
         {
-            // Gate 1: the pace drop is the whole cost. No trash: it would draw from the rng differently in the two worlds.
-            var cfg = new SimConfig { trashPerPersonHour = 0f };
+            // Gate 1: the pace drop is the whole cost.
+            var cfg = new SimConfig();
             var clean = NewSim(7, cfg); var messy = NewSim(7, cfg);
             for (int i = 0; i < 12; i++)
             {

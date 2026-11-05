@@ -27,16 +27,13 @@ namespace AquariumCiv.Sim
         public float eldestStoryAge = 60f;      // the eldest tells the founding story in winter from this age
         public float retireAge = 65f;           // a notable leaves their everyday job and becomes an elder (user, 2026-10-29: "retirement at 65 fine")
         public float messFullHours = 48f;       // mess reaches its cap after this many real hours
-        public int trashMax = 12;
-        public float trashPerPersonHour = 0.02f;
         public float outputPenaltyMax = 0.25f;  // work-pace drop at full mess (Gate 1)
-        // Care moves up (#60, life-in-the-box §7, choice 6 ★): in the town, sweepers really clear trash heaps and trim
+        // Care moves up (#60, life-in-the-box §7, choice 6 ★): in the town, sweepers really trim
         // overgrowth, slowly, in real hours like the mess. Never the glass. However many there are, they clear at most
         // careMaxShare of what the mess brings in, so mess still grows and the Keeper always has care to do.
         public int peoplePerCrowdSweeper = 12;   // the crowd puts one sweeper out per this many people (§5 "Town care")
-        public float sweepHeapsPerHour = 0.1f;   // trash heaps one sweeper clears per real hour (one every 10 h)
         public float trimPerHour = 0.005f;       // overgrowth one sweeper trims per real hour (mess brings 1/48 ≈ 0.021)
-        public float careMaxShare = 0.5f;        // all sweepers together clear at most this share of the incoming trash/overgrowth
+        public float careMaxShare = 0.5f;        // all sweepers together clear at most this share of the incoming overgrowth
         // Shaping by placement (#82; SimCore.Shaping.cs): shared charges, refilled by cleaning and over time while the
         // people are happy (decisions.md "Shaping limit"). Amounts are first guesses, tuned later by E2.
         public float shapingStartCharges = 2f;
@@ -45,7 +42,6 @@ namespace AquariumCiv.Sim
         public float shapingHappyMood = 0.6f;
         public float shapingPerGrime = 0.5f;        // charges for wiping the whole glass (scaled to what was really wiped)
         public float shapingPerOvergrowth = 0.4f;   // ... for trimming all the overgrowth
-        public float shapingPerTrash = 0.08f;       // ... per trash heap taken away
         public int buildingSlots = 20;          // the economy's building cap (where they stand is Settle's: Building.x/z, lotId)
         // Organic placement (M2, #32; Sim/Settle): every building gets a lot, paths wear in from walking. Off only for
         // tests that compare the economy with and without it. terrainPreset picks the box's land (0 = the style kit's).
@@ -249,16 +245,6 @@ namespace AquariumCiv.Sim
     }
 
     [Serializable]
-    public class TrashItem
-    {
-        public int id;
-        public int slot;                // drawn by the economy's dice (kept, so placement never shifts them)
-        public float offsetX, offsetZ;
-        public long month;
-        public float x, z;              // where it lies (Settle: by the door of the lot its slot picks)
-    }
-
-    [Serializable]
     public class Notable
     {
         public int id;
@@ -346,9 +332,7 @@ namespace AquariumCiv.Sim
         public long month;          // game months stepped
         public int population;
         public float food, wood, mood;
-        public float grime, overgrowth, trashAccum;
-        public float sweepAccum;    // town sweepers' progress toward the next heap, 0..1 (SimCore.Care.cs)
-        public List<TrashItem> trash = new();
+        public float grime, overgrowth;
         public List<Building> buildings = new();
         public List<Notable> notables = new();
         public List<ChronicleEntry> chronicle = new();
