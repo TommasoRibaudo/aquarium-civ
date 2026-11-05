@@ -353,6 +353,8 @@ namespace AquariumCiv.View
                 var cards = PersonCardView.Instance;
                 var choice = ChoiceSceneView.Instance; // #224: a touch on one of the two choices answers the people
                 if (quick && pressWorld && choice != null && choice.WorldTap(pressPos)) { }
+                // #333 (tester): a tap right on a rabbit is the rabbit's, before a piece's card (a rabbit by the fire opened "The fire")
+                else if (quick && pressWorld && RabbitView.Instance != null && RabbitView.Instance.RabbitUnderScreen(pressPos) && RabbitView.Instance.TapAtScreen(pressPos) > 0) { }
                 else if (quick && pressWorld && cards != null && cards.WorldTap(pressPos)) { }
                 else
                 {
