@@ -50,7 +50,10 @@ namespace AquariumCiv.View
         // A mound of dark soil with a ring of stones round it: bigger as the tree grows.
         static void Ring(MeshBuilder mb, Vector3 g, int stage)
         {
-            float r = 0.06f + 0.035f * stage;
+            // #317 / tester: the seed and the sprout were lost at the default view. They get a wider ring and a halo of fresh
+            // green moss, so the one spot the Keeper planted reads at a glance on bare sand or among the grass.
+            float r = stage < 2 ? 0.1f : 0.06f + 0.035f * stage;
+            if (stage < 2) mb.Ico(g + Vector3.up * 0.001f, r * 2f, new Vector3(1f, 0.06f, 1f), LeafFresh, 0.12f, LeafLight);
             mb.Ico(g + Vector3.up * 0.002f, r * 0.82f, new Vector3(1f, 0.22f, 1f), Soil, 0.1f, Soil);
             int n = 6 + stage * 2;
             for (int i = 0; i < n; i++)
@@ -66,8 +69,8 @@ namespace AquariumCiv.View
         {
             // A plump seed half-buried in the mound, with a glint of gold (it glows, very faintly, at night).
             mb.lamp = GlowChannel(BudGlow);
-            mb.Ico(g + Vector3.up * 0.014f, 0.016f, new Vector3(1f, 0.8f, 1.4f), Bud, 0.08f, Soil);
-            mb.Ico(g + new Vector3(0f, 0.022f, 0.004f), 0.008f, Vector3.one, Blossom, 0.05f);
+            mb.Ico(g + Vector3.up * 0.024f, 0.028f, new Vector3(1f, 0.8f, 1.4f), Bud, 0.08f, Soil);
+            mb.Ico(g + new Vector3(0f, 0.04f, 0.007f), 0.013f, Vector3.one, Blossom, 0.05f);
             mb.lamp = -1f;
         }
 
@@ -75,15 +78,16 @@ namespace AquariumCiv.View
         {
             // A bright stem with two fat seed leaves, tipped with a bud.
             mb.sway = 0.4f;
-            mb.Prism(g, 0.006f, 0.0045f, 0.07f, 5, LeafLight);
+            const float e = 1.9f; // #317: big enough to find at the default view
+            mb.Prism(g, 0.006f * e, 0.0045f * e, 0.07f * e, 5, LeafLight);
             mb.sway = 1f;
             mb.lamp = GlowChannel(CanopyGlow * 1.6f);
             for (int i = 0; i < 2; i++)
             {
                 float s = i == 0 ? 1f : -1f;
-                mb.Ico(g + new Vector3(0.026f * s, 0.07f, 0.004f * s), 0.03f, new Vector3(1.4f, 0.28f, 0.9f), i == 0 ? LeafFresh : LeafLight, 0.1f, LeafDeep);
+                mb.Ico(g + new Vector3(0.026f * s, 0.07f, 0.004f * s) * e, 0.03f * e, new Vector3(1.4f, 0.28f, 0.9f), i == 0 ? LeafFresh : LeafLight, 0.1f, LeafDeep);
             }
-            mb.Ico(g + Vector3.up * 0.09f, 0.014f, new Vector3(0.9f, 1.3f, 0.9f), LeafLight, 0.1f);
+            mb.Ico(g + Vector3.up * 0.09f * e, 0.014f * e, new Vector3(0.9f, 1.3f, 0.9f), LeafLight, 0.1f);
             mb.lamp = -1f;
             mb.sway = 0f;
         }

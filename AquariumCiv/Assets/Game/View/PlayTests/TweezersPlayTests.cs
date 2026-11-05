@@ -234,5 +234,27 @@ namespace AquariumCiv.View.PlayTests
             }
             finally { Close(); }
         }
+
+        /// <summary>#317 look check: every stage of the Keeper's tree at the default camera (tester: the seed and the sprout were lost there), and the grown tree at night.</summary>
+        [UnityTest]
+        public IEnumerator KeeperTree_EveryStageAtTheDefaultView_Shots()
+        {
+            yield return Open();
+            try
+            {
+                yield return LivingLand();
+                for (int s = 0; s <= 4; s++)
+                {
+                    EcoDebug.TreeStage(s);
+                    for (int i = 0; i < 20; i++) yield return null;
+                    yield return Shot($"keeper-tree-T{s}-default");
+                }
+                NightLamps.DebugSetLevel(1f);
+                for (int i = 0; i < 20; i++) yield return null;
+                yield return Shot("keeper-tree-T4-night");
+                NightLamps.DebugSetLevel(0f);
+            }
+            finally { Close(); }
+        }
     }
 }
