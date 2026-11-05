@@ -744,3 +744,10 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   A before/after look at a `Life/` change in the Editor: swap the one file from the parent commit, recompile, run, restore.
 
 - **2026-11-04 · Full regression batch from one script (final verify).** `AquariumCiv/Temp/agent/batch.sh`-style loop: per line `mode|filter|type`, delete `TestResults.xml`, `test run --async_tests true`, wait for the file, parse `<test-run total/passed/failed>` plus failed `fullname`s. EditMode by assembly took ~70 min (Life.Tests alone ~25 min, 1548-test log line is the whole-project count, not the assembly's); the 15 PlayMode classes ~25 min. A foreground wait over 180 s is moved to the background by the harness: use `ping -n 110 127.0.0.1` (about 110 s) between checks. [verified]
+- **2026-11-04 · Unity's NUnit has no `Is.AnyOf`; parallel workers + one final Editor run.** [verified] `Tools/SimTests` builds against a newer NUnit,
+  so a test using `Is.AnyOf(...)` passed `dotnet test` but sent the Editor to "Enter Safe Mode?" (CS0117) when it opened. Use
+  `CollectionAssert.Contains(new[] { ... }, value, msg)`. Answer the dialog with `dismiss-dialogs.ps1 -Click` (Ignore) and recompile after the fix.
+  Seven no-Editor workers (offline csc + dotnet tests) and one batched Editor pass at the end (10 EditMode assemblies, 14 PlayMode classes,
+  smoke) worked. The Editor pass still found 3 bugs that offline checks can't see (a side pane faded at the default view, a tap swallowed by a
+  drag throttle, a weed's reach hiding a sapling), so keep that pass. A runner that waits on `test status` until `completed`, then reads the JSON
+  (`data.result.summary` / `results[].Status`), lives in the session scratchpad; copy the pattern into `Tools/` if it's needed again.
