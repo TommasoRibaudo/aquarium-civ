@@ -16,6 +16,7 @@
 # has seen `running` and then `completed` (or a status that changed from the one before the run, for a run that
 # ends inside the first poll), and prints the summary plus every failed test. Every wait is bounded:
 # READY_WAIT_S (default 300 s) for the Editor and RUN_LIMIT_S (default 2400 s) per run.
+# EXPLICIT=1 also runs [Explicit] tests (shot classes). A filter that matches 0 tests gives up after 90 s.
 # Output: $OUT (default AquariumCiv/Temp/agent/test-runs)/<tag>.status.json, and a line per run in summary.txt.
 set -u
 export UNITY_NO_PAGER=1 UNITY_NO_BANNER=1
@@ -44,6 +45,7 @@ run_one() {
   local mode=$1 filter=$2 ftype=$3 tag=$4
   local args=(--mode "$mode" --filter "$filter" --async_tests true)
   [ -n "$ftype" ] && args+=(--filter_type "$ftype")
+  [ "${EXPLICIT:-0}" = 1 ] && args+=(--include_explicit true)
   wait_ready || { echo "== $tag: SKIPPED (Editor not ready)" | tee -a "$OUT/summary.txt"; return 1; }
   local before; before=$(timeout 60 unity command test status --format json 2>/dev/null | md5sum | cut -c1-12)
   local started=0
@@ -62,6 +64,8 @@ run_one() {
       [ $seen = 1 ] && break
       # ended inside the first poll: trust it only once the status differs from the one before the run
       [ "$(echo "$st" | md5sum | cut -c1-12)" != "$before" ] && [ "$t" -ge 20 ] && break
+      # still the old "completed" a minute on: the filter most likely matched 0 tests (an [Explicit] class needs EXPLICIT=1)
+      if [ "$t" -ge 90 ]; then echo "!! $tag: no run started in 90 s (0 tests matched? [Explicit] needs EXPLICIT=1)"; break; fi
     fi
   done
   echo "$st" > "$OUT/$tag.status.json"
