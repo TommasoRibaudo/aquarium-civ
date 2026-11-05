@@ -157,6 +157,8 @@ namespace AquariumCiv.View
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);
             if (Btn("Camp gate")) last = EcoDebug.CampGate();
             if (Btn("+2 hides")) last = EcoDebug.AddHides(2);
+            if (Btn("Rack 1 hide")) last = EcoDebug.ShowRack(1); // #332
+            if (Btn("Rack 6 hides")) last = EcoDebug.ShowRack(6); // #332
             if (Btn("Village gate")) last = EcoDebug.VillageGate();
             EndRow();
             Row();

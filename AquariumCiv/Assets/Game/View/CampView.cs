@@ -261,49 +261,21 @@ namespace AquariumCiv.View
             HidesShown = points.Count;
         }
 
-        /// <summary>Two forked poles with a bar across, and a hide stretched on the bar for each point: a flat, tan sheet with a darker edge,
-        /// pegged at the corners. Built in the box's own coordinates.</summary>
+        /// <summary>The hide rack (#332, replacing #284's bar): an A-frame of crossed poles at each end with a ridge pole, and a pelt hung on
+        /// it for each point (hide-shaped, dark edge, cream lacing), with a folded pile at its foot as they come off dry. Built in the box's
+        /// own coordinates by <see cref="Pieces.HideRack"/>.</summary>
         GameObject BuildFrame(float cx, float cz, float dx, float dz, List<(float x, float z)> hides)
         {
             var mb = new MeshBuilder(box.seed + 284) { jitter = 0f };
             var land = box.land;
-            var wood = new Color(0.36f, 0.25f, 0.14f);
-            var woodDark = new Color(0.27f, 0.18f, 0.10f);
-            const float h = 0.20f;          // pole height
-            float halfLen = Mathf.Max(0.12f, (HideFrameSpan(hides.Count)) * 0.5f + 0.05f);
-            float yaw = Mathf.Atan2(dx, dz) * Mathf.Rad2Deg; // local +x runs along the bar
+            float halfLen = Mathf.Max(0.12f, HideFrameSpan(hides.Count) * 0.5f + 0.06f);
+            float yaw = Mathf.Atan2(dx, dz) * Mathf.Rad2Deg; // local +z runs along the bar, +x away from the fire
             var centre = land.OnGround(cx, cz);
             mb.M = Matrix4x4.TRS(centre, Quaternion.Euler(0f, yaw, 0f), Vector3.one);
-            // posts
-            foreach (float s in new[] { -1f, 1f })
-            {
-                mb.Prism(new Vector3(0f, -0.005f, s * halfLen), 0.016f, 0.011f, h, 5, wood, null);
-                // a lean-to brace behind each
-                mb.Box(new Vector3(-0.045f, h * 0.35f, s * halfLen), new Vector3(0.012f, h * 0.7f, 0.010f), woodDark, Quaternion.Euler(0f, 0f, -22f));
-            }
-            // the bar
-            mb.Box(new Vector3(0f, h, 0f), new Vector3(0.020f, 0.020f, halfLen * 2f + 0.03f), wood);
-            // the hides, each hung from the bar and pulled taut
-            for (int i = 0; i < hides.Count; i++)
-            {
-                var p = hides[i];
-                var world = land.OnGround(p.x, p.z);
-                var local = mb.M.inverse.MultiplyPoint3x4(world);
-                float z = local.z;
-                uint r = (uint)(i * 2654435761u + 284u);
-                float tone = ((r >> 8) & 255) / 255f;
-                var skin = Color.Lerp(new Color(0.55f, 0.33f, 0.18f), new Color(0.70f, 0.44f, 0.24f), tone);
-                var edge = Color.Lerp(skin, new Color(0.96f, 0.90f, 0.78f), 0.5f);
-                float w = 0.068f, hh = 0.150f + (((r >> 16) & 15) / 15f) * 0.02f;
-                float top = h - 0.007f;
-                // the sheet: a thin slab, slightly tilted so the hides don't all read as one wall
-                // the sheet: a thin slab leaning off the bar (a drying rack), so it shows its face from above whichever way the camera looks
-                var lean = Quaternion.Euler(0f, 0f, 38f);
-                var pivot = new Vector3(0f, top, z);
-                mb.Box(pivot + lean * new Vector3(0f, -hh * 0.5f, 0f), new Vector3(0.010f, hh, w), skin, lean);
-                // a pale rim at the foot
-                mb.Box(pivot + lean * new Vector3(0.001f, -hh + 0.004f, 0f), new Vector3(0.013f, 0.012f, w + 0.004f), edge, lean);
-            }
+            var inv = mb.M.inverse;
+            var zs = new List<float>(hides.Count);
+            foreach (var p in hides) zs.Add(inv.MultiplyPoint3x4(land.OnGround(p.x, p.z)).z);
+            Pieces.HideRack(mb, halfLen, zs, PileFor(hides.Count), box.seed + 284);
             mb.M = Matrix4x4.identity;
             var go = new GameObject("HideFrame") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(Holder(), false);
@@ -313,6 +285,9 @@ namespace AquariumCiv.View
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             return go;
         }
+
+        /// <summary>Folded hides at the rack's foot for the hides on it: one for every three, at most three.</summary>
+        public static int PileFor(int hidesOnFrame) => Mathf.Clamp(hidesOnFrame / 3, 0, 3);
 
         static float HideFrameSpan(int n) => Mathf.Max(3, n) * LifePlanner.HideFrameSpacing;
     }
