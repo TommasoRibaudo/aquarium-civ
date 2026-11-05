@@ -315,6 +315,23 @@ namespace AquariumCiv.View
 
         /// <summary>#333: a tap on the land at a screen spot (called by GlassVoice for a tap no person card took). Returns how many rabbits
         /// it startled (0 when no rabbit is near, or the spot is not on the land). Never removes one.</summary>
+        /// <summary>Tester (batch 2): a rabbit's doll is right under the finger (within a fingertip on screen, about 0.03 of the screen's
+        /// height). Then the tap is the rabbit's, before a piece's or a person's card (a rabbit by the fire opened "The fire").</summary>
+        public bool RabbitUnderScreen(Vector2 screenPos)
+        {
+            var cam = Camera.main;
+            if (cam == null) return false;
+            float r = 0.03f * Screen.height;
+            foreach (var kv in slots)
+            {
+                var d = kv.Value.doll;
+                if (d == null || !d.gameObject.activeInHierarchy) continue;
+                var sp = cam.WorldToScreenPoint(d.transform.position);
+                if (sp.z > 0f && ((Vector2)sp - screenPos).sqrMagnitude <= r * r) return true;
+            }
+            return false;
+        }
+
         public int TapAtScreen(Vector2 screenPos)
         {
             var shaping = ShapingView.Instance;
