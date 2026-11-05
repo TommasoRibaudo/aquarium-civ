@@ -435,8 +435,8 @@ namespace AquariumCiv.View
             // skip row: test builds only, the quietest thing on screen
             skipRow = new VisualElement { name = "firstrun-skip-row", pickingMode = PickingMode.Ignore };
             skipRow.AddToClassList("fr-skip");
-            skipRow.Add(new GlassButton("Skip step", () => run?.SkipStep(), ButtonKind.Quiet) { name = "firstrun-skip-step" });
-            skipRow.Add(new GlassButton("Skip all", () => run?.SkipAll(), ButtonKind.Quiet) { name = "firstrun-skip-all" });
+            skipRow.Add(new GlassButton("Skip step", () => run?.SkipStep(), ButtonKind.Ghost) { name = "firstrun-skip-step" });
+            skipRow.Add(new GlassButton("Skip all", () => run?.SkipAll(), ButtonKind.Ghost) { name = "firstrun-skip-all" });
             skipRow.style.display = DisplayStyle.None;
             safe.Add(skipRow);
 
