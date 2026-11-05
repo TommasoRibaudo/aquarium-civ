@@ -23,7 +23,7 @@ zoom)`: 0 = farthest, 1 = closest. **The default view is zoom 1 = zoom01 0.27.**
 The ambient bubble does not use zoom at all: it uses the speaker's height on screen (`ShowMeDirector.DollPixels`, in
 pixels of a 2556-tall frame): no bubble under 12 px (`TinySpeakerPx`), the bubble narrows from 640 to 470 panel units
 between 100 and 30 px. Ritual symbols hide under 14 px (`RitualBubbleView.TinyDollPx`). So "too far" has five
-different thresholds today. **[measure]** the doll's height at zoom 1 (expected ~25 to 40 px from the tester's report).
+different thresholds today. **Measured (2026-11-04, 1179x2556, Marta, midday box, living land):** the doll is **28 px** tall at zoom 1, **52 px** at zoom 0.45 and **22 px** at zoom 1.25 (about 28 / zoom).
 
 ## 1. Inventory
 
@@ -108,9 +108,9 @@ checks). Phase 2 adds the label words to the closed-world content test.
 
 ### Option A: the zoom decides (the issue's example)
 
-- **Far and default (doll under 45 px [measure], about zoom > 0.75):** every spoken line goes to the top caption: the
+- **Far and default (doll under 45 px, measured: about zoom > 0.62, since 28 px / zoom = 45 px):** every spoken line goes to the top caption: the
   line, then "Name, at the place" (or the crowd label). The `SpeakerRing` goes under the speaker for as long as the
-  line shows, bigger and pulsing once at far zoom (its 0.18 radius is ~10 px at the default view **[measure]**). A
+  line shows, bigger and pulsing once at far zoom (its 0.18 radius reads as an ellipse about 40 px wide and 12 px tall at the default view, measured on the 0b frame). A
   speaker off screen: the caption's name line gets a small arrow toward them (left/right/down), no camera move.
 - **Close (doll 45 px and up):** over the head as today, any length up to the bubble's 4 lines; longer still goes to
   the caption, with the ring.
@@ -145,7 +145,7 @@ checks). Phase 2 adds the label words to the closed-world content test.
 ### Option C: the size decides, with a speech mark between
 
 Three tiers by the speaker's size on screen, decided at the start of each line:
-- **Close (doll >= 45 px [measure]):** over the head (as A).
+- **Close (doll >= 45 px, about zoom <= 0.62):** over the head (as A).
 - **Middle (the default view: 15 to 45 px):** the line on the caption with the name, and over the speaker a speech
   mark (a quote glyph, the same size and style as the chatter marks, in the ring's warm white) with the ring under them:
   the mark is where you look, the caption is where you read.
@@ -160,7 +160,7 @@ Three tiers by the speaker's size on screen, decided at the start of each line:
 
 ### Recommendation
 
-**Recommended: Option A**, with the switch on the speaker's size (one number, 45 px **[measure]**), not raw zoom, so
+**Recommended: Option A**, with the switch on the speaker's size (one number, 45 px, confirmed by the measure above: 28 px at the default view is well under it, 52 px at zoom 0.45 is over), not raw zoom, so
 a tall phone and a tablet agree. It answers the user's question directly ("lines at the top like other text"), keeps
 the words on the people when the player has come close to look (the reward for zooming in), and reuses what exists:
 the caption lane, `SpeakerRing`, the evening talk's caption + name-over-speaker pattern (#12 above, already approved).
@@ -194,6 +194,16 @@ name below it in the quote style. Ring: warm white (1, 0.95, 0.78), 0.8 peak, an
 | C2 | zoom 1.25, the same speaker | "Line on walker" | caption with the name, no mark, ring (or arrow if off screen) |
 | C3 | = A2 | as A2 | the bubble (same as A2) |
 | M1 (all) | zoom 1, a group of 3 at the fire, ~18:30 | **"Gather 6"**, **"Force chat"**, **"Voice exchange here"** | marks over the group; for the in-step proposal, a label or caption on the sheet: "each mark here has a voice" (it's a sound change: no mock, a short screen recording with sound if possible) |
+
+**Shots (done 2026-11-04).** Real frames from the game, mock-ups composited from them with the game's own caption look
+(plate `#4C3C2D`, Lora Bold 52 px, name in Lora Medium). All in `docs/design/results/p8/feedback2/`: today
+[`327_today.jpg`](results/p8/feedback2/327_today.jpg) (0a + 0b), A [`327_option_A.jpg`](results/p8/feedback2/327_option_A.jpg)
+(A1 mock, A2 **real** frame at zoom 0.45, A3 mock with the arrow), B [`327_option_B.jpg`](results/p8/feedback2/327_option_B.jpg)
+(B1 + B2), C [`327_option_C.jpg`](results/p8/feedback2/327_option_C.jpg) (C1 + C2 at zoom 1.25), plus the want line A4
+[`327_extra_A4.jpg`](results/p8/feedback2/327_extra_A4.jpg) (today's want line is a nameless caption and no ring; the mock adds the
+crowd label and ring). C3 = A2. **M1: hear it in the build** (a sound change, no shot). Limits: the speech mark and ring in the
+mocks are drawn, not the game's; the stray chatter mark (note, dots) over another person is a real mark of the base frame.
+At zoom 1 the ring and the mark are small (a 28 px doll): they read as a hint, which is the point to judge.
 
 Present to the user as three pairs side by side: A (A1 + A2, A3 as an extra), B (B1 + B2), C (C1 + C2), with 0a and
 0b as "today".
