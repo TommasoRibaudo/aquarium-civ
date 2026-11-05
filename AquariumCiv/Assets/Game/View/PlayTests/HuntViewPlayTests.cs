@@ -84,7 +84,7 @@ namespace AquariumCiv.View.PlayTests
                     pv.timeScale = 1f;
                     var h = HunterAt(pv, who);
                     if (rv.TryGetPosition(id, out var rp)) closest = Mathf.Min(closest, Vector2.Distance(h, new Vector2(rp.x, rp.z)));
-                    if (rv.TryGetAct(id, out bool fl) && fl) calmBeforeStrike = false;
+                    if (rv.TryGetAct(id, out bool fl) && fl) { if (calmBeforeStrike) Debug.Log($"[hunt] stalked rabbit {id} took fright at progress {a.progress:0.00}: {rv.DebugScare(id)}"); calmBeforeStrike = false; }
                     if (!shotStalk && a.progress > 0.5f) { shotStalk = true; yield return Shot($"hunt_{tag}_stalk"); yield return Close(pv, who, $"hunt_{tag}_stalk_close"); }
                 }
                 if (a.hunt == HuntPhase.Strike)
