@@ -12,7 +12,7 @@ namespace AquariumCiv.Sim.Eco
     public static class EcoSeen
     {
         /// <summary>Real seconds, from the return, over which fresh green fades to the normal palette.</summary>
-        public const float FadeSeconds = 180f;
+        public const float FadeSeconds = 100f;
 
         public static bool IsGreen(EcoState e, int cell)
         {

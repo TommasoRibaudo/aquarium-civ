@@ -146,7 +146,7 @@ namespace AquariumCiv.View
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
             // #300: the new grass tints the land it lies on, so it is lit like the land at every hour (the plain tint glowed at night)
-            if (freshMat == null) { freshMat = MakeMaterial("EcoTint", 5, DstColor, SrcColor); if (freshMat != null) freshMat.name = "EcoNewGrass"; if (freshMat != null) freshMat.SetFloat("_FreshLift", 0.7f); }
+            if (freshMat == null) { freshMat = MakeMaterial("EcoTint", 5, DstColor, SrcColor); if (freshMat != null) freshMat.name = "EcoNewGrass"; if (freshMat != null) freshMat.SetFloat("_FreshLift", 0.25f); }
             if (pudMat != null && !pudTuned)
             {
                 // water, not slate (tester run 1): a dark wet-blue/brown bed under the sky's reflection
@@ -379,8 +379,8 @@ namespace AquariumCiv.View
         void BuildNewGrass()
         {
             System.Array.Copy(ngS, ngB, N);
-            // a light, fresh spring green over the normal grass: the more it is new, the more of it shows
-            NewGrassCells = SoftPatch(ngS, new Color32(175, 245, 85, 255), 0.15f, 0.9f, N);
+            // a faint, pale spring green (#281 note #321: a hint, not a glow) over the normal grass: the more it is new, the more of it shows
+            NewGrassCells = SoftPatch(ngS, new Color32(205, 240, 150, 255), 0.15f, 0.55f, N);
             Upload(ngMesh);
         }
 
