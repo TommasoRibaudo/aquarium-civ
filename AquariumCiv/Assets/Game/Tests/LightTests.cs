@@ -531,7 +531,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(0f, NearGlassFade.Amount(0.2f, 0f), "an edge-on pane has no fade");
             Assert.AreEqual(NearGlassFade.MaxPaneFade, NearGlassFade.Amount(0.2f, 1f), 1e-6f);
             Assert.AreEqual(NearGlassFade.MaxFrameFade, NearGlassFade.Amount(0.2f, 1f, isFrame: true), 1e-6f);
-            Assert.Less(NearGlassFade.MaxPaneFade, 1f, "subtle: never fully gone");
+            Assert.AreEqual(1f, NearGlassFade.MaxPaneFade, "#319: a close pane goes fully clear");
         }
 
         [Test]
@@ -567,6 +567,23 @@ namespace AquariumCiv.Tests
                 int visible = 0;
                 for (int p = 0; p < 4; p++) if (NearGlassFade.Opacity(0.3f, facing[p]) > 0.99f) visible++;
                 Assert.GreaterOrEqual(visible, 2, "at yaw " + deg + " the back panes stay in view");
+            }
+        }
+
+        [Test]
+        public void Fade_PlaneDistance_FadesAtFullZoomWhenTheCameraIsNearThePane()
+        {
+            Assert.AreEqual(0f, NearGlassFade.Amount(1f, 1f, planeRatio: 1f), 1e-6f, "far from the pane: nothing");
+            Assert.AreEqual(1f, NearGlassFade.Amount(1f, 1f, planeRatio: 0.1f), 1e-6f, "right at the pane: gone");
+            Assert.AreEqual(0f, NearGlassFade.Amount(1f, -1f, planeRatio: 0f), "the back pane never fades");
+            Assert.AreEqual(0f, NearGlassFade.Amount(1f, 1f, cleanMode: true, planeRatio: 0f), "cloth in hand: stays");
+            float prev = 0f;
+            for (float r = 1f; r >= 0f; r -= 0.002f)
+            {
+                float a = NearGlassFade.Amount(1f, 1f, planeRatio: r);
+                Assert.GreaterOrEqual(a, prev - 1e-6f);
+                Assert.Less(a - prev, 0.02f, "no pop at " + r);
+                prev = a;
             }
         }
 

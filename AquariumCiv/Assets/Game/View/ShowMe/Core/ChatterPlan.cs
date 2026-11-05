@@ -19,6 +19,8 @@ namespace AquariumCiv.View.ShowMe
         public bool asleep;
         /// <summary>0..3, which babble voice (<see cref="ChatterBabble.VoiceFor"/>).</summary>
         public int voice;
+        /// <summary>#316: a child (higher, quicker voice).</summary>
+        public bool kid;
         /// <summary>Rapport toward the other members of the group, by their id. Missing = <see cref="Rapport.Idle"/>.</summary>
         public Dictionary<int, Rapport> toward = new Dictionary<int, Rapport>();
     }
@@ -29,6 +31,8 @@ namespace AquariumCiv.View.ShowMe
         public int id;
         /// <summary>At the fire or another warm spot: ♪ is likelier.</summary>
         public bool nearFire;
+        /// <summary>#316: somebody in the group is at work (a call out is likelier), and the group is on screen (only those are heard).</summary>
+        public bool working, onScreen = true;
         public List<ChatterPerson> members = new List<ChatterPerson>();
     }
 

@@ -49,3 +49,9 @@ The first-water sounds (#279) are two CC0 one-shots, the same files as #280's br
 - KayKit Forest Nature Pack, KayKit Resource Bits: https://kaylousberg.itch.io/
 - Kenney City Kit Industrial + Factory Kit (industrial era): https://kenney.nl/assets
 - Kenney Mini Characters (civilian citizens): https://kenney.nl/assets/mini-characters
+
+#315/#316 (2026-11-04): the frogs and the voices are code-made, no new third-party file. The pond's frogs are single soft croaks
+(`FrogCroaker.Generate`, 4 takes) instead of the recorded chorus: `Ambience/frogs_pond_rec_loop.ogg` (BigSoundBank "Frogs #2", CC0, see above)
+stays in the repo but the game no longer plays it (the frog layer's level only drives how often a croak comes). The voices' new kinds
+(laugh, call, shout, hum, giggle, chat; clips 6 to 11 of `ChatterBabble`) and their muffled takes (`ChatterBabble.Muffle`) are made in code like
+the old babble. No CC0 voice or frog sample was searched for or downloaded in this pass (the Editor-free worktree run); recorded voices or a recorded soft croak stay an option once the code-made ones are heard on a phone.

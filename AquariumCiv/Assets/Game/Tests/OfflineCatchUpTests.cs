@@ -51,8 +51,6 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(1f, full.State.grime, 1e-5f);
             Assert.AreEqual(full.State.grime, slowed.State.grime, 1e-5f);
             Assert.AreEqual(full.State.overgrowth, slowed.State.overgrowth, 1e-5f);
-            Assert.Greater(slowed.State.trash.Count, 0);
-            Assert.LessOrEqual(slowed.State.trash.Count, slowed.Config.trashMax);
         }
 
         [Test]
@@ -62,7 +60,6 @@ namespace AquariumCiv.Tests
             sim.CatchUp(30 * 24);
             Assert.AreEqual(1f, sim.State.grime);
             Assert.AreEqual(1f, sim.State.overgrowth);
-            Assert.LessOrEqual(sim.State.trash.Count, sim.Config.trashMax);
         }
 
         [Test]

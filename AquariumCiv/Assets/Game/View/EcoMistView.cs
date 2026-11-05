@@ -153,6 +153,7 @@ namespace AquariumCiv.View
             hud ??= GameHud.Instance;
             var hand = hud != null ? hud.Hand : GameHud.KitTool.None;
             if (hand == GameHud.KitTool.Seed) { SeedHand(sim, n, pos); return; }
+            if (hand == GameHud.KitTool.Tweezers) { if (misting) EndMist(); pressed = false; return; } // the tweezers are CareView's (#311): no hold-to-mist under them
             if (n != 1 || !Usable(sim))
             {
                 if (misting) EndMist();
@@ -438,6 +439,9 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The ground under a screen point, box-local: marches the ray down to the land.</summary>
+        /// <summary>The land point (box-local) under a screen point, for the other kit tools (the tweezers, #311).</summary>
+        public bool GroundPoint(Vector2 screen, out Vector3 at) => Ground(screen, out at);
+
         bool Ground(Vector2 screen, out Vector3 at)
         {
             at = default;

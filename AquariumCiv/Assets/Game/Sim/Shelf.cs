@@ -103,7 +103,7 @@ namespace AquariumCiv.Sim
             var box = shelf.Active ?? throw new InvalidOperationException("no active box");
             if (!sim.State.boxComplete) throw new InvalidOperationException("the box is not complete");
             var s = sim.State;
-            s.grime = 0; s.overgrowth = 0; s.trashAccum = 0; s.trash.Clear(); // museum glass doesn't get dirty
+            s.grime = 0; s.overgrowth = 0; // museum glass doesn't get dirty
             box.state = s;
             box.museum = true;
             box.plate = completion?.plate ?? $"{sim.PlaceName} - years 1-{SimCore.YearNo(s.month)}";

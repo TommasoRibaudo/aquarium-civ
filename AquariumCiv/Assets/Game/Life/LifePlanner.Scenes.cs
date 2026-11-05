@@ -627,7 +627,6 @@ namespace AquariumCiv.Life
             PlaceKind.BuildingSite => "the building site",
             PlaceKind.ForestEdge => "the forest edge",
             PlaceKind.ClayBank => "the clay bank",
-            PlaceKind.TrashHeap => "a trash heap",
             PlaceKind.Nudge => "the Keeper's gift",
             PlaceKind.Remembering => p.index == 1 ? "the churchyard" : "the cairn",
             PlaceKind.Hill => "the hill",

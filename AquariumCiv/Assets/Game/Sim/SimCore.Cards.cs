@@ -228,6 +228,20 @@ namespace AquariumCiv.Sim
                 }
             }
 
+            // #312: a callback never comes before its dilemma's result (the lapse line or the Keeper's answer). If the callback made the
+            // stack and that card is among the new ones, the card comes in too, taking the lowest-scoring plain card's place.
+            foreach (var cb in chosen.Where(c => c.lead.kind == CallbackKind).ToList())
+            {
+                var end = DilemmaEndCard(cb, cards);
+                if (end == null || chosen.Contains(end)) continue;
+                chosen.Add(end);
+                pool.Remove(end);
+                if (chosen.Count <= stack.cap) continue;
+                var drop = chosen.Where(c => c != end && c != cb && c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma && c.lead.kind != CallbackKind)
+                    .OrderBy(c => c.score).FirstOrDefault();
+                chosen.Remove(drop ?? cb);
+            }
+
             // Order (good news first, decided).
             static IEnumerable<ChronicleCard> ByScore(IEnumerable<ChronicleCard> xs) => xs.OrderByDescending(c => c.score).ThenBy(c => c.month);
             var rest = chosen.Where(c => c.kind != CardKind.EraReady && c.kind != CardKind.Wish && c.kind != CardKind.Dilemma).ToList();
@@ -238,11 +252,30 @@ namespace AquariumCiv.Sim
             stack.cards.AddRange(ByScore(rest.Where(c => c != headline && c.tone != CardTone.Sad)));
             stack.cards.AddRange(ByScore(rest.Where(c => c.tone == CardTone.Sad)));
             stack.cards.AddRange(chosen.Where(c => c.kind == CardKind.Wish));
+            // #312: a callback sits after its dilemma's result card, wherever the scores put it.
+            foreach (var cb in stack.cards.Where(c => c.lead.kind == CallbackKind).ToList())
+            {
+                var end = DilemmaEndCard(cb, stack.cards);
+                int ei = end == null ? -1 : stack.cards.IndexOf(end);
+                if (ei < 0 || ei < stack.cards.IndexOf(cb)) continue;
+                stack.cards.Remove(cb);
+                stack.cards.Insert(stack.cards.IndexOf(end) + 1, cb);
+            }
 
             stack.also = ByScore(cards.Where(c => !chosen.Contains(c))).ToList();
             stack.alsoHeadlines = stack.also.Take(3).Select(c => c.headline).ToList();
             stack.alsoMore = Math.Max(0, stack.also.Count - 3);
             return stack;
+        }
+
+        /// <summary>#312: the card (among <paramref name="among"/>) that ends the dilemma a callback card pays off: the lapse's line,
+        /// the Keeper's answer, or the question's own card. Null if the callback has none among them.</summary>
+        ChronicleCard DilemmaEndCard(ChronicleCard callback, IEnumerable<ChronicleCard> among)
+        {
+            var info = CallbackInfoOf(callback.lead);
+            var d = info?.dilemma;
+            if (d == null) return null;
+            return among.FirstOrDefault(c => c != callback && c.entries.Any(e => e.id == d.resultEntryId || e.id == d.answerEntryId));
         }
 
         void Fill(ChronicleCard c, HashSet<int> viewed)

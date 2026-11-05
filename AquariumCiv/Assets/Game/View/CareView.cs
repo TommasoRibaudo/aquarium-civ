@@ -22,8 +22,8 @@ namespace AquariumCiv.View
     /// <item><b>Clean mode</b> (design/one-handed-controls.md; the HUD's Clean button): only then does one finger wipe.
     /// This is the <see cref="ICameraGate"/> the camera asks at touch-down: a press that starts on the glass or on a piece of
     /// mess is ours, a press anywhere else stays the camera's, and two fingers are always the camera.</item>
-    /// <item><b>Mess.</b> <see cref="MessProps"/> draws the heaps and weed patches; a stroke that starts on one is a toss: a fast
-    /// flick (release speed and a minimum travel) throws it out through <see cref="SimCore.RemoveTrash"/> or
+    /// <item><b>Mess.</b> <see cref="MessProps"/> draws the weed patches (the trash heaps are gone, #313); a stroke that starts on
+    /// one is a toss: a fast flick (release speed and a minimum travel) throws it out through
     /// <see cref="SimCore.Prune"/>, a slow one drops it back with a hint. Mess behind dirty glass is out of reach.</item>
     /// <item><b>Sunlight.</b> The sun's intensity follows the mess (<see cref="CareMath.SunScale"/>, at most -25 %).</item>
     /// <item><b>Cheer.</b> When the glass goes spotless (or all the mess is gone) there is a chime, sparkles and the people
@@ -191,7 +191,7 @@ namespace AquariumCiv.View
             }
             var sim = Sim;
             if (sim != null && sim.State.firstRun.active) return; // the ghost finger is saying this, and one message at a time
-            hud?.Toast(sim != null && sim.MessLevel <= 0.0005f ? NothingToClean : sim != null && sim.EcologyOn ? WipeHintLand : WipeHint, 5f);
+            hud?.Toast(sim != null && (sim.EcologyOn ? sim.State.grime : sim.MessLevel) <= 0.0005f ? NothingToClean : sim != null && sim.EcologyOn ? WipeHintLand : WipeHint, 5f);
         }
 
         // ---------------- the camera gate ----------------
@@ -209,7 +209,9 @@ namespace AquariumCiv.View
             if (!CleanMode || masks.Length == 0 || UiInput.Over(pos)) return Stroke.Ignored;
             var c = Cam;
             if (c == null) return Stroke.Ignored;
-            piece = props.Pick(c, pos, pickRadius * Screen.height);
+            // #311: on a living land the cloth keeps to the glass; weeds, vines and saplings are the tweezers' (a flick still clears a box without the ecology)
+            var sim = Sim;
+            if (sim == null || !sim.EcologyOn) piece = props.Pick(c, pos, pickRadius * Screen.height);
             if (piece != null && !BehindDirtyGlass(c, piece)) return Stroke.Grab;
             piece = null;
             return GlassHit(c.ScreenPointToRay(pos), out _, out _, out _) || WipeAnywhere ? Stroke.Wipe : Stroke.Ignored;
@@ -337,7 +339,7 @@ namespace AquariumCiv.View
                 float r = radiusUv * masks[i].size.x;
                 masks[i].Smudge(uv, r, strength);
                 LastSmudgePane = i; LastSmudgeUv = uv; LastSmudgeRadius = r;
-                if (sim != null) { sim.AddMess(CrumbGrime, 0f, 0); synced = sim.State.grime; } // no Grow: this grime is drawn here
+                if (sim != null) { sim.AddMess(CrumbGrime, 0f); synced = sim.State.grime; } // no Grow: this grime is drawn here
                 return;
             }
         }
@@ -522,11 +524,13 @@ namespace AquariumCiv.View
                 return;
             }
             lastTouchTime = Time.unscaledTime;
+            if (hud != null && hud.Hand == GameHud.KitTool.Tweezers) { TweezersHand(sim, n, a); lastPos = a; return; }
             if (!pressSeen)
             {
                 pressSeen = true;
                 stroke = n == 1 ? Begin(a) : Stroke.Ignored;
                 if (n == 1) PointToClean(sim, a);
+                if (n == 1 && CleanMode && sim.EcologyOn && Cam != null && UnderFinger(Cam, a) != null) TellClothIsForGlass();
                 lastPos = a;
                 return;
             }
@@ -540,12 +544,136 @@ namespace AquariumCiv.View
             lastPos = a;
         }
 
+        // ---------------- #311: the tweezers ----------------
+        public const string ClothIsForGlass = "The cloth is for the glass. Take the tweezers from your Kit for weeds.";
+        public const string TweezersHintOnMess = "Take the tweezers from your Kit to pluck weeds.";
+        float clothHintAt = -99f;
+
+        void TellClothIsForGlass()
+        {
+            if (hud == null || Time.unscaledTime - clothHintAt < 12f) return;
+            clothHintAt = Time.unscaledTime;
+            hud.Toast(ClothIsForGlass, 3f, through: true);
+        }
+
+        /// <summary>The land point under a screen point (box-local), through the misting view's ray (it knows the land).</summary>
+        bool LandPoint(Vector2 screen, out Vector3 at)
+        {
+            at = default;
+            var m = EcoMistView.Instance;
+            return m != null && m.GroundPoint(screen, out at);
+        }
+
+        /// <summary>How far from the finger (box units) a sapling still counts as touched.</summary>
+        public const float SaplingReach = 0.16f;
+        /// <summary>Plucks that happened this session (tests and the debug panel).</summary>
+        public int Plucks { get; private set; }
+        /// <summary>What the last pluck took: "weed", "treeweed", "vine", "sapling" or "" (tests).</summary>
+        public string LastPluck { get; private set; } = "";
+        bool tweezing;
+        float lastPluckAt = -9f;
+
+        void TweezersHand(SimCore sim, int n, Vector2 pos)
+        {
+            if (!pressSeen)
+            {
+                pressSeen = true;
+                tweezing = n == 1 && !UiInput.Over(pos) && sim.EcologyOn && hud.IsVisible && !hud.SheetOpen && !hud.CameraMode;
+                lastPluckAt = -9f; // the throttle paces a drag; a fresh tap always gets its pluck
+            }
+            if (n >= 2) tweezing = false; // two fingers are the camera's
+            if (!tweezing) return;
+            if (Time.unscaledTime - lastPluckAt < 0.06f) return;
+            if (PluckAt(sim, pos)) lastPluckAt = Time.unscaledTime;
+        }
+
+        /// <summary>Plucks whatever overgrows under a screen point: a weed patch, a tuft round the tree or a cell of vine (what is drawn there), else the wild
+        /// sapling nearest to the land point there. Never the Keeper's tree, a grown tree or the heart of a wood (the sim decides). True if something came out.</summary>
+        public bool PluckAt(SimCore sim, Vector2 screenPos)
+        {
+            var c = Cam;
+            if (c == null || sim == null || !sim.EcologyOn) return false;
+            var piece = props.PickUnder(c, screenPos, TapReachPixels * 1.2f);
+            if (piece != null && BehindDirtyGlass(c, piece)) piece = null;
+            bool onLand = LandPoint(screenPos, out var at);
+            if (piece != null && onLand)
+            {
+                // A wild sapling nearer the finger than the drawn piece wins (a weed patch's reach must not hide the sapling you tapped).
+                int near = sim.EcoNearestSapling(at.x, at.z, SaplingReach);
+                if (near >= 0)
+                {
+                    var sw = box.transform.TransformPoint(new Vector3(Sim_X(near), box.GroundHeight(Sim_X(near), Sim_Z(near)), Sim_Z(near)));
+                    var ss = c.WorldToScreenPoint(sw);
+                    var ps = c.WorldToScreenPoint(piece.Center);
+                    if (Vector2.Distance(screenPos, ss) < Vector2.Distance(screenPos, ps)) piece = null;
+                }
+            }
+            if (piece != null) return PluckPiece(sim, piece);
+            if (onLand)
+            {
+                int cell = sim.EcoPluckSapling(at.x, at.z, SaplingReach);
+                if (cell >= 0)
+                {
+                    var local = new Vector3(Sim_X(cell), 0f, Sim_Z(cell));
+                    local.y = box.GroundHeight(local.x, local.z);
+                    props.PopSapling(local);
+                    box.Refresh();
+                    Plucked("sapling", local, 0.9f);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static float Sim_X(int cell) => AquariumCiv.Sim.Settle.SiteMap.CXc(cell);
+        static float Sim_Z(int cell) => AquariumCiv.Sim.Settle.SiteMap.CZc(cell);
+
+        /// <summary>Plucks one drawn piece of overgrowth (the tweezers, or a test).</summary>
+        public bool PluckPiece(SimCore sim, MessProps.Piece piece)
+        {
+            if (piece == null || piece.leaving) return false;
+            var at = piece.t.localPosition;
+            string what;
+            switch (piece.kind)
+            {
+                case MessProps.Kind.Vine:
+                    if (!sim.EcoPluckVine(piece.key)) return false;
+                    what = "vine";
+                    break;
+                case MessProps.Kind.TreeWeed:
+                    if (!sim.EcoPluckTreeWeed()) return false;
+                    what = "treeweed";
+                    break;
+                default:
+                {
+                    float og = sim.State.overgrowth, cut = og - MessProps.WeedUnit < 0.03f ? og : MessProps.WeedUnit;
+                    sim.Prune(cut);
+                    what = "weed";
+                    break;
+                }
+            }
+            props.Pluck(piece);
+            Plucked(what, at, what == "vine" ? 0.6f : 1f);
+            return true;
+        }
+
+        void Plucked(string what, Vector3 local, float pitchSpread)
+        {
+            Plucks++; strokes++;
+            LastPluck = what;
+            GameClock.Tel.Cleaned("prune", true);
+            TouchHint.Cleaned();
+            Sfx.Play(CueLibrary.Pluck, 0f, 1f + (what == "vine" ? -0.15f : 0f));
+            Burst(transform.TransformPoint(local) + Vector3.up * 0.06f, 3, 0.08f, 0.1f);
+            people?.Planner?.ReactAt(KeeperGesture.Prune, people.Now, local.x, local.z, 1.4f);
+        }
+
         /// <summary>#160: a touch on mess outside clean mode doesn't clean, and says why: the Clean button pulses and, now and then, a short
         /// hint shows. The drag goes on to move the camera.</summary>
         void PointToClean(SimCore sim, Vector2 pos)
         {
             pressAnswered = false;
-            if (hud == null || CleanMode || !hud.IsVisible || hud.CameraMode || hud.SheetOpen || sim.State.firstRun.active || UiInput.Over(pos)) return;
+            if (hud == null || CleanMode || hud.Hand != GameHud.KitTool.None ||!hud.IsVisible || hud.CameraMode || hud.SheetOpen || sim.State.firstRun.active || UiInput.Over(pos)) return;
             var shaping = ShapingView.Instance;
             if (shaping != null && shaping.ShapeMode) return;
             var c = Cam;
@@ -560,7 +688,7 @@ namespace AquariumCiv.View
         void Say(AquariumCiv.Sim.CleanHintResult r)
         {
             if (r.pulse) hud.PulseClean();
-            if (r.hint) hud.Toast(AquariumCiv.Sim.CleanHint.Text, 3f, through: true); // it answers a touch: a waiting prompt doesn't hold it back
+            if (r.hint) hud.Toast(Sim != null && Sim.EcologyOn ? TweezersHintOnMess : AquariumCiv.Sim.CleanHint.Text, 3f, through: true); // it answers a touch: a waiting prompt doesn't hold it back
         }
 
         bool pressAnswered;
@@ -603,7 +731,7 @@ namespace AquariumCiv.View
         {
             if (Instance == null) return "no CareView";
             Instance.TouchHint.Reset();
-            return "Clean hint forgotten: touch a weed or trash";
+            return "Clean hint forgotten: touch a weed";
         }
 
         Stroke Begin(Vector2 pos)
@@ -711,7 +839,7 @@ namespace AquariumCiv.View
         /// <summary>Throws a piece out (the flick, or a test): the sim loses it, the people react, the piece flies off.</summary>
         public void Toss(SimCore sim, MessProps.Piece piece, Vector2 releaseSpeed)
         {
-            GameClock.Tel.Cleaned(piece.weed ? "prune" : "flick", true);
+            GameClock.Tel.Cleaned("prune", true);
             TouchHint.Cleaned();
             var c = Cam;
             var dir = (c.transform.right * releaseSpeed.x + c.transform.up * releaseSpeed.y).normalized;
@@ -719,16 +847,10 @@ namespace AquariumCiv.View
             float strength = Mathf.InverseLerp(flickSpeed, flickSpeed * 4f, releaseSpeed.magnitude);
             var vel = (dir * 0.5f + Vector3.up * 0.4f) * s * Mathf.Lerp(0.6f, 1.2f, strength);
             var at = piece.t.localPosition;
-            if (piece.weed)
             {
                 float og = sim.State.overgrowth, cut = og - MessProps.WeedUnit < 0.03f ? og : MessProps.WeedUnit;
                 sim.Prune(cut);
                 people?.Planner?.ReactAt(KeeperGesture.Prune, people.Now, at.x, at.z, 1.4f);
-            }
-            else
-            {
-                sim.RemoveTrash(piece.key);
-                people?.Planner?.React(KeeperGesture.FlickTrash, people.Now, Place.Land(PlaceKind.TrashHeap, piece.key));
             }
             props.Throw(piece, vel);
             // #96: the swish of the throw, a snip for a weed; a harder flick swishes higher
@@ -752,7 +874,7 @@ namespace AquariumCiv.View
             if (hud == null || !hud.CleanMode) return;
             float now = Time.unscaledTime;
             if (stroke != Stroke.None && stroke != Stroke.Ignored) { spotlessSince = -1f; return; }
-            if (sim.MessLevel <= 0.0005f)
+            if ((sim.EcologyOn ? sim.State.grime : sim.MessLevel) <= 0.0005f) // #311: on a living land the cloth only has the glass to do
             {
                 if (spotlessSince < 0f) spotlessSince = now;
                 if (now - spotlessSince >= spotlessExitSeconds) hud.SetCleanMode(false);

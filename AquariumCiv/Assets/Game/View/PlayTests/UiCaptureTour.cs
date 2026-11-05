@@ -197,7 +197,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Cap("extra-hud-default-night");
             NightLamps.DebugSetLevel(0f);
             PeopleView.DebugSetHour(11f);
-            Sim.AddMess(0.7f, 0.5f, 6);
+            Sim.AddMess(0.7f, 0.5f);
             yield return Frames(60);
             yield return Cap("extra-hud-default-dirty", Sim.State.grime > 0.3f, "grime " + Sim.State.grime);
             hud.SetCleanMode(true);

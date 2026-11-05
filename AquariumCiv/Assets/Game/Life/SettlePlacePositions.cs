@@ -8,7 +8,7 @@ namespace AquariumCiv.Life
     /// <summary>
     /// The planner's places in the world, from M2's settlement layer (#32, <see cref="SimCore.Settlement"/>; growth-lab.md
     /// "M2"): building lots and their doors, the fire and the market's centre, the land features (pond, forest, meadow,
-    /// rock, the Keeper's hill and shapings), trash heaps and nudges, the walking cost and routes along the path network
+    /// rock, the Keeper's hill and shapings) and nudges, the walking cost and routes along the path network
     /// (the same cost the wear pass walks with, so the paths worn are the paths walked, rule 3), and the homes per family
     /// (<see cref="Settlement.HomeOf"/>: children with a parent, partners together).
     ///
@@ -51,7 +51,6 @@ namespace AquariumCiv.Life
             h = h * 31 + s.Lots.Count;
             h = h * 31 + S.settle.nextLotId;
             h = h * 31 + S.nudges.Count;
-            h = h * 31 + S.trash.Count;
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
             if (h == sig && s == st) return true;
@@ -224,9 +223,6 @@ namespace AquariumCiv.Life
             switch (p.kind)
             {
                 case PlaceKind.None: return false;
-                case PlaceKind.TrashHeap:
-                    foreach (var t in sim.State.trash) if (t.id == p.index) { x = t.x; z = t.z; return true; }
-                    return false;
                 case PlaceKind.Puddle:
                     if (p.index < 0 || p.index >= SiteMap.N) return false;
                     x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);

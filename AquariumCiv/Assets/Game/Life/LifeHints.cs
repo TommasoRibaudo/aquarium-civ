@@ -69,7 +69,7 @@ namespace AquariumCiv.Life
     /// </summary>
     public interface IPlacePositions
     {
-        /// <summary>Where the activity at a place happens (a lot's door, a field's middle, the fire, a heap). False when
+        /// <summary>Where the activity at a place happens (a lot's door, a field's middle, the fire). False when
         /// the place has no spot (yet).</summary>
         bool TryGetPosition(Place place, out float x, out float z);
 

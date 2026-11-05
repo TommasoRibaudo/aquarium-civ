@@ -68,7 +68,7 @@ namespace AquariumCiv.Sim
     /// </list>
     /// Why the economy can't move: no dice stream is drawn (rolls come from <see cref="RoleRoll"/>, a hash of the seed, the
     /// people and the month), no notable or story link is changed, and term lines take their ids from their own counter
-    /// (<see cref="SimState.termLineNextId"/>), so the ids of buildings, notables and trash (which jobs, roles and the
+    /// (<see cref="SimState.termLineNextId"/>), so the ids of buildings, and notables (which jobs, roles and the
     /// crowd hash read) are the same with or without the flavour. Story events that touch the economy (storms, droughts,
     /// bumper harvests, the harvest festival) are never added, removed or re-weighted; at most their text gets a coda.
     /// </summary>

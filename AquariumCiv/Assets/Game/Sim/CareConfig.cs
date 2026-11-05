@@ -37,7 +37,7 @@ namespace AquariumCiv.Sim
         public static readonly string[] MoodLines =
         {
             "I miss the sun...", "Found a sock bigger than my house.", "The weeds are taller than me now!",
-            "Is it evening already?", "My crops are squinting.", "Someone's crate is in my garden.",
+            "Is it evening already?", "My crops are squinting.", "Something green crept into my garden.",
         };
         public static readonly string[] CheerLines = { "Look at that sky!", "Sunshine!", "I can see the hills again!", "Back to work, the light's back!" };
     }

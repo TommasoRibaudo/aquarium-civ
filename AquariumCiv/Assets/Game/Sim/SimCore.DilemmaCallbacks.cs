@@ -36,7 +36,7 @@ namespace AquariumCiv.Sim
 
     /// <summary>
     /// Dilemma callbacks (P7 rule 4, #221): every option comes back years later, credited "Because the Keeper chose ..." (answered) or
-    /// "Because they chose ..." (lapsed). Scheduled at the dilemma's end from a hash of the seed and the dilemma id (no dice), fired
+    /// "Because the people chose ..." (lapsed). Scheduled at the dilemma's end from a hash of the seed and the dilemma id (no dice), fired
     /// by <see cref="CallbackStep"/> in the monthly step (one per month at most). The entry is a story card whose thread is the old
     /// question, so it gets the teaser payoff boost and shows the question as the grey line above.
     /// </summary>
@@ -102,7 +102,7 @@ namespace AquariumCiv.Sim
             string raw = ok ? def.text : def.fallback;
             if (string.IsNullOrEmpty(raw)) return null; // no fallback: dropped quietly
             string label = DilemmaText(ddef.options[c.option].label, d);
-            string credit = (d.state == DilemmaState.Answered ? "Because the Keeper chose " : "Because they chose ") + label;
+            string credit = (d.state == DilemmaState.Answered ? "Because the Keeper chose " : "Because the people chose ") + label;
             string text = DilemmaText(raw, d).Replace("{chosen}", label);
             if (raw.Contains("{credit}")) text = text.Replace("{credit}", credit);
             else text = credit + ", " + (raw.StartsWith("{") || text.Length == 0 ? text : char.ToLowerInvariant(text[0]) + text.Substring(1));

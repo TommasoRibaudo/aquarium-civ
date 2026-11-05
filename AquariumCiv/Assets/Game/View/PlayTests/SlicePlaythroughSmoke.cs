@@ -196,7 +196,7 @@ namespace AquariumCiv.View.PlayTests
             var hud = GameHud.Instance;
             var care = CareView.Instance;
             var sim = Sim;
-            sim.AddMess(0.6f, 0.3f, 2);
+            sim.AddMess(0.6f, 0.3f);
             yield return Frames(20);
             float grime = sim.State.grime;
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
@@ -212,7 +212,7 @@ namespace AquariumCiv.View.PlayTests
                 var sp = (Vector2)Camera.main.WorldToScreenPoint(piece.Center);
                 yield return Drag(new[] { sp, sp + new Vector2(0.01f, 0.08f) * Screen.height }, 0.045f * Screen.height);
                 yield return Frames(6);
-                Assert.Less(care.Props.AllPieces.Count(p => !p.leaving), left, "a flick throws a heap out");
+                Assert.Less(care.Props.AllPieces.Count(p => !p.leaving), left, "a flick throws a weed patch out");
             }
             if (hud.CleanMode) yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return Frames(6);

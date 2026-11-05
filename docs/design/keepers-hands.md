@@ -109,7 +109,7 @@ The mist no longer greens its whole core at once, and green no longer waits for 
 | **Cloth** | Drag on the glass | Wipes grime **and droplets** (condensation) off the glass | Start (today's wipe) |
 | **Mister** | Hold over a spot; the mist drifts down where you hold. Longer = wetter | Raises the spot's moisture (green follows) and **the box's humidity**; over many mistings, **the water table** | Beat 1 |
 | **Seed** | Tap a spot | Plants the one seed. The slot empties after (one per box; later seeds: §3.3) | Beat 4 |
-| **Snips** | Drag across what overgrows | Weeds round the young tree; later **weeds in the fields** and the **forest's edge** creeping over paths, yards and fields; vines on roofs (today's prune) | Beat 4 (the tree's weeds) |
+| **Tweezers** (the snips; the name is the user's, 2026-11-04) | Tap, or drag across, what overgrows | Plucks the **weeds round the young tree**, the **forest's edge** (wild seedlings and saplings creeping over paths, yards and the meadow) and the **creeping vine** (§5.5); later **weeds in the fields**. The pluck lifts it out with a small pop. Never the Keeper's tree, a grown tree or the heart of a wood (§8). The cloth keeps the glass only (#311) | Beat 4 (the tree's weeds) |
 | **Stick** | Drag a line from water | Digs a **canal**; water fills it and follows the slope. Push/pull to make a hollow or a bank (today's hill & hollow) | Village |
 
 ### 3.2 What happens to today's tools
@@ -131,13 +131,13 @@ The mist no longer greens its whole core at once, and green no longer waits for 
 Today's HUD has **History, Clean, Shape** (ui/spec.md §2, signed off in #107). Proposal:
 
 - **★ One "kit" button** where Clean and Shape were. Tap it and a short rail of the unlocked tools fans out in the
-  thumb zone (cloth, mister, and later seed, snips, stick). Tap a tool and it's in hand until you put it down (as
+  thumb zone (cloth, mister, tweezers, and later seed, stick). Tap a tool and it's in hand until you put it down (as
   clean mode today). The cloth comes first, so a glance is still one tap away from a wipe. Two buttons become one.
-- Alternative: **two buttons**, *Clean* (cloth, snips: care) and *Tend* (mister, seed, stick: growth). It keeps
+- Alternative: **two buttons**, *Clean* (cloth, tweezers: care) and *Tend* (mister, seed, stick: growth). It keeps
   today's muscle memory, but the split no longer matches the design, since everything is care now.
 - Rules kept: one gesture per tool (#145), one finger = the tool and two = the camera, ≥ 48 dp targets, no timers or
   counts on the tools.
-- **Limits:** no charges. The mister and snips are free; the land's own pace is the limit (moisture saturates, then
+- **Limits:** no charges. The mister and tweezers are free; the land's own pace is the limit (moisture saturates, then
   more misting only fogs the glass, §5.1). The seed is one per box until the forest stands. The stick's canals have
   a natural cap (the pond's water). That removes the charges economy (`SimConfig.shaping*`), which care fed.
 
@@ -198,13 +198,14 @@ While you're away: natural moisture (a little dew, a rare passing shower the peo
 humidity drifts back toward a middling value, the water table holds. **Nothing dies back.** The land just grows
 slower without you, and grime and droplets cap as mess does today (48 h).
 
-### 5.5 What overgrows (the snips)
+### 5.5 What overgrows (the tweezers)
 | Thing | Where it comes from | You see | If left | Era |
 |---|---|---|---|---|
 | **Weeds round the young tree** | The meadow | Tall grass at its foot | Its growth slows | Camp |
 | **The forest's edge** | Birds keep spreading seeds | Saplings creeping into paths, yards and the meadow | It takes the meadow and pinches paths; the people work round it (never a building lost) | Camp → |
 | **Weeds in the fields** | Fertile, watered farmland | Weeds among the crops | The harvest pace drops a little (today's −25 % max, capped) | Village → |
 | **Vines on roofs** | The forest nearby | As today's overgrowth | As today | Village → |
+| **The creeping vine** (#314) | Damp shade at the forest's edge: it starts only beside young trees on wet ground, from the camp on | A dark, bluish strand of small leaves along the ground, in a line; slower than the weeds | It grows to a cap and counts as overgrowth (the mess and the sunlight), never blocks a building | Camp → |
 
 **Care moves up** (game-definition §5 rule 5): in later eras the people weed their own fields and keep their own
 forest edge (gardeners, woodcutters), and you see them doing it. The glass and the water stay yours.
@@ -312,7 +313,7 @@ outcrop rule of research 10 ("the land picks"):
 - **at the water's edge → reeds** (clears fouled water, brings frogs and birds),
 - **on meadow → wildflowers** (bees for the beekeeper, colours for the dyers).
 
-So the rail stays short: **cloth, mister, seed (pouch), snips, stick**. That's five tools by the town, versus eight
+So the rail stays short: **cloth, mister, seed (pouch), tweezers, stick**. That's five tools by the town, versus eight
 gift tools plus decorate today.
 
 ### 8.6 What stays true

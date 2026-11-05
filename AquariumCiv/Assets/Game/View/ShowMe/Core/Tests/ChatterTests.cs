@@ -237,7 +237,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                     Assert.Less(Math.Abs(a[^1]), 0.02f, "or the end");
                 }
             Assert.AreEqual(4, ChatterBabble.Voices);
-            Assert.AreEqual(6, ChatterBabble.Clips);
+            Assert.AreEqual(12, ChatterBabble.Clips);
             Assert.AreEqual(22050, ChatterBabble.SampleRate);
         }
 
@@ -248,7 +248,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             Assert.IsFalse(ChatterBabble.Generate(0, 0, 1).SequenceEqual(ChatterBabble.Generate(1, 0, 1)));
             Assert.IsFalse(ChatterBabble.Generate(0, 0, 1).SequenceEqual(ChatterBabble.Generate(0, 1, 1)));
             Assert.Throws<ArgumentOutOfRangeException>(() => ChatterBabble.Generate(4, 0, 1));
-            Assert.Throws<ArgumentOutOfRangeException>(() => ChatterBabble.Generate(0, 6, 1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => ChatterBabble.Generate(0, ChatterBabble.Clips, 1));
         }
 
         [Test]

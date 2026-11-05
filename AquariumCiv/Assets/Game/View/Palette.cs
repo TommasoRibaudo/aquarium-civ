@@ -20,6 +20,8 @@ namespace AquariumCiv.View
 
         // nature
         public static readonly Color LeafA = H("#6E9A4B"), LeafB = H("#5C8A45"), LeafC = H("#86AE58"), Pine = H("#3F6B4A");
+        /// <summary>#314: the creeping vine, darker and bluer than the weeds.</summary>
+        public static readonly Color VineStem = H("#34524A"), VineA = H("#3F7367"), VineB = H("#2F5F5E");
         public static readonly Color Bark = H("#6B4E3A"), Rock = H("#A29C93"), RockDark = H("#878178"), RockLight = H("#BDB7AD");
         public static readonly Color[] Flowers = { H("#F2E8D5"), H("#F0C75E"), H("#E59A8C"), H("#B9A3D9") };
 

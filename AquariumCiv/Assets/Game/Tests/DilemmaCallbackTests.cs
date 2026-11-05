@@ -169,10 +169,30 @@ namespace AquariumCiv.Tests
             int opt = lapsed.State.dilemmas[0].option;
             lapsed.DebugFireCallbackNow();
             var e = CallbackEntry(lapsed);
-            StringAssert.StartsWith("Because they chose " + (opt == 0 ? "the fields" : "the woods") + " -- and so it was", e.text);
+            StringAssert.StartsWith("Because the people chose " + (opt == 0 ? "the fields" : "the woods") + " -- and so it was", e.text);
             StringAssert.DoesNotContain("Keeper", e.text);
             Assert.AreEqual(CallbackCredit.People, lapsed.CallbackInfoOf(e).credit);
             Assert.IsNull(lapsed.CallbackInfoOf(lapsed.State.chronicle[0]));
+        }
+
+        [Test]
+        public void ACallbackNeverComesBeforeTheLapseLineThatIsItsResult()
+        {
+            // #312: the callback outscores the lapse line, so a stack by score alone put it first.
+            foreach (int cap in new[] { 2, 3, 50 })
+            {
+                var sim = Raised(6, Def("o", Plain("the fields feed us."), Plain("the woods are thick.")));
+                Assert.IsTrue(sim.DebugLapseDilemma());
+                var d = sim.State.dilemmas[0];
+                sim.Advance(16);
+                var cb = CallbackEntry(sim);
+                Assert.IsNotNull(cb, "the callback fired");
+                StringAssert.StartsWith("Because the people chose ", cb.text);
+                var stack = sim.ReturnCardsCapped(0, cap);
+                int line = stack.cards.FindIndex(c => c.entries.Any(e => e.id == d.resultEntryId));
+                int back = stack.cards.FindIndex(c => c.entries.Any(e => e.id == cb.id));
+                if (back >= 0) Assert.IsTrue(line >= 0 && line < back, $"cap {cap}: the lapse line (card {line}) comes before the callback (card {back})");
+            }
         }
 
         [Test]
