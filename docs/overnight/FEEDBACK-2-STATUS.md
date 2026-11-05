@@ -17,8 +17,8 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - [x] 6+7 · #329 and the #281 tint merged (open for sign-off)
 - [x] 8 · #327 proposal written, shots taken (open, `needs:user`)
 - [x] 9 · #330 options written (open, `needs:user`)
-- [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or filed as baseline
-- [ ] `EcoPhonePlaythrough` + the touch play-through done, every beat looked at
+- [x] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or filed as baseline
+- [x] `EcoPhonePlaythrough` + the touch play-through done, every beat looked at
 - [ ] Tester run; [real] fixed; [polish] listed
 - [ ] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
 - [ ] PR → `dev`, CI green, merged
@@ -47,3 +47,5 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - 23:05-23:20 PlayMode batch on p8/feedback-2-pass: Rabbit 3/3, Audio 4/4, CampStash 1/1, PeopleWiring 15/15, Care 4/4, WorldTap 7/7, PondLife 3/3, Chatter 7/7, FirstRunPolish 10/10, NewGrass 1/1, Tester2Fix 6/6, SmokePlay 2/2; Telemetry 2/3 (AScriptedSession now green: #325 fixed); Hunt 1/2.
   - HuntViewPlayTests.Hunter_StalksARealRabbit "rabbit stays put while stalked": ticket #333 (base files swapped in: 2/2). Cause: rabbits spread over the meadow, the hunted one fled from a passer-by. Fix 6a49f57: the hunted rabbit minds nobody until the strike. Rerun 2/2.
   - TelemetryPlayTests.TheRecallQuestionWaitsForACalmMoment (#328's new test): a test bug: the fixture's touch never reaches the HUD tool buttons (picked 'hud-clean', no click), and on a spotless box the cloth puts itself down after 2.2 s anyway. Fix 629c857: cloth as state + frame-by-frame watch; the by-touch Kit + tool + answer check moved into Feedback2Playthrough beat 5b.
+- 23:38-00:00 Play-through: EcoPhonePlaythrough 1/1 (phone_01..24 looked at). Feedback2Playthrough (by touch, 1179x2556) 1/1 after two test fixes (rack mesh is DontSave: Resources.FindObjectsOfTypeAll; watcher DestroyImmediate): first run by touch; mister bare 0.998→0.993; cloth; Kit open → recall waits 3 s, mister in hand → waits, put down → opens when calm, "Not now" closes it (5b, real taps); tweezers 4 plucks (weed, tuft, vine, sapling); rabbit tap: freeze frame at the ring, gone from frame by the next shot, 2.42 away at 3 s, still 2.06 away 61 s field time later, count 3→3; camp y8.8 rack 1854 verts, 0 log seats; recall never open over kit/tool in 6271 frames; 1 sand gust in the first 13 s. f2_01..12 looked at.
+- TelemetryPlayTests 3/3 after 28cdc75: the question rightly showed at the first calm moment while the test waited for session time, and the Kit tap then answered it; the test now holds a tool while the question becomes due. (The fixture's tap does reach the HUD; 629c857's note saying it doesn't was wrong.)
