@@ -37,3 +37,4 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - 21:31 8 · #327 phase 1 merged (fce92a9): docs/design/people-talk.md (inventory, options A/B/C, rec A, shot list). PIL mock script in scratchpad 327-mock.py. Shots still to take (Editor queue).
 - 21:40 4 · #333 merged (5d13ef4) + 9465add (dup comment). RabbitHerd startle (freeze 0.3 s, bolt to a new home far from tap; tap spot + old spot avoided 180 s field time; never removed), wider roam + spread homes; hash-keyed randomness (sim fingerprint test). Hook: GlassVoice.HandleTaps → RabbitView.TapAtScreen, additive (knock/ripple still happen). Hunt target and sign rabbit skipped. Cheats "Spawn rabbits here", "Startle all". New PlayMode RabbitViewPlayTests.Touch_StartlesARabbit_... Lane A done 21:40.
 - dotnet SimTests on the #325 merge: 1327/1327.
+- 21:58 dotnet SimTests on 7f56286 (all lane A merged): 1345/1345.
