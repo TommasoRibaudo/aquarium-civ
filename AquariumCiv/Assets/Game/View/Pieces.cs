@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AquariumCiv.Sim;
 using UnityEngine;
 
@@ -51,7 +52,7 @@ namespace AquariumCiv.View
                 case PieceKind.Lantern: Lantern(mb, Vector3.zero, Phase(p.seed)); break;
                 case PieceKind.Granary: Granary(mb, Vector3.zero); break;
                 case PieceKind.Crates: Crates(mb, Vector3.zero); break;
-                case PieceKind.LogSeat: Log(mb, new Vector3(0, 0.035f, 0), 0.035f, Mathf.Max(0.2f, w), 90f, Palette.Bark); break;
+                case PieceKind.LogSeat: break; // #332: the log seats round the fire are gone (people sit on the ground); an old save's LogSeat draws nothing
                 case PieceKind.Stall:
                     if (town) MarketStall(mb, Vector3.zero, p.seed);
                     else Stall(mb, Vector3.zero, 0f, Palette.Tunics[Mathf.Abs(p.seed) % Palette.Tunics.Length]);
@@ -415,15 +416,7 @@ namespace AquariumCiv.View
             mb.Prism(p, 0.085f, 0.075f, 0.016f, 7, Palette.Ember);
             FireBody(mb, p, phase, look);
             mb.emission = 0f;
-            if (!seats) return;
-            mb.emission = warm ? 0.1f : 0f;
-            for (int i = 0; i < 3; i++)
-            {
-                float a = i * 2.1f + 0.4f;
-                var q = p + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.4f;
-                Log(mb, q + Vector3.up * 0.035f, 0.035f, 0.3f, -a * Mathf.Rad2Deg + 90f, warm ? Color.Lerp(Palette.Bark, Palette.Glow, 0.18f) : Palette.Bark);
-            }
-            mb.emission = 0f;
+            // #332: no log seats round the fire any more (the `seats` flag stays for callers): people sit on the ground.
         }
 
         /// <summary>The look's flame body, on top of the ember bed. Soft has only coals: its flames are glow quads
@@ -605,12 +598,132 @@ namespace AquariumCiv.View
 
         public static void DryingRack(MeshBuilder mb, Vector3 p)
         {
-            foreach (int s in new[] { -1, 1 }) mb.Box(p + new Vector3(s * 0.15f, 0.14f, 0), new Vector3(0.02f, 0.28f, 0.02f), Palette.Bark);
-            mb.Box(p + new Vector3(0, 0.27f, 0), new Vector3(0.34f, 0.018f, 0.018f), Palette.Bark);
-            mb.sway = 0.25f;
-            mb.Box(p + new Vector3(-0.06f, 0.19f, 0), new Vector3(0.1f, 0.15f, 0.008f), Palette.Hide);
-            mb.Box(p + new Vector3(0.07f, 0.2f, 0), new Vector3(0.08f, 0.12f, 0.008f), Palette.Canvas);
-            mb.sway = 0f;
+            // #332: the same A-frame rack as the camp's hide frame, two pelts, bar along world x
+            var saved = mb.M;
+            mb.M = saved * Matrix4x4.TRS(p, Quaternion.Euler(0f, 90f, 0f), Vector3.one);
+            HideRack(mb, 2, 0, 7);
+            mb.M = saved;
+        }
+
+        /// <summary>The hide outline (#332): a pelt with four legs and a neck, as (across -1..1, down 0..1).</summary>
+        static readonly Vector2[] HideOutline =
+        {
+            new(-0.5f, 0f), new(0.5f, 0f), new(0.95f, 0.12f), new(0.7f, 0.30f), new(0.8f, 0.58f), new(1f, 0.84f), new(0.55f, 0.80f),
+            new(0.28f, 1f), new(-0.28f, 1f), new(-0.55f, 0.80f), new(-1f, 0.84f), new(-0.8f, 0.58f), new(-0.7f, 0.30f), new(-0.95f, 0.12f),
+        };
+
+        public const float RackHeight = 0.22f, RackLeanDeg = -12f;
+        /// <summary>How far the rack reaches from its centre line across the bar (poles, leaning frames, folded pile), for clearances.</summary>
+        public const float RackHalfDepth = 0.2f;
+        /// <summary>Hides stretched on the frame at most (the rest lie folded at its foot).</summary>
+        public const int RackMaxOnFrame = 2;
+        const float FrameW = 0.17f, FrameL = 0.19f, FrameGap = 0.02f;
+
+        /// <summary>Half the rack's length along the bar for this many hides on it.</summary>
+        public static float RackHalfLength(int onFrame) => onFrame >= 2 ? 0.22f : 0.13f;
+
+        /// <summary>A hide drying rack (#332), in the builder's local space with the bar along z and the origin on the ground at its centre:
+        /// an A-frame of two crossed poles at each end and a ridge pole; from the ridge hangs a square frame of poles leaning back off +x for each
+        /// of up to <see cref="RackMaxOnFrame"/> hides, a big pelt stretched in it and laced to the poles all round; the hides beyond those lie
+        /// as <paramref name="pile"/> folded slabs at the foot on the -x side.</summary>
+        public static void HideRack(MeshBuilder mb, int hides, int pile, int seed)
+        {
+            float savedJitter = mb.jitter, savedSway = mb.sway;
+            mb.jitter = 0f; mb.sway = 0f;
+            var wood = new Color(0.40f, 0.28f, 0.16f);
+            var woodDark = new Color(0.28f, 0.19f, 0.11f);
+            var cord = new Color(0.93f, 0.86f, 0.68f);
+            float h = RackHeight;
+            int on = Mathf.Min(hides, RackMaxOnFrame);
+            float halfLen = RackHalfLength(on);
+            foreach (float s in new[] { -1f, 1f })
+            {
+                float z = s * halfLen;
+                for (int k = 0; k < 2; k++)
+                {
+                    float side = k == 0 ? -1f : 1f;
+                    Pole(mb, new Vector3(side * 0.07f, -0.005f, z), new Vector3(-side * 0.035f, h + 0.045f, z), 0.016f, k == 0 ? wood : woodDark);
+                }
+                mb.Box(new Vector3(0f, h - 0.03f, z), new Vector3(0.026f, 0.012f, 0.018f), cord); // the lashing where they cross
+            }
+            mb.Box(new Vector3(0f, h, 0f), new Vector3(0.020f, 0.020f, halfLen * 2f + 0.07f), wood); // the ridge pole in the forks
+            var lean = Quaternion.Euler(0f, 0f, RackLeanDeg);
+            var down = lean * Vector3.down;
+            var normal = lean * Vector3.right;
+            for (int i = 0; i < on; i++)
+            {
+                uint r = (uint)((i + 1) * 2654435761u + (uint)seed * 97u);
+                float tone = ((r >> 8) & 255) / 255f;
+                var skin = Color.Lerp(new Color(0.60f, 0.34f, 0.15f), new Color(0.68f, 0.40f, 0.19f), tone);
+                float z = (i - (on - 1) * 0.5f) * (FrameW + 0.02f);
+                var top = new Vector3(0.016f, h - 0.012f, z);
+                StretchFrame(mb, top, down, normal, wood, woodDark);
+                HidePelt(mb, top + down * (FrameL * 0.5f), Vector3.forward * 0.062f, down * 0.15f, normal, skin, cord);
+            }
+            for (int i = 0; i < pile; i++) // the folded hides at the foot, as they come off dry
+            {
+                float sgn = i % 2 == 0 ? 1f : -1f;
+                var skin = Color.Lerp(new Color(0.55f, 0.31f, 0.14f), new Color(0.72f, 0.44f, 0.21f), i % 2 == 0 ? 0.9f : 0.1f);
+                var at = new Vector3(-0.135f + 0.008f * sgn, 0.009f + i * 0.018f, 0.012f * sgn);
+                var rot = Quaternion.Euler(0f, (11f + 9f * i) * sgn, 0f);
+                float k = 1f - i * 0.1f;
+                mb.Box(at, new Vector3(0.095f * k, 0.017f, 0.08f * k), skin, rot);
+                mb.Box(at, new Vector3(0.099f * k, 0.007f, 0.084f * k), new Color(0.2f, 0.11f, 0.05f), rot); // the dark rim underneath each
+            }
+            mb.jitter = savedJitter; mb.sway = savedSway;
+        }
+
+        /// <summary>The square of poles a hide is stretched in, hanging from <paramref name="top"/> (its top edge's middle) along <paramref name="down"/>.</summary>
+        static void StretchFrame(MeshBuilder mb, Vector3 top, Vector3 down, Vector3 normal, Color wood, Color woodDark)
+        {
+            var z = Vector3.forward;
+            var tl = top - z * (FrameW * 0.5f); var tr = top + z * (FrameW * 0.5f);
+            var bl = tl + down * FrameL; var br = tr + down * FrameL;
+            Pole(mb, tl, tr, 0.012f, woodDark); Pole(mb, bl, br, 0.012f, woodDark);
+            Pole(mb, tl, bl, 0.012f, wood); Pole(mb, tr, br, 0.012f, wood);
+        }
+
+        static void Pole(MeshBuilder mb, Vector3 a, Vector3 b, float thick, Color col)
+        {
+            var dir = b - a;
+            if (dir.sqrMagnitude < 1e-10f) return;
+            mb.Box((a + b) * 0.5f, new Vector3(thick, dir.magnitude, thick), col, Quaternion.FromToRotation(Vector3.up, dir.normalized));
+        }
+
+        /// <summary>One pelt centred on <paramref name="centre"/>: <paramref name="halfAcross"/> is half its width along the bar, <paramref name="downFull"/>
+        /// its full length. Dark rim, paler skin inside it (paler flesh side behind), and cream lacing from every point of the outline out to the frame.</summary>
+        static void HidePelt(MeshBuilder mb, Vector3 centre, Vector3 halfAcross, Vector3 downFull, Vector3 normal, Color skin, Color cord)
+        {
+            var rim = Color.Lerp(skin, new Color(0.16f, 0.08f, 0.04f), 0.65f);
+            var inner = Color.Lerp(skin, new Color(0.86f, 0.62f, 0.38f), 0.35f);
+            var back = Color.Lerp(skin, new Color(0.95f, 0.88f, 0.72f), 0.4f);
+            Vector3 P(Vector2 q, float scale, float off) =>
+                centre + halfAcross * (q.x * scale) + downFull * ((q.y - 0.5f) * scale) + normal * off;
+            void Fan(float scale, float off, Color col)
+            {
+                var c = P(new Vector2(0f, 0.5f), scale, off);
+                for (int i = 0; i < HideOutline.Length; i++)
+                {
+                    var a = P(HideOutline[i], scale, off); var b = P(HideOutline[(i + 1) % HideOutline.Length], scale, off);
+                    mb.Tri(c, a, b, col); mb.Tri(c, b, a, col); // both faces
+                }
+            }
+            Fan(1f, 0f, rim);
+            Fan(0.78f, -0.0025f, inner);
+            Fan(0.78f, 0.0025f, back);
+            // lacing out to the nearest side of the frame
+            float fx = FrameW * 0.5f - 0.006f, fy = FrameL * 0.5f - 0.004f;
+            float ax = halfAcross.magnitude, ay = downFull.magnitude;
+            var dn = downFull.normalized; var ac = halfAcross.normalized;
+            for (int i = 0; i < HideOutline.Length; i++)
+            {
+                var v = P(HideOutline[i], 1f, 0.002f);
+                float u = HideOutline[i].x * ax, w = (HideOutline[i].y - 0.5f) * ay; // across, down from the centre
+                float dx = fx - Mathf.Abs(u), dy = fy - Mathf.Abs(w);
+                Vector3 end = dx < dy ? centre + ac * (Mathf.Sign(u) * fx) + dn * w : centre + ac * u + dn * (Mathf.Sign(w) * fy);
+                end += normal * 0.002f;
+                Pole(mb, v, end, 0.0045f, cord);
+            }
         }
 
         /// <summary>A hide lean-to, open side facing local -z.</summary>
