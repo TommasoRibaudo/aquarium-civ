@@ -12,7 +12,7 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - [x] 1 · #325 merged
 - [x] 2 · #328 merged
 - [x] 3 · #331 merged (open for a listen)
-- [ ] 4 · #333 merged
+- [x] 4 · #333 merged
 - [ ] 5 · #332 merged (open for look sign-off)
 - [ ] 6+7 · #329 and the #281 tint merged (open for sign-off)
 - [ ] 8 · #327 proposal written, shots taken (open, `needs:user`)
@@ -35,3 +35,5 @@ or a number and have separate Touches; the look issues need screenshots to itera
 - 21:25 2 · #328 merged (f8984c1) + my review fix 7384e32 (HUD busy read 4x/s, not per frame). RecallCalm pure rule + RecallCalmTests (4) + TelemetryPlayTests.TheRecallQuestionWaitsForACalmMoment. Cheat "Ask recall (when calm)".
 - 21:28 3 · #331 merged (8dea379): SandGusts scheduler + 4 gust cuts from the old hiss loop (deleted), AudioDirector plays them; SandGustsTests (7). Cheat "Sand gust now". Worker's offline View compile showed CS0234 in GlassMask.cs (untouched): check at recompile. Wind loop already random-offset, 40 s: left.
 - 21:31 8 · #327 phase 1 merged (fce92a9): docs/design/people-talk.md (inventory, options A/B/C, rec A, shot list). PIL mock script in scratchpad 327-mock.py. Shots still to take (Editor queue).
+- 21:40 4 · #333 merged (5d13ef4) + 9465add (dup comment). RabbitHerd startle (freeze 0.3 s, bolt to a new home far from tap; tap spot + old spot avoided 180 s field time; never removed), wider roam + spread homes; hash-keyed randomness (sim fingerprint test). Hook: GlassVoice.HandleTaps → RabbitView.TapAtScreen, additive (knock/ripple still happen). Hunt target and sign rabbit skipped. Cheats "Spawn rabbits here", "Startle all". New PlayMode RabbitViewPlayTests.Touch_StartlesARabbit_... Lane A done 21:40.
+- dotnet SimTests on the #325 merge: 1327/1327.
