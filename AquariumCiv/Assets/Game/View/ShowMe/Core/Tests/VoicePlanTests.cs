@@ -51,7 +51,7 @@ namespace AquariumCiv.View.ShowMe.Tests
                     at.Add(t); clips.Add(v.clip);
                     Assert.IsTrue(v.muffled, "far voices are muffled");
                     Assert.LessOrEqual(v.volume, p.rules.farVolume + 1e-4f, "and quiet");
-                    Assert.That(v.clip, Is.AnyOf(ChatterBabble.Shout, ChatterBabble.Call, ChatterBabble.Laugh, ChatterBabble.Giggle), "calls, shouts, laughs: no chatter");
+                    CollectionAssert.Contains(new[] { ChatterBabble.Shout, ChatterBabble.Call, ChatterBabble.Laugh, ChatterBabble.Giggle }, v.clip, "calls, shouts, laughs: no chatter");
                 }
             Assert.That(at.Count, Is.InRange(25, 70), "one every 20 to 40 s over 20 minutes");
             for (int i = 1; i < at.Count; i++) Assert.GreaterOrEqual(at[i] - at[i - 1], p.rules.farGapMin - 0.3, "never closer than the gap");
@@ -78,7 +78,7 @@ namespace AquariumCiv.View.ShowMe.Tests
             Assert.IsNotEmpty(turns);
             foreach (var t in turns)
             {
-                Assert.That(t.clip, Is.AnyOf(ChatterBabble.Hum, 2, 0), "a hush: soft kinds only");
+                CollectionAssert.Contains(new[] { ChatterBabble.Hum, 2, 0 }, t.clip, "a hush: soft kinds only");
                 Assert.LessOrEqual(t.volume, 0.5f + 1e-4f);
             }
         }
