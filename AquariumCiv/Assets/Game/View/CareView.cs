@@ -433,6 +433,13 @@ namespace AquariumCiv.View
         /// <summary>Is there wipeable glass under this screen position (for tests and hints)?</summary>
         public bool GlassAt(Vector2 screenPos) => Cam != null && masks.Length > 0 && GlassHit(Cam.ScreenPointToRay(screenPos), out _, out _, out _);
 
+        /// <summary>#333: the world point on the glass under this screen position (where a knock lands), if there is glass there.</summary>
+        public bool GlassPointAt(Vector2 screenPos, out Vector3 world)
+        {
+            world = default;
+            return Cam != null && masks.Length > 0 && GlassHit(Cam.ScreenPointToRay(screenPos), out _, out _, out world);
+        }
+
         bool GlassHit(Ray ray, out int pane, out Vector2 uv, out Vector3 point)
         {
             pane = -1; uv = default; point = default;

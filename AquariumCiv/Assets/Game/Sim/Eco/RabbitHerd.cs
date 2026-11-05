@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using AquariumCiv.Sim.Settle;
 
@@ -32,9 +33,13 @@ namespace AquariumCiv.Sim.Eco
         public const int HomePool = 200;
         /// <summary>#333: a tap within this of a rabbit startles it; the ones within <see cref="NearRadius"/> of the tap follow a moment later.</summary>
         public const float TapRadius = 0.3f, NearRadius = 0.75f;
+        /// <summary>A knock on the glass startles the rabbits this close to the knocked spot (box units, on the ground).</summary>
+        public const float KnockRadius = 1.0f;
         /// <summary>#333: a startled rabbit settles this far from where it was frightened if the meadow lets it; the place stays avoided
         /// (radius, seconds of field time) so nothing steers a rabbit straight back.</summary>
         public const float AvoidRadius = 0.7f, AvoidSeconds = 180f, WantFar = 1.2f, WantApart = 0.45f;
+        /// <summary>A startled rabbit's new place is at least this far from where it was, when the meadow has such a place.</summary>
+        public const float MinRun = 0.8f;
 
         // ---------------------------------------------------------------- hashes
         public static uint H(uint a, uint b, uint c)
@@ -206,9 +211,14 @@ namespace AquariumCiv.Sim.Eco
 
             void Spot(int id, long leg, double t, out float x, out float z)
             {
-                var l = LocalOf(HomeAt(id, t));
+                int home = HomeAt(id, t);
+                var l = LocalOf(home);
                 uint r = H((uint)seed, (uint)id, (uint)(leg * 7 + 3));
-                int c = l[(int)(r % (uint)l.Count)];
+                // each green cell near home gets a hashed weight for this leg and the heaviest is the spot: when the green round the home
+                // changes, the spot only moves if its own cell went or a new one outweighs it (picking by index into the list reshuffled
+                // every spot, and the rabbit jumped across the meadow); and it is even over the cells, with no pull to the patch's edge
+                int c = l[0]; uint bw = 0;
+                foreach (int k in l) { uint w = H(r, (uint)k, 77u); if (w >= bw) { bw = w; c = k; } }
                 // the jitter stays inside the cell (0.1 wide)
                 x = SiteMap.CXc(c) + (F(r, 1, 5) - 0.5f) * 0.07f;
                 z = SiteMap.CZc(c) + (F(r, 2, 5) - 0.5f) * 0.07f;
@@ -270,7 +280,17 @@ namespace AquariumCiv.Sim.Eco
             /// tap and from where it was, clear of the places avoided, apart from the other rabbits. The places are avoided for a while.
             /// Never removes a rabbit. <paramref name="skip"/> keeps some out (a rabbit a hunter is stalking). Randomness: hashes of
             /// (seed, rabbit, startle count) only, never the sim's stream.</summary>
-            public int Startle(float tx, float tz, double t, Func<int, bool> skip, List<Startled> into)
+            public int Startle(float tx, float tz, double t, Func<int, bool> skip, List<Startled> into) =>
+                Scatter(tx, tz, t, skip, into, NearRadius, TapRadius, false);
+
+            /// <summary>The Keeper knocks on the glass at a point whose ground spot is (kx, kz) (at the pane): every rabbit within
+            /// <see cref="KnockRadius"/> of it startles (the nearest at once, the others a moment later) and runs to another part of the
+            /// meadow, as for <see cref="Startle"/>. No rabbit has to be at the spot. A tap on a rabbit or on the land does nothing to them
+            /// (the user, 2026-11-05: only the glass).</summary>
+            public int Knock(float kx, float kz, double t, Func<int, bool> skip, List<Startled> into) =>
+                Scatter(kx, kz, t, skip, into, KnockRadius, KnockRadius, true);
+
+            int Scatter(float tx, float tz, double t, Func<int, bool> skip, List<Startled> into, float reach, float hitRadius, bool nearestFirst)
             {
                 into.Clear();
                 if (pool.Count == 0 || meadow.Count == 0) return 0;
@@ -281,16 +301,40 @@ namespace AquariumCiv.Sim.Eco
                     if (skip != null && skip(id)) continue;
                     var p = Sample(id, t);
                     float d = MathF.Sqrt((p.x - tx) * (p.x - tx) + (p.z - tz) * (p.z - tz));
-                    if (d <= TapRadius) hit = true;
-                    if (d <= NearRadius) order.Add((d, id));
+                    if (d <= hitRadius) hit = true;
+                    if (d <= reach) order.Add((d, id));
                 }
                 if (!hit) return 0;
+                return Send(order, tx, tz, t, into, nearestFirst);
+            }
+
+            /// <summary>The Keeper knocked on the glass beside these rabbits (the view picks them by what the player sees: close to the
+            /// finger on screen, not under it). Each freezes, then runs to another part of the meadow, away from (fx, fz), the land the
+            /// finger points at; the nearest goes at once, the others a moment later. Skipped ones (the hunted) stay.</summary>
+            public int StartleThese(IReadOnlyList<int> ids, float fx, float fz, double t, Func<int, bool> skip, List<Startled> into)
+            {
+                into.Clear();
+                if (pool.Count == 0 || meadow.Count == 0 || ids == null) return 0;
+                var order = new List<(float d, int id)>();
+                foreach (int id in ids)
+                {
+                    if (!alive.Contains(id) || (skip != null && skip(id))) continue;
+                    var p = Sample(id, t);
+                    order.Add((MathF.Sqrt((p.x - fx) * (p.x - fx) + (p.z - fz) * (p.z - fz)), id));
+                }
+                if (order.Count == 0) return 0;
+                return Send(order, fx, fz, t, into, true);
+            }
+
+            int Send(List<(float d, int id)> order, float tx, float tz, double t, List<Startled> into, bool nearestFirst)
+            {
+                float first = order.Count > 0 ? order.Min(o => o.d) : 0f;
                 avoids.RemoveAll(a => a.until < t);
                 avoids.Add(new Avoid { x = tx, z = tz, until = t + AvoidSeconds });
                 order.Sort((a, b) => { int c = a.d.CompareTo(b.d); return c != 0 ? c : a.id.CompareTo(b.id); });
                 foreach (var (d, id) in order)
                 {
-                    double go = t + (d <= TapRadius ? 0.0 : 0.12 + d * 0.5) + Scare.FreezeSeconds;
+                    double go = t + (nearestFirst ? (d <= first + 0.001f ? 0.0 : 0.12 + (d - first) * 0.5) : (d <= TapRadius ? 0.0 : 0.12 + d * 0.5)) + (nearestFirst ? Scare.NoticeSeconds : Scare.FreezeSeconds); // knock: the nearest at once, the rest a moment later
                     var p = Sample(id, t);
                     float ax = p.x - tx, az = p.z - tz, al = MathF.Sqrt(ax * ax + az * az);
                     if (al < 0.001f) { ax = 1f; az = 0f; al = 1f; }
@@ -332,9 +376,11 @@ namespace AquariumCiv.Sim.Eco
                         int oh = HomeAt(o, go);
                         nn = Math.Min(nn, MathF.Sqrt(Dist2(oh, cx, cz)));
                     }
-                    float sc = Math.Min(dTap, WantFar) * 2f + Math.Min(dFrom, WantFar) + Math.Min(nn, WantApart) * 3f;
+                    // another part of the meadow first (the user: "run to a different place"), then away from the others' homes
+                    float sc = Math.Min(dTap, WantFar) * 2f + Math.Min(dFrom, WantFar) * 2f + Math.Min(nn, WantApart) * 2f;
+                    if (dFrom < MinRun) sc -= 3f;
                     if (Avoided(cx, cz, t)) sc -= 4f;
-                    if (PathGreen(fx, fz, cx, cz)) sc += 1.5f;
+                    if (PathGreen(fx, fz, cx, cz)) sc += 0.5f;
                     if (sc > bs) { bs = sc; best = c; }
                 }
                 return best;
@@ -379,28 +425,52 @@ namespace AquariumCiv.Sim.Eco
             public const float AlertRadius = 0.55f, FleeSpeed = 1.6f, ReturnSpeed = 0.5f;
             /// <summary>A startled rabbit freezes this long, sitting up, before it bolts: the beat that tells you it noticed.</summary>
             public const float FreezeSeconds = 0.3f;
+            /// <summary>A knocked rabbit's notice: the flinch, then up on its haunches staring at the knock, before it runs (longer than the
+            /// freeze when people come near: the knock is a surprise).</summary>
+            public const float NoticeSeconds = 0.45f;
+            /// <summary>The first part of the freeze: a flinch, a little jump in place (seconds, height).</summary>
+            public const float FlinchSeconds = 0.14f, FlinchHeight = 0.022f;
+            /// <summary>After the run it sits up and looks back toward the knock this long, then grazes again.</summary>
+            public const float SettleSeconds = 1.1f;
             /// <summary>One flee bound covers this much ground (box units).</summary>
             public const float BoundLen = 0.17f;
             public float offX, offZ;
             float calm, lastYaw, freeze, stride, back;
             bool flee;
             public bool Fleeing => flee || holding || running;
+            /// <summary>Sitting up after the run, looking back (counts as calm).</summary>
+            public bool Settling => settleLeft > 0f;
+            /// <summary>On its way somewhere (frozen to run, running, sitting after the run, or hopping back into its day): it may be crossing
+            /// a strip of bare earth.</summary>
+            public bool InTransit => holding || running || settleLeft > 0f || offX * offX + offZ * offZ > 0.0004f;
+            /// <summary>Debug: the scare's state in one line.</summary>
+            public string Debug => $"hold {holding} run {running} flee {flee} settle {settleLeft:0.00} calm {calm:0.00} off ({offX:0.00},{offZ:0.00})";
             /// <summary>#333: frozen after a tap, waiting to bolt; and bolting to its new place.</summary>
             public bool Holding => holding;
             public bool Running => running;
             bool holding, running;
-            float holdFromX, holdFromZ, holdYaw, holdLeft;
+            float holdFromX, holdFromZ, holdYaw, holdLeft, holdTime, faceX, faceZ, runTime, runDone, settleLeft, settleYaw, curX, curZ, toX, toZ;
             double holdUntil;
-            /// <summary>One startle bound covers this much ground; the run is faster than a flee from people.</summary>
-            public const float RunSpeed = 2.2f, RunBound = 0.2f;
+            /// <summary>The run: one bound covers <see cref="RunBound"/>; the speed builds from <see cref="RunStart"/> to <see cref="RunSpeed"/>
+            /// over the first bounds and eases to <see cref="RunEnd"/> over the last <see cref="SlowDown"/> (box units, per second). About four
+            /// bounds a second at full speed: a rabbit's gait, not a blur.</summary>
+            public const float RunSpeed = 1.15f, RunStart = 0.55f, RunEnd = 0.45f, RunBound = 0.27f, SlowDown = 0.4f, RunRamp = 0.35f;
+            /// <summary>A slight zigzag across the line of the run (box units, and the distance of one swing).</summary>
+            public const float ZigZag = 0.035f, ZigLen = 0.55f;
+            /// <summary>A scheduled pose that moves farther than this in one step jumped (a new home, or the green round it changed and the
+            /// spot with it): the doll keeps its place and hops over instead (a real hop is 0.12).</summary>
+            public const float JumpGuard = 0.3f;
+            float lastBaseX, lastBaseZ; bool hasLastBase; double lastNow = double.NaN;
+            float targetX = float.NaN, targetZ = float.NaN; // where the run ends (the refuge), if given
 
             /// <summary>#333: a tap startled this rabbit. It stays at (fromX, fromZ), sitting up and facing (faceX, faceZ) (the tap), until field
             /// time <paramref name="until"/> (when the field gives it its new home); then it bolts to where the schedule now has it.</summary>
-            public void Hold(float fromX, float fromZ, float faceX, float faceZ, double until, float freezeSeconds)
+            public void Hold(float fromX, float fromZ, float faceX_, float faceZ_, double until, float freezeSeconds, float runToX = float.NaN, float runToZ = float.NaN)
             {
-                holding = true; running = false; flee = false;
-                holdFromX = fromX; holdFromZ = fromZ; holdUntil = until; holdLeft = freezeSeconds + 1f;
-                holdYaw = MathF.Atan2(faceX - fromX, faceZ - fromZ);
+                holding = true; running = false; flee = false; settleLeft = 0f;
+                holdFromX = fromX; holdFromZ = fromZ; holdUntil = until; holdLeft = freezeSeconds + 1f; holdTime = 0f;
+                faceX = faceX_; faceZ = faceZ_; targetX = runToX; targetZ = runToZ;
+                holdYaw = MathF.Atan2(faceX_ - fromX, faceZ_ - fromZ);
                 offX = offZ = 0f; stride = 0f;
             }
 
@@ -425,28 +495,67 @@ namespace AquariumCiv.Sim.Eco
                 var p = basePose;
                 if (holding)
                 {
-                    holdLeft -= dt;
-                    bool go = double.IsNaN(now) ? holdLeft <= 1f : now >= holdUntil || holdLeft <= 0f;
+                    holdLeft -= dt; holdTime += dt;
+                    bool go = double.IsNaN(now) ? holdLeft <= 1f : (now >= holdUntil && holdTime >= NoticeSeconds) || holdLeft <= 0f;
                     if (!go)
-                    {
-                        p.x = holdFromX; p.z = holdFromZ; p.y = 0f; p.phase = 0f; p.act = RabbitAct.SitUp; p.yaw = holdYaw;
+                    {   // it noticed: a flinch (a little jump in place), then up on its haunches, ears up, staring at the knock
+                        p.x = holdFromX; p.z = holdFromZ; p.phase = 0f; p.act = RabbitAct.SitUp; p.yaw = holdYaw;
+                        p.y = holdTime < FlinchSeconds ? MathF.Sin(MathF.PI * holdTime / FlinchSeconds) * FlinchHeight : 0f;
                         return p;
                     }
-                    holding = false; running = true;
-                    offX = holdFromX - basePose.x; offZ = holdFromZ - basePose.z; stride = 0f;
+                    // the run goes from where it froze to where its new home has it now: a fixed point, so the home's own wandering
+                    // during the run doesn't add to it (that made the rabbit jump)
+                    holding = false; running = true; runTime = 0f; runDone = 0f; stride = 0f;
+                    curX = holdFromX; curZ = holdFromZ;
+                    if (float.IsNaN(targetX)) { toX = basePose.x; toZ = basePose.z; } else { toX = targetX; toZ = targetZ; } // the refuge, far from the knock
                 }
-                float d = MathF.Sqrt(offX * offX + offZ * offZ);
-                if (d <= 0.02f) { running = false; flee = false; calm = 0f; offX = offZ = 0f; back = 0f; stride = 0f; return p; }
-                float m = MathF.Min(d, RunSpeed * dt);
-                lastYaw = MathF.Atan2(-offX, -offZ);
-                offX -= offX / d * m; offZ -= offZ / d * m;
+                float rx = toX - curX, rz = toZ - curZ, d = MathF.Sqrt(rx * rx + rz * rz);
+                if (d <= 0.02f)
+                {   // there: sit up and look back toward the knock; then it hops back into its home's day (the calm path below)
+                    running = false; flee = false; back = 0f; stride = 0f;
+                    settleLeft = SettleSeconds; settleYaw = MathF.Atan2(faceX - toX, faceZ - toZ);
+                    p.x = toX; p.z = toZ; p.act = RabbitAct.SitUp; p.yaw = settleYaw; p.y = 0f; p.phase = 0f;
+                    return p;
+                }
+                runTime += dt;
+                float v = RunSpeed;
+                if (runTime < RunRamp) v = RunStart + (RunSpeed - RunStart) * (runTime / RunRamp);
+                if (d < SlowDown) v = MathF.Min(v, RunEnd + (RunSpeed - RunEnd) * (d / SlowDown));
+                float m = MathF.Min(d, v * dt);
+                float ux = rx / d, uz = rz / d; // the way it runs
+                if (!GreenStep(field, curX, curZ, ref ux, ref uz, m, dt)) m = 0f; // no way on green this frame: wait, don't pop
+                lastYaw = MathF.Atan2(ux, uz);
+                curX += ux * m; curZ += uz * m;
+                runDone += m;
                 stride += m / RunBound;
-                p.x = basePose.x + offX; p.z = basePose.z + offZ;
-                for (int k = 0; k < 4 && !field.IsGreenAt(p.x, p.z); k++) { offX *= 0.5f; offZ *= 0.5f; p.x = basePose.x + offX; p.z = basePose.z + offZ; }
+                // a slight zigzag across the line, fading out as it arrives (never a jump: the offset itself stays on the line)
+                float zig = MathF.Sin(runDone / ZigLen * MathF.PI) * ZigZag * MathF.Min(1f, d / SlowDown);
+                if (!field.IsGreenAt(curX - uz * zig, curZ + ux * zig)) zig = 0f;
+                p.x = curX - uz * zig; p.z = curZ + ux * zig;
                 float ph = stride - MathF.Floor(stride);
-                p.act = RabbitAct.Flee; p.yaw = lastYaw; p.phase = ph; p.y = MathF.Sin(MathF.PI * ph) * HopArc * 1.8f;
+                p.act = RabbitAct.Flee; p.yaw = lastYaw + MathF.Cos(runDone / ZigLen * MathF.PI) * 0.25f * MathF.Min(1f, d / SlowDown); p.phase = ph;
+                p.y = MathF.Sin(MathF.PI * ph) * HopArc * 1.6f;
                 return p;
             }
+
+            /// <summary>A step of <paramref name="m"/> from (x, z) along (ux, uz) that stays on green: straight, else turned 45 degrees either
+            /// side (still closing in; the direction is updated). After <see cref="StuckSeconds"/> with no such step it goes straight on,
+            /// across the bare bit: better than standing stuck or jumping. False: wait this frame.</summary>
+            bool GreenStep(Field field, float x, float z, ref float ux, ref float uz, float m, float dt)
+            {
+                if (m <= 0f || field.IsGreenAt(x + ux * m, z + uz * m)) { stuck = 0f; return true; }
+                foreach (float a in Ahead)
+                {
+                    float ca = MathF.Cos(a), sa = MathF.Sin(a);
+                    float tx = ux * ca - uz * sa, tz = ux * sa + uz * ca;
+                    if (field.IsGreenAt(x + tx * m, z + tz * m)) { ux = tx; uz = tz; stuck = 0f; return true; }
+                }
+                stuck += dt;
+                return stuck >= StuckSeconds;
+            }
+            static readonly float[] Ahead = { 0.785f, -0.785f };
+            public const float StuckSeconds = 0.3f;
+            float stuck;
 
             static readonly float[] Turns = { 0f, 0.785f, -0.785f, 1.571f, -1.571f };
 
@@ -455,7 +564,23 @@ namespace AquariumCiv.Sim.Eco
             /// its schedule (it never slides).</summary>
             public RabbitPose Step(float dt, RabbitPose basePose, IReadOnlyList<float> px, IReadOnlyList<float> pz, Field field, double now = double.NaN)
             {
+                bool jumped = false; float jx = 0f, jz = 0f;
+                if (hasLastBase)
+                {   // farther than the schedule can hop in the field time that passed (fast-forward hops are not jumps)
+                    double fdt = double.IsNaN(now) || double.IsNaN(lastNow) ? 0.0 : Math.Max(0.0, now - lastNow);
+                    float guard = MathF.Max(JumpGuard, (float)fdt * (HopLen / HopTime) * 1.5f + 0.05f);
+                    jx = lastBaseX - basePose.x; jz = lastBaseZ - basePose.z; jumped = jx * jx + jz * jz > guard * guard;
+                }
+                lastBaseX = basePose.x; lastBaseZ = basePose.z; hasLastBase = true; lastNow = now;
                 if (holding || running) return Startle(dt, basePose, field, now);
+                if (jumped && settleLeft <= 0f) { offX += jx; offZ += jz; if (!flee) calm = MathF.Max(calm, 1.5f); } // hop over, don't pop
+                if (settleLeft > 0f)
+                {   // after the run: up on its haunches where it stopped, looking back where the knock came from
+                    settleLeft -= dt;
+                    var q = basePose; q.x = toX; q.z = toZ; q.act = RabbitAct.SitUp; q.yaw = settleYaw; q.y = 0f; q.phase = 0f;
+                    if (settleLeft <= 0f) { offX = toX - basePose.x; offZ = toZ - basePose.z; flee = false; calm = 1.5f; } // then hops back into its day
+                    return q;
+                }
                 float cx = basePose.x + offX, cz = basePose.z + offZ;
                 bool bolting = false, hoppingBack = false;
                 if (FleeDirection(cx, cz, px, pz, AlertRadius, out float dx, out float dz))
@@ -489,8 +614,10 @@ namespace AquariumCiv.Sim.Eco
                         if (d > 0f)
                         {
                             float m = MathF.Min(d, ReturnSpeed * dt);
-                            lastYaw = MathF.Atan2(-offX, -offZ);
-                            if (m >= d) { offX = offZ = 0f; } else { offX -= offX / d * m; offZ -= offZ / d * m; }
+                            float ux = -offX / d, uz = -offZ / d;
+                            if (m < d && !GreenStep(field, basePose.x + offX, basePose.z + offZ, ref ux, ref uz, m, dt)) m = 0f; // around bare earth, never across or a pop
+                            lastYaw = MathF.Atan2(ux, uz);
+                            if (m >= d) { offX = offZ = 0f; } else { offX += ux * m; offZ += uz * m; }
                             back += m / HopLen;
                             hoppingBack = true;
                         }
@@ -500,8 +627,12 @@ namespace AquariumCiv.Sim.Eco
                 var p = basePose;
                 p.x = basePose.x + offX; p.z = basePose.z + offZ;
                 // never off the green: pull the offset in until it is back on it
-                for (int k = 0; k < 4 && !field.IsGreenAt(p.x, p.z); k++) { offX *= 0.5f; offZ *= 0.5f; p.x = basePose.x + offX; p.z = basePose.z + offZ; }
-                if (!field.IsGreenAt(p.x, p.z)) { offX = offZ = 0f; p.x = basePose.x; p.z = basePose.z; }
+                // (not while it hops back after a startle: halving the offset there made it jump; its way back may cross bare earth)
+                if (!hoppingBack)
+                {
+                    for (int k = 0; k < 4 && !field.IsGreenAt(p.x, p.z); k++) { offX *= 0.5f; offZ *= 0.5f; p.x = basePose.x + offX; p.z = basePose.z + offZ; }
+                    if (!field.IsGreenAt(p.x, p.z)) { offX = offZ = 0f; p.x = basePose.x; p.z = basePose.z; }
+                }
                 if (flee && !bolting)
                 {   // frozen: up on the haunches, facing the danger
                     p.act = RabbitAct.SitUp; p.yaw = lastYaw; p.y = 0f; p.phase = 0f;
