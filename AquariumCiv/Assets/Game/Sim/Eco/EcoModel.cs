@@ -280,12 +280,45 @@ namespace AquariumCiv.Sim.Eco
             return made;
         }
 
+        /// <summary>#378 (playtest #342): the Keeper's tree is not planted in the bed's outer cells. Its crown is about a quarter
+        /// unit across, so a tree in the last cells pokes through the glass and hangs over the edge; this many cells from each wall stay clear.</summary>
+        public const int TreeEdgeMargin = 3;
+
+        /// <summary>True when the cell lies inside the tree's bed: at least <see cref="TreeEdgeMargin"/> cells from every wall.</summary>
+        public static bool InTreeBed(int c)
+        {
+            if (c < 0 || c >= SiteMap.N) return false;
+            int i = SiteMap.I(c), j = SiteMap.J(c);
+            return i >= TreeEdgeMargin && i < SiteMap.NX - TreeEdgeMargin && j >= TreeEdgeMargin && j < SiteMap.NZ - TreeEdgeMargin;
+        }
+
+        /// <summary>Where a seed pressed at (x, z) really goes: that cell when it is dry ground inside the tree's bed, else the
+        /// nearest such cell (within a few cells), else -1 (refused). The view shows the answer, so nothing jumps silently.</summary>
+        public int TreeCellFor(float x, float z)
+        {
+            int c0 = SiteMap.CellAt(x, z);
+            if (c0 < 0) return -1;
+            bool Good(int c) => InTreeBed(c) && !land.InBasin(c) && Cv(c) != EcoCover.Water;
+            if (Good(c0)) return c0;
+            int i0 = SiteMap.I(c0), j0 = SiteMap.J(c0), best = -1;
+            float bestD = (TreeEdgeMargin + 2) * (TreeEdgeMargin + 2) + 0.5f;
+            for (int j = Math.Max(0, j0 - TreeEdgeMargin - 2); j <= Math.Min(SiteMap.NZ - 1, j0 + TreeEdgeMargin + 2); j++)
+                for (int i = Math.Max(0, i0 - TreeEdgeMargin - 2); i <= Math.Min(SiteMap.NX - 1, i0 + TreeEdgeMargin + 2); i++)
+                {
+                    int c = SiteMap.Index(i, j);
+                    if (!Good(c)) continue;
+                    float d = (i - i0) * (i - i0) + (j - j0) * (j - j0);
+                    if (d < bestD) { bestD = d; best = c; }
+                }
+            return best;
+        }
+
         /// <summary>The seed goes into open ground (not the hollow, not the water), once the seed is unlocked.</summary>
         public bool Plant(float x, float z, long month)
         {
             if (st.treeCell >= 0 || !SeedAvailable) return false;
-            int c = SiteMap.CellAt(x, z);
-            if (c < 0 || land.InBasin(c) || Cv(c) == EcoCover.Water) return false;
+            int c = TreeCellFor(x, z);
+            if (c < 0) return false;
             st.treeCell = c; st.cover[c] = (byte)EcoCover.Seedling;
             Reach(EcoMilestones.TreePlanted, month);
             return true;

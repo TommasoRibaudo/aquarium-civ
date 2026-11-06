@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.View.ShowMe;
 using AquariumCiv.View.Shaping;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -56,7 +57,8 @@ namespace AquariumCiv.View
         readonly List<RelicLine> lines = new();
         readonly HashSet<(string, int, float)> said = new();
         // taps
-        bool pressDown, pressValid, pressWorld;
+        readonly TapGesture tapGesture = new();
+        bool pressValid, pressWorld;
         Vector2 pressPos;
         float pressTime, lastTapTime = -10f;
         int taps;
@@ -341,15 +343,15 @@ namespace AquariumCiv.View
         {
             int n = ReadPointer(out var pos);
             float t = Time.unscaledTime;
-            if (n == 1 && !pressDown) { pressDown = true; pressPos = pos; pressTime = t; pressValid = KnockAllowed(pos); pressWorld = WorldTapAllowed(pos); }
-            else if (n >= 2) pressValid = pressWorld = false;
-            else if (n == 1 && (pos - pressPos).magnitude > TapSlop * Mathf.Max(1f, Screen.height)) pressValid = pressWorld = false;
-            if (n == 0 && pressDown)
+            // #376: a second finger ever joining spoils the press (TapGesture); lifting out of a pinch is never a new press.
+            var ev = tapGesture.Update(n, pos.x, pos.y, t, TapSlop * Mathf.Max(1f, Screen.height), TapMaxSeconds);
+            if (ev == TapGesture.Event.Began) { pressPos = pos; pressTime = t; pressValid = KnockAllowed(pos); pressWorld = WorldTapAllowed(pos); }
+            else if (ev == TapGesture.Event.Cancelled) pressValid = pressWorld = false;
+            if (ev == TapGesture.Event.Tap)
             {
-                pressDown = false;
                 // #39: a tap on a person's doll opens their card (and a tap on the world closes an open card); only a tap
                 // that reaches neither is the Keeper's knock.
-                bool quick = t - pressTime <= TapMaxSeconds;
+                bool quick = tapGesture.Quick;
                 var cards = PersonCardView.Instance;
                 var choice = ChoiceSceneView.Instance; // #224: a touch on one of the two choices answers the people
                 if (quick && pressWorld && choice != null && choice.WorldTap(pressPos)) { }

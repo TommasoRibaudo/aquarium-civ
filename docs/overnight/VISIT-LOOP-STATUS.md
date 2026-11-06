@@ -24,3 +24,11 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 ## Log (wall clock · what · commit · Editor min · notes)
 - 2026-11-06 10:25 · worktree `F:\GameDev-wt\visitloop` on `vl/visit-loop` from origin/dev 0c7e397 · — · 0 ·
   The prompt named `F:\GameDev-wt\visitloop`; an older `F:\GameDev-visitloop` (docs/visit-loop, merged) also exists, unused.
+- 2026-11-06 10:30 · milestone "Visit loop" + issues #352–#380 filed (T1 352, T2 353, T3 354, A1 355, A3 356, B1–B11 357–367, C1–C7 368–374, D1–D6 375–380); notes #334–#350 triaged (fb:triaged; #334/#349 → #332) · — · 0 ·
+- 2026-11-06 10:30 · `Tools/offline-csc.py` (offline compile in one command, 11 s for Sim+Life+View+View.Tests) · 20dc42e · 0 ·
+- 2026-11-06 10:31 · wave 1 started: T1 #352 (Opus), A3 #356 (Opus), C1 #368, D1 #375, D2 #376, D4 #378, D6 #380 (Sonnet), worktrees F:\GameDev-wt\<n> · — · 0 ·
+- 2026-11-06 10:33 · main checkout on `vl/editor` (= vl/visit-loop; vl/visit-loop itself lives in the worktree), Editor opened (~6 min import after branch switch); D5 #379 Editor worker started + stall watcher · — · ~7 ·
+- 2026-11-06 ~11:00 · merged D1 #375 (0d6dfcf), D2 #376 (5f667a5), D4 #378 (cad4c1d), A3 #356 specs (e39cd13); offline-csc 0 errors; `dotnet test Tools/SimTests` 1356/1356 on the merge · — · 0 · Unity checks queued for batch 1: TweezersPlayTests, TapGestureTests (7), GestureEdgePlayTests, GlassPlayTests, RabbitViewPlayTests, EcoTests, smoke
+- 2026-11-06 ~11:00 · A1 #355 beat kit started (Opus) in parallel with T1; A3 open questions for the user: hugs, hit-stop, kid tumble, felling now or later
+- 2026-11-06 10:49 · D5 #379 PARTIAL merged: droplet 0.55 light floor removed (changed-pixel 1.109 → 1.010 at 20 h); MistDuskPlayTests 4/4, Tester2FixPlayTests 6/6, smoke 2/2 · 53be654 · 16 (lock time; the worker said 55, wrong) · measured on a barren year-0 box; the tester's case is a lush year-39 village → batch 1: re-measure on a grown village (grass/forest cover), camera orbit on. #379 stays open.
+- 2026-11-06 ~11:05 · D6 #380 merged (5f7c072): camp_remember waits for a real death. C1 told to merge it in (same files).

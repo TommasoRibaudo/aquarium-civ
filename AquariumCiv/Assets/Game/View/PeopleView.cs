@@ -79,6 +79,8 @@ namespace AquariumCiv.View
             public float stride;
             public Vector2 velocity;
             public bool walking;
+            /// <summary>#355: the pose's hit, as a once-per-contact edge for <see cref="WorkHit"/>.</summary>
+            public HitEdge hitEdge;
         }
 
         BoxView box;
@@ -449,6 +451,7 @@ namespace AquariumCiv.View
             if (hunting) DollMotion.Hunt(ref pose, a.hunt, a.progress);
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
+            bool struck = d.hitEdge.Step(pose.hidden ? 0f : pose.hit); // #355
             if (pose.hidden) return;
             v.SetBaby(!a.carrying.IsNone, a.carryOnBack);
             float s = v.scale;
@@ -458,6 +461,7 @@ namespace AquariumCiv.View
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
+            if (struck) WorkHit?.Invoke(a.who, a.place, style, WorkHitPoint.HitPoint(v)); // #355
         }
 
         // ---------------------------------------------------------------- #283: the hunt
@@ -794,6 +798,11 @@ namespace AquariumCiv.View
         /// <summary>#282: turn this person (while they stand) to face a spot (box units); the first rabbit's sign sets it for whoever points.</summary>
         public void LookAt(PersonRef who, Vector2 at) => lookAt[who.Key] = at;
         public void ClearLookAt(PersonRef who) => lookAt.Remove(who.Key);
+
+        /// <summary>#355: a stroke landed: a doll's <see cref="DollPose.hit"/> went 0 → 1 (a loop's chop, hoe or knock, a beat's
+        /// <see cref="BeatPhase.Contact"/>), once per contact. Who, where they work, the move, and the tool's end in world space
+        /// (<see cref="WorkHitPoint.HitPoint"/>). Puffs (HitFx) and the targets' answers subscribe here.</summary>
+        public event System.Action<PersonRef, Place, DollStyle, Vector3> WorkHit;
 
         /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
         /// and who is nearest to a sign.</summary>
