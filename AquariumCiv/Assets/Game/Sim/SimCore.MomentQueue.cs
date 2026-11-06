@@ -375,6 +375,17 @@ namespace AquariumCiv.Sim
 
         bool momentNoTrim;
 
+        /// <summary>Debug (batch 3): this line's waiting moment becomes a card now (reason <see cref="MomentCardReason.Cheat"/>), as a
+        /// moment held too long does: the way to read a callback's card since #371 stages callbacks. False if the line has no
+        /// waiting moment (moments off, not a ceremony, already playing, played or carded).</summary>
+        public bool DebugCardMoment(int entryId)
+        {
+            var m = MomentOfEntry(entryId);
+            if (m == null || m.state != HeldMomentState.Waiting) return false;
+            CardMoment(m, MomentCardReason.Cheat);
+            return true;
+        }
+
         /// <summary>Debug: the next moment may play now: the budget is full, the rest and the visit's cap are lifted, and the kind
         /// rule forgets the last one. The view starts it on its next check.</summary>
         public void DebugMomentDueNow()

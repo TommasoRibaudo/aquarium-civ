@@ -85,7 +85,9 @@ namespace AquariumCiv.View.PlayTests
             foreach (var p in Choice.Stage.Pins())
             {
                 Assert.IsTrue(pv.TryGetDollPosition(p.who, out var at), when + ": " + p.who + " is out");
-                Assert.Less((at - new Vector2(p.x, p.z)).magnitude, 0.06f, when + ": " + p.who + " stands on their spot");
+                var act = pv.Activities.FirstOrDefault(a => a.who == p.who);
+                Assert.Less((at - new Vector2(p.x, p.z)).magnitude, 0.06f, when + ": " + p.who + " stands on their spot"
+                    + $" (doing {act.kind}/{act.source}, moving {act.moving}, staged moments playing {StagedMoments.Playing}, at {at}, pin ({p.x:0.00}, {p.z:0.00}))");
             }
             Assert.Greater(Choice.HaloAlpha(0), 0.5f, when + ": a halo on the first");
             Assert.Greater(Choice.HaloAlpha(1), 0.5f, when + ": a halo on the second");
@@ -107,10 +109,23 @@ namespace AquariumCiv.View.PlayTests
         }
 
         // Others' lazy one-offs (the speaker ring, the chatter marks) appear on first use: not ours, not a leak (as in AssertNoNewRoots).
-        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks", "HitFx" }; // HitFx: a scene root since batch 1; its puff renderer is made on the first hit
-        static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
-            .Count(r => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
-                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0);
+        // HitFx: a scene root since batch 1; its puff renderer is made on the first hit. RitualBubbles (#370): the staged moments'
+        // glyphs, one mesh made on the first bubble and kept (off) after, exactly like ChatterMarks.
+        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks", "HitFx", "RitualBubbles" };
+        /// <summary>Not ours and not a leak: the doll's own, the lazy one-offs, and the answer's consequence prop (#371: the sim places
+        /// it when the Keeper answers, it is meant to stay in the box).</summary>
+        static bool Counted(MeshRenderer r) => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
+                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0 && !r.name.StartsWith("Consequence_");
+        static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>().Count(Counted);
+        static System.Collections.Generic.List<string> RendererNames() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
+            .Where(Counted)
+            .Select(r => r.transform.root.name + "/" + r.name + (r.gameObject.activeInHierarchy ? "" : " (off)")).ToList();
+        static string AddedRenderers(System.Collections.Generic.List<string> before)
+        {
+            var added = RendererNames();
+            foreach (var n in before) added.Remove(n);
+            return string.Join(", ", added);
+        }
         static int Roots() => RootNames().Count;
         static System.Collections.Generic.List<string> RootNames()
         {
@@ -127,6 +142,7 @@ namespace AquariumCiv.View.PlayTests
             var added = now.ToList();
             foreach (var n in before) added.Remove(n);
             Debug.Log($"[ChoiceScene] {when}: roots {before.Count} -> {now.Count}" + (added.Count > 0 ? " (new: " + string.Join(", ", added) + ")" : ""));
+            added.RemoveAll(n => System.Array.IndexOf(LazyRoots, n) >= 0); // others' lazy one-offs: logged, not counted
             Assert.IsFalse(added.Any(n => n.Contains("Choice")), when + ": a root of the choice scene was left: " + string.Join(", ", added));
             Assert.LessOrEqual(added.Count, 1, when + ": new roots " + string.Join(", ", added));
         }
@@ -137,7 +153,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return OpenBox(1170, 2532);
             yield return ToTheCard("camp_fire");
-            var roots = RootNames(); int renderers = Renderers();
+            var roots = RootNames(); int renderers = Renderers(); var rendererNames = RendererNames();
             var d = Sim.OpenDilemma;
             yield return ShowTheChoice("who");
             AssertApart("who", out int left);
@@ -165,7 +181,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, ChoiceObjects(), "no prop, halo or traveller left");
             Assert.AreEqual(0, pv.PinCount, "nobody pinned");
             AssertNoNewRoots(roots, "who");
-            Assert.LessOrEqual(Renderers(), renderers, "no leaked renderers");
+            Assert.LessOrEqual(Renderers(), renderers, "no leaked renderers: " + AddedRenderers(rendererNames));
             Debug.Log($"[ChoiceScene] sanity: roots {roots.Count} -> {Roots()}, renderers {renderers} -> {Renderers()}, choice objects {ChoiceObjects()}");
             AssertNoErrors("who by touch");
         }
@@ -175,7 +191,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return OpenBox(1170, 2532);
             yield return ToTheCard("camp_remember");
-            var roots = RootNames(); int renderers = Renderers();
+            var roots = RootNames(); int renderers = Renderers(); var rendererNames = RendererNames();
             var d = Sim.OpenDilemma;
             yield return ShowTheChoice("tradition");
             yield return Tap("cards-showme-back");
@@ -191,7 +207,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, ChoiceObjects(), "nothing left behind");
             Assert.AreEqual(0, PeopleView.Find().PinCount);
             AssertNoNewRoots(roots, "leave");
-            Assert.LessOrEqual(Renderers(), renderers);
+            Assert.LessOrEqual(Renderers(), renderers, "no leaked renderers: " + AddedRenderers(rendererNames));
             // The next Show me stages it again.
             yield return ShowTheChoice("tradition again");
             Assert.AreEqual(d.id, Choice.Stage.dilemmaId);

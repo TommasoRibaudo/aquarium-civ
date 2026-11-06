@@ -30,6 +30,7 @@ namespace AquariumCiv.View
         readonly List<Own> own = new List<Own>();
         readonly StoryWorld world = new StoryWorld();
         readonly Dictionary<long, StoryKind> seen = new Dictionary<long, StoryKind>();
+        readonly HashSet<long> seenMoments = new HashSet<long>();
         StoryDirector director;
         SimCore boundSim;
         PeopleView pv;
@@ -125,6 +126,7 @@ namespace AquariumCiv.View
         {
             world.Clear();
             seen.Clear();
+            seenMoments.Clear();
             var planner = pv.Planner;
             var now = pv.Now;
             world.population = sim.State.population;
@@ -144,7 +146,8 @@ namespace AquariumCiv.View
                 if (a.hunt != HuntPhase.None) world.huntOn = true;
                 if (!pv.TryGetDollFeet(a.who, out var feet) || !InView(cam, feet)) continue;
                 int key = a.who.Key;
-                var kind = StoryNow(planner, a, now, t, out long id, out bool held);
+                var kind = StoryNow(planner, a, now, t, out long id, out bool held, out bool moment);
+                if (moment) { seenMoments.Add(id); continue; }
                 if (kind != StoryKind.None) { seen[id] = kind; continue; }
                 if (held) continue;
                 var stage = planner.StageOf(a.who);
@@ -157,8 +160,9 @@ namespace AquariumCiv.View
                 });
             }
             world.storiesInView = seen.Count;
+            world.momentsInView = seenMoments.Count; // batch 3: the moments count as one together (StoryWorld.Counted)
             foreach (var k in seen.Values) if (k != StoryKind.Other && !world.kindsInView.Contains(k)) world.kindsInView.Add(k);
-            InViewCount = seen.Count;
+            InViewCount = seen.Count + seenMoments.Count;
 
             var rv = RabbitView.Instance;
             int rid = rv != null ? rv.NearestShown(world.focusX, world.focusZ) : -1;
@@ -171,9 +175,9 @@ namespace AquariumCiv.View
 
         /// <summary>The story this person is in now (None: none), one id per story. <paramref name="held"/>: in one of the director's own
         /// stories or a pair beat or a game that isn't a story yet (still walking to it): not free either.</summary>
-        StoryKind StoryNow(LifePlanner planner, in PersonActivity a, ViewTime now, float t, out long id, out bool held)
+        StoryKind StoryNow(LifePlanner planner, in PersonActivity a, ViewTime now, float t, out long id, out bool held, out bool moment)
         {
-            held = false;
+            held = false; moment = false;
             int key = a.who.Key;
             foreach (var o in own)
                 if (o.members.Contains(key)) { id = -1000L - o.id; held = true; return o.kind; }
@@ -195,6 +199,7 @@ namespace AquariumCiv.View
             if (planner.HeldMomentAt(a.who, now, out var scene, out _, out _, out _))
             {
                 id = RuntimeHelpers.GetHashCode(scene) * 4L + 3;
+                moment = true;
                 return StoryKind.Other;
             }
             return StoryRules.StoryOf(a, out id);

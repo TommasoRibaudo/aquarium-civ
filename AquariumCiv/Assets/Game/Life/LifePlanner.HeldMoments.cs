@@ -16,6 +16,8 @@ namespace AquariumCiv.Life
         /// <summary>The moment's place (the planner walks the cast there).</summary>
         public Place place;
         public int CastCount => plan?.members.Count ?? 0;
+        /// <summary>Batch 3: people a choice scene took out of this moment (the Keeper's ask holds its cast): no longer in it.</summary>
+        public readonly HashSet<int> released = new HashSet<int>();
     }
 
     /// <summary>
@@ -38,6 +40,45 @@ namespace AquariumCiv.Life
 
         /// <summary>The staged moments playing now (or not yet ended) (tests, the panel).</summary>
         public IReadOnlyList<HeldMomentScene> HeldScenes => heldScenes;
+
+        /// <summary>Batch 3: is this person standing in the choice scene (a side, the asker) at <paramref name="t"/>?</summary>
+        bool InChoice(int key, ViewTime t)
+        {
+            var st = choice;
+            if (st == null || t.day != st.day || t.hour >= st.end) return false;
+            foreach (var (who, _, _) in st.Pins()) if (who.Key == key) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Batch 3: the choice scene holds its cast. Staged at <paramref name="at"/> while a moment plays (the welcome on a return),
+        /// it takes its people out of that moment: their steps are cut there and the view no longer places or poses them by it
+        /// (<see cref="HeldMomentAt"/>), so they walk to their spot and stay on it. The moment plays on with the rest.
+        /// </summary>
+        void ReleaseChoiceCastFromHeldMoments(ChoiceStage st, ViewTime at)
+        {
+            if (st == null || heldScenes.Count == 0) return;
+            bool changed = false;
+            float h = at.hour;
+            foreach (var sc in heldScenes)
+            {
+                if (sc.day != at.day || h >= sc.end || !heldStaging.TryGetValue(sc, out var stg)) continue;
+                foreach (var (who, _, _) in st.Pins())
+                {
+                    int key = who.Key;
+                    if (sc.plan?.Member(key) == null || !sc.released.Add(key)) continue;
+                    changed = true;
+                    if (!stg.segs.TryGetValue(key, out var list)) continue;
+                    for (int j = list.Count - 1; j >= 0; j--)
+                    {
+                        var s = list[j];
+                        if (s.start >= h) { list.RemoveAt(j); continue; }
+                        if (s.end > h) { s.end = h; list[j] = s; }
+                    }
+                }
+            }
+            if (changed) LiveChanged();
+        }
 
         /// <summary>Can a staged moment of <paramref name="seconds"/> start at <paramref name="at"/>: daytime, and over by the evening.</summary>
         public static bool HeldMomentFits(ViewTime at, float seconds)
@@ -197,6 +238,7 @@ namespace AquariumCiv.Life
             {
                 var sc = heldScenes[i];
                 if (t.day != sc.day || t.hour < sc.start || t.hour >= sc.end) continue;
+                if (sc.released.Count > 0 && sc.released.Contains(who.Key)) continue; // batch 3: a choice scene took them
                 float s = LifeClock.RealSecondsBetween(sc.start, t.hour);
                 if (!sc.plan.StepAt(who.Key, s, out member, out step)) continue;
                 if (!HeldMomentPlaying(sc, t)) continue;
@@ -241,6 +283,7 @@ namespace AquariumCiv.Life
             if (p == null || p.stage == LifeStage.Baby) return false;
             if (DayOf(p)[Find(DayOf(p), at.hour)].kind == ActivityKind.Sleep) return false; // nobody is woken for it
             if (HuntActivityAt(p, at, out _) || TentActivityAt(p, at, out _)) return false;  // the hunt and the tent go on
+            if (InChoice(p.key, at)) return false; // batch 3: the Keeper's ask holds its cast
             foreach (var sc in heldScenes) if (sc.day == at.day && at.hour < sc.end && sc.plan.Member(p.key) != null) return false; // a busy day: one moment each
             return true;
         }

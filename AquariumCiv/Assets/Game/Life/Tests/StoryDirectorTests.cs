@@ -90,6 +90,39 @@ namespace AquariumCiv.Life.Tests
             Assert.IsNotNull(late, "none for a while: one starts");
         }
 
+        /// <summary>Batch 3: staged moments in view are the foreground, all of them counted as one story. Two moments (a busy day, or
+        /// the queue after a skip) no longer hold a tribe on High at its cap of 2 forever; one moment still fills a tribe's Normal
+        /// view; nobody in a moment is free, so what starts is cast from the others.</summary>
+        [Test]
+        public void StagedMoments_CountAsOneStory_AndNeverLendTheirCast()
+        {
+            var w = World(4, 0f); w.momentsInView = 2;
+            Assert.AreEqual(1, w.Counted, "two moments count as one");
+            w.storiesInView = 1;
+            Assert.AreEqual(2, w.Counted, "plus the background stories");
+
+            // A tribe on High (floor 1, cap 2), two moments playing in view the whole time: one background story starts once the interval is up.
+            var d = new StoryDirector(4) { Density = StoryDensity.High };
+            StoryPlan plan = null;
+            for (float t = 0f; t < 30f && plan == null; t += StoryRules.CheckSeconds)
+            {
+                var mw = World(4, t); mw.momentsInView = 2;
+                mw.free.RemoveAll(a => a.key == -1 || a.key == 100); // in the moments: not free
+                plan = d.Step(mw, Yes);
+            }
+            Assert.IsNotNull(plan, "the moments do not hold the director at its cap: " + d.LastWhy);
+            Assert.IsFalse(plan.members.Contains(-1) || plan.members.Contains(100), "nobody from a moment's cast");
+
+            // A tribe on Normal (floor 0, cap 1): one moment fills its view, it starts nothing while the moment plays.
+            var calm = new StoryDirector(4);
+            for (float t = 0f; t < 60f; t += StoryRules.CheckSeconds)
+            {
+                var mw = World(4, t); mw.momentsInView = 1;
+                Assert.IsNull(calm.Step(mw, Yes), $"t {t}: a moment is a story to watch: a tribe stays calm");
+            }
+            StringAssert.Contains("enough", calm.LastWhy);
+        }
+
         [Test]
         public void Density_ScalesWithPopulation_LikeTheMomentDirector()
         {

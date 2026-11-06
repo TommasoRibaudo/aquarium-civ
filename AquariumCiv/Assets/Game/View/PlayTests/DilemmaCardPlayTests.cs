@@ -185,10 +185,18 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(180000)]
         public IEnumerator TheDotFollowsTheStoriesInLivePlay()
         {
-            yield return Watching(750, 1334, dilemmas: false); // the lab would raise choices (new unread cards) inside the 12 s windows below
-            var all = Sim.UnreadCardsCapped(999);
-            foreach (var c in all.cards.Concat(all.also)) Sim.MarkCardRead(c);
-            yield return Until(() => !Model.HistoryDot, 12f); // worked out again at the next month (5 s at x60)
+            // Dilemmas on (with them off the dot is not worked out live: WithDilemmasOffALiveRaiseChangesNothing), but the lab
+            // schedule off so no choice is raised inside the 12 s windows below; the clock still at x60 so a month turns in 5 s.
+            yield return Watching(750, 1334);
+            DilemmaCheats.Lab(false);
+            GameClock.Instance.speed = GameClock.LabSpeed;
+            void ReadAll()
+            {
+                var all = Sim.UnreadCardsCapped(999);
+                foreach (var c in all.cards.Concat(all.also)) Sim.MarkCardRead(c);
+            }
+            // worked out again at the next month (5 s at x60); a story the box writes meanwhile is read too
+            yield return Until(() => { ReadAll(); return !Model.HistoryDot; }, 12f);
             Assert.IsFalse(Model.HistoryDot, "all read: no dot");
             var who = Sim.State.notables.Find(n => n.alive);
             Sim.Chronicle("story", who.FullName + " found a way across the stream.", 0.9f, who.id);
@@ -264,6 +272,12 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(Sim.AnswerDilemma(d.id, option, DilemmaPath.Card));
                 var e = Sim.DebugFireCallbackNow();
                 Assert.IsNotNull(e, def + " fires a callback");
+                // #371: a callback is a held moment, watched in the box, not a card; it is a card only once held too long. This
+                // check is about that card, so it takes the cheat's path (the panel's "fire callback"): the moment becomes the card.
+                var held = Sim.MomentOfEntry(e.id);
+                Assert.IsNotNull(held, def + ": the callback queued its moment");
+                Assert.AreEqual(HeldMomentState.Waiting, held.state, def + ": the moment waits to be watched");
+                Assert.IsTrue(Sim.DebugCardMoment(e.id), def + ": the cheat turns it into a card");
                 yield return Frames(2);
                 Debug.Log("[240] " + CardStackView.DebugOpenEntry(e.id));
                 Assert.AreEqual(e.id, Model.Shown?.lead.id, def + ": its card is up");
