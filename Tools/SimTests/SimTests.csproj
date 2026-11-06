@@ -91,6 +91,7 @@
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
     <Compile Include="CameraGlassTests.cs" /><!-- #273: the glass limits of the camera -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/CampFrameTests.cs" /><!-- t1-camera: the camp frame -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->
   </ItemGroup>
   <ItemGroup>
