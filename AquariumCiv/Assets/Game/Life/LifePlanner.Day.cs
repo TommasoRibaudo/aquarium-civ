@@ -712,12 +712,12 @@ namespace AquariumCiv.Life
             else
             {
                 // Dawn: water from the well or the stream, a chore at the door, then off to work.
-                if (R(k, day, 2) < 0.3f)
+                if (R(k, day, 2) < 0.3f || forcedWater.Contains(k)) // #360: the cheat sends some on top of the dice
                 {
                     var water = WaterPlace; // P8 (#267): the pond once it has water, else the wet low ground
                     // #152: empty on the way out and while they draw; full only once it's drawn.
                     Move(ActivityKind.Walk, water, bt + WalkHours(p.home, water), Prop.EmptyBucket, TripType.HomeToGreen);
-                    At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.EmptyBucket);
+                    At(ActivityKind.FetchWater, bt + 0.35f, water, Prop.EmptyBucket); // #360: 3.5 s at dawn: kneel, dip, hold, lift (was 0.2 h = 2 s)
                     Move(ActivityKind.FetchWater, p.home, bt + WalkHours(water, p.home), Prop.Buckets, TripType.Home);
                 }
                 if (work.sweeps && box.sweeperExtraBlocks > 0)

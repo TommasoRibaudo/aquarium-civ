@@ -119,6 +119,7 @@ namespace AnimBench
             PropKind.Broom => new Vector3(0, -0.09f, 0),
             PropKind.Stick => new Vector3(0, 0.18f, 0),
             PropKind.Fish => new Vector3(0, -0.01f, -0.012f),
+            PropKind.Bucket or PropKind.BucketEmpty or PropKind.BucketMuddy => new Vector3(0, -0.085f, 0), // #360: the bucket's bottom (PegDoll.PropMesh)
             _ => Vector3.zero,
         };
 
@@ -179,6 +180,7 @@ namespace AnimBench
         public ObjectFrame Last;
         public Vector3 ArcFrom, ArcTo;
         public bool ArcLaunched;
+        public float RippleT = -1f; public int Ripples; // #360
     }
 
     public sealed class Simulator
@@ -302,7 +304,10 @@ namespace AnimBench
             }
             int steps = seg.Steps;
             int step = seg.Step ?? (steps <= 1 ? 0 : (int)(since / Mathf.Max(1e-3f, seg.StepSeconds)) % steps);
-            bool holds = seg.Prop != PropKind.None && seg.Prop != PropKind.Mask;
+            var segProp = seg.Prop;
+            if (segProp == PropKind.BucketEmpty && style == DollStyle.DrawWater && WaterBeats.Full(since, spec.Seed, seg.Queue)) // #360: full from the start of the lift
+                segProp = seg.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
+            bool holds = segProp != PropKind.None && segProp != PropKind.Mask;
             d.Stride = Mathf.Repeat(d.Stride + DollMotion.Cadence(style, d.Speed) * Mathf.PI * dt, Mathf.PI * 2f);
             var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, seg.Slot, holds, d.Speed, progress, since, seg.Count, d.Stride);
             if (style != d.Drew)
@@ -317,12 +322,17 @@ namespace AnimBench
                 pose = DollMotion.Blend(d.BlendFrom, pose, Mathf.SmoothStep(0f, 1f, d.BlendT / Bench.BlendSeconds));
             }
             if (hunting) DollMotion.Hunt(ref pose, seg.Hunt, progress);
+            if (kind == ActivityKind.FetchWater) // #360, as PeopleView.Drive
+            {
+                if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, spec.Seed, seg.Queue);
+                else if (style == DollStyle.Walk && seg.Moves) WaterBeats.Heavy(ref pose, d.Stride);
+            }
             d.Pose = pose;
 
             var f = new DollFrame
             {
                 Pose = pose, Style = style, Pos = d.Pos, BodyYaw = d.Yaw, Yaw = d.Yaw + pose.yaw, Walking = walking, Speed = d.Speed,
-                Progress = progress, Since = since, Segment = si, Step = step, Hunt = seg.Hunt, Prop = seg.Prop, Slot = seg.Slot,
+                Progress = progress, Since = since, Segment = si, Step = step, Hunt = seg.Hunt, Prop = segProp, Slot = seg.Slot,
             };
             Bench.Place(ref f, spec.Scale);
             d.Last = f;
@@ -335,6 +345,13 @@ namespace AnimBench
             switch (s.Kind)
             {
                 case "rabbit": StepRabbit(o, ref f, t, dt); break;
+                case "water": case "pond": case "puddle":
+                {
+                    // #360: the ripple ring answers a dip on the contact frame (HitFx draws it in the game): act "ripple" for 0.9 s after a hit aimed at it
+                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.9f ? "ripple " + o.Ripples : ""; // a new ring is a new answer
+                    break;
+                }
                 case "bush":
                 {
                     var picker = s.PickedBy != null ? DollById(s.PickedBy) : null;
