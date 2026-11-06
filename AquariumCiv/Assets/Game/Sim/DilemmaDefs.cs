@@ -67,6 +67,7 @@ namespace AquariumCiv.Sim
         public string id = "";
         public DilemmaKind kind;
         public Era minEra = Era.Camp, maxEra = Era.Town;
+        public bool needsDeath;             // #380: the def's words assume a loss ("the ones we lose"): only once someone in this box has died
         public string needs;                // building types that must stand ("a|b" = either), null = none (as the roles' table)
         public DilemmaCast cast;
         public string role;                 // RoleType (or Leader) the people are choosing for; null = an honour with no seat
@@ -207,7 +208,7 @@ namespace AquariumCiv.Sim
         /// <summary>Tradition: where the people remember their dead. A custom only: the stone by the pond, or the old tree.</summary>
         static readonly DilemmaDef CampRemember = new DilemmaDef
         {
-            id = "camp_remember", kind = DilemmaKind.Tradition, minEra = Era.Camp, maxEra = Era.Camp,
+            id = "camp_remember", kind = DilemmaKind.Tradition, minEra = Era.Camp, maxEra = Era.Camp, needsDeath = true, // #346: nobody to remember before the first death
             question = "Where do we remember the ones we lose: stone or tree?",
             askedBy = new Dictionary<string, string>
             {
