@@ -14,8 +14,10 @@ namespace AquariumCiv.View
     /// </summary>
     public static class ToddleFollow
     {
-        /// <summary>Behind the walking carer, and to one side (so the two don't line up in the camera's view).</summary>
-        public const float Behind = 0.15f, Side = 0.05f;
+        /// <summary>Behind the walking carer, and to one side (so the two don't line up in the camera's view). Batch 4 (AnimLab 358-toddle):
+        /// 0.05 u to the side hid the toddler behind a carer walking at the default camera (5 s and 20 s); 0.12 u is more than half a
+        /// grown-up plus half a toddler (~0.085 u), so it shows beside their legs from any heading.</summary>
+        public const float Behind = 0.15f, Side = 0.12f;
         /// <summary>The potter: an arc of this radius at a standing carer's front-left or front-right (<see cref="PotterAside"/> rad off their
         /// front, by hash, so the carer's body hides it less), swinging ±<see cref="PotterSwing"/> rad at about 0.08 u/s.</summary>
         public const float Potter = 0.17f, PotterAside = 0.7f, PotterSwing = 0.9f, PotterRate = 0.5f;
@@ -54,20 +56,27 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Where the toddler wants to be now. <paramref name="carerFace"/>: the way the carer faces (unit); <paramref name="carerWalking"/>
-        /// with <paramref name="carerHeading"/> (unit) the way they go. Plopped: where it sits (<paramref name="current"/>).</summary>
-        public static Vector2 Target(int key, float t, Vector2 carer, Vector2 carerFace, bool carerWalking, Vector2 carerHeading, Vector2 current)
+        /// with <paramref name="carerHeading"/> (unit) the way they go. Plopped: where it sits (<paramref name="current"/>).
+        /// <paramref name="view"/> (batch 4): the camera's forward on the ground (x, z), or zero. Given, the toddler keeps to the carer's side
+        /// nearer the camera (AnimLab 358-toddle: on the far side it was hidden behind them at the default camera); the hash picks the side
+        /// only when the two are level (the carer walking straight at or away from the camera).</summary>
+        public static Vector2 Target(int key, float t, Vector2 carer, Vector2 carerFace, bool carerWalking, Vector2 carerHeading, Vector2 current, Vector2 view = default)
         {
             if (PlopSince(key, t) >= 0f) return current;
             float aside = BeatHash.Pick(2, key, 3, Salt) == 0 ? -1f : 1f; // its side of the carer
+            bool seen = view.sqrMagnitude > 1e-6f;
             if (carerWalking && carerHeading.sqrMagnitude > 1e-6f)
             {
                 var h = carerHeading.normalized;
                 var right = new Vector2(h.y, -h.x);
+                if (seen) { float d = Vector2.Dot(right, view.normalized); if (Mathf.Abs(d) > 0.25f) aside = d > 0f ? -1f : 1f; } // the near side
                 return carer - h * Behind + right * (Side * aside);
             }
             var f = carerFace.sqrMagnitude > 1e-6f ? carerFace.normalized : new Vector2(0f, -1f);
-            float a0 = Mathf.Atan2(f.y, f.x) + aside * PotterAside;
-            float a = a0 + PotterSwing * Mathf.Sin(t * PotterRate + BeatHash.U01(key, 4, Salt) * 6.283f);
+            if (seen) { var fr = new Vector2(f.y, -f.x); float d = Vector2.Dot(fr, view.normalized); if (Mathf.Abs(d) > 0.25f) aside = d > 0f ? 1f : -1f; }
+            float away = seen ? Mathf.Max(0f, Vector2.Dot(f, view.normalized)) : 0f; // facing away from the camera: its front is behind them
+            float a0 = Mathf.Atan2(f.y, f.x) + aside * (PotterAside + 0.6f * away); // so potter at their side there, on a shorter swing
+            float a = a0 + PotterSwing * (1f - 0.6f * away) * Mathf.Sin(t * PotterRate + BeatHash.U01(key, 4, Salt) * 6.283f);
             return carer + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Potter;
         }
 
