@@ -46,7 +46,8 @@ namespace AnimBench
             var prev = d.Pos;
             bool jump = !d.Placed || dt <= 0f;
             var cf = Quaternion.Euler(0f, carer.Yaw, 0f) * Vector3.back;
-            var target = ToddleFollow.Target(spec.Seed, time, carer.Pos, new Vector2(cf.x, cf.z), carer.Walking, carer.Velocity, d.Placed ? d.Pos : carer.Pos);
+            var camF = Quaternion.Euler(clip.Camera.Pitch, clip.Camera.Yaw, 0f) * Vector3.forward; // batch 4: as PeopleView, the camera's ground forward
+            var target = ToddleFollow.Target(spec.Seed, time, carer.Pos, new Vector2(cf.x, cf.z), carer.Walking, carer.Velocity, d.Placed ? d.Pos : carer.Pos, new Vector2(camF.x, camF.z));
             d.Pos = jump ? target : Vector2.MoveTowards(d.Pos, target, ToddleFollow.Speed((target - d.Pos).magnitude) * dt);
             float inst = !jump ? (d.Pos - prev).magnitude / dt : 0f;
             d.Speed = Mathf.Lerp(d.Speed, inst, dt > 0f ? 1f - Mathf.Exp(-dt * 10f) : 1f);

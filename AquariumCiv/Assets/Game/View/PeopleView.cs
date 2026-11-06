@@ -408,7 +408,8 @@ namespace AquariumCiv.View
             if (toddling) // 2026-11-06: behind the walking carer, pottering in front of a standing one, sat down where it plopped
             {
                 var cf = Quaternion.Euler(0f, carerDoll.yaw, 0f) * Vector3.back;
-                target = ToddleFollow.Target(a.who.Key, time, carerDoll.drawn, new Vector2(cf.x, cf.z), carerDoll.walking, carerDoll.velocity, d.pos);
+                var camF = Camera.main != null ? Camera.main.transform.forward : Vector3.zero; // batch 4: the toddler keeps to the near side
+                target = ToddleFollow.Target(a.who.Key, time, carerDoll.drawn, new Vector2(cf.x, cf.z), carerDoll.walking, carerDoll.velocity, d.pos, new Vector2(camF.x, camF.z));
                 face = carerDoll.drawn;
             }
             // #365 B9.c: someone at the fire gets up and pokes it with a stick
