@@ -226,7 +226,7 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(0.35f, knap[1].life, 1e-5f);
             Assert.Greater(knap[1].gravity, 0f);
             var fire = Bits(PuffKind.Sparks, 1, new PuffOptions { fire = true, groundY = float.NaN }, out n);
-            Assert.AreEqual(0.7f, fire[1].life, 1e-5f);
+            Assert.AreEqual(1.1f, fire[1].life, 1e-5f); // look-fix: longer, clear of the flames
             Assert.Less(fire[1].gravity, 0f, "the fire sparks float up");
             Assert.Greater(HitFxMath.Position(fire[1], 0.5f).y, HitFxMath.Position(fire[1], 0.1f).y);
         }

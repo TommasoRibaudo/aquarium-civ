@@ -63,7 +63,8 @@ namespace AquariumCiv.View
     /// </summary>
     public static class PairStage
     {
-        public const float HandGap = 0.14f, GiverPace = 0.5f, HugFrom = 0.22f;
+        public const float HandGap = 0.18f, // look-fix: 0.14 (bodies 0.04 apart, both leaning in) read as one doll inside the other in the real box;
+             GiverPace = 0.5f, HugFrom = 0.22f;
         static readonly List<PairEvent> events = new List<PairEvent>();
 
         public static IReadOnlyList<PairEvent> Events => events;

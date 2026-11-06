@@ -59,7 +59,8 @@
      10.8
     ]
    ],
-   "fallAt": 13.25
+   "fallAt": 13.25,
+   "takenAt": 15.32
   },
   {
    "id": "spear",
@@ -210,7 +211,7 @@
      "hunt": "HoldUp",
      "dur": 1.8,
      "prop": "Rabbit",
-     "face": "rabbit"
+     "face": "fire"
     },
     {
      "label": "carry home",

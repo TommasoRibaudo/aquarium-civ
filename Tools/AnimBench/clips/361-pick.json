@@ -9,9 +9,9 @@
   "expect": { "reactSeconds": 0.2, "arcs": [ { "kind": "berry", "by": "picker", "target": "picker.handL" } ] },
   "objects": [
     { "id": "bush", "kind": "bush", "pos": [0.0, 0.0], "radius": 0.1, "berries": 7, "pickedBy": "picker", "state": { "dropOnHit": 1 } },
-    { "id": "berry1", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "picker.handR", "to": "picker.handL", "t0": 0.52, "t1": 0.82, "height": 0.06 } },
-    { "id": "berry2", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "picker.handR", "to": "picker.handL", "t0": 3.02, "t1": 3.32, "height": 0.06 } },
-    { "id": "berry3", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "picker.handR", "to": "picker.handL", "t0": 5.52, "t1": 5.82, "height": 0.06 } }
+    { "id": "berry1", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "picker.handR", "to": "picker.handL", "t0": 0.52, "t1": 0.82, "height": 0.06, "heldBefore": false, "hideAt": 0.87 } },
+    { "id": "berry2", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "picker.handR", "to": "picker.handL", "t0": 3.02, "t1": 3.32, "height": 0.06, "heldBefore": false, "hideAt": 3.37 } },
+    { "id": "berry3", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "picker.handR", "to": "picker.handL", "t0": 5.52, "t1": 5.82, "height": 0.06, "heldBefore": false, "hideAt": 5.87 } }
   ],
   "dolls": [
     { "id": "picker", "seed": 361, "role": "gatherer", "prop": "Basket", "slot": "Hand", "phase": 0,

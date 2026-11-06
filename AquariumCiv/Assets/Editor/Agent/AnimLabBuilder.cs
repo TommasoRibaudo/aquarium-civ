@@ -335,12 +335,13 @@ namespace AquariumCiv.EditorTools
                             float a0 = k * Mathf.PI * 2f / seg, a1 = (k + 1) * Mathf.PI * 2f / seg;
                             b.Tri(Vector3.zero, new Vector3(Mathf.Cos(a1) * w, 0f, Mathf.Sin(a1) * dd), new Vector3(Mathf.Cos(a0) * w, 0f, Mathf.Sin(a0) * dd), land.water);
                         }
-                        rig.go = MeshObject(s, root, o.id, b.ToMesh("LabWater"), Water, p0 + Vector3.up * 0.004f, false);
+                        // look-fix: the lab's ground is flat at y 0, so water set at the real surface (-0.08) was hidden under the grass: lift it to the ground
+                        rig.go = MeshObject(s, root, o.id, b.ToMesh("LabWater"), Water, new Vector3(p0.x, Mathf.Max(p0.y, 0f) + 0.004f, p0.z), false);
                         break;
                     }
-                    case "spear": case "fish": case "basket":
+                    case "spear": case "fish": case "basket": case "pot": // look-fix: the stew pot is the game's clay pot, not a grey ball
                     {
-                        var kind = o.kind == "spear" ? PropKind.Spear : o.kind == "fish" ? PropKind.Fish : PropKind.Basket;
+                        var kind = o.kind == "spear" ? PropKind.Spear : o.kind == "fish" ? PropKind.Fish : o.kind == "pot" ? PropKind.Pot : PropKind.Basket;
                         rig.go = new GameObject(o.id);
                         rig.go.transform.SetParent(root, false);
                         var part = new GameObject("Mesh");
@@ -348,6 +349,29 @@ namespace AquariumCiv.EditorTools
                         part.AddComponent<MeshFilter>().sharedMesh = PegDoll.PropMesh(kind);
                         part.AddComponent<MeshRenderer>().sharedMaterial = Solid;
                         if (kind == PropKind.Spear) part.transform.localRotation = Quaternion.Euler(80f, 0f, 0f); // in flight: point first
+                        break;
+                    }
+                    case "stash":
+                    {
+                        // look-fix: the camp's stash is a low heap of berries on a mat, not a grey boulder
+                        var b = new MeshBuilder(index * 31 + 21) { jitter = 0f };
+                        b.Prism(Vector3.zero, o.radius, o.radius * 0.95f, 0.006f, 10, Palette.Thatch);
+                        b.Ico(new Vector3(0f, 0.004f, 0f), o.radius * 0.7f, new Vector3(1f, 0.45f, 1f), Palette.Ember, 0.15f);
+                        for (int k = 0; k < 9; k++)
+                        {
+                            float a = k * 2.39996f, r = o.radius * 0.55f * Mathf.Sqrt((k + 0.5f) / 9f);
+                            b.Ico(new Vector3(Mathf.Cos(a) * r, 0.018f + 0.01f * (1f - r / o.radius), Mathf.Sin(a) * r), 0.012f, Vector3.one, new Color(0.78f, 0.1f, 0.15f), 0.1f);
+                        }
+                        rig.go = MeshObject(s, root, o.id, b.ToMesh("LabStash"), Solid, p0);
+                        break;
+                    }
+                    case "root":
+                    {
+                        // look-fix: the dig spot is a patch of turned dirt; a root on an arc is the game's own dug root (BerryPickView.BuildRoot)
+                        var b = new MeshBuilder(index * 31 + 19) { jitter = 0f };
+                        if (o.act != null && o.act.Length > 0 && o.act[0] == "held") BerryPickView.BuildRoot(b); // an arc object (Bench.StepArc)
+                        else b.Prism(Vector3.zero, o.radius, o.radius * 0.8f, 0.006f, 9, Palette.Dirt);
+                        rig.go = MeshObject(s, root, o.id, b.ToMesh("LabRoot"), Solid, p0);
                         break;
                     }
                     default:
@@ -425,6 +449,7 @@ namespace AquariumCiv.EditorTools
                     r.rabbit.Show(act, a[k + 5], time);
                     continue;
                 }
+                if (r.data.kind is "water" or "pond" or "puddle") pos.y = Mathf.Max(pos.y, 0f) + 0.004f; // look-fix: on the flat lab ground, not under it
                 r.go.transform.localPosition = pos;
                 if (r.data.kind is "spear" or "fish" or "ball" or "berry") r.go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
                 if (r.berries != null)

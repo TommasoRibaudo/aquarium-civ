@@ -17,8 +17,13 @@ namespace AquariumCiv.View
         public const float RootHeldSeconds = 0.96f;
         /// <summary>From the pull's Contact to the root coming up out of the ground into the hand.</summary>
         public const float RootUpAfterSeconds = 0.16f;
+        /// <summary>Look-fix: a tasted berry rides in the kid's hand from the contact until the hand is at the mouth (the Follow step).</summary>
+        public const float TasteToMouthSeconds = 0.5f;
 
-        static readonly Vector3 BasketArm = new Vector3(28f, 0f, -12f);
+        static readonly Vector3 BasketArm = new Vector3(28f, 0f, -30f); // look-fix: out from the hip (z -12 hid the basket behind the body)
+        /// <summary>Look-fix (AnimLab, batch 1): the picker's head went into the bush at the spec's 32-40 degree lean from 0.17 u off its
+        /// centre. The lean is scaled by this and the reaching arm pitched up by the difference, so the hand still reaches the bush.</summary>
+        public const float PickLeanScale = 0.55f;
         /// <summary>The left arm pose the basket is built upright for (PegDollView.HoldInLeft).</summary>
         public static Vector3 BasketArmL => BasketArm;
 
@@ -54,7 +59,7 @@ namespace AquariumCiv.View
             s.Add(Beat.Step(BeatPhase.Antic, 0.2f, Ease.Out, PoseKey.Hold.ArmR(85, 0, 8).Lean(40).Squash(0.66f)));
             s.Add(Beat.Step(BeatPhase.Contact, 0.06f, Ease.Linear, PoseKey.Hold));
             s.Add(Beat.Step(BeatPhase.Hold, 0.1f, Ease.Linear, PoseKey.Hold));
-            s.Add(Beat.Step(BeatPhase.Act, 0.3f, Ease.Back, PoseKey.Hold.ArmR(150, 0, 8).Lean(-15).Squash(0.95f)));
+            s.Add(Beat.Step(BeatPhase.Act, 0.3f, Ease.Back, PoseKey.Hold.ArmR(112, 0, 14).Lean(-12).Squash(0.95f))); // look-fix: held up at the face, not hoisted overhead like a rock
             s.Add(Beat.Step(BeatPhase.Hold, 0.5f, Ease.Linear, PoseKey.Hold));
             s.Add(Beat.Step(BeatPhase.Follow, 0.25f, Ease.Snap, PoseKey.Hold.ArmR(75, 0, 8).Lean(30).Squash(0.7f)));
             s.Add(Beat.Step(BeatPhase.Settle, 0.5f, Ease.Smooth, PoseKey.Base));
@@ -68,7 +73,8 @@ namespace AquariumCiv.View
                 s.Add(Beat.Step(BeatPhase.Antic, 0.1f, Ease.Out, PoseKey.Hold.ArmR(60, 0, 18)));
                 s.Add(Beat.Step(BeatPhase.Act, 0.4f, Ease.Smooth, PoseKey.Hold.ArmR(100, 0, 18).Lean(8)));
                 s.Add(Beat.Step(BeatPhase.Contact, 0.06f, Ease.Linear, PoseKey.Hold));
-                s.Add(Beat.Step(BeatPhase.Follow, 0.5f, Ease.Smooth, PoseKey.Hold.ArmR(135, 0, 18).Lean(-3)));
+                // look-fix: a big arc up to the mouth and the head tipped back (the whole doll leans back): it reads from the default camera
+                s.Add(Beat.Step(BeatPhase.Follow, 0.5f, Ease.Back, PoseKey.Hold.ArmR(158, 0, 6).Lean(-16)));
                 s.Add(Beat.Step(BeatPhase.Hold, 0.6f, Ease.Linear, PoseKey.Hold)); // chewing (a bob rides on it)
                 if (i < 2) s.Add(Beat.Step(BeatPhase.Settle, 0.54f, Ease.Smooth, PoseKey.Base));
                 else
@@ -199,6 +205,7 @@ namespace AquariumCiv.View
                 {
                     p = pickGroup.Pose(pickUnder, Mathf.Repeat(t, pickGroup.Duration));
                     EndOfBlock(ref p, pickUnder, progress, since);
+                    if (p.lean > 0f) { float cut = p.lean * (1f - PickLeanScale); p.lean -= cut; p.armR.x += cut; } // look-fix: the hand reaches, the head stays out
                     break;
                 }
                 case DollStyle.DigRoot:

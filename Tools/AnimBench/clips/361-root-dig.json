@@ -9,7 +9,7 @@
   "expect": { "reactSeconds": 0.2, "arcs": [ { "kind": "root", "by": "digger", "target": "digger.handL" } ] },
   "objects": [
     { "id": "spot", "kind": "root", "pos": [0.0, 0.0], "radius": 0.06, "berries": 9, "pickedBy": "digger", "state": { "dropOnHit": 1 } },
-    { "id": "root1", "kind": "root", "pos": [0.0, 0.0], "arc": { "from": "digger.handR", "to": "digger.handL", "t0": 2.63, "t1": 2.88, "height": 0.05 } }
+    { "id": "root1", "kind": "root", "pos": [0.0, 0.0], "arc": { "from": "digger.handR", "to": "digger.handL", "t0": 2.63, "t1": 2.88, "height": 0.05, "heldBefore": false, "hideAt": 2.93 } }
   ],
   "dolls": [
     { "id": "digger", "seed": 362, "role": "everyone", "prop": "Basket", "slot": "Hand", "phase": 0,

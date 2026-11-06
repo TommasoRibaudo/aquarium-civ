@@ -180,7 +180,7 @@ namespace AquariumCiv.View
                         b.size = 0.012f * scale;
                         b.spin = Rng(seed, i, 5, -360f, 360f);
                         b.gravity = (o.fire ? -0.6f : 2.0f) * scale;
-                        b.life = o.fire ? 0.7f : 0.35f;
+                        b.life = o.fire ? 1.1f : 0.35f; // look-fix: the fire's sparks float up for longer, clear of the flames
                         b.colour = o.gold ? PuffColour.Gold : (i & 1) == 0 ? PuffColour.Ember : PuffColour.SparkYellow;
                         break;
                     }
