@@ -229,6 +229,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Show me on this card (the bar)")) last = CardStackView.DebugShowMe();
             }
             if (Section("Dilemmas (P7)")) { var line = DilemmaCheats.Gui(); if (line != null) last = line; }
+            if (Section("Hit puffs (#357)")) { var line = HitFxCheats.Gui(); if (line != null) last = line; } // #357
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

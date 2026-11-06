@@ -173,6 +173,16 @@ namespace AquariumCiv.View
             refreshT = 0f;
         }
 
+        // ---------------------------------------------------------------- #357: the bush answers a stroke
+        /// <summary>#357: shakes this bush (site cell) once, leaning away from <paramref name="away"/> (world direction from whoever reached in).
+        /// The bush is in the land's chunk mesh, so this is the shader's sway at the bush's spot (<see cref="HitFx.Shake"/>); its berry dots are
+        /// one mesh with the same sway weight and move with it. False if the cell has no bush.</summary>
+        public bool Shake(int cell, Vector3 away, float delay = 0f)
+        {
+            if (box == null || box.Root == null || !box.BushSpots.TryGetValue(cell, out var spot)) return false;
+            return HitFx.Shake(ShakeTarget.Bush, box.Root.TransformPoint(spot.pos), away, delay);
+        }
+
         // ---------------------------------------------------------------- the berries
         static float H01(int a, int b) => Land.Hash3(7311, a, b);
 
@@ -192,7 +202,7 @@ namespace AquariumCiv.View
             }
             if (key == berriesKey && berriesGo != null) return;
             berriesKey = key;
-            var mb = new MeshBuilder(box.GetHashCode() & 0xffff) { jitter = 0f };
+            var mb = new MeshBuilder(box.GetHashCode() & 0xffff) { jitter = 0f, sway = 0.3f }; // #357: the dots sway with the bush (its weight), so a shake moves them too
             int dots = 0, withBerries = 0;
             foreach (var (cell, pos, r, n) in items)
             {
