@@ -242,6 +242,7 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Show queue + next due time")) last = HeldMomentStage.DebugStatus();
                 if (GUILayout.Button("Moments on/off")) last = HeldMomentStage.DebugToggle();
                 GUILayout.EndHorizontal();
+                if (GUILayout.Button("Stage the held choice now (t1-moments)")) last = HeldMomentStage.DebugStageHeldChoice(); // visit-loop 2.4
             }
             // ---- end #369 ----
             // ---- #374: this visit's telemetry numbers ----

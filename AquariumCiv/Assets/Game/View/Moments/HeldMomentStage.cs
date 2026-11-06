@@ -115,7 +115,12 @@ namespace AquariumCiv.View
             lastStarted.Clear();
             var sim = Sim;
             if (!ReferenceEquals(sim, boundSim)) { StopAll(); boundSim = sim; } // another box: what played there is over (the sim gives it back on its next visit)
-            if (sim == null || !sim.MomentsOn) { LastWhy = sim == null ? "no living box on screen" : "moments off"; return lastStarted; }
+            if (sim == null || !sim.MomentsOn)
+            {
+                LastWhy = sim == null ? "no living box on screen" : "moments off";
+                if (sim != null && BusyReason() == null) TryStageChoice(sim);
+                return lastStarted;
+            }
 
             foreach (var m in sim.PlayingMoments())
             {
@@ -129,7 +134,27 @@ namespace AquariumCiv.View
 
             string busy = BusyReason();
             if (busy != null) { LastWhy = busy; return lastStarted; }
-            return StartNow(sim);
+            var started = StartNow(sim);
+            if (started.Count == 0) TryStageChoice(sim); // visit-loop 2.4: after the welcome moment, the held choice is staged in the box
+            return started;
+        }
+
+        int choiceTries;
+
+        /// <summary>Visit-loop 2.4 (the fail item of tester run 1): a choice waiting when the app opens is staged in the box first, the
+        /// choice scene with its cast, as Show me on its card does, after the welcome moment (never over a moment playing or due, never
+        /// over an open card stack). The card stays available. Three failed tries and it is left to the card.</summary>
+        void TryStageChoice(SimCore sim)
+        {
+            if (!sim.ChoiceStageDue) { choiceTries = 0; return; }
+            var cv = ChoiceSceneView.Instance;
+            if (cv == null || cv.State != ChoiceSceneView.Phase.Idle) return;
+            if (sim.PlayingMoments().Count > 0 || sim.MomentBeforeChoice()) { LastWhy = "the welcome moment first"; return; }
+            var cards = CardStackView.Instance;
+            if (cards != null && cards.StackOpen) { LastWhy = "the card stack is open"; return; }
+            var v = sim.OpenDilemmaView;
+            if (v != null && cv.Offer(v)) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the held choice is staged"; return; }
+            if (++choiceTries >= 3) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the choice could not be staged: its card stays"; }
         }
 
         List<HeldMoment> StartNow(SimCore sim)
@@ -225,6 +250,19 @@ namespace AquariumCiv.View
             if (stage == null) return "no moment stage in the scene";
             var started = stage.Check();
             return started.Count == 0 ? $"nothing started: {stage.LastWhy}" : $"playing {string.Join(", ", started.Select(x => $"#{x.id} {x.kind}"))}";
+        }
+
+        /// <summary>Cheat (visit loop 2.4): the open choice counts as held on an open, and is staged in the box now if the box is calm.</summary>
+        public static string DebugStageHeldChoice()
+        {
+            var sim = Sim;
+            if (sim == null) return "no living box";
+            if (sim.OpenDilemma == null) return "no choice is open";
+            sim.DebugHoldChoiceForOpen();
+            var stage = Instance;
+            if (stage == null) return "no moment stage in the scene";
+            stage.Check();
+            return sim.ChoiceStageDue ? "waiting: " + stage.LastWhy : "staged (or left to its card)";
         }
 
         /// <summary>Cheat: the queue and the next due time.</summary>

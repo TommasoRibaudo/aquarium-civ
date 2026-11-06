@@ -16,6 +16,8 @@ namespace AquariumCiv.Life
         Eye,
         /// <summary>Music: dancing and singing.</summary>
         Notes,
+        /// <summary>Love and new life: the couple at their wedding, the parent lifting the newborn (t1-moments).</summary>
+        Heart,
     }
 
     /// <summary>One symbol bubble over one person for a span of the view day (view hours). The view draws it.</summary>
@@ -140,6 +142,8 @@ namespace AquariumCiv.Life
                         StageBeat.Point => RitualSymbol.Eye,
                         _ => null,
                     };
+                    if (m.role == MomentRole.Couple && s.beat is StageBeat.WalkIn or StageBeat.Vow or StageBeat.Join or StageBeat.Centre) sym = RitualSymbol.Heart; // the wedding says so
+                    else if (m.role == MomentRole.Parent && s.beat == StageBeat.LiftBaby) sym = RitualSymbol.Heart; // the newborn too
                     if (sym == null) continue;
                     int slices = Math.Max(1, (int)Math.Ceiling((s.t1 - s.t0) / MaxBubbleSeconds - 1e-3f));
                     for (int k = 0; k < slices; k++)

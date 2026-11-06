@@ -419,5 +419,65 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(1, old.momentPacing.credit, 1e-9);
             Assert.AreEqual(-2, old.momentPacing.lastLeaderId);
         }
+
+        // ---------- t1-moments: a ceremony's line is a card only if its ceremony never plays ----------
+
+        static bool InAnyCardPath(SimCore sim, ChronicleEntry e)
+        {
+            bool Has(ReturnStack st) => st.cards.Concat(st.also).Any(c => c.entries.Contains(e));
+            return Has(sim.UnreadCardsCapped(1000)) || Has(sim.ReturnCardsCapped(-1, 1000));
+        }
+
+        [Test]
+        public void ACeremonyLineIsNotACardEvenToAListenerOfTheLineItself()
+        {
+            // Tester run 1: a card said "Esk married Aveline" though no wedding had been shown live. The chronicle event came before the
+            // queue knew the line, so anything working out the cards on it (the history dot) saw an unread card.
+            var sim = Box();
+            sim.CardsSeenToNow();
+            sim.Advance(1.0 / 12);
+            bool sawCard = false;
+            sim.Chronicled += e => { if (e.kind == "festival") sawCard = InAnyCardPath(sim, e) || sim.HasUnreadCards; };
+            sim.Chronicle("festival", "The people gathered round the fire for a feast.", 0.65f);
+            Assert.IsFalse(sawCard, "the moment is queued before anyone is told of the line");
+        }
+
+        [Test]
+        public void APlayedCeremonyStaysOutOfTheCardsUntilTheLedgerIsPastIt()
+        {
+            var sim = Box();
+            sim.CardsSeenToNow();
+            sim.Advance(1.0 / 12);
+            var e = sim.Chronicle("wedding", "A and B married by the winter fire.", 0.7f, 1);
+            var m = sim.MomentOfEntry(e.id);
+            m.state = HeldMomentState.Played; m.endMonth = sim.State.month;
+            for (int i = 0; i < (MomentRules.KeepFinishedMonths + 24); i++) sim.Advance(1.0 / 12); // 32 game years; the stack was never opened
+            Assert.IsTrue(sim.State.chronicle.Contains(e));
+            Assert.IsFalse(InAnyCardPath(sim, e), "it was watched live: its line never becomes a card later");
+        }
+
+        [Test]
+        public void AwayAndBackNoCeremonyLineIsACardUnlessItsMomentBecameOne()
+        {
+            foreach (int seed in new[] { 3, 7, 11 })
+            {
+                var sim = Box(seed);
+                sim.CardsSeenToNow();
+                int firstId = sim.State.chronicle.Count > 0 ? sim.State.chronicle.Max(x => x.id) : 0; // the box's first year was lived before the queue was emptied
+                for (int round = 0; round < 6; round++)
+                {
+                    sim.CatchUp(8);
+                    sim.BeginVisit();
+                    foreach (var e in sim.State.chronicle.Where(x => x.id > firstId && MomentRules.KindOfLine(x.kind, out _) && x.month > sim.State.cards.since))
+                    {
+                        var m = sim.MomentOfEntry(e.id);
+                        if (InAnyCardPath(sim, e))
+                            Assert.IsTrue(m == null ? false : m.state == HeldMomentState.Carded, $"seed {seed} round {round}: '{e.text}' ({e.kind} #{e.id} month {e.month}) is a card ({(m == null ? "no moment; in list: " + sim.State.moments.Any(x => x.entryId == e.id) + ", moments " + sim.State.moments.Count : m.state.ToString())})");
+                    }
+                    var due = sim.StartDueMoments();
+                    foreach (var d in due) sim.FinishMoment(d.id, true);
+                }
+            }
+        }
     }
 }

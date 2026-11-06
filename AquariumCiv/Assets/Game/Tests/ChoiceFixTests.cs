@@ -352,5 +352,58 @@ namespace AquariumCiv.Tests
                     Assert.IsTrue(sim.State.chronicle.Any(e => e.id == c.lead.id), "and every one is in the chronicle, the History");
             }
         }
+
+        // ---------- t1-moments: a choice held for the open is staged in the box first (visit-loop 2.4) ----------
+
+        [Test]
+        public void AHeldChoiceIsFlaggedToStageOnTheOpenAndOnlyOnce()
+        {
+            var sim = Box();
+            DueNow(sim);
+            sim.CatchUp(2);
+            Assert.IsFalse(sim.ChoiceStageDue, "away: nothing to stage yet");
+            Assert.IsTrue(sim.BeginVisit());
+            Assert.IsTrue(sim.ChoiceStageDue, "the open found a choice waiting: the box stages it first");
+            sim.ChoiceStaged();
+            Assert.IsFalse(sim.ChoiceStageDue, "staged once for this open");
+            sim.CatchUp(1);
+            sim.BeginVisit();
+            Assert.IsTrue(sim.ChoiceStageDue, "the next open: the same waiting choice is staged again");
+            sim.LetThemDecide(sim.OpenDilemma.id);
+            Assert.IsFalse(sim.ChoiceStageDue, "answered: nothing to stage");
+        }
+
+        [Test]
+        public void NoChoiceWaitingMeansNothingToStage()
+        {
+            var sim = Box();
+            sim.State.dilemmaLastRaiseHours = sim.State.clockHours; // just raised: the gap has not passed
+            sim.CatchUp(0.01);
+            Assert.IsFalse(sim.BeginVisit());
+            Assert.IsFalse(sim.ChoiceStageDue);
+        }
+
+        [Test]
+        public void TheWelcomeMomentComesBeforeTheStagedChoice()
+        {
+            var cfg = new SimConfig { dilemmas = true, moments = true };
+            var sim = NewSim(5, cfg);
+            sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => Way("w" + i)).ToArray();
+            for (int m = 0; m < 12; m++) sim.Advance(1.0 / 12);
+            sim.State.moments.Clear();
+            var mom = new HeldMoment { id = sim.MomentPacing.nextId++, kind = MomentKind.Festival, month = sim.State.month, priority = 0.6f };
+            sim.State.moments.Add(mom);
+            DueNow(sim);
+            sim.CatchUp(2);
+            Assert.IsTrue(sim.BeginVisit());
+            Assert.IsTrue(sim.ChoiceStageDue);
+            Assert.IsTrue(sim.MomentBeforeChoice(), "a moment waits to be the welcome: the choice waits for it");
+            var due = sim.StartDueMoments();
+            Assert.AreEqual(1, due.Count);
+            Assert.IsTrue(sim.MomentBeforeChoice(), "it is playing: the choice still waits");
+            sim.FinishMoment(due[0].id, true);
+            Assert.IsFalse(sim.MomentBeforeChoice(), "the welcome is over");
+            Assert.IsTrue(sim.ChoiceStageDue, "now the held choice is staged");
+        }
     }
 }

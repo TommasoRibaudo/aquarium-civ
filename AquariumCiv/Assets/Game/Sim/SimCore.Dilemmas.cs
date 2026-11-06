@@ -257,7 +257,32 @@ namespace AquariumCiv.Sim
             }
             if (OpenDilemma == null) TryRaiseDilemma();
             awayHours = 0;
+            choiceStageFor = OpenDilemma?.id ?? -1; // visit-loop 2.4: a choice waiting on the open is staged in the box first
             return OpenDilemma != null;
+        }
+
+        // Not saved: a load is an open, and BeginVisit sets it again.
+        int choiceStageFor = -1;
+
+        /// <summary>Visit-loop 2.4: this open found a choice waiting (held while away, or still open from an earlier visit) and the view
+        /// has not yet staged it in the box. The view stages it once the welcome moment is over, then calls <see cref="ChoiceStaged"/>.
+        /// False once staged, answered, lapsed or when none was open on the open.</summary>
+        public bool ChoiceStageDue => choiceStageFor >= 0 && OpenDilemma?.id == choiceStageFor;
+
+        /// <summary>The view staged the waiting choice (or gave up): it is not due again until the next open.</summary>
+        public void ChoiceStaged() => choiceStageFor = -1;
+
+        /// <summary>Debug: the open choice counts as held for this open (it is staged again).</summary>
+        public void DebugHoldChoiceForOpen() => choiceStageFor = OpenDilemma?.id ?? -1;
+
+        /// <summary>Visit-loop 2.4: a moment (the welcome) is playing or still due on this open, so the held choice waits for it:
+        /// the welcome moment first, then the staged choice. Starts the visit's bookkeeping like the director does.</summary>
+        public bool MomentBeforeChoice()
+        {
+            if (!Config.moments || CatchingUp || State.firstRun.active) return false;
+            if (Moments.Any(m => m.state == HeldMomentState.Playing)) return true;
+            EnsureMomentVisit();
+            return MomentPacing.welcomeDue && Moments.Any(m => m.state == HeldMomentState.Waiting);
         }
 
         /// <summary>A person the options point at died: the people decide at once (the same as a wish whose wisher dies).</summary>
