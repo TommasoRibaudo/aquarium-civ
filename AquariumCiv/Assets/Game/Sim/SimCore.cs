@@ -77,6 +77,7 @@ namespace AquariumCiv.Sim
                 Step(); steps++;
             }
             if (watched) { State.clockHours = Math.Round(clockStart + realHours, 9); awayHours = 0; }
+            if (watched) MomentWatched(realHours); // #369: the moment director's budget grows only while watched
             return steps;
         }
 
@@ -99,6 +100,7 @@ namespace AquariumCiv.Sim
             try { r.months = Advance(r.simHours); }
             finally { CatchingUp = false; catchClockScale = 1.0; }
             awayHours += r.realHours;
+            MomentAway(r.realHours); // #369: nothing plays while away; a long enough absence makes the next watched moment a new visit
             State.clockHours = Math.Round(clockStart + r.realHours, 9); // #368: the real hours away, whatever pace the civ lived them at (choices are paced in these)
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
@@ -145,6 +147,7 @@ namespace AquariumCiv.Sim
             ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
             WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
             DilemmaStep(); // no dice, and nothing at all unless Config.dilemmas: the Keeper's dilemmas (SimCore.Dilemmas.cs, P7)
+            MomentStep(); // no dice, nothing unless Config.moments: held ceremonies grow old into cards (SimCore.MomentQueue.cs, #369)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
@@ -476,6 +479,7 @@ namespace AquariumCiv.Sim
             var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
             Chronicled?.Invoke(e);
+            MomentFromLine(e); // #369: a wedding, a birth, a new leader, a callback or a festival queues its ceremony for the Keeper
             return e;
         }
     }
