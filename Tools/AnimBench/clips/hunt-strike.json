@@ -1,0 +1,29 @@
+{
+  "name": "hunt-strike",
+  "notes": "Baseline (#352): today's hunt, a miss, staged as LifePlanner.Hunt plans it and PeopleView/RabbitView play it. Fire at (-1.0, -0.25), rabbit at (0.5, 0.15): stalk point 0.5 short of it (StalkRange), lunge point 3/4 of the way in (0.125 off the rabbit). Beats at the morning's 16 s per view hour: the end of the walk out (WalkSpeed 5 u/h = 0.31 u/s), Stalk 0.3 h (creeps stalk -> lunge), Strike 0.06 h (DollMotion.Hunt: wind-up and thrust, hit at progress 0.6-0.8, the spear stays in the hand), Bolt 0.12 h (arms out), then the walk back. The stalked rabbit minds nobody until the strike is over (RabbitView: hunted until the resolve hour), only sits up with the hunter inside 0.8; then RabbitHerd.Scare runs as in the game. Two more rabbits graze nearby and get the plain Scare.",
+  "duration": 11.5,
+  "fps": 30,
+  "secondsPerViewHour": 16,
+  "camera": { "view": "default", "focus": [0.15, 0.05], "span": 1.5 },
+  "sheet": { "from": 5.0, "to": 10.0, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2, "arcs": [ { "kind": "spear", "by": "hunter", "target": "rabbit" } ] },
+  "knownGaps": ["hitNear", "react", "arcs"],
+  "objects": [
+    { "id": "fire", "kind": "fire", "pos": [-1.0, -0.25] },
+    { "id": "rabbit", "kind": "rabbit", "pos": [0.5, 0.15], "yaw": 200, "hunted": { "by": "hunter", "until": 7.36 } },
+    { "id": "rabbit2", "kind": "rabbit", "pos": [0.75, 0.42], "yaw": 120 },
+    { "id": "rabbit3", "kind": "rabbit", "pos": [0.85, -0.12], "yaw": 300 }
+  ],
+  "dolls": [
+    {
+      "id": "hunter", "seed": 283, "role": "hunter", "prop": "Spear", "slot": "Hand",
+      "timeline": [
+        { "label": "walk out", "activity": "Walk", "hunt": "WalkOut", "from": [-0.4665, -0.1078], "to": [0.0168, 0.0211], "dur": 1.6 },
+        { "label": "stalk", "activity": "Stalk", "hunt": "Stalk", "to": [0.3792, 0.1178], "hours": 0.3, "face": "rabbit", "target": "rabbit" },
+        { "label": "strike", "activity": "Stalk", "hunt": "Strike", "hours": 0.06, "face": "rabbit", "target": "rabbit" },
+        { "label": "bolt (miss)", "activity": "Stalk", "hunt": "Bolt", "hours": 0.12, "face": "rabbit" },
+        { "label": "walk back", "activity": "Walk", "hunt": "WalkBack", "to": [-0.3745, -0.0832], "dur": 2.5 }
+      ]
+    }
+  ]
+}

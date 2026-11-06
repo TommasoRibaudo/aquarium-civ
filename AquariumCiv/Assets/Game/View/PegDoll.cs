@@ -3,21 +3,6 @@ using UnityEngine;
 
 namespace AquariumCiv.View
 {
-    public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear, Rod, Hammer, Broom, Sack, Stick, Bucket, Block, Barrel,
-        // #92: the relics and the glass (a chunk of the Sky Crumb, the Festival Mask worn on the face, the Keeper Doll, the Left
-        // Sandal, the Lens's folded tripod, the brass Lens, the scholar's slate, the measuring rod)
-        Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate, MeasuringRod,
-        // #152: a bucket on its way to the water
-        BucketEmpty,
-        // #283: a caught rabbit over the shoulder
-        Rabbit,
-        // #267: a bucket of muddy water (scooped from the wet low ground or a puddle while the pond is dry)
-        BucketMuddy }
-
-    /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
-    /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
-    public enum PropSlot { Hand, Head, Back, Shoulder, Arms, Front }
-
     /// <summary>
     /// The peg-doll villager's meshes (style kit, life-in-the-box §9): body + head as one mesh (tapered tunic, belt,
     /// round head, hair or a straw hat, and an optional bright accent: a headband for camp people, a sash for a role),

@@ -22,6 +22,9 @@ AquariumCiv/Assets/Prototypes/_Shared/Resources/BuildInfo.txt*
 .idea/
 *.csproj
 !Tools/SimTests/SimTests.csproj
+!Tools/AnimBench/AnimBench.csproj
+!Tools/AnimBench.Tests/AnimBench.Tests.csproj
+Tools/AnimBench/out/
 *.unityproj
 *.sln
 *.suo

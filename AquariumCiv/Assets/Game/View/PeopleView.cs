@@ -446,7 +446,7 @@ namespace AquariumCiv.View
                 d.blendT += dt;
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
-            if (hunting) HuntPose(ref pose, a);
+            if (hunting) DollMotion.Hunt(ref pose, a.hunt, a.progress);
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             if (pose.hidden) return;
@@ -504,32 +504,6 @@ namespace AquariumCiv.View
             if (dx * dx + dz * dz > 0.05f * 0.05f) return new Vector2(x, z);
             float ang = Hash01(key, 283) * Mathf.PI * 2f;
             return new Vector2(plan.fireX + Mathf.Cos(ang) * 0.34f, plan.fireZ + Mathf.Sin(ang) * 0.34f);
-        }
-
-        /// <summary>The throw (wind up, then thrust the spear out), the shrug after a miss and the kid's cheer ride on top of the crouch
-        /// the stalk already is.</summary>
-        static void HuntPose(ref DollPose pose, in PersonActivity a)
-        {
-            switch (a.hunt)
-            {
-                case HuntPhase.Strike:
-                {
-                    float u = Mathf.Clamp01(a.progress);
-                    float thrust = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.35f) / 0.3f));
-                    pose.squash = Mathf.Lerp(0.72f, 1f, Mathf.SmoothStep(0f, 1f, u / 0.35f));
-                    pose.lean = Mathf.Lerp(-8f, 34f, thrust);
-                    pose.armR = new Vector3(Mathf.Lerp(165f, 55f, thrust), 0f, 8f);
-                    pose.armL = new Vector3(Mathf.Lerp(20f, 70f, thrust), 0f, -12f);
-                    pose.extend = true;
-                    pose.hit = u > 0.6f && u < 0.8f ? 1f : 0f;
-                    break;
-                }
-                case HuntPhase.Bolt: // it got away: arms out, a step back
-                    pose.squash = 1f; pose.lean = -6f;
-                    pose.armL = new Vector3(0f, 0f, -70f); pose.armR = new Vector3(0f, 0f, 70f);
-                    pose.extend = false;
-                    break;
-            }
         }
 
         /// <summary>#189: from the planned point to the drawn one: the walker's offset eases toward what the crowd presses (it fades when
