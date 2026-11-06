@@ -348,6 +348,11 @@ namespace AquariumCiv.View
                 var p = new VisualElement { name = "tl-pin-" + i++, pickingMode = PickingMode.Ignore };
                 p.AddToClassList("tl-pin");
                 p.EnableInClassList("tl-pin--group", g.IsGroup);
+                if (g.HasHand) // #373: a choice the Keeper made is in this marker
+                {
+                    p.AddToClassList("tl-pin--hand");
+                    p.Add(new GlassIcon("hand", "tl-pin-hand") { name = "tl-hand-" + (i - 1) });
+                }
                 p.style.left = g.x;
                 pinsLayer.Add(p);
             }

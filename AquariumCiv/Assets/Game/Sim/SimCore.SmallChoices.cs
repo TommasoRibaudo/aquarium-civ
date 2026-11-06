@@ -31,6 +31,7 @@ namespace AquariumCiv.Sim
             id = "small_naming", kind = DilemmaKind.Who, size = DilemmaSize.Small, smallKind = Naming, cast = DilemmaCast.TwoCandidates,
             minEra = Era.Camp, maxEra = Era.Town,
             question = "{a} and {b} have a baby, and two names. {a} says {n1}. {b} says {n2}.",
+            shortAsk = "Naming {a} and {b}'s baby.",
             letDone = "{a} and {b} named the baby {n}.",
             options = new[] { Name(1), Name(2) },
         };

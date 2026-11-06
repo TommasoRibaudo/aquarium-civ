@@ -41,6 +41,8 @@ namespace AquariumCiv.View.TimeLapseScreen
         public List<StoryPin> pins = new List<StoryPin>();   // in time order
         public StoryPin Lead;                            // the strongest story: its kind draws the icon
         public bool IsGroup => pins.Count > 1;
+        /// <summary>#373: a choice the Keeper made is in this marker (drawn with a hand).</summary>
+        public bool HasHand => pins.Any(p => p.kind == SimCore.KeeperPinKind);
         public float Year => pins[0].year;
     }
 

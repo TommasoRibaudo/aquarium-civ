@@ -16,6 +16,9 @@
 /* Pin ticks stop short of the era names (question 20) */
 .tl-pin { position: absolute; top: 36px; width: 5.5px; height: 38px; margin-left: -2.75px; background-color: var(--ink); }
 .tl-pin--group { top: 29px; width: 8.25px; height: 45px; margin-left: -4.125px; }
+/* #373: a hand pin marks a choice the Keeper made: the tick in the primary colour, a small hand on top */
+.tl-pin--hand { background-color: var(--primary); }
+.tl-pin-hand { position: absolute; left: -16.5px; top: -41px; width: 38.5px; height: 38.5px; -unity-background-image-tint-color: var(--primary); }
 
 .tl-playhead { position: absolute; top: 40.75px; width: 38.5px; height: 38.5px; margin-left: -19.25px; }
 .tl-handle {

@@ -82,6 +82,7 @@ namespace AquariumCiv.Sim
         public string smallKind;            // #372: set on a small choice (SmallChoices.Naming...): it is raised from a moment of the box, not the era
         public string letDone = "";         // small choices: the line when the people take the pick ({n} = the name); empty = the plain line
         public string question = "";        // the people's ask, {a}/{b}/{place}
+        public string shortAsk = "";        // #373: the ask in a few words for the Keeper's choices page; empty = cut from the question
         /// <summary>The question in the asker's voice, by their trait (the asker is the era's leader when it is raised, if they are
         /// not one of the two). A trait not listed, or no asker, gets <see cref="question"/>. Optional.</summary>
         public Dictionary<string, string> askedBy;

@@ -39,6 +39,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ChoiceFixTests.cs" /><!-- visit loop C1 #368 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/KeeperChoicesTests.cs" /><!-- visit loop C6 #373 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/MomentQueueTests.cs" /><!-- visit loop C2 #369 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaContentTests.cs" /><!-- P7 #222 -->
