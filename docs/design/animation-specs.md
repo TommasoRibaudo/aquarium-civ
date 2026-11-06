@@ -34,6 +34,8 @@ a short hit-stop on key beats (§0.8).
 Today's small offsets don't read: the talk bob is 0.006 u (under 1 px), the stalk creep 0.01 u. **Every new offset in
 these sheets is at least 0.025 u.**
 
+*Kit (#355):* nothing new: offsets and arm angles stay `DollPose`'s; one-shot beats ride on top of it (`View/Beats/Beat.cs`).
+
 ### 0.2 Beat phases
 A **beat** is one told-once action: a list of phases, each with a duration, an easing and the pose keys it moves
 between. It runs on `since` (real seconds into the beat), like `Knock` and `Peer` do today (`DollMotion.cs:533-567`).
@@ -49,11 +51,15 @@ between. It runs on `since` (real seconds into the beat), like `Knock` and `Peer
 | `Settle` | back to the idle or the next loop |
 | `EndBeat` | the payoff seen **once per loop** (the full bucket lifted, the fish in the basket): P5 |
 
+*Kit (#355):* `BeatPhase` (+ `Done`), `Beat` (`Beat.Step(phase, s, ease, PoseKey)`, `Sample`, `Pose`/`Apply` over the loop pose, `ContactBetween`), `PoseKey`; the Contact sets `DollPose.hit` and `PeopleView.WorkHit` fires once (`HitEdge`, `WorkHitPoint.HitPoint` = the tool's end).
+
 ### 0.3 Easing names
 `Linear` · `In` (quad, speeds up) · `Out` (quad, slows down) · `Smooth` (smoothstep, today's `Smooth`) · `Snap`
 (cubic in; strikes, ≤ 0.15 s) · `Back` (out-back overshoot, s = 1.7; settles, lifts) · `Bounce` (ball landing:
 two bounces at 35 % then 12 % height) · `Wobble(A, f, τ)` (damped sine A·e^(−t/τ)·sin 2πft; shakes, quivers) ·
 `Pop` (scale 0 → 1.2 → 1 over 0.15 s; something appearing).
+
+*Kit (#355):* `Ease` + `Easing.Apply(ease, u)`; `Easing.Wobble(t, A, f, τ)`, `Easing.WobbleSeconds`, `Easing.Pop`, `Easing.BounceHeight` (`View/Beats/Easing.cs`).
 
 ### 0.4 Puff kinds (B1 draws them; one pooled mesh, one draw, like `ChatterView`)
 At most 24 live puffs, 160 bits. Flat low-poly bits in palette colours, no alpha: they **shrink to 0** over the last
@@ -71,6 +77,8 @@ At most 24 live puffs, 160 bits. Flat low-poly bits in palette colours, no alpha
 | `Steam` | 2 blobs | r 0.025 → 0.05 | rise 0.12 u/s, sideways sine 0.02 u | 0 | 1.2 | off-white |
 | `Snow` | 5 | cubes 0.014 | 0.6 u/s | 3.0 | 0.4 | white |
 
+*Kit (#355):* not in the kit (B1 #357 draws them); they start from `PeopleView.WorkHit(who, place, style, worldPos)`.
+
 ### 0.5 Answers (what the target does; the object owns its answer, The Sims rule)
 
 | Answer | Motion | Default numbers |
@@ -85,6 +93,8 @@ At most 24 live puffs, 160 bits. Flat low-poly bits in palette colours, no alpha
 | `Flare` | fire flames scale 1 → 1.3 → 1, `Back`, 0.35 s, + `Sparks` | the fire |
 | `Fill` | the container prop swaps empty → full at contact, with a `Pop` | bucket, basket dots |
 | `Turn` | bystanders within 0.8 u face the event for 1.5 s (`PeopleView.LookAt`, `PeopleView.cs:821`) | onlookers |
+
+*Kit (#355):* not in the kit: each answer is its target's view; the shakes use `Easing.Wobble`, `Pop` uses `Easing.Pop`, `Squash` `Ease.Back`.
 
 ### 0.6 Arc objects (pooled transforms on parametric arcs, no physics)
 `Arc(start, end, h, T, spin, landing)`: position = lerp(start, end, u) + up · 4h·u(1−u), u = t/T (`Linear` in time:
@@ -102,6 +112,8 @@ beat (play group, hunt plan, fisher), so the planner and the view agree.
 | `Snowball` | r 0.02 | `Burst` (`Snow` puff on whoever it hits) | B2 (stretch) |
 | `Splash` | – (a `Droplets` puff aimed at a point) | – | B3 |
 
+*Kit (#355):* `ArcShot.Throw(start, end, h, T, landing, launchAt, spin)`, `Landing` (Catch, Stick, BounceRoll, DropIn, Splash, Burst), `Arc.Sample` → `ArcSample` (position, rotation, `ArcStage`), `Arc.LandedBetween`, `ArcPool` (Launch, Sample, Release, Sweep) (`View/Beats/Arc.cs`). The meshes are the drawer's.
+
 ### 0.7 Groups and pairs (shared clock, roles)
 A **group** (play group, dance ring, staged moment) or **pair** (talk, hand-over, walk together, hug) holds one clock
 `t0`, a beat index, and per member a **role**, a target point and a facing. Members never run their own loop while in
@@ -113,6 +125,8 @@ it. Roles:
 - Pair: `Talker` / `Listener`, `Giver` / `Taker`, `Lead` / `Side` (walk together), `HugA` / `HugB`.
 - Onlookers: `Watcher` (`Turn`), `Cheerer`.
 
+*Kit (#355):* `GroupRole`, `BeatGroup.Cue(i, t)` → `MemberCue` (role, target, face, round, since, desync); `RingGroup` (Dancer/Centre, Watcher), `PairGroup` + `PairKind` (Talk, HandOver, WalkTogether, Hug), `ChaseGroup` (Chaser/Runner) (`View/Beats/BeatGroup.cs`).
+
 ### 0.8 De-sync and optional variants
 - **De-sync (P6):** every doll's loop already gets its own phase (`PeopleView.cs:428`). In a beat, each member also
   gets: a start delay 0–0.6 s, period × (0.9–1.1) and amplitude × (0.85–1.15), all from a hash of its key (never the
@@ -122,6 +136,8 @@ it. Roles:
   **0.1 s**; the puff spawns as the freeze ends. The plan clock keeps running; the view catches up by shortening that
   beat's `Follow` by 0.1 s. Key contacts: spear lands, fish yanked, tag touch, bucket dip, "found!", tree lands.
 - **`Hugs` (optional, flag, default off):** B7 and C3.
+
+*Kit (#355):* `Desync.Of(key, salt)`, `Desync.InGroup(seed, i, n)` (no three start within 0.15 s), `Desync.InStep`, `BeatHash` (own seeded hash); `BeatFlags.HitStop` (`Beat.Clock`/`Sample(since, hitStop)`), `BeatFlags.Hugs` (`View/Beats/BeatDesync.cs`, `Beat.cs`).
 
 ### 0.9 Principle tests (AnimBench; research 17 §4)
 
@@ -137,6 +153,8 @@ it. Roles:
 | Arc | an arc starts within 0.02 u of the hand and ends within 0.03 u of its target |
 
 P7 (a story always in view) is the director's (B11) test.
+
+*Kit (#355):* P1 Touch: `WorkHitPoint.HitPoint` is the `worldPos`; P6: `Desync.InGroup`; P8: a `Beat`'s Contact is ≥ `Beat.MinContact` and its Hold is a `PoseKey.Hold` step; Arc: `Arc.Sample` at `launchAt` and just before `LandAt`.
 
 ---
 
