@@ -168,6 +168,10 @@ namespace AquariumCiv.View
             Row(); // #365 B9 meals and the fire
             if (Btn("Meal now")) last = PeopleView.DebugMealNow();
             if (Btn("Poke the fire now")) last = PeopleView.DebugPokeFireNow();
+            // #367 the background-life director: a story always in progress on screen, as busy as the population says
+            GUILayout.Label(StoryDirectorView.DebugStatus());
+            Row();
+            if (Btn("Story density: off / normal / high (now " + StoryDirectorView.Density + ")")) last = StoryDirectorView.CycleDensity();
             EndRow();
             Row(); // #359 kids' play 2: at the real water, round a real tree, hide and seek round real cover, snowballs
             if (Btn("Kids play: splash")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Splash);

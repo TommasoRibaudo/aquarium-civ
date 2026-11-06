@@ -96,16 +96,21 @@ namespace AquariumCiv.Sim
             population < CampFromPop ? MomentBoxSize.Tribe : population < VillageFromPop ? MomentBoxSize.Camp : population < TownFromPop ? MomentBoxSize.Village : MomentBoxSize.Town;
 
         /// <summary>Watched minutes per moment for this population: 15 / 10 / 8 / 6, linear between the rows.</summary>
-        public static double IntervalMinutes(int population)
+        public static double IntervalMinutes(int population) => ByPopulation(population, AnchorMinutes);
+
+        /// <summary>#367: the population curve itself, one value per row (tribe 6, camp 10, village 22, town 30), linear between the
+        /// rows, flat outside. The background-life director (Life/StoryDirector.cs) scales on it too, so both get busy alike.</summary>
+        public static double ByPopulation(int population, double[] atRows)
         {
-            if (population <= AnchorPop[0]) return AnchorMinutes[0];
+            if (atRows == null || atRows.Length != AnchorPop.Length) throw new System.ArgumentException("one value per row", nameof(atRows));
+            if (population <= AnchorPop[0]) return atRows[0];
             for (int i = 1; i < AnchorPop.Length; i++)
                 if (population <= AnchorPop[i])
                 {
                     double t = (population - AnchorPop[i - 1]) / (double)(AnchorPop[i] - AnchorPop[i - 1]);
-                    return AnchorMinutes[i - 1] + (AnchorMinutes[i] - AnchorMinutes[i - 1]) * t;
+                    return atRows[i - 1] + (atRows[i] - atRows[i - 1]) * t;
                 }
-            return AnchorMinutes[AnchorMinutes.Length - 1];
+            return atRows[atRows.Length - 1];
         }
 
         /// <summary>The rest after a moment (watched minutes): 8 / 6 / 4 / 3.</summary>

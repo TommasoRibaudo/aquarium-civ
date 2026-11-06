@@ -1045,6 +1045,8 @@ namespace AquariumCiv.View
         KidPlayDirector kidPlay;
         /// <summary>#358: the play groups (tag, ball, the rabbit chase, the ring dance) and the panel's play cheats.</summary>
         public KidPlayDirector KidPlay => kidPlay ??= new KidPlayDirector(this);
+        /// <summary>#367: the clock the play groups and pair beats run on (real seconds of posing), for the background-life director.</summary>
+        public float PoseClock => poseClock;
         internal Land LandForPlay => Box != null ? Box.land : null;
         internal BoxView BoxForPlay => Box; // #359
         internal PegDollView ViewOf(int key) => dolls.TryGetValue(key, out var d) ? d.view : null;
