@@ -349,5 +349,50 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(cam.TickFlight(2f), "and it arrives");
             Object.DestroyImmediate(go);
         }
+        /// <summary>#376 (playtest #337): zooming with two fingers on the glass knocked it. Two fingers landing together, one lifting
+        /// and then the other, is a pinch, not a tap; a single tap right after still knocks.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator APinchOnTheGlassIsNeverAKnock()
+        {
+            yield return OpenSlice(seed: 7531, skipFirstRun: true);
+            var glass = GlassVoice.Instance;
+            var a = new Vector2(-1f, -1f);
+            for (float fy = 0.3f; fy <= 0.7f && a.x < 0f; fy += 0.03f)
+                for (float fx = 0.2f; fx <= 0.7f; fx += 0.05f)
+                {
+                    var p = new Vector2(Screen.width * fx, Screen.height * fy);
+                    var q = p + new Vector2(Screen.width * 0.1f, 0f);
+                    if (CareView.Instance.GlassAt(p) && CareView.Instance.GlassAt(q) && PersonCardView.Instance.Pick(p) <= 0 && PersonCardView.Instance.Pick(q) <= 0) { a = p; break; }
+                }
+            Assume.That(a.x, Is.GreaterThanOrEqualTo(0f), "some glass has no doll behind it");
+            var b = a + new Vector2(Screen.width * 0.1f, 0f);
+            int knocks = glass.Knocks;
+            int id1 = 90, id2 = 91;
+            BeginTouch(id1, a, queueEventOnly: true);
+            BeginTouch(id2, b, queueEventOnly: true);
+            yield return null; yield return null;
+            EndTouch(id1, a, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+            EndTouch(id2, b, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+            yield return Wait(GlassVoice.TapGap + 0.3f);
+            Assert.AreEqual(knocks, glass.Knocks, "a pinch is not a knock");
+            // One finger down, a second joins, both lift: still nothing.
+            BeginTouch(id1 + 2, a, queueEventOnly: true);
+            yield return null; yield return null;
+            BeginTouch(id2 + 2, b, queueEventOnly: true);
+            yield return null; yield return null;
+            EndTouch(id2 + 2, b, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+            EndTouch(id1 + 2, a, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+            yield return Wait(GlassVoice.TapGap + 0.3f);
+            Assert.AreEqual(knocks, glass.Knocks, "a second finger joining spoils the tap");
+            // And a fresh single tap still knocks, at once.
+            yield return TapAt(a);
+            yield return Until(() => glass.Knocks > knocks, 3f);
+            Assert.AreEqual(knocks + 1, glass.Knocks, "a single tap still knocks");
+            AssertNoErrors("pinch knock");
+        }
     }
 }

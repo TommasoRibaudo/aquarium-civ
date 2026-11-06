@@ -270,6 +270,7 @@ namespace AquariumCiv.Sim
             if (State.dilemmas.Any(d => d.defId == def.id)) return "asked already in this box";  // never repeats in a box
             if (State.era < def.minEra || State.era > def.maxEra) return "not in this era";
             if (!string.IsNullOrEmpty(def.needs) && !Has(def.needs)) return "a building it needs is missing";
+            if (def.needsDeath && !AnyoneHasDied) return NobodyDiedWhy;
             if (def.leaderElder || def.termEndingMonths > 0)
             {
                 var lseat = SeatOf(LeaderOf(State.era));
@@ -295,6 +296,14 @@ namespace AquariumCiv.Sim
                 a = ranked[0].id; b = ranked[1].id;
             }
             return null;
+        }
+
+        public const string NobodyDiedWhy = "nobody has died yet";
+
+        /// <summary>#346: true once any person of this box has died (a notable, in the camp or apart). Words about the lost wait for this.</summary>
+        public bool AnyoneHasDied
+        {
+            get { foreach (var n in State.notables) if (!n.alive) return true; return false; }
         }
 
         List<(DilemmaDef def, int a, int b)> EligibleDefs(DilemmaSize? size = null)
@@ -611,6 +620,7 @@ namespace AquariumCiv.Sim
             foreach (var def in DilemmaCatalog)
             {
                 if (defId != null && def.id != defId) continue;
+                if (defId != null && def.needsDeath && !AnyoneHasDied) DebugKillOldest(); // #346: a cheat asked for it by name: the death it waits for comes first
                 if (DefHolds(def, out int a, out int b)) return RaiseDilemma(def, a, b);
             }
             return null;

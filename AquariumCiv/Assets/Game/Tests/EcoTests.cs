@@ -590,5 +590,46 @@ namespace AquariumCiv.Tests
             away.Advance(6);
             Assert.AreEqual(Fingerprint(live.State), Fingerprint(away.State), "a week away equals live stepping with both on");
         }
+
+        static bool ClearOfGlass(int c) => SiteMap.I(c) >= 3 && SiteMap.I(c) < SiteMap.NX - 3 && SiteMap.J(c) >= 3 && SiteMap.J(c) < SiteMap.NZ - 3;
+
+        // #378 (playtest #342): a tree planted in the last cells by the glass poked through it.
+        [Test]
+        public void TheKeepersTree_IsNeverPlantedOnTheBedsEdge_ItSnapsInToTheNearestGoodCell()
+        {
+            var sim = EcoWorld();
+            sim.DebugOpenCampGate();
+            sim.State.eco.milestoneKeys.Add(EcoMilestones.SeedUnlocked); sim.State.eco.milestoneMonths.Add(0);
+            var land = sim.EcoGround;
+            int m = EcoModel.TreeEdgeMargin;
+            // find an edge cell on each wall that is dry ground once moved in (not the hollow)
+            int tried = 0;
+            for (int w = 0; w < 4; w++)
+            {
+                for (int k = 6; k < 30 && tried <= w; k++)
+                {
+                    int i = w == 0 ? 0 : w == 1 ? SiteMap.NX - 1 : k, j = w == 2 ? 0 : w == 3 ? SiteMap.NZ - 1 : k;
+                    int edge = SiteMap.Index(i, j);
+                    int snapped = sim.TreeCellFor(SiteMap.CXc(edge), SiteMap.CZc(edge));
+                    if (snapped < 0) continue; // the hollow reaches this stretch: refused, also fine
+                    tried++;
+                    Assert.IsTrue(ClearOfGlass(snapped), "edge cell " + edge + " snapped to a cell inside the bed");
+                    Assert.IsFalse(land.InBasin(snapped));
+                    Assert.LessOrEqual(Math.Abs(SiteMap.I(snapped) - i), m + 2);
+                }
+            }
+            Assert.Greater(tried, 0, "at least one edge stretch is dry");
+            // an interior dry cell is unchanged
+            int inner = -1;
+            for (int c = 0; c < EcoLand.N && inner < 0; c++) if (EcoModel.InTreeBed(c) && !land.InBasin(c) && sim.State.eco.cover[c] != (byte)EcoCover.Water) inner = c;
+            Assert.AreEqual(inner, sim.TreeCellFor(SiteMap.CXc(inner), SiteMap.CZc(inner)), "an inside cell is never moved");
+            // and planting on the very corner lands inside the bed
+            int corner = SiteMap.Index(0, 0);
+            if (sim.TreeCellFor(SiteMap.CXc(corner), SiteMap.CZc(corner)) >= 0)
+            {
+                Assert.IsTrue(sim.PlantTree(SiteMap.CXc(corner), SiteMap.CZc(corner)));
+                Assert.IsTrue(ClearOfGlass(sim.State.eco.treeCell), "the tree stands clear of the glass");
+            }
+        }
     }
 }
