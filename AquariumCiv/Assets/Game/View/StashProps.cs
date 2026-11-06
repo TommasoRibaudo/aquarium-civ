@@ -64,6 +64,45 @@ namespace AquariumCiv.View
             return n;
         }
 
+        // ---- #361: the pile answers a tipped basket (animation-specs B1.f: Squash 0.88 -> 1)
+        /// <summary>How far the pile squashes on a landing (0.12 = to 0.88), and how long it takes to settle.</summary>
+        public const float SquashDepth = 0.12f, SquashSeconds = 0.6f;
+        float bumpAge = -1f, bumpDepth;
+        /// <summary>Squashes the pile once (and a pile already settling is squashed again from the top). <paramref name="depth"/> 0.12 is the spec's 0.88.</summary>
+        public void Bump(float depth = SquashDepth)
+        {
+            if (bumpAge >= 0f && bumpDepth * Mathf.Exp(-bumpAge / 0.12f) >= depth) return; // still squashed deeper than this: let it settle
+            bumpAge = 0f; bumpDepth = depth;
+        }
+        /// <summary>The pile's current squash (1 = at rest), for tests.</summary>
+        public float SquashNow => root != null ? root.localScale.y : 1f;
+        /// <summary>The top of the pile in world space (the landing spot of a tipped basket). False while the stash isn't drawn.</summary>
+        public bool TryGetPileTop(out Vector3 world)
+        {
+            world = default;
+            if (root == null || !drawn || box == null || box.land == null || !root.gameObject.activeSelf) return false;
+            world = root.parent.TransformPoint(box.land.OnGround(shown.x, shown.z) + Vector3.up * 0.04f);
+            return true;
+        }
+
+        void LateUpdate()
+        {
+            if (bumpAge < 0f || root == null) return;
+            bumpAge += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            if (bumpAge >= SquashSeconds || !drawn || box == null || box.land == null)
+            {
+                bumpAge = -1f;
+                root.localScale = Vector3.one; root.localPosition = Vector3.zero;
+                return;
+            }
+            float k = 1f - bumpDepth * Mathf.Exp(-bumpAge / 0.12f) * Mathf.Cos(bumpAge * Mathf.PI * 2f * 2f);
+            float w = 1f + (1f - k) * 0.5f;
+            var scale = new Vector3(w, k, w);
+            var pivot = box.land.OnGround(shown.x, shown.z);
+            root.localScale = scale;
+            root.localPosition = pivot - Vector3.Scale(pivot, scale); // squashed about the pile's foot
+        }
+
         void OnEnable() => box = GetComponent<BoxView>();
 
         void OnDisable()

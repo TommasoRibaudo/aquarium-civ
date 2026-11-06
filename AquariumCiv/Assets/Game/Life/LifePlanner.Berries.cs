@@ -42,9 +42,38 @@ namespace AquariumCiv.Life
             return adults;
         }
 
+        readonly Dictionary<int, (float start, float until)> debugTips = new();
+
+        /// <summary>"Tip at the stash now": up to <paramref name="grownUps"/> grown-ups (not the toolmaker) walk to the camp's stash pile with a basket and tip it
+        /// (a TipLoad block of <paramref name="hours"/> view hours: the beat plays once they stand still at the pile). Returns how many, or -1 when there is no stash pile
+        /// (it is the camp's: from the village on the load goes to the fire).</summary>
+        public int DebugTipNow(ViewTime now, int grownUps = 3, float hours = 0.25f)
+        {
+            Sync();
+            if (stash.kind != PlaceKind.Stash) return -1;
+            debugTips.Clear();
+            int n = 0;
+            foreach (var p in people)
+                if (p.Adult && p.job != JobType.Toolmaker && n < grownUps) { debugTips[p.key] = (now.hour, now.hour + hours); n++; }
+            return n;
+        }
+
         bool DebugPickerAt(Person p, ViewTime t, out PersonActivity a)
         {
             a = default;
+            if (debugTips.Count > 0 && debugTips.TryGetValue(p.key, out var tip))
+            {
+                if (t.hour >= tip.until) debugTips.Remove(p.key);
+                else if (t.hour >= tip.start)
+                {
+                    a = new PersonActivity
+                    {
+                        who = p.who, kind = ActivityKind.TipLoad, place = stash, from = stash, prop = Prop.Basket,
+                        start = tip.start, end = tip.until, progress = (t.hour - tip.start) / (tip.until - tip.start), pace = 1f, chronicleId = -1,
+                    };
+                    return true;
+                }
+            }
             if (debugPickers.Count == 0 || !debugPickers.TryGetValue(p.key, out var d)) return false;
             if (t.hour >= d.until || t.hour < d.start) { if (t.hour >= d.until) debugPickers.Remove(p.key); return false; }
             var place = d.cell < 0 ? Place.Land(PlaceKind.Stream) : Place.Land(PlaceKind.BushCell, d.cell);
