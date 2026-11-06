@@ -252,12 +252,12 @@ namespace AnimBench
             var checkedArcs = new HashSet<ObjectTrack>();
             foreach (var e in t.Clip.Expect.Arcs)
             {
-                var o = arcs.FirstOrDefault(a => a.Spec.Kind == e.Kind && (e.By == null || (a.Spec.Arc.From ?? "").Split('.')[0] == e.By));
+                var o = arcs.FirstOrDefault(a => a.Spec.Kind == e.Kind && (e.By == null || a.Spec.Arc.Thrower == e.By));
                 if (o == null) { r.Fail($"no {e.Kind} arc from {e.By} to {e.Target}: the {e.Kind} never leaves the hand"); continue; }
                 checkedArcs.Add(o);
                 CheckOneArc(t, o, e.By, e.Target ?? o.Spec.Arc.To, r);
             }
-            foreach (var o in arcs) if (!checkedArcs.Contains(o)) CheckOneArc(t, o, (o.Spec.Arc.From ?? "").Split('.')[0], o.Spec.Arc.To, r);
+            foreach (var o in arcs) if (!checkedArcs.Contains(o)) CheckOneArc(t, o, o.Spec.Arc.Thrower, o.Spec.Arc.To, r);
             return r;
         }
 
@@ -318,7 +318,8 @@ namespace AnimBench
             {
                 var hand = d.Frames[f0];
                 float dh = Mathf.Min((o.Frames[f0].Pos - hand.HandR).magnitude, (o.Frames[f0].Pos - hand.Tip).magnitude);
-                if (dh > width) r.Fail($"{o.Spec.Id} starts {dh:0.000} u from {by}'s hand (> {width:0.000})");
+                float startReach = t.Clip.Expect.ArcReach ?? width; // #364: a fish leaves the water at the line's end
+                if (dh > startReach) r.Fail($"{o.Spec.Id} starts {dh:0.000} u from {by}'s hand (> {startReach:0.000})");
             }
             Vector3 c = default; float rad = 0f; bool found = false;
             int dot = target != null ? target.LastIndexOf('.') : -1;

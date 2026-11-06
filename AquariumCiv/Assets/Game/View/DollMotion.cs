@@ -293,10 +293,8 @@ namespace AquariumCiv.View
 
                 case DollStyle.Fish:
                 {
-                    // The rod held out over the water, a slow bob and now and then a tug.
-                    float u = Frac(t / 4.5f);
-                    float tug = u > 0.85f ? Mathf.Sin((u - 0.85f) / 0.15f * Mathf.PI) * 22f : 0f;
-                    p.armR = new Vector3(118f + Mathf.Sin(t * 1.1f) * 3f + tug, 0, 6f);
+                    // The rod held out over the water, a slow bob. #364: the tugs, bites and the end beat are FishBeats.Apply's (PeopleView and AnimBench call it).
+                    p.armR = new Vector3(118f + Mathf.Sin(t * 1.1f) * 3f, 0, 6f);
                     p.armL = new Vector3(70f, 0, -6f);
                     p.extend = hasProp;
                     p.lean = -2f;

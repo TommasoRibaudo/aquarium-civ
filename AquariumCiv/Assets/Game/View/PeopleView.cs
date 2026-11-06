@@ -401,7 +401,10 @@ namespace AquariumCiv.View
             // #360: drawing water: kneel at the real water's edge, facing the water (the slot's side of it), not in the middle of the pond.
             bool drawing = a.kind == ActivityKind.FetchWater && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && a.place.kind is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
             if (drawing) target = DrawStand(land, a.place.kind, spot, target, a.slot, out face);
-            if (!hunting && !tenting && !a.moving && !drawing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            // #364: fishing: the fisher stands 0.06 u back from the real water edge facing the water (the water run's spot), so the line's end is on the water
+            bool fishing = a.kind == ActivityKind.Fish && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
+            if (fishing) target = DrawStand(land, PlaceKind.Pond, spot, target, a.slot, out face);
+            if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
@@ -458,6 +461,17 @@ namespace AquariumCiv.View
             if (kind == PropKind.BucketEmpty && a.kind == ActivityKind.FetchWater && !a.moving && a.end > a.start &&
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
                 kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
+            // #364: a fisher's block runs on its own seconds (the cheat's shift on top) and what is left of it: the bites, the yank, the end beat (FishBeats);
+            // in the end beat the line is in and the last catch is held up on the stick.
+            float fishS = 0f, fishLeft = 99f;
+            bool fishNow = style == DollStyle.Fish && a.kind == ActivityKind.Fish && !a.moving && !hidden;
+            if (fishNow)
+            {
+                float at = a.end > a.start ? Mathf.Clamp(now.hour, a.start, a.end) : a.start;
+                fishS = LifeClock.RealSecondsBetween(a.start, at) + FishingView.ShiftOf(a.who.Key);
+                fishLeft = a.end > a.start ? LifeClock.RealSecondsBetween(at, a.end) : 99f;
+                if (FishBeats.HoldsFish(a.who.Key, fishS, fishLeft)) (kind, slot) = (PropKind.Fish, PropSlot.Hand);
+            }
             if (hunting) (kind, slot) = HuntProp(a, kind, slot);   // #362: the spear leaves the hand; the catch is lifted up
             if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
@@ -523,6 +537,7 @@ namespace AquariumCiv.View
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
                 else if (style == DollStyle.Walk && a.moving) WaterBeats.Heavy(ref pose, d.stride);
             }
+            if (fishNow) FishBeats.Apply(ref pose, fishS, a.who.Key, fishLeft); // #364
             // #363 B7: the pair beats lie over the pose the loop drew.
             if (paired) PairStage.Apply(pairEv, pairCue.index, time, ref pose, d.stride);
             else if (style == DollStyle.Talk && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit
@@ -551,11 +566,19 @@ namespace AquariumCiv.View
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
             if (style == DollStyle.TipBasket) BasketTip?.Invoke(a.who, v, tipSince); // #361: every frame of the tip (BerryPickView pours the berries)
+            Vector3 fishLine = default;
+            if (fishNow)
+            {   // #364: the line's end, on the water, a rod's reach out along the way the fisher faces: the splash is there and the fish leaves from there
+                float level = KidPlay.PondLevel(out float pondLevel) ? pondLevel : Land.WaterY;
+                var fwd = Quaternion.Euler(0, d.yaw, 0) * Vector3.back;
+                fishLine = peopleRoot.TransformPoint(new Vector3(ground.x, level, ground.z) + fwd * (FishBeats.LineReach * s * dollZoomScale));
+                Fishing?.Invoke(a.who, v, fishS, fishLeft, fishLine);
+            }
             if (struck)
-            {   // #355; #362: a throw's hit is the spear coming down, so the puff is where it lands, not at the hand
+            {   // #355; #362: a throw's hit is the spear coming down, so the puff is where it lands, not at the hand; #364: a yank's is the line's end
                 var hitAt = hunting && a.hunt == HuntPhase.Strike && huntPlan != null
                     ? peopleRoot.TransformPoint(HuntStage.LandPoint(huntPlan, (hx, hz) => Box.SurfaceHeight(hx, hz)))
-                    : WorkHitPoint.HitPoint(v);
+                    : fishNow ? fishLine : WorkHitPoint.HitPoint(v);
                 WorkHit?.Invoke(a.who, a.place, style, hitAt);
             }
         }
@@ -1069,6 +1092,9 @@ namespace AquariumCiv.View
         /// <see cref="BeatPhase.Contact"/>), once per contact. Who, where they work, the move, and the tool's end in world space
         /// (<see cref="WorkHitPoint.HitPoint"/>). Puffs (HitFx) and the targets' answers subscribe here.</summary>
         public event System.Action<PersonRef, Place, DollStyle, Vector3> WorkHit;
+
+        /// <summary>#364: every frame a fisher stands fishing: who, the doll, the block's seconds so far (with the cheat's shift), the seconds left, and the line's end (world, on the water).</summary>
+        public event System.Action<PersonRef, PegDollView, float, float, Vector3> Fishing;
         /// <summary>#361: every frame a doll tips its basket onto the stash pile: who, their view, seconds into the tip.</summary>
         public event System.Action<PersonRef, PegDollView, float> BasketTip;
 

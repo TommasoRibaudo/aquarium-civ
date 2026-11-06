@@ -140,6 +140,9 @@ namespace AquariumCiv.View
             if (Btn("Frogs now")) last = EcoDebug.FrogsNow();
             if (Btn("Ducks now")) last = EcoDebug.DucksNow();
             EndRow();
+            Row(); // #364
+            if (Btn("Fish bite now")) last = FishingView.DebugBiteNow();
+            EndRow();
             Row(); // #361
             if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
             if (Btn("Root dig now")) last = BerryPickView.DebugRootDigNow();
