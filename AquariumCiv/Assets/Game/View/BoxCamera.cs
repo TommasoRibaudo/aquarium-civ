@@ -620,8 +620,18 @@ namespace AquariumCiv.View
             if (Mathf.Approximately(z0, z1)) return;
             if (GroundAt(screenPoint, out var g)) target = BoxCameraMath.ZoomTarget(target, new Vector3(g.x, target.y, g.z), z0, z1);
             zoom = z1;
+            LiftPitchToFloor();
             StayOnLand();
             Apply();
+        }
+
+        /// <summary>#377 (playtest #336): the pitch floor rises as you zoom out (14 close, 24 at the full box). Left to the spring, a pinch out kept tilting the camera up for a second
+        /// after the fingers stopped (height still climbing 4 units after the zoom hit its limit). The floor now lifts the pitch in the same frame, so the pitch is a plain function of the zoom.</summary>
+        void LiftPitchToFloor()
+        {
+            float floor = BoxCameraMath.PitchFloor(zoom);
+            if (targetPitch < floor) targetPitch = floor;
+            if (pitch < floor) { pitch = floor; lastPitch = pitch; }
         }
 
         /// <summary>The rubber band and a pinch towards the wall both stop at the land's edge.</summary>
