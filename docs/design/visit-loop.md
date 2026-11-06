@@ -32,6 +32,10 @@ Status: **model signed off by the user, 2026-11-06** (answers in §4; decisions.
    notable's newborn from two names the parents offer). A choice is raised only while you watch, or held for your next
    open, where it is staged in the box first. It **never resolves unseen**: it closes when you answer, when you pick
    "Let them decide" (credited as your choice), after being shown on 3 visits, or if its people are gone.
+   **Paced by time, not by opens** [est]: a new choice needs a pending slot (at most one open at a time) and a gap of
+   about **3 real hours** (watched or away) since the last one was raised, with big ones every ~6–10 h and small
+   ones between. Someone opening every 5 minutes sees the same waiting choice, or none; someone away for a night
+   finds one, never a stack. The director's moments work the same way (a budget per watched minute, not per open).
    **Not a blocking pop-up** (research 16 §4.4: the failure was unseen lapses, not skipping; games that keep running
    never force a choice; a modal hides the box you answer in; pillars 2 and 4).
 5. **Every choice leaves something in the box** within a game year (a feather, a roof, a stone), its callback is a
