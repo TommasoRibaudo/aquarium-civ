@@ -230,8 +230,18 @@ namespace AquariumCiv.View.PlayTests
                 for (int i = 0; i < 40; i++) yield return null;
                 sim.AddMess(1f, 0f); // the glass fogs over
                 for (int i = 0; i < 20; i++) yield return null;
-                var weed = care.Props.AllPieces.FirstOrDefault(p => !p.leaving && p.kind == MessProps.Kind.Weed && OnScreen(ScreenOf(p)));
-                Assert.IsNotNull(weed, "a weed patch in view");
+                // Batch 1: from the default pitch most of the land is seen through the open top, so "a weed in view" was often not behind
+                // any pane. Take one that is; failing that, look in lower, through the front glass.
+                MessProps.Piece Pick() => care.Props.AllPieces.FirstOrDefault(p => !p.leaving && p.kind == MessProps.Kind.Weed && OnScreen(ScreenOf(p)) && care.BehindDirtyGlass(Camera.main, p));
+                var weed = Pick();
+                if (weed == null)
+                {
+                    var rig = Camera.main.GetComponent<BoxCamera>();
+                    rig.pitch = 14f; rig.Apply();
+                    for (int i = 0; i < 30; i++) yield return null;
+                    weed = Pick();
+                }
+                Assert.IsNotNull(weed, "a weed patch in view, behind the glass");
                 Assert.IsTrue(care.BehindDirtyGlass(Camera.main, weed), "precondition: the glass in front of the weed is grimy");
                 hud.SetHand(GameHud.KitTool.Tweezers);
                 yield return null;

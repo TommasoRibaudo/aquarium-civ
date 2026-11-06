@@ -83,7 +83,7 @@ At most 24 live puffs, 160 bits. Flat low-poly bits in palette colours, no alpha
 
 | Answer | Motion | Default numbers |
 |---|---|---|
-| `Sway` | rotate about the base, away from the actor, `Wobble` | bush 7°, 6 Hz, τ 0.18 s (≈ 0.5 s visible); tree crown 4°, 4 Hz, τ 0.3 s |
+| `Sway` | rotate about the base, away from the actor, `Wobble` | bush 11°, 6 Hz, τ 0.18 s (≈ 0.5 s visible); tree crown 6°, 4 Hz, τ 0.3 s (raised from 7° / 4° in the batch-1 Editor pass: they didn't read on a phone) |
 | `Jolt` | drop 0.012 u and back, `Wobble` 8 Hz τ 0.12 s | tent frame, stone, stash pile |
 | `Squash` | scale y 0.88 → 1, `Back`, 0.2 s | basket or bucket set down, the pile when a load lands |
 | `Pop` | scale `Pop` | a berry in the basket, a fish, a new accent |
@@ -209,7 +209,7 @@ a pool test (25 hits in one frame → 24 puffs, oldest dropped, no allocation).
 ### B1.f Shakes on targets
 | Target | Answer | Notes |
 |---|---|---|
-| Bush | `Sway` 7°, 6 Hz, τ 0.18 s + 1–2 `Leaves` (none in winter) + its berry dots move with it | bushes are baked into the land's chunk meshes (`View/BoxView.Eco.cs:69-124`): see "Hard in code" |
+| Bush | `Sway` 11°, 6 Hz, τ 0.18 s + 1–2 `Leaves` (none in winter) + its berry dots move with it | bushes are baked into the land's chunk meshes (`View/BoxView.Eco.cs:69-124`): see "Hard in code" |
 | Tree | crown `Sway` 4°, 4 Hz, τ 0.3 s + 1–2 `Leaves` | same |
 | Tent frame | `Jolt` (#284 hammer `hit`) + `Dust` at the post foot | `Life/LifePlanner.Tents.cs` |
 | Stone, stash pile | `Squash` 0.88 → 1 | `CampStash` |
@@ -404,7 +404,7 @@ ball's, `Snowball` arc h 0.12, `Snow` puff on the target kid, who flinches and t
 | Actors | a gatherer with `Basket` (left hand), at **a real bush** (`PlaceKind.BushCell`, 0.17 u off its centre, facing it: `PeopleView.cs:626-632`) |
 | Wind-up | arm pulls back to x 40, 0.15 s; then reaches up and in: arm x 40 → 110, lean 32 → 38, 0.35 s `Smooth` |
 | Contact | hand at a berry dot (arm x 110) → `hit` |
-| Answer | bush `Sway` 7° + 1–2 `Leaves`; the dot leaves the bush |
+| Answer | bush `Sway` 11° + 1–2 `Leaves`; the dot leaves the bush |
 | Act | the arm snaps back to x 70 (0.12 s `Snap`); a `Berry` arcs from the hand into the basket (h 0.06, T 0.3 s) |
 | Hold | basket `Pop`; 0.2 s still |
 | Basket | shows 0 → 5 berry dots on top as picks add up (a dot per pick, up to 5) |

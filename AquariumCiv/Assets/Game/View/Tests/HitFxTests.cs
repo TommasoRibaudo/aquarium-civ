@@ -109,7 +109,7 @@ namespace AquariumCiv.View.Tests
         public void ShakeDecay_StartsAtZero_Peaks_AndDiesBelow6Percent()
         {
             var bush = ShakeSpec.Bush;
-            Assert.AreEqual(7f, bush.degrees); Assert.AreEqual(6f, bush.hz); Assert.AreEqual(0.18f, bush.tau);
+            Assert.AreEqual(11f, bush.degrees); Assert.AreEqual(6f, bush.hz); Assert.AreEqual(0.18f, bush.tau);
             Assert.AreEqual(0f, ShakeMath.Wobble(bush, 0f));
             Assert.AreEqual(0f, ShakeMath.Wobble(bush, -1f), "nothing before the hit");
             float peak = 0f;
@@ -155,7 +155,7 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(0.1f, set.A[0].z, 1e-4f);
             Assert.AreEqual(1f, set.C[0].x, 1e-5f, "the direction is a unit vector");
             Assert.Less(set.A[1].z, 0f, "the delayed one waits (negative age)");
-            Assert.AreEqual(Mathf.Tan(7f * Mathf.Deg2Rad), set.A[0].w, 1e-5f);
+            Assert.AreEqual(Mathf.Tan(ShakeSpec.Bush.degrees * Mathf.Deg2Rad), set.A[0].w, 1e-5f);
             Assert.AreEqual(1, set.Step(10.0 + ShakeSpec.Bush.Seconds + 0.01), "the bush is done; the delayed tree is not");
             for (int i = 0; i < ShakeSet.Max + 4; i++) set.Add(ShakeSpec.Bush, new Vector3(i, 0f, 0f), 0f, Vector3.right, 20.0);
             Assert.AreEqual(ShakeSet.Max, set.Step(20.05));

@@ -134,7 +134,7 @@ namespace AquariumCiv.EditorTools
             Time.captureDeltaTime = 1f / s.fps;
             if (cam == null)
             {
-                var go = new GameObject("AnimLabLiveCamera") { hideFlags = HideFlags.DontSave };
+                var go = new GameObject("AnimLabLiveCamera"); // DontDestroyOnLoad only: a DontSave root outlives play mode (LeakCheck)
                 Object.DontDestroyOnLoad(go);
                 cam = go.AddComponent<Camera>();
                 cam.enabled = false;
@@ -273,7 +273,7 @@ namespace AquariumCiv.EditorTools
             public static void Ensure()
             {
                 if (instance != null) return;
-                var go = new GameObject("AnimLabLiveRunner") { hideFlags = HideFlags.DontSave };
+                var go = new GameObject("AnimLabLiveRunner"); // DontDestroyOnLoad only: dies with play mode
                 Object.DontDestroyOnLoad(go);
                 instance = go.AddComponent<Runner>();
             }

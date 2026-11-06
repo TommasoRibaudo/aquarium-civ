@@ -230,7 +230,13 @@ namespace AquariumCiv.Life
                     float stalkAt = start + toFire + TakeSpearHours + WalkOutHours(plan);   // exactly as BuildSteps lays the steps out
                     strikeAt = stalkAt + Hrs(stalkAt, plan.StalkSeconds);
                 }
-                if (!RabbitHopsBetween(plan.rabbitId, day, strikeAt, HuntTiming.StrikeSeconds + 0.3f)) break;
+                // Batch 1: the geometry is re-aimed at the strike below; the strike must not move with it (a rabbit that hopped in
+                // between left the spear 0.4 off and the rabbit hopping through the throw: EcoHuntTests/HuntThrowTests).
+                huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
+                Geometry(plan, fx, fz, tx, tz);
+                float stalkAt2 = start + toFire + TakeSpearHours + WalkOutHours(plan);
+                bool settled = Math.Abs(stalkAt2 + Hrs(stalkAt2, plan.StalkSeconds) - strikeAt) < 1e-4f;
+                if (settled && !RabbitHopsBetween(plan.rabbitId, day, strikeAt, HuntTiming.StrikeSeconds + 0.3f)) break;
                 plan.stalkExtra += 0.4f;
             }
             huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);

@@ -91,7 +91,10 @@ namespace AquariumCiv.View
         public static HitFx Ensure()
         {
             if (Instance != null) return Instance;
-            var g = new GameObject("HitFx") { hideFlags = HideFlags.DontSave };
+            // In play mode it lives in the scene and dies with it: a parentless DontSave root outlives the scene and play mode
+            // (PlayTestBase.LeakCheck failed every GestureEdge test on one). Out of play mode (AnimLab, edit tests) nothing may be saved.
+            var g = new GameObject("HitFx");
+            if (!Application.isPlaying) g.hideFlags = HideFlags.DontSave;
             return g.AddComponent<HitFx>();
         }
 
