@@ -75,17 +75,21 @@ namespace AnimBench
             {
                 var d = t.Doll(h.Doll);
                 r.Marks.Add(new PrincipleMark { Doll = h.Doll, Kind = "contact", T0 = h.T0, T1 = h.T1 });
-                if (h.Target == null) { r.Fail($"{h.Doll} hits at {h.T0:0.00}s with no target (the verb has no object)"); continue; }
+                // #362: a throw's hit is the thrown thing coming down: then it is the spear that has to touch its target
+                var landing = t.Objects.FirstOrDefault(o => o.Spec.Arc != null && o.Spec.Arc.To != null && Math.Abs(o.Spec.Arc.T1 - h.T0) <= 0.15f && (o.Spec.Arc.From ?? "").StartsWith(h.Doll + "."));
+                string aim = landing != null ? landing.Spec.Arc.To : h.Target;
+                if (aim == null) { r.Fail($"{h.Doll} hits at {h.T0:0.00}s with no target (the verb has no object)"); continue; }
                 float best = float.MaxValue; int bestF = h.F0;
                 for (int f = h.F0; f <= h.F1; f++)
                 {
-                    if (!t.TargetAt(h.Target, f, out var c, out var rad)) { r.Fail($"{h.Doll}'s target '{h.Target}' is not in the clip"); best = -1f; break; }
-                    float dist = Mathf.Max(0f, (d.Frames[f].Tip - c).magnitude - rad);
+                    if (!t.TargetAt(aim, f, out var c, out var rad)) { r.Fail($"{h.Doll}'s target '{aim}' is not in the clip"); best = -1f; break; }
+                    var toolAt = landing != null ? landing.Frames[f].Pos : d.Frames[f].Tip;
+                    float dist = Mathf.Max(0f, (toolAt - c).magnitude - rad);
                     if (dist < best) { best = dist; bestF = f; }
                 }
                 if (best < 0f) continue;
-                if (best > d.Width) r.Fail($"{h.Doll} hits at {h.T0:0.00}s but its tool is {best:0.000} u from {h.Target} (> one doll-width {d.Width:0.000}; tool tip at height {d.Frames[bestF].Tip.y:0.00})");
-                else r.Note($"{h.Doll} hits {h.Target} at {h.T0:0.00}s, tool {best:0.000} u off it (frame {bestF})");
+                if (best > d.Width) r.Fail($"{h.Doll} hits at {h.T0:0.00}s but its tool is {best:0.000} u from {aim} (> one doll-width {d.Width:0.000}; tool tip at height {d.Frames[bestF].Tip.y:0.00})");
+                else r.Note($"{h.Doll} hits {aim} at {h.T0:0.00}s, {(landing != null ? "the spear" : "tool")} {best:0.000} u off it (frame {bestF})");
             }
             return r;
         }

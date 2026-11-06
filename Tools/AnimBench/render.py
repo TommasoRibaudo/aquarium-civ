@@ -477,6 +477,7 @@ class Scene:
             fx, fz = math.sin(yaw), math.cos(yaw)
             fur, belly = (150, 135, 118), (230, 222, 205)
             up = act == "SitUp"
+            down = act == "Fallen"   # #362: on its side
             hop = p[1]
             body_c = (p[0], 0.028 + hop + (0.008 if up else 0), p[2])
             head_c = (p[0] + fx * (0.022 if up else 0.035), (0.068 if up else 0.04) + hop, p[2] + fz * (0.022 if up else 0.035))
@@ -491,6 +492,8 @@ class Scene:
             def draw(dr):
                 bx, by = cam.px(body_c)
                 rx, ry = 0.034 * s, (0.036 if up else 0.024) * s
+                if down:
+                    rx, ry = 0.036 * s, 0.017 * s
                 if act == "Flee":
                     rx *= 1.15
                 tx, ty = cam.px(tail_c)
