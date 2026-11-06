@@ -62,6 +62,9 @@ namespace AquariumCiv.Life
     {
         None, ToFire, TakeSpear, WalkOut, Stalk, Strike, Bolt, WalkBack, CarryBack, Skin, Cook, Return,
         KidFollow, KidWatch, KidCheer, KidBack,
+        // #362 (added at the end): the thrown spear's aftermath. A miss: FetchSpear, PullSpear (then WalkBack); a catch: ToCatch, PickUp, HoldUp (then CarryBack).
+        // The kid of a catch: KidRun to the hunter, KidEscort home beside him.
+        FetchSpear, PullSpear, ToCatch, PickUp, HoldUp, KidRun, KidEscort,
     }
 
     /// <summary>P8 (#267): the water in a bucket. None = not a bucket; Muddy = scooped from the wet low ground while the pond is dry.</summary>

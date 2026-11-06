@@ -153,6 +153,13 @@ namespace AquariumCiv.View
             return catches ? (ok ? "next hunt catches" : "refused: the herd is at its floor, it stays a miss") : "next hunt misses";
         }
 
+        /// <summary>"Slow-mo the next hunt" (#362): the view clock runs at half speed from the stalk to the held-up catch (or the pulled spear), once.</summary>
+        public static string HuntSlowMoNext()
+        {
+            HuntSlowMo.Armed = true;
+            return "the next hunt plays at half speed (from the stalk on)";
+        }
+
         public static string MistCamp()
         {
             var st = Sim?.Settlement;

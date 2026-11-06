@@ -69,7 +69,7 @@ namespace AquariumCiv.View.PlayTests
             pv.timeScale = 4f;
             var seen = new HashSet<HuntPhase>();
             bool spearWalkOut = false, stalkCrouch = false, rabbitShoulder = false, fledAfterStrike = false, calmBeforeStrike = true;
-            float closest = 99f; bool shotStalk = false, shotStrike = false, shotCarry = false;
+            bool spearStuck = false, spearFlew = false; float closest = 99f; bool shotStalk = false, shotStrike = false, shotCarry = false;
             float t0 = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - t0 < 300f)
             {
@@ -92,6 +92,8 @@ namespace AquariumCiv.View.PlayTests
                     pv.timeScale = 0.5f;
                     if (!shotStrike && a.progress > 0.55f) { shotStrike = true; yield return Shot($"hunt_{tag}_strike"); yield return Close(pv, who, $"hunt_{tag}_strike_close"); }
                 }
+                if (a.hunt == HuntPhase.Strike && pv.HuntStage.TryGetSpear(plan, out _, out var flightStage) && flightStage == AquariumCiv.View.ArcStage.Flying) spearFlew = true; // #362
+                if (a.hunt is HuntPhase.Bolt or HuntPhase.FetchSpear or HuntPhase.ToCatch or HuntPhase.PickUp && pv.HuntStage.Stuck > 0) spearStuck = true;
                 if (a.hunt == HuntPhase.Bolt) { pv.timeScale = 1f; if (rv.TryGetAct(id, out bool fl2) && fl2) fledAfterStrike = true; }
                 if (a.hunt == HuntPhase.CarryBack)
                 {
@@ -105,6 +107,10 @@ namespace AquariumCiv.View.PlayTests
             Debug.Log($"[hunt] {tag}: closest {closest:0.00}, phases {string.Join(",", seen)}");
             Assert.IsTrue(seen.Contains(HuntPhase.WalkOut) && seen.Contains(HuntPhase.Stalk) && seen.Contains(HuntPhase.Strike), "walk out, stalk, strike: " + string.Join(",", seen));
             Assert.IsTrue(spearWalkOut, "the hunter walks out with a spear in hand");
+            Assert.IsTrue(spearFlew, "#362: the spear is thrown: it flies");
+            Assert.IsTrue(spearStuck, "#362: and stands in the ground after the throw");
+            Assert.IsTrue(catches ? seen.Contains(HuntPhase.ToCatch) && seen.Contains(HuntPhase.PickUp) && seen.Contains(HuntPhase.HoldUp)
+                                  : seen.Contains(HuntPhase.FetchSpear) && seen.Contains(HuntPhase.PullSpear), "#362: the hunter picks up the catch / pulls the spear: " + string.Join(",", seen));
             Assert.IsTrue(stalkCrouch, "and stalks crouched");
             Assert.Less(closest, 0.75f, "the stalk gets close to a real rabbit");
             Assert.IsTrue(calmBeforeStrike, "the rabbit stays put while it is stalked");

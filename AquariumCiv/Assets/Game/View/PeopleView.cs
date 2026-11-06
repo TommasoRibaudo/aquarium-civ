@@ -103,6 +103,10 @@ namespace AquariumCiv.View
         /// <summary>The poses' clock: seconds this view has run, so a pose moves with the frames it is stepped by.</summary>
         float poseClock;
         readonly List<PersonActivity> acts = new();
+        /// <summary>#362: the thrown spear, and the hunt step the doll being driven is in (set by <see cref="HuntSpot"/>).</summary>
+        readonly HuntStage huntStage = new();
+        HuntStep huntStep; HuntPlan huntPlan;
+        public HuntStage HuntStage => huntStage;
         readonly Dictionary<int, Doll> dolls = new();
         readonly Dictionary<Place, int> countAt = new();
         readonly HashSet<(Place, int)> taken = new();
@@ -196,6 +200,7 @@ namespace AquariumCiv.View
             // The view day turns at midnight, not when the sim's month ticks mid-day (that swapped everyone's plan and the
             // dolls jumped, #30); a sim that jumped ahead (a catch-up, a skip) or another box is taken at once, in place.
             float hour = clockStarted ? now.hour : startHour;
+            HuntSlowMo.Tick(this, now); // #362: the "Slow-mo next hunt" cheat
             var next = LifeClock.Advance(new ViewTime(0, hour), dt * Mathf.Max(0f, timeScale));
             long day = clockStarted && !newSim ? LifeClock.NextViewDay(now.day, next.day, sim.State.month) : sim.State.month;
             if (clockStarted && day != now.day && next.day == 0 && !SoftDayTurns) snapAll = true;
@@ -326,6 +331,9 @@ namespace AquariumCiv.View
                 d.act = a;
                 Drive(d, a, stage, dt, time);
             }
+            // #362: the thrown spear flies and stands in the ground
+            huntStage.Tick(planner, now, peopleRoot, Box.SolidMaterial,
+                who => dolls.TryGetValue(who.Key, out var hd) && hd.view != null ? hd.view.prop : null, (hx, hz) => Box.SurfaceHeight(hx, hz));
             gone.Clear();
             foreach (var kv in dolls) if (!seen.Contains(kv.Key)) gone.Add(kv.Key);
             foreach (int k in gone) { if (dolls[k].view != null) Kill(dolls[k].view.gameObject); dolls.Remove(k); }
@@ -412,7 +420,9 @@ namespace AquariumCiv.View
             if (d.speed > WalkStarts) d.walking = true; else if (d.speed < WalkStops) d.walking = false;
             bool walking = d.walking;
             var style = DollMotion.StyleOf(a.kind);
-            if (walking && style != DollStyle.Hop) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
+            // #362: a crouched creep (0.1 u/s) is faster than the walk threshold, but it is a stalk, not a walk
+            bool keepsHunchStyle = hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp;
+            if (walking && style != DollStyle.Hop && !keepsHunchStyle) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
 
@@ -422,6 +432,7 @@ namespace AquariumCiv.View
             if (kind == PropKind.BucketEmpty && a.kind == ActivityKind.FetchWater && !a.moving && a.end > a.start &&
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
                 kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
+            if (hunting) (kind, slot) = HuntProp(a, kind, slot);   // #362: the spear leaves the hand; the catch is lifted up
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
 
@@ -462,7 +473,12 @@ namespace AquariumCiv.View
                 d.blendT += dt;
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
-            if (hunting) DollMotion.Hunt(ref pose, a.hunt, a.progress);
+            if (hunting)
+            {
+                var stalkNow = default(HuntStalk.Now);
+                if (a.hunt == HuntPhase.Stalk && huntPlan != null) stalkNow = HuntStalk.Sample(since, huntPlan.freezeA, huntPlan.freezeB);
+                DollMotion.Hunt(ref pose, a.hunt, a.progress, since, stalkNow);
+            }
             if (a.kind == ActivityKind.FetchWater) // #360: the draw (kneel, dip, lift) at the water; the heavy walk home with the full bucket
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
@@ -480,7 +496,13 @@ namespace AquariumCiv.View
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
-            if (struck) WorkHit?.Invoke(a.who, a.place, style, WorkHitPoint.HitPoint(v)); // #355
+            if (struck)
+            {   // #355; #362: a throw's hit is the spear coming down, so the puff is where it lands, not at the hand
+                var hitAt = hunting && a.hunt == HuntPhase.Strike && huntPlan != null
+                    ? peopleRoot.TransformPoint(HuntStage.LandPoint(huntPlan, (hx, hz) => Box.SurfaceHeight(hx, hz)))
+                    : WorkHitPoint.HitPoint(v);
+                WorkHit?.Invoke(a.who, a.place, style, hitAt);
+            }
         }
 
         // ---------------------------------------------------------------- #283: the hunt
@@ -491,14 +513,18 @@ namespace AquariumCiv.View
         {
             x = z = 0f; face = null;
             if (!planner.HuntStepAt(a.who, now, out var st, out var plan)) return false;
+            huntStep = st; huntPlan = plan;
             float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
             bool startOpen = st.phase is HuntPhase.ToFire or HuntPhase.KidFollow, endOpen = st.phase is HuntPhase.Return or HuntPhase.KidBack;
             if (startOpen && !planner.Positions.TryGetPosition(st.from, out x0, out z0)) { x0 = plan.fireX; z0 = plan.fireZ; }
             if (endOpen && !planner.Positions.TryGetPosition(st.to, out x1, out z1)) { x1 = plan.fireX; z1 = plan.fireZ; }
             float f = Mathf.Clamp01((now.hour - st.start) / Mathf.Max(1e-4f, st.end - st.start));
+            if (st.phase == HuntPhase.Stalk)   // #362: seven creeping steps and the freezes, the same clock the rabbit sits up on
+                f = HuntStalk.Sample(LifeClock.RealSecondsBetween(st.start, Mathf.Max(st.start, now.hour)), plan.freezeA, plan.freezeB).fraction;
             var p = Vector2.Lerp(AtFire(plan, x0, z0, a.who.Key), AtFire(plan, x1, z1, a.who.Key), f);
             x = p.x; z = p.y;
             if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
+            else if (st.faceSpear) face = new Vector2(plan.landX, plan.landZ);
             else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
             return true;
         }
@@ -518,6 +544,21 @@ namespace AquariumCiv.View
             if (st.phase is TentPhase.TakeLoad) face = new Vector2(plan.frameX, plan.frameZ);
             else if (st.phase is TentPhase.Raise or TentPhase.Stand or TentPhase.KidWatch or TentPhase.KidCheer) face = new Vector2(plan.lotX, plan.lotZ);
             return true;
+        }
+
+        /// <summary>#362: what the hunter holds now. The spear is in the hand until the throw releases it, and again once it is pulled out
+        /// of the ground; a catch is held up in the hand (not over the shoulder) from the moment it is lifted.</summary>
+        (PropKind, PropSlot) HuntProp(in PersonActivity a, PropKind kind, PropSlot slot)
+        {
+            float since = a.end > a.start ? LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)) : 0f;
+            switch (a.hunt)
+            {
+                case HuntPhase.Strike: if (!HuntBeats.SpearInHand(a.hunt, since)) return (PropKind.None, PropSlot.Hand); break;
+                case HuntPhase.PullSpear: if (huntPlan != null && now.hour < huntPlan.takeHour) return (PropKind.None, PropSlot.Hand); break;
+                case HuntPhase.PickUp: if (huntPlan != null && now.hour >= huntPlan.takeHour) return (PropKind.Rabbit, PropSlot.Hand); break;
+                case HuntPhase.HoldUp: return (PropKind.Rabbit, PropSlot.Hand);
+            }
+            return (kind, slot);
         }
 
         /// <summary>A point on the fire itself becomes a spot on the ring round it, so nobody stands in the flames.</summary>
