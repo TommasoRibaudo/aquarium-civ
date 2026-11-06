@@ -29,6 +29,7 @@ namespace AquariumCiv.Life
 
         void AddChronicleScene(DayInfo d, ChronicleEntry e)
         {
+            if (QueuedForTheKeeper(e)) return; // #370: its ceremony waits for the Keeper and is staged once, live
             var sc = new Scene { day = d.day, a = e.notableId, b = e.otherNotableId, chronicleId = e.id, aPartner = -1, aFriend = -1, aParent = -1 };
             switch (e.kind)
             {

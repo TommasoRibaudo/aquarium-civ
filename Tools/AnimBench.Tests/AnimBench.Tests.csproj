@@ -21,6 +21,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/WaterBeatsTests.cs" /><!-- #360 -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/KidPlayTests.cs" /><!-- #358 -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/PairBeatsTests.cs" /><!-- #363 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/MomentBeatsTests.cs" /><!-- #370 -->
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../AnimBench/AnimBench.csproj" />

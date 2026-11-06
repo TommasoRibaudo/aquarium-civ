@@ -260,6 +260,7 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #371 ----
+            if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

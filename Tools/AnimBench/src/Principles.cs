@@ -165,6 +165,7 @@ namespace AnimBench
                     if (!IsLoop(s) || s.T0 >= t.Clip.Duration) continue;
                     any = true;
                     var next = i + 1 < segs.Count ? segs[i + 1] : null;
+                    if (s.Plan != null && next != null && next.Plan == s.Plan && next.Style == s.Style && !next.EndBeat && next.T0 < t.Clip.Duration) continue; // #370: a staged moment's step is cut in short stretches: one loop
                     float end = Math.Min(s.T1, t.Clip.Duration);
                     r.Marks.Add(new PrincipleMark { Doll = d.Spec.Id, Kind = "loop", T0 = s.T0, T1 = end });
                     if (next == null || next.T0 >= t.Clip.Duration)

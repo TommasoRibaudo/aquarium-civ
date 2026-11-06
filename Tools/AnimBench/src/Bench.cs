@@ -367,6 +367,7 @@ namespace AnimBench
             var chatMate = style == DollStyle.Talk && seg.Partner != null && (kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit) ? clip.Doll(seg.Partner) : null;
             if (chatMate != null)
                 PairBeats.Talk(ref pose, PairBeats.TalkAt(spec.Seed, chatMate.Seed, clip.Clock + t, Mathf.Max(0f, ChatEnd(spec, si) - tc)), Desync.Of(spec.Seed, 363).amp, holds);
+            if (seg.Plan != null) MomentBeats.Apply(ref pose, seg.Plan, seg.Member, seg.StepIndex, tc, out _); // #370, as PeopleView's StagedPose hook
             if (kind == ActivityKind.FetchWater) // #360, as PeopleView.Drive
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, spec.Seed, seg.Queue);
@@ -412,6 +413,29 @@ namespace AnimBench
                     float age = o.RippleT >= 0f ? t - o.RippleT : 99f;
                     f.Act = live && age < 0.6f ? "squash " + o.Ripples : "";
                     f.State["squash"] = live && age < 0.6f ? 1f - 0.12f * Mathf.Exp(-age / 0.12f) * Mathf.Cos(age * Mathf.PI * 4f) : 1f;
+                    break;
+                }
+                case "fire":
+                {
+                    // #370: the fire flares on a hit aimed at it (HitFx and the fire's look draw it in the game): act "flare" for 0.4 s
+                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.4f ? "flare " + o.Ripples : "";
+                    break;
+                }
+                case "bundle":
+                {
+                    // #370: the newborn between its parent's hands (held in the arms, then lifted high)
+                    var holder = s.Follows != null ? DollById(s.Follows) : null;
+                    if (holder != null && holder.Placed) f.Pos = (holder.Last.HandL + holder.Last.HandR) * 0.5f + new Vector3(0f, 0.012f, 0f);
+                    break;
+                }
+                case "mark":
+                {
+                    // #370: the new chief's gold mark over the head: it pops on a hit aimed at it (act "pop" for 0.4 s)
+                    var holder = s.Follows != null ? DollById(s.Follows) : null;
+                    if (holder != null && holder.Placed) f.Pos = new Vector3(holder.Last.Pos.x, 0.26f * holder.Spec.Scale, holder.Last.Pos.y); // over the head, steady (the band, not the bob)
+                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.4f ? "pop " + o.Ripples : "";
                     break;
                 }
                 case "bush":

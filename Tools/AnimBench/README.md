@@ -108,6 +108,14 @@ run of play frames is followed by a payoff frame before the clip ends; `neighbou
 a throw's release is checked by `arcs`, not `hitNear`/`react`. `expect.hitReach` widens `hitNear` (the chase's contact is the rabbits'
 0.55 u alert radius, not a touch).
 
+**Staged moments (#370).** A clip-level `"moment"` block builds the dolls from the game's own plan
+(`Life/MomentStagePlan.cs`) and the view's spots and beats (`View/Beats/MomentBeats.cs`): `{"kind": "Wedding" | "Newborn" |
+"NewLeader" | "Festival", "seed", "fire": [x, z], "glass": [x, z], "normal": [x, z], "a", "b", "officiant": [x, z],
+"guests": [[x, z], ...], "kids": [[x, z], ...]}`. Doll ids are the role and a number (`couple1`, `parent1`, `chief1`).
+Without `"duration"` the clip runs the plan's length. The planner's walks there are straight walks here. Two follower
+objects: `"kind": "bundle", "follows": "parent1"` (the newborn between the hands) and `"kind": "mark", "follows":
+"chief1"` (the gold mark: it answers a hit aimed at it). A `fire` answers a hit aimed at it with `flare`.
+
 ## The principles (research 17 §4, without pixels)
 
 | id | passes when |

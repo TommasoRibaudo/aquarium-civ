@@ -180,6 +180,8 @@ namespace AquariumCiv.Life
         ShapingReaction,
         // #224: the choice scene: the people wait on the Keeper's touch, then react to it (LifePlanner.StageChoice)
         Choice,
+        // #370: a held ceremony staged for the Keeper (LifePlanner.StageHeldMoment)
+        HeldMoment,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>

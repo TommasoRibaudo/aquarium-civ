@@ -1,0 +1,15 @@
+{
+  "name": "370-new-chief",
+  "notes": "#370 C3.c: the new chief, from the game's plan and beats. A horseshoe gathers at the fire, open toward the glass; the chief walks through the gap to the seat between the fire and the glass; the old chief hands the band over (the chief puts it on); sit, stand, speak to the Keeper; everyone bows in a wave, nearest first, 0.12 s apart; the gold mark pops on (the hit: gold sparks in the game) and everyone cheers.",
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.05], "span": 1.9 },
+  "sheet": { "from": 9, "to": 25, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "objects": [ { "id": "fire", "kind": "fire", "pos": [0.0, 0.2] }, { "id": "goldmark", "kind": "mark", "follows": "chief1", "radius": 0.02 } ],
+  "moment": {
+    "kind": "NewLeader", "seed": 13, "fire": [0.0, 0.2], "glass": [0.0, -1.95], "normal": [0.0, -1.0],
+    "a": [0.7, 0.9], "b": [-0.5, 0.8],
+    "guests": [[1.1, 0.3], [-1.0, 0.1], [0.4, 1.2], [-0.3, 1.25], [1.2, -0.2], [-1.2, -0.3]],
+    "kids": [[0.5, -0.5], [-0.6, -0.5]]
+  }
+}
