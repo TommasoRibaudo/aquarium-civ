@@ -18,6 +18,7 @@ namespace AquariumCiv.View
             PropKind.Spear => 0.18f,
             PropKind.Rod => 0.2f,
             PropKind.Stick => 0.1f,
+            PropKind.Bucket or PropKind.BucketEmpty or PropKind.BucketMuddy => -0.085f, // #360: the bucket's bottom hangs below the grip, and it is what meets the water
             _ => 0f,
         };
 
@@ -27,7 +28,7 @@ namespace AquariumCiv.View
             if (v.prop != null && v.propSlot == PropSlot.Hand)
             {
                 float reach = ToolReach(v.propKind);
-                if (reach > 0f) return v.prop.TransformPoint(new Vector3(0f, reach, 0f));
+                if (reach != 0f) return v.prop.TransformPoint(new Vector3(0f, reach, 0f));
             }
             return v.armR != null ? v.armR.TransformPoint(new Vector3(0f, -PegDoll.ArmLen * v.scale, 0f)) : v.transform.position;
         }

@@ -49,7 +49,7 @@ namespace AquariumCiv.View.Tests
         {
             var under = DollPose.Rest;
             var p = under; WaterBeats.Apply(ref p, WaterBeats.ContactAt(3, 0) + 0.3f, 3, 0);
-            Assert.Less(p.squash, 0.75f); Assert.Greater(p.lean, 35f);
+            Assert.Less(p.squash, 0.75f); Assert.Greater(p.lean, 20f); Assert.LessOrEqual(p.lean, 45f, "a kneel, not a dive"); Assert.Less(p.offset.y, -0.05f);
             var q = under; WaterBeats.Apply(ref q, WaterBeats.FullAt(3, 0) + 0.3f, 3, 0);
             Assert.Less(q.lean, 0f, "leaning back on the lift");
             var done = under; WaterBeats.Apply(ref done, 10f, 3, 0);
