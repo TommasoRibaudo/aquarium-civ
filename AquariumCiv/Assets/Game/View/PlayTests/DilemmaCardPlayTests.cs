@@ -185,7 +185,7 @@ namespace AquariumCiv.View.PlayTests
         [UnityTest, Timeout(180000)]
         public IEnumerator TheDotFollowsTheStoriesInLivePlay()
         {
-            yield return Watching(750, 1334);
+            yield return Watching(750, 1334, dilemmas: false); // the lab would raise choices (new unread cards) inside the 12 s windows below
             var all = Sim.UnreadCardsCapped(999);
             foreach (var c in all.cards.Concat(all.also)) Sim.MarkCardRead(c);
             yield return Until(() => !Model.HistoryDot, 12f); // worked out again at the next month (5 s at x60)
@@ -256,7 +256,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Watching(w, h);
             DilemmaCheats.Lab(false); // the clock at real time: nothing raised or lapsed in the way of this check
             int seen = 0;
-            foreach (var (def, option) in new[] { ("camp_winter", 0), ("camp_remember", 1), ("camp_fire", 0) } /* a def is raised once per box: one option each */)
+            foreach (var (def, option) in new[] { ("camp_winter", 0), ("camp_fire", 0), ("camp_remember", 1) } /* a def is raised once per box: one option each. camp_remember last: its cheat kills the oldest (the chief), and camp_fire needs a living elder chief */)
             {
                 if (Model.Mode == CardStackMode.Open) Model.Close();
                 var d = Sim.DebugRaiseDilemma(def);
