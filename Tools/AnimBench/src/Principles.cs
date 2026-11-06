@@ -179,6 +179,7 @@ namespace AnimBench
                     }
                 }
             }
+            any |= CheckMealEndBeats(t, r); // #365
             any |= CheckPlayEndBeats(t, r); // #358
             if (!any) { r.Applies = false; r.Note("no work or play loop in the clip"); }
             return r;
@@ -212,12 +213,20 @@ namespace AnimBench
             return r;
         }
 
+        /// <summary>#365: the doll's hand left the bowl for its mouth within the last <see cref="Desync.InStepWindow"/> s (armR.x rose through 70).</summary>
+        static bool BiteStarted(Track t, DollTrack d, int f)
+        {
+            int k = Math.Max(1, (int)Math.Ceiling(Desync.InStepWindow * t.Clip.Fps));
+            return d.Frames[f].Pose.armR.x > 70f && d.Frames[Math.Max(0, f - k)].Pose.armR.x < 70f;
+        }
+
         static string LargestGroup(Track t, int f, float radius)
         {
             var byStyle = new Dictionary<DollStyle, List<DollTrack>>();
             foreach (var d in t.Dolls)
             {
                 var s = d.Frames[f].Style;
+                if (s == DollStyle.EatMeal && !BiteStarted(t, d, f)) continue; // #365: eaters are in step only if their hands leave the bowl together
                 if (Idle.Contains(s) || d.Frames[f].InStep) continue; // #358: the ring dance and its cheer move together on purpose (§0.8)
                 if (!byStyle.TryGetValue(s, out var l)) byStyle[s] = l = new List<DollTrack>();
                 l.Add(d);
@@ -259,6 +268,24 @@ namespace AnimBench
             }
             foreach (var o in arcs) if (!checkedArcs.Contains(o)) CheckOneArc(t, o, (o.Spec.Arc.From ?? "").Split('.')[0], o.Spec.Arc.To, r);
             return r;
+        }
+
+        /// <summary>#365 B9.a: a meal (an EatMeal segment that ends inside the clip) ends with the lean back, arms out: the end beat lives inside the move.</summary>
+        static bool CheckMealEndBeats(Track t, PrincipleResult r)
+        {
+            bool any = false;
+            foreach (var d in t.Dolls)
+                foreach (var s in d.Spec.Segments)
+                {
+                    if (s.Style != DollStyle.EatMeal || s.T1 > t.Clip.Duration + 1e-3f || s.T1 - s.T0 < 3f) continue;
+                    any = true;
+                    int f = t.FrameAt(Math.Max(s.T0, s.T1 - 0.1f));
+                    var p = d.Frames[f].Pose;
+                    r.Marks.Add(new PrincipleMark { Doll = d.Spec.Id, Kind = "loop", T0 = s.T0, T1 = s.T1 });
+                    if (p.lean <= -5f && p.armR.z >= 50f) { r.Note($"{d.Spec.Id}: the meal ends leaning back ({p.lean:0} deg), arms out"); r.Marks.Add(new PrincipleMark { Doll = d.Spec.Id, Kind = "end", T0 = s.T1 - MealBeats.EndSeconds, T1 = s.T1 }); }
+                    else r.Fail($"{d.Spec.Id}: the meal ends at {s.T1:0.0}s with no lean back (lean {p.lean:0}, arm out {p.armR.z:0})");
+                }
+            return any;
         }
 
         /// <summary>#358: a play group's dolls have no segments: each run of play frames that isn't a payoff (a chase, a toss, a creep) must be

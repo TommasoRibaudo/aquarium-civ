@@ -61,10 +61,10 @@ namespace AnimBench
 
         bool StepPairDoll(DollState d, float t, float dt)
         {
-            if (pairEv == null || t < pairEv.start || pairEv.IsOver(t)) return false;
             var spec = d.Spec;
+            var pairEv = this.pairEv != null && t >= this.pairEv.start && !this.pairEv.IsOver(t) && this.pairEv.group.IndexOf(spec.Seed) >= 0 ? this.pairEv : MealEventFor(spec.Seed, t); // #365: the meal's bowl chain too
+            if (pairEv == null) return false;
             int i = pairEv.group.IndexOf(spec.Seed);
-            if (i < 0) return false;
             var cue = PairStage.CueOf(pairEv, i, t);
             int si = spec.IndexAt(Mathf.Max(0f, t));
             var seg = spec.Segments[si];
@@ -77,7 +77,7 @@ namespace AnimBench
             d.Placed = true;
             if (d.Speed > Bench.WalkStarts) d.Walking = true; else if (d.Speed < Bench.WalkStops) d.Walking = false;
             bool walking = d.Walking;
-            var style = walking ? DollStyle.Walk : DollStyle.Stand;
+            var style = walking ? DollStyle.Walk : pairEv.takerSeated && i == 1 ? DollStyle.Sit : DollStyle.Stand; // #365: a bowl handed to someone who stays seated
             if (jump) d.Velocity = Vector2.zero;
             else d.Velocity = Vector2.Lerp(d.Velocity, (d.Pos - prev) / dt, 1f - Mathf.Exp(-dt * Bench.VelocityRate));
             float want = d.Yaw;
@@ -103,10 +103,10 @@ namespace AnimBench
                 d.BlendT += dt;
                 pose = DollMotion.Blend(d.BlendFrom, pose, Mathf.SmoothStep(0f, 1f, d.BlendT / Bench.BlendSeconds));
             }
-            if (pairEv.kind == PairKind.WalkTogether && i == 1) d.Stride = DollById(clip.Pair.A).Stride; // PeopleView: strides in step
+            if (pairEv.kind == PairKind.WalkTogether && i == 1) d.Stride = dolls.Find(x => x.Spec.Seed == pairEv.group.KeyOf(0)).Stride; // PeopleView: strides in step
             PairStage.Apply(pairEv, i, t, ref pose, d.Stride);
             d.Pose = pose;
-            string other = i == 0 ? clip.Pair.B : clip.Pair.A;
+            string other = dolls.Find(x => x.Spec.Seed == pairEv.group.KeyOf(1 - i)).Spec.Id;
             var f = new DollFrame
             {
                 Pose = pose, Style = style, Pos = d.Pos, BodyYaw = d.Yaw, Yaw = d.Yaw + pose.yaw, Walking = walking, Speed = d.Speed,

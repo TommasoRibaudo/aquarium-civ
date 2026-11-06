@@ -124,6 +124,7 @@ namespace AquariumCiv.View
         readonly List<(Vector2 c, float r)> blockers = new();
         /// <summary>#189: who stands where this frame, and what nobody walks through (the fire, the stash pile).</summary>
         readonly CrowdAvoid crowd = new();
+        readonly MealDirector meals = new(); // #365 B9: bowls, the poke, the pot
         readonly List<Solid> solids = new();
         /// <summary>#189: how much faster than the plan the drawn doll may catch up with where it should be.</summary>
         const float DrawnSlack = 0.35f;
@@ -309,6 +310,10 @@ namespace AquariumCiv.View
             poseClock += dt;
             float time = poseClock;
             KidPlay.Step(planner, acts, now, time, peopleRoot); // #358: the play groups
+            // #365 B9: the bowls round the fire, who pokes it, the pot beside it
+            meals.Step(acts, time, pl => planner.Positions.TryGetPosition(pl, out float mx, out float mz) ? new Vector2(mx, mz) : (Vector2?)null, planner.StageOf, planner.JobOf,
+                k => dolls.TryGetValue(k, out var md) && md.placed ? md.pos : (Vector2?)null);
+            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp, (mx, mz) => Box.SurfaceHeight(mx, mz));
             seen.Clear();
             claimed.Clear();
             // #189: everyone on view where they were drawn last frame, for the walkers to keep clear of (nobody goes round a sleeper they can't see, #203).
@@ -383,6 +388,8 @@ namespace AquariumCiv.View
                     face = target + (target - from).normalized; // moved round a corner, still looking away from the house
                 }
             }
+            // #365 B9.d: the cook stands at the pot, facing it
+            if (!hidden && !hunting && !tenting && !a.moving && !a.enRoute && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && meals.HasFire) { target = meals.CookSpot(target); face = meals.Pot; }
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
@@ -392,6 +399,9 @@ namespace AquariumCiv.View
             PairCue pairCue = default; PairEvent pairEv = null;
             bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
             if (paired) { target = pairCue.pos; face = pairCue.face; }
+            // #365 B9.c: someone at the fire gets up and pokes it with a stick
+            float pokeSince = 0f; bool pokeBig = false;
+            bool poking = !hidden && !paired && !playing && !tenting && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && !(playing && playCue.sink > 0f) /* #359: wading in on purpose */ && land.IsWater(target.x, target.y))
             {
                 var wet = target;
@@ -448,7 +458,8 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
-            if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over)
+            if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = pairEv.takerSeated && pairCue.index == 1 ? DollStyle.Sit : DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over); #365: a bowl is handed to someone who stays seated
+            else if (style == DollStyle.EatMeal && !walking && meals.Waiting(a.who.Key, time)) style = DollStyle.Sit; // #365 B9.b: sitting, hands in the lap, until the bowl comes round
             if (!a.moving && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.SitTogether or ActivityKind.Eat or ActivityKind.Visit)
             { d.mateKey = a.partner.Key; d.mateTime = time; } // #363: who they last stood with
 
@@ -459,11 +470,13 @@ namespace AquariumCiv.View
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
                 kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
             if (hunting) (kind, slot) = HuntProp(a, kind, slot);   // #362: the spear leaves the hand; the catch is lifted up
+            if (a.kind == ActivityKind.Eat && kind == PropKind.None && !walking && style == DollStyle.EatMeal) (kind, slot) = (PropKind.Bowl, PropSlot.Hand); // #365 B9.a: the meal's bowl (a berry snack at a bush is TasteBerry, not this style)
+            if (poking && pokeSince > -0.05f) (kind, slot) = (PropKind.Stick, PropSlot.Hand); // #365 B9.c
             if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
             if (playing && playCue.stick) { kind = PropKind.Stick; slot = PropSlot.Hand; } // #359: the stick duel
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
-            v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
+            v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind == PropKind.Bowl); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
             float want = d.yaw;
@@ -518,6 +531,7 @@ namespace AquariumCiv.View
                 DollMotion.Hunt(ref pose, a.hunt, a.progress, since, stalkNow);
             }
             StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
+            if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c: up from the sit, the stick into the fire, back down
             if (a.kind == ActivityKind.FetchWater) // #360: the draw (kneel, dip, lift) at the water; the heavy walk home with the full bucket
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
@@ -537,6 +551,8 @@ namespace AquariumCiv.View
                 if (a.who.Key > d.mateKey) d.stride = mate.stride;   // strides in step (a pair is exempt from the neighbours rule)
                 PairBeats.WalkTogether(ref pose, mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey));
             }
+            if (style == DollStyle.Stir && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && !a.moving && meals.HasFire && meals.StirBegan(a.who.Key, phase, a.pace))
+                HitFx.Puff(PuffKind.Steam, peopleRoot.TransformPoint(meals.PotTopLocal((sx, sz) => Box.SurfaceHeight(sx, sz))), Vector3.up, 1.2f); // #365 B9.d: steam at the top of each stir
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             bool struck = d.hitEdge.Step(pose.hidden ? 0f : pose.hit); // #355
@@ -556,7 +572,7 @@ namespace AquariumCiv.View
                 var hitAt = hunting && a.hunt == HuntPhase.Strike && huntPlan != null
                     ? peopleRoot.TransformPoint(HuntStage.LandPoint(huntPlan, (hx, hz) => Box.SurfaceHeight(hx, hz)))
                     : WorkHitPoint.HitPoint(v);
-                WorkHit?.Invoke(a.who, a.place, style, hitAt);
+                WorkHit?.Invoke(a.who, a.place, poking ? (pokeBig ? DollStyle.PokeFireBig : DollStyle.PokeFire) : style, hitAt); // #365: the poke's sparks
             }
         }
 
@@ -1282,6 +1298,25 @@ namespace AquariumCiv.View
 
         /// <summary>Debug: jump the view clock on by <paramref name="hours"/> view hours.</summary>
         public static string DebugSkipHours(float hours) { var p = Find(); return p == null ? "no PeopleView" : DebugSetHour(p.now.hour + hours); }
+
+        // ---- #365 B9 cheats: one block ----
+        /// <summary>Debug (#365): the midday meal now: the clock to 12.05 h, everyone walks to eat (at the fire in the camp: the bowls go round, then they eat, then they lean back full).</summary>
+        public static string DebugMealNow()
+        {
+            var p = Find();
+            if (p == null) return "no PeopleView";
+            p.meals.Reset();
+            SetHourGently(12.05f);
+            return "meal now: hour 12.05, bowls go round once three are seated at the fire";
+        }
+
+        /// <summary>Debug (#365): someone sitting at the fire pokes it now (a big poke: the flare).</summary>
+        public static string DebugPokeFireNow()
+        {
+            var p = Find();
+            return p == null ? "no PeopleView" : p.meals.ForcePoke(p.poseClock);
+        }
+        // ---- end #365 ----
 
         /// <summary>Debug: the view clock's speed (1 = normal, 10 = a day in 30 s).</summary>
         public static string DebugSpeed(float scale) { var p = Find(); if (p == null) return "no PeopleView"; p.timeScale = scale; return $"view clock ×{scale}"; }

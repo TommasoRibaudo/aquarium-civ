@@ -1,0 +1,75 @@
+{
+  "name": "365-stir",
+  "notes": "#365 B9.d: the camp cook stirs the stew pot (activity Cook = DollStyle.Stir, a stick; she stands 0.16 u from the pot, MealDirector.CookSpot): one stir every 1.6 s, steam (2 blobs, 1.2 s) at the top of each stir (HitFx Steam puff in the game; the bench draws two blobs), every 4th stir she tastes: the paddle leaves the pot, the hand goes to the mouth (0.45 s), chews (bob), one nod, back to the pot (1.9 s). The loop ends in a wave: dinner is ready (the end beat).",
+  "duration": 17.0,
+  "fps": 30,
+  "warmup": 1,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.12,
+      -0.05
+    ],
+    "span": 0.8
+  },
+  "sheet": {
+    "from": 5.0,
+    "to": 9.6,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6
+  },
+  "objects": [
+    {
+      "id": "fire",
+      "kind": "fire",
+      "pos": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "pot",
+      "kind": "pot",
+      "pos": [
+        0.1,
+        -0.09
+      ],
+      "follows": "cook"
+    }
+  ],
+  "dolls": [
+    {
+      "id": "cook",
+      "seed": 631,
+      "role": "cook",
+      "prop": "Stick",
+      "timeline": [
+        {
+          "label": "stir",
+          "activity": "Cook",
+          "pos": [
+            0.218,
+            -0.197
+          ],
+          "face": "pot",
+          "dur": 15.0
+        },
+        {
+          "label": "dinner is ready",
+          "style": "Wave",
+          "pos": [
+            0.218,
+            -0.197
+          ],
+          "face": "pot",
+          "dur": 2.0,
+          "endBeat": true,
+          "prop": "Stick"
+        }
+      ]
+    }
+  ]
+}
