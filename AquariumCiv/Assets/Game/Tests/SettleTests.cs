@@ -197,7 +197,7 @@ namespace AquariumCiv.Tests
             b.Advance(48.0);                                                 // catch-up: one call
             for (int k = 0; k < 48 * 7; k++) c.Advance(1.0 / 7.0);           // live: odd-sized frames
             Assert.AreEqual(a.State.month, b.State.month);
-            b.State.simHours = c.State.simHours = a.State.simHours; // summed in different steps: equal to rounding only
+            b.State.clockHours = c.State.clockHours = a.State.clockHours; b.State.simHours = c.State.simHours = a.State.simHours; // summed in different steps: equal to rounding only
             string ja = JsonUtility.ToJson(a.State);
             Assert.AreEqual(ja, JsonUtility.ToJson(b.State), "month by month vs Advance(48 h)");
             Assert.AreEqual(ja, JsonUtility.ToJson(c.State), "small frames vs month by month");

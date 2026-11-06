@@ -400,7 +400,6 @@ namespace AquariumCiv.Sim
         public double dilemmaNextHours = -1; // #368: the next big one is due from this clock hour (-1 = not scheduled yet)
         public double dilemmaLastRaiseHours = -1e9; // #368: the clock hour the last choice was raised at (nothing yet: very long ago)
         public double clockHours;            // #368: real hours the box has run: live play adds what Advance gets, a catch-up adds the real hours away
-        public double lastSeenHours;         // #368: the clock hour the player last watched (a visit's start, then every live step)
         public int visitCount;               // #368: visits so far (an open after >= 15 minutes away; SimCore.BeginVisit)
         public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
         public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)

@@ -76,12 +76,13 @@ namespace AquariumCiv.Sim
                 State.clockHours = clockStart + Math.Clamp(((State.month + 1) * Config.StepHours - simStart) * scale, 0.0, span);
                 Step(); steps++;
             }
-            if (watched) { State.clockHours = clockStart + realHours; State.lastSeenHours = State.clockHours; }
+            if (watched) { State.clockHours = Math.Round(clockStart + realHours, 9); awayHours = 0; }
             return steps;
         }
 
         /// <summary>True while <see cref="CatchUp"/> runs the months the player was away.</summary>
         public bool CatchingUp { get; private set; }
+        double awayHours;             // real hours away since the last watched step or visit (#368; not saved: a load catches up, then opens)
         double catchClockScale = 1.0; // real hours per sim hour of the catch-up in progress (#368)
 
         /// <summary>
@@ -97,7 +98,8 @@ namespace AquariumCiv.Sim
             catchClockScale = r.simHours > 1e-9 ? r.realHours / r.simHours : 1.0;
             try { r.months = Advance(r.simHours); }
             finally { CatchingUp = false; catchClockScale = 1.0; }
-            State.clockHours = clockStart + r.realHours; // #368: the real hours away, whatever pace the civ lived them at (choices are paced in these)
+            awayHours += r.realHours;
+            State.clockHours = Math.Round(clockStart + r.realHours, 9); // #368: the real hours away, whatever pace the civ lived them at (choices are paced in these)
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
             return r;

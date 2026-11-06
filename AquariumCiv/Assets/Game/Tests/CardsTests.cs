@@ -52,7 +52,7 @@ namespace AquariumCiv.Tests
             string[] kinds = { "wedding", "friendship", "storm", "keeper", "invention", "naming", "apprentice", "snow", "festival", "role_won" };
             for (int i = 0; i < kinds.Length; i++) Add(sim, 1 + i, kinds[i], 0.5f + i * 0.02f);
 
-            foreach (var (hours, cap) in new[] { (0.5, 3), (1.0, 5), (4.0, 5), (8.0, 5), (24.0, 7) })
+            foreach (var (hours, cap) in new[] { (0.5, 1), (1.0, 2), (4.0, 2), (8.0, 2), (24.0, 3) })
             {
                 var r = sim.ReturnCards(0, hours);
                 Assert.AreEqual(cap, r.cap, $"{hours} h");
@@ -82,7 +82,7 @@ namespace AquariumCiv.Tests
             Add(sim, 8, "rivalry", 0.58f);
             sim.State.eraReady = true;
 
-            var r = sim.ReturnCards(0, 24);
+            var r = sim.ReturnCardsCapped(0, 7);
             CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "rivalry", "storm", "rainbow", "death", "wish" }, r.cards.Select(c => c.lead.kind).ToArray());
             Assert.AreEqual(CardKind.EraReady, r.cards[0].kind);
             Assert.AreEqual(CardKind.Legend, r.cards[5].kind);
@@ -91,13 +91,13 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(r.cards.Concat(r.also).Any(c => c.lead.kind == "coming_of_age"), "never a card");
 
             // Under an hour: era ready and the wish still come; the death outscores the wedding, but good news keeps its slot.
-            r = sim.ReturnCards(0, 0.5);
+            r = sim.ReturnCardsCapped(0, 3);
             CollectionAssert.AreEqual(new[] { "era-ready", "wedding", "wish" }, r.cards.Select(c => c.lead.kind).ToArray());
             Assert.IsTrue(r.also.Any(c => c.lead.kind == "death"));
 
             // Once the era is watched, era-ready is plain good news.
             sim.State.eraReady = false;
-            Assert.AreEqual(CardKind.Story, sim.ReturnCards(0, 24).cards.First(c => c.lead.kind == "era-ready").kind);
+            Assert.AreEqual(CardKind.Story, sim.ReturnCardsCapped(0, 7).cards.First(c => c.lead.kind == "era-ready").kind);
         }
 
         [Test]
@@ -106,7 +106,7 @@ namespace AquariumCiv.Tests
             var sim = Quiet();
             Add(sim, 1, "wedding", 0.7f); Add(sim, 2, "wedding", 0.7f); Add(sim, 3, "wedding", 0.7f);
             Add(sim, 4, "storm", 0.5f); Add(sim, 5, "friendship", 0.5f);
-            var r = sim.ReturnCards(0, 0.5);
+            var r = sim.ReturnCardsCapped(0, 3);
             Assert.AreEqual(2, r.cards.Count(c => c.lead.kind == "wedding"), "−0.15 per wedding already chosen: 0.7, 0.55, then 0.4 < 0.5");
             Assert.AreEqual(1, r.also.Count(c => c.lead.kind == "wedding"));
         }
@@ -182,7 +182,7 @@ namespace AquariumCiv.Tests
             Add(sim, 2, "invention", 0.5f, a[0].id);
             Add(sim, 3, "song", 0.5f, a[1].id);
             sim.State.pinnedNotableId = a[0].id;
-            var r = sim.ReturnCards(0, 0.5, new[] { a[1].id });
+            var r = sim.ReturnCardsCapped(0, 3, new[] { a[1].id });
             CollectionAssert.AreEqual(new[] { "invention", "storm", "song" }, r.cards.Select(c => c.lead.kind).ToArray());
             Assert.AreEqual(0.65f, r.cards[0].score, 1e-5f);
             Assert.AreEqual(0.55f, r.cards[2].score, 1e-5f);
@@ -520,7 +520,7 @@ namespace AquariumCiv.Tests
             Watched(sim, 30, s => s.OpenTeaser());
             Watched(loaded, 30, s => s.OpenTeaser());
             Assert.AreEqual(JsonUtility.ToJson(sim.State), JsonUtility.ToJson(loaded.State), "a loaded box goes on the same way");
-            var a = sim.ReturnCards(sim.State.month - 240, 24); var b = loaded.ReturnCards(loaded.State.month - 240, 24);
+            var a = sim.ReturnCardsCapped(sim.State.month - 240, 7); var b = loaded.ReturnCardsCapped(loaded.State.month - 240, 7);
             Assert.AreEqual(a.cards.Select(c => c.headline + c.teaser + c.score), b.cards.Select(c => c.headline + c.teaser + c.score));
 
             // A save from before the cards: entries not looked at, no threads. The links come back on load.
@@ -528,7 +528,7 @@ namespace AquariumCiv.Tests
             old.threads = new List<StoryThread>(); old.threadNextId = 0; old.teaserThreadId = -1;
             foreach (var e in old.chronicle) e.threadId = -1;
             var oldSim = new SimCore(sim.Config, old);
-            var r = oldSim.ReturnCards(0, 24);
+            var r = oldSim.ReturnCardsCapped(0, 7);
             Assert.AreEqual(7, r.cards.Count);
             Assert.IsTrue(old.chronicle.All(e => e.threadId >= 0));
             Assert.Greater(old.threads.Count, 0, "the story links are rebuilt");

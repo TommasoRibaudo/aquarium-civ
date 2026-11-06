@@ -229,7 +229,7 @@ namespace AquariumCiv.Sim
             var s = State;
             if (!Config.dilemmas) return false; // off: no state changes at all
             EnsureDilemmaState();
-            bool newVisit = s.visitCount == 0 || s.clockHours - s.lastSeenHours >= DilemmaVisitAwayHours - 1e-9;
+            bool newVisit = s.visitCount == 0 || awayHours >= DilemmaVisitAwayHours - 1e-9;
             if (newVisit) s.visitCount++;
             var open = OpenDilemma;
             if (open != null && open.visitNo != s.visitCount)
@@ -238,7 +238,7 @@ namespace AquariumCiv.Sim
                 else { open.visits++; open.visitNo = s.visitCount; }
             }
             if (OpenDilemma == null) TryRaiseDilemma();
-            s.lastSeenHours = s.clockHours;
+            awayHours = 0;
             return OpenDilemma != null;
         }
 
