@@ -68,7 +68,7 @@ namespace AquariumCiv.View.Tests
                 forward = Mathf.Min(forward, p.offset.z);
             }
             Assert.AreEqual(1, hits);
-            Assert.That(forward, Is.LessThanOrEqualTo(-0.09f), "a step in toward the fire");
+            Assert.That(forward, Is.InRange(-0.08f, -0.05f), "a step in toward the fire, small (batch 2: the 0.1 step put the poker into a seated neighbour; the stick does the reach)");
             var end = MealBeats.Poke.Pose(under, MealBeats.Poke.Duration + 0.5f);
             Assert.AreEqual(under.squash, end.squash, 0.001f, "sits down again");
         }

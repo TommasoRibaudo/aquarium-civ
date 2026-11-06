@@ -449,7 +449,8 @@ namespace AquariumCiv.Life
             {
                 var m = Add(fam[i], MomentRole.Family);
                 int row = i / 3, col = i % 3;
-                float across = (col == 0 ? -1f : col == 1 ? 1f : 0f) * 0.17f;
+                // batch 2: 0.3 across, not 0.17: at the default camera (yaw 28) the +0.17 one stood right behind the parent and read as inside it
+                float across = (col == 0 ? -1f : col == 1 ? 1f : 0f) * 0.3f;
                 float x = px - Gx * (0.3f + 0.12f * row) + Px * across, z = pz - Gz * (0.3f + 0.12f * row) + Pz * across;
                 Put(m, Facing(Travel(m, GoAt(m.key, 0.3f, 0.8f), tL, x, z), px, pz));
                 var cheer = Facing(Here(m, StageBeat.Cheer, ActivityKind.Cheer, tL + 0.45f, tC), px, pz); // the baby goes up: they cheer
