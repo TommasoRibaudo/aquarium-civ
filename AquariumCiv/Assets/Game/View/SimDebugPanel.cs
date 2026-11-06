@@ -230,6 +230,20 @@ namespace AquariumCiv.View
             }
             if (Section("Dilemmas (P7)")) { var line = DilemmaCheats.Gui(); if (line != null) last = line; }
             if (Section("Hit puffs (#357)")) { var line = HitFxCheats.Gui(); if (line != null) last = line; } // #357
+            // ---- #369: the moment queue and director ----
+            if (Section("Moments (#369)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Queue one moment of each kind")) last = HeldMomentStage.DebugQueueOneOfEach();
+                if (GUILayout.Button("Play next moment now")) last = HeldMomentStage.DebugPlayNextNow();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Busy day")) last = HeldMomentStage.DebugPlayNextNow(true);
+                if (GUILayout.Button("Show queue + next due time")) last = HeldMomentStage.DebugStatus();
+                if (GUILayout.Button("Moments on/off")) last = HeldMomentStage.DebugToggle();
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #369 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

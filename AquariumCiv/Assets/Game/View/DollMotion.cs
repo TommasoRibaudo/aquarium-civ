@@ -14,6 +14,10 @@ namespace AquariumCiv.View
         Lopsided, Taste, HoldUp,
         // P8 #266: stamping in a puddle
         Stomp,
+        // #361: berries you can see (View/Beats/BerryBeats.cs)
+        PickBerry, DigRoot, TasteBerry,
+        // #360: kneeling to draw water (appended)
+        DrawWater,
         // #358 kids' play (View/Beats/KidPlay.cs): the roles a play group draws, the toddle and the ring dance
         PlayChaser, PlayRunner, PlayTaunt, PlayThrow, PlayCatch, PlayCharge, Toddle, RingDance,
     }
@@ -106,6 +110,7 @@ namespace AquariumCiv.View
             ActivityKind.Argue => DollStyle.Argue,
             ActivityKind.Swim or ActivityKind.Splash => DollStyle.Swim,
             ActivityKind.Stomp => DollStyle.Stomp,
+            ActivityKind.FetchWater => DollStyle.DrawWater, // #360 (the walk home is Walk, by speed)
             ActivityKind.WashHands => DollStyle.Crouch,
             ActivityKind.Mourn or ActivityKind.Service => DollStyle.Mourn,
             ActivityKind.Cheer or ActivityKind.Clap => DollStyle.Cheer,
@@ -262,6 +267,12 @@ namespace AquariumCiv.View
                     if (pause) { p.squash = 1f; p.lean = 0f; p.armR = new Vector3(0, 0, 14f); p.roll = Mathf.Sin(t * 2f) * 3f; }
                     break;
                 }
+
+                case DollStyle.PickBerry: // #361
+                case DollStyle.DigRoot:
+                case DollStyle.TasteBerry:
+                    BerryMotion.Evaluate(style, ref p, t, progress, since);
+                    break;
 
                 case DollStyle.Scatter:
                 {
@@ -631,30 +642,12 @@ namespace AquariumCiv.View
             return p;
         }
 
-        /// <summary>The throw (wind up, then thrust the spear out), the shrug after a miss and the kid's cheer ride on top of the crouch
-        /// the stalk already is (#283; moved from PeopleView for AnimBench, #352, unchanged).</summary>
-        public static void Hunt(ref DollPose pose, HuntPhase phase, float progress)
+        /// <summary>The hunt's pose on top of the style's (#283; moved from PeopleView for AnimBench, #352). #362: the overlay is
+        /// <see cref="HuntBeats"/> (the creeping stalk, the thrown spear, the shrug, the bend), laid on the pose underneath so it eases in
+        /// and out. <paramref name="since"/> is real seconds into the hunt step; <paramref name="stalk"/> the stalk's rhythm.</summary>
+        public static void Hunt(ref DollPose pose, HuntPhase phase, float progress, float since = 0f, HuntStalk.Now stalk = default)
         {
-            switch (phase)
-            {
-                case HuntPhase.Strike:
-                {
-                    float u = Mathf.Clamp01(progress);
-                    float thrust = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.35f) / 0.3f));
-                    pose.squash = Mathf.Lerp(0.72f, 1f, Mathf.SmoothStep(0f, 1f, u / 0.35f));
-                    pose.lean = Mathf.Lerp(-8f, 34f, thrust);
-                    pose.armR = new Vector3(Mathf.Lerp(165f, 55f, thrust), 0f, 8f);
-                    pose.armL = new Vector3(Mathf.Lerp(20f, 70f, thrust), 0f, -12f);
-                    pose.extend = true;
-                    pose.hit = u > 0.6f && u < 0.8f ? 1f : 0f;
-                    break;
-                }
-                case HuntPhase.Bolt: // it got away: arms out, a step back
-                    pose.squash = 1f; pose.lean = -6f;
-                    pose.armL = new Vector3(0f, 0f, -70f); pose.armR = new Vector3(0f, 0f, 70f);
-                    pose.extend = false;
-                    break;
-            }
+            HuntBeats.Apply(ref pose, phase, since, stalk);
         }
 
         /// <summary>Arms that hold a load: a hand on the head load, both arms round what's hugged, both pushing a barrel.</summary>

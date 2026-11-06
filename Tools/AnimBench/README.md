@@ -88,6 +88,11 @@ and `state` (free numbers). These kinds are drawn: `rabbit`, `bush`, `tree`, `fi
 - `rabbit` runs the real `Sim.Eco.RabbitHerd.Scare` against every visible doll. Its schedule is a fixed grazing spot,
   all green. `"hunted": {"by": "hunter", "until": t}` is RabbitView's rule: it ignores everyone until the hunt's resolve
   time, and only sits up with the hunter within 0.8 u. `"scared": false` makes a prop rabbit.
+- `rabbit` (#362, the hunt): `"sitUp": [[t0,t1],...]` (the hunted rabbit sits up in these windows: the plan's stalk freezes; a stalk
+  segment takes `"freezeA"`/`"freezeB"` seconds so the hunter's creep freezes at the same time), `"startle": {"at", "from", "to"}`
+  (RabbitView's `Scare.Hold`: flinch, ears up 0.45 s, then the bolt to `to`), `"fallAt": t` (hit by the spear: jumps 0.05 u, falls on its side).
+  Arc objects take `"hideAt": t` (a spear pulled out of the ground). A hit that coincides with a thrown arc's landing is measured on the
+  arc object (the spear touches its target), not on the hand.
 - `bush`: `"berries": N`. Add `"pickedBy": id, "dropEvery": 5` to drop a berry every 5 s while that doll picks (BushView's
   rule today).
 - `"arc": {"from": "kid.hand" | "hunter.tip" | id | [x,y,z], "to": id | [x,y,z], "t0", "t1", "height", "heldBefore"}`

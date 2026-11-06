@@ -76,6 +76,7 @@ namespace AquariumCiv.Game
             int seed = DebugNextSeed != 0 ? DebugNextSeed : new System.Random().Next(1, int.MaxValue);
             DebugNextSeed = 0; // one box only
             LoadLabSwitches();
+            if (MomentsOnByDefault) config.moments = true; // #369: ceremonies wait for the Keeper and play while watched (visit-loop.md 2.1)
             if (EcologyPref) config.ecology = true; // P8: the living land, switched on from the debug panel (kept across restarts)
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, seed);
@@ -349,6 +350,9 @@ namespace AquariumCiv.Game
             PlayerPrefs.SetInt(key, on ? 1 : 0);
             PlayerPrefs.Save();
         }
+        /// <summary>#369: the moment queue is on in every new clock (Editor and builds); a play test that pins the old cards turns it off first.</summary>
+        public static bool MomentsOnByDefault = true;
+
         void LoadLabSwitches()
         {
             if (Application.isEditor) return;

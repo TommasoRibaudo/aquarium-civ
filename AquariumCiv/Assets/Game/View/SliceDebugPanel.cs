@@ -132,10 +132,17 @@ namespace AquariumCiv.View
             if (Btn("Puddles now")) last = EcoDebug.PuddlesNow();
             if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
             EndRow();
+            Row(); // #360
+            if (Btn("Water run now")) last = PeopleView.DebugWaterRun();
+            EndRow();
             Row();
             if (Btn("Water breaks the surface now")) last = EcoDebug.WaterBreaksNow();
             if (Btn("Frogs now")) last = EcoDebug.FrogsNow();
             if (Btn("Ducks now")) last = EcoDebug.DucksNow();
+            EndRow();
+            Row(); // #361
+            if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
+            if (Btn("Root dig now")) last = BerryPickView.DebugRootDigNow();
             EndRow();
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
@@ -161,6 +168,7 @@ namespace AquariumCiv.View
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
             if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
+            if (Btn("Slow-mo next hunt")) last = EcoDebug.HuntSlowMoNext();   // #362
             EndRow();
             Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);

@@ -37,7 +37,7 @@ namespace AnimBench
             DollStyle.Chop, DollStyle.Hammer, DollStyle.Hoe, DollStyle.Pick, DollStyle.Scatter, DollStyle.Fish, DollStyle.Stir, DollStyle.Sweep,
             DollStyle.Saw, DollStyle.Lift, DollStyle.SitStrike, DollStyle.SitWeave, DollStyle.Hop, DollStyle.Swim, DollStyle.Stomp, DollStyle.Crouch,
             DollStyle.Hang, DollStyle.Bell, DollStyle.Taste, DollStyle.Write, DollStyle.Lopsided, DollStyle.Talk, DollStyle.Argue, DollStyle.Haggle,
-            DollStyle.Speech,
+            DollStyle.Speech, DollStyle.PickBerry, DollStyle.DigRoot, DollStyle.TasteBerry,
         };
 
         /// <summary>Moves that can close a loop: told once or held (a flinch, a held-up catch, a cheer, a bow).</summary>
@@ -76,18 +76,22 @@ namespace AnimBench
                 var d = t.Doll(h.Doll);
                 if (h.IsRelease) { r.Note($"{h.Doll} lets go of the ball at {h.T0:0.00}s (a release: the arcs check says where it lands)"); continue; }
                 r.Marks.Add(new PrincipleMark { Doll = h.Doll, Kind = "contact", T0 = h.T0, T1 = h.T1 });
-                if (h.Target == null) { r.Fail($"{h.Doll} hits at {h.T0:0.00}s with no target (the verb has no object)"); continue; }
+                // #362: a throw's hit is the thrown thing coming down: then it is the spear that has to touch its target
+                var landing = t.Objects.FirstOrDefault(o => o.Spec.Arc != null && o.Spec.Arc.To != null && Math.Abs(o.Spec.Arc.T1 - h.T0) <= 0.15f && (o.Spec.Arc.From ?? "").StartsWith(h.Doll + "."));
+                string aim = landing != null ? landing.Spec.Arc.To : h.Target;
+                if (aim == null) { r.Fail($"{h.Doll} hits at {h.T0:0.00}s with no target (the verb has no object)"); continue; }
                 float best = float.MaxValue; int bestF = h.F0;
                 for (int f = h.F0; f <= h.F1; f++)
                 {
-                    if (!t.TargetAt(h.Target, f, out var c, out var rad)) { r.Fail($"{h.Doll}'s target '{h.Target}' is not in the clip"); best = -1f; break; }
-                    float dist = Mathf.Max(0f, (d.Frames[f].Tip - c).magnitude - rad);
+                    if (!t.TargetAt(aim, f, out var c, out var rad)) { r.Fail($"{h.Doll}'s target '{aim}' is not in the clip"); best = -1f; break; }
+                    var toolAt = landing != null ? landing.Frames[f].Pos : d.Frames[f].Tip;
+                    float dist = Mathf.Max(0f, (toolAt - c).magnitude - rad);
                     if (dist < best) { best = dist; bestF = f; }
                 }
                 if (best < 0f) continue;
-                float reach = t.Clip.Expect.HitReach ?? d.Width;
-                if (best > reach) r.Fail($"{h.Doll} hits at {h.T0:0.00}s but its tool is {best:0.000} u from {h.Target} (> {(t.Clip.Expect.HitReach.HasValue ? "the clip's hitReach" : "one doll-width")} {reach:0.000}; tool tip at height {d.Frames[bestF].Tip.y:0.00})");
-                else r.Note($"{h.Doll} hits {h.Target} at {h.T0:0.00}s, tool {best:0.000} u off it (frame {bestF})");
+                float reach = t.Clip.Expect.HitReach ?? d.Width; // #358: the chase's contact is the alert radius
+                if (best > reach) r.Fail($"{h.Doll} hits at {h.T0:0.00}s but its tool is {best:0.000} u from {aim} (> {(t.Clip.Expect.HitReach.HasValue ? "the clip's hitReach" : "one doll-width")} {reach:0.000}; tool tip at height {d.Frames[bestF].Tip.y:0.00})");
+                else r.Note($"{h.Doll} hits {aim} at {h.T0:0.00}s, {(landing != null ? "the spear" : "tool")} {best:0.000} u off it (frame {bestF})");
             }
             return r;
         }
@@ -314,7 +318,16 @@ namespace AnimBench
                 float dh = Mathf.Min((o.Frames[f0].Pos - hand.HandR).magnitude, (o.Frames[f0].Pos - hand.Tip).magnitude);
                 if (dh > width) r.Fail($"{o.Spec.Id} starts {dh:0.000} u from {by}'s hand (> {width:0.000})");
             }
-            if (target != null && t.TargetAt(target, f1, out var c, out var rad))
+            Vector3 c = default; float rad = 0f; bool found = false;
+            int dot = target != null ? target.LastIndexOf('.') : -1;
+            if (dot > 0 && t.Doll(target.Substring(0, dot)) is DollTrack td) // #361: "picker.handL": the basket in a doll's hand
+            {
+                var fr = td.Frames[f1];
+                string part = target.Substring(dot + 1);
+                c = part == "handL" ? fr.HandL : part == "head" ? fr.Head : part == "tip" ? fr.Tip : fr.HandR; rad = 0.03f; found = true;
+            }
+            else if (target != null) found = t.TargetAt(target, f1, out c, out rad);
+            if (target != null && found)
             {
                 float dl = Mathf.Max(0f, (o.Frames[f1].Pos - c).magnitude - rad);
                 if (dl > width) r.Fail($"{o.Spec.Id} lands {dl:0.000} u from {target} (> {width:0.000})");

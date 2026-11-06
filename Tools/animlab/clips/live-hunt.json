@@ -1,0 +1,19 @@
+{
+  "name": "live-hunt",
+  "notes": "#353 AnimLab live test: the real game in play mode (seed 4242, the living land), a camp with rabbits in the meadow (HuntViewPlayTests' setup), then EcoDebug.StartHunt: a real hunter after a real rabbit of the herd. The cameras follow whoever is on a hunt step. Then the view clock skips 0.55 h, so the 10 s recorded hold the stalk, the strike and the catch.",
+  "live": {
+    "seed": 4242,
+    "ecology": 1,
+    "setup": [
+      "AquariumCiv.View.PeopleView.DebugSetHour(9f); foreach (var p in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f) }) AquariumCiv.View.EcoDebug.MistBig(p.Item1, p.Item2); AquariumCiv.View.EcoDebug.SkipSeasons(1); AquariumCiv.View.EcoDebug.OpenCampGate(); var sim = AquariumCiv.Game.GameClock.Instance.ActiveSim; for (int i = 0; i < 12 && sim.State.era != AquariumCiv.Sim.Era.Camp; i++) { AquariumCiv.View.EcoDebug.MistCamp(); AquariumCiv.View.EcoDebug.SkipSeasons(1); } AquariumCiv.View.EcoDebug.AddRabbits(6); AquariumCiv.View.PeopleView.DebugSetHour(9f); return \"era \" + sim.State.era + \", rabbits \" + sim.EcoRabbitCount;",
+      "return AquariumCiv.View.EcoDebug.StartHunt();",
+      "return AquariumCiv.View.PeopleView.DebugSkipHours(0.55f);"
+    ],
+    "warm": 0.5,
+    "seconds": 10,
+    "fps": 30,
+    "follow": "hunt",
+    "span": 1.6,
+    "closeSpan": 0.7
+  }
+}

@@ -20,6 +20,8 @@ namespace AquariumCiv.Life
         public bool moving;
         /// <summary>The person faces the rabbit (its spot is <see cref="HuntPlan.targetX"/>, <see cref="HuntPlan.targetZ"/>) rather than their direction of travel.</summary>
         public bool faceRabbit;
+        /// <summary>#362: the person faces the spear in the ground (<see cref="HuntPlan.landX"/>, <see cref="HuntPlan.landZ"/>).</summary>
+        public bool faceSpear;
     }
 
     /// <summary>
@@ -43,7 +45,14 @@ namespace AquariumCiv.Life
         public bool caught;
         public bool forced, debugStarted;
         public float start, end, strikeStart, resolveHour;
+        /// <summary>lungeX/Z is the THROW point (#362: 0.4 u from the rabbit; it was the lunge point 0.125 u off it).</summary>
         public float targetX, targetZ, stalkX, stalkZ, lungeX, lungeZ, fireX, fireZ;
+        /// <summary>#362: where the spear comes down (the rabbit on a catch, past or beside it on a miss), the spot the hunter stands to
+        /// lift the catch or pull the spear, and the hours the spear leaves the hand, lands, and is taken up.</summary>
+        public float landX, landZ, standX, standZ, releaseHour, landHour, takeHour, stalkStart;
+        /// <summary>#362: the stalk's rhythm: the two freezes (seconds; 0 = none) and the wait for the rabbit to stop hopping.</summary>
+        public float freezeA, freezeB, stalkExtra;
+        public float StalkSeconds => HuntStalk.Duration(freezeA, freezeB, stalkExtra);
         internal Place hunterBase, hunterBaseEnd, kidBase, kidBaseEnd;
         public readonly List<HuntStep> steps = new List<HuntStep>();
         public readonly List<HuntStep> kidSteps = new List<HuntStep>();
@@ -70,8 +79,7 @@ namespace AquariumCiv.Life
         /// <summary>A kid tags along on this share of hunts.</summary>
         public const float HuntKidChance = 0.3f;
         /// <summary>How close the hunter stalks from, and the beat lengths in view hours.</summary>
-        public const float StalkRange = 0.5f, TakeSpearHours = 0.12f, StalkHours = 0.3f, StrikeHours = 0.06f, BoltHours = 0.12f,
-            SkinHours = 0.3f, CookHours = 0.3f, CheerHours = 0.12f;
+        public const float StalkRange = HuntTiming.StalkRange, TakeSpearHours = 0.12f, SkinHours = 0.3f, CookHours = 0.3f;
         /// <summary>Start windows: share of hunts that start in the morning (7 to 9:30), toward dusk (the last two hours of the
         /// afternoon), or otherwise in the working day.</summary>
         public const float HuntMorningShare = 0.45f, HuntDuskShare = 0.40f;
@@ -206,14 +214,24 @@ namespace AquariumCiv.Life
             plan.hunterBase = BasePlace(hunter, day, start);
             float toFire = HuntWalkHours(plan.hunterBase, fx, fz);
 
-            // where the spear flies: the rabbit's spot at the strike, a fixed point of the iteration start -> strike time -> spot
-            float tx = 0f, tz = 0f;
-            float strikeAt = start + toFire + TakeSpearHours + 0.4f + StalkHours;
-            for (int it = 0; it < 4; it++)
+            // #362: the stalk's rhythm (the two freezes), then where the spear flies: the rabbit's spot at the strike, a fixed point of
+            // the iteration start -> strike time -> spot. The strike waits for a moment the rabbit is not hopping (it stands still for the throw).
+            plan.freezeA = 0.8f + 0.7f * R(hunter.key, day, 360 + slot);
+            plan.freezeB = R(hunter.key, day, 362 + slot) < 0.5f ? 0.8f + 0.7f * R(hunter.key, day, 364 + slot) : 0f;
+            plan.stalkExtra = 0f;
+            float tx = 0f, tz = 0f, strikeAt = start + toFire + TakeSpearHours + 0.4f;
+            for (int wait = 0; wait < 14; wait++)
             {
-                huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
-                Geometry(plan, fx, fz, tx, tz);
-                strikeAt = start + toFire + TakeSpearHours + WalkOutHours(plan) + StalkHours;
+                strikeAt = start + toFire + TakeSpearHours + 0.4f + StalkHoursOf(plan, start);
+                for (int it = 0; it < 4; it++)
+                {
+                    huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
+                    Geometry(plan, fx, fz, tx, tz);
+                    float stalkAt = start + toFire + TakeSpearHours + WalkOutHours(plan);   // exactly as BuildSteps lays the steps out
+                    strikeAt = stalkAt + Hrs(stalkAt, plan.StalkSeconds);
+                }
+                if (!RabbitHopsBetween(plan.rabbitId, day, strikeAt, HuntTiming.StrikeSeconds + 0.3f)) break;
+                plan.stalkExtra += 0.4f;
             }
             huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
             Geometry(plan, fx, fz, tx, tz);
@@ -234,7 +252,27 @@ namespace AquariumCiv.Life
             if (len > 0.001f) { ux = dx / len; uz = dz / len; }
             float reach = Math.Min(StalkRange, len * 0.6f);
             plan.stalkX = tx - ux * reach; plan.stalkZ = tz - uz * reach;
-            plan.lungeX = plan.stalkX + (tx - plan.stalkX) * 0.75f; plan.lungeZ = plan.stalkZ + (tz - plan.stalkZ) * 0.75f;
+            float throwAt = Math.Min(HuntTiming.ThrowRange, reach * 0.55f);   // #362: the throw point, not a lunge
+            plan.lungeX = tx - ux * throwAt; plan.lungeZ = tz - uz * throwAt;
+        }
+
+        /// <summary>#362: the hours the stalk lasts if it starts at about <paramref name="start"/>.</summary>
+        static float StalkHoursOf(HuntPlan plan, float start) => LifeClock.ViewHoursFor(Math.Min(23.5f, start + 0.8f), plan.StalkSeconds);
+
+        /// <summary>Hours that <paramref name="seconds"/> last from <paramref name="hour"/>, across the day's phases.</summary>
+        static float Hrs(float hour, float seconds)
+        {
+            float lo = 0f, hi = LifeClock.ViewHoursFor(hour, seconds) * 3f + 0.01f;   // the phases' speeds differ, so bisect
+            for (int i = 0; i < 24; i++) { float mid = (lo + hi) * 0.5f; if (LifeClock.RealSecondsBetween(hour, hour + mid) < seconds) lo = mid; else hi = mid; }
+            return (lo + hi) * 0.5f;
+        }
+
+        /// <summary>Is the rabbit hopping at any moment of the window (field seconds from <paramref name="hour"/>)?</summary>
+        bool RabbitHopsBetween(int id, long day, float hour, float seconds)
+        {
+            double t0 = HuntClock.FieldSeconds(day, hour);
+            for (float s = -0.3f; s <= seconds; s += 0.25f) if (huntField.Sample(id, t0 + s).act == RabbitAct.Hop) return true;
+            return false;
         }
 
         static float Dist(float ax, float az, float bx, float bz) { float dx = ax - bx, dz = az - bz; return (float)Math.Sqrt(dx * dx + dz * dz); }
@@ -286,28 +324,59 @@ namespace AquariumCiv.Life
             float fx = plan.fireX, fz = plan.fireZ;
             float t = plan.start;
             var meadowStalk = FieldPlace(plan.stalkX, plan.stalkZ);
-            var meadowLunge = FieldPlace(plan.lungeX, plan.lungeZ);
+            var meadowThrow = FieldPlace(plan.lungeX, plan.lungeZ);
+
+            // #362: where the spear comes down. A catch: on the rabbit. A miss: past it or beside it (seeded), and the spot the hunter
+            // stands to pull it out is a step short of it, on the side he comes from.
+            float ux = plan.targetX - plan.lungeX, uz = plan.targetZ - plan.lungeZ, ul = (float)Math.Sqrt(ux * ux + uz * uz);
+            if (ul > 1e-4f) { ux /= ul; uz /= ul; } else { ux = 1f; uz = 0f; }
+            if (plan.catches) { plan.landX = plan.targetX; plan.landZ = plan.targetZ; }
+            else
+            {
+                float past = HuntTiming.MissPast + HuntTiming.MissPastMore * R(plan.hunter.Key, plan.day, 370);
+                float side = (R(plan.hunter.Key, plan.day, 371) < 0.5f ? -1f : 1f) * HuntTiming.MissSide * (0.6f + 0.8f * R(plan.hunter.Key, plan.day, 372));
+                plan.landX = plan.targetX + ux * past - uz * side; plan.landZ = plan.targetZ + uz * past + ux * side;
+            }
+            float sx = plan.landX - plan.lungeX, sz = plan.landZ - plan.lungeZ, sl = (float)Math.Sqrt(sx * sx + sz * sz);
+            if (sl > 1e-4f) { sx /= sl; sz /= sl; }
+            plan.standX = plan.landX - sx * HuntTiming.StandOff; plan.standZ = plan.landZ - sz * HuntTiming.StandOff;
 
             float toFire = HuntWalkHours(plan.hunterBase, fx, fz);
             AddStep(plan, ref t, toFire, HuntPhase.ToFire, ActivityKind.Walk, Prop.None, plan.hunterBase, fire, true, false);
             AddStep(plan, ref t, TakeSpearHours, HuntPhase.TakeSpear, ActivityKind.Prepare, Prop.Spear, fire, fire, false, false, fx, fz, fx, fz);
             AddStep(plan, ref t, WalkOutHours(plan), HuntPhase.WalkOut, ActivityKind.Walk, Prop.Spear, fire, meadowStalk, true, false, fx, fz, plan.stalkX, plan.stalkZ);
-            AddStep(plan, ref t, StalkHours, HuntPhase.Stalk, ActivityKind.Stalk, Prop.Spear, meadowStalk, meadowLunge, false, true, plan.stalkX, plan.stalkZ, plan.lungeX, plan.lungeZ);
-            AddStep(plan, ref t, StrikeHours, HuntPhase.Strike, ActivityKind.Stalk, Prop.Spear, meadowLunge, meadowLunge, false, true, plan.lungeX, plan.lungeZ, plan.lungeX, plan.lungeZ);
-            plan.resolveHour = t;
+            plan.stalkStart = t;
+            AddStep(plan, ref t, Hrs(t, plan.StalkSeconds), HuntPhase.Stalk, ActivityKind.Stalk, Prop.Spear, meadowStalk, meadowThrow, false, true, plan.stalkX, plan.stalkZ, plan.lungeX, plan.lungeZ);
+            float strike0 = t;
+            plan.strikeStart = strike0;
+            AddStep(plan, ref t, Hrs(t, HuntTiming.StrikeSeconds), HuntPhase.Strike, ActivityKind.Stalk, Prop.Spear, meadowThrow, meadowThrow, false, true, plan.lungeX, plan.lungeZ, plan.lungeX, plan.lungeZ);
+            plan.releaseHour = strike0 + Hrs(strike0, HuntTiming.ReleaseAt);
+            plan.landHour = plan.resolveHour = strike0 + Hrs(strike0, HuntTiming.LandAt);   // settled when the spear comes down
             float afterStrike = t;
             if (plan.catches)
             {
-                float carry = WalkH(Dist(plan.lungeX, plan.lungeZ, fx, fz), WalkSpeed * 0.8f);
-                AddStep(plan, ref t, carry, HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, meadowLunge, stash, true, false, plan.lungeX, plan.lungeZ, fx, fz);
+                var atRabbit = FieldPlace(plan.standX, plan.standZ);
+                AddStep(plan, ref t, WalkH(Dist(plan.lungeX, plan.lungeZ, plan.standX, plan.standZ)), HuntPhase.ToCatch, ActivityKind.Walk, Prop.None, meadowThrow, atRabbit, true, true, plan.lungeX, plan.lungeZ, plan.standX, plan.standZ);
+                float pick0 = t;
+                AddStep(plan, ref t, Hrs(t, HuntTiming.PickUpSeconds), HuntPhase.PickUp, ActivityKind.Prepare, Prop.None, atRabbit, atRabbit, false, true, plan.standX, plan.standZ, plan.standX, plan.standZ);
+                plan.takeHour = pick0 + Hrs(pick0, HuntTiming.PickUpSeconds * HuntTiming.PickTakeAt);
+                AddStep(plan, ref t, Hrs(t, HuntTiming.HoldUpSeconds), HuntPhase.HoldUp, ActivityKind.HoldUp, Prop.Rabbit, atRabbit, atRabbit, false, true, plan.standX, plan.standZ, plan.standX, plan.standZ);
+                float carry = WalkH(Dist(plan.standX, plan.standZ, fx, fz), WalkSpeed * HuntTiming.ProudWalk);
+                AddStep(plan, ref t, carry, HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, atRabbit, stash, true, false, plan.standX, plan.standZ, fx, fz);
                 AddStep(plan, ref t, SkinHours, HuntPhase.Skin, ActivityKind.Prepare, Prop.Hide, fire, fire, false, false, fx, fz, fx, fz);
                 AddStep(plan, ref t, CookHours, HuntPhase.Cook, ActivityKind.Cook, Prop.Stick, fire, fire, false, false, fx, fz, fx, fz);
             }
             else
             {
-                AddStep(plan, ref t, BoltHours, HuntPhase.Bolt, ActivityKind.Stalk, Prop.Spear, meadowLunge, meadowLunge, false, true, plan.lungeX, plan.lungeZ, plan.lungeX, plan.lungeZ);
-                float back = WalkH(Dist(plan.lungeX, plan.lungeZ, fx, fz));
-                AddStep(plan, ref t, back, HuntPhase.WalkBack, ActivityKind.Walk, Prop.Spear, meadowLunge, fire, true, false, plan.lungeX, plan.lungeZ, fx, fz);
+                // the shrug and the stamp; then to the spear, bend and pull it out; then home with it
+                var atSpear = FieldPlace(plan.standX, plan.standZ);
+                AddStep(plan, ref t, Hrs(t, HuntTiming.BoltSeconds), HuntPhase.Bolt, ActivityKind.Stalk, Prop.None, meadowThrow, meadowThrow, false, true, plan.lungeX, plan.lungeZ, plan.lungeX, plan.lungeZ);
+                AddStep(plan, ref t, WalkH(Dist(plan.lungeX, plan.lungeZ, plan.standX, plan.standZ)), HuntPhase.FetchSpear, ActivityKind.Walk, Prop.None, meadowThrow, atSpear, true, false, plan.lungeX, plan.lungeZ, plan.standX, plan.standZ);
+                float pull0 = t;
+                AddStep(plan, ref t, Hrs(t, HuntTiming.PullSeconds), HuntPhase.PullSpear, ActivityKind.Prepare, Prop.Spear, atSpear, atSpear, false, false, plan.standX, plan.standZ, plan.standX, plan.standZ);
+                plan.takeHour = pull0 + Hrs(pull0, HuntTiming.PullSeconds * HuntTiming.PullTakeAt);
+                float back = WalkH(Dist(plan.standX, plan.standZ, fx, fz));
+                AddStep(plan, ref t, back, HuntPhase.WalkBack, ActivityKind.Walk, Prop.Spear, atSpear, fire, true, false, plan.standX, plan.standZ, fx, fz);
             }
             // the walk back into the day
             var hunter = FindPerson(plan.hunter);
@@ -333,11 +402,40 @@ namespace AquariumCiv.Life
             float t = plan.steps.Count > 1 ? plan.steps[1].start : plan.start;   // leaves as the hunter takes the spear
             float follow = Math.Max(HuntWalkHours(plan.kidBase, kx, kz), plan.steps[2].end - t + 0.05f);
             AddKid(plan, ref t, follow, HuntPhase.KidFollow, ActivityKind.Walk, plan.kidBase, kidSpot, true, false, kx, kz);
-            AddKid(plan, ref t, Math.Max(0.05f, afterStrike - t), HuntPhase.KidWatch, ActivityKind.Watch, kidSpot, kidSpot, false, true, kx, kz);
-            if (plan.catches) AddKid(plan, ref t, CheerHours, HuntPhase.KidCheer, ActivityKind.Cheer, kidSpot, kidSpot, false, true, kx, kz);
+            if (plan.catches)
+            {
+                // watches until the spear comes down, cheers while the hunter walks to the rabbit, runs over as he lifts it, walks home beside him
+                AddKid(plan, ref t, Math.Max(0.02f, plan.landHour - t), HuntPhase.KidWatch, ActivityKind.Watch, kidSpot, kidSpot, false, true, kx, kz);
+                var toCatch = plan.steps.Find(s => s.phase == HuntPhase.ToCatch);
+                var hold = plan.steps.Find(s => s.phase == HuntPhase.HoldUp);
+                var carry = plan.steps.Find(s => s.phase == HuntPhase.CarryBack);
+                AddKid(plan, ref t, Math.Max(0.05f, toCatch.end - t), HuntPhase.KidCheer, ActivityKind.Cheer, kidSpot, kidSpot, false, true, kx, kz);
+                // the spot beside the hunter, a little to the side of the line home
+                float sideX = -uz * 0.12f, sideZ = ux * 0.12f;
+                float bx = plan.standX + sideX, bz = plan.standZ + sideZ;
+                AddKidXY(plan, ref t, Math.Max(0.05f, hold.end - t), HuntPhase.KidRun, ActivityKind.RunOver, kidSpot, FieldPlace(bx, bz), true, true, kx, kz, bx, bz);
+                AddKidXY(plan, ref t, Math.Max(0.05f, carry.end - t), HuntPhase.KidEscort, ActivityKind.Walk, FieldPlace(bx, bz), stash, true, false, bx, bz, fx + sideX, fz + sideZ);
+            }
+            else
+            {
+                var bolt = plan.steps.Find(s => s.phase == HuntPhase.Bolt);
+                AddKid(plan, ref t, Math.Max(0.05f, bolt.end - t), HuntPhase.KidWatch, ActivityKind.Watch, kidSpot, kidSpot, false, true, kx, kz);
+            }
             plan.kidBaseEnd = BasePlace(kid, plan.day, t + 0.5f);
-            float home = Math.Max(HuntWalkHours(plan.kidBaseEnd, kx, kz), 0.15f);
-            AddKid(plan, ref t, home, HuntPhase.KidBack, ActivityKind.Walk, kidSpot, plan.kidBaseEnd, true, false, kx, kz);
+            float home = Math.Max(HuntWalkHours(plan.kidBaseEnd, plan.catches ? fx : kx, plan.catches ? fz : kz), 0.15f);
+            if (plan.catches) AddKid(plan, ref t, home, HuntPhase.KidBack, ActivityKind.Walk, stash, plan.kidBaseEnd, true, false, fx, fz);
+            else AddKid(plan, ref t, home, HuntPhase.KidBack, ActivityKind.Walk, kidSpot, plan.kidBaseEnd, true, false, kx, kz);
+        }
+
+        void AddKidXY(HuntPlan plan, ref float t, float hours, HuntPhase phase, ActivityKind kind, Place from, Place to, bool moving, bool faceRabbit,
+            float x0, float z0, float x1, float z1)
+        {
+            plan.kidSteps.Add(new HuntStep
+            {
+                phase = phase, start = t, end = t + hours, from = from, to = to, hasXZ = true, kind = kind, prop = Prop.None,
+                moving = moving, faceRabbit = faceRabbit, x0 = x0, z0 = z0, x1 = x1, z1 = z1,
+            });
+            t += hours;
         }
 
         Person FindPerson(PersonRef who) { byKey.TryGetValue(who.Key, out var p); return p; }
@@ -355,6 +453,7 @@ namespace AquariumCiv.Life
             {
                 phase = phase, start = t, end = t + hours, from = from, to = to, hasXZ = xz, x0 = x0, z0 = z0, x1 = x1, z1 = z1,
                 kind = kind, prop = prop, moving = moving, faceRabbit = faceRabbit,
+                faceSpear = phase == HuntPhase.FetchSpear || phase == HuntPhase.PullSpear,
             });
             t += hours;
         }

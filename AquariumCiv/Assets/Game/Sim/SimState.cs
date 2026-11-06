@@ -90,11 +90,15 @@ namespace AquariumCiv.Sim
 
         // Keeper's dilemmas (P7, #220; SimCore.Dilemmas.cs). Off: no dilemma is ever raised and nothing else changes.
         public bool dilemmas = false;
+        public bool smallChoices = true;            // #372: small choices (naming a newborn) between the big ones; off = only big ones, as before
         public bool dilemmaLab = false;             // the lab schedule: the first at dilemmaLabFirstYear, then about every dilemmaLabEveryYears
         public int dilemmaMinYears = 6;             // normal play: one dilemma per this many game years ...
         public int dilemmaMaxYears = 10;            // ... up to this many [est]
         public int dilemmaLabFirstYear = 2;
         public int dilemmaLabEveryYears = 3;
+        // #369: the moment queue and its director (SimCore.MomentQueue.cs). Off: nothing is queued and the cards are as before.
+        // The game turns it on (GameClock); the sim tests that want it say so.
+        public bool moments = false;
 
         public const int MonthsPerYear = 12;
         public double StepHours => 1.0 / MonthsPerYear / yearsPerRealHour;
@@ -263,6 +267,7 @@ namespace AquariumCiv.Sim
         public int rivalId = -1;
         public int mentorId = -1;
         public long jobChangedMonth = -1000000; // month of the last job fill or forced move (SimCore.Jobs.cs, #67); old saves: long ago
+        public bool namedByKeeper; // #372: the Keeper picked this person's name (a small choice); the person card shows it (C4)
         public string job = "";  // everyday job (JobType; SimCore.Jobs.cs): "" as a child, "elder" when retired
 
         public string FullName => $"{name} {family}";
@@ -404,6 +409,10 @@ namespace AquariumCiv.Sim
         public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
         public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
         public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book
+        // #369: the ceremonies held for the Keeper and the director's pacing (SimCore.MomentQueue.cs). An old save loads with none.
+        // (Not the last fields: SweeperTests appends to the JSON after trimming its closing braces.)
+        public MomentPacing momentPacing = new();
+        public List<HeldMoment> moments = new();
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
