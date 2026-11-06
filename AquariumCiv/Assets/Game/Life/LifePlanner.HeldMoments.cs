@@ -217,8 +217,8 @@ namespace AquariumCiv.Life
                 if (p.key != plan.carrierKey && p.key != plan.babyKey) continue;
                 float s = LifeClock.RealSecondsBetween(sc.start, t.hour);
                 if (s >= plan.Duration || !HeldMomentPlaying(sc, t)) continue;
-                if (p.key == plan.carrierKey && byKey.TryGetValue(plan.babyKey, out var baby)) { a.carrying = baby.who; a.carryOnBack = false; }
-                else if (p.key == plan.babyKey && byKey.TryGetValue(plan.carrierKey, out var carer)) { a.carriedBy = carer.who; a.carryOnBack = false; }
+                if (p.key == plan.carrierKey && byKey.TryGetValue(plan.babyKey, out var baby)) { a.carrying = baby.who; a.carryOnBack = false; a.carryOnFoot = false; }
+                else if (p.key == plan.babyKey && byKey.TryGetValue(plan.carrierKey, out var carer)) { a.carriedBy = carer.who; a.carryOnBack = false; a.carryOnFoot = false; }
                 return;
             }
         }

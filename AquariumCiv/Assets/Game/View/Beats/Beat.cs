@@ -113,13 +113,13 @@ namespace AquariumCiv.View
         public bool Hit => phase == BeatPhase.Contact && started && !done;
     }
 
-    /// <summary>The optional variants of the spec sheets (animation-specs §0.8): off until the user picks them on a clip.</summary>
+    /// <summary>The optional variants of the spec sheets (animation-specs §0.8): hit-stop off, hugs on (the user, 2026-11-06).</summary>
     public static class BeatFlags
     {
         /// <summary>A key contact freezes actor, target and arc object for <see cref="HitStopSeconds"/>; the beat's Follow catches up.</summary>
         public static bool HitStop;
-        /// <summary>Hugs between peg dolls (B7, C3).</summary>
-        public static bool Hugs;
+        /// <summary>Hugs between peg dolls (B7, C3). On: the user, 2026-11-06 "Hugs are fine. Add them." (View/HugDirector.cs; the panel can turn them off).</summary>
+        public static bool Hugs = true;
         public const float HitStopSeconds = 0.1f;
     }
 

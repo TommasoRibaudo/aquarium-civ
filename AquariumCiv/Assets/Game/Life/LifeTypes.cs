@@ -233,6 +233,9 @@ namespace AquariumCiv.Life
         public bool enRoute;
         /// <summary>#192: on a baby, who has them now (None = at home, out of sight).</summary>
         public PersonRef carriedBy;
+        /// <summary>User 2026-11-06 "toddling is fine": the walking-age baby is on its own feet, toddling after the carer (on both the carer,
+        /// with <see cref="carrying"/>, and the baby, with <see cref="carriedBy"/>), not in their arms (LifePlanner.Toddle.cs).</summary>
+        public bool carryOnFoot;
         /// <summary>#283: the beat of a hunt this is (None = not a hunt). The step's coordinates come from
         /// <see cref="LifePlanner.HuntStepAt"/>.</summary>
         public HuntPhase hunt;

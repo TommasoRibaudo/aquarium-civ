@@ -135,7 +135,7 @@ it. Roles:
 - **`HitStop` (optional, flag, default off):** on a key contact the actor, the target and the arc object freeze for
   **0.1 s**; the puff spawns as the freeze ends. The plan clock keeps running; the view catches up by shortening that
   beat's `Follow` by 0.1 s. Key contacts: spear lands, fish yanked, tag touch, bucket dip, "found!", tree lands.
-- **`Hugs` (optional, flag, default off):** B7 and C3.
+- **`Hugs` (flag, on since the user's call 2026-11-06):** B7 and C3; the panel can turn it off.
 
 *Kit (#355):* `Desync.Of(key, salt)`, `Desync.InGroup(seed, i, n)` (no three start within 0.15 s), `Desync.InStep`, `BeatHash` (own seeded hash); `BeatFlags.HitStop` (`Beat.Clock`/`Sample(since, hitStop)`), `BeatFlags.Hugs` (`View/Beats/BeatDesync.cs`, `Beat.cs`).
 
@@ -278,7 +278,8 @@ plays in rounds inside it. Kids' runs: `Run` with bounce 0.03 u (today 0.022), l
 | Contact | the first kid within `AlertRadius` 0.55 u of a rabbit → `hit`; `RabbitHerd.Scare` on every rabbit within 0.55 u of any kid |
 | Answer | `Bolt`: ears up 0.45 s, then they flee at 1.6 u/s, 3× the kids; `Grass` at each rabbit's first bound |
 | Follow | the kids run on 1.5–2 s, slow down (`Out`, 0.6 s), stop; hands on knees (lean 30, arms x 30) panting 1 s |
-| End beat | they laugh (`Laugh`, `DollMotion.cs:513`, 1.2 s), pointing where the rabbits went; one may tumble (see open questions): lie 0.8 s, `Grass`, up again |
+| End beat | they laugh (`Laugh`, `DollMotion.cs:513`, 1.2 s), pointing where the rabbits went; one may tumble (see the tumble row): lie 0.8 s, `Grass`, up again |
+| Tumble (user 2026-11-06 "sometimes"; as built) | about 1 chase in 4 (`BeatHash`, never the sim's stream) one kid, never the one whose charge scares the herd, trips 0.7 s into its charge: stumble (lean 34, arms out x 95, 0.22 s), dive onto its front (lean 80, arms x 165, 0.16 s), the Contact = a `Grass` puff under the chest (a `PlayFx`, not a `hit`), a small Back bounce, lies 0.8 s, up onto its knees (squash 0.8) and up (0.7 s), brushes its tunic 0.8 s; it slides on 0.08 u and stays there. The others face it while they pant and laugh (`Laugh` points), it laughs last where it fell, then all sit. Cheat **"Kids chase rabbits: a kid tumbles"**; clip `358-chase-rabbits-tumble` (`RabbitChaseGame.Tumble`) |
 | Timing | 8–10 s. At most once per view hour per herd; never within 0.5 h of a planned hunt near it |
 | De-sync | charge starts 0–0.4 s apart; the creep is in no step |
 | 3-s read | "kids run at the rabbits; the rabbits scatter" |
@@ -296,6 +297,7 @@ plays in rounds inside it. Kids' runs: `Run` with bounce 0.03 u (today 0.022), l
 | 3-s read | "a little one toddles after a grown-up" |
 | Cheat | (part of "Kids play: ...": "Toddle") |
 | Replaces | `Hop` for `Toddle` |
+| **In the game (user 2026-11-06 "toddling is fine"; as built)** | a baby of 1 to 4 on its carer's carry (#192) toddles instead of riding when the carer's hands are free and they stay about the camp (a walk ≤ 1.2 u); long walks, busy hands, storm and snow: carried; ≤ 3 toddlers a day in the box (#192's cost). The toddler is a kid doll × 0.8: 0.15 u behind and 0.05 u aside of the walking carer, pottering on a 0.17 u arc at their front-left or front-right while they stand or sit (≤ 0.36 u/s); a plop every 6–10 s (no hit), a carer standing within 0.35 u turns and bends. `View/Beats/ToddleFollow.cs`, `Life/LifePlanner.Toddle.cs`, PeopleView; cheat **"Toddlers walk: all"** (adds a two-year-old if none); clip `358-toddle` (the cheat's play-group toddle: `358-toddle-game`) |
 
 ### B2.e Dance ring
 *Everyone holds hands in a ring that turns as one, steps in and out.*
@@ -517,7 +519,7 @@ on a catch the hunter holds it up and walks home proud.*
 | Uses | couples, the hunter and the kid home (B6), the wedding walk (C3) |
 | 3-s read | "two walk together, hand in hand" |
 
-### B7.d Hug (optional variant, flag `Hugs`, default off until the user decides)
+### B7.d Hug (flag `Hugs`, on: the user, 2026-11-06 "Hugs are fine. Add them.")
 *Arms wide, a step in, a squeeze with a little sway, a step back.*
 | | |
 |---|---|
@@ -529,6 +531,7 @@ on a catch the hunter holds it up and walks home proud.*
 | Timing | 2.4 s |
 | 3-s read | "two people hug" |
 | Cheat | **"Hug now"** |
+| **Where (as built, `View/HugDirector.cs`, `Life/HugRules.cs`)** | the wedding's join after the vow (C3, the moment's own); a **reunion**: the hunter home with a catch (CarryBack → Skin at the fire) and their partner, or a kid of theirs, within 1.4 u; a **reconcile**: two rivals whose bicker the leader stepped into, as it ends; a **parent and a kid** at dawn (6:36–8:00) or on the evening green (18:12–19:30), about one day in three for each. Rare on purpose: a pair once a view day, 2 / 3 / 4 / 6 a day in the box (tribe / camp / village / town), never two within 25 s; only people standing free (not working, walking off, in a game or a moment). A grown-up hugging a kid lifts it 0.02 u. Cheats: "Hug now", "Hugs: on/off", **"Hug: parent and kid now"**; clips `363-hug` (reunion), `363-hug-parent-kid` |
 
 ---
 
@@ -734,7 +737,7 @@ Replaces the `Visit` at `Scenes.cs:101-110`.
 
 ## Open questions for the user
 
-1. **Hugs** between peg dolls: on or off? (B7.d, C3.a; built behind a flag, shown on a clip.)
+1. **Hugs** between peg dolls: on or off? (B7.d, C3.a.) **Decided 2026-11-06: on, used in the game.**
 2. **Hit-stop**: a 0.1 s freeze on the key beats (spear lands, fish yanked, tag, dip, found, tree lands), or none?
-3. **A kid tumbles** in the rabbit chase (falls over in a puff of grass, gets up laughing): cute, or too much?
+3. **A kid tumbles** in the rabbit chase (falls over in a puff of grass, gets up laughing): cute, or too much? **Decided 2026-11-06: sometimes (about 1 chase in 4).**
 4. **Felling** (B10): build it now (keepers-hands §8.3 says yes) or wait until the town era needs it?

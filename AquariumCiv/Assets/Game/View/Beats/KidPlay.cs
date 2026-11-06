@@ -739,6 +739,38 @@ namespace AquariumCiv.View
             public float[] chargeAt, laughAt;
             public int leader, contactBy;
             public float contactAt;
+            /// <summary>The 2026-11-06 tumble: the kid who trips in this chase (−1: nobody), when it trips (cycle seconds), lands, is up again.</summary>
+            public int tumbler = -1;
+            public float tripAt, landAt, upAt;
+        }
+
+        // ---------------------------------------------------------------- the tumble (user 2026-11-06: "Kid tumble sometimes")
+        /// <summary>About one chase in four, one kid (never the one whose charge scares the herd) trips while charging. By the kit's hash.</summary>
+        public const float TumbleShare = 0.25f, TripAfter = 0.7f, Slide = 0.08f, SlideFor = 0.45f, BrushFor = 0.8f;
+        /// <summary>The cheat: the next chase built has a tumble (the first chase of a forced game).</summary>
+        public bool TumbleFirst;
+
+        /// <summary>The trip: a stumble forward (arms out to catch it), a dive onto the belly with a little bounce (the Contact: the grass puff),
+        /// a beat lying there, up onto the knees, up. Never hurt-looking: the arms reach out the whole way, no clutching, no limp.</summary>
+        public static readonly Beat Tumble = new Beat(
+            Beat.Step(BeatPhase.Act, 0.22f, Ease.Out, PoseKey.Hold.Lean(34f).Roll(0f).Squash(0.95f).Offset(0f, 0.02f, 0f).Arms(95f, 30f)),
+            Beat.Step(BeatPhase.Act, 0.16f, Ease.In, PoseKey.Hold.Lean(80f).Squash(0.92f).Offset(0f, 0.012f, 0f).Arms(165f, 22f)),
+            Beat.Step(BeatPhase.Contact, Beat.MinContact, Ease.Linear, PoseKey.Hold),
+            Beat.Step(BeatPhase.Hold, 0.18f, Ease.Back, PoseKey.Hold.Lean(84f).Squash(0.86f)),
+            Beat.Step(BeatPhase.Hold, 0.62f, Ease.Smooth, PoseKey.Hold.Lean(82f).Squash(0.94f).Arms(150f, 40f)),
+            Beat.Step(BeatPhase.Follow, 0.40f, Ease.Out, PoseKey.Hold.Lean(22f).Squash(0.8f).Offset(0f, 0f, 0f).Arms(40f, 30f)),
+            Beat.Step(BeatPhase.Settle, 0.30f, Ease.Back, PoseKey.Hold.Lean(6f).Squash(1f).Arms(25f, 18f)));
+
+        /// <summary>Seconds from the trip to the landing (the grass puff) and to standing again.</summary>
+        public static float LandAfter => Tumble.ContactAt;
+        public static float UpAfter => Tumble.Duration;
+
+        /// <summary>Who trips in chase <paramref name="j"/> of a game with <paramref name="n"/> kids (−1: nobody): the kit's hash, never the sim's dice.</summary>
+        public static int TumblerOf(int seed, int j, int n, int contactBy, bool force)
+        {
+            if (n < 2 || (!force && BeatHash.U01(seed, j, 3583) >= TumbleShare)) return -1;
+            int k = BeatHash.Pick(n - 1, seed, j, 3584);
+            return k >= contactBy && contactBy >= 0 ? k + 1 : k;
         }
 
         readonly List<Chase> chases = new();
@@ -803,6 +835,15 @@ namespace AquariumCiv.View
                 }
                 first = t1 + Pant;
                 for (int o = 0; o < n; o++) ch.laughAt[order[(o + j) % n]] = first + o * LaughStagger; // the laugh goes round them
+                ch.tumbler = TumblerOf(seed, j, n, ch.contactBy, j == 0 && TumbleFirst);
+                if (ch.tumbler >= 0)
+                {
+                    ch.tripAt = ch.chargeAt[ch.tumbler] + TripAfter;
+                    ch.landAt = ch.tripAt + LandAfter;
+                    ch.upAt = ch.tripAt + UpAfter;
+                    // It laughs too, once it has brushed itself off (sits out laughing where it fell).
+                    ch.laughAt[ch.tumbler] = Mathf.Max(ch.laughAt[ch.tumbler], ch.upAt + BrushFor + 0.1f);
+                }
                 chases.Add(ch);
             }
             return chases[c];
@@ -817,6 +858,14 @@ namespace AquariumCiv.View
         Vector2 PosIn(Chase ch, int i, float w)
         {
             if (!ch.herd) return ch.from[i];
+            if (i == ch.tumbler && w >= ch.tripAt)
+            {
+                // The trip: it slides on a little the way it ran, and stays where it fell.
+                var at = PosIn(ch, i, ch.tripAt - 1e-4f);
+                var run = ch.E[i] - ch.C[i];
+                var dir = run.sqrMagnitude > 1e-6f ? run.normalized : Vector2.right;
+                return at + dir * (Slide * Easing.Apply(Ease.Out, (w - ch.tripAt) / SlideFor));
+            }
             if (w < Approach) return Vector2.Lerp(ch.from[i], ch.S[i], Easing.Apply(Ease.Smooth, w / Approach));
             float creep0 = Approach + PointFor;
             if (w < creep0) return ch.S[i];
@@ -843,6 +892,17 @@ namespace AquariumCiv.View
             if (!ch.herd) { cue.under = cue.style = DollStyle.Sit; cue.face = centre; return cue; }
             cue.face = ch.H;
             float creep0 = Approach + PointFor;
+            if (i == ch.tumbler && w >= ch.tripAt && w < ch.laughAt[i])
+            {
+                // Tripped: the beat is the whole pose (on Stand, so no run cycle under it), then brushing off where it fell.
+                var run = ch.E[i] - ch.C[i];
+                cue.face = cue.pos + (run.sqrMagnitude > 1e-6f ? run.normalized : Vector2.right);
+                cue.under = cue.style = DollStyle.Stand;
+                cue.since = w - ch.tripAt;
+                return cue;
+            }
+            // The others turn to the one who fell once it is down, and laugh at it (Laugh points).
+            bool atTumble = ch.tumbler >= 0 && i != ch.tumbler && w >= ch.landAt;
             if (w < Approach) { cue.under = cue.style = DollStyle.Walk; }
             else if (w < creep0) cue.style = i == ch.leader ? DollStyle.Point : DollStyle.Crouch;
             else if (w < ch.chargeAt[i]) cue.style = DollStyle.Crouch;
@@ -854,8 +914,8 @@ namespace AquariumCiv.View
                 if (i == ch.contactBy) cue.hitOn = Herd;
                 cue.face = ch.H + (ch.H - ch.S[i]);
             }
-            else if (w < ch.laughAt[i]) { cue.style = DollStyle.Stand; cue.face = ch.H + (ch.H - ch.S[i]); cue.since = w - ch.chargeAt[i] - Charge; }
-            else if (w < ch.laughAt[i] + Laugh) { cue.under = cue.style = DollStyle.Laugh; cue.endBeat = true; cue.face = ch.H + (ch.H - ch.S[i]); }
+            else if (w < ch.laughAt[i]) { cue.style = DollStyle.Stand; cue.face = atTumble ? PosIn(ch, ch.tumbler, w) : ch.H + (ch.H - ch.S[i]); cue.since = w - ch.chargeAt[i] - Charge; }
+            else if (w < ch.laughAt[i] + Laugh) { cue.under = cue.style = DollStyle.Laugh; cue.endBeat = true; cue.face = atTumble ? PosIn(ch, ch.tumbler, w) : ch.H + (ch.H - ch.S[i]); }
             else { cue.under = cue.style = DollStyle.Sit; cue.face = centre; }
             if (cue.style == DollStyle.Crouch) cue.under = DollStyle.Crouch;
             if (cue.style == DollStyle.Point) cue.under = DollStyle.Point;
@@ -869,6 +929,7 @@ namespace AquariumCiv.View
             float w = t - t0 - cyc * Period;
             if (!ch.herd) return;
             float tau = Mathf.PI * 2f;
+            if (i == ch.tumbler && w >= ch.tripAt && w < ch.laughAt[i]) { TumblePose(ref p, c.since); return; }
             switch (c.style)
             {
                 case DollStyle.Crouch:
@@ -905,6 +966,40 @@ namespace AquariumCiv.View
                         p.offset.y = Mathf.Abs(Mathf.Sin(t * 3f * tau)) * 0.012f * u;
                     }
                     break;
+            }
+        }
+
+        /// <summary>The tripped kid <paramref name="since"/> seconds after the trip: the <see cref="Tumble"/> beat over a stand, then brushing
+        /// itself off (both hands swat the tunic in turn, a look down, a little wiggle) for <see cref="BrushFor"/> s.</summary>
+        public static void TumblePose(ref DollPose p, float since)
+        {
+            if (since < UpAfter) { Tumble.Apply(ref p, since); return; }
+            float b = since - UpAfter;
+            float k = Easing.Apply(Ease.Smooth, b / 0.15f) * (1f - Easing.Apply(Ease.Smooth, (b - (BrushFor - 0.2f)) / 0.2f));
+            float sw = Mathf.Sin(b * 5f * Mathf.PI * 2f);
+            p.lean = Mathf.Lerp(6f, 14f, k);
+            p.squash = 1f;
+            p.offset = new Vector3(0f, Mathf.Abs(sw) * 0.006f * k, 0f);
+            p.roll = sw * 4f * k;
+            p.armL = Vector3.Lerp(new Vector3(25f, 0f, -18f), new Vector3(42f + sw * 26f, 0f, -12f), k);
+            p.armR = Vector3.Lerp(new Vector3(25f, 0f, 18f), new Vector3(42f - sw * 26f, 0f, 12f), k);
+        }
+
+        /// <summary>The grass puff where a tumbling kid lands (once per tumble, through HitFx: <c>KidPlayDirector.FireEffects</c>).</summary>
+        public override void Effects(float from, float to, List<PlayFx> into)
+        {
+            if (to <= from) return;
+            for (int c = CycleAt(from); c <= CycleAt(to); c++)
+            {
+                var ch = ChaseOf(c);
+                if (ch.tumbler < 0) continue;
+                float at = t0 + c * Period + ch.landAt;
+                if (at <= from || at > to) continue;
+                var pos = PosIn(ch, ch.tumbler, ch.landAt);
+                var run = ch.E[ch.tumbler] - ch.C[ch.tumbler];
+                var dir = run.sqrMagnitude > 1e-6f ? run.normalized : Vector2.right;
+                var chest = pos + dir * (BodyH * KidScale * 0.6f); // it lands on its front: the puff is under the chest, ahead of the feet
+                into.Add(new PlayFx { kind = PlayFxKind.Grass, at = at, pos = new Vector3(chest.x, 0.005f, chest.y), aim = Vector3.up, count = 7, by = ch.tumbler, on = -1, scale = 0.8f });
             }
         }
     }

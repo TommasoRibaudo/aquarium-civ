@@ -382,6 +382,13 @@ namespace AquariumCiv.View
             if (Btn("Hug now")) last = PeopleView.DebugPair(PairKind.Hug);
             if (Btn("Hugs: " + (BeatFlags.Hugs ? "on" : "off"))) { BeatFlags.Hugs = !BeatFlags.Hugs; last = "hugs " + (BeatFlags.Hugs ? "on" : "off"); }
             EndRow();
+            // hugs/tumble/toddle (user 2026-11-06): the in-game hugs' status, a parent-and-kid hug, a chase with a tumble, toddlers on their feet
+            GUILayout.Label(HugDirector.DebugStatus());
+            Row();
+            if (Btn("Hug: parent and kid now")) last = HugDirector.DebugParentKid();
+            if (Btn("Kids chase rabbits: a kid tumbles")) last = KidPlayDirector.DebugTumble();
+            if (Btn("Toddlers walk: " + (AquariumCiv.Life.LifePlanner.DebugToddlers ? "all" : "normal"))) { var tpv = PeopleView.Find(); last = tpv != null && tpv.Planner != null ? tpv.Planner.DebugToddlersToggle() : "no people"; }
+            EndRow();
             // #315/#316: the frogs and the voices by distance.
             Row();
             if (Btn("Frog now")) last = AudioDirector.DebugFrog();

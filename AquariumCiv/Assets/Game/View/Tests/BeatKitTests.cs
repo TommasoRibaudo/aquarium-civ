@@ -477,7 +477,7 @@ namespace AquariumCiv.View.Tests
             try
             {
                 BeatFlags.Hugs = false;
-                Assert.AreEqual(GroupRole.Giver, hug.Cue(0, 1f).role, "hugs are off until the user picks them (§0.8)");
+                Assert.AreEqual(GroupRole.Giver, hug.Cue(0, 1f).role, "with hugs off, a hug stance is a hand-over's (§0.8)");
                 BeatFlags.Hugs = true;
                 Assert.AreEqual(GroupRole.HugA, hug.Cue(0, 1f).role);
                 Assert.AreEqual(PairGroup.HugGap, (hug.Cue(0, 1f).target - hug.Cue(1, 1f).target).magnitude, 1e-4f, "close");
