@@ -358,7 +358,10 @@ namespace AquariumCiv.View
         {
             var v = d.view;
             var land = Box.land;
-            bool hidden = stage == LifeStage.Baby || a.kind == ActivityKind.None; // babies are never walkers: a carer's doll shows them (#192, §4 "Everyone")
+            // Babies are drawn on their carer (#192, §4 "Everyone"); 2026-11-06: a walking-age one on its feet toddles after them (ToddleFollow).
+            Doll carerDoll = null;
+            bool toddling = stage == LifeStage.Baby && a.carryOnFoot && !a.carriedBy.IsNone && dolls.TryGetValue(a.carriedBy.Key, out carerDoll) && carerDoll.placed && !carerDoll.pose.hidden;
+            bool hidden = (stage == LifeStage.Baby && !toddling) || a.kind == ActivityKind.None;
             float x = 0f, z = 0f;
             Vector2? huntFace = null;
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
@@ -399,6 +402,12 @@ namespace AquariumCiv.View
             PairCue pairCue = default; PairEvent pairEv = null;
             bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
             if (paired) { target = pairCue.pos; face = pairCue.face; }
+            if (toddling) // 2026-11-06: behind the walking carer, pottering in front of a standing one, sat down where it plopped
+            {
+                var cf = Quaternion.Euler(0f, carerDoll.yaw, 0f) * Vector3.back;
+                target = ToddleFollow.Target(a.who.Key, time, carerDoll.drawn, new Vector2(cf.x, cf.z), carerDoll.walking, carerDoll.velocity, d.pos);
+                face = carerDoll.drawn;
+            }
             // #365 B9.c: someone at the fire gets up and pokes it with a stick
             float pokeSince = 0f; bool pokeBig = false;
             bool poking = !hidden && !paired && !playing && !tenting && !a.moving && meals.Poking(a.who.Key, time, out pokeSince, out pokeBig);
@@ -435,6 +444,7 @@ namespace AquariumCiv.View
             if (jump) d.pos = target;
             else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
             else if (paired) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, pairCue.speed * 1.1f + (target - d.pos).magnitude * 1.5f) * dt); // #363: the pair's pace
+            else if (toddling) d.pos = Vector2.MoveTowards(d.pos, target, ToddleFollow.Speed((target - d.pos).magnitude) * dt); // 2026-11-06: a toddler's pace
             else
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
@@ -461,6 +471,7 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
+            if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
             if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = pairEv.takerSeated && pairCue.index == 1 ? DollStyle.Sit : DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over); #365: a bowl is handed to someone who stays seated
             else if (style == DollStyle.EatMeal && !walking && meals.Waiting(a.who.Key, time)) style = DollStyle.Sit; // #365 B9.b: sitting, hands in the lap, until the bowl comes round
             if (!a.moving && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.SitTogether or ActivityKind.Eat or ActivityKind.Visit)
@@ -505,6 +516,11 @@ namespace AquariumCiv.View
                     want = Yaw(d.pos, p.pos);
                 else if (face.HasValue && (face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value);
             }
+            // 2026-11-06: a carer standing near their toddler when it plops turns to it and bends (ToddleFollow.CarerPose below).
+            Vector2? bendTo = null;
+            if (!a.carrying.IsNone && a.carryOnFoot && !walking && !paired && !playing && style == DollStyle.Stand && ToddleFollow.PlopSince(a.carrying.Key, time) >= 0f
+                && dolls.TryGetValue(a.carrying.Key, out var tod) && tod.placed && (tod.drawn - d.drawn).sqrMagnitude < ToddleFollow.BendReach * ToddleFollow.BendReach)
+            { bendTo = tod.drawn; if ((tod.drawn - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, tod.drawn); }
             float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, d.speed / FaceFrom) : MostTurn; // nearly stopped in a crowd, a body doesn't spin
             d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * TurnRate)), -most * dt, most * dt) : want;
 
@@ -517,7 +533,7 @@ namespace AquariumCiv.View
             float since = a.end > a.start ? LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)) : 0f;
             bool holds = kind != PropKind.None && kind != PropKind.Mask; // a mask is worn, the hands stay free
             // #192: a baby in the arms holds them the way a load does; on the back it rides, and the hands stay on the work.
-            bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !holds;
+            bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !a.carryOnFoot && !holds;
             d.stride = Mathf.Repeat(d.stride + DollMotion.Cadence(playing ? playCue.under : style, d.speed) * Mathf.PI * dt, Mathf.PI * 2f);
             if (paired && pairEv.kind == PairKind.WalkTogether && pairCue.index == 1 && dolls.TryGetValue(pairEv.group.KeyOf(0), out var strideLead)) d.stride = strideLead.stride; // #363: strides in step
             float tipSince = 0f;
@@ -546,6 +562,8 @@ namespace AquariumCiv.View
             }
             StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
             if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c: up from the sit, the stick into the fire, back down
+            if (toddling) ToddleFollow.ToddlerPose(ref pose, a.who.Key, time); // 2026-11-06: the plop
+            else if (bendTo.HasValue) ToddleFollow.CarerPose(ref pose, a.carrying.Key, time);
             if (a.kind == ActivityKind.FetchWater) // #360: the draw (kneel, dip, lift) at the water; the heavy walk home with the full bucket
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
@@ -572,14 +590,15 @@ namespace AquariumCiv.View
             v.gameObject.SetActive(!pose.hidden);
             bool struck = d.hitEdge.Step(pose.hidden ? 0f : pose.hit); // #355
             if (pose.hidden) return;
-            v.SetBaby(!a.carrying.IsNone, a.carryOnBack);
+            v.SetBaby(!a.carrying.IsNone && !a.carryOnFoot, a.carryOnBack);
             float s = v.scale;
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
             var ground = new Vector3(d.drawn.x, Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y), d.drawn.y);
             if (playing && playCue.sink > 0f && KidPlay.PondLevel(out float pondY)) ground.y = pondY - playCue.sink; // #359: wading, jumped in
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
-            v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
+            float zs = toddling ? dollZoomScale * ToddleFollow.ToddlerScale : dollZoomScale; // 2026-11-06: the little one is littler than a kid
+            v.transform.localScale = new Vector3(zs, pose.squash * zs, zs);
             v.ApplyArms(pose);
             if (style == DollStyle.TipBasket) BasketTip?.Invoke(a.who, v, tipSince); // #361: every frame of the tip (BerryPickView pours the berries)
             Vector3 fishLine = default;

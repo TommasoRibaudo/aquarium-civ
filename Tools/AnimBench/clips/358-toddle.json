@@ -1,15 +1,102 @@
 {
   "name": "358-toddle",
-  "notes": "#358 B2.d toddle: a carer strolls a small circle (0.12 u/s) and a little one wobbles after it, 0.15 u behind, arms out, rolling side to side (View/Beats/KidPlay.cs ToddleGame). Every 6-10 s the toddler plops down (squash, a drop, Back); the carer stops, turns, bends to it, and on they go (the end beat). In the game babies are drawn on their carer (#192), so this shows through the cheat 'Toddle' (a kid as the toddler) until the user decides (open question).",
-  "duration": 18,
+  "notes": "User 2026-11-06 'Toddling is fine' (B2.d in the normal game, #192's babies): a walking-age baby (1 to 4) on its own feet after its real carer, as PeopleView draws it when the planner says carryOnFoot (LifePlanner.Toddle.cs: the carer's own carry, hands free, a walk of 1.2 u or less, at most 3 toddlers a day). The carer's day: stands, walks 0.9 u across the camp, stands, walks back. The toddler (a kid doll x 0.8) pottering on a short arc in front of the standing carer, wobbling 0.15 u behind the walking one (a little to the side), arms out, rolling; every 6-10 s it plops onto its bottom, sits a beat and gets up (the end beat); a carer standing near turns and bends to it. View/Beats/ToddleFollow.cs. AnimLab: cheat 'Toddlers walk: all' (adds a two-year-old if the box has none), then the hours 8:00-17:30.",
+  "duration": 23.0,
   "fps": 30,
-  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.0 },
-  "sheet": { "from": 0, "to": 18, "frames": 24, "columns": 6 },
-  "expect": { "neighbourRadius": 0.6 },
-  "play": { "game": "Toddle", "members": ["carer", "baby"], "center": [0.0, 0.0], "seed": 12 },
+  "warmup": 1,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.0,
+      0.05
+    ],
+    "span": 1.3
+  },
+  "sheet": {
+    "from": 0,
+    "to": 23.0,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6
+  },
+  "toddle": {
+    "carer": "ma",
+    "toddler": "baby"
+  },
   "objects": [],
   "dolls": [
-    { "id": "carer", "kid": false, "seed": 401 },
-    { "id": "baby", "kid": true, "seed": 402 }
+    {
+      "id": "ma",
+      "seed": 401,
+      "role": "carer",
+      "timeline": [
+        {
+          "label": "stand",
+          "style": "Stand",
+          "pos": [
+            -0.45,
+            0.0
+          ],
+          "facing": 200,
+          "dur": 5
+        },
+        {
+          "label": "walk over",
+          "activity": "Walk",
+          "from": [
+            -0.45,
+            0.0
+          ],
+          "to": [
+            0.45,
+            0.15
+          ],
+          "dur": 3.4
+        },
+        {
+          "label": "stand",
+          "style": "Stand",
+          "pos": [
+            0.45,
+            0.15
+          ],
+          "facing": 160,
+          "dur": 8
+        },
+        {
+          "label": "walk back",
+          "activity": "Walk",
+          "from": [
+            0.45,
+            0.15
+          ],
+          "to": [
+            -0.3,
+            -0.05
+          ],
+          "dur": 3
+        },
+        {
+          "label": "stand",
+          "style": "Stand",
+          "pos": [
+            -0.3,
+            -0.05
+          ],
+          "facing": 180
+        }
+      ]
+    },
+    {
+      "id": "baby",
+      "seed": 402,
+      "kid": true,
+      "pos": [
+        -0.45,
+        -0.15
+      ]
+    }
   ]
 }

@@ -32,6 +32,8 @@ namespace AnimBench
         public PlaySpec Play;
         /// <summary>#363: a pair moment (src/Pair.cs).</summary>
         public PairSpec Pair;
+        /// <summary>2026-11-06: a toddler following its real carer (Toddle.cs).</summary>
+        public ToddleSpec Toddle;
         /// <summary>#365: the meal and the fire (src/Meal.cs).</summary>
         public MealSpec Meal;
         /// <summary>#370: the staged moment the dolls were built from (null for a hand-made clip).</summary>
@@ -78,6 +80,7 @@ namespace AnimBench
             }
             if (root["play"] is JsonObject pl) c.Play = PlaySpec.Parse(pl); // #358
             if (root["pair"] is JsonObject pr) c.Pair = PairSpec.Parse(pr); // #363
+            if (root["toddle"] is JsonObject td) c.Toddle = ToddleSpec.Parse(td); // 2026-11-06
             if (root["meal"] is JsonObject ml) c.Meal = MealSpec.Parse(ml); // #365
             if (root["moment"] is JsonObject mo) c.Moment = MomentClip.Expand(c, mo, root["duration"] == null); // #370: the dolls from the game's staged-moment plan
             if (c.Dolls.Count == 0 && c.Objects.Count == 0) throw new ClipException("a clip needs at least one doll or object");

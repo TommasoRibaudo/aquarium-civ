@@ -287,6 +287,7 @@ namespace AnimBench
         {
             if (StepPlayDoll(d, t, dt)) return; // #358: a play group drives this doll
             if (StepPairDoll(d, t, dt)) return; // #363: a pair moment drives this doll
+            if (StepToddleDoll(d, t, dt)) return; // 2026-11-06: a toddler after its carer
             var spec = d.Spec;
             int si = spec.IndexAt(tc);
             var seg = spec.Segments[si];
@@ -332,6 +333,8 @@ namespace AnimBench
                 else if (face.HasValue && (face.Value - d.Pos).sqrMagnitude > 1e-5f) want = Bench.Yaw(d.Pos, face.Value);
                 else if (faceAngle.HasValue) want = faceAngle.Value;
             }
+            var bendTo = ToddleBendTo(d, walking, style, clip.Clock + t); // 2026-11-06, as PeopleView: a carer turns to its plopped toddler
+            if (bendTo.HasValue && (bendTo.Value - d.Pos).sqrMagnitude > 1e-5f) want = Bench.Yaw(d.Pos, bendTo.Value);
             float most = walking || seg.Moves ? Mathf.Lerp(Bench.SlowTurn, Bench.MostTurn, d.Speed / Bench.FaceFrom) : Bench.MostTurn;
             d.Yaw = dt > 0f ? d.Yaw + Mathf.Clamp(Mathf.DeltaAngle(d.Yaw, want) * (1f - Mathf.Exp(-dt * Bench.TurnRate)), -most * dt, most * dt) : want;
 
@@ -406,6 +409,7 @@ namespace AnimBench
                 else if (style == DollStyle.Walk && seg.Moves) WaterBeats.Heavy(ref pose, d.Stride);
             }
             if (fishing) FishBeats.Apply(ref pose, fishS, spec.Seed, fishLeft); // #364
+            if (bendTo.HasValue) ToddleFollow.CarerPose(ref pose, DollById(clip.Toddle.Toddler).Spec.Seed, clip.Clock + t); // 2026-11-06
             d.Pose = pose;
 
             var f = new DollFrame

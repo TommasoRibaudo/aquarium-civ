@@ -162,11 +162,12 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void Hug_IsBehindTheFlag_AndClosesToHugGapThenStepsBack()
         {
+            Assert.IsTrue(BeatFlags.Hugs, "hugs are on by default (the user, 2026-11-06)");
             bool was = BeatFlags.Hugs;
             try
             {
                 BeatFlags.Hugs = false;
-                Assert.IsNull(PairStage.Hug(1, 0f, 1, 2, Vector2.zero, new Vector2(0.5f, 0f)), "off by default");
+                Assert.IsNull(PairStage.Hug(1, 0f, 1, 2, Vector2.zero, new Vector2(0.5f, 0f)), "off with the flag off");
                 var ev = PairStage.Hug(1, 0f, 1, 2, Vector2.zero, new Vector2(0.5f, 0f), force: true);
                 Assert.NotNull(ev);
                 float at = ev.BeatStart;

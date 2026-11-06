@@ -71,7 +71,7 @@ namespace AquariumCiv.Life.Tests
                         Assert.AreEqual(a.who, byKey[a.carrying.Key].carriedBy, "the baby says who has them");
                         Assert.IsTrue(a.kind >= 0 && planner.IsValidPlace(a.place));
                         seen.Add(a.carrying.Key);
-                        StringAssert.Contains(a.carryOnBack ? "on their back" : "in their arms", planner.Describe(a));
+                        StringAssert.Contains(a.carryOnFoot ? "toddling after them" : a.carryOnBack ? "on their back" : "in their arms", planner.Describe(a)); // 2026-11-06: a walker toddles
                     }
                     foreach (var a in acts)
                         if (!a.carriedBy.IsNone) Assert.IsTrue(carriedNow.Contains(a.who.Key), $"{t}: {a.who} is carried by nobody");
