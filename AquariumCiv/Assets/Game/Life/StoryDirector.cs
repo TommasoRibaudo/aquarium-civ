@@ -46,6 +46,13 @@ namespace AquariumCiv.Life
         public bool waterHours;
         /// <summary>Distinct stories in progress inside the view rectangle (inset 10 %), each counted once.</summary>
         public int storiesInView;
+        /// <summary>Batch 3: the staged (held) moments playing in view, each counted once. A moment is the foreground, not a
+        /// background story: all of them together count as ONE story (<see cref="Counted"/>), so a wedding fills a tribe's view but
+        /// a busy day (two moments) can't hold the director at its cap while the queue plays one after another. Their people are
+        /// never free (the view leaves them out of <see cref="free"/>), so nothing started steals a moment's cast.</summary>
+        public int momentsInView;
+        /// <summary>What the director counts against its floor and cap: the background stories plus one for any moments.</summary>
+        public int Counted => storiesInView + (momentsInView > 0 ? 1 : 0);
         /// <summary>The director's kinds among them (never start one already in view).</summary>
         public readonly List<StoryKind> kindsInView = new List<StoryKind>();
         /// <summary>Where the camera looks (the ground under the screen's middle).</summary>
@@ -62,7 +69,7 @@ namespace AquariumCiv.Life
         public void Clear()
         {
             kindsInView.Clear(); free.Clear();
-            storiesInView = 0; rabbits = huntOn = water = splash = bush = false; bushCell = -1; waterHours = false;
+            storiesInView = momentsInView = 0; rabbits = huntOn = water = splash = bush = false; bushCell = -1; waterHours = false;
         }
     }
 
@@ -253,10 +260,11 @@ namespace AquariumCiv.Life
             if (w.time < nextCheck) return null;
             nextCheck = w.time + StoryRules.CheckSeconds;
             LastLook = w.time;
-            StoriesInView = w.storiesInView;
+            int inView = w.Counted;
+            StoriesInView = inView;
             if (float.IsNaN(lastSeen)) lastSeen = w.time;
             if (float.IsNaN(lastStart)) lastStart = w.time; // the first look: a tribe waits its quiet stretch, a camp's floor starts one at once
-            if (w.storiesInView > 0) lastSeen = w.time;
+            if (inView > 0) lastSeen = w.time;
             if (Density == StoryDensity.Off) return Wait("off", float.PositiveInfinity);
             if (w.part == StoryDayPart.Night) return Wait("night: everyone sleeps", float.PositiveInfinity);
 
@@ -265,14 +273,14 @@ namespace AquariumCiv.Life
             int floor = StoryRules.Floor(pop, Density), cap = StoryRules.Cap(pop, Density);
             float quiet = StoryRules.QuietSeconds(pop, Density);
             float sinceStart = w.time - lastStart, sinceSeen = w.time - lastSeen;
-            bool below = w.storiesInView < floor;
-            bool tooQuiet = w.storiesInView == 0 && sinceSeen >= quiet;
-            bool due = w.storiesInView < cap && sinceStart >= interval;
+            bool below = inView < floor;
+            bool tooQuiet = inView == 0 && sinceSeen >= quiet;
+            bool due = inView < cap && sinceStart >= interval;
             if (!below && !tooQuiet && !due)
             {
-                float next = w.storiesInView >= cap ? float.PositiveInfinity
-                    : Math.Max(nextCheck - w.time, Math.Min(interval - sinceStart, w.storiesInView == 0 ? quiet - sinceSeen : float.PositiveInfinity));
-                return Wait(w.storiesInView >= cap ? $"{w.storiesInView} in view (enough)" : "not yet", next);
+                float next = inView >= cap ? float.PositiveInfinity
+                    : Math.Max(nextCheck - w.time, Math.Min(interval - sinceStart, inView == 0 ? quiet - sinceSeen : float.PositiveInfinity));
+                return Wait(inView >= cap ? $"{inView} in view (enough)" + (w.momentsInView > 0 ? $", {w.momentsInView} moment(s) as one" : "") : "not yet", next);
             }
 
             var plan = new StoryPlan();

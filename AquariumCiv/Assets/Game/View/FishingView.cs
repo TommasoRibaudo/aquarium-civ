@@ -92,6 +92,8 @@ namespace AquariumCiv.View
             foreach (var f in fishers.Values) if (f.basket != null) Destroy(f.basket.gameObject);
             fishers.Clear(); shift.Clear(); wantBite.Clear();
             if (fishMesh != null) Destroy(fishMesh);
+            if (holder != null) Destroy(holder.gameObject);
+            holder = null;
         }
 
         void Update()
@@ -251,8 +253,22 @@ namespace AquariumCiv.View
             st.top = p + Vector3.up * (0.05f * zoom);
         }
 
+        /// <summary>A fisher unseen this long has packed up: their basket is destroyed (batch 3: one hidden basket root and three
+        /// renderers stayed for every person who ever fished). A block seen again starts fresh anyway (<c>init</c> is false).</summary>
+        const float PackUpSeconds = 2f;
+        readonly List<int> packedUp = new List<int>();
+
         void StepBaskets(float dt)
         {
+            packedUp.Clear();
+            foreach (var kv in fishers)
+                if (clock - kv.Value.seen > PackUpSeconds) packedUp.Add(kv.Key);
+            foreach (int key in packedUp)
+            {
+                var gone = fishers[key];
+                if (gone.basket != null) Destroy(gone.basket.gameObject);
+                fishers.Remove(key);
+            }
             foreach (var st in fishers.Values)
             {
                 if (st.basket == null) continue;
@@ -278,9 +294,26 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- the pieces
+        Transform holder;
+
+        /// <summary>Batch 3: every piece (the flying fish, the baskets) under one child of the box, at world scale 1, so none of them is a
+        /// root of the scene of its own (pieces are placed in world space).</summary>
+        Transform Holder()
+        {
+            if (holder == null)
+            {
+                holder = new GameObject("FishingPieces").transform;
+                holder.SetParent(transform, false);
+            }
+            var ls = transform.lossyScale;
+            holder.localScale = new Vector3(ls.x != 0f ? 1f / ls.x : 1f, ls.y != 0f ? 1f / ls.y : 1f, ls.z != 0f ? 1f / ls.z : 1f);
+            return holder;
+        }
+
         GameObject NewPiece(string name, Mesh mesh)
         {
             var go = new GameObject(name);
+            go.transform.SetParent(Holder(), false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();
             r.sharedMaterial = box != null ? box.SolidMaterial : null;

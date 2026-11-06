@@ -99,6 +99,7 @@ namespace AquariumCiv.View
             if (sim == null) return "no box";
             var e = sim.DebugFireCallbackNow();
             if (e == null) return "no callback left to tell";
+            sim.DebugCardMoment(e.id); // #371 stages a callback: this cheat reads its card, so the held moment becomes one
             string card = CardStackView.DebugOpenEntry(e.id);
             return Saved($"callback: {e.text} ({card})");
         }

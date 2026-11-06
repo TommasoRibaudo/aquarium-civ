@@ -265,6 +265,37 @@ namespace AquariumCiv.Life.Tests
             Assert.IsNotNull(planner.StageChoice(sim.ViewOfDilemma(d), After(at, 40f), Right.x, Right.z, Viewer.x, Viewer.z));
         }
 
+        /// <summary>Batch 3: a staged moment plays (the welcome on a return) when the Keeper taps Show me: the choice scene holds its
+        /// cast. Everyone it stands is out of the moment (the view no longer places them by it) and plays the choice; the rest of the
+        /// moment's cast plays on.</summary>
+        [Test]
+        public void AChoiceStagedDuringAMoment_HoldsItsCast()
+        {
+            var (sim, d) = Raised("camp_remember", 72);
+            Assert.IsNotNull(sim);
+            sim.Config.moments = true;
+            var m = sim.DebugQueueMoment(MomentKind.Festival);
+            Assert.IsNotNull(m, "a festival can be queued");
+            var planner = LifePlanner.Wired(sim);
+            var at = new ViewTime(sim.State.month, 10f);
+            var sc = planner.StageHeldMoment(m, at);
+            Assert.IsNotNull(sc, planner.LastHeldWhyNot);
+            var ask = After(at, sc.plan.ringT0 + 1f);
+            var st = planner.StageChoice(sim.ViewOfDilemma(d), ask, Right.x, Right.z, Viewer.x, Viewer.z);
+            Assert.IsNotNull(st);
+            var cast = st.Pins().Select(p => p.who).ToList();
+            Assert.IsTrue(cast.Any(w => sc.plan.Member(w.Key) != null), "the test needs someone in both (the festival takes everyone near)");
+            var later = After(ask, 6f);
+            var plans = Plans(planner, later);
+            foreach (var w in cast)
+            {
+                Assert.IsFalse(planner.HeldMomentAt(w, later, out _, out _, out _, out _), w + " is out of the moment");
+                Assert.AreNotEqual(ActivityKind.Dance, plans[w.Key].kind, w + " plays the choice, not the ring");
+            }
+            var rest = sc.plan.members.Select(x => x.key > 0 ? PersonRef.Notable(x.key) : PersonRef.Crowd(-x.key - 1)).Where(w => !cast.Contains(w)).ToList();
+            Assert.IsTrue(rest.Any(w => planner.HeldMomentAt(w, later, out _, out _, out _, out _)), "the others play the moment on");
+        }
+
         static float Dist((float x, float z) a, (float x, float z) b) => (float)Math.Sqrt((a.x - b.x) * (a.x - b.x) + (a.z - b.z) * (a.z - b.z));
     }
 }
