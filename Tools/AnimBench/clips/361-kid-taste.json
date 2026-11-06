@@ -1,0 +1,20 @@
+{
+  "name": "361-kid-taste",
+  "notes": "B5.c (#361): a kid snacking at a berry bush (LifePlanner KidBerryPlace: Eat at a BushCell) draws TasteBerry standing, not Sit: reach to the bush (contact: a dot comes off, the bush sways), hand to the mouth, chew bob, 2.2 s a berry; every 3rd berry a happy hop with arms out (the end beat). The kid stands 0.17 u off the bush like every picker.",
+  "duration": 8,
+  "fps": 30,
+  "warmup": 0,
+  "camera": { "view": "default", "focus": [-0.05, 0.0], "span": 0.5 },
+  "sheet": { "from": 0, "to": 2.4, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2 },
+  "objects": [
+    { "id": "bush", "kind": "bush", "pos": [0.0, 0.0], "radius": 0.1, "berries": 7, "pickedBy": "kid", "state": { "dropOnHit": 1 } }
+  ],
+  "dolls": [
+    { "id": "kid", "kid": true, "seed": 363, "role": "kid", "phase": 0,
+      "timeline": [
+        { "label": "taste", "style": "TasteBerry", "activity": "Eat", "pos": [-0.15, 0.0], "face": "bush", "target": "bush", "dur": 7 },
+        { "label": "run off", "activity": "Walk", "from": [-0.15, 0.0], "to": [-0.7, 0.2], "dur": 1.5, "endBeat": true }
+      ] }
+  ]
+}

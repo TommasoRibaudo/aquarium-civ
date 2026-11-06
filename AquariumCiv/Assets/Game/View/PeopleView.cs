@@ -39,6 +39,8 @@ namespace AquariumCiv.View
         public static float DollScaleAmount = AquariumCiv.Lighting.CameraReach.DollScaleUp;
         BoxCamera rig;
         float dollZoomScale = 1f;
+        /// <summary>#361: the dolls' zoom factor, which the berry and root arcs share (animation-specs §0.1).</summary>
+        public float DollZoom => dollZoomScale;
         public float replanSeconds = 0.2f;
         [Tooltip("Animate in edit mode (otherwise edit mode only updates when the Editor repaints).")]
         public bool animateInEditMode;
@@ -81,6 +83,8 @@ namespace AquariumCiv.View
             public bool walking;
             /// <summary>#355: the pose's hit, as a once-per-contact edge for <see cref="WorkHit"/>.</summary>
             public HitEdge hitEdge;
+            /// <summary>#361: the pose clock the berry beats loop on (<see cref="TryGetBerryDoll"/>).</summary>
+            public float poseClock;
         }
 
         BoxView box;
@@ -410,6 +414,7 @@ namespace AquariumCiv.View
             var style = DollMotion.StyleOf(a.kind);
             if (walking && style != DollStyle.Hop) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
             if (hidden) style = DollStyle.Hidden;
+            if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
 
             // Props.
             var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
@@ -418,6 +423,7 @@ namespace AquariumCiv.View
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
                 kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
+            v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
 
             // Facing: along the walk, else the partner, the ring's centre, the work or the water.
             float want = d.yaw;
@@ -435,6 +441,7 @@ namespace AquariumCiv.View
 
             // Pose: the apprentice copies the master a beat late (§4).
             float phase = time + d.phase - (a.copiesPartner ? 0.35f : 0f);
+            d.poseClock = phase; // #361
             if (!a.partner.IsNone && !a.copiesPartner && a.kind is ActivityKind.Chat or ActivityKind.Argue) phase += a.who.Key < a.partner.Key ? 0f : 0.65f;
             int steps = ActivityInfo.LoopSteps(a.kind);
             // #92: a story told once (the lens look, the tap-back's knocks) runs on real seconds into the activity.
@@ -929,6 +936,15 @@ namespace AquariumCiv.View
             var t = d.view.transform;
             float top = (PegDoll.HeadY + PegDoll.HeadR) * d.view.scale * dollZoomScale;
             world = t.parent != null ? t.parent.TransformPoint(t.localPosition + Vector3.up * top) : t.position + Vector3.up * top;
+            return true;
+        }
+
+        /// <summary>#361: a doll's view and the clock its berry beat loops on, for <see cref="BerryPickView"/>.</summary>
+        public bool TryGetBerryDoll(PersonRef who, out PegDollView view, out float poseClock)
+        {
+            view = null; poseClock = 0f;
+            if (!dolls.TryGetValue(who.Key, out var d) || !d.placed || d.view == null || !d.view.gameObject.activeInHierarchy) return false;
+            view = d.view; poseClock = d.poseClock;
             return true;
         }
 

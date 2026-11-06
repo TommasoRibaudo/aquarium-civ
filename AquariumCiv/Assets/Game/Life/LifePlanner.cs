@@ -184,6 +184,7 @@ namespace AquariumCiv.Life
             if (HuntActivityAt(p, t, out var hunting)) return hunting;
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
+            if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);

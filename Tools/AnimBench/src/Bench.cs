@@ -146,7 +146,12 @@ namespace AnimBench
             if (f.Prop == PropKind.None) return;
             var (pos, rot) = SlotPose(f.Slot);
             float ps = Mathf.Lerp(1f, s, 0.5f);
-            if (f.Slot == PropSlot.Hand)
+            if (f.Slot == PropSlot.Hand && f.Prop == PropKind.Basket && BerryMotion.BasketInLeft(f.Style))
+            {
+                // #361: the basket in the left hand, upright for the arm pose it is held at (PegDollView.HoldInLeft)
+                f.PropFrame = f.ArmL.Child(new Vector3(-pos.x, pos.y, pos.z) * s, Quaternion.Inverse(Quaternion.Euler(f.Pose.armL)) * rot, Vector3.one * ps);
+            }
+            else if (f.Slot == PropSlot.Hand)
             {
                 var rest = Quaternion.Inverse(Quaternion.Euler(-35f, 0, 10f)) * Quaternion.Euler(0, 0, IsTool(f.Prop) ? -ToolTilt : 0f) * rot;
                 var pr = f.ArmR.Child(pos * s, pose.extend ? AlongArm : rest, Vector3.one * ps);
@@ -177,6 +182,7 @@ namespace AnimBench
         public ObjectSpec Spec;
         public RabbitHerd.Scare Scare;
         public float Berries, DropClock;
+        public bool PickerHit;
         public ObjectFrame Last;
         public Vector3 ArcFrom, ArcTo;
         public bool ArcLaunched;
@@ -353,9 +359,17 @@ namespace AnimBench
                     break;
                 }
                 case "bush":
+                case "root": // #361: a spot of dry ground that gives up a root on each of the digger's hits
                 {
                     var picker = s.PickedBy != null ? DollById(s.PickedBy) : null;
-                    if (live && picker != null && picker.Last.Style == DollStyle.Pick && o.Berries > 0f)
+                    if (live && picker != null && s.State.ContainsKey("dropOnHit"))
+                    {
+                        // #361: the view takes a dot on each of the picker's hits (BerryPickView)
+                        bool h = picker.Last.Pose.hit > 0.5f;
+                        if (h && !o.PickerHit && o.Berries > 0f) o.Berries -= 1f;
+                        o.PickerHit = h;
+                    }
+                    else if (live && picker != null && picker.Last.Style is DollStyle.Pick or DollStyle.PickBerry && o.Berries > 0f)
                     {
                         o.DropClock += dt;
                         if (o.DropClock >= s.DropEvery) { o.DropClock -= s.DropEvery; o.Berries -= 1f; }

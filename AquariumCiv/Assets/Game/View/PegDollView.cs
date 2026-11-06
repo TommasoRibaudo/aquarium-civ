@@ -28,6 +28,8 @@ namespace AquariumCiv.View
         Transform baby, babyStraps;
         bool babyOnBack;
         bool extended;
+        /// <summary>#361: the basket rides in the left hand (the right hand picks): see <see cref="HoldInLeft"/>.</summary>
+        bool inLeft;
         static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
         public static PegDollView Create(Transform parent, Material material, PegDoll.Look look, bool kid, int seed)
@@ -94,7 +96,7 @@ namespace AquariumCiv.View
         /// so they swing with it; the arm is raised a little to hold the prop out.</summary>
         public void SetProp(PropKind kind, PropSlot slot)
         {
-            propKind = kind; propSlot = slot;
+            propKind = kind; propSlot = slot; inLeft = false;
             if (prop != null) { if (Application.isPlaying) Destroy(prop.gameObject); else DestroyImmediate(prop.gameObject); prop = null; }
             if (propExtra != null) { if (Application.isPlaying) Destroy(propExtra.gameObject); else DestroyImmediate(propExtra.gameObject); propExtra = null; }
             armR.localRotation = Quaternion.Euler(0, 0, 14f);
@@ -148,6 +150,18 @@ namespace AquariumCiv.View
             prop.localRotation = extend ? AlongArm : propRest;
         }
 
+        /// <summary>#361: a hand basket in the left hand while the right hand picks or digs (it stays upright whatever the arm does), else back in the right.
+        /// Cheap to call every frame.</summary>
+        public void HoldInLeft(bool on)
+        {
+            on &= prop != null && propSlot == PropSlot.Hand && propKind == PropKind.Basket;
+            if (on == inLeft) return;
+            inLeft = on;
+            var (pos, rot) = PegDoll.SlotPose(PropSlot.Hand);
+            if (on) { prop.SetParent(armL, false); prop.localPosition = new Vector3(-pos.x, pos.y, pos.z) * scale; prop.localRotation = Quaternion.Inverse(armL.localRotation) * rot; }
+            else { prop.SetParent(armR, false); prop.localPosition = pos * scale; prop.localRotation = propRest; }
+        }
+
         /// <summary>The arms (and the hand tool's grip) for one frame of a <see cref="DollPose"/>. The whole-doll part of the
         /// pose (lean, squash, offset) goes on this transform; <see cref="PeopleView"/> sets it with the position.</summary>
         public void ApplyArms(in DollPose pose)
@@ -155,6 +169,7 @@ namespace AquariumCiv.View
             armL.localRotation = Quaternion.Euler(pose.armL);
             armR.localRotation = Quaternion.Euler(pose.armR);
             SetGrip(pose.extend);
+            if (inLeft && prop != null) prop.localRotation = Quaternion.Inverse(armL.localRotation); // #361: the basket stays upright
         }
     }
 }
