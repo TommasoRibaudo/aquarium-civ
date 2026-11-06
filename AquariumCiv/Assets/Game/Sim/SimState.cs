@@ -90,6 +90,7 @@ namespace AquariumCiv.Sim
 
         // Keeper's dilemmas (P7, #220; SimCore.Dilemmas.cs). Off: no dilemma is ever raised and nothing else changes.
         public bool dilemmas = false;
+        public bool smallChoices = true;            // #372: small choices (naming a newborn) between the big ones; off = only big ones, as before
         public bool dilemmaLab = false;             // the lab schedule: the first at dilemmaLabFirstYear, then about every dilemmaLabEveryYears
         public int dilemmaMinYears = 6;             // normal play: one dilemma per this many game years ...
         public int dilemmaMaxYears = 10;            // ... up to this many [est]
@@ -263,6 +264,7 @@ namespace AquariumCiv.Sim
         public int rivalId = -1;
         public int mentorId = -1;
         public long jobChangedMonth = -1000000; // month of the last job fill or forced move (SimCore.Jobs.cs, #67); old saves: long ago
+        public bool namedByKeeper; // #372: the Keeper picked this person's name (a small choice); the person card shows it (C4)
         public string job = "";  // everyday job (JobType; SimCore.Jobs.cs): "" as a child, "elder" when retired
 
         public string FullName => $"{name} {family}";

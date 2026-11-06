@@ -133,7 +133,7 @@ namespace AquariumCiv.Tests
                 var sim = NewSim(seed, Cfg(true));
                 sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
                 YearsAnswering(sim, 20);
-                var ds = sim.State.dilemmas;
+                var ds = sim.State.dilemmas.Where(d => d.size == DilemmaSize.Big).ToList(); // #372: small choices sit between the big ones
                 Assert.GreaterOrEqual(ds.Count, 3, $"seed {seed}");
                 Assert.GreaterOrEqual(ds[0].month, 24, $"seed {seed}");
                 Assert.LessOrEqual(ds[0].month, 24 + 24 + 8, $"seed {seed}: year 2, or by year 4 when a wish was open");
