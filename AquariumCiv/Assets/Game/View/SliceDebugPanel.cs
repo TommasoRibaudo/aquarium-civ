@@ -165,6 +165,11 @@ namespace AquariumCiv.View
             if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
             if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
             EndRow();
+            // #367 the background-life director: a story always in progress on screen, as busy as the population says
+            GUILayout.Label(StoryDirectorView.DebugStatus());
+            Row();
+            if (Btn("Story density: off / normal / high (now " + StoryDirectorView.Density + ")")) last = StoryDirectorView.CycleDensity();
+            EndRow();
             Row(); // #359 kids' play 2: at the real water, round a real tree, hide and seek round real cover, snowballs
             if (Btn("Kids play: splash")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Splash);
             if (Btn("Kids play: woods")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Woods);

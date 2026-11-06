@@ -182,6 +182,8 @@ namespace AquariumCiv.Life
         Choice,
         // #370: a held ceremony staged for the Keeper (LifePlanner.StageHeldMoment)
         HeldMoment,
+        // #367: a small everyday story the background-life director starts (a water run, a pick at a bush; Life/StoryDirector.Planner.cs)
+        LifeStory,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>
