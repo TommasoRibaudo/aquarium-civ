@@ -304,6 +304,15 @@ namespace AquariumCiv.View
             return b.Root.TransformPoint(new Vector3(local.x, b.SurfaceHeight(local.x, local.z), local.z)).y;
         }
 
+        /// <summary>Visit loop: what the land under a puff looks like (grass, soil or sand), so its colours can contrast with it.</summary>
+        PuffGround GroundUnder(Vector3 world)
+        {
+            var b = Box;
+            if (b == null || b.Root == null) return PuffGround.Soil;
+            var local = b.Root.InverseTransformPoint(world);
+            return PuffContrast.Classify(b.GroundColor(local.x, local.z, local.y, out _));
+        }
+
         float WaterY(Vector3 world)
         {
             var b = Box;
@@ -354,7 +363,8 @@ namespace AquariumCiv.View
         {
             if (!force && !InView(at)) return false;
             if (kind == PuffKind.Sparks && o.fire) at += Vector3.up * 0.07f * ZoomScale; // look-fix: the fire's sparks start over the flames, not inside them
-            pool.Spawn(kind, at, dir, scale * Mathf.Max(ZoomScale, ViewBoost(at)), Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
+            var puff = pool.Spawn(kind, at, dir, scale * Mathf.Max(ZoomScale, ViewBoost(at)), Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
+            puff.ground = GroundUnder(at);
             LastKind = kind;
             return true;
         }
@@ -469,6 +479,7 @@ namespace AquariumCiv.View
                 var p = pool[s];
                 if (!p.live) continue;
                 float since = (float)(now - p.start);
+                if (since < PuffContrast.PopSeconds) DrawPop(cam, p, since);
                 for (int i = 0; i < p.bitCount; i++)
                 {
                     ref var b = ref p.bits[i];
@@ -481,6 +492,7 @@ namespace AquariumCiv.View
                     float perPx = cam.orthographic ? 2f * cam.orthographicSize / cam.pixelHeight : 2f * depth * tan / cam.pixelHeight;
                     var col = palette[(int)b.colour];
                     var rim = RimOf(b.colour, col);
+                    if (PuffContrast.Pick(b.colour, p.ground, out var pf, out var pr)) { col = MeshBuilder.Linear(pf); rim = MeshBuilder.Linear(pr); }
                     var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f); // the outline sits just behind the fill
                     if (b.shape == PuffShape.Ring)
                     {
@@ -521,6 +533,41 @@ namespace AquariumCiv.View
                 }
             }
             Upload();
+        }
+
+        /// <summary>Visit loop: a brief white flash ring under every puff (about 3 frames) so the eye catches the moment, over a dark band.</summary>
+        void DrawPop(Camera cam, Puff p, float since)
+        {
+            var pos = p.origin;
+            float depth = Vector3.Dot(pos - cam.transform.position, cam.transform.forward);
+            if (depth <= 0f) return;
+            float perPx = cam.orthographic ? 2f * cam.orthographicSize / cam.pixelHeight : 2f * depth * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / cam.pixelHeight;
+            float r = MinPuffPixels * 0.9f * perPx * PuffContrast.PopRadius01(since);
+            if (r <= 0f) return;
+            float line = r * 0.45f;
+            var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f);
+            AddPopRing(cam, r * 1.12f, line * 1.5f, pos + back * 1.5f, MeshBuilder.Linear(new Color(0.15f, 0.15f, 0.2f)));
+            AddPopRing(cam, r, line, pos - back * 0.5f, MeshBuilder.Linear(Color.white));
+        }
+
+        void AddPopRing(Camera cam, float radius, float line, Vector3 centre, Color c)
+        {
+            int first = verts.Count;
+            float ro = radius + line * 0.5f, ri = Mathf.Max(0f, radius - line * 0.5f);
+            var right = cam.transform.right; var up = cam.transform.up;
+            const int sides = HitFxShapes.RingSides;
+            for (int i = 0; i < sides; i++)
+            {
+                float a = i * Mathf.PI * 2f / sides, ca = Mathf.Cos(a), sa = Mathf.Sin(a);
+                verts.Add(centre + (right * ca + up * sa) * ro); colors.Add(c);
+                verts.Add(centre + (right * ca + up * sa) * ri); colors.Add(c);
+            }
+            for (int i = 0; i < sides; i++)
+            {
+                int o0 = first + i * 2, i0 = o0 + 1, o1 = first + (i + 1) % sides * 2, i1 = o1 + 1;
+                tris.Add(o0); tris.Add(o1); tris.Add(i0);
+                tris.Add(i0); tris.Add(o1); tris.Add(i1);
+            }
         }
 
         static float Shrink(float age, float life) => HitFxMath.Shrink(age, life);

@@ -19,6 +19,59 @@ namespace AquariumCiv.View
     /// yellow sparks (gold for the chief), water and mud, grass and leaf (the season's), steam, snow.</summary>
     public enum PuffColour { WoodPale, Bark, DrySoil, WetSoil, Ember, SparkYellow, Gold, Water, Mud, RingWater, RingMud, Grass, Leaf, Steam, Snow }
 
+    /// <summary>The ground under a puff, for picking colours that contrast with it.</summary>
+    public enum PuffGround { Grass, Soil, Sand }
+
+    /// <summary>
+    /// Visit-loop look-fix: puffs on grass vanished (green on green). Pure: the ground under a puff is classified from its colour and each kind gets a
+    /// light, saturated fill plus a dark rim that contrasts with it. Colours here are sRGB; HitFx converts to linear.
+    /// </summary>
+    public static class PuffContrast
+    {
+        /// <summary>Grass = green-dominant; sand = light; else soil.</summary>
+        public static PuffGround Classify(Color c)
+        {
+            if (c.g > c.r * 1.02f && c.g >= c.b) return PuffGround.Grass;
+            float lum = 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
+            return lum > 0.6f ? PuffGround.Sand : PuffGround.Soil;
+        }
+
+        static readonly Color SparkRim = new(0.35f, 0.08f, 0.03f), WoodRim = new(0.25f, 0.14f, 0.06f),
+            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f);
+
+        /// <summary>The fill and rim (sRGB) for a kind of bit on a ground. False = keep the palette's own colour (it already reads).</summary>
+        public static bool Pick(PuffColour c, PuffGround g, out Color fill, out Color rim)
+        {
+            fill = rim = default;
+            switch (c)
+            {
+                case PuffColour.WoodPale:
+                    fill = g == PuffGround.Sand ? new Color(0.62f, 0.4f, 0.2f) : new Color(1f, 0.96f, 0.8f); rim = WoodRim; return true;
+                case PuffColour.Bark:
+                    fill = g == PuffGround.Sand ? new Color(0.4f, 0.25f, 0.12f) : new Color(0.85f, 0.62f, 0.35f); rim = WoodRim; return true;
+                case PuffColour.DrySoil: case PuffColour.WetSoil: case PuffColour.Mud:
+                    if (g == PuffGround.Grass) return false;
+                    fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = SoilRim; return true;
+                case PuffColour.Ember: fill = new Color(1f, 0.55f, 0.1f); rim = SparkRim; return true;
+                case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = SparkRim; return true;
+                case PuffColour.Gold: fill = new Color(1f, 0.8f, 0.1f); rim = SparkRim; return true;
+                case PuffColour.Water: fill = new Color(0.88f, 0.96f, 1f); rim = WaterRim; return true;
+                case PuffColour.RingWater: fill = new Color(0.95f, 1f, 1f); rim = WaterRim; return true;
+                case PuffColour.Grass:
+                    fill = g == PuffGround.Sand ? new Color(0.55f, 0.8f, 0.2f) : new Color(0.85f, 0.95f, 0.4f); rim = GrassRim; return true;
+                case PuffColour.Leaf:
+                    if (g != PuffGround.Grass) return false;
+                    fill = new Color(0.96f, 0.9f, 0.35f); rim = LeafRim; return true;
+                default: return false;
+            }
+        }
+
+        /// <summary>The white pop flash under every puff lasts this long (about 3 frames).</summary>
+        public const float PopSeconds = 0.12f;
+        /// <summary>The pop ring's radius as a share of its full size at <paramref name="since"/> seconds (grows fast, 0 once over).</summary>
+        public static float PopRadius01(float since) => since < 0f || since >= PopSeconds ? 0f : Mathf.Lerp(0.55f, 1f, since / PopSeconds);
+    }
+
     /// <summary>What a spawn may change (all optional; default = the table's numbers).</summary>
     public struct PuffOptions
     {
@@ -456,6 +509,10 @@ namespace AquariumCiv.View
         public bool live;
         public double start, end;
         public long order;
+        /// <summary>Where it started, its scale, and the ground under it (the contrast pick and the pop flash).</summary>
+        public Vector3 origin;
+        public float scale;
+        public PuffGround ground;
         public int bitCount;
         public readonly PuffBit[] bits = new PuffBit[PuffSpec.MaxBitsPerPuff];
     }
@@ -495,6 +552,7 @@ namespace AquariumCiv.View
             if (slot == null) slot = DropOldest(null);
             slot.kind = kind;
             slot.bitCount = HitFxMath.Launch(kind, origin, dir, scale, seed, opts, slot.bits);
+            slot.origin = origin; slot.scale = scale; slot.ground = PuffGround.Soil;
             slot.start = now;
             slot.end = now + HitFxMath.Duration(slot.bits, slot.bitCount);
             slot.order = ++order;

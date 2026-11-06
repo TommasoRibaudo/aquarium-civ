@@ -167,7 +167,7 @@ namespace AquariumCiv.View
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             clock += dt;
             StepCamera();
-            if (letRow != null) letRow.style.display = State == Phase.Waiting && Watched() ? DisplayStyle.Flex : DisplayStyle.None;
+            if (letRow != null) SyncLetRow(State == Phase.Waiting && Watched());
             if (State == Phase.Idle) return;
             phaseT += dt;
             var pv = PeopleView.Find();
@@ -423,6 +423,27 @@ namespace AquariumCiv.View
             r.receiveShadows = false;
             go.SetActive(false);
             return go;
+        }
+
+        VisualElement showBarEl;
+
+        /// <summary>Visit loop: "Let them decide" is really hidden (display none and not visible, taps off) unless the question waits and the player watches;
+        /// shown, it sits just above the cards' bar (whose height and lift vary with the safe area and a wrapped answer line), never behind it.</summary>
+        void SyncLetRow(bool on)
+        {
+            letRow.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+            letRow.visible = on;
+            var let = letRow.Q("choice-let");
+            if (let != null) let.pickingMode = on ? PickingMode.Position : PickingMode.Ignore;
+            if (!on) return;
+            if (showBarEl == null && letRow.panel != null) showBarEl = letRow.panel.visualTree.Q("cards-showme-bar");
+            float bottom = 176f;
+            if (showBarEl != null && showBarEl.resolvedStyle.display != DisplayStyle.None && showBarEl.parent != null)
+            {
+                float h = showBarEl.parent.layout.height, top = showBarEl.layout.yMin;
+                if (!float.IsNaN(h) && !float.IsNaN(top) && h > 0f) bottom = Mathf.Max(bottom, h - top + 12f);
+            }
+            letRow.style.bottom = bottom;
         }
 
         void BuildUi()
