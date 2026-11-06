@@ -168,11 +168,15 @@ namespace AnimBench
         /// <summary>#358: how close a hit's hand must be to its target's surface (default one doll-width). The rabbit chase's contact
         /// is the kid coming inside the rabbits' alert radius (0.55 u), not a touch.</summary>
         public float? HitReach;
+        /// <summary>#364: how far from the thrower's hand or tool tip an arc may start (default one doll-width). The fisher's fish leaves the
+        /// water at the line's end, a line's length from the rod's tip.</summary>
+        public float? ArcReach;
 
         public static ExpectSpec Parse(JsonObject o)
         {
             var e = new ExpectSpec
             {
+                ArcReach = Clip.NumOpt(o, "arcReach"),
                 NeighbourRadius = Clip.Num(o, "neighbourRadius", 0.6f),
                 ReactSeconds = Clip.Num(o, "reactSeconds", 0.2f),
                 HitReach = Clip.NumOpt(o, "hitReach"),
@@ -370,6 +374,9 @@ namespace AnimBench
         /// <summary>Where it leaves from: "dollId.hand", "dollId.tip" (the hand tool's tip), an object id, or a point [x, y, z].</summary>
         public string From, To;
         public Vector3? FromPoint, ToPoint;
+        /// <summary>#364: who throws it when it leaves from a point (the fisher's fish leaves the water at the line's end); else the doll in <see cref="From"/>.</summary>
+        public string By;
+        public string Thrower => By ?? (From ?? "").Split('.')[0];
         public float T0, T1, Height = 0.15f;
         /// <summary>Before the throw it rides on its "from" anchor (true) or is not there yet (false).</summary>
         public bool HeldBefore = true;
@@ -431,7 +438,7 @@ namespace AnimBench
             s.DropEvery = Clip.Num(o, "dropEvery", 5f);
             if (o["arc"] is JsonObject a)
             {
-                var arc = new ArcSpec { T0 = Clip.Num(a, "t0", 0f), T1 = Clip.Num(a, "t1", 1f), Height = Clip.Num(a, "height", 0.15f), HeldBefore = Clip.Bool(a, "heldBefore", true), HideAt = Clip.Num(a, "hideAt", float.MaxValue) };
+                var arc = new ArcSpec { T0 = Clip.Num(a, "t0", 0f), T1 = Clip.Num(a, "t1", 1f), Height = Clip.Num(a, "height", 0.15f), HeldBefore = Clip.Bool(a, "heldBefore", true), HideAt = Clip.Num(a, "hideAt", float.MaxValue), By = Clip.Str(a, "by") };
                 if (a["from"] is JsonArray) arc.FromPoint = Clip.XYZ(a["from"], w + " arc.from"); else arc.From = Clip.Str(a, "from");
                 if (a["to"] is JsonArray) arc.ToPoint = Clip.XYZ(a["to"], w + " arc.to"); else arc.To = Clip.Str(a, "to");
                 if (arc.T1 <= arc.T0) throw new ClipException($"{w} arc: t1 must be after t0");

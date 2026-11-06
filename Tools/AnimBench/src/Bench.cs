@@ -355,6 +355,15 @@ namespace AnimBench
                 }
             if (propKind == PropKind.BucketEmpty && style == DollStyle.DrawWater && WaterBeats.Full(since, spec.Seed, seg.Queue)) // #360: full from the start of the lift
                 propKind = seg.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
+            // #364, as PeopleView.Drive: the fishing runs on the block's seconds (consecutive Fish segments are one block); in the end beat the catch is on the stick
+            float fishS = 0f, fishLeft = 99f;
+            bool fishing = kind == ActivityKind.Fish && style == DollStyle.Fish;
+            if (fishing)
+            {
+                FishBlock(spec, si, out float blockStart, out float blockEnd);
+                fishS = Mathf.Max(0f, tc - blockStart); fishLeft = blockEnd - tc;
+                if (FishBeats.HoldsFish(spec.Seed, fishS, fishLeft)) { propKind = PropKind.Fish; propSlot = PropSlot.Hand; }
+            }
             bool holds = propKind != PropKind.None && propKind != PropKind.Mask;
             d.Stride = Mathf.Repeat(d.Stride + DollMotion.Cadence(style, d.Speed) * Mathf.PI * dt, Mathf.PI * 2f);
             if (style == DollStyle.TipBasket) // #361, as PeopleView.Drive: the tip runs from the first frame the doll stands still
@@ -386,6 +395,7 @@ namespace AnimBench
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, spec.Seed, seg.Queue);
                 else if (style == DollStyle.Walk && seg.Moves) WaterBeats.Heavy(ref pose, d.Stride);
             }
+            if (fishing) FishBeats.Apply(ref pose, fishS, spec.Seed, fishLeft); // #364
             d.Pose = pose;
 
             var f = new DollFrame
@@ -395,6 +405,15 @@ namespace AnimBench
             };
             Bench.Place(ref f, spec.Scale);
             d.Last = f;
+        }
+
+        /// <summary>#364: a fishing block is the run of consecutive segments with the Fish activity (the loop, then the end beat's own segment for the principles).</summary>
+        static void FishBlock(DollSpec spec, int si, out float start, out float end)
+        {
+            int a = si, b = si;
+            while (a > 0 && spec.Segments[a - 1].Activity == ActivityKind.Fish) a--;
+            while (b + 1 < spec.Segments.Count && spec.Segments[b + 1].Activity == ActivityKind.Fish) b++;
+            start = spec.Segments[a].T0; end = spec.Segments[b].T1;
         }
 
         /// <summary>#363: when the chat ends (the planner's one activity may be several segments in a clip: an end-beat segment follows it).</summary>
