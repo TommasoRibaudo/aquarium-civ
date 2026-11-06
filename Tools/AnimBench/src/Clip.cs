@@ -204,6 +204,10 @@ namespace AnimBench
         public int Count;
         public float StepSeconds;
         public bool CopiesPartner, Hidden, EndBeat;
+        /// <summary>#360: the bucket is drawn from muddy water (the full bucket is the brown one).</summary>
+        public bool Muddy;
+        /// <summary>#360: the place in the queue at the bank (PersonActivity.slot): sets the draw's start delay.</summary>
+        public int Queue;
         public string Partner, Target, Label;
 
         public float Length => Math.Max(1e-4f, T1 - T0);
@@ -311,6 +315,8 @@ namespace AnimBench
                 seg.CopiesPartner = Get("copiesPartner") is JsonValue cp && cp.GetValue<bool>();
                 seg.Hidden = Get("hidden") is JsonValue hv && hv.GetValue<bool>();
                 seg.EndBeat = so["endBeat"] is JsonValue eb && eb.GetValue<bool>();
+                seg.Queue = Clip.Int(so, "queue", 0);
+                seg.Muddy = Get("water")?.ToString() == "muddy";
                 seg.Partner = Get("partner")?.ToString();
                 seg.Target = Get("target")?.ToString();
                 seg.Label = Clip.Str(so, "label");

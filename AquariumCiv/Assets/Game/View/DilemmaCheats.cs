@@ -216,6 +216,37 @@ namespace AquariumCiv.View
             GUILayout.Label(ChoiceVisitStatus());
         }
 
+        // ---- #372: small choices (naming a notable's newborn) ----
+        /// <summary>#372: raise the naming of a notable's newborn now (a newborn of a wed couple is made first if none waits); opens the stack on its card.</summary>
+        public static string SmallChoiceNow()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseNaming();
+            if (d == null) return "no two adults to be parents in this box";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            return Saved($"raised {d.defId} (#{d.id}): {sim.QuestionOf(d)}; {CardStackView.DebugOpenEntry(d.entryId)}");
+        }
+
+        /// <summary>#372: a baby is born to a wed notable couple (the two free adults are wed first), waiting for a name.</summary>
+        public static string NotableNewborn()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var c = sim.DebugMakeNotableNewborn();
+            return c == null ? "no two adults to be parents in this box" : Saved($"{c.FullName} was born (waiting for a name)");
+        }
+
+        static void GuiSmallChoices(ref string last)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Small (#372):", GUILayout.Width(80));
+            if (GUILayout.Button("Small choice now (naming)")) last = SmallChoiceNow();
+            if (GUILayout.Button("Notable newborn")) last = NotableNewborn();
+            GUILayout.EndHorizontal();
+        }
+
         public static string Gui()
         {
             string last = null;
@@ -249,6 +280,7 @@ namespace AquariumCiv.View
             GUILayout.EndHorizontal();
             GUILayout.Label(BoxStatus());
             GuiChoiceFix(ref last);
+            GuiSmallChoices(ref last);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Fire next callback")) last = FireCallback();
             if (GUILayout.Button("Report")) last = Report();

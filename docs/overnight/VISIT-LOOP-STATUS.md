@@ -40,3 +40,5 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 ~11:40 · C2 #369 (Opus) + C5 #372 started; board updated (Tools/board-status.sh) after the user asked to see progress on the Slice board
 - Note: offline-csc must list AquariumCiv.Cards whenever View code calls new Cards API (a missing assembly compiles against the stale Library copy and shows false errors).
 - 2026-11-06 11:06 · (clock check: the "~11:40" entries above were really ~11:00–11:05.) B2 #358 (Opus), B4 #360, B5 #361, B6 #362 started on AnimBench (shared brief-anim.md: new files, small hooks in shared files, enum values at the end); T2 #353 AnimLab (Opus) holds the Editor + stall watcher · — · — ·
+- 2026-11-06 11:15 · B1 #357 merged (a1923cf, phase 1; Unity: HitFxTests, HitFx PlayTests, shader recompile, screenshots). B2/B4/B5/B6 told about HitFx.
+- 2026-11-06 11:18 · T3 #354 review page published: https://claude.ai/artifact/RzJdmS9RqEzRdJ599G6a2H (source: scratchpad review/manifest.json + gen.py → index.html; republish the same file path after each batch). Shows the 4 open questions, spec reads, AnimBench baselines (hop circle, hunt strike).

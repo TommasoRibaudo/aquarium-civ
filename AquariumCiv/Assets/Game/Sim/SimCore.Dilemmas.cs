@@ -40,6 +40,8 @@ namespace AquariumCiv.Sim
         public int visits = 1;              // visits it has been shown on (the raise counts as the first)
         public int visitNo;                 // the SimState.visitCount of the last visit that counted
         public double raisedHours;          // the SimState.clockHours it was raised at (real hours)
+        public int subjectId = -1;          // #372: a small choice's subject (the newborn being named); -1 = none
+        public string nameA = "", nameB = ""; // #372: a small choice's two offered words ({n1}, {n2}); empty = none
 
         /// <summary>The person option <paramref name="i"/> points at (-1 = none).</summary>
         public int PersonOf(int i) => i == 0 ? personA : i == 1 ? personB : -1;
@@ -107,7 +109,7 @@ namespace AquariumCiv.Sim
 
         public Dilemma FindDilemma(int id) => State.dilemmas.FirstOrDefault(d => d.id == id);
         public Dilemma DilemmaOfEntry(int entryId) => State.dilemmas.FirstOrDefault(d => d.entryId == entryId);
-        public DilemmaDef DilemmaDefOf(Dilemma d) => d == null ? null : DilemmaCatalog.FirstOrDefault(x => x.id == d.defId);
+        public DilemmaDef DilemmaDefOf(Dilemma d) => d == null ? null : DilemmaCatalog.FirstOrDefault(x => x.id == d.defId) ?? SmallCatalog.FirstOrDefault(x => x.id == d.defId);
 
         /// <summary>The dilemma that is open now (at most one), or null.</summary>
         public Dilemma OpenDilemma => State.dilemmas.FirstOrDefault(d => d.state == DilemmaState.Open);
@@ -154,7 +156,11 @@ namespace AquariumCiv.Sim
         long DilemmaLastEnd => State.dilemmas.Count == 0 ? long.MinValue / 2 : State.dilemmas.Max(d => d.endMonth >= 0 ? d.endMonth : d.month);
 
         /// <summary>The next big choice is due from this clock hour (see <see cref="DilemmaScheduleFrom"/>); -1 = not scheduled.</summary>
-        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0;
+        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && (State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0 || SmallDue);
+
+        /// <summary>#372: a small choice is next, its moment exists and the gap has passed: like a due big one it holds the slot (no new wish starts).</summary>
+        bool SmallDue => Config.smallChoices && State.dilemmas.Count > 0 && NextDilemmaSize() == DilemmaSize.Small
+            && HoursSinceDilemmaRaised + ClockEps >= DilemmaGapNow && EligibleSmall().Count > 0;
 
         /// <summary>While a dilemma is open or due, no new wish starts (the slot is shared).</summary>
         bool DilemmaHoldsSlot => Config.dilemmas && (OpenDilemma != null || DilemmaDue);
@@ -162,8 +168,17 @@ namespace AquariumCiv.Sim
         /// <summary>#368: real hours since the last choice was raised (a very large number when none ever was).</summary>
         public double HoursSinceDilemmaRaised => State.dilemmaLastRaiseHours < -1e8 ? 1e9 : State.clockHours - State.dilemmaLastRaiseHours;
 
-        /// <summary>#368: the next choice's size. Today only Big; C5 (small choices) alternates here, using the same gap.</summary>
-        public DilemmaSize NextDilemmaSize() => DilemmaSize.Big;
+        /// <summary>#368/#372: the next choice's size. A big choice that is due always comes first; otherwise a small one follows a big
+        /// one, and a big follows a small one (they alternate). Small ones share the gap and the one-at-a-time rule; with none eligible
+        /// the slot waits (nothing is invented) until the next big is due.</summary>
+        public DilemmaSize NextDilemmaSize()
+        {
+            var s = State;
+            if (!Config.smallChoices || SmallCatalog.Count == 0) return DilemmaSize.Big;
+            if (s.dilemmaNextHours >= 0 && s.clockHours + ClockEps >= s.dilemmaNextHours) return DilemmaSize.Big;
+            var last = s.dilemmas.Count == 0 ? null : s.dilemmas[s.dilemmas.Count - 1];
+            return last != null && last.size == DilemmaSize.Big ? DilemmaSize.Small : DilemmaSize.Big;
+        }
 
         /// <summary>The clock hour the next big choice is due, counted from <paramref name="from"/> (real hours). Normal play: 6 to 10 game
         /// years on (hours at the box's pace); the lab: the first at year 2, then about every 3 years (plus or minus 6 months).</summary>
@@ -205,14 +220,15 @@ namespace AquariumCiv.Sim
             if (!Config.dilemmas || OpenDilemma != null) return false;
             if (s.firstRun.active) { s.dilemmaNextHours = -1; return false; } // none during the first run; the clock restarts after it
             if (s.dilemmaNextHours < 0) s.dilemmaNextHours = DilemmaScheduleFrom(s.clockHours, s.dilemmas.Count == 0);
-            if (CatchingUp || s.clockHours + ClockEps < s.dilemmaNextHours) return false;
+            var size = NextDilemmaSize();
+            if (CatchingUp || size == DilemmaSize.Big && s.clockHours + ClockEps < s.dilemmaNextHours) return false;
             if (HoursSinceDilemmaRaised + ClockEps < DilemmaGapNow) return false;
             // A due dilemma never ends a wish: it waits for the open one to end (new wishes already wait for it), then the 8-month gap
             // runs from that end.
             if (OpenWish != null) return false;
             long lastWish = s.wishes.Count == 0 ? long.MinValue / 2 : s.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
             if (s.month - lastWish < DilemmaGapMonths) return false;
-            var pick = PickDilemmaDef(NextDilemmaSize(), out int a, out int b);
+            var pick = PickDilemmaDef(size, out int a, out int b);
             if (pick == null) return false;
             RaiseDilemma(pick, a, b);
             return true;
@@ -246,7 +262,9 @@ namespace AquariumCiv.Sim
         bool CastGone(Dilemma d)
         {
             var def = DilemmaDefOf(d);
-            if (def == null || def.cast != DilemmaCast.TwoCandidates) return false;
+            if (def == null) return false;
+            if (def.smallKind != null && d.subjectId >= 0 && Alive(d.subjectId) == null) return true; // the baby is gone
+            if (def.cast != DilemmaCast.TwoCandidates) return false;
             return Alive(d.personA) == null || Alive(d.personB) == null;
         }
 
@@ -317,7 +335,7 @@ namespace AquariumCiv.Sim
         DilemmaDef PickDilemmaDef(DilemmaSize size, out int a, out int b)
         {
             a = b = -1;
-            var ok = EligibleDefs(size);
+            var ok = size == DilemmaSize.Small ? EligibleSmall() : EligibleDefs(size);
             if (ok.Count == 0) return null;
             var pick = ok[(int)(DilemmaRoll(22, State.dilemmaNextId, State.month) * ok.Count) % ok.Count];
             a = pick.a; b = pick.b;
@@ -329,6 +347,7 @@ namespace AquariumCiv.Sim
         {
             if (string.IsNullOrEmpty(t)) return "";
             if (t.IndexOf('{') < 0) return t;
+            if (d.subjectId >= 0 || !string.IsNullOrEmpty(d.nameA)) t = SmallText(t, d);
             return t.Replace("{a}", FindNotable(d.personA)?.name ?? "someone").Replace("{b}", FindNotable(d.personB)?.name ?? "someone")
                     .Replace("{place}", DilemmaPlace);
         }
@@ -405,6 +424,7 @@ namespace AquariumCiv.Sim
             int id = s.dilemmaNextId++;
             if (s.visitCount < 1) s.visitCount = 1; // a session in progress is a visit; the raise is the first time it is shown
             var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b, size = def.size, visits = 1, visitNo = s.visitCount, raisedHours = Math.Round(s.clockHours, 6) };
+            PrepareSmall(d, def);
             var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
             if (def.askerNotLeader)
                 d.askerId = s.notables.Where(n => n.alive && n.age >= AdultAge && n.id != (leader?.id ?? -1) && n.id != a && n.id != b)
@@ -456,7 +476,8 @@ namespace AquariumCiv.Sim
             if (d == null || def == null || d.state != DilemmaState.Open) return false;
             int option = DilemmaDefaultOption(d);
             d.end = DilemmaEnd.LetThemDecide;
-            CloseAnswered(d, def, option, path, $"The Keeper let the people decide, and they chose {DilemmaText(def.options[option].label, d)}.");
+            string label = DilemmaText(def.options[option].label, d);
+            CloseAnswered(d, def, option, path, !string.IsNullOrEmpty(def.letDone) ? DilemmaCap(DilemmaText(def.letDone.Replace("{n}", label), d)) : $"The Keeper let the people decide, and they chose {label}.");
             return true;
         }
 
@@ -480,6 +501,7 @@ namespace AquariumCiv.Sim
         {
             var def = DilemmaDefOf(d);
             if (def == null) return 0;
+            if (def.smallKind != null) return SmallDefaultOption(d);
             string role = RoleOfDef(def);
             // The role-holder decides; a dilemma about no role is decided by the one who asked (the leader when it was raised).
             var holder = string.IsNullOrEmpty(role) ? Alive(d.askerId) : Alive(SeatOf(role)?.holderId ?? -1);
@@ -511,7 +533,7 @@ namespace AquariumCiv.Sim
             if (def == null) return;
             d.option = DilemmaDefaultOption(d);
             string label = DilemmaText(def.options[d.option].label, d);
-            var e = Record("dilemma_result", $"The people chose {label} themselves.", 0.55f, d.PersonOf(d.option), d.PersonOf(1 - d.option));
+            var e = Record("dilemma_result", !string.IsNullOrEmpty(def.letDone) ? DilemmaCap(DilemmaText(def.letDone.Replace("{n}", label), d)) : $"The people chose {label} themselves.", 0.55f, d.PersonOf(d.option), d.PersonOf(1 - d.option));
             d.resultEntryId = e.id;
             ApplyDilemmaEffects(d, def, d.option);
             ScheduleCallbacks(d, def, d.option);
@@ -524,6 +546,7 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             var o = def.options[option];
+            if (def.smallKind != null) { ApplySmall(d, def, option); return; } // a small choice has no role, lean or ties
             var chosen = Alive(d.PersonOf(option));
             var other = Alive(d.PersonOf(1 - option));
 

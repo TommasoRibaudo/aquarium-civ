@@ -16,6 +16,8 @@ namespace AquariumCiv.View
         Stomp,
         // #361: berries you can see (View/Beats/BerryBeats.cs)
         PickBerry, DigRoot, TasteBerry,
+        // #360: kneeling to draw water (appended)
+        DrawWater,
     }
 
     /// <summary>
@@ -105,6 +107,7 @@ namespace AquariumCiv.View
             ActivityKind.Argue => DollStyle.Argue,
             ActivityKind.Swim or ActivityKind.Splash => DollStyle.Swim,
             ActivityKind.Stomp => DollStyle.Stomp,
+            ActivityKind.FetchWater => DollStyle.DrawWater, // #360 (the walk home is Walk, by speed)
             ActivityKind.WashHands => DollStyle.Crouch,
             ActivityKind.Mourn or ActivityKind.Service => DollStyle.Mourn,
             ActivityKind.Cheer or ActivityKind.Clap => DollStyle.Cheer,

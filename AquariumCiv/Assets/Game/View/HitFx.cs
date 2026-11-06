@@ -180,7 +180,7 @@ namespace AquariumCiv.View
         public static HitAnswer Resolve(DollStyle style, PlaceKind place)
         {
             bool water = place is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
-            bool strokeStyle = style is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.SitStrike or DollStyle.Stomp or DollStyle.Fish or DollStyle.Stir;
+            bool strokeStyle = style is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.SitStrike or DollStyle.Stomp or DollStyle.Fish or DollStyle.Stir or DollStyle.DrawWater /* #360 */;
             if (water && (strokeStyle || style is DollStyle.Pick or DollStyle.Crouch or DollStyle.Reach))
                 return new HitAnswer { hasPuff = true, puff = PuffKind.Droplets, ring = true };
             bool bush = place is PlaceKind.BushCell or PlaceKind.Bushes;
@@ -218,7 +218,7 @@ namespace AquariumCiv.View
             {
                 var o = PuffOptions.Default;
                 bool water = ans.puff == PuffKind.Droplets;
-                if (water) { o.groundY = WaterY(at); at.y = Mathf.Max(at.y, o.groundY); }
+                if (water) { o.groundY = WaterY(at); at.y = Mathf.Max(at.y, o.groundY); o.mud = style == DollStyle.DrawWater && place.kind is PlaceKind.Puddle or PlaceKind.Stream; /* #360: the wet low ground is scooped muddy */ }
                 else o.groundY = GroundY(at);
                 o.fire = ans.fire;
                 if (Spawn(ans.puff, at, away, 1f, o, false)) LastHitPuffs++;

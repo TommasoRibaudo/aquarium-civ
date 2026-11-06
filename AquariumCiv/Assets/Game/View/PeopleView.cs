@@ -370,7 +370,10 @@ namespace AquariumCiv.View
                 target = Ashore(land, target);
                 if (!a.moving) face = wet; // the fisher faces the water
             }
-            if (!hunting && !tenting && !a.moving && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            // #360: drawing water: kneel at the real water's edge, facing the water (the slot's side of it), not in the middle of the pond.
+            bool drawing = a.kind == ActivityKind.FetchWater && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && a.place.kind is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
+            if (drawing) target = DrawStand(land, a.place.kind, spot, target, a.slot, out face);
+            if (!hunting && !tenting && !a.moving && !drawing && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
@@ -415,6 +418,10 @@ namespace AquariumCiv.View
 
             // Props.
             var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
+            // #360: the bucket comes up full at the start of the lift (the plan's block keeps the empty one until it walks home).
+            if (kind == PropKind.BucketEmpty && a.kind == ActivityKind.FetchWater && !a.moving && a.end > a.start &&
+                WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
+                kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
 
@@ -456,6 +463,11 @@ namespace AquariumCiv.View
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
             if (hunting) DollMotion.Hunt(ref pose, a.hunt, a.progress);
+            if (a.kind == ActivityKind.FetchWater) // #360: the draw (kneel, dip, lift) at the water; the heavy walk home with the full bucket
+            {
+                if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
+                else if (style == DollStyle.Walk && a.moving) WaterBeats.Heavy(ref pose, d.stride);
+            }
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             bool struck = d.hitEdge.Step(pose.hidden ? 0f : pose.hit); // #355
@@ -686,6 +698,24 @@ namespace AquariumCiv.View
             return true;
         }
 
+        /// <summary>#360: where someone kneels to draw water, and what they face: 0.06 u back from the real edge of the pond (the first dry point
+        /// out from its middle, turned by the slot so two drawers stand apart), or 0.1 u off a puddle or the wet bed.</summary>
+        static Vector2 DrawStand(Land land, PlaceKind kind, Vector2 spot, Vector2 slotSpot, int slot, out Vector2? face)
+        {
+            var water = kind == PlaceKind.Pond ? land.pond : spot;
+            var dir = kind == PlaceKind.Pond ? land.centre - water : slotSpot - water;
+            if (dir.sqrMagnitude < 1e-6f) dir = Vector2.down;
+            dir.Normalize();
+            float turn = ((slot + 1) / 2) * (slot % 2 == 1 ? 1f : -1f) * 0.45f; // radians
+            float c = Mathf.Cos(turn), sn = Mathf.Sin(turn);
+            dir = new Vector2(dir.x * c - dir.y * sn, dir.x * sn + dir.y * c);
+            var edge = water;
+            if (kind == PlaceKind.Pond) for (int i = 0; i < 200 && land.IsWater(edge.x, edge.y); i++) edge += dir * 0.02f;
+            var stand = edge + dir * (kind == PlaceKind.Pond ? 0.06f : 0.1f);
+            face = stand - dir; // one step towards the water
+            return stand;
+        }
+
         static Vector2 Ashore(Land land, Vector2 p)
         {
             var dir = land.centre - p;
@@ -857,6 +887,16 @@ namespace AquariumCiv.View
             var pv = Find();
             if (pv == null || pv.planner == null) return "no people";
             return pv.planner.ForceRunIn(bicker ? ActivityKind.Argue : ActivityKind.Chat, pv.now);
+        }
+
+        /// <summary>Debug (#360): "Water run now": three adults draw water at dawn, and the clock goes to the walk out.</summary>
+        public static string DebugWaterRun()
+        {
+            var pv = Find();
+            if (pv == null || pv.planner == null) return "no people";
+            string who = pv.planner.ForceWaterRun(3);
+            DebugSetHour(5.7f);
+            return who;
         }
 
         /// <summary>The way a doll faces (box-local, on the ground), for tests.</summary>
