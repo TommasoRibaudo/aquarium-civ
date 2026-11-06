@@ -244,6 +244,13 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #369 ----
+            // ---- #374: this visit's telemetry numbers ----
+            if (Section("Visit telemetry (#374)"))
+            {
+                var vt = GameClock.Instance != null ? GameClock.Instance.VisitTracker() : null;
+                GUILayout.Label(vt != null ? vt.Line() : "no visit telemetry (no box or telemetry off)");
+            }
+            // ---- end #374 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();
