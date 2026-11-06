@@ -48,6 +48,7 @@ namespace AquariumCiv.View
         readonly Button[] alsoLines = new Button[3];
         // The dilemma card (#223): two columns, each an answer button (face + label) over the hint in the people's voice.
         VisualElement dilBox;
+        GlassButton dilLet;                 // #368: "Let them decide" under the two options (cards-dil-let)
         readonly VisualElement[] dilCols = new VisualElement[2];
         readonly GlassButton[] dilAnswers = new GlassButton[2];
         readonly GlassPortrait[] dilFaces = new GlassPortrait[2];
@@ -446,6 +447,12 @@ namespace AquariumCiv.View
                 dilHints[i].enableRichText = true;
             }
             dilBox.style.display = DisplayStyle.None;
+            // #368: every choice can be handed back. The wording is fixed. Quiet, under the two options, only while the question is open.
+            dilLet = Press("cards-dil-let", "Let them decide", () => model?.LetThemDecide(), card, ButtonKind.Quiet, UiRole.Confirm);
+            card.hierarchy.Remove(dilLet);
+            card.hierarchy.Insert(card.hierarchy.IndexOf(dilBox) + 1, dilLet);
+            dilLet.style.alignSelf = Align.Center;
+            dilLet.style.display = DisplayStyle.None;
         }
 
         /// <summary>The hook #224's choice scene implements: Show me on an open dilemma card offers the dilemma to it. Return true to take the
@@ -459,7 +466,7 @@ namespace AquariumCiv.View
             var f = model?.Face;
             var v = f?.dilemma;
             if (v == null || f.dilemmaChosen < 0 || f.dilemmaChosen >= v.options.Length) return;
-            showBar.Set($"The Keeper chose {v.options[f.dilemmaChosen].label}.", null);
+            showBar.Set(f.dilemmaLetThem ? $"The Keeper let the people decide: {v.options[f.dilemmaChosen].label}." : $"The Keeper chose {v.options[f.dilemmaChosen].label}.", null);
         }
 
         void AnswerDilemma(int option)
@@ -770,6 +777,7 @@ namespace AquariumCiv.View
             SetFitStory(false);
             foreach (var l in new[] { teaser, body, endLine, quote, note, footer }) Show(l, false);
             Show(dilBox, false);
+            Show(dilLet, false);
             Show(scroll, true);
             headline.RemoveFromClassList("cards-ask");
             card.RemoveFromClassList("cards-dilcard");
@@ -791,11 +799,13 @@ namespace AquariumCiv.View
             SetFitStory(false);
             Show(scroll, false);
             Show(dilBox, true);
+            Show(dilLet, f.dilemmaChosen < 0);
             Show(eraMark, false);
             head.EnableInClassList("cards-head--alone", true);
             headline.AddToClassList("cards-ask");
             card.AddToClassList("cards-dilcard");
             string words = f.dilemmaChosen < 0 ? v.question
+                : f.dilemmaLetThem ? $"The Keeper let the people decide. They chose {v.options[f.dilemmaChosen].label}."
                 : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
                 : $"The Keeper chose {v.options[f.dilemmaChosen].label}.";
             headline.text = GlassType.Lines(words, 16f, 1.25f);
@@ -831,6 +841,7 @@ namespace AquariumCiv.View
         {
             if (f.dilemma != null) { DrawDilemma(f); return; }
             Show(dilBox, false);
+            Show(dilLet, false);
             Show(scroll, true);
             headline.RemoveFromClassList("cards-ask");
             card.RemoveFromClassList("cards-dilcard");

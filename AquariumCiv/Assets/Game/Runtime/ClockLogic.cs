@@ -60,6 +60,7 @@ namespace AquariumCiv.Game
                     r.shelf = e.shelf;
                     r.awayHours = SaveStore.AwayHours(e, nowUtc, out r.awayCapped);
                     r.catchUp = r.sim.CatchUp(r.awayHours);
+                    r.sim.BeginVisit(); // #368: the open counts as a visit; a choice held while away is raised now, staged first by the view
                     return r;
                 case SaveStore.LoadResult.Corrupt:
                     r.corruptKeptAs = KeepAside(path);
@@ -80,7 +81,9 @@ namespace AquariumCiv.Game
         public static CatchUpResult Resume(SimCore sim, DateTime pausedUtc, DateTime nowUtc)
         {
             double h = Math.Clamp((nowUtc - pausedUtc).TotalHours, 0, SaveStore.MaxAwayHours);
-            return sim.CatchUp(h);
+            var r = sim.CatchUp(h);
+            sim.BeginVisit(); // #368: back in the app is an open (a visit only after 15 minutes away)
+            return r;
         }
 
         /// <summary>Writes the save unless this session must not (a newer build's save is on disk).</summary>

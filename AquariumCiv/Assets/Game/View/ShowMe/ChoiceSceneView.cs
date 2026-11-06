@@ -72,6 +72,7 @@ namespace AquariumCiv.View
         MaterialPropertyBlock block;
         GameObject uiGo;
         VisualElement uiRoot;
+        VisualElement letRow;       // #368: "Let them decide" (choice-let), while the question waits and the player watches
         readonly GlassTag[] tags = new GlassTag[2];
         float phaseT, clock;
         bool watchedSeen, said;
@@ -119,6 +120,7 @@ namespace AquariumCiv.View
             if (uiGo != null) Kill(uiGo);
             uiGo = null; uiRoot = null;
             tags[0] = tags[1] = null;
+            letRow = null;
         }
 
         static void Kill(Object o) { if (o == null) return; if (Application.isPlaying) Destroy(o); else DestroyImmediate(o); }
@@ -165,6 +167,7 @@ namespace AquariumCiv.View
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             clock += dt;
             StepCamera();
+            if (letRow != null) letRow.style.display = State == Phase.Waiting && Watched() ? DisplayStyle.Flex : DisplayStyle.None;
             if (State == Phase.Idle) return;
             phaseT += dt;
             var pv = PeopleView.Find();
@@ -438,6 +441,39 @@ namespace AquariumCiv.View
                 tags[i].style.display = DisplayStyle.None;
                 uiRoot.Add(tags[i]);
             }
+            // #368: every choice can be handed back. The wording is fixed; the people decide, credited as the Keeper's choice.
+            letRow = new VisualElement { name = "choice-let-row", pickingMode = PickingMode.Ignore };
+            letRow.style.position = Position.Absolute;
+            letRow.style.left = 0f; letRow.style.right = 0f; letRow.style.bottom = 176f;
+            letRow.style.flexDirection = FlexDirection.Row;
+            letRow.style.justifyContent = Justify.Center;
+            letRow.style.display = DisplayStyle.None;
+            letRow.Add(new GlassButton("Let them decide", () => LetThemDecide(), ButtonKind.Quiet, UiRole.Confirm) { name = "choice-let" });
+            uiRoot.Add(letRow);
+        }
+
+        /// <summary>#368: "Let them decide" in the box: the people take their default, credited as the Keeper's choice (final, the Box path);
+        /// they react like to an answer. False when nothing waits.</summary>
+        public bool LetThemDecide()
+        {
+            var sim = Sim;
+            var pv = PeopleView.Find();
+            if (Stage == null || sim == null || State != Phase.Waiting) return false;
+            var cards = CardStackView.Instance;
+            var d = sim.FindDilemma(Stage.dilemmaId);
+            bool ok = cards != null && cards.Model != null && cards.Model.LetThemDecideInBox(Stage.dilemmaId);
+            if (!ok && sim.LetThemDecide(Stage.dilemmaId, DilemmaPath.Box)) { ok = true; GameClock.DilemmaAnswered(d); }
+            if (!ok || d == null) return false;
+            Chosen = d.option;
+            Unsay();
+            State = Phase.Reacting;
+            phaseT = 0f;
+            if (pv != null && pv.Planner != null) pv.Planner.ReactChoice(d.option, pv.Now);
+            foreach (var t in travellers) t.home = t.pos;
+            Sfx.Play(CueLibrary.Cheer);
+            if (cards != null) cards.ChoiceAnswered();
+            Debug.Log($"[Choice] {Stage.defId}: the Keeper let the people decide (option {d.option})");
+            return true;
         }
 
         void ClearWorld()

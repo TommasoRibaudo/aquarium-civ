@@ -46,6 +46,14 @@ namespace AquariumCiv.View.Cards.Tests
 
         CardStackModel Model(SimCore sim, TelemetryLog log = null) => new CardStackModel(sim, () => clock, log);
 
+        /// <summary>Opened on a return of exactly <paramref name="cap"/> cards (the cap by time away is 1 / 2 / 3 since #368).</summary>
+        static CardStackModel OpenedCap(CardStackModel m, int cap)
+        {
+            Assert.IsTrue(m.DebugPrepare(cap));
+            Assert.IsTrue(m.TapPeek());
+            return m;
+        }
+
         static CardStackModel Opened(CardStackModel m, double hours = Day)
         {
             Assert.IsTrue(m.Prepare(hours));
@@ -70,7 +78,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void TheCapFollowsTimeAwayAndTheRestGoToAlso()
         {
-            foreach (var (hours, cap) in new[] { (0.5, 3), (FewHours, 5), (Day, 7) })
+            foreach (var (hours, cap) in new[] { (0.5, 1), (FewHours, 2), (Day, 3) })
             {
                 var sim = Quiet();
                 AddMany(sim, 10);
@@ -90,7 +98,7 @@ namespace AquariumCiv.View.Cards.Tests
             Add(sim, "wedding", 0.6f);
             Add(sim, "storm", 0.7f);
             sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            var m = Opened(Model(sim), FewHours);
+            var m = OpenedCap(Model(sim), 5);
             var kinds = new List<CardKind>();
             var tones = new List<CardTone>();
             for (bool more = true; more; more = m.Next()) { kinds.Add(m.Face.kind); tones.Add(m.Face.tone); }
@@ -161,7 +169,7 @@ namespace AquariumCiv.View.Cards.Tests
         {
             var sim = Quiet();
             AddMany(sim, 9);
-            var m = Opened(Model(sim), 0.5); // 3 cards, 6 past the cap
+            var m = OpenedCap(Model(sim), 3); // 3 cards, 6 past the cap
             m.Next(); m.Next(); m.Next();
             Assert.IsTrue(m.OnAlsoPage);
             var face = m.Face;

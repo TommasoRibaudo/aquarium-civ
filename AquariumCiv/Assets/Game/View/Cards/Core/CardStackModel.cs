@@ -50,6 +50,7 @@ namespace AquariumCiv.View.Cards
         public DilemmaView dilemma;     // a dilemma card: the question, the two options and who/what they point at (null elsewhere)
         public int dilemmaChosen = -1;  // the option taken (answered from anywhere, or by the people on a lapse); -1 = still open
         public bool dilemmaLapsed;      // the people chose it themselves: the card says so and nothing lifts
+        public bool dilemmaLetThem;     // #368: the Keeper handed it back ("Let them decide"): credited as the Keeper's, says so
     }
 
     /// <summary>What Give did: the wish to arm the tool for, or why not (<see cref="line"/> is ready to show).</summary>
@@ -468,6 +469,30 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
+        /// <summary>#368: "Let them decide" on the dilemma card: the people take their default, credited as the Keeper's choice. Final, like an answer.</summary>
+        public bool LetThemDecide()
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.state != DilemmaState.Open) return false;
+            if (!sim.LetThemDecide(d.id, DilemmaPath.Card)) return false;
+            DilemmaTel?.Answered(log, d, now());
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>#368: "Let them decide" from the box scene, on the Box path. False unless the card on screen is this dilemma and it is open.</summary>
+        public bool LetThemDecideInBox(int dilemmaId)
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.id != dilemmaId || d.state != DilemmaState.Open) return false;
+            if (!sim.LetThemDecide(d.id, DilemmaPath.Box)) return false;
+            DilemmaTel?.Answered(log, d, now());
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
         /// <summary>The hook for #224: Show me on a dilemma card flies to the choice scene instead of a place. Set by the in-box scene;
         /// returns true if it took the tap (the card then waits behind it), false to fall back to the normal Show me.</summary>
         public Func<DilemmaView, bool> DilemmaShowMeHook;
@@ -549,6 +574,7 @@ namespace AquariumCiv.View.Cards
             if (d.state == DilemmaState.Open) return;
             f.dilemmaChosen = d.option;
             f.dilemmaLapsed = d.state == DilemmaState.Lapsed;
+            f.dilemmaLetThem = d.end == DilemmaEnd.LetThemDecide;
         }
 
         void FillGive(CardFace f, Wish w)

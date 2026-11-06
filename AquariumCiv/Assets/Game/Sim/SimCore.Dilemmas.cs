@@ -6,6 +6,14 @@ namespace AquariumCiv.Sim
 {
     public enum DilemmaState { Open, Answered, Lapsed }
 
+    /// <summary>How a dilemma ended (#368). Answered and LetThemDecide are the Keeper's (credited); Visits and Gone are unanswered closes
+    /// (the people took their default); Debug is a cheat.</summary>
+    public enum DilemmaEnd { None, Answered, LetThemDecide, Visits, Gone, Debug }
+
+    /// <summary>#368: a big choice (the dilemmas of DilemmaDefs, every ~6-10 h) or a small one between (C5 adds them: naming a newborn).
+    /// The scheduler asks <see cref="SimCore.NextDilemmaSize"/>; today only Big is ever picked.</summary>
+    public enum DilemmaSize { Big, Small }
+
     /// <summary>Where the player answered: by touching one of the two people or places in the box, or on the card's two buttons.</summary>
     public enum DilemmaPath { Box, Card }
 
@@ -26,6 +34,12 @@ namespace AquariumCiv.Sim
         public int entryId = -1;            // its chronicle entry (kind "dilemma"): the card
         public int answerEntryId = -1;      // the Keeper line an answer wrote (kind "keeper"); -1 for a lapse
         public int resultEntryId = -1;      // the line a lapse wrote (kind "dilemma_result": a story card, not the question)
+        // #368: visits and the end. An old save has these at their defaults (an old open dilemma counts as shown once).
+        public DilemmaSize size;            // big or small
+        public DilemmaEnd end;              // how it ended (None while open)
+        public int visits = 1;              // visits it has been shown on (the raise counts as the first)
+        public int visitNo;                 // the SimState.visitCount of the last visit that counted
+        public double raisedHours;          // the SimState.clockHours it was raised at (real hours)
 
         /// <summary>The person option <paramref name="i"/> points at (-1 = none).</summary>
         public int PersonOf(int i) => i == 0 ? personA : i == 1 ? personB : -1;
@@ -71,12 +85,20 @@ namespace AquariumCiv.Sim
     /// </summary>
     public partial class SimCore
     {
-        public const int DilemmaGapMonths = 8, DilemmaLapseMonths = 24;
-        /// <summary>#238: in the lab (×60) the people wait 48 game months, 4 real minutes, so a tester who is watching has time to see and
-        /// answer one. Normal play keeps <see cref="DilemmaLapseMonths"/> (P7.md, Pacing).</summary>
-        public const int DilemmaLabLapseMonths = 48;
-        /// <summary>How long an open dilemma waits before the people decide, for this box's config.</summary>
-        public int DilemmaLapseAfter => Config.dilemmaLab ? DilemmaLabLapseMonths : DilemmaLapseMonths;
+        /// <summary>The gap after a wish ends before a dilemma is raised (game months). Wishes only: a choice's own gap is in hours.</summary>
+        public const int DilemmaGapMonths = 8;
+        /// <summary>#368 (visit-loop.md 2.4): a choice is never closed by the clock. It closes on an answer, "Let them decide", being shown
+        /// on this many visits, or its people being gone.</summary>
+        public const int DilemmaMaxVisits = 3;
+        /// <summary>#368: a new choice needs this many real hours (watched or away) since the last one was raised [est].</summary>
+        public const double DilemmaGapHours = 3.0;
+        /// <summary>#368: an open counts as a new visit only after this long away (real hours, 15 minutes), so flicking back to the app
+        /// from another one does not burn the question's three visits.</summary>
+        public const double DilemmaVisitAwayHours = 0.25;
+        /// <summary>The clock is a sum of floats: hour comparisons forgive this much (well under a game month).</summary>
+        const double ClockEps = 1e-7;
+        /// <summary>The gap in this box's clock: the lab (x60) keeps the old 8 game months.</summary>
+        public double DilemmaGapNow => Config.dilemmaLab ? DilemmaGapMonths * Config.StepHours : DilemmaGapHours;
         /// <summary>Dilemma entries take their own ids (above the wishes'), so the shared ids never shift.</summary>
         public const int DilemmaIdBase = 1_200_000_000;
 
@@ -131,50 +153,93 @@ namespace AquariumCiv.Sim
         // ---------- pacing ----------
         long DilemmaLastEnd => State.dilemmas.Count == 0 ? long.MinValue / 2 : State.dilemmas.Max(d => d.endMonth >= 0 ? d.endMonth : d.month);
 
-        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && State.dilemmaNextMonth >= 0 && State.month >= State.dilemmaNextMonth && EligibleDefs().Count > 0;
+        /// <summary>The next big choice is due from this clock hour (see <see cref="DilemmaScheduleFrom"/>); -1 = not scheduled.</summary>
+        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0;
 
         /// <summary>While a dilemma is open or due, no new wish starts (the slot is shared).</summary>
         bool DilemmaHoldsSlot => Config.dilemmas && (OpenDilemma != null || DilemmaDue);
 
-        /// <summary>The month the next dilemma is due, counted from <paramref name="from"/>. Normal play: 6 to 10 game years on;
-        /// the lab: the first at year 2, then about every 3 years (plus or minus 6 months).</summary>
-        long DilemmaScheduleFrom(long from, bool first)
+        /// <summary>#368: real hours since the last choice was raised (a very large number when none ever was).</summary>
+        public double HoursSinceDilemmaRaised => State.dilemmaLastRaiseHours < -1e8 ? 1e9 : State.clockHours - State.dilemmaLastRaiseHours;
+
+        /// <summary>#368: the next choice's size. Today only Big; C5 (small choices) alternates here, using the same gap.</summary>
+        public DilemmaSize NextDilemmaSize() => DilemmaSize.Big;
+
+        /// <summary>The clock hour the next big choice is due, counted from <paramref name="from"/> (real hours). Normal play: 6 to 10 game
+        /// years on (hours at the box's pace); the lab: the first at year 2, then about every 3 years (plus or minus 6 months).</summary>
+        double DilemmaScheduleFrom(double from, bool first)
         {
             var c = Config;
+            double month = c.StepHours;
             if (c.dilemmaLab)
             {
-                if (first) return Math.Max(from, (long)c.dilemmaLabFirstYear * SimConfig.MonthsPerYear);
-                int jitter = (int)(DilemmaRoll(21, State.dilemmaNextId, from) * 13f) - 6;
-                return from + (long)c.dilemmaLabEveryYears * SimConfig.MonthsPerYear + jitter;
+                if (first) return Math.Max(from, c.dilemmaLabFirstYear * SimConfig.MonthsPerYear * month);
+                int jitter = (int)(DilemmaRoll(21, State.dilemmaNextId, (long)Math.Round(from / month)) * 13f) - 6;
+                return from + (c.dilemmaLabEveryYears * SimConfig.MonthsPerYear + jitter) * month;
             }
             int lo = c.dilemmaMinYears * SimConfig.MonthsPerYear, hi = Math.Max(lo, c.dilemmaMaxYears * SimConfig.MonthsPerYear);
-            return from + lo + (int)(DilemmaRoll(20, State.dilemmaNextId, from) * (hi - lo + 1));
+            return from + (lo + (int)(DilemmaRoll(20, State.dilemmaNextId, (long)Math.Round(from / month)) * (hi - lo + 1))) * month;
         }
 
-        /// <summary>Every month: lapse what is old, and raise the next when it is due. No dice. Nothing at all when off.</summary>
+        /// <summary>Every month: close a choice whose people are gone, and raise the next when it is due and the player is watching.
+        /// Nothing lapses by the clock (#368). No dice. Nothing at all when off.</summary>
         void DilemmaStep()
         {
             ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
             if (!Config.dilemmas) return;
-            var s = State;
             CallbackStep(); // no dice: one due callback per month
             var open = OpenDilemma;
             if (open != null)
             {
-                if (s.month - open.month >= DilemmaLapseAfter || CastGone(open)) LapseDilemma(open);
+                if (CastGone(open)) LapseDilemma(open, DilemmaEnd.Gone);
                 return;
             }
-            if (s.firstRun.active) { s.dilemmaNextMonth = -1; return; } // none during the first run; the clock restarts after it
-            if (s.dilemmaNextMonth < 0) s.dilemmaNextMonth = DilemmaScheduleFrom(s.month, s.dilemmas.Count == 0);
-            if (s.month < s.dilemmaNextMonth) return;
+            TryRaiseDilemma();
+        }
+
+        /// <summary>#368: raise the next choice if it is due, the gap has passed and the player is watching. During an offline catch-up
+        /// it never raises: the choice is held (still due) and <see cref="BeginVisit"/> raises it on the next open. True if one was raised.</summary>
+        bool TryRaiseDilemma()
+        {
+            var s = State;
+            if (!Config.dilemmas || OpenDilemma != null) return false;
+            if (s.firstRun.active) { s.dilemmaNextHours = -1; return false; } // none during the first run; the clock restarts after it
+            if (s.dilemmaNextHours < 0) s.dilemmaNextHours = DilemmaScheduleFrom(s.clockHours, s.dilemmas.Count == 0);
+            if (CatchingUp || s.clockHours + ClockEps < s.dilemmaNextHours) return false;
+            if (HoursSinceDilemmaRaised + ClockEps < DilemmaGapNow) return false;
             // A due dilemma never ends a wish: it waits for the open one to end (new wishes already wait for it), then the 8-month gap
             // runs from that end.
-            if (OpenWish != null) return;
+            if (OpenWish != null) return false;
             long lastWish = s.wishes.Count == 0 ? long.MinValue / 2 : s.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
-            if (s.month - Math.Max(lastWish, DilemmaLastEnd) < DilemmaGapMonths) return;
-            var pick = PickDilemmaDef(out int a, out int b);
-            if (pick == null) return;
+            if (s.month - lastWish < DilemmaGapMonths) return false;
+            var pick = PickDilemmaDef(NextDilemmaSize(), out int a, out int b);
+            if (pick == null) return false;
             RaiseDilemma(pick, a, b);
+            return true;
+        }
+
+        /// <summary>
+        /// #368: the app came to the front (a session start, or an open after being away). Counts a visit (an open after at least
+        /// <see cref="DilemmaVisitAwayHours"/> away, or the first), counts it against the open choice (shown on <see cref="DilemmaMaxVisits"/>
+        /// visits, then the people decide it, recorded as unanswered), and raises a held choice if it is due and the gap has passed.
+        /// Call it after <see cref="CatchUp"/>. No dice. True if a choice is open afterwards.
+        /// </summary>
+        public bool BeginVisit()
+        {
+            var s = State;
+            if (!Config.dilemmas) return false; // off: no state changes at all
+            EnsureDilemmaState();
+            bool newVisit = s.visitCount == 0 || awayHours >= DilemmaVisitAwayHours - 1e-9;
+            if (newVisit) s.visitCount++;
+            var open = OpenDilemma;
+            if (open != null && open.visitNo != s.visitCount)
+            {
+                if (open.visits >= DilemmaMaxVisits) LapseDilemma(open, DilemmaEnd.Visits); // shown on three visits, never answered
+                else { open.visits++; open.visitNo = s.visitCount; }
+            }
+            if (OpenDilemma == null) TryRaiseDilemma();
+            awayHours = 0;
+            return OpenDilemma != null;
         }
 
         /// <summary>A person the options point at died: the people decide at once (the same as a wish whose wisher dies).</summary>
@@ -241,18 +306,18 @@ namespace AquariumCiv.Sim
             get { foreach (var n in State.notables) if (!n.alive) return true; return false; }
         }
 
-        List<(DilemmaDef def, int a, int b)> EligibleDefs()
+        List<(DilemmaDef def, int a, int b)> EligibleDefs(DilemmaSize? size = null)
         {
             var list = new List<(DilemmaDef def, int a, int b)>();
             foreach (var def in DilemmaCatalog)
-                if (DefHolds(def, out int a, out int b)) list.Add((def, a, b));
+                if ((size == null || def.size == size) && DefHolds(def, out int a, out int b)) list.Add((def, a, b));
             return list;
         }
 
-        DilemmaDef PickDilemmaDef(out int a, out int b)
+        DilemmaDef PickDilemmaDef(DilemmaSize size, out int a, out int b)
         {
             a = b = -1;
-            var ok = EligibleDefs();
+            var ok = EligibleDefs(size);
             if (ok.Count == 0) return null;
             var pick = ok[(int)(DilemmaRoll(22, State.dilemmaNextId, State.month) * ok.Count) % ok.Count];
             a = pick.a; b = pick.b;
@@ -328,7 +393,9 @@ namespace AquariumCiv.Sim
         {
             var d = State.dilemmas.FirstOrDefault(x => x.answerEntryId == e.id);
             var def = DilemmaDefOf(d);
-            return d == null || def == null || d.option < 0 ? null : $"The Keeper chose {DilemmaText(def.options[d.option].label, d)}";
+            return d == null || def == null || d.option < 0 ? null
+                : d.end == DilemmaEnd.LetThemDecide ? $"The Keeper let the people decide: {DilemmaText(def.options[d.option].label, d)}"
+                : $"The Keeper chose {DilemmaText(def.options[d.option].label, d)}";
         }
 
         // ---------- raise ----------
@@ -336,7 +403,8 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             int id = s.dilemmaNextId++;
-            var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b };
+            if (s.visitCount < 1) s.visitCount = 1; // a session in progress is a visit; the raise is the first time it is shown
+            var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b, size = def.size, visits = 1, visitNo = s.visitCount, raisedHours = Math.Round(s.clockHours, 6) };
             var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
             if (def.askerNotLeader)
                 d.askerId = s.notables.Where(n => n.alive && n.age >= AdultAge && n.id != (leader?.id ?? -1) && n.id != a && n.id != b)
@@ -353,7 +421,8 @@ namespace AquariumCiv.Sim
             Chronicled?.Invoke(e);
             d.entryId = e.id;
             s.dilemmas.Add(d);
-            s.dilemmaNextMonth = DilemmaScheduleFrom(s.month, false);
+            s.dilemmaLastRaiseHours = Math.Round(s.clockHours, 6);
+            if (def.size == DilemmaSize.Big) s.dilemmaNextHours = DilemmaScheduleFrom(s.clockHours, false);
             return d;
         }
 
@@ -368,18 +437,40 @@ namespace AquariumCiv.Sim
             var d = FindDilemma(dilemmaId);
             var def = DilemmaDefOf(d);
             if (d == null || def == null || d.state != DilemmaState.Open || option < 0 || option >= def.options.Length) return false;
+            d.end = DilemmaEnd.Answered;
+            var o = def.options[option];
+            string text = string.IsNullOrEmpty(o.done) ? $"The people asked, and the Keeper chose {DilemmaText(o.label, d)}." : DilemmaCap(DilemmaText(o.done, d));
+            CloseAnswered(d, def, option, path, text);
+            return true;
+        }
+
+        /// <summary>
+        /// #368: "Let them decide": the Keeper hands the choice back. The people take their default (<see cref="DilemmaDefaultOption"/>);
+        /// it is credited as the Keeper's choice (state Answered, a "keeper" line, callbacks and the book treat it as the Keeper's pick).
+        /// False if the dilemma is not open.
+        /// </summary>
+        public bool LetThemDecide(int dilemmaId, DilemmaPath path = DilemmaPath.Card)
+        {
+            var d = FindDilemma(dilemmaId);
+            var def = DilemmaDefOf(d);
+            if (d == null || def == null || d.state != DilemmaState.Open) return false;
+            int option = DilemmaDefaultOption(d);
+            d.end = DilemmaEnd.LetThemDecide;
+            CloseAnswered(d, def, option, path, $"The Keeper let the people decide, and they chose {DilemmaText(def.options[option].label, d)}.");
+            return true;
+        }
+
+        void CloseAnswered(Dilemma d, DilemmaDef def, int option, DilemmaPath path, string text)
+        {
             d.state = DilemmaState.Answered;
             d.option = option;
             d.path = path;
             d.endMonth = State.month;
-            var o = def.options[option];
-            string text = string.IsNullOrEmpty(o.done) ? $"The people asked, and the Keeper chose {DilemmaText(o.label, d)}." : DilemmaCap(DilemmaText(o.done, d));
             var e = Record("keeper", text, 0.8f, d.PersonOf(option), d.PersonOf(1 - option));
             e.keeper = true;
             d.answerEntryId = e.id;
             ApplyDilemmaEffects(d, def, option);
             ScheduleCallbacks(d, def, option);
-            return true;
         }
 
         // ---------- lapse ----------
@@ -408,12 +499,13 @@ namespace AquariumCiv.Sim
             return (int)(DilemmaRoll(30, d.id, d.month) * score.Length) % score.Length;
         }
 
-        /// <summary>The people decide (24 months of silence, 48 in the lab, or a person in it died): the default option's effects apply and the
-        /// chronicle says so neutrally. No blame, nothing credited to the Keeper.</summary>
-        void LapseDilemma(Dilemma d)
+        /// <summary>The people decide (the choice was shown on three visits without an answer, or a person in it died; a cheat): the default
+        /// option's effects apply and the chronicle says so neutrally. No blame, nothing credited to the Keeper. Recorded as unanswered.</summary>
+        void LapseDilemma(Dilemma d, DilemmaEnd end = DilemmaEnd.Debug)
         {
             if (d == null || d.state != DilemmaState.Open) return;
             var def = DilemmaDefOf(d);
+            d.end = end;
             d.state = DilemmaState.Lapsed;
             d.endMonth = State.month;
             if (def == null) return;
@@ -532,6 +624,31 @@ namespace AquariumCiv.Sim
                 if (DefHolds(def, out int a, out int b)) return RaiseDilemma(def, a, b);
             }
             return null;
+        }
+
+        /// <summary>Debug (#368): forget the gap and the schedule: the next watched month raises a choice (a wish or the first run may still hold it).</summary>
+        public void DebugSkipDilemmaGap()
+        {
+            State.dilemmaLastRaiseHours = -1e9;
+            State.dilemmaNextHours = State.clockHours;
+        }
+
+        /// <summary>Debug (#368): the visit counter, the open choice's visits and the hours since the last raise, in a line.</summary>
+        public string DilemmaVisitStatus()
+        {
+            var o = OpenDilemma;
+            double since = HoursSinceDilemmaRaised;
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture, "visits counted {0}; open choice: {1}; since last raise {2}; next big due {3}",
+                State.visitCount, o == null ? "none" : $"{o.defId} shown on {o.visits}/{DilemmaMaxVisits} visits",
+                since > 1e8 ? "never raised" : since.ToString("0.0") + " h",
+                State.dilemmaNextHours < 0 ? "not scheduled" : (State.dilemmaNextHours - State.clockHours).ToString("0.0") + " h from now");
+        }
+
+        /// <summary>Debug (#368): the player was away <paramref name="hours"/> real hours and opens the app (catch-up, then a visit).</summary>
+        public bool DebugOpenAfter(double hours)
+        {
+            CatchUp(Math.Max(0, hours));
+            return BeginVisit();
         }
 
         /// <summary>Debug: the people decide the open dilemma now. False if none is open.</summary>

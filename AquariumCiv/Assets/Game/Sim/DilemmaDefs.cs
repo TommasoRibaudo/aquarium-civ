@@ -75,6 +75,7 @@ namespace AquariumCiv.Sim
         public bool leaderElder;            // the era's leader must be an elder (SimConfig.elderAge): the people are thinking about who comes next
         public int termEndingMonths;        // > 0: the leader's term must end within this many months (an election is coming)
         public bool askerNotLeader;         // the eldest other adult asks, not the leader (a leader doesn't ask who replaces them)
+        public DilemmaSize size = DilemmaSize.Big; // #368: a big choice (every ~6-10 h) or a small one between (C5)
         public string question = "";        // the people's ask, {a}/{b}/{place}
         /// <summary>The question in the asker's voice, by their trait (the asker is the era's leader when it is raised, if they are
         /// not one of the two). A trait not listed, or no asker, gets <see cref="question"/>. Optional.</summary>

@@ -335,7 +335,7 @@ namespace AquariumCiv.Game
             if (c == null) return "no GameClock running";
             c.config.dilemmaLab = on;
             c.speed = on ? LabSpeed : 1f;
-            if (c.ActiveSim != null && c.ActiveSim.OpenDilemma == null) c.ActiveSim.State.dilemmaNextMonth = -1;
+            if (c.ActiveSim != null && c.ActiveSim.OpenDilemma == null) c.ActiveSim.State.dilemmaNextHours = -1;
             SaveLabSwitch(LabKey, on);
             return c.DilemmaStatus();
         }
@@ -356,9 +356,9 @@ namespace AquariumCiv.Game
             if (PlayerPrefs.GetInt(LabKey, 0) == 1) { config.dilemmaLab = true; speed = LabSpeed; }
         }
 
-        public string DilemmaStatus() => string.Format(CultureInfo.InvariantCulture, "dilemmas {0} (variant {1}) · {2} · clock x{3:0} · next due month {4} (now {5})",
+        public string DilemmaStatus() => string.Format(CultureInfo.InvariantCulture, "dilemmas {0} (variant {1}) · {2} · clock x{3:0} · next due at clock hour {4:0.0} (now {5:0.0})",
             config.dilemmas ? "on" : "off", DilemmaSurvey.VariantOf(config.dilemmas), config.dilemmaLab ? "lab schedule" : "normal schedule", speed,
-            ActiveSim?.State.dilemmaNextMonth ?? -1, ActiveSim?.State.month ?? 0);
+            ActiveSim?.State.dilemmaNextHours ?? -1, ActiveSim?.State.clockHours ?? 0);
 
         // ---------- debug (callable from `unity command script eval`) ----------
         /// <summary>Live time jump: the civ lives <paramref name="hours"/> at full speed, mess as in live play.</summary>
@@ -401,6 +401,7 @@ namespace AquariumCiv.Game
             if (c == null || c.Sim == null) return "no GameClock running";
             c.Sim.MarkLandSeen(); // like a pause: the land as it is now has been seen
             var r = c.Sim.CatchUp(Math.Clamp(hours, 0, SaveStore.MaxAwayHours));
+            c.Sim.BeginVisit(); // #368: coming back is an open
             c.Report(r, "debug away");
             LandReturned?.Invoke();
             c.Save();
