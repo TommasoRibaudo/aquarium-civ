@@ -30,6 +30,8 @@ namespace AnimBench
         public string SourcePath;
         /// <summary>#358: a kids' play group (src/Play.cs).</summary>
         public PlaySpec Play;
+        /// <summary>#363: a pair moment (src/Pair.cs).</summary>
+        public PairSpec Pair;
 
         public int FrameCount => Math.Max(1, (int)Math.Round(Duration * Fps) + 1);
         public float Dt => 1f / Fps;
@@ -71,6 +73,7 @@ namespace AnimBench
                 foreach (var d in dolls) c.Dolls.Add(DollSpec.Parse((JsonObject)d, c, i++));
             }
             if (root["play"] is JsonObject pl) c.Play = PlaySpec.Parse(pl); // #358
+            if (root["pair"] is JsonObject pr) c.Pair = PairSpec.Parse(pr); // #363
             if (c.Dolls.Count == 0 && c.Objects.Count == 0) throw new ClipException("a clip needs at least one doll or object");
             var ids = new HashSet<string>();
             foreach (var d in c.Dolls) if (!ids.Add(d.Id)) throw new ClipException($"duplicate id '{d.Id}'");

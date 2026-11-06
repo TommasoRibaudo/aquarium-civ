@@ -160,12 +160,14 @@ namespace AquariumCiv.View
         /// <summary>The way from member 0 to member 1 (talk, hand-over, hug), or the way they walk (unit).</summary>
         public readonly Vector2 heading;
         public readonly float gap, turnSeconds, speed;
+        /// <summary>#363: the walkers' centre-to-centre gap (default <see cref="SideBySide"/>).</summary>
+        public readonly float side;
         readonly int firstTalker;
 
-        public PairGroup(int seed, float t0, int a, int b, PairKind kind, Vector2 anchor, Vector2 heading, float gap = 0.16f, float turnSeconds = 2.6f, float speed = 0.12f)
+        public PairGroup(int seed, float t0, int a, int b, PairKind kind, Vector2 anchor, Vector2 heading, float gap = 0.16f, float turnSeconds = 2.6f, float speed = 0.12f, float side = SideBySide)
             : base(seed, t0, new[] { a, b }, false)
         {
-            this.kind = kind; this.anchor = anchor; this.gap = gap; this.turnSeconds = Mathf.Max(0.2f, turnSeconds); this.speed = speed;
+            this.side = side; this.kind = kind; this.anchor = anchor; this.gap = gap; this.turnSeconds = Mathf.Max(0.2f, turnSeconds); this.speed = speed;
             this.heading = heading.sqrMagnitude > 1e-8f ? heading.normalized : new Vector2(1f, 0f);
             firstTalker = BeatHash.Pick(2, seed, a ^ b, 363);
         }
@@ -201,7 +203,7 @@ namespace AquariumCiv.View
                     var right = new Vector2(heading.y, -heading.x);
                     cue.role = i == 0 ? GroupRole.Lead : GroupRole.Side;
                     cue.since = d.Clock(since);
-                    cue.target = i == 0 ? lead : lead + right * SideBySide;
+                    cue.target = i == 0 ? lead : lead + right * side;
                     cue.face = cue.target + heading;
                     cue.moving = speed > 0f;
                     break;

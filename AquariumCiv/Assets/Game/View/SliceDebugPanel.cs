@@ -357,6 +357,13 @@ namespace AquariumCiv.View
             }
             if (Btn("Force knock")) last = GlassVoice.DebugKnock();
             EndRow();
+            // #363: pairs (talk is "Force chat" above; the hug shows the variant even while BeatFlags.Hugs is off)
+            Row();
+            if (Btn("Hand over now")) last = PeopleView.DebugPair(PairKind.HandOver);
+            if (Btn("Walk together now")) last = PeopleView.DebugPair(PairKind.WalkTogether);
+            if (Btn("Hug now")) last = PeopleView.DebugPair(PairKind.Hug);
+            if (Btn("Hugs: " + (BeatFlags.Hugs ? "on" : "off"))) { BeatFlags.Hugs = !BeatFlags.Hugs; last = "hugs " + (BeatFlags.Hugs ? "on" : "off"); }
+            EndRow();
             // #315/#316: the frogs and the voices by distance.
             Row();
             if (Btn("Frog now")) last = AudioDirector.DebugFrog();

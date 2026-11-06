@@ -218,6 +218,7 @@ namespace AnimBench
             for (int i = 0; i < cover.Length; i++) cover[i] = (byte)EcoCover.Grass;
             field.Refresh(cover, new bool[EcoLand.N], 352, -1);
             SetUpPlay(); // #358
+            SetUpPair(); // #363
         }
 
         /// <summary>Runs the clip: the warm-up (not recorded), then every frame.</summary>
@@ -262,6 +263,7 @@ namespace AnimBench
         void StepDoll(DollState d, float t, float tc, float dt)
         {
             if (StepPlayDoll(d, t, dt)) return; // #358: a play group drives this doll
+            if (StepPairDoll(d, t, dt)) return; // #363: a pair moment drives this doll
             var spec = d.Spec;
             int si = spec.IndexAt(tc);
             var seg = spec.Segments[si];
@@ -347,6 +349,10 @@ namespace AnimBench
                 pose = DollMotion.Blend(d.BlendFrom, pose, Mathf.SmoothStep(0f, 1f, d.BlendT / Bench.BlendSeconds));
             }
             if (hunting) DollMotion.Hunt(ref pose, seg.Hunt, progress, since, stalkNow);
+            // #363, as PeopleView.Drive: the chat on the pair's shared clock (listener nods, open hand, shared laugh)
+            var chatMate = style == DollStyle.Talk && seg.Partner != null && (kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit) ? clip.Doll(seg.Partner) : null;
+            if (chatMate != null)
+                PairBeats.Talk(ref pose, PairBeats.TalkAt(spec.Seed, chatMate.Seed, clip.Clock + t, Mathf.Max(0f, ChatEnd(spec, si) - tc)), Desync.Of(spec.Seed, 363).amp, holds);
             if (kind == ActivityKind.FetchWater) // #360, as PeopleView.Drive
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, spec.Seed, seg.Queue);
@@ -361,6 +367,14 @@ namespace AnimBench
             };
             Bench.Place(ref f, spec.Scale);
             d.Last = f;
+        }
+
+        /// <summary>#363: when the chat ends (the planner's one activity may be several segments in a clip: an end-beat segment follows it).</summary>
+        static float ChatEnd(DollSpec spec, int si)
+        {
+            var seg = spec.Segments[si];
+            while (si + 1 < spec.Segments.Count && spec.Segments[si + 1].Activity == seg.Activity && spec.Segments[si + 1].Partner == seg.Partner) si++;
+            return spec.Segments[si].T1;
         }
 
         void StepObject(ObjectState o, float t, float dt, bool live)

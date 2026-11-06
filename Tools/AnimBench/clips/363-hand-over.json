@@ -1,0 +1,16 @@
+{
+  "name": "363-hand-over",
+  "notes": "#363 B7.b: the toolmaker (stone in hand; in the game she is knapping at the fire) walks the hunter's spear over: the giver walks up to 0.14 u, holds the spear out (arms x80 to 92, lean 10 to 14), the hunter reaches 0.1 s later and meets the hand: contact (hit = the giver's, hands within a doll-width), the spear is in exactly one pair of hands (giver until the contact frame, taker after), a 0.3 s hold, the taker lifts it to look (arms x100 then 60), the giver's arms drop with one nod. Real planner moment: the hunt's TakeSpear step (PeopleView.HandSpear), squeezed into the step (window); here no squeeze.",
+  "duration": 4.2,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [-0.1, 0.0], "span": 0.8 },
+  "sheet": { "from": 0.8, "to": 3.4, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "pair": { "kind": "HandOver", "members": ["tess", "hal"], "t0": 1.0, "prop": "Spear" },
+  "objects": [],
+  "dolls": [
+    { "id": "tess", "seed": 31, "pos": [-0.35, 0.0], "face": "hal", "prop": "Hammer", "style": "Stand", "target": "hal" },
+    { "id": "hal", "seed": 32, "pos": [0.0, 0.0], "face": "tess", "style": "Stand" }
+  ]
+}
