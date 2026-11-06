@@ -407,6 +407,8 @@
 .kg-banner-words { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-10); }
 .kg-banner-words > .type-head { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* a long headline never runs under the way out */
 .kg-banner-sub { white-space: normal; }
+/* visit loop: a banner whose headline is a whole sentence (the choice's answer line) wraps instead of cutting it off */
+.kg-banner--wrap .kg-banner-words > .type-head { white-space: normal; overflow: visible; text-overflow: clip; }
 .kg-big-prompt {
     position: absolute; left: 121px; right: 121px; bottom: 561px; height: 154px; margin: 0; padding: 0 var(--space-16);
     border-width: 0; border-radius: var(--radius-tool);

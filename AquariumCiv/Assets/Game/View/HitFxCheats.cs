@@ -61,7 +61,16 @@ namespace AquariumCiv.View
             int n = 0;
             for (int i = 0; i < kinds.Length; i++)
             {
-                var at = Vector3.Lerp(a, b, (i + 0.5f) / kinds.Length) + Vector3.up * 0.06f;
+                var at = Vector3.Lerp(a, b, (i + 0.5f) / kinds.Length);
+                // Visit loop: keep the row on the top surface (the ray's ends can land on the box's soil wall)
+                var box = Object.FindAnyObjectByType<BoxView>();
+                if (box != null && box.Root != null)
+                {
+                    var l = box.Root.InverseTransformPoint(at);
+                    float x = Mathf.Clamp(l.x, -Land.HX + 0.3f, Land.HX - 0.3f), z = Mathf.Clamp(l.z, -Land.HZ + 0.3f, Land.HZ - 0.3f);
+                    at = box.Root.TransformPoint(new Vector3(x, box.SurfaceHeight(x, z), z));
+                }
+                at += Vector3.up * 0.06f;
                 var o = PuffOptions.Default;
                 o.groundY = at.y - 0.06f;
                 var away = cam.transform.right;

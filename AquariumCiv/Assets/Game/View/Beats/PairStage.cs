@@ -38,6 +38,8 @@ namespace AquariumCiv.View
         public readonly float walkSpeed;
         /// <summary>The smaller of a hug lifts 0.02 u.</summary>
         public bool liftSecond;
+        /// <summary>Visit loop: the hug's heart mark has been raised (once per hug).</summary>
+        public bool heartShown;
         /// <summary>#365 B9.b: the taker stays seated (a bowl handed round the ring): its activity's pose stays under the beat.</summary>
         public bool takerSeated;
         /// <summary>Set to end it early (the step it hangs on ended).</summary>
@@ -173,6 +175,14 @@ namespace AquariumCiv.View
             if (since < PairBeats.HugArrive) return Mathf.Lerp(HugFrom, PairBeats.HugGapClose, Easing.Apply(Ease.Smooth, since / PairBeats.HugArrive));
             if (since < f) return PairBeats.HugGapClose;
             return Mathf.Lerp(PairBeats.HugGapClose, PairBeats.HugGapClose + PairBeats.HugStepBack, Easing.Apply(Ease.Smooth, (since - f) / 0.3f));
+        }
+
+        /// <summary>Visit loop: true once, the first time the hug's arms have closed (then the view raises a heart over the carer).</summary>
+        public static bool HeartDue(PairEvent e, float t)
+        {
+            if (e == null || e.kind != PairKind.Hug || e.heartShown || t - e.BeatStart < PairBeats.HeartDelay) return false;
+            e.heartShown = true;
+            return true;
         }
 
         /// <summary>Lays the event's beat over <paramref name="pose"/> (the loop pose the doll drew). <paramref name="stride"/>: the walk's phase (for the joined hands).</summary>

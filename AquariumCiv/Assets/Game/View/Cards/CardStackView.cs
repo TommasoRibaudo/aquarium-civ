@@ -405,6 +405,7 @@ namespace AquariumCiv.View
             root.Add(sheet);
 
             showBar = new GlassBanner { name = "cards-showme-bar", pickingMode = PickingMode.Ignore };
+            showBar.AddToClassList("kg-banner--wrap"); // visit loop: "The Keeper chose full…" was cut off at 1080x1920
             showBar.style.display = DisplayStyle.None;
             showBar.End.Add(new GlassButton("Back to the story", () => showingPlace = false, ButtonKind.Secondary, UiRole.Back) { name = "cards-showme-back", Compact = true });
             root.Add(showBar);
@@ -800,7 +801,7 @@ namespace AquariumCiv.View
             SetFitStory(false);
             Show(scroll, false);
             Show(dilBox, true);
-            Show(dilLet, f.dilemmaChosen < 0);
+            Show(dilLet, f.dilemmaChosen < 0 && !showingPlace); // visit loop: the sheet's copy is really hidden while the box scene has its own
             Show(eraMark, false);
             head.EnableInClassList("cards-head--alone", true);
             headline.AddToClassList("cards-ask");

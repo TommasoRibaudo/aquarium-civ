@@ -161,12 +161,16 @@ namespace AquariumCiv.View
 
         // ------------------------------------------------------------------ hug (B7.d, behind BeatFlags.Hugs)
         public const float HugArrive = 0.6f, HugGapClose = 0.09f, HugStepBack = 0.05f;
+        /// <summary>Visit loop: the hold was 1.2 s and read as "two dolls standing close"; now 1.8 s, a visible sway and a heart (<see cref="HeartDelay"/> into the beat).</summary>
+        public const float HugHold = 1.8f, HugSwayDegrees = 10f, HugSwayHz = 0.8f;
+        /// <summary>When the heart mark pops over the carer: as the arms close.</summary>
+        public static float HeartDelay => Hug.StartOf(BeatPhase.Contact);
         /// <summary>Arms wide while they step in, wrap on arrival with a squeeze, hold (the sway is laid on by <see cref="HugSway"/>), let go.</summary>
         public static readonly Beat Hug = new Beat(
-            Beat.Step(BeatPhase.Antic, 0.30f, Ease.Out, PoseKey.Hold.Lean(4f).ArmL(30f, 0f, -100f).ArmR(30f, 0f, 100f)),
+            Beat.Step(BeatPhase.Antic, 0.30f, Ease.Out, PoseKey.Hold.Lean(4f).ArmL(40f, 0f, -140f).ArmR(40f, 0f, 140f)), // visit loop: arms wider on the way in (was 100)
             Beat.Step(BeatPhase.Act, 0.30f, Ease.Smooth, PoseKey.Hold.Lean(10f).Squash(0.92f).ArmL(85f, 0f, 10f).ArmR(85f, 0f, -10f)),
             Beat.Step(BeatPhase.Contact, 0.08f, Ease.Linear, PoseKey.Hold),
-            Beat.Step(BeatPhase.Hold, 1.20f, Ease.Linear, PoseKey.Hold),
+            Beat.Step(BeatPhase.Hold, HugHold, Ease.Linear, PoseKey.Hold),
             Beat.Step(BeatPhase.Follow, 0.30f, Ease.Smooth, PoseKey.Hold.Lean(2f).Squash(1f).Arms(20f, 14f)),
             Beat.Step(BeatPhase.Settle, 0.20f, Ease.Smooth, PoseKey.Base));
 
@@ -177,7 +181,7 @@ namespace AquariumCiv.View
             if (since > hold0 && since < hold1)
             {
                 float k = Easing.Apply(Ease.Smooth, (since - hold0) / 0.2f);
-                p.roll = (second ? -1f : 1f) * 6f * Mathf.Sin((since - hold0) * Mathf.PI * 2f) * k;
+                p.roll = (second ? -1f : 1f) * HugSwayDegrees * Mathf.Sin((since - hold0) * Mathf.PI * 2f * HugSwayHz) * k;
                 if (lifted) p.offset.y = 0.02f * k;
             }
             else if (since >= hold1 && since < hold1 + 0.3f)

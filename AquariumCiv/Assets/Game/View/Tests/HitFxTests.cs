@@ -301,5 +301,56 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(HitFxShapes.RingSides * 2, verts.Count);
             Assert.AreEqual(HitFxShapes.RingSides * 6, tris.Count);
         }
+
+        // ---- visit loop: puff colours that contrast with the ground
+        static float Lum(Color c) => 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
+
+        [Test]
+        public void Ground_IsClassifiedFromItsColour()
+        {
+            Assert.AreEqual(PuffGround.Grass, PuffContrast.Classify(new Color(0.35f, 0.6f, 0.25f)));
+            Assert.AreEqual(PuffGround.Soil, PuffContrast.Classify(new Color(0.4f, 0.28f, 0.18f)));
+            Assert.AreEqual(PuffGround.Sand, PuffContrast.Classify(new Color(0.88f, 0.8f, 0.55f)));
+        }
+
+        [Test]
+        public void GrassBits_OnGrass_ArePaleYellowGreen_WithDarkRim()
+        {
+            Assert.IsTrue(PuffContrast.Pick(PuffColour.Grass, PuffGround.Grass, out var fill, out var rim));
+            Assert.Greater(Lum(fill), 0.75f);
+            Assert.Less(Lum(rim), 0.3f);
+            Assert.Greater(fill.r, fill.b); Assert.Greater(fill.g, fill.b);
+        }
+
+        [Test]
+        public void EveryPickedKind_OnEveryGround_HasALightFillOrDarkOne_AgainstItsRim()
+        {
+            foreach (PuffGround g in System.Enum.GetValues(typeof(PuffGround)))
+                foreach (PuffColour c in System.Enum.GetValues(typeof(PuffColour)))
+                    if (PuffContrast.Pick(c, g, out var fill, out var rim))
+                        Assert.Greater(Mathf.Abs(Lum(fill) - Lum(rim)), 0.2f, $"{c} on {g}");
+        }
+
+        [Test]
+        public void DropletsAndSparks_ContrastWithGrass_AndWoodChipsWithSand()
+        {
+            var grassLum = Lum(new Color(0.35f, 0.6f, 0.25f));
+            foreach (var c in new[] { PuffColour.Water, PuffColour.SparkYellow, PuffColour.Ember, PuffColour.Grass, PuffColour.WoodPale })
+            {
+                Assert.IsTrue(PuffContrast.Pick(c, PuffGround.Grass, out var fill, out _), c.ToString());
+                Assert.Greater(Mathf.Abs(Lum(fill) - grassLum), 0.15f, c.ToString());
+            }
+            PuffContrast.Pick(PuffColour.WoodPale, PuffGround.Sand, out var chip, out _);
+            Assert.Less(Lum(chip), 0.55f);
+        }
+
+        [Test]
+        public void Pop_LastsAboutThreeFrames_ThenGone()
+        {
+            Assert.Greater(PuffContrast.PopRadius01(0f), 0f);
+            Assert.Greater(PuffContrast.PopRadius01(PuffContrast.PopSeconds * 0.9f), PuffContrast.PopRadius01(0f));
+            Assert.AreEqual(0f, PuffContrast.PopRadius01(PuffContrast.PopSeconds));
+            Assert.LessOrEqual(PuffContrast.PopSeconds, 0.2f);
+        }
     }
 }

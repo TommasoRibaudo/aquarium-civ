@@ -174,11 +174,32 @@ namespace AquariumCiv.View.Tests
                 Assert.AreEqual(PairBeats.HugGapClose, (PairStage.CueOf(ev, 0, at + 1.0f).pos - PairStage.CueOf(ev, 1, at + 1.0f).pos).magnitude, 1e-3f, "arms around each other");
                 float end = (PairStage.CueOf(ev, 0, at + 2.3f).pos - PairStage.CueOf(ev, 1, at + 2.3f).pos).magnitude;
                 Assert.AreEqual(PairBeats.HugGapClose + PairBeats.HugStepBack, end, 2e-3f, "a step back");
-                Assert.AreEqual(2.4f, PairBeats.Hug.Duration, 0.05f);
+                Assert.AreEqual(3.0f, PairBeats.Hug.Duration, 0.05f, "visit loop: the hold is 1.8 s");
                 BeatFlags.Hugs = true;
                 Assert.NotNull(PairStage.Hug(1, 0f, 1, 2, Vector2.zero, new Vector2(0.5f, 0f)), "on with the flag");
             }
             finally { BeatFlags.Hugs = was; }
+        }
+
+        [Test]
+        public void Hug_HoldsAboutTwoSeconds_AndRaisesOneHeartOnceTheArmsClose()
+        {
+            Assert.That(PairBeats.HugHold, Is.InRange(1.5f, 2f));
+            var ev = PairStage.Hug(1, 0f, 1, 2, Vector2.zero, new Vector2(0.5f, 0f), force: true);
+            Assert.IsFalse(PairStage.HeartDue(ev, ev.BeatStart + PairBeats.HeartDelay - 0.05f), "not before the arms close");
+            Assert.IsTrue(PairStage.HeartDue(ev, ev.BeatStart + PairBeats.HeartDelay + 0.01f));
+            Assert.IsFalse(PairStage.HeartDue(ev, ev.BeatStart + 1.5f), "once per hug");
+            Assert.IsFalse(PairStage.HeartDue(PairStage.WalkTogether(1, 0f, 1, 2, Vector2.zero, Vector2.right, 5f), 3f), "only a hug");
+        }
+
+        [Test]
+        public void HugSway_IsVisible_AndOppositeForTheTwo()
+        {
+            float t = PairBeats.Hug.StartOf(BeatPhase.Contact) + 0.5f / PairBeats.HugSwayHz * 0.5f + 0.25f;
+            var a = DollPose.Rest; var b = DollPose.Rest;
+            PairBeats.HugSway(ref a, t, false, false); PairBeats.HugSway(ref b, t, true, false);
+            Assert.Greater(Mathf.Abs(a.roll), 5f);
+            Assert.AreEqual(a.roll, -b.roll, 1e-4f);
         }
     }
 }

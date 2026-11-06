@@ -319,6 +319,9 @@ namespace AquariumCiv.View
             foreach (var b in beats) Mark(b.bangAt, b.id, b.voice, ChatterMark.Bang, quiet, KnockReaction.LeadSeconds + KnockReaction.HoldSeconds);
         }
 
+        /// <summary>Visit loop: a heart mark over this person now (the hug's), for <paramref name="seconds"/>. False when marks are off.</summary>
+        public bool Heart(int id, float seconds) => Mark(Now, id, 0, ChatterMark.Heart, false, seconds);
+
         bool Mark(double at, int id, int voice, ChatterMark mark, bool quiet, float seconds)
         {
             var s = Plan.React(at, id, voice, mark, Effective, quiet, seconds);

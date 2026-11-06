@@ -576,6 +576,7 @@ namespace AquariumCiv.View
             if (fishNow) FishBeats.Apply(ref pose, fishS, a.who.Key, fishLeft); // #364
             // #363 B7: the pair beats lie over the pose the loop drew.
             if (paired) PairStage.Apply(pairEv, pairCue.index, time, ref pose, d.stride);
+            if (paired && pairCue.index == 0 && PairStage.HeartDue(pairEv, time)) ShowMeDirector.Instance?.Chatter.Heart(a.who.Key, 1.6f); // visit loop: a heart over the carer as the arms close
             else if (style == DollStyle.Talk && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit
                      && dolls.TryGetValue(a.partner.Key, out var chatMate) && chatMate.placed && (chatMate.pos - d.pos).sqrMagnitude < 0.6f * 0.6f)
             {
