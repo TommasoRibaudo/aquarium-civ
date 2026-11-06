@@ -42,7 +42,7 @@ namespace AquariumCiv.View
             public float lastSeen, lastSince; public int launched, total;
         }
         /// <summary>A root coming up out of the ground and held in the hand, until its arc leaves.</summary>
-        sealed class Held { public GameObject go; public PersonRef who; public float upAt, throwAt; public bool thrown; }
+        sealed class Held { public GameObject go; public PersonRef who; public float upAt, throwAt; public bool thrown, eat; /* look-fix: a tasted berry, eaten at throwAt */ }
         /// <summary>The berries on one basket (its prop; a new prop is a new, empty basket).</summary>
         sealed class Fill { public Transform prop; public Transform[] dots = new Transform[BerryMotion.BasketMax]; public int count; public float[] pop = new float[BerryMotion.BasketMax]; }
 
@@ -154,7 +154,12 @@ namespace AquariumCiv.View
             bush.Shake(place.index, away); // the bush answers on the contact frame
             HitFx.Puff(PuffKind.Leaves, hand, away, toBasket ? 1f : 0.7f);
             if (!bush.PickOneDot(place.index, who, out var dot)) return; // nothing left to take: just the shake
-            if (!toBasket) return;
+            if (!toBasket)
+            {   // look-fix: the tasted berry is seen in the hand on its way up to the mouth, then it is gone (eaten)
+                var b = NewPiece("Berry", BerryMesh());
+                held.Add(new Held { go = b, who = who, upAt = clock, throwAt = clock + BerryMotion.TasteToMouthSeconds, eat = true });
+                return;
+            }
             var f = FillOf(who.Key, v);
             if (f == null) return;
             Launch(who, hand, BasketTop(f.prop), BerryHeight, BerryFlight, false);
@@ -271,6 +276,7 @@ namespace AquariumCiv.View
                 var h = held[i];
                 if (h.go == null || people == null || !people.TryGetBerryDoll(h.who, out var v, out _) || v.armR == null) { Drop(h, i); continue; }
                 var hand = WorkHitPoint.HitPoint(v);
+                if (clock >= h.throwAt && h.eat) { Drop(h, i); continue; } // look-fix: eaten
                 if (clock >= h.throwAt)
                 {
                     var f = FillOf(h.who.Key, v);
@@ -281,7 +287,7 @@ namespace AquariumCiv.View
                 }
                 if (clock < h.upAt) continue;
                 if (!h.go.activeSelf) h.go.SetActive(true);
-                float u = Mathf.Clamp01((clock - h.upAt) / 0.3f); // it comes up out of the ground into the held-up hand
+                float u = h.eat ? 1f : Mathf.Clamp01((clock - h.upAt) / 0.3f); // it comes up out of the ground into the held-up hand (a berry is just in the fingers)
                 h.go.transform.position = hand + Vector3.up * 0.03f * u;
                 h.go.transform.rotation = Quaternion.Euler(0f, clock * 40f, 8f);
                 h.go.transform.localScale = Vector3.one * (Mathf.Lerp(0.3f, 1f, u) * (people != null ? v.transform.localScale.x : 1f));
@@ -404,14 +410,27 @@ namespace AquariumCiv.View
             return berryMesh;
         }
 
+        /// <summary>Look-fix (visit loop): a dug root that reads as a root, not a stone: a knobbly tan-brown taproot (three lumps tapering
+        /// down, 0.075 long), thin dark tendrils off its sides and tip, a small leaf tuft at the crown (the grip, at the origin).</summary>
+        public static void BuildRoot(MeshBuilder mb)
+        {
+            var tan = new Color(0.80f, 0.58f, 0.34f); var brown = new Color(0.58f, 0.40f, 0.24f); var hair = new Color(0.40f, 0.27f, 0.17f);
+            mb.Ico(new Vector3(0f, -0.006f, 0f), 0.014f, new Vector3(1f, 1.1f, 0.95f), tan, 0.12f, brown);
+            mb.Ico(new Vector3(0.003f, -0.026f, 0.001f), 0.011f, new Vector3(0.95f, 1.2f, 1f), tan, 0.15f, brown);
+            mb.Ico(new Vector3(-0.002f, -0.044f, 0f), 0.008f, new Vector3(0.9f, 1.3f, 0.9f), brown, 0.15f);
+            mb.Prism(new Vector3(-0.002f, -0.05f, 0f), 0.0045f, 0.0015f, 0.025f, 4, brown, Quaternion.Euler(180f, 0f, 12f));                // the tapering tip
+            mb.Prism(new Vector3(0.010f, -0.02f, 0f), 0.0018f, 0.0008f, 0.026f, 4, hair, Quaternion.Euler(0f, 0f, -125f), false);          // tendrils
+            mb.Prism(new Vector3(-0.010f, -0.032f, 0.002f), 0.0018f, 0.0008f, 0.022f, 4, hair, Quaternion.Euler(10f, 0f, 130f), false);
+            mb.Prism(new Vector3(0.004f, -0.04f, -0.006f), 0.0015f, 0.0007f, 0.02f, 4, hair, Quaternion.Euler(-120f, 0f, -20f), false);
+            mb.Ico(new Vector3(0f, 0.012f, 0f), 0.009f, new Vector3(1.1f, 1.4f, 1.1f), new Color(0.35f, 0.55f, 0.25f), 0.15f);          // the leaf tuft
+        }
+
         Mesh RootMesh()
         {
             if (rootMesh == null)
             {
                 var mb = new MeshBuilder(362) { jitter = 0f };
-                // a tan carrot 0.06 long, thick at the top, a leaf tuft at the crown
-                mb.Prism(new Vector3(0f, -0.03f, 0f), 0.003f, 0.014f, 0.06f, 6, new Color(0.82f, 0.6f, 0.34f));
-                mb.Ico(new Vector3(0f, 0.035f, 0f), 0.012f, new Vector3(0.8f, 1.2f, 0.8f), new Color(0.35f, 0.55f, 0.25f), 0.1f);
+                BuildRoot(mb);
                 rootMesh = mb.ToMesh("PickedRoot");
             }
             return rootMesh;

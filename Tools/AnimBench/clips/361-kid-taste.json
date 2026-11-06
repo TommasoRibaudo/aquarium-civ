@@ -8,7 +8,9 @@
   "sheet": { "from": 0, "to": 2.4, "frames": 24, "columns": 6 },
   "expect": { "reactSeconds": 0.2 },
   "objects": [
-    { "id": "bush", "kind": "bush", "pos": [0.0, 0.0], "radius": 0.1, "berries": 7, "pickedBy": "kid", "state": { "dropOnHit": 1 } }
+    { "id": "bush", "kind": "bush", "pos": [0.0, 0.0], "radius": 0.1, "berries": 7, "pickedBy": "kid", "state": { "dropOnHit": 1 } },
+    { "id": "berry1", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "kid.handR", "to": "kid.head", "t0": 0.53, "t1": 1.03, "height": 0.04, "heldBefore": false, "hideAt": 1.05 } },
+    { "id": "berry2", "kind": "berry", "pos": [0.0, 0.0], "arc": { "from": "kid.handR", "to": "kid.head", "t0": 2.73, "t1": 3.23, "height": 0.04, "heldBefore": false, "hideAt": 3.25 } }
   ],
   "dolls": [
     { "id": "kid", "kid": true, "seed": 363, "role": "kid", "phase": 0,

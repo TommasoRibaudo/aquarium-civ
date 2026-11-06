@@ -160,6 +160,14 @@ namespace AquariumCiv.View
             Band(mb, s, BodyH * 0.66f * s, -0.03f * s, 0.008f * s, 0f, Mathf.PI * 2f, 10, BabyWrap, 0.0035f);
         }
 
+        /// <summary>Look-fix: the caught rabbit's build scale, and its scruff (where a hand holds it up) in the prop's frame.</summary>
+        public const float RabbitPropScale = 0.64f;
+        public static readonly Vector3 RabbitScruff = new Vector3(0f, -0.004f, 0.078f) * RabbitPropScale;
+
+        /// <summary>Look-fix: a rabbit held in the hand hangs from its scruff, head up, whatever the arm does (turned with the doll only):
+        /// the prop's +z (its head) up, its ears and belly toward where the doll faces.</summary>
+        public static readonly Quaternion RabbitHang = Quaternion.Euler(0f, 180f, 0f) * Quaternion.Euler(-90f, 0f, 0f);
+
         /// <summary>A shared prop mesh (palette colours only), built once. The grip is at the origin.</summary>
         public static Mesh PropMesh(PropKind kind)
         {
@@ -213,9 +221,11 @@ namespace AquariumCiv.View
                 {
                     // #283: a caught rabbit slung across the shoulders (the shoulder slot turns local z across the body): fur body,
                     // head and hanging ears at +z, white tail and haunch at -z, dangling feet. Drawn big so it reads at phone size.
-                    var fur = new Color(0.66f, 0.47f, 0.30f); var belly = Color.Lerp(fur, Color.white, 0.55f);
+                    // Look-fix (visit loop): a box rabbit's size (about 1.1x RabbitDoll), not 1.45x (it was longer than the hunter), and a
+                    // less pale belly, so the catch reads as the same animal that grazed, not a towering white thing.
+                    var fur = new Color(0.62f, 0.45f, 0.29f); var belly = Color.Lerp(fur, Color.white, 0.3f);
                     var dark = new Color(0.20f, 0.14f, 0.12f); var white = new Color(0.98f, 0.97f, 0.94f);
-                    mb.M = Matrix4x4.Scale(Vector3.one * 1.45f); // bigger than life: it has to read on a phone
+                    mb.M = Matrix4x4.Scale(Vector3.one * RabbitPropScale); // 0.14 u nose to tail, the grazing rabbit's ~0.12
                     mb.Ico(new Vector3(0f, -0.010f, -0.020f), 0.044f, new Vector3(0.85f, 0.85f, 1.35f), fur, 0.05f, belly);
                     mb.Ico(new Vector3(0f, -0.016f, 0.050f), 0.030f, new Vector3(0.9f, 0.9f, 1.2f), fur, 0.05f, belly);
                     mb.Ico(new Vector3(0f, -0.030f, 0.098f), 0.024f, new Vector3(0.85f, 0.9f, 1.2f), fur, 0.05f, belly);       // head, hanging

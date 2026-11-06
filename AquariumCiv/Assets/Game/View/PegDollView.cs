@@ -109,6 +109,8 @@ namespace AquariumCiv.View
             if (slot == PropSlot.Hand) armR.localRotation = Quaternion.Euler(-35f, 0, 10f);
             prop = Part(parent, "Prop_" + kind, PegDoll.PropMesh(kind), material, pos * scale, rot);
             prop.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
+            if (kind == PropKind.Rabbit && slot == PropSlot.Shoulder) // look-fix: over ONE shoulder, nose to tail front-to-back, the head down the back
+                prop.SetLocalPositionAndRotation(new Vector3(PegDoll.ShoulderX * 0.9f, PegDoll.BodyH + 0.012f, 0.01f) * scale, Quaternion.Euler(-12f, 0f, 0f));
             if (slot == PropSlot.Hand)
             {
                 // Upright in the raised hand, then leaned out from the body for tools (they break the outline).
@@ -188,6 +190,18 @@ namespace AquariumCiv.View
             armR.localRotation = Quaternion.Euler(pose.armR);
             SetGrip(pose.extend);
             if (inLeft && prop != null) prop.localRotation = Quaternion.Inverse(armL.localRotation); // #361: the basket stays upright
+            if (prop != null && propKind == PropKind.Rabbit && propSlot == PropSlot.Hand) HangRabbit();
+        }
+
+        /// <summary>Look-fix (visit loop, #362): the caught rabbit hangs from the fist by its scruff, head up, body down, turned with the doll
+        /// only, so held up overhead it reads as an animal dangling from a raised hand, not a plank swung with the arm.</summary>
+        void HangRabbit()
+        {
+            var (pos, _) = PegDoll.SlotPose(PropSlot.Hand);
+            var fist = armR.TransformPoint(pos * scale);
+            var rot = Quaternion.Euler(0f, transform.eulerAngles.y, 0f) * PegDoll.RabbitHang;
+            prop.rotation = rot;
+            prop.position = fist - rot * (PegDoll.RabbitScruff * prop.lossyScale.x);
         }
     }
 }

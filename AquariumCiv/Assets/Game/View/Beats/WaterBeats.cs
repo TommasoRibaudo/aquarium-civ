@@ -17,15 +17,16 @@ namespace AquariumCiv.View
         // Arms are absolute; the bucket hangs upright at HoldArm (-35, 0, 10), so the arm only tips it a little.
         public static readonly Beat Draw = new Beat(
             Beat.Step(BeatPhase.Approach, 0.30f, Ease.Smooth, PoseKey.Hold),
-            // kneel: squash 0.7, down, lean forward, bucket hand forward
-            Beat.Step(BeatPhase.Antic, 0.40f, Ease.Smooth, PoseKey.Hold.Squash(0.68f).Lean(16f).Offset(0f, -0.045f, -0.01f).ArmR(0f, 0f, 10f)),
-            // dip: further over, the bucket reaches down to the water
-            Beat.Step(BeatPhase.Act, 0.35f, Ease.Smooth, PoseKey.Hold.Squash(0.6f).Lean(28f).Offset(0f, -0.07f, -0.035f).ArmR(40f, 0f, 8f)),
+            // kneel: squash 0.76, lean forward, bucket hand forward. Look-fix (AnimLab, batch 1): the feet stay ON the bank (offset y
+            // -0.07 with squash 0.6 sank the real doll to the shoulders into the ground); the squash alone reads as the kneel.
+            Beat.Step(BeatPhase.Antic, 0.40f, Ease.Smooth, PoseKey.Hold.Squash(0.76f).Lean(18f).Offset(0f, -0.008f, -0.012f).ArmR(10f, 0f, 10f)),
+            // dip: further over, the arm reaches out and down so the bucket goes into the water past the edge
+            Beat.Step(BeatPhase.Act, 0.35f, Ease.Smooth, PoseKey.Hold.Squash(0.7f).Lean(34f).Offset(0f, -0.012f, -0.04f).ArmR(58f, 0f, 8f)),
             Beat.Step(BeatPhase.Contact, 0.08f, Ease.Linear, PoseKey.Hold),
             // under, filling (the wobble is added in Apply)
             Beat.Step(BeatPhase.Hold, 0.60f, Ease.Linear, PoseKey.Hold),
             // lift anticipation: sink, then up with effort (Back overshoots the lean)
-            Beat.Step(BeatPhase.Antic, 0.15f, Ease.Smooth, PoseKey.Hold.Squash(0.56f).Lean(32f)),
+            Beat.Step(BeatPhase.Antic, 0.15f, Ease.Smooth, PoseKey.Hold.Squash(0.66f).Lean(38f)),
             Beat.Step(BeatPhase.Act, 0.40f, Ease.Back, PoseKey.Hold.Lean(-14f).Squash(0.97f).Offset(0f, 0f, 0.01f).ArmR(-20f, 0f, 10f)),
             // the weight lands: the full bucket held a moment
             Beat.Step(BeatPhase.EndBeat, 0.25f, Ease.Smooth, PoseKey.Hold.Squash(0.92f).Lean(4f).Offset(0f, -0.01f, 0f)),

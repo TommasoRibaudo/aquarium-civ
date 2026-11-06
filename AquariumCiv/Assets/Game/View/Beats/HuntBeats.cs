@@ -22,8 +22,12 @@ namespace AquariumCiv.View
 
         /// <summary>After a miss: arms out in a shrug, a stamp, the arms stay out a moment, then drop.</summary>
         public static readonly Beat Shrug = new Beat(
-            Beat.Step(BeatPhase.Antic, 0.25f, Ease.Out, PoseKey.Hold.Squash(1f).Lean(-6f).ArmL(0f, 0f, -70f).ArmR(0f, 0f, 70f).Extend(false)),
-            Beat.Step(BeatPhase.Hold, 0.45f, Ease.Linear, PoseKey.Hold),
+            // look-fix (AnimLab, batch 1): arms straight out at 70 degrees read as a stiff T-pose on the real doll (it has no elbows);
+            // a shrug is the hands out low and forward, palms to the sky, and a little shake of the head (the whole doll turns -10/+10)
+            Beat.Step(BeatPhase.Antic, 0.25f, Ease.Out, PoseKey.Hold.Squash(1f).Lean(-6f).ArmL(72f, 0f, -22f).ArmR(72f, 0f, 22f).Extend(false)),
+            Beat.Step(BeatPhase.Hold, 0.15f, Ease.Smooth, PoseKey.Hold.Yaw(-10f)),
+            Beat.Step(BeatPhase.Hold, 0.15f, Ease.Smooth, PoseKey.Hold.Yaw(10f)),
+            Beat.Step(BeatPhase.Hold, 0.15f, Ease.Smooth, PoseKey.Hold.Yaw(0f)),
             Beat.Step(BeatPhase.Act, 0.10f, Ease.Snap, PoseKey.Hold.Squash(0.86f).Lean(4f)),
             Beat.Step(BeatPhase.Follow, 0.20f, Ease.Back, PoseKey.Hold.Squash(1f).Lean(-6f)),
             Beat.Step(BeatPhase.Hold, 0.40f, Ease.Linear, PoseKey.Hold),
@@ -83,7 +87,22 @@ namespace AquariumCiv.View
                 case HuntPhase.Bolt: Shrug.Apply(ref pose, since); break;
                 case HuntPhase.PullSpear: Pull.Apply(ref pose, since); break;
                 case HuntPhase.PickUp: Lift.Apply(ref pose, since); break;
+                case HuntPhase.HoldUp: ShowCatch(ref pose, since); break;
             }
+        }
+
+        /// <summary>Look-fix (visit loop): the catch is shown off, not hidden over the head. The fist swings up and OUT to the side
+        /// (0.35 s, out-back past the key), so the dangling rabbit (PegDollView.HangRabbit) hangs clear of the head and reads against
+        /// the grass from the high default camera; then two proud pumps and a hold.</summary>
+        public static void ShowCatch(ref DollPose pose, float since)
+        {
+            float u = Mathf.Clamp01(since / 0.35f);
+            float up = Easing.Apply(Ease.Back, u);
+            float pump = since > 0.35f && since < 1.15f ? Mathf.Abs(Mathf.Sin((since - 0.35f) * Mathf.PI / 0.4f)) : 0f;
+            pose.armR = new Vector3(Mathf.LerpUnclamped(60f, 112f, up) + 12f * pump, 0f, Mathf.LerpUnclamped(10f, 72f, up));
+            pose.armL = new Vector3(0f, 0f, -24f);
+            pose.lean = -8f; pose.roll = -4f * up;
+            pose.offset.y = 0.008f * pump;
         }
 
         /// <summary>Has the spear left the hand? (The prop is drawn until then.)</summary>

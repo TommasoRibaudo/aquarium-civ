@@ -46,7 +46,14 @@ namespace AquariumCiv.View
         /// <summary>The debug panel's "Puffs on/off": off = no puffs and no shakes from <see cref="PeopleView.WorkHit"/> (direct calls too).</summary>
         public static bool Enabled = true;
         /// <summary>The smallest a bit draws, in pixels across (§0.1: below ~3 px nothing reads at the full-box view).</summary>
-        public static float MinPixels = 4f;
+        public static float MinPixels = 6f; // look-fix: 4 px bits vanished at the default zoom
+        /// <summary>Look-fix (visit loop): a whole puff keeps at least this many pixels across (its spread and its bits grow with the camera's distance),
+        /// so at the full-box view it still reads (batch 1: almost invisible at ~4 px). Its nominal span is <see cref="NominalSpan"/>.</summary>
+        public static float MinPuffPixels = 14f;
+        const float NominalSpan = 0.06f, MaxViewBoost = 3f;
+        /// <summary>Look-fix: every bit is drawn over a darker silhouette this much bigger (a cartoon outline), so pale puffs (ring, droplets,
+        /// grass, snow, steam) read on sand and on grass, and sparks read against the flames.</summary>
+        public static float RimScale = 1.38f;
 
         public static HitFx Instance { get; private set; }
 
@@ -294,6 +301,22 @@ namespace AquariumCiv.View
             return b.Root.TransformPoint(new Vector3(local.x, Mathf.Min(surface, Land.WaterY), local.z)).y;
         }
 
+        /// <summary>Look-fix: the puff scale that keeps <see cref="NominalSpan"/> at least <see cref="MinPuffPixels"/> across from the main camera
+        /// (1 when close, up to <see cref="MaxViewBoost"/>). The camera's own pixel height, so a render texture (AnimLab) counts right.</summary>
+        static float ViewBoost(Vector3 at)
+        {
+            var cam = Camera.main;
+            if (cam == null || cam.pixelHeight <= 0) return 1f;
+            float perPx = PerPixel(cam, at);
+            return Mathf.Clamp(MinPuffPixels * perPx / NominalSpan, 1f, MaxViewBoost);
+        }
+
+        static float PerPixel(Camera cam, Vector3 at)
+        {
+            float depth = Mathf.Max(0.01f, Vector3.Dot(at - cam.transform.position, cam.transform.forward));
+            return cam.orthographic ? 2f * cam.orthographicSize / cam.pixelHeight : 2f * depth * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / cam.pixelHeight;
+        }
+
         float ZoomScale
         {
             get
@@ -317,7 +340,8 @@ namespace AquariumCiv.View
         bool Spawn(PuffKind kind, Vector3 at, Vector3 dir, float scale, in PuffOptions o, bool force)
         {
             if (!force && !InView(at)) return false;
-            pool.Spawn(kind, at, dir, scale * ZoomScale, Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
+            if (kind == PuffKind.Sparks && o.fire) at += Vector3.up * 0.07f * ZoomScale; // look-fix: the fire's sparks start over the flames, not inside them
+            pool.Spawn(kind, at, dir, scale * Mathf.Max(ZoomScale, ViewBoost(at)), Now, unchecked(++seedCounter * 7919 + (int)kind * 104729), o);
             LastKind = kind;
             return true;
         }
@@ -441,11 +465,15 @@ namespace AquariumCiv.View
                     var pos = HitFxMath.Position(b, age);
                     float depth = Vector3.Dot(pos - cam.transform.position, cam.transform.forward);
                     if (depth <= 0f) continue;
-                    float perPx = cam.orthographic ? 2f * cam.orthographicSize / Screen.height : 2f * depth * tan / Screen.height;
+                    float perPx = cam.orthographic ? 2f * cam.orthographicSize / cam.pixelHeight : 2f * depth * tan / cam.pixelHeight;
                     var col = palette[(int)b.colour];
+                    var rim = RimOf(b.colour, col);
+                    var back = cam.transform.forward * Mathf.Max(0.002f, perPx * 0.5f); // the outline sits just behind the fill
                     if (b.shape == PuffShape.Ring)
                     {
-                        float line = Mathf.Max(HitFxMath.Line(b, age), perPx * 1.5f * Shrink(age, b.life));
+                        float line = Mathf.Max(HitFxMath.Line(b, age), perPx * 2f * Shrink(age, b.life));
+                        HitFxShapes.RingTris(size, line * 2.4f, pos + back, verts, tris); // a dark band under the pale ring
+                        for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(rim);
                         HitFxShapes.RingTris(size, line, pos, verts, tris);
                         for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(col);
                         continue;
@@ -462,21 +490,35 @@ namespace AquariumCiv.View
                     float cr = Mathf.Cos(roll * Mathf.Deg2Rad), sr = Mathf.Sin(roll * Mathf.Deg2Rad);
                     float stretch = b.stretch > 0f ? b.stretch : 1f;
                     var o = HitFxShapes.Unit(b.shape);
-                    int start = verts.Count;
-                    for (int k = 0; k < o.v.Length; k++)
+                    for (int pass = 0; pass < 2; pass++) // look-fix: the outline first (bigger, darker, just behind), then the fill
                     {
-                        float x = o.v[k].x * size * stretch, y = o.v[k].y * size;
-                        float rx = x * cr - y * sr, ry = x * sr + y * cr;
-                        verts.Add(pos + right * rx + up * ry);
-                        colors.Add(col);
+                        float sz = pass == 0 ? size * RimScale + perPx * 1.5f : size;
+                        var at = pass == 0 ? pos + back : pos;
+                        var c = pass == 0 ? rim : col;
+                        int start = verts.Count;
+                        for (int k = 0; k < o.v.Length; k++)
+                        {
+                            float x = o.v[k].x * sz * stretch, y = o.v[k].y * sz;
+                            float rx = x * cr - y * sr, ry = x * sr + y * cr;
+                            verts.Add(at + right * rx + up * ry);
+                            colors.Add(c);
+                        }
+                        for (int k = 0; k < o.t.Length; k++) tris.Add(start + o.t[k]);
                     }
-                    for (int k = 0; k < o.t.Length; k++) tris.Add(start + o.t[k]);
                 }
             }
             Upload();
         }
 
         static float Shrink(float age, float life) => HitFxMath.Shrink(age, life);
+
+        /// <summary>Look-fix: the outline colour of a puff bit: a dark version of its own colour (sparks: a deep ember, so they stand out of the flames).</summary>
+        Color RimOf(PuffColour pc, Color col)
+        {
+            if (pc is PuffColour.SparkYellow or PuffColour.Ember or PuffColour.Gold) return MeshBuilder.Linear(new Color(0.35f, 0.08f, 0.03f));
+            float k = pc is PuffColour.Water or PuffColour.RingWater or PuffColour.Snow or PuffColour.Steam ? 0.5f : 0.42f;
+            return new Color(col.r * k, col.g * k, col.b * k, 1f);
+        }
 
         void Upload()
         {

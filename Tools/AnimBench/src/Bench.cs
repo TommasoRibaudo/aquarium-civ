@@ -156,6 +156,14 @@ namespace AnimBench
                 float roll = f.Style == DollStyle.TipBasket ? BerryMotion.TipRoll(f.Since) : 0f, lift = f.Style == DollStyle.TipBasket ? BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s : 0f; // #361: rolled over the pile (BerryPickView)
                 f.PropFrame = f.ArmL.Child(new Vector3(-pos.x, pos.y, pos.z) * s + new Vector3(0f, lift, 0f), Quaternion.Euler(-roll, 0f, 0f) * Quaternion.Inverse(Quaternion.Euler(f.Pose.armL)) * rot, Vector3.one * ps);
             }
+            else if (f.Slot == PropSlot.Hand && f.Prop == PropKind.Rabbit)
+            {
+                // look-fix (PegDollView.HangRabbit): the catch hangs from the fist by its scruff, head up, turned with the doll only
+                var hang = yawQ * Quaternion.Euler(0f, 180f, 0f) * Quaternion.Euler(-90f, 0f, 0f);
+                var scruff = new Vector3(0f, -0.004f, 0.078f) * 0.64f; // PegDoll.RabbitScruff
+                var fist = f.ArmR.Point(pos * s);
+                f.PropFrame = new Frame { O = fist - hang * (scruff * ps), X = hang * new Vector3(ps, 0, 0), Y = hang * new Vector3(0, ps, 0), Z = hang * new Vector3(0, 0, ps) };
+            }
             else if (f.Slot == PropSlot.Hand)
             {
                 var rest = Quaternion.Inverse(Quaternion.Euler(-35f, 0, 10f)) * Quaternion.Euler(0, 0, IsTool(f.Prop) ? -ToolTilt : 0f) * rot;
@@ -169,6 +177,8 @@ namespace AnimBench
                 float lift = BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s, roll = BerryMotion.TipRoll(f.Since);
                 f.PropFrame = body.Child(pos * s + new Vector3(0f, lift, 0f), Quaternion.Euler(-roll, 0f, 0f) * rot, Vector3.one * ps);
             }
+            else if (f.Slot == PropSlot.Shoulder && f.Prop == PropKind.Rabbit) // look-fix (PegDollView.SetProp): over one shoulder, head down the back
+                f.PropFrame = body.Child(new Vector3(ShoulderX * 0.9f, BodyH + 0.012f, 0.01f) * s, Quaternion.Euler(-12f, 0f, 0f), Vector3.one * ps);
             else f.PropFrame = body.Child(pos * s, rot, Vector3.one * ps);
         }
     }
@@ -521,6 +531,7 @@ namespace AnimBench
             foreach (var d in dolls) if (d.Placed && d.Last.Style != DollStyle.Hidden) { px.Add(d.Pos.x); pz.Add(d.Pos.y); }
             RabbitPose p;
             if (!s.Scared) p = basePose;
+            else if (s.TakenAt >= 0f && t >= s.TakenAt) { f.Visible = false; f.Act = "taken"; f.Pos = new Vector3(s.Pos.x, 0f, s.Pos.z); return; } // look-fix: in the hunter's hand now
             else if (s.FallAt >= 0f && t >= s.FallAt)
             {   // #362 RabbitView.ShowFallen: it jumps 0.05 u and falls on its side
                 float u = Mathf.Clamp01((t - s.FallAt) / HuntTiming.FallSeconds), e = u * u * (3f - 2f * u);
@@ -533,7 +544,7 @@ namespace AnimBench
             else if (s.StartleAt >= 0f && t >= s.StartleAt)
             {   // #362 RabbitView.ScatterTarget / Scatter: Scare.Hold (flinch, ears up 0.45 s), then the bolt away
                 if (!o.Startled) { o.Startled = true; o.Scare.Hold(s.Pos.x, s.Pos.z, s.StartleFrom.x, s.StartleFrom.y, s.StartleAt, RabbitHerd.Scare.NoticeSeconds, s.StartleTo.x, s.StartleTo.y); }
-                p = o.Scare.Step(dt, basePose, none, none, field, t);
+                p = o.Scare.Step(dt, basePose, px, pz, field, t); // look-fix: a bolting rabbit still minds the people (it never runs through the hunter)
             }
             else if (s.HuntedBy != null && t < s.HuntedUntil)
             {

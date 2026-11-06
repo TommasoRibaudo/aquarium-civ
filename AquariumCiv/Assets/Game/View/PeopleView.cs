@@ -707,6 +707,7 @@ namespace AquariumCiv.View
             var p = Vector2.Lerp(AtFire(plan, x0, z0, a.who.Key), AtFire(plan, x1, z1, a.who.Key), f);
             x = p.x; z = p.y;
             if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
+            else if (st.phase == HuntPhase.HoldUp) face = new Vector2(plan.fireX, plan.fireZ); // look-fix: the catch is shown to the camp (and the kid running over), not to the empty grass
             else if (st.faceSpear) face = new Vector2(plan.landX, plan.landZ);
             else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
             return true;

@@ -402,6 +402,9 @@ namespace AnimBench
         public Vector2 StartleFrom, StartleTo;
         /// <summary>#362 rabbit: hit by the spear at this time: jumps 0.05 u and falls on its side (0.25 s). Negative = never.</summary>
         public float FallAt = -1f;
+        /// <summary>Look-fix: the fallen rabbit is lifted into the hunter's hand at this time and leaves the ground (RabbitView hides it at the
+        /// plan's takeHour, when PeopleView.HuntProp puts the prop in the hand). Negative = never.</summary>
+        public float TakenAt = -1f;
         /// <summary>Rabbit: false = never scared (a prop rabbit).</summary>
         public bool Scared = true;
         public ArcSpec Arc;
@@ -432,6 +435,7 @@ namespace AnimBench
             if (o["sitUp"] is JsonArray su) foreach (var w2 in su) s.SitUp.Add(Clip.XZ(w2, w + " sitUp"));
             if (o["startle"] is JsonObject sl) { s.StartleAt = Clip.Num(sl, "at", 0f); s.StartleFrom = Clip.XZ(sl["from"], w + " startle.from"); s.StartleTo = Clip.XZ(sl["to"], w + " startle.to"); }
             s.FallAt = Clip.Num(o, "fallAt", -1f);
+            s.TakenAt = Clip.Num(o, "takenAt", -1f);
             s.Scared = Clip.Bool(o, "scared", true);
             s.PickedBy = Clip.Str(o, "pickedBy");
             s.Follows = Clip.Str(o, "follows");
