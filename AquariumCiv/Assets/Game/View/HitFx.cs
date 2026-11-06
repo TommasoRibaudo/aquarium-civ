@@ -45,6 +45,12 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         /// <summary>The debug panel's "Puffs on/off": off = no puffs and no shakes from <see cref="PeopleView.WorkHit"/> (direct calls too).</summary>
         public static bool Enabled = true;
+        // #370 (batch 2): the festival's log toss lands on the frame its staged pose set the hit; only that stroke flares the fire
+        // (a kid pointing at the fire during play, or any other Point, makes nothing: #359).
+        static PersonRef stagedToss;
+        static int stagedTossFrame = -1;
+        /// <summary>#370: <see cref="StagedMoments"/> marks the doll whose Toss contact is on this frame (called from its pose hook, just before the hit edge).</summary>
+        public static void MarkStagedToss(PersonRef who) { stagedToss = who; stagedTossFrame = Time.frameCount; }
         /// <summary>The smallest a bit draws, in pixels across (§0.1: below ~3 px nothing reads at the full-box view).</summary>
         public static float MinPixels = 6f; // look-fix: 4 px bits vanished at the default zoom
         /// <summary>Look-fix (visit loop): a whole puff keeps at least this many pixels across (its spread and its bits grow with the camera's distance),
@@ -197,7 +203,7 @@ namespace AquariumCiv.View
         /// then the move: Chop at the woods = chips and a tree sway (at an outcrop sparks, else chips); Hammer = dust and a frame jolt (sparks at a smithy);
         /// Hoe = dust; SitStrike (knap) = sparks; Stomp = dust (water at a puddle). Anything else that sets <c>hit</c> (the glass knock) = nothing.
         /// </summary>
-        public static HitAnswer Resolve(DollStyle style, PlaceKind place)
+        public static HitAnswer Resolve(DollStyle style, PlaceKind place, bool stagedToss = false)
         {
             bool water = place is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
             bool strokeStyle = style is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.SitStrike or DollStyle.Stomp or DollStyle.Fish or DollStyle.Stir or DollStyle.DrawWater /* #360 */;
@@ -209,7 +215,7 @@ namespace AquariumCiv.View
             // #362: the hunter's throw lands (Contact of the Strike beat; the point is where the spear comes down): a puff of grass, on the meadow
             if (style == DollStyle.Crouch && place == PlaceKind.Meadow) return new HitAnswer { hasPuff = true, puff = PuffKind.Grass };
             // ---- #370: the staged moments (MomentBeats): a log thrown on the fire flares (a big burst of the fire's sparks); the new chief's pop: gold sparks ----
-            if (style == DollStyle.Point && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = 1.6f };
+            if (stagedToss && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = 1.6f };
             if (style == DollStyle.Cheer && place is PlaceKind.Fire or PlaceKind.Green) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, gold = true };
             // ---- end #370 ----
             // #365 B9.c: the stick into the fire: its sparks float up; every third poke is bigger (the flare stand-in, as the thrown log's)
@@ -239,7 +245,7 @@ namespace AquariumCiv.View
             HitsSeen++;
             LastHitPuffs = 0;
             if (!Enabled) return;
-            var ans = Resolve(style, place.kind);
+            var ans = Resolve(style, place.kind, stagedTossFrame == Time.frameCount && stagedToss.Equals(who)); // #370: only the staged toss flares
             if (ans.IsNone) return;
             var away = AwayFrom(who, at);
             if (ans.hasPuff)
