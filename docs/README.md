@@ -35,6 +35,7 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
 | [design/keepers-hands.md](design/keepers-hands.md) | The Keeper's hands: a box that starts barren, misting/planting/snipping/digging, care rebuilt on the land, the kit button (draft) |
 | [design/visit-loop.md](design/visit-loop.md) | The visit loop: moments that wait to be seen, one owned choice per visit, animations that show what's happening (draft) |
+| [design/animation-specs.md](design/animation-specs.md) | Beat sheets for every Visit loop animation (B1-B11, staged moments) and the shared beat vocabulary (draft, #356) |
 | [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (built) |
 | [design/ui-inventory.md](design/ui-inventory.md) | Every UI piece: objects, connections, states, flows, docs against code (#105) |
 | [design/people-talk.md](design/people-talk.md) | Where the people's words show: every line, caption, bubble and mark today, and the options for one rule (#327, for the user to pick) |
