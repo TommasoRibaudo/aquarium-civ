@@ -37,7 +37,7 @@ namespace AnimBench
             DollStyle.Chop, DollStyle.Hammer, DollStyle.Hoe, DollStyle.Pick, DollStyle.Scatter, DollStyle.Fish, DollStyle.Stir, DollStyle.Sweep,
             DollStyle.Saw, DollStyle.Lift, DollStyle.SitStrike, DollStyle.SitWeave, DollStyle.Hop, DollStyle.Swim, DollStyle.Stomp, DollStyle.Crouch,
             DollStyle.Hang, DollStyle.Bell, DollStyle.Taste, DollStyle.Write, DollStyle.Lopsided, DollStyle.Talk, DollStyle.Argue, DollStyle.Haggle,
-            DollStyle.Speech,
+            DollStyle.Speech, DollStyle.PickBerry, DollStyle.DigRoot, DollStyle.TasteBerry,
         };
 
         /// <summary>Moves that can close a loop: told once or held (a flinch, a held-up catch, a cheer, a bow).</summary>
@@ -264,7 +264,16 @@ namespace AnimBench
                 float dh = Mathf.Min((o.Frames[f0].Pos - hand.HandR).magnitude, (o.Frames[f0].Pos - hand.Tip).magnitude);
                 if (dh > width) r.Fail($"{o.Spec.Id} starts {dh:0.000} u from {by}'s hand (> {width:0.000})");
             }
-            if (target != null && t.TargetAt(target, f1, out var c, out var rad))
+            Vector3 c = default; float rad = 0f; bool found = false;
+            int dot = target != null ? target.LastIndexOf('.') : -1;
+            if (dot > 0 && t.Doll(target.Substring(0, dot)) is DollTrack td) // #361: "picker.handL": the basket in a doll's hand
+            {
+                var fr = td.Frames[f1];
+                string part = target.Substring(dot + 1);
+                c = part == "handL" ? fr.HandL : part == "head" ? fr.Head : part == "tip" ? fr.Tip : fr.HandR; rad = 0.03f; found = true;
+            }
+            else if (target != null) found = t.TargetAt(target, f1, out c, out rad);
+            if (target != null && found)
             {
                 float dl = Mathf.Max(0f, (o.Frames[f1].Pos - c).magnitude - rad);
                 if (dl > width) r.Fail($"{o.Spec.Id} lands {dl:0.000} u from {target} (> {width:0.000})");

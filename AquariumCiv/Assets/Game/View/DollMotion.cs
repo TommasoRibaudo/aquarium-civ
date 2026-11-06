@@ -14,6 +14,8 @@ namespace AquariumCiv.View
         Lopsided, Taste, HoldUp,
         // P8 #266: stamping in a puddle
         Stomp,
+        // #361: berries you can see (View/Beats/BerryBeats.cs)
+        PickBerry, DigRoot, TasteBerry,
     }
 
     /// <summary>
@@ -259,6 +261,12 @@ namespace AquariumCiv.View
                     if (pause) { p.squash = 1f; p.lean = 0f; p.armR = new Vector3(0, 0, 14f); p.roll = Mathf.Sin(t * 2f) * 3f; }
                     break;
                 }
+
+                case DollStyle.PickBerry: // #361
+                case DollStyle.DigRoot:
+                case DollStyle.TasteBerry:
+                    BerryMotion.Evaluate(style, ref p, t, progress, since);
+                    break;
 
                 case DollStyle.Scatter:
                 {
