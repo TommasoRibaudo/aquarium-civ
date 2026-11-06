@@ -322,7 +322,15 @@ namespace AquariumCiv.Sim.Replay
                 p.hasPos = sim.EntryPosition(e, out p.x, out p.z);
                 res.Add(p);
             }
-            return res;
+            // #373: every choice the Keeper made gets a hand pin, on top of the cap (they are few); it replaces the same line's story pin.
+            foreach (var h in sim.KeeperChoicePins())
+            {
+                var e = sim.State.chronicle.Find(x => x.id == h.entryId);
+                if (e != null) h.hasPos = sim.EntryPosition(e, out h.x, out h.z);
+                res.RemoveAll(x => x.entryId == h.entryId);
+                res.Add(h);
+            }
+            return res.OrderBy(x => x.month).ThenBy(x => x.entryId).ToList();
         }
 
         /// <summary>The pins the playhead passes going from <paramref name="from"/> to <paramref name="to"/> (fractional years,

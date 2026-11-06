@@ -72,3 +72,9 @@
 .book-relic-words { flex-grow: 1; flex-shrink: 1; min-width: 0; }
 .book-relic-owner { margin: -11px 0 0 0; color: var(--ink); }
 .book-relic-icon { -unity-background-image-tint-color: var(--paper); }
+
+/* #373: The Keeper's choices page: one block per choice, short lines */
+.book-choice { flex-shrink: 0; padding: 16.5px 0 16.5px 0; border-bottom-width: 2.75px; border-color: rgba(106, 75, 54, 0.2); }
+.book-choice-ask { margin: 0 0 5.5px 0; white-space: normal; color: var(--ink); }
+.book-choice-line { margin: 0 0 3px 0; white-space: normal; color: var(--ink); }
+.book-choice-people { opacity: 0.75; }

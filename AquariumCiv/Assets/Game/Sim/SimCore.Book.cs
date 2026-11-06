@@ -5,7 +5,7 @@ using System.Linq;
 namespace AquariumCiv.Sim
 {
     /// <summary>The kinds of page in the small book (chronicle-and-history.md §4.1).</summary>
-    public enum BookPageKind { Cover, Founding, Era, Legend, Family, Relics, End }
+    public enum BookPageKind { Cover, Founding, Era, Legend, Family, Relics, End, Choices }
 
     /// <summary>Someone named on a page: a tap opens their card.</summary>
     public sealed class BookPerson
@@ -56,6 +56,7 @@ namespace AquariumCiv.Sim
         public List<BookRelic> relics = new();
         public PersonCard person;       // a legend's page
         public BookFamily family;
+        public List<KeeperChoiceLine> choices = new();   // #373: the Keeper's choices page
     }
 
     /// <summary>
@@ -87,9 +88,12 @@ namespace AquariumCiv.Sim
             var ids = new HashSet<int>(legends.Select(n => n.id));
             var pages = new List<BookPage> { BookCover(), BookFounding(ids) };
             var chapters = BookChapters();
+            var keeperChoices = KeeperChoicesByEra();
             foreach (var c in chapters)
             {
                 pages.Add(BookEra(c));
+                var mine = keeperChoices.FirstOrDefault(x => x.era == c.era);
+                if (mine != null && mine.lines.Count > 0) pages.Add(BookKeeperChoices(c, mine));
                 foreach (var n in legends.Where(n => LegendEra(n, chapters) == c.era).OrderBy(n => n.bornMonth).ThenBy(n => n.id))
                     pages.Add(BookLegend(n, ids));
             }
@@ -216,6 +220,14 @@ namespace AquariumCiv.Sim
             if (c.era != Era.Camp) p.people = c.leaders.Select(n => BookPersonOf(n.id, role, null)).Where(x => x != null).ToList();
             return p;
         }
+
+        /// <summary>#373: "The Keeper's choices" of an era, right after the era's page.</summary>
+        BookPage BookKeeperChoices(BookChapter c, KeeperChoicesEra sec) => new()
+        {
+            kind = BookPageKind.Choices, key = "choices:" + (int)c.era, era = c.era, title = "The Keeper's choices",
+            sub = c.toYear >= 0 ? $"Years {c.fromYear}–{c.toYear}" : $"From year {c.fromYear}",
+            choices = sec.lines, stillEra = c.toYear >= 0 ? (int)c.era + 1 : (int)c.era,
+        };
 
         BookPage BookLegend(Notable n, HashSet<int> legends)
         {

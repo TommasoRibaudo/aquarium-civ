@@ -261,6 +261,16 @@ namespace AquariumCiv.View
             }
             // ---- end #371 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
+            // ---- #373: the Keeper's choices page and the hand pins ----
+            if (Section("Keeper's choices (#373)"))
+            {
+                if (GUILayout.Button("Fill the Keeper's choices (3 eras of sample choices)"))
+                {
+                    int n = sim.DebugFillKeeperChoices();
+                    last = Done(n > 0 ? $"{n} sample choices in the book and on the time-lapse" : "already filled, or no era reached yet");
+                }
+            }
+            // ---- end #373 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();
