@@ -623,6 +623,32 @@ namespace AquariumCiv.View
             return p;
         }
 
+        /// <summary>The throw (wind up, then thrust the spear out), the shrug after a miss and the kid's cheer ride on top of the crouch
+        /// the stalk already is (#283; moved from PeopleView for AnimBench, #352, unchanged).</summary>
+        public static void Hunt(ref DollPose pose, HuntPhase phase, float progress)
+        {
+            switch (phase)
+            {
+                case HuntPhase.Strike:
+                {
+                    float u = Mathf.Clamp01(progress);
+                    float thrust = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((u - 0.35f) / 0.3f));
+                    pose.squash = Mathf.Lerp(0.72f, 1f, Mathf.SmoothStep(0f, 1f, u / 0.35f));
+                    pose.lean = Mathf.Lerp(-8f, 34f, thrust);
+                    pose.armR = new Vector3(Mathf.Lerp(165f, 55f, thrust), 0f, 8f);
+                    pose.armL = new Vector3(Mathf.Lerp(20f, 70f, thrust), 0f, -12f);
+                    pose.extend = true;
+                    pose.hit = u > 0.6f && u < 0.8f ? 1f : 0f;
+                    break;
+                }
+                case HuntPhase.Bolt: // it got away: arms out, a step back
+                    pose.squash = 1f; pose.lean = -6f;
+                    pose.armL = new Vector3(0f, 0f, -70f); pose.armR = new Vector3(0f, 0f, 70f);
+                    pose.extend = false;
+                    break;
+            }
+        }
+
         /// <summary>Arms that hold a load: a hand on the head load, both arms round what's hugged, both pushing a barrel.</summary>
         static void Carry(ref DollPose p, PropSlot slot, bool hasProp, float swing)
         {

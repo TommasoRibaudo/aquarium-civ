@@ -1,0 +1,5 @@
+bin/
+obj/
+# rendered clips: sheets, curves, tracks, videos (regenerate with run.sh)
+out/
+__pycache__/
