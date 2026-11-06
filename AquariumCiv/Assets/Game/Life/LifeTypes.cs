@@ -35,6 +35,8 @@ namespace AquariumCiv.Life
         Indoors,
         /// <summary>P8 #266: stamping about in a mist puddle (a kid), and kneeling at one to wash hands or cup the water. Appended so the older values keep their numbers.</summary>
         Stomp, WashHands,
+        /// <summary>#361: at the stash pile, tipping the carried basket onto it (a short stay after the carry). Appended so the older values keep their numbers.</summary>
+        TipLoad,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -276,7 +278,7 @@ namespace AquariumCiv.Life
                     return ActivityGroup.Rest;
                 case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;
-                case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel:
+                case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;
                 case ActivityKind.Walk:
                     return ActivityGroup.Walk;

@@ -88,6 +88,8 @@ namespace AquariumCiv.View
             /// <summary>#363: who they last stood talking with, and when (a couple leaving together walks together, see <see cref="Mates"/>).</summary>
             public int mateKey;
             public float mateTime = -999f;
+            /// <summary>#361: when the tip at the stash began (the first frame the doll stood still at the pile): the beat runs from there.</summary>
+            public float tipStart;
         }
 
         BoxView box;
@@ -489,6 +491,12 @@ namespace AquariumCiv.View
             bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !holds;
             d.stride = Mathf.Repeat(d.stride + DollMotion.Cadence(playing ? playCue.under : style, d.speed) * Mathf.PI * dt, Mathf.PI * 2f);
             if (paired && pairEv.kind == PairKind.WalkTogether && pairCue.index == 1 && dolls.TryGetValue(pairEv.group.KeyOf(0), out var strideLead)) d.stride = strideLead.stride; // #363: strides in step
+            float tipSince = 0f;
+            if (style == DollStyle.TipBasket) // #361: the tip plays from the moment the doll stands still at the pile, not from the plan's start
+            {
+                if (d.drew != DollStyle.TipBasket) d.tipStart = time;
+                tipSince = since = time - d.tipStart;
+            }
             var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
             if (style != d.drew)
             {
@@ -538,6 +546,7 @@ namespace AquariumCiv.View
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
             v.ApplyArms(pose);
+            if (style == DollStyle.TipBasket) BasketTip?.Invoke(a.who, v, tipSince); // #361: every frame of the tip (BerryPickView pours the berries)
             if (struck)
             {   // #355; #362: a throw's hit is the spear coming down, so the puff is where it lands, not at the hand
                 var hitAt = hunting && a.hunt == HuntPhase.Strike && huntPlan != null
@@ -994,7 +1003,8 @@ namespace AquariumCiv.View
                 _ => PropKind.None,
             };
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
-            if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
+            if (kind == PropKind.Basket) slot = PropSlot.Hand; // #361: a basket is held in a hand (the left one while the right picks, PegDollView.HoldInLeft), never hugged: SlotOf says Arms
+            else if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
             else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
@@ -1054,6 +1064,8 @@ namespace AquariumCiv.View
         /// <see cref="BeatPhase.Contact"/>), once per contact. Who, where they work, the move, and the tool's end in world space
         /// (<see cref="WorkHitPoint.HitPoint"/>). Puffs (HitFx) and the targets' answers subscribe here.</summary>
         public event System.Action<PersonRef, Place, DollStyle, Vector3> WorkHit;
+        /// <summary>#361: every frame a doll tips its basket onto the stash pile: who, their view, seconds into the tip.</summary>
+        public event System.Action<PersonRef, PegDollView, float> BasketTip;
 
         /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
         /// and who is nearest to a sign.</summary>
