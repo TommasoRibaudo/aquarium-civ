@@ -39,3 +39,4 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 ~11:40 · D3 #377 merged (ee4eaff): pitch floor lifted in lockstep with zoom (BoxCamera.LiftPitchToFloor); ZoomLurchPlayTests 2/2, View.Tests 151/152 (1 inconclusive), CameraGlassFeel 2/2, smoke 2/2 · 854fc61 · 13 ·
 - 2026-11-06 ~11:40 · C2 #369 (Opus) + C5 #372 started; board updated (Tools/board-status.sh) after the user asked to see progress on the Slice board
 - Note: offline-csc must list AquariumCiv.Cards whenever View code calls new Cards API (a missing assembly compiles against the stale Library copy and shows false errors).
+- 2026-11-06 11:06 · (clock check: the "~11:40" entries above were really ~11:00–11:05.) B2 #358 (Opus), B4 #360, B5 #361, B6 #362 started on AnimBench (shared brief-anim.md: new files, small hooks in shared files, enum values at the end); T2 #353 AnimLab (Opus) holds the Editor + stall watcher · — · — ·
