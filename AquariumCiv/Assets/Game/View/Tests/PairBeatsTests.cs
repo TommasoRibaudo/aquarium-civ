@@ -172,7 +172,7 @@ namespace AquariumCiv.View.Tests
                 Assert.NotNull(ev);
                 float at = ev.BeatStart;
                 Assert.AreEqual(PairBeats.HugGapClose, (PairStage.CueOf(ev, 0, at + 1.0f).pos - PairStage.CueOf(ev, 1, at + 1.0f).pos).magnitude, 1e-3f, "arms around each other");
-                float end = (PairStage.CueOf(ev, 0, at + 2.3f).pos - PairStage.CueOf(ev, 1, at + 2.3f).pos).magnitude;
+                float end = (PairStage.CueOf(ev, 0, at + 2.9f).pos - PairStage.CueOf(ev, 1, at + 2.9f).pos).magnitude;
                 Assert.AreEqual(PairBeats.HugGapClose + PairBeats.HugStepBack, end, 2e-3f, "a step back");
                 Assert.AreEqual(3.0f, PairBeats.Hug.Duration, 0.05f, "visit loop: the hold is 1.8 s");
                 BeatFlags.Hugs = true;
@@ -195,10 +195,10 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void HugSway_IsVisible_AndOppositeForTheTwo()
         {
-            float t = PairBeats.Hug.StartOf(BeatPhase.Contact) + 0.5f / PairBeats.HugSwayHz * 0.5f + 0.25f;
+            float t = PairBeats.Hug.StartOf(BeatPhase.Contact) + 0.25f / PairBeats.HugSwayHz; // the sine's peak
             var a = DollPose.Rest; var b = DollPose.Rest;
             PairBeats.HugSway(ref a, t, false, false); PairBeats.HugSway(ref b, t, true, false);
-            Assert.Greater(Mathf.Abs(a.roll), 5f);
+            Assert.Greater(Mathf.Abs(a.roll), 8f);
             Assert.AreEqual(a.roll, -b.roll, 1e-4f);
         }
     }
