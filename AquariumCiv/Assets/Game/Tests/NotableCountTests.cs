@@ -153,7 +153,9 @@ namespace AquariumCiv.Tests
         {
             var full = WithPeople(11, 25f, 25f, 25f, 25f); // four adults: the camp's max
             full.Advance(15);
-            Assert.IsFalse(full.State.chronicle.Any(e => e.kind == "birth"), "no births while the adults are at the max");
+            foreach (var e in full.State.chronicle.Where(e => e.kind == "birth")) // (the story may wed two of them meanwhile: they may have a child)
+                Assert.GreaterOrEqual(full.State.notables.First(n => n.id == full.State.notables.First(c => c.id == e.notableId).parentId).partnerId, 0,
+                    "no births to the unwed while the adults are at the max");
 
             var room = WithPeople(11, 25f, 25f, 25f); // three adults: room for children, up to max + familyRoom in all
             room.Advance(15);
@@ -164,6 +166,29 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(cap, Alive(room), "nobody new");
             Assert.Greater(Adults(room), room.Config.campNotables.max);
             Assert.IsTrue(room.State.notables.Where(n => n.parentId >= 0).All(n => n.alive), "a child is never demoted to the crowd");
+        }
+
+        /// <summary>Visit-loop tester 2026-11-06: eight people over 20 years in a living-land camp and no births. The camp's
+        /// four notable adults were at the max, so births paused for everyone, wedded or not. A wedded couple now has
+        /// children inside the family room; a single adult still waits for room.</summary>
+        [Test]
+        public void AWeddedCoupleHasChildrenInAFullCamp()
+        {
+            int withKids = 0;
+            for (int seed = 1; seed <= 10; seed++)
+            {
+                var sim = WithPeople(seed, 25f, 25f, 25f, 25f);
+                sim.Config.marriedBirths = true;
+                var s = sim.State;
+                s.notables[0].partnerId = s.notables[1].id; s.notables[1].partnerId = s.notables[0].id;
+                sim.Advance(20);
+                int cap = sim.Config.campNotables.max + sim.Config.familyRoom;
+                Assert.LessOrEqual(Alive(sim), cap, "the family room is still the brake");
+                foreach (var b in s.chronicle.Where(e => e.kind == "birth"))
+                    Assert.GreaterOrEqual(s.notables.First(n => n.id == s.notables.First(c => c.id == b.notableId).parentId).partnerId, 0, "only the wedded have children in a full camp");
+                if (s.chronicle.Any(e => e.kind == "birth")) withKids++;
+            }
+            Assert.GreaterOrEqual(withKids, 8, "a wedded pair in a full camp has a child within 20 years, nearly always");
         }
 
         [Test]
