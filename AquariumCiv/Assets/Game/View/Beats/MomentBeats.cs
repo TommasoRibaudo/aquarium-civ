@@ -202,7 +202,27 @@ namespace AquariumCiv.View
         /// Where member <paramref name="m"/> stands in step <paramref name="index"/> at plan time <paramref name="t"/> (box x, z), and
         /// what they face (null: the way they walk). The ring and the orbit come from the kit; the rest is the plan's straight line.
         /// </summary>
+        /// <summary>Batch 2 (#370, the user: "a clunky janky bit" in the festival): a step that starts somewhere else than the last one left
+        /// them (the leader from the toss into the ring: 0.28 u; everyone from the ring's clap to the feast: 0.075 u) eases over from there
+        /// at about a walk (<see cref="CatchUpSpeed"/>, at least <see cref="CatchUpMin"/> s) instead of popping. Travel steps are the planner's walks.</summary>
         public static Vector2 Spot(MomentStagePlan plan, MomentMember m, int index, float t, out Vector2? face)
+        {
+            var at = SpotRaw(plan, m, index, t, out face);
+            if (index <= 0 || index >= m.steps.Count || m.steps[index].travel || m.steps[index - 1].travel) return at;
+            var st = m.steps[index];
+            var prev = m.steps[index - 1];
+            var from = SpotRaw(plan, m, index - 1, prev.t1, out _);
+            var to = SpotRaw(plan, m, index, st.t0, out _);
+            float gap = (to - from).magnitude;
+            if (gap < 0.01f) return at;
+            float span = Mathf.Max(CatchUpMin, gap / CatchUpSpeed), k = (t - st.t0) / span;
+            if (k >= 1f) return at;
+            return Vector2.Lerp(from + (at - to), at, Easing.Apply(Ease.Smooth, Mathf.Max(0f, k)));
+        }
+
+        public const float CatchUpSpeed = 0.35f, CatchUpMin = 0.35f;
+
+        static Vector2 SpotRaw(MomentStagePlan plan, MomentMember m, int index, float t, out Vector2? face)
         {
             face = null;
             var st = m.steps[index];

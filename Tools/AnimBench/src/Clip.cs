@@ -211,6 +211,9 @@ namespace AnimBench
     public sealed class Segment
     {
         public float T0, T1;
+        /// <summary>Batch 2: the whole activity this segment is a slice of (a staged step cut into 0.1 s samples), as PeopleView's a.start/a.end:
+        /// the loop's clock and progress run over it, not over the slice (the feast's eaters flicked to the end pose every 0.1 s).</summary>
+        public float? ActT0, ActT1;
         public ActivityKind? Activity;
         public DollStyle Style = DollStyle.Stand;
         public HuntPhase Hunt;
