@@ -141,5 +141,77 @@ namespace AquariumCiv.View.PlayTests
                 if (rig != null) rig.enabled = true;
             }
         }
+
+        static float MeanLum(Texture2D t)
+        {
+            var p = t.GetPixels(); int w = t.width, h = t.height; double s = 0; int n = 0;
+            for (int y = 0; y < (int)(h * 0.6f); y++) for (int x = 0; x < w; x++) { s += Lum(p[y * w + x]); n++; }
+            return n > 0 ? (float)(s / n) : 0f;
+        }
+
+        /// <summary>#379 D5 re-measure: the tester's case (a grown village, years in, at sundown) with the camera orbit off (masked
+        /// ratio, the #300 method) and on (whole-screen land mean, as a player sees it). A probe: logs, asserts nothing.</summary>
+        [UnityTest, Explicit, Timeout(900000)]
+        public IEnumerator Probe_GrownVillageSundown([Values(false, true)] bool orbit)
+        {
+            UseLivingLand();
+            yield return OpenSlice(seed: 4242);
+            Debug.Log("[mistdusk-d5] " + SimLayoutSource.DebugSkipYears(39));
+            for (int i = 0; i < 8; i++) EcoDebug.SkipSeasons(1);
+            yield return Frames(60);
+            var hud = GameHud.Instance;
+            if (hud != null && hud.CleanMode) hud.SetCleanMode(false);
+            hud?.SetHand(GameHud.KitTool.Mister);
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            var box = Object.FindAnyObjectByType<BoxView>();
+            var st = GameClock.Instance.ActiveSim.Settlement;
+            float x = st.Map.greenX + 0.5f, z = st.Map.greenZ;
+            const float hour = 19.5f;
+            try
+            {
+                if (DayLightDriver.Instance != null) DayLightDriver.Instance.HoldFlicker = true;
+                PeopleView.DebugSetHour(hour);
+                PeopleView.DebugSpeed(0f);
+                yield return new WaitForSecondsRealtime(1.5f);
+                rig.enabled = orbit;
+                yield return Frames(10);
+                Texture2D off1 = null, off2 = null, during = null, after = null;
+                yield return Grab(t => off1 = t);
+                string gOff = Globals();
+                yield return Frames(3);
+                yield return Grab(t => off2 = t);
+                yield return Shot($"mistdusk_d5_{(orbit ? "orbit" : "still")}_off");
+                var w = box.transform.TransformPoint(box.land.OnGround(x, z));
+                var sp = Camera.main.WorldToScreenPoint(w);
+                var at = new Vector2(sp.x, sp.y);
+                int id = touchId++;
+                BeginTouch(id, at, queueEventOnly: true);
+                float t0 = Time.unscaledTime;
+                while (Time.unscaledTime - t0 < 1.4f) { MoveTouch(id, at + new Vector2(Mathf.Sin(Time.unscaledTime * 9f), 0f), delta: Vector2.zero, queueEventOnly: true); yield return null; }
+                bool held = EcoMistView.Instance != null && EcoMistView.Instance.Misting;
+                yield return Grab(t => during = t);
+                string gDuring = Globals();
+                yield return Shot($"mistdusk_d5_{(orbit ? "orbit" : "still")}_during");
+                EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true);
+                yield return new WaitForSecondsRealtime(4f);
+                yield return Grab(t => after = t);
+                yield return Shot($"mistdusk_d5_{(orbit ? "orbit" : "still")}_after");
+                var r = new float[3];
+                Ratio(off1, off2, during, r);
+                float masked = r[0], changed = ChangedRatio; int changedPx = ChangedPx;
+                Ratio(off1, off2, after, r);
+                float lOff = MeanLum(off1), lDur = MeanLum(during), lAfter = MeanLum(after);
+                var s = GameClock.Instance.ActiveSim;
+                Debug.Log($"[mistdusk-d5] orbit {orbit} year {s.State.Year:0.0} era {s.State.era} pop {s.State.population} held {held} · whole land mean off {lOff:0.0000} during {lDur:0.0000} ({lDur / Mathf.Max(1e-5f, lOff):0.000}) after {lAfter:0.0000} ({lAfter / Mathf.Max(1e-5f, lOff):0.000}) · masked during/off {masked:0.000}, after/off {r[0]:0.000} · changed px {changedPx} ratio {changed:0.000}");
+                Debug.Log($"[mistdusk-d5] OFF {gOff}");
+                Debug.Log($"[mistdusk-d5] DURING {gDuring}");
+            }
+            finally
+            {
+                PeopleView.DebugSpeed(1f);
+                if (DayLightDriver.Instance != null) DayLightDriver.Instance.HoldFlicker = false;
+                if (rig != null) rig.enabled = true;
+            }
+        }
     }
 }
