@@ -169,7 +169,7 @@ namespace AquariumCiv.Sim
         public ReturnStack ReturnCardsCapped(long sinceMonth, int cap, IEnumerable<int> viewedPeople = null)
         {
             AnnotateNew();
-            return BuildStack(State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e)).ToList(), cap, viewedPeople);
+            return BuildStack(State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e) && !MomentHidesCard(e)).ToList(), cap, viewedPeople); // #369: a held ceremony is watched, not a card
         }
 
         /// <summary>§2.2 steps 2–5 over the collected entries (chronicle order).</summary>
