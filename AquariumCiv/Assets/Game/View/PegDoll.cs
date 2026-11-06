@@ -230,6 +230,9 @@ namespace AquariumCiv.View
                 case PropKind.Basket:
                     mb.Prism(new Vector3(0, -0.01f, 0), 0.032f, 0.042f, 0.04f, 8, Palette.Thatch, topCol: Palette.Ember);
                     break;
+                case PropKind.Bowl: // #365 B9: a small clay bowl of stew (0.03 tall, 0.07 across), carried in the left hand
+                    mb.Prism(new Vector3(0, -0.012f, 0), 0.018f, 0.036f, 0.03f, 8, Palette.Terracotta, topCol: new Color(0.80f, 0.52f, 0.20f));
+                    break;
                 case PropKind.Sheaf:
                 {
                     // Lies crosswise on the head: two cones (0.075 each, 0.15 in all) joined at a tied waist, tilted 8 degrees.

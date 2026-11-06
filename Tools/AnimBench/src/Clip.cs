@@ -32,6 +32,8 @@ namespace AnimBench
         public PlaySpec Play;
         /// <summary>#363: a pair moment (src/Pair.cs).</summary>
         public PairSpec Pair;
+        /// <summary>#365: the meal and the fire (src/Meal.cs).</summary>
+        public MealSpec Meal;
         /// <summary>#370: the staged moment the dolls were built from (null for a hand-made clip).</summary>
         public AquariumCiv.Life.MomentStagePlan Moment;
 
@@ -76,6 +78,7 @@ namespace AnimBench
             }
             if (root["play"] is JsonObject pl) c.Play = PlaySpec.Parse(pl); // #358
             if (root["pair"] is JsonObject pr) c.Pair = PairSpec.Parse(pr); // #363
+            if (root["meal"] is JsonObject ml) c.Meal = MealSpec.Parse(ml); // #365
             if (root["moment"] is JsonObject mo) c.Moment = MomentClip.Expand(c, mo, root["duration"] == null); // #370: the dolls from the game's staged-moment plan
             if (c.Dolls.Count == 0 && c.Objects.Count == 0) throw new ClipException("a clip needs at least one doll or object");
             var ids = new HashSet<string>();
@@ -210,6 +213,8 @@ namespace AnimBench
         public Vector2 From, To;
         public FaceSpec Face;
         public PropKind Prop;
+        /// <summary>#365: the eater holds the meal's bowl once it is served (PeopleView gives every served eater one).</summary>
+        public bool Bowl;
         public PropSlot Slot = PropSlot.Hand;
         public float Pace = 1f;
         public int? Step;
@@ -328,6 +333,7 @@ namespace AnimBench
                 if (Get("face") != null) seg.Face = FaceSpec.Parse(Get("face"), sw + " face");
                 else if (Get("facing") != null) seg.Face = FaceSpec.Parse(Get("facing"), sw + " facing");
                 if (Get("prop") != null) seg.Prop = Clip.Enum<PropKind>(Get("prop").ToString(), sw + " prop");
+                if (Get("bowl") != null) seg.Bowl = bool.Parse(Get("bowl").ToString().ToLowerInvariant()); // #365
                 if (Get("slot") != null) seg.Slot = Clip.Enum<PropSlot>(Get("slot").ToString(), sw + " slot");
                 seg.Pace = Get("pace") is JsonValue pv ? (float)pv.GetValue<double>() : 1f;
                 if (so["step"] != null) seg.Step = Clip.Int(so, "step", 0);
@@ -401,7 +407,7 @@ namespace AnimBench
         static float DefaultRadius(string kind) => kind switch
         {
             "rabbit" => 0.04f, "bush" => 0.13f, "tree" => 0.12f, "fire" => 0.1f, "ball" => 0.025f, "basket" => 0.04f,
-            "spear" => 0.02f, "berry" => 0.012f, "fish" => 0.025f, "tent" => 0.18f, "stash" => 0.1f, _ => 0.05f,
+            "spear" => 0.02f, "berry" => 0.012f, "fish" => 0.025f, "tent" => 0.18f, "stash" => 0.1f, "pot" => 0.06f, _ => 0.05f,
         };
 
         public static ObjectSpec Parse(JsonObject o, Clip clip)

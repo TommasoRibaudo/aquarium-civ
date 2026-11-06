@@ -250,6 +250,8 @@ def prop_shapes(kind):
         return [("seg", (0, -0.015, 0), (0, 0.085, 0), W, 0.006), ("blob", (0, 0.0, -0.012), 0.018, PAL["Water"])]
     if k == "Basket":
         return [("blob", (0, -0.01, 0), 0.038, PAL["Thatch"]), ("blob", (0, 0.008, 0), 0.02, PAL["Ember"])]
+    if k == "Bowl":  # #365: a clay bowl of stew
+        return [("blob", (0, -0.008, 0), 0.034, (198, 111, 78)), ("blob", (0, 0.006, 0), 0.022, (204, 133, 51))]
     if k in ("Bucket", "BucketEmpty", "BucketMuddy"):
         top = {"Bucket": PAL["Water"], "BucketMuddy": (107, 77, 43), "BucketEmpty": PAL["Door"]}[k]
         return [("blob", (0, -0.06, 0), 0.032, W), ("blob", (0, -0.04, 0), 0.018, top)]
@@ -518,6 +520,43 @@ class Scene:
                 dr.polygon([(x - rx * 0.55, y), (x + rx * 0.55, y), tip], fill=PAL["Fire"])
                 tip2 = cam.px((p[0], 0.08, p[2]))
                 dr.polygon([(x - rx * 0.3, y), (x + rx * 0.3, y), tip2], fill=PAL["FireCore"])
+                act = ch["act"][f]
+                if act.startswith("flare"):  # #365/#370: the fire flares and sparks rise (HitFx draws them in the game)
+                    g = f
+                    while g > 0 and ch["act"][g - 1] == act:
+                        g -= 1
+                    age = (f - g) / 30.0
+                    k = max(0.0, 1.0 - age / 0.4)
+                    tip3 = cam.px((p[0], 0.13 + 0.07 * k, p[2]))
+                    dr.polygon([(x - rx * 0.7, y), (x + rx * 0.7, y), tip3], fill=PAL["FireCore"])
+                    for i in range(6):
+                        a = i * 1.9
+                        sx_, sy_ = cam.px((p[0] + math.cos(a) * 0.04 * (1 + age * 2), 0.12 + age * (0.25 + 0.04 * i), p[2] + math.sin(a) * 0.04 * (1 + age * 2)))
+                        rr = max(1.5, 0.012 * s * max(0.2, 1.0 - age / 0.9))
+                        dr.ellipse([sx_ - rr, sy_ - rr, sx_ + rr, sy_ + rr], fill=(255, 205, 70))
+            prims.append((dep, draw))
+        elif kind == "pot":  # #365: the stew pot on its stones; steam blobs rise at the top of each stir
+            def draw(dr):
+                x, y = cam.px((p[0], 0, p[2]))
+                rx = 0.07 * s
+                ry = rx * max(0.2, math.sin(math.radians(cam.pitch)))
+                dr.ellipse([x - rx, y - ry, x + rx, y + ry], fill=PAL["Rock"], outline=darker(PAL["Rock"], 0.6))
+                bx, by = cam.px((p[0], 0.07, p[2]))
+                rr = 0.05 * s
+                dr.ellipse([bx - rr, by - rr * 0.9, bx + rr, by + rr * 0.9], fill=(198, 111, 78), outline=darker((198, 111, 78), 0.6))
+                tx, ty = cam.px((p[0], 0.11, p[2]))
+                dr.ellipse([tx - rr * 0.85, ty - rr * 0.3, tx + rr * 0.85, ty + rr * 0.3], fill=(204, 133, 51))
+                act = ch["act"][f]
+                if act.startswith("steam"):
+                    g = f
+                    while g > 0 and ch["act"][g - 1] == act:
+                        g -= 1
+                    age = (f - g) / 30.0
+                    k = min(1.0, age / 1.2)
+                    for i, dx in enumerate((-0.012, 0.014)):
+                        sx_, sy_ = cam.px((p[0] + dx + 0.01 * math.sin(age * 4 + i), 0.13 + k * (0.16 + 0.03 * i), p[2]))
+                        rr2 = max(1.5, 0.022 * s * (1.0 - max(0.0, (k - 0.6) / 0.4)))
+                        dr.ellipse([sx_ - rr2, sy_ - rr2, sx_ + rr2, sy_ + rr2], fill=(236, 238, 240), outline=(200, 204, 208))
             prims.append((dep, draw))
         elif kind == "bush":
             berries = int(round(ch.get("berries", [0] * (f + 1))[f]))
