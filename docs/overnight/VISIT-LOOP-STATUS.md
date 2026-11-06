@@ -28,3 +28,5 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 10:30 · `Tools/offline-csc.py` (offline compile in one command, 11 s for Sim+Life+View+View.Tests) · 20dc42e · 0 ·
 - 2026-11-06 10:31 · wave 1 started: T1 #352 (Opus), A3 #356 (Opus), C1 #368, D1 #375, D2 #376, D4 #378, D6 #380 (Sonnet), worktrees F:\GameDev-wt\<n> · — · 0 ·
 - 2026-11-06 10:33 · main checkout on `vl/editor` (= vl/visit-loop; vl/visit-loop itself lives in the worktree), Editor opened (~6 min import after branch switch); D5 #379 Editor worker started + stall watcher · — · ~7 ·
+- 2026-11-06 ~11:00 · merged D1 #375 (0d6dfcf), D2 #376 (5f667a5), D4 #378 (cad4c1d), A3 #356 specs (e39cd13); offline-csc 0 errors; `dotnet test Tools/SimTests` 1356/1356 on the merge · — · 0 · Unity checks queued for batch 1: TweezersPlayTests, TapGestureTests (7), GestureEdgePlayTests, GlassPlayTests, RabbitViewPlayTests, EcoTests, smoke
+- 2026-11-06 ~11:00 · A1 #355 beat kit started (Opus) in parallel with T1; A3 open questions for the user: hugs, hit-stop, kid tumble, felling now or later
