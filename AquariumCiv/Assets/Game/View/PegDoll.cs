@@ -17,6 +17,8 @@ namespace AquariumCiv.View
 
         /// <summary>The proportions every part hangs from (adult; multiply by the doll's scale).</summary>
         public const float BodyH = 0.13f, ShoulderX = 0.046f, ArmLen = 0.075f, HeadR = 0.043f;
+        /// <summary>#358: the ball prop's radius as built (a held ball is drawn at the prop scale; the play group's flying ball scales to r 0.035).</summary>
+        public const float BallMeshR = 0.04f;
         public static float HeadY => BodyH + 0.04f;
 
         public struct Look
@@ -315,6 +317,11 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(-0.016f, 0.036f, 0), 0.034f, 0.034f, 0.008f, 8, Palette.Iron, side, false, false);
                     break;
                 }
+                case PropKind.Ball:
+                    // #358: the kids' ball, oversized (bigger than a kid's head) so it reads in flight: bright red, a yellow cap
+                    // so it shows it spins and rolls.
+                    mb.Ico(Vector3.zero, BallMeshR, Vector3.one, Palette.Accents[0], 0.04f, Palette.Accents[1]);
+                    break;
                 // ---------------- #92: the relics ----------------
                 case PropKind.Crumb:
                     // A chunk of sky bread hugged in both arms: a pale golden lump with a darker crust.

@@ -50,6 +50,17 @@ namespace AquariumCiv.Game
         public const string DilemmaLapsed = "dilemma_lapsed";     // id, option (the default the people took), years_open
         public const string CallbackShown = "callback_shown";     // id (the dilemma), option, years_since
         public const string CallbackShowMe = "callback_showme";   // id (the dilemma)
+        // #374 (visit loop C7): the diary test's numbers, per visit (n = the visit's number; a visit is an open after >= 15 min away).
+        // Format version 2 (TelemetryVersion): session_start carries tv; version 1 logs have none and simply have none of these events.
+        public const string VisitStart = "visit_start";           // box, n, opens (in this visit so far), away_h, fresh (false = another open of the same visit)
+        public const string MomentLive = "moment_live";           // box, n, id, kind, result(played|stopped), welcome, at_min (watched min into the visit), gap_min (since the last live release; omitted for the first)
+        public const string MomentCard = "moment_card";           // box, n, id, kind, why (the moment became a return card without playing)
+        public const string ChoiceRaised = "choice_raised";       // box, n, id, small
+        public const string ChoiceEnd = "choice_end";             // box, n, id, end(answered|let_decide|lapsed|gone), shown_visits, hours (raise to answer / let-decide)
+        public const string VisitSum = "visit_sum";               // box, n, opens, watched_min, live, stopped, carded, gaps ("a;b" watched min), raised, answered, let_decide, lapsed, answer_h, cards_shown, cards_read (cumulative: the last per n wins)
+        public const string VisitRecall = "visit_recall";         // box, n, outcome(shown|answered|dismissed), named (a count), named_seen, live_since, read_since
+        /// <summary>The log's format version, written into every session_start as "tv". 1 = through #325; 2 = adds the visit events (#374).</summary>
+        public const int TelemetryVersion = 2;
     }
 
     /// <summary>One logged event: when, which session, what, plus flat properties (string / number / bool).</summary>

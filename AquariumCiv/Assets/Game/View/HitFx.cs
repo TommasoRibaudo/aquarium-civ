@@ -186,6 +186,8 @@ namespace AquariumCiv.View
             bool bush = place is PlaceKind.BushCell or PlaceKind.Bushes;
             if (bush && (style is DollStyle.Pick or DollStyle.Reach or DollStyle.Chop or DollStyle.Hoe or DollStyle.Crouch))
                 return new HitAnswer { shake = ShakeTarget.Bush, leaves = 2 };
+            // #362: the hunter's throw lands (Contact of the Strike beat; the point is where the spear comes down): a puff of grass, on the meadow
+            if (style == DollStyle.Crouch && place == PlaceKind.Meadow) return new HitAnswer { hasPuff = true, puff = PuffKind.Grass };
             switch (style)
             {
                 case DollStyle.Chop:

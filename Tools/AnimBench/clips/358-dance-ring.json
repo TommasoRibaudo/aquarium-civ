@@ -1,0 +1,15 @@
+{
+  "name": "358-dance-ring",
+  "notes": "#358 B2.e ring dance (weddings, the festival): seven dancers on a ring of r = 0.3 + 0.03 x max(0, n - 6) (the kit's RingGroup, in step on purpose: exempt from P6), arms out so the hands meet, the ring turns 25 deg/s and reverses every 4 beats, a hop on each 0.5 s beat; every 8 beats all step in to 0.6 r with arms up and a cheer bounce, and out. After 24 beats the ring stops and everyone cheers (the end beat). AnimLab: cheat 'Dance ring now'.",
+  "duration": 13.4,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.2 },
+  "sheet": { "from": 0, "to": 13.4, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "play": { "game": "DanceRing", "members": ["a", "b", "c", "d", "e", "f", "g"], "center": [0.0, 0.0], "seed": 21 },
+  "objects": [ { "id": "fire", "kind": "fire", "pos": [0.0, 0.0] } ],
+  "dolls": [
+    { "id": "a", "seed": 501 }, { "id": "b", "seed": 502 }, { "id": "c", "kid": true, "seed": 503 }, { "id": "d", "seed": 504 },
+    { "id": "e", "seed": 505 }, { "id": "f", "kid": true, "seed": 506 }, { "id": "g", "seed": 507 }
+  ]
+}

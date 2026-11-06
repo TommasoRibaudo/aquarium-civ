@@ -1,0 +1,281 @@
+{
+ "secondsPerViewHour": 16,
+ "camera": {
+  "view": "default",
+  "focus": [
+   0.15,
+   0.05
+  ],
+  "span": 1.6
+ },
+ "fps": 30,
+ "name": "362-hunt-catch",
+ "notes": "#362 B6: the hunt that catches. Same stalk and throw as 362-hunt-miss; the spear lands IN the rabbit (the rabbit jumps 0.05 u and falls on its side, 0.25 s), the neighbours bolted at the release; the hunter walks to the rabbit, bends and lifts it (the rabbit is in his hand from 0.36 s of the bend, the spear comes out of the ground with it), holds it up 1.8 s, and walks home slowly (0.8x) with the kid beside him. The kid watches, cheers as the spear lands, runs over and walks home beside him. Hold-up uses the Hand slot (PeopleView.HuntProp).",
+ "duration": 20.6,
+ "sheet": {
+  "from": 12.1,
+  "to": 20.1,
+  "frames": 24,
+  "columns": 6
+ },
+ "expect": {
+  "reactSeconds": 0.2,
+  "arcs": [
+   {
+    "kind": "spear",
+    "by": "hunter",
+    "target": "rabbit"
+   }
+  ]
+ },
+ "objects": [
+  {
+   "id": "fire",
+   "kind": "fire",
+   "pos": [
+    -1.2,
+    -0.4
+   ]
+  },
+  {
+   "id": "rabbit",
+   "kind": "rabbit",
+   "pos": [
+    0.4,
+    0.1
+   ],
+   "yaw": 200,
+   "hunted": {
+    "by": "hunter",
+    "until": 13.25
+   },
+   "sitUp": [
+    [
+     5.2,
+     6.3
+    ],
+    [
+     9.9,
+     10.8
+    ]
+   ],
+   "fallAt": 13.25
+  },
+  {
+   "id": "spear",
+   "kind": "spear",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "radius": 0.02,
+   "arc": {
+    "from": "hunter.tip",
+    "to": "rabbit",
+    "t0": 12.8,
+    "t1": 13.25,
+    "height": 0.15,
+    "heldBefore": false,
+    "hideAt": 15.32
+   }
+  },
+  {
+   "id": "rabbit2",
+   "kind": "rabbit",
+   "pos": [
+    0.75,
+    0.42
+   ],
+   "yaw": 120,
+   "startle": {
+    "at": 12.8,
+    "from": [
+     0.4,
+     0.1
+    ],
+    "to": [
+     1.0,
+     1.05
+    ]
+   }
+  },
+  {
+   "id": "rabbit3",
+   "kind": "rabbit",
+   "pos": [
+    0.85,
+    -0.12
+   ],
+   "yaw": 300,
+   "startle": {
+    "at": 12.94,
+    "from": [
+     0.4,
+     0.1
+    ],
+    "to": [
+     1.35,
+     -0.75
+    ]
+   }
+  },
+  {
+   "id": "rabbit4",
+   "kind": "rabbit",
+   "pos": [
+    -0.1,
+    0.62
+   ],
+   "yaw": 40,
+   "startle": {
+    "at": 13.02,
+    "from": [
+     0.4,
+     0.1
+    ],
+    "to": [
+     -0.9,
+     1.05
+    ]
+   }
+  }
+ ],
+ "dolls": [
+  {
+   "id": "hunter",
+   "seed": 283,
+   "role": "hunter",
+   "prop": "Spear",
+   "slot": "Hand",
+   "timeline": [
+    {
+     "label": "walk out",
+     "activity": "Walk",
+     "hunt": "WalkOut",
+     "from": [
+      -0.554,
+      -0.198
+     ],
+     "to": [
+      -0.316,
+      -0.124
+     ],
+     "dur": 1.6
+    },
+    {
+     "label": "stalk",
+     "activity": "Stalk",
+     "hunt": "Stalk",
+     "to": [
+      0.018,
+      -0.019
+     ],
+     "dur": 10.4,
+     "freezeA": 1.1,
+     "freezeB": 0.9,
+     "face": "rabbit"
+    },
+    {
+     "label": "throw",
+     "activity": "Stalk",
+     "hunt": "Strike",
+     "dur": 2.0,
+     "face": "rabbit",
+     "target": "rabbit"
+    },
+    {
+     "label": "to the rabbit",
+     "activity": "Walk",
+     "hunt": "ToCatch",
+     "to": [
+      0.305,
+      0.07
+     ],
+     "dur": 0.96,
+     "prop": "None",
+     "face": "rabbit"
+    },
+    {
+     "label": "lift it",
+     "activity": "Prepare",
+     "hunt": "PickUp",
+     "dur": 0.8,
+     "prop": "None",
+     "face": "rabbit"
+    },
+    {
+     "label": "hold it up",
+     "activity": "HoldUp",
+     "hunt": "HoldUp",
+     "dur": 1.8,
+     "prop": "Rabbit",
+     "face": "rabbit"
+    },
+    {
+     "label": "carry home",
+     "activity": "Carry",
+     "hunt": "CarryBack",
+     "to": [
+      -0.411,
+      -0.154
+     ],
+     "dur": 3.0,
+     "prop": "Rabbit",
+     "slot": "Shoulder"
+    }
+   ]
+  },
+  {
+   "id": "kid",
+   "kid": true,
+   "seed": 77,
+   "role": "kid",
+   "pos": [
+    -0.793,
+    -0.273
+   ],
+   "timeline": [
+    {
+     "label": "watch",
+     "activity": "Watch",
+     "hunt": "KidWatch",
+     "pos": [
+      -0.793,
+      -0.273
+     ],
+     "until": 13.25,
+     "face": "rabbit"
+    },
+    {
+     "label": "cheer",
+     "activity": "Cheer",
+     "hunt": "KidCheer",
+     "dur": 1.71,
+     "face": "rabbit"
+    },
+    {
+     "label": "run over",
+     "activity": "RunOver",
+     "hunt": "KidRun",
+     "to": [
+      0.34,
+      -0.044
+     ],
+     "until": 17.56,
+     "face": "hunter"
+    },
+    {
+     "label": "home beside him",
+     "activity": "Walk",
+     "hunt": "KidEscort",
+     "to": [
+      -0.376,
+      -0.268
+     ],
+     "dur": 3.0
+    }
+   ]
+  }
+ ]
+}

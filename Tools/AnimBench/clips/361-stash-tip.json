@@ -221,7 +221,7 @@
       "seed": 361,
       "role": "gatherer",
       "prop": "Basket",
-      "slot": "Arms",
+      "slot": "Hand",
       "phase": 0,
       "timeline": [
         {
@@ -272,7 +272,7 @@
       "seed": 362,
       "role": "gatherer",
       "prop": "Basket",
-      "slot": "Arms",
+      "slot": "Hand",
       "phase": 0.4,
       "timeline": [
         {

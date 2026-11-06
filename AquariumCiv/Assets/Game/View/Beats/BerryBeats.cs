@@ -142,7 +142,7 @@ namespace AquariumCiv.View
         public static bool IsBerryStyle(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot or DollStyle.TasteBerry or DollStyle.TipBasket;
 
         /// <summary>The basket rides in the left hand while the right hand picks or digs (PegDollView.HoldInLeft).</summary>
-        public static bool BasketInLeft(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot;
+        public static bool BasketInLeft(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot or DollStyle.TipBasket;
 
         /// <summary>The move for an activity at a place: a gatherer at a real bush picks berries, at the dry stream bed digs roots, a kid
         /// eating at a bush stands tasting. Anything else keeps <paramref name="style"/>.</summary>

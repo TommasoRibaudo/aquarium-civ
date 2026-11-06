@@ -1,0 +1,15 @@
+{
+  "name": "358-toddle",
+  "notes": "#358 B2.d toddle: a carer strolls a small circle (0.12 u/s) and a little one wobbles after it, 0.15 u behind, arms out, rolling side to side (View/Beats/KidPlay.cs ToddleGame). Every 6-10 s the toddler plops down (squash, a drop, Back); the carer stops, turns, bends to it, and on they go (the end beat). In the game babies are drawn on their carer (#192), so this shows through the cheat 'Toddle' (a kid as the toddler) until the user decides (open question).",
+  "duration": 18,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.0 },
+  "sheet": { "from": 0, "to": 18, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "play": { "game": "Toddle", "members": ["carer", "baby"], "center": [0.0, 0.0], "seed": 12 },
+  "objects": [],
+  "dolls": [
+    { "id": "carer", "kid": false, "seed": 401 },
+    { "id": "baby", "kid": true, "seed": 402 }
+  ]
+}

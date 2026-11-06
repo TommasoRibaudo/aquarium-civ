@@ -38,7 +38,7 @@ namespace AquariumCiv.View
         /// <summary>#361: one tip in progress: the basket's resting transform (put back when the tip stops), how many berries have left it.</summary>
         sealed class Tip
         {
-            public PegDollView v; public Transform prop; public Vector3 restPos; public Quaternion restRot;
+            public PegDollView v; public Transform prop, parent; public Vector3 restPos; public Quaternion restRot;
             public float lastSeen, lastSince; public int launched, total;
         }
         /// <summary>A root coming up out of the ground and held in the hand, until its arc leaves.</summary>
@@ -188,7 +188,7 @@ namespace AquariumCiv.View
                 if (t != null) RestoreBasket(t);
                 var f0 = FillOf(who.Key, v);
                 if (f0 == null) return;
-                t = new Tip { v = v, prop = v.prop, restPos = v.prop.localPosition, restRot = v.prop.localRotation };
+                t = new Tip { v = v, prop = v.prop, parent = v.prop.parent, restPos = v.prop.localPosition, restRot = v.prop.localRotation };
                 t.total = BerryMotion.TipBerries(f0.count);
                 if (f0.count < t.total) { for (int i = f0.count; i < t.total; i++) f0.pop[i] = 0.0001f; f0.count = t.total; } // a basket we never saw filled: the tip still pours
                 tips[who.Key] = t;
@@ -198,7 +198,9 @@ namespace AquariumCiv.View
             // the basket comes up off the chest and rolls forward over the pile
             float lift = BerryMotion.TipLift(since), roll = BerryMotion.TipRoll(since);
             t.prop.localPosition = t.restPos + new Vector3(0f, BerryMotion.TipLiftHeight * lift * v.scale, 0f);
-            t.prop.localRotation = Quaternion.Euler(-roll, 0f, 0f) * t.restRot;
+            // in the left hand the basket is kept upright against the arm every frame (PegDollView.ApplyArms): roll from that
+            var upright = v.BasketIsInLeft ? Quaternion.Inverse(v.armL.localRotation) : t.restRot;
+            t.prop.localRotation = Quaternion.Euler(-roll, 0f, 0f) * upright;
             if (t.launched >= t.total) return;
             var fill = FillOf(who.Key, v);
             while (t.launched < t.total && since >= BerryMotion.TipLaunchAt(t.launched))
@@ -248,7 +250,7 @@ namespace AquariumCiv.View
 
         static void RestoreBasket(Tip t)
         {
-            if (t == null || t.prop == null) return;
+            if (t == null || t.prop == null || t.prop.parent != t.parent) return; // moved to the other hand since: PegDollView put it right
             t.prop.localPosition = t.restPos; t.prop.localRotation = t.restRot;
         }
 

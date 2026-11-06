@@ -1,0 +1,17 @@
+{
+  "name": "358-tag",
+  "notes": "#358 B2.a tag (replaces hop-circle for kid play): four kids at the gathering place, one play group (View/Beats/KidPlay.cs TagGame on the kit's ChaseGroup). The new chaser spins and bounces (wind-up), runs at its runner arms out, its right arm shoots out on the touch (hit; the runner jolts back: Flinch), both hold; the others run off waving and taunt; the old chaser runs off arms up. After 3-5 tags all sit panting (the end beat). AnimLab: same staging at the gathering place; cheat 'Kids play: tag'.",
+  "duration": 17,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.5 },
+  "sheet": { "from": 0, "to": 17, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "play": { "game": "Tag", "members": ["kidA", "kidB", "kidC", "kidD"], "center": [0.0, 0.0], "seed": 358 },
+  "objects": [],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 101 },
+    { "id": "kidB", "kid": true, "seed": 102 },
+    { "id": "kidC", "kid": true, "seed": 103 },
+    { "id": "kidD", "kid": true, "seed": 104 }
+  ]
+}

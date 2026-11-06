@@ -114,11 +114,13 @@ namespace AquariumCiv.Game
             Telemetry.SetVariant(DilemmaSurvey.VariantOf(config.dilemmas), false); // P7 (#225): A = dilemmas off, B = on, in every session_start
             Telemetry.StartSession(reason, awayHours, Application.version, Application.platform.ToString(),
                 (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalMinutes);
+            VisitTracker()?.Open(Telemetry, ActiveSim, awayHours); // #374: a new visit after a real absence, else one more open
         }
 
         void EndTelemetrySession(string reason)
         {
             if (Telemetry == null) return;
+            if (visitTel != null && visitTelSim == ActiveSim) { visitTel.Observe(ActiveSim, Telemetry); visitTel.Close(Telemetry); } // #374: the visit so far
             Telemetry.EndSession(reason, Time.realtimeSinceStartup - sessionStart);
         }
 
@@ -136,6 +138,7 @@ namespace AquariumCiv.Game
             if (ActiveSim == null) return;
             if (!Held) ActiveSim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) * Math.Max(0f, speed) / 3600.0);
             if (Telemetry != null) DilemmaTracker()?.Observe(ActiveSim, Telemetry);
+            if (Telemetry != null) VisitTracker()?.Observe(ActiveSim, Telemetry); // #374
             sinceSave += Time.unscaledDeltaTime;
             if (sinceSave >= autosaveSeconds) Save();
             Telemetry?.Tick();
@@ -307,6 +310,27 @@ namespace AquariumCiv.Game
         /// <summary>The tracker for <paramref name="sim"/> when it is the active box, else null (the card stack asks with its own box).</summary>
         public static DilemmaTelemetryTracker DilemmaTrackerFor(SimCore sim) =>
             Instance != null && sim != null && Instance.ActiveSim == sim ? Instance.DilemmaTracker() : null;
+
+        // ---------- #374 visit telemetry ----------
+        VisitTelemetryTracker visitTel;
+        SimCore visitTelSim;
+
+        /// <summary>The visit tracker of the active box (a new one, with the saved state of that box, when the box changes; null with no
+        /// telemetry or box). The log's card hooks reach it through <see cref="TelemetryLog.Visits"/>.</summary>
+        public VisitTelemetryTracker VisitTracker()
+        {
+            var sim = ActiveSim;
+            if (sim == null || Telemetry == null) return null;
+            if (visitTel != null && visitTelSim == sim) return visitTel;
+            bool first = visitTel == null;
+            visitTel?.Close(Telemetry);
+            var dt = DilemmaTracker();
+            visitTel = new VisitTelemetryTracker(VisitTelemetryTracker.Load(Telemetry), sim, dt == null ? (Func<int, bool>)null : dt.IsCheat, Telemetry.BoxId);
+            visitTelSim = sim;
+            Telemetry.Visits = visitTel;
+            if (!first) visitTel.Open(Telemetry, sim, 0); // the shelf switched boxes: this box's running visit gets an open
+            return visitTel;
+        }
 
         static double RealNow => Time.realtimeSinceStartupAsDouble;
 
