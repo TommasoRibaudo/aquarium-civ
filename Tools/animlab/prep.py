@@ -3,6 +3,8 @@
 Usage:
   python Tools/animlab/prep.py lab <clip.json> <bench out dir> <lab.json>
   python Tools/animlab/prep.py batch <batch.json> <lab.json> [<lab.json> ...]   (out dir = each lab.json's folder)
+  python Tools/animlab/prep.py live <clip.json> <out dir>      (a live request: lab.json, and prints AnimLabLive's spec)
+  python Tools/animlab/prep.py field <clip.json> <a.b.c> [default]
 
 The poses are AnimBench's: the same clip run through the game's DollMotion / beat kit, frame for frame (same fps, same frame
 times). The Editor only puts them on the real dolls, so the timing matches AnimBench by construction; the Editor's own check is
@@ -164,7 +166,56 @@ def make_batch(batch_path, labs):
     return batch
 
 
+def make_live(clip_path, out_dir):
+    """A live request (clip JSON with a "live" section): writes out_dir/lab.json and prints the LiveSpec JSON for AnimLabLive.Begin."""
+    clip = json.load(open(clip_path, encoding="utf-8"))
+    live = clip["live"]
+    head = clip.get("animlab", {}) or {}
+    name = os.path.splitext(os.path.basename(clip_path))[0]
+    fps = float(live.get("fps", 30))
+    seconds = float(live.get("seconds", 6))
+    focus = live.get("focus", [0.0, 0.0])
+    spec = {"clip": name, "outDir": os.path.abspath(out_dir), "warm": float(live.get("warm", 1)), "seconds": seconds, "fps": fps,
+            "follow": live.get("follow", ""), "fx": focus[0], "fz": focus[1], "span": float(live.get("span", 1.5)),
+            "closeSpan": float(live.get("closeSpan", 0.6)), "yaw": float(live.get("yaw", 28)), "pitch": float(live.get("pitch", 34))}
+    os.makedirs(out_dir, exist_ok=True)
+    lab = {"format": "animlab-live/1", "clip": name, "request": os.path.abspath(clip_path), "issue": str(head.get("issue", "")),
+           "branch": str(head.get("branch", "")), "commit": str(head.get("commit", "")), "fps": fps, "frames": int(round(seconds * fps)) + 1}
+    with open(os.path.join(out_dir, "lab.json"), "w", encoding="utf-8") as fh:
+        json.dump(lab, fh)
+    print(json.dumps(spec))
+
+
+def field(clip_path, path, default=""):
+    v = json.load(open(clip_path, encoding="utf-8"))
+    for k in path.split("."):
+        if not isinstance(v, dict) or k not in v:
+            print(default)
+            return
+        v = v[k]
+    print(v if not isinstance(v, (dict, list)) else json.dumps(v))
+
+
+def setup_steps(clip_path):
+    """live.setup: one C# snippet or a list of them (the driver lets the game run ~2 s between steps). Printed one per line, JSON-quoted."""
+    live = json.load(open(clip_path, encoding="utf-8")).get("live", {})
+    steps = live.get("setup", [])
+    if isinstance(steps, str):
+        steps = [steps]
+    for st in steps:
+        print(json.dumps(st))
+
+
 def main(argv):
+    if len(argv) >= 2 and argv[0] == "steps":
+        setup_steps(argv[1])
+        return 0
+    if len(argv) >= 3 and argv[0] == "live":
+        make_live(argv[1], argv[2])
+        return 0
+    if len(argv) >= 3 and argv[0] == "field":
+        field(argv[1], argv[2], argv[3] if len(argv) > 3 else "")
+        return 0
     if len(argv) >= 4 and argv[0] == "lab":
         n = make_lab(argv[1], argv[2], argv[3])
         print(f"lab {argv[3]}: {n} frames")

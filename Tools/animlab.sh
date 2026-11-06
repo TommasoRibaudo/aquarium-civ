@@ -5,6 +5,8 @@
 #   bash Tools/animlab.sh render [--cells N] [--chunk S]  render the queue (the Editor holder only): N clips per batch (default 6),
 #                                                         S seconds per Editor call (default 40, always < 60); --calls C caps the
 #                                                         Editor calls (default 80): an unfinished batch resumes on the next render
+#   bash Tools/animlab.sh live                            render the LIVE requests (a "live" section: the real game in play
+#                                                         mode, a cheat sets the scene up), all in one play-mode session
 #   bash Tools/animlab.sh status                          the queue, the batch in progress, the last outputs
 #
 # Queue: AquariumCiv/Temp/agent/animlab/requests/*.json, one AnimBench clip per file (Tools/AnimBench/README.md), with an optional
@@ -93,7 +95,7 @@ print("batch %s: frame %d/%d, %d clips, %d calls, %.2f frames/s, done=%s" % (b["
     if [ -f "$LAB/batch.json" ] && ! grep -q '"done": *true' "$LAB/batch.json"; then
       echo "resuming the batch in progress"
     else
-      reqs=( $(ls -1 "$REQ"/*.json 2>/dev/null | head -n "$cells") )
+      reqs=( $(grep -L '"live"' "$REQ"/*.json 2>/dev/null | head -n "$cells") )   # live requests go through 'live'
       [ ${#reqs[@]} -gt 0 ] || { echo "queue empty"; exit 0; }
       labs=()
       for r in "${reqs[@]}"; do
@@ -142,5 +144,59 @@ print("rendered %d frame steps x %d clips x 2 cameras in %.1f s of Editor time (
 ' "$OUT/_batch/$id/batch.json"
     echo "total $(( $(date +%s) - t0 )) s. Look at: $OUT/_batch/$id/grid.png, grid.mp4 and each $OUT/<clip>/sheet.png"
     ;;
-  *) sed -n '2,8p' "$0"; exit 2 ;;
+  live)
+    # Live requests (a "live" section): one play-mode session for all of them. Every wait is a bounded loop of bounded calls.
+    mapfile -t reqs < <(grep -l '"live"' "$REQ"/*.json 2>/dev/null)
+    [ ${#reqs[@]} -gt 0 ] || { echo "no live requests"; exit 0; }
+    st="$(timeout 30 unity status --project-path "$WPROJ" --format json 2>/dev/null | tr -d '\n')"
+    echo "$st" | grep -q '"ready"' || die "the Editor is not ready (unity status: ${st:0:200})"
+    t0=$(date +%s)
+    playing() { ueval 'return UnityEditor.EditorApplication.isPlaying ? "yes" : "no";'; }
+    wait_for() { # $1 = C# expression returning a string, $2 = regex to wait for, $3 = tries (2 s apart)
+      local r=""
+      for i in $(seq 1 "$3"); do
+        r="$(ueval "return $1;")"
+        if echo "$r" | grep -Eq "$2"; then echo "$r"; return 0; fi
+        sleep 2
+      done
+      echo "TIMEOUT waiting for '$2' (last: $r)"; return 1
+    }
+    seed="$("$PY" "$ROOT/Tools/animlab/prep.py" field "${reqs[0]}" live.seed 4242)"
+    eco="$("$PY" "$ROOT/Tools/animlab/prep.py" field "${reqs[0]}" live.ecology 1)"
+    echo "  enter: $(ueval 'return AquariumCiv.EditorTools.AnimLabLive.EnterPlay();')"
+    p=""; for i in $(seq 1 30); do sleep 2; p="$(playing)"; [ "$p" = "yes" ] && break; done
+    [ "$p" = "yes" ] || { echo "  play mode did not start ($p)"; powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT/Tools/unity-dialogs/dismiss-dialogs.ps1" 2>/dev/null | tail -3; die "live: no play mode"; }
+    echo "  load: $(ueval "return AquariumCiv.EditorTools.AnimLabLive.Load($seed, $eco);")"
+    if ! wait_for 'AquariumCiv.EditorTools.AnimLabLive.Status()' '^ready' 45 >/dev/null; then
+      echo "  $(ueval 'return AquariumCiv.EditorTools.AnimLabLive.Status();')"; ueval 'return AquariumCiv.EditorTools.AnimLabLive.ExitPlay();'; die "live: the scene never came up"
+    fi
+    echo "  [$(( $(date +%s) - t0 )) s] scene ready"
+    labs=(); done_reqs=()
+    for r in "${reqs[@]}"; do
+      name="$(basename "$r" .json)"; o="$OUT/$name"
+      rm -rf "$o/frames"; mkdir -p "$o"
+      spec="$("$PY" "$ROOT/Tools/animlab/prep.py" live "$r" "$o")" || { echo "  $name: bad request"; continue; }
+      while IFS= read -r stepq; do
+        step="$("$PY" -c 'import json,sys; print(json.loads(sys.argv[1]))' "$stepq")"
+        echo "  $name setup: $(ueval "$step")"
+        sleep 2   # the game runs between steps (rabbits come out, a plan settles)
+      done < <("$PY" "$ROOT/Tools/animlab/prep.py" steps "$r")
+      esc="$("$PY" -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$spec")"
+      echo "  $name: $(ueval "return AquariumCiv.EditorTools.AnimLabLive.Begin($esc);")"
+      if res="$(wait_for 'AquariumCiv.EditorTools.AnimLabLive.Status()' '^(done|ERROR)' 150)" && [ "${res#done}" != "$res" ]; then
+        echo "  [$(( $(date +%s) - t0 )) s] $name recorded"; labs+=( "$o/lab.json" ); done_reqs+=( "$r" )
+      else echo "  $name: $res"; fi
+    done
+    echo "  exit: $(ueval 'return AquariumCiv.EditorTools.AnimLabLive.ExitPlay();')"
+    for i in $(seq 1 30); do sleep 2; [ "$(playing)" = "no" ] && break; done
+    echo "  finish: $(ueval 'return AquariumCiv.EditorTools.AnimLabBuilder.Finish();')"
+    [ ${#labs[@]} -gt 0 ] || die "live: nothing recorded"
+    "$PY" "$ROOT/Tools/animlab/prep.py" batch "$LAB/live-batch.json" "${labs[@]}" >/dev/null
+    "$PY" "$ROOT/Tools/animlab/post.py" "$LAB/live-batch.json" || echo "  post had errors (above)"
+    id="$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$LAB/live-batch.json")"
+    mkdir -p "$OUT/_batch/$id"; mv "$LAB/live-batch.json" "$OUT/_batch/$id/batch.json"
+    for r in "${done_reqs[@]}"; do mv "$r" "$REQ/done/"; done
+    echo "total $(( $(date +%s) - t0 )) s. Look at: $OUT/_batch/$id/grid.png and each $OUT/<clip>/sheet.png"
+    ;;
+  *) sed -n '2,12p' "$0"; exit 2 ;;
 esac
