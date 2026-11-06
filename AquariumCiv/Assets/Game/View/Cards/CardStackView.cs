@@ -448,9 +448,9 @@ namespace AquariumCiv.View
             }
             dilBox.style.display = DisplayStyle.None;
             // #368: every choice can be handed back. The wording is fixed. Quiet, under the two options, only while the question is open.
+            // It sits in the button row (BuildActions): on its own line between the options and the row it overflowed the sheet and the
+            // row drew over it (batch 1, 1179x2556: "Show me" covered "Let them").
             dilLet = Press("cards-dil-let", "Let them decide", () => model?.LetThemDecide(), card, ButtonKind.Quiet, UiRole.Confirm);
-            card.hierarchy.Remove(dilLet);
-            card.hierarchy.Insert(card.hierarchy.IndexOf(dilBox) + 1, dilLet);
             dilLet.style.alignSelf = Align.Center;
             dilLet.style.display = DisplayStyle.None;
         }
@@ -565,6 +565,7 @@ namespace AquariumCiv.View
             nextBtn = Press("cards-next", "Next", () => model?.Next(), row);
             showMeBtn = Press("cards-showme", "Show me", ShowMe, row, ButtonKind.Secondary, UiRole.None); // the director sounds it when the flight starts
             actionBtn = Press("cards-action", "", Act, row, ButtonKind.Primary, UiRole.Confirm);
+            if (dilLet != null) { dilLet.RemoveFromHierarchy(); row.Add(dilLet); } // #368: after Show me, while a choice is open
         }
 
         // ================================================================== touches
