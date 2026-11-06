@@ -339,7 +339,8 @@ namespace AquariumCiv.View
             float x = 0f, z = 0f;
             Vector2? huntFace = null;
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
-            bool tenting = !hunting && a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace); // #284: the planned walk to the frame and the lot
+            bool tenting = !hunting && ((a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
+                || (StagedSpot != null && StagedSpot(a, now, out x, out z, out huntFace))); // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path
             if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             var spot = new Vector2(x, z);
@@ -463,6 +464,7 @@ namespace AquariumCiv.View
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
             if (hunting) DollMotion.Hunt(ref pose, a.hunt, a.progress);
+            StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
             if (a.kind == ActivityKind.FetchWater) // #360: the draw (kneel, dip, lift) at the water; the heavy walk home with the full bucket
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
@@ -840,6 +842,12 @@ namespace AquariumCiv.View
         /// <see cref="BeatPhase.Contact"/>), once per contact. Who, where they work, the move, and the tool's end in world space
         /// (<see cref="WorkHitPoint.HitPoint"/>). Puffs (HitFx) and the targets' answers subscribe here.</summary>
         public event System.Action<PersonRef, Place, DollStyle, Vector3> WorkHit;
+
+        /// <summary>#370: a staged moment (<c>StagedMoments</c>) places its cast on the plan's own spots and lays its beats over their pose.</summary>
+        public delegate bool StagedSpotHook(in PersonActivity a, ViewTime now, out float x, out float z, out Vector2? face);
+        public delegate void StagedPoseHook(in PersonActivity a, PegDollView view, ref DollPose pose);
+        public static StagedSpotHook StagedSpot;
+        public static StagedPoseHook StagedPose;
 
         /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
         /// and who is nearest to a sign.</summary>

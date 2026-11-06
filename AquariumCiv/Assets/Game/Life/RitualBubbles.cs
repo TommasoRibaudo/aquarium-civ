@@ -116,6 +116,45 @@ namespace AquariumCiv.Life
             return Pick(cand);
         }
 
+        /// <summary>#370: a staged moment's symbols (<see cref="LifePlanner.StageHeldMoment"/>): music notes over the dancers, a sun
+        /// over the vow, the speech, the lift and the pop, an eye over the kid who spotted the Keeper. Long steps are cut into
+        /// <see cref="MaxBubbleSeconds"/> slices that go round the cast; at most <see cref="MaxAlive"/> at once, one per person.</summary>
+        public static List<RitualBubble> ForHeldMoment(HeldMomentScene sc)
+        {
+            var cand = new List<(int prio, RitualBubble b)>();
+            if (sc?.plan == null) return new List<RitualBubble>();
+            var start = new ViewTime(sc.day, sc.start);
+            float Hour(float secs) { var t = LifeClock.Advance(start, secs); return t.day > sc.day ? 24f : t.hour; }
+            var members = sc.plan.members;
+            for (int i = 0; i < members.Count; i++)
+            {
+                var m = members[i];
+                var who = m.key > 0 ? PersonRef.Notable(m.key) : PersonRef.Crowd(-m.key - 1);
+                bool lead = m.role is MomentRole.Couple or MomentRole.Parent or MomentRole.Chief or MomentRole.Leader or MomentRole.Spotter;
+                foreach (var s in m.steps)
+                {
+                    RitualSymbol? sym = s.beat switch
+                    {
+                        StageBeat.Ring or StageBeat.Centre => RitualSymbol.Notes,
+                        StageBeat.Vow or StageBeat.Speech or StageBeat.LiftBaby or StageBeat.GoldPop => RitualSymbol.Sun,
+                        StageBeat.Point => RitualSymbol.Eye,
+                        _ => null,
+                    };
+                    if (sym == null) continue;
+                    int slices = Math.Max(1, (int)Math.Ceiling((s.t1 - s.t0) / MaxBubbleSeconds - 1e-3f));
+                    for (int k = 0; k < slices; k++)
+                    {
+                        float t0 = s.t0 + k * MaxBubbleSeconds, t1 = Math.Min(s.t1, t0 + MaxBubbleSeconds);
+                        float h0 = Hour(t0), h1 = Hour(t1);
+                        if (h1 - h0 < 1e-4f) continue;
+                        int turn = members.Count > 0 ? (i + members.Count - (k * MaxAlive) % members.Count) % members.Count : i; // a different few each slice
+                        cand.Add((k * 10000 + (lead ? 0 : 1000) + turn, new RitualBubble { who = who, symbol = sym.Value, start = h0, end = h1, role = lead ? RelicCast.Owner : RelicCast.Grown }));
+                    }
+                }
+            }
+            return Pick(cand);
+        }
+
         static int Rank(RelicCast c) => c switch
         {
             RelicCast.Owner => 0, RelicCast.Second => 1, RelicCast.Holder => 1, RelicCast.Heir => 1,

@@ -80,6 +80,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i < list.Count; i++)
                     if (now.hour >= list[i].start && now.hour < list[i].end) active.Add((list[i], false));
             }
+            StagedMoments.AddBubbles(now, active); // #370: the staged moments' symbols
             if (active.Count == 0) CollectFestival(pv, now, active);
             // Never more than a handful at once, and one per person, whatever is staged (two moments at once, a festival over a ritual).
             if (active.Count > RitualBubbles.MaxAlive || HasTwiceOver(active))

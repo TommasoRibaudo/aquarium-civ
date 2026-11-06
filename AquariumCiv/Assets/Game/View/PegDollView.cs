@@ -27,6 +27,7 @@ namespace AquariumCiv.View
         /// <summary>#192: the baby this doll carries: a part of the doll, not a walker, shown in the arms or on the back.</summary>
         Transform baby, babyStraps;
         bool babyOnBack;
+        float babyLift; // #370: 0 in the arms, 1 held up over the head
         bool extended;
         /// <summary>#361: the basket rides in the left hand (the right hand picks): see <see cref="HoldInLeft"/>.</summary>
         bool inLeft;
@@ -125,6 +126,7 @@ namespace AquariumCiv.View
             if (!on)
             {
                 if (baby != null && baby.gameObject.activeSelf) baby.gameObject.SetActive(false);
+                if (babyLift != 0f) LiftBaby(0f); // #370
                 if (babyStraps != null && babyStraps.gameObject.activeSelf) babyStraps.gameObject.SetActive(false);
                 return;
             }
@@ -134,11 +136,25 @@ namespace AquariumCiv.View
             if (babyStraps != null && babyStraps.gameObject.activeSelf != onBack) babyStraps.gameObject.SetActive(onBack);
             if (babyOnBack == onBack) return;
             babyOnBack = onBack;
+            babyLift = 0f; // #370: placed back in the arms below
             var (pos, _) = PegDoll.SlotPose(onBack ? PropSlot.Back : PropSlot.Arms);
             // Arms: held across the chest, the head at the crook. Back: upright in its wrap, looking back over the shoulder.
             var nudge = onBack ? new Vector3(0f, 0.03f, 0.022f) : new Vector3(0f, 0.008f, -0.018f); // the head over the shoulder; out in front of the chest
             baby.SetLocalPositionAndRotation((pos + nudge) * scale, onBack ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.Euler(0f, 0f, -68f));
             baby.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
+        }
+
+        /// <summary>#370: the newborn held up to the glass: 0 in the arms (as <see cref="SetBaby"/> holds it), 1 high over the head,
+        /// upright and facing out (the arms at x 165). Cheap to call every frame.</summary>
+        public void LiftBaby(float k)
+        {
+            k = Mathf.Max(0f, k);
+            if (baby == null || babyOnBack || Mathf.Abs(k - babyLift) < 1e-4f) return;
+            babyLift = k;
+            var (pos, _) = PegDoll.SlotPose(PropSlot.Arms);
+            var held = (pos + new Vector3(0f, 0.008f, -0.018f)) * scale;
+            var high = new Vector3(0f, PegDoll.HeadY + PegDoll.HeadR + 0.04f, -0.03f) * scale;
+            baby.SetLocalPositionAndRotation(Vector3.LerpUnclamped(held, high, k), Quaternion.SlerpUnclamped(Quaternion.Euler(0f, 0f, -68f), Quaternion.identity, Mathf.Min(1f, k)));
         }
 
         /// <summary>Turns a hand tool out along the arm (a strike: the axe head ends up in front, the rod out over the water)

@@ -1,0 +1,16 @@
+{
+  "name": "370-wedding",
+  "notes": "#370 C3.a: the wedding the people organise because the Keeper showed up, built from the game's own plan (Life/MomentStagePlan.cs) and beats (View/Beats/MomentBeats.cs). A kid looks up at the glass, points (a '!' in the game), runs to tell; everyone walks over into two rows; the couple walk the aisle hand in hand and each row cheers as they pass (a wave); the vow and the blessing; hands joined and a hop; a ring dances round them (in step on purpose, B2.e); they all wave to the glass. Walks there are straight here; the game walks the paths.",
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, -0.25], "span": 2.6 },
+  "sheet": { "from": 0, "to": 40, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "knownGaps": ["neighbours"],
+  "objects": [ { "id": "fire", "kind": "fire", "pos": [0.0, 0.2] } ],
+  "moment": {
+    "kind": "Wedding", "seed": 7, "fire": [0.0, 0.2], "glass": [0.0, -1.95], "normal": [0.0, -1.0],
+    "a": [0.9, 0.9], "b": [-0.6, 0.75], "officiant": [0.35, 0.65],
+    "guests": [[1.2, 0.4], [-1.0, 0.25], [0.55, 1.3], [-0.4, 1.2], [1.5, -0.3]],
+    "kids": [[0.6, -0.65], [-0.9, -0.5]]
+  }
+}

@@ -28,6 +28,8 @@ namespace AnimBench
         /// <summary>Principles this clip is known to fail today (research 17 §4): the tests report them as gaps, not failures.</summary>
         public readonly HashSet<string> KnownGaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         public string SourcePath;
+        /// <summary>#370: the staged moment the dolls were built from (null for a hand-made clip).</summary>
+        public AquariumCiv.Life.MomentStagePlan Moment;
 
         public int FrameCount => Math.Max(1, (int)Math.Round(Duration * Fps) + 1);
         public float Dt => 1f / Fps;
@@ -68,6 +70,7 @@ namespace AnimBench
                 int i = 0;
                 foreach (var d in dolls) c.Dolls.Add(DollSpec.Parse((JsonObject)d, c, i++));
             }
+            if (root["moment"] is JsonObject mo) c.Moment = MomentClip.Expand(c, mo, root["duration"] == null); // #370: the dolls from the game's staged-moment plan
             if (c.Dolls.Count == 0 && c.Objects.Count == 0) throw new ClipException("a clip needs at least one doll or object");
             var ids = new HashSet<string>();
             foreach (var d in c.Dolls) if (!ids.Add(d.Id)) throw new ClipException($"duplicate id '{d.Id}'");
@@ -209,6 +212,10 @@ namespace AnimBench
         /// <summary>#360: the place in the queue at the bank (PersonActivity.slot): sets the draw's start delay.</summary>
         public int Queue;
         public string Partner, Target, Label;
+        /// <summary>#370: this stretch is step <see cref="StepIndex"/> of a staged moment (MomentBeats lays its beat on the pose).</summary>
+        public AquariumCiv.Life.MomentStagePlan Plan;
+        public AquariumCiv.Life.MomentMember Member;
+        public int StepIndex = -1;
 
         public float Length => Math.Max(1e-4f, T1 - T0);
         public bool Moves => (To - From).sqrMagnitude > 1e-10f;
@@ -364,6 +371,8 @@ namespace AnimBench
         /// <summary>Bush: who picks it (a berry drops every <see cref="DropEvery"/> s while they work it, BushView).</summary>
         public string PickedBy;
         public float DropEvery = 5f;
+        /// <summary>#370: a "bundle" (the newborn) rides between this doll's hands.</summary>
+        public string Follows;
 
         static float DefaultRadius(string kind) => kind switch
         {
@@ -385,6 +394,7 @@ namespace AnimBench
             if (o["hunted"] is JsonObject h) { s.HuntedBy = Clip.Str(h, "by"); s.HuntedUntil = Clip.Num(h, "until", 0f); }
             s.Scared = Clip.Bool(o, "scared", true);
             s.PickedBy = Clip.Str(o, "pickedBy");
+            s.Follows = Clip.Str(o, "follows");
             s.DropEvery = Clip.Num(o, "dropEvery", 5f);
             if (o["arc"] is JsonObject a)
             {
