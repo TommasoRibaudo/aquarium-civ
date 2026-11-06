@@ -2,7 +2,7 @@
 // kids playing at each place (and the dancers at a wedding or the festival), splits them into groups with the planner side's
 // PlayGroups (a game each, the neighbour's never shared, 1 u apart), and runs each group's game (View/Beats/KidPlay.cs): a member's
 // cue gives PeopleView.Drive the spot, the facing, the move and the pose; the director draws each ball game's ball. The debug panel's
-// "Kids play" cheats force a game at the gathering place. B3 (#359) adds its games through KidGame.Create and the candidate filter here.
+// "Kids play" cheats force a game at the gathering place. B3 (#359): the water, the woods, hide and seek and snowballs, in KidPlayDirector.Sites.cs.
 using System.Collections.Generic;
 using AquariumCiv.Life;
 using AquariumCiv.Sim.Settle;
@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace AquariumCiv.View
 {
-    public sealed class KidPlayDirector
+    public sealed partial class KidPlayDirector
     {
         /// <summary>A place's kids must stay the same this long before their groups are split again (arrivals come in one by one).</summary>
         public const float Settle = 1.2f;
@@ -30,6 +30,8 @@ namespace AquariumCiv.View
             public ArcShot flight;
             public Vector3 lastBall;
             public float lastT = float.NegativeInfinity;
+            public PlaySite site;              // #359: the real water, tree or cover a B3 game plays with
+            public float fxT = float.NaN;      // #359: its puffs and shakes are fired up to here
         }
 
         readonly PeopleView pv;
@@ -107,16 +109,17 @@ namespace AquariumCiv.View
                 Split(planner, place, kids, viewNow, time, root);
             }
             foreach (var g in groups) for (int i = 0; i < g.game.Count; i++) if (pv.ScaleOf(g.game.KeyOf(i), out float s)) g.game.scales[i] = s;
+            FireEffects(root, time); // #359
         }
 
         static bool IsCandidate(LifePlanner planner, in PersonActivity a)
         {
             if (a.moving || a.enRoute || a.hunt != HuntPhase.None || a.tent != TentPhase.None) return false;
-            if (a.kind == ActivityKind.Play)
+            if (a.kind is ActivityKind.Play or ActivityKind.Swim or ActivityKind.Snowball) // #359: the water (Swim) and the snow are play groups too
             {
                 if (planner.StageOf(a.who) != LifeStage.Kid) return false;
-                // The water and the puddles are B3's (#359); the hill is a run up and down, as before.
-                return a.place.kind is not (PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle or PlaceKind.Nudge or PlaceKind.Hill or PlaceKind.Glass);
+                // The hill is a run up and down, as before.
+                return a.place.kind is not (PlaceKind.Stream or PlaceKind.Hill or PlaceKind.Glass);
             }
             return a.kind == ActivityKind.Dance && !a.facesGlass && planner.StageOf(a.who) is LifeStage.Kid or LifeStage.Adult or LifeStage.Elder;
         }
@@ -161,20 +164,26 @@ namespace AquariumCiv.View
             }
             bool rabbitsOk = !noRabbitsUntil.TryGetValue(place, out float until) || time > until;
             bool roomy = real.kind != PlaceKind.Home; // by a home: a ball in the yard, where the kids stand (tag would run through the houses)
+            bool snow = planner.WeatherOn(viewNow.day) == Weather.Snow; // #359
             PlayGroups.Split(kids, real.GetHashCode(), viewNow.day, viewNow.hour, px, pz,
-                rabbitsOk && roomy ? (x, z) => HerdNear(planner, viewNow, new Vector2(x, z)).HasValue : null,
+                (x, z) => SitesAt(planner, viewNow, real, new Vector2(x, z), rabbitsOk && roomy, roomy, snow), // #359: what each spot offers
                 (x, z) => { var o = Open(new Vector2(x, z), new Vector2(px, pz)); return (o.x, o.y); }, plans, roomy);
+            usedTrees.Clear();
             foreach (var p in plans)
             {
                 var centre = new Vector2(p.x, p.z);
                 if (!roomy && pv.MeanDrawn(p.members, out var mean)) centre = mean;
-                Add(MakeGroup(planner, viewNow, place, p.game, p.seed, p.members, centre, time));
+                var game = p.game;
+                var site = SiteFor(planner, game, real, ref centre, viewNow); // #359
+                if (site == null && game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek) game = PlayGroups.Fits(PlayGame.Tag, p.members.Length) ? PlayGame.Tag : PlayGame.Ball;
+                var g = MakeGroup(planner, viewNow, place, game, p.seed, p.members, centre, time, site);
+                Add(g);
             }
         }
 
-        Group MakeGroup(LifePlanner planner, ViewTime viewNow, Place place, PlayGame game, int seed, IReadOnlyList<int> members, Vector2 centre, float t0)
+        Group MakeGroup(LifePlanner planner, ViewTime viewNow, Place place, PlayGame game, int seed, IReadOnlyList<int> members, Vector2 centre, float t0, PlaySite site = null)
         {
-            var g = new Group { place = place, game = KidGame.Create(game, seed, t0, members, centre) };
+            var g = new Group { place = place, site = site, game = KidGame.Create(game, seed, t0, members, centre, site) };
             if (g.game is RabbitChaseGame chase) chase.HerdAt = _ => HerdNear(pv.Planner, pv.Now, centre);
             return g;
         }
@@ -248,9 +257,10 @@ namespace AquariumCiv.View
         /// <summary>After the dolls are placed: each ball game's ball in its holder's hands, or on its arc (from where the hands let it go).</summary>
         public void DrawBalls(Transform root, Material material, float zoom)
         {
+            DrawSnowballs(root, material, zoom); // #359
             foreach (var g in groups)
             {
-                if (!g.game.HasBall) continue;
+                if (!g.game.HasBall || g.game is SnowballGame) continue;
                 if (g.ball == null)
                 {
                     g.ball = new GameObject("Play Ball") { hideFlags = HideFlags.DontSave };
@@ -299,6 +309,7 @@ namespace AquariumCiv.View
         {
             var planner = pv.Planner;
             if (planner == null) return "no planner";
+            if (game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek) return ForceB3(game); // #359
             var gather = planner.GatherPlace;
             if (!planner.Positions.TryGetPosition(gather, out float gx, out float gz)) return "no gathering place";
             var spot = new Vector2(gx, gz);
@@ -314,7 +325,7 @@ namespace AquariumCiv.View
                 centre = r + away * 0.8f; // the kids gather near the rabbits, out of their alert radius
                 herd = r;
             }
-            int want = game switch { PlayGame.Tag => 4, PlayGame.Ball => 3, PlayGame.ChaseRabbits => 3, PlayGame.Toddle => 2, _ => 7 };
+            int want = game switch { PlayGame.Tag => 4, PlayGame.Ball => 3, PlayGame.ChaseRabbits => 3, PlayGame.Toddle => 2, PlayGame.Snowball => 3, _ => 7 };
             var who = new List<int>();
             if (game == PlayGame.Toddle)
             {

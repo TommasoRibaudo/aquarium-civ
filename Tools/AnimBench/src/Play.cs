@@ -7,6 +7,11 @@
 //   "play": { "game": "Tag", "members": ["kidA", "kidB"], "center": [0, 0], "seed": 7, "t0": 0, "ball": "ball" }
 //
 // The rabbit chase looks for the rabbits (objects of kind "rabbit") within 1.2 u of the centre at the start of each chase.
+//
+// #359 (B3): the games' real things are clip objects: "water" (a pond or puddle object; the pond's edge is found from its middle
+// out towards "center"), "tree" (the trunk), "base" and "covers" (hide and seek), "autumn"; "spray": an object id that follows each
+// splash's aimed droplets (an arc event, so `arcs` checks they leave the hands and land on the partner). A splash's or a jump's
+// contact is aimed at the water object, a slap on the trunk at the tree (both answer: "ripple"/"sway"). Wading sinks the doll.
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using AquariumCiv.Life;
@@ -23,6 +28,10 @@ namespace AnimBench
         public int Seed = 1;
         public float T0;
         public string Ball;
+        /// <summary>#359: the B3 games' real things (object ids) and the droplets' arc object.</summary>
+        public string Water, Tree, Base, Spray;
+        public readonly List<string> Covers = new List<string>();
+        public bool Autumn;
 
         public static PlaySpec Parse(JsonObject o)
         {
@@ -35,6 +44,9 @@ namespace AnimBench
             };
             if (o["center"] != null || o["centre"] != null) p.Centre = Clip.XZ(o["center"] ?? o["centre"], "play center");
             if (o["members"] is JsonArray m) foreach (var x in m) p.Members.Add(x.GetValue<string>());
+            p.Water = Clip.Str(o, "water"); p.Tree = Clip.Str(o, "tree"); p.Base = Clip.Str(o, "base"); p.Spray = Clip.Str(o, "spray"); // #359
+            p.Autumn = Clip.Bool(o, "autumn", false);
+            if (o["covers"] is JsonArray cv) foreach (var x in cv) p.Covers.Add(x.GetValue<string>());
             if (p.Members.Count == 0) throw new ClipException("play: needs members (doll ids)");
             return p;
         }
@@ -68,7 +80,7 @@ namespace AnimBench
                 playIds.Add(id);
                 keys.Add(d.Seed);
             }
-            play = KidGame.Create(ps.Game, ps.Seed, ps.T0, keys, ps.Centre) ?? throw new ClipException($"play: no game '{ps.Game}'");
+            play = KidGame.Create(ps.Game, ps.Seed, ps.T0, keys, ps.Centre, SiteOf(ps)) ?? throw new ClipException($"play: no game '{ps.Game}'");
             for (int i = 0; i < playIds.Count; i++) play.scales[i] = clip.Doll(playIds[i]).Scale;
             if (play is RabbitChaseGame chase) chase.HerdAt = _ => NearestRabbit(ps.Centre, 1.2f, out string _);
         }
@@ -124,14 +136,17 @@ namespace AnimBench
             float most = d.Walking ? Mathf.Lerp(Bench.SlowTurn, Bench.MostTurn, d.Speed / Bench.FaceFrom) : Bench.MostTurn;
             d.Yaw = dt > 0f ? d.Yaw + Mathf.Clamp(Mathf.DeltaAngle(d.Yaw, want) * (1f - Mathf.Exp(-dt * Bench.TurnRate)), -most * dt, most * dt) : want;
 
+            if (cue.sink > 0f) { pose.offset.y -= cue.sink / spec.Scale; d.Pose = pose; } // #359: wading (the ground is flat at the water's surface here)
             string target = null;
-            if (cue.hitOn >= 0) target = playIds[cue.hitOn];
+            if (cue.hitOn == KidGame.Water) target = clip.Play.Water; // #359
+            else if (cue.hitOn == KidGame.TreeHit) target = clip.Play.Tree;
+            else if (cue.hitOn >= 0) target = playIds[cue.hitOn];
             else if (cue.hitOn == KidGame.Herd) { NearestRabbit(d.Pos, 3f, out target); }
             else if (cue.hitOn == KidGame.Release) target = HitEvent.ReleaseTarget;
             var f = new DollFrame
             {
                 Pose = pose, Style = style, Pos = d.Pos, BodyYaw = d.Yaw, Yaw = d.Yaw + pose.yaw, Walking = d.Walking, Speed = d.Speed,
-                Progress = 0f, Since = cue.since, Segment = 0, Step = cue.round, Hunt = HuntPhase.None, Prop = PropKind.None, Slot = AquariumCiv.View.PropSlot.Hand,
+                Progress = 0f, Since = cue.since, Segment = 0, Step = cue.round, Hunt = HuntPhase.None, Prop = cue.stick ? PropKind.Stick : PropKind.None, Slot = AquariumCiv.View.PropSlot.Hand,
                 HitTarget = target, EndBeat = cue.endBeat, InStep = cue.inStep, Playing = true,
             };
             Bench.Place(ref f, spec.Scale);
@@ -150,12 +165,18 @@ namespace AnimBench
                 f.Act = "held";
                 return true;
             }
+            if (play is SnowballGame && b.stage == ArcStage.Gone) { f.Visible = false; f.Act = "gone"; if (o.Last.State != null) f.Pos = o.Last.Pos; return true; } // #359: not made yet / burst (where it burst)
             if (b.shotIndex != ballShot)
             {
                 // It leaves the hands where they are on this frame (the game's start is where it expects them).
                 ballShot = b.shotIndex;
                 ballFlight = b.shot;
                 if (o.Last.State != null) ballFlight.start = o.Last.Pos;
+                if (play is SnowballGame sg && t >= 0f)
+                {
+                    var sh = sg.ShotAt(b.shotIndex);
+                    ArcEvents.Add(new ArcEvent { Object = o.Spec.Id, By = playIds[sh.from], Target = playIds[sh.to], T0 = play.t0 + sh.launch, T1 = play.t0 + sh.land });
+                }
                 if (play is BallGame bg && t >= 0f)
                 {
                     var th = bg.ThrowAt(b.shotIndex);

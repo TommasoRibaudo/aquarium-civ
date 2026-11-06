@@ -68,6 +68,8 @@ namespace AquariumCiv.View
 
         /// <summary>P8 #288: where each bush was drawn (site cell -> ground point, radius), filled as the chunks build; BushView hangs the berries on them.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> BushSpots = new();
+        /// <summary>#359: where each grown tree was drawn (site cell -> ground point, crown radius), as BushSpots: the kids play round the real trunks.</summary>
+        public readonly Dictionary<int, (Vector3 pos, float r)> TreeSpots = new();
 
         /// <summary>What grows in this chunk, from the cover cell by cell (deterministic per cell, so a rebuild never shuffles it).</summary>
         void EcoNature(MeshBuilder mb, int k, List<(Vector2 p, float r)> near)
@@ -85,6 +87,7 @@ namespace AquariumCiv.View
                 var ib = Item(ec.treeCell, 9);
                 KeeperTree(ib, land.OnGround(p), ec.treeStage, ec.treeNeed, co);
                 mb.AppendFree(ib);
+                if (ec.treeStage >= 4) lock (TreeSpots) TreeSpots[ec.treeCell] = (land.OnGround(p), 0.12f + 0.06f * ec.treeStage); // #359: the Keeper's grown tree is a tree to play round
                 near.Add((p, 0.12f + 0.06f * ec.treeStage));
             }
             // Then the trees, big to small, then bushes, then the grass (which claims nothing).
@@ -108,6 +111,7 @@ namespace AquariumCiv.View
                         Pieces.Tree(ib, land.OnGround(p), s, H(c, 5) < 0.3f, co);
                         mb.AppendFree(ib);
                         near.Add((p, 0.16f * s));
+                        if (grown) lock (TreeSpots) TreeSpots[c] = (land.OnGround(p), 0.16f * s); // #359
                     }
                     else if (pass == 1 && (cv == EcoLayer.Bush || cv == EcoLayer.Seedling))
                     {

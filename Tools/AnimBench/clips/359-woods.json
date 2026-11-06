@@ -1,0 +1,17 @@
+{
+  "name": "359-woods",
+  "notes": "#359 B3.b woods games: two kids at one real grown tree (BoxView.TreeSpots in the game). View/Beats/KidPlay2.cs WoodsGame: three rounds round the trunk (r 0.14): the 'it' bounces twice, both run round on opposite sides, the runner stops dead with a hand on the trunk (Contact on the tree: HitFx tree shake + 2 leaves), both peek round it (roll 20, step out 0.045), the runner dashes back the other way and the chaser cuts round: the tag (arm out, the runner jolts back), they swap. Then a stick duel beside the tree, 0.18 u apart: raise, strike (Contact when the sticks cross: a small flash of sparks), the other blocks and jolts back; 5-6 strikes, then both sticks held high (the end beat). AnimLab: cheat 'Kids play: woods' (needs a grown tree).",
+  "duration": 27.6,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.1, 0.1], "span": 1.0 },
+  "sheet": { "from": 0.5, "to": 27.6, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6, "reactSeconds": 0.2 },
+  "play": { "game": "Woods", "members": ["kidA", "kidB"], "center": [0.0, 0.0], "seed": 77, "tree": "tree1" },
+  "objects": [
+    { "id": "tree1", "kind": "tree", "pos": [0.0, 0.0], "radius": 0.04 }
+  ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 771 },
+    { "id": "kidB", "kid": true, "seed": 772 }
+  ]
+}

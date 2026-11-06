@@ -31,6 +31,10 @@ namespace AquariumCiv.View
         public bool endBeat;
         /// <summary>Moves in step with the others on purpose (the ring dance, its cheer: exempt from P6).</summary>
         public bool inStep;
+        /// <summary>#359: the feet this far (box units) below the water's surface (wading at the pond, jumped in); 0 on the ground.</summary>
+        public float sink;
+        /// <summary>#359: a stick in the hand (the stick duel in the woods).</summary>
+        public bool stick;
     }
 
     /// <summary>The group's ball now: in someone's arms, or free (flying, bouncing, rolling, lying).</summary>
@@ -85,6 +89,8 @@ namespace AquariumCiv.View
     public abstract class KidGame
     {
         public const int NoHit = -1, Herd = -2, Release = -3;
+        /// <summary>#359: the contact lands on the water (a splash, a jump in) or on the game's tree (a hand slapped on the trunk).</summary>
+        public const int Water = -4, TreeHit = -5;
         /// <summary>The peg doll's build (PegDoll; copied: PegDoll builds meshes, so it stays out of the pure kit).</summary>
         public const float KidScale = 0.68f, BodyH = 0.13f, ShoulderX = 0.046f, ArmLen = 0.075f;
 
@@ -114,6 +120,8 @@ namespace AquariumCiv.View
         /// <summary>The beats over the cue's loop pose.</summary>
         public virtual void Pose(int i, float t, in PlayCue c, ref DollPose p) { }
         public virtual bool HasBall => false;
+        /// <summary>#359: the puffs and shakes due in (<paramref name="from"/>, <paramref name="to"/>] (the owner's clock), each once (KidPlay2.cs).</summary>
+        public virtual void Effects(float from, float to, List<PlayFx> into) { }
         public virtual BallState Ball(float t) => new BallState { holder = -1, stage = ArcStage.Gone };
 
         /// <summary>The whole pose: the cue's loop (<see cref="DollMotion.Evaluate"/>, its run cycle on the doll's own stride) and the beats on top.</summary>
@@ -127,9 +135,13 @@ namespace AquariumCiv.View
             return p;
         }
 
-        /// <summary>The game for a plan (B3 adds its cases here).</summary>
-        public static KidGame Create(PlayGame g, int seed, float t0, IReadOnlyList<int> members, Vector2 centre) => g switch
+        /// <summary>The game for a plan; the B3 games (#359) play on the real things in <paramref name="site"/>.</summary>
+        public static KidGame Create(PlayGame g, int seed, float t0, IReadOnlyList<int> members, Vector2 centre, PlaySite site = null) => g switch
         {
+            PlayGame.Splash => new SplashGame(seed, t0, members, centre, site),
+            PlayGame.Woods => new WoodsGame(seed, t0, members, centre, site),
+            PlayGame.HideSeek => new HideSeekGame(seed, t0, members, centre, site),
+            PlayGame.Snowball => new SnowballGame(seed, t0, members, centre),
             PlayGame.Tag => new TagGame(seed, t0, members, centre),
             PlayGame.Ball => new BallGame(seed, t0, members, centre),
             PlayGame.ChaseRabbits => new RabbitChaseGame(seed, t0, members, centre),

@@ -392,7 +392,7 @@ namespace AquariumCiv.View
             PairCue pairCue = default; PairEvent pairEv = null;
             bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
             if (paired) { target = pairCue.pos; face = pairCue.face; }
-            if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(target.x, target.y))
+            if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && !(playing && playCue.sink > 0f) /* #359: wading in on purpose */ && land.IsWater(target.x, target.y))
             {
                 var wet = target;
                 target = Ashore(land, target);
@@ -401,7 +401,7 @@ namespace AquariumCiv.View
             // #360: drawing water: kneel at the real water's edge, facing the water (the slot's side of it), not in the middle of the pond.
             bool drawing = a.kind == ActivityKind.FetchWater && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && a.place.kind is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
             if (drawing) target = DrawStand(land, a.place.kind, spot, target, a.slot, out face);
-            if (!hunting && !tenting && !a.moving && !drawing && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
+            if (!hunting && !tenting && !a.moving && !drawing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
@@ -461,6 +461,7 @@ namespace AquariumCiv.View
             if (hunting) (kind, slot) = HuntProp(a, kind, slot);   // #362: the spear leaves the hand; the catch is lifted up
             if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
+            if (playing && playCue.stick) { kind = PropKind.Stick; slot = PropSlot.Hand; } // #359: the stick duel
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
 
@@ -544,6 +545,7 @@ namespace AquariumCiv.View
             float s = v.scale;
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
             var ground = new Vector3(d.drawn.x, Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y), d.drawn.y);
+            if (playing && playCue.sink > 0f && KidPlay.PondLevel(out float pondY)) ground.y = pondY - playCue.sink; // #359: wading, jumped in
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             v.transform.localScale = new Vector3(dollZoomScale, pose.squash * dollZoomScale, dollZoomScale);
@@ -1028,6 +1030,7 @@ namespace AquariumCiv.View
         /// <summary>#358: the play groups (tag, ball, the rabbit chase, the ring dance) and the panel's play cheats.</summary>
         public KidPlayDirector KidPlay => kidPlay ??= new KidPlayDirector(this);
         internal Land LandForPlay => Box != null ? Box.land : null;
+        internal BoxView BoxForPlay => Box; // #359
         internal PegDollView ViewOf(int key) => dolls.TryGetValue(key, out var d) ? d.view : null;
         internal float GroundAt(float x, float z) => Box != null ? Box.SurfaceHeight(x, z) : 0f;
         /// <summary>How big a person's doll is drawn (doll scale × zoom), for where its hands are.</summary>

@@ -116,6 +116,13 @@ Without `"duration"` the clip runs the plan's length. The planner's walks there 
 objects: `"kind": "bundle", "follows": "parent1"` (the newborn between the hands) and `"kind": "mark", "follows":
 "chief1"` (the gold mark: it answers a hit aimed at it). A `fire` answers a hit aimed at it with `flare`.
 
+**Kids' play 2 (#359).** Games `Splash`, `Woods`, `HideSeek`, `Snowball` (`View/Beats/KidPlay2.cs`) take their real things from the
+clip's objects: `"water"` (a `pond` or `puddle` object: the pond's edge is found from its middle out towards `center`; put its `pos`
+y at 0, the surface), `"tree"` (the trunk), `"base"` and `"covers"` (hide and seek), `"autumn"`. `"spray"` names an object that rides
+each splash's aimed droplets: every splash is an arc event (`arcs`: they leave the hands and land on the partner). A splash or a
+jump in is a hit on the water (it answers "ripple"), a slap on the trunk a hit on the tree ("sway"); wading sinks the doll. The
+snowball is the `"ball"` object. The games' puffs and shakes are logged in the simulator (`PlayFxLog`).
+
 ## The principles (research 17 §4, without pixels)
 
 | id | passes when |

@@ -253,6 +253,7 @@ namespace AnimBench
         {
             float tc = Mathf.Max(0f, t); // during the warm-up the timeline holds its first moment, while the doll's own clock runs
             foreach (var d in dolls) StepDoll(d, t, tc, dt);
+            StepPlayFx(t); // #359
             foreach (var o in objects) StepObject(o, tc, dt, t >= 0f);
         }
 
@@ -402,10 +403,14 @@ namespace AnimBench
                 case "water": case "pond": case "puddle":
                 {
                     // #360: the ripple ring answers a dip on the contact frame (HitFx draws it in the game): act "ripple" for 0.9 s after a hit aimed at it
-                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && (dd.Last.Playing ? dd.Last.HitTarget == s.Id : dd.Spec.Segments[dd.Last.Segment].Target == s.Id)) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; } // #359: a play group's splash too
                     f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.9f ? "ripple " + o.Ripples : ""; // a new ring is a new answer
                     break;
                 }
+                case "tree": // #359: a slap on the trunk sways the crown (HitFx's tree shake) for 0.5 s
+                    if (PlayHitOn(s.Id)) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.5f ? "sway " + o.Ripples : "";
+                    break;
                 case "stash":
                 {
                     // #361: the pile squashes (0.88 -> 1, StashProps.Bump) on each hit aimed at it: act "squash n" for 0.6 s, state squash = the scale
@@ -460,6 +465,7 @@ namespace AnimBench
             }
             if (s.Arc != null) StepArc(o, ref f, t);
             StepBall(o, ref f, t); // #358
+            StepSpray(o, ref f, t); // #359
             o.Last = f;
         }
 
