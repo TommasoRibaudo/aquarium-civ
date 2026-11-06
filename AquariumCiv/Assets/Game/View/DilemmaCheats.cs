@@ -50,6 +50,7 @@ namespace AquariumCiv.View
             var sim = Sim;
             if (sim == null) return "no box";
             string why = sim.DilemmaWhyNot(id);
+            if (why == SimCore.NobodyDiedWhy) { sim.DebugKillOldest(); why = sim.DilemmaWhyNot(id); } // #346: the cheat brings the death it waits for
             if (why != null) return id + " can't be raised here: " + why;
             var d = sim.DebugRaiseDilemma(id);
             if (d == null) return id + " can't be raised here";

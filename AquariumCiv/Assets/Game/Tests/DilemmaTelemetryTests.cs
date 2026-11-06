@@ -110,6 +110,7 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(tr.Answered(log, d1, 112.5));
             Assert.IsFalse(tr.Answered(log, d1, 113));
 
+            sim.DebugKillOldest(); // #346: the one def left waits for a death
             var d2 = sim.DebugRaiseDilemma();
             Assert.IsTrue(sim.DebugLapseDilemma());
             Assert.That(tr.Observe(sim, log), Is.EqualTo(2), "d2 raised and lapsed");
