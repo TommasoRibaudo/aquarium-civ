@@ -227,6 +227,17 @@ namespace AquariumCiv.View
             return s.PlantTree(x, z) ? Refresh("the Keeper's tree planted") : "can't plant (no seed yet, or a bad spot)";
         }
 
+        // #378: press the seed on the very corner of the bed; the sim must snap it in from the glass.
+        public static string PlantAtEdge()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            float x = -AquariumCiv.Sim.Settle.Terrain.HX + 0.02f, z = AquariumCiv.Sim.Settle.Terrain.HZ - 0.02f;
+            int at = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), to = s.TreeCellFor(x, z);
+            if (!s.PlantTree(x, z)) return "can't plant at the edge (no seed yet, or a tree stands)";
+            return Refresh($"edge cell {at} -> tree cell {to}");
+        }
+
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }
 }

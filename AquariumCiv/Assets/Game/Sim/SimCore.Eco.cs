@@ -141,6 +141,10 @@ namespace AquariumCiv.Sim
 
         /// <summary>Plant the Keeper's one tree at (x, z). False when the seed isn't unlocked, a tree stands already, or the
         /// spot is in the hollow or the water.</summary>
+        /// <summary>#378: the cell the Keeper's tree would really take for a press at (x, z): the cell itself, or the nearest cell
+        /// clear of the glass and the hollow; -1 when there is none.</summary>
+        public int TreeCellFor(float x, float z) => EcologyOn ? EcoM.TreeCellFor(x, z) : -1;
+
         public bool PlantTree(float x, float z)
         {
             if (!EcologyOn) return false;
