@@ -303,7 +303,7 @@ namespace AquariumCiv.Sim
                 .OrderBy(x => x.kids).ThenBy(x => x.n.id).ToList();
             foreach (var (p, kids) in parents)
             {
-                if (!RoomForABirth && !(Alive(p.partnerId) != null && RoomForAMarriedBirth)) continue;
+                if (!RoomForABirth && !(Config.marriedBirths && Alive(p.partnerId) != null && RoomForAMarriedBirth)) continue;
                 if (!rng.Chance(BirthChance / (1 + kids))) continue;
                 // A couple's children share one family name, whichever of them is born to it (#61: full siblings came out
                 // Gale and Hearth); the line names both parents.

@@ -56,6 +56,7 @@ namespace AquariumCiv.Sim
         // count against it, up to familyRoom of them over the max, so notable families go on across generations (user,
         // 2026-10-29: "notables give birth to people that will become notables"). Below the min the crowd fills in, one
         // notable a year (SimCore.YearlyNotables).
+        public bool marriedBirths = false;      // a wedded couple has children even at the era's adult max (the game turns it on, GameClock; off keeps the seed-pinned sim as before)
         public int familyRoom = 2;              // living notables (children included) never exceed the era's max + this
         public int startNotables = 3;           // fits the camp's band
         public NotableBand campNotables = new NotableBand { min = 2, max = 4 };

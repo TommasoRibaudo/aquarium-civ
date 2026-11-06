@@ -77,6 +77,7 @@ namespace AquariumCiv.Game
             DebugNextSeed = 0; // one box only
             LoadLabSwitches();
             if (MomentsOnByDefault) config.moments = true; // #369: ceremonies wait for the Keeper and play while watched (visit-loop.md 2.1)
+            config.marriedBirths = true; // a wedded couple has children in a full camp (visit-loop tester 2026-11-06)
             if (EcologyPref) config.ecology = true; // P8: the living land, switched on from the debug panel (kept across restarts)
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, seed);

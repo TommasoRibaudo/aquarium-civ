@@ -178,6 +178,7 @@ namespace AquariumCiv.Tests
             for (int seed = 1; seed <= 10; seed++)
             {
                 var sim = WithPeople(seed, 25f, 25f, 25f, 25f);
+                sim.Config.marriedBirths = true;
                 var s = sim.State;
                 s.notables[0].partnerId = s.notables[1].id; s.notables[1].partnerId = s.notables[0].id;
                 sim.Advance(20);
