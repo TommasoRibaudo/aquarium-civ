@@ -272,6 +272,11 @@ namespace AquariumCiv.Sim
             }
         }
 
+        /// <summary>A wedded couple may have a child even while the adults fill the era's max (a full camp of four grown-ups
+        /// otherwise never sees a child, however long the couple has been wed: visit-loop tester, 2026-11-06). Everyone alive
+        /// still stays within the max + <see cref="SimConfig.familyRoom"/>, so the family room is the brake.</summary>
+        public bool RoomForAMarriedBirth => State.notables.Count(n => n.alive) < NotablesWanted.max + Config.familyRoom;
+
         void YearlyNotables()
         {
             var s = State;
@@ -298,7 +303,7 @@ namespace AquariumCiv.Sim
                 .OrderBy(x => x.kids).ThenBy(x => x.n.id).ToList();
             foreach (var (p, kids) in parents)
             {
-                if (!RoomForABirth) break;
+                if (!RoomForABirth && !(Alive(p.partnerId) != null && RoomForAMarriedBirth)) continue;
                 if (!rng.Chance(BirthChance / (1 + kids))) continue;
                 // A couple's children share one family name, whichever of them is born to it (#61: full siblings came out
                 // Gale and Hearth); the line names both parents.
