@@ -396,7 +396,7 @@ namespace AquariumCiv.View
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
-            if (playing) { target = FreeOfPeople(playCue.pos, false) ? playCue.pos : Standable(playCue.pos, playCue.pos, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
+            if (playing) { var cueAt = PlayOffLots(playCue.pos, spot); target = FreeOfPeople(cueAt, false) ? cueAt : Standable(cueAt, cueAt, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
             // #363 B7: a pair moment has them (hand over, walk together, hug): the pair's shared clock says where they stand and what they face.
             if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
             PairCue pairCue = default; PairEvent pairEv = null;
@@ -1107,6 +1107,18 @@ namespace AquariumCiv.View
 
         /// <summary>Batch 2 (#358): how many points of a ring of radius <paramref name="r"/> round <paramref name="c"/> (and its middle) fall on a
         /// building's lot, so a play group can pick open ground (its kids ran through the houses: ADay "inside a lot").</summary>
+        /// <summary>Play-lots fix: a game's target (tag's flee area, the ball's circle, a chase, a hide spot, the woods ring) never stands in a
+        /// building's lot: a target that falls in one slides to the nearest open ground (toward the group's spot first).</summary>
+        Vector2 PlayOffLots(Vector2 p, Vector2 toward)
+        {
+            var st = plannerSim != null ? plannerSim.Settlement : null;
+            if (st == null) return p;
+            bool InLot(float x, float z) { int c = SiteMap.CellAt(x, z); return c >= 0 && st.WalkCost(c) == 0; }
+            var dir = toward - p;
+            var q = OpenGround.Nudge(p.x, p.y, InLot, dir.x, dir.y);
+            return new Vector2(q.x, q.z);
+        }
+
         internal int LotHitsNear(Vector2 c, float r)
         {
             var st = plannerSim != null ? plannerSim.Settlement : null;
