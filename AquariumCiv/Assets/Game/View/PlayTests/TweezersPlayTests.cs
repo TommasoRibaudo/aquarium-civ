@@ -214,6 +214,36 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>#375 (playtest #347, "tweezers only worked when I wasn't clicking through the glass"): a weed seen through grimy glass comes out
+        /// with a tap by touch. Failed before the fix: PluckAt dropped any piece behind dirty glass (BehindDirtyGlass), the cloth's rule.</summary>
+        [UnityTest]
+        public IEnumerator Tweezers_PluckAWeedSeenThroughGrimyGlass()
+        {
+            yield return Open();
+            try
+            {
+                yield return LivingLand();
+                var sim = GameClock.Instance.Sim;
+                var hud = GameHud.Instance;
+                var care = CareView.Instance;
+                sim.AddMess(0f, 0.4f);
+                for (int i = 0; i < 40; i++) yield return null;
+                sim.AddMess(1f, 0f); // the glass fogs over
+                for (int i = 0; i < 20; i++) yield return null;
+                var weed = care.Props.AllPieces.FirstOrDefault(p => !p.leaving && p.kind == MessProps.Kind.Weed && OnScreen(ScreenOf(p)));
+                Assert.IsNotNull(weed, "a weed patch in view");
+                Assert.IsTrue(care.BehindDirtyGlass(Camera.main, weed), "precondition: the glass in front of the weed is grimy");
+                hud.SetHand(GameHud.KitTool.Tweezers);
+                yield return null;
+                float og0 = sim.State.overgrowth;
+                yield return TapAt(ScreenOf(weed));
+                Assert.Less(sim.State.overgrowth, og0 - 0.05f, "the weed came out through the glass");
+                Assert.AreEqual("weed", care.LastPluck);
+                hud.SetHand(GameHud.KitTool.None);
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator TheKitSheet_HasTheTweezers_AndPuttingThemDownEndsTheTool()
         {

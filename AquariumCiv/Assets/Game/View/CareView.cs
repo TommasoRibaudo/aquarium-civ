@@ -482,7 +482,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Is the glass between the camera and this piece still dirty (a fingertip patch where the sight line crosses it)?</summary>
-        bool BehindDirtyGlass(Camera c, MessProps.Piece piece)
+        public bool BehindDirtyGlass(Camera c, MessProps.Piece piece)
         {
             var from = c.transform.position;
             var to = piece.Center;
@@ -601,7 +601,8 @@ namespace AquariumCiv.View
             var c = Cam;
             if (c == null || sim == null || !sim.EcologyOn) return false;
             var piece = props.PickUnder(c, screenPos, TapReachPixels * 1.2f);
-            if (piece != null && BehindDirtyGlass(c, piece)) piece = null;
+            // #375 (playtest #347): the tweezers reach through the glass, grimy or not. BehindDirtyGlass is the cloth's rule (Classify); here it dropped
+            // every weed, tuft and vine seen through a fogged patch, so a pluck only worked on clean glass.
             bool onLand = LandPoint(screenPos, out var at);
             if (piece != null && onLand)
             {
