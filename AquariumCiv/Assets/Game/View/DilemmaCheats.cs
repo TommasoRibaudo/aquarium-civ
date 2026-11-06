@@ -148,6 +148,73 @@ namespace AquariumCiv.View
 
         // ---------------- the panel section ----------------
         /// <summary>Draws the "Dilemmas (P7)" section (IMGUI, inside <see cref="SimDebugPanel"/>). Returns the last action's line, or null.</summary>
+        // ---- #368: the choice fix (raised while watching or on open, paced by hours, "Let them decide") ----
+        /// <summary>#368: raise whichever choice holds now, ignoring the 3-hour gap and the schedule; opens the stack on its card.</summary>
+        public static string RaiseChoiceNow()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseDilemma();
+            if (d == null) return "no choice holds in this box now";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            return Saved($"raised {d.defId} (#{d.id}); {CardStackView.DebugOpenEntry(d.entryId)}");
+        }
+
+        /// <summary>#368: forget the gap: the next watched month raises a choice.</summary>
+        public static string SkipChoiceGap()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            sim.DebugSkipDilemmaGap();
+            return Saved("choice gap skipped: the next watched month raises one (a wish or the first run may hold it)");
+        }
+
+        /// <summary>#368: visits counted, the open choice's visits, hours since the last raise.</summary>
+        public static string ChoiceVisitStatus() => Sim == null ? "no box" : Sim.DilemmaVisitStatus();
+
+        /// <summary>#368: the player was away <paramref name="hours"/> and opens the app: a catch-up, then a visit.</summary>
+        public static string OpenAfter(double hours)
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            bool open = sim.DebugOpenAfter(hours);
+            return Saved($"opened after {hours:0.#} h away; {(open ? "a choice is waiting" : "no choice waiting")}; {sim.DilemmaVisitStatus()}");
+        }
+
+        /// <summary>#368: "Let them decide" on the open choice, on the Card path (through the card when it is up).</summary>
+        public static string LetThemDecide()
+        {
+            var sim = Sim;
+            var d = sim?.OpenDilemma;
+            if (d == null) return "no open dilemma";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            var m = CardStackView.Instance != null ? CardStackView.Instance.Model : null;
+            bool onCard = m != null && m.Face != null && m.Face.kind == CardKind.Dilemma && m.Shown != null && m.Shown.lead.id == d.entryId;
+            bool ok = onCard ? m.LetThemDecide() : sim.LetThemDecide(d.id, DilemmaPath.Card);
+            if (!ok) return "could not hand it back";
+            if (!onCard) GameClock.DilemmaAnswered(d);
+            return Saved($"let them decide {d.defId}: they chose option {d.option + 1}");
+        }
+
+        static void GuiChoiceFix(ref string last)
+        {
+            GUILayout.Label("Choice pacing (#368):");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Raise a choice now")) last = RaiseChoiceNow();
+            if (GUILayout.Button("Skip choice gap")) last = SkipChoiceGap();
+            if (GUILayout.Button("Let them decide")) last = LetThemDecide();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Open after:", GUILayout.Width(70));
+            if (GUILayout.Button("5 min")) last = OpenAfter(5 / 60.0);
+            if (GUILayout.Button("1 h")) last = OpenAfter(1);
+            if (GUILayout.Button("4 h")) last = OpenAfter(4);
+            if (GUILayout.Button("12 h")) last = OpenAfter(12);
+            GUILayout.EndHorizontal();
+            GUILayout.Label(ChoiceVisitStatus());
+        }
+
         public static string Gui()
         {
             string last = null;
@@ -180,6 +247,7 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Leave")) last = LeaveBox();
             GUILayout.EndHorizontal();
             GUILayout.Label(BoxStatus());
+            GuiChoiceFix(ref last);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Fire next callback")) last = FireCallback();
             if (GUILayout.Button("Report")) last = Report();

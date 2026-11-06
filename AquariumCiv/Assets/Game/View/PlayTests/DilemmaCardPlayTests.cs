@@ -153,7 +153,6 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return Watching(1170, 2532);
             Assert.AreEqual(GameClock.LabSpeed, GameClock.Instance.speed, "the lab runs at x60");
-            Assert.AreEqual(SimCore.DilemmaLabLapseMonths, Sim.DilemmaLapseAfter, "the lab lapses after 48 months");
             var d = Sim.DebugRaiseDilemma();
             Assert.IsNotNull(d, "a dilemma holds in this box");
             float t0 = Time.realtimeSinceStartup;
@@ -179,7 +178,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(1.5f);
             Assert.AreEqual(CardStackMode.Hidden, Model.Mode, "no second peek for the same dilemma");
             DilemmaCheats.Lab(false);
-            Assert.AreEqual(SimCore.DilemmaLapseMonths, Sim.DilemmaLapseAfter, "normal play lapses after 24 months");
+            Assert.AreEqual(DilemmaState.Open, d.state, "#368: closed unanswered, it stays open: nothing lapses by the clock");
             AssertNoErrors("live raise");
         }
 

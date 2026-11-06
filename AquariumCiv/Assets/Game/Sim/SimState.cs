@@ -397,7 +397,11 @@ namespace AquariumCiv.Sim
         // Keeper's dilemmas (SimCore.Dilemmas.cs, #220). All default-safe: an old save loads with none.
         public List<Dilemma> dilemmas = new();
         public int dilemmaNextId = 1;
-        public long dilemmaNextMonth = -1;   // the next one is due from this month (-1 = not scheduled yet)
+        public double dilemmaNextHours = -1; // #368: the next big one is due from this clock hour (-1 = not scheduled yet)
+        public double dilemmaLastRaiseHours = -1e9; // #368: the clock hour the last choice was raised at (nothing yet: very long ago)
+        public double clockHours;            // #368: real hours the box has run: live play adds what Advance gets, a catch-up adds the real hours away
+        public double lastSeenHours;         // #368: the clock hour the player last watched (a visit's start, then every live step)
+        public int visitCount;               // #368: visits so far (an open after >= 15 minutes away; SimCore.BeginVisit)
         public List<DilemmaLean> dilemmaLeans = new(); // the leans an answer left, 36 months each
         public List<DilemmaCallback> dilemmaCallbacks = new(); // scheduled callbacks (SimCore.DilemmaCallbacks.cs, #221)
         public List<string> customs = new(); // the box's customs, set by answers ("burial:stone"); read by the world and the book

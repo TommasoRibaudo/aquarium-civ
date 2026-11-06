@@ -62,15 +62,27 @@ namespace AquariumCiv.Sim
         public int Advance(double realHours)
         {
             if (realHours <= 0) return 0;
+            double simStart = State.simHours, clockStart = State.clockHours;
             State.simHours += realHours;
             long target = (long)Math.Floor(State.simHours / Config.StepHours + 1e-7);
             int steps = 0;
-            while (State.month < target) { Step(); steps++; }
+            // #368: the real-hours clock moves step by step, so one long Advance equals many short ones. Watched: a sim hour is a real hour.
+            // Catching up: a sim hour is catchClockScale real hours, so a choice that falls due while the player is away is due in the
+            // steps after it (wishes stop starting, SimCore.Dilemmas.cs); CatchUp sets the clock to the exact total afterwards.
+            bool watched = !CatchingUp;
+            double scale = watched ? 1.0 : catchClockScale, span = realHours * scale;
+            while (State.month < target)
+            {
+                State.clockHours = clockStart + Math.Clamp(((State.month + 1) * Config.StepHours - simStart) * scale, 0.0, span);
+                Step(); steps++;
+            }
+            if (watched) { State.clockHours = clockStart + realHours; State.lastSeenHours = State.clockHours; }
             return steps;
         }
 
         /// <summary>True while <see cref="CatchUp"/> runs the months the player was away.</summary>
         public bool CatchingUp { get; private set; }
+        double catchClockScale = 1.0; // real hours per sim hour of the catch-up in progress (#368)
 
         /// <summary>
         /// Offline catch-up (game definition v0.2): the civ lives the first <see cref="SimConfig.fullSpeedHours"/> at full
@@ -81,8 +93,11 @@ namespace AquariumCiv.Sim
         {
             var r = new CatchUpResult { realHours = Math.Max(0, realHoursAway), simHours = Config.OfflineSimHours(realHoursAway) };
             CatchingUp = true; // no relics are found while the player is away (SimCore.Relics.cs)
+            double clockStart = State.clockHours;
+            catchClockScale = r.simHours > 1e-9 ? r.realHours / r.simHours : 1.0;
             try { r.months = Advance(r.simHours); }
-            finally { CatchingUp = false; }
+            finally { CatchingUp = false; catchClockScale = 1.0; }
+            State.clockHours = clockStart + r.realHours; // #368: the real hours away, whatever pace the civ lived them at (choices are paced in these)
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
             return r;
