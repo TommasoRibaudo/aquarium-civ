@@ -539,9 +539,10 @@ namespace AquariumCiv.View
         public readonly float degrees, hz, tau, reach, drop;
         public ShakeSpec(float degrees, float hz, float tau, float reach, float drop = 0f) { this.degrees = degrees; this.hz = hz; this.tau = tau; this.reach = reach; this.drop = drop; }
 
-        /// <summary>Bush: sway 7°, 6 Hz, τ 0.18 s (about 0.5 s visible). Tree crown: 4°, 4 Hz, τ 0.3 s. Frame and stone: drop 0.012 u, 8 Hz, τ 0.12 s.</summary>
-        public static readonly ShakeSpec Bush = new(7f, 6f, 0.18f, 0.12f);
-        public static readonly ShakeSpec Tree = new(4f, 4f, 0.3f, 0.30f);
+        /// <summary>Bush: sway 11°, 6 Hz, τ 0.18 s (about 0.5 s visible). Tree crown: 6°, 4 Hz, τ 0.3 s (batch 1: 7° and 4° moved a berry bush
+        /// 2-3 px on a 1179x2556 screen at zoom 0.7: it didn't read). Frame and stone: drop 0.012 u, 8 Hz, τ 0.12 s.</summary>
+        public static readonly ShakeSpec Bush = new(11f, 6f, 0.18f, 0.12f);
+        public static readonly ShakeSpec Tree = new(6f, 4f, 0.3f, 0.30f);
         public static readonly ShakeSpec Jolt = new(0f, 8f, 0.12f, 0.2f, 0.012f);
 
         public static ShakeSpec Of(ShakeTarget t) => t switch { ShakeTarget.Bush => Bush, ShakeTarget.Tree => Tree, _ => Jolt };

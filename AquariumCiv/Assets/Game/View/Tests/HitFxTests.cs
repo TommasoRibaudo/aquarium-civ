@@ -109,7 +109,7 @@ namespace AquariumCiv.View.Tests
         public void ShakeDecay_StartsAtZero_Peaks_AndDiesBelow6Percent()
         {
             var bush = ShakeSpec.Bush;
-            Assert.AreEqual(7f, bush.degrees); Assert.AreEqual(6f, bush.hz); Assert.AreEqual(0.18f, bush.tau);
+            Assert.AreEqual(11f, bush.degrees); Assert.AreEqual(6f, bush.hz); Assert.AreEqual(0.18f, bush.tau);
             Assert.AreEqual(0f, ShakeMath.Wobble(bush, 0f));
             Assert.AreEqual(0f, ShakeMath.Wobble(bush, -1f), "nothing before the hit");
             float peak = 0f;
