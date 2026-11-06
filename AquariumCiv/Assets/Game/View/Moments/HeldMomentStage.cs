@@ -181,7 +181,7 @@ namespace AquariumCiv.View
         /// by side with a flower, a parent holding the baby up, the new leader speaking at the seat, the people at a callback's
         /// thing. A line with no echo (a festival is box-wide, a line older than the echo's limit) can't be staged: null (a card).
         /// C3 (#370) replaces these with the staged scenes.</summary>
-        static MomentStaging Placeholder(HeldMoment m, SimCore sim)
+        internal static MomentStaging Placeholder(HeldMoment m, SimCore sim)
         {
             var pv = PeopleView.Find();
             var planner = pv != null ? pv.Planner : null;

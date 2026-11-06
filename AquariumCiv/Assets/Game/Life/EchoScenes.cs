@@ -31,6 +31,8 @@ namespace AquariumCiv.Life
         Remembering,
         /// <summary>The Keeper's shaping (<see cref="EchoScene.nudgeId"/>) when the answer has no building.</summary>
         Shaping,
+        /// <summary>#371: the thing a choice left in the box (<see cref="EchoScene.propId"/>).</summary>
+        Prop,
     }
 
     /// <summary>Why a "Show me" has no echo (fly-to only, chronicle-and-history §2.5).</summary>
@@ -71,7 +73,7 @@ namespace AquariumCiv.Life
         /// <summary>The lead (<see cref="RelicCast.Owner"/>) and the other one (<see cref="RelicCast.Second"/>); -1 = none.</summary>
         public int leadId = -1, otherId = -1;
         public EchoWhere where;
-        public int buildingId = -1, nudgeId = -1;
+        public int buildingId = -1, nudgeId = -1, propId = -1;
         public string relicId = "";
         /// <summary>The thing next to its maker (the five-wheeled barrow, the pink roof, the turnip): the story kind, for the
         /// view to set a prop by the lead. "" = none.</summary>
@@ -115,7 +117,8 @@ namespace AquariumCiv.Life
             { sc.skip = EchoSkip.BoxWide; return sc; }
             if (kind == "retired" || kind == "job_change" || kind == "job_fill" || kind == "job_era" || kind == "coming_of_age" || kind == "role_stepdown")
             { sc.skip = EchoSkip.NoStory; return sc; }
-            if (sim.State.month - e.month > MaxAgeMonths) { sc.skip = EchoSkip.TooOld; return sc; }
+            // #371: a callback moment is staged when the Keeper watches, however long it was held (the moment queue ages it out).
+            if (kind != SimCore.CallbackKind && sim.State.month - e.month > MaxAgeMonths) { sc.skip = EchoSkip.TooOld; return sc; }
 
             var d = new RelicMomentDef { relicId = e.relicId ?? "", seconds = Math.Max(MinSeconds, Math.Min(MaxSeconds, seconds)), standIns = false, maxKids = 0, maxGrown = 0, maxQueue = 0 };
             int A = AliveId(sim, e.notableId), B = AliveId(sim, e.otherNotableId);
@@ -194,6 +197,24 @@ namespace AquariumCiv.Life
                     if (app >= 0) Beat(d, RelicCast.Second, 0f, 1f, ActivityKind.WatchWork, RelicWhere.Spot);
                     break;
                 }
+                case SimCore.CallbackKind:
+                {
+                    // #371: a choice comes back. The person it is about points at the thing the choice left; neighbours watch, then
+                    // clap. The line said is the callback's own ("Because the Keeper chose ...").
+                    sc.kind = SceneKind.Chat; sc.otherId = -1;
+                    d.seconds = MaxSeconds; // a long line to read
+                    var cp = sim.ConsequencePropOfEntry(e);
+                    if (cp != null && cp.placed) { sc.where = EchoWhere.Prop; sc.propId = cp.id; }
+                    else if (e.buildingId >= 0 && sim.State.buildings.Exists(b => b.id == e.buildingId)) { sc.where = EchoWhere.Building; sc.buildingId = e.buildingId; }
+                    else sc.where = EchoWhere.Fire;
+                    Beat(d, RelicCast.Owner, 0f, 0.45f, ActivityKind.Point, RelicWhere.Spot);
+                    Beat(d, RelicCast.Owner, 0.45f, 1f, ActivityKind.HoldUp, RelicWhere.Spot, faces: true);
+                    d.maxGrown = 3;
+                    Beat(d, RelicCast.Grown, 0f, 0.5f, ActivityKind.Watch, RelicWhere.Spot);
+                    Beat(d, RelicCast.Grown, 0.5f, 1f, ActivityKind.Clap, RelicWhere.Spot);
+                    sc.line = e.text; sc.lineSpeakerId = -1; sc.lineAt = 0.1f;
+                    return Done(sc, d, e, true);
+                }
                 case "keeper":
                 {
                     // The worker at the new field or building, with a tool raised (to the Keeper).
@@ -237,10 +258,11 @@ namespace AquariumCiv.Life
             return Done(sc, d, e);
         }
 
-        static EchoScene Done(EchoScene sc, RelicMomentDef d, ChronicleEntry e)
+        static EchoScene Done(EchoScene sc, RelicMomentDef d, ChronicleEntry e, bool keepLine = false)
         {
             if (d.beats.Count == 0) { sc.skip = EchoSkip.PeopleGone; return sc; }
             sc.def = d;
+            if (keepLine) return sc;
             if (!string.IsNullOrEmpty(e.quote)) { sc.line = e.quote; sc.lineSpeakerId = e.speakerId; }
             return sc;
         }

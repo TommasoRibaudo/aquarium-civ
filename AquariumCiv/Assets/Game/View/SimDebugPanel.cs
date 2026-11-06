@@ -244,6 +244,15 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #369 ----
+            // ---- #371: the things a choice leaves in the box ----
+            if (Section("Choices leave things (#371)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Place every consequence prop")) last = ConsequenceCheats.PlaceEvery();
+                if (GUILayout.Button("Play a callback moment now")) last = ConsequenceCheats.PlayCallbackNow();
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #371 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

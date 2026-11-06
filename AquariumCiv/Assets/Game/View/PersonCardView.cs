@@ -956,7 +956,7 @@ namespace AquariumCiv.View
         static string Signature(PersonCard c)
         {
             var sb = new StringBuilder();
-            sb.Append(c.id).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.pinned)
+            sb.Append(c.id).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.keeperLine).Append('|').Append(c.pinned)
               .Append('|').Append(c.wish?.id ?? -1).Append('|').Append(c.relics.Count).Append('|').Append(c.quote?.text);
             foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors)) sb.Append('|').Append(t.otherId).Append(t.kind).Append(t.otherAlive);
             foreach (var st in c.recentStories) sb.Append('|').Append(st.entryId);
@@ -1000,6 +1000,12 @@ namespace AquariumCiv.View
                     note.Add("Remembered by " + who + ".");
                 }
                 if (note.Count > 0) box.Add(Note(string.Join(" ", note)));
+            }
+            if (!string.IsNullOrEmpty(c.keeperLine)) // #371: the Keeper's hand on this person
+            {
+                var k = Note(c.keeperLine);
+                k.name = "person-card-keeper";
+                body.Add(k);
             }
             if (c.quote != null && !string.IsNullOrEmpty(c.quote.text))
             {

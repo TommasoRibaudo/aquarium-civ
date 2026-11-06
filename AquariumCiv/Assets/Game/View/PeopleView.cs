@@ -575,6 +575,7 @@ namespace AquariumCiv.View
                     return p;
                 }
                 case PlaceKind.Relic:
+                case PlaceKind.Prop: // #371: round the thing a choice left, the same ring
                 {
                     // #92: round the relic (the crumb, the doll's post, the tripod, the vines), a little back from it.
                     float r = 0.2f + Mathf.Max(0, count - 6) * 0.02f;

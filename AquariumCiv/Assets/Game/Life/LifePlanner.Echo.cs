@@ -126,6 +126,7 @@ namespace AquariumCiv.Life
                     p = b != null ? PlaceOf(b) : Place.None;
                     break;
                 case EchoWhere.Relic: p = RelicPlace(echo.relicId); break;
+                case EchoWhere.Prop: p = Place.Land(PlaceKind.Prop, echo.propId); break; // #371
                 case EchoWhere.Home: p = lead.home; break;
                 case EchoWhere.Seat: p = SeatOfHolder(lead.key); break;
                 case EchoWhere.Bench: p = wellB != null ? PlaceOf(wellB) : gather; break;
