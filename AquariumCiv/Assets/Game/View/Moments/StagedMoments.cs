@@ -39,6 +39,7 @@ namespace AquariumCiv.View
             public bool over;
             public readonly HashSet<int> marked = new HashSet<int>();
             public List<RitualBubble> bubbles;
+            public StagedSign sign; // t1-moments: the wedding's arch and petals
         }
 
         static readonly List<Live> lives = new List<Live>();
@@ -48,6 +49,20 @@ namespace AquariumCiv.View
         /// <summary>The last scene started (tests, the panel).</summary>
         public static HeldMomentScene LastScene { get; private set; }
         public static string LastWhy { get; private set; } = "";
+        /// <summary>The held moment whose scene is on stage now (null = none). The people's bubbles say its own lines.</summary>
+        public static HeldMoment PlayingMoment(SimCore sim)
+        {
+            if (sim == null) return null;
+            for (int i = lives.Count - 1; i >= 0; i--)
+            {
+                var l = lives[i];
+                if (l.scene == null || l.over || !ReferenceEquals(l.sim, sim)) continue;
+                var m = sim.FindMoment(l.moment.id);
+                if (m != null && m.state == HeldMomentState.Playing) return m;
+            }
+            return null;
+        }
+
         /// <summary>The scenes playing now.</summary>
         public static int Playing { get { int n = 0; foreach (var l in lives) if (!l.over && l.scene != null) n++; return n; } }
 
@@ -89,6 +104,13 @@ namespace AquariumCiv.View
             live.scene = live.planner.StageHeldMoment(live.moment, live.pv.Now);
             if (live.scene == null) { LastWhy = live.planner.LastHeldWhyNot; return false; }
             LastScene = live.scene;
+            if (live.moment.kind == MomentKind.Wedding)
+            {
+                var sc = live.scene;
+                var pv = live.pv;
+                live.sign = StagedSign.Wedding(UnityEngine.Object.FindAnyObjectByType<BoxView>(), sc.plan,
+                    () => pv == null ? 0f : pv.Now.day != sc.day ? 999f : LifeClock.RealSecondsBetween(sc.start, pv.Now.hour)); // t1-moments: a wedding looks like one
+            }
             LastWhy = null;
             Started++;
             return true;
@@ -123,6 +145,11 @@ namespace AquariumCiv.View
         {
             if (live.over) return;
             live.over = true;
+            if (live.sign != null)
+            {
+                if (Application.isPlaying) UnityEngine.Object.Destroy(live.sign.gameObject); else UnityEngine.Object.DestroyImmediate(live.sign.gameObject);
+                live.sign = null;
+            }
             if (live.scene != null)
             {
                 live.planner?.EndHeldMoment(live.scene);

@@ -368,5 +368,42 @@ namespace AquariumCiv.View.ShowMe.Tests
             StringAssert.DoesNotContain("the next one", MomentLibrary.NotifyQuestion);
             StringAssert.Contains("people", MomentLibrary.NotifyQuestion);
         }
+
+        // ----------------------------------------------------------------------------------------------- t1-moments: a staged moment's own words
+
+        [Test]
+        public void EachStagedMomentHasItsOwnShortClosedWorldLines()
+        {
+            var sim = ShowMeTests.SimIn(Era.Village, 7);
+            foreach (var kind in new[] { MomentKind.Festival, MomentKind.Wedding, MomentKind.Newborn, MomentKind.NewLeader })
+            {
+                var lines = PeopleVoice.MomentLines(kind, 1, 2);
+                Assert.GreaterOrEqual(lines.Count, 3, kind + " has a few lines");
+                foreach (var (text, _) in lines)
+                {
+                    Assert.IsTrue(PeopleVoice.Allowed(text, sim), text);
+                    Assert.LessOrEqual(PeopleVoice.Wrap(text).Count, 2, "short: " + text);
+                    StringAssert.DoesNotContain("getting up", text);
+                }
+            }
+            CollectionAssert.IsEmpty(PeopleVoice.MomentLines(MomentKind.Callback, 1, 2), "a callback has its own line");
+        }
+
+        [Test]
+        public void WhileAMomentPlaysTheBubblesAreItsLinesNotTheStories()
+        {
+            var sim = ShowMeTests.SimIn(Era.Village, 7);
+            sim.Chronicle("lazy", "Somebody rested.", 0.9f, 1);
+            var wb = new WorldBubbles(sim, new BubbleRules { warmUpSeconds = 0f })
+            {
+                HeldNow = new HeldMoment { id = 77, kind = MomentKind.Festival, personA = -1, personB = -1 },
+            };
+            var texts = PeopleVoice.MomentLines(MomentKind.Festival, -1, -1).Select(l => l.text).ToList();
+            var got = new List<WorldBubble>();
+            for (int i = 0; i < 12; i++) { var b = wb.Next(100 + i * 10); if (b != null) got.Add(b); }
+            Assert.GreaterOrEqual(got.Count, 3);
+            foreach (var b in got) CollectionAssert.Contains(texts, b.text);
+            Assert.AreEqual(got.Count, got.Select(b => b.text).Distinct().Count(), "no line twice in a moment");
+        }
     }
 }

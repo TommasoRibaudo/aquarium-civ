@@ -324,6 +324,29 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("building over");
         }
 
+        /// <summary>t1-moments (visit-loop 2.4, the fail item of tester run 1): a choice held for the next open is staged in the box
+        /// first, by itself, with no Show me; the card peek is still there.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AHeldChoiceIsStagedInTheBoxOnTheOpenWithoutShowMe()
+        {
+            yield return OpenBox(1170, 2532);
+            Dilemma d = null;
+            for (int i = 0; i < 4 && d == null; i++)
+            {
+                d = Sim.DebugRaiseDilemma("camp_fire");
+                if (d == null) { SimLayoutSource.DebugSkipYears(1f); yield return null; }
+            }
+            Assert.IsNotNull(d);
+            GameClock.DebugAway(24); // away a day and back: an open with the choice waiting
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting, 90f);
+            Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, "staged in the box on the open, no Show me tapped");
+            Assert.IsFalse(Sim.ChoiceStageDue, "once per open");
+            Assert.IsNotNull(Choice.Stage);
+            Assert.AreEqual(d.id, Sim.OpenDilemma?.id, "still the same open choice, with its card");
+            yield return Shot("t1-held-choice-staged-on-open");
+            AssertNoErrors("held choice staged");
+        }
+
         public override void TearDown()
         {
             ChoiceSceneView.DebugWatch = false;

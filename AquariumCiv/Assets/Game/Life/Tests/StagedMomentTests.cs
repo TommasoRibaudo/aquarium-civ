@@ -302,5 +302,21 @@ namespace AquariumCiv.Life.Tests
             Assert.Greater(Scenes(false), 0, "without the queue, the wedding plays as the month's scene");
             Assert.AreEqual(0, Scenes(true), "held for the Keeper: it plays once, staged, not also as the month's scene");
         }
+
+        [Test]
+        public void TheWeddingSaysSoWithHeartsOverTheCoupleAndTheNewbornOverTheParent()
+        {
+            // t1-moments (tester run 1: nothing said "wedding" in three seconds): a heart over each of the couple from the walk to the ring.
+            var wed = new HeldMomentScene { kind = MomentKind.Wedding, plan = Build(MomentKind.Wedding), day = 0, start = 9f, end = 10f };
+            var couple = wed.plan.members.Where(m => m.role == MomentRole.Couple).Select(m => PersonRef.Notable(m.key)).ToList();
+            var hearts = RitualBubbles.ForHeldMoment(wed).Where(b => b.symbol == RitualSymbol.Heart).ToList();
+            Assert.AreEqual(2, couple.Count);
+            foreach (var who in couple) Assert.IsTrue(hearts.Any(b => b.who.Equals(who)), "a heart over each of the couple");
+            Assert.IsFalse(hearts.Any(b => !couple.Contains(b.who)), "only the couple");
+
+            var born = new HeldMomentScene { kind = MomentKind.Newborn, plan = Build(MomentKind.Newborn), day = 0, start = 9f, end = 10f };
+            var parent = PersonRef.Notable(born.plan.carrierKey);
+            Assert.IsTrue(RitualBubbles.ForHeldMoment(born).Any(b => b.symbol == RitualSymbol.Heart && b.who.Equals(parent)), "the parent lifting the baby shows a heart");
+        }
     }
 }

@@ -53,6 +53,11 @@ namespace AquariumCiv.View.ShowMe
         readonly Dictionary<int, double> lastBy = new Dictionary<int, double>();
         double last = double.NegativeInfinity, started = double.NaN;
 
+        /// <summary>t1-moments: a staged moment is playing in the box (null = none). While it does, the people say its own few lines
+        /// (<see cref="PeopleVoice.MomentLines"/>), nothing from the stories: a festival is not the time for "I'm thinking about
+        /// getting up".</summary>
+        public HeldMoment HeldNow { get; set; }
+
         public WorldBubbles(SimCore sim, BubbleRules rules = null)
         {
             this.sim = sim ?? throw new ArgumentNullException(nameof(sim));
@@ -83,7 +88,7 @@ namespace AquariumCiv.View.ShowMe
             if (double.IsNaN(started)) started = now; // the session starts with the first moment the people may speak
             if (now - started < rules.warmUpSeconds) return null;
             double gap = now - last;
-            bool momentReady = moment != null && gap >= rules.momentGapSeconds;
+            bool momentReady = (moment != null || HeldNow != null) && gap >= rules.momentGapSeconds;
             if (gap < rules.minGapSeconds && !momentReady) return null;
             foreach (var b in Candidates(moment, visible))
             {
@@ -177,6 +182,13 @@ namespace AquariumCiv.View.ShowMe
 
         IEnumerable<WorldBubble> All(string moment)
         {
+            if (HeldNow != null)
+            {
+                var lines = PeopleVoice.MomentLines(HeldNow.kind, HeldNow.personA, HeldNow.personB);
+                for (int i = 0; i < lines.Count; i++)
+                    yield return Make($"held:{HeldNow.id}:{i}", lines[i].text, lines[i].speaker, BubbleSource.Moment, -1, 0);
+                yield break;
+            }
             // 1. What's happening now, in this stage's words.
             if (!string.IsNullOrEmpty(moment) && moment != PeopleMoment.Any)
             {

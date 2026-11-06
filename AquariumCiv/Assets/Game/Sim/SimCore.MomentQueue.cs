@@ -172,7 +172,11 @@ namespace AquariumCiv.Sim
                 if (why != MomentCardReason.None) CardMoment(m, why);
             }
             TrimMomentQueue();
-            list.RemoveAll(m => (m.state == HeldMomentState.Played || m.state == HeldMomentState.Carded) && s.month - m.endMonth > MomentRules.KeepFinishedMonths);
+            // A played ceremony keeps hiding its line until the card ledger is past it: forgotten earlier, an unread line would come back
+            // as a card for something that was watched live (or, forgotten after it waited, for one never shown).
+            var ledger = s.cards;
+            list.RemoveAll(m => (m.state == HeldMomentState.Played || m.state == HeldMomentState.Carded) && s.month - m.endMonth > MomentRules.KeepFinishedMonths
+                                && (m.state == HeldMomentState.Carded || ledger == null || m.month <= ledger.since));
         }
 
         // ---------- the director's clock ----------

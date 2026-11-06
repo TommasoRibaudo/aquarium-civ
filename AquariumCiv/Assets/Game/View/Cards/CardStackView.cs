@@ -80,6 +80,8 @@ namespace AquariumCiv.View
         public const string ChoiceNote = "Touch one.";
         /// <summary>The peek or the stack is up: prompts over the world wait (MomentPlayer.PromptsBlocked).</summary>
         public bool Showing => model != null && model.Mode != CardStackMode.Hidden;
+        /// <summary>The stack itself (not the peek) is open over the box: nothing is staged under it (visit-loop 2.4).</summary>
+        public bool StackOpen => model != null && model.Mode == CardStackMode.Open;
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.ActiveSim : null;
 
