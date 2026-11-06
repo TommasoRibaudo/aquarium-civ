@@ -126,9 +126,10 @@ namespace AquariumCiv.Sim
             MomentBoxSize.Tribe => 2, MomentBoxSize.Camp => 3, MomentBoxSize.Village => 4, _ => 5,
         };
 
-        /// <summary>A kind whose line stays a return card while its ceremony waits or after it played. A callback does, until C4
-        /// (#222) stages it with its credit ("Because the Keeper chose ..."): today only its card says whose choice came back.</summary>
-        public static bool AlsoACard(MomentKind kind) => kind == MomentKind.Callback;
+        /// <summary>A kind whose line stays a return card while its ceremony waits or after it played. None does now: #371 stages a
+        /// callback as a live moment (the people go to the thing the choice left, the "Because the Keeper chose ..." line is its
+        /// caption), so its card appears only if the moment becomes a card (held too long, queue full, could not be staged).</summary>
+        public static bool AlsoACard(MomentKind kind) => false;
 
         public static float KindBonus(MomentKind kind) => kind == MomentKind.Callback ? CallbackBonus : kind == MomentKind.NewLeader ? NewLeaderBonus : 0f;
 

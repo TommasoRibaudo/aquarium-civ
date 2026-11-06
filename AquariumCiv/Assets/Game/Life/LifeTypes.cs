@@ -35,6 +35,8 @@ namespace AquariumCiv.Life
         Indoors,
         /// <summary>P8 #266: stamping about in a mist puddle (a kid), and kneeling at one to wash hands or cup the water. Appended so the older values keep their numbers.</summary>
         Stomp, WashHands,
+        /// <summary>#361: at the stash pile, tipping the carried basket onto it (a short stay after the carry). Appended so the older values keep their numbers.</summary>
+        TipLoad,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -94,6 +96,8 @@ namespace AquariumCiv.Life
         BushCell,
         /// <summary>P8 #266: a mist puddle (index = the site cell).</summary>
         Puddle,
+        /// <summary>#371: a thing a choice left in the box (index = <see cref="Sim.ConsequenceProp.id"/>); where a callback's people go. Appended last so the saved ints stay.</summary>
+        Prop,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -274,7 +278,7 @@ namespace AquariumCiv.Life
                     return ActivityGroup.Rest;
                 case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;
-                case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel:
+                case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;
                 case ActivityKind.Walk:
                     return ActivityGroup.Walk;

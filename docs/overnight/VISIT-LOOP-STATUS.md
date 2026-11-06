@@ -48,3 +48,8 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 11:30 · B6 #362 merged (962f82c; conflicts with B4 in PeopleView/AnimBench resolved keeping both); AnimBench.Tests 110 pass / 2 skips; water, pick, hunt-catch, hunt-miss all principle-green; hunt-catch sheet looked at (throw → stick in rabbit → pick up → hold up → kid joins → walk home) · — · 0 ·
 - 2026-11-06 11:30 · started C3 #370 (Opus), C4 #371, C7 #374, B5 follow-up 361b; B2 #358 still running
 - 2026-11-06 11:32 · Editor batch 1 (Opus worker, vl/batch1): recompile everything, AnimLab renders of 7 clips, screenshots (puffs, shakes, Let-them-decide, naming, tree edge), EditMode ×6 assemblies + 14 PlayMode classes + smoke, D5 re-measure on a grown village · — · started ·
+- 2026-11-06 11:50 · B2 #358 merged (197020b): tag, ball (drawn), chase rabbits, toddle, dance ring; AnimBench.Tests 144/146; ball sheet looked at · — · 0 · open for user: should toddlers walk in the normal game (#192)?
+- 2026-11-06 11:50 · B3 #359 started (Opus); review page v3: drafts for tag, ball, chase, dance, pick, dig, taste, hunt catch + miss, water; 5th question (toddle)
+- 2026-11-06 ~12:05 · C7 #374 merged (fcc48da: visit telemetry v2; recall data shape, no sheet — follow-up); C4 #371 merged (ff56164: consequence props per option, callbacks live, "Chosen by the Keeper"); offline-csc now orders assemblies itself (5f9c228) · — · 0 ·
+- 2026-11-06 ~12:05 · 361b stash tip: merge conflicted with B2 (enums/PeopleView/Bench) → aborted, sent back to its worker to merge + fix the basket slot (Arms vs Hand) it found
+- 2026-11-06 ~12:05 · started B7 #363 (talk/pairs), C6 #373 (Keeper's choices page); running: batch 1 (Editor), B3, C3, 361b

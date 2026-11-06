@@ -22,6 +22,7 @@ namespace AquariumCiv.Sim
         {
             label = "{n" + n + "}", hint = n == 1 ? "{a}'s name for the baby." : "{b}'s name for the baby.",
             done = "The Keeper named the baby {n" + n + "}.",
+            prop = ConsequenceKind.NamePeg, propAt = PropAnchor.Home,
         };
 
         /// <summary>Naming a notable couple's newborn: each parent offers a name. Option 0 points at the first parent, option 1 at the second.</summary>

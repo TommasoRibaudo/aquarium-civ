@@ -242,6 +242,13 @@ namespace AquariumCiv.Life
                     return true;
                 case PlaceKind.Glass: return GlassSpot(p.index, out x, out z);
                 case PlaceKind.Relic: return RelicSpot(p.index, out x, out z);
+                case PlaceKind.Prop: // #371: the thing a choice left
+                {
+                    var cp = sim.FindConsequenceProp(p.index);
+                    if (cp == null || !cp.placed) return false;
+                    x = cp.x; z = cp.z;
+                    return true;
+                }
             }
             if (p.IsBuilding)
             {

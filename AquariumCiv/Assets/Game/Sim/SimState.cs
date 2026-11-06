@@ -267,6 +267,7 @@ namespace AquariumCiv.Sim
         public int rivalId = -1;
         public int mentorId = -1;
         public long jobChangedMonth = -1000000; // month of the last job fill or forced move (SimCore.Jobs.cs, #67); old saves: long ago
+        public bool chosenByKeeper; // #371: a choice the Keeper answered (or let the people decide) set this person's fate (a seat, a home here); the card says so
         public bool namedByKeeper; // #372: the Keeper picked this person's name (a small choice); the person card shows it (C4)
         public string job = "";  // everyday job (JobType; SimCore.Jobs.cs): "" as a child, "elder" when retired
 
@@ -413,6 +414,7 @@ namespace AquariumCiv.Sim
         // (Not the last fields: SweeperTests appends to the JSON after trimming its closing braces.)
         public MomentPacing momentPacing = new();
         public List<HeldMoment> moments = new();
+        public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         public float Year => month / (float)SimConfig.MonthsPerYear;

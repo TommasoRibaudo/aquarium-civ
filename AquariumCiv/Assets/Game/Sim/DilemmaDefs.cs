@@ -32,6 +32,9 @@ namespace AquariumCiv.Sim
         public string apart = "";           // with strangers: they live apart instead of joining (ApartKind: "woods_camp", "shore_hut"; #231)
         public string buildingType = "";    // the place this option refers to ("Well"): its first building is the dilemma's place for the option
         public DilemmaCallbackDef[] callbacks;  // storylets that fire 4-15 years after this option was taken (answered or lapsed); null = none
+        public string prop = "";            // #371: the thing this option leaves in the box (ConsequenceKind), within a game year; "" = none
+        public PropAnchor propAt;           // where it goes (the person's home, the option's building, the fire, the edge, the pond)
+        public string propBuilding = "";    // PropAnchor.Building: the building type to stand by when the option has no building of its own (else buildingType)
         public string[] favouredBy;         // traits (NameData.Traits) that tilt a lapse toward this option, when the role-holder has one
     }
 
@@ -144,6 +147,7 @@ namespace AquariumCiv.Sim
                     label = "{a}", hint = "{a} will lead {place} their own way, and {b} will watch.",
                     done = "The old chief stepped down, and the Keeper chose {a} to lead.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
+                    prop = ConsequenceKind.Feather, propAt = PropAnchor.Home,
                     callbacks = new[]
                     {
                         Cb("fire_a_kept", "{place} still does things {a}'s way, down to who sits where at supper.",
@@ -156,6 +160,7 @@ namespace AquariumCiv.Sim
                     label = "{b}", hint = "{b} will lead {place} their own way, and {a} will watch.",
                     done = "The old chief stepped down, and the Keeper chose {b} to lead.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
+                    prop = ConsequenceKind.Feather, propAt = PropAnchor.Home,
                     callbacks = new[]
                     {
                         Cb("fire_b_kept", "{place} still does things {b}'s way, down to who sits where at supper.",
@@ -186,6 +191,7 @@ namespace AquariumCiv.Sim
                     label = "the baskets", hint = "Full bellies all winter, and a thinner woodpile.",
                     done = "The Keeper chose the baskets, and everyone went berrying.",
                     lean = SimCore.Lean.Food, custom = "winter:baskets", buildingType = BuildingType.Farm,
+                    prop = ConsequenceKind.Baskets, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the kind", "the gardener", "the lazy", "the dreamer", "the singer" },
                     callbacks = new[]
                     {
@@ -198,6 +204,7 @@ namespace AquariumCiv.Sim
                     label = "the woodpile", hint = "Warm huts and new building, and a plainer winter table.",
                     done = "The Keeper chose the woodpile. The axes rang till the first snow.",
                     lean = SimCore.Lean.Craft, custom = "winter:wood", buildingType = BuildingType.Lumbermill,
+                    prop = ConsequenceKind.WoodpileRoof, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the tinkerer", "the brave", "the stubborn", "the clever", "the worrier" },
                     callbacks = new[]
                     {
@@ -228,6 +235,7 @@ namespace AquariumCiv.Sim
                     label = "the stone", hint = "Names on the big stone by the pond, there for good.",
                     done = "The Keeper chose the stone. The first name went on it that spring.",
                     custom = "remember:stone",
+                    prop = ConsequenceKind.NameStone, propAt = PropAnchor.Pond,
                     favouredBy = new[] { "the stubborn", "the clever", "the grump", "the brave", "the tinkerer" },
                     callbacks = new[]
                     {
@@ -240,6 +248,7 @@ namespace AquariumCiv.Sim
                     label = "the tree", hint = "A charm on the old tree for each of them, growing with it.",
                     done = "The Keeper chose the old tree. The first charm went up that spring.",
                     custom = "remember:tree",
+                    prop = ConsequenceKind.CharmPole, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the kind", "the gardener", "the dreamer", "the singer", "the worrier" },
                     callbacks = new[]
                     {
@@ -271,6 +280,7 @@ namespace AquariumCiv.Sim
                     label = "a place by the fire", hint = "Two new faces round the fire, and new ways of doing things.",
                     done = "The Keeper let the travellers from a far-away tank stay. They slept by the fire and never left.",
                     strangers = 2, custom = "travellers:stayed",
+                    prop = ConsequenceKind.StewPot, propAt = PropAnchor.Fire,
                     favouredBy = new[] { "the kind", "the singer", "the gossip", "the dreamer", "the joker", "the loud" },
                     callbacks = new[]
                     {
@@ -283,6 +293,7 @@ namespace AquariumCiv.Sim
                     label = "full packs", hint = "They'll camp in the far woods, and leave us their trick with an axe.",
                     done = "The Keeper sent the travellers from a far-away tank to the far woods, with full packs.",
                     lean = SimCore.Lean.Craft, custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp,
+                    prop = ConsequenceKind.AxeStump, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the clever", "the tinkerer", "the lazy" },
                     callbacks = new[]
                     {
@@ -335,6 +346,7 @@ namespace AquariumCiv.Sim
                     label = "{a}", hint = "{a} will run {place} their way, and {b} will watch.",
                     done = "The vote was split, and the Keeper chose {a} as headman.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
+                    prop = ConsequenceKind.Staff, propAt = PropAnchor.Home,
                     callbacks = new[]
                     {
                         Cb("headman_a_meetings", "the meetings by the well still go {a}'s way, and they still start late.",
@@ -347,6 +359,7 @@ namespace AquariumCiv.Sim
                     label = "{b}", hint = "{b} will run {place} their way, and {a} will watch.",
                     done = "The vote was split, and the Keeper chose {b} as headman.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
+                    prop = ConsequenceKind.Staff, propAt = PropAnchor.Home,
                     callbacks = new[]
                     {
                         Cb("headman_b_meetings", "the meetings by the well still go {b}'s way, and they still start late.",
@@ -378,6 +391,7 @@ namespace AquariumCiv.Sim
                     label = "the miller", hint = "Full sacks and fresh bread, and the roofs drip a while longer.",
                     done = "The Keeper sent the young ones to the miller. The mill sang all summer.",
                     lean = SimCore.Lean.Food, custom = "spring:miller", buildingType = BuildingType.Windmill,
+                    prop = ConsequenceKind.FlourSacks, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the gardener", "the kind", "the singer", "the lazy", "the worrier" },
                     callbacks = new[]
                     {
@@ -391,6 +405,7 @@ namespace AquariumCiv.Sim
                     label = "the roofers", hint = "Dry roofs and new rafters, and the bread a little thin.",
                     done = "The Keeper sent the young ones up the ladders. Sawdust got into everything, including the soup.",
                     lean = SimCore.Lean.Craft, custom = "spring:roofers", buildingType = BuildingType.Hut,
+                    prop = ConsequenceKind.RoofBird, propAt = PropAnchor.Building,
                     favouredBy = new[] { "the tinkerer", "the clever", "the stubborn", "the brave", "the loud" },
                     callbacks = new[]
                     {
@@ -421,6 +436,7 @@ namespace AquariumCiv.Sim
                     label = "a feast", hint = "Long tables with everyone at them, and the Keeper watching.",
                     done = "The Keeper chose a feast. The tables ran the length of {place}.",
                     custom = "harvest:feast",
+                    prop = ConsequenceKind.LongTable, propAt = PropAnchor.Fire,
                     favouredBy = new[] { "the loud", "the joker", "the singer", "the gossip", "the lazy" },
                     callbacks = new[]
                     {
@@ -434,6 +450,7 @@ namespace AquariumCiv.Sim
                     label = "an offering", hint = "The best basket left on the hill for the Keeper, and quiet thanks.",
                     done = "The Keeper chose an offering. The best basket went up the hill, very carefully.",
                     custom = "harvest:offering",
+                    prop = ConsequenceKind.OfferingBasket, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the kind", "the dreamer", "the worrier", "the gardener", "the stubborn" },
                     callbacks = new[]
                     {
@@ -466,6 +483,7 @@ namespace AquariumCiv.Sim
                     label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
                     done = "The Keeper gave the family from a far-away tank a home here. They moved in with a goat.",
                     strangers = 3, custom = "pond:joined",
+                    prop = ConsequenceKind.GoatFence, propAt = PropAnchor.Fire,
                     favouredBy = new[] { "the kind", "the gossip", "the singer", "the loud", "the joker" },
                     callbacks = new[]
                     {
@@ -478,6 +496,7 @@ namespace AquariumCiv.Sim
                     label = "a home across the pond", hint = "They'll keep their own shore, and trade us their catch.",
                     done = "The Keeper left the family from a far-away tank on their shore. They waved, and sent fish.",
                     lean = SimCore.Lean.Food, custom = "pond:neighbours", strangers = 3, apart = ApartKind.ShoreHut,
+                    prop = ConsequenceKind.FishCrate, propAt = PropAnchor.Pond,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the gardener", "the lazy" },
                     callbacks = new[]
                     {
