@@ -107,7 +107,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         // Others' lazy one-offs (the speaker ring, the chatter marks) appear on first use: not ours, not a leak (as in AssertNoNewRoots).
-        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks" };
+        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks", "HitFx" }; // HitFx: a scene root since batch 1; its puff renderer is made on the first hit
         static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
             .Count(r => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
                         && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0);
