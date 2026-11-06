@@ -1,0 +1,16 @@
+{
+  "name": "363-talk",
+  "notes": "#363 B7.a: two pairs chat at the green (activity Chat, partner set; no pair block, the chat is a function of the two keys and the shared clock). Talker bobs 0.02 u, every 2nd beat an open hand (right arm x78 z36); the listener nods 0.15 s after each talker peak (lean 4 to 20, squash .96; a double nod on the open-hand beat); turns swap every 2 beats; the last 1.2 s both laugh (bob 0.02 at 9 Hz, roll 5, lean -8, arms to the belly). The second pair stands 0.5 u away to show the pairs never bob in step. The last 0.5 s is a second Chat segment flagged endBeat (the laugh is the chat's end beat; the game has one activity).",
+  "duration": 13,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.3 },
+  "sheet": { "from": 0, "to": 13, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.3 },
+  "dolls": [
+    { "id": "ana", "seed": 11, "partner": "ben", "pos": [-0.40, 0.0], "face": "ben", "timeline": [ { "activity": "Chat", "t": 0, "dur": 12.5 }, { "activity": "Chat", "t": 12.5, "dur": 0.5, "endBeat": true } ] },
+    { "id": "ben", "seed": 12, "partner": "ana", "pos": [-0.24, 0.0], "face": "ana", "timeline": [ { "activity": "Chat", "t": 0, "dur": 12.5 }, { "activity": "Chat", "t": 12.5, "dur": 0.5, "endBeat": true } ] },
+    { "id": "cai", "seed": 21, "partner": "dee", "pos": [0.24, 0.0], "face": "dee", "timeline": [ { "activity": "Chat", "t": 0, "dur": 12.5 }, { "activity": "Chat", "t": 12.5, "dur": 0.5, "endBeat": true } ] },
+    { "id": "dee", "seed": 22, "partner": "cai", "pos": [0.40, 0.0], "face": "cai", "timeline": [ { "activity": "Chat", "t": 0, "dur": 12.5 }, { "activity": "Chat", "t": 12.5, "dur": 0.5, "endBeat": true } ] }
+  ]
+}

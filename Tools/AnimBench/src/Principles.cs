@@ -134,6 +134,7 @@ namespace AnimBench
                 var A = d.Frames[a]; var B = d.Frames[b];
                 if (A.Style != B.Style) return $"{A.Style} -> {B.Style}";
                 if ((A.Pos - B.Pos).magnitude > 0.01f) return "moved";
+                if (A.Prop != B.Prop) return $"{A.Prop} -> {B.Prop}"; // #363: the taker takes the thing
                 return null;
             }
             var o = t.Object(id);

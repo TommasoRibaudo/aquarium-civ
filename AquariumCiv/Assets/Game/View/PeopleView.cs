@@ -85,6 +85,9 @@ namespace AquariumCiv.View
             public HitEdge hitEdge;
             /// <summary>#361: the pose clock the berry beats loop on (<see cref="TryGetBerryDoll"/>).</summary>
             public float poseClock;
+            /// <summary>#363: who they last stood talking with, and when (a couple leaving together walks together, see <see cref="Mates"/>).</summary>
+            public int mateKey;
+            public float mateTime = -999f;
             /// <summary>#361: when the tip at the stash began (the first frame the doll stood still at the pile): the beat runs from there.</summary>
             public float tipStart;
         }
@@ -108,6 +111,8 @@ namespace AquariumCiv.View
         /// <summary>#362: the thrown spear, and the hunt step the doll being driven is in (set by <see cref="HuntSpot"/>).</summary>
         readonly HuntStage huntStage = new();
         HuntStep huntStep; HuntPlan huntPlan;
+        /// <summary>#363: the hunt plan each hunter was last handed a spear for (once per plan).</summary>
+        readonly Dictionary<int, HuntPlan> spearHanded = new Dictionary<int, HuntPlan>();
         public HuntStage HuntStage => huntStage;
         readonly Dictionary<int, Doll> dolls = new();
         readonly Dictionary<Place, int> countAt = new();
@@ -381,6 +386,11 @@ namespace AquariumCiv.View
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
             if (playing) { target = playCue.pos; face = playCue.face; }
+            // #363 B7: a pair moment has them (hand over, walk together, hug): the pair's shared clock says where they stand and what they face.
+            if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
+            PairCue pairCue = default; PairEvent pairEv = null;
+            bool paired = !hidden && !playing && !tenting && PairStage.TryCue(a.who.Key, time, out pairEv, out pairCue);
+            if (paired) { target = pairCue.pos; face = pairCue.face; }
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(target.x, target.y))
             {
                 var wet = target;
@@ -410,6 +420,7 @@ namespace AquariumCiv.View
             bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll;
             if (jump) d.pos = target;
             else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
+            else if (paired) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, pairCue.speed * 1.1f + (target - d.pos).magnitude * 1.5f) * dt); // #363: the pair's pace
             else
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
@@ -436,6 +447,9 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
+            if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over)
+            if (!a.moving && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.SitTogether or ActivityKind.Eat or ActivityKind.Visit)
+            { d.mateKey = a.partner.Key; d.mateTime = time; } // #363: who they last stood with
 
             // Props.
             var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
@@ -444,6 +458,7 @@ namespace AquariumCiv.View
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
                 kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
             if (hunting) (kind, slot) = HuntProp(a, kind, slot);   // #362: the spear leaves the hand; the catch is lifted up
+            if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
@@ -453,6 +468,7 @@ namespace AquariumCiv.View
             if (jump || dt <= 0f) d.velocity = Vector2.zero;
             else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
             if (playing) { if ((face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value); } // #358: the game says what they face, running or not
+            else if (paired && !walking && face.HasValue) { if ((face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value); } // #363
             else if (walking && !((hunting || tenting) && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
@@ -474,6 +490,7 @@ namespace AquariumCiv.View
             // #192: a baby in the arms holds them the way a load does; on the back it rides, and the hands stay on the work.
             bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !holds;
             d.stride = Mathf.Repeat(d.stride + DollMotion.Cadence(playing ? playCue.under : style, d.speed) * Mathf.PI * dt, Mathf.PI * 2f);
+            if (paired && pairEv.kind == PairKind.WalkTogether && pairCue.index == 1 && dolls.TryGetValue(pairEv.group.KeyOf(0), out var strideLead)) d.stride = strideLead.stride; // #363: strides in step
             float tipSince = 0f;
             if (style == DollStyle.TipBasket) // #361: the tip plays from the moment the doll stands still at the pile, not from the plan's start
             {
@@ -503,6 +520,20 @@ namespace AquariumCiv.View
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, a.who.Key, a.slot);
                 else if (style == DollStyle.Walk && a.moving) WaterBeats.Heavy(ref pose, d.stride);
             }
+            // #363 B7: the pair beats lie over the pose the loop drew.
+            if (paired) PairStage.Apply(pairEv, pairCue.index, time, ref pose, d.stride);
+            else if (style == DollStyle.Talk && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.Visit
+                     && dolls.TryGetValue(a.partner.Key, out var chatMate) && chatMate.placed && (chatMate.pos - d.pos).sqrMagnitude < 0.6f * 0.6f)
+            {
+                // The listener nods on the talker's beats, the talker turns an open hand, the last 1.2 s are a shared laugh; one clock for the pair.
+                float left = LifeClock.RealSecondsBetween(Mathf.Clamp(now.hour, a.start, a.end), a.end);
+                PairBeats.Talk(ref pose, PairBeats.TalkAt(a.who.Key, a.partner.Key, time, left), Desync.Of(a.who.Key, 363).amp, holds);
+            }
+            else if (style == DollStyle.Walk && Mates(d, a, time, out bool mateLead, out var mate))
+            {
+                if (a.who.Key > d.mateKey) d.stride = mate.stride;   // strides in step (a pair is exempt from the neighbours rule)
+                PairBeats.WalkTogether(ref pose, mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey));
+            }
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             bool struck = d.hitEdge.Step(pose.hidden ? 0f : pose.hit); // #355
@@ -523,6 +554,95 @@ namespace AquariumCiv.View
                     : WorkHitPoint.HitPoint(v);
                 WorkHit?.Invoke(a.who, a.place, style, hitAt);
             }
+        }
+
+        // ---------------------------------------------------------------- #363: pairs
+
+        /// <summary>True when this walker and the one they last stood talking with leave together: both walking, near, the same way. <paramref name="lead"/>
+        /// is the one whose right side faces the other (the other walks at their right hand).</summary>
+        bool Mates(Doll d, in PersonActivity a, float time, out bool lead, out Doll mate)
+        {
+            lead = false; mate = null;
+            if (time - d.mateTime > 120f || !dolls.TryGetValue(d.mateKey, out mate) || mate.mateKey != a.who.Key || time - mate.mateTime > 120f) return false;
+            if (!mate.placed || !mate.walking || (mate.pos - d.pos).sqrMagnitude > 0.45f * 0.45f) return false;
+            if (d.velocity.sqrMagnitude < 0.0025f || mate.velocity.sqrMagnitude < 0.0025f) return false;
+            var h = d.velocity.normalized;
+            if (Vector2.Dot(h, mate.velocity.normalized) < 0.8f) return false;
+            lead = Vector2.Dot(mate.pos - d.pos, new Vector2(h.y, -h.x)) > 0f;
+            return true;
+        }
+
+        /// <summary>A hunter takes the spear (the hunt's TakeSpear step): if a toolmaker is knapping near, they walk it over and hand it across.
+        /// Once per hunt plan; squeezed into what is left of the step.</summary>
+        void HandSpear(Doll hunter, in PersonActivity a, float time)
+        {
+            int key = a.who.Key;
+            if (huntPlan == null || (spearHanded.TryGetValue(key, out var done) && done == huntPlan)) return;
+            spearHanded[key] = huntPlan;
+            int best = -1; float bestD = PairStage.MaxHandOverReach * PairStage.MaxHandOverReach;
+            foreach (var kv in dolls)
+            {
+                var o = kv.Value;
+                if (kv.Key == key || o.act.kind != ActivityKind.Knap || !o.placed || o.pose.hidden || PairStage.TryCue(kv.Key, time, out _, out _)) continue;
+                float dd = (o.pos - hunter.pos).sqrMagnitude;
+                if (dd < bestD) { bestD = dd; best = kv.Key; }
+            }
+            if (best < 0) return;
+            float window = LifeClock.RealSecondsBetween(now.hour, Mathf.Max(now.hour, huntStep.end));
+            var ev = PairStage.HandOver(PairBeats.PairSeed(best, key) ^ (int)now.day, time, best, key, dolls[best].pos, hunter.pos, PropKind.Spear, window);
+            if (ev == null) return;
+            ev.cutAt = time + window + 0.2f;
+            PairStage.Add(ev);
+        }
+
+        /// <summary>Debug (#363): "Hand over now" / "Walk together now" / "Hug now": the two nearest people on view play the pair beat.</summary>
+        public static string DebugPair(PairKind kind)
+        {
+            var pv = Find();
+            return pv == null ? "no people" : pv.StagePair(kind);
+        }
+
+        string StagePair(PairKind kind)
+        {
+            float time = poseClock;
+            int ka = 0, kb = 0; float best = float.MaxValue;
+            foreach (var x in dolls)
+                foreach (var y in dolls)
+                {
+                    if (x.Key >= y.Key) continue;
+                    Doll p = x.Value, q = y.Value;
+                    if (!p.placed || !q.placed || p.pose.hidden || q.pose.hidden || p.view == null || q.view == null) continue;
+                    if (PairStage.TryCue(x.Key, time, out _, out _) || PairStage.TryCue(y.Key, time, out _, out _)) continue;
+                    float dd = (p.pos - q.pos).sqrMagnitude;
+                    if (dd < best) { best = dd; ka = x.Key; kb = y.Key; }
+                }
+            if (best == float.MaxValue) return "pairs: need two people on view";
+            Doll a = dolls[ka], b = dolls[kb];
+            int seed = PairBeats.PairSeed(ka, kb) ^ (int)now.day;
+            PairEvent ev;
+            switch (kind)
+            {
+                case PairKind.HandOver:
+                    ev = PairStage.HandOver(seed, time, ka, kb, a.pos, b.pos, PropKind.Spear, 0f, 3f);
+                    break;
+                case PairKind.WalkTogether:
+                {
+                    var mid = (a.pos + b.pos) * 0.5f;
+                    var toMid = -mid; // toward the middle of the box, so they stay on the ground
+                    if (toMid.sqrMagnitude < 0.09f) toMid = new Vector2(1f, 0f);
+                    var heading = toMid.normalized;
+                    var right = new Vector2(heading.y, -heading.x);
+                    bool aLead = Vector2.Dot(b.pos - a.pos, right) > 0f; // whoever has the other on the right leads
+                    ev = PairStage.WalkTogether(seed, time, aLead ? ka : kb, aLead ? kb : ka, aLead ? a.pos : b.pos, heading, 7f);
+                    break;
+                }
+                default:
+                    ev = PairStage.Hug(seed, time, ka, kb, a.pos, b.pos, true, b.view.scale < a.view.scale * 0.9f);
+                    break;
+            }
+            if (ev == null) return "pairs: too far apart";
+            PairStage.Add(ev);
+            return $"pairs: {kind} with {ka} and {kb}";
         }
 
         // ---------------------------------------------------------------- #283: the hunt
