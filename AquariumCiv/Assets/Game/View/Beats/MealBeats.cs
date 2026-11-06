@@ -72,11 +72,11 @@ namespace AquariumCiv.View
         // ------------------------------------------------------------------ poking the fire (B9.c)
         /// <summary>Stands up out of the sit with the stick raised (x 125), thrusts down and forward at the fire (Snap; the Contact: sparks and a flare), holds, pulls back, sits.</summary>
         public static readonly Beat Poke = new Beat(
-            Beat.Step(BeatPhase.Antic, 0.34f, Ease.Back, PoseKey.Hold.Squash(1f).Offset(0f, 0f, -0.05f).Lean(-6f).ArmR(125f, 0f, 8f).ArmL(30f, 0f, -12f).Extend(true)),
-            Beat.Step(BeatPhase.Act, 0.15f, Ease.Snap, PoseKey.Hold.Offset(0f, 0f, -0.10f).Lean(26f).ArmR(62f, 0f, 6f)),
+            Beat.Step(BeatPhase.Antic, 0.34f, Ease.Back, PoseKey.Hold.Squash(1f).Offset(0f, 0f, -0.03f).Lean(-6f).ArmR(125f, 0f, 8f).ArmL(30f, 0f, -12f).Extend(true)),
+            Beat.Step(BeatPhase.Act, 0.15f, Ease.Snap, PoseKey.Hold.Offset(0f, 0f, -0.06f).Lean(20f).ArmR(68f, 0f, 6f)),
             Beat.Step(BeatPhase.Contact, 0.08f, Ease.Linear, PoseKey.Hold),
             Beat.Step(BeatPhase.Hold, 0.22f, Ease.Linear, PoseKey.Hold),
-            Beat.Step(BeatPhase.Follow, 0.40f, Ease.Smooth, PoseKey.Hold.Offset(0f, 0f, -0.05f).Lean(8f).ArmR(100f, 0f, 8f)),
+            Beat.Step(BeatPhase.Follow, 0.40f, Ease.Smooth, PoseKey.Hold.Offset(0f, 0f, -0.03f).Lean(8f).ArmR(100f, 0f, 8f)),
             Beat.Step(BeatPhase.Settle, 0.45f, Ease.Smooth, PoseKey.Base));
 
         /// <summary>One poke slot is <see cref="PokeSlot"/> s; the poke starts at a hashed point in its first <see cref="PokeJitter"/> s, so the gap between two pokes is 5 to 8 s.</summary>

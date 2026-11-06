@@ -75,7 +75,7 @@ namespace AnimBench
                 float arrive = -1f;
                 if (st.travel)
                 {
-                    var from = i == 0 ? start : new Vector2(m.steps[i - 1].x1, m.steps[i - 1].z1);
+                    var from = i == 0 ? start : MomentBeats.Spot(plan, m, i - 1, m.steps[i - 1].t1, out _); // batch 2: from where the last step left them (a ring spot, the toss spot), not its plan point: no pop
                     arrive = Math.Min(st.t1, st.t0 + (new Vector2(st.x0, st.z0) - from).magnitude / WalkSpeed);
                     if (arrive > st.t0 + 1e-3f && arrive < st.t1 - 1e-3f) cuts.Add(arrive);
                 }
@@ -87,10 +87,11 @@ namespace AnimBench
                     float a = cuts[k], b = cuts[k + 1];
                     var seg = new Segment { T0 = a, T1 = b, Activity = st.kind, Style = DollMotion.StyleOf(st.kind), Steps = ActivityInfo.LoopSteps(st.kind), StepSeconds = 4f };
                     seg.Plan = plan; seg.Member = m; seg.StepIndex = i;
+                    if (!st.travel) { seg.ActT0 = st.t0; seg.ActT1 = st.t1; } // batch 2: one activity over the step
                     Vector2? face;
                     if (st.travel)
                     {
-                        var from = i == 0 ? start : new Vector2(m.steps[i - 1].x1, m.steps[i - 1].z1);
+                        var from = i == 0 ? start : MomentBeats.Spot(plan, m, i - 1, m.steps[i - 1].t1, out _); // batch 2: from where the last step left them (a ring spot, the toss spot), not its plan point: no pop
                         var to = new Vector2(st.x0, st.z0);
                         bool walking = arrive > a + 1e-4f && k == 0 && arrive < st.t1 - 1e-3f;
                         seg.From = walking ? from : to; seg.To = to;

@@ -85,6 +85,14 @@ namespace AquariumCiv.View.Tests
             Assert.AreEqual(shake, a.shake);
         }
 
+        [Test]
+        public void Resolve_OnlyTheStagedTossFlaresTheFire_APointDoesNot()
+        {   // #370 vs #359: the festival's log toss (marked by StagedMoments) flares; a kid pointing at the fire in play does nothing
+            var toss = HitFx.Resolve(DollStyle.Point, PlaceKind.Fire, stagedToss: true);
+            Assert.IsTrue(toss.hasPuff); Assert.AreEqual(PuffKind.Sparks, toss.puff); Assert.IsTrue(toss.fire); Assert.Greater(toss.big, 1f);
+            Assert.IsTrue(HitFx.Resolve(DollStyle.Point, PlaceKind.Fire).IsNone);
+        }
+
         [TestCase(DollStyle.Stomp, PlaceKind.Puddle)]
         [TestCase(DollStyle.Chop, PlaceKind.Pond)]
         [TestCase(DollStyle.Fish, PlaceKind.Stream)]

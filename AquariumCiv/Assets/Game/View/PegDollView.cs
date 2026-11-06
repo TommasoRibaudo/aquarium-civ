@@ -191,7 +191,18 @@ namespace AquariumCiv.View
             SetGrip(pose.extend);
             if (inLeft && prop != null) prop.localRotation = Quaternion.Inverse(armL.localRotation); // #361: the basket stays upright
             if (prop != null && propKind == PropKind.Rabbit && propSlot == PropSlot.Hand) HangRabbit();
+            if (prop != null && propKind == PropKind.Spear && propSlot == PropSlot.Hand) prop.localRotation = Quaternion.Inverse(armR.localRotation) * SpearAim(pose.extend, pose.lean);
         }
+
+        /// <summary>Batch 2 (#362, the user: "the spear is held weirdly, almost backwards"): the spear's point always leads forward, whatever the
+        /// arm does (along the arm it pointed back on the wind-up): in the doll's frame (forward = -z), tipped up <see cref="SpearCarryUp"/> carried
+        /// and on the stalk, nearly level (<see cref="SpearAimUp"/>) on the aim and the throw. Held a quarter from the butt (the mesh's grip).</summary>
+        public static Quaternion SpearAim(bool aiming, float lean = 0f)
+        {
+            float e = (aiming ? SpearAimUp : SpearCarryUp) + lean; // the doll's lean is taken out: a lean back on the wind-up does not stand the spear up
+            return Quaternion.Euler(e - 90f, 0f, 0f) /* +y (the point) to forward (-z), tipped up e */;
+        }
+        public const float SpearCarryUp = 30f, SpearAimUp = 12f;
 
         /// <summary>Look-fix (visit loop, #362): the caught rabbit hangs from the fist by its scruff, head up, body down, turned with the doll
         /// only, so held up overhead it reads as an animal dangling from a raised hand, not a plank swung with the arm.</summary>

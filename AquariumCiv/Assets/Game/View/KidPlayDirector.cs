@@ -218,8 +218,23 @@ namespace AquariumCiv.View
                 if (land == null || !land.IsWater(p.x, p.y)) break;
                 p = Vector2.Lerp(p, home, 0.4f);
             }
-            return p;
+            // Batch 2: open ground, not among the houses: the nearest centre whose play ring (PlayRingR) keeps off the lots.
+            if (pv.LotHitsNear(p, PlayRingR) == 0) return p;
+            Vector2 best = p; int bestHits = int.MaxValue;
+            for (int ring = 1; ring <= 5 && bestHits > 0; ring++)
+                for (int k = 0; k < 12; k++)
+                {
+                    float a = k * Mathf.PI / 6f;
+                    var q = p + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (0.2f * ring);
+                    if (Mathf.Abs(q.x) > Land.HX - 0.45f || Mathf.Abs(q.y) > Land.HZ - 0.45f || (land != null && land.IsWater(q.x, q.y))) continue;
+                    int h = pv.LotHitsNear(q, PlayRingR);
+                    if (h < bestHits) { bestHits = h; best = q; }
+                }
+            return bestHits <= pv.LotHitsNear(p, PlayRingR) ? best : p;
         }
+
+        /// <summary>Batch 2: the ground a play group's game covers round its centre, kept off the lots by <see cref="Open"/>.</summary>
+        const float PlayRingR = 0.5f;
 
         void Add(Group g)
         {
@@ -253,6 +268,22 @@ namespace AquariumCiv.View
         static void Kill(Object o) { if (o == null) return; if (Application.isPlaying) Object.Destroy(o); else Object.DestroyImmediate(o); }
 
         // ---------------------------------------------------------------- the ball (B2.b)
+
+        /// <summary>Batch 2 (#358 look): the ball is never drawn smaller than this across, in screen pixels (it was ~4 px at the full-box view).</summary>
+        public static float BallMinPixels = 9f;
+
+        /// <summary>The ball's radius (root-local units) that makes it <see cref="BallMinPixels"/> across on the main camera at <paramref name="local"/>.</summary>
+        static float MinBallRadius(Transform root, Vector3 local)
+        {
+            var cam = Camera.main;
+            if (cam == null || cam.pixelHeight <= 0) return 0f;
+            var world = root.TransformPoint(local);
+            float depth = Vector3.Dot(world - cam.transform.position, cam.transform.forward);
+            if (depth <= 0f) return 0f;
+            float perPx = cam.orthographic ? 2f * cam.orthographicSize / cam.pixelHeight : 2f * depth * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / cam.pixelHeight;
+            float s = Mathf.Max(1e-5f, root.lossyScale.x);
+            return 0.5f * BallMinPixels * perPx / s;
+        }
 
         /// <summary>After the dolls are placed: each ball game's ball in its holder's hands, or on its arc (from where the hands let it go).</summary>
         public void DrawBalls(Transform root, Material material, float zoom)
@@ -295,7 +326,7 @@ namespace AquariumCiv.View
                 g.ball.SetActive(true);
                 g.ball.transform.localPosition = pos;
                 g.ball.transform.localRotation = b.Free ? b.rotation : Quaternion.identity;
-                g.ball.transform.localScale = Vector3.one * (zoom * BallGame.BallR / PegDoll.BallMeshR);
+                g.ball.transform.localScale = Vector3.one * (Mathf.Max(zoom * BallGame.BallR, MinBallRadius(root, pos)) / PegDoll.BallMeshR);
                 g.lastBall = pos;
                 g.lastT = now;
             }

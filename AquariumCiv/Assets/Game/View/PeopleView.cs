@@ -120,6 +120,8 @@ namespace AquariumCiv.View
         readonly Dictionary<(Place, SlotSpots.HomeSpot), int> homeRanks = new();
         /// <summary>Where the dolls placed so far this frame stand (rule 6: one doll per spot, also after a slot moved off a lot).</summary>
         readonly List<Vector2> claimed = new();
+        /// <summary>Batch 2: where the kids in a play group stand this frame (the still ones keep off them; the game's own members don't push each other).</summary>
+        readonly List<Vector2> playSpots = new();
         /// <summary>Pieces standing on open ground (a well by the fire): rings and spreads keep off them.</summary>
         readonly List<(Vector2 c, float r)> blockers = new();
         /// <summary>#189: who stands where this frame, and what nobody walks through (the fire, the stash pile).</summary>
@@ -316,6 +318,7 @@ namespace AquariumCiv.View
             meals.DrawPot(peopleRoot, Box.SolidMaterial, camp, (mx, mz) => Box.SurfaceHeight(mx, mz));
             seen.Clear();
             claimed.Clear();
+            playSpots.Clear();
             // #189: everyone on view where they were drawn last frame, for the walkers to keep clear of (nobody goes round a sleeper they can't see, #203).
             crowd.Clear();
             for (int i = 0; i < acts.Count; i++)
@@ -393,7 +396,7 @@ namespace AquariumCiv.View
             // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
             PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
             bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
-            if (playing) { target = playCue.pos; face = playCue.face; }
+            if (playing) { target = FreeOfPeople(playCue.pos, false) ? playCue.pos : Standable(playCue.pos, playCue.pos, true, false, false); face = playCue.face; playSpots.Add(target); } // batch 2: never on top of a still grown-up (nor in a lot)
             // #363 B7: a pair moment has them (hand over, walk together, hug): the pair's shared clock says where they stand and what they face.
             if (hunting && a.hunt == HuntPhase.TakeSpear) HandSpear(d, a, time);
             PairCue pairCue = default; PairEvent pairEv = null;
@@ -488,7 +491,7 @@ namespace AquariumCiv.View
             if (poking && pokeSince > -0.05f) (kind, slot) = (PropKind.Stick, PropSlot.Hand); // #365 B9.c
             if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
-            if (playing && playCue.stick) { kind = PropKind.Stick; slot = PropSlot.Hand; } // #359: the stick duel
+            if (playing && playCue.stick) { kind = PropKind.Twig; slot = PropSlot.Hand; } // #359: the stick duel (batch 2: a short twig)
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind == PropKind.Bowl); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
 
@@ -879,13 +882,14 @@ namespace AquariumCiv.View
         /// <summary>A slot that fell on a building's lot (a ring round the market running into a house) moves to the nearest
         /// walkable ground: round the same ring first, then closer to the middle. The spot itself if nothing is free.</summary>
         static readonly float[] Rings = { 1f, 1.4f, 0.75f, 1.8f, 0.5f };
+        static readonly float[] FarRings = { 2.3f, 3f }; // batch 2
 
-        Vector2 Standable(Vector2 p, Vector2 centre, bool offLots, bool noCloser = false)
+        Vector2 Standable(Vector2 p, Vector2 centre, bool offLots, bool noCloser = false, bool players = true)
         {
             var st = offLots && plannerSim != null ? plannerSim.Settlement : null;
             bool Free(Vector2 q)
             {
-                foreach (var o in claimed) if ((o - q).sqrMagnitude < Personal * Personal) return false;
+                if (!FreeOfPeople(q, players)) return false;
                 if (!offLots) return true;
                 foreach (var b in blockers) if ((b.c - q).sqrMagnitude < b.r * b.r) return false;
                 if (st == null) return true;
@@ -903,7 +907,32 @@ namespace AquariumCiv.View
                         var q = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r * shrink;
                         if (Free(q)) return q;
                     }
+            // Batch 2: no standable spot clear of the lots: further out first, then still never on another doll (both fell back to the door: ADay "stacked").
+            foreach (float far in FarRings)
+                for (int k = 0; k <= 12; k++)
+                    for (int sgn = -1; sgn <= 1; sgn += 2)
+                    {
+                        float a = a0 + sgn * k * 15f * Mathf.Deg2Rad;
+                        var q = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Mathf.Max(r, 0.2f) * far;
+                        if (Free(q)) return q;
+                    }
+            foreach (float shrink in Rings)
+                for (int k = 0; k <= 12; k++)
+                    for (int sgn = -1; sgn <= 1; sgn += 2)
+                    {
+                        float a = a0 + sgn * k * 15f * Mathf.Deg2Rad;
+                        var q = centre + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r * Mathf.Max(1f, shrink);
+                        if (FreeOfPeople(q, players)) return q;
+                    }
             return noCloser ? p : centre;
+        }
+
+        /// <summary>Batch 2: no still doll (and, with <paramref name="players"/>, no kid at play) within <see cref="Personal"/>.</summary>
+        bool FreeOfPeople(Vector2 q, bool players = true)
+        {
+            foreach (var o in claimed) if ((o - q).sqrMagnitude < Personal * Personal) return false;
+            if (players) foreach (var o in playSpots) if ((o - q).sqrMagnitude < Personal * Personal) return false;
+            return true;
         }
 
         /// <summary>Is the straight line between two points on walkable ground (no lot, no pond)? A line that starts on a
@@ -925,7 +954,10 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#360: where someone kneels to draw water, and what they face: 0.06 u back from the real edge of the pond (the first dry point
-        /// out from its middle, turned by the slot so two drawers stand apart), or 0.1 u off a puddle or the wet bed.</summary>
+        /// out from its middle, turned by the slot so two drawers stand apart), <see cref="PuddleStandOff"/> off a puddle's middle, or 0.1 u off the wet bed.</summary>
+        /// <summary>#360 (batch 2): a drawn puddle reaches ~0.1 u from its cell's middle (EcoSurface.BuildPuddles: R up to 0.086, x1.2, a 0.015 nudge), so the drawer kneels just outside it, not in it.</summary>
+        public const float PuddleStandOff = 0.13f;
+
         static Vector2 DrawStand(Land land, PlaceKind kind, Vector2 spot, Vector2 slotSpot, int slot, out Vector2? face)
         {
             var water = kind == PlaceKind.Pond ? land.pond : spot;
@@ -937,7 +969,7 @@ namespace AquariumCiv.View
             dir = new Vector2(dir.x * c - dir.y * sn, dir.x * sn + dir.y * c);
             var edge = water;
             if (kind == PlaceKind.Pond) for (int i = 0; i < 200 && land.IsWater(edge.x, edge.y); i++) edge += dir * 0.02f;
-            var stand = edge + dir * (kind == PlaceKind.Pond ? 0.06f : 0.1f);
+            var stand = edge + dir * (kind == PlaceKind.Pond ? 0.06f : kind == PlaceKind.Puddle ? PuddleStandOff : 0.1f);
             face = stand - dir; // one step towards the water
             return stand;
         }
@@ -1072,6 +1104,22 @@ namespace AquariumCiv.View
         /// <summary>#367: the clock the play groups and pair beats run on (real seconds of posing), for the background-life director.</summary>
         public float PoseClock => poseClock;
         internal Land LandForPlay => Box != null ? Box.land : null;
+
+        /// <summary>Batch 2 (#358): how many points of a ring of radius <paramref name="r"/> round <paramref name="c"/> (and its middle) fall on a
+        /// building's lot, so a play group can pick open ground (its kids ran through the houses: ADay "inside a lot").</summary>
+        internal int LotHitsNear(Vector2 c, float r)
+        {
+            var st = plannerSim != null ? plannerSim.Settlement : null;
+            if (st == null) return 0;
+            int n = 0;
+            for (int k = -1; k < 12; k++)
+            {
+                var q = k < 0 ? c : c + new Vector2(Mathf.Cos(k * Mathf.PI / 6f), Mathf.Sin(k * Mathf.PI / 6f)) * r;
+                int cell = SiteMap.CellAt(q.x, q.y);
+                if (cell >= 0 && st.WalkCost(cell) == 0) n++;
+            }
+            return n;
+        }
         internal BoxView BoxForPlay => Box; // #359
         internal PegDollView ViewOf(int key) => dolls.TryGetValue(key, out var d) ? d.view : null;
         internal float GroundAt(float x, float z) => Box != null ? Box.SurfaceHeight(x, z) : 0f;
