@@ -157,6 +157,13 @@ namespace AquariumCiv.View
             if (Btn("Spawn rabbits here")) last = RabbitView.Instance != null ? RabbitView.Instance.DebugSpawnHere(4) : "no rabbit view";
             if (Btn("Startle all")) last = RabbitView.Instance != null ? "startled " + RabbitView.Instance.DebugStartleAll() : "no rabbit view";
             EndRow();
+            Row(); // #358 kids' play: each game at the gathering place for 45 s
+            if (Btn("Kids play: tag")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Tag);
+            if (Btn("Kids play: ball")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Ball);
+            if (Btn("Kids play: chase rabbits")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.ChaseRabbits);
+            if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
+            if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
+            EndRow();
             Row();
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);

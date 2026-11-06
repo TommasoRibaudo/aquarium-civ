@@ -18,6 +18,8 @@ namespace AquariumCiv.View
         PickBerry, DigRoot, TasteBerry,
         // #360: kneeling to draw water (appended)
         DrawWater,
+        // #358 kids' play (View/Beats/KidPlay.cs): the roles a play group draws, the toddle and the ring dance
+        PlayChaser, PlayRunner, PlayTaunt, PlayThrow, PlayCatch, PlayCharge, Toddle, RingDance,
     }
 
     /// <summary>
@@ -60,7 +62,8 @@ namespace AquariumCiv.View
             ActivityKind.Knap or ActivityKind.ThrowPot => DollStyle.SitStrike,
             ActivityKind.Weave => DollStyle.SitWeave,
             ActivityKind.Stretch => DollStyle.Stretch,
-            ActivityKind.Toddle or ActivityKind.Play or ActivityKind.Dance or ActivityKind.Snowball => DollStyle.Hop,
+            ActivityKind.Play or ActivityKind.Snowball => DollStyle.Hop, // #358: Play is a play group's (KidPlayDirector); Hop is what a kid out of one shows
+            ActivityKind.Toddle => DollStyle.Toddle, ActivityKind.Dance => DollStyle.RingDance, // #358
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
             ActivityKind.HangWashing => DollStyle.Hang,
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
@@ -402,6 +405,11 @@ namespace AquariumCiv.View
                     p.lean = 10f;
                     break;
                 }
+
+                case DollStyle.Toddle:
+                case DollStyle.RingDance:
+                    KidPlayPoses.Loop(style, ref p, t); // #358
+                    break;
 
                 case DollStyle.Mourn:
                     p.lean = 16f;

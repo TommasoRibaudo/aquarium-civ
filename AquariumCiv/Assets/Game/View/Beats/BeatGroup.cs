@@ -240,10 +240,13 @@ namespace AquariumCiv.View
         readonly List<Vector2[]> starts = new();
         readonly List<int> chasers = new(), targets = new();
 
-        public ChaseGroup(int seed, float t0, IReadOnlyList<int> members, Vector2 centre, float radius = 0.6f, float roundSeconds = 5f)
+        /// <summary>How far a runner flees in a round (#358: tag uses more of the green than the default).</summary>
+        public readonly float flee;
+
+        public ChaseGroup(int seed, float t0, IReadOnlyList<int> members, Vector2 centre, float radius = 0.6f, float roundSeconds = 5f, float flee = FleeDistance)
             : base(seed, t0, members, false)
         {
-            this.centre = centre; this.radius = radius; this.roundSeconds = Mathf.Max(0.5f, roundSeconds);
+            this.centre = centre; this.radius = radius; this.roundSeconds = Mathf.Max(0.5f, roundSeconds); this.flee = flee;
             int n = Count;
             var s0 = new Vector2[n];
             float a0 = BeatHash.U01(seed, 0, 358) * Mathf.PI * 2f;
@@ -297,8 +300,8 @@ namespace AquariumCiv.View
             var dir = away.normalized;
             float cs = Mathf.Cos(turn), sn = Mathf.Sin(turn);
             dir = new Vector2(dir.x * cs - dir.y * sn, dir.x * sn + dir.y * cs);
-            var end = s[i] + dir * FleeDistance * desyncs[i].period;
-            if ((end - centre).magnitude > radius) end = Clamp(s[i] - dir * (FleeDistance * 0.5f), centre, radius); // at the edge: duck back the other way
+            var end = s[i] + dir * flee * desyncs[i].period;
+            if ((end - centre).magnitude > radius) end = Clamp(s[i] - dir * (flee * 0.5f), centre, radius); // at the edge: duck back the other way
             return Clamp(end, centre, radius);
         }
 

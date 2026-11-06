@@ -160,6 +160,7 @@ namespace AquariumCiv.View
             if (box != null) box.PlannedPeople = false;
             foreach (var d in dolls.Values) if (d.view != null) Kill(d.view.gameObject);
             dolls.Clear();
+            kidPlay?.Clear(); // #358
             // DontSave: like BoxView's root, a deferred Destroy can be lost on the way into play mode (BoxView.OrphanRoots).
             if (peopleRoot != null) DestroyImmediate(peopleRoot.gameObject);
             peopleRoot = null;
@@ -300,6 +301,7 @@ namespace AquariumCiv.View
             bool camp = sim.State.era == Era.Camp;
             poseClock += dt;
             float time = poseClock;
+            KidPlay.Step(planner, acts, now, time, peopleRoot); // #358: the play groups
             seen.Clear();
             claimed.Clear();
             // #189: everyone on view where they were drawn last frame, for the walkers to keep clear of (nobody goes round a sleeper they can't see, #203).
@@ -334,6 +336,7 @@ namespace AquariumCiv.View
             // #362: the thrown spear flies and stands in the ground
             huntStage.Tick(planner, now, peopleRoot, Box.SolidMaterial,
                 who => dolls.TryGetValue(who.Key, out var hd) && hd.view != null ? hd.view.prop : null, (hx, hz) => Box.SurfaceHeight(hx, hz));
+            KidPlay.DrawBalls(peopleRoot, Box.SolidMaterial, dollZoomScale); // #358
             gone.Clear();
             foreach (var kv in dolls) if (!seen.Contains(kv.Key)) gone.Add(kv.Key);
             foreach (int k in gone) { if (dolls[k].view != null) Kill(dolls[k].view.gameObject); dolls.Remove(k); }
@@ -372,6 +375,10 @@ namespace AquariumCiv.View
                     face = target + (target - from).normalized; // moved round a corner, still looking away from the house
                 }
             }
+            // #358: a play group has them: its game says where they stand, what they face and the move (KidPlayDirector).
+            PlayCue playCue = default; KidGame playGame = null; int playIx = -1;
+            bool playing = !hidden && !hunting && !tenting && KidPlay.TryCue(a.who.Key, time, out playCue, out playGame, out playIx);
+            if (playing) { target = playCue.pos; face = playCue.face; }
             if (a.kind != ActivityKind.Swim && a.kind != ActivityKind.Splash && land.IsWater(target.x, target.y))
             {
                 var wet = target;
@@ -400,6 +407,7 @@ namespace AquariumCiv.View
             d.lastSpot = spot;
             bool jump = !d.placed || d.wasHidden || dt <= 0f || snapAll;
             if (jump) d.pos = target;
+            else if (playing) d.pos = Vector2.MoveTowards(d.pos, target, Mathf.Min(0.75f, playCue.speed * 1.15f + 0.15f + (target - d.pos).magnitude * 3f) * dt); // #358: the game's pace (a run in tag), catching up fast
             else
             {
                 // Into a slot: straight if the way is clear, else by the place's middle (no cutting across a house corner).
@@ -425,6 +433,7 @@ namespace AquariumCiv.View
             if (walking && style != DollStyle.Hop && !keepsHunchStyle) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
+            if (playing) style = playCue.style; // #358
 
             // Props.
             var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
@@ -433,6 +442,7 @@ namespace AquariumCiv.View
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
                 kind = a.water == WaterKind.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
             if (hunting) (kind, slot) = HuntProp(a, kind, slot);   // #362: the spear leaves the hand; the catch is lifted up
+            if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style)); // #361: the right hand picks, the basket rides in the left
 
@@ -440,7 +450,8 @@ namespace AquariumCiv.View
             float want = d.yaw;
             if (jump || dt <= 0f) d.velocity = Vector2.zero;
             else d.velocity = Vector2.Lerp(d.velocity, (d.drawn - drawnWas) / dt, 1f - Mathf.Exp(-dt * VelocityRate));
-            if (walking && !((hunting || tenting) && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
+            if (playing) { if ((face.Value - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, face.Value); } // #358: the game says what they face, running or not
+            else if (walking && !((hunting || tenting) && huntFace.HasValue)) { if (d.velocity.sqrMagnitude > 0.05f * 0.05f) want = Yaw(Vector2.zero, d.velocity); }
             else
             {
                 if (!a.partner.IsNone && dolls.TryGetValue(a.partner.Key, out var p) && p.placed && (p.pos - d.pos).sqrMagnitude < 0.6f * 0.6f && p.pos != d.pos)
@@ -460,8 +471,8 @@ namespace AquariumCiv.View
             bool holds = kind != PropKind.None && kind != PropKind.Mask; // a mask is worn, the hands stay free
             // #192: a baby in the arms holds them the way a load does; on the back it rides, and the hands stay on the work.
             bool babyArms = !a.carrying.IsNone && !a.carryOnBack && !holds;
-            d.stride = Mathf.Repeat(d.stride + DollMotion.Cadence(style, d.speed) * Mathf.PI * dt, Mathf.PI * 2f);
-            var pose = DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride);
+            d.stride = Mathf.Repeat(d.stride + DollMotion.Cadence(playing ? playCue.under : style, d.speed) * Mathf.PI * dt, Mathf.PI * 2f);
+            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
             if (style != d.drew)
             {
                 d.blendFrom = d.pose;
@@ -858,6 +869,7 @@ namespace AquariumCiv.View
                 LifeProp.Hammer or LifeProp.Hammerstone or LifeProp.Pick => PropKind.Hammer,
                 LifeProp.FishStick => PropKind.Fish,
                 LifeProp.Rod => PropKind.Rod,
+                LifeProp.Ball => PropKind.Ball, // #358: drawn (it fell to None)
                 _ => PropKind.None,
             };
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
@@ -865,6 +877,7 @@ namespace AquariumCiv.View
             else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
+            else if (kind == PropKind.Ball) slot = PropSlot.Arms; // #358: hugged
             else if (kind == PropKind.Slate && activity == ActivityKind.WriteDown) slot = PropSlot.Arms; // hugged, the hand writes
             return (kind, slot);
         }
@@ -876,6 +889,45 @@ namespace AquariumCiv.View
         /// <summary>#282: turn this person (while they stand) to face a spot (box units); the first rabbit's sign sets it for whoever points.</summary>
         public void LookAt(PersonRef who, Vector2 at) => lookAt[who.Key] = at;
         public void ClearLookAt(PersonRef who) => lookAt.Remove(who.Key);
+
+        // ---------------------------------------------------------------- #358: kids' play (KidPlayDirector)
+        KidPlayDirector kidPlay;
+        /// <summary>#358: the play groups (tag, ball, the rabbit chase, the ring dance) and the panel's play cheats.</summary>
+        public KidPlayDirector KidPlay => kidPlay ??= new KidPlayDirector(this);
+        internal Land LandForPlay => Box != null ? Box.land : null;
+        internal PegDollView ViewOf(int key) => dolls.TryGetValue(key, out var d) ? d.view : null;
+        internal float GroundAt(float x, float z) => Box != null ? Box.SurfaceHeight(x, z) : 0f;
+        /// <summary>How big a person's doll is drawn (doll scale × zoom), for where its hands are.</summary>
+        internal bool ScaleOf(int key, out float s)
+        {
+            s = 0f;
+            if (!dolls.TryGetValue(key, out var d) || d.view == null) return false;
+            s = d.view.scale * dollZoomScale;
+            return true;
+        }
+        /// <summary>The person on view nearest a spot who passes <paramref name="ok"/> and isn't in <paramref name="not"/> (a key, or −1).</summary>
+        internal int NearestShown(Vector2 at, System.Func<PersonRef, bool> ok, List<int> not)
+        {
+            int best = -1; float bd = float.MaxValue;
+            foreach (var a in acts)
+            {
+                int k = a.who.Key;
+                if (not.Contains(k) || !dolls.TryGetValue(k, out var d) || !d.placed || d.pose.hidden || d.view == null || !d.view.gameObject.activeInHierarchy) continue;
+                if (a.hunt != HuntPhase.None || a.tent != TentPhase.None || !ok(a.who)) continue;
+                float dd = (d.drawn - at).sqrMagnitude;
+                if (dd < bd) { bd = dd; best = k; }
+            }
+            return best;
+        }
+        /// <summary>Where a few people are drawn, on average (a home's kids in its yard).</summary>
+        internal bool MeanDrawn(int[] keys, out Vector2 mean)
+        {
+            mean = Vector2.zero; int n = 0;
+            foreach (int k in keys) if (dolls.TryGetValue(k, out var d) && d.placed) { mean += d.drawn; n++; }
+            if (n == 0) return false;
+            mean /= n;
+            return true;
+        }
 
         /// <summary>#355: a stroke landed: a doll's <see cref="DollPose.hit"/> went 0 → 1 (a loop's chop, hoe or knock, a beat's
         /// <see cref="BeatPhase.Contact"/>), once per contact. Who, where they work, the move, and the tool's end in world space
