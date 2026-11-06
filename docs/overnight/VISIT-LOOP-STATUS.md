@@ -32,3 +32,5 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 ~11:00 · A1 #355 beat kit started (Opus) in parallel with T1; A3 open questions for the user: hugs, hit-stop, kid tumble, felling now or later
 - 2026-11-06 10:49 · D5 #379 PARTIAL merged: droplet 0.55 light floor removed (changed-pixel 1.109 → 1.010 at 20 h); MistDuskPlayTests 4/4, Tester2FixPlayTests 6/6, smoke 2/2 · 53be654 · 16 (lock time; the worker said 55, wrong) · measured on a barren year-0 box; the tester's case is a lush year-39 village → batch 1: re-measure on a grown village (grass/forest cover), camera orbit on. #379 stays open.
 - 2026-11-06 ~11:05 · D6 #380 merged (5f7c072): camp_remember waits for a real death. C1 told to merge it in (same files).
+- 2026-11-06 ~11:15 · A1 #355 beat kit merged (d64f86c): View/Beats/** (Easing, Beat, BeatDesync, Arc, BeatGroup), WorkHit in PeopleView; 29 pure tests offline · — · 0 · Unity: BeatKit* (29) + WorkHitTests in batch 1. T1 told to glob View/Beats/**.
+- 2026-11-06 ~11:15 · B1 #357 puffs started (Sonnet, phase 1); D3 #377 in the Editor
