@@ -94,6 +94,11 @@ namespace AquariumCiv.Game
         public DilemmaStats dilemmas = new DilemmaStats { variant = "all" };
         public SortedDictionary<string, DilemmaStats> dilemmasByVariant = new SortedDictionary<string, DilemmaStats>();
 
+        /// <summary>#374: the visit numbers (moments seen live, gaps, choices by outcome, cards read, recall asks).</summary>
+        public VisitStats visitStats = new VisitStats();
+        /// <summary>The log's format version (the highest session_start "tv"; 1 when none carries one).</summary>
+        public int logVersion = 1;
+
         public Dictionary<string, int> counts = new Dictionary<string, int>();
 
         static string B(bool? v) => v.HasValue ? (v.Value ? "yes" : "no") : "n/a";
@@ -114,6 +119,7 @@ namespace AquariumCiv.Game
             sb.AppendLine(string.Format(c, "History: {0} opens ({1} unprompted) · time-lapse {2} ({3} unprompted) · {4} scrubs ({5:0} yrs) · pins {6} · plays {7} · snapshots {8} · book {9} turns / {10} pages · Remember {11}",
                 historyOpens, historyOpensUnprompted, timelapseOpens, timelapseOpensUnprompted, scrubs, scrubYearsTotal, pinTaps, plays, snapshots, bookPageTurns, bookPagesSeen, rememberTaps));
             sb.AppendLine($"Recall question: shown {recallShown}x · " + (recallAnswered ? "answered " + string.Join(",", storiesRecalled) : "not answered"));
+            if (visitStats.Any || visitStats.recallShown > 0) sb.AppendLine(visitStats.ToText());
             if (dilemmas.Any)
             {
                 foreach (var kv in dilemmasByVariant) sb.AppendLine(kv.Value.ToText());
@@ -142,6 +148,18 @@ namespace AquariumCiv.Game
             N("timelapse_opens", timelapseOpens); N("timelapse_scrubs", scrubs); N("pin_taps", pinTaps); N("plays", plays);
             N("snapshots", snapshots); N("book_pages_seen", bookPagesSeen); N("remember_taps", rememberTaps);
             N("recall_shown", recallShown);
+            N("log_version", logVersion);
+            if (visitStats.Any)
+            {
+                var v = visitStats;
+                N("visits", v.visits); N("visit_opens", v.opens); N("visit_watched_min", v.watchedMin);
+                N("moments_live", v.live); N("moments_stopped", v.stopped); N("moments_carded", v.carded);
+                O("moments_live_per_visit", v.AvgMomentsPerVisit); O("moment_gap_avg_min", v.AvgGapMin);
+                N("choices_raised", v.raised); N("choices_answered", v.answered); N("choices_let_decide", v.letDecide); N("choices_lapsed", v.lapsed);
+                O("choice_answer_h_median", DilemmaStats.Median(v.answerHours));
+                N("visit_cards_shown", v.cardsShown); N("visit_cards_read", v.cardsRead);
+                N("visit_recall_shown", v.recallShown); N("visit_recall_answered", v.recallAnswered);
+            }
             if (dilemmas.Any)
             {
                 void D(string pre, DilemmaStats s)
@@ -212,6 +230,7 @@ namespace AquariumCiv.Game
             void CountSession(string session, string v) { if (v != null && sessVariants.Add((session ?? "") + "|" + v)) VariantStats(v).sessions++; }
             string lastVariant = null;
             var tracks = new Dictionary<string, DilemmaTrack>();
+            var visitSums = new Dictionary<string, TelemetryEvent>(); // "box|n": the last visit_sum of each visit wins (they are cumulative)
 
             DilemmaStats VariantStats(string v)
             {
@@ -257,10 +276,19 @@ namespace AquariumCiv.Game
                         }
                     case Ev.CallbackShown: TrackOf(e).callbacksShown++; break;
                     case Ev.CallbackShowMe: TrackOf(e).callbackShowMe++; break;
+                    case Ev.VisitSum: visitSums[e.Str("box", "") + "|" + (int)e.Num("n")] = e; break;
+                    case Ev.VisitRecall:
+                        {
+                            string o = e.Str("outcome");
+                            if (o == "shown") r.visitStats.recallShown++;
+                            else if (o == "answered") { r.visitStats.recallAnswered++; r.visitStats.recallNamed += (int)e.Num("named"); r.visitStats.recallNamedSeen += (int)e.Num("named_seen"); }
+                            break;
+                        }
                     case Ev.SessionStart:
                         if (e.Str("variant") != null) { sessVariant[e.session ?? ""] = lastVariant = e.Str("variant"); VariantStats(lastVariant); CountSession(e.session, lastVariant); }
                         else if (lastVariant != null && !sessVariant.ContainsKey(e.session ?? "")) { sessVariant[e.session ?? ""] = lastVariant; CountSession(e.session, lastVariant); }
                         r.opens++;
+                        r.logVersion = Math.Max(r.logVersion, (int)e.Num("tv", 1));
                         int d = DayOf(e);
                         openDays.Add(d);
                         r.opensPerDay[d] = (r.opensPerDay.TryGetValue(d, out var oc) ? oc : 0) + 1;
@@ -321,6 +349,16 @@ namespace AquariumCiv.Game
                 a.sessions += s.sessions; a.raised += s.raised; a.shown += s.shown; a.answered += s.answered; a.lapsed += s.lapsed;
                 a.lapsedUnseen += s.lapsedUnseen; a.answeredBox += s.answeredBox; a.answeredCard += s.answeredCard;
                 a.cheatEvents += s.cheatEvents; a.secondsToAnswer.AddRange(s.secondsToAnswer); a.callbacksShown += s.callbacksShown; a.callbackShowMe += s.callbackShowMe;
+            }
+            foreach (var e in visitSums.Values)
+            {
+                var v = r.visitStats;
+                v.visits++; v.opens += (int)e.Num("opens"); v.watchedMin += e.Num("watched_min");
+                v.live += (int)e.Num("live"); v.stopped += (int)e.Num("stopped"); v.carded += (int)e.Num("carded");
+                v.raised += (int)e.Num("raised"); v.answered += (int)e.Num("answered"); v.letDecide += (int)e.Num("let_decide"); v.lapsed += (int)e.Num("lapsed");
+                v.cardsShown += (int)e.Num("cards_shown"); v.cardsRead += (int)e.Num("cards_read");
+                foreach (var g in (e.Str("gaps") ?? "").Split(';')) if (double.TryParse(g, NumberStyles.Float, CultureInfo.InvariantCulture, out var gv)) { v.gapSum += gv; v.gapCount++; }
+                foreach (var h in (e.Str("answer_h") ?? "").Split(';')) if (double.TryParse(h, NumberStyles.Float, CultureInfo.InvariantCulture, out var hv)) v.answerHours.Add(hv);
             }
             r.daysPlayed = openDays.Count;
             r.bookPagesSeen = pages.Count;
