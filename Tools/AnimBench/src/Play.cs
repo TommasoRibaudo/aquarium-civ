@@ -146,7 +146,7 @@ namespace AnimBench
             var f = new DollFrame
             {
                 Pose = pose, Style = style, Pos = d.Pos, BodyYaw = d.Yaw, Yaw = d.Yaw + pose.yaw, Walking = d.Walking, Speed = d.Speed,
-                Progress = 0f, Since = cue.since, Segment = 0, Step = cue.round, Hunt = HuntPhase.None, Prop = cue.stick ? PropKind.Stick : PropKind.None, Slot = AquariumCiv.View.PropSlot.Hand,
+                Progress = 0f, Since = cue.since, Segment = 0, Step = cue.round, Hunt = HuntPhase.None, Prop = cue.stick ? PropKind.Twig : PropKind.None, Slot = AquariumCiv.View.PropSlot.Hand,
                 HitTarget = target, EndBeat = cue.endBeat, InStep = cue.inStep, Playing = true,
             };
             Bench.Place(ref f, spec.Scale);

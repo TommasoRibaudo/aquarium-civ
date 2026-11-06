@@ -351,6 +351,17 @@ namespace AquariumCiv.EditorTools
                         if (kind == PropKind.Spear) part.transform.localRotation = Quaternion.Euler(80f, 0f, 0f); // in flight: point first
                         break;
                     }
+                    case "bundle":
+                    {
+                        // batch 2: the newborn is the game's own baby (PegDoll.BabyMesh, as PegDollView.SetBaby/LiftBaby draw it), not a grey ball
+                        rig.go = new GameObject(o.id);
+                        rig.go.transform.SetParent(root, false);
+                        var part = new GameObject("Baby");
+                        part.transform.SetParent(rig.go.transform, false);
+                        part.AddComponent<MeshFilter>().sharedMesh = PegDoll.BabyMesh();
+                        part.AddComponent<MeshRenderer>().sharedMaterial = Solid;
+                        break;
+                    }
                     case "stash":
                     {
                         // look-fix: the camp's stash is a low heap of berries on a mat, not a grey boulder
@@ -451,6 +462,20 @@ namespace AquariumCiv.EditorTools
                 }
                 if (r.data.kind is "water" or "pond" or "puddle") pos.y = Mathf.Max(pos.y, 0f) + 0.004f; // look-fix: on the flat lab ground, not under it
                 r.go.transform.localPosition = pos;
+                if (r.data.kind == "bundle")
+                {
+                    // batch 2: held across the chest (-68 deg, as SetBaby), upright once lifted over the head (LiftBaby), turned with its holder
+                    DollRig near = null; float best = float.MaxValue;
+                    foreach (var d in c.dolls)
+                    {
+                        var dp = d.view.transform.localPosition;
+                        float dd = (dp.x - pos.x) * (dp.x - pos.x) + (dp.z - pos.z) * (dp.z - pos.z);
+                        if (dd < best) { best = dd; near = d; }
+                    }
+                    float lift = Mathf.InverseLerp(0.12f, 0.22f, pos.y);
+                    var turn = near != null ? Quaternion.Euler(0f, near.view.transform.localEulerAngles.y, 0f) : Quaternion.identity;
+                    r.go.transform.localRotation = turn * Quaternion.Euler(0f, 0f, -68f * (1f - lift));
+                }
                 if (r.data.kind is "spear" or "fish" or "ball" or "berry") r.go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
                 if (r.berries != null)
                 {
@@ -490,6 +515,7 @@ namespace AquariumCiv.EditorTools
             PropKind.Hammer => new Vector3(0, 0.1f, -0.03f),
             PropKind.Broom => new Vector3(0, -0.09f, 0),
             PropKind.Stick => new Vector3(0, 0.18f, 0),
+            PropKind.Twig => new Vector3(0, 0.13f, 0), // #359 batch 2: the duel's twig (PegDoll.PropMesh)
             PropKind.Fish => new Vector3(0, -0.01f, -0.012f),
             _ => Vector3.zero,
         };

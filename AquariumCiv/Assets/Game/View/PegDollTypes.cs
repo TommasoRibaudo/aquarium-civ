@@ -15,7 +15,9 @@ namespace AquariumCiv.View
         // #358: the kids' big ball
         Ball,
         // #365 B9: the meal's bowl (rides in the left hand)
-        Bowl }
+        Bowl,
+        // #359 (batch 2): the kids' duel stick, a short twig (the 0.24 staff read as a spear in a kid's hand)
+        Twig }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

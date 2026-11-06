@@ -305,6 +305,11 @@ namespace AquariumCiv.View
                     mb.Ico(new Vector3(0, 0.0f, 0), 0.042f, new Vector3(1f, 1.1f, 0.85f), Color.Lerp(Palette.Canvas, Palette.Hide, 0.35f), 0.08f);
                     mb.Prism(new Vector3(0, 0.04f, 0), 0.012f, 0.016f, 0.016f, 6, Palette.Timber);
                     break;
+                case PropKind.Twig:
+                    // #359 (batch 2): the kids' duel stick: a short twig (0.17, the staff is 0.24) with a side nub, so it reads as a found stick, not a staff.
+                    mb.Box(new Vector3(0, 0.045f, 0), new Vector3(0.012f, 0.17f, 0.012f), Palette.Bark);
+                    mb.Box(new Vector3(0.012f, 0.06f, 0), new Vector3(0.022f, 0.008f, 0.008f), Palette.Bark);
+                    break;
                 case PropKind.Stick:
                     // A plain staff or stirring paddle (0.24), flat at the low end.
                     mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.011f, 0.24f, 0.011f), Palette.Bark);

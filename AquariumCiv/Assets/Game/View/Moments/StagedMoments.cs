@@ -175,6 +175,7 @@ namespace AquariumCiv.View
             if (st.travel && a.moving) { view.LiftBaby(0f); return; }
             MomentBeats.Apply(ref pose, sc.plan, m, i, secs, out float lift);
             view.LiftBaby(m.key == sc.plan.carrierKey ? lift : 0f);
+            if (st.beat == StageBeat.Toss && pose.hit > 0f) HitFx.MarkStagedToss(a.who); // the log lands: HitFx flares the fire for this stroke only
             // The spotter: a "!" over the kid who saw the Keeper, as it points.
             if (st.beat == StageBeat.Point && live.marked.Add(m.key)) ShowMeDirector.Instance?.KnockHeard(a.who);
         }

@@ -18,6 +18,7 @@ namespace AquariumCiv.View
             PropKind.Spear => 0.18f,
             PropKind.Rod => 0.2f,
             PropKind.Stick => 0.1f,
+            PropKind.Twig => 0.09f, // #359 batch 2
             PropKind.Bucket or PropKind.BucketEmpty or PropKind.BucketMuddy => -0.085f, // #360: the bucket's bottom hangs below the grip, and it is what meets the water
             _ => 0f,
         };

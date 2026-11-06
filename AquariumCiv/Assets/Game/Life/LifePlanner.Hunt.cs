@@ -582,6 +582,9 @@ namespace AquariumCiv.Life
                     if (!p.Adult || p.job == JobType.Toolmaker || (pass == 0 && p.job != JobType.Hunter)) continue;
                     bool busy = false;
                     foreach (var pl in list) if (pl.hunter == p.who && pl.end + 0.3f > now.hour && pl.start - 0.3f < now.hour + 1.8f) busy = true;
+                    // Batch 2: a live block (a staged moment, a callback, an errand) beats a hunt in PlanBase: don't start one under it
+                    // (HuntViewPlayTests: the hunter danced at a staged wedding and the hunt ran unseen behind it).
+                    foreach (var bl in BlocksOf(p)) if (bl.be > now.hour && bl.bs < now.hour + 1.8f) busy = true;
                     if (!busy) { pick = p; break; }
                 }
             if (pick == null) return false;

@@ -268,6 +268,27 @@ namespace AquariumCiv.View
             return p;
         }
 
+        /// <summary>Batch 2 (#358 look): no two kids closer than this (doll middles); the touch is at the kit's contact reach, wider.</summary>
+        public const float MinGap = 0.085f;
+
+        /// <summary><see cref="PosAt"/> with the members pushed apart where two paths cross (the new chaser ran through the one who just
+        /// tagged it): each of a too-close pair steps half the shortfall away from the other, so both cues agree and it eases in and out.</summary>
+        Vector2 Spaced(int i, int r, float local)
+        {
+            var p = PosAt(i, r, local);
+            var push = Vector2.zero;
+            for (int j = 0; j < Count; j++)
+            {
+                if (j == i) continue;
+                var d = p - PosAt(j, r, local);
+                float m = d.magnitude;
+                if (m >= MinGap) continue;
+                var dir = m > 1e-4f ? d / m : (i < j ? Vector2.left : Vector2.right);
+                push += dir * (0.5f * (MinGap - m));
+            }
+            return p + push;
+        }
+
         public override PlayCue Cue(int i, float t)
         {
             Where(t, out int r, out float local, out bool resting);
@@ -288,7 +309,7 @@ namespace AquariumCiv.View
             int ch = chase.ChaserOf(r), g = chase.TargetOf(r), old = r % TagsPerSet > 0 ? chase.ChaserOf(r - 1) : -1;
             float run = RunSeconds;
             var raw = chase.Cue(i, ChaseTime(r, i == ch ? ChaserLocal(local) : local));
-            cue.pos = PosAt(i, r, local);
+            cue.pos = Spaced(i, r, local);
             cue.face = raw.face;
             cue.speed = SpeedOf(x => PosAt(i, r, x), local);
             bool moving = local < run && cue.speed > 0.02f;
@@ -392,7 +413,8 @@ namespace AquariumCiv.View
     /// </summary>
     public sealed class BallGame : KidGame
     {
-        public const float Antic = 0.3f, Act = 0.12f, Speed = 0.6f, BallR = 0.035f, RunSpeed = 0.5f, Pick = 0.45f, Turn = 0.45f,
+        public const float Antic = 0.3f, Act = 0.12f, Speed = 0.6f, BallR = 0.045f, // batch 2: 0.035 read as a 4 px dot at the full-box view (the draw also keeps it ≥ KidPlayDirector.BallMinPixels)
+            RunSpeed = 0.5f, Pick = 0.45f, Turn = 0.45f,
             HoldUp = 0.9f, CatchHold = 0.25f, Side = 0.42f, SoloThrow = 0.4f, FirstReady = 0.6f, MissShare = 0.25f;
 
         /// <summary>The toss: wind up (arms back, squash, lean back), swing through (a hop), release (the Contact), hold, back.</summary>

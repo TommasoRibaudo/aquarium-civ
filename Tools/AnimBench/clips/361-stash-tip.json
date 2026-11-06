@@ -1,6 +1,6 @@
 {
   "name": "361-stash-tip",
-  "notes": "B5.a end beat (#361 follow-up): a gatherer carries the full basket to the stash pile and tips it. PeopleView stops them in the pile's fan (0.14 u off its middle, facing it, Slot Arms: the basket rides on the chest), then TipBasket (BerryMotion): lift (arms 95), tilt (lean 35, arms 80, the basket rolled 100 deg by BerryPickView), 3 to 5 berries leave the rim 0.06 s apart (h 0.05, 0.25 s) and the first lands on the pile at the contact: the pile Squashes 0.88 -> 1 (StashProps.Bump) with a small dust puff (HitFx). Then back to the carry pose, basket empty. ~1.4 s. The second doll comes 2.4 s after the first (never in step; off the sheet's window so the two do not hide each other). Arcs are authored at this render's hit times.",
+  "notes": "B5.a end beat (#361 follow-up): a gatherer carries the full basket to the stash pile and tips it. PeopleView stops them in the pile's fan (0.14 u off its middle, facing it, Slot Arms: the basket rides on the chest), then TipBasket (BerryMotion): lift (arms 95), tilt (lean 35, arms 80, the basket rolled 100 deg by BerryPickView), 3 to 5 berries leave the rim 0.06 s apart (h 0.05, 0.25 s) and the first lands on the pile at the contact: the pile Squashes 0.88 -> 1 (StashProps.Bump) with a small dust puff (HitFx). Then back to the carry pose, basket empty. ~1.4 s. The second doll comes 2.4 s after the first (never in step; off the sheet's window so the two do not hide each other). Arcs are authored at this render's hit times. Batch 2: the second gatherer comes up to its own fan slot from outside (radially), not across the first one's spot (it walked through the first tipper).",
   "duration": 9.6,
   "fps": 30,
   "warmup": 0,
@@ -279,8 +279,8 @@
           "label": "carry",
           "activity": "Carry",
           "from": [
-            -0.9,
-            -0.35
+            -0.22,
+            -0.95
           ],
           "to": [
             -0.03,
@@ -311,8 +311,8 @@
             -0.14
           ],
           "to": [
-            -0.9,
-            -0.35
+            -0.22,
+            -0.95
           ],
           "dur": 2.6
         }

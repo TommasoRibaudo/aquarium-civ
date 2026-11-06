@@ -151,6 +151,10 @@ namespace AquariumCiv.View.PlayTests
                 for (int i = 0; i < 12 && Sim.State.era != Era.Camp; i++) { EcoDebug.MistCamp(); EcoDebug.SkipSeasons(1); }
                 Debug.Log($"[hunt] era {Sim.State.era}, rabbits {Sim.EcoRabbitCount}");
                 EcoDebug.AddRabbits(6);
+                // Batch 2: the season skips leave a staged moment (#370: a wedding) playing at the fire; its live blocks take the
+                // adults (they beat a hunt by design, and DebugStartHunt now won't pick anyone under one). This test watches a hunt: end it.
+                // The skips queued several (a wedding, a new chief): each one stopped lets the next start, so stop them until none comes for 2 s.
+                for (int calm = 0, f = 0; calm < 120 && f < 1200; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
                 PeopleView.DebugSetHour(9f);
                 yield return Frames(30);
                 yield return Until(() => !rv.SignPlaying && rv.Shown >= 3, 15f);

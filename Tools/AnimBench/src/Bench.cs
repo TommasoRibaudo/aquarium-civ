@@ -112,6 +112,13 @@ namespace AnimBench
         };
 
         /// <summary>The working end of a hand prop in its own frame (from PegDoll.BuildProp's geometry).</summary>
+        /// <summary>PegDollView.SpearAim (batch 2): the spear's point leads forward in the doll's frame, whatever the arm does.</summary>
+        static Quaternion SpearAim(bool aiming, float lean)
+        {
+            float e = (aiming ? 12f : 30f) + lean;
+            return Quaternion.Euler(e - 90f, 0f, 0f) /* +y (the point) to forward (-z), tipped up e */;
+        }
+
         public static Vector3 ToolTip(PropKind k) => k switch
         {
             PropKind.Spear => new Vector3(0, 0.205f, 0),
@@ -122,6 +129,7 @@ namespace AnimBench
             PropKind.Hammer => new Vector3(0, 0.1f, -0.03f),
             PropKind.Broom => new Vector3(0, -0.09f, 0),
             PropKind.Stick => new Vector3(0, 0.18f, 0),
+            PropKind.Twig => new Vector3(0, 0.13f, 0), // #359 batch 2: the duel's twig (PegDoll.PropMesh)
             PropKind.Fish => new Vector3(0, -0.01f, -0.012f),
             PropKind.Bucket or PropKind.BucketEmpty or PropKind.BucketMuddy => new Vector3(0, -0.085f, 0), // #360: the bucket's bottom (PegDoll.PropMesh)
             _ => Vector3.zero,
@@ -167,7 +175,8 @@ namespace AnimBench
             else if (f.Slot == PropSlot.Hand)
             {
                 var rest = Quaternion.Inverse(Quaternion.Euler(-35f, 0, 10f)) * Quaternion.Euler(0, 0, IsTool(f.Prop) ? -ToolTilt : 0f) * rot;
-                var pr = f.ArmR.Child(pos * s, pose.extend ? AlongArm : rest, Vector3.one * ps);
+                var grip = f.Prop == PropKind.Spear ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * SpearAim(pose.extend, pose.lean) : pose.extend ? AlongArm : rest; // batch 2: PegDollView.SpearAim
+                var pr = f.ArmR.Child(pos * s, grip, Vector3.one * ps);
                 f.PropFrame = pr;
                 if (ToolTip(f.Prop) != Vector3.zero) f.Tip = pr.Point(ToolTip(f.Prop));
             }
@@ -384,7 +393,9 @@ namespace AnimBench
                 if (d.Drew != DollStyle.TipBasket) d.TipStart = time;
                 since = time - d.TipStart;
             }
-            var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, propSlot, holds, d.Speed, progress, since, seg.Count, d.Stride);
+            float actSince = seg.ActT0.HasValue ? Mathf.Max(0f, tc - seg.ActT0.Value) : since; // batch 2: a sliced step runs one clock
+            float actProgress = seg.ActT0.HasValue && seg.ActT1.Value > seg.ActT0.Value ? Mathf.Clamp01(actSince / (seg.ActT1.Value - seg.ActT0.Value)) : progress;
+            var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, propSlot, holds, d.Speed, actProgress, actSince, seg.Count, d.Stride);
             if (style != d.Drew)
             {
                 d.BlendFrom = d.Pose;
