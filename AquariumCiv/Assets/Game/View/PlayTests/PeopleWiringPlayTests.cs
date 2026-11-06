@@ -100,6 +100,10 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator TheGroupAtTheGlassIsLooseAndHoldsStill()
         {
             yield return Grown();
+            // Batch 4: the year skip queues #370 staged moments whose live blocks take the adults away from the glass: stop them first.
+            for (int calm = 0, f = 0; calm < 120 && f < 1200; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
+            PeopleView.DebugSetHour(10f);
+            yield return Frames(4);
             StringAssert.Contains("at the glass", GlassVoice.DebugGather(6));
             var pv = People;
             yield return Until(() => pv.Activities.Count(a => a.place.kind == PlaceKind.Glass && !a.moving) >= 4, 30f);
