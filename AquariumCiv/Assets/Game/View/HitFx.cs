@@ -195,6 +195,8 @@ namespace AquariumCiv.View
             if (style == DollStyle.Point && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = 1.6f };
             if (style == DollStyle.Cheer && place is PlaceKind.Fire or PlaceKind.Green) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, gold = true };
             // ---- end #370 ----
+            // #365 B9.c: the stick into the fire: its sparks float up; every third poke is bigger (the flare stand-in, as the thrown log's)
+            if (style is DollStyle.PokeFire or DollStyle.PokeFireBig && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = style == DollStyle.PokeFireBig ? 1.7f : 1f };
             switch (style)
             {
                 case DollStyle.Chop:

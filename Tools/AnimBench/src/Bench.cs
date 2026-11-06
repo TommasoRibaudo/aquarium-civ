@@ -150,7 +150,7 @@ namespace AnimBench
             if (f.Prop == PropKind.None) return;
             var (pos, rot) = SlotPose(f.Slot);
             float ps = Mathf.Lerp(1f, s, 0.5f);
-            if (f.Slot == PropSlot.Hand && f.Prop == PropKind.Basket && BerryMotion.BasketInLeft(f.Style))
+            if (f.Slot == PropSlot.Hand && ((f.Prop == PropKind.Basket && BerryMotion.BasketInLeft(f.Style)) || f.Prop == PropKind.Bowl)) // #365: the meal's bowl rides in the left hand too
             {
                 // #361: the basket in the left hand, upright for the arm pose it is held at (PegDollView.HoldInLeft)
                 float roll = f.Style == DollStyle.TipBasket ? BerryMotion.TipRoll(f.Since) : 0f, lift = f.Style == DollStyle.TipBasket ? BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s : 0f; // #361: rolled over the pile (BerryPickView)
@@ -198,6 +198,8 @@ namespace AnimBench
         public bool PickerHit;
         public ObjectFrame Last;
         public Vector3 ArcFrom, ArcTo;
+        /// <summary>#365: the pot's last stir count (steam on each new one).</summary>
+        public int LastStir = int.MinValue;
         public bool ArcLaunched, Startled;
         public float RippleT = -1f; public int Ripples; // #360
     }
@@ -228,6 +230,7 @@ namespace AnimBench
             field.Refresh(cover, new bool[EcoLand.N], 352, -1);
             SetUpPlay(); // #358
             SetUpPair(); // #363
+            SetUpMeal(); // #365
         }
 
         /// <summary>Runs the clip: the warm-up (not recorded), then every frame.</summary>
@@ -334,6 +337,14 @@ namespace AnimBench
             int step = seg.Step ?? (steps <= 1 ? 0 : (int)(since / Mathf.Max(1e-3f, seg.StepSeconds)) % steps);
             // PeopleView.HuntProp: the spear leaves the hand at the release and is back after the pull; the catch is lifted into the hand
             var propKind = seg.Prop; var propSlot = seg.Slot;
+            // #365, as PeopleView.Drive: a seated eater waits for its bowl (Sit), then eats from it; someone at the fire gets up to poke it with a stick
+            if (style == DollStyle.EatMeal && !walking)
+            {
+                if (MealWaiting(d, t)) style = DollStyle.Sit;
+                else if (seg.Prop == PropKind.None && seg.Bowl) { propKind = PropKind.Bowl; propSlot = PropSlot.Hand; }
+            }
+            bool poking = MealPoking(d, t, out float pokeSince);
+            if (poking) { propKind = PropKind.Stick; propSlot = PropSlot.Hand; }
             if (hunting)
                 switch (seg.Hunt)
                 {
@@ -378,6 +389,7 @@ namespace AnimBench
             if (chatMate != null)
                 PairBeats.Talk(ref pose, PairBeats.TalkAt(spec.Seed, chatMate.Seed, clip.Clock + t, Mathf.Max(0f, ChatEnd(spec, si) - tc)), Desync.Of(spec.Seed, 363).amp, holds);
             if (seg.Plan != null) MomentBeats.Apply(ref pose, seg.Plan, seg.Member, seg.StepIndex, tc, out _); // #370, as PeopleView's StagedPose hook
+            if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c
             if (kind == ActivityKind.FetchWater) // #360, as PeopleView.Drive
             {
                 if (style == DollStyle.DrawWater) WaterBeats.Apply(ref pose, since, spec.Seed, seg.Queue);
@@ -437,6 +449,19 @@ namespace AnimBench
                     float age = o.RippleT >= 0f ? t - o.RippleT : 99f;
                     f.Act = live && age < 0.6f ? "squash " + o.Ripples : "";
                     f.State["squash"] = live && age < 0.6f ? 1f - 0.12f * Mathf.Exp(-age / 0.12f) * Mathf.Cos(age * Mathf.PI * 4f) : 1f;
+                    break;
+                }
+                case "pot":
+                {
+                    // #365: steam (2 blobs) at the top of each stir of the cook it follows: act "steam n" for 1.2 s
+                    var cook = s.Follows != null ? DollById(s.Follows) : null;
+                    if (cook != null && cook.Placed && cook.Last.Style == DollStyle.Stir)
+                    {
+                        int idx = MealBeats.StirIndex(clip.Clock + t + cook.Spec.Phase, cook.Spec.At(Mathf.Max(0f, t)).Pace, out _, out _);
+                        if (o.LastStir != int.MinValue && idx > o.LastStir && live) { o.Ripples++; o.RippleT = t; }
+                        o.LastStir = idx;
+                    }
+                    f.Act = live && o.RippleT >= 0f && t - o.RippleT < 1.2f ? "steam " + o.Ripples : "";
                     break;
                 }
                 case "fire":

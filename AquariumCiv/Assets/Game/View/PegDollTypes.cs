@@ -13,7 +13,9 @@ namespace AquariumCiv.View
         // #267: a bucket of muddy water (scooped from the wet low ground or a puddle while the pond is dry)
         BucketMuddy,
         // #358: the kids' big ball
-        Ball }
+        Ball,
+        // #365 B9: the meal's bowl (rides in the left hand)
+        Bowl }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

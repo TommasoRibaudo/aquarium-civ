@@ -1,0 +1,253 @@
+{
+  "name": "365-bowls",
+  "notes": "#365 B9.b: the bowls go round. The cook (stirring at the pot) takes a bowl and walks round the seated ring from the pot's side, handing each person a bowl: a chain of B7's hand-over events (MealStage.Pass, 1.5 s a person, the takers stay seated). Each taker waits with empty hands (Sit) until its bowl is in hand (the Contact), looks at it (arms lift), then eats from it (EatMeal: the bowl in the left hand). The cook is served last, then everyone eats and leans back full. Six are served by hand; the seventh took its own from the pile (MealStage.MaxServed). AnimLab: cheat 'Meal now'.",
+  "duration": 22.5,
+  "fps": 30,
+  "warmup": 1,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.0,
+      0.0
+    ],
+    "span": 1.0
+  },
+  "sheet": {
+    "from": 0.6,
+    "to": 11.6,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6,
+    "reactSeconds": 0.3
+  },
+  "meal": {
+    "pass": {
+      "giver": "cook",
+      "takers": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g"
+      ],
+      "t0": 1.0,
+      "fire": [
+        0,
+        0
+      ],
+      "pot": [
+        0.1,
+        -0.09
+      ]
+    }
+  },
+  "objects": [
+    {
+      "id": "fire",
+      "kind": "fire",
+      "pos": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "pot",
+      "kind": "pot",
+      "pos": [
+        0.1,
+        -0.09
+      ],
+      "follows": "cook"
+    }
+  ],
+  "dolls": [
+    {
+      "id": "cook",
+      "seed": 640,
+      "role": "cook",
+      "prop": "Stick",
+      "timeline": [
+        {
+          "label": "at the pot",
+          "pos": [
+            0.218,
+            -0.197
+          ],
+          "face": "pot",
+          "dur": 1.0,
+          "style": "Stand"
+        },
+        {
+          "label": "eat",
+          "activity": "Eat",
+          "pos": [
+            0.218,
+            -0.197
+          ],
+          "face": "pot",
+          "bowl": true,
+          "prop": "None",
+          "dur": 21.0
+        }
+      ]
+    },
+    {
+      "id": "a",
+      "seed": 641,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 0,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 21.5
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "seed": 642,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 1,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 20.5
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "seed": 643,
+      "kid": true,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 2,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 21.0
+        }
+      ]
+    },
+    {
+      "id": "d",
+      "seed": 644,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 3,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 22.0
+        }
+      ]
+    },
+    {
+      "id": "e",
+      "seed": 645,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 4,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 20.8
+        }
+      ]
+    },
+    {
+      "id": "f",
+      "seed": 646,
+      "kid": true,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 5,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 21.6
+        }
+      ]
+    },
+    {
+      "id": "g",
+      "seed": 647,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 6,
+        "count": 8,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "Eat",
+          "bowl": true,
+          "dur": 20.4
+        }
+      ]
+    }
+  ]
+}

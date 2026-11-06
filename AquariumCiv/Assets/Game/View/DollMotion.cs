@@ -24,6 +24,8 @@ namespace AquariumCiv.View
         TipBasket,
         // #359 kids' play 2 (View/Beats/KidPlay2.cs): splash, the woods games, hide and seek, snowballs
         PlaySplash, PlayJump, PlayShake, PlayCircle, PlayPeek, PlayDuel, PlayBlock, PlayCount, PlaySeek, PlayHide, PlayFound, PlayTouch, PlaySnowball,
+        // #365 B9 meals and the fire (View/Beats/MealBeats.cs): eating in the ring, the stick into the fire (small, big: the flare)
+        EatMeal, PokeFire, PokeFireBig,
     }
 
     /// <summary>
@@ -61,8 +63,9 @@ namespace AquariumCiv.View
             ActivityKind.None => DollStyle.Stand,
             ActivityKind.Sleep or ActivityKind.Indoors => DollStyle.Hidden,
             ActivityKind.Nap => DollStyle.Lie,
-            ActivityKind.SitOut or ActivityKind.Eat or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or
+            ActivityKind.SitOut or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or
                 ActivityKind.Drink or ActivityKind.SitWithOld or ActivityKind.MindBabies or ActivityKind.Meeting => DollStyle.Sit,
+            ActivityKind.Eat => DollStyle.EatMeal, // #365 B9: hand to mouth, chew, lean back full
             ActivityKind.Knap or ActivityKind.ThrowPot => DollStyle.SitStrike,
             ActivityKind.Weave => DollStyle.SitWeave,
             ActivityKind.Stretch => DollStyle.Stretch,
@@ -302,15 +305,14 @@ namespace AquariumCiv.View
                 }
 
                 case DollStyle.Stir:
-                {
-                    float w = t * tau / (1.6f / pace);
-                    p.armR = new Vector3(40f + Mathf.Sin(w) * 14f, 0, 10f + Mathf.Cos(w) * 14f);
-                    p.armL = new Vector3(25f, 0, -12f);
                     p.extend = hasProp;
-                    p.lean = 16f;
-                    p.roll = Mathf.Cos(w) * 2f;
+                    MealBeats.Stir(ref p, t, pace); // #365 B9.d: the stir, and a taste every fourth stir (the paddle comes out of the pot: upright in the fist)
                     break;
-                }
+
+                case DollStyle.EatMeal:
+                    // #365 B9.a: seated, the bowl in the left hand, the right hand to the mouth now and then, a lean back full at the end
+                    MealBeats.Eat(ref p, t, progress > 0.03f ? since * (1f - progress) / progress : 99f);
+                    break;
 
                 case DollStyle.Sweep:
                 {

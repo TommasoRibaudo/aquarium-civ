@@ -38,6 +38,8 @@ namespace AquariumCiv.View
         public readonly float walkSpeed;
         /// <summary>The smaller of a hug lifts 0.02 u.</summary>
         public bool liftSecond;
+        /// <summary>#365 B9.b: the taker stays seated (a bowl handed round the ring): its activity's pose stays under the beat.</summary>
+        public bool takerSeated;
         /// <summary>Set to end it early (the step it hangs on ended).</summary>
         public float cutAt = float.MaxValue;
 
