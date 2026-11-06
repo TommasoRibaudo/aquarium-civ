@@ -44,6 +44,8 @@ namespace AquariumCiv.Life
         /// <summary>The rabbit really was taken (a planned catch is refused at the herd's floor).</summary>
         public bool caught;
         public bool forced, debugStarted;
+        /// <summary>t1-huntgrass: the stalk, throw and stand have no tall grass or bush between them and the default camera (false when no open approach existed).</summary>
+        public bool openLine;
         public float start, end, strikeStart, resolveHour;
         /// <summary>lungeX/Z is the THROW point (#362: 0.4 u from the rabbit; it was the lunge point 0.125 u off it).</summary>
         public float targetX, targetZ, stalkX, stalkZ, lungeX, lungeZ, fireX, fireZ;
@@ -209,11 +211,32 @@ namespace AquariumCiv.Life
             if (cands.Count == 0) return null;
             cands.Sort((a, b) => { int c = a.d.CompareTo(b.d); return c != 0 ? c : a.id.CompareTo(b.id); });
             int pick = cands.Count > 1 && R(hunter.key, day, 320 + slot) < 0.25f ? 1 : 0;
-            plan.rabbitId = cands[pick].id;
-
             plan.hunterBase = BasePlace(hunter, day, start);
             float toFire = HuntWalkHours(plan.hunterBase, fx, fz);
 
+            // t1-huntgrass: the hunt is played on open ground (tall grass and bushes hide the doll at the default camera). Try the
+            // picked rabbit first, then the next nearest (up to four); the first whose line is open wins, else the picked one is played.
+            var order = new List<int> { cands[pick].id };
+            for (int k = 0; k < cands.Count && order.Count < 4; k++) if (k != pick) order.Add(cands[k].id);
+            float strikeAt = 0f;
+            for (int oi = 0; oi <= order.Count; oi++)
+            {
+                plan.rabbitId = order[oi < order.Count ? oi : 0];
+                strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz);
+                if (plan.openLine) break;
+            }
+            plan.strikeStart = strikeAt;
+            plan.catches = wantCatch && sim.HuntSurplus > 0;
+            if (useHeldForce && huntForceNext.HasValue) { plan.catches = huntForceNext.Value && sim.HuntSurplus > 0; plan.forced = true; huntForceNext = null; }
+
+            if (R(hunter.key, day, 330 + slot) < HuntKidChance) PickKid(plan, hunter, day, slot, usedKids);
+            BuildSteps(plan);
+            return plan;
+        }
+
+        /// <summary>The stalk's rhythm and where the spear flies for the plan's rabbit; returns the strike hour (the old body of MakeHunt).</summary>
+        float SolveAim(HuntPlan plan, Person hunter, long day, float start, int slot, float toFire, float fx, float fz)
+        {
             // #362: the stalk's rhythm (the two freezes), then where the spear flies: the rabbit's spot at the strike, a fixed point of
             // the iteration start -> strike time -> spot. The strike waits for a moment the rabbit is not hopping (it stands still for the throw).
             plan.freezeA = 0.8f + 0.7f * R(hunter.key, day, 360 + slot);
@@ -241,26 +264,54 @@ namespace AquariumCiv.Life
             }
             huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
             Geometry(plan, fx, fz, tx, tz);
-            plan.strikeStart = strikeAt;
-            plan.catches = wantCatch && sim.HuntSurplus > 0;
-            if (useHeldForce && huntForceNext.HasValue) { plan.catches = huntForceNext.Value && sim.HuntSurplus > 0; plan.forced = true; huntForceNext = null; }
-
-            if (R(hunter.key, day, 330 + slot) < HuntKidChance) PickKid(plan, hunter, day, slot, usedKids);
-            BuildSteps(plan);
-            return plan;
+            return strikeAt;
         }
 
-        static void Geometry(HuntPlan plan, float fx, float fz, float tx, float tz)
+        /// <summary>Does something that hides a doll at the default camera (tall grass, a bush, reeds, a young or grown tree) stand on this world point's cell?</summary>
+        bool HidesDoll(float x, float z)
+        {
+            if (!sim.EcologyOn) return false;
+            var e = sim.State.eco;
+            if (e == null || !e.on || e.cover == null) return false;
+            int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z);
+            if (c < 0 || c >= e.cover.Length) return false;
+            var cv = (EcoCover)e.cover[c];
+            return cv == EcoCover.Tall || cv == EcoCover.Bush || cv == EcoCover.Reeds || cv == EcoCover.Young || cv == EcoCover.Tree;
+        }
+
+        /// <summary>Approach turns tried round the rabbit when the straight line from the fire is hidden (radians, the camera-side-first order is seeded by the sign).</summary>
+        static readonly float[] ApproachTurns = { 0f, 0.5f, -0.5f, 1.0f, -1.0f, 1.5f, -1.5f, 2.1f, -2.1f };
+
+        /// <summary>The stalk, throw and stand spots for a rabbit at (tx, tz). The line from the fire is used when it is open; else the
+        /// approach turns round the rabbit (t1-huntgrass) until the stalk, the throw and the stand have no tall grass or bush between them
+        /// and the camera. <see cref="HuntPlan.openLine"/> says whether one was found.</summary>
+        void Geometry(HuntPlan plan, float fx, float fz, float tx, float tz)
         {
             plan.targetX = tx; plan.targetZ = tz;
             float dx = tx - fx, dz = tz - fz, len = (float)Math.Sqrt(dx * dx + dz * dz);
             float ux = 1f, uz = 0f;
             if (len > 0.001f) { ux = dx / len; uz = dz / len; }
             float reach = Math.Min(StalkRange, len * 0.6f);
-            plan.stalkX = tx - ux * reach; plan.stalkZ = tz - uz * reach;
             float throwAt = Math.Min(HuntTiming.ThrowRange, reach * 0.55f);   // #362: the throw point, not a lunge
-            plan.lungeX = tx - ux * throwAt; plan.lungeZ = tz - uz * throwAt;
+            plan.openLine = false;
+            int best = int.MaxValue;
+            for (int k = 0; k < ApproachTurns.Length; k++)
+            {
+                float a = ApproachTurns[k], ca = (float)Math.Cos(a), sa = (float)Math.Sin(a);
+                float vx = ux * ca - uz * sa, vz = ux * sa + uz * ca;
+                float sx = tx - vx * reach, sz = tz - vz * reach, lx = tx - vx * throwAt, lz = tz - vz * throwAt;
+                int hidden = HuntOpen.Hidden(sx, sz, lx, lz, tx, tz, tx - vx * HuntTiming.StandOff, tz - vz * HuntTiming.StandOff, HidesDoll);
+                if (k > 0 && !(PointInBox(sx, sz) && PointInBox(lx, lz))) continue;
+                if (hidden < best)
+                {   // the least hidden line so far (the straight one on a tie: it is tried first)
+                    best = hidden;
+                    plan.stalkX = sx; plan.stalkZ = sz; plan.lungeX = lx; plan.lungeZ = lz;
+                    if (hidden == 0) { plan.openLine = true; return; }
+                }
+            }
         }
+
+        static bool PointInBox(float x, float z) => AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z) >= 0;
 
         /// <summary>#362: the hours the stalk lasts if it starts at about <paramref name="start"/>.</summary>
         static float StalkHoursOf(HuntPlan plan, float start) => LifeClock.ViewHoursFor(Math.Min(23.5f, start + 0.8f), plan.StalkSeconds);
