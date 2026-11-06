@@ -1,0 +1,16 @@
+{
+  "name": "359-snowball",
+  "notes": "#359 (B2 stretch) snowball fight: three kids on a ring 0.5 u across. View/Beats/KidPlay2.cs SnowballGame: bend and scoop (a little snow puff), wind the arm back, throw (the release: a snowball on an arc, h 0.12), it bursts on the target in a snow puff, the target flinches and turns away, then scoops and throws back; every fifth throw they all laugh (the end beat). Replaces the last Hop of kids' play (ActivityKind.Snowball). AnimLab: cheat 'Kids play: snowball'.",
+  "duration": 16,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.1 },
+  "sheet": { "from": 0.3, "to": 16, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "play": { "game": "Snowball", "members": ["kidA", "kidB", "kidC"], "center": [0.0, 0.0], "seed": 12, "ball": "snowball" },
+  "objects": [ { "id": "snowball", "kind": "snowball", "radius": 0.02 } ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 121 },
+    { "id": "kidB", "kid": true, "seed": 122 },
+    { "id": "kidC", "kid": true, "seed": 123 }
+  ]
+}

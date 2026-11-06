@@ -108,6 +108,13 @@ run of play frames is followed by a payoff frame before the clip ends; `neighbou
 a throw's release is checked by `arcs`, not `hitNear`/`react`. `expect.hitReach` widens `hitNear` (the chase's contact is the rabbits'
 0.55 u alert radius, not a touch).
 
+**Kids' play 2 (#359).** Games `Splash`, `Woods`, `HideSeek`, `Snowball` (`View/Beats/KidPlay2.cs`) take their real things from the
+clip's objects: `"water"` (a `pond` or `puddle` object: the pond's edge is found from its middle out towards `center`; put its `pos`
+y at 0, the surface), `"tree"` (the trunk), `"base"` and `"covers"` (hide and seek), `"autumn"`. `"spray"` names an object that rides
+each splash's aimed droplets: every splash is an arc event (`arcs`: they leave the hands and land on the partner). A splash or a
+jump in is a hit on the water (it answers "ripple"), a slap on the trunk a hit on the tree ("sway"); wading sinks the doll. The
+snowball is the `"ball"` object. The games' puffs and shakes are logged in the simulator (`PlayFxLog`).
+
 ## The principles (research 17 §4, without pixels)
 
 | id | passes when |

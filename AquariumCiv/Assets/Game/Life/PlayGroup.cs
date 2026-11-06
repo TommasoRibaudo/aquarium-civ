@@ -20,7 +20,31 @@ namespace AquariumCiv.Life
         Toddle,
         /// <summary>B2.e: a ring that turns as one (weddings, the festival).</summary>
         DanceRing,
-        // B3 (#359) adds its games here, after DanceRing: Splash, Woods, HideSeek.
+        /// <summary>B3.a (#359): two kids splash each other at the real water (the pond's edge, a puddle); now and then one jumps in.</summary>
+        Splash,
+        /// <summary>B3.b (#359): two kids round a real grown tree: chasing round the trunk and peeking, then a stick duel.</summary>
+        Woods,
+        /// <summary>B3.c (#359): one counts at a tent or a tree, the others hide behind real cover; found, they race back.</summary>
+        HideSeek,
+        /// <summary>#359 (B2's stretch): a snowball fight on a snow day.</summary>
+        Snowball,
+    }
+
+    /// <summary>#359: what a group's spot offers (the owner looks at the real land): the B3 games need their real thing.</summary>
+    [Flags]
+    public enum PlaySites
+    {
+        None = 0,
+        /// <summary>Rabbits within reach (B2.c).</summary>
+        Rabbits = 1,
+        /// <summary>The kids are at the water (the pond with water in it, a puddle), not in winter: they splash (B3.a).</summary>
+        Water = 2,
+        /// <summary>A grown tree within reach (B3.b).</summary>
+        Tree = 4,
+        /// <summary>A base (a tent, a tree, the pile) with cover round it for every hider (B3.c).</summary>
+        Cover = 8,
+        /// <summary>Snow on the ground: a snowball fight.</summary>
+        Snow = 16,
     }
 
     /// <summary>One play group the split asks for: its game, its members (person keys, in order) and where it plays.</summary>
@@ -69,8 +93,35 @@ namespace AquariumCiv.Life
             PlayGame.Tag => size >= 2 && size <= MaxGroup,
             PlayGame.Ball => size >= 1 && size <= MaxBall,
             PlayGame.ChaseRabbits => size >= 1 && size <= MaxChase,
+            PlayGame.Splash => size >= 2 && size <= MaxGroup, // #359
+            PlayGame.Woods => size == 2,
+            PlayGame.HideSeek => size >= 3 && size <= MaxGroup,
+            PlayGame.Snowball => size >= 2 && size <= MaxGroup,
             _ => false,
         };
+
+        /// <summary>
+        /// #359: the game for a group by what its spot offers. At the water the water is the game (splash); snow makes a snowball fight;
+        /// a grown tree near (a pair) or cover round a base (three or four) each come first one time in two, so the woods and hide and
+        /// seek turn up as often as the rabbit chase; otherwise B2's pick. Never a game another group here is playing (principle 6),
+        /// except the splash (the groups stand ≥ <see cref="Apart"/> apart along the bank).
+        /// </summary>
+        public static PlayGame Pick(int seed, int size, PlaySites sites, ICollection<PlayGame> taken, bool roomy = true)
+        {
+            bool Free(PlayGame g) => Fits(g, size) && (taken == null || !taken.Contains(g));
+            if ((sites & PlaySites.Water) != 0 && Fits(PlayGame.Splash, size)) return PlayGame.Splash;
+            if (roomy)
+            {
+                if ((sites & PlaySites.Snow) != 0 && Free(PlayGame.Snowball)) return PlayGame.Snowball;
+                bool woods = (sites & PlaySites.Tree) != 0 && Free(PlayGame.Woods), hide = (sites & PlaySites.Cover) != 0 && Free(PlayGame.HideSeek);
+                if (woods && U01(seed, size, 14) < 0.5f) return PlayGame.Woods;
+                if (hide && U01(seed, size, 15) < 0.5f) return PlayGame.HideSeek;
+                var g = Pick(seed, size, (sites & PlaySites.Rabbits) != 0, taken, true);
+                if (taken != null && taken.Contains(g)) { if (woods) return PlayGame.Woods; if (hide) return PlayGame.HideSeek; } // B2's fallback repeats a game: a free B3 one instead
+                return g;
+            }
+            return Pick(seed, size, false, taken, false);
+        }
 
         static readonly PlayGame[] KidGames = { PlayGame.Tag, PlayGame.Ball, PlayGame.ChaseRabbits };
 
@@ -108,6 +159,12 @@ namespace AquariumCiv.Life
         /// </summary>
         public static void Split(IReadOnlyList<int> kids, int placeHash, long day, float hour, float px, float pz,
                                  Func<float, float, bool> rabbitsAt, Func<float, float, (float x, float z)> open, List<PlayGroupPlan> into, bool roomy = true)
+            => Split(kids, placeHash, day, hour, px, pz, rabbitsAt == null ? null : (x, z) => rabbitsAt(x, z) ? PlaySites.Rabbits : PlaySites.None, open, into, roomy);
+
+        /// <summary>#359: <see cref="Split(IReadOnlyList{int}, int, long, float, float, float, Func{float, float, bool}, Func{float, float, ValueTuple{float, float}}, List{PlayGroupPlan}, bool)"/>
+        /// with everything a spot offers (<paramref name="sitesAt"/>: the rabbits, the water, a tree, cover, snow).</summary>
+        public static void Split(IReadOnlyList<int> kids, int placeHash, long day, float hour, float px, float pz,
+                                 Func<float, float, PlaySites> sitesAt, Func<float, float, (float x, float z)> open, List<PlayGroupPlan> into, bool roomy = true)
         {
             into.Clear();
             int n = kids?.Count ?? 0;
@@ -129,8 +186,8 @@ namespace AquariumCiv.Life
                 float x = px + (float)Math.Cos(a) * r, z = pz + (float)Math.Sin(a) * r;
                 if (open != null) (x, z) = open(x, z);
                 int seed = Seed(placeHash, day, hour, gi);
-                bool rabbits = rabbitsAt != null && rabbitsAt(x, z);
-                var g = Pick(seed, size, rabbits, taken, roomy);
+                var sites = sitesAt != null ? sitesAt(x, z) : PlaySites.None;
+                var g = Pick(seed, size, sites, taken, roomy);
                 taken.Add(g);
                 into.Add(new PlayGroupPlan { game = g, seed = seed, members = members, x = x, z = z });
             }

@@ -20,6 +20,8 @@ namespace AquariumCiv.View
         DrawWater,
         // #358 kids' play (View/Beats/KidPlay.cs): the roles a play group draws, the toddle and the ring dance
         PlayChaser, PlayRunner, PlayTaunt, PlayThrow, PlayCatch, PlayCharge, Toddle, RingDance,
+        // #359 kids' play 2 (View/Beats/KidPlay2.cs): splash, the woods games, hide and seek, snowballs
+        PlaySplash, PlayJump, PlayShake, PlayCircle, PlayPeek, PlayDuel, PlayBlock, PlayCount, PlaySeek, PlayHide, PlayFound, PlayTouch, PlaySnowball,
     }
 
     /// <summary>
@@ -423,6 +425,7 @@ namespace AquariumCiv.View
                     p.offset.y = Mathf.Abs(s) * 0.022f;
                     p.roll = s * 6f;
                     p.armL = new Vector3(10f, 0, -50f - s * 18f); p.armR = new Vector3(10f, 0, 50f - s * 18f);
+                    p.hit = Mathf.Abs(s) < 0.15f ? 1f : 0f; // #359 (B1.d): each stamp lands (every 0.45 s): droplets and a ring in a puddle, dust on dry ground (HitFx)
                     break;
                 }
 

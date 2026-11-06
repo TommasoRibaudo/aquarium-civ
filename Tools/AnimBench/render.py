@@ -561,7 +561,7 @@ class Scene:
             prims.append((dep, draw))
         else:
             col = {"ball": PAL["Accents"][0], "berry": (181, 40, 60), "fish": PAL["Water"], "basket": PAL["Thatch"],
-                   "stash": PAL["Hide"], "tent": PAL["Canvas"]}.get(kind, (140, 140, 140))
+                   "stash": PAL["Hide"], "tent": PAL["Canvas"], "spray": PAL["Water"], "snowball": (245, 248, 252)}.get(kind, (140, 140, 140))
 
             def shadow(dr):
                 x, y = cam.px((p[0], 0, p[2]))

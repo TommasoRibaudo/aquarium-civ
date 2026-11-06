@@ -1,0 +1,23 @@
+{
+  "name": "359-hide-seek",
+  "notes": "#359 B3.c hide and seek: four kids, a tent as the base, two bushes, a tree and another tent within 1 u as cover. View/Beats/KidPlay2.cs HideSeekGame: the seeker counts facing the tent, hands over its eyes, bobbing (4 s); the others run each to its own cover and crouch on the far side from the base, peeking out now and then; the seeker turns, walks round looking left and right, to the nearest first; beside a hider it points and hops (the Contact): the hider pops up (stretch, hop, arms up) and races back to touch the tent; the last found, the seeker runs back too and everyone cheers (the end beat). HitFx: the bush shakes as a kid dives behind it and as it pops up. AnimLab: cheat 'Kids play: hide and seek' (needs a tent, tree or the pile with 2+ cover within 1 u).",
+  "duration": 19.8,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.05, -0.05], "span": 1.8 },
+  "sheet": { "from": 0.2, "to": 19.8, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6, "reactSeconds": 0.2 },
+  "play": { "game": "HideSeek", "members": ["kidA", "kidB", "kidC", "kidD"], "center": [0.0, -0.3], "seed": 31, "base": "tent1", "covers": ["bush1", "bush2", "tree1", "tent2"] },
+  "objects": [
+    { "id": "tent1", "kind": "tent", "pos": [0.0, 0.0], "radius": 0.12 },
+    { "id": "bush1", "kind": "bush", "pos": [-0.65, 0.35], "radius": 0.09 },
+    { "id": "bush2", "kind": "bush", "pos": [0.6, 0.45], "radius": 0.08 },
+    { "id": "tree1", "kind": "tree", "pos": [0.75, -0.25], "radius": 0.04 },
+    { "id": "tent2", "kind": "tent", "pos": [-0.55, -0.6], "radius": 0.12 }
+  ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 311 },
+    { "id": "kidB", "kid": true, "seed": 312 },
+    { "id": "kidC", "kid": true, "seed": 313 },
+    { "id": "kidD", "kid": true, "seed": 314 }
+  ]
+}
