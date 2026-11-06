@@ -1,0 +1,31 @@
+{
+  "name": "360-water-run",
+  "notes": "B4 #360: two people draw water at the pond's edge at dawn (3.5 s block, 0.35 h): walk out with the empty bucket, kneel facing the water 0.06 u back from the edge, dip (hit on the contact frame: HitFx droplets + ring), the bucket jostles under for 0.6 s, lift with effort (the prop turns full at the start of the lift), the weight lands, then the heavy walk home (rolled away from the bucket, lower, small bounce). Each has its own start delay (0 to 0.6 s by hash), so the dips never land together. The pond is a sphere at the water level (y -0.08); the bucket's bottom is the tool tip.",
+  "duration": 12.5,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [-0.3, 0.1], "span": 1.9 },
+  "sheet": { "from": 2.5, "to": 8.5, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2, "neighbourRadius": 0.6 },
+  "objects": [
+    { "id": "pond", "kind": "pond", "pos": [0.5, -0.08, 0.0], "radius": 0.5, "size": [1.0, 1.0] }
+  ],
+  "dolls": [
+    {
+      "id": "drawerA", "seed": 361, "role": "adult", "slot": "Hand",
+      "timeline": [
+        { "label": "walk out", "activity": "Walk", "prop": "BucketEmpty", "from": [-1.1, 0.25], "to": [-0.06, 0.02], "dur": 3.4 },
+        { "label": "draw", "activity": "FetchWater", "prop": "BucketEmpty", "face": "pond", "target": "pond", "dur": 3.5 },
+        { "label": "home", "activity": "FetchWater", "prop": "Bucket", "to": [-1.1, 0.25], "dur": 5.6 }
+      ]
+    },
+    {
+      "id": "drawerB", "seed": 362, "role": "adult", "slot": "Hand",
+      "timeline": [
+        { "label": "walk out", "activity": "Walk", "prop": "BucketEmpty", "from": [-1.0, -0.55], "to": [0.0, -0.27], "dur": 3.4 },
+        { "label": "draw", "queue": 1, "activity": "FetchWater", "prop": "BucketEmpty", "face": "pond", "target": "pond", "dur": 3.5 },
+        { "label": "home", "activity": "FetchWater", "prop": "Bucket", "to": [-1.0, -0.55], "dur": 5.6 }
+      ]
+    }
+  ]
+}

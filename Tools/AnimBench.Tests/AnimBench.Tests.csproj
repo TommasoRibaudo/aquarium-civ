@@ -17,6 +17,7 @@
   <ItemGroup>
     <!-- #355: the beat kit's own pure tests run here too (the kit itself comes in through AnimBench.csproj) -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/BeatKitTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/WaterBeatsTests.cs" /><!-- #360 -->
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../AnimBench/AnimBench.csproj" />

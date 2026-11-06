@@ -1,0 +1,23 @@
+{
+  "name": "360-water-run-muddy",
+  "notes": "B4 #360, the muddy variant: before the pond has water the bucket is scooped from the wet low ground (a puddle). One drawer kneels 0.1 u off the puddle, dips (HitFx: droplets + ring in the muddy brown, via Resolve: DrawWater at a Puddle or Stream) and walks home with the brown (BucketMuddy) bucket.",
+  "duration": 10.5,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [-0.2, 0.05], "span": 1.5 },
+  "sheet": { "from": 2.5, "to": 8.0, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2 },
+  "objects": [
+    { "id": "puddle", "kind": "puddle", "pos": [0.1, -0.08, 0.0], "radius": 0.12, "size": [0.24, 0.24] }
+  ],
+  "dolls": [
+    {
+      "id": "drawer", "seed": 371, "role": "adult", "slot": "Hand",
+      "timeline": [
+        { "label": "walk out", "activity": "Walk", "prop": "BucketEmpty", "from": [-1.0, 0.3], "to": [-0.0, 0.0], "dur": 3.2 },
+        { "label": "draw", "activity": "FetchWater", "prop": "BucketEmpty", "water": "muddy", "face": "puddle", "target": "puddle", "dur": 3.5 },
+        { "label": "home", "activity": "FetchWater", "prop": "BucketMuddy", "to": [-1.0, 0.3], "dur": 5.0 }
+      ]
+    }
+  ]
+}
