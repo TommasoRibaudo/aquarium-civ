@@ -17,13 +17,30 @@ LIB = "F:/GameDev/AquariumCiv/Library/ScriptAssemblies"
 PKG = "F:/GameDev/AquariumCiv/Library/PackageCache"
 
 
+REFS = {}
+
+
 def asmdefs(root):
     out = {}
     for d, _, files in os.walk(os.path.join(root, "AquariumCiv", "Assets")):
         for f in files:
             if f.endswith(".asmdef"):
                 with open(os.path.join(d, f), encoding="utf-8-sig") as fh:
-                    out[json.load(fh)["name"]] = d.replace("\\", "/")
+                    j = json.load(fh)
+                out[j["name"]] = d.replace("\\", "/")
+                REFS[j["name"]] = [r for r in j.get("references", []) if not r.startswith("GUID:")]
+    return out
+
+
+def ordered(names):
+    """Dependency order among the named assemblies (an assembly after every named one it references)."""
+    done, out = set(), []
+    def visit(n, stack=()):
+        if n in done or n in stack: return
+        for r in REFS.get(n, []):
+            if r in names: visit(r, stack + (n,))
+        done.add(n); out.append(n)
+    for n in names: visit(n)
     return out
 
 
@@ -43,6 +60,7 @@ def main():
     wt = sys.argv[1].replace("\\", "/").rstrip("/")
     names = sys.argv[2:]
     defs = asmdefs(wt)
+    names = ordered(names)
     out = os.path.join(tempfile.gettempdir(), "offline-csc",
                        hashlib.md5((wt + "|".join(names)).encode()).hexdigest()[:10]).replace("\\", "/")
     os.makedirs(out, exist_ok=True)
