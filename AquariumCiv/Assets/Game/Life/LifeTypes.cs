@@ -94,6 +94,8 @@ namespace AquariumCiv.Life
         BushCell,
         /// <summary>P8 #266: a mist puddle (index = the site cell).</summary>
         Puddle,
+        /// <summary>#371: a thing a choice left in the box (index = <see cref="Sim.ConsequenceProp.id"/>); where a callback's people go. Appended last so the saved ints stay.</summary>
+        Prop,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the

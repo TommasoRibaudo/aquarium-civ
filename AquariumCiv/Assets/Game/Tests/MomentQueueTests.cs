@@ -104,7 +104,7 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void ACallbackWaitsAsAMomentAndStaysACardUntilC4StagesItsCredit()
+        public void ACallbackWaitsAsAMomentAndIsNotACardWhileItWaits()
         {
             var sim = Box();
             sim.CardsSeenToNow();
@@ -113,7 +113,7 @@ namespace AquariumCiv.Tests
             var m = sim.MomentOfEntry(e.id);
             Assert.IsNotNull(m);
             Assert.AreEqual(MomentKind.Callback, m.kind);
-            Assert.IsFalse(sim.MomentHidesCard(e), "its card is the only place that says whose choice came back");
+            Assert.IsTrue(sim.MomentHidesCard(e), "#371: the moment says whose choice came back, so its card waits until it becomes one");
         }
 
         // ---------- nothing plays while away; the welcome on the open ----------

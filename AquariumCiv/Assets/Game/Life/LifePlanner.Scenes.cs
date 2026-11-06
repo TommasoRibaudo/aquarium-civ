@@ -632,6 +632,7 @@ namespace AquariumCiv.Life
             PlaceKind.Hill => "the hill",
             PlaceKind.Glass => belief <= 1 ? "the edge of the sky" : belief == 2 ? "the window" : beliefLater ? "the glass" : "the wall",
             PlaceKind.Relic => RelicNoun(p.index),
+            PlaceKind.Prop => "the Keeper's choice", // #371
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }
