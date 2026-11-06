@@ -105,6 +105,11 @@ namespace AquariumCiv.View
             return g.AddComponent<HitFx>();
         }
 
+        /// <summary>Look-fix: the instance a stroke may use. Out of play mode a stroke never makes one: edit-mode tests that step PeopleView
+        /// (PeopleViewTests' day, BerryPickView, RabbitView) made a parentless DontSave "HitFx" on every puff (OnEnable, which sets
+        /// <see cref="Instance"/>, doesn't run in edit mode), and every later PlayMode test failed LeakCheck on them.</summary>
+        static HitFx Live() => Application.isPlaying ? Ensure() : Instance;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
         {
@@ -162,8 +167,8 @@ namespace AquariumCiv.View
         public static bool Puff(PuffKind kind, Vector3 worldPos, Vector3 dir, float scale, in PuffOptions opts, bool force = false)
         {
             if (!Enabled) return false;
-            var fx = Ensure();
-            return fx.Spawn(kind, worldPos, dir, scale, opts, force);
+            var fx = Live();
+            return fx != null && fx.Spawn(kind, worldPos, dir, scale, opts, force);
         }
 
         /// <summary>A shake on a baked bush or tree at <paramref name="worldPos"/>, leaning away along <paramref name="away"/>, after <paramref name="delay"/> seconds
@@ -171,14 +176,16 @@ namespace AquariumCiv.View
         public static bool Shake(ShakeTarget target, Vector3 worldPos, Vector3 away, float delay = 0f, bool force = false)
         {
             if (!Enabled || target is ShakeTarget.None or ShakeTarget.Frame or ShakeTarget.Stone) return false;
-            return Ensure().StartShake(target, worldPos, away, delay, force);
+            var fx = Live();
+            return fx != null && fx.StartShake(target, worldPos, away, delay, force);
         }
 
         /// <summary>A drop-and-back jolt of a separate object (a tent frame, a stone, a stash pile): 0.012 u down, 8 Hz, τ 0.12 s (§0.5), on its local position.</summary>
         public static bool Jolt(Transform t, float delay = 0f)
         {
             if (!Enabled || t == null) return false;
-            return Ensure().StartJolt(t, delay);
+            var fx = Live();
+            return fx != null && fx.StartJolt(t, delay);
         }
 
         // ================================================================== the answer to a WorkHit
