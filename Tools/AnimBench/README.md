@@ -94,6 +94,15 @@ and `state` (free numbers). These kinds are drawn: `rabbit`, `bush`, `tree`, `fi
   is a parametric arc (research 17 §6.4). The start and end are fixed at `t0`. Before `t0` the object rides on its
   `from` anchor. Used for a thrown ball, spear, berry or fish.
 
+**Play groups (#358).** `"play": {"game": "Tag" | "Ball" | "ChaseRabbits" | "Toddle" | "DanceRing", "members": [doll ids],
+"center": [x, z], "seed": n, "t0": 0, "ball": "ballObjectId"}` drives those dolls from the game's own code (`View/Beats/KidPlay.cs`),
+as `KidPlayDirector` does in the game: the doll stands on the cue's spot, faces the cue's point, shows the cue's move and the game's
+beats. The ball object sits between the holder's hands, else on the game's arc from where the hands let it go; every throw is an arc
+event for `arcs`. The rabbit chase chases the clip's rabbits within 1.2 u of the centre. For a play doll, `endBeat` asks that every
+run of play frames is followed by a payoff frame before the clip ends; `neighbours` skips the ring dance (in step on purpose, §0.8);
+a throw's release is checked by `arcs`, not `hitNear`/`react`. `expect.hitReach` widens `hitNear` (the chase's contact is the rabbits'
+0.55 u alert radius, not a touch).
+
 ## The principles (research 17 §4, without pixels)
 
 | id | passes when |

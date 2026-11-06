@@ -1,0 +1,20 @@
+{
+  "name": "358-chase-rabbits",
+  "notes": "#358 B2.c chase the rabbits: three kids and the real herd (Sim.Eco.RabbitHerd.Scare against every doll, as RabbitView runs it). View/Beats/KidPlay.cs RabbitChaseGame: the kids walk round to the herd's side, one points, all creep up crouched from different sides (50 degrees apart), then charge arms up; the first one inside the rabbits' alert radius (0.55 u) is the Contact, the rabbits sit up and bolt; the kids run on, slow, hands on knees, then laugh one after the other (the end beat) and sit. hitReach 0.6: the contact is the scare at the alert radius, not a touch. AnimLab: cheat 'Kids play: chase rabbits' (needs rabbits: 'Spawn rabbits here').",
+  "duration": 12,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.55, 0.15], "span": 2.0 },
+  "sheet": { "from": 0, "to": 12, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6, "hitReach": 0.6 },
+  "play": { "game": "ChaseRabbits", "members": ["kidA", "kidB", "kidC"], "center": [0.0, 0.0], "seed": 9 },
+  "objects": [
+    { "id": "rabbit1", "kind": "rabbit", "pos": [0.95, 0.25], "yaw": 40 },
+    { "id": "rabbit2", "kind": "rabbit", "pos": [1.12, 0.38], "yaw": 200 },
+    { "id": "rabbit3", "kind": "rabbit", "pos": [1.08, 0.12], "yaw": 120 }
+  ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 301 },
+    { "id": "kidB", "kid": true, "seed": 302 },
+    { "id": "kidC", "kid": true, "seed": 303 }
+  ]
+}

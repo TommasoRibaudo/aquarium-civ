@@ -52,6 +52,10 @@ namespace AnimBench
         public Vector3 HandL, HandR, Head;
         /// <summary>The working end of a hand tool (spear point, axe head), else the right hand.</summary>
         public Vector3 Tip;
+        /// <summary>#358 play groups: whom this frame's hit lands on (a doll or object id; <see cref="HitEvent.ReleaseTarget"/> for a throw), the round's
+        /// payoff (P5), moving in step on purpose (the ring dance: exempt from P6), and driven by a play group at all.</summary>
+        public string HitTarget;
+        public bool EndBeat, InStep, Playing;
     }
 
     public struct ObjectFrame
@@ -181,7 +185,7 @@ namespace AnimBench
         public bool ArcLaunched;
     }
 
-    public sealed class Simulator
+    public sealed partial class Simulator
     {
         readonly Clip clip;
         readonly List<DollState> dolls = new List<DollState>();
@@ -205,6 +209,7 @@ namespace AnimBench
             var cover = new byte[EcoLand.N];
             for (int i = 0; i < cover.Length; i++) cover[i] = (byte)EcoCover.Grass;
             field.Refresh(cover, new bool[EcoLand.N], 352, -1);
+            SetUpPlay(); // #358
         }
 
         /// <summary>Runs the clip: the warm-up (not recorded), then every frame.</summary>
@@ -221,6 +226,7 @@ namespace AnimBench
                 first = false;
                 if (i >= 0) track.Record(i, t, dolls.ConvertAll(d => d.Last), objects.ConvertAll(o => o.Last));
             }
+            track.ArcEvents.AddRange(ArcEvents); // #358
             track.Finish();
             return track;
         }
@@ -247,6 +253,7 @@ namespace AnimBench
 
         void StepDoll(DollState d, float t, float tc, float dt)
         {
+            if (StepPlayDoll(d, t, dt)) return; // #358: a play group drives this doll
             var spec = d.Spec;
             int si = spec.IndexAt(tc);
             var seg = spec.Segments[si];
@@ -348,6 +355,7 @@ namespace AnimBench
                 }
             }
             if (s.Arc != null) StepArc(o, ref f, t);
+            StepBall(o, ref f, t); // #358
             o.Last = f;
         }
 

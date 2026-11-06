@@ -28,6 +28,8 @@ namespace AnimBench
         /// <summary>Principles this clip is known to fail today (research 17 §4): the tests report them as gaps, not failures.</summary>
         public readonly HashSet<string> KnownGaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         public string SourcePath;
+        /// <summary>#358: a kids' play group (src/Play.cs).</summary>
+        public PlaySpec Play;
 
         public int FrameCount => Math.Max(1, (int)Math.Round(Duration * Fps) + 1);
         public float Dt => 1f / Fps;
@@ -68,6 +70,7 @@ namespace AnimBench
                 int i = 0;
                 foreach (var d in dolls) c.Dolls.Add(DollSpec.Parse((JsonObject)d, c, i++));
             }
+            if (root["play"] is JsonObject pl) c.Play = PlaySpec.Parse(pl); // #358
             if (c.Dolls.Count == 0 && c.Objects.Count == 0) throw new ClipException("a clip needs at least one doll or object");
             var ids = new HashSet<string>();
             foreach (var d in c.Dolls) if (!ids.Add(d.Id)) throw new ClipException($"duplicate id '{d.Id}'");
@@ -153,6 +156,9 @@ namespace AnimBench
         public float NeighbourRadius = 0.6f;
         /// <summary>How soon the target must answer a hit (seconds).</summary>
         public float ReactSeconds = 0.2f;
+        /// <summary>#358: how close a hit's hand must be to its target's surface (default one doll-width). The rabbit chase's contact
+        /// is the kid coming inside the rabbits' alert radius (0.55 u), not a touch.</summary>
+        public float? HitReach;
 
         public static ExpectSpec Parse(JsonObject o)
         {
@@ -160,6 +166,7 @@ namespace AnimBench
             {
                 NeighbourRadius = Clip.Num(o, "neighbourRadius", 0.6f),
                 ReactSeconds = Clip.Num(o, "reactSeconds", 0.2f),
+                HitReach = Clip.NumOpt(o, "hitReach"),
             };
             if (o["arcs"] is JsonArray arcs)
                 foreach (JsonObject a in arcs)

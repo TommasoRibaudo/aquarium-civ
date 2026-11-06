@@ -30,6 +30,9 @@ namespace AnimBench
         public string Doll, Target;
         public int F0, F1, Segment;
         public float T0, T1;
+        /// <summary>#358: a throw's release (the ball leaves the hands): the arcs principle checks where it goes.</summary>
+        public const string ReleaseTarget = "!release";
+        public bool IsRelease => Target == ReleaseTarget;
     }
 
     public sealed class Track
@@ -39,6 +42,8 @@ namespace AnimBench
         public readonly List<DollTrack> Dolls = new List<DollTrack>();
         public readonly List<ObjectTrack> Objects = new List<ObjectTrack>();
         public readonly List<HitEvent> Hits = new List<HitEvent>();
+        /// <summary>#358: the play group's throws.</summary>
+        public readonly List<ArcEvent> ArcEvents = new List<ArcEvent>();
 
         public int Count => Times.Length;
 
@@ -74,7 +79,7 @@ namespace AnimBench
                     if (!on && start >= 0)
                     {
                         int seg = d.Frames[start].Segment;
-                        Hits.Add(new HitEvent { Doll = d.Spec.Id, F0 = start, F1 = i - 1, T0 = Times[start], T1 = Times[i - 1], Segment = seg, Target = d.Spec.Segments[seg].Target });
+                        Hits.Add(new HitEvent { Doll = d.Spec.Id, F0 = start, F1 = i - 1, T0 = Times[start], T1 = Times[i - 1], Segment = seg, Target = d.Frames[start].HitTarget ?? d.Spec.Segments[seg].Target });
                         start = -1;
                     }
                 }

@@ -608,7 +608,7 @@ namespace AquariumCiv.Life
             int block = 0;
             while (t < 17f)
             {
-                float end = Math.Min(17f, t + 1.25f + R(k, day, 20 + block) * 0.75f);
+                float end = Math.Min(17f, t + 1.25f + R(PlayBlockKey, day, 20 + block) * 0.75f); // #358: one length for every kid that day: the kids at the green play together for a block (a play group)
                 if (17f - end < 0.5f) end = 17f;
                 At(PlayKind(p, d, 20 + block), end, PlayPlace(p, d, 20 + block, near: block % 2 == 0), PlayProp(p, d, 20 + block));
                 t = end; block++;
@@ -620,6 +620,9 @@ namespace AquariumCiv.Life
             At(ActivityKind.Play, home, gather);
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
         }
+
+        /// <summary>#358: the afternoon play blocks' key: the same for every kid, so their blocks start and end together.</summary>
+        const int PlayBlockKey = 358358;
 
         ActivityKind PlayKind(Person p, DayInfo d, int salt)
         {

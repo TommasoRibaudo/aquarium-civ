@@ -74,6 +74,7 @@ namespace AnimBench
             foreach (var h in t.Hits)
             {
                 var d = t.Doll(h.Doll);
+                if (h.IsRelease) { r.Note($"{h.Doll} lets go of the ball at {h.T0:0.00}s (a release: the arcs check says where it lands)"); continue; }
                 r.Marks.Add(new PrincipleMark { Doll = h.Doll, Kind = "contact", T0 = h.T0, T1 = h.T1 });
                 if (h.Target == null) { r.Fail($"{h.Doll} hits at {h.T0:0.00}s with no target (the verb has no object)"); continue; }
                 float best = float.MaxValue; int bestF = h.F0;
@@ -84,7 +85,8 @@ namespace AnimBench
                     if (dist < best) { best = dist; bestF = f; }
                 }
                 if (best < 0f) continue;
-                if (best > d.Width) r.Fail($"{h.Doll} hits at {h.T0:0.00}s but its tool is {best:0.000} u from {h.Target} (> one doll-width {d.Width:0.000}; tool tip at height {d.Frames[bestF].Tip.y:0.00})");
+                float reach = t.Clip.Expect.HitReach ?? d.Width;
+                if (best > reach) r.Fail($"{h.Doll} hits at {h.T0:0.00}s but its tool is {best:0.000} u from {h.Target} (> {(t.Clip.Expect.HitReach.HasValue ? "the clip's hitReach" : "one doll-width")} {reach:0.000}; tool tip at height {d.Frames[bestF].Tip.y:0.00})");
                 else r.Note($"{h.Doll} hits {h.Target} at {h.T0:0.00}s, tool {best:0.000} u off it (frame {bestF})");
             }
             return r;
@@ -96,7 +98,7 @@ namespace AnimBench
         {
             float window = t.Clip.Expect.ReactSeconds;
             var r = new PrincipleResult { Id = React, Title = $"the target answers within {window:0.00}s of the hit, not before (§4.2)" };
-            var targeted = t.Hits.Where(h => h.Target != null).ToList();
+            var targeted = t.Hits.Where(h => h.Target != null && !h.IsRelease).ToList();
             if (targeted.Count == 0) { r.Applies = false; return r.Note("no hit with a target"); }
             foreach (var h in targeted)
             {
@@ -171,6 +173,7 @@ namespace AnimBench
                     }
                 }
             }
+            any |= CheckPlayEndBeats(t, r); // #358
             if (!any) { r.Applies = false; r.Note("no work or play loop in the clip"); }
             return r;
         }
@@ -209,7 +212,7 @@ namespace AnimBench
             foreach (var d in t.Dolls)
             {
                 var s = d.Frames[f].Style;
-                if (Idle.Contains(s)) continue;
+                if (Idle.Contains(s) || d.Frames[f].InStep) continue; // #358: the ring dance and its cheer move together on purpose (§0.8)
                 if (!byStyle.TryGetValue(s, out var l)) byStyle[s] = l = new List<DollTrack>();
                 l.Add(d);
             }
@@ -238,7 +241,8 @@ namespace AnimBench
         {
             var r = new PrincipleResult { Id = Arcs, Title = "arcs (ball, spear, berry, fish) start at the hand and land on the target" };
             var arcs = t.Objects.Where(o => o.Spec.Arc != null).ToList();
-            if (t.Clip.Expect.Arcs.Count == 0 && arcs.Count == 0) { r.Applies = false; return r.Note("no arcs expected or present"); }
+            if (t.Clip.Expect.Arcs.Count == 0 && arcs.Count == 0 && t.ArcEvents.Count == 0) { r.Applies = false; return r.Note("no arcs expected or present"); }
+            CheckPlayArcs(t, r); // #358
             var checkedArcs = new HashSet<ObjectTrack>();
             foreach (var e in t.Clip.Expect.Arcs)
             {
@@ -249,6 +253,52 @@ namespace AnimBench
             }
             foreach (var o in arcs) if (!checkedArcs.Contains(o)) CheckOneArc(t, o, (o.Spec.Arc.From ?? "").Split('.')[0], o.Spec.Arc.To, r);
             return r;
+        }
+
+        /// <summary>#358: a play group's dolls have no segments: each run of play frames that isn't a payoff (a chase, a toss, a creep) must be
+        /// followed by a payoff frame (<see cref="DollFrame.EndBeat"/>: the touch held, the catch, the laugh) before the clip ends.</summary>
+        static bool CheckPlayEndBeats(Track t, PrincipleResult r)
+        {
+            bool any = false;
+            foreach (var d in t.Dolls)
+            {
+                int owing = -1, loops = 0, ends = 0;
+                for (int f = 0; f < t.Count; f++)
+                {
+                    var fr = d.Frames[f];
+                    if (!fr.Playing) continue;
+                    any = true;
+                    if (fr.EndBeat) { if (owing >= 0) { ends++; owing = -1; } }
+                    else if (!Idle.Contains(fr.Style) && owing < 0) { owing = f; loops++; }
+                }
+                if (owing >= 0) r.Fail($"{d.Spec.Id}: plays {d.Frames[owing].Style} from {t.Times[owing]:0.0}s to the end of the clip with no payoff");
+                else if (loops > 0) r.Note($"{d.Spec.Id}: {loops} play rounds, each ends in a payoff");
+            }
+            return any;
+        }
+
+        /// <summary>#358: every throw of a play group's ball starts at the thrower's hands and (unless it was a miss) lands in the catcher's arms.</summary>
+        static void CheckPlayArcs(Track t, PrincipleResult r)
+        {
+            foreach (var e in t.ArcEvents)
+            {
+                var o = t.Object(e.Object); var d = t.Doll(e.By);
+                if (o == null || d == null) continue;
+                int f0 = t.FrameAt(e.T0), f1 = Math.Min(t.Count - 1, t.FrameAt(e.T1));
+                r.Marks.Add(new PrincipleMark { Doll = e.By, Kind = "arc", T0 = e.T0, T1 = e.T1 });
+                float dh = Mathf.Min((o.Frames[f0].Pos - d.Frames[f0].HandR).magnitude, (o.Frames[f0].Pos - (d.Frames[f0].HandL + d.Frames[f0].HandR) * 0.5f).magnitude);
+                if (dh > d.Width) r.Fail($"{e.Object} leaves {e.By} {dh:0.000} u from its hands at {e.T0:0.00}s (> {d.Width:0.000})");
+                if (e.T1 > t.Times[t.Count - 1]) { r.Note($"{e.Object}: {e.By} throws at {e.T0:0.00}s, lands after the clip"); continue; }
+                if (e.Target == null) { r.Note($"{e.Object}: {e.By} throws at {e.T0:0.00}s, a miss: it bounces and rolls"); continue; }
+                if (t.TargetAt(e.Target, f1, out var c, out var rad))
+                {
+                    float dl = Mathf.Max(0f, (o.Frames[f1].Pos - c).magnitude - rad);
+                    var td = t.Doll(e.Target);
+                    float w = td != null ? td.Width : Bench.DollWidth;
+                    if (dl > w) r.Fail($"{e.Object} lands {dl:0.000} u from {e.Target} (> {w:0.000})");
+                    else r.Note($"{e.Object}: {e.By} -> {e.Target}, from {dh:0.000} u off the hands, lands {dl:0.000} u off it at {e.T1:0.00}s");
+                }
+            }
         }
 
         static void CheckOneArc(Track t, ObjectTrack o, string by, string target, PrincipleResult r)
