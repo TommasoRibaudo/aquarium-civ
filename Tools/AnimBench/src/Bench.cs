@@ -153,7 +153,8 @@ namespace AnimBench
             if (f.Slot == PropSlot.Hand && f.Prop == PropKind.Basket && BerryMotion.BasketInLeft(f.Style))
             {
                 // #361: the basket in the left hand, upright for the arm pose it is held at (PegDollView.HoldInLeft)
-                f.PropFrame = f.ArmL.Child(new Vector3(-pos.x, pos.y, pos.z) * s, Quaternion.Inverse(Quaternion.Euler(f.Pose.armL)) * rot, Vector3.one * ps);
+                float roll = f.Style == DollStyle.TipBasket ? BerryMotion.TipRoll(f.Since) : 0f, lift = f.Style == DollStyle.TipBasket ? BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s : 0f; // #361: rolled over the pile (BerryPickView)
+                f.PropFrame = f.ArmL.Child(new Vector3(-pos.x, pos.y, pos.z) * s + new Vector3(0f, lift, 0f), Quaternion.Euler(-roll, 0f, 0f) * Quaternion.Inverse(Quaternion.Euler(f.Pose.armL)) * rot, Vector3.one * ps);
             }
             else if (f.Slot == PropSlot.Hand)
             {
@@ -161,6 +162,12 @@ namespace AnimBench
                 var pr = f.ArmR.Child(pos * s, pose.extend ? AlongArm : rest, Vector3.one * ps);
                 f.PropFrame = pr;
                 if (ToolTip(f.Prop) != Vector3.zero) f.Tip = pr.Point(ToolTip(f.Prop));
+            }
+            else if (f.Style == DollStyle.TipBasket && f.Prop == PropKind.Basket)
+            {
+                // #361: the tip at the stash: the basket lifts off the chest and rolls forward (PegDollView's prop, turned by BerryPickView)
+                float lift = BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s, roll = BerryMotion.TipRoll(f.Since);
+                f.PropFrame = body.Child(pos * s + new Vector3(0f, lift, 0f), Quaternion.Euler(-roll, 0f, 0f) * rot, Vector3.one * ps);
             }
             else f.PropFrame = body.Child(pos * s, rot, Vector3.one * ps);
         }
@@ -178,6 +185,8 @@ namespace AnimBench
         public DollStyle Drew;
         public float BlendT = Bench.BlendSeconds;
         public DollFrame Last;
+        /// <summary>#361: when the doll stood still at the pile and began tipping (PeopleView.Doll.tipStart).</summary>
+        public float TipStart;
     }
 
     /// <summary>One object's running state (a rabbit's scare, a bush's berries).</summary>
@@ -334,6 +343,11 @@ namespace AnimBench
                 propKind = seg.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
             bool holds = propKind != PropKind.None && propKind != PropKind.Mask;
             d.Stride = Mathf.Repeat(d.Stride + DollMotion.Cadence(style, d.Speed) * Mathf.PI * dt, Mathf.PI * 2f);
+            if (style == DollStyle.TipBasket) // #361, as PeopleView.Drive: the tip runs from the first frame the doll stands still
+            {
+                if (d.Drew != DollStyle.TipBasket) d.TipStart = time;
+                since = time - d.TipStart;
+            }
             var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, propSlot, holds, d.Speed, progress, since, seg.Count, d.Stride);
             if (style != d.Drew)
             {
@@ -375,6 +389,15 @@ namespace AnimBench
                     // #360: the ripple ring answers a dip on the contact frame (HitFx draws it in the game): act "ripple" for 0.9 s after a hit aimed at it
                     foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
                     f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.9f ? "ripple " + o.Ripples : ""; // a new ring is a new answer
+                    break;
+                }
+                case "stash":
+                {
+                    // #361: the pile squashes (0.88 -> 1, StashProps.Bump) on each hit aimed at it: act "squash n" for 0.6 s, state squash = the scale
+                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    float age = o.RippleT >= 0f ? t - o.RippleT : 99f;
+                    f.Act = live && age < 0.6f ? "squash " + o.Ripples : "";
+                    f.State["squash"] = live && age < 0.6f ? 1f - 0.12f * Mathf.Exp(-age / 0.12f) * Mathf.Cos(age * Mathf.PI * 4f) : 1f;
                     break;
                 }
                 case "bush":
@@ -446,7 +469,10 @@ namespace AnimBench
             string id = dot > 0 ? a.Substring(0, dot) : a, part = dot > 0 ? a.Substring(dot + 1) : "";
             var d = DollById(id);
             if (d != null)
+            {
+                if (part == "basket" && d.Last.PropFrame.HasValue) return d.Last.PropFrame.Value.Point(new Vector3(0f, 0.04f, 0f)); // #361: the basket's rim (BerryPickView.BasketTop)
                 return part switch { "tip" => d.Last.Tip, "handL" => d.Last.HandL, "head" => d.Last.Head, _ => d.Last.HandR };
+            }
             var o = ObjectById(id) ?? throw new ClipException($"arc anchor '{a}' is neither a doll nor an object");
             return o.Last.State != null ? o.Last.Pos + new Vector3(0, o.Spec.Radius * 0.5f, 0) : o.Spec.Pos;
         }

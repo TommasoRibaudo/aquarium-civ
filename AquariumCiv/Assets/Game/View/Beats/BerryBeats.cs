@@ -22,7 +22,17 @@ namespace AquariumCiv.View
         /// <summary>The left arm pose the basket is built upright for (PegDollView.HoldInLeft).</summary>
         public static Vector3 BasketArmL => BasketArm;
 
-        static readonly Beat pickGroup, rootGroup, tasteGroup, holdUp;
+        // ---- the end beat at the stash (B5.a, #361 follow-up): tip the basket onto the pile. Times are seconds since the doll stood still at the pile.
+        /// <summary>The whole tip: lift, tilt, pour, settle (the planner's TipLoad block is a little longer).</summary>
+        public const float TipSeconds = 1.4f;
+        /// <summary>The berries leave the rim at <see cref="TipPourAt"/> + i * <see cref="TipGap"/>, and fly <see cref="TipFlight"/>: the first lands at <see cref="TipContactAt"/> (the pose's hit).</summary>
+        public const float TipPourAt = 0.5f, TipGap = 0.06f, TipFlight = 0.25f, TipContactAt = TipPourAt + TipFlight;
+        public const int TipMinBerries = 3, TipMaxBerries = 5;
+        /// <summary>The basket rolled forward this far (degrees) at the pour; the view turns the prop (it is on the chest, not on an arm).</summary>
+        public const float TipRollDegrees = 100f, TipLiftHeight = 0.03f;
+
+        static readonly Beat pickGroup, rootGroup, tasteGroup, holdUp, tipBeat;
+        static readonly DollPose tipUnder;
         static readonly float[] rootContacts, pickContacts, tasteContacts;
         static readonly DollPose pickUnder, rootUnder, tasteUnder;
 
@@ -70,6 +80,16 @@ namespace AquariumCiv.View
                 }
             }
             tasteGroup = Make(s, times); tasteContacts = times.ToArray();
+
+            // the tip: the basket comes up (arms 95), tips forward (lean 35, arms 80), shakes out, the first berry lands (contact), the rest follow, then back to the carry
+            tipUnder = DollPose.Rest; tipUnder.lean = 3f; tipUnder.armL = new Vector3(62f, 0f, -4f); tipUnder.armR = new Vector3(62f, 0f, 4f);
+            tipBeat = new Beat(
+                Beat.Step(BeatPhase.Antic, 0.25f, Ease.Out, PoseKey.Hold.Arms(95, 4).Lean(-4)),
+                Beat.Step(BeatPhase.Act, 0.25f, Ease.Smooth, PoseKey.Hold.Arms(80, 4).Lean(35)),
+                Beat.Step(BeatPhase.Act, TipContactAt - 0.5f, Ease.Linear, PoseKey.Hold.Lean(38)),
+                Beat.Step(BeatPhase.Contact, 0.06f, Ease.Linear, PoseKey.Hold),
+                Beat.Step(BeatPhase.Hold, 0.25f, Ease.Linear, PoseKey.Hold),
+                Beat.Step(BeatPhase.Settle, TipSeconds - TipContactAt - 0.31f, Ease.Smooth, PoseKey.Base));
 
             holdUp = new Beat(
                 Beat.Step(BeatPhase.EndBeat, 0.3f, Ease.Back, PoseKey.Hold.ArmL(120, 0, -12).Lean(10).Squash(0.9f).ArmR(40, 0, 8)),
@@ -119,10 +139,10 @@ namespace AquariumCiv.View
 
         // ---------------------------------------------------------------- what the styles are
 
-        public static bool IsBerryStyle(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot or DollStyle.TasteBerry;
+        public static bool IsBerryStyle(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot or DollStyle.TasteBerry or DollStyle.TipBasket;
 
         /// <summary>The basket rides in the left hand while the right hand picks or digs (PegDollView.HoldInLeft).</summary>
-        public static bool BasketInLeft(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot;
+        public static bool BasketInLeft(DollStyle s) => s is DollStyle.PickBerry or DollStyle.DigRoot or DollStyle.TipBasket;
 
         /// <summary>The move for an activity at a place: a gatherer at a real bush picks berries, at the dry stream bed digs roots, a kid
         /// eating at a bush stands tasting. Anything else keeps <paramref name="style"/>.</summary>
@@ -138,6 +158,36 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- the poses
+
+        // ---------------------------------------------------------------- the tip at the stash
+
+        /// <summary>The pose of the tip <paramref name="since"/> seconds after the doll stood still at the pile (held on its last frame after the end).</summary>
+        public static DollPose TipPose(float since) => tipBeat.Pose(tipUnder, Mathf.Max(0f, since));
+
+        /// <summary>The seconds into the tip of the beat's contact (equal to <see cref="TipContactAt"/>).</summary>
+        public static float TipContact => tipBeat.ContactAt;
+
+        /// <summary>How far the basket is rolled forward (0..<see cref="TipRollDegrees"/>): up with the lift, over at the pour, back at the end.</summary>
+        public static float TipRoll(float since)
+        {
+            float on = Easing.Apply(Ease.Smooth, (since - 0.25f) / 0.25f);
+            float off = Easing.Apply(Ease.Smooth, (since - (TipSeconds - 0.4f)) / 0.4f);
+            return TipRollDegrees * Mathf.Clamp01(on - off);
+        }
+
+        /// <summary>How far the basket is lifted off the chest (0..1 of <see cref="TipLiftHeight"/>).</summary>
+        public static float TipLift(float since)
+        {
+            float up = Easing.Apply(Ease.Out, since / 0.25f);
+            float down = Easing.Apply(Ease.Smooth, (since - (TipSeconds - 0.4f)) / 0.4f);
+            return Mathf.Clamp01(up - down);
+        }
+
+        /// <summary>How many berries pour (3..5): the basket's count, but never a tip of nothing.</summary>
+        public static int TipBerries(int inBasket) => Mathf.Clamp(inBasket, TipMinBerries, TipMaxBerries);
+
+        /// <summary>When berry <paramref name="i"/> leaves the rim, seconds into the tip.</summary>
+        public static float TipLaunchAt(int i) => TipPourAt + i * TipGap;
 
         /// <summary>The pose of a berry style at the doll's pose clock <paramref name="t"/>. <paramref name="progress"/> (0..1) and
         /// <paramref name="since"/> (real seconds) tell how long the block still has: the last <see cref="HoldUpSeconds"/> of a pick hold the basket up.</summary>
@@ -157,6 +207,9 @@ namespace AquariumCiv.View
                     EndOfBlock(ref p, rootUnder, progress, since);
                     break;
                 }
+                case DollStyle.TipBasket:
+                    p = TipPose(since);
+                    break;
                 case DollStyle.TasteBerry:
                 {
                     float c = Mathf.Repeat(t, tasteGroup.Duration);

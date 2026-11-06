@@ -538,6 +538,7 @@ namespace AquariumCiv.Life
                 ActivityKind.Carry => $"taking {PropNoun(a.prop)} to {where}",
                 ActivityKind.FetchWater => a.moving ? $"carrying water to {where}" : $"drawing water at {where}",
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
+                ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
                 ActivityKind.Indoors => "indoors",
