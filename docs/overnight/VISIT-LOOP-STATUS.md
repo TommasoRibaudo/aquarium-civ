@@ -34,3 +34,8 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 ~11:05 · D6 #380 merged (5f7c072): camp_remember waits for a real death. C1 told to merge it in (same files).
 - 2026-11-06 ~11:15 · A1 #355 beat kit merged (d64f86c): View/Beats/** (Easing, Beat, BeatDesync, Arc, BeatGroup), WorkHit in PeopleView; 29 pure tests offline · — · 0 · Unity: BeatKit* (29) + WorkHitTests in batch 1. T1 told to glob View/Beats/**.
 - 2026-11-06 ~11:15 · B1 #357 puffs started (Sonnet, phase 1); D3 #377 in the Editor
+- 2026-11-06 ~11:40 · C1 #368 merged (25da79c): visit = open after ≥15 min away (worker's call, recorded); 3-visit close; LetThemDecide on card + scene; clockHours pacing 3 h; CardCap 1/2/3 · — · 0 · Unity: CardStackTests, DilemmaCardPlayTests, ChoiceScenePlayTests, DilemmaCheatsPlayTests, P7SelfPlayTests, smoke
+- 2026-11-06 ~11:40 · T1 #352 AnimBench merged (20be5ae): `bash Tools/AnimBench/run.sh <clip>` 2.7 s (--no-video), ~4 s with video; two worktrees at once OK; AnimBench.Tests 60 pass / 5 known-gap skips. Baseline hunt-strike sheet looked at: strike 0.167 u off the rabbit, react 0.37 s, no spear arc, stalk drawn as Walk · — · 0 ·
+- 2026-11-06 ~11:40 · D3 #377 merged (ee4eaff): pitch floor lifted in lockstep with zoom (BoxCamera.LiftPitchToFloor); ZoomLurchPlayTests 2/2, View.Tests 151/152 (1 inconclusive), CameraGlassFeel 2/2, smoke 2/2 · 854fc61 · 13 ·
+- 2026-11-06 ~11:40 · C2 #369 (Opus) + C5 #372 started; board updated (Tools/board-status.sh) after the user asked to see progress on the Slice board
+- Note: offline-csc must list AquariumCiv.Cards whenever View code calls new Cards API (a missing assembly compiles against the stale Library copy and shows false errors).
