@@ -131,6 +131,7 @@ namespace AquariumCiv.View
                 if (done) { playing.Remove(m.id); sim.FinishMoment(m.id, true); }
             }
             if (sim.PlayingMoments().Count > 0) { LastWhy = "a moment is playing"; return lastStarted; }
+            DropTakenBack(sim); // tester run 1 #10
 
             string busy = BusyReason();
             if (busy != null) { LastWhy = busy; return lastStarted; }
@@ -157,6 +158,27 @@ namespace AquariumCiv.View
             if (++choiceTries >= 3) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the choice could not be staged: its card stays"; }
         }
 
+        /// <summary>Tester run 1 #10: a moment the sim took back (the player left mid-scene: <c>EnsureMomentVisit</c> puts it back to
+        /// waiting, and the next open's welcome hands the same one over again) is no longer playing, but its staging was never
+        /// stopped: each away left one more scene "playing" in the box (2-3 at once in a 5-person camp). Stop every staging the sim
+        /// no longer plays before anything new starts, so a camp only ever has the one.</summary>
+        void DropTakenBack(SimCore sim)
+        {
+            if (playing.Count == 0) return;
+            var ids = new List<int>(playing.Keys);
+            foreach (int id in ids)
+            {
+                var hm = sim.FindMoment(id);
+                if (hm != null && hm.state == HeldMomentState.Playing) continue;
+                var st = playing[id];
+                playing.Remove(id);
+                try { st?.Stop?.Invoke(); } catch (Exception ex) { Debug.LogException(ex); }
+            }
+        }
+
+        /// <summary>Stagings this stage still holds (tests: one at most outside a town's busy day).</summary>
+        public int StagingCount => playing.Count;
+
         List<HeldMoment> StartNow(SimCore sim)
         {
             var due = sim.StartDueMoments();
@@ -167,6 +189,7 @@ namespace AquariumCiv.View
                 try { st = (stagers.TryGetValue(m.kind, out var f) && f != null ? f : Placeholder)(m, sim); }
                 catch (Exception ex) { Debug.LogException(ex); }
                 if (st == null) { sim.FinishMoment(m.id, false); continue; } // can't be staged now: told as a card
+                if (playing.TryGetValue(m.id, out var old) && old != null && !ReferenceEquals(old, st)) { try { old.Stop?.Invoke(); } catch (Exception ex) { Debug.LogException(ex); } } // #10: never two stagings of one moment
                 playing[m.id] = st;
                 lastStarted.Add(m);
             }

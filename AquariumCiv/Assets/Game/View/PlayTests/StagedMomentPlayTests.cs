@@ -83,6 +83,27 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("the staged wedding");
         }
 
+        /// <summary>Tester run 1 #10: leaving mid-moment and coming back (the sim gives the moment back to waiting and the welcome
+        /// hands it over again) left the old staging playing: 2-3 scenes at once in a small camp after a few aways. Only one now.</summary>
+        [UnityTest, Timeout(180000)]
+        public IEnumerator LeavingMidMoment_ThenComingBack_StagesOneSceneAtATime()
+        {
+            yield return Box();
+            string line = StagedMoments.DebugPlayNow(MomentKind.Festival);
+            Assert.IsNotNull(StagedMoments.LastScene, line);
+            yield return Frames(30);
+            Assert.AreEqual(1, StagedMoments.Playing, "the festival plays");
+            for (int away = 0; away < 3; away++)
+            {
+                GameClock.DebugAway(1.0); // past MomentRules.VisitAwayHours: a new visit
+                for (int i = 0; i < 6; i++) { yield return Frames(20); HeldMomentStage.Instance.Check(); }
+                Assert.LessOrEqual(StagedMoments.Playing, 1, $"after away {away + 1}: one scene at most in a small box");
+                Assert.LessOrEqual(HeldMomentStage.Instance.StagingCount, Mathf.Max(1, Sim.PlayingMoments().Count), $"after away {away + 1}: no staging the sim no longer plays");
+            }
+            StagedMoments.StopAll();
+            AssertNoErrors("aways mid-moment");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator StoppingAMoment_ReleasesEveryone_AndTheCheatsPlayEachKind()
         {
