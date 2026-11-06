@@ -416,6 +416,8 @@ ball's, `Snowball` arc h 0.12, `Snow` puff on the target kid, who flinches and t
 | Tests | P1 (hand within 0.05 u of a dot), P2 (dot gone and bush sways within 0.2 s), Arc (hand → basket), P5 |
 | Replaces | `Pick` for `Gather` at a bush; `Harvest`/`Weed` keep `Pick` |
 
+**As built, the tip at the stash (#361 follow-up, `TipLoad` / `DollStyle.TipBasket`, clip `361-stash-tip`):** a short block at the pile right after the carry (planner: its 1.8 s come out of the work before the carry, the day's other blocks keep their times). The beat runs from the first frame the doll stands still: lift 0.25 s (arms 95), tilt 0.25 s (lean 35, arms 80, basket rolled 100° by `BerryPickView`, it rides on the chest), shake out 0.25 s, then 3 to 5 berries leave the rim 0.06 s apart from 0.5 s (h 0.05, 0.25 s) onto the pile; the first lands at 0.75 s = the pose's `hit`: pile `Squash` 0.88 → 1 (`StashProps.Bump`) + a small `Dust` puff; the basket shows empty; settle to 1.4 s. The spec's "both arms x 80, 4–6 arcs" became 3–5 (the basket holds 5). Roots are tipped the same way. Cheat: "Tip at the stash now".
+
 ### B5.b Digging roots (before green; the stream bed)
 *Kneeling in the dry hollow, the digger paws at the ground in puffs of dust and pulls a root up high.*
 | | |

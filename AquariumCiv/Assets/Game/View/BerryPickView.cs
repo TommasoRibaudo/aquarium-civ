@@ -14,6 +14,9 @@ namespace AquariumCiv.View
     /// <item>Taste: the same dot and shake (a lighter one); the kid eats it, no arc.</item>
     /// <item>Dig: dust at the ground (small on the paw strokes, big on the pull); on the pull a root comes up into the hand, is held high 0.5 s, then arcs into the basket.</item>
     /// </list>
+    /// <para>The end beat (<see cref="DollStyle.TipBasket"/>, #361 follow-up): at the stash pile a gatherer lifts the basket, rolls it forward, and 3 to 5 berries leave its rim
+    /// 0.06 s apart in kit arcs (h 0.05, 0.25 s) onto the pile; the first landing is the pose's hit: the pile Squashes (<see cref="StashProps.Bump"/>) with a small
+    /// puff of dust. The basket then shows empty. The basket sits on the chest (it is not on an arm), so this view turns the prop itself while <see cref="PeopleView.BasketTip"/> fires.</para>
     /// One pooled berry mesh and one root mesh; the arcs run on <see cref="ArcPool"/>. Nothing here touches the sim except the one dot a pick takes.
     /// </summary>
     [DefaultExecutionOrder(7)]
@@ -29,6 +32,14 @@ namespace AquariumCiv.View
         {
             public GameObject go; public ArcHandle arc; public bool root;
             public PersonRef who; public float landAt; public bool landed;
+            /// <summary>#361: a berry tipped onto the stash pile (not into a basket).</summary>
+            public bool pile;
+        }
+        /// <summary>#361: one tip in progress: the basket's resting transform (put back when the tip stops), how many berries have left it.</summary>
+        sealed class Tip
+        {
+            public PegDollView v; public Transform prop; public Vector3 restPos; public Quaternion restRot;
+            public float lastSeen, lastSince; public int launched, total;
         }
         /// <summary>A root coming up out of the ground and held in the hand, until its arc leaves.</summary>
         sealed class Held { public GameObject go; public PersonRef who; public float upAt, throwAt; public bool thrown; }
@@ -42,6 +53,9 @@ namespace AquariumCiv.View
         readonly List<Flyer> flying = new();
         readonly List<Held> held = new();
         readonly Dictionary<int, Fill> fills = new();
+        readonly Dictionary<int, Tip> tips = new();
+        readonly List<int> tipDone = new();
+        StashProps stash;
         Mesh berryMesh, rootMesh;
 
         // for tests and the debug panel
@@ -49,6 +63,11 @@ namespace AquariumCiv.View
         public int RootsPulled { get; private set; }
         public int HitsSeen { get; private set; }
         public int LiveFlyers => flying.Count;
+        /// <summary>#361: tips begun, berries sent to the pile, and the pile's answers (the tip's hit frames).</summary>
+        public int TipsSeen { get; private set; }
+        public int PileArcs { get; private set; }
+        public int PileHits { get; private set; }
+        public int TipsInProgress => tips.Count;
 
         /// <summary>The berries shown in this person's basket now (tests).</summary>
         public int BasketCount(PersonRef who) => fills.TryGetValue(who.Key, out var f) && f.prop != null ? f.count : 0;
@@ -77,8 +96,10 @@ namespace AquariumCiv.View
         {
             if (Instance != this) return;
             Instance = null;
-            if (people != null) people.WorkHit -= OnWorkHit;
+            if (people != null) { people.WorkHit -= OnWorkHit; people.BasketTip -= OnBasketTip; }
             people = null;
+            foreach (var t in tips.Values) RestoreBasket(t);
+            tips.Clear();
             foreach (var f in flying) if (f.go != null) Destroy(f.go);
             foreach (var h in held) if (h.go != null) Destroy(h.go);
             flying.Clear(); held.Clear(); fills.Clear();
@@ -97,11 +118,13 @@ namespace AquariumCiv.View
                 var pv = PeopleView.Find();
                 if (pv != people)
                 {
-                    if (people != null) people.WorkHit -= OnWorkHit;
+                    if (people != null) { people.WorkHit -= OnWorkHit; people.BasketTip -= OnBasketTip; }
                     people = pv;
-                    if (people != null) people.WorkHit += OnWorkHit;
+                    if (people != null) { people.WorkHit += OnWorkHit; people.BasketTip += OnBasketTip; }
                 }
+                if (stash == null) stash = FindAnyObjectByType<StashProps>();
             }
+            StepTips();
             StepHeld();
             StepFlyers();
             StepFills(dt);
@@ -120,6 +143,7 @@ namespace AquariumCiv.View
                 case DollStyle.PickBerry: Pick(who, place, v, at, away, true); break;
                 case DollStyle.TasteBerry: Pick(who, place, v, at, away, false); break;
                 case DollStyle.DigRoot: Dig(who, v, at, away, BerryMotion.IsRootPull(poseClock)); break;
+                case DollStyle.TipBasket: PileAnswers(at, away); break;
             }
         }
 
@@ -153,6 +177,81 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- the things in flight
+        // ---------------------------------------------------------------- the tip at the stash (#361)
+        static readonly Vector2[] PileSpread = { new(0f, 0f), new(0.022f, 0.012f), new(-0.02f, 0.014f), new(0.008f, -0.022f), new(-0.014f, -0.012f) };
+
+        void OnBasketTip(PersonRef who, PegDollView v, float since)
+        {
+            if (v == null || v.prop == null || v.propKind != PropKind.Basket) return;
+            if (!tips.TryGetValue(who.Key, out var t) || t.prop != v.prop || since < t.lastSince - 0.05f)
+            {
+                if (t != null) RestoreBasket(t);
+                var f0 = FillOf(who.Key, v);
+                if (f0 == null) return;
+                t = new Tip { v = v, prop = v.prop, restPos = v.prop.localPosition, restRot = v.prop.localRotation };
+                t.total = BerryMotion.TipBerries(f0.count);
+                if (f0.count < t.total) { for (int i = f0.count; i < t.total; i++) f0.pop[i] = 0.0001f; f0.count = t.total; } // a basket we never saw filled: the tip still pours
+                tips[who.Key] = t;
+                TipsSeen++;
+            }
+            t.lastSeen = clock; t.lastSince = since;
+            // the basket comes up off the chest and rolls forward over the pile
+            float lift = BerryMotion.TipLift(since), roll = BerryMotion.TipRoll(since);
+            t.prop.localPosition = t.restPos + new Vector3(0f, BerryMotion.TipLiftHeight * lift * v.scale, 0f);
+            t.prop.localRotation = Quaternion.Euler(-roll, 0f, 0f) * t.restRot;
+            if (t.launched >= t.total) return;
+            var fill = FillOf(who.Key, v);
+            while (t.launched < t.total && since >= BerryMotion.TipLaunchAt(t.launched))
+            {
+                int i = t.launched++;
+                var rim = BasketTop(t.prop);
+                var to = PileSpot(rim, i, v);
+                if (fill != null && fill.count > 0) fill.count--; // that dot leaves the basket
+                var go = NewPiece("Berry", BerryMesh());
+                var shot = ArcShot.Throw(rim, to, 0.05f, BerryMotion.TipFlight, Landing.DropIn, clock, 360f, BerryRadius);
+                var fl = new Flyer { go = go, arc = pool.Launch(shot), who = who, landAt = shot.LandAt, pile = true };
+                flying.Add(fl);
+                go.transform.position = rim;
+                ArcsLaunched++; PileArcs++;
+            }
+        }
+
+        /// <summary>Where berry <paramref name="i"/> lands: on the pile's top (a little spread), else a hand's length in front of the basket.</summary>
+        Vector3 PileSpot(Vector3 rim, int i, PegDollView v)
+        {
+            var spread = PileSpread[i % PileSpread.Length] * DollScale();
+            if (stash != null && stash.TryGetPileTop(out var top)) return top + new Vector3(spread.x, 0f, spread.y);
+            return rim + v.transform.forward * 0.1f + Vector3.down * 0.05f;
+        }
+
+        /// <summary>The first berry lands: the pile squashes and a small puff of dust goes up from its top.</summary>
+        void PileAnswers(Vector3 hand, Vector3 away)
+        {
+            PileHits++;
+            var at = hand;
+            var o = PuffOptions.Default;
+            if (stash != null)
+            {
+                stash.Bump();
+                if (stash.TryGetPileTop(out var top)) { at = top; o.groundY = top.y - 0.04f; }
+            }
+            HitFx.Puff(PuffKind.Dust, at, away, 0.6f, o);
+        }
+
+        void StepTips()
+        {
+            if (tips.Count == 0) return;
+            tipDone.Clear();
+            foreach (var kv in tips) if (clock - kv.Value.lastSeen > 0.12f || kv.Value.prop == null) tipDone.Add(kv.Key); // the tip stopped (the block ended, the doll walked off)
+            foreach (var k in tipDone) { RestoreBasket(tips[k]); tips.Remove(k); }
+        }
+
+        static void RestoreBasket(Tip t)
+        {
+            if (t == null || t.prop == null) return;
+            t.prop.localPosition = t.restPos; t.prop.localRotation = t.restRot;
+        }
+
         void Launch(PersonRef who, Vector3 from, Vector3 to, float h, float flight, bool root)
         {
             var go = NewPiece(root ? "Root" : "Berry", root ? RootMesh() : BerryMesh());
@@ -210,6 +309,7 @@ namespace AquariumCiv.View
 
         void Landed(Flyer f)
         {
+            if (f.pile) { if (stash != null) stash.Bump(0.08f); return; } // a tipped berry lands on the pile, not in a basket
             if (people == null || !people.TryGetBerryDoll(f.who, out var v, out _)) return;
             var fill = FillOf(f.who.Key, v);
             if (fill == null) return;
@@ -323,6 +423,15 @@ namespace AquariumCiv.View
             if (pv == null || pv.Planner == null) return "no PeopleView";
             int cell = pv.Planner.DebugPickersNow(pv.Now);
             return cell < 0 ? "no bush (or nobody free)" : $"pickers to bush {cell}";
+        }
+
+        /// <summary>"Tip at the stash now": three grown-ups walk to the camp's stash pile and tip a basket onto it (camp only).</summary>
+        public static string DebugTipNow()
+        {
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no PeopleView";
+            int n = pv.Planner.DebugTipNow(pv.Now);
+            return n < 0 ? "no stash pile (camp era only)" : n == 0 ? "nobody free" : $"{n} tipping baskets at the stash";
         }
 
         /// <summary>"Root dig now": the same, at the dry stream bed: three grown-ups dig roots for 0.8 view hours.</summary>

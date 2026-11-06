@@ -143,6 +143,7 @@ namespace AquariumCiv.View
             Row(); // #361
             if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
             if (Btn("Root dig now")) last = BerryPickView.DebugRootDigNow();
+            if (Btn("Tip at the stash now")) last = BerryPickView.DebugTipNow();
             EndRow();
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();

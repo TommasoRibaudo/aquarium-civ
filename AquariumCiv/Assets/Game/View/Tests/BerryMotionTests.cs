@@ -109,5 +109,69 @@ namespace AquariumCiv.View.Tests
                 Assert.GreaterOrEqual(holdFrom, 0f, style + " has a contact");
             }
         }
+
+        // ---------------------------------------------------------------- the tip at the stash
+
+        [Test]
+        public void Tip_OneHit_AtTheFirstBerrysLanding_InAboutAsecondAndAHalf()
+        {
+            Assert.AreEqual(BerryMotion.TipContactAt, BerryMotion.TipContact, 1e-4f, "the pose's contact is where the first berry lands");
+            Assert.That(BerryMotion.TipSeconds, Is.InRange(1.2f, 1.5f));
+            int hits = 0; float first = -1f, last = 0f;
+            for (float t = 0f; t < BerryMotion.TipSeconds + 0.5f; t += 1f / 60f)
+            {
+                var p = BerryMotion.TipPose(t);
+                if (p.hit > 0.5f && last <= 0.5f) { hits++; if (first < 0f) first = t; }
+                last = p.hit;
+            }
+            Assert.AreEqual(1, hits);
+            Assert.AreEqual(BerryMotion.TipContactAt, first, 0.03f);
+        }
+
+        [Test]
+        public void Tip_BerriesLeaveTheRimOnceTheBasketIsOver_AndLandOnTheContactFrameOrAfter()
+        {
+            Assert.GreaterOrEqual(BerryMotion.TipLaunchAt(0), 0.45f, "after the lift and the tilt");
+            Assert.AreEqual(BerryMotion.TipContactAt, BerryMotion.TipLaunchAt(0) + BerryMotion.TipFlight, 1e-4f, "the first lands on the hit");
+            Assert.Greater(BerryMotion.TipRoll(BerryMotion.TipLaunchAt(0)), 0.95f * BerryMotion.TipRollDegrees, "the basket is rolled over when the first berry leaves");
+            Assert.AreEqual(0f, BerryMotion.TipRoll(0f), 1e-3f);
+            Assert.AreEqual(0f, BerryMotion.TipRoll(BerryMotion.TipSeconds), 1e-3f, "empty and upright again at the end");
+            Assert.AreEqual(0f, BerryMotion.TipLift(BerryMotion.TipSeconds), 1e-3f);
+            Assert.AreEqual(BerryMotion.TipGap, BerryMotion.TipLaunchAt(1) - BerryMotion.TipLaunchAt(0), 1e-4f, "0.06 s apart");
+        }
+
+        [Test]
+        public void Tip_PoursThreeToFiveBerries_NeverNone()
+        {
+            Assert.AreEqual(3, BerryMotion.TipBerries(0));
+            Assert.AreEqual(3, BerryMotion.TipBerries(3));
+            Assert.AreEqual(4, BerryMotion.TipBerries(4));
+            Assert.AreEqual(5, BerryMotion.TipBerries(9));
+        }
+
+        [Test]
+        public void Tip_LeansOverThePile_AndStaysInRange()
+        {
+            float maxLean = 0f;
+            for (float t = 0f; t < BerryMotion.TipSeconds + 0.3f; t += 1f / 60f)
+            {
+                var p = BerryMotion.TipPose(t);
+                maxLean = Mathf.Max(maxLean, p.lean);
+                Assert.IsFalse(float.IsNaN(p.lean + p.armL.x + p.armR.x + p.squash));
+                Assert.That(p.squash, Is.InRange(0.9f, 1.01f));
+            }
+            Assert.GreaterOrEqual(maxLean, 30f, "the lean (spec: 35) reads on a phone");
+            var end = BerryMotion.TipPose(BerryMotion.TipSeconds + 0.3f);
+            Assert.Less(end.lean, 6f, "back upright for the walk home");
+        }
+
+        [Test]
+        public void TipBasket_IsABerryStyle_AndTipLoadDrawsIt()
+        {
+            Assert.IsTrue(BerryMotion.IsBerryStyle(DollStyle.TipBasket));
+            Assert.AreEqual(DollStyle.TipBasket, DollMotion.StyleOf(ActivityKind.TipLoad));
+            var p = DollMotion.Evaluate(DollStyle.TipBasket, 0f, 1f, 0, 1, PropSlot.Arms, true, 0f, 0f, 0.8f);
+            Assert.Greater(p.lean, 10f, "DollMotion hands the tip's clock (since) to the beat");
+        }
     }
 }

@@ -1,0 +1,322 @@
+{
+  "name": "361-stash-tip",
+  "notes": "B5.a end beat (#361 follow-up): a gatherer carries the full basket to the stash pile and tips it. PeopleView stops them in the pile's fan (0.14 u off its middle, facing it, Slot Arms: the basket rides on the chest), then TipBasket (BerryMotion): lift (arms 95), tilt (lean 35, arms 80, the basket rolled 100 deg by BerryPickView), 3 to 5 berries leave the rim 0.06 s apart (h 0.05, 0.25 s) and the first lands on the pile at the contact: the pile Squashes 0.88 -> 1 (StashProps.Bump) with a small dust puff (HitFx). Then back to the carry pose, basket empty. ~1.4 s. The second doll comes 2.4 s after the first (never in step; off the sheet's window so the two do not hide each other). Arcs are authored at this render's hit times.",
+  "duration": 9.6,
+  "fps": 30,
+  "warmup": 0,
+  "camera": {
+    "view": "default",
+    "focus": [
+      -0.07,
+      0.0
+    ],
+    "span": 0.42
+  },
+  "sheet": {
+    "from": 2.8,
+    "to": 4.5,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "reactSeconds": 0.2,
+    "arcs": [
+      {
+        "kind": "berry",
+        "by": "tipper",
+        "target": "pile"
+      },
+      {
+        "kind": "berry",
+        "by": "tipper2",
+        "target": "pile"
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "pile",
+      "kind": "stash",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "radius": 0.07
+    },
+    {
+      "id": "tipper-b1",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper.basket",
+        "to": [
+          0,
+          0.04,
+          0
+        ],
+        "t0": 3.38,
+        "t1": 3.63,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper-b2",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper.basket",
+        "to": [
+          0.022,
+          0.04,
+          0.012
+        ],
+        "t0": 3.44,
+        "t1": 3.69,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper-b3",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper.basket",
+        "to": [
+          -0.02,
+          0.04,
+          0.014
+        ],
+        "t0": 3.5,
+        "t1": 3.75,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper-b4",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper.basket",
+        "to": [
+          0.008,
+          0.04,
+          -0.022
+        ],
+        "t0": 3.56,
+        "t1": 3.81,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper2-b1",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper2.basket",
+        "to": [
+          0,
+          0.04,
+          0
+        ],
+        "t0": 5.72,
+        "t1": 5.97,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper2-b2",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper2.basket",
+        "to": [
+          0.022,
+          0.04,
+          0.012
+        ],
+        "t0": 5.78,
+        "t1": 6.03,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper2-b3",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper2.basket",
+        "to": [
+          -0.02,
+          0.04,
+          0.014
+        ],
+        "t0": 5.84,
+        "t1": 6.09,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper2-b4",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper2.basket",
+        "to": [
+          0.008,
+          0.04,
+          -0.022
+        ],
+        "t0": 5.9,
+        "t1": 6.15,
+        "height": 0.05
+      }
+    },
+    {
+      "id": "tipper2-b5",
+      "kind": "berry",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "arc": {
+        "from": "tipper2.basket",
+        "to": [
+          -0.014,
+          0.04,
+          -0.012
+        ],
+        "t0": 5.96,
+        "t1": 6.21,
+        "height": 0.05
+      }
+    }
+  ],
+  "dolls": [
+    {
+      "id": "tipper",
+      "seed": 361,
+      "role": "gatherer",
+      "prop": "Basket",
+      "slot": "Arms",
+      "phase": 0,
+      "timeline": [
+        {
+          "label": "carry",
+          "activity": "Carry",
+          "from": [
+            -0.9,
+            0.35
+          ],
+          "to": [
+            -0.14,
+            0.0
+          ],
+          "face": "pile",
+          "dur": 2.6
+        },
+        {
+          "label": "tip",
+          "style": "TipBasket",
+          "activity": "TipLoad",
+          "pos": [
+            -0.14,
+            0.0
+          ],
+          "face": "pile",
+          "target": "pile",
+          "dur": 2.0,
+          "endBeat": true
+        },
+        {
+          "label": "back to work",
+          "activity": "Walk",
+          "prop": "None",
+          "from": [
+            -0.14,
+            0.0
+          ],
+          "to": [
+            -0.9,
+            0.35
+          ],
+          "dur": 5.0
+        }
+      ]
+    },
+    {
+      "id": "tipper2",
+      "seed": 362,
+      "role": "gatherer",
+      "prop": "Basket",
+      "slot": "Arms",
+      "phase": 0.4,
+      "timeline": [
+        {
+          "label": "carry",
+          "activity": "Carry",
+          "from": [
+            -0.9,
+            -0.35
+          ],
+          "to": [
+            -0.03,
+            -0.14
+          ],
+          "face": "pile",
+          "dur": 5.0
+        },
+        {
+          "label": "tip",
+          "style": "TipBasket",
+          "activity": "TipLoad",
+          "pos": [
+            -0.03,
+            -0.14
+          ],
+          "face": "pile",
+          "target": "pile",
+          "dur": 2.0,
+          "endBeat": true
+        },
+        {
+          "label": "back to work",
+          "activity": "Walk",
+          "prop": "None",
+          "from": [
+            -0.03,
+            -0.14
+          ],
+          "to": [
+            -0.9,
+            -0.35
+          ],
+          "dur": 2.6
+        }
+      ]
+    }
+  ]
+}

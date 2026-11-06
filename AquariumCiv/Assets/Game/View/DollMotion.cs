@@ -18,6 +18,8 @@ namespace AquariumCiv.View
         PickBerry, DigRoot, TasteBerry,
         // #360: kneeling to draw water (appended)
         DrawWater,
+        // #361: tipping the basket onto the stash pile (View/Beats/BerryBeats.cs)
+        TipBasket,
     }
 
     /// <summary>
@@ -109,6 +111,7 @@ namespace AquariumCiv.View
             ActivityKind.Stomp => DollStyle.Stomp,
             ActivityKind.FetchWater => DollStyle.DrawWater, // #360 (the walk home is Walk, by speed)
             ActivityKind.WashHands => DollStyle.Crouch,
+            ActivityKind.TipLoad => DollStyle.TipBasket, // #361
             ActivityKind.Mourn or ActivityKind.Service => DollStyle.Mourn,
             ActivityKind.Cheer or ActivityKind.Clap => DollStyle.Cheer,
             ActivityKind.Wave => DollStyle.Wave,
@@ -268,6 +271,7 @@ namespace AquariumCiv.View
                 case DollStyle.PickBerry: // #361
                 case DollStyle.DigRoot:
                 case DollStyle.TasteBerry:
+                case DollStyle.TipBasket:
                     BerryMotion.Evaluate(style, ref p, t, progress, since);
                     break;
 

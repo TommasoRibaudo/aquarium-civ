@@ -566,10 +566,13 @@ class Scene:
                 dr.ellipse([x - rx, y - rx * 0.45, x + rx, y + rx * 0.45], fill=darker(PAL["GrassA"], 0.82))
             prims.append((None, shadow))
 
+            sq = ch["squash"][f] if kind == "stash" and "squash" in ch else 1.0  # #361: the pile squashes when a tipped berry lands
+
             def draw(dr):
                 x, y = cam.px((p[0], p[1] + rad, p[2]))
                 rr = max(2, rad * s)
-                dr.ellipse([x - rr, y - rr, x + rr, y + rr], fill=col, outline=darker(col, 0.6))
+                ry = rr * sq
+                dr.ellipse([x - rr * (1 + (1 - sq) * 0.5), y + rr - ry * 2 * 0.5 - ry, x + rr * (1 + (1 - sq) * 0.5), y + rr], fill=col, outline=darker(col, 0.6)) if kind == "stash" else                     dr.ellipse([x - rr, y - rr, x + rr, y + rr], fill=col, outline=darker(col, 0.6))
             prims.append((dep, draw))
 
 
