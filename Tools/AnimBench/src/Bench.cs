@@ -52,6 +52,10 @@ namespace AnimBench
         public Vector3 HandL, HandR, Head;
         /// <summary>The working end of a hand tool (spear point, axe head), else the right hand.</summary>
         public Vector3 Tip;
+        /// <summary>#358 play groups: whom this frame's hit lands on (a doll or object id; <see cref="HitEvent.ReleaseTarget"/> for a throw), the round's
+        /// payoff (P5), moving in step on purpose (the ring dance: exempt from P6), and driven by a play group at all.</summary>
+        public string HitTarget;
+        public bool EndBeat, InStep, Playing;
     }
 
     public struct ObjectFrame
@@ -149,7 +153,8 @@ namespace AnimBench
             if (f.Slot == PropSlot.Hand && f.Prop == PropKind.Basket && BerryMotion.BasketInLeft(f.Style))
             {
                 // #361: the basket in the left hand, upright for the arm pose it is held at (PegDollView.HoldInLeft)
-                f.PropFrame = f.ArmL.Child(new Vector3(-pos.x, pos.y, pos.z) * s, Quaternion.Inverse(Quaternion.Euler(f.Pose.armL)) * rot, Vector3.one * ps);
+                float roll = f.Style == DollStyle.TipBasket ? BerryMotion.TipRoll(f.Since) : 0f, lift = f.Style == DollStyle.TipBasket ? BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s : 0f; // #361: rolled over the pile (BerryPickView)
+                f.PropFrame = f.ArmL.Child(new Vector3(-pos.x, pos.y, pos.z) * s + new Vector3(0f, lift, 0f), Quaternion.Euler(-roll, 0f, 0f) * Quaternion.Inverse(Quaternion.Euler(f.Pose.armL)) * rot, Vector3.one * ps);
             }
             else if (f.Slot == PropSlot.Hand)
             {
@@ -157,6 +162,12 @@ namespace AnimBench
                 var pr = f.ArmR.Child(pos * s, pose.extend ? AlongArm : rest, Vector3.one * ps);
                 f.PropFrame = pr;
                 if (ToolTip(f.Prop) != Vector3.zero) f.Tip = pr.Point(ToolTip(f.Prop));
+            }
+            else if (f.Style == DollStyle.TipBasket && f.Prop == PropKind.Basket)
+            {
+                // #361: the tip at the stash: the basket lifts off the chest and rolls forward (PegDollView's prop, turned by BerryPickView)
+                float lift = BerryMotion.TipLift(f.Since) * BerryMotion.TipLiftHeight * s, roll = BerryMotion.TipRoll(f.Since);
+                f.PropFrame = body.Child(pos * s + new Vector3(0f, lift, 0f), Quaternion.Euler(-roll, 0f, 0f) * rot, Vector3.one * ps);
             }
             else f.PropFrame = body.Child(pos * s, rot, Vector3.one * ps);
         }
@@ -174,6 +185,8 @@ namespace AnimBench
         public DollStyle Drew;
         public float BlendT = Bench.BlendSeconds;
         public DollFrame Last;
+        /// <summary>#361: when the doll stood still at the pile and began tipping (PeopleView.Doll.tipStart).</summary>
+        public float TipStart;
     }
 
     /// <summary>One object's running state (a rabbit's scare, a bush's berries).</summary>
@@ -185,11 +198,11 @@ namespace AnimBench
         public bool PickerHit;
         public ObjectFrame Last;
         public Vector3 ArcFrom, ArcTo;
-        public bool ArcLaunched;
+        public bool ArcLaunched, Startled;
         public float RippleT = -1f; public int Ripples; // #360
     }
 
-    public sealed class Simulator
+    public sealed partial class Simulator
     {
         readonly Clip clip;
         readonly List<DollState> dolls = new List<DollState>();
@@ -213,6 +226,7 @@ namespace AnimBench
             var cover = new byte[EcoLand.N];
             for (int i = 0; i < cover.Length; i++) cover[i] = (byte)EcoCover.Grass;
             field.Refresh(cover, new bool[EcoLand.N], 352, -1);
+            SetUpPlay(); // #358
         }
 
         /// <summary>Runs the clip: the warm-up (not recorded), then every frame.</summary>
@@ -229,6 +243,7 @@ namespace AnimBench
                 first = false;
                 if (i >= 0) track.Record(i, t, dolls.ConvertAll(d => d.Last), objects.ConvertAll(o => o.Last));
             }
+            track.ArcEvents.AddRange(ArcEvents); // #358
             track.Finish();
             return track;
         }
@@ -255,13 +270,16 @@ namespace AnimBench
 
         void StepDoll(DollState d, float t, float tc, float dt)
         {
+            if (StepPlayDoll(d, t, dt)) return; // #358: a play group drives this doll
             var spec = d.Spec;
             int si = spec.IndexAt(tc);
             var seg = spec.Segments[si];
             float since = Mathf.Max(0f, tc - seg.T0);
             float progress = Mathf.Clamp01(since / seg.Length);
-            var plan = seg.Moves ? Vector2.Lerp(seg.From, seg.To, progress) : seg.From;
             bool hunting = seg.Hunt != HuntPhase.None;
+            var stalkNow = default(HuntStalk.Now);
+            if (seg.Hunt == HuntPhase.Stalk) stalkNow = HuntStalk.Sample(since, seg.FreezeA, seg.FreezeB);
+            var plan = seg.Moves ? Vector2.Lerp(seg.From, seg.To, seg.Hunt == HuntPhase.Stalk ? stalkNow.fraction : progress) : seg.From;   // #362: seven creeping steps
 
             var prev = d.Pos;
             bool jump = !d.Placed || dt <= 0f;
@@ -274,7 +292,8 @@ namespace AnimBench
 
             var style = seg.Style;
             var kind = seg.Activity ?? ActivityKind.None;
-            if (walking && style != DollStyle.Hop) style = kind == ActivityKind.RunOver || (spec.Kid && kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
+            bool keepsHunch = hunting && seg.Hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp;   // PeopleView.keepsHunchStyle
+            if (walking && style != DollStyle.Hop && !keepsHunch) style = kind == ActivityKind.RunOver || (spec.Kid && kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
             if (seg.Hidden) style = DollStyle.Hidden;
 
             // Facing: along the walk, else the partner, else what the clip says to face.
@@ -310,12 +329,26 @@ namespace AnimBench
             }
             int steps = seg.Steps;
             int step = seg.Step ?? (steps <= 1 ? 0 : (int)(since / Mathf.Max(1e-3f, seg.StepSeconds)) % steps);
-            var segProp = seg.Prop;
-            if (segProp == PropKind.BucketEmpty && style == DollStyle.DrawWater && WaterBeats.Full(since, spec.Seed, seg.Queue)) // #360: full from the start of the lift
-                segProp = seg.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
-            bool holds = segProp != PropKind.None && segProp != PropKind.Mask;
+            // PeopleView.HuntProp: the spear leaves the hand at the release and is back after the pull; the catch is lifted into the hand
+            var propKind = seg.Prop; var propSlot = seg.Slot;
+            if (hunting)
+                switch (seg.Hunt)
+                {
+                    case HuntPhase.Strike: if (since >= HuntTiming.ReleaseAt) propKind = PropKind.None; break;
+                    case HuntPhase.PullSpear: if (since < HuntTiming.PullSeconds * HuntTiming.PullTakeAt) propKind = PropKind.None; break;
+                    case HuntPhase.PickUp: if (since >= HuntTiming.PickUpSeconds * HuntTiming.PickTakeAt) { propKind = PropKind.Rabbit; propSlot = PropSlot.Hand; } break;
+                    case HuntPhase.HoldUp: propKind = PropKind.Rabbit; propSlot = PropSlot.Hand; break;
+                }
+            if (propKind == PropKind.BucketEmpty && style == DollStyle.DrawWater && WaterBeats.Full(since, spec.Seed, seg.Queue)) // #360: full from the start of the lift
+                propKind = seg.Muddy ? PropKind.BucketMuddy : PropKind.Bucket;
+            bool holds = propKind != PropKind.None && propKind != PropKind.Mask;
             d.Stride = Mathf.Repeat(d.Stride + DollMotion.Cadence(style, d.Speed) * Mathf.PI * dt, Mathf.PI * 2f);
-            var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, seg.Slot, holds, d.Speed, progress, since, seg.Count, d.Stride);
+            if (style == DollStyle.TipBasket) // #361, as PeopleView.Drive: the tip runs from the first frame the doll stands still
+            {
+                if (d.Drew != DollStyle.TipBasket) d.TipStart = time;
+                since = time - d.TipStart;
+            }
+            var pose = DollMotion.Evaluate(style, phase, seg.Pace, step, steps, propSlot, holds, d.Speed, progress, since, seg.Count, d.Stride);
             if (style != d.Drew)
             {
                 d.BlendFrom = d.Pose;
@@ -327,7 +360,7 @@ namespace AnimBench
                 d.BlendT += dt;
                 pose = DollMotion.Blend(d.BlendFrom, pose, Mathf.SmoothStep(0f, 1f, d.BlendT / Bench.BlendSeconds));
             }
-            if (hunting) DollMotion.Hunt(ref pose, seg.Hunt, progress);
+            if (hunting) DollMotion.Hunt(ref pose, seg.Hunt, progress, since, stalkNow);
             if (seg.Plan != null) MomentBeats.Apply(ref pose, seg.Plan, seg.Member, seg.StepIndex, tc, out _); // #370, as PeopleView's StagedPose hook
             if (kind == ActivityKind.FetchWater) // #360, as PeopleView.Drive
             {
@@ -339,7 +372,7 @@ namespace AnimBench
             var f = new DollFrame
             {
                 Pose = pose, Style = style, Pos = d.Pos, BodyYaw = d.Yaw, Yaw = d.Yaw + pose.yaw, Walking = walking, Speed = d.Speed,
-                Progress = progress, Since = since, Segment = si, Step = step, Hunt = seg.Hunt, Prop = segProp, Slot = seg.Slot,
+                Progress = progress, Since = since, Segment = si, Step = step, Hunt = seg.Hunt, Prop = propKind, Slot = propSlot,
             };
             Bench.Place(ref f, spec.Scale);
             d.Last = f;
@@ -357,6 +390,15 @@ namespace AnimBench
                     // #360: the ripple ring answers a dip on the contact frame (HitFx draws it in the game): act "ripple" for 0.9 s after a hit aimed at it
                     foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
                     f.Act = live && o.RippleT >= 0f && t - o.RippleT < 0.9f ? "ripple " + o.Ripples : ""; // a new ring is a new answer
+                    break;
+                }
+                case "stash":
+                {
+                    // #361: the pile squashes (0.88 -> 1, StashProps.Bump) on each hit aimed at it: act "squash n" for 0.6 s, state squash = the scale
+                    foreach (var dd in dolls) if (dd.Placed && dd.Last.Pose.hit > 0.5f && dd.Spec.Segments[dd.Last.Segment].Target == s.Id) { if (o.RippleT < 0f || t - o.RippleT > 0.15f) o.Ripples++; o.RippleT = t; }
+                    float age = o.RippleT >= 0f ? t - o.RippleT : 99f;
+                    f.Act = live && age < 0.6f ? "squash " + o.Ripples : "";
+                    f.State["squash"] = live && age < 0.6f ? 1f - 0.12f * Mathf.Exp(-age / 0.12f) * Mathf.Cos(age * Mathf.PI * 4f) : 1f;
                     break;
                 }
                 case "fire":
@@ -403,6 +445,7 @@ namespace AnimBench
                 }
             }
             if (s.Arc != null) StepArc(o, ref f, t);
+            StepBall(o, ref f, t); // #358
             o.Last = f;
         }
 
@@ -414,12 +457,26 @@ namespace AnimBench
             foreach (var d in dolls) if (d.Placed && d.Last.Style != DollStyle.Hidden) { px.Add(d.Pos.x); pz.Add(d.Pos.y); }
             RabbitPose p;
             if (!s.Scared) p = basePose;
+            else if (s.FallAt >= 0f && t >= s.FallAt)
+            {   // #362 RabbitView.ShowFallen: it jumps 0.05 u and falls on its side
+                float u = Mathf.Clamp01((t - s.FallAt) / HuntTiming.FallSeconds), e = u * u * (3f - 2f * u);
+                p = basePose; p.y = 0.05f * 4f * u * (1f - u) + 0.018f * e; p.act = RabbitAct.Flee;
+                f.State["roll"] = 90f * e;
+                f.Act = "Fallen";
+                f.Pos = new Vector3(p.x, p.y, p.z); f.Yaw = p.yaw * Mathf.Rad2Deg; f.Phase = 0.5f;
+                return;
+            }
+            else if (s.StartleAt >= 0f && t >= s.StartleAt)
+            {   // #362 RabbitView.ScatterTarget / Scatter: Scare.Hold (flinch, ears up 0.45 s), then the bolt away
+                if (!o.Startled) { o.Startled = true; o.Scare.Hold(s.Pos.x, s.Pos.z, s.StartleFrom.x, s.StartleFrom.y, s.StartleAt, RabbitHerd.Scare.NoticeSeconds, s.StartleTo.x, s.StartleTo.y); }
+                p = o.Scare.Step(dt, basePose, none, none, field, t);
+            }
             else if (s.HuntedBy != null && t < s.HuntedUntil)
             {
-                // RabbitView #283: the stalked rabbit minds nobody until the strike is over; with the hunter within 0.8 it sits up.
+                // RabbitView #283/#362: the stalked rabbit minds nobody until the spear comes down; it sits up when the plan says (the stalk's freezes).
                 p = o.Scare.Step(dt, basePose, none, none, field, t);
-                var h = DollById(s.HuntedBy);
-                if (p.act == RabbitAct.Graze && h != null && h.Placed && (h.Pos - new Vector2(p.x, p.z)).sqrMagnitude < 0.8f * 0.8f) p.act = RabbitAct.SitUp;
+                bool up = false; foreach (var w in s.SitUp) if (t >= w.x && t < w.y) up = true;
+                if (p.act == RabbitAct.Graze && up) p.act = RabbitAct.SitUp;
             }
             else p = o.Scare.Step(dt, basePose, px, pz, field, t);
             f.Pos = new Vector3(p.x, p.y, p.z);
@@ -436,7 +493,10 @@ namespace AnimBench
             string id = dot > 0 ? a.Substring(0, dot) : a, part = dot > 0 ? a.Substring(dot + 1) : "";
             var d = DollById(id);
             if (d != null)
+            {
+                if (part == "basket" && d.Last.PropFrame.HasValue) return d.Last.PropFrame.Value.Point(new Vector3(0f, 0.04f, 0f)); // #361: the basket's rim (BerryPickView.BasketTop)
                 return part switch { "tip" => d.Last.Tip, "handL" => d.Last.HandL, "head" => d.Last.Head, _ => d.Last.HandR };
+            }
             var o = ObjectById(id) ?? throw new ClipException($"arc anchor '{a}' is neither a doll nor an object");
             return o.Last.State != null ? o.Last.Pos + new Vector3(0, o.Spec.Radius * 0.5f, 0) : o.Spec.Pos;
         }
@@ -445,6 +505,7 @@ namespace AnimBench
         void StepArc(ObjectState o, ref ObjectFrame f, float t)
         {
             var a = o.Spec.Arc;
+            if (t >= a.HideAt) { f.Visible = false; f.Act = "gone"; return; }
             if (t < a.T0)
             {
                 f.Visible = a.HeldBefore;

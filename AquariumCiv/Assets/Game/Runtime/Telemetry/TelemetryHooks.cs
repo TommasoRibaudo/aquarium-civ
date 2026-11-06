@@ -21,10 +21,17 @@ namespace AquariumCiv.Game
         public static void FirstRunStepStarted(this TelemetryLog l, string step) => l?.Log(Ev.FirstRunStep, "step", step);
 
         // cards
-        public static void CardShown(this TelemetryLog l, string card, string kind, int index, int total) =>
+        public static void CardShown(this TelemetryLog l, string card, string kind, int index, int total)
+        {
             l?.Log(Ev.CardShown, "card", card, "kind", kind, "i", index, "n", total);
+            l?.Visits?.CardShown(); // #374
+        }
         /// <summary>Dwell comes from <see cref="DwellTracker"/>.</summary>
-        public static void CardRead(this TelemetryLog l, string card, double dwellSeconds) => l?.Log(Ev.CardRead, "card", card, "dwell_ms", Math.Round(dwellSeconds * 1000));
+        public static void CardRead(this TelemetryLog l, string card, double dwellSeconds)
+        {
+            l?.Log(Ev.CardRead, "card", card, "dwell_ms", Math.Round(dwellSeconds * 1000));
+            l?.Visits?.CardRead(); // #374
+        }
         public static void CardOpened(this TelemetryLog l, string card, int personId) => l?.Log(Ev.CardOpened, "card", card, "person", personId);
         public static void CardFlownTo(this TelemetryLog l, string card) => l?.Log(Ev.CardFlownTo, "card", card);
         public static void ShowMe(this TelemetryLog l, string card) => l?.Log(Ev.ShowMe, "card", card);

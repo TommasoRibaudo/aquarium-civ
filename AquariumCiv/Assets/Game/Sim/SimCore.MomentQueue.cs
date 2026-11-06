@@ -12,7 +12,7 @@ namespace AquariumCiv.Sim
     /// <item><b>The queue.</b> A wedding, a birth, a new leader, a choice's callback or a festival still happens on time in the sim
     /// and writes its chronicle line as before; its <i>ceremony</i> is queued (<see cref="HeldMoment"/>: kind, people, when,
     /// priority). While it waits, or once played, its line is not a return card; it is a card only if it never gets staged.
-    /// (A callback stays a card as well until C4 stages its credit: <see cref="MomentRules.AlsoACard"/>.)</item>
+    /// (A callback is staged too since #371: <see cref="MomentRules.AlsoACard"/> is false for every kind.)</item>
     /// <item><b>The director</b> plays them only while the player watches, on a budget per watched minute (never per open):
     /// <see cref="MomentRules"/> has the rates by population, the rest after each, the cap per visit, the queue's cap. Never two
     /// of a kind in a row within a visit. The top waiting moment plays on the open (the welcome). A town now and then has a busy

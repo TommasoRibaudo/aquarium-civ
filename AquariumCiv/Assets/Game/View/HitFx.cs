@@ -19,6 +19,9 @@ namespace AquariumCiv.View
         public int leaves;
         /// <summary>The sparks are the fire's (float up), not a knapped stone's.</summary>
         public bool fire;
+        /// <summary>#370: gold sparks (the new chief's pop); <see cref="big"/>: a bigger burst (a log thrown on the fire flares).</summary>
+        public bool gold;
+        public float big;
         public bool IsNone => !hasPuff && shake == ShakeTarget.None && leaves == 0;
     }
 
@@ -186,6 +189,12 @@ namespace AquariumCiv.View
             bool bush = place is PlaceKind.BushCell or PlaceKind.Bushes;
             if (bush && (style is DollStyle.Pick or DollStyle.Reach or DollStyle.Chop or DollStyle.Hoe or DollStyle.Crouch))
                 return new HitAnswer { shake = ShakeTarget.Bush, leaves = 2 };
+            // #362: the hunter's throw lands (Contact of the Strike beat; the point is where the spear comes down): a puff of grass, on the meadow
+            if (style == DollStyle.Crouch && place == PlaceKind.Meadow) return new HitAnswer { hasPuff = true, puff = PuffKind.Grass };
+            // ---- #370: the staged moments (MomentBeats): a log thrown on the fire flares (a big burst of the fire's sparks); the new chief's pop: gold sparks ----
+            if (style == DollStyle.Point && place == PlaceKind.Fire) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, big = 1.6f };
+            if (style == DollStyle.Cheer && place is PlaceKind.Fire or PlaceKind.Green) return new HitAnswer { hasPuff = true, puff = PuffKind.Sparks, fire = true, gold = true };
+            // ---- end #370 ----
             switch (style)
             {
                 case DollStyle.Chop:
@@ -221,7 +230,8 @@ namespace AquariumCiv.View
                 if (water) { o.groundY = WaterY(at); at.y = Mathf.Max(at.y, o.groundY); o.mud = style == DollStyle.DrawWater && place.kind is PlaceKind.Puddle or PlaceKind.Stream; /* #360: the wet low ground is scooped muddy */ }
                 else o.groundY = GroundY(at);
                 o.fire = ans.fire;
-                if (Spawn(ans.puff, at, away, 1f, o, false)) LastHitPuffs++;
+                o.gold = ans.gold; // #370
+                if (Spawn(ans.puff, at, away, ans.big > 0f ? ans.big : 1f, o, false)) LastHitPuffs++;
                 if (ans.ring && Spawn(PuffKind.Ring, at, away, 1f, o, false)) LastHitPuffs++;
             }
             if (ans.shake == ShakeTarget.Bush)

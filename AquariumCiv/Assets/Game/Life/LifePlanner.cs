@@ -158,6 +158,7 @@ namespace AquariumCiv.Life
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
                 case PlaceKind.BushCell: return sim.EcologyOn && EcoBushes.IsBush(sim.State.eco, p.index); // P8 #288
                 case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
+                case PlaceKind.Prop: { var cp = sim.FindConsequenceProp(p.index); return cp != null && cp.placed; } // #371
             }
             return !p.IsBuilding || buildingIds.Contains(p.buildingId);
         }

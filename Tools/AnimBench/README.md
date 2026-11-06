@@ -88,11 +88,25 @@ and `state` (free numbers). These kinds are drawn: `rabbit`, `bush`, `tree`, `fi
 - `rabbit` runs the real `Sim.Eco.RabbitHerd.Scare` against every visible doll. Its schedule is a fixed grazing spot,
   all green. `"hunted": {"by": "hunter", "until": t}` is RabbitView's rule: it ignores everyone until the hunt's resolve
   time, and only sits up with the hunter within 0.8 u. `"scared": false` makes a prop rabbit.
+- `rabbit` (#362, the hunt): `"sitUp": [[t0,t1],...]` (the hunted rabbit sits up in these windows: the plan's stalk freezes; a stalk
+  segment takes `"freezeA"`/`"freezeB"` seconds so the hunter's creep freezes at the same time), `"startle": {"at", "from", "to"}`
+  (RabbitView's `Scare.Hold`: flinch, ears up 0.45 s, then the bolt to `to`), `"fallAt": t` (hit by the spear: jumps 0.05 u, falls on its side).
+  Arc objects take `"hideAt": t` (a spear pulled out of the ground). A hit that coincides with a thrown arc's landing is measured on the
+  arc object (the spear touches its target), not on the hand.
 - `bush`: `"berries": N`. Add `"pickedBy": id, "dropEvery": 5` to drop a berry every 5 s while that doll picks (BushView's
   rule today).
 - `"arc": {"from": "kid.hand" | "hunter.tip" | id | [x,y,z], "to": id | [x,y,z], "t0", "t1", "height", "heldBefore"}`
   is a parametric arc (research 17 §6.4). The start and end are fixed at `t0`. Before `t0` the object rides on its
   `from` anchor. Used for a thrown ball, spear, berry or fish.
+
+**Play groups (#358).** `"play": {"game": "Tag" | "Ball" | "ChaseRabbits" | "Toddle" | "DanceRing", "members": [doll ids],
+"center": [x, z], "seed": n, "t0": 0, "ball": "ballObjectId"}` drives those dolls from the game's own code (`View/Beats/KidPlay.cs`),
+as `KidPlayDirector` does in the game: the doll stands on the cue's spot, faces the cue's point, shows the cue's move and the game's
+beats. The ball object sits between the holder's hands, else on the game's arc from where the hands let it go; every throw is an arc
+event for `arcs`. The rabbit chase chases the clip's rabbits within 1.2 u of the centre. For a play doll, `endBeat` asks that every
+run of play frames is followed by a payoff frame before the clip ends; `neighbours` skips the ring dance (in step on purpose, §0.8);
+a throw's release is checked by `arcs`, not `hitNear`/`react`. `expect.hitReach` widens `hitNear` (the chase's contact is the rabbits'
+0.55 u alert radius, not a touch).
 
 **Staged moments (#370).** A clip-level `"moment"` block builds the dolls from the game's own plan
 (`Life/MomentStagePlan.cs`) and the view's spots and beats (`View/Beats/MomentBeats.cs`): `{"kind": "Wedding" | "Newborn" |

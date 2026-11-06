@@ -608,7 +608,7 @@ namespace AquariumCiv.Life
             int block = 0;
             while (t < 17f)
             {
-                float end = Math.Min(17f, t + 1.25f + R(k, day, 20 + block) * 0.75f);
+                float end = Math.Min(17f, t + 1.25f + R(PlayBlockKey, day, 20 + block) * 0.75f); // #358: one length for every kid that day: the kids at the green play together for a block (a play group)
                 if (17f - end < 0.5f) end = 17f;
                 At(PlayKind(p, d, 20 + block), end, PlayPlace(p, d, 20 + block, near: block % 2 == 0), PlayProp(p, d, 20 + block));
                 t = end; block++;
@@ -620,6 +620,9 @@ namespace AquariumCiv.Life
             At(ActivityKind.Play, home, gather);
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
         }
+
+        /// <summary>#358: the afternoon play blocks' key: the same for every kid, so their blocks start and end together.</summary>
+        const int PlayBlockKey = 358358;
 
         ActivityKind PlayKind(Person p, DayInfo d, int salt)
         {
@@ -864,6 +867,24 @@ namespace AquariumCiv.Life
             _ => Prop.None,
         };
 
+        /// <summary>#361: how long the tip at the stash lasts (real seconds: the 1.4 s beat plus the moment the doll takes to stand still at the pile).</summary>
+        public const float TipBlockSeconds = 1.8f;
+
+        /// <summary>#361: the view hours a carry of a basket to the camp's stash pile spends tipping it (0 for any other load or place).</summary>
+        static float TipHours(Work work, float end)
+        {
+            if (work.load != Prop.Basket || work.dest.kind != PlaceKind.Stash) return 0f;
+            // the block's last TipBlockSeconds of real time, across a phase's change of speed (a block that ends at midday)
+            float h = LifeClock.ViewHoursFor(end - 1e-3f, TipBlockSeconds);
+            for (int i = 0; i < 4; i++)
+            {
+                float real = LifeClock.RealSecondsBetween(Math.Max(0f, end - h), end);
+                if (real < 1e-3f || Math.Abs(real - TipBlockSeconds) < 0.01f) break;
+                h *= TipBlockSeconds / real;
+            }
+            return h;
+        }
+
         /// <summary>Work hours in blocks of 1.25–2 view hours (20–40 real s, rule 5): a work loop at the site, or a carry
         /// of the goods to where they go (Banished's busy signal). The day's last block carries the goods to the store.</summary>
         void WorkBlocks(Person p, DayInfo d, Work work, float from, float to, int salt, bool lastCarries)
@@ -884,12 +905,13 @@ namespace AquariumCiv.Life
                 if (work.chores) { loop = Chore(p, d, salt + i); tool = ChoreProp(loop); if (loop == ActivityKind.SitOut) { loop = ActivityKind.SweepStep; tool = Prop.Broom; } }
                 bool carry = work.load != Prop.None && (i > 0 || from > LifeClock.WorkStart) && R(k, day, salt + 200 + i) < work.carryShare;
                 if (lastCarries && end >= to && work.load != Prop.None) carry = true;
+                float tip = TipHours(work, end); // #361: a basket is tipped onto the stash pile at the end of the carry; its time comes out of the work loop, not the blocks after
                 if (carry && (work.dest != site || !work.fetchFrom.IsNone))
                 {
                     // #30: only when the walk back to the site and the carry both fit the block; a squeezed walk back ran
                     // at several times the walking pace (the merchant's cart loop). Else this block is the work loop.
                     var src0 = work.fetchFrom.IsNone ? site : work.fetchFrom;
-                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.dest)) +
+                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.dest)) + tip +
                                  (work.fetchFrom.IsNone ? 0f : WalkHours(site, src0));
                     if (end - t < fits) carry = false;
                 }
@@ -898,11 +920,16 @@ namespace AquariumCiv.Life
                     var src = work.fetchFrom.IsNone ? site : work.fetchFrom;
                     var dst = work.dest;
                     float cd = Math.Max(0.35f, WalkHours(src, dst));
-                    float workUntil = Math.Max(t, end - cd - (work.fetchFrom.IsNone ? 0f : WalkHours(site, src)));
+                    float workUntil = Math.Max(t, end - cd - tip - (work.fetchFrom.IsNone ? 0f : WalkHours(site, src)));
                     if (workUntil > t + 0.1f) At(loop, workUntil, site, tool);
                     // #152: off to the water with the empty bucket; any other fetch goes empty-handed.
                     if (src != bcur) Move(ActivityKind.Walk, src, Math.Min(end - 0.2f, bt + WalkHours(bcur, src)), work.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None, TripType.Errand);
-                    Move(work.carryKind, dst, end, work.load, TripType.Carry);
+                    Move(work.carryKind, dst, end - tip, work.load, TripType.Carry);
+                    if (tip > 0f && bcur == dst && bt >= end - tip - 1e-3f) // #361: stand at the pile and tip the basket onto it
+                    {
+                        Push(ActivityKind.TipLoad, bt, end, dst, dst, work.load, PersonRef.None, TripType.None, still: true);
+                        bt = end;
+                    }
                 }
                 else At(loop, end, site, tool, Ref(work.with));
                 t = end; i++;

@@ -28,6 +28,8 @@ namespace AnimBench
         /// <summary>Principles this clip is known to fail today (research 17 §4): the tests report them as gaps, not failures.</summary>
         public readonly HashSet<string> KnownGaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         public string SourcePath;
+        /// <summary>#358: a kids' play group (src/Play.cs).</summary>
+        public PlaySpec Play;
         /// <summary>#370: the staged moment the dolls were built from (null for a hand-made clip).</summary>
         public AquariumCiv.Life.MomentStagePlan Moment;
 
@@ -70,6 +72,7 @@ namespace AnimBench
                 int i = 0;
                 foreach (var d in dolls) c.Dolls.Add(DollSpec.Parse((JsonObject)d, c, i++));
             }
+            if (root["play"] is JsonObject pl) c.Play = PlaySpec.Parse(pl); // #358
             if (root["moment"] is JsonObject mo) c.Moment = MomentClip.Expand(c, mo, root["duration"] == null); // #370: the dolls from the game's staged-moment plan
             if (c.Dolls.Count == 0 && c.Objects.Count == 0) throw new ClipException("a clip needs at least one doll or object");
             var ids = new HashSet<string>();
@@ -156,6 +159,9 @@ namespace AnimBench
         public float NeighbourRadius = 0.6f;
         /// <summary>How soon the target must answer a hit (seconds).</summary>
         public float ReactSeconds = 0.2f;
+        /// <summary>#358: how close a hit's hand must be to its target's surface (default one doll-width). The rabbit chase's contact
+        /// is the kid coming inside the rabbits' alert radius (0.55 u), not a touch.</summary>
+        public float? HitReach;
 
         public static ExpectSpec Parse(JsonObject o)
         {
@@ -163,6 +169,7 @@ namespace AnimBench
             {
                 NeighbourRadius = Clip.Num(o, "neighbourRadius", 0.6f),
                 ReactSeconds = Clip.Num(o, "reactSeconds", 0.2f),
+                HitReach = Clip.NumOpt(o, "hitReach"),
             };
             if (o["arcs"] is JsonArray arcs)
                 foreach (JsonObject a in arcs)
@@ -211,6 +218,8 @@ namespace AnimBench
         public bool Muddy;
         /// <summary>#360: the place in the queue at the bank (PersonActivity.slot): sets the draw's start delay.</summary>
         public int Queue;
+        /// <summary>#362: a Stalk segment's two freezes (seconds; the rabbit sits up and the hunter stops), as the hunt plan has them.</summary>
+        public float FreezeA, FreezeB;
         public string Partner, Target, Label;
         /// <summary>#370: this stretch is step <see cref="StepIndex"/> of a staged moment (MomentBeats lays its beat on the pose).</summary>
         public AquariumCiv.Life.MomentStagePlan Plan;
@@ -308,6 +317,8 @@ namespace AnimBench
                 if (style != null) seg.Style = Clip.Enum<DollStyle>(style, sw + " style");
                 if (so["steps"] != null) seg.Steps = Clip.Int(so, "steps", 0);
                 if (Get("hunt") != null) seg.Hunt = Clip.Enum<HuntPhase>(Get("hunt").ToString(), sw + " hunt");
+                if (so["freezeA"] != null) seg.FreezeA = Clip.Num(so, "freezeA", 0f);
+                if (so["freezeB"] != null) seg.FreezeB = Clip.Num(so, "freezeB", 0f);
                 seg.From = so["from"] != null ? Clip.XZ(so["from"], sw + " from") : so["pos"] != null ? Clip.XZ(so["pos"], sw + " pos") : at;
                 seg.To = so["to"] != null ? Clip.XZ(so["to"], sw + " to") : seg.From;
                 at = seg.To;
@@ -353,6 +364,8 @@ namespace AnimBench
         public float T0, T1, Height = 0.15f;
         /// <summary>Before the throw it rides on its "from" anchor (true) or is not there yet (false).</summary>
         public bool HeldBefore = true;
+        /// <summary>#362: from this clip time the object is gone (a spear pulled out of the ground, a berry eaten).</summary>
+        public float HideAt = float.MaxValue;
     }
 
     public sealed class ObjectSpec
@@ -365,6 +378,14 @@ namespace AnimBench
         /// <summary>Rabbit: the stalked one minds nobody until <see cref="HuntedUntil"/> (RabbitView: the hunt's resolve hour), only sits up when the hunter is within 0.8.</summary>
         public string HuntedBy;
         public float HuntedUntil;
+        /// <summary>#362 rabbit: windows (clip seconds) in which the hunted rabbit sits up (the plan's stalk freezes).</summary>
+        public readonly List<Vector2> SitUp = new List<Vector2>();
+        /// <summary>#362 rabbit: at <see cref="StartleAt"/> it freezes (flinch, ears up, 0.45 s) and bolts to <see cref="StartleTo"/>, away from <see cref="StartleFrom"/>
+        /// (RabbitView's Scare.Hold, as the knock and the hunt use it). Negative = never.</summary>
+        public float StartleAt = -1f;
+        public Vector2 StartleFrom, StartleTo;
+        /// <summary>#362 rabbit: hit by the spear at this time: jumps 0.05 u and falls on its side (0.25 s). Negative = never.</summary>
+        public float FallAt = -1f;
         /// <summary>Rabbit: false = never scared (a prop rabbit).</summary>
         public bool Scared = true;
         public ArcSpec Arc;
@@ -392,13 +413,16 @@ namespace AnimBench
             if (o["state"] is JsonObject st) foreach (var kv in st) s.State[kv.Key] = (float)kv.Value.GetValue<double>();
             if (o["berries"] != null) s.State["berries"] = Clip.Num(o, "berries", 0f);
             if (o["hunted"] is JsonObject h) { s.HuntedBy = Clip.Str(h, "by"); s.HuntedUntil = Clip.Num(h, "until", 0f); }
+            if (o["sitUp"] is JsonArray su) foreach (var w2 in su) s.SitUp.Add(Clip.XZ(w2, w + " sitUp"));
+            if (o["startle"] is JsonObject sl) { s.StartleAt = Clip.Num(sl, "at", 0f); s.StartleFrom = Clip.XZ(sl["from"], w + " startle.from"); s.StartleTo = Clip.XZ(sl["to"], w + " startle.to"); }
+            s.FallAt = Clip.Num(o, "fallAt", -1f);
             s.Scared = Clip.Bool(o, "scared", true);
             s.PickedBy = Clip.Str(o, "pickedBy");
             s.Follows = Clip.Str(o, "follows");
             s.DropEvery = Clip.Num(o, "dropEvery", 5f);
             if (o["arc"] is JsonObject a)
             {
-                var arc = new ArcSpec { T0 = Clip.Num(a, "t0", 0f), T1 = Clip.Num(a, "t1", 1f), Height = Clip.Num(a, "height", 0.15f), HeldBefore = Clip.Bool(a, "heldBefore", true) };
+                var arc = new ArcSpec { T0 = Clip.Num(a, "t0", 0f), T1 = Clip.Num(a, "t1", 1f), Height = Clip.Num(a, "height", 0.15f), HeldBefore = Clip.Bool(a, "heldBefore", true), HideAt = Clip.Num(a, "hideAt", float.MaxValue) };
                 if (a["from"] is JsonArray) arc.FromPoint = Clip.XYZ(a["from"], w + " arc.from"); else arc.From = Clip.Str(a, "from");
                 if (a["to"] is JsonArray) arc.ToPoint = Clip.XYZ(a["to"], w + " arc.to"); else arc.To = Clip.Str(a, "to");
                 if (arc.T1 <= arc.T0) throw new ClipException($"{w} arc: t1 must be after t0");

@@ -200,21 +200,23 @@ namespace AnimBenchTests
         [Test]
         public void ExtendedSpear_PointsAlongTheArm()
         {
-            var t = Run(@"{ ""duration"": 0.5, ""dolls"": [ { ""id"": ""h"", ""prop"": ""Spear"", ""timeline"": [ { ""activity"": ""Stalk"", ""hunt"": ""Strike"", ""dur"": 1 } ] } ] }");
-            var fr = t.Dolls[0].Frames[0];
-            var arm = (fr.HandR - fr.ArmR.O).normalized;
-            var spear = (fr.Tip - fr.HandR).normalized;
-            Assert.That(fr.Pose.extend, Is.True);
-            Assert.That(Vector3.Dot(arm, spear), Is.GreaterThan(0.99f), "AlongArm turns the spear out along the arm");
+            var t = Run(@"{ ""duration"": 1.2, ""warmup"": 0, ""dolls"": [ { ""id"": ""h"", ""prop"": ""Spear"", ""timeline"": [ { ""activity"": ""Stalk"", ""hunt"": ""Strike"", ""dur"": 3 } ] } ] }");
+            var fr = t.Dolls[0].Frames[t.FrameAt(1.0f)];   // #362: the throw's follow-through (the spear is out along the arm; at 0.4 s it is still in the wind-up)
+            Assert.That(fr.Pose.extend, Is.True, "the arm is out after the throw");
+            Assert.That(fr.Prop, Is.EqualTo(PropKind.None), "the spear has left the hand (#362)");
+            var held = t.Dolls[0].Frames[t.FrameAt(0.7f)];
+            Assert.That(held.Prop, Is.EqualTo(PropKind.Spear), "and is in it before the release");
+            var arm = (held.HandR - held.ArmR.O).normalized;
+            Assert.That(held.HandR.y, Is.GreaterThan(held.Head.y), "the spear hand is up over the head in the wind-up");
         }
 
         [Test]
         public void HuntedRabbit_IgnoresTheHunterUntilTheStrikeIsOver()
         {
-            var t = Run(@"{ ""duration"": 4, ""objects"": [ { ""id"": ""r"", ""kind"": ""rabbit"", ""pos"": [0.2, 0], ""hunted"": { ""by"": ""h"", ""until"": 2 } } ],
+            var t = Run(@"{ ""duration"": 4, ""objects"": [ { ""id"": ""r"", ""kind"": ""rabbit"", ""pos"": [0.2, 0], ""hunted"": { ""by"": ""h"", ""until"": 2 }, ""sitUp"": [[1, 2]] } ],
                             ""dolls"": [ { ""id"": ""h"", ""activity"": ""Stalk"", ""pos"": [0, 0] } ] }");
             var r = t.Objects[0];
-            Assert.That(r.Frames[t.FrameAt(1.9f)].Act, Is.EqualTo("SitUp"), "sits up with the hunter inside 0.8");
+            Assert.That(r.Frames[t.FrameAt(1.9f)].Act, Is.EqualTo("SitUp"), "sits up when the plan says so (#362), the hunter near or not");
             Assert.That((r.Frames[t.FrameAt(1.9f)].Pos - new Vector3(0.2f, 0, 0)).magnitude, Is.LessThan(1e-3f), "but stays");
             Assert.That((r.Frames[t.FrameAt(3.5f)].Pos - new Vector3(0.2f, 0, 0)).magnitude, Is.GreaterThan(0.1f), "after: RabbitHerd.Scare bolts");
         }

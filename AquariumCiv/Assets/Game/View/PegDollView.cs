@@ -31,6 +31,8 @@ namespace AquariumCiv.View
         bool extended;
         /// <summary>#361: the basket rides in the left hand (the right hand picks): see <see cref="HoldInLeft"/>.</summary>
         bool inLeft;
+        /// <summary>#361: the basket is in the left hand now (upright whatever the arm does).</summary>
+        public bool BasketIsInLeft => inLeft;
         static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
         public static PegDollView Create(Transform parent, Material material, PegDoll.Look look, bool kid, int seed)

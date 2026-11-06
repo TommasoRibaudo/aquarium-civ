@@ -143,6 +143,7 @@ namespace AquariumCiv.View
             Row(); // #361
             if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
             if (Btn("Root dig now")) last = BerryPickView.DebugRootDigNow();
+            if (Btn("Tip at the stash now")) last = BerryPickView.DebugTipNow();
             EndRow();
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
@@ -157,10 +158,18 @@ namespace AquariumCiv.View
             if (Btn("Spawn rabbits here")) last = RabbitView.Instance != null ? RabbitView.Instance.DebugSpawnHere(4) : "no rabbit view";
             if (Btn("Startle all")) last = RabbitView.Instance != null ? "startled " + RabbitView.Instance.DebugStartleAll() : "no rabbit view";
             EndRow();
+            Row(); // #358 kids' play: each game at the gathering place for 45 s
+            if (Btn("Kids play: tag")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Tag);
+            if (Btn("Kids play: ball")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Ball);
+            if (Btn("Kids play: chase rabbits")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.ChaseRabbits);
+            if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
+            if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
+            EndRow();
             Row();
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
             if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
+            if (Btn("Slow-mo next hunt")) last = EcoDebug.HuntSlowMoNext();   // #362
             EndRow();
             Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);

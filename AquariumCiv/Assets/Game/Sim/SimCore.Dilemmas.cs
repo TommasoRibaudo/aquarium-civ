@@ -130,6 +130,7 @@ namespace AquariumCiv.Sim
             s.dilemmaCallbacks ??= new List<DilemmaCallback>();
             s.customs ??= new List<string>();
             s.apartGroups ??= new List<ApartGroup>();
+            s.consequenceProps ??= new List<ConsequenceProp>();
             if (s.dilemmaNextId < 1) s.dilemmaNextId = 1;
         }
 
@@ -200,6 +201,7 @@ namespace AquariumCiv.Sim
         /// Nothing lapses by the clock (#368). No dice. Nothing at all when off.</summary>
         void DilemmaStep()
         {
+            ConsequencePropStep(); // #371: a choice's thing waiting for its spot is placed (within a game year)
             ApartStep(); // the people who live apart age even if the switch is turned off later (nothing when there are none)
             if (!Config.dilemmas) return;
             CallbackStep(); // no dice: one due callback per month
@@ -492,6 +494,7 @@ namespace AquariumCiv.Sim
             d.answerEntryId = e.id;
             ApplyDilemmaEffects(d, def, option);
             ScheduleCallbacks(d, def, option);
+            LeaveConsequence(d, def, option);
         }
 
         // ---------- lapse ----------
@@ -537,6 +540,7 @@ namespace AquariumCiv.Sim
             d.resultEntryId = e.id;
             ApplyDilemmaEffects(d, def, d.option);
             ScheduleCallbacks(d, def, d.option);
+            LeaveConsequence(d, def, d.option);
         }
 
         // ---------- effects ----------
@@ -558,6 +562,7 @@ namespace AquariumCiv.Sim
                 {
                     if (seat.holderId >= 0 && seat.holderId != chosen.id) Vacate(seat);   // the holder steps aside; bypasses the succession roll
                     Assign(seat, chosen);
+                    if (d.state == DilemmaState.Answered) chosen.chosenByKeeper = true; // #371: the card says "Chosen by the Keeper"
                     RoleLine("role_won", $"{chosen.FullName} became {RoleIn(role)}.", 0.65f, chosen, other, seat);
                 }
             }
@@ -598,6 +603,7 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             var made = MakeStrangers(d, count, out string family);
+            if (d.state == DilemmaState.Answered) foreach (var n in made) n.chosenByKeeper = true; // #371
             s.population += made.Count;
             string names = string.Join(" and ", made.Select(n => n.name));
             Chronicle("newcomer", $"The {family} family, {names}, wandered in from a far-away tank and joined the {EraNoun(s.era)}.", 0.7f, made[0].id);

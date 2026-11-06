@@ -1,0 +1,16 @@
+{
+  "name": "358-ball",
+  "notes": "#358 B2.b ball: three kids in a triangle toss a big drawn ball (View/Beats/KidPlay.cs BallGame). Two-handed underhand toss (peg dolls have no legs): squash and arms back, swing through with a hop, release (the Contact); the ball flies on a kit arc from the thrower's hands to the catcher's arms; the catcher lifts its arms as it comes, catches (squash, a step back), holds it, turns to the next one. One throw in four lands past the catcher, bounces twice and rolls to a stop; the nearest kid runs, bends, picks it up, runs back. Every 6-9 throws the holder holds the ball up high (the end beat). AnimLab: cheat 'Kids play: ball'.",
+  "duration": 24,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.05], "span": 1.2 },
+  "sheet": { "from": 0, "to": 24, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "play": { "game": "Ball", "members": ["kidA", "kidB", "kidC"], "center": [0.0, 0.0], "seed": 4, "ball": "ball" },
+  "objects": [ { "id": "ball", "kind": "ball", "radius": 0.035 } ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 201 },
+    { "id": "kidB", "kid": true, "seed": 202 },
+    { "id": "kidC", "kid": true, "seed": 203 }
+  ]
+}
