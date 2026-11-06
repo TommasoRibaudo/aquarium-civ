@@ -252,5 +252,25 @@ namespace AquariumCiv.View.Tests
             Assert.IsFalse(BoxCameraMath.GroundPoint(new Ray(Vector3.up * 3f, Vector3.up), 1f, out _), "pointing away");
             Assert.IsFalse(BoxCameraMath.GroundPoint(new Ray(Vector3.up * 3f, Vector3.right), 1f, out _), "parallel");
         }
+
+        /// <summary>#377: along a zoom sweep with the pitch at its floor (what a pinch does), the camera's height, pitch and distance change one way and in small steps.</summary>
+        [Test]
+        public void ZoomSweep_PitchHeightDistance_MonotoneAndJumpFree()
+        {
+            float fit = 20f; var target = new Vector3(0f, 1f, 0f);
+            float prevP = -1f, prevH = -1f, prevD = -1f, maxP = 0f, maxH = 0f;
+            for (float z = AquariumCiv.Lighting.CameraReach.MinZoom; z <= AquariumCiv.Lighting.CameraReach.MaxZoom + 1e-4f; z += 0.005f)
+            {
+                float pitch = BoxCameraMath.PitchFloor(z), d = fit * z;
+                float h = target.y + Mathf.Sin(pitch * Mathf.Deg2Rad) * d;
+                if (prevP >= 0f)
+                {
+                    Assert.GreaterOrEqual(pitch, prevP - 1e-4f, "pitch never falls as the zoom opens"); Assert.GreaterOrEqual(h, prevH - 1e-4f, "height never falls"); Assert.GreaterOrEqual(d, prevD);
+                    maxP = Mathf.Max(maxP, pitch - prevP); maxH = Mathf.Max(maxH, h - prevH);
+                }
+                prevP = pitch; prevH = h; prevD = d;
+            }
+            Assert.Less(maxP, 0.1f, "no pitch jump per 0.005 zoom"); Assert.Less(maxH, 0.15f, "no height jump per 0.005 zoom");
+        }
     }
 }
