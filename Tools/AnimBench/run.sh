@@ -49,7 +49,7 @@ needs_build() {
   [ -f "$DLL" ] || return 0
   [ -n "$(find "$HERE/src" "$HERE/Shims" "$HERE/../SimTests/Shims" "$HERE/AnimBench.csproj" "$GAME/Sim" "$GAME/Life" \
           "$GAME/View/DollMotion.cs" "$GAME/View/PegDollTypes.cs" -name '*.cs*' -newer "$DLL" -print -quit 2>/dev/null)" ] && return 0
-  [ -n "$(find "$GAME/View" -maxdepth 1 \( -name 'Beat*.cs' -o -name 'Arc*.cs' \) -newer "$DLL" -print -quit 2>/dev/null)" ] && return 0
+  [ -d "$GAME/View/Beats" ] && [ -n "$(find "$GAME/View/Beats" -name '*.cs' -newer "$DLL" -print -quit)" ] && return 0
   [ -d "$GAME/View/Anim/Core" ] && [ -n "$(find "$GAME/View/Anim/Core" -name '*.cs' -newer "$DLL" -print -quit)" ] && return 0
   return 1
 }
