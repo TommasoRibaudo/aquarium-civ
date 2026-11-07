@@ -62,6 +62,9 @@ namespace AquariumCiv.Sim.Eco
         // P8 #288: the bushes. The first one that came up (a sign the people notice; -1 = none yet) and what has been picked:
         // parallel lists, cell / the view day of the last pick / berries left (0..1) at that day (see EcoBushes).
         public int firstBushCell = -1;
+        /// <summary>#385: where the berry thickets stand (site cells; -1 = not yet). The first is set by the first bushes, the second
+        /// by a stray far from the first once the first has filled in. Bushes spread inside them and thin out elsewhere.</summary>
+        public int thicketA = -1, thicketB = -1;
         public List<int> bushPickCell = new List<int>();
         public List<long> bushPickDay = new List<long>();
         public List<float> bushPickLeft = new List<float>();

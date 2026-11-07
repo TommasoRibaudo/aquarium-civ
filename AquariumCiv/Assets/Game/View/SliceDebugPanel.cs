@@ -158,6 +158,7 @@ namespace AquariumCiv.View
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
             if (Btn("+3 bushes")) last = EcoDebug.AddBushes(3);
+            if (Btn("Bush carpet (old save)")) last = EcoDebug.CarpetBushes();
             EndRow();
             Row();
             if (Btn("Rabbit tracks now")) last = EcoDebug.RabbitTracksNow();

@@ -111,6 +111,7 @@ namespace AquariumCiv.Sim.Eco
             Natural(s);
             Water(s);
             Air();
+            Thickets();
             Succession(s);
             GrowTree(s, month);
             Birds(s);
@@ -478,6 +479,9 @@ namespace AquariumCiv.Sim.Eco
                     case EcoCover.Tall:
                         if (TryBush(c, m, bushes, graze, g, 1.5f)) next[c] = (byte)EcoCover.Bush;
                         break;
+                    case EcoCover.Bush:
+                        if (ThinBush(c)) next[c] = (byte)(m >= t.tallAt && !land.yard[c] ? EcoCover.Tall : EcoCover.Grass); // #385
+                        break;
                     case EcoCover.Seedling:
                         if (Chance(14, c) < t.seedlingRate * t.treeSeason[s] * Terrain.Smooth(0.15f, 0.45f, m) * (1f - t.grazeSeedling * graze)) next[c] = (byte)EcoCover.Young;
                         break;
@@ -494,6 +498,7 @@ namespace AquariumCiv.Sim.Eco
         {
             if (land.InBasin(c) || m < t.bushAt || st.soil[c] < t.bushSoil) return false;
             float p = t.bushRate * mult * (1f + t.bushNeighbour * bushes / 8f) * (1f - t.grazeBush * graze) * g;
+            p *= (st.thicketA < 0 ? 1f : t.bushStray + t.thicketBoost * ThicketZone(c)) * BushRoom; // #385: in the thickets, and not past the cap
             return Chance(13, c) < p;
         }
 
@@ -558,7 +563,7 @@ namespace AquariumCiv.Sim.Eco
             }
         }
 
-        /// <summary>Jays cache in open ground and at edges; bushes shelter the seedling; never in the flood line or the yard.</summary>
+        /// <summary>Jays cache in open ground and at edges; bushes shelter the seedling (not in a thicket's heart); never in the flood line or the yard.</summary>
         bool TakesSeed(int c, float roll)
         {
             if (land.InBasin(c) || land.yard[c] || c == st.treeCell) return false;
@@ -571,6 +576,7 @@ namespace AquariumCiv.Sim.Eco
                 case EcoCover.Bare: p = st.moisture[c] > 0.3f ? t.seedTakeBare : 0f; break;
                 default: p = 0f; break;
             }
+            if (st.thicketA >= 0) p *= 1f - t.thicketChoke * ThicketZone(c); // #385: a berry thicket chokes the seedlings, so it stays a thicket
             return roll < p;
         }
 
