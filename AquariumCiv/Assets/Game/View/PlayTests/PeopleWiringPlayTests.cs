@@ -323,6 +323,8 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator AnAmbientLineOverTheLimitIsACaption()
         {
             yield return Grown();
+            // Batch 8: the year skip queues #370 staged moments; while one plays the bank offers only its few lines: stop them first.
+            for (int calm = 0, f = 0; calm < 120 && f < 1200; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
             var sm = ShowMeDirector.Instance;
             string said = "";
             for (int i = 0; i < 40 && !said.StartsWith("caption"); i++) said = ShowMeDirector.DebugBubble();
