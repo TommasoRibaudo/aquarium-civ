@@ -132,16 +132,62 @@ namespace AquariumCiv.View
                 if (done) { playing.Remove(m.id); sim.FinishMoment(m.id, true); }
             }
             if (sim.PlayingMoments().Count > 0) { LastWhy = "a moment is playing"; return lastStarted; }
+            if (GreetingOn(sim)) { LastWhy = "the welcome greeting"; return lastStarted; } // t3-welcome: the greeting plays first, then the held choice
             DropTakenBack(sim); // tester run 1 #10
 
             string busy = BusyReason();
             if (busy != null) { LastWhy = busy; return lastStarted; }
             var started = StartNow(sim);
+            if (started.Count == 0 && TryGreeting(sim)) return started; // t3-welcome: nothing waits: a small live greeting
             if (started.Count == 0) TryStageChoice(sim); // visit-loop 2.4: after the welcome moment, the held choice is staged in the box
             return started;
         }
 
         int choiceTries;
+
+        // ---------- t3-welcome: the greeting when nothing waits ----------
+
+        GreetingInfo greeting;
+        int greetingTries;
+        /// <summary>The last greeting started (tests, the panel).</summary>
+        public GreetingInfo LastGreeting { get; private set; }
+
+        bool GreetingOn(SimCore sim)
+        {
+            if (greeting == null) return false;
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null || !pv.Planner.GreetingPlaying(pv.Now)) { greeting = null; return false; }
+            return true;
+        }
+
+        /// <summary>Visit-loop 2.1-2.2: an open after a while away with no ceremony waiting still greets the Keeper, once: kids at the
+        /// glass, the people waving from the fire, someone holding up what is truly there, a pair showing a new building. The first kind
+        /// that can be cast plays; none can (everyone asleep or busy): three tries a few seconds apart, then it is dropped, never forced.</summary>
+        bool TryGreeting(SimCore sim)
+        {
+            var due = sim.GreetingDue;
+            if (due == WelcomeKind.None) { greetingTries = 0; return false; }
+            if (!sim.GreetingForced && sim.WaitingMoments().Count > 0) { sim.GreetingDrop(); return false; } // a ceremony came: it is the welcome
+            var pv = PeopleView.Find();
+            var planner = pv != null ? pv.Planner : null;
+            if (planner == null) return false;
+            var cards = CardStackView.Instance;
+            if (cards != null && cards.StackOpen) return false;
+            foreach (var kind in sim.GreetingOptions())
+            {
+                var info = planner.StageGreeting(kind, pv.Now);
+                if (info == null) continue;
+                sim.GreetingPlayed(info.kind);
+                greeting = LastGreeting = info;
+                greetingTries = 0;
+                LastWhy = $"greeting: {info.kind} ({info.premise}), {info.count} people";
+                Debug.Log($"[HeldMomentStage] welcome greeting {info.kind}: {info.premise}; cast {info.count}");
+                return true;
+            }
+            LastWhy = "no greeting could be cast: " + planner.LastGreetingWhyNot;
+            if (++greetingTries >= 3) { sim.GreetingDrop(); greetingTries = 0; }
+            return false;
+        }
 
         /// <summary>Visit-loop 2.4 (the fail item of tester run 1): a choice waiting when the app opens is staged in the box first, the
         /// choice scene with its cast, as Show me on its card does, after the welcome moment (never over a moment playing or due, never
@@ -289,6 +335,19 @@ namespace AquariumCiv.View
             if (stage == null) return "no moment stage in the scene";
             stage.Check();
             return sim.ChoiceStageDue ? "waiting: " + stage.LastWhy : "staged (or left to its card)";
+        }
+
+        /// <summary>Cheat (t3-welcome): a greeting is owed now, whatever the time away and whatever waits, and plays on the next calm look.</summary>
+        public static string DebugWelcomeNow()
+        {
+            var sim = Sim;
+            if (sim == null) return "no living box";
+            string owed = sim.DebugGreetNow();
+            var stage = Instance;
+            if (stage == null) return owed + " (no moment stage in the scene)";
+            if (stage.greeting != null) stage.greeting = null;
+            stage.Check();
+            return owed + " -> " + (stage.LastWhy ?? "");
         }
 
         /// <summary>Cheat: the queue and the next due time.</summary>

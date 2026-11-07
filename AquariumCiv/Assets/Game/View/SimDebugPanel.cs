@@ -250,6 +250,9 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
                 // ---- end t3-choice ----
             }
+            // ---- t3-welcome: the greeting when nothing waits ----
+            if (GUILayout.Button("Welcome now (nothing queued)")) last = HeldMomentStage.DebugWelcomeNow();
+            // ---- end t3-welcome ----
             // ---- end #369 ----
             // ---- #374: this visit's telemetry numbers ----
             if (Section("Visit telemetry (#374)"))
