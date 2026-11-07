@@ -380,8 +380,11 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(DilemmaState.Answered, d.state, "a touch in the box answers: " + ChoiceSceneView.DebugStatus());
             Assert.AreEqual(DilemmaPath.Box, d.path);
             Assert.AreEqual(ChoiceSceneView.Phase.Reacting, Choice.State);
+            Assert.IsFalse(Shown(Choice.UiRoot.Q("choice-let")), "batch 7: Let them decide goes once it is answered");
+            Assert.IsTrue(GameHud.Instance.ToolsLaneTaken, "batch 7: History stays out from under the bar while it shows the answer");
             yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, 30f);
             Assert.IsFalse(Choice.BoxBarUp, "the bar goes with the scene");
+            Assert.IsFalse(GameHud.Instance.ToolsLaneTaken, "and History comes back");
             AssertNoErrors("held choice staged");
         }
 

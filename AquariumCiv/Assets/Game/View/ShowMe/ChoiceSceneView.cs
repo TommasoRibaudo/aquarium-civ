@@ -162,7 +162,7 @@ namespace AquariumCiv.View
             uiGo = null; uiRoot = null;
             tags[0] = tags[1] = null;
             letRow = null; boxBar = null; letBtn = null; showBarEl = null;
-            if (boxBarUp) GameHud.Instance?.HideTools(ToolBlock, false);
+            if (boxBarUp) { GameHud.Instance?.HideTools(ToolBlock, false); GameHud.Instance?.TakeToolsLane(ToolBlock, false); }
             boxBarUp = false;
             boxBarSafe = default;
         }
@@ -356,6 +356,7 @@ namespace AquariumCiv.View
             State = Phase.Idle;
             Stage = null;
             inBox = false;
+            if (boxBar != null) SyncBoxBar(false); // batch 7: the bar goes with the scene in the same frame (Update syncs it before End)
         }
 
         // ================================================================== a touch
@@ -560,6 +561,7 @@ namespace AquariumCiv.View
             letRow.style.display = rowOn ? DisplayStyle.Flex : DisplayStyle.None;
             letRow.visible = rowOn;
             if (letBtn != null) letBtn.pickingMode = on ? PickingMode.Position : PickingMode.Ignore;
+            if (letBtn != null) letBtn.style.display = on ? DisplayStyle.Flex : DisplayStyle.None; // batch 7: gone once answered (the bar stays for the answer line)
             if (!rowOn) return;
             if (showBarEl == null && letRow.panel != null) showBarEl = letRow.panel.visualTree.Q("cards-showme-bar");
             float bottom = 176f;
@@ -624,6 +626,7 @@ namespace AquariumCiv.View
             boxBarUp = on;
             boxBar.pickingMode = on ? PickingMode.Position : PickingMode.Ignore;
             GameHud.Instance?.HideTools(ToolBlock, on);
+            GameHud.Instance?.TakeToolsLane(ToolBlock, on);
             if (on) GlassMotion.Show(boxBar, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
             else GlassMotion.Hide(boxBar, GlassMotion.SlideOff, GlassMotion.SlideMs);
         }
