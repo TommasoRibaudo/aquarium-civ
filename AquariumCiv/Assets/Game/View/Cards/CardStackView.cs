@@ -40,7 +40,7 @@ namespace AquariumCiv.View
         GlassScroll scroll;
         GlassPortrait peekPortrait;
         GlassIcon peekStar;
-        Label peekText, peekTeaser, teaser, headline, body, endLine, quote, note, footer, alsoTitle;
+        Label peekAsk, peekText, peekTeaser, teaser, headline, body, endLine, quote, note, footer, alsoTitle;
         GlassButton nextBtn, backBtn, skipBtn, showMeBtn, actionBtn;
         readonly GlassButton[] portraits = new GlassButton[2];
         readonly GlassPortrait[] faces = new GlassPortrait[2];
@@ -233,6 +233,7 @@ namespace AquariumCiv.View
             WatchLive();
             SetToolsHidden(open);
             SetPeekUp(peeking && !covered);
+            peek.EnableInClassList("kg-peek--choice", peeking && model.PeekIsChoice); // t3-choice: a choice waits on the Keeper
             if (hud != null)
             {
                 bool mine = open && !covered;
@@ -265,20 +266,43 @@ namespace AquariumCiv.View
             if (id != liveSeen) { liveSeen = id; livePending = open != null ? open.entryId : -1; }
             if (livePending < 0) return;
             var d = bound.DilemmaOfEntry(livePending);
-            if (d == null || d.state != DilemmaState.Open || model.Holds(livePending)) { livePending = -1; return; } // gone, or a stack has it
-            if (model.Mode != CardStackMode.Hidden || !LiveFree()) return; // wait until the other thing closes
+            // Gone, already on the peek, or open in the stack. t3-choice (tester run 2 D): a peek up with an older story switches to it.
+            if (d == null || d.state != DilemmaState.Open || model.PeekIs(livePending) || model.Mode == CardStackMode.Open && model.Holds(livePending)) { livePending = -1; return; }
+            if (model.Mode == CardStackMode.Open || !LiveFree()) return; // wait until the other thing closes
             if (model.ShowLive(livePending)) livePending = -1;
         }
 
-        /// <summary>Nothing else holds the screen: no sheet or card, no moment, Show me, choice scene, evening talk or clean mode.</summary>
+        /// <summary>t3-choice: the choice scene staged in the box let go without an answer: the open choice comes back on the peek (when the
+        /// screen is free), so it stays one touch away.</summary>
+        public void PeekOpenChoice()
+        {
+            var open = bound?.OpenDilemma;
+            if (open != null && model != null && !model.PeekIs(open.entryId)) { liveSeen = open.id; livePending = open.entryId; }
+        }
+
+        /// <summary>Nothing else holds the screen: no sheet or card, no moment, Show me, choice scene, evening talk or clean mode. Our own
+        /// peek doesn't count (t3-choice: a new choice takes its place).</summary>
         bool LiveFree()
         {
-            if (Covered() || MomentPlayer.PromptsBlocked()) return false;
+            if (Covered() || (model.Mode == CardStackMode.Hidden ? MomentPlayer.PromptsBlocked() : OtherPromptsBlocked())) return false;
             if (hud != null && (hud.CleanMode || hud.Hand != GameHud.KitTool.None)) return false;
             var talk = EveningTalkView.Instance;
             if (talk != null && talk.Open) return false;
             var choice = ChoiceSceneView.Instance;
             return choice == null || choice.State == ChoiceSceneView.Phase.Idle;
+        }
+
+        /// <summary><see cref="MomentPlayer.PromptsBlocked"/> without the cards' own peek.</summary>
+        static bool OtherPromptsBlocked()
+        {
+            var recall = RecallPromptView.Instance;
+            if (recall != null && recall.IsOpen) return true;
+            var tool = ShapingView.Instance;
+            if (tool != null && tool.WishArmed) return true;
+            var sm = ShowMeDirector.Instance;
+            if (sm != null && sm.Busy) return true;
+            var fr = FirstRunView.Instance;
+            return fr != null && (fr.CardOpen || fr.NameSheetOpen);
         }
 
         /// <summary>Debug and tests (#238): the card of a dilemma raised live that waits for the screen to be free (-1 = none).</summary>
@@ -393,6 +417,8 @@ namespace AquariumCiv.View
             peek.Add(lines);
             peekText = Text("cards-peek-text", lines, "type-head", "kg-peek-line");
             peekTeaser = Text("cards-peek-teaser", lines, "type-quote", "kg-peek-teaser");
+            peekAsk = Text("cards-peek-ask", peek, "kg-peek-ask"); // t3-choice: a choice waits on the Keeper
+            peekAsk.text = "?";
             peek.RegisterCallback<PointerDownEvent>(e => SwipeDown(peek, e));
             peek.RegisterCallback<PointerUpEvent>(e => { if (SwipeUp(peek, e, out var d)) PeekReleased(d); });
             root.Add(peek);

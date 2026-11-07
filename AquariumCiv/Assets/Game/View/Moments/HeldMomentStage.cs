@@ -191,7 +191,8 @@ namespace AquariumCiv.View
 
         /// <summary>Visit-loop 2.4 (the fail item of tester run 1): a choice waiting when the app opens is staged in the box first, the
         /// choice scene with its cast, as Show me on its card does, after the welcome moment (never over a moment playing or due, never
-        /// over an open card stack). The card stays available. Three failed tries and it is left to the card.</summary>
+        /// over an open card stack). The card stays available. Three failed tries and it is left to the card. t3-choice: a choice raised
+        /// while the player watches is staged the same way.</summary>
         void TryStageChoice(SimCore sim)
         {
             if (!sim.ChoiceStageDue) { choiceTries = 0; return; }
@@ -201,7 +202,7 @@ namespace AquariumCiv.View
             var cards = CardStackView.Instance;
             if (cards != null && cards.StackOpen) { LastWhy = "the card stack is open"; return; }
             var v = sim.OpenDilemmaView;
-            if (v != null && cv.Offer(v)) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the held choice is staged"; return; }
+            if (v != null && cv.StageInBox(v)) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the held choice is staged"; return; } // t3-choice: held at its spots while watched, answerable by touch
             Debug.Log($"[HeldMomentStage] the held choice was not staged (try {choiceTries + 1}): view {(v == null ? "none" : v.dilemma?.state.ToString())}"); // batch 5: why it gave up
             if (++choiceTries >= 3) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the choice could not be staged: its card stays"; }
         }

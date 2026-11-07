@@ -345,8 +345,78 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(Sim.ChoiceStageDue, "once per open");
             Assert.IsNotNull(Choice.Stage);
             Assert.AreEqual(d.id, Sim.OpenDilemma?.id, "still the same open choice, with its card");
+            Assert.IsTrue(Choice.InBox, "staged in the box by itself");
             yield return Shot("t1-held-choice-staged-on-open");
+
+            // t3-choice (tester run 2 A): it holds while the player looks at the box; it went Drifting after 1.5 s before.
+            yield return new WaitForSecondsRealtime(10f);
+            Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, "10 s later the people still wait: " + ChoiceSceneView.DebugStatus());
+            Assert.IsTrue(Choice.Answerable, "a touch answers");
+            var pv = PeopleView.Find();
+            foreach (var p in Choice.Stage.Pins())
+                Assert.IsTrue(pv.TryGetDollPosition(p.who, out var at) && (at - new Vector2(p.x, p.z)).magnitude < 0.08f, p.who + " is still at the spot");
+            Assert.IsTrue(Choice.BoxBarUp, "the bar invites the touch without opening the card");
+            var bar = Choice.UiRoot.Q("choice-bar");
+            Assert.IsTrue(Shown(bar), "choice-bar on screen");
+            Assert.AreEqual(CardStackView.ChoiceNote, bar.Q<Label>("choice-bar-text").text);
+            var let = Choice.UiRoot.Q("choice-let");
+            Assert.IsTrue(Shown(let) && let.pickingMode == PickingMode.Position, "Let them decide on the bar");
+            Assert.GreaterOrEqual(let.worldBound.height, 121f - 1f, "44 pt tall (tester run 2 E)");
+            // t3-choice F: the tags keep the gutter from the screen's sides.
+            for (int i = 0; i < 2; i++)
+            {
+                var tag = Choice.UiRoot.Q("choice-tag-" + i);
+                if (!Shown(tag)) continue;
+                Assert.GreaterOrEqual(tag.worldBound.xMin, ChoiceSceneView.TagGutter - 1f, "tag " + i + " clear of the left edge");
+                Assert.LessOrEqual(tag.worldBound.xMax, Choice.UiRoot.worldBound.width - ChoiceSceneView.TagGutter + 1f, "tag " + i + " clear of the right edge");
+            }
+            yield return Shot("t3-held-choice-10s-later");
+
+            // A touch on an option in the box answers it (the Box path), no card opened.
+            Assert.IsTrue(Choice.TryScreenOf(0, out var s0), "option 0 on screen");
+            Assert.AreNotEqual(CardStackMode.Open, Model.Mode);
+            yield return TapAt(s0);
+            yield return Frames(3);
+            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch in the box answers: " + ChoiceSceneView.DebugStatus());
+            Assert.AreEqual(DilemmaPath.Box, d.path);
+            Assert.AreEqual(ChoiceSceneView.Phase.Reacting, Choice.State);
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, 30f);
+            Assert.IsFalse(Choice.BoxBarUp, "the bar goes with the scene");
             AssertNoErrors("held choice staged");
+        }
+
+        /// <summary>t3-choice (tester run 2 D): a choice raised while the player watches: the peek switches to it with the "?" mark,
+        /// and the people stage it in the box.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AChoiceRaisedLiveTakesThePeekAndIsStaged()
+        {
+            yield return OpenBox(1170, 2532);
+            DilemmaCheats.Toggle(true);
+            Assert.IsTrue(Model.DebugPrepare(3), "a return's peek with older stories");
+            yield return Frames(4);
+            Dilemma d = null;
+            for (int i = 0; i < 4 && d == null; i++)
+            {
+                d = Sim.DebugRaiseDilemma("camp_fire");
+                if (d == null) { SimLayoutSource.DebugSkipYears(1f); yield return null; }
+            }
+            Assert.IsNotNull(d);
+            Sim.DebugHoldChoiceForOpen(); // what a live raise does (TryRaiseDilemma); the cheat raises around it
+            yield return Until(() => Model.PeekIs(d.entryId), 10f);
+            Assert.IsTrue(Model.PeekIs(d.entryId), "the peek switched to the new choice");
+            Assert.IsTrue(Cards.Root.Q("cards-peek").ClassListContains("kg-peek--choice"), "and wears the ? mark");
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting, 60f);
+            Assert.IsTrue(Choice.InBox, "staged in the box while watched: " + HeldMomentStage.Instance?.LastWhy);
+            yield return Shot("t3-live-choice-peek-and-stage");
+            Assert.IsTrue(ChoiceSceneView.DebugRelax().StartsWith("let go"));
+            yield return Frames(3);
+            Assert.AreEqual(ChoiceSceneView.Phase.Drifting, Choice.State, "it lets go");
+            Assert.IsFalse(Choice.BoxBarUp);
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, 30f);
+            yield return Until(() => Model.PeekIs(d.entryId), 10f);
+            Assert.IsTrue(Model.PeekIs(d.entryId), "still one touch away on the peek");
+            Assert.AreEqual(DilemmaState.Open, d.state, "never resolves unseen");
+            AssertNoErrors("live choice");
         }
 
         public override void TearDown()

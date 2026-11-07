@@ -232,7 +232,8 @@ namespace AquariumCiv.Sim
             if (s.month - lastWish < DilemmaGapMonths) return false;
             var pick = PickDilemmaDef(size, out int a, out int b);
             if (pick == null) return false;
-            RaiseDilemma(pick, a, b);
+            var raised = RaiseDilemma(pick, a, b);
+            choiceStageFor = raised.id; // t3-choice (tester run 2 D): a choice raised while the player watches is staged in the box too
             return true;
         }
 
@@ -264,8 +265,8 @@ namespace AquariumCiv.Sim
         // Not saved: a load is an open, and BeginVisit sets it again.
         int choiceStageFor = -1;
 
-        /// <summary>Visit-loop 2.4: this open found a choice waiting (held while away, or still open from an earlier visit) and the view
-        /// has not yet staged it in the box. The view stages it once the welcome moment is over, then calls <see cref="ChoiceStaged"/>.
+        /// <summary>Visit-loop 2.4: this open found a choice waiting (held while away, or still open from an earlier visit), or one was
+        /// just raised while the player watches (t3-choice), and the view has not yet staged it in the box. The view stages it once the welcome moment is over, then calls <see cref="ChoiceStaged"/>.
         /// False once staged, answered, lapsed or when none was open on the open.</summary>
         public bool ChoiceStageDue => choiceStageFor >= 0 && OpenDilemma?.id == choiceStageFor;
 
