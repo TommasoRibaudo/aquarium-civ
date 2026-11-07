@@ -33,7 +33,8 @@ namespace AquariumCiv.View
     /// <item>Each is handed to the stager registered for its kind (<see cref="Register"/>), else the placeholder: the "Show me"
     /// echo the box already has for that line (<see cref="EchoScenes"/>, played where the people are, no camera grab).</item>
     /// <item>When the staging says <see cref="MomentStaging.Done"/>, <see cref="SimCore.FinishMoment"/>(played). A stager that
-    /// returns null: FinishMoment(not played), and the moment is told as a card instead, so nothing is lost.</item>
+    /// returns null: <see cref="SimCore.DeferMoment"/>, and the moment waits to be offered again (t2-polish); after
+    /// <see cref="MomentRules.MaxDeferrals"/> tries it is told as a card, so nothing is lost.</item>
     /// </list>
     /// The sim never plays anything while away; this only ever runs while watched.
     /// </summary>
@@ -189,7 +190,7 @@ namespace AquariumCiv.View
                 MomentStaging st = null;
                 try { st = (stagers.TryGetValue(m.kind, out var f) && f != null ? f : Placeholder)(m, sim); }
                 catch (Exception ex) { Debug.LogException(ex); }
-                if (st == null) { sim.FinishMoment(m.id, false); continue; } // can't be staged now: told as a card
+                if (st == null) { sim.DeferMoment(m.id); continue; } // t2-polish: can't be staged now (its people are out): it waits, a card only after several tries
                 if (playing.TryGetValue(m.id, out var old) && old != null && !ReferenceEquals(old, st)) { try { old.Stop?.Invoke(); } catch (Exception ex) { Debug.LogException(ex); } } // #10: never two stagings of one moment
                 playing[m.id] = st;
                 lastStarted.Add(m);

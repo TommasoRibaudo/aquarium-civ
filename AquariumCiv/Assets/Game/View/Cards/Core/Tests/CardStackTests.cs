@@ -876,5 +876,52 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(char.IsUpper(f.body[0]), "the body reads as a sentence: " + f.body);
             StringAssert.StartsWith("At the fire: ", f.teaserLine, "the question stays as the grey line");
         }
+
+        /// <summary>t2-polish (the peek said "Esk married Aveline" for a wedding never shown): boxes lived the way the game lives them
+        /// (watched minutes with the director handing moments over, the view staging some and failing to cast others, then an away
+        /// through CatchUp + BeginVisit and the peek's Prepare). After every away, the peek and the whole unread stack never hold a line
+        /// whose ceremony waits or plays: no wedding, birth or new chief is read before it is watched.</summary>
+        [Test]
+        public void AfterAnyAwayThePeekNeverHoldsACeremonyThatWaitsOrPlays()
+        {
+            int checkedStacks = 0, deferred = 0;
+            for (int seed = 1; seed <= 12; seed++)
+            {
+                var cfg = new SimConfig { moments = true, marriedBirths = true };
+                var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                var m = Model(sim);
+                for (int visit = 0; visit < 5; visit++)
+                {
+                    for (int min = 0; min < 6; min++)
+                    {
+                        sim.Advance(1 / 60.0);
+                        foreach (var h in sim.StartDueMoments())
+                        {
+                            // the view: a couple out hunting can't be cast the first times (it waits again), the rest play
+                            if (h.deferrals < 2 && (h.id + visit) % 2 == 0) { sim.DeferMoment(h.id); deferred++; }
+                            else sim.FinishMoment(h.id, true);
+                        }
+                    }
+                    double away = visit % 2 == 0 ? 1 : 8;
+                    sim.CatchUp(away);
+                    sim.BeginVisit();
+                    m.Prepare(away);
+                    var all = sim.UnreadCardsCapped(64);
+                    foreach (var c in all.cards.Concat(all.also))
+                        foreach (var e in c.entries)
+                            Assert.IsFalse(sim.MomentStillHeld(e), $"seed {seed} visit {visit}: '{sim.Headline(e)}' is a card while its ceremony waits");
+                    if (m.Mode == CardStackMode.Peek && !m.Peek.isTeaser)
+                    {
+                        var held = sim.State.moments.Where(x => x.state == HeldMomentState.Waiting || x.state == HeldMomentState.Playing)
+                            .Select(x => sim.State.chronicle.FirstOrDefault(e => e.id == x.entryId)).Where(e => e != null).Select(sim.Headline);
+                        CollectionAssert.DoesNotContain(held.ToList(), m.Peek.text, $"seed {seed} visit {visit}: the peek reads a held ceremony");
+                    }
+                    checkedStacks++;
+                    m.HidePeek();
+                }
+            }
+            Assert.AreEqual(60, checkedStacks);
+            Assert.Greater(deferred, 0, "some moments could not be staged at first");
+        }
     }
 }

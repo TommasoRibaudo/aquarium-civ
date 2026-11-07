@@ -13,7 +13,7 @@ namespace AquariumCiv.View
     /// <list type="bullet">
     /// <item>A handed-over moment is cast and planned by the planner (<see cref="LifePlanner.StageHeldMoment"/>): real people,
     /// the real fire and glass, a beginning, a middle and an end beat, no camera move. At night it waits for the morning
-    /// (it is still the director's "playing" one); one that can't be cast is told as a card (FinishMoment(not played)).</item>
+    /// (it is still the director's "playing" one); one that can't be cast yet waits again (SimCore.DeferMoment; a card only after several tries).</item>
     /// <item>Each frame the people view asks <see cref="PeopleView.StagedSpot"/> and <see cref="PeopleView.StagedPose"/>: the
     /// plan's spot (the aisle, the ring, the glass) and its beat (<see cref="MomentBeats"/>), the same steps the planner plays.</item>
     /// <item><b>Done</b> once the scene is over (everyone walks back into their day); <b>Stop</b> ends it at once and releases
@@ -24,7 +24,7 @@ namespace AquariumCiv.View
     {
         /// <summary>The kinds staged here.</summary>
         public static readonly MomentKind[] Kinds = { MomentKind.Wedding, MomentKind.Newborn, MomentKind.NewLeader, MomentKind.Festival };
-        /// <summary>A moment waiting for the morning gives up after this long (real seconds) and becomes a card (the director's own
+        /// <summary>A moment waiting for the morning gives up after this long (real seconds) and waits again (the director's own
         /// limit is 3 watched minutes).</summary>
         public const float MaxWaitSeconds = 150f;
 
@@ -130,7 +130,7 @@ namespace AquariumCiv.View
                     if (TryStart(live)) return false;
                 }
                 else if (live.since < MaxWaitSeconds) return false;
-                live.sim.FinishMoment(live.moment.id, false); // never staged: told as a card
+                live.sim.DeferMoment(live.moment.id); // t2-polish: not staged yet: it waits for the Keeper again (a card only after several tries)
                 GaveUp++;
                 End(live, false);
                 return true;

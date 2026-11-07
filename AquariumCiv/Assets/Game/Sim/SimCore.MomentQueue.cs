@@ -241,6 +241,8 @@ namespace AquariumCiv.Sim
             var waiting = WaitingMoments();
             if (waiting.Count == 0) return "nothing waiting";
             var p = MomentPacing;
+            waiting = waiting.Where(m => m.retryAt <= p.watchedMinutes + 1e-9).ToList(); // t2-polish: one that couldn't be staged waits a little
+            if (waiting.Count == 0) return "waiting for its people";
             var size = MomentSize;
             if (p.welcomeDue) { picks = new List<HeldMoment> { waiting[0] }; return null; } // the welcome: the top one, on the open
             if (p.visitPlayed >= MomentRules.VisitCap(size)) return "this visit has had its moments";
@@ -323,6 +325,35 @@ namespace AquariumCiv.Sim
             return true;
         }
 
+        /// <summary>
+        /// t2-polish: the view was handed a moment it can't stage yet (the couple is out hunting or in the tent, it is night and the
+        /// morning is far): the ceremony waits again (visit-loop.md 2.1: it plays while the Keeper watches; its line must not turn into a
+        /// card first). It is offered again after <see cref="MomentRules.RetryMinutes"/> watched minutes, the visit's count and the
+        /// budget are given back as for a moment not staged, and the welcome stays due. After <see cref="MomentRules.MaxDeferrals"/>
+        /// tries it is a card (<see cref="MomentCardReason.NotStaged"/>), so a moment no view can ever stage is not held for 8 years.
+        /// False if it was not playing.
+        /// </summary>
+        public bool DeferMoment(int id)
+        {
+            var m = FindMoment(id);
+            if (m == null || m.state != HeldMomentState.Playing) return false;
+            if (m.deferrals + 1 >= MomentRules.MaxDeferrals) return FinishMoment(id, false);
+            var p = MomentPacing;
+            bool welcome = m.welcome;
+            int batch = m.batch;
+            m.deferrals++;
+            m.state = HeldMomentState.Waiting;
+            m.startedAt = -1; m.batch = -1; m.welcome = false;
+            m.retryAt = p.watchedMinutes + MomentRules.RetryMinutes;
+            p.visitPlayed = Math.Max(0, p.visitPlayed - 1);
+            if (!Moments.Any(x => x.batch == batch && x.state != HeldMomentState.Carded))
+            {
+                p.credit = Math.Min(MomentRules.CreditCap, p.credit + 1.0);
+                if (welcome) p.welcomeDue = true;
+            }
+            return true;
+        }
+
         /// <summary>The next release, in watched minutes from now: 0 = due now (or the welcome), -1 = nothing waits or the visit's cap
         /// is reached. A moment playing counts as not due.</summary>
         public double MomentDueInMinutes()
@@ -331,11 +362,12 @@ namespace AquariumCiv.Sim
             var waiting = WaitingMoments();
             if (waiting.Count == 0) return -1;
             var p = MomentPacing;
-            if (p.welcomeDue) return 0;
+            double retry = Math.Max(0, waiting.Min(m => m.retryAt) - p.watchedMinutes); // t2-polish: the soonest one may be offered again
+            if (p.welcomeDue) return retry;
             if (p.visitPlayed >= MomentRules.VisitCap(MomentSize)) return -1;
             double rest = Math.Max(0, p.restUntil - p.watchedMinutes);
             double budget = Math.Max(0, (1.0 - p.credit) * MomentRules.IntervalMinutes(State.population));
-            return Math.Max(rest, budget);
+            return Math.Max(Math.Max(rest, budget), retry);
         }
 
         // ---------- debug (#369 cheats) ----------
@@ -399,6 +431,7 @@ namespace AquariumCiv.Sim
             p.restUntil = p.watchedMinutes;
             p.visitPlayed = 0;
             p.lastKind = -1;
+            foreach (var m in Moments) if (m.state == HeldMomentState.Waiting) m.retryAt = 0; // t2-polish: a deferred one may go too
         }
 
         /// <summary>Debug: the next release is a busy day (2 or 3 kinds at once) if two kinds wait, whatever the box's size, and it
@@ -427,7 +460,8 @@ namespace AquariumCiv.Sim
         string Describe(HeldMoment m)
         {
             string who = string.Join(" & ", new[] { m.personA, m.personB }.Where(i => i >= 0).Select(i => FindNotable(i)?.name ?? "?"));
-            return string.Format(CultureInfo.InvariantCulture, "#{0} {1}{2} · {3:0.##} · {4} mo ago", m.id, m.kind, who.Length > 0 ? " (" + who + ")" : "", m.priority, State.month - m.month);
+            return string.Format(CultureInfo.InvariantCulture, "#{0} {1}{2} · {3:0.##} · {4} mo ago{5}", m.id, m.kind, who.Length > 0 ? " (" + who + ")" : "", m.priority, State.month - m.month,
+                m.deferrals > 0 ? $" · not staged yet x{m.deferrals}" : ""); // t2-polish: the panel shows a moment waiting for its people
         }
     }
 }
