@@ -37,7 +37,7 @@ namespace AquariumCiv.View
         }
 
         static readonly Color SparkRim = new(0.35f, 0.08f, 0.03f), WoodRim = new(0.25f, 0.14f, 0.06f),
-            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f);
+            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f), SandRim = new(0.95f, 0.85f, 0.65f);
 
         /// <summary>The fill and rim (sRGB) for a kind of bit on a ground. False = keep the palette's own colour (it already reads).</summary>
         public static bool Pick(PuffColour c, PuffGround g, out Color fill, out Color rim)
@@ -48,11 +48,11 @@ namespace AquariumCiv.View
                 case PuffColour.WoodPale:
                     fill = g == PuffGround.Sand ? new Color(0.62f, 0.4f, 0.2f) : new Color(1f, 0.96f, 0.8f); rim = WoodRim; return true;
                 case PuffColour.Bark:
-                    fill = g == PuffGround.Sand ? new Color(0.4f, 0.25f, 0.12f) : new Color(0.85f, 0.62f, 0.35f); rim = WoodRim; return true;
+                    fill = g == PuffGround.Sand ? new Color(0.4f, 0.25f, 0.12f) : new Color(0.85f, 0.62f, 0.35f); rim = g == PuffGround.Sand ? SandRim : WoodRim; return true; // batch 5: a dark chip on sand gets a pale rim (dark on dark was 0.12 apart)
                 case PuffColour.DrySoil: case PuffColour.WetSoil: case PuffColour.Mud:
                     if (g == PuffGround.Grass) return false;
                     fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = SoilRim; return true;
-                case PuffColour.Ember: fill = new Color(1f, 0.55f, 0.1f); rim = SparkRim; return true;
+                case PuffColour.Ember: fill = new Color(1f, 0.6f, 0.15f); rim = SparkRim; return true; // batch 5: 0.18 off grass (was 0.148)
                 case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = SparkRim; return true;
                 case PuffColour.Gold: fill = new Color(1f, 0.8f, 0.1f); rim = SparkRim; return true;
                 case PuffColour.Water: fill = new Color(0.88f, 0.96f, 1f); rim = WaterRim; return true;

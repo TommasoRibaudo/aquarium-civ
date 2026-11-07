@@ -175,7 +175,7 @@ namespace AnimBench
             else if (f.Slot == PropSlot.Hand)
             {
                 var rest = Quaternion.Inverse(Quaternion.Euler(-35f, 0, 10f)) * Quaternion.Euler(0, 0, IsTool(f.Prop) ? -ToolTilt : 0f) * rot;
-                var grip = f.Prop == PropKind.Spear ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * SpearAim(pose.extend, pose.lean) : pose.extend ? AlongArm : rest; // batch 2: PegDollView.SpearAim
+                var grip = f.Prop == PropKind.Spear ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * SpearAim(pose.extend, pose.lean) : f.Prop == PropKind.Pot ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * rot : pose.extend ? AlongArm : rest; // batch 2: PegDollView.SpearAim; batch 5: a pot stays upright in the hand
                 var pr = f.ArmR.Child(pos * s, grip, Vector3.one * ps);
                 f.PropFrame = pr;
                 if (ToolTip(f.Prop) != Vector3.zero) f.Tip = pr.Point(ToolTip(f.Prop));

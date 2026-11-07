@@ -147,7 +147,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Does this move swing a hand tool out along the arm (axe, hammer, hoe, rod, stirring stick)?</summary>
-        public static bool Extends(DollStyle s) => s is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.Fish or DollStyle.Stir;
+        public static bool Extends(DollStyle s) => s is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.Fish or DollStyle.Stir or DollStyle.SitStrike; // batch 5: SitStrike (knap)
 
         static float Frac(float x) => x - Mathf.Floor(x);
         static float Smooth(float a, float b, float x) => Mathf.SmoothStep(a, b, Mathf.Clamp01(x));
@@ -214,6 +214,7 @@ namespace AquariumCiv.View
                         p.armR = new Vector3(u < 0.7f ? Smooth(40f, 85f, u / 0.7f) : Smooth(85f, 40f, (u - 0.7f) / 0.3f), 0, 8f);
                         p.hit = u > 0.92f ? 1f : 0f;
                         p.lean = 14f;
+                        p.extend = handTool; // batch 5 (the user: "when they craft, they have the hammer upside down"): the hammerstone out along the arm, head first (it rode at its carry angle and turned head-back as the arm rose)
                     }
                     else if (style == DollStyle.SitWeave)
                     {
