@@ -45,7 +45,8 @@ namespace AquariumCiv.View
 
         public static void Flush()
         {
-            Shader.SetGlobalFloat(CountId, Off ? 0 : count);
+            if (Off) return; // shots set the globals by hand
+            Shader.SetGlobalFloat(CountId, count);
             if (count > 0)
             {
                 Shader.SetGlobalVectorArray(PosId, pos);
