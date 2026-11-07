@@ -36,6 +36,8 @@ namespace AquariumCiv.Lighting
         public const float CampFadeEnd = 34f, CampFadeStart = 46f, CampFadeStartShare = 0.95f;
         /// <summary>As close as a camp frame, a part counts as near from this facing (the corner post beside the near pane is 0.17-0.3 at the opening's yaw, wherever the camp).</summary>
         public const float CampFace = 0.12f;
+        /// <summary>Batch 5: at this share of the whole-box distance (or nearer) the camp closeness is 1 whatever the screen (0.95 to 0.80: no pop on a pinch).</summary>
+        public const float CampRatioEnd = 0.80f;
 
         /// <summary>0..1 from the camera's distance to its pivot (<paramref name="distance"/>) and the whole-box distance (<paramref name="fit"/>):
         /// 1 from <see cref="CampFadeEnd"/> in. A camp frame sits there (dolls of 35-45 px are 26-33 units away at the opening's pitch, <see cref="CampFrame"/>).</summary>
@@ -43,7 +45,11 @@ namespace AquariumCiv.Lighting
         {
             float start = System.Math.Min(CampFadeStart, CampFadeStartShare * fit);
             float end = System.Math.Min(CampFadeEnd, start - 2f); // a wide screen (a tablet) fits the whole box from nearer still
-            return Smooth((start - distance) / (start - end));
+            float byDistance = Smooth((start - distance) / (start - end));
+            // Batch 5: a 1080x1920 camp frame sat at 36 units (zoom 0.81 of a 44-unit fit), past CampFadeEnd: the near frame stayed at 0.08.
+            // So the share of the whole-box distance counts too: fully camp-close from CampRatioEnd of it in (still 0 at zoom 1).
+            float byRatio = Smooth((CampFadeStartShare - distance / System.Math.Max(1e-3f, fit)) / (CampFadeStartShare - CampRatioEnd));
+            return System.Math.Max(byDistance, byRatio);
         }
 
         /// <summary>

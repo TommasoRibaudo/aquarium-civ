@@ -155,6 +155,7 @@ namespace AquariumCiv.View
             if (cards != null && cards.StackOpen) { LastWhy = "the card stack is open"; return; }
             var v = sim.OpenDilemmaView;
             if (v != null && cv.Offer(v)) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the held choice is staged"; return; }
+            Debug.Log($"[HeldMomentStage] the held choice was not staged (try {choiceTries + 1}): view {(v == null ? "none" : v.dilemma?.state.ToString())}"); // batch 5: why it gave up
             if (++choiceTries >= 3) { sim.ChoiceStaged(); choiceTries = 0; LastWhy = "the choice could not be staged: its card stays"; }
         }
 

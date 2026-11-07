@@ -5,6 +5,6 @@
   "camera": { "view": "default", "focus": [0.05, -0.05], "span": 0.7 },
   "sheet": { "from": 1.0, "to": 4.0, "frames": 24, "columns": 6 },
   "knownGaps": ["endBeat", "react"],
-  "objects": [ { "id": "thing", "kind": "fire", "pos": [0.0, -0.16] } ],
+  "objects": [ { "id": "thing", "kind": "mark", "pos": [0.16, 0.0] } ],
   "dolls": [ { "id": "worker", "seed": 517, "role": "worker", "activity": "Knap", "prop": "Hammer", "pos": [0.0, 0.0], "face": "thing", "target": "thing", "dur": 6.0 } ]
 }

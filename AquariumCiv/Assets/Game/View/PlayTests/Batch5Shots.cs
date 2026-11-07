@@ -18,6 +18,7 @@ namespace AquariumCiv.View.PlayTests
     public class Batch5Shots : PlayTestBase
     {
         const string Dir = "b5/";
+        public override void Setup() { base.Setup(); System.IO.Directory.CreateDirectory(Shots + Dir); }
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
@@ -115,7 +116,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(3f);
                 var kinds = pv.Activities.GroupBy(a => a.kind).Select(g => $"{g.Key}x{g.Count()}");
                 Debug.Log($"[b5] camp at {hr:0.00}: {string.Join(" ", kinds)}");
-                yield return Shot(Dir + $"camp_{hr:0.00}");
+                yield return Shot(Dir + $"camp_{(int)(hr * 100)}");
             }
             PeopleView.DebugSetHour(11f); yield return Frames(10);
             Debug.Log("[b5] wedding: " + StagedMoments.DebugPlayNow(MomentKind.Wedding));

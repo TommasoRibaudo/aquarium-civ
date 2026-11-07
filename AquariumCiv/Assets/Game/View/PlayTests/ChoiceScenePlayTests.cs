@@ -298,9 +298,10 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("241-near-miss-750x1334");
             // A real touch still answers.
             Assert.IsTrue(Choice.TryScreenOf(0, out var at));
+            string before = $"state {Choice.State}, side {Choice.SideAt(at, out var sd)} ({sd:0}), at {at}, screen {Screen.width}x{Screen.height}"; // batch 5: why a side tap missed
             yield return TapAt(at);
             yield return Frames(3);
-            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch on a side still answers");
+            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch on a side still answers: " + before + $" -> {Choice.State}");
             AssertNoErrors("near miss");
         }
 
@@ -330,6 +331,7 @@ namespace AquariumCiv.View.PlayTests
         public IEnumerator AHeldChoiceIsStagedInTheBoxOnTheOpenWithoutShowMe()
         {
             yield return OpenBox(1170, 2532);
+            DilemmaCheats.Toggle(true); // batch 5: dilemmas are off in the Editor (tooling 2026-11-06), and then BeginVisit never holds the choice for the open
             Dilemma d = null;
             for (int i = 0; i < 4 && d == null; i++)
             {
@@ -339,7 +341,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(d);
             GameClock.DebugAway(24); // away a day and back: an open with the choice waiting
             yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting, 90f);
-            Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, "staged in the box on the open, no Show me tapped");
+            Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, $"staged in the box on the open, no Show me tapped (batch 5: why {HeldMomentStage.Instance?.LastWhy}, due {Sim.ChoiceStageDue}, moment first {Sim.MomentBeforeChoice()}, busy {HeldMomentStage.BusyReason()}, open {Sim.OpenDilemma?.id})");
             Assert.IsFalse(Sim.ChoiceStageDue, "once per open");
             Assert.IsNotNull(Choice.Stage);
             Assert.AreEqual(d.id, Sim.OpenDilemma?.id, "still the same open choice, with its card");
