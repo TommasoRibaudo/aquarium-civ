@@ -487,6 +487,7 @@ namespace AquariumCiv.View
 
             // Props.
             var (kind, slot) = PropOf(a.prop, a.PropSlot, a.kind, a.water);
+            style = DollMotion.ToolStyle(style, a.kind, kind); // #401: weeding with a hoe is the hoe's swing
             // #360: the bucket comes up full at the start of the lift (the plan's block keeps the empty one until it walks home).
             if (kind == PropKind.BucketEmpty && a.kind == ActivityKind.FetchWater && !a.moving && a.end > a.start &&
                 WaterBeats.Full(LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)), a.who.Key, a.slot))
@@ -1114,6 +1115,7 @@ namespace AquariumCiv.View
             else if (kind == PropKind.Barrel) slot = PropSlot.Front;
             else if (kind == PropKind.Ball) slot = PropSlot.Arms; // #358: hugged
             else if (kind == PropKind.Slate && activity == ActivityKind.WriteDown) slot = PropSlot.Arms; // hugged, the hand writes
+            if (activity == ActivityKind.Harvest && prop == LifeProp.Scythe) kind = PropKind.None; // #401: the crop is picked by hand (DollStyle.Pick); a scythe drawn as a hoe flailed blade-over with the reaching arm
             return (kind, slot);
         }
 
