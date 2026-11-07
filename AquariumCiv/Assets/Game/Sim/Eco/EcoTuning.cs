@@ -63,7 +63,7 @@ namespace AquariumCiv.Sim.Eco
         // #385: bushes grow in one or two thickets, not a carpet. Inside a thicket they spread as before; outside, a stray now and then
         // (bushStray of the rate) that dies back (bushStrayDie a season). The count settles at the cap (bushPerMeadow of the meadow, at
         // most bushCap); above it the bushes thin, outside the thickets first (bushThin a season at most): old carpeted saves thin in a few years.
-        public float thicketBoost = 6f, thicketChoke = 0.9f, thicketR1 = 0.52f, thicketR2 = 0.36f, thicketEdge = 0.35f, thicketFromCamp = 0.85f, thicketApart = 1.4f;
+        public float thicketBoost = 6f, thicketChoke = 0.9f, thicketR1 = 0.52f, thicketR2 = 0.36f, thicketEdge = 0.35f, thicketFromCamp = 1.1f, thicketApart = 1.4f;
         public int thicketBAfter = 15, bushCap = 60;
         public float bushPerMeadow = 0.04f, bushStray = 0.03f, bushStrayDie = 0.04f, bushThin = 0.12f;
         public float soilGrass = 0.012f, soilTall = 0.02f, soilBush = 0.025f, soilTree = 0.03f, soilStart = 0.08f, soilStartBase = 0.15f;

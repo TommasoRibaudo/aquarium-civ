@@ -415,7 +415,8 @@ namespace AquariumCiv.Sim.Settle
                 {
                     var tmp = Scratch;
                     SiteMap.RectCells(x, z, yaw, lw, ld, 0f, tmp);
-                    int inside = 0; foreach (int k in tmp) if (map.Forest(k)) inside++;
+                    int inside = 0; float over = 0f;
+                    foreach (int k in tmp) { if (map.Forest(k)) inside++; over += map.Overgrown(k); } // #385: a thicket counts as half a tree
                     float frac = tmp.Count > 0 ? inside / (float)tmp.Count : 0f;
                     if (kind == LotKind.Lumbermill || kind == LotKind.TimberYard)
                     {
@@ -423,7 +424,7 @@ namespace AquariumCiv.Sim.Settle
                         return Terrain.Clamp(Math.Min(1f, near / 10f) * 2f - 1f - frac, -1f, 1f);
                     }
                     if (kind == LotKind.Windmill) return 1f - Math.Min(1f, CountForest(map, x, z, 0.5f) / 4f) * 2f;
-                    return -frac * 2f;
+                    return -(tmp.Count > 0 ? over / tmp.Count : 0f) * 2f;
                 }
                 case Term.Height:
                 {

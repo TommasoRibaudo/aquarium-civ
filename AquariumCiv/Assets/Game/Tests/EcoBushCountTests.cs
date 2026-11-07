@@ -79,6 +79,25 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheVillage_BuildsRoundTheThickets([ValueSource(nameof(BushSeeds))] int seed)
+        {
+            // #385, the user 2026-11-07: buildings go round the thickets, onto one only when short of room
+            var r = PlayBushes(true, 40, seed);
+            var map = r.sim.Settlement.Map;
+            int heart = 0, built = 0, lots = 0;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if (map.lot[c] != 0) lots++;
+                if (r.sim.BushThicketZone(c) < 0.5f) continue;
+                heart++;
+                if (map.lot[c] != 0) built++;
+            }
+            TestContext.Out.WriteLine($"seed {seed}: {built} of {heart} thicket-heart cells under a lot ({lots} lot cells in all), {r.count[39]} bushes");
+            Assert.Greater(heart, 20);
+            Assert.LessOrEqual(built, heart / 10, "the village went round the thickets");
+        }
+
+        [Test]
         public void TheWoodsDontTakeTheThickets()
         {
             // a thicket chokes seedlings: its heart is still meadow and bush in a grown box

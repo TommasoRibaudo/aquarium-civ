@@ -134,6 +134,9 @@ namespace AquariumCiv.Sim.Settle
             if (eco == null || !eco.on || eco.cover == null) return;
             var land = Eco.EcoLand.For(St.terrain);
             Map.noBuild = land.noBuild;
+            Map.thicket ??= new float[SiteMap.N];
+            bool anyThicket = eco.thicketA >= 0;
+            for (int c = 0; c < SiteMap.N; c++) Map.thicket[c] = anyThicket ? core.BushThicketZone(c) : 0f; // #385: build round the thickets
             bool wet = false;
             for (int c = 0; c < SiteMap.N; c++)
             {
