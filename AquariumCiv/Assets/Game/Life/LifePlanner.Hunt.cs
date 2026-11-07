@@ -103,6 +103,15 @@ namespace AquariumCiv.Life
             return Dist(x, z, cx, cz) <= huntFrameR + HuntFrameMargin;
         }
 
+        /// <summary>t4-fixes (tester run 3: the strike at the screen's edge): the strike point keeps this far inside the camp frame.</summary>
+        public const float HuntStrikeInset = 0.25f;
+        /// <summary>t4-fixes: is the strike point well inside the camp frame (by <see cref="HuntStrikeInset"/>), so the throw is not at the edge?</summary>
+        public bool StrikeWellInFrame(float x, float z)
+        {
+            float cx = huntFrameSet ? huntFrameX : sim.EcoGround.campX, cz = huntFrameSet ? huntFrameZ : sim.EcoGround.campZ;
+            return Dist(x, z, cx, cz) <= huntFrameR - HuntStrikeInset;
+        }
+
         /// <summary>The rabbits the hunters see. The view sets its field here (and keeps it synced to the sim count); without it
         /// nothing is hunted. Setting it forgets the plans made so far.</summary>
         public RabbitHerd.Field Rabbits { get => huntField; set { huntField = value; huntDays.Clear(); } }
@@ -243,9 +252,10 @@ namespace AquariumCiv.Life
                 plan.rabbitId = order[oi];
                 strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz);
                 bool inFrame = InHuntFrame(plan.lungeX, plan.lungeZ) && InHuntFrame(plan.targetX, plan.targetZ);
-                int rank = (inFrame ? 2 : 0) + (plan.openLine ? 1 : 0);
+                // t4-fixes: the old order (in the frame, then an open line), then a strike point well inside the frame (not at the edge)
+                int rank = (inFrame ? 4 : 0) + (plan.openLine ? 2 : 0) + (StrikeWellInFrame(plan.lungeX, plan.lungeZ) ? 1 : 0);
                 if (rank > bestRank) { bestRank = rank; bestIdx = oi; }
-                if (rank == 3) break;
+                if (rank == 7) break;
             }
             if (plan.rabbitId != order[bestIdx]) { plan.rabbitId = order[bestIdx]; strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz); }
             plan.strikeStart = strikeAt;
@@ -446,7 +456,8 @@ namespace AquariumCiv.Life
                 if (Dist(plan.standX, plan.standZ, plan.holdX, plan.holdZ) > 0.05f)
                     AddStep(plan, ref t, WalkH(Dist(plan.standX, plan.standZ, plan.holdX, plan.holdZ), WalkSpeed * HuntTiming.ProudWalk), HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, atRabbit, atHold, true, false, plan.standX, plan.standZ, plan.holdX, plan.holdZ);
                 float carry = WalkH(Dist(plan.holdX, plan.holdZ, fx, fz), WalkSpeed * HuntTiming.ProudWalk);
-                AddStep(plan, ref t, Hrs(t, HuntTiming.HoldUpSeconds), HuntPhase.HoldUp, ActivityKind.HoldUp, Prop.Rabbit, atHold, atHold, false, true, plan.holdX, plan.holdZ, plan.holdX, plan.holdZ);
+                // t4-fixes (tester run 3: the hunter showed his back): the hold-up faces the camera (PeopleView), not the rabbit's old spot
+                AddStep(plan, ref t, Hrs(t, HuntTiming.HoldUpSeconds), HuntPhase.HoldUp, ActivityKind.HoldUp, Prop.Rabbit, atHold, atHold, false, false, plan.holdX, plan.holdZ, plan.holdX, plan.holdZ);
                 AddStep(plan, ref t, carry, HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, atHold, stash, true, false, plan.holdX, plan.holdZ, fx, fz);
                 AddStep(plan, ref t, SkinHours, HuntPhase.Skin, ActivityKind.Prepare, Prop.Hide, fire, fire, false, false, fx, fz, fx, fz);
                 AddStep(plan, ref t, CookHours, HuntPhase.Cook, ActivityKind.Cook, Prop.Stick, fire, fire, false, false, fx, fz, fx, fz);

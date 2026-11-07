@@ -36,6 +36,7 @@ namespace AquariumCiv.Sim
         public PropAnchor propAt;           // where it goes (the person's home, the option's building, the fire, the edge, the pond)
         public string propBuilding = "";    // PropAnchor.Building: the building type to stand by when the option has no building of its own (else buildingType)
         public string[] favouredBy;         // traits (NameData.Traits) that tilt a lapse toward this option, when the role-holder has one
+        public string icon = "";            // t4-fixes: the option's own mark on its tag in the box (a GlassIcon name); "" = none (a person option shows a person)
     }
 
     /// <summary>

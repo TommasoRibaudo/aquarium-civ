@@ -246,6 +246,24 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Small choice now (naming)")) last = SmallChoiceNow();
             if (GUILayout.Button("Notable newborn")) last = NotableNewborn();
             GUILayout.EndHorizontal();
+            // ---- t4-fixes: the everyday small choices (the story at the fire, supper) ----
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Everyday:", GUILayout.Width(80));
+            if (GUILayout.Button("Small: who tells the story")) last = EverydaySmallNow(SmallChoices.Story);
+            if (GUILayout.Button("Small: supper")) last = EverydaySmallNow(SmallChoices.Supper);
+            GUILayout.EndHorizontal();
+        }
+
+        /// <summary>t4-fixes: raise the story or the supper small choice now; opens the stack on its card.</summary>
+        public static string EverydaySmallNow(string kind)
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseSmall(kind);
+            if (d == null) return "fewer than two adults in this box";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            return Saved($"raised {d.defId} (#{d.id}): {sim.QuestionOf(d)}; {CardStackView.DebugOpenEntry(d.entryId)}");
         }
 
         public static string Gui()

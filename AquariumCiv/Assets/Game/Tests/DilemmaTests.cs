@@ -116,6 +116,7 @@ namespace AquariumCiv.Tests
                     id = "w" + i, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "q",
                     options = new[] { new DilemmaOptionDef { label = "x", hint = "h" }, new DilemmaOptionDef { label = "y", hint = "h" } },
                 }).ToArray();
+                sim.SmallCatalog = new DilemmaDef[0]; // t4-fixes: the big schedule alone (a big may fill an empty small slot after 3 h)
                 YearsAnswering(sim, 40);
                 int n = sim.State.dilemmas.Count;
                 Assert.GreaterOrEqual(n, 3, $"seed {seed}: {n} in 40 years");
@@ -132,6 +133,7 @@ namespace AquariumCiv.Tests
             {
                 var sim = NewSim(seed, Cfg(true));
                 sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
+                sim.SmallCatalog = new DilemmaDef[0]; // t4-fixes: the big schedule alone (a big may fill an empty small slot after 3 h)
                 YearsAnswering(sim, 20);
                 var ds = sim.State.dilemmas.Where(d => d.size == DilemmaSize.Big).ToList(); // #372: small choices sit between the big ones
                 Assert.GreaterOrEqual(ds.Count, 3, $"seed {seed}");

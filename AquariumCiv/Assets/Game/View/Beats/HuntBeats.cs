@@ -94,15 +94,21 @@ namespace AquariumCiv.View
         /// <summary>Look-fix (visit loop): the catch is shown off, not hidden over the head. The fist swings up and OUT to the side
         /// (0.35 s, out-back past the key), so the dangling rabbit (PegDollView.HangRabbit) hangs clear of the head and reads against
         /// the grass from the high default camera; then two proud pumps and a hold.</summary>
+        /// <summary>t4-fixes: the hold-up's arm at the top (degrees): pitched up past level, out to the side (was 112 / 72: the fist sat at
+        /// shoulder height out to the side).</summary>
+        public const float HoldUpArmPitch = 128f, HoldUpArmOut = 58f;
+
         public static void ShowCatch(ref DollPose pose, float since)
         {
             float u = Mathf.Clamp01(since / 0.35f);
             float up = Easing.Apply(Ease.Back, u);
             float pump = since > 0.35f && since < 1.15f ? Mathf.Abs(Mathf.Sin((since - 0.35f) * Mathf.PI / 0.4f)) : 0f;
-            pose.armR = new Vector3(Mathf.LerpUnclamped(60f, 112f, up) + 12f * pump, 0f, Mathf.LerpUnclamped(10f, 72f, up));
+            // t4-fixes (tester run 3): higher (the fist well over the head, still out to the side so the rabbit hangs clear of it) and a
+            // bigger proud hop on each pump; the hunter faces the camera (PeopleView), so the catch is seen from the front.
+            pose.armR = new Vector3(Mathf.LerpUnclamped(60f, HoldUpArmPitch, up) + 12f * pump, 0f, Mathf.LerpUnclamped(10f, HoldUpArmOut, up));
             pose.armL = new Vector3(0f, 0f, -24f);
             pose.lean = -8f; pose.roll = -4f * up;
-            pose.offset.y = 0.008f * pump;
+            pose.offset.y = 0.012f * pump;
         }
 
         /// <summary>Has the spear left the hand? (The prop is drawn until then.)</summary>

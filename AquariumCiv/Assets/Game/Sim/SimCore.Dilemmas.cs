@@ -65,6 +65,7 @@ namespace AquariumCiv.Sim
         public int personId = -1;           // the notable it points at (-1 = none)
         public int buildingId = -1;         // the building it points at (-1 = none)
         public string buildingType = "";
+        public string icon = "";            // t4-fixes: the option's own mark for its tag ("" = none)
     }
 
     /// <summary>What the view reads for a dilemma: kind, the question, and its two options (#223 card, #224 choice scene).</summary>
@@ -159,9 +160,10 @@ namespace AquariumCiv.Sim
         /// <summary>The next big choice is due from this clock hour (see <see cref="DilemmaScheduleFrom"/>); -1 = not scheduled.</summary>
         bool DilemmaDue => Config.dilemmas && !State.firstRun.active && (State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0 || SmallDue);
 
-        /// <summary>#372: a small choice is next, its moment exists and the gap has passed: like a due big one it holds the slot (no new wish starts).</summary>
+        /// <summary>#372: a small choice is next, its moment exists and the gap has passed: like a due big one it holds the slot (no new wish starts).
+        /// t4-fixes: with no small kind eligible, the next eligible big fills the small slot (see <see cref="TryRaiseDilemma"/>).</summary>
         bool SmallDue => Config.smallChoices && State.dilemmas.Count > 0 && NextDilemmaSize() == DilemmaSize.Small
-            && HoursSinceDilemmaRaised + ClockEps >= DilemmaGapNow && EligibleSmall().Count > 0;
+            && HoursSinceDilemmaRaised + ClockEps >= DilemmaGapNow && (EligibleSmall().Count > 0 || EligibleDefs(DilemmaSize.Big).Count > 0);
 
         /// <summary>While a dilemma is open or due, no new wish starts (the slot is shared).</summary>
         bool DilemmaHoldsSlot => Config.dilemmas && (OpenDilemma != null || DilemmaDue);
@@ -171,7 +173,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>#368/#372: the next choice's size. A big choice that is due always comes first; otherwise a small one follows a big
         /// one, and a big follows a small one (they alternate). Small ones share the gap and the one-at-a-time rule; with none eligible
-        /// the slot waits (nothing is invented) until the next big is due.</summary>
+        /// (nothing is invented) the next eligible big takes the small slot after the gap (t4-fixes, in <see cref="TryRaiseDilemma"/>).</summary>
         public DilemmaSize NextDilemmaSize()
         {
             var s = State;
@@ -223,8 +225,12 @@ namespace AquariumCiv.Sim
             if (s.firstRun.active) { s.dilemmaNextHours = -1; return false; } // none during the first run; the clock restarts after it
             if (s.dilemmaNextHours < 0) s.dilemmaNextHours = DilemmaScheduleFrom(s.clockHours, s.dilemmas.Count == 0);
             var size = NextDilemmaSize();
-            if (CatchingUp || size == DilemmaSize.Big && s.clockHours + ClockEps < s.dilemmaNextHours) return false;
+            if (CatchingUp) return false;
             if (HoursSinceDilemmaRaised + ClockEps < DilemmaGapNow) return false;
+            // t4-fixes (tester run 3): the small slot is open but no small kind is there (no newborn, the everyday ones asked): the next
+            // eligible big comes after the 3 h gap instead of waiting out its 6-10 h window, so a return still finds a choice.
+            if (size == DilemmaSize.Small && EligibleSmall().Count == 0) size = DilemmaSize.Big;
+            else if (size == DilemmaSize.Big && s.clockHours + ClockEps < s.dilemmaNextHours) return false;
             // A due dilemma never ends a wish: it waits for the open one to end (new wishes already wait for it), then the 8-month gap
             // runs from that end.
             if (OpenWish != null) return false;
@@ -421,7 +427,7 @@ namespace AquariumCiv.Sim
                 v.options[i] = new DilemmaOptionView
                 {
                     index = i, label = DilemmaText(o.label, d), hint = HintOf(def, d, i),
-                    personId = d.PersonOf(i), buildingId = d.BuildingOf(i), buildingType = o.buildingType ?? "",
+                    personId = d.PersonOf(i), buildingId = d.BuildingOf(i), buildingType = o.buildingType ?? "", icon = o.icon ?? "",
                 };
             }
             return v;
@@ -518,6 +524,9 @@ namespace AquariumCiv.Sim
             var e = Record("keeper", text, 0.8f, d.PersonOf(option), d.PersonOf(1 - option));
             e.keeper = true;
             d.answerEntryId = e.id;
+            // t4-fixes (tester run 3): the Keeper gave this answer and saw it said: it is read, so a later return never leads its peek
+            // with the Keeper's own old answer. It stays in History and on the Keeper's choices page.
+            if (State.cards != null && e.month > State.cards.since && !State.cards.read.Contains(e.id)) State.cards.read.Add(e.id);
             ApplyDilemmaEffects(d, def, option);
             ScheduleCallbacks(d, def, option);
             LeaveConsequence(d, def, option);

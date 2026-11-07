@@ -237,7 +237,7 @@ namespace AquariumCiv.View
                 MomentStaging st = null;
                 try { st = (stagers.TryGetValue(m.kind, out var f) && f != null ? f : Placeholder)(m, sim); }
                 catch (Exception ex) { Debug.LogException(ex); }
-                if (st == null) { sim.DeferMoment(m.id); continue; } // t2-polish: can't be staged now (its people are out): it waits, a card only after several tries
+                if (st == null) { if (sim.FindMoment(m.id)?.state == HeldMomentState.Playing) sim.DeferMoment(m.id); continue; } // t2-polish: can't be staged now (its people are out): it waits, a card only after several tries. t4-fixes: a stager that put it back to wait for the morning already did
                 if (playing.TryGetValue(m.id, out var old) && old != null && !ReferenceEquals(old, st)) { try { old.Stop?.Invoke(); } catch (Exception ex) { Debug.LogException(ex); } } // #10: never two stagings of one moment
                 playing[m.id] = st;
                 lastStarted.Add(m);

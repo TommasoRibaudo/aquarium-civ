@@ -88,6 +88,20 @@ namespace AquariumCiv.Life
             return end.day == at.day && end.hour <= HeldLatest;
         }
 
+        /// <summary>t4-fixes: the buildings standing on their lots (tents, huts...) as x, z, radius triples, for the wedding's vow point to
+        /// keep out of their shadow; the fire's own pit is not one.</summary>
+        float[] HeldBlockers(float fx, float fz)
+        {
+            var list = new List<float>();
+            foreach (var b in sim.State.buildings)
+            {
+                if (b.lotId == 0 || Dist(b.x, b.z, fx, fz) < 0.3f) continue;
+                float r = 0.5f * Math.Max(b.w, b.d);
+                list.Add(b.x); list.Add(b.z); list.Add(r > 0.05f ? r : 0.25f);
+            }
+            return list.ToArray();
+        }
+
         /// <summary>About how long a staged moment of this kind takes (real seconds), to check <see cref="HeldMomentFits"/> before casting.</summary>
         public static float HeldMomentSeconds(MomentKind kind) => kind switch
         {
@@ -115,7 +129,7 @@ namespace AquariumCiv.Life
             if (!positions.TryGetPosition(fire, out fx, out fz) && !positions.TryGetPosition(gather, out fx, out fz)) return NoHeld("no fire on the land");
             if (!positions.TryGetPosition(GlassPlace, out float gx, out float gz)) return NoHeld("no glass spot");
             var n = GlassNormalOf(glassSide);
-            var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ };
+            var geo = new MomentGeometry { fireX = fx, fireZ = fz, glassX = gx, glassZ = gz, nx = n.x, nz = n.z, halfX = Terrain.HX, halfZ = Terrain.HZ, blockers = HeldBlockers(fx, fz) };
 
             var cast = new MomentCast();
             var used = new HashSet<int>();

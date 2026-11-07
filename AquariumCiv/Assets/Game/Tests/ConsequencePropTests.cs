@@ -40,7 +40,7 @@ namespace AquariumCiv.Tests
         public void EveryOptionOfEveryChoiceHasAProp()
         {
             var all = DilemmaDefs.All.Concat(SmallChoices.All).ToList();
-            Assert.AreEqual(9, all.Count);
+            Assert.AreEqual(11, all.Count); // t4-fixes: + the story and supper small choices
             foreach (var def in all)
                 foreach (var o in def.options)
                     CollectionAssert.Contains(ConsequenceKind.All, o.prop, $"{def.id}: option '{o.label}' leaves a thing");
@@ -98,7 +98,7 @@ namespace AquariumCiv.Tests
             var sim = NewSim(9, Cfg());
             for (int m = 0; m < 24; m++) sim.Advance(1.0 / 12);
             int n = sim.DebugPlaceEveryProp();
-            Assert.AreEqual(18, n, "16 big options and 2 naming options");
+            Assert.AreEqual(22, n, "16 big options and 2 options each of naming, story and supper (t4-fixes)");
             Assert.AreEqual(n, sim.ConsequenceProps.Count(p => p.placed));
             foreach (var p in sim.ConsequenceProps)
             {

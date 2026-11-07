@@ -89,6 +89,8 @@ namespace AquariumCiv.Life
     public struct MomentGeometry
     {
         public float fireX, fireZ, glassX, glassZ, nx, nz, halfX, halfZ;
+        /// <summary>t4-fixes: what hides people standing behind it (tents, buildings): x, z, radius triples in box units; null = none.</summary>
+        public float[] blockers;
     }
 
     /// <summary>
@@ -209,6 +211,52 @@ namespace AquariumCiv.Life
 
         bool Fail(string why) { LastWhyNot = why; return false; }
 
+        /// <summary>t4-fixes: the wedding's turns round the fire, in the order tried (radians from straight toward the glass).</summary>
+        static readonly float[] VowTurns = { 0f, 0.4f, -0.4f, 0.8f, -0.8f, 1.2f, -1.2f, 1.57f, -1.57f };
+
+        /// <summary>
+        /// t4-fixes (tester run 3: the arch beside the teepee hid the couple and the guests at the default camera): the vow point is in
+        /// front of the fire toward the glass (the Keeper's side), as before; when a blocker (<see cref="MomentGeometry.blockers"/>) stands in
+        /// the ring or between it and the glass, the point turns round the fire (up to a quarter either way) to the first spot in the open,
+        /// else the least hidden one. No blockers: the old spot.
+        /// </summary>
+        void VowPoint(float R, out float x, out float z)
+        {
+            float dist = R + 0.34f, best = float.MaxValue;
+            x = geo.fireX + Gx * dist; z = geo.fireZ + Gz * dist;
+            ClampIn(ref x, ref z, R + 0.12f);
+            foreach (float a in VowTurns)
+                for (int far = 0; far < 2; far++) // the usual distance, then a little farther out from the fire
+                {
+                    float ca = (float)Math.Cos(a), sa = (float)Math.Sin(a), d = dist + far * 0.25f;
+                    float dx = Gx * ca - Gz * sa, dz = Gx * sa + Gz * ca;
+                    float cx = geo.fireX + dx * d, cz = geo.fireZ + dz * d;
+                    ClampIn(ref cx, ref cz, R + 0.12f);
+                    float hidden = Hidden(cx, cz, R);
+                    if (hidden <= 0f) { x = cx; z = cz; return; } // the first spot in the open, in the order tried
+                    float score = hidden + Math.Abs(a) * 0.02f + far * 0.01f; // none in the open: the least hidden, a little turn preferred
+                    if (score < best) { best = score; x = cx; z = cz; }
+                }
+        }
+
+        /// <summary>t4-fixes: how much the blockers hide a ring of radius <paramref name="R"/> at (cx, cz): overlap with the ring, and any in
+        /// front of it (toward the glass, within a box unit) as wide as the ring. 0 = in the open.</summary>
+        public float Hidden(float cx, float cz, float R)
+        {
+            var b = geo.blockers;
+            if (b == null) return 0f;
+            float s = 0f;
+            for (int i = 0; i + 2 < b.Length; i += 3)
+            {
+                float bx = b[i], bz = b[i + 1], br = b[i + 2];
+                float inRing = R + 0.12f + br - Dist(cx, cz, bx, bz);
+                if (inRing > 0f) s += inRing;
+                float ahead = (bx - cx) * Gx + (bz - cz) * Gz, side = Math.Abs((bx - cx) * Px + (bz - cz) * Pz);
+                if (ahead > 0f && ahead < 1f && side < R + br) s += (R + br - side) * 0.5f;
+            }
+            return s;
+        }
+
         // ---- geometry helpers: g points out of the glass (toward the Keeper), p across it (left to right on screen) ----
         float Gx => geo.nx; float Gz => geo.nz;
         float Px => -geo.nz; float Pz => geo.nx;
@@ -305,10 +353,9 @@ namespace AquariumCiv.Life
             ringN = cast.Count + (hasSpotter ? 1 : 0);
             float R = RFor(Math.Max(1, ringN));
 
-            // The vow point: in front of the fire, toward the glass, clear of the fire by the ring.
-            centreX = geo.fireX + Gx * (R + 0.34f);
-            centreZ = geo.fireZ + Gz * (R + 0.34f);
-            ClampIn(ref centreX, ref centreZ, R + 0.12f);
+            // The vow point: in front of the fire, toward the glass, clear of the fire by the ring (t4-fixes: turned round the fire away
+            // from a tent that would stand in the ring or hide it from the glass).
+            VowPoint(R, out centreX, out centreZ);
             float cx = centreX, cz = centreZ;
             // The aisle runs across the screen (p), the couple walks it left to right; two rows face each other 0.32 apart.
             int rowMembers = cast.Count + (hasSpotter ? 1 : 0);

@@ -161,6 +161,7 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(6, sim.State.dilemmas.Count, "one per long absence, never a stack");
             // watching: the spacing between raises is the 6-10 h window, not less
             var live = Box(7);
+            live.SmallCatalog = new DilemmaDef[0]; // t4-fixes: the big schedule alone (a big may fill an empty small slot after 3 h)
             live.State.dilemmaNextHours = -1;
             for (int h = 0; h < 80; h++)
             {

@@ -342,13 +342,31 @@ namespace AquariumCiv.Sim
             var m = FindMoment(id);
             if (m == null || m.state != HeldMomentState.Playing) return false;
             if (m.deferrals + 1 >= MomentRules.MaxDeferrals) return FinishMoment(id, false);
+            m.deferrals++;
+            return BackToWaiting(m, MomentRules.RetryMinutes);
+        }
+
+        /// <summary>
+        /// t4-fixes (tester run 3: "Festival: Playing" all night with nothing on screen): the view was handed a moment at night, when the
+        /// people are asleep and it can't be staged before the morning. It goes back to waiting at once (never "playing" with nothing
+        /// shown) without counting a try (a night is not a failure: it never turns into a card for it), is offered again after
+        /// <see cref="MomentRules.NightRetryMinutes"/> watched minutes, and the welcome stays due for the morning. False if it was not playing.
+        /// </summary>
+        public bool NightWaitMoment(int id)
+        {
+            var m = FindMoment(id);
+            if (m == null || m.state != HeldMomentState.Playing) return false;
+            return BackToWaiting(m, MomentRules.NightRetryMinutes);
+        }
+
+        bool BackToWaiting(HeldMoment m, double retryMinutes)
+        {
             var p = MomentPacing;
             bool welcome = m.welcome;
             int batch = m.batch;
-            m.deferrals++;
             m.state = HeldMomentState.Waiting;
             m.startedAt = -1; m.batch = -1; m.welcome = false;
-            m.retryAt = p.watchedMinutes + MomentRules.RetryMinutes;
+            m.retryAt = p.watchedMinutes + retryMinutes;
             p.visitPlayed = Math.Max(0, p.visitPlayed - 1);
             if (!Moments.Any(x => x.batch == batch && x.state != HeldMomentState.Carded))
             {

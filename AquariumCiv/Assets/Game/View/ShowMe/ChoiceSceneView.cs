@@ -84,6 +84,55 @@ namespace AquariumCiv.View
             return hi < lo ? (left + width - right) * 0.5f : Mathf.Clamp(x, lo, hi);
         }
 
+        /// <summary>t4-fixes (tester run 3: "full packs" over "a place by the fire" while the cast walked in): two tags keep at least this
+        /// much clear between them (panel units).</summary>
+        public const float TagSeparation = 36f;
+        /// <summary>t4-fixes: a side's person counts as arrived this near their spot (box units), and every side counts as settled after
+        /// this many real seconds whatever (a doll held up on the way never hides its tag for good).</summary>
+        public const float SettleDistance = 0.06f, SettleMaxSeconds = 4f;
+
+        /// <summary>t4-fixes: a side's tag (and a touch on its walking people) waits until its cast has nearly arrived: the farthest of
+        /// them is within <see cref="SettleDistance"/> of their spot, or the scene has waited <see cref="SettleMaxSeconds"/>.</summary>
+        public static bool SideSettled(float farthest, float seconds) => farthest <= SettleDistance || seconds >= SettleMaxSeconds;
+
+        /// <summary>t4-fixes (tester item 6): a tag's mark means something: the option's own mark, else a person for a who-choice, else none.</summary>
+        public static string TagMark(DilemmaOptionView o) =>
+            o == null ? null : !string.IsNullOrEmpty(o.icon) ? o.icon : o.personId >= 0 ? "person" : null;
+
+        /// <summary>
+        /// t4-fixes: two tags never overlap. Each tag hangs by its bottom centre (<paramref name="a"/>, <paramref name="b"/>: panel units,
+        /// y down) and is <paramref name="sizeA"/> / <paramref name="sizeB"/> big. When their boxes, grown by <paramref name="gap"/>, overlap,
+        /// they are pushed apart side by side (the left one stays left) if both fit between <paramref name="minX"/> and
+        /// <paramref name="maxX"/>; otherwise the higher one goes up (not above <paramref name="minTop"/>) and the lower one down by the rest.
+        /// Tags already apart are left where they are.
+        /// </summary>
+        public static void SeparateTags(ref Vector2 a, ref Vector2 b, Vector2 sizeA, Vector2 sizeB, float gap, float minX, float maxX, float minTop)
+        {
+            float needX = (sizeA.x + sizeB.x) * 0.5f + gap, needY = (sizeA.y + sizeB.y) * 0.5f + gap;
+            float cyA = a.y - sizeA.y * 0.5f, cyB = b.y - sizeB.y * 0.5f;
+            float ox = needX - Mathf.Abs(a.x - b.x), oy = needY - Mathf.Abs(cyA - cyB);
+            if (ox <= 0f || oy <= 0f) return;
+            bool aLeft = a.x <= b.x;
+            float wL = aLeft ? sizeA.x : sizeB.x, wR = aLeft ? sizeB.x : sizeA.x;
+            if (maxX - minX >= wL + wR + gap)
+            {
+                float l = aLeft ? a.x : b.x, r = aLeft ? b.x : a.x, mid = (l + r) * 0.5f;
+                // Apart about their middle, by just enough, then slid back inside the sides together.
+                l = mid - needX * 0.5f; r = mid + needX * 0.5f;
+                float shift = Mathf.Max(0f, minX - (l - wL * 0.5f)) - Mathf.Max(0f, r + wR * 0.5f - maxX);
+                l += shift; r += shift;
+                if (aLeft) { a.x = l; b.x = r; } else { b.x = l; a.x = r; }
+                return;
+            }
+            // Too wide to sit side by side: one above the other. The higher one goes up as far as the top allows, the lower one takes the rest.
+            bool aUp = cyA <= cyB;
+            float hUp = aUp ? sizeA.y : sizeB.y;
+            float upY = aUp ? a.y : b.y;
+            float lift = Mathf.Min(oy, Mathf.Max(0f, upY - hUp - minTop));
+            if (aUp) { a.y -= lift; b.y += oy - lift; }
+            else { b.y -= lift; a.y += oy - lift; }
+        }
+
         bool inBox, appAway;
         float boxT;
         GlassBanner boxBar;
@@ -381,7 +430,7 @@ namespace AquariumCiv.View
             float r = PickRadius * Screen.width / GameUiPanel.ReferenceWidth;
             int best = -1;
             for (int i = 0; i < 2; i++)
-                foreach (var (feet, top) in Figures(i))
+                foreach (var (feet, top) in TouchFigures(i))
                 {
                     var a = cam.WorldToScreenPoint(feet);
                     var b = cam.WorldToScreenPoint(top);
@@ -398,7 +447,7 @@ namespace AquariumCiv.View
             screen = default;
             var cam = Camera.main;
             if (Stage == null || cam == null || side < 0 || side > 1) return false;
-            foreach (var (feet, top) in Figures(side))
+            foreach (var (feet, top) in SpotFigures(side)) // t4-fixes: where the side stands (a touch there always counts)
             {
                 var s = cam.WorldToScreenPoint((feet + top) * 0.5f);
                 if (s.z <= 0f) continue;
@@ -489,7 +538,7 @@ namespace AquariumCiv.View
             {
                 var o = v.options[i];
                 tags[i].Word = o.label;
-                if (o.personId < 0) tags[i].Mark = st.kind switch { DilemmaKind.Tradition => "scroll", DilemmaKind.Strangers => i == 0 ? "person" : "herd", _ => "pin" };
+                tags[i].Mark = TagMark(o); // t4-fixes: set every time (a reused tag kept the last scene's mark: a pot on "Agnes")
                 tags[i].style.display = DisplayStyle.None;
                 haloA[i] = 0f;
             }
@@ -700,6 +749,56 @@ namespace AquariumCiv.View
 
         Vector3 World(float x, float z) => box.transform.TransformPoint(box.land.OnGround(x, z));
 
+        /// <summary>t4-fixes: the side's figures where they will stand (their spots, the prop, the travellers' places), not where the
+        /// walking dolls are now: the tags hang from these, so a person walking across the other side never drags a tag over it.</summary>
+        IEnumerable<(Vector3 feet, Vector3 top)> SpotFigures(int side)
+        {
+            var s = Stage.sides[side];
+            var pv = PeopleView.Find();
+            foreach (var (who, x, z) in s.people)
+            {
+                var g = World(x, z);
+                float h = pv != null && pv.TryGetDollFeet(who, out var f) && pv.TryGetDollTop(who, out var t) ? Mathf.Max(0.05f, t.y - f.y) : FigureHeight;
+                yield return (g, g + Vector3.up * h); // as tall as the doll is drawn now
+            }
+            if (props[side] != null)
+            {
+                var b = props[side].position;
+                yield return (b, b + Vector3.up * ChoiceProps.TopOf(s.Prop));
+            }
+            if (s.travellers.Count > 0)
+                foreach (var t in travellers)
+                {
+                    var g = World(t.home.x, t.home.y);
+                    yield return (g, g + Vector3.up * FigureHeight);
+                }
+        }
+
+        /// <summary>t4-fixes: what a touch on a side hits: its spots always; its walking people only once they have arrived (a touch on a
+        /// doll still crossing the scene is not taken as an answer for its side).</summary>
+        IEnumerable<(Vector3 feet, Vector3 top)> TouchFigures(int side)
+        {
+            foreach (var f in SpotFigures(side)) yield return f;
+            if (!Settled(side)) yield break;
+            foreach (var f in Figures(side)) yield return f;
+        }
+
+        /// <summary>t4-fixes: the side's people have (nearly) reached their spots, or the scene has waited long enough.</summary>
+        public bool Settled(int side)
+        {
+            if (Stage == null || side < 0 || side > 1) return false;
+            var pv = PeopleView.Find();
+            float far = 0f, unit = Mathf.Max(1e-4f, box != null ? box.transform.lossyScale.x : 1f);
+            if (pv != null)
+                foreach (var (who, x, z) in Stage.sides[side].people)
+                    if (pv.TryGetDollFeet(who, out var f))
+                    {
+                        var g = World(x, z);
+                        far = Mathf.Max(far, new Vector2(f.x - g.x, f.z - g.z).magnitude / unit);
+                    }
+            return SideSettled(far, phaseT);
+        }
+
         void DrawHalos(PeopleView pv, float dt)
         {
             bool up = State == Phase.Waiting && Watched();
@@ -714,7 +813,7 @@ namespace AquariumCiv.View
                 // Under the middle of the side's figures, a little wider for a group.
                 Vector3 sum = Vector3.zero;
                 int n = 0;
-                foreach (var (feet, _) in Figures(i)) { sum += feet; n++; }
+                foreach (var (feet, _) in SpotFigures(i)) { sum += feet; n++; } // t4-fixes: under where the side stands, as its tag
                 if (n == 0) { go.SetActive(false); continue; }
                 var at = sum / n;
                 float group = Stage.sides[i].travellers.Count > 1 ? 1.5f : Stage.sides[i].people.Count > 1 ? 1.3f : 1f;
@@ -729,26 +828,55 @@ namespace AquariumCiv.View
             }
         }
 
+        readonly bool[] tagOn = new bool[2];
+        readonly Vector2[] tagAt = new Vector2[2], tagSize = new Vector2[2];
+
         void DrawTags(PeopleView pv, Camera cam)
         {
             bool on = State == Phase.Waiting && Watched();
             for (int i = 0; i < 2; i++)
             {
                 var tag = tags[i];
+                tagOn[i] = false;
                 if (tag == null) continue;
-                bool shown = on && haloA[i] > 0.3f && Place(tag, cam, i);
-                tag.style.display = shown ? DisplayStyle.Flex : DisplayStyle.None;
+                // t4-fixes: a side's tag comes once its cast has (nearly) arrived, hung from where they will stand.
+                tagOn[i] = on && haloA[i] > 0.3f && Settled(i) && Place(tag, cam, i, out tagAt[i]);
+                float w = tag.resolvedStyle.width, h = tag.resolvedStyle.height;
+                // Not laid out yet (its first frame up): about a tag's size, so the two never touch even for that frame.
+                tagSize[i] = new Vector2(float.IsNaN(w) || w <= 0f ? 300f : w, float.IsNaN(h) || h <= 0f ? 90f : h);
+            }
+            if (tagOn[0] && tagOn[1] && uiRoot != null)
+            {
+                var inset = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+                float W = uiRoot.layout.width;
+                if (!float.IsNaN(W) && W > 0f)
+                    SeparateTags(ref tagAt[0], ref tagAt[1], tagSize[0], tagSize[1], TagSeparation, inset.x + TagGutter, W - inset.z - TagGutter, inset.y + TagGutter);
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                var tag = tags[i];
+                if (tag == null) continue;
+                if (tagOn[i]) { tag.style.left = tagAt[i].x; tag.style.top = tagAt[i].y; }
+                tag.style.display = tagOn[i] ? DisplayStyle.Flex : DisplayStyle.None;
                 tag.style.opacity = haloA[i];
             }
         }
 
-        /// <summary>Hangs a tag over the side's highest figure, kept on screen.</summary>
-        bool Place(GlassTag tag, Camera cam, int side)
+        /// <summary>Tests and the tester: where a side's tag hangs now (panel units, its bottom centre) and whether it is up.</summary>
+        public bool TagAt(int side, out Vector2 at)
         {
+            at = side >= 0 && side < 2 ? tagAt[side] : default;
+            return side >= 0 && side < 2 && tagOn[side];
+        }
+
+        /// <summary>Where a tag hangs over the side's highest spot, kept on screen (panel units, its bottom centre).</summary>
+        bool Place(GlassTag tag, Camera cam, int side, out Vector2 at)
+        {
+            at = default;
             if (uiRoot?.panel == null) return false;
             Vector3? best = null;
             float bestY = float.MinValue;
-            foreach (var (_, top) in Figures(side))
+            foreach (var (_, top) in SpotFigures(side))
             {
                 var s = cam.WorldToScreenPoint(top);
                 if (s.z > 0f && s.y > bestY) { bestY = s.y; best = s; }
@@ -761,8 +889,7 @@ namespace AquariumCiv.View
             if (float.IsNaN(half)) half = 0f;
             // t3-choice F: never nearer the sides than the gutter and the safe area (tester run 2: 18 px from the edge).
             var inset = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
-            tag.style.left = W > 0f ? ClampTagX(p.x, half, W, TagGutter, inset.x, inset.z) : p.x;
-            tag.style.top = p.y - 10f;
+            at = new Vector2(W > 0f ? ClampTagX(p.x, half, W, TagGutter, inset.x, inset.z) : p.x, p.y - 10f);
             return true;
         }
 

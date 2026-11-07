@@ -14,6 +14,12 @@ namespace AquariumCiv.Sim
     public static class SmallChoices
     {
         public const string Naming = "naming";
+        /// <summary>t4-fixes: who tells the story at the fire tonight (two adults). Almost always there in a camp.</summary>
+        public const string Story = "story";
+        /// <summary>t4-fixes: supper tonight, one big pot or a basket each. Always there in a camp.</summary>
+        public const string Supper = "supper";
+        /// <summary>t4-fixes: a story or supper choice is asked at most this many times in a box (each leaves its thing).</summary>
+        public const int RepeatMax = 2;
 
         /// <summary>A newborn can be named by the Keeper until this age (game years).</summary>
         public const float NewbornNameAge = 4f;
@@ -36,7 +42,42 @@ namespace AquariumCiv.Sim
             options = new[] { Name(1), Name(2) },
         };
 
-        public static readonly DilemmaDef[] All = { NamingDef };
+        /// <summary>t4-fixes: who tells the story at the fire tonight. Option 0 is the first adult, option 1 the second. The teller
+        /// keeps a feather by their home.</summary>
+        static readonly DilemmaDef StoryDef = new DilemmaDef
+        {
+            id = "small_story", kind = DilemmaKind.Who, size = DilemmaSize.Small, smallKind = Story, cast = DilemmaCast.TwoCandidates,
+            minEra = Era.Camp, maxEra = Era.Village,
+            question = "Who tells the story at the fire tonight: {a} or {b}?",
+            shortAsk = "Who tells tonight's story.",
+            letDone = "{n} told the story at the fire.",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "{a}", hint = "{a} tells it slow, with all the voices.", done = "The Keeper picked {a} to tell the story.",
+                    prop = ConsequenceKind.Feather, propAt = PropAnchor.Home },
+                new DilemmaOptionDef { label = "{b}", hint = "{b} tells it short, and gets a laugh.", done = "The Keeper picked {b} to tell the story.",
+                    prop = ConsequenceKind.Feather, propAt = PropAnchor.Home },
+            },
+        };
+
+        /// <summary>t4-fixes: supper tonight. One big pot stays by the fire, or the baskets stack up there.</summary>
+        static readonly DilemmaDef SupperDef = new DilemmaDef
+        {
+            id = "small_supper", kind = DilemmaKind.Tradition, size = DilemmaSize.Small, smallKind = Supper, cast = DilemmaCast.None,
+            minEra = Era.Camp, maxEra = Era.Village,
+            question = "Supper tonight: one big pot for everyone, or a basket for each family?",
+            shortAsk = "What supper is tonight.",
+            letDone = "They had {n} for supper.",
+            options = new[]
+            {
+                new DilemmaOptionDef { label = "one big pot", hint = "Everyone eats together at the fire.", done = "The Keeper chose one big pot for supper.",
+                    prop = ConsequenceKind.StewPot, propAt = PropAnchor.Fire },
+                new DilemmaOptionDef { label = "a basket each", hint = "Each family eats at home, quietly.", done = "The Keeper chose a basket each for supper.",
+                    prop = ConsequenceKind.Baskets, propAt = PropAnchor.Fire },
+            },
+        };
+
+        public static readonly DilemmaDef[] All = { NamingDef, StoryDef, SupperDef };
     }
 
     public partial class SimCore
@@ -76,7 +117,43 @@ namespace AquariumCiv.Sim
                 a = p.id; b = q.id;
                 return null;
             }
-            return "unknown small choice";
+            if (def.smallKind != SmallChoices.Story && def.smallKind != SmallChoices.Supper) return "unknown small choice";
+            // t4-fixes: the everyday kinds. Never the same kind twice in a row among the small ones, and at most RepeatMax in a box.
+            if (State.era < def.minEra || State.era > def.maxEra) return "not in this era";
+            var lastSmall = State.dilemmas.LastOrDefault(x => x.size == DilemmaSize.Small);
+            if (lastSmall != null && lastSmall.defId == def.id) return "asked last time";
+            if (State.dilemmas.Count(x => x.defId == def.id) >= SmallChoices.RepeatMax) return "asked enough in this box";
+            if (def.smallKind == SmallChoices.Supper) return null;
+            return StoryPair(def, out a, out b) ? null : "fewer than two adults";
+        }
+
+        /// <summary>t4-fixes: the story's two adults, by a hash of the next id, a pair not asked about before while there are others.</summary>
+        bool StoryPair(DilemmaDef def, out int a, out int b)
+        {
+            a = b = -1;
+            var told = new HashSet<int>(State.dilemmas.Where(x => x.defId == def.id).SelectMany(x => new[] { x.personA, x.personB }));
+            var adults = State.notables.Where(n => n.alive && n.age >= AdultAge).ToList();
+            var fresh = adults.Where(n => !told.Contains(n.id)).ToList();
+            var pool = fresh.Count >= 2 ? fresh : adults;
+            if (pool.Count < 2) return false;
+            var ranked = pool.OrderByDescending(n => DilemmaRoll(123, n.id, State.dilemmaNextId)).ThenBy(n => n.id).ToList();
+            a = ranked[0].id; b = ranked[1].id;
+            return true;
+        }
+
+        /// <summary>Debug (t4-fixes): raise the story or the supper small choice now (the open choice lapses, the open wish closes; the
+        /// repeat rules are lifted). Null if it can't be cast (fewer than two adults for the story).</summary>
+        public Dilemma DebugRaiseSmall(string kind)
+        {
+            var def = SmallCatalog.FirstOrDefault(x => x.smallKind == kind) ?? SmallChoices.All.FirstOrDefault(x => x.smallKind == kind);
+            if (def == null) return null;
+            int a = -1, b = -1;
+            if (kind == SmallChoices.Story && !StoryPair(def, out a, out b)) return null;
+            var open = OpenDilemma;
+            if (open != null) LapseDilemma(open);
+            var w = OpenWish;
+            if (w != null) CloseWish(w, WishState.Lapsed);
+            return RaiseDilemma(def, a, b);
         }
 
         List<(DilemmaDef def, int a, int b)> EligibleSmall()
@@ -84,6 +161,9 @@ namespace AquariumCiv.Sim
             var list = new List<(DilemmaDef def, int a, int b)>();
             foreach (var def in SmallCatalog)
                 if (SmallWhyNot(def, out int a, out int b) == null) list.Add((def, a, b));
+            // t4-fixes: a newborn waiting for a name goes first (the baby grows out of it); the everyday kinds fill the other slots.
+            int naming = list.FindIndex(x => x.def.smallKind == SmallChoices.Naming);
+            if (naming >= 0) return new List<(DilemmaDef def, int a, int b)> { list[naming] };
             return list;
         }
 

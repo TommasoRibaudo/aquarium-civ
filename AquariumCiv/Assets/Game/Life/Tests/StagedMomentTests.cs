@@ -70,6 +70,27 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(plan.members.Count, plan.members.Select(m => m.key).Distinct().Count(), "one part each");
         }
 
+        /// <summary>t4-fixes (tester run 3, b9_wedding_17s): the arch stood beside the teepee, which hid the couple and the guests. A tent in
+        /// front of the usual vow point turns it round the fire to open ground; with nothing in the way the spot is the old one.</summary>
+        [Test]
+        public void TheWeddingIsHeldInTheOpenAwayFromTents()
+        {
+            var open = Build(MomentKind.Wedding);
+            Assert.AreEqual(Geo.fireX, open.centreX, 1e-4f, "no tents: straight in front of the fire, toward the glass");
+            Assert.Less(open.centreZ, Geo.fireZ);
+            var geo = Geo;
+            geo.blockers = new[] { open.centreX + 0.1f, open.centreZ - 0.2f, 0.25f }; // a teepee right where the ring would be
+            var moved = MomentStagePlan.Build(MomentKind.Wedding, Cast(MomentKind.Wedding), geo, 370);
+            Assert.IsNotNull(moved, MomentStagePlan.LastWhyNot);
+            Assert.Greater(Math.Abs(moved.centreX - open.centreX) + Math.Abs(moved.centreZ - open.centreZ), 0.2f, "turned away from the tent");
+            float was = moved.Hidden(open.centreX, open.centreZ, moved.ringRadius), now = moved.Hidden(moved.centreX, moved.centreZ, moved.ringRadius);
+            Assert.Greater(was, 0.2f, "the old spot is behind the tent");
+            Assert.Less(now, was * 0.05f, "the new one is (nearly) in the open");
+            Assert.Greater(Math.Sqrt((moved.centreX - geo.blockers[0]) * (moved.centreX - geo.blockers[0]) + (moved.centreZ - geo.blockers[1]) * (moved.centreZ - geo.blockers[1])),
+                moved.ringRadius + 0.12f + geo.blockers[2], $"the tent is outside the ring: centre {moved.centreX},{moved.centreZ} R {moved.ringRadius} open {open.centreX},{open.centreZ} now {now}");
+            Assert.Less(moved.centreZ, Geo.fireZ + 0.05f, "still on the glass side of the fire");
+        }
+
         [TestCaseSource(nameof(Kinds))]
         public void ThePlan_IsAPureFunctionOfItsInputs(MomentKind kind)
         {
