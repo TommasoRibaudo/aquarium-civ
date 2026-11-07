@@ -98,7 +98,7 @@ namespace AquariumCiv.Sim
             {
                 var cv = (EcoCover)e.cover[c];
                 if (cv != EcoCover.Grass && cv != EcoCover.Tall && cv != EcoCover.Bare) continue;
-                if (g.noBuild[c] || g.yard[c]) continue;
+                if (g.noBuild[c] || g.yard[c] || EcoM.NearFire(c)) continue; // #385: none round the fire
                 if (map != null && (map.lot[c] != 0 || map.tier[c] >= PathNet.Trail || map.Green(c))) continue;
                 float dx = SiteMap.CXc(c) - g.campX, dz = SiteMap.CZc(c) - g.campZ;
                 float zone = e.thicketA >= 0 ? EcoM.ThicketZone(c) : 1f;
@@ -127,7 +127,7 @@ namespace AquariumCiv.Sim
             {
                 var cv = (EcoCover)e.cover[c];
                 if (cv != EcoCover.Grass && cv != EcoCover.Tall) continue;
-                if (g.noBuild[c] || g.yard[c]) continue;
+                if (g.noBuild[c] || g.yard[c] || EcoM.NearFire(c)) continue; // #385: none round the fire
                 if (map != null && (map.lot[c] != 0 || map.tier[c] >= PathNet.Trail || map.Green(c))) continue;
                 e.cover[c] = (byte)EcoCover.Bush; made++;
             }

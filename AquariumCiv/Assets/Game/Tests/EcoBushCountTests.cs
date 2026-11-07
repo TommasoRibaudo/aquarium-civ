@@ -6,6 +6,7 @@ using AquariumCiv.Sim;
 using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 using NUnit.Framework;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.Tests
 {
@@ -17,7 +18,7 @@ namespace AquariumCiv.Tests
         sealed class BushYears
         {
             public SimCore sim;
-            public readonly List<int> count = new List<int>(), onSettlement = new List<int>(), outside = new List<int>();
+            public readonly List<int> count = new List<int>(), onSettlement = new List<int>(), outside = new List<int>(), nearFire = new List<int>();
         }
 
         static readonly Dictionary<string, BushYears> bushCache = new Dictionary<string, BushYears>();
@@ -36,15 +37,17 @@ namespace AquariumCiv.Tests
                     sim.Advance(0.25);
                     if (s % 4 != 3) continue;
                     var e = sim.State.eco; var map = sim.Settlement.Map;
-                    int n = 0, on = 0, outs = 0;
+                    int n = 0, on = 0, outs = 0, fire = 0;
+                    var g = sim.EcoGround;
                     for (int c = 0; c < EcoLand.N; c++)
                     {
                         if ((EcoCover)e.cover[c] != EcoCover.Bush) continue;
                         n++;
                         if (map.lot[c] != 0 || map.tier[c] >= PathNet.Trail || map.Green(c)) on++;
                         if (sim.BushThicketZone(c) <= 0f) outs++;
+                        if (Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ) < 0.9f) fire++;
                     }
-                    r.count.Add(n); r.onSettlement.Add(on); r.outside.Add(outs);
+                    r.count.Add(n); r.onSettlement.Add(on); r.outside.Add(outs); r.nearFire.Add(fire);
                 }
                 return bushCache[key] = r;
             }
@@ -95,6 +98,14 @@ namespace AquariumCiv.Tests
             TestContext.Out.WriteLine($"seed {seed}: {built} of {heart} thicket-heart cells under a lot ({lots} lot cells in all), {r.count[39]} bushes");
             Assert.Greater(heart, 20);
             Assert.LessOrEqual(built, heart / 10, "the village went round the thickets");
+        }
+
+        [Test]
+        public void NoBush_CloseToTheFire([ValueSource(nameof(BushSeeds))] int seed)
+        {
+            // the user 2026-11-07: the thickets a little away from the camp's centre
+            var r = PlayBushes(true, 40, seed);
+            for (int y = 1; y <= 40; y++) Assert.AreEqual(0, r.nearFire[y - 1], $"year {y}: a bush within 0.9 of the fire");
         }
 
         [Test]

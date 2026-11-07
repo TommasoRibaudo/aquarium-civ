@@ -496,7 +496,7 @@ namespace AquariumCiv.Sim.Eco
 
         bool TryBush(int c, float m, int bushes, float graze, float g, float mult)
         {
-            if (land.InBasin(c) || m < t.bushAt || st.soil[c] < t.bushSoil) return false;
+            if (land.InBasin(c) || m < t.bushAt || st.soil[c] < t.bushSoil || NearFire(c)) return false;
             float p = t.bushRate * mult * (1f + t.bushNeighbour * bushes / 8f) * (1f - t.grazeBush * graze) * g;
             p *= (st.thicketA < 0 ? 1f : t.bushStray + t.thicketBoost * ThicketZone(c)) * BushRoom; // #385: in the thickets, and not past the cap
             return Chance(13, c) < p;

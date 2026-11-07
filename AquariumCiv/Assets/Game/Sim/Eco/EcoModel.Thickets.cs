@@ -84,10 +84,14 @@ namespace AquariumCiv.Sim.Eco
             return d >= 1f ? 0f : d <= 0.5f ? 1f : 1f - Terrain.Smooth(0.5f, 1f, d);
         }
 
+        /// <summary>The ring round the camp's fire where no bush grows (the user 2026-11-07: thickets a little away from the centre).</summary>
+        public bool NearFire(int c) => Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), land.campX, land.campZ) < t.bushCampMargin;
+
         /// <summary>A bush goes back to meadow this season: strays outside a thicket die back now and then, and above the cap
         /// the bushes thin, outside the thickets and at their edges first.</summary>
         bool ThinBush(int c)
         {
+            if (NearFire(c)) return Chance(16, c) < t.bushMarginDie; // the people keep the ground round the fire clear
             if (st.thicketA < 0) return false;
             float zone = ThicketZone(c), die = zone <= 0f ? t.bushStrayDie : 0f;
             int cap = BushCap;
