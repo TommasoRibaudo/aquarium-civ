@@ -410,7 +410,7 @@ namespace AquariumCiv.Life
             var under = segs[Find(segs, t.hour)];
             bool asleep = under.kind == ActivityKind.Sleep;
             bool kid = p.stage == LifeStage.Kid;
-            float roll = R(p.key, (long)(r.start * 1000) + r.day * 100000, 140 + (int)r.gesture);
+            float roll = Roll(p, r);
             float f = r.end > r.start ? Math.Max(0f, Math.Min(1f, (t.hour - r.start) / (r.end - r.start))) : 0f;
             if (!ReactsPlain(p, r, t, under, asleep, kid, roll, out kind, out prop, out to)) return false;
             if (prop == Prop.Lantern || r.gesture == KeeperGesture.WishAnswered) return true; // stepping out of the door at night with a lantern; a wish's cheer is theirs at any stage
@@ -463,6 +463,9 @@ namespace AquariumCiv.Life
                 case KeeperGesture.Puddle:
                     // P8 #266: a mist puddle draws the people near it: kids stamp in it, now and then a grown-up kneels to wash their hands.
                     if (r.near.IsNone || !near || roll >= r.share * (kid ? 1f : 0.85f)) return false;
+                    // #406: the puddle calls every 11 s, so a grown-up by the fire went to wash, came back, and went again. A grown-up
+                    // washes once a day: not when an earlier visit today already took them.
+                    if (!kid && WashedEarlier(p, r)) return false;
                     kind = kid ? ActivityKind.Stomp : ActivityKind.WashHands; to = r.near;
                     return true;
                 case KeeperGesture.Marvel:
@@ -502,6 +505,24 @@ namespace AquariumCiv.Life
                     }
                     kind = ActivityKind.LookUp; return true; // a town scholar studies or measures it (StagedReaction)
                 }
+            }
+            return false;
+        }
+
+        float Roll(Person p, Reaction r) => R(p.key, (long)(r.start * 1000) + r.day * 100000, 140 + (int)r.gesture);
+
+        /// <summary>#406: did a puddle visit earlier on <paramref name="r"/>'s day already take this grown-up to wash their hands?</summary>
+        bool WashedEarlier(Person p, Reaction r)
+        {
+            Seg[] segs = null;
+            for (int i = 0; i < reactions.Count; i++)
+            {
+                var e = reactions[i];
+                if (e.gesture != KeeperGesture.Puddle || e.day != r.day || e.start >= r.start || e.near.IsNone) continue;
+                if (Roll(p, e) >= e.share * 0.85f) continue;
+                segs ??= DayOf(p);
+                var under = segs[Find(segs, e.start)];
+                if (under.kind != ActivityKind.Sleep && Near(p, under, e)) return true;
             }
             return false;
         }

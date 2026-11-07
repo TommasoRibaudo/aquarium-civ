@@ -23,6 +23,9 @@ namespace AquariumCiv.Life
             public Place fetchFrom;     // set: the carry comes from here to dest (restocking, water)
             public float carryShare;
             public bool keepsRestDay, sweeps, chores;
+            /// <summary>#405: the day's work starts with a fetch: to <see cref="fetchFrom"/> with the empty bucket, then the load to
+            /// <see cref="dest"/>, before the first loop at the site (the cook draws water before stirring the pot).</summary>
+            public bool fetchFirst;
             public Person with;         // a work partner (the two-man saw)
         }
 
@@ -221,6 +224,7 @@ namespace AquariumCiv.Life
                     w.keepsRestDay = true;
                     w = Fetch(w, WaterPlace);
                     w.dest = stash; // #150: the water too is set down by the fire
+                    w.fetchFirst = true; // #405 (user, 2026-11-07): water from the well first, carried to the fire, then the pot
                     return w;
                 case CrowdSplitter:
                     return Fetch(W(jb, ActivityKind.StackWood, Prop.Log, Prop.Log, jb, 0.3f), Woods);
