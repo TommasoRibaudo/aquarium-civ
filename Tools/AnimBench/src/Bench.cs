@@ -98,7 +98,6 @@ namespace AnimBench
         /// <summary>One doll-width (the tunic's hem across), adult units.</summary>
         public const float DollWidth = 2f * BodyR;
         public const float ToolTilt = 22f;
-        static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
         /// <summary>PegDoll.SlotPose (copied; PegDoll.cs builds meshes, so it stays out of the bench).</summary>
         public static (Vector3 pos, Quaternion rot) SlotPose(PropSlot slot) => slot switch
@@ -175,7 +174,7 @@ namespace AnimBench
             else if (f.Slot == PropSlot.Hand)
             {
                 var rest = Quaternion.Inverse(Quaternion.Euler(-35f, 0, 10f)) * Quaternion.Euler(0, 0, IsTool(f.Prop) ? -ToolTilt : 0f) * rot;
-                var grip = f.Prop == PropKind.Spear ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * SpearAim(pose.extend, pose.lean) : f.Prop == PropKind.Pot ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * rot : pose.extend ? AlongArm : rest; // batch 2: PegDollView.SpearAim; batch 5: a pot stays upright in the hand
+                var grip = f.Prop == PropKind.Spear ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * SpearAim(pose.extend, pose.lean) : f.Prop == PropKind.Pot ? Quaternion.Inverse(Quaternion.Euler(f.Pose.armR)) * rot : pose.extend ? DollMotion.ToolGrip(f.Prop) : rest; // batch 2: PegDollView.SpearAim; batch 5: a pot stays upright in the hand
                 var pr = f.ArmR.Child(pos * s, grip, Vector3.one * ps);
                 f.PropFrame = pr;
                 if (ToolTip(f.Prop) != Vector3.zero) f.Tip = pr.Point(ToolTip(f.Prop));

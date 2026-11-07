@@ -1,0 +1,10 @@
+{
+  "name": "grip-kindling",
+  "notes": "#401 grip check (playtest #398: chopping kindling holds the tools wrong): kindling at the home block",
+  "duration": 6.0, "fps": 30, "warmup": 1,
+  "camera": { "view": "default", "focus": [0.05, -0.05], "span": 0.7 },
+  "sheet": { "from": 1.0, "to": 4.0, "frames": 24, "columns": 6 },
+  "knownGaps": ["endBeat", "react"],
+  "objects": [ { "id": "block", "kind": "root", "pos": [0.15, 0.0] } ],
+  "dolls": [ { "id": "worker", "seed": 519, "role": "worker", "activity": "ChopKindling", "prop": "Axe", "pos": [0.0, 0.0], "face": "block", "target": "block", "dur": 6.0 } ]
+}
