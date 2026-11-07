@@ -79,7 +79,7 @@ namespace AquariumCiv.Tests
         // ---------------------------------------------------------------- the zoom
 
         [Test]
-        public void Zoom_ADollIs35To45PxOfA2556PxScreen_AtEveryFrameSize_InsideTheCameraLimits()
+        public void Zoom_ADollIs46To64PxOfA2556PxScreen_AtEveryFrameSize_InsideTheCameraLimits()
         {
             foreach (float aspect in Aspects)
             {
@@ -162,6 +162,52 @@ namespace AquariumCiv.Tests
                 }
             }
             Assert.AreEqual(NearGlassFade.MaxFrameFade, NearGlassFade.Amount(0.2f, 1f, isFrame: true), 1e-6f, "without the camp closeness the frame keeps #319's trace");
+        }
+
+        // ---------------------------------------------------------------- 2026-11-07: closer (55 px), trimmed, resized
+
+        [Test]
+        public void Zoom_TheDefaultIs55PxOf2556_AndTheSameShareOf1920_AtBothSizes_WithTheNearGlassFullyGone()
+        {
+            Assert.AreEqual(55f, CampFrame.TargetDollPx);
+            foreach (var (aspect, h) in new[] { (1179f / 2556f, 2556f), (1080f / 1920f, 1920f) })
+            {
+                float fit = Fit(aspect);
+                float zoom = CampFrame.Zoom(CampFrame.MinRadius, fit, TanV, aspect), d = zoom * fit;
+                float px = CampFrame.DollPx(d, CampFrame.Pitch, h, TanV, CameraReach.DollScale(zoom));
+                Assert.AreEqual(55f * h / 2556f, px, 0.6f, $"aspect {aspect:0.000}: zoom {zoom:0.00}, {px:0.0} px of {h}");
+                Assert.GreaterOrEqual(zoom, CameraReach.MinZoom + 0.05f, "well inside the closest zoom");
+                Assert.AreEqual(1f, NearGlassFade.CampCloseness(d, fit), 1e-4f, $"near glass 0 at aspect {aspect:0.000}");
+                Assert.GreaterOrEqual(CampFrame.Pitch, CameraReach.PitchFloor(zoom));
+                Console.WriteLine($"camp frame aspect {aspect:0.000}: zoom {zoom:0.000}, distance {d:0.0}, doll {px:0.0} px of {h}");
+            }
+        }
+
+        [Test]
+        public void Frame_ASpreadCamp_KeepsTheFireAndTheBusiestPeople_WithinTheMaxRadius_AndNothingNearTheFireIsCut()
+        {
+            var camp = new List<CampFrame.Point> { P(0f, 0f, 3f), P(1.0f, 0.3f), P(-1.0f, -0.4f), P(0.2f, 1.1f) };
+            var dolls = new List<CampFrame.Point> { P(0.1f, 0.1f), P(0.3f, -0.2f), P(-0.2f, 0.3f), P(0.5f, 0.5f), P(-0.6f, -0.1f), P(1.9f, 1.0f), P(-1.8f, -1.2f) };
+            var f = CampFrame.Frame(camp, dolls, HX, HZ);
+            Assert.LessOrEqual(f.radius, CampFrame.MaxRadius + 1e-4f, f.ToString());
+            Assert.LessOrEqual(Dist(camp[0], f), f.radius, "the fire is in");
+            for (int i = 0; i < 5; i++) Assert.LessOrEqual(Dist(dolls[i], f), f.radius, $"doll {i} at the fire is in: {f}");
+            Assert.Greater(Dist(dolls[5], f), f.radius - CampFrame.Pad, "the stragglers at the edge are let go of");
+        }
+
+        [Test]
+        public void Resize_TheFrameIsFittedAgainWhenTheAspectMoves()
+        {
+            Assert.IsTrue(CampFrame.AspectChanged(0f, 0.46f), "never framed");
+            Assert.IsTrue(CampFrame.AspectChanged(1179f / 2556f, 1080f / 1920f), "1179x2556 to 1080x1920");
+            Assert.IsFalse(CampFrame.AspectChanged(1179f / 2556f, 1179.5f / 2556f), "a pixel of jitter isn't a resize");
+            // The old zoom at the new size is not the frame: the zoom is a share of the fit, which moves with the aspect.
+            float a0 = 1179f / 2556f, a1 = 1080f / 1920f;
+            float z0 = CampFrame.Zoom(1f, Fit(a0), TanV, a0), z1 = CampFrame.Zoom(1f, Fit(a1), TanV, a1);
+            float pxStale = CampFrame.DollPx(z0 * Fit(a1), CampFrame.Pitch, 1920f, TanV, CameraReach.DollScale(z0));
+            float pxFresh = CampFrame.DollPx(z1 * Fit(a1), CampFrame.Pitch, 1920f, TanV, CameraReach.DollScale(z1));
+            Assert.AreEqual(55f * 1920f / 2556f, pxFresh, 0.6f);
+            Assert.Greater(Math.Abs(pxFresh - pxStale), 1.0f, "so the frame must be recomputed");
         }
 
         static float Dist(CampFrame.Point p, CampFrame.Result f) => (float)Math.Sqrt((p.x - f.x) * (p.x - f.x) + (p.z - f.z) * (p.z - f.z));

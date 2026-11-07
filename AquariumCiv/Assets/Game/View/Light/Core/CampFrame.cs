@@ -17,7 +17,7 @@ namespace AquariumCiv.Lighting
     {
         /// <summary>The one number to tune: a doll's height on screen at the camp frame, in pixels of a 2556-px-tall portrait screen
         /// (the user's 35–45 px). Other screens get the same share of their height.</summary>
-        public const float TargetDollPx = 40f, MinDollPx = 35f, MaxDollPx = 45f, ReferenceScreenH = 2556f;
+        public const float TargetDollPx = 55f, MinDollPx = 46f, MaxDollPx = 64f, ReferenceScreenH = 2556f;
         /// <summary>A peg doll standing, world units (before <see cref="CameraReach.DollScale"/>).</summary>
         public const float DollHeight = 0.213f;
         /// <summary>The frame's angles: the opening view's (the camera doesn't tilt to dodge the rim: the near glass fades instead).</summary>
@@ -28,7 +28,7 @@ namespace AquariumCiv.Lighting
         /// <summary>Dolls this close to the camp's middle are at the camp; a group is the dolls this close to its densest doll.</summary>
         public const float CampReach = 2.0f, GroupReach = 1.0f;
         /// <summary>The frame's radius: room round the outermost point, never smaller or larger than these.</summary>
-        public const float Pad = 0.3f, MinRadius = 0.6f, MaxRadius = 1.8f;
+        public const float Pad = 0.3f, MinRadius = 0.6f, MaxRadius = 1.6f;
         /// <summary>The frame's circle takes at most this share of the screen's half width.</summary>
         public const float FitShare = 0.8f;
         /// <summary>The frame's centre stays this far inside the land's edge.</summary>
@@ -59,6 +59,7 @@ namespace AquariumCiv.Lighting
             dolls ??= Array.Empty<Point>();
             var pts = new List<Point>();
             Source src;
+            int nFixed = 0;
             Group(dolls, out int groupCount, out float gx, out float gz);
             bool groupIsMost = dolls.Count > 0 && groupCount * 2 >= dolls.Count;
             if (camp.Count == 0)
@@ -73,6 +74,7 @@ namespace AquariumCiv.Lighting
                 int atCamp = 0;
                 for (int i = 0; i < dolls.Count; i++) if (Dist(dolls[i].x, dolls[i].z, cx, cz) <= CampReach) atCamp++;
                 for (int i = 0; i < camp.Count; i++) if (i == 0 || Dist(camp[i].x, camp[i].z, cx, cz) <= CampReach) pts.Add(camp[i]);
+                nFixed = pts.Count;
                 if (atCamp * 2 >= dolls.Count || !groupIsMost)
                 {
                     AddNear(dolls, cx, cz, CampReach, pts);
@@ -83,15 +85,40 @@ namespace AquariumCiv.Lighting
                     // Most of them are together away from the camp (at the pond, the field): frame them, with the fire when both fit.
                     var both = new List<Point> { camp[0] };
                     AddNear(dolls, gx, gz, GroupReach, both);
-                    if (Enclose(both, out _, out _) + Pad <= MaxRadius) { pts = both; src = Source.CampAndGroup; }
+                    if (Enclose(both, out _, out _) + Pad <= MaxRadius) { pts = both; nFixed = 1; src = Source.CampAndGroup; }
                     else { pts.Clear(); AddNear(dolls, gx, gz, GroupReach, pts); src = Source.Group; }
                 }
             }
+            Trim(pts, nFixed);
             float r = Enclose(pts, out float fx, out float fz) + Pad;
             fx = Clamp(fx, -(halfX - EdgeInset), halfX - EdgeInset);
             fz = Clamp(fz, -(halfZ - EdgeInset), halfZ - EdgeInset);
             return new Result { x = fx, z = fz, radius = Clamp(r, MinRadius, MaxRadius), source = src };
         }
+
+        /// <summary>
+        /// A tighter view cannot hold a spread camp: when the points don't fit <see cref="MaxRadius"/>, let go of the farthest dolls first
+        /// (keeping the busiest half of them), then the farthest tents; the fire (the first point) always stays. Deterministic.
+        /// </summary>
+        static void Trim(List<Point> pts, int nFixed)
+        {
+            int keep = (pts.Count - nFixed + 1) / 2;
+            while (pts.Count - nFixed > keep && Enclose(pts, out _, out _) + Pad > MaxRadius) RemoveFarthest(pts, nFixed, pts.Count);
+            while (nFixed > 1 && Enclose(pts, out _, out _) + Pad > MaxRadius) { RemoveFarthest(pts, 1, nFixed); nFixed--; }
+        }
+
+        static void RemoveFarthest(List<Point> pts, int from, int to)
+        {
+            Enclose(pts, out float cx, out float cz);
+            int worst = -1; float wd = -1f;
+            for (int i = from; i < to; i++) { float d = Dist(pts[i].x, pts[i].z, cx, cz); if (d > wd + 1e-5f) { wd = d; worst = i; } }
+            if (worst >= 0) pts.RemoveAt(worst);
+        }
+
+        /// <summary>Item G (tester run 2): the Game view was resized (1179x2556 to 1080x1920) and the next return framed the whole box.
+        /// The camp frame is re-fitted when the aspect moves by more than <see cref="AspectEpsilon"/>.</summary>
+        public const float AspectEpsilon = 0.004f;
+        public static bool AspectChanged(float before, float now) => before <= 0f || Math.Abs(now - before) > AspectEpsilon;
 
         /// <summary>The densest doll (most others within <see cref="GroupReach"/>; the first on a tie) and the mean of its group.</summary>
         static void Group(IReadOnlyList<Point> dolls, out int count, out float x, out float z)

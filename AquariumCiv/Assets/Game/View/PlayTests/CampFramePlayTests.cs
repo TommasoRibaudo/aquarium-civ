@@ -13,7 +13,7 @@ namespace AquariumCiv.View.PlayTests
 {
     /// <summary>
     /// t1-camera (decisions.md 2026-11-06, "The default camera"; tester run 1 items 1-2): after an Away the camera eases to the camp
-    /// frame by itself: dolls ~40 px tall on a 1179x2556 phone, the near glass and its frame gone, and a pinch out still gets the whole
+    /// frame by itself: dolls ~55 px tall on a 1179x2556 phone, the near glass and its frame gone, and a pinch out still gets the whole
     /// box back. Shots go to Temp/agent/t1camera/.
     /// </summary>
     [Category("CampFrame")]
@@ -66,7 +66,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(px.Count, 0, "people are in the frame");
             px.Sort();
             float median = px[px.Count / 2];
-            Assert.That(median, Is.InRange(CampFrame.MinDollPx - 3f, CampFrame.MaxDollPx + 3f), "a doll reads at ~40 px on the phone");
+            Assert.That(median, Is.InRange(CampFrame.MinDollPx - 3f, CampFrame.MaxDollPx + 3f), "a doll reads at ~55 px on the phone");
 
             // The near glass is gone: no rim across the camp.
             Assert.LessOrEqual(box.PaneOpacity(0), 0.05f, "front pane");

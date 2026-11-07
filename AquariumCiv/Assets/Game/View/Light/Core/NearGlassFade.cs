@@ -40,7 +40,7 @@ namespace AquariumCiv.Lighting
         public const float CampRatioEnd = 0.80f;
 
         /// <summary>0..1 from the camera's distance to its pivot (<paramref name="distance"/>) and the whole-box distance (<paramref name="fit"/>):
-        /// 1 from <see cref="CampFadeEnd"/> in. A camp frame sits there (dolls of 35-45 px are 26-33 units away at the opening's pitch, <see cref="CampFrame"/>).</summary>
+        /// 1 from <see cref="CampFadeEnd"/> in. A camp frame sits there (dolls of 46-64 px are 19-26 units away at the opening's pitch, <see cref="CampFrame"/>).</summary>
         public static float CampCloseness(float distance, float fit)
         {
             float start = System.Math.Min(CampFadeStart, CampFadeStartShare * fit);
