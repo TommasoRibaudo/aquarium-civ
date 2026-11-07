@@ -373,6 +373,24 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(sim.ChoiceStageDue, "answered: nothing to stage");
         }
 
+        /// <summary>t3-choice (tester run 2 D): a choice the people raise while the player watches is staged in the box like a held one.</summary>
+        [Test]
+        public void AChoiceRaisedWhileWatchingIsFlaggedToStage()
+        {
+            var sim = Box();
+            if (sim.OpenDilemma != null) sim.LetThemDecide(sim.OpenDilemma.id);
+            sim.ChoiceStaged();
+            Assert.IsFalse(sim.ChoiceStageDue, "nothing open, nothing to stage");
+            DueNow(sim);
+            for (int m = 0; m < 24 && sim.OpenDilemma == null; m++) sim.Advance(1.0 / 12);
+            Assert.IsNotNull(sim.OpenDilemma, "raised while watching");
+            Assert.IsTrue(sim.ChoiceStageDue, "a live choice is staged in the box too");
+            sim.ChoiceStaged();
+            Assert.IsFalse(sim.ChoiceStageDue, "once");
+            Watch(sim, 1);
+            Assert.IsFalse(sim.ChoiceStageDue, "watching on does not stage it again");
+        }
+
         [Test]
         public void NoChoiceWaitingMeansNothingToStage()
         {

@@ -195,11 +195,12 @@ namespace AquariumCiv.View.Cards
         }
 
         /// <summary>#238: a dilemma the people raised while the player watches. The peek comes up with it on top, as on a return, and a
-        /// tap opens on its card; the rest of the unread stories wait for the next return (the dot says so). False when the stack is up
-        /// already, in the first run or a museum, or when the entry is not an open dilemma's card.</summary>
+        /// tap opens on its card; the rest of the unread stories wait for the next return (the dot says so). A peek already up switches
+        /// to it (t3-choice, tester run 2 D: the old line stayed and nothing said a choice was waiting). False when the stack is open,
+        /// in the first run or a museum, or when the entry is not an open dilemma's card.</summary>
         public bool ShowLive(int entryId)
         {
-            if (Mode != CardStackMode.Hidden || Quiet) return false;
+            if (Mode == CardStackMode.Open || Quiet || PeekIs(entryId)) return false;
             var d = sim.DilemmaOfEntry(entryId);
             if (d == null || d.state != DilemmaState.Open) return false;
             var all = sim.UnreadCardsCapped(64, viewed);
@@ -212,6 +213,19 @@ namespace AquariumCiv.View.Cards
             Mode = CardStackMode.Peek;
             Changed?.Invoke();
             return true;
+        }
+
+        /// <summary>t3-choice: the peek is up with this entry's card on top.</summary>
+        public bool PeekIs(int entryId) => Mode == CardStackMode.Peek && stack != null && stack.cards.Count > 0 && stack.cards[0].lead.id == entryId;
+
+        /// <summary>t3-choice: the peek's top card is a choice still waiting on the Keeper (the peek wears a "?"; live, so an answer
+        /// in the box takes it off).</summary>
+        public bool PeekIsChoice => Mode == CardStackMode.Peek && stack != null && stack.cards.Count > 0 && OpenChoice(stack.cards[0]);
+
+        bool OpenChoice(ChronicleCard c)
+        {
+            var d = c?.lead == null ? null : sim.DilemmaOfEntry(c.lead.id);
+            return d != null && d.state == DilemmaState.Open;
         }
 
         /// <summary>The stack built now holds this entry's card (on a page or in "Also…").</summary>

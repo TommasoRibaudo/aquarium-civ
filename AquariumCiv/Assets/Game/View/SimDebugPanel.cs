@@ -243,6 +243,12 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Moments on/off")) last = HeldMomentStage.DebugToggle();
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Stage the held choice now (t1-moments)")) last = HeldMomentStage.DebugStageHeldChoice(); // visit-loop 2.4
+                // ---- t3-choice: the box-staged choice's hold ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Box choice: status")) last = ChoiceSceneView.DebugStatus();
+                if (GUILayout.Button("Box choice: let go now")) last = ChoiceSceneView.DebugRelax();
+                GUILayout.EndHorizontal();
+                // ---- end t3-choice ----
             }
             // ---- end #369 ----
             // ---- #374: this visit's telemetry numbers ----

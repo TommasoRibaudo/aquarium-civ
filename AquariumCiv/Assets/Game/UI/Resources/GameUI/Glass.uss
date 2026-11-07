@@ -248,6 +248,14 @@
 .kg-peek-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kg-peek-teaser { margin-top: 5.5px; white-space: normal; }
 .kg-peek--teaser .kg-peek-line { -unity-font-definition: var(--font-serif-italic); font-size: 38.5px; white-space: normal; }
+/* t3-choice: a choice waits on the Keeper: a round "?" mark at the end of the peek */
+.kg-peek-ask {
+    width: 77px; height: 77px; margin-left: var(--space-8); flex-shrink: 0; border-radius: 50%;
+    background-color: var(--primary); border-width: var(--hairline); border-color: var(--on-primary);
+    color: var(--on-primary); -unity-font-definition: var(--font-serif); font-size: 49.5px; -unity-text-align: middle-center;
+    padding: 0; display: none;
+}
+.kg-peek--choice .kg-peek-ask { display: flex; }
 
 /* ---------------- card: content of a sheet, never its own surface ---------------- */
 .kg-card { flex-grow: 1; flex-shrink: 1; }

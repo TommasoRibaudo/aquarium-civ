@@ -830,6 +830,29 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(m.HistoryDot, "the rest wait: the dot");
         }
 
+        /// <summary>t3-choice (tester run 2 D): a return's peek is up with an older story when the people raise a choice: the peek
+        /// switches to the choice and wears the choice mark.</summary>
+        [Test]
+        public void ALiveDilemmaReplacesAnOlderStoryOnThePeek()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            AddMany(sim, 4);
+            var m = Model(sim);
+            Assert.IsTrue(m.DebugPrepare(3));
+            Assert.AreEqual(CardStackMode.Peek, m.Mode);
+            if (m.PeekIs(d.entryId)) Assert.IsFalse(m.ShowLive(d.entryId), "already on top");
+            else Assert.IsTrue(m.ShowLive(d.entryId), "the peek switches to the new choice");
+            Assert.IsTrue(m.PeekIs(d.entryId));
+            Assert.IsTrue(m.PeekIsChoice, "the peek says a choice waits");
+            Assert.AreEqual(sim.Headline(sim.State.chronicle.First(e => e.id == d.entryId)), m.Peek.text);
+            Assert.IsFalse(m.ShowLive(d.entryId), "not twice");
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Box);
+            Assert.IsFalse(m.PeekIsChoice, "answered in the box: the mark goes");
+            Assert.IsTrue(m.TapPeek());
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+            Assert.IsFalse(m.ShowLive(d.entryId), "never over the open stack");
+        }
+
         [Test]
         public void NoLivePeekInTheFirstRunOrForAnAnsweredDilemma()
         {
