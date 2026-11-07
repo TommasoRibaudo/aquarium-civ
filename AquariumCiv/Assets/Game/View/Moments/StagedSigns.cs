@@ -13,7 +13,11 @@ namespace AquariumCiv.View
     /// </summary>
     public sealed class StagedSign : MonoBehaviour
     {
-        public const float ArchHalf = 0.17f, ArchH = 0.2f, PostH = 0.19f;
+        // t2-polish: 1.4x (0.17 / 0.2 / 0.19 read small at the camp frame, batch 5 wedding_0..3), and it stands a little behind the
+        // couple as the camera sees them (BackOffset), so it frames them and never hides them.
+        public const float ArchHalf = 0.24f, ArchH = 0.28f, PostH = 0.27f, BackOffset = 0.07f;
+        /// <summary>t2-polish: the flower band, brighter than the meadow's palette so it reads at ~40 px dolls: rose, sun yellow, cream, coral.</summary>
+        public static readonly Color[] ArchFlowers = { new Color(1f, 0.45f, 0.62f), new Color(1f, 0.85f, 0.25f), new Color(1f, 0.97f, 0.9f), new Color(1f, 0.55f, 0.4f) };
         /// <summary>The seconds (from the moment's start) the arch begins to rise, and the petals fall.</summary>
         public const float RiseAt = 3f, RiseSeconds = 1.4f, PetalSeconds = 0.6f;
 
@@ -62,11 +66,11 @@ namespace AquariumCiv.View
         {
             var mb = new MeshBuilder(370) { jitter = 0f };
             var leaf = new[] { Palette.LeafA, Palette.LeafC, Palette.LeafB };
-            var fl = Palette.Flowers;
+            var fl = ArchFlowers;
             float cy = PostH; // the ring's centre sits at the posts' tops
             for (int side = -1; side <= 1; side += 2)
-                mb.Box(new Vector3(side * ArchHalf, PostH * 0.5f, 0f), new Vector3(0.03f, PostH, 0.03f), Palette.Timber);
-            const int n = 14;
+                mb.Box(new Vector3(side * ArchHalf, PostH * 0.5f, 0f), new Vector3(0.04f, PostH, 0.04f), Palette.Timber);
+            const int n = 16;
             for (int i = 0; i < n; i++)
             {
                 float a0 = Mathf.PI * i / n, a1 = Mathf.PI * (i + 1) / n, am = (a0 + a1) * 0.5f;
@@ -75,16 +79,16 @@ namespace AquariumCiv.View
                 var mid = (p0 + p1) * 0.5f;
                 float len = (p1 - p0).magnitude * 1.15f;
                 float deg = Mathf.Atan2(p1.y - p0.y, p1.x - p0.x) * Mathf.Rad2Deg;
-                mb.Box(mid, new Vector3(len, 0.032f, 0.032f), leaf[i % 3], Quaternion.Euler(0f, 0f, deg));
+                mb.Box(mid, new Vector3(len, 0.042f, 0.042f), leaf[i % 3], Quaternion.Euler(0f, 0f, deg));
                 // a big flower every other step, alternating colours, bulging out front so it faces the camera
-                if (i % 2 == 0) mb.Ico(mid + new Vector3(0f, 0f, 0.012f), 0.026f, Vector3.one, fl[(i / 2) % fl.Length], 0.1f);
-                else mb.Ico(mid + new Vector3(0f, 0.012f, 0.014f), 0.017f, Vector3.one, fl[(i / 2 + 2) % fl.Length], 0.1f);
+                if (i % 2 == 0) mb.Ico(mid + new Vector3(0f, 0f, 0.017f), 0.036f, Vector3.one, fl[(i / 2) % fl.Length], 0.1f);
+                else mb.Ico(mid + new Vector3(0f, 0.017f, 0.02f), 0.026f, Vector3.one, fl[(i / 2 + 2) % fl.Length], 0.1f);
             }
             // the bunch where the two halves meet, and a bloom low on each post
-            mb.Ico(new Vector3(0f, cy + ArchH + 0.012f, 0.014f), 0.034f, Vector3.one, fl[2], 0.1f);
-            mb.Ico(new Vector3(0f, cy + ArchH + 0.034f, 0.014f), 0.022f, Vector3.one, fl[1], 0.1f);
+            mb.Ico(new Vector3(0f, cy + ArchH + 0.017f, 0.02f), 0.048f, Vector3.one, fl[0], 0.1f);
+            mb.Ico(new Vector3(0f, cy + ArchH + 0.048f, 0.02f), 0.031f, Vector3.one, fl[1], 0.1f);
             for (int side = -1; side <= 1; side += 2)
-                mb.Ico(new Vector3(side * ArchHalf, 0.035f, 0.02f), 0.026f, Vector3.one, fl[side < 0 ? 0 : 3], 0.1f);
+                mb.Ico(new Vector3(side * ArchHalf, 0.05f, 0.028f), 0.036f, Vector3.one, fl[side < 0 ? 0 : 3], 0.1f);
             return mb.ToMesh("WeddingArch");
         }
 
@@ -114,7 +118,11 @@ namespace AquariumCiv.View
             // The arch rises as the guests gather, with a little overshoot, and stays.
             float k = Mathf.Clamp01((t - RiseAt) / RiseSeconds);
             float e = k <= 0f ? 0f : 1f + 1.7f * Mathf.Pow(k - 1f, 3f) + 0.7f * Mathf.Pow(k - 1f, 2f); // easeOutBack
-            if (arch != null) arch.localScale = new Vector3(Mathf.Max(0.001f, e), Mathf.Max(0.001f, e), Mathf.Max(0.001f, e));
+            if (arch != null)
+            {
+                arch.localScale = new Vector3(Mathf.Max(0.001f, e), Mathf.Max(0.001f, e), Mathf.Max(0.001f, e));
+                arch.localPosition = new Vector3(0f, 0f, -BackOffset * CameraSide()); // behind the couple as the camera sees them
+            }
             // The petals fall on the join, once, and lie there.
             if (petals != null)
             {
@@ -128,6 +136,15 @@ namespace AquariumCiv.View
                     petals.localPosition = new Vector3(0f, (1f - s) * 0.2f, 0f); // they drift down from above
                 }
             }
+        }
+
+        /// <summary>+1 when the camera is on the arch's +z side (the side its flowers bulge to), -1 when it is behind it.</summary>
+        float CameraSide()
+        {
+            var cam = Camera.main;
+            if (cam == null) return 1f;
+            var local = transform.InverseTransformPoint(cam.transform.position);
+            return local.z >= 0f ? 1f : -1f;
         }
 
         void OnDestroy()
