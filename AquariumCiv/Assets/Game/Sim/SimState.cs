@@ -415,6 +415,7 @@ namespace AquariumCiv.Sim
         // (Not the last fields: SweeperTests appends to the JSON after trimming its closing braces.)
         public MomentPacing momentPacing = new();
         public List<HeldMoment> moments = new();
+        public WelcomeMemo welcomeMemo = new(); // t3-welcome: the box at the last watched step, to tell what is new at the next open
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 

@@ -604,8 +604,9 @@ namespace AquariumCiv.View
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
             var ground = new Vector3(d.drawn.x, Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y), d.drawn.y);
             if (playing && playCue.sink > 0f && KidPlay.PondLevel(out float pondY)) ground.y = pondY - playCue.sink; // #359: wading, jumped in
-            d.grassHide = Mathf.MoveTowards(d.grassHide, hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.HoldUp ? 1f : 0f, dt / 0.35f);
-            if (d.grassHide > 0f) GrassHide.Add(peopleRoot.TransformPoint(ground), d.grassHide);
+            d.grassHide = Mathf.MoveTowards(d.grassHide, hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack ? 1f : 0f, dt / 0.35f);
+            // t3-hunt: the catch's phases (walk to it, lift, hold up, carry home) flatten a wider patch than the stalk does
+            if (d.grassHide > 0f) GrassHide.Add(peopleRoot.TransformPoint(ground), d.grassHide, hunting && a.hunt is HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack ? GrassHide.WideRadius : GrassHide.Radius);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             float zs = toddling ? dollZoomScale * ToddleFollow.ToddlerScale : dollZoomScale; // 2026-11-06: the little one is littler than a kid
@@ -737,7 +738,7 @@ namespace AquariumCiv.View
             var p = Vector2.Lerp(AtFire(plan, x0, z0, a.who.Key), AtFire(plan, x1, z1, a.who.Key), f);
             x = p.x; z = p.y;
             if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
-            else if (st.phase == HuntPhase.HoldUp) face = new Vector2(plan.fireX, plan.fireZ); // look-fix: the catch is shown to the camp (and the kid running over), not to the empty grass
+            else if (st.phase == HuntPhase.HoldUp) face = new Vector2(plan.holdX + HuntOpen.CamX, plan.holdZ + HuntOpen.CamZ); // t3-hunt: the catch is held up to the camera side (the camp is where the camera looks, and the kid runs over)
             else if (st.faceSpear) face = new Vector2(plan.landX, plan.landZ);
             else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
             return true;

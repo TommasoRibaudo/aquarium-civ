@@ -1,0 +1,24 @@
+{
+  "name": "t3-welcome-glass",
+  "notes": "t3-welcome (tester run 2 item C): the greeting when nothing waits, KidsAtGlass. Three kids by the fire hear the Keeper is back, hurry to the front glass (Walk 3 s; the planner caps the walk at 3.5 s), wave (Wave), then press their hands to it (PressHands) as the end beat. Facing 0 = toward the camera and the glass (checked on a zoomed sheet: face and headband show; the arm goes up for the wave, both hands out for the press). The cuts are staggered (0.55 + 0.06 per kid of the greeting) so neighbours never move in step. Game: LifePlanner.StageGreeting(KidsAtGlass), Wave then PressHands at the glass place, faces the glass. 10 s in all. The planner's walks follow the paths here straight.",
+  "duration": 10,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, -1.2], "span": 1.6 },
+  "sheet": { "from": 0.3, "to": 10, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.3 },
+  "objects": [ { "id": "fire", "kind": "fire", "pos": [0.0, 0.0], "radius": 0.15 } ],
+  "dolls": [
+    { "id": "kid1", "kid": true, "seed": 3301, "timeline": [
+      { "t": 0, "activity": "Walk", "from": [-0.30, -0.35], "to": [-0.45, -1.80], "dur": 3.0 },
+      { "t": 3.0, "activity": "Wave", "pos": [-0.45, -1.80], "facing": 0, "dur": 3.3 },
+      { "t": 6.3, "activity": "PressHands", "pos": [-0.45, -1.84], "facing": 0, "endBeat": true, "dur": 3.7 } ] },
+    { "id": "kid2", "kid": true, "seed": 3302, "timeline": [
+      { "t": 0, "activity": "Walk", "from": [0.25, -0.40], "to": [0.0, -1.80], "dur": 3.0 },
+      { "t": 3.0, "activity": "Wave", "pos": [0.0, -1.80], "facing": 0, "dur": 3.9 },
+      { "t": 6.9, "activity": "PressHands", "pos": [0.0, -1.84], "facing": 0, "endBeat": true, "dur": 3.1 } ] },
+    { "id": "kid3", "kid": true, "seed": 3303, "timeline": [
+      { "t": 0.2, "activity": "Walk", "from": [0.45, -0.20], "to": [0.45, -1.80], "dur": 3.2 },
+      { "t": 3.4, "activity": "Wave", "pos": [0.45, -1.80], "facing": 0, "dur": 3.9 },
+      { "t": 7.3, "activity": "PressHands", "pos": [0.45, -1.84], "facing": 0, "endBeat": true, "dur": 2.7 } ] }
+  ]
+}

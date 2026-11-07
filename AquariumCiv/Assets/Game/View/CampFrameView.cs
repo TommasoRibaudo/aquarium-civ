@@ -170,6 +170,8 @@ namespace AquariumCiv.View
             cam.SetHome(new Vector3(world.x, cam.target.y, world.z), CampFrame.Yaw, pitch, zoom);
             Last = f; LastZoom = zoom; Framed++;
             framedAspect = aspect;
+            // t3-hunt: the planner prefers hunts inside what this view really shows (read from the frame's own maths, never a hard-coded radius)
+            pv.Planner.SetHuntFrame(f.x, f.z, Mathf.Clamp(Mathf.Min(f.radius, CampFrame.VisibleRadius(fit * zoom, tan, aspect)), CampFrame.MinRadius * 0.5f, CampFrame.MaxRadius));
             float px = CampFrame.DollPx(fit * zoom, pitch, Screen.height, tan, CameraReach.DollScale(zoom, PeopleView.DollScaleAmount));
             string s = $"camp frame {f}: zoom {zoom:0.00}, doll {px:0} px of {Screen.height}";
             Debug.Log("[CampFrame] " + s);
