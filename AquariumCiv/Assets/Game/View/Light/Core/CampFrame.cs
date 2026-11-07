@@ -166,6 +166,10 @@ namespace AquariumCiv.Lighting
             return Clamp(d, lo, hi);
         }
 
+        /// <summary>t3-hunt: how far from the frame's centre the screen really shows at camera <paramref name="distance"/> (the frame's own
+        /// circle takes <see cref="FitShare"/> of the half width). Smaller than the frame radius when the dolls are held big (a tighter default view).</summary>
+        public static float VisibleRadius(float distance, float tanHalfV, float aspect) => distance * FitShare * tanHalfV * Math.Max(0.1f, Math.Min(1f, aspect));
+
         /// <summary>The zoom for <see cref="Distance"/>.</summary>
         public static float Zoom(float radius, float fit, float tanHalfV, float aspect, float pitchDeg = Pitch, float dollScaleAmount = CameraReach.DollScaleUp)
             => Distance(radius, fit, tanHalfV, aspect, pitchDeg, dollScaleAmount) / Math.Max(1e-3f, fit);

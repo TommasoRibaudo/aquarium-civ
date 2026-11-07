@@ -132,11 +132,14 @@ namespace AquariumCiv.Life.Tests
                 if (p.catches)
                 {
                     sawCatch = true;
-                    CollectionAssert.AreEqual(new[] { HuntPhase.ToCatch, HuntPhase.PickUp, HuntPhase.HoldUp, HuntPhase.CarryBack, HuntPhase.Skin, HuntPhase.Cook }, ph.Skip(strike + 1).Take(6).ToList());
+                    // t3-hunt: a short CarryBack walk to the hold-up spot comes before the HoldUp (repeats collapse)
+                    var after = ph.Skip(strike + 1).Take(7).ToList();
+                    if (after.Count > 2 && after[2] == HuntPhase.CarryBack) after.RemoveAt(2);   // the walk to the hold-up spot (absent when the rabbit fell by the camp)
+                    CollectionAssert.AreEqual(new[] { HuntPhase.ToCatch, HuntPhase.PickUp, HuntPhase.HoldUp, HuntPhase.CarryBack, HuntPhase.Skin, HuntPhase.Cook }, after.Take(6).ToList());
                     var hold = p.steps.First(x => x.phase == HuntPhase.HoldUp);
                     Assert.AreEqual((ActivityKind.HoldUp, Prop.Rabbit), (hold.kind, hold.prop));
                     Assert.AreEqual(HuntTiming.HoldUpSeconds, LifeClock.RealSecondsBetween(hold.start, hold.end), 0.1f);
-                    var carry = p.steps.First(x => x.phase == HuntPhase.CarryBack);
+                    var carry = p.steps.Where(x => x.phase == HuntPhase.CarryBack).OrderByDescending(x => Dist(x.x0, x.z0, x.x1, x.z1)).First();   // t3-hunt: the long walk home
                     float speed = Dist(carry.x0, carry.z0, carry.x1, carry.z1) / LifeClock.RealSecondsBetween(carry.start, carry.end);
                     float walk = LifePlanner.WalkSpeed / LifeClock.RealSecondsPerViewHour(carry.start);
                     Assert.Less(speed, walk * 0.95f, "a slow proud walk home, slower than a plain one");

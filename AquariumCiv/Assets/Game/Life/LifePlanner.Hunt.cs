@@ -51,6 +51,9 @@ namespace AquariumCiv.Life
         public float targetX, targetZ, stalkX, stalkZ, lungeX, lungeZ, fireX, fireZ;
         /// <summary>#362: where the spear comes down (the rabbit on a catch, past or beside it on a miss), the spot the hunter stands to
         /// lift the catch or pull the spear, and the hours the spear leaves the hand, lands, and is taken up.</summary>
+        /// <summary>t3-hunt: where the hunter holds the catch up: a few steps back toward the camp on open ground (the rabbit fell where it fell; the payoff is shown where the camera looks).</summary>
+        public float holdX, holdZ;
+        public bool holdOpen;
         public float landX, landZ, standX, standZ, releaseHour, landHour, takeHour, stalkStart;
         /// <summary>#362: the stalk's rhythm: the two freezes (seconds; 0 = none) and the wait for the rabbit to stop hopping.</summary>
         public float freezeA, freezeB, stalkExtra;
@@ -85,6 +88,20 @@ namespace AquariumCiv.Life
         /// <summary>Start windows: share of hunts that start in the morning (7 to 9:30), toward dusk (the last two hours of the
         /// afternoon), or otherwise in the working day.</summary>
         public const float HuntMorningShare = 0.45f, HuntDuskShare = 0.40f;
+
+        /// <summary>t3-hunt: the camp frame the default camera shows (CampFrame.Frame: centre and radius, box units). The planner prefers rabbits and
+        /// holds that stay inside it plus <see cref="HuntFrameMargin"/>; the centre is the fire unless <see cref="SetHuntFrame"/> says otherwise.</summary>
+        public const float HuntFrameDefaultRadius = 1.4f, HuntFrameMargin = 0.3f;
+        float huntFrameX, huntFrameZ, huntFrameR = HuntFrameDefaultRadius;
+        bool huntFrameSet;
+        public void SetHuntFrame(float x, float z, float radius) { huntFrameX = x; huntFrameZ = z; huntFrameR = radius; huntFrameSet = true; }   // applies to the days planned from now on (a day's hunts are never re-rolled mid-day)
+        public void ClearHuntFrame() { huntFrameSet = false; huntFrameR = HuntFrameDefaultRadius; }
+        /// <summary>Is the world point inside the camp frame (plus the margin)?</summary>
+        public bool InHuntFrame(float x, float z)
+        {
+            float cx = huntFrameSet ? huntFrameX : sim.EcoGround.campX, cz = huntFrameSet ? huntFrameZ : sim.EcoGround.campZ;
+            return Dist(x, z, cx, cz) <= huntFrameR + HuntFrameMargin;
+        }
 
         /// <summary>The rabbits the hunters see. The view sets its field here (and keeps it synced to the sim count); without it
         /// nothing is hunted. Setting it forgets the plans made so far.</summary>
@@ -216,15 +233,21 @@ namespace AquariumCiv.Life
 
             // t1-huntgrass: the hunt is played on open ground (tall grass and bushes hide the doll at the default camera). Try the
             // picked rabbit first, then the next nearest (up to four); the first whose line is open wins, else the picked one is played.
+            // t3-hunt: and in the camp frame (the strike and the rabbit where the camera looks): open + in frame, then open, then in frame.
             var order = new List<int> { cands[pick].id };
-            for (int k = 0; k < cands.Count && order.Count < 4; k++) if (k != pick) order.Add(cands[k].id);
+            for (int k = 0; k < cands.Count && order.Count < 10; k++) if (k != pick) order.Add(cands[k].id);
             float strikeAt = 0f;
-            for (int oi = 0; oi <= order.Count; oi++)
+            int bestRank = -1, bestIdx = 0;
+            for (int oi = 0; oi < order.Count; oi++)
             {
-                plan.rabbitId = order[oi < order.Count ? oi : 0];
+                plan.rabbitId = order[oi];
                 strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz);
-                if (plan.openLine) break;
+                bool inFrame = InHuntFrame(plan.lungeX, plan.lungeZ) && InHuntFrame(plan.targetX, plan.targetZ);
+                int rank = (inFrame ? 2 : 0) + (plan.openLine ? 1 : 0);
+                if (rank > bestRank) { bestRank = rank; bestIdx = oi; }
+                if (rank == 3) break;
             }
+            if (plan.rabbitId != order[bestIdx]) { plan.rabbitId = order[bestIdx]; strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz); }
             plan.strikeStart = strikeAt;
             plan.catches = wantCatch && sim.HuntSurplus > 0;
             if (useHeldForce && huntForceNext.HasValue) { plan.catches = huntForceNext.Value && sim.HuntSurplus > 0; plan.forced = true; huntForceNext = null; }
@@ -397,6 +420,7 @@ namespace AquariumCiv.Life
             float sx = plan.landX - plan.lungeX, sz = plan.landZ - plan.lungeZ, sl = (float)Math.Sqrt(sx * sx + sz * sz);
             if (sl > 1e-4f) { sx /= sl; sz /= sl; }
             plan.standX = plan.landX - sx * HuntTiming.StandOff; plan.standZ = plan.landZ - sz * HuntTiming.StandOff;
+            HoldSpot(plan);
 
             float toFire = HuntWalkHours(plan.hunterBase, fx, fz);
             AddStep(plan, ref t, toFire, HuntPhase.ToFire, ActivityKind.Walk, Prop.None, plan.hunterBase, fire, true, false);
@@ -417,9 +441,13 @@ namespace AquariumCiv.Life
                 float pick0 = t;
                 AddStep(plan, ref t, Hrs(t, HuntTiming.PickUpSeconds), HuntPhase.PickUp, ActivityKind.Prepare, Prop.None, atRabbit, atRabbit, false, true, plan.standX, plan.standZ, plan.standX, plan.standZ);
                 plan.takeHour = pick0 + Hrs(pick0, HuntTiming.PickUpSeconds * HuntTiming.PickTakeAt);
-                AddStep(plan, ref t, Hrs(t, HuntTiming.HoldUpSeconds), HuntPhase.HoldUp, ActivityKind.HoldUp, Prop.Rabbit, atRabbit, atRabbit, false, true, plan.standX, plan.standZ, plan.standX, plan.standZ);
-                float carry = WalkH(Dist(plan.standX, plan.standZ, fx, fz), WalkSpeed * HuntTiming.ProudWalk);
-                AddStep(plan, ref t, carry, HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, atRabbit, stash, true, false, plan.standX, plan.standZ, fx, fz);
+                // t3-hunt: a few steps toward the camp onto open ground, then the hold-up there, then home
+                var atHold = FieldPlace(plan.holdX, plan.holdZ);
+                if (Dist(plan.standX, plan.standZ, plan.holdX, plan.holdZ) > 0.05f)
+                    AddStep(plan, ref t, WalkH(Dist(plan.standX, plan.standZ, plan.holdX, plan.holdZ), WalkSpeed * HuntTiming.ProudWalk), HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, atRabbit, atHold, true, false, plan.standX, plan.standZ, plan.holdX, plan.holdZ);
+                float carry = WalkH(Dist(plan.holdX, plan.holdZ, fx, fz), WalkSpeed * HuntTiming.ProudWalk);
+                AddStep(plan, ref t, Hrs(t, HuntTiming.HoldUpSeconds), HuntPhase.HoldUp, ActivityKind.HoldUp, Prop.Rabbit, atHold, atHold, false, true, plan.holdX, plan.holdZ, plan.holdX, plan.holdZ);
+                AddStep(plan, ref t, carry, HuntPhase.CarryBack, ActivityKind.Carry, Prop.Rabbit, atHold, stash, true, false, plan.holdX, plan.holdZ, fx, fz);
                 AddStep(plan, ref t, SkinHours, HuntPhase.Skin, ActivityKind.Prepare, Prop.Hide, fire, fire, false, false, fx, fz, fx, fz);
                 AddStep(plan, ref t, CookHours, HuntPhase.Cook, ActivityKind.Cook, Prop.Stick, fire, fire, false, false, fx, fz, fx, fz);
             }
@@ -445,6 +473,36 @@ namespace AquariumCiv.Life
             if (!plan.kid.IsNone) BuildKidSteps(plan, afterStrike);
         }
 
+        /// <summary>t3-hunt: the hold-up spot: a few steps from where the rabbit fell back toward the camp (never past it), on open ground
+        /// (<see cref="HuntOpen.SpotClear"/>) inside the camp frame when one can be found; else where the hunter stands.</summary>
+        void HoldSpot(HuntPlan plan)
+        {
+            plan.holdX = plan.standX; plan.holdZ = plan.standZ; plan.holdOpen = HuntOpen.SpotClear(plan.standX, plan.standZ, HidesDoll);
+            float dx = plan.fireX - plan.standX, dz = plan.fireZ - plan.standZ, len = (float)Math.Sqrt(dx * dx + dz * dz);
+            if (len < 0.5f) return;
+            float ux = dx / len, uz = dz / len;
+            float[] dists = { 0.55f, 0.7f, 0.4f, 0.85f, 0.3f };
+            float[] turns = { 0f, 0.45f, -0.45f, 0.9f, -0.9f };
+            int bestRank = -1;
+            bool found = false; float bx = 0f, bz = 0f; bool bestOpen = false;
+            foreach (float d0 in dists)
+            {
+                float d = Math.Min(d0, len * 0.6f);
+                foreach (float a in turns)
+                {
+                    float ca = (float)Math.Cos(a), sa = (float)Math.Sin(a);
+                    float x = plan.standX + (ux * ca - uz * sa) * d, z = plan.standZ + (ux * sa + uz * ca) * d;
+                    if (!PointInBox(x, z)) continue;
+                    bool open = HuntOpen.SpotClear(x, z, HidesDoll), inF = InHuntFrame(x, z);
+                    int rank = (open ? 2 : 0) + (inF ? 1 : 0);
+                    if (rank > bestRank) { bestRank = rank; bx = x; bz = z; bestOpen = open; found = true; }
+                    if (rank == 3) goto done;
+                }
+            }
+            done:
+            if (found) { plan.holdX = bx; plan.holdZ = bz; plan.holdOpen = bestOpen; }
+        }
+
         void BuildKidSteps(HuntPlan plan, float afterStrike)
         {
             var kid = FindPerson(plan.kid);
@@ -465,11 +523,11 @@ namespace AquariumCiv.Life
                 AddKid(plan, ref t, Math.Max(0.02f, plan.landHour - t), HuntPhase.KidWatch, ActivityKind.Watch, kidSpot, kidSpot, false, true, kx, kz);
                 var toCatch = plan.steps.Find(s => s.phase == HuntPhase.ToCatch);
                 var hold = plan.steps.Find(s => s.phase == HuntPhase.HoldUp);
-                var carry = plan.steps.Find(s => s.phase == HuntPhase.CarryBack);
+                var carry = plan.steps.FindLast(s => s.phase == HuntPhase.CarryBack);
                 AddKid(plan, ref t, Math.Max(0.05f, toCatch.end - t), HuntPhase.KidCheer, ActivityKind.Cheer, kidSpot, kidSpot, false, true, kx, kz);
                 // the spot beside the hunter, a little to the side of the line home
                 float sideX = -uz * 0.12f, sideZ = ux * 0.12f;
-                float bx = plan.standX + sideX, bz = plan.standZ + sideZ;
+                float bx = plan.holdX + sideX, bz = plan.holdZ + sideZ;
                 AddKidXY(plan, ref t, Math.Max(0.05f, hold.end - t), HuntPhase.KidRun, ActivityKind.RunOver, kidSpot, FieldPlace(bx, bz), true, true, kx, kz, bx, bz);
                 AddKidXY(plan, ref t, Math.Max(0.05f, carry.end - t), HuntPhase.KidEscort, ActivityKind.Walk, FieldPlace(bx, bz), stash, true, false, bx, bz, fx + sideX, fz + sideZ);
             }

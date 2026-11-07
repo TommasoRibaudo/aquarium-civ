@@ -16,6 +16,8 @@ namespace AquariumCiv.View
         /// <summary>Tall-grass tufts' UV0.x: 1 (wind weight) + 1 (the marker). Reeds use 0.8 + 1.</summary>
         public const float TallSway = 2f;
         public const float Radius = 0.25f;
+        /// <summary>t3-hunt: the hold-up and the walk home with the catch flatten a wider patch (the payoff must be seen).</summary>
+        public const float WideRadius = 0.35f;
 
         static readonly int PosId = Shader.PropertyToID("_AC_HidePos"), DirId = Shader.PropertyToID("_AC_HideDir"), CountId = Shader.PropertyToID("_AC_HideCount");
         static readonly Vector4[] pos = new Vector4[Max], dir = new Vector4[Max];
@@ -31,7 +33,7 @@ namespace AquariumCiv.View
         public static void Begin() => count = 0;
 
         /// <summary>A world-space foot point and how hidden the grass near it is (0..1).</summary>
-        public static void Add(Vector3 feet, float amount)
+        public static void Add(Vector3 feet, float amount, float radius = Radius)
         {
             if (count >= Max || amount <= 0.001f) return;
             var cam = Camera.main;
@@ -39,7 +41,7 @@ namespace AquariumCiv.View
             var h = new Vector2(toCam.x, toCam.z);
             h = h.sqrMagnitude > 1e-6f ? h.normalized : Vector2.up;
             pos[count] = new Vector4(feet.x, feet.y, feet.z, Mathf.Clamp01(amount));
-            dir[count] = new Vector4(h.x, h.y, Radius, 0f);
+            dir[count] = new Vector4(h.x, h.y, radius, 0f);
             count++;
         }
 
