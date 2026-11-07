@@ -149,6 +149,29 @@ namespace AquariumCiv.View
         /// <summary>Does this move swing a hand tool out along the arm (axe, hammer, hoe, rod, stirring stick)?</summary>
         public static bool Extends(DollStyle s) => s is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.Fish or DollStyle.Stir or DollStyle.SitStrike; // batch 5: SitStrike (knap)
 
+        /// <summary>#401 (playtest: "hoes held the other way round", chopping kindling held wrong): a hand tool swung out along the
+        /// arm, in the arm's frame. The handle runs on from the fist (the prop's +y down the arm's -y), and the working side (the
+        /// mesh's -z: the axe's edge, the hoe's blade) faces the arm's +z, which is the side that leads the downstroke (forward with
+        /// the arm overhead, down with it level). Before, the blade trailed: the hoe was raised blade-back, the axe struck edge-up.
+        /// Striking tools also tip forward from the arm (<see cref="StrikeTip"/>), so they land on the ground or block in front
+        /// rather than going on down the arm into the ground (the hoe's blade ended ~0.1 u under the soil on the hit).</summary>
+        public static Quaternion ToolGrip(PropKind kind) => Quaternion.Euler(StrikeTip(kind), 0f, 0f) * Quaternion.Euler(180f, 0f, 0f);
+
+        /// <summary>#401: degrees a striking tool's handle leans forward of the arm while it is swung (the fist turns the tool out).
+        /// The hoe most: a long handle held near its end, the blade meeting the row ahead.</summary>
+        public static float StrikeTip(PropKind kind) => kind switch
+        {
+            PropKind.Hoe => 52f,
+            PropKind.Axe => 55f,
+            PropKind.Hammer => 45f,
+            _ => 0f,
+        };
+
+        /// <summary>#401: the move for an activity given the tool actually in the hand. Weeding with a hoe is the hoe's chop at the row
+        /// (the picking crouch swung the hoe, fixed to the reaching arm, blade over and back); weeding with a basket stays a pick.</summary>
+        public static DollStyle ToolStyle(DollStyle style, ActivityKind kind, PropKind prop) =>
+            style == DollStyle.Pick && kind == ActivityKind.Weed && prop == PropKind.Hoe ? DollStyle.Hoe : style;
+
         static float Frac(float x) => x - Mathf.Floor(x);
         static float Smooth(float a, float b, float x) => Mathf.SmoothStep(a, b, Mathf.Clamp01(x));
 

@@ -33,7 +33,6 @@ namespace AquariumCiv.View
         bool inLeft;
         /// <summary>#361: the basket is in the left hand now (upright whatever the arm does).</summary>
         public bool BasketIsInLeft => inLeft;
-        static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
         public static PegDollView Create(Transform parent, Material material, PegDoll.Look look, bool kid, int seed)
         {
@@ -168,7 +167,7 @@ namespace AquariumCiv.View
         {
             if (extend == extended || prop == null || propSlot != PropSlot.Hand) return;
             extended = extend;
-            prop.localRotation = extend ? AlongArm : propRest;
+            prop.localRotation = extend ? DollMotion.ToolGrip(propKind) : propRest; // #401
         }
 
         /// <summary>#361: a hand basket in the left hand while the right hand picks or digs (it stays upright whatever the arm does), else back in the right.
