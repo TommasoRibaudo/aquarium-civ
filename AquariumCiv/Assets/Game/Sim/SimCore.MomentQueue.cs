@@ -118,12 +118,13 @@ namespace AquariumCiv.Sim
             return m;
         }
 
-        /// <summary>The queue keeps <see cref="MomentRules.QueueCap"/>: the oldest beyond becomes a card ("older ones become cards").</summary>
+        /// <summary>The queue keeps <see cref="MomentRules.QueueCap"/>: beyond it the lowest-priority waiting moment becomes a card, the oldest
+        /// of equals (t2-evict, the user's call of 2026-11-06: a wedding or a new chief outlasts a run of births).</summary>
         void TrimMomentQueue()
         {
             if (momentNoTrim) return;
             int cap = MomentRules.QueueCap(MomentSize);
-            var waiting = Moments.Where(m => m.state == HeldMomentState.Waiting).OrderBy(m => m.month).ThenBy(m => m.id).ToList();
+            var waiting = Moments.Where(m => m.state == HeldMomentState.Waiting).OrderBy(m => m.priority).ThenBy(m => m.month).ThenBy(m => m.id).ToList();
             for (int i = 0; i < waiting.Count - cap; i++) CardMoment(waiting[i], MomentCardReason.QueueFull);
         }
 

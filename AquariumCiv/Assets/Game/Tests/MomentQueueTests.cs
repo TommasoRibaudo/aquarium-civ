@@ -368,6 +368,39 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(HeldMomentState.Waiting, sim.MomentOfEntry(e3.id).state);
         }
 
+        /// <summary>t2-evict (the user's call, 2026-11-06): a full queue cards its lowest-priority moment, not simply the oldest. A tribe
+        /// (cap 2) has a wedding, then three births during an away: the wedding still waits for the Keeper, births become cards.</summary>
+        [Test]
+        public void AFullQueueCardsTheLowestPriorityMomentSoAWeddingOutlastsARunOfBirths()
+        {
+            var sim = Box();
+            var adults = sim.State.notables.Where(n => n.alive && n.age >= 18f).OrderBy(n => n.id).ToList();
+            Assert.GreaterOrEqual(adults.Count, 2);
+            sim.State.population = 5; // a tribe keeps 2
+            var w = sim.Chronicle("wedding", $"{adults[0].FullName} married {adults[1].FullName} by the fire.", 0.7f, adults[0].id);
+            var wedding = sim.MomentOfEntry(w.id);
+            Assert.IsNotNull(wedding);
+            wedding.personB = adults[1].id; // the couple (Chronicle names one; the sim's own wedding line names both)
+            var births = new List<HeldMoment>();
+            for (int i = 0; i < 3; i++)
+            {
+                sim.CatchUp(0.05); // away: a few weeks pass, nothing plays
+                sim.State.population = 5;
+                var baby = sim.DebugBirth();
+                Assert.IsNotNull(baby);
+                var b = sim.MomentOfEntry(sim.State.chronicle.Last(e => e.kind == "birth" && e.notableId == baby.id).id);
+                Assert.IsNotNull(b);
+                births.Add(b);
+            }
+            sim.CatchUp(0.05);
+            Assert.AreEqual(MomentRules.QueueCap(MomentBoxSize.Tribe), 2);
+            CollectionAssert.Contains(new[] { HeldMomentState.Waiting, HeldMomentState.Playing, HeldMomentState.Played }, wedding.state, "the wedding outlasts the births");
+            Assert.That(births.Count(b => b.state == HeldMomentState.Carded && b.cardReason == MomentCardReason.QueueFull), Is.GreaterThanOrEqualTo(1), "a birth was carded");
+            Assert.IsTrue(sim.MomentHidesCard(w), "so the peek can't read the wedding");
+            var oldest = births[0];
+            Assert.AreEqual(HeldMomentState.Carded, oldest.state, "of equal births the oldest goes first");
+        }
+
         [Test]
         public void AMomentTheViewCannotStageBecomesACardAndGivesTheBudgetBack()
         {
