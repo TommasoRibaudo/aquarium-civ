@@ -36,6 +36,8 @@ namespace AquariumCiv.Sim
         public int batch = -1;              // MomentPacing.releases when it was released (a busy day releases 2 or 3 in one batch)
         public bool welcome;                // played as the welcome moment of an open
         public bool cheat;                  // queued by a cheat
+        public int deferrals;               // t2-polish: times the view could not stage it yet (its people were out); it waited again
+        public double retryAt;              // t2-polish: not handed over again before this watched minute (MomentPacing.watchedMinutes)
     }
 
     /// <summary>#369: the director's state, saved with the box. Its clock is the watched minutes: only live, watched play moves it,
@@ -83,6 +85,10 @@ namespace AquariumCiv.Sim
         public const double CreditCap = 1.0;
         /// <summary>A moment the view never finished (it lost track) ends by itself after this many watched minutes.</summary>
         public const double MaxPlayMinutes = 3.0;
+        /// <summary>t2-polish: a moment the view could not stage yet (its people on a hunt, in the tent, asleep) waits again and is
+        /// offered after this many watched minutes; after <see cref="MaxDeferrals"/> such tries it becomes a card [est].</summary>
+        public const double RetryMinutes = 2.0;
+        public const int MaxDeferrals = 6;
         /// <summary>A town's release is a "busy day" this often (2 or 3 kinds at once, a wedding during the market) [est].</summary>
         public const float BusyDayChance = 0.25f;
         public const int BusyDayMax = 3;

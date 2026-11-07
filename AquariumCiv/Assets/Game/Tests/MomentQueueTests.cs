@@ -383,6 +383,56 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(1, sim.StartDueMoments().Count, "the next one may play at once: no rest after nothing");
         }
 
+        /// <summary>t2-polish: the return peek said "Esk married Aveline" for a wedding never shown: the welcome handed the wedding over
+        /// while one of the couple was on a hunt, the planner couldn't cast it ("the couple isn't here"), and the view told it as a card
+        /// at once. Now it waits again (DeferMoment): its line stays out of the cards, it is offered again after a short wait, and only
+        /// after <see cref="MomentRules.MaxDeferrals"/> tries is it a card.</summary>
+        [Test]
+        public void AMomentThatCannotBeStagedYetWaitsAgainAndIsNotACard()
+        {
+            var sim = Box();
+            var e = sim.Chronicle("festival", "The people gathered round the fire for a feast.", 0.9f);
+            var m = sim.MomentOfEntry(e.id);
+            sim.MomentPacing.welcomeDue = true;
+            var got = sim.StartDueMoments().Single();
+            Assert.AreSame(m, got);
+            Assert.IsTrue(got.welcome);
+            Assert.IsTrue(sim.DeferMoment(m.id));
+            Assert.AreEqual(HeldMomentState.Waiting, m.state, "it waits for its people");
+            Assert.IsTrue(sim.MomentHidesCard(e), "a deferred ceremony is still not a card");
+            Assert.IsTrue(sim.MomentPacing.welcomeDue, "the welcome is still due");
+            Assert.AreEqual(1, sim.MomentPacing.credit, 1e-9, "the budget is given back");
+            Assert.AreEqual(0, sim.StartDueMoments().Count, "not offered again at once");
+            Assert.AreEqual("waiting for its people", sim.MomentWaitReason());
+            Assert.That(sim.MomentDueInMinutes(), Is.EqualTo(MomentRules.RetryMinutes).Within(1e-6));
+            WatchMinutes(sim, MomentRules.RetryMinutes + 1);
+            Assert.AreSame(m, sim.StartDueMoments().Single(), "offered again (still the welcome)");
+            Assert.IsTrue(m.welcome);
+            for (int i = 1; i < MomentRules.MaxDeferrals - 1; i++)
+            {
+                Assert.IsTrue(sim.DeferMoment(m.id));
+                Assert.AreEqual(HeldMomentState.Waiting, m.state);
+                WatchMinutes(sim, MomentRules.RetryMinutes + 1);
+                Assert.AreSame(m, sim.StartDueMoments().Single());
+            }
+            Assert.IsTrue(sim.DeferMoment(m.id));
+            Assert.AreEqual(HeldMomentState.Carded, m.state, "a moment no view can stage is a card after a few tries, not held for 8 years");
+            Assert.AreEqual(MomentCardReason.NotStaged, m.cardReason);
+            Assert.IsFalse(sim.MomentHidesCard(e));
+            Assert.IsFalse(sim.DeferMoment(m.id), "only a playing moment");
+        }
+
+        [Test]
+        public void ADeferredMomentLetsTheNextOnePlay()
+        {
+            var sim = Box();
+            var a = Add(sim, MomentKind.Festival, 0.9f);
+            var b = Add(sim, MomentKind.Callback, 0.5f);
+            Assert.AreSame(a, sim.StartDueMoments().Single());
+            Assert.IsTrue(sim.DeferMoment(a.id));
+            Assert.AreSame(b, sim.StartDueMoments().Single(), "the next one waiting is not held up by one whose people are out");
+        }
+
         [Test]
         public void NothingPlaysDuringTheFirstRun()
         {

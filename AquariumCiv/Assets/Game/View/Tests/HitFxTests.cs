@@ -344,6 +344,27 @@ namespace AquariumCiv.View.Tests
             Assert.Less(Lum(chip), 0.55f);
         }
 
+        /// <summary>t2-polish (batch 5 puffs_0/1): droplets and sparks were specks on sand at the camp frame. They keep a bigger floor on
+        /// screen than dust or chips, bigger still on sand, and a bolder, darker outline there.</summary>
+        [Test]
+        public void DropletsAndSparks_OnSand_KeepABiggerFloor_AndABolderDarkRim()
+        {
+            foreach (var s in new[] { PuffShape.Drop, PuffShape.Diamond, PuffShape.Star })
+            {
+                Assert.GreaterOrEqual(PuffContrast.MinPixelsScale(s, PuffGround.Sand), 2f, s.ToString());
+                Assert.Greater(PuffContrast.MinPixelsScale(s, PuffGround.Grass), PuffContrast.MinPixelsScale(PuffShape.Slab, PuffGround.Grass), s.ToString());
+            }
+            Assert.AreEqual(0.5f, PuffContrast.MinPixelsScale(PuffShape.Blob, PuffGround.Sand), "dust reads already: its floor is its radius");
+            var sandLum = Lum(new Color(0.88f, 0.8f, 0.55f));
+            foreach (var c in new[] { PuffColour.Water, PuffColour.SparkYellow, PuffColour.Ember })
+            {
+                Assert.Greater(PuffContrast.RimBoost(c, PuffGround.Sand), 1f, c.ToString());
+                Assert.AreEqual(1f, PuffContrast.RimBoost(c, PuffGround.Grass), c.ToString());
+                Assert.IsTrue(PuffContrast.Pick(c, PuffGround.Sand, out _, out var rim));
+                Assert.Greater(sandLum - Lum(rim), 0.6f, c + ": the outline stands out of the sand");
+            }
+        }
+
         [Test]
         public void Pop_LastsAboutThreeFrames_ThenGone()
         {
