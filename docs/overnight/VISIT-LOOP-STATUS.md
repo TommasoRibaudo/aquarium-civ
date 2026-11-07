@@ -8,17 +8,17 @@ the Editor in batches (AnimLab queue + affected tests), one holder. Why: the ani
 moves timing and staging off the Editor, so only the real look and the wiring need it.
 
 ## Checklist
-- [ ] `vl/visit-loop` from `origin/dev`; milestone and issues filed; notes triaged
-- [ ] T1 AnimBench: baselines rendered (Hop circle, hunt strike), runs in two worktrees at once; tooling.md entry
-- [ ] T2 AnimLab: three clips side by side in one call; queue works; tooling.md entry
-- [ ] T3 review page published; link given to the user
-- [ ] A3 specs on the review page
-- [ ] C1 merged · D1–D6 merged
-- [ ] A1 · B1 merged
-- [ ] B2 · B4 · B5 · B6 merged, clips on the review page
-- [ ] C2 · C3 · C4 merged
-- [ ] B7 · B8 · B9 · B11 · C5 · C6 · C7 merged (B10: built or deferred, with the reason)
-- [ ] Final pass green; play-through done; tester [real] findings fixed
+- [x] `vl/visit-loop` from `origin/dev`; milestone and issues filed; notes triaged
+- [x] T1 AnimBench: baselines rendered (Hop circle, hunt strike), runs in two worktrees at once; tooling.md entry
+- [x] T2 AnimLab: three clips side by side in one call; queue works; tooling.md entry
+- [x] T3 review page published; link given to the user
+- [x] A3 specs on the review page
+- [x] C1 merged · D1–D6 merged
+- [x] A1 · B1 merged
+- [x] B2 · B4 · B5 · B6 merged, clips on the review page
+- [x] C2 · C3 · C4 merged
+- [x] B7 · B8 · B9 · B11 · C5 · C6 · C7 merged (B10: built or deferred, with the reason)
+- [x] Final pass green; play-through done; tester [real] findings fixed
 - [ ] PR to `dev` merged; sign-offs listed for the user
 
 ## Log (wall clock · what · commit · Editor min · notes)
@@ -88,3 +88,4 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-07 ~03:00 · batch 7 merged (8ee74ba): all listed classes green after one game fix (the box choice bar: hide with the scene, History steps aside, pill drops after the answer); camp frame 55 px median, resize re-frames; shots b7/. Orchestrator look at a1_frame: near glass gone, camp centred, still much bare sand/soil wall in frame. Tester run 3 next.
 - 2026-11-07 01:15 · TESTER run 3: near pass. FIXED A, C (8 h/4 h), D, E, F, G (55 px; 3 of 5 dolls named); B partly (hold-up in frame but small, back to camera; strike at the screen edge). [real] 1 tags overlap for the first seconds of a staged choice (a04_choice_staged.png); 2 no choice raised over two returns ~7 h (pacing; small slot had no newborn); 3 night return: "Festival:Playing" while nothing plays, no greeting, stale peek. [polish] arch hidden by the teepee; toddler ~15 px; tag icons meaningless. → t4 worker.
 - 2026-11-07 ~01:50 · t4-fixes merged (ce013e4): tags from target spots + SeparateTags; small 'who tells the story' and 'supper' choices + big after 3 h when no small fits; NightWaitMoment; Keeper's answer line marked read; arch away from tents; hold-up faces camera. Next: batch 8 = verify + FINAL full pass.
+- 2026-11-07 ~03:00 · batch 8 merged (d87e566): run-3 fixes verified; FINAL pass green (10 EditMode assemblies, 22 PlayMode classes + smoke; Fishing and MistDusk@21h flaky, passed on rerun; HugsToddlers 1 inconclusive). dotnet SimTests 1560/1560, AnimBench 323/338 (15 known-gap skips). Forbidden-file check clean. B10 felling deferred (the user). PR to dev next.
