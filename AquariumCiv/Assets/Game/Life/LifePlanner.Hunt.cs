@@ -94,8 +94,8 @@ namespace AquariumCiv.Life
         public const float HuntFrameDefaultRadius = 1.4f, HuntFrameMargin = 0.3f;
         float huntFrameX, huntFrameZ, huntFrameR = HuntFrameDefaultRadius;
         bool huntFrameSet;
-        public void SetHuntFrame(float x, float z, float radius) { huntFrameX = x; huntFrameZ = z; huntFrameR = radius; huntFrameSet = true; huntDays.Clear(); }
-        public void ClearHuntFrame() { huntFrameSet = false; huntFrameR = HuntFrameDefaultRadius; huntDays.Clear(); }
+        public void SetHuntFrame(float x, float z, float radius) { huntFrameX = x; huntFrameZ = z; huntFrameR = radius; huntFrameSet = true; }   // applies to the days planned from now on (a day's hunts are never re-rolled mid-day)
+        public void ClearHuntFrame() { huntFrameSet = false; huntFrameR = HuntFrameDefaultRadius; }
         /// <summary>Is the world point inside the camp frame (plus the margin)?</summary>
         public bool InHuntFrame(float x, float z)
         {
