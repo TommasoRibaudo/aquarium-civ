@@ -42,9 +42,13 @@ namespace AquariumCiv.View.PlayTests
                 foreach (var n in born) n.age = 20f;
                 PeopleView.Find().Planner.Invalidate();
             }
+            Debug.Log("[b5] moments before calm: " + MomentStates());
             yield return Calm();
+            Debug.Log("[b5] moments after calm: " + MomentStates());
             Debug.Log($"[b5] camp: era {Sim.State.era}, grown-ups {Sim.State.notables.Count(n => n.alive && n.age >= 16f)}, all {Sim.State.notables.Count(n => n.alive)}");
         }
+
+        static string MomentStates() => string.Join(", ", (Sim.State.moments ?? new List<HeldMoment>()).Select(m => $"{m.kind}:{m.state}({m.cardReason}) defer {m.deferrals}"));
 
         static IEnumerator Calm()
         {
@@ -87,6 +91,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => !rig.IsFlying, 4f);
             yield return new WaitForSecondsRealtime(1.2f);
             Debug.Log($"[b5] {w}x{h} away+1h: {CampFrameView.Status()} | zoom {rig.zoom:0.000} | {DollPx(out _)} | {Glass()}");
+            Debug.Log("[b5] moments after away: " + MomentStates());
             yield return Shot(Dir + $"cam_{w}x{h}_framed");
             Debug.Log("[b5] " + CampFrameView.DebugWholeBox());
             yield return Until(() => !rig.IsFlying, 4f); yield return new WaitForSecondsRealtime(1f);
@@ -110,7 +115,9 @@ namespace AquariumCiv.View.PlayTests
             {
                 PeopleView.DebugSetHour(hr);
                 yield return Frames(20);
+                Debug.Log("[b5] moments before calm: " + MomentStates());
                 yield return Calm();
+                Debug.Log("[b5] moments after calm: " + MomentStates());
                 Debug.Log("[b5] " + CampFrameView.DebugCampFrame());
                 yield return Until(() => !rig.IsFlying, 4f);
                 yield return new WaitForSecondsRealtime(3f);
@@ -127,7 +134,9 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot(Dir + $"wedding_{i}");
             }
             StagedMoments.StopAll();
+            Debug.Log("[b5] moments before calm: " + MomentStates());
             yield return Calm();
+            Debug.Log("[b5] moments after calm: " + MomentStates());
             Debug.Log("[b5] " + CampFrameView.DebugCampFrame());
             yield return Until(() => !rig.IsFlying, 4f); yield return new WaitForSecondsRealtime(1f);
             Debug.Log("[b5] puffs: " + HitFxCheats.PuffRow());
