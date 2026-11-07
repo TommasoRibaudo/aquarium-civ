@@ -191,6 +191,7 @@ namespace AquariumCiv.Sim
             double minutes = realHours * 60.0;
             p.watchedMinutes = Math.Round(p.watchedMinutes + minutes, 9);
             p.credit = Math.Min(MomentRules.CreditCap, p.credit + minutes / MomentRules.IntervalMinutes(State.population));
+            WelcomeRemember(); // t3-welcome
             // A moment the view lost track of ends by itself (played: it was handed over while watched).
             foreach (var m in Moments)
                 if (m.state == HeldMomentState.Playing && p.watchedMinutes - m.startedAt > MomentRules.MaxPlayMinutes) FinishMoment(m.id, true);
@@ -210,6 +211,7 @@ namespace AquariumCiv.Sim
         void EnsureMomentVisit()
         {
             bool fresh = !momentVisitLive || momentAwayHours >= MomentRules.VisitAwayHours - 1e-9;
+            double awayWas = momentAwayHours; // t3-welcome
             momentAwayHours = 0;
             if (!fresh) return;
             momentVisitLive = true;
@@ -222,6 +224,7 @@ namespace AquariumCiv.Sim
             foreach (var m in Moments)
                 if (m.state == HeldMomentState.Waiting) { var why = MomentStale(m); if (why != MomentCardReason.None) CardMoment(m, why); }
             p.welcomeDue = Moments.Any(m => m.state == HeldMomentState.Waiting);
+            WelcomeOnNewVisit(awayWas); // t3-welcome: nothing waits and the Keeper was away a while: a small greeting is owed
         }
 
         // ---------- the director: what plays now ----------
