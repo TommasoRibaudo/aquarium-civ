@@ -503,7 +503,7 @@ namespace AquariumCiv.View
                         for (int k = 0; k < HitFxShapes.RingSides * 2; k++) colors.Add(col);
                         continue;
                     }
-                    float floor = perPx * MinPixels * (b.shape == PuffShape.Blob ? 0.5f : 1f);
+                    float floor = perPx * MinPixels * PuffContrast.MinPixelsScale(b.shape, p.ground); // t2-polish: droplets and sparks keep more on sand
                     float shrink = HitFxMath.Shrink(age, b.life);
                     size = Mathf.Max(size, floor * shrink);
                     float roll = HitFxMath.Roll(b, age);
@@ -517,7 +517,7 @@ namespace AquariumCiv.View
                     var o = HitFxShapes.Unit(b.shape);
                     for (int pass = 0; pass < 2; pass++) // look-fix: the outline first (bigger, darker, just behind), then the fill
                     {
-                        float sz = pass == 0 ? size * RimScale + perPx * 1.5f : size;
+                        float sz = pass == 0 ? size * RimScale * PuffContrast.RimBoost(b.colour, p.ground) + perPx * 1.5f : size;
                         var at = pass == 0 ? pos + back : pos;
                         var c = pass == 0 ? rim : col;
                         int start = verts.Count;

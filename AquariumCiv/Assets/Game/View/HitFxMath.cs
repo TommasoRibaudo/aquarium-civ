@@ -37,7 +37,8 @@ namespace AquariumCiv.View
         }
 
         static readonly Color SparkRim = new(0.35f, 0.08f, 0.03f), WoodRim = new(0.25f, 0.14f, 0.06f),
-            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f), SandRim = new(0.95f, 0.85f, 0.65f);
+            WaterRim = new(0.05f, 0.22f, 0.45f), GrassRim = new(0.12f, 0.28f, 0.05f), LeafRim = new(0.35f, 0.2f, 0.03f), SoilRim = new(0.2f, 0.12f, 0.06f), SandRim = new(0.95f, 0.85f, 0.65f),
+            SparkRimSand = new(0.22f, 0.04f, 0.02f), WaterRimSand = new(0.02f, 0.12f, 0.34f); // t2-polish: deeper outlines on sand
 
         /// <summary>The fill and rim (sRGB) for a kind of bit on a ground. False = keep the palette's own colour (it already reads).</summary>
         public static bool Pick(PuffColour c, PuffGround g, out Color fill, out Color rim)
@@ -52,10 +53,10 @@ namespace AquariumCiv.View
                 case PuffColour.DrySoil: case PuffColour.WetSoil: case PuffColour.Mud:
                     if (g == PuffGround.Grass) return false;
                     fill = g == PuffGround.Sand ? new Color(0.5f, 0.36f, 0.22f) : new Color(0.92f, 0.85f, 0.7f); rim = SoilRim; return true;
-                case PuffColour.Ember: fill = new Color(1f, 0.6f, 0.15f); rim = SparkRim; return true; // batch 5: 0.18 off grass (was 0.148)
-                case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = SparkRim; return true;
+                case PuffColour.Ember: fill = new Color(1f, 0.6f, 0.15f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true; // batch 5: 0.18 off grass (was 0.148)
+                case PuffColour.SparkYellow: fill = new Color(1f, 0.88f, 0.2f); rim = g == PuffGround.Sand ? SparkRimSand : SparkRim; return true;
                 case PuffColour.Gold: fill = new Color(1f, 0.8f, 0.1f); rim = SparkRim; return true;
-                case PuffColour.Water: fill = new Color(0.88f, 0.96f, 1f); rim = WaterRim; return true;
+                case PuffColour.Water: fill = g == PuffGround.Sand ? new Color(0.78f, 0.92f, 1f) : new Color(0.88f, 0.96f, 1f); rim = g == PuffGround.Sand ? WaterRimSand : WaterRim; return true; // t2-polish: bluer on sand
                 case PuffColour.RingWater: fill = new Color(0.95f, 1f, 1f); rim = WaterRim; return true;
                 case PuffColour.Grass:
                     fill = g == PuffGround.Sand ? new Color(0.55f, 0.8f, 0.2f) : new Color(0.85f, 0.95f, 0.4f); rim = GrassRim; return true;
@@ -65,6 +66,21 @@ namespace AquariumCiv.View
                 default: return false;
             }
         }
+
+        /// <summary>t2-polish (batch 5 puffs on sand): the smallest a bit draws, as a share of HitFx.MinPixels. Droplets and sparks are
+        /// thin shapes (a teardrop 0.6 wide, a diamond) that read as specks at the camp frame: they keep 1.6x, on sand 2x (pale on pale);
+        /// a dust blob's floor is its radius (0.5x); the rest 1x.</summary>
+        public static float MinPixelsScale(PuffShape s, PuffGround g) => s switch
+        {
+            PuffShape.Blob => 0.5f,
+            PuffShape.Drop or PuffShape.Diamond or PuffShape.Star => g == PuffGround.Sand ? 2f : 1.6f,
+            _ => 1f,
+        };
+
+        /// <summary>t2-polish: how much thicker the dark outline is than HitFx.RimScale for this bit on this ground. Water and fire bits on
+        /// sand get a bolder rim (1.25x): their fills are as light as the sand, so the outline is what reads.</summary>
+        public static float RimBoost(PuffColour c, PuffGround g) =>
+            g == PuffGround.Sand && (c == PuffColour.Water || c == PuffColour.Mud || c == PuffColour.SparkYellow || c == PuffColour.Ember || c == PuffColour.Gold) ? 1.25f : 1f;
 
         /// <summary>The white pop flash under every puff lasts this long (about 3 frames).</summary>
         public const float PopSeconds = 0.12f;
