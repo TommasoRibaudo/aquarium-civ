@@ -25,6 +25,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | 13 | [research/13-lighting.md](research/13-lighting.md) | Lighting today, a real night and dusk under URP on a phone, glass/frost/UI at night; recommendation and variants for #175 and #113 |
 | 14 | [research/14-dilemmas-and-living-land.md](research/14-dilemmas-and-living-land.md) | Meaningful play: the Keeper's dilemmas, and a living land (biomes, species, generation, expansion); prototypes P7/P8 |
 | 15 | [research/15-barren-to-living-box.md](research/15-barren-to-living-box.md) | P8 groundwork: a box that starts barren and grows (rain → grass → rabbits → wood → ponds), real-ecology rules, the Ecology Lab spike |
+| 16 | [research/16-visit-loop-events-and-choices.md](research/16-visit-loop-events-and-choices.md) | Events you see, choices you own: storytellers, presence-gated moments, why a choice should wait instead of lapsing; the "hold, stage, ask" model |
+| 17 | [research/17-readable-life-animations.md](research/17-readable-life-animations.md) | Life you can watch: inventory of every people animation today, principles (the verb touches its target, the target answers), upgrades by impact |
 
 ## Design documents
 | File | Topic |
@@ -32,6 +34,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | [design/game-definition.md](design/game-definition.md) | Pillars, loops, care mechanic, progression, concept variants (draft) |
 | [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
 | [design/keepers-hands.md](design/keepers-hands.md) | The Keeper's hands: a box that starts barren, misting/planting/snipping/digging, care rebuilt on the land, the kit button (draft) |
+| [design/visit-loop.md](design/visit-loop.md) | The visit loop: moments that wait to be seen, one owned choice per visit, animations that show what's happening (draft) |
+| [design/animation-specs.md](design/animation-specs.md) | Beat sheets for every Visit loop animation (B1-B11, staged moments) and the shared beat vocabulary (draft, #356) |
 | [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (built) |
 | [design/ui-inventory.md](design/ui-inventory.md) | Every UI piece: objects, connections, states, flows, docs against code (#105) |
 | [design/people-talk.md](design/people-talk.md) | Where the people's words show: every line, caption, bubble and mark today, and the options for one rule (#327, for the user to pick) |

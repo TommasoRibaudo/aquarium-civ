@@ -1,0 +1,60 @@
+{
+  "name": "363-hug-parent-kid",
+  "notes": "#363 B7.d, on in the game since the user's 2026-11-06 call: a parent and their kid hug at dawn or on the evening green now and then (View/HugDirector.cs: HugRules.ParentKidToday, about 1 day in 3 for each part, a pair once a day). They close in with arms wide, wrap (arms x85, z inward 10, squash .92, lean 10), a hit on arrival, hold 1.2 s swaying roll +-6 at 1 Hz (opposite signs: they face each other), step back 0.05 u with a tiny hop, arms drop. The kid is the second and is lifted 0.02 u while held. knownGaps react: the bench only sees a doll answer by style, position or prop; the kid answers by wrapping its arms and squashing on the same frame (pose), after closing in by itself. AnimLab: cheat 'Hug: parent and kid now'.",
+  "duration": 4.5,
+  "fps": 30,
+  "warmup": 1,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.0,
+      0.0
+    ],
+    "span": 0.7
+  },
+  "sheet": {
+    "from": 0.6,
+    "to": 4.5,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6
+  },
+  "knownGaps": [
+    "react"
+  ],
+  "pair": {
+    "kind": "Hug",
+    "members": [
+      "ma",
+      "kid"
+    ],
+    "t0": 1.0,
+    "force": false,
+    "liftSecond": true
+  },
+  "objects": [],
+  "dolls": [
+    {
+      "id": "ma",
+      "seed": 51,
+      "pos": [
+        -0.3,
+        0.0
+      ],
+      "style": "Stand",
+      "target": "kid"
+    },
+    {
+      "id": "kid",
+      "seed": 52,
+      "kid": true,
+      "pos": [
+        0.3,
+        0.0
+      ],
+      "style": "Stand"
+    }
+  ]
+}

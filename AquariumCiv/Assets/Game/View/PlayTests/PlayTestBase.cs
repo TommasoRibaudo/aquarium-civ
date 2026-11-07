@@ -92,6 +92,7 @@ namespace AquariumCiv.View.PlayTests
                     if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
             GameUiPanel.Toasts.ClearHolds(); // static: a prompt or peek an earlier test left up still holds the lane after its scene went
             if (seed != 0) GameClock.DebugNextSeed = seed;
+            CampFrameView.Auto = false; // t1-camera: a test that stands still keeps the camera where it opened; its own tests turn it on
             SetSize(w, h);
             float waited = 0f;
             while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
@@ -119,6 +120,7 @@ namespace AquariumCiv.View.PlayTests
             if (pv != null) { pv.timeScale = 1f; pv.Planner?.ClearLive(); }
             MomentPlayer.DebugHoldHurry = false;
             GameClock.DebugNextSeed = 0;
+            CampFrameView.Auto = true;
             if (!opened) return;
             opened = false;
             GameSettings.Sound = soundWas;

@@ -1,0 +1,16 @@
+{
+  "name": "363-walk-together",
+  "notes": "#363 B7.c: a couple walks home together (staged by PairStage.WalkTogether; in the game PeopleView.Mates overlays the same pose on two walkers who last stood talking and leave the same way). Side by side 0.12 u apart, one speed, strides in step (shared stride phase), the inner hands joined and swinging together, a slight lean toward each other, and a turn to each other in turn (15 deg every 2 s, the lead first). Heading +x, the side walks at the lead's right hand.",
+  "duration": 7.8,
+  "fps": 30,
+  "warmup": 1,
+  "camera": { "view": "default", "focus": [0.0, 0.0], "span": 1.4 },
+  "sheet": { "from": 0, "to": 7.8, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "pair": { "kind": "WalkTogether", "members": ["lia", "tom"], "t0": 0.0, "heading": [1, 0], "seconds": 8, "speed": 0.14 },
+  "objects": [],
+  "dolls": [
+    { "id": "lia", "seed": 41, "pos": [-0.5, 0.0], "style": "Stand" },
+    { "id": "tom", "seed": 42, "pos": [-0.5, -0.12], "style": "Stand" }
+  ]
+}

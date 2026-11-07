@@ -29,6 +29,7 @@ namespace AquariumCiv.Life
 
         void AddChronicleScene(DayInfo d, ChronicleEntry e)
         {
+            if (QueuedForTheKeeper(e)) return; // #370: its ceremony waits for the Keeper and is staged once, live
             var sc = new Scene { day = d.day, a = e.notableId, b = e.otherNotableId, chronicleId = e.id, aPartner = -1, aFriend = -1, aParent = -1 };
             switch (e.kind)
             {
@@ -538,6 +539,7 @@ namespace AquariumCiv.Life
                 ActivityKind.Carry => $"taking {PropNoun(a.prop)} to {where}",
                 ActivityKind.FetchWater => a.moving ? $"carrying water to {where}" : $"drawing water at {where}",
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
+                ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
                 ActivityKind.Indoors => "indoors",
@@ -632,6 +634,7 @@ namespace AquariumCiv.Life
             PlaceKind.Hill => "the hill",
             PlaceKind.Glass => belief <= 1 ? "the edge of the sky" : belief == 2 ? "the window" : beliefLater ? "the glass" : "the wall",
             PlaceKind.Relic => RelicNoun(p.index),
+            PlaceKind.Prop => "the Keeper's choice", // #371
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }

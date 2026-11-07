@@ -1,0 +1,21 @@
+{
+  "name": "361-root-dig",
+  "notes": "B5.b (#361): before the first green, everyone gathers by digging roots in the dry stream bed. Style DigRoot (BerryMotion): kneel, paw (dust on every other down-stroke), the pull (lean 35 -> -15, big dust at the contact), the root held up 0.5 s, then it arcs into the basket (left hand). Two paw hits (small Dust) and one pull (big Dust) per 4 s. The arc is authored at this render's pull hit (hit at 1.7 s: t0 = hit + 0.56 s of held-up root). The 'root' object stands for the dug ground: it answers each hit (HitFx Dust, not drawn by the bench).",
+  "duration": 9,
+  "fps": 30,
+  "warmup": 0,
+  "camera": { "view": "default", "focus": [-0.05, 0.0], "span": 0.55 },
+  "sheet": { "from": 0, "to": 4, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2, "arcs": [ { "kind": "root", "by": "digger", "target": "digger.handL" } ] },
+  "objects": [
+    { "id": "spot", "kind": "root", "pos": [0.0, 0.0], "radius": 0.06, "berries": 9, "pickedBy": "digger", "state": { "dropOnHit": 1 } },
+    { "id": "root1", "kind": "root", "pos": [0.0, 0.0], "arc": { "from": "digger.handR", "to": "digger.handL", "t0": 2.63, "t1": 2.88, "height": 0.05, "heldBefore": false, "hideAt": 2.93 } }
+  ],
+  "dolls": [
+    { "id": "digger", "seed": 362, "role": "everyone", "prop": "Basket", "slot": "Hand", "phase": 0,
+      "timeline": [
+        { "label": "dig", "style": "DigRoot", "activity": "Gather", "pos": [-0.14, 0.0], "face": "spot", "target": "spot", "dur": 8 },
+        { "label": "carry home", "activity": "Carry", "from": [-0.14, 0.0], "to": [-0.7, 0.2], "dur": 2.5, "endBeat": true }
+      ] }
+  ]
+}

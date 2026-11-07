@@ -1,0 +1,10 @@
+{
+  "name": "grip-chop",
+  "notes": "batch 5 grip check (the user: hammer upside down when they craft): the axe grip while chopping",
+  "duration": 6.0, "fps": 30, "warmup": 1,
+  "camera": { "view": "default", "focus": [0.05, -0.05], "span": 0.7 },
+  "sheet": { "from": 1.0, "to": 4.0, "frames": 24, "columns": 6 },
+  "knownGaps": ["endBeat", "react"],
+  "objects": [ { "id": "thing", "kind": "tree", "pos": [0.2, 0.05] } ],
+  "dolls": [ { "id": "worker", "seed": 517, "role": "worker", "activity": "Chop", "prop": "Axe", "pos": [0.0, 0.0], "face": "thing", "target": "thing", "dur": 6.0 } ]
+}

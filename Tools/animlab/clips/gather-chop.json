@@ -1,0 +1,17 @@
+{
+  "name": "gather-chop",
+  "notes": "#353 AnimLab's third test clip: two work loops side by side at a bush and a tree. A gatherer on Gather (DollStyle.Pick) at a bush with 6 berries that drops one every 2 s while she picks (BushView's rule, sped up), and a woodcutter on Chop with the axe at a tree. Both face their target. Shows a hand tool's strike against a target (hits) next to a pick loop (no tool).",
+  "duration": 6,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.35, 0.0], "span": 1.3 },
+  "sheet": { "from": 0, "to": 4, "frames": 24, "columns": 6 },
+  "knownGaps": ["endBeat", "react", "hitNear"],
+  "objects": [
+    { "id": "bush", "kind": "bush", "pos": [0.0, 0.05], "berries": 6, "pickedBy": "gatherer", "dropEvery": 2 },
+    { "id": "tree", "kind": "tree", "pos": [0.75, -0.05] }
+  ],
+  "dolls": [
+    { "id": "gatherer", "seed": 211, "activity": "Gather", "pos": [0.02, -0.24], "face": "bush", "target": "bush" },
+    { "id": "woodcutter", "seed": 212, "activity": "Chop", "prop": "Axe", "slot": "Hand", "pos": [0.52, 0.06], "face": "tree", "target": "tree" }
+  ]
+}

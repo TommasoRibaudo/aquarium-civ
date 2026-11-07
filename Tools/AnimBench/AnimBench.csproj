@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    #352 AnimBench: animation timing and staging without the Unity Editor (README.md). Compiles the game's own pure code
+    (View/DollMotion.cs, the Life and Sim types it needs) against small UnityEngine math shims, and steps clips frame by frame.
+    Run: bash Tools/AnimBench/run.sh <clip.json | clip name>
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TieredPGO>true</TieredPGO>
+    <NoWarn>$(NoWarn);CS0414;CS0649;CS0169</NoWarn>
+    <AssemblyName>AnimBench</AssemblyName>
+    <RootNamespace>AnimBench</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The game's pure code, as Tools/SimTests compiles it (Unity stays the authority: these are the same files). -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Sim/**/*.cs" Exclude="../../AquariumCiv/Assets/Game/Sim/**/Tests/**" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Life/**/*.cs" Exclude="../../AquariumCiv/Assets/Game/Life/**/Tests/**" />
+    <Compile Include="../../AquariumCiv/Assets/Game/View/DollMotion.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/View/PegDollTypes.cs" />
+    <!--
+      The beat kit (#355, A1) and any later pure animation code: drop files matching these globs and they compile in.
+      Keep them free of UnityEngine beyond the math in Shims/UnityMath.cs (no MonoBehaviour, no Mesh, no Transform).
+    -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Beats/**/*.cs" /><!-- #355 beat kit: Easing, Beat, BeatDesync, Arc, BeatGroup (WorkHitPoint.cs uses Transforms: not here) -->
+    <Compile Include="../../AquariumCiv/Assets/Game/View/Anim/Core/**/*.cs" />
+    <Compile Include="../SimTests/Shims/*.cs" />
+    <Compile Include="Shims/*.cs" />
+    <Compile Include="src/*.cs" />
+  </ItemGroup>
+</Project>

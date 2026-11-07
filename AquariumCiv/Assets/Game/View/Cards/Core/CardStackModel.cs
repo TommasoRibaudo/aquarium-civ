@@ -50,6 +50,7 @@ namespace AquariumCiv.View.Cards
         public DilemmaView dilemma;     // a dilemma card: the question, the two options and who/what they point at (null elsewhere)
         public int dilemmaChosen = -1;  // the option taken (answered from anywhere, or by the people on a lapse); -1 = still open
         public bool dilemmaLapsed;      // the people chose it themselves: the card says so and nothing lifts
+        public bool dilemmaLetThem;     // #368: the Keeper handed it back ("Let them decide"): credited as the Keeper's, says so
     }
 
     /// <summary>What Give did: the wish to arm the tool for, or why not (<see cref="line"/> is ready to show).</summary>
@@ -194,11 +195,12 @@ namespace AquariumCiv.View.Cards
         }
 
         /// <summary>#238: a dilemma the people raised while the player watches. The peek comes up with it on top, as on a return, and a
-        /// tap opens on its card; the rest of the unread stories wait for the next return (the dot says so). False when the stack is up
-        /// already, in the first run or a museum, or when the entry is not an open dilemma's card.</summary>
+        /// tap opens on its card; the rest of the unread stories wait for the next return (the dot says so). A peek already up switches
+        /// to it (t3-choice, tester run 2 D: the old line stayed and nothing said a choice was waiting). False when the stack is open,
+        /// in the first run or a museum, or when the entry is not an open dilemma's card.</summary>
         public bool ShowLive(int entryId)
         {
-            if (Mode != CardStackMode.Hidden || Quiet) return false;
+            if (Mode == CardStackMode.Open || Quiet || PeekIs(entryId)) return false;
             var d = sim.DilemmaOfEntry(entryId);
             if (d == null || d.state != DilemmaState.Open) return false;
             var all = sim.UnreadCardsCapped(64, viewed);
@@ -211,6 +213,19 @@ namespace AquariumCiv.View.Cards
             Mode = CardStackMode.Peek;
             Changed?.Invoke();
             return true;
+        }
+
+        /// <summary>t3-choice: the peek is up with this entry's card on top.</summary>
+        public bool PeekIs(int entryId) => Mode == CardStackMode.Peek && stack != null && stack.cards.Count > 0 && stack.cards[0].lead.id == entryId;
+
+        /// <summary>t3-choice: the peek's top card is a choice still waiting on the Keeper (the peek wears a "?"; live, so an answer
+        /// in the box takes it off).</summary>
+        public bool PeekIsChoice => Mode == CardStackMode.Peek && stack != null && stack.cards.Count > 0 && OpenChoice(stack.cards[0]);
+
+        bool OpenChoice(ChronicleCard c)
+        {
+            var d = c?.lead == null ? null : sim.DilemmaOfEntry(c.lead.id);
+            return d != null && d.state == DilemmaState.Open;
         }
 
         /// <summary>The stack built now holds this entry's card (on a page or in "Also…").</summary>
@@ -468,6 +483,30 @@ namespace AquariumCiv.View.Cards
             return true;
         }
 
+        /// <summary>#368: "Let them decide" on the dilemma card: the people take their default, credited as the Keeper's choice. Final, like an answer.</summary>
+        public bool LetThemDecide()
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.state != DilemmaState.Open) return false;
+            if (!sim.LetThemDecide(d.id, DilemmaPath.Card)) return false;
+            DilemmaTel?.Answered(log, d, now());
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>#368: "Let them decide" from the box scene, on the Box path. False unless the card on screen is this dilemma and it is open.</summary>
+        public bool LetThemDecideInBox(int dilemmaId)
+        {
+            var d = DilemmaOnCard();
+            if (d == null || d.id != dilemmaId || d.state != DilemmaState.Open) return false;
+            if (!sim.LetThemDecide(d.id, DilemmaPath.Box)) return false;
+            DilemmaTel?.Answered(log, d, now());
+            sim.MarkCardRead(Shown);
+            Changed?.Invoke();
+            return true;
+        }
+
         /// <summary>The hook for #224: Show me on a dilemma card flies to the choice scene instead of a place. Set by the in-box scene;
         /// returns true if it took the tap (the card then waits behind it), false to fall back to the normal Show me.</summary>
         public Func<DilemmaView, bool> DilemmaShowMeHook;
@@ -549,6 +588,7 @@ namespace AquariumCiv.View.Cards
             if (d.state == DilemmaState.Open) return;
             f.dilemmaChosen = d.option;
             f.dilemmaLapsed = d.state == DilemmaState.Lapsed;
+            f.dilemmaLetThem = d.end == DilemmaEnd.LetThemDecide;
         }
 
         void FillGive(CardFace f, Wish w)

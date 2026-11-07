@@ -478,7 +478,7 @@ namespace AquariumCiv.Life
                     var pc = b.pieces[i];
                     if (pc.reaction || h < pc.t0 || h >= pc.t1) continue;
                     var seg = pc.seg;
-                    if (seg.Moving || ActivityInfo.IsMove(seg.kind)) seg.from = b.stopPlace;
+                    if ((seg.Moving || ActivityInfo.IsMove(seg.kind)) && !seg.still) seg.from = b.stopPlace; // #367: a still one (a draw at the water) stays put
                     if (seg.place.IsNone)
                     {
                         // #92: a staged beat done where they stand: the place they stand at (or walked to), else the nearest.

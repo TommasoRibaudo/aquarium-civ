@@ -37,6 +37,10 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/ShapingTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WishTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTests.cs" /><!-- P7 #220 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ChoiceFixTests.cs" /><!-- visit loop C1 #368 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/ConsequencePropTests.cs" /><!-- visit loop C4 #371 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/KeeperChoicesTests.cs" /><!-- visit loop C6 #373 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/MomentQueueTests.cs" /><!-- visit loop C2 #369 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaCallbackTests.cs" /><!-- P7 #221 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaContentTests.cs" /><!-- P7 #222 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- P8 #243: the ecology layer -->
@@ -65,7 +69,9 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Runtime/Telemetry/*.cs" /><!-- #81/#100 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TelemetryTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/RecallCalmTests.cs" /><!-- #328 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SmallChoiceTests.cs" /><!-- #372 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DilemmaTelemetryTests.cs" /><!-- P7 #225 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/VisitTelemetryTests.cs" /><!-- visit loop C7 #374 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/TownEconomyTests.cs" />
     <!-- #96: the pure sound model (cues, gate, mix/duck, ambience, moment timeline, haptics) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/Audio/Core/**/*.cs" />
@@ -85,6 +91,7 @@
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
     <Compile Include="CameraGlassTests.cs" /><!-- #273: the glass limits of the camera -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/CampFrameTests.cs" /><!-- t1-camera: the camp frame -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->
   </ItemGroup>
   <ItemGroup>

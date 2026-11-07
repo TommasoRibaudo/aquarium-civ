@@ -62,15 +62,29 @@ namespace AquariumCiv.Sim
         public int Advance(double realHours)
         {
             if (realHours <= 0) return 0;
+            double simStart = State.simHours, clockStart = State.clockHours;
             State.simHours += realHours;
             long target = (long)Math.Floor(State.simHours / Config.StepHours + 1e-7);
             int steps = 0;
-            while (State.month < target) { Step(); steps++; }
+            // #368: the real-hours clock moves step by step, so one long Advance equals many short ones. Watched: a sim hour is a real hour.
+            // Catching up: a sim hour is catchClockScale real hours, so a choice that falls due while the player is away is due in the
+            // steps after it (wishes stop starting, SimCore.Dilemmas.cs); CatchUp sets the clock to the exact total afterwards.
+            bool watched = !CatchingUp;
+            double scale = watched ? 1.0 : catchClockScale, span = realHours * scale;
+            while (State.month < target)
+            {
+                State.clockHours = clockStart + Math.Clamp(((State.month + 1) * Config.StepHours - simStart) * scale, 0.0, span);
+                Step(); steps++;
+            }
+            if (watched) { State.clockHours = Math.Round(clockStart + realHours, 9); awayHours = 0; }
+            if (watched) MomentWatched(realHours); // #369: the moment director's budget grows only while watched
             return steps;
         }
 
         /// <summary>True while <see cref="CatchUp"/> runs the months the player was away.</summary>
         public bool CatchingUp { get; private set; }
+        double awayHours;             // real hours away since the last watched step or visit (#368; not saved: a load catches up, then opens)
+        double catchClockScale = 1.0; // real hours per sim hour of the catch-up in progress (#368)
 
         /// <summary>
         /// Offline catch-up (game definition v0.2): the civ lives the first <see cref="SimConfig.fullSpeedHours"/> at full
@@ -81,8 +95,13 @@ namespace AquariumCiv.Sim
         {
             var r = new CatchUpResult { realHours = Math.Max(0, realHoursAway), simHours = Config.OfflineSimHours(realHoursAway) };
             CatchingUp = true; // no relics are found while the player is away (SimCore.Relics.cs)
+            double clockStart = State.clockHours;
+            catchClockScale = r.simHours > 1e-9 ? r.realHours / r.simHours : 1.0;
             try { r.months = Advance(r.simHours); }
-            finally { CatchingUp = false; }
+            finally { CatchingUp = false; catchClockScale = 1.0; }
+            awayHours += r.realHours;
+            MomentAway(r.realHours); // #369: nothing plays while away; a long enough absence makes the next watched moment a new visit
+            State.clockHours = Math.Round(clockStart + r.realHours, 9); // #368: the real hours away, whatever pace the civ lived them at (choices are paced in these)
             double unlived = r.realHours - r.simHours;
             if (unlived > 0) AccrueMess((float)unlived);
             return r;
@@ -128,6 +147,7 @@ namespace AquariumCiv.Sim
             ShapingStep(); // no dice: charges refill while the people are happy (SimCore.Shaping.cs)
             WishStep(); // no dice: a notable sometimes wishes for a gift (SimCore.Wishes.cs)
             DilemmaStep(); // no dice, and nothing at all unless Config.dilemmas: the Keeper's dilemmas (SimCore.Dilemmas.cs, P7)
+            MomentStep(); // no dice, nothing unless Config.moments: held ceremonies grow old into cards (SimCore.MomentQueue.cs, #369)
             CareStep(); // no dice: the first sweepers make the chronicle (SimCore.Care.cs)
             RelicsStep(); // no dice: the Keeper Doll, the Lens, quotes (SimCore.Relics.cs)
             CardsStep(); // no dice: teaser threads, story links (SimCore.Cards.cs)
@@ -252,6 +272,11 @@ namespace AquariumCiv.Sim
             }
         }
 
+        /// <summary>A wedded couple may have a child even while the adults fill the era's max (a full camp of four grown-ups
+        /// otherwise never sees a child, however long the couple has been wed: visit-loop tester, 2026-11-06). Everyone alive
+        /// still stays within the max + <see cref="SimConfig.familyRoom"/>, so the family room is the brake.</summary>
+        public bool RoomForAMarriedBirth => State.notables.Count(n => n.alive) < NotablesWanted.max + Config.familyRoom;
+
         void YearlyNotables()
         {
             var s = State;
@@ -278,7 +303,7 @@ namespace AquariumCiv.Sim
                 .OrderBy(x => x.kids).ThenBy(x => x.n.id).ToList();
             foreach (var (p, kids) in parents)
             {
-                if (!RoomForABirth) break;
+                if (!RoomForABirth && !(Config.marriedBirths && Alive(p.partnerId) != null && RoomForAMarriedBirth)) continue;
                 if (!rng.Chance(BirthChance / (1 + kids))) continue;
                 // A couple's children share one family name, whichever of them is born to it (#61: full siblings came out
                 // Gale and Hearth); the line names both parents.
@@ -458,7 +483,8 @@ namespace AquariumCiv.Sim
             text = TermCoda(kind, text, notableId, otherId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
             var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
-            Chronicled?.Invoke(e);
+            MomentFromLine(e); // #369: a wedding, a birth, a new leader, a callback or a festival queues its ceremony for the Keeper
+            Chronicled?.Invoke(e); // after the queue: a listener that works out the cards (the history dot) must not see the line as a card first
             return e;
         }
     }

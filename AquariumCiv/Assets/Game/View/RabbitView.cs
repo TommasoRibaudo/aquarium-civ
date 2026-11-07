@@ -35,7 +35,13 @@ namespace AquariumCiv.View
         Transform holder;
         Transform rootSeen;
         readonly List<RabbitDoll> pool = new();
-        sealed class Slot { public RabbitDoll doll; public RabbitHerd.Scare scare = new(); public float grow; public int id; }
+        sealed class Slot
+        {
+            public RabbitDoll doll; public RabbitHerd.Scare scare = new(); public float grow; public int id;
+            /// <summary>#362: this rabbit was hit by a thrown spear and lies where it fell until the hunter lifts it; a bolt the hunt set off
+            /// (the first bound throws up grass).</summary>
+            public HuntPlan fallenPlan; public bool huntBolt, wasRunning;
+        }
         readonly Dictionary<int, Slot> slots = new();
         readonly List<int> gone = new();
         readonly List<PersonRef> whoBuf = new();
@@ -269,13 +275,14 @@ namespace AquariumCiv.View
             double t = FieldNow;
             var pv = People;
             var hunts = HookHunts(pv, sim);
+            HuntEvents(hunts, pv);
             if (pv != null && pv.Planner != null) pv.StandingNow(whoBuf, px, pz); else { whoBuf.Clear(); px.Clear(); pz.Clear(); }
 
             foreach (var sc in Scarers) { px.Add(sc.x); pz.Add(sc.y); }
 
             // leavers
             gone.Clear();
-            foreach (var kv in slots) if (!IsAlive(kv.Key)) gone.Add(kv.Key);
+            foreach (var kv in slots) if (!IsAlive(kv.Key) && !Lies(kv.Value, pv)) gone.Add(kv.Key);
             foreach (int id in gone) { Release(slots[id]); slots.Remove(id); }
 
             foreach (int id in Field.Alive)
@@ -295,8 +302,12 @@ namespace AquariumCiv.View
                     if (hunt != null)
                     {   // #283: the rabbit the hunter stalks does not mind the hunter (nor the kid behind) until the strike
                         FilterOut(hunt);
+                        // #362: from the strike on it stands where the plan aimed (the planner waited for it not to hop), grazing
+                        double hold = HuntClock.FieldSeconds(hunt.day, hunt.strikeStart);
+                        if (t > hold) { basePose = Field.Sample(id, hold); basePose.act = basePose.act == RabbitAct.Hop ? RabbitAct.Graze : basePose.act; basePose.y = 0f; basePose.phase = 0f; }
                         p = s.scare.Step(dt, basePose, fpx, fpz, Field, t);
-                        if (p.act == RabbitAct.Graze && NearAnyone(p.x, p.z, hunt, pv, StalkAlertRange)) p.act = RabbitAct.SitUp; // it looks up, and does not see
+                        // #362: it sits up when the PLAN says so (the hunter freezes at the same moment), not when he happens to be near
+                        if (p.act == RabbitAct.Graze && StalkFreeze(hunt, pv.Now.hour)) p.act = RabbitAct.SitUp;
                     }
                     else p = s.scare.Step(dt, basePose, px, pz, Field, t);
                 }
@@ -304,9 +315,16 @@ namespace AquariumCiv.View
                 d.gameObject.SetActive(true);
                 var tr = d.transform;
                 tr.localPosition = box.land.OnGround(p.x, p.z) + Vector3.up * p.y;
+                d.Roll(0f);
                 d.Face(p.yaw * Mathf.Rad2Deg, dt, p.act == RabbitAct.Flee);
                 d.Show(p.act, p.phase, (float)t, s.grow);
+                bool running = s.scare.Running;
+                if (running && !s.wasRunning && s.huntBolt && HitFx.Enabled)
+                    HitFx.Puff(PuffKind.Grass, box.Root.TransformPoint(tr.localPosition), Vector3.up, 0.8f);   // #362: the first bound
+                if (!running) s.huntBolt = s.huntBolt && s.scare.Holding;
+                s.wasRunning = running;
             }
+            ShowFallen(pv, t, dt);
             if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);
         }
 
@@ -371,6 +389,7 @@ namespace AquariumCiv.View
             foreach (var st in startleBuf)
             {
                 if (!slots.TryGetValue(st.id, out var s) || s.doll == null) continue;
+                if (huntScatter) s.huntBolt = true;
                 var at = s.doll.transform.localPosition;
                 s.scare.Hold(at.x, at.z, x, z, st.until, RabbitHerd.Scare.NoticeSeconds, SiteMap.CXc(st.refuge), SiteMap.CZc(st.refuge));
             }
@@ -421,8 +440,96 @@ namespace AquariumCiv.View
                 if (Field.Alive.Count == 0) return null; // a day planned with no rabbits would stay without a hunt
                 pl.Rabbits = Field;
             }
-            pl.ResolveHunts(pv.Now);
+            settledBuf.Clear();
+            pl.ResolveHunts(pv.Now, settledBuf);
+            foreach (var plan in settledBuf)   // #362: a hit rabbit stays where it fell until the hunter lifts it (the sim already counts it gone)
+                if (plan.caught && slots.TryGetValue(plan.rabbitId, out var fs)) fs.fallenPlan = plan;
             return pl.HuntsOn(pv.Now.day);
+        }
+
+        // ---------------------------------------------------------------- #362: the thrown spear's effect on the rabbits
+        readonly List<HuntPlan> settledBuf = new();
+        readonly Dictionary<HuntPlan, int> huntFired = new();
+        bool huntScatter;
+
+        /// <summary>Is the hunted rabbit sitting up now (the hunter freezes at the same moment)?</summary>
+        static bool StalkFreeze(HuntPlan hunt, float hour)
+        {
+            if (hunt.steps.Count < 4) return false;
+            var st = hunt.steps[3];
+            if (st.phase != HuntPhase.Stalk || hour < st.start || hour >= st.end) return false;
+            return HuntStalk.RabbitUp(LifeClock.RealSecondsBetween(st.start, hour), hunt.freezeA, hunt.freezeB);
+        }
+
+        /// <summary>The spear leaves the hand: every other rabbit near the target bolts (at the throw, not before). The spear lands:
+        /// on a miss the target freezes and zigzags off; a hit rabbit falls (<see cref="ShowFallen"/>).</summary>
+        void HuntEvents(IReadOnlyList<HuntPlan> hunts, PeopleView pv)
+        {
+            if (hunts == null || pv == null) return;
+            if (huntFired.Count > 24) huntFired.Clear();
+            for (int i = 0; i < hunts.Count; i++)
+            {
+                var plan = hunts[i];
+                if (plan.steps.Count < 5 || plan.steps[4].phase != HuntPhase.Strike) continue;
+                double rel = HuntClock.FieldSeconds(pv.Now.day, pv.Now.hour) - HuntClock.FieldSeconds(plan.day, plan.steps[4].start);
+                if (rel < HuntTiming.ReleaseAt) continue;
+                huntFired.TryGetValue(plan, out int fired);
+                if ((fired & 1) == 0)
+                {
+                    huntFired[plan] = fired |= 1;
+                    if (rel < HuntTiming.ReleaseAt + 2.5) { huntScatter = true; Scatter(plan.targetX, plan.targetZ, null, true); huntScatter = false; }
+                }
+                if ((fired & 2) == 0 && rel >= HuntTiming.LandAt && plan.resolved)
+                {
+                    huntFired[plan] = fired |= 2;
+                    if (rel < HuntTiming.LandAt + 2.5 && !plan.caught) ScatterTarget(plan);
+                }
+            }
+        }
+
+        /// <summary>A miss: the target rabbit freezes (ears up, a flinch), then bolts away from the hunter.</summary>
+        void ScatterTarget(HuntPlan plan)
+        {
+            var sim = Sim;
+            if (sim == null || !sim.EcologyOn || !Field.HasGreen || !slots.ContainsKey(plan.rabbitId)) return;
+            huntIds.Clear(); huntIds.Add(plan.rabbitId);
+            Field.StartleThese(huntIds, plan.lungeX, plan.lungeZ, FieldNow, null, startleBuf);
+            foreach (var st in startleBuf)
+            {
+                if (!slots.TryGetValue(st.id, out var s) || s.doll == null) continue;
+                s.huntBolt = true;
+                var at = s.doll.transform.localPosition;
+                s.scare.Hold(at.x, at.z, plan.lungeX, plan.lungeZ, st.until, RabbitHerd.Scare.NoticeSeconds, SiteMap.CXc(st.refuge), SiteMap.CZc(st.refuge));
+            }
+        }
+        readonly List<int> huntIds = new();
+
+        /// <summary>This slot's rabbit was hit and lies where it fell, until the hunter has lifted it.</summary>
+        bool Lies(Slot s, PeopleView pv)
+        {
+            if (s.fallenPlan == null) return false;
+            if (pv != null && (pv.Now.day != s.fallenPlan.day || pv.Now.hour >= s.fallenPlan.takeHour)) { s.fallenPlan = null; return false; }
+            return true;
+        }
+
+        /// <summary>The hit rabbit: it jumps 0.05 u and falls on its side (roll 90 degrees over 0.25 s), limp, where the spear came down.</summary>
+        void ShowFallen(PeopleView pv, double t, float dt)
+        {
+            foreach (var kv in slots)
+            {
+                var s = kv.Value;
+                if (s.fallenPlan == null || s.doll == null || !Lies(s, pv)) continue;
+                var plan = s.fallenPlan;
+                double landAt = HuntClock.FieldSeconds(plan.day, plan.steps[4].start) + HuntTiming.LandAt;
+                float u = Mathf.Clamp01((float)(t - landAt) / HuntTiming.FallSeconds);
+                float e = u * u * (3f - 2f * u);
+                var d = s.doll;
+                d.gameObject.SetActive(true);
+                d.transform.localPosition = box.land.OnGround(plan.targetX, plan.targetZ) + Vector3.up * (0.05f * 4f * u * (1f - u) + 0.018f * e);
+                d.Roll(90f * e);
+                d.Face(Mathf.Atan2(plan.targetX - plan.lungeX, plan.targetZ - plan.lungeZ) * Mathf.Rad2Deg + 70f, dt);
+                d.Show(RabbitAct.Flee, 0.5f, (float)t, s.grow);
+            }
         }
 
         static HuntPlan HuntOn(IReadOnlyList<HuntPlan> hunts, int id, float hour)

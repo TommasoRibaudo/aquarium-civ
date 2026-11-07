@@ -158,6 +158,7 @@ namespace AquariumCiv.Life
                 case PlaceKind.Nudge: return nudgeIds.Contains(p.index);
                 case PlaceKind.BushCell: return sim.EcologyOn && EcoBushes.IsBush(sim.State.eco, p.index); // P8 #288
                 case PlaceKind.Relic: return p.index >= 0 && p.index < relicHere.Length && relicHere[p.index]; // #92
+                case PlaceKind.Prop: { var cp = sim.FindConsequenceProp(p.index); return cp != null && cp.placed; } // #371
             }
             return !p.IsBuilding || buildingIds.Contains(p.buildingId);
         }
@@ -170,6 +171,7 @@ namespace AquariumCiv.Life
         {
             var a = PlanBase(p, t);
             ApplyCarry(p, ref a, t); // #192: a parent carrying a baby, a baby carried
+            HeldMomentCarry(p, ref a, t); // #370: the newborn in the arms, held up to the glass
             return a;
         }
 
@@ -184,6 +186,8 @@ namespace AquariumCiv.Life
             if (HuntActivityAt(p, t, out var hunting)) return hunting;
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
+            if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
+            if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);

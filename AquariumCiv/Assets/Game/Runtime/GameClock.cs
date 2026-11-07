@@ -76,6 +76,8 @@ namespace AquariumCiv.Game
             int seed = DebugNextSeed != 0 ? DebugNextSeed : new System.Random().Next(1, int.MaxValue);
             DebugNextSeed = 0; // one box only
             LoadLabSwitches();
+            if (MomentsOnByDefault) config.moments = true; // #369: ceremonies wait for the Keeper and play while watched (visit-loop.md 2.1)
+            config.marriedBirths = true; // a wedded couple has children in a full camp (visit-loop tester 2026-11-06)
             if (EcologyPref) config.ecology = true; // P8: the living land, switched on from the debug panel (kept across restarts)
             var sw = System.Diagnostics.Stopwatch.StartNew();
             Session = ClockLogic.Start(SavePath, DateTime.UtcNow, config, seed);
@@ -113,11 +115,13 @@ namespace AquariumCiv.Game
             Telemetry.SetVariant(DilemmaSurvey.VariantOf(config.dilemmas), false); // P7 (#225): A = dilemmas off, B = on, in every session_start
             Telemetry.StartSession(reason, awayHours, Application.version, Application.platform.ToString(),
                 (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalMinutes);
+            VisitTracker()?.Open(Telemetry, ActiveSim, awayHours); // #374: a new visit after a real absence, else one more open
         }
 
         void EndTelemetrySession(string reason)
         {
             if (Telemetry == null) return;
+            if (visitTel != null && visitTelSim == ActiveSim) { visitTel.Observe(ActiveSim, Telemetry); visitTel.Close(Telemetry); } // #374: the visit so far
             Telemetry.EndSession(reason, Time.realtimeSinceStartup - sessionStart);
         }
 
@@ -135,6 +139,7 @@ namespace AquariumCiv.Game
             if (ActiveSim == null) return;
             if (!Held) ActiveSim.Advance(Math.Min(Time.unscaledDeltaTime, maxFrameSeconds) * Math.Max(0f, speed) / 3600.0);
             if (Telemetry != null) DilemmaTracker()?.Observe(ActiveSim, Telemetry);
+            if (Telemetry != null) VisitTracker()?.Observe(ActiveSim, Telemetry); // #374
             sinceSave += Time.unscaledDeltaTime;
             if (sinceSave >= autosaveSeconds) Save();
             Telemetry?.Tick();
@@ -307,6 +312,27 @@ namespace AquariumCiv.Game
         public static DilemmaTelemetryTracker DilemmaTrackerFor(SimCore sim) =>
             Instance != null && sim != null && Instance.ActiveSim == sim ? Instance.DilemmaTracker() : null;
 
+        // ---------- #374 visit telemetry ----------
+        VisitTelemetryTracker visitTel;
+        SimCore visitTelSim;
+
+        /// <summary>The visit tracker of the active box (a new one, with the saved state of that box, when the box changes; null with no
+        /// telemetry or box). The log's card hooks reach it through <see cref="TelemetryLog.Visits"/>.</summary>
+        public VisitTelemetryTracker VisitTracker()
+        {
+            var sim = ActiveSim;
+            if (sim == null || Telemetry == null) return null;
+            if (visitTel != null && visitTelSim == sim) return visitTel;
+            bool first = visitTel == null;
+            visitTel?.Close(Telemetry);
+            var dt = DilemmaTracker();
+            visitTel = new VisitTelemetryTracker(VisitTelemetryTracker.Load(Telemetry), sim, dt == null ? (Func<int, bool>)null : dt.IsCheat, Telemetry.BoxId);
+            visitTelSim = sim;
+            Telemetry.Visits = visitTel;
+            if (!first) visitTel.Open(Telemetry, sim, 0); // the shelf switched boxes: this box's running visit gets an open
+            return visitTel;
+        }
+
         static double RealNow => Time.realtimeSinceStartupAsDouble;
 
         /// <summary>The question is in front of the player (the box scene opened, or a cheat staged it). Once per dilemma.</summary>
@@ -335,7 +361,7 @@ namespace AquariumCiv.Game
             if (c == null) return "no GameClock running";
             c.config.dilemmaLab = on;
             c.speed = on ? LabSpeed : 1f;
-            if (c.ActiveSim != null && c.ActiveSim.OpenDilemma == null) c.ActiveSim.State.dilemmaNextMonth = -1;
+            if (c.ActiveSim != null && c.ActiveSim.OpenDilemma == null) c.ActiveSim.State.dilemmaNextHours = -1;
             SaveLabSwitch(LabKey, on);
             return c.DilemmaStatus();
         }
@@ -349,6 +375,9 @@ namespace AquariumCiv.Game
             PlayerPrefs.SetInt(key, on ? 1 : 0);
             PlayerPrefs.Save();
         }
+        /// <summary>#369: the moment queue is on in every new clock (Editor and builds); a play test that pins the old cards turns it off first.</summary>
+        public static bool MomentsOnByDefault = true;
+
         void LoadLabSwitches()
         {
             if (Application.isEditor) return;
@@ -356,9 +385,9 @@ namespace AquariumCiv.Game
             if (PlayerPrefs.GetInt(LabKey, 0) == 1) { config.dilemmaLab = true; speed = LabSpeed; }
         }
 
-        public string DilemmaStatus() => string.Format(CultureInfo.InvariantCulture, "dilemmas {0} (variant {1}) · {2} · clock x{3:0} · next due month {4} (now {5})",
+        public string DilemmaStatus() => string.Format(CultureInfo.InvariantCulture, "dilemmas {0} (variant {1}) · {2} · clock x{3:0} · next due at clock hour {4:0.0} (now {5:0.0})",
             config.dilemmas ? "on" : "off", DilemmaSurvey.VariantOf(config.dilemmas), config.dilemmaLab ? "lab schedule" : "normal schedule", speed,
-            ActiveSim?.State.dilemmaNextMonth ?? -1, ActiveSim?.State.month ?? 0);
+            ActiveSim?.State.dilemmaNextHours ?? -1, ActiveSim?.State.clockHours ?? 0);
 
         // ---------- debug (callable from `unity command script eval`) ----------
         /// <summary>Live time jump: the civ lives <paramref name="hours"/> at full speed, mess as in live play.</summary>
@@ -401,6 +430,7 @@ namespace AquariumCiv.Game
             if (c == null || c.Sim == null) return "no GameClock running";
             c.Sim.MarkLandSeen(); // like a pause: the land as it is now has been seen
             var r = c.Sim.CatchUp(Math.Clamp(hours, 0, SaveStore.MaxAwayHours));
+            c.Sim.BeginVisit(); // #368: coming back is an open
             c.Report(r, "debug away");
             LandReturned?.Invoke();
             c.Save();

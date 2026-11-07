@@ -90,6 +90,7 @@ namespace AquariumCiv.Sim
         public int roleSinceYear = -1;
         public int termEndsYear = -1;   // elected roles: the year of the next vote (-1 = no term)
         public string roleLine = "";    // "gatherer, chief of the camp"; "child"; "elder, priest"
+        public string keeperLine = "";  // #371: "Chosen by the Keeper." / "Named by the Keeper." ("" = the Keeper's hand set nothing here)
         public List<PersonTerm> terms = new();          // every term, oldest first (the book's "roles with years")
         public List<PersonTie> family = new();          // partner, parents, children, siblings (living first)
         public List<PersonTie> friends = new();         // friend, made up, shared stories
@@ -398,6 +399,7 @@ namespace AquariumCiv.Sim
                 }
             }
             c.roleLine = CardRoleLine(n, c.role);
+            c.keeperLine = KeeperHandLine(n);
             foreach (var t in TermsOf(n.id).OrderBy(t => t.fromMonth))
             {
                 long end = t.toMonth >= 0 ? t.toMonth : (n.alive ? State.month : n.diedMonth);
@@ -451,6 +453,15 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>"gatherer, chief of the camp"; "child"; "elder, priest". The dead: their last job and their last role.</summary>
+        /// <summary>#371: what the Keeper's hand set for this person, for their card: "Chosen by the Keeper." (a seat or a home here, from a
+        /// choice they answered or handed back) and/or "Named by the Keeper." (a small choice, C5). Empty if neither.</summary>
+        public string KeeperHandLine(Notable n)
+        {
+            if (n == null) return "";
+            if (n.chosenByKeeper && n.namedByKeeper) return "Chosen and named by the Keeper.";
+            return n.chosenByKeeper ? "Chosen by the Keeper." : n.namedByKeeper ? "Named by the Keeper." : "";
+        }
+
         public string CardRoleLine(Notable n, string role = null)
         {
             if (n == null) return "";

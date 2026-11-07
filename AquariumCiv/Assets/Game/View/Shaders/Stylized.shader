@@ -54,6 +54,36 @@ Shader "AquariumCiv/View/Stylized"
         float4 _AC_LampParams;
         float _AC_FrameFade[8];
 
+        // #357 hit answers: the shake centres of the bushes and trees baked into the land (HitFx fills them; _AC_ShakeCount is 0 when none,
+        // and then the vertex shader skips all of it). A: x, z, age in s (< 0 waits), tan of the sway angle. B: Hz, tau s, reach u, base y.
+        // C: direction x, z (away from whoever struck). Only vertices with a sway weight (leaves, grass) move.
+        float _AC_ShakeCount;
+        float4 _AC_ShakeA[16];
+        float4 _AC_ShakeB[16];
+        float4 _AC_ShakeC[16];
+
+        // The hunt's safety net (GrassHide): up to 4 hunters (xyz = their feet, w = how much, 0..1); _AC_HideDir = (x, z unit vector toward the
+        // camera, radius u). Tall grass and reeds (sway weight >= 1.5: the marker is 1 + the real weight) on the camera side of a hunter and
+        // within the radius flatten to the ground, so a clump never stands between the camera and the hunter. _AC_HideCount 0 = off.
+        float _AC_HideCount;
+        float4 _AC_HidePos[4];
+        float4 _AC_HideDir[4];
+
+        float3 HideNear(float3 p)
+        {
+            int n = (int)_AC_HideCount;
+            [loop] for (int i = 0; i < n; i++)
+            {
+                float4 c = _AC_HidePos[i];
+                float4 dr = _AC_HideDir[i];
+                float2 d = p.xz - c.xz;
+                float side = smoothstep(-0.06, 0.04, dot(d, dr.xy));
+                float nearK = 1.0 - smoothstep(dr.z * 0.55, dr.z, length(d));
+                p.y = c.y + (p.y - c.y) * (1.0 - 0.92 * c.w * side * nearK);
+            }
+            return p;
+        }
+
         float Hash11(float n) { return frac(sin(n * 12.9898) * 43758.5453); }
 
         // A light's slow breathing, 0.89..1: two sines a few seconds long (0.31 and 0.53 Hz), each lamp on its own phase. A fire
@@ -101,6 +131,25 @@ Shader "AquariumCiv/View/Stylized"
             return positionWS;
         }
 
+        // A damped sway about the base, away from the stroke: a vertex height h above the base moves h * tan(angle) * wobble, fading with the
+        // distance from the centre (exp(-(d/reach)^2)). Same maths as ShakeMath.SwayOffset.
+        float3 Shake(float3 p, float weight)
+        {
+            if (weight < 0.01 || _AC_ShakeCount < 0.5) return p;
+            int n = (int)_AC_ShakeCount;
+            [loop] for (int i = 0; i < n; i++)
+            {
+                float4 a = _AC_ShakeA[i];
+                if (a.z < 0.0) continue;
+                float4 b = _AC_ShakeB[i];
+                float2 d = p.xz - a.xy;
+                float k = exp(-dot(d, d) / (b.z * b.z));
+                float s = a.w * exp(-a.z / b.y) * sin(6.2832 * b.x * a.z);
+                p.xz += _AC_ShakeC[i].xy * (s * max(p.y - b.w, 0.0) * k);
+            }
+            return p;
+        }
+
         // Flame flicker (the fire pit): UV1.x = 2 + height weight (0 at the flame's foot, 1 at its tip), UV1.y = the fire's
         // phase. Stretch +-6 % and wobble sideways 0.004 u, both scaled by the weight; two slow sines at 0.37 and 0.61 Hz (periods of about 2 s and 3 s: a fire breathes, it doesn't jitter: #214).
         // The glow shader's halo and ground pool use the same n(), so they breathe with the flames.
@@ -122,7 +171,12 @@ Shader "AquariumCiv/View/Stylized"
                 positionWS.xz += 0.004 * w * float2(sin(t * 0.8 + ph), cos(t * 0.6 + ph * 1.3));
                 return positionWS;
             }
-            return Sway(positionWS, swayWeight);
+            if (swayWeight > 1.5) // tall grass / reed marker
+            {
+                swayWeight -= 1.0;
+                if (_AC_HideCount > 0.5) positionWS = HideNear(positionWS);
+            }
+            return Shake(Sway(positionWS, swayWeight), swayWeight);
         }
         ENDHLSL
 

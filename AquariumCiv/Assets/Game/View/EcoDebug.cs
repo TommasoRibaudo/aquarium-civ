@@ -153,6 +153,13 @@ namespace AquariumCiv.View
             return catches ? (ok ? "next hunt catches" : "refused: the herd is at its floor, it stays a miss") : "next hunt misses";
         }
 
+        /// <summary>"Slow-mo the next hunt" (#362): the view clock runs at half speed from the stalk to the held-up catch (or the pulled spear), once.</summary>
+        public static string HuntSlowMoNext()
+        {
+            HuntSlowMo.Armed = true;
+            return "the next hunt plays at half speed (from the stalk on)";
+        }
+
         public static string MistCamp()
         {
             var st = Sim?.Settlement;
@@ -225,6 +232,17 @@ namespace AquariumCiv.View
             float x = 0f, z = 0f;
             if (st != null) { x = st.Map.greenX + 0.6f; z = st.Map.greenZ + 0.3f; }
             return s.PlantTree(x, z) ? Refresh("the Keeper's tree planted") : "can't plant (no seed yet, or a bad spot)";
+        }
+
+        // #378: press the seed on the very corner of the bed; the sim must snap it in from the glass.
+        public static string PlantAtEdge()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            float x = -AquariumCiv.Sim.Settle.Terrain.HX + 0.02f, z = AquariumCiv.Sim.Settle.Terrain.HZ - 0.02f;
+            int at = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), to = s.TreeCellFor(x, z);
+            if (!s.PlantTree(x, z)) return "can't plant at the edge (no seed yet, or a tree stands)";
+            return Refresh($"edge cell {at} -> tree cell {to}");
         }
 
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }

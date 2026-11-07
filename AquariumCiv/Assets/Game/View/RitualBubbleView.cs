@@ -80,6 +80,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i < list.Count; i++)
                     if (now.hour >= list[i].start && now.hour < list[i].end) active.Add((list[i], false));
             }
+            StagedMoments.AddBubbles(now, active); // #370: the staged moments' symbols
             if (active.Count == 0) CollectFestival(pv, now, active);
             // Never more than a handful at once, and one per person, whatever is staged (two moments at once, a festival over a ritual).
             if (active.Count > RitualBubbles.MaxAlive || HasTwiceOver(active))
@@ -249,6 +250,15 @@ namespace AquariumCiv.View
                     }
                     Bar(mb, new Vector2(-0.16f, 0.25f), new Vector2(0.14f, 0.25f), 0.07f, Ink);
                     break;
+                case RitualSymbol.Heart: // t1-moments: the wedding's sign (and the newborn's), a fat rose heart that reads at 20 px
+                    {
+                        var rose = Palette.Accents[4];
+                        Disc(mb, new Vector2(-0.12f, 0.1f), 0.17f, 0.17f, rose);
+                        Disc(mb, new Vector2(0.12f, 0.1f), 0.17f, 0.17f, rose);
+                        mb.Tri(new Vector3(-0.285f, 0.04f), new Vector3(0.285f, 0.04f), new Vector3(0f, -0.3f), rose);
+                        Disc(mb, new Vector2(-0.16f, 0.16f), 0.045f, 0.035f, new Color(1f, 1f, 1f, 0.85f)); // a shine
+                        break;
+                    }
             }
             s = new Shape { v = mb.verts.ToArray(), c = mb.colors.ToArray(), t = mb.tris.ToArray() };
             shapes[sym] = s;

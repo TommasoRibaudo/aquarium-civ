@@ -200,8 +200,12 @@ namespace AquariumCiv.View
         {
             if (!faced) { yaw = yawDeg; faced = true; }
             else yaw = Mathf.MoveTowardsAngle(yaw, yawDeg, (quick ? 900f : 420f) * dt);
-            transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(0f, 0f, rollDeg);
         }
+
+        float rollDeg;
+        /// <summary>#362: tipped onto its side by this many degrees about its length (a hit rabbit); 0 for every other pose. Set before <see cref="Face"/>.</summary>
+        public void Roll(float deg) { rollDeg = deg; }
 
         /// <summary>Pose the doll: the act and where it is in the hop or stride (0..1), <paramref name="time"/> in seconds (the life clock).</summary>
         public void Show(RabbitAct act, float phase, float time, float grow = 1f)

@@ -20,6 +20,18 @@ namespace AquariumCiv.Tests
 
         static void Years(SimCore sim, double years) { for (int m = 0; m < (int)(years * 12 + 0.5); m++) sim.Advance(1.0 / 12); }
 
+        /// <summary>#368: a choice no longer lapses by the clock, so a pacing test that runs many years hands each one back as it appears
+        /// (the player answers every choice): month by month, "Let them decide" on whatever is open.</summary>
+        static void YearsAnswering(SimCore sim, double years)
+        {
+            for (int m = 0; m < (int)(years * 12 + 0.5); m++)
+            {
+                sim.Advance(1.0 / 12);
+                var open = sim.OpenDilemma;
+                if (open != null) sim.LetThemDecide(open.id);
+            }
+        }
+
         /// <summary>Defs of every effect kind, test-local, so the tests don't depend on the content's text (#222).</summary>
         static DilemmaDef WhoDef(string id, string lapseTraitA = null, string lapseTraitB = null) => new DilemmaDef
         {
@@ -104,7 +116,8 @@ namespace AquariumCiv.Tests
                     id = "w" + i, kind = DilemmaKind.WhichWay, cast = DilemmaCast.None, question = "q",
                     options = new[] { new DilemmaOptionDef { label = "x", hint = "h" }, new DilemmaOptionDef { label = "y", hint = "h" } },
                 }).ToArray();
-                Years(sim, 40);
+                sim.SmallCatalog = new DilemmaDef[0]; // t4-fixes: the big schedule alone (a big may fill an empty small slot after 3 h)
+                YearsAnswering(sim, 40);
                 int n = sim.State.dilemmas.Count;
                 Assert.GreaterOrEqual(n, 3, $"seed {seed}: {n} in 40 years");
                 Assert.LessOrEqual(n, 7, $"seed {seed}: {n} in 40 years");
@@ -120,8 +133,9 @@ namespace AquariumCiv.Tests
             {
                 var sim = NewSim(seed, Cfg(true));
                 sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
-                Years(sim, 20);
-                var ds = sim.State.dilemmas;
+                sim.SmallCatalog = new DilemmaDef[0]; // t4-fixes: the big schedule alone (a big may fill an empty small slot after 3 h)
+                YearsAnswering(sim, 20);
+                var ds = sim.State.dilemmas.Where(d => d.size == DilemmaSize.Big).ToList(); // #372: small choices sit between the big ones
                 Assert.GreaterOrEqual(ds.Count, 3, $"seed {seed}");
                 Assert.GreaterOrEqual(ds[0].month, 24, $"seed {seed}");
                 Assert.LessOrEqual(ds[0].month, 24 + 24 + 8, $"seed {seed}: year 2, or by year 4 when a wish was open");
@@ -144,6 +158,7 @@ namespace AquariumCiv.Tests
                 for (int m = 0; m < 16 * 12; m++)
                 {
                     sim.Advance(1.0 / 12);
+                    if (sim.OpenDilemma != null && m % 7 == 0) sim.LetThemDecide(sim.OpenDilemma.id); // #368: answered, not lapsed by the clock
                     Assert.IsFalse(sim.OpenWish != null && sim.OpenDilemma != null, $"seed {seed} month {sim.State.month}: a wish and a dilemma together");
                     Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.state == DilemmaState.Open), 1);
                 }
@@ -176,7 +191,7 @@ namespace AquariumCiv.Tests
                 Years(sim, 1);
                 var w = sim.DebugForceWish();
                 Assert.IsNotNull(w);
-                sim.State.dilemmaNextMonth = sim.State.month + 1; // due while the wish is open
+                sim.State.dilemmaNextHours = sim.State.clockHours + sim.Config.StepHours; // due while the wish is open
                 for (int m = 0; m < 20; m++)
                 {
                     sim.Advance(1.0 / 12);
@@ -605,19 +620,20 @@ namespace AquariumCiv.Tests
 
         // ---------- the lapse ----------
 
+        // #368: the old rule "a choice lapses after 24 game months (48 in the lab)" is dead: nothing closes a choice by the clock. These
+        // two replace SilenceLapsesAfter24Months... and TheLabLapsesAfter48MonthsAndNormalPlayAfter24; the visit rules are in ChoiceFixTests.
         [Test]
-        public void SilenceLapsesAfter24MonthsWithANeutralLineAndTheEffectsApply()
+        public void ThePeopleDecideAfterThreeVisitsWithANeutralLineAndTheEffectsApply()
         {
             var sim = NewSim(9, Cfg());
             sim.DilemmaCatalog = new[] { WayDef("way") };
             Years(sim, 1);
             var d = sim.DebugRaiseDilemma("way");
-            long raised = d.month;
-            sim.Advance(23.0 / 12);
-            Assert.AreEqual(DilemmaState.Open, d.state, "still open at 23 months");
-            sim.Advance(1.0 / 12);
-            Assert.AreEqual(raised + SimCore.DilemmaLapseMonths, sim.State.month);
+            for (int v = 2; v <= SimCore.DilemmaMaxVisits; v++) { sim.CatchUp(1); sim.BeginVisit(); Assert.AreEqual(DilemmaState.Open, d.state, $"still open on visit {v}"); }
+            sim.CatchUp(1);
+            sim.BeginVisit();
             Assert.AreEqual(DilemmaState.Lapsed, d.state);
+            Assert.AreEqual(DilemmaEnd.Visits, d.end);
             Assert.AreEqual(-1, d.answerEntryId);
             var line = sim.State.chronicle.Single(e => e.id == d.resultEntryId);
             StringAssert.StartsWith("The people chose ", line.text);
@@ -627,22 +643,17 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void TheLabLapsesAfter48MonthsAndNormalPlayAfter24()
+        public void NothingClosesAChoiceByTheClockNotEvenInTheLab()
         {
-            // #238: a lab tester watching at x60 gets 4 real minutes; normal play is unchanged.
             foreach (var lab in new[] { false, true })
             {
                 var sim = NewSim(9, Cfg(lab));
                 sim.DilemmaCatalog = new[] { WayDef("way") };
                 Years(sim, 1);
                 var d = sim.DebugRaiseDilemma("way");
-                int window = lab ? 48 : 24;
-                Assert.AreEqual(window, sim.DilemmaLapseAfter);
-                for (int m = 1; m < window; m++) sim.Advance(1.0 / 12);
-                Assert.AreEqual(DilemmaState.Open, d.state, $"still open at {window - 1} months (lab {lab})");
-                sim.Advance(1.0 / 12);
-                Assert.AreEqual(DilemmaState.Lapsed, d.state, $"lapsed at {window} months (lab {lab})");
-                Assert.AreEqual(d.month + window, d.endMonth);
+                Years(sim, 12); // twelve game years, far past the old 24 / 48 months
+                Assert.AreEqual(DilemmaState.Open, d.state, $"lab {lab}");
+                Assert.AreEqual(DilemmaEnd.None, d.end);
             }
         }
 
@@ -683,7 +694,7 @@ namespace AquariumCiv.Tests
                     sim.DilemmaCatalog = new[] { WayDef("way", favoured: false) };
                     Years(sim, 1);
                     var d = sim.DebugRaiseDilemma("way");
-                    sim.Advance(2.0);
+                    Assert.IsTrue(sim.DebugLapseDilemma()); // #368: no clock lapse any more; the people's pick is the same code
                     Assert.AreEqual(DilemmaState.Lapsed, d.state);
                     picks.Add(d.option);
                 }
@@ -727,12 +738,12 @@ namespace AquariumCiv.Tests
             Years(a, 9); b.Advance(9);
             Assert.AreEqual(Fingerprint(a.State), Fingerprint(b.State));
             Assert.AreEqual(JsonUtility.ToJson(a.State.dilemmas), JsonUtility.ToJson(b.State.dilemmas));
-            // and a lapse the same way
+            // and an unanswered one the same way (#368: nothing lapses by the clock any more, so both stay open)
             var c = NewSim(12, Cfg(true)); var e = NewSim(12, Cfg(true));
-            Years(c, 8); e.Advance(8); // the lab lapses after 48 months (#238)
+            Years(c, 8); e.Advance(8);
             Assert.AreEqual(Fingerprint(c.State), Fingerprint(e.State));
             Assert.AreEqual(string.Join("|", c.State.dilemmas.Select(x => x.defId + x.month + x.option + x.state)), string.Join("|", e.State.dilemmas.Select(x => x.defId + x.month + x.option + x.state)));
-            Assert.IsTrue(c.State.dilemmas.Any(x => x.state == DilemmaState.Lapsed));
+            Assert.IsTrue(c.State.dilemmas.Count > 0 && c.State.dilemmas.All(x => x.state == DilemmaState.Open));
         }
 
         [Test]
@@ -757,7 +768,8 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(0, labButOff.State.dilemmas.Count);
             Assert.AreEqual(0, labButOff.State.dilemmaLeans.Count);
             Assert.AreEqual(0, labButOff.State.apartGroups.Count);
-            Assert.AreEqual(-1, labButOff.State.dilemmaNextMonth);
+            Assert.AreEqual(-1, labButOff.State.dilemmaNextHours);
+            Assert.AreEqual(0, labButOff.State.visitCount, "no visit is counted with the switch off");
             Assert.AreEqual(Fingerprint(plain.State), Fingerprint(labButOff.State));
             Assert.AreEqual(plain.State.chronicle.Count, labButOff.State.chronicle.Count);
             Assert.AreEqual(0, plain.ReturnCardsCapped(-1, 7).cards.Count(c => c.kind == CardKind.Dilemma));
@@ -787,7 +799,9 @@ namespace AquariumCiv.Tests
             Assert.IsNotNull(old.dilemmaLeans);
             Assert.IsNotNull(old.customs);
             Assert.AreEqual(1, old.dilemmaNextId);
-            Assert.AreEqual(-1, old.dilemmaNextMonth);
+            Assert.AreEqual(-1, old.dilemmaNextHours);
+            Assert.AreEqual(0, old.visitCount);
+            Assert.Less(old.dilemmaLastRaiseHours, -1e8, "an old save: nothing was ever raised");
         }
     }
 }
