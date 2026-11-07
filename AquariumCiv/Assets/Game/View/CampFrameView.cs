@@ -11,8 +11,8 @@ namespace AquariumCiv.View
     /// <summary>
     /// The default camera frames the camp (decisions.md 2026-11-06, "The default camera"; tester run 1, items 1 and 2). On an open
     /// (not a new box: the first run's framing is approved and stays) and on every return (a resume from the background, the debug
-    /// Away), once the dolls stand, the camera eases to <see cref="CampFrame"/>: the camp and the people round it, dolls ~40 px on a
-    /// 2556-px phone, the near glass faded (<see cref="NearGlassFade.CampCloseness"/>). It's an ordinary flight: a touch stops it, and
+    /// Away), once the dolls stand, the camera eases to <see cref="CampFrame"/>: the camp and the people round it, dolls ~55 px on a
+    /// 2556-px phone (the same share of any screen), the near glass faded (<see cref="NearGlassFade.CampCloseness"/>). It's an ordinary flight: a touch stops it, and
     /// a pinch out still reaches the whole box. It never moves while something else has the view (a moment, Show me, the choice, a
     /// sheet, a card, camera mode...): it waits a little, then lets the chance go. The frame becomes the camera's home.
     /// </summary>
@@ -27,6 +27,7 @@ namespace AquariumCiv.View
         public const float SettleSeconds = 0.6f, DollWaitSeconds = 4f, GiveUpSeconds = 8f;
 
         bool pending;
+        float framedAspect;
         float since;
         GameClock hooked;
 
@@ -74,6 +75,15 @@ namespace AquariumCiv.View
                 if (hooked != null) hooked.CaughtUp -= OnCaughtUp;
                 hooked = c;
                 if (c != null) c.CaughtUp += OnCaughtUp;
+            }
+            // Item G: the Game view was resized after a frame. The zoom is a share of the whole-box distance, which moves with the aspect,
+            // so frame again (once the view is free) if the camera is still at the frame; a pinched-out view stays where it is.
+            var camNow = Cam;
+            var cc = camNow != null ? camNow.GetComponent<Camera>() : null;
+            if (cc != null && Framed > 0 && !pending && CampFrame.AspectChanged(framedAspect, cc.aspect))
+            {
+                if (Mathf.Abs(camNow.zoom - LastZoom) < 0.08f) Trigger();
+                framedAspect = cc.aspect;
             }
             if (!pending) return;
             since += Time.unscaledDeltaTime;
@@ -159,6 +169,7 @@ namespace AquariumCiv.View
             cam.EaseTo(world, CampFrame.Yaw, pitch, zoom, seconds);
             cam.SetHome(new Vector3(world.x, cam.target.y, world.z), CampFrame.Yaw, pitch, zoom);
             Last = f; LastZoom = zoom; Framed++;
+            framedAspect = aspect;
             float px = CampFrame.DollPx(fit * zoom, pitch, Screen.height, tan, CameraReach.DollScale(zoom, PeopleView.DollScaleAmount));
             string s = $"camp frame {f}: zoom {zoom:0.00}, doll {px:0} px of {Screen.height}";
             Debug.Log("[CampFrame] " + s);
