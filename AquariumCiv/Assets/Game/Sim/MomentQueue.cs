@@ -56,6 +56,9 @@ namespace AquariumCiv.Sim
         public int releases;                // batches released so far (the busy-day roll's salt)
         public int lastLeaderId = -2;       // the era's leader at the end of last month (-2 = not known yet: an old save, a new box)
         public bool busyNext;               // cheat: the next release is a busy day if the box has two kinds waiting
+        public bool greetingDue;            // t3-welcome: this visit owes a small greeting (nothing waited at the open)
+        public int greetingKind;            // t3-welcome: the WelcomeKind it will try first (0 = None)
+        public int lastGreeting;            // t3-welcome: the WelcomeKind greeted last (never twice in a row)
     }
 
     /// <summary>

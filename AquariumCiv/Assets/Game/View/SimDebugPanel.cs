@@ -244,6 +244,9 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Stage the held choice now (t1-moments)")) last = HeldMomentStage.DebugStageHeldChoice(); // visit-loop 2.4
             }
+            // ---- t3-welcome: the greeting when nothing waits ----
+            if (GUILayout.Button("Welcome now (nothing queued)")) last = HeldMomentStage.DebugWelcomeNow();
+            // ---- end t3-welcome ----
             // ---- end #369 ----
             // ---- #374: this visit's telemetry numbers ----
             if (Section("Visit telemetry (#374)"))
