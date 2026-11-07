@@ -55,7 +55,32 @@ namespace AquariumCiv.Sim
         public void EcoRabbitsRefresh(RabbitHerd.Field field)
         {
             if (!EcologyOn) return;
-            field.Refresh(State.eco.cover, EcoGround.yard, State.eco.seed, State.eco.rabbitArrivalCell);
+            field.Refresh(State.eco.cover, EcoGround.yard, State.eco.seed, State.eco.rabbitArrivalCell, EcoRabbitBlocked());
+        }
+
+        readonly bool[] rabbitBlocked = new bool[EcoLand.N];
+
+        /// <summary>#400 (playtest: rabbits "jump up and down when hitting buildings and fields"): the cells the rabbits keep off whatever
+        /// grows there: every lot (houses, fields, pastures, the camp's tents) and the camp's green round the fire. Null when nothing
+        /// is settled. The array is reused: copy it to keep it.</summary>
+        public bool[] EcoRabbitBlocked()
+        {
+            var map = Config.settle ? Settlement?.Map : null;
+            if (map == null || map.lot == null) return null;
+            for (int c = 0; c < EcoLand.N; c++) rabbitBlocked[c] = map.lot[c] != 0 || map.Green(c);
+            return rabbitBlocked;
+        }
+
+        /// <summary>#400: a key that changes when the rabbits' ground does (the green cover or the blocked cells): the view refreshes its field then.</summary>
+        public int EcoRabbitGroundKey()
+        {
+            if (!EcologyOn) return 0;
+            var cover = State.eco.cover;
+            var blocked = EcoRabbitBlocked();
+            int h = 17;
+            for (int c = 0; c < cover.Length; c++)
+                h = h * 31 + (RabbitHerd.IsGreen((EcoCover)cover[c]) && (blocked == null || !blocked[c]) ? c + 1 : 0);
+            return h;
         }
 
         void PickRabbitTracks()

@@ -136,7 +136,13 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(fled, "a rabbit with a person at 0.15 flees");
                 Assert.Greater(moved, 0.1f, "and it got away from where it was");
                 Assert.IsTrue(rv.Field.IsGreenAt(at1.x, at1.z), "onto green");
+                // #400: a person who stays put near a few rabbits: they run to a spot and settle, none bounds on the spot
+                for (int k = 1; k < 4 && k < rv.Field.Alive.Count; k++)
+                    if (rv.TryGetPosition(rv.Field.Alive[k], out var ak)) rv.Scarers.Add(new Vector2(ak.x - 0.2f, ak.z + 0.1f));
+                yield return Frames(240);
+                rv.Scarers.Clear();
                 yield return Frames(200);
+                Assert.AreEqual(0, rv.BoundsInPlace, "no rabbit hopped or bounded on the spot (#395)");
                 AssertNoErrors("rabbits");
             }
             finally { GameClock.EcologyPref = prefWas; }

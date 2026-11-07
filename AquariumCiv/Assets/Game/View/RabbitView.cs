@@ -41,6 +41,8 @@ namespace AquariumCiv.View
             /// <summary>#362: this rabbit was hit by a thrown spear and lies where it fell until the hunter lifts it; a bolt the hunt set off
             /// (the first bound throws up grass).</summary>
             public HuntPlan fallenPlan; public bool huntBolt, wasRunning;
+            /// <summary>#400: where the doll stood last frame (box-local x, z), for <see cref="BoundsInPlace"/>.</summary>
+            public Vector2 lastAt; public bool hasLast;
         }
         readonly Dictionary<int, Slot> slots = new();
         readonly List<int> gone = new();
@@ -64,6 +66,9 @@ namespace AquariumCiv.View
         public bool TracksShown => tracks != null && tracks.activeSelf;
         public bool SignPlaying => sign != null;
         public int SignsPlayed { get; private set; }
+        /// <summary>#400 (playtest: "jump up and down on the same spot"): frames a rabbit was shown in the air in a hop or a bound without
+        /// moving over the ground. Should stay 0; for tests and the tester.</summary>
+        public int BoundsInPlace { get; private set; }
         /// <summary>Who pointed at the first rabbit (none before it), and whether they were really in the pointing activity.</summary>
         public PersonRef LastPointer { get; private set; }
         public int SignRabbitId => sign != null ? sign.id : -1;
@@ -135,10 +140,8 @@ namespace AquariumCiv.View
             int season = (int)(sim.State.month / 3);
             if (fieldReady && season == fieldSeason && refreshT > 0f) return;
             refreshT = 0.8f;
-            // the green changes with the mists too, not only at the season: refresh when the mask changed
-            int h = 17;
-            var cover = sim.State.eco.cover;
-            for (int c = 0; c < cover.Length; c++) h = h * 31 + (RabbitHerd.IsGreen((EcoCover)cover[c]) ? c + 1 : 0);
+            // the green changes with the mists too, and the village builds on it (#400): refresh when the rabbits' ground changed
+            int h = sim.EcoRabbitGroundKey();
             if (fieldReady && season == fieldSeason && h == greenHash) return;
             fieldReady = true; fieldSeason = season; greenHash = h;
             sim.EcoRabbitsRefresh(Field);
@@ -311,11 +314,17 @@ namespace AquariumCiv.View
                     }
                     else p = s.scare.Step(dt, basePose, px, pz, Field, t);
                 }
+                // #400: kept off its day with no way back (or people stay there): it makes its home where it stands
+                if (s.scare.TakeStranded(out float stX, out float stZ)) Field.Rehome(id, SiteMap.CellAt(stX, stZ), t);
                 var d = s.doll;
                 d.gameObject.SetActive(true);
                 var tr = d.transform;
                 tr.localPosition = box.land.OnGround(p.x, p.z) + Vector3.up * p.y;
+                var at = new Vector2(p.x, p.z);
+                if (s.hasLast && dt > 0f && (p.act == RabbitAct.Hop || p.act == RabbitAct.Flee) && p.y > 0.002f && (at - s.lastAt).sqrMagnitude < 1e-10f) BoundsInPlace++;
+                s.lastAt = at; s.hasLast = true;
                 d.Roll(0f);
+                d.Ground(GroundNormal(p.x, p.z));
                 d.Face(p.yaw * Mathf.Rad2Deg, dt, p.act == RabbitAct.Flee);
                 d.Show(p.act, p.phase, (float)t, s.grow);
                 bool running = s.scare.Running;
@@ -527,6 +536,7 @@ namespace AquariumCiv.View
                 d.gameObject.SetActive(true);
                 d.transform.localPosition = box.land.OnGround(plan.targetX, plan.targetZ) + Vector3.up * (0.05f * 4f * u * (1f - u) + 0.018f * e);
                 d.Roll(90f * e);
+                d.Ground(GroundNormal(plan.targetX, plan.targetZ));
                 d.Face(Mathf.Atan2(plan.targetX - plan.lungeX, plan.targetZ - plan.lungeZ) * Mathf.Rad2Deg + 70f, dt);
                 d.Show(RabbitAct.Flee, 0.5f, (float)t, s.grow);
             }
@@ -560,6 +570,16 @@ namespace AquariumCiv.View
                 return dx * dx + dz * dz < range * range;
             }
             return false;
+        }
+
+        /// <summary>The ground's normal at (x, z), box-local, over a rabbit's length (so a single bump does not tip it).</summary>
+        Vector3 GroundNormal(float x, float z)
+        {
+            const float e = 0.04f;
+            var land = box.land;
+            float hx = land.OnGround(x + e, z).y - land.OnGround(x - e, z).y;
+            float hz = land.OnGround(x, z + e).y - land.OnGround(x, z - e).y;
+            return new Vector3(-hx, 2f * e, -hz).normalized;
         }
 
         bool IsAlive(int id) { var a = Field.Alive; for (int i = 0; i < a.Count; i++) if (a[i] == id) return true; return false; }

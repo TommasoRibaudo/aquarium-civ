@@ -198,9 +198,27 @@ namespace AquariumCiv.View
         /// (quicker when it bolts), so a new direction reads as the rabbit deciding to go there.</summary>
         public void Face(float yawDeg, float dt, bool quick = false)
         {
-            if (!faced) { yaw = yawDeg; faced = true; }
-            else yaw = Mathf.MoveTowardsAngle(yaw, yawDeg, (quick ? 900f : 420f) * dt);
-            transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(0f, 0f, rollDeg);
+            if (!faced) { yaw = yawDeg; faced = true; tilt = tiltTo; }
+            else
+            {
+                yaw = Mathf.MoveTowardsAngle(yaw, yawDeg, (quick ? 900f : 420f) * dt);
+                tilt = Quaternion.Slerp(tilt, tiltTo, 1f - Mathf.Exp(-12f * dt));
+            }
+            transform.localRotation = tilt * Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(0f, 0f, rollDeg);
+        }
+
+        Quaternion tilt = Quaternion.identity, tiltTo = Quaternion.identity;
+        /// <summary>The most a rabbit leans with the ground (degrees): it stands along a slope, not level on it with its feet in the hill.</summary>
+        public const float MaxTilt = 30f;
+
+        /// <summary>#400 (playtest: "bunny standing at a weird angle"): the ground's normal under the doll (box-local). The body leans with
+        /// the slope (eased in <see cref="Face"/>), so on a hillside it stands along the hill. Set before <see cref="Face"/>.</summary>
+        public void Ground(Vector3 normal)
+        {
+            if (normal.sqrMagnitude < 1e-6f) { tiltTo = Quaternion.identity; return; }
+            var to = Quaternion.FromToRotation(Vector3.up, normal.normalized);
+            float a = Quaternion.Angle(Quaternion.identity, to);
+            tiltTo = a > MaxTilt ? Quaternion.Slerp(Quaternion.identity, to, MaxTilt / a) : to;
         }
 
         float rollDeg;
