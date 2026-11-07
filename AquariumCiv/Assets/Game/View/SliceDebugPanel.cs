@@ -69,6 +69,13 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Fly in: door")) last = DebugFlyDoor(people, rig);
             if (GUILayout.Button("Go home")) rig.GoHome();
             GUILayout.EndHorizontal();
+            // ---- t1-camera (tester run 1, items 1-2): the default camera frames the camp; a pinch out still shows the whole box.
+            GUILayout.Label(CampFrameView.Status());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Camera: camp frame")) last = CampFrameView.DebugCampFrame();
+            if (GUILayout.Button("Camera: whole box")) last = CampFrameView.DebugWholeBox();
+            GUILayout.EndHorizontal();
+            // ---- end t1-camera
         }
 
         /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>
