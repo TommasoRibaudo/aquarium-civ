@@ -1,0 +1,248 @@
+{
+ "secondsPerViewHour": 16,
+ "camera": {
+  "view": "default",
+  "focus": [
+   0.15,
+   0.05
+  ],
+  "span": 1.6
+ },
+ "fps": 30,
+ "name": "hunt-strike",
+ "notes": "#352 baseline, updated by #362: the stalk, the thrown spear and the miss. Same staging as 362-hunt-miss (the baseline gaps hitNear/react/arcs are closed: the spear is thrown and lands, the rabbit answers at the landing, the stalk is a crouched creep with freezes). Kept as the short name the README uses.",
+ "duration": 21.1,
+ "sheet": {
+  "from": 10.4,
+  "to": 17.4,
+  "frames": 24,
+  "columns": 6
+ },
+ "expect": {
+  "reactSeconds": 0.2,
+  "arcs": [
+   {
+    "kind": "spear",
+    "by": "hunter",
+    "target": "spot"
+   }
+  ]
+ },
+ "objects": [
+  {
+   "id": "fire",
+   "kind": "fire",
+   "pos": [
+    -1.2,
+    -0.4
+   ]
+  },
+  {
+   "id": "spot",
+   "kind": "mark",
+   "pos": [
+    0.519,
+    0.221
+   ],
+   "radius": 0.02
+  },
+  {
+   "id": "rabbit",
+   "kind": "rabbit",
+   "pos": [
+    0.4,
+    0.1
+   ],
+   "yaw": 200,
+   "hunted": {
+    "by": "hunter",
+    "until": 13.25
+   },
+   "sitUp": [
+    [
+     5.2,
+     6.3
+    ],
+    [
+     9.9,
+     10.8
+    ]
+   ],
+   "startle": {
+    "at": 13.25,
+    "from": [
+     0.018,
+     -0.019
+    ],
+    "to": [
+     0.35,
+     0.95
+    ]
+   }
+  },
+  {
+   "id": "spear",
+   "kind": "spear",
+   "pos": [
+    0,
+    0,
+    0
+   ],
+   "radius": 0.02,
+   "arc": {
+    "from": "hunter.tip",
+    "to": "spot",
+    "t0": 12.8,
+    "t1": 13.25,
+    "height": 0.15,
+    "heldBefore": false,
+    "hideAt": 17.62
+   }
+  },
+  {
+   "id": "rabbit2",
+   "kind": "rabbit",
+   "pos": [
+    0.75,
+    0.42
+   ],
+   "yaw": 120,
+   "startle": {
+    "at": 12.8,
+    "from": [
+     0.4,
+     0.1
+    ],
+    "to": [
+     1.0,
+     1.05
+    ]
+   }
+  },
+  {
+   "id": "rabbit3",
+   "kind": "rabbit",
+   "pos": [
+    0.85,
+    -0.12
+   ],
+   "yaw": 300,
+   "startle": {
+    "at": 12.94,
+    "from": [
+     0.4,
+     0.1
+    ],
+    "to": [
+     1.35,
+     -0.75
+    ]
+   }
+  },
+  {
+   "id": "rabbit4",
+   "kind": "rabbit",
+   "pos": [
+    -0.1,
+    0.62
+   ],
+   "yaw": 40,
+   "startle": {
+    "at": 13.02,
+    "from": [
+     0.4,
+     0.1
+    ],
+    "to": [
+     -0.9,
+     1.05
+    ]
+   }
+  }
+ ],
+ "dolls": [
+  {
+   "id": "hunter",
+   "seed": 283,
+   "role": "hunter",
+   "prop": "Spear",
+   "slot": "Hand",
+   "timeline": [
+    {
+     "label": "walk out",
+     "activity": "Walk",
+     "hunt": "WalkOut",
+     "from": [
+      -0.554,
+      -0.198
+     ],
+     "to": [
+      -0.316,
+      -0.124
+     ],
+     "dur": 1.6
+    },
+    {
+     "label": "stalk",
+     "activity": "Stalk",
+     "hunt": "Stalk",
+     "to": [
+      0.018,
+      -0.019
+     ],
+     "dur": 10.4,
+     "freezeA": 1.1,
+     "freezeB": 0.9,
+     "face": "rabbit"
+    },
+    {
+     "label": "throw",
+     "activity": "Stalk",
+     "hunt": "Strike",
+     "dur": 2.0,
+     "face": "rabbit",
+     "target": "rabbit"
+    },
+    {
+     "label": "shrug",
+     "activity": "Stalk",
+     "hunt": "Bolt",
+     "dur": 1.8,
+     "prop": "None",
+     "face": "rabbit"
+    },
+    {
+     "label": "to the spear",
+     "activity": "Walk",
+     "hunt": "FetchSpear",
+     "to": [
+      0.429,
+      0.178
+     ],
+     "dur": 1.46,
+     "prop": "None",
+     "face": "spot"
+    },
+    {
+     "label": "pull it out",
+     "activity": "Prepare",
+     "hunt": "PullSpear",
+     "dur": 0.8,
+     "prop": "Spear",
+     "face": "spot"
+    },
+    {
+     "label": "walk back",
+     "activity": "Walk",
+     "hunt": "WalkBack",
+     "to": [
+      -0.06,
+      0.004
+     ],
+     "dur": 3.0,
+     "prop": "Spear"
+    }
+   ]
+  }
+ ]
+}

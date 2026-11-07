@@ -87,6 +87,21 @@ namespace AquariumCiv.Game
             catch (Exception) { WriteErrors++; return now().ToUniversalTime(); }
         }
 
+        /// <summary>#374: the running box's visit tracker, if the game made one; the card hooks tell it what was shown and read.</summary>
+        public VisitTelemetryTracker Visits { get; set; }
+
+        /// <summary>A small state file next to the log (never a "box-" name, so the log ignores it). A failing disk is counted, not thrown.</summary>
+        public void WriteSidecar(string name, string text)
+        {
+            try { storage.Delete(name); storage.Append(name, text); }
+            catch (Exception) { WriteErrors++; }
+        }
+
+        public string ReadSidecar(string name)
+        {
+            try { return storage.ReadAll(name); } catch (Exception) { WriteErrors++; return ""; }
+        }
+
         // ---- sessions -------------------------------------------------------------------------------------------
 
         /// <summary>The app opened or came back after a real absence: a new session id and a session_start line (flushed at once).</summary>
@@ -94,7 +109,7 @@ namespace AquariumCiv.Game
         {
             SessionId = NewId();
             Log(Ev.SessionStart, "reason", reason, "build", build, "platform", platform, "tz_min", tzMinutes,
-                "away_h", awayHours, "install_utc", InstallUtc.ToString("o", CultureInfo.InvariantCulture), "variant", Variant);
+                "away_h", awayHours, "install_utc", InstallUtc.ToString("o", CultureInfo.InvariantCulture), "variant", Variant, "tv", Ev.TelemetryVersion);
             Flush();
         }
 

@@ -1,0 +1,83 @@
+{
+  "name": "358-chase-rabbits-tumble",
+  "notes": "User 2026-11-06 'Kid tumble sometimes' (B2.c): the rabbit chase of 358-chase-rabbits with a game seed (2) whose first chase has a tumble (about 1 in 4 chases by the kit's hash, never the kid whose charge scares the herd). The tripping kid stumbles forward with its arms out, dives onto its belly with a small bounce (the grass puff: PlayFx Grass at the chest), lies a beat, gets up onto its knees and up, brushes off its tunic; the other two turn to it while they pant and laugh at it, pointing (Laugh); it laughs last, where it fell, then they all sit. AnimLab: cheat 'Kids chase rabbits: a kid tumbles' (needs rabbits: 'Spawn rabbits here').",
+  "duration": 12,
+  "fps": 30,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.75,
+      0.0
+    ],
+    "span": 1.0
+  },
+  "sheet": {
+    "from": 4.9,
+    "to": 9.5,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6,
+    "hitReach": 0.6
+  },
+  "play": {
+    "game": "ChaseRabbits",
+    "members": [
+      "kidA",
+      "kidB",
+      "kidC"
+    ],
+    "center": [
+      0.0,
+      0.0
+    ],
+    "seed": 2
+  },
+  "objects": [
+    {
+      "id": "rabbit1",
+      "kind": "rabbit",
+      "pos": [
+        0.95,
+        0.25
+      ],
+      "yaw": 40
+    },
+    {
+      "id": "rabbit2",
+      "kind": "rabbit",
+      "pos": [
+        1.12,
+        0.38
+      ],
+      "yaw": 200
+    },
+    {
+      "id": "rabbit3",
+      "kind": "rabbit",
+      "pos": [
+        1.08,
+        0.12
+      ],
+      "yaw": 120
+    }
+  ],
+  "dolls": [
+    {
+      "id": "kidA",
+      "kid": true,
+      "seed": 301
+    },
+    {
+      "id": "kidB",
+      "kid": true,
+      "seed": 302
+    },
+    {
+      "id": "kidC",
+      "kid": true,
+      "seed": 303
+    }
+  ]
+}

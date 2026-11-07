@@ -64,7 +64,7 @@ namespace AquariumCiv.Sim
     /// <summary>What <see cref="SimCore.ReturnCards"/> gives the view: the stack in order, and the overflow.</summary>
     public sealed class ReturnStack
     {
-        public int cap;                                 // 3 / 5 / 7 by time away
+        public int cap;                                 // 1 / 2 / 3 by time away (#368)
         public List<ChronicleCard> cards = new();       // in showing order: era ready, good news, the rest, deaths, the wish
         public List<ChronicleCard> also = new();        // past the cap, best first; each opens to its full card
         public List<string> alsoHeadlines = new();      // the "Also…" card's three short lines
@@ -81,7 +81,7 @@ namespace AquariumCiv.Sim
     /// friendship and the wedding, lost and found (<see cref="LinkStories"/> for relics).</item>
     /// <item><b>Ranking inputs</b> per entry: tone and kind group from a table in code (<see cref="ToneOf"/>,
     /// <see cref="GroupOf"/>), people (<see cref="ChronicleEntry.notableId"/>, other), place (building).</item>
-    /// <item><b><see cref="ReturnCards"/></b>: ranked, merged and grouped per §2.2, capped 3/5/7 by time away, with "Also…".</item>
+    /// <item><b><see cref="ReturnCards"/></b>: ranked, merged and grouped per §2.2, capped 1/2/3 by time away (#368), with "Also…".</item>
     /// <item><b>The glass stage</b> (1–3, §5.2): opened by the era; its relic opens the later half (<see cref="GlassRelicFound"/>).</item>
     /// </list>
     /// Story only. No dice stream is drawn, no economy value is read for a decision that writes back, and threads take
@@ -146,8 +146,9 @@ namespace AquariumCiv.Sim
         public static bool ShownAsCard(ChronicleEntry e) =>
             GroupOf(e.kind) != "hidden" && !((e.kind == "job_change" || e.kind == "job_era" || e.kind == "retired") && e.salience < 0.5f);
 
-        /// <summary>A card can be up to 3 after under an hour away, 5 after 1–8 hours, 7 after longer (Choice 1).</summary>
-        public static int CardCap(double realHoursAway) => realHoursAway < 1 ? 3 : realHoursAway <= 8 ? 5 : 7;
+        /// <summary>#368 (visit-loop.md 2.3): a return shows up to 1 card after under an hour away, 2 after 1–8 hours, 3 after longer (it was
+        /// 3 / 5 / 7). The rest are not lost: they wait in "Also…" and in History, where every story stays.</summary>
+        public static int CardCap(double realHoursAway) => realHoursAway < 1 ? 1 : realHoursAway <= 8 ? 2 : 3;
 
         public StoryThread FindThread(int id) => id <= 0 || State.threads == null ? null : State.threads.FirstOrDefault(t => t.id == id);
 
@@ -168,7 +169,7 @@ namespace AquariumCiv.Sim
         public ReturnStack ReturnCardsCapped(long sinceMonth, int cap, IEnumerable<int> viewedPeople = null)
         {
             AnnotateNew();
-            return BuildStack(State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e)).ToList(), cap, viewedPeople);
+            return BuildStack(State.chronicle.Where(e => e.month > sinceMonth && ShownAsCard(e) && WishCardLive(e) && !MomentHidesCard(e)).ToList(), cap, viewedPeople); // #369: a held ceremony is watched, not a card
         }
 
         /// <summary>§2.2 steps 2–5 over the collected entries (chronicle order).</summary>

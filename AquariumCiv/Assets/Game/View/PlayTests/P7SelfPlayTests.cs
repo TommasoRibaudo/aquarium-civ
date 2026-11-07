@@ -149,8 +149,11 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("p7self-3-card-village-1170x2532");
             if (Model.Mode == CardStackMode.Open) Model.Close();
             yield return Frames(6);
-            yield return Live(5f, () => d3.state != DilemmaState.Open); // the lab waits 48 months (#238)
-            Assert.AreEqual(DilemmaState.Lapsed, d3.state, d3.defId + " lapses after four years unanswered (the lab)");
+            // #368: nothing lapses by the clock. It stays open while the player watches; it closes after being shown on three visits.
+            yield return Live(3f, () => d3.state != DilemmaState.Open);
+            Assert.AreEqual(DilemmaState.Open, d3.state, d3.defId + " stays open while the player watches");
+            for (int v = 0; v < SimCore.DilemmaMaxVisits && d3.state == DilemmaState.Open; v++) Sim.DebugOpenAfter(1); // away an hour, back: a visit each
+            Assert.AreEqual(DilemmaState.Lapsed, d3.state, d3.defId + " closes unanswered after three visits");
             Debug.Log($"[P7Self] lapsed {d3.defId}: the people chose option {d3.option}; entry {d3.resultEntryId}");
 
             // 5. a callback, by the clock if one comes within 15 years, else fired

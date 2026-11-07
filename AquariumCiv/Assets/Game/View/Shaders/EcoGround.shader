@@ -132,7 +132,7 @@ Shader "AquariumCiv/View/EcoGround"
                 // a droplet: round and soft from the quad's UV, a touch brighter in the middle
                 float2 q = i.uv * 2.0 - 1.0;
                 half m = saturate(1.0 - dot(q, q));
-                half3 dcol = i.color.rgb * (0.55 + day * 0.6);
+                half3 dcol = i.color.rgb * (0.12 + day * 1.0); // #379: lit like the land (a 0.55 floor made white puffs on a dusk land)
                 return half4(dcol, a * m * m);
             }
             ENDHLSL

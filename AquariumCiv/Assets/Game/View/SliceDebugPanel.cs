@@ -69,6 +69,13 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Fly in: door")) last = DebugFlyDoor(people, rig);
             if (GUILayout.Button("Go home")) rig.GoHome();
             GUILayout.EndHorizontal();
+            // ---- t1-camera (tester run 1, items 1-2): the default camera frames the camp; a pinch out still shows the whole box.
+            GUILayout.Label(CampFrameView.Status());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Camera: camp frame")) last = CampFrameView.DebugCampFrame();
+            if (GUILayout.Button("Camera: whole box")) last = CampFrameView.DebugWholeBox();
+            GUILayout.EndHorizontal();
+            // ---- end t1-camera
         }
 
         /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>
@@ -132,10 +139,21 @@ namespace AquariumCiv.View
             if (Btn("Puddles now")) last = EcoDebug.PuddlesNow();
             if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
             EndRow();
+            Row(); // #360
+            if (Btn("Water run now")) last = PeopleView.DebugWaterRun();
+            EndRow();
             Row();
             if (Btn("Water breaks the surface now")) last = EcoDebug.WaterBreaksNow();
             if (Btn("Frogs now")) last = EcoDebug.FrogsNow();
             if (Btn("Ducks now")) last = EcoDebug.DucksNow();
+            EndRow();
+            Row(); // #364
+            if (Btn("Fish bite now")) last = FishingView.DebugBiteNow();
+            EndRow();
+            Row(); // #361
+            if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
+            if (Btn("Root dig now")) last = BerryPickView.DebugRootDigNow();
+            if (Btn("Tip at the stash now")) last = BerryPickView.DebugTipNow();
             EndRow();
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
@@ -150,10 +168,32 @@ namespace AquariumCiv.View
             if (Btn("Spawn rabbits here")) last = RabbitView.Instance != null ? RabbitView.Instance.DebugSpawnHere(4) : "no rabbit view";
             if (Btn("Startle all")) last = RabbitView.Instance != null ? "startled " + RabbitView.Instance.DebugStartleAll() : "no rabbit view";
             EndRow();
+            Row(); // #358 kids' play: each game at the gathering place for 45 s
+            if (Btn("Kids play: tag")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Tag);
+            if (Btn("Kids play: ball")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Ball);
+            if (Btn("Kids play: chase rabbits")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.ChaseRabbits);
+            if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
+            if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
+            EndRow();
+            Row(); // #365 B9 meals and the fire
+            if (Btn("Meal now")) last = PeopleView.DebugMealNow();
+            if (Btn("Poke the fire now")) last = PeopleView.DebugPokeFireNow();
+            // #367 the background-life director: a story always in progress on screen, as busy as the population says
+            GUILayout.Label(StoryDirectorView.DebugStatus());
+            Row();
+            if (Btn("Story density: off / normal / high (now " + StoryDirectorView.Density + ")")) last = StoryDirectorView.CycleDensity();
+            EndRow();
+            Row(); // #359 kids' play 2: at the real water, round a real tree, hide and seek round real cover, snowballs
+            if (Btn("Kids play: splash")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Splash);
+            if (Btn("Kids play: woods")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Woods);
+            if (Btn("Kids play: hide and seek")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.HideSeek);
+            if (Btn("Kids play: snowball")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Snowball);
+            EndRow();
             Row();
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
             if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
+            if (Btn("Slow-mo next hunt")) last = EcoDebug.HuntSlowMoNext();   // #362
             EndRow();
             Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
@@ -170,6 +210,7 @@ namespace AquariumCiv.View
             if (Btn("Dry air")) last = EcoDebug.Humidity(0.1f);
             if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
             if (Btn("Plant tree")) last = EcoDebug.PlantHere();
+            if (Btn("Plant at edge")) last = EcoDebug.PlantAtEdge(); // #378
             for (int i = 0; i <= 4; i++) if (Btn("T" + i)) last = EcoDebug.TreeStage(i);
             EndRow();
         }
@@ -340,6 +381,20 @@ namespace AquariumCiv.View
                     if (Btn(mark.ToString())) last = chatter.DebugMark(PeopleView.Find(), mark);
             }
             if (Btn("Force knock")) last = GlassVoice.DebugKnock();
+            EndRow();
+            // #363: pairs (talk is "Force chat" above; the hug shows the variant even while BeatFlags.Hugs is off)
+            Row();
+            if (Btn("Hand over now")) last = PeopleView.DebugPair(PairKind.HandOver);
+            if (Btn("Walk together now")) last = PeopleView.DebugPair(PairKind.WalkTogether);
+            if (Btn("Hug now")) last = PeopleView.DebugPair(PairKind.Hug);
+            if (Btn("Hugs: " + (BeatFlags.Hugs ? "on" : "off"))) { BeatFlags.Hugs = !BeatFlags.Hugs; last = "hugs " + (BeatFlags.Hugs ? "on" : "off"); }
+            EndRow();
+            // hugs/tumble/toddle (user 2026-11-06): the in-game hugs' status, a parent-and-kid hug, a chase with a tumble, toddlers on their feet
+            GUILayout.Label(HugDirector.DebugStatus());
+            Row();
+            if (Btn("Hug: parent and kid now")) last = HugDirector.DebugParentKid();
+            if (Btn("Kids chase rabbits: a kid tumbles")) last = KidPlayDirector.DebugTumble();
+            if (Btn("Toddlers walk: " + (AquariumCiv.Life.LifePlanner.DebugToddlers ? "all" : "normal"))) { var tpv = PeopleView.Find(); last = tpv != null && tpv.Planner != null ? tpv.Planner.DebugToddlersToggle() : "no people"; }
             EndRow();
             // #315/#316: the frogs and the voices by distance.
             Row();

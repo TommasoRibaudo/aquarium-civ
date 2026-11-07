@@ -273,5 +273,37 @@ namespace AquariumCiv.Tests
                 }
             }
         }
+
+        // ---------- #346: "remember the ones we lose" needs someone lost ----------
+
+        static bool SomeoneDied(SimCore sim) => sim.State.notables.Any(n => !n.alive);
+
+        [Test]
+        public void TheRememberDilemmaIsNeverAskedWhileNobodyHasDied()
+        {
+            var def = Defs.Single(d => d.id == "camp_remember");
+            foreach (int seed in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 })
+            {
+                var sim = NewSim(seed, new SimConfig { dilemmas = true });
+                sim.DilemmaCatalog = new[] { def };
+                for (int m = 0; m < 40 * 12 && sim.State.dilemmas.Count == 0; m++)
+                {
+                    Month(sim, def);
+                    if (sim.State.dilemmas.Count > 0)
+                        Assert.IsTrue(SomeoneDied(sim), $"seed {seed}, month {sim.State.month}: asked where to remember the lost with nobody dead");
+                }
+            }
+            // The debug raise respects it too, and a death opens it.
+            var box = NewSim(3, new SimConfig { dilemmas = true });
+            box.DilemmaCatalog = new[] { def };
+            for (int m = 0; m < 12 * 3; m++) Month(box, def);
+            if (!SomeoneDied(box))
+            {
+                Assert.AreEqual(SimCore.NobodyDiedWhy, box.DilemmaWhyNot("camp_remember"), "nobody dead: not eligible");
+                Assert.IsNotNull(box.DebugKillOldest());
+                Assert.IsNull(box.DilemmaWhyNot("camp_remember"), "after a death it can be");
+                Assert.IsNotNull(box.DebugRaiseDilemma("camp_remember"));
+            }
+        }
     }
 }

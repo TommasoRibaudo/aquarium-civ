@@ -1,0 +1,15 @@
+{
+  "name": "370-newborn",
+  "notes": "#370 C3.b: the newborn held up to the glass, from the game's plan and beats. The parent carries the baby (the grey bundle between the hands) to the glass, lowers it to the chest (the wind-up), lifts it high with both arms and sways it; the family cheers behind; the kids press their hands to the glass; cradle and bow (the end beat). Walks there are straight here.",
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, -1.45], "span": 1.5 },
+  "sheet": { "from": 3, "to": 13, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "objects": [ { "id": "baby", "kind": "bundle", "follows": "parent1", "radius": 0.035 } ],
+  "moment": {
+    "kind": "Newborn", "seed": 11, "fire": [0.0, 0.2], "glass": [0.0, -1.95], "normal": [0.0, -1.0],
+    "a": [0.45, -0.6],
+    "guests": [[0.8, -0.3], [0.1, -0.2]],
+    "kids": [[-0.4, -0.9], [0.7, -1.1]]
+  }
+}

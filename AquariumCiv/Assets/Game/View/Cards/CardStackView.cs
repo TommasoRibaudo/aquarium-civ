@@ -40,7 +40,7 @@ namespace AquariumCiv.View
         GlassScroll scroll;
         GlassPortrait peekPortrait;
         GlassIcon peekStar;
-        Label peekText, peekTeaser, teaser, headline, body, endLine, quote, note, footer, alsoTitle;
+        Label peekAsk, peekText, peekTeaser, teaser, headline, body, endLine, quote, note, footer, alsoTitle;
         GlassButton nextBtn, backBtn, skipBtn, showMeBtn, actionBtn;
         readonly GlassButton[] portraits = new GlassButton[2];
         readonly GlassPortrait[] faces = new GlassPortrait[2];
@@ -48,6 +48,7 @@ namespace AquariumCiv.View
         readonly Button[] alsoLines = new Button[3];
         // The dilemma card (#223): two columns, each an answer button (face + label) over the hint in the people's voice.
         VisualElement dilBox;
+        GlassButton dilLet;                 // #368: "Let them decide" under the two options (cards-dil-let)
         readonly VisualElement[] dilCols = new VisualElement[2];
         readonly GlassButton[] dilAnswers = new GlassButton[2];
         readonly GlassPortrait[] dilFaces = new GlassPortrait[2];
@@ -79,6 +80,8 @@ namespace AquariumCiv.View
         public const string ChoiceNote = "Touch one.";
         /// <summary>The peek or the stack is up: prompts over the world wait (MomentPlayer.PromptsBlocked).</summary>
         public bool Showing => model != null && model.Mode != CardStackMode.Hidden;
+        /// <summary>The stack itself (not the peek) is open over the box: nothing is staged under it (visit-loop 2.4).</summary>
+        public bool StackOpen => model != null && model.Mode == CardStackMode.Open;
 
         static SimCore Sim => GameClock.Instance != null ? GameClock.Instance.ActiveSim : null;
 
@@ -230,6 +233,7 @@ namespace AquariumCiv.View
             WatchLive();
             SetToolsHidden(open);
             SetPeekUp(peeking && !covered);
+            peek.EnableInClassList("kg-peek--choice", peeking && model.PeekIsChoice); // t3-choice: a choice waits on the Keeper
             if (hud != null)
             {
                 bool mine = open && !covered;
@@ -262,20 +266,43 @@ namespace AquariumCiv.View
             if (id != liveSeen) { liveSeen = id; livePending = open != null ? open.entryId : -1; }
             if (livePending < 0) return;
             var d = bound.DilemmaOfEntry(livePending);
-            if (d == null || d.state != DilemmaState.Open || model.Holds(livePending)) { livePending = -1; return; } // gone, or a stack has it
-            if (model.Mode != CardStackMode.Hidden || !LiveFree()) return; // wait until the other thing closes
+            // Gone, already on the peek, or open in the stack. t3-choice (tester run 2 D): a peek up with an older story switches to it.
+            if (d == null || d.state != DilemmaState.Open || model.PeekIs(livePending) || model.Mode == CardStackMode.Open && model.Holds(livePending)) { livePending = -1; return; }
+            if (model.Mode == CardStackMode.Open || !LiveFree()) return; // wait until the other thing closes
             if (model.ShowLive(livePending)) livePending = -1;
         }
 
-        /// <summary>Nothing else holds the screen: no sheet or card, no moment, Show me, choice scene, evening talk or clean mode.</summary>
+        /// <summary>t3-choice: the choice scene staged in the box let go without an answer: the open choice comes back on the peek (when the
+        /// screen is free), so it stays one touch away.</summary>
+        public void PeekOpenChoice()
+        {
+            var open = bound?.OpenDilemma;
+            if (open != null && model != null && !model.PeekIs(open.entryId)) { liveSeen = open.id; livePending = open.entryId; }
+        }
+
+        /// <summary>Nothing else holds the screen: no sheet or card, no moment, Show me, choice scene, evening talk or clean mode. Our own
+        /// peek doesn't count (t3-choice: a new choice takes its place).</summary>
         bool LiveFree()
         {
-            if (Covered() || MomentPlayer.PromptsBlocked()) return false;
+            if (Covered() || (model.Mode == CardStackMode.Hidden ? MomentPlayer.PromptsBlocked() : OtherPromptsBlocked())) return false;
             if (hud != null && (hud.CleanMode || hud.Hand != GameHud.KitTool.None)) return false;
             var talk = EveningTalkView.Instance;
             if (talk != null && talk.Open) return false;
             var choice = ChoiceSceneView.Instance;
             return choice == null || choice.State == ChoiceSceneView.Phase.Idle;
+        }
+
+        /// <summary><see cref="MomentPlayer.PromptsBlocked"/> without the cards' own peek.</summary>
+        static bool OtherPromptsBlocked()
+        {
+            var recall = RecallPromptView.Instance;
+            if (recall != null && recall.IsOpen) return true;
+            var tool = ShapingView.Instance;
+            if (tool != null && tool.WishArmed) return true;
+            var sm = ShowMeDirector.Instance;
+            if (sm != null && sm.Busy) return true;
+            var fr = FirstRunView.Instance;
+            return fr != null && (fr.CardOpen || fr.NameSheetOpen);
         }
 
         /// <summary>Debug and tests (#238): the card of a dilemma raised live that waits for the screen to be free (-1 = none).</summary>
@@ -390,6 +417,8 @@ namespace AquariumCiv.View
             peek.Add(lines);
             peekText = Text("cards-peek-text", lines, "type-head", "kg-peek-line");
             peekTeaser = Text("cards-peek-teaser", lines, "type-quote", "kg-peek-teaser");
+            peekAsk = Text("cards-peek-ask", peek, "kg-peek-ask"); // t3-choice: a choice waits on the Keeper
+            peekAsk.text = "?";
             peek.RegisterCallback<PointerDownEvent>(e => SwipeDown(peek, e));
             peek.RegisterCallback<PointerUpEvent>(e => { if (SwipeUp(peek, e, out var d)) PeekReleased(d); });
             root.Add(peek);
@@ -404,6 +433,7 @@ namespace AquariumCiv.View
             root.Add(sheet);
 
             showBar = new GlassBanner { name = "cards-showme-bar", pickingMode = PickingMode.Ignore };
+            showBar.AddToClassList("kg-banner--wrap"); // visit loop: "The Keeper chose full…" was cut off at 1080x1920
             showBar.style.display = DisplayStyle.None;
             showBar.End.Add(new GlassButton("Back to the story", () => showingPlace = false, ButtonKind.Secondary, UiRole.Back) { name = "cards-showme-back", Compact = true });
             root.Add(showBar);
@@ -446,6 +476,12 @@ namespace AquariumCiv.View
                 dilHints[i].enableRichText = true;
             }
             dilBox.style.display = DisplayStyle.None;
+            // #368: every choice can be handed back. The wording is fixed. Quiet, under the two options, only while the question is open.
+            // It sits in the button row (BuildActions): on its own line between the options and the row it overflowed the sheet and the
+            // row drew over it (batch 1, 1179x2556: "Show me" covered "Let them").
+            dilLet = Press("cards-dil-let", "Let them decide", () => model?.LetThemDecide(), card, ButtonKind.Quiet, UiRole.Confirm);
+            dilLet.style.alignSelf = Align.Center;
+            dilLet.style.display = DisplayStyle.None;
         }
 
         /// <summary>The hook #224's choice scene implements: Show me on an open dilemma card offers the dilemma to it. Return true to take the
@@ -459,7 +495,7 @@ namespace AquariumCiv.View
             var f = model?.Face;
             var v = f?.dilemma;
             if (v == null || f.dilemmaChosen < 0 || f.dilemmaChosen >= v.options.Length) return;
-            showBar.Set($"The Keeper chose {v.options[f.dilemmaChosen].label}.", null);
+            showBar.Set(f.dilemmaLetThem ? $"The Keeper let the people decide: {v.options[f.dilemmaChosen].label}." : $"The Keeper chose {v.options[f.dilemmaChosen].label}.", null);
         }
 
         void AnswerDilemma(int option)
@@ -558,6 +594,7 @@ namespace AquariumCiv.View
             nextBtn = Press("cards-next", "Next", () => model?.Next(), row);
             showMeBtn = Press("cards-showme", "Show me", ShowMe, row, ButtonKind.Secondary, UiRole.None); // the director sounds it when the flight starts
             actionBtn = Press("cards-action", "", Act, row, ButtonKind.Primary, UiRole.Confirm);
+            if (dilLet != null) { dilLet.RemoveFromHierarchy(); row.Add(dilLet); } // #368: after Show me, while a choice is open
         }
 
         // ================================================================== touches
@@ -770,6 +807,7 @@ namespace AquariumCiv.View
             SetFitStory(false);
             foreach (var l in new[] { teaser, body, endLine, quote, note, footer }) Show(l, false);
             Show(dilBox, false);
+            Show(dilLet, false);
             Show(scroll, true);
             headline.RemoveFromClassList("cards-ask");
             card.RemoveFromClassList("cards-dilcard");
@@ -791,11 +829,13 @@ namespace AquariumCiv.View
             SetFitStory(false);
             Show(scroll, false);
             Show(dilBox, true);
+            Show(dilLet, f.dilemmaChosen < 0 && !showingPlace); // visit loop: the sheet's copy is really hidden while the box scene has its own
             Show(eraMark, false);
             head.EnableInClassList("cards-head--alone", true);
             headline.AddToClassList("cards-ask");
             card.AddToClassList("cards-dilcard");
             string words = f.dilemmaChosen < 0 ? v.question
+                : f.dilemmaLetThem ? $"The Keeper let the people decide. They chose {v.options[f.dilemmaChosen].label}."
                 : f.dilemmaLapsed ? $"The people chose {v.options[f.dilemmaChosen].label} themselves."
                 : $"The Keeper chose {v.options[f.dilemmaChosen].label}.";
             headline.text = GlassType.Lines(words, 16f, 1.25f);
@@ -831,6 +871,7 @@ namespace AquariumCiv.View
         {
             if (f.dilemma != null) { DrawDilemma(f); return; }
             Show(dilBox, false);
+            Show(dilLet, false);
             Show(scroll, true);
             headline.RemoveFromClassList("cards-ask");
             card.RemoveFromClassList("cards-dilcard");

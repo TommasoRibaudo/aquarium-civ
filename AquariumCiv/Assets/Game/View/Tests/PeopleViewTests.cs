@@ -222,6 +222,7 @@ namespace AquariumCiv.View.Tests
                 var styles = new HashSet<string>();
                 var jumpLog = new List<string>();
                 var lotLog = new List<string>();
+                var stackLog = new List<string>();
                 while (people.Now.hour < 22.5f && frames < 4000)
                 {
                     people.Tick(0.1f);
@@ -257,12 +258,16 @@ namespace AquariumCiv.View.Tests
                     // Rule 6: one doll per spot. Settled, visible dolls never stand on top of each other.
                     if (frames % 10 == 0)
                     {
-                        var still = people.Activities.Where(a => !a.moving && !people.IsWalking(a.who) && a.kind != ActivityKind.Sleep &&
-                            people.Planner.StageOf(a.who) != LifeStage.Baby && people.TryGetDollPosition(a.who, out _))
-                            .Select(a => { people.TryGetDollPosition(a.who, out var q); return q; }).ToList();
+                        var stillActs = people.Activities.Where(a => !a.moving && !people.IsWalking(a.who) && a.kind != ActivityKind.Sleep &&
+                            people.Planner.StageOf(a.who) != LifeStage.Baby && people.TryGetDollPosition(a.who, out _)).ToList();
+                        var still = stillActs.Select(a => { people.TryGetDollPosition(a.who, out var q); return q; }).ToList();
                         for (int i = 0; i < still.Count; i++)
                             for (int j = i + 1; j < still.Count; j++)
-                                if ((still[i] - still[j]).sqrMagnitude < 0.05f * 0.05f) stacked++;
+                                if ((still[i] - still[j]).sqrMagnitude < 0.05f * 0.05f)
+                                {
+                                    stacked++;
+                                    if (stackLog.Count < 12) stackLog.Add($"{people.Now} ({still[i].x:0.00},{still[i].y:0.00}) {people.Describe(stillActs[i])} | {people.Describe(stillActs[j])}");
+                                }
                     }
                     if (frames % 20 == 0 && LifeClock.IsWorkHour(people.Now.hour) && !people.Planner.IsRestDay(people.Now.day))
                     {
@@ -279,7 +284,7 @@ namespace AquariumCiv.View.Tests
                 Assert.Less(frames, 4000, "the clock ran through the day");
                 Assert.AreEqual(0, jumps, "no doll teleports (> 0.25 u in a 100 ms frame):\n" + string.Join("\n", jumpLog));
                 Assert.AreEqual(0, wet, "nobody stands in the pond unless swimming");
-                Assert.AreEqual(0, stacked, "no two dolls stand on the same spot");
+                Assert.AreEqual(0, stacked, "no two dolls stand on the same spot:\n" + string.Join("\n", stackLog));
                 Assert.AreEqual(0, onLot, "nobody stands inside a building's lot (a ring round the market runs round the houses):\n" + string.Join("\n", lotLog));
                 TestContext.WriteLine($"styles seen: {string.Join(", ", styles)}; busy {busyAdults}/{adultSamples}; night rushes {nightJumps}; {people.Status()}");
                 Assert.GreaterOrEqual(styles.Count, 8, "a day shows many different moves");

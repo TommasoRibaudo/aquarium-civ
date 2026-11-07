@@ -14,6 +14,18 @@ namespace AquariumCiv.View
         Lopsided, Taste, HoldUp,
         // P8 #266: stamping in a puddle
         Stomp,
+        // #361: berries you can see (View/Beats/BerryBeats.cs)
+        PickBerry, DigRoot, TasteBerry,
+        // #360: kneeling to draw water (appended)
+        DrawWater,
+        // #358 kids' play (View/Beats/KidPlay.cs): the roles a play group draws, the toddle and the ring dance
+        PlayChaser, PlayRunner, PlayTaunt, PlayThrow, PlayCatch, PlayCharge, Toddle, RingDance,
+        // #361: tipping the basket onto the stash pile (View/Beats/BerryBeats.cs)
+        TipBasket,
+        // #359 kids' play 2 (View/Beats/KidPlay2.cs): splash, the woods games, hide and seek, snowballs
+        PlaySplash, PlayJump, PlayShake, PlayCircle, PlayPeek, PlayDuel, PlayBlock, PlayCount, PlaySeek, PlayHide, PlayFound, PlayTouch, PlaySnowball,
+        // #365 B9 meals and the fire (View/Beats/MealBeats.cs): eating in the ring, the stick into the fire (small, big: the flare)
+        EatMeal, PokeFire, PokeFireBig,
     }
 
     /// <summary>
@@ -51,12 +63,14 @@ namespace AquariumCiv.View
             ActivityKind.None => DollStyle.Stand,
             ActivityKind.Sleep or ActivityKind.Indoors => DollStyle.Hidden,
             ActivityKind.Nap => DollStyle.Lie,
-            ActivityKind.SitOut or ActivityKind.Eat or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or
+            ActivityKind.SitOut or ActivityKind.SitTogether or ActivityKind.ListenStory or ActivityKind.Listen or
                 ActivityKind.Drink or ActivityKind.SitWithOld or ActivityKind.MindBabies or ActivityKind.Meeting => DollStyle.Sit,
+            ActivityKind.Eat => DollStyle.EatMeal, // #365 B9: hand to mouth, chew, lean back full
             ActivityKind.Knap or ActivityKind.ThrowPot => DollStyle.SitStrike,
             ActivityKind.Weave => DollStyle.SitWeave,
             ActivityKind.Stretch => DollStyle.Stretch,
-            ActivityKind.Toddle or ActivityKind.Play or ActivityKind.Dance or ActivityKind.Snowball => DollStyle.Hop,
+            ActivityKind.Play or ActivityKind.Snowball => DollStyle.Hop, // #358: Play is a play group's (KidPlayDirector); Hop is what a kid out of one shows
+            ActivityKind.Toddle => DollStyle.Toddle, ActivityKind.Dance => DollStyle.RingDance, // #358
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
             ActivityKind.HangWashing => DollStyle.Hang,
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
@@ -103,7 +117,9 @@ namespace AquariumCiv.View
             ActivityKind.Argue => DollStyle.Argue,
             ActivityKind.Swim or ActivityKind.Splash => DollStyle.Swim,
             ActivityKind.Stomp => DollStyle.Stomp,
+            ActivityKind.FetchWater => DollStyle.DrawWater, // #360 (the walk home is Walk, by speed)
             ActivityKind.WashHands => DollStyle.Crouch,
+            ActivityKind.TipLoad => DollStyle.TipBasket, // #361
             ActivityKind.Mourn or ActivityKind.Service => DollStyle.Mourn,
             ActivityKind.Cheer or ActivityKind.Clap => DollStyle.Cheer,
             ActivityKind.Wave => DollStyle.Wave,
@@ -131,7 +147,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Does this move swing a hand tool out along the arm (axe, hammer, hoe, rod, stirring stick)?</summary>
-        public static bool Extends(DollStyle s) => s is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.Fish or DollStyle.Stir;
+        public static bool Extends(DollStyle s) => s is DollStyle.Chop or DollStyle.Hammer or DollStyle.Hoe or DollStyle.Fish or DollStyle.Stir or DollStyle.SitStrike; // batch 5: SitStrike (knap)
 
         static float Frac(float x) => x - Mathf.Floor(x);
         static float Smooth(float a, float b, float x) => Mathf.SmoothStep(a, b, Mathf.Clamp01(x));
@@ -198,6 +214,7 @@ namespace AquariumCiv.View
                         p.armR = new Vector3(u < 0.7f ? Smooth(40f, 85f, u / 0.7f) : Smooth(85f, 40f, (u - 0.7f) / 0.3f), 0, 8f);
                         p.hit = u > 0.92f ? 1f : 0f;
                         p.lean = 14f;
+                        p.extend = handTool; // batch 5 (the user: "when they craft, they have the hammer upside down"): the hammerstone out along the arm, head first (it rode at its carry angle and turned head-back as the arm rose)
                     }
                     else if (style == DollStyle.SitWeave)
                     {
@@ -260,6 +277,13 @@ namespace AquariumCiv.View
                     break;
                 }
 
+                case DollStyle.PickBerry: // #361
+                case DollStyle.DigRoot:
+                case DollStyle.TasteBerry:
+                case DollStyle.TipBasket:
+                    BerryMotion.Evaluate(style, ref p, t, progress, since);
+                    break;
+
                 case DollStyle.Scatter:
                 {
                     // Sowing: a slow walk-on-the-spot bob, the right arm flings out to the side.
@@ -273,10 +297,8 @@ namespace AquariumCiv.View
 
                 case DollStyle.Fish:
                 {
-                    // The rod held out over the water, a slow bob and now and then a tug.
-                    float u = Frac(t / 4.5f);
-                    float tug = u > 0.85f ? Mathf.Sin((u - 0.85f) / 0.15f * Mathf.PI) * 22f : 0f;
-                    p.armR = new Vector3(118f + Mathf.Sin(t * 1.1f) * 3f + tug, 0, 6f);
+                    // The rod held out over the water, a slow bob. #364: the tugs, bites and the end beat are FishBeats.Apply's (PeopleView and AnimBench call it).
+                    p.armR = new Vector3(118f + Mathf.Sin(t * 1.1f) * 3f, 0, 6f);
                     p.armL = new Vector3(70f, 0, -6f);
                     p.extend = hasProp;
                     p.lean = -2f;
@@ -284,15 +306,14 @@ namespace AquariumCiv.View
                 }
 
                 case DollStyle.Stir:
-                {
-                    float w = t * tau / (1.6f / pace);
-                    p.armR = new Vector3(40f + Mathf.Sin(w) * 14f, 0, 10f + Mathf.Cos(w) * 14f);
-                    p.armL = new Vector3(25f, 0, -12f);
                     p.extend = hasProp;
-                    p.lean = 16f;
-                    p.roll = Mathf.Cos(w) * 2f;
+                    MealBeats.Stir(ref p, t, pace); // #365 B9.d: the stir, and a taste every fourth stir (the paddle comes out of the pot: upright in the fist)
                     break;
-                }
+
+                case DollStyle.EatMeal:
+                    // #365 B9.a: seated, the bowl in the left hand, the right hand to the mouth now and then, a lean back full at the end
+                    MealBeats.Eat(ref p, t, progress > 0.03f ? since * (1f - progress) / progress : 99f);
+                    break;
 
                 case DollStyle.Sweep:
                 {
@@ -392,6 +413,11 @@ namespace AquariumCiv.View
                     break;
                 }
 
+                case DollStyle.Toddle:
+                case DollStyle.RingDance:
+                    KidPlayPoses.Loop(style, ref p, t); // #358
+                    break;
+
                 case DollStyle.Mourn:
                     p.lean = 16f;
                     p.armL = new Vector3(15f, 0, -6f); p.armR = new Vector3(15f, 0, 6f);
@@ -404,6 +430,7 @@ namespace AquariumCiv.View
                     p.offset.y = Mathf.Abs(s) * 0.022f;
                     p.roll = s * 6f;
                     p.armL = new Vector3(10f, 0, -50f - s * 18f); p.armR = new Vector3(10f, 0, 50f - s * 18f);
+                    p.hit = Mathf.Abs(s) < 0.15f ? 1f : 0f; // #359 (B1.d): each stamp lands (every 0.45 s): droplets and a ring in a puddle, dust on dry ground (HitFx)
                     break;
                 }
 
@@ -621,6 +648,14 @@ namespace AquariumCiv.View
                     break;
             }
             return p;
+        }
+
+        /// <summary>The hunt's pose on top of the style's (#283; moved from PeopleView for AnimBench, #352). #362: the overlay is
+        /// <see cref="HuntBeats"/> (the creeping stalk, the thrown spear, the shrug, the bend), laid on the pose underneath so it eases in
+        /// and out. <paramref name="since"/> is real seconds into the hunt step; <paramref name="stalk"/> the stalk's rhythm.</summary>
+        public static void Hunt(ref DollPose pose, HuntPhase phase, float progress, float since = 0f, HuntStalk.Now stalk = default)
+        {
+            HuntBeats.Apply(ref pose, phase, since, stalk);
         }
 
         /// <summary>Arms that hold a load: a hand on the head load, both arms round what's hugged, both pushing a barrel.</summary>

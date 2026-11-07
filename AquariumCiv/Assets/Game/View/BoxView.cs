@@ -1629,6 +1629,7 @@ namespace AquariumCiv.View
             // #319: how close the camera is to each pane itself (plane distance over the fit distance), on top of the zoom.
             var camLocal = transform.InverseTransformPoint(cam.transform.position);
             float fit = rig != null ? Mathf.Max(0.01f, rig.FitDistance()) : 10f;
+            float camp = rig != null ? NearGlassFade.CampCloseness(fit * rig.zoom, fit) : 0f; // the camp frame: no near glass edge (decisions 2026-11-06)
             float gx = Land.HX + 0.075f, gz = Land.HZ + 0.075f;
             for (int i = 0; i < 4; i++)
             {
@@ -1638,7 +1639,7 @@ namespace AquariumCiv.View
                     ? new Vector3(Mathf.Clamp(camLocal.x, -gx, gx), Mathf.Clamp(camLocal.y, 0f, Land.GlassTop), i == 0 ? -gz : gz)
                     : new Vector3(i == 2 ? -gx : gx, Mathf.Clamp(camLocal.y, 0f, Land.GlassTop), Mathf.Clamp(camLocal.z, -gz, gz));
                 float pd = Vector3.Dot(PartOut[i], camLocal) < (i < 2 ? gz : gx) ? float.MaxValue : Vector3.Distance(camLocal, near) / fit;
-                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), false, clean, NearGlassForce, pd);
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), false, clean, NearGlassForce, pd, camp);
                 float now = NearGlassFade.Follow(paneFade[i], want, dt);
                 if (Mathf.Abs(want - now) < 0.002f) now = want;
                 if (now == paneFade[i]) continue;
@@ -1649,7 +1650,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < 8; i++)
             {
                 float pd = i < 4 ? (Vector3.Dot(PartOut[i], camLocal) - (i < 2 ? gz : gx)) / fit : float.MaxValue;
-                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), true, clean, NearGlassForce, pd);
+                float want = NearGlassFade.Opacity(ratio, Vector3.Dot(PartOut[i], to), true, clean, NearGlassForce, pd, camp);
                 float now = NearGlassFade.Follow(frameShown[i], want, dt);
                 if (Mathf.Abs(want - now) < 0.002f) now = want;
                 if (now == frameShown[i]) continue;

@@ -173,6 +173,48 @@ namespace AquariumCiv.View
             refreshT = 0f;
         }
 
+        // ---------------------------------------------------------------- #357: the bush answers a stroke
+        /// <summary>#357: shakes this bush (site cell) once, leaning away from <paramref name="away"/> (world direction from whoever reached in).
+        /// The bush is in the land's chunk mesh, so this is the shader's sway at the bush's spot (<see cref="HitFx.Shake"/>); its berry dots are
+        /// one mesh with the same sway weight and move with it. False if the cell has no bush.</summary>
+        public bool Shake(int cell, Vector3 away, float delay = 0f)
+        {
+            if (box == null || box.Root == null || !box.BushSpots.TryGetValue(cell, out var spot)) return false;
+            return HitFx.Shake(ShakeTarget.Bush, box.Root.TransformPoint(spot.pos), away, delay);
+        }
+
+        // ---------------------------------------------------------------- #361: berries you can see (a separate block: BerryPickView calls it)
+        /// <summary>#361: one visible pick (the picker's hand is at a berry): the bush loses exactly one dot (1/<see cref="FullDots"/> of its crop, so the
+        /// dots shown stay equal to the sim's count; the picker's 5 s timer starts over). Returns the world spot of the dot that went (the last one, where
+        /// the berry hops from) and false when the bush has none to give. The view picks at its own 2.5 s; the sim's old 0.35 per 5 s was about a dot per 2 s.</summary>
+        public bool PickOneDot(int cell, PersonRef who, out Vector3 dotWorld)
+        {
+            dotWorld = default;
+            var sim = Sim; var pv = People;
+            if (sim == null || pv == null || box == null || box.Root == null || !sim.EcologyOn) return false;
+            if (!box.BushSpots.TryGetValue(cell, out var spot)) return false;
+            int season = (int)LifeClock.SeasonOf(sim.State.month);
+            if (sim.BerryStateOf(season) != BerryState.Berries) return false;
+            int n = Mathf.RoundToInt(sim.BerriesAt(cell, pv.Now.day, season) * FullDots);
+            if (n <= 0) return false;
+            dotWorld = box.Root.TransformPoint(DotLocal(cell, n - 1, spot.pos, spot.r));
+            if (sim.PickBush(cell, pv.Now.day, 1f / FullDots) <= 0f) return false;
+            PicksDone++; LastPickCell = cell; VisiblePicks++;
+            if (picking.TryGetValue(who.Key, out var p) && p.cell == cell) p.t = 0f;
+            berriesKey = long.MinValue; refreshT = 0f;
+            return true;
+        }
+        /// <summary>Visible picks so far (tests).</summary>
+        public int VisiblePicks { get; private set; }
+
+        /// <summary>Where berry dot <paramref name="i"/> of a bush sits (box-local): a fixed place per index, so picking takes the last ones.</summary>
+        static Vector3 DotLocal(int cell, int i, Vector3 pos, float r)
+        {
+            float az = H01(cell, i * 3 + 1) * Mathf.PI * 2f, el = Mathf.Lerp(0.25f, 1.15f, H01(cell, i * 3 + 2));
+            var dir = new Vector3(Mathf.Cos(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Sin(az) * Mathf.Cos(el));
+            return pos + Vector3.up * r * 0.5f + new Vector3(dir.x * r * 1.2f, dir.y * r * 0.8f, dir.z * r * 1.1f) * 1.02f;
+        }
+
         // ---------------------------------------------------------------- the berries
         static float H01(int a, int b) => Land.Hash3(7311, a, b);
 
@@ -192,7 +234,7 @@ namespace AquariumCiv.View
             }
             if (key == berriesKey && berriesGo != null) return;
             berriesKey = key;
-            var mb = new MeshBuilder(box.GetHashCode() & 0xffff) { jitter = 0f };
+            var mb = new MeshBuilder(box.GetHashCode() & 0xffff) { jitter = 0f, sway = 0.3f }; // #357: the dots sway with the bush (its weight), so a shake moves them too
             int dots = 0, withBerries = 0;
             foreach (var (cell, pos, r, n) in items)
             {
@@ -200,9 +242,7 @@ namespace AquariumCiv.View
                 for (int i = 0; i < n; i++)
                 {
                     // a fixed place per dot index on the bush's upper half, so picking takes the last ones and the rest stay put
-                    float az = H01(cell, i * 3 + 1) * Mathf.PI * 2f, el = Mathf.Lerp(0.25f, 1.15f, H01(cell, i * 3 + 2));
-                    var dir = new Vector3(Mathf.Cos(az) * Mathf.Cos(el), Mathf.Sin(el), Mathf.Sin(az) * Mathf.Cos(el));
-                    var at = pos + Vector3.up * r * 0.5f + new Vector3(dir.x * r * 1.2f, dir.y * r * 0.8f, dir.z * r * 1.1f) * 1.02f;
+                    var at = DotLocal(cell, i, pos, r);
                     Color col;
                     float rad;
                     if (state == BerryState.Flowers)

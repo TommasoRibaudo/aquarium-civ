@@ -1,0 +1,26 @@
+{
+  "name": "364-fishing",
+  "notes": "B8 #364 Fishing pays off. One fisher (seed 408 = the person's key; the schedule is FishBeats', hashed per fisher, 2-4 tugs per bite) stands 0.06 u back from the real water edge (x 0.19; the pond's disc edge is x 0.25) facing the water, the rod out over it (the line's end 0.34 u out, x 0.53, on the water at y -0.08). Bite 1 at 7.17 s is a catch: nibble (two dips, a tiny ring at the line each), lean in, held breath, yank (arm 100 -> 165 in 0.15 s, the hit: droplets + rings from HitFx at the line's end), the fish flips twice on a 0.3 u arc (0.6 s) into the basket 0.08 u to the fisher's left (the basket Pops, the fish stays in it), arms up and a 0.03 hop. Bite 2 at 16.17 s is a miss: the fish only clears the water (h 0.05, 0.4 s) and drops back, the fisher slumps. Bite 3 at 25.17 s is a catch. The block ends 1.6 s later: the line comes in and the last fish is held up on the stick (the second fish stays in the basket). The three fish arcs are authored at FishBeats' contact times (bite + 0.95 s). The frog or duck that moves off the splash (PondLife.Startle) and the basket Pop are the game's (not drawn here).",
+  "duration": 31.0,
+  "fps": 30,
+  "warmup": 0,
+  "camera": { "view": "default", "focus": [0.33, 0.02], "span": 1.15 },
+  "sheet": { "from": 6.9, "to": 9.2, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2, "hitReach": 0.5, "arcReach": 0.5, "arcs": [ { "kind": "fish", "by": "angler", "target": "basket" } ] },
+  "objects": [
+    { "id": "pond", "kind": "pond", "pos": [0.75, -0.08, 0.0], "radius": 0.5, "size": [1.0, 1.0] },
+    { "id": "basket", "kind": "basket", "pos": [0.19, 0.0, 0.08] },
+    { "id": "fishA", "kind": "fish", "pos": [0.53, -0.08, 0.0], "arc": { "by": "angler", "from": [0.53, -0.08, 0.0], "to": "basket", "t0": 8.12, "t1": 8.72, "height": 0.3 } },
+    { "id": "fishMiss", "kind": "fish", "pos": [0.53, -0.08, 0.0], "arc": { "by": "angler", "from": [0.53, -0.08, 0.0], "to": [0.55, -0.08, 0.02], "t0": 17.12, "t1": 17.52, "height": 0.05, "hideAt": 17.55 } },
+    { "id": "fishB", "kind": "fish", "pos": [0.53, -0.08, 0.0], "arc": { "by": "angler", "from": [0.53, -0.08, 0.0], "to": "basket", "t0": 26.12, "t1": 26.72, "height": 0.3 } }
+  ],
+  "dolls": [
+    {
+      "id": "angler", "seed": 408, "role": "fisher", "prop": "Rod", "slot": "Hand", "phase": 0,
+      "timeline": [
+        { "label": "fish", "activity": "Fish", "pos": [0.19, 0.0], "face": "pond", "target": "pond", "dur": 28.2 },
+        { "label": "line in, fish held up", "activity": "Fish", "pos": [0.19, 0.0], "face": "pond", "dur": 1.6, "endBeat": true }
+      ]
+    }
+  ]
+}

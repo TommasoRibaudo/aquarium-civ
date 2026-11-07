@@ -1,0 +1,18 @@
+{
+  "name": "359-splash",
+  "notes": "#359 B3.a splash: two kids ankle-deep at the pond's real edge (the edge found from the pond's middle out to the group, as B4 finds it), 0.25 u apart along the bank. View/Beats/KidPlay2.cs SplashGame: crouch, arms down and back, the sweep through the water (Contact at arms x 60: a ring at the hands, droplets aimed at the partner; the 'spray' object rides them), the partner is soaked as they land (jolts back, arms up), laughs and splashes back. The 5th or 6th exchange: one jumps in (squash, a hop out 0.13 u, lands sunk 0.06 in a ring and ten droplets), the other squeals, it wades back; then both wade out and shake off (the end beat). HitFx: Ring + Droplets (aimed) on each splash, Ring + Droplets on the jump, 4 Droplets each on the shake. AnimLab: cheat 'Kids play: splash' (pond with water, else the nearest puddle).",
+  "duration": 15,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.05], "span": 0.9 },
+  "sheet": { "from": 0.3, "to": 15, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6, "reactSeconds": 0.2 },
+  "play": { "game": "Splash", "members": ["kidA", "kidB"], "center": [0.0, -0.35], "seed": 59, "water": "pond", "spray": "spray" },
+  "objects": [
+    { "id": "pond", "kind": "pond", "pos": [0.0, 0.0, 0.5], "radius": 0.5, "size": [1.2, 0.9] },
+    { "id": "spray", "kind": "spray", "radius": 0.02 }
+  ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 591 },
+    { "id": "kidB", "kid": true, "seed": 592 }
+  ]
+}

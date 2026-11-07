@@ -1,0 +1,19 @@
+{
+  "name": "hop-circle",
+  "notes": "Baseline (#352): today's kids at play. Four kids on the camp fire's ring as PeopleView.SlotSpot places them (r 0.3, slots 45 degrees apart, facing the middle), each on Play -> DollStyle.Hop with their own phase (Hash01(seed, 5) * 37 s). Their prop is the Ball, which is never drawn (PropOf: Prop.Ball -> PropKind.None). Research 17 §2.2: every kid draws the same small circle.",
+  "duration": 6,
+  "fps": 30,
+  "camera": { "view": "default", "focus": [0.0, 0.15], "span": 1.1 },
+  "sheet": { "from": 0, "to": 3, "frames": 24, "columns": 6 },
+  "expect": { "neighbourRadius": 0.6 },
+  "knownGaps": ["endBeat", "neighbours"],
+  "objects": [
+    { "id": "fire", "kind": "fire", "pos": [0.0, 0.0] }
+  ],
+  "dolls": [
+    { "id": "kidA", "kid": true, "seed": 101, "activity": "Play", "ring": { "center": [0.0, 0.0], "r": 0.3, "slot": 0, "count": 4, "h": 60 } },
+    { "id": "kidB", "kid": true, "seed": 102, "activity": "Play", "ring": { "center": [0.0, 0.0], "r": 0.3, "slot": 1, "count": 4, "h": 60 } },
+    { "id": "kidC", "kid": true, "seed": 103, "activity": "Play", "ring": { "center": [0.0, 0.0], "r": 0.3, "slot": 2, "count": 4, "h": 60 } },
+    { "id": "kidD", "kid": true, "seed": 104, "activity": "Play", "ring": { "center": [0.0, 0.0], "r": 0.3, "slot": 3, "count": 4, "h": 60 } }
+  ]
+}

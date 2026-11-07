@@ -338,6 +338,18 @@ namespace AquariumCiv.GameUI
 
         public bool ToolsHidden => toolBlocks.Count > 0;
 
+        readonly System.Collections.Generic.HashSet<string> laneBlocks = new();
+
+        /// <summary>Batch 7: a bar of someone else's sits in the tools' lane (the box-staged choice's bar), so History steps out of
+        /// sight and taps under it too (HideTools leaves History, which showed through the bar).</summary>
+        public void TakeToolsLane(string reason, bool on)
+        {
+            if (!(on ? laneBlocks.Add(reason) : laneBlocks.Remove(reason))) return;
+            ToolsBehindSheet();
+        }
+
+        public bool ToolsLaneTaken => laneBlocks.Count > 0;
+
         /// <summary>History always opens the time-lapse (D1). This does it: false means there is nothing to replay yet, so the
         /// History sheet opens instead.</summary>
         public Func<bool> HistoryTapped;
@@ -705,7 +717,7 @@ namespace AquariumCiv.GameUI
         void ToolsBehindSheet()
         {
             var v = openSheet != null || outsideSheet != null || toolInHand || bannerUp ? Visibility.Hidden : Visibility.Visible;
-            bottomRow.style.visibility = v;
+            bottomRow.style.visibility = laneBlocks.Count > 0 ? Visibility.Hidden : v;
             pinRow.style.visibility = peekUp ? Visibility.Hidden : v;
         }
 

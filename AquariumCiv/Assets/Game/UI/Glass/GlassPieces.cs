@@ -112,6 +112,7 @@ namespace AquariumCiv.GameUI
             get => icon?.Shape;
             set
             {
+                if (string.IsNullOrEmpty(value)) { icon?.RemoveFromHierarchy(); icon = null; return; } // t4-fixes: no mark at all
                 if (icon == null) { icon = new GlassIcon(value, "kg-icon--small"); Insert(0, icon); }
                 else icon.Shape = value;
             }

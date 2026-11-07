@@ -119,7 +119,7 @@ namespace AquariumCiv.Life
                 var rw = RoleWork(p, d, morning);
                 if (rw.HasValue) return rw.Value;
             }
-            return JobWork(p, d);
+            return SpreadDiggers(p, d, JobWork(p, d)); // tester run 1 #3: two or three dig the stream bed, the rest find other work
         }
 
         Work JobWork(Person p, DayInfo d)
@@ -240,6 +240,8 @@ namespace AquariumCiv.Life
             // everyone helps in the fields (§3 seasons). Never wandering (rule 2).
             if (season == Season.Autumn && era != Era.Camp && farms.Count > 0 && p.Adult)
                 return W(PlaceOf(farms[(int)(H(p.key, d.day, 75) % (uint)farms.Count)]), ActivityKind.Harvest, Prop.Scythe, Prop.Sheaf, Store(Prop.Sheaf), 0.35f);
+            var campHelp = CampHelperWork(p, d); // tester run 1 #3: a camp's helpers out on the land, not all sweeping at a few tents
+            if (campHelp.HasValue) return campHelp.Value;
             w = W(p.home, ActivityKind.SweepStep, Prop.Broom, marketB != null ? Prop.Basket : Prop.Buckets, p.home, 0.3f);
             w.chores = true;
             return Fetch(w, marketB != null ? PlaceOf(marketB) : WaterPlace);
