@@ -80,3 +80,4 @@ moves timing and staging off the Editor, so only the real look and the wiring ne
 - 2026-11-06 ~17:45 · USER: default camera = "Frame the camp" (decisions.md). Camera worker next.
 - 2026-11-06 ~18:00 · merged t1-sched (camp day spread: 3+-in-step at pop 8 18%→2%, story on screen 54%→81%; finding 10: stale staging stopped on re-open). Camera worker (frame the camp) running.
 - 2026-11-06 21:25 · machine shut down ~18:00; recovered: camera branch committed (4fcd715) → offline-csc 0 errors (needs AquariumCiv.Light in the list), CampFrame tests 7/7 → merged. Grass-fade WIP saved as af5dd4f on vs/t1-grassfade (unverified); Editor was down.
+- 2026-11-06 21:40 · USER: "when they craft, they have the hammer upside down" → batch 5: fix the hammer prop's grip (head up/out) for Hammer / Knap / SitStrike / ThrowPot styles; AnimLab clips of each; the review page.
