@@ -157,6 +157,7 @@ namespace AquariumCiv.Life
             if (stg.segs.Count == 0 && st.sides[0].Prop == ChoiceProp.None && st.sides[1].travellers.Count == 0) return null;
             if (stg.segs.Count > 0) AddLive(SceneKind.Choice, at, st.end, stg);
             choice = st;
+            ReleaseChoiceCastFromHeldMoments(st, at); // batch 3: a moment playing doesn't pull them off their spots
             return st;
         }
 

@@ -38,6 +38,8 @@ namespace AquariumCiv.View
             public Transform root, head, tail; public GameObject go;
             public Vector2 at, to; public float yaw, timer, dabble; public int state; // 0 hidden, 1 paddle, 2 dabble, 3 ashore (walk), 4 stand ashore, 5 back
             public Vector2 shore;
+            /// <summary>#364: seconds it keeps paddling off fast after a splash (the fisher's yank).</summary>
+            public float flee;
         }
 
         BoxView box;
@@ -334,6 +336,44 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- frogs
+        /// <summary>The splash radius (box units) in which a frog hops in and a duck paddles off (#364: the fisher's yank; the spec says 0.5 u).</summary>
+        public const float StartleRadius = 0.5f;
+        public int Startles { get; private set; }
+
+        /// <summary>
+        /// #364: a splash at <paramref name="world"/> (the fish leaves the water): every sitting frog within <paramref name="radius"/> hops in, and every
+        /// duck on the water or the bank within it paddles off the other way, fast, for a few seconds. Returns how many animals moved off.
+        /// </summary>
+        public int Startle(Vector3 world, float radius = StartleRadius)
+        {
+            if (box == null || box.Root == null || !isActiveAndEnabled) return 0;
+            var eco = box.layout.eco;
+            if (eco.pondCells <= 0) return 0;
+            var l = box.Root.InverseTransformPoint(world);
+            var from = new Vector2(l.x, l.z);
+            float r2 = radius * radius;
+            int n = 0;
+            foreach (var f in frogs)
+                if (f.state == 1 && f.go.activeSelf && (new Vector2(f.at.x, f.at.z) - from).sqrMagnitude < r2) { Hop(f, eco); n++; }
+            foreach (var d in ducks)
+            {
+                if (d.state == 0 || d.state == 3 || d.state == 4 || water.Count == 0 || (d.at - from).sqrMagnitude >= r2) continue;
+                // the farthest water from the splash among a few cells
+                Vector2 best = d.at; float bestD = -1f;
+                for (int k = 0; k < 8; k++)
+                {
+                    int c = water[(int)((uint)(d.at.x * 977f + d.at.y * 131f + k * 7919f) % (uint)water.Count)];
+                    var q = new Vector2(SiteMap.CXc(c), SiteMap.CZc(c));
+                    float dist = (q - from).sqrMagnitude;
+                    if (dist > bestD) { bestD = dist; best = q; }
+                }
+                d.to = best; d.state = 5; d.timer = 4f; d.flee = 2.5f;
+                n++;
+            }
+            Startles += n;
+            return n;
+        }
+
         void UpdateFrogs(EcoLayer eco, int want, bool night, float dt)
         {
             int active = 0;
@@ -445,7 +485,8 @@ namespace AquariumCiv.View
                     case 5:
                         if (scared || (d.at - d.to).sqrMagnitude < 0.0004f || d.timer <= 0f) PickTarget(d, eco, scared);
                         d.timer -= dt;
-                        if (scared) speed = 0.12f;
+                        if (scared || d.flee > 0f) speed = 0.12f;
+                        d.flee = Mathf.Max(0f, d.flee - dt);
                         Move(d, eco, speed, dt);
                         if (!scared && (d.at - d.to).sqrMagnitude < 0.0009f && Random.value < dt * 0.25f) { d.state = 2; d.dabble = 0f; }
                         else if (!scared && d.state == 5) d.state = 1;

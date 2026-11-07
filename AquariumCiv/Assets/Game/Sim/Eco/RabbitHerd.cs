@@ -456,7 +456,7 @@ namespace AquariumCiv.Sim.Eco
             /// bounds a second at full speed: a rabbit's gait, not a blur.</summary>
             public const float RunSpeed = 1.15f, RunStart = 0.55f, RunEnd = 0.45f, RunBound = 0.27f, SlowDown = 0.4f, RunRamp = 0.35f;
             /// <summary>A slight zigzag across the line of the run (box units, and the distance of one swing).</summary>
-            public const float ZigZag = 0.035f, ZigLen = 0.55f;
+            public const float ZigZag = 0.06f, ZigLen = 0.55f; // #362: 0.06 (was 0.035), so a bolting rabbit zigzags visibly
             /// <summary>A scheduled pose that moves farther than this in one step jumped (a new home, or the green round it changed and the
             /// spot with it): the doll keeps its place and hops over instead (a real hop is 0.12).</summary>
             public const float JumpGuard = 0.3f;

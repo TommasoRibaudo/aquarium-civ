@@ -105,9 +105,31 @@ namespace AquariumCiv.View
         /// <summary>Is the camera off its home view? The HUD backs the box name and top icons while it is (spec §4).</summary>
         public bool OffHome => homeKnown && (zoom < HomeZoom || (target - homeTarget).magnitude > HomeOffset);
 
+        // ---------------- the camp frame (decisions 2026-11-06, "The default camera") ----------------
+        Vector3 boxTarget;
+        float boxYaw, boxPitch, boxZoom;
+
+        /// <summary>The camp frame is home now: <see cref="GoHome"/> (the evening talk's way back, the debug panel's "Go home") returns there.
+        /// The view the box opened on (the whole box) stays as <see cref="GoWholeBox"/>.</summary>
+        public void SetHome(Vector3 worldTarget, float yawAt, float pitchAt, float zoomAt)
+        {
+            TellHud(); // the opening view is remembered first
+            homeTarget = worldTarget; homeYaw = yawAt; homePitch = pitchAt; homeFit = zoomAt;
+        }
+
+        /// <summary>Eases out to the view the box opened on: the whole box (a pinch out gets there too).</summary>
+        public void GoWholeBox(float seconds = BoxCameraMath.FlyDefaultSeconds)
+        {
+            TellHud();
+            EaseTo(boxTarget, boxYaw, boxPitch, boxZoom, seconds);
+        }
+
+        /// <summary>The home pose (target, yaw, pitch, zoom): the camp frame once one was framed, else the opening view.</summary>
+        public (Vector3 target, float yaw, float pitch, float zoom) Home => (homeTarget, homeYaw, homePitch, homeFit);
+
         void TellHud()
         {
-            if (!homeKnown) { homeTarget = target; homeYaw = yaw; homePitch = pitch; homeFit = zoom; homeKnown = true; }
+            if (!homeKnown) { homeTarget = boxTarget = target; homeYaw = boxYaw = yaw; homePitch = boxPitch = pitch; homeFit = boxZoom = zoom; homeKnown = true; }
             AquariumCiv.GameUI.GameHud.Instance?.SetOffHome(OffHome || DayLightDriver.HudNeedsBacking);
         }
 
@@ -620,8 +642,18 @@ namespace AquariumCiv.View
             if (Mathf.Approximately(z0, z1)) return;
             if (GroundAt(screenPoint, out var g)) target = BoxCameraMath.ZoomTarget(target, new Vector3(g.x, target.y, g.z), z0, z1);
             zoom = z1;
+            LiftPitchToFloor();
             StayOnLand();
             Apply();
+        }
+
+        /// <summary>#377 (playtest #336): the pitch floor rises as you zoom out (14 close, 24 at the full box). Left to the spring, a pinch out kept tilting the camera up for a second
+        /// after the fingers stopped (height still climbing 4 units after the zoom hit its limit). The floor now lifts the pitch in the same frame, so the pitch is a plain function of the zoom.</summary>
+        void LiftPitchToFloor()
+        {
+            float floor = BoxCameraMath.PitchFloor(zoom);
+            if (targetPitch < floor) targetPitch = floor;
+            if (pitch < floor) { pitch = floor; lastPitch = pitch; }
         }
 
         /// <summary>The rubber band and a pinch towards the wall both stop at the land's edge.</summary>

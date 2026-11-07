@@ -241,6 +241,8 @@ namespace AquariumCiv.View
             if ((seedLast - seedAt).magnitude > slop * 2f * Mathf.Max(1, Screen.height)) return; // a drag isn't a tap
             if (!Ground(seedLast, out var at)) return;
             if (!sim.CanPlantTree) { LastSeed = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; }
+            int tcell = sim.TreeCellFor(at.x, at.z);
+            bool moved = tcell >= 0 && tcell != AquariumCiv.Sim.Settle.SiteMap.CellAt(at.x, at.z);
             if (!sim.PlantTree(at.x, at.z))
             {
                 LastSeed = "refused";
@@ -251,7 +253,8 @@ namespace AquariumCiv.View
             box.Refresh();
             GameClock.Instance?.Save();
             hud?.SetHand(GameHud.KitTool.None);
-            hud?.Toast("The seed is in the ground. Mist it, and keep its weeds back.", 4f);
+            // #378: a press on the glass rim lands a little in from it; say so, the seed never jumps silently.
+            hud?.Toast(moved ? "The seed went in a little way from the glass, where a tree has room. Mist it, and keep its weeds back." : "The seed is in the ground. Mist it, and keep its weeds back.", 4f);
             var pv = PeopleView.Find();
             if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, at.x, at.z, 1.4f);
         }

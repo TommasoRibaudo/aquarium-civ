@@ -153,7 +153,6 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return Watching(1170, 2532);
             Assert.AreEqual(GameClock.LabSpeed, GameClock.Instance.speed, "the lab runs at x60");
-            Assert.AreEqual(SimCore.DilemmaLabLapseMonths, Sim.DilemmaLapseAfter, "the lab lapses after 48 months");
             var d = Sim.DebugRaiseDilemma();
             Assert.IsNotNull(d, "a dilemma holds in this box");
             float t0 = Time.realtimeSinceStartup;
@@ -179,17 +178,25 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(1.5f);
             Assert.AreEqual(CardStackMode.Hidden, Model.Mode, "no second peek for the same dilemma");
             DilemmaCheats.Lab(false);
-            Assert.AreEqual(SimCore.DilemmaLapseMonths, Sim.DilemmaLapseAfter, "normal play lapses after 24 months");
+            Assert.AreEqual(DilemmaState.Open, d.state, "#368: closed unanswered, it stays open: nothing lapses by the clock");
             AssertNoErrors("live raise");
         }
 
         [UnityTest, Timeout(180000)]
         public IEnumerator TheDotFollowsTheStoriesInLivePlay()
         {
+            // Dilemmas on (with them off the dot is not worked out live: WithDilemmasOffALiveRaiseChangesNothing), but the lab
+            // schedule off so no choice is raised inside the 12 s windows below; the clock still at x60 so a month turns in 5 s.
             yield return Watching(750, 1334);
-            var all = Sim.UnreadCardsCapped(999);
-            foreach (var c in all.cards.Concat(all.also)) Sim.MarkCardRead(c);
-            yield return Until(() => !Model.HistoryDot, 12f); // worked out again at the next month (5 s at x60)
+            DilemmaCheats.Lab(false);
+            GameClock.Instance.speed = GameClock.LabSpeed;
+            void ReadAll()
+            {
+                var all = Sim.UnreadCardsCapped(999);
+                foreach (var c in all.cards.Concat(all.also)) Sim.MarkCardRead(c);
+            }
+            // worked out again at the next month (5 s at x60); a story the box writes meanwhile is read too
+            yield return Until(() => { ReadAll(); return !Model.HistoryDot; }, 12f);
             Assert.IsFalse(Model.HistoryDot, "all read: no dot");
             var who = Sim.State.notables.Find(n => n.alive);
             Sim.Chronicle("story", who.FullName + " found a way across the stream.", 0.9f, who.id);
@@ -257,7 +264,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Watching(w, h);
             DilemmaCheats.Lab(false); // the clock at real time: nothing raised or lapsed in the way of this check
             int seen = 0;
-            foreach (var (def, option) in new[] { ("camp_winter", 0), ("camp_remember", 1), ("camp_fire", 0) } /* a def is raised once per box: one option each */)
+            foreach (var (def, option) in new[] { ("camp_winter", 0), ("camp_fire", 0), ("camp_remember", 1) } /* a def is raised once per box: one option each. camp_remember last: its cheat kills the oldest (the chief), and camp_fire needs a living elder chief */)
             {
                 if (Model.Mode == CardStackMode.Open) Model.Close();
                 var d = Sim.DebugRaiseDilemma(def);
@@ -265,6 +272,12 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(Sim.AnswerDilemma(d.id, option, DilemmaPath.Card));
                 var e = Sim.DebugFireCallbackNow();
                 Assert.IsNotNull(e, def + " fires a callback");
+                // #371: a callback is a held moment, watched in the box, not a card; it is a card only once held too long. This
+                // check is about that card, so it takes the cheat's path (the panel's "fire callback"): the moment becomes the card.
+                var held = Sim.MomentOfEntry(e.id);
+                Assert.IsNotNull(held, def + ": the callback queued its moment");
+                Assert.AreEqual(HeldMomentState.Waiting, held.state, def + ": the moment waits to be watched");
+                Assert.IsTrue(Sim.DebugCardMoment(e.id), def + ": the cheat turns it into a card");
                 yield return Frames(2);
                 Debug.Log("[240] " + CardStackView.DebugOpenEntry(e.id));
                 Assert.AreEqual(e.id, Model.Shown?.lead.id, def + ": its card is up");

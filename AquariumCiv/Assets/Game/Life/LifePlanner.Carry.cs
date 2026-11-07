@@ -79,10 +79,11 @@ namespace AquariumCiv.Life
             if (carryPlans.TryGetValue(baby.key, out var plan)) return plan;
             plan = default;
             long day = dayInfo.day;
-            if (R(baby.key, day, 1990) < CarryDayShare && babyCarers.TryGetValue(baby.key, out var carers))
+            bool cheat = DebugToddlers && baby.age >= ToddleAge; // 2026-11-06 cheat: every toddler out all day
+            if ((cheat || R(baby.key, day, 1990) < CarryDayShare) && babyCarers.TryGetValue(baby.key, out var carers))
             {
-                float start = CarryFrom + (CarryUntil - CarryFrom - 3f) * R(baby.key, day, 1991);
-                float end = Math.Min(CarryUntil, start + 1f + 2f * R(baby.key, day, 1992));
+                float start = cheat ? CarryFrom : CarryFrom + (CarryUntil - CarryFrom - 3f) * R(baby.key, day, 1991);
+                float end = cheat ? CarryUntil : Math.Min(CarryUntil, start + 1f + 2f * R(baby.key, day, 1992));
                 float mid = (start + end) * 0.5f;
                 // The parent first, the other if the first is busy at the middle of the window.
                 int turn = (int)(H(baby.key, day, 1993) % (uint)carers.Length);
@@ -122,7 +123,8 @@ namespace AquariumCiv.Life
                 if (plan.carer != null && t.hour >= plan.start && t.hour < plan.end)
                 {
                     var ca = PlanBase(plan.carer, t);
-                    if (CanHold(ca.kind, plan.onBack)) { a.carriedBy = plan.carer.who; a.carryOnBack = plan.onBack; }
+                    bool foot = OnFoot(p, ca, t); // 2026-11-06: a walking-age one toddles after them for the short walks
+                    if (foot || CanHold(ca.kind, plan.onBack)) { a.carriedBy = plan.carer.who; a.carryOnBack = plan.onBack && !foot; a.carryOnFoot = foot; }
                 }
                 return;
             }
@@ -130,9 +132,12 @@ namespace AquariumCiv.Life
             foreach (var b in babies)
             {
                 var plan = CarryOf(b);
-                if (plan.carer != p || t.hour < plan.start || t.hour >= plan.end || !CanHold(a.kind, plan.onBack)) continue;
+                if (plan.carer != p || t.hour < plan.start || t.hour >= plan.end) continue;
+                bool foot = OnFoot(b, a, t); // 2026-11-06
+                if (!foot && !CanHold(a.kind, plan.onBack)) continue;
                 a.carrying = b.who;
-                a.carryOnBack = plan.onBack;
+                a.carryOnBack = plan.onBack && !foot;
+                a.carryOnFoot = foot;
                 return;
             }
         }
@@ -148,6 +153,7 @@ namespace AquariumCiv.Life
         {
             if (a.carrying.IsNone || !byKey.TryGetValue(a.carrying.Key, out var b)) return "";
             string name = b.n != null ? b.n.FullName : "a baby";
+            if (a.carryOnFoot) return $", {(b.n != null ? name : "a little one")} toddling after them"; // 2026-11-06
             return a.carryOnBack ? $", {name} on their back" : $", {name} in their arms";
         }
     }

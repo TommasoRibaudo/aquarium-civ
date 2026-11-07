@@ -50,6 +50,7 @@ namespace AquariumCiv.View
             var sim = Sim;
             if (sim == null) return "no box";
             string why = sim.DilemmaWhyNot(id);
+            if (why == SimCore.NobodyDiedWhy) { sim.DebugKillOldest(); why = sim.DilemmaWhyNot(id); } // #346: the cheat brings the death it waits for
             if (why != null) return id + " can't be raised here: " + why;
             var d = sim.DebugRaiseDilemma(id);
             if (d == null) return id + " can't be raised here";
@@ -98,6 +99,7 @@ namespace AquariumCiv.View
             if (sim == null) return "no box";
             var e = sim.DebugFireCallbackNow();
             if (e == null) return "no callback left to tell";
+            sim.DebugCardMoment(e.id); // #371 stages a callback: this cheat reads its card, so the held moment becomes one
             string card = CardStackView.DebugOpenEntry(e.id);
             return Saved($"callback: {e.text} ({card})");
         }
@@ -148,6 +150,122 @@ namespace AquariumCiv.View
 
         // ---------------- the panel section ----------------
         /// <summary>Draws the "Dilemmas (P7)" section (IMGUI, inside <see cref="SimDebugPanel"/>). Returns the last action's line, or null.</summary>
+        // ---- #368: the choice fix (raised while watching or on open, paced by hours, "Let them decide") ----
+        /// <summary>#368: raise whichever choice holds now, ignoring the 3-hour gap and the schedule; opens the stack on its card.</summary>
+        public static string RaiseChoiceNow()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseDilemma();
+            if (d == null) return "no choice holds in this box now";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            return Saved($"raised {d.defId} (#{d.id}); {CardStackView.DebugOpenEntry(d.entryId)}");
+        }
+
+        /// <summary>#368: forget the gap: the next watched month raises a choice.</summary>
+        public static string SkipChoiceGap()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            sim.DebugSkipDilemmaGap();
+            return Saved("choice gap skipped: the next watched month raises one (a wish or the first run may hold it)");
+        }
+
+        /// <summary>#368: visits counted, the open choice's visits, hours since the last raise.</summary>
+        public static string ChoiceVisitStatus() => Sim == null ? "no box" : Sim.DilemmaVisitStatus();
+
+        /// <summary>#368: the player was away <paramref name="hours"/> and opens the app: a catch-up, then a visit.</summary>
+        public static string OpenAfter(double hours)
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            bool open = sim.DebugOpenAfter(hours);
+            return Saved($"opened after {hours:0.#} h away; {(open ? "a choice is waiting" : "no choice waiting")}; {sim.DilemmaVisitStatus()}");
+        }
+
+        /// <summary>#368: "Let them decide" on the open choice, on the Card path (through the card when it is up).</summary>
+        public static string LetThemDecide()
+        {
+            var sim = Sim;
+            var d = sim?.OpenDilemma;
+            if (d == null) return "no open dilemma";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            var m = CardStackView.Instance != null ? CardStackView.Instance.Model : null;
+            bool onCard = m != null && m.Face != null && m.Face.kind == CardKind.Dilemma && m.Shown != null && m.Shown.lead.id == d.entryId;
+            bool ok = onCard ? m.LetThemDecide() : sim.LetThemDecide(d.id, DilemmaPath.Card);
+            if (!ok) return "could not hand it back";
+            if (!onCard) GameClock.DilemmaAnswered(d);
+            return Saved($"let them decide {d.defId}: they chose option {d.option + 1}");
+        }
+
+        static void GuiChoiceFix(ref string last)
+        {
+            GUILayout.Label("Choice pacing (#368):");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Raise a choice now")) last = RaiseChoiceNow();
+            if (GUILayout.Button("Skip choice gap")) last = SkipChoiceGap();
+            if (GUILayout.Button("Let them decide")) last = LetThemDecide();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Open after:", GUILayout.Width(70));
+            if (GUILayout.Button("5 min")) last = OpenAfter(5 / 60.0);
+            if (GUILayout.Button("1 h")) last = OpenAfter(1);
+            if (GUILayout.Button("4 h")) last = OpenAfter(4);
+            if (GUILayout.Button("12 h")) last = OpenAfter(12);
+            GUILayout.EndHorizontal();
+            GUILayout.Label(ChoiceVisitStatus());
+        }
+
+        // ---- #372: small choices (naming a notable's newborn) ----
+        /// <summary>#372: raise the naming of a notable's newborn now (a newborn of a wed couple is made first if none waits); opens the stack on its card.</summary>
+        public static string SmallChoiceNow()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseNaming();
+            if (d == null) return "no two adults to be parents in this box";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            return Saved($"raised {d.defId} (#{d.id}): {sim.QuestionOf(d)}; {CardStackView.DebugOpenEntry(d.entryId)}");
+        }
+
+        /// <summary>#372: a baby is born to a wed notable couple (the two free adults are wed first), waiting for a name.</summary>
+        public static string NotableNewborn()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var c = sim.DebugMakeNotableNewborn();
+            return c == null ? "no two adults to be parents in this box" : Saved($"{c.FullName} was born (waiting for a name)");
+        }
+
+        static void GuiSmallChoices(ref string last)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Small (#372):", GUILayout.Width(80));
+            if (GUILayout.Button("Small choice now (naming)")) last = SmallChoiceNow();
+            if (GUILayout.Button("Notable newborn")) last = NotableNewborn();
+            GUILayout.EndHorizontal();
+            // ---- t4-fixes: the everyday small choices (the story at the fire, supper) ----
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Everyday:", GUILayout.Width(80));
+            if (GUILayout.Button("Small: who tells the story")) last = EverydaySmallNow(SmallChoices.Story);
+            if (GUILayout.Button("Small: supper")) last = EverydaySmallNow(SmallChoices.Supper);
+            GUILayout.EndHorizontal();
+        }
+
+        /// <summary>t4-fixes: raise the story or the supper small choice now; opens the stack on its card.</summary>
+        public static string EverydaySmallNow(string kind)
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseSmall(kind);
+            if (d == null) return "fewer than two adults in this box";
+            GameClock.Instance?.DilemmaTracker()?.MarkCheat(d.id);
+            GameClock.Instance?.DilemmaTracker()?.Observe(sim, GameClock.Tel);
+            return Saved($"raised {d.defId} (#{d.id}): {sim.QuestionOf(d)}; {CardStackView.DebugOpenEntry(d.entryId)}");
+        }
+
         public static string Gui()
         {
             string last = null;
@@ -180,6 +298,8 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Leave")) last = LeaveBox();
             GUILayout.EndHorizontal();
             GUILayout.Label(BoxStatus());
+            GuiChoiceFix(ref last);
+            GuiSmallChoices(ref last);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Fire next callback")) last = FireCallback();
             if (GUILayout.Button("Report")) last = Report();

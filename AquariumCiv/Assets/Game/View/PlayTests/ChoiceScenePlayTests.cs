@@ -85,7 +85,9 @@ namespace AquariumCiv.View.PlayTests
             foreach (var p in Choice.Stage.Pins())
             {
                 Assert.IsTrue(pv.TryGetDollPosition(p.who, out var at), when + ": " + p.who + " is out");
-                Assert.Less((at - new Vector2(p.x, p.z)).magnitude, 0.06f, when + ": " + p.who + " stands on their spot");
+                var act = pv.Activities.FirstOrDefault(a => a.who == p.who);
+                Assert.Less((at - new Vector2(p.x, p.z)).magnitude, 0.06f, when + ": " + p.who + " stands on their spot"
+                    + $" (doing {act.kind}/{act.source}, moving {act.moving}, staged moments playing {StagedMoments.Playing}, at {at}, pin ({p.x:0.00}, {p.z:0.00}))");
             }
             Assert.Greater(Choice.HaloAlpha(0), 0.5f, when + ": a halo on the first");
             Assert.Greater(Choice.HaloAlpha(1), 0.5f, when + ": a halo on the second");
@@ -107,10 +109,23 @@ namespace AquariumCiv.View.PlayTests
         }
 
         // Others' lazy one-offs (the speaker ring, the chatter marks) appear on first use: not ours, not a leak (as in AssertNoNewRoots).
-        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks" };
-        static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
-            .Count(r => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
-                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0);
+        // HitFx: a scene root since batch 1; its puff renderer is made on the first hit. RitualBubbles (#370): the staged moments'
+        // glyphs, one mesh made on the first bubble and kept (off) after, exactly like ChatterMarks.
+        static readonly string[] LazyRoots = { "SpeakerRing", "ChatterMarks", "HitFx", "RitualBubbles" };
+        /// <summary>Not ours and not a leak: the doll's own, the lazy one-offs, and the answer's consequence prop (#371: the sim places
+        /// it when the Keeper answers, it is meant to stay in the box).</summary>
+        static bool Counted(MeshRenderer r) => r != null && r.gameObject.scene.IsValid() && r.GetComponentInParent<PegDollView>() == null
+                        && System.Array.IndexOf(LazyRoots, r.transform.root.name) < 0 && !r.name.StartsWith("Consequence_");
+        static int Renderers() => Resources.FindObjectsOfTypeAll<MeshRenderer>().Count(Counted);
+        static System.Collections.Generic.List<string> RendererNames() => Resources.FindObjectsOfTypeAll<MeshRenderer>()
+            .Where(Counted)
+            .Select(r => r.transform.root.name + "/" + r.name + (r.gameObject.activeInHierarchy ? "" : " (off)")).ToList();
+        static string AddedRenderers(System.Collections.Generic.List<string> before)
+        {
+            var added = RendererNames();
+            foreach (var n in before) added.Remove(n);
+            return string.Join(", ", added);
+        }
         static int Roots() => RootNames().Count;
         static System.Collections.Generic.List<string> RootNames()
         {
@@ -127,6 +142,7 @@ namespace AquariumCiv.View.PlayTests
             var added = now.ToList();
             foreach (var n in before) added.Remove(n);
             Debug.Log($"[ChoiceScene] {when}: roots {before.Count} -> {now.Count}" + (added.Count > 0 ? " (new: " + string.Join(", ", added) + ")" : ""));
+            added.RemoveAll(n => System.Array.IndexOf(LazyRoots, n) >= 0); // others' lazy one-offs: logged, not counted
             Assert.IsFalse(added.Any(n => n.Contains("Choice")), when + ": a root of the choice scene was left: " + string.Join(", ", added));
             Assert.LessOrEqual(added.Count, 1, when + ": new roots " + string.Join(", ", added));
         }
@@ -137,7 +153,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return OpenBox(1170, 2532);
             yield return ToTheCard("camp_fire");
-            var roots = RootNames(); int renderers = Renderers();
+            var roots = RootNames(); int renderers = Renderers(); var rendererNames = RendererNames();
             var d = Sim.OpenDilemma;
             yield return ShowTheChoice("who");
             AssertApart("who", out int left);
@@ -165,7 +181,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, ChoiceObjects(), "no prop, halo or traveller left");
             Assert.AreEqual(0, pv.PinCount, "nobody pinned");
             AssertNoNewRoots(roots, "who");
-            Assert.LessOrEqual(Renderers(), renderers, "no leaked renderers");
+            Assert.LessOrEqual(Renderers(), renderers, "no leaked renderers: " + AddedRenderers(rendererNames));
             Debug.Log($"[ChoiceScene] sanity: roots {roots.Count} -> {Roots()}, renderers {renderers} -> {Renderers()}, choice objects {ChoiceObjects()}");
             AssertNoErrors("who by touch");
         }
@@ -175,7 +191,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return OpenBox(1170, 2532);
             yield return ToTheCard("camp_remember");
-            var roots = RootNames(); int renderers = Renderers();
+            var roots = RootNames(); int renderers = Renderers(); var rendererNames = RendererNames();
             var d = Sim.OpenDilemma;
             yield return ShowTheChoice("tradition");
             yield return Tap("cards-showme-back");
@@ -191,7 +207,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(0, ChoiceObjects(), "nothing left behind");
             Assert.AreEqual(0, PeopleView.Find().PinCount);
             AssertNoNewRoots(roots, "leave");
-            Assert.LessOrEqual(Renderers(), renderers);
+            Assert.LessOrEqual(Renderers(), renderers, "no leaked renderers: " + AddedRenderers(rendererNames));
             // The next Show me stages it again.
             yield return ShowTheChoice("tradition again");
             Assert.AreEqual(d.id, Choice.Stage.dilemmaId);
@@ -282,9 +298,10 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("241-near-miss-750x1334");
             // A real touch still answers.
             Assert.IsTrue(Choice.TryScreenOf(0, out var at));
+            string before = $"state {Choice.State}, side {Choice.SideAt(at, out var sd)} ({sd:0}), at {at}, screen {Screen.width}x{Screen.height}"; // batch 5: why a side tap missed
             yield return TapAt(at);
             yield return Frames(3);
-            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch on a side still answers");
+            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch on a side still answers: " + before + $" -> {Choice.State}");
             AssertNoErrors("near miss");
         }
 
@@ -306,6 +323,103 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(sheet.IsOpen, "back once the building card closes");
             Assert.AreEqual(CardKind.Dilemma, Model.Face.kind);
             AssertNoErrors("building over");
+        }
+
+        /// <summary>t1-moments (visit-loop 2.4, the fail item of tester run 1): a choice held for the next open is staged in the box
+        /// first, by itself, with no Show me; the card peek is still there.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AHeldChoiceIsStagedInTheBoxOnTheOpenWithoutShowMe()
+        {
+            yield return OpenBox(1170, 2532);
+            DilemmaCheats.Toggle(true); // batch 5: dilemmas are off in the Editor (tooling 2026-11-06), and then BeginVisit never holds the choice for the open
+            Dilemma d = null;
+            for (int i = 0; i < 4 && d == null; i++)
+            {
+                d = Sim.DebugRaiseDilemma("camp_fire");
+                if (d == null) { SimLayoutSource.DebugSkipYears(1f); yield return null; }
+            }
+            Assert.IsNotNull(d);
+            GameClock.DebugAway(24); // away a day and back: an open with the choice waiting
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting, 90f);
+            Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, $"staged in the box on the open, no Show me tapped (batch 5: why {HeldMomentStage.Instance?.LastWhy}, due {Sim.ChoiceStageDue}, moment first {Sim.MomentBeforeChoice()}, busy {HeldMomentStage.BusyReason()}, open {Sim.OpenDilemma?.id})");
+            Assert.IsFalse(Sim.ChoiceStageDue, "once per open");
+            Assert.IsNotNull(Choice.Stage);
+            Assert.AreEqual(d.id, Sim.OpenDilemma?.id, "still the same open choice, with its card");
+            Assert.IsTrue(Choice.InBox, "staged in the box by itself");
+            yield return Shot("t1-held-choice-staged-on-open");
+
+            // t3-choice (tester run 2 A): it holds while the player looks at the box; it went Drifting after 1.5 s before.
+            yield return new WaitForSecondsRealtime(10f);
+            Assert.AreEqual(ChoiceSceneView.Phase.Waiting, Choice.State, "10 s later the people still wait: " + ChoiceSceneView.DebugStatus());
+            Assert.IsTrue(Choice.Answerable, "a touch answers");
+            var pv = PeopleView.Find();
+            foreach (var p in Choice.Stage.Pins())
+                Assert.IsTrue(pv.TryGetDollPosition(p.who, out var at) && (at - new Vector2(p.x, p.z)).magnitude < 0.08f, p.who + " is still at the spot");
+            Assert.IsTrue(Choice.BoxBarUp, "the bar invites the touch without opening the card");
+            var bar = Choice.UiRoot.Q("choice-bar");
+            Assert.IsTrue(Shown(bar), "choice-bar on screen");
+            Assert.AreEqual(CardStackView.ChoiceNote, bar.Q<Label>("choice-bar-text").text);
+            var let = Choice.UiRoot.Q("choice-let");
+            Assert.IsTrue(Shown(let) && let.pickingMode == PickingMode.Position, "Let them decide on the bar");
+            Assert.GreaterOrEqual(let.worldBound.height, 121f - 1f, "44 pt tall (tester run 2 E)");
+            // t3-choice F: the tags keep the gutter from the screen's sides.
+            for (int i = 0; i < 2; i++)
+            {
+                var tag = Choice.UiRoot.Q("choice-tag-" + i);
+                if (!Shown(tag)) continue;
+                Assert.GreaterOrEqual(tag.worldBound.xMin, ChoiceSceneView.TagGutter - 1f, "tag " + i + " clear of the left edge");
+                Assert.LessOrEqual(tag.worldBound.xMax, Choice.UiRoot.worldBound.width - ChoiceSceneView.TagGutter + 1f, "tag " + i + " clear of the right edge");
+            }
+            yield return Shot("t3-held-choice-10s-later");
+
+            // A touch on an option in the box answers it (the Box path), no card opened.
+            Assert.IsTrue(Choice.TryScreenOf(0, out var s0), "option 0 on screen");
+            Assert.AreNotEqual(CardStackMode.Open, Model.Mode);
+            yield return TapAt(s0);
+            yield return Frames(3);
+            Assert.AreEqual(DilemmaState.Answered, d.state, "a touch in the box answers: " + ChoiceSceneView.DebugStatus());
+            Assert.AreEqual(DilemmaPath.Box, d.path);
+            Assert.AreEqual(ChoiceSceneView.Phase.Reacting, Choice.State);
+            Assert.IsFalse(Shown(Choice.UiRoot.Q("choice-let")), "batch 7: Let them decide goes once it is answered");
+            Assert.IsTrue(GameHud.Instance.ToolsLaneTaken, "batch 7: History stays out from under the bar while it shows the answer");
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, 30f);
+            Assert.IsFalse(Choice.BoxBarUp, "the bar goes with the scene");
+            Assert.IsFalse(GameHud.Instance.ToolsLaneTaken, "and History comes back");
+            AssertNoErrors("held choice staged");
+        }
+
+        /// <summary>t3-choice (tester run 2 D): a choice raised while the player watches: the peek switches to it with the "?" mark,
+        /// and the people stage it in the box.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator AChoiceRaisedLiveTakesThePeekAndIsStaged()
+        {
+            yield return OpenBox(1170, 2532);
+            DilemmaCheats.Toggle(true);
+            Assert.IsTrue(Model.DebugPrepare(3), "a return's peek with older stories");
+            yield return Frames(4);
+            Dilemma d = null;
+            for (int i = 0; i < 4 && d == null; i++)
+            {
+                d = Sim.DebugRaiseDilemma("camp_fire");
+                if (d == null) { SimLayoutSource.DebugSkipYears(1f); yield return null; }
+            }
+            Assert.IsNotNull(d);
+            Sim.DebugHoldChoiceForOpen(); // what a live raise does (TryRaiseDilemma); the cheat raises around it
+            yield return Until(() => Model.PeekIs(d.entryId), 10f);
+            Assert.IsTrue(Model.PeekIs(d.entryId), "the peek switched to the new choice");
+            Assert.IsTrue(Cards.Root.Q("cards-peek").ClassListContains("kg-peek--choice"), "and wears the ? mark");
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Waiting, 60f);
+            Assert.IsTrue(Choice.InBox, "staged in the box while watched: " + HeldMomentStage.Instance?.LastWhy);
+            yield return Shot("t3-live-choice-peek-and-stage");
+            Assert.IsTrue(ChoiceSceneView.DebugRelax().StartsWith("let go"));
+            yield return Frames(3);
+            Assert.AreEqual(ChoiceSceneView.Phase.Drifting, Choice.State, "it lets go");
+            Assert.IsFalse(Choice.BoxBarUp);
+            yield return Until(() => Choice.State == ChoiceSceneView.Phase.Idle, 30f);
+            yield return Until(() => Model.PeekIs(d.entryId), 10f);
+            Assert.IsTrue(Model.PeekIs(d.entryId), "still one touch away on the peek");
+            Assert.AreEqual(DilemmaState.Open, d.state, "never resolves unseen");
+            AssertNoErrors("live choice");
         }
 
         public override void TearDown()

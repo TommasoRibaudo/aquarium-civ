@@ -1,0 +1,69 @@
+{
+  "name": "363-hug",
+  "notes": "#363 B7.d as the game triggers it (user 2026-11-06 'Hugs are fine. Add them.'; View/HugDirector.cs): a reunion. The hunter is home with the catch (the hunt's CarryBack turns to Skin at the fire, the hide in hand, a bundle); their partner, sitting out 0.9 u off, gets up and they meet halfway: arms wide on the way in, wrap (arms x85, z inward 10, squash .92, lean 10) with the hit on arrival, hold 1.8 s swaying roll +-10 at 0.8 Hz (visit loop: longer, wider arms, a heart over the carer) in opposite directions, step back 0.05 u with a tiny hop, arms drop; then the hunter goes on to skin the catch. Not forced: BeatFlags.Hugs is on by default. Rare on purpose: a pair once a view day, 2-6 hugs a day in the box by population, none within 25 s of another (Life/HugRules.cs). The other triggers: the wedding's join after the vow (370-wedding), two rivals the leader stepped between as their bicker ends, a parent and a kid at dawn or in the evening (363-hug-parent-kid). knownGaps react: the partner answers in its pose (wraps, squashes) on the hug's own frame, which the bench can't see as an answer. AnimLab: cheat 'Hug now' (the two nearest), or a hunt with a catch near a partner.",
+  "duration": 4.85,
+  "fps": 30,
+  "warmup": 1,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.0,
+      0.0
+    ],
+    "span": 1.3
+  },
+  "sheet": {
+    "from": 0.6,
+    "to": 4.85,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6
+  },
+  "knownGaps": [
+    "react"
+  ],
+  "pair": {
+    "kind": "Hug",
+    "members": [
+      "hunter",
+      "partner"
+    ],
+    "t0": 1.0
+  },
+  "objects": [
+    {
+      "id": "fire",
+      "kind": "fire",
+      "pos": [
+        -0.55,
+        0.15
+      ]
+    }
+  ],
+  "dolls": [
+    {
+      "id": "hunter",
+      "seed": 61,
+      "role": "hunter",
+      "pos": [
+        -0.4,
+        0.0
+      ],
+      "style": "Stand",
+      "prop": "Bundle",
+      "target": "partner"
+    },
+    {
+      "id": "partner",
+      "seed": 62,
+      "role": "partner",
+      "pos": [
+        0.5,
+        0.05
+      ],
+      "style": "Stand"
+    }
+  ]
+}

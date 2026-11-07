@@ -60,6 +60,85 @@ namespace AquariumCiv.View
         /// <summary>Tests and the debug panel: watched without the card (the card's bar normally says so).</summary>
         public static bool DebugWatch;
 
+        /// <summary>t3-choice (tester run 2 A): a choice staged in the box by itself (held for the open, or raised live) holds its cast
+        /// while the player looks at the box, at most this long (real seconds); then it relaxes and stays one touch away on the peek.</summary>
+        public const float BoxHoldSeconds = 80f;
+        /// <summary>t3-choice F: a tag keeps at least this far from the screen's sides (panel units, ~12 pt), plus the safe area.</summary>
+        public const float TagGutter = 33f;
+        /// <summary>Staged in the box by itself, not from the card's Show me: its own bar ("Touch one." and "Let them decide").</summary>
+        public bool InBox => inBox && State != Phase.Idle;
+        /// <summary>Tests: real seconds the box-staged choice has been held.</summary>
+        public float BoxSeconds => boxT;
+
+        /// <summary>t3-choice: the rule a box-staged choice holds by (pure, EditMode-tested): the app in front, nothing else open over
+        /// the box, the scene on camera, and not past <see cref="BoxHoldSeconds"/>.</summary>
+        public static bool BoxHolds(float seconds, bool appInFront, bool somethingElseOpen, bool onCamera) =>
+            appInFront && !somethingElseOpen && onCamera && seconds < BoxHoldSeconds;
+
+        /// <summary>t3-choice F: a tag's centre (panel units) kept <paramref name="gutter"/> from both sides of a panel <paramref name="width"/>
+        /// wide (<paramref name="left"/>/<paramref name="right"/>: the safe-area insets). A tag wider than the room sits in the middle.</summary>
+        public static float ClampTagX(float x, float halfWidth, float width, float gutter, float left = 0f, float right = 0f)
+        {
+            if (width <= 0f) return x;
+            float lo = left + gutter + halfWidth, hi = width - right - gutter - halfWidth;
+            return hi < lo ? (left + width - right) * 0.5f : Mathf.Clamp(x, lo, hi);
+        }
+
+        /// <summary>t4-fixes (tester run 3: "full packs" over "a place by the fire" while the cast walked in): two tags keep at least this
+        /// much clear between them (panel units).</summary>
+        public const float TagSeparation = 36f;
+        /// <summary>t4-fixes: a side's person counts as arrived this near their spot (box units), and every side counts as settled after
+        /// this many real seconds whatever (a doll held up on the way never hides its tag for good).</summary>
+        public const float SettleDistance = 0.06f, SettleMaxSeconds = 4f;
+
+        /// <summary>t4-fixes: a side's tag (and a touch on its walking people) waits until its cast has nearly arrived: the farthest of
+        /// them is within <see cref="SettleDistance"/> of their spot, or the scene has waited <see cref="SettleMaxSeconds"/>.</summary>
+        public static bool SideSettled(float farthest, float seconds) => farthest <= SettleDistance || seconds >= SettleMaxSeconds;
+
+        /// <summary>t4-fixes (tester item 6): a tag's mark means something: the option's own mark, else a person for a who-choice, else none.</summary>
+        public static string TagMark(DilemmaOptionView o) =>
+            o == null ? null : !string.IsNullOrEmpty(o.icon) ? o.icon : o.personId >= 0 ? "person" : null;
+
+        /// <summary>
+        /// t4-fixes: two tags never overlap. Each tag hangs by its bottom centre (<paramref name="a"/>, <paramref name="b"/>: panel units,
+        /// y down) and is <paramref name="sizeA"/> / <paramref name="sizeB"/> big. When their boxes, grown by <paramref name="gap"/>, overlap,
+        /// they are pushed apart side by side (the left one stays left) if both fit between <paramref name="minX"/> and
+        /// <paramref name="maxX"/>; otherwise the higher one goes up (not above <paramref name="minTop"/>) and the lower one down by the rest.
+        /// Tags already apart are left where they are.
+        /// </summary>
+        public static void SeparateTags(ref Vector2 a, ref Vector2 b, Vector2 sizeA, Vector2 sizeB, float gap, float minX, float maxX, float minTop)
+        {
+            float needX = (sizeA.x + sizeB.x) * 0.5f + gap, needY = (sizeA.y + sizeB.y) * 0.5f + gap;
+            float cyA = a.y - sizeA.y * 0.5f, cyB = b.y - sizeB.y * 0.5f;
+            float ox = needX - Mathf.Abs(a.x - b.x), oy = needY - Mathf.Abs(cyA - cyB);
+            if (ox <= 0f || oy <= 0f) return;
+            bool aLeft = a.x <= b.x;
+            float wL = aLeft ? sizeA.x : sizeB.x, wR = aLeft ? sizeB.x : sizeA.x;
+            if (maxX - minX >= wL + wR + gap)
+            {
+                float l = aLeft ? a.x : b.x, r = aLeft ? b.x : a.x, mid = (l + r) * 0.5f;
+                // Apart about their middle, by just enough, then slid back inside the sides together.
+                l = mid - needX * 0.5f; r = mid + needX * 0.5f;
+                float shift = Mathf.Max(0f, minX - (l - wL * 0.5f)) - Mathf.Max(0f, r + wR * 0.5f - maxX);
+                l += shift; r += shift;
+                if (aLeft) { a.x = l; b.x = r; } else { b.x = l; a.x = r; }
+                return;
+            }
+            // Too wide to sit side by side: one above the other. The higher one goes up as far as the top allows, the lower one takes the rest.
+            bool aUp = cyA <= cyB;
+            float hUp = aUp ? sizeA.y : sizeB.y;
+            float upY = aUp ? a.y : b.y;
+            float lift = Mathf.Min(oy, Mathf.Max(0f, upY - hUp - minTop));
+            if (aUp) { a.y -= lift; b.y += oy - lift; }
+            else { b.y -= lift; a.y += oy - lift; }
+        }
+
+        bool inBox, appAway;
+        float boxT;
+        GlassBanner boxBar;
+        GlassButton letBtn;
+        readonly string[] labels = { "", "" };
+
         BoxView box;
         Transform root;
         readonly GameObject[] halos = new GameObject[2];
@@ -72,6 +151,7 @@ namespace AquariumCiv.View
         MaterialPropertyBlock block;
         GameObject uiGo;
         VisualElement uiRoot;
+        VisualElement letRow;       // #368: "Let them decide" (choice-let), while the question waits and the player watches
         readonly GlassTag[] tags = new GlassTag[2];
         float phaseT, clock;
         bool watchedSeen, said;
@@ -106,12 +186,23 @@ namespace AquariumCiv.View
             Instance = this;
             box = GetComponent<BoxView>();
             CardStackView.DilemmaShowMeHook = Offer;
+            UiInput.Add(IsOverUi);
+        }
+
+        /// <summary>A touch on the choice's bar or "Let them decide" is the UI's, not the world's (the tags stay world taps: they answer).</summary>
+        bool IsOverUi(Vector2 screen)
+        {
+            if (uiRoot?.panel == null) return false;
+            var p = RuntimePanelUtils.ScreenToPanel(uiRoot.panel, new Vector2(screen.x, Screen.height - screen.y));
+            if (boxBarUp && boxBar != null && boxBar.worldBound.Contains(p)) return true;
+            return letBtn != null && letBtn.pickingMode == PickingMode.Position && letBtn.resolvedStyle.display != DisplayStyle.None && letBtn.worldBound.Contains(p);
         }
 
         void OnDisable()
         {
             if (Instance != this) return;
             Instance = null;
+            UiInput.Remove(IsOverUi);
             if (CardStackView.DilemmaShowMeHook == (System.Func<DilemmaView, bool>)Offer) CardStackView.DilemmaShowMeHook = null;
             End();
             Kill(haloMesh); Kill(haloMat);
@@ -119,6 +210,18 @@ namespace AquariumCiv.View
             if (uiGo != null) Kill(uiGo);
             uiGo = null; uiRoot = null;
             tags[0] = tags[1] = null;
+            letRow = null; boxBar = null; letBtn = null; showBarEl = null;
+            if (boxBarUp) { GameHud.Instance?.HideTools(ToolBlock, false); GameHud.Instance?.TakeToolsLane(ToolBlock, false); }
+            boxBarUp = false;
+            boxBarSafe = default;
+        }
+
+        const string ToolBlock = "choice";
+
+        void OnApplicationPause(bool pause)
+        {
+            appAway = pause;
+            if (pause && inBox && State == Phase.Waiting) Relax(); // the app went to the back: Update may not run again before the resume
         }
 
         static void Kill(Object o) { if (o == null) return; if (Application.isPlaying) Destroy(o); else DestroyImmediate(o); }
@@ -143,7 +246,10 @@ namespace AquariumCiv.View
             pv.ClearPins();
             Stage = st;
             Chosen = -1;
+            inBox = false; // the card's Show me (StageInBox sets it after)
+            boxT = 0f;
             question = v.question ?? "";
+            for (int i = 0; i < 2; i++) labels[i] = v.options != null && i < v.options.Length ? v.options[i].label ?? "" : "";
             said = false;
             Build(st, v);
             if (!ownCamera) { saved = (cam.target, cam.yaw, cam.pitch, cam.zoom); ownCamera = true; }
@@ -158,6 +264,19 @@ namespace AquariumCiv.View
             return true;
         }
 
+        /// <summary>Visit-loop 2.4 (t3-choice, tester run 2 A): the open choice staged in the box by itself, held for the open or raised
+        /// while the player watches. The cast stays at its spots while the player looks at the box (<see cref="BoxHolds"/>), the bar says
+        /// "Touch one." with "Let them decide", a touch on a side answers. Not a pop-up: opening anything else lets it go.</summary>
+        public bool StageInBox(DilemmaView v)
+        {
+            if (!Offer(v)) return false;
+            inBox = true;
+            boxT = 0f;
+            boxBar?.Set(CardStackView.ChoiceNote, null);
+            Debug.Log($"[Choice] {Stage.defId} staged in the box by itself (held up to {BoxHoldSeconds:0}s while watched)");
+            return true;
+        }
+
         // ================================================================== the frame
 
         void Update()
@@ -165,6 +284,9 @@ namespace AquariumCiv.View
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             clock += dt;
             StepCamera();
+            bool ask = State == Phase.Waiting && Watched();
+            if (letRow != null) SyncLetRow(ask);
+            if (boxBar != null) SyncBoxBar(inBox && (ask || State == Phase.Reacting));
             if (State == Phase.Idle) return;
             phaseT += dt;
             var pv = PeopleView.Find();
@@ -178,8 +300,9 @@ namespace AquariumCiv.View
             {
                 case Phase.Waiting:
                     if (!open) { End(); return; } // answered on the card, or the people decided
+                    if (inBox) boxT += dt;
                     if (watched) { watchedSeen = true; if (!said && phaseT > 0.6f) SayAsk(); }
-                    else if (watchedSeen || phaseT > 1.5f) { State = Phase.Drifting; phaseT = 0f; Unsay(); break; } // left without a touch
+                    else if (inBox || watchedSeen || phaseT > 1.5f) { Relax(); break; } // left without a touch
                     if (!planner.ChoiceRunning(pv.Now) || LifeClock.RealSecondsBetween(pv.Now.hour, Stage.end) < ExtendBefore) Restage(pv, planner, d);
                     break;
                 case Phase.Drifting:
@@ -208,7 +331,56 @@ namespace AquariumCiv.View
         {
             if (DebugWatch) return true;
             var cards = CardStackView.Instance;
-            return cards != null && cards.ShowingChoice;
+            if (cards != null && cards.ShowingChoice) return true;
+            return inBox && BoxHolds(boxT, !appAway, SomethingElseOpen(), OnCamera());
+        }
+
+        /// <summary>Left without a touch: the people drift back to their day. A box-staged choice lets go for good (until the next open
+        /// or Show me) and comes back on the peek, one touch away.</summary>
+        void Relax()
+        {
+            State = Phase.Drifting;
+            phaseT = 0f;
+            Unsay();
+            if (!inBox) return;
+            inBox = false;
+            CardStackView.Instance?.PeekOpenChoice();
+            Debug.Log($"[Choice] the box-staged choice relaxed after {boxT:0.0}s: the peek keeps it");
+        }
+
+        /// <summary>The player opened something over the box, or the box isn't theirs to touch now.</summary>
+        static bool SomethingElseOpen()
+        {
+            var cards = CardStackView.Instance;
+            if (cards != null && cards.StackOpen) return true;
+            var hud = GameHud.Instance;
+            if (hud != null && (hud.SheetOpen || hud.CameraMode || hud.CleanMode || hud.Hand != GameHud.KitTool.None || !hud.IsVisible)) return true;
+            var person = PersonCardView.Instance;
+            if (person != null && (person.AnyOpen || person.BuildingOpen)) return true;
+            var c = GameClock.Instance;
+            if (c != null && (c.Held || c.Visiting)) return true;
+            var mp = MomentPlayer.Instance;
+            if (mp != null && mp.Playing) return true;
+            var tl = TimeLapseView.Find();
+            if (tl != null && tl.Active) return true;
+            var et = EveningTalkView.Instance;
+            if (et != null && et.Open) return true;
+            var sv = ShapingView.Instance;
+            if (sv != null && sv.ShapeMode) return true;
+            var bc = BoxCompleteController.Instance;
+            return bc != null && (bc.Playing || bc.ShelfOpen);
+        }
+
+        /// <summary>The scene's middle is on screen (the camera is on the camp). While the camera flies in, it counts as on.</summary>
+        bool OnCamera()
+        {
+            var bc = Cam;
+            var cam = Camera.main;
+            if (bc == null || cam == null || Stage == null) return false;
+            if (bc.IsFlying) return true;
+            var m = Middle(Stage);
+            var v = cam.WorldToViewportPoint(World(m.x, m.y));
+            return v.z > 0f && v.x > 0.02f && v.x < 0.98f && v.y > 0.02f && v.y < 0.98f;
         }
 
         void Restage(PeopleView pv, LifePlanner planner, Dilemma d)
@@ -232,6 +404,8 @@ namespace AquariumCiv.View
             ClearWorld();
             State = Phase.Idle;
             Stage = null;
+            inBox = false;
+            if (boxBar != null) SyncBoxBar(false); // batch 7: the bar goes with the scene in the same frame (Update syncs it before End)
         }
 
         // ================================================================== a touch
@@ -256,7 +430,7 @@ namespace AquariumCiv.View
             float r = PickRadius * Screen.width / GameUiPanel.ReferenceWidth;
             int best = -1;
             for (int i = 0; i < 2; i++)
-                foreach (var (feet, top) in Figures(i))
+                foreach (var (feet, top) in TouchFigures(i))
                 {
                     var a = cam.WorldToScreenPoint(feet);
                     var b = cam.WorldToScreenPoint(top);
@@ -273,7 +447,7 @@ namespace AquariumCiv.View
             screen = default;
             var cam = Camera.main;
             if (Stage == null || cam == null || side < 0 || side > 1) return false;
-            foreach (var (feet, top) in Figures(side))
+            foreach (var (feet, top) in SpotFigures(side)) // t4-fixes: where the side stands (a touch there always counts)
             {
                 var s = cam.WorldToScreenPoint((feet + top) * 0.5f);
                 if (s.z <= 0f) continue;
@@ -309,6 +483,7 @@ namespace AquariumCiv.View
             foreach (var t in travellers) t.home = t.pos;
             Sfx.Play(CueLibrary.Cheer);
             if (cards != null) cards.ChoiceAnswered();
+            if (inBox && boxBar != null) boxBar.Set($"The Keeper chose {labels[option]}.", null); // as the card's bar says it
             Debug.Log($"[Choice] {Stage.defId}: the Keeper chose option {option} in the box");
             return true;
         }
@@ -363,7 +538,7 @@ namespace AquariumCiv.View
             {
                 var o = v.options[i];
                 tags[i].Word = o.label;
-                if (o.personId < 0) tags[i].Mark = st.kind switch { DilemmaKind.Tradition => "scroll", DilemmaKind.Strangers => i == 0 ? "person" : "herd", _ => "pin" };
+                tags[i].Mark = TagMark(o); // t4-fixes: set every time (a reused tag kept the last scene's mark: a pot on "Agnes")
                 tags[i].style.display = DisplayStyle.None;
                 haloA[i] = 0f;
             }
@@ -422,6 +597,31 @@ namespace AquariumCiv.View
             return go;
         }
 
+        VisualElement showBarEl;
+
+        /// <summary>Visit loop: "Let them decide" is really hidden (display none and not visible, taps off) unless the question waits and the player watches;
+        /// shown, it sits just above the cards' bar (whose height and lift vary with the safe area and a wrapped answer line), never behind it.</summary>
+        void SyncLetRow(bool on)
+        {
+            // t3-choice: staged in the box by itself, the button sits in the choice's own bar; from the card, over the card's bar.
+            var home = inBox && boxBar != null ? boxBar.End : letRow;
+            if (letBtn != null && letBtn.parent != home) home.Add(letBtn);
+            bool rowOn = on && !inBox;
+            letRow.style.display = rowOn ? DisplayStyle.Flex : DisplayStyle.None;
+            letRow.visible = rowOn;
+            if (letBtn != null) letBtn.pickingMode = on ? PickingMode.Position : PickingMode.Ignore;
+            if (letBtn != null) letBtn.style.display = on ? DisplayStyle.Flex : DisplayStyle.None; // batch 7: gone once answered (the bar stays for the answer line)
+            if (!rowOn) return;
+            if (showBarEl == null && letRow.panel != null) showBarEl = letRow.panel.visualTree.Q("cards-showme-bar");
+            float bottom = 176f;
+            if (showBarEl != null && showBarEl.resolvedStyle.display != DisplayStyle.None && showBarEl.parent != null)
+            {
+                float h = showBarEl.parent.layout.height, top = showBarEl.layout.yMin;
+                if (!float.IsNaN(h) && !float.IsNaN(top) && h > 0f) bottom = Mathf.Max(bottom, h - top + 12f);
+            }
+            letRow.style.bottom = bottom;
+        }
+
         void BuildUi()
         {
             uiGo = new GameObject("ChoiceTags") { hideFlags = HideFlags.DontSave };
@@ -438,6 +638,76 @@ namespace AquariumCiv.View
                 tags[i].style.display = DisplayStyle.None;
                 uiRoot.Add(tags[i]);
             }
+            // #368: every choice can be handed back. The wording is fixed; the people decide, credited as the Keeper's choice.
+            letRow = new VisualElement { name = "choice-let-row", pickingMode = PickingMode.Ignore };
+            letRow.style.position = Position.Absolute;
+            letRow.style.left = 0f; letRow.style.right = 0f; letRow.style.bottom = 176f;
+            letRow.style.flexDirection = FlexDirection.Row;
+            letRow.style.justifyContent = Justify.Center;
+            letRow.style.display = DisplayStyle.None;
+            // t3-choice E: the game's pill (a cream fill and an edge), so it reads on dark soil as on grass; 44 pt tall.
+            letBtn = new GlassButton("Let them decide", () => LetThemDecide(), ButtonKind.Secondary, UiRole.Confirm) { name = "choice-let", Compact = true };
+            letRow.Add(letBtn);
+            uiRoot.Add(letRow);
+            // t3-choice A: a choice staged in the box by itself has no card bar over it: its own, in the tools' lane (the tools step aside),
+            // under the peek: "Touch one." and "Let them decide".
+            boxBar = new GlassBanner(CardStackView.ChoiceNote, null) { name = "choice-bar", pickingMode = PickingMode.Ignore };
+            boxBar.AddToClassList("kg-banner--wrap");
+            boxBar.TitleLabel.name = "choice-bar-text";
+            boxBar.style.display = DisplayStyle.None;
+            uiRoot.Add(boxBar);
+        }
+
+        bool boxBarUp;
+        Rect boxBarSafe;
+
+        void SyncBoxBar(bool on)
+        {
+            if (on && Screen.safeArea != boxBarSafe)
+            {
+                boxBarSafe = Screen.safeArea;
+                var i = GameUiPanel.SafeInsets(boxBarSafe, Screen.width, Screen.height);
+                boxBar.style.bottom = i.w + GameUiPanel.Lane(GameUiPanel.ToolsBottom, i.w);
+                boxBar.style.left = GlassSheet.SidePad + i.x;
+                boxBar.style.right = GlassSheet.SidePad + i.z;
+            }
+            if (on == boxBarUp) return;
+            boxBarUp = on;
+            boxBar.pickingMode = on ? PickingMode.Position : PickingMode.Ignore;
+            GameHud.Instance?.HideTools(ToolBlock, on);
+            GameHud.Instance?.TakeToolsLane(ToolBlock, on);
+            if (on) GlassMotion.Show(boxBar, GlassMotion.SlideOff, null, GlassMotion.SlideMs);
+            else GlassMotion.Hide(boxBar, GlassMotion.SlideOff, GlassMotion.SlideMs);
+        }
+
+        /// <summary>Tests and the tester: the box-staged choice's bar is up.</summary>
+        public bool BoxBarUp => boxBarUp;
+        /// <summary>Tests: the scene's own UI (tags <c>choice-tag-0/1</c>, <c>choice-bar</c>, <c>choice-let</c>).</summary>
+        public VisualElement UiRoot => uiRoot;
+
+        /// <summary>#368: "Let them decide" in the box: the people take their default, credited as the Keeper's choice (final, the Box path);
+        /// they react like to an answer. False when nothing waits.</summary>
+        public bool LetThemDecide()
+        {
+            var sim = Sim;
+            var pv = PeopleView.Find();
+            if (Stage == null || sim == null || State != Phase.Waiting) return false;
+            var cards = CardStackView.Instance;
+            var d = sim.FindDilemma(Stage.dilemmaId);
+            bool ok = cards != null && cards.Model != null && cards.Model.LetThemDecideInBox(Stage.dilemmaId);
+            if (!ok && sim.LetThemDecide(Stage.dilemmaId, DilemmaPath.Box)) { ok = true; GameClock.DilemmaAnswered(d); }
+            if (!ok || d == null) return false;
+            Chosen = d.option;
+            Unsay();
+            State = Phase.Reacting;
+            phaseT = 0f;
+            if (pv != null && pv.Planner != null) pv.Planner.ReactChoice(d.option, pv.Now);
+            foreach (var t in travellers) t.home = t.pos;
+            Sfx.Play(CueLibrary.Cheer);
+            if (cards != null) cards.ChoiceAnswered();
+            if (inBox && boxBar != null && d.option >= 0 && d.option < 2) boxBar.Set($"The Keeper let the people decide: {labels[d.option]}.", null);
+            Debug.Log($"[Choice] {Stage.defId}: the Keeper let the people decide (option {d.option})");
+            return true;
         }
 
         void ClearWorld()
@@ -479,6 +749,56 @@ namespace AquariumCiv.View
 
         Vector3 World(float x, float z) => box.transform.TransformPoint(box.land.OnGround(x, z));
 
+        /// <summary>t4-fixes: the side's figures where they will stand (their spots, the prop, the travellers' places), not where the
+        /// walking dolls are now: the tags hang from these, so a person walking across the other side never drags a tag over it.</summary>
+        IEnumerable<(Vector3 feet, Vector3 top)> SpotFigures(int side)
+        {
+            var s = Stage.sides[side];
+            var pv = PeopleView.Find();
+            foreach (var (who, x, z) in s.people)
+            {
+                var g = World(x, z);
+                float h = pv != null && pv.TryGetDollFeet(who, out var f) && pv.TryGetDollTop(who, out var t) ? Mathf.Max(0.05f, t.y - f.y) : FigureHeight;
+                yield return (g, g + Vector3.up * h); // as tall as the doll is drawn now
+            }
+            if (props[side] != null)
+            {
+                var b = props[side].position;
+                yield return (b, b + Vector3.up * ChoiceProps.TopOf(s.Prop));
+            }
+            if (s.travellers.Count > 0)
+                foreach (var t in travellers)
+                {
+                    var g = World(t.home.x, t.home.y);
+                    yield return (g, g + Vector3.up * FigureHeight);
+                }
+        }
+
+        /// <summary>t4-fixes: what a touch on a side hits: its spots always; its walking people only once they have arrived (a touch on a
+        /// doll still crossing the scene is not taken as an answer for its side).</summary>
+        IEnumerable<(Vector3 feet, Vector3 top)> TouchFigures(int side)
+        {
+            foreach (var f in SpotFigures(side)) yield return f;
+            if (!Settled(side)) yield break;
+            foreach (var f in Figures(side)) yield return f;
+        }
+
+        /// <summary>t4-fixes: the side's people have (nearly) reached their spots, or the scene has waited long enough.</summary>
+        public bool Settled(int side)
+        {
+            if (Stage == null || side < 0 || side > 1) return false;
+            var pv = PeopleView.Find();
+            float far = 0f, unit = Mathf.Max(1e-4f, box != null ? box.transform.lossyScale.x : 1f);
+            if (pv != null)
+                foreach (var (who, x, z) in Stage.sides[side].people)
+                    if (pv.TryGetDollFeet(who, out var f))
+                    {
+                        var g = World(x, z);
+                        far = Mathf.Max(far, new Vector2(f.x - g.x, f.z - g.z).magnitude / unit);
+                    }
+            return SideSettled(far, phaseT);
+        }
+
         void DrawHalos(PeopleView pv, float dt)
         {
             bool up = State == Phase.Waiting && Watched();
@@ -493,7 +813,7 @@ namespace AquariumCiv.View
                 // Under the middle of the side's figures, a little wider for a group.
                 Vector3 sum = Vector3.zero;
                 int n = 0;
-                foreach (var (feet, _) in Figures(i)) { sum += feet; n++; }
+                foreach (var (feet, _) in SpotFigures(i)) { sum += feet; n++; } // t4-fixes: under where the side stands, as its tag
                 if (n == 0) { go.SetActive(false); continue; }
                 var at = sum / n;
                 float group = Stage.sides[i].travellers.Count > 1 ? 1.5f : Stage.sides[i].people.Count > 1 ? 1.3f : 1f;
@@ -508,26 +828,55 @@ namespace AquariumCiv.View
             }
         }
 
+        readonly bool[] tagOn = new bool[2];
+        readonly Vector2[] tagAt = new Vector2[2], tagSize = new Vector2[2];
+
         void DrawTags(PeopleView pv, Camera cam)
         {
             bool on = State == Phase.Waiting && Watched();
             for (int i = 0; i < 2; i++)
             {
                 var tag = tags[i];
+                tagOn[i] = false;
                 if (tag == null) continue;
-                bool shown = on && haloA[i] > 0.3f && Place(tag, cam, i);
-                tag.style.display = shown ? DisplayStyle.Flex : DisplayStyle.None;
+                // t4-fixes: a side's tag comes once its cast has (nearly) arrived, hung from where they will stand.
+                tagOn[i] = on && haloA[i] > 0.3f && Settled(i) && Place(tag, cam, i, out tagAt[i]);
+                float w = tag.resolvedStyle.width, h = tag.resolvedStyle.height;
+                // Not laid out yet (its first frame up): about a tag's size, so the two never touch even for that frame.
+                tagSize[i] = new Vector2(float.IsNaN(w) || w <= 0f ? 300f : w, float.IsNaN(h) || h <= 0f ? 90f : h);
+            }
+            if (tagOn[0] && tagOn[1] && uiRoot != null)
+            {
+                var inset = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+                float W = uiRoot.layout.width;
+                if (!float.IsNaN(W) && W > 0f)
+                    SeparateTags(ref tagAt[0], ref tagAt[1], tagSize[0], tagSize[1], TagSeparation, inset.x + TagGutter, W - inset.z - TagGutter, inset.y + TagGutter);
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                var tag = tags[i];
+                if (tag == null) continue;
+                if (tagOn[i]) { tag.style.left = tagAt[i].x; tag.style.top = tagAt[i].y; }
+                tag.style.display = tagOn[i] ? DisplayStyle.Flex : DisplayStyle.None;
                 tag.style.opacity = haloA[i];
             }
         }
 
-        /// <summary>Hangs a tag over the side's highest figure, kept on screen.</summary>
-        bool Place(GlassTag tag, Camera cam, int side)
+        /// <summary>Tests and the tester: where a side's tag hangs now (panel units, its bottom centre) and whether it is up.</summary>
+        public bool TagAt(int side, out Vector2 at)
         {
+            at = side >= 0 && side < 2 ? tagAt[side] : default;
+            return side >= 0 && side < 2 && tagOn[side];
+        }
+
+        /// <summary>Where a tag hangs over the side's highest spot, kept on screen (panel units, its bottom centre).</summary>
+        bool Place(GlassTag tag, Camera cam, int side, out Vector2 at)
+        {
+            at = default;
             if (uiRoot?.panel == null) return false;
             Vector3? best = null;
             float bestY = float.MinValue;
-            foreach (var (_, top) in Figures(side))
+            foreach (var (_, top) in SpotFigures(side))
             {
                 var s = cam.WorldToScreenPoint(top);
                 if (s.z > 0f && s.y > bestY) { bestY = s.y; best = s; }
@@ -538,8 +887,9 @@ namespace AquariumCiv.View
             var p = RuntimePanelUtils.ScreenToPanel(uiRoot.panel, new Vector2(sp.x, Screen.height - sp.y));
             float half = tag.resolvedStyle.width * 0.5f, W = uiRoot.layout.width;
             if (float.IsNaN(half)) half = 0f;
-            tag.style.left = W > 0f ? Mathf.Clamp(p.x, half + 16f, Mathf.Max(half + 16f, W - half - 16f)) : p.x;
-            tag.style.top = p.y - 10f;
+            // t3-choice F: never nearer the sides than the gutter and the safe area (tester run 2: 18 px from the edge).
+            var inset = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            at = new Vector2(W > 0f ? ClampTagX(p.x, half, W, TagGutter, inset.x, inset.z) : p.x, p.y - 10f);
             return true;
         }
 
@@ -640,7 +990,7 @@ namespace AquariumCiv.View
             if (landed && !taken && !cam.IsFlying && ((cam.target - landedTarget).magnitude > 0.05f || Mathf.Abs(cam.zoom - landedZoom) > 0.02f)) taken = true;
             var cards = CardStackView.Instance;
             bool cardOpen = cards != null && cards.Model != null && cards.Model.Mode == CardStackMode.Open;
-            if (cardOpen || DebugWatch) return;
+            if (cardOpen || DebugWatch || inBox) return; // t3-choice: a box-staged choice keeps its frame until it is answered or lets go
             ownCamera = false;
             if (!taken) cam.EaseTo(saved.target, saved.yaw, saved.pitch, saved.zoom, ShowMeDirector.ReturnSeconds);
         }
@@ -660,8 +1010,9 @@ namespace AquariumCiv.View
             var v = Instance;
             if (v == null) return "no ChoiceSceneView";
             if (v.Stage == null) return $"choice: {v.State}, last answer {v.Chosen}";
-            return string.Format(CultureInfo.InvariantCulture, "choice: {0} {1:0.0}s, {2}: {3}; halos {4:0.00}/{5:0.00}",
-                v.State, v.phaseT, v.Stage.defId, Describe(v.Stage), v.haloA[0], v.haloA[1]);
+            return string.Format(CultureInfo.InvariantCulture, "choice: {0} {1:0.0}s, {2}: {3}; halos {4:0.00}/{5:0.00}{6}",
+                v.State, v.phaseT, v.Stage.defId, Describe(v.Stage), v.haloA[0], v.haloA[1],
+                v.inBox ? string.Format(CultureInfo.InvariantCulture, "; in the box {0:0}/{1:0}s, watched {2}", v.boxT, BoxHoldSeconds, v.Watched()) : "");
         }
 
         /// <summary>Debug: stage the open dilemma's choice scene without the card (watched until <see cref="DebugLeave"/>).</summary>
@@ -681,6 +1032,16 @@ namespace AquariumCiv.View
         {
             var v = Instance;
             return v == null ? "no ChoiceSceneView" : v.Answer(option) ? DebugStatus() : "no answer (nothing waiting, or closed)";
+        }
+
+        /// <summary>Debug (t3-choice): a box-staged choice lets go now, as after <see cref="BoxHoldSeconds"/> (the peek keeps it).</summary>
+        public static string DebugRelax()
+        {
+            var v = Instance;
+            if (v == null) return "no ChoiceSceneView";
+            if (!v.InBox || v.State != Phase.Waiting) return "no box-staged choice waiting: " + DebugStatus();
+            v.boxT = BoxHoldSeconds;
+            return "let go: " + DebugStatus();
         }
 
         /// <summary>Debug: look away (the people drift back after <see cref="ChoiceScenes.DriftSeconds"/>).</summary>

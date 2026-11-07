@@ -35,6 +35,8 @@ namespace AquariumCiv.Life
         Indoors,
         /// <summary>P8 #266: stamping about in a mist puddle (a kid), and kneeling at one to wash hands or cup the water. Appended so the older values keep their numbers.</summary>
         Stomp, WashHands,
+        /// <summary>#361: at the stash pile, tipping the carried basket onto it (a short stay after the carry). Appended so the older values keep their numbers.</summary>
+        TipLoad,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -62,6 +64,9 @@ namespace AquariumCiv.Life
     {
         None, ToFire, TakeSpear, WalkOut, Stalk, Strike, Bolt, WalkBack, CarryBack, Skin, Cook, Return,
         KidFollow, KidWatch, KidCheer, KidBack,
+        // #362 (added at the end): the thrown spear's aftermath. A miss: FetchSpear, PullSpear (then WalkBack); a catch: ToCatch, PickUp, HoldUp (then CarryBack).
+        // The kid of a catch: KidRun to the hunter, KidEscort home beside him.
+        FetchSpear, PullSpear, ToCatch, PickUp, HoldUp, KidRun, KidEscort,
     }
 
     /// <summary>P8 (#267): the water in a bucket. None = not a bucket; Muddy = scooped from the wet low ground while the pond is dry.</summary>
@@ -91,6 +96,8 @@ namespace AquariumCiv.Life
         BushCell,
         /// <summary>P8 #266: a mist puddle (index = the site cell).</summary>
         Puddle,
+        /// <summary>#371: a thing a choice left in the box (index = <see cref="Sim.ConsequenceProp.id"/>); where a callback's people go. Appended last so the saved ints stay.</summary>
+        Prop,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -173,6 +180,10 @@ namespace AquariumCiv.Life
         ShapingReaction,
         // #224: the choice scene: the people wait on the Keeper's touch, then react to it (LifePlanner.StageChoice)
         Choice,
+        // #370: a held ceremony staged for the Keeper (LifePlanner.StageHeldMoment)
+        HeldMoment,
+        // #367: a small everyday story the background-life director starts (a water run, a pick at a bush; Life/StoryDirector.Planner.cs)
+        LifeStory,
     }
 
     /// <summary>Babies stay home, kids play, adults work, elders sit out and tell stories.</summary>
@@ -222,6 +233,9 @@ namespace AquariumCiv.Life
         public bool enRoute;
         /// <summary>#192: on a baby, who has them now (None = at home, out of sight).</summary>
         public PersonRef carriedBy;
+        /// <summary>User 2026-11-06 "toddling is fine": the walking-age baby is on its own feet, toddling after the carer (on both the carer,
+        /// with <see cref="carrying"/>, and the baby, with <see cref="carriedBy"/>), not in their arms (LifePlanner.Toddle.cs).</summary>
+        public bool carryOnFoot;
         /// <summary>#283: the beat of a hunt this is (None = not a hunt). The step's coordinates come from
         /// <see cref="LifePlanner.HuntStepAt"/>.</summary>
         public HuntPhase hunt;
@@ -271,7 +285,7 @@ namespace AquariumCiv.Life
                     return ActivityGroup.Rest;
                 case ActivityKind.SweepStep: case ActivityKind.HangWashing: case ActivityKind.ChopKindling: case ActivityKind.MindBabies:
                     return ActivityGroup.Chore;
-                case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel:
+                case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;
                 case ActivityKind.Walk:
                     return ActivityGroup.Walk;

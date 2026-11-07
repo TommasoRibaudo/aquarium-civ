@@ -27,7 +27,12 @@ namespace AquariumCiv.View
         /// <summary>#192: the baby this doll carries: a part of the doll, not a walker, shown in the arms or on the back.</summary>
         Transform baby, babyStraps;
         bool babyOnBack;
+        float babyLift; // #370: 0 in the arms, 1 held up over the head
         bool extended;
+        /// <summary>#361: the basket rides in the left hand (the right hand picks): see <see cref="HoldInLeft"/>.</summary>
+        bool inLeft;
+        /// <summary>#361: the basket is in the left hand now (upright whatever the arm does).</summary>
+        public bool BasketIsInLeft => inLeft;
         static readonly Quaternion AlongArm = Quaternion.Euler(180f, 0f, 0f) * Quaternion.Euler(0f, 180f, 0f);
 
         public static PegDollView Create(Transform parent, Material material, PegDoll.Look look, bool kid, int seed)
@@ -94,7 +99,7 @@ namespace AquariumCiv.View
         /// so they swing with it; the arm is raised a little to hold the prop out.</summary>
         public void SetProp(PropKind kind, PropSlot slot)
         {
-            propKind = kind; propSlot = slot;
+            propKind = kind; propSlot = slot; inLeft = false;
             if (prop != null) { if (Application.isPlaying) Destroy(prop.gameObject); else DestroyImmediate(prop.gameObject); prop = null; }
             if (propExtra != null) { if (Application.isPlaying) Destroy(propExtra.gameObject); else DestroyImmediate(propExtra.gameObject); propExtra = null; }
             armR.localRotation = Quaternion.Euler(0, 0, 14f);
@@ -104,6 +109,9 @@ namespace AquariumCiv.View
             if (slot == PropSlot.Hand) armR.localRotation = Quaternion.Euler(-35f, 0, 10f);
             prop = Part(parent, "Prop_" + kind, PegDoll.PropMesh(kind), material, pos * scale, rot);
             prop.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
+            if (kind == PropKind.Rabbit && slot == PropSlot.Hand) prop.localScale *= HeldRabbitScale; // t4-fixes: the catch reads at the default camera
+            if (kind == PropKind.Rabbit && slot == PropSlot.Shoulder) // look-fix: over ONE shoulder, nose to tail front-to-back, the head down the back
+                prop.SetLocalPositionAndRotation(new Vector3(PegDoll.ShoulderX * 0.9f, PegDoll.BodyH + 0.012f, 0.01f) * scale, Quaternion.Euler(-12f, 0f, 0f));
             if (slot == PropSlot.Hand)
             {
                 // Upright in the raised hand, then leaned out from the body for tools (they break the outline).
@@ -123,6 +131,7 @@ namespace AquariumCiv.View
             if (!on)
             {
                 if (baby != null && baby.gameObject.activeSelf) baby.gameObject.SetActive(false);
+                if (babyLift != 0f) LiftBaby(0f); // #370
                 if (babyStraps != null && babyStraps.gameObject.activeSelf) babyStraps.gameObject.SetActive(false);
                 return;
             }
@@ -132,11 +141,25 @@ namespace AquariumCiv.View
             if (babyStraps != null && babyStraps.gameObject.activeSelf != onBack) babyStraps.gameObject.SetActive(onBack);
             if (babyOnBack == onBack) return;
             babyOnBack = onBack;
+            babyLift = 0f; // #370: placed back in the arms below
             var (pos, _) = PegDoll.SlotPose(onBack ? PropSlot.Back : PropSlot.Arms);
             // Arms: held across the chest, the head at the crook. Back: upright in its wrap, looking back over the shoulder.
             var nudge = onBack ? new Vector3(0f, 0.03f, 0.022f) : new Vector3(0f, 0.008f, -0.018f); // the head over the shoulder; out in front of the chest
             baby.SetLocalPositionAndRotation((pos + nudge) * scale, onBack ? Quaternion.Euler(0f, 180f, 0f) : Quaternion.Euler(0f, 0f, -68f));
             baby.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
+        }
+
+        /// <summary>#370: the newborn held up to the glass: 0 in the arms (as <see cref="SetBaby"/> holds it), 1 high over the head,
+        /// upright and facing out (the arms at x 165). Cheap to call every frame.</summary>
+        public void LiftBaby(float k)
+        {
+            k = Mathf.Max(0f, k);
+            if (baby == null || babyOnBack || Mathf.Abs(k - babyLift) < 1e-4f) return;
+            babyLift = k;
+            var (pos, _) = PegDoll.SlotPose(PropSlot.Arms);
+            var held = (pos + new Vector3(0f, 0.008f, -0.018f)) * scale;
+            var high = new Vector3(0f, PegDoll.HeadY + PegDoll.HeadR + 0.04f, -0.03f) * scale;
+            baby.SetLocalPositionAndRotation(Vector3.LerpUnclamped(held, high, k), Quaternion.SlerpUnclamped(Quaternion.Euler(0f, 0f, -68f), Quaternion.identity, Mathf.Min(1f, k)));
         }
 
         /// <summary>Turns a hand tool out along the arm (a strike: the axe head ends up in front, the rod out over the water)
@@ -148,13 +171,52 @@ namespace AquariumCiv.View
             prop.localRotation = extend ? AlongArm : propRest;
         }
 
+        /// <summary>#361: a hand basket in the left hand while the right hand picks or digs (it stays upright whatever the arm does), else back in the right.
+        /// Cheap to call every frame.</summary>
+        public void HoldInLeft(bool on)
+        {
+            on &= prop != null && propSlot == PropSlot.Hand && propKind is PropKind.Basket or PropKind.Bowl; // #365: the meal's bowl rides in the left hand too
+            if (on == inLeft) return;
+            inLeft = on;
+            var (pos, rot) = PegDoll.SlotPose(PropSlot.Hand);
+            if (on) { prop.SetParent(armL, false); prop.localPosition = new Vector3(-pos.x, pos.y, pos.z) * scale; prop.localRotation = Quaternion.Inverse(armL.localRotation) * rot; }
+            else { prop.SetParent(armR, false); prop.localPosition = pos * scale; prop.localRotation = propRest; }
+        }
+
         /// <summary>The arms (and the hand tool's grip) for one frame of a <see cref="DollPose"/>. The whole-doll part of the
         /// pose (lean, squash, offset) goes on this transform; <see cref="PeopleView"/> sets it with the position.</summary>
         public void ApplyArms(in DollPose pose)
         {
             armL.localRotation = Quaternion.Euler(pose.armL);
             armR.localRotation = Quaternion.Euler(pose.armR);
-            SetGrip(pose.extend);
+            SetGrip(pose.extend && propKind != PropKind.Pot); // batch 5: a pot is never swung out along the arm
+            if (prop != null && propKind == PropKind.Pot && propSlot == PropSlot.Hand && !inLeft) prop.localRotation = Quaternion.Inverse(armR.localRotation); // batch 5: the potter's pot stays upright in the hand
+            if (inLeft && prop != null) prop.localRotation = Quaternion.Inverse(armL.localRotation); // #361: the basket stays upright
+            if (prop != null && propKind == PropKind.Rabbit && propSlot == PropSlot.Hand) HangRabbit();
+            if (prop != null && propKind == PropKind.Spear && propSlot == PropSlot.Hand) prop.localRotation = Quaternion.Inverse(armR.localRotation) * SpearAim(pose.extend, pose.lean);
+        }
+
+        /// <summary>Batch 2 (#362, the user: "the spear is held weirdly, almost backwards"): the spear's point always leads forward, whatever the
+        /// arm does (along the arm it pointed back on the wind-up): in the doll's frame (forward = -z), tipped up <see cref="SpearCarryUp"/> carried
+        /// and on the stalk, nearly level (<see cref="SpearAimUp"/>) on the aim and the throw. Held a quarter from the butt (the mesh's grip).</summary>
+        public static Quaternion SpearAim(bool aiming, float lean = 0f)
+        {
+            float e = (aiming ? SpearAimUp : SpearCarryUp) + lean; // the doll's lean is taken out: a lean back on the wind-up does not stand the spear up
+            return Quaternion.Euler(e - 90f, 0f, 0f) /* +y (the point) to forward (-z), tipped up e */;
+        }
+        public const float SpearCarryUp = 30f, SpearAimUp = 12f;
+        /// <summary>t4-fixes (tester run 3: the held rabbit read ~10 px): a rabbit held in the hand is drawn this much bigger.</summary>
+        public const float HeldRabbitScale = 1.2f;
+
+        /// <summary>Look-fix (visit loop, #362): the caught rabbit hangs from the fist by its scruff, head up, body down, turned with the doll
+        /// only, so held up overhead it reads as an animal dangling from a raised hand, not a plank swung with the arm.</summary>
+        void HangRabbit()
+        {
+            var (pos, _) = PegDoll.SlotPose(PropSlot.Hand);
+            var fist = armR.TransformPoint(pos * scale);
+            var rot = Quaternion.Euler(0f, transform.eulerAngles.y, 0f) * PegDoll.RabbitHang;
+            prop.rotation = rot;
+            prop.position = fist - rot * (PegDoll.RabbitScruff * prop.lossyScale.x);
         }
     }
 }

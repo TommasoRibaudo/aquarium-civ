@@ -1,0 +1,181 @@
+{
+  "name": "365-poke-fire",
+  "notes": "#365 B9.c: the evening at the camp fire. One grown-up (p) stands up out of the sit, raises a stick (arm x125, 0.34 s, a step toward the fire), thrusts it down into the fire (Snap 0.15 s: the Contact; HitFx: the fire's sparks float up, the fire flares), holds 0.22 s, pulls back 0.4 s and sits down again (0.45 s). Every 5 to 8 s one person pokes (the second poke is the big one: a flare). Spec timing kept; the step in to the fire (0.1 u) and the stand-up are what make the stick reach.",
+  "duration": 10.0,
+  "fps": 30,
+  "warmup": 1,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0,
+      0
+    ],
+    "span": 0.9
+  },
+  "sheet": {
+    "from": 1.2,
+    "to": 3.2,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "neighbourRadius": 0.6,
+    "reactSeconds": 0.2
+  },
+  "meal": {
+    "pokes": [
+      {
+        "doll": "p",
+        "t": 1.5
+      },
+      {
+        "doll": "e",
+        "t": 7.4
+      }
+    ]
+  },
+  "objects": [
+    {
+      "id": "fire",
+      "kind": "fire",
+      "pos": [
+        0,
+        0
+      ]
+    }
+  ],
+  "dolls": [
+    {
+      "id": "p",
+      "seed": 621,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 0,
+        "count": 6,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "SitOut",
+          "target": "fire",
+          "dur": 10.0
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "seed": 622,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 1,
+        "count": 6,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "SitOut",
+          "target": "fire",
+          "dur": 10.0
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "seed": 623,
+      "kid": true,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 2,
+        "count": 6,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "SitOut",
+          "target": "fire",
+          "dur": 10.0
+        }
+      ]
+    },
+    {
+      "id": "d",
+      "seed": 624,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 3,
+        "count": 6,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "SitOut",
+          "target": "fire",
+          "dur": 10.0
+        }
+      ]
+    },
+    {
+      "id": "e",
+      "seed": 625,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 4,
+        "count": 6,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "SitOut",
+          "target": "fire",
+          "dur": 10.0
+        }
+      ]
+    },
+    {
+      "id": "f",
+      "seed": 626,
+      "kid": false,
+      "ring": {
+        "center": [
+          0,
+          0
+        ],
+        "r": 0.3,
+        "slot": 5,
+        "count": 6,
+        "h": 20
+      },
+      "timeline": [
+        {
+          "activity": "SitOut",
+          "target": "fire",
+          "dur": 10.0
+        }
+      ]
+    }
+  ]
+}

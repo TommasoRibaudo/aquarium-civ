@@ -38,7 +38,7 @@ namespace AquariumCiv.Sim
             (e.kind == "wish" && WishOfEntry(e.id)?.state == WishState.Open) || (e.kind == "dilemma" && DilemmaCardLive(e)) || (e.kind == "era-ready" && EraReadyLive(e));
 
         bool CardUnread(ChronicleEntry e, HashSet<int> read) =>
-            e.month > State.cards.since && !read.Contains(e.id) && ShownAsCard(e) && WishCardLive(e) && EraReadyLive(e);
+            e.month > State.cards.since && !read.Contains(e.id) && ShownAsCard(e) && WishCardLive(e) && EraReadyLive(e) && !MomentHidesCard(e); // #369: a held ceremony is watched, not a card
 
         /// <summary>The cards for a return from what's unread, whatever month it dates from.</summary>
         public ReturnStack UnreadCards(double realHoursAway, IEnumerable<int> viewedPeople = null) =>
@@ -80,7 +80,7 @@ namespace AquariumCiv.Sim
             var read = new HashSet<int>(c.read);
             long first = State.month;
             foreach (var e in State.chronicle)
-                if (e.month < first && CardUnread(e, read)) first = e.month;
+                if (e.month < first && (CardUnread(e, read) || MomentStillHeld(e))) first = e.month; // #369: never past a ceremony that may still become a card
             c.since = Math.Max(c.since, first - 1);
             var after = new HashSet<int>(State.chronicle.Where(e => e.month > c.since).Select(e => e.id));
             c.read.RemoveAll(id => !after.Contains(id));

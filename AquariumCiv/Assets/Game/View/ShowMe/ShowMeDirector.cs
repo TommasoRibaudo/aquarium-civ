@@ -569,6 +569,7 @@ namespace AquariumCiv.View
             Visible(pv, cam);
             var now = pv.Now;
             string moment = now.hour >= 18f && now.hour < 21f ? PeopleMoment.Evening : null;
+            bubbles.HeldNow = StagedMoments.PlayingMoment(Sim); // t1-moments: a staged moment's own words, not the stories
             var b = bubbles.Next(Time.unscaledTime, moment, visibleNotables);
             if (b == null) return;
             ShowBubble(pv, cam, b);

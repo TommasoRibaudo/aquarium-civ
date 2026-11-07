@@ -1,0 +1,10 @@
+{
+  "name": "grip-potter",
+  "notes": "batch 5 grip check (the user: hammer upside down when they craft): the potter (ThrowPot = SitStrike with a pot in hand)",
+  "duration": 6.0, "fps": 30, "warmup": 1,
+  "camera": { "view": "default", "focus": [0.05, -0.05], "span": 0.7 },
+  "sheet": { "from": 1.0, "to": 4.0, "frames": 24, "columns": 6 },
+  "knownGaps": ["endBeat", "react"],
+  "objects": [ { "id": "thing", "kind": "stash", "pos": [0.0, -0.16] } ],
+  "dolls": [ { "id": "worker", "seed": 517, "role": "worker", "activity": "ThrowPot", "prop": "Pot", "pos": [0.0, 0.0], "face": "thing", "target": "thing", "dur": 6.0 } ]
+}

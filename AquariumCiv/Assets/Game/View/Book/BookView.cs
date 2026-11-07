@@ -292,6 +292,7 @@ namespace AquariumCiv.View
                 case BookPageKind.Family: Family(body, p); break;
                 case BookPageKind.Relics: Relics(body, p); break;
                 case BookPageKind.End: End(body, p); break;
+                case BookPageKind.Choices: Choices(body, p); break;
             }
             if (p.isNew)
             {
@@ -383,6 +384,26 @@ namespace AquariumCiv.View
             if (!string.IsNullOrEmpty(p.note)) Para(to, p.note);
             foreach (var s in p.stories) StoryRow(to, s);
             foreach (var who in p.people) PersonRow(to, who);
+        }
+
+        /// <summary>#373: "The Keeper's choices" of an era: per choice the ask, what was chosen, who it touched, what it left. The Keeper's
+        /// own are tappable (Show me), the people's after a lapse are plain lines.</summary>
+        void Choices(VisualElement to, BookPage p)
+        {
+            Text(to, p.title, "type-title", "book-title");
+            Text(to, p.sub, "type-sub", "book-sub");
+            bool canShow = !(GameClock.Instance?.Visiting ?? true);
+            foreach (var c in p.choices)
+            {
+                var block = new VisualElement { name = "book-choice-" + c.dilemmaId, pickingMode = PickingMode.Ignore };
+                block.AddToClassList("book-choice");
+                Text(block, c.ask + " · year " + c.year, "type-small-head", "book-choice-ask");
+                Text(block, c.chosenLine, "type-body", "book-choice-line");
+                if (c.touchedLine != "") Text(block, c.touchedLine, "type-body", "book-choice-line", "book-choice-people");
+                if (c.propLine != "") Text(block, c.propLine, "type-body", "book-choice-line", "book-choice-people");
+                if (canShow && c.answerEntryId >= 0) { int entry = c.answerEntryId; Tap(block, () => ShowMe(entry)); }
+                to.Add(block);
+            }
         }
 
         void Family(VisualElement to, BookPage p)

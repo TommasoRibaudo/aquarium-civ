@@ -229,6 +229,58 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Show me on this card (the bar)")) last = CardStackView.DebugShowMe();
             }
             if (Section("Dilemmas (P7)")) { var line = DilemmaCheats.Gui(); if (line != null) last = line; }
+            if (Section("Hit puffs (#357)")) { var line = HitFxCheats.Gui(); if (line != null) last = line; } // #357
+            // ---- #369: the moment queue and director ----
+            if (Section("Moments (#369)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Queue one moment of each kind")) last = HeldMomentStage.DebugQueueOneOfEach();
+                if (GUILayout.Button("Play next moment now")) last = HeldMomentStage.DebugPlayNextNow();
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Busy day")) last = HeldMomentStage.DebugPlayNextNow(true);
+                if (GUILayout.Button("Show queue + next due time")) last = HeldMomentStage.DebugStatus();
+                if (GUILayout.Button("Moments on/off")) last = HeldMomentStage.DebugToggle();
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("Stage the held choice now (t1-moments)")) last = HeldMomentStage.DebugStageHeldChoice(); // visit-loop 2.4
+                // ---- t3-choice: the box-staged choice's hold ----
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Box choice: status")) last = ChoiceSceneView.DebugStatus();
+                if (GUILayout.Button("Box choice: let go now")) last = ChoiceSceneView.DebugRelax();
+                GUILayout.EndHorizontal();
+                // ---- end t3-choice ----
+            }
+            // ---- t3-welcome: the greeting when nothing waits ----
+            if (GUILayout.Button("Welcome now (nothing queued)")) last = HeldMomentStage.DebugWelcomeNow();
+            // ---- end t3-welcome ----
+            // ---- end #369 ----
+            // ---- #374: this visit's telemetry numbers ----
+            if (Section("Visit telemetry (#374)"))
+            {
+                var vt = GameClock.Instance != null ? GameClock.Instance.VisitTracker() : null;
+                GUILayout.Label(vt != null ? vt.Line() : "no visit telemetry (no box or telemetry off)");
+            }
+            // ---- end #374 ----
+            // ---- #371: the things a choice leaves in the box ----
+            if (Section("Choices leave things (#371)"))
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Place every consequence prop")) last = ConsequenceCheats.PlaceEvery();
+                if (GUILayout.Button("Play a callback moment now")) last = ConsequenceCheats.PlayCallbackNow();
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #371 ----
+            if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
+            // ---- #373: the Keeper's choices page and the hand pins ----
+            if (Section("Keeper's choices (#373)"))
+            {
+                if (GUILayout.Button("Fill the Keeper's choices (3 eras of sample choices)"))
+                {
+                    int n = sim.DebugFillKeeperChoices();
+                    last = Done(n > 0 ? $"{n} sample choices in the book and on the time-lapse" : "already filled, or no era reached yet");
+                }
+            }
+            // ---- end #373 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

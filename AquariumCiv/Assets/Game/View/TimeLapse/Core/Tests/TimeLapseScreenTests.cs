@@ -537,5 +537,38 @@ namespace AquariumCiv.View.TimeLapseScreen.Tests
             m.Clock.Seek(0f); m.Play(); m.Tick(0.5f);
             Assert.Greater(m.Version, v);
         }
+
+        // ---------- #373: the Keeper's hand pins ----------
+        static StoryPin HandPin(int id, float year) =>
+            new StoryPin { entryId = id, year = year, month = (long)(year * Y), salience = 0.8f, text = "The fields, or the woods? The Keeper chose the woods.", kind = SimCore.KeeperPinKind };
+
+        [Test]
+        public void AHandPinMarksItsMarkerAndATapShowsItsOneLine()
+        {
+            var pins = new[] { Pin(1, 10f), HandPin(2, 50f) };
+            var l = Lay(W, 100f, pins, Band(Era.Camp, 0f, 100f, true));
+            Assert.IsFalse(l.Groups[0].HasHand);
+            Assert.IsTrue(l.Groups[1].HasHand, "the choice's marker is drawn with a hand");
+            var m = new TimeLapseScreenModel(new TimeLapse(sim), new ReplayClock(100f), null, "", null, pins);
+            m.SetWidth(W);
+            m.TapPin(2);
+            Assert.AreEqual("The fields, or the woods? The Keeper chose the woods.", m.Caption.Text);
+            Assert.AreEqual(50f, m.Position, 0.01f);
+        }
+
+        [Test]
+        public void TheLiveTimelineHasAHandPinForEachChoiceTheKeeperMade()
+        {
+            var cfg = new SimConfig { dilemmas = true };
+            var s = new SimCore(cfg, SimCore.NewWorld(9, cfg));
+            for (int m = 0; m < 30 * Y; m++) s.Step();
+            Assert.Greater(s.DebugFillKeeperChoices(), 0);
+            var pins = new TimeLapse(s).Pins();
+            var hands = pins.Where(p => p.kind == SimCore.KeeperPinKind).ToList();
+            Assert.AreEqual(s.KeeperChoicePins().Count, hands.Count);
+            Assert.Greater(hands.Count, 0);
+            CollectionAssert.AreEqual(pins.OrderBy(p => p.month).ThenBy(p => p.entryId).Select(p => p.entryId).ToArray(), pins.Select(p => p.entryId).ToArray(), "still in time order");
+            Assert.AreEqual(hands.Count, hands.Select(p => p.entryId).Distinct().Count());
+        }
     }
 }

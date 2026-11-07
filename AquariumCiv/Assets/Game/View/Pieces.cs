@@ -1106,9 +1106,9 @@ namespace AquariumCiv.View
             if (b.radius > 0.13f) mb.Ico(g + new Vector3(b.radius * 0.9f, b.radius * 0.05f, b.radius * 0.5f), b.radius * 0.5f, new Vector3(1f, 0.7f, 1f), Color.Lerp(col, look.rockDark, 0.4f), 0.3f, look.rockDark);
         }
 
-        public static void GrassTuft(MeshBuilder mb, Vector3 g, float h, Color col)
+        public static void GrassTuft(MeshBuilder mb, Vector3 g, float h, Color col, bool tall = false)
         {
-            mb.sway = 1f;
+            mb.sway = tall ? GrassHide.TallSway : 1f; // the tall-grass marker: the hunt's hide-near safety net reads it
             for (int b = 0; b < 3; b++)
             {
                 float a = b * 2.1f + mb.Range(0f, 1f);
@@ -1122,7 +1122,7 @@ namespace AquariumCiv.View
 
         public static void Reed(MeshBuilder mb, Vector3 g, Color col)
         {
-            mb.sway = 0.8f;
+            mb.sway = 0.8f + GrassHide.TallSway - 1f;
             mb.Prism(g, 0.012f, 0f, mb.Range(0.14f, 0.24f), 3, col, Quaternion.Euler(mb.Range(-8f, 8f), 0, mb.Range(-8f, 8f)));
             mb.sway = 0f;
         }

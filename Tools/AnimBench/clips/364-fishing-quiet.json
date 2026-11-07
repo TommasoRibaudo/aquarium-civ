@@ -1,0 +1,24 @@
+{
+  "name": "364-fishing-quiet",
+  "notes": "B8 #364, the other ending: a short block (11 s) in which the only bite (7.18 s, seed 51) is a miss. Nibble, yank (the hit: droplets + rings at the line's end), the fish only clears the water (h 0.05 u, 0.4 s) and drops back in one ring, the fisher slumps (lean 20, arms limp). The block ends with nothing in the basket: the line comes in and the fisher stretches (arms up, 1.6 s), no fish held up and the basket stays empty.",
+  "duration": 11.5,
+  "fps": 30,
+  "warmup": 0,
+  "camera": { "view": "default", "focus": [0.33, 0.02], "span": 1.15 },
+  "sheet": { "from": 7.0, "to": 11.4, "frames": 24, "columns": 6 },
+  "expect": { "reactSeconds": 0.2, "hitReach": 0.5, "arcReach": 0.5 },
+  "objects": [
+    { "id": "pond", "kind": "pond", "pos": [0.75, -0.08, 0.0], "radius": 0.5, "size": [1.0, 1.0] },
+    { "id": "basket", "kind": "basket", "pos": [0.19, 0.0, 0.08] },
+    { "id": "fishMiss", "kind": "fish", "pos": [0.53, -0.08, 0.0], "arc": { "by": "angler", "from": [0.53, -0.08, 0.0], "to": [0.55, -0.08, 0.02], "t0": 8.13, "t1": 8.53, "height": 0.05, "hideAt": 8.56 } }
+  ],
+  "dolls": [
+    {
+      "id": "angler", "seed": 51, "role": "fisher", "prop": "Rod", "slot": "Hand", "phase": 0,
+      "timeline": [
+        { "label": "fish", "activity": "Fish", "pos": [0.19, 0.0], "face": "pond", "target": "pond", "dur": 9.9 },
+        { "label": "line in, a stretch", "activity": "Fish", "pos": [0.19, 0.0], "face": "pond", "dur": 1.6, "endBeat": true }
+      ]
+    }
+  ]
+}

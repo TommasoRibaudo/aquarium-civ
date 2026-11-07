@@ -89,7 +89,7 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); dayInfo.day = long.MinValue; }
+        void ClearDays() { runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); dayInfo.day = long.MinValue; diggersDay = long.MinValue; /* tester run 1 #3 */ }
 
         void EnsureDay(long day)
         {
@@ -608,7 +608,7 @@ namespace AquariumCiv.Life
             int block = 0;
             while (t < 17f)
             {
-                float end = Math.Min(17f, t + 1.25f + R(k, day, 20 + block) * 0.75f);
+                float end = Math.Min(17f, t + 1.25f + R(PlayBlockKey, day, 20 + block) * 0.75f); // #358: one length for every kid that day: the kids at the green play together for a block (a play group)
                 if (17f - end < 0.5f) end = 17f;
                 At(PlayKind(p, d, 20 + block), end, PlayPlace(p, d, 20 + block, near: block % 2 == 0), PlayProp(p, d, 20 + block));
                 t = end; block++;
@@ -620,6 +620,9 @@ namespace AquariumCiv.Life
             At(ActivityKind.Play, home, gather);
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
         }
+
+        /// <summary>#358: the afternoon play blocks' key: the same for every kid, so their blocks start and end together.</summary>
+        const int PlayBlockKey = 358358;
 
         ActivityKind PlayKind(Person p, DayInfo d, int salt)
         {
@@ -677,17 +680,17 @@ namespace AquariumCiv.Life
             At(ActivityKind.SitOut, 7f, p.home, Prop.Stool);
             bool wander = farms.Count > 0 && R(k, day, 3) < 0.4f;
             if (wander) At(ActivityKind.WatchWork, 9f, PlaceOf(farms[(int)(H(k, day, 4) % (uint)farms.Count)]), Prop.Stick);
-            else At(ActivityKind.SitOut, 9f, gather, Prop.Stick);
+            else At(ActivityKind.SitOut, 9f, ElderSitPlace(p, d, 0), Prop.Stick); // tester run 1 #3: ElderSitPlace is the gather outside the camp
             bool minds = R(k, day, 5) < 0.4f;
-            At(minds ? ActivityKind.MindBabies : ActivityKind.SitOut, 10f, minds ? p.home : gather);
+            At(minds ? ActivityKind.MindBabies : ActivityKind.SitOut, 10f, minds ? p.home : ElderSitPlace(p, d, 1));
             if (d.teller == p) At(ActivityKind.StoryTell, 11f, gather);
-            else At(ActivityKind.SitOut, 11f, gather, Prop.Stool);
+            else At(ActivityKind.SitOut, 11f, ElderSitPlace(p, d, 2), Prop.Stool);
             if (p.hints.sitWithOldChance > 0f && R(k, day, 6) < p.hints.sitWithOldChance) At(ActivityKind.SitWithOld, 12f, gather);
-            else At(ActivityKind.SitOut, 12f, gather);
+            else At(ActivityKind.SitOut, 12f, ElderSitPlace(p, d, 3));
             At(ActivityKind.Eat, 12.9f, MealPlace(p, d), Prop.None, Ref(p.partner));
             At(minds ? ActivityKind.SitOut : ActivityKind.MindBabies, 15f, p.home);
             if (farms.Count > 0 && R(k, day, 7) < 0.5f) At(ActivityKind.WatchWork, 17f, PlaceOf(farms[(int)(H(k, day, 8) % (uint)farms.Count)]), Prop.Stick);
-            else At(ActivityKind.SitOut, 17f, gather, Prop.Stool);
+            else At(ActivityKind.SitOut, 17f, ElderSitPlace(p, d, 4), Prop.Stool);
             float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours;
             if (StyleOf(p, d) != EveningStyle.Gather) { At(ActivityKind.SitOut, home, p.home, Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197
             At(ActivityKind.SitOut, 18.3f, gather, Prop.Stool, default, TripType.HomeToGreen);
@@ -708,16 +711,16 @@ namespace AquariumCiv.Life
             At(ActivityKind.Sleep, (rest ? 6f : 5f) + R(k, day, 1) * 0.6f + (rest ? 0f : Math.Max(0f, sh.start - LifeClock.WorkStart - 0.3f)), p.home);
             At(ActivityKind.Stretch, bt + 0.2f, p.home);
 
-            if (rest) { RestDay(p, d); }
+            if (rest) { if (CampSpread) CampRestDay(p, d); else RestDay(p, d); } // tester run 1 #3: the camp's rest day spread out
             else
             {
                 // Dawn: water from the well or the stream, a chore at the door, then off to work.
-                if (R(k, day, 2) < 0.3f)
+                if (R(k, day, 2) < 0.3f || forcedWater.Contains(k)) // #360: the cheat sends some on top of the dice
                 {
                     var water = WaterPlace; // P8 (#267): the pond once it has water, else the wet low ground
                     // #152: empty on the way out and while they draw; full only once it's drawn.
                     Move(ActivityKind.Walk, water, bt + WalkHours(p.home, water), Prop.EmptyBucket, TripType.HomeToGreen);
-                    At(ActivityKind.FetchWater, bt + 0.2f, water, Prop.EmptyBucket);
+                    At(ActivityKind.FetchWater, bt + 0.35f, water, Prop.EmptyBucket); // #360: 3.5 s at dawn: kneel, dip, hold, lift (was 0.2 h = 2 s)
                     Move(ActivityKind.FetchWater, p.home, bt + WalkHours(water, p.home), Prop.Buckets, TripType.Home);
                 }
                 if (work.sweeps && box.sweeperExtraBlocks > 0)
@@ -803,6 +806,7 @@ namespace AquariumCiv.Life
             At(ActivityKind.Eat, Math.Min(sh.back - 0.2f, Math.Max(sh.back - back, arrive + 0.3f)), meal, Prop.None, Ref(with));
             if (napAfter) return; // off to the green for a nap instead of back to work
             if (meal != work.site) { if (bcur != work.site) Move(ActivityKind.Walk, work.site, Math.Max(sh.back, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork); }
+            else if (CampSpread && !work.chores && work.loop != ActivityKind.Inspect) At(work.loop, sh.back, meal, work.tool); // tester run 1 #3: the camp's work goes on over the meal (the cook at the pot, the picker at the bush)
             else At(ActivityKind.SitOut, sh.back, meal);
         }
 
@@ -811,7 +815,7 @@ namespace AquariumCiv.Life
         Place MealPlace(Person p, DayInfo d, Place workSite = default)
         {
             if (p.partner != null && p.partner.key < p.key && p.partner.Grown) p = p.partner;
-            if (era == Era.Camp) return fire;
+            if (era == Era.Camp) return workSite == fire ? fire : CampMealPlace(p, d, workSite); // tester run 1 #3: meals in shifts and places
             if (era == Era.Village)
             {
                 var f = p.Adult ? FieldOf(p, d) : Place.None;
@@ -864,6 +868,24 @@ namespace AquariumCiv.Life
             _ => Prop.None,
         };
 
+        /// <summary>#361: how long the tip at the stash lasts (real seconds: the 1.4 s beat plus the moment the doll takes to stand still at the pile).</summary>
+        public const float TipBlockSeconds = 1.8f;
+
+        /// <summary>#361: the view hours a carry of a basket to the camp's stash pile spends tipping it (0 for any other load or place).</summary>
+        static float TipHours(Work work, float end)
+        {
+            if (work.load != Prop.Basket || work.dest.kind != PlaceKind.Stash) return 0f;
+            // the block's last TipBlockSeconds of real time, across a phase's change of speed (a block that ends at midday)
+            float h = LifeClock.ViewHoursFor(end - 1e-3f, TipBlockSeconds);
+            for (int i = 0; i < 4; i++)
+            {
+                float real = LifeClock.RealSecondsBetween(Math.Max(0f, end - h), end);
+                if (real < 1e-3f || Math.Abs(real - TipBlockSeconds) < 0.01f) break;
+                h *= TipBlockSeconds / real;
+            }
+            return h;
+        }
+
         /// <summary>Work hours in blocks of 1.25–2 view hours (20–40 real s, rule 5): a work loop at the site, or a carry
         /// of the goods to where they go (Banished's busy signal). The day's last block carries the goods to the store.</summary>
         void WorkBlocks(Person p, DayInfo d, Work work, float from, float to, int salt, bool lastCarries)
@@ -884,12 +906,13 @@ namespace AquariumCiv.Life
                 if (work.chores) { loop = Chore(p, d, salt + i); tool = ChoreProp(loop); if (loop == ActivityKind.SitOut) { loop = ActivityKind.SweepStep; tool = Prop.Broom; } }
                 bool carry = work.load != Prop.None && (i > 0 || from > LifeClock.WorkStart) && R(k, day, salt + 200 + i) < work.carryShare;
                 if (lastCarries && end >= to && work.load != Prop.None) carry = true;
+                float tip = TipHours(work, end); // #361: a basket is tipped onto the stash pile at the end of the carry; its time comes out of the work loop, not the blocks after
                 if (carry && (work.dest != site || !work.fetchFrom.IsNone))
                 {
                     // #30: only when the walk back to the site and the carry both fit the block; a squeezed walk back ran
                     // at several times the walking pace (the merchant's cart loop). Else this block is the work loop.
                     var src0 = work.fetchFrom.IsNone ? site : work.fetchFrom;
-                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.dest)) +
+                    float fits = (bcur != site ? WalkHours(bcur, site) : 0f) + 0.1f + Math.Max(0.35f, WalkHours(src0, work.dest)) + tip +
                                  (work.fetchFrom.IsNone ? 0f : WalkHours(site, src0));
                     if (end - t < fits) carry = false;
                 }
@@ -898,11 +921,16 @@ namespace AquariumCiv.Life
                     var src = work.fetchFrom.IsNone ? site : work.fetchFrom;
                     var dst = work.dest;
                     float cd = Math.Max(0.35f, WalkHours(src, dst));
-                    float workUntil = Math.Max(t, end - cd - (work.fetchFrom.IsNone ? 0f : WalkHours(site, src)));
+                    float workUntil = Math.Max(t, end - cd - tip - (work.fetchFrom.IsNone ? 0f : WalkHours(site, src)));
                     if (workUntil > t + 0.1f) At(loop, workUntil, site, tool);
                     // #152: off to the water with the empty bucket; any other fetch goes empty-handed.
                     if (src != bcur) Move(ActivityKind.Walk, src, Math.Min(end - 0.2f, bt + WalkHours(bcur, src)), work.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None, TripType.Errand);
-                    Move(work.carryKind, dst, end, work.load, TripType.Carry);
+                    Move(work.carryKind, dst, end - tip, work.load, TripType.Carry);
+                    if (tip > 0f && bcur == dst && bt >= end - tip - 1e-3f) // #361: stand at the pile and tip the basket onto it
+                    {
+                        Push(ActivityKind.TipLoad, bt, end, dst, dst, work.load, PersonRef.None, TripType.None, still: true);
+                        bt = end;
+                    }
                 }
                 else At(loop, end, site, tool, Ref(work.with));
                 t = end; i++;
@@ -920,7 +948,7 @@ namespace AquariumCiv.Life
             // A very tidy holder in office: the sweepers sweep the green again before the evening gathering.
             if (box.sweeperExtraBlocks >= 2 && p.job == JobType.Sweeper && !d.rest) At(ActivityKind.Sweep, 17.5f, gather, Prop.Broom);
             if (style != EveningStyle.Gather) { OtherEvening(p, d, style, home); return; }
-            At(ActivityKind.SitOut, 17.6f, gather, Prop.None, default, TripType.HomeToGreen);
+            if (!CampEveningRole(p, d)) At(ActivityKind.SitOut, 17.6f, gather, Prop.None, default, TripType.HomeToGreen); // tester run 1 #3: the fire's roles
             At(leader != null && leader != p ? ActivityKind.Listen : ActivityKind.Chat, 18.3f, gather, Prop.None, Ref(leader));
             ActivityKind free;
             var place = gather;
@@ -982,6 +1010,7 @@ namespace AquariumCiv.Life
             s.lunch = 11.5f + 0.5f * sf + 0.65f * R(lk, d.day, 81);
             s.back = s.lunch + 0.6f + 0.4f * R(lk, d.day, 82);
             s.end = Math.Max(s.back + 1.2f, LifeClock.AfternoonEnd(d.season) + (sf - 0.5f) * 0.9f);
+            if (CampSpread) CampShift(ref s, p, d); // tester run 1 #3
             return s;
         }
 

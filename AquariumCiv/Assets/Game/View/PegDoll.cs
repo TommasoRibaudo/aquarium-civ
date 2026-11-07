@@ -3,21 +3,6 @@ using UnityEngine;
 
 namespace AquariumCiv.View
 {
-    public enum PropKind { None, Axe, Basket, Sheaf, Log, Lantern, Hoe, Bundle, Fish, Pot, Spear, Rod, Hammer, Broom, Sack, Stick, Bucket, Block, Barrel,
-        // #92: the relics and the glass (a chunk of the Sky Crumb, the Festival Mask worn on the face, the Keeper Doll, the Left
-        // Sandal, the Lens's folded tripod, the brass Lens, the scholar's slate, the measuring rod)
-        Crumb, Mask, Doll, Sandal, Tripod, Lens, Slate, MeasuringRod,
-        // #152: a bucket on its way to the water
-        BucketEmpty,
-        // #283: a caught rabbit over the shoulder
-        Rabbit,
-        // #267: a bucket of muddy water (scooped from the wet low ground or a puddle while the pond is dry)
-        BucketMuddy }
-
-    /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
-    /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
-    public enum PropSlot { Hand, Head, Back, Shoulder, Arms, Front }
-
     /// <summary>
     /// The peg-doll villager's meshes (style kit, life-in-the-box §9): body + head as one mesh (tapered tunic, belt,
     /// round head, hair or a straw hat, and an optional bright accent: a headband for camp people, a sash for a role),
@@ -32,6 +17,8 @@ namespace AquariumCiv.View
 
         /// <summary>The proportions every part hangs from (adult; multiply by the doll's scale).</summary>
         public const float BodyH = 0.13f, ShoulderX = 0.046f, ArmLen = 0.075f, HeadR = 0.043f;
+        /// <summary>#358: the ball prop's radius as built (a held ball is drawn at the prop scale; the play group's flying ball scales to r 0.035).</summary>
+        public const float BallMeshR = 0.04f;
         public static float HeadY => BodyH + 0.04f;
 
         public struct Look
@@ -173,6 +160,14 @@ namespace AquariumCiv.View
             Band(mb, s, BodyH * 0.66f * s, -0.03f * s, 0.008f * s, 0f, Mathf.PI * 2f, 10, BabyWrap, 0.0035f);
         }
 
+        /// <summary>Look-fix: the caught rabbit's build scale, and its scruff (where a hand holds it up) in the prop's frame.</summary>
+        public const float RabbitPropScale = 0.64f;
+        public static readonly Vector3 RabbitScruff = new Vector3(0f, -0.004f, 0.078f) * RabbitPropScale;
+
+        /// <summary>Look-fix: a rabbit held in the hand hangs from its scruff, head up, whatever the arm does (turned with the doll only):
+        /// the prop's +z (its head) up, its ears and belly toward where the doll faces.</summary>
+        public static readonly Quaternion RabbitHang = Quaternion.Euler(0f, 180f, 0f) * Quaternion.Euler(-90f, 0f, 0f);
+
         /// <summary>A shared prop mesh (palette colours only), built once. The grip is at the origin.</summary>
         public static Mesh PropMesh(PropKind kind)
         {
@@ -226,9 +221,11 @@ namespace AquariumCiv.View
                 {
                     // #283: a caught rabbit slung across the shoulders (the shoulder slot turns local z across the body): fur body,
                     // head and hanging ears at +z, white tail and haunch at -z, dangling feet. Drawn big so it reads at phone size.
-                    var fur = new Color(0.66f, 0.47f, 0.30f); var belly = Color.Lerp(fur, Color.white, 0.55f);
+                    // Look-fix (visit loop): a box rabbit's size (about 1.1x RabbitDoll), not 1.45x (it was longer than the hunter), and a
+                    // less pale belly, so the catch reads as the same animal that grazed, not a towering white thing.
+                    var fur = new Color(0.62f, 0.45f, 0.29f); var belly = Color.Lerp(fur, Color.white, 0.3f);
                     var dark = new Color(0.20f, 0.14f, 0.12f); var white = new Color(0.98f, 0.97f, 0.94f);
-                    mb.M = Matrix4x4.Scale(Vector3.one * 1.45f); // bigger than life: it has to read on a phone
+                    mb.M = Matrix4x4.Scale(Vector3.one * RabbitPropScale); // 0.14 u nose to tail, the grazing rabbit's ~0.12
                     mb.Ico(new Vector3(0f, -0.010f, -0.020f), 0.044f, new Vector3(0.85f, 0.85f, 1.35f), fur, 0.05f, belly);
                     mb.Ico(new Vector3(0f, -0.016f, 0.050f), 0.030f, new Vector3(0.9f, 0.9f, 1.2f), fur, 0.05f, belly);
                     mb.Ico(new Vector3(0f, -0.030f, 0.098f), 0.024f, new Vector3(0.85f, 0.9f, 1.2f), fur, 0.05f, belly);       // head, hanging
@@ -242,6 +239,9 @@ namespace AquariumCiv.View
                 }
                 case PropKind.Basket:
                     mb.Prism(new Vector3(0, -0.01f, 0), 0.032f, 0.042f, 0.04f, 8, Palette.Thatch, topCol: Palette.Ember);
+                    break;
+                case PropKind.Bowl: // #365 B9: a small clay bowl of stew (0.03 tall, 0.07 across), carried in the left hand
+                    mb.Prism(new Vector3(0, -0.012f, 0), 0.018f, 0.036f, 0.03f, 8, Palette.Terracotta, topCol: new Color(0.80f, 0.52f, 0.20f));
                     break;
                 case PropKind.Sheaf:
                 {
@@ -305,6 +305,11 @@ namespace AquariumCiv.View
                     mb.Ico(new Vector3(0, 0.0f, 0), 0.042f, new Vector3(1f, 1.1f, 0.85f), Color.Lerp(Palette.Canvas, Palette.Hide, 0.35f), 0.08f);
                     mb.Prism(new Vector3(0, 0.04f, 0), 0.012f, 0.016f, 0.016f, 6, Palette.Timber);
                     break;
+                case PropKind.Twig:
+                    // #359 (batch 2): the kids' duel stick: a short twig (0.17, the staff is 0.24) with a side nub, so it reads as a found stick, not a staff.
+                    mb.Box(new Vector3(0, 0.045f, 0), new Vector3(0.012f, 0.17f, 0.012f), Palette.Bark);
+                    mb.Box(new Vector3(0.012f, 0.06f, 0), new Vector3(0.022f, 0.008f, 0.008f), Palette.Bark);
+                    break;
                 case PropKind.Stick:
                     // A plain staff or stirring paddle (0.24), flat at the low end.
                     mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.011f, 0.24f, 0.011f), Palette.Bark);
@@ -330,6 +335,11 @@ namespace AquariumCiv.View
                     mb.Prism(new Vector3(-0.016f, 0.036f, 0), 0.034f, 0.034f, 0.008f, 8, Palette.Iron, side, false, false);
                     break;
                 }
+                case PropKind.Ball:
+                    // #358: the kids' ball, oversized (bigger than a kid's head) so it reads in flight: bright red, a yellow cap
+                    // so it shows it spins and rolls.
+                    mb.Ico(Vector3.zero, BallMeshR, Vector3.one, Palette.Accents[0], 0.04f, Palette.Accents[1]);
+                    break;
                 // ---------------- #92: the relics ----------------
                 case PropKind.Crumb:
                     // A chunk of sky bread hugged in both arms: a pale golden lump with a darker crust.

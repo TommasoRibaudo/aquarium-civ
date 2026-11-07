@@ -46,6 +46,14 @@ namespace AquariumCiv.View.Cards.Tests
 
         CardStackModel Model(SimCore sim, TelemetryLog log = null) => new CardStackModel(sim, () => clock, log);
 
+        /// <summary>Opened on a return of exactly <paramref name="cap"/> cards (the cap by time away is 1 / 2 / 3 since #368).</summary>
+        static CardStackModel OpenedCap(CardStackModel m, int cap)
+        {
+            Assert.IsTrue(m.DebugPrepare(cap));
+            Assert.IsTrue(m.TapPeek());
+            return m;
+        }
+
         static CardStackModel Opened(CardStackModel m, double hours = Day)
         {
             Assert.IsTrue(m.Prepare(hours));
@@ -70,7 +78,7 @@ namespace AquariumCiv.View.Cards.Tests
         [Test]
         public void TheCapFollowsTimeAwayAndTheRestGoToAlso()
         {
-            foreach (var (hours, cap) in new[] { (0.5, 3), (FewHours, 5), (Day, 7) })
+            foreach (var (hours, cap) in new[] { (0.5, 1), (FewHours, 2), (Day, 3) })
             {
                 var sim = Quiet();
                 AddMany(sim, 10);
@@ -90,7 +98,7 @@ namespace AquariumCiv.View.Cards.Tests
             Add(sim, "wedding", 0.6f);
             Add(sim, "storm", 0.7f);
             sim.DebugForceWish(SimCore.NudgeKind.Rain);
-            var m = Opened(Model(sim), FewHours);
+            var m = OpenedCap(Model(sim), 5);
             var kinds = new List<CardKind>();
             var tones = new List<CardTone>();
             for (bool more = true; more; more = m.Next()) { kinds.Add(m.Face.kind); tones.Add(m.Face.tone); }
@@ -161,7 +169,7 @@ namespace AquariumCiv.View.Cards.Tests
         {
             var sim = Quiet();
             AddMany(sim, 9);
-            var m = Opened(Model(sim), 0.5); // 3 cards, 6 past the cap
+            var m = OpenedCap(Model(sim), 3); // 3 cards, 6 past the cap
             m.Next(); m.Next(); m.Next();
             Assert.IsTrue(m.OnAlsoPage);
             var face = m.Face;
@@ -759,11 +767,15 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(m.Next());
             Assert.AreNotEqual(CardKind.Dilemma, m.Face.kind);
             m.SkipAll();
+            AddMany(sim, 2); // t4-fixes: something new happened while away
             Assert.IsTrue(m.Prepare(Day));
             m.TapPeek();
             var kinds = new List<CardKind>();
-            do kinds.Add(m.Face.kind); while (m.Next());
-            Assert.IsFalse(kinds.Contains(CardKind.Dilemma), "an answered dilemma's question is gone; the keeper card tells it");
+            var leads = new List<int>();
+            do { kinds.Add(m.Face.kind); if (m.Shown != null) leads.Add(m.Shown.lead.id); } while (m.Next());
+            Assert.IsFalse(kinds.Contains(CardKind.Dilemma), "an answered dilemma's question is gone");
+            // t4-fixes (tester run 3): the Keeper gave the answer and saw it said: it is read, so a later return never leads with it
+            CollectionAssert.DoesNotContain(leads, d.answerEntryId, "the Keeper's own answer is not news on the next return (it stays in History)");
         }
 
         [Test]
@@ -822,6 +834,29 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(m.HistoryDot, "the rest wait: the dot");
         }
 
+        /// <summary>t3-choice (tester run 2 D): a return's peek is up with an older story when the people raise a choice: the peek
+        /// switches to the choice and wears the choice mark.</summary>
+        [Test]
+        public void ALiveDilemmaReplacesAnOlderStoryOnThePeek()
+        {
+            var sim = WithDilemma("camp_travellers", out var d);
+            AddMany(sim, 4);
+            var m = Model(sim);
+            Assert.IsTrue(m.DebugPrepare(3));
+            Assert.AreEqual(CardStackMode.Peek, m.Mode);
+            if (m.PeekIs(d.entryId)) Assert.IsFalse(m.ShowLive(d.entryId), "already on top");
+            else Assert.IsTrue(m.ShowLive(d.entryId), "the peek switches to the new choice");
+            Assert.IsTrue(m.PeekIs(d.entryId));
+            Assert.IsTrue(m.PeekIsChoice, "the peek says a choice waits");
+            Assert.AreEqual(sim.Headline(sim.State.chronicle.First(e => e.id == d.entryId)), m.Peek.text);
+            Assert.IsFalse(m.ShowLive(d.entryId), "not twice");
+            sim.AnswerDilemma(d.id, 0, DilemmaPath.Box);
+            Assert.IsFalse(m.PeekIsChoice, "answered in the box: the mark goes");
+            Assert.IsTrue(m.TapPeek());
+            Assert.AreEqual(CardKind.Dilemma, m.Face.kind);
+            Assert.IsFalse(m.ShowLive(d.entryId), "never over the open stack");
+        }
+
         [Test]
         public void NoLivePeekInTheFirstRunOrForAnAnsweredDilemma()
         {
@@ -867,6 +902,53 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsFalse(f.body.StartsWith("Because"), f.body);
             Assert.IsTrue(char.IsUpper(f.body[0]), "the body reads as a sentence: " + f.body);
             StringAssert.StartsWith("At the fire: ", f.teaserLine, "the question stays as the grey line");
+        }
+
+        /// <summary>t2-polish (the peek said "Esk married Aveline" for a wedding never shown): boxes lived the way the game lives them
+        /// (watched minutes with the director handing moments over, the view staging some and failing to cast others, then an away
+        /// through CatchUp + BeginVisit and the peek's Prepare). After every away, the peek and the whole unread stack never hold a line
+        /// whose ceremony waits or plays: no wedding, birth or new chief is read before it is watched.</summary>
+        [Test]
+        public void AfterAnyAwayThePeekNeverHoldsACeremonyThatWaitsOrPlays()
+        {
+            int checkedStacks = 0, deferred = 0;
+            for (int seed = 1; seed <= 12; seed++)
+            {
+                var cfg = new SimConfig { moments = true, marriedBirths = true };
+                var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+                var m = Model(sim);
+                for (int visit = 0; visit < 5; visit++)
+                {
+                    for (int min = 0; min < 6; min++)
+                    {
+                        sim.Advance(1 / 60.0);
+                        foreach (var h in sim.StartDueMoments())
+                        {
+                            // the view: a couple out hunting can't be cast the first times (it waits again), the rest play
+                            if (h.deferrals < 2 && (h.id + visit) % 2 == 0) { sim.DeferMoment(h.id); deferred++; }
+                            else sim.FinishMoment(h.id, true);
+                        }
+                    }
+                    double away = visit % 2 == 0 ? 1 : 8;
+                    sim.CatchUp(away);
+                    sim.BeginVisit();
+                    m.Prepare(away);
+                    var all = sim.UnreadCardsCapped(64);
+                    foreach (var c in all.cards.Concat(all.also))
+                        foreach (var e in c.entries)
+                            Assert.IsFalse(sim.MomentStillHeld(e), $"seed {seed} visit {visit}: '{sim.Headline(e)}' is a card while its ceremony waits");
+                    if (m.Mode == CardStackMode.Peek && !m.Peek.isTeaser)
+                    {
+                        var held = sim.State.moments.Where(x => x.state == HeldMomentState.Waiting || x.state == HeldMomentState.Playing)
+                            .Select(x => sim.State.chronicle.FirstOrDefault(e => e.id == x.entryId)).Where(e => e != null).Select(sim.Headline);
+                        CollectionAssert.DoesNotContain(held.ToList(), m.Peek.text, $"seed {seed} visit {visit}: the peek reads a held ceremony");
+                    }
+                    checkedStacks++;
+                    m.HidePeek();
+                }
+            }
+            Assert.AreEqual(60, checkedStacks);
+            Assert.Greater(deferred, 0, "some moments could not be staged at first");
         }
     }
 }
