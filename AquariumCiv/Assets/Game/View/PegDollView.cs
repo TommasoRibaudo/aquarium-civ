@@ -188,7 +188,8 @@ namespace AquariumCiv.View
         {
             armL.localRotation = Quaternion.Euler(pose.armL);
             armR.localRotation = Quaternion.Euler(pose.armR);
-            SetGrip(pose.extend);
+            SetGrip(pose.extend && propKind != PropKind.Pot); // batch 5: a pot is never swung out along the arm
+            if (prop != null && propKind == PropKind.Pot && propSlot == PropSlot.Hand && !inLeft) prop.localRotation = Quaternion.Inverse(armR.localRotation); // batch 5: the potter's pot stays upright in the hand
             if (inLeft && prop != null) prop.localRotation = Quaternion.Inverse(armL.localRotation); // #361: the basket stays upright
             if (prop != null && propKind == PropKind.Rabbit && propSlot == PropSlot.Hand) HangRabbit();
             if (prop != null && propKind == PropKind.Spear && propSlot == PropSlot.Hand) prop.localRotation = Quaternion.Inverse(armR.localRotation) * SpearAim(pose.extend, pose.lean);
