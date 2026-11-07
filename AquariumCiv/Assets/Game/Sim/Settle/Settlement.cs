@@ -103,6 +103,26 @@ namespace AquariumCiv.Sim.Settle
             if (S.month % 3 == 0) WearPass();
             wearTicks += Stopwatch.GetTimestamp() - t1;
             monthsStepped++;
+            ClearBushes();
+        }
+
+        /// <summary>#385 (#334: a grown bush clipped a tent): no bush stands on a lot, a path or the camp's green. The people clear
+        /// the ground they build on and trample what grows on their paths; it goes back to grass. No dice.</summary>
+        public int ClearBushes()
+        {
+            var eco = S.eco;
+            if (eco == null || !eco.on || eco.cover == null) return 0;
+            int n = 0;
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                if (eco.cover[c] != (byte)Eco.EcoCover.Bush) continue;
+                if (Map.lot[c] == 0 && Map.tier[c] < PathNet.Trail && !Map.Green(c)) continue;
+                eco.cover[c] = (byte)Eco.EcoCover.Grass;
+                Map.Set(c, SiteMap.FMeadow, true);
+                n++;
+            }
+            eco.cBush = Math.Max(0, eco.cBush - n);
+            return n;
         }
 
         /// <summary>The ecology (Sim/Eco) writes into the land after each of its steps: the pond is the ecology's water, the
@@ -114,6 +134,9 @@ namespace AquariumCiv.Sim.Settle
             if (eco == null || !eco.on || eco.cover == null) return;
             var land = Eco.EcoLand.For(St.terrain);
             Map.noBuild = land.noBuild;
+            Map.thicket ??= new float[SiteMap.N];
+            bool anyThicket = eco.thicketA >= 0;
+            for (int c = 0; c < SiteMap.N; c++) Map.thicket[c] = anyThicket ? core.BushThicketZone(c) : 0f; // #385: build round the thickets
             bool wet = false;
             for (int c = 0; c < SiteMap.N; c++)
             {
@@ -143,7 +166,7 @@ namespace AquariumCiv.Sim.Settle
         }
 
         /// <summary>Offer a lot to buildings added since the last month (debug builds) without stepping time.</summary>
-        public void PlacePending() => ProcessNewBuildings(false);
+        public void PlacePending() { ProcessNewBuildings(false); ClearBushes(); }
 
         /// <summary>The era moment: lots never move; the camp's hearth gives way to the green, families get barns.</summary>
         public void OnEraChange()

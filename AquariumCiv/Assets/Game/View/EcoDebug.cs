@@ -122,13 +122,23 @@ namespace AquariumCiv.View
             return c < 0 ? "no bush: no ground for it" : Refresh($"first bush at cell {c}");
         }
 
-        /// <summary>"+N bushes" (#288): bushes on the grass nearest the camp (every third cell).</summary>
+        /// <summary>"+N bushes" (#288, #385): bushes in the thickets' hearts (before the first thicket, on the grass nearest the camp).</summary>
         public static string AddBushes(int n)
         {
             var s = Sim;
             if (s == null || !s.EcologyOn) return "living land off";
             int c = s.DebugAddBushes(n);
-            return Refresh($"+{n} bushes: {c} came up");
+            var all = new System.Collections.Generic.List<int>(); s.BushCells(all);
+            return Refresh($"+{n} bushes: {c} came up ({all.Count} of {s.BushCap})");
+        }
+
+        /// <summary>"Bush carpet" (#385): the meadow turns to bushes, as an old save grew them; they thin back to the thickets over a few years.</summary>
+        public static string CarpetBushes()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int c = s.DebugCarpetBushes();
+            return Refresh($"bush carpet: {c} came up; the land holds {s.BushCap}");
         }
 
         /// <summary>"Start a hunt now" (#283): a hunter takes a spear and goes after the nearest rabbit, starting now.</summary>

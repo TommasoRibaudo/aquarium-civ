@@ -28,6 +28,11 @@ namespace AquariumCiv.Sim.Settle
         public readonly bool eco;
         /// <summary>Cells no lot may take (the ecology's flood line, below the main hollow's spill level); null when the ecology is off.</summary>
         public bool[] noBuild;
+        /// <summary>#385: how much each cell is in a berry thicket (0..1), set by <see cref="Settlement.SyncEco"/>; null when the ecology is off.
+        /// The placers weigh it as half a tree, so the village grows round the thickets and builds on one only when short of room.</summary>
+        public float[] thicket;
+        /// <summary>The placers' cost of a cell's cover: a tree 1, a thicket's heart 0.5.</summary>
+        public float Overgrown(int c) => Forest(c) ? 1f : thicket != null ? 0.5f * thicket[c] : 0f;
 
         public byte[] flags => st.flags;
         public byte[] tier => st.tier;
