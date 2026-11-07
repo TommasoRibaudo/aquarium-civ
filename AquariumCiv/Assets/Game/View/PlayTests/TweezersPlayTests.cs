@@ -214,6 +214,87 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>#402 (playtest #394, "removed a tree and another grown-up tree appeared right after"): a grown tree with young ones just before it
+        /// in cell order is drawn before the pluck, and still drawn (not newly drawn) after it. Failed before the fix: trees and young trees were
+        /// placed in one pass in cell order, so a young tree took the grown one's room and plucking it let the grown tree pop up.</summary>
+        [UnityTest]
+        public IEnumerator Tweezers_PluckingASapling_NoGrownTreePopsUp()
+        {
+            yield return Open();
+            try
+            {
+                yield return LivingLand();
+                var sim = GameClock.Instance.Sim;
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var e = sim.State.eco;
+                box.Refresh();
+                yield return null;
+                // A grown tree that is drawn today, on an even cell (one crown per 2 × 2 block), away from the Keeper's tree and the water.
+                int ti = e.treeCell >= 0 ? AquariumCiv.Sim.Settle.SiteMap.I(e.treeCell) : -99, tj = e.treeCell >= 0 ? AquariumCiv.Sim.Settle.SiteMap.J(e.treeCell) : -99;
+                bool Ok(int c)
+                {
+                    int i = AquariumCiv.Sim.Settle.SiteMap.I(c), j = AquariumCiv.Sim.Settle.SiteMap.J(c);
+                    if (((i | j) & 1) != 0 || i < 2 || j < 2 || i > AquariumCiv.Sim.Settle.SiteMap.NX - 3 || j > AquariumCiv.Sim.Settle.SiteMap.NZ - 3) return false;
+                    if (Math.Abs(i - ti) < 4 && Math.Abs(j - tj) < 4) return false;
+                    for (int dj = -2; dj <= 2; dj++)
+                        for (int di = -2; di <= 2; di++)
+                        {
+                            var cv = (EcoCover)e.cover[AquariumCiv.Sim.Settle.SiteMap.Index(i + di, j + dj)];
+                            if (cv == EcoCover.Water || cv == EcoCover.Reeds) return false;
+                        }
+                    return true;
+                }
+                // Spots where a lone grown tree is drawn (meadow round it), apart from each other: one spot alone can miss, since each young
+                // tree is drawn only on some cells (a hash), so the case runs at several.
+                var spots = new System.Collections.Generic.List<int>();
+                var tried = Enumerable.Range(0, EcoLand.N).Where(Ok).OrderBy(c => (c * 7919) % 997).Take(60).ToList();
+                foreach (int cand in tried)
+                {
+                    if (spots.Count >= 6) break;
+                    int gi = AquariumCiv.Sim.Settle.SiteMap.I(cand), gj = AquariumCiv.Sim.Settle.SiteMap.J(cand);
+                    if (spots.Any(s => Math.Abs(AquariumCiv.Sim.Settle.SiteMap.I(s) - gi) < 6 && Math.Abs(AquariumCiv.Sim.Settle.SiteMap.J(s) - gj) < 6)) continue;
+                    var saved = new byte[25];
+                    for (int dj = -2, k = 0; dj <= 2; dj++)
+                        for (int di = -2; di <= 2; di++, k++)
+                        {
+                            int c = AquariumCiv.Sim.Settle.SiteMap.Index(gi + di, gj + dj);
+                            saved[k] = e.cover[c];
+                            e.cover[c] = (byte)EcoCover.Grass;
+                        }
+                    e.cover[cand] = (byte)EcoCover.Tree;
+                    lock (box.TreeSpots) box.TreeSpots.Clear();
+                    box.Refresh();
+                    bool stands;
+                    lock (box.TreeSpots) stands = box.TreeSpots.ContainsKey(cand);
+                    if (stands) { spots.Add(cand); continue; }
+                    for (int dj = -2, k = 0; dj <= 2; dj++)
+                        for (int di = -2; di <= 2; di++, k++) e.cover[AquariumCiv.Sim.Settle.SiteMap.Index(gi + di, gj + dj)] = saved[k];
+                }
+                Assert.GreaterOrEqual(spots.Count, 3, $"lone grown trees stand ({tried.Count} spots tried)");
+                // Young trees on the four cells that come before each grown tree in cell order and touch it.
+                var young = spots.SelectMany(g => new[] { (-1, 0), (-1, -1), (0, -1), (1, -1) }
+                    .Select(d => AquariumCiv.Sim.Settle.SiteMap.Index(AquariumCiv.Sim.Settle.SiteMap.I(g) + d.Item1, AquariumCiv.Sim.Settle.SiteMap.J(g) + d.Item2))).ToArray();
+                foreach (int c in young) e.cover[c] = (byte)EcoCover.Young;
+                lock (box.TreeSpots) box.TreeSpots.Clear();
+                box.Refresh();
+                yield return null;
+                string Missing() { lock (box.TreeSpots) return string.Join(" ", spots.Where(g => !box.TreeSpots.ContainsKey(g)).Select(g => $"{AquariumCiv.Sim.Settle.SiteMap.I(g)},{AquariumCiv.Sim.Settle.SiteMap.J(g)}")); }
+                Assert.AreEqual("", Missing(), $"every grown tree is drawn with young trees beside it ({spots.Count} spots)");
+
+                foreach (int c in young)
+                {
+                    Assert.IsTrue(sim.EcoCanPluckSapling(c), $"young tree {c} can be plucked");
+                    Assert.AreEqual(c, sim.EcoPluckSapling(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c), 0.01f));
+                }
+                lock (box.TreeSpots) box.TreeSpots.Clear();
+                box.Refresh();
+                yield return null;
+                Assert.AreEqual("", Missing(), "every grown tree still stands after the pluck");
+                yield return Shot("tweezers-402-after-pluck");
+            }
+            finally { Close(); }
+        }
+
         /// <summary>#375 (playtest #347, "tweezers only worked when I wasn't clicking through the glass"): a weed seen through grimy glass comes out
         /// with a tap by touch. Failed before the fix: PluckAt dropped any piece behind dirty glass (BehindDirtyGlass), the cloth's rule.</summary>
         [UnityTest]
