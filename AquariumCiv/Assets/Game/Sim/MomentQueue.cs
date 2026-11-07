@@ -92,6 +92,8 @@ namespace AquariumCiv.Sim
         /// offered after this many watched minutes; after <see cref="MaxDeferrals"/> such tries it becomes a card [est].</summary>
         public const double RetryMinutes = 2.0;
         public const int MaxDeferrals = 6;
+        /// <summary>t4-fixes: a moment handed over at night waits this many watched minutes before it is offered again (not a try).</summary>
+        public const double NightRetryMinutes = 0.5;
         /// <summary>A town's release is a "busy day" this often (2 or 3 kinds at once, a wedding during the market) [est].</summary>
         public const float BusyDayChance = 0.25f;
         public const int BusyDayMax = 3;

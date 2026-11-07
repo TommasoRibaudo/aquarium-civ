@@ -767,11 +767,15 @@ namespace AquariumCiv.View.Cards.Tests
             Assert.IsTrue(m.Next());
             Assert.AreNotEqual(CardKind.Dilemma, m.Face.kind);
             m.SkipAll();
+            AddMany(sim, 2); // t4-fixes: something new happened while away
             Assert.IsTrue(m.Prepare(Day));
             m.TapPeek();
             var kinds = new List<CardKind>();
-            do kinds.Add(m.Face.kind); while (m.Next());
-            Assert.IsFalse(kinds.Contains(CardKind.Dilemma), "an answered dilemma's question is gone; the keeper card tells it");
+            var leads = new List<int>();
+            do { kinds.Add(m.Face.kind); if (m.Shown != null) leads.Add(m.Shown.lead.id); } while (m.Next());
+            Assert.IsFalse(kinds.Contains(CardKind.Dilemma), "an answered dilemma's question is gone");
+            // t4-fixes (tester run 3): the Keeper gave the answer and saw it said: it is read, so a later return never leads with it
+            CollectionAssert.DoesNotContain(leads, d.answerEntryId, "the Keeper's own answer is not news on the next return (it stays in History)");
         }
 
         [Test]

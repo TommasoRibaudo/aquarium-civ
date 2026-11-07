@@ -109,6 +109,7 @@ namespace AquariumCiv.View
             if (slot == PropSlot.Hand) armR.localRotation = Quaternion.Euler(-35f, 0, 10f);
             prop = Part(parent, "Prop_" + kind, PegDoll.PropMesh(kind), material, pos * scale, rot);
             prop.localScale = Vector3.one * Mathf.Lerp(1f, scale, 0.5f);
+            if (kind == PropKind.Rabbit && slot == PropSlot.Hand) prop.localScale *= HeldRabbitScale; // t4-fixes: the catch reads at the default camera
             if (kind == PropKind.Rabbit && slot == PropSlot.Shoulder) // look-fix: over ONE shoulder, nose to tail front-to-back, the head down the back
                 prop.SetLocalPositionAndRotation(new Vector3(PegDoll.ShoulderX * 0.9f, PegDoll.BodyH + 0.012f, 0.01f) * scale, Quaternion.Euler(-12f, 0f, 0f));
             if (slot == PropSlot.Hand)
@@ -204,6 +205,8 @@ namespace AquariumCiv.View
             return Quaternion.Euler(e - 90f, 0f, 0f) /* +y (the point) to forward (-z), tipped up e */;
         }
         public const float SpearCarryUp = 30f, SpearAimUp = 12f;
+        /// <summary>t4-fixes (tester run 3: the held rabbit read ~10 px): a rabbit held in the hand is drawn this much bigger.</summary>
+        public const float HeldRabbitScale = 1.2f;
 
         /// <summary>Look-fix (visit loop, #362): the caught rabbit hangs from the fist by its scruff, head up, body down, turned with the doll
         /// only, so held up overhead it reads as an animal dangling from a raised hand, not a plank swung with the arm.</summary>

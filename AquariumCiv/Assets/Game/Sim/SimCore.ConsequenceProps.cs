@@ -83,7 +83,7 @@ namespace AquariumCiv.Sim
             if (string.IsNullOrEmpty(o.prop)) return;
             var list = (State.consequenceProps ??= new List<ConsequenceProp>());
             if (list.Any(p => p.dilemmaId == d.id && p.option == option)) return;
-            int person = def.smallKind != null ? d.subjectId : d.PersonOf(option);
+            int person = def.smallKind != null && d.subjectId >= 0 ? d.subjectId : d.PersonOf(option); // t4-fixes: a small choice with no subject (the story) is about its person
             var p = new ConsequenceProp
             {
                 id = list.Count == 0 ? 1 : list.Max(x => x.id) + 1, dilemmaId = d.id, option = option, kind = o.prop, anchor = o.propAt,

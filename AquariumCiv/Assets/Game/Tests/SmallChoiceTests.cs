@@ -125,12 +125,14 @@ namespace AquariumCiv.Tests
             var sim = AfterABig(5, newborn: false);
             foreach (var n in sim.State.notables) n.partnerId = -1; // no couples, so no newborn of a couple
             Assert.IsNull(sim.NamingNewborn());
-            // A choice raised in the following years only ever names a real baby of a real couple (nothing is invented).
+            // A naming raised in the following years only ever names a real baby of a real couple (nothing is invented). t4-fixes: the
+            // other choices that fill the slots meanwhile (the everyday small kinds, a big in the small slot) are answered and passed.
             for (int m = 0; m < 48; m++)
             {
                 sim.Advance(1.0 / 12);
                 var open = sim.OpenDilemma;
                 if (open == null) continue;
+                if (open.defId != "small_naming") { Assert.IsTrue(sim.AnswerDilemma(open.id, 0, DilemmaPath.Card)); continue; }
                 Assert.AreEqual(DilemmaSize.Small, open.size);
                 var child = sim.FindNotable(open.subjectId);
                 Assert.Less(child.age, SmallChoices.NewbornNameAge);
@@ -181,6 +183,121 @@ namespace AquariumCiv.Tests
             again.AnswerDilemma(d2.id, 1, DilemmaPath.Card);
             var back2 = JsonUtility.FromJson<SimState>(JsonUtility.ToJson(again.State));
             Assert.IsTrue(new SimCore(Cfg(), back2).NamedByKeeper(d.subjectId));
+        }
+
+        // ---------- t4-fixes (tester run 3): two returns, 7 h, and no choice ----------
+
+        /// <summary>A small kind that is never there (no moment for it): the small slot has nothing to offer.</summary>
+        static DilemmaDef NeverSmall() => new DilemmaDef
+        {
+            id = "small_never", kind = DilemmaKind.WhichWay, size = DilemmaSize.Small, smallKind = "never", question = "?",
+            options = new[] { new DilemmaOptionDef { label = "a", hint = "h" }, new DilemmaOptionDef { label = "b", hint = "h" } },
+        };
+
+        /// <summary>Opens every 1 to 3 real hours over <paramref name="hours"/> (watched 15 minutes each, the open choice answered while
+        /// watched): checks the rules on the way and returns the choices raised after the start.</summary>
+        static System.Collections.Generic.List<Dilemma> PlayOpens(SimCore sim, double hours)
+        {
+            double start = sim.State.clockHours;
+            int before = sim.State.dilemmas.Count;
+            double[] gaps = { 1.0, 2.0, 3.0, 1.5, 2.5, 1.0, 3.0, 2.0 };
+            for (int k = 0; sim.State.clockHours - start < hours; k++)
+            {
+                for (int m = 0; m < 3; m++)
+                {
+                    sim.Advance(1.0 / 12);
+                    Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.state == DilemmaState.Open), 1, "never two open at once");
+                    var open = sim.OpenDilemma;
+                    if (open != null && m == 2) Assert.IsTrue(sim.AnswerDilemma(open.id, 0, DilemmaPath.Box));
+                }
+                double from = sim.State.clockHours;
+                sim.CatchUp(gaps[k % gaps.Length]);
+                double to = sim.State.clockHours;
+                Assert.IsNull(sim.State.dilemmas.Skip(before).FirstOrDefault(d => d.raisedHours > from + 1e-6 && d.raisedHours < to - 1e-6), "never raised during an away");
+                sim.BeginVisit();
+                Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.state == DilemmaState.Open), 1, "never two open at once");
+            }
+            var raised = sim.State.dilemmas.Skip(before).ToList();
+            for (int i = 1; i < raised.Count; i++)
+                Assert.GreaterOrEqual(raised[i].raisedHours - raised[i - 1].raisedHours, SimCore.DilemmaGapHours - 1e-6, "the 3 h gap");
+            if (raised.Count > 0 && before > 0) Assert.GreaterOrEqual(raised[0].raisedHours - sim.State.dilemmas[before - 1].raisedHours, SimCore.DilemmaGapHours - 1e-6);
+            return raised;
+        }
+
+        [Test]
+        public void NoSmallKindThereTheNextBigFillsTheSlotAfterTheGap()
+        {
+            for (int seed = 1; seed <= 4; seed++)
+            {
+                var sim = AfterABig(seed, newborn: false);
+                sim.SmallCatalog = new[] { NeverSmall() };
+                var raised = PlayOpens(sim, 10);
+                Assert.GreaterOrEqual(raised.Count, 2, $"seed {seed}: a choice every few hours, not only when the next big's 6-10 h window comes");
+                Assert.IsTrue(raised.All(d => d.size == DilemmaSize.Big), $"seed {seed}: nothing is invented: the bigs fill in");
+            }
+        }
+
+        [Test]
+        public void WithoutANewbornTheEverydayKindsComeEveryFewHours()
+        {
+            for (int seed = 1; seed <= 4; seed++)
+            {
+                var sim = AfterABig(seed, newborn: false);
+                sim.SmallCatalog = SmallChoices.All.Where(d => d.smallKind != SmallChoices.Naming).ToArray(); // no notable newborn in this box
+                var raised = PlayOpens(sim, 10);
+                Assert.GreaterOrEqual(raised.Count, 2, $"seed {seed}");
+                Assert.IsTrue(raised.Any(d => d.size == DilemmaSize.Small), $"seed {seed}: a small one between the bigs");
+                var smalls = raised.Where(d => d.size == DilemmaSize.Small).ToList();
+                for (int i = 1; i < smalls.Count; i++) Assert.AreNotEqual(smalls[i - 1].defId, smalls[i].defId, $"seed {seed}: never the same kind twice in a row");
+            }
+        }
+
+        [Test]
+        public void TheEverydayKindsAreThereInACampAndLeaveTheirThing()
+        {
+            foreach (string kind in new[] { SmallChoices.Story, SmallChoices.Supper })
+                for (int option = 0; option < 2; option++)
+                {
+                    var sim = AfterABig(3, newborn: false);
+                    sim.SmallCatalog = SmallChoices.All.Where(d => d.smallKind == kind).ToArray();
+                    var d = RaiseSmall(sim);
+                    Assert.AreEqual(DilemmaSize.Small, d.size);
+                    var v = sim.OpenDilemmaView;
+                    Assert.IsFalse(v.question.Contains("{"), v.question);
+                    if (kind == SmallChoices.Story)
+                    {
+                        Assert.AreNotEqual(d.personA, d.personB);
+                        Assert.GreaterOrEqual(sim.FindNotable(d.personA).age, SimCore.AdultAge);
+                        Assert.AreEqual(sim.FindNotable(d.personA).name, v.options[0].label);
+                        Assert.AreEqual(d.personB, v.options[1].personId);
+                    }
+                    Assert.IsTrue(sim.AnswerDilemma(d.id, option, DilemmaPath.Box));
+                    for (int m = 0; m < SimCore.PropWithinMonths; m++) sim.Advance(1.0 / 12);
+                    var p = sim.ConsequencePropFor(d.id, option);
+                    Assert.IsNotNull(p, $"{kind} {option}");
+                    Assert.IsTrue(p.placed, $"{kind} {option}");
+                    if (kind == SmallChoices.Story) Assert.AreEqual(d.PersonOf(option), p.personId, "the teller's feather is by their home");
+                }
+        }
+
+        [Test]
+        public void TheEverydayKindsAreAskedAtMostTwiceEach()
+        {
+            var sim = AfterABig(2, newborn: false);
+            sim.SmallCatalog = SmallChoices.All.Where(d => d.smallKind != SmallChoices.Naming).ToArray();
+            PlayOpens(sim, 40);
+            foreach (var id in new[] { "small_story", "small_supper" })
+                Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.defId == id), SmallChoices.RepeatMax, id);
+        }
+
+        [Test]
+        public void TheKeepersOwnAnswerIsReadAndNeverLeadsTheNextReturn()
+        {
+            var sim = AfterABig(4, newborn: false);
+            var keeperLine = sim.State.chronicle.Single(e => e.id == sim.State.dilemmas[0].answerEntryId);
+            Assert.IsTrue(sim.State.cards.read.Contains(keeperLine.id), "the Keeper's answer is read");
+            var stack = sim.UnreadCardsCapped(3);
+            Assert.IsFalse(stack.cards.Concat(stack.also).Any(c => c.entries.Any(e => e.id == keeperLine.id)), "not a card on the next return");
         }
 
         [Test]

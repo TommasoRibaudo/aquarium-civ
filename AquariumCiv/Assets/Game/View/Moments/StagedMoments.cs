@@ -13,7 +13,8 @@ namespace AquariumCiv.View
     /// <list type="bullet">
     /// <item>A handed-over moment is cast and planned by the planner (<see cref="LifePlanner.StageHeldMoment"/>): real people,
     /// the real fire and glass, a beginning, a middle and an end beat, no camera move. At night it waits for the morning
-    /// (it is still the director's "playing" one); one that can't be cast yet waits again (SimCore.DeferMoment; a card only after several tries).</item>
+    /// in the queue (t4-fixes: SimCore.NightWaitMoment, Waiting, never "playing" with nothing shown); one that can't be cast yet waits
+    /// again (SimCore.DeferMoment; a card only after several tries).</item>
     /// <item>Each frame the people view asks <see cref="PeopleView.StagedSpot"/> and <see cref="PeopleView.StagedPose"/>: the
     /// plan's spot (the aisle, the ring, the glass) and its beat (<see cref="MomentBeats"/>), the same steps the planner plays.</item>
     /// <item><b>Done</b> once the scene is over (everyone walks back into their day); <b>Stop</b> ends it at once and releases
@@ -46,6 +47,8 @@ namespace AquariumCiv.View
 
         /// <summary>Counters (tests, the panel): scenes started, finished on their own, stopped early, given up (made a card).</summary>
         public static int Started, Finished, Stopped, GaveUp;
+        /// <summary>t4-fixes: moments handed over at night and put back to wait for the morning (tests, the panel).</summary>
+        public static int NightWaits;
         /// <summary>The last scene started (tests, the panel).</summary>
         public static HeldMomentScene LastScene { get; private set; }
         public static string LastWhy { get; private set; } = "";
@@ -67,7 +70,7 @@ namespace AquariumCiv.View
         public static int Playing { get { int n = 0; foreach (var l in lives) if (!l.over && l.scene != null) n++; return n; } }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { lives.Clear(); Started = Finished = Stopped = GaveUp = 0; LastScene = null; }
+        static void ResetStatics() { lives.Clear(); Started = Finished = Stopped = GaveUp = NightWaits = 0; LastScene = null; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         public static void Install()
@@ -94,7 +97,16 @@ namespace AquariumCiv.View
             var planner = pv != null ? pv.Planner : null;
             if (planner == null || m == null) { LastWhy = "no people view"; return null; }
             var live = new Live { moment = m, sim = sim, pv = pv, planner = planner };
-            if (LifePlanner.HeldMomentFits(pv.Now, LifePlanner.HeldMomentSeconds(m.kind)) && !TryStart(live)) return null; // can't be cast: a card
+            if (!LifePlanner.HeldMomentFits(pv.Now, LifePlanner.HeldMomentSeconds(m.kind)))
+            {
+                // t4-fixes (tester run 3): night. It waits for the morning in the queue (Waiting, not a try), never "playing" with nothing on
+                // screen: the stage sees it is no longer playing and lets it be.
+                sim.NightWaitMoment(m.id);
+                NightWaits++;
+                LastWhy = "night: it waits for the morning";
+                return null;
+            }
+            if (!TryStart(live)) return null; // can't be cast: it waits (a card only after several tries)
             lives.Add(live);
             return new MomentStaging { Done = () => Done(live), Stop = () => End(live, true) };
         }

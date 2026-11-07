@@ -455,6 +455,30 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(sim.DeferMoment(m.id), "only a playing moment");
         }
 
+        /// <summary>t4-fixes (tester run 3): a festival handed over at night sat "Playing" with nothing on screen. Now it goes back to
+        /// waiting at once, without counting a try (a night never makes it a card), and the welcome stays due for the morning.</summary>
+        [Test]
+        public void AMomentHandedOverAtNightWaitsWithoutCountingATry()
+        {
+            var sim = Box();
+            var e = sim.Chronicle("festival", "The people gathered round the fire for a feast.", 0.9f);
+            var m = sim.MomentOfEntry(e.id);
+            sim.MomentPacing.welcomeDue = true;
+            for (int i = 0; i < MomentRules.MaxDeferrals + 2; i++)
+            {
+                Assert.AreSame(m, sim.StartDueMoments().Single());
+                Assert.IsTrue(sim.NightWaitMoment(m.id));
+                Assert.AreEqual(HeldMomentState.Waiting, m.state, "never playing with nothing shown");
+                Assert.AreEqual(0, sim.PlayingMoments().Count);
+                Assert.AreEqual(0, m.deferrals, "a night is not a try");
+                Assert.IsTrue(sim.MomentPacing.welcomeDue, "the welcome waits for the morning");
+                Assert.IsTrue(sim.MomentHidesCard(e), "still not a card");
+                Assert.AreEqual(0, sim.StartDueMoments().Count, "not offered again at once");
+                WatchMinutes(sim, MomentRules.NightRetryMinutes + 0.1);
+            }
+            Assert.IsFalse(sim.NightWaitMoment(m.id), "only a playing moment");
+        }
+
         [Test]
         public void ADeferredMomentLetsTheNextOnePlay()
         {

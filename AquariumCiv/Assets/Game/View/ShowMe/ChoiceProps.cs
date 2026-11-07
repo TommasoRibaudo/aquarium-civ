@@ -21,6 +21,7 @@ namespace AquariumCiv.View
         {
             "camp_remember" => option == 0 ? Offering.Stone : Offering.Sprig,
             "village_harvest" => option == 0 ? Offering.Feast : Offering.Basket,
+            "small_supper" => option == 0 ? Offering.Feast : Offering.Basket, // t4-fixes: one big pot, or a basket each
             _ => Offering.Basket,
         };
 
