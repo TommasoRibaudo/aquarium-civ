@@ -162,7 +162,7 @@ namespace AquariumCiv.View
                             float h = cv == EcoLayer.Tall ? Mathf.Lerp(0.08f, 0.13f, H(c, 30 + t)) : Mathf.Lerp(0.035f, 0.065f, H(c, 30 + t));
                             float c3 = H(c, 32 + t);
                             var g = land.OnGround(q);
-                            Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC);
+                            Pieces.GrassTuft(ib, g, h, c3 < 0.33f ? co.tuftA : c3 < 0.66f ? co.tuftB : co.tuftC, cv == EcoLayer.Tall);
                             if (cv == EcoLayer.Tall && H(c, 34 + t) < 0.12f)
                                 ib.Ico(g + Vector3.up * h * 0.8f, 0.014f, Vector3.one, Palette.Flowers[Mathf.Min(Palette.Flowers.Length - 1, (int)(H(c, 36) * Palette.Flowers.Length))], 0.1f);
                             mb.AppendFree(ib);

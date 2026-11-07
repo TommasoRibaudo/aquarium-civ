@@ -62,6 +62,28 @@ Shader "AquariumCiv/View/Stylized"
         float4 _AC_ShakeB[16];
         float4 _AC_ShakeC[16];
 
+        // The hunt's safety net (GrassHide): up to 4 hunters (xyz = their feet, w = how much, 0..1); _AC_HideDir = (x, z unit vector toward the
+        // camera, radius u). Tall grass and reeds (sway weight >= 1.5: the marker is 1 + the real weight) on the camera side of a hunter and
+        // within the radius flatten to the ground, so a clump never stands between the camera and the hunter. _AC_HideCount 0 = off.
+        float _AC_HideCount;
+        float4 _AC_HidePos[4];
+        float4 _AC_HideDir[4];
+
+        float3 HideNear(float3 p)
+        {
+            int n = (int)_AC_HideCount;
+            [loop] for (int i = 0; i < n; i++)
+            {
+                float4 c = _AC_HidePos[i];
+                float4 dr = _AC_HideDir[i];
+                float2 d = p.xz - c.xz;
+                float side = smoothstep(-0.06, 0.04, dot(d, dr.xy));
+                float nearK = 1.0 - smoothstep(dr.z * 0.55, dr.z, length(d));
+                p.y = c.y + (p.y - c.y) * (1.0 - 0.92 * c.w * side * nearK);
+            }
+            return p;
+        }
+
         float Hash11(float n) { return frac(sin(n * 12.9898) * 43758.5453); }
 
         // A light's slow breathing, 0.89..1: two sines a few seconds long (0.31 and 0.53 Hz), each lamp on its own phase. A fire
@@ -148,6 +170,11 @@ Shader "AquariumCiv/View/Stylized"
                 positionWS.y += w * 0.3 * 0.06 * n; // height weight x flame height x stretch
                 positionWS.xz += 0.004 * w * float2(sin(t * 0.8 + ph), cos(t * 0.6 + ph * 1.3));
                 return positionWS;
+            }
+            if (swayWeight > 1.5) // tall grass / reed marker
+            {
+                swayWeight -= 1.0;
+                if (_AC_HideCount > 0.5) positionWS = HideNear(positionWS);
             }
             return Shake(Sway(positionWS, swayWeight), swayWeight);
         }

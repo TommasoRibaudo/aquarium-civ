@@ -73,6 +73,8 @@ namespace AquariumCiv.View
             /// by <see cref="offset"/> and kept off the solids. <see cref="heading"/> is the way the plan walks, its index this frame's in the crowd.</summary>
             public Vector2 drawn, offset, heading;
             public int crowdIndex = -1;
+            /// <summary>0..1: how far the tall grass between a stalking hunter and the camera has flattened (GrassHide); eases in and out.</summary>
+            public float grassHide;
             /// <summary>The pose drawn last frame and the move it was (#203: a change of move blends over <see cref="BlendSeconds"/>, from <see cref="blendFrom"/>).</summary>
             public DollPose pose, blendFrom;
             public DollStyle drew;
@@ -203,6 +205,7 @@ namespace AquariumCiv.View
             var sim = Source != null ? Source.Sim : null;
             if (sim == null || Box == null || Box.Root == null) return;
             Box.PlannedPeople = true;
+            GrassHide.Begin();
             if (rig == null && Camera.main != null) rig = Camera.main.GetComponent<BoxCamera>();
             dollZoomScale = rig != null ? AquariumCiv.Lighting.CameraReach.DollScale(rig.zoom, DollScaleAmount) : 1f;
             bool newSim = planner == null || plannerSim != sim;
@@ -348,6 +351,7 @@ namespace AquariumCiv.View
                 d.act = a;
                 Drive(d, a, stage, dt, time);
             }
+            GrassHide.Flush();
             // #362: the thrown spear flies and stands in the ground
             huntStage.Tick(planner, now, peopleRoot, Box.SolidMaterial,
                 who => dolls.TryGetValue(who.Key, out var hd) && hd.view != null ? hd.view.prop : null, (hx, hz) => Box.SurfaceHeight(hx, hz));
@@ -600,6 +604,8 @@ namespace AquariumCiv.View
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
             var ground = new Vector3(d.drawn.x, Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y), d.drawn.y);
             if (playing && playCue.sink > 0f && KidPlay.PondLevel(out float pondY)) ground.y = pondY - playCue.sink; // #359: wading, jumped in
+            d.grassHide = Mathf.MoveTowards(d.grassHide, hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.HoldUp ? 1f : 0f, dt / 0.35f);
+            if (d.grassHide > 0f) GrassHide.Add(peopleRoot.TransformPoint(ground), d.grassHide);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
             v.transform.SetLocalPositionAndRotation(ground + yawQ * (pose.offset * s), yawQ * tilt);
             float zs = toddling ? dollZoomScale * ToddleFollow.ToddlerScale : dollZoomScale; // 2026-11-06: the little one is littler than a kid
