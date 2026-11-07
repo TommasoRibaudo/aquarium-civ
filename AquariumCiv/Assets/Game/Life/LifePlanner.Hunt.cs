@@ -233,9 +233,9 @@ namespace AquariumCiv.Life
 
             // t1-huntgrass: the hunt is played on open ground (tall grass and bushes hide the doll at the default camera). Try the
             // picked rabbit first, then the next nearest (up to four); the first whose line is open wins, else the picked one is played.
-            // t3-hunt: and in the camp frame (the strike and the rabbit where the camera looks) first of all: open + in frame, then in frame, then open.
+            // t3-hunt: and in the camp frame (the strike and the rabbit where the camera looks): open + in frame, then open, then in frame.
             var order = new List<int> { cands[pick].id };
-            for (int k = 0; k < cands.Count && order.Count < 6; k++) if (k != pick) order.Add(cands[k].id);
+            for (int k = 0; k < cands.Count && order.Count < 10; k++) if (k != pick) order.Add(cands[k].id);
             float strikeAt = 0f;
             int bestRank = -1, bestIdx = 0;
             for (int oi = 0; oi < order.Count; oi++)

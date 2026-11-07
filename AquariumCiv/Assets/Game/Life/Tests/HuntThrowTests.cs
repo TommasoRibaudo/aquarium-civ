@@ -139,7 +139,7 @@ namespace AquariumCiv.Life.Tests
                     var hold = p.steps.First(x => x.phase == HuntPhase.HoldUp);
                     Assert.AreEqual((ActivityKind.HoldUp, Prop.Rabbit), (hold.kind, hold.prop));
                     Assert.AreEqual(HuntTiming.HoldUpSeconds, LifeClock.RealSecondsBetween(hold.start, hold.end), 0.1f);
-                    var carry = p.steps.Last(x => x.phase == HuntPhase.CarryBack);
+                    var carry = p.steps.Where(x => x.phase == HuntPhase.CarryBack).OrderByDescending(x => Dist(x.x0, x.z0, x.x1, x.z1)).First();   // t3-hunt: the long walk home
                     float speed = Dist(carry.x0, carry.z0, carry.x1, carry.z1) / LifeClock.RealSecondsBetween(carry.start, carry.end);
                     float walk = LifePlanner.WalkSpeed / LifeClock.RealSecondsPerViewHour(carry.start);
                     Assert.Less(speed, walk * 0.95f, "a slow proud walk home, slower than a plain one");
