@@ -27,6 +27,8 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | 15 | [research/15-barren-to-living-box.md](research/15-barren-to-living-box.md) | P8 groundwork: a box that starts barren and grows (rain → grass → rabbits → wood → ponds), real-ecology rules, the Ecology Lab spike |
 | 16 | [research/16-visit-loop-events-and-choices.md](research/16-visit-loop-events-and-choices.md) | Events you see, choices you own: storytellers, presence-gated moments, why a choice should wait instead of lapsing; the "hold, stage, ask" model |
 | 17 | [research/17-readable-life-animations.md](research/17-readable-life-animations.md) | Life you can watch: inventory of every people animation today, principles (the verb touches its target, the target answers), upgrades by impact |
+| 18 | [research/18-placed-life-and-ecosystems.md](research/18-placed-life-and-ecosystems.md) | Life you place: the Keeper stocks the box once the land is ready (thicket, rabbits, deer, ducks, fish), the ecosystems ladder, what the people do with each species |
+| 19 | [research/19-wolves-and-the-first-dogs.md](research/19-wolves-and-the-first-dogs.md) | Wolves you place: real wolf behaviour, how other games do wolves, the no-harm rules, the scenes and choices, and the arc from scraps and a lost pup to the camp's dogs |
 
 ## Design documents
 | File | Topic |
