@@ -288,6 +288,7 @@ namespace AquariumCiv.Life
             int edge = -1, woods = -1, bushes = -1, meadow = -1, rock = -1, road = -1, hill = -1;
             float dEdge = float.MaxValue, dWoods = float.MaxValue, dBushes = float.MaxValue, dMeadow = float.MaxValue, dRock = float.MaxValue;
             float dRoad = -1f, hHill = float.MinValue;
+            int keeperTree = sim != null && sim.State.eco != null && sim.State.eco.on ? sim.State.eco.treeCell : -1; // #493: never a woods / chopping spot
             for (int c = 0; c < SiteMap.N; c++)
             {
                 float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
@@ -296,6 +297,7 @@ namespace AquariumCiv.Life
                 bool water = map.Water(c);
                 if (map.Forest(c))
                 {
+                    if (c == keeperTree) continue;
                     if (d < dEdge) { dEdge = d; edge = c; }
                     if (d < dWoods && ForestAround(map, c) >= 8) { dWoods = d; woods = c; }
                 }
