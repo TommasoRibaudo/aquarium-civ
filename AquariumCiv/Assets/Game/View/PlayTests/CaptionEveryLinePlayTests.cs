@@ -67,7 +67,8 @@ namespace AquariumCiv.View.PlayTests
             return best;
         }
 
-        static VisualElement ShowMeRoot => Director.GetComponentInChildren<UIDocument>().rootVisualElement;
+        // The caption's own document ("ShowMeUI"); GetComponentInChildren found another UIDocument under the director first.
+        static VisualElement ShowMeRoot => GameObject.Find("ShowMeUI").GetComponent<UIDocument>().rootVisualElement;
 
         /// <summary>The routing: at the default view (zoom 1) and close up (0.45), a line is the caption with the name, the ring and the
         /// speech mark, and never a bubble.</summary>
@@ -96,6 +97,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.Less(cap.worldBound.yMax, ShowMeRoot.worldBound.height * 0.4f, "in the top lane");
             Assert.AreEqual(0, Director.Chatter.Plan.Live.Count(s => !s.reaction), "the chatter fades under a real line");
             Debug.Log($"[#327] zoom {zoom}: {said}; ring at {Director.Ring.At}, mark at {Director.Chatter.SpeechAt}, caption {cap.worldBound}");
+            yield return new WaitForSecondsRealtime(1f); // the mark and ring have faded in: shoot the settled look
             yield return LookShot($"caption-zoom-{zoom:0.00}");
             AssertNoErrors("routing " + zoom);
         }
