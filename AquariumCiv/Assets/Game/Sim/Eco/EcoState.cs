@@ -114,6 +114,9 @@ namespace AquariumCiv.Sim.Eco
         public int thefts, wolfWay;
         public long theftMonth = -1, wolfWayMonth = -1, wolfQuietUntil = -1;
         public bool theftSeen = true, theftHide;
+        /// <summary>#424 / B12.f: the first howl after the wolves were placed has played (it comes at the first dusk; kept in the save so a
+        /// box closed before dusk still hears it next time, and never twice).</summary>
+        public bool firstHowlHeard;
         /// <summary>#437 the white wolf (choice 6.5, a pure moment): the month it howled on the ridge (-1 never; once per box).</summary>
         public long whiteWolfMonth = -1;
         /// <summary>#437 / #431 / #446 the duck pen (spec §7): built (#431 sets it; the debug pen too), pen ducks (#431's; apart from the

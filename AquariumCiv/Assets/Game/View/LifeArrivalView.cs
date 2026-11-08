@@ -15,8 +15,8 @@ namespace AquariumCiv.View
     /// <item><b>The arrival</b>, an effect with no hand (B12.a–f): the thicket's seeds shower down and three bushes push up green; the
     /// rabbits drop lightly from the rim and shake off (RabbitView plays the pair itself); the deer step out of the trees and walk to the
     /// spot; the ducks glide down onto the pond with a skid; a bag floats on the pond, opens, and fish shadows dart out; two grey wolves
-    /// trot out of the far wood at the den and lie down, and the first dusk after brings their howl. Deer and wolves are
-    /// <see cref="QuadDoll"/> placeholders until #425.</item>
+    /// trot out of the far wood at the den and lie down, and the first dusk after brings their howl. Deer and wolves are P0's
+    /// <see cref="QuadDoll"/>; at the end beat they are handed to <see cref="DeerView"/> / <see cref="WolfView"/> where they stand (#425).</item>
     /// <item><b>The people react</b> (B12.0) within half a second: everyone awake within 2.5 u turns to it, the nearest grown-up points,
     /// one kid runs over and cheers, two or three walk over to watch, the chief looks up at the glass; for the wolves they only turn and
     /// stand still. At night the reaction waits for dawn (the arrival doesn't).</item>
@@ -52,12 +52,6 @@ namespace AquariumCiv.View
             LifeSpecies.Ducks => 3.6f, LifeSpecies.Fish => 6.2f, _ => 6f,
         };
 
-        /// <summary>After the end beat the deer graze and the wolves lie at the den this long, then go back into the trees (they have no
-        /// everyday view yet, #425/#426/#440).</summary>
-        public const float StayAfter = 8f, LeaveSeconds = 3f;
-        /// <summary>The camera leans in this close for an arrival (BoxCamera zoom; the nudge default is 0.7): the founding group is small [est].</summary>
-        public const float ArrivalZoom = 0.45f;
-
         sealed class Arrival
         {
             public LifeSpecies s; public int cell; public Vector3 at; public float t, length; public bool replay;
@@ -78,7 +72,7 @@ namespace AquariumCiv.View
         readonly List<(PersonRef who, float until)> looking = new();
         Material glass, shadow;
         static Mesh seedMesh, bagMesh, fishMesh, wingMesh;
-        long howlDay = -1; bool howlDue; float howlT = -1f; Arrival howlShow;
+        float howlT = -1f; Arrival howlShow;
 
         // ---------------------------------------------------------------- for tests and the panel
         public int Played { get; private set; }
@@ -97,7 +91,11 @@ namespace AquariumCiv.View
         public PersonRef LastRunner { get; private set; }
         public string LastLine { get; private set; } = "";
         public int Howls { get; private set; }
+        /// <summary>First-dusk howls played by themselves (B12.f end beat).</summary>
+        public int FirstHowls { get; private set; }
         public int HintsPlayed { get; private set; }
+        /// <summary>Hint scenes the camera leaned in on.</summary>
+        public int HintLeans { get; private set; }
         public string LastHint { get; private set; } = "";
         /// <summary>The arrival's pieces drawn now (bushes, dolls, the bag, shadows): the shots and tests look for them.</summary>
         public int PiecesShown { get { int n = 0; foreach (var a in playing) if (a.root != null && a.root.gameObject.activeInHierarchy) n += a.root.childCount; return n; } }
@@ -168,7 +166,8 @@ namespace AquariumCiv.View
             foreach (var s in LifeJar.All)
                 if (sim.LifeArrivalPending(s) && !Has(s)) Begin(s, sim.LifePlacedCell(s), false);
             float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-            TryNudge();
+            TryLean();
+            if (Cam != null) WatchCancels(Cam);
             var pv = PeopleView.Find();
             for (int i = playing.Count - 1; i >= 0; i--)
             {
@@ -190,23 +189,65 @@ namespace AquariumCiv.View
             Howl(sim, pv, dt);
         }
 
-        Vector3 nudgeAt; float nudgeUntil = -1f; bool nudgeReplay;
-        /// <summary>Camera leans made for arrivals (tests).</summary>
+        // ---------------------------------------------------------------- the lean (user 2026-11-08: "the camera leans in")
+        Vector3 leanAt; float leanUntil = -1f, hintLeanUntil = -1f; LifeSpecies leanFor; bool leanReplay, leanRefused; int cancelsSeen;
+        /// <summary>Camera leans made for the ghost, arrivals and hints (tests).</summary>
         public int Nudges { get; private set; }
+        /// <summary>The player cancelled a lean (two fingers): no more leans until the life tool is put down and the arrivals are over.</summary>
+        public bool LeanRefused => leanRefused;
 
-        void TryNudge()
+        /// <summary>How close the camera leans for each group (BoxCamera zoom; 1 = the whole box): close enough that the group reads at phone
+        /// size (rabbits and ducks are ~0.05 u), never closer than the camera's floor. Animals stay true to scale.</summary>
+        public static float LeanZoom(LifeSpecies s) => s switch
         {
-            if (Time.unscaledTime > nudgeUntil) return;
-            var cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
-            if (cam == null || (nudgeReplay && !GlassVoice.CameraFree())) return;
-            if (cam.NudgeToward(nudgeAt, ArrivalZoom)) { Nudges++; nudgeUntil = -1f; }
+            LifeSpecies.Thicket => 0.36f, LifeSpecies.Rabbits => 0.2f, LifeSpecies.Deer => 0.32f,
+            LifeSpecies.Ducks => 0.2f, LifeSpecies.Fish => 0.22f, _ => 0.32f,
+        };
+        /// <summary>A waiting hint's lean: the people are the scene, so a little wider; held this long at most (real seconds).</summary>
+        public const float HintZoom = 0.42f, HintHoldMax = 10f;
+
+        static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+
+        /// <summary>What keeps a lean: the ghost on the land, an arrival playing (and its line), a hint scene.</summary>
+        bool HoldLean()
+        {
+            var lp = LifePlaceView.Instance;
+            return (lp != null && lp.GhostShown) || playing.Count > 0 || Time.unscaledTime < hintLeanUntil;
+        }
+
+        /// <summary>The ghost was shown or moved (LifePlaceView): lean in on it, box-local <paramref name="at"/>.</summary>
+        public bool LeanOnGhost(LifeSpecies s, Vector3 at)
+        {
+            if (box == null) return false;
+            leanAt = box.transform.TransformPoint(at); leanFor = s; leanReplay = false; leanUntil = Time.unscaledTime + 1.2f;
+            return TryLeanNow();
+        }
+
+        void TryLean()
+        {
+            if (Time.unscaledTime > leanUntil) return;
+            var cam = Cam;
+            if (cam == null) return;
+            WatchCancels(cam);
+            if (leanRefused || (leanReplay && !GlassVoice.CameraFree())) { leanUntil = -1f; return; }
+            if (cam.LeanIn(leanAt, LeanZoom(leanFor), HoldLean)) { Nudges++; leanUntil = -1f; }
+        }
+
+        bool TryLeanNow() { TryLean(); return leanUntil < 0f; }
+
+        void WatchCancels(BoxCamera cam)
+        {
+            if (cam.LeanCancels != cancelsSeen) { cancelsSeen = cam.LeanCancels; leanRefused = true; }
+            var hud = GameUI.GameHud.Instance;
+            bool inHand = hud != null && hud.Hand == GameUI.GameHud.KitTool.Life;
+            if (leanRefused && !inHand && playing.Count == 0 && !cam.Leaning) leanRefused = false; // the next placing may lean again
         }
 
         bool Has(LifeSpecies s) { foreach (var a in playing) if (a.s == s) return true; return false; }
 
         bool Done(Arrival a)
         {
-            float stay = a.s is LifeSpecies.Deer or LifeSpecies.Wolves ? StayAfter + LeaveSeconds : 0.5f;
+            const float stay = 0.5f; // deer and wolves are handed to their everyday views at the end beat (#425)
             return a.t >= a.length + stay && (a.lined || !a.reacted || a.t > a.length + 30f);
         }
 
@@ -248,13 +289,13 @@ namespace AquariumCiv.View
                 case LifeSpecies.Ducks: SetupDucks(a); break;
                 case LifeSpecies.Fish: SetupFish(a); break;
                 case LifeSpecies.Wolves:
-                    SetupWolves(a);
-                    if (!replay) { howlDue = true; howlDay = PeopleView.Find() != null ? PeopleView.Find().Now.day : -1; }
+                    SetupWolves(a); // the first dusk's howl is the sim's (WolfFirstHowlDue, saved)
                     break;
             }
-            // B12.0: the camera leans in, as the first rabbit's sign did; tried for a second (the finger that placed it may still hold the camera)
-            nudgeAt = box.transform.TransformPoint(a.at); nudgeUntil = Time.unscaledTime + 1.2f; nudgeReplay = replay;
-            TryNudge();
+            // B12.0 + user 2026-11-08: the camera leans in close and stays through the arrival; tried for a second (the finger that placed
+            // it may still hold the camera)
+            leanAt = box.transform.TransformPoint(a.at); leanFor = s; leanUntil = Time.unscaledTime + 1.2f; leanReplay = replay;
+            TryLean();
             Sfx.Play(s is LifeSpecies.Ducks or LifeSpecies.Fish ? CueLibrary.FirstWaterDrop : CueLibrary.Pluck, 0f, 0.7f);
         }
 
@@ -440,7 +481,9 @@ namespace AquariumCiv.View
             {
                 var q = new QuadDoll(g[i].quad, a.root, box.SolidMaterial);
                 a.quads.Add(q);
-                var to = Ground(a.at.x + g[i].at.x, a.at.z + g[i].at.y, false);
+                float tx = a.at.x + g[i].at.x, tz = a.at.z + g[i].at.y;
+                TreeCrowns.Push(box, bound, ref tx, ref tz, 0.07f); // #425: never under a crown
+                var to = Ground(tx, tz, false);
                 a.to.Add(to);
                 a.from.Add(Ground(edge.x + g[i].at.x * 0.5f, edge.z + g[i].at.y * 0.5f, false));
             }
@@ -448,7 +491,15 @@ namespace AquariumCiv.View
 
         void StepQuads(Arrival a, bool wolves)
         {
-            float stay = a.t - a.length;
+            if (a.landed) return;
+            if (a.t >= a.length)
+            {   // #425: the end beat hands them to their everyday view where they stand (DeerView / WolfView draw them from now)
+                a.landed = true;
+                var hand = wolves ? WolfView.HandOff : DeerView.HandOff;
+                hand.Clear();
+                foreach (var q in a.quads) { hand.Add((q.go.transform.localPosition, q.go.transform.localEulerAngles.y)); q.SetActive(false); }
+                return;
+            }
             for (int i = 0; i < a.quads.Count; i++)
             {
                 var q = a.quads[i];
@@ -459,13 +510,6 @@ namespace AquariumCiv.View
                 float walk = wolves ? 1.3f : 2.6f;
                 float t = a.t - delay;
                 float alertAt = walk, settle = walk + (wolves ? 2.6f : 1.5f);
-                if (stay > StayAfter)
-                {   // back into the trees, fading
-                    float u = Mathf.Clamp01((stay - StayAfter) / LeaveSeconds);
-                    var p = Vector3.Lerp(to, from, u);
-                    q.Pose(p, yawIn + 180f, (stay - StayAfter) * (wolves ? 16f : 10f), wolves ? 1f : 0f, 0f, 0f, 0f, 0f, wolves ? 0f : 30f, 1f - Mathf.SmoothStep(0.6f, 1f, u));
-                    continue;
-                }
                 if (t < 0f) { q.Pose(from, yawIn, float.NaN, 0f, 0f, 0f, 0f, 0f, 0f, 0f); continue; } // not out yet
                 if (t < walk)
                 {
@@ -512,10 +556,12 @@ namespace AquariumCiv.View
             var g = LifeLooks.Group(LifeSpecies.Wolves);
             for (int i = 0; i < g.Length; i++)
             {
-                var q = new QuadDoll(QuadKind.Wolf, a.root, box.SolidMaterial);
+                var q = new QuadDoll(QuadLook.Of(QuadKind.Wolf, i), a.root, box.SolidMaterial);
                 a.quads.Add(q);
                 var side = new Vector3(-outDir.z, 0f, outDir.x) * g[i].at.x;
-                var to = Ground(a.at.x + side.x, a.at.z + side.z, false);
+                float tx = a.at.x + side.x, tz = a.at.z + side.z;
+                TreeCrowns.Push(box, bound, ref tx, ref tz, 0.06f); // #425: at the den mouth, not under the crowns
+                var to = Ground(tx, tz, false);
                 a.to.Add(to);
                 var from = to + outDir * 0.35f;
                 a.from.Add(Ground(from.x, from.z, false));
@@ -523,7 +569,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>B12.f end beat: the first dusk after the wolves were placed, they howl (B21.a plays it in full later, #441). The sound is a
-        /// placeholder made in code (CareSound.MakeHowl).</summary>
+        /// CC0 recording (Freesound 519592, assets-log).</summary>
         void Howl(SimCore sim, PeopleView pv, float dt)
         {
             if (howlShow != null)
@@ -538,12 +584,11 @@ namespace AquariumCiv.View
                 if (howlT > 5f) { End(howlShow); howlShow = null; }
                 return;
             }
-            if (!howlDue || pv == null || !sim.WolvesPlaced) return;
+            if (pv == null || !sim.WolfFirstHowlDue) return;
             float hour = pv.ViewHour;
             bool dusk = hour >= 18.5f && hour < 21.5f;
-            if (!dusk || pv.Now.day < howlDay) return;
-            if (Has(LifeSpecies.Wolves)) return; // the arrival is still playing: the howl comes after
-            DebugHowl();
+            if (!dusk || Has(LifeSpecies.Wolves)) return; // the arrival is still playing: the howl comes after
+            if (sim.AckFirstHowl()) { DebugHowl(); FirstHowls++; }
         }
 
         /// <summary>The debug panel's "howl now" (and what the first dusk calls): two wolves sit at the den and howl.</summary>
@@ -553,14 +598,18 @@ namespace AquariumCiv.View
             if (sim == null || box == null || box.Root == null) return "no living box";
             int den = sim.WolfDen >= 0 ? sim.WolfDen : sim.LifePlacedCell(LifeSpecies.Wolves);
             if (den < 0) return "no wolves' den";
-            howlDue = false;
-            if (howlShow != null) End(howlShow);
-            howlShow = new Arrival { s = LifeSpecies.Wolves, cell = den };
-            howlShow.at = Ground(SiteMap.CXc(den), SiteMap.CZc(den), false);
-            howlShow.root = new GameObject("Howl") { hideFlags = HideFlags.DontSave }.transform;
-            howlShow.root.SetParent(box.transform, false);
-            SetupWolves(howlShow);
-            howlT = 0f;
+            if (howlShow != null) { End(howlShow); howlShow = null; }
+            var wv = WolfView.Instance;
+            var denAt = Ground(SiteMap.CXc(den), SiteMap.CZc(den), false);
+            if (wv != null && sim.WolvesPlaced) wv.ForceHowl(5f); // #425: the pack itself sits and howls
+            else
+            {
+                howlShow = new Arrival { s = LifeSpecies.Wolves, cell = den, at = denAt };
+                howlShow.root = new GameObject("Howl") { hideFlags = HideFlags.DontSave }.transform;
+                howlShow.root.SetParent(box.transform, false);
+                SetupWolves(howlShow);
+                howlT = 0f;
+            }
             Howls++;
             Sfx.Play(CueLibrary.WolfHowl, 0f, 1f);
             Sfx.Play(CueLibrary.WolfHowl, -2f, 0.8f, 0.7f);
@@ -569,7 +618,7 @@ namespace AquariumCiv.View
             if (pv != null && pv.Planner != null)
             {
                 pv.StandingNow(whoBuf, px, pz);
-                for (int i = 0; i < whoBuf.Count; i++) { pv.LookAt(whoBuf[i], new Vector2(howlShow.at.x, howlShow.at.z)); looking.Add((whoBuf[i], Time.unscaledTime + 3f)); }
+                for (int i = 0; i < whoBuf.Count; i++) { pv.LookAt(whoBuf[i], new Vector2(denAt.x, denAt.z)); looking.Add((whoBuf[i], Time.unscaledTime + 3f)); }
             }
             return $"the wolves howl at the den (cell {den})";
         }
@@ -862,8 +911,16 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The director started a hint: that jar won't hint again this visit.</summary>
-        public void HintStarted(LifeSpecies s, int stage, int people)
+        public void HintStarted(LifeSpecies s, int stage, int people, float seconds = 0f, int cell = -1)
         {
+            // user 2026-11-08: the hint scenes lean in too (only when the camera is free: nobody holding it, no card, no moment)
+            if (cell >= 0 && seconds > 0f && box != null && GlassVoice.CameraFree() && Cam != null && !Cam.Touching && !Cam.Leaning)
+            {
+                hintLeanUntil = Time.unscaledTime + Mathf.Min(seconds, HintHoldMax);
+                var at = box.land.OnGround(SiteMap.CXc(cell), SiteMap.CZc(cell));
+                WatchCancels(Cam);
+                if (!leanRefused && Cam.LeanIn(box.transform.TransformPoint(at), HintZoom, HoldLean)) { Nudges++; HintLeans++; }
+            }
             hinted.Add(s);
             HintsPlayed++;
             LastHint = $"{s} stage {stage} ({people})";
@@ -876,7 +933,7 @@ namespace AquariumCiv.View
         {
             string p = playing.Count == 0 ? "none playing" : string.Join(", ", playing.ConvertAll(a => $"{a.s} {a.t:0.0}/{a.length:0.0}s"));
             return $"arrivals: {p}; played {Played}, last {LastSpecies} (turned {LastTurned}, walkers {LastWalkers}); hints {HintsPlayed} ({LastHint}); howls {Howls}" +
-                   (howlDue ? ", howl due at dusk" : "");
+                   (Sim != null && Sim.WolfFirstHowlDue ? ", first howl due at dusk" : "");
         }
     }
 }

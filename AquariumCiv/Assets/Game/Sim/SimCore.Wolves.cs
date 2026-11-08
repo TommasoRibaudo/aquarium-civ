@@ -91,6 +91,10 @@ namespace AquariumCiv.Sim
         public int EcoWolfYearlings => EcologyOn ? State.eco.wolfYearlings : 0;
         /// <summary>The den's site cell (-1 none).</summary>
         public int WolfDen => EcologyOn ? State.eco.wolfDen : -1;
+        /// <summary>B12.f: the wolves are placed and their first howl hasn't played yet (it plays at the next dusk; saved).</summary>
+        public bool WolfFirstHowlDue => WolvesPlaced && !State.eco.firstHowlHeard;
+        /// <summary>The first howl played: true the first time.</summary>
+        public bool AckFirstHowl() { if (!WolfFirstHowlDue) return false; State.eco.firstHowlHeard = true; return true; }
         /// <summary>Young wolves who left the box at its edge: the last time (game month, -1 never) and how many then; and all so far.</summary>
         public long WolvesLeftMonth => EcologyOn ? State.eco.wolvesLeftMonth : -1;
         public int WolvesLeftLast => EcologyOn ? State.eco.wolvesLeftLast : 0;

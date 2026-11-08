@@ -102,6 +102,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return null;
                 yield return AssertArrival(s, played0, "p9-arr-" + s.ToString().ToLowerInvariant() + (tapped ? "-tap" : "-dbg"));
                 yield return Until(() => !la.Playing(s), 20f);
+                yield return CameraSettled();
             }
             Assert.GreaterOrEqual(byTap, 4, "most species placed by the real tap");
             AssertNoErrors("every arrival");
@@ -134,6 +135,95 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(1, la.Howls, "the wolves' howl");
             yield return new WaitForSecondsRealtime(6f);
             AssertNoErrors("debug arrivals");
+        }
+
+        static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();
+
+        /// <summary>Waits until no lean holds the camera and it has glided home (between species).</summary>
+        static IEnumerator CameraSettled() { yield return Until(() => !Cam.Leaning && !Cam.Gliding && !Cam.GlideArmed && !Cam.IsFlying, 12f); }
+
+        /// <summary>User 2026-11-08, "the camera leans in": the ghost and the arrival are seen close (the group reads at phone size), the camera
+        /// stays through the arrival and then eases back to where the player had it. Shots: p9-lean-*.png.</summary>
+        [UnityTest, Timeout(900000)]
+        public IEnumerator Lean_Ghost_And_Arrival_Then_Back()
+        {
+            yield return LivingLand();
+            var la = LifeArrivalView.Instance; var lpv = LifePlaceView.Instance; var hud = GameHud.Instance;
+            foreach (var s in new[] { LifeSpecies.Rabbits, LifeSpecies.Ducks, LifeSpecies.Fish, LifeSpecies.Thicket, LifeSpecies.Deer })
+            {
+                Sim.DebugJarsReady();
+                yield return CameraSettled();
+                string tag = "p9-lean-" + s.ToString().ToLowerInvariant();
+                float zoom0 = Cam.zoom; var target0 = Cam.target;
+                hud.TakeLife(s);
+                yield return Frames(5);
+                int cell = GlowingCellOnScreen(Sim, s);
+                if (cell < 0) { Debug.Log($"[p9-lean] {s}: no glowing spot on screen"); hud.SetHand(GameHud.KitTool.None); continue; }
+                yield return Shot(tag + "-0-default");
+                int n0 = la.Nudges;
+                yield return TapAt(lpv.ScreenOf(cell));
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return Until(() => !Cam.IsFlying, 8f); // the flight runs on capped frame time: slow Editor frames stretch it
+                Assert.IsTrue(lpv.GhostShown, $"{s}: the ghost");
+                Assert.Greater(la.Nudges, n0, $"{s}: the camera leaned in on the ghost");
+                Assert.IsTrue(Cam.Leaning, $"{s}: and holds there while the ghost waits");
+                Assert.LessOrEqual(Cam.zoom, Mathf.Min(zoom0, LifeArrivalView.LeanZoom(s)) + 0.02f, $"{s}: close in");
+                yield return Shot(tag + "-1-ghost");
+                // the second tap (on the ghost where it is on screen now) sets them down; the camera stays through the arrival
+                yield return TapAt(lpv.ScreenOf(lpv.GhostCell));
+                yield return Frames(5);
+                Assert.IsTrue(Sim.LifeIsPlaced(s), $"{s}: placed by the tap on the ghost ({lpv.Last})");
+                float len = LifeArrivalView.Length(s);
+                yield return new WaitForSecondsRealtime(len * 0.45f);
+                Assert.IsTrue(Cam.Leaning, $"{s}: the lean holds through the arrival");
+                yield return Shot(tag + "-2-arrival");
+                yield return new WaitForSecondsRealtime(len * 0.5f);
+                yield return Shot(tag + "-3-end");
+                yield return CameraSettled();
+                Assert.IsFalse(Cam.Leaning, $"{s}: the lean let go after the arrival");
+                Assert.AreEqual(zoom0, Cam.zoom, 0.03f, $"{s}: and the camera eased back to the player's zoom");
+                Assert.Less(new Vector2(Cam.target.x - target0.x, Cam.target.z - target0.z).magnitude, 0.1f, $"{s}: and their spot");
+            }
+            AssertNoErrors("leans");
+        }
+
+        /// <summary>A two-finger move while the camera leans cancels it (the player's camera wins), and no lean comes back until the tool is
+        /// put down.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Lean_TwoFingers_Cancel_It()
+        {
+            yield return LivingLand();
+            var la = LifeArrivalView.Instance; var lpv = LifePlaceView.Instance; var hud = GameHud.Instance;
+            hud.TakeLife(LifeSpecies.Rabbits);
+            yield return Frames(5);
+            int cell = GlowingCellOnScreen(Sim, LifeSpecies.Rabbits);
+            Assert.GreaterOrEqual(cell, 0, "a glowing spot");
+            yield return TapAt(lpv.ScreenOf(cell));
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return Until(() => !Cam.IsFlying, 8f);
+            Assert.IsTrue(Cam.Leaning, "leaning on the ghost");
+            int c0 = Cam.LeanCancels;
+            // two fingers pan across the screen
+            var a = new Vector2(Screen.width * 0.4f, Screen.height * 0.5f); var b = new Vector2(Screen.width * 0.6f, Screen.height * 0.5f);
+            BeginTouch(901, a, queueEventOnly: true); BeginTouch(902, b, queueEventOnly: true);
+            yield return null;
+            for (int i = 1; i <= 12; i++) { var d = new Vector2(0f, i * Screen.height * 0.01f); MoveTouch(901, a + d, delta: Vector2.zero, queueEventOnly: true); MoveTouch(902, b + d, delta: Vector2.zero, queueEventOnly: true); yield return null; }
+            EndTouch(901, a, delta: Vector2.zero, queueEventOnly: true); EndTouch(902, b, delta: Vector2.zero, queueEventOnly: true);
+            yield return Frames(3);
+            Assert.Greater(Cam.LeanCancels, c0, "two fingers cancelled the lean");
+            Assert.IsFalse(Cam.Leaning, "no lean now");
+            float z = Cam.zoom; var t = Cam.target;
+            yield return new WaitForSecondsRealtime(3f);
+            Assert.AreEqual(z, Cam.zoom, 0.01f, "no glide back after a cancel: the player has the camera");
+            // moving the ghost now doesn't lean again
+            int other = GlowingCellOnScreen(Sim, LifeSpecies.Rabbits);
+            int n0 = la.Nudges;
+            if (other >= 0 && other != lpv.GhostCell) { yield return TapAt(lpv.ScreenOf(other)); yield return Frames(5); Assert.AreEqual(n0, la.Nudges, "refused: no new lean"); }
+            Assert.IsTrue(la.LeanRefused, "the lean stays off for this placing");
+            hud.SetHand(GameHud.KitTool.None);
+            yield return Frames(5);
+            Assert.IsFalse(la.LeanRefused, "put down: the next placing may lean again");
+            AssertNoErrors("lean cancel");
         }
 
         [UnityTest, Timeout(600000)]

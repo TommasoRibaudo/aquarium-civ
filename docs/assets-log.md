@@ -61,3 +61,12 @@ the old babble. No CC0 voice or frog sample was searched for or downloaded in th
 (`CareSound.MakeHowl`: a breathy rising tone with a waver and a second voice a fifth under it, ~2.8 s). No CC0 howl was searched for in
 this pass; a recorded one (Freesound/BigSoundBank CC0) can replace it by pointing the cue at a file. The arrivals' other sounds reuse
 existing cues (`pluck` for the bushes pushing up, `first_water_drop` for the ducks and the fish bag).
+
+#425 (2026-11-08): **the wolves' howl is a real recording now.** "Wolves - Yellowstone National Park" by Nivatius on Freesound,
+https://freesound.org/people/Nivatius/sounds/519592/ (a National Park Service recording of a wolf chorus), license stated on the page:
+**Creative Commons 0** (http://creativecommons.org/publicdomain/zero/1.0/). Downloaded the page's HQ preview
+(cdn.freesound.org/previews/519/519592_7143328-hq.mp3); trimmed 29.2 s to 33.4 s (one sustained howl that ends on a falling note),
+150 Hz high-pass (the original has a low rumble), loudness to about -18 LUFS, 0.05 s fade in, 0.4 s fade out, mono 44.1 kHz OGG q5:
+`AquariumCiv/Assets/Audio/Resources/Sfx/Eco/wolf_howl.ogg` (4.2 s). The cue `wolf_howl` points at it; `CareSound.MakeHowl` stays in
+code but is no longer played. It is a chorus rather than a single wolf; a single clean howl could replace it later. The shared quadruped
+(P0: `View/QuadDoll.cs`) is built in code: no model pack.

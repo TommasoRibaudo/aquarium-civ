@@ -43,7 +43,7 @@ namespace AquariumCiv.Audio
         // ---------- ids: the land's one-shots (P8 #279) ----------
         public const string FirstWaterDrop = "first_water_drop", FirstWaterBubble = "first_water_bubble", LooseStone = "eco_loose_stone";
 
-        /// <summary>P9 #424 (B12.f): the wolves' first howl at dusk (a placeholder made in code, CareSound.MakeHowl).</summary>
+        /// <summary>P9 #424 (B12.f): the wolves' howl at dusk (#425: a CC0 recording, Sfx/Eco/wolf_howl, assets-log 2026-11-08).</summary>
         public const string WolfHowl = "wolf_howl";
 
         const string Eco = "Sfx/Eco/", Ui = "Sfx/Ui/", Care = "Sfx/Care/", Moment = "Sfx/Moment/", Amb = "Ambience/";
@@ -97,7 +97,7 @@ namespace AquariumCiv.Audio
             Add(new CueDef(MessDrop, SoundBus.Care, 0.45f, Care + "dropLeather").Jitter(1.5f).Limit(0.1f, 2).Prio(50).Len(0.4f));
             Add(new CueDef(MessFlick, SoundBus.Care, 0.6f, "proc:swish").Jitter(1f).Limit(0.08f, 3).Prio(60).Len(0.4f).Buzz(HapticKind.Medium));
             Add(new CueDef(Prune, SoundBus.Care, 0.45f, Care + "knifeSlice", Care + "knifeSlice2").Jitter(1.5f).Limit(0.12f, 2).Prio(55).Len(0.4f).Buzz(HapticKind.Selection));
-            Add(new CueDef(WolfHowl, SoundBus.World, 0.45f, "proc:howl").Jitter(1.5f).Limit(0.5f, 2).Prio(70).Len(2.8f));
+            Add(new CueDef(WolfHowl, SoundBus.World, 0.5f, Eco + "wolf_howl").Jitter(1f).Limit(0.5f, 2).Prio(70).Len(4.2f)); // #425: a CC0 recording (assets-log 2026-11-08)
             Add(new CueDef(Pluck, SoundBus.Care, 0.5f, "proc:pop").Jitter(3f).Limit(0.07f, 3).Prio(55).Len(0.25f).Buzz(HapticKind.Light)); // #311: the tweezers lift a weed, a vine or a sapling out
             Add(new CueDef(Rain, SoundBus.Care, 0.35f, Care + "drop_002", Care + "drop_003").Jitter(2f).Limit(0.15f, 3).Prio(45).Len(0.3f));
             Add(new CueDef(ShapeChannel, SoundBus.Care, 0.5f, Care + "footstep_grass_000", Care + "footstep_grass_001", Care + "footstep_grass_002").Jitter(1.5f, 0.12f).Limit(0.09f, 3).Prio(55).Len(0.3f).Buzz(HapticKind.Selection));

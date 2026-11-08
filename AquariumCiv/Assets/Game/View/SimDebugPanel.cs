@@ -320,6 +320,24 @@ namespace AquariumCiv.View
                         GUILayout.EndHorizontal();
                     }
                     if (GUILayout.Button("Wolves howl now")) last = Done(la.DebugHowl());
+                    // #425: the everyday deer and wolves (P0's quadruped): status, a knock, a person near, the hour they show off at
+                    var dv = DeerView.Instance; var wv = WolfView.Instance;
+                    if (dv != null) GUILayout.Label(dv.Status());
+                    if (wv != null) GUILayout.Label(wv.Status());
+                    GUILayout.BeginHorizontal();
+                    if (dv != null && GUILayout.Button("Knock by the deer"))
+                    {
+                        var ps = new System.Collections.Generic.List<Vector3>(); dv.WorldPositions(ps);
+                        if (ps.Count == 0) last = Done("no deer shown");
+                        else { var loc = dv.transform.InverseTransformPoint(ps[0]); last = Done($"{dv.KnockAtGround(loc.x + 0.2f, loc.z + 0.2f)} deer bolt"); }
+                    }
+                    if (dv != null && GUILayout.Button(dv.Scarers.Count > 0 ? "Person by the deer: off" : "Person by the deer"))
+                    {
+                        if (dv.Scarers.Count > 0) { dv.Scarers.Clear(); last = Done("nobody by the deer"); }
+                        else if (dv.TryGetDeer(0, out var d0, out _)) { dv.Scarers.Add(new Vector2(d0.x + 0.25f, d0.z)); last = Done("someone stands by the deer: heads up, then they walk off"); }
+                    }
+                    if (sim.WolvesPlaced && GUILayout.Button("Wolves: first howl again")) { sim.State.eco.firstHowlHeard = false; last = Done("the first howl plays at the next dusk"); }
+                    GUILayout.EndHorizontal();
                     var sdv = StoryDirectorView.Instance;
                     GUILayout.BeginHorizontal();
                     foreach (var s in all)
