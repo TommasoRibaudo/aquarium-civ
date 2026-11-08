@@ -28,6 +28,14 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(sim.AnswerDilemma(d.id, option, DilemmaPath.Card));
         }
 
+        /// <summary>The lost pup's choice: already open when the Keeper watched the spring it was found (user 2026-11-08: raised as it
+        /// happens), else raised now by the debug.</summary>
+        static Dilemma RaisedPup(SimCore sim)
+        {
+            var open = sim.OpenDilemma;
+            return open != null && open.defId == LifeChoices.PupDef.id ? open : sim.DebugRaiseLifeChoice(LifeChoices.Pup);
+        }
+
         static void ToMonth(SimCore sim, Func<long, bool> until, int max = 400) { for (int k = 0; k < max && !until(sim.State.month); k++) sim.Step(); }
 
         // ================================================================ adoption (choice 6.2)
@@ -48,7 +56,7 @@ namespace AquariumCiv.Tests
             int finder = sim.LostPupFinder;
             var kid = sim.FindNotable(finder);
             Assert.IsNotNull(kid);
-            var d = sim.DebugRaiseLifeChoice(LifeChoices.Pup);
+            var d = RaisedPup(sim);
             Assert.IsNotNull(d);
             Assert.AreEqual(finder, d.subjectId);
             StringAssert.StartsWith(kid.name + " found a wolf pup alone by the den.", sim.QuestionOf(d));
@@ -98,7 +106,7 @@ namespace AquariumCiv.Tests
             Assert.GreaterOrEqual(quiet.State.eco.pupFoundMonth - placed, 24);
 
             // leave it with its mother: asked again next spring
-            var d = scraps.DebugRaiseLifeChoice(LifeChoices.Pup);
+            var d = RaisedPup(scraps);
             Assert.IsTrue(scraps.AnswerDilemma(d.id, 1, DilemmaPath.Card));
             Assert.AreEqual(0, scraps.DogCount);
             Assert.IsFalse(scraps.LostPupWaiting);
@@ -108,7 +116,7 @@ namespace AquariumCiv.Tests
             Assert.Greater(scraps.State.eco.pupFoundMonth, left);
             Assert.AreEqual(0, EcoModel.SeasonOf(scraps.State.eco.pupFoundMonth));
             Assert.AreNotEqual((left + 1) / 12, (scraps.State.eco.pupFoundMonth + 1) / 12, "a later spring");
-            var d2 = scraps.DebugRaiseLifeChoice(LifeChoices.Pup);
+            var d2 = RaisedPup(scraps);
             Assert.AreEqual(2, scraps.LostPupAsked);
             Assert.IsTrue(scraps.LetThemDecide(d2.id));
         }
@@ -125,10 +133,12 @@ namespace AquariumCiv.Tests
                 if (m % 12 == 0) sim.CatchUp(0.3); // between visits now and then (old dogs go then)
                 else sim.Advance(1.0 / 12);
                 maxDogs = Math.Max(maxDogs, sim.DogCount);
+                Assert.LessOrEqual(sim.EcoWolfCount, 6, "the wild pack, extra pups and all, stays within its cap");
+                Assert.AreEqual(2 + sim.EcoWolfPups + sim.EcoWolfYearlings, sim.EcoWolfCount);
                 Assert.LessOrEqual(sim.DogCount, SimCore.DogCap, $"month {sim.State.month}");
                 Assert.Greater(sim.DogCount, 0, "the line goes on");
             }
-            extraLines = sim.State.chronicle.Count(x => x.kind == "dog_pups_apart");
+            extraLines = sim.State.chronicle.Count(x => x.kind == "dog_pups_wild");
             var all = sim.AllDogs;
             TestContext.Out.WriteLine($"{all.Count} dogs, gens {string.Join(",", all.Select(d => d.gen))}, extra-pup lines {extraLines}");
             Assert.AreEqual(SimCore.DogCap, maxDogs, "the camp fills to three");
@@ -152,6 +162,51 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(all.Where(d => d.gen >= 4).All(d => d.earDroop >= 0.9f), "by generation 4 they look like dogs");
             Assert.IsTrue(all.Any(d => !d.Alive), "old dogs are gone in time");
             Assert.IsTrue(all.Where(d => d.parentId >= 0).All(d => sim.FindDog(d.parentId).gen == d.gen - 1));
+        }
+
+        /// <summary>User 2026-11-08: one pup stays per litter, and the extra pups go back to the wild pack (as this year's pups, within
+        /// its 2-6); past the cap they leave the box as young wolves do; with no pack in the box they leave.</summary>
+        [Test]
+        public void Litter_OnePupStays_TheExtraPupsJoinTheWildPack_ThePackStaysAtMostSix()
+        {
+            var sim = Pack();
+            Assert.IsNotNull(sim.DebugAdoptPup());
+            var e = sim.State.eco;
+            e.wolfPups = 0; e.wolfYearlings = 0; e.wolves = 2;
+            int left0 = sim.WolvesLeftTotal;
+            int dogs = sim.DogCount;
+            Assert.AreEqual(dogs + 1, sim.DebugNextDogGeneration(), "one pup stays");
+            var litter = sim.State.chronicle.Last(x => x.kind == "dog_litter");
+            int n = litter.text.Contains("had three pups") ? 3 : 2, extra = n - 1;
+            Assert.AreEqual(2 + extra, sim.EcoWolfCount, "the extra pups joined the pack");
+            Assert.AreEqual(extra, sim.EcoWolfPups, "as this year's pups");
+            Assert.AreEqual(left0, sim.WolvesLeftTotal, "none left: there was room");
+            var line = sim.State.chronicle.Last(x => x.kind == "dog_pups_wild").text;
+            Assert.AreEqual(extra == 1 ? "One of the pups trotted off toward the far wood, and the wolves took it in."
+                : "Two of the pups trotted off toward the far wood, and the wolves took them in.", line);
+            Assert.IsFalse(sim.State.chronicle.Any(x => x.text.Contains("far side of the meadow") || x.text.Contains("people apart")));
+
+            // a full pack: the extra pups leave the box as young wolves do, and the pack stays at six
+            e.wolfPups = 4; e.wolves = 6;
+            int left1 = sim.WolvesLeftTotal;
+            sim.DebugNextDogGeneration();
+            litter = sim.State.chronicle.Last(x => x.kind == "dog_litter");
+            extra = (litter.text.Contains("had three pups") ? 3 : 2) - 1;
+            Assert.AreEqual(6, sim.EcoWolfCount, "never past the cap");
+            Assert.AreEqual(left1 + extra, sim.WolvesLeftTotal, "past the cap they leave");
+            Assert.AreEqual(extra, sim.WolvesLeftLast);
+            Assert.AreEqual(sim.State.month, sim.WolvesLeftMonth);
+
+            // the pack grows past them with its own spring: still within the cap
+            for (int m = 0; m < 5 * 12; m++) { sim.Step(); Assert.LessOrEqual(sim.EcoWolfCount, 6); }
+
+            // no pack in the box (it shouldn't happen: the wolves come first): they leave
+            var lone = WolfPackTests.Wooded();
+            Assert.IsFalse(lone.WolvesPlaced);
+            Assert.IsNotNull(lone.DebugAdoptPup());
+            lone.DebugNextDogGeneration();
+            Assert.AreEqual(0, lone.EcoWolfCount, "no pack made from the pups");
+            Assert.Greater(lone.WolvesLeftTotal, 0);
         }
 
         [Test]

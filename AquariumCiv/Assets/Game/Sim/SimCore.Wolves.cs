@@ -10,7 +10,8 @@ namespace AquariumCiv.Sim
     /// #437 / #438: the wolves' and the dogs' choices (placed-life spec §5.6, research 19 §6). They ride the small-choice machinery
     /// (SimCore.SmallChoices.cs: one open at a time, the gap, three visits, "Let them decide", the card and the choice scene), raised from
     /// the box's own moment, never while the Keeper is away (the dilemma machinery holds them), never resolved unseen. A waiting life
-    /// choice takes the next small slot even when a big one would come next (<see cref="SimCore.LifeChoiceWaiting"/>). Option 0 / 1:
+    /// choice takes the next small slot even when a big one would come next (<see cref="SimCore.LifeChoiceWaiting"/>); the seasonal
+    /// ones (the thief, the pup) don't even wait for the gap (<see cref="SimCore.SeasonalLifeWaiting"/>, user 2026-11-08). Option 0 / 1:
     /// <list type="bullet">
     /// <item><see cref="Thief"/> (6.1, after the first theft): chase them off / leave them the scraps. Let them decide: a bold chief shares.</item>
     /// <item><see cref="Pup"/> (6.2, the lost pup; spring): bring it home / leave it with its mother. {child} is the one who found it.</item>
@@ -328,6 +329,24 @@ namespace AquariumCiv.Sim
 
         /// <summary>A life choice's moment exists and no choice is open: it takes the next small slot once the gap has passed.</summary>
         public bool LifeChoiceWaiting => Config.smallChoices && EligibleLife().Count > 0;
+
+        /// <summary>User 2026-11-08: the seasonal life choices (the meat thief, the lost pup) are raised when they happen, without the
+        /// small-choice gap or waiting for the next small slot. Still one choice at a time, only while the Keeper watches or on an open,
+        /// never resolved unseen. The kill and the pen keep the normal pacing.</summary>
+        public static bool IsSeasonalLife(DilemmaDef def) => def?.smallKind == LifeChoices.Thief || def?.smallKind == LifeChoices.Pup;
+
+        /// <summary>A seasonal life choice (thief, pup) has its moment and isn't open: it is raised at the next watched month or open, ahead
+        /// of the gap (it still waits for an open choice or wish to end).</summary>
+        public bool SeasonalLifeWaiting => Config.smallChoices && SeasonalLifeDef() != null;
+
+        /// <summary>The first seasonal life choice (in the catalog's order: thief, pup) whose moment is there now; null none.</summary>
+        DilemmaDef SeasonalLifeDef()
+        {
+            if (!EcologyOn || LifeChoiceCatalog == null) return null;
+            foreach (var def in LifeChoiceCatalog)
+                if (IsSeasonalLife(def) && LifeWhyNot(def) == null) return def;
+            return null;
+        }
 
         List<(DilemmaDef def, int a, int b)> EligibleLife()
         {

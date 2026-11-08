@@ -96,6 +96,20 @@ namespace AquariumCiv.Sim.Eco
             st.wolves = WolfPair + st.wolfYearlings + st.wolfPups;
         }
 
+        /// <summary>User 2026-11-08 (#438): a dog litter's extra pups trot off to the far wood and the wild pack takes them in, as this
+        /// year's pups, while there is room under the cap (2..wolfCap); the rest leave the box at its edge as young wolves do. With no pack
+        /// in the box they all leave. Returns how many joined the pack.</summary>
+        public int TakeInDogPups(int n, long month)
+        {
+            if (n <= 0) return 0;
+            int joined = WolvesPlaced ? Math.Min(n, Math.Max(0, t.wolfCap - (WolfPair + st.wolfYearlings + st.wolfPups))) : 0;
+            st.wolfPups += joined;
+            if (WolvesPlaced) st.wolves = WolfPair + st.wolfYearlings + st.wolfPups;
+            int left = n - joined;
+            if (left > 0) { st.wolvesLeft += left; st.wolvesLeftLast = left; st.wolvesLeftMonth = month; }
+            return joined;
+        }
+
         /// <summary>The white wolf howls on the ridge now (once per box; the debug "white wolf now" too). False when it already has.</summary>
         public bool RaiseWhiteWolf(long month)
         {

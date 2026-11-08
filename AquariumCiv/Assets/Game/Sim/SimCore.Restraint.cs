@@ -59,9 +59,62 @@ namespace AquariumCiv.Sim
             {
                 var who = RulingNotable();
                 string name = who?.FullName ?? "The eldest";
-                Chronicle(RulingKind, RulingLine(s, name), 0.8f, who?.id ?? -1);
+                var j = EcoM.Jar(s);
+                j.ruledBy = who?.id ?? -1;
+                j.ruledEntryId = -1;
+                var e = Chronicle(RulingKind, RulingLine(s, name), 0.8f, who?.id ?? -1); // queues the MomentKind.Ruling moment
+                j.ruledEntryId = e?.id ?? -1;
                 LifeRuled?.Invoke(s);
             }
+        }
+
+        /// <summary>What the view's ruling beat needs (its own small beat at the fire): the species, who rules (a notable id; -1 when
+        /// nobody was named, the line then says "The eldest"), their name as the line has it, and the line itself (approved words).</summary>
+        public struct RulingInfo
+        {
+            public LifeSpecies species;
+            public int rulerId;
+            public string rulerName;
+            public string line;
+            public long month;
+            public int entryId;
+        }
+
+        /// <summary>The ruling a chronicle line (or a <see cref="MomentKind.Ruling"/> moment's <see cref="HeldMoment.entryId"/>) is
+        /// about. False when the line is not a ruling.</summary>
+        public bool RulingOfEntry(int entryId, out RulingInfo info)
+        {
+            info = default;
+            if (!EcologyOn || entryId < 0) return false;
+            foreach (LifeSpecies s in Enum.GetValues(typeof(LifeSpecies)))
+            {
+                if (!LifeJar.Restocks(s)) continue;
+                var j = EcoM.Jar(s);
+                if (j.ruledMonth < 0 || j.ruledEntryId != entryId) continue;
+                var e = State.chronicle.FirstOrDefault(x => x.id == entryId);
+                var who = FindNotable(j.ruledBy);
+                info = new RulingInfo
+                {
+                    species = s, rulerId = j.ruledBy, rulerName = who?.FullName ?? "The eldest", line = e?.text ?? "",
+                    month = j.ruledMonth, entryId = entryId,
+                };
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>The ruling a held moment stages (<see cref="RulingOfEntry"/>). False unless it is a <see cref="MomentKind.Ruling"/>.</summary>
+        public bool RulingOf(HeldMoment m, out RulingInfo info)
+        {
+            info = default;
+            return m != null && m.kind == MomentKind.Ruling && RulingOfEntry(m.entryId, out info);
+        }
+
+        /// <summary>The ruling on this species, if the people have ruled on it. False when they haven't.</summary>
+        public bool RulingOn(LifeSpecies s, out RulingInfo info)
+        {
+            info = default;
+            return EcologyOn && LifeJar.Restocks(s) && RulingOfEntry(EcoM.Jar(s).ruledEntryId, out info) && info.species == s;
         }
 
         /// <summary>Who rules: the era's leader, else the eldest grown-up.</summary>

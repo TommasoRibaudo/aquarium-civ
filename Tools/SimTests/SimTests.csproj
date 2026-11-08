@@ -50,6 +50,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/WolfPackTests.cs" /><!-- #437 the wolf pack -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/DogLineTests.cs" /><!-- #438 the dog line -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/WolfContactTests.cs" /><!-- #437 no wolf plan has contact, against the real planner -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/VillageDeerHuntTests.cs" /><!-- 2026-11-08 the village hunts deer, half as often -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->

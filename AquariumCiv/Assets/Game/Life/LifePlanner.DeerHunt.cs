@@ -34,6 +34,11 @@ namespace AquariumCiv.Life
         // ---------------------------------------------------------------- tuning [est, #434]
         /// <summary>The share of working days the hunters go after the deer (a deer feeds the camp for days: it is not a daily job).</summary>
         public const float DeerHuntDayChance = 0.2f;
+        /// <summary>User 2026-11-08: the village and the town hunt the deer too, about half as often as the camp (fields feed them now).</summary>
+        public const float SettledDeerHuntShare = 0.5f;
+        /// <summary>The share of working days the hunters go after the deer in this era: <see cref="DeerHuntDayChance"/> in the camp, half
+        /// that in the village and the town.</summary>
+        public static float DeerHuntChanceIn(Era era) => era == Era.Camp ? DeerHuntDayChance : DeerHuntDayChance * SettledDeerHuntShare;
         /// <summary>How often the arrow finds its mark.</summary>
         public const float DeerHitChance = 0.5f;
         /// <summary>Two or three go; a hunt needs two.</summary>
@@ -47,9 +52,9 @@ namespace AquariumCiv.Life
         static readonly List<DeerHuntPlan> NoDeerHunts = new List<DeerHuntPlan>();
         bool? deerForceNext;
 
-        /// <summary>The deer hunts of a view day (at most one), in the order they settle. Empty unless the ecology is on, the era is the
-        /// camp's, there are deer and the herd has one above its floor (and it isn't a spring the people have ruled on). Made once per
-        /// day and kept.</summary>
+        /// <summary>The deer hunts of a view day (at most one), in the order they settle. Empty unless the ecology is on, there are deer
+        /// and the herd has one above its floor (and it isn't a spring the people have ruled on). Every era hunts: the village and the
+        /// town half as often as the camp (<see cref="DeerHuntChanceIn"/>). Made once per day and kept.</summary>
         public IReadOnlyList<DeerHuntPlan> DeerHuntsOn(long day)
         {
             Sync();
@@ -58,7 +63,7 @@ namespace AquariumCiv.Life
 
         List<DeerHuntPlan> DeerHuntsOf(long day)
         {
-            if (sim == null || !sim.EcologyOn || sim.State.era != Era.Camp || sim.EcoDeerCount == 0) return NoDeerHunts;
+            if (sim == null || !sim.EcologyOn || sim.EcoDeerCount == 0) return NoDeerHunts;
             if (deerDays.TryGetValue(day, out var list)) return list;
             EnsureDay(day);
             List<long> drop = null;
@@ -67,7 +72,7 @@ namespace AquariumCiv.Life
             list = new List<DeerHuntPlan>();
             deerDays[day] = list;
             if (LifeClock.IsRestDay(day) || dayInfo.weather == Weather.Storm || sim.DeerHuntSurplus <= 0) return list;
-            if (R(0, day, 400) >= DeerHuntDayChance) return list;
+            if (R(0, day, 400) >= DeerHuntChanceIn(sim.State.era)) return list;
             var plan = MakeDeerHunt(day, DeerHuntFrom + DeerHuntSpread * R(0, day, 401), R(0, day, 402) < DeerHitChance);
             if (plan != null) { list.Add(plan); ReindexDeer(list); }
             return list;

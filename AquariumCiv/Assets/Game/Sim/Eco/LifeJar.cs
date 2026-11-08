@@ -34,6 +34,9 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>#422 restraint (spec §4.3): the game month a notable ruled on this species' take (-1 = not yet; once per species).
         /// From then on the people's take of it pauses in spring.</summary>
         public long ruledMonth = -1;
+        /// <summary>#422: who ruled (a notable id, -1 the eldest unnamed) and the chronicle line of the ruling (-1 none): the view's
+        /// ruling beat reads them through SimCore.RulingOf.</summary>
+        public int ruledBy = -1, ruledEntryId = -1;
         /// <summary>#422: a take brought the species down to its floor during this season (a species hunted down each season is "at
         /// its floor" even if it breeds back by the season's end). Read and cleared at the end of each season.</summary>
         public bool floorHit;
