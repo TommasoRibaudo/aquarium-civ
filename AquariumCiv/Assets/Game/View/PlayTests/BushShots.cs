@@ -23,6 +23,9 @@ namespace AquariumCiv.View.PlayTests
             var map = s.Settlement.Map;
             float cx = map.greenX, cz = map.greenZ;
             if (s.CanPlantTree) s.PlantTree(cx + 0.9f, cz + 0.3f);
+            // P9 (#417-#419): the Keeper places every ready jar by the camp (as EcoTests' Keeper)
+            var ready = new List<AquariumCiv.Sim.Eco.LifeSpecies>(); s.ReadyJars(ready);
+            foreach (var sp in ready) { int c = s.LifePlaceCellNearCamp(sp); if (c >= 0) s.PlaceLife(sp, c); }
             for (int k = 0; k < 3; k++)
             {
                 float a = (season * 3 + k) * 2.39996f, r = 0.5f + 0.35f * ((season + k) % 4);
