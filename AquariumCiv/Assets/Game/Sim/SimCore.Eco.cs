@@ -75,6 +75,7 @@ namespace AquariumCiv.Sim
         void EcoTell()
         {
             var m = EcoM;
+            JarsTell(); // #417: the jars that opened
             if (m.newMilestones.Count == 0 && m.newGates.Count == 0) return;
             var keys = m.newMilestones.ToArray(); var gates = m.newGates.ToArray();
             m.newMilestones.Clear(); m.newGates.Clear();

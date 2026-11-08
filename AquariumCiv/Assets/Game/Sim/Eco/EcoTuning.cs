@@ -90,13 +90,24 @@ namespace AquariumCiv.Sim.Eco
         public int weedNeighbours = 3;
         public int learnWater = 3, learnRing = 6;                 // Keeper mistings before the people water it / ring it
         public float peopleWater = 0.18f, ringSlowsWeeds = 0.5f;
-        public float seedUnlockBush = 0.003f;                     // the seed comes after the first bushes
+        public float seedUnlockBush = 0.003f;                     // unused since #418: the seed comes after the thicket is placed
 
         // #314: the creeping vine (slower than the weeds: a strand grows a cell a season, a new one starts now and then)
         public int vineCap = 30;
         public float vineSeedChance = 0.3f, vineGrowChance = 0.5f, vineDamp = 0.4f;
         // #311: a wild sapling inside a wood (this many grown trees round it) is the forest's own heart, not its edge
         public int heartTrees = 3;
+
+        // #417 the life jar (placed-life spec §3, §4.3; all [est] until #434). Each jar opens on its land condition once the rung below is placed.
+        public float jarThicketMeadow = 0.10f, jarRabbitsMeadow = 0.15f; // meadow share for the thicket's jar, the rabbits'
+        public int jarDeerTrees = 5, jarDucksPond = 12;                   // grown trees (the Keeper's counts) for the deer; pond cells for the ducks
+        public int jarFishReeds = 6, jarFishAfterDucks = 6;               // reed cells, and months since the ducks were placed, for the fish
+        public int jarRestockMonths = 24;                                 // at its floor this long: the jar opens again for one more group
+        public float deerNearTree = 0.3f;                                 // the deer's valid ground: within this of a grown tree
+        // #418 the one placed thicket (spec §5.1): a disc round the placed spot, 3 founders, a bush a season until it holds thicketBushes.
+        // It replaces #385's self-founding thickets and strays (thicketBoost, bushStray, thicketBAfter, bushPerMeadow, bushCap: unused now).
+        public float thicketRadius = 0.45f;
+        public int thicketBushes = 22, thicketFounders = 3;
 
         // Gates
         public float campMeadow = 0.20f;

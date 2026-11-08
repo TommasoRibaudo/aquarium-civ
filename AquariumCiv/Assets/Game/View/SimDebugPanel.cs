@@ -281,6 +281,25 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #373 ----
+            // ---- #417: the life jar (placed-life spec §10); "place" opens a shut jar and places by the camp, no ghost ----
+            if (sim.EcologyOn && Section("Life jar (#417)"))
+            {
+                var all = AquariumCiv.Sim.Eco.LifeJar.All;
+                GUILayout.Label(string.Join(" · ", all.Select(s => s + " " + sim.JarStateOf(s))));
+                if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
+                for (int i = 0; i < all.Length; i += 3)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 3 && k < all.Length; k++)
+                        if (GUILayout.Button("Place " + all[k])) { int c = sim.DebugPlaceNearCamp(all[k]); last = Done(c < 0 ? $"{all[k]}: no valid ground" : $"{all[k]} placed at cell {c}"); }
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.BeginHorizontal();
+                foreach (var s in all)
+                    if (AquariumCiv.Sim.Eco.LifeJar.Restocks(s) && GUILayout.Button("Again " + s)) last = Done(sim.DebugJarAgain(s) ? $"{s} jar open again" : $"{s}: not placed");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #417 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

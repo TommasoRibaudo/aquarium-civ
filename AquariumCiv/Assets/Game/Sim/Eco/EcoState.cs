@@ -65,6 +65,15 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>#385: where the berry thickets stand (site cells; -1 = not yet). The first is set by the first bushes, the second
         /// by a stray far from the first once the first has filled in. Bushes spread inside them and thin out elsewhere.</summary>
         public int thicketA = -1, thicketB = -1;
+        /// <summary>#418: the placed thicket's radius (box units) round <see cref="thicketA"/>; 0 = no placed thicket. thicketB is no longer
+        /// set (one thicket per box, placed-life spec §5.1): it stays in the save so an old one loads.</summary>
+        public float thicketRadius;
+
+        /// <summary>#417 the life jar (placed-life spec §2, §9): one entry per <see cref="LifeSpecies"/>, keyed by name so adding a
+        /// species never breaks a save. <see cref="jarOn"/> is false in a save from before the jar: the model migrates it once
+        /// (EcoModel.EnsureJars: rabbits that arrived and wild bushes count as placed).</summary>
+        public bool jarOn;
+        public List<LifeJarEntry> jars = new List<LifeJarEntry>();
         public List<int> bushPickCell = new List<int>();
         public List<long> bushPickDay = new List<long>();
         public List<float> bushPickLeft = new List<float>();

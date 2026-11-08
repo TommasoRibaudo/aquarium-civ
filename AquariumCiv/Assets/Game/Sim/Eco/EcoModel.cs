@@ -27,7 +27,7 @@ namespace AquariumCiv.Sim.Eco
         public EcoModel(EcoState state, EcoLand land, EcoTuning tuning)
         {
             st = state; this.land = land; t = tuning;
-            if (st.on && st.cover != null) EnsureLayers();
+            if (st.on && st.cover != null) { EnsureLayers(); EnsureJars(); }
         }
 
         /// <summary>An old save has no wet, puddle or sprout layers: start them empty.</summary>
@@ -59,6 +59,7 @@ namespace AquariumCiv.Sim.Eco
             st.treeCell = -1; st.treeProgress = 0f; st.treeWeeds = 0f; st.treeStage = 0; st.keeperMistings = 0; st.treeWilting = false;
             st.campGateMonth = st.villageGateMonth = -1;
             st.milestoneKeys = new List<string>(); st.milestoneMonths = new List<long>();
+            st.jarOn = true; st.jars = new List<LifeJarEntry>(); st.thicketA = st.thicketB = -1; st.thicketRadius = 0f; // #417: every jar starts shut
             new EcoModel(st, land, t).Count();
         }
 
@@ -120,6 +121,7 @@ namespace AquariumCiv.Sim.Eco
             st.season++;
             Count();
             Gates(month);
+            UpdateJars(month); // #417: the jars the land is ready for open
         }
 
         // ---------------------------------------------------------------- the Keeper's hands
