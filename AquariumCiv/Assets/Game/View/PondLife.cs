@@ -14,7 +14,7 @@ namespace AquariumCiv.View
     /// <item>Frogs sit on the bank and on the lily pads: two or three by day, five or six at dusk and night (as the frog sound
     /// grows at night), none in winter. They puff their throat now and then (more at night), and hop into the water when a person
     /// comes near; a while later another sits somewhere else.</item>
-    /// <item>Ducks: once the pond is <see cref="DuckPondCells"/> cells or more, one duck paddles on it (two from 40 cells), dabbles
+    /// <item>Ducks (P9 #421/#424: as many as the sim's placed ducks, at most two shown; the pond's size no longer brings them): one duck paddles on it, dabbles
     /// (tail up) now and then, and sometimes waddles ashore for a while. A person coming close sends it paddling off.</item>
     /// </list>
     /// </summary>
@@ -155,8 +155,10 @@ namespace AquariumCiv.View
             wantF = Mathf.Min(wantF + (night ? 1 : 0) * (hour >= 20f || hour < 5f ? 1 : 0), MaxFrogs);
             wantF = Mathf.Min(wantF, 1 + water.Count / 3);
             if (Time.unscaledTime < forceFrogsUntil) wantF = MaxFrogs;
-            int wantD = water.Count >= TwoDucksPondCells ? 2 : water.Count >= DuckPondCells ? 1 : 0;
+            // P9 #421/#424 (B12.d): the ducks are the sim's (placed by the Keeper), no longer the pond's size; none while their arrival plays
+            int wantD = Mathf.Min(MaxDucks, sim.EcoDucksShown());
             if (Time.unscaledTime < forceDucksUntil) wantD = MaxDucks;
+            if (Time.unscaledTime < HoldDucksUntil) wantD = 0;
             WantedFrogs = wantF; WantedDucks = wantD;
 
             UpdatePads(eco);
@@ -195,6 +197,21 @@ namespace AquariumCiv.View
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             return g;
         }
+
+        /// <summary>P9 #424: the duck's parts (the ghost's silhouette and the ducks' arrival use the same duck); head and tail sit at
+        /// <see cref="DuckHeadAt"/> and <see cref="DuckTailAt"/> from the body.</summary>
+        public static void DuckMeshes(out Mesh body, out Mesh head, out Mesh tail)
+        {
+            BuildMeshes();
+            body = duckBody; head = duckHead; tail = duckTail;
+        }
+        public static readonly Vector3 DuckHeadAt = new(0f, 0.040f, 0.030f), DuckTailAt = new(0f, 0.028f, -0.034f);
+
+        /// <summary>P9 #424: while the ducks' arrival plays (until this unscaled time) the pond shows none of its own: the pair gliding
+        /// down is the arrival's.</summary>
+        public static float HoldDucksUntil = -1f;
+        /// <summary>P9 #424: where the arrival's ducks stopped (box-local x, z): the pond's ducks start there instead of a cell of their own.</summary>
+        public static readonly List<Vector2> DuckStarts = new();
 
         static void BuildMeshes()
         {
@@ -252,8 +269,8 @@ namespace AquariumCiv.View
             d.go = new GameObject("Duck") { hideFlags = HideFlags.DontSave };
             d.root = d.go.transform; d.root.SetParent(holder, false);
             Part(d.root, "Body", duckBody, box.SolidMaterial, Vector3.zero);
-            d.head = Part(d.root, "Head", duckHead, box.SolidMaterial, new Vector3(0f, 0.040f, 0.030f)).transform;
-            d.tail = Part(d.root, "Tail", duckTail, box.SolidMaterial, new Vector3(0f, 0.028f, -0.034f)).transform;
+            d.head = Part(d.root, "Head", duckHead, box.SolidMaterial, DuckHeadAt).transform;
+            d.tail = Part(d.root, "Tail", duckTail, box.SolidMaterial, DuckTailAt).transform;
             d.go.SetActive(false);
             d.timer = 1f + i;
             return d;
@@ -474,6 +491,7 @@ namespace AquariumCiv.View
                 {
                     int c = water[(i * 13 + 5) % water.Count];
                     d.at = new Vector2(SiteMap.CXc(c), SiteMap.CZc(c)); d.to = d.at; d.state = 1; d.timer = Random.Range(2f, 5f);
+                    if (i < DuckStarts.Count) { d.at = DuckStarts[i]; d.to = d.at; if (i == DuckStarts.Count - 1 || i == want - 1) DuckStarts.Clear(); } // #424: from where they landed
                     d.go.SetActive(true);
                 }
                 bool scared = NearestPerson(d.at.x, d.at.y) < DuckFlee;

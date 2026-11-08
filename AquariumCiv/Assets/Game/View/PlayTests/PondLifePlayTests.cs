@@ -134,8 +134,12 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(pl.FrogHops, hops, "a frog hopped into the water when someone came near");
             pl.Scarers.Clear();
 
-            int natural = pl.WantedDucks;
-            Assert.AreEqual(cells >= PondLife.TwoDucksPondCells ? 2 : cells >= PondLife.DuckPondCells ? 1 : 0, natural, $"ducks by pond size ({cells} cells)");
+            // P9 #421/#424: the ducks are the Keeper's to place now, not the pond's size
+            Assert.AreEqual(0, pl.WantedDucks, $"no ducks before they are placed ({cells} cells)");
+            EcoDebug.Table(0.3f);
+            Assert.GreaterOrEqual(Sim.DebugPlaceNearCamp(AquariumCiv.Sim.Eco.LifeSpecies.Ducks), 0, "the ducks placed");
+            yield return Until(() => pl.WantedDucks > 0, 8f); // after their arrival plays
+            Assert.AreEqual(Mathf.Min(PondLife.MaxDucks, Sim.EcoDucksShown()), pl.WantedDucks, "the placed ducks");
             string msg = EcoDebug.DucksNow();
             yield return Until(() => pl.DucksShown > 0, 5f);
             Assert.Greater(pl.DucksShown, 0, msg);
@@ -145,7 +149,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Fly(box, ds[0].x, ds[0].y, 1.2f);
             yield return Shot("pond_ducks");
             Assert.IsEmpty(errors, string.Join("\n", errors));
-            Debug.Log($"[PondLife] pond {cells} cells, frogs day {day} night {night}, natural ducks {natural}, ducks shown {pl.DucksShown}");
+            Debug.Log($"[PondLife] pond {cells} cells, frogs day {day} night {night}, ducks wanted {pl.WantedDucks}, ducks shown {pl.DucksShown}");
         }
     }
 }
