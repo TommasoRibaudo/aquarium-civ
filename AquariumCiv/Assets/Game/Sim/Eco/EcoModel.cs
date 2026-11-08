@@ -573,10 +573,8 @@ namespace AquariumCiv.Sim.Eco
         void Animals(long month)
         {
             float meadow = st.cGrass + st.cTall + 0.3f * st.cBush;
-            // #282: tracks come first, at half the meadow the first rabbit needs; the rabbit follows at least a season later.
-            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow * 0.5f) Reach(EcoMilestones.RabbitTracks, month);
-            long tracksAt = st.MonthOf(EcoMilestones.RabbitTracks);
-            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow && tracksAt >= 0 && month - tracksAt >= 3) { st.rabbits = 2f; Reach(EcoMilestones.FirstRabbit, month); }
+            // #419 (placed-life spec §5.2): rabbits never arrive by themselves; the Keeper places a pair (FoundRabbits) and the herd
+            // grows from there toward the meadow's capacity, as before.
             if (st.rabbits > 0f)
             {
                 float k = meadow / t.meadowPerRabbit;
@@ -612,7 +610,8 @@ namespace AquariumCiv.Sim.Eco
             if (st.cGrass + st.cTall + st.cBush > 0) Reach(EcoMilestones.FirstGreen, month);
             if (st.cBush > 0) Reach(EcoMilestones.FirstBush, month);
             if (st.birds >= t.firstBirdAt) Reach(EcoMilestones.FirstBird, month);
-            if (st.campGateMonth < 0 && MeadowFrac >= t.campMeadow && st.rabbits >= t.campRabbits)
+            // #419 (spec §3.1): the camp waits on the rabbits the Keeper placed
+            if (st.campGateMonth < 0 && MeadowFrac >= t.campMeadow && IsPlaced(LifeSpecies.Rabbits) && st.rabbits >= t.campRabbits)
             {
                 st.campGateMonth = (int)month; Reach(EcoMilestones.CampGate, month); newGates.Add("camp");
             }
@@ -621,6 +620,7 @@ namespace AquariumCiv.Sim.Eco
             bool keeperGrown = st.treeCell >= 0 && st.treeCell < EcoLand.N && Cv(st.treeCell) == EcoCover.Tree;
             if (st.cTrees - (keeperGrown ? 1 : 0) > 0) Reach(EcoMilestones.FirstWoodTree, month);
             if (st.cPond > 0) Reach(EcoMilestones.WaterSurfaced, month);
+            // TODO(#421, #433): placed-life spec §3.1 adds "ducks and fish placed" to the village gate; changed with their populations.
             if (st.villageGateMonth < 0 && st.campGateMonth >= 0 && st.cPond >= t.pondGateCells && st.cTrees >= t.villageTrees)
             {
                 st.villageGateMonth = (int)month; Reach(EcoMilestones.VillageGate, month); newGates.Add("village");

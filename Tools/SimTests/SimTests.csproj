@@ -49,6 +49,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitPlacedTests.cs" /><!-- #419 placed rabbits -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTweezersTests.cs" /><!-- 311, 314 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoMistHoldTests.cs" /><!-- P8 polish 266 view half: the hold -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoFirstRunTests.cs" /><!-- P8 #248 -->

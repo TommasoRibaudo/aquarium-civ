@@ -255,7 +255,7 @@ namespace AquariumCiv.Tests
             var care = Pace(true, 8 * 4); var none = Pace(false, 34 * 4);
             TestContext.Out.WriteLine($"gate: care Y{care:0.0}, none Y{none:0.0}");
             Assert.That(care, Is.InRange(3f, 5.4f), "with care: the lab's 3-4 years");
-            Assert.That(none, Is.InRange(18f, 31.6f), "without the player: 18-30 years");
+            Assert.AreEqual(-1f, none, "without the player: no rabbits are ever placed, so no camp (#419, placed-life spec §2.2)");
         }
 
         /// <summary>A careful keeper (three mists in each of the first two seasons, then every hour) until the camp gate opens; game years, or -1.</summary>
@@ -264,6 +264,7 @@ namespace AquariumCiv.Tests
             var sim = World();
             for (int s = 0; s < seasons && !sim.CampGateOpen; s++)
             {
+                if (care && (s <= 1 || s % 4 == 0)) EcoTests.PlaceReadyJars(sim); // #417-#419: the thicket, then the rabbits
                 if (care && (s <= 1 || s % 4 == 0))
                     for (int k = 0; k < 3; k++)
                     {

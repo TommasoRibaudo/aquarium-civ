@@ -282,7 +282,23 @@ namespace AquariumCiv.Sim.Eco
             switch (s)
             {
                 case LifeSpecies.Thicket: FoundThicket(cell, month); break; // #418
+                case LifeSpecies.Rabbits: FoundRabbits(cell, month, restock); break; // #419
             }
+        }
+
+        /// <summary>The founding pair of rabbits that every placing brings (spec §4.1).</summary>
+        public const float RabbitPair = 2f;
+
+        /// <summary>#419 (spec §5.2): a pair hops in at the placed cell and the warren is dug there (RabbitHerd reads
+        /// <see cref="EcoState.rabbitArrivalCell"/>); the tracks show from now on (D3: only after placing). A restock brings another
+        /// pair to the same herd; the warren stays where it is.</summary>
+        void FoundRabbits(int cell, long month, bool restock)
+        {
+            st.rabbits = MathF.Max(st.rabbits, 0f) + RabbitPair;
+            if (restock && st.rabbitArrivalCell >= 0) return;
+            st.rabbitArrivalCell = cell; st.rabbitArrivalSeen = false;
+            Reach(EcoMilestones.RabbitTracks, month);
+            Reach(EcoMilestones.FirstRabbit, month);
         }
 
         // ---------------------------------------------------------------- debug

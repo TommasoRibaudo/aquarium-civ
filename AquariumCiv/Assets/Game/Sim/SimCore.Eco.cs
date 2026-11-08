@@ -89,11 +89,13 @@ namespace AquariumCiv.Sim
                 else if (key == EcoMilestones.RabbitTracks)
                 {
                     PickRabbitTracks();
+                    if (LifePlacedMonth(LifeSpecies.Rabbits) != State.month) // #419: the placing has its own history line
                     Chronicle("eco_tracks", "Small prints crossed the edge of the grass, and stopped at the green. The people crouched over them.", 0.5f);
                 }
                 else if (key == EcoMilestones.FirstRabbit)
                 {
                     PickRabbitArrival();
+                    if (LifePlacedMonth(LifeSpecies.Rabbits) != State.month) // #419: the placing has its own history line
                     Chronicle("eco_rabbit", "A rabbit was seen in the grass. Nobody had seen one before.", 0.6f);
                 }
                 else if (key == EcoMilestones.FirstBush)

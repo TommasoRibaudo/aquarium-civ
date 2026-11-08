@@ -34,9 +34,10 @@ namespace AquariumCiv.Tests
         /// The run starts at 08:00; the first session is half an hour.</summary>
         sealed class Keeper
         {
-            readonly bool care;
+            readonly bool care, places;
             int spotsMisted;
-            public Keeper(bool care) { this.care = care; }
+            /// <param name="places">#419: false = a Keeper who tends the land but never opens the jar (nothing is ever placed).</param>
+            public Keeper(bool care, bool places = true) { this.care = care; this.places = places; }
 
             static bool Awake(int season) => (8 + season / 4) % 24 >= 8;
 
@@ -51,7 +52,7 @@ namespace AquariumCiv.Tests
             {
                 var e = sim.State.eco;
                 if (!VisitsAt(e.season)) return;
-                PlaceReadyJars(sim); // #417-#419: the Keeper places every jar that is ready, by the camp
+                if (places) PlaceReadyJars(sim); // #417-#419: the Keeper places every jar that is ready, by the camp
                 var land = sim.EcoGround;
                 // The lab plans the whole visit from the land as it stands on arrival, then does it.
                 (float x, float z)? plant = e.treeCell < 0 && sim.CanPlantTree ? PlantSpot(sim, land) : ((float, float)?)null;
@@ -442,14 +443,15 @@ namespace AquariumCiv.Tests
             TestContext.Out.WriteLine($"care: camp Y{care.CampYear:0.0} green Y{care.Year(EcoMilestones.FirstGreen):0.0} bush Y{care.Year(EcoMilestones.FirstBush):0.0} " +
                 $"planted Y{care.Year(EcoMilestones.TreePlanted):0.0} grown Y{care.Year(EcoMilestones.TreeGrown):0.0} water Y{care.Year(EcoMilestones.WaterSurfaced):0.0} village Y{care.VillageYear:0.0}; " +
                 $"none: camp Y{none.CampYear:0.0}; runs {care.ms:0} + {none.ms:0} ms");
-            // The lab, seed 7 on the first terrain: care camp Y4.3, village Y25.3; no player camp Y25.3.
+            // The lab, seed 7 on the first terrain: care camp Y4.3, village Y25.3; no player camp Y25.3 (before #419).
             Assert.That(care.CampYear, Is.InRange(4.3f * 0.75f, 4.3f * 1.25f), "care: camp");
             Assert.That(care.VillageYear, Is.InRange(25.3f * 0.75f, 25.3f * 1.25f), "care: village");
-            Assert.That(none.CampYear, Is.InRange(25.3f * 0.75f, 25.3f * 1.25f), "no player: camp");
+            // #419 (placed-life spec §2.2): nothing big arrives by itself, so a box nobody opens never gets its rabbits or its camp
+            Assert.AreEqual(-1f, none.CampYear, "no player: no camp");
+            Assert.AreEqual(0f, none.sim.EcoRabbits, "no player: no rabbits");
             // the issue's own ranges, too
             Assert.That(care.CampYear, Is.InRange(3f, 5.4f));
             Assert.That(care.VillageYear, Is.InRange(19f, 31.6f));
-            Assert.That(none.CampYear, Is.InRange(18f, 31.6f));
             Assert.IsFalse(none.sim.State.eco.Reached(EcoMilestones.TreePlanted), "no player plants nothing");
         }
 
@@ -596,6 +598,7 @@ namespace AquariumCiv.Tests
             for (int m = 0; m < 30 * 12; m++)
             {
                 if (m % 3 == 0) sim.Mist(map.greenX + 0.6f + (m % 7) * 0.08f, map.greenZ - 0.2f, 2f);
+                if (m % 3 == 0) PlaceReadyJars(sim); // #419: the camp waits on the Keeper's rabbits
                 sim.Advance(1.0 / 12);
                 var d = sim.OpenDilemma;
                 if (d != null && sim.AnswerDilemma(d.id, m % 2, DilemmaPath.Box)) answered++;
