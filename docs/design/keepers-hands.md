@@ -41,11 +41,11 @@ glass-voice stages: a little scared in the camp, curious in the village, studyin
 |---|---|---|---|---|---|
 | 0 | **Barren land** | Wipe the misted glass (first run) | Dry, cracked dirt; hollows; a dry stream bed | **The tribe is already there**: one tent and a fire, nothing more. Slow life: they dig roots in the dry stream bed, sit and sleep by the fire, watch the sky (§2.1) | **Tribe** (before the camp) |
 | 1 | **The first mist** | **Mist** a spot | Green spreads from where it fell, over seconds; crickets start with the first green | They react **at once**: they stand in it, faces up, astonished; a child plays in the mist; ~~they move their fire next to the green~~ (dropped, user 2026-11-03); the glass voice's first line. Every early mist is a small moment (§2.1) | Tribe |
-| 2 | **Meadows and bunnies** | Keep misting, here and there | Meadow spreads; rabbit tracks first, then **rabbits** arrive with enough grass | They hunt; hides become **new tents** (none are built before this) | **Camp starts here, officially** (an era moment, small) |
-| 3 | **Bushes** | (nothing new) | Bushes appear in the meadow over time | **Gatherers** (berries) | Camp |
+| 2 | **Meadows and bunnies** ~~(arrive)~~ → **placed**, see [placed-life.md](placed-life.md) | Keep misting, here and there | Meadow spreads; rabbit tracks first, then **rabbits** arrive with enough grass | They hunt; hides become **new tents** (none are built before this) | **Camp starts here, officially** (an era moment, small) |
+| 3 | **Bushes** ~~(appear)~~ → **one placed thicket**, see [placed-life.md](placed-life.md) | (nothing new) | Bushes appear in the meadow over time | **Gatherers** (berries) | Camp |
 | 4 | **The one seed** | **Plant** the seed (once); care for it (§4) | Seed → sprout → sapling → young → grown, through seasons | Watch it; later they carry water to it | Camp |
 | 5 | **The forest** | (nothing new; keep tending) | Birds spread its seeds; wild trees grow without care | **Woodcutters**, more gathering (mushrooms, nuts) | Camp |
-| 6 | **The water rises** | **Keep misting** the box; wipe the droplets that bead on the glass | The **water table** rises, visible in the soil cross-section; it **breaks the surface in the lowlands** as a pond, then reeds, frogs, ducks | **Fishers**; nobody ever built in the lowlands (§5.3) | Camp → ready |
+| 6 | **The water rises** (ducks and fish now **placed**, see [placed-life.md](placed-life.md)) | **Keep misting** the box; wipe the droplets that bead on the glass | The **water table** rises, visible in the soil cross-section; it **breaks the surface in the lowlands** as a pond, then reeds, frogs, ducks | **Fishers**; nobody ever built in the lowlands (§5.3) | Camp → ready |
 | 7 | **Village** | Watch the era moment | Fields on the moist flats | Farmers, huts of wood | **Village** |
 | 8 | **The canal** | **Dig** a line from the pond with the stick | Water fills it; the land along it greens and grows richer | A **mill** on the canal; fields along it do better | Village |
 | 9 | **On to the town** | Tend: weeds in fields, the forest's edge, the humidity, the water | The land matures | Crafts | Town (its tools: §3.3) |
@@ -54,6 +54,9 @@ What gates each era [est, the spike measures it]: the **camp** starts with meado
 the **village** needs the forest (≥ N grown trees) **and** water at the surface, plus today's population and
 building rules (`SimConfig.villageAt`). Natural moisture keeps all of this moving slowly without the player (§5.4), so
 an era always comes eventually, only later.
+
+> **Superseded in part (2026-11-08):** beats 2, 3 and 6 and the camp gate below are replaced by
+> [placed-life.md](placed-life.md): the thicket, rabbits, deer, ducks, fish and wolves are placed by the Keeper.
 
 ### 2.1 Before the camp: the tribe (decided 2026-11-02)
 The user's answers after the Ecology Lab (#228), which showed that with care the camp gate opens about 3–4 game
@@ -117,7 +120,7 @@ The mist no longer greens its whole core at once, and green no longer waits for 
 |---|---|---|
 | Rain (cloud) | **Mister** | The user: spray, not rain |
 | Grove | **Seed** (one, cared for) | Decided 2026-11-02 |
-| Herd (flick in animals) | **Gone**: animals come by themselves when the land can hold them | Ecology, not a power |
+| Herd (flick in animals) | ~~**Gone**: animals come by themselves when the land can hold them~~ **Replaced 2026-11-07/08:** the **life slot** places one founding group per species once the land is ready ([placed-life.md](placed-life.md)) | The user wants the arrival of life to be the Keeper's doing |
 | Channel | **Stick** (dig a canal) | A physical act |
 | Hill & hollow | **Stick** (push or pull) | Same tool, second gesture |
 | Keeper's Lamp | **Gone as a tool** (§8.4): the lamp-lit square is the people's own | Not tending |
