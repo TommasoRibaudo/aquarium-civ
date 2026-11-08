@@ -148,6 +148,9 @@ namespace AquariumCiv.View
         /// <summary>#150: past the pile's edge, what rings keep off it; and past that edge, where someone stands to set a load down.</summary>
         const float StashBlockMargin = 0.02f, StashStandOff = 0.04f;
         readonly Dictionary<int, Lot> lotOfBuilding = new();
+        /// <summary>Verify run 2026-11-07: per home building, the side its chopping block stands (<see cref="SlotSpots.Home"/>'s blockSide).</summary>
+        readonly Dictionary<int, int> blockSideOf = new();
+        readonly List<Lot> standingLots = new();
         readonly Dictionary<int, Notable> notables = new();
         readonly HashSet<int> seen = new();
         readonly List<int> gone = new();
@@ -297,10 +300,52 @@ namespace AquariumCiv.View
             {
                 lotsMonth = sim.State.month; lotsCount = lots;
                 lotOfBuilding.Clear();
+                blockSideOf.Clear();
+                standingLots.Clear();
                 if (st != null)
                     foreach (var l in st.Lots)
+                    {
+                        if (!l.retired && !l.open && l.kind != LotKind.Farm && l.kind != LotKind.Pasture && l.kind != LotKind.Orchard) standingLots.Add(l);
                         if (l.buildingId > 0 && (!lotOfBuilding.TryGetValue(l.buildingId, out var old) || (old.retired && !l.retired))) lotOfBuilding[l.buildingId] = l;
+                    }
             }
+        }
+
+        /// <summary>Within this much of another building's lot a yard spot is under its eaves (a roof overhangs its lot).</summary>
+        const float EavesReach = 0.12f;
+
+        /// <summary>Verify run 2026-11-07: kindling was split in the gap between two houses, hidden by their roofs. The block goes on the
+        /// side of the door with room: +1 as drawn, -1 the other side, 0 out in front when both are shut. Cached per building.</summary>
+        int BlockSide(Lot lot, Vector2 door, float outAngle)
+        {
+            if (blockSideOf.TryGetValue(lot.buildingId, out int side)) return side;
+            side = 0;
+            foreach (int s in new[] { 1, -1 })
+            {
+                bool clear = true;
+                for (int rank = 0; rank < 3 && clear; rank++) // the second and third at the block stand further out: their spots count too
+                {
+                    var (dx, dz) = SlotSpots.Home(SlotSpots.HomeSpot.Block, rank, outAngle, s);
+                    clear = !UnderEaves(lot, door + new Vector2(dx, dz));
+                }
+                if (clear) { side = s; break; }
+            }
+            blockSideOf[lot.buildingId] = side;
+            return side;
+        }
+
+        /// <summary>The point is on or near another standing building's lot.</summary>
+        bool UnderEaves(Lot own, Vector2 p)
+        {
+            foreach (var l in standingLots)
+            {
+                if (l == own) continue;
+                float r = l.yaw * Mathf.Deg2Rad, c = Mathf.Cos(r), s = Mathf.Sin(r);
+                float lx = p.x - l.x, lz = p.y - l.z;
+                float u = lx * c - lz * s, v = lx * s + lz * c; // into the lot's own frame
+                if (Mathf.Abs(u) < l.w * 0.5f + EavesReach && Mathf.Abs(v) < l.d * 0.5f + EavesReach) return true;
+            }
+            return false;
         }
 
         // ---------------- dolls ----------------
@@ -871,7 +916,7 @@ namespace AquariumCiv.View
                 var centre = new Vector2(lot.x, lot.z);
                 var outDir = (spot - centre).sqrMagnitude > 1e-6f ? (spot - centre).normalized : Vector2.down;
                 float baseAng = Mathf.Atan2(outDir.y, outDir.x);
-                var (dx, dz) = a.place.kind == PlaceKind.Home ? SlotSpots.Home(SlotSpots.SpotFor(a.kind), d.homeRank, baseAng) // #200: at most two at the door, the rest in the yard
+                var (dx, dz) = a.place.kind == PlaceKind.Home ? SlotSpots.Home(SlotSpots.SpotFor(a.kind), d.homeRank, baseAng, BlockSide(lot, spot, baseAng)) // #200: at most two at the door, the rest in the yard
                     : SlotSpots.Door(a.slot, baseAng); // a fan outside the door, no two closer than SlotSpots.Gap
                 var at = spot + new Vector2(dx, dz);
                 // #200: at home they look out over the town. Facing their own wall, a sitter or a chopper looks as if they're building it.
