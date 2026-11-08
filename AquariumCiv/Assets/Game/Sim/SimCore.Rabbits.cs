@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Sim.Eco;
+using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
 {
@@ -59,15 +60,19 @@ namespace AquariumCiv.Sim
         }
 
         readonly bool[] rabbitBlocked = new bool[EcoLand.N];
+        /// <summary>How far from the camp's fire the rabbits keep (box units): past the green (0.42) and the people sat round the fire.</summary>
+        public const float RabbitFireMargin = 0.65f;
 
         /// <summary>#400 (playtest: rabbits "jump up and down when hitting buildings and fields"): the cells the rabbits keep off whatever
         /// grows there: every lot (houses, fields, pastures, the camp's tents) and the camp's green round the fire. Null when nothing
-        /// is settled. The array is reused: copy it to keep it.</summary>
+        /// is settled. The array is reused: copy it to keep it. Verify run 2026-11-07 (rabbits grazing right at the fire ring, past the people
+        /// sitting there): they keep <see cref="RabbitFireMargin"/> from the fire too (the bushes' 0.9 ring took the hunts' open ground).</summary>
         public bool[] EcoRabbitBlocked()
         {
             var map = Config.settle ? Settlement?.Map : null;
             if (map == null || map.lot == null) return null;
-            for (int c = 0; c < EcoLand.N; c++) rabbitBlocked[c] = map.lot[c] != 0 || map.Green(c);
+            var g = EcoGround;
+            for (int c = 0; c < EcoLand.N; c++) rabbitBlocked[c] = map.lot[c] != 0 || map.Green(c) || Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ) < RabbitFireMargin;
             return rabbitBlocked;
         }
 

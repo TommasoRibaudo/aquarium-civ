@@ -18,7 +18,7 @@ namespace AquariumCiv.Tests
         sealed class BushYears
         {
             public SimCore sim;
-            public readonly List<int> count = new List<int>(), onSettlement = new List<int>(), outside = new List<int>(), nearFire = new List<int>();
+            public readonly List<int> count = new List<int>(), onSettlement = new List<int>(), besideLot = new List<int>(), outside = new List<int>(), nearFire = new List<int>();
         }
 
         static readonly Dictionary<string, BushYears> bushCache = new Dictionary<string, BushYears>();
@@ -37,17 +37,18 @@ namespace AquariumCiv.Tests
                     sim.Advance(0.25);
                     if (s % 4 != 3) continue;
                     var e = sim.State.eco; var map = sim.Settlement.Map;
-                    int n = 0, on = 0, outs = 0, fire = 0;
+                    int n = 0, on = 0, outs = 0, fire = 0, beside = 0;
                     var g = sim.EcoGround;
                     for (int c = 0; c < EcoLand.N; c++)
                     {
                         if ((EcoCover)e.cover[c] != EcoCover.Bush) continue;
                         n++;
                         if (map.lot[c] != 0 || map.tier[c] >= PathNet.Trail || map.Green(c)) on++;
+                        else if (NextToALot(map, c)) beside++;
                         if (sim.BushThicketZone(c) <= 0f) outs++;
                         if (Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ) < 0.9f) fire++;
                     }
-                    r.count.Add(n); r.onSettlement.Add(on); r.outside.Add(outs); r.nearFire.Add(fire);
+                    r.count.Add(n); r.onSettlement.Add(on); r.besideLot.Add(beside); r.outside.Add(outs); r.nearFire.Add(fire);
                 }
                 return bushCache[key] = r;
             }
@@ -79,6 +80,49 @@ namespace AquariumCiv.Tests
         {
             var r = PlayBushes(true, 40, seed);
             for (int y = 1; y <= 40; y++) Assert.AreEqual(0, r.onSettlement[y - 1], $"year {y}: a bush on a lot, path or the green (#334)");
+        }
+
+        static bool NextToALot(SiteMap map, int c)
+        {
+            int x = c % SiteMap.NX, z = c / SiteMap.NX;
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = x + dx, nz = z + dz;
+                    if ((dx != 0 || dz != 0) && nx >= 0 && nz >= 0 && nx < SiteMap.NX && nz < SiteMap.NZ && map.lot[nz * SiteMap.NX + nx] != 0) return true;
+                }
+            return false;
+        }
+
+        [Test]
+        public void NoBush_BesideALot([ValueSource(nameof(BushSeeds))] int seed)
+        {
+            // verify run 2026-11-07: two bushes in the cells beside a house's lot reached under its walls (a bush's crown is wider
+            // than its cell). A bush keeps one cell of room from every lot.
+            var r = PlayBushes(true, 40, seed);
+            TestContext.Out.WriteLine($"seed {seed}: beside a lot by year: " + string.Join(" ", r.besideLot.Select((n, i) => $"y{i + 1}:{n}")));
+            for (int y = 1; y <= 40; y++) Assert.AreEqual(0, r.besideLot[y - 1], $"year {y}: a bush in the cell beside a lot");
+        }
+
+        [Test]
+        public void Rabbits_KeepOffTheRingRoundTheFire()
+        {
+            // verify run 2026-11-07: rabbits grazed right at the camp's fire ring, past the people sitting there; they keep
+            // SimCore.RabbitFireMargin from the fire.
+            var sim = EcoWorld(7);
+            sim.Advance(1.0);
+            var blocked = sim.EcoRabbitBlocked();
+            Assert.IsNotNull(blocked, "a settled box");
+            var g = sim.EcoGround;
+            int ring = 0, open = 0;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ);
+                if (d < SimCore.RabbitFireMargin - 0.05f) { ring++; Assert.IsTrue(blocked[c], $"cell {c} at {d:0.00} from the fire is open to the rabbits"); }
+                else if (d > 1.2f && !blocked[c]) open++;
+            }
+            Assert.Greater(ring, 40);
+            Assert.Greater(open, 500, "the rest of the land stays theirs");
         }
 
         [Test]
