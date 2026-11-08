@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Settle;
 using AquariumCiv.View.ShowMe;
 using NUnit.Framework;
 using UnityEngine;
@@ -130,6 +131,58 @@ namespace AquariumCiv.View.PlayTests
             }
             finally { pv.HandDriven = false; }
             AssertNoErrors("dawn lane");
+        }
+
+        // ---------------- verify run 2026-11-07: kindling split in the open ----------------
+
+        /// <summary>Kindling was split in the gap between two houses, under their roofs. Every doll chopping kindling (or stacking wood) at
+        /// home, over the mornings of a winter and a spring week, stands clear of every other building's lot by the eaves' reach.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator KindlingIsSplitInTheOpen()
+        {
+            UseLivingLand();
+            yield return Village(30f);
+            var pv = People;
+            pv.HandDriven = true;
+            int seen = 0, under = 0;
+            string first = "";
+            var lots = Sim.Settlement.Lots.Where(l => !l.retired && !l.open && l.kind != LotKind.Farm && l.kind != LotKind.Pasture && l.kind != LotKind.Orchard).ToList();
+            try
+            {
+                for (int day = 0; day < 8; day++)
+                {
+                    for (float h = 6f; h <= 11f; h += 0.25f)
+                    {
+                        pv.SetHour(h);
+                        for (int f = 0; f < 45; f++) pv.Tick(1f / 30f);
+                        foreach (var a in pv.Activities)
+                        {
+                            if (a.moving || a.place.kind != PlaceKind.Home || (a.kind != ActivityKind.ChopKindling && a.kind != ActivityKind.StackWood)) continue;
+                            if (!pv.TryGetDollPosition(a.who, out var p)) continue;
+                            seen++;
+                            foreach (var l in lots)
+                            {
+                                if (l.buildingId == a.place.buildingId) continue;
+                                float r = l.yaw * Mathf.Deg2Rad, c = Mathf.Cos(r), sn = Mathf.Sin(r);
+                                float lx = p.x - l.x, lz = p.y - l.z, u = lx * c - lz * sn, v = lx * sn + lz * c;
+                                if (Mathf.Abs(u) < l.w * 0.5f + 0.1f && Mathf.Abs(v) < l.d * 0.5f + 0.1f)
+                                {
+                                    under++;
+                                    if (first == "") { var own = Sim.Settlement.Lots.FirstOrDefault(o => o.buildingId == a.place.buildingId && !o.retired); pv.Planner.Positions.TryGetPosition(a.place, out float sx, out float sz); first = $"day {day} {h:0.00} h: {a.kind} at home {a.place.buildingId} ({p.x:0.00}, {p.y:0.00}) under lot {l.id} ({l.kind}, building {l.buildingId}, at ({l.x:0.00}, {l.z:0.00}) {l.w:0.00}x{l.d:0.00} yaw {l.yaw:0}); own lot " + (own == null ? "none" : $"{own.id} {own.kind} at ({own.x:0.00}, {own.z:0.00}) {own.w:0.00}x{own.d:0.00} yaw {own.yaw:0} open {own.open}") + $"; door spot ({sx:0.00}, {sz:0.00})"; }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    SimLayoutSource.DebugSkipYears(day == 3 ? 0.25f : 0.03f); // a winter week, then a spring one
+                    pv.Tick(1f / 30f);
+                }
+            }
+            finally { pv.HandDriven = false; }
+            Debug.Log($"[kindling] {seen} chopper samples, {under} under another building's eaves. {first}");
+            Assert.Greater(seen, 10, "somebody split kindling at home");
+            Assert.AreEqual(0, under, first);
+            AssertNoErrors("kindling");
         }
 
         // ---------------- #209: leaders round the label stack ----------------

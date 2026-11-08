@@ -39,16 +39,19 @@ namespace AquariumCiv.Life
         };
 
         /// <summary>The <paramref name="rank"/>th person at this kind of spot at one home, from the door: the first two of <see cref="HomeSpot.Door"/> at it, anyone after them out in front.</summary>
-        public static (float dx, float dz) Home(HomeSpot spot, int rank, float outAngle)
+        /// <param name="blockSide">Verify run 2026-11-07 (kindling split in the gap between two houses, under their roofs): which side
+        /// of the door the block stands, +1 as drawn, -1 swapped with the line (a neighbour's house on that side), 0 out in front (both sides shut).</param>
+        public static (float dx, float dz) Home(HomeSpot spot, int rank, float outAngle, int blockSide = 1)
         {
             float ox = (float)Math.Cos(outAngle), oz = (float)Math.Sin(outAngle), sx = -oz, sz = ox;
+            if (spot == HomeSpot.Block && blockSide == 0) spot = HomeSpot.Front;
             switch (spot)
             {
                 case HomeSpot.Door when rank < AtDoor: return Door(rank, outAngle);
                 case HomeSpot.Block:
                 case HomeSpot.Line:
                 {
-                    float side = spot == HomeSpot.Block ? YardSide : -YardSide, o = YardOut + rank * Gap;
+                    float side = (spot == HomeSpot.Block ? YardSide : -YardSide) * (blockSide < 0 ? -1f : 1f), o = YardOut + rank * Gap;
                     return (ox * o + sx * side, oz * o + sz * side);
                 }
             }

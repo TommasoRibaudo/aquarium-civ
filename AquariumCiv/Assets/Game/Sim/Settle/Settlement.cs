@@ -107,7 +107,9 @@ namespace AquariumCiv.Sim.Settle
         }
 
         /// <summary>#385 (#334: a grown bush clipped a tent): no bush stands on a lot, a path or the camp's green. The people clear
-        /// the ground they build on and trample what grows on their paths; it goes back to grass. No dice.</summary>
+        /// the ground they build on and trample what grows on their paths; it goes back to grass. No dice. Verify run 2026-11-07: a
+        /// bush's crown is wider than its cell, and two in the cells beside a house's lot reached under its walls, so the cells
+        /// round a lot are cleared too.</summary>
         public int ClearBushes()
         {
             var eco = S.eco;
@@ -116,13 +118,26 @@ namespace AquariumCiv.Sim.Settle
             for (int c = 0; c < SiteMap.N; c++)
             {
                 if (eco.cover[c] != (byte)Eco.EcoCover.Bush) continue;
-                if (Map.lot[c] == 0 && Map.tier[c] < PathNet.Trail && !Map.Green(c)) continue;
+                if (Map.lot[c] == 0 && Map.tier[c] < PathNet.Trail && !Map.Green(c) && !NextToALot(c)) continue;
                 eco.cover[c] = (byte)Eco.EcoCover.Grass;
                 Map.Set(c, SiteMap.FMeadow, true);
                 n++;
             }
             eco.cBush = Math.Max(0, eco.cBush - n);
             return n;
+        }
+
+        /// <summary>A lot takes one of the eight cells round <paramref name="c"/>.</summary>
+        bool NextToALot(int c)
+        {
+            int x = c % SiteMap.NX, z = c / SiteMap.NX;
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int nx = x + dx, nz = z + dz;
+                    if ((dx != 0 || dz != 0) && nx >= 0 && nz >= 0 && nx < SiteMap.NX && nz < SiteMap.NZ && Map.lot[nz * SiteMap.NX + nx] != 0) return true;
+                }
+            return false;
         }
 
         /// <summary>The ecology (Sim/Eco) writes into the land after each of its steps: the pond is the ecology's water, the
