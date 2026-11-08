@@ -553,7 +553,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator ShowMeWordsSitOnTheBubbleAndTheCaption()
+        public IEnumerator ShowMeWordsSitOnTheCaptionWithTheirSpeaker()
         {
             yield return Returned();
             var d = ShowMeDirector.Instance;
@@ -563,16 +563,19 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(id, 0, "someone to say it");
             yield return TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.6f)); // the peek goes
             yield return Frames(4);
-            Assert.IsTrue(d.SayOverHead("Rain on the east field.", PersonRef.Notable(id), 5f));
+            // #327 Option B: short or long, a line is on the caption with the speaker's name, ring and speech mark; no bubble.
+            Assert.IsTrue(d.Say("Rain on the east field.", PersonRef.Notable(id), 5f));
             yield return Frames(4);
             var ui = GameObject.Find("ShowMeUI").GetComponent<UIDocument>().rootVisualElement;
-            Assert.IsInstanceOf<GlassBubble>(ui.Q("showme-bubble"));
-            Assert.IsNull(d.ShownCaption);
+            Assert.IsNull(ui.Q("showme-bubble"), "no over-head bubble for spoken lines");
+            Assert.AreEqual("Rain on the east field.", d.ShownCaption);
+            Assert.AreEqual(Sim.FindNotable(id).name, d.LastWho, "the speaker's name under the line");
+            Assert.IsTrue(d.SpeakerRingUp, "the ring under them");
+            Assert.IsTrue(d.SpeechMarkUp, "the speech mark over them");
             string line = new string('a', GlassBubble.MaxChars + 1);
-            Assert.IsTrue(d.SayOverHead(line, PersonRef.Notable(id), 5f));
+            Assert.IsTrue(d.Say(line, PersonRef.Notable(id), 5f));
             yield return Frames(4);
-            Assert.AreEqual(line, d.ShownCaption, "longer lines become a caption");
-            Assert.IsFalse(d.EchoBubbleShown, "one message at a time");
+            Assert.AreEqual(line, d.ShownCaption, "a longer line is the same caption");
             var cap = ui.Q("showme-caption");
             Assert.IsInstanceOf<GlassCaption>(cap);
             Assert.AreEqual(DisplayStyle.Flex, cap.resolvedStyle.display);
@@ -642,10 +645,10 @@ namespace AquariumCiv.View.PlayTests
             var d = ShowMeDirector.Instance;
             var pv = PeopleView.Find();
             var who = Sim.State.notables.First(n => n.alive && pv.TryGetDollTop(PersonRef.Notable(n.id), out _));
-            d.SayOverHead("Rain on the east field. Told you.", PersonRef.Notable(who.id), 6f);
+            d.Say("Rain on the east field. Told you.", PersonRef.Notable(who.id), 6f);
             yield return Frames(8);
-            yield return Shot(dir + "showme-bubble");
-            d.SayOverHead("Mira and Tob keep sitting together at the fire, and everyone can see why.", PersonRef.Notable(who.id), 6f);
+            yield return Shot(dir + "showme-line");
+            d.Say("Mira and Tob keep sitting together at the fire, and everyone can see why.", PersonRef.Notable(who.id), 6f);
             yield return Frames(30);
             yield return Shot(dir + "showme-caption");
             AssertNoErrors("shots");

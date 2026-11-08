@@ -191,28 +191,33 @@ namespace AquariumCiv.View.PlayTests
                     if (c.name == "gone-building") Assert.AreEqual(ShowMeFallback.BuildingGone, plan.target.fallback);
                     Assert.AreEqual(c.echo, plan.HasEcho, $"{c.name}: echo {plan.echo.skip}");
                     bool echoed = false, flewThere = false, flower = false, shotLine = false, overHead = false;
-                    int linesOver = d.EchoLinesOverHead;
+                    int linesOver = d.SceneLines;
                     float t = 0f;
                     while (d.State != ShowMeDirector.Phase.Idle && t < 25f)
                     {
                         audit.Step();
                         if (d.State == ShowMeDirector.Phase.Waiting) flewThere = true;
                         if (d.CurrentEcho != null && !echoed) echoed = true;
-                        if (d.EchoBubbleShown && !overHead && pv.TryGetDollFeet(d.EchoSpeaker, out var feet))
+                        // #327 Option B: the echo's line is on the caption, with its speaker's ring and speech mark
+                        if (d.CaptionUp && !overHead && !d.LineSpeaker.IsNone && pv.TryGetDollFeet(d.LineSpeaker, out var feet))
                         {
-                            var fs = Camera.main.WorldToScreenPoint(feet);
+                            yield return null; // the ring and mark are drawn in LateUpdate
+                            audit.Step();
                             overHead = true;
-                            Assert.Greater(d.BubbleScreen.y, fs.y, $"{c.name}: the line sits above the speaker's feet");
-                            Assert.Less(d.BubbleScreen.y - fs.y, 0.2f * Screen.height, $"{c.name}: and right over their head");
-                            Assert.Less(Mathf.Abs(d.BubbleScreen.x - fs.x), 0.05f * Screen.width, $"{c.name}: not off to the side");
+                            if (d.CaptionUp && !d.LineSpeaker.IsNone)
+                            {
+                                Assert.IsTrue(d.SpeakerRingUp, $"{c.name}: the ring under the speaker");
+                                Assert.Less((d.Ring.At - feet).magnitude, 0.1f, $"{c.name}: at their feet");
+                                Assert.IsTrue(d.SpeechMarkUp, $"{c.name}: the speech mark over them");
+                            }
                         }
-                        if (echoed && !shotLine && d.EchoBubbleShown)
+                        if (echoed && !shotLine && d.CaptionUp)
                         {
                             shotLine = true;
                             for (int f = 0; f < 3; f++) { yield return null; audit.Step(); }
-                            var line = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-bubble");
+                            var line = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-caption");
                             var lb = line.worldBound;
-                            if (d.EchoBubbleShown) Assert.IsTrue(lb.xMin >= 0f && lb.xMax <= line.panel.visualTree.layout.width && lb.yMin >= 0f, $"{c.name}: the line stays on screen: {lb}");
+                            if (d.CaptionUp) Assert.IsTrue(lb.xMin >= 0f && lb.xMax <= line.panel.visualTree.layout.width && lb.yMin >= 0f, $"{c.name}: the line stays on screen: {lb}");
                             yield return Shot("showme-" + c.name);
                         }
                         if (!c.echo && d.State == ShowMeDirector.Phase.Hold && !flower)
@@ -230,11 +235,7 @@ namespace AquariumCiv.View.PlayTests
                     if (c.echo && !string.IsNullOrEmpty(plan.echo.line))
                     {
                         StringAssert.Contains(plan.echo.line, d.LastLine, $"{c.name}: the echo's line is said");
-                        if (!GlassBubble.TooLong(d.LastLine)) // spec §3: a longer line is a caption (#120's bank has plenty)
-                        {
-                            Assert.Greater(d.EchoLinesOverHead, linesOver, $"{c.name}: over the speaker's head, not at the fixed spot");
-                            Assert.IsTrue(overHead, $"{c.name}: and it showed");
-                        }
+                        Assert.Greater(d.SceneLines, linesOver, $"{c.name}: on the caption (#327 Option B)");
                     }
                     if (!c.echo) Assert.IsTrue(flower, "a flower at the stone");
                     Assert.IsTrue(d.Returned, $"{c.name}: the camera comes back");
@@ -298,15 +299,16 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsNull(d.QuietReason(), "normal play: they may speak");
                 float t = 0f;
                 while (d.ShownBubble == null && t < 30f) { t += Time.unscaledDeltaTime; yield return null; }
-                Assert.IsNotNull(d.ShownBubble, "someone says something over their head");
+                Assert.IsNotNull(d.ShownBubble, "someone says something (on the caption, #327)");
                 Debug.Log($"[ShowMePlay] bubble after {t:0.0}s: {d.ShownBubble}");
                 Assert.IsTrue(PeopleVoice.Allowed(d.ShownBubble.text, GameClock.Instance.Sim));
                 yield return null; yield return null; yield return null;
-                var el = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-bubble");
+                var el = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-caption");
                 var wb = el.worldBound;
                 float pw = el.panel.visualTree.layout.width;
-                Assert.IsTrue(wb.xMin >= 0f && wb.xMax <= pw && wb.yMin >= 0f, $"the bubble stays on screen: {wb}, panel width {pw}");
-                yield return Shot("showme-bubble");
+                Assert.IsTrue(wb.xMin >= 0f && wb.xMax <= pw && wb.yMin >= 0f, $"the caption stays on screen: {wb}, panel width {pw}");
+                Assert.IsTrue(d.SpeakerRingUp, "the ring under the speaker");
+                yield return Shot("showme-line");
 
                 hud.SetCameraMode(true);
                 yield return null; yield return null;

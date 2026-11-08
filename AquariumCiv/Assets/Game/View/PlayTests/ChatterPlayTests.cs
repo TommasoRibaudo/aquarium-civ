@@ -70,7 +70,7 @@ namespace AquariumCiv.View.PlayTests
 
             // a real line
             var who = View.DrawnOver[0];
-            Assert.IsTrue(Sm.SayOverHead("Hush.", who, 2f));
+            Assert.IsTrue(Sm.Say("Hush.", who, 2f));
             yield return Frames(3);
             Assert.AreEqual(0, View.Plan.Live.Count(s => !s.reaction), "a real line fades the talk");
             yield return Frames(10);

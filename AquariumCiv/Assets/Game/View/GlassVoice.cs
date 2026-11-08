@@ -21,8 +21,9 @@ namespace AquariumCiv.View
     /// mid-day: it re-plans the day).</item>
     /// <item><b>Relic moments.</b> When the sim finds a relic while the box is watched (<see cref="SimCore.RelicFound"/>, not
     /// in a catch-up), its moment is staged (<see cref="LifePlanner.StartRelicMoment"/>); the Lens waits for dusk, an era moment
-    /// first plays out. The Festival Mask's is the festival's (MomentPlayer, #91). The lines said in a moment show in the era
-    /// speaker's head (<see cref="ShowMeDirector.SayOverHead"/>).</item>
+    /// first plays out. The Festival Mask's is the festival's (MomentPlayer, #91). The lines said in a moment show on the
+    /// one caption with the speaker's name, ring and speech mark (#327 Option B, <see cref="ShowMeDirector.SayOrWait"/>); a line that
+    /// finds the word busy waits its turn.</item>
     /// <item><b>Tapping the glass.</b> A tap on the box outside clean mode and camera mode is the Keeper knocking: the people
     /// react as their stage does (<see cref="KeeperGesture.TapGlass"/>), and once the taps stop the sim is told how many
     /// (<see cref="SimCore.KeeperTapped"/>); in stage 3 with the Lens a scholar walks over and knocks back as often
@@ -200,7 +201,7 @@ namespace AquariumCiv.View
             foreach (var a in pv.Activities)
             {
                 if (!a.who.IsNotable || a.kind == ActivityKind.Sleep || a.kind == ActivityKind.None || !pv.TryGetDollTop(a.who, out _)) continue;
-                if (!show.SayOverHead(line, a.who, 3f)) return;
+                show.SayOrWait(line, a.who, 3f, LineKind.Crumb); // #327: busy, it waits its turn rather than vanishing
                 LastCrumbLine = line;
                 Debug.Log($"[Crumb] {a.who} says: {line}");
                 return;
@@ -265,9 +266,9 @@ namespace AquariumCiv.View
             {
                 if (!said.Add((l.relicId, l.lineNo, l.start))) continue;
                 float secs = Mathf.Clamp(LifeClock.RealSecondsBetween(l.start, l.end), 3f, MomentPlayer.BubbleSeconds);
-                // Over the speaker's head, like Show me (user 2026-10-30); the moment's bubble if nobody can carry it.
+                // #327 Option B: on the one caption with the speaker's name, ring and mark; busy, it waits its turn (no second system).
                 var sm = ShowMeDirector.Instance;
-                if (sm != null && sm.SayOverHead(l.text, l.speaker, secs)) continue;
+                if (sm != null) { sm.SayOrWait(l.text, l.speaker, secs, LineKind.Relic); continue; }
                 string who = l.speaker.IsNotable ? Sim?.FindNotable(l.speaker.notableId)?.name : null;
                 mp.Say($"“{l.text}”", secs, who != null && !l.text.Contains(who) ? who : null);
             }

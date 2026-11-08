@@ -86,7 +86,7 @@ namespace AquariumCiv.View.PlayTests
         static IEnumerator Say(PersonRef who)
         {
             ShowMeDirector.BubblesOn = true; // off, the director takes a line down at once
-            StringAssert.StartsWith("bubble", ShowMeDirector.DebugSayOver(who, Line));
+            StringAssert.StartsWith("line", ShowMeDirector.DebugSayOver(who, Line));
             yield return new WaitForSecondsRealtime(0.25f);
         }
 
@@ -101,7 +101,7 @@ namespace AquariumCiv.View.PlayTests
         // ---------------- item 1: off screen, the line finishes too ----------------
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator ASpeakerOffScreenFinishesTheLineAndTheTailComesBackWithThem()
+        public IEnumerator ASpeakerOffScreenFinishesTheLineAndTheRingComesBackWithThem()
         {
             yield return Village(30f);
             Cam.EaseTo(Vector3.zero, Cam.yaw, 50f, Cam.minZoom, 0.05f);
@@ -110,23 +110,21 @@ namespace AquariumCiv.View.PlayTests
             yield return Say(who);
             var line = Director.ShownBubble;
             Assert.IsNotNull(line);
-            Assert.IsTrue(Director.TailReaching, "the tail on them");
+            Assert.IsTrue(Director.SpeakerRingUp, "the ring under them");
+            Assert.IsTrue(Director.SpeechMarkUp, "the speech mark over them");
             var back = (Cam.target, Cam.yaw, Cam.pitch, Cam.zoom);
             People.TryGetDollFeet(who, out var feet);
             Cam.EaseTo(feet + Vector3.right * 2.4f, Cam.yaw, 50f, Cam.minZoom, 0.05f); // the camera moves off them
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.IsFalse(People.TryGetDollTop(who, out var top) && IsOnScreen(top), "they've left the screen");
-            var held = Director.BubbleRect;
             yield return new WaitForSecondsRealtime(0.4f);
-            Assert.AreSame(line, Director.ShownBubble, "the line isn't cut");
-            Assert.IsFalse(Director.TailReaching, "no tail pointing off the screen");
-            Assert.IsFalse(Director.SpeakerRingUp, "no ring");
-            Assert.Less((Director.BubbleRect.position - held.position).magnitude, 1f, "and it holds its place");
+            Assert.AreSame(line, Director.ShownBubble, "the line isn't cut: the caption doesn't need them on screen");
+            Assert.IsTrue(Director.CaptionUp);
             Cam.EaseTo(back.target, back.yaw, back.pitch, back.zoom, 0.05f);
             yield return new WaitForSecondsRealtime(0.4f);
             Assert.IsNotNull(Director.ShownBubble, "still reading");
-            Assert.IsTrue(Director.TailReaching, "the tail is back on them");
-            Assert.IsTrue(Director.SpeakerRingUp, "and the ring");
+            Assert.IsTrue(Director.SpeakerRingUp, "the ring is under them");
+            Assert.IsTrue(Director.SpeechMarkUp, "and the mark over them");
             AssertNoErrors("off screen");
         }
 
@@ -317,7 +315,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual((float)UnityEngine.Rendering.CompareFunction.Always, r.sharedMaterial.GetFloat("_ZTest"), "no tree cuts the ring");
             Assert.GreaterOrEqual(r.sharedMaterial.renderQueue, 3000, "and it comes after what it draws over");
             Assert.AreEqual((float)UnityEngine.Rendering.CompareFunction.LessEqual, ShapingView.LoadFx().GetFloat("_ZTest"), "nothing else in the box lost its depth test");
-            Debug.Log($"[bundle5] hidden speaker {hidden}, tip {Director.TailTipOnPanel}, ring at {Director.Ring.At}");
+            Debug.Log($"[bundle5] hidden speaker {hidden}, ring at {Director.Ring.At}, mark {Director.SpeechMarkUp}");
             yield return LookShot("ring-hidden-home");
             People.TryGetDollFeet(hidden, out var feet);
             Cam.EaseTo(feet, Cam.yaw, 45f, Cam.minZoom, 0.05f);
