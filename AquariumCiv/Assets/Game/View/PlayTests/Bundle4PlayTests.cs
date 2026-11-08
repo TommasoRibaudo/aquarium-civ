@@ -16,7 +16,7 @@ using UnityEngine.UIElements;
 
 namespace AquariumCiv.View.PlayTests
 {
-    /// <summary>Bundle 4 by touch on the real scene: a bubble's tail lands on its speaker's head (#204), a roof tap can't open someone the camera can't
+    /// <summary>Bundle 4 by touch on the real scene: a line's ring and speech mark are on its speaker (#204, #327), a roof tap can't open someone the camera can't
     /// see, and every tap on mess gets an answer without taking a building's card (tester run 8).</summary>
     [Category("Bundle4")]
     public class Bundle4PlayTests : PlayTestBase
@@ -66,12 +66,12 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => GameUiPanel.Toasts.Current == null && GameUiPanel.Toasts.Waiting == 0, 6f);
         }
 
-        static bool OnHead(PersonRef who, out float off)
+        /// <summary>#327: the ring sits at the speaker's feet (box units off), false with no doll.</summary>
+        static bool RingOn(PersonRef who, out float off)
         {
             off = float.MaxValue;
-            var sm = Director;
-            if (!sm.TryHeadOnPanel(who, out var head)) return false;
-            off = (sm.TailTipOnPanel - head).magnitude;
+            if (!People.TryGetDollFeet(who, out var feet) || !Director.SpeakerRingUp) return false;
+            off = (Director.Ring.At - feet).magnitude;
             return true;
         }
 
@@ -94,14 +94,14 @@ namespace AquariumCiv.View.PlayTests
         static IEnumerator Say(PersonRef who)
         {
             ShowMeDirector.BubblesOn = true; // off, the director takes a line down at once
-            StringAssert.StartsWith("bubble", ShowMeDirector.DebugSayOver(who, Line));
+            StringAssert.StartsWith("line", ShowMeDirector.DebugSayOver(who, Line));
             yield return new WaitForSecondsRealtime(0.25f);
         }
 
-        // ---------------- #204 ----------------
+        // ---------------- #204, since #327 Option B: the ring and the speech mark tie the caption to its speaker ----------------
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator TwoSpeakersCloseTogetherEachGetTheirOwnTail()
+        public IEnumerator TwoSpeakersCloseTogetherEachGetTheirOwnRingAndMark()
         {
             yield return Village(30f);
             PeopleView.DebugSetHour(18.8f);
@@ -113,40 +113,19 @@ namespace AquariumCiv.View.PlayTests
             foreach (var (who, other) in new[] { (pair.a.who, pair.b.who), (pair.b.who, pair.a.who) })
             {
                 yield return Say(who);
-                Assert.IsTrue(OnHead(who, out float off), "the speaker is on view");
-                OnHead(other, out float otherOff);
-                Assert.Less(off, 10f, $"the tip lands on {who}'s head");
-                if (otherOff > 12f) Assert.Less(off, otherOff, "theirs, not the neighbour's");
-                yield return LookShot($"tail-pair-{who.Key}");
+                Assert.IsTrue(Director.CaptionUp, "the line is on the caption");
+                Assert.AreEqual(who, Director.LineSpeaker);
+                Assert.IsTrue(RingOn(who, out float off), "the speaker has the ring");
+                Assert.Less(off, 0.02f, $"the ring is at {who}'s feet");
+                Assert.IsTrue(Director.SpeechMarkUp, "and the speech mark");
+                Assert.AreEqual(who, Director.Chatter.SpeechDrawnOver, "over them, not the neighbour");
+                yield return LookShot($"ring-pair-{who.Key}");
             }
             AssertNoErrors("pair");
         }
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator AtEitherScreenEdgeTheTipStillReaches()
-        {
-            yield return Village(30f);
-            Cam.EaseTo(Vector3.zero, Cam.yaw, 50f, Cam.minZoom, 0.05f);
-            yield return new WaitForSecondsRealtime(0.3f);
-            PeopleView.DebugSetHour(11f);
-            yield return new WaitForSecondsRealtime(1f);
-            var all = Shown();
-            Assert.Greater(all.Count, 1, "people on view close up");
-            foreach (var (who, name) in new[] { (all.OrderBy(a => a.at.x).First().who, "left"), (all.OrderByDescending(a => a.at.x).First().who, "right") })
-            {
-                yield return Say(who);
-                Assert.IsTrue(OnHead(who, out float off), name + " speaker on view");
-                Assert.Less(off, 10f, $"{name}: the tip lands on the head");
-                var r = Director.BubbleRect;
-                Assert.GreaterOrEqual(r.xMin, 20f, name + ": the bubble is on screen");
-                Assert.LessOrEqual(r.xMax, Director.PanelWidth - 20f, name + ": the bubble is on screen");
-                yield return LookShot("tail-edge-" + name);
-            }
-            AssertNoErrors("edges");
-        }
-
-        [UnityTest, Timeout(120000)]
-        public IEnumerator TheTailFollowsAWalkerWhileTheBubbleMovesSlowly()
+        public IEnumerator TheRingAndTheMarkFollowAWalker()
         {
             yield return Village(30f);
             PeopleView.DebugSetHour(6.9f);
@@ -156,29 +135,24 @@ namespace AquariumCiv.View.PlayTests
             var who = walkers[0].who;
             yield return Say(who);
             Assert.AreEqual(BubbleSource.Ambient, Director.ShownBubble.source);
-            float worst = 0f, head = 0f, box = 0f, end = Time.realtimeSinceStartup + 2.5f;
-            Director.TryHeadOnPanel(who, out var lastHead);
-            var lastBox = Director.BubbleRect.position;
+            float worst = 0f, end = Time.realtimeSinceStartup + 2.5f;
             int frames = 0;
             while (Time.realtimeSinceStartup < end && Director.ShownBubble != null)
             {
                 yield return null;
-                if (!OnHead(who, out float off)) break;
+                if (!RingOn(who, out float off)) break;
                 frames++;
                 worst = Mathf.Max(worst, off);
-                Director.TryHeadOnPanel(who, out var h);
-                head += (h - lastHead).magnitude; lastHead = h;
-                box += (Director.BubbleRect.position - lastBox).magnitude; lastBox = Director.BubbleRect.position;
+                Assert.AreEqual(who, Director.Chatter.SpeechDrawnOver, "the mark stays over the walker");
             }
-            Debug.Log($"[#204] walker {who}: {frames} frames, worst tip off {worst:0.0}, head moved {head:0}, bubble moved {box:0}");
+            Debug.Log($"[#204] walker {who}: {frames} frames, worst ring off {worst:0.000}");
             Assert.Greater(frames, 5);
-            Assert.Less(worst, 12f, "the tip stays on the walker");
-            Assert.Less(box, head * 0.9f + 4f, "and the bubble moves less than they do");
-            yield return LookShot("tail-walker");
+            Assert.Less(worst, 0.05f, "the ring stays under the walker");
+            yield return LookShot("ring-walker");
             AssertNoErrors("walker");
         }
 
-        /// <summary>#143 over #204: the line finishes its read time. With nobody to point at, the tail and the ring go and the bubble holds its last place.</summary>
+        /// <summary>#143 over #327: the line finishes its read time. With nobody to stand under or over, the ring and the mark go.</summary>
         [UnityTest, Timeout(120000)]
         public IEnumerator ASpeakerGoneIndoorsFinishesTheLineAndNothingPointsAtNothing()
         {
@@ -190,16 +164,14 @@ namespace AquariumCiv.View.PlayTests
             var line = Director.ShownBubble;
             Assert.IsNotNull(line);
             Assert.IsTrue(Director.SpeakerRingUp, "the speaker has their ring while the line is up");
-            Assert.IsTrue(Director.TailReaching, "and the tail");
+            Assert.IsTrue(Director.SpeechMarkUp, "and the speech mark");
             float start = Time.realtimeSinceStartup;
             PeopleView.DebugSetHour(23.5f); // everyone goes in at once
             yield return Frames(3);
-            var held = Director.BubbleRect;
             yield return new WaitForSecondsRealtime(1f);
             Assert.AreSame(line, Director.ShownBubble, "the line isn't cut");
-            Assert.IsFalse(Director.TailReaching, "no tail pointing at nobody");
-            Assert.IsFalse(Director.SpeakerRingUp, "and no ring");
-            Assert.Less((Director.BubbleRect.position - held.position).magnitude, 1f, "the bubble holds its last place");
+            Assert.IsFalse(Director.SpeakerRingUp, "no ring under nobody");
+            Assert.IsFalse(Director.Chatter.SpeechDrawn, "and no mark over nobody");
             yield return Until(() => Director.ShownBubble == null, line.seconds + 2f);
             Assert.GreaterOrEqual(Time.realtimeSinceStartup - start, line.seconds - 1.2f, "it finishes at its own time");
             Assert.IsTrue(GameUiPanel.Bubbles.Free(BubbleHost.Rank.World), "the word is free again");

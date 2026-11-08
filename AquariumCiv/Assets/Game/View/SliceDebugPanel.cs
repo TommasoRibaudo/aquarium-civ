@@ -383,6 +383,12 @@ namespace AquariumCiv.View
             }
             if (Btn("Force knock")) last = GlassVoice.DebugKnock();
             EndRow();
+            // #327 Option B: every spoken line on the caption with the name, the ring and the speech mark.
+            Row();
+            if (Btn("Line: caption here")) last = ShowMeDirector.DebugLineHere();
+            if (Btn("Speech mark")) last = ShowMeDirector.DebugSpeechMark();
+            if (Btn("Line: 2nd waits")) last = ShowMeDirector.DebugWaitingLines();
+            EndRow();
             // #363: pairs (talk is "Force chat" above; the hug shows the variant even while BeatFlags.Hugs is off)
             Row();
             if (Btn("Hand over now")) last = PeopleView.DebugPair(PairKind.HandOver);
