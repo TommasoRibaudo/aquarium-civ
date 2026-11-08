@@ -1,8 +1,10 @@
-# Animation spec sheets: B1–B11 and the staged moments (A3, #356)
+# Animation spec sheets: B1–B26, the staged moments and placed life (A3, #356; P9, #416)
 
 Status: **draft, waiting for the user** (2026-11-06). One beat sheet per animation of the Visit loop. Design:
 [visit-loop.md](visit-loop.md) §2.6 and §4; research [17](../research/17-readable-life-animations.md) §4 (the eight
 principles, P1–P8 below) and §5–6. Every number is [est] until it has been looked at in AnimBench and in an AnimLab clip.
+**P9 (2026-11-08):** B12–B26 and the shared quadruped (P0) cover the Placed life milestone (#424–#446), in the part
+"Placed life" below.
 No Unity was run for this file. File refs are `AquariumCiv/Assets/Game/...` on `vl/visit-loop` at 20dc42e.
 
 The user (2026-11-06): *"The animation needs to be very well done."* Cute, not realistic, but each move shows what is
@@ -710,6 +712,616 @@ Replaces the `Visit` at `Scenes.cs:101-110`.
 | 6 End beat | everyone jumps at once (`Cheer` hop, in step, once) | 1 s |
 
 3-s read: "the whole camp dances round a big fire". Cheat: **"Festival now"**.
+
+---
+
+## Placed life (P9, #416)
+
+Beat sheets for every scene ticket of the **P9 Placed life** milestone. Design:
+[placed-life.md](placed-life.md) (the jar, the ladder, the numbers); research
+[18](../research/18-placed-life-and-ecosystems.md) §3, §5 and [19](../research/19-wolves-and-the-first-dogs.md) §5–§7.
+Every number is [est] until AnimBench and an AnimLab clip. File refs are `AquariumCiv/Assets/Game/...` on `dev` at
+008d66a. The default camera frames the camp (dolls ~55 px on a 2556-px phone, decisions.md 2026-11-06), so 0.01 u is
+about 2.5 px there; the 0.025 u floor of §0.1 still holds, and every beat below is written to read at that camera with
+the sound off.
+
+**Rules every sheet keeps (user, 2026-11-07 and 2026-11-08):** no blood, ever (a caught animal lies still; a wolf kill
+happens behind a bush) · **a wolf never touches a person** and **is never killed** · wolves never come in among the
+tents (the closest they get: the bone spot, the rack at the camp's edge, the eyes at the firelight's edge) · one berry
+thicket, never built on · no fishing before fish are placed · a placement is a ghost first, then a second tap · the
+jar waits for the Keeper.
+
+**Two distances used below:** the **tent ring** is the circle round the fire that holds every tent, plus 0.25 u; the
+**firelight's edge** is 1.0 u from the fire at night. Wolf paths are planned outside the tent ring; the planner rejects
+any wolf point inside it (tested in B21–B23 and B26).
+
+### P0. The shared quadruped (#425)
+
+Deer, wolves and dogs are **one procedural four-legged doll** (research 19 §11), built like `RabbitDoll`
+(`View/RabbitDoll.cs`): low-poly boxes and icos from the palette, one mesh per look, pooled, posed by a small
+`QuadPose` (body pitch and bob, head yaw and pitch, leg phase, tail angle, ear angle). No skinning.
+
+| Part | Deer | Wolf | Dog (generation g) | Pup |
+|---|---|---|---|---|
+| Shoulder height (u) | 0.15 (stag 0.16) | 0.10 | 0.10 → 0.09 | 0.05 |
+| Body length (u) | 0.20 | 0.16 | 0.16 → 0.14 | 0.08 |
+| Leg length / body | 0.75 | 0.6 | 0.6 → 0.5 | 0.45 |
+| Head | long, slim | long muzzle | muzzle × (1 → 0.8) | round, big (× 1.4) |
+| Ears | wide, upright | upright, pointed | droop 0 → 1 | upright, big |
+| Tail | short white flag | long, hanging straight | curl 0 → 1 (up over the back) | stub |
+| Coat | fawn, pale belly; **white stag**: off-white, a gold glint in the eye | grey with a darker saddle; **the grey wolf** (B22) a pale silver face; **white wolf**: white | patch 0 → 1 (piebald blotches) | grey fluff |
+| Extra | antlers (stags; size by age), white rump | eyes catch the firelight at night (an unlit emissive dot pair, 0.012 u) | hide collar (from stage 2) | — |
+
+**Drift:** each dog generation adds 0.25 to `earDroop`, `patch` and `tailCurl` (capped at 1) and takes 0.05 off the
+muzzle, with ±0.1 from a hash of the dog, so litter-mates differ. Generation 4 looks like a dog (research 19 §7). The
+first pup is generation 0: a wolf.
+
+| Gait or pose | Motion | Used by |
+|---|---|---|
+| `Walk` | 4-beat leg swing, 1.6 steps/s, body bob 0.008 u | all |
+| `Trot` | diagonal pairs, 2.6 steps/s, bob 0.015 u; wolves trot in a line, 0.12 u apart | wolves, dogs |
+| `Graze` | head down to the ground (0.6 s `Smooth`), small head nods, a step every 3–5 s | deer |
+| `Alert` | head up and turned to the cause in 0.25 s (`Snap`), ears forward, tail flag up (deer), still 0.6–1.5 s | all: **the answer to a person, a wolf or a knock** |
+| `Bolt` | deer: bounds for 3 s at 1.4 u/s, white rump flashing, leaps of 0.04 u; wolves: a flat run at 1.6 u/s | all |
+| `LieDown` | front legs fold, then back, 0.6 s; head on the paws | all; a hunted deer lies on its side (roll 90°, 0.3 s) |
+| `Drink` | front legs splay a little, head down to the water line (−0.08 u, see Hard in code item 7), lapping nod at 2 Hz; lifts between sips | deer, wolves |
+| `SitHowl` | sit (0.4 s), muzzle up to 70°, hold 2–3 s with a slow chest swell; others join 0.4–1.0 s apart. A bark is a 0.15 s head jab, twice | wolves, dogs |
+| `PlayBow` | front low (body pitch −20°), rump up, tail wag at 3 Hz, then a hop sideways 0.04 u | pups, dogs, kids' play |
+| `SleepCurl` | lying, body curved into a ring, tail over the nose; a breath bob 0.004 u every 3 s | dogs by the fire, pups at the den |
+| `Sniff` | head down 0.3 s, three quick nods, head up | arrivals, the dog tracking |
+
+3-s read targets: a deer reads as **long legs plus antlers or a white rump**; a wolf as **grey, low, tail down**; a
+dog as **floppy ears and a curled tail**. Tests: AnimBench holds each gait 3 s and the tester names it at the default
+camera (P4). The rabbit keeps its own doll.
+
+---
+
+## B12. Arrivals: placing life, and the waiting hint (#424)
+
+### B12.0 The ghost and the drop (every species)
+*You pick the species and tap a glowing spot; faint outlines of the group show there; tap again and they arrive.*
+| | |
+|---|---|
+| Ghost | first tap on valid ground (the glow, #423): the founding group drawn as **flat pale outlines** on the ground (a palette tint at 60 % value, no alpha; `Pop` in 0.15 s), breathing scale 1 → 1.04 over 1.2 s. Another tap on the glow moves the ghost there (a 0.2 s `Smooth` slide). A tap off the glow leaves the ghost where it is and gives a tiny `Dust` "no" at that spot (no sound, no text) |
+| Confirm | a tap on the ghost (or the "Place" chip) → **Contact**: the ghost `Pop`s out and the species' arrival beat (B12.a–f) starts on the same frame |
+| Camera | `BoxCamera.NudgeToward` the spot, as the first rabbit's sign does (`View/RabbitView.cs:251`) |
+| People (the first-mist rule) | within 0.5 s everyone awake within 2.5 u `Turn`s to the spot (`PeopleView.LookAt`, `View/PeopleView.cs:1221`); the nearest grown-up `Point`s for 1.5 s; one kid runs toward it, stops at 0.4 u and `Cheer`s; 2–3 others walk to 0.6 u and stand watching for 4 s. At night the people's reaction waits for dawn (the arrival itself doesn't) |
+| Glass voice | one line per species (placed-life.md has the lines), after the arrival's end beat |
+| End beat | the arrival's own (below); then the people drift back to work over 3–5 s, not all at once (§0.8) |
+| Timing | ghost to confirm: the player's; arrival 2–6 s by species; reaction 6–8 s |
+| 3-s read | "something new came into the box, and the people run to see" |
+| Cheat | **"Place X here"** (skips the ghost), **"Ready every jar"** |
+| Tests | P2 (the arrival starts ≤ 0.2 s after the confirm), P3 (every person within 2.5 u turns); the ghost never shows off the glow |
+| Builds on | the first rabbit's sign (`View/RabbitView.cs:226-252`: `Planner.React(KeeperGesture.Sighting)`, `LookAt`, the camera nudge), which this replaces for rabbits |
+
+### B12.a The berry thicket
+| | |
+|---|---|
+| Arrival | three bushes **push up from the soil** at the spot, 0.15 u apart, 0.3 s after each other: `Dust` at the base, the bush scales 0 → 1.15 → 1 (`Back`, 0.5 s), a `Leaves` puff (3) on top, one `Sway` of 6° |
+| End beat | the berries show: dots `Pop` on a few at a time over 1 s |
+| Then | the thicket spreads only inside its own area (~20–25 bushes, placed-life.md): a new bush at its edge pushes up the same way, at most one a season. Nobody builds on the area |
+| 3-s read | "bushes grew where the Keeper tapped" |
+
+### B12.b The rabbits
+| | |
+|---|---|
+| Arrival | a pair drops lightly from above the rim: each falls 0.4 u in 0.5 s (`In`), lands with a `Bounce` (35 %) and a `Grass` puff, then **shakes off** (body roll ±12°, 8 Hz, τ 0.15 s, ears flapping), sits up and looks round (`Alert`), and hops 2–3 hops apart (`RabbitHerd.HopLen` 0.12 u, `Sim/Eco/RabbitHerd.cs:30`) |
+| End beat | both graze; the rabbit tracks (#282) show from now on |
+| 3-s read | "two rabbits dropped in" |
+| Replaces | rabbits arriving by themselves (`Sim/Eco/EcoModel.cs:587-589`) and the tracks-first sign |
+
+### B12.c The deer
+| | |
+|---|---|
+| Arrival | the stag steps out of the trees nearest the spot (or the box's back edge if no tree is within 1 u), **walks** to the spot, stops, `Alert` 1.5 s with the ears turning; the two does follow 1.0 s and 1.6 s behind |
+| End beat | the stag lowers its head to graze; one doe keeps watching the camp (`Alert` held 2 s), then grazes |
+| Timing | 5–6 s from the trees to grazing |
+| 3-s read | "deer walked out of the wood" |
+
+### B12.d The ducks
+| | |
+|---|---|
+| Arrival | a pair glides down from above the rim onto the water: a shallow glide from 0.5 u up (1.2 s, `Out`), feet forward, then **lands with a skid** of 0.15 u along the water: two `Ring`s and `Droplets` (6) |
+| End beat | both shake their tails, then paddle a slow circle; one dabbles (tail up, as `View/PondLife.cs:17` does today) |
+| 3-s read | "two ducks landed on the pond" |
+| Replaces | `PondLife`'s ducks shown by pond size (`DuckPondCells` 20 / 40, `View/PondLife.cs:26`); the view now draws the sim's stock (#421) |
+
+### B12.e The fish
+| | |
+|---|---|
+| Arrival | **the bag**: a clear, slightly blue bag (a squashed icosphere 0.08 u with a tied top) drops onto the water at the spot (`Bounce`, `Ring`) and **floats** 3 s, bobbing (`Wobble` 0.01 u, 1.5 Hz), 6 small dark fish shapes circling inside. Then the knot opens (a 0.2 s `Pop`), the bag tips and **sinks out of sight** in 0.6 s |
+| End beat | 6 fish shadows fan out under the water from the spot over 1.5 s (B16.a), with 2 `Ring`s |
+| Note | the aquarium way of adding fish (research 18 §3.1); the bag never stays on the water |
+| 3-s read | "a bag floated on the pond and fish came out" |
+
+### B12.f The wolves
+| | |
+|---|---|
+| Arrival | at the den spot (the far wood, placed-life.md) **two grey shapes trot out of the trees** 0.3 u, stop, `Sniff` the air (muzzle up, two nods), look toward the camp 1.5 s (`Alert`), then lie down at the den mouth |
+| People | the B12.0 reaction, **quieter**: they turn and stand still; nobody runs toward it; a grown-up puts a hand on a kid's shoulder (arm x 70, 2 s) |
+| End beat | **the first howl that night**: at the first dusk after placing, B21.a plays by itself (it doesn't wait for the Keeper: a howl carries) |
+| 3-s read | "two wolves came out of the far wood" |
+
+### B12.w The waiting hint (a jar is ready and you haven't placed it)
+*The people show they feel something missing, a little more the longer the jar waits.*
+| | |
+|---|---|
+| Rule | at most one hint scene per visit, in daylight, started by the B11 director as a cheap story (it counts as one). Its stage grows with time ready: stage 1 in the first game year, stage 2 after, stage 3 after 2 years |
+| Thicket | stage 1: a gatherer with an empty `Basket` stands at the meadow and looks round (head yaw ±40°, 2 s); stage 2: two gatherers, one shrugs; stage 3: a kid pulls at the grass and pretends to eat it |
+| Rabbits | stage 1: a hunter crouches at the meadow's edge, spear low, looking (`Crouch`, 4 s), then stands and shrugs; stage 2: two hunters, one points at empty grass; stage 3: kids play "rabbit" (one hops, the others chase: `ChaseGroup` with a kid as the runner) |
+| Deer | a hunter stands at the wood's edge looking in (head sweep, 3 s); stage 3: a kid holds two sticks up as antlers |
+| Ducks · fish | a kid sits at the empty bank, drops a pebble in (`Ring`) and watches it; stage 2: a grown-up kneels and looks into the water; stage 3: someone stands in the shallows with a spear, waiting, then walks out |
+| Wolves | none: nobody misses wolves. The kit's dot is enough |
+| 3-s read | "they're looking for something that isn't there" |
+| Cheat | **"Hint now"** (stage 1–3) |
+| Tests | never two hints in one visit; none at night; none for wolves |
+
+---
+
+## B13. The deer hunt, the carry, the feast and the antlers (#426)
+
+**Decided in this sheet [est]:** the deer hunt uses **bows** (research 18 §5.3: "bows on their backs", and deer make
+"the bow a craft"); the rabbit hunt keeps the thrown spear (B6, the user's call). The first deer hunt shows the first
+bows.
+
+### B13.a The hunt
+*Two or three hunters leave in a line, creep to the wood's edge, freeze when the stag looks up, shoot; on a hit the
+herd bolts and the stag lies down; on a miss the arrow thunks into a tree.*
+| | |
+|---|---|
+| Actors · roles | 2–3 `Hunter`s with a `Bow` (a new prop: a 0.16 u bark-coloured arc with a string line); the **target deer** (the stag on the first hunt, later a buck or a young male; no does in spring once the restraint beat has played); the herd |
+| Verb → target | shoot → **the real deer** |
+| Approach | they leave the camp in a line, 0.15 u apart, bows on their backs; 1.2 u from the herd they crouch (squash 0.72) and the lead **points** (arm x 90, 1 s); the others nod |
+| Stalk | as B6 (`Life/HuntTiming.cs:46-47`: 7 steps of 0.5 s plus 0.7 s still), side by side 0.2 u apart, from 1.0 u to the **shot point 0.6 u** from the deer |
+| Freeze | 1–2 times the stag lifts its head (`Alert`) and **everyone** freezes mid-step until it grazes again (0.8–1.5 s); planned, so view and planner agree (as B6) |
+| Wind-up | the shooter rises to one knee; the bow comes up (left arm x 90 holding it), the right arm draws back (x 80, z −40); **hold the aim 0.5 s** |
+| Act · Contact 1 | release: the string arm snaps forward in 0.1 s → `hit`; the arrow leaves |
+| Arc | `Arrow` (new arc object: 0.12 u, thin; a feathered end once the ducks give feathers, B15.b) from the bow to the deer (hit) or 0.15–0.25 u past it into a trunk (miss); h 0.06 u; **T 0.4 s** |
+| Answer: hit | the deer jumps 0.03 u, stumbles three steps, **lies down** on its side (`LieDown`, 0.3 s) and is still. No blood; no arrow shows in it (the arrow vanishes at contact). **The rest of the herd `Bolt`s** into the wood (3 s, white rumps) |
+| Answer: miss | the `Arrow` lands `Stick` in a trunk (`Wobble` 6°, 10 Hz, τ 0.25 s) with 2 `Chips`; the whole herd `Bolt`s; the hunters stand and **shrug** together (B6's shrug, `HuntTiming.BoltSeconds` 1.8 s) and walk over to pull the arrow out |
+| Follow: hit | the hunters walk to the deer; one kneels and lays a hand on its neck (arm x 60, 1 s: a thank-you); one runs back to the camp for the pole (B13.b) |
+| Timing | approach 6–10 s; stalk 8–12 s; the shot 1.5 s; the carry starts ~6 s after a hit |
+| Rules | after the restraint beat, no deer hunt in spring; never at the water (B14.a); never below the deer's floor (#422) |
+| De-sync | one deer hunt at a time; never while the pack hunts (B20) within 2 u |
+| 3-s read | "hunters with bows creep up on deer" |
+| Cheat | **"Deer hunt now"**, "Next hunt hits / misses" |
+| Tests | Arc (bow → deer ±0.03 on a hit), P2 (the deer answers ≤ 0.2 s), P3 (every deer within 1.5 u bolts), P8 (aim hold ≥ 0.3 s), no hunt below the floor |
+| Builds on | B6 (`Life/HuntTiming.cs`, `View/Beats/HuntBeats.cs`, `View/HuntStage.cs`); new props `Bow` and `Pole`; new arc `Arrow` |
+
+### B13.b The pole carry
+*The stag hangs from a pole between two hunters, legs up, and they walk it home.*
+| | |
+|---|---|
+| Beat | the fetcher comes back with a `Pole` (0.35 u); two hunters kneel and tie (both arms x 60, a 1.5 s fiddle), then stand together (`Back`, 0.5 s): the deer hangs under the pole, legs tied up, swaying ±6° at 1 Hz |
+| Walk | home at 0.7× speed, the two in step on purpose (they carry one thing), bob 0.015 u; the third hunter walks ahead carrying the bows |
+| End beat | they set it down by the fire (`Squash` on the deer, `Dust`); everyone in the camp `Turn`s and the kids run up |
+| 3-s read | "two hunters carry a deer on a pole" |
+| Tests | P5 (the set-down happens); the pole's ends stay in the hands (within 0.02 u) for the whole walk |
+
+### B13.c The feast
+*That night the fire is bigger and there is dancing.*
+| | |
+|---|---|
+| Beat | at dusk the fire `Flare`s and stays at scale 1.3 for the evening; a spit over it (two forked sticks and a bar, a roasting shape turning slowly); B9.b's bowl round (`View/Beats/MealBeats.cs`) with meat; then a dance ring (B2.e, `RingGroup`) for 12–16 s |
+| End beat | the shooter stands in the middle of the ring (`Centre`) and the others `Cheer` |
+| Rule | a held moment (C2's queue): only the **first** deer hunt gets the staged feast; later hunts get the meal only |
+| 3-s read | "a big fire and a dance after the hunt" |
+| Cheat | **"Deer feast now"** |
+
+### B13.d The antlers over the chief's tent
+| | |
+|---|---|
+| Beat | the next morning the chief and the shooter carry the antlers (a prop, 0.12 u wide) to the chief's tent; the shooter steps up on a log (+0.05 u), raises them (arms x 170) and sets them over the door (`Jolt` on the tent) |
+| End beat | everyone near `Cheer`s; the antlers stay for the life of the camp (a consequence prop like `ConsequenceKind.Feather`, `View/ConsequenceProps.cs:26`) and move to the chief's hut in the village |
+| 3-s read | "antlers go up over a tent" |
+
+### B13.e The shed antler (spring)
+| | |
+|---|---|
+| Beat | once each spring after the first deer: a kid in the wood bends (lean 35, 0.4 s), lifts an antler (`HoldUp`, arm x 160, 1.5 s) and runs back to the camp holding it high; a grown-up takes it and turns it in the hands (1 s) |
+| End beat | the kid `Cheer`s; the antler goes onto the stash pile (`Squash`) |
+| 3-s read | "a kid found an antler and runs home with it" |
+
+---
+
+## B14. Dawn at the pond and the white stag (#427)
+
+### B14.a Dawn at the pond
+*At first light the does come to drink; whoever is awake stops and watches; a kid holds very still.*
+| | |
+|---|---|
+| When | dawn (view hours 5–7), about every 3rd day with deer and a pond; never while a hunt runs |
+| Deer | 2–3 does walk from the wood to the nearest bank and `Drink` 6–10 s, lifting their heads between sips; one `Alert`s at a person for 1.5 s, then drinks again |
+| People | everyone awake within 2 u stops (their block pauses for up to 0.5 view h, as B11 borrows) and `Turn`s; a kid within 1 u freezes in a crouch (squash 0.8, arms in) and **holds still** until the deer leave; a grown-up holds a finger up (arm x 140, 1 s: "shh") |
+| Rule | **nobody hunts at the water** (a people's rule, placed-life.md): the hunt planner never targets a deer within 0.5 u of the pond |
+| End beat | the does walk back into the wood; the kid stands and looks at the grown-up, who nods |
+| Timing | 20–30 s |
+| 3-s read | "deer drinking at the pond while the people watch" |
+| Cheat | **"Dawn at the pond now"** |
+| Tests | no hunt plan within 0.5 u of water; P3 (a doe alerts when a person comes within 0.8 u) |
+
+### B14.b The white stag (a staged choice)
+*The hunters saw the white stag. Hunt it, or let it be?*
+| | |
+|---|---|
+| When | once per box, a game year or more after the first deer hunt; a big choice (visit-loop.md §2.4: raised only while you watch, never resolves unseen, "Let them decide" is credited to you) |
+| Staging | at the wood's edge the white stag steps out and stands (`Alert`, 3 s), a soft gold glint in the eye; two hunters walk toward the camp pointing back, the chief stands, the camp turns to the wood. Then the choice card. The two sides stand as `Life/ChoiceScenes.cs` places them: hunters with bows on one side, a kid with the elder on the other |
+| Hunt it | B13.a with the white stag; on a hit the staged feast (B13.c) plays again, and its antlers (bigger, white-tipped) replace the first ones over the chief's door |
+| Let it be | the stag walks slowly back into the wood; the hunters lower their bows; from then on it shows at B14.a now and then (1 dawn in 5, at the back, never a target) and a kid points every time |
+| Let them decide | the chief's trait picks (as research 19 §6.1) |
+| 3-s read | "a white deer at the wood's edge; everyone stops" |
+| Cheat | **"White stag now"** |
+| Tests | never raised while away; the "let it be" stag is never a hunt target |
+
+---
+
+## B15. Ducks: eggs, feathers, ducklings, feeding (#428)
+
+### B15.a Eggs and the mother duck's charge
+*A gatherer wades in, comes up with an egg, and the mother duck chases them out, flapping.*
+| | |
+|---|---|
+| When | spring, at most once a day, with a nest in the reeds (#421) |
+| Approach | a gatherer with a `Basket` wades in knee-deep (the doll sinks 0.04 u; a `Ring` every step) to the nest |
+| Act · Contact | bends (lean 35, 0.4 s) and lifts an `Egg` (a new prop, 0.025 u, white) → `hit`: the mother duck on the nest **stands up** (0.2 s), wings out |
+| Answer | **the charge**: the duck rushes at the gatherer flapping (wing beat 6 Hz, a 0.03 u hop every 0.25 s, neck stretched out) for 1.5 s |
+| Follow | the gatherer runs out of the water with the egg **held high** (arm x 165), knees up (bob 0.03 u), the duck flapping behind for 0.6 u; at the bank the duck stops, shakes its tail and swims back |
+| End beat | on the bank the gatherer looks at the egg and laughs (`Laugh`); kids watching `Cheer` |
+| Rule | eggs are taken only from a nest of 3 or more, so the ducks never drop below their floor (#422) |
+| 3-s read | "a duck chases someone out of the reeds" |
+| Cheat | **"Egg run now"** |
+| Tests | P1 (the hand at the nest), P2 (the duck answers ≤ 0.2 s); the duck never touches the person (stays ≥ 0.05 u behind) |
+
+### B15.b Feathers to arrows
+| | |
+|---|---|
+| Beat | late summer, after the moult: the fletcher bends on the bank and picks up a feather (a small white `Pop` into the hand), holds it up to the light 1 s, puts it in the basket; 3–4 feathers in 6 s |
+| Then | from the next day the hunters' arrows and quivers show white tips: **a visible upgrade** |
+| 3-s read | "someone picking up feathers on the bank" |
+
+### B15.c Ducklings in a line
+| | |
+|---|---|
+| When | spring, after hatching (#421) |
+| Ducks | the mother swims or waddles with 3–5 ducklings in a line behind her (0.025 u each, yellow-brown, 0.04 u apart, each following the one before with a 0.25 s lag) |
+| Kid | when the line is on land within 1.5 u of a kid, the kid walks behind them **copying the waddle** (body roll ±10° at 2 Hz, arms out like wings, z ∓60), 0.15 u behind the last duckling; another kid laughs |
+| End beat | the ducks reach the water and slide in; the kid stops at the edge and flaps the arms twice |
+| 3-s read | "a kid waddling behind a line of ducklings" |
+| Cheat | **"Ducklings now"** |
+
+### B15.d Feeding the ducks
+| | |
+|---|---|
+| Beat | 2–3 kids at the bank throw crumbs (berry-sized bits, h 0.08, T 0.35 s, onto the water: `Ring`s); the ducks **come fast** (paddling at 2×); when they climb out, one kid runs away from them (B2's runner), the others laugh |
+| End beat | the ducks peck up the last crumbs; the kids walk off |
+| 3-s read | "kids throwing food to the ducks" |
+
+---
+
+## B16. Fish: shadows, spearing, the rack, the line (#429)
+
+### B16.a Fish you can see
+| | |
+|---|---|
+| Look | dark fish shapes under the water: flat ellipses 0.05 × 0.015 u, 0.02 u below the surface (a darker tint of the water), up to 8 shown (placed-life.md: about one per 3 pond cells) |
+| Motion | they drift in a loose school and turn together now and then (all within 0.3 s); dart 0.2 u when startled |
+| Answer | `Flee` from a person in the water or a `Ring` within 0.3 u: they dart off and regroup 2 s later |
+| Winter | fewer shown, slower |
+| 3-s read | "there are fish in the pond" |
+
+### B16.b Spearing (camp)
+*Knee-deep, spear raised, very still; the strike and a splash; a wriggling fish held up, or a wet face.*
+| | |
+|---|---|
+| Actors | a fisher with a `Spear`, knee-deep (sinks 0.04 u) |
+| Wait | spear raised (arm x 150), head down (pitch −30), **still** 3–6 s while the shadows drift close |
+| Act · Contact | the strike: arm x 150 → 40 in 0.12 s (`Snap`), lean 30 → `hit`: `Droplets` 8 and 2 `Ring`s; the fish near it dart |
+| Hit (1 in 3) | the spear comes up with a fish on it, wriggling (`Wobble` 25°, 6 Hz, τ 0.5 s), held up high (`HoldUp`) for 1.2 s |
+| Miss | the spear comes up empty; a `Droplets` puff aimed at the fisher's face; they shake the head (yaw ±20°, 4 Hz, 0.5 s) |
+| End beat | the catch goes on the fish stick (`FishStick`, as B8's end), then to the rack (B16.c) |
+| Timing | a strike every 8–14 s |
+| 3-s read | "someone spearing fish in the shallows" |
+| Cheat | **"Spear a fish now"** |
+| Tests | P2, P3 (fish within 0.3 u flee), P8 |
+
+### B16.c The smoking rack
+| | |
+|---|---|
+| Look | two posts and a bar with fish hanging (reuse `ApartProps.FishRack`, `View/ApartProps.cs:69`) over a small smoky fire; grey `Steam` puffs drift up every 0.8 s |
+| Beat | a grown-up hangs the day's fish one at a time (arm x 150, 0.6 s each; the fish `Pop`s onto the bar), then fans the smoke with a hand (arm z ∓80 ↔ ∓40 at 2 Hz, 2 s) |
+| Where | at the camp's edge, outside the tent ring (so the meat thief in B22 can reach it without coming among the tents) |
+| 3-s read | "fish hanging over smoke" |
+
+### B16.d Kids splashing scatter the fish
+| | |
+|---|---|
+| Beat | B3.a's splash (`View/Beats/KidPlay2.cs`); every `Droplets` or `Ring` within 0.3 u of a fish shadow sends it darting (B16.a); a kid points at the shadows going |
+| 3-s read | "kids splashing, fish darting away" |
+
+### B16.e The line waits for the fish
+| | |
+|---|---|
+| Rule | **no fishing of any kind before fish are placed** (user, 2026-11-08). The planner's fishing (`Life/LifePlanner.Fish.cs`) and B8 (`View/Beats/FishBeats.cs`, `View/FishingView.cs`) run only once there is a fish stock; before that the bank is for water (B4), splashing (B3) and the ducks |
+| After | B8 as built, but a bite needs a fish shadow within 0.3 u of the line's end: the shadow darts to the hook in 0.4 s just before the nibble, so the bite has a cause you can see |
+| Tests | no fishing activity in a box with open water and no placed fish |
+
+---
+
+## B17. Small scenes for berries and rabbits (#430)
+
+### B17.a The berry kid
+*A kid picks with the gatherer, eats every second berry, gets a purple mouth; the grown-up takes the basket off them.*
+| | |
+|---|---|
+| Beat | a kid beside a gatherer (B5.a) picks too (B5.c's reach); every 2nd berry goes in the mouth (arm x 135, chew bob 0.01 u at 8 Hz); after 3 eaten the kid has a **purple mouth** (a small dark-purple disc on the head, 0.015 u, until the next meal) |
+| End beat | the gatherer looks at the kid and takes the kid's basket (B7.b hand-over); the kid shrugs, grinning |
+| 3-s read | "a kid eating the berries they should be picking" |
+
+### B17.b The songbird
+| | |
+|---|---|
+| Beat | a songbird (0.02 u) lands on the bush being picked; the gatherer **shoos** it (arm z ∓90, two flaps, 0.5 s); it flies up 0.15 u, circles once and lands back on the bush; the gatherer's arms drop (a slump, 0.5 s) |
+| Note | songbirds still come by themselves (research 18 §3.4) |
+| 3-s read | "someone shooing a bird off a bush" |
+
+### B17.c The drying mat
+| | |
+|---|---|
+| Beat | late summer: a hide mat by a tent; a gatherer tips the basket onto it (B5.a's tip), kneels and spreads the berries with both hands (arms x 50 ↔ 70, side to side, 2 s); the berries are a purple patch that darkens over the days |
+| End beat | in autumn the dried berries go into a `Sack` carried to the stash: the winter food |
+| 3-s read | "berries spread out to dry on a mat" |
+
+### B17.d Rabbit snares
+| | |
+|---|---|
+| Set | evening: a hunter kneels at a rabbit run at the meadow's edge and sets a loop (both hands at the ground, a 1.5 s fiddle); a small stake and loop stay (a prop, 0.03 u) |
+| Check | next morning the hunter kneels and **lifts the loop**: mostly empty (2 in 3: a shrug, the loop reset), sometimes a rabbit (`HoldUp` 1.2 s, home on the shoulder as in B6) |
+| Rule | a snare catch counts toward the rabbits' floor (`SimCore.HuntFloor` 2, `Sim/SimCore.Hunt.cs:15`) |
+| 3-s read | "a hunter checks a snare" |
+
+---
+
+## B18. Village: the duck pen and the fish pond (#431)
+
+At most two pens (decisions.md 2026-11-07: tame only what's needed); a small village may build one.
+
+### B18.a The duck pen
+| | |
+|---|---|
+| Build | 2–3 villagers drive stakes in a ring 0.4 u across at the pond's edge (`Hammer` strikes, `Chips`) and weave branches between them (both arms x 60 ↔ 80, 2 s per span); a gate of two stakes |
+| Life | evening: a kid with a `Stick` walks the ducks into the pen (the ducks waddle ahead in a line, the kid behind with the stick out); morning: the gate opens and they waddle to the water |
+| Eggs | from now on from the pen: a villager reaches over the fence; no charge, the tame duck only quacks (two head jabs) |
+| 3-s read | "ducks herded into a little fence" |
+
+### B18.b The fish pond
+| | |
+|---|---|
+| Build | a small pool dug beside the pond with the stick (`Dust`), joined by a short cut that is then closed with stones (`Jolt`); a villager moves 3–4 fish in with a basket (wade, scoop, carry, tip in: `Ring`s) |
+| Life | a villager feeds it (B15.d's throw) and scoops one out now and then with a basket (a fish `Pop`s up, `Droplets`) |
+| 3-s read | "someone scooping a fish from a small pool" |
+
+---
+
+## B19. The weir and the basket traps: the morning lift (#432)
+
+*Every morning two villagers lift the basket at the weir: fish flapping inside, or nothing.*
+| | |
+|---|---|
+| Build (once) | where the canal leaves the pond: a fence of stakes across the water (driven in, `Ring`s) with woven baskets set in the gap (research 18 §5.5) |
+| The lift | each morning (view hour 7) two villagers wade knee-deep to the basket, bend (lean 35) and **lift it together** (both arms x 60 → 120, 0.8 s, `Back`); water pours out (`Droplets` 10, aimed down) |
+| Answer | 2 in 3: 1–3 fish flap inside (each `Wobble` 30°, 8 Hz; one flips out in an arc and back in); 1 in 3: empty, and the two look at each other and shrug |
+| End beat | they carry it to the bank between them and tip it into a basket (`Squash`); the trap goes back in (`Ring`) |
+| Timing | 25 s |
+| 3-s read | "two people lift a fish trap out of the water" |
+| Cheat | **"Weir lift now"** |
+| Tests | P5; fish only with a fish stock (B16.e); catches respect the fish floor (#422) |
+
+---
+
+## B20. The pack hunt, the ravens and the kill (#440)
+
+*The wolves trot in a line at the wood's edge and test the herd with a rush; mostly the deer get away; sometimes an
+old doe goes down behind a bush, and the ravens come.*
+| | |
+|---|---|
+| When | a few times a game year, more in winter (research 19 §5); by day, so it can be seen |
+| Approach | 2–3 wolves `Trot` in a line, 0.12 u apart, along the wood's edge toward the herd |
+| Antic | at 1.2 u the deer lift their heads (`Alert`); the wolves stop, heads low, 1 s |
+| Act | **the test**: the wolves rush (`Bolt`) 0.6 u; the herd `Bolt`s |
+| Mostly (3 in 4) | the deer get away into the trees; the wolves slow, stop and **pant** (head bob 4 Hz, a small red tongue 0.01 u, 2 s), then trot back |
+| Sometimes (1 in 4) | an old doe or a fawn lags; the wolves close in and pass **behind a bush or the trees' edge**; the doe goes down there, out of sight (no blood; the bush `Sway`s once). The wolves stay there, heads down |
+| Answer: ravens | within 5 s, **2–3 ravens** (black, 0.03 u) circle above the spot (r 0.2 u, 0.35 u up, 4 s a circle), then land near it |
+| End beat | after 20 s the wolves lie down by the kill; the ravens hop round them |
+| People | anyone within 2.5 u `Turn`s; a hunter **points at the ravens** (the sign for B23.b) |
+| Rule | a kill counts toward the deer's floor (#422); no chase is planned when the herd is at its floor |
+| 3-s read | "wolves chasing deer at the wood's edge" |
+| Cheat | **"Pack hunt now (catch / miss)"** |
+| Tests | the kill point is hidden from the default camera by a bush or tree (a line-of-sight check; with no cover the chase always misses) |
+
+---
+
+## B21. The howl, the eyes, the knock, the white wolf (#441)
+
+### B21.a The howl at dusk
+*One wolf howls, the others join; at the fire everyone falls silent; a child howls back; the wolves answer.*
+| | |
+|---|---|
+| When | most evenings (view hours 18–20); longer after a kill |
+| Wolves | at the den one sits and howls (`SitHowl`), the others join 0.4–1.0 s apart; 4–6 s |
+| People | everyone at the fire stops talking (chatter bubbles off for 4 s, `View/ChatterView.cs`) and `Turn`s toward the wood (the head only for those sitting) |
+| The kid | 1 evening in 3: a kid stands, cups the hands to the mouth (both arms x 130) and **howls back** (head up 40°, 2 s); a grown-up pulls the kid down by the arm (0.5 s); 1 s later the wolves answer (a short `SitHowl`) and the kid grins |
+| Sound | a howl chorus (#447); the picture reads without it |
+| 3-s read | "wolves howl; the people at the fire turn and listen" |
+| Cheat | **"Howl now"** |
+
+### B21.b Eyes at the edge of the firelight
+| | |
+|---|---|
+| When | some nights; more once the pack is bold (#437) |
+| Beat | two pairs of eyes (P0's eye dots) glint at **the firelight's edge**, always outside the tent ring; the bodies stay dark |
+| Answer | someone throws a stick on the fire (a `Log` arc, h 0.1, T 0.4 s): the fire `Flare`s (scale 1.3, `Sparks`); the eyes blink out, back off 0.3 u, and go |
+| 3-s read | "eyes in the dark; someone feeds the fire" |
+| Tests | no eye point inside the tent ring |
+
+### B21.c The knock
+| | |
+|---|---|
+| Beat | the Keeper's knock on the glass (exists: `View/GlassVoice.cs:401`, `Life/LifePlanner.Scenes.cs:335`) also reaches wolves within 2 u of the tap: `Alert` toward the glass for 0.3 s, then they **melt into the trees** (`Bolt`, 1.2 s) |
+| Rule | the Keeper's only power over the wolves, and a gentle one (research 19 §9) |
+| Tests | P3 (every wolf within 2 u answers) |
+
+### B21.d The white wolf (a pure moment, no choice)
+| | |
+|---|---|
+| When | once per box, in a winter after the pack's first pups |
+| Beat | at dusk a white wolf stands on the highest ground at the wood's edge and howls (`SitHowl`, 5 s); the pack joins below; **everyone comes out** of the tents and stands looking (all `Turn`; a kid is lifted onto a grown-up's back, 0.6 s) |
+| End beat | the white wolf turns and is gone into the trees; a book page |
+| Rule | never hunted, no pelt (wolves are never killed) |
+| 3-s read | "a white wolf howls on the hill; the whole camp watches" |
+| Cheat | **"White wolf now"** |
+
+---
+
+## B22. The meat thief, the scraps choice and the grey wolf (#442)
+
+### B22.a The meat thief
+*A wolf slinks to the drying rack; a hunter shouts, everyone waves their arms and a torch; the wolf grabs a strip and
+trots off, tail up.*
+| | |
+|---|---|
+| When | at most once a season, at dusk; never when the stash is low (research 19 §4 rule 3) |
+| Where | the drying rack (B16.c) or the hide frame (`View/CampView.cs:246-248`), **at the camp's edge**, outside the tent ring |
+| Approach | a wolf comes out of the dark low (body pitch −10°, slow `Walk`) and stops twice |
+| Antic | a hunter sees it, stands, **points and shouts** (arm x 90, two head jabs) |
+| Act | everyone near stands and waves both arms (z ∓150 ↔ ∓100 at 3 Hz); one takes a burning stick from the fire and holds it up (a torch prop) |
+| Answer | the wolf snaps a strip off the rack (a small brown strip `Pop`s into its mouth) and **trots off** with it into the dark, tail up |
+| End beat | the people stand looking after it; one shrugs, one laughs |
+| Rule | the wolf never comes within 0.3 u of a person; if someone walks at it, it leaves at once |
+| 3-s read | "a wolf steals meat from the rack; the people shout and wave" |
+| Cheat | **"Meat thief now"** |
+
+### B22.b The choice: chase them off, or leave them the scraps? (staged)
+| | |
+|---|---|
+| When | after the first theft, raised while you watch (visit-loop.md §2.4) |
+| Staging | the rack with a strip missing; on one side the hunters with a torch and an armful of thorny branches; on the other the elder with a bowl of scraps at the camp's edge (the sides as `Life/ChoiceScenes.cs` places them) |
+| Chase them off | the hunters lay a ring of thorny branches round the rack (B18.a's weave, 6 s) and set a torch stake by it, lit each night; the wolves howl from farther off (B21.a at the den only, no B21.b eyes for a season) |
+| Leave the scraps | a **bone spot** at the camp's edge (outside the tent ring, ≥ 1.0 u from the fire): a small pile of pale bones; B22.c starts |
+| Let them decide | the chief's trait picks (a bold chief shares, a careful one chases) |
+| 3-s read | "thorns round the rack, or a pile of scraps for the wolves" |
+
+### B22.c The grey wolf at the bone spot
+| | |
+|---|---|
+| Who | **the grey wolf**: the boldest of the pack, recognisable by its pale silver face (P0) |
+| Beat | at dusk the grey wolf comes to the bone spot, takes a bone and lies down 0.2 u from the pile to chew (head tilted, a gnawing bob); the people at the fire **sit still and watch**, talking in murmurs (small chatter bubbles); a kid edges two steps closer and is pulled back |
+| Over time | it stays longer each visit and lies a little nearer the light (from 1.3 u to 1.0 u from the fire over a game year), never nearer |
+| 3-s read | "a wolf chewing a bone near the camp while the people watch" |
+| Tests | the bone spot and the grey wolf stay outside the tent ring and ≥ 0.3 u from any person |
+
+---
+
+## B23. Trailing the hunters, and the ravens' kill (#443)
+
+### B23.a The wolf trailing the hunters
+| | |
+|---|---|
+| When | on a deer hunt (B13.a) while the pack is bold |
+| Beat | a wolf follows the hunters far behind (≥ 1.0 u) and stops when they stop; after a hit the hunters leave a **leftovers bundle** (a small wrapped brown bundle, no blood) where the deer lay; once they've gone with the pole, the wolf trots up and takes it |
+| Later (the scraps path) | each hunt it trails a little closer (1.0 → 0.6 u) |
+| 3-s read | "a wolf follows the hunters at a distance" |
+
+### B23.b The ravens' kill: take it, or leave it? (staged choice)
+| | |
+|---|---|
+| When | after a B20 kill with ravens, raised while you watch |
+| Staging | the ravens circling over the wood; a hunter points; the hunters stand ready with bows on their backs and a pole; the choice card |
+| Take it | the hunters walk over in a line; at 0.6 u from the wolves they **shout and wave** (B22.a's wave, a bow held up high); the wolves back off 0.5 u, stand, then trot away; the hunters carry the meat home on the pole (B13.b) |
+| Leave it | the hunters stand at the wood's edge a moment, then walk home; the wolves eat; the pack is a little bolder |
+| Rule | nobody touches a wolf and no wolf touches anyone: the planner keeps ≥ 0.3 u between them, and the wolves always leave |
+| 3-s read | "hunters drive wolves off a kill" |
+| Cheat | **"Ravens' kill now"** |
+
+---
+
+## B24. The lost pup and the pup at the fire (#444)
+
+### B24.a The lost pup (staged choice)
+*A child found a wolf pup alone by the den. Bring it home, or leave it with its mother?*
+| | |
+|---|---|
+| When | spring, on the scraps path; on the chase path two springs later anyway (dogs are never closed off, decisions.md 2026-11-07) |
+| Staging | in the wood a kid crouches by a tiny grey pup (P0's pup, 0.05 u) that tumbles toward them; the kid looks back at the camp; a parent walks over; the choice card |
+| Bring it home | the kid **picks the pup up in both arms** (arms x 60, held at the chest) and walks home with it, the parent beside; at the fire everyone gathers and the kids crowd round. The dog arc starts (#438) |
+| Leave it | the kid sets it down; the pup runs back toward the den (`Trot`, one tumble); the kid watches it go (`Turn` held 3 s). It can come again next spring |
+| 3-s read | "a kid carries a wolf pup home" |
+| Cheat | **"Lost pup now"** |
+
+### B24.b The pup at the fire
+| | |
+|---|---|
+| Its keeper | the kid who found it (a bond, research 19 §7): the pup follows them, 0.1 u behind (B7.c-style) |
+| Scenes (one at a time; B11 counts them) | chews a hide (head shakes ±25° at 4 Hz); plays with the kids (`PlayBow`, and a kid bows back, arms down); sleeps curled by the embers (`SleepCurl`); **steals a fish** from the stash and runs with it in its mouth, a grown-up chases 0.5 u and gives up |
+| A bit wild | it never fetches; now and then it growls at a grown-up near the meat (head low, 0.5 s) |
+| 3-s read | "a pup playing with kids by the fire" |
+
+---
+
+## B25. The grown dog at the hunt and on guard (#445)
+
+### B25.a At the hunt
+| | |
+|---|---|
+| Flush | on a rabbit hunt (B6) the dog runs ahead into the grass; the rabbits `Bolt` (`RabbitHerd`'s scare, `Sim/Eco/RabbitHerd.cs:411`) toward the hunter, who gets the throw |
+| Track the miss | after a deer-hunt miss (B13.a) the dog `Sniff`s where the deer stood, trots into the wood nose down, stops and **barks**; the hunters follow; 1 time in 3 it finds a lame deer, which then counts as a hit (the B13.b carry) |
+| Look | the hide collar from stage 2; the generations' drift (P0) |
+| 3-s read | "a dog runs ahead of the hunters" |
+
+### B25.b On guard
+| | |
+|---|---|
+| Beat | at night, when a wolf comes within 1.2 u of the camp (B21.b's eyes, B22.a's thief): the dog stands, faces it and **barks** (three head jabs, a 0.03 u hop forward each); the wild wolves `Alert` and turn back into the dark |
+| Then | from the first guard on, the meat thief scenes stop |
+| 3-s read | "a dog barking at the dark; the eyes go away" |
+| Cheat | **"Wolves come near (guard)"** |
+
+### B25.c A litter, and the old dog
+| | |
+|---|---|
+| Pups | next spring 2–3 pups at the dog's side (`SleepCurl` against it, `PlayBow` with the kids); each is the next generation (P0's drift). With the cap of 1–3 dogs (#438), extra pups go with a kid to the box's edge and fade out there, with a history line ("taken in by the people apart") |
+| Old dog | grey round the muzzle, lies by the fire more; one visit it is simply gone, with a history line (the existing old-age rule) |
+
+---
+
+## B26. The wolves at the duck pen (village, once) (#446)
+
+*The wolves circled the duck pen last night. A thorn fence, or let the dogs keep watch?*
+| | |
+|---|---|
+| When | once, the first night after the duck pen (B18.a) stands, if wolves are placed |
+| Night | 2 wolves trot once round the pen 0.2 u from the fence (10 s); the ducks inside huddle in the middle (quacking head jabs); nothing is taken |
+| Morning staging | villagers find tracks round the pen (paw prints, drawn like the rabbit tracks) and point; the choice card |
+| A thorn fence | villagers weave thorny branches round the pen (B18.a's weave, darker and spiky) and set a torch stake by it at night |
+| The dogs keep watch (only with dogs) | a dog sleeps by the pen gate (`SleepCurl`); seen once: the wolves come, the dog barks (B25.b), they turn back. Then it's routine |
+| Rule | either way the pen is safe from then on; wolves never take from a guarded pen |
+| 3-s read | "wolves circling the duck pen at night" |
+| Cheat | **"Wolves at the pen now"** |
+
+### Placed life: hard in code
+
+1. **There is no four-legged doll.** `RabbitDoll` (`View/RabbitDoll.cs`) is the model to copy; P0 is #425's work and
+   B13, B14 and B20–B26 wait on it.
+2. **`PondLife`'s ducks are view-only**, shown by pond size (`View/PondLife.cs:26`); B12.d and B15 need the sim's
+   stock (#421), nests, ducklings and the pen.
+3. **Fishing has no stock** (`Life/LifePlanner.Fish.cs`): B16.e gates it on placed fish, and a bite needs a visible
+   shadow near the hook.
+4. **New props:** `Bow`, `Arrow` (arc), `Pole`, `Egg`, `Antlers`, a torch, a snare, a bone pile, the drying mat, the
+   weir's basket. One prop per doll (Hard in code item 8 below): the bow rides on the back while a hunter holds the
+   pole.
+5. **The tent ring must be a planner rule** for every wolf point (B21–B23, B26), tested like `Life/HugRules.cs`.
+6. **Hidden kills** need a line-of-sight check from the default camera to cover between it and the kill (B20).
+7. **The rack and the hide frame must stand at the camp's edge** so B22.a reaches them without crossing the tent ring;
+   today the hide frame stands where the planner puts it (`View/CampView.cs:246-248`).
 
 ---
 
