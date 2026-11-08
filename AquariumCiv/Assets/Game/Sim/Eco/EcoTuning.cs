@@ -111,6 +111,23 @@ namespace AquariumCiv.Sim.Eco
         public int fishSchool = 6, fishPondPer = 3, fishMin = 3;
         public float fishGrow = 0.35f;
 
+        // #437 the wolves (spec §3, §4.1, §5.6; research 19 §3-§5). The jar: the herd at wolvesDeer or more for wolvesDeerMonths, a wood of
+        // wolvesTrees grown trees, and a den spot (a grown tree in the wood: denTrees grown trees round it, the wood between it and the
+        // fire) at least denFromFire from the fire. The pack: 2..wolfCap, pups wolfPupsMin..Max in spring. A chase a month with
+        // wolfChase (x wolfWinter in winter), one in 1/wolfCatch ends in a kill; kills stay at least wolfKillFromFire from the fire.
+        // The white wolf: once, in a winter after the first pups, with whiteWolfChance a winter.
+        public int wolvesDeer = 5, wolvesDeerMonths = 12, wolvesTrees = 20, denTrees = 3, wolfCap = 6, wolfPupsMin = 2, wolfPupsMax = 4;
+        public float denFromFire = 1.5f, wolfChase = 0.35f, wolfWinter = 1.8f, wolfCatch = 0.25f, wolfKillFromFire = 1.2f, whiteWolfChance = 0.35f;
+        // Boldness (0..1): its start, and what moves it. Scraps and a kill left raise it; a chase or a kill taken lower it; the first guard
+        // bark lowers it; each month scraps wear it up and a grown dog on guard wears it down.
+        public float boldStart = 0.2f, boldScraps = 0.15f, boldChase = 0.15f, boldKillLeft = 0.08f, boldKillTaken = 0.1f, boldGuard = 0.1f,
+            boldScrapsMonth = 0.01f, boldDogMonth = 0.01f;
+        // The deer's human shield (research 19 §1): with the pack about, the herd's home moves up to this share of the way to the fire.
+        public float deerShieldPull = 0.35f;
+        // The meat thief: a chance a season (wolfThiefBase + wolfThiefBold x boldness); never while food would drop below
+        // wolfThiefFood x population. It takes one strip (food) or, now and then, a hide.
+        public float wolfThiefBase = 0.3f, wolfThiefBold = 0.5f, wolfThiefFood = 1.5f, wolfThiefStrip = 1f;
+
         // #417 the life jar (placed-life spec §3, §4.3; all [est] until #434). Each jar opens on its land condition once the rung below is placed.
         public float jarThicketMeadow = 0.10f, jarRabbitsMeadow = 0.15f; // meadow share for the thicket's jar, the rabbits'
         public int jarDeerTrees = 5, jarDucksPond = 12;                   // grown trees (the Keeper's counts) for the deer; pond cells for the ducks

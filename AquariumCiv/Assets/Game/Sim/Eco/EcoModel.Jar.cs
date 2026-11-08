@@ -132,8 +132,8 @@ namespace AquariumCiv.Sim.Eco
                     var d = Jar(LifeSpecies.Ducks);
                     return d.placedMonth >= 0 && month - d.placedMonth >= t.jarFishAfterDucks && st.cReeds >= t.jarFishReeds;
                 }
-                // Wolves (deer >= 5 for a year, wood >= 20, a den spot >= 1.5 u from the fire): #437. Until then the jar stays shut.
-                case LifeSpecies.Wolves: return false;
+                // #437: the deer at 5 or more for a full game year, a wood of 20 grown trees, a den spot >= 1.5 u from the fire
+                case LifeSpecies.Wolves: return WolvesLandReady(month);
             }
             return false;
         }
@@ -174,7 +174,7 @@ namespace AquariumCiv.Sim.Eco
             newJars.Add(s);
         }
 
-        /// <summary>The species' count the floor reads, or -1 while it has no population in the sim (the thicket; the wolves until #437).
+        /// <summary>The species' count the floor reads, or -1 while it has no population in the sim (the thicket).
         /// The ducks are the wild flock only (pen ducks, #431, are apart).</summary>
         public float Population(LifeSpecies s) => s switch
         {
@@ -182,6 +182,7 @@ namespace AquariumCiv.Sim.Eco
             LifeSpecies.Deer => DeerCount,
             LifeSpecies.Ducks => st.ducks,
             LifeSpecies.Fish => st.fish,
+            LifeSpecies.Wolves => st.wolves, // #437 (the jar never restocks: the pair is the floor)
             _ => -1f,
         };
 
@@ -239,7 +240,8 @@ namespace AquariumCiv.Sim.Eco
                 LifeSpecies.Fish => st.fishHome,
                 _ => Jar(s).placedCell,
             };
-            if (home < 0 || !Shy(s)) return home;
+            if (home < 0) return home;
+            if (!Shy(s)) return s == LifeSpecies.Deer ? ShieldedDeerHome(home) : home; // #437: with the pack about the deer graze nearer the camp
             int far = FarthestGroundCell(s);
             return far >= 0 ? far : home;
         }
@@ -302,7 +304,7 @@ namespace AquariumCiv.Sim.Eco
                 case LifeSpecies.Fish:
                     return cv == EcoCover.Water && WaterNeighbours(cell) == 8;
                 case LifeSpecies.Wolves:
-                    return false; // the den spot: #437
+                    return DenOk(cell, settled); // #437: den spots only
             }
             return false;
         }
@@ -390,6 +392,7 @@ namespace AquariumCiv.Sim.Eco
                 case LifeSpecies.Deer: FoundDeer(cell, restock); break; // #420
                 case LifeSpecies.Ducks: FoundDucks(cell, restock); break; // #421
                 case LifeSpecies.Fish: FoundFish(cell, restock); break; // #421
+                case LifeSpecies.Wolves: FoundWolves(cell); break; // #437 (never a restock)
             }
         }
 

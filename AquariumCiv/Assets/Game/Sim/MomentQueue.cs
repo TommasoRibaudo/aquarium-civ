@@ -4,7 +4,7 @@ namespace AquariumCiv.Sim
 {
     /// <summary>#369: the ceremonies that wait for the Keeper (visit-loop.md 2.1; research 16 §4.1).
     /// #422: Ruling, a notable's rule on a species at its floor ("leave the does in spring"), staged at the fire.</summary>
-    public enum MomentKind { Wedding, Newborn, NewLeader, Callback, Festival, Ruling }
+    public enum MomentKind { Wedding, Newborn, NewLeader, Callback, Festival, Ruling, WhiteWolf }
 
     /// <summary>#369: where a held moment is. Waiting in the queue, Playing in the box now, Played while watched, or Carded: it
     /// could not be staged (held too long, the queue overflowed, its people are gone, the baby grew, the view could not play it)
@@ -160,6 +160,7 @@ namespace AquariumCiv.Sim
                 case "festival": case "anniversary": kind = MomentKind.Festival; return true;
                 case SimCore.CallbackKind: kind = MomentKind.Callback; return true;
                 case SimCore.RulingKind: kind = MomentKind.Ruling; return true; // #422
+                case SimCore.WhiteWolfKind: kind = MomentKind.WhiteWolf; return true; // #437: a pure moment, everyone comes out to see
                 default: kind = MomentKind.Wedding; return false;
             }
         }

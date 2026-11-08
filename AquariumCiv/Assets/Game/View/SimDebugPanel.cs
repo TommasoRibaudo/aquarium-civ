@@ -321,6 +321,32 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #420-#422 ----
+            // ---- #437/#438: the wolves and the dogs (placed-life spec §10) ----
+            if (sim.EcologyOn && Section("Wolves and dogs (#437-#438)"))
+            {
+                GUILayout.Label($"wolves {sim.EcoWolfCount} (pups {sim.EcoWolfPups}) · bold {sim.WolfBoldness:0.00} · {sim.WolfWayTaken} · kills {sim.WolfKillCount} · thefts {sim.WolfThefts} · dogs {sim.DogCount} · pen {sim.DuckPenGuard}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ready wolves")) last = Done(sim.DebugReadyWolves() ? "the wolves' jar is open" : "no den spot, or placed already");
+                if (GUILayout.Button("Place wolves (far wood)")) { int c = sim.DebugPlaceWolves(); last = Done(c < 0 ? "no den spot, or placed already" : $"the pair at den cell {c}"); }
+                if (GUILayout.Button("Wolves bold (1)")) last = Done(sim.DebugWolvesBold() ? "boldness 1" : "no wolves");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Meat thief now")) last = Done(sim.DebugMeatThiefNow() ? "a wolf took from the rack" : "no wolves, or the thief is stopped");
+                if (GUILayout.Button("Wolves' kill now")) { var k = sim.DebugWolfKillNow(); last = Done(k == null ? "no prey to spare" : $"{k.Prey} at cell {k.cell}: the ravens circle"); }
+                if (GUILayout.Button("White wolf now")) last = Done(sim.DebugWhiteWolfNow() ? "the white wolf howls" : "no wolves, or it already has");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Lost pup now")) last = Done(sim.DebugLostPupNow() ? "a child found a pup" : "a dog came home already");
+                if (GUILayout.Button("Next dog generation")) last = Done($"{sim.DebugNextDogGeneration()} dogs");
+                if (GUILayout.Button("Wolves at the pen now")) last = Done(sim.DebugWolvesAtPenNow() ? "the pack circled the pen" : "no wolves, or it has already");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: thief")) last = Done(sim.DebugRaiseLifeChoice(LifeChoices.Thief) != null ? "the thief choice is open" : "no theft yet (meat thief now)");
+                if (GUILayout.Button("Ask: kill")) last = Done(sim.DebugRaiseLifeChoice(LifeChoices.Kill) != null ? "the kill choice is open" : "no fresh kill (wolves' kill now)");
+                if (GUILayout.Button("Ask: pen")) last = Done(sim.DebugRaiseLifeChoice(LifeChoices.Pen) != null ? "the pen choice is open" : "no circling, or no grown dog");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #437/#438 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

@@ -9,7 +9,7 @@ namespace AquariumCiv.Sim
     /// <list type="bullet">
     /// <item><b>Floors:</b> every taker goes through <see cref="EcoModel.TryTake"/>, which never crosses a species' floor (rabbits 2,
     /// deer 2, ducks 2, fish 3): the hunters (<see cref="HuntCatch"/>, <see cref="DeerHuntCatch"/>), the egg gatherers
-    /// (<see cref="TakeEgg"/>), the fishers (<see cref="FishCatch"/>), and the wolves (<see cref="WolfTake"/>, the hook for #437).</item>
+    /// (<see cref="TakeEgg"/>), the fishers (<see cref="FishCatch"/>), and the wolves (<see cref="WolfTake"/>; the pack's own chases go through EcoModel.Chase, SimCore.Wolves.cs).</item>
     /// <item><b>Shy:</b> a species at its floor after takes is <see cref="LifeShy"/>; its home (<see cref="LifeHomeCell"/>) moves to
     /// the far side of its ground from the camp, and the view shows it mostly at dawn. Fewer seen, none gone.</item>
     /// <item><b>Restraint:</b> the first season a species sits at its floor after takes (the ducks: a spring whose nests were emptied),
@@ -32,7 +32,7 @@ namespace AquariumCiv.Sim
         /// <summary>Where the species lives now: its placed home, or the far side of its ground while shy. -1 when none is placed.</summary>
         public int LifeHomeCell(LifeSpecies s) => EcologyOn ? EcoM.HomeCell(s) : -1;
 
-        /// <summary>The species' count the floors read (the wild ducks only), or -1 for the thicket and the wolves (#437).</summary>
+        /// <summary>The species' count the floors read (the wild ducks only; the wolves' pack, #437), or -1 for the thicket.</summary>
         public float LifePopulation(LifeSpecies s) => EcologyOn ? EcoM.Population(s) : -1f;
 
         /// <summary>The floor no taker crosses.</summary>

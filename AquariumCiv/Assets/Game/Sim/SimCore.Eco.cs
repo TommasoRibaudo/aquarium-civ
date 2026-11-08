@@ -65,10 +65,13 @@ namespace AquariumCiv.Sim
             var s = State;
             int season = (int)((s.month / 3 + 3) % 4);
             EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
-            if (s.month % 3 != 0) return;
-            EcoM.Step(season, s.month);
-            if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
-            EcoTell();
+            if (s.month % 3 == 0)
+            {
+                EcoM.Step(season, s.month);
+                if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
+                EcoTell();
+            }
+            WolvesMonth(season); // #437/#438: the pack's month (a chase, the thief, the pen) and the dogs' (hash dice only)
         }
 
         /// <summary>Raises what the land reached since last time, and writes the gates and the water into the chronicle.</summary>

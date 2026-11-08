@@ -84,6 +84,15 @@ namespace AquariumCiv.Sim.Eco
             return false;
         }
 
+        /// <summary>#437: the wolves take an old doe while there are two or more does, else a spare stag (never the last stag or doe).</summary>
+        bool TakeDeerForWolves(out bool stag)
+        {
+            stag = false;
+            if (st.deerDoes >= 2) { st.deerDoes--; return true; }
+            if (st.deerStags >= 2) { st.deerStags--; stag = true; return true; }
+            return false;
+        }
+
         // ---------------------------------------------------------------- the ducks (#421, spec §5.4)
         public const int DuckPair = 2;
 
@@ -155,6 +164,7 @@ namespace AquariumCiv.Sim.Eco
             DeerSeason(s, month);
             DuckSeason(s, month);
             FishSeason(s);
+            WolfSeason(s, month); // #437: the pack's year and the wolves' jar clock
         }
 
         // ---------------------------------------------------------------- takes (spec §4.2)
@@ -195,7 +205,7 @@ namespace AquariumCiv.Sim.Eco
             {
                 case LifeSpecies.Rabbits: st.rabbits = MathF.Max(0f, st.rabbits - 1f); st.rabbitsCaught++; return true; // as CatchRabbit always did
                 case LifeSpecies.Deer:
-                    if (!TakeDeer(out stag)) return false;
+                    if (!(who == LifeTaker.Wolves ? TakeDeerForWolves(out stag) : TakeDeer(out stag))) return false;
                     st.deerTaken++;
                     return true;
                 case LifeSpecies.Ducks:
