@@ -69,13 +69,16 @@ namespace AquariumCiv.Sim
         {
             var map = Settlement?.Map;
             if (map == null) { g.towerX = g.x + 0.35f; g.towerZ = g.z; return; }
+            // by the camp as it is drawn (a shore family's keeps to the shore, ApartSpots.FreeSpot), not by the home spot it was nudged off:
+            // the tester found the tower 1.2 from the camp, by the town's field
+            var (cx, cz) = ApartSpots.FreeSpot(map, g.x, g.z, out _, ApartSpots.Footprint, g.kind == ApartKind.ShoreHut);
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock | SiteMap.FLaid;
             int best = -1; float bestScore = float.MinValue;
             for (int c = 0; c < SiteMap.N; c++)
             {
                 int i = SiteMap.I(c), j = SiteMap.J(c);
                 if (i < 3 || j < 3 || i >= SiteMap.NX - 3 || j >= SiteMap.NZ - 3) continue;
-                float dx = SiteMap.CXc(c) - g.x, dz = SiteMap.CZc(c) - g.z, d = (float)Math.Sqrt(dx * dx + dz * dz);
+                float dx = SiteMap.CXc(c) - cx, dz = SiteMap.CZc(c) - cz, d = (float)Math.Sqrt(dx * dx + dz * dz);
                 if (d < 0.3f || d > 0.65f) continue;
                 if (map.pond[c] || map.lot[c] != 0 || (map.ring != null && map.ring[c] != 0) || (map.flags[c] & block) != 0) continue;
                 if (map.wear != null && map.wear[c] >= PathNet.TTrail) continue;
@@ -92,7 +95,7 @@ namespace AquariumCiv.Sim
                 }
                 if (score > bestScore) { bestScore = score; best = c; }
             }
-            if (best < 0) { g.towerX = g.x + 0.35f; g.towerZ = g.z; return; }
+            if (best < 0) { g.towerX = cx + 0.35f; g.towerZ = cz; return; }
             g.towerX = SiteMap.CXc(best);
             g.towerZ = SiteMap.CZc(best);
         }

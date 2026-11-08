@@ -16,6 +16,7 @@ namespace AquariumCiv.View.PlayTests
     public class ApartTowerPlayTests : PlayTestBase
     {
         const int Seed = 7531;
+        const float BoatLaunchAt = ApartGroupsView.BoatLaunch;
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static ApartGroupsView View => ApartGroupsView.Instance;
         static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();
@@ -52,6 +53,23 @@ namespace AquariumCiv.View.PlayTests
         }
 
         ApartGroup Shore => Sim.ApartGroups.First(g => g.kind == ApartKind.ShoreHut);
+
+        /// <summary>The #404 tester saw people jump in one frame (into the boat, at the top of a climb, to a far ladder): the longest step
+        /// any of the group took in one frame, and where.</summary>
+        readonly System.Collections.Generic.Dictionary<int, Vector2> lastPos = new();
+        float worstStep; string worstAt = "";
+        void WatchSteps(ApartGroup g, float hour)
+        {
+            foreach (var x in View.MembersNow(g.id))
+            {
+                if (lastPos.TryGetValue(x.id, out var was))
+                {
+                    float d = (x.pos - was).magnitude;
+                    if (d > worstStep) { worstStep = d; worstAt = $"#{x.id} at {hour:0.00} h: {d:0.000} ({was} -> {x.pos})"; }
+                }
+                lastPos[x.id] = x.pos;
+            }
+        }
 
         IEnumerator Look(string shot, float zoom = 0.45f, bool tower = false)
         {
@@ -109,7 +127,10 @@ namespace AquariumCiv.View.PlayTests
                 if (h < ApartGroupsView.LightOn - 0.02f && on) darkBefore = false;
                 if (h > ApartGroupsView.LightOn + 0.05f && on) litAfter = true;
                 foreach (var x in View.MembersNow(g.id)) topLift = Mathf.Max(topLift, x.lift);
-            }, speed: 6f);
+                WatchSteps(g, h);
+            }, speed: 4f, budget: 60f);
+            Debug.Log("[tower] lamp: longest one-frame step " + worstAt);
+            Assert.Less(worstStep, 0.06f, "nobody jumps (dusk lamp): " + worstAt);
             Assert.IsTrue(darkBefore, "dark before it's lit");
             Assert.IsTrue(litAfter, "lit after");
             Assert.Greater(topLift, ApartProps.TowerPlatformY - 0.02f, "the lighter stood on the platform");
@@ -204,7 +225,15 @@ namespace AquariumCiv.View.PlayTests
                     if (f) { wentOut = true; farthest = Mathf.Max(farthest, (b - home).magnitude); }
                     int on = View.MembersNow(g.id).Count(x => x.scripted && x.lift > 0.5f && (x.pos - b).magnitude < 0.1f);
                     mostOnBoat = Mathf.Max(mostOnBoat, on);
-                });
+                    // the tester saw them waist-deep far out in the pond before the launch: on the way down they stay between the camp and the boat
+                    var bx = Object.FindAnyObjectByType<BoxView>();
+                    if (h < BoatLaunchAt && !f)
+                        foreach (var x in View.MembersNow(g.id).Where(y => y.scripted && (y.pos - home).magnitude > 0.08f))
+                            Assert.GreaterOrEqual(bx.land.Height(x.pos.x, x.pos.y), bx.layout.eco.waterY - 0.02f, $"at {h:0.00} h on the shore (at most wading its edge) on the way to the beached boat, not out in the pond ({x.pos} vs boat {home})");
+                    WatchSteps(g, h);
+                }, speed: 4f, budget: 90f);
+                Debug.Log("[tower] boat: longest one-frame step " + worstAt);
+                Assert.Less(worstStep, 0.06f, "nobody jumps (the boat): " + worstAt);
                 Assert.IsTrue(wentOut, "the boat went out");
                 Assert.Greater(farthest, 0.05f, "out on the water");
                 Assert.GreaterOrEqual(mostOnBoat, Mathf.Min(2, g.members.Count(n => n.alive)), "two of them in it");

@@ -400,8 +400,9 @@ namespace AquariumCiv.Tests
                 Assert.GreaterOrEqual(c, 0);
                 Assert.IsFalse(map.pond[c], "not in the water");
                 Assert.AreEqual(0, map.lot[c], "not on a lot");
-                float d = (float)System.Math.Sqrt((g.towerX - g.x) * (g.towerX - g.x) + (g.towerZ - g.z) * (g.towerZ - g.z));
-                Assert.That(d, Is.InRange(0.29f, 0.66f), $"seed {seed}: by their camp");
+                var (cx, cz) = AquariumCiv.Sim.Settle.ApartSpots.FreeSpot(map, g.x, g.z, out _, AquariumCiv.Sim.Settle.ApartSpots.Footprint, true); // the camp as drawn
+                float d = (float)System.Math.Sqrt((g.towerX - cx) * (g.towerX - cx) + (g.towerZ - cz) * (g.towerZ - cz));
+                Assert.That(d, Is.InRange(0.29f, 0.66f), $"seed {seed}: by their camp as it is drawn");
             }
         }
 

@@ -39,7 +39,7 @@ namespace AquariumCiv.View
             public ApartDoing doing = (ApartDoing)(-1);
             public bool hidden;
             // #404: a scripted moment (the boat, the lamp, the lookout, the build) has them: how high they stand, what they hold
-            public bool scripted;
+            public bool scripted, onBoat;
             public float lift;
             public PropKind prop;
         }
@@ -197,7 +197,7 @@ namespace AquariumCiv.View
                 if (c.hasWater)
                 {
                     var p = spot;
-                    for (int i = 0; i < 20 && !land.IsWater(p.x, p.y); i++) p += c.water * 0.04f;
+                    for (int i = 0; i < 20 && !Wet(p); i++) p += c.water * 0.04f; // #404 tester: the living pond's water, not the fixed line (the boat sat out in the pond)
                     c.fishAt = p - c.water * 0.06f;             // the last dry step
                     c.boatAt = p + c.water * 0.02f - c.side * 0.16f;
                 }
@@ -381,7 +381,7 @@ namespace AquariumCiv.View
             var goal = Goal(c, m, count, hour, out float faceYaw);
             var before = m.pos;
             m.pos = Vector2.MoveTowards(m.pos, goal, WalkSpeed * dt);
-            if (land.IsWater(m.pos.x, m.pos.y)) m.pos = before;
+            if (Wet(m.pos)) m.pos = before;
             float speed = (m.pos - before).magnitude / Mathf.Max(dt, 1e-4f);
             bool walking = (m.pos - goal).sqrMagnitude > 0.0004f && speed > 0.01f;
             // asleep once in the shelter: hidden inside it

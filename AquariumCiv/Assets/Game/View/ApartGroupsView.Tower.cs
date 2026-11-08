@@ -40,7 +40,9 @@ namespace AquariumCiv.View
             public float lift;
             public DollStyle style;
             public PropKind prop;
-            public bool walk, onBoat;
+            public bool walk, onBoat, wade, climb;
+            /// <summary>A climb's ladder foot: nobody starts up before they've walked to it.</summary>
+            public Vector2 foot;
         }
 
         // ================================================================== the tower
@@ -143,6 +145,8 @@ namespace AquariumCiv.View
             s.lift = h;
             s.face = IntoTower(c);
             s.style = DollStyle.Reach;
+            s.climb = true;
+            s.foot = LadderFoot(c);
         }
 
         Vector2 LadderFoot(Camp c) => OnTower(c, 0f, ApartProps.TowerLadderZ - 0.07f);
@@ -183,11 +187,11 @@ namespace AquariumCiv.View
             heading = c.water;
             if (hour < BoatLaunch || hour >= BoatIn) { p = c.boatAt; return false; }
             if (hour < BoatOutAt) { p = Vector2.Lerp(c.boatAt, c.boatOut, Mathf.SmoothStep(0f, 1f, (hour - BoatLaunch) / (BoatOutAt - BoatLaunch))); return true; }
-            if (hour >= BoatBack) { p = Vector2.Lerp(c.boatOut, c.boatAt, Mathf.SmoothStep(0f, 1f, (hour - BoatBack) / (BoatIn - BoatBack))); heading = -c.water; return true; }
-            // fishing: a slow drift round the spot, the bow turning with it
-            float a = (hour - BoatOutAt) * 1.3f;
-            p = c.boatOut + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.03f - new Vector2(1f, 0f) * 0.03f;
-            heading = new Vector2(-Mathf.Sin(a), Mathf.Cos(a));
+            if (hour >= BoatBack) { p = Vector2.Lerp(c.boatOut, c.boatAt, Mathf.SmoothStep(0f, 1f, (hour - BoatBack) / (BoatIn - BoatBack))); return true; }
+            // fishing: one slow loop of drift that ends where it began. The hull is the same at both ends, so it keeps its line across the
+            // pond, out and back: the rowers keep their seats (a flip of the bow swapped them in one frame, the tester's jump at 10:54).
+            float a = Mathf.PI * 2f * (hour - BoatOutAt) / (BoatBack - BoatOutAt);
+            p = c.boatOut + new Vector2(Mathf.Cos(a) - 1f, Mathf.Sin(a)) * 0.03f;
             if (!Wet(p)) p = c.boatOut;
             return true;
         }
@@ -233,16 +237,17 @@ namespace AquariumCiv.View
             int seat = rank == 0 ? 0 : 1;
             if (hour < BoatLaunch)
             {
-                s.walk = true; s.at = c.boatAt - c.water * 0.08f + c.side * (seat == 0 ? -0.05f : 0.05f); s.face = c.water; s.style = DollStyle.Stand;
+                // down to the beached boat and into their seat in it (wading the last step), so the launch carries them off from there
+                s.walk = true; s.wade = true; s.at = c.boatAt + c.water * (seat == 0 ? 0.045f : -0.045f); s.face = seat == 0 ? -c.water : c.water; s.style = DollStyle.Sit;
                 return true;
             }
             if (hour >= BoatIn)
             {
-                s.walk = true; s.at = c.boatAt - c.water * 0.16f + c.side * (seat == 0 ? -0.06f : 0.06f); s.face = -c.water; s.style = DollStyle.Stand;
+                s.walk = true; s.wade = true; s.at = c.boatAt - c.water * 0.16f + c.side * (seat == 0 ? -0.06f : 0.06f); s.face = -c.water; s.style = DollStyle.Stand;
                 return true;
             }
-            BoatAt(c, hour, out var p, out var heading);
-            var along = heading.sqrMagnitude > 1e-6f ? heading.normalized : c.water;
+            BoatAt(c, hour, out var p, out _);
+            var along = c.water; // the seats keep their ends of the hull, out and back
             s.onBoat = true;
             s.at = p + along * (seat == 0 ? 0.045f : -0.045f);
             s.lift = WaterLevel + 0.01f;
@@ -327,15 +332,26 @@ namespace AquariumCiv.View
             var land = box.land;
             var before = m.pos;
             bool walking = false;
+            // a climb waits until they've walked to the ladder's foot (the tester saw a lookout jump 0.85 to it)
+            if (s.climb && m.lift < 0.02f && (m.pos - s.foot).sqrMagnitude > 0.04f * 0.04f) { s.walk = true; s.at = s.foot; s.face = s.at - m.pos; }
+            // a rower not in the boat yet (late from the camp) wades after their seat rather than being put in it
+            if (s.onBoat && !m.onBoat && (m.pos - s.at).sqrMagnitude > 0.05f * 0.05f) { s.walk = true; s.wade = true; s.onBoat = false; s.lift = 0f; }
             if (s.walk)
             {
-                if (m.lift > 0.02f) { m.pos = s.at; m.lift = 0f; } // never walk off a platform: the climb ends at the foot
+                if (m.lift > 0.02f && !m.onBoat) { m.pos = s.at; m.lift = 0f; } // never walk off a platform (the climb ends at its foot); out of a boat they step
                 m.pos = Vector2.MoveTowards(m.pos, s.at, WalkSpeed * dt);
-                if (land.IsWater(m.pos.x, m.pos.y) && !s.onBoat) m.pos = before;
+                if (Wet(m.pos) && !s.wade) m.pos = before;
                 walking = (m.pos - s.at).sqrMagnitude > 0.0004f;
                 m.lift = 0f;
+                m.onBoat = false;
             }
-            else { m.pos = s.at; m.lift = s.lift; }
+            else if (m.lift > 0.02f && s.lift > 0.02f && !s.onBoat && !m.onBoat && (m.pos - s.at).sqrMagnitude > 0.0004f)
+            {
+                // on the ladder or the platform: from the ladder's top to their spot (and back down) they step, not jump
+                m.pos = Vector2.MoveTowards(m.pos, s.at, WalkSpeed * dt);
+                m.lift = s.lift;
+            }
+            else { m.pos = s.at; m.lift = s.lift; m.onBoat = s.onBoat; }
             float speed = (m.pos - before).magnitude / Mathf.Max(dt, 1e-4f);
             var style = walking ? DollStyle.Walk : s.style;
             var dir = walking ? m.pos - before : s.face;
@@ -345,7 +361,9 @@ namespace AquariumCiv.View
             float sc = v.scale;
             var yawQ = Quaternion.Euler(0f, m.yaw + pose.yaw, 0f);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0f, 0f) : Quaternion.Euler(-pose.lean, 0f, pose.roll);
-            var foot = s.onBoat && !walking ? new Vector3(m.pos.x, m.lift, m.pos.y) : land.OnGround(m.pos) + Vector3.up * m.lift;
+            var ground = land.OnGround(m.pos);
+            if (s.wade) ground.y = Mathf.Max(ground.y, WaterLevel - 0.01f); // wading the shallows, not walking the bed
+            var foot = s.onBoat && !walking ? new Vector3(m.pos.x, m.lift, m.pos.y) : ground + Vector3.up * m.lift;
             v.transform.SetLocalPositionAndRotation(foot + yawQ * (pose.offset * sc), yawQ * tilt);
             v.transform.localScale = new Vector3(k, pose.squash * k, k);
             v.ApplyArms(pose);
@@ -374,7 +392,11 @@ namespace AquariumCiv.View
             if (c == null) return false;
             float top = ApartProps.TowerPlatformY + 0.01f;
             var s = new Script();
-            if (!kid && slot < 2)
+            // while one of the people apart lights the lamp (18:12-19:06) the platform and the ladder are theirs: townsfolk wait at the foot
+            var pvNow = PeopleView.Find();
+            float hourNow = pvNow != null ? pvNow.ViewHour : 12f;
+            bool lighting = hourNow >= LightWalk && hourNow < LightDone + 0.05f;
+            if (!kid && slot < 2 && !lighting)
             {
                 float t = Mathf.Clamp01(Mathf.Min(upSeconds, leftSeconds) / TownClimbSeconds);
                 if (t < 1f) { v.Climbing(c, top * t, ref s); at = s.at; lift = s.lift; face = s.at + s.face; style = s.style; return true; }
@@ -388,7 +410,7 @@ namespace AquariumCiv.View
             if (!kid)
             {
                 // round its foot, never in front of the ladder
-                int k = slot - 2;
+                int k = lighting ? slot : slot - 2;
                 float a = (50f + (k % 6) * 52f) * Mathf.Deg2Rad, r = 0.2f + (k / 6) * 0.07f;
                 at = v.OnTower(c, Mathf.Sin(a) * r, -Mathf.Cos(a) * r);
                 face = at + (at - c.towerAt);
@@ -398,7 +420,7 @@ namespace AquariumCiv.View
             // the dare: one kid at a time on the ladder
             int turn = (int)Mathf.Floor(time / KidTurnSeconds);
             float p = Mathf.Repeat(time, KidTurnSeconds) / KidTurnSeconds;
-            bool mine = turn % 4 == slot % 4 && upSeconds > 1f && leftSeconds > KidTurnSeconds;
+            bool mine = turn % 4 == slot % 4 && upSeconds > 1f && leftSeconds > KidTurnSeconds && !lighting;
             if (mine && p < 0.85f)
             {
                 float h = p < 0.35f ? top * 0.5f * p / 0.35f : p < 0.55f ? top * 0.5f : top * 0.5f * (1f - (p - 0.55f) / 0.3f);
