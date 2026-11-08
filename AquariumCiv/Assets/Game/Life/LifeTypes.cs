@@ -98,6 +98,8 @@ namespace AquariumCiv.Life
         Puddle,
         /// <summary>#371: a thing a choice left in the box (index = <see cref="Sim.ConsequenceProp.id"/>); where a callback's people go. Appended last so the saved ints stay.</summary>
         Prop,
+        /// <summary>#404: the lookout tower the people apart gave the Keeper (its foot; <see cref="Sim.SimCore.TowerGroup"/>). Appended last so the saved ints stay.</summary>
+        Tower,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the

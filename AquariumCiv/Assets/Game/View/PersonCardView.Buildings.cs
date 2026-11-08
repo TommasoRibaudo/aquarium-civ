@@ -54,8 +54,19 @@ namespace AquariumCiv.View
                 if (HitsLot(l, o, v, y0, y0 + tall * CoreShare, CoreShare, out float tc) && tc < coreT) { coreT = tc; core = l.buildingId; }
                 if (mill && HitsLot(l, o, v, y0 + MillSailsFrom, y0 + MillSailsTop, MillSailsWide, out float ts) && ts < bestT) { bestT = ts; best = l.buildingId; }
             }
+            // #404: the lookout tower the people apart gave the Keeper
+            var tv = ApartGroupsView.Instance;
+            if (tv != null && tv.TowerForTap(out var tAt, out float tH))
+            {
+                var tl = new Lot { x = tAt.x, z = tAt.y, w = TowerTapSide, d = TowerTapSide };
+                float ty = box.GroundHeight(tAt.x, tAt.y);
+                if (HitsLot(tl, o, v, ty, ty + tH, 1f, out float tt) && tt < Mathf.Min(coreT, bestT)) return SimCore.TowerCardId;
+            }
             return core >= 0 ? core : best; // the air round a house's eaves doesn't take a tap from the well behind it
         }
+
+        /// <summary>#404: the tower's tap box, a side (box units): its legs and the platform, a little generous.</summary>
+        const float TowerTapSide = 0.3f;
 
         /// <summary>A doll the camera can't see: a roof, a wall or the eaves stand between the lens and both its head and its middle, by the box's real
         /// meshes (tester run 8: a lot's core box let through dolls behind the eaves and just past the lot). A tap there is for what's in front.</summary>
@@ -124,6 +135,8 @@ namespace AquariumCiv.View
         {
             var box = FindAnyObjectByType<BoxView>();
             var lot = Sim?.Settlement?.Lots.FirstOrDefault(l => l.buildingId == buildingId && !l.retired);
+            if (buildingId == SimCore.TowerCardId && ApartGroupsView.Instance != null && ApartGroupsView.Instance.TowerForTap(out var tAt, out _))
+                lot = new Lot { x = tAt.x, z = tAt.y, w = TowerTapSide, d = TowerTapSide }; // #404: round the tower's legs
             if (lot == null || box == null) { HideMark(); return; }
             if (markGo == null)
             {
@@ -194,9 +207,32 @@ namespace AquariumCiv.View
             buildingTitle.text = c.title;
             buildingWhat.text = GlassType.Lines(c.whatItIs, 15f, 1.35f);
             buildingYear.text = c.yearLine;
-            buildingBy.text = GlassType.Lines(c.builderLine, 15f, 1.35f);
+            buildingBy.text = GlassType.Lines(c.builderLine + TowerUpNow(c), 15f, 1.35f);
             buildingBuilder.style.display = c.Together ? DisplayStyle.None : DisplayStyle.Flex;
             if (!c.Together) buildingBuilder.text = c.builderName;
+        }
+
+        readonly System.Collections.Generic.List<PersonRef> towerUp = new();
+
+        /// <summary>#404: on the tower's card, who is up there now (the people apart, and any townsfolk on the ladder or the platform).</summary>
+        string TowerUpNow(BuildingCardInfo c)
+        {
+            if (c.buildingId != SimCore.TowerCardId) return "";
+            var sim = Sim;
+            var names = ApartGroupsView.Instance != null ? ApartGroupsView.Instance.UpTheTower(sim) : new System.Collections.Generic.List<string>();
+            var pv = PeopleView.Find();
+            if (pv != null && sim != null)
+            {
+                pv.TowerClimbers(towerUp);
+                foreach (var who in towerUp)
+                {
+                    string n = who.IsNotable ? sim.FindNotable(who.notableId)?.name : who.IsCrowd ? sim.CrowdName(who.crowdIndex) : null;
+                    if (!string.IsNullOrEmpty(n)) names.Add(n);
+                }
+            }
+            if (names.Count == 0) return " Nobody is up there now.";
+            if (names.Count == 1) return $" {names[0]} is up there now.";
+            return $" Up there now: {string.Join(", ", names.GetRange(0, names.Count - 1))} and {names[names.Count - 1]}.";
         }
 
         void BuilderTapped()

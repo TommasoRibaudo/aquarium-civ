@@ -22,6 +22,30 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
+        public void TheShoreFamilysCampStandsByTheWater()
+        {
+            // #404: their spot is next to the pond, so its footprint always took a water cell and the camp was nudged inland for good:
+            // no boat could go out. While the pond has water it stands dry with the water within ShoreReach.
+            int seen = 0;
+            foreach (int seed in new[] { 7531, 7, 42 })
+            {
+                var sim = Grown(seed, 96);
+                var map = sim.Settlement.Map;
+                if (!Array.Exists(map.pond, p => p)) continue;
+                var home = sim.ApartSpotPreview(ApartKind.ShoreHut);
+                var spot = ApartLife.FreeSpot(map, home.x, home.z, out _, shore: true);
+                int c = SiteMap.CellAt(spot.x, spot.z);
+                Assert.IsTrue(ApartLife.CellFree(map, c), $"seed {seed}: on dry, clear ground");
+                var w = ApartLife.WaterWay(map, spot.x, spot.z, ApartLife.ShoreReach);
+                Assert.IsTrue(w.x != 0f || w.z != 0f, $"seed {seed}: the water within {ApartLife.ShoreReach} of ({spot.x:0.00}, {spot.z:0.00})");
+                var woods = ApartLife.FreeSpot(map, home.x, home.z, out _);
+                Assert.IsTrue(ApartLife.FootprintFree(map, woods.x, woods.z), "anyone else still keeps the whole footprint dry");
+                seen++;
+            }
+            Assert.Greater(seen, 0, "a box with a pond");
+        }
+
+        [Test]
         public void TheCampStaysOnItsSpotWhileItIsClearAndMovesOffALotThatCoversIt()
         {
             var sim = Grown(7531, 96);

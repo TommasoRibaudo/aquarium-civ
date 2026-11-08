@@ -614,6 +614,13 @@ namespace AquariumCiv.Life
                 t = end; block++;
             }
             float home = 19.3f + R(k, day, 2) * 0.3f - box.homeEarlyHours;
+            // #404: some evenings the kids dare each other at the lookout tower (one roll for all of them, so they go together)
+            if (TowerOpen && (DebugTowerEvenings || R(PlayBlockKey, day, 404) < TowerDareEvening) && R(k, day, 57) < 0.5f)
+            {
+                At(ActivityKind.Play, home, Place.Land(PlaceKind.Tower), Prop.None, default, TripType.HomeToGreen);
+                At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
+                return;
+            }
             if (R(k, day, 56) < 0.45f) { At(ActivityKind.Play, home, p.home, Prop.Ball, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197: some play at their own door
             At(ActivityKind.Play, 18.3f, gather, Prop.Ball, default, TripType.HomeToGreen);
             if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, Math.Min(home, 19.1f), gather, Prop.None, Ref(d.teller));
@@ -1077,7 +1084,17 @@ namespace AquariumCiv.Life
 
         /// <summary>Where a free adult spends the evening: the green and the fire (about four in ten), the tavern, a friend's door,
         /// or their own.</summary>
-        enum EveningStyle { Gather, Tavern, Visit, Home }
+        enum EveningStyle { Gather, Tavern, Visit, Home, Tower }
+
+        /// <summary>#404: the share of evenings (of those spent at home) someone walks out to the people apart's lookout tower once it stands.</summary>
+        public const float TowerEvening = 0.08f;
+        /// <summary>#404: the share of evenings the kids dare each other at the tower (about half of them go).</summary>
+        public const float TowerDareEvening = 0.2f;
+
+        bool TowerOpen => sim != null && sim.TowerStands;
+
+        /// <summary>Debug (the panel, the tester): half the free evenings go to the tower, and every evening is a dare evening.</summary>
+        public static bool DebugTowerEvenings;
 
         EveningStyle StyleOf(Person p, DayInfo d)
         {
@@ -1088,6 +1105,7 @@ namespace AquariumCiv.Life
             if (r < 0.42f + tav) return EveningStyle.Tavern;
             bool friendDoor = p.friend != null && p.friend.Grown && p.friend.home != p.home && !p.friend.home.IsNone;
             if (friendDoor && r < 0.42f + tav + 0.12f) return EveningStyle.Visit;
+            if (TowerOpen && r >= 1f - (DebugTowerEvenings ? 0.5f : TowerEvening)) return EveningStyle.Tower; // #404: a couple decides together (the pair's roll)
             return EveningStyle.Home;
         }
 
@@ -1099,6 +1117,12 @@ namespace AquariumCiv.Life
             if (style == EveningStyle.Tavern)
             {
                 At(ActivityKind.Drink, Math.Max(late, bt + 1f), PlaceOf(tavernB), Prop.Mug);
+            }
+            else if (style == EveningStyle.Tower)
+            {
+                // #404: out to the lookout tower at dusk: up on the platform or at its foot (the view decides), home to bed
+                At(chore, 17.9f, p.home, ChoreProp(chore));
+                At(ActivityKind.SitOut, Math.Max(Math.Min(home, 19.6f), bt + 1.1f), Place.Land(PlaceKind.Tower), Prop.None, p.partner != null ? Ref(p.partner) : default);
             }
             else if (style == EveningStyle.Visit)
             {

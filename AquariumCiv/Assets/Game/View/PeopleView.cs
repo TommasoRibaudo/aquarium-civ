@@ -92,6 +92,11 @@ namespace AquariumCiv.View
             public float mateTime = -999f;
             /// <summary>#361: when the tip at the stash began (the first frame the doll stood still at the pile): the beat runs from there.</summary>
             public float tipStart;
+            /// <summary>#404: at the lookout tower: since when (the first frame they stood still there), and where, how high, facing what, how (ApartGroupsView.TowerUse).</summary>
+            public float towerSince = -1f, towerLift;
+            public bool atTower;
+            public Vector2 towerAt, towerFace;
+            public DollStyle towerStyle;
         }
 
         BoxView box;
@@ -414,6 +419,13 @@ namespace AquariumCiv.View
             Doll carerDoll = null;
             bool toddling = stage == LifeStage.Baby && a.carryOnFoot && !a.carriedBy.IsNone && dolls.TryGetValue(a.carriedBy.Key, out carerDoll) && carerDoll.placed && !carerDoll.pose.hidden;
             bool hidden = (stage == LifeStage.Baby && !toddling) || a.kind == ActivityKind.None;
+            // #404: at the lookout tower: up the ladder, on the platform, at its foot, or the kids' dare
+            bool towerNow = a.place.kind == PlaceKind.Tower && !a.moving && !a.enRoute && !hidden;
+            if (!towerNow) d.towerSince = -1f;
+            else if (d.towerSince < 0f) d.towerSince = time;
+            d.atTower = towerNow && ApartGroupsView.TowerUse(a.slot, stage == LifeStage.Kid, time - d.towerSince,
+                a.end > a.start ? LifeClock.RealSecondsBetween(Mathf.Clamp(now.hour, a.start, a.end), a.end) : 99f, time,
+                out d.towerAt, out d.towerLift, out d.towerFace, out d.towerStyle);
             float x = 0f, z = 0f;
             Vector2? huntFace = null;
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
@@ -435,7 +447,7 @@ namespace AquariumCiv.View
             {
                 target = SlotSpot(d, a, spot, out face);
                 bool yard = a.place.kind == PlaceKind.Home && (target - spot).sqrMagnitude > SlotSpots.AtDoorReach * SlotSpots.AtDoorReach;
-                target = Standable(target, spot, !InField(a.place), yard);
+                if (!d.atTower) target = Standable(target, spot, !InField(a.place), yard); // #404: a spot on the ladder or the platform is the tower's own
                 claimed.Add(target);
                 if (yard && lotOfBuilding.TryGetValue(a.place.buildingId, out var yardLot))
                 {
@@ -524,6 +536,7 @@ namespace AquariumCiv.View
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
             if (playing) style = playCue.style; // #358
+            if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
             if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = pairEv.takerSeated && pairCue.index == 1 ? DollStyle.Sit : DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over); #365: a bowl is handed to someone who stays seated
             else if (style == DollStyle.EatMeal && !walking && meals.Waiting(a.who.Key, time)) style = DollStyle.Sit; // #365 B9.b: sitting, hands in the lap, until the bowl comes round
@@ -648,7 +661,7 @@ namespace AquariumCiv.View
             v.SetBaby(!a.carrying.IsNone && !a.carryOnFoot, a.carryOnBack);
             float s = v.scale;
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
-            var ground = new Vector3(d.drawn.x, Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y), d.drawn.y);
+            var ground = new Vector3(d.drawn.x, (Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y)) + (d.atTower ? d.towerLift : 0f), d.drawn.y); // #404: up the tower
             if (playing && playCue.sink > 0f && KidPlay.PondLevel(out float pondY)) ground.y = pondY - playCue.sink; // #359: wading, jumped in
             d.grassHide = Mathf.MoveTowards(d.grassHide, hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack ? 1f : 0f, dt / 0.35f);
             // t3-hunt: the catch's phases (walk to it, lift, hold up, carry home) flatten a wider patch than the stalk does
@@ -862,6 +875,9 @@ namespace AquariumCiv.View
             float h = Hash01(a.place.GetHashCode(), 11) * Mathf.PI * 2f;
             switch (a.place.kind)
             {
+                case PlaceKind.Tower when d.atTower: // #404
+                    face = d.towerFace;
+                    return d.towerAt;
                 case PlaceKind.Glass:
                 {
                     // #190: a loose group, some closer, some behind, a few turned to each other; the wary (stage 1) keep a step
@@ -1483,6 +1499,14 @@ namespace AquariumCiv.View
         // ---- end #365 ----
 
         /// <summary>Debug: the view clock's speed (1 = normal, 10 = a day in 30 s).</summary>
+        /// <summary>#404: the townsfolk up the lookout tower now (on the ladder or the platform).</summary>
+        public void TowerClimbers(List<PersonRef> into)
+        {
+            into.Clear();
+            foreach (var a in acts)
+                if (dolls.TryGetValue(a.who.Key, out var d) && d.atTower && d.towerLift > 0.1f) into.Add(a.who);
+        }
+
         public static string DebugSpeed(float scale) { var p = Find(); if (p == null) return "no PeopleView"; p.timeScale = scale; return $"view clock ×{scale}"; }
 
         /// <summary>Debug / tester: what <paramref name="count"/> people are doing now (notables first, then a spread of
