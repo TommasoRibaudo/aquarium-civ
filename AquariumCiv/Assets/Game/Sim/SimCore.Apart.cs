@@ -107,7 +107,7 @@ namespace AquariumCiv.Sim
                 {
                     int i = SiteMap.I(c), j = SiteMap.J(c);
                     if (i < 3 || j < 3 || i >= SiteMap.NX - 3 || j >= SiteMap.NZ - 3) continue;
-                    if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0) continue;
+                    if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Reserved(c)) continue;
                     float dx = SiteMap.CXc(c) - map.greenX, dz = SiteMap.CZc(c) - map.greenZ;
                     float score = (float)Math.Sqrt(dx * dx + dz * dz);
                     if (pass == 0)

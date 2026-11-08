@@ -476,11 +476,7 @@ namespace AquariumCiv.Sim.Eco
                     case EcoCover.Grass:
                         if (land.yard[c]) break; // the camp keeps its yard short
                         if (m >= t.tallAt && soil[c] >= t.tallSoil && Chance(12, c) < t.tallRate * Terrain.Smooth(t.tallAt, 0.7f, m) * (1f - t.grazeTall * graze) * g) next[c] = (byte)EcoCover.Tall;
-                        else if (TryBush(c, m, bushes, graze, g, 1f)) next[c] = (byte)EcoCover.Bush;
-                        break;
-                    case EcoCover.Tall:
-                        if (TryBush(c, m, bushes, graze, g, 1.5f)) next[c] = (byte)EcoCover.Bush;
-                        break;
+                        break; // #418: no bush comes up by itself; the placed thicket fills (Thickets)
                     case EcoCover.Bush:
                         if (ThinBush(c)) next[c] = (byte)(m >= t.tallAt && !land.yard[c] ? EcoCover.Tall : EcoCover.Grass); // #385
                         break;
@@ -494,14 +490,6 @@ namespace AquariumCiv.Sim.Eco
             }
             Array.Copy(scratch, soil, EcoLand.N);
             Array.Copy(next, st.cover, EcoLand.N);
-        }
-
-        bool TryBush(int c, float m, int bushes, float graze, float g, float mult)
-        {
-            if (land.InBasin(c) || m < t.bushAt || st.soil[c] < t.bushSoil || NearFire(c)) return false;
-            float p = t.bushRate * mult * (1f + t.bushNeighbour * bushes / 8f) * (1f - t.grazeBush * graze) * g;
-            p *= (st.thicketA < 0 ? 1f : t.bushStray + t.thicketBoost * ThicketZone(c)) * BushRoom; // #385: in the thickets, and not past the cap
-            return Chance(13, c) < p;
         }
 
         // ---------------------------------------------------------------- the one tree
@@ -628,7 +616,7 @@ namespace AquariumCiv.Sim.Eco
             {
                 st.campGateMonth = (int)month; Reach(EcoMilestones.CampGate, month); newGates.Add("camp");
             }
-            if (st.campGateMonth >= 0 && BushFrac >= t.seedUnlockBush) Reach(EcoMilestones.SeedUnlocked, month);
+            if (st.campGateMonth >= 0 && IsPlaced(LifeSpecies.Thicket)) Reach(EcoMilestones.SeedUnlocked, month); // #418: after the thicket is placed (was: the first wild bushes)
             // #493: the milestone is the first WILD grown tree (the woodcutter's work); the Keeper's own tree never counts.
             bool keeperGrown = st.treeCell >= 0 && st.treeCell < EcoLand.N && Cv(st.treeCell) == EcoCover.Tree;
             if (st.cTrees - (keeperGrown ? 1 : 0) > 0) Reach(EcoMilestones.FirstWoodTree, month);

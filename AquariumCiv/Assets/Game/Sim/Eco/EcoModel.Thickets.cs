@@ -4,36 +4,78 @@ using AquariumCiv.Sim.Settle;
 namespace AquariumCiv.Sim.Eco
 {
     /// <summary>
-    /// #385 (playtest #341, the user 2026-11-07): the berry bushes grow in one or two thickets, not a carpet over the meadow.
-    /// The first thicket stands where the first bushes came up (pushed out from the camp so it never sits on the tents); a second
-    /// one takes hold where a stray bush comes up far from the first, once the first has filled in. Inside a thicket bushes spread
-    /// as they always did; outside, a stray now and then, which dies back. The count settles at a cap that scales with the meadow
-    /// (about 60 in a grown box); above it bushes thin, the ones outside the thickets first, so a carpeted old save thins over a few
-    /// years. Hash dice only, as the rest of the land.
+    /// #418 (placed-life spec §5.1; decisions 2026-11-07 "1 thicket ... it stays in that own area"): the berry thicket is placed by
+    /// the Keeper, once per box, and it is the only bush life in the box. No bush grows before it is placed, and none ever grows
+    /// outside its area: a disc round the placed spot (<see cref="EcoState.thicketRadius"/>, a ragged edge) that holds about
+    /// <see cref="EcoTuning.thicketBushes"/>. It starts with <see cref="EcoTuning.thicketFounders"/> bushes and fills a bush a
+    /// season, then stops. #385's rules stay: no bush in the ring round the fire, the thicket chokes tree seedlings, and the
+    /// settlement keeps off it (Settlement.SyncEco reserves the area). An old save's wild bushes outside the area stay but never
+    /// spread, and thin by #385's rule. Hash dice only, as the rest of the land.
     /// </summary>
     public sealed partial class EcoModel
     {
-        /// <summary>How many bushes the land holds now: a share of the meadow, at most <see cref="EcoTuning.bushCap"/>.</summary>
-        public int BushCap => Math.Max(1, Math.Min(t.bushCap, (int)MathF.Round(t.bushPerMeadow * (st.cGrass + st.cTall + st.cBush))));
+        /// <summary>How many bushes the thicket holds (the count settles here).</summary>
+        public int BushCap => Math.Max(1, t.thicketBushes);
 
-        /// <summary>Room for new bushes: 1 well under the cap, 0 at it.</summary>
-        float BushRoom { get { float f = st.cBush / (float)BushCap; return Terrain.Clamp01(1f - f * f); } }
+        /// <summary>The thicket is placed (its centre and radius are set).</summary>
+        public bool ThicketPlaced => st.thicketA >= 0 && st.thicketRadius > 0f;
 
-        /// <summary>Sets the thickets from the bushes that stand (once each). Runs before the season's succession.</summary>
+        /// <summary>The placed thicket fills: one bush a season next to a standing one, heart first, until it holds the cap.
+        /// Runs before the season's succession.</summary>
         void Thickets()
         {
-            if (st.cBush <= 0) return;
-            float cx = land.campX, cz = land.campZ;
-            if (st.thicketA < 0)
+            if (!ThicketPlaced || BushesInThicket() >= BushCap) return;
+            int best = -1; float bestScore = float.MinValue;
+            for (int c = 0; c < EcoLand.N; c++)
             {
-                int c = NearestBush(cx, cz, -1, 0f);
-                if (c >= 0) st.thicketA = PushedFromCamp(c);
+                float zone = ThicketZone(c);
+                if (zone <= 0f || !BushGround(c)) continue;
+                int n = EcoLand.Neighbours8(c, nb), bushes = 0;
+                for (int k = 0; k < n; k++) if (Cv(nb[k]) == EcoCover.Bush && ThicketZone(nb[k]) > 0f) bushes++;
+                if (bushes == 0) continue;
+                float score = zone + 0.35f * Chance(30, c);
+                if (score > bestScore) { bestScore = score; best = c; }
             }
-            else if (st.thicketB < 0 && st.cBush >= t.thicketBAfter)
+            if (best >= 0) st.cover[best] = (byte)EcoCover.Bush;
+        }
+
+        /// <summary>Bushes standing in the thicket's area now.</summary>
+        public int BushesInThicket()
+        {
+            int n = 0;
+            for (int c = 0; c < EcoLand.N; c++) if (Cv(c) == EcoCover.Bush && ThicketZone(c) > 0f) n++;
+            return n;
+        }
+
+        /// <summary>A bush may come up here: open ground (meadow or bare) off the hollow, the yard, the fire's ring and the Keeper's tree.</summary>
+        bool BushGround(int c)
+        {
+            var cv = Cv(c);
+            if (cv != EcoCover.Grass && cv != EcoCover.Tall && cv != EcoCover.Bare) return false;
+            return !land.InBasin(c) && !land.yard[c] && !NearFire(c) && c != st.treeCell;
+        }
+
+        /// <summary>#418: the Keeper placed the thicket at <paramref name="cell"/>: its area is set and the founders come up there
+        /// (the cell itself and the nearest open ground round it).</summary>
+        void FoundThicket(int cell, long month)
+        {
+            st.thicketA = cell; st.thicketB = -1; st.thicketRadius = t.thicketRadius;
+            float x = SiteMap.CXc(cell), z = SiteMap.CZc(cell);
+            int made = 0;
+            while (made < t.thicketFounders)
             {
-                int c = NearestBush(cx, cz, st.thicketA, t.thicketApart);
-                if (c >= 0) st.thicketB = PushedFromCamp(c);
+                int best = -1; float bd = float.MaxValue;
+                for (int c = 0; c < EcoLand.N; c++)
+                {
+                    if (ThicketZone(c) <= 0f || !BushGround(c)) continue;
+                    float d = Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z);
+                    if (d < bd) { bd = d; best = c; }
+                }
+                if (best < 0) break;
+                st.cover[best] = (byte)EcoCover.Bush; made++;
             }
+            if (Cv(cell) == EcoCover.Bush) st.firstBushCell = cell;
+            if (made > 0) Reach(EcoMilestones.FirstBush, month);
         }
 
         /// <summary>The bush nearest (x, z) at least <paramref name="apart"/> from <paramref name="away"/>'s centre, or -1. Ties by cell.</summary>
@@ -50,8 +92,8 @@ namespace AquariumCiv.Sim.Eco
             return best;
         }
 
-        /// <summary>The thicket's centre for a bush: the bush's own cell, or out along the line from the camp so the thicket's edge
-        /// stays off the green and the tents. Kept on the land (not in the glass's margin).</summary>
+        /// <summary>An old save's thicket centre for a bush (#385): the bush's own cell, or out along the line from the camp so the
+        /// thicket's edge stays off the green and the tents. Kept on the land (not in the glass's margin).</summary>
         int PushedFromCamp(int c)
         {
             float x = SiteMap.CXc(c), z = SiteMap.CZc(c), dx = x - land.campX, dz = z - land.campZ, d = MathF.Sqrt(dx * dx + dz * dz);
@@ -63,14 +105,11 @@ namespace AquariumCiv.Sim.Eco
             return p >= 0 ? p : c;
         }
 
-        /// <summary>How much a cell is in a thicket: 1 in the heart, falling to 0 at a ragged edge. Everywhere 1 before the first
-        /// thicket (so the first bushes come as they always did).</summary>
+        /// <summary>How much a cell is in the thicket: 1 in the heart, falling to 0 at a ragged edge; 0 everywhere before it is placed.</summary>
         public float ThicketZone(int c)
         {
-            if (st.thicketA < 0) return 1f;
-            float z = Zone(c, st.thicketA, t.thicketR1, 1);
-            if (st.thicketB >= 0) z = MathF.Max(z, Zone(c, st.thicketB, t.thicketR2, 2));
-            return z;
+            if (st.thicketA < 0) return 0f;
+            return Zone(c, st.thicketA, st.thicketRadius > 0f ? st.thicketRadius : t.thicketR1, 1);
         }
 
         float Zone(int c, int centre, float r, int salt)
@@ -87,12 +126,11 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>The ring round the camp's fire where no bush grows (the user 2026-11-07: thickets a little away from the centre).</summary>
         public bool NearFire(int c) => Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), land.campX, land.campZ) < t.bushCampMargin;
 
-        /// <summary>A bush goes back to meadow this season: strays outside a thicket die back now and then, and above the cap
-        /// the bushes thin, outside the thickets and at their edges first.</summary>
+        /// <summary>A bush goes back to meadow this season: in the ring round the fire; outside the thicket (an old save's wild bushes)
+        /// now and then; and above the cap the bushes thin, outside the thicket and at its edges first.</summary>
         bool ThinBush(int c)
         {
             if (NearFire(c)) return Chance(16, c) < t.bushMarginDie; // the people keep the ground round the fire clear
-            if (st.thicketA < 0) return false;
             float zone = ThicketZone(c), die = zone <= 0f ? t.bushStrayDie : 0f;
             int cap = BushCap;
             if (st.cBush > cap) die += t.bushThin * MathF.Min(1f, (st.cBush - cap) / (float)cap) * (1f - 0.85f * zone);

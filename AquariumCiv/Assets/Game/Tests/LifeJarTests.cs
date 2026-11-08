@@ -396,6 +396,8 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(loaded.LifeArrivalPending(LifeSpecies.Rabbits), "no arrival replays for an old herd");
             Assert.AreEqual(JarState.Placed, loaded.JarStateOf(LifeSpecies.Thicket));
             Assert.GreaterOrEqual(loaded.LifePlacedCell(LifeSpecies.Thicket), 0);
+            Assert.AreEqual(loaded.LifePlacedCell(LifeSpecies.Thicket), loaded.State.eco.thicketA, "#418: the one thicket stands there");
+            Assert.Greater(loaded.BushThicketZone(loaded.State.eco.thicketA), 0f);
             Assert.AreEqual(JarState.Locked, loaded.JarStateOf(LifeSpecies.Deer), "jars open for the rest");
             Assert.IsTrue(loaded.State.eco.jarOn);
             // a box with nothing in it migrates to every jar shut
@@ -403,6 +405,45 @@ namespace AquariumCiv.Tests
             bare.State.eco.jarOn = false; bare.State.eco.jars = null;
             var b2 = new SimCore(bare.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(bare.State)));
             foreach (var s in LifeJar.All) Assert.AreEqual(JarState.Locked, b2.JarStateOf(s));
+        }
+
+        // ---------------------------------------------------------------- #418 the thicket (spec §5.1)
+        [Test]
+        public void PlacingTheThicket_ThreeFounders_TheAreaReservedAtOnce_TheSeedAfter()
+        {
+            var sim = World(); Meadow(sim, 0.3f);
+            var e = sim.State.eco; var map = sim.Settlement.Map;
+            Assert.AreEqual(0, e.cover.Count(v => v == (byte)EcoCover.Bush), "no bush before the thicket");
+            Assert.IsNull(map.reserved, "nothing reserved yet");
+            int c = sim.LifePlaceCellNearCamp(LifeSpecies.Thicket);
+            Assert.IsTrue(sim.PlaceLife(LifeSpecies.Thicket, c));
+            Assert.AreEqual(c, e.thicketA); Assert.AreEqual(sim.Config.eco.thicketRadius, e.thicketRadius); Assert.AreEqual(-1, e.thicketB);
+            var bushes = Enumerable.Range(0, EcoLand.N).Where(x => e.cover[x] == (byte)EcoCover.Bush).ToList();
+            Assert.AreEqual(sim.Config.eco.thicketFounders, bushes.Count, "the founding group: 3 bushes");
+            Assert.Contains(c, bushes, "one on the placed spot");
+            foreach (int b in bushes) Assert.Greater(sim.BushThicketZone(b), 0f);
+            Assert.IsTrue(e.Reached(EcoMilestones.FirstBush));
+            Assert.AreEqual(c, sim.FirstBushCell);
+            Assert.IsTrue(sim.BerriesGrow, "the gatherers' berry job can start");
+            int area = 0;
+            for (int x = 0; x < EcoLand.N; x++)
+            {
+                if (sim.BushThicketZone(x) <= 0f) continue;
+                area++;
+                Assert.IsTrue(map.Reserved(x) && map.NoBuild(x), "reserved like water, at once");
+            }
+            Assert.Greater(area, 30);
+            // the seed waits on the camp as before, and now on the thicket (not on wild bushes)
+            Assert.IsFalse(e.Reached(EcoMilestones.SeedUnlocked));
+            var noThicket = World(); Meadow(noThicket, 0.3f);
+            noThicket.DebugOpenCampGate(); noThicket.DebugSkipSeasons(1);
+            Assert.IsFalse(noThicket.State.eco.Reached(EcoMilestones.SeedUnlocked), "camp but no thicket: no seed");
+            sim.DebugOpenCampGate(); sim.DebugSkipSeasons(1);
+            Assert.IsTrue(e.Reached(EcoMilestones.SeedUnlocked), "camp and thicket: the seed");
+            Assert.IsTrue(sim.CanPlantTree);
+            // the area keeps its reservation across a save
+            var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
+            Assert.IsTrue(loaded.Settlement.Map.Reserved(c));
         }
 
         // ---------------------------------------------------------------- debug (spec §10)

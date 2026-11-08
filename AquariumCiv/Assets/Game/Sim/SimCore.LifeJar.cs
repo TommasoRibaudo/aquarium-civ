@@ -149,15 +149,22 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>Debug ("place X here"): opens the species' jar if it is shut and places its group at the valid cell nearest the
-        /// camp's fire, through the same path as the Keeper's tap. The cell, or -1 (no valid ground).</summary>
+        /// camp's fire, through the same path as the Keeper's tap. On a box with no meadow yet, the thicket and the rabbits take bare
+        /// ground (so the bush and rabbit cheats work on a barren box). The cell, or -1 (no valid ground).</summary>
         public int DebugPlaceNearCamp(LifeSpecies s)
         {
             if (!EcologyOn) return -1;
-            int c = LifePlaceCellNearCamp(s);
-            if (c < 0) return -1;
-            var j = EcoM.Jar(s);
-            if (j.State != JarState.Ready) { j.state = (int)JarState.Ready; j.readyMonth = State.month; j.readySeen = true; }
-            return PlaceLife(s, c) ? c : -1;
+            var m = EcoM;
+            try
+            {
+                int c = LifePlaceCellNearCamp(s);
+                if (c < 0) { m.cheatBareGround = true; c = LifePlaceCellNearCamp(s); }
+                if (c < 0) return -1;
+                var j = m.Jar(s);
+                if (j.State != JarState.Ready) { j.state = (int)JarState.Ready; j.readyMonth = State.month; j.readySeen = true; }
+                return PlaceLife(s, c) ? c : -1;
+            }
+            finally { m.cheatBareGround = false; }
         }
 
         /// <summary>Debug ("jar again"): a placed species' jar opens again now, as a restock does. False for the thicket and the

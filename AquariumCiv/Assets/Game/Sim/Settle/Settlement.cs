@@ -152,6 +152,13 @@ namespace AquariumCiv.Sim.Settle
             Map.thicket ??= new float[SiteMap.N];
             bool anyThicket = eco.thicketA >= 0;
             for (int c = 0; c < SiteMap.N; c++) Map.thicket[c] = anyThicket ? core.BushThicketZone(c) : 0f; // #385: build round the thickets
+            // #418: the placed thicket's whole area is reserved, like water: nothing is ever planned on it
+            if (anyThicket && eco.thicketRadius > 0f)
+            {
+                Map.reserved ??= new bool[SiteMap.N];
+                for (int c = 0; c < SiteMap.N; c++) Map.reserved[c] = Map.thicket[c] > 0f;
+            }
+            else Map.reserved = null;
             bool wet = false;
             for (int c = 0; c < SiteMap.N; c++)
             {

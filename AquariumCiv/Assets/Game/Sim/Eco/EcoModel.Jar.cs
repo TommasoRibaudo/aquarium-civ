@@ -58,6 +58,7 @@ namespace AquariumCiv.Sim.Eco
                 int centre = BiggestOldThicket();
                 if (centre >= 0)
                 {
+                    st.thicketA = centre; st.thicketB = -1; st.thicketRadius = t.thicketRadius; // #418: one thicket; the bushes outside it never spread
                     long m = st.MonthOf(EcoMilestones.FirstBush);
                     MarkPlaced(Jar(LifeSpecies.Thicket), centre, m < 0 ? 0 : m);
                 }
@@ -169,6 +170,10 @@ namespace AquariumCiv.Sim.Eco
 
         static bool IsMeadow(EcoCover c) => c == EcoCover.Grass || c == EcoCover.Tall;
 
+        /// <summary>Debug only (SimCore.DebugPlaceNearCamp on a barren box): bare ground counts as meadow for the thicket and the rabbits.</summary>
+        public bool cheatBareGround;
+        bool MeadowOk(EcoCover c) => IsMeadow(c) || (cheatBareGround && c == EcoCover.Bare);
+
         /// <summary>The species can be placed on this cell now: its jar is Ready and the ground is valid.</summary>
         public bool CanPlace(LifeSpecies s, int cell, Func<int, bool> settled = null)
             => JarStateOf(s) == JarState.Ready && GroundOk(s, cell, settled);
@@ -182,9 +187,9 @@ namespace AquariumCiv.Sim.Eco
             switch (s)
             {
                 case LifeSpecies.Thicket:
-                    return IsMeadow(cv) && FromFire(cell) >= t.bushCampMargin && ThicketDiscClear(cell, settled);
+                    return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && ThicketDiscClear(cell, settled);
                 case LifeSpecies.Rabbits:
-                    return IsMeadow(cv) && FromFire(cell) >= t.bushCampMargin && !land.yard[cell] && !(settled?.Invoke(cell) ?? false);
+                    return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && !land.yard[cell] && !(settled?.Invoke(cell) ?? false);
                 case LifeSpecies.Deer:
                     return cv != EcoCover.Water && !land.InBasin(cell) && FromFire(cell) >= t.bushCampMargin && NearGrownTree(cell, t.deerNearTree)
                         && !(settled?.Invoke(cell) ?? false);
@@ -274,6 +279,10 @@ namespace AquariumCiv.Sim.Eco
         /// record their placing until their populations come (#420, #421).</summary>
         void Found(LifeSpecies s, int cell, long month, bool restock)
         {
+            switch (s)
+            {
+                case LifeSpecies.Thicket: FoundThicket(cell, month); break; // #418
+            }
         }
 
         // ---------------------------------------------------------------- debug
