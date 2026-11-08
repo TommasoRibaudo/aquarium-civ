@@ -97,6 +97,29 @@ namespace AquariumCiv.Sim
             g.towerZ = SiteMap.CZc(best);
         }
 
+        /// <summary>The card id the view opens for the tower (not a sim building's: those count up from 1).</summary>
+        public const int TowerCardId = 404_000_000;
+
+        /// <summary>#404: the tower's card: what it is, who gave it, when it was built (or that it's still going up). Null without a tower.</summary>
+        public BuildingCardInfo TowerCard()
+        {
+            var g = TowerGroup;
+            if (g == null) return null;
+            int stage = TowerStage(g);
+            string from = g.kind == ApartKind.ShoreHut ? "who live across the pond" : "who live in the far woods";
+            int year = (int)((g.towerFrom + (long)TowerStageMonths * (TowerDone - 1)) / SimConfig.MonthsPerYear);
+            return new BuildingCardInfo
+            {
+                buildingId = TowerCardId, type = "tower", title = "Lookout tower",
+                whatItIs = stage >= TowerDone
+                    ? $"A gift for the Keeper from the {g.family} family, {from}. Its lamp is lit at dusk."
+                    : $"The {g.family} family, {from}, are building it. It will be a gift for the Keeper.",
+                year = year,
+                yearLine = stage >= TowerDone ? $"Built in year {year}." : "Still going up.",
+                builderLine = $"Built by the {g.family} family.",
+            };
+        }
+
         // ---------------------------------------------------------------- debug (the debug panel)
 
         /// <summary>Debug: begin the tower now (the first group with someone alive), whatever the era.</summary>

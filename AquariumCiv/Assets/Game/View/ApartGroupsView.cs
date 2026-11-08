@@ -20,7 +20,7 @@ namespace AquariumCiv.View
     /// spot, it is drawn at the nearest free one. While a choice scene reacts for the same dilemma, its travellers stand for them.
     /// Everything hangs under the box and goes with it. Debug: <see cref="DebugStatus"/>.
     /// </summary>
-    public class ApartGroupsView : MonoBehaviour
+    public partial class ApartGroupsView : MonoBehaviour
     {
         public static bool AutoCreate = true;
         public static ApartGroupsView Instance { get; private set; }
@@ -38,6 +38,10 @@ namespace AquariumCiv.View
             public float yaw, stride, phase;
             public ApartDoing doing = (ApartDoing)(-1);
             public bool hidden;
+            // #404: a scripted moment (the boat, the lamp, the lookout, the build) has them: how high they stand, what they hold
+            public bool scripted;
+            public float lift;
+            public PropKind prop;
         }
 
         sealed class Camp
@@ -51,6 +55,15 @@ namespace AquariumCiv.View
             public float nextCheck;
             public readonly List<Object> meshes = new();
             public readonly Dictionary<int, Member> members = new();
+            // #404: the boat that goes out, and the lookout tower
+            public Transform boat;
+            public Vector2 boatOut;
+            public float boatHomeYaw;
+            public int towerStage = -1;
+            public Vector2 towerAt;
+            public float towerYaw;
+            public bool lampOn;
+            public readonly List<Object> towerMeshes = new();
         }
 
         BoxView box;
@@ -101,6 +114,8 @@ namespace AquariumCiv.View
             c.members.Clear();
             foreach (var o in c.meshes) Kill(o);
             c.meshes.Clear();
+            foreach (var o in c.towerMeshes) Kill(o);
+            c.towerMeshes.Clear();
             if (c.root != null) Kill(c.root.gameObject);
             c.root = null;
         }
@@ -144,6 +159,8 @@ namespace AquariumCiv.View
                 if (c.root == null || clock >= c.nextCheck) Place(sim, c);
                 bool alive = g.AnyAlive;
                 if (c.root == null || alive != c.lit) Build(sim, c, alive);
+                UpdateTower(sim, c, g, hour); // #404
+                UpdateBoat(sim, c, hour);
                 Drive(sim, c, g, hour, k, dt, staged == g.dilemmaId);
             }
             if (camps.Count > sim.ApartGroups.Count)
@@ -157,7 +174,7 @@ namespace AquariumCiv.View
         {
             c.nextCheck = clock + SpotCheckSeconds;
             var map = sim.Settlement?.Map;
-            var (x, z) = ApartLife.FreeSpot(map, c.home.x, c.home.y, out bool moved);
+            var (x, z) = ApartLife.FreeSpot(map, c.home.x, c.home.y, out bool moved, shore: c.kind == ApartKind.ShoreHut);
             var spot = new Vector2(x, z);
             var land = box.land;
             // never in the water, also without a map
@@ -185,6 +202,7 @@ namespace AquariumCiv.View
                     c.boatAt = p + c.water * 0.02f - c.side * 0.16f;
                 }
                 else { c.fishAt = spot + c.side * 0.3f; c.boatAt = c.fishAt; }
+                c.boatOut = BoatOutFrom(c);
             }
             else
             {
@@ -203,6 +221,9 @@ namespace AquariumCiv.View
             c.meshes.Clear();
             if (c.root != null) Kill(c.root.gameObject); // the dolls are kept: they hang under the box's root, not the camp's
             c.lit = lit;
+            c.boat = null;
+            c.towerStage = -1; // #404: the tower and its lamp are rebuilt under the new root
+            c.lampOn = false;
             c.root = new GameObject("ApartCamp" + c.groupId) { hideFlags = HideFlags.DontSave }.transform;
             c.root.SetParent(root, false);
             float yawBack = Mathf.Atan2(c.back.x, c.back.y) * Mathf.Rad2Deg;
@@ -211,7 +232,8 @@ namespace AquariumCiv.View
             {
                 Part(c, "Hut", ApartProps.Hut(lit, c.groupId), c.shelter, yawBack);
                 Part(c, "FishRack", ApartProps.FishRack(lit), c.work, yawBack + 90f);
-                if (c.hasWater) Part(c, "Boat", ApartProps.Boat(), c.boatAt, Mathf.Atan2(c.side.x, c.side.y) * Mathf.Rad2Deg - 90f + 12f);
+                c.boatHomeYaw = Mathf.Atan2(c.side.x, c.side.y) * Mathf.Rad2Deg - 90f + 12f;
+                if (c.hasWater) c.boat = Part(c, "Boat", ApartProps.Boat(), c.boatAt, c.boatHomeYaw).transform;
             }
             else
             {
@@ -221,7 +243,7 @@ namespace AquariumCiv.View
             if (lit) Glow(c);
         }
 
-        void Part(Camp c, string name, Mesh mesh, Vector2 at, float yaw)
+        GameObject Part(Camp c, string name, Mesh mesh, Vector2 at, float yaw)
         {
             c.meshes.Add(mesh);
             var go = new GameObject(name) { hideFlags = HideFlags.DontSave };
@@ -231,6 +253,7 @@ namespace AquariumCiv.View
             mr.sharedMaterial = box.SolidMaterial;
             mr.shadowCastingMode = ShadowCastingMode.On;
             go.transform.SetLocalPositionAndRotation(box.land.OnGround(at), Quaternion.Euler(0f, yaw, 0f));
+            return go;
         }
 
         /// <summary>The fire's glow, as the settlement's (BoxView.Glows): a halo behind the flame and a warm pool on the ground, both
@@ -272,6 +295,8 @@ namespace AquariumCiv.View
         void Drive(SimCore sim, Camp c, ApartGroup g, float hour, float k, float dt, bool sceneHasThem)
         {
             int n = g.members.Count;
+            int alive = 0, rank = 0;
+            foreach (var x in g.members) if (x.alive) alive++;
             for (int i = 0; i < n; i++)
             {
                 var person = g.members[i];
@@ -282,7 +307,13 @@ namespace AquariumCiv.View
                     continue;
                 }
                 if (m == null) c.members[person.id] = m = MakeMember(sim, c, g, person, i);
-                Step(c, m, n, hour, k, dt, sceneHasThem);
+                if (!sceneHasThem && Scripted(sim, c, rank, alive, hour, out var script)) StepScripted(c, m, script, k, dt); // #404
+                else
+                {
+                    if (m.scripted) { m.scripted = false; m.lift = 0f; m.doing = (ApartDoing)(-1); } // back to their day: its prop again
+                    Step(c, m, n, hour, k, dt, sceneHasThem);
+                }
+                rank++;
             }
         }
 
@@ -406,7 +437,7 @@ namespace AquariumCiv.View
             camps.TryGetValue(groupId, out var c) ? c.members.Values.Where(m => m.view != null).Select(m => m.view).ToList() : new List<PegDollView>();
 
         /// <summary>How many meshes the camps own now (the sanity check's count).</summary>
-        public int MeshCount => camps.Values.Sum(c => c.meshes.Count + c.members.Count * 2);
+        public int MeshCount => camps.Values.Sum(c => c.meshes.Count + c.towerMeshes.Count + c.members.Count * 2);
 
         public static string DebugStatus()
         {
@@ -416,9 +447,10 @@ namespace AquariumCiv.View
             var sb = new StringBuilder();
             var ci = CultureInfo.InvariantCulture;
             foreach (var c in v.camps.Values)
-                sb.AppendFormat(ci, "apart {0} {1} at ({2:0.00},{3:0.00}){4} · fire {5} · {6} drawn: {7}\n", c.groupId, c.kind, c.fire.x, c.fire.y,
+                sb.AppendFormat(ci, "apart {0} {1} at ({2:0.00},{3:0.00}){4}{8} · fire {5} · {6} drawn: {7}\n", c.groupId, c.kind, c.fire.x, c.fire.y,
                     c.nudged ? " (nudged)" : "", c.lit ? "lit" : "cold", c.members.Count,
-                    string.Join(", ", c.members.Values.Select(m => $"{m.doing}{(m.hidden ? " (in)" : "")}")));
+                    string.Join(", ", c.members.Values.Select(m => $"{(m.scripted ? "scripted" : m.doing.ToString())}{(m.hidden ? " (in)" : "")}{(m.lift > 0.01f ? $" (up {m.lift:0.00})" : "")}")),
+                    (c.hasWater ? " · by water" : " · no water") + (c.boat != null ? " · boat" : "") + (c.towerStage > 0 ? $" · tower {c.towerStage}{(c.lampOn ? " lit" : "")}" : ""));
             return sb.ToString().TrimEnd('\n');
         }
 

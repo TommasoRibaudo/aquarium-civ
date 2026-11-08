@@ -65,7 +65,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(lit, when + ": their fire burns");
             if (!nudged) Assert.Less((fire - new Vector2(g.x, g.z)).magnitude, 0.05f, when + ": at the group's home spot");
             else Debug.Log($"[Apart] {when}: nudged {(fire - new Vector2(g.x, g.z)).magnitude:0.00} from the home spot");
-            Assert.IsTrue(ApartLife.FootprintFree(Sim.Settlement.Map, fire.x, fire.y), when + ": clear of lots, paths and water");
+            var map = Sim.Settlement.Map;
+            if (g.kind == ApartKind.ShoreHut) // #404: a shore camp's water side is its own; it stands dry, its footprint clear but for the water
+                Assert.IsTrue(ApartLife.CellFree(map, AquariumCiv.Sim.Settle.SiteMap.CellAt(fire.x, fire.y)) && ApartLife.FootprintFree(map, fire.x, fire.y, ApartLife.Footprint, true), when + ": dry, and clear of lots and paths");
+            else Assert.IsTrue(ApartLife.FootprintFree(map, fire.x, fire.y), when + ": clear of lots, paths and water");
             var drawn = View.DrawnMembers(g.id);
             int alive = g.members.Count(n => n.alive);
             Assert.AreEqual(alive, drawn.Count, when + ": a doll for every living member");

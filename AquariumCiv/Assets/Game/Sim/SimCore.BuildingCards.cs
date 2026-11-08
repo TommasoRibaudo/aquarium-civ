@@ -39,6 +39,7 @@ namespace AquariumCiv.Sim
         /// <summary>The card for a building, or null if it isn't there. Builders of old saves (id 0) read as "together".</summary>
         public BuildingCardInfo BuildingCardOf(int buildingId)
         {
+            if (buildingId == TowerCardId) return TowerCard(); // #404
             var b = State.buildings.FirstOrDefault(x => x.id == buildingId);
             if (b == null) return null;
             var c = new BuildingCardInfo

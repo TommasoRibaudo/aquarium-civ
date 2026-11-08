@@ -304,6 +304,28 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Fire next callback")) last = FireCallback();
             if (GUILayout.Button("Report")) last = Report();
             GUILayout.EndHorizontal();
+            // #404: the people apart's boat and lookout tower
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Tower: begin")) last = Sim?.DebugTowerBegin() ?? "no sim";
+            if (GUILayout.Button("Tower: next stage")) last = Sim?.DebugTowerNextStage() ?? "no sim";
+            if (GUILayout.Button(ApartGroupsView.DebugBoatEveryDay ? "Boat: every day" : "Boat: 2 days in 3")) { ApartGroupsView.DebugBoatEveryDay = !ApartGroupsView.DebugBoatEveryDay; last = "boat every day: " + ApartGroupsView.DebugBoatEveryDay; }
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Apart: fly to camp")) last = ApartGroupsView.DebugFly();
+            if (GUILayout.Button("8:20 boat")) last = PeopleView.DebugSetHour(8.2f);
+            if (GUILayout.Button("10:00 lookout")) last = PeopleView.DebugSetHour(10f);
+            if (GUILayout.Button("18:15 lamp")) last = PeopleView.DebugSetHour(18.15f);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(AquariumCiv.Life.LifePlanner.DebugTowerEvenings ? "Tower evenings: many" : "Tower evenings: few"))
+            {
+                AquariumCiv.Life.LifePlanner.DebugTowerEvenings = !AquariumCiv.Life.LifePlanner.DebugTowerEvenings;
+                PeopleView.Find()?.Planner?.Invalidate();
+                last = "tower evenings many: " + AquariumCiv.Life.LifePlanner.DebugTowerEvenings;
+            }
+            if (GUILayout.Button("Tower: fly")) last = ApartGroupsView.DebugFlyTower();
+            if (GUILayout.Button("Tower: card")) last = PersonCardView.Instance != null && PersonCardView.Instance.OpenBuilding(SimCore.TowerCardId) ? "tower card" : "no tower";
+            GUILayout.EndHorizontal();
             GUILayout.Label(List());
             return last;
         }
