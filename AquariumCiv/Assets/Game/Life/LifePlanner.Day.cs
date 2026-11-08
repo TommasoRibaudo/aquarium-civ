@@ -715,7 +715,7 @@ namespace AquariumCiv.Life
             else
             {
                 // Dawn: water from the well or the stream, a chore at the door, then off to work.
-                if (R(k, day, 2) < 0.3f || forcedWater.Contains(k)) // #360: the cheat sends some on top of the dice
+                if (!work.fetchFirst && (R(k, day, 2) < 0.3f || forcedWater.Contains(k))) // #360: the cheat sends some on top of the dice; #405: the cook draws on the way to work instead
                 {
                     var water = WaterPlace; // P8 (#267): the pond once it has water, else the wet low ground
                     // #152: empty on the way out and while they draw; full only once it's drawn.
@@ -748,15 +748,16 @@ namespace AquariumCiv.Life
                         choreUntil = choreStart + choreLen;
                     }
                     At(Chore(p, d, 3), choreUntil, p.home, ChoreProp(Chore(p, d, 3)));
-                    float walk = WalkHours(p.home, work.site);
+                    float walk = work.fetchFirst ? FetchFirstHours(p.home, work) : WalkHours(p.home, work.site);
                     // #208 phase B: in the Editor the lane still knotted (worst 8 -> 10 in the Village), as the short chore was
                     // followed by sitting out at the door until work. After the chore they go back in, and step out only just before leaving.
                     float leave = sh.start - walk;
                     if (leave - 0.12f > choreUntil + 0.05f) At(ActivityKind.Indoors, leave - 0.12f, p.home);
                     At(ActivityKind.SitOut, leave, p.home);
                 }
+                if (work.fetchFirst) FetchFirst(work); // #405: the well, then the stash by the fire, then the pot
                 // The walk to work takes as long as the route does: a late start (the water came first) arrives late.
-                Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);
+                if (bcur != work.site || !work.fetchFirst) Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);
 
                 if (p.mentor != null) CopyMaster(p, 7f, 9f); // a young apprentice still learns from the master first
                 WorkBlocks(p, d, work, sh.start, sh.lunch, 10, false);
@@ -867,6 +868,24 @@ namespace AquariumCiv.Life
             ActivityKind.ChopKindling => Prop.Axe,
             _ => Prop.None,
         };
+
+        /// <summary>#405: the view hours the trip to work takes with the fetch first: to the water, the dip, the carry to where
+        /// the load is set down, and the step on to the site.</summary>
+        float FetchFirstHours(Place from, Work w) =>
+            WalkHours(from, w.fetchFrom) + FetchDipHours + Math.Max(0.35f, WalkHours(w.fetchFrom, w.dest)) + (w.dest != w.site ? WalkHours(w.dest, w.site) : 0f);
+
+        /// <summary>#360: the dip at the water (3.5 s at dawn: kneel, dip, hold, lift).</summary>
+        const float FetchDipHours = 0.35f;
+
+        /// <summary>#405: on the way to work: out with the empty bucket, the dip, and the full buckets carried to <see cref="Work.dest"/>.</summary>
+        void FetchFirst(Work w)
+        {
+            var src = w.fetchFrom;
+            if (src.IsNone) return;
+            if (src != bcur) Move(ActivityKind.Walk, src, bt + WalkHours(bcur, src), w.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None, TripType.HomeToWork);
+            At(ActivityKind.FetchWater, bt + FetchDipHours, src, w.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None);
+            Move(w.load == Prop.Buckets ? ActivityKind.FetchWater : w.carryKind, w.dest, bt + Math.Max(0.35f, WalkHours(src, w.dest)), w.load, TripType.Carry); // the dawn run's walk back, full
+        }
 
         /// <summary>#361: how long the tip at the stash lasts (real seconds: the 1.4 s beat plus the moment the doll takes to stand still at the pile).</summary>
         public const float TipBlockSeconds = 1.8f;
