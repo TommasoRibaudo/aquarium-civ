@@ -441,6 +441,19 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(MomentKind.Ruling, m.kind);
             Assert.AreEqual(e.notableId, m.personA, "the notable who ruled");
             Assert.IsTrue(sim.MomentHidesCard(e), "seen in the box, not a card");
+            // what the view's own ruling beat needs (2026-11-08): who rules, the species, the line
+            Assert.IsTrue(sim.RulingOf(m, out var r));
+            Assert.AreEqual(LifeSpecies.Rabbits, r.species);
+            Assert.AreEqual(e.notableId, r.rulerId);
+            Assert.AreEqual(e.text, r.line);
+            Assert.AreEqual(e.id, r.entryId);
+            Assert.AreEqual(sim.LifeRuledMonth(LifeSpecies.Rabbits), r.month);
+            if (r.rulerId >= 0) StringAssert.Contains(r.rulerName, r.line);
+            Assert.IsTrue(sim.RulingOn(LifeSpecies.Rabbits, out var r2));
+            Assert.AreEqual(r.entryId, r2.entryId);
+            Assert.IsFalse(sim.RulingOn(LifeSpecies.Deer, out _), "no ruling on the deer yet");
+            Assert.IsFalse(sim.RulingOfEntry(sim.State.chronicle.First(x => x.kind != SimCore.RulingKind).id, out _), "not a ruling line");
+            Assert.AreEqual(1, sim.State.moments.Count(x => x.kind == MomentKind.Ruling), "one ruling moment");
             Assert.IsFalse(sim.DebugRestraintNow(LifeSpecies.Thicket), "the thicket is never taken from");
         }
 

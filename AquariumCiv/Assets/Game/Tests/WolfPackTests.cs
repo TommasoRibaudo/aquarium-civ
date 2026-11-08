@@ -276,6 +276,8 @@ namespace AquariumCiv.Tests
         public void Boldness_RisesWithScrapsAndLeftKills_FallsWithChasesTakenKillsAndDogs_StaysInItsBounds()
         {
             var up = Pack(7, Choices());
+            // no lost pup here (user 2026-11-08: it is raised as it happens, and the kill's debug raise would lapse it into a dog)
+            up.LifeChoiceCatalog = new[] { LifeChoices.ThiefDef, LifeChoices.KillDef, LifeChoices.PenDef };
             up.DebugMeatThiefNow();
             var d = up.DebugRaiseLifeChoice(LifeChoices.Thief);
             Assert.IsNotNull(d);
@@ -410,6 +412,64 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(3, d.visits);
             Assert.AreNotEqual(WolfWay.None, sim.WolfWayTaken, "the people's own pick");
             Assert.IsFalse(sim.LifeChoiceWaiting, "asked once");
+        }
+
+        /// <summary>User 2026-11-08: the seasonal life choices (the thief, the lost pup) are raised in the month they happen, inside the
+        /// small-choice gap and without waiting for the small slot; never two choices open at once (the second waits its turn); never
+        /// while away. The kill keeps the normal pacing.</summary>
+        [Test]
+        public void Choices_ThiefAndPup_RaisedAsTheyHappen_NoGap_NeverTwoAtOnce_TheKillKeepsThePacing()
+        {
+            var sim = Pack(7, Choices());
+            OnlyLifeChoices(sim);
+            void StepWatched() { OnlyLifeChoices(sim); sim.Step(); }
+            // a kill asked and answered now: the gap starts
+            Assert.IsNotNull(sim.DebugWolfKillNow());
+            var kill = sim.DebugRaiseLifeChoice(LifeChoices.Kill);
+            Assert.IsNotNull(kill);
+            Assert.IsTrue(sim.AnswerDilemma(kill.id, 1, DilemmaPath.Card));
+            // another kill keeps the normal pacing: it waits out the gap
+            WolfKill k2 = null;
+            for (int r = 0; r < 6 && k2 == null; r++) { StepWatched(); k2 = sim.DebugWolfKillNow(); }
+            Assert.IsNotNull(k2);
+            StepWatched();
+            Assert.IsNull(sim.OpenDilemma, "the kill waits for the gap");
+            Assert.IsTrue(sim.LifeChoiceWaiting);
+            Assert.Less(sim.HoursSinceDilemmaRaised, SimCore.DilemmaGapHours);
+            // the thief: raised in the month it happens, inside the gap, ahead of the waiting kill
+            Assert.IsTrue(sim.DebugMeatThiefNow());
+            StepWatched();
+            var thief = sim.OpenDilemma;
+            Assert.IsNotNull(thief, "raised as it happens");
+            Assert.AreEqual(LifeChoices.ThiefDef.id, thief.defId);
+            Assert.Less(thief.raisedHours - kill.raisedHours, SimCore.DilemmaGapHours, "no gap");
+            Assert.IsTrue(sim.ChoiceStageDue, "staged in the box");
+            // the pup found while the thief waits: it waits its turn (never two open)
+            sim.State.eco.pupFoundMonth = sim.State.month; sim.State.eco.pupFinder = -1;
+            Assert.IsTrue(sim.LostPupWaiting);
+            for (int m = 0; m < 3; m++)
+            {
+                StepWatched();
+                Assert.AreEqual(1, sim.State.dilemmas.Count(x => x.state == DilemmaState.Open), "never two at once");
+                Assert.AreSame(thief, sim.OpenDilemma);
+            }
+            Assert.IsTrue(sim.AnswerDilemma(thief.id, 1, DilemmaPath.Card));
+            StepWatched();
+            var pup = sim.OpenDilemma;
+            Assert.IsNotNull(pup, "the pup next, without the gap");
+            Assert.AreEqual(LifeChoices.PupDef.id, pup.defId);
+            Assert.Less(pup.raisedHours - thief.raisedHours, SimCore.DilemmaGapHours);
+            Assert.IsTrue(sim.AnswerDilemma(pup.id, 1, DilemmaPath.Card), "leave it with its mother");
+            // never while away: a pup found during an absence waits for the open, and is never decided unseen
+            sim.State.eco.pupNotBefore = 0;
+            sim.State.eco.pupFoundMonth = sim.State.month; sim.State.eco.pupFinder = -1;
+            OnlyLifeChoices(sim);
+            sim.CatchUp(2);
+            Assert.IsNull(sim.OpenDilemma, "never raised while away");
+            Assert.AreEqual(0, sim.DogCount, "never decided unseen");
+            Assert.IsTrue(sim.BeginVisit(), "raised on the open");
+            Assert.AreEqual(LifeChoices.PupDef.id, sim.OpenDilemma.defId);
+            Assert.Less(sim.OpenDilemma.raisedHours - pup.raisedHours, SimCore.DilemmaGapHours, "the gap didn't hold it");
         }
 
         [Test]

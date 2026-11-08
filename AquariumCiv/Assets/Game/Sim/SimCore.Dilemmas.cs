@@ -159,7 +159,7 @@ namespace AquariumCiv.Sim
         long DilemmaLastEnd => State.dilemmas.Count == 0 ? long.MinValue / 2 : State.dilemmas.Max(d => d.endMonth >= 0 ? d.endMonth : d.month);
 
         /// <summary>The next big choice is due from this clock hour (see <see cref="DilemmaScheduleFrom"/>); -1 = not scheduled.</summary>
-        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && (State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0 || SmallDue);
+        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && (State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0 || SmallDue || SeasonalLifeWaiting);
 
         /// <summary>#372: a small choice is next, its moment exists and the gap has passed: like a due big one it holds the slot (no new wish starts).
         /// t4-fixes: with no small kind eligible, the next eligible big fills the small slot (see <see cref="TryRaiseDilemma"/>).</summary>
@@ -227,6 +227,7 @@ namespace AquariumCiv.Sim
             if (s.dilemmaNextHours < 0) s.dilemmaNextHours = DilemmaScheduleFrom(s.clockHours, s.dilemmas.Count == 0);
             var size = NextDilemmaSize();
             if (CatchingUp) return false;
+            if (TryRaiseSeasonalLife()) return true; // user 2026-11-08: the thief and the pup don't wait for the gap
             if (HoursSinceDilemmaRaised + ClockEps < DilemmaGapNow) return false;
             // t4-fixes (tester run 3): the small slot is open but no small kind is there (no newborn, the everyday ones asked): the next
             // eligible big comes after the 3 h gap instead of waiting out its 6-10 h window, so a return still finds a choice.
@@ -246,6 +247,19 @@ namespace AquariumCiv.Sim
             if (pick == null) return false;
             var raised = RaiseDilemma(pick, a, b);
             choiceStageFor = raised.id; // t3-choice (tester run 2 D): a choice raised while the player watches is staged in the box too
+            return true;
+        }
+
+        /// <summary>User 2026-11-08: a seasonal life choice (the meat thief, the lost pup) is raised as soon as it happens, without the
+        /// small-choice gap, the next small slot or the wishes' gap; still never with another choice or a wish open (it waits its turn),
+        /// and only from <see cref="TryRaiseDilemma"/> (the Keeper watches, or an open). True if one was raised.</summary>
+        bool TryRaiseSeasonalLife()
+        {
+            if (!Config.smallChoices || OpenDilemma != null || OpenWish != null) return false;
+            var def = SeasonalLifeDef();
+            if (def == null) return false;
+            var raised = RaiseDilemma(def, -1, -1);
+            choiceStageFor = raised.id;
             return true;
         }
 

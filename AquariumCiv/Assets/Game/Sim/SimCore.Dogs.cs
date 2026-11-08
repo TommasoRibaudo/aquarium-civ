@@ -17,8 +17,8 @@ namespace AquariumCiv.Sim
     /// closed off); "leave it" asks again next spring. Brought home, the pup bonds to the child who found it (its keeper: both cards show
     /// it). At a year it is grown (a hide collar): it flushes rabbits for the hunters (<see cref="DogFlushBonus"/>), sometimes finds a
     /// missed deer (<see cref="DogFindsMiss"/>), and guards at night (the first bark: boldness down, and the meat thief stops for good).
-    /// Every 2-3 game years a grown dog has a litter (2-3 pups) while there is room under the cap of 3: one pup stays, the others leave
-    /// with a history line, so the dogs' ages stagger and the line goes on; each generation's look drifts toward "dog" (P0: +0.25 ear
+    /// Every 2-3 game years a grown dog has a litter (2-3 pups) while there is room under the cap of 3: one pup stays, the others go
+    /// back to the wild pack (a history line), so the dogs' ages stagger and the line goes on; each generation's look drifts toward "dog" (P0: +0.25 ear
     /// droop, coat patch and tail curl, -0.05 muzzle, +-0.1 by a hash). An old dog's
     /// muzzle greys, and one visit it is simply gone (only while the Keeper is away, never on screen), told like an old person's death.
     /// The book's "first dog": its name, its keeper's name, the month.
@@ -273,7 +273,8 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>A grown dog's litter (2-3 pups) while there is room under the cap: the youngest line's grown dog is the mother; one pup
-        /// stays (the next generation, bonded to a child without a dog, else the mother's keeper), the others leave with a history line.
+        /// stays (the next generation, bonded to a child without a dog, else the mother's keeper), the others trot off to the far wood and
+        /// the wild pack takes them in (<see cref="EcoModel.TakeInDogPups"/>), with a history line.
         /// The next litter in 2-3 game years. False when no grown dog or no room (it waits).</summary>
         bool Litter(long month, bool force)
         {
@@ -295,10 +296,11 @@ namespace AquariumCiv.Sim
             Chronicle("dog_litter", $"{mother.name} had {Words(n).ToLowerInvariant()} pups by the fire. The children argued over which one should stay.", 0.55f, mother.keeperId);
             if (extra > 0)
             {
-                bool apart = State.apartGroups != null && State.apartGroups.Count > 0;
-                Chronicle("dog_pups_apart", apart
-                    ? (extra == 1 ? "One of the pups was taken in by the people apart." : $"{Words(extra)} of the pups were taken in by the people apart.")
-                    : (extra == 1 ? "One of the pups went off with the children to the far side of the meadow, and a family there kept it." : $"{Words(extra)} of the pups went off with the children to the far side of the meadow, and families there kept them."), 0.4f);
+                // User 2026-11-08: the extra pups go back to the wild pack (within its cap; past it they leave the box as young wolves do)
+                EcoM.TakeInDogPups(extra, month);
+                Chronicle("dog_pups_wild", extra == 1
+                    ? "One of the pups trotted off toward the far wood, and the wolves took it in."
+                    : $"{Words(extra)} of the pups trotted off toward the far wood, and the wolves took them in.", 0.4f);
             }
             return true;
         }
