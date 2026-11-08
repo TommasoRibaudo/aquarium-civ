@@ -20,7 +20,7 @@ namespace AquariumCiv.Tests
     /// seed 7 on the first terrain, so the numbers can be set beside the lab's own (care: camp Y4.3, village Y25.3; no
     /// player: camp Y25.3).
     /// </summary>
-    public class EcoTests
+    public partial class EcoTests
     {
         // ---------------------------------------------------------------- helpers
         static SimCore EcoWorld(int seed = 7, SimConfig cfg = null)
@@ -137,7 +137,9 @@ namespace AquariumCiv.Tests
                     {
                         var a = (EcoCover)was[c]; var b = (EcoCover)now[c];
                         if (a == EcoCover.Water && b != EcoCover.Water) r.pondShrank = true;
-                        else if (b != EcoCover.Water && b != EcoCover.Reeds && a != EcoCover.Reeds && (int)b < (int)a) r.diedBack = true;
+                        else if (b != EcoCover.Water && b != EcoCover.Reeds && a != EcoCover.Reeds && (int)b < (int)a
+                                 && !(a == EcoCover.Bush && (b == EcoCover.Grass || b == EcoCover.Tall)) // #385: bushes thin back to meadow
+                                 && !(b == EcoCover.Grass && Cleared(sim, c))) r.diedBack = true; // #385: the people clear their lots, paths and green
                     }
                     int pond = sim.EcoPondCells;
                     if (pond < r.lastPond) r.pondShrank = true;
@@ -149,6 +151,13 @@ namespace AquariumCiv.Tests
         }
 
         const int Seasons30 = 30 * 4;
+
+        /// <summary>#385: a cell the people keep clear (a lot, a path, the green): what grows there goes back to grass.</summary>
+        static bool Cleared(SimCore sim, int c)
+        {
+            var map = sim.Settlement?.Map;
+            return map != null && (map.lot[c] != 0 || map.tier[c] >= PathNet.Trail || map.Green(c));
+        }
 
         // ---------------------------------------------------------------- off = untouched
         [Test]
@@ -436,7 +445,7 @@ namespace AquariumCiv.Tests
         {
             var r = Play(true, Seasons30);
             Assert.IsFalse(r.pondShrank, "an established pond stays");
-            Assert.IsFalse(r.diedBack, "cover only moves forward");
+            Assert.IsFalse(r.diedBack, "cover only moves forward (bushes may thin back to meadow, #385)");
             Assert.Greater(r.lastPond, 0);
         }
 

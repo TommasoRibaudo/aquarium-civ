@@ -90,8 +90,9 @@ namespace AquariumCiv.View
                 if (ec.treeStage >= 4) lock (TreeSpots) TreeSpots[ec.treeCell] = (land.OnGround(p), 0.12f + 0.06f * ec.treeStage); // #359: the Keeper's grown tree is a tree to play round
                 near.Add((p, 0.12f + 0.06f * ec.treeStage));
             }
-            // Then the trees, big to small, then bushes, then the grass (which claims nothing).
-            for (int pass = 0; pass < 3; pass++)
+            // Then the grown trees, then the young ones, then bushes and seedlings, then the grass (which claims nothing). Grown before young (#402):
+            // in one pass a young tree earlier in cell order took a grown tree's room, so plucking it let a grown tree pop up in its place.
+            for (int pass = -1; pass < 3; pass++)
                 for (int c = 0; c < Site.N; c++)
                 {
                     byte cv = ec.cover[c];
@@ -99,7 +100,7 @@ namespace AquariumCiv.View
                     var p = Spot(c, 1);
                     if (ChunkOf(p) != k) continue;
                     int i = Site.I(c), j = Site.J(c);
-                    if (pass == 0 && (cv == EcoLayer.Tree || cv == EcoLayer.Young))
+                    if ((pass == -1 && cv == EcoLayer.Tree) || (pass == 0 && cv == EcoLayer.Young))
                     {
                         // A grown crown is two cells across: one per 2 × 2 block, plus a few in between for an uneven edge.
                         bool grown = cv == EcoLayer.Tree;

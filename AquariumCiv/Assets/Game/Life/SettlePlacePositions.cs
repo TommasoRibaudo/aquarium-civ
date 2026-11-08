@@ -242,6 +242,13 @@ namespace AquariumCiv.Life
                     return true;
                 case PlaceKind.Glass: return GlassSpot(p.index, out x, out z);
                 case PlaceKind.Relic: return RelicSpot(p.index, out x, out z);
+                case PlaceKind.Tower: // #404: the lookout tower, once it stands
+                {
+                    var t = sim.TowerGroup;
+                    if (t == null || !sim.TowerStands) return false;
+                    x = t.towerX; z = t.towerZ;
+                    return true;
+                }
                 case PlaceKind.Prop: // #371: the thing a choice left
                 {
                     var cp = sim.FindConsequenceProp(p.index);

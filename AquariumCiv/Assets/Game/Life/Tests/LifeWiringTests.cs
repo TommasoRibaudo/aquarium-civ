@@ -180,7 +180,8 @@ namespace AquariumCiv.Life.Tests
                                                       (route[0].z - route[route.Count - 1].z) * (route[0].z - route[route.Count - 1].z));
                     if (route.Count > 2 && (route.Count - 1) * SiteMap.Cell > straight * 1.15f) bent++;
                     // The morning walk to work lasts as long as the route takes (unless a role beat or a scene cuts in).
-                    if (tr.type == TripType.HomeToWork && morningWalk && tr.end >= LifeClock.WorkStart - 1e-4f && tr.start < LifeClock.Midday)
+                    // #405: the cook's walk to work goes by the well first and can end before WorkStart, so every morning walk to work counts.
+                    if (tr.type == TripType.HomeToWork && morningWalk && tr.start < LifeClock.Midday)
                     {
                         morningWalk = false;
                         planner.DaySchedule(who, day, segs);

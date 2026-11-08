@@ -28,6 +28,10 @@ namespace AquariumCiv.Sim
         public int cell = -1;               // the SiteMap cell of the spot (-1 when settling is off)
         public long sinceMonth;
         public List<Notable> members = new List<Notable>();
+        /// <summary>#404: this group builds (or keeps) the Keeper's lookout tower, begun in <see cref="towerFrom"/>, standing at towerX/Z.</summary>
+        public bool tower, towerDone;
+        public long towerFrom;
+        public float towerX, towerZ;
 
         public bool AnyAlive => members.Any(n => n.alive);
     }
@@ -69,6 +73,7 @@ namespace AquariumCiv.Sim
         {
             var gs = State.apartGroups;
             if (gs == null || gs.Count == 0) return;
+            TowerStep(); // #404
             float step = Config.notableAgeFactor / SimConfig.MonthsPerYear;
             foreach (var g in gs)
                 foreach (var n in g.members)

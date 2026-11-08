@@ -95,6 +95,63 @@ namespace AquariumCiv.View
             return Done(mb, "ApartBoat");
         }
 
+        // ---------------------------------------------------------------- #404: the lookout tower
+
+        /// <summary>The tower's platform height, half its width, and where the ladder stands (local -z, its front), box units.</summary>
+        public const float TowerPlatformY = 0.36f, TowerHalf = 0.09f, TowerLadderZ = -0.125f, TowerLampY = 0.47f, TowerLampX = 0.07f, TowerLampZ = -0.2f;
+
+        /// <summary>The people apart's lookout tower (#404), by stage: 1 four posts braced and a pile of planks; 2 the platform with its rail
+        /// and the ladder on local -z; 3 the peaked roof over it and the lamp's hook. The lamp itself is <see cref="TowerLamp"/>.</summary>
+        public static Mesh Tower(int stage, int seed)
+        {
+            var mb = new MeshBuilder(2330 + seed) { jitter = 0.015f };
+            const float h = TowerHalf, y = TowerPlatformY;
+            float postTop = stage >= 3 ? y + 0.17f : stage >= 2 ? y + 0.07f : y;
+            foreach (int sx in new[] { -1, 1 })
+                foreach (int sz in new[] { -1, 1 })
+                    mb.Box(new Vector3(sx * h, postTop * 0.5f, sz * h), new Vector3(0.022f, postTop, 0.022f), Palette.Bark);
+            // the cross braces on the two sides
+            foreach (int sx in new[] { -1, 1 })
+                mb.Box(new Vector3(sx * h, y * 0.45f, 0f), new Vector3(0.01f, 0.012f, h * 2.6f), Palette.Timber, Quaternion.Euler(52f, 0f, 0f));
+            if (stage <= 1)
+            {
+                for (int i = 0; i < 4; i++) // the planks still waiting on the ground
+                    mb.Box(new Vector3(h + 0.1f, 0.008f + i * 0.012f, -h - 0.12f + 0.02f * i), new Vector3(0.05f, 0.01f, 0.2f), i % 2 == 0 ? Palette.WoodLight : Palette.Timber, Quaternion.Euler(0f, 70f + 8f * i, 0f)); // on the camp's side
+                return Done(mb, "ApartTower1");
+            }
+            mb.Box(new Vector3(0f, y, 0f), new Vector3(h * 2f + 0.05f, 0.018f, h * 2f + 0.05f), Palette.WoodLight); // the platform
+            foreach (int s in new[] { -1, 1 }) // the rail on three sides (the ladder comes up at the front)
+            {
+                mb.Box(new Vector3(s * (h + 0.022f), y + 0.05f, 0f), new Vector3(0.01f, 0.01f, h * 2f + 0.05f), Palette.Timber);
+                mb.Box(new Vector3(0f, y + 0.05f, h + 0.022f), new Vector3(h * 2f + 0.05f, 0.01f, 0.01f), Palette.Timber);
+            }
+            foreach (int s in new[] { -1, 1 }) // the ladder's rails, leaning a little
+                mb.Box(new Vector3(s * 0.035f, y * 0.5f, LadderZ(y * 0.5f)), new Vector3(0.01f, y + 0.03f, 0.01f), Palette.Timber, Quaternion.Euler(6f, 0f, 0f));
+            for (int r = 1; r < 7; r++)
+                mb.Box(new Vector3(0f, r * y / 7f, LadderZ(r * y / 7f)), new Vector3(0.07f, 0.008f, 0.008f), Palette.WoodLight);
+            if (stage <= 2) return Done(mb, "ApartTower2");
+            mb.Prism(new Vector3(0f, y + 0.17f, 0f), 0.2f, 0.015f, 0.13f, 4, Palette.Thatch, Quaternion.Euler(0f, 45f, 0f), topCol: Palette.Straw); // the roof
+            // the lamp's arm: out from the front post, past the eaves, so the lamp is seen from above
+            mb.Box(new Vector3(TowerLampX, TowerLampY + 0.05f, (-h + TowerLampZ) * 0.5f), new Vector3(0.012f, 0.012f, -TowerLampZ - h + 0.02f), Palette.Bark);
+            mb.Box(new Vector3(TowerLampX, TowerLampY + 0.035f, TowerLampZ), new Vector3(0.005f, 0.03f, 0.005f), Palette.Bark);
+            return Done(mb, "ApartTower3");
+        }
+
+        /// <summary>The ladder's line (local z at a height): its foot out at <see cref="TowerLadderZ"/>, leaning in 6° to the platform's front.
+        /// A climber's feet follow it.</summary>
+        public static float LadderZ(float height) => TowerLadderZ - 0.01f + height * 0.105f;
+
+        /// <summary>The tower's lamp, hung under the roof: dark, or lit (it glows with the night like a lit window).</summary>
+        public static Mesh TowerLamp(bool lit, int seed)
+        {
+            var mb = new MeshBuilder(2334 + seed) { jitter = 0f };
+            if (lit) mb.lamp = Pieces.Phase(seed);
+            mb.Box(new Vector3(TowerLampX, TowerLampY, TowerLampZ), new Vector3(0.045f, 0.055f, 0.045f), lit ? Palette.WindowLit : Palette.SoilDark);
+            mb.lamp = -1f;
+            mb.Box(new Vector3(TowerLampX, TowerLampY + 0.031f, TowerLampZ), new Vector3(0.055f, 0.008f, 0.055f), Palette.Bark); // its cap
+            return Done(mb, lit ? "ApartTowerLampLit" : "ApartTowerLamp");
+        }
+
         static Mesh Done(MeshBuilder mb, string name)
         {
             var mesh = mb.ToMesh(name);

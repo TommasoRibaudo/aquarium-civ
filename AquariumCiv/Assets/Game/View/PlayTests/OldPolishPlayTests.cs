@@ -5,6 +5,7 @@ using AquariumCiv.Game;
 using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Settle;
 using AquariumCiv.View.ShowMe;
 using NUnit.Framework;
 using UnityEngine;
@@ -130,6 +131,147 @@ namespace AquariumCiv.View.PlayTests
             }
             finally { pv.HandDriven = false; }
             AssertNoErrors("dawn lane");
+        }
+
+        // ---------------- verify run 2026-11-07: kindling split in the open ----------------
+
+        /// <summary>Kindling was split in the gap between two houses, under their roofs. Every doll chopping kindling (or stacking wood) at
+        /// home, over the mornings of a winter and a spring week, stands clear of every other building's lot by the eaves' reach.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator KindlingIsSplitInTheOpen()
+        {
+            UseLivingLand();
+            yield return Village(30f);
+            var pv = People;
+            pv.HandDriven = true;
+            int seen = 0, under = 0;
+            string first = "";
+            var lots = Sim.Settlement.Lots.Where(l => !l.retired && !l.open && l.kind != LotKind.Farm && l.kind != LotKind.Pasture && l.kind != LotKind.Orchard).ToList();
+            try
+            {
+                for (int day = 0; day < 8; day++)
+                {
+                    for (float h = 6f; h <= 11f; h += 0.25f)
+                    {
+                        pv.SetHour(h);
+                        for (int f = 0; f < 45; f++) pv.Tick(1f / 30f);
+                        foreach (var a in pv.Activities)
+                        {
+                            if (a.moving || a.place.kind != PlaceKind.Home || (a.kind != ActivityKind.ChopKindling && a.kind != ActivityKind.StackWood)) continue;
+                            if (!pv.TryGetDollPosition(a.who, out var p)) continue;
+                            seen++;
+                            foreach (var l in lots)
+                            {
+                                if (l.buildingId == a.place.buildingId) continue;
+                                float r = l.yaw * Mathf.Deg2Rad, c = Mathf.Cos(r), sn = Mathf.Sin(r);
+                                float lx = p.x - l.x, lz = p.y - l.z, u = lx * c - lz * sn, v = lx * sn + lz * c;
+                                if (Mathf.Abs(u) < l.w * 0.5f + 0.1f && Mathf.Abs(v) < l.d * 0.5f + 0.1f)
+                                {
+                                    under++;
+                                    if (first == "") { var own = Sim.Settlement.Lots.FirstOrDefault(o => o.buildingId == a.place.buildingId && !o.retired); pv.Planner.Positions.TryGetPosition(a.place, out float sx, out float sz); first = $"day {day} {h:0.00} h: {a.kind} at home {a.place.buildingId} ({p.x:0.00}, {p.y:0.00}) under lot {l.id} ({l.kind}, building {l.buildingId}, at ({l.x:0.00}, {l.z:0.00}) {l.w:0.00}x{l.d:0.00} yaw {l.yaw:0}); own lot " + (own == null ? "none" : $"{own.id} {own.kind} at ({own.x:0.00}, {own.z:0.00}) {own.w:0.00}x{own.d:0.00} yaw {own.yaw:0} open {own.open}") + $"; door spot ({sx:0.00}, {sz:0.00})"; }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    SimLayoutSource.DebugSkipYears(day == 3 ? 0.25f : 0.03f); // a winter week, then a spring one
+                    pv.Tick(1f / 30f);
+                }
+            }
+            finally { pv.HandDriven = false; }
+            Debug.Log($"[kindling] {seen} chopper samples, {under} under another building's eaves. {first}");
+            Assert.Greater(seen, 10, "somebody split kindling at home");
+            Assert.AreEqual(0, under, first);
+            AssertNoErrors("kindling");
+        }
+
+        // ---------------- #208 (2026-11-07): the dawn knot as the player sees it, living land on ----------------
+
+        /// <summary>Everyone the player can see now (not indoors, not asleep), anywhere: the biggest bunch within <see cref="KnotReach"/> of one
+        /// of them, who is in it, and the most standing still at one door.</summary>
+        static (int knot, int door, string who) CountSeen(PeopleView pv)
+        {
+            for (int f = 0; f < 75; f++) pv.Tick(1f / 30f);
+            var was = new Dictionary<int, Vector2>();
+            foreach (var a in pv.Activities) if (pv.TryGetDollPosition(a.who, out var w)) was[a.who.Key] = w;
+            pv.Tick(1f / 30f);
+            var seen = new List<Vector2>();
+            var what = new List<string>();
+            var doors = new Dictionary<Place, int>();
+            foreach (var a in pv.Activities)
+            {
+                if (DollMotion.StyleOf(a.kind) == DollStyle.Hidden || !pv.TryGetDollTop(a.who, out _) || !pv.TryGetDollPosition(a.who, out var p)) continue;
+                seen.Add(p);
+                what.Add($"{a.kind}{(a.moving ? "(walking)" : "")}@{a.place.kind}{a.place.buildingId}");
+                if (a.moving || a.place.kind != PlaceKind.Home) continue;
+                bool standing = was.TryGetValue(a.who.Key, out var then) && (p - then).magnitude < 0.0005f;
+                if (standing && pv.Planner.Positions.TryGetPosition(a.place, out float dx, out float dz) && (p - new Vector2(dx, dz)).magnitude < AtDoor)
+                {
+                    doors.TryGetValue(a.place, out int n);
+                    doors[a.place] = n + 1;
+                }
+            }
+            int knot = 0; string who = "";
+            for (int i = 0; i < seen.Count; i++)
+            {
+                var p = seen[i];
+                int n = seen.Count(o => (o - p).magnitude < KnotReach);
+                if (n <= knot) continue;
+                knot = n;
+                who = string.Join(", ", Enumerable.Range(0, seen.Count).Where(j => (seen[j] - p).magnitude < KnotReach).Select(j => what[j]));
+            }
+            return (knot, doors.Count == 0 ? 0 : doors.Values.Max(), who);
+        }
+
+        /// <summary>#208 (user, 2026-11-07): at dawn 7-8 people knot up in the village and 4 at the camp's tent door. Samples 06:18-06:36 every
+        /// 3 min over 5 days with the living land on, logs the worst knot and door, and shoots 06:27.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator DawnKnotAsSeen([Values(0, 1, 2)] int stage)
+        {
+            UseLivingLand();
+            bool village = stage > 0;
+            string name = stage == 0 ? "camp" : stage == 1 ? "village" : "grown";
+            if (village) yield return Village(stage == 1 ? 14f : 30f);
+            else
+            {
+                yield return OpenSlice(seed: Seed);
+                ShowMeDirector.BubblesOn = false;
+                Sim.CleanAll();
+                yield return new WaitForSecondsRealtime(0.5f);
+            }
+            var pv = People;
+            pv.HandDriven = true;
+            int knot = 0, door = 0, samples = 0;
+            float knotSum = 0f;
+            string worstAt = "";
+            try
+            {
+                for (int day = 0; day < 5; day++)
+                {
+                    int dayWorst = 0;
+                    for (float h = 6.3f; h <= 6.601f; h += 0.05f)
+                    {
+                        pv.SetHour(h);
+                        var c = CountSeen(pv);
+                        samples++;
+                        if (c.knot > knot) { knot = c.knot; worstAt = $"day {day} {h:0.00}h: {c.who}"; }
+                        dayWorst = Mathf.Max(dayWorst, c.knot);
+                        door = Mathf.Max(door, c.door);
+                    }
+                    knotSum += dayWorst;
+                    SimLayoutSource.DebugSkipYears(0.09f);
+                    pv.Tick(1f / 30f);
+                }
+                string say = $"[208b] {name} dawn 6.3-6.6 h: {samples} samples, worst knot {knot} ({worstAt}), mean of each day's worst {knotSum / 5f:0.0}, most at one door {door}, pop {Sim.State.population}, era {Sim.State.era}, year {Sim.State.Year:0.0}";
+                Debug.Log(say);
+                pv.SetHour(6.45f);
+                for (int f = 0; f < 90; f++) pv.Tick(1f / 30f);
+                pv.HandDriven = false;
+                yield return Frames(2);
+                yield return Shot($"208b-dawn-{name}-0627");
+            }
+            finally { pv.HandDriven = false; }
+            AssertNoErrors("dawn knot");
         }
 
         // ---------------- #209: leaders round the label stack ----------------

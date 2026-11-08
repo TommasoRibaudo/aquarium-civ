@@ -614,6 +614,13 @@ namespace AquariumCiv.Life
                 t = end; block++;
             }
             float home = 19.3f + R(k, day, 2) * 0.3f - box.homeEarlyHours;
+            // #404: some evenings the kids dare each other at the lookout tower (one roll for all of them, so they go together)
+            if (TowerOpen && (DebugTowerEvenings || R(PlayBlockKey, day, 404) < TowerDareEvening) && R(k, day, 57) < 0.5f)
+            {
+                At(ActivityKind.Play, home, Place.Land(PlaceKind.Tower), Prop.None, default, TripType.HomeToGreen);
+                At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
+                return;
+            }
             if (R(k, day, 56) < 0.45f) { At(ActivityKind.Play, home, p.home, Prop.Ball, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197: some play at their own door
             At(ActivityKind.Play, 18.3f, gather, Prop.Ball, default, TripType.HomeToGreen);
             if (d.teller != null && d.teller != p) At(ActivityKind.ListenStory, Math.Min(home, 19.1f), gather, Prop.None, Ref(d.teller));
@@ -709,13 +716,15 @@ namespace AquariumCiv.Life
             bool rest = d.rest && !work.keepsRestDay;
             var sh = ShiftOf(p, d);
             At(ActivityKind.Sleep, (rest ? 6f : 5f) + R(k, day, 1) * 0.6f + (rest ? 0f : Math.Max(0f, sh.start - LifeClock.WorkStart - 0.3f)), p.home);
-            At(ActivityKind.Stretch, bt + 0.2f, p.home);
+            // #208: three of one home stretched at the door together at 05:54 (the Town's worst knot): the lane's first turn stretches
+            // outside, the rest inside.
+            At(DawnTurn(p, d, 3).rank == 0 ? ActivityKind.Stretch : ActivityKind.Indoors, bt + 0.2f, p.home);
 
             if (rest) { if (CampSpread) CampRestDay(p, d); else RestDay(p, d); } // tester run 1 #3: the camp's rest day spread out
             else
             {
                 // Dawn: water from the well or the stream, a chore at the door, then off to work.
-                if (R(k, day, 2) < 0.3f || forcedWater.Contains(k)) // #360: the cheat sends some on top of the dice
+                if (!work.fetchFirst && (R(k, day, 2) < 0.3f || forcedWater.Contains(k))) // #360: the cheat sends some on top of the dice; #405: the cook draws on the way to work instead
                 {
                     var water = WaterPlace; // P8 (#267): the pond once it has water, else the wet low ground
                     // #152: empty on the way out and while they draw; full only once it's drawn.
@@ -736,27 +745,21 @@ namespace AquariumCiv.Life
                     // #208: the chore used to run from the stretch to its end, so everyone was out at the door together and
                     // knotted the lane between two homes at ~06:30. Each person now stays in until their own start, spread
                     // over the stretch between waking and the old end, and does a short chore (0.35-0.55 h).
+                    // #208 (2026-11-07): still 4 at the camp's tent (3 chopping kindling) and 7 at two facing village homes, as housemates
+                    // drew their chore and start on their own dice. Now the home's working adults take turns: each its own slot of the
+                    // stretch and its own chore (DawnTurn), the chore shortened when the slots are tight, so a home has about one out at a time.
                     float choreEnd = Math.Min(6.6f + (sh.start - LifeClock.WorkStart), sh.start - 0.4f);
-                    float choreLen = 0.35f + 0.2f * R(k, day, 130);
-                    float choreFrom = bt + 0.1f;
-                    float slack = choreEnd - choreLen - choreFrom;
-                    float choreUntil = choreEnd;
-                    if (slack > 0.05f)
-                    {
-                        float choreStart = choreFrom + slack * R(k, day, 131);
-                        At(ActivityKind.Indoors, choreStart, p.home);
-                        choreUntil = choreStart + choreLen;
-                    }
-                    At(Chore(p, d, 3), choreUntil, p.home, ChoreProp(Chore(p, d, 3)));
-                    float walk = WalkHours(p.home, work.site);
+                    float choreUntil = HomeChoreTurn(p, d, choreEnd - 1f, choreEnd, 3); // one shared hour for the home's turns
+                    float walk = work.fetchFirst ? FetchFirstHours(p.home, work) : WalkHours(p.home, work.site);
                     // #208 phase B: in the Editor the lane still knotted (worst 8 -> 10 in the Village), as the short chore was
                     // followed by sitting out at the door until work. After the chore they go back in, and step out only just before leaving.
                     float leave = sh.start - walk;
                     if (leave - 0.12f > choreUntil + 0.05f) At(ActivityKind.Indoors, leave - 0.12f, p.home);
                     At(ActivityKind.SitOut, leave, p.home);
                 }
+                if (work.fetchFirst) FetchFirst(work); // #405: the well, then the stash by the fire, then the pot
                 // The walk to work takes as long as the route does: a late start (the water came first) arrives late.
-                Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);
+                if (bcur != work.site || !work.fetchFirst) Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);
 
                 if (p.mentor != null) CopyMaster(p, 7f, 9f); // a young apprentice still learns from the master first
                 WorkBlocks(p, d, work, sh.start, sh.lunch, 10, false);
@@ -783,7 +786,7 @@ namespace AquariumCiv.Life
         {
             int k = p.key;
             long day = d.day;
-            At(Chore(p, d, 5), 8.5f, p.home, ChoreProp(Chore(p, d, 5)));
+            if (HomeChoreTurn(p, d, 6.7f, 8.5f, 5) < 8.5f - 0.01f) At(ActivityKind.Indoors, 8.5f, p.home); // #208: housemates take turns
             if (churchB != null) At(ActivityKind.Listen, 10.5f, PlaceOf(churchB), Prop.None, default, TripType.Errand); // the service
             else At(ActivityKind.Chat, 10.5f, gather, Prop.None, Ref(p.friend), TripType.HomeToGreen);
             if (marketB != null && R(k, day, 6) < 0.5f) { At(ActivityKind.Shop, 11.5f, PlaceOf(marketB), Prop.Basket, default, TripType.HomeToMarket); }
@@ -860,6 +863,53 @@ namespace AquariumCiv.Life
             _ => ActivityKind.SitOut,
         };
 
+        static readonly ActivityKind[] DawnChores = { ActivityKind.SweepStep, ActivityKind.HangWashing, ActivityKind.ChopKindling, ActivityKind.SitOut };
+        readonly List<Person> dawnHouse = new();
+        /// <summary>#208: homes whose doors stand this close (box units) share the dawn turns: twice the 0.25 knot the play test counts.</summary>
+        const float DawnLane = 0.6f;
+
+        /// <summary>#208: this person's turn at the home's dawn chore: their place among the home's grown-up adults (shuffled per day),
+        /// how many share the home, and their chore. Housemates' chores differ (the home's first chore, then the next ones round).</summary>
+        (int rank, int count, ActivityKind chore) DawnTurn(Person p, DayInfo d, int salt)
+        {
+            // The turns are the lane's, not only the home's: the worst knots straddled two facing homes (doors within the knot's reach).
+            dawnHouse.Clear();
+            bool placed = positions.TryGetPosition(p.home, out float hx, out float hz);
+            foreach (var q in people)
+            {
+                if (q.stage != LifeStage.Adult) continue;
+                if (q.home == p.home) { dawnHouse.Add(q); continue; }
+                if (placed && positions.TryGetPosition(q.home, out float qx, out float qz) && (qx - hx) * (qx - hx) + (qz - hz) * (qz - hz) < DawnLane * DawnLane) dawnHouse.Add(q);
+            }
+            if (dawnHouse.Count <= 1) return (0, 1, Chore(p, d, salt));
+            long day = d.day;
+            dawnHouse.Sort((a, b) => { uint ha = H(a.key, day, 132 + salt), hb = H(b.key, day, 132 + salt); return ha != hb ? ha.CompareTo(hb) : a.key.CompareTo(b.key); });
+            int rank = Math.Max(0, dawnHouse.IndexOf(p));
+            int first = (int)(H(dawnHouse[0].key, day, 600 + salt) % (uint)DawnChores.Length);
+            return (rank, dawnHouse.Count, DawnChores[(first + rank) % DawnChores.Length]);
+        }
+
+        /// <summary>#208: the home's morning chore by turns, between <paramref name="from"/> and <paramref name="end"/>: in until this person's
+        /// slot, their own chore (shortened when the slots are tight), and back in. Returns when their chore ends (they are in after it).</summary>
+        float HomeChoreTurn(Person p, DayInfo d, float from, float end, int salt)
+        {
+            int k = p.key;
+            long day = d.day;
+            var (rank, count, kind) = DawnTurn(p, d, salt);
+            float slot = (end - from) / count;
+            float len = Math.Min(0.35f + 0.2f * R(k, day, 130 + salt), Math.Max(0.2f, slot - 0.05f));
+            float until = end;
+            if (end - Math.Max(from, bt) - len > 0.05f)
+            {
+                // The window is the home's, shared by all (slots cut from each one's own waking did not line up); nobody starts before they're up.
+                float start = Math.Max(bt + 0.05f, from + rank * slot + Math.Max(0f, slot - len) * R(k, day, 131 + salt));
+                At(ActivityKind.Indoors, start, p.home);
+                until = Math.Min(end, start + len);
+            }
+            At(kind, until, p.home, ChoreProp(kind));
+            return until;
+        }
+
         static Prop ChoreProp(ActivityKind k) => k switch
         {
             ActivityKind.SweepStep => Prop.Broom,
@@ -867,6 +917,24 @@ namespace AquariumCiv.Life
             ActivityKind.ChopKindling => Prop.Axe,
             _ => Prop.None,
         };
+
+        /// <summary>#405: the view hours the trip to work takes with the fetch first: to the water, the dip, the carry to where
+        /// the load is set down, and the step on to the site.</summary>
+        float FetchFirstHours(Place from, Work w) =>
+            WalkHours(from, w.fetchFrom) + FetchDipHours + Math.Max(0.35f, WalkHours(w.fetchFrom, w.dest)) + (w.dest != w.site ? WalkHours(w.dest, w.site) : 0f);
+
+        /// <summary>#360: the dip at the water (3.5 s at dawn: kneel, dip, hold, lift).</summary>
+        const float FetchDipHours = 0.35f;
+
+        /// <summary>#405: on the way to work: out with the empty bucket, the dip, and the full buckets carried to <see cref="Work.dest"/>.</summary>
+        void FetchFirst(Work w)
+        {
+            var src = w.fetchFrom;
+            if (src.IsNone) return;
+            if (src != bcur) Move(ActivityKind.Walk, src, bt + WalkHours(bcur, src), w.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None, TripType.HomeToWork);
+            At(ActivityKind.FetchWater, bt + FetchDipHours, src, w.load == Prop.Buckets ? Prop.EmptyBucket : Prop.None);
+            Move(w.load == Prop.Buckets ? ActivityKind.FetchWater : w.carryKind, w.dest, bt + Math.Max(0.35f, WalkHours(src, w.dest)), w.load, TripType.Carry); // the dawn run's walk back, full
+        }
 
         /// <summary>#361: how long the tip at the stash lasts (real seconds: the 1.4 s beat plus the moment the doll takes to stand still at the pile).</summary>
         public const float TipBlockSeconds = 1.8f;
@@ -1016,7 +1084,17 @@ namespace AquariumCiv.Life
 
         /// <summary>Where a free adult spends the evening: the green and the fire (about four in ten), the tavern, a friend's door,
         /// or their own.</summary>
-        enum EveningStyle { Gather, Tavern, Visit, Home }
+        enum EveningStyle { Gather, Tavern, Visit, Home, Tower }
+
+        /// <summary>#404: the share of evenings (of those spent at home) someone walks out to the people apart's lookout tower once it stands.</summary>
+        public const float TowerEvening = 0.08f;
+        /// <summary>#404: the share of evenings the kids dare each other at the tower (about half of them go).</summary>
+        public const float TowerDareEvening = 0.2f;
+
+        bool TowerOpen => sim != null && sim.TowerStands;
+
+        /// <summary>Debug (the panel, the tester): half the free evenings go to the tower, and every evening is a dare evening.</summary>
+        public static bool DebugTowerEvenings;
 
         EveningStyle StyleOf(Person p, DayInfo d)
         {
@@ -1027,6 +1105,7 @@ namespace AquariumCiv.Life
             if (r < 0.42f + tav) return EveningStyle.Tavern;
             bool friendDoor = p.friend != null && p.friend.Grown && p.friend.home != p.home && !p.friend.home.IsNone;
             if (friendDoor && r < 0.42f + tav + 0.12f) return EveningStyle.Visit;
+            if (TowerOpen && r >= 1f - (DebugTowerEvenings ? 0.5f : TowerEvening)) return EveningStyle.Tower; // #404: a couple decides together (the pair's roll)
             return EveningStyle.Home;
         }
 
@@ -1038,6 +1117,12 @@ namespace AquariumCiv.Life
             if (style == EveningStyle.Tavern)
             {
                 At(ActivityKind.Drink, Math.Max(late, bt + 1f), PlaceOf(tavernB), Prop.Mug);
+            }
+            else if (style == EveningStyle.Tower)
+            {
+                // #404: out to the lookout tower at dusk: up on the platform or at its foot (the view decides), home to bed
+                At(chore, 17.9f, p.home, ChoreProp(chore));
+                At(ActivityKind.SitOut, Math.Max(Math.Min(home, 19.6f), bt + 1.1f), Place.Land(PlaceKind.Tower), Prop.None, p.partner != null ? Ref(p.partner) : default);
             }
             else if (style == EveningStyle.Visit)
             {

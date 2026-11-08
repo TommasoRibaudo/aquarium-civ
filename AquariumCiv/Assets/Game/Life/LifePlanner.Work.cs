@@ -23,6 +23,9 @@ namespace AquariumCiv.Life
             public Place fetchFrom;     // set: the carry comes from here to dest (restocking, water)
             public float carryShare;
             public bool keepsRestDay, sweeps, chores;
+            /// <summary>#405: the day's work starts with a fetch: to <see cref="fetchFrom"/> with the empty bucket, then the load to
+            /// <see cref="dest"/>, before the first loop at the site (the cook draws water before stirring the pot).</summary>
+            public bool fetchFirst;
             public Person with;         // a work partner (the two-man saw)
         }
 
@@ -99,6 +102,8 @@ namespace AquariumCiv.Life
         }
         /// <summary>Where the water is drawn: the well; else the pond once it has water; else the wet low ground (the stream bed).</summary>
         Place WaterPlace => wellB != null ? PlaceOf(wellB) : OnLiving && sim.OpenWater ? Pond : OnLiving ? PuddleOr(Stream) : Stream;
+        /// <summary>Is there water to draw: a well, the pond with water, a drinkable puddle, or (off the living land) the stream.</summary>
+        bool HasRealWater => wellB != null || !OnLiving || sim.OpenWater || (sim.EcoHasPuddles && sim.EcoNearestPuddle(0f, 0f, 99f) >= 0);
         /// <summary>P8 (#267/#266): with no pond, a drinkable mist puddle (the nearest to the camp) is where the muddy water is scooped; else the wet low ground.</summary>
         Place PuddleOr(Place fallback)
         {
@@ -219,8 +224,10 @@ namespace AquariumCiv.Life
                 case CrowdCook:
                     w = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
                     w.keepsRestDay = true;
+                    if (!HasRealWater) return w; // verify run 2026-11-07: a living-land box with no well, pond or puddle has nothing to draw; the cook doesn't dip into dry grass
                     w = Fetch(w, WaterPlace);
                     w.dest = stash; // #150: the water too is set down by the fire
+                    w.fetchFirst = true; // #405 (user, 2026-11-07): water from the well first, carried to the fire, then the pot
                     return w;
                 case CrowdSplitter:
                     return Fetch(W(jb, ActivityKind.StackWood, Prop.Log, Prop.Log, jb, 0.3f), Woods);

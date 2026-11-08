@@ -60,7 +60,9 @@ namespace AquariumCiv.Life
         {
             int k = p.key, ck = CoupleKey(p);
             long day = d.day;
-            At(Chore(p, d, 5), 7.6f + 0.9f * R(k, day, 142), p.home, ChoreProp(Chore(p, d, 5)));
+            // #208: the tent's grown-ups take turns at the morning chore (they all stood at the door together), in a shared window.
+            float choreEnd = 7.6f + 0.9f * R(k, day, 142);
+            if (HomeChoreTurn(p, d, 6.7f, 8.05f, 5) < choreEnd - 0.01f) At(ActivityKind.Indoors, choreEnd, p.home);
             float lunch = 11.2f + 1.6f * R(ck, day, 143);
             float mid = bt + (lunch - bt) * (0.4f + 0.2f * R(ck, day, 144));
             Pastime(p, d, 0, mid);

@@ -389,8 +389,8 @@ namespace AquariumCiv.Sim.Settle
 
             float acc = Placer.TermValue(Term.Access, w, site.kind, spec, nudge, c.x, c.z, c.yaw, c.w, c.d, c.door, reach);
             SiteMap.RectCells(c.x, c.z, c.yaw, c.w, c.d, 0f, cells);
-            float sl = 0f, wd = 99f; int trees = 0;
-            foreach (int k in cells) { sl += map.slope[k]; wd = MathF.Min(wd, map.waterDist[k]); if (map.Forest(k)) trees++; }
+            float sl = 0f, wd = 99f, trees = 0f;
+            foreach (int k in cells) { sl += map.slope[k]; wd = MathF.Min(wd, map.waterDist[k]); trees += map.Overgrown(k); } // #385: a thicket is half a tree
             int nc = Math.Max(1, cells.Count);
             float slope = Terrain.Clamp(1f - 2f * (sl / nc) / Math.Max(0.05f, spec.maxSlope), -1f, 1f);
             float water = Encyclopedia.WaterTerm(site.kind, wd);

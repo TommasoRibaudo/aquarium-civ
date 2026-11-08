@@ -372,6 +372,7 @@ namespace AquariumCiv.View
             Card = null;
             edges.Clear();
             flownForCard = false;
+            ResetExpanded(); // #403: every card opens at 30 %
             if (GameHud.Instance != null) GameHud.Instance.SetOutsideSheet(null);
             if (sheet != null) sheet.Close(() => { if (!AnyOpen && !BuildingOpen) cardRoot.style.display = DisplayStyle.None; });
             ClearLines();
@@ -395,6 +396,7 @@ namespace AquariumCiv.View
 
         bool FlyTo(PersonRef who)
         {
+            if (IsOpen && Expanded && who.IsNotable) return FlyAboveTallCard(); // #403
             var cam = Cam;
             var pv = PeopleView.Find();
             if (cam == null || pv == null || !pv.TryGetDollFeet(who, out var feet)) return false;
@@ -417,6 +419,7 @@ namespace AquariumCiv.View
             if (CrowdOpen && Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + 1f; RefreshCrowd(); }
             if ((AnyOpen || BuildingOpen) && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); CloseCrowd(); CloseBuilding(); }
             if (AnyOpen) KeepInView();
+            TickGrow(); // #484
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateChip(sim, false);
         }
@@ -865,6 +868,7 @@ namespace AquariumCiv.View
             head.Add(pinButton);
             head.Add(new GlassButton("", Close, ButtonKind.Icon, UiRole.None) { name = "person-card-close", Icon = "close" });
             sheet.Add(head);
+            BuildExpandUi(head); // #403
             subtitle = new Label { name = "person-card-sub", pickingMode = PickingMode.Ignore };
             subtitle.AddToClassList("type-sub");
             subtitle.AddToClassList("pc-sub");

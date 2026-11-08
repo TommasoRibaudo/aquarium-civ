@@ -298,7 +298,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return null; yield return null;
                 Assert.IsFalse(cards.IsOpen, "Close closes it");
                 Assert.AreEqual(0, cards.LinesDrawn, "the lines clear with the card");
-                Assert.IsEmpty(errors, string.Join("\n", errors));
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }
@@ -362,6 +362,156 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        IEnumerator SwipeFrom(Vector2 from, float dy)
+        {
+            BeginTouch(touchId, from, queueEventOnly: true);
+            yield return null; yield return null;
+            for (int i = 1; i <= 6; i++) { MoveTouch(touchId, from + new Vector2(0f, dy * i / 6f), queueEventOnly: true); yield return null; }
+            EndTouch(touchId, from + new Vector2(0f, dy), delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+            touchId++;
+        }
+
+        /// <summary>#403 (note #384): the handle grows the card to 59 % and the person stays above it; a swipe down on the head brings it
+        /// back to 30 %; a closed card opens at 30 % again. Shots: pc-tall, pc-tall-short.</summary>
+        [UnityTest]
+        public IEnumerator TheHandleGrowsTheCardAndThePersonStaysAboveIt()
+        {
+            foreach (var (w, h, shot) in new[] { (1179, 2556, "pc-tall"), (750, 1334, "pc-tall-short") })
+            {
+                yield return Open(true, w, h);
+                try
+                {
+                    yield return Grow();
+                    var sim = GameClock.Instance.Sim;
+                    var cards = PersonCardView.Instance;
+                    int id = PickSubject(sim);
+                    PeopleView.Find().timeScale = 0.05f;
+                    cards.Open(id, true);
+                    yield return new WaitForSecondsRealtime(1.2f);
+                    var card = cards.CardRoot.Q("person-card");
+                    float full = cards.CardRoot.worldBound.height;
+                    Assert.IsFalse(cards.Expanded, "a card opens at 30 %");
+                    Assert.Less(card.worldBound.height, full * (PersonCardView.CardMaxShare + 0.01f));
+                    float shortBody = cards.CardRoot.Q<ScrollView>("person-card-body").worldBound.height;
+
+                    yield return TapAt(GameUiPanel.ScreenCenter(cards.Grab));
+                    yield return new WaitForSecondsRealtime(1.4f); // the flight lands
+                    Assert.IsTrue(cards.Expanded, "a tap on the handle grows the card");
+                    Assert.AreEqual(full * PersonCardView.ExpandedShare, card.worldBound.height, full * 0.01f, "the tall card is 59 %");
+                    float tallBody = cards.CardRoot.Q<ScrollView>("person-card-body").worldBound.height;
+                    var bc = Camera.main.GetComponent<BoxCamera>();
+                    PeopleView.Find().TryGetDollFeet(PersonRef.Notable(id), out var feet);
+                    Debug.Log($"[403] cam target {bc.target} zoom {bc.zoom:0.00} pitch {bc.pitch:0.0} yaw {bc.yaw:0} · feet {feet} · want {ShowMeDirector.AboveCard(bc, feet, bc.zoom, bc.pitch, PersonCardView.ExpandedAnchorY)} · doll y {(DollScreen(id, out var dy) ? dy.y / Screen.height : -1f):0.00} · bounds {BoxCameraMath.PanBounds(bc.zoom)}");
+                    Assert.Greater(tallBody, shortBody * 2f, $"the scroll area grows ({shortBody:0} → {tallBody:0} px)");
+                    Assert.IsTrue(DollScreen(id, out var at) && at.y > Screen.height * PersonCardView.ExpandedShare, $"the person stands above the tall card (y {at.y:0} of {Screen.height})");
+                    Assert.IsTrue(cards.IsOpen, "the handle is no world tap");
+                    yield return Shot(shot);
+
+                    yield return SwipeFrom(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-name")), -Screen.height * 0.08f); // screen y up: down
+                    yield return null;
+                    Assert.IsFalse(cards.Expanded, "a swipe down on the head brings it back to 30 %");
+                    yield return SwipeFrom(GameUiPanel.ScreenCenter(cards.Grab), Screen.height * 0.08f);
+                    Assert.IsTrue(cards.Expanded, "a swipe up on the handle grows it");
+                    cards.Close();
+                    yield return new WaitForSecondsRealtime(0.5f);
+                    cards.Open(id, false);
+                    yield return null; yield return null;
+                    Assert.IsFalse(cards.Expanded, "a card opens at 30 % again");
+                    Assert.IsEmpty(errors, string.Join(" | ", errors));
+                }
+                finally { Close(); }
+            }
+        }
+
+        /// <summary>The person's head on the card's panel (y down), or false off screen.</summary>
+        static bool HeadOnPanel(PersonCardView cards, int id, out float y)
+        {
+            y = 0f;
+            var pv = PeopleView.Find();
+            if (!pv.TryGetDollTop(PersonRef.Notable(id), out var top)) return false;
+            var s = Camera.main.WorldToScreenPoint(top);
+            if (s.z <= 0f) return false;
+            y = RuntimePanelUtils.ScreenToPanel(cards.CardRoot.panel, new Vector2(s.x, Screen.height - s.y)).y;
+            return true;
+        }
+
+        /// <summary>#484, #485, #486 (the #403 tester's polish): the card grows behind the camera and never over its person; a person at the
+        /// back who needs no flight still stands clear of the tall card; the pill takes a tap 44 pt tall.</summary>
+        [UnityTest]
+        public IEnumerator TheTallCardNeverCoversItsPerson_AndThePillIsEasyToHit()
+        {
+            yield return Open(true, 750, 1334); // the short phone, where the back person's feet touched the edge
+            try
+            {
+                yield return Grow();
+                var sim = GameClock.Instance.Sim;
+                var cards = PersonCardView.Instance;
+                PeopleView.Find().timeScale = 0.02f;
+                var card = cards.CardRoot.Q("person-card");
+
+                // #484: every frame of the grow, the head stays above the card's top
+                int id = PickSubject(sim);
+                cards.Open(id, true);
+                yield return new WaitForSecondsRealtime(1.2f);
+                cards.SetExpanded(true);
+                int frames = 0, under = 0; float worst = 0f;
+                float t0 = Time.realtimeSinceStartup;
+                while (Time.realtimeSinceStartup - t0 < PersonCardView.GrowSeconds + 0.3f)
+                {
+                    yield return null;
+                    if (!HeadOnPanel(cards, id, out float hy)) continue;
+                    frames++;
+                    float over = hy - card.worldBound.yMin;
+                    if (over > 2f) { under++; worst = Mathf.Max(worst, over); }
+                }
+                Debug.Log($"[484] grow: {frames} frames, head under the card's top in {under} (worst {worst:0} px)");
+                Assert.Greater(frames, 10);
+                Assert.AreEqual(0, under, $"the head went under the growing card (worst {worst:0} px)");
+                Assert.AreEqual(cards.CardRoot.worldBound.height * PersonCardView.ExpandedShare, card.worldBound.height, cards.CardRoot.worldBound.height * 0.01f, "full height in the end");
+                cards.Close();
+                yield return new WaitForSecondsRealtime(0.4f);
+
+                // #485: a person at the back (just clear of the tall card's edge, so no flight is needed today) still ends clear of it
+                int back = -1;
+                foreach (var n in sim.State.notables.Where(x => x.alive))
+                {
+                    cards.Open(n.id, true);
+                    yield return new WaitForSecondsRealtime(1.1f);
+                    if (DollScreen(n.id, out var p0) && p0.y > Screen.height * PersonCardView.ExpandedShare && p0.y < Screen.height * (PersonCardView.ExpandedShare + PersonCardView.ClearShare)) { back = n.id; break; }
+                    cards.Close();
+                    yield return null;
+                }
+                if (back >= 0)
+                {
+                    cards.SetExpanded(true);
+                    yield return new WaitForSecondsRealtime(PersonCardView.GrowSeconds + 0.4f);
+                    Assert.IsTrue(DollScreen(back, out var p1));
+                    Debug.Log($"[485] back person {back}: middle at {p1.y / Screen.height:0.000} of the screen");
+                    Assert.GreaterOrEqual(p1.y / Screen.height, PersonCardView.ExpandedShare + PersonCardView.ClearShare - 0.012f, "their middle clear of the tall card's edge");
+                    cards.Close();
+                    yield return new WaitForSecondsRealtime(0.4f);
+                }
+                else Debug.Log("[485] no person stood just over the edge in this box: the case isn't exercised here");
+
+                // #486: the pill's tap area is 44 pt tall; a tap 30 pt above the card's edge grows it
+                cards.Open(id, true);
+                yield return new WaitForSecondsRealtime(1.2f);
+                float pt = cards.CardRoot.worldBound.width / 393f;
+                Assert.GreaterOrEqual(cards.Grab.worldBound.height, 120f, "44 pt tall");
+                var g = cards.Grab.worldBound;
+                var tapPanel = new Vector2(g.center.x, card.worldBound.yMin - 30f * pt);
+                Assert.IsTrue(g.Contains(tapPanel), "30 pt above the edge is the pill's");
+                float panelToScreen = Screen.width / cards.CardRoot.panel.visualTree.worldBound.width; // as GameUiPanel.ScreenCenter
+                yield return TapAt(new Vector2(tapPanel.x * panelToScreen, Screen.height - tapPanel.y * panelToScreen));
+                yield return new WaitForSecondsRealtime(0.3f);
+                Assert.IsTrue(cards.Expanded, "the tap above the edge grew the card");
+                Assert.IsTrue(cards.IsOpen, "and was no world tap");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { Close(); }
+        }
+
         [UnityTest]
         public IEnumerator ATapOnEmptyGlassStillKnocks()
         {
@@ -404,7 +554,7 @@ namespace AquariumCiv.View.PlayTests
                     Assert.IsFalse(cards.IsOpen, "a tap on the world closes the card");
                     Assert.AreEqual(knocks, glass.Knocks, "closing the card is no knock");
                 }
-                Assert.IsEmpty(errors, string.Join("\n", errors));
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }
@@ -462,7 +612,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(0.5f);
                 yield return Until(() => PersonCardView.Instance.PinTagShown, 2f);
                 Assert.IsTrue(PersonCardView.Instance.PinTagShown, "the tag is back after loading");
-                Assert.IsEmpty(errors, string.Join("\n", errors));
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }
@@ -548,7 +698,7 @@ namespace AquariumCiv.View.PlayTests
                     }
                 }
                 Assert.Greater(seen, 0, "labels were on screen");
-                Assert.IsEmpty(errors, string.Join("\n", errors));
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }
@@ -603,7 +753,7 @@ namespace AquariumCiv.View.PlayTests
                 cards.Close();
                 yield return null; yield return null;
                 Assert.AreEqual(Visibility.Visible, hud.Root.Q("hud-history").resolvedStyle.visibility, "the tools come back with the card gone");
-                Assert.IsEmpty(errors, string.Join("\n", errors));
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }
@@ -695,7 +845,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.AreEqual(0, cards.LinesDrawn);
                 yield return Shot("pc-memorial");
                 cards.Close();
-                Assert.IsEmpty(errors, string.Join("\n", errors));
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
             }
             finally { Close(); }
         }

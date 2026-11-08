@@ -460,6 +460,10 @@
 .pc-head > .kg-btn--compact { margin-left: var(--space-10); }
 .pc-head > .kg-btn--icon { margin-left: var(--space-6); }
 .pc-sub { flex-shrink: 0; white-space: normal; }
+/* #403: the handle on the card's top edge. Its tap area (#486: 44 pt tall) reaches over the edge; the pill sits in the sheet's top padding */
+.pc-grab { position: absolute; top: -85px; left: 50%; width: 330px; height: 121px; translate: -50% 0; align-items: center; justify-content: flex-end; padding-bottom: 14px; }
+.pc-grab-pill { width: 99px; height: 11px; border-radius: 5.5px; background-color: var(--edge); }
+.pc-grab:active > .pc-grab-pill { background-color: var(--brass-light); }
 .pc-tabs { flex-shrink: 0; margin-top: -5.5px; margin-bottom: -5.5px; }
 .pc-scroll { min-height: 0; margin-top: var(--space-4); }
 .pc-scroll-pad { width: 100%; padding-right: 24.75px; }

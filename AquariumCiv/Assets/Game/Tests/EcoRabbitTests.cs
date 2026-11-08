@@ -173,7 +173,7 @@ namespace AquariumCiv.Tests
                 Assert.IsTrue(f.IsGreenAt(p.x, p.z), "bolts, but only over green");
             }
             Assert.IsTrue(scare.Fleeing);
-            Assert.GreaterOrEqual(scare.offX, 0f, "moved away from the west, or stayed put at the green's edge");
+            Assert.GreaterOrEqual(scare.offX, -0.02f, "moved away from the west (or across, #400: never back past the person), or stayed put at the green's edge");
             var none = new float[0];
             for (int i = 0; i < 400; i++)
             {
@@ -415,6 +415,28 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(b.x, last.x, 0.02f, "and it gets there");
         }
 
+        /// <summary>Verify run 2026-11-07: a schedule step of 0.2-0.29 (under the old 0.3 guard, far over a real hop) popped the rabbit two or
+        /// three cells in one frame. It must hop over instead.</summary>
+        [Test]
+        public void Scare_AMidSizeJumpInTheSchedule_IsHoppedOver_NotAPop()
+        {
+            var f = Herd(out _, 3);
+            var sc = new RabbitHerd.Scare();
+            var none = new float[0];
+            var a = new RabbitPose { x = -1.0f, z = 0.0f, act = RabbitAct.Graze };
+            var b = new RabbitPose { x = -0.75f, z = 0.0f, act = RabbitAct.Graze };
+            var last = sc.Step(0.013f, a, none, none, f);
+            float maxStep = 0f;
+            for (int i = 0; i < 200; i++)
+            {
+                var p = sc.Step(0.013f, b, none, none, f);
+                maxStep = Math.Max(maxStep, Dist(p.x, p.z, last.x, last.z));
+                last = p;
+            }
+            Assert.Less(maxStep, 0.05f, "no pop: at most a hop's worth a step");
+            Assert.AreEqual(b.x, last.x, 0.02f, "and it gets there");
+        }
+
         [Test]
         public void Knock_FarFromEveryRabbit_DoesNothing()
         {
@@ -545,6 +567,145 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(f.PositionOf(id, 60.0, out float qx, out float qz));
             Assert.AreEqual(hx, qx); Assert.AreEqual(hz, qz);
             Assert.IsTrue(f.Remove(id), "a catch still takes it out");
+        }
+    
+        // ---------------------------------------------------------------- #400: motion (playtest 2026-11-07)
+        /// <summary>A meadow made by hand: grass over the cells i0..i1 x j0..j1, bare elsewhere; a lot blocks column
+        /// <paramref name="wallI"/> from the box's edge up to row <paramref name="wallTo"/> (with a gap above it, unless it reaches the far edge).</summary>
+        static RabbitHerd.Field Strip(int i0, int i1, int j0, int j1, int wallI = -1, int wallTo = -1)
+        {
+            var cover = new byte[EcoLand.N];
+            var blocked = new bool[EcoLand.N];
+            for (int j = j0; j <= j1; j++)
+                for (int i = i0; i <= i1; i++)
+                {
+                    int c = SiteMap.Index(i, j);
+                    cover[c] = (byte)EcoCover.Grass;
+                }
+            if (wallI >= 0) for (int j = 0; j <= wallTo && j < SiteMap.NZ; j++) blocked[SiteMap.Index(wallI, j)] = true;
+            var f = new RabbitHerd.Field();
+            f.Refresh(cover, null, 5, -1, blocked);
+            f.Sync(1);
+            return f;
+        }
+
+        static RabbitPose Still(float x, float z) => new RabbitPose { x = x, z = z, act = RabbitAct.Graze };
+
+        [Test]
+        public void Blocked_Cells_AreNotGreen_AndNoHomeIsOnThem()
+        {
+            var f = Strip(10, 40, 10, 30, 25, 26);
+            Assert.IsFalse(f.IsGreenAt(SiteMap.CX(25), SiteMap.CZ(15)), "a lot is not meadow to a rabbit");
+            Assert.IsTrue(f.IsGreenAt(SiteMap.CX(25), SiteMap.CZ(29)), "the gap past the lot is");
+            f.Sync(12);
+            foreach (int id in f.Alive)
+                for (double t = 0; t < 600; t += 0.7)
+                {
+                    var p = f.Sample(id, t);
+                    Assert.IsTrue(f.IsGreenAt(p.x, p.z), $"rabbit {id} on a lot at {t}");
+                }
+        }
+
+        [Test]
+        public void Route_GoesRoundTheLot_OverGreenOnly()
+        {
+            var f = Strip(10, 40, 10, 30, 25, 26);
+            float ax = SiteMap.CX(20), az = SiteMap.CZ(14), bx = SiteMap.CX(30), bz = SiteMap.CZ(14);
+            Assert.IsFalse(f.PathClear(ax, az, bx, bz), "straight across is through the lot");
+            var route = new List<(float x, float z)>();
+            Assert.IsTrue(f.Route(ax, az, bx, bz, route));
+            Assert.IsTrue(f.IsGreenAt(route[0].x, route[0].z), "over the grass, through the gap past the lot");
+            float x = ax, z = az;
+            foreach (var w in route) { Assert.IsTrue(f.PathClear(x, z, w.x, w.z), "every leg over green"); x = w.x; z = w.z; }
+            Assert.AreEqual(bx, x, 1e-4f); Assert.AreEqual(bz, z, 1e-4f);
+            var none = new List<(float x, float z)>();
+            var cut = Strip(10, 40, 10, 30, 25, SiteMap.NZ - 1);
+            Assert.IsFalse(cut.Route(ax, az, bx, bz, none), "a lot right across the box: no way");
+        }
+
+        /// <summary>#381/#395: scared, a rabbit runs off to a real spot; it never bounds on the spot. Whenever it shows a hop or a bound it
+        /// moved that frame, and it ends well away from the person.</summary>
+        [Test]
+        public void Scared_RunsToARealSpot_NeverBoundsOnTheSpot()
+        {
+            var f = Strip(10, 40, 10, 30);
+            float x = SiteMap.CX(25), z = SiteMap.CZ(20);
+            var sc = new RabbitHerd.Scare();
+            var px = new[] { x - 0.3f }; var pz = new[] { z };
+            var last = sc.Step(0.03f, Still(x, z), px, pz, f);
+            int moved = 0;
+            for (int i = 0; i < 200; i++)
+            {
+                var p = sc.Step(0.03f, Still(x, z), px, pz, f);
+                float step = Dist(p.x, p.z, last.x, last.z);
+                if ((p.act == RabbitAct.Hop || p.act == RabbitAct.Flee) && p.y > 1e-4f) { Assert.Greater(step, 1e-4f, $"a bound on the spot at frame {i}"); moved++; }
+                Assert.IsTrue(f.IsGreenAt(p.x, p.z));
+                last = p;
+            }
+            Assert.Greater(moved, 5, "it ran");
+            Assert.Greater(Dist(last.x, last.z, px[0], pz[0]), RabbitHerd.Scare.AlertRadius, "out of the person's reach");
+            Assert.IsFalse(sc.Running, "and stopped there");
+        }
+
+        /// <summary>#381: hemmed in (a person at the only way out of a dead end), it sits up and watches: no bouncing, no shaking.</summary>
+        [Test]
+        public void Scared_WithNowhereToGo_SitsUpAndWatches()
+        {
+            var f = Strip(20, 22, 20, 21); // a scrap of grass 3 x 2 cells
+            float x = SiteMap.CX(21), z = SiteMap.CZ(20);
+            var sc = new RabbitHerd.Scare();
+            var px = new[] { x + 0.05f }; var pz = new[] { z + 0.12f };
+            RabbitPose last = sc.Step(0.03f, Still(x, z), px, pz, f);
+            for (int i = 0; i < 200; i++)
+            {
+                var p = sc.Step(0.03f, Still(x, z), px, pz, f);
+                Assert.IsTrue(f.IsGreenAt(p.x, p.z));
+                if (p.y > 1e-4f) Assert.Greater(Dist(p.x, p.z, last.x, last.z), 1e-4f, $"in the air without moving at frame {i}");
+                last = p;
+            }
+            Assert.AreEqual(RabbitAct.SitUp, last.act, "up on its haunches, watching");
+        }
+
+        /// <summary>#395: its day is across a lot: it hops back round the lot, never over it, in whole hops, and joins its day.</summary>
+        [Test]
+        public void HopsBack_RoundALot_NotThroughIt()
+        {
+            var f = Strip(10, 40, 10, 30, 25, 26);
+            float ax = SiteMap.CX(20), az = SiteMap.CZ(14), bx = SiteMap.CX(30), bz = SiteMap.CZ(14);
+            var sc = new RabbitHerd.Scare();
+            var none = new float[0];
+            var last = sc.Step(0.03f, Still(ax, az), none, none, f);
+            bool home = false;
+            for (int i = 0; i < 2000 && !home; i++)
+            {
+                var p = sc.Step(0.03f, Still(bx, bz), none, none, f);
+                Assert.IsTrue(f.IsGreenAt(p.x, p.z), $"over the lot at frame {i} ({p.x:0.00},{p.z:0.00})");
+                Assert.Less(Dist(p.x, p.z, last.x, last.z), 0.05f, "no pop");
+                if (p.act != RabbitAct.Hop) Assert.Less(Dist(p.x, p.z, last.x, last.z), 0.031f, "it only moves in a hop");
+                last = p;
+                home = !sc.InTransit;
+            }
+            Assert.IsTrue(home, "it got back into its day");
+            Assert.AreEqual(bx, last.x, 1e-4f);
+        }
+
+        /// <summary>No way back at all: it stays where it is and asks for a new home there (the view rehomes it).</summary>
+        [Test]
+        public void NoWayBack_AsksForAHomeWhereItIs()
+        {
+            var f = Strip(10, 40, 10, 30, 25, SiteMap.NZ - 1);
+            float ax = SiteMap.CX(20), az = SiteMap.CZ(14), bx = SiteMap.CX(30), bz = SiteMap.CZ(14);
+            var sc = new RabbitHerd.Scare();
+            var none = new float[0];
+            sc.Step(0.03f, Still(ax, az), none, none, f);
+            bool asked = false;
+            for (int i = 0; i < 100 && !asked; i++)
+            {
+                var p = sc.Step(0.03f, Still(bx, bz), none, none, f);
+                Assert.Less(p.x, SiteMap.CX(25) - 0.04f, "never crosses");
+                if (sc.TakeStranded(out float sx, out float sz)) { asked = true; Assert.AreEqual(ax, sx, 0.05f); }
+            }
+            Assert.IsTrue(asked);
         }
     }
 }
