@@ -392,7 +392,7 @@ namespace AquariumCiv.View
                     if (GUILayout.Button($"Show me: {e.kind} · {h}")) last = ShowMeDirector.DebugShow(e.id);
                 }
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Force a bubble")) last = ShowMeDirector.DebugBubble();
+                if (GUILayout.Button("Force a line")) last = ShowMeDirector.DebugBubble();
                 if (GUILayout.Button("Tree line")) last = ShowMeDirector.DebugTreeLine(); // #318
                 if (GUILayout.Button("End show me")) last = ShowMeDirector.DebugEnd();
                 GUILayout.EndHorizontal();

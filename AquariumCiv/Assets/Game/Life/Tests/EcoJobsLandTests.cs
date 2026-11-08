@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using AquariumCiv.Sim;
@@ -61,12 +62,67 @@ namespace AquariumCiv.Life.Tests
             StringAssert.Contains("fisher: open", sim.DebugJobsReadout());
         }
 
-        [Test]
-        public void TheKeepersGrownTreeOpensTheWoodcutterToo()
+        // ---- #493: the Keeper's tree is never cut
+        static SimCore KeeperOnly(out int keeperCell)
         {
-            var sim = Barren(3);
-            Reach(sim, EcoMilestones.TreeGrown);
+            var cfg = new SimConfig { ecology = true, settle = true };
+            var sim = new SimCore(cfg, SimCore.NewWorld(3, cfg));
+            Assert.IsNotNull(sim.Settlement);
+            Assert.IsTrue(sim.DebugTreeStage(4));
+            keeperCell = sim.State.eco.treeCell;
+            sim.Step();
+            return sim;
+        }
+
+        static void AllWoodcutters(SimCore sim)
+        {
+            foreach (var n in sim.State.notables.Where(x => x.alive && x.age >= 16f && x.age < sim.Config.retireAge))
+                sim.DebugSetJob(n, JobType.Woodcutter);
+        }
+
+        [Test]
+        public void TheKeepersGrownTreeAloneOpensNoWoodWork()
+        {
+            var sim = KeeperOnly(out int cell);
+            Assert.AreEqual(EcoCover.Tree, sim.EcoCoverAt(cell));
+            Assert.IsFalse(sim.TreesGrow);
+            Assert.IsFalse(sim.JobOpen(JobType.Woodcutter));
+            AllWoodcutters(sim);
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            foreach (var season in new[] { Season.Autumn, Season.Winter })
+            {
+                planner.ForcedSeason = season;
+                foreach (var who in planner.People)
+                {
+                    planner.DaySchedule(who, 1, day);
+                    Assert.IsFalse(day.Any(a => a.kind == ActivityKind.Chop || a.kind == ActivityKind.ChopKindling && a.place.kind is PlaceKind.Woods or PlaceKind.ForestEdge),
+                        season + ": nobody chops with only the Keeper's tree standing");
+                }
+            }
+            var pos = new SettlePlacePositions(sim);
+            foreach (var kind in new[] { PlaceKind.Woods, PlaceKind.ForestEdge })
+                if (pos.TryGetPosition(Place.Land(kind), out float x, out float z))
+                    Assert.AreNotEqual(cell, AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), kind + " is never the Keeper's tree");
+        }
+
+        [Test]
+        public void OnceAWildTreeGrowsChoppingGoesThereNeverToTheKeepersTree()
+        {
+            var sim = KeeperOnly(out int cell);
+            var eco = sim.State.eco;
+            int wild = -1;
+            for (int c = 0; c < EcoLand.N && wild < 0; c++)
+                if (c != cell && (EcoCover)eco.cover[c] == EcoCover.Bare && Math.Abs(AquariumCiv.Sim.Settle.SiteMap.CXc(c)) < 2.5f && Math.Abs(AquariumCiv.Sim.Settle.SiteMap.CZc(c)) < 1.7f) wild = c; // inside the glass margin
+            Assert.GreaterOrEqual(wild, 0);
+            eco.cover[wild] = (byte)EcoCover.Tree;
+            for (int m = 0; m < 12 && !sim.TreesGrow; m++) sim.Step(); // the ecology steps once a season
+            Assert.AreEqual(EcoCover.Tree, sim.EcoCoverAt(wild));
+            Assert.IsTrue(sim.TreesGrow, "a wild tree stands");
             Assert.IsTrue(sim.JobOpen(JobType.Woodcutter));
+            var pos = new SettlePlacePositions(sim);
+            Assert.IsTrue(pos.TryGetPosition(Place.Land(PlaceKind.ForestEdge), out float x, out float z));
+            Assert.AreEqual(wild, AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), "the edge is the wild tree");
         }
 
         [Test]

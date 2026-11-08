@@ -39,6 +39,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Drop();
             yield return Until(() => GlassVoice.Instance.LastCrumbLine != null, 8f);
             Assert.IsNotNull(GlassVoice.Instance.LastCrumbLine, "a line as it lands");
+            yield return Until(() => ShowMeDirector.Instance.LastLine == GlassVoice.Instance.LastCrumbLine, 11f); // #327: busy, it waits its turn
             Assert.AreEqual(GlassVoice.Instance.LastCrumbLine, ShowMeDirector.Instance.LastLine);
             AssertNoErrors("crumb line");
         }

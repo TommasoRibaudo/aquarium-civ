@@ -121,6 +121,37 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("loose group");
         }
 
+        /// <summary>#494: at the glass, looking out, each one's flat forward is toward the camera (within 35 degrees), at two camera yaws.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator PeopleAtTheGlassLookTowardTheCamera()
+        {
+            yield return Grown();
+            for (int calm = 0, f = 0; calm < 120 && f < 1200; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
+            PeopleView.DebugSetHour(10f);
+            yield return Frames(4);
+            StringAssert.Contains("at the glass", GlassVoice.DebugGather(6));
+            var pv = People;
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            yield return Until(() => pv.Activities.Count(a => a.place.kind == PlaceKind.Glass && !a.moving && PeopleView.GazesAtCamera(a.kind, a.place.kind)) >= 3, 30f);
+            foreach (float yaw in new[] { -15f, 40f })
+            {
+                rig.EaseTo(rig.target, yaw, rig.pitch, rig.zoom, 0.3f);
+                yield return new WaitForSecondsRealtime(3.5f); // the camera settles, then the lazy turn
+                Assert.AreEqual(0, LifePlanner.GlassSideFacing(yaw), "both yaws look in through the same wall, so nobody is re-planned");
+                var at = pv.Activities.Where(a => a.place.kind == PlaceKind.Glass && !a.moving && PeopleView.GazesAtCamera(a.kind, a.place.kind)).ToList();
+                Assert.GreaterOrEqual(at.Count, 3, "they are at the glass, looking out");
+                Assert.IsTrue(pv.CameraPlanePoint(out var cam));
+                foreach (var a in at)
+                {
+                    Assert.IsTrue(pv.TryGetDollPosition(a.who, out var pos));
+                    Assert.IsTrue(pv.TryGetDollFacing(a.who, out var fwd));
+                    float off = Vector2.Angle(fwd, cam - pos);
+                    Assert.LessOrEqual(off, 35f, $"{a.who.Key} ({a.kind}) faces the camera at yaw {yaw}, was {off:0} degrees off");
+                }
+            }
+            AssertNoErrors("glass gaze");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator ACarriedBabyShowsOnTheirCarerAndTheCardAgrees()
         {
@@ -272,7 +303,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Grown();
             var pv = People;
             string said = null;
-            for (int round = 0; round < 8 && (said == null || !said.StartsWith("want:")); round++) // a wording over the bubble's limit is a caption, and the next telling words it differently
+            for (int round = 0; round < 8 && (said == null || !said.StartsWith("want:")); round++)
                 foreach (WantCase c in System.Enum.GetValues(typeof(WantCase)))
                 {
                     said = ShowMeDirector.DebugWant(c);
@@ -285,6 +316,9 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(BubbleSource.Want, sm.ShownBubble.source);
             Assert.IsNotNull(GameUiPanel.Bubbles.Holder, "the host gave it the word");
             Assert.IsFalse(GameUiPanel.Bubbles.Free(BubbleHost.Rank.World), "and nobody talks over it");
+            Assert.IsTrue(sm.CaptionUp, "#327: on the caption");
+            Assert.IsFalse(string.IsNullOrEmpty(sm.LastWho), "with a name or a crowd label");
+            Assert.IsTrue(sm.SpeakerRingUp, "and the ring under whoever says it");
             yield return Shot("people-want");
             AssertNoErrors("want line");
         }
@@ -296,15 +330,10 @@ namespace AquariumCiv.View.PlayTests
             yield return Grown();
             var sm = ShowMeDirector.Instance;
             string said = ShowMeDirector.DebugBubble();
-            for (int i = 0; i < 12 && said.StartsWith("caption"); i++) said = ShowMeDirector.DebugBubble(); // a long line is a caption: this one is about the bubble
-            StringAssert.StartsWith("bubble", said);
+            StringAssert.StartsWith("line", said);
             yield return Frames(4);
             var b = sm.ShownBubble;
             Assert.IsNotNull(b);
-            var el = sm.GetComponentsInChildren<UIDocument>().Select(d => d.rootVisualElement.Q("showme-bubble")).First(e => e != null);
-            var head = new Vector2(sm.BubbleScreen.x, Screen.height - sm.BubbleScreen.y);
-            var panelHead = RuntimePanelUtils.ScreenToPanel(el.panel, head);
-            Assert.IsFalse(el.worldBound.Contains(panelHead), "the bubble isn't on the speaker");
             Assert.GreaterOrEqual(b.seconds, 3.5f, "long enough to read");
             float start = Time.realtimeSinceStartup;
             PeopleView.DebugSetHour(23.5f); // everyone goes in at once
@@ -317,21 +346,28 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("speaker indoors");
         }
 
-        /// <summary>Tester run 6: a line over the bubble's limit is a caption here too, so no bubble runs past three lines.</summary>
+        /// <summary>Tester run 6, #327 Option B: every ambient line, long or short, is on the caption with its speaker's name (or a crowd label) and ring.</summary>
         [UnityTest, Timeout(120000)]
         [Category("Tester6")]
-        public IEnumerator AnAmbientLineOverTheLimitIsACaption()
+        public IEnumerator EveryAmbientLineIsACaptionWithItsSpeaker()
         {
             yield return Grown();
             // Batch 8: the year skip queues #370 staged moments; while one plays the bank offers only its few lines: stop them first.
             for (int calm = 0, f = 0; calm < 120 && f < 1200; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
             var sm = ShowMeDirector.Instance;
-            string said = "";
-            for (int i = 0; i < 40 && !said.StartsWith("caption"); i++) said = ShowMeDirector.DebugBubble();
-            StringAssert.StartsWith("caption", said, "the bank has long lines");
-            Assert.IsTrue(sm.CaptionUp);
-            Assert.IsNull(sm.ShownBubble, "no bubble for it");
-            Assert.IsTrue(GlassBubble.TooLong(sm.LastLine), sm.LastLine);
+            bool sawLong = false, sawShort = false;
+            for (int i = 0; i < 40 && !(sawLong && sawShort); i++)
+            {
+                string said = ShowMeDirector.DebugBubble();
+                if (!said.StartsWith("line")) continue;
+                yield return Frames(2);
+                Assert.IsTrue(sm.CaptionUp, said);
+                Assert.IsNotNull(sm.ShownBubble, said);
+                Assert.IsFalse(string.IsNullOrEmpty(sm.LastWho), "a name or a crowd label: " + said);
+                Assert.IsTrue(sm.SpeakerRingUp, "the ring: " + said);
+                if (GlassBubble.TooLong(sm.LastLine)) sawLong = true; else sawShort = true;
+            }
+            Assert.IsTrue(sawLong || sawShort, "the bank has lines");
             AssertNoErrors("long ambient line");
         }
 
