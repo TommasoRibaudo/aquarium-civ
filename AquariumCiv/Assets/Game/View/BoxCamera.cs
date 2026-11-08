@@ -241,6 +241,49 @@ namespace AquariumCiv.View
         /// front pane is lost in its haze (Show me does the same).</summary>
         public const float NudgeZoom = 0.7f, NudgeSeconds = 1.8f, NudgePitch = 50f;
 
+        // ---------------- the lean (P9, user 2026-11-08) ----------------
+        System.Func<bool> leanHold;
+        bool leanFlight;
+
+        /// <summary>A lean is on: the camera went in close for something small (placed life) and stays while <c>hold</c> says so, then glides
+        /// back to where the player had it.</summary>
+        public bool Leaning => leanHold != null && (glide.Armed || IsFlying);
+        /// <summary>Leans the player cancelled (a two-finger move, an orbit drag or a scroll while a lean held the camera).</summary>
+        public int LeanCancels { get; private set; }
+        /// <summary>A lean looks down from at least this pitch (degrees), a little steeper than a nudge so a small group on the ground spreads out.</summary>
+        public const float LeanPitch = 52f, LeanSeconds = 1.4f;
+
+        /// <summary>
+        /// P9 (user 2026-11-08, "the camera leans in"): eases in close to <paramref name="worldPoint"/> at <paramref name="zoomTo"/> so a small
+        /// group reads at phone size, keeps the view there while <paramref name="hold"/> is true, then glides back to where the player had the
+        /// camera (the first lean of a chain keeps the way home). Unlike a nudge it leans even when the spot is framed, and a one-finger tap (the
+        /// life tool's own taps) doesn't stop it; a two-finger move, an orbit drag or a scroll does (<see cref="LeanCancels"/>). Never against a
+        /// finger already moving the camera. True when the camera moves.
+        /// </summary>
+        public bool LeanIn(Vector3 worldPoint, float zoomTo, System.Func<bool> hold, float seconds = LeanSeconds)
+        {
+            if (cam == null) cam = GetComponent<Camera>();
+            if (cam == null || !isActiveAndEnabled || (Touching && (moved || mode == Mode.TwoFinger))) return false;
+            float z1 = Mathf.Min(zoom, Mathf.Clamp(zoomTo, minZoom, maxZoom));
+            ReturnAfterFlight();
+            EaseTo(worldPoint, yaw, Mathf.Max(pitch, LeanPitch), z1, seconds);
+            leanHold = hold;
+            leanFlight = IsFlying;
+            return true;
+        }
+
+        /// <summary>Ends a lean now: the camera glides back after the usual short wait.</summary>
+        public void ReleaseLean() { leanHold = null; }
+
+        bool LeanHeld()
+        {
+            if (leanHold == null) return false;
+            bool h;
+            try { h = leanHold(); } catch { h = false; }
+            if (!h) leanHold = null;
+            return h;
+        }
+
         // ---------------- the glide back (#146) ----------------
         readonly GlideBack glide = new();
         bool glideNext;
@@ -263,6 +306,7 @@ namespace AquariumCiv.View
         /// <summary>Something is using the view the flight went to: its card is up, a moment plays, camera mode. The wait restarts when that ends.</summary>
         bool GlideHeld()
         {
+            if (LeanHeld()) return true;
             var hud = AquariumCiv.GameUI.GameHud.Instance;
             if (IsFollowing || (hud != null && (hud.CameraMode || hud.CleanMode || hud.SheetOpen))) return true;
             var card = PersonCardView.Instance;
@@ -282,10 +326,14 @@ namespace AquariumCiv.View
         /// <summary>One frame of the glide; true while it has the camera.</summary>
         bool StepGlide(float dt, int touches, float scroll)
         {
-            if (!glide.Armed) return false;
+            if (!glide.Armed) { leanHold = null; return false; }
             // Tester run 10: with a card up a press may be the tap that closes it, so only a real drag or pinch forgets the way home.
             bool held = GlideHeld();
-            if (Mathf.Abs(scroll) > 0.01f || (touches > 0 && (!held || moved || touches >= 2))) { glide.Cancel(); return false; }
+            if (Mathf.Abs(scroll) > 0.01f || (touches > 0 && (!held || moved || touches >= 2)))
+            {
+                if (leanHold != null) { LeanCancels++; leanHold = null; }
+                glide.Cancel(); return false;
+            }
             if (held) { glide.Remember(glideTarget.x, glideTarget.z, glideZoom, glideYaw, glidePitch); return false; }
             float x = target.x, z = target.z, zm = zoom, y = yaw, p = pitch;
             if (!glide.Step(dt, ref x, ref z, ref zm, ref y, ref p)) return false;
@@ -353,14 +401,19 @@ namespace AquariumCiv.View
         /// <summary>Stops a flight where it is.</summary>
         public void CancelFlight() { if (IsFlying) EndFlight(false); }
 
-        void EndFlight(bool arrived) { IsFlying = false; firmFlight = false; FlightEnded?.Invoke(arrived); }
+        void EndFlight(bool arrived) { IsFlying = false; firmFlight = false; leanFlight = false; FlightEnded?.Invoke(arrived); }
 
         /// <summary>One frame of flight (public for tests): <paramref name="touches"/> fingers or buttons down, or a scroll, interrupt it.
         /// Returns true while the camera is still flying after this frame.</summary>
         public bool TickFlight(float dt, int touches = 0, float scroll = 0f)
         {
             if (!IsFlying) return false;
-            if (!firmFlight && (touches > 0 || Mathf.Abs(scroll) > 0.01f)) { EndFlight(false); return false; }
+            // a lean's flight gives way to a camera gesture (two fingers, a scroll), not to the life tool's one-finger taps
+            if (!firmFlight && (touches > (leanFlight && leanHold != null ? 1 : 0) || Mathf.Abs(scroll) > 0.01f))
+            {
+                if (leanFlight && leanHold != null) { LeanCancels++; leanHold = null; glide.Cancel(); }
+                EndFlight(false); return false;
+            }
             flyT += dt;
             float k = BoxCameraMath.FlyEase(flyDur > 0f ? flyT / flyDur : 1f);
             target = Vector3.Lerp(flyFrom, flyTo, k);
@@ -403,7 +456,7 @@ namespace AquariumCiv.View
                 // The tool keeps the touch; a flight still gives way to it.
                 if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
                 n = 0; mode = Mode.None; orbiting = false; velocity = Vector2.zero;
-                glide.Cancel();
+                if (!(glide.Armed && LeanHeld())) glide.Cancel(); // a lean stays through the life tool's taps
                 return;
             }
             if (IsFlying && TickFlight(dt, n, scrollY)) { FollowAngles(dt); return; }

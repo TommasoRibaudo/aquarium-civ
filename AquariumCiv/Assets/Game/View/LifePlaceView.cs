@@ -158,6 +158,7 @@ namespace AquariumCiv.View
             }
             bool moved = GhostShown;
             ShowGhost(s, cell);
+            LifeArrivalView.Instance?.LeanOnGhost(s, ghostAt); // user 2026-11-08: the camera leans in so the group reads at phone size
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
             if (!moved) { hud?.WithdrawToast(GameHud.LifeHint); hud?.Toast("Tap the outline again to set them down here.", 3f); }
         }

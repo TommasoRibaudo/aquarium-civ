@@ -268,7 +268,7 @@ namespace AquariumCiv.View
                 {
                     if (!pv.Planner.StartStoryHint(plan.hintSpecies, plan.hintStage, plan.members, plan.hintCell, pv.Now, out float secs, out hintWhy, plan.force)) return false;
                     until = clock + secs;
-                    LifeArrivalView.Instance?.HintStarted((Sim.Eco.LifeSpecies)plan.hintSpecies, plan.hintStage, plan.members.Count);
+                    LifeArrivalView.Instance?.HintStarted((Sim.Eco.LifeSpecies)plan.hintSpecies, plan.hintStage, plan.members.Count, secs, plan.hintCell);
                     break;
                 }
                 case StoryKind.WaterRun: case StoryKind.Pick:
