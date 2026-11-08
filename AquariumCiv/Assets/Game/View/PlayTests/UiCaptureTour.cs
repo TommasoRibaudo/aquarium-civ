@@ -285,7 +285,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(1f);
             string said = ShowMeDirector.DebugBubble();
             yield return Frames(4);
-            var el = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-bubble");
+            var el = d.GetComponentInChildren<UIDocument>().rootVisualElement.Q("showme-caption"); // #327 Option B: the people's lines are on the caption
             yield return Until(() => Shown(el), 8f);
             yield return Cap("3.2-bubble-shown", Shown(el), said);
             AssertNoErrors("bubble");

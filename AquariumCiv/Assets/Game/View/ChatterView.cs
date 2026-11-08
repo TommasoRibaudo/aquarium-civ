@@ -15,8 +15,10 @@ namespace AquariumCiv.View
     /// <summary>
     /// The wordless chatter on screen (#144, research 12): reads who stands together, feeds <see cref="ChatterPlan"/> each frame, draws its
     /// marks and plays their babble, and turns a knock into a <c>!</c> before the body moves (#161). All marks are one mesh, one material and
-    /// one draw call, rebuilt in world space each frame from five shapes made once with <see cref="MeshBuilder"/>, facing the camera at about
+    /// one draw call, rebuilt in world space each frame from six shapes made once with <see cref="MeshBuilder"/>, facing the camera at about
     /// 20 pt on screen whatever the zoom. <see cref="ShowMeDirector"/> owns it and drives it: this class decides nothing about quiet.
+    /// #327 Option B: the sixth shape is the speech mark, a quote glyph on a warm disc over whoever has a line on the caption
+    /// (<see cref="SpeechOver"/>, set by the director each frame), so the tie between the words at the top and the person reads in the world.
     /// </summary>
     public sealed class ChatterView
     {
@@ -371,6 +373,7 @@ namespace AquariumCiv.View
                 DrawnMarks.Add(d.show.mark);
             }
             MarksDrawn = DrawnOver.Count;
+            DrawSpeech(pv, cam, px, tan, right, up, forward);
             Upload();
             watch.Stop();
             Note(t0);
@@ -400,6 +403,38 @@ namespace AquariumCiv.View
                 var d = live.Find(l => l.order == p.ids[0]);
                 if (d != null) d.spread = new Vector2(p.x - p.anchorX, -(p.y - (p.anchorY - w)));
             }
+        }
+
+        // ================================================================== the speech mark (#327)
+
+        /// <summary>Who has a line on the caption now (None = nobody): the speech mark stands over their head while it shows.</summary>
+        public PersonRef SpeechOver = PersonRef.None;
+        /// <summary>The speech mark was drawn last frame, over whom and where in pixels (tests).</summary>
+        public bool SpeechDrawn { get; private set; }
+        public PersonRef SpeechDrawnOver { get; private set; }
+        public Vector3 SpeechAt { get; private set; }
+        float speechAlpha;
+        PersonRef speechLast = PersonRef.None;
+
+        /// <summary>The speech mark fades in and out like the other marks, over the speaker, a little higher than a chatter mark so
+        /// a knock's ! beside it doesn't sit on it.</summary>
+        void DrawSpeech(PeopleView pv, Camera cam, float px, float tan, Vector3 right, Vector3 up, Vector3 forward)
+        {
+            SpeechDrawn = false;
+            SpeechDrawnOver = PersonRef.None;
+            bool on = !SpeechOver.IsNone;
+            if (on) speechLast = SpeechOver;
+            speechAlpha = Mathf.MoveTowards(speechAlpha, on ? 1f : 0f, Mathf.Min(Time.unscaledDeltaTime, 0.1f) / FadeSeconds);
+            if (speechAlpha <= 0f || speechLast.IsNone || !pv.TryGetDollTop(speechLast, out var top)) return;
+            float depth = Vector3.Dot(top - cam.transform.position, forward);
+            if (depth <= 0f) return;
+            float perPx = cam.orthographic ? 2f * cam.orthographicSize / Screen.height : 2f * depth * tan / Screen.height;
+            float size = px * perPx;
+            var at = top + up * (size * 0.85f);
+            Append(Shapes(ChatterMark.Speech), at, right * size, up * size, speechAlpha);
+            SpeechDrawn = on;
+            SpeechDrawnOver = speechLast;
+            SpeechAt = cam.WorldToScreenPoint(at);
         }
 
         const float MarkGap = 1.12f;
@@ -460,17 +495,29 @@ namespace AquariumCiv.View
             live.Clear(); Plan.Reset();
         }
 
-        // ================================================================== the five shapes
+        // ================================================================== the six shapes
+        /// <summary>The speech mark's disc: the speaker ring's warm white, so mark and ring read as one person's line.</summary>
+        static readonly Color SpeechPaper = new(1f, 0.95f, 0.78f, 1f);
+
         Shape Shapes(ChatterMark m)
         {
             if (shapes.TryGetValue(m, out var s)) return s;
             var mb = new MeshBuilder(144) { jitter = 0f };
             var ink = new Color(0.17f, 0.11f, 0.07f, 1f);
+            var paper = m == ChatterMark.Speech ? SpeechPaper : Color.white;
             Disc(mb, Vector2.zero, 0.54f, 0.54f, new Color(0.2f, 0.14f, 0.1f, 0.3f));
-            Disc(mb, Vector2.zero, 0.5f, 0.5f, Color.white);
-            mb.Tri(new Vector3(-0.13f, -0.44f), new Vector3(0.13f, -0.44f), new Vector3(0f, -0.66f), Color.white);
+            Disc(mb, Vector2.zero, 0.5f, 0.5f, paper);
+            mb.Tri(new Vector3(-0.13f, -0.44f), new Vector3(0.13f, -0.44f), new Vector3(0f, -0.66f), paper);
             switch (m)
             {
+                case ChatterMark.Speech:
+                    // an opening quote: two round heads low, each with a tail rising to the right
+                    foreach (float x in new[] { -0.15f, 0.15f })
+                    {
+                        Disc(mb, new Vector2(x, -0.06f), 0.11f, 0.11f, ink);
+                        Bar(mb, new Vector2(x - 0.08f, -0.02f), new Vector2(x + 0.05f, 0.22f), 0.08f, ink);
+                    }
+                    break;
                 case ChatterMark.Dots:
                     for (int i = -1; i <= 1; i++) Disc(mb, new Vector2(i * 0.26f, 0f), 0.09f, 0.09f, ink);
                     break;

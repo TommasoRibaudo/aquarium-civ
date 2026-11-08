@@ -111,8 +111,8 @@ namespace AquariumCiv.Sim
 
         /// <summary>P8 (#285): berries grow (a bush came up). Without the ecology there is always something to gather.</summary>
         public bool BerriesGrow => !EcologyOn || State.eco.Reached(EcoMilestones.FirstBush);
-        /// <summary>P8 (#285): trees stand, wild or the Keeper's own grown one. Without the ecology there is a forest.</summary>
-        public bool TreesGrow => !EcologyOn || State.eco.Reached(EcoMilestones.FirstWoodTree) || State.eco.Reached(EcoMilestones.TreeGrown);
+        /// <summary>P8 (#285, #493): a wild tree has grown (the Keeper's own tree is never cut, so it opens no wood work). Without the ecology there is a forest.</summary>
+        public bool TreesGrow => !EcologyOn || State.eco.Reached(EcoMilestones.FirstWoodTree);
         /// <summary>P8 (#285): rabbits have been seen (the hunter's job opens).</summary>
         public bool RabbitsSeen => !EcologyOn || State.eco.Reached(EcoMilestones.FirstRabbit);
 

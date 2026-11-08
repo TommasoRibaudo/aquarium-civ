@@ -61,6 +61,8 @@ namespace AquariumCiv.View
             public uint sig;
             public Vector2 pos;
             public float yaw, speed, phase;
+            /// <summary>#494: 0 to 1, how much they are looking out at the camera from the glass (eased); tilts the head up a little more.</summary>
+            public float gaze;
             public bool placed, wasHidden;
             public PersonActivity act;
             /// <summary>The place this person holds a slot at, and which (stable while they stay, rule 6).</summary>
@@ -142,7 +144,7 @@ namespace AquariumCiv.View
         /// <summary>Tester run 9: under this speed a doll hasn't really got a way to face, and turns at <see cref="SlowTurn"/> at the most (degrees a second).</summary>
         const float FaceFrom = 0.2f, SlowTurn = 110f;
         /// <summary>#203: how fast the way a walker goes settles (per second), how fast a doll turns to face it, and the fastest it turns (degrees a second).</summary>
-        const float HeadingRate = 8f, VelocityRate = 10f, TurnRate = 9f, MostTurn = 300f;
+        const float HeadingRate = 8f, VelocityRate = 10f, TurnRate = 9f, MostTurn = 300f, GazeTurnRate = 2.2f, GazeHeadUp = 6f; // #494: 2.2 a second is a ~0.5 s lazy follow
         /// <summary>#203: slower than this a doll isn't walking, faster than that it is: a doll easing onto its spot doesn't flick between the two.</summary>
         const float WalkStops = 0.03f, WalkStarts = 0.05f;
         /// <summary>#203: how long one move takes to become the next.</summary>
@@ -491,6 +493,8 @@ namespace AquariumCiv.View
             if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
+            // #494: at the glass, looking out: turned toward the camera, from where they stand (see GazesAtCamera).
+            bool gazing = !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && GazesAtCamera(a.kind, a.place.kind) && CameraPlanePoint(out camPlane);
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
             target.x = Mathf.Clamp(target.x, -Land.HX + rim, Land.HX - rim);
             target.y = Mathf.Clamp(target.y, -Land.HZ + rim, Land.HZ - rim);
@@ -588,8 +592,14 @@ namespace AquariumCiv.View
             if (!a.carrying.IsNone && a.carryOnFoot && !walking && !paired && !playing && style == DollStyle.Stand && ToddleFollow.PlopSince(a.carrying.Key, time) >= 0f
                 && dolls.TryGetValue(a.carrying.Key, out var tod) && tod.placed && (tod.drawn - d.drawn).sqrMagnitude < ToddleFollow.BendReach * ToddleFollow.BendReach)
             { bendTo = tod.drawn; if ((tod.drawn - d.pos).sqrMagnitude > 1e-5f) want = Yaw(d.pos, tod.drawn); }
+            if (gazing)
+            {   // #494: the Keeper is there: face the camera from here (they converge a little), lazily
+                var toCam = camPlane - d.pos;
+                if (toCam.sqrMagnitude > 1e-4f) want = Yaw(d.pos, camPlane);
+            }
+            d.gaze = dt > 0f ? Mathf.MoveTowards(d.gaze, gazing ? 1f : 0f, dt / 0.8f) : (gazing ? 1f : 0f);
             float most = walking || a.moving ? Mathf.Lerp(SlowTurn, MostTurn, d.speed / FaceFrom) : MostTurn; // nearly stopped in a crowd, a body doesn't spin
-            d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * TurnRate)), -most * dt, most * dt) : want;
+            d.yaw = dt > 0f ? d.yaw + Mathf.Clamp(Mathf.DeltaAngle(d.yaw, want) * (1f - Mathf.Exp(-dt * (gazing ? GazeTurnRate : TurnRate))), -most * dt, most * dt) : want;
 
             // Pose: the apprentice copies the master a beat late (§4).
             float phase = time + d.phase - (a.copiesPartner ? 0.35f : 0f);
@@ -654,6 +664,7 @@ namespace AquariumCiv.View
             }
             if (style == DollStyle.Stir && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && !a.moving && meals.HasFire && meals.StirBegan(a.who.Key, phase, a.pace))
                 HitFx.Puff(PuffKind.Steam, peopleRoot.TransformPoint(meals.PotTopLocal((sx, sz) => Box.SurfaceHeight(sx, sz))), Vector3.up, 1.2f); // #365 B9.d: steam at the top of each stir
+            if (d.gaze > 0f && !pose.lying) pose.lean -= GazeHeadUp * d.gaze; // #494: the head tilts up a little more toward the camera
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);
             bool struck = d.hitEdge.Step(pose.hidden ? 0f : pose.hit); // #355
@@ -1071,6 +1082,28 @@ namespace AquariumCiv.View
             dir.Normalize();
             for (int i = 0; i < 40 && land.IsWater(p.x, p.y); i++) p += dir * 0.03f;
             return p + dir * 0.03f;
+        }
+
+        /// <summary>#494: the activities in which someone looks out through the glass (and so at the camera): the look-ups, the kids pressing
+        /// hands, the adults sitting facing it at dusk, a small wave; the gather is these at the Glass place. Nothing else turns to the camera.</summary>
+        public static bool GazesAtCamera(ActivityKind k, PlaceKind place) => k switch
+        {
+            ActivityKind.LookAtGlass or ActivityKind.LookUpWary or ActivityKind.GazeWary or ActivityKind.PressHands or ActivityKind.WaveWary => true,
+            ActivityKind.LookUp or ActivityKind.Gaze or ActivityKind.SitOut or ActivityKind.Wave => place == PlaceKind.Glass,
+            _ => false,
+        };
+
+        Vector2 camPlane;
+
+        /// <summary>#494: where the camera is on the ground plane, in the people's own (box-local) frame. False without a camera.</summary>
+        public bool CameraPlanePoint(out Vector2 p)
+        {
+            p = default;
+            var cam = Camera.main;
+            if (cam == null || peopleRoot == null) return false;
+            var l = peopleRoot.InverseTransformPoint(cam.transform.position);
+            p = new Vector2(l.x, l.z);
+            return true;
         }
 
         /// <summary>The yaw that turns the doll's front (local −z) from <paramref name="from"/> towards <paramref name="to"/>.</summary>

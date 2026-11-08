@@ -95,7 +95,7 @@ namespace AquariumCiv.View.PlayTests
                     Assert.IsEmpty(errors, $"{id}: no errors: {string.Join(" | ", errors)}");
                 }
                 var sm = ShowMeDirector.Instance;
-                Assert.Greater(sm.EchoLinesOverHead, 0, "the moments' lines go over the speaker's head (user 2026-10-30)");
+                Assert.Greater(sm.SceneLines, 0, "the moments' lines go on the caption with their speaker (#327 Option B)");
                 StringAssert.DoesNotContain("{0}", sm.LastLine, "a line was said with the name filled in");
                 Assert.IsNotEmpty(sm.LastLine);
             }

@@ -627,7 +627,9 @@ namespace AquariumCiv.Sim.Eco
                 st.campGateMonth = (int)month; Reach(EcoMilestones.CampGate, month); newGates.Add("camp");
             }
             if (st.campGateMonth >= 0 && BushFrac >= t.seedUnlockBush) Reach(EcoMilestones.SeedUnlocked, month);
-            if (st.cTrees > 0) Reach(EcoMilestones.FirstWoodTree, month);
+            // #493: the milestone is the first WILD grown tree (the woodcutter's work); the Keeper's own tree never counts.
+            bool keeperGrown = st.treeCell >= 0 && st.treeCell < EcoLand.N && Cv(st.treeCell) == EcoCover.Tree;
+            if (st.cTrees - (keeperGrown ? 1 : 0) > 0) Reach(EcoMilestones.FirstWoodTree, month);
             if (st.cPond > 0) Reach(EcoMilestones.WaterSurfaced, month);
             if (st.villageGateMonth < 0 && st.campGateMonth >= 0 && st.cPond >= t.pondGateCells && st.cTrees >= t.villageTrees)
             {

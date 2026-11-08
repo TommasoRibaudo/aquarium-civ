@@ -1,6 +1,13 @@
 # Where the people's words show: review and proposal (#327 phase 1, draft, 2026-11-04)
 
 Status: **for the user to pick an option.** Nothing changes in code until one is picked. Phase 2 builds it.
+
+**Picked: Option B (the user, 2026-11-08). Phase 2 built** on `polish/327-caption-every-line`: `LineRoute` (pure, `View/ShowMe/Core`) routes every
+spoken line to the one caption (`showme-caption`, a real holder of the word now) with the name or a crowd label ("someone in the camp"),
+the `SpeakerRing` and a speech mark (`ChatterMark.Speech`, sixth shape in `ChatterView`'s mesh, on the ring's warm white); the ShowMe
+bubble is gone, the first run's wish keeps its own. Relic, crumb and wish lines wait up to 10 s for the word (`LineQueue`) instead of
+the moment overlay or silence. Not built yet (open questions 2 to 4): a line's own voice, marks in step with voices, place words in
+the name line ("Mira, by the tree"). Cheats (SliceDebugPanel): "Line: caption here", "Speech mark", "Line: 2nd waits".
 **[est]** = a guess to tune. **[measure]** = a number the Editor phase reads off a real frame.
 
 Why (the user, 2026-11-04, from the tester's finding on #318): at the normal zoom the people are too small to carry a

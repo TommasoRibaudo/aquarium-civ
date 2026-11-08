@@ -122,10 +122,11 @@ namespace AquariumCiv.View
             if (line == null) return;
             var show = ShowMeDirector.Instance;
             var mp = MomentPlayer.Instance;
-            if (show == null || (mp != null && mp.Playing)) return;
+            if (show == null) return;
             var first = FirstRunView.Instance;
             if (first != null && first.HasTheWord) { held.Add(line); return; } // the first run's words: this waits its turn (tester run 6)
-            show.SayOverHead(line.text, PersonRef.Notable(line.speakerId), PeopleVoice.SecondsFor(line.text));
+            if (mp != null && mp.Playing) { held.Add(line); return; } // #327: a moment's words too, rather than dropping it
+            show.SayOrWait(line.text, PersonRef.Notable(line.speakerId), PeopleVoice.SecondsFor(line.text), LineKind.Wish); // #327: busy, it waits its turn
         }
 
         /// <summary>Lines kept back while the first run had the word. Said one at a time once it's passed, oldest first.</summary>
@@ -134,6 +135,8 @@ namespace AquariumCiv.View
             if (held.Count == 0) return;
             var first = FirstRunView.Instance;
             if (first != null && first.HasTheWord) return;
+            var mp = MomentPlayer.Instance;
+            if (mp != null && mp.Playing) return;
             if (Time.unscaledTime < nextHeld || !GameUiPanel.Bubbles.Free(BubbleHost.Rank.World)) return; // someone is speaking: after them
             var line = held[0];
             held.RemoveAt(0);

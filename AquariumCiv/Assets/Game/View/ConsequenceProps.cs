@@ -69,8 +69,15 @@ namespace AquariumCiv.View
                     for (int i = 0; i < 3; i++)
                         mb.Prism(new Vector3(Mathf.Cos(i * 2.094f), 0f, Mathf.Sin(i * 2.094f)) * 0.1f, 0.008f, 0.006f, 0.2f, 5, Palette.Bark,
                             Quaternion.AngleAxis(14f, new Vector3(-Mathf.Sin(i * 2.094f), 0f, Mathf.Cos(i * 2.094f))));
-                    mb.Prism(new Vector3(0f, 0.08f, 0f), 0.07f, 0.09f, 0.09f, 9, Palette.Iron, topCol: Palette.Terracotta);
-                    mb.Prism(new Vector3(0f, 0.168f, 0f), 0.075f, 0.075f, 0.004f, 9, Palette.Sprout);
+                    // #492: a clay pot of stew like the cook's camp pot (MealDirector); the green top read as a cauldron
+                    mb.Prism(new Vector3(0f, 0.08f, 0f), 0.07f, 0.09f, 0.09f, 9, Palette.Terracotta, topCol: Palette.Terracotta);
+                    mb.Prism(new Vector3(0f, 0.168f, 0f), 0.075f, 0.075f, 0.004f, 9, new Color(0.80f, 0.52f, 0.20f)); // the stew
+                    for (int i = 0; i < 3; i++) // a few bits in the stew, so it reads as food at the default zoom
+                    {
+                        float a = i * 2.3f + 0.4f;
+                        mb.Ico(new Vector3(Mathf.Cos(a) * 0.035f, 0.172f, Mathf.Sin(a) * 0.035f), 0.012f, new Vector3(1f, 0.5f, 1f),
+                            i == 1 ? Palette.Sprout : Palette.WoodLight, 0.2f);
+                    }
                     break;
                 case ConsequenceKind.AxeStump: // a stump with an axe stuck in it, a notch in the handle
                     mb.Prism(Vector3.zero, 0.075f, 0.065f, 0.1f, 8, Palette.Bark, topCol: Palette.WoodLight);

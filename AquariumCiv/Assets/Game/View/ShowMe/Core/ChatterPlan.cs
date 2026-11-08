@@ -4,8 +4,8 @@ using System.Linq;
 
 namespace AquariumCiv.View.ShowMe
 {
-    /// <summary>The five marks of the wordless chatter (#144, research 12 §5): … ♪ ♥ ! ?</summary>
-    public enum ChatterMark { None, Dots, Note, Heart, Bang, Question }
+    /// <summary>The five marks of the wordless chatter (#144, research 12 §5): … ♪ ♥ ! ?, and #327's speech mark (a quote glyph over whoever has a line on the caption; never a chatter turn).</summary>
+    public enum ChatterMark { None, Dots, Note, Heart, Bang, Question, Speech }
 
     /// <summary>How people talk without words (#144 research 12 §6). The debug panel keeps this until the user picks.</summary>
     public enum ChatterStyle { Off, Marks, MarksBabble, GestureBabble }
