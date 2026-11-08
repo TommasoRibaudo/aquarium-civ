@@ -149,6 +149,7 @@ namespace AquariumCiv.View.PlayTests
         static int ApartObjects() => Resources.FindObjectsOfTypeAll<Transform>().Count(t => t != null && t.name.StartsWith("Apart") && t.gameObject.scene.IsValid());
         static int ApartMeshes() => Resources.FindObjectsOfTypeAll<Mesh>().Count(m => m != null && m.name.StartsWith("Apart"));
         static int DollMeshes() => Resources.FindObjectsOfTypeAll<Mesh>().Count(m => m != null && (m.name == "DollBody" || m.name == "DollArm"));
+        static readonly string[] LazyViewRoots = { "ChatterMarks", "RitualBubbles" };
         static List<string> RootNames() => UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects().Select(g => g.name).OrderBy(n => n).ToList();
 
         [UnityTest, Timeout(300000)]
@@ -182,6 +183,10 @@ namespace AquariumCiv.View.PlayTests
             var added = now.ToList(); foreach (var n in roots) added.Remove(n);
             Debug.Log($"[Apart] sanity: roots {roots.Count} -> {now.Count} (new: {string.Join(", ", added)}), apart objects {ApartObjects()}, apart meshes {ApartMeshes()}, doll meshes {dolls} -> {DollMeshes()}");
             Assert.IsFalse(added.Any(n => n.StartsWith("Apart")), "no camp root at the scene's top");
+            // #488: chatter marks and ritual bubbles make their one root lazily, the first time a mark or a ritual shows; whether
+            // that happens inside this test's two years depends on timing. They are singletons, not leaks: allow them once each.
+            foreach (var n in LazyViewRoots) Assert.LessOrEqual(now.Count(x => x == n), 1, "one " + n + " root at most");
+            added.RemoveAll(n => LazyViewRoots.Contains(n));
             Assert.LessOrEqual(added.Count, 1, "new roots: " + string.Join(", ", added));
             yield return Shot("231-cold-camp-1170x2532");
             AssertNoErrors("cold camp");
