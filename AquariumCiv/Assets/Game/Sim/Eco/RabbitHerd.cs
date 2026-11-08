@@ -535,7 +535,7 @@ namespace AquariumCiv.Sim.Eco
             public const float ZigZag = 0.06f, ZigLen = 0.55f; // #362: 0.06 (was 0.035), so a bolting rabbit zigzags visibly
             /// <summary>A scheduled pose that moves farther than this in one step jumped (a new home, or the green round it changed and the
             /// spot with it): the doll keeps its place and hops over instead (a real hop is 0.12).</summary>
-            public const float JumpGuard = 0.3f;
+            public const float JumpGuard = 0.15f; // verify run 2026-11-07: 0.3 let a 0.2-0.29 snap of the schedule through; a real hop is 0.12 and per frame far less
 
             /// <summary>Where it is shown minus where its day has it (0 on its day): for tests and the debug line.</summary>
             public float offX, offZ;

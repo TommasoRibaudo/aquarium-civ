@@ -415,6 +415,28 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(b.x, last.x, 0.02f, "and it gets there");
         }
 
+        /// <summary>Verify run 2026-11-07: a schedule step of 0.2-0.29 (under the old 0.3 guard, far over a real hop) popped the rabbit two or
+        /// three cells in one frame. It must hop over instead.</summary>
+        [Test]
+        public void Scare_AMidSizeJumpInTheSchedule_IsHoppedOver_NotAPop()
+        {
+            var f = Herd(out _, 3);
+            var sc = new RabbitHerd.Scare();
+            var none = new float[0];
+            var a = new RabbitPose { x = -1.0f, z = 0.0f, act = RabbitAct.Graze };
+            var b = new RabbitPose { x = -0.75f, z = 0.0f, act = RabbitAct.Graze };
+            var last = sc.Step(0.013f, a, none, none, f);
+            float maxStep = 0f;
+            for (int i = 0; i < 200; i++)
+            {
+                var p = sc.Step(0.013f, b, none, none, f);
+                maxStep = Math.Max(maxStep, Dist(p.x, p.z, last.x, last.z));
+                last = p;
+            }
+            Assert.Less(maxStep, 0.05f, "no pop: at most a hop's worth a step");
+            Assert.AreEqual(b.x, last.x, 0.02f, "and it gets there");
+        }
+
         [Test]
         public void Knock_FarFromEveryRabbit_DoesNothing()
         {
