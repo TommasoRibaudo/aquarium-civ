@@ -365,6 +365,103 @@ namespace AquariumCiv.Tests
             },
         };
 
+        // ---------- #404: the lookout tower the people apart give the Keeper ----------
+
+        static ApartGroup SettleApart(SimCore sim, string kind, string id = "a")
+        {
+            sim.DilemmaCatalog = new[] { ApartDef(id, kind, 3) };
+            var d = sim.DebugRaiseDilemma(id);
+            Assert.IsTrue(sim.AnswerDilemma(d.id, 1, DilemmaPath.Card));
+            return sim.ApartOf(d);
+        }
+
+        static void StartTown(SimCore sim) { sim.State.era = Era.Town; sim.State.eraStartMonth = sim.State.month; }
+
+        static void Months(SimCore sim, int n) { for (int m = 0; m < n; m++) sim.Advance(1.0 / 12); }
+
+        [Test]
+        public void TheTower_IsBegunAFewMonthsIntoTheTown_ByTheirCamp()
+        {
+            for (int seed = 1; seed <= 4; seed++)
+            {
+                var sim = NewSim(seed, Cfg());
+                Years(sim, 4);
+                var g = SettleApart(sim, ApartKind.ShoreHut);
+                Years(sim, 3);
+                Assert.IsNull(sim.TowerGroup, "no tower before the town");
+                StartTown(sim);
+                Months(sim, SimCore.TowerAfterTownMonths - 1);
+                Assert.IsNull(sim.TowerGroup, "not in the town's first months");
+                Months(sim, 2);
+                Assert.AreSame(g, sim.TowerGroup, $"seed {seed}: begun a few months into the town");
+                Assert.AreEqual(1, sim.TowerStage(g), "the frame first");
+                var map = sim.Settlement.Map;
+                int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(g.towerX, g.towerZ);
+                Assert.GreaterOrEqual(c, 0);
+                Assert.IsFalse(map.pond[c], "not in the water");
+                Assert.AreEqual(0, map.lot[c], "not on a lot");
+                float d = (float)System.Math.Sqrt((g.towerX - g.x) * (g.towerX - g.x) + (g.towerZ - g.z) * (g.towerZ - g.z));
+                Assert.That(d, Is.InRange(0.29f, 0.66f), $"seed {seed}: by their camp");
+            }
+        }
+
+        [Test]
+        public void TheTower_GoesUpInThreeStages_AndTheChronicleSaysSoOnce()
+        {
+            var sim = NewSim(3, Cfg());
+            Years(sim, 4);
+            var g = SettleApart(sim, ApartKind.WoodsCamp);
+            StartTown(sim);
+            Months(sim, SimCore.TowerAfterTownMonths + 1);
+            Assert.AreEqual(1, sim.TowerStage(g));
+            Assert.IsFalse(sim.TowerStands);
+            Months(sim, SimCore.TowerStageMonths);
+            Assert.AreEqual(2, sim.TowerStage(g), "the platform and ladder");
+            Months(sim, SimCore.TowerStageMonths);
+            Assert.AreEqual(SimCore.TowerDone, sim.TowerStage(g), "the roof and lamp");
+            Assert.IsTrue(sim.TowerStands);
+            Years(sim, 3);
+            Assert.AreEqual(1, sim.State.chronicle.Count(e => e.kind == "gift"), "one chronicle line");
+            Assert.IsTrue(sim.State.chronicle.Single(e => e.kind == "gift").text.Contains("lookout tower"));
+        }
+
+        [Test]
+        public void TheTower_OncePerBox_TheShoreFamilyFirst_AndNotWithNobodyLeft()
+        {
+            var sim = NewSim(5, Cfg());
+            Years(sim, 4);
+            var woods = SettleApart(sim, ApartKind.WoodsCamp, "w");
+            Years(sim, 1);
+            var shore = SettleApart(sim, ApartKind.ShoreHut, "s");
+            StartTown(sim);
+            Months(sim, SimCore.TowerAfterTownMonths + 1);
+            Assert.AreSame(shore, sim.TowerGroup, "the shore family builds it");
+            Assert.IsFalse(woods.tower, "one tower per box");
+
+            var lone = NewSim(6, Cfg());
+            Years(lone, 4);
+            var gone = SettleApart(lone, ApartKind.ShoreHut);
+            foreach (var n in gone.members) n.alive = false;
+            StartTown(lone);
+            Months(lone, SimCore.TowerAfterTownMonths + 3);
+            Assert.IsNull(lone.TowerGroup, "nobody left to build it");
+        }
+
+        [Test]
+        public void TheTower_IsSavedWithTheBox()
+        {
+            var sim = NewSim(2, Cfg());
+            Years(sim, 4);
+            SettleApart(sim, ApartKind.ShoreHut);
+            StartTown(sim);
+            Months(sim, SimCore.TowerAfterTownMonths + 3);
+            var back = JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State));
+            var g = back.apartGroups[0];
+            Assert.IsTrue(g.tower);
+            Assert.AreEqual(sim.State.apartGroups[0].towerFrom, g.towerFrom);
+            Assert.AreEqual(sim.State.apartGroups[0].towerX, g.towerX, 1e-5f);
+        }
+
         [Test]
         public void AnApartAnswerMakesAGroupAtItsSpotThatIsNotTheSettlements()
         {
