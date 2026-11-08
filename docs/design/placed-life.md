@@ -51,7 +51,7 @@ Each jar opens only after the rung below it is placed, on top of its land condit
 ```
 thicket ──► rabbits (camp) ──┬──► deer ──► wolves
                              └──► ducks ──► fish  ──► (village gate)
-the seed unlocks after the thicket is placed (Q4)
+the seed unlocks after the thicket is placed and the camp has started
 ```
 
 The two branches run side by side; when both have a ready jar, the player picks the order (the chooser, §6).
@@ -142,7 +142,7 @@ floor doesn't happen. **No species ever dies out.** Wolf kills count toward the 
   it, in any era. The settlement planner treats it like water. The people walk into it to pick.
 - **Valid ground:** meadow, at least the camp margin (`bushCampMargin` 0.9 u) from the fire, the whole disc on dry
   land (no lowland, no pond), clear of existing tents and paths.
-- **The seed** unlocks after the thicket is placed (today it unlocks after the first wild bush, `seedUnlockBush`).
+- **The seed** unlocks once the thicket is placed **and** the camp has started (user, 2026-11-08; it used to follow the first wild bush, `seedUnlockBush`).
 - **Near the Keeper's tree** (D6): the tree's weeds grow a little slower under it [est 0.8×]. A small reward, never needed.
 - **Uses:** picking (B5, exists), the berry kid, the songbird, the drying mat (B17, #430).
 
@@ -250,9 +250,9 @@ the pen is safe either way. Both pens are reserved ground like the thicket. #431
 |---|---|---|---|---|
 | 0 | Barren | Wipe | As today | Tribe |
 | 1 | First mist | Mist | As today; crickets with the first green | Tribe |
-| 2 | **First berries** | **Place the thicket** (meadow 10 %) | The gatherers' first job; the berry kid; the seed unlocks | Tribe |
+| 2 | **First berries** | **Place the thicket** (meadow 10 %) | The gatherers' first job; the berry kid | Tribe |
 | 3 | **Game** | **Place the rabbits** (meadow 15 %) | Tracks, the first hunt, hides; at meadow 20 %: **the camp** | → Camp |
-| 4 | The one seed | Plant and tend | As today | Camp |
+| 4 | The one seed | Plant and tend | Unlocks once the thicket is placed and the camp has started (2026-11-08) | Camp |
 | 5 | The forest | — | Jays spread it | Camp |
 | 6 | **Deer** | **Place the deer** (5 grown trees) | The deer hunt, the antlers, dawn at the water, the white stag | Camp |
 | 6b | **Wolves** | **Place the wolves** (deer ≥ 5 for a year, wood 20) | The first howl, the pack hunt, the meat thief (choice 1) | Camp |
