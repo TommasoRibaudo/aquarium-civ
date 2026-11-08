@@ -37,8 +37,9 @@ namespace AquariumCiv.Life
 
         /// <summary>What member <paramref name="member"/> of a group of <paramref name="kind"/> does at <paramref name="hour"/>: asleep in the
         /// shelter at night, at the fire in the morning and from the evening (their fire glows at dusk), and in the day the first works (fishing
-        /// at a shore hut, chopping at a woods camp), the second wanders a little, the third weaves by the shelter.</summary>
-        public static ApartDoing Doing(string kind, int member, float hour)
+        /// at a shore hut, chopping at a woods camp), the second wanders a little, the third weaves by the shelter. #421: with
+        /// <paramref name="fishing"/> false (SimCore.FishingOpen: no fish placed yet) the shore hut's first wanders by the water instead.</summary>
+        public static ApartDoing Doing(string kind, int member, float hour, bool fishing = true)
         {
             hour = ((hour % 24f) + 24f) % 24f;
             if (hour < WakeHour || hour >= BedHour) return ApartDoing.Sleep;
@@ -47,7 +48,7 @@ namespace AquariumCiv.Life
             if (hour >= 12.5f && hour < 13.5f) return ApartDoing.SitAtFire;
             switch (member % 3)
             {
-                case 0: return kind == ApartKind.ShoreHut ? ApartDoing.Fish : ApartDoing.Chop;
+                case 0: return kind == ApartKind.ShoreHut ? (fishing ? ApartDoing.Fish : ApartDoing.Wander) : ApartDoing.Chop;
                 case 1: return ApartDoing.Wander;
                 default: return ApartDoing.Weave;
             }

@@ -105,7 +105,7 @@ namespace AquariumCiv.Life
         /// <summary>About how long a staged moment of this kind takes (real seconds), to check <see cref="HeldMomentFits"/> before casting.</summary>
         public static float HeldMomentSeconds(MomentKind kind) => kind switch
         {
-            MomentKind.Wedding => 42f, MomentKind.Newborn => 22f, MomentKind.NewLeader => 27f, MomentKind.Festival => 50f, _ => 10f,
+            MomentKind.Wedding => 42f, MomentKind.Newborn => 22f, MomentKind.NewLeader => 27f, MomentKind.Festival => 50f, MomentKind.Ruling => 50f, MomentKind.WhiteWolf => 50f, _ => 10f,
         };
 
         /// <summary>
@@ -171,8 +171,11 @@ namespace AquariumCiv.Life
                     break;
                 }
                 case MomentKind.Festival:
+                case MomentKind.Ruling: // #422: the notable who rules speaks behind the fire, the people round it (the festival's ring)
+                case MomentKind.WhiteWolf: // #437: everyone comes out round the fire and looks to the ridge (B21.d; its own beats: #441)
                 {
-                    var speaker = leader != null && Free(leader, at) ? leader : EldestFree(at, used);
+                    var speaker = m.kind == MomentKind.Ruling && A != null && A.Grown && Free(A, at) ? A
+                        : leader != null && Free(leader, at) ? leader : EldestFree(at, used);
                     if (speaker != null) { cast.officiant = Who(speaker, place, at); cast.hasOfficiant = true; used.Add(speaker.key); }
                     Crowd(cast, place, at, used, q => true, MomentStagePlan.MaxFestival);
                     break;

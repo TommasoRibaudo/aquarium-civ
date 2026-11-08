@@ -150,7 +150,7 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void Wolves_StayShut_Until437()
+        public void Wolves_StayShut_OnCountsAlone_TheHerdsYearAndADenAreNeeded()
         {
             var sim = World(); var m = Model(sim); var e = sim.State.eco;
             foreach (var s in LifeJar.All) if (s != LifeSpecies.Wolves) SetPlaced(m, s);
@@ -257,7 +257,7 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(sim.CanPlaceLife(LifeSpecies.Fish, mid), "the deeper part");
             Assert.IsFalse(sim.CanPlaceLife(LifeSpecies.Fish, corner), "not at the edge");
             Assert.IsFalse(sim.CanPlaceLife(LifeSpecies.Wolves, mid));
-            Assert.AreEqual(-1, sim.LifePlaceCellNearCamp(LifeSpecies.Wolves), "the den: #437");
+            Assert.AreEqual(-1, sim.LifePlaceCellNearCamp(LifeSpecies.Wolves), "no den spot here (a far wood)");
             // out of range
             Assert.IsFalse(sim.CanPlaceLife(LifeSpecies.Rabbits, -1));
             Assert.IsFalse(sim.CanPlaceLife(LifeSpecies.Rabbits, EcoLand.N));
@@ -458,7 +458,7 @@ namespace AquariumCiv.Tests
             int c = sim.DebugPlaceNearCamp(LifeSpecies.Rabbits);
             Assert.GreaterOrEqual(c, 0);
             Assert.AreEqual(JarState.Placed, sim.JarStateOf(LifeSpecies.Rabbits));
-            Assert.AreEqual(-1, sim.DebugPlaceNearCamp(LifeSpecies.Wolves), "no den ground before #437");
+            Assert.AreEqual(-1, sim.DebugPlaceNearCamp(LifeSpecies.Wolves), "no den ground: no far wood");
             // place a shut jar's species: it opens first
             var s2 = World(); Meadow(s2, 0.3f);
             Assert.GreaterOrEqual(s2.DebugPlaceNearCamp(LifeSpecies.Rabbits), 0, "the cheat skips the ladder");

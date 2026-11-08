@@ -46,6 +46,10 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoTests.cs" /><!-- P8 #243: the ecology layer -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoBushCountTests.cs" /><!-- #385 bush count -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/LifeJarTests.cs" /><!-- #417 the life jar -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/PlacedLifeTests.cs" /><!-- #420-#422 deer, ducks, fish, floors, restraint -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/WolfPackTests.cs" /><!-- #437 the wolf pack -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/DogLineTests.cs" /><!-- #438 the dog line -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/WolfContactTests.cs" /><!-- #437 no wolf plan has contact, against the real planner -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
