@@ -596,6 +596,13 @@ namespace AquariumCiv.View
                     ChunkBounds(k, out float ex0, out float ex1, out float ez0, out float ez1);
                     unchecked { h[k] = (h[k] ^ layout.eco.HashRect(ex0 - 0.25f, ex1 + 0.25f, ez0 - 0.25f, ez1 + 0.25f)) * 16777619u; }
                 }
+            if (Eco)
+                lock (BushSpots)
+                    foreach (int c in HiddenBushes) // #424: a bush the thicket's arrival draws (and gives back) rebuilds its chunk
+                    {
+                        float bx = AquariumCiv.Sim.Settle.SiteMap.CXc(c), bz = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
+                        Into(h, bx - 0.15f, bz - 0.15f, bx + 0.15f, bz + 0.15f, unchecked((uint)c * 2654435761u + 424u));
+                    }
             foreach (var p in layout.pieces)
             {
                 var e = Hash.New();

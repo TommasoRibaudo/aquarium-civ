@@ -228,6 +228,7 @@ namespace AquariumCiv.View
             foreach (var kv in box.BushSpots)
             {
                 if (sim.State.eco.cover[kv.Key] != (byte)EcoCover.Bush) continue;
+                if (box.HiddenBushes.Contains(kv.Key)) { key = key * 31 + 5; continue; } // #424: still pushing up (the arrival draws it)
                 int n = state == BerryState.Flowers ? 5 : state == BerryState.Berries ? Mathf.RoundToInt(sim.BerriesAt(kv.Key, day, season) * FullDots) : 0;
                 if (n > 0) items.Add((kv.Key, kv.Value.pos, kv.Value.r, n));
                 key = key * 31 + kv.Key * 7 + n;

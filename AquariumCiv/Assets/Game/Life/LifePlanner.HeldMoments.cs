@@ -295,6 +295,17 @@ namespace AquariumCiv.Life
 
         static (float x, float z) GlassNormalOf(int side) => (side & 3) switch { 0 => (0f, -1f), 1 => (1f, 0f), 2 => (0f, 1f), _ => (-1f, 0f) };
 
+        /// <summary>Why <see cref="Free"/> says no (P9 #424: the hint cheat reports it).</summary>
+        string FreeWhy(Person p, ViewTime at)
+        {
+            if (p == null || p.stage == LifeStage.Baby) return "a baby";
+            if (DayOf(p)[Find(DayOf(p), at.hour)].kind == ActivityKind.Sleep) return "asleep";
+            if (HuntActivityAt(p, at, out _)) return "hunting";
+            if (TentActivityAt(p, at, out _)) return "raising a tent";
+            if (InChoice(p.key, at)) return "in a choice";
+            return "in a held moment";
+        }
+
         bool Free(Person p, ViewTime at)
         {
             if (p == null || p.stage == LifeStage.Baby) return false;

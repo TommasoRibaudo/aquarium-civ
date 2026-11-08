@@ -22,10 +22,13 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         public static RabbitView Instance { get; private set; }
 
-        /// <summary>The first rabbit's sign lasts this many seconds (it hops in, the person points).</summary>
-        public const float SignSeconds = 6f;
-        /// <summary>The sign waits for daylight (view hours): nobody stands out pointing in the dark.</summary>
-        public const float SignFromHour = 6.5f, SignToHour = 19f;
+        /// <summary>P9 #424 (B12.b): the placed pair's arrival lasts this many seconds: they drop lightly from above the rim (0.5 s), land
+        /// with a bounce and a grass puff, shake off, sit up and look round, then hop off into their day. (Was the first rabbit hopping
+        /// in from the meadow's edge while a person pointed, #282; the people's reaction is LifeArrivalView's now.)</summary>
+        public const float SignSeconds = 3.4f;
+        public const float DropSeconds = 0.5f, DropHeight = 0.4f, BounceSeconds = 0.25f, ShakeSeconds = 0.7f, LookSeconds = 1.2f;
+        /// <summary>Kept for old callers: the arrival plays at any hour now (B12.0: the people's reaction waits for dawn, not the arrival).</summary>
+        public const float SignFromHour = 0f, SignToHour = 24f;
 
         /// <summary>The rabbits' shared field: the hunt planner takes this one (never its own).</summary>
         public RabbitHerd.Field Field { get; } = new RabbitHerd.Field();
@@ -57,7 +60,7 @@ namespace AquariumCiv.View
         GameObject tracks;
         int tracksKey;
         // the first rabbit's sign
-        sealed class Sign { public int id; public float t; public Vector2 from; public PersonRef pointer; }
+        sealed class Sign { public int id; public float t; public Vector2 from; public PersonRef pointer; public readonly List<int> ids = new(); public readonly Dictionary<int, RabbitPose> at = new(); public bool landed; }
         Sign sign;
 
         /// <summary>Rabbit dolls shown now, and how many are fleeing, for tests and the debug panel.</summary>
@@ -70,8 +73,19 @@ namespace AquariumCiv.View
         /// moving over the ground. Should stay 0; for tests and the tester.</summary>
         public int BoundsInPlace { get; private set; }
         /// <summary>Who pointed at the first rabbit (none before it), and whether they were really in the pointing activity.</summary>
-        public PersonRef LastPointer { get; private set; }
+        public PersonRef LastPointer => LifeArrivalView.Instance != null ? LifeArrivalView.Instance.LastPointer : PersonRef.None; // #424: the arrival view picks who points
         public int SignRabbitId => sign != null ? sign.id : -1;
+        /// <summary>P9 #424: rabbits in the arrival's drop now (the pair), and how far it is (0..1).</summary>
+        public int Dropping => sign != null ? sign.ids.Count : 0;
+        public float DropProgress => sign != null ? Mathf.Clamp01(sign.t / SignSeconds) : 0f;
+        /// <summary>P9 #424, the debug panel's "replay the rabbits' arrival": the drop plays again for the rabbits shown now.</summary>
+        public bool ReplayDrop()
+        {
+            if (Field.Alive.Count == 0) return false;
+            if (sign != null) EndSign(People);
+            StartDrop();
+            return true;
+        }
 
         /// <summary>Extra spots (box-local x, z) that scare the rabbits like a person would: for tests and the debug panel.</summary>
         public readonly List<Vector2> Scarers = new();
@@ -229,26 +243,26 @@ namespace AquariumCiv.View
             if (sign != null || !sim.EcoRabbitArrivalPending || Field.Alive.Count == 0 || !Field.HasGreen) return;
             var pv = People;
             if (pv == null || pv.Planner == null) return;
-            float hour = pv.ViewHour;
-            if (hour < SignFromHour || hour > SignToHour) return; // waits for the day
             if (!sim.AckRabbitArrival()) return;
+            StartDrop();
+        }
+
+        /// <summary>B12.b: the pair (every rabbit shown, at most two) drops where the field has them now; the people's reaction, the
+        /// camera's nudge and the line are LifeArrivalView's.</summary>
+        void StartDrop()
+        {
             int id = Field.Alive[0];
-            var sp = Field.Sample(id, FieldNow);
-            Vector2 from = SignStart(sp.x, sp.z);
-            sign = new Sign { id = id, from = from };
-            SignsPlayed++;
-            // whoever stands nearest points at it
-            pv.StandingNow(whoBuf, px, pz);
-            int n = RabbitHerd.Nearest(px, pz, sp.x, sp.z);
-            if (n >= 0)
+            sign = new Sign { id = id };
+            double now = FieldNow;
+            foreach (int r in Field.Alive)
             {
-                sign.pointer = whoBuf[n]; LastPointer = sign.pointer;
-                pv.Planner.React(KeeperGesture.Sighting, pv.Now, default, sign.pointer, 1f, SignSeconds);
-                pv.LookAt(sign.pointer, new Vector2(sp.x, sp.z));
+                if (sign.ids.Count >= 2) break;
+                sign.ids.Add(r);
+                sign.at[r] = Field.Sample(r, now);
             }
-            else LastPointer = PersonRef.None;
-            var cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
-            if (cam != null) cam.NudgeToward(box.transform.TransformPoint(box.land.OnGround(sp.x, sp.z)));
+            var sp = sign.at[id];
+            sign.from = new Vector2(sp.x, sp.z);
+            SignsPlayed++;
         }
 
         /// <summary>Where the first rabbit comes in from: just past the meadow's edge, on the side where the grass ends.</summary>
@@ -298,7 +312,8 @@ namespace AquariumCiv.View
                 s.grow = Mathf.MoveTowards(s.grow, 1f, dt / 0.7f);
                 var basePose = Field.Sample(id, t);
                 RabbitPose p;
-                if (sign != null && sign.id == id) p = SignPose(basePose, dt, pv);
+                float roll = 0f;
+                if (sign != null && sign.ids.Contains(id)) p = DropPose(id, basePose, out roll);
                 else
                 {
                     var hunt = hunts != null ? HuntOn(hunts, id, pv.Now.hour) : null;
@@ -321,9 +336,9 @@ namespace AquariumCiv.View
                 var tr = d.transform;
                 tr.localPosition = box.land.OnGround(p.x, p.z) + Vector3.up * p.y;
                 var at = new Vector2(p.x, p.z);
-                if (s.hasLast && dt > 0f && (p.act == RabbitAct.Hop || p.act == RabbitAct.Flee) && p.y > 0.002f && (at - s.lastAt).sqrMagnitude < 1e-10f) BoundsInPlace++;
+                if (s.hasLast && dt > 0f && !(sign != null && sign.ids.Contains(id)) && (p.act == RabbitAct.Hop || p.act == RabbitAct.Flee) && p.y > 0.002f && (at - s.lastAt).sqrMagnitude < 1e-10f) BoundsInPlace++;
                 s.lastAt = at; s.hasLast = true;
-                d.Roll(0f);
+                d.Roll(roll);
                 d.Ground(GroundNormal(p.x, p.z));
                 d.Face(p.yaw * Mathf.Rad2Deg, dt, p.act == RabbitAct.Flee);
                 d.Show(p.act, p.phase, (float)t, s.grow);
@@ -334,7 +349,16 @@ namespace AquariumCiv.View
                 s.wasRunning = running;
             }
             ShowFallen(pv, t, dt);
-            if (sign != null && !slots.ContainsKey(sign.id)) EndSign(pv);
+            if (sign != null)
+            {
+                sign.t += dt;
+                if (!sign.landed && sign.t >= DropSeconds)
+                {
+                    sign.landed = true;
+                    if (HitFx.Enabled) foreach (int r in sign.ids) if (sign.at.TryGetValue(r, out var q)) HitFx.Puff(PuffKind.Grass, box.Root.TransformPoint(box.land.OnGround(q.x, q.z)), Vector3.up, 0.9f, true);
+                }
+                if (sign.t >= SignSeconds || !slots.ContainsKey(sign.id)) EndSign(pv);
+            }
         }
 
         // ---------------------------------------------------------------- a knock on the glass startles (#333)
@@ -349,6 +373,22 @@ namespace AquariumCiv.View
         /// <summary>#333 (the user, 2026-11-05): a knock on the GLASS close to rabbits makes the close ones run off; a tap ON a rabbit
         /// does nothing to it (nor does a tap on the land through the open top: GlassVoice only calls this for a knock). "Close" is what
         /// the player sees: the rabbits near the finger on screen. They run away from the land the finger points at. Returns how many.</summary>
+        /// <summary>Debug: what a knock at this screen point would reach (the dolls' screen distances), without startling anything.</summary>
+        public string DebugKnockReach(Vector2 screenPos)
+        {
+            var cam = Camera.main;
+            if (cam == null) return "no camera";
+            var parts = new List<string>();
+            foreach (var kv in slots)
+            {
+                var d = kv.Value.doll;
+                if (d == null || !d.gameObject.activeInHierarchy) continue;
+                var sp = cam.WorldToScreenPoint(d.transform.position);
+                parts.Add($"{kv.Key}:{((Vector2)sp - screenPos).magnitude:0}");
+            }
+            return $"on {OnRabbitScreen * Screen.height:0} reach {KnockScreenReach * Screen.height:0} [{string.Join(" ", parts)}]";
+        }
+
         public int KnockAtScreen(Vector2 screenPos)
         {
             var cam = Camera.main;
@@ -584,26 +624,36 @@ namespace AquariumCiv.View
 
         bool IsAlive(int id) { var a = Field.Alive; for (int i = 0; i < a.Count; i++) if (a[i] == id) return true; return false; }
 
-        RabbitPose SignPose(RabbitPose basePose, float dt, PeopleView pv)
+        /// <summary>B12.b, one rabbit of the dropping pair: falls 0.4 u (ease in), lands with a 35 % bounce, shakes off (roll 12 deg,
+        /// 8 Hz, dying away), sits up and looks round, then hops from where it landed into the field's pose.</summary>
+        RabbitPose DropPose(int id, RabbitPose basePose, out float roll)
         {
-            sign.t += dt;
-            float u = Mathf.Clamp01(sign.t / SignSeconds);
-            float e = u * u * (3f - 2f * u);
-            var to = new Vector2(basePose.x, basePose.z);
-            var at = Vector2.Lerp(sign.from, to, e);
-            var p = basePose;
-            p.x = at.x; p.z = at.y;
-            float dist = (to - sign.from).magnitude;
-            int hops = Mathf.Max(4, Mathf.CeilToInt(dist / RabbitHerd.HopLen));
-            float h = u * hops; float ph = h - Mathf.Floor(h);
-            if (u < 0.97f)
+            roll = 0f;
+            float t = sign.t;
+            var p = sign.at.TryGetValue(id, out var landed) ? landed : basePose;
+            if (sign.ids.IndexOf(id) == 1) t -= 0.18f; // the second lands a beat after the first
+            p.act = RabbitAct.SitUp; p.phase = 0f; p.y = 0f;
+            if (t < DropSeconds)
             {
-                p.act = RabbitAct.Hop; p.phase = ph; p.y = Mathf.Sin(Mathf.PI * ph) * RabbitHerd.HopArc;
-                var dir = to - sign.from; p.yaw = Mathf.Atan2(dir.x, dir.y);
+                float u = Mathf.Clamp01(t / DropSeconds);
+                p.y = DropHeight * (1f - u * u); // ease in: falling faster
+                p.act = RabbitAct.Hop; p.phase = 0.5f;
+                return p;
             }
-            if (pv != null && !sign.pointer.IsNone) pv.LookAt(sign.pointer, at);
-            if (sign.t >= SignSeconds) EndSign(pv);
-            return p;
+            t -= DropSeconds;
+            if (t < BounceSeconds) { float u = t / BounceSeconds; p.y = Mathf.Sin(Mathf.PI * u) * DropHeight * 0.35f * 0.25f; p.act = RabbitAct.Hop; p.phase = u; return p; }
+            t -= BounceSeconds;
+            if (t < ShakeSeconds) { roll = 12f * Mathf.Sin(t * 8f * Mathf.PI * 2f) * Mathf.Exp(-t / 0.3f); p.act = RabbitAct.Graze; return p; }
+            t -= ShakeSeconds;
+            if (t < LookSeconds) { p.yaw += Mathf.Sin(t / LookSeconds * Mathf.PI * 2f) * 0.6f; return p; } // sits up, looks round
+            t -= LookSeconds;
+            float k = Mathf.Clamp01(t / Mathf.Max(0.05f, SignSeconds - DropSeconds - BounceSeconds - ShakeSeconds - LookSeconds));
+            var a = new Vector2(p.x, p.z); var b = new Vector2(basePose.x, basePose.z);
+            var q = basePose;
+            var at = Vector2.Lerp(a, b, k);
+            q.x = at.x; q.z = at.y;
+            if ((b - a).sqrMagnitude > 1e-4f) { q.act = RabbitAct.Hop; q.phase = k; q.y = Mathf.Sin(Mathf.PI * k) * RabbitHerd.HopArc; q.yaw = Mathf.Atan2(b.x - a.x, b.y - a.y); }
+            return q;
         }
 
         void EndSign(PeopleView pv)

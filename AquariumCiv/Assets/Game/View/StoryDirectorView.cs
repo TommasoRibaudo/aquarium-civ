@@ -171,6 +171,34 @@ namespace AquariumCiv.View
             if (pv.KidPlay.SplashSpot(new Vector2(world.focusX, world.focusZ), out var edge) && InView(cam, World(edge.x, edge.y))) { world.splash = true; world.splashX = edge.x; world.splashZ = edge.y; }
             if (planner.StoryBushNear(world.focusX, world.focusZ, now.day, out int cell, out float bx, out float bz) && InView(cam, World(bx, bz)))
             { world.bush = true; world.bushCell = cell; world.bushX = bx; world.bushZ = bz; }
+            // P9 #424 (B12.w): a ready jar's waiting hint (LifeArrivalView keeps the once-per-visit rule; never the wolves)
+            var la = LifeArrivalView.Instance;
+            if (la != null && la.HintWanted(sim, out int hs, out int hst, out int hc, out float hx, out float hz))
+            { world.hint = true; world.hintSpecies = hs; world.hintStage = hst; world.hintCell = hc; world.hintX = hx; world.hintZ = hz; }
+        }
+
+        /// <summary>P9 #424, the cheat "Hint now": the waiting hint for <paramref name="species"/> at <paramref name="stage"/> (1–3) at once,
+        /// whatever the director's floor, the visit's rule or the hour says (it still needs idle people near the spot). What happened.</summary>
+        public string HintNow(Sim.Eco.LifeSpecies species, int stage)
+        {
+            var sim = Sim;
+            if (sim == null) return "no living box on screen";
+            if (pv == null) pv = PeopleView.Find();
+            var cam = Camera.main;
+            if (pv == null || pv.Planner == null || cam == null) return "no people or camera";
+            director ??= new StoryDirector(unchecked(sim.State.seed * 31 + 367));
+            var la = LifeArrivalView.Instance;
+            if (la == null || !la.HintSpot(sim, species, out int cell, out float x, out float z)) return $"hint {species}: no spot for it";
+            Fill(sim, cam);
+            world.part = StoryDayPart.Day;
+            world.hint = true; world.hintSpecies = (int)species; world.hintStage = Mathf.Clamp(stage, 1, 3); world.hintCell = cell; world.hintX = x; world.hintZ = z;
+            var plan = new StoryPlan();
+            if (!director.TryCast(world, StoryKind.Hint, plan) && !CastAnyone(plan, (int)species, world.hintStage, cell, x, z))
+                return $"hint {species}: nobody awake within {StoryRules.ErrandReach} u of the spot";
+            plan.force = true;
+            if (!TryStart(plan)) return $"hint {species}: the planner couldn't start it ({hintWhy}; {plan.members.Count} cast)";
+            LastPlan = plan;
+            return $"hint {species} stage {world.hintStage}: {plan.members.Count} at cell {cell}";
         }
 
         /// <summary>The story this person is in now (None: none), one id per story. <paramref name="held"/>: in one of the director's own
@@ -236,6 +264,13 @@ namespace AquariumCiv.View
                     until = clock + (ev.End - t);
                     break;
                 }
+                case StoryKind.Hint:
+                {
+                    if (!pv.Planner.StartStoryHint(plan.hintSpecies, plan.hintStage, plan.members, plan.hintCell, pv.Now, out float secs, out hintWhy, plan.force)) return false;
+                    until = clock + secs;
+                    LifeArrivalView.Instance?.HintStarted((Sim.Eco.LifeSpecies)plan.hintSpecies, plan.hintStage, plan.members.Count);
+                    break;
+                }
                 case StoryKind.WaterRun: case StoryKind.Pick:
                 {
                     if (plan.members.Count < 1) return false;
@@ -251,6 +286,32 @@ namespace AquariumCiv.View
             own.Add(o);
             return true;
         }
+
+        /// <summary>The cheat's cast when nobody near is idle: the nearest grown-ups and kids awake, whatever they are doing (the planner
+        /// still leaves out sleepers, hunters and people in a moment).</summary>
+        bool CastAnyone(StoryPlan plan, int species, int stage, int cell, float x, float z)
+        {
+            StoryRules.HintCast(species, stage, out int adults, out int kids);
+            var who = new List<PersonRef>(); var xs = new List<float>(); var zs = new List<float>();
+            pv.StandingNow(who, xs, zs);
+            var order = new List<int>();
+            for (int i = 0; i < who.Count; i++) order.Add(i);
+            order.Sort((a, b) => ((xs[a] - x) * (xs[a] - x) + (zs[a] - z) * (zs[a] - z)).CompareTo((xs[b] - x) * (xs[b] - x) + (zs[b] - z) * (zs[b] - z)));
+            plan.members.Clear();
+            int na = 0, nk = 0;
+            foreach (int i in order)
+            {
+                var st = pv.Planner.StageOf(who[i]);
+                if (st == LifeStage.Adult && na < adults + 4) { plan.members.Insert(na++, who[i].Key); } // spares: the planner takes the first free ones
+                else if (st == LifeStage.Kid && nk < kids + 3) { plan.members.Add(who[i].Key); nk++; }
+            }
+            if (plan.members.Count == 0) return false;
+            plan.kind = StoryKind.Hint; plan.seconds = StoryRules.Seconds(StoryKind.Hint);
+            plan.x = x; plan.z = z; plan.hintSpecies = species; plan.hintStage = stage; plan.hintCell = cell;
+            return true;
+        }
+
+        string hintWhy = "";
 
         static PersonRef Ref(int key) => key > 0 ? PersonRef.Notable(key) : PersonRef.Crowd(-key - 1);
 

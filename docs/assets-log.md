@@ -56,3 +56,8 @@ The first-water sounds (#279) are two CC0 one-shots, the same files as #280's br
 stays in the repo but the game no longer plays it (the frog layer's level only drives how often a croak comes). The voices' new kinds
 (laugh, call, shout, hum, giggle, chat; clips 6 to 11 of `ChatterBabble`) and their muffled takes (`ChatterBabble.Muffle`) are made in code like
 the old babble. No CC0 voice or frog sample was searched for or downloaded in this pass (the Editor-free worktree run); recorded voices or a recorded soft croak stay an option once the code-made ones are heard on a phone.
+
+#424 (2026-11-08): no new third-party file. The wolves' first howl (`wolf_howl`, `proc:howl`) is a placeholder made in code
+(`CareSound.MakeHowl`: a breathy rising tone with a waver and a second voice a fifth under it, ~2.8 s). No CC0 howl was searched for in
+this pass; a recorded one (Freesound/BigSoundBank CC0) can replace it by pointing the cue at a file. The arrivals' other sounds reuse
+existing cues (`pluck` for the bushes pushing up, `first_water_drop` for the ducks and the fish bag).

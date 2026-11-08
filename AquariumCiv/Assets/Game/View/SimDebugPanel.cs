@@ -27,6 +27,7 @@ namespace AquariumCiv.View
         readonly Dictionary<string, bool> fold = new();
         Vector2 scroll;
         string last = "";
+        int hintStage = 1; // #424: the "Hint X" cheats play this stage
         int sel;                 // selected notable id (-1 = none)
         float shapeX, shapeZ = 0.8f;
         int shapeKind;
@@ -306,6 +307,28 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
                 var lpv = LifePlaceView.Instance;
                 if (lpv != null && lpv.Last.Length > 0) GUILayout.Label($"life tool: {lpv.Last} (glow {lpv.GlowCells})");
+                // #424: the arrivals (replay any placed species'), the wolves' first howl, the waiting hint at each stage
+                var la = LifeArrivalView.Instance;
+                if (la != null)
+                {
+                    GUILayout.Label(la.Status());
+                    for (int i = 0; i < all.Length; i += 3)
+                    {
+                        GUILayout.BeginHorizontal();
+                        for (int k = i; k < i + 3 && k < all.Length; k++)
+                            if (GUILayout.Button("Replay " + all[k])) last = Done(la.Replay(all[k]));
+                        GUILayout.EndHorizontal();
+                    }
+                    if (GUILayout.Button("Wolves howl now")) last = Done(la.DebugHowl());
+                    var sdv = StoryDirectorView.Instance;
+                    GUILayout.BeginHorizontal();
+                    foreach (var s in all)
+                        if (s != AquariumCiv.Sim.Eco.LifeSpecies.Wolves && sdv != null && GUILayout.Button("Hint " + s)) last = Done(sdv.HintNow(s, hintStage));
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    for (int st = 1; st <= 3; st++) if (GUILayout.Toggle(hintStage == st, $"stage {st}", "Button")) hintStage = st;
+                    GUILayout.EndHorizontal();
+                }
             }
             // ---- end #417 ----
             // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----

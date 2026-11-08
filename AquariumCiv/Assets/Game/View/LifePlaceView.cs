@@ -27,11 +27,15 @@ namespace AquariumCiv.View
         [Tooltip("A tap this near the ghost's middle (box units) places it.")] public float ghostReach = 0.32f;
         [Tooltip("The glow's colour (alpha = its strongest).")] public Color glow = new(1f, 0.95f, 0.55f, 0.55f);
         [Tooltip("The ghost's outline colour: pale, no see-through on the lines.")] public Color ghostColor = new(0.97f, 0.95f, 0.86f, 0.9f);
+        [Tooltip("The silhouettes' fill (pale) and their thin darker edge.")] public Color ghostFill = new(0.97f, 0.95f, 0.88f, 0.8f), ghostEdge = new(0.30f, 0.26f, 0.20f, 0.55f);
+        [Tooltip("User 2026-11-08: the rest of the land dims a little while a species is in hand (0 = off).")][Range(0f, 0.6f)] public float dim = 0.22f;
 
         BoxView box;
         GameHud hud;
         Material fx;
-        GameObject glowGo, ghostGo, noGo;
+        GameObject glowGo, ghostGo, noGo, restoreGo, dimGo, fillGo, edgeGo;
+        Material glowMat, dimMat, restoreMat, fillMat, edgeMat;
+        Mesh dimMesh;
         Mesh glowMesh, ghostMesh, noMesh;
         MaterialPropertyBlock mpb;
         readonly List<int> cells = new();
@@ -44,6 +48,8 @@ namespace AquariumCiv.View
 
         /// <summary>Cells glowing now (0 when nothing is in hand).</summary>
         public int GlowCells { get; private set; }
+        /// <summary>The land is dimmed now (a species in hand), and how strongly (user 2026-11-08).</summary>
+        public bool Dimmed => dimGo != null && dimGo.activeSelf;
         /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
         public int GhostCell { get; private set; } = -1;
@@ -72,9 +78,11 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (Instance == this) Instance = null;
-            foreach (var go in new[] { glowGo, ghostGo, noGo }) if (go != null) Destroy(go);
-            foreach (var m in new[] { glowMesh, ghostMesh, noMesh }) if (m != null) Destroy(m);
-            glowGo = ghostGo = noGo = null; glowMesh = ghostMesh = noMesh = null;
+            foreach (var go in new[] { glowGo, ghostGo, noGo, restoreGo, dimGo, fillGo, edgeGo }) if (go != null) Destroy(go);
+            foreach (var m in new[] { glowMesh, ghostMesh, noMesh, dimMesh }) if (m != null) Destroy(m);
+            foreach (var m in new[] { glowMat, dimMat, restoreMat, fillMat, edgeMat }) if (m != null) Destroy(m);
+            glowGo = ghostGo = noGo = restoreGo = dimGo = fillGo = edgeGo = null; glowMesh = ghostMesh = noMesh = dimMesh = null;
+            glowMat = dimMat = restoreMat = fillMat = edgeMat = null;
         }
 
         void Update()
@@ -85,6 +93,8 @@ namespace AquariumCiv.View
             if (!holding)
             {
                 if (glowGo != null && glowGo.activeSelf) glowGo.SetActive(false);
+                if (restoreGo != null && restoreGo.activeSelf) restoreGo.SetActive(false);
+                if (dimGo != null && dimGo.activeSelf) dimGo.SetActive(false); // the moment the tool is put down
                 HideGhost();
                 GlowCells = 0; glowStamp = -1; down = false;
                 DrawNo();
@@ -101,6 +111,7 @@ namespace AquariumCiv.View
                 mpb.SetColor(ColorId, c);
                 glowGo.GetComponent<MeshRenderer>().SetPropertyBlock(mpb);
             }
+            Dim();
             DrawGhost();
             DrawNo();
             Taps(sim, s);
@@ -196,8 +207,25 @@ namespace AquariumCiv.View
         {
             sim.LifeGround(s, cells);
             GlowCells = cells.Count;
-            if (glowGo == null) { glowGo = Child("LifeGlow", out glowMesh); mpb = new MaterialPropertyBlock(); }
+            if (glowGo == null)
+            {
+                glowGo = Child("LifeGlow", out glowMesh); mpb = new MaterialPropertyBlock();
+                glowMat = new Material(Fx) { hideFlags = HideFlags.DontSave, renderQueue = 3003 }; // after the dim and the restore
+                glowGo.GetComponent<MeshRenderer>().sharedMaterial = glowMat;
+                // the restore: the same soft sheet, undoing the dim on the valid ground (dst x (1 + k a))
+                restoreGo = new GameObject("LifeGlowRestore");
+                restoreGo.transform.SetParent(box.transform, false);
+                restoreGo.AddComponent<MeshFilter>().sharedMesh = glowMesh;
+                var rr = restoreGo.AddComponent<MeshRenderer>();
+                restoreMat = DimMaterial(3002);
+                restoreMat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.DstColor);
+                restoreMat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
+                restoreMat.SetFloat("_Premul", 1f);
+                rr.sharedMaterial = restoreMat;
+                rr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; rr.receiveShadows = false;
+            }
             glowGo.SetActive(cells.Count > 0);
+            restoreGo.SetActive(cells.Count > 0);
             var valid = new bool[SiteMap.N];
             foreach (int c in cells) valid[c] = true;
             int VX = SiteMap.NX + 1, VZ = SiteMap.NZ + 1;
@@ -271,6 +299,8 @@ namespace AquariumCiv.View
         void HideGhost()
         {
             if (ghostGo != null && ghostGo.activeSelf) ghostGo.SetActive(false);
+            if (fillGo != null && fillGo.activeSelf) fillGo.SetActive(false);
+            if (edgeGo != null && edgeGo.activeSelf) edgeGo.SetActive(false);
             GhostCell = -1;
         }
 
@@ -284,11 +314,86 @@ namespace AquariumCiv.View
             var c = Vector3.Lerp(slideFrom, ghostAt, k);
             float wob = now - wobbleT < 0.3f ? Mathf.Sin((now - wobbleT) * 50f) * 0.025f * (1f - (now - wobbleT) / 0.3f) : 0f;
             c.x += wob;
+            // user 2026-11-08: faint outlines of the actual group (the real bushes, rabbits, ducks; placeholder deer and wolves), not rings;
+            // the thicket keeps its area ring (nobody builds there)
             var parts = new List<(Vector3, float, float)>();
-            foreach (var m in Group(ghostFor)) parts.Add((new Vector3(c.x + m.x * breath, 0f, c.z + m.z * breath), m.rx * breath * pop, m.rz * breath * pop));
-            if (ghostFor == LifeSpecies.Thicket) parts.Add((c, ThicketArea * breath, ThicketArea * breath)); // the thicket's own area: nobody builds there
-            else parts.Add((c, GroupRing * breath * pop, GroupRing * breath * pop)); // a small group reads at the default zoom by its ring
+            if (ghostFor == LifeSpecies.Thicket) parts.Add((c, ThicketArea * breath, ThicketArea * breath));
             Rings(ghostMesh, parts, ghostColor, 0.016f, ghostFor);
+            Silhouettes(c, breath * pop);
+        }
+
+        /// <summary>The ghost's silhouettes: the group's pale shapes over a thin darker edge, side-on to the camera, breathing.</summary>
+        void Silhouettes(Vector3 c, float scale)
+        {
+            if (fillGo == null)
+            {
+                fillGo = Child("LifeGhostFill", out _); edgeGo = Child("LifeGhostEdge", out _);
+                fillMat = DimMaterial(3005); fillMat.SetColor("_Color", ghostFill);
+                edgeMat = DimMaterial(3004); edgeMat.SetColor("_Color", ghostEdge);
+                fillGo.GetComponent<MeshRenderer>().sharedMaterial = fillMat;
+                edgeGo.GetComponent<MeshRenderer>().sharedMaterial = edgeMat;
+            }
+            fillGo.GetComponent<MeshFilter>().sharedMesh = LifeLooks.Ghost(ghostFor, box, false);
+            edgeGo.GetComponent<MeshFilter>().sharedMesh = LifeLooks.Ghost(ghostFor, box, true);
+            bool water = ghostFor == LifeSpecies.Ducks || ghostFor == LifeSpecies.Fish;
+            float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor) - (water ? 0.008f : 0.012f);
+            // side-on to the camera: the group's +x runs across the screen
+            float yaw = 0f;
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                var f = box.transform.InverseTransformDirection(cam.transform.forward);
+                yaw = Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
+            }
+            foreach (var go in new[] { fillGo, edgeGo })
+            {
+                go.SetActive(true);
+                go.transform.localPosition = new Vector3(c.x, y, c.z);
+                go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                go.transform.localScale = Vector3.one * Mathf.Max(0.001f, scale);
+            }
+        }
+
+        Material DimMaterial(int queue)
+        {
+            var res = Resources.Load<Material>("LifeDim");
+            var m = res != null ? new Material(res) : new Material(Shader.Find("AquariumCiv/View/LifeDim"));
+            m.hideFlags = HideFlags.DontSave;
+            m.renderQueue = queue;
+            return m;
+        }
+
+        /// <summary>User 2026-11-08: the whole view dims a little (a quad over it, after the box) and the restore sheet undoes it on the
+        /// valid ground, so the glow stays soft and the rest reads as "not here".</summary>
+        void Dim()
+        {
+            var cam = Camera.main;
+            if (cam == null || dim <= 0.001f) { if (dimGo != null) dimGo.SetActive(false); return; }
+            if (dimGo == null)
+            {
+                dimGo = new GameObject("LifeDim") { hideFlags = HideFlags.DontSave };
+                dimMesh = new Mesh { name = "LifeDim" };
+                dimMesh.SetVertices(new List<Vector3> { new(-0.5f, -0.5f, 0f), new(0.5f, -0.5f, 0f), new(0.5f, 0.5f, 0f), new(-0.5f, 0.5f, 0f) });
+                dimMesh.SetColors(new List<Color> { Color.white, Color.white, Color.white, Color.white });
+                dimMesh.SetTriangles(new[] { 0, 2, 1, 0, 3, 2 }, 0);
+                dimMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
+                dimGo.AddComponent<MeshFilter>().sharedMesh = dimMesh;
+                var r = dimGo.AddComponent<MeshRenderer>();
+                dimMat = DimMaterial(3001);
+                dimMat.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+                r.sharedMaterial = dimMat;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            }
+            if (dimGo.transform.parent != cam.transform) dimGo.transform.SetParent(cam.transform, false);
+            float d = cam.nearClipPlane + 0.02f;
+            float h = cam.orthographic ? cam.orthographicSize * 2f : 2f * d * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            dimGo.transform.localPosition = new Vector3(0f, 0f, d);
+            dimGo.transform.localRotation = Quaternion.identity;
+            dimGo.transform.localScale = new Vector3(h * cam.aspect * 1.1f, h * 1.1f, 1f);
+            dimMat.SetColor("_Color", new Color(0f, 0f, 0f, dim));
+            float k = dim / (1f - dim);
+            restoreMat.SetColor("_Color", new Color(k, k, k, 1f));
+            dimGo.SetActive(GlowCells > 0);
         }
 
         const float ThicketArea = 0.45f; // EcoTuning.thicketRadius

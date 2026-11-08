@@ -100,6 +100,9 @@ namespace AquariumCiv.Life
         Prop,
         /// <summary>#404: the lookout tower the people apart gave the Keeper (its foot; <see cref="Sim.SimCore.TowerGroup"/>). Appended last so the saved ints stay.</summary>
         Tower,
+        /// <summary>P9 #424: a spot by placed life where people stand and look (index = site cell × 8 + slot; slot 0 is 0.4 u from the
+        /// cell toward the fire, slots 1–7 on a ring at 0.6 u on the fire's side; a water cell's spots are on its bank). Appended last.</summary>
+        Arrival,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -166,7 +169,12 @@ namespace AquariumCiv.Life
         /// <summary>P8 #282: the first rabbit hops in; the one person it names (the target) stops and points at it.</summary>
         Sighting,
         /// <summary>P8 #279: water broke the surface in the hollow; the people near come over to look at it.</summary>
-        Marvel }
+        Marvel,
+        /// <summary>P9 #424 (B12.0): the Keeper placed life. The one person it names (the target) goes to the arrival's spot (the
+        /// reaction's place, a <see cref="PlaceKind.Arrival"/>): a kid runs over and cheers, a grown-up walks over and watches.</summary>
+        Arrival,
+        /// <summary>P9 #424 (B12.f): the wolves came. The target turns and stands still where they are, watching; nobody walks over.</summary>
+        ArrivalStill }
 
     /// <summary>Story scenes (§6) and the era's gathering. Started from this month's chronicle, by "Show me" (an echo), or by
     /// the debug panel.</summary>

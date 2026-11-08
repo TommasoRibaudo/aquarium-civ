@@ -227,6 +227,7 @@ namespace AquariumCiv.Life
                     if (p.index < 0 || p.index >= SiteMap.N) return false;
                     x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
                     return true;
+                case PlaceKind.Arrival: return ArrivalSpot(p.index, out x, out z); // P9 #424
                 case PlaceKind.Nudge:
                     foreach (var n in sim.State.nudges) if (n.id == p.index) { x = n.x; z = n.z; return true; }
                     return false;
@@ -391,6 +392,45 @@ namespace AquariumCiv.Life
             land[(int)PlaceKind.Stash * 4] = new Spot(wx, wz);
             CampStash.At(fx, fz, CampStash.PileRadius, out wx, out wz);
             land[(int)PlaceKind.Stash * 4 + 1] = new Spot(wx, wz);
+        }
+
+        /// <summary>P9 #424: a spot to stand and look at placed life (<see cref="PlaceKind.Arrival"/>: index = cell × 8 + slot). Slot 0 is
+        /// <see cref="ArrivalNear"/> from the cell toward the fire (the kid who runs over), slots 1–7 fan out at <see cref="ArrivalWatch"/> on
+        /// the fire's side (±70°). From a water cell the spot is pushed out to its bank, so nobody stands in the pond.</summary>
+        public static bool ArrivalSpotOf(SimCore sim, int index, float fireX, float fireZ, out float x, out float z)
+        {
+            x = z = 0f;
+            if (index < 0) return false;
+            int cell = index / 8, slot = index % 8;
+            if (cell < 0 || cell >= SiteMap.N) return false;
+            float cx = SiteMap.CXc(cell), cz = SiteMap.CZc(cell);
+            float dx = fireX - cx, dz = fireZ - cz, d = (float)Math.Sqrt(dx * dx + dz * dz);
+            if (d < 1e-4f) { dx = 0f; dz = -1f; } else { dx /= d; dz /= d; }
+            float r = slot == 0 ? ArrivalNear : ArrivalWatch;
+            if (slot > 0)
+            {
+                float a = ((slot + 1) / 2) * (slot % 2 == 1 ? 1f : -1f) * 0.35f; // radians: 0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4
+                float c = (float)Math.Cos(a), s = (float)Math.Sin(a);
+                (dx, dz) = (dx * c - dz * s, dx * s + dz * c);
+            }
+            bool Wet(float px, float pz)
+            {
+                int k = SiteMap.CellAt(px, pz);
+                return k >= 0 && sim.EcoCoverAt(k) == Sim.Eco.EcoCover.Water;
+            }
+            x = cx; z = cz;
+            if (Wet(cx, cz)) for (int i = 0; i < 80 && Wet(x, z); i++) { x += dx * 0.03f; z += dz * 0.03f; } // to the bank first
+            x += dx * r; z += dz * r;
+            return true;
+        }
+
+        /// <summary>B12.0: the kid stops this far from the spot, the watchers this far [est].</summary>
+        public const float ArrivalNear = 0.4f, ArrivalWatch = 0.6f;
+
+        bool ArrivalSpot(int index, out float x, out float z)
+        {
+            st.Fire(out float fx, out float fz, out _);
+            return ArrivalSpotOf(sim, index, fx, fz, out x, out z);
         }
 
         /// <summary>#92: where the people stand at the front glass: on walkable ground just inside the wall

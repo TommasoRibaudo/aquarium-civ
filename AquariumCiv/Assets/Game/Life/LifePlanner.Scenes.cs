@@ -355,7 +355,8 @@ namespace AquariumCiv.Life
         {
             KeeperGesture.Return => 2.5f, KeeperGesture.Wipe => 2f, KeeperGesture.FullClean => 3f, KeeperGesture.FlickTrash => 1.5f,
             KeeperGesture.Prune => 2.5f, KeeperGesture.Rain => 4f, KeeperGesture.Shape => 3f, KeeperGesture.HoldFinger => 4f,
-            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, KeeperGesture.Sighting => 5f, KeeperGesture.Marvel => 4f, _ => 1.5f,
+            KeeperGesture.TapGlass => 1.5f, KeeperGesture.TapPerson => 3f, KeeperGesture.WishAnswered => 4f, KeeperGesture.Puddle => 4f, KeeperGesture.Sighting => 5f, KeeperGesture.Marvel => 4f,
+            KeeperGesture.Arrival => 4f, KeeperGesture.ArrivalStill => 4f, _ => 1.5f,
         };
 
         /// <summary>
@@ -432,6 +433,17 @@ namespace AquariumCiv.Life
             {
                 if (r.target != p.who || asleep) return false;
                 kind = ActivityKind.Point; // #282: the first rabbit; PeopleView.LookAt turns them to it
+                return true;
+            }
+            if (r.gesture == KeeperGesture.Arrival || r.gesture == KeeperGesture.ArrivalStill)
+            {
+                // P9 #424 (B12.0): placed life. The view picks who (the nearest grown-up points by Sighting; one kid runs; two or three walk
+                // over and watch; for the wolves they only turn and stand still).
+                if (r.target != p.who || asleep) return false;
+                if (r.gesture == KeeperGesture.ArrivalStill) { kind = ActivityKind.Watch; return true; }
+                to = r.near;
+                bool arriving = (t.hour - r.start) < (r.end - r.start) * 0.45f && under.place != r.near;
+                kind = kid ? (arriving ? ActivityKind.RunOver : ActivityKind.Cheer) : ActivityKind.Watch;
                 return true;
             }
             if (r.gesture == KeeperGesture.TapPerson || r.gesture == KeeperGesture.Glance)
