@@ -98,6 +98,19 @@ namespace AquariumCiv.Sim.Eco
         // #311: a wild sapling inside a wood (this many grown trees round it) is the forest's own heart, not its edge
         public int heartTrees = 3;
 
+        // #420 the deer (spec §4.1, §5.3): cap 1 per deerTreesPer grown trees, between deerMin and deerMax; one fawn per doe in spring
+        // under the cap. The white stag shows once per box, at most once a season with this chance, when the herd holds whiteStagHerd
+        // for whiteStagAfter months after the placing.
+        public int deerTreesPer = 3, deerMin = 3, deerMax = 8, whiteStagHerd = 5, whiteStagAfter = 24;
+        public float whiteStagChance = 0.2f, deerRange = 0.6f;
+        // #421 the ducks (spec §5.4): a wild cap; a clutch per pair in spring (duckClutchMin..Max eggs), duckGrowShare of them grow up.
+        // Reeds come duckReedBoost times as fast within duckReedNear of where the ducks were placed (the reeds grow first there).
+        public int duckCap = 8, duckClutchMin = 3, duckClutchMax = 5;
+        public float duckGrowShare = 0.5f, duckReedBoost = 3f, duckReedNear = 0.6f;
+        // #421 the fish (spec §5.5): a school of fishSchool; cap 1 per fishPondPer pond cells; it grows toward the cap within a year.
+        public int fishSchool = 6, fishPondPer = 3, fishMin = 3;
+        public float fishGrow = 0.35f;
+
         // #417 the life jar (placed-life spec §3, §4.3; all [est] until #434). Each jar opens on its land condition once the rung below is placed.
         public float jarThicketMeadow = 0.10f, jarRabbitsMeadow = 0.15f; // meadow share for the thicket's jar, the rabbits'
         public int jarDeerTrees = 5, jarDucksPond = 12;                   // grown trees (the Keeper's counts) for the deer; pond cells for the ducks

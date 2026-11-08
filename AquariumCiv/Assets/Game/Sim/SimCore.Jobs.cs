@@ -29,13 +29,13 @@ namespace AquariumCiv.Sim
         {
             (Era.Camp, JobType.Gatherer, new string[0]),
             (Era.Camp, JobType.Hunter, new[] { "rabbits" }), // P8 (#285): a living land opens it with the first rabbit; without the ecology it is always there
-            (Era.Camp, JobType.Fisher, new[] { "pond" }),
+            (Era.Camp, JobType.Fisher, new[] { "fish" }), // #421: no fishing of any kind until fish are placed (off the ecology: the pond)
             (Era.Camp, JobType.Woodcutter, new[] { "trees" }),
             (Era.Camp, JobType.Toolmaker, new[] { BuildingType.Camp }),
 
             (Era.Village, JobType.Farmer, new[] { BuildingType.Farm }),
             (Era.Village, JobType.Woodcutter, new[] { BuildingType.Lumbermill + "|grove" }),
-            (Era.Village, JobType.Fisher, new[] { "pond" }),
+            (Era.Village, JobType.Fisher, new[] { "fish" }),
             (Era.Village, JobType.Shepherd, new[] { "herd" }),
             (Era.Village, JobType.Beekeeper, new[] { "meadow" }),
             (Era.Village, JobType.Potter, new[] { "clay" }),
@@ -43,7 +43,7 @@ namespace AquariumCiv.Sim
 
             (Era.Town, JobType.Farmer, new[] { BuildingType.Farm }),
             (Era.Town, JobType.Woodcutter, new[] { BuildingType.Lumbermill + "|grove" }),
-            (Era.Town, JobType.Fisher, new[] { "pond" }),
+            (Era.Town, JobType.Fisher, new[] { "fish" }),
             (Era.Town, JobType.Shepherd, new[] { "herd" }),
             (Era.Town, JobType.Beekeeper, new[] { "meadow" }),
             (Era.Town, JobType.Mason, new[] { "stone", "quarry" }),
@@ -95,6 +95,7 @@ namespace AquariumCiv.Sim
             // P8 (#285): on a living land a job exists only when the land offers its work. The milestones are never taken
             // back (pillar 4: the land never dies back), so a job that opened never closes. Off, the old always-there box.
             "pond" => !EcologyOn || State.eco.Reached(EcoMilestones.WaterSurfaced),
+            "fish" => FishingOpen, // #421 (placed-life spec §5.5): fish placed in a pond with water; off the ecology always
             "trees" => !EcologyOn || TreesGrow,
             "rabbits" => !EcologyOn || State.eco.Reached(EcoMilestones.FirstRabbit),
             "forest" => true,
@@ -129,7 +130,7 @@ namespace AquariumCiv.Sim
         public string DebugJobsReadout()
         {
             var lines = new List<string>();
-            if (EcologyOn) lines.Add($"land: {(BeforeCamp ? "tribe, before the camp" : "camp gate open")}; bushes {(BerriesGrow ? "yes" : "no")}, trees {(TreesGrow ? "yes" : "no")}, rabbits {(RabbitsSeen ? "yes" : "no")}, pond {(OpenWater ? "yes" : "no")}");
+            if (EcologyOn) lines.Add($"land: {(BeforeCamp ? "tribe, before the camp" : "camp gate open")}; bushes {(BerriesGrow ? "yes" : "no")}, trees {(TreesGrow ? "yes" : "no")}, rabbits {(RabbitsSeen ? "yes" : "no")}, pond {(OpenWater ? "yes" : "no")}, fish {(FishingOpen ? "yes" : "no")}");
             foreach (var j in JobTable.Where(x => x.era == State.era))
             {
                 var missing = j.needs.Where(x => !Has(x)).ToList();

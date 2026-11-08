@@ -31,6 +31,12 @@ namespace AquariumCiv.Sim.Eco
         public bool readySeen;
         /// <summary>The view played the arrival of the last placing (SimCore.AckLifeArrival). True when nothing waits.</summary>
         public bool arrivalSeen = true;
+        /// <summary>#422 restraint (spec §4.3): the game month a notable ruled on this species' take (-1 = not yet; once per species).
+        /// From then on the people's take of it pauses in spring.</summary>
+        public long ruledMonth = -1;
+        /// <summary>#422: a take brought the species down to its floor during this season (a species hunted down each season is "at
+        /// its floor" even if it breeds back by the season's end). Read and cleared at the end of each season.</summary>
+        public bool floorHit;
 
         public JarState State => (JarState)state;
     }

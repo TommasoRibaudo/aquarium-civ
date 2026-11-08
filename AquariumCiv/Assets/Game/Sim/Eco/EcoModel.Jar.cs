@@ -63,6 +63,26 @@ namespace AquariumCiv.Sim.Eco
                     MarkPlaced(Jar(LifeSpecies.Thicket), centre, m < 0 ? 0 : m);
                 }
             }
+            AdoptVillagePond();
+        }
+
+        /// <summary>#421 (spec §9): a box already past the village gate (an old save, or the debug gate) had its ducks and its fishing
+        /// before the jar: they count as placed, a pair and a school at the pond, so the village's fishers keep their work.</summary>
+        void AdoptVillagePond()
+        {
+            if (st.villageGateMonth < 0) return;
+            if (!IsPlaced(LifeSpecies.Ducks))
+            {
+                int c = NearestPlaceCell(LifeSpecies.Ducks);
+                MarkPlaced(Jar(LifeSpecies.Ducks), c, st.villageGateMonth);
+                FoundDucks(c, false);
+            }
+            if (!IsPlaced(LifeSpecies.Fish))
+            {
+                int c = NearestPlaceCell(LifeSpecies.Fish);
+                MarkPlaced(Jar(LifeSpecies.Fish), c, st.villageGateMonth);
+                FoundFish(c, false);
+            }
         }
 
         bool AnyBush() { for (int c = 0; c < EcoLand.N; c++) if (Cv(c) == EcoCover.Bush) return true; return false; }
@@ -118,8 +138,9 @@ namespace AquariumCiv.Sim.Eco
             return false;
         }
 
-        /// <summary>Opens the jars whose land is ready, and the restocks (spec §4.3). End of each season step, and after a placing.</summary>
-        public void UpdateJars(long month)
+        /// <summary>Opens the jars whose land is ready, and the restocks (spec §4.3). End of each season step, and after a placing
+        /// (<paramref name="season"/> false: the floors are read at the season's end only).</summary>
+        public void UpdateJars(long month, bool season = true)
         {
             AdoptPresent();
             foreach (var s in LifeJar.All)
@@ -129,13 +150,16 @@ namespace AquariumCiv.Sim.Eco
                 {
                     if (LandReady(s, month)) Open(j, s, month);
                 }
-                else if (j.State == JarState.Placed && LifeJar.Restocks(s))
+                else if (season && j.State == JarState.Placed && LifeJar.Restocks(s))
                 {
                     float pop = Population(s), floor = Floor(s);
-                    if (pop < 0f) continue; // no population model yet (#420, #421)
-                    if (pop > floor + 0.5f) { j.atFloorSince = -1; continue; }
+                    if (pop < 0f) continue; // no population model (the wolves: #437)
+                    bool low = pop <= floor + 0.5f || j.floorHit; // #422: at the floor now, or taken down to it this season
+                    j.floorHit = false;
+                    if (!low) { j.atFloorSince = -1; continue; }
                     if (j.atFloorSince < 0) j.atFloorSince = month;
-                    else if (month - j.atFloorSince >= t.jarRestockMonths)
+                    else if (month - j.atFloorSince >= 3 && Taken(s) > 0) LeanSeason(s, month); // #422: a season at the floor after takes
+                    if (month - j.atFloorSince >= t.jarRestockMonths)
                     {
                         j.restocks++; j.atFloorSince = -1;
                         Open(j, s, month);
@@ -150,8 +174,88 @@ namespace AquariumCiv.Sim.Eco
             newJars.Add(s);
         }
 
-        /// <summary>The species' count the floor reads, or -1 while it has no population in the sim (deer, ducks, fish: #420, #421).</summary>
-        public float Population(LifeSpecies s) => s == LifeSpecies.Rabbits ? st.rabbits : -1f;
+        /// <summary>The species' count the floor reads, or -1 while it has no population in the sim (the thicket; the wolves until #437).
+        /// The ducks are the wild flock only (pen ducks, #431, are apart).</summary>
+        public float Population(LifeSpecies s) => s switch
+        {
+            LifeSpecies.Rabbits => st.rabbits,
+            LifeSpecies.Deer => DeerCount,
+            LifeSpecies.Ducks => st.ducks,
+            LifeSpecies.Fish => st.fish,
+            _ => -1f,
+        };
+
+        /// <summary>How many of the species any taker has taken so far (the shyness and the ruling follow takes, not a founding group
+        /// that is small to begin with).</summary>
+        public int Taken(LifeSpecies s) => s switch
+        {
+            LifeSpecies.Rabbits => st.rabbitsCaught,
+            LifeSpecies.Deer => st.deerTaken,
+            LifeSpecies.Ducks => st.ducksTaken + st.eggsTaken,
+            LifeSpecies.Fish => st.fishCaught,
+            _ => 0,
+        };
+
+        // ---------------------------------------------------------------- #422 shy, then restraint (spec §4.3)
+        /// <summary>Rulings made since SimCore last told them (the history line and the staged moment).</summary>
+        public readonly List<LifeSpecies> newRulings = new List<LifeSpecies>();
+
+        /// <summary>A lean season (a season at the floor after takes; the ducks: a spring whose nests were emptied): the first one
+        /// makes a notable rule on the species, once per species. From then on its take pauses in spring (<see cref="SpringPaused"/>).</summary>
+        void LeanSeason(LifeSpecies s, long month)
+        {
+            var j = Jar(s);
+            if (j.ruledMonth >= 0 || !IsPlaced(s)) return;
+            j.ruledMonth = month;
+            newRulings.Add(s);
+        }
+
+        /// <summary>Debug ("restraint now"): the ruling on the species now, whatever its count. False when it has ruled already, the
+        /// species never restocks (the thicket, the wolves), or nothing is placed.</summary>
+        public bool DebugRule(LifeSpecies s, long month)
+        {
+            if (!LifeJar.Restocks(s) || Jar(s).ruledMonth >= 0 || !IsPlaced(s)) return false;
+            LeanSeason(s, month);
+            return true;
+        }
+
+        /// <summary>Shy (spec §4.3): a placed species at its floor after takes keeps to the far side of its ground and shows mostly at
+        /// dawn. Fewer seen, none gone.</summary>
+        public bool Shy(LifeSpecies s)
+        {
+            float pop = Population(s);
+            return pop > 0f && IsPlaced(s) && pop <= Floor(s) + 0.5f && Taken(s) > 0;
+        }
+
+        /// <summary>Where the species lives now: its home (the placed cell; the rabbits' warren), or, while it is shy, the cell of its
+        /// valid ground farthest from the camp's fire (the far side of the box). -1 when nothing is placed.</summary>
+        public int HomeCell(LifeSpecies s)
+        {
+            int home = s switch
+            {
+                LifeSpecies.Rabbits => st.rabbitArrivalCell,
+                LifeSpecies.Deer => st.deerHome,
+                LifeSpecies.Ducks => st.duckHome,
+                LifeSpecies.Fish => st.fishHome,
+                _ => Jar(s).placedCell,
+            };
+            if (home < 0 || !Shy(s)) return home;
+            int far = FarthestGroundCell(s);
+            return far >= 0 ? far : home;
+        }
+
+        /// <summary>The valid ground for the species (spec §5, the settlement aside) farthest from the fire, ties by cell; -1 none.</summary>
+        int FarthestGroundCell(LifeSpecies s)
+        {
+            int best = -1; float bd = -1f;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                float d = FromFire(c);
+                if (d <= bd || !GroundOk(s, c)) continue;
+                bd = d; best = c;
+            }
+            return best;
+        }
 
         /// <summary>The floor no taker crosses (spec §4.1): the rabbits' is the hunt's (<see cref="SimCore.HuntFloor"/>).</summary>
         public static float Floor(LifeSpecies s) => s switch
@@ -271,18 +375,21 @@ namespace AquariumCiv.Sim.Eco
             j.readySeen = true; j.arrivalSeen = false; j.atFloorSince = -1;
             Found(s, cell, month, restock);
             Count();
-            UpdateJars(month);
+            UpdateJars(month, false);
             return true;
         }
 
-        /// <summary>The founding group comes into the land. Thicket (#418) and rabbits (#419) live here; deer, ducks and fish only
-        /// record their placing until their populations come (#420, #421).</summary>
+        /// <summary>The founding group comes into the land: the thicket (#418), the rabbits (#419), the deer (#420), the ducks and the
+        /// fish (#421; EcoModel.Life.cs). The wolves are #437.</summary>
         void Found(LifeSpecies s, int cell, long month, bool restock)
         {
             switch (s)
             {
                 case LifeSpecies.Thicket: FoundThicket(cell, month); break; // #418
                 case LifeSpecies.Rabbits: FoundRabbits(cell, month, restock); break; // #419
+                case LifeSpecies.Deer: FoundDeer(cell, restock); break; // #420
+                case LifeSpecies.Ducks: FoundDucks(cell, restock); break; // #421
+                case LifeSpecies.Fish: FoundFish(cell, restock); break; // #421
             }
         }
 

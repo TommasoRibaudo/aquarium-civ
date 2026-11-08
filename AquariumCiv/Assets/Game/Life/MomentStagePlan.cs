@@ -200,6 +200,7 @@ namespace AquariumCiv.Life
                 MomentKind.Newborn => plan.Newborn(cast),
                 MomentKind.NewLeader => plan.Chief(cast),
                 MomentKind.Festival => plan.Festival(cast),
+                MomentKind.Ruling => plan.Festival(cast), // #422: a gathering at the fire, the ruling notable speaking (its own beats: a view ticket)
                 _ => plan.Fail("not a staged kind"),
             };
             if (!ok) return null;

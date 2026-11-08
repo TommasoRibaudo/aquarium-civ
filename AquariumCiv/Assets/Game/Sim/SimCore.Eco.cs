@@ -76,6 +76,7 @@ namespace AquariumCiv.Sim
         {
             var m = EcoM;
             JarsTell(); // #417: the jars that opened
+            PlacedLifeTell(); // #420-#422: the white stag, the fletched arrows, the rulings
             if (m.newMilestones.Count == 0 && m.newGates.Count == 0) return;
             var keys = m.newMilestones.ToArray(); var gates = m.newGates.ToArray();
             m.newMilestones.Clear(); m.newGates.Clear();

@@ -300,6 +300,27 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #417 ----
+            // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
+            if (sim.EcologyOn && Section("Placed life (#420-#422)"))
+            {
+                GUILayout.Label($"deer {sim.EcoDeerCount}/{sim.EcoDeerCap} · ducks {sim.EcoDucks} eggs {sim.EcoDuckEggs} · fish {sim.EcoFish} · white stag {sim.WhiteStagState}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Deer hunt now")) last = Done(sim.DebugDeerHuntNow() ? $"a deer taken, {sim.EcoDeerCount} left" : "no deer to spare");
+                if (GUILayout.Button("Deer to capacity")) last = Done($"{sim.DebugDeerToCap()} deer");
+                if (GUILayout.Button("White stag now")) last = Done(sim.DebugWhiteStagNow() ? "the white stag shows" : "it already has");
+                if (GUILayout.Button("Eggs now")) last = Done($"{sim.DebugEggsNow()} eggs in the nests");
+                GUILayout.EndHorizontal();
+                var takers = new[] { AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, AquariumCiv.Sim.Eco.LifeSpecies.Deer, AquariumCiv.Sim.Eco.LifeSpecies.Ducks, AquariumCiv.Sim.Eco.LifeSpecies.Fish };
+                GUILayout.BeginHorizontal();
+                foreach (var s in takers)
+                    if (GUILayout.Button("Floor " + s)) last = Done(sim.DebugToFloor(s) ? $"{s} at its floor (shy)" : $"{s}: not placed");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                foreach (var s in takers)
+                    if (GUILayout.Button("Restraint " + s)) last = Done(sim.DebugRestraintNow(s) ? $"{s}: the ruling" : $"{s}: ruled already");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #420-#422 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

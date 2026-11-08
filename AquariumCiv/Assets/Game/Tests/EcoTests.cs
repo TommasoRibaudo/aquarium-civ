@@ -35,9 +35,11 @@ namespace AquariumCiv.Tests
         sealed class Keeper
         {
             readonly bool care, places;
+            readonly Func<LifeSpecies, bool> which;
             int spotsMisted;
             /// <param name="places">#419: false = a Keeper who tends the land but never opens the jar (nothing is ever placed).</param>
-            public Keeper(bool care, bool places = true) { this.care = care; this.places = places; }
+            /// <param name="which">#421: the species this Keeper places (null = every ready jar).</param>
+            public Keeper(bool care, bool places = true, Func<LifeSpecies, bool> which = null) { this.care = care; this.places = places; this.which = which; }
 
             static bool Awake(int season) => (8 + season / 4) % 24 >= 8;
 
@@ -52,7 +54,7 @@ namespace AquariumCiv.Tests
             {
                 var e = sim.State.eco;
                 if (!VisitsAt(e.season)) return;
-                if (places) PlaceReadyJars(sim); // #417-#419: the Keeper places every jar that is ready, by the camp
+                if (places) PlaceReadyJars(sim, which); // #417-#419: the Keeper places every jar that is ready, by the camp
                 var land = sim.EcoGround;
                 // The lab plans the whole visit from the land as it stands on arrival, then does it.
                 (float x, float z)? plant = e.treeCell < 0 && sim.CanPlantTree ? PlantSpot(sim, land) : ((float, float)?)null;
@@ -104,12 +106,13 @@ namespace AquariumCiv.Tests
         }
 
         /// <summary>#417: every ready jar's group goes on the valid cell nearest the camp (what a scripted Keeper does on a visit).</summary>
-        internal static void PlaceReadyJars(SimCore sim)
+        internal static void PlaceReadyJars(SimCore sim, Func<LifeSpecies, bool> which = null)
         {
             var ready = new List<LifeSpecies>();
             sim.ReadyJars(ready);
             foreach (var sp in ready)
             {
+                if (which != null && !which(sp)) continue;
                 int c = sim.LifePlaceCellNearCamp(sp);
                 if (c >= 0) sim.PlaceLife(sp, c);
             }

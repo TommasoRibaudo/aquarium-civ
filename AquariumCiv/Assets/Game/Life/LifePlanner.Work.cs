@@ -152,7 +152,7 @@ namespace AquariumCiv.Life
                     if (sim != null && sim.EcologyOn) return TribeWork(p, d); // P8 (#285, #283): the job opens with the first rabbit; the hunt itself is planned in LifePlanner.Hunt.cs (HuntPlan) and plays over the day; between hunts: the tribe's work
                     return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, stash, season == Season.Winter ? 0.35f : 0.25f);
                 case JobType.Fisher:
-                    if (sim != null && sim.EcologyOn && sim.EcoPondCells == 0) // P8: no water yet: the hollow is dug for roots, not fished
+                    if (sim != null && !sim.FishingOpen) // P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
                         return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
                     return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? stash : Store(Prop.Goods), 0.25f);
                 case JobType.Woodcutter:

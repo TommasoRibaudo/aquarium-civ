@@ -117,6 +117,7 @@ namespace AquariumCiv.Sim.Eco
             GrowTree(s, month);
             Birds(s);
             Animals(month);
+            PlacedSeason(s, month); // #420, #421: the deer, the ducks and the fish the Keeper placed
             Vines(s);
             st.season++;
             Count();
@@ -465,7 +466,7 @@ namespace AquariumCiv.Sim.Eco
                 }
                 if (c == st.treeCell) continue;
                 bool basinEdge = land.InBasin(c) && water > 0 && land.height[c] < st.pondLevel + t.reedBand;
-                if (basinEdge && cv != EcoCover.Reeds && Chance(10, c) < t.reedRate * g) { next[c] = (byte)EcoCover.Reeds; continue; }
+                if (basinEdge && cv != EcoCover.Reeds && Chance(10, c) < t.reedRate * g * DuckReedBoost(c)) { next[c] = (byte)EcoCover.Reeds; continue; } // #421: first where the ducks were placed
                 switch (cv)
                 {
                     case EcoCover.Bare:
@@ -620,8 +621,9 @@ namespace AquariumCiv.Sim.Eco
             bool keeperGrown = st.treeCell >= 0 && st.treeCell < EcoLand.N && Cv(st.treeCell) == EcoCover.Tree;
             if (st.cTrees - (keeperGrown ? 1 : 0) > 0) Reach(EcoMilestones.FirstWoodTree, month);
             if (st.cPond > 0) Reach(EcoMilestones.WaterSurfaced, month);
-            // TODO(#421, #433): placed-life spec §3.1 adds "ducks and fish placed" to the village gate; changed with their populations.
-            if (st.villageGateMonth < 0 && st.campGateMonth >= 0 && st.cPond >= t.pondGateCells && st.cTrees >= t.villageTrees)
+            // #421 (placed-life spec §3.1): the village also waits on the ducks and the fish the Keeper placed (deer and wolves are not needed)
+            if (st.villageGateMonth < 0 && st.campGateMonth >= 0 && st.cPond >= t.pondGateCells && st.cTrees >= t.villageTrees
+                && IsPlaced(LifeSpecies.Ducks) && IsPlaced(LifeSpecies.Fish))
             {
                 st.villageGateMonth = (int)month; Reach(EcoMilestones.VillageGate, month); newGates.Add("village");
             }
@@ -661,6 +663,7 @@ namespace AquariumCiv.Sim.Eco
                 for (int c = 0; c < EcoLand.N; c++) { Mix(st.cover[c]); Mix((ulong)BitConverter.SingleToInt32Bits(st.moisture[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.soil[c])); if (st.sprout != null) { Mix((ulong)BitConverter.SingleToInt32Bits(st.sprout[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.puddle[c])); } }
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.table)); Mix((ulong)BitConverter.SingleToInt32Bits(st.humidity));
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.rabbits)); Mix((ulong)BitConverter.SingleToInt32Bits(st.treeProgress));
+                Mix((ulong)(st.deerStags * 1000 + st.deerDoes)); Mix((ulong)(st.ducks * 1000 + st.fish)); // #420, #421
                 Mix((ulong)st.season); Mix((ulong)(long)st.campGateMonth); Mix((ulong)(long)st.villageGateMonth);
                 return h;
             }

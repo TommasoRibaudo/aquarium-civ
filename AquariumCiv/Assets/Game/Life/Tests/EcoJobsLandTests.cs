@@ -29,6 +29,14 @@ namespace AquariumCiv.Life.Tests
                 if ((EcoCover)sim.State.eco.cover[c] == EcoCover.Bare) { sim.State.eco.cover[c] = (byte)EcoCover.Water; n++; }
         }
 
+        /// <summary>#421: the fish placed (as the Keeper's jar would): the fisher's job waits for them.</summary>
+        static void PlaceFish(SimCore sim)
+        {
+            var j = sim.State.eco.jars.First(x => x.species == nameof(LifeSpecies.Fish));
+            j.state = (int)JarState.Placed; j.placings = 1; j.placedMonth = sim.State.month;
+            sim.State.eco.fish = 6;
+        }
+
         static void DryLand(SimCore sim)
         {
             for (int c = 0; c < EcoLand.N; c++) sim.State.eco.cover[c] = (byte)EcoCover.Bare;
@@ -58,7 +66,9 @@ namespace AquariumCiv.Life.Tests
             Assert.IsTrue(sim.JobOpen(JobType.Hunter), "rabbits");
             Assert.IsFalse(sim.JobOpen(JobType.Fisher), "no pond yet");
             Reach(sim, EcoMilestones.WaterSurfaced);
-            Assert.IsTrue(sim.JobOpen(JobType.Fisher), "a pond");
+            Assert.IsFalse(sim.JobOpen(JobType.Fisher), "#421: a pond, but no fish placed yet");
+            PlaceFish(sim);
+            Assert.IsTrue(sim.JobOpen(JobType.Fisher), "the fish the Keeper placed");
             StringAssert.Contains("fisher: open", sim.DebugJobsReadout());
         }
 
@@ -129,7 +139,7 @@ namespace AquariumCiv.Life.Tests
         public void AJobThatOpenedNeverCloses()
         {
             var sim = Barren(3);
-            Reach(sim, EcoMilestones.FirstWoodTree); Reach(sim, EcoMilestones.WaterSurfaced); Reach(sim, EcoMilestones.FirstRabbit);
+            Reach(sim, EcoMilestones.FirstWoodTree); Reach(sim, EcoMilestones.WaterSurfaced); Reach(sim, EcoMilestones.FirstRabbit); PlaceFish(sim);
             Assert.IsTrue(sim.JobOpen(JobType.Woodcutter) && sim.JobOpen(JobType.Fisher) && sim.JobOpen(JobType.Hunter));
             DryLand(sim);
             for (int m = 0; m < 6; m++) sim.Step();

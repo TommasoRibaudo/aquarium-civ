@@ -74,6 +74,27 @@ namespace AquariumCiv.Sim.Eco
         /// (EcoModel.EnsureJars: rabbits that arrived and wild bushes count as placed).</summary>
         public bool jarOn;
         public List<LifeJarEntry> jars = new List<LifeJarEntry>();
+
+        /// <summary>#420 the deer (placed-life spec §4.1, §5.3): stags and does in the herd (fawns counted in as they come), the herd's
+        /// home (the placed cell; -1 none), deer the hunt took, the fawns of the last spring (the view's), the first stag's antlers over
+        /// the chief's tent (game month, -1 none), the white stag (a <see cref="WhiteStag"/>) and the month it was seen. An old save has
+        /// none of this: no deer.</summary>
+        public int deerStags, deerDoes, deerHome = -1, deerTaken, deerFawns;
+        public long antlersMonth = -1, whiteStagMonth = -1;
+        public int whiteStag;
+        /// <summary>#420: the people's deer hunts already settled on view day <see cref="deerHuntDay"/> (as huntDay / huntDone).</summary>
+        public long deerHuntDay = -1;
+        public int deerHuntDone;
+        /// <summary>#421 the ducks (spec §5.4): the wild flock (pen ducks are #431 and are counted apart), its home (the placed edge cell),
+        /// eggs in the nests now (laid in spring, hatched at the end of summer), the ducklings of the last hatch, eggs the people took,
+        /// and the month the feathers first fletched the hunters' arrows (-1 not yet).</summary>
+        public int ducks, duckHome = -1, duckEggs, ducklings, eggsTaken;
+        /// <summary>#422: eggs taken this spring (a spring whose nests the people emptied is the ducks' lean season) and wild ducks a
+        /// taker other than the people took (the wolves, #437).</summary>
+        public int eggsTakenSpring, ducksTaken;
+        public long fletchedMonth = -1;
+        /// <summary>#421 the fish (spec §5.5): the stock, its home (the placed deep cell) and the fish caught.</summary>
+        public int fish, fishHome = -1, fishCaught;
         public List<int> bushPickCell = new List<int>();
         public List<long> bushPickDay = new List<long>();
         public List<float> bushPickLeft = new List<float>();
