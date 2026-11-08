@@ -298,6 +298,14 @@ namespace AquariumCiv.View
                 foreach (var s in all)
                     if (AquariumCiv.Sim.Eco.LifeJar.Restocks(s) && GUILayout.Button("Again " + s)) last = Done(sim.DebugJarAgain(s) ? $"{s} jar open again" : $"{s}: not placed");
                 GUILayout.EndHorizontal();
+                // #423: the life tool in hand (glow, ghost, tap to place), for a ready jar
+                var hudL = GameHud.Instance;
+                GUILayout.BeginHorizontal();
+                foreach (var s in all)
+                    if (sim.JarReady(s) && hudL != null && GUILayout.Button("Hold " + s)) { hudL.TakeLife(s); last = Done($"{s} in hand: tap the glow"); }
+                GUILayout.EndHorizontal();
+                var lpv = LifePlaceView.Instance;
+                if (lpv != null && lpv.Last.Length > 0) GUILayout.Label($"life tool: {lpv.Last} (glow {lpv.GlowCells})");
             }
             // ---- end #417 ----
             if (Section("Fire (#65)"))

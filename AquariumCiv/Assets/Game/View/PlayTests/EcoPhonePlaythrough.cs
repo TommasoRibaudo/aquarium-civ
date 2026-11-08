@@ -224,13 +224,26 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(Sim.LandNewCellCount, 0, "grass grew while the box was left");
                 Assert.Greater(surf281.NewGrassCells, 0, "new grass shows in the fresher green");
 
-                // 7. rabbit tracks, then rabbits
+                // 7. P9 (#417-#419): nothing big arrives by itself. The thicket's jar opens, the Keeper places it; then the rabbits' jar
+                // opens and the Keeper places the pair (their tracks come with them). Both by touch: Kit, the life slot, the glow, the ghost (#423)
                 var rabbits = RabbitView.Instance;
                 Assert.IsNotNull(rabbits, "the rabbit view");
-                yield return AdvanceUntil(hud, "rabbit tracks", () => rabbits.TracksShown, 60);
+                Assert.IsFalse(Sim.LifeIsPlaced(AquariumCiv.Sim.Eco.LifeSpecies.Thicket), "no thicket before the Keeper places it");
+                yield return AdvanceUntil(hud, "the thicket's jar", () => Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Thicket), 60);
+                yield return PutDownMister(hud);
+                yield return KeeperPlaces(AquariumCiv.Sim.Eco.LifeSpecies.Thicket, "phone_10b_life_thicket");
+                if (!LastPlaced) Miss("the thicket placed");
+                Assert.AreEqual(0, Sim.EcoRabbitCount, "no rabbit comes by itself");
+                yield return AdvanceUntil(hud, "the rabbits' jar", () => Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits), 60);
+                yield return PutDownMister(hud);
+                Assert.AreEqual(0, Sim.EcoRabbitCount, "a ready jar waits for the Keeper");
+                yield return KeeperPlaces(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, "phone_10c_life_rabbits");
+                if (!LastPlaced) Miss("the rabbits placed");
+                yield return Until(() => rabbits.TracksShown, 5f);
                 yield return new WaitForSecondsRealtime(1f);
                 yield return Shot("phone_11_rabbit_tracks");
-                yield return AdvanceUntil(hud, "rabbits", () => Sim.EcoRabbitCount > 0 && rabbits.Shown > 0, 80);
+                if (!rabbits.TracksShown) Miss("rabbit tracks with the placed pair");
+                yield return AdvanceUntil(hud, "rabbits", () => Sim.EcoRabbitCount > 0 && rabbits.Shown > 0, 8);
                 yield return new WaitForSecondsRealtime(1.5f);
                 Debug.Log($"[phone] rabbits: sim {Sim.EcoRabbitCount}, shown {rabbits.Shown}, year {Sim.State.Year:0.0}");
                 if (Sim.EcoRabbitCount > 0) Assert.AreEqual(Sim.EcoRabbitsShown(), rabbits.Shown, "the box shows the rabbits the sim counts");

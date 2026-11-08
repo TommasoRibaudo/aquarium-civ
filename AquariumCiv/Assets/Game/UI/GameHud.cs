@@ -146,7 +146,7 @@ namespace AquariumCiv.GameUI
 
         // ---------------- P8: the Keeper's kit (keepers-hands.md section 3) ----------------
         /// <summary>The kit's tools besides the cloth (the cloth is clean mode). One in hand at a time; one finger is the tool, two the camera.</summary>
-        public enum KitTool { None, Mister, Seed, Tweezers }
+        public enum KitTool { None, Mister, Seed, Tweezers, Life }
         KitTool hand;
         bool kitBox, kitSeedShown;
         GlassButton kitCloth, kitMister, kitSeed, kitTweezers;
@@ -172,6 +172,8 @@ namespace AquariumCiv.GameUI
             if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
             if (t == KitTool.Seed) Toast("Tap a spot on the land to plant the seed.", 4f);
             if (t == KitTool.Tweezers) Toast(TweezersHint, 4f);
+            if (t == KitTool.Life) Toast(LifeHint, 4f);
+            if (kitLife != null) kitLife.EnableInClassList("kg-tool--on", t == KitTool.Life);
             HandChanged?.Invoke(t);
         }
 
@@ -220,11 +222,141 @@ namespace AquariumCiv.GameUI
             acts.Add(kitMister = new GlassButton("Mister", () => SetHand(KitTool.Mister), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-mister" });
             acts.Add(kitTweezers = new GlassButton("Tweezers", () => SetHand(KitTool.Tweezers), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-tweezers" });
             acts.Add(kitSeed = new GlassButton("Seed", () => SetHand(KitTool.Seed), ButtonKind.Secondary, UiRole.Toggle) { name = "kit-seed" });
+            acts.AddToClassList("kit-acts");
+            // #423: the life slot, next to the seed; shown only while a jar is ready
+            kitLife = new GlassButton("Life", OnLifeSlot, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life" };
+            kitLife.AddToClassList("kit-life");
+            kitLife.Insert(0, new GlassIcon("life-jar", "kit-life-icon"));
+            var slotDot = new VisualElement { name = "kit-life-dot", pickingMode = PickingMode.Ignore };
+            slotDot.AddToClassList("kg-dot");
+            slotDot.AddToClassList("kit-life-dot");
+            kitLife.Add(slotDot);
+            kitLife.style.display = DisplayStyle.None;
+            acts.Add(kitLife);
+            kitLifeRow = new VisualElement { name = "kit-life-row", pickingMode = PickingMode.Ignore };
+            kitLifeRow.AddToClassList("kit-life-row");
             kitNote.style.whiteSpace = WhiteSpace.Normal; // the phone's width: the note wraps, never runs off the sheet
             kitNote.style.marginBottom = 12;
             sheet.Add(kitNote);
+            sheet.Add(kitLifeRow); // the chooser opens above the slot (spec section 6)
             sheet.Add(acts);
             kitSeed.style.display = DisplayStyle.None;
+        }
+
+        // ---------------- #423: the life slot (placed-life spec section 6) ----------------
+        GlassButton kitLife;
+        VisualElement kitLifeRow, kitDot;
+        AquariumCiv.Sim.Eco.LifeSpecies heldLife;
+        readonly System.Collections.Generic.List<AquariumCiv.Sim.Eco.LifeSpecies> readyJars = new();
+        string lifeRowKey = "";
+        bool lifeShown;
+        public const string LifeHint = "Tap the glowing ground to choose a spot. Two fingers move the view.";
+        /// <summary>The species in hand while <see cref="Hand"/> is <see cref="KitTool.Life"/>.</summary>
+        public AquariumCiv.Sim.Eco.LifeSpecies HeldLife => heldLife;
+        /// <summary>How many times the ready wiggle played (tests).</summary>
+        public int LifeWiggles { get; private set; }
+        /// <summary>The chooser row is open (two or more ready jars; tests).</summary>
+        public bool LifeRowOpen => kitLifeRow != null && kitLifeRow.ClassListContains("kit-life-row--open");
+        /// <summary>The chooser opens in the note's place (the kit sheet keeps its height).</summary>
+        void SetLifeRow(bool open)
+        {
+            kitLifeRow.EnableInClassList("kit-life-row--open", open);
+            if (kitNote != null) kitNote.style.display = open ? DisplayStyle.None : DisplayStyle.Flex;
+            // the other tools step aside too: the sheet keeps its height, so on a short phone the icons would run into the title
+            var others = open ? DisplayStyle.None : DisplayStyle.Flex;
+            foreach (var b in new[] { kitCloth, kitMister, kitTweezers }) if (b != null) b.style.display = others;
+            if (kitSeed != null) kitSeed.style.display = !open && kitSeedShown ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+        /// <summary>The slot shows in the kit (a jar is ready).</summary>
+        public bool LifeSlotShown => lifeShown;
+        /// <summary>The Kit button carries the small dot (a jar is ready and nothing is in hand).</summary>
+        public bool LifeDotShown => cleanButton != null && cleanButton.ClassListContains("kg-tool--life");
+
+        /// <summary>Takes the species in hand (the life tool): its ground glows (LifePlaceView), the next taps place it.</summary>
+        public void TakeLife(AquariumCiv.Sim.Eco.LifeSpecies s)
+        {
+            heldLife = s;
+            if (hand == KitTool.Life) { HandChanged?.Invoke(hand); return; }
+            SetHand(KitTool.Life);
+        }
+
+        void OnLifeSlot()
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (hand == KitTool.Life) { SetHand(KitTool.None); return; } // tapping the slot puts it back
+            if (sim == null) return;
+            sim.ReadyJars(readyJars);
+            if (readyJars.Count == 0) return;
+            if (readyJars.Count == 1) { SetLifeRow(false); TakeLife(readyJars[0]); return; }
+            bool open = !LifeRowOpen;
+            if (open) FillLifeRow();
+            SetLifeRow(open);
+        }
+
+        void FillLifeRow()
+        {
+            string key = string.Join(",", readyJars);
+            if (key == lifeRowKey) return;
+            lifeRowKey = key;
+            kitLifeRow.Clear();
+            foreach (var sp in readyJars)
+            {
+                var s = sp;
+                var b = new GlassButton("", () => { SetLifeRow(false); TakeLife(s); }, ButtonKind.Secondary, UiRole.Toggle) { name = "kit-life-" + s.ToString().ToLowerInvariant() };
+                b.AddToClassList("kit-life-choice");
+                b.Add(new GlassIcon(LifeIcon(s)));
+                kitLifeRow.Add(b);
+            }
+        }
+
+        /// <summary>The icon of each species in the chooser (Icons/life-*.svg, drawn for this project).</summary>
+        public static string LifeIcon(AquariumCiv.Sim.Eco.LifeSpecies s) => s switch
+        {
+            AquariumCiv.Sim.Eco.LifeSpecies.Thicket => "life-thicket",
+            AquariumCiv.Sim.Eco.LifeSpecies.Rabbits => "life-rabbits",
+            AquariumCiv.Sim.Eco.LifeSpecies.Deer => "life-stag",
+            AquariumCiv.Sim.Eco.LifeSpecies.Ducks => "life-duck",
+            AquariumCiv.Sim.Eco.LifeSpecies.Fish => "life-fish",
+            AquariumCiv.Sim.Eco.LifeSpecies.Wolves => "life-wolf",
+            _ => "life-jar",
+        };
+
+        /// <summary>Each frame: the slot shows while a jar is ready, the Kit button keeps a small dot until it is placed, and a jar
+        /// that opened (here or while away) wiggles the Kit button once, the next time the HUD is up to see it.</summary>
+        void FollowLife(AquariumCiv.Sim.SimCore sim)
+        {
+            bool any = sim.AnyJarReady;
+            if (any != lifeShown)
+            {
+                lifeShown = any;
+                if (!any) SetLifeRow(false);
+            }
+            var show = any || hand == KitTool.Life ? DisplayStyle.Flex : DisplayStyle.None;
+            if (kitLife.style.display != show) kitLife.style.display = show;
+            kitLife.EnableInClassList("kit-life--ready", any);
+            cleanButton?.EnableInClassList("kg-tool--life", any && hand != KitTool.Life);
+            if (hand == KitTool.Life && !sim.JarReady(heldLife)) SetHand(KitTool.None); // placed (or gone): the tool is put down
+            if (LifeRowOpen) { sim.ReadyJars(readyJars); FillLifeRow(); }
+            if (!any || hidden || cameraMode || toolsWaiting || toolBlocks.Count > 0 || sim.State.firstRun.active) return;
+            bool due = false;
+            foreach (var s in AquariumCiv.Sim.Eco.LifeJar.All) if (sim.AckJarReady(s)) due = true;
+            if (!due) return;
+            LifeWiggles++;
+            UiSound.Play(UiRole.NewTool);
+            Wiggle(cleanButton);
+            if (OpenSheet == Kit) Wiggle(kitLife);
+        }
+
+        static readonly float[] WiggleDeg = { -9f, 9f, -7f, 7f, -4f, 3f, 0f };
+        /// <summary>One wiggle: a few quick turns either way, then still.</summary>
+        static void Wiggle(VisualElement e)
+        {
+            if (e == null || GlassMotion.Instant) return;
+            for (int i = 0; i < WiggleDeg.Length; i++)
+            {
+                float a = WiggleDeg[i];
+                e.schedule.Execute(() => e.style.rotate = new Rotate(new Angle(a, AngleUnit.Degree))).ExecuteLater(i * 70);
+            }
         }
 
         /// <summary>Each frame: a living-land box shows Kit (not Clean and Shape); the seed joins the kit when the land is ready for it
@@ -241,6 +373,7 @@ namespace AquariumCiv.GameUI
                 if (shapeButton != null) shapeButton.style.display = eco || toolBlocks.Count > 0 ? DisplayStyle.None : DisplayStyle.Flex;
             }
             if (!eco || kitSeed == null) return;
+            FollowLife(sim);
             bool seed = sim.CanPlantTree;
             if (seed != kitSeedShown)
             {
@@ -555,6 +688,10 @@ namespace AquariumCiv.GameUI
             bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => { if (kitBox) OnKitButton(); else SetCleanMode(!cleanMode); }, UiRole.Toggle));
             cleanButton.Add(new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
             cleanButton.Add(new GlassNewTag());
+            kitDot = new VisualElement { name = "hud-kit-dot", pickingMode = PickingMode.Ignore }; // #423: a jar is ready
+            kitDot.AddToClassList("kg-dot");
+            kitDot.AddToClassList("kg-tool-dot");
+            cleanButton.Add(kitDot);
             bottomRow.Add(shapeButton = Tool("hud-shape", "Shape", () => { SetShapeNew(false); Open(Shaping); }, UiRole.Open));
             shapeButton.Add(new GlassNewTag());
             safe.Add(bottomRow);
@@ -688,7 +825,7 @@ namespace AquariumCiv.GameUI
             if (!sheets.TryGetValue(id, out var scrim) || openSheet == scrim) return;
             if (id == Shaping && kitBox) id = Kit; // a living-land box has no Shape tray: the kit is the Keeper's hands
             if (id == Shaping || id == Kit) SetCleanMode(false); // one mode at a time, and Done would sit hidden behind the tray
-            if (id == Kit) SetHand(KitTool.None);
+            if (id == Kit) { SetHand(KitTool.None); if (kitLifeRow != null) SetLifeRow(false); } // the kit opens on its tools, the chooser shut
             if (!sheets.TryGetValue(id, out scrim) || openSheet == scrim) return;
             if (openSheet != null) { openSheet.style.display = DisplayStyle.None; openSheet.Sheet.Close(); }
             openSheet = scrim;
