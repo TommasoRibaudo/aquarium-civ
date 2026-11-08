@@ -121,6 +121,37 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("loose group");
         }
 
+        /// <summary>#494: at the glass, looking out, each one's flat forward is toward the camera (within 35 degrees), at two camera yaws.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator PeopleAtTheGlassLookTowardTheCamera()
+        {
+            yield return Grown();
+            for (int calm = 0, f = 0; calm < 120 && f < 1200; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
+            PeopleView.DebugSetHour(10f);
+            yield return Frames(4);
+            StringAssert.Contains("at the glass", GlassVoice.DebugGather(6));
+            var pv = People;
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            yield return Until(() => pv.Activities.Count(a => a.place.kind == PlaceKind.Glass && !a.moving && PeopleView.GazesAtCamera(a.kind, a.place.kind)) >= 3, 30f);
+            foreach (float yaw in new[] { -15f, 40f })
+            {
+                rig.EaseTo(rig.target, yaw, rig.pitch, rig.zoom, 0.3f);
+                yield return new WaitForSecondsRealtime(3.5f); // the camera settles, then the lazy turn
+                Assert.AreEqual(0, LifePlanner.GlassSideFacing(yaw), "both yaws look in through the same wall, so nobody is re-planned");
+                var at = pv.Activities.Where(a => a.place.kind == PlaceKind.Glass && !a.moving && PeopleView.GazesAtCamera(a.kind, a.place.kind)).ToList();
+                Assert.GreaterOrEqual(at.Count, 3, "they are at the glass, looking out");
+                Assert.IsTrue(pv.CameraPlanePoint(out var cam));
+                foreach (var a in at)
+                {
+                    Assert.IsTrue(pv.TryGetDollPosition(a.who, out var pos));
+                    Assert.IsTrue(pv.TryGetDollFacing(a.who, out var fwd));
+                    float off = Vector2.Angle(fwd, cam - pos);
+                    Assert.LessOrEqual(off, 35f, $"{a.who.Key} ({a.kind}) faces the camera at yaw {yaw}, was {off:0} degrees off");
+                }
+            }
+            AssertNoErrors("glass gaze");
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator ACarriedBabyShowsOnTheirCarerAndTheCardAgrees()
         {
