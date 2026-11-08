@@ -419,6 +419,7 @@ namespace AquariumCiv.View
             if (CrowdOpen && Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + 1f; RefreshCrowd(); }
             if ((AnyOpen || BuildingOpen) && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); CloseCrowd(); CloseBuilding(); }
             if (AnyOpen) KeepInView();
+            TickGrow(); // #484
             if (Screen.safeArea != lastSafe || Screen.width != lastScreen.x || Screen.height != lastScreen.y) ApplySafeArea();
             UpdateChip(sim, false);
         }

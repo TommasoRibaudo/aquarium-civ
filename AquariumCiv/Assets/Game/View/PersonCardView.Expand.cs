@@ -28,6 +28,13 @@ namespace AquariumCiv.View
         VisualElement grab;
         Vector2 pressAt;
         int pressId = -1;
+        /// <summary>#484: while the camera flies for the tall card, the card grows under the person (never over them): when that began, and
+        /// its height now (share of the screen).</summary>
+        float growSince = -1f, growShare;
+        /// <summary>#484: how long the card may take to reach its full height behind the flight (real seconds) before it snaps.</summary>
+        public const float GrowSeconds = BoxCameraMath.FlyDefaultSeconds + 0.4f;
+        /// <summary>The card is growing after the camera now (tests).</summary>
+        public bool Growing => growSince >= 0f;
 
         /// <summary>Called once from EnsureUi: the handle on the card's top edge, and the swipe on the head row.</summary>
         void BuildExpandUi(VisualElement head)
@@ -71,14 +78,49 @@ namespace AquariumCiv.View
         {
             if (sheet == null || on == Expanded || (on && !IsOpen)) return;
             Expanded = on;
-            ApplyExpanded();
             UiSound.Play(UiRole.Toggle);
-            if (on && IsOpen && PersonUnder(ExpandedShare)) flownForCard = FlyTo(Who);
+            bool fly = on && IsOpen && PersonUnder(ExpandedShare);
+            if (fly) flownForCard = FlyTo(Who);
+            // #484: with a flight, the card grows behind the camera, kept under the person, instead of snapping over them for a second
+            if (fly && flownForCard) { growSince = Time.unscaledTime; growShare = CardMaxShare; }
+            else growSince = -1f;
+            ApplyExpanded();
+        }
+
+        /// <summary>#484, every frame from Update: while growing, the card's top stays under the person's head (and their margin), rising
+        /// as the camera lifts them, until it's full height or the flight has had its time.</summary>
+        void TickGrow()
+        {
+            if (growSince < 0f || sheet == null) return;
+            if (!Expanded || !IsOpen) { EndGrow(); return; }
+            float limit = ExpandedShare;
+            var pv = PeopleView.Find();
+            var cam = Camera.main;
+            if (pv != null && cam != null && cardRoot?.panel != null && pv.TryGetDollTop(Who, out var top))
+            {
+                var at = ToPanel(cam, top, out bool ok);
+                float h = cardRoot.worldBound.height;
+                if (ok && h > 1f) limit = Mathf.Clamp((h - at.y - KeepClear) / h, CardMaxShare, ExpandedShare);
+            }
+            growShare = Mathf.Max(growShare, limit); // it never shrinks back while it grows
+            if (growShare >= ExpandedShare - 0.002f || Time.unscaledTime - growSince > GrowSeconds) { EndGrow(); return; }
+            sheet.style.height = Length.Percent(growShare * 100f);
+            sheet.Surface.Follow(60);
+        }
+
+        void EndGrow()
+        {
+            growSince = -1f;
+            if (sheet == null) return;
+            sheet.style.height = StyleKeyword.Null; // the class's 59 % (or 30 %) again
+            sheet.Surface.Follow(GlassMotion.SlideMs);
         }
 
         void ApplyExpanded()
         {
             if (sheet == null) return;
+            if (growSince >= 0f) sheet.style.height = Length.Percent(CardMaxShare * 100f); // #484: it starts at 30 % and grows in TickGrow
+            else sheet.style.height = StyleKeyword.Null;
             sheet.EnableInClassList(GlassSheet.HeightClass(SheetHeight.Standard), !Expanded);
             sheet.EnableInClassList(GlassSheet.HeightClass(SheetHeight.Tall), Expanded);
             sheet.EnableInClassList(TallClass, Expanded);
@@ -88,6 +130,7 @@ namespace AquariumCiv.View
         /// <summary>Back to 30 % with no sound (the card closed).</summary>
         void ResetExpanded()
         {
+            growSince = -1f;
             if (!Expanded) return;
             Expanded = false;
             ApplyExpanded();
@@ -151,15 +194,17 @@ namespace AquariumCiv.View
             return true;
         }
 
-        /// <summary>The open person's head would sit under a card of this share of the screen.</summary>
+        /// <summary>The open person would stand on or under a card of this share of the screen: #485, their middle (not only their head) must
+        /// stand <see cref="ClearShare"/> above its edge, the clearance the flight gives a flown person (a back person's feet touched the edge).</summary>
         bool PersonUnder(float share)
         {
             var pv = PeopleView.Find();
             var cam = Camera.main;
-            if (pv == null || cam == null || cardRoot?.panel == null || !pv.TryGetDollTop(Who, out var top)) return false;
-            var at = ToPanel(cam, top, out bool ok);
-            float edge = cardRoot.worldBound.height * (1f - share);
-            return !ok || at.y > edge - KeepClear;
+            if (pv == null || cam == null || cardRoot?.panel == null || !pv.TryGetDollTop(Who, out var top) || !pv.TryGetDollFeet(Who, out var feet)) return false;
+            var at = ToPanel(cam, (top + feet) * 0.5f, out bool ok);
+            float h = cardRoot.worldBound.height;
+            float edge = h * (1f - share);
+            return !ok || at.y > edge - ClearShare * h;
         }
     }
 }
