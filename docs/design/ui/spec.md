@@ -157,6 +157,9 @@ flat, with no copy, no filter and no pass. The debug panel flips it for a sessio
   Top padding is 12 pt plus the hairline. Longer content scrolls inside, and the scroll view's height snaps to whole lines so
   no line is cut. Above 30 %: setting picker 33 %, licences 35 %, settings and feedback 59 %, settings with the silent notice
   63 %. None of those talk about the world, so rule 5 holds.
+- **The tall person card (#403, playtest note #384):** the person card opens at 30 %. A grab pill on its top edge (tap it, or swipe
+  up or down on it or the head row) grows it to 59 %, so a life can be read. Rule 5 still holds: the camera stands the person
+  above the tall card, zooming in when the pan bounds stop it near the front glass. Every card opens at 30 % again.
 - **Short phones (375 × 667):** the sheet stays 30 %, 200 pt. The card needs about 216 pt at full layout, so under 700 pt
   tall the year joins the dots row and bottom padding drops to 14, which gives 193 pt. Longer text scrolls. Drawn at the
   end of 3.3, built in #166. A locked Give's reason moves above the body there, so it can't scroll out of sight.
