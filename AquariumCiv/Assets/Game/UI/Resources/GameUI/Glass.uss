@@ -770,7 +770,11 @@
 .kit-life > .kit-life-icon { position: absolute; left: 27.5px; top: 35px; width: 52px; height: 52px; }
 .kit-life-dot { position: absolute; right: -6px; top: -6px; display: none; }
 .kit-life--ready > .kit-life-dot { display: flex; }
-.kit-life-row { flex-direction: row; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-8); display: none; }
+/* tester 2026-11-08: on a wide screen (1640x2360) 30 % was too short for the title, the chooser and the slot, so the row shrank and its
+   140 px icons spilled onto the title and the slot. The kit keeps 30 % at least and grows to what it holds; nothing in it shrinks. */
+.kg-sheet.kit-sheet { height: auto; min-height: 30%; max-height: 80%; }
+.kit-acts { flex-shrink: 0; }
+.kit-life-row { flex-direction: row; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-8); display: none; flex-shrink: 0; }
 .kit-life-row--open { display: flex; }
 .kit-life-choice { width: 140px; height: 140px; min-width: 0; padding: 0; margin: 0 16.5px var(--space-8) 0; flex-direction: column; justify-content: center; align-items: center; }
 .kit-life-choice > .kg-icon { width: 77px; height: 77px; }

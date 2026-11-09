@@ -215,6 +215,7 @@ namespace AquariumCiv.GameUI
         void BuildKit()
         {
             var sheet = Sheet(Kit, "The Keeper's kit");
+            sheet.AddToClassList("kit-sheet"); // tester 2026-11-08: grows past 30 % when its tools need it (the chooser on a tablet)
             kitNote = Text("", "type-note", "kg-sheet-note");
             var acts = new VisualElement();
             acts.AddToClassList("kg-card-acts");
