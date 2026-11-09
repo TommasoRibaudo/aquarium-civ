@@ -585,6 +585,54 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(off.DebugToFloor(LifeSpecies.Deer)); Assert.IsFalse(off.DebugRestraintNow(LifeSpecies.Deer));
             Assert.IsTrue(off.FishingOpen, "the old box fishes as ever"); Assert.IsTrue(off.FishCatch());
         }
+
+        // ================================================================ #519 the ducks and the fish only on water you can see
+        [Test]
+        public void Ducks_NoGround_NoJar_NoCheat_WithoutOpenWater()
+        {
+            var sim = Camp(pond: false);
+            Assert.AreEqual(0, sim.EcoPondCells, "a box with no pond drawn");
+            for (int c = 0; c < EcoLand.N; c++) Assert.IsFalse(sim.EcoOpenWater(c), $"cell {c} is not open water");
+            var cells = new List<int>();
+            sim.LifeGround(LifeSpecies.Ducks, cells);
+            Assert.AreEqual(0, cells.Count, "no duck ground");
+            sim.LifeGround(LifeSpecies.Fish, cells);
+            Assert.AreEqual(0, cells.Count, "no fish ground");
+            Assert.IsFalse(Model(sim).LandReady(LifeSpecies.Ducks, sim.State.month), "the ducks' jar stays shut");
+            Assert.AreEqual(-1, sim.DebugPlaceNearCamp(LifeSpecies.Ducks), "even the cheat finds no water");
+            Assert.AreEqual(0, sim.EcoDucks);
+            Assert.AreEqual(0, sim.State.chronicle.Count(x => x.kind == "life_ducks"), "no line about ducks you can't see");
+            // the debug village gate on a dry box adopts no ducks and no fish (#421's adoption waits for the water)
+            sim.DebugOpenVillageGate();
+            Season(sim);
+            if (sim.EcoPondCells == 0) { Assert.AreEqual(0, sim.EcoDucks); Assert.AreEqual(0, sim.EcoFish); }
+            Assert.IsTrue(sim.EcoDucks == 0 || sim.EcoOpenWater(sim.EcoDuckHome), "adopted ducks live on open water");
+        }
+
+        [Test]
+        public void Ducks_PondGivesWay_TheyMoveToTheWaterLeft_ThenGoWithALine()
+        {
+            var sim = Camp();
+            int d = sim.DebugPlaceNearCamp(LifeSpecies.Ducks);
+            Assert.GreaterOrEqual(d, 0);
+            int f = sim.DebugPlaceNearCamp(LifeSpecies.Fish);
+            Assert.GreaterOrEqual(f, 0);
+            Assert.IsTrue(sim.EcoOpenWater(d) && sim.EcoOpenWater(f));
+            // the water at their homes gives way: they keep to the water that is left
+            sim.State.eco.cover[d] = (byte)EcoCover.Bare; sim.State.eco.cover[f] = (byte)EcoCover.Bare;
+            Season(sim);
+            Assert.AreEqual(2, sim.EcoDucks, "still a pair");
+            Assert.IsTrue(sim.EcoOpenWater(sim.State.eco.duckHome), "the ducks moved to open water");
+            Assert.IsTrue(sim.EcoOpenWater(sim.State.eco.fishHome), "the fish moved to open water");
+            Assert.AreNotEqual(d, sim.State.eco.duckHome);
+            Assert.AreEqual(0, sim.State.chronicle.Count(x => x.kind.StartsWith("life_left_")), "nothing left while there was water");
+            // no water at all: they are gone, and the history says so once
+            Assert.Greater(sim.DebugPondDries(), 0);
+            Assert.AreEqual(0, sim.EcoDucks); Assert.AreEqual(0, sim.EcoFish);
+            Assert.AreEqual(-1, sim.EcoDuckHome);
+            Assert.AreEqual(1, sim.State.chronicle.Count(x => x.kind == "life_left_ducks"));
+            Assert.AreEqual(1, sim.State.chronicle.Count(x => x.kind == "life_left_fish"));
+        }
     }
 
     /// <summary>#420-#422 over the long run: a Keeper who places every jar, people who take all they can every month.</summary>
@@ -654,6 +702,9 @@ namespace AquariumCiv.Tests
             Assert.IsFalse(sim.VillageGateOpen, "but no village without the ducks and the fish");
             Assert.AreEqual(JarState.Ready, sim.JarStateOf(LifeSpecies.Ducks), "the jar waits");
             Assert.AreEqual(Era.Camp, sim.State.era);
+            // #519: the old "a family of ducks moved into the pond" story never comes by itself on a living-land box
+            Assert.AreEqual(0, sim.State.chronicle.Count(x => x.kind == "ducks"), "no duck story without placed ducks");
+            Assert.AreEqual(0, sim.State.chronicle.Count(x => x.kind == "life_ducks"), "no duck arrival line without placing");
         }
     }
 }
