@@ -55,6 +55,8 @@ namespace AquariumCiv.Life
         EmptyBucket,
         /// <summary>#283: a caught rabbit, carried over the shoulder to the fire. Appended last so the saved ints stay.</summary>
         Rabbit,
+        /// <summary>P9 #426 (B13): the hunter's bow (on the back while walking, in the hand to shoot) and the carrying pole. Appended last.</summary>
+        Bow, Pole,
     }
 
     /// <summary>#283: which beat of a hunt a <see cref="PersonActivity"/> is (None = not a hunt). The hunter's beats come in this order:
@@ -67,6 +69,12 @@ namespace AquariumCiv.Life
         // #362 (added at the end): the thrown spear's aftermath. A miss: FetchSpear, PullSpear (then WalkBack); a catch: ToCatch, PickUp, HoldUp (then CarryBack).
         // The kid of a catch: KidRun to the hunter, KidEscort home beside him.
         FetchSpear, PullSpear, ToCatch, PickUp, HoldUp, KidRun, KidEscort,
+        // P9 #426 (B13, appended): the deer hunt with bows. All: ToFire, (DeerWait), DeerTakeBow, DeerWalkOut in a line, DeerCrouch (the lead
+        // points), DeerStalk side by side, then the shooter's DeerShoot while the others DeerWatchShot. A hit: DeerToKill, the shooter's
+        // DeerThank, the runner's DeerPoleRun / DeerTakePole / DeerPoleBack, DeerToTie, DeerTie, DeerCarry (the two carriers; the third
+        // DeerAhead with the bows), DeerSetDown. A miss: DeerShrug, the shooter's DeerToArrow / DeerPullArrow. Then Return.
+        DeerTakeBow, DeerWalkOut, DeerWait, DeerCrouch, DeerStalk, DeerShoot, DeerWatchShot, DeerShrug, DeerToArrow, DeerPullArrow,
+        DeerToKill, DeerThank, DeerPoleRun, DeerTakePole, DeerPoleBack, DeerToTie, DeerTie, DeerCarry, DeerAhead, DeerSetDown,
     }
 
     /// <summary>P8 (#267): the water in a bucket. None = not a bucket; Muddy = scooped from the wet low ground while the pond is dry.</summary>
@@ -348,6 +356,7 @@ namespace AquariumCiv.Life
                 Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
                 Prop.Handcart => PropSlot.Pulled,
                 Prop.Barrel => PropSlot.Rolled,
+                Prop.Bow => k == ActivityKind.Walk ? PropSlot.Back : PropSlot.Hand, // #426: bows on their backs on the way out
                 _ => PropSlot.Hand,
             };
         }

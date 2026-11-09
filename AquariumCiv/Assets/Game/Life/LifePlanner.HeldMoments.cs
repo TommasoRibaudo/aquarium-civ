@@ -300,7 +300,7 @@ namespace AquariumCiv.Life
         {
             if (p == null || p.stage == LifeStage.Baby) return "a baby";
             if (DayOf(p)[Find(DayOf(p), at.hour)].kind == ActivityKind.Sleep) return "asleep";
-            if (HuntActivityAt(p, at, out _)) return "hunting";
+            if (HuntActivityAt(p, at, out _) || DeerHuntActivityAt(p, at, out _)) return "hunting";
             if (TentActivityAt(p, at, out _)) return "raising a tent";
             if (InChoice(p.key, at)) return "in a choice";
             return "in a held moment";
@@ -310,7 +310,7 @@ namespace AquariumCiv.Life
         {
             if (p == null || p.stage == LifeStage.Baby) return false;
             if (DayOf(p)[Find(DayOf(p), at.hour)].kind == ActivityKind.Sleep) return false; // nobody is woken for it
-            if (HuntActivityAt(p, at, out _) || TentActivityAt(p, at, out _)) return false;  // the hunt and the tent go on
+            if (HuntActivityAt(p, at, out _) || DeerHuntActivityAt(p, at, out _) || TentActivityAt(p, at, out _)) return false;  // the hunt and the tent go on
             if (InChoice(p.key, at)) return false; // batch 3: the Keeper's ask holds its cast
             foreach (var sc in heldScenes) if (sc.day == at.day && at.hour < sc.end && sc.plan.Member(p.key) != null) return false; // a busy day: one moment each
             return true;

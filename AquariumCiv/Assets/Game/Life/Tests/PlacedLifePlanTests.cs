@@ -44,7 +44,7 @@ namespace AquariumCiv.Life.Tests
         }
 
         /// <summary>The camp's rungs placed (on bare ground: the debug cheat), a wood of 30 grown trees and a full herd of deer.</summary>
-        static SimCore Deer(int seed = 7)
+        internal static SimCore Deer(int seed = 7)
         {
             var sim = World(seed);
             Assert.GreaterOrEqual(sim.DebugPlaceNearCamp(LifeSpecies.Thicket), 0);

@@ -26,6 +26,30 @@ namespace AquariumCiv.Life
         /// <summary>View hours: they leave the fire, the shot, they are home with the carry.</summary>
         public float start, resolveHour, end;
         public double ResolveAbsolute => day * 24.0 + resolveHour;
+
+        // ---- #426 the scene (LifePlanner.DeerScene.cs; empty until the view hands the planner its deer, <see cref="LifePlanner.DeerField"/>)
+        /// <summary>The deer they go after (an id of the view's herd; -1 none) and where it stands from the stalk to the shot. The white
+        /// stag (#427) is no deer of the herd: <see cref="white"/>, and its spot is given.</summary>
+        public int targetId = -1;
+        public bool targetStag, white;
+        public float targetX, targetZ;
+        /// <summary>The camp's fire, the way out (unit, fire to deer), the shot point (the shooter's), where the arrow comes down, where the
+        /// deer is set down by the fire.</summary>
+        public float fireX, fireZ, dirX, dirZ, shotX, shotZ, landX, landZ, setX, setZ;
+        /// <summary>The stalk's two freezes (seconds; the stag lifts its head and everyone freezes).</summary>
+        public float freezeA, freezeB;
+        /// <summary>View hours: the stalk starts, the shot starts, the arrow leaves and lands (the contact; = <see cref="resolveHour"/>),
+        /// the deer goes up on the pole, is set down by the fire; a miss: the arrow is pulled out.</summary>
+        public float walkOutHour, stalkStart, shootStart, releaseHour, landHour, takeHour, setDownHour, arrowTakeHour;
+        /// <summary>The one who runs back for the pole (an index into <see cref="hunters"/>); the shooter is index 0.</summary>
+        public int poleRunner = 1;
+        /// <summary>Each hunter's beats, in <see cref="hunters"/>' order.</summary>
+        public readonly List<List<HuntStep>> steps = new List<List<HuntStep>>();
+        public bool HasScene => steps.Count > 0;
+        public float StalkSeconds => HuntStalk.Duration(freezeA, freezeB);
+        /// <summary>The scene plays a hit: planned, and the herd had one to spare when it was planned (a hit the floor would refuse is
+        /// played as a miss).</summary>
+        public bool playsHit;
     }
 
     /// <summary>#420: the deer hunt as planner data (see <see cref="DeerHuntPlan"/>).</summary>
@@ -74,6 +98,7 @@ namespace AquariumCiv.Life
             if (LifeClock.IsRestDay(day) || dayInfo.weather == Weather.Storm || sim.DeerHuntSurplus <= 0) return list;
             if (R(0, day, 400) >= DeerHuntChanceIn(sim.State.era)) return list;
             var plan = MakeDeerHunt(day, DeerHuntFrom + DeerHuntSpread * R(0, day, 401), R(0, day, 402) < DeerHitChance);
+            if (plan != null && deerField != null && !plan.HasScene) plan = null; // #426: the view's herd gives no deer to stalk (all at the water)
             if (plan != null) { list.Add(plan); ReindexDeer(list); }
             return list;
         }
@@ -95,6 +120,7 @@ namespace AquariumCiv.Life
             var plan = new DeerHuntPlan { day = day, start = start, resolveHour = start + DeerShotAfter, end = start + DeerHuntHours, hits = hits };
             for (int i = 0; i < pool.Count && plan.hunters.Count < want; i++) plan.hunters.Add(pool[i].p.who);
             if (deerForceNext.HasValue) { plan.hits = deerForceNext.Value; plan.forced = true; deerForceNext = null; }
+            BuildDeerScene(plan);
             return plan;
         }
 
@@ -125,7 +151,8 @@ namespace AquariumCiv.Life
                     if (plan.ResolveAbsolute > now.Absolute) break;
                     plan.resolved = true;
                     if (plan.index < sim.DeerHuntsSettled(day)) continue; // settled before a reload
-                    if (plan.hits && sim.DeerHuntCatch(out bool stag)) { plan.caught = true; plan.stag = stag; }
+                    if (plan.white) { plan.caught = true; plan.stag = true; } // #427: the sim settled the white stag at the Keeper's answer
+                    else if (plan.hits && sim.DeerHuntCatch(out bool stag)) { plan.caught = true; plan.stag = stag; }
                     sim.DeerHuntSettled(day);
                     settled?.Add(plan);
                     count++;

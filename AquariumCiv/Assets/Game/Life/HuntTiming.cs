@@ -39,6 +39,45 @@ namespace AquariumCiv.Life
         public const float MissPast = 0.12f, MissPastMore = 0.08f, MissSide = 0.09f, StandOff = 0.10f;
     }
 
+    /// <summary>
+    /// P9 #426 (animation-specs B13): the deer hunt's beats in REAL seconds, shared by the planner and the view as <see cref="HuntTiming"/>
+    /// is for the rabbits. The shot (<see cref="HuntPhase.DeerShoot"/>): up to one knee, the bow comes up, the draw, hold the aim, the
+    /// release, the arrow's flight, it lands (the contact), the hold. Distances in box units. Pure: AnimBench compiles it.
+    /// </summary>
+    public static class DeerTiming
+    {
+        // ---- the shot, seconds from the start of the step
+        public const float RiseSeconds = 0.45f, DrawSeconds = 0.5f, AimSeconds = 0.5f, ReleaseSnap = 0.1f;
+        /// <summary>The string arm snaps forward and the arrow leaves.</summary>
+        public const float ReleaseAt = RiseSeconds + DrawSeconds + AimSeconds;
+        /// <summary>The arrow's flight (slower than life so it can be followed) and its apex over the straight line.</summary>
+        public const float FlightSeconds = 0.4f, FlightApex = 0.06f;
+        public const float LandAt = ReleaseAt + FlightSeconds;
+        public const float ShootSeconds = LandAt + 0.9f;
+        /// <summary>The crouch at the wood's edge with the lead's point (arm x 90, 1 s) and the others' nods.</summary>
+        public const float CrouchSeconds = 1.8f;
+        /// <summary>A hit: the kneel with a hand on the neck (the thank-you); the tie under the pole; the set-down by the fire.</summary>
+        public const float ThankSeconds = 1.8f, TieSeconds = 1.8f, SetDownSeconds = 1.3f, TakePoleSeconds = 0.9f;
+        /// <summary>A miss: the shrug together (B6's), the pull that frees the arrow from the ground.</summary>
+        public const float ShrugSeconds = HuntTiming.BoltSeconds, PullSeconds = 0.8f, PullTakeAt = 0.36f;
+
+        // ---- geometry
+        /// <summary>The crouch (the lead points) this far from the deer, the stalk ends at the shot point this far.</summary>
+        public const float CrouchRange = 1.1f, ShotRange = 0.6f;
+        /// <summary>Hunters walk out in a line this far apart and stalk side by side this far apart.</summary>
+        public const float LineGap = 0.15f, SideGap = 0.2f;
+        /// <summary>A miss lands this far past the deer (plus a side step); the shooter stands this far short of the arrow to pull it.</summary>
+        public const float MissPast = 0.2f, MissSide = 0.06f, StandOff = 0.1f;
+        /// <summary>The pole (0.35 u): its carriers stand at its two ends; the deer is set down this far from the fire.</summary>
+        public const float PoleHalf = 0.175f, SetDownFromFire = 0.42f;
+        /// <summary>The carry home is slower than a walk; the runner who fetches the pole runs.</summary>
+        public const float CarryPace = 0.7f, RunPace = 1.9f;
+        /// <summary>Nobody hunts at the water (B14.a): never a deer within this of the pond.</summary>
+        public const float WaterKeep = 0.5f;
+        /// <summary>At the release every deer this near the target bolts (P3).</summary>
+        public const float BoltReach = 1.5f;
+    }
+
     /// <summary>The stalk's rhythm: seven creeping steps (0.05 u in 0.5 s, then still 0.7 s), and once or twice the rabbit sits up and the
     /// hunter freezes until it grazes again. Planner and view read the same function of the seconds into the stalk.</summary>
     public static class HuntStalk

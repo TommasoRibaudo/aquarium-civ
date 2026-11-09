@@ -205,9 +205,14 @@ namespace AquariumCiv.View
             // the arrival draws its own dolls until its end beat
             var la = LifeArrivalView.Instance;
             if (la != null && la.Playing(LifeSpecies.Deer)) { HideAll(); return; }
-            Field.Sync(count);
             var pv = PeopleView.Find();
-            if (pv != null && pv.Planner != null) pv.StandingNow(whoBuf, px, pz); else { whoBuf.Clear(); px.Clear(); pz.Clear(); }
+            var planner = pv != null ? pv.Planner : null;
+            // #426: the hunters see this herd; the hunts settle here (a hit takes the deer they shot, not the last one shown)
+            if (planner != null) { planner.DeerField = Field; Hunts(planner, pv.Now); }
+            else hunts.Clear();
+            Field.Sync(count);
+            if (planner != null) pv.StandingNow(whoBuf, px, pz); else { whoBuf.Clear(); px.Clear(); pz.Clear(); }
+            DropHunters();
             foreach (var sc in Scarers) { px.Add(sc.x); pz.Add(sc.y); }
             double t = FieldNow;
             float hour = pv != null ? pv.ViewHour : 12f;
@@ -237,7 +242,9 @@ namespace AquariumCiv.View
                         s.cur = box.land.OnGround(x0, z0); s.yaw = p0.yaw * Mathf.Rad2Deg; s.grow = 0f; // a new fawn grown up, a restock: fades in
                     }
                 }
-                Step(sim, s, Field.Sample(id, t, hour), dt, (float)t, hour);
+                var dayPose = Field.Sample(id, t, hour);
+                if (HuntHolds(s, pv, ref dayPose, out bool hide)) { if (hide) { s.doll.SetActive(false); continue; } }
+                Step(sim, s, dayPose, dt, (float)t, hour);
             }
             if (hand > 0) HandOff.Clear();
             Fawns(sim, (float)t);
@@ -380,6 +387,101 @@ namespace AquariumCiv.View
             }
         }
 
+        // ---------------------------------------------------------------- #426 the deer hunt
+        readonly List<DeerHuntPlan> hunts = new();
+        readonly List<DeerHuntPlan> settled = new();
+        readonly HashSet<DeerHuntPlan> bolted = new();
+        /// <summary>The deer hunts' herd bolts (at the arrow's landing), the deer the hunt took out of the herd, frames the target was held.</summary>
+        public int HuntBolts { get; private set; }
+        public int HuntTaken { get; private set; }
+        public int TargetHeldFrames { get; private set; }
+        /// <summary>The last hunt settled here (tests, the panel).</summary>
+        public DeerHuntPlan LastHunt { get; private set; }
+
+        void Hunts(LifePlanner planner, ViewTime now)
+        {
+            settled.Clear();
+            planner.ResolveDeerHunts(now, settled);
+            foreach (var p in settled)
+            {
+                LastHunt = p;
+                if (p.caught && !p.white && p.targetId >= 0 && Field.Remove(p.targetId)) HuntTaken++;
+            }
+            planner.DeerScenesOn(now.day, hunts);
+            bolted.RemoveWhere(p => p.day < now.day - 1);
+            // the arrow lands: every deer this near bolts (the target too on a miss), away from the shot
+            foreach (var p in hunts)
+            {
+                if (now.hour < p.landHour || now.hour > p.landHour + 0.2f || !bolted.Add(p)) continue;
+                var hit = new List<Slot>();
+                foreach (var s in slots.Values)
+                {
+                    if (!s.doll.go.activeSelf || (p.playsHit && s.id == p.targetId)) continue;
+                    if ((new Vector2(s.cur.x - p.targetX, s.cur.z - p.targetZ)).magnitude <= DeerTiming.BoltReach) hit.Add(s);
+                }
+                if (Startle(p.shotX, p.shotZ, hit, 0.1f) > 0) HuntBolts++;
+            }
+        }
+
+        /// <summary>The hunters stalking (from the walk out to the shot) don't make the herd look up and walk off: the stalk's own freezes
+        /// are the deer's look-ups (B13.a), planned, so the view and the planner agree.</summary>
+        void DropHunters()
+        {
+            if (hunts.Count == 0 || whoBuf.Count == 0) return;
+            var pv = PeopleView.Find();
+            if (pv == null) return;
+            float h = pv.Now.hour;
+            for (int i = whoBuf.Count - 1; i >= 0 && i < px.Count; i--)
+                foreach (var p in hunts)
+                    if (h >= p.walkOutHour && h < p.landHour + 0.05f && p.hunters.Contains(whoBuf[i])) { whoBuf.RemoveAt(i); px.RemoveAt(i); pz.RemoveAt(i); break; }
+        }
+
+        /// <summary>The hunt's target: it stands at the plan's spot from the walk out to the shot, lifting its head in the stalk's freezes; on
+        /// a hit it is the stage's to draw from the landing on (<paramref name="hide"/>). False when no hunt has it.</summary>
+        bool HuntHolds(Slot s, PeopleView pv, ref DeerPose pose, out bool hide)
+        {
+            hide = false;
+            if (hunts.Count == 0 || pv == null) return false;
+            float h = pv.Now.hour;
+            foreach (var p in hunts)
+            {
+                if (p.white || p.targetId != s.id || h < p.walkOutHour) continue;
+                if (h >= p.landHour) { if (p.playsHit) { hide = true; return true; } continue; }
+                pose.x = p.targetX; pose.z = p.targetZ; pose.yaw = Mathf.Atan2(p.fireX - p.targetX, p.fireZ - p.targetZ) + 1.3f;
+                pose.act = DeerAct.Graze;
+                if (h >= p.stalkStart && h < p.shootStart)
+                {
+                    float into = LifeClock.RealSecondsBetween(p.stalkStart, h);
+                    if (HuntStalk.Sample(into, p.freezeA, p.freezeB).move == HuntStalk.Move.Freeze) pose.act = DeerAct.LookUp;
+                }
+                s.off = false; s.alertT = -1f;
+                TargetHeldFrames++;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Is deer <paramref name="id"/> a hunt's target being held now (tests)?</summary>
+        public bool IsHuntTarget(int id) { foreach (var p in hunts) if (!p.white && p.targetId == id) return true; return false; }
+
+        /// <summary>Where a shown deer stands now (box-local), by id. False when not shown.</summary>
+        public bool TryGetDeerById(int id, out Vector3 at)
+        {
+            at = default;
+            if (!slots.TryGetValue(id, out var s) || s.doll == null || !s.doll.go.activeSelf) return false;
+            at = s.cur; return true;
+        }
+
+        /// <summary>#427 (B14.a): the deer drinking at the pond now (box-local positions; empty when none).</summary>
+        public void DrinkingNow(List<Vector3> into)
+        {
+            into.Clear();
+            foreach (var sl in slots.Values) if (sl.doll != null && sl.doll.go.activeSelf && sl.lastAct == DeerAct.Drink) into.Add(sl.cur);
+        }
+
+        /// <summary>Deer bolting or looking up before a bolt right now.</summary>
+        public int BoltingNow => Bolting;
+
         // ---------------------------------------------------------------- a knock on the glass (like the rabbits, #333)
 
         /// <summary>A knock on the glass close to deer on screen: they look up at once, then bolt away from the land the finger points at.
@@ -411,7 +513,7 @@ namespace AquariumCiv.View
             return Startle(x, z, hit);
         }
 
-        int Startle(float x, float z, List<Slot> hit)
+        int Startle(float x, float z, List<Slot> hit, float look = -1f)
         {
             var sim = Sim;
             int n = 0;
@@ -420,7 +522,7 @@ namespace AquariumCiv.View
                 if (!Field.BoltSpot(s.cur.x, s.cur.z, x, z, out float bx, out float bz)) continue;
                 TreeCrowns.Push(box, sim, ref bx, ref bz, Pad);
                 s.alertT = -1f; s.boltT = -1f;
-                s.knockT = 0f; // looks up first, then bounds
+                s.knockT = look >= 0f ? KnockLook - look : 0f; // looks up first, then bounds (a hunt's arrow: at once)
                 s.boltTo = new Vector2(bx, bz);
                 s.cause = new Vector2(x, z);
                 n++;

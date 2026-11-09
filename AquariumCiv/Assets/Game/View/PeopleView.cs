@@ -120,6 +120,8 @@ namespace AquariumCiv.View
         /// <summary>#362: the thrown spear, and the hunt step the doll being driven is in (set by <see cref="HuntSpot"/>).</summary>
         readonly HuntStage huntStage = new();
         HuntStep huntStep; HuntPlan huntPlan;
+        /// <summary>#426: the deer hunt the doll being driven is in (null none), and its place in the plan's hunters (0 = the shooter).</summary>
+        DeerHuntPlan deerPlan; int deerRole;
         /// <summary>#363: the hunt plan each hunter was last handed a spear for (once per plan).</summary>
         readonly Dictionary<int, HuntPlan> spearHanded = new Dictionary<int, HuntPlan>();
         public HuntStage HuntStage => huntStage;
@@ -432,7 +434,8 @@ namespace AquariumCiv.View
             Vector2? huntFace = null;
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
             bool tenting = !hunting && ((a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
-                || (StagedSpot != null && StagedSpot(a, now, out x, out z, out huntFace))); // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path
+                || (StagedSpot != null && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path
+                || (LifeSpot != null && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
             if (hunting || tenting) hidden = false;
             else if (!planner.PositionAt(a.who, now, out x, out z) && !planner.Positions.TryGetPosition(a.place, out x, out z)) hidden = true;
             var spot = new Vector2(x, z);
@@ -535,7 +538,8 @@ namespace AquariumCiv.View
             bool walking = d.walking;
             var style = DollMotion.StyleOf(a.kind);
             // #362: a crouched creep (0.1 u/s) is faster than the walk threshold, but it is a stalk, not a walk
-            bool keepsHunchStyle = hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp;
+            bool keepsHunchStyle = hunting && (a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.Bolt or HuntPhase.PullSpear or HuntPhase.PickUp or HuntPhase.HoldUp
+                || DeerBeats.Crouched(a.hunt)); // #426
             if (walking && style != DollStyle.Hop && !keepsHunchStyle) style = a.kind == ActivityKind.RunOver || (stage == LifeStage.Kid && a.kind == ActivityKind.Play) ? DollStyle.Run : DollStyle.Walk;
             if (hidden) style = DollStyle.Hidden;
             if (!walking && !hidden) style = BerryMotion.Retarget(style, a.kind, a.place.kind); // #361: berries and roots you can see
@@ -631,13 +635,20 @@ namespace AquariumCiv.View
                 d.blendT += dt;
                 pose = DollMotion.Blend(d.blendFrom, pose, Mathf.SmoothStep(0f, 1f, d.blendT / BlendSeconds));
             }
-            if (hunting)
+            if (hunting && deerPlan != null)
+            {   // #426 (B13): the deer hunt's beats: the crouch and the lead's point, the stalk, the shot, the kneel, the tie, the pole carry
+                var stalkNow = default(HuntStalk.Now);
+                if (a.hunt == HuntPhase.DeerStalk) stalkNow = HuntStalk.Sample(since, deerPlan.freezeA, deerPlan.freezeB);
+                DeerBeats.Apply(ref pose, a.hunt, since, stalkNow, deerRole, d.stride, walking);
+            }
+            else if (hunting)
             {
                 var stalkNow = default(HuntStalk.Now);
                 if (a.hunt == HuntPhase.Stalk && huntPlan != null) stalkNow = HuntStalk.Sample(since, huntPlan.freezeA, huntPlan.freezeB);
                 DollMotion.Hunt(ref pose, a.hunt, a.progress, since, stalkNow);
             }
             StagedPose?.Invoke(a, v, ref pose); // #370: a staged moment's one-shot beats (a cheer, a bow, the lift, the ring)
+            LifePose?.Invoke(a, v, ref pose); // #427: a placed-life scene's beats (the kid holding still, the "shh", a point)
             if (poking) MealBeats.Poke.Apply(ref pose, pokeSince); // #365 B9.c: up from the sit, the stick into the fire, back down
             if (toddling) ToddleFollow.ToddlerPose(ref pose, a.who.Key, time); // 2026-11-06: the plop
             else if (bendTo.HasValue) ToddleFollow.CarerPose(ref pose, a.carrying.Key, time);
@@ -674,7 +685,7 @@ namespace AquariumCiv.View
             var yawQ = Quaternion.Euler(0, d.yaw + pose.yaw, 0);
             var ground = new Vector3(d.drawn.x, (Box != null ? Box.SurfaceHeight(d.drawn.x, d.drawn.y) : land.Height(d.drawn.x, d.drawn.y)) + (d.atTower ? d.towerLift : 0f), d.drawn.y); // #404: up the tower
             if (playing && playCue.sink > 0f && KidPlay.PondLevel(out float pondY)) ground.y = pondY - playCue.sink; // #359: wading, jumped in
-            d.grassHide = Mathf.MoveTowards(d.grassHide, hunting && a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack ? 1f : 0f, dt / 0.35f);
+            d.grassHide = Mathf.MoveTowards(d.grassHide, hunting && (a.hunt is HuntPhase.Stalk or HuntPhase.Strike or HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack || DeerBeats.Crouched(a.hunt)) ? 1f : 0f, dt / 0.35f);
             // t3-hunt: the catch's phases (walk to it, lift, hold up, carry home) flatten a wider patch than the stalk does
             if (d.grassHide > 0f) GrassHide.Add(peopleRoot.TransformPoint(ground), d.grassHide, hunting && a.hunt is HuntPhase.ToCatch or HuntPhase.PickUp or HuntPhase.HoldUp or HuntPhase.CarryBack ? GrassHide.WideRadius : GrassHide.Radius);
             var tilt = pose.lying ? Quaternion.Euler(90f, 0, 0) : Quaternion.Euler(-pose.lean, 0, pose.roll);
@@ -796,7 +807,8 @@ namespace AquariumCiv.View
         bool HuntSpot(in PersonActivity a, out float x, out float z, out Vector2? face)
         {
             x = z = 0f; face = null;
-            if (!planner.HuntStepAt(a.who, now, out var st, out var plan)) return false;
+            deerPlan = null;
+            if (!planner.HuntStepAt(a.who, now, out var st, out var plan)) { huntPlan = null; return DeerSpot(a, out x, out z, out face); }
             huntStep = st; huntPlan = plan;
             float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
             bool startOpen = st.phase is HuntPhase.ToFire or HuntPhase.KidFollow, endOpen = st.phase is HuntPhase.Return or HuntPhase.KidBack;
@@ -811,6 +823,27 @@ namespace AquariumCiv.View
             else if (st.phase == HuntPhase.HoldUp) face = new Vector2(plan.holdX + HuntOpen.CamX, plan.holdZ + HuntOpen.CamZ); // t3-hunt: the catch is held up to the camera side (the camp is where the camera looks, and the kid runs over)
             else if (st.faceSpear) face = new Vector2(plan.landX, plan.landZ);
             else if (st.phase is HuntPhase.TakeSpear or HuntPhase.Skin or HuntPhase.Cook) face = new Vector2(plan.fireX, plan.fireZ);
+            return true;
+        }
+
+        /// <summary>#426: where a deer hunter is now, from the deer hunt's own coordinates, and what they face (the deer from the crouch to the
+        /// shot and over it, the fire for the bow and the pole, the arrow they pull, the set-down spot).</summary>
+        bool DeerSpot(in PersonActivity a, out float x, out float z, out Vector2? face)
+        {
+            x = z = 0f; face = null;
+            if (!planner.DeerHuntStepAt(a.who, now, out var st, out var plan)) return false;
+            huntStep = st; deerPlan = plan; deerRole = plan.hunters.IndexOf(a.who);
+            float x0 = st.x0, z0 = st.z0, x1 = st.x1, z1 = st.z1;
+            if (st.phase == HuntPhase.ToFire && !planner.Positions.TryGetPosition(st.from, out x0, out z0)) { x0 = x1; z0 = z1; }
+            if (st.phase == HuntPhase.Return && !planner.Positions.TryGetPosition(st.to, out x1, out z1)) { x1 = x0; z1 = z0; }
+            float f = Mathf.Clamp01((now.hour - st.start) / Mathf.Max(1e-4f, st.end - st.start));
+            if (st.phase == HuntPhase.DeerStalk) f = HuntStalk.Sample(LifeClock.RealSecondsBetween(st.start, Mathf.Max(st.start, now.hour)), plan.freezeA, plan.freezeB).fraction;
+            x = Mathf.Lerp(x0, x1, f); z = Mathf.Lerp(z0, z1, f);
+            if (st.faceRabbit) face = new Vector2(plan.targetX, plan.targetZ);
+            else if (st.phase is HuntPhase.DeerTakeBow or HuntPhase.DeerTakePole) face = new Vector2(plan.fireX, plan.fireZ);
+            else if (st.phase == HuntPhase.DeerPullArrow) face = new Vector2(plan.landX, plan.landZ);
+            else if (st.phase == HuntPhase.DeerSetDown) face = new Vector2(plan.setX, plan.setZ);
+            else if (st.phase == HuntPhase.DeerWait && st.prop != Prop.None && !st.moving && now.hour >= plan.landHour) face = new Vector2(plan.targetX, plan.targetZ);
             return true;
         }
 
@@ -835,6 +868,7 @@ namespace AquariumCiv.View
         /// of the ground; a catch is held up in the hand (not over the shoulder) from the moment it is lifted.</summary>
         (PropKind, PropSlot) HuntProp(in PersonActivity a, PropKind kind, PropSlot slot)
         {
+            if (deerPlan != null) return DeerBeats.PropOf(a.hunt, kind, slot); // #426
             float since = a.end > a.start ? LifeClock.RealSecondsBetween(a.start, Mathf.Clamp(now.hour, a.start, a.end)) : 0f;
             switch (a.hunt)
             {
@@ -1193,6 +1227,8 @@ namespace AquariumCiv.View
                 LifeProp.Axe => PropKind.Axe,
                 LifeProp.Spear => PropKind.Spear,
                 LifeProp.Rabbit => PropKind.Rabbit, // #283
+                LifeProp.Bow => PropKind.Bow, // #426
+                LifeProp.Pole => PropKind.Pole,
                 LifeProp.Pots or LifeProp.Honey => PropKind.Pot,
                 LifeProp.Hoe or LifeProp.Scythe => PropKind.Hoe,
                 LifeProp.Hammer or LifeProp.Hammerstone or LifeProp.Pick => PropKind.Hammer,
@@ -1306,6 +1342,9 @@ namespace AquariumCiv.View
         public delegate void StagedPoseHook(in PersonActivity a, PegDollView view, ref DollPose pose);
         public static StagedSpotHook StagedSpot;
         public static StagedPoseHook StagedPose;
+        /// <summary>#427: the placed-life scenes' own hooks (DeerScenesView: the dawn at the pond), beside the staged moments'.</summary>
+        public static StagedSpotHook LifeSpot;
+        public static StagedPoseHook LifePose;
 
         /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
         /// and who is nearest to a sign.</summary>
@@ -1372,6 +1411,15 @@ namespace AquariumCiv.View
             if (!dolls.TryGetValue(who.Key, out var d) || !d.placed) return false;
             var f = Quaternion.Euler(0f, d.yaw, 0f) * Vector3.back; // a doll faces local -z
             forward = new Vector2(f.x, f.z);
+            return true;
+        }
+
+        /// <summary>#426: a person's doll as drawn now (its transform; the deer hunt's pole rides on the carriers' shoulders). False if hidden or none.</summary>
+        public bool TryGetDollTransform(PersonRef who, out Transform t)
+        {
+            t = null;
+            if (!dolls.TryGetValue(who.Key, out var d) || !d.placed || d.view == null || !d.view.gameObject.activeInHierarchy) return false;
+            t = d.view.transform;
             return true;
         }
 

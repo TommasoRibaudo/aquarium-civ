@@ -354,10 +354,19 @@ namespace AquariumCiv.View
             {
                 GUILayout.Label($"deer {sim.EcoDeerCount}/{sim.EcoDeerCap} · ducks {sim.EcoDucks} eggs {sim.EcoDuckEggs} · fish {sim.EcoFish} · white stag {sim.WhiteStagState}");
                 GUILayout.BeginHorizontal();
-                if (GUILayout.Button("Deer hunt now")) last = Done(sim.DebugDeerHuntNow() ? $"a deer taken, {sim.EcoDeerCount} left" : "no deer to spare");
+                if (GUILayout.Button("Settle a deer hit (sim)")) last = Done(sim.DebugDeerHuntNow() ? $"a deer taken, {sim.EcoDeerCount} left" : "no deer to spare");
                 if (GUILayout.Button("Deer to capacity")) last = Done($"{sim.DebugDeerToCap()} deer");
                 if (GUILayout.Button("White stag now")) last = Done(sim.DebugWhiteStagNow() ? "the white stag shows" : "it already has");
                 if (GUILayout.Button("Eggs now")) last = Done($"{sim.DebugEggsNow()} eggs in the nests");
+                GUILayout.EndHorizontal();
+                // #426: the deer hunt you watch (bows, the stalk, the arrow, the pole carry), the feast, the antlers
+                var dhs = DeerHuntStage.Instance;
+                if (dhs != null) GUILayout.Label(dhs.Status());
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Deer hunt now (hit)")) last = Done(DeerHuntStage.DebugHuntNow(true));
+                if (GUILayout.Button("Deer hunt now (miss)")) last = Done(DeerHuntStage.DebugHuntNow(false));
+                if (dhs != null && GUILayout.Button("Deer feast now")) last = Done(dhs.DebugFeastNow());
+                if (dhs != null && GUILayout.Button("Antlers up now")) last = Done(dhs.DebugAntlersNow());
                 GUILayout.EndHorizontal();
                 var takers = new[] { AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, AquariumCiv.Sim.Eco.LifeSpecies.Deer, AquariumCiv.Sim.Eco.LifeSpecies.Ducks, AquariumCiv.Sim.Eco.LifeSpecies.Fish };
                 GUILayout.BeginHorizontal();

@@ -17,7 +17,9 @@ namespace AquariumCiv.View
         // #365 B9: the meal's bowl (rides in the left hand)
         Bowl,
         // #359 (batch 2): the kids' duel stick, a short twig (the 0.24 staff read as a spear in a kid's hand)
-        Twig }
+        Twig,
+        // P9 #426 (B13): the hunter's bow (a bark arc with a string) and the carrying pole
+        Bow, Pole }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>
