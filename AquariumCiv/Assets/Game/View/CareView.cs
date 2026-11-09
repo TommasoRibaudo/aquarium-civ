@@ -54,7 +54,10 @@ namespace AquariumCiv.View
         [Header("Sun")]
         public float sunFollowRate = 1.5f;
 
-        enum Stroke { None, Ignored, Wipe, Grab }
+        enum Stroke { None, Ignored, Wipe, Grab, Pending }
+        // #518: a wipe's press waiting out KitPress.SecondFingerGrace
+        Vector2 pendingAt;
+        float pendingT;
 
         BoxView box;
         MessProps props;
@@ -524,7 +527,15 @@ namespace AquariumCiv.View
             int n = ReadPointers(out var a);
             if (n == 0)
             {
-                if (stroke == Stroke.Wipe) EndWipe(sim);
+                if (tweezing && hud != null && hud.Hand == GameHud.KitTool.Tweezers && !tweezeTried) PluckAt(sim, lastPos); // #518: a tap quicker than the grace plucks on its lift
+                tweezing = false;
+                if (stroke == Stroke.Pending) // #518: a dab quicker than the grace wipes on its lift
+                {
+                    var end = lastPos;
+                    lastPos = pendingAt;
+                    if (Begin(pendingAt) == Stroke.Wipe) { ContinueWipe(sim, end, dt); EndWipe(sim); }
+                }
+                else if (stroke == Stroke.Wipe) EndWipe(sim);
                 else if (stroke == Stroke.Grab) EndGrab(sim, lastPos);
                 stroke = Stroke.None; pressSeen = false;
                 sound.SetRub(0f, 0f);
@@ -535,13 +546,23 @@ namespace AquariumCiv.View
             if (!pressSeen)
             {
                 pressSeen = true;
-                stroke = n == 1 ? Begin(a) : Stroke.Ignored;
+                // #518: a wipe waits a moment for a second finger (a pan or pinch in clean mode never rubs the glass); a grab starts at once
+                // (it only holds the piece, and a second finger drops it back)
+                if (n != 1) stroke = Stroke.Ignored;
+                else if (Classify(a, out _) == Stroke.Wipe) { stroke = Stroke.Pending; pendingAt = a; pendingT = Time.unscaledTime; }
+                else stroke = Begin(a);
                 if (n == 1) PointToClean(sim, a);
                 if (n == 1 && CleanMode && sim.EcologyOn && Cam != null && UnderFinger(Cam, a) != null) TellClothIsForGlass();
                 lastPos = a;
                 return;
             }
             if (n >= 2 && stroke != Stroke.Ignored) { Cancel(); stroke = Stroke.Ignored; return; } // two fingers are the camera's
+            if (stroke == Stroke.Pending)
+            {
+                if (Time.unscaledTime - pendingT < KitPress.SecondFingerGrace) { lastPos = a; return; }
+                lastPos = pendingAt;
+                stroke = Begin(pendingAt); // the stroke starts where the finger landed and catches up to it
+            }
             if (stroke == Stroke.Wipe) ContinueWipe(sim, a, dt);
             else if (stroke == Stroke.Grab)
             {
@@ -577,8 +598,8 @@ namespace AquariumCiv.View
         public int Plucks { get; private set; }
         /// <summary>What the last pluck took: "weed", "treeweed", "vine", "sapling" or "" (tests).</summary>
         public string LastPluck { get; private set; } = "";
-        bool tweezing;
-        float lastPluckAt = -9f;
+        bool tweezing, tweezeTried;
+        float lastPluckAt = -9f, tweezeT;
 
         void TweezersHand(SimCore sim, int n, Vector2 pos)
         {
@@ -587,9 +608,13 @@ namespace AquariumCiv.View
                 pressSeen = true;
                 tweezing = n == 1 && !UiInput.Over(pos) && sim.EcologyOn && hud.IsVisible && !hud.SheetOpen && !hud.CameraMode;
                 lastPluckAt = -9f; // the throttle paces a drag; a fresh tap always gets its pluck
+                tweezeT = Time.unscaledTime; tweezeTried = false;
             }
-            if (n >= 2) tweezing = false; // two fingers are the camera's
+            if (n >= 2) tweezing = false; // two fingers are the camera's, until every finger is up
             if (!tweezing) return;
+            // #518: wait a moment for a second finger (a pan or pinch never plucks); a tap quicker than that plucks on its lift (HandleInput)
+            if (Time.unscaledTime - tweezeT < KitPress.SecondFingerGrace) return;
+            tweezeTried = true;
             if (Time.unscaledTime - lastPluckAt < 0.06f) return;
             if (PluckAt(sim, pos)) lastPluckAt = Time.unscaledTime;
         }

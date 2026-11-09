@@ -212,6 +212,7 @@ namespace AquariumCiv.View
             if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
             if (Btn("Plant tree")) last = EcoDebug.PlantHere();
             if (Btn("Plant at edge")) last = EcoDebug.PlantAtEdge(); // #378
+            if (Btn("Seed in hand")) last = EcoDebug.SeedInHand(); // #518: a ghost first, then a tap on it plants
             for (int i = 0; i <= 4; i++) if (Btn("T" + i)) last = EcoDebug.TreeStage(i);
             EndRow();
         }
