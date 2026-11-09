@@ -1466,10 +1466,10 @@ namespace AquariumCiv.View
                 else if (p.kind == PieceKind.Lantern)
                 {
                     float phase = Pieces.Phase(p.seed);
-                    Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.275f, 0)), 0.2f, 1f + phase, Palette.Lamp);
+                    Add(frame.MultiplyPoint3x4(new Vector3(0.065f, 0.185f, 0)), 0.26f, 1f + phase, Palette.Lamp);
                     var foot = frame.MultiplyPoint3x4(new Vector3(0.065f, 0f, 0));
                     AddPool(foot.x, foot.z, LanternPool, phase, 1f);
-                    spots.Add((frame.MultiplyPoint3x4(new Vector3(0.065f, 0.26f, 0)), LampThreshold01(phase)));
+                    spots.Add((frame.MultiplyPoint3x4(new Vector3(0.065f, 0.185f, 0)), LampThreshold01(phase)));
                 }
                 else if (p.era != Era.Camp && HasWindows(p.kind))
                 {
@@ -1479,6 +1479,14 @@ namespace AquariumCiv.View
                     AddPool(step.x, step.z, WindowPool, phase, 0.6f);
                     spots.Add((step + Vector3.up * 0.16f, LampThreshold01(phase)));
                 }
+            }
+            // #525: the grown Keeper's tree throws a faint warm pool on the ground at night. Same pool technique as a lantern (kind 8, one more
+            // grid in the Glows mesh, no light), a third of a lantern's strength; the phase 0.05 puts its on-ramp where the tree's own glow
+            // starts (KeeperTreeKit.GlowOf, lamp level 0.15) and it is full a little after, so it fades in and out with the dusk and the dawn.
+            if (layout.eco != null && layout.eco.treeCell >= 0 && layout.eco.treeStage >= KeeperTreeKit.PoolStage)
+            {
+                int tc = layout.eco.treeCell;
+                AddPool(AquariumCiv.Sim.Settle.SiteMap.CXc(tc), AquariumCiv.Sim.Settle.SiteMap.CZc(tc), KeeperTreeKit.PoolRadius(layout.eco.treeStage), KeeperTreeKit.PoolPhase, KeeperTreeKit.PoolStrength);
             }
             lampCount = spots.Count;
             if (LampX.Length < lampCount) { LampX = new float[lampCount]; LampY = new float[lampCount]; LampZ = new float[lampCount]; LampThreshold = new float[lampCount]; }
@@ -1512,7 +1520,7 @@ namespace AquariumCiv.View
         static bool HasWindows(PieceKind k) => k is PieceKind.Home or PieceKind.Shop or PieceKind.Tavern or PieceKind.Guildhall or PieceKind.Church or PieceKind.Market or PieceKind.Smithy or PieceKind.Bakery or PieceKind.Workshop;
 
         /// <summary>Pool radii (world units) before the look's own size.</summary>
-        public const float LanternPool = 0.62f, WindowPool = 0.36f;
+        public const float LanternPool = 0.7f, WindowPool = 0.36f;
         /// <summary>The level a lamp's mesh lights at, as the Stylized and Glow shaders' LampOn work it out from its phase.</summary>
         static float LampThreshold01(float phase) => 0.12f + phase * 0.6f;
 
