@@ -16,6 +16,9 @@ namespace AquariumCiv.Life
         Other,
         ChaseRabbits, Ball, Tag, Splash,
         WaterRun, HandOver, Pick,
+        /// <summary>P9 #424 (B12.w): a jar is ready and waits; the people show they miss what isn't there (a gatherer at the empty meadow,
+        /// a child at the empty pond). At most once per visit per ready jar (the view's rule), in daylight.</summary>
+        Hint,
     }
 
     /// <summary>The cheat: off, as the population says, or twice the rate (for the tester).</summary>
@@ -65,11 +68,14 @@ namespace AquariumCiv.Life
         /// <summary>Water the kids can splash in (the pond's edge or a puddle, not in winter).</summary>
         public bool splash; public float splashX, splashZ;
         public bool bush; public float bushX, bushZ; public int bushCell = -1;
+        /// <summary>P9 #424: a ready jar's waiting hint may play (the view says which: once per visit per jar, never the wolves): the
+        /// species (<see cref="Sim.Eco.LifeSpecies"/> as an int), its stage 1–3, the site cell and where the people go to look.</summary>
+        public bool hint; public int hintSpecies, hintStage = 1, hintCell = -1; public float hintX, hintZ;
 
         public void Clear()
         {
             kindsInView.Clear(); free.Clear();
-            storiesInView = momentsInView = 0; rabbits = huntOn = water = splash = bush = false; bushCell = -1; waterHours = false;
+            storiesInView = momentsInView = 0; rabbits = huntOn = water = splash = bush = hint = false; bushCell = hintCell = -1; waterHours = false;
         }
     }
 
@@ -82,6 +88,8 @@ namespace AquariumCiv.Life
         public float seconds;
         public int seed;
         public int bushCell = -1;
+        /// <summary>P9 #424: a <see cref="StoryKind.Hint"/>'s species (as an int), stage and site cell.</summary>
+        public int hintSpecies, hintStage, hintCell = -1; public bool force;
         public override string ToString() => $"{kind} ×{members.Count}";
     }
 
@@ -129,6 +137,7 @@ namespace AquariumCiv.Life
             StoryKind.WaterRun => 18f,
             StoryKind.HandOver => 6f,
             StoryKind.Pick => 20f,
+            StoryKind.Hint => 14f,
             _ => 10f,
         };
 
@@ -136,8 +145,24 @@ namespace AquariumCiv.Life
         /// grown-ups' errands.</summary>
         public static readonly StoryKind[] Order =
         {
-            StoryKind.ChaseRabbits, StoryKind.Ball, StoryKind.Tag, StoryKind.Splash, StoryKind.WaterRun, StoryKind.HandOver, StoryKind.Pick,
+            StoryKind.Hint, StoryKind.ChaseRabbits, StoryKind.Ball, StoryKind.Tag, StoryKind.Splash, StoryKind.WaterRun, StoryKind.HandOver, StoryKind.Pick,
         };
+
+        /// <summary>P9 #424 (B12.w, placed-life §2.4): who plays a waiting hint, by species (<see cref="Sim.Eco.LifeSpecies"/> as an int:
+        /// 0 thicket, 1 rabbits, 2 deer, 3 ducks, 4 fish, 5 wolves) and stage: grown-ups, then kids. Stage 1 is one person, stage 2 adds a
+        /// grown-up, stage 3 a kid (two for the rabbit game). The ducks' hint is a child's. Wolves: nobody (nobody misses wolves).</summary>
+        public static void HintCast(int species, int stage, out int adults, out int kids)
+        {
+            adults = kids = 0;
+            if (species == 5) return;
+            stage = Math.Max(1, Math.Min(3, stage));
+            if (species == 3) { kids = 1; adults = stage >= 2 ? 1 : 0; if (stage >= 3) adults = 2; return; }
+            adults = stage >= 2 ? 2 : 1;
+            if (stage >= 3) kids = species == 1 ? 2 : 1;
+        }
+
+        /// <summary>B12.w: the hint's stage from the months the jar has waited (stage 2 after a game year, 3 after two) [est].</summary>
+        public static int HintStage(long monthsWaiting) => monthsWaiting >= 24 ? 3 : monthsWaiting >= 12 ? 2 : 1;
 
         public static bool IsKidGame(StoryKind k) => k is StoryKind.ChaseRabbits or StoryKind.Ball or StoryKind.Tag or StoryKind.Splash;
 
@@ -307,6 +332,9 @@ namespace AquariumCiv.Life
 
         StoryPlan Wait(string why, float next) { LastWhy = why; NextIn = next; return null; }
 
+        /// <summary>The cast alone, nothing started or remembered (P9 #424's "Hint now" cheat).</summary>
+        public bool TryCast(StoryWorld w, StoryKind kind, StoryPlan plan) => Cast(w, kind, plan);
+
         /// <summary>Who plays <paramref name="kind"/> now, nearest the camera's focus first; false when it can't be cast.</summary>
         bool Cast(StoryWorld w, StoryKind kind, StoryPlan plan)
         {
@@ -320,13 +348,32 @@ namespace AquariumCiv.Life
             foreach (var a in w.free)
             {
                 if (a.freeSeconds < need) continue; // their idle stretch ends too soon: they'd be late for work or a meal
-                if (StoryRules.IsKidGame(kind) ? !a.kid : kind == StoryKind.HandOver ? a.kid : !a.adult) continue;
+                if (kind == StoryKind.Hint ? !(a.kid || a.adult) : StoryRules.IsKidGame(kind) ? !a.kid : kind == StoryKind.HandOver ? a.kid : !a.adult) continue;
                 if (w.part == StoryDayPart.Evening && !a.atFire) continue;
                 pool.Add(a);
             }
             if (pool.Count == 0) return false;
             switch (kind)
             {
+                case StoryKind.Hint:
+                {
+                    if (!w.hint || w.hintCell < 0 || w.part != StoryDayPart.Day) return false;
+                    StoryRules.HintCast(w.hintSpecies, w.hintStage, out int adults, out int kids);
+                    if (adults + kids == 0) return false;
+                    SortBy(w.hintX, w.hintZ);
+                    int na = 0, nk = 0;
+                    foreach (var a in pool)
+                    {
+                        if ((a.x - w.hintX) * (a.x - w.hintX) + (a.z - w.hintZ) * (a.z - w.hintZ) > StoryRules.ErrandReach * StoryRules.ErrandReach) break;
+                        if (a.adult && na < adults) { plan.members.Insert(na, a.key); na++; }
+                        else if (a.kid && nk < kids) { plan.members.Add(a.key); nk++; }
+                    }
+                    // the first actor is the stage-1 one (a grown-up, or the child for the ducks): without them there is no hint
+                    if ((adults > 0 && na == 0) || (adults == 0 && nk == 0)) { plan.members.Clear(); return false; }
+                    plan.x = w.hintX; plan.z = w.hintZ;
+                    plan.hintSpecies = w.hintSpecies; plan.hintStage = w.hintStage; plan.hintCell = w.hintCell;
+                    return true;
+                }
                 case StoryKind.ChaseRabbits:
                     if (!w.rabbits || w.huntOn) return false;
                     return Group(plan, w.rabbitX, w.rabbitZ, StoryRules.SiteReach, 1, PlayGroups.MaxChase);

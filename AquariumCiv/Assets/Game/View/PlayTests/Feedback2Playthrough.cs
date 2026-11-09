@@ -333,7 +333,16 @@ namespace AquariumCiv.View.PlayTests
                 var rv = RabbitView.Instance;
                 var pvh = PeopleView.Find();
                 Assert.IsNotNull(rv, "the rabbit view");
-                yield return AdvanceUntil(hud, "rabbits", () => Sim.EcoRabbitCount > 0 && rv.Shown > 0, 150);
+                // P9 (#417-#419): the thicket's jar, then the rabbits' jar open as time passes; the Keeper places each
+                yield return AdvanceUntil(hud, "the thicket's jar", () => Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Thicket) || Sim.LifeIsPlaced(AquariumCiv.Sim.Eco.LifeSpecies.Thicket), 100);
+                yield return PutDownTool(hud);
+                yield return KeeperPlaces(AquariumCiv.Sim.Eco.LifeSpecies.Thicket);
+                if (!Sim.LifeIsPlaced(AquariumCiv.Sim.Eco.LifeSpecies.Thicket)) Miss("the thicket placed");
+                yield return AdvanceUntil(hud, "the rabbits' jar", () => Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits), 100);
+                yield return PutDownTool(hud);
+                yield return KeeperPlaces(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits);
+                if (!LastPlaced) Miss("the rabbits placed");
+                yield return AdvanceUntil(hud, "rabbits", () => Sim.EcoRabbitCount > 0 && rv.Shown > 0, 8);
                 yield return PutDownTool(hud);
                 if (Sim.EcoRabbitCount > 0 && rv.Shown > 0)
                 {

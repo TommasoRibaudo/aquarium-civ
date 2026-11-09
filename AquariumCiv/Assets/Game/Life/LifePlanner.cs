@@ -185,6 +185,7 @@ namespace AquariumCiv.Life
                 if (t.hour >= blocks[b].bs && t.hour < blocks[b].be) return BlockActivity(p, blocks[b], t);
             // #283: a hunt in the meadow (a hunter, or a kid who follows) takes the person until it is over.
             if (HuntActivityAt(p, t, out var hunting)) return hunting;
+            if (DeerHuntActivityAt(p, t, out var deerHunting)) return deerHunting; // #426: the deer hunt with bows, the pole carry home
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush

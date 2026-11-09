@@ -53,6 +53,7 @@ namespace AquariumCiv.View
             "gift" => MakeGift(),
             "swish" => MakeSwish(),
             "pop" => MakePop(),
+            "howl" => MakeHowl(),
             "cheer" => MakeCheer(),
             "flies" => MakeFlies(),
             "bird0" => MakeBird(0),
@@ -283,6 +284,34 @@ namespace AquariumCiv.View
                 d[i] = Mathf.Sin(2f * Mathf.PI * (260f - 900f * t) * t) * Mathf.Exp(-t * 38f) * 0.8f;
             }
             return Clip("CarePop", d);
+        }
+
+        /// <summary>P9 #424 (B12.f): a placeholder wolf howl made in code until a CC0 recording is found: a breathy tone that rises,
+        /// holds with a slow waver and falls away, ~2.6 s, a second voice a fifth under it joining late.</summary>
+        static AudioClip MakeHowl()
+        {
+            const float len = 2.8f;
+            int n = (int)(Rate * len);
+            var d = new float[n];
+            float ph1 = 0f, ph2 = 0f;
+            uint seed = 4241;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)Rate, u = t / len;
+                // pitch: up from 330 Hz to 560 Hz in the first 0.6 s, hold with vibrato, fall to 380 Hz at the end
+                float f = u < 0.22f ? Mathf.Lerp(330f, 560f, Mathf.SmoothStep(0f, 1f, u / 0.22f))
+                        : u < 0.75f ? 560f : Mathf.Lerp(560f, 380f, (u - 0.75f) / 0.25f);
+                f *= 1f + 0.012f * Mathf.Sin(2f * Mathf.PI * 5.2f * t);
+                ph1 += 2f * Mathf.PI * f / Rate;
+                ph2 += 2f * Mathf.PI * f * 0.667f / Rate;
+                float env = Mathf.Clamp01(t / 0.25f) * Mathf.Clamp01((len - t) / 0.7f);
+                float env2 = Mathf.Clamp01((t - 0.9f) / 0.4f) * Mathf.Clamp01((len - t) / 0.5f) * 0.5f;
+                seed = seed * 1664525u + 1013904223u;
+                float noise = ((seed >> 9) / 8388608f - 1f) * 0.05f; // breath
+                float tone = Mathf.Sin(ph1) + 0.25f * Mathf.Sin(2f * ph1) + 0.08f * Mathf.Sin(3f * ph1);
+                d[i] = (tone * env + Mathf.Sin(ph2) * env2 + noise * env) * 0.32f;
+            }
+            return Clip("WolfHowl", d);
         }
 
         static AudioClip Clip(string name, float[] data)

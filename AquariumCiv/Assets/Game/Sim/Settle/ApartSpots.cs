@@ -22,7 +22,7 @@ namespace AquariumCiv.Sim.Settle
             if (c < 0) return false;
             int i = SiteMap.I(c), j = SiteMap.J(c);
             if (i < 2 || j < 2 || i >= SiteMap.NX - 2 || j >= SiteMap.NZ - 2) return false;
-            if (map.Water(c)) return false;
+            if (map.Water(c) || map.Reserved(c)) return false; // #418: never on the thicket
             if (map.lot != null && map.lot[c] != 0) return false;
             if (map.ring != null && map.ring[c] != 0) return false;
             if (map.wear != null && map.wear[c] >= PathNet.TTrail) return false;

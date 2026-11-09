@@ -80,7 +80,7 @@ namespace AquariumCiv.Sim
                 if (i < 3 || j < 3 || i >= SiteMap.NX - 3 || j >= SiteMap.NZ - 3) continue;
                 float dx = SiteMap.CXc(c) - cx, dz = SiteMap.CZc(c) - cz, d = (float)Math.Sqrt(dx * dx + dz * dz);
                 if (d < 0.3f || d > 0.65f) continue;
-                if (map.pond[c] || map.lot[c] != 0 || (map.ring != null && map.ring[c] != 0) || (map.flags[c] & block) != 0) continue;
+                if (map.pond[c] || map.lot[c] != 0 || (map.ring != null && map.ring[c] != 0) || (map.flags[c] & block) != 0 || map.Reserved(c)) continue;
                 if (map.wear != null && map.wear[c] >= PathNet.TTrail) continue;
                 float score = -Math.Abs(d - 0.4f);
                 if (g.kind == ApartKind.ShoreHut)

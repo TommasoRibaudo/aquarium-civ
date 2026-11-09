@@ -87,7 +87,7 @@ namespace AquariumCiv.Life
             bool water = !OnLiving || sim.OpenWater;
             bool berries = !OnLiving || sim.BerriesGrow;
             var with = p.partner != null && p.partner.Grown ? Ref(p.partner) : default;
-            if (r < 0.16f && water && WaterHere(Pond)) { At(ActivityKind.Fish, until, Pond, Prop.Rod, with); return; }
+            if (r < 0.16f && water && WaterHere(Pond)) { At(ActivityKind.Fish, until, Pond, Prop.Rod, with); return; } // #421: WaterHere = fish to catch
             if (r < 0.32f && berries) { At(ActivityKind.Gather, until, BerryPlaceFor(p, d, slot), Prop.Basket, with); return; }
             if (r < 0.42f)
             {
@@ -120,8 +120,8 @@ namespace AquariumCiv.Life
             if (sit < until - MinStay) { var ch = Chore(p, d, 190 + slot); At(ch, until, p.home, ChoreProp(ch)); }
         }
 
-        /// <summary>The pond has water to fish (a living land's pond may still be dry).</summary>
-        bool WaterHere(Place pond) => !OnLiving || sim.EcoPondCells > 0;
+        /// <summary>The pond has fish to catch: on a living land, water and the fish the Keeper placed (#421, placed-life spec §5.5).</summary>
+        bool WaterHere(Place pond) => !OnLiving || sim.FishingOpen;
 
         // ---------------------------------------------------------------- the crowd's helpers
 
@@ -132,7 +132,7 @@ namespace AquariumCiv.Life
         {
             if (!CampSpread || !p.Adult) return null;
             float r = R(p.key, d.day, 147);
-            bool water = !OnLiving || sim.EcoPondCells > 0;
+            bool water = !OnLiving || sim.FishingOpen; // #421: fishing waits for the fish
             if (r < 0.35f && (!OnLiving || sim.BerriesGrow)) return TribeWork(p, d);
             if (r < 0.55f && water) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);
             if (r < 0.70f && WoodsStand) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
@@ -211,7 +211,7 @@ namespace AquariumCiv.Life
         {
             if (!CampSpread || sim.BeforeCamp || w.site != Stream || w.loop != ActivityKind.Gather || MayDig(p, d)) return w;
             float r = R(p.key, d.day, 149);
-            bool water = !OnLiving || sim.EcoPondCells > 0;
+            bool water = !OnLiving || sim.FishingOpen; // #421: fishing waits for the fish
             if (water && r < 0.45f) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);
             if (WoodsStand && r < 0.8f) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
             var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);

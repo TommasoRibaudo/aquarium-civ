@@ -110,7 +110,8 @@ namespace AquariumCiv.Sim
 
         public Dilemma FindDilemma(int id) => State.dilemmas.FirstOrDefault(d => d.id == id);
         public Dilemma DilemmaOfEntry(int entryId) => State.dilemmas.FirstOrDefault(d => d.entryId == entryId);
-        public DilemmaDef DilemmaDefOf(Dilemma d) => d == null ? null : DilemmaCatalog.FirstOrDefault(x => x.id == d.defId) ?? SmallCatalog.FirstOrDefault(x => x.id == d.defId);
+        public DilemmaDef DilemmaDefOf(Dilemma d) => d == null ? null : DilemmaCatalog.FirstOrDefault(x => x.id == d.defId) ?? SmallCatalog.FirstOrDefault(x => x.id == d.defId)
+            ?? LifeChoiceCatalog?.FirstOrDefault(x => x.id == d.defId); // #437/#438: the wolves' and the dogs' choices
 
         /// <summary>The dilemma that is open now (at most one), or null.</summary>
         public Dilemma OpenDilemma => State.dilemmas.FirstOrDefault(d => d.state == DilemmaState.Open);
@@ -158,11 +159,11 @@ namespace AquariumCiv.Sim
         long DilemmaLastEnd => State.dilemmas.Count == 0 ? long.MinValue / 2 : State.dilemmas.Max(d => d.endMonth >= 0 ? d.endMonth : d.month);
 
         /// <summary>The next big choice is due from this clock hour (see <see cref="DilemmaScheduleFrom"/>); -1 = not scheduled.</summary>
-        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && (State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0 || SmallDue);
+        bool DilemmaDue => Config.dilemmas && !State.firstRun.active && (State.dilemmaNextHours >= 0 && State.clockHours + ClockEps >= State.dilemmaNextHours && EligibleDefs().Count > 0 || SmallDue || SeasonalLifeWaiting);
 
         /// <summary>#372: a small choice is next, its moment exists and the gap has passed: like a due big one it holds the slot (no new wish starts).
         /// t4-fixes: with no small kind eligible, the next eligible big fills the small slot (see <see cref="TryRaiseDilemma"/>).</summary>
-        bool SmallDue => Config.smallChoices && State.dilemmas.Count > 0 && NextDilemmaSize() == DilemmaSize.Small
+        bool SmallDue => Config.smallChoices && (State.dilemmas.Count > 0 && NextDilemmaSize() == DilemmaSize.Small || LifeChoiceWaiting) // #437: a waiting life choice takes the small slot
             && HoursSinceDilemmaRaised + ClockEps >= DilemmaGapNow && (EligibleSmall().Count > 0 || EligibleDefs(DilemmaSize.Big).Count > 0);
 
         /// <summary>While a dilemma is open or due, no new wish starts (the slot is shared).</summary>
@@ -226,20 +227,39 @@ namespace AquariumCiv.Sim
             if (s.dilemmaNextHours < 0) s.dilemmaNextHours = DilemmaScheduleFrom(s.clockHours, s.dilemmas.Count == 0);
             var size = NextDilemmaSize();
             if (CatchingUp) return false;
+            if (TryRaiseSeasonalLife()) return true; // user 2026-11-08: the thief and the pup don't wait for the gap
             if (HoursSinceDilemmaRaised + ClockEps < DilemmaGapNow) return false;
             // t4-fixes (tester run 3): the small slot is open but no small kind is there (no newborn, the everyday ones asked): the next
             // eligible big comes after the 3 h gap instead of waiting out its 6-10 h window, so a return still finds a choice.
             if (size == DilemmaSize.Small && EligibleSmall().Count == 0) size = DilemmaSize.Big;
-            else if (size == DilemmaSize.Big && s.clockHours + ClockEps < s.dilemmaNextHours) return false;
+            else if (size == DilemmaSize.Big && s.clockHours + ClockEps < s.dilemmaNextHours)
+            {
+                if (!LifeChoiceWaiting) return false;
+                size = DilemmaSize.Small; // #437/#438: the wolves' and the dogs' moments don't wait out a big choice's 6-10 h window
+            }
             // A due dilemma never ends a wish: it waits for the open one to end (new wishes already wait for it), then the 8-month gap
             // runs from that end.
             if (OpenWish != null) return false;
             long lastWish = s.wishes.Count == 0 ? long.MinValue / 2 : s.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
             if (s.month - lastWish < DilemmaGapMonths) return false;
             var pick = PickDilemmaDef(size, out int a, out int b);
+            if (pick == null && size == DilemmaSize.Big && LifeChoiceWaiting) pick = PickDilemmaDef(DilemmaSize.Small, out a, out b); // #437: no big one holds
             if (pick == null) return false;
             var raised = RaiseDilemma(pick, a, b);
             choiceStageFor = raised.id; // t3-choice (tester run 2 D): a choice raised while the player watches is staged in the box too
+            return true;
+        }
+
+        /// <summary>User 2026-11-08: a seasonal life choice (the meat thief, the lost pup) is raised as soon as it happens, without the
+        /// small-choice gap, the next small slot or the wishes' gap; still never with another choice or a wish open (it waits its turn),
+        /// and only from <see cref="TryRaiseDilemma"/> (the Keeper watches, or an open). True if one was raised.</summary>
+        bool TryRaiseSeasonalLife()
+        {
+            if (!Config.smallChoices || OpenDilemma != null || OpenWish != null) return false;
+            var def = SeasonalLifeDef();
+            if (def == null) return false;
+            var raised = RaiseDilemma(def, -1, -1);
+            choiceStageFor = raised.id;
             return true;
         }
 

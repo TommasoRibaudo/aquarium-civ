@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using AquariumCiv.Game;
+using AquariumCiv.GameUI;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Settle;
@@ -25,6 +26,23 @@ namespace AquariumCiv.View.PlayTests
             // green away from the camp's yard, a few spots, then a season so it spreads
             foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f) }) EcoDebug.MistBig(x, z);
             EcoDebug.SkipSeasons(1);
+        }
+
+        /// <summary>#419: the founding pair placed through the jar on the test's meadow, away from the camp (where rabbits used to come
+        /// in by themselves), not by the camp as the +N cheat does. The jar is opened by the cheat first.</summary>
+        static void PlacePairInMeadow()
+        {
+            if (!Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits)) Sim.DebugJarsReady();
+            int best = -1; float bd = float.MaxValue;
+            for (int c = 0; c < SiteMap.N; c++)
+            {
+                if (!Sim.CanPlaceLife(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, c)) continue;
+                float dx = SiteMap.CXc(c) + 1.6f, dz = SiteMap.CZc(c) - 0.6f, d = dx * dx + dz * dz;
+                if (d < bd) { bd = d; best = c; }
+            }
+            Assert.GreaterOrEqual(best, 0, "meadow for the pair");
+            Assert.IsTrue(Sim.PlaceLife(AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, best), "the pair placed");
+            EcoDebug.SkipSeasons(0);
         }
 
         IEnumerator Fly(BoxView box, float x, float z, float zoomMul)
@@ -72,7 +90,7 @@ namespace AquariumCiv.View.PlayTests
 
                 // ---- the first rabbit: its sign plays once, someone points
                 var pv = PeopleView.Find();
-                StringAssert.DoesNotContain("off", EcoDebug.AddRabbits(1));
+                PlacePairInMeadow(); // #419: the first rabbits are a placed pair
                 bool pointed = false;
                 yield return Until(() => rv.SignsPlayed > 0, 10f);
                 Assert.AreEqual(1, rv.SignsPlayed, "the sign started");
@@ -86,16 +104,16 @@ namespace AquariumCiv.View.PlayTests
                     yield return null;
                 }
                 Assert.IsTrue(pointed, "the person nearest the rabbit points");
-                yield return Until(() => !rv.SignPlaying, 10f);
+                yield return Until(() => !rv.SignPlaying, 20f); // SignSeconds of unscaled time, capped at 0.1 s a frame: a slow Editor stretches it
                 Assert.IsFalse(rv.SignPlaying, "the sign ends");
-                Assert.AreEqual(1, rv.Shown, "the first rabbit is on screen");
+                Assert.AreEqual(2, rv.Shown, "the founding pair is on screen (#419: \"+1\" on an empty box places the pair)");
                 Assert.AreEqual(1, rv.SignsPlayed, "once");
 
                 // ---- the herd follows the sim count and stays on the green
                 EcoDebug.AddRabbits(4);
                 yield return Frames(30);
                 Assert.AreEqual(Sim.EcoRabbitsShown(), rv.Shown, "dolls follow the sim");
-                Assert.AreEqual(5, rv.Shown);
+                Assert.AreEqual(6, rv.Shown, "the pair plus four");
                 EcoDebug.AddRabbits(30);
                 yield return Frames(30);
                 Assert.AreEqual(12, Sim.EcoRabbitsShown(), "capped");
@@ -163,16 +181,25 @@ namespace AquariumCiv.View.PlayTests
                 var care = CareView.Instance;
                 PeopleView.DebugSetHour(11f);
                 Meadow();
-                EcoDebug.AddRabbits(6);
+                PlacePairInMeadow();
+                EcoDebug.AddRabbits(4);
                 yield return Frames(30);
                 yield return Until(() => rv.SignsPlayed > 0, 10f);
                 yield return Until(() => !rv.SignPlaying, 10f);
+                // #424: the arrival's people (a kid runs over, two or three watch) go back to their day before the knock
+                yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 15f);
+                yield return new WaitForSecondsRealtime(5f);
+                // and the camera has glided back from the arrival's lean (a stale knock spot misses the rabbit)
+                { var camT = Camera.main.transform; var last = camT.position; float still = 0f, waited = 0f;
+                  while (still < 1f && waited < 20f) { yield return null; float d = Time.unscaledDeltaTime; waited += d; still = (camT.position - last).sqrMagnitude < 1e-8f ? still + d : 0f; last = camT.position; } }
                 yield return Frames(30);
                 int shown = rv.Shown;
                 // a rabbit with glass beside it on screen: a knock spot a few fingertips off, on glass, with no rabbit under the finger and
                 // nothing there that opens a card (pieces and people are a card's, before the knock)
                 int r0 = -1; Vector2 onRabbit = default, knockAt = default;
                 var shaping = ShapingView.Instance;
+                var folk = new System.Collections.Generic.List<PersonRef>(); var folkX = new System.Collections.Generic.List<float>(); var folkZ = new System.Collections.Generic.List<float>();
+                PeopleView.Find().StandingNow(folk, folkX, folkZ);
                 bool Clean(Vector2 k)
                 {
                     if (k.x < 0 || k.y < 0 || k.x > Screen.width || k.y > Screen.height || UiInput.Over(k) || !care.GlassAt(k)) return false;
@@ -180,12 +207,17 @@ namespace AquariumCiv.View.PlayTests
                         if (rv.TryGetPosition(other, out var q) && ((Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(q)) - k).magnitude < RabbitView.OnRabbitScreen * Screen.height * 1.5f) return false;
                     if (shaping == null || !shaping.GroundPoint(k, out float gx, out float gz)) return false;
                     foreach (var pc in box.layout.pieces) if (new Vector2(pc.x - gx, pc.z - gz).magnitude < 0.45f) return false;
+                    // #419: the pair now lives nearer the people; a tap on (or by) a person opens their card instead of knocking
+                    for (int i = 0; i < folkX.Count; i++) if (new Vector2(folkX[i] - gx, folkZ[i] - gz).magnitude < 1.0f) return false; // a crowd card picks wide
                     return true;
                 }
                 foreach (int id in rv.Field.Alive)
                 {
                     if (!rv.TryGetPosition(id, out var p)) continue;
                     var sp = (Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(p));
+                    bool byFolk = false; // the tap ON the rabbit must not land on a person (their card would open and take the knock)
+                    for (int i = 0; i < folkX.Count; i++) if (new Vector2(folkX[i] - p.x, folkZ[i] - p.z).magnitude < 0.45f) byFolk = true;
+                    if (byFolk) continue;
                     foreach (float f in new[] { 0.05f, 0.07f, 0.09f })
                         for (int dIx = 0; dIx < 8 && r0 < 0; dIx++)
                         {
@@ -204,6 +236,12 @@ namespace AquariumCiv.View.PlayTests
                 yield return new WaitForSecondsRealtime(0.6f);
                 Assert.IsFalse(rv.IsStartled(r0), "a tap on the rabbit does not startle it");
                 yield return new WaitForSecondsRealtime(1.5f); // the knock's count settles (no double tap with the next one)
+                // #419: the pair lives nearer the people now; a tap on the rabbit through open air can pick a person (a card opens, which
+                // is not a startle). Close it as a player would before knocking; the card would take the knock.
+                var cards = PersonCardView.Instance;
+                bool cardAfterTap = cards != null && (cards.AnyOpen || cards.BuildingOpen);
+                if (cardAfterTap) { if (cards.IsOpen) cards.Close(); if (cards.CrowdOpen) cards.CloseCrowd(); if (cards.BuildingOpen) cards.CloseBuilding(); yield return new WaitForSecondsRealtime(0.8f); }
+                Debug.Log($"[rabbit-knock] card after the tap on the rabbit: {cardAfterTap}");
 
                 // 2. a knock on the glass beside it: it freezes, then runs off, and stays away
                 Assert.IsTrue(rv.TryGetPosition(r0, out at0));
@@ -211,11 +249,20 @@ namespace AquariumCiv.View.PlayTests
                 float nearestOther = float.MaxValue;
                 foreach (int id in rv.Field.Alive)
                     if (rv.TryGetPosition(id, out var q)) nearestOther = Mathf.Min(nearestOther, ((Vector2)Camera.main.WorldToScreenPoint(box.transform.TransformPoint(q)) - knockAt).magnitude);
+                { var h = GameHud.Instance; Debug.Log($"[rabbit-knock] before: clean {h.CleanMode} hand {h.Hand} cam {h.CameraMode} sheet {h.SheetOpen} visible {h.IsVisible} moment {(MomentPlayer.Instance != null && MomentPlayer.Instance.Playing)} glass {care.GlassAt(knockAt)} arrivals {LifeArrivalView.Instance?.Status()} sign {rv.SignPlaying} dropping {rv.Dropping} scare {rv.DebugScare(r0)} glassvoice {GlassVoice.Instance != null}"); }
                 yield return TapAt(knockAt);
                 yield return new WaitForSecondsRealtime(0.15f);
                 Debug.Log($"[rabbit-knock] knocks {knocks0} -> {(GlassVoice.Instance != null ? GlassVoice.Instance.Knocks : -1)} (counts when the taps stop), taps {GlassVoice.Instance?.LastTaps}, nearest rabbit to the knock {nearestOther:0} px, card open {PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen)}, fleeing {(rv.TryGetAct(r0, out bool flx) && flx)}");
+                if (!(rv.TryGetAct(r0, out bool fl0) && fl0))
+                {
+                    yield return new WaitForSecondsRealtime(0.8f);
+                    var cardsNow = PersonCardView.Instance;
+                    Debug.Log($"[rabbit-knock] after 0.95 s: knocks {GlassVoice.Instance?.Knocks} taps {GlassVoice.Instance?.LastTaps} card {cardsNow != null && (cardsNow.AnyOpen || cardsNow.BuildingOpen)} crowd {cardsNow != null && cardsNow.CrowdOpen} dolls in reach: {rv.DebugKnockReach(knockAt)}");
+                }
                 Assert.IsTrue(rv.TryGetAct(r0, out bool fl) && fl, "the knock beside it startles the rabbit");
                 for (int k = 0; k < 10; k++) { yield return new WaitForSecondsRealtime(0.5f); rv.TryGetPosition(r0, out var pk); Debug.Log($"[rabbit-knock] {0.15f + 0.5f * (k + 1):0.0}s at ({pk.x:0.00},{pk.z:0.00}) {new Vector2(pk.x - at0.x, pk.z - at0.z).magnitude:0.00} from start: {rv.DebugScare(r0)}"); }
+                // a far meadow is a longer run: let it get there (bounded) before asking where it stands
+                for (float w = 0f; w < 6f && rv.TryGetAct(r0, out bool still) && still; w += 0.25f) yield return new WaitForSecondsRealtime(0.25f);
                 Assert.IsTrue(rv.TryGetPosition(r0, out var end), "still there");
                 Assert.AreEqual(shown, rv.Shown, "a knock removes nobody");
                 Assert.Greater(new Vector2(end.x - at0.x, end.z - at0.z).magnitude, 0.5f, "it ran to another part of the meadow");
@@ -239,7 +286,8 @@ namespace AquariumCiv.View.PlayTests
                 var rv = RabbitView.Instance;
                 PeopleView.DebugSetHour(11f);
                 Meadow();
-                EcoDebug.AddRabbits(6);
+                PlacePairInMeadow();
+                EcoDebug.AddRabbits(4);
                 yield return Frames(30);
                 yield return Until(() => rv.SignsPlayed > 0, 10f);
                 yield return Until(() => !rv.SignPlaying, 10f);

@@ -305,6 +305,29 @@ namespace AquariumCiv.View
                     mb.Ico(new Vector3(0, 0.0f, 0), 0.042f, new Vector3(1f, 1.1f, 0.85f), Color.Lerp(Palette.Canvas, Palette.Hide, 0.35f), 0.08f);
                     mb.Prism(new Vector3(0, 0.04f, 0), 0.012f, 0.016f, 0.016f, 6, Palette.Timber);
                     break;
+                case PropKind.Bow:
+                {
+                    // #426 (B13): a 0.16 u bark-coloured arc held at its middle, the limbs curving back, a pale string between the tips.
+                    const float R = 0.1f, A = 52f;
+                    int segs = 7;
+                    for (int k = 0; k < segs; k++)
+                    {
+                        float a0 = Mathf.Lerp(-A, A, k / (float)segs) * Mathf.Deg2Rad, a1 = Mathf.Lerp(-A, A, (k + 1) / (float)segs) * Mathf.Deg2Rad;
+                        var p0 = new Vector3(Mathf.Cos(a0) * R - R, Mathf.Sin(a0) * R + 0.06f, 0f);
+                        var p1 = new Vector3(Mathf.Cos(a1) * R - R, Mathf.Sin(a1) * R + 0.06f, 0f);
+                        var mid = (p0 + p1) * 0.5f; var d = p1 - p0;
+                        float thick = Mathf.Lerp(0.011f, 0.007f, Mathf.Abs(k - (segs - 1) * 0.5f) / (segs * 0.5f));
+                        mb.Box(mid, new Vector3(thick, d.magnitude + 0.003f, thick), Palette.Bark, Quaternion.Euler(0f, 0f, -Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg));
+                    }
+                    float sx = Mathf.Cos(A * Mathf.Deg2Rad) * R - R, sy = Mathf.Sin(A * Mathf.Deg2Rad) * R;
+                    mb.Box(new Vector3(sx, 0.06f, 0f), new Vector3(0.003f, sy * 2f, 0.003f), Palette.Plaster);
+                    mb.Box(new Vector3(0f, 0.06f, 0f), new Vector3(0.015f, 0.025f, 0.015f), Palette.WoodLight); // the grip
+                    break;
+                }
+                case PropKind.Pole:
+                    // #426 (B13.b): the carrying pole, 0.35 u, held near its end
+                    mb.Box(new Vector3(0f, 0.1f, 0f), new Vector3(0.012f, 0.35f, 0.012f), Palette.WoodLight);
+                    break;
                 case PropKind.Twig:
                     // #359 (batch 2): the kids' duel stick: a short twig (0.17, the staff is 0.24) with a side nub, so it reads as a found stick, not a staff.
                     mb.Box(new Vector3(0, 0.045f, 0), new Vector3(0.012f, 0.17f, 0.012f), Palette.Bark);

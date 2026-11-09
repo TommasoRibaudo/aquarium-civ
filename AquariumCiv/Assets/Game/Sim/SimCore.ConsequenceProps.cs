@@ -200,7 +200,7 @@ namespace AquariumCiv.Sim
                     if (Math.Abs(cx) > mx || Math.Abs(cz) > mz) continue;
                     float dx = cx - ax, dz = cz - az, d = (float)Math.Sqrt(dx * dx + dz * dz);
                     if (d < lo || d > hi) continue;
-                    if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Forest(c)) continue;
+                    if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Forest(c) || map.Reserved(c)) continue;
                     if (pass < 2 && Settlement.WalkCost(c) == 0) continue;
                     bool crowded = false;
                     foreach (var q in State.consequenceProps)

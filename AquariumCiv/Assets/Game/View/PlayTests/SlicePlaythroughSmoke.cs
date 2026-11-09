@@ -61,6 +61,27 @@ namespace AquariumCiv.View.PlayTests
             return list;
         }
 
+        /// <summary>A flick a slow Editor can't slow down. CareView reads the release speed in real seconds (flickSpeed screen heights a
+        /// second over the last 0.1 s), and a drag spans its begin, move and release frames, so on an Editor at a few fps (tooling.md
+        /// 2026-11-02 / 2026-11-08) the old 0.08 H drag came out under flickSpeed and dropped the patch back. One move, as long as the
+        /// frame time needs: three times the speed over three frames.</summary>
+        IEnumerator Flick(CareView care, Vector2 sp)
+        {
+            float t0 = Time.realtimeSinceStartup;
+            yield return Frames(4);
+            float frame = (Time.realtimeSinceStartup - t0) / 4f;
+            float travel = Mathf.Clamp(care.flickSpeed * 3f * 4f * frame, 0.3f, 2f);
+            Debug.Log($"[smoke] flick: frame {frame * 1000f:0} ms, travel {travel:0.00} H");
+            var to = sp + new Vector2(0.02f, travel) * Screen.height;
+            int id = touchId++;
+            BeginTouch(id, sp, queueEventOnly: true);
+            yield return null;
+            MoveTouch(id, to, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null; // the move gets a frame of its own before the lift
+            EndTouch(id, to, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
+        }
+
         IEnumerator FirstRunByTouch()
         {
             Assert.IsTrue(Run.Active, "a fresh box starts the first run");
@@ -80,7 +101,7 @@ namespace AquariumCiv.View.PlayTests
                 var piece = care.Props.AllPieces.FirstOrDefault(p => !p.leaving && p.weed);
                 if (piece == null) { yield return null; continue; }
                 var sp = (Vector2)Camera.main.WorldToScreenPoint(piece.Center);
-                yield return Drag(new[] { sp, sp + new Vector2(0.01f, 0.08f) * Screen.height }, 0.045f * Screen.height);
+                yield return Flick(care, sp);
                 yield return Frames(4);
             }
             yield return Frames(20);
@@ -210,7 +231,7 @@ namespace AquariumCiv.View.PlayTests
             if (piece != null)
             {
                 var sp = (Vector2)Camera.main.WorldToScreenPoint(piece.Center);
-                yield return Drag(new[] { sp, sp + new Vector2(0.01f, 0.08f) * Screen.height }, 0.045f * Screen.height);
+                yield return Flick(care, sp);
                 yield return Frames(6);
                 Assert.Less(care.Props.AllPieces.Count(p => !p.leaving), left, "a flick throws a weed patch out");
             }
@@ -342,7 +363,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(c.Playing, "a tap on Finish starts the last moment");
             c.Director.HurryFactor = 4f;
             MomentPlayer.DebugHoldHurry = true;
-            yield return Until(() => c.PickerOpen, 60f);
+            yield return Until(() => c.PickerOpen, 240f); // the moment runs on capped frame time (0.1 s): a slow Editor stretches it
             Assert.IsTrue(c.PickerOpen, "the moment asks for the next box");
             yield return Shot("smoke_last_moment");
             yield return Frames(4);

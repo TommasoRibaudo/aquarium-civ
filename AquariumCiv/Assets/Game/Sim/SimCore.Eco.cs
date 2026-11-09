@@ -65,16 +65,21 @@ namespace AquariumCiv.Sim
             var s = State;
             int season = (int)((s.month / 3 + 3) % 4);
             EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
-            if (s.month % 3 != 0) return;
-            EcoM.Step(season, s.month);
-            if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
-            EcoTell();
+            if (s.month % 3 == 0)
+            {
+                EcoM.Step(season, s.month);
+                if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
+                EcoTell();
+            }
+            WolvesMonth(season); // #437/#438: the pack's month (a chase, the thief, the pen) and the dogs' (hash dice only)
         }
 
         /// <summary>Raises what the land reached since last time, and writes the gates and the water into the chronicle.</summary>
         void EcoTell()
         {
             var m = EcoM;
+            JarsTell(); // #417: the jars that opened
+            PlacedLifeTell(); // #420-#422: the white stag, the fletched arrows, the rulings
             if (m.newMilestones.Count == 0 && m.newGates.Count == 0) return;
             var keys = m.newMilestones.ToArray(); var gates = m.newGates.ToArray();
             m.newMilestones.Clear(); m.newGates.Clear();
@@ -88,11 +93,13 @@ namespace AquariumCiv.Sim
                 else if (key == EcoMilestones.RabbitTracks)
                 {
                     PickRabbitTracks();
+                    if (LifePlacedMonth(LifeSpecies.Rabbits) != State.month) // #419: the placing has its own history line
                     Chronicle("eco_tracks", "Small prints crossed the edge of the grass, and stopped at the green. The people crouched over them.", 0.5f);
                 }
                 else if (key == EcoMilestones.FirstRabbit)
                 {
                     PickRabbitArrival();
+                    if (LifePlacedMonth(LifeSpecies.Rabbits) != State.month) // #419: the placing has its own history line
                     Chronicle("eco_rabbit", "A rabbit was seen in the grass. Nobody had seen one before.", 0.6f);
                 }
                 else if (key == EcoMilestones.FirstBush)
