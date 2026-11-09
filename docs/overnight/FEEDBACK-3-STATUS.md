@@ -16,7 +16,7 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - [x] `p9/feedback-3` from origin/dev
 - [ ] #519 ducks only where water is drawn (sim) merged
 - [ ] #521 first camp days spread out merged
-- [ ] #522 crowd line names the speaker merged
+- [x] #522 crowd line names the speaker merged
 - [ ] #523 no weeds on the trodden ground merged
 - [ ] #520 barren wind repeat merged (open for a listen)
 - [ ] #518 seed ghost + two-finger guard merged (open: seed-in-jar question)
@@ -32,3 +32,5 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 
 ## Log
 - 2026-11-09 run start. Editor closed, lock free, health OK (C: 22 GB).
+- Lane A started in parallel (worktrees F:\GameDev-wt\<n>): #519 (Opus), #521, #522, #523, #520 (Sonnet), #518 (Opus: input). Editor worker #524 (Sonnet) on vs/524-wet-glass in F:\GameDev; stall watcher waits for its lock. Next in the Editor queue: #525+#526, then #516 (after #518 merges).
+- 16:51 #522 merged (b5225b2, branch 1c9efdd): Who = notable name, else crowd first name (SimState.crowdNames), else null; caption hides an empty attribution (GlassCaption.Set). Verify: LineRouteTests (3 new), PeopleWiringPlayTests, CaptionEveryLinePlayTests, caption shot.
