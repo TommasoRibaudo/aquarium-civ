@@ -14,12 +14,12 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 
 ## Checklist
 - [x] `p9/feedback-3` from origin/dev
-- [ ] #519 ducks only where water is drawn (sim) merged
-- [ ] #521 first camp days spread out merged
+- [x] #519 ducks only where water is drawn (sim) merged
+- [x] #521 first camp days spread out merged
 - [x] #522 crowd line names the speaker merged
-- [ ] #523 no weeds on the trodden ground merged
+- [x] #523 no weeds on the trodden ground merged
 - [x] #520 barren wind repeat merged (open for a listen)
-- [ ] #518 seed ghost + two-finger guard merged (open: seed-in-jar question)
+- [x] #518 seed ghost + two-finger guard merged (open: seed-in-jar question)
 - [ ] #524 wet at the glass merged (open for look)
 - [ ] #525 + #526 tree glow, tent poles merged (open for look)
 - [ ] #516 placing life: ghost, glow, button merged (open for look)
@@ -36,3 +36,8 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - 16:51 #522 merged (b5225b2, branch 1c9efdd): Who = notable name, else crowd first name (SimState.crowdNames), else null; caption hides an empty attribution (GlassCaption.Set). Verify: LineRouteTests (3 new), PeopleWiringPlayTests, CaptionEveryLinePlayTests, caption shot.
 - 16:55 Session interrupted ~16:55. Resumed all 6 workers from their transcripts (#521, #523, #524 had uncommitted work; #519, #520, #518 none yet). #524 still holds the lock; stall watcher restarted.
 - 16:57 #520 merged (3ccb8f9, branch 65ca9d0): the 40 s barren_wind_loop was the repeat (batch 2's 'left' was wrong). BarrenWind: 2 voices (B pitch ~0.87, ~46 s), wandering gain 0.3-0.9, pitch drift ±3.5%; cue 0.9→0.68; fade smoothstep^1.5. Offline csc merge 0 errors (list ShowMe too). Verify: AquariumCiv.Audio.Tests; Audio status readout; a listen (needs:user).
+- 17:12 #518 merged (a42d1a8, fa1cd13): KitPlace shared ghost flow (KitPress two-finger guard, GhostTap, GhostLook), SeedPlaceView, mister/tweezers/cloth wait 0.1 s for a 2nd finger. Cheat Seed in hand. Verify: SeedGhostPlayTests (4) + LifeSlot, LifeArrival, Tweezers, EcoMistView, Care, GestureEdge, FirstRun, smoke. Risks: wipes 0.1 s late, slow-frame mister test.
+- #519 merged (dd97681; I committed the worker's files): root cause of #515 = SimCore.Story random duck story fired on ecology boxes (now !EcologyOn only). Duck/fish ground = OpenWater; jar/adoption wait for water; flocks keep to water or leave with a line (wording mine-to-confirm). Cheat Pond dries now. SimTests 1709/1709 on the merge.
+- #521 merged (835e6b4): cause = SpreadDiggers skipped before the camp gate + JobWork sent all to Stream. Now ≤2 diggers at 3 patches, cook at fire, others water/door chores, lunch in turns. CampSpreadTests (5). Verify Life.Tests + first-morning shot; dig patch offsets untested in Editor.
+- #523 merged (172596e): IsTroddenGround (fire ring 1.15 + SettledCell); MessProps FindSpot skips trodden, outward search fallback; PullTroddenVine each EcoStep. TroddenGroundTests (5).
+- #524 merged (4f0ea5b): EcoWetFace strip + AtEdge. Reviewed shots: effect doesn't read; sent back for one stronger iteration (30 min). Merge offline csc 0 errors (11 assemblies); dotnet on full merge running.
