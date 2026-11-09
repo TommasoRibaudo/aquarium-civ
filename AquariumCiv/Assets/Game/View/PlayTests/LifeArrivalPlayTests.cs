@@ -133,6 +133,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => !la.Playing(LifeSpecies.Ducks), 10f);
             StringAssert.Contains("howl", la.DebugHowl());
             Assert.AreEqual(1, la.Howls, "the wolves' howl");
+            Assert.AreEqual(1, la.HowlsVoiced, "the cheat's howl is heard");
             yield return new WaitForSecondsRealtime(6f);
             AssertNoErrors("debug arrivals");
         }
@@ -168,6 +169,11 @@ namespace AquariumCiv.View.PlayTests
                 Assert.Greater(la.Nudges, n0, $"{s}: the camera leaned in on the ghost");
                 Assert.IsTrue(Cam.Leaning, $"{s}: and holds there while the ghost waits");
                 Assert.LessOrEqual(Cam.zoom, Mathf.Min(zoom0, LifeArrivalView.LeanZoom(s)) + 0.02f, $"{s}: close in");
+                // user 2026-11-08: the smallest groups lean past the player's floor (0.2) to about 0.15; the rest stay above it
+                bool small = s is LifeSpecies.Rabbits or LifeSpecies.Ducks or LifeSpecies.Fish;
+                if (small) Assert.Less(Cam.zoom, AquariumCiv.Lighting.CameraReach.MinZoom - 0.02f, $"{s}: past the player's zoom floor");
+                else Assert.GreaterOrEqual(Cam.zoom, AquariumCiv.Lighting.CameraReach.MinZoom - 0.005f, $"{s}: not past the floor");
+                Assert.GreaterOrEqual(Cam.zoom, BoxCamera.LeanMinZoom - 0.005f, $"{s}: never past the lean's own floor");
                 yield return Shot(tag + "-1-ghost");
                 // the second tap (on the ghost where it is on screen now) sets them down; the camera stays through the arrival
                 yield return TapAt(lpv.ScreenOf(lpv.GhostCell));
@@ -183,6 +189,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(Cam.Leaning, $"{s}: the lean let go after the arrival");
                 Assert.AreEqual(0, Cam.LeanCancels - cancels0, $"{s}: nothing cancelled the lean");
                 Assert.AreEqual(zoom0, Cam.zoom, 0.03f, $"{s}: and the camera eased back to the player's zoom (leaning {Cam.Leaning}, glide {Cam.GlideArmed}/{Cam.Gliding}, flying {Cam.IsFlying})");
+                Assert.GreaterOrEqual(Cam.zoom, Cam.minZoom - 0.005f, $"{s}: back inside the player's range");
                 Assert.Less(new Vector2(Cam.target.x - target0.x, Cam.target.z - target0.z).magnitude, 0.1f, $"{s}: and their spot");
             }
             AssertNoErrors("leans");
@@ -215,7 +222,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsFalse(Cam.Leaning, "no lean now");
             float z = Cam.zoom; var t = Cam.target;
             yield return new WaitForSecondsRealtime(3f);
-            Assert.AreEqual(z, Cam.zoom, 0.01f, "no glide back after a cancel: the player has the camera");
+            // user 2026-11-08: a rabbit's lean sits under the player's floor; once cancelled it only eases up to the floor, no glide back
+            Assert.AreEqual(Mathf.Max(z, Cam.minZoom), Cam.zoom, 0.01f, "no glide back after a cancel: the player has the camera");
             // moving the ghost now doesn't lean again
             int other = GlowingCellOnScreen(Sim, LifeSpecies.Rabbits);
             int n0 = la.Nudges;
@@ -302,6 +310,86 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(2, StoryRules.HintStage(13));
             Assert.AreEqual(3, StoryRules.HintStage(25));
             AssertNoErrors("hint");
+        }
+
+        /// <summary>User 2026-11-08: the waiting hint leans only when its spot is off screen or the camera is zoomed out past 0.6; framed and
+        /// close enough, the camera stays where the player has it.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator HintLean_OnlyOffScreen_OrZoomedOut()
+        {
+            // the rule itself
+            Assert.IsTrue(LifeArrivalView.HintWantsLean(new Vector3(0.5f, 0.5f, 5f), 0.9f), "zoomed out past 0.6: lean");
+            Assert.IsFalse(LifeArrivalView.HintWantsLean(new Vector3(0.5f, 0.5f, 5f), 0.5f), "framed and close: no lean");
+            Assert.IsTrue(LifeArrivalView.HintWantsLean(new Vector3(1.2f, 0.5f, 5f), 0.5f), "off to the side: lean");
+            Assert.IsTrue(LifeArrivalView.HintWantsLean(new Vector3(0.5f, 0.5f, -1f), 0.4f), "behind the camera: lean");
+            Assert.IsTrue(LifeArrivalView.HintWantsLean(new Vector3(0.5f, 0.97f, 5f), 0.4f), "at the top edge: lean");
+            yield return LivingLand();
+            for (int calm = 0, f = 0; calm < 60 && f < 900; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
+            yield return CameraSettled();
+            var la = LifeArrivalView.Instance;
+            Assert.IsTrue(la.HintSpot(Sim, LifeSpecies.Thicket, out int cell, out float hx, out float hz), "a hint spot");
+            var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            var spot = box.transform.TransformPoint(box.land.OnGround(hx, hz));
+            // 1. framed, zoomed in to 0.5: no lean
+            Cam.FlyTo(spot, 0.5f, 0f);
+            yield return Frames(3);
+            int leans0 = la.HintLeans, framed0 = la.HintFramed;
+            la.HintStarted(LifeSpecies.Thicket, 1, 1, 6f, cell);
+            yield return Frames(3);
+            Assert.AreEqual(leans0, la.HintLeans, $"framed at zoom {Cam.zoom:0.00}: no lean");
+            Assert.AreEqual(framed0 + 1, la.HintFramed, "counted as framed");
+            Assert.IsFalse(Cam.Leaning, "the camera stays");
+            // 2. zoomed out past 0.6 (the spot still on screen): lean
+            Cam.FlyTo(spot, 0.95f, 0f);
+            yield return Frames(3);
+            la.NewVisit();
+            la.HintStarted(LifeSpecies.Thicket, 1, 1, 3f, cell);
+            yield return Frames(3);
+            Assert.AreEqual(leans0 + 1, la.HintLeans, $"zoomed out ({Cam.zoom:0.00}): the camera leans in");
+            yield return Shot("p9-hint-lean-zoomed-out");
+            yield return CameraSettled();
+            // 3. close (0.5) but the spot is off screen: lean
+            var away = box.transform.TransformPoint(box.land.OnGround(-hx, -hz));
+            Cam.FlyTo(away, 0.4f, 0f);
+            yield return Frames(3);
+            var vp = Camera.main.WorldToViewportPoint(spot);
+            if (LifeArrivalView.HintWantsLean(vp, Cam.zoom) && Cam.zoom <= LifeArrivalView.HintLeanFromZoom)
+            {
+                la.NewVisit();
+                la.HintStarted(LifeSpecies.Thicket, 1, 1, 3f, cell);
+                yield return Frames(3);
+                Assert.AreEqual(leans0 + 2, la.HintLeans, $"off screen ({vp}): the camera leans in");
+            }
+            else Debug.Log($"[p9-hint-lean] the far spot still frames the hint ({vp}); case 3 skipped");
+            AssertNoErrors("hint lean");
+        }
+
+        /// <summary>User 2026-11-08: the dusk howls are silent except at most one a visit (the CC0 chorus); a new visit may be heard again.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator DuskHowl_HeardOncePerVisit()
+        {
+            yield return LivingLand();
+            var la = LifeArrivalView.Instance;
+            Assert.GreaterOrEqual(Sim.DebugPlaceWolves(), 0, "wolves");
+            yield return Until(() => !la.Playing(LifeSpecies.Wolves), 20f);
+            la.NewVisit();
+            int v0 = la.HowlsVoiced, s0 = la.HowlsSilent;
+            Assert.IsTrue(la.VoiceHowl(), "the first dusk howl of a visit is heard");
+            Assert.IsFalse(la.VoiceHowl(), "the next one is silent");
+            Assert.IsFalse(la.VoiceHowl(), "and the next");
+            Assert.AreEqual(v0 + 1, la.HowlsVoiced); Assert.AreEqual(s0 + 2, la.HowlsSilent);
+            // the pack's own dusk howl in normal play goes through the same limit
+            PeopleView.DebugSetHour(19.2f);
+            var wv = WolfView.Instance;
+            Assert.IsNotNull(wv, "the wolves' view");
+            int d0 = wv.DuskHowls;
+            yield return Until(() => wv.DuskHowls > d0, 60f);
+            Debug.Log($"[p9-howl] dusk howls {wv.DuskHowls - d0}, heard {la.HowlsVoiced - v0}, silent {la.HowlsSilent - s0}");
+            Assert.AreEqual(v0 + 1, la.HowlsVoiced, "no second howl heard this visit");
+            la.NewVisit();
+            Assert.IsFalse(la.HowlHeardThisVisit, "a new visit");
+            Assert.IsTrue(la.VoiceHowl(), "a new visit may hear one again");
+            AssertNoErrors("howl per visit");
         }
     }
 }

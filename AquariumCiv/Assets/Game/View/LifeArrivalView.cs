@@ -96,6 +96,12 @@ namespace AquariumCiv.View
         public int HintsPlayed { get; private set; }
         /// <summary>Hint scenes the camera leaned in on.</summary>
         public int HintLeans { get; private set; }
+        /// <summary>Hint scenes already framed (on screen, the camera close enough): no lean.</summary>
+        public int HintFramed { get; private set; }
+        /// <summary>User 2026-11-08: dusk howls with the CC0 chorus (at most one a visit) and the ones kept silent.</summary>
+        public int HowlsVoiced { get; private set; }
+        public int HowlsSilent { get; private set; }
+        bool howlVoiced;
         public string LastHint { get; private set; } = "";
         /// <summary>The arrival's pieces drawn now (bushes, dolls, the bag, shadows): the shots and tests look for them.</summary>
         public int PiecesShown { get { int n = 0; foreach (var a in playing) if (a.root != null && a.root.gameObject.activeInHierarchy) n += a.root.childCount; return n; } }
@@ -139,8 +145,26 @@ namespace AquariumCiv.View
             if (shadow != null) Destroy(shadow);
         }
 
-        /// <summary>A new visit (the box opened after time away): each ready jar may hint once more.</summary>
-        void OnCaughtUp(CatchUpResult r) => hinted.Clear();
+        /// <summary>A new visit (the box opened after time away): each ready jar may hint once more, and a dusk howl may be heard again.</summary>
+        void OnCaughtUp(CatchUpResult r) => NewVisit();
+
+        /// <summary>What a new visit clears (tests call it directly).</summary>
+        public void NewVisit() { hinted.Clear(); howlVoiced = false; }
+
+        /// <summary>User 2026-11-08: the wolves' dusk howls are silent except at most one a visit, which plays the CC0 chorus. The debug
+        /// panel's "howl now" (<paramref name="cheat"/>) always sounds. True when this howl is heard.</summary>
+        public bool VoiceHowl(bool cheat = false)
+        {
+            if (howlVoiced && !cheat) { HowlsSilent++; return false; }
+            howlVoiced = true;
+            HowlsVoiced++;
+            Sfx.Play(CueLibrary.WolfHowl, 0f, 1f);
+            Sfx.Play(CueLibrary.WolfHowl, -2f, 0.8f, 0.7f);
+            return true;
+        }
+
+        /// <summary>Has a howl been heard this visit?</summary>
+        public bool HowlHeardThisVisit => howlVoiced;
 
         void Bind(SimCore sim)
         {
@@ -197,14 +221,25 @@ namespace AquariumCiv.View
         public bool LeanRefused => leanRefused;
 
         /// <summary>How close the camera leans for each group (BoxCamera zoom; 1 = the whole box): close enough that the group reads at phone
-        /// size (rabbits and ducks are ~0.05 u), never closer than the camera's floor. Animals stay true to scale.</summary>
+        /// size (rabbits and ducks are ~0.05 u). User 2026-11-08: the rabbits, ducks and fish go past the player's floor (0.2) to
+        /// <see cref="BoxCamera.LeanMinZoom"/>; the rest stay above it. Animals stay true to scale.</summary>
         public static float LeanZoom(LifeSpecies s) => s switch
         {
-            LifeSpecies.Thicket => 0.36f, LifeSpecies.Rabbits => 0.2f, LifeSpecies.Deer => 0.32f,
-            LifeSpecies.Ducks => 0.2f, LifeSpecies.Fish => 0.22f, _ => 0.32f,
+            LifeSpecies.Thicket => 0.36f, LifeSpecies.Rabbits => BoxCamera.LeanMinZoom, LifeSpecies.Deer => 0.32f,
+            LifeSpecies.Ducks => BoxCamera.LeanMinZoom, LifeSpecies.Fish => BoxCamera.LeanMinZoom, _ => 0.32f,
         };
         /// <summary>A waiting hint's lean: the people are the scene, so a little wider; held this long at most (real seconds).</summary>
         public const float HintZoom = 0.42f, HintHoldMax = 10f;
+        /// <summary>User 2026-11-08: a hint leans only when its spot is off screen or the camera is zoomed out past this.</summary>
+        public const float HintLeanFromZoom = 0.6f;
+
+        /// <summary>Does a waiting hint lean (user 2026-11-08)? Only when its spot (<paramref name="viewport"/>, Camera.WorldToViewportPoint) is
+        /// off screen (behind the camera or outside the frame's inner edge) or the camera is zoomed out past <see cref="HintLeanFromZoom"/>.</summary>
+        public static bool HintWantsLean(Vector3 viewport, float zoom)
+        {
+            bool onScreen = viewport.z > 0f && viewport.x > 0.06f && viewport.x < 0.94f && viewport.y > 0.08f && viewport.y < 0.92f;
+            return !onScreen || zoom > HintLeanFromZoom;
+        }
 
         static BoxCamera Cam => Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
 
@@ -588,11 +623,12 @@ namespace AquariumCiv.View
             float hour = pv.ViewHour;
             bool dusk = hour >= 18.5f && hour < 21.5f;
             if (!dusk || Has(LifeSpecies.Wolves)) return; // the arrival is still playing: the howl comes after
-            if (sim.AckFirstHowl()) { DebugHowl(); FirstHowls++; }
+            if (sim.AckFirstHowl()) { DebugHowl(false); FirstHowls++; }
         }
 
-        /// <summary>The debug panel's "howl now" (and what the first dusk calls): two wolves sit at the den and howl.</summary>
-        public string DebugHowl()
+        /// <summary>The debug panel's "howl now" (and what the first dusk calls, <paramref name="cheat"/> false: heard only if no howl was
+        /// heard this visit): two wolves sit at the den and howl.</summary>
+        public string DebugHowl(bool cheat = true)
         {
             var sim = Sim;
             if (sim == null || box == null || box.Root == null) return "no living box";
@@ -611,8 +647,7 @@ namespace AquariumCiv.View
                 howlT = 0f;
             }
             Howls++;
-            Sfx.Play(CueLibrary.WolfHowl, 0f, 1f);
-            Sfx.Play(CueLibrary.WolfHowl, -2f, 0.8f, 0.7f);
+            VoiceHowl(cheat);
             // the people look toward the far wood a beat
             var pv = PeopleView.Find();
             if (pv != null && pv.Planner != null)
@@ -914,12 +949,19 @@ namespace AquariumCiv.View
         public void HintStarted(LifeSpecies s, int stage, int people, float seconds = 0f, int cell = -1)
         {
             // user 2026-11-08: the hint scenes lean in too (only when the camera is free: nobody holding it, no card, no moment)
+            // and (user 2026-11-08) only when the spot is off screen or the camera is out past HintLeanFromZoom
             if (cell >= 0 && seconds > 0f && box != null && GlassVoice.CameraFree() && Cam != null && !Cam.Touching && !Cam.Leaning)
             {
-                hintLeanUntil = Time.unscaledTime + Mathf.Min(seconds, HintHoldMax);
-                var at = box.land.OnGround(SiteMap.CXc(cell), SiteMap.CZc(cell));
-                WatchCancels(Cam);
-                if (!leanRefused && Cam.LeanIn(box.transform.TransformPoint(at), HintZoom, HoldLean)) { Nudges++; HintLeans++; }
+                var world = box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(cell), SiteMap.CZc(cell)));
+                var cam = Cam;
+                var unityCam = cam.GetComponent<Camera>();
+                if (unityCam != null && HintWantsLean(unityCam.WorldToViewportPoint(world), cam.zoom))
+                {
+                    hintLeanUntil = Time.unscaledTime + Mathf.Min(seconds, HintHoldMax);
+                    WatchCancels(cam);
+                    if (!leanRefused && cam.LeanIn(world, HintZoom, HoldLean)) { Nudges++; HintLeans++; }
+                }
+                else HintFramed++;
             }
             hinted.Add(s);
             HintsPlayed++;
@@ -932,7 +974,7 @@ namespace AquariumCiv.View
         public string Status()
         {
             string p = playing.Count == 0 ? "none playing" : string.Join(", ", playing.ConvertAll(a => $"{a.s} {a.t:0.0}/{a.length:0.0}s"));
-            return $"arrivals: {p}; played {Played}, last {LastSpecies} (turned {LastTurned}, walkers {LastWalkers}); hints {HintsPlayed} ({LastHint}); howls {Howls}" +
+            return $"arrivals: {p}; played {Played}, last {LastSpecies} (turned {LastTurned}, walkers {LastWalkers}); hints {HintsPlayed} ({LastHint}, leaned {HintLeans}, framed {HintFramed}); howls {Howls} (heard {HowlsVoiced}, silent {HowlsSilent})" +
                    (Sim != null && Sim.WolfFirstHowlDue ? ", first howl due at dusk" : "");
         }
     }

@@ -174,7 +174,7 @@ namespace AquariumCiv.View
             if (IsFlying) EndFlight(false);
             if (!glideNext) glide.Cancel(); // a flight of its own, the way back or a moment's: it has the camera now
             glideNext = false;
-            float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, minZoom, maxZoom) : zoom;
+            float z1 = zoomTo > 0f ? Mathf.Clamp(zoomTo, flyFloor > 0f ? flyFloor : minZoom, maxZoom) : zoom;
             flyFrom = target; flyZoomFrom = zoom; flyZoomTo = z1;
             // #273: the end pose's own range (the flight keeps yaw and pitch), so a flight never ends where the spring would pull it back or the camera sits in a pane.
             flyTo = BoxCameraMath.ClampFocus(new Vector3(worldPoint.x, target.y, worldPoint.z), GlassBounds(z1));
@@ -252,6 +252,12 @@ namespace AquariumCiv.View
         public int LeanCancels { get; private set; }
         /// <summary>A lean looks down from at least this pitch (degrees), a little steeper than a nudge so a small group on the ground spreads out.</summary>
         public const float LeanPitch = 52f, LeanSeconds = 1.4f;
+        /// <summary>User 2026-11-08: a lean may go past the player's zoom floor (<see cref="CameraReach.MinZoom"/>) to this, for the smallest
+        /// groups (rabbits, ducks, fish); it still eases back to the player's zoom, and a cancelled lean eases up to the floor.</summary>
+        public const float LeanMinZoom = 0.15f;
+        /// <summary>How fast a zoom left under the player's floor (a cancelled lean) eases back up to it (zoom per second).</summary>
+        const float FloorEase = 0.3f;
+        float flyFloor = -1f;
 
         /// <summary>
         /// P9 (user 2026-11-08, "the camera leans in"): eases in close to <paramref name="worldPoint"/> at <paramref name="zoomTo"/> so a small
@@ -264,9 +270,12 @@ namespace AquariumCiv.View
         {
             if (cam == null) cam = GetComponent<Camera>();
             if (cam == null || !isActiveAndEnabled || (Touching && (moved || mode == Mode.TwoFinger))) return false;
-            float z1 = Mathf.Min(zoom, Mathf.Clamp(zoomTo, minZoom, maxZoom));
+            float floor = Mathf.Min(minZoom, LeanMinZoom);
+            float z1 = Mathf.Min(zoom, Mathf.Clamp(zoomTo, floor, maxZoom));
             ReturnAfterFlight();
-            EaseTo(worldPoint, yaw, Mathf.Max(pitch, LeanPitch), z1, seconds);
+            flyFloor = floor;
+            try { EaseTo(worldPoint, yaw, Mathf.Max(pitch, LeanPitch), z1, seconds); }
+            finally { flyFloor = -1f; }
             leanHold = hold;
             leanFlight = IsFlying;
             return true;
@@ -472,7 +481,7 @@ namespace AquariumCiv.View
             if (Mouse.current != null && n == 0)
             {
                 float scroll = Mouse.current.scroll.ReadValue().y;
-                if (Mathf.Abs(scroll) > 0.01f) ZoomAbout(Mathf.Clamp(zoom * (1f - scroll * 0.0008f), minZoom, maxZoom), Mouse.current.position.ReadValue());
+                if (Mathf.Abs(scroll) > 0.01f) ZoomAbout(Mathf.Clamp(zoom * (1f - scroll * 0.0008f), Mathf.Min(minZoom, zoom), maxZoom), Mouse.current.position.ReadValue());
             }
 
             bool dragging = mode == Mode.Orbit && orbiting;
@@ -495,7 +504,9 @@ namespace AquariumCiv.View
             yaw += (targetYaw - yaw) * f;
             pitch += (targetPitch - pitch) * f;
             lastYaw = yaw; lastPitch = pitch;
-            zoom = Mathf.Clamp(zoom, minZoom, maxZoom);
+            // a held lean may sit under the player's floor (LeanMinZoom); once it is cancelled the zoom eases up to the floor, no jump
+            if (zoom < minZoom) zoom = leanHold != null ? Mathf.Max(zoom, Mathf.Min(minZoom, LeanMinZoom)) : Mathf.MoveTowards(zoom, minZoom, FloorEase * dt);
+            zoom = Mathf.Min(zoom, maxZoom);
         }
 
         void FollowAngles(float dt)
@@ -677,7 +688,7 @@ namespace AquariumCiv.View
                 return;
             }
             panTravel += (mid - prevMid).magnitude;
-            if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, minZoom, maxZoom), mid);
+            if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, Mathf.Min(minZoom, zoom), maxZoom), mid);
             if (GroundAt(prevMid, out var g0) && GroundAt(mid, out var g1))
             {
                 var bound = ViewBounds(zoom);

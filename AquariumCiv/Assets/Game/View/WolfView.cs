@@ -61,6 +61,9 @@ namespace AquariumCiv.View
         public int UnderCrownFrames { get; private set; }
         public int Detours { get; private set; }
         public bool Howling => Time.unscaledTime < howlUntil;
+        /// <summary>The pack's own dusk howls seen start (the field's sit-howl; a forced howl is not one).</summary>
+        public int DuskHowls { get; private set; }
+        bool duskHowlWas;
         public string LastActs { get; private set; } = "";
         /// <summary>Extra spots (box-local x, z) that count as people: tests and the debug panel.</summary>
         public readonly List<Vector2> Scarers = new();
@@ -157,6 +160,7 @@ namespace AquariumCiv.View
             float hour = pv != null ? pv.ViewHour : 12f;
             int hand = 0;
             var acts = new System.Text.StringBuilder();
+            bool duskHowl = false;
             for (int id = 0; id < count; id++)
             {
                 bool pup = Field.IsPup(id), grey = id == WolfPack.GreyWolf;
@@ -171,6 +175,7 @@ namespace AquariumCiv.View
                 var s = slots[id];
                 var pose = Field.Sample(id, t, day, hour, people);
                 if (Howling && !pup) { pose.act = WolfAct.Howl; pose.visible = true; }
+                else if (pose.act == WolfAct.Howl && pose.visible) duskHowl = true;
                 if (!s.placed)
                 {
                     s.placed = true; s.grow = 1f;
@@ -182,6 +187,9 @@ namespace AquariumCiv.View
             }
             if (hand > 0) HandOff.Clear();
             LastActs = acts.ToString();
+            // user 2026-11-08: the everyday dusk howl is silent except once a visit (the CC0 chorus; LifeArrivalView.VoiceHowl)
+            if (duskHowl && !duskHowlWas) { DuskHowls++; la?.VoiceHowl(); }
+            duskHowlWas = duskHowl;
         }
 
         void EnsureField(SimCore sim, float dt)
