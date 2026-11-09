@@ -87,6 +87,29 @@ namespace AquariumCiv.Tests
 
         static void ToSpring(SimCore sim) { do sim.Step(); while (sim.State.month % 12 != 3); }
 
+        // ================================================================ tester 2026-11-08: no rabbits in the thicket
+        [Test]
+        public void Rabbits_GroundIsNeverInsideThePlacedThicket()
+        {
+            var sim = World();
+            LifeJarTests.Meadow(sim, 0.3f);
+            int t = sim.DebugPlaceNearCamp(LifeSpecies.Thicket);
+            Assert.GreaterOrEqual(t, 0);
+            var e = sim.State.eco; var tune = sim.Config.eco;
+            Assert.GreaterOrEqual(e.thicketA, 0, "the thicket is placed");
+            float reach = e.thicketRadius * (1f + tune.thicketEdge * 0.5f) + tune.rabbitThicketMargin;
+            float cx = SiteMap.CXc(e.thicketA), cz = SiteMap.CZc(e.thicketA);
+            // the thicket's own heart was meadow before it was placed: it must not be rabbit ground now
+            Assert.IsFalse(sim.LifeGroundOk(LifeSpecies.Rabbits, e.thicketA), "not in the thicket's heart");
+            var cells = new List<int>();
+            sim.LifeGround(LifeSpecies.Rabbits, cells);
+            Assert.Greater(cells.Count, 0, "there is still rabbit ground");
+            foreach (var c in cells) Assert.GreaterOrEqual(Dist(c, cx, cz), reach - 1e-4f, $"cell {c} is in the thicket's reach");
+            int near = sim.LifePlaceCellNearCamp(LifeSpecies.Rabbits);
+            Assert.GreaterOrEqual(near, 0);
+            Assert.GreaterOrEqual(Dist(near, cx, cz), reach - 1e-4f, "the nearest rabbit spot is outside the thicket");
+        }
+
         // ================================================================ #420 the deer
         [Test]
         public void Deer_NoneUntilPlaced_ThenAStagAndTwoDoes_AtThePlacedCell()

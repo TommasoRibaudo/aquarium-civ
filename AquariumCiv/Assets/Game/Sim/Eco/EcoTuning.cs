@@ -137,6 +137,7 @@ namespace AquariumCiv.Sim.Eco
         // #418 the one placed thicket (spec §5.1): a disc round the placed spot, 3 founders, a bush a season until it holds thicketBushes.
         // It replaces #385's self-founding thickets and strays (thicketBoost, bushStray, thicketBAfter, bushPerMeadow, bushCap: unused now).
         public float thicketRadius = 0.45f;
+        public float rabbitThicketMargin = 0.12f; // tester 2026-11-08: the rabbits' ground stays this far outside the thicket's widest edge
         public int thicketBushes = 22, thicketFounders = 3;
 
         // Gates

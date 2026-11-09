@@ -295,7 +295,8 @@ namespace AquariumCiv.Sim.Eco
                 case LifeSpecies.Thicket:
                     return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && ThicketDiscClear(cell, settled);
                 case LifeSpecies.Rabbits:
-                    return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && !land.yard[cell] && !(settled?.Invoke(cell) ?? false);
+                    return MeadowOk(cv) && FromFire(cell) >= t.bushCampMargin && !land.yard[cell] && !InThicketReach(cell)
+                        && !(settled?.Invoke(cell) ?? false);
                 case LifeSpecies.Deer:
                     return cv != EcoCover.Water && !land.InBasin(cell) && FromFire(cell) >= t.bushCampMargin && NearGrownTree(cell, t.deerNearTree)
                         && !(settled?.Invoke(cell) ?? false);
@@ -307,6 +308,15 @@ namespace AquariumCiv.Sim.Eco
                     return DenOk(cell, settled); // #437: den spots only
             }
             return false;
+        }
+
+        /// <summary>Tester 2026-11-08: the rabbits never go down inside the placed thicket (the bushes hide the group and its arrival):
+        /// its ragged edge's widest reach plus <see cref="EcoTuning.rabbitThicketMargin"/> is off their ground.</summary>
+        public bool InThicketReach(int cell)
+        {
+            if (st.thicketA < 0 || st.thicketRadius <= 0f) return false;
+            float R = st.thicketRadius * (1f + t.thicketEdge * 0.5f) + t.rabbitThicketMargin;
+            return Terrain.Dist(SiteMap.CXc(cell), SiteMap.CZc(cell), SiteMap.CXc(st.thicketA), SiteMap.CZc(st.thicketA)) < R;
         }
 
         int WaterNeighbours(int c)

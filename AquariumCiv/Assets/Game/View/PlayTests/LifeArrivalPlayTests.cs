@@ -100,6 +100,22 @@ namespace AquariumCiv.View.PlayTests
                     Assert.GreaterOrEqual(s == LifeSpecies.Wolves ? Sim.DebugPlaceWolves() : Sim.DebugPlaceNearCamp(s), 0, $"{s}: placed");
                 }
                 yield return null;
+                if (s == LifeSpecies.Rabbits)
+                {
+                    // tester 2026-11-08: the pair drops at the chosen spot, and never inside the thicket's bushes
+                    int home = Sim.LifePlacedCell(LifeSpecies.Rabbits);
+                    var rv = RabbitView.Instance;
+                    yield return Until(() => rv.TryGetDropSpot(out _), 2f);
+                    Assert.IsTrue(rv.TryGetDropSpot(out var drop), "the pair drops");
+                    var c0 = new Vector2(AquariumCiv.Sim.Settle.SiteMap.CXc(home), AquariumCiv.Sim.Settle.SiteMap.CZc(home));
+                    Assert.Less((drop - c0).magnitude, 0.08f, $"the pair lands at the placed spot ({drop} vs {c0})");
+                    var e = Sim.State.eco;
+                    if (e.thicketA >= 0)
+                    {
+                        var t0 = new Vector2(AquariumCiv.Sim.Settle.SiteMap.CXc(e.thicketA), AquariumCiv.Sim.Settle.SiteMap.CZc(e.thicketA));
+                        Assert.Greater((drop - t0).magnitude, e.thicketRadius, "the pair lands outside the thicket");
+                    }
+                }
                 yield return AssertArrival(s, played0, "p9-arr-" + s.ToString().ToLowerInvariant() + (tapped ? "-tap" : "-dbg"));
                 yield return Until(() => !la.Playing(s), 20f);
                 yield return CameraSettled();

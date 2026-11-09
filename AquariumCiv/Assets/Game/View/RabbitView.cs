@@ -26,6 +26,8 @@ namespace AquariumCiv.View
         /// with a bounce and a grass puff, shake off, sit up and look round, then hop off into their day. (Was the first rabbit hopping
         /// in from the meadow's edge while a person pointed, #282; the people's reaction is LifeArrivalView's now.)</summary>
         public const float SignSeconds = 3.4f;
+        /// <summary>How far either rabbit of the dropping pair lands from the placed spot's centre (box units).</summary>
+        public const float DropApart = 0.035f;
         public const float DropSeconds = 0.5f, DropHeight = 0.4f, BounceSeconds = 0.25f, ShakeSeconds = 0.7f, LookSeconds = 1.2f;
         /// <summary>Kept for old callers: the arrival plays at any hour now (B12.0: the people's reaction waits for dawn, not the arrival).</summary>
         public const float SignFromHour = 0f, SignToHour = 24f;
@@ -75,6 +77,8 @@ namespace AquariumCiv.View
         /// <summary>Who pointed at the first rabbit (none before it), and whether they were really in the pointing activity.</summary>
         public PersonRef LastPointer => LifeArrivalView.Instance != null ? LifeArrivalView.Instance.LastPointer : PersonRef.None; // #424: the arrival view picks who points
         public int SignRabbitId => sign != null ? sign.id : -1;
+        /// <summary>Where the dropping pair's first rabbit lands (box-local x, z), while the drop plays (tests).</summary>
+        public bool TryGetDropSpot(out Vector2 at) { at = sign != null ? sign.from : default; return sign != null; }
         /// <summary>P9 #424: rabbits in the arrival's drop now (the pair), and how far it is (0..1).</summary>
         public int Dropping => sign != null ? sign.ids.Count : 0;
         public float DropProgress => sign != null ? Mathf.Clamp01(sign.t / SignSeconds) : 0f;
@@ -260,6 +264,18 @@ namespace AquariumCiv.View
                 sign.ids.Add(r);
                 sign.at[r] = Field.Sample(r, now);
             }
+            // tester 2026-11-08: the pair drops at the spot the Keeper chose (the ghost's cell, the warren), side by side, then hops
+            // to where the field has them
+            var sim = Sim;
+            int home = sim != null ? sim.EcoRabbitWarren : -1;
+            if (home >= 0)
+                for (int k = 0; k < sign.ids.Count; k++)
+                {
+                    var q = sign.at[sign.ids[k]];
+                    q.x = SiteMap.CXc(home) + (k == 0 ? -DropApart : DropApart);
+                    q.z = SiteMap.CZc(home) + (k == 0 ? 0f : DropApart * 0.6f);
+                    sign.at[sign.ids[k]] = q;
+                }
             var sp = sign.at[id];
             sign.from = new Vector2(sp.x, sp.z);
             SignsPlayed++;
