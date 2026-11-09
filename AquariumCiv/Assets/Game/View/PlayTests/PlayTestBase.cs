@@ -87,15 +87,17 @@ namespace AquariumCiv.View.PlayTests
                 soundWas = GameSettings.Sound;
                 opened = true;
             }
-            if (freshSave)
-                foreach (var ext in new[] { "", ".bak" })
-                    if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
             GameUiPanel.Toasts.ClearHolds(); // static: a prompt or peek an earlier test left up still holds the lane after its scene went
             if (seed != 0) GameClock.DebugNextSeed = seed;
             CampFrameView.Auto = false; // t1-camera: a test that stands still keeps the camera where it opened; its own tests turn it on
             SetSize(w, h);
             float waited = 0f;
             while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
+            // after the resize: a Game view resize can blur the window, and the last test's GameClock saves its box on that focus loss
+            // (OnApplicationFocus), which the new scene then loaded (tester fixes 2026-11-08: a 1640x2360 test left its ready jars behind)
+            if (freshSave)
+                foreach (var ext in new[] { "", ".bak" })
+                    if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Single));
 #endif

@@ -51,6 +51,10 @@ namespace AquariumCiv.View
         /// <summary>The land is dimmed now (a species in hand), and how strongly (user 2026-11-08).</summary>
         public bool Dimmed => dimGo != null && dimGo.activeSelf;
         /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
+        /// <summary>The hint while the ghost waits for its second tap.</summary>
+        public const string TapAgainHint = "Tap the outline again to set them down here.";
+        /// <summary>How long the tap-again hint may stay up while the ghost waits (it goes with the ghost before that).</summary>
+        public const float GhostHintSeconds = 30f;
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
         public int GhostCell { get; private set; } = -1;
         /// <summary>Taps on dark ground (the soft "no"), placings made by tap, and the last answer (tests, debug panel).</summary>
@@ -160,7 +164,9 @@ namespace AquariumCiv.View
             ShowGhost(s, cell);
             LifeArrivalView.Instance?.LeanOnGhost(s, ghostAt); // user 2026-11-08: the camera leans in so the group reads at phone size
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
-            if (!moved) { hud?.WithdrawToast(GameHud.LifeHint); hud?.Toast("Tap the outline again to set them down here.", 3f); }
+            // tester 2026-11-08: the hint stays while the ghost waits (a 3 s toast ran out during the camera's lean, so nobody saw it);
+            // it goes with the ghost (HideGhost)
+            hud?.WithdrawToast(GameHud.LifeHint); hud?.Toast(TapAgainHint, GhostHintSeconds);
         }
 
         void Place(SimCore sim, LifeSpecies s, int cell)
@@ -302,6 +308,7 @@ namespace AquariumCiv.View
             if (ghostGo != null && ghostGo.activeSelf) ghostGo.SetActive(false);
             if (fillGo != null && fillGo.activeSelf) fillGo.SetActive(false);
             if (edgeGo != null && edgeGo.activeSelf) edgeGo.SetActive(false);
+            if (GhostCell >= 0) hud?.WithdrawToast(TapAgainHint);
             GhostCell = -1;
         }
 

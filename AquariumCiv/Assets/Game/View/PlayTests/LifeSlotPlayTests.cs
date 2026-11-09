@@ -21,6 +21,11 @@ namespace AquariumCiv.View.PlayTests
     public class LifeSlotPlayTests : PlayTestBase
     {
         static SimCore Sim => GameClock.Instance.ActiveSim;
+        static bool Shown(VisualElement e)
+        {
+            for (; e != null; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return false;
+            return true;
+        }
 
         /// <summary>A living box with a meadow, after the first run, at 10 h, with nothing on screen.</summary>
         IEnumerator LivingMeadow(int w = 1179, int h = 2556)
@@ -118,9 +123,15 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(lpv.GhostShown, "the ghost: " + lpv.Last);
             Assert.AreEqual(cell, lpv.GhostCell);
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "a ghost places nothing");
+            // tester 2026-11-08: the "tap again" hint shows while the ghost waits
+            yield return Until(() => GameUiPanel.Toasts.Current == LifePlaceView.TapAgainHint, 3f);
+            Assert.AreEqual(LifePlaceView.TapAgainHint, GameUiPanel.Toasts.Current, $"the tap-again hint is up (held by: {GameUiPanel.Toasts.Holders})");
+            Assert.IsTrue(Shown(hud.Root.Q("hud-toast")), "and on screen");
             yield return new WaitForSecondsRealtime(0.6f);
             var bc = Camera.main.GetComponent<BoxCamera>();
             yield return Until(() => !bc.IsFlying, 8f); // the camera leans in on the ghost (user 2026-11-08): screen spots move
+            yield return new WaitForSecondsRealtime(3.5f); // past the old 3 s toast
+            Assert.AreEqual(LifePlaceView.TapAgainHint, GameUiPanel.Toasts.Current, "the hint stays while the ghost waits, after the lean");
             yield return Shot("p9-slot-5-ghost");
             // a dark tap with the ghost up: the ghost stays where it was
             dark = DarkSpot(LifeSpecies.Thicket, out darkCell);
@@ -140,6 +151,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(placed0 + 1, lpv.Placings);
             Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "the tool is put down");
             Assert.IsFalse(lpv.GhostShown, "the ghost goes");
+            Assert.AreNotEqual(LifePlaceView.TapAgainHint, GameUiPanel.Toasts.Current, "and its hint with it");
             yield return Frames(5);
             Assert.AreEqual(0, lpv.GlowCells, "and the glow");
             var bushes = new List<int>(); Sim.BushCells(bushes);
@@ -219,6 +231,37 @@ namespace AquariumCiv.View.PlayTests
             }
             yield return Shot("p9-slot-9-small-phone-row");
             AssertNoErrors("small phone");
+        }
+
+        /// <summary>Tester 2026-11-08: at 1640x2360 the chooser row ran 26 px into the kit's title and onto the Life slot. At every
+        /// phone and tablet size the row sits wholly under the title and over the slot. Shots: p9-slot-row-WxH.png.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator EverySize_ChooserRowClearsTitleAndSlot()
+        {
+            yield return LivingMeadow(1080, 1920);
+            var hud = GameHud.Instance;
+            Sim.DebugJarsReady();
+            yield return Frames(10);
+            foreach (var (w, h) in new[] { (1080, 1920), (1080, 2400), (1179, 2556), (1640, 2360) })
+            {
+                SetSize(w, h);
+                yield return Frames(15);
+                if (hud.OpenSheet != GameHud.Kit) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); yield return new WaitForSecondsRealtime(0.6f); }
+                Assert.AreEqual(GameHud.Kit, hud.OpenSheet, $"{w}x{h}: the kit is open");
+                if (!hud.LifeRowOpen) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life")); yield return new WaitForSecondsRealtime(0.6f); }
+                Assert.IsTrue(hud.LifeRowOpen, $"{w}x{h}: the row is open");
+                var row = hud.Root.Q("kit-life-row");
+                var slot = hud.Root.Q("kit-life").worldBound;
+                var title = hud.Root.Q("kit-scrim").Q(className: "kg-sheet-head").worldBound;
+                foreach (var c in row.Children())
+                {
+                    var r = c.worldBound;
+                    Assert.GreaterOrEqual(r.yMin, title.yMax - 0.5f, $"{w}x{h}: {c.name} clears the title ({r} vs {title})");
+                    Assert.LessOrEqual(r.yMax, slot.yMin + 0.5f, $"{w}x{h}: {c.name} clears the Life slot ({r} vs {slot})");
+                }
+                yield return Shot($"p9-slot-row-{w}x{h}");
+            }
+            AssertNoErrors("row at every size");
         }
     }
 }
