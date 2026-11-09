@@ -855,13 +855,30 @@ namespace AquariumCiv.Life
             return PlaceOf(p.jobBuilding);
         }
 
-        ActivityKind Chore(Person p, DayInfo d, int salt) => (H(p.key, d.day, salt + 600) % 4) switch
+        ActivityKind Chore(Person p, DayInfo d, int salt) => ChoreIndex(p, d, salt) switch
         {
             0 => ActivityKind.SweepStep,
             1 => ActivityKind.HangWashing,
             2 => ActivityKind.ChopKindling,
             _ => ActivityKind.SitOut,
         };
+
+        /// <summary>The chore index (0-3). #521: a small first camp deals them out by rank, so the grown-ups never do the same chore
+        /// at once (three chopping kindling at the one tent); everywhere else it stays the person's own hash.</summary>
+        uint ChoreIndex(Person p, DayInfo d, int salt)
+        {
+            uint mine = H(p.key, d.day, salt + 600);
+            if (!CampSpread || !p.Adult) return mine % 4;
+            int adults = 0, rank = 0;
+            foreach (var q in people)
+            {
+                if (!q.Adult) continue;
+                adults++;
+                uint h = H(q.key, d.day, salt + 600);
+                if (q != p && (h < mine || (h == mine && q.key < p.key))) rank++;
+            }
+            return adults > 8 ? mine % 4 : (uint)(rank + H(0, d.day, salt + 601) % 4) % 4;
+        }
 
         static readonly ActivityKind[] DawnChores = { ActivityKind.SweepStep, ActivityKind.HangWashing, ActivityKind.ChopKindling, ActivityKind.SitOut };
         readonly List<Person> dawnHouse = new();
