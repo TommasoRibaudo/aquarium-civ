@@ -20,7 +20,7 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - [x] #523 no weeds on the trodden ground merged
 - [x] #520 barren wind repeat merged (open for a listen)
 - [x] #518 seed ghost + two-finger guard merged (open: seed-in-jar question)
-- [ ] #524 wet at the glass merged (open for look)
+- [x] #524 wet at the glass merged (open for look)
 - [ ] #525 + #526 tree glow, tent poles merged (open for look)
 - [ ] #516 placing life: ghost, glow, button merged (open for look)
 - [ ] Batched Editor pass green (EditMode by assembly, PlayMode classes, smoke)
@@ -41,3 +41,4 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - #521 merged (835e6b4): cause = SpreadDiggers skipped before the camp gate + JobWork sent all to Stream. Now ≤2 diggers at 3 patches, cook at fire, others water/door chores, lunch in turns. CampSpreadTests (5). Verify Life.Tests + first-morning shot; dig patch offsets untested in Editor.
 - #523 merged (172596e): IsTroddenGround (fire ring 1.15 + SettledCell); MessProps FindSpot skips trodden, outward search fallback; PullTroddenVine each EcoStep. TroddenGroundTests (5).
 - #524 merged (4f0ea5b): EcoWetFace strip + AtEdge. Reviewed shots: effect doesn't read; sent back for one stronger iteration (30 min). Merge offline csc 0 errors (11 assemblies); dotnet on full merge running.
+- 17:18 #524 iteration merged (c1e02f0): own EcoWetFace material (cool dark), drop 0.40, full strength at the glass line. Reviewed 524_after_zoom_a: band reads. Open for look sign-off (check night).
