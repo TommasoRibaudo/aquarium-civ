@@ -52,7 +52,7 @@ namespace AquariumCiv.Sim
     /// <summary>The Keeper's actions the sim counts (<see cref="SimCore.KeeperActionsDone"/>). Shapings use their NudgeKind.</summary>
     public static class KeeperAction
     {
-        public const string Wipe = "wipe", Prune = "prune", Mist = "mist", Plant = "plant"; // Mist, Plant: the ecology (SimCore.Eco.cs)
+        public const string Wipe = "wipe", Prune = "prune", Mist = "mist", Plant = "plant", Place = "place"; // Mist, Plant: the ecology (SimCore.Eco.cs); Place: the life jar (#417)
 
         /// <summary>The Keeper Doll's prop for an action, or null if the doll has none for it (§1.3).</summary>
         public static string PropOf(string action) => action switch

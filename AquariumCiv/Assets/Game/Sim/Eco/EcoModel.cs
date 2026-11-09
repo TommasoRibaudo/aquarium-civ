@@ -27,7 +27,7 @@ namespace AquariumCiv.Sim.Eco
         public EcoModel(EcoState state, EcoLand land, EcoTuning tuning)
         {
             st = state; this.land = land; t = tuning;
-            if (st.on && st.cover != null) EnsureLayers();
+            if (st.on && st.cover != null) { EnsureLayers(); EnsureJars(); }
         }
 
         /// <summary>An old save has no wet, puddle or sprout layers: start them empty.</summary>
@@ -59,6 +59,7 @@ namespace AquariumCiv.Sim.Eco
             st.treeCell = -1; st.treeProgress = 0f; st.treeWeeds = 0f; st.treeStage = 0; st.keeperMistings = 0; st.treeWilting = false;
             st.campGateMonth = st.villageGateMonth = -1;
             st.milestoneKeys = new List<string>(); st.milestoneMonths = new List<long>();
+            st.jarOn = true; st.jars = new List<LifeJarEntry>(); st.thicketA = st.thicketB = -1; st.thicketRadius = 0f; // #417: every jar starts shut
             new EcoModel(st, land, t).Count();
         }
 
@@ -116,10 +117,12 @@ namespace AquariumCiv.Sim.Eco
             GrowTree(s, month);
             Birds(s);
             Animals(month);
+            PlacedSeason(s, month); // #420, #421: the deer, the ducks and the fish the Keeper placed
             Vines(s);
             st.season++;
             Count();
             Gates(month);
+            UpdateJars(month); // #417: the jars the land is ready for open
         }
 
         // ---------------------------------------------------------------- the Keeper's hands
@@ -463,7 +466,7 @@ namespace AquariumCiv.Sim.Eco
                 }
                 if (c == st.treeCell) continue;
                 bool basinEdge = land.InBasin(c) && water > 0 && land.height[c] < st.pondLevel + t.reedBand;
-                if (basinEdge && cv != EcoCover.Reeds && Chance(10, c) < t.reedRate * g) { next[c] = (byte)EcoCover.Reeds; continue; }
+                if (basinEdge && cv != EcoCover.Reeds && Chance(10, c) < t.reedRate * g * DuckReedBoost(c)) { next[c] = (byte)EcoCover.Reeds; continue; } // #421: first where the ducks were placed
                 switch (cv)
                 {
                     case EcoCover.Bare:
@@ -474,11 +477,7 @@ namespace AquariumCiv.Sim.Eco
                     case EcoCover.Grass:
                         if (land.yard[c]) break; // the camp keeps its yard short
                         if (m >= t.tallAt && soil[c] >= t.tallSoil && Chance(12, c) < t.tallRate * Terrain.Smooth(t.tallAt, 0.7f, m) * (1f - t.grazeTall * graze) * g) next[c] = (byte)EcoCover.Tall;
-                        else if (TryBush(c, m, bushes, graze, g, 1f)) next[c] = (byte)EcoCover.Bush;
-                        break;
-                    case EcoCover.Tall:
-                        if (TryBush(c, m, bushes, graze, g, 1.5f)) next[c] = (byte)EcoCover.Bush;
-                        break;
+                        break; // #418: no bush comes up by itself; the placed thicket fills (Thickets)
                     case EcoCover.Bush:
                         if (ThinBush(c)) next[c] = (byte)(m >= t.tallAt && !land.yard[c] ? EcoCover.Tall : EcoCover.Grass); // #385
                         break;
@@ -492,14 +491,6 @@ namespace AquariumCiv.Sim.Eco
             }
             Array.Copy(scratch, soil, EcoLand.N);
             Array.Copy(next, st.cover, EcoLand.N);
-        }
-
-        bool TryBush(int c, float m, int bushes, float graze, float g, float mult)
-        {
-            if (land.InBasin(c) || m < t.bushAt || st.soil[c] < t.bushSoil || NearFire(c)) return false;
-            float p = t.bushRate * mult * (1f + t.bushNeighbour * bushes / 8f) * (1f - t.grazeBush * graze) * g;
-            p *= (st.thicketA < 0 ? 1f : t.bushStray + t.thicketBoost * ThicketZone(c)) * BushRoom; // #385: in the thickets, and not past the cap
-            return Chance(13, c) < p;
         }
 
         // ---------------------------------------------------------------- the one tree
@@ -583,10 +574,8 @@ namespace AquariumCiv.Sim.Eco
         void Animals(long month)
         {
             float meadow = st.cGrass + st.cTall + 0.3f * st.cBush;
-            // #282: tracks come first, at half the meadow the first rabbit needs; the rabbit follows at least a season later.
-            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow * 0.5f) Reach(EcoMilestones.RabbitTracks, month);
-            long tracksAt = st.MonthOf(EcoMilestones.RabbitTracks);
-            if (st.rabbits <= 0f && MeadowFrac >= t.rabbitsAtMeadow && tracksAt >= 0 && month - tracksAt >= 3) { st.rabbits = 2f; Reach(EcoMilestones.FirstRabbit, month); }
+            // #419 (placed-life spec §5.2): rabbits never arrive by themselves; the Keeper places a pair (FoundRabbits) and the herd
+            // grows from there toward the meadow's capacity, as before.
             if (st.rabbits > 0f)
             {
                 float k = meadow / t.meadowPerRabbit;
@@ -622,16 +611,19 @@ namespace AquariumCiv.Sim.Eco
             if (st.cGrass + st.cTall + st.cBush > 0) Reach(EcoMilestones.FirstGreen, month);
             if (st.cBush > 0) Reach(EcoMilestones.FirstBush, month);
             if (st.birds >= t.firstBirdAt) Reach(EcoMilestones.FirstBird, month);
-            if (st.campGateMonth < 0 && MeadowFrac >= t.campMeadow && st.rabbits >= t.campRabbits)
+            // #419 (spec §3.1): the camp waits on the rabbits the Keeper placed
+            if (st.campGateMonth < 0 && MeadowFrac >= t.campMeadow && IsPlaced(LifeSpecies.Rabbits) && st.rabbits >= t.campRabbits)
             {
                 st.campGateMonth = (int)month; Reach(EcoMilestones.CampGate, month); newGates.Add("camp");
             }
-            if (st.campGateMonth >= 0 && BushFrac >= t.seedUnlockBush) Reach(EcoMilestones.SeedUnlocked, month);
+            if (st.campGateMonth >= 0 && IsPlaced(LifeSpecies.Thicket)) Reach(EcoMilestones.SeedUnlocked, month); // #418: after the thicket is placed (was: the first wild bushes)
             // #493: the milestone is the first WILD grown tree (the woodcutter's work); the Keeper's own tree never counts.
             bool keeperGrown = st.treeCell >= 0 && st.treeCell < EcoLand.N && Cv(st.treeCell) == EcoCover.Tree;
             if (st.cTrees - (keeperGrown ? 1 : 0) > 0) Reach(EcoMilestones.FirstWoodTree, month);
             if (st.cPond > 0) Reach(EcoMilestones.WaterSurfaced, month);
-            if (st.villageGateMonth < 0 && st.campGateMonth >= 0 && st.cPond >= t.pondGateCells && st.cTrees >= t.villageTrees)
+            // #421 (placed-life spec §3.1): the village also waits on the ducks and the fish the Keeper placed (deer and wolves are not needed)
+            if (st.villageGateMonth < 0 && st.campGateMonth >= 0 && st.cPond >= t.pondGateCells && st.cTrees >= t.villageTrees
+                && IsPlaced(LifeSpecies.Ducks) && IsPlaced(LifeSpecies.Fish))
             {
                 st.villageGateMonth = (int)month; Reach(EcoMilestones.VillageGate, month); newGates.Add("village");
             }
@@ -671,6 +663,7 @@ namespace AquariumCiv.Sim.Eco
                 for (int c = 0; c < EcoLand.N; c++) { Mix(st.cover[c]); Mix((ulong)BitConverter.SingleToInt32Bits(st.moisture[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.soil[c])); if (st.sprout != null) { Mix((ulong)BitConverter.SingleToInt32Bits(st.sprout[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.puddle[c])); } }
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.table)); Mix((ulong)BitConverter.SingleToInt32Bits(st.humidity));
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.rabbits)); Mix((ulong)BitConverter.SingleToInt32Bits(st.treeProgress));
+                Mix((ulong)(st.deerStags * 1000 + st.deerDoes)); Mix((ulong)(st.ducks * 1000 + st.fish)); // #420, #421
                 Mix((ulong)st.season); Mix((ulong)(long)st.campGateMonth); Mix((ulong)(long)st.villageGateMonth);
                 return h;
             }

@@ -51,10 +51,10 @@ namespace AquariumCiv.Sim
         /// <summary>A gatherer (or a child) picked at a bush on a view day: it has fewer berries for a while. Returns the share taken.</summary>
         public float PickBush(int cell, long day, float amount = EcoBushes.PickAmount) => EcologyOn ? EcoBushes.Pick(State.eco, cell, day, amount) : 0f;
 
-        /// <summary>#385: how much a site cell is in a berry thicket (0..1; 1 everywhere before the first thicket). 0 off the ecology.</summary>
+        /// <summary>#385, #418: how much a site cell is in the placed berry thicket (0..1; 0 everywhere before it is placed). 0 off the ecology.</summary>
         public float BushThicketZone(int cell) => EcologyOn ? EcoM.ThicketZone(cell) : 0f;
 
-        /// <summary>#385: how many bushes the land holds now (the cap the count settles at). 0 off the ecology.</summary>
+        /// <summary>#418: how many bushes the thicket holds (the cap the count settles at). 0 off the ecology.</summary>
         public int BushCap => EcologyOn ? EcoM.BushCap : 0;
 
         /// <summary>The bush nearest the camp's green, or -1: the first bush chosen when the land has none yet marked.</summary>
@@ -70,13 +70,15 @@ namespace AquariumCiv.Sim
         void FirstBushTell()
         {
             if (State.eco.firstBushCell < 0 || !EcoBushes.IsBush(State.eco, State.eco.firstBushCell)) State.eco.firstBushCell = NearestBushToCamp();
-            Chronicle("eco_bush", "A bush stood up out of the grass, low and dark, with small flowers on it. The people came to look at it.", 0.7f);
+            // #418: the bushes come with the Keeper's thicket, and its placing already has its history line (SimCore.LifeJar)
+            if (LifePlacedMonth(LifeSpecies.Thicket) != State.month)
+                Chronicle("eco_bush", "A bush stood up out of the grass, low and dark, with small flowers on it. The people came to look at it.", 0.7f);
             FirstBushSeen?.Invoke(State.eco.firstBushCell);
         }
 
         // ---------- debug hooks (the panel's "first bush now" and "+N bushes")
-        /// <summary>Debug: the first bush now. Turns the grass nearest the camp into a bush if none stands, reaches the milestone.
-        /// Returns the cell, or -1 (no ecology or no ground for it).</summary>
+        /// <summary>Debug: the first bush now. Places the thicket by the camp if none stands (#418: no bush grows outside it), reaches
+        /// the milestone. Returns the cell, or -1 (no ecology or no ground for it).</summary>
         public int DebugFirstBushNow()
         {
             if (!EcologyOn) return -1;
@@ -85,11 +87,12 @@ namespace AquariumCiv.Sim
             return FirstBushCell;
         }
 
-        /// <summary>Debug: +N bushes on the grass nearest the camp, or in the thickets once they stand (#385; never on water, trees,
-        /// the pond, the yard, a lot or a path). Returns how many came up. The first one also reaches the first-bush milestone.</summary>
+        /// <summary>Debug: +N bushes in the thicket's heart (#418: the thicket is placed by the camp first if it isn't; never on water,
+        /// trees, the pond, the yard, a lot or a path). Returns how many came up (the thicket's founders not counted).</summary>
         public int DebugAddBushes(int n)
         {
             if (!EcologyOn || n <= 0) return 0;
+            if (!LifeIsPlaced(LifeSpecies.Thicket) && DebugPlaceNearCamp(LifeSpecies.Thicket) < 0) return 0;
             var e = State.eco;
             var g = EcoGround;
             var map = Config.settle ? Settlement.Map : null;
@@ -101,9 +104,9 @@ namespace AquariumCiv.Sim
                 if (g.noBuild[c] || g.yard[c] || EcoM.NearFire(c)) continue; // #385: none round the fire
                 if (map != null && (map.lot[c] != 0 || map.tier[c] >= PathNet.Trail || map.Green(c))) continue;
                 float dx = SiteMap.CXc(c) - g.campX, dz = SiteMap.CZc(c) - g.campZ;
-                float zone = e.thicketA >= 0 ? EcoM.ThicketZone(c) : 1f;
+                float zone = EcoM.ThicketZone(c);
                 if (zone <= 0f) continue;
-                order.Add((dx * dx + dz * dz - 100f * zone, c)); // the thickets' hearts first, then nearest the camp
+                order.Add((dx * dx + dz * dz - 100f * zone, c)); // the thicket's heart first, then nearest the camp
             }
             order.Sort((a, b) => a.k != b.k ? a.k.CompareTo(b.k) : a.c.CompareTo(b.c));
             int made = 0;

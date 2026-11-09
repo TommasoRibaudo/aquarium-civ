@@ -109,6 +109,7 @@ namespace AquariumCiv.Sim
         string SmallWhyNot(DilemmaDef def, out int a, out int b)
         {
             a = b = -1;
+            if (LifeChoices.Is(def)) return LifeWhyNot(def); // #437/#438
             if (def.smallKind == SmallChoices.Naming)
             {
                 var c = NamingNewborn();
@@ -164,6 +165,9 @@ namespace AquariumCiv.Sim
             // t4-fixes: a newborn waiting for a name goes first (the baby grows out of it); the everyday kinds fill the other slots.
             int naming = list.FindIndex(x => x.def.smallKind == SmallChoices.Naming);
             if (naming >= 0) return new List<(DilemmaDef def, int a, int b)> { list[naming] };
+            // #437/#438: a wolves' or dogs' moment that waits comes next (the first in the catalog's order: thief, pup, kill, pen)
+            var life = EligibleLife();
+            if (life.Count > 0) return new List<(DilemmaDef def, int a, int b)> { life[0] };
             return list;
         }
 
@@ -174,6 +178,7 @@ namespace AquariumCiv.Sim
         /// from every living person's name and from the baby's own.</summary>
         void PrepareSmall(Dilemma d, DilemmaDef def)
         {
+            if (LifeChoices.Is(def)) { PrepareLife(d, def); return; } // #437/#438
             if (def.smallKind != SmallChoices.Naming) return;
             var c = NamingNewborn();
             if (c == null) return;
@@ -202,6 +207,7 @@ namespace AquariumCiv.Sim
         /// decide), never when the people took it after a lapse.</summary>
         void ApplySmall(Dilemma d, DilemmaDef def, int option)
         {
+            if (LifeChoices.Is(def)) { ApplyLife(d, def, option); return; } // #437/#438
             if (def.smallKind != SmallChoices.Naming) return;
             var c = FindNotable(d.subjectId);
             if (c == null || !c.alive) return;
@@ -225,6 +231,8 @@ namespace AquariumCiv.Sim
         /// has died cannot be taken.</summary>
         int SmallDefaultOption(Dilemma d)
         {
+            var def = DilemmaDefOf(d);
+            if (LifeChoices.Is(def)) return LifeDefaultOption(d, def); // #437/#438: the chief's trait
             bool a = Alive(d.personA) != null, b = Alive(d.personB) != null;
             if (a != b) return a ? 0 : 1;
             return (int)(DilemmaRoll(31, d.id, d.month) * 2f) % 2;

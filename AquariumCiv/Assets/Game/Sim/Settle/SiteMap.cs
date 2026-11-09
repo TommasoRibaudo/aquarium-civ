@@ -33,6 +33,10 @@ namespace AquariumCiv.Sim.Settle
         public float[] thicket;
         /// <summary>The placers' cost of a cell's cover: a tree 1, a thicket's heart 0.5.</summary>
         public float Overgrown(int c) => Forest(c) ? 1f : thicket != null ? 0.5f * thicket[c] : 0f;
+        /// <summary>#418: the placed thicket's area (placed-life spec §5.1), set by <see cref="Settlement.SyncEco"/>: treated like water by
+        /// every planner (no tent, hut, field, pen, yard, commons or path; the people may still walk in to pick). Null when there is none.</summary>
+        public bool[] reserved;
+        public bool Reserved(int c) => reserved != null && reserved[c];
 
         public byte[] flags => st.flags;
         public byte[] tier => st.tier;
@@ -94,7 +98,7 @@ namespace AquariumCiv.Sim.Settle
         public bool Rock(int c) => (st.flags[c] & FRock) != 0;
         public bool Water(int c) => pond[c] || (st.flags[c] & FCanal) != 0;
         /// <summary>No lot here: below the ecology's flood line (always false with the ecology off).</summary>
-        public bool NoBuild(int c) => noBuild != null && noBuild[c];
+        public bool NoBuild(int c) => (noBuild != null && noBuild[c]) || Reserved(c); // #418: the thicket is reserved ground too
 
         public static int Index(int i, int j) => j * NX + i;
         public static int I(int c) => c % NX;

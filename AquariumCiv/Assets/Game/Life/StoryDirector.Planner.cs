@@ -114,6 +114,93 @@ namespace AquariumCiv.Life
             return true;
         }
 
+        /// <summary>
+        /// P9 #424 (B12.w, placed-life §2.4): a ready jar's waiting hint. The people in <paramref name="members"/> (grown-ups first, as
+        /// <see cref="StoryRules.HintCast"/> casts them) walk to the empty spot by <paramref name="cell"/> and show what is missing there:
+        /// a gatherer with an empty basket looks round the meadow, a hunter crouches with his spear and studies the grass, a child sits at
+        /// the empty pond; the later stages add a second grown-up who points, and a kid's pretend (tasting the grass, playing "rabbit",
+        /// sticks held up as antlers). Only idle people (<see cref="StoryRules.FreeFor"/>); someone busy is left out. False when nobody
+        /// could go. <paramref name="seconds"/> is the longest of their errands, walks included.
+        /// </summary>
+        public bool StartStoryHint(int species, int stage, IReadOnlyList<int> members, int cell, ViewTime at, out float seconds, out string why, bool force = false)
+        {
+            seconds = 0f; why = "";
+            Sync();
+            EnsureDay(at.day);
+            PruneLive(at);
+            if (cell < 0) { why = "no spot"; return false; }
+            var st = new Staging { glass = GlassPlace, spot = Place.Land(PlaceKind.Arrival, cell * 8 + 1), start = at.hour, end = at.hour };
+            int slot = 1, adultsSeen = 0, kidsSeen = 0;
+            StoryRules.HintCast(species, stage, out int wantAdults, out int wantKids); // the cast may hold spares: take the first free ones
+            foreach (int key in members)
+            {
+                if (!byKey.TryGetValue(key, out var p)) { why = "not in the box"; continue; }
+                if (!Free(p, at) || InLifeStory(p.who, at)) { why = "busy: " + FreeWhy(p, at); continue; }
+                var now = PlanPerson(p, at);
+                if (!force && !StoryRules.FreeFor(now, p.stage)) { why = "not idle: " + now.kind; continue; } // the cheat ("Hint now") borrows a worker for its 14 s
+                bool kid = p.stage == LifeStage.Kid;
+                if (kid ? kidsSeen >= wantKids : adultsSeen >= wantAdults) continue;
+                if (kid) kidsSeen++;
+                int role = kid ? 2 : adultsSeen++ == 0 ? 0 : 1; // 0: the one who looks, 1: the one who points, 2: a kid's pretend
+                var spot = Place.Land(PlaceKind.Arrival, cell * 8 + Math.Min(7, slot++));
+                var from = StopPlace(p, at.hour);
+                var list = new List<Seg>(3);
+                float t = 0f;
+                void Add(ActivityKind k, Prop prop, float secs, bool carries, bool still = false)
+                {
+                    float h0 = HourOf(at, LifeClock.Advance(at, t));
+                    t += secs;
+                    float h1 = HourOf(at, LifeClock.Advance(at, t));
+                    if (h1 <= h0 + 1e-5f) return;
+                    var s = Mk(k, h0, h1, spot, prop, ActivitySource.Scene);
+                    s.carries = carries;
+                    s.still = still;
+                    list.Add(s);
+                }
+                float walk = WalkSecs(WalkLen(from, spot)) + StoryWalkPad;
+                HintBeats(species, role, out var k1, out var p1, out float s1, out var k2, out float s2);
+                Add(k1, p1, walk + s1, p1 != Prop.None);
+                if (k2 != ActivityKind.None) Add(k2, p1, s2, false, still: true);
+                if (list.Count == 0) { why = "no beats"; continue; }
+                if (t > StoryMaxErrandSeconds * 1.5f) { why = $"too far ({t:0} s)"; continue; }
+                st.segs[p.key] = list;
+                st.roles[p.key] = role == 0 ? RelicCast.Owner : role == 1 ? RelicCast.Second : RelicCast.Kids;
+                st.order.Add(p.key);
+                st.end = Math.Max(st.end, list[list.Count - 1].end);
+                seconds = Math.Max(seconds, t);
+            }
+            if (st.order.Count == 0) { if (why == "") why = "nobody free"; return false; }
+            if (st.end >= 24f || LifeClock.Advance(at, seconds).day != at.day) { why = "the day ends first"; return false; }
+            AddLive(SceneKind.LifeStory, at, st.end, st, st.order[0]);
+            return true;
+        }
+
+        /// <summary>B12.w: what each hint actor does at the spot (the arrival beat while walking there and a while after, then a second beat).</summary>
+        static void HintBeats(int species, int role, out ActivityKind k1, out Prop prop, out float s1, out ActivityKind k2, out float s2)
+        {
+            k2 = ActivityKind.None; s2 = 0f; s1 = 4f; prop = Prop.None;
+            if (role == 2)
+            {
+                // the kids' pretend: tasting the grass (no berries), playing "rabbit", sticks up as antlers, a pebble in the empty water
+                switch (species)
+                {
+                    case 0: k1 = ActivityKind.Taste; s1 = 5f; return;
+                    case 1: k1 = ActivityKind.Play; s1 = 7f; return;
+                    case 2: k1 = ActivityKind.HoldUp; prop = Prop.Stick; s1 = 4f; return;
+                    default: k1 = ActivityKind.Watch; s1 = 6f; return;
+                }
+            }
+            if (role == 1) { k1 = ActivityKind.Point; s1 = 3f; k2 = ActivityKind.Search; s2 = 2.5f; return; }
+            switch (species)
+            {
+                case 0: k1 = ActivityKind.Search; prop = Prop.Basket; s1 = 5f; return;                                   // the empty basket
+                case 1: k1 = ActivityKind.Stalk; prop = Prop.Spear; s1 = 4f; k2 = ActivityKind.Search; s2 = 2f; return;  // crouch, study, stand
+                case 2: k1 = ActivityKind.Watch; prop = Prop.Spear; s1 = 4f; k2 = ActivityKind.Search; s2 = 2f; return;  // looking into the wood
+                case 3: k1 = ActivityKind.Inspect; s1 = 4f; return;                                                      // kneels at the bank
+                default: k1 = ActivityKind.Watch; prop = Prop.Spear; s1 = 5f; k2 = ActivityKind.Search; s2 = 2f; return; // the fisher with nothing to spear
+            }
+        }
+
         /// <summary>End every errand the director started (the cheat turned it off, the box changed): they walk back into their day.</summary>
         public int EndLifeStories()
         {

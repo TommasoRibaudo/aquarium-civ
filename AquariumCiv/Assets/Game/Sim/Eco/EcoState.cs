@@ -65,6 +65,75 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>#385: where the berry thickets stand (site cells; -1 = not yet). The first is set by the first bushes, the second
         /// by a stray far from the first once the first has filled in. Bushes spread inside them and thin out elsewhere.</summary>
         public int thicketA = -1, thicketB = -1;
+        /// <summary>#418: the placed thicket's radius (box units) round <see cref="thicketA"/>; 0 = no placed thicket. thicketB is no longer
+        /// set (one thicket per box, placed-life spec §5.1): it stays in the save so an old one loads.</summary>
+        public float thicketRadius;
+
+        /// <summary>#417 the life jar (placed-life spec §2, §9): one entry per <see cref="LifeSpecies"/>, keyed by name so adding a
+        /// species never breaks a save. <see cref="jarOn"/> is false in a save from before the jar: the model migrates it once
+        /// (EcoModel.EnsureJars: rabbits that arrived and wild bushes count as placed).</summary>
+        public bool jarOn;
+        public List<LifeJarEntry> jars = new List<LifeJarEntry>();
+
+        /// <summary>#420 the deer (placed-life spec §4.1, §5.3): stags and does in the herd (fawns counted in as they come), the herd's
+        /// home (the placed cell; -1 none), deer the hunt took, the fawns of the last spring (the view's), the first stag's antlers over
+        /// the chief's tent (game month, -1 none), the white stag (a <see cref="WhiteStag"/>) and the month it was seen. An old save has
+        /// none of this: no deer.</summary>
+        public int deerStags, deerDoes, deerHome = -1, deerTaken, deerFawns;
+        public long antlersMonth = -1, whiteStagMonth = -1;
+        public int whiteStag;
+        /// <summary>#420: the people's deer hunts already settled on view day <see cref="deerHuntDay"/> (as huntDay / huntDone).</summary>
+        public long deerHuntDay = -1;
+        public int deerHuntDone;
+        /// <summary>#421 the ducks (spec §5.4): the wild flock (pen ducks are #431 and are counted apart), its home (the placed edge cell),
+        /// eggs in the nests now (laid in spring, hatched at the end of summer), the ducklings of the last hatch, eggs the people took,
+        /// and the month the feathers first fletched the hunters' arrows (-1 not yet).</summary>
+        public int ducks, duckHome = -1, duckEggs, ducklings, eggsTaken;
+        /// <summary>#422: eggs taken this spring (a spring whose nests the people emptied is the ducks' lean season) and wild ducks a
+        /// taker other than the people took (the wolves, #437).</summary>
+        public int eggsTakenSpring, ducksTaken;
+        public long fletchedMonth = -1;
+        /// <summary>#421 the fish (spec §5.5): the stock, its home (the placed deep cell) and the fish caught.</summary>
+        public int fish, fishHome = -1, fishCaught;
+
+        /// <summary>#437 the wolves (spec §4.1, §5.6): the jar's clock (the first season-end the herd held 5 deer in a row; -1 not now),
+        /// the pack (the pair is the floor; <see cref="wolfPups"/> born this spring, <see cref="wolfYearlings"/> last spring's, who
+        /// leave at the box's edge in autumn), the den cell, the month of the first pups, the young that ever left and the last time
+        /// some did (the view's fade at the edge), boldness (0..1, starts 0.2), chases and kills.</summary>
+        public long deerFiveSince = -1;
+        public int wolves, wolfPups, wolfYearlings, wolfDen = -1, wolvesLeft, wolvesLeftLast;
+        public long wolfFirstPupsMonth = -1, wolvesLeftMonth = -1;
+        public float wolfBold = 0.2f;
+        public int wolfChases, wolfKills;
+        public long wolfChaseMonth = -1;
+        public bool wolfChaseCaught;
+        /// <summary>#437: the latest kills (at most <see cref="EcoModel.WolfKillsKept"/>), oldest first: the ravens' spots.</summary>
+        public List<WolfKill> wolfKillLog = new List<WolfKill>();
+        /// <summary>#437 the meat thief (spec §5.6, choice 6.1): thefts so far, the month of the last one, whether the view has played
+        /// it, the people's answer (a <see cref="WolfWay"/>) and when; no eyes at the firelight until <see cref="wolfQuietUntil"/>.</summary>
+        public int thefts, wolfWay;
+        public long theftMonth = -1, wolfWayMonth = -1, wolfQuietUntil = -1;
+        public bool theftSeen = true, theftHide;
+        /// <summary>#424 / B12.f: the first howl after the wolves were placed has played (it comes at the first dusk; kept in the save so a
+        /// box closed before dusk still hears it next time, and never twice).</summary>
+        public bool firstHowlHeard;
+        /// <summary>#437 the white wolf (choice 6.5, a pure moment): the month it howled on the ridge (-1 never; once per box).</summary>
+        public long whiteWolfMonth = -1;
+        /// <summary>#437 / #431 / #446 the duck pen (spec §7): built (#431 sets it; the debug pen too), pen ducks (#431's; apart from the
+        /// wild flock), the night the pack circled it (-1 not yet; once), and how it is guarded (a <see cref="PenGuard"/>).</summary>
+        public bool duckPen;
+        public int penDucks, penGuard;
+        public long penCircledMonth = -1;
+
+        /// <summary>#438 the dogs (spec §5.7): the lost pup (the spring it was found and by which child; -1 none waiting; the next spring it
+        /// can be found again after "leave it"; how many times it was asked), every dog that ever lived (gone ones keep their
+        /// record), the next litter, the first guard bark, and the first dog's record for the book.</summary>
+        public long pupFoundMonth = -1, pupNotBefore = -1, nextLitterMonth = -1, dogGuardMonth = -1;
+        public int pupFinder = -1, pupAsked, dogNextId = 1;
+        public List<Dog> dogs = new List<Dog>();
+        public int firstDogId = -1, firstDogKeeperId = -1;
+        public string firstDogKeeperName = "", firstDogName = "";
+        public long firstDogMonth = -1;
         public List<int> bushPickCell = new List<int>();
         public List<long> bushPickDay = new List<long>();
         public List<float> bushPickLeft = new List<float>();
@@ -84,6 +153,46 @@ namespace AquariumCiv.Sim.Eco
         }
 
         public bool Reached(string key) => milestoneKeys.Contains(key);
+    }
+
+    /// <summary>#437: what became of a wolf kill: the ravens circle it (Open), the wolves ate it, or the people took the meat (choice 6.3).</summary>
+    public enum KillEaten { Open = -1, Wolves = 0, People = 1 }
+
+    /// <summary>#437: one wolf kill, as the view reads it (the ravens over it, B20, B23.b): where, when, what (a <see cref="LifeSpecies"/>;
+    /// a fawn or an old doe for the deer; a pen duck), who ate it (a <see cref="KillEaten"/>), and whether choice 6.3 was raised on it. Saved.</summary>
+    [Serializable]
+    public class WolfKill
+    {
+        public int cell = -1, prey;
+        public long month;
+        public bool fawn, pen;
+        public int eatenBy = (int)KillEaten.Open;
+        public bool asked;
+
+        public LifeSpecies Prey => (LifeSpecies)prey;
+        public KillEaten EatenBy => (KillEaten)eatenBy;
+    }
+
+    /// <summary>#437 choice 6.1's answer: not asked yet, chase them off (thorns round the rack, a torch), or leave them the scraps.</summary>
+    public enum WolfWay { None = 0, Chase = 1, Scraps = 2 }
+
+    /// <summary>#446 the duck pen's guard after the wolves circled it (spec §7): none yet, a thorn fence, or the dogs keep watch.</summary>
+    public enum PenGuard { None = 0, Fence = 1, Dogs = 2 }
+
+    /// <summary>#438 one dog (spec §5.7, P0): its line (generation 0 is the adopted wolf pup), its keeper (the child it is bonded to;
+    /// -1 none), its look (P0's drift: ear droop, coat patch and tail curl 0..1, muzzle length 1 = a wolf's), when it was born and how long
+    /// it lives, and when it was gone (-1 alive). Saved.</summary>
+    [Serializable]
+    public class Dog
+    {
+        public int id, gen, keeperId = -1, parentId = -1, lifeMonths = 132;
+        public string name = "";
+        public long bornMonth, goneMonth = -1;
+        public float earDroop, patch, tailCurl, muzzle = 1f;
+        /// <summary>The grey round the muzzle has been told (a history line once).</summary>
+        public bool greyTold;
+
+        public bool Alive => goneMonth < 0;
     }
 
     /// <summary>The milestone keys of <see cref="SimCore.EcoMilestone"/>: one beat each of the land's arc.</summary>

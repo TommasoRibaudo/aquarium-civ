@@ -90,13 +90,55 @@ namespace AquariumCiv.Sim.Eco
         public int weedNeighbours = 3;
         public int learnWater = 3, learnRing = 6;                 // Keeper mistings before the people water it / ring it
         public float peopleWater = 0.18f, ringSlowsWeeds = 0.5f;
-        public float seedUnlockBush = 0.003f;                     // the seed comes after the first bushes
+        public float seedUnlockBush = 0.003f;                     // unused since #418: the seed comes after the thicket is placed
 
         // #314: the creeping vine (slower than the weeds: a strand grows a cell a season, a new one starts now and then)
         public int vineCap = 30;
         public float vineSeedChance = 0.3f, vineGrowChance = 0.5f, vineDamp = 0.4f;
         // #311: a wild sapling inside a wood (this many grown trees round it) is the forest's own heart, not its edge
         public int heartTrees = 3;
+
+        // #420 the deer (spec §4.1, §5.3): cap 1 per deerTreesPer grown trees, between deerMin and deerMax; one fawn per doe in spring
+        // under the cap. The white stag shows once per box, at most once a season with this chance, when the herd holds whiteStagHerd
+        // for whiteStagAfter months after the placing.
+        public int deerTreesPer = 3, deerMin = 3, deerMax = 8, whiteStagHerd = 5, whiteStagAfter = 24;
+        public float whiteStagChance = 0.2f, deerRange = 0.6f;
+        // #421 the ducks (spec §5.4): a wild cap; a clutch per pair in spring (duckClutchMin..Max eggs), duckGrowShare of them grow up.
+        // Reeds come duckReedBoost times as fast within duckReedNear of where the ducks were placed (the reeds grow first there).
+        public int duckCap = 8, duckClutchMin = 3, duckClutchMax = 5;
+        public float duckGrowShare = 0.5f, duckReedBoost = 3f, duckReedNear = 0.6f;
+        // #421 the fish (spec §5.5): a school of fishSchool; cap 1 per fishPondPer pond cells; it grows toward the cap within a year.
+        public int fishSchool = 6, fishPondPer = 3, fishMin = 3;
+        public float fishGrow = 0.35f;
+
+        // #437 the wolves (spec §3, §4.1, §5.6; research 19 §3-§5). The jar: the herd at wolvesDeer or more for wolvesDeerMonths, a wood of
+        // wolvesTrees grown trees, and a den spot (a grown tree in the wood: denTrees grown trees round it, the wood between it and the
+        // fire) at least denFromFire from the fire. The pack: 2..wolfCap, pups wolfPupsMin..Max in spring. A chase a month with
+        // wolfChase (x wolfWinter in winter), one in 1/wolfCatch ends in a kill; kills stay at least wolfKillFromFire from the fire.
+        // The white wolf: once, in a winter after the first pups, with whiteWolfChance a winter.
+        public int wolvesDeer = 5, wolvesDeerMonths = 12, wolvesTrees = 20, denTrees = 3, wolfCap = 6, wolfPupsMin = 2, wolfPupsMax = 4;
+        public float denFromFire = 1.5f, wolfChase = 0.35f, wolfWinter = 1.8f, wolfCatch = 0.25f, wolfKillFromFire = 1.2f, whiteWolfChance = 0.35f;
+        // Boldness (0..1): its start, and what moves it. Scraps and a kill left raise it; a chase or a kill taken lower it; the first guard
+        // bark lowers it; each month scraps wear it up and a grown dog on guard wears it down.
+        public float boldStart = 0.2f, boldScraps = 0.15f, boldChase = 0.15f, boldKillLeft = 0.08f, boldKillTaken = 0.1f, boldGuard = 0.1f,
+            boldScrapsMonth = 0.01f, boldDogMonth = 0.01f;
+        // The deer's human shield (research 19 §1): with the pack about, the herd's home moves up to this share of the way to the fire.
+        public float deerShieldPull = 0.35f;
+        // The meat thief: a chance a season (wolfThiefBase + wolfThiefBold x boldness); never while food would drop below
+        // wolfThiefFood x population. It takes one strip (food) or, now and then, a hide.
+        public float wolfThiefBase = 0.3f, wolfThiefBold = 0.5f, wolfThiefFood = 1.5f, wolfThiefStrip = 1f;
+
+        // #417 the life jar (placed-life spec §3, §4.3; all [est] until #434). Each jar opens on its land condition once the rung below is placed.
+        public float jarThicketMeadow = 0.10f, jarRabbitsMeadow = 0.15f; // meadow share for the thicket's jar, the rabbits'
+        public int jarDeerTrees = 5, jarDucksPond = 12;                   // grown trees (the Keeper's counts) for the deer; pond cells for the ducks
+        public int jarFishReeds = 6, jarFishAfterDucks = 6;               // reed cells, and months since the ducks were placed, for the fish
+        public int jarRestockMonths = 24;                                 // at its floor this long: the jar opens again for one more group
+        public float deerNearTree = 0.3f;                                 // the deer's valid ground: within this of a grown tree
+        // #418 the one placed thicket (spec §5.1): a disc round the placed spot, 3 founders, a bush a season until it holds thicketBushes.
+        // It replaces #385's self-founding thickets and strays (thicketBoost, bushStray, thicketBAfter, bushPerMeadow, bushCap: unused now).
+        public float thicketRadius = 0.45f;
+        public float rabbitThicketMargin = 0.12f; // tester 2026-11-08: the rabbits' ground stays this far outside the thicket's widest edge
+        public int thicketBushes = 22, thicketFounders = 3;
 
         // Gates
         public float campMeadow = 0.20f;

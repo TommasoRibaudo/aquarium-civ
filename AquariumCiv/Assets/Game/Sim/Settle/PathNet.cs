@@ -48,6 +48,8 @@ namespace AquariumCiv.Sim.Settle
         public PathNet(SiteMap map) { m = map; }
 
         public bool Passable(int c) => m.lot[c] == 0 && !m.pond[c];
+        /// <summary>#418: stepping into the reserved thicket costs this much more, so no route runs through it.</summary>
+        public const float ReservedCost = 4f;
 
         /// <summary>Cost to step into cell c (×10, orthogonal). The planner walks with the same cost.</summary>
         public int StepCost(int c)
@@ -55,6 +57,7 @@ namespace AquariumCiv.Sim.Settle
             float k = 1f + SlopeCost * m.slope[c];
             if (m.Canal(c) && !m.Laid(c)) k *= 5f;       // fording a canal; laid crossings are bridges
             if (m.Green(c)) k *= 0.6f;
+            if (m.Reserved(c)) k *= ReservedCost;        // #418: walkers go round the thicket (they still walk in to pick)
             float wn = Math.Min(1f, m.wear[c] / TPath);
             k *= 1f - WornDiscount * wn;
             if (m.tier[c] >= PathTier) k *= NetworkDiscount; // walked paths draw walkers; a laid but unwalked trail doesn't
@@ -258,7 +261,7 @@ namespace AquariumCiv.Sim.Settle
                     if (w >= keep * 0.6f && (cur != Road || roadsAllowed)) t = cur;
                 }
                 if (m.Laid(c) && t < Trail) t = Trail;
-                if (m.lot[c] != 0 || m.pond[c]) t = 0;
+                if (m.lot[c] != 0 || m.pond[c] || m.Reserved(c)) t = 0; // #418: no path ever forms in the thicket
                 m.tier[c] = t;
                 if (t == 0) pm[c] = 0;
                 else if (pm[c] == 0) pm[c] = (int)month + 1;

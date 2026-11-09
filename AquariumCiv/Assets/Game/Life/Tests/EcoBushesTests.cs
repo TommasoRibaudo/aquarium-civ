@@ -144,10 +144,10 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(first, cell);
             Assert.AreEqual(first, sim.FirstBushCell);
             Assert.IsTrue(sim.FirstBushSignActive);
-            Assert.AreEqual(1, sim.State.chronicle.Count(e => e.kind == "eco_bush"), "one chronicle line");
+            Assert.AreEqual(1, sim.State.chronicle.Count(e => e.kind == "eco_bush" || e.kind == "life_thicket"), "one chronicle line (#418: the thicket's placing tells it)");
             sim.DebugFirstBushNow(); sim.DebugAddBushes(5);
             Assert.AreEqual(1, seen, "once");
-            Assert.AreEqual(1, sim.State.chronicle.Count(e => e.kind == "eco_bush"));
+            Assert.AreEqual(1, sim.State.chronicle.Count(e => e.kind == "eco_bush" || e.kind == "life_thicket"));
         }
 
         [Test]

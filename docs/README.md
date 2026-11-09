@@ -36,6 +36,7 @@ aquarium — you have to look after it (clean up, keep it healthy) or it degrade
 | [design/game-definition.md](design/game-definition.md) | Pillars, loops, care mechanic, progression, concept variants (draft) |
 | [design/prototype-plan.md](design/prototype-plan.md) | Prototype hypotheses, A/B pairs, metrics, test protocol, order (draft) |
 | [design/keepers-hands.md](design/keepers-hands.md) | The Keeper's hands: a box that starts barren, misting/planting/snipping/digging, care rebuilt on the land, the kit button (draft) |
+| [design/placed-life.md](design/placed-life.md) | Placed life (P9): the jar, readiness and the ladder, populations and floors, the thicket, deer, ducks, fish, wolves and dogs, the life slot (draft, #416) |
 | [design/visit-loop.md](design/visit-loop.md) | The visit loop: moments that wait to be seen, one owned choice per visit, animations that show what's happening (draft) |
 | [design/animation-specs.md](design/animation-specs.md) | Beat sheets for every Visit loop animation (B1-B11, staged moments) and the shared beat vocabulary (draft, #356) |
 | [design/one-handed-controls.md](design/one-handed-controls.md) | One-handed play: Clean button so one finger always moves (built) |

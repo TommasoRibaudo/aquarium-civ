@@ -23,12 +23,14 @@ namespace AquariumCiv.Tests
 
         static void MistSpot(SimCore sim, int k) { var s = Spots[k % Spots.Length]; sim.DebugMistBig(sim.EcoGround.campX + s.dx, sim.EcoGround.campZ + s.dz); }
 
-        /// <summary>Mists one more spot every other month until a rabbit stands in the box.</summary>
+        /// <summary>Mists one more spot every other month, placing every jar that opens (#419: the thicket, then the rabbits), until a
+        /// rabbit stands in the box.</summary>
         static void GrowUntilRabbit(SimCore sim, int maxMonths = 120)
         {
             for (int m = 0; m < maxMonths && !sim.RabbitsSeen; m++)
             {
                 if (m % 2 == 0 && m < 80) MistSpot(sim, m / 2);
+                EcoTests.PlaceReadyJars(sim);
                 sim.Advance(1.0 / 12);
             }
         }
@@ -43,17 +45,23 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void TracksComeAtLeastASeasonBeforeTheFirstRabbit()
+        public void TracksAndTheFirstRabbit_ComeWithThePlacing_NotBefore()
         {
+            // #419 (placed-life spec §3, D3): the tracks show only after the Keeper places the rabbits
             var sim = World();
+            for (int m = 0; m < 60; m++) { if (m % 2 == 0) MistSpot(sim, m / 2); sim.Advance(1.0 / 12); } // a green box, nothing placed
+            Assert.Greater(sim.EcoMeadowShare, 0.15f, "meadow enough for rabbits");
+            Assert.IsFalse(sim.EcoRabbitTracksSeen, "no tracks without rabbits");
+            Assert.AreEqual(0, sim.EcoRabbitCount);
             GrowUntilRabbit(sim);
             long tracks = sim.EcoMilestoneMonth(EcoMilestones.RabbitTracks), rabbit = sim.EcoMilestoneMonth(EcoMilestones.FirstRabbit);
-            Assert.GreaterOrEqual(tracks, 0, "tracks were seen");
-            Assert.GreaterOrEqual(rabbit, 0, "a rabbit came");
-            Assert.GreaterOrEqual(rabbit - tracks, 3, "at least a season between the tracks and the first rabbit");
+            Assert.GreaterOrEqual(rabbit, 0, "rabbits were placed");
+            Assert.AreEqual(sim.LifePlacedMonth(LifeSpecies.Rabbits), rabbit, "the first rabbit is the placed pair");
+            Assert.AreEqual(rabbit, tracks, "the tracks come with them");
             Assert.IsTrue(sim.EcoRabbitTracksSeen);
-            Assert.IsTrue(sim.State.chronicle.Exists(c => c.kind == "eco_tracks"), "the chronicle tells of the tracks");
-            Assert.IsTrue(sim.State.chronicle.Exists(c => c.kind == "eco_rabbit"));
+            Assert.Greater(sim.EcoRabbitTrackCells.Count, 0);
+            Assert.IsTrue(sim.State.chronicle.Exists(c => c.kind == "life_rabbits"), "the chronicle tells of the placing");
+            Assert.IsFalse(sim.State.chronicle.Exists(c => c.kind == "eco_rabbit" || c.kind == "eco_tracks"), "once, not three times");
         }
 
         [Test]
@@ -63,10 +71,11 @@ namespace AquariumCiv.Tests
             for (int m = 0; m < 60 && !sim.EcoRabbitTracksSeen; m++)
             {
                 if (m % 2 == 0) MistSpot(sim, m / 2);
+                EcoTests.PlaceReadyJars(sim);
                 sim.Advance(1.0 / 12);
             }
             Assert.IsTrue(sim.EcoRabbitTracksSeen);
-            Assert.AreEqual(0, sim.EcoRabbitCount, "no rabbit yet when the tracks show");
+            Assert.AreEqual(2, sim.EcoRabbitCount, "the tracks show with the placed pair (#419)");
             var cells = sim.EcoRabbitTrackCells;
             Assert.Greater(cells.Count, 0);
             foreach (int c in cells)
@@ -194,6 +203,7 @@ namespace AquariumCiv.Tests
             GrowUntilRabbit(sim);
             Assert.AreEqual(1, fired);
             Assert.GreaterOrEqual(cell, 0);
+            Assert.AreEqual(sim.LifePlacedCell(LifeSpecies.Rabbits), cell, "#419: they come in where the Keeper placed them");
             Assert.AreEqual(cell, sim.EcoRabbitWarren);
             Assert.IsTrue(RabbitHerd.IsGreen(sim.EcoCoverAt(cell)));
             Assert.IsTrue(sim.EcoRabbitArrivalPending);

@@ -27,6 +27,7 @@ namespace AquariumCiv.View
         readonly Dictionary<string, bool> fold = new();
         Vector2 scroll;
         string last = "";
+        int hintStage = 1; // #424: the "Hint X" cheats play this stage
         int sel;                 // selected notable id (-1 = none)
         float shapeX, shapeZ = 0.8f;
         int shapeKind;
@@ -281,6 +282,139 @@ namespace AquariumCiv.View
                 }
             }
             // ---- end #373 ----
+            // ---- #417: the life jar (placed-life spec §10); "place" opens a shut jar and places by the camp, no ghost ----
+            if (sim.EcologyOn && Section("Life jar (#417)"))
+            {
+                var all = AquariumCiv.Sim.Eco.LifeJar.All;
+                GUILayout.Label(string.Join(" · ", all.Select(s => s + " " + sim.JarStateOf(s))));
+                if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
+                for (int i = 0; i < all.Length; i += 3)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int k = i; k < i + 3 && k < all.Length; k++)
+                        if (GUILayout.Button("Place " + all[k])) { int c = sim.DebugPlaceNearCamp(all[k]); last = Done(c < 0 ? $"{all[k]}: no valid ground" : $"{all[k]} placed at cell {c}"); }
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.BeginHorizontal();
+                foreach (var s in all)
+                    if (AquariumCiv.Sim.Eco.LifeJar.Restocks(s) && GUILayout.Button("Again " + s)) last = Done(sim.DebugJarAgain(s) ? $"{s} jar open again" : $"{s}: not placed");
+                GUILayout.EndHorizontal();
+                // #423: the life tool in hand (glow, ghost, tap to place), for a ready jar
+                var hudL = GameHud.Instance;
+                GUILayout.BeginHorizontal();
+                foreach (var s in all)
+                    if (sim.JarReady(s) && hudL != null && GUILayout.Button("Hold " + s)) { hudL.TakeLife(s); last = Done($"{s} in hand: tap the glow"); }
+                GUILayout.EndHorizontal();
+                var lpv = LifePlaceView.Instance;
+                if (lpv != null && lpv.Last.Length > 0) GUILayout.Label($"life tool: {lpv.Last} (glow {lpv.GlowCells})");
+                // #424: the arrivals (replay any placed species'), the wolves' first howl, the waiting hint at each stage
+                var la = LifeArrivalView.Instance;
+                if (la != null)
+                {
+                    GUILayout.Label(la.Status());
+                    for (int i = 0; i < all.Length; i += 3)
+                    {
+                        GUILayout.BeginHorizontal();
+                        for (int k = i; k < i + 3 && k < all.Length; k++)
+                            if (GUILayout.Button("Replay " + all[k])) last = Done(la.Replay(all[k]));
+                        GUILayout.EndHorizontal();
+                    }
+                    if (GUILayout.Button("Wolves howl now")) last = Done(la.DebugHowl());
+                    // #425: the everyday deer and wolves (P0's quadruped): status, a knock, a person near, the hour they show off at
+                    var dv = DeerView.Instance; var wv = WolfView.Instance;
+                    if (dv != null) GUILayout.Label(dv.Status());
+                    if (wv != null) GUILayout.Label(wv.Status());
+                    GUILayout.BeginHorizontal();
+                    if (dv != null && GUILayout.Button("Knock by the deer"))
+                    {
+                        var ps = new System.Collections.Generic.List<Vector3>(); dv.WorldPositions(ps);
+                        if (ps.Count == 0) last = Done("no deer shown");
+                        else { var loc = dv.transform.InverseTransformPoint(ps[0]); last = Done($"{dv.KnockAtGround(loc.x + 0.2f, loc.z + 0.2f)} deer bolt"); }
+                    }
+                    if (dv != null && GUILayout.Button(dv.Scarers.Count > 0 ? "Person by the deer: off" : "Person by the deer"))
+                    {
+                        if (dv.Scarers.Count > 0) { dv.Scarers.Clear(); last = Done("nobody by the deer"); }
+                        else if (dv.TryGetDeer(0, out var d0, out _)) { dv.Scarers.Add(new Vector2(d0.x + 0.25f, d0.z)); last = Done("someone stands by the deer: heads up, then they walk off"); }
+                    }
+                    if (sim.WolvesPlaced && GUILayout.Button("Wolves: first howl again")) { sim.State.eco.firstHowlHeard = false; last = Done("the first howl plays at the next dusk"); }
+                    GUILayout.EndHorizontal();
+                    var sdv = StoryDirectorView.Instance;
+                    GUILayout.BeginHorizontal();
+                    foreach (var s in all)
+                        if (s != AquariumCiv.Sim.Eco.LifeSpecies.Wolves && sdv != null && GUILayout.Button("Hint " + s)) last = Done(sdv.HintNow(s, hintStage));
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    for (int st = 1; st <= 3; st++) if (GUILayout.Toggle(hintStage == st, $"stage {st}", "Button")) hintStage = st;
+                    GUILayout.EndHorizontal();
+                }
+            }
+            // ---- end #417 ----
+            // ---- #420-#422: deer, ducks, fish; floors, shy, restraint (placed-life spec §10) ----
+            if (sim.EcologyOn && Section("Placed life (#420-#422)"))
+            {
+                GUILayout.Label($"deer {sim.EcoDeerCount}/{sim.EcoDeerCap} · ducks {sim.EcoDucks} eggs {sim.EcoDuckEggs} · fish {sim.EcoFish} · white stag {sim.WhiteStagState}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Settle a deer hit (sim)")) last = Done(sim.DebugDeerHuntNow() ? $"a deer taken, {sim.EcoDeerCount} left" : "no deer to spare");
+                if (GUILayout.Button("Deer to capacity")) last = Done($"{sim.DebugDeerToCap()} deer");
+                if (GUILayout.Button("White stag now")) last = Done(DeerScenesView.Instance != null ? DeerScenesView.Instance.DebugWhiteStagNow() : sim.DebugWhiteStagNow() ? "the white stag shows" : "it already has");
+                if (GUILayout.Button("Eggs now")) last = Done($"{sim.DebugEggsNow()} eggs in the nests");
+                GUILayout.EndHorizontal();
+                // #426: the deer hunt you watch (bows, the stalk, the arrow, the pole carry), the feast, the antlers
+                var dhs = DeerHuntStage.Instance;
+                if (dhs != null) GUILayout.Label(dhs.Status());
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Deer hunt now (hit)")) last = Done(DeerHuntStage.DebugHuntNow(true));
+                if (GUILayout.Button("Deer hunt now (miss)")) last = Done(DeerHuntStage.DebugHuntNow(false));
+                if (dhs != null && GUILayout.Button("Deer feast now")) last = Done(dhs.DebugFeastNow());
+                if (dhs != null && GUILayout.Button("Antlers up now")) last = Done(dhs.DebugAntlersNow());
+                GUILayout.EndHorizontal();
+                // #427: dawn at the pond, the white stag (its choice; after "let it be" it shows at dawn)
+                var dsv = DeerScenesView.Instance;
+                if (dsv != null)
+                {
+                    GUILayout.Label(dsv.Status());
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Dawn at the pond now")) last = Done(dsv.DebugDawnNow());
+                    if (GUILayout.Button("White stag at dawn now")) last = Done(dsv.DebugWhiteDawnNow());
+                    GUILayout.EndHorizontal();
+                }
+                var takers = new[] { AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, AquariumCiv.Sim.Eco.LifeSpecies.Deer, AquariumCiv.Sim.Eco.LifeSpecies.Ducks, AquariumCiv.Sim.Eco.LifeSpecies.Fish };
+                GUILayout.BeginHorizontal();
+                foreach (var s in takers)
+                    if (GUILayout.Button("Floor " + s)) last = Done(sim.DebugToFloor(s) ? $"{s} at its floor (shy)" : $"{s}: not placed");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                foreach (var s in takers)
+                    if (GUILayout.Button("Restraint " + s)) last = Done(sim.DebugRestraintNow(s) ? $"{s}: the ruling" : $"{s}: ruled already");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #420-#422 ----
+            // ---- #437/#438: the wolves and the dogs (placed-life spec §10) ----
+            if (sim.EcologyOn && Section("Wolves and dogs (#437-#438)"))
+            {
+                GUILayout.Label($"wolves {sim.EcoWolfCount} (pups {sim.EcoWolfPups}) · bold {sim.WolfBoldness:0.00} · {sim.WolfWayTaken} · kills {sim.WolfKillCount} · thefts {sim.WolfThefts} · dogs {sim.DogCount} · pen {sim.DuckPenGuard}");
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ready wolves")) last = Done(sim.DebugReadyWolves() ? "the wolves' jar is open" : "no den spot, or placed already");
+                if (GUILayout.Button("Place wolves (far wood)")) { int c = sim.DebugPlaceWolves(); last = Done(c < 0 ? "no den spot, or placed already" : $"the pair at den cell {c}"); }
+                if (GUILayout.Button("Wolves bold (1)")) last = Done(sim.DebugWolvesBold() ? "boldness 1" : "no wolves");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Meat thief now")) last = Done(sim.DebugMeatThiefNow() ? "a wolf took from the rack" : "no wolves, or the thief is stopped");
+                if (GUILayout.Button("Wolves' kill now")) { var k = sim.DebugWolfKillNow(); last = Done(k == null ? "no prey to spare" : $"{k.Prey} at cell {k.cell}: the ravens circle"); }
+                if (GUILayout.Button("White wolf now")) last = Done(sim.DebugWhiteWolfNow() ? "the white wolf howls" : "no wolves, or it already has");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Lost pup now")) last = Done(sim.DebugLostPupNow() ? "a child found a pup" : "a dog came home already");
+                if (GUILayout.Button("Next dog generation")) last = Done($"{sim.DebugNextDogGeneration()} dogs");
+                if (GUILayout.Button("Wolves at the pen now")) last = Done(sim.DebugWolvesAtPenNow() ? "the pack circled the pen" : "no wolves, or it has already");
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Ask: thief")) last = Done(sim.DebugRaiseLifeChoice(LifeChoices.Thief) != null ? "the thief choice is open" : "no theft yet (meat thief now)");
+                if (GUILayout.Button("Ask: kill")) last = Done(sim.DebugRaiseLifeChoice(LifeChoices.Kill) != null ? "the kill choice is open" : "no fresh kill (wolves' kill now)");
+                if (GUILayout.Button("Ask: pen")) last = Done(sim.DebugRaiseLifeChoice(LifeChoices.Pen) != null ? "the pen choice is open" : "no circling, or no grown dog");
+                GUILayout.EndHorizontal();
+            }
+            // ---- end #437/#438 ----
             if (Section("Fire (#65)"))
             {
                 GUILayout.BeginHorizontal();

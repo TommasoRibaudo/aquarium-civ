@@ -158,7 +158,7 @@ namespace AquariumCiv.Sim.Settle
                 var map = w.Map;
                 for (int cell = 0; cell < SiteMap.N; cell++)
                 {
-                    if (map.Water(cell) || map.lot[cell] != 0) continue;
+                    if (map.Water(cell) || map.lot[cell] != 0 || map.Reserved(cell)) continue; // #418: no yard on the thicket
                     float d = Terrain.Dist(SiteMap.CXc(cell), SiteMap.CZc(cell), k.x, k.z);
                     if (d < k.r * 0.8f) map.Set(cell, SiteMap.FYard, true);
                     else if (d < k.r + RingExtra && map.ring[cell] == 0) map.ring[cell] = k.id;
@@ -533,7 +533,7 @@ namespace AquariumCiv.Sim.Settle
                 if (!far) continue;
                 st.commons.Add(new Commons { x = x, z = z, r = rad });
                 for (int c = 0; c < SiteMap.N; c++)
-                    if (!map.Water(c) && Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z) < rad) map.Set(c, SiteMap.FCommons, true);
+                    if (!map.Water(c) && !map.Reserved(c) && Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z) < rad) map.Set(c, SiteMap.FCommons, true);
             }
         }
     }

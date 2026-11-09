@@ -10,8 +10,9 @@ using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.Tests
 {
-    /// <summary>#385 (playtest #341, the user 2026-11-07): berry bushes grow in one or two thickets and settle at about 60 in a
-    /// grown box, never a carpet; none on a lot, a path or the green; an old carpeted save thins over a few years.</summary>
+    /// <summary>#385 (playtest #341, the user 2026-11-07), #418 (placed-life spec §5.1): the one berry thicket is placed by the Keeper;
+    /// no bush before it, none outside its area, and it fills to its cap of about 22; none on a lot, a path or the green; the settlement
+    /// never builds on it; an old carpeted save thins back over a few years.</summary>
     public partial class EcoTests
     {
         /// <summary>A scripted run, year by year: the bush count, the bushes on lots / paths / the green, and those outside the thickets.</summary>
@@ -57,22 +58,45 @@ namespace AquariumCiv.Tests
         static readonly int[] BushSeeds = { 7, 3, 11 };
 
         [Test]
-        public void Bushes_SettleNearSixty_NeverACarpet([ValueSource(nameof(BushSeeds))] int seed)
+        public void Bushes_FillTheThicketToItsCap_AndStop([ValueSource(nameof(BushSeeds))] int seed)
         {
+            // #418: 3 founders, a bush a season, up to the cap (20-25), then it stops
             var r = PlayBushes(true, 40, seed);
             TestContext.Out.WriteLine($"seed {seed}: " + string.Join(" ", r.count.Select((n, i) => $"y{i + 1}:{n}")));
-            Assert.That(r.count[15], Is.InRange(12, 50), "year 16: the thickets filling in");
-            for (int y = 30; y <= 40; y++) Assert.That(r.count[y - 1], Is.InRange(40, 70), $"year {y}: settled near 60");
-            Assert.LessOrEqual(r.count.Max(), 72, "never past the cap by much");
+            int cap = r.sim.BushCap;
+            Assert.That(cap, Is.InRange(20, 25), "the spec's 20-25 bushes");
+            Assert.AreEqual(cap, r.count[39], "year 40: the thicket holds its cap");
+            int full = r.count.FindIndex(n => n >= cap);
+            Assert.That(full, Is.InRange(2, 12), "it fills over a few years, not at once");
+            for (int y = full; y < 40; y++) Assert.AreEqual(cap, r.count[y], $"year {y + 1}: stays at the cap");
+            for (int y = 1; y < full; y++) if (r.count[y - 1] > 0) Assert.LessOrEqual(r.count[y] - r.count[y - 1], 4, $"year {y + 1}: about a bush a season");
         }
 
         [Test]
-        public void Bushes_GrowInOneOrTwoThickets([ValueSource(nameof(BushSeeds))] int seed)
+        public void Bushes_OnlyInTheThicketsArea_Over40Years([ValueSource(nameof(BushSeeds))] int seed)
         {
             var r = PlayBushes(true, 40, seed);
-            Assert.GreaterOrEqual(r.sim.State.eco.thicketA, 0, "a first thicket");
-            for (int y = 20; y <= 40; y++)
-                Assert.LessOrEqual(r.outside[y - 1], Math.Max(3, r.count[y - 1] / 8), $"year {y}: only a few strays outside the thickets");
+            var e = r.sim.State.eco;
+            Assert.GreaterOrEqual(e.thicketA, 0, "the Keeper placed the thicket");
+            Assert.AreEqual(-1, e.thicketB, "exactly one thicket, ever");
+            Assert.AreEqual(e.thicketA, r.sim.LifePlacedCell(LifeSpecies.Thicket));
+            for (int y = 1; y <= 40; y++) Assert.AreEqual(0, r.outside[y - 1], $"year {y}: a bush outside the thicket's area");
+        }
+
+        [Test]
+        public void NoBush_BeforeTheThicketIsPlaced([ValueSource(nameof(BushSeeds))] int seed)
+        {
+            // a box nobody tends: no thicket is ever placed, so no bush ever grows (40 years)
+            var none = PlayBushes(false, 40, seed);
+            Assert.IsTrue(none.count.All(n => n == 0), "no bush without the Keeper's thicket: " + string.Join(" ", none.count));
+            Assert.IsFalse(none.sim.LifeIsPlaced(LifeSpecies.Thicket));
+            Assert.IsFalse(none.sim.State.eco.Reached(EcoMilestones.FirstBush));
+            // and a tended box has none until the placing
+            var care = PlayBushes(true, 40, seed);
+            long placed = care.sim.LifePlacedMonth(LifeSpecies.Thicket);
+            Assert.GreaterOrEqual(placed, 0);
+            Assert.AreEqual(placed, care.sim.EcoMilestoneMonth(EcoMilestones.FirstBush), "the first bushes are the founders");
+            for (int y = 1; y <= 40 && y * 12 <= placed; y++) Assert.AreEqual(0, care.count[y - 1], $"year {y}: a bush before the thicket");
         }
 
         [Test]
@@ -126,22 +150,30 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void TheVillage_BuildsRoundTheThickets([ValueSource(nameof(BushSeeds))] int seed)
+        public void TheSettlement_NeverBuildsOnTheThicket([ValueSource(nameof(BushSeeds))] int seed)
         {
-            // #385, the user 2026-11-07: buildings go round the thickets, onto one only when short of room
+            // #418, placed-life spec §5.1: the thicket's whole area is reserved, like water: no tent, hut, field, pen, path or yard, ever
             var r = PlayBushes(true, 40, seed);
-            var map = r.sim.Settlement.Map;
-            int heart = 0, built = 0, lots = 0;
+            var sim = r.sim; var map = sim.Settlement.Map;
+            foreach (var t in new[] { BuildingType.Farm, BuildingType.Hut, BuildingType.Hut, BuildingType.Farm, BuildingType.Hut, BuildingType.Lumbermill })
+                sim.DebugBuild(t); // crowd the box: every kind of lot has to find room
+            sim.Advance(2);
+            sim.Settlement.SyncEco();
+            int area = 0;
+            const byte held = SiteMap.FLaid | SiteMap.FYard | SiteMap.FCommons | SiteMap.FGreen;
             for (int c = 0; c < EcoLand.N; c++)
             {
-                if (map.lot[c] != 0) lots++;
-                if (r.sim.BushThicketZone(c) < 0.5f) continue;
-                heart++;
-                if (map.lot[c] != 0) built++;
+                if (sim.BushThicketZone(c) <= 0f) continue;
+                area++;
+                Assert.IsTrue(map.Reserved(c), $"cell {c} in the thicket is reserved");
+                Assert.AreEqual(0, map.lot[c], $"cell {c} in the thicket under a lot");
+                Assert.Less(map.tier[c], PathNet.Trail, $"cell {c} in the thicket under a path");
+                Assert.AreEqual(0, map.flags[c] & held, $"cell {c} in the thicket is a yard, commons, green or laid path");
+                Assert.AreEqual(0, map.ring[c], $"cell {c} in the thicket held for a family");
             }
-            TestContext.Out.WriteLine($"seed {seed}: {built} of {heart} thicket-heart cells under a lot ({lots} lot cells in all), {r.count[39]} bushes");
-            Assert.Greater(heart, 20);
-            Assert.LessOrEqual(built, heart / 10, "the village went round the thickets");
+            TestContext.Out.WriteLine($"seed {seed}: {area} thicket cells, {sim.State.settle.lots.Count} lots, era {sim.State.era}");
+            Assert.That(area, Is.InRange(30, 120), "an area about three tents wide");
+            Assert.Greater(sim.State.settle.lots.Count, 6, "the box did build, round it");
         }
 
         [Test]
@@ -171,28 +203,44 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void AnOldCarpet_ThinsBackOverAFewYears()
+        public void AnOldCarpet_BecomesOneThicket_AndTheRestThinsAway()
         {
+            // #418, spec §9: an old save from before the jar, its meadow a carpet of wild bushes. It loads with the thicket placed at
+            // the old thicket's centre; the bushes outside it never spread and thin back over the years; the thicket's own stay.
             var sim = EcoWorld(7); var keeper = new Keeper(true);
             for (int s = 0; s < 30 * 4; s++) { keeper.Play(sim); sim.Advance(0.25); }
-            // an old save: no thickets yet, the meadow a carpet of bushes
-            sim.State.eco.thicketA = sim.State.eco.thicketB = -1;
+            var e = sim.State.eco;
+            // as saved before the jar: the meadow a carpet of bushes, no jar, #385's thickets unset
             sim.DebugCarpetBushes();
+            e.jarOn = false; e.jars = null; e.thicketA = e.thicketB = -1; e.thicketRadius = 0f;
+            int carpet = e.cover.Count(v => v == (byte)EcoCover.Bush);
+            Assert.Greater(carpet, 300, "the carpet");
+            var loaded = new SimCore(sim.Config, UnityEngine.JsonUtility.FromJson<SimState>(UnityEngine.JsonUtility.ToJson(sim.State)));
+            Assert.IsTrue(loaded.LifeIsPlaced(LifeSpecies.Thicket), "the wild bushes count as the placed thicket");
+            Assert.GreaterOrEqual(loaded.State.eco.thicketA, 0);
+            Assert.Greater(loaded.State.eco.thicketRadius, 0f);
+            Assert.AreEqual(-1, loaded.State.eco.thicketB);
+            Assert.AreEqual(loaded.State.eco.thicketA, loaded.LifePlacedCell(LifeSpecies.Thicket));
             var cells = new List<int>();
-            sim.BushCells(cells);
-            int carpet = cells.Count, cap = sim.BushCap;
-            Assert.Greater(carpet, 400, "the carpet");
-            var years = new List<int>();
-            for (int y = 1; y <= 6; y++)
+            int cap = loaded.BushCap, outside0 = Outside(loaded);
+            var years = new List<int>(); var outs = new List<int>();
+            for (int y = 1; y <= 8; y++)
             {
-                for (int s = 0; s < 4; s++) { keeper.Play(sim); sim.Advance(0.25); }
-                sim.BushCells(cells); years.Add(cells.Count);
+                for (int s = 0; s < 4; s++) loaded.Advance(0.25);
+                loaded.BushCells(cells); years.Add(cells.Count); outs.Add(Outside(loaded));
             }
-            TestContext.Out.WriteLine($"carpet {carpet}, cap {cap}: " + string.Join(" ", years.Select((n, i) => $"+{i + 1}y:{n}")));
-            Assert.Greater(years[0], cap * 5, "not all at once: a year on, still plenty");
-            Assert.Greater(years[1], cap * 2, "two years on, still thinning");
-            Assert.LessOrEqual(years[5], cap * 1.5f, "six years on: back near the cap");
-            Assert.GreaterOrEqual(years[5], cap / 2, "the thickets themselves stay");
+            TestContext.Out.WriteLine($"carpet {carpet} ({outside0} outside), cap {cap}: " + string.Join(" ", years.Select((n, i) => $"+{i + 1}y:{n}/{outs[i]}")));
+            for (int y = 1; y < 8; y++) Assert.LessOrEqual(outs[y], outs[y - 1], "the bushes outside never spread");
+            Assert.Greater(years[0], cap * 4, "not all at once: a year on, still plenty");
+            Assert.LessOrEqual(years[7], cap * 2.5f, "eight years on: thinned back toward the thicket");
+            Assert.GreaterOrEqual(years[7] - outs[7], cap / 2, "the thicket itself stays");
+        }
+
+        static int Outside(SimCore sim)
+        {
+            var e = sim.State.eco; int n = 0;
+            for (int c = 0; c < EcoLand.N; c++) if (e.cover[c] == (byte)EcoCover.Bush && sim.BushThicketZone(c) <= 0f) n++;
+            return n;
         }
 
         [Test]
@@ -201,12 +249,14 @@ namespace AquariumCiv.Tests
             var r = Play(true, Seasons30);
             float bush = r.Year(EcoMilestones.FirstBush), seed = r.Year(EcoMilestones.SeedUnlocked);
             Assert.That(bush, Is.InRange(0f, 10f), "first bush");
-            Assert.That(seed, Is.InRange(bush, 14f), "the seed follows the first bushes");
-            Assert.AreEqual(1, r.sim.State.chronicle.Count(c => c.kind == "eco_bush"), "told once");
+            Assert.That(seed, Is.InRange(bush, 14f), "the seed follows the thicket (#418)");
+            Assert.GreaterOrEqual(seed, r.CampYear, "and the camp");
+            Assert.AreEqual(1, r.sim.State.chronicle.Count(c => c.kind == "life_thicket"), "the placing is told once");
+            Assert.AreEqual(0, r.sim.State.chronicle.Count(c => c.kind == "eco_bush"), "not twice: the bushes came with the placing");
         }
 
         [Test]
-        public void DebugAddBushes_GoInTheThickets()
+        public void DebugAddBushes_GoInTheThicket()
         {
             var r = PlayBushes(true, 20, 3);
             var sim = r.sim;
@@ -214,7 +264,14 @@ namespace AquariumCiv.Tests
             int made = sim.DebugAddBushes(4);
             Assert.AreEqual(4, made);
             var after = new List<int>(); sim.BushCells(after);
-            foreach (var c in after.Except(before)) Assert.Greater(sim.BushThicketZone(c), 0.5f, "a new bush in a thicket's heart");
+            foreach (var c in after.Except(before)) Assert.Greater(sim.BushThicketZone(c), 0f, "a new bush inside the thicket");
+            // on a box with no thicket yet, the cheat places it by the camp first
+            var fresh = EcoWorld(7);
+            LifeJarTests.Meadow(fresh, 0.3f);
+            Assert.Greater(fresh.DebugAddBushes(2), 0);
+            Assert.IsTrue(fresh.LifeIsPlaced(LifeSpecies.Thicket));
+            fresh.BushCells(after);
+            foreach (var c in after) Assert.Greater(fresh.BushThicketZone(c), 0f);
         }
 
         [Test, Explicit("measurement: prints the 62-year bush curve (#385 before/after)")]

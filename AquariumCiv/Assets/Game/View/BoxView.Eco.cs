@@ -68,6 +68,15 @@ namespace AquariumCiv.View
 
         /// <summary>P8 #288: where each bush was drawn (site cell -> ground point, radius), filled as the chunks build; BushView hangs the berries on them.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> BushSpots = new();
+        /// <summary>P9 #424 (B12.a): bush cells drawn by the thicket's arrival while it plays (they push up out of the soil), so the chunk
+        /// leaves them out; their spot is still written to <see cref="BushSpots"/>. Change it through <see cref="HideBushes"/>.</summary>
+        public readonly HashSet<int> HiddenBushes = new();
+
+        /// <summary>P9 #424: hide (or show again) these bush cells; their chunks rebuild on the next <see cref="Refresh"/>.</summary>
+        public void HideBushes(IEnumerable<int> cells, bool hide)
+        {
+            lock (BushSpots) foreach (int c in cells) { if (hide) HiddenBushes.Add(c); else HiddenBushes.Remove(c); }
+        }
         /// <summary>#359: where each grown tree was drawn (site cell -> ground point, crown radius), as BushSpots: the kids play round the real trunks.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> TreeSpots = new();
 
@@ -123,8 +132,8 @@ namespace AquariumCiv.View
                             float r = Mathf.Lerp(0.05f, 0.1f, H(c, 4));
                             var ib = Item(c, 2);
                             var bg = land.OnGround(p);
-                            Pieces.Bush(ib, bg, r, false, co);
-                            mb.AppendFree(ib);
+                            bool hidden; lock (BushSpots) hidden = HiddenBushes.Contains(c);
+                            if (!hidden) { Pieces.Bush(ib, bg, r, false, co); mb.AppendFree(ib); } else ib.Free(); // #424: the arrival draws it
                             near.Add((p, r));
                             lock (BushSpots) BushSpots[c] = (bg, r); // chunks build in parallel (#279: a big pond rebuilt several at once and corrupted the dictionary)
                         }

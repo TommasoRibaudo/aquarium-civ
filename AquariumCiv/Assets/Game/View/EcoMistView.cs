@@ -153,7 +153,7 @@ namespace AquariumCiv.View
             hud ??= GameHud.Instance;
             var hand = hud != null ? hud.Hand : GameHud.KitTool.None;
             if (hand == GameHud.KitTool.Seed) { SeedHand(sim, n, pos); return; }
-            if (hand == GameHud.KitTool.Tweezers) { if (misting) EndMist(); pressed = false; return; } // the tweezers are CareView's (#311): no hold-to-mist under them
+            if (hand == GameHud.KitTool.Tweezers || hand == GameHud.KitTool.Life) { if (misting) EndMist(); pressed = false; return; } // the tweezers are CareView's (#311), the life tool LifePlaceView's (#423): no hold-to-mist under them
             if (n != 1 || !Usable(sim))
             {
                 if (misting) EndMist();

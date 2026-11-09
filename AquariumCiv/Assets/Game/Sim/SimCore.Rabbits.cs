@@ -6,8 +6,8 @@ using AquariumCiv.Sim.Settle;
 namespace AquariumCiv.Sim
 {
     /// <summary>
-    /// #282 phase 1: the sim side of the rabbits you see. Tracks come first (a milestone at half the meadow the first rabbit
-    /// needs, at least a season before it), then the first rabbit with an arrival cell at the meadow's edge, then the count
+    /// #282 phase 1, #419: the sim side of the rabbits you see. The Keeper places a pair from the life jar (SimCore.LifeJar,
+    /// placed-life spec §5.2): the tracks and the first rabbit come with that placing, the warren is the placed cell, then the count
     /// the view shows (<see cref="RabbitHerd.Shown"/>). A hunt's catch (<see cref="CatchRabbit"/>) lowers the same
     /// <c>EcoState.rabbits</c> the grazing reads, and the model regrows it toward meadow / 35. With the ecology off none of
     /// this does anything.
@@ -16,7 +16,7 @@ namespace AquariumCiv.Sim
     {
         public const int TrackCellCount = 5;
 
-        /// <summary>The first rabbit hopped in at the meadow's edge: the cell (the view plays the sign, then <see cref="AckRabbitArrival"/>).</summary>
+        /// <summary>The first rabbits were placed: the cell (the view plays the sign, then <see cref="AckRabbitArrival"/>).</summary>
         public event Action<int> RabbitArrived;
 
         public int EcoRabbitCount => EcologyOn ? (int)MathF.Round(State.eco.rabbits) : 0;
@@ -38,7 +38,7 @@ namespace AquariumCiv.Sim
             }
         }
 
-        /// <summary>The warren: the cell the first rabbit came in at, or -1 before it.</summary>
+        /// <summary>The warren: the cell the Keeper placed the first pair on (#419), or -1 before it.</summary>
         public int EcoRabbitWarren => EcologyOn ? State.eco.rabbitArrivalCell : -1;
         public int EcoRabbitsCaught => EcologyOn ? State.eco.rabbitsCaught : 0;
 
@@ -98,7 +98,9 @@ namespace AquariumCiv.Sim
         void PickRabbitArrival()
         {
             var e = State.eco; var cells = new List<int>();
-            // prefer one of the tracks' cells that is still green: the rabbit comes where the prints were
+            // #419: the placed pair's cell is the warren
+            if (e.rabbitArrivalCell >= 0) { RabbitArrived?.Invoke(e.rabbitArrivalCell); return; }
+            // (an old save or a cheat: one of the tracks' cells that is still green: the rabbit comes where the prints were)
             if (e.trackCells != null)
                 foreach (int c in e.trackCells) if (RabbitHerd.IsGreen((EcoCover)e.cover[c])) { cells.Add(c); break; }
             if (cells.Count == 0) RabbitHerd.EdgeCells(e.cover, EcoGround.yard, e.seed, 91, 1, cells);
@@ -126,11 +128,13 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        /// <summary>Debug ("+N rabbits"): add <paramref name="n"/> rabbits to the sim count (the first ones through the tracks and the
-        /// first-rabbit sign). The model pulls the count back toward the meadow at the next season. Returns the new count.</summary>
+        /// <summary>Debug ("+N rabbits"): add <paramref name="n"/> rabbits to the sim count. With none placed yet, the founding pair is
+        /// placed by the camp first and counts toward the N (#419: through the jar, the tracks and the first-rabbit sign; so "+1" on an
+        /// empty box gives the pair). The model pulls the count back toward the meadow at the next season. Returns the new count.</summary>
         public int DebugAddRabbits(int n)
         {
             if (!EcologyOn || n <= 0) return EcoRabbitCount;
+            if (!LifeIsPlaced(LifeSpecies.Rabbits) && DebugPlaceNearCamp(LifeSpecies.Rabbits) >= 0) n = Math.Max(0, n - (int)EcoModel.RabbitPair);
             var e = State.eco;
             EcoM.Reach(EcoMilestones.RabbitTracks, State.month);
             EcoM.Reach(EcoMilestones.FirstRabbit, State.month);

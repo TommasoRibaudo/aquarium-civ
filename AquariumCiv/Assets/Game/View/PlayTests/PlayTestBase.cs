@@ -87,15 +87,17 @@ namespace AquariumCiv.View.PlayTests
                 soundWas = GameSettings.Sound;
                 opened = true;
             }
-            if (freshSave)
-                foreach (var ext in new[] { "", ".bak" })
-                    if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
             GameUiPanel.Toasts.ClearHolds(); // static: a prompt or peek an earlier test left up still holds the lane after its scene went
             if (seed != 0) GameClock.DebugNextSeed = seed;
             CampFrameView.Auto = false; // t1-camera: a test that stands still keeps the camera where it opened; its own tests turn it on
             SetSize(w, h);
             float waited = 0f;
             while ((Screen.width != w || Screen.height != h) && waited < 4f) { waited += 0.1f; yield return new WaitForSecondsRealtime(0.1f); }
+            // after the resize: a Game view resize can blur the window, and the last test's GameClock saves its box on that focus loss
+            // (OnApplicationFocus), which the new scene then loaded (tester fixes 2026-11-08: a 1640x2360 test left its ready jars behind)
+            if (freshSave)
+                foreach (var ext in new[] { "", ".bak" })
+                    if (File.Exists(savePath + ext)) File.Delete(savePath + ext);
 #if UNITY_EDITOR
             yield return UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Single));
 #endif
@@ -201,6 +203,80 @@ namespace AquariumCiv.View.PlayTests
         }
 
         protected static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
+
+        /// <summary>P9 (#417-#419, #423): the Keeper places a ready jar's founding group near the camp by touch, the way a player
+        /// does: Kit, the life slot (and the species in the chooser when two jars are ready), a tap on a glowing spot (the ghost),
+        /// a tap on the ghost. Sets <see cref="LastPlaced"/>; asserts each UI step.</summary>
+        protected IEnumerator KeeperPlaces(AquariumCiv.Sim.Eco.LifeSpecies s, string shotPrefix = null)
+        {
+            var sim = GameClock.Instance.ActiveSim;
+            var hud = GameHud.Instance;
+            LastPlaced = false;
+            if (sim == null || hud == null || !sim.JarReady(s)) yield break;
+            GameUiPanel.AcceptInputUnfocused(true);
+            yield return Until(() => hud.IsVisible && !(PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen)), 30f);
+            if (hud.SheetOpen) { hud.CloseSheet(); yield return Frames(10); }
+            if (hud.Hand != GameHud.KitTool.None || hud.CleanMode) { yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean")); yield return Frames(10); }
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
+            Assert.IsTrue(hud.LifeSlotShown, "the life slot is in the kit while a jar is ready");
+            if (shotPrefix != null) yield return Shot(shotPrefix + "_kit");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            yield return new WaitForSecondsRealtime(0.4f);
+            if (hud.LifeRowOpen)
+            {
+                if (shotPrefix != null) yield return Shot(shotPrefix + "_row");
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-" + s.ToString().ToLowerInvariant()));
+                yield return new WaitForSecondsRealtime(0.4f);
+            }
+            Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "the life tool in hand");
+            Assert.AreEqual(s, hud.HeldLife, "the species in hand");
+            var lpv = LifePlaceView.Instance;
+            Assert.IsNotNull(lpv, "the life tool's view");
+            yield return Frames(5);
+            Assert.Greater(lpv.GlowCells, 0, "its ground glows");
+            int cell = GlowingCellOnScreen(sim, s);
+            Assert.GreaterOrEqual(cell, 0, "a glowing spot on screen to tap");
+            var p = lpv.ScreenOf(cell);
+            yield return TapAt(p);
+            yield return Frames(5);
+            Assert.IsTrue(lpv.GhostShown, "the first tap on the glow shows the ghost: " + lpv.Last);
+            Assert.IsTrue(sim.JarReady(s), "a ghost is not a placing");
+            // the camera leans in on the ghost (user 2026-11-08): tap it where it is on screen once the lean has landed
+            var bc = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+            yield return new WaitForSecondsRealtime(0.2f);
+            if (bc != null) yield return Until(() => !bc.IsFlying, 8f);
+            if (shotPrefix != null) { yield return new WaitForSecondsRealtime(0.4f); yield return Shot(shotPrefix + "_ghost"); }
+            p = lpv.ScreenOf(lpv.GhostCell);
+            yield return TapAt(p);
+            yield return Frames(10);
+            LastPlaced = sim.LifeIsPlaced(s) && !sim.JarReady(s);
+            Assert.IsTrue(LastPlaced, "a tap on the ghost places it: " + lpv.Last);
+            Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "placed: the tool is put down");
+        }
+        protected bool LastPlaced;
+
+        /// <summary>A cell the species may be placed on, as near the camp as the screen allows: its middle is on screen, clear of
+        /// the HUD, and a tap there lands on the same cell.</summary>
+        protected static int GlowingCellOnScreen(AquariumCiv.Sim.SimCore sim, AquariumCiv.Sim.Eco.LifeSpecies s)
+        {
+            var lpv = LifePlaceView.Instance; var mist = EcoMistView.Instance;
+            var ground = new List<int>();
+            sim.LifeGround(s, ground);
+            int near = sim.LifePlaceCellNearCamp(s);
+            float nx = near >= 0 ? AquariumCiv.Sim.Settle.SiteMap.CXc(near) : 0f, nz = near >= 0 ? AquariumCiv.Sim.Settle.SiteMap.CZc(near) : 0f;
+            foreach (int c in ground.OrderBy(c => { float dx = AquariumCiv.Sim.Settle.SiteMap.CXc(c) - nx, dz = AquariumCiv.Sim.Settle.SiteMap.CZc(c) - nz; return dx * dx + dz * dz; }))
+            {
+                if (!sim.CanPlaceLife(s, c)) continue;
+                var p = lpv.ScreenOf(c);
+                if (p.x < Screen.width * 0.1f || p.x > Screen.width * 0.9f || p.y < Screen.height * 0.18f || p.y > Screen.height * 0.82f) continue;
+                if (UiInput.Over(p)) continue;
+                if (mist == null || !mist.GroundPoint(p, out var at) || AquariumCiv.Sim.Settle.SiteMap.CellAt(at.x, at.z) != c) continue;
+                return c;
+            }
+            return -1;
+        }
 
         /// <summary>Fails on any console error since <see cref="OpenSlice"/>.</summary>
         protected void AssertNoErrors(string when) => Assert.IsEmpty(errors, $"{when}: {string.Join(" | ", errors.Take(5))}");

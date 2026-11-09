@@ -10,11 +10,11 @@ namespace AquariumCiv.Life
         readonly Dictionary<int, (float start, float until)> debugFishers = new();
 
         /// <summary>Sends up to <paramref name="grownUps"/> grown-ups (not the toolmaker) to fish the pond from now for <paramref name="hours"/> view hours.
-        /// Returns who, or -1 when the pond has no water yet (the ecology layer's dry hollow) or nobody is free.</summary>
+        /// Returns who, or -1 when the pond has no water yet (the ecology layer's dry hollow), no fish were placed (#421), or nobody is free.</summary>
         public int DebugFishNow(ViewTime now, int grownUps = 2, float hours = 2f)
         {
             Sync();
-            if (sim != null && sim.EcologyOn && sim.EcoPondCells == 0) return -1;
+            if (sim != null && !sim.FishingOpen) return -1; // #421: no fishing of any kind until fish are placed
             debugFishers.Clear();
             int n = 0;
             foreach (var p in people)

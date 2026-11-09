@@ -377,6 +377,7 @@ namespace AquariumCiv.View
             planner.ReactKnock(now, late);
             Sfx.Play(CueLibrary.TapGlass); // #96: a knuckle on glass
             RabbitView.Instance?.KnockAtScreen(pressPos); // #333: the rabbits close to the knocked spot startle and run (a tap on a rabbit does nothing)
+            DeerView.Instance?.KnockAtScreen(pressPos);   // #425: and the deer look up, then bolt
         }
 
         /// <summary>#96: the knocks back line up with the doll's Knock (one every half second, the hit mid-swing); a
