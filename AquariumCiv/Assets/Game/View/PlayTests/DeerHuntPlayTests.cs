@@ -152,6 +152,17 @@ namespace AquariumCiv.View.PlayTests
             yield return UntilHour(p, p.arrowTakeHour + 0.01f);
             yield return Frames(3);
             Assert.IsFalse(stage.TryGetArrow(out _, out _), "the shooter pulled the arrow out");
+            // tester 2026-11-08: once the hunt is over it must never be rebuilt (it re-shot its arrow every frame, ArrowsShot 2 -> 81)
+            if (Now.hour < p.end + 1.6f) PeopleView.DebugSetHour(Mathf.Min(p.end + 1.6f, 23f));
+            yield return Frames(5);
+            int shot = stage.ArrowsShot, landed = stage.ArrowsLanded;
+            var hunt = GameObject.Find("Deer hunt");
+            int kids = hunt != null ? hunt.transform.childCount : 0;
+            yield return new WaitForSecondsRealtime(3f);
+            Assert.AreEqual(shot, stage.ArrowsShot, "no arrow is shot again after the hunt ended");
+            Assert.AreEqual(landed, stage.ArrowsLanded, "no arrow lands again after the hunt ended");
+            Assert.LessOrEqual(hunt != null ? hunt.transform.childCount : 0, kids, "the hunt's objects stay flat after it ended");
+            Assert.IsFalse(stage.TryGetArrow(out _, out _), "no arrow after the hunt ended");
             AssertNoErrors("deer hunt miss");
         }
 

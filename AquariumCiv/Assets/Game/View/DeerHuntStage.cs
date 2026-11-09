@@ -156,12 +156,15 @@ namespace AquariumCiv.View
             foreach (var p in plans)
             {
                 if (now.hour < p.releaseHour - 0.01f) continue;
-                if (!lives.TryGetValue(p, out var l)) { l = new Live { plan = p }; lives[p] = l; }
-                Arrow(l, pv, now);
-                if (p.playsHit) Carcass(l, pv, now, sim);
                 // the first deer (and the white stag) earn the feast that night (B13.c)
                 if (p.playsHit && now.hour >= p.landHour && !feastDays.Contains(p.day) && (p.white || sim.EcoDeerTaken <= 1)) { feastDays.Add(p.day); }
                 if (p.playsHit && now.hour >= p.landHour && (p.targetStag || p.white)) antlerDay = Mathf.Max(antlerDay, (int)p.day);
+                // a finished hunt is over for good: the plan stays listed for the rest of the day, but it must never be rebuilt (it re-shot
+                // its arrow and re-laid its carcass every frame: tester 2026-11-08, ArrowsShot 2 -> 81 with no new hunt)
+                if (now.hour > p.end + 1.5f) continue;
+                if (!lives.TryGetValue(p, out var l)) { l = new Live { plan = p }; lives[p] = l; }
+                Arrow(l, pv, now);
+                if (p.playsHit) Carcass(l, pv, now, sim);
             }
             Feast(pv, now);
             Antlers(sim, now);
