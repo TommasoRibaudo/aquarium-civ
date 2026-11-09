@@ -26,9 +26,9 @@ namespace AquariumCiv.View
 
         [Tooltip("A press that wanders further than this (share of screen height) is a drag, not a tap.")] public float slop = 0.02f;
         [Tooltip("A tap this near the ghost's middle (box units) places it.")] public float ghostReach = 0.32f;
-        [Tooltip("The glow's colour (alpha = its strongest).")] public Color glow = new(1f, 0.95f, 0.55f, 0.55f);
-        [Tooltip("The ghost's outline colour: pale, no see-through on the lines.")] public Color ghostColor = new(0.97f, 0.95f, 0.86f, 0.9f);
-        [Tooltip("The silhouettes' fill (pale) and their thin darker edge.")] public Color ghostFill = new(0.97f, 0.95f, 0.88f, 0.8f), ghostEdge = new(0.30f, 0.26f, 0.20f, 0.55f);
+        [Tooltip("#516 the glow's colour (alpha = its strongest): a pale warm white, no green or yellow (playtest #510: it read as grass).")] public Color glow = new(1f, 0.97f, 0.9f, 0.26f);
+        [Tooltip("#516 how much of the glow fills the valid ground inside its outline (0 = only the outline).")][Range(0f, 1f)] public float glowFill = 0.1f;
+        [Tooltip("The silhouettes' fill (pale) and their thin darker edge.")] public Color ghostFill = new(1f, 1f, 1f, 0.86f), ghostEdge = new(0.30f, 0.26f, 0.20f, 0.6f);
         [Tooltip("User 2026-11-08: the rest of the land dims a little while a species is in hand (0 = off).")][Range(0f, 0.6f)] public float dim = 0.22f;
 
         BoxView box;
@@ -40,7 +40,7 @@ namespace AquariumCiv.View
         GhostLook look;
         readonly KitPress press = new();
         Mesh dimMesh;
-        Mesh glowMesh, ghostMesh, noMesh;
+        Mesh glowMesh, rimMesh, ghostMesh, noMesh;
         MaterialPropertyBlock mpb;
         readonly List<int> cells = new();
         LifeSpecies glowFor;
@@ -51,14 +51,24 @@ namespace AquariumCiv.View
         public int GlowCells { get; private set; }
         /// <summary>The land is dimmed now (a species in hand), and how strongly (user 2026-11-08).</summary>
         public bool Dimmed => dimGo != null && dimGo.activeSelf;
-        /// <summary>The hint while the ghost waits for its second tap.</summary>
-        public const string TapAgainHint = "Tap the outline again to set them down here.";
+        /// <summary>The hint while the ghost waits for its second tap: #516 it names what is going down, once.</summary>
+        public static string TapAgainHintFor(LifeSpecies s) => $"Tap again to set the {GroupName(s)} down here.";
+        /// <summary>#516 what the people call each founding group (the hint's one name for it).</summary>
+        public static string GroupName(LifeSpecies s) => s switch
+        {
+            LifeSpecies.Thicket => "bushes",
+            LifeSpecies.Rabbits => "rabbits",
+            LifeSpecies.Deer => "deer",
+            LifeSpecies.Ducks => "ducks",
+            LifeSpecies.Fish => "fish",
+            _ => "wolves",
+        };
         /// <summary>How long the tap-again hint may stay up while the ghost waits (it goes with the ghost before that).</summary>
         public const float GhostHintSeconds = GhostTap.HintSeconds;
         /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
         public int GhostCell => Ghost.Cell;
-        GhostTap Ghost => ghost ??= new GhostTap(TapAgainHint, ghostReach);
+        GhostTap Ghost => ghost ??= new GhostTap(TapAgainHintFor(LifeSpecies.Thicket), ghostReach);
         /// <summary>Taps on dark ground (the soft "no"), placings made by tap, and the last answer (tests, debug panel).</summary>
         public int Refusals { get; private set; }
         public int Placings { get; private set; }
@@ -85,10 +95,10 @@ namespace AquariumCiv.View
         {
             if (Instance == this) Instance = null;
             foreach (var go in new[] { glowGo, ghostGo, noGo, restoreGo, dimGo }) if (go != null) Destroy(go);
-            foreach (var m in new[] { glowMesh, ghostMesh, noMesh, dimMesh }) if (m != null) Destroy(m);
+            foreach (var m in new[] { glowMesh, rimMesh, ghostMesh, noMesh, dimMesh }) if (m != null) Destroy(m);
             foreach (var m in new[] { glowMat, dimMat, restoreMat }) if (m != null) Destroy(m);
             look?.Destroy(); look = null; ghost?.Hide(null);
-            glowGo = ghostGo = noGo = restoreGo = dimGo = null; glowMesh = ghostMesh = noMesh = dimMesh = null;
+            glowGo = ghostGo = noGo = restoreGo = dimGo = null; glowMesh = rimMesh = ghostMesh = noMesh = dimMesh = null;
             glowMat = dimMat = restoreMat = null;
         }
 
@@ -110,7 +120,11 @@ namespace AquariumCiv.View
             var s = hud.HeldLife;
             // the glow follows the land: rebuilt when the species changes or the land moved on (a season, a placing)
             int stamp = (int)(sim.State.month * 8 + (int)s);
-            if (s != glowFor || stamp != glowStamp) { glowFor = s; glowStamp = stamp; BuildGlow(sim, s); if (GhostShown && !sim.LifeGroundOk(s, GhostCell)) HideGhost(); }
+            if (s != glowFor || stamp != glowStamp)
+            {
+                if (GhostShown && (s != ghostFor || !sim.LifeGroundOk(s, GhostCell))) HideGhost(); // #516: the ghost is always the species in hand
+                glowFor = s; glowStamp = stamp; BuildGlow(sim, s);
+            }
             if (glowGo != null)
             {
                 float pulse = 0.82f + 0.18f * Mathf.Sin(Time.unscaledTime * 2.4f); // a soft breath, never a blink
@@ -207,6 +221,9 @@ namespace AquariumCiv.View
             if (glowGo == null)
             {
                 glowGo = Child("LifeGlow", out glowMesh); mpb = new MaterialPropertyBlock();
+                // #516: the glow draws the outline (rimMesh); the soft sheet (glowMesh) is the restore's
+                rimMesh = new Mesh { name = "LifeGlowRim" }; rimMesh.MarkDynamic();
+                glowGo.GetComponent<MeshFilter>().sharedMesh = rimMesh;
                 glowMat = new Material(Fx) { hideFlags = HideFlags.DontSave, renderQueue = 3003 }; // after the dim and the restore
                 glowGo.GetComponent<MeshRenderer>().sharedMaterial = glowMat;
                 // the restore: the same soft sheet, undoing the dim on the valid ground (dst x (1 + k a))
@@ -239,7 +256,7 @@ namespace AquariumCiv.View
                         }
                     lit[j * VX + i] = k / 4f;
                 }
-            var verts = new List<Vector3>(); var cols = new List<Color32>(); var tris = new List<int>();
+            var verts = new List<Vector3>(); var cols = new List<Color32>(); var rims = new List<Color32>(); var tris = new List<int>();
             var index = new Dictionary<int, int>();
             int V(int i, int j)
             {
@@ -249,7 +266,10 @@ namespace AquariumCiv.View
                 v = verts.Count;
                 verts.Add(new Vector3(x, GroundY(Mathf.Clamp(x, -Land.HX, Land.HX), Mathf.Clamp(z, -Land.HZ, Land.HZ), s), z));
                 float a = lit[key];
-                cols.Add(new Color(1f, 1f, 1f, a * a * (3f - 2f * a))); // smoothstep: a soft rim
+                float soft = a * a * (3f - 2f * a);
+                cols.Add(new Color(1f, 1f, 1f, soft)); // smoothstep: a soft rim (the restore)
+                // #516 the glow: a soft line on the valid ground's edge (corners shared by valid and dark cells), the inside only faintly
+                rims.Add(new Color(1f, 1f, 1f, Mathf.Max(4f * a * (1f - a), glowFill * soft)));
                 index[key] = v;
                 return v;
             }
@@ -264,6 +284,10 @@ namespace AquariumCiv.View
             glowMesh.indexFormat = verts.Count > 65000 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16;
             glowMesh.SetVertices(verts); glowMesh.SetColors(cols); glowMesh.SetTriangles(tris, 0);
             glowMesh.RecalculateBounds();
+            rimMesh.Clear();
+            rimMesh.indexFormat = glowMesh.indexFormat;
+            rimMesh.SetVertices(verts); rimMesh.SetColors(rims); rimMesh.SetTriangles(tris, 0);
+            rimMesh.RecalculateBounds();
         }
 
         // ---------------------------------------------------------------- the ghost (B12.0: flat pale outlines, breathing)
@@ -283,6 +307,7 @@ namespace AquariumCiv.View
             var target = new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell));
             if (ghostGo == null) ghostGo = Child("LifeGhost", out ghostMesh);
             ghostGo.SetActive(true);
+            Ghost.SetHint(TapAgainHintFor(s), hud);
             Ghost.Show(cell, target, hud, GameHud.LifeHint);
             ghostFor = s;
         }
@@ -302,11 +327,8 @@ namespace AquariumCiv.View
             if (!GhostShown) return;
             float breath = Ghost.Breath(), pop = Ghost.Pop();
             var c = Ghost.Centre();
-            // user 2026-11-08: faint outlines of the actual group (the real bushes, rabbits, ducks; placeholder deer and wolves), not rings;
-            // the thicket keeps its area ring (nobody builds there)
-            var parts = new List<(Vector3, float, float)>();
-            if (ghostFor == LifeSpecies.Thicket) parts.Add((c, ThicketArea * breath, ThicketArea * breath));
-            Rings(ghostMesh, parts, ghostColor, 0.016f, ghostFor);
+            // user 2026-11-08: faint outlines of the actual group (the real bushes, rabbits, ducks; placeholder deer and wolves), not rings.
+            // #516 (playtest #509/#510): the thicket's area ring went too: with it the bushes read as a blob in a ring, not as bushes
             Silhouettes(c, breath * pop);
         }
 
@@ -354,8 +376,6 @@ namespace AquariumCiv.View
             dimGo.SetActive(GlowCells > 0);
         }
 
-        const float ThicketArea = 0.45f; // EcoTuning.thicketRadius
-        const float GroupRing = 0.2f;
 
         void DrawNo()
         {

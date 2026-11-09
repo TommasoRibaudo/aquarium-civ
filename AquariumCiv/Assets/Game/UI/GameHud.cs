@@ -44,6 +44,7 @@ namespace AquariumCiv.GameUI
         StoriesChip storiesChip;
         SettingsSheets settings;
         GlassButton cleanButton, shapeButton, historyButton;
+        GlassIcon toolMark;
         readonly System.Collections.Generic.HashSet<string> toolBlocks = new();
         GlassToast toastLabel;
         bool cleanMode, shapeNew, offHome, toolsWaiting;
@@ -137,8 +138,8 @@ namespace AquariumCiv.GameUI
             cleanMode = on;
             if (cleanButton != null)
             {
-                cleanButton.text = on ? "Done" : KitBox ? "Kit" : "Clean";
-                cleanButton.EnableInClassList("kg-tool--on", on); // the word, a check and a ring: the mode is never a silent one
+                ShowToolWord();
+                cleanButton.EnableInClassList("kg-tool--on", on); // the word, a mark and a ring: the mode is never a silent one
             }
             if (on && hand != KitTool.None) SetHand(KitTool.None);
             CleanModeChanged?.Invoke(on);
@@ -157,7 +158,21 @@ namespace AquariumCiv.GameUI
         public bool KitBox => kitBox;
         public event Action<KitTool> HandChanged;
 
-        /// <summary>Put a kit tool in hand (None puts it down). Clean mode ends; the Kit button reads Done and stays lit while it's held.</summary>
+        /// <summary>#516 (playtest #510: "Done" read as "confirm" while it only closed the placement): with a kit tool in hand the Kit
+        /// button says what it does, puts the tool away, under a cross. A plain box's clean mode keeps Done and its check.</summary>
+        public const string PutAway = "Put away";
+
+        /// <summary>The Kit/Clean button's word and mark for the state now.</summary>
+        void ShowToolWord()
+        {
+            if (cleanButton == null) return;
+            bool away = hand != KitTool.None || (cleanMode && kitBox);
+            cleanButton.text = away ? PutAway : cleanMode ? "Done" : kitBox ? "Kit" : "Clean";
+            if (toolMark != null) toolMark.Shape = away ? "close" : "check";
+            cleanButton.EnableInClassList("kg-tool--away", away);
+        }
+
+        /// <summary>Put a kit tool in hand (None puts it down). Clean mode ends; the Kit button reads Put away and stays lit while it's held.</summary>
         public void SetHand(KitTool t)
         {
             if (hand == t) return;
@@ -166,7 +181,7 @@ namespace AquariumCiv.GameUI
             if (cleanButton != null)
             {
                 bool on = t != KitTool.None || cleanMode;
-                cleanButton.text = on ? "Done" : KitBox ? "Kit" : "Clean";
+                ShowToolWord();
                 cleanButton.EnableInClassList("kg-tool--on", on);
             }
             if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
@@ -372,7 +387,7 @@ namespace AquariumCiv.GameUI
             {
                 kitBox = eco;
                 if (!eco) SetHand(KitTool.None);
-                if (cleanButton != null) cleanButton.text = cleanMode || hand != KitTool.None ? "Done" : eco ? "Kit" : "Clean";
+                ShowToolWord();
                 if (shapeButton != null) shapeButton.style.display = eco || toolBlocks.Count > 0 ? DisplayStyle.None : DisplayStyle.Flex;
             }
             if (!eco || kitSeed == null) return;
@@ -689,7 +704,7 @@ namespace AquariumCiv.GameUI
             bottomRow = Row("hud-bottom");
             bottomRow.Add(historyButton = Tool("hud-history", "History", OnHistory, UiRole.Open));
             bottomRow.Add(cleanButton = Tool("hud-clean", "Clean", () => { if (kitBox) OnKitButton(); else SetCleanMode(!cleanMode); }, UiRole.Toggle));
-            cleanButton.Add(new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
+            cleanButton.Add(toolMark = new GlassIcon("check", "kg-icon--small", "kg-tool-mark"));
             cleanButton.Add(new GlassNewTag());
             kitDot = new VisualElement { name = "hud-kit-dot", pickingMode = PickingMode.Ignore }; // #423: a jar is ready
             kitDot.AddToClassList("kg-dot");

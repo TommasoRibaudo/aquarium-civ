@@ -20,14 +20,14 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         public static SeedPlaceView Instance { get; private set; }
 
-        /// <summary>The hint while the ghost waits for its second tap.</summary>
-        public const string TapAgainHint = "Tap the outline again to plant the seed here.";
+        /// <summary>The hint while the ghost waits for its second tap (#516: the life slot's wording, naming what goes down).</summary>
+        public const string TapAgainHint = "Tap again to plant the seed here.";
         public const string NotThere = "Not there: the seed needs dry ground above the hollow.";
 
         [Tooltip("A press that wanders further than this (share of screen height) is a drag, not a tap.")] public float slop = 0.02f;
         [Tooltip("A tap this near the ghost's middle (box units) plants it.")] public float ghostReach = 0.28f;
         [Tooltip("The ghost's size against the real mound.")] public float ghostScale = 1.25f;
-        [Tooltip("The silhouette's fill (pale) and its thin darker edge.")] public Color ghostFill = new(0.97f, 0.95f, 0.88f, 0.8f), ghostEdge = new(0.30f, 0.26f, 0.20f, 0.55f);
+        [Tooltip("The silhouette's fill (pale) and its thin darker edge.")] public Color ghostFill = new(1f, 1f, 1f, 0.86f), ghostEdge = new(0.30f, 0.26f, 0.20f, 0.6f);
 
         BoxView box;
         GameHud hud;
@@ -139,8 +139,8 @@ namespace AquariumCiv.View
             look.Draw(GhostMesh(false), GhostMesh(true), new Vector3(c.x, y, c.z), ghostScale * Ghost.Breath() * Ghost.Pop(), ghostFill, ghostEdge);
         }
 
-        /// <summary>The Keeper's tree at stage 0 (the seed in its mound, its stones and moss) as one white silhouette; <paramref name="edge"/>:
-        /// a little larger, for the darker outline behind.</summary>
+        /// <summary>The Keeper's tree at stage 0 (the seed in its mound, its stones and moss), its own colours washed pale (#516,
+        /// <see cref="GhostLook.Pale"/>); <paramref name="edge"/>: a little larger, in white, for the darker outline behind.</summary>
         static Mesh GhostMesh(bool edge)
         {
             var m = edge ? edgeMesh : fillMesh;
@@ -149,7 +149,7 @@ namespace AquariumCiv.View
             if (edge) mb.M = Matrix4x4.Scale(new Vector3(1.12f, 1.25f, 1.12f));
             KeeperTreeKit.Build(mb, Vector3.zero, 0, 0, LandColors.River);
             mb.M = Matrix4x4.identity;
-            for (int i = 0; i < mb.colors.Count; i++) mb.colors[i] = Color.white;
+            if (edge) GhostLook.Flat(mb); else GhostLook.Pale(mb);
             m = mb.ToMesh(edge ? "SeedGhost_edge" : "SeedGhost");
             m.hideFlags = HideFlags.DontSave;
             if (edge) edgeMesh = m; else fillMesh = m;
