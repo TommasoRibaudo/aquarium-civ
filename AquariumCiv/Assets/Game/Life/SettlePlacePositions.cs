@@ -213,6 +213,16 @@ namespace AquariumCiv.Life
             return best;
         }
 
+        /// <summary>#521: the stream bed's other dry patches for digging roots: a few steps either side of the bed, on the nearest
+        /// walkable ground (the bed itself stays patch 0). Falls back to the bed when there is nothing walkable near.</summary>
+        void DigSpot(int index, ref float x, ref float z)
+        {
+            float a = index == 1 ? 0.6f : 3.4f; // radians: one patch each side
+            int c = Walkable(x + 0.5f * (float)Math.Cos(a), z + 0.5f * (float)Math.Sin(a));
+            if (c < 0) return;
+            x = SiteMap.CXc(c); z = SiteMap.CZc(c);
+        }
+
         // ------------------------------------------------------------------ positions
 
         /// <summary>Where a place is. <paramref name="door"/>: where a walk to it ends (a lot's door) rather than where the
@@ -275,6 +285,7 @@ namespace AquariumCiv.Life
             int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash && p.index == 1 ? 1 : 0);
             if (!land.TryGetValue(key, out var s)) return false;
             x = s.x; z = s.z;
+            if (p.kind == PlaceKind.Stream && p.index > 0) DigSpot(p.index, ref x, ref z); // #521: the stream bed other dry patches
             return true;
         }
 
