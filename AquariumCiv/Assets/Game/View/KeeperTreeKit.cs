@@ -29,6 +29,12 @@ namespace AquariumCiv.View
             return t * t * (3f - 2f * t);
         }
 
+        /// <summary>#525: the ground pool under the tree at night (BoxView.Glows): from this stage, this wide, this strong (a lantern's is 1, the fire's much more),
+        /// switching on with the lamp level at <see cref="PoolPhase"/> (threshold 0.12 + 0.6 x phase = 0.15, where <see cref="GlowOf"/> starts).</summary>
+        public const int PoolStage = 3;
+        public const float PoolPhase = 0.05f, PoolStrength = 0.3f;
+        public static float PoolRadius(int stage) => stage >= 4 ? 0.5f : 0.4f;
+
         /// <summary>The lamp channel value for a soft glow of this strength: 2 + strength.</summary>
         public static float GlowChannel(float strength) => 2f + Mathf.Clamp01(strength);
 
