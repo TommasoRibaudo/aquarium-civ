@@ -140,6 +140,11 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(Sim.DebugPlaceNearCamp(AquariumCiv.Sim.Eco.LifeSpecies.Ducks), 0, "the ducks placed");
             yield return Until(() => pl.WantedDucks > 0, 8f); // after their arrival plays
             Assert.AreEqual(Mathf.Min(PondLife.MaxDucks, Sim.EcoDucksShown()), pl.WantedDucks, "the placed ducks");
+            // tester 2026-11-08: a grown flock (8 after a ten-year jump) is drawn whole, not 2
+            Sim.State.eco.ducks = 8;
+            yield return Until(() => pl.DucksShown >= 8, 5f);
+            Assert.AreEqual(8, pl.WantedDucks, "the pond wants the whole wild flock");
+            Assert.AreEqual(8, pl.DucksShown, "and shows it");
             string msg = EcoDebug.DucksNow();
             yield return Until(() => pl.DucksShown > 0, 5f);
             Assert.Greater(pl.DucksShown, 0, msg);

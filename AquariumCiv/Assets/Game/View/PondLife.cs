@@ -14,7 +14,7 @@ namespace AquariumCiv.View
     /// <item>Frogs sit on the bank and on the lily pads: two or three by day, five or six at dusk and night (as the frog sound
     /// grows at night), none in winter. They puff their throat now and then (more at night), and hop into the water when a person
     /// comes near; a while later another sits somewhere else.</item>
-    /// <item>Ducks (P9 #421/#424: as many as the sim's placed ducks, at most two shown; the pond's size no longer brings them): one duck paddles on it, dabbles
+    /// <item>Ducks (P9 #421/#424: as many as the sim's wild flock, up to its cap of 8; the pond's size no longer brings them): one duck paddles on it, dabbles
     /// (tail up) now and then, and sometimes waddles ashore for a while. A person coming close sends it paddling off.</item>
     /// </list>
     /// </summary>
@@ -23,7 +23,10 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         public static PondLife Instance { get; private set; }
 
-        public const int DuckPondCells = 20, TwoDucksPondCells = 40, MaxFrogs = 6, MaxDucks = 2, MaxPads = 4;
+        public const int DuckPondCells = 20, TwoDucksPondCells = 40, MaxFrogs = 6, MaxPads = 4;
+        /// <summary>The most ducks the pond draws: the sim's wild cap (spec §4.1, 8). Tester 2026-11-08: it was 2, so a flock of 8 after a
+        /// ten-year jump showed as 2.</summary>
+        public const int MaxDucks = AquariumCiv.Sim.SimCore.DucksShownCap;
         /// <summary>A person closer than this (box units) sends a frog into the water, and a duck away.</summary>
         public const float FrogFlee = 0.32f, DuckFlee = 0.30f;
 
