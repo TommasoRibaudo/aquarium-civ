@@ -356,7 +356,7 @@ namespace AquariumCiv.View
                 GUILayout.BeginHorizontal();
                 if (GUILayout.Button("Settle a deer hit (sim)")) last = Done(sim.DebugDeerHuntNow() ? $"a deer taken, {sim.EcoDeerCount} left" : "no deer to spare");
                 if (GUILayout.Button("Deer to capacity")) last = Done($"{sim.DebugDeerToCap()} deer");
-                if (GUILayout.Button("White stag now")) last = Done(sim.DebugWhiteStagNow() ? "the white stag shows" : "it already has");
+                if (GUILayout.Button("White stag now")) last = Done(DeerScenesView.Instance != null ? DeerScenesView.Instance.DebugWhiteStagNow() : sim.DebugWhiteStagNow() ? "the white stag shows" : "it already has");
                 if (GUILayout.Button("Eggs now")) last = Done($"{sim.DebugEggsNow()} eggs in the nests");
                 GUILayout.EndHorizontal();
                 // #426: the deer hunt you watch (bows, the stalk, the arrow, the pole carry), the feast, the antlers
@@ -368,6 +368,16 @@ namespace AquariumCiv.View
                 if (dhs != null && GUILayout.Button("Deer feast now")) last = Done(dhs.DebugFeastNow());
                 if (dhs != null && GUILayout.Button("Antlers up now")) last = Done(dhs.DebugAntlersNow());
                 GUILayout.EndHorizontal();
+                // #427: dawn at the pond, the white stag (its choice; after "let it be" it shows at dawn)
+                var dsv = DeerScenesView.Instance;
+                if (dsv != null)
+                {
+                    GUILayout.Label(dsv.Status());
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Dawn at the pond now")) last = Done(dsv.DebugDawnNow());
+                    if (GUILayout.Button("White stag at dawn now")) last = Done(dsv.DebugWhiteDawnNow());
+                    GUILayout.EndHorizontal();
+                }
                 var takers = new[] { AquariumCiv.Sim.Eco.LifeSpecies.Rabbits, AquariumCiv.Sim.Eco.LifeSpecies.Deer, AquariumCiv.Sim.Eco.LifeSpecies.Ducks, AquariumCiv.Sim.Eco.LifeSpecies.Fish };
                 GUILayout.BeginHorizontal();
                 foreach (var s in takers)

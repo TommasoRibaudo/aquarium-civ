@@ -23,6 +23,8 @@ namespace AquariumCiv.Sim
     public static class LifeChoices
     {
         public const string Thief = "wolf_thief", Pup = "lost_pup", Kill = "wolf_kill", Pen = "duck_pen";
+        /// <summary>P9 #427 (B14.b, spec D5): the white stag, once per box: hunt it / let it be.</summary>
+        public const string WhiteStag = "white_stag";
 
         static DilemmaDef Def(string kind, string question, string shortAsk, string a, string aHint, string b, string bHint) => new DilemmaDef
         {
@@ -55,9 +57,18 @@ namespace AquariumCiv.Sim
             "a thorn fence", "A ring of thorny branches round the pen, and a torch at night.",
             "the dogs keeping watch", "A dog sleeps by the pen gate, and barks when the wolves come.");
 
-        public static readonly DilemmaDef[] All = { ThiefDef, PupDef, KillDef, PenDef };
+        /// <summary>#427: the words are [est] until the user signs them off (the issue's own question).</summary>
+        public static readonly DilemmaDef WhiteStagDef = Def(WhiteStag,
+            "The hunters saw the white stag. Hunt it, or let it be?", "The white stag.",
+            "to hunt it", "A feast that night, and its great white antlers over the chief's door.",
+            "to let it be", "The hunters lower their bows. It may come back at dawn, and the people will tell of it.");
 
-        public static bool Is(DilemmaDef def) => def?.smallKind != null && Array.IndexOf(new[] { Thief, Pup, Kill, Pen }, def.smallKind) >= 0;
+        public static readonly DilemmaDef[] All = { ThiefDef, PupDef, KillDef, PenDef, WhiteStagDef };
+
+        public static bool Is(DilemmaDef def) => def?.smallKind != null && Array.IndexOf(new[] { Thief, Pup, Kill, Pen, WhiteStag }, def.smallKind) >= 0;
+
+        /// <summary>#427 "Let them decide" for the white stag: these chiefs let it be (the gentle and the dreaming); the rest hunt it.</summary>
+        public static readonly string[] LetBeTraits = { "the kind", "the dreamer", "the singer" };
 
         /// <summary>"Let them decide" leans on the chief's trait: these share and take chances (the scraps, the pup, the kill, the dogs).</summary>
         public static readonly string[] BoldTraits = { "the brave", "the kind", "the dreamer", "the joker", "the singer", "the loud" };
@@ -337,7 +348,8 @@ namespace AquariumCiv.Sim
         /// <summary>User 2026-11-08: the seasonal life choices (the meat thief, the lost pup) are raised when they happen, without the
         /// small-choice gap or waiting for the next small slot. Still one choice at a time, only while the Keeper watches or on an open,
         /// never resolved unseen. The kill and the pen keep the normal pacing.</summary>
-        public static bool IsSeasonalLife(DilemmaDef def) => def?.smallKind == LifeChoices.Thief || def?.smallKind == LifeChoices.Pup;
+        public static bool IsSeasonalLife(DilemmaDef def) => def?.smallKind == LifeChoices.Thief || def?.smallKind == LifeChoices.Pup
+            || def?.smallKind == LifeChoices.WhiteStag; // #427: the white stag stands at the wood's edge now: it is asked now
 
         /// <summary>A seasonal life choice (thief, pup) has its moment and isn't open: it is raised at the next watched month or open, ahead
         /// of the gap (it still waits for an open choice or wish to end).</summary>
@@ -387,6 +399,8 @@ namespace AquariumCiv.Sim
                     return GrownDogs == 0 ? "no dog to keep watch" : null;
                 case LifeChoices.Pup:
                     return PupWhyNot();
+                case LifeChoices.WhiteStag:
+                    return WhiteStagChoiceDue && !LifeAsked(def) ? null : "no white stag waiting";
             }
             return "unknown life choice";
         }
@@ -427,6 +441,9 @@ namespace AquariumCiv.Sim
                 case LifeChoices.Pup:
                     ApplyPup(d, option);
                     break;
+                case LifeChoices.WhiteStag:
+                    ResolveWhiteStag(option == 0); // #427: 0 hunt it (the feast, the great antlers), 1 let it be (it shows at dawn)
+                    break;
             }
             e.wolfBold = Math.Clamp(e.wolfBold, 0f, 1f);
         }
@@ -444,6 +461,7 @@ namespace AquariumCiv.Sim
                 LifeChoices.Pup => bold ? 0 : 1,
                 LifeChoices.Kill => bold ? 0 : 1,
                 LifeChoices.Pen => bold && GrownDogs > 0 ? 1 : 0,
+                LifeChoices.WhiteStag => Array.IndexOf(LifeChoices.LetBeTraits, leader.trait) >= 0 ? 1 : 0,
                 _ => 0,
             };
         }

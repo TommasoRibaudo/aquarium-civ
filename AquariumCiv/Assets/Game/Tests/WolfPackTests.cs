@@ -411,7 +411,8 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(DilemmaEnd.Visits, d.end);
             Assert.AreEqual(3, d.visits);
             Assert.AreNotEqual(WolfWay.None, sim.WolfWayTaken, "the people's own pick");
-            Assert.IsFalse(sim.LifeChoiceWaiting, "asked once");
+            Assert.IsFalse(sim.LifeChoiceWaiting && sim.State.eco.whiteStag != (int)WhiteStag.Seen, "asked once"); // #427: the white stag may wait by now
+            Assert.IsFalse(sim.State.dilemmas.Count(x => x.defId == LifeChoices.ThiefDef.id) > 1, "the thief asked once");
         }
 
         /// <summary>User 2026-11-08: the seasonal life choices (the thief, the lost pup) are raised in the month they happen, inside the
@@ -568,7 +569,7 @@ namespace AquariumCiv.Tests
             Assert.IsNotNull(mo, "held for the Keeper as a moment");
             Assert.AreEqual(MomentKind.WhiteWolf, mo.kind);
             Assert.IsFalse(sim.DebugWhiteWolfNow(), "once");
-            Assert.IsFalse(LifeChoices.All.Any(x => x.question.Contains("white")), "no pelt, no choice");
+            Assert.IsFalse(LifeChoices.All.Any(x => x.question.Contains("white wolf")), "no pelt, no choice"); // (the white stag, #427, is a choice)
         }
 
         // ================================================================ the hard rules (WolfRules)
