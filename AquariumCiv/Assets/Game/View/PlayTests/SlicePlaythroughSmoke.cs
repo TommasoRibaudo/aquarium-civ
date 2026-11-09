@@ -70,10 +70,16 @@ namespace AquariumCiv.View.PlayTests
             float t0 = Time.realtimeSinceStartup;
             yield return Frames(4);
             float frame = (Time.realtimeSinceStartup - t0) / 4f;
-            float travel = Mathf.Clamp(care.flickSpeed * 3f * 3f * frame, 0.3f, 2f);
+            float travel = Mathf.Clamp(care.flickSpeed * 3f * 4f * frame, 0.3f, 2f);
             Debug.Log($"[smoke] flick: frame {frame * 1000f:0} ms, travel {travel:0.00} H");
             var to = sp + new Vector2(0.02f, travel) * Screen.height;
-            yield return Drag(new[] { sp, to }, travel * Screen.height + 1f);
+            int id = touchId++;
+            BeginTouch(id, sp, queueEventOnly: true);
+            yield return null;
+            MoveTouch(id, to, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null; // the move gets a frame of its own before the lift
+            EndTouch(id, to, delta: Vector2.zero, queueEventOnly: true);
+            yield return null; yield return null;
         }
 
         IEnumerator FirstRunByTouch()
