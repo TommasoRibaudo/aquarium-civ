@@ -86,7 +86,8 @@ namespace AquariumCiv.Audio
                 float bare = Clamp01(a.bare01);
                 // The barren bed: full on a dead box, eased out as the green takes over; quieter at night, gone below 15 % bare.
                 float u = Clamp01((bare - BarrenGoneBelow) / (1f - BarrenGoneBelow));
-                barren = u * u * (3f - 2f * u) * (0.75f + 0.25f * day);
+                float us = u * u * (3f - 2f * u);
+                barren = us * (float)Math.Sqrt(us) * (0.75f + 0.25f * day); // #520: us^1.5, so the wind drops away faster as the land greens (still full at 100 % bare)
                 // #331: the sand's hiss is the gust rate and level (SandGusts), not a bed: lower, and gone by 40 % bare, well before the wind bed's 15 %.
                 float uh = Clamp01((bare - SandHissGoneBelow) / (1f - SandHissGoneBelow));
                 sandHiss = SandHissMax * uh * uh * (3f - 2f * uh);
