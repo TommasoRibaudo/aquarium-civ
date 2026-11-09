@@ -94,18 +94,23 @@ namespace AquariumCiv.View
         void RefreshSpots(SimCore sim)
         {
             var root = box.Root;
-            long month = sim.State.month;
+            // #523: looked at again every sim day (not only each month), so a patch on ground that just turned trodden is moved within a day
+            long month = sim.State.month * 1000000L + (long)(sim.State.simHours / 24.0);
             if (root == spotsRoot && month == spotsMonth) return;
             bool rebuilt = root != spotsRoot;
-            spotsRoot = root; spotsMonth = month;
+            spotsRoot = root; spotsMonth = month; trodden = sim;
             if (root == null) return;
             for (int i = 0; i < MaxWeeds; i++)
             {
-                if (spotKnown[i] && !rebuilt && box.FreeForProp(spots[i], 0.2f)) continue;
+                if (spotKnown[i] && !rebuilt && box.FreeForProp(spots[i], 0.2f) && !Trodden(spots[i])) continue;
                 spotKnown[i] = FindSpot(i, out spots[i]);
                 if (weeds.TryGetValue(i, out var w) && spotKnown[i]) w.t.localPosition = Ground(spots[i]);
             }
         }
+
+        SimCore trodden;
+        /// <summary>#523: the fire's ring, the lots and the paths people walk stay clear of weeds (SimCore.IsTroddenGround).</summary>
+        bool Trodden(Vector2 p) => trodden != null && trodden.IsTroddenGround(p.x, p.y);
 
         bool FindSpot(int i, out Vector2 spot)
         {
@@ -114,7 +119,7 @@ namespace AquariumCiv.View
                 var p = PatchCentre.HasValue
                     ? PatchCentre.Value + new Vector2(Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f, Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * PatchRadius
                     : new Vector2((Land.Hash3(i * 41 + k, 3, 17) * 2f - 1f) * (Land.HX - 0.5f), (Land.Hash3(i * 53 + k, 9, 23) * 2f - 1f) * (Land.HZ - 0.5f));
-                if (!box.FreeForProp(p, 0.22f)) continue;
+                if (!box.FreeForProp(p, 0.22f) || Trodden(p)) continue;
                 bool clash = false;
                 for (int j = 0; j < MaxWeeds; j++) if (j != i && spotKnown[j] && (spots[j] - p).sqrMagnitude < (PatchCentre.HasValue ? 0.26f : 0.38f) * (PatchCentre.HasValue ? 0.26f : 0.38f)) { clash = true; break; }
                 if (!clash) { spot = p; return true; }
@@ -169,13 +174,14 @@ namespace AquariumCiv.View
         void SyncVine(SimCore sim)
         {
             var list = sim.EcologyOn ? sim.EcoVine : System.Array.Empty<int>();
+            // #523: no vine is drawn on trodden ground; one that was there leaves with the next sync
             scratch.Clear();
-            foreach (var k in vines.Keys) if (!Contains(list, k)) scratch.Add(k);
+            foreach (var k in vines.Keys) if (!Contains(list, k) || VineTrodden(sim, k)) scratch.Add(k);
             foreach (var k in scratch) { Leave(vines[k], Vector3.zero); vines.Remove(k); }
             for (int i = 0; i < list.Count; i++)
             {
                 int c = list[i];
-                if (vines.ContainsKey(c)) continue;
+                if (vines.ContainsKey(c) || VineTrodden(sim, c)) continue;
                 // run along the strand: toward the next cell, or on from the one before it
                 float cx = AquariumCiv.Sim.Settle.SiteMap.CXc(c), cz = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
                 float dx = 1f, dz = 0f;
@@ -189,6 +195,7 @@ namespace AquariumCiv.View
             }
         }
 
+        static bool VineTrodden(SimCore sim, int c) => sim.IsTroddenGround(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c));
         static bool Contains(IReadOnlyList<int> list, int c) { for (int i = 0; i < list.Count; i++) if (list[i] == c) return true; return false; }
         static bool Near(int a, int b) => Mathf.Abs(AquariumCiv.Sim.Settle.SiteMap.I(a) - AquariumCiv.Sim.Settle.SiteMap.I(b)) <= 1 && Mathf.Abs(AquariumCiv.Sim.Settle.SiteMap.J(a) - AquariumCiv.Sim.Settle.SiteMap.J(b)) <= 1;
 
