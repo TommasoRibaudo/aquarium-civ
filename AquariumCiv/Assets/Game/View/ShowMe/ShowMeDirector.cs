@@ -394,11 +394,11 @@ namespace AquariumCiv.View
 
         static string NameOf(PersonRef who) => who.IsNotable ? Sim?.FindNotable(who.notableId)?.name : null;
 
-        /// <summary>The caption's "who" line for this speaker: their name, a crowd label with a word from the box, or nothing.</summary>
+        /// <summary>The caption's "who" line for this speaker: their first name (notable or crowd person), or null so the caption shows none (#522).</summary>
         static string WhoLine(PersonRef who)
         {
             var sim = Sim;
-            return LineRoute.Who(NameOf(who), who.IsCrowd, sim != null ? PeopleVoice.PlaceWord(sim) : null);
+            return LineRoute.Who(NameOf(who), who.IsCrowd && sim != null ? sim.CrowdName(who.crowdIndex) : null);
         }
 
         sealed class Waiting { public string text; public PersonRef who; public float seconds; public LineKind kind; }
