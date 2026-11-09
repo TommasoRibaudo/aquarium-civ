@@ -41,7 +41,7 @@ namespace AquariumCiv.View
         Mesh faceMesh, wetMesh, pudMesh, spMesh, frMesh, ngMesh;
         MeshFilter faceF, wetF, sheenF, pudF, spF, frF, ngF;
         MeshRenderer faceR, wetR, sheenR, pudR, spR, frR, ngR;
-        Material wetMat, sheenMat, pudMat, tintMat, freshMat;
+        Material faceMat, wetMat, sheenMat, pudMat, tintMat, freshMat;
         bool pudTuned;
 
         // reusable builders
@@ -142,6 +142,7 @@ namespace AquariumCiv.View
         {
             const int Zero = 0, One = 1, DstColor = 2, SrcColor = 3, SrcAlpha = 5, OneMinusSrcAlpha = 10;
             wetMat ??= MakeMaterial("EcoWet", 0, DstColor, Zero);
+            if (faceMat == null) { faceMat = MakeMaterial("EcoWet", 0, DstColor, Zero); if (faceMat != null) { faceMat.name = "EcoWetFace"; faceMat.SetFloat("_WetBoost", 2.2f); faceMat.SetColor("_WetColor", new Color(0.52f, 0.52f, 0.58f)); } } // #524: the cut face sits in the glass's shadow: a clearly darker, cooler wet tone
             sheenMat ??= MakeMaterial("EcoSheen", 1, One, One);
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
@@ -157,7 +158,7 @@ namespace AquariumCiv.View
                 pudMat.SetColor("_WetColor", new Color(0.46f, 0.37f, 0.31f)); // the puddle's mud rim
                 if (sheenMat != null) sheenMat.SetFloat("_WetBoost", 1.9f);
             }
-            return wetMat != null && sheenMat != null && pudMat != null && tintMat != null && freshMat != null;
+            return faceMat != null && wetMat != null && sheenMat != null && pudMat != null && tintMat != null && freshMat != null;
         }
 
         MeshFilter Part(string name, ref MeshRenderer r, Material mat, Mesh mesh)
@@ -203,7 +204,7 @@ namespace AquariumCiv.View
                 faceMesh = NewMesh("EcoWetFace"); Warm(faceMesh); Warm(wetMesh); Warm(pudMesh); Warm(frMesh); Warm(ngMesh);
                 ngF = Part("EcoNewGrass", ref ngR, freshMat, ngMesh);
                 frF = Part("EcoFresh", ref frR, tintMat, frMesh);
-                faceF = Part("EcoWetFace", ref faceR, wetMat, faceMesh);
+                faceF = Part("EcoWetFace", ref faceR, faceMat, faceMesh);
                 wetF = Part("EcoWet", ref wetR, wetMat, wetMesh);
                 sheenF = Part("EcoSheen", ref sheenR, sheenMat, wetMesh);
                 pudF = Part("EcoPuddles", ref pudR, pudMat, pudMesh);
@@ -341,7 +342,8 @@ namespace AquariumCiv.View
                     {
                         int ci = i + (q & 1), cj = j + (q >> 1);
                         float a = (Get(f, ci - 1, cj - 1, toGlass) + Get(f, ci, cj - 1, toGlass) + Get(f, ci - 1, cj, toGlass) + Get(f, ci, cj, toGlass)) * 0.25f;
-                        a *= 1f - noise + noise * 2f * Hash(ci * 31 + 7, cj * 17 + 3); // a ragged edge, not the grid's
+                        bool atGlass = toGlass && (ci == 0 || cj == 0 || ci == NX || cj == NZ); // #524: the wet runs to the glass line at full strength
+                        if (!atGlass) a *= 1f - noise + noise * 2f * Hash(ci * 31 + 7, cj * 17 + 3); // a ragged edge, not the grid's
                         Add(ci * Site.Cell + Site.X0, CornerY(ci, cj) + Lift, cj * Site.Cell + Site.Z0, Mathf.Clamp01(a * scale), colour);
                     }
                     // corners: 1 = (i,j), 2 = (i+1,j), 3 = (i,j+1), 4 = (i+1,j+1); fan round the middle
@@ -406,10 +408,10 @@ namespace AquariumCiv.View
                         }
                         float w = e == 0 ? w0 : w1;
                         float top = box.land.Height(x, z) - 0.004f;
-                        float drop = 0.16f * (0.75f + 0.5f * Hash(k * 13 + side * 101, 5)); // a ragged lower edge
+                        float drop = 0.40f * (0.75f + 0.5f * Hash(k * 13 + side * 101, 5)); // a ragged lower edge
                         var p = new Vector3(x, top, z) + o;
                         Add(p.x, p.y, p.z, w, new Color32(255, 255, 255, 255));
-                        Add(p.x, p.y - drop * 0.4f, p.z, w * 0.7f, new Color32(255, 255, 255, 255));
+                        Add(p.x, p.y - drop * 0.45f, p.z, w * 0.85f, new Color32(255, 255, 255, 255));
                         Add(p.x, p.y - drop, p.z, 0f, new Color32(255, 255, 255, 255));
                     }
                     for (int r = 0; r < 2; r++)
