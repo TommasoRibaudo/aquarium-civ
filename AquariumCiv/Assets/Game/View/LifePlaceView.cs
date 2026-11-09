@@ -5,7 +5,6 @@ using AquariumCiv.Sim;
 using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace AquariumCiv.View
 {
@@ -16,6 +15,8 @@ namespace AquariumCiv.View
     /// (<see cref="SimCore.PlaceLife"/>), a tap elsewhere on the glow moves the ghost, a tap on dark ground gives a small "no"
     /// wobble and nothing else, a tap off the land puts the tool back. One finger is the tool, two the camera
     /// (<see cref="EcoMistView.ClaimsPress"/> already holds one finger for any kit tool). The arrival itself is #424's.
+    /// <para>#518: the tap and the ghost's flow are <see cref="KitPress"/> and <see cref="GhostTap"/>, shared with the seed
+    /// (<see cref="SeedPlaceView"/>); the silhouettes are <see cref="GhostLook"/>.</para>
     /// </summary>
     [DefaultExecutionOrder(-14)]
     public class LifePlaceView : MonoBehaviour
@@ -33,30 +34,31 @@ namespace AquariumCiv.View
         BoxView box;
         GameHud hud;
         Material fx;
-        GameObject glowGo, ghostGo, noGo, restoreGo, dimGo, fillGo, edgeGo;
-        Material glowMat, dimMat, restoreMat, fillMat, edgeMat;
+        GameObject glowGo, ghostGo, noGo, restoreGo, dimGo;
+        Material glowMat, dimMat, restoreMat;
+        GhostTap ghost;
+        GhostLook look;
+        readonly KitPress press = new();
         Mesh dimMesh;
         Mesh glowMesh, ghostMesh, noMesh;
         MaterialPropertyBlock mpb;
         readonly List<int> cells = new();
         LifeSpecies glowFor;
         int glowStamp = -1;
-        bool down, multi;
-        Vector2 downAt, lastAt;
-        Vector3 ghostAt;
-        float ghostT, wobbleT = -9f, noT = -9f;
+        float noT = -9f;
 
         /// <summary>Cells glowing now (0 when nothing is in hand).</summary>
         public int GlowCells { get; private set; }
         /// <summary>The land is dimmed now (a species in hand), and how strongly (user 2026-11-08).</summary>
         public bool Dimmed => dimGo != null && dimGo.activeSelf;
-        /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
         /// <summary>The hint while the ghost waits for its second tap.</summary>
         public const string TapAgainHint = "Tap the outline again to set them down here.";
         /// <summary>How long the tap-again hint may stay up while the ghost waits (it goes with the ghost before that).</summary>
-        public const float GhostHintSeconds = 30f;
+        public const float GhostHintSeconds = GhostTap.HintSeconds;
+        /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
-        public int GhostCell { get; private set; } = -1;
+        public int GhostCell => Ghost.Cell;
+        GhostTap Ghost => ghost ??= new GhostTap(TapAgainHint, ghostReach);
         /// <summary>Taps on dark ground (the soft "no"), placings made by tap, and the last answer (tests, debug panel).</summary>
         public int Refusals { get; private set; }
         public int Placings { get; private set; }
@@ -82,11 +84,12 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (Instance == this) Instance = null;
-            foreach (var go in new[] { glowGo, ghostGo, noGo, restoreGo, dimGo, fillGo, edgeGo }) if (go != null) Destroy(go);
+            foreach (var go in new[] { glowGo, ghostGo, noGo, restoreGo, dimGo }) if (go != null) Destroy(go);
             foreach (var m in new[] { glowMesh, ghostMesh, noMesh, dimMesh }) if (m != null) Destroy(m);
-            foreach (var m in new[] { glowMat, dimMat, restoreMat, fillMat, edgeMat }) if (m != null) Destroy(m);
-            glowGo = ghostGo = noGo = restoreGo = dimGo = fillGo = edgeGo = null; glowMesh = ghostMesh = noMesh = dimMesh = null;
-            glowMat = dimMat = restoreMat = fillMat = edgeMat = null;
+            foreach (var m in new[] { glowMat, dimMat, restoreMat }) if (m != null) Destroy(m);
+            look?.Destroy(); look = null; ghost?.Hide(null);
+            glowGo = ghostGo = noGo = restoreGo = dimGo = null; glowMesh = ghostMesh = noMesh = dimMesh = null;
+            glowMat = dimMat = restoreMat = null;
         }
 
         void Update()
@@ -100,7 +103,7 @@ namespace AquariumCiv.View
                 if (restoreGo != null && restoreGo.activeSelf) restoreGo.SetActive(false);
                 if (dimGo != null && dimGo.activeSelf) dimGo.SetActive(false); // the moment the tool is put down
                 HideGhost();
-                GlowCells = 0; glowStamp = -1; down = false;
+                GlowCells = 0; glowStamp = -1; press.Reset();
                 DrawNo();
                 return;
             }
@@ -126,19 +129,8 @@ namespace AquariumCiv.View
         // ---------------------------------------------------------------- input
         void Taps(SimCore sim, LifeSpecies s)
         {
-            int n = ReadPointer(out var pos);
-            if (n > 0)
-            {
-                if (!down) { down = !UiInput.Over(pos); multi = false; downAt = pos; }
-                if (n > 1) multi = true;
-                lastAt = pos;
-                return;
-            }
-            if (!down) return;
-            down = false;
-            if (multi) return; // two fingers: the camera's
-            if ((lastAt - downAt).magnitude > slop * 2f * Mathf.Max(1, Screen.height)) return; // a drag isn't a tap
-            TapAt(sim, s, lastAt);
+            int n = KitPress.ReadPointer(out var pos);
+            if (press.Tap(n, pos, slop, out var at)) TapAt(sim, s, at); // two fingers (a pan, a pinch) never place: the camera's (#518)
         }
 
         /// <summary>One tap of the life tool at a screen point (the touch path calls it; tests may too).</summary>
@@ -147,7 +139,8 @@ namespace AquariumCiv.View
             var mist = EcoMistView.Instance;
             if (mist == null || !mist.GroundPoint(screen, out var at)) { Last = "off the land: put back"; hud?.SetHand(GameHud.KitTool.None); return; }
             int cell = SiteMap.CellAt(at.x, at.z);
-            if (GhostShown && new Vector2(at.x - ghostAt.x, at.z - ghostAt.z).magnitude <= ghostReach && sim.CanPlaceLife(s, GhostCell))
+            Ghost.reach = ghostReach;
+            if (GhostShown && Ghost.OnGhost(at) && sim.CanPlaceLife(s, GhostCell))
             {
                 Place(sim, s, GhostCell);
                 return;
@@ -156,17 +149,14 @@ namespace AquariumCiv.View
             {
                 Refusals++;
                 Last = $"no: cell {cell}";
-                wobbleT = Time.unscaledTime;
+                Ghost.Wobble();
                 noAt = box.land.OnGround(at.x, at.z); noT = Time.unscaledTime;
                 return;
             }
             bool moved = GhostShown;
-            ShowGhost(s, cell);
-            LifeArrivalView.Instance?.LeanOnGhost(s, ghostAt); // user 2026-11-08: the camera leans in so the group reads at phone size
+            ShowGhost(s, cell); // the tap-again hint stays while the ghost waits and goes with it (GhostTap)
+            LifeArrivalView.Instance?.LeanOnGhost(s, Ghost.At); // user 2026-11-08: the camera leans in so the group reads at phone size
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
-            // tester 2026-11-08: the hint stays while the ghost waits (a 3 s toast ran out during the camera's lean, so nobody saw it);
-            // it goes with the ghost (HideGhost)
-            hud?.WithdrawToast(GameHud.LifeHint); hud?.Toast(TapAgainHint, GhostHintSeconds);
         }
 
         void Place(SimCore sim, LifeSpecies s, int cell)
@@ -291,37 +281,27 @@ namespace AquariumCiv.View
         void ShowGhost(LifeSpecies s, int cell)
         {
             var target = new Vector3(SiteMap.CXc(cell), 0f, SiteMap.CZc(cell));
-            bool slide = GhostShown;
             if (ghostGo == null) ghostGo = Child("LifeGhost", out ghostMesh);
             ghostGo.SetActive(true);
-            slideFrom = slide ? ghostAt : target; slideT = slide ? Time.unscaledTime : -9f;
-            ghostAt = target; GhostCell = cell; ghostT = slide ? ghostT : Time.unscaledTime;
+            Ghost.Show(cell, target, hud, GameHud.LifeHint);
             ghostFor = s;
         }
 
         LifeSpecies ghostFor;
-        Vector3 slideFrom, noAt;
-        float slideT = -9f;
+        Vector3 noAt;
 
         void HideGhost()
         {
             if (ghostGo != null && ghostGo.activeSelf) ghostGo.SetActive(false);
-            if (fillGo != null && fillGo.activeSelf) fillGo.SetActive(false);
-            if (edgeGo != null && edgeGo.activeSelf) edgeGo.SetActive(false);
-            if (GhostCell >= 0) hud?.WithdrawToast(TapAgainHint);
-            GhostCell = -1;
+            look?.Hide();
+            Ghost.Hide(hud);
         }
 
         void DrawGhost()
         {
             if (!GhostShown) return;
-            float now = Time.unscaledTime;
-            float pop = Mathf.Clamp01((now - ghostT) / 0.15f);
-            float breath = 1f + 0.02f * (1f - Mathf.Cos((now - ghostT) * Mathf.PI * 2f / 1.2f)); // 1 -> 1.04 over 1.2 s
-            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((now - slideT) / 0.2f));
-            var c = Vector3.Lerp(slideFrom, ghostAt, k);
-            float wob = now - wobbleT < 0.3f ? Mathf.Sin((now - wobbleT) * 50f) * 0.025f * (1f - (now - wobbleT) / 0.3f) : 0f;
-            c.x += wob;
+            float breath = Ghost.Breath(), pop = Ghost.Pop();
+            var c = Ghost.Centre();
             // user 2026-11-08: faint outlines of the actual group (the real bushes, rabbits, ducks; placeholder deer and wolves), not rings;
             // the thicket keeps its area ring (nobody builds there)
             var parts = new List<(Vector3, float, float)>();
@@ -333,43 +313,13 @@ namespace AquariumCiv.View
         /// <summary>The ghost's silhouettes: the group's pale shapes over a thin darker edge, side-on to the camera, breathing.</summary>
         void Silhouettes(Vector3 c, float scale)
         {
-            if (fillGo == null)
-            {
-                fillGo = Child("LifeGhostFill", out _); edgeGo = Child("LifeGhostEdge", out _);
-                fillMat = DimMaterial(3005); fillMat.SetColor("_Color", ghostFill);
-                edgeMat = DimMaterial(3004); edgeMat.SetColor("_Color", ghostEdge);
-                fillGo.GetComponent<MeshRenderer>().sharedMaterial = fillMat;
-                edgeGo.GetComponent<MeshRenderer>().sharedMaterial = edgeMat;
-            }
-            fillGo.GetComponent<MeshFilter>().sharedMesh = LifeLooks.Ghost(ghostFor, box, false);
-            edgeGo.GetComponent<MeshFilter>().sharedMesh = LifeLooks.Ghost(ghostFor, box, true);
+            look ??= new GhostLook(box.transform, "LifeGhost");
             bool water = ghostFor == LifeSpecies.Ducks || ghostFor == LifeSpecies.Fish;
             float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor) - (water ? 0.008f : 0.012f);
-            // side-on to the camera: the group's +x runs across the screen
-            float yaw = 0f;
-            var cam = Camera.main;
-            if (cam != null)
-            {
-                var f = box.transform.InverseTransformDirection(cam.transform.forward);
-                yaw = Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
-            }
-            foreach (var go in new[] { fillGo, edgeGo })
-            {
-                go.SetActive(true);
-                go.transform.localPosition = new Vector3(c.x, y, c.z);
-                go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-                go.transform.localScale = Vector3.one * Mathf.Max(0.001f, scale);
-            }
+            look.Draw(LifeLooks.Ghost(ghostFor, box, false), LifeLooks.Ghost(ghostFor, box, true), new Vector3(c.x, y, c.z), scale, ghostFill, ghostEdge);
         }
 
-        Material DimMaterial(int queue)
-        {
-            var res = Resources.Load<Material>("LifeDim");
-            var m = res != null ? new Material(res) : new Material(Shader.Find("AquariumCiv/View/LifeDim"));
-            m.hideFlags = HideFlags.DontSave;
-            m.renderQueue = queue;
-            return m;
-        }
+        static Material DimMaterial(int queue) => GhostLook.DimMaterial(queue);
 
         /// <summary>User 2026-11-08: the whole view dims a little (a quad over it, after the box) and the restore sheet undoes it on the
         /// valid ground, so the glow stays soft and the rest reads as "not here".</summary>
@@ -444,27 +394,6 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- pointer
-        static int ReadPointer(out Vector2 a)
-        {
-            a = default;
-            int n = 0;
-            var ts = Touchscreen.current;
-            if (ts != null)
-            {
-                foreach (var t in ts.touches)
-                {
-                    if (!t.isInProgress) continue;
-                    if (n == 0) a = t.position.ReadValue();
-                    n++;
-                }
-                if (n > 0) return n;
-            }
-            var m = Mouse.current;
-            if (m == null) return 0;
-            a = m.position.ReadValue();
-            return m.leftButton.isPressed ? 1 : (m.rightButton.isPressed || m.middleButton.isPressed) ? 2 : 0;
-        }
-
         /// <summary>The screen point of a site cell's middle on the land (tests and the debug panel).</summary>
         public Vector2 ScreenOf(int cell)
         {

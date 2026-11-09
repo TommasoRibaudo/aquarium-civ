@@ -170,7 +170,7 @@ namespace AquariumCiv.GameUI
                 cleanButton.EnableInClassList("kg-tool--on", on);
             }
             if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
-            if (t == KitTool.Seed) Toast("Tap a spot on the land to plant the seed.", 4f);
+            if (t == KitTool.Seed) Toast(SeedHint, 4f);
             if (t == KitTool.Tweezers) Toast(TweezersHint, 4f);
             if (t == KitTool.Life) Toast(LifeHint, 4f);
             if (kitLife != null) kitLife.EnableInClassList("kg-tool--on", t == KitTool.Life);
@@ -182,6 +182,8 @@ namespace AquariumCiv.GameUI
         public const string MisterHint = "Hold a finger over the land to mist it. Two fingers move the view.";
         /// <summary>#311: the tweezers pluck what overgrows; the cloth keeps the glass.</summary>
         public const string TweezersHint = "Tap or drag over weeds, vines and saplings to pluck them. Two fingers move the view.";
+        /// <summary>#518: the seed places like the life slot: a tap shows where it would go, a second tap on that plants it.</summary>
+        public const string SeedHint = "Tap the land to choose where the seed goes. Two fingers move the view.";
         const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
         public static bool MisterHintDue
         {
