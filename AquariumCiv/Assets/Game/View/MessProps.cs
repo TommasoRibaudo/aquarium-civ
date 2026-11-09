@@ -133,7 +133,20 @@ namespace AquariumCiv.View
         void AddWeed(int i)
         {
             if (!spotKnown[i]) spotKnown[i] = FindSpot(i, out spots[i]);
-            if (!spotKnown[i]) { spots[i] = new Vector2(0f, 1.6f); spotKnown[i] = true; }
+            if (!spotKnown[i])
+            {
+                // #523: the fallback spot must be open ground too: search outward from (0, 1.6), else skip this patch
+                var fb = new Vector2(0f, 1.6f); bool ok = false;
+                for (int ring = 0; ring < 12 && !ok; ring++)
+                    for (int a = 0; a < 12 && !ok; a++)
+                    {
+                        float ang = a * Mathf.PI / 6f, rr = ring * 0.15f;
+                        var q = fb + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rr;
+                        if (box.FreeForProp(q, 0.22f) && !Trodden(q)) { spots[i] = q; ok = true; }
+                    }
+                if (!ok) return; // no open spot: no patch this sync (it is tried again next sync)
+                spotKnown[i] = true;
+            }
             var piece = MakePiece(true, i, $"Weeds{i}", WeedMesh(i));
             piece.t.localPosition = Ground(spots[i]);
             weeds[i] = piece;

@@ -14,7 +14,7 @@ namespace AquariumCiv.Tests
         [Test]
         public void TheFireRingAndEveryLotAreTroddenForTwoYearsAndOpenGroundIsLeft([ValueSource(nameof(Runs))] (int seed, int preset) run)
         {
-            var cfg = new SimConfig { terrainPreset = run.preset, settle = true, buildingSlots = 20 };
+            var cfg = new SimConfig { terrainPreset = run.preset, settle = true, buildingSlots = 20, ecology = true };
             var sim = new SimCore(cfg, SimCore.NewWorld(run.seed, cfg));
             int checkedLots = 0;
             while (sim.State.month < 24)
@@ -32,6 +32,12 @@ namespace AquariumCiv.Tests
                         foreach (float r in new[] { 0f, 0.5f, 1.0f, SimCore.FireClearRadius - 0.02f })
                             Assert.IsTrue(sim.IsTroddenGround(fx + r * (float)System.Math.Cos(a), fz + r * (float)System.Math.Sin(a)), $"fire ring r={r} month {sim.State.month}");
                     }
+                // #523: no vine stands on trodden ground, and VineLoad counts only what is left on open ground
+                if (sim.EcologyOn)
+                {
+                    foreach (int vc in sim.EcoVine) Assert.IsFalse(sim.IsTroddenGround(SiteMap.CXc(vc), SiteMap.CZc(vc)), $"vine on trodden cell {vc} month {sim.State.month}");
+                    Assert.AreEqual(System.Math.Min(SimCore.VineLoadMax, sim.EcoVine.Count * SimCore.VineLoadPerCell), sim.VineLoad, 1e-6f);
+                }
                 // every lot cell
                 for (int c = 0; c < SiteMap.N; c++)
                     if (map.lot[c] != 0) { Assert.IsTrue(sim.IsTroddenGround(SiteMap.CXc(c), SiteMap.CZc(c)), $"lot cell {c}"); checkedLots++; }
@@ -41,6 +47,21 @@ namespace AquariumCiv.Tests
             int open = 0;
             for (int c = 0; c < SiteMap.N; c++) if (!sim.IsTroddenGround(SiteMap.CXc(c), SiteMap.CZc(c))) open++;
             Assert.Greater(open, SiteMap.N / 2, $"open cells {open}/{SiteMap.N}");
+        }
+
+        [Test]
+        public void AVineOnALotIsPulledAtOnceAndNeverCounts()
+        {
+            var cfg = new SimConfig { terrainPreset = 0, settle = true, buildingSlots = 20, ecology = true };
+            var sim = new SimCore(cfg, SimCore.NewWorld(7, cfg));
+            for (int m = 0; m < 24; m++) { sim.Step(); sim.State.simHours = sim.State.month * sim.Config.StepHours; if (sim.State.eraReady) sim.AdvanceEra(); }
+            if (!sim.EcologyOn) Assert.Inconclusive("ecology off");
+            int lotCell = -1;
+            for (int c = 0; c < SiteMap.N && lotCell < 0; c++) if (sim.Settlement.Map.lot[c] != 0) lotCell = c;
+            Assert.GreaterOrEqual(lotCell, 0);
+            sim.State.eco.vine.Add(lotCell);
+            sim.Step();
+            CollectionAssert.DoesNotContain(sim.State.eco.vine, lotCell);
         }
 
         [Test]

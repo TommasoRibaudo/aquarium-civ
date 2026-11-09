@@ -23,5 +23,14 @@ namespace AquariumCiv.Sim
             int c = SiteMap.CellAt(x, z);
             return c >= 0 && SettledCell(c);
         }
+
+        /// <summary>#523: the people pull any vine that has grown onto trodden ground, so a vine never stands (or counts in
+        /// <see cref="VineLoad"/>) where nobody can see or pluck it. Called every month after the land's step; hash dice and the settlement only.</summary>
+        void PullTroddenVine()
+        {
+            var v = State.eco?.vine;
+            if (v == null || v.Count == 0 || !Config.settle) return;
+            v.RemoveAll(c => IsTroddenGround(SiteMap.CXc(c), SiteMap.CZc(c)));
+        }
     }
 }
