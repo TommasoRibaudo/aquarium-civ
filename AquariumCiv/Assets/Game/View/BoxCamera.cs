@@ -455,6 +455,8 @@ namespace AquariumCiv.View
             {
                 // The tool keeps the touch; a flight still gives way to it.
                 if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
+                // a second finger on a tool's press is the player taking the camera: it ends a lean (user 2026-11-08)
+                if (n >= 2 && leanHold != null) { LeanCancels++; leanHold = null; glide.Cancel(); }
                 n = 0; mode = Mode.None; orbiting = false; velocity = Vector2.zero;
                 if (!(glide.Armed && LeanHeld())) glide.Cancel(); // a lean stays through the life tool's taps
                 return;

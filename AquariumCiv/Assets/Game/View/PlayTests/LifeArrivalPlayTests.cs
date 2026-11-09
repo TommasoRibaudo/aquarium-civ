@@ -140,7 +140,7 @@ namespace AquariumCiv.View.PlayTests
         static BoxCamera Cam => Camera.main.GetComponent<BoxCamera>();
 
         /// <summary>Waits until no lean holds the camera and it has glided home (between species).</summary>
-        static IEnumerator CameraSettled() { yield return Until(() => !Cam.Leaning && !Cam.Gliding && !Cam.GlideArmed && !Cam.IsFlying, 12f); }
+        static IEnumerator CameraSettled() { yield return Until(() => !Cam.Leaning && !Cam.Gliding && !Cam.GlideArmed && !Cam.IsFlying, 30f); } // capped frame time: slow frames stretch the glide
 
         /// <summary>User 2026-11-08, "the camera leans in": the ghost and the arrival are seen close (the group reads at phone size), the camera
         /// stays through the arrival and then eases back to where the player had it. Shots: p9-lean-*.png.</summary>
@@ -154,7 +154,7 @@ namespace AquariumCiv.View.PlayTests
                 Sim.DebugJarsReady();
                 yield return CameraSettled();
                 string tag = "p9-lean-" + s.ToString().ToLowerInvariant();
-                float zoom0 = Cam.zoom; var target0 = Cam.target;
+                float zoom0 = Cam.zoom; var target0 = Cam.target; int cancels0 = Cam.LeanCancels;
                 hud.TakeLife(s);
                 yield return Frames(5);
                 int cell = GlowingCellOnScreen(Sim, s);
@@ -181,7 +181,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot(tag + "-3-end");
                 yield return CameraSettled();
                 Assert.IsFalse(Cam.Leaning, $"{s}: the lean let go after the arrival");
-                Assert.AreEqual(zoom0, Cam.zoom, 0.03f, $"{s}: and the camera eased back to the player's zoom");
+                Assert.AreEqual(0, Cam.LeanCancels - cancels0, $"{s}: nothing cancelled the lean");
+                Assert.AreEqual(zoom0, Cam.zoom, 0.03f, $"{s}: and the camera eased back to the player's zoom (leaning {Cam.Leaning}, glide {Cam.GlideArmed}/{Cam.Gliding}, flying {Cam.IsFlying})");
                 Assert.Less(new Vector2(Cam.target.x - target0.x, Cam.target.z - target0.z).magnitude, 0.1f, $"{s}: and their spot");
             }
             AssertNoErrors("leans");

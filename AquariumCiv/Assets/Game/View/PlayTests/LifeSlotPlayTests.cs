@@ -119,8 +119,12 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(cell, lpv.GhostCell);
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "a ghost places nothing");
             yield return new WaitForSecondsRealtime(0.6f);
+            var bc = Camera.main.GetComponent<BoxCamera>();
+            yield return Until(() => !bc.IsFlying, 8f); // the camera leans in on the ghost (user 2026-11-08): screen spots move
             yield return Shot("p9-slot-5-ghost");
             // a dark tap with the ghost up: the ghost stays where it was
+            dark = DarkSpot(LifeSpecies.Thicket, out darkCell);
+            Assert.GreaterOrEqual(darkCell, 0, "dark ground on screen after the lean");
             yield return TapAt(dark);
             yield return Frames(3);
             Assert.AreEqual(cell, lpv.GhostCell, "a tap off the glow leaves the ghost");
@@ -128,6 +132,7 @@ namespace AquariumCiv.View.PlayTests
 
             // the tap on the ghost places it
             int placed0 = lpv.Placings;
+            p = lpv.ScreenOf(lpv.GhostCell);
             yield return TapAt(p);
             yield return Frames(10);
             Assert.AreEqual(JarState.Placed, Sim.JarStateOf(LifeSpecies.Thicket), "placed: " + lpv.Last);

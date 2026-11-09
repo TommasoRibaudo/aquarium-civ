@@ -241,7 +241,12 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(5);
             Assert.IsTrue(lpv.GhostShown, "the first tap on the glow shows the ghost: " + lpv.Last);
             Assert.IsTrue(sim.JarReady(s), "a ghost is not a placing");
+            // the camera leans in on the ghost (user 2026-11-08): tap it where it is on screen once the lean has landed
+            var bc = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+            yield return new WaitForSecondsRealtime(0.2f);
+            if (bc != null) yield return Until(() => !bc.IsFlying, 8f);
             if (shotPrefix != null) { yield return new WaitForSecondsRealtime(0.4f); yield return Shot(shotPrefix + "_ghost"); }
+            p = lpv.ScreenOf(lpv.GhostCell);
             yield return TapAt(p);
             yield return Frames(10);
             LastPlaced = sim.LifeIsPlaced(s) && !sim.JarReady(s);
