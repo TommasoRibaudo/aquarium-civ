@@ -30,15 +30,29 @@ namespace AquariumCiv.View.ShowMe.Tests
         }
 
         [Test]
-        public void TheWhoLineIsTheNameOrACrowdLabelFromTheBox()
+        public void TheWhoLineIsTheSpeakersFirstNameOrNothing()
         {
-            Assert.AreEqual("Mira", LineRoute.Who("Mira", false, "camp"));
-            Assert.AreEqual("Mira", LineRoute.Who("Mira", true, "camp"), "a name wins");
-            Assert.AreEqual("someone in the camp", LineRoute.Who(null, true, "camp"));
-            Assert.AreEqual("someone in the village", LineRoute.Who("", true, "village"));
-            Assert.IsNull(LineRoute.Who(null, false, "camp"), "nobody to name");
-            foreach (var w in new[] { "tank", "glass", "aquarium", "world", "outside" })
-                StringAssert.DoesNotContain(w, LineRoute.Who(null, true, "town"), "closed world: only the box's words");
+            Assert.AreEqual("Mira", LineRoute.Who("Mira", null));
+            Assert.AreEqual("Mira", LineRoute.Who("Mira", "Tov"), "a notable's name wins");
+            Assert.AreEqual("Tov", LineRoute.Who(null, "Tov"), "a crowd person is named too");
+            Assert.AreEqual("Tov", LineRoute.Who("", "Tov"));
+            Assert.IsNull(LineRoute.Who(null, null), "nobody to name: no line");
+            Assert.IsNull(LineRoute.Who("", ""));
+            Assert.IsNull(LineRoute.Who("  ", " "));
+            Assert.IsNull(LineRoute.Who(null));
+        }
+
+        [Test]
+        public void TheWhoLineNeverSaysSomeone()
+        {
+            foreach (var r in new[] { LineRoute.Who(null, null), LineRoute.Who("Mira", null), LineRoute.Who(null, "Tov") })
+                if (r != null) StringAssert.DoesNotContain("someone", r);
+        }
+
+        [Test]
+        public void TheSamePersonGetsTheSameNameEveryTime()
+        {
+            for (int i = 0; i < 5; i++) Assert.AreEqual("Tov", LineRoute.Who(null, "Tov"));
         }
 
         [Test]
