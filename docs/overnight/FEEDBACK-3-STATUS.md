@@ -21,7 +21,7 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - [x] #520 barren wind repeat merged (open for a listen)
 - [x] #518 seed ghost + two-finger guard merged (open: seed-in-jar question)
 - [x] #524 wet at the glass merged (open for look)
-- [ ] #525 + #526 tree glow, tent poles merged (open for look)
+- [x] #525 + #526 tree glow, tent poles merged (open for look)
 - [ ] #516 placing life: ghost, glow, button merged (open for look)
 - [ ] Batched Editor pass green (EditMode by assembly, PlayMode classes, smoke)
 - [ ] Touch play-through, every beat looked at
@@ -42,3 +42,6 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - #523 merged (172596e): IsTroddenGround (fire ring 1.15 + SettledCell); MessProps FindSpot skips trodden, outward search fallback; PullTroddenVine each EcoStep. TroddenGroundTests (5).
 - #524 merged (4f0ea5b): EcoWetFace strip + AtEdge. Reviewed shots: effect doesn't read; sent back for one stronger iteration (30 min). Merge offline csc 0 errors (11 assemblies); dotnet on full merge running.
 - 17:18 #524 iteration merged (c1e02f0): own EcoWetFace material (cool dark), drop 0.40, full strength at the glass line. Reviewed 524_after_zoom_a: band reads. Open for look sign-off (check night).
+- 17:19 dotnet SimTests on the full lane A merge (294d8a7): 1719/1719.
+- 17:21 User spotted a modal: 'Enter Safe Mode?' from the #525 worker's own uncommitted BoxView edit (Site.CXc → SiteMap.CXc). Clicked Ignore; told the worker to offline-compile before each recompile. The stall watcher didn't catch it in time (quiet window 600 s).
+- 17:36 #525+#526 merged (ceb6a3d + 5c197d3 metas): tree pool = lantern Glow pool kind 8 at 0.3 strength, r 0.4/0.5, on at lamp 0.15; lanterns shorter post, capped bigger head, brighter. Lanterns exist only from Village on; the tall dark poles beside them are festival bunting posts (likely #499's poles; untouched → ask user). Pool very subtle → look sign-off. Editor tests: KeeperTreeKit 5/5, ViewKit 11/11, FireAndProp 21/21, TownKit 7/7. Worker note: after Safe Mode Ignore, plain recompile kept the old error; forced import + RequestScriptCompilation fixed it (tooling note to write).
