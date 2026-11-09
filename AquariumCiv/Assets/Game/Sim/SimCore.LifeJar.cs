@@ -132,10 +132,28 @@ namespace AquariumCiv.Sim
         void JarsTell()
         {
             var m = EcoM;
+            LeftWaterTell();
             if (m.newJars.Count == 0) return;
             var opened = m.newJars.ToArray();
             m.newJars.Clear();
             foreach (var s in opened) LifeJarOpened?.Invoke(s);
+        }
+
+        /// <summary>#519: open water the Keeper can see (the cells the view draws the pond's sheet over). The ducks and the fish live
+        /// only here. False off the ecology.</summary>
+        public bool EcoOpenWater(int cell) => EcologyOn && EcoM.OpenWater(cell);
+
+        /// <summary>#519: a flock with no open water left in the box is gone; the history says so, in the people's words.</summary>
+        void LeftWaterTell()
+        {
+            var m = EcoM;
+            if (m.newLeftWater.Count == 0) return;
+            var gone = m.newLeftWater.ToArray();
+            m.newLeftWater.Clear();
+            foreach (var s in gone)
+                Chronicle("life_left_" + s.ToString().ToLowerInvariant(), s == LifeSpecies.Ducks
+                    ? "The ducks had no water left to swim on. One morning they were gone, and only a few feathers lay in the dry hollow."
+                    : "The water was gone from the hollow, and the fish with it. The children looked for them in the mud.", 0.6f);
         }
 
         // ---------- debug (the panel's "Life jar" block; CLAUDE.md "debug panel stays current") ----------
@@ -165,6 +183,19 @@ namespace AquariumCiv.Sim
                 return PlaceLife(s, c) ? c : -1;
             }
             finally { m.cheatBareGround = false; }
+        }
+
+        /// <summary>#519 debug ("pond dries"): every pond cell is bare ground now, and the ducks and the fish keep to the water at once
+        /// (none left: they go, with their history line). The water step floods the hollow again from the next season. Cells dried.</summary>
+        public int DebugPondDries()
+        {
+            if (!EcologyOn) return 0;
+            var e = State.eco; int n = 0;
+            for (int c = 0; c < EcoLand.N; c++) if ((EcoCover)e.cover[c] == EcoCover.Water) { e.cover[c] = (byte)EcoCover.Bare; n++; }
+            EcoM.Count();
+            EcoM.KeepToTheWater();
+            EcoTell();
+            return n;
         }
 
         /// <summary>Debug ("jar again"): a placed species' jar opens again now, as a restock does. False for the thicket and the

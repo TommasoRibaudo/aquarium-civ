@@ -330,7 +330,9 @@ namespace AquariumCiv.Sim
             if (season >= 5 && season <= 7 && Fresh("drought", -1, 6)) Add(0.4f, () => { s.food *= 0.85f; Chronicle("drought", string.Format(Nth(DroughtLines, Told("drought")), "", EraNoun(s.era)), 0.48f); });
             if (season >= 8 && season <= 9 && Fresh("bumper", -1, 6)) Add(0.5f, () => { s.food = Math.Min(FoodCap, s.food * 1.2f + 5f); Chronicle("bumper", string.Format(Nth(s.era == Era.Camp ? CampBumperLines : BumperLines, Told("bumper")), "", EraNoun(s.era)), 0.55f); });
             if (Fresh("strange_light", -1, 20)) Add(0.35f, () => Chronicle("strange_light", string.Format(Nth(!CardsOn || s.storyFlags.Contains(FlagLampUsed) ? StrangeLightLamp : StrangeLightEarly, Told("strange_light")), KeeperWord), 0.5f));
-            if (Fresh("ducks", -1, 30)) Add(0.35f, () => Chronicle("ducks", Nth(DuckLines, Told("ducks")), 0.45f));
+            // #519: on a living-land box ducks come only from the Keeper's jar (placed-life spec §2) and the jar tells their arrival;
+            // this old story ("a family of ducks moved into the pond") came by itself with no pond and no ducks to see. Old boxes only.
+            if (!EcologyOn && Fresh("ducks", -1, 30)) Add(0.35f, () => Chronicle("ducks", Nth(DuckLines, Told("ducks")), 0.45f));
             if (Count(BuildingType.Tavern) > 0 && Fresh("sheep", -1, 30)) Add(0.4f, () =>
             {
                 var b = State.buildings.First(x => x.type == BuildingType.Tavern);

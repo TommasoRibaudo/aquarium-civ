@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace AquariumCiv.Sim.Eco
 {
@@ -161,10 +162,51 @@ namespace AquariumCiv.Sim.Eco
         /// <summary>The placed populations' season (from <see cref="Animals"/>).</summary>
         void PlacedSeason(int s, long month)
         {
+            KeepToTheWater(); // #519: first, so the season's ducks and fish live on water the Keeper can see
             DeerSeason(s, month);
             DuckSeason(s, month);
             FishSeason(s);
             WolfSeason(s, month); // #437: the pack's year and the wolves' jar clock
+        }
+
+        // ---------------------------------------------------------------- #519 never on water you can't see
+        /// <summary>The flocks that left the box's water this step, for SimCore's history line (as <see cref="newRulings"/>).</summary>
+        public readonly List<LifeSpecies> newLeftWater = new List<LifeSpecies>();
+
+        /// <summary>#519: the ducks and the fish live on open water (<see cref="OpenWater"/>). A home that is not open water (the pond
+        /// gave way, or an old save's flock was adopted with no pond) moves to the nearest of their ground, else to the nearest open
+        /// water; with no open water in the box at all the flock is gone (a history line says so). The established pond never shrinks
+        /// today (EcoModel.Water), so this is the guard, not the rule.</summary>
+        public void KeepToTheWater()
+        {
+            if (st.ducks > 0 && !OpenWater(st.duckHome))
+            {
+                int c = WaterNear(LifeSpecies.Ducks, st.duckHome);
+                if (c >= 0) st.duckHome = c;
+                else { st.ducks = 0; st.duckEggs = 0; st.ducklings = 0; st.duckHome = -1; newLeftWater.Add(LifeSpecies.Ducks); }
+            }
+            if (st.fish > 0 && !OpenWater(st.fishHome))
+            {
+                int c = WaterNear(LifeSpecies.Fish, st.fishHome);
+                if (c >= 0) st.fishHome = c;
+                else { st.fish = 0; st.fishHome = -1; newLeftWater.Add(LifeSpecies.Fish); }
+            }
+        }
+
+        /// <summary>The species' ground nearest <paramref name="from"/> (the fire when -1), else the nearest open water; -1 none.</summary>
+        int WaterNear(LifeSpecies s, int from)
+        {
+            float fx = from >= 0 && from < EcoLand.N ? Settle.SiteMap.CXc(from) : land.campX;
+            float fz = from >= 0 && from < EcoLand.N ? Settle.SiteMap.CZc(from) : land.campZ;
+            int best = -1, wet = -1; float bd = float.MaxValue, wd = float.MaxValue;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if (!OpenWater(c)) continue;
+                float d = Settle.Terrain.Dist(Settle.SiteMap.CXc(c), Settle.SiteMap.CZc(c), fx, fz);
+                if (d < wd) { wd = d; wet = c; }
+                if (d < bd && GroundOk(s, c)) { bd = d; best = c; }
+            }
+            return best >= 0 ? best : wet;
         }
 
         // ---------------------------------------------------------------- takes (spec §4.2)

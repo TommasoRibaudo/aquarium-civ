@@ -71,15 +71,16 @@ namespace AquariumCiv.Sim.Eco
         void AdoptVillagePond()
         {
             if (st.villageGateMonth < 0) return;
+            // #519: only onto open water: with none yet (a debug gate on a dry box) they wait for it (this runs every step)
             if (!IsPlaced(LifeSpecies.Ducks))
             {
                 int c = NearestPlaceCell(LifeSpecies.Ducks);
-                MarkPlaced(Jar(LifeSpecies.Ducks), c, st.villageGateMonth);
-                FoundDucks(c, false);
+                if (c >= 0) { MarkPlaced(Jar(LifeSpecies.Ducks), c, st.villageGateMonth); FoundDucks(c, false); }
             }
             if (!IsPlaced(LifeSpecies.Fish))
             {
                 int c = NearestPlaceCell(LifeSpecies.Fish);
+                if (c < 0) return;
                 MarkPlaced(Jar(LifeSpecies.Fish), c, st.villageGateMonth);
                 FoundFish(c, false);
             }
@@ -300,10 +301,10 @@ namespace AquariumCiv.Sim.Eco
                 case LifeSpecies.Deer:
                     return cv != EcoCover.Water && !land.InBasin(cell) && FromFire(cell) >= t.bushCampMargin && NearGrownTree(cell, t.deerNearTree)
                         && !(settled?.Invoke(cell) ?? false);
-                case LifeSpecies.Ducks:
-                    return cv == EcoCover.Water && WaterNeighbours(cell) < EcoLand.Neighbours8(cell, nb);
+                case LifeSpecies.Ducks: // #519: open water the Keeper can see, at its edge
+                    return OpenWater(cell) && WaterNeighbours(cell) < EcoLand.Neighbours8(cell, nb);
                 case LifeSpecies.Fish:
-                    return cv == EcoCover.Water && WaterNeighbours(cell) == 8;
+                    return OpenWater(cell) && WaterNeighbours(cell) == 8;
                 case LifeSpecies.Wolves:
                     return DenOk(cell, settled); // #437: den spots only
             }
@@ -318,6 +319,11 @@ namespace AquariumCiv.Sim.Eco
             float R = st.thicketRadius * (1f + t.thicketEdge * 0.5f) + t.rabbitThicketMargin;
             return Terrain.Dist(SiteMap.CXc(cell), SiteMap.CZc(cell), SiteMap.CXc(st.thicketA), SiteMap.CZc(st.thicketA)) < R;
         }
+
+        /// <summary>#519: open water the Keeper can see: a pond cell (the water step sets them under the pond's level, EcoModel.cs Water). The view draws its water sheet at
+        /// <see cref="EcoState.pondLevel"/> over exactly these cells (EcoLayer.WaterCell reads the same cover; BoxView.EcoWaterMesh),
+        /// so the ducks' and the fish's ground, and where they live, read this and nothing else.</summary>
+        public bool OpenWater(int c) => c >= 0 && c < EcoLand.N && Cv(c) == EcoCover.Water;
 
         int WaterNeighbours(int c)
         {
