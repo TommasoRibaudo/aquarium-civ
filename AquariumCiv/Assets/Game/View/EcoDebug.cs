@@ -242,6 +242,20 @@ namespace AquariumCiv.View
             return Refresh($"table at flood line {aboveFlood:+0.00;-0.00}");
         }
 
+        // fb4 #495
+        /// <summary>The pond grows a step: the table rises a little above the water's level now and a season passes (the shore, the fishers and the shore hut follow). With no pond yet, the first water.</summary>
+        public static string PondStep(float step = 0.05f)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            if (s.EcoPondCells == 0) return WaterBreaksNow();
+            int before = s.EcoPondCells;
+            s.DebugSetTable(s.State.eco.pondLevel + step);
+            s.DebugSkipSeasons(1);
+            return Refresh($"pond grew a step: {before} -> {s.EcoPondCells} cells");
+        }
+        // end fb4 #495
+
         public static string Humidity(float v) { var s = Sim; if (s == null || !s.EcologyOn) return "living land off"; s.DebugSetHumidity(v); s.DebugSkipSeasons(1); s.DebugSetHumidity(v); return Refresh($"humidity {v:0.00} (+1 season, so the glass shows it)"); } // tester P8: droplets only build on a season step
 
         public static string PlantHere()

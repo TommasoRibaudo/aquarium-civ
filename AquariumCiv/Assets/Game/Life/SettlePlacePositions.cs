@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Life
@@ -53,6 +54,7 @@ namespace AquariumCiv.Life
             h = h * 31 + S.nudges.Count;
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
+            h = h * 31 + sim.EcoPondCells; // #495: the pond grows between months' lots: its shore is asked again
             if (h == sig && s == st) return true;
             bool newSettlement = s != st;
             sig = h; st = s;
@@ -339,6 +341,8 @@ namespace AquariumCiv.Life
                         if (c >= 0 && !map.Water(c)) break;
                     }
             }
+            // #495: on a living land the water is the eco pond's open water (what is drawn), and the shore is its dry edge nearest the green.
+            if (PondShore.NearestShore(sim, gx, gz, 0, out float shx, out float shz, out _, out _)) { sx = shx; sz = shz; }
             var shore = new Spot(sx, sz);
 
             // The midden: out past the green, away from the pond.
