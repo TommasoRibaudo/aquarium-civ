@@ -93,5 +93,19 @@ namespace AquariumCiv.View.ShowMe.Tests
             Assert.IsTrue(q.TryTake(0, true, out var l));
             Assert.AreEqual(2, l);
         }
+
+        [Test]
+        public void AHeldWordKeepsTheWaitingLinesInTime()
+        {
+            // tester feedback 3: while the Keeper places life the lines wait; they don't age while the word is held
+            var q = new LineQueue<string>();
+            q.Add("a", 0);
+            q.Hold(60);
+            Assert.IsFalse(q.TryTake(LineRoute.WaitSeconds + 30, false, out _));
+            Assert.AreEqual(1, q.Count, "still waiting after a long hold");
+            Assert.AreEqual(0, q.Dropped);
+            Assert.IsTrue(q.TryTake(LineRoute.WaitSeconds + 31, true, out var l));
+            Assert.AreEqual("a", l);
+        }
     }
 }

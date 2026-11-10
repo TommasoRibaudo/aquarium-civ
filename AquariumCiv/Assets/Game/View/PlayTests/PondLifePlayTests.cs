@@ -156,5 +156,36 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsEmpty(errors, string.Join("\n", errors));
             Debug.Log($"[PondLife] pond {cells} cells, frogs day {day} night {night}, ducks wanted {pl.WantedDucks}, ducks shown {pl.DucksShown}");
         }
+
+        /// <summary>Tester feedback 3: the debug panel's "Pond dries now" takes the water off the screen at once (the view refreshes), and the
+        /// hollow stays dry a season later (the table cheat is undone). Shot: Temp/agent/tfix_pond_dried.png.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator PondDriesCheat_WaterGoesAtOnce_StaysDry()
+        {
+            UseLivingLand();
+            yield return OpenSlice(1080, 1920, seed: 4242);
+            Assert.IsTrue(Sim.EcologyOn, "a living-land box");
+            var box = Object.FindAnyObjectByType<BoxView>();
+            PeopleView.DebugSetHour(10f);
+            EcoDebug.Table(0.3f);
+            yield return Frames(20);
+            Assert.Greater(Sim.EcoPondCells, 0, "a pond");
+            Assert.Greater(box.DebugWaterMesh != null ? box.DebugWaterMesh.vertexCount : 0, 0, "its water drawn");
+            yield return new WaitForSecondsRealtime(5f); // the first water's moment passes
+            int wc = -1;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N && wc < 0; c++) if (Sim.EcoOpenWater(c)) wc = c;
+            yield return Fly(box, AquariumCiv.Sim.Settle.SiteMap.CXc(wc), AquariumCiv.Sim.Settle.SiteMap.CZc(wc), 3f);
+            yield return Shot("tfix_pond_before_cheat");
+            string said = EcoDebug.PondDries();
+            yield return Frames(3);
+            Assert.AreEqual(0, Sim.EcoPondCells, said);
+            Assert.AreEqual(0, box.DebugWaterMesh != null ? box.DebugWaterMesh.vertexCount : 0, "the water goes on screen at once");
+            yield return new WaitForSecondsRealtime(1f);
+            yield return Shot("tfix_pond_dried");
+            Sim.DebugSkipSeasons(1);
+            yield return Frames(10);
+            Assert.AreEqual(0, Sim.EcoPondCells, "still dry a season later");
+            Assert.IsEmpty(errors, string.Join(" | ", errors));
+        }
     }
 }

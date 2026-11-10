@@ -75,6 +75,14 @@ namespace AquariumCiv.View.ShowMe
             return true;
         }
 
+        /// <summary>Tester feedback 3: the word is held for <paramref name="seconds"/> (the Keeper is placing life or a seed): the lines
+        /// waiting don't age meanwhile, so none is let go just because the Keeper took their time.</summary>
+        public void Hold(double seconds)
+        {
+            if (seconds <= 0) return;
+            for (int i = 0; i < waiting.Count; i++) waiting[i] = (waiting[i].line, waiting[i].until + seconds);
+        }
+
         public void Clear() => waiting.Clear();
     }
 }

@@ -223,6 +223,16 @@ namespace AquariumCiv.View
 
         public static string VillageGate() { var s = Sim; return s != null && s.DebugOpenVillageGate() ? Refresh("village gate open") : "no change"; }
 
+        /// <summary>#519 + tester feedback 3: the pond dries now (the ducks and the fish leave) and the box shows it at once: the water
+        /// sheet goes with the next view refresh, made here, not a season later.</summary>
+        public static string PondDries()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int n = s.DebugPondDries();
+            return Refresh($"{n} pond cells dried; ducks {s.EcoDucks}, fish {s.EcoFish}");
+        }
+
         public static string Table(float aboveFlood)
         {
             var s = Sim;

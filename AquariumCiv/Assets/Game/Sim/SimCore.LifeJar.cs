@@ -186,12 +186,16 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>#519 debug ("pond dries"): every pond cell is bare ground now, and the ducks and the fish keep to the water at once
-        /// (none left: they go, with their history line). The water step floods the hollow again from the next season. Cells dried.</summary>
+        /// (none left: they go, with their history line). Tester feedback 3: the water table, its peak and the pond's level go back down
+        /// to the barren start too (undoing a "table" cheat), so the hollow stays dry until mist soaks down and raises the table again
+        /// by the usual rules. Cells dried.</summary>
         public int DebugPondDries()
         {
             if (!EcologyOn) return 0;
             var e = State.eco; int n = 0;
             for (int c = 0; c < EcoLand.N; c++) if ((EcoCover)e.cover[c] == EcoCover.Water) { e.cover[c] = (byte)EcoCover.Bare; n++; }
+            float low = EcoM.land.minHeight - EcoM.t.tableStartBelow;
+            e.table = Math.Min(e.table, low); e.tablePeak = Math.Min(e.tablePeak, low); e.pondLevel = Math.Min(e.pondLevel, low);
             EcoM.Count();
             EcoM.KeepToTheWater();
             EcoTell();
