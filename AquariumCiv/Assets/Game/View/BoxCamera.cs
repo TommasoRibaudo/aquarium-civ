@@ -274,7 +274,10 @@ namespace AquariumCiv.View
             float z1 = Mathf.Min(zoom, Mathf.Clamp(zoomTo, floor, maxZoom));
             ReturnAfterFlight();
             flyFloor = floor;
-            try { EaseTo(worldPoint, yaw, Mathf.Max(pitch, LeanPitch), z1, seconds); }
+            float p1 = Mathf.Max(pitch, LeanPitch);
+            // tester feedback 3: the camera turns round a pivot at target.y, not on the ground; a spot on land above (or below) that height
+            // sat high on screen under the caption. Aim the pivot so the screen's middle ray meets the spot itself.
+            try { EaseTo(BoxCameraMath.PivotOver(worldPoint, target.y, yaw, p1), yaw, p1, z1, seconds); }
             finally { flyFloor = -1f; }
             leanHold = hold;
             leanFlight = IsFlying;

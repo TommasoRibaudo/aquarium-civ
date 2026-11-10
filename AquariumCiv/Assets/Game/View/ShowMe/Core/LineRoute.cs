@@ -11,7 +11,7 @@ namespace AquariumCiv.View.ShowMe
 
     /// <summary>
     /// #327 Option B (the user, 2026-11-08): every spoken line, at any zoom, goes to the one caption at the top with the speaker's
-    /// name (or a crowd label), the ring under the speaker and a speech mark over their head. The over-head bubble is kept only for
+    /// name (or nothing), the ring under the speaker and a speech mark over their head. The over-head bubble is kept only for
     /// the first run's wish, which points at a person to tap. A line from a scene (a relic, the crumb, a wish's thanks, Show me)
     /// that finds the word busy waits its turn for a while instead of falling to a second system or vanishing; the people's
     /// ambient talk doesn't wait (there is always more of it). Pure, so SimTests run it too.
@@ -33,13 +33,12 @@ namespace AquariumCiv.View.ShowMe
             _ => true,
         };
 
-        /// <summary>The line under the caption's words: the speaker's name, or for one of the crowd a narrator's label with a word from
-        /// the box ("someone in the camp"). Null with nobody to name.</summary>
-        public static string Who(string name, bool crowd, string placeWord)
+        /// <summary>The line under the caption's words: the speaker's first name (a notable's, else the crowd person's), or null
+        /// when nobody can be named. Never a filler like "someone in the camp" (#522): no name, no line.</summary>
+        public static string Who(string notableName, string crowdName = null)
         {
-            if (!string.IsNullOrEmpty(name)) return name;
-            if (!crowd) return null;
-            return string.IsNullOrEmpty(placeWord) ? "someone nearby" : "someone in the " + placeWord;
+            if (!string.IsNullOrWhiteSpace(notableName)) return notableName;
+            return string.IsNullOrWhiteSpace(crowdName) ? null : crowdName;
         }
     }
 
@@ -74,6 +73,14 @@ namespace AquariumCiv.View.ShowMe
             line = waiting[0].line;
             waiting.RemoveAt(0);
             return true;
+        }
+
+        /// <summary>Tester feedback 3: the word is held for <paramref name="seconds"/> (the Keeper is placing life or a seed): the lines
+        /// waiting don't age meanwhile, so none is let go just because the Keeper took their time.</summary>
+        public void Hold(double seconds)
+        {
+            if (seconds <= 0) return;
+            for (int i = 0; i < waiting.Count; i++) waiting[i] = (waiting[i].line, waiting[i].until + seconds);
         }
 
         public void Clear() => waiting.Clear();

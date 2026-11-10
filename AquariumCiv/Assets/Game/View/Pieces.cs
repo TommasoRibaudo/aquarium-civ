@@ -767,16 +767,18 @@ namespace AquariumCiv.View
         /// <summary>A lantern on a post: dark iron cage round a lamp that lights at night (flickering on, NightLamps).</summary>
         public static void Lantern(MeshBuilder mb, Vector3 p, float lampPhase)
         {
-            mb.Box(p + new Vector3(0, 0.16f, 0), new Vector3(0.025f, 0.32f, 0.025f), Palette.Timber);
-            mb.Box(p + new Vector3(0.035f, 0.31f, 0), new Vector3(0.08f, 0.015f, 0.015f), Palette.Timber);
-            var lp = p + new Vector3(0.065f, 0.255f, 0);
-            mb.Box(lp + new Vector3(0, 0.05f, 0), new Vector3(0.05f, 0.012f, 0.05f), Palette.Iron);
-            mb.emission = 0.15f;
+            // #526: shorter (0.24 u, was 0.32) so it reads as a lamp post by a door, not a pole; a bigger lamp head under a cap, so it is a lantern by day too.
+            mb.Box(p + new Vector3(0, 0.12f, 0), new Vector3(0.025f, 0.24f, 0.025f), Palette.Timber);
+            mb.Box(p + new Vector3(0.03f, 0.235f, 0), new Vector3(0.07f, 0.015f, 0.015f), Palette.Timber);
+            var lp = p + new Vector3(0.065f, 0.165f, 0);
+            mb.Box(lp + new Vector3(0, 0.065f, 0), new Vector3(0.07f, 0.012f, 0.07f), Palette.Iron);   // cap
+            mb.Box(lp + new Vector3(0, 0.077f, 0), new Vector3(0.04f, 0.012f, 0.04f), Palette.Iron);
+            mb.emission = 0.3f;
             mb.lamp = lampPhase;
-            mb.Box(lp + new Vector3(0, 0.02f, 0), new Vector3(0.036f, 0.048f, 0.036f), Palette.Lamp);
+            mb.Box(lp + new Vector3(0, 0.02f, 0), new Vector3(0.055f, 0.07f, 0.055f), Palette.Lamp);  // the lamp head
             mb.lamp = -1f;
             mb.emission = 0f;
-            mb.Box(lp + new Vector3(0, -0.008f, 0), new Vector3(0.044f, 0.01f, 0.044f), Palette.Iron);
+            mb.Box(lp + new Vector3(0, -0.02f, 0), new Vector3(0.062f, 0.01f, 0.062f), Palette.Iron);
         }
 
         /// <summary>A fence along a polyline in lot-local (or world) space, posts every ~0.2 u.</summary>

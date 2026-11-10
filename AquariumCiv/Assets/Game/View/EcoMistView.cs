@@ -150,29 +150,36 @@ namespace AquariumCiv.View
                 if (Mathf.Abs(want - box.Droplets) > 0.001f) box.SetDroplets(Mathf.MoveTowards(box.Droplets, want, dt * 0.8f));
             }
             int n = ReadPointer(out var pos);
+            // #518: a press a second finger joined is the camera's until every finger is up (the finger left after a pinch never mists)
+            if (n == 0) spoiled = false; else if (n > 1) spoiled = true;
             hud ??= GameHud.Instance;
             var hand = hud != null ? hud.Hand : GameHud.KitTool.None;
-            if (hand == GameHud.KitTool.Seed) { SeedHand(sim, n, pos); return; }
-            if (hand == GameHud.KitTool.Tweezers || hand == GameHud.KitTool.Life) { if (misting) EndMist(); pressed = false; return; } // the tweezers are CareView's (#311), the life tool LifePlaceView's (#423): no hold-to-mist under them
-            if (n != 1 || !Usable(sim))
+            // the tweezers are CareView's (#311), the life tool LifePlaceView's (#423), the seed SeedPlaceView's (#518): no hold-to-mist under them
+            if (hand == GameHud.KitTool.Tweezers || hand == GameHud.KitTool.Life || hand == GameHud.KitTool.Seed) { if (misting) EndMist(); pressed = false; return; }
+            float now = Time.unscaledTime;
+            if (n != 1 || spoiled || !Usable(sim))
             {
-                if (misting) EndMist();
+                // #518: the mister in hand waits a moment for a second finger; a tap quicker than that mists on its lift
+                if (n == 0 && pressed && !misting && hand == GameHud.KitTool.Mister && !float.IsPositiveInfinity(pressT) && Usable(sim)) TapMist(sim, pressLast);
+                if (misting && !(n == 0 && now < tapTailUntil)) EndMist();
                 pressed = false;
                 return;
             }
-            float now = Time.unscaledTime;
             bool inHand = hand == GameHud.KitTool.Mister; // the mister in hand: one finger mists at once and a drag mists along (keepers-hands 3.1)
             if (!pressed)
             {
-                pressed = true; pressT = now; pressPos = pos;
+                if (misting) EndMist(); // the tail of a tap's mist
+                pressed = true; pressT = now; pressPos = pressLast = pos;
                 if (UiInput.Over(pos)) pressT = float.PositiveInfinity; // a press on the UI is the UI's
                 return;
             }
+            pressLast = pos;
             if (!misting)
             {
                 if (float.IsPositiveInfinity(pressT)) return;
                 if (!inHand && (pos - pressPos).magnitude > slop * Mathf.Max(1, Screen.height)) { pressT = float.PositiveInfinity; return; } // a drag: the camera's
                 if (!inHand && now - pressT < holdDelay) return;
+                if (inHand && now - pressT < KitPress.SecondFingerGrace) return; // #518: a second finger may still land (a pan, a pinch)
                 BeginMist();
             }
             var bc = Cam; if (bc != null) bc.HoldOrbitUntil = now + 0.25f;
@@ -217,46 +224,22 @@ namespace AquariumCiv.View
             return sim != null && sim.EcologyOn && Ground(screenPos, out _);
         }
 
-        // ---------- the seed in hand: a tap on the land plants the one tree ----------
-        bool seedDown;
-        float seedT;
-        Vector2 seedAt, seedLast;
-        /// <summary>The last seed tap's answer (tests and the debug panel).</summary>
-        public string LastSeed { get; private set; } = "";
+        // ---------- #518: guards and the mister's quick tap ----------
+        bool spoiled;
+        Vector2 pressLast;
+        float tapTailUntil = -9f;
 
-        void SeedHand(SimCore sim, int n, Vector2 pos)
+        /// <summary>A tap with the mister in hand quicker than <see cref="KitPress.SecondFingerGrace"/>: one pulse where it lifted, and the
+        /// spray runs a moment longer so the tap is seen.</summary>
+        void TapMist(SimCore sim, Vector2 pos)
         {
-            if (misting) EndMist();
-            pressed = false;
-            if (sim == null || !sim.EcologyOn) return;
-            if (n == 1)
-            {
-                if (!seedDown) { seedDown = !UiInput.Over(pos); seedT = Time.unscaledTime; seedAt = pos; }
-                seedLast = pos;
-                return;
-            }
-            if (!seedDown) return;
-            seedDown = false;
-            if (n > 1) return; // two fingers: the camera's
-            if ((seedLast - seedAt).magnitude > slop * 2f * Mathf.Max(1, Screen.height)) return; // a drag isn't a tap
-            if (!Ground(seedLast, out var at)) return;
-            if (!sim.CanPlantTree) { LastSeed = "no seed"; hud?.SetHand(GameHud.KitTool.None); return; }
-            int tcell = sim.TreeCellFor(at.x, at.z);
-            bool moved = tcell >= 0 && tcell != AquariumCiv.Sim.Settle.SiteMap.CellAt(at.x, at.z);
-            if (!sim.PlantTree(at.x, at.z))
-            {
-                LastSeed = "refused";
-                hud?.Toast("Not there: the seed needs dry ground above the hollow.", 3f);
-                return;
-            }
-            LastSeed = $"planted at ({at.x:0.00}, {at.z:0.00})";
-            box.Refresh();
-            GameClock.Instance?.Save();
-            hud?.SetHand(GameHud.KitTool.None);
-            // #378: a press on the glass rim lands a little in from it; say so, the seed never jumps silently.
-            hud?.Toast(moved ? "The seed went in a little way from the glass, where a tree has room. Mist it, and keep its weeds back." : "The seed is in the ground. Mist it, and keep its weeds back.", 4f);
-            var pv = PeopleView.Find();
-            if (pv != null && pv.Planner != null) pv.Planner.ReactAt(AquariumCiv.Life.KeeperGesture.Rain, pv.Now, at.x, at.z, 1.4f);
+            if (!Ground(pos, out var at)) return;
+            BeginMist();
+            dwellAt = at; dwellOn = true; dwell = Mathf.Max(Time.unscaledDeltaTime, 1f / 60f);
+            SprayRadius = sim.EcoMistRadius(dwell);
+            Spray(at);
+            Pulse(sim, at, pulseSeconds, dwell);
+            tapTailUntil = Time.unscaledTime + 0.25f;
         }
 
         void EndMist()

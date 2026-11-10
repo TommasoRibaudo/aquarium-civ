@@ -299,6 +299,9 @@ namespace AquariumCiv.View
                 foreach (var s in all)
                     if (AquariumCiv.Sim.Eco.LifeJar.Restocks(s) && GUILayout.Button("Again " + s)) last = Done(sim.DebugJarAgain(s) ? $"{s} jar open again" : $"{s}: not placed");
                 GUILayout.EndHorizontal();
+                // ---- #519: the ducks and the fish keep to the water you can see ----
+                if (GUILayout.Button("Pond dries now (ducks/fish leave, #519)")) last = Done(EcoDebug.PondDries()); // tester feedback 3: the water goes on screen at once
+                // ---- end #519 ----
                 // #423: the life tool in hand (glow, ghost, tap to place), for a ready jar
                 var hudL = GameHud.Instance;
                 GUILayout.BeginHorizontal();

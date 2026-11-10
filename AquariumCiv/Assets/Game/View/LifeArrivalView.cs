@@ -254,7 +254,8 @@ namespace AquariumCiv.View
         public bool LeanOnGhost(LifeSpecies s, Vector3 at)
         {
             if (box == null) return false;
-            leanAt = box.transform.TransformPoint(at); leanFor = s; leanReplay = false; leanUntil = Time.unscaledTime + 1.2f;
+            // tester feedback 3: on the ground (or the water), not at the box's floor: the lean frames the spot itself in the middle band
+            leanAt = box.transform.TransformPoint(Ground(at.x, at.z, s is LifeSpecies.Ducks or LifeSpecies.Fish)); leanFor = s; leanReplay = false; leanUntil = Time.unscaledTime + 1.2f;
             return TryLeanNow();
         }
 

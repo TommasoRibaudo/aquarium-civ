@@ -152,7 +152,8 @@ namespace AquariumCiv.Audio
             // stone; frogs over a soft lap). Ours, so CC0; replace with recorded ones once the look is approved.
             // #280: recorded CC0 (docs/assets-log.md). Levels set against the old code-made beds (barren -26 dB, frogs -32 dB effective):
             // wind is the recording at about -27 dB, the sand's hiss under it, frogs a touch under the old bed, the soil faint.
-            Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.9f, Amb + "barren_wind_loop").Looped().Prio(10).Len(30f));
+            // #520: 0.9 -> 0.68; the wind plays as two voices (BarrenWind), their mean power is a bit under the old single loop.
+            Add(new CueDef(AmbBarren, SoundBus.Ambience, 0.68f, Amb + "barren_wind_loop").Looped().Prio(10).Len(30f));
             // #331: not a bed: SandGusts plays 2-6 s gusts of these four cuts (the AudioDirector keeps the loop silent unless the debug panel forces it).
             Add(new CueDef(AmbSandHiss, SoundBus.Ambience, 0.6f, Amb + "barren_sand_gust_1", Amb + "barren_sand_gust_2", Amb + "barren_sand_gust_3", Amb + "barren_sand_gust_4").Looped().Prio(10).Len(8f));
             // #315: the recorded chorus loop is no longer played (the view makes single croaks, see FrogCroaker); the layer's level

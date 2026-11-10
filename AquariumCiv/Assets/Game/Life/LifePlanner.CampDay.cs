@@ -44,6 +44,23 @@ namespace AquariumCiv.Life
         {
             int lk = p.partner != null && p.partner.Adult ? PairKey(p, p.partner) : p.key;
             s.lunch = 11.25f + 1.6f * R(lk, d.day, 141);
+            // #521: a small first camp eats in turns, spread evenly over the stretch (by the day's hash order), so the dice never put
+            // three of five at the fire at once. A big camp keeps the dice (its crowd is already spread).
+            int ng = 0, gi = 0; uint mine = H(lk, d.day, 141);
+            foreach (var q in people)
+            {
+                if (!q.Adult) continue;
+                int qk = q.partner != null && q.partner.Adult ? PairKey(q, q.partner) : q.key;
+                if (qk == lk) continue;
+                bool first = true;
+                foreach (var o in people) if (o != q && o.Adult && o.key < q.key && (o.partner != null && o.partner.Adult ? PairKey(o, o.partner) : o.key) == qk) { first = false; break; }
+                if (!first) continue;
+                ng++;
+                uint h = H(qk, d.day, 141);
+                if (h < mine || (h == mine && qk < lk)) gi++;
+            }
+            ng++; // the person's own group
+            if (p.Adult && ng <= 8) s.lunch = 11.2f + 1.9f * (gi + 0.5f) / ng;
             s.back = s.lunch + 0.55f + 0.35f * R(lk, d.day, 82);
             s.end = Math.Max(s.end, s.back + 1.2f);
         }
@@ -184,32 +201,56 @@ namespace AquariumCiv.Life
         // ---------------------------------------------------------------- the stream bed
 
         long diggersDay = long.MinValue;
-        readonly System.Collections.Generic.HashSet<int> diggers = new System.Collections.Generic.HashSet<int>();
+        readonly System.Collections.Generic.List<int> diggers = new System.Collections.Generic.List<int>();
 
-        /// <summary>How many may dig roots in the stream bed at once in a camp: the bed is one spot, and four or more diggers there
-        /// knelt and dug in step [est].</summary>
+        /// <summary>How many may dig roots in the stream bed at once in a camp: four or more diggers at one bed knelt and dug in
+        /// step [est]. #521: two (three in a big camp), each at their own dry patch (<see cref="DigSpots"/>).</summary>
         int DiggerSlots => people.Count >= 14 ? 3 : 2;
 
+        /// <summary>#521: the dry patches of the stream bed where roots are dug (patch 0 is the bed itself; the others a few steps
+        /// along it, SettlePlacePositions.DigSpot). Two diggers never share one.</summary>
+        public const int DigSpots = 3;
+
         /// <summary>Today's diggers: the grown-ups by the day's hash, the first <see cref="DiggerSlots"/> (stable for the day).</summary>
-        bool MayDig(Person p, DayInfo d)
+        bool MayDig(Person p, DayInfo d) => DigIndex(p, d) >= 0;
+
+        int DigIndex(Person p, DayInfo d)
         {
             if (diggersDay != d.day)
             {
                 diggersDay = d.day;
                 diggers.Clear();
                 var order = new System.Collections.Generic.List<Person>();
-                foreach (var q in people) if (q.Adult && q.job != JobType.Toolmaker && q.job != CrowdCook) order.Add(q);
+                foreach (var q in people) if (q.Adult && q.job != JobType.Toolmaker && q.job != CrowdCook && (sim.BeforeCamp || q.job == JobType.Gatherer)) order.Add(q); // #521: only those whose work is roots take a bed slot
                 order.Sort((a, b) => { int c = H(a.key, d.day, 148).CompareTo(H(b.key, d.day, 148)); return c != 0 ? c : a.key.CompareTo(b.key); });
+                // the day's first patch is a hash too, so it is not always the same bed
                 for (int i = 0; i < order.Count && diggers.Count < DiggerSlots; i++) diggers.Add(order[i].key);
             }
-            return diggers.Contains(p.key);
+            return diggers.IndexOf(p.key);
         }
 
-        /// <summary>A camp's work in the stream bed goes to today's few diggers; the others fish, chop or carry water and do the
-        /// chores at their own tent (hashed per person and day [est]).</summary>
+        /// <summary>A camp's work in the stream bed goes to today's few diggers, each at their own patch; the others do the
+        /// camp's other work: the cook tends the fire, the rest fetch water, fish, or chop where the land allows it, and do the
+        /// chores at their tent (hashed per person and day [est]). #521: this also holds before the camp gate, when everyone
+        /// used to dig at the one bed (JobWork sent every worker to the Stream; the fishing and chopping stay shut on a dead land).</summary>
         Work SpreadDiggers(Person p, DayInfo d, Work w)
         {
-            if (!CampSpread || sim.BeforeCamp || w.site != Stream || w.loop != ActivityKind.Gather || MayDig(p, d)) return w;
+            if (!CampSpread || w.site != Stream || w.loop != ActivityKind.Gather) return w;
+            int dig = DigIndex(p, d);
+            if (dig >= 0)
+            {
+                int spot = (dig + (int)(H(0, d.day, 524) % (uint)DigSpots)) % DigSpots;
+                w.site = Place.Land(PlaceKind.Stream, spot);
+                if (w.altSite == Stream) w.altSite = w.site; // the second spot of the day is the same patch
+                return w;
+            }
+            if (p.job == CrowdCook)
+            {
+                var cook = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
+                cook.keepsRestDay = true;
+                if (HasRealWater) { cook = Fetch(cook, WaterPlace); cook.dest = stash; cook.fetchFirst = true; }
+                return cook;
+            }
             float r = R(p.key, d.day, 149);
             bool water = !OnLiving || sim.FishingOpen; // #421: fishing waits for the fish
             if (water && r < 0.45f) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);

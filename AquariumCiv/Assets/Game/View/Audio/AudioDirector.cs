@@ -88,6 +88,12 @@ namespace AquariumCiv.View
         public int BirdCallsPlayed { get; private set; }
         public float BirdSwell => birdSong != null ? birdSong.Swell : 1f;
 
+        // #520: the barren wind's second voice (the same clip, lower, own gain wander) so the 40 s loop never lines up with itself.
+        BarrenWind barrenWind;
+        AudioSource windB;
+        int barrenLayer = -1;
+        public string BarrenWindStatus => barrenWind != null ? barrenWind.ToString() : "n/a";
+
         // #331: the sand's hiss as occasional gusts (SandGusts) on one pooled source: a random offset into one of four cuts, faded in and out.
         SandGusts sandGusts;
         AudioSource gustSource;
@@ -157,6 +163,10 @@ namespace AquariumCiv.View
             frogClips = new AudioClip[FrogCroaker.ClipCount];
             for (int i = 0; i < frogClips.Length; i++) frogClips[i] = Clip("proc:frog" + i);
             frogCroak = new FrogCroaker(Environment.TickCount + 315);
+            barrenLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbBarren);
+            windB = Source("Amb_barren_windB", true);
+            windB.clip = amb[barrenLayer].clip;
+            barrenWind = new BarrenWind(Environment.TickCount + 520);
             hissLayer = Array.IndexOf(AmbienceLevels.CueIds, CueLibrary.AmbSandHiss);
             gustSource = Source("SandGusts", false);
             var gustCue = CueLibrary.Get(CueLibrary.AmbSandHiss);
@@ -356,6 +366,7 @@ namespace AquariumCiv.View
                 if (i == birdLayer) v *= birdSong.Swell;
                 if (i == frogLayer && LayerForce[i] != 1) v = 0f; // #315: no chorus loop, only single croaks (UpdateFrogs)
                 if (i == hissLayer) v = 0f;                        // #331: no constant hiss, only gusts (UpdateGusts)
+                if (i == barrenLayer) { UpdateBarrenWind(dt, src, v); continue; }
                 src.volume = v;
                 if (v > 0.001f && !src.isPlaying)
                 {
@@ -368,6 +379,20 @@ namespace AquariumCiv.View
             UpdateFrogs(dt, inMoment, bus);
             UpdateGusts(dt, inMoment, bus);
             UpdateStones(dt, inMoment);
+        }
+
+        // #520: two voices of the barren wind, each with its own wandering gain and pitch; voice B starts at its own random offset.
+        void UpdateBarrenWind(float dt, AudioSource a, float v)
+        {
+            barrenWind.Tick(dt);
+            a.volume = v * barrenWind.GainA; a.pitch = barrenWind.PitchOfA;
+            windB.volume = v * barrenWind.GainB; windB.pitch = barrenWind.PitchOfB;
+            if (v > 0.001f)
+            {
+                if (!a.isPlaying) { if (a.time <= 0f) a.time = UnityEngine.Random.Range(0f, a.clip.length * 0.9f); a.Play(); }
+                if (!windB.isPlaying) { if (windB.time <= 0f) windB.time = UnityEngine.Random.Range(0f, windB.clip.length * 0.9f); windB.Play(); }
+            }
+            else { if (a.isPlaying) a.Pause(); if (windB.isPlaying) windB.Pause(); }
         }
 
         // #331: the gust rate and level come from the hiss layer (the bare share); one gust at a time, its envelope here.
@@ -581,11 +606,11 @@ namespace AquariumCiv.View
             var s = a.settings;
             var t = a.ambTarget;
             return string.Format(CultureInfo.InvariantCulture,
-                "audio: sound {0}{1} · sfx {2:0.00} amb {3:0.00} music {4:0.00} · duck {5:0.00}\nbuses: ui/care/world {6:0.00} amb {7:0.00} music {8:0.00}\namb now: calm {9:0.00} birds {10:0.00} crickets {11:0.00} rain {12:0.00} wind {13:0.00} flies {19:0.00} sand-gust rate {20:0.00} (gusts {21}, next in {22:0}s)\nplayed {14} (muted {15}, dropped {16}) · buzzes {17} · last {18}",
+                "audio: sound {0}{1} · sfx {2:0.00} amb {3:0.00} music {4:0.00} · duck {5:0.00}\nbuses: ui/care/world {6:0.00} amb {7:0.00} music {8:0.00}\namb now: calm {9:0.00} birds {10:0.00} crickets {11:0.00} rain {12:0.00} wind {13:0.00} flies {19:0.00} sand-gust rate {20:0.00} (gusts {21}, next in {22:0}s)\nbarren wind (#520): bed {23:0.00} {24}\nplayed {14} (muted {15}, dropped {16}) · buzzes {17} · last {18}",
                 s.sound ? "on" : "OFF", s.deviceSilent ? " (phone silent)" : "", s.sfx, s.ambience, s.music, a.ducker.Gain,
                 a.Gain(SoundBus.Care), a.Gain(SoundBus.Ambience), a.Gain(SoundBus.Music),
                 a.fader.Level(0), a.fader.Level(1), a.fader.Level(2), a.fader.Level(3), a.fader.Level(4),
-                a.PlayedCount, a.MutedCount, a.DroppedCount, a.HapticsFired, a.LastPlayed, a.fader.Level(5), a.fader.Level(a.hissLayer), a.SandGustsPlayed, a.sandGusts.SecondsToNext);
+                a.PlayedCount, a.MutedCount, a.DroppedCount, a.HapticsFired, a.LastPlayed, a.fader.Level(5), a.fader.Level(a.hissLayer), a.SandGustsPlayed, a.sandGusts.SecondsToNext, a.fader.Level(a.barrenLayer), a.BarrenWindStatus);
         }
 
         public static string DebugPlay(string cue)
