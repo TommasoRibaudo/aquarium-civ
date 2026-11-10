@@ -25,10 +25,10 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - [x] #516 placing life: ghost, glow, button merged (open for look)
 - [x] Batched Editor pass green (EditMode by assembly, PlayMode classes, smoke)
 - [x] Touch play-through, every beat looked at (Feedback3Playthrough; state cheats for the late beats)
-- [ ] Tester run; [real] fixed; [polish] listed
+- [x] Tester run; [real] fixed; [polish] listed
 - [ ] Issues closed / sign-off comments; answered notes closed
 - [ ] PR → dev, CI green, merged
-- [ ] Final report; docs/open-questions.md updated
+- [ ] Final report (open-questions.md updated)
 
 ## Log
 - 2026-11-09 run start. Editor closed, lock free, health OK (C: 22 GB).
@@ -50,3 +50,5 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - 18:38 Batched pass started on vs/feedback3-pass (F:\GameDev) by one Editor agent: restart, recompile, 10 EditMode assemblies, ~20 PlayMode classes + smoke, play-through beats a-j by touch (2.5 h box). Watcher on its lock.
 - 19:07 Third interruption (~18:40-19:07): the pass had no commits, Unity gone, Temp/agent wiped. Resumed the pass agent; it now writes results to docs/overnight/feedback3-pass-results.md as it goes.
 - 20:35 Batched pass merged (f5ee9ef). EditMode 10 assemblies green. PlayMode 19 classes; #518 regression found and fixed (4fe9a59: the pending wipe replays the finger's path; Tester2Fix 6/6, SlicePlaythroughSmoke 2/2). Care + EcoMistView budget failures flaky (pass on rerun); MistDusk 20/21 h already fail on dev. Play-through Feedback3Playthrough 1/1 (beats a-j by touch). **Pacing flag:** misting 5 spots/season, box 62 % bare at y15.8, camp gate shut; seed not unlocked by y17, no pond by y19 → state cheats for those beats → ask user. Next: tester.
+- 20:40 Tester (one run, 1080x1920 + 1179x2556 + tablet): 7 pass, 3 [real]: ghost under the caption after the lean, placing glow faint, Pond dries cheat left water on screen. 3 [polish]: small seed ghost, 0.1 s wipe start, first-run wipe may need a second pass. Not checked: tree pool, wet strip (History opened the time-lapse), #526 posts.
+- 21:10 Fixes merged (5b827c7 via c26b6fd): lean aims at the real ground height (ghost at 50 %), people's lines wait while placing (LineQueue.Hold), honey glow with a slow breath, EcoDebug.PondDries refreshes and drops the table. GhostFrame 3/3, Pond 4/4, LifeArrival 8/8, Caption 6/6, PeopleWiring 16/16, smoke 2/2. dotnet SimTests on the merge 1721/1721. open-questions.md updated (6ec3650).
