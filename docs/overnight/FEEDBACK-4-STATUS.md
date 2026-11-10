@@ -28,3 +28,5 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 ## Log
 - 14:19 run start. Editor closed, lock free, health 0 (C: 28 GB). Issues and notes read; shots of #530/#531/#532/#537 looked at.
 - 14:35 Workers started (all Sonnet): lane A #495 (wt 495, + shared water helper), #541 (wt 541), #538 (wt 538); Editor worker #526+#540 in F:\GameDev (vs/526-540-camp-props). Watcher waits for its lock (300 s quiet). Shared rules: scratchpad/worker-rules.md.
+- 14:30 #538 merged (3faf03f, branch 50e510f): view-limited PanBoundsFor now = glass range (PanScale draw-in + soft band kept). SimTests 1721/1721. Verify: BoxCameraTests, CameraGlassFeel category (new FreePan_FromTheCamp), CameraModePlayTests, smoke; shots p538/*. Open for feel sign-off.
+- 14:30 #541 merged (branch c58233a): cause = KidPlayDirector grouped per Place, so two lone kids at two places each drew Ball solo. PlayGroups.Gather (reach 3.2, same class) + Differ. Cheat 'Two kids play'. Verify: PlayGatherTests, PlayGroupTests, KidsTogetherPlayTests (shot two-kids-together).
