@@ -126,16 +126,14 @@ namespace AquariumCiv.Lighting
             }
         }
 
-        /// <summary>The view-limited rest bounds: the glass's inner face less the visible extent (never more than <see cref="PanBounds"/>, 0 when the whole box fits), then drawn in by <see cref="PanScale"/>.</summary>
+        /// <summary>
+        /// #538 (user 2026-11-10: "I want free movement"): the pan is no longer limited by the view. The pivot rests anywhere up to the
+        /// glass's inner face at every zoom, drawn in only by <see cref="PanScale"/> so the camera stays outside the box's hull.
+        /// (#273 limited it to the visible ground's edge, which left almost no left / right travel at mid and far zoom.)
+        /// <paramref name="tanHalfV"/> and <paramref name="aspect"/> stay so callers keep their signature; <see cref="VisibleExtent"/> is still there for tests.
+        /// </summary>
         public static void PanBoundsFor(float yawDeg, float pitchDeg, float distance, float pivotY, float tanHalfV, float aspect, float halfX, float halfZ,
             float hullX, float hullZ, float bottom, float top, out float boundX, out float boundZ)
-        {
-            PanBounds(halfX, halfZ, out float maxX, out float maxZ);
-            VisibleExtent(yawDeg, pitchDeg, distance, tanHalfV, aspect, out float ex, out float ez);
-            boundX = Math.Min(maxX, Math.Max(0f, halfX - ex));
-            boundZ = Math.Min(maxZ, Math.Max(0f, halfZ - ez));
-            float s = PanScale(yawDeg, pitchDeg, distance, pivotY, boundX, boundZ, hullX, hullZ, bottom, top);
-            boundX *= s; boundZ *= s;
-        }
+            => PanBoundsFor(yawDeg, pitchDeg, distance, pivotY, halfX, halfZ, hullX, hullZ, bottom, top, out boundX, out boundZ);
     }
 }

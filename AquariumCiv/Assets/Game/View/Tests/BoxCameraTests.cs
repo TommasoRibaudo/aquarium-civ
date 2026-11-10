@@ -138,14 +138,33 @@ namespace AquariumCiv.View.Tests
         [Test]
         public void PanBoundsFor_DrawsInOnlyWhereTheCameraWouldEnterTheBox()
         {
+            // #538: the view no longer limits the pan: at close, mid and far zoom (the camp's default pose) the pivot reaches each side wall's inner face.
             var open = BoxCameraMath.PanBounds(1f);
+            foreach (float dist in new[] { 8.2f, 20f, 41f, 53f })
+            {
+                var b = BoxCameraMath.PanBoundsFor(0f, 26f, dist, 1f);
+                Assert.AreEqual(open.x, b.x, 1e-4f, "x reaches the glass at distance " + dist);
+                Assert.AreEqual(open.y, b.y, 1e-4f, "z reaches the glass at distance " + dist);
+                Assert.Greater(b.x, Land.HX - 0.3f);
+                Assert.Less(b.x, BoxCameraMath.PanHardStop.x);
+            }
             var far = BoxCameraMath.PanBoundsFor(28f, 34f, 41f, 0f);
-            Assert.LessOrEqual(far.x, 0.4f, "far out the whole box fits: the tank stays on screen (user 2026-11-04)");
-            var close = BoxCameraMath.PanBoundsFor(0f, 24f, 8.2f, 0f);
-            Assert.Greater(close.x, 1.5f, "close up the view goes a long way towards the wall");
-            Assert.LessOrEqual(close.x, open.x + 1e-4f);
+            Assert.Greater(far.x, Land.HX - 0.3f, "far out, free pan (#538; was 0.4 under #273's view limit)");
             var corner = BoxCameraMath.PanBoundsFor(55f, 14f, 8.2f, 0f);
-            Assert.LessOrEqual(corner.x, close.x + 1e-4f);
+            Assert.LessOrEqual(corner.x, open.x + 1e-4f, "the camera low and close at a corner still draws the range in");
+            // the camera never enters the box's hull at the held end of the pan, any of those poses
+            float hx = Land.HX + BoxCameraMath.HullSide, hz = Land.HZ + BoxCameraMath.HullSide;
+            foreach (var pose in new[] { (28f, 34f, 41f), (55f, 14f, 8.2f), (0f, 24f, 8.2f), (-30f, 20f, 15f) })
+            {
+                var b = BoxCameraMath.PanBoundsFor(pose.Item1, pose.Item2, pose.Item3, 0f);
+                var stop = BoxCameraMath.PanHardStop;
+                CameraGlass.CameraOffset(pose.Item1, pose.Item2, pose.Item3, out float ox, out float oy, out float oz);
+                foreach (float sx in new[] { -1f, 1f }) foreach (float sz in new[] { -1f, 1f })
+                {
+                    float px = sx * Mathf.Min(stop.x, b.x + CameraGlass.Gap), pz = sz * Mathf.Min(stop.y, b.y + CameraGlass.Gap);
+                    Assert.IsFalse(CameraGlass.CameraInsideBox(px + ox, oy, pz + oz, hx, hz, BoxCameraMath.ShelfY, Land.GlassTop, 0.3f), "pose " + pose);
+                }
+            }
         }
 
         /// <summary>The user saw "only a piece of the tank": for every pose, the moments' included, nothing of the box or the shelf row on screen is in front of the near plane.</summary>

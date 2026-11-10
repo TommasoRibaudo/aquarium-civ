@@ -100,8 +100,10 @@ namespace AquariumCiv.View.PlayTests
                     float wallX = -1f;
                     if (w.axis == 0) wallX = cam.WorldToViewportPoint(new Vector3(w.sign * Land.HX, Rig.target.y, Rig.target.z)).x;
                     log.AppendLine($"   limit {restLim:F3} worst corner outside screen {worstOut:F3} wall viewport x {wallX:F3}");
-                    if (zoom >= 1f) Assert.LessOrEqual(worstOut, 0.03f, $"{zoomName} {w.name}: the tank stays on screen");
-                    else if (w.axis == 0) Assert.AreEqual(w.sign > 0 ? 1f : 0f, wallX, 0.15f, $"{zoomName} {w.name}: the glass wall is at the screen's edge");
+                    // #538: the old "tank stays on screen at far zoom" and "glass wall at the screen's edge at close zoom" asserts were the strict
+                    // view limit of #273; the pan is free now, so they are logged (worst corner, wall viewport x), not asserted. What stays: the
+                    // pivot reaches the glass's rest limit, never passes the soft band, and the camera never sits in the box.
+                    if (w.axis == 0) Assert.AreEqual(0.5f, wallX, 0.35f, $"{zoomName} {w.name}: the pivot is at the glass wall, so the wall is near the screen's middle");
                     yield return Shot($"{zoomName}_{w.name}_held");
                     var maxAbs = 0f; foreach (var p in trace) maxAbs = Mathf.Max(maxAbs, (w.axis == 0 ? p.x : p.z) * w.sign);
                     log.AppendLine($"{zoomName} {w.name}: held {held:F3} max {maxAbs:F3} rest {restLim:F3} stop {stopLim:F3} glass {(w.axis == 0 ? Land.HX : Land.HZ):F3}");
@@ -118,6 +120,42 @@ namespace AquariumCiv.View.PlayTests
                     Assert.IsFalse(inBox.Contains(true), $"{zoomName} {w.name}: the camera never sits inside the box");
                 }
             File.WriteAllText(Dir + "summary.txt", log.ToString());
+            Debug.Log(log.ToString());
+            Close();
+        }
+
+        /// <summary>
+        /// #538: from the camp's opening pose, at close / mid / far zoom, a two-finger drag left and right until it stops. The pivot gets within
+        /// a small margin of each side wall's inner face, and the camera never passes the glass. Shots (1179 x 2556) at each extreme go to Temp/agent/p538/.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator FreePan_FromTheCamp_ReachesBothSideWalls_AtCloseMidAndFarZoom()
+        {
+            yield return Open();
+            string dir = "F:/GameDev/AquariumCiv/Temp/agent/p538/"; Directory.CreateDirectory(dir);
+            var log = new StringBuilder();
+            float reach = Land.HX - CameraGlass.Margin - CameraGlass.Gap - 0.3f; // a small margin short of the rest limit
+            foreach (var (zoomName, zoom) in new[] { ("close", CameraReach.MinZoom), ("mid", 0.6f), ("far", 1f) })
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    Rig.EaseTo(new Vector3(0f, 1f, 0f), 28f, 34f, zoom, 0f); // the camp's opening yaw / pitch
+                    for (int i = 0; i < 40; i++) yield return null;
+                    var trace = new List<Vector3>(); var inBox = new List<bool>();
+                    // yaw 28: the screen's right is mostly +x; a finger moving left carries the pivot right (+x). Drag long, in steps, until it stops.
+                    var dirv = new Vector2(-side, 0f) * (Screen.height * 1.5f);
+                    yield return Pan(dirv, 60, trace, inBox, release: false);
+                    for (int i = 0; i < 15; i++) { yield return null; trace.Add(Rig.target); inBox.Add(CameraInBox(Rig)); }
+                    float x = Rig.target.x * side;
+                    log.AppendLine($"{zoomName} side {side}: pivot x {Rig.target.x:F3} z {Rig.target.z:F3} (wall {Land.HX:F2}) reach target {reach:F2}");
+                    yield return Shot($"{zoomName}_{(side < 0 ? "left" : "right")}");
+                    EndTouch(fa, new Vector2(Screen.width * 0.4f, Screen.height * 0.5f), delta: Vector2.zero, queueEventOnly: true);
+                    EndTouch(fb, new Vector2(Screen.width * 0.6f, Screen.height * 0.5f), delta: Vector2.zero, queueEventOnly: true);
+                    for (int i = 0; i < 30; i++) yield return null;
+                    Assert.IsFalse(inBox.Contains(true), $"{zoomName} side {side}: the camera never sits inside the box");
+                    Assert.Less(Mathf.Abs(Rig.target.x), Land.HX, $"{zoomName} side {side}: the pivot never reaches the glass");
+                    Assert.Greater(Mathf.Abs(Rig.target.x), reach, $"{zoomName} side {side}: a drag across reaches the side wall (got {x:F2})");
+                }
+            File.WriteAllText(dir + "summary.txt", log.ToString());
             Debug.Log(log.ToString());
             Close();
         }
