@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 using AquariumCiv.Game;
 using AquariumCiv.Life;
@@ -70,8 +71,12 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(20);
                 pv.Planner.ClearLive();
                 FishingView.DebugBiteNow(); // sends fishers if none are free
-                yield return Until(() => Fishers(pv, feet) > 0, 30f);
-                yield return Frames(30); // they have settled on their spots
+                int steady = 0;
+                for (int fr = 0; fr < 900 && steady < 10; fr++) // somebody stands fishing, 10 frames running (they settle on their spots)
+                {
+                    yield return null;
+                    steady = Fishers(pv, feet) > 0 && feet.TrueForAll(f => NearestWater(Sim, f.x, f.y) <= 0.3f) ? steady + 1 : 0;
+                }
                 Assert.Greater(Fishers(pv, feet), 0, $"step {step}: somebody fishes ({Sim.EcoPondCells} cells)");
                 foreach (var f in feet)
                 {
