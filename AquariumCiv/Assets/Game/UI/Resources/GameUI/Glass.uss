@@ -602,6 +602,9 @@
 .kg-tool-mark { position: absolute; left: 50%; top: 52px; margin-left: -96px; display: none; }
 .kg-tool--on { padding-left: 49.5px; border-width: 5.5px; border-color: var(--primary); }
 .kg-tool--on > .kg-tool-mark { display: flex; }
+/* #516: with a kit tool in hand the button reads "Put away" under a cross (a wider word: the mark steps left) */
+.kg-tool--on.kg-tool--away { padding-left: 66px; }
+.kg-tool--away > .kg-tool-mark { margin-left: -142px; }
 .kg-tool--new { border-width: 5.5px; border-color: var(--brass); transition: border-color 600ms ease-in-out, scale 80ms ease-out; }
 .kg-tool--glow { border-color: var(--brass-light); }
 .kg-tool > .kg-new-tag { position: absolute; left: 50%; top: -30px; margin-left: -60.5px; display: none; }

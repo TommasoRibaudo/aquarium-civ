@@ -33,9 +33,9 @@ namespace AquariumCiv.View
         // ---------------------------------------------------------------- the ghost's silhouettes
         static readonly Dictionary<LifeSpecies, Mesh> ghosts = new(), edges = new();
 
-        /// <summary>The group as one mesh of pale silhouettes (white vertex colours: the material tints them), centred on the origin with
-        /// the ground at y 0; <paramref name="edge"/>: the same shapes a little larger, drawn behind in a darker tint, so each reads as an
-        /// outlined shape on any ground.</summary>
+        /// <summary>The group as one mesh of pale models (#516: their own colours washed pale and softly shaded, <see cref="GhostLook.Pale"/>),
+        /// centred on the origin with the ground at y 0; <paramref name="edge"/>: the same shapes a little larger in white, drawn behind in a
+        /// darker tint, so each reads as an outlined shape on any ground.</summary>
         public static Mesh Ghost(LifeSpecies s, BoxView box, bool edge)
         {
             var cache = edge ? edges : ghosts;
@@ -49,7 +49,7 @@ namespace AquariumCiv.View
                 BuildMember(mb, s, g, box);
             }
             mb.M = Matrix4x4.identity;
-            for (int i = 0; i < mb.colors.Count; i++) mb.colors[i] = Color.white;
+            if (edge) GhostLook.Flat(mb); else GhostLook.Pale(mb);
             m = mb.ToMesh($"LifeGhost_{s}{(edge ? "_edge" : "")}");
             cache[s] = m;
             return m;
@@ -66,10 +66,13 @@ namespace AquariumCiv.View
                     PondLife.DuckMeshes(out var body, out var head, out var tail);
                     Append(mb, body, Vector3.zero); Append(mb, head, PondLife.DuckHeadAt); Append(mb, tail, PondLife.DuckTailAt);
                     break;
-                case LifeSpecies.Fish: FishShape(mb, 1f); break;
+                case LifeSpecies.Fish: FishShape(mb, 1f, FishGhost); break;
                 default: QuadDoll.Shape(mb, g.quad); break;
             }
         }
+
+        /// <summary>#516 the fish's ghost colour (the pond's fish are shadows; a pale slate reads as fish on the water).</summary>
+        static readonly Color FishGhost = new(0.42f, 0.52f, 0.58f);
 
         /// <summary>A small fish seen from above: a flat body and a tail fork, lying on the water (y 0), facing +z.</summary>
         public static void FishShape(MeshBuilder mb, float scale, Color? col = null)
@@ -129,10 +132,17 @@ namespace AquariumCiv.View
             return m;
         }
 
+        /// <summary>A mesh's triangles into the builder, keeping its vertex colours (#516: the ghost shows them, washed pale).</summary>
         static void Append(MeshBuilder mb, Mesh m, Vector3 at = default)
         {
-            var v = m.vertices; var t = m.triangles;
-            for (int i = 0; i < t.Length; i += 3) mb.Tri(v[t[i]] + at, v[t[i + 1]] + at, v[t[i + 2]] + at, Color.white);
+            var v = m.vertices; var t = m.triangles; var col = m.colors;
+            bool has = col != null && col.Length == v.Length;
+            for (int i = 0; i < t.Length; i += 3)
+            {
+                int a = t[i], b = t[i + 1], c = t[i + 2];
+                if (has) mb.TriC(v[a] + at, v[b] + at, v[c] + at, col[a].gamma, col[b].gamma, col[c].gamma); // the builder stores linear: undo it, it adds it back
+                else mb.Tri(v[a] + at, v[b] + at, v[c] + at, Color.white);
+            }
         }
     }
 }

@@ -87,10 +87,18 @@ namespace AquariumCiv.View
 
         /// <summary>A tap this near the ghost's middle (box units) sets it down.</summary>
         public float reach;
-        /// <summary>The hint while the ghost waits for its second tap.</summary>
-        public readonly string hint;
+        /// <summary>The hint while the ghost waits for its second tap (#516: the life slot names its species in it).</summary>
+        public string hint { get; private set; }
 
         public GhostTap(string hint, float reach) { this.hint = hint; this.reach = reach; }
+
+        /// <summary>#516 a new hint for the next showing; one already up is swapped for it.</summary>
+        public void SetHint(string h, GameHud hud)
+        {
+            if (h == hint) return;
+            if (Shown) { hud?.WithdrawToast(hint); hud?.Toast(h, HintSeconds); }
+            hint = h;
+        }
 
         public bool Shown => Cell >= 0;
         public int Cell { get; private set; } = -1;
@@ -145,8 +153,11 @@ namespace AquariumCiv.View
     }
 
     /// <summary>
-    /// #518 a ghost's look (B12.0): pale silhouettes over a thin darker edge, side-on to the camera, on the land. The life slot draws its
-    /// founding group with it and the seed its mound; #516 restyles it here for both.
+    /// #518 a ghost's look (B12.0): pale models over a thin darker edge, side-on to the camera, on the land. The life slot draws its
+    /// founding group with it and the seed its mound.
+    /// <para>#516 (playtest #509/#510): an all-white silhouette read as a blob for the thicket (the rabbits' read at once). The fill
+    /// now keeps the model's own colours, washed pale and softly shaded (<see cref="Pale"/>), so bushes read as bushes and rabbits as
+    /// rabbits; the edge stays one darker tint.</para>
     /// </summary>
     public sealed class GhostLook
     {
@@ -202,6 +213,29 @@ namespace AquariumCiv.View
             foreach (var go in new[] { fillGo, edgeGo }) if (go != null) Object.Destroy(go);
             foreach (var m in new[] { fillMat, edgeMat }) if (m != null) Object.Destroy(m);
             fillGo = edgeGo = null; fillMat = edgeMat = null;
+        }
+
+        /// <summary>#516 the ghost's fill colours: each vertex keeps its model's colour, shaded a little by which way it faces (light from
+        /// above and the camera's side: the ghost faces the camera, +z away from it) and washed toward white by <paramref name="wash"/>.
+        /// The material's tint and alpha make it a ghost.</summary>
+        public static void Pale(MeshBuilder mb, float wash = 0.26f)
+        {
+            var light = new Vector3(-0.35f, 0.8f, -0.5f).normalized;
+            for (int i = 0; i < mb.colors.Count; i++)
+            {
+                var n = i < mb.normals.Count ? mb.normals[i] : Vector3.up;
+                float shade = 0.62f + 0.38f * Mathf.Clamp01(Vector3.Dot(n.normalized, light));
+                var c = mb.colors[i].gamma * shade; // the builder's colours are linear: wash in the eye's terms
+                c = Color.Lerp(c, Color.white, wash).linear;
+                c.a = 1f;
+                mb.colors[i] = c;
+            }
+        }
+
+        /// <summary>The edge: one flat tint (the material's), whatever the model's colours.</summary>
+        public static void Flat(MeshBuilder mb)
+        {
+            for (int i = 0; i < mb.colors.Count; i++) mb.colors[i] = Color.white;
         }
 
         GameObject Child(string n)
