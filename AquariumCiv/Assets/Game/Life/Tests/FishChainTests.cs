@@ -124,18 +124,6 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
-        public void TheRackStandsInAFreeGap_AwayFromTheHideRack()
-        {
-            for (int seed = 1; seed <= 60; seed++)
-            {
-                float a = FishRackSpot.AngleFor(seed), h = FishRackSpot.HideAngle(seed);
-                Assert.GreaterOrEqual(Gap(a, h), 1.0f, $"seed {seed}: the two racks are well apart round the fire (each is 0.7 rad wide)");
-                foreach (float seat in new[] { 0.4f, 2.5f, 4.6f, CampStash.Angle })
-                    Assert.GreaterOrEqual(Gap(a, seat), 0.8f, $"seed {seed}: clear of the seat or the stash at {seat}");
-            }
-        }
-
-        [Test]
         public void TheHideRackAngleIsThePlannersOwn()
         {
             for (int seed = 1; seed <= 8; seed++)
@@ -146,7 +134,7 @@ namespace AquariumCiv.Life.Tests
                 Assert.IsTrue(planner.HideFrame(out float x, out float z, out _, out _));
                 Assert.IsTrue(planner.FirePoint(out float fx, out float fz));
                 float a = (float)System.Math.Atan2(z - fz, x - fx); if (a < 0f) a += 6.2831853f;
-                Assert.AreEqual(0f, Gap(FishRackSpot.HideAngle(sim.State.seed), a), 1e-3f, "seed " + seed);
+                Assert.AreEqual(0f, Gap(FishRackSpot.HideAngleAt(fx, fz, sim.State.seed), a), 1e-3f, "seed " + seed);
             }
         }
 

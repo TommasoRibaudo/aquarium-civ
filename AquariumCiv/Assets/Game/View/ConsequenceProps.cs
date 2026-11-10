@@ -182,7 +182,7 @@ namespace AquariumCiv.View
         BoxView box;
         Transform root;
         SimCore drawn;
-        float fx, fz, rackAngle;
+        float fx, fz, rackAngle, fishAngle = float.NaN;
         PeopleView people;
         readonly List<CampSpots.Disc> spots = new();
         readonly Dictionary<int, Made> made = new();
@@ -260,6 +260,7 @@ namespace AquariumCiv.View
                 foreach (var b in sim.State.buildings) if (b.lotId != 0) spots.Add(new CampSpots.Disc(b.x, b.z, 0.22f));
                 planner.HideFrame(out float hx, out float hz, out _, out _);
                 rackAngle = Mathf.Atan2(hz - fz, hx - fx);
+                fishAngle = FishRackSpot.AngleFor(fx, fz, sim.State.seed); // #543
             }
             foreach (var p in list)
             {
@@ -267,7 +268,7 @@ namespace AquariumCiv.View
                 float px = p.x, pz = p.z;
                 if (haveFire && p.anchor == PropAnchor.Fire)
                 {
-                    CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz);
+                    CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle);
                     spots.Add(new CampSpots.Disc(px, pz, CampSpots.PropRadius));
                 }
                 else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
