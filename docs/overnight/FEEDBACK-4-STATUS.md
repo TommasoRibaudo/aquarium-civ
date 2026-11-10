@@ -14,7 +14,7 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 - [x] 2 · #539 merged (settlers' camp and its fire)
 - [x] 3 · #541 merged (kids play together)
 - [x] 4 · #538 merged (open for feel sign-off)
-- [ ] 5+6 · #526 and #540 merged (#526 open for look sign-off)
+- [x] 5+6 · #526 and #540 merged (#526 open for look sign-off)
 - [ ] 7 · #542 cause written in the issue, fix merged
 - [ ] 8 · #543 merged (open for look sign-off)
 - [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
@@ -34,3 +34,4 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 - 14:40 Watcher STALL (5 min quiet): not a dialog; the #526/#540 worker's blocking EditMode run (Life tests). Restarted watcher with a 900 s window.
 - 14:52 SimTests: #541 merge 1727/1727; #495 merge 1732/1732 (the #495 worker's host crash didn't repeat: likely two suites at once).
 - 14:42 #539 merged (branch b01dc3d): SimCore.ApartCampSpot = one rule (FreeSpot/ShoreFree avoid PondShore.FutureWater); woods camp off the basin+margin; shore hut just outside the basin; spot re-asked every 5 s (a flooded camp moves at the next check, possibly in view: polish note); PoolReach clips the settlers' fire pool to future water. Cheats Settlers: woods/shore, Pond to full. Verify ApartPondPlayTests (4 shots 539-*), ApartGroupsPlayTests, smoke.
+- 14:44 #526+#540 merged (4556294, branch 69281b2): the #537/#499 poles = ConsequenceKind.Feather (storyteller tradition prop by the tent door): now a pale stake in a stone ring with 3 fanned feathers (cream/yellow/red). #540: pure Life/CampSpots places fire-anchored consequence props clear of rack/stash/stone/pot/tents (view only, sim spot untouched); rack angle nudged off them. Cheat 'Camp props: show all'. Life.Tests 389/389, CampSpots 4/4, smoke 2/2. Looked at a_night_default, a_day_fire_close, a_day_feather_close: pot and rack apart, stakes read. #526 open for look sign-off. Worker moved the untracked prompt file aside in F:\GameDev (it's tracked on the branch now).
