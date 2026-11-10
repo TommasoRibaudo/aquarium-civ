@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using AquariumCiv.Game;
+using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -23,11 +24,22 @@ namespace AquariumCiv.View
             var mb = new MeshBuilder(3710 + System.Array.IndexOf(ConsequenceKind.All, kind)) { jitter = 0.025f };
             switch (kind)
             {
-                case ConsequenceKind.Feather: // a post with a long feather tied to it, red cord below
-                    mb.Prism(Vector3.zero, 0.014f, 0.011f, 0.34f, 6, Palette.Bark, topCol: Palette.WoodLight);
-                    mb.Box(new Vector3(0f, 0.2f, 0f), new Vector3(0.03f, 0.012f, 0.03f), Palette.Accents[0]);
-                    mb.Ico(new Vector3(0.03f, 0.3f, 0f), 0.04f, new Vector3(0.28f, 1.8f, 0.5f), Palette.Flowers[0], 0.05f, Palette.Flowers[1]);
-                    mb.Box(new Vector3(0.012f, 0.3f, 0f), new Vector3(0.006f, 0.17f, 0.006f), Palette.Plaster);
+                case ConsequenceKind.Feather: // fb4 #526: a storyteller's stake: a pale stake in a ring of stones, a red cord, three big feathers fanned on top
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float a = i / 5f * Mathf.PI * 2f;
+                        mb.Ico(new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.05f, 0.022f, new Vector3(1f, 0.7f, 1f), Palette.Rock, 0.2f);
+                    }
+                    mb.Prism(Vector3.zero, 0.018f, 0.014f, 0.2f, 6, Palette.WoodLight, topCol: Palette.Plaster);
+                    mb.Box(new Vector3(0f, 0.11f, 0f), new Vector3(0.048f, 0.03f, 0.048f), Palette.Accents[0]);
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        var rot = Quaternion.Euler(0f, 0f, -i * 24f);
+                        var col = i == 0 ? Palette.Plaster : i < 0 ? Palette.Accents[1] : Palette.Accents[0];
+                        var at = new Vector3(i * 0.04f, 0.31f - Mathf.Abs(i) * 0.015f, 0f);
+                        mb.Box(at, new Vector3(0.05f, 0.2f, 0.008f), col, rot);
+                        mb.Box(at, new Vector3(0.006f, 0.21f, 0.011f), Palette.Timber, rot);
+                    }
                     break;
                 case ConsequenceKind.Baskets: // three berry baskets, stacked
                     for (int i = 0; i < 3; i++)
@@ -170,6 +182,9 @@ namespace AquariumCiv.View
         BoxView box;
         Transform root;
         SimCore drawn;
+        float fx, fz, rackAngle;
+        PeopleView people;
+        readonly List<CampSpots.Disc> spots = new();
         readonly Dictionary<int, Made> made = new();
         readonly Dictionary<int, float> pulses = new();
 
@@ -236,9 +251,26 @@ namespace AquariumCiv.View
                 root = new GameObject("ConsequenceProps") { hideFlags = HideFlags.DontSave }.transform;
                 root.SetParent(transform, false);
             }
+            if (people == null) people = PeopleView.Find(); var planner = people != null ? people.Planner : null;
+            bool haveFire = planner != null && planner.FirePoint(out fx, out fz) && planner.HideFrame(out _, out _, out _, out _);
+            spots.Clear();
+            if (haveFire)
+            {
+                // fb4 #540: the buildings and the things already placed are in the way
+                foreach (var b in sim.State.buildings) if (b.lotId != 0) spots.Add(new CampSpots.Disc(b.x, b.z, 0.22f));
+                planner.HideFrame(out float hx, out float hz, out _, out _);
+                rackAngle = Mathf.Atan2(hz - fz, hx - fx);
+            }
             foreach (var p in list)
             {
                 if (!p.placed) continue;
+                float px = p.x, pz = p.z;
+                if (haveFire && p.anchor == PropAnchor.Fire)
+                {
+                    CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz);
+                    spots.Add(new CampSpots.Disc(px, pz, CampSpots.PropRadius));
+                }
+                else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
                 if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != p.kind)
                 {
                     if (m != null) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }
@@ -261,7 +293,7 @@ namespace AquariumCiv.View
                     else { float w = Mathf.Sin(k * Mathf.PI); s *= 1f + 0.25f * w; lift = 0.04f * w; }
                 }
                 m.t.localScale = Vector3.one * s;
-                m.t.SetLocalPositionAndRotation(box.land.OnGround(p.x, p.z) + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f));
+                m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f));
             }
         }
     }
@@ -281,6 +313,16 @@ namespace AquariumCiv.View
             if (sim == null) return "no box";
             int n = sim.DebugPlaceEveryProp();
             return $"{n} things stand in the box";
+        }
+
+        /// <summary>fb4 #540: every fire-side thing at once: the drying rack with 6 hides, every Keeper's prop (the stew pot, the feathers...),
+        /// so the overlaps can be looked at.</summary>
+        public static string ShowCampProps()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            string a = EcoDebug.ShowRack(6);
+            return a + "; " + PlaceEvery();
         }
 
         /// <summary>Fires the next callback (a choice is raised and answered first when none is waiting) and plays its moment now.</summary>
