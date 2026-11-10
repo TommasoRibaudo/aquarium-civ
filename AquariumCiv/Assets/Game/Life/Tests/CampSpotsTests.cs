@@ -67,6 +67,44 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(0.1f, x, 1e-4f); Assert.AreEqual(-0.7f, z, 1e-4f);
         }
 
+        [Test]
+        public void FishRack_NeverOverlapsTheHideRackStashStoneSeatsOrPot_AtAnyFireOrSeed()
+        {
+            var discs = new List<CampSpots.Disc>();
+            foreach (var f in Fires)
+                for (int seed = 0; seed < 72; seed++)
+                {
+                    float hide = CampSpots.RackAngle(f.x, f.z, seed / 72f * 6.2831853f, LifePlanner.HideFrameDistance);
+                    float fish = CampSpots.FishRackAngle(f.x, f.z, hide);
+                    discs.Clear(); CampSpots.FireSide(f.x, f.z, discs); CampSpots.Seats(f.x, f.z, discs);
+                    foreach (var d in discs)
+                        Assert.GreaterOrEqual(CampSpots.DistanceToRack(f.x, f.z, fish, CampSpots.FishDistance, d.x, d.z, CampSpots.FishHalfDepth, CampSpots.FishHalfLength), d.r - 1e-3f, $"fire {f} hide {hide} fish {fish}");
+                    float gap = Math.Abs(fish - hide) % 6.2831853f; if (gap > 3.1415927f) gap = 6.2831853f - gap;
+                    Assert.GreaterOrEqual(gap, CampSpots.RackGap - 1e-3f, $"racks too close: hide {hide} fish {fish}");
+                }
+        }
+
+        [Test]
+        public void StewPot_NeverStandsInTheFishRack()
+        {
+            var fixedDiscs = new List<CampSpots.Disc>();
+            foreach (var f in Fires)
+            {
+                fixedDiscs.Clear(); CampSpots.FireSide(f.x, f.z, fixedDiscs);
+                for (int s = 0; s < 36; s++)
+                {
+                    float hide = CampSpots.RackAngle(f.x, f.z, s / 36f * 6.2831853f, LifePlanner.HideFrameDistance);
+                    float fish = CampSpots.FishRackAngle(f.x, f.z, hide);
+                    for (int w = 0; w < 48; w++)
+                    {
+                        float wa = w / 48f * 6.2831853f, wr = 0.45f + (w % 5) * 0.1f;
+                        CampSpots.Spot(f.x, f.z, hide, LifePlanner.HideFrameDistance, f.x + (float)Math.Cos(wa) * wr, f.z + (float)Math.Sin(wa) * wr, null, out float x, out float z, fish);
+                        Assert.GreaterOrEqual(CampSpots.DistanceToRack(f.x, f.z, fish, CampSpots.FishDistance, x, z, CampSpots.FishHalfDepth, CampSpots.FishHalfLength), CampSpots.PropRadius - 1e-3f, $"fire {f} fish {fish} got {x},{z}");
+                    }
+                }
+            }
+        }
+
         static void Spot(float fx, float fz, float rack, float wx, float wz, out float x, out float z) =>
             CampSpots.Spot(fx, fz, rack, LifePlanner.HideFrameDistance, fx + wx, fz + wz, null, out x, out z);
     }

@@ -5,9 +5,8 @@ namespace AquariumCiv.Life
     /// <summary>
     /// #543: where the camp's fish rack stands, pure geometry (x/z in world units, angle as <see cref="CampStash"/> uses it: x = cos, z =
     /// sin from the fire). One rack, shared by the fishers' catch and the smoking rack of #429. It stands in one of the two gaps between
-    /// the fire's log seats that the stash does not use (the seats are at 0.4, 2.5 and 4.6 radians, the stash at 3.55, the crumb's stone
-    /// at 0.29): about 83 or 323 degrees, whichever is farther from the hide rack's side (the seed's, <see cref="HideAngle"/>), so the two
-    /// racks never meet. Its bar runs across the line from the fire; people stand on the fire's side of it.
+    /// the fire's log seats that the stash does not use (about 83 or 323 degrees), whichever is farther from the hide rack, and
+    /// <see cref="CampSpots"/> nudges it off anything it would touch, so the racks, stash, stone, pot and seats never meet. Its bar runs across the line from the fire; people stand on the fire's side of it.
     /// </summary>
     public static class FishRackSpot
     {
@@ -21,23 +20,16 @@ namespace AquariumCiv.Life
         /// <summary>The hide rack's angle for a seed (the same hash as <c>LifePlanner.HideFrame</c>; a test pins it).</summary>
         public static float HideAngle(int seed) => (LifePlanner.Mix(seed, 0, 0, 410) >> 8) * (1f / 16777216f) * 6.2831853f;
 
-        /// <summary>The rack's angle: the gap farther from the hide rack.</summary>
-        public static float AngleFor(int seed)
-        {
-            float h = HideAngle(seed);
-            return Gap(Gaps[0], h) >= Gap(Gaps[1], h) ? Gaps[0] : Gaps[1];
-        }
+        /// <summary>The hide rack's angle as the camp stands it (the seed's, nudged by <see cref="CampSpots.RackAngle"/>).</summary>
+        public static float HideAngleAt(float fx, float fz, int seed) => CampSpots.RackAngle(fx, fz, HideAngle(seed), LifePlanner.HideFrameDistance);
 
-        static float Gap(float a, float b)
-        {
-            float d = Math.Abs(a - b) % 6.2831853f;
-            return d > 3.1415927f ? 6.2831853f - d : d;
-        }
+        /// <summary>The rack's angle (<see cref="CampSpots.FishRackAngle"/>): clear of the hide rack, the stash, the stone, the pot and the seats.</summary>
+        public static float AngleFor(float fx, float fz, int seed) => CampSpots.FishRackAngle(fx, fz, HideAngleAt(fx, fz, seed));
 
         /// <summary>A point <paramref name="radius"/> from the fire towards the rack.</summary>
         public static void At(float fx, float fz, int seed, float radius, out float x, out float z)
         {
-            float a = AngleFor(seed);
+            float a = AngleFor(fx, fz, seed);
             x = fx + (float)Math.Cos(a) * radius;
             z = fz + (float)Math.Sin(a) * radius;
         }
@@ -45,7 +37,7 @@ namespace AquariumCiv.Life
         /// <summary>The rack's centre and the unit direction along its bar.</summary>
         public static void Frame(float fx, float fz, int seed, out float x, out float z, out float dirX, out float dirZ)
         {
-            float a = AngleFor(seed);
+            float a = AngleFor(fx, fz, seed);
             float ux = (float)Math.Cos(a), uz = (float)Math.Sin(a);
             x = fx + ux * Distance; z = fz + uz * Distance;
             dirX = -uz; dirZ = ux;
