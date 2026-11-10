@@ -16,7 +16,7 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 - [x] 4 · #538 merged (open for feel sign-off)
 - [x] 5+6 · #526 and #540 merged (#526 open for look sign-off)
 - [x] 7 · #542 cause written in the issue, fix merged
-- [ ] 8 · #543 merged (open for look sign-off)
+- [x] 8 · #543 merged (open for look sign-off)
 - [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
 - [ ] `Feedback4Playthrough` + the touch play-through done, every beat looked at
 - [ ] Tester run; [real] fixed; [polish] listed
@@ -39,3 +39,4 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 - 14:55 #543 offline merged (2ed92e5, branch 276cd99): fish basket (PropKind.FishBasket creel), FishCaught→sim basket, HangFish at PlaceKind.FishRack, dries a day, RackKeeper TakeDownFish→pile shows dried fish (StashProps). Living land only. Cheats Fill fish basket / Fish on the rack / Dried fish to pile. SimTests 1745 (worker), AnimBench 543-fish-rack. Offline csc on merge 0 errors (6 assemblies). Follow-up sent: FishRackSpot via CampSpots (vs/543-rack-spot). Editor phase (FishChainPlayTests shots, AnimLab) in the pass.
 - 15:05 SimTests on the #543 merge: 1751/1752 (1 failure; rerun to name it). #543 rack follow-up merged (59ee43d, branch 9f1df55: CampSpots.FishRackAngle, seats as discs, props avoid the fish rack; its branch 1753/1753).
 - 15:05 #542 merged (639fd8f, branch eff2a9a). Cause (commented on #542): at default zoom the pond is ~100 px at the box edge and its glow can't be seen; the first tap leaned to zoom 0.15 on the ghost so the pond was cut off, and the confirm only counted within 0.32 u of the ghost (other water moved the ghost). Also the tap ray hit the pond bed (neighbour invalid cell). Fix: ducks/fish frame the whole pond on taking the tool (zoom 0.3-0.6), any valid water tap confirms at the ghost, captions say water, TapAt resolves water species on the water surface. PondPlacingPlayTests 2/2, LifeSlot 4/4, LifeArrival 11/11, SeedGhost 4/4, GhostFrame 3/3, SmokePlay 2/2. Looked at ducks-2-ghost: pond framed, caption clear; the duck ghost is small. Editor tickets so far: 2 (restart before the pass).
+- 15:11 Final lane merge: offline csc 0 errors (7 assemblies), SimTests 1753/1753 (the 1751/1752 failure was FishChainTests.TheHideRackAngleIsThePlannersOwn vs #540's rack nudge, fixed by the follow-up). #543 checked off (open for look sign-off; its Editor look in the pass). Batched pass started (Sonnet) on vs/feedback4-pass in F:\GameDev; watcher 900 s.
