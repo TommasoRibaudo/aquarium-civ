@@ -22,7 +22,7 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - [x] #518 seed ghost + two-finger guard merged (open: seed-in-jar question)
 - [x] #524 wet at the glass merged (open for look)
 - [x] #525 + #526 tree glow, tent poles merged (open for look)
-- [ ] #516 placing life: ghost, glow, button merged (open for look)
+- [x] #516 placing life: ghost, glow, button merged (open for look)
 - [ ] Batched Editor pass green (EditMode by assembly, PlayMode classes, smoke)
 - [ ] Touch play-through, every beat looked at
 - [ ] Tester run; [real] fixed; [polish] listed
@@ -45,3 +45,5 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - 17:19 dotnet SimTests on the full lane A merge (294d8a7): 1719/1719.
 - 17:21 User spotted a modal: 'Enter Safe Mode?' from the #525 worker's own uncommitted BoxView edit (Site.CXc → SiteMap.CXc). Clicked Ignore; told the worker to offline-compile before each recompile. The stall watcher didn't catch it in time (quiet window 600 s).
 - 17:36 #525+#526 merged (ceb6a3d + 5c197d3 metas): tree pool = lantern Glow pool kind 8 at 0.3 strength, r 0.4/0.5, on at lamp 0.15; lanterns shorter post, capped bigger head, brighter. Lanterns exist only from Village on; the tall dark poles beside them are festival bunting posts (likely #499's poles; untouched → ask user). Pool very subtle → look sign-off. Editor tests: KeeperTreeKit 5/5, ViewKit 11/11, FireAndProp 21/21, TownKit 7/7. Worker note: after Safe Mode Ignore, plain recompile kept the old error; forced import + RequestScriptCompilation fixed it (tooling note to write).
+- 18:21 Second interruption (~17:45-18:21). #516 had committed 13fe4fb plus uncommitted edits; Unity was gone, lock stale. Resumed the worker (reopen Editor, finish, 40 min box); watcher restarted.
+- 18:38 #516 merged (13fe4fb, c86b414): GhostLook.Pale keeps species colours (life slot + seed), thicket area ring gone, hint names the group, glow warm-white outline 0.26, Kit button '✕ Put away' with a tool in hand (clean mode keeps Done: smoke regression 3/3 fixed). LifeSlot 4/4, LifeArrival 8/8, SeedGhost 4/4, SlicePlaythroughSmoke 1/1. Reviewed thicket ghost + glow shots. Open for look sign-off. Editor queue done → batched pass.
