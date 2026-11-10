@@ -58,6 +58,9 @@ namespace AquariumCiv.View
         // #518: a wipe's press waiting out KitPress.SecondFingerGrace
         Vector2 pendingAt;
         float pendingT;
+        // the path the finger travelled while the wipe waited: replayed when it starts, so a fast swipe from off the glass still wipes
+        // from the pane's edge (feedback-3 pass: edge-to-edge swipes lost their first ~0.1 s and left a strip at each side)
+        readonly List<Vector2> pendingPath = new List<Vector2>();
 
         BoxView box;
         MessProps props;
@@ -531,9 +534,7 @@ namespace AquariumCiv.View
                 tweezing = false;
                 if (stroke == Stroke.Pending) // #518: a dab quicker than the grace wipes on its lift
                 {
-                    var end = lastPos;
-                    lastPos = pendingAt;
-                    if (Begin(pendingAt) == Stroke.Wipe) { ContinueWipe(sim, end, dt); EndWipe(sim); }
+                    if (StartPendingWipe(sim, dt) == Stroke.Wipe) EndWipe(sim);
                 }
                 else if (stroke == Stroke.Wipe) EndWipe(sim);
                 else if (stroke == Stroke.Grab) EndGrab(sim, lastPos);
@@ -549,7 +550,7 @@ namespace AquariumCiv.View
                 // #518: a wipe waits a moment for a second finger (a pan or pinch in clean mode never rubs the glass); a grab starts at once
                 // (it only holds the piece, and a second finger drops it back)
                 if (n != 1) stroke = Stroke.Ignored;
-                else if (Classify(a, out _) == Stroke.Wipe) { stroke = Stroke.Pending; pendingAt = a; pendingT = Time.unscaledTime; }
+                else if (Classify(a, out _) == Stroke.Wipe) { stroke = Stroke.Pending; pendingAt = a; pendingT = Time.unscaledTime; pendingPath.Clear(); }
                 else stroke = Begin(a);
                 if (n == 1) PointToClean(sim, a);
                 if (n == 1 && CleanMode && sim.EcologyOn && Cam != null && UnderFinger(Cam, a) != null) TellClothIsForGlass();
@@ -559,9 +560,8 @@ namespace AquariumCiv.View
             if (n >= 2 && stroke != Stroke.Ignored) { Cancel(); stroke = Stroke.Ignored; return; } // two fingers are the camera's
             if (stroke == Stroke.Pending)
             {
-                if (Time.unscaledTime - pendingT < KitPress.SecondFingerGrace) { lastPos = a; return; }
-                lastPos = pendingAt;
-                stroke = Begin(pendingAt); // the stroke starts where the finger landed and catches up to it
+                if (Time.unscaledTime - pendingT < KitPress.SecondFingerGrace) { pendingPath.Add(a); lastPos = a; return; }
+                stroke = StartPendingWipe(sim, dt); // the stroke starts where the finger landed and catches up to it along its path
             }
             if (stroke == Stroke.Wipe) ContinueWipe(sim, a, dt);
             else if (stroke == Stroke.Grab)
@@ -570,6 +570,19 @@ namespace AquariumCiv.View
                 while (samples.Count > 2 && Time.unscaledTime - samples[0].t > 0.1f) samples.RemoveAt(0);
             }
             lastPos = a;
+        }
+
+        /// <summary>#518: the pending wipe starts where the finger landed and replays the path it travelled while it waited, so the
+        /// strokes' first ~0.1 s still wipe (a swipe from off the glass reaches the pane's edge). Leaves <see cref="lastPos"/> at the
+        /// path's end.</summary>
+        Stroke StartPendingWipe(SimCore sim, float dt)
+        {
+            lastPos = pendingAt;
+            var kind = Begin(pendingAt);
+            if (kind == Stroke.Wipe)
+                foreach (var p in pendingPath) { ContinueWipe(sim, p, dt); lastPos = p; }
+            pendingPath.Clear();
+            return kind;
         }
 
         // ---------------- #311: the tweezers ----------------
