@@ -159,14 +159,14 @@ namespace AquariumCiv.GameUI
         public event Action<KitTool> HandChanged;
 
         /// <summary>#516 (playtest #510: "Done" read as "confirm" while it only closed the placement): with a kit tool in hand the Kit
-        /// button says what it does, puts the tool away, under a cross. A plain box's clean mode keeps Done and its check.</summary>
+        /// button says what it does, puts the tool away, under a cross. Clean mode (the cloth, the first run's wipe) keeps Done and its check.</summary>
         public const string PutAway = "Put away";
 
         /// <summary>The Kit/Clean button's word and mark for the state now.</summary>
         void ShowToolWord()
         {
             if (cleanButton == null) return;
-            bool away = hand != KitTool.None || (cleanMode && kitBox);
+            bool away = hand != KitTool.None;
             cleanButton.text = away ? PutAway : cleanMode ? "Done" : kitBox ? "Kit" : "Clean";
             if (toolMark != null) toolMark.Shape = away ? "close" : "check";
             cleanButton.EnableInClassList("kg-tool--away", away);
