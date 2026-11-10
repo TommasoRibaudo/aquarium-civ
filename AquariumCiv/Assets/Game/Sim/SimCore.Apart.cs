@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
@@ -48,6 +49,44 @@ namespace AquariumCiv.Sim
             var g = new ApartGroup { kind = kind ?? ApartKind.WoodsCamp };
             ApartSpot(g);
             return (g.x, g.z);
+        }
+
+
+        // ---- #539: the camp keeps clear of where the eco pond WILL be (PondShore.FutureWater), not just where it is today
+        /// <summary>Box units past the pond's full basin that a woods camp's centre keeps (its footprint reach, and the fire's pool, stay dry).</summary>
+        public const float WoodsPondMargin = 0.3f;
+        /// <summary>Box units past the full basin that a shore hut keeps: near the water, on ground that stays dry.</summary>
+        public const float ShorePondMargin = 0.1f;
+        /// <summary>How far from the basin's edge a shore hut may stand.</summary>
+        public const float ShoreHutReach = 0.4f;
+        [NonSerialized] EcoLand maskLand; [NonSerialized] float maskMargin = -1f; [NonSerialized] bool[] maskCells;
+
+        /// <summary>The cached future-water mask for <paramref name="margin"/> (null with the ecology off).</summary>
+        public bool[] FutureWaterMask(float margin)
+        {
+            if (!EcologyOn) return null;
+            var land = EcoGround;
+            if (land == null) return null;
+            if (maskCells == null || maskLand != land || Math.Abs(maskMargin - margin) > 1e-5f) { maskCells = PondShore.FutureWater(land, margin); maskLand = land; maskMargin = margin; }
+            return maskCells;
+        }
+
+        /// <summary>Where a camp of <paramref name="kind"/> is drawn: <see cref="ApartSpots.FreeSpot"/> with the pond's full extent kept clear
+        /// (a woods camp: footprint plus <see cref="WoodsPondMargin"/>; a shore hut only <see cref="ShorePondMargin"/> round the centre).
+        /// A camp the water would reach moves back to dry ground.</summary>
+        public (float x, float z) ApartCampSpot(float x, float z, string kind, out bool moved)
+        {
+            bool shore = kind == ApartKind.ShoreHut;
+            var avoid = FutureWaterMask(shore ? ShorePondMargin : WoodsPondMargin);
+            return ApartSpots.FreeSpot(Settlement?.Map, x, z, out moved, ApartSpots.Footprint, shore, avoid, shore ? 0.1f : ApartSpots.Footprint);
+        }
+
+        /// <summary>Debug cheat (#539): a couple of strangers settle apart now, as if a dilemma had sent them (no dice).</summary>
+        public ApartGroup DebugSettlersArrive(string kind)
+        {
+            var d = new Dilemma { id = 900000 + State.apartGroups.Count, month = State.month, state = DilemmaState.Answered };
+            StrangersApart(d, 2, kind);
+            return State.apartGroups[State.apartGroups.Count - 1];
         }
 
         /// <summary>The apart group a dilemma's answer made, or null.</summary>
@@ -101,6 +140,15 @@ namespace AquariumCiv.Sim
                 return;
             }
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
+            // #539: on a living-land box the pond grows: never within reach of its full basin (a woods camp well clear; a shore hut just
+            // outside it, with the water close by)
+            bool shoreHut = g.kind == ApartKind.ShoreHut;
+            bool[] woodsKeep = null, shoreKeep = null, shoreNear = null;
+            if (EcologyOn)
+            {
+                woodsKeep = PondShore.FutureWater(EcoGround, WoodsPondMargin + ApartSpots.Footprint);
+                if (shoreHut) { shoreKeep = PondShore.FutureWater(EcoGround, ShorePondMargin); shoreNear = PondShore.FutureWater(EcoGround, ShoreHutReach); }
+            }
             int best = -1; float bestScore = float.MinValue;
             for (int pass = g.kind == ApartKind.ShoreHut ? 0 : 1; pass < 2 && best < 0; pass++)
                 for (int c = 0; c < SiteMap.N; c++)
@@ -108,11 +156,13 @@ namespace AquariumCiv.Sim
                     int i = SiteMap.I(c), j = SiteMap.J(c);
                     if (i < 3 || j < 3 || i >= SiteMap.NX - 3 || j >= SiteMap.NZ - 3) continue;
                     if (map.pond[c] || map.lot[c] != 0 || map.ring[c] != 0 || (map.flags[c] & block) != 0 || map.Reserved(c)) continue;
+                    if (pass == 0 && shoreKeep != null) { if (shoreKeep[c] || !shoreNear[c]) continue; }
+                    else if (woodsKeep != null && woodsKeep[c]) continue;
                     float dx = SiteMap.CXc(c) - map.greenX, dz = SiteMap.CZc(c) - map.greenZ;
                     float score = (float)Math.Sqrt(dx * dx + dz * dz);
                     if (pass == 0)
                     {
-                        bool shore = map.pond[c - 1] || map.pond[c + 1] || map.pond[c - SiteMap.NX] || map.pond[c + SiteMap.NX];
+                        bool shore = shoreKeep != null || map.pond[c - 1] || map.pond[c + 1] || map.pond[c - SiteMap.NX] || map.pond[c + SiteMap.NX];
                         if (!shore) continue;
                     }
                     else
