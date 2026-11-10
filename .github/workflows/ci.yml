@@ -69,11 +69,12 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             git /repo --redact --no-banner --log-opts="$range"
 
-  # The pure-C# sim tests outside Unity (Tools/SimTests, docs/workflow.md sim lane). Seconds, no license, no secrets.
+  # The pure-C# sim tests outside Unity (Tools/SimTests, docs/workflow.md sim lane). No license, no secrets.
+  # ~4-10 min as of 2026-11-10 (1721 tests); a 10 min cap cancelled a green run on PR #534.
   sim-tests:
     name: Sim tests (dotnet)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
