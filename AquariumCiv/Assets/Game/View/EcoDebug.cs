@@ -256,6 +256,19 @@ namespace AquariumCiv.View
         }
         // end fb4 #495
 
+        // fb4 #539
+        public static string SettlersArrive(bool shore)
+        {
+            var s = Sim;
+            if (s == null) return "no sim";
+            var g = s.DebugSettlersArrive(shore ? AquariumCiv.Sim.ApartKind.ShoreHut : AquariumCiv.Sim.ApartKind.WoodsCamp);
+            return $"{g.family} family settled apart ({g.kind}) at {g.x:0.00},{g.z:0.00}";
+        }
+
+        /// <summary>The pond fills to its flood line at once (its full extent), the table jumped and a season passed.</summary>
+        public static string PondToFull() => Table(0f);
+        // end fb4 #539
+
         public static string Humidity(float v) { var s = Sim; if (s == null || !s.EcologyOn) return "living land off"; s.DebugSetHumidity(v); s.DebugSkipSeasons(1); s.DebugSetHumidity(v); return Refresh($"humidity {v:0.00} (+1 season, so the glass shows it)"); } // tester P8: droplets only build on a season step
 
         public static string PlantHere()

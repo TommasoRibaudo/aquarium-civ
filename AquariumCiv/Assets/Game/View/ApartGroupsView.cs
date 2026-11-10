@@ -6,6 +6,7 @@ using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using AquariumCiv.Sim.Eco;
+using SiteMap = AquariumCiv.Sim.Settle.SiteMap;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -47,6 +48,7 @@ namespace AquariumCiv.View
 
         sealed class Camp
         {
+            public float poolMax = 9f; // #539: the fire's light pool stops short of the water and the pond hole
             public int groupId, dilemmaId;
             public string kind;
             public Transform root;
@@ -176,7 +178,7 @@ namespace AquariumCiv.View
         {
             c.nextCheck = clock + SpotCheckSeconds;
             var map = sim.Settlement?.Map;
-            var (x, z) = ApartLife.FreeSpot(map, c.home.x, c.home.y, out bool moved, shore: c.kind == ApartKind.ShoreHut);
+            var (x, z) = sim.ApartCampSpot(c.home.x, c.home.y, c.kind, out bool moved); // #539: also clear of where the pond will be
             var spot = new Vector2(x, z);
             var land = box.land;
             // never in the water, also without a map
@@ -192,6 +194,7 @@ namespace AquariumCiv.View
             c.back = c.kind == ApartKind.ShoreHut && c.hasWater ? -c.water : away.sqrMagnitude > 1e-4f ? away.normalized : Vector2.up;
             c.side = new Vector2(-c.back.y, c.back.x);
             c.fire = spot;
+            c.poolMax = PoolReach(sim, spot);
             if (c.kind == ApartKind.ShoreHut)
             {
                 c.shelter = spot + c.back * 0.3f;
@@ -259,6 +262,25 @@ namespace AquariumCiv.View
             return go;
         }
 
+        /// <summary>#539: how far a fire at <paramref name="at"/> can light the ground before the pond (its full basin, wet or dry) begins.</summary>
+        static float PoolReach(SimCore sim, Vector2 at)
+        {
+            var mask = sim.FutureWaterMask(0f);
+            if (mask == null) return 9f;
+            float best = 9f;
+            const float scan = 0.7f;
+            int n = Mathf.CeilToInt(scan / SiteMap.Cell);
+            for (int dj = -n; dj <= n; dj++)
+                for (int di = -n; di <= n; di++)
+                {
+                    int cell = SiteMap.CellAt(at.x + di * SiteMap.Cell, at.y + dj * SiteMap.Cell);
+                    if (cell < 0 || !mask[cell]) continue;
+                    float d = Mathf.Sqrt(di * di + dj * dj) * SiteMap.Cell - SiteMap.Cell * 0.5f;
+                    if (d < best) best = d;
+                }
+            return Mathf.Max(0.12f, best);
+        }
+
         /// <summary>The fire's glow, as the settlement's (BoxView.Glows): a halo behind the flame and a warm pool on the ground, both
         /// stronger at night (the Glow shader reads the lamp level), and a few embers.</summary>
         void Glow(Camp c)
@@ -276,7 +298,7 @@ namespace AquariumCiv.View
             float phase = Pieces.Phase(c.groupId * 31 + 5);
             const float s = 0.9f; // a camp fire, a little smaller than the settlement's
             Add(foot + Vector3.up * 0.13f * s, look.haloRadius * s, 0f, Palette.FireHalo, phase, 0.13f * s);
-            Add(foot + Vector3.up * 0.02f, look.poolRadius * s, 4f, Palette.FirePool, phase, look.poolBoost);
+            Add(foot + Vector3.up * 0.02f, Mathf.Min(look.poolRadius * s, c.poolMax), 4f, Palette.FirePool, phase, look.poolBoost);
             int embers = Mathf.Min(look.embers, 3);
             for (int e = 0; e < embers; e++)
                 Add(foot + Vector3.up * look.emberY * s, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(c.groupId, e, 11)) / Mathf.Max(1, embers), 1.2f + 0.8f * Land.Hash3(c.groupId, e, 12));
@@ -433,6 +455,15 @@ namespace AquariumCiv.View
             fire = default; lit = false; nudged = false;
             if (!camps.TryGetValue(groupId, out var c) || c.root == null) return false;
             fire = c.fire; lit = c.lit; nudged = c.nudged;
+            return true;
+        }
+
+        /// <summary>#539: the radius of the camp fire's light pool on the ground, as drawn (clipped to stop short of the pond's basin).</summary>
+        public bool TryGetPoolRadius(int groupId, out float radius)
+        {
+            radius = 0f;
+            if (!camps.TryGetValue(groupId, out var c) || c.root == null || !c.lit) return false;
+            radius = Mathf.Min(FireLooks.Spec(FireLooks.Active).poolRadius * 0.9f, c.poolMax);
             return true;
         }
 

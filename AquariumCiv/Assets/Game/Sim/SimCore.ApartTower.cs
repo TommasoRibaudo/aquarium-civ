@@ -71,7 +71,7 @@ namespace AquariumCiv.Sim
             if (map == null) { g.towerX = g.x + 0.35f; g.towerZ = g.z; return; }
             // by the camp as it is drawn (a shore family's keeps to the shore, ApartSpots.FreeSpot), not by the home spot it was nudged off:
             // the tester found the tower 1.2 from the camp, by the town's field
-            var (cx, cz) = ApartSpots.FreeSpot(map, g.x, g.z, out _, ApartSpots.Footprint, g.kind == ApartKind.ShoreHut);
+            var (cx, cz) = ApartCampSpot(g.x, g.z, g.kind, out _);
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock | SiteMap.FLaid;
             int best = -1; float bestScore = float.MinValue;
             for (int c = 0; c < SiteMap.N; c++)
