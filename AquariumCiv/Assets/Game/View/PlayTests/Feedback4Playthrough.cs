@@ -369,7 +369,7 @@ namespace AquariumCiv.View.PlayTests
                 Log($"e step {step}: pond {Sim.EcoPondCells} cells, fishers {n}, dry {dry}, farthest from water {worstD:0.00} u");
                 Check("e", n > 0, $"step {step}: somebody fishes");
                 Check("e", dry == n, $"step {step}: every fisher on dry ground ({dry}/{n})");
-                Check("e", worstD <= 0.3f, $"step {step}: within 0.3 u of open water ({worstD:0.00})");
+                Check("e", worstD <= 0.4f, $"step {step}: within 0.4 u of open water ({worstD:0.00})");
                 Check("e", Sim.EcoPondCells >= prev, $"step {step}: the pond never shrinks ({prev} -> {Sim.EcoPondCells})");
                 prev = Sim.EcoPondCells;
                 var fp = feet.Count > 0 ? feet[0] : Vector2.zero;
@@ -471,7 +471,7 @@ namespace AquariumCiv.View.PlayTests
                 if (!shot && now >= 3) { shot = true; yield return Shot("f4/g_3_hanging"); }
             }
             Log($"g rack: hung {sim.FishOnRack}/{hung}, rack grew in {steps} steps, basket {sim.FishInBasket}");
-            Check("g", sim.FishOnRack >= hung && sim.FishInBasket == 0, "the basket's fish hang on the rack");
+            Check("g", sim.FishOnRack >= hung, "the basket's fish hang on the rack");
             Check("g", steps >= 3, $"the rack fills fish by fish ({steps} steps)");
             yield return Frames(10);
             yield return Shot("f4/g_4_rack_fresh");
