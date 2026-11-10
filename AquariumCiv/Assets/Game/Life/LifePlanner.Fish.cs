@@ -14,7 +14,7 @@ namespace AquariumCiv.Life
         public int DebugFishNow(ViewTime now, int grownUps = 2, float hours = 2f)
         {
             Sync();
-            if (sim != null && !sim.FishingOpen) return -1; // #421: no fishing of any kind until fish are placed
+            if (sim != null && !sim.FishingWater) return -1; // #421: no fishing of any kind until fish are placed
             debugFishers.Clear();
             int n = 0;
             foreach (var p in people)

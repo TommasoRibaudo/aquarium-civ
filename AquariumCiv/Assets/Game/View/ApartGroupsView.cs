@@ -5,6 +5,7 @@ using System.Text;
 using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -50,7 +51,8 @@ namespace AquariumCiv.View
             public string kind;
             public Transform root;
             public bool lit;
-            public Vector2 spot, home, back, side, water, fire, shelter, work, fishAt, boatAt;
+            public Vector2 spot, home, back, side, water, fire, shelter, work, fishAt, boatAt, fishFace;
+            public bool fishWet, fishing; // #495: the fisher's dry bank point is the eco pond's edge now; the pond has open water and fish
             public bool hasWater, nudged;
             public float nextCheck;
             public readonly List<Object> meshes = new();
@@ -179,7 +181,7 @@ namespace AquariumCiv.View
             var land = box.land;
             // never in the water, also without a map
             for (int i = 0; i < 12 && land.IsWater(spot.x, spot.y); i++) spot = Vector2.MoveTowards(spot, Vector2.zero, 0.08f);
-            if (c.root != null && (spot - c.spot).sqrMagnitude < 1e-6f) return;
+            if (c.root != null && (spot - c.spot).sqrMagnitude < 1e-6f) { if (c.kind == ApartKind.ShoreHut) FishSpot(sim, c); return; } // #495: the pond grows: ask again
             c.spot = spot;
             c.nudged = moved;
             var w = ApartLife.WaterWay(map, spot.x, spot.y);
@@ -203,6 +205,7 @@ namespace AquariumCiv.View
                 }
                 else { c.fishAt = spot + c.side * 0.3f; c.boatAt = c.fishAt; }
                 c.boatOut = BoatOutFrom(c);
+                FishSpot(sim, c);
             }
             else
             {
@@ -340,7 +343,7 @@ namespace AquariumCiv.View
                 case ApartDoing.Sleep:
                     at = c.shelter; face = -c.back; break;
                 case ApartDoing.Fish:
-                    at = c.fishAt + c.side * (m.index * 0.08f); face = c.hasWater ? c.water : c.side; break;
+                    at = c.fishAt + (c.fishWet ? new Vector2(-c.fishFace.y, c.fishFace.x) : c.side) * (m.index * 0.08f); face = c.fishWet ? c.fishFace : c.hasWater ? c.water : c.side; break;
                 case ApartDoing.Chop:
                     at = c.work - c.back * 0.14f; face = c.back; break;
                 case ApartDoing.Weave:
@@ -365,11 +368,21 @@ namespace AquariumCiv.View
             return at;
         }
 
+        /// <summary>#495: the fisher stands on dry ground at the eco pond's open-water edge nearest the hut (<see cref="PondShore"/>), facing the water; asked again every spot check, so it follows the pond as it grows.</summary>
+        void FishSpot(SimCore sim, Camp c)
+        {
+            c.fishing = sim.FishingWater;
+            c.fishWet = PondShore.NearestShore(sim, c.spot.x, c.spot.y, 0, out float sx, out float sz, out float fx, out float fz);
+            if (!c.fishWet) return;
+            c.fishAt = new Vector2(sx, sz);
+            c.fishFace = new Vector2(fx - sx, fz - sz).normalized;
+        }
+
         void Step(Camp c, Member m, int count, float hour, float k, float dt, bool sceneHasThem)
         {
             var v = m.view;
             if (sceneHasThem) { v.gameObject.SetActive(false); return; } // the choice scene's travellers are them, for now
-            var doing = ApartLife.Doing(c.kind, m.index, hour);
+            var doing = ApartLife.Doing(c.kind, m.index, hour, c.fishing || c.kind != ApartKind.ShoreHut);
             if (doing != m.doing)
             {
                 m.doing = doing;

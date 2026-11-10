@@ -208,6 +208,7 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Water up")) last = EcoDebug.Table(0.004f);
+            if (Btn("Pond +1 step")) last = EcoDebug.PondStep(); // fb4 #495
             if (Btn("Dry air")) last = EcoDebug.Humidity(0.1f);
             if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
             if (Btn("Plant tree")) last = EcoDebug.PlantHere();

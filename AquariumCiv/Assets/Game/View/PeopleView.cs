@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 using UnityEngine;
 using LifeProp = AquariumCiv.Life.Prop;
@@ -489,10 +490,10 @@ namespace AquariumCiv.View
             }
             // #360: drawing water: kneel at the real water's edge, facing the water (the slot's side of it), not in the middle of the pond.
             bool drawing = a.kind == ActivityKind.FetchWater && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && a.place.kind is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
-            if (drawing) target = DrawStand(land, a.place.kind, spot, target, a.slot, out face);
+            if (drawing) target = DrawStand(land, plannerSim, a.place.kind, spot, target, a.slot, out face);
             // #364: fishing: the fisher stands 0.06 u back from the real water edge facing the water (the water run's spot), so the line's end is on the water
             bool fishing = a.kind == ActivityKind.Fish && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
-            if (fishing) target = DrawStand(land, PlaceKind.Pond, spot, target, a.slot, out face);
+            if (fishing) target = DrawStand(land, plannerSim, PlaceKind.Pond, spot, target, a.slot, out face);
             if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
@@ -1093,8 +1094,14 @@ namespace AquariumCiv.View
         /// <summary>#360 (batch 2): a drawn puddle reaches ~0.1 u from its cell's middle (EcoSurface.BuildPuddles: R up to 0.086, x1.2, a 0.015 nudge), so the drawer kneels just outside it, not in it.</summary>
         public const float PuddleStandOff = 0.13f;
 
-        static Vector2 DrawStand(Land land, PlaceKind kind, Vector2 spot, Vector2 slotSpot, int slot, out Vector2? face)
+        static Vector2 DrawStand(Land land, SimCore sim, PlaceKind kind, Vector2 spot, Vector2 slotSpot, int slot, out Vector2? face)
         {
+            // #495: on a living land the pond is the eco water that is drawn, and it grows: stand on its dry edge, facing it (the fixed Land pond is not it)
+            if (kind == PlaceKind.Pond && PondShore.NearestShore(sim, spot.x, spot.y, slot, out float shx, out float shz, out float fcx, out float fcz))
+            {
+                face = new Vector2(fcx, fcz);
+                return new Vector2(shx, shz);
+            }
             var water = kind == PlaceKind.Pond ? land.pond : spot;
             var dir = kind == PlaceKind.Pond ? land.centre - water : slotSpot - water;
             if (dir.sqrMagnitude < 1e-6f) dir = Vector2.down;
