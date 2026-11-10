@@ -3,7 +3,35 @@
 Everything waiting on a decision by the user, in one place. Answered items move to [decisions.md](decisions.md) and are
 deleted here. Recommended options come first and are marked ★. On GitHub: issues labelled `needs:user`.
 
-_Last updated 2026-11-05._
+_Last updated 2026-11-09._
+
+## Playtest-feedback batch 3 (2026-11-09)
+Shots in `design/results/p9/feedback3/` (`5xx_*` per issue, `f3_*` the touch play-through, `tester_*`/`tfix_*` the tester run and its fixes).
+Run log: `overnight/FEEDBACK-3-STATUS.md`; pass results: `overnight/feedback3-pass-results.md`.
+
+### Sign-offs on the phone (built, merged, issue open)
+- **#516 placing life**: ghosts keep the species' colours as pale silhouettes (no area ring on the thicket); the hint names the group ("Tap again to set the bushes down here."); the glowing ground was made stronger after the tester found it faint; with a tool in hand the Kit button reads "✕ Put away" (clean mode keeps "Done"). The camera lean now keeps the ghost clear of the caption.
+- **#518 seed**: first tap shows a ghost, second plants. Two-finger pans never mist, plant or wipe (the tools wait 0.1 s for a second finger; the cloth replays the path so nothing is lost). The seed ghost is small at the default zoom (~22 pt): ★ accept, or make it bigger. **Question:** should the seed also go into the life jar?
+- **#520 barren wind**: a listen. The 40 s loop was the repeat; now two voices at different pitches, wandering level and pitch, softer fade.
+- **#524 wet at the glass**: misting at the glass darkens the edge and a strip down the soil face (`524_*`, `f3_g_*`). Subtle at the default zoom: ★ accept, or stronger.
+- **#525 tree at night**: a faint warm pool under the grown tree, far weaker than the fire's (`f3_i_*`). ★ accept, or stronger.
+- **#526 poles by the tents**: the lanterns (Village on) got a shorter post and a bigger, brighter capped head. The tall dark poles in your shot are most likely the festival bunting posts, which I didn't touch: say if those are the ones you meant.
+
+### Decisions needed
+- **Greening pace**: in the pass's touch play-through, holding the mister on 5 spots every season, the box was still 62 % bare at year 15.8 with the camp gate shut; the seed wasn't unlocked by year 17 and no pond had formed by year 19. The play-through used state cheats for those beats. ★ Look at a real early game on the phone first; if it feels this slow, open a tuning issue.
+- **Lanterns at tent doors** (#526): lanterns only exist from the Village era. Camp tents have none. ★ Leave as is.
+
+### Calls I made without you
+- #519 history lines when a pond dries: ducks: "The ducks had no water left to swim on. One morning they were gone, and only a few feathers lay in the dry hollow." Fish: "The water was gone from the hollow, and the fish with it. The children looked for them in the mud." Say if you want other words.
+- #519 root cause: the old random duck story fired on living-land boxes; it now only runs on old (non-ecology) boxes.
+- #521: at most 2 diggers at 3 patches on the first camp days; the cook stays at the fire; lunch in turns.
+- #523: weeds and vines never grow on the fire's ring or settled ground; vines that reach it are pulled.
+- While a life or seed tool is in hand, people's caption lines wait (they play after).
+
+### Polish noted, not fixed
+- The cloth's first stroke starts ~0.1 s after the finger lands (the second-finger wait); the path is replayed, so nothing is lost.
+- After one full edge-to-edge wipe the glass looks clean, but the worst pane can still read just above the "wiped" mark, so the first-run step may need a second pass.
+- Already failing on dev (not this batch): MistDuskPlayTests at 20 h and 21 h (spraying lightens the land at dusk by ~1.2 vs the 1.08 limit).
 
 ## Playtest-feedback batch 2 (2026-11-04/05)
 Shots in `design/results/p8/feedback2/`. Run log: `overnight/FEEDBACK-2-STATUS.md`.
