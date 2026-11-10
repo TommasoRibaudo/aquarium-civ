@@ -11,7 +11,7 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 ## Checklist
 - [x] `p9/feedback-4` from `origin/dev`; this prompt committed
 - [x] 1 · #495 merged (fisher on the water's edge; the shared "future water" helper)
-- [ ] 2 · #539 merged (settlers' camp and its fire)
+- [x] 2 · #539 merged (settlers' camp and its fire)
 - [x] 3 · #541 merged (kids play together)
 - [x] 4 · #538 merged (open for feel sign-off)
 - [ ] 5+6 · #526 and #540 merged (#526 open for look sign-off)
@@ -33,3 +33,4 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 - 14:40 #495 merged (9f8ea1c, branch 2205826): Pond shore from eco cover (new Sim/Eco/PondShore.cs: IsWet, NearestShore, FutureWater mask for #539); SimCore.FishingWater = FishingOpen && OpenWater gates the planner; PeopleView.DrawStand + ApartGroupsView FishSpot follow the shore each check. Cheat 'Pond +1 step'. Verify FisherShorePlayTests (Fishing), FishingPlayTests, PondLife. Risk: DrawStand scans cells per frame per fisher. #539 and #543 workers started from it (Sonnet).
 - 14:40 Watcher STALL (5 min quiet): not a dialog; the #526/#540 worker's blocking EditMode run (Life tests). Restarted watcher with a 900 s window.
 - 14:52 SimTests: #541 merge 1727/1727; #495 merge 1732/1732 (the #495 worker's host crash didn't repeat: likely two suites at once).
+- 14:42 #539 merged (branch b01dc3d): SimCore.ApartCampSpot = one rule (FreeSpot/ShoreFree avoid PondShore.FutureWater); woods camp off the basin+margin; shore hut just outside the basin; spot re-asked every 5 s (a flooded camp moves at the next check, possibly in view: polish note); PoolReach clips the settlers' fire pool to future water. Cheats Settlers: woods/shore, Pond to full. Verify ApartPondPlayTests (4 shots 539-*), ApartGroupsPlayTests, smoke.
