@@ -27,3 +27,4 @@ one Editor worker at a time: #526+#540, then #542, then the lane B parts; then o
 
 ## Log
 - 14:19 run start. Editor closed, lock free, health 0 (C: 28 GB). Issues and notes read; shots of #530/#531/#532/#537 looked at.
+- 14:35 Workers started (all Sonnet): lane A #495 (wt 495, + shared water helper), #541 (wt 541), #538 (wt 538); Editor worker #526+#540 in F:\GameDev (vs/526-540-camp-props). Watcher waits for its lock (300 s quiet). Shared rules: scratchpad/worker-rules.md.
