@@ -317,7 +317,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsNotNull(GameUiPanel.Bubbles.Holder, "the host gave it the word");
             Assert.IsFalse(GameUiPanel.Bubbles.Free(BubbleHost.Rank.World), "and nobody talks over it");
             Assert.IsTrue(sm.CaptionUp, "#327: on the caption");
-            Assert.IsFalse(string.IsNullOrEmpty(sm.LastWho), "with a name or a crowd label");
+            Assert.IsFalse(string.IsNullOrEmpty(sm.LastWho), "with the speaker's first name");
             Assert.IsTrue(sm.SpeakerRingUp, "and the ring under whoever says it");
             yield return Shot("people-want");
             AssertNoErrors("want line");
@@ -363,7 +363,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(2);
                 Assert.IsTrue(sm.CaptionUp, said);
                 Assert.IsNotNull(sm.ShownBubble, said);
-                Assert.IsFalse(string.IsNullOrEmpty(sm.LastWho), "a name or a crowd label: " + said);
+                Assert.IsFalse(string.IsNullOrEmpty(sm.LastWho), "the speaker's first name: " + said);
                 Assert.IsTrue(sm.SpeakerRingUp, "the ring: " + said);
                 if (GlassBubble.TooLong(sm.LastLine)) sawLong = true; else sawShort = true;
             }

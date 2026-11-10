@@ -91,7 +91,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "the thicket in hand");
             Assert.AreEqual(LifeSpecies.Thicket, hud.HeldLife);
             Assert.IsNull(hud.OpenSheet, "the kit closes with the tool in hand");
-            Assert.IsFalse(hud.LifeDotShown, "no dot on Done while the jar is in hand");
+            Assert.IsFalse(hud.LifeDotShown, "no dot on the Kit button while the jar is in hand");
+            // #516 (playtest #510): the button says what it does, it doesn't read as "confirm"
+            Assert.AreEqual(GameHud.PutAway, hud.Root.Q<Button>("hud-clean").text, "the Kit button puts the jar away");
+            Assert.GreaterOrEqual(hud.Root.Q("hud-clean").worldBound.height / hud.Root.worldBound.height * 852f, 44f, "44 pt or more");
 
             // the glow
             var lpv = LifePlaceView.Instance;
@@ -124,14 +127,14 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(cell, lpv.GhostCell);
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "a ghost places nothing");
             // tester 2026-11-08: the "tap again" hint shows while the ghost waits
-            yield return Until(() => GameUiPanel.Toasts.Current == LifePlaceView.TapAgainHint, 3f);
-            Assert.AreEqual(LifePlaceView.TapAgainHint, GameUiPanel.Toasts.Current, $"the tap-again hint is up (held by: {GameUiPanel.Toasts.Holders})");
+            yield return Until(() => GameUiPanel.Toasts.Current == LifePlaceView.TapAgainHintFor(LifeSpecies.Thicket), 3f);
+            Assert.AreEqual(LifePlaceView.TapAgainHintFor(LifeSpecies.Thicket), GameUiPanel.Toasts.Current, $"the tap-again hint is up (held by: {GameUiPanel.Toasts.Holders})");
             Assert.IsTrue(Shown(hud.Root.Q("hud-toast")), "and on screen");
             yield return new WaitForSecondsRealtime(0.6f);
             var bc = Camera.main.GetComponent<BoxCamera>();
             yield return Until(() => !bc.IsFlying, 8f); // the camera leans in on the ghost (user 2026-11-08): screen spots move
             yield return new WaitForSecondsRealtime(3.5f); // past the old 3 s toast
-            Assert.AreEqual(LifePlaceView.TapAgainHint, GameUiPanel.Toasts.Current, "the hint stays while the ghost waits, after the lean");
+            Assert.AreEqual(LifePlaceView.TapAgainHintFor(LifeSpecies.Thicket), GameUiPanel.Toasts.Current, "the hint stays while the ghost waits, after the lean");
             yield return Shot("p9-slot-5-ghost");
             // a dark tap with the ghost up: the ghost stays where it was
             dark = DarkSpot(LifeSpecies.Thicket, out darkCell);
@@ -151,7 +154,7 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(placed0 + 1, lpv.Placings);
             Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "the tool is put down");
             Assert.IsFalse(lpv.GhostShown, "the ghost goes");
-            Assert.AreNotEqual(LifePlaceView.TapAgainHint, GameUiPanel.Toasts.Current, "and its hint with it");
+            Assert.AreNotEqual(LifePlaceView.TapAgainHintFor(LifeSpecies.Thicket), GameUiPanel.Toasts.Current, "and its hint with it");
             yield return Frames(5);
             Assert.AreEqual(0, lpv.GlowCells, "and the glow");
             var bushes = new List<int>(); Sim.BushCells(bushes);
@@ -188,10 +191,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.Greater(LifePlaceView.Instance.GlowCells, 0, "the rabbits' ground glows");
             yield return new WaitForSecondsRealtime(1f);
             yield return Shot("p9-slot-8-rabbits-glow");
-            // Done puts it back
+            // Put away puts it back
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return Frames(10);
-            Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "Done puts it back");
+            Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "Put away puts it back");
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Rabbits), "still ready");
             Assert.AreEqual(0, LifePlaceView.Instance.GlowCells, "the glow goes");
             // and the whole real path places the pair

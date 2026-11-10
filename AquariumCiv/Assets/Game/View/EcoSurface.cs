@@ -38,10 +38,10 @@ namespace AquariumCiv.View
         float buildT;
         Transform rootSeen;
 
-        Mesh wetMesh, pudMesh, spMesh, frMesh, ngMesh;
-        MeshFilter wetF, sheenF, pudF, spF, frF, ngF;
-        MeshRenderer wetR, sheenR, pudR, spR, frR, ngR;
-        Material wetMat, sheenMat, pudMat, tintMat, freshMat;
+        Mesh faceMesh, wetMesh, pudMesh, spMesh, frMesh, ngMesh;
+        MeshFilter faceF, wetF, sheenF, pudF, spF, frF, ngF;
+        MeshRenderer faceR, wetR, sheenR, pudR, spR, frR, ngR;
+        Material faceMat, wetMat, sheenMat, pudMat, tintMat, freshMat;
         bool pudTuned;
 
         // reusable builders
@@ -110,10 +110,10 @@ namespace AquariumCiv.View
 
         void Clear()
         {
-            foreach (var go in new[] { wetF, sheenF, pudF, spF, frF, ngF }) if (go != null) Destroy(go.gameObject);
-            wetF = sheenF = pudF = spF = frF = ngF = null;
-            foreach (var m in new[] { wetMesh, pudMesh, spMesh, frMesh, ngMesh }) if (m != null) Destroy(m);
-            wetMesh = pudMesh = spMesh = frMesh = ngMesh = null;
+            foreach (var go in new[] { faceF, wetF, sheenF, pudF, spF, frF, ngF }) if (go != null) Destroy(go.gameObject);
+            faceF = wetF = sheenF = pudF = spF = frF = ngF = null;
+            foreach (var m in new[] { faceMesh, wetMesh, pudMesh, spMesh, frMesh, ngMesh }) if (m != null) Destroy(m);
+            faceMesh = wetMesh = pudMesh = spMesh = frMesh = ngMesh = null;
         }
 
         SimCore Sim => GameClock.Instance != null ? GameClock.Instance.Sim : null;
@@ -142,6 +142,7 @@ namespace AquariumCiv.View
         {
             const int Zero = 0, One = 1, DstColor = 2, SrcColor = 3, SrcAlpha = 5, OneMinusSrcAlpha = 10;
             wetMat ??= MakeMaterial("EcoWet", 0, DstColor, Zero);
+            if (faceMat == null) { faceMat = MakeMaterial("EcoWet", 0, DstColor, Zero); if (faceMat != null) { faceMat.name = "EcoWetFace"; faceMat.SetFloat("_WetBoost", 2.2f); faceMat.SetColor("_WetColor", new Color(0.52f, 0.52f, 0.58f)); } } // #524: the cut face sits in the glass's shadow: a clearly darker, cooler wet tone
             sheenMat ??= MakeMaterial("EcoSheen", 1, One, One);
             pudMat ??= MakeMaterial("EcoPuddle", 2, SrcAlpha, OneMinusSrcAlpha);
             tintMat ??= MakeMaterial("EcoTint", 3, SrcAlpha, OneMinusSrcAlpha);
@@ -157,7 +158,7 @@ namespace AquariumCiv.View
                 pudMat.SetColor("_WetColor", new Color(0.46f, 0.37f, 0.31f)); // the puddle's mud rim
                 if (sheenMat != null) sheenMat.SetFloat("_WetBoost", 1.9f);
             }
-            return wetMat != null && sheenMat != null && pudMat != null && tintMat != null && freshMat != null;
+            return faceMat != null && wetMat != null && sheenMat != null && pudMat != null && tintMat != null && freshMat != null;
         }
 
         MeshFilter Part(string name, ref MeshRenderer r, Material mat, Mesh mesh)
@@ -200,9 +201,10 @@ namespace AquariumCiv.View
             {
                 rootSeen = box.Root;
                 wetMesh = NewMesh("EcoWet"); pudMesh = NewMesh("EcoPuddles"); spMesh = NewMesh("EcoShoots"); frMesh = NewMesh("EcoFresh"); ngMesh = NewMesh("EcoNewGrass");
-                Warm(wetMesh); Warm(pudMesh); Warm(frMesh); Warm(ngMesh);
+                faceMesh = NewMesh("EcoWetFace"); Warm(faceMesh); Warm(wetMesh); Warm(pudMesh); Warm(frMesh); Warm(ngMesh);
                 ngF = Part("EcoNewGrass", ref ngR, freshMat, ngMesh);
                 frF = Part("EcoFresh", ref frR, tintMat, frMesh);
+                faceF = Part("EcoWetFace", ref faceR, faceMat, faceMesh);
                 wetF = Part("EcoWet", ref wetR, wetMat, wetMesh);
                 sheenF = Part("EcoSheen", ref sheenR, sheenMat, wetMesh);
                 pudF = Part("EcoPuddles", ref pudR, pudMat, pudMesh);
@@ -233,7 +235,7 @@ namespace AquariumCiv.View
 
         void SetVisible(bool on)
         {
-            foreach (var r in new[] { wetR, sheenR, pudR, spR, frR, ngR }) if (r != null && r.enabled != on) r.enabled = on;
+            foreach (var r in new[] { faceR, wetR, sheenR, pudR, spR, frR, ngR }) if (r != null && r.enabled != on) r.enabled = on;
         }
 
         void Read(SimCore sim)
@@ -308,9 +310,15 @@ namespace AquariumCiv.View
 
         float At(float[] f, int i, int j) => i < 0 || j < 0 || i >= NX || j >= NZ ? 0f : f[Site.Index(i, j)];
 
+        /// <summary>#524: like <see cref="At"/> but the glass is not the end of the ground: past the edge a cell reads as the edge cell,
+        /// so a wet patch runs on to the glass instead of fading out a cell short of it.</summary>
+        float AtEdge(float[] f, int i, int j) => f[Site.Index(Mathf.Clamp(i, 0, NX - 1), Mathf.Clamp(j, 0, NZ - 1))];
+
+        float Get(float[] f, int i, int j, bool toGlass) => toGlass ? AtEdge(f, i, j) : At(f, i, j);
+
         /// <summary>Soft patches from a per-cell field: every cell with something in it or next to it, five points a cell (the
         /// middle and the four corners, each corner the mean of the four cells round it), so the edge fades out over a cell.</summary>
-        int SoftPatch(float[] f, Color32 colour, float noise, float scale, int cellCap)
+        int SoftPatch(float[] f, Color32 colour, float noise, float scale, int cellCap, bool toGlass = false)
         {
             pos.Clear(); col.Clear(); uv0.Clear(); uv1.Clear(); tri.Clear();
             int used = 0;
@@ -322,7 +330,7 @@ namespace AquariumCiv.View
                     if (!any)
                     {
                         for (int dj = -1; dj <= 1 && !any; dj++)
-                            for (int di = -1; di <= 1; di++) if (At(f, i + di, j + dj) > 0.001f) { any = true; break; }
+                            for (int di = -1; di <= 1; di++) if (Get(f, i + di, j + dj, toGlass) > 0.001f) { any = true; break; }
                     }
                     if (!any) continue;
                     if (++used > cellCap) break;
@@ -333,8 +341,9 @@ namespace AquariumCiv.View
                     for (int q = 0; q < 4; q++)
                     {
                         int ci = i + (q & 1), cj = j + (q >> 1);
-                        float a = (At(f, ci - 1, cj - 1) + At(f, ci, cj - 1) + At(f, ci - 1, cj) + At(f, ci, cj)) * 0.25f;
-                        a *= 1f - noise + noise * 2f * Hash(ci * 31 + 7, cj * 17 + 3); // a ragged edge, not the grid's
+                        float a = (Get(f, ci - 1, cj - 1, toGlass) + Get(f, ci, cj - 1, toGlass) + Get(f, ci - 1, cj, toGlass) + Get(f, ci, cj, toGlass)) * 0.25f;
+                        bool atGlass = toGlass && (ci == 0 || cj == 0 || ci == NX || cj == NZ); // #524: the wet runs to the glass line at full strength
+                        if (!atGlass) a *= 1f - noise + noise * 2f * Hash(ci * 31 + 7, cj * 17 + 3); // a ragged edge, not the grid's
                         Add(ci * Site.Cell + Site.X0, CornerY(ci, cj) + Lift, cj * Site.Cell + Site.Z0, Mathf.Clamp01(a * scale), colour);
                     }
                     // corners: 1 = (i,j), 2 = (i+1,j), 3 = (i,j+1), 4 = (i+1,j+1); fan round the middle
@@ -364,8 +373,67 @@ namespace AquariumCiv.View
         void BuildWet()
         {
             System.Array.Copy(wetS, wetB, N);
-            WetCells = SoftPatch(wetS, new Color32(255, 255, 255, 255), 0.35f, 1f, N);
+            WetCells = SoftPatch(wetS, new Color32(255, 255, 255, 255), 0.35f, 1f, N, true);
             Upload(wetMesh);
+            BuildWetFace();
+        }
+
+        /// <summary>#524: the cut soil face under the cells at the glass darkens where the top is wet, with a short gradient down;
+        /// it dries with the top (same wetS). One strip per cell along each glass pane, a hair proud of the cut like the damp earth.</summary>
+        void BuildWetFace()
+        {
+            pos.Clear(); col.Clear(); uv0.Clear(); uv1.Clear(); tri.Clear();
+            float HX = Site.X0 * -1f, HZ = Site.Z0 * -1f;
+            const float Off = 0.004f;
+            for (int side = 0; side < 4; side++)
+            {
+                int n = side % 2 == 0 ? NX : NZ;
+                var o = side switch { 0 => new Vector3(0, 0, -Off), 1 => new Vector3(Off, 0, 0), 2 => new Vector3(0, 0, Off), _ => new Vector3(-Off, 0, 0) };
+                for (int s = 0; s < n; s++)
+                {
+                    // the boundary cells this strip lies under: the cell s along the side, and the point at its two ends (mean with the neighbour)
+                    float w0 = FaceWet(side, s - 1, s, n), w1 = FaceWet(side, s, s + 1, n);
+                    if (w0 <= 0.001f && w1 <= 0.001f) continue;
+                    int b = pos.Count;
+                    for (int e = 0; e < 2; e++)
+                    {
+                        int k = s + e;
+                        float x, z;
+                        switch (side)
+                        {
+                            case 0: x = Site.X0 + k * Site.Cell; z = -HZ; break;
+                            case 1: x = HX; z = Site.Z0 + k * Site.Cell; break;
+                            case 2: x = Site.X0 + k * Site.Cell; z = HZ; break;
+                            default: x = -HX; z = Site.Z0 + k * Site.Cell; break;
+                        }
+                        float w = e == 0 ? w0 : w1;
+                        float top = box.land.Height(x, z) - 0.004f;
+                        float drop = 0.40f * (0.75f + 0.5f * Hash(k * 13 + side * 101, 5)); // a ragged lower edge
+                        var p = new Vector3(x, top, z) + o;
+                        Add(p.x, p.y, p.z, w, new Color32(255, 255, 255, 255));
+                        Add(p.x, p.y - drop * 0.45f, p.z, w * 0.85f, new Color32(255, 255, 255, 255));
+                        Add(p.x, p.y - drop, p.z, 0f, new Color32(255, 255, 255, 255));
+                    }
+                    for (int r = 0; r < 2; r++)
+                    {
+                        int v = b + r, u = b + 3 + r;
+                        tri.Add(v); tri.Add(v + 1); tri.Add(u + 1);
+                        tri.Add(v); tri.Add(u + 1); tri.Add(u);
+                    }
+                }
+            }
+            Upload(faceMesh);
+        }
+
+        /// <summary>The wet value at the glass between boundary cells a and b along a side (ends clamp to the corner cell).</summary>
+        float FaceWet(int side, int a, int b, int n)
+        {
+            float V(int k)
+            {
+                k = Mathf.Clamp(k, 0, n - 1);
+                return side switch { 0 => wetS[Site.Index(k, 0)], 1 => wetS[Site.Index(NX - 1, k)], 2 => wetS[Site.Index(k, NZ - 1)], _ => wetS[Site.Index(0, k)] };
+            }
+            return Mathf.Clamp01((V(a) + V(b)) * 0.5f);
         }
 
         void BuildFresh()

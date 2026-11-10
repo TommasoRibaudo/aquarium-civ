@@ -3,7 +3,7 @@
 Status: **for the user to pick an option.** Nothing changes in code until one is picked. Phase 2 builds it.
 
 **Picked: Option B (the user, 2026-11-08). Phase 2 built** on `polish/327-caption-every-line`: `LineRoute` (pure, `View/ShowMe/Core`) routes every
-spoken line to the one caption (`showme-caption`, a real holder of the word now) with the name or a crowd label ("someone in the camp"),
+spoken line to the one caption (`showme-caption`, a real holder of the word now) with the speaker's first name (nothing under the line when nobody can be named, #522),
 the `SpeakerRing` and a speech mark (`ChatterMark.Speech`, sixth shape in `ChatterView`'s mesh, on the ring's warm white); the ShowMe
 bubble is gone, the first run's wish keeps its own. Relic, crumb and wish lines wait up to 10 s for the word (`LineQueue`) instead of
 the moment overlay or silence. Not built yet (open questions 2 to 4): a line's own voice, marks in step with voices, place words in
@@ -194,7 +194,7 @@ name below it in the quote style. Ring: warm white (1, 0.95, 0.78), 0.8 peak, an
 | A1 | as 0a, but a line with a named speaker standing mid-screen (pick a tree line from a trait, or "Line on walker" for the base frame) | "Line on walker", then hide the bubble in the mock | caption: the line + "Mira, by the tree"; ring under Mira, a little bigger; no bubble; marks faded |
 | A2 | zoom 0.45 on the same person | "Line on walker" | the over-head bubble with tail and ring (today's look; real frame, no mock needed) |
 | A3 | zoom 1, the speaker off the screen's left edge (pan) | "Tree line" | caption with the name and a small arrow pointing left on the name line |
-| A4 | zoom 1, a crowd line (a want) | SliceDebugPanel → a **WantCase** button | caption with a crowd label ("someone at the fire"), ring under that person |
+| A4 | zoom 1, a crowd line (a want) | SliceDebugPanel → a **WantCase** button | caption with that person's first name, ring under them |
 | B1 | = A1's base frame | as A1 | caption + name + ring + a small quote-glyph mark over Mira's head |
 | B2 | = A2's base frame (zoom 0.45) | as A2 | the same caption at the top, no bubble, the mark over the head (shows B's cost close up) |
 | C1 | = A1's base frame | as A1 | caption + name + ring + the quote-glyph mark (C's middle tier) |

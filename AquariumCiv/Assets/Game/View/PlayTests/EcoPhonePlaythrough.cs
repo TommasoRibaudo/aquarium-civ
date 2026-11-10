@@ -157,7 +157,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-mister"));
                 yield return new WaitForSecondsRealtime(0.5f);
                 Assert.AreEqual(GameHud.KitTool.Mister, hud.Hand, "the mister in hand");
-                Assert.AreEqual("Done", kitBtn.text);
+                Assert.AreEqual(GameHud.PutAway, kitBtn.text); // #516: says what it does
                 float bare0 = Sim.EcoBareShare;
                 var spots = new[] { (-1.2f, 0.4f), (0.6f, 0.9f), (-0.2f, -1.2f), (1.4f, 0.2f) };
                 // The mist shows a wet area and a little green at once; the rest greens over time (#266, #271). Per stroke: the wet area under

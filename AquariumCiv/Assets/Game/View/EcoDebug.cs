@@ -223,6 +223,16 @@ namespace AquariumCiv.View
 
         public static string VillageGate() { var s = Sim; return s != null && s.DebugOpenVillageGate() ? Refresh("village gate open") : "no change"; }
 
+        /// <summary>#519 + tester feedback 3: the pond dries now (the ducks and the fish leave) and the box shows it at once: the water
+        /// sheet goes with the next view refresh, made here, not a season later.</summary>
+        public static string PondDries()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            int n = s.DebugPondDries();
+            return Refresh($"{n} pond cells dried; ducks {s.EcoDucks}, fish {s.EcoFish}");
+        }
+
         public static string Table(float aboveFlood)
         {
             var s = Sim;
@@ -255,6 +265,23 @@ namespace AquariumCiv.View
             return Refresh($"edge cell {at} -> tree cell {to}");
         }
 
+        // ---- #518: the seed in hand (it places like the life slot: a ghost, then a tap on it); readies the seed first if the land hasn't ----
+        public static string SeedInHand()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            if (s.State.eco.treeCell >= 0) return "a tree stands: one seed per box";
+            if (s.State.eco.campGateMonth < 0) s.DebugOpenCampGate();
+            if (!s.State.eco.Reached(AquariumCiv.Sim.Eco.EcoMilestones.SeedUnlocked))
+            { s.State.eco.milestoneKeys.Add(AquariumCiv.Sim.Eco.EcoMilestones.SeedUnlocked); s.State.eco.milestoneMonths.Add(s.State.month); }
+            if (!s.CanPlantTree) return "no seed";
+            var hud = AquariumCiv.GameUI.GameHud.Instance;
+            if (hud == null) return "no HUD";
+            hud.SetHand(AquariumCiv.GameUI.GameHud.KitTool.Seed);
+            var sp = SeedPlaceView.Instance;
+            return "the seed in hand: tap the land, then the outline" + (sp != null && sp.Last.Length > 0 ? $" (last: {sp.Last})" : "");
+        }
+        // ---- end #518 ----
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }
 }

@@ -71,6 +71,7 @@ namespace AquariumCiv.Sim
                 if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing
                 EcoTell();
             }
+            PullTroddenVine(); // #523: vine on trodden ground is pulled the same step it grows there (SimCore.Trodden.cs)
             WolvesMonth(season); // #437/#438: the pack's month (a chase, the thief, the pen) and the dogs' (hash dice only)
         }
 
