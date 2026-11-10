@@ -33,6 +33,14 @@ namespace AquariumCiv.View
             new(0.062f, 0f, 0.026f), new(0.062f, HideHeight, 0.026f), new(0.062f, 2f * HideHeight, 0.026f),
         };
 
+        /// <summary>#543: where the dried fish lie: a stack of three layers at the pile's side (x across, z towards the fire), each fish lying along z (turned 90 degrees), clear of the logs, baskets and hides.</summary>
+        public const float FishHeight = 0.008f;
+        public static readonly Vector3[] FishSpots =
+        {
+            new(-0.084f, 0f, -0.012f), new(-0.072f, 0f, -0.012f), new(-0.060f, 0f, -0.012f),
+            new(-0.078f, FishHeight, -0.012f), new(-0.066f, FishHeight, -0.012f), new(-0.072f, 2f * FishHeight, -0.012f),
+        };
+
         static Vector3[] Logs()
         {
             var spots = new List<Vector3>();
@@ -45,8 +53,8 @@ namespace AquariumCiv.View
 
         BoxView box;
         Transform root;
-        Mesh logMesh, basketMesh, hideMesh;
-        readonly List<Transform> logs = new(), baskets = new(), hides = new();
+        Mesh logMesh, basketMesh, hideMesh, fishMesh;
+        readonly List<Transform> logs = new(), baskets = new(), hides = new(), fishes = new();
         StashLook shown;
         bool drawn;
 
@@ -54,6 +62,8 @@ namespace AquariumCiv.View
         public int LogsShown => CountOn(logs);
         public int BasketsShown => CountOn(baskets);
         public int HidesShown => CountOn(hides);
+        /// <summary>#543: dried fish lying on the pile.</summary>
+        public int FishShown => CountOn(fishes);
         public bool Visible => root != null && root.gameObject.activeSelf;
         public Transform Root => root;
 
@@ -108,9 +118,9 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (root != null) Kill(root.gameObject);
-            Kill(logMesh); Kill(basketMesh); Kill(hideMesh);
+            Kill(logMesh); Kill(basketMesh); Kill(hideMesh); Kill(fishMesh);
             root = null;
-            logs.Clear(); baskets.Clear(); hides.Clear();
+            logs.Clear(); baskets.Clear(); hides.Clear(); fishes.Clear();
             drawn = false;
         }
 
@@ -131,7 +141,7 @@ namespace AquariumCiv.View
 
         static bool Same(in StashLook a, in StashLook b) =>
             a.x == b.x && a.z == b.z && a.faceX == b.faceX && a.faceZ == b.faceZ &&
-            a.stock.logs == b.stock.logs && a.stock.baskets == b.stock.baskets && a.stock.hides == b.stock.hides;
+            a.stock.logs == b.stock.logs && a.stock.baskets == b.stock.baskets && a.stock.hides == b.stock.hides && a.stock.fish == b.stock.fish;
 
         void Draw(in StashLook s)
         {
@@ -140,9 +150,10 @@ namespace AquariumCiv.View
             Lay(logs, LogSpots, s, rot, s.stock.logs);
             Lay(baskets, BasketSpots, s, rot, s.stock.baskets);
             Lay(hides, HideSpots, s, rot, s.stock.hides);
+            Lay(fishes, FishSpots, s, rot, s.stock.fish, 90f); // #543: each lies along z
         }
 
-        void Lay(List<Transform> parts, Vector3[] spots, in StashLook s, Quaternion rot, int count)
+        void Lay(List<Transform> parts, Vector3[] spots, in StashLook s, Quaternion rot, int count, float turn = 0f)
         {
             for (int i = 0; i < parts.Count; i++)
             {
@@ -151,7 +162,7 @@ namespace AquariumCiv.View
                 if (!on) continue;
                 var at = rot * spots[i];
                 // each on the ground under it, so the pile sits on the land's small slopes
-                parts[i].SetLocalPositionAndRotation(box.land.OnGround(s.x + at.x, s.z + at.z) + Vector3.up * spots[i].y, rot);
+                parts[i].SetLocalPositionAndRotation(box.land.OnGround(s.x + at.x, s.z + at.z) + Vector3.up * spots[i].y, rot * Quaternion.Euler(0f, turn, 0f));
             }
         }
 
@@ -162,6 +173,8 @@ namespace AquariumCiv.View
             logMesh = Mesh("StashLog", mb => Pieces.Log(mb, Vector3.zero, LogRadius, LogLength, 90f, Palette.Bark));
             basketMesh = Mesh("StashBasket", mb => mb.Prism(Vector3.zero, 0.018f, BasketRadius, BasketHeight, 8, Palette.Thatch, topCol: Palette.Ember));
             hideMesh = Mesh("StashHide", mb => mb.Box(new Vector3(0f, HideHeight * 0.5f, 0f), new Vector3(HideHalfX * 2f, HideHeight, HideHalfZ * 2f), Palette.Hide));
+            fishMesh = Mesh("StashFish", FishRackPieces.DriedFish);
+            Parts(fishes, FishSpots.Length, "StashFish", fishMesh);
             Parts(logs, LogSpots.Length, "StashLog", logMesh);
             Parts(baskets, BasketSpots.Length, "StashBasket", basketMesh);
             Parts(hides, HideSpots.Length, "StashHide", hideMesh);

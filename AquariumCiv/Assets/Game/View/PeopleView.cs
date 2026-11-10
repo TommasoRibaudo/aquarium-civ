@@ -1240,12 +1240,13 @@ namespace AquariumCiv.View
                 LifeProp.Hoe or LifeProp.Scythe => PropKind.Hoe,
                 LifeProp.Hammer or LifeProp.Hammerstone or LifeProp.Pick => PropKind.Hammer,
                 LifeProp.FishStick => PropKind.Fish,
+                LifeProp.FishBasket => PropKind.FishBasket, // #543
                 LifeProp.Rod => PropKind.Rod,
                 LifeProp.Ball => PropKind.Ball, // #358: drawn (it fell to None)
                 _ => PropKind.None,
             };
             // Fit the slot to the mesh: a bundle rides on the back, buckets hang from the hand, a block is hugged.
-            if (kind == PropKind.Basket) slot = PropSlot.Hand; // #361: a basket is held in a hand (the left one while the right picks, PegDollView.HoldInLeft), never hugged: SlotOf says Arms
+            if (kind is PropKind.Basket or PropKind.FishBasket) slot = PropSlot.Hand; // #361: a basket is held in a hand (the left one while the right picks, PegDollView.HoldInLeft), never hugged: SlotOf says Arms
             else if (kind == PropKind.Bundle && slot != PropSlot.Shoulder) slot = PropSlot.Back;
             else if (kind is PropKind.Bucket or PropKind.BucketMuddy or PropKind.BucketEmpty) slot = PropSlot.Hand;
             else if (kind == PropKind.Block && slot == PropSlot.Hand) slot = PropSlot.Arms;

@@ -220,6 +220,11 @@ namespace AquariumCiv.View
             if (Btn("Seed in hand")) last = EcoDebug.SeedInHand(); // #518: a ghost first, then a tap on it plants
             for (int i = 0; i <= 4; i++) if (Btn("T" + i)) last = EcoDebug.TreeStage(i);
             EndRow();
+            Row(); // fb4 #543: the fish chain
+            if (Btn("Fill fish basket")) last = FishRackView.DebugFillBasket();
+            if (Btn("Fish on the rack")) last = FishRackView.DebugRack();
+            if (Btn("Dried fish to pile")) last = FishRackView.DebugToPile();
+            EndRow();
         }
 
         void OnGUI()

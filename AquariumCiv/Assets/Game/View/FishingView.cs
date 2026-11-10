@@ -34,7 +34,7 @@ namespace AquariumCiv.View
             public Transform basket; public readonly Transform[] fish = new Transform[FishBeats.MaxShown]; public readonly float[] pop = { -1f, -1f };
             public Vector3 top;
         }
-        sealed class Flyer { public GameObject go; public ArcHandle arc; public float landAt; public bool miss; public Vector3 end, away; }
+        sealed class Flyer { public GameObject go; public ArcHandle arc; public float landAt; public bool miss; public Vector3 end, away; public int key; }
 
         PeopleView people;
         BoxView box;
@@ -52,6 +52,8 @@ namespace AquariumCiv.View
         public int MissesLaunched { get; private set; }
         public int Landed { get; private set; }
         public int Startled { get; private set; }
+        /// <summary>#543: catches that landed in a fish basket and were counted into the camp's chain.</summary>
+        public int FishKept { get; private set; }
         public int LiveFlyers => flying.Count;
         public int FishersShown { get { int n = 0; foreach (var f in fishers.Values) if (clock - f.seen < 0.25f) n++; return n; } }
 
@@ -166,21 +168,21 @@ namespace AquariumCiv.View
             if (FishBeats.Miss(key, k))
             {
                 var end = line + away * 0.04f * zoom;
-                Launch(line, end, FishBeats.MissApex * zoom, FishBeats.MissFlight, Landing.Splash, true, away);
+                Launch(line, end, FishBeats.MissApex * zoom, FishBeats.MissFlight, Landing.Splash, true, away, key);
                 MissesLaunched++;
             }
             else
             {
-                Launch(line, st.top, FishBeats.Apex * zoom, FishBeats.Flight, Landing.DropIn, false, away);
+                Launch(line, st.top, FishBeats.Apex * zoom, FishBeats.Flight, Landing.DropIn, false, away, key);
                 CatchesLaunched++;
             }
         }
 
-        void Launch(Vector3 from, Vector3 to, float apex, float flight, Landing landing, bool miss, Vector3 away)
+        void Launch(Vector3 from, Vector3 to, float apex, float flight, Landing landing, bool miss, Vector3 away, int key)
         {
             var go = NewPiece("Fish", FishMesh());
             var shot = ArcShot.Throw(from, to, apex, flight, landing, clock, FishBeats.Spin, 0.02f);
-            flying.Add(new Flyer { go = go, arc = pool.Launch(shot), landAt = shot.LandAt, miss = miss, end = to, away = away });
+            flying.Add(new Flyer { go = go, arc = pool.Launch(shot), landAt = shot.LandAt, miss = miss, end = to, away = away, key = key });
             go.transform.position = from;
         }
 
@@ -204,6 +206,7 @@ namespace AquariumCiv.View
                 {
                     Landed++;
                     if (f.miss) Ring(f.end, f.away, 0.7f); // it drops back: one ring
+                    else if (people != null && people.Planner != null && people.Planner.FishCaught(f.key)) FishKept++; // #543: it is in the fish basket, and the sim's
                     Remove(f, i);
                 }
             }
@@ -225,7 +228,7 @@ namespace AquariumCiv.View
             float zoom = people != null ? people.DollZoom : 1f;
             if (st.basket == null)
             {
-                var go = NewPiece("FishBasket", PegDoll.PropMesh(PropKind.Basket));
+                var go = NewPiece("FishBasket", PegDoll.PropMesh(PropKind.FishBasket)); // #543: its own look, not the berry basket's
                 st.basket = go.transform;
                 for (int i = 0; i < st.fish.Length; i++)
                 {

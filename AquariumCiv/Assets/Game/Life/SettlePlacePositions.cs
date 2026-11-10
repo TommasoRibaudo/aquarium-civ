@@ -284,7 +284,7 @@ namespace AquariumCiv.Life
             }
             if (p.kind == PlaceKind.Green) { x = st.GreenX; z = st.GreenZ; return true; }
             if (!landReady) BuildLand();
-            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash && p.index == 1 ? 1 : 0);
+            int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash or PlaceKind.FishRack && p.index == 1 ? 1 : 0);
             if (!land.TryGetValue(key, out var s)) return false;
             x = s.x; z = s.z;
             if (p.kind == PlaceKind.Stream && p.index > 0) DigSpot(p.index, ref x, ref z); // #521: the stream bed other dry patches
@@ -407,6 +407,11 @@ namespace AquariumCiv.Life
             land[(int)PlaceKind.Stash * 4] = new Spot(wx, wz);
             CampStash.At(fx, fz, CampStash.PileRadius, out wx, out wz);
             land[(int)PlaceKind.Stash * 4 + 1] = new Spot(wx, wz);
+            // #543: the fish rack by the fire (0 = where people stand, 1 = the rack's middle)
+            FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.StandRadius, out wx, out wz);
+            land[(int)PlaceKind.FishRack * 4] = new Spot(wx, wz);
+            FishRackSpot.At(fx, fz, sim.State.seed, FishRackSpot.Distance, out wx, out wz);
+            land[(int)PlaceKind.FishRack * 4 + 1] = new Spot(wx, wz);
         }
 
         /// <summary>P9 #424: a spot to stand and look at placed life (<see cref="PlaceKind.Arrival"/>: index = cell × 8 + slot). Slot 0 is

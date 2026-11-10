@@ -37,6 +37,8 @@ namespace AquariumCiv.Life
         Stomp, WashHands,
         /// <summary>#361: at the stash pile, tipping the carried basket onto it (a short stay after the carry). Appended so the older values keep their numbers.</summary>
         TipLoad,
+        /// <summary>#543: at the fish rack, hanging the basket's fish up to dry, and taking the dry ones down. Appended so the older values keep their numbers.</summary>
+        HangFish, TakeDownFish,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -57,6 +59,8 @@ namespace AquariumCiv.Life
         Rabbit,
         /// <summary>P9 #426 (B13): the hunter's bow (on the back while walking, in the hand to shoot) and the carrying pole. Appended last.</summary>
         Bow, Pole,
+        /// <summary>#543: the fish basket (a fisher's catch, carried to the rack). Appended last.</summary>
+        FishBasket,
     }
 
     /// <summary>#283: which beat of a hunt a <see cref="PersonActivity"/> is (None = not a hunt). The hunter's beats come in this order:
@@ -111,6 +115,8 @@ namespace AquariumCiv.Life
         /// <summary>P9 #424: a spot by placed life where people stand and look (index = site cell × 8 + slot; slot 0 is 0.4 u from the
         /// cell toward the fire, slots 1–7 on a ring at 0.6 u on the fire's side; a water cell's spots are on its bank). Appended last.</summary>
         Arrival,
+        /// <summary>#543: the camp's fish rack by the fire (land; index -1 = where people stand to hang and take down fish, 1 = the rack itself, see <see cref="FishRackSpot"/>). Appended last.</summary>
+        FishRack,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the
@@ -305,6 +311,8 @@ namespace AquariumCiv.Life
                     return ActivityGroup.Chore;
                 case ActivityKind.Carry: case ActivityKind.FetchWater: case ActivityKind.RollBarrel: case ActivityKind.TipLoad:
                     return ActivityGroup.Carry;
+                case ActivityKind.HangFish: case ActivityKind.TakeDownFish: // #543
+                    return ActivityGroup.Work;
                 case ActivityKind.Walk:
                     return ActivityGroup.Walk;
                 case ActivityKind.Play: case ActivityKind.Swim: case ActivityKind.Snowball:
@@ -353,7 +361,7 @@ namespace AquariumCiv.Life
                 Prop.Log or Prop.Sack or Prop.Hide or Prop.Rabbit or Prop.Buckets or Prop.EmptyBucket or Prop.Table or Prop.Tripod => PropSlot.Shoulder,
                 Prop.Mask => PropSlot.Head,
                 Prop.Wool or Prop.Cloth or Prop.Goods => carrying ? PropSlot.Back : PropSlot.Hand,
-                Prop.Lamb or Prop.Basket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
+                Prop.Lamb or Prop.Basket or Prop.FishBasket or Prop.Honey or Prop.Crumb or Prop.Doll => PropSlot.Arms,
                 Prop.Handcart => PropSlot.Pulled,
                 Prop.Barrel => PropSlot.Rolled,
                 Prop.Bow => k == ActivityKind.Walk ? PropSlot.Back : PropSlot.Hand, // #426: bows on their backs on the way out
