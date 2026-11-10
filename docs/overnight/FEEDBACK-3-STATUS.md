@@ -23,8 +23,8 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - [x] #524 wet at the glass merged (open for look)
 - [x] #525 + #526 tree glow, tent poles merged (open for look)
 - [x] #516 placing life: ghost, glow, button merged (open for look)
-- [ ] Batched Editor pass green (EditMode by assembly, PlayMode classes, smoke)
-- [ ] Touch play-through, every beat looked at
+- [x] Batched Editor pass green (EditMode by assembly, PlayMode classes, smoke)
+- [x] Touch play-through, every beat looked at (Feedback3Playthrough; state cheats for the late beats)
 - [ ] Tester run; [real] fixed; [polish] listed
 - [ ] Issues closed / sign-off comments; answered notes closed
 - [ ] PR → dev, CI green, merged
@@ -47,3 +47,6 @@ Notes → issues: #509/#510/#511→#516 (#511 closed), #513→#518, #515→#519,
 - 17:36 #525+#526 merged (ceb6a3d + 5c197d3 metas): tree pool = lantern Glow pool kind 8 at 0.3 strength, r 0.4/0.5, on at lamp 0.15; lanterns shorter post, capped bigger head, brighter. Lanterns exist only from Village on; the tall dark poles beside them are festival bunting posts (likely #499's poles; untouched → ask user). Pool very subtle → look sign-off. Editor tests: KeeperTreeKit 5/5, ViewKit 11/11, FireAndProp 21/21, TownKit 7/7. Worker note: after Safe Mode Ignore, plain recompile kept the old error; forced import + RequestScriptCompilation fixed it (tooling note to write).
 - 18:21 Second interruption (~17:45-18:21). #516 had committed 13fe4fb plus uncommitted edits; Unity was gone, lock stale. Resumed the worker (reopen Editor, finish, 40 min box); watcher restarted.
 - 18:38 #516 merged (13fe4fb, c86b414): GhostLook.Pale keeps species colours (life slot + seed), thicket area ring gone, hint names the group, glow warm-white outline 0.26, Kit button '✕ Put away' with a tool in hand (clean mode keeps Done: smoke regression 3/3 fixed). LifeSlot 4/4, LifeArrival 8/8, SeedGhost 4/4, SlicePlaythroughSmoke 1/1. Reviewed thicket ghost + glow shots. Open for look sign-off. Editor queue done → batched pass.
+- 18:38 Batched pass started on vs/feedback3-pass (F:\GameDev) by one Editor agent: restart, recompile, 10 EditMode assemblies, ~20 PlayMode classes + smoke, play-through beats a-j by touch (2.5 h box). Watcher on its lock.
+- 19:07 Third interruption (~18:40-19:07): the pass had no commits, Unity gone, Temp/agent wiped. Resumed the pass agent; it now writes results to docs/overnight/feedback3-pass-results.md as it goes.
+- 20:35 Batched pass merged (f5ee9ef). EditMode 10 assemblies green. PlayMode 19 classes; #518 regression found and fixed (4fe9a59: the pending wipe replays the finger's path; Tester2Fix 6/6, SlicePlaythroughSmoke 2/2). Care + EcoMistView budget failures flaky (pass on rerun); MistDusk 20/21 h already fail on dev. Play-through Feedback3Playthrough 1/1 (beats a-j by touch). **Pacing flag:** misting 5 spots/season, box 62 % bare at y15.8, camp gate shut; seed not unlocked by y17, no pond by y19 → state cheats for those beats → ask user. Next: tester.
