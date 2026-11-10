@@ -175,6 +175,7 @@ namespace AquariumCiv.View
             if (Btn("Kids play: chase rabbits")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.ChaseRabbits);
             if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
             if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
+            if (Btn("Two kids play")) last = KidPlayDirector.DebugTwo(); // fb4 #541
             EndRow();
             Row(); // #365 B9 meals and the fire
             if (Btn("Meal now")) last = PeopleView.DebugMealNow();

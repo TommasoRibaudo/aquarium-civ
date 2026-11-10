@@ -79,13 +79,15 @@ namespace AquariumCiv.View
             for (int i = 0; i < acts.Count; i++)
             {
                 var a = acts[i];
-                if (!IsCandidate(planner, a)) continue;
+                bool two = twoUntil > time && twoAt.ContainsKey(a.who.Key); // #541 cheat: this kid is one of the two
+                if (!two && !IsCandidate(planner, a)) continue;
                 if (IsForced(a.who.Key)) continue;
                 candidates.Add(a.who.Key);
-                var key = DanceKey(a);
+                var key = two ? twoAt[a.who.Key] : DanceKey(a);
                 if (!atPlace.TryGetValue(key, out var list)) atPlace[key] = list = new List<int>();
                 list.Add(a.who.Key);
             }
+            GatherLoneKids(planner); // #541
             int block = Mathf.FloorToInt(viewNow.hour / PlayGroups.BlockHours);
             placesBuf.Clear();
             foreach (var kv in atPlace) placesBuf.Add(kv.Key);
@@ -111,6 +113,40 @@ namespace AquariumCiv.View
             foreach (var g in groups) for (int i = 0; i < g.game.Count; i++) if (pv.ScaleOf(g.game.KeyOf(i), out float s)) g.game.scales[i] = s;
             FireEffects(root, time); // #359
         }
+
+        readonly List<PlayGroups.KidSpot> spotsBuf = new();
+        readonly List<Place> spotPlaces = new();
+
+        /// <summary>#541: a lone free kid joins the nearest other kids' group (PlayGroups.Gather) instead of playing a solo copy beside them.</summary>
+        void GatherLoneKids(LifePlanner planner)
+        {
+            spotsBuf.Clear(); spotPlaces.Clear();
+            foreach (var kv in atPlace)
+            {
+                if (kv.Value.Count == 0 || IsDance(kv.Key)) continue;
+                var real = RealPlace(kv.Key);
+                if (!planner.Positions.TryGetPosition(real, out float px, out float pz)) continue;
+                spotsBuf.Add(new PlayGroups.KidSpot(real.GetHashCode(), px, pz, kv.Value.Count, real.kind == PlaceKind.Home ? 1 : 0));
+                spotPlaces.Add(kv.Key);
+            }
+            if (spotsBuf.Count < 2) return;
+            var host = PlayGroups.Gather(spotsBuf);
+            for (int i = 0; i < host.Length; i++)
+            {
+                if (host[i] == i) continue;
+                var from = atPlace[spotPlaces[i]]; var to = atPlace[spotPlaces[host[i]]];
+                to.AddRange(from); from.Clear();
+            }
+        }
+
+        /// <summary>#541: the games the other groups in view play now (a group here avoids them: two copies of one game look like a glitch).</summary>
+        void GamesElsewhere(Place place, List<PlayGame> into)
+        {
+            into.Clear();
+            foreach (var g in groups) if (g.place != place) into.Add(g.game.game);
+        }
+
+        readonly List<PlayGame> inViewBuf = new();
 
         static bool IsCandidate(LifePlanner planner, in PersonActivity a)
         {
@@ -174,6 +210,7 @@ namespace AquariumCiv.View
                 var centre = new Vector2(p.x, p.z);
                 if (!roomy && pv.MeanDrawn(p.members, out var mean)) centre = mean;
                 var game = p.game;
+                if (game is PlayGame.Tag or PlayGame.Ball) { GamesElsewhere(place, inViewBuf); game = PlayGroups.Differ(game, p.members.Length, inViewBuf, roomy); } // #541
                 var site = SiteFor(planner, game, real, ref centre, viewNow); // #359
                 if (site == null && game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek) game = PlayGroups.Fits(PlayGame.Tag, p.members.Length) ? PlayGame.Tag : PlayGame.Ball;
                 var g = MakeGroup(planner, viewNow, place, game, p.seed, p.members, centre, time, site);
@@ -390,6 +427,44 @@ namespace AquariumCiv.View
             if (g.game is RabbitChaseGame chase) { var c = centre; chase.HerdAt = cyc => cyc == 0 ? herd : HerdNear(pv.Planner, pv.Now, c); }
             Add(g);
             return $"{game}: {who.Count} at the gathering place for {ForcedSeconds:0} s";
+        }
+
+        // fb4 #541 cheat: "two kids play": two free kids at once, each at its own place (the camp's fire and its pile), through the real
+        // grouping path: they must end up in ONE together game, never two solo copies.
+        readonly Dictionary<int, Place> twoAt = new();
+        float twoUntil;
+
+        public string ForceTwo()
+        {
+            var planner = pv.Planner;
+            if (planner == null) return "no planner";
+            var a = planner.GatherPlace; var b = new Place(PlaceKind.Stash, -1, 1);
+            if (!planner.Positions.TryGetPosition(a, out float ax, out float az) || !planner.Positions.TryGetPosition(b, out _, out _)) return "no gathering place or pile";
+            var spot = new Vector2(ax, az);
+            var who = new List<int>();
+            for (int n = 0; n < 2; n++)
+            {
+                int k = pv.NearestShown(spot, x => planner.StageOf(x) == LifeStage.Kid, who);
+                if (k < 0) return $"only {who.Count} kid(s) on view";
+                who.Add(k);
+            }
+            foreach (int k in who) if (byKey.TryGetValue(k, out var gi)) { int ix = groups.IndexOf(gi.g); if (ix >= 0) Remove(ix); }
+            twoAt.Clear(); twoAt[who[0]] = a; twoAt[who[1]] = b; twoUntil = now + ForcedSeconds;
+            return "two kids play: 2 free kids at once, 45 s";
+        }
+
+        /// <summary>The game(s) the kids in <paramref name="keys"/> are in now, one entry per distinct group (tests: two kids must share one).</summary>
+        public int GroupsOf(IEnumerable<int> keys)
+        {
+            var seen = new HashSet<object>();
+            foreach (int k in keys) if (byKey.TryGetValue(k, out var gi) && (gi.g.forced || candidates.Contains(k))) seen.Add(gi.g);
+            return seen.Count;
+        }
+
+        public static string DebugTwo()
+        {
+            var pv = PeopleView.Find();
+            return pv == null ? "no people view" : pv.KidPlay.ForceTwo();
         }
 
         public static string Debug(PlayGame game)
