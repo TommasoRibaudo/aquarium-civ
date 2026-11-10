@@ -187,7 +187,7 @@ namespace AquariumCiv.GameUI
             if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
             if (t == KitTool.Seed) Toast(SeedHint, 4f);
             if (t == KitTool.Tweezers) Toast(TweezersHint, 4f);
-            if (t == KitTool.Life) Toast(LifeHint, 4f);
+            if (t == KitTool.Life) Toast(heldLife is AquariumCiv.Sim.Eco.LifeSpecies.Ducks or AquariumCiv.Sim.Eco.LifeSpecies.Fish ? LifeWaterHint : LifeHint, 4f);
             if (kitLife != null) kitLife.EnableInClassList("kg-tool--on", t == KitTool.Life);
             HandChanged?.Invoke(t);
         }
@@ -268,6 +268,7 @@ namespace AquariumCiv.GameUI
         readonly System.Collections.Generic.List<AquariumCiv.Sim.Eco.LifeSpecies> readyJars = new();
         string lifeRowKey = "";
         bool lifeShown;
+        public const string LifeWaterHint = "Tap the water to choose a spot. Two fingers move the view."; // fb4 #542
         public const string LifeHint = "Tap the glowing ground to choose a spot. Two fingers move the view.";
         /// <summary>The species in hand while <see cref="Hand"/> is <see cref="KitTool.Life"/>.</summary>
         public AquariumCiv.Sim.Eco.LifeSpecies HeldLife => heldLife;

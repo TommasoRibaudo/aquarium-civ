@@ -226,8 +226,20 @@ namespace AquariumCiv.View
         public static float LeanZoom(LifeSpecies s) => s switch
         {
             LifeSpecies.Thicket => 0.36f, LifeSpecies.Rabbits => BoxCamera.LeanMinZoom, LifeSpecies.Deer => 0.32f,
-            LifeSpecies.Ducks => BoxCamera.LeanMinZoom, LifeSpecies.Fish => BoxCamera.LeanMinZoom, _ => 0.32f,
+            LifeSpecies.Ducks => WaterZoom, LifeSpecies.Fish => WaterZoom, _ => 0.32f,
         };
+        /// <summary>fb4 #542: the zoom that shows the whole pond for the ducks and the fish (any tap on the water places them, so the
+        /// pond is the target, not a speck): set by <see cref="LifePlaceView"/> from the pond's size when the water tool is taken.</summary>
+        public static float WaterZoom = 0.4f;
+        public static float WaterZoomFor(float pondWidth) => Mathf.Clamp(pondWidth / 5.5f, 0.3f, 0.6f);
+
+        /// <summary>fb4 #542: the water tool was just taken: the camera frames the whole pond (box-local centre, its width in box units)
+        /// before the first tap, so the water the player must tap is a big target.</summary>
+        public bool LeanOnPond(LifeSpecies s, Vector3 centre, float width)
+        {
+            WaterZoom = WaterZoomFor(width);
+            return LeanOnGhost(s, centre);
+        }
         /// <summary>A waiting hint's lean: the people are the scene, so a little wider; held this long at most (real seconds).</summary>
         public const float HintZoom = 0.42f, HintHoldMax = 10f;
         /// <summary>User 2026-11-08: a hint leans only when its spot is off screen or the camera is zoomed out past this.</summary>
@@ -247,7 +259,7 @@ namespace AquariumCiv.View
         bool HoldLean()
         {
             var lp = LifePlaceView.Instance;
-            return (lp != null && lp.GhostShown) || playing.Count > 0 || Time.unscaledTime < hintLeanUntil;
+            return (lp != null && (lp.GhostShown || lp.FramingWater)) || playing.Count > 0 || Time.unscaledTime < hintLeanUntil;
         }
 
         /// <summary>The ghost was shown or moved (LifePlaceView): lean in on it, box-local <paramref name="at"/>.</summary>

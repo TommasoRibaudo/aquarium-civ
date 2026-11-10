@@ -56,7 +56,10 @@ namespace AquariumCiv.View
         /// <summary>The land is dimmed now (a species in hand), and how strongly (user 2026-11-08).</summary>
         public bool Dimmed => dimGo != null && dimGo.activeSelf;
         /// <summary>The hint while the ghost waits for its second tap: #516 it names what is going down, once.</summary>
-        public static string TapAgainHintFor(LifeSpecies s) => $"Tap again to set the {GroupName(s)} down here.";
+        public static string TapAgainHintFor(LifeSpecies s) => IsWater(s) ? $"Tap the water again to set the {GroupName(s)} down." : $"Tap again to set the {GroupName(s)} down here.";
+        /// <summary>fb4 #542: the ducks and the fish live on the pond as a whole: any tap on its water counts, and the camera frames the pond.</summary>
+        public static bool IsWater(LifeSpecies s) => s == LifeSpecies.Ducks || s == LifeSpecies.Fish;
+        LifeSpecies framedFor = (LifeSpecies)(-1);
         /// <summary>#516 what the people call each founding group (the hint's one name for it).</summary>
         public static string GroupName(LifeSpecies s) => s switch
         {
@@ -70,6 +73,8 @@ namespace AquariumCiv.View
         /// <summary>How long the tap-again hint may stay up while the ghost waits (it goes with the ghost before that).</summary>
         public const float GhostHintSeconds = GhostTap.HintSeconds;
         /// <summary>The ghost is shown, at <see cref="GhostCell"/>.</summary>
+        /// <summary>fb4 #542: the pond tool (ducks, fish) is in hand: the camera keeps the pond framed.</summary>
+        public bool FramingWater => framedFor == (hud != null ? hud.HeldLife : framedFor) && IsWater(framedFor) && hud != null && hud.Hand == GameHud.KitTool.Life;
         public bool GhostShown => ghostGo != null && ghostGo.activeSelf;
         public int GhostCell => Ghost.Cell;
         GhostTap Ghost => ghost ??= new GhostTap(TapAgainHintFor(LifeSpecies.Thicket), ghostReach);
@@ -117,7 +122,7 @@ namespace AquariumCiv.View
                 if (restoreGo != null && restoreGo.activeSelf) restoreGo.SetActive(false);
                 if (dimGo != null && dimGo.activeSelf) dimGo.SetActive(false); // the moment the tool is put down
                 HideGhost();
-                GlowCells = 0; glowStamp = -1; press.Reset();
+                GlowCells = 0; glowStamp = -1; press.Reset(); framedFor = (LifeSpecies)(-1);
                 DrawNo();
                 return;
             }
@@ -136,6 +141,7 @@ namespace AquariumCiv.View
                 mpb.SetColor(ColorId, new Color(1f, 1f, 1f, pulse));
                 glowGo.GetComponent<MeshRenderer>().SetPropertyBlock(mpb);
             }
+            if (IsWater(s) && framedFor != s) { framedFor = s; FramePond(); }
             Dim();
             DrawGhost();
             DrawNo();
@@ -157,8 +163,12 @@ namespace AquariumCiv.View
             var mist = EcoMistView.Instance;
             if (mist == null || !mist.GroundPoint(screen, out var at)) { Last = "off the land: put back"; hud?.SetHand(GameHud.KitTool.None); return; }
             int cell = SiteMap.CellAt(at.x, at.z);
+            // fb4 #542: the player taps the water they SEE; the ray goes on to the pond's bed, which can sit a cell or more further on
+            if (IsWater(s) && (cell < 0 || !sim.LifeGroundOk(s, cell)) && SurfaceCell(screen, out int sc) && sim.LifeGroundOk(s, sc)) { cell = sc; at = box.land.OnGround(SiteMap.CXc(sc), SiteMap.CZc(sc)); }
             Ghost.reach = ghostReach;
-            if (GhostShown && Ghost.OnGhost(at) && sim.CanPlaceLife(s, GhostCell))
+            // fb4 #542: on the pond any tap on its water sets the group down where the ghost stands (the first tap on the water showed it)
+            bool onWater = IsWater(s) && cell >= 0 && sim.LifeGroundOk(s, cell);
+            if (GhostShown && (onWater || Ghost.OnGhost(at)) && sim.CanPlaceLife(s, GhostCell))
             {
                 Place(sim, s, GhostCell);
                 return;
@@ -175,6 +185,38 @@ namespace AquariumCiv.View
             ShowGhost(s, cell); // the tap-again hint stays while the ghost waits and goes with it (GhostTap)
             LifeArrivalView.Instance?.LeanOnGhost(s, Ghost.At); // user 2026-11-08: the camera leans in so the group reads at phone size
             Last = moved ? $"ghost moved to {cell}" : $"ghost at {cell}";
+        }
+
+        /// <summary>fb4 #542: the water tool was just taken: the camera frames the whole pond (the glow's cells), so the first tap is on a big target.</summary>
+        void FramePond()
+        {
+            if (cells.Count == 0) return;
+            float x0 = float.MaxValue, x1 = float.MinValue, z0 = float.MaxValue, z1 = float.MinValue;
+            foreach (int c in cells)
+            {
+                float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
+                x0 = Mathf.Min(x0, x); x1 = Mathf.Max(x1, x); z0 = Mathf.Min(z0, z); z1 = Mathf.Max(z1, z);
+            }
+            float width = Mathf.Max(x1 - x0, (z1 - z0) * 1.3f) + 0.6f;
+            LifeArrivalView.Instance?.LeanOnPond(hud.HeldLife, new Vector3((x0 + x1) * 0.5f, 0f, (z0 + z1) * 0.5f), width);
+        }
+
+        /// <summary>The cell under the water's surface at a screen point (the ray meets the water plane, not the bed).</summary>
+        bool SurfaceCell(Vector2 screen, out int cell)
+        {
+            cell = -1;
+            var cam = Camera.main;
+            if (cam == null) return false;
+            float w = box.layout != null && box.layout.eco != null ? box.layout.eco.waterY : Land.WaterY;
+            var ray = cam.ScreenPointToRay(screen);
+            var o = box.transform.InverseTransformPoint(ray.origin);
+            var d = box.transform.InverseTransformDirection(ray.direction);
+            if (d.y > -0.0001f) return false;
+            float t = (w - o.y) / d.y;
+            if (t < 0f) return false;
+            var p = o + d * t;
+            cell = SiteMap.CellAt(p.x, p.z);
+            return cell >= 0;
         }
 
         void Place(SimCore sim, LifeSpecies s, int cell)
