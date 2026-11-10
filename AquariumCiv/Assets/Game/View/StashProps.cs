@@ -33,13 +33,17 @@ namespace AquariumCiv.View
             new(0.062f, 0f, 0.026f), new(0.062f, HideHeight, 0.026f), new(0.062f, 2f * HideHeight, 0.026f),
         };
 
-        /// <summary>#543: where the dried fish lie: a stack of three layers at the pile's side (x across, z towards the fire), each fish lying along z (turned 90 degrees), clear of the logs, baskets and hides.</summary>
+        /// <summary>#543: where the dried fish lie, on a dark mat in front of the logs (the side the camera sees; x across, z towards the fire): four broadside in two rows with gaps, heads alternating, then two crossed on top. Each fish lies along its turn (FishTurns: 0 = along x).</summary>
         public const float FishHeight = 0.008f;
         public static readonly Vector3[] FishSpots =
         {
-            new(-0.084f, 0f, -0.012f), new(-0.072f, 0f, -0.012f), new(-0.060f, 0f, -0.012f),
-            new(-0.078f, FishHeight, -0.012f), new(-0.066f, FishHeight, -0.012f), new(-0.072f, 2f * FishHeight, -0.012f),
+            new(-0.030f, 0f, -0.097f), new(0.026f, 0f, -0.097f), new(-0.030f, 0f, -0.116f), new(0.026f, 0f, -0.116f),
+            new(-0.002f, FishHeight, -0.100f), new(0.0f, 2f * FishHeight, -0.113f),
         };
+        public static readonly float[] FishTurns = { 0f, 180f, 180f, 0f, 20f, -25f };
+        /// <summary>The mat the fish lie on: centre and half sizes (a contrasting ground so each fish reads).</summary>
+        public static readonly Vector3 MatSpot = new(-0.002f, 0f, -0.1065f);
+        public const float MatHalfX = 0.062f, MatHalfZ = 0.021f, MatHeight = 0.003f;
 
         static Vector3[] Logs()
         {
@@ -53,8 +57,8 @@ namespace AquariumCiv.View
 
         BoxView box;
         Transform root;
-        Mesh logMesh, basketMesh, hideMesh, fishMesh;
-        readonly List<Transform> logs = new(), baskets = new(), hides = new(), fishes = new();
+        Mesh logMesh, basketMesh, hideMesh, fishMesh, matMesh;
+        readonly List<Transform> logs = new(), baskets = new(), hides = new(), fishes = new(), mats = new();
         StashLook shown;
         bool drawn;
 
@@ -118,9 +122,9 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (root != null) Kill(root.gameObject);
-            Kill(logMesh); Kill(basketMesh); Kill(hideMesh); Kill(fishMesh);
+            Kill(logMesh); Kill(basketMesh); Kill(hideMesh); Kill(fishMesh); Kill(matMesh);
             root = null;
-            logs.Clear(); baskets.Clear(); hides.Clear(); fishes.Clear();
+            logs.Clear(); baskets.Clear(); hides.Clear(); fishes.Clear(); mats.Clear();
             drawn = false;
         }
 
@@ -150,10 +154,11 @@ namespace AquariumCiv.View
             Lay(logs, LogSpots, s, rot, s.stock.logs);
             Lay(baskets, BasketSpots, s, rot, s.stock.baskets);
             Lay(hides, HideSpots, s, rot, s.stock.hides);
-            Lay(fishes, FishSpots, s, rot, s.stock.fish, 90f); // #543: each lies along z
+            Lay(fishes, FishSpots, s, rot, s.stock.fish, FishTurns); // #543: each lies along its own turn
+            LayMat(s, rot);
         }
 
-        void Lay(List<Transform> parts, Vector3[] spots, in StashLook s, Quaternion rot, int count, float turn = 0f)
+        void Lay(List<Transform> parts, Vector3[] spots, in StashLook s, Quaternion rot, int count, float[] turns = null)
         {
             for (int i = 0; i < parts.Count; i++)
             {
@@ -162,8 +167,17 @@ namespace AquariumCiv.View
                 if (!on) continue;
                 var at = rot * spots[i];
                 // each on the ground under it, so the pile sits on the land's small slopes
-                parts[i].SetLocalPositionAndRotation(box.land.OnGround(s.x + at.x, s.z + at.z) + Vector3.up * spots[i].y, rot * Quaternion.Euler(0f, turn, 0f));
+                parts[i].SetLocalPositionAndRotation(box.land.OnGround(s.x + at.x, s.z + at.z) + Vector3.up * spots[i].y, rot * Quaternion.Euler(0f, turns != null ? turns[i] : 0f, 0f));
             }
+        }
+
+        void LayMat(in StashLook s, Quaternion rot)
+        {
+            bool on = s.stock.fish > 0;
+            mats[0].gameObject.SetActive(on);
+            if (!on) return;
+            var at = rot * MatSpot;
+            mats[0].SetLocalPositionAndRotation(box.land.OnGround(s.x + at.x, s.z + at.z), rot);
         }
 
         void Build()
@@ -174,6 +188,8 @@ namespace AquariumCiv.View
             basketMesh = Mesh("StashBasket", mb => mb.Prism(Vector3.zero, 0.018f, BasketRadius, BasketHeight, 8, Palette.Thatch, topCol: Palette.Ember));
             hideMesh = Mesh("StashHide", mb => mb.Box(new Vector3(0f, HideHeight * 0.5f, 0f), new Vector3(HideHalfX * 2f, HideHeight, HideHalfZ * 2f), Palette.Hide));
             fishMesh = Mesh("StashFish", FishRackPieces.DriedFish);
+            matMesh = Mesh("StashMat", mb => mb.Box(new Vector3(0f, MatHeight * 0.5f, 0f), new Vector3(MatHalfX * 2f, MatHeight, MatHalfZ * 2f), Palette.Door));
+            Parts(mats, 1, "StashMat", matMesh);
             Parts(fishes, FishSpots.Length, "StashFish", fishMesh);
             Parts(logs, LogSpots.Length, "StashLog", logMesh);
             Parts(baskets, BasketSpots.Length, "StashBasket", basketMesh);

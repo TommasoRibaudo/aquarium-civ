@@ -113,12 +113,14 @@ namespace AquariumCiv.View
 
         /// <summary>One dry fish lying flat, for the food pile (0.051 long along x, 0.014 across, 0.01 thick).</summary>
         public const float DriedHalfLength = 0.026f, DriedHalfWidth = 0.008f;
+        static readonly Color PileBack = new Color(0.42f, 0.47f, 0.52f), PileBelly = new Color(0.86f, 0.86f, 0.78f), PileTail = new Color(0.30f, 0.34f, 0.40f);
         public static void DriedFish(MeshBuilder mb)
         {
+            // pale silver-grey with a dark tail: stands apart from the sand, the logs and the dark mat they lie on
             float sj = mb.jitter; mb.jitter = 0.02f;
-            mb.Ico(new Vector3(0f, 0.004f, 0f), 0.017f, new Vector3(1.1f, 0.25f, 0.42f), DryBack, 0.03f, DryBelly);
-            mb.Ico(new Vector3(0.0195f, 0.004f, 0f), 0.005f, new Vector3(0.9f, 0.7f, 0.9f), DryBack, 0.02f);
-            mb.Box(new Vector3(-0.0215f, 0.003f, 0f), new Vector3(0.008f, 0.003f, 0.013f), DryTail);
+            mb.Ico(new Vector3(0f, 0.006f, 0f), 0.017f, new Vector3(1.1f, 0.30f, 0.46f), PileBack, 0.03f, PileBelly);
+            mb.Ico(new Vector3(0.0195f, 0.006f, 0f), 0.005f, new Vector3(0.9f, 0.7f, 0.9f), PileBack, 0.02f);
+            mb.Box(new Vector3(-0.0215f, 0.005f, 0f), new Vector3(0.008f, 0.003f, 0.015f), PileTail);
             mb.jitter = sj;
         }
 
