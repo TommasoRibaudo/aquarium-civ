@@ -27,7 +27,7 @@ namespace AquariumCiv.View
         static readonly Color Wood = new Color(0.40f, 0.28f, 0.16f), WoodDark = new Color(0.28f, 0.19f, 0.11f), Cord = new Color(0.93f, 0.86f, 0.68f);
         static readonly Color Reed = new Color(0.50f, 0.56f, 0.47f), ReedDark = new Color(0.36f, 0.42f, 0.35f), Rim = new Color(0.82f, 0.78f, 0.62f);
         static readonly Color FreshBack = new Color(0.43f, 0.55f, 0.62f), FreshBelly = new Color(0.86f, 0.89f, 0.88f), FreshTail = new Color(0.36f, 0.48f, 0.56f);
-        static readonly Color DryBack = new Color(0.62f, 0.42f, 0.20f), DryBelly = new Color(0.80f, 0.60f, 0.32f), DryTail = new Color(0.52f, 0.34f, 0.16f);
+        static readonly Color DryBack = new Color(0.40f, 0.24f, 0.11f), DryBelly = new Color(0.62f, 0.42f, 0.20f), DryTail = new Color(0.30f, 0.18f, 0.08f);
 
         // ---------------------------------------------------------------- the basket
 

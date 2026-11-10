@@ -77,7 +77,7 @@ namespace AquariumCiv.View.Tests
                 Assert.AreEqual(ActivityGroup.Work, ActivityInfo.GroupOf(k));
                 Assert.IsTrue(ActivityInfo.IsBusy(k));
             }
-            Assert.AreEqual(PropSlot.Arms, ActivityInfo.SlotOf(Prop.FishBasket, ActivityKind.Carry));
+            Assert.AreEqual(AquariumCiv.Life.PropSlot.Arms, ActivityInfo.SlotOf(Prop.FishBasket, ActivityKind.Carry));
         }
     }
 }
