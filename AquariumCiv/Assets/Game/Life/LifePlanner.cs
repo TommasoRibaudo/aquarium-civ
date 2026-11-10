@@ -190,6 +190,7 @@ namespace AquariumCiv.Life
             if (TentActivityAt(p, t, out var raising)) return raising;
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
+            if (DebugRackAt(p, t, out var racking)) return racking; // #543 debug: "fill fish basket" / "fish on the rack"
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);
@@ -541,9 +542,12 @@ namespace AquariumCiv.Life
 
         // ======================================================================== hashing (never the sim's dice)
 
-        uint H(int key, long day, int salt)
+        uint H(int key, long day, int salt) => Mix(sim.State.seed, key, day, salt);
+
+        /// <summary>The planner's hash for a seed (static so geometry that must agree with it, <see cref="FishRackSpot"/>, can use it).</summary>
+        public static uint Mix(int seed, int key, long day, int salt)
         {
-            uint h = (uint)sim.State.seed * 0x9E3779B1u ^ (uint)key * 0x85EBCA77u ^ (uint)day * 0xC2B2AE3Du ^ (uint)(day >> 32) * 0x165667B1u ^ (uint)salt * 0x27D4EB2Fu;
+            uint h = (uint)seed * 0x9E3779B1u ^ (uint)key * 0x85EBCA77u ^ (uint)day * 0xC2B2AE3Du ^ (uint)(day >> 32) * 0x165667B1u ^ (uint)salt * 0x27D4EB2Fu;
             h ^= h >> 16; h *= 0x7FEB352Du; h ^= h >> 15; h *= 0x846CA68Bu; h ^= h >> 16;
             return h;
         }

@@ -72,7 +72,8 @@ namespace AquariumCiv.View
             ActivityKind.Play or ActivityKind.Snowball => DollStyle.Hop, // #358: Play is a play group's (KidPlayDirector); Hop is what a kid out of one shows
             ActivityKind.Toddle => DollStyle.Toddle, ActivityKind.Dance => DollStyle.RingDance, // #358
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
-            ActivityKind.HangWashing => DollStyle.Hang,
+            ActivityKind.HangWashing or ActivityKind.HangFish => DollStyle.Hang, // #543
+            ActivityKind.TakeDownFish => DollStyle.Lift, // #543
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
             ActivityKind.Hammer or ActivityKind.Repair => DollStyle.Hammer,
             ActivityKind.Saw => DollStyle.Saw,

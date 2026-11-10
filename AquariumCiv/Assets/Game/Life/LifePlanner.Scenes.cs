@@ -573,6 +573,7 @@ namespace AquariumCiv.Life
                 ActivityKind.FetchWater => a.moving ? $"carrying water to {where}" : $"drawing water at {where}",
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
+                ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
                 ActivityKind.Indoors => "indoors",
@@ -635,7 +636,7 @@ namespace AquariumCiv.Life
         static string PropNoun(Prop p) => p switch
         {
             Prop.Log => "logs", Prop.Handcart => "a handcart", Prop.Sheaf => "sheaves", Prop.Basket => "a basket", Prop.Hide => "a hide",
-            Prop.FishStick => "fish", Prop.Pots => "pots", Prop.Block => "a stone block", Prop.Cloth => "cloth", Prop.Loaves => "loaves",
+            Prop.FishStick or Prop.FishBasket => "fish", Prop.Pots => "pots", Prop.Block => "a stone block", Prop.Cloth => "cloth", Prop.Loaves => "loaves",
             Prop.Goods => "goods", Prop.Sack => "flour sacks", Prop.Honey => "honey", Prop.Wool => "wool", Prop.Lamb => "a lamb",
             Prop.Buckets => "water", Prop.Spear => "new tools", Prop.SeedBag => "seed baskets", Prop.Barrel => "a barrel", _ => "things",
         };
@@ -669,6 +670,7 @@ namespace AquariumCiv.Life
             PlaceKind.Relic => RelicNoun(p.index),
             PlaceKind.Prop => "the Keeper's choice", // #371
             PlaceKind.Tower => "the lookout tower", // #404
+            PlaceKind.FishRack => "the fish rack", // #543
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }

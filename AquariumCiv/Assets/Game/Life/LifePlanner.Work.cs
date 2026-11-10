@@ -26,6 +26,8 @@ namespace AquariumCiv.Life
             /// <summary>#405: the day's work starts with a fetch: to <see cref="fetchFrom"/> with the empty bucket, then the load to
             /// <see cref="dest"/>, before the first loop at the site (the cook draws water before stirring the pot).</summary>
             public bool fetchFirst;
+            /// <summary>#543: the day's work starts at the fish rack: the dry fish taken down and carried to the pile, then the walk to the site.</summary>
+            public bool takeDownFirst;
             public Person with;         // a work partner (the two-man saw)
         }
 
@@ -154,7 +156,7 @@ namespace AquariumCiv.Life
                 case JobType.Fisher:
                     if (sim != null && !sim.FishingWater) // P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
                         return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
-                    return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? stash : Store(Prop.Goods), 0.25f);
+                    return camp ? FishWork() : W(Pond, ActivityKind.Fish, Prop.Rod, Prop.Basket, Store(Prop.Goods), 0.25f); // #543: a camp's catch goes to the fish rack
                 case JobType.Woodcutter:
                     if (sim != null && sim.EcologyOn && !sim.TreesGrow) return TribeWork(p, d); // P8 (#285): no trees, no chopping
                     w = W(Woods, ActivityKind.Chop, Prop.Axe, camp ? Prop.Log : Prop.Handcart, Store(Prop.Log), 0.3f);

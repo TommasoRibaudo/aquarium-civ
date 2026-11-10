@@ -54,6 +54,7 @@ namespace AquariumCiv.Life
             look.faceX = fx - look.x;
             look.faceZ = fz - look.z;
             look.stock = CampStash.StockOf(sim.State.food, sim.State.wood);
+            look.stock.fish = CampStash.FishShown(sim.FishInPile); // #543
             return true;
         }
 

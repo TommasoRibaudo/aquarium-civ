@@ -151,7 +151,7 @@ namespace AquariumCiv.Life
             float r = R(p.key, d.day, 147);
             bool water = !OnLiving || sim.FishingWater; // #421: fishing waits for the fish
             if (r < 0.35f && (!OnLiving || sim.BerriesGrow)) return TribeWork(p, d);
-            if (r < 0.55f && water) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);
+            if (r < 0.55f && water) return FishWork();
             if (r < 0.70f && WoodsStand) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
             return null; // the chores at home, as before
         }
@@ -253,7 +253,7 @@ namespace AquariumCiv.Life
             }
             float r = R(p.key, d.day, 149);
             bool water = !OnLiving || sim.FishingWater; // #421: fishing waits for the fish
-            if (water && r < 0.45f) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);
+            if (water && r < 0.45f) return FishWork();
             if (WoodsStand && r < 0.8f) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
             var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
             c.chores = true;

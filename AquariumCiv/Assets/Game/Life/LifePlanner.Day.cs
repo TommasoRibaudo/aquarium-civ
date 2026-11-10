@@ -89,7 +89,7 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); dayInfo.day = long.MinValue; diggersDay = long.MinValue; /* tester run 1 #3 */ }
+        void ClearDays() { runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; diggersDay = long.MinValue; /* tester run 1 #3 */ }
 
         void EnsureDay(long day)
         {
@@ -750,7 +750,8 @@ namespace AquariumCiv.Life
                     // stretch and its own chore (DawnTurn), the chore shortened when the slots are tight, so a home has about one out at a time.
                     float choreEnd = Math.Min(6.6f + (sh.start - LifeClock.WorkStart), sh.start - 0.4f);
                     float choreUntil = HomeChoreTurn(p, d, choreEnd - 1f, choreEnd, 3); // one shared hour for the home's turns
-                    float walk = work.fetchFirst ? FetchFirstHours(p.home, work) : WalkHours(p.home, work.site);
+                    if (TakesDownFish(p, d, work)) work.takeDownFirst = true; // #543: the dry fish come down first thing
+                    float walk = work.fetchFirst ? FetchFirstHours(p.home, work) : work.takeDownFirst ? TakeDownFirstHours(p.home, work) : WalkHours(p.home, work.site);
                     // #208 phase B: in the Editor the lane still knotted (worst 8 -> 10 in the Village), as the short chore was
                     // followed by sitting out at the door until work. After the chore they go back in, and step out only just before leaving.
                     float leave = sh.start - walk;
@@ -758,6 +759,7 @@ namespace AquariumCiv.Life
                     At(ActivityKind.SitOut, leave, p.home);
                 }
                 if (work.fetchFirst) FetchFirst(work); // #405: the well, then the stash by the fire, then the pot
+                else if (work.takeDownFirst) TakeDownFirst(); // #543
                 // The walk to work takes as long as the route does: a late start (the water came first) arrives late.
                 if (bcur != work.site || !work.fetchFirst) Move(ActivityKind.Walk, work.site, Math.Max(sh.start, bt + WalkHours(bcur, work.site)), Prop.None, TripType.HomeToWork);
 
@@ -959,14 +961,20 @@ namespace AquariumCiv.Life
         /// <summary>#361: the view hours a carry of a basket to the camp's stash pile spends tipping it (0 for any other load or place).</summary>
         static float TipHours(Work work, float end)
         {
+            if (work.load == Prop.FishBasket && work.dest.kind == PlaceKind.FishRack) return BlockHours(end, HangBlockSeconds); // #543: the catch is hung up on the rack
             if (work.load != Prop.Basket || work.dest.kind != PlaceKind.Stash) return 0f;
-            // the block's last TipBlockSeconds of real time, across a phase's change of speed (a block that ends at midday)
-            float h = LifeClock.ViewHoursFor(end - 1e-3f, TipBlockSeconds);
+            return BlockHours(end, TipBlockSeconds);
+        }
+
+        /// <summary>The view hours of the last <paramref name="seconds"/> of real time before <paramref name="end"/>, across a phase's change of speed (a block that ends at midday).</summary>
+        static float BlockHours(float end, float seconds)
+        {
+            float h = LifeClock.ViewHoursFor(end - 1e-3f, seconds);
             for (int i = 0; i < 4; i++)
             {
                 float real = LifeClock.RealSecondsBetween(Math.Max(0f, end - h), end);
-                if (real < 1e-3f || Math.Abs(real - TipBlockSeconds) < 0.01f) break;
-                h *= TipBlockSeconds / real;
+                if (real < 1e-3f || Math.Abs(real - seconds) < 0.01f) break;
+                h *= seconds / real;
             }
             return h;
         }
@@ -1013,7 +1021,7 @@ namespace AquariumCiv.Life
                     Move(work.carryKind, dst, end - tip, work.load, TripType.Carry);
                     if (tip > 0f && bcur == dst && bt >= end - tip - 1e-3f) // #361: stand at the pile and tip the basket onto it
                     {
-                        Push(ActivityKind.TipLoad, bt, end, dst, dst, work.load, PersonRef.None, TripType.None, still: true);
+                        Push(work.load == Prop.FishBasket ? ActivityKind.HangFish : ActivityKind.TipLoad, bt, end, dst, dst, work.load, PersonRef.None, TripType.None, still: true);
                         bt = end;
                     }
                 }
