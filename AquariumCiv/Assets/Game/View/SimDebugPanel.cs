@@ -271,6 +271,10 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #371 ----
+            // ---- fb4 #540: camp props ----
+            if (Section("Camp props (fb4 #540)"))
+                if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();
+            // ---- end fb4 #540 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             // ---- #373: the Keeper's choices page and the hand pins ----
             if (Section("Keeper's choices (#373)"))
