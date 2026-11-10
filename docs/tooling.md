@@ -792,3 +792,9 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `AquariumCiv.View.PlayTests` to inherit `PlayTestBase`; run it with `EXPLICIT=1 bash Tools/run-tests.sh`. Gotcha: the
   HUD "History" button opens the time-lapse screen, which `hud.SheetOpen`/`CloseSheet()` don't see; holds made while it is
   open scrub the timeline.
+
+- **2026-11-09 (feedback 3 tfix): `unity` CLI project path from Bash and Python edits.** `--project-path F:\GameDev\AquariumCiv`
+  unquoted in Git Bash collapses to `F:GameDevAquariumCiv`; quote it (`'F:\GameDev\AquariumCiv'`) or `cd AquariumCiv` and omit it.
+  When patching C# with a Python heredoc, a `"\n"` inside a C# string literal must be written `"\n"` in the Python source (it
+  became a real newline once and broke the offline compile). The camera's lean looks at a pivot at `target.y`, not on the
+  ground: aim it with `BoxCameraMath.PivotOver` or a spot on higher land sits above mid-screen.

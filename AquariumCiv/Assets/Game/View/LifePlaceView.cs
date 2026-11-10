@@ -26,8 +26,9 @@ namespace AquariumCiv.View
 
         [Tooltip("A press that wanders further than this (share of screen height) is a drag, not a tap.")] public float slop = 0.02f;
         [Tooltip("A tap this near the ghost's middle (box units) places it.")] public float ghostReach = 0.32f;
-        [Tooltip("#516 the glow's colour (alpha = its strongest): a pale warm white, no green or yellow (playtest #510: it read as grass).")] public Color glow = new(1f, 0.97f, 0.9f, 0.26f);
-        [Tooltip("#516 how much of the glow fills the valid ground inside its outline (0 = only the outline).")][Range(0f, 1f)] public float glowFill = 0.1f;
+        [Tooltip("Tester feedback 3: the glow's outline (alpha = its strongest). A warm honey line, darker and more saturated than the pale sand so it reads as a target at the default zoom; no green or yellow (playtest #510: it read as grass).")] public Color glow = new(1f, 0.6f, 0.26f, 0.7f);
+        [Tooltip("Tester feedback 3: the valid ground inside the outline: a warm bright cream, so the ground itself lifts (alpha = its strongest).")] public Color glowFillColor = new(1f, 0.95f, 0.84f, 0.3f);
+        [Tooltip("How deep the glow's slow breath goes (0 = steady): gentle, never a blink.")][Range(0f, 0.5f)] public float glowBreath = 0.28f;
         [Tooltip("The silhouettes' fill (pale) and their thin darker edge.")] public Color ghostFill = new(1f, 1f, 1f, 0.86f), ghostEdge = new(0.30f, 0.26f, 0.20f, 0.6f);
         [Tooltip("User 2026-11-08: the rest of the land dims a little while a species is in hand (0 = off).")][Range(0f, 0.6f)] public float dim = 0.22f;
 
@@ -46,6 +47,9 @@ namespace AquariumCiv.View
         LifeSpecies glowFor;
         int glowStamp = -1;
         float noT = -9f;
+
+        /// <summary>The glow is built again next frame (after its colours change: tests, the debug panel).</summary>
+        public void RebuildGlow() => glowStamp = -1;
 
         /// <summary>Cells glowing now (0 when nothing is in hand).</summary>
         public int GlowCells { get; private set; }
@@ -127,9 +131,9 @@ namespace AquariumCiv.View
             }
             if (glowGo != null)
             {
-                float pulse = 0.82f + 0.18f * Mathf.Sin(Time.unscaledTime * 2.4f); // a soft breath, never a blink
-                var c = glow; c.a *= pulse;
-                mpb.SetColor(ColorId, c);
+                // a slow soft breath (about 2.6 s), never a blink; the colours are the mesh's (outline and fill)
+                float pulse = 1f - glowBreath * 0.5f * (1f + Mathf.Sin(Time.unscaledTime * 2.4f));
+                mpb.SetColor(ColorId, new Color(1f, 1f, 1f, pulse));
                 glowGo.GetComponent<MeshRenderer>().SetPropertyBlock(mpb);
             }
             Dim();
@@ -268,8 +272,12 @@ namespace AquariumCiv.View
                 float a = lit[key];
                 float soft = a * a * (3f - 2f * a);
                 cols.Add(new Color(1f, 1f, 1f, soft)); // smoothstep: a soft rim (the restore)
-                // #516 the glow: a soft line on the valid ground's edge (corners shared by valid and dark cells), the inside only faintly
-                rims.Add(new Color(1f, 1f, 1f, Mathf.Max(4f * a * (1f - a), glowFill * soft)));
+                // #516 the glow: a soft line on the valid ground's edge (corners shared by valid and dark cells); tester feedback 3: in a
+                // warm honey that stands off pale sand, over a bright cream fill on the ground inside
+                float edge = 4f * a * (1f - a);
+                var rc = Color.Lerp(glowFillColor, glow, edge).linear; // picked in the eye's terms; the vertex colours are linear
+                rc.a = Mathf.Max(glow.a * edge, glowFillColor.a * soft);
+                rims.Add(rc);
                 index[key] = v;
                 return v;
             }
@@ -414,6 +422,20 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- pointer
+        /// <summary>Where the ghost's middle is on screen now, on the ground or the water it stands on (tests: tester feedback 3, the ghost
+        /// sits in the clear middle band after the lean). Zero with no ghost.</summary>
+        public Vector2 GhostScreen
+        {
+            get
+            {
+                var cam = Camera.main;
+                if (cam == null || box == null || !GhostShown) return Vector2.zero;
+                var c = Ghost.At;
+                float y = GroundY(Mathf.Clamp(c.x, -Land.HX, Land.HX), Mathf.Clamp(c.z, -Land.HZ, Land.HZ), ghostFor);
+                return cam.WorldToScreenPoint(box.transform.TransformPoint(new Vector3(c.x, y, c.z)));
+            }
+        }
+
         /// <summary>The screen point of a site cell's middle on the land (tests and the debug panel).</summary>
         public Vector2 ScreenOf(int cell)
         {

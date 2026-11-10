@@ -420,7 +420,19 @@ namespace AquariumCiv.View
         {
             var hud = GameHud.Instance;
             var mp = MomentPlayer.Instance;
-            return (mp != null && mp.Playing) || BoxCompleteController.ShelfIsOpen || (hud != null && (hud.CameraMode || !hud.IsVisible));
+            return (mp != null && mp.Playing) || BoxCompleteController.ShelfIsOpen || (hud != null && (hud.CameraMode || !hud.IsVisible)) || Placing();
+        }
+
+        /// <summary>Tester feedback 3: the Keeper is placing life or a seed (the tool in hand, or its ghost up). The caption lane sits over
+        /// the ghost after the camera's lean, so the people's lines wait meanwhile: scene lines queue (and don't age), the talk pauses.</summary>
+        public static bool Placing()
+        {
+            var hud = GameHud.Instance;
+            if (hud != null && (hud.Hand == GameHud.KitTool.Life || hud.Hand == GameHud.KitTool.Seed)) return true;
+            var lp = LifePlaceView.Instance;
+            if (lp != null && lp.GhostShown) return true;
+            var sp = SeedPlaceView.Instance;
+            return sp != null && sp.GhostShown;
         }
 
         /// <summary>The one way a spoken line shows: ask the word for <paramref name="voice"/>, then the caption with the "who" line, the
@@ -500,7 +512,14 @@ namespace AquariumCiv.View
         {
             if (captionUntil <= 0f) return false;
             bool world = captionVoice != null && captionVoice == worldVoice;
-            if (Time.unscaledTime >= captionUntil || CaptionBlocked() || (world && QuietReason() != null)) { EndLine(); return false; }
+            if (Time.unscaledTime >= captionUntil || CaptionBlocked() || (world && QuietReason() != null))
+            {
+                // tester feedback 3: a scene's line cut short by the Keeper taking up a tool waits for the rest of its time instead
+                float left = captionUntil - Time.unscaledTime;
+                if (!world && captionVoice != null && left > 1f && Placing() && LineRoute.Waits(LastKind))
+                    waiting.Add(new Waiting { text = LastLine, who = lineWho, seconds = Mathf.Max(3f, left), kind = LastKind }, Time.unscaledTimeAsDouble);
+                EndLine(); return false;
+            }
             return true;
         }
 
@@ -548,6 +567,7 @@ namespace AquariumCiv.View
             if (PersonCardView.Instance != null && (PersonCardView.Instance.AnyOpen || PersonCardView.Instance.BuildingOpen)) return "a person card is open"; // its tie tags stand over the people (tester run 5)
             if (hud != null && !hud.IsVisible) return "the HUD is hidden";
             if (Busy) return "show me";
+            if (Placing()) return "the Keeper is placing"; // tester feedback 3: the caption would hide the ghost
             if (ChoiceSceneView.Instance != null && ChoiceSceneView.Instance.Holding) return "the people ask the Keeper"; // #224
             if (FirstRunView.Instance != null && FirstRunView.Instance.HasTheWord) return "the first run";
             if (!GameUiPanel.Bubbles.Free(BubbleHost.Rank.World) && GameUiPanel.Bubbles.Holder != WorldVoice) return SomeoneSpeaks;
@@ -570,6 +590,7 @@ namespace AquariumCiv.View
             var pv = PeopleView.Find();
             var cam = Camera.main;
             bool up = StepCaption();
+            if (Placing()) waiting.Hold(Mathf.Min(Time.unscaledDeltaTime, 0.1f)); // tester feedback 3: lines don't age while the Keeper places
             // #327: a scene's line that found the word busy says it now, if it's still in time.
             if (!CaptionBlocked() && SceneMaySpeak(false) && waiting.TryTake(Time.unscaledTimeAsDouble, true, out var w))
             {

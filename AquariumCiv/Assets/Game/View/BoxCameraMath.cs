@@ -81,6 +81,17 @@ namespace AquariumCiv.View
             return new Vector3(Mathf.Clamp(target.x, -b.x, b.x), target.y, Mathf.Clamp(target.z, -b.y, b.y));
         }
 
+        /// <summary>Tester feedback 3: the pivot (at height <paramref name="pivotY"/>) to look at so the screen's middle ray, at this yaw and
+        /// pitch (degrees, looking down), meets <paramref name="spot"/> (world, at its own height). The camera looks at its pivot, so a spot
+        /// on ground above the pivot's height shows above the middle of the screen unless the pivot moves toward the camera.</summary>
+        public static Vector3 PivotOver(Vector3 spot, float pivotY, float yawDeg, float pitchDeg)
+        {
+            float t = Mathf.Tan(Mathf.Clamp(pitchDeg, 5f, 89f) * Mathf.Deg2Rad);
+            float h = (pivotY - spot.y) / t; // how far along the view, flat, the middle ray runs from the pivot down to the spot's height
+            float yr = yawDeg * Mathf.Deg2Rad;
+            return new Vector3(spot.x - Mathf.Sin(yr) * h, pivotY, spot.z - Mathf.Cos(yr) * h);
+        }
+
         /// <summary>#273: the same, against bounds the caller already drew in for its pose (<see cref="PanBoundsFor"/>).</summary>
         public static Vector3 ClampFocus(Vector3 target, Vector2 bound)
             => new Vector3(Mathf.Clamp(target.x, -bound.x, bound.x), target.y, Mathf.Clamp(target.z, -bound.y, bound.y));

@@ -633,6 +633,20 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(1, sim.State.chronicle.Count(x => x.kind == "life_left_ducks"));
             Assert.AreEqual(1, sim.State.chronicle.Count(x => x.kind == "life_left_fish"));
         }
+
+        [Test]
+        public void PondDriesCheat_UndoesTheTableCheat_TheHollowStaysDryNextSeason()
+        {
+            // tester feedback 3: after "pond dries" a table raised by the debug cheat (just under the flood line) refilled the pond a season later
+            var sim = Camp();
+            sim.DebugSetTable(sim.EcoFloodLine + 0.3f);
+            Season(sim);
+            Assert.Greater(sim.EcoPondCells, 0, "the table cheat made a pond");
+            Assert.Greater(sim.DebugPondDries(), 0);
+            Assert.AreEqual(0, sim.EcoPondCells, "dry now");
+            Season(sim);
+            Assert.AreEqual(0, sim.EcoPondCells, "and still dry a season later");
+        }
     }
 
     /// <summary>#420-#422 over the long run: a Keeper who places every jar, people who take all they can every month.</summary>
