@@ -54,17 +54,27 @@ namespace AquariumCiv.View.Tests
         public void ThePilesFishFitItsExtent_AndClearTheLogsAndBaskets()
         {
             Assert.AreEqual(CampStash.MaxFish, StashProps.FishSpots.Length);
-            foreach (var p in StashProps.FishSpots)
+            Assert.AreEqual(StashProps.FishSpots.Length, StashProps.FishTurns.Length);
+            for (int i = 0; i < StashProps.FishSpots.Length; i++)
             {
-                // each lies along z (turned 90 degrees), its half length 0.026 along z and 0.008 across
+                var p = StashProps.FishSpots[i];
+                var q = Quaternion.Euler(0f, StashProps.FishTurns[i], 0f);
+                // the fish's local x is its length; turned about y, its box corners
+                float maxR = 0f, maxZ = float.MinValue;
                 foreach (float sx in new[] { -1f, 1f })
                     foreach (float sz in new[] { -1f, 1f })
-                        Assert.LessOrEqual(new Vector2(p.x + sx * FishRackPieces.DriedHalfWidth, p.z + sz * FishRackPieces.DriedHalfLength).magnitude, CampStash.PileExtent, "a fish on the pile");
+                    {
+                        var c = q * new Vector3(sx * FishRackPieces.DriedHalfLength, 0f, sz * FishRackPieces.DriedHalfWidth);
+                        maxR = Mathf.Max(maxR, new Vector2(p.x + c.x, p.z + c.z).magnitude);
+                        maxZ = Mathf.Max(maxZ, p.z + c.z);
+                    }
+                // CampSpots keeps a margin of 0.06 around PileExtent: the fish lie in front of the logs, inside it
+                Assert.LessOrEqual(maxR, CampStash.PileExtent + 0.04f, "a fish on the pile");
                 foreach (var b in StashProps.BasketSpots)
                     Assert.GreaterOrEqual(new Vector2(p.x - b.x, p.z - b.z).magnitude, StashProps.BasketRadius, "clear of a basket");
                 foreach (var h in StashProps.HideSpots)
-                    Assert.GreaterOrEqual(Mathf.Abs(p.x - h.x), StashProps.HideHalfX, "clear of the hides");
-                Assert.LessOrEqual(p.x + FishRackPieces.DriedHalfWidth, -0.05f + 0.012f, "beside the logs' ends (they run x -0.05 to 0.05)");
+                    Assert.GreaterOrEqual(Mathf.Abs(p.x - h.x) + Mathf.Abs(p.z - h.z), StashProps.HideHalfX, "clear of the hides");
+                Assert.LessOrEqual(maxZ, -0.072f - StashProps.LogRadius + 0.012f, "in front of the logs' bottom row");
             }
         }
 

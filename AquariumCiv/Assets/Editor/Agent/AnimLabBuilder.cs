@@ -362,6 +362,14 @@ namespace AquariumCiv.EditorTools
                         part.AddComponent<MeshRenderer>().sharedMaterial = Solid;
                         break;
                     }
+                    case "rack":
+                    {
+                        // #543: the camp's fish rack (the game's frame, bar along z, a cord at each of the six places the clip hangs fish), not a grey boulder
+                        var b = new MeshBuilder(index * 31 + 23) { jitter = 0f };
+                        FishRackPieces.Rack(b, 6);
+                        rig.go = MeshObject(s, root, o.id, b.ToMesh("LabRack"), Solid, p0);
+                        break;
+                    }
                     case "stash":
                     {
                         // look-fix: the camp's stash is a low heap of berries on a mat, not a grey boulder
