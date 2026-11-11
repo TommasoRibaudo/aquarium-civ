@@ -21,6 +21,7 @@ namespace AquariumCiv.View
         string renameText = "";
         TextField renameField;
         Label renameMsg;
+        VisualElement renameActs;
         float renamed;
 
         /// <summary>The field (tests).</summary>
@@ -34,6 +35,7 @@ namespace AquariumCiv.View
             renameText = "";
             renameField = null;
             renameMsg = null;
+            renameActs = null;
             if (sheet != null && renamed > 0f) { sheet.style.translate = StyleKeyword.Null; renamed = 0f; }
         }
 
@@ -44,7 +46,8 @@ namespace AquariumCiv.View
             wrap.style.flexShrink = 0;
             if (!RenameOpen)
             {
-                var open = new GlassButton("Call them something else", () => OpenRename(c), ButtonKind.Secondary, UiRole.Open) { name = "person-card-rename", Compact = true, Icon = "pencil" };
+                var open = new GlassButton("Call them something else", () => OpenRename(c), ButtonKind.Secondary, UiRole.Open) { name = "person-card-rename", Compact = true };
+                open.Marked("pencil", true);
                 open.style.alignSelf = Align.FlexStart;
                 wrap.Add(open);
                 return;
@@ -61,6 +64,7 @@ namespace AquariumCiv.View
             acts.Add(new GlassButton("Never mind", CancelRename, ButtonKind.Quiet, UiRole.Close) { name = "person-card-rename-cancel" });
             acts.Add(new GlassButton("Keep", () => DoKeep(), ButtonKind.Primary, UiRole.None) { name = "person-card-rename-keep" });
             wrap.Add(acts);
+            renameActs = acts;
         }
 
         void OpenRename(PersonCard c)
@@ -69,6 +73,15 @@ namespace AquariumCiv.View
             renameText = c.name;
             Refresh(true);
             renameField?.Focus();
+            ShowRenameActs();
+        }
+
+        /// <summary>The card is a short scroll: bring Never mind / Keep fully into view (the pass found them half cut off, and a tap on the cut half missed).</summary>
+        void ShowRenameActs()
+        {
+            var acts = renameActs;
+            if (acts == null || body == null) return;
+            body.schedule.Execute(() => { if (renameActs == acts && body != null) body.ScrollTo(acts); }).ExecuteLater(30);
         }
 
         void CancelRename()
@@ -98,6 +111,7 @@ namespace AquariumCiv.View
             {
                 renameMsg.text = SimCore.RenameMessage(r);
                 UiSound.Play(UiRole.Refused);
+                ShowRenameActs();
             }
             return r;
         }

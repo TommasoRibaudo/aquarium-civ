@@ -403,7 +403,8 @@ namespace AquariumCiv.Sim
                     float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
                     var cv = (EcoCover)e.cover[c];
                     if (c == e.treeCell || c == skip || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall)) continue;
-                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
+                    if ((Settle.SiteMap.I(c) & 1) != 0 || (Settle.SiteMap.J(c) & 1) != 0) continue;
                     float dk = Settle.Terrain.Dist(x, z, kx, kz);
                     if (dk < rMin || dk > rMax) continue;
                     if (apart > 0f)

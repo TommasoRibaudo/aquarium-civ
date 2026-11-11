@@ -59,7 +59,7 @@ namespace AquariumCiv.View.PlayTests
             field.value = "Pip";
             yield return TapEl(Q("person-card-rename-keep"));
             yield return Frames(10);
-            Assert.AreEqual("Pip", Sim.FindNotable(n.id).name);
+            Assert.AreEqual("Pip", Sim.FindNotable(n.id).name, "after Keep: problem \"" + Cards.RenameProblem + "\", field \"" + Cards.RenameField?.value + "\", open " + Cards.RenameOpen);
             Assert.IsFalse(Cards.RenameOpen);
             StringAssert.Contains("Pip", Cards.CardRoot.Q<Label>("person-card-name").text, "the title reads the new name");
             Assert.AreEqual($"{was} {n.family} mended the roof.", old.text, "old lines keep the old name");
