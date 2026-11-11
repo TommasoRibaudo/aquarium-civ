@@ -574,6 +574,7 @@ namespace AquariumCiv.Life
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
                 ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
+                ActivityKind.Pray => "praying at the feather pole", // fb4 #566
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
                 ActivityKind.Indoors => "indoors",

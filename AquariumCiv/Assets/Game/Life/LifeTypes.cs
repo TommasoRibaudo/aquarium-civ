@@ -39,6 +39,8 @@ namespace AquariumCiv.Life
         TipLoad,
         /// <summary>#543: at the fish rack, hanging the basket's fish up to dry, and taking the dry ones down. Appended so the older values keep their numbers.</summary>
         HangFish, TakeDownFish,
+        /// <summary>fb4 #566: at the feather pole, hands together, a small bow. Appended so the older values keep their numbers.</summary>
+        Pray,
     }
 
     /// <summary>Broad groups, for the busy share (rule 4) and the job report.</summary>
@@ -313,6 +315,8 @@ namespace AquariumCiv.Life
                     return ActivityGroup.Carry;
                 case ActivityKind.HangFish: case ActivityKind.TakeDownFish: // #543
                     return ActivityGroup.Work;
+                case ActivityKind.Pray: // fb4 #566
+                    return ActivityGroup.Social;
                 case ActivityKind.Walk:
                     return ActivityGroup.Walk;
                 case ActivityKind.Play: case ActivityKind.Swim: case ActivityKind.Snowball:
