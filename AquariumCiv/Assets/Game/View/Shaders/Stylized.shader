@@ -24,6 +24,7 @@ Shader "AquariumCiv/View/Stylized"
         _Wind ("Wind strength", Float) = 0.018
         _WindSpeed ("Wind speed", Float) = 1.4
         _LampBoost ("Lamp brightness at night", Float) = 2.2
+        _SeasonSnow ("Snow settles on this material (the land: 1)", Float) = 0
         [HideInInspector] _SrcBlend ("Src blend", Float) = 1
         [HideInInspector] _DstBlend ("Dst blend", Float) = 0
     }
@@ -42,6 +43,7 @@ Shader "AquariumCiv/View/Stylized"
             half _Rim, _Emission;
             float _Wind, _WindSpeed;
             half _LampBoost;
+            half _SeasonSnow;
         CBUFFER_END
 
         // Globals (not per material): the night level every lamp in the box follows; the day's extra ambient strength (added to
@@ -68,6 +70,57 @@ Shader "AquariumCiv/View/Stylized"
         float _AC_HideCount;
         float4 _AC_HidePos[4];
         float4 _AC_HideDir[4];
+
+        // #576 seasons: _AC_Season = (spring, summer, autumn, winter) weights summing to 1 (SeasonLook; all 0 = no season, neutral) and
+        // _AC_Snow 0..1. Both written a few times a minute, not per object. The vertex shader recolours what is green (grass, leaves, moss)
+        // by season, and lays snow on the up-facing land (materials with _SeasonSnow 1: the ground and what is built into it); people,
+        // dolls and props keep their colours. Green people's clothes are safe: outside the land only vertices that sway (foliage) change.
+        float4 _AC_Season;
+        float _AC_Snow;
+
+        float Hash21(float2 p) { return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
+        float VNoise(float2 q)
+        {
+            float2 i = floor(q), f = frac(q);
+            f = f * f * (3.0 - 2.0 * f);
+            return lerp(lerp(Hash21(i), Hash21(i + float2(1, 0)), f.x), lerp(Hash21(i + float2(0, 1)), Hash21(i + float2(1, 1)), f.x), f.y);
+        }
+
+        half3 SeasonColour(half3 c, float3 p, float3 nWS, float sway, float2 lamp)
+        {
+            half tot = (half)(_AC_Season.x + _AC_Season.y + _AC_Season.z + _AC_Season.w);
+            if (tot < 0.01 || lamp.x > 0.5) return c; // no season set, or a lamp / flame / frame part
+            half land = _SeasonSnow;
+            half l = dot(c, half3(0.30, 0.59, 0.11));
+            half foliage = (sway > 0.01 || land > 0.5) ? saturate((c.g / max(c.r, 0.02) - 0.9) * 3.0) * step(c.b * 1.15, c.g) : 0;
+            half3 col = c;
+            if (foliage > 0.001)
+            {
+                float h = Hash21(floor(p.xz * 7.0));                       // a patch of leaves turns together: gold here, red there
+                half3 spring = c * half3(1.3, 1.32, 0.62); // fresh, lighter, yellower
+                half3 gold = l * half3(2.0, 1.3, 0.28);
+                half3 red = l * half3(2.1, 0.55, 0.22);
+                half3 autumn = lerp(gold, red, smoothstep(0.4, 0.9, h)) * 1.12;
+                if (sway < 0.01) autumn = l * half3(1.75, 1.35, 0.6);     // the ground's grass dries to straw
+                half3 winter = lerp(c, half3(l, l, l) * half3(1.0, 1.04, 1.1) * 1.45 + 0.05, 0.85);
+                half3 tinted = (spring * _AC_Season.x + c * half3(0.8, 0.95, 0.78) * _AC_Season.y + autumn * _AC_Season.z + winter * _AC_Season.w) / tot;
+                col = lerp(c, tinted, foliage);
+            }
+            if (land > 0.5 && _AC_Snow > 0.001)
+            {
+                // a light dusting, not a blanket (#576 round 2): only flat natural ground (steep roofs, grey stones and white canvas
+                // stay as they are), in soft patches that grow with the snow and leave the meadow showing through
+                half up = smoothstep(0.82, 0.96, nWS.y);
+                half mx = max(c.r, max(c.g, c.b));
+                half sat = (mx - min(c.r, min(c.g, c.b))) / (mx + 1e-3);
+                half natural = smoothstep(0.22, 0.38, sat) * (1.0 - smoothstep(0.7, 0.9, sat));
+                half h = VNoise(p.xz * 2.0) * 0.65 + VNoise(p.xz * 5.0) * 0.35; // soft drifts, bilinear value noise
+                half t = 1.0 - _AC_Snow * 0.5;
+                half amt = smoothstep(t, t + 0.22, h) * up * natural;
+                col = lerp(col, half3(0.7, 0.76, 0.86), amt * 0.75);
+            }
+            return col;
+        }
 
         float3 HideNear(float3 p)
         {
@@ -213,7 +266,7 @@ Shader "AquariumCiv/View/Stylized"
                 o.positionWS = p;
                 o.positionCS = TransformWorldToHClip(p);
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
-                o.color = v.color;
+                o.color = half4(SeasonColour(v.color.rgb, TransformObjectToWorld(v.positionOS.xyz), o.normalWS, v.uv.x, v.lamp), v.color.a);
                 float opacity = v.lamp.x < -0.5 ? 1.0 - _AC_FrameFade[(int)(-v.lamp.x - 0.5)] : 1.0;
                 o.uv = float4(v.uv, LampOn(v.lamp), opacity);
                 o.fog = half2(ComputeFogFactor(o.positionCS.z), LampLight(p, o.normalWS));
