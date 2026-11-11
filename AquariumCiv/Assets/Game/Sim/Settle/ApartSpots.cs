@@ -38,7 +38,7 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>A camp can stand at (x, z): every cell within <paramref name="r"/> is free (<see cref="CellFree"/>), no wood within
         /// <see cref="Clearing"/> (a camp under the canopy can't be seen), and not within <see cref="GlassMargin"/> of the glass (seen through
         /// the side panes and the frame, it's lost).</summary>
-        public static bool FootprintFree(SiteMap map, float x, float z, float r = Footprint, bool waterOk = false)
+        public static bool FootprintFree(SiteMap map, float x, float z, float r = Footprint, bool waterOk = false, bool[] avoid = null, float avoidR = Footprint)
         {
             if (Math.Abs(x) > Terrain.HX - GlassMargin || Math.Abs(z) > Terrain.HZ - GlassMargin) return false;
             float reach = Math.Max(r, Clearing + FrontView);
@@ -49,6 +49,7 @@ namespace AquariumCiv.Sim.Settle
                     float px = x + di * SiteMap.Cell, pz = z + dj * SiteMap.Cell;
                     float d2 = (px - x) * (px - x) + (pz - z) * (pz - z);
                     int c = SiteMap.CellAt(px, pz);
+                    if (avoid != null && c >= 0 && avoid[c] && d2 <= avoidR * avoidR + 1e-6f) return false; // #539: where the pond will be
                     if (d2 <= r * r + 1e-6f && !CellFree(map, c) && !(waterOk && c >= 0 && map.pond[c])) return false; // a shore camp's water side is its own
                     if (c < 0 || !map.Forest(c)) continue;
                     if (d2 <= Clearing * Clearing + 1e-6f) return false;
@@ -62,7 +63,7 @@ namespace AquariumCiv.Sim.Settle
         /// <summary>Where the camp is drawn: its home spot while that is clear, else the nearest clear cell centre (<paramref name="moved"/>
         /// says so; the nearest anywhere in the box). No map (settling off), or nowhere
         /// clear at all: the spot as it is.</summary>
-        public static (float x, float z) FreeSpot(SiteMap map, float x, float z, out bool moved, float r = Footprint, bool shore = false)
+        public static (float x, float z) FreeSpot(SiteMap map, float x, float z, out bool moved, float r = Footprint, bool shore = false, bool[] avoid = null, float avoidR = Footprint)
         {
             moved = false;
             if (map == null) return (x, z);
@@ -71,7 +72,7 @@ namespace AquariumCiv.Sim.Settle
             // to a dry spot with water within ShoreReach, the water side counting as clear.
             if (shore && AnyPond(map))
             {
-                if (ShoreFree(map, x, z, r)) return (x, z);
+                if (ShoreFree(map, x, z, r, avoid, avoidR)) return (x, z);
                 for (int pass = 0; pass < 2; pass++)
                 {
                     float best = float.MaxValue; (float x, float z) at = (x, z);
@@ -81,13 +82,13 @@ namespace AquariumCiv.Sim.Settle
                         float d = (px - x) * (px - x) + (pz - z) * (pz - z);
                         if (d >= best || !CellFree(map, c)) continue;
                         if (pass == 0 && (px - map.greenX) * (px - map.greenX) + (pz - map.greenZ) * (pz - map.greenZ) < AwayFromGreen * AwayFromGreen) continue;
-                        if (!ShoreFree(map, px, pz, r)) continue;
+                        if (!ShoreFree(map, px, pz, r, avoid, avoidR)) continue;
                         best = d; at = (px, pz);
                     }
                     if (best < float.MaxValue) { moved = (at.x - x) * (at.x - x) + (at.z - z) * (at.z - z) > 1e-6f; return at; }
                 }
             }
-            if (FootprintFree(map, x, z, r)) return (x, z);
+            if (FootprintFree(map, x, z, r, false, avoid, avoidR)) return (x, z);
             // Apart means apart: first look only where it is well away from the settlement's green, then anywhere.
             for (int pass = 0; pass < 2; pass++)
             {
@@ -98,7 +99,7 @@ namespace AquariumCiv.Sim.Settle
                     float d = (px - x) * (px - x) + (pz - z) * (pz - z);
                     if (d >= best || !CellFree(map, c)) continue;
                     if (pass == 0 && (px - map.greenX) * (px - map.greenX) + (pz - map.greenZ) * (pz - map.greenZ) < AwayFromGreen * AwayFromGreen) continue;
-                    if (!FootprintFree(map, px, pz, r)) continue;
+                    if (!FootprintFree(map, px, pz, r, false, avoid, avoidR)) continue;
                     best = d; at = (px, pz);
                 }
                 if (best < float.MaxValue) { moved = true; return at; }
@@ -112,9 +113,9 @@ namespace AquariumCiv.Sim.Settle
         public static bool AnyPond(SiteMap map) { for (int c = 0; c < SiteMap.N; c++) if (map.pond[c]) return true; return false; }
 
         /// <summary>A dry spot whose footprint is clear but for water, with the water within <see cref="ShoreReach"/>.</summary>
-        public static bool ShoreFree(SiteMap map, float x, float z, float r)
+        public static bool ShoreFree(SiteMap map, float x, float z, float r, bool[] avoid = null, float avoidR = Footprint)
         {
-            if (!CellFree(map, SiteMap.CellAt(x, z)) || !FootprintFree(map, x, z, r, true)) return false;
+            if (!CellFree(map, SiteMap.CellAt(x, z)) || !FootprintFree(map, x, z, r, true, avoid, avoidR)) return false;
             var w = WaterWay(map, x, z, ShoreReach);
             return w.x != 0f || w.z != 0f;
         }

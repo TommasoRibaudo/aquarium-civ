@@ -5,6 +5,8 @@ using System.Text;
 using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
+using SiteMap = AquariumCiv.Sim.Settle.SiteMap;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -46,11 +48,13 @@ namespace AquariumCiv.View
 
         sealed class Camp
         {
+            public float poolMax = 9f; // #539: the fire's light pool stops short of the water and the pond hole
             public int groupId, dilemmaId;
             public string kind;
             public Transform root;
             public bool lit;
-            public Vector2 spot, home, back, side, water, fire, shelter, work, fishAt, boatAt;
+            public Vector2 spot, home, back, side, water, fire, shelter, work, fishAt, boatAt, fishFace;
+            public bool fishWet, fishing; // #495: the fisher's dry bank point is the eco pond's edge now; the pond has open water and fish
             public bool hasWater, nudged;
             public float nextCheck;
             public readonly List<Object> meshes = new();
@@ -174,12 +178,12 @@ namespace AquariumCiv.View
         {
             c.nextCheck = clock + SpotCheckSeconds;
             var map = sim.Settlement?.Map;
-            var (x, z) = ApartLife.FreeSpot(map, c.home.x, c.home.y, out bool moved, shore: c.kind == ApartKind.ShoreHut);
+            var (x, z) = sim.ApartCampSpot(c.home.x, c.home.y, c.kind, out bool moved); // #539: also clear of where the pond will be
             var spot = new Vector2(x, z);
             var land = box.land;
             // never in the water, also without a map
             for (int i = 0; i < 12 && land.IsWater(spot.x, spot.y); i++) spot = Vector2.MoveTowards(spot, Vector2.zero, 0.08f);
-            if (c.root != null && (spot - c.spot).sqrMagnitude < 1e-6f) return;
+            if (c.root != null && (spot - c.spot).sqrMagnitude < 1e-6f) { if (c.kind == ApartKind.ShoreHut) FishSpot(sim, c); return; } // #495: the pond grows: ask again
             c.spot = spot;
             c.nudged = moved;
             var w = ApartLife.WaterWay(map, spot.x, spot.y);
@@ -190,6 +194,7 @@ namespace AquariumCiv.View
             c.back = c.kind == ApartKind.ShoreHut && c.hasWater ? -c.water : away.sqrMagnitude > 1e-4f ? away.normalized : Vector2.up;
             c.side = new Vector2(-c.back.y, c.back.x);
             c.fire = spot;
+            c.poolMax = PoolReach(sim, spot);
             if (c.kind == ApartKind.ShoreHut)
             {
                 c.shelter = spot + c.back * 0.3f;
@@ -203,6 +208,7 @@ namespace AquariumCiv.View
                 }
                 else { c.fishAt = spot + c.side * 0.3f; c.boatAt = c.fishAt; }
                 c.boatOut = BoatOutFrom(c);
+                FishSpot(sim, c);
             }
             else
             {
@@ -256,6 +262,25 @@ namespace AquariumCiv.View
             return go;
         }
 
+        /// <summary>#539: how far a fire at <paramref name="at"/> can light the ground before the pond (its full basin, wet or dry) begins.</summary>
+        static float PoolReach(SimCore sim, Vector2 at)
+        {
+            var mask = sim.FutureWaterMask(0f);
+            if (mask == null) return 9f;
+            float best = 9f;
+            const float scan = 0.7f;
+            int n = Mathf.CeilToInt(scan / SiteMap.Cell);
+            for (int dj = -n; dj <= n; dj++)
+                for (int di = -n; di <= n; di++)
+                {
+                    int cell = SiteMap.CellAt(at.x + di * SiteMap.Cell, at.y + dj * SiteMap.Cell);
+                    if (cell < 0 || !mask[cell]) continue;
+                    float d = Mathf.Sqrt(di * di + dj * dj) * SiteMap.Cell - SiteMap.Cell * 0.5f;
+                    if (d < best) best = d;
+                }
+            return Mathf.Max(0.12f, best);
+        }
+
         /// <summary>The fire's glow, as the settlement's (BoxView.Glows): a halo behind the flame and a warm pool on the ground, both
         /// stronger at night (the Glow shader reads the lamp level), and a few embers.</summary>
         void Glow(Camp c)
@@ -273,7 +298,7 @@ namespace AquariumCiv.View
             float phase = Pieces.Phase(c.groupId * 31 + 5);
             const float s = 0.9f; // a camp fire, a little smaller than the settlement's
             Add(foot + Vector3.up * 0.13f * s, look.haloRadius * s, 0f, Palette.FireHalo, phase, 0.13f * s);
-            Add(foot + Vector3.up * 0.02f, look.poolRadius * s, 4f, Palette.FirePool, phase, look.poolBoost);
+            Add(foot + Vector3.up * 0.02f, Mathf.Min(look.poolRadius * s, c.poolMax), 4f, Palette.FirePool, phase, look.poolBoost);
             int embers = Mathf.Min(look.embers, 3);
             for (int e = 0; e < embers; e++)
                 Add(foot + Vector3.up * look.emberY * s, 0.012f, 3f, Palette.FireSpark, (e + Land.Hash3(c.groupId, e, 11)) / Mathf.Max(1, embers), 1.2f + 0.8f * Land.Hash3(c.groupId, e, 12));
@@ -340,7 +365,7 @@ namespace AquariumCiv.View
                 case ApartDoing.Sleep:
                     at = c.shelter; face = -c.back; break;
                 case ApartDoing.Fish:
-                    at = c.fishAt + c.side * (m.index * 0.08f); face = c.hasWater ? c.water : c.side; break;
+                    at = c.fishAt + (c.fishWet ? new Vector2(-c.fishFace.y, c.fishFace.x) : c.side) * (m.index * 0.08f); face = c.fishWet ? c.fishFace : c.hasWater ? c.water : c.side; break;
                 case ApartDoing.Chop:
                     at = c.work - c.back * 0.14f; face = c.back; break;
                 case ApartDoing.Weave:
@@ -365,11 +390,21 @@ namespace AquariumCiv.View
             return at;
         }
 
+        /// <summary>#495: the fisher stands on dry ground at the eco pond's open-water edge nearest the hut (<see cref="PondShore"/>), facing the water; asked again every spot check, so it follows the pond as it grows.</summary>
+        void FishSpot(SimCore sim, Camp c)
+        {
+            c.fishing = sim.FishingWater;
+            c.fishWet = PondShore.NearestShore(sim, c.spot.x, c.spot.y, 0, out float sx, out float sz, out float fx, out float fz);
+            if (!c.fishWet) return;
+            c.fishAt = new Vector2(sx, sz);
+            c.fishFace = new Vector2(fx - sx, fz - sz).normalized;
+        }
+
         void Step(Camp c, Member m, int count, float hour, float k, float dt, bool sceneHasThem)
         {
             var v = m.view;
             if (sceneHasThem) { v.gameObject.SetActive(false); return; } // the choice scene's travellers are them, for now
-            var doing = ApartLife.Doing(c.kind, m.index, hour);
+            var doing = ApartLife.Doing(c.kind, m.index, hour, c.fishing || c.kind != ApartKind.ShoreHut);
             if (doing != m.doing)
             {
                 m.doing = doing;
@@ -420,6 +455,15 @@ namespace AquariumCiv.View
             fire = default; lit = false; nudged = false;
             if (!camps.TryGetValue(groupId, out var c) || c.root == null) return false;
             fire = c.fire; lit = c.lit; nudged = c.nudged;
+            return true;
+        }
+
+        /// <summary>#539: the radius of the camp fire's light pool on the ground, as drawn (clipped to stop short of the pond's basin).</summary>
+        public bool TryGetPoolRadius(int groupId, out float radius)
+        {
+            radius = 0f;
+            if (!camps.TryGetValue(groupId, out var c) || c.root == null || !c.lit) return false;
+            radius = Mathf.Min(FireLooks.Spec(FireLooks.Active).poolRadius * 0.9f, c.poolMax);
             return true;
         }
 

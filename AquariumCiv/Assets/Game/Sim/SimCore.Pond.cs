@@ -68,6 +68,9 @@ namespace AquariumCiv.Sim
         /// opened never closes). With the ecology off the old box: always.</summary>
         public bool FishingOpen => !EcologyOn || LifeIsPlaced(LifeSpecies.Fish);
 
+        /// <summary>#495: fishing happens only with fish placed AND open water at the shore (the drawn pond; a dried one stops the lines, the job stays open).</summary>
+        public bool FishingWater => FishingOpen && OpenWater;
+
         /// <summary>How many fish the fishers may still take now: the stock above its floor; none in spring once the people have
         /// ruled on it (#422).</summary>
         public int FishSurplus => EcologyOn && EcoM.MayTake(LifeSpecies.Fish, LifeTaker.Fishers, State.month) ? EcoM.Surplus(LifeSpecies.Fish, LifeTaker.Fishers) : 0;

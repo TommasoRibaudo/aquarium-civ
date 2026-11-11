@@ -199,7 +199,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < acts.Count; i++)
             {
                 var a = acts[i];
-                if (a.moving || a.kind == ActivityKind.Sleep || a.kind == ActivityKind.None || pv.IsWalking(a.who)) continue;
+                if (a.moving || a.kind == ActivityKind.Sleep || a.kind == ActivityKind.None || a.kind == ActivityKind.Pray || pv.IsWalking(a.who)) continue; // fb4 #566: prayers don't sing
                 if (!pv.TryGetDollTop(a.who, out var top) || !pv.TryGetDollPosition(a.who, out var at)) continue;
                 standing.Add((a.who, at, a.kind, OnScreen(top)));
             }
@@ -245,7 +245,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < acts.Count; i++)
             {
                 var a = acts[i];
-                if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap || a.kind == ActivityKind.None || inGroup.Contains(a.who.Key)) continue;
+                if (a.kind == ActivityKind.Sleep || a.kind == ActivityKind.Nap || a.kind == ActivityKind.None || a.kind == ActivityKind.Pray || inGroup.Contains(a.who.Key)) continue;
                 if (!pv.TryGetDollTop(a.who, out var top) || !OnScreen(top)) continue;
                 lone.Add(new VoiceMember { id = a.who.Key, voice = VoiceOf(pv, sim, a.who), kid = IsKid(pv, sim, a.who) });
             }

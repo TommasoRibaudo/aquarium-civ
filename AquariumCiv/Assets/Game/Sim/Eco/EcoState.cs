@@ -95,6 +95,11 @@ namespace AquariumCiv.Sim.Eco
         public long fletchedMonth = -1;
         /// <summary>#421 the fish (spec §5.5): the stock, its home (the placed deep cell) and the fish caught.</summary>
         public int fish, fishHome = -1, fishCaught;
+        /// <summary>#543 the fish chain: fish in the fish basket (just caught), fish hanging on the rack to dry (fresh, hung on view day
+        /// <see cref="fishRackDay"/>, and dry: hung before that day), dried fish on the food pile, and the last view day the camp ate from it.
+        /// Old saves have none of these: all zero, no day.</summary>
+        public int fishBasket, fishRackFresh, fishRackDry, fishPile;
+        public long fishRackDay = -1, fishEatDay = -1;
 
         /// <summary>#437 the wolves (spec §4.1, §5.6): the jar's clock (the first season-end the herd held 5 deer in a row; -1 not now),
         /// the pack (the pair is the floor; <see cref="wolfPups"/> born this spring, <see cref="wolfYearlings"/> last spring's, who

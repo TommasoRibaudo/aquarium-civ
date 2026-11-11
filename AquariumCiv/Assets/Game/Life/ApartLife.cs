@@ -31,7 +31,7 @@ namespace AquariumCiv.Life
         /// <summary>A camp can stand at (x, z) (<see cref="ApartSpots.FootprintFree"/>).</summary>
         public static bool FootprintFree(SiteMap map, float x, float z, float r = Footprint, bool waterOk = false) => ApartSpots.FootprintFree(map, x, z, r, waterOk);
         /// <summary>Where the camp is drawn (<see cref="ApartSpots.FreeSpot"/>).</summary>
-        public static (float x, float z) FreeSpot(SiteMap map, float x, float z, out bool moved, float r = Footprint, bool shore = false) => ApartSpots.FreeSpot(map, x, z, out moved, r, shore);
+        public static (float x, float z) FreeSpot(SiteMap map, float x, float z, out bool moved, float r = Footprint, bool shore = false, bool[] avoid = null, float avoidR = Footprint) => ApartSpots.FreeSpot(map, x, z, out moved, r, shore, avoid, avoidR);
         /// <summary>The way to the nearest water within reach (<see cref="ApartSpots.WaterWay"/>).</summary>
         public static (float x, float z) WaterWay(SiteMap map, float x, float z, float reach = 0.8f) => ApartSpots.WaterWay(map, x, z, reach);
 

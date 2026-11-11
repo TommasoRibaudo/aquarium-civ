@@ -123,7 +123,7 @@ namespace AquariumCiv.Life
                             var o = v.def.options[i];
                             if (o == null || o.strangers <= 0 || string.IsNullOrEmpty(o.apart)) continue;
                             var spot = sim.ApartSpotPreview(o.apart);
-                            var home = ApartLife.FreeSpot(sim.Settlement?.Map, spot.x, spot.z, out _, shore: o.apart == ApartKind.ShoreHut); // where ApartGroupsView will draw their camp
+                            var home = sim.ApartCampSpot(spot.x, spot.z, o.apart, out _); // where ApartGroupsView will draw their camp
                             var toward = ChoiceScenes.HomeWard(c, home, hx, hz, out bool homeOk);
                             if (!homeOk) break;
                             edge = toward;

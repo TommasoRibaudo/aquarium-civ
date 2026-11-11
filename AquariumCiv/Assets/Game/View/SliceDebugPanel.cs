@@ -175,6 +175,7 @@ namespace AquariumCiv.View
             if (Btn("Kids play: chase rabbits")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.ChaseRabbits);
             if (Btn("Toddle")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Toddle);
             if (Btn("Dance ring now")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.DanceRing);
+            if (Btn("Two kids play")) last = KidPlayDirector.DebugTwo(); // fb4 #541
             EndRow();
             Row(); // #365 B9 meals and the fire
             if (Btn("Meal now")) last = PeopleView.DebugMealNow();
@@ -208,12 +209,24 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Water up")) last = EcoDebug.Table(0.004f);
+            if (Btn("Pond +1 step")) last = EcoDebug.PondStep(); // fb4 #495
+            if (Btn("Settlers: woods")) last = EcoDebug.SettlersArrive(false); // fb4 #539
+            if (Btn("Settlers: shore")) last = EcoDebug.SettlersArrive(true); // fb4 #539
+            if (Btn("Pond to full")) last = EcoDebug.PondToFull(); // fb4 #539
             if (Btn("Dry air")) last = EcoDebug.Humidity(0.1f);
             if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
             if (Btn("Plant tree")) last = EcoDebug.PlantHere();
             if (Btn("Plant at edge")) last = EcoDebug.PlantAtEdge(); // #378
             if (Btn("Seed in hand")) last = EcoDebug.SeedInHand(); // #518: a ghost first, then a tap on it plants
             for (int i = 0; i <= 4; i++) if (Btn("T" + i)) last = EcoDebug.TreeStage(i);
+            EndRow();
+            Row(); // fb4 #543: the fish chain
+            if (Btn("Fill fish basket")) last = FishRackView.DebugFillBasket();
+            if (Btn("Fish on the rack")) last = FishRackView.DebugRack();
+            if (Btn("Dried fish to pile")) last = FishRackView.DebugToPile();
+            EndRow();
+            Row(); // fb4 #566: the feather pole
+            if (Btn("Feather pole: pray now")) last = ConsequenceCheats.PrayNow();
             EndRow();
         }
 

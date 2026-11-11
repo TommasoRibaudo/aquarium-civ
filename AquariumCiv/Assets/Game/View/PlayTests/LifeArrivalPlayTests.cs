@@ -186,7 +186,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(Cam.Leaning, $"{s}: and holds there while the ghost waits");
                 Assert.LessOrEqual(Cam.zoom, Mathf.Min(zoom0, LifeArrivalView.LeanZoom(s)) + 0.02f, $"{s}: close in");
                 // user 2026-11-08: the smallest groups lean past the player's floor (0.2) to about 0.15; the rest stay above it
-                bool small = s is LifeSpecies.Rabbits or LifeSpecies.Ducks or LifeSpecies.Fish;
+                bool small = s is LifeSpecies.Rabbits; // fb4 #542: the ducks and the fish frame the whole pond instead
                 if (small) Assert.Less(Cam.zoom, AquariumCiv.Lighting.CameraReach.MinZoom - 0.02f, $"{s}: past the player's zoom floor");
                 else Assert.GreaterOrEqual(Cam.zoom, AquariumCiv.Lighting.CameraReach.MinZoom - 0.005f, $"{s}: not past the floor");
                 Assert.GreaterOrEqual(Cam.zoom, BoxCamera.LeanMinZoom - 0.005f, $"{s}: never past the lean's own floor");
