@@ -128,6 +128,8 @@ namespace AquariumCiv.View.PlayTests
             var tl = new List<string>();
             for (int c = 0; c < EcoLand.N; c++) { var cv = (EcoCover)Sim.State.eco.cover[c]; if (cv == EcoCover.Tree || cv == EcoCover.Young) tl.Add($"{cv}{c}@{SiteMap.CXc(c):0.0},{SiteMap.CZc(c):0.0}"); }
             Debug.Log($"[fb5pass] beside: Keeper's tree {kt}, trees {string.Join(" ", tl)}");
+            var bv0 = SimLayoutSource.Find().GetComponent<BoxView>();
+            for (int c = 0; c < EcoLand.N; c++) if ((EcoCover)Sim.State.eco.cover[c] == EcoCover.Tree) { bool drawn; lock (bv0.TreeSpots) drawn = bv0.TreeSpots.ContainsKey(c); Debug.Log($"[fb5pass] beside: grown cell {c} drawn {drawn} dist {Vector2.Distance(new Vector2(SiteMap.CXc(c), SiteMap.CZc(c)), kt):0.00}"); }
             int choppersNear = 0, choppers = 0;
             for (float hr = 8f; hr <= 17f; hr += 0.5f)
             {
@@ -292,6 +294,32 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        /// <summary>#569 staging: a young box with the same seedlings on both halves (mirrored about x = 0, on bare land), so the two halves differ only in the mist.</summary>
+        public static int PlantSeedlingPairs(int pairs)
+        {
+            var e = Sim.State.eco; var g = Sim.EcoGround; int made = 0;
+            foreach (float z in new[] { -1.3f, 1.2f, -0.6f, 0.7f, 0.1f, -1.5f, 1.45f, -0.2f, -1.0f, 0.4f })
+            {
+                if (made >= pairs * 2) break;
+                foreach (float x in new[] { 1.6f, 0.9f, 2.0f, 1.3f })
+                {
+                    int a = SiteMap.CellAt(-x, z), b = SiteMap.CellAt(x, z);
+                    if (a < 0 || b < 0 || e.cover[a] != (byte)EcoCover.Bare || e.cover[b] != (byte)EcoCover.Bare || g.InBasin(a) || g.InBasin(b) || g.yard[a] || g.yard[b]) continue;
+                    e.cover[a] = e.cover[b] = (byte)EcoCover.Seedling; made += 2; break;
+                }
+            }
+            return made;
+        }
+
+        /// <summary>#569: per half (x &lt; 0 misted, x &gt;= 0 control) the land cells by cover.</summary>
+        static string HalfCounts()
+        {
+            var e = Sim.State.eco; var n = new int[2, 9];
+            for (int c = 0; c < EcoLand.N; c++) n[SiteMap.CXc(c) < 0f ? 0 : 1, Mathf.Clamp(e.cover[c], 0, 8)]++;
+            string One(int h) { var sb = new System.Text.StringBuilder(); for (int k = 0; k < 9; k++) sb.Append((EcoCover)k).Append(' ').Append(n[h, k]).Append(k < 8 ? ", " : ""); return sb.ToString(); }
+            return "MISTED [" + One(0) + "] CONTROL [" + One(1) + "]";
+        }
+
         [UnityTest, Timeout(1200000)]
         public IEnumerator MistHalf_GreenerWithMoreYoungTrees()
         {
@@ -304,7 +332,14 @@ namespace AquariumCiv.View.PlayTests
             // a seed first, so there is something to spread: a few big mists on both sides, then the half run
             foreach (var (x, z) in new[] { (-1.6f, 0.6f), (1.6f, 0.9f) }) EcoDebug.MistBig(x, z);
             Debug.Log("[fb5pass] " + EcoDebug.TreeStage(4)); // a grown Keeper's tree: the seed source the young trees come from
+            Debug.Log("[fb5pass] seedlings planted: " + PlantSeedlingPairs(8));
+            Debug.Log("[fb5pass] before: " + HalfCounts());
+            var box0 = (target: new Vector3(0f, 1f, 0f), yaw: 28f, pitch: 34f, zoom: 1f);
+            Rig.EaseTo(box0.target, box0.yaw, box0.pitch, box0.zoom, 0.3f);
+            yield return new WaitForSecondsRealtime(1.5f);
+            yield return Snap("569_before");
             Debug.Log("[fb5pass] " + EcoDebug.MistHalf(12));
+            Debug.Log("[fb5pass] after: " + HalfCounts());
             yield return Fb5SeasonShots.ToSeason(1, 2f); // the half-year to the middle of summer: snow would hide the green
             var e = Sim.State.eco; int left = 0, right = 0, leftGreen = 0, rightGreen = 0;
             for (int c = 0; c < EcoLand.N; c++)

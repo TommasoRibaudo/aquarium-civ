@@ -380,7 +380,13 @@ namespace AquariumCiv.View
         }
         // ---- end #518 ----
         // ---- #573: wild trees to reproduce the woods spot ----
-        public static string WildTrees(bool beside) { var s = Sim; return s == null ? "no sim" : Refresh(s.DebugWildTrees(beside)); }
+        public static string WildTrees(bool beside)
+        {
+            var s = Sim; if (s == null) return "no sim";
+            var src = SimLayoutSource.Find(); var bv = src != null ? src.GetComponent<BoxView>() : null;
+            // #573: only cells where the box has room to draw the tree (BoxView.Free: paths, clearings, props), or the cheat plants a tree nobody sees
+            return Refresh(s.DebugWildTrees(beside, 1, bv == null ? null : (x, z, r) => bv.FreeForProp(new UnityEngine.Vector2(x, z), r)));
+        }
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }
 }
