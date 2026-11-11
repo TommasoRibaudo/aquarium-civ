@@ -105,6 +105,42 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(8);
         }
 
+        /// <summary>Every stop but the season ones and the pacing pair shows the land in summer (no snow on dry land, leaves on the trees); the season stops set their own.</summary>
+        IEnumerator ResetSeason()
+        {
+            for (int k = 0; k < 4 && LifeClock.SeasonOf(Sim.State.month) != Season.Summer; k++) EcoDebug.SkipToNextSeason();
+            yield return Frames(4);
+        }
+
+        /// <summary>The camera on a subject with no shift (it sits mid-screen: below the sign-off panel, above the Kit button), following the first activity that matches.</summary>
+        IEnumerator Follow(Func<PersonActivity, bool> match, float zoom, float pitch, float seconds)
+        {
+            float t0 = Time.unscaledTime;
+            while (Time.unscaledTime - t0 < seconds)
+            {
+                if (Seen(match, out var at)) { var w = World(at.x, at.y); Rig.CancelFlight(); Rig.pitch = pitch; Rig.zoom = zoom; Rig.target = w; Rig.Apply(); }
+                yield return null;
+            }
+        }
+
+        /// <summary>#574: the nearest open-water cell to a sim point, in units (the egg gatherer must kneel at the pond's edge).</summary>
+        static float WaterDist(Vector2 p)
+        {
+            float wd = float.MaxValue;
+            for (int c = 0; c < EcoLand.N; c++)
+                if (Sim.EcoCoverAt(c) == EcoCover.Water) wd = Mathf.Min(wd, Vector2.Distance(new Vector2(SiteMap.CXc(c), SiteMap.CZc(c)), p));
+            return wd;
+        }
+
+        /// <summary>A person kneeling with a basket within 0.8 u of the water: the egg gatherer (a berry gatherer kneels with a basket too, in the meadow).</summary>
+        bool EggKneel(out Vector2 at)
+        {
+            at = default;
+            foreach (var a in pv.Activities)
+                if (a.kind == ActivityKind.Gather && a.prop == Prop.Basket && !a.moving && pv.TryGetDollPosition(a.who, out var p) && WaterDist(p) < 0.8f) { at = p; return true; }
+            return false;
+        }
+
         void Rebind()
         {
             hud = GameHud.Instance;
@@ -234,11 +270,17 @@ namespace AquariumCiv.View.PlayTests
             Say("fast forward x4: waiting for a chopper");
             yield return Until(() => Seen(a => a.kind == ActivityKind.Chop && !a.moving, out _), 90f);
             if (!Seen(a => a.kind == ActivityKind.Chop && !a.moving, out var at)) { Say("setup failed: nobody chopped in time; press Set up again"); DefaultView(); yield break; }
+            if (mode == 1)
+            {
+                pv.timeScale = 0.5f; // slow enough that the swing, the chips and the log on the ground read, and the chopper is still at the tree when the shot is taken
+                Say("chopping at the wild tree: chips, then logs on the ground");
+                yield return Follow(a => a.kind == ActivityKind.Chop, 0.13f, 38f, 3f);
+                yield break;
+            }
             Look(World(at.x, at.y), 0.2f, 45f);
-            if (mode == 1) { pv.timeScale = 1f; Say("chopping at the wild tree: chips, then logs on the ground"); yield return Wait(1f); yield break; }
             Say("waiting for a log to be carried");
             yield return Until(() => Seen(a => a.moving && a.prop == Prop.Log, out _), 90f);
-            if (Seen(a => a.moving && a.prop == Prop.Log, out var carry)) { pv.timeScale = 1f; Look(World(carry.x, carry.y), 0.25f, 45f); Say("a log on its way to the stash"); }
+            if (Seen(a => a.moving && a.prop == Prop.Log, out var carry)) { pv.timeScale = 0.5f; Say("a log on its way to the stash"); yield return Follow(a => a.moving && a.prop == Prop.Log, 0.2f, 42f, 3f); yield break; }
             else Say("no log carried yet; press Set up again");
             yield return Wait(1f);
         }
@@ -269,11 +311,23 @@ namespace AquariumCiv.View.PlayTests
                 StateCheat("ducks placed", $"near the camp ({Sim.DebugPlaceNearCamp(LifeSpecies.Ducks)})");
             }
             yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 20f);
+            // ducks above their floor, or the cheat refuses (no egg is taken at the floor): let the flock grow 8 seasons (the season comes round), staged moments stopped
+            StateCheat("grow the flock", EcoDebug.SkipSeasons(8));
+            for (int calm = 0, f = 0; calm < 120 && f < 1500; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
             Hour(10f);
             yield return Frames(10);
             StateCheat("gather an egg now", EcoDebug.GatherEggNow());
-            yield return Until(() => Seen(a => a.kind == ActivityKind.Gather && a.prop == Prop.Basket && !a.moving, out _), 90f);
-            if (Seen(a => a.kind == ActivityKind.Gather && a.prop == Prop.Basket && !a.moving, out var at)) { Look(World(at.x, at.y), 0.2f, 45f); Say("a gatherer at the pond edge with a basket"); }
+            yield return Until(() => EggKneel(out _), 90f);
+            if (EggKneel(out var at))
+            {
+                pv.timeScale = 0.6f; Say("a gatherer kneels at the pond edge with a basket");
+                for (float tt = 0f; tt < 2.5f; tt += Time.unscaledDeltaTime)
+                {
+                    if (EggKneel(out at)) { var w = World(at.x, at.y); Rig.CancelFlight(); Rig.pitch = 40f; Rig.zoom = 0.22f; Rig.target = w; Rig.Apply(); }
+                    yield return null;
+                }
+                yield break;
+            }
             else { Say("setup failed: no gatherer seen; press Set up again"); DefaultView(); }
             yield return Wait(1f);
         }
