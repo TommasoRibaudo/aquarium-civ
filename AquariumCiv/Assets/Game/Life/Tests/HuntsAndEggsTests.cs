@@ -193,6 +193,30 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual((ActivityKind.Walk, Prop.None), (back.kind, back.prop), "empty basket, no carry");
         }
 
+        /// <summary>#574 (Feedback5Playthrough beat e): the egg gatherer's walk and kneel follow the REAL shore of the current water, small pond or big. Before the fix the
+        /// day's stitched positions never knew the egg plan: the person stood at their base spot (the meadow, ~2 u from a 106-cell pond) for the whole walk.</summary>
+        [TestCase(6, 6)] [TestCase(12, 10)]
+        public void TheGatherWalksToTheRealShore_SmallPondOrBig(int w, int h)
+        {
+            var cfg = new SimConfig { ecology = true, settle = true };
+            var sim = new SimCore(cfg, SimCore.NewWorld(7, cfg));
+            sim.DebugOpenCampGate();
+            Block(sim, w, h, 1.2f, EcoCover.Water);
+            Assert.GreaterOrEqual(sim.DebugPlaceNearCamp(LifeSpecies.Ducks), 0);
+            sim.State.eco.ducks = 6; sim.State.eco.duckEggs = 3;
+            var planner = LifePlanner.Wired(sim);
+            Assert.IsTrue(planner.DebugStartEggGather(new ViewTime(5, 9f), out var plan));
+            float Wet(float x, float z) { float b = float.MaxValue; for (int c = 0; c < SiteMap.N; c++) if (sim.EcoCoverAt(c) == EcoCover.Water) b = System.Math.Min(b, Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), x, z)); return b; }
+            Assert.IsTrue(planner.PositionAt(plan.who, new ViewTime(5, plan.start + 0.01f), out float sx, out float sz));
+            Assert.IsTrue(planner.PositionAt(plan.who, new ViewTime(5, (plan.start + plan.pickStart) / 2), out float mx, out float mz));
+            Assert.IsTrue(planner.PositionAt(plan.who, new ViewTime(5, (plan.pickStart + plan.resolveHour) / 2), out float kx, out float kz));
+            TestContext.WriteLine($"{sim.EcoPondCells} cells: start ({sx:0.00},{sz:0.00}) mid-walk ({mx:0.00},{mz:0.00}) kneel ({kx:0.00},{kz:0.00}) {Wet(kx, kz):0.00} u from water");
+            Assert.LessOrEqual(Wet(kx, kz), 0.8f, "kneels within 0.8 u of a wet cell");
+            if (Wet(sx, sz) > 0.8f) Assert.Greater(Terrain.Dist(mx, mz, sx, sz), 0.05f, "the walk really moves them");
+            Assert.IsTrue(planner.PositionAt(plan.who, new ViewTime(5, plan.pickStart - 0.01f), out float ax, out float az));
+            Assert.LessOrEqual(Wet(ax, az), 0.8f, "arrives at the water as the pick starts");
+        }
+
         [Test]
         public void TheGatherIsDeterministic_AndHuntersHunt()
         {

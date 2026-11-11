@@ -288,8 +288,12 @@ namespace AquariumCiv.Life
         BoxHints box;
         int crowdCount;
 
+        int pondSeen = -1;
+
         void Sync()
         {
+            int pond = sim.EcologyOn ? sim.EcoPondCells : 0; // #574: the shore moves as the pond grows: routes to and from it are asked again
+            if (pond != pondSeen) { pondSeen = pond; polyCache.Clear(); }
             long sig = Signature();
             if (sig == snapSig) return;
             snapSig = sig;
