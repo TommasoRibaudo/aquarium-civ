@@ -26,6 +26,16 @@ questions sign-off**) stages every look item below with the cheats and walks the
 - **The season word's place on the title line (#576)**: it sits between the year and the people: "Year 3 · Autumn · 5 people". ★ Keep it in the title line. Alternative: show the seasons only through the colours, with no word.
 - **The lid's look (#577)**: a faint haze at the default view, fading out from a camera pitch of about 68 degrees (top-down hides it) and when you zoom in. ★ Keep it. Alternative: a stronger lid, or no lid.
 
+- **A new box starts in winter (#576)**: the sim's first month is winter, so after the first run a new box shows "Year 0 · Winter" with light snow on bare sand (the tester found it a cold first impression). The first run itself now plays in a neutral summer look. ★ Start new boxes in spring (the first month moves; pacing re-checked). Alternative: keep winter, the land's honest clock.
+
+### Tester polish (2026-11-11, no [real] findings)
+- #573 close-up chopping: the chopper hides behind the tree's crown; chips and the log on the ground are a few pixels.
+- #576 winter at the default zoom: people a few pixels, tents pale against the snow.
+- #571 the title pill resizes with its text, so the sun button shifts sideways as the line changes.
+- #570 at year 0 the Kit already says "The camp waits for: a meadow · rabbits in the meadow": maybe too early for a new player.
+- #575 after a rename the card is scrolled so "Call them something else" sits under the tab row; the rename field is half scrolled off at the top while Keep shows.
+- #570 a tapped locked seed looks darker (selected) and could read as available.
+
 ### Calls I made without you
 - #570: the waits-for line sits on the Kit sheet (not History: History opens the time-lapse); a 'camp waits for' stage before the camp; the chooser now opens whenever a jar is shut (one ready jar = two taps).
 - #572: 'the office of chief' is the Offices sheet row (the title chip), not a building; every office holder's name opens their card.

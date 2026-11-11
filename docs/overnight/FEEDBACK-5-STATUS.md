@@ -22,7 +22,7 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
 - [x] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
 - [x] `Feedback5Playthrough` + the touch play-through done, every beat looked at
-- [ ] Tester run; [real] fixed; [polish] listed
+- [x] Tester run; [real] fixed; [polish] listed
 - [x] Walkthrough: open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
 - [ ] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
 - [ ] `docs/tooling.md` entry for any tooling problem solved; Run In Background ON; lock released; Editor ready
@@ -73,6 +73,7 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - 16:37 Walkthrough round 2 (c8ba073, merged): chopper/carrier followed, egg stop kneels at the water, summer reset between stops, title visible; auto 22/22 staged; I looked at all 22 shots (strips). Playthrough beat e = REAL BUG: with a 106-cell pond the egg gatherer kneels 1.97 u from water (Pond place, not the shore). Fix worker started (Editor, vs/574-egg-shore).
 - 17:10 Egg shore fix merged (f24fe34, branch b7bf1e9): cause = LifePlanner.PositionAt ignored the egg plan (the gatherer stayed at their base spot ~2 u from a small pond); now follows the egg route; polyCache cleared when the pond grows. HuntsAndEggs 16/16, FisherShore 1/1, Fishing 2/2, Feedback5Playthrough 0 soft fails, Smoke 2/2, SimTests 1819. I looked at beat e: kneeling at the pond's edge.
 - 17:13 Tester started (45 min brief, vs/fb5-tester = f24fe34). Editor tickets since restart: 3.
+- 18:00 Tester done (sonnet, ~60 min incl. lost runner time): no [real]; 7 [polish] (into open-questions). Pass list all PASS; not checked: travellers' captions, title on a birth, rename at 750, pane count after reload as its own step. I treated 'a new box opens in snow' as a regression of the approved opening: the first run now plays in a neutral summer look (SeasonLook, HeldForFirstRun); Seasons 2/2, FirstRunPolish 10/10, Smoke 2/2. 'Start boxes in spring?' is a Decision for the user. Run In Background set ON; lock released.
 
 ## RESUME HERE (next session)
 1. Health gate + lock + watcher; open the Editor on a branch from p9/feedback-5 (F:\GameDev is on vs/feedback5-pass).
