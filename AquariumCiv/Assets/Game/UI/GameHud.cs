@@ -177,6 +177,7 @@ namespace AquariumCiv.GameUI
         {
             if (hand == t) return;
             if (t != KitTool.None) { SetCleanMode(false); CloseSheet(); }
+            var was = hand;
             hand = t;
             if (cleanButton != null)
             {
@@ -186,6 +187,7 @@ namespace AquariumCiv.GameUI
             }
             if (t == KitTool.Mister && MisterHintDue) { Toast(MisterHint, 4f); NoteMisterHintShown(); }
             if (t == KitTool.Seed) Toast(SeedHint, 4f);
+            else if (was == KitTool.Seed) WithdrawToast(SeedHint); // #558: the seed is back in the jar; its hint no longer applies (it would sit in the queue and show with nothing in hand)
             if (t == KitTool.Tweezers) Toast(TweezersHint, 4f);
             if (t == KitTool.Life) Toast(heldLife is AquariumCiv.Sim.Eco.LifeSpecies.Ducks or AquariumCiv.Sim.Eco.LifeSpecies.Fish ? LifeWaterHint : LifeHint, 4f);
             if (kitLife != null) kitLife.EnableInClassList("kg-tool--on", t == KitTool.Life || t == KitTool.Seed);
