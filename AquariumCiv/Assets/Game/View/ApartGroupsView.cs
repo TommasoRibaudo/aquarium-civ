@@ -170,7 +170,7 @@ namespace AquariumCiv.View
             float k = AquariumCiv.Lighting.CameraReach.DollScale(cam != null ? cam.zoom : 1f, PeopleView.DollScaleAmount);
             var choice = ChoiceSceneView.Instance;
             int staged = choice != null && choice.Stage != null ? choice.Stage.dilemmaId : -1;
-            foreach (var g in sim.ApartGroups)
+            foreach (var g in sim.ApartGroups.ToList()) // #578: FinishApartJoin removes the group while it is driven
             {
                 if (!camps.TryGetValue(g.id, out var c)) camps[g.id] = c = new Camp { groupId = g.id, dilemmaId = g.dilemmaId, kind = g.kind, home = new Vector2(g.x, g.z) };
                 if (c.root == null || clock >= c.nextCheck) Place(sim, c);

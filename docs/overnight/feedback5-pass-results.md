@@ -53,3 +53,17 @@ tests: EcoRabbitTests seed, FisherShore wait, PersonCardRename diagnostics; new 
 - Polish: rename field half scrolled off at the top while Keep is visible; wild tree/sapling "beside" cheat is not drawn when closer than ~0.3 u to the Keeper's tree.
 - Tester sub-agent cadence not run in this pass.
 - Tooling: Fb5PassShots staging traps (hunts/eggs need `grownUps: 0` (the births make babies, whose carers take every adult), staged moments stopped, rabbits shown >= 3, ducks placed then 8 seasons for the flock to pass its floor).
+
+## Part 2 (2026-11-11, branch vs/fb5-pass2)
+Recompile 0 errors. EditMode re-runs: Life 461/461, View 320 (319 + 1 inconclusive, BoxLeakTests by design; the first View run echoed Life's totals, re-run alone).
+PlayMode: PersonCardRename 1/1, FisherShore 1/1, Fishing 2/2, HuntView 2/2, BuildingCard 5 + 1 inconclusive (by design), PondLife 4/4, ApartGroups 5/5, ApartPond 1/1,
+Travellers 2/2 (after the fixes below), Fb5Pass (explicit) 5/5, SmokePlay 2/2.
+#578 fixes: (product) `ApartGroupsView.LateUpdate` iterated `sim.ApartGroups` while `FinishApartJoin` removed the group on arrival: InvalidOperationException every join;
+now iterates a snapshot. (test) the join waited only 15 s, but a staged moment (a wedding arch) owns the visit first: now 90 s, and the failure message lists the calm conditions.
+(test) "no stale mesh" compared with a count taken before the scene opened that included meshes the previous test left: now LessOrEqual. The Assume on camp_fire held (not Inconclusive).
+Shots (Temp/agent/fb5/pass2/578-*, 1170x2532, the test's size): carry-lift (cutter by the woodpile, a log lying beside it; the carry on the shoulder is too small to read), carry-pile (caption
+"The notch in the axe handle works. Come and see the pile!"; a wedding arch is playing at the fire), join-pack (wide view, caption of the arch moment: the pack-up itself is tiny, the lean is slight),
+join-walk (two people with bundles leaving the woods camp, the tent by the pond), join-cleared (8 people, caption "Here we are, then. We brought our own logs.", no camp at the woods; ApartCamp roots = 0 asserted).
+Fb5Pass shots (pass/, 1179x2556) all read: 569 mist (summer year 3; at this zoom the half contrast is not readable, the counts in the test carry the proof), 573 woods_spot/chop/carry (wild fir, cutter behind it with chips, log to pile),
+573 beside (no extra tree drawn, known polish), 574 hunt Strike/CarryBack (spear hunter among rabbits, carrier with kill), 574 egg kneel/carry (gatherer at the water edge, caption "Two birds came down onto our water").
+Findings left: join-pack shot shows the camera not close on the packing (a moment owned the view first); log on the shoulder small at default zoom (polish).
