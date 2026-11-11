@@ -47,6 +47,8 @@ namespace AquariumCiv.View.Tests
             var one = Build(mb => FishRackPieces.HangingFish(mb, FishRackPieces.HangPoint(0), false, 1));
             Assert.Greater(one.vertexCount, 0);
             Assert.LessOrEqual(one.bounds.size.y, FishRackPieces.FishLength * 1.4f, "about a fish long");
+            Assert.Less(one.bounds.size.z, FishRackPieces.Spacing, "neighbours on the bar have a gap");
+            Assert.Greater(FishRackPieces.Height - FishRackPieces.FishLength * 1.1f, 0.05f, "clear of the ground");
             Assert.Greater(Mathf.Abs(Build(mb => FishRackPieces.HangingFish(mb, Vector3.zero, true, 1)).bounds.size.y - one.bounds.size.y), 0f, "dry fish are shorter");
         }
 
