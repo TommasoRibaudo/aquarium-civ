@@ -10,6 +10,8 @@ namespace AquariumCiv.Sim
     public static class ApartKind
     {
         public const string WoodsCamp = "woods_camp";   // a fire and a lean-to in the far woods (camp_travellers' "full packs")
+        public const string MeadowCamp = "meadow_camp"; // #578: the same camp out on open grass (camp_travellers when there are no woods)
+        public const string PondCamp = "pond_camp";     // #578: the same camp on dry ground by the pond
         public const string ShoreHut = "shore_hut";     // a hut on the far shore of the pond (village_hill_family's "a home across the pond")
     }
 
@@ -28,6 +30,13 @@ namespace AquariumCiv.Sim
         public float x, z;                  // the home spot, in box coordinates (the same as Building.x/z)
         public int cell = -1;               // the SiteMap cell of the spot (-1 when settling is off)
         public long sinceMonth;
+        // #578: the travellers (an option with joins): carry wood to their stash, and walk in and join the village
+        public bool joins;
+        public int joinState;               // 0 = not joining, 1 = waits for the next new house (answered in a village), 2 = joining now (the view walks them in)
+        public long joinMonth;              // the month joinState became 2
+        public int joinAfterId;             // joinState 1: a house with an id above this is a new one
+        public int woodLoads;               // loads of logs their people have set on the camp's pile
+        public bool firstLoadTold;
         public List<Notable> members = new List<Notable>();
         /// <summary>#404: this group builds (or keeps) the Keeper's lookout tower, begun in <see cref="towerFrom"/>, standing at towerX/Z.</summary>
         public bool tower, towerDone;
@@ -82,10 +91,10 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>Debug cheat (#539): a couple of strangers settle apart now, as if a dilemma had sent them (no dice).</summary>
-        public ApartGroup DebugSettlersArrive(string kind)
+        public ApartGroup DebugSettlersArrive(string kind, bool joins = false)
         {
-            var d = new Dilemma { id = 900000 + State.apartGroups.Count, month = State.month, state = DilemmaState.Answered };
-            StrangersApart(d, 2, kind);
+            var d = new Dilemma { id = 900000 + State.apartGroups.Count + (int)(State.month % 1000), month = State.month, state = DilemmaState.Answered };
+            StrangersApart(d, 2, kind, joins);
             return State.apartGroups[State.apartGroups.Count - 1];
         }
 
@@ -94,16 +103,17 @@ namespace AquariumCiv.Sim
 
         /// <summary>The strangers settle apart: made as for joining (named, a couple), then taken out of the settlement's people and
         /// given a home spot and a camp. Nothing in the economy changes.</summary>
-        void StrangersApart(Dilemma d, int count, string kind)
+        void StrangersApart(Dilemma d, int count, string kind, bool joins = false)
         {
             var s = State;
             var made = MakeStrangers(d, count, out string family);
             foreach (var n in made) s.notables.Remove(n);
-            var g = new ApartGroup { id = s.apartGroups.Count + 1, dilemmaId = d.id, kind = kind, family = family, sinceMonth = s.month, members = made };
+            var g = new ApartGroup { id = (s.apartGroups.Count == 0 ? 0 : s.apartGroups.Max(x => x.id)) + 1, dilemmaId = d.id, kind = kind, family = family, sinceMonth = s.month, members = made, joins = joins };
             ApartSpot(g);
+            if (joins && s.era >= Era.Village) { g.joinState = 1; g.joinAfterId = s.buildings.Count == 0 ? 0 : s.buildings.Max(b => b.id); } // answered in a village: they join at the next new house
             s.apartGroups.Add(g);
             string names = string.Join(" and ", made.Select(n => n.name));
-            string home = kind == ApartKind.ShoreHut ? "built a hut on the far shore of the pond" : "made a camp in the far woods";
+            string home = kind == ApartKind.ShoreHut ? "built a hut on the far shore of the pond" : "made a camp " + ApartWhere(kind);
             Chronicle("newcomer", $"The {family} family, {names}, wandered in from a far-away tank and {home}.", 0.7f, -1);
         }
 
@@ -113,6 +123,7 @@ namespace AquariumCiv.Sim
             var gs = State.apartGroups;
             if (gs == null || gs.Count == 0) return;
             TowerStep(); // #404
+            JoinStep(); // #578
             float step = Config.notableAgeFactor / SimConfig.MonthsPerYear;
             foreach (var g in gs)
                 foreach (var n in g.members)
@@ -122,7 +133,7 @@ namespace AquariumCiv.Sim
                     if (n.age < n.lifespan) continue;
                     n.alive = false;
                     n.diedMonth = State.month;
-                    string where = g.kind == ApartKind.ShoreHut ? "of the far shore" : "of the far woods";
+                    string where = g.kind == ApartKind.ShoreHut ? "of the far shore" : g.kind == ApartKind.MeadowCamp ? "of the far meadow" : g.kind == ApartKind.PondCamp ? "of the pond camp" : "of the far woods";
                     Chronicle("death", $"{n.FullName} {where} died of old age at {Math.Floor(n.age)}.", 0.6f, -1);
                 }
         }
@@ -142,15 +153,16 @@ namespace AquariumCiv.Sim
             const byte block = SiteMap.FCanal | SiteMap.FGreen | SiteMap.FCommons | SiteMap.FYard | SiteMap.FRock;
             // #539: on a living-land box the pond grows: never within reach of its full basin (a woods camp well clear; a shore hut just
             // outside it, with the water close by)
-            bool shoreHut = g.kind == ApartKind.ShoreHut;
+            bool shoreHut = g.kind == ApartKind.ShoreHut, pondCamp = g.kind == ApartKind.PondCamp, meadow = g.kind == ApartKind.MeadowCamp;
             bool[] woodsKeep = null, shoreKeep = null, shoreNear = null;
             if (EcologyOn)
             {
                 woodsKeep = PondShore.FutureWater(EcoGround, WoodsPondMargin + ApartSpots.Footprint);
                 if (shoreHut) { shoreKeep = PondShore.FutureWater(EcoGround, ShorePondMargin); shoreNear = PondShore.FutureWater(EcoGround, ShoreHutReach); }
+                else if (pondCamp) { shoreKeep = woodsKeep; shoreNear = PondShore.FutureWater(EcoGround, WoodsPondMargin + ApartSpots.Footprint + ShoreHutReach); } // #578: dry ground, close to the water
             }
             int best = -1; float bestScore = float.MinValue;
-            for (int pass = g.kind == ApartKind.ShoreHut ? 0 : 1; pass < 2 && best < 0; pass++)
+            for (int pass = shoreHut || pondCamp ? 0 : 1; pass < 2 && best < 0; pass++)
                 for (int c = 0; c < SiteMap.N; c++)
                 {
                     int i = SiteMap.I(c), j = SiteMap.J(c);
@@ -169,7 +181,7 @@ namespace AquariumCiv.Sim
                     {
                         int forest = 0;
                         for (int dj = -1; dj <= 1; dj++) for (int di = -1; di <= 1; di++) if (map.Forest(c + dj * SiteMap.NX + di)) forest++;
-                        score += forest * 0.2f;
+                        score += forest * (meadow ? -0.4f : 0.2f); // #578: a meadow camp is out on open grass
                     }
                     if (score > bestScore) { bestScore = score; best = c; }
                 }

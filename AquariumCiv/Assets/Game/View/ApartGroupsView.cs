@@ -44,6 +44,10 @@ namespace AquariumCiv.View
             public bool scripted, onBoat;
             public float lift;
             public PropKind prop;
+            // #578: the cutter's carry (chop, lift a log, walk it to the pile, set it down) paced by the sim's wood rate
+            public float carryClock;
+            public bool dropped;
+            public CarryPhase carry;
         }
 
         sealed class Camp
@@ -68,6 +72,14 @@ namespace AquariumCiv.View
             public float towerYaw;
             public bool lampOn;
             public readonly List<Object> towerMeshes = new();
+            // #578: the travellers' wood and their walk in. chopAt: where the cutter cuts; pile: the logs set down at the woodpile (pileShown of them);
+            // carryNow: a cheat has sent the cutter out; joinClock: seconds since they began to pack up (0 = not joining)
+            public Vector2 chopAt;
+            public GameObject pile;
+            public int pileShown = -1;
+            public float rate = 1f;
+            public bool carryNow;
+            public float joinClock;
         }
 
         BoxView box;
@@ -163,8 +175,11 @@ namespace AquariumCiv.View
                 if (c.root == null || clock >= c.nextCheck) Place(sim, c);
                 bool alive = g.AnyAlive;
                 if (c.root == null || alive != c.lit) Build(sim, c, alive);
+                if (g.joinState == 2 && c.root != null) { DriveJoin(sim, c, g, k, dt); continue; } // #578: packing up and walking in to the green
                 UpdateTower(sim, c, g, hour); // #404
                 UpdateBoat(sim, c, hour);
+                c.rate = sim.ApartWoodRate(g);
+                UpdatePile(c, g);
                 Drive(sim, c, g, hour, k, dt, staged == g.dilemmaId);
             }
             if (camps.Count > sim.ApartGroups.Count)
@@ -215,6 +230,8 @@ namespace AquariumCiv.View
                 c.shelter = spot - c.side * 0.3f + c.back * 0.08f; // beside the fire, not back under the trees
                 c.work = spot + c.side * 0.3f;                  // the woodpile
                 c.fishAt = c.boatAt = c.work;
+                c.chopAt = c.work + c.side * 0.45f;             // #578: where the cutter cuts; the logs are carried from here to the pile
+                if (Wet(c.chopAt) || land.IsWater(c.chopAt.x, c.chopAt.y)) c.chopAt = c.work - c.back * 0.14f;
             }
             if (c.root != null) Build(sim, c, c.lit);
         }
@@ -228,6 +245,7 @@ namespace AquariumCiv.View
             if (c.root != null) Kill(c.root.gameObject); // the dolls are kept: they hang under the box's root, not the camp's
             c.lit = lit;
             c.boat = null;
+            c.pile = null; c.pileShown = -1; // #578: the pile of logs is drawn again under the new root
             c.towerStage = -1; // #404: the tower and its lamp are rebuilt under the new root
             c.lampOn = false;
             c.root = new GameObject("ApartCamp" + c.groupId) { hideFlags = HideFlags.DontSave }.transform;
@@ -245,6 +263,7 @@ namespace AquariumCiv.View
             {
                 Part(c, "LeanTo", ApartProps.LeanTo(), c.shelter, yawBack);
                 Part(c, "Woodpile", ApartProps.Woodpile(), c.work, yawBack + 90f);
+                if (c.chopAt != c.work - c.back * 0.14f) Part(c, "ChopLogs", ApartProps.Logs(2, 1), c.chopAt - c.side * 0.1f, yawBack); // #578: the cutter's own two
             }
             if (lit) Glow(c);
         }
@@ -367,7 +386,7 @@ namespace AquariumCiv.View
                 case ApartDoing.Fish:
                     at = c.fishAt + (c.fishWet ? new Vector2(-c.fishFace.y, c.fishFace.x) : c.side) * (m.index * 0.08f); face = c.fishWet ? c.fishFace : c.hasWater ? c.water : c.side; break;
                 case ApartDoing.Chop:
-                    at = c.work - c.back * 0.14f; face = c.back; break;
+                    at = c.kind == ApartKind.ShoreHut ? c.work - c.back * 0.14f : CarryGoal(c, m); face = c.back; break;
                 case ApartDoing.Weave:
                     at = c.shelter - c.back * 0.16f + c.side * 0.1f; face = -c.back; break;
                 case ApartDoing.Wander:
@@ -405,13 +424,15 @@ namespace AquariumCiv.View
             var v = m.view;
             if (sceneHasThem) { v.gameObject.SetActive(false); return; } // the choice scene's travellers are them, for now
             var doing = ApartLife.Doing(c.kind, m.index, hour, c.fishing || c.kind != ApartKind.ShoreHut);
+            if (c.carryNow && m.index == 0 && c.kind != ApartKind.ShoreHut) doing = ApartDoing.Chop; // the cheat: out to cut now, whatever the hour
             if (doing != m.doing)
             {
                 m.doing = doing;
-                if (doing == ApartDoing.Fish) v.SetProp(PropKind.Rod, PropSlot.Hand);
-                else if (doing == ApartDoing.Chop) v.SetProp(PropKind.Axe, PropSlot.Hand);
-                else v.SetProp(PropKind.None, PropSlot.Hand);
+                m.prop = doing == ApartDoing.Fish ? PropKind.Rod : doing == ApartDoing.Chop ? PropKind.Axe : PropKind.None;
+                v.SetProp(m.prop, PropSlot.Hand);
             }
+            var carry = CarryPhase.Chop;
+            if (doing == ApartDoing.Chop && c.kind != ApartKind.ShoreHut) carry = Carry(c, m, dt); // #578
             var land = box.land;
             var goal = Goal(c, m, count, hour, out float faceYaw);
             var before = m.pos;
@@ -428,7 +449,7 @@ namespace AquariumCiv.View
             {
                 ApartDoing.SitAtFire => Mathf.Repeat(clock + m.phase * 7f, 9f) > 7.5f ? DollStyle.Talk : DollStyle.Sit,
                 ApartDoing.Fish => DollStyle.Fish,
-                ApartDoing.Chop => DollStyle.Chop,
+                ApartDoing.Chop => carry == CarryPhase.Chop ? DollStyle.Chop : DollStyle.Stand,
                 ApartDoing.Weave => DollStyle.SitWeave,
                 ApartDoing.Wander => DollStyle.Look,
                 _ => DollStyle.Stand,

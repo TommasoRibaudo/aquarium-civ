@@ -7,6 +7,9 @@ namespace AquariumCiv.Life
     /// <summary>What someone who lives apart (#231) is doing at an hour of the view day.</summary>
     public enum ApartDoing { Sleep, SitAtFire, Fish, Chop, Wander, Weave }
 
+    /// <summary>#578: the beats of one wood carry (the travellers'): chop at the cutting spot, lift a log, walk it to the camp's pile, set it down.</summary>
+    public enum CarryPhase { Chop, Lift, Walk, Drop }
+
     /// <summary>
     /// The little life of an apart group (#231 phase 2; the sim's <see cref="ApartGroup"/>): where its camp stands now and what its people do
     /// through the view day. Pure and view-side, read-only on the sim. The camp keeps clear of the settlement: never on a lot, a lot's ring,
@@ -53,6 +56,26 @@ namespace AquariumCiv.Life
                 default: return ApartDoing.Weave;
             }
         }
+
+        /// <summary>Real seconds between two carries by the camp's cutter at the usual pace (#578). The wood lean (x1.5) shortens it to two thirds.</summary>
+        public const float CarrySeconds = 45f;
+        /// <summary>The share of one carry cycle (0..1) at which each beat starts: Lift, Walk, Drop.</summary>
+        public const float LiftAt = 0.6f, WalkAt = 0.66f, DropAt = 0.92f;
+
+        /// <summary>The beat at <paramref name="cycle"/> (0..1, wrapping) of a carry. In the Walk beat <paramref name="walk"/> runs 0..1 (the pile is at 1).</summary>
+        public static CarryPhase CarryAt(float cycle, out float walk)
+        {
+            cycle -= (float)Math.Floor(cycle);
+            walk = cycle < WalkAt ? 0f : cycle >= DropAt ? 1f : (cycle - WalkAt) / (DropAt - WalkAt);
+            return cycle < LiftAt ? CarryPhase.Chop : cycle < WalkAt ? CarryPhase.Lift : cycle < DropAt ? CarryPhase.Walk : CarryPhase.Drop;
+        }
+
+        /// <summary>Real seconds one carry takes at <paramref name="woodRate"/> (the sim's <c>ApartWoodRate</c>: 1 usually, 1.5 while the wood lean lasts).</summary>
+        public static float CarryPeriod(float woodRate) => CarrySeconds / Math.Max(0.1f, woodRate);
+
+        /// <summary>How many logs a pile of <paramref name="loads"/> loads shows (a log a load, up to a full stack).</summary>
+        public static int PileLogs(int loads) => Math.Max(0, Math.Min(MaxPileLogs, loads));
+        public const int MaxPileLogs = 12;
 
         /// <summary>A seat round the fire (box units), the members spread evenly, the first on the side away from <paramref name="back"/>.</summary>
         public static (float x, float z) Seat((float x, float z) fire, (float x, float z) back, int member, int count)
