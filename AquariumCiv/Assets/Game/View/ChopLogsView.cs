@@ -11,8 +11,8 @@ namespace AquariumCiv.View
     /// <summary>
     /// #573: chopping reads as wood. The chips are HitFx's (one burst per axe hit at the woods); this view adds the logs: every
     /// <c>chopHitsPerLog</c>th hit by a woodcutter lays one log on the ground beside them (<see cref="ChopLogTally"/> counts,
-    /// at most <see cref="ChopLogTally.MaxPerChopper"/> by one chopper). When the chopper stops hitting (the planner's Chop work then carries
-    /// a Log to the stash) the logs are lifted off one by one, and the pile at the stash (<see cref="StashProps"/>) grows with the stock.
+    /// at most <see cref="ChopLogTally.MaxPerChopper"/> by one chopper). When the chopper's chopping ends (the planner's Chop work then carries
+    /// a Log to the stash: their doll now holds a Log and walks) the logs on the ground are lifted with the carry's own start, and the pile at the stash (<see cref="StashProps"/>) grows with the stock.
     /// A tree is never removed (#366 felling stays undecided): the logs come from it. Pooled, one mesh, one material.
     /// The log-carry itself is the planner's <c>LifePlanner.CarryLogs</c> work (reusable by travellers, #578).
     /// </summary>
@@ -21,20 +21,18 @@ namespace AquariumCiv.View
     {
         public static bool AutoCreate = true;
         public static ChopLogsView Instance { get; private set; }
-        /// <summary>Seconds without a hit before the chopper is taken to have left with the load.</summary>
-        public const float LeaveAfter = 2.2f, LiftEvery = 0.25f;
         public const int PoolSize = 24;
 
         sealed class Lying { public Transform t; public int who; }
         readonly ChopLogTally tally = new();
         readonly List<Lying> lying = new();
         readonly List<Transform> pool = new();
-        readonly Dictionary<int, float> lastHit = new();
+        readonly Dictionary<int, PersonRef> lastHit = new();
         readonly List<int> gone = new();
         PeopleView people;
         BoxView box;
         Mesh logMesh;
-        float findT, clock, liftT;
+        float findT, clock;
 
         /// <summary>For tests and the debug panel: logs on the ground now, and hits seen.</summary>
         public int LogsOnGround => lying.Count;
@@ -87,30 +85,27 @@ namespace AquariumCiv.View
                     if (people != null) people.WorkHit += OnWorkHit;
                 }
             }
-            // The choppers who stopped: their logs are lifted, one at a time (they carry them off).
+            // The choppers whose chopping is over: the carry has begun (the log is in their hands), so the logs on the ground go with them.
             gone.Clear();
-            foreach (var kv in lastHit) if (clock - kv.Value > LeaveAfter) gone.Add(kv.Key);
-            foreach (int who in gone) { lastHit.Remove(who); tally.Leave(who); liftWho.Add(who); }
-            liftT -= dt;
-            if (liftWho.Count > 0 && liftT <= 0f)
+            foreach (var kv in lastHit)
             {
-                liftT = LiftEvery;
+                bool chopping = people != null && people.TryGetActivityOf(kv.Value, out var act) && act.kind == ActivityKind.Chop && !act.moving;
+                if (!chopping) gone.Add(kv.Key);
+            }
+            foreach (int who in gone)
+            {
+                lastHit.Remove(who); tally.Leave(who);
                 for (int i = lying.Count - 1; i >= 0; i--)
-                    if (liftWho.Contains(lying[i].who)) { lying[i].t.gameObject.SetActive(false); lying.RemoveAt(i); break; }
-                bool any = false;
-                foreach (var l in lying) if (liftWho.Contains(l.who)) { any = true; break; }
-                if (!any) liftWho.Clear();
+                    if (lying[i].who == who) { lying[i].t.gameObject.SetActive(false); lying.RemoveAt(i); }
             }
         }
-        readonly HashSet<int> liftWho = new();
 
         void OnWorkHit(PersonRef who, Place place, DollStyle style, Vector3 at)
         {
             if (style != DollStyle.Chop || (place.kind != PlaceKind.Woods) || box == null || box.Root == null) return;
             HitsSeen++;
             int key = who.Key;
-            lastHit[key] = clock;
-            liftWho.Remove(key);
+            lastHit[key] = who;
             var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
             int perLog = sim != null && sim.Config.eco != null ? sim.Config.eco.chopHitsPerLog : 4;
             if (!tally.Hit(key, perLog)) return;

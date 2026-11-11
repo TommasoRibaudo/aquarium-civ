@@ -191,6 +191,33 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
+        public void NoMoreThanTwoChopAtOneTreeTheRestDoTheTribesWork()
+        {
+            var sim = KeeperOnly(out _);
+            sim.DebugWildTrees(false);
+            Assert.AreEqual(1, sim.WoodsTreeCount);
+            AllWoodcutters(sim);
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            int most = 0, others = 0;
+            for (int d = 0; d < 6; d++)
+            {
+                var chopping = new HashSet<int>();
+                foreach (var who in planner.People)
+                {
+
+                    planner.DaySchedule(who, d, day);
+                    if (day.Any(a => a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods)) chopping.Add(who.Key);
+                    else others++; // anything but chopping: the chores at home or the tribe's work
+                }
+                most = Math.Max(most, chopping.Count);
+            }
+            Assert.LessOrEqual(most, LifePlanner.ChoppersPerTree, "at most two to a tree");
+            Assert.Greater(most, 0, "and they do chop");
+            Assert.Greater(others, 0, "the others do other work");
+        }
+
+        [Test]
         public void AJobThatOpenedNeverCloses()
         {
             var sim = Barren(3);

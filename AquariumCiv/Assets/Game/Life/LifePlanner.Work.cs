@@ -126,7 +126,41 @@ namespace AquariumCiv.Life
                 var rw = RoleWork(p, d, morning);
                 if (rw.HasValue) return rw.Value;
             }
-            return SpreadDiggers(p, d, JobWork(p, d)); // tester run 1 #3: two or three dig the stream bed, the rest find other work
+            var jw = SpreadDiggers(p, d, JobWork(p, d)); // tester run 1 #3: two or three dig the stream bed, the rest find other work
+            return OnLiving && !chopScan ? ChopSlots(p, d, jw) : jw;
+        }
+
+        // #573: at most two choppers to a grown wild tree (Place.Land(Woods, slot/2)); the rest go to the next tree, or to the tribe's work when the trees are taken.
+        long chopDay = long.MinValue;
+        bool chopScan;
+        readonly System.Collections.Generic.List<int> chopCrew = new System.Collections.Generic.List<int>();
+        public const int ChoppersPerTree = 2;
+        Work ChopSlots(Person p, DayInfo d, Work w)
+        {
+            if (w.loop != ActivityKind.Chop || w.site.kind != PlaceKind.Woods) return w;
+            if (chopDay != d.day)
+            {
+                chopDay = d.day; chopCrew.Clear();
+                chopScan = true;
+                try
+                {
+                    var order = new System.Collections.Generic.List<Person>();
+                    foreach (var q in people) if (q.Adult) order.Add(q);
+                    order.Sort((a, b) => a.key.CompareTo(b.key));
+                    foreach (var q in order) { var qw = SpreadDiggers(q, d, JobWork(q, d)); if (qw.loop == ActivityKind.Chop && qw.site.kind == PlaceKind.Woods) chopCrew.Add(q.key); }
+                }
+                finally { chopScan = false; }
+            }
+            int slot = chopCrew.IndexOf(p.key);
+            if (slot < 0) return w;
+            if (slot >= sim.WoodsTreeCount * ChoppersPerTree)
+            {   // every tree has its two: the rest do the chores at home (not all at one berry spot)
+                var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
+                c.chores = true;
+                return Fetch(c, WaterPlace);
+            }
+            w.site = Place.Land(PlaceKind.Woods, slot / ChoppersPerTree);
+            return w;
         }
 
         Work JobWork(Person p, DayInfo d)

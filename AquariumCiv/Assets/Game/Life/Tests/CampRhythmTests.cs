@@ -29,7 +29,7 @@ namespace AquariumCiv.Life.Tests
             foreach (var key in new[] { EcoMilestones.FirstBush, EcoMilestones.WaterSurfaced, EcoMilestones.FirstWoodTree })
                 if (!sim.State.eco.milestoneKeys.Contains(key)) { sim.State.eco.milestoneKeys.Add(key); sim.State.eco.milestoneMonths.Add(sim.State.month); }
             sim.DebugAddRabbits(8);
-            sim.DebugWildTrees(false); // #573: the woodcutters need a real grown wild tree away from the Keeper's tree, not only the milestone
+            sim.DebugWildTrees(false, 5); // #573: the woodcutters need real grown wild trees away from the Keeper's tree (five, spread out, two choppers to each), not only the milestone
             sim.DebugRedrawJobs();
             for (int m = 0; m < 24; m++) sim.Step();
             Assert.AreEqual(Era.Camp, sim.State.era, "still a camp");
@@ -99,13 +99,12 @@ namespace AquariumCiv.Life.Tests
                     {
                         var a = acts[i];
                         if (a.moving || !Visible(a)) continue;
-                        if (a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods) continue; // #573: with a real grown tree to chop (one, away from the Keeper's) the choppers share its one spot and the view stands them on slots round it
                         var pa = pos[a.who.Key];
                         if (!pa.ok) continue;
                         int same = 0;
                         foreach (var b in acts)
                         {
-                            if (b.moving || b.kind != a.kind || !Visible(b) || (b.kind == ActivityKind.Chop && b.place.kind == PlaceKind.Woods)) continue;
+                            if (b.moving || b.kind != a.kind || !Visible(b)) continue;
                             var pb = pos[b.who.Key];
                             if (!pb.ok) continue;
                             if ((pa.x - pb.x) * (pa.x - pb.x) + (pa.z - pb.z) * (pa.z - pb.z) <= 0.36f) same++;

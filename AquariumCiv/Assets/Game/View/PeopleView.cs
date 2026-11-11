@@ -624,7 +624,7 @@ namespace AquariumCiv.View
                 if (d.drew != DollStyle.TipBasket) d.tipStart = time;
                 tipSince = since = time - d.tipStart;
             }
-            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
+            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, style == DollStyle.Chop ? a.pace * (0.9f + 0.2f * Hash01(a.who.Key, 6)) : a.pace /* #573: each chopper has their own tempo, so two at one tree never strike together */, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
             if (style != d.drew)
             {
                 d.blendFrom = d.pose;
@@ -1398,6 +1398,14 @@ namespace AquariumCiv.View
         public bool TryGetActivity(PegDollView view, out PersonActivity act)
         {
             foreach (var d in dolls.Values) if (d.view == view) { act = d.act; return true; }
+            act = default;
+            return false;
+        }
+
+        /// <summary>#573: the activity a person's doll is showing (false when they have no doll).</summary>
+        public bool TryGetActivityOf(PersonRef who, out PersonActivity act)
+        {
+            if (dolls.TryGetValue(who.Key, out var d)) { act = d.act; return true; }
             act = default;
             return false;
         }
