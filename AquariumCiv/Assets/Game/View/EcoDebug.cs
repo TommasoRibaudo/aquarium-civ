@@ -369,6 +369,8 @@ namespace AquariumCiv.View
             return "the seed in hand: tap the land, then the outline" + (sp != null && sp.Last.Length > 0 ? $" (last: {sp.Last})" : "");
         }
         // ---- end #518 ----
+        // ---- #573: wild trees to reproduce the woods spot ----
+        public static string WildTrees(bool beside) { var s = Sim; return s == null ? "no sim" : Refresh(s.DebugWildTrees(beside)); }
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }
 }
