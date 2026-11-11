@@ -1,6 +1,10 @@
+using System.Collections.Generic;
+using AquariumCiv.Sim.Eco;
+using AquariumCiv.Sim.Settle;
 using AquariumCiv.Game;
 using AquariumCiv.Sim;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.View
 {
@@ -57,6 +61,39 @@ namespace AquariumCiv.View
         }
 
         public static string MistBigCamp() { var st = Sim?.Settlement; return st != null ? MistBig(st.Map.greenX + 0.5f, st.Map.greenZ) : "no sim"; }
+
+        /// <summary>#569 side by side: mists every cell of the box's left half (x &lt; 0; the right half stays the control) with full 4-second
+        /// strokes at the start of each season, for <paramref name="seasons"/> seasons, with time running. "Mist one half, skip 3 yr" = 12 seasons.</summary>
+        public static string MistHalf(int seasons)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            for (int k = 0; k < seasons; k++)
+            {
+                foreach (float x in new[] { -2.3f, -1.2f }) foreach (float z in new[] { -1.5f, -0.5f, 0.5f, 1.5f }) s.Mist(x, z, 4f, 4f);
+                s.DebugSkipSeasons(1);
+            }
+            return Refresh($"left half misted every season for {seasons} seasons; the right half is the control");
+        }
+
+        /// <summary>#569 "Mist trees": a full 4-second mist on the Keeper's tree, each stand of wild seedlings and young trees and each grown
+        /// tree (at most 6 spots), the way a player waters the wood. Then "+1 yr" shows misted ground seeding and growing faster than the rest.</summary>
+        public static string MistTrees()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var e = s.State.eco; var spots = new List<int>();
+            for (int c = 0; c < EcoLand.N && spots.Count < 6; c++)
+            {
+                var cv = (EcoCover)e.cover[c];
+                if (cv != EcoCover.Tree && cv != EcoCover.Young && cv != EcoCover.Seedling) continue;
+                bool near = false;
+                foreach (var o in spots) if (Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), SiteMap.CXc(o), SiteMap.CZc(o)) < 0.8f) { near = true; break; }
+                if (!near) spots.Add(c);
+            }
+            foreach (var c in spots) s.Mist(SiteMap.CXc(c), SiteMap.CZc(c), 4f, 4f);
+            return Refresh(spots.Count == 0 ? "no trees or seedlings to water yet" : $"watered {spots.Count} spots round the trees (+1 yr to see it)");
+        }
 
         /// <summary>"Puddles now": soak the ground round the camp so wet ground and puddles show at once (#266).</summary>
         public static string PuddlesNow()
