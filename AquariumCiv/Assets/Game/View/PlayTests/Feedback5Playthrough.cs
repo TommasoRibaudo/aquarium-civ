@@ -132,6 +132,14 @@ namespace AquariumCiv.View.PlayTests
             pv.timeScale = 1f;
         }
 
+        static float WaterDist(Vector2 p)
+        {
+            float wd = float.MaxValue;
+            for (int c = 0; c < EcoLand.N; c++)
+                if (Sim.EcoCoverAt(c) == EcoCover.Water) wd = Mathf.Min(wd, Vector2.Distance(new Vector2(SiteMap.CXc(c), SiteMap.CZc(c)), p));
+            return wd;
+        }
+
         static int Count(Func<EcoCover, bool> pick, bool left)
         {
             var e = Sim.State.eco; int n = 0;
@@ -345,23 +353,48 @@ namespace AquariumCiv.View.PlayTests
                 Cheat("ducks placed", $"near the camp ({sim.DebugPlaceNearCamp(LifeSpecies.Ducks)})");
             }
             yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 20f);
+            Cheat("grow the flock", EcoDebug.SkipSeasons(8)); // ducks above their floor, or no egg is taken; the season comes round
+            for (int calm = 0, f = 0; calm < 120 && f < 1500; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
             PeopleView.DebugSetHour(10f);
             pv.Planner.ClearLive();
             yield return Frames(10);
             Cheat("gather an egg now", EcoDebug.GatherEggNow()); // SliceDebugPanel's #574 button
-            bool basket = false; Vector2 gp = default;
+            bool basket = false; Vector2 gp = default; float nearest = float.MaxValue; int baskets = 0;
+            pv.timeScale = 3f; // the walk to the reeds takes view hours
+            var diag = new Dictionary<int, string>();
             yield return Until(() =>
             {
+                foreach (var q in pv.Activities)
+                    if (q.place.kind == PlaceKind.Pond || q.from.kind == PlaceKind.Pond)
+                    {
+                        string s = $"{q.kind}->{q.place.kind} moving={q.moving} prop={q.prop}";
+                        if (!diag.TryGetValue(q.who.Key, out var old) || old != s)
+                        {
+                            diag[q.who.Key] = s;
+                            Vector2 dp = default; pv.TryGetDollPosition(q.who, out dp);
+                            Debug.Log($"[f5] e diag hour {pv.Now.hour:0.00}: person {q.who.Key} {s} at {dp.x:0.00},{dp.y:0.00} ({WaterDist(dp):0.00} u from water)");
+                        }
+                    }
                 foreach (var a in pv.Activities)
-                    if (a.kind == ActivityKind.Gather && a.prop == Prop.Basket && !a.moving && pv.TryGetDollPosition(a.who, out gp)) { basket = true; return true; }
+                    if (a.kind == ActivityKind.Gather && a.prop == Prop.Basket && !a.moving && pv.TryGetDollPosition(a.who, out gp))
+                    {
+                        baskets++; nearest = Mathf.Min(nearest, WaterDist(gp));
+                        if (WaterDist(gp) < 0.8f) { basket = true; return true; }
+                    }
                 return false;
             }, 90f);
-            Check("e", basket, "a gatherer stands at the pond edge with a basket");
+            pv.timeScale = 1f;
+            Check("e", basket, $"a gatherer stands at the pond edge with a basket ({baskets} basket-gather samples, nearest {nearest:0.00} u from the water)");
             if (basket)
             {
-                Look(World(gp.x, gp.y), 0.2f, 45f);
-                yield return Settle(1.2f);
+                pv.timeScale = 0.6f;
+                for (float tt = 0f; tt < 1.5f; tt += Time.unscaledDeltaTime)
+                {
+                    foreach (var a in pv.Activities) if (a.kind == ActivityKind.Gather && a.prop == Prop.Basket && pv.TryGetDollPosition(a.who, out gp) && WaterDist(gp) < 0.8f) { var w = World(gp.x, gp.y); Rig.CancelFlight(); Rig.pitch = 40f; Rig.zoom = 0.22f; Rig.target = w; Rig.Apply(); }
+                    yield return null;
+                }
                 yield return Snap("e_3_egg_gatherer");
+                pv.timeScale = 1f;
             }
             DefaultView();
         }

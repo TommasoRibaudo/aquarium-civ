@@ -779,6 +779,7 @@ namespace AquariumCiv.View.PlayTests
                     if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
                     if (youngBox && !st.Slug.StartsWith("pacing_")) { yield return RebuildPlayedBox(); }
                     yield return CloseLooseUi();
+                    if (!st.Slug.StartsWith("season_") && !st.Slug.StartsWith("pacing_")) yield return ResetSeason();
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {
@@ -788,7 +789,9 @@ namespace AquariumCiv.View.PlayTests
                         if (shoot)
                         {
                             if (st.Kind != Kind.Look) textShots++;
+                            if (st.Slug == "title_line") { panel.collapsed = true; yield return Frames(3); } // the title sits behind the panel: fold it for the shot
                             yield return Shot((i + 1).ToString("00") + "_" + st.Slug);
+                            panel.collapsed = false;
                         }
                         for (int e = 0; e < st.Extras.Length; e++)
                         {
@@ -877,7 +880,8 @@ namespace AquariumCiv.View.PlayTests
         string[] extras = new string[0], options = new string[0], bulletTitles = new string[0], bullets = new string[0];
         string[] secNames = new string[0]; int[] secFirst = new int[0], secCount = new int[0];
         int mode;
-        bool collapsed, typing, jumpOpen;
+        internal bool collapsed;
+        bool typing, jumpOpen;
         Rect screenRect, pub, noteRect;
         float measuredH = 200f;
         bool pubSet;
@@ -988,6 +992,7 @@ namespace AquariumCiv.View.PlayTests
             const float X = 6f, W = UnitsWide - 12f, IW = W - 16f;
             float y = TopPx / sc;
             var e = Event.current;
+            if (collapsed) y += 70f / sc; // folded, the bar sits below the HUD title line (it hid it)
             if (collapsed)
             {
                 var r = new Rect(X, y, W, 40f);
