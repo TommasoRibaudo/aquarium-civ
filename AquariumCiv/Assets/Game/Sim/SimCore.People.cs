@@ -373,6 +373,45 @@ namespace AquariumCiv.Sim
             return edges.Values.OrderBy(e => Math.Min(e.a, e.b)).ThenBy(e => Math.Max(e.a, e.b)).ToList();
         }
 
+        // ---------- renaming (#575, playtest note #548) ----------
+        /// <summary>#575: the longest first name the Keeper can give a notable.</summary>
+        public const int RenameMaxLength = 16;
+
+        /// <summary>#575: the Keeper gives a notable a new first name. Free text, tidied (trimmed, spaces squeezed) and checked with the
+        /// settlement-name rules (letters, a few marks, a light filter). Empty, or the same name, keeps the old one (Ok, nothing changes).
+        /// Two living people may not share a first name, as at birth (<see cref="MakeNameUnique"/>): that is refused as
+        /// <see cref="RenameResult.Taken"/> so the card can say so. Only the name field changes: chronicle lines already written are
+        /// plain text and keep the old name; lines written after read the new one. Draws no dice.</summary>
+        public RenameResult RenameNotable(int notableId, string raw, out string clean)
+        {
+            clean = SettlementNaming.Tidy(raw);
+            var n = FindNotable(notableId);
+            if (n == null) return RenameResult.NoSuchPerson;
+            if (clean.Length == 0 || clean == n.name) { clean = n.name; return RenameResult.Kept; }
+            if (clean.Length > RenameMaxLength) return RenameResult.TooLong;
+            var p = SettlementNaming.Check(clean, out clean);
+            if (p == NameProblem.TooShort) return RenameResult.TooShort;
+            if (p != NameProblem.None) return RenameResult.Refused;
+            if (clean.Length > RenameMaxLength) return RenameResult.TooLong;
+            string given = clean;
+            if (State.notables.Any(o => o != n && (o.alive && o.name == given || o.name == given && o.family == n.family)))
+                return RenameResult.Taken;
+            n.name = clean;
+            return RenameResult.Renamed;
+        }
+
+        /// <summary>What the card tells the Keeper after a rename (words: <see cref="RenameMessage"/>).</summary>
+        public enum RenameResult { Renamed, Kept, NoSuchPerson, TooShort, TooLong, Refused, Taken }
+
+        public static string RenameMessage(RenameResult r) => r switch
+        {
+            RenameResult.TooShort => "A little longer?",
+            RenameResult.TooLong => $"Up to {RenameMaxLength} letters.",
+            RenameResult.Refused => "Letters, please. Try another?",
+            RenameResult.Taken => "Someone here already goes by that.",
+            _ => "",
+        };
+
         // ---------- the card ----------
         /// <summary>The person card for a notable, or null if there is no such notable.</summary>
         public PersonCard PersonCardOf(int notableId)

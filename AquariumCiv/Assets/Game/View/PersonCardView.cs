@@ -283,7 +283,7 @@ namespace AquariumCiv.View
             CloseBuilding(false); // one card at a time (tester run 10)
             var hud = GameHud.Instance;
             if (hud != null) { hud.CloseSheet(); hud.SetCleanMode(false); }
-            if (OpenId != notableId) { Tab = CardTab.About; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
+            if (OpenId != notableId) { RenameReset(); Tab = CardTab.About; if (logOpen) GameClock.Tel.CardOpened("person", notableId); }
             OpenId = notableId;
             Card = card;
             edges = sim.RelationshipGraph(true, notableId);
@@ -370,6 +370,7 @@ namespace AquariumCiv.View
             UiSound.Play(UiRole.Close); // #96
             OpenId = -1;
             Card = null;
+            RenameReset(); // #575
             edges.Clear();
             flownForCard = false;
             ResetExpanded(); // #403: every card opens at 30 %
@@ -491,6 +492,7 @@ namespace AquariumCiv.View
 
         void LateUpdate()
         {
+            RideKeyboard(); // #575
             var sim = Sim;
             var pv = PeopleView.Find();
             var cam = Camera.main;
@@ -951,6 +953,7 @@ namespace AquariumCiv.View
             string s = Signature(card);
             Card = card;
             if (!force && s == sig) return;
+            if (!force && RenameOpen && renameField != null) return; // #575: a redraw would drop what is being typed
             edges = sim.RelationshipGraph(true, OpenId);
             float scroll = body != null ? body.scrollOffset.y : 0f;
             Build(card);
@@ -960,9 +963,9 @@ namespace AquariumCiv.View
         static string Signature(PersonCard c)
         {
             var sb = new StringBuilder();
-            sb.Append(c.id).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.keeperLine).Append('|').Append(c.pinned)
+            sb.Append(c.id).Append('|').Append(c.fullName).Append('|').Append(c.age).Append('|').Append(c.alive).Append('|').Append(c.roleLine).Append('|').Append(c.keeperLine).Append('|').Append(c.pinned)
               .Append('|').Append(c.wish?.id ?? -1).Append('|').Append(c.relics.Count).Append('|').Append(c.quote?.text);
-            foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors)) sb.Append('|').Append(t.otherId).Append(t.kind).Append(t.otherAlive);
+            foreach (var t in c.family.Concat(c.friends).Concat(c.rivals).Concat(c.mentors)) sb.Append('|').Append(t.otherId).Append(t.otherName).Append(t.kind).Append(t.otherAlive);
             foreach (var st in c.recentStories) sb.Append('|').Append(st.entryId);
             return sb.ToString();
         }
@@ -989,6 +992,7 @@ namespace AquariumCiv.View
 
         void BuildAbout(PersonCard c)
         {
+            if (c.alive) BuildRenameRow(c); // #575
             if (c.memorial != null)
             {
                 var m = c.memorial;

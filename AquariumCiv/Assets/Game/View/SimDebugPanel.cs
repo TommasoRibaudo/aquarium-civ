@@ -229,6 +229,8 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Show me on this card (the bar)")) last = CardStackView.DebugShowMe();
             }
+            if (Section("Rename a notable (#575)"))
+                if (GUILayout.Button("Open a card with the rename field")) last = PersonCardView.DebugRenameField(); // #575
             if (Section("Dilemmas (P7)")) { var line = DilemmaCheats.Gui(); if (line != null) last = line; }
             if (Section("Hit puffs (#357)")) { var line = HitFxCheats.Gui(); if (line != null) last = line; } // #357
             // ---- #369: the moment queue and director ----
