@@ -280,6 +280,8 @@ Shader "AquariumCiv/View/Stylized"
                 #else
                     cs.z = max(cs.z, cs.w * UNITY_NEAR_CLIP_VALUE);
                 #endif
+                // #577: a frame part the camera has faded away casts no shadow either (a shadow can't be half there: gone from half faded).
+                if (v.lamp.x < -0.5 && _AC_FrameFade[(int)(-v.lamp.x - 0.5)] > 0.5) cs = float4(0, 0, 0, 1);
                 o.positionCS = cs;
                 return o;
             }
