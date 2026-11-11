@@ -938,6 +938,25 @@ namespace AquariumCiv.View
                     face = p + n * cos + along * sin;
                     return p;
                 }
+                case PlaceKind.Prop when a.kind == ActivityKind.Pray:
+                {
+                    // fb4 #566: a small arc on the camera's side of the pole, kneeling, facing it: the Keeper sees their backs and the pole beyond.
+                    var cam = Camera.main;
+                    var box = Box;
+                    Vector2 toCam = new Vector2(0f, -1f);
+                    if (cam != null)
+                    {
+                        var cp = box != null ? box.transform.InverseTransformPoint(cam.transform.position) : cam.transform.position;
+                        var v = new Vector2(cp.x - spot.x, cp.z - spot.y);
+                        if (v.sqrMagnitude > 1e-6f) toCam = v.normalized;
+                    }
+                    const float PrayR = 0.28f, PrayStep = 0.17f;
+                    int k = a.slot;
+                    float off = ((k + 1) / 2) * ((k & 1) == 1 ? 1f : -1f) * PrayStep / PrayR;
+                    float ang = Mathf.Atan2(toCam.y, toCam.x) + off;
+                    face = spot;
+                    return spot + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * PrayR;
+                }
                 case PlaceKind.Relic:
                 case PlaceKind.Prop: // #371: round the thing a choice left, the same ring
                 {

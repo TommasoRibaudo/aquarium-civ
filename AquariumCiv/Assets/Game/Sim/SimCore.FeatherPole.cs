@@ -52,7 +52,9 @@ namespace AquariumCiv.Sim
             if (st != null) st.Fire(out fx, out fz, out _);
             var bpts = new List<(float x, float z)>();
             foreach (var b in State.buildings) if (b.lotId != 0) bpts.Add((b.x, b.z));
-            var (x, z) = FeatherPoleSpots.Pick(st?.Map, fx, fz, State.seed, bpts, FutureWaterMask(FeatherPoleSpots.WaterMargin));
+            var opts = new List<(float x, float z)>();
+            foreach (var q in State.consequenceProps) if (q.placed && q.kind != ConsequenceKind.Feather) opts.Add((q.x, q.z));
+            var (x, z) = FeatherPoleSpots.Pick(st?.Map, fx, fz, State.seed, bpts, FutureWaterMask(FeatherPoleSpots.WaterMargin), opts);
             State.featherPoleSet = true; State.featherPoleX = x; State.featherPoleZ = z;
             MoveFeathersToPole();
         }
@@ -90,11 +92,11 @@ namespace AquariumCiv.Sim
     {
         /// <summary>Nearest to the fire (clear of the rack, stash, pot, seats, hide frame), the room the pole and the people round it keep
         /// clear of paths, fields, yards and trees, and from a tent, in box units.</summary>
-        public const float MinFire = 1.3f, Room = 0.22f, BuildingGap = 0.5f, TreeGap = 0.25f;
+        public const float MinFire = 1.5f, Room = 0.22f, BuildingGap = 0.75f, PropGap = 0.7f, TreeGap = 0.25f;
         /// <summary>The pond's future water is kept this far away (the people stand round the pole).</summary>
         public const float WaterMargin = 0.25f;
         /// <summary>How far past the farthest settled thing the pole stands, and the bounds on the ring it aims for.</summary>
-        public const float Beyond = 0.35f, MinTarget = 1.5f, MaxTarget = 2.3f;
+        public const float Beyond = 0.6f, MinTarget = 1.8f, MaxTarget = 2.6f;
 
         static bool Open(SiteMap map, int c, bool[] avoid)
         {
@@ -111,7 +113,7 @@ namespace AquariumCiv.Sim
         }
 
         /// <summary>The pole's spot. With no map (settling off) a fixed point out from the fire.</summary>
-        public static (float x, float z) Pick(SiteMap map, float fx, float fz, int seed, IList<(float x, float z)> buildings, bool[] avoid)
+        public static (float x, float z) Pick(SiteMap map, float fx, float fz, int seed, IList<(float x, float z)> buildings, bool[] avoid, IList<(float x, float z)> props = null)
         {
             if (map == null) return Fixed(fx, fz, seed);
             // how far the settled ground reaches from the fire
@@ -132,7 +134,10 @@ namespace AquariumCiv.Sim
                     if (!FreeAround(map, x, z, pass == 0 ? Room : Room * 0.6f, avoid, pass < 2)) continue;
                     if (buildings != null && TooNear(buildings, x, z, pass == 0 ? BuildingGap : BuildingGap * 0.7f)) continue;
                     // the nearest to the ring at the target distance; a front-glass lean (the Keeper looks from -z) and a little jitter pick between equals
-                    float score = Math.Abs(d - target) + 0.08f * (z - fz) + Terrain.Hash3(seed, SiteMap.I(c), SiteMap.J(c)) * 0.06f;
+                    if (props != null && TooNear(props, x, z, pass == 0 ? PropGap : PropGap * 0.7f)) continue;
+                    // the Keeper looks from -z: lean to the near side so the people face away from the camera, and keep a tent from standing in front of the pole
+                    float score = Math.Abs(d - target) + 0.25f * (z - fz) + Terrain.Hash3(seed, SiteMap.I(c), SiteMap.J(c)) * 0.06f;
+                    if (buildings != null) foreach (var b in buildings) if (b.z < z && b.z > z - 1.0f && Math.Abs(b.x - x) < 0.6f) { score += 0.8f; break; }
                     if (score < bestScore) { bestScore = score; best = c; }
                 }
                 if (best >= 0) return (SiteMap.CXc(best), SiteMap.CZc(best));

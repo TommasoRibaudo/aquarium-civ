@@ -119,13 +119,14 @@ namespace AquariumCiv.View.PlayTests
             yield return Jpg("wide_camp");
 
             Debug.Log("[pole] " + ConsequenceCheats.PrayNow());
-            pv.timeScale = 4f;
-            yield return Until(() => pv.Activities.Count(a => a.kind == ActivityKind.Pray && !pv.IsWalking(a.who)) >= 2, 60f);
+            pv.timeScale = 2f;
+            yield return Until(() => pv.Activities.Count(a => a.kind == ActivityKind.Pray && !pv.IsWalking(a.who)) >= 1, 120f);
+            Debug.Log($"[pole] praying now: {pv.Activities.Count(a => a.kind == ActivityKind.Pray)}, standing {pv.Activities.Count(a => a.kind == ActivityKind.Pray && !pv.IsWalking(a.who))}");
             pv.timeScale = 1f;
-            Look(pole, 0.09f, 32f, 110f);
+            Look(pole, 0.07f, 30f, 0f);
             yield return Wait(0.8f);
             yield return Jpg("close_pray_a");
-            Look(pole, 0.08f, 25f, 60f);
+            Look(pole, 0.06f, 28f, 0f);
             yield return Wait(1.6f);
             yield return Jpg("close_pray_b");
             yield return Wait(1.6f);
@@ -135,7 +136,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Wait(1f);
             Debug.Log("[pole] " + ConsequenceCheats.PrayNow());
             pv.timeScale = 4f;
-            yield return Until(() => pv.Activities.Count(a => a.kind == ActivityKind.Pray && !pv.IsWalking(a.who)) >= 2, 60f);
+            yield return Until(() => pv.Activities.Count(a => a.kind == ActivityKind.Pray && !pv.IsWalking(a.who)) >= 2, 120f);
+            Debug.Log($"[pole] dusk praying: {pv.Activities.Count(a => a.kind == ActivityKind.Pray)}");
             pv.timeScale = 1f;
             Look(pole, 0.25f, 42f, 20f);
             yield return Wait(0.8f);

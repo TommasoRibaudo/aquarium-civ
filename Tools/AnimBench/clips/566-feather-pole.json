@@ -1,0 +1,148 @@
+{
+  "name": "566-feather-pole",
+  "notes": "#566 the feather pole: three people kneel in a small arc 0.28 u from it on the camera's side, facing it, hands together, a slow bow (DollStyle.Pray, 6 s round). No music marks (ChatterView skips Pray). knownGaps neighbours: a prayer is done together on purpose.",
+  "duration": 14.0,
+  "fps": 30,
+  "warmup": 0,
+  "camera": {
+    "view": "default",
+    "focus": [
+      0.0,
+      -0.1
+    ],
+    "span": 0.7
+  },
+  "sheet": {
+    "from": 0.0,
+    "to": 8.0,
+    "frames": 24,
+    "columns": 6
+  },
+  "expect": {
+    "reactSeconds": 0.2
+  },
+  "objects": [
+    {
+      "id": "pole",
+      "kind": "feather",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "radius": 0.08
+    }
+  ],
+  "dolls": [
+    {
+      "id": "p0",
+      "seed": 566,
+      "role": "villager",
+      "prop": "None",
+      "slot": "Hand",
+      "phase": 0.0,
+      "timeline": [
+        {
+          "label": "walk up",
+          "activity": "Walk",
+          "from": [
+            -0.5,
+            -0.88
+          ],
+          "to": [
+            0.0,
+            -0.28
+          ],
+          "face": "pole",
+          "dur": 2.0
+        },
+        {
+          "label": "pray",
+          "activity": "Pray",
+          "pos": [
+            0.0,
+            -0.28
+          ],
+          "face": "pole",
+          "target": "pole",
+          "dur": 10.0,
+          "endBeat": true
+        }
+      ]
+    },
+    {
+      "id": "p1",
+      "seed": 567,
+      "role": "villager",
+      "prop": "None",
+      "slot": "Hand",
+      "phase": 0.2,
+      "timeline": [
+        {
+          "label": "walk up",
+          "activity": "Walk",
+          "from": [
+            -0.34199999999999997,
+            -0.831
+          ],
+          "to": [
+            0.158,
+            -0.231
+          ],
+          "face": "pole",
+          "dur": 2.0
+        },
+        {
+          "label": "pray",
+          "activity": "Pray",
+          "pos": [
+            0.158,
+            -0.231
+          ],
+          "face": "pole",
+          "target": "pole",
+          "dur": 10.0,
+          "endBeat": true
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "seed": 568,
+      "role": "villager",
+      "prop": "None",
+      "slot": "Hand",
+      "phase": 0.4,
+      "timeline": [
+        {
+          "label": "walk up",
+          "activity": "Walk",
+          "from": [
+            -0.658,
+            -0.831
+          ],
+          "to": [
+            -0.158,
+            -0.231
+          ],
+          "face": "pole",
+          "dur": 2.0
+        },
+        {
+          "label": "pray",
+          "activity": "Pray",
+          "pos": [
+            -0.158,
+            -0.231
+          ],
+          "face": "pole",
+          "target": "pole",
+          "dur": 10.0,
+          "endBeat": true
+        }
+      ]
+    }
+  ],
+  "knownGaps": [
+    "neighbours"
+  ]
+}

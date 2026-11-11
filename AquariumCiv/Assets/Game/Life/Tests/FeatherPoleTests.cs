@@ -63,9 +63,11 @@ namespace AquariumCiv.Life.Tests
                 sim.Settlement.Fire(out float fx, out float fz, out _);
                 float d = Terrain.Dist(x, z, fx, fz);
                 Assert.GreaterOrEqual(d, FeatherPoleSpots.MinFire - 1e-3f, $"seed {seed}: out past the rack, stash, pot and seats");
-                Assert.LessOrEqual(d, 2.6f, $"seed {seed}: still in view of the camp");
+                Assert.LessOrEqual(d, 2.9f, $"seed {seed}: still in view of the camp");
                 foreach (var b in sim.State.buildings.Where(q => q.lotId != 0))
                     Assert.GreaterOrEqual(Terrain.Dist(x, z, b.x, b.z), FeatherPoleSpots.BuildingGap * 0.99f, $"seed {seed}: clear of the tent at {b.x:0.00},{b.z:0.00}");
+                foreach (var q in sim.State.consequenceProps.Where(q => q.placed && q.kind != ConsequenceKind.Feather))
+                    Assert.GreaterOrEqual(Terrain.Dist(x, z, q.x, q.z), FeatherPoleSpots.PropGap * 0.69f, $"seed {seed}: clear of the {q.kind} prop");
                 var map = sim.Settlement.Map;
                 int c = SiteMap.CellAt(x, z);
                 Assert.IsTrue(ApartSpots.CellFree(map, c), $"seed {seed}: on open ground (no lot, path, field, yard, green, rock, water)");
