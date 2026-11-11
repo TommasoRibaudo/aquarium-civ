@@ -62,6 +62,9 @@ namespace AquariumCiv.View.PlayTests
             Assert.GreaterOrEqual(Sim.DebugPlaceNearCamp(LifeSpecies.Fish), 0, "the fish placed");
             yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 20f);
             PeopleView.DebugSetHour(10f);
+            // the first-water moment sends everyone to look ("Inspect") for ~40 s and outranks the cheat's fishers (fb5 pass: all five Inspect at 10.4 h)
+            yield return Until(() => FirstWaterView.Instance == null || !FirstWaterView.Instance.Playing, 90f);
+            PeopleView.DebugSetHour(10f);
             Assert.IsTrue(Sim.FishingWater);
 
             int prev = 0, checks = 0;
@@ -77,7 +80,8 @@ namespace AquariumCiv.View.PlayTests
                     yield return null;
                     steady = Fishers(pv, feet) > 0 && feet.TrueForAll(f => NearestWater(Sim, f.x, f.y) <= 0.3f) ? steady + 1 : 0;
                 }
-                Assert.Greater(Fishers(pv, feet), 0, $"step {step}: somebody fishes ({Sim.EcoPondCells} cells)");
+                var doing = string.Join(" ", System.Linq.Enumerable.Select(pv.Activities, q => q.kind.ToString() + (q.moving ? ">" : "") + (q.enRoute ? "r" : "")));
+                Assert.Greater(Fishers(pv, feet), 0, "step " + step + ": somebody fishes (" + Sim.EcoPondCells + " cells; hour " + pv.Now.hour.ToString("0.0") + "; FishingWater " + Sim.FishingWater + "; doing: " + doing + ")");
                 foreach (var f in feet)
                 {
                     Assert.IsFalse(PondShore.IsWet(Sim, f.x, f.y), $"step {step}: the fisher at ({f.x:0.00},{f.y:0.00}) stands on dry ground");

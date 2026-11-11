@@ -492,7 +492,7 @@ namespace AquariumCiv.View
             bool drawing = a.kind == ActivityKind.FetchWater && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && a.place.kind is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
             if (drawing) target = DrawStand(land, plannerSim, a.place.kind, spot, target, a.slot, out face);
             // #364: fishing: the fisher stands 0.06 u back from the real water edge facing the water (the water run's spot), so the line's end is on the water
-            bool fishing = a.kind == ActivityKind.Fish && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
+            bool fishing = (a.kind == ActivityKind.Fish || a.kind == ActivityKind.Gather && a.prop == Prop.Basket /* #574: the egg pick at the reeds */) && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
             if (fishing) target = DrawStand(land, plannerSim, PlaceKind.Pond, spot, target, a.slot, out face);
             if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
