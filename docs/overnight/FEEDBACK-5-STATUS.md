@@ -10,15 +10,15 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 
 ## Checklist
 - [x] `p9/feedback-5` from `origin/dev`; this prompt committed (86f4370)
-- [ ] 1 · #569 merged (pacing table; target in decisions.md; fixtures re-seeded with reasons)
-- [ ] 2 · #573 merged (no chopping by the Keeper's tree; chips and logs)
-- [ ] 3 · #574 cause written in the issue; hunts and the egg gather merged
-- [ ] 4 · #578 merged (words, wood, joining)
-- [ ] 5 · #575 merged (rename)
-- [ ] 6 · #570 merged (locked seeds, village line)
-- [ ] 7 · #571 + #572 merged (population, chief's office)
-- [ ] 8 · #576 merged (open for look sign-off)
-- [ ] 9 · #577 merged (open for look sign-off)
+- [x] 1 · #569 merged (pacing table; target in decisions.md; fixtures re-seeded with reasons)
+- [x] 2 · #573 merged (no chopping by the Keeper's tree; chips and logs)
+- [x] 3 · #574 cause written in the issue; hunts and the egg gather merged
+- [x] 4 · #578 merged (words, wood, joining)
+- [x] 5 · #575 merged (rename)
+- [x] 6 · #570 merged (locked seeds, village line)
+- [x] 7 · #571 + #572 merged (population, chief's office)
+- [x] 8 · #576 merged (open for look sign-off)
+- [x] 9 · #577 merged (open for look sign-off)
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
 - [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
 - [ ] `Feedback5Playthrough` + the touch play-through done, every beat looked at
@@ -58,6 +58,10 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - 09:25 Editor restart (3 tickets): restart-editor.sh hit 'Save Scene' again ('did not quit in 150 s'); the dialog had gone by the time I looked and Unity had quit; reopened (ready). Shots of fb5/ copied to scratchpad/shots first.
 - 09:30 #573 round 2 merged (9225d43, branch f510d7b): ≤2 choppers per grown tree (ChopSlots), overflow does home chores, swing tempo 0.9-1.1, logs lifted when the chopper walks off with a Log, CampRhythm back at 6/20/50 (fixture: 5 wild trees). AnimBench 573-chop-logs: two choppers out of step. My SimTests on the merge: 1802/1802.
 - 09:35 #578 lane A started (wt 578 from 9225d43). #576 round 2 holds the Editor (lock re-created, watcher 900 s).
+- 09:44 #576 round 2 merged (dd9621a, branch a327435): light patchy snow on natural ground only (not roofs/stones/canvas/shelf), spring yellower, summer deeper; Fb5SeasonShots _default/_box/_close + Title750. Seasons 2/2, HudInfo 6/6, CameraGlassFeel 3/3, Smoke 2/2. Looked at the 4 box shots + winter close: distinct at a glance. Frozen pond rim not done ('maybe' in the issue). Open for look sign-off. Offline csc on the merge 0 errors.
+- 09:46 Batched Editor pass started (Sonnet, vs/feedback5-pass from dd9621a) on everything but #578; Fb5PassShots for the workers' Editor checks. Watcher 900 s. Editor tickets since restart: 2.
+- 10:00 #578 round 1 back (4559cab): land-true words (woods/pond/meadow fixed when raised), PondCamp/MeadowCamp, ApartLife.CarryAt log cycle, pile x1.5 for 36 months, joining at the village/next Hut, camp teardown; SimTests 1816. Round 2 sent (join + first load must be watched; pond words need water).
+- 10:30 #578 round 2 merged (22df0c7, branch 4857c23): joining waits for a calm watched moment (JoinCalm), camera nudges, arrival caption; first-load caption; pond words only with water. My checks on the merge: offline csc 0 errors, SimTests 1817/1817. All lane A merged. Walkthrough + Feedback5Playthrough worker started offline (wt fb5walk).
 
 ## Round logs
 - #575 round 1: claims sim + card + test; diff read (OK: chronicle lines are plain text). Pending: Unity shots (pass).
@@ -69,3 +73,6 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - #570 round 1: accepted offline; Editor phase (fit at 750x1334, shots) pending.
 - #573 round 2: all three points met; accepted (fixture with 5 wild trees accepted: a real wood has several trees).
 - #576 round 1: look OK except snow too heavy, spring≈summer; no whole-box or 750 shot. Round 2 sent.
+- #576 round 2: accepted.
+- #578 round 1: content OK; short: join can fire unseen (away/off-camera), first load unseen, pond words with an empty basin. Round 2 sent.
+- #578 round 2: accepted. TravellersPlayTests' join test Assumes camp_fire raise: confirm it runs (not Inconclusive) in the pass.
