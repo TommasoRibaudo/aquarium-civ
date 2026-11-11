@@ -107,9 +107,9 @@ namespace AquariumCiv.Tests
                     mistedGrown += misted.grown; dryGrown += dry.grown;
                     mistedSap += misted.saplings; drySap += dry.saplings;
                 }
-            TestContext.Out.WriteLine($"after 3 years: grown trees misted {mistedGrown} vs dry {dryGrown}; saplings misted {mistedSap} vs dry {drySap}");
-            Assert.GreaterOrEqual(mistedGrown, dryGrown * 1.2f, "seedlings and young trees grew up faster where the mister's water fell");
-            Assert.GreaterOrEqual(mistedGrown + mistedSap, (dryGrown + drySap) * 1.05f, "and more seeds took there");
+            TestContext.Out.WriteLine($"after 3 years: young+grown trees misted {mistedGrown} vs dry {dryGrown}; saplings misted {mistedSap} vs dry {drySap}");
+            Assert.GreaterOrEqual(mistedGrown, dryGrown * 2f, "seedlings and young trees grew up faster where the mister's water fell");
+            Assert.GreaterOrEqual(mistedGrown + mistedSap, (dryGrown + drySap) * 1.1f, "and visibly more plants stand there (more seeds took)");
         }
 
         [Test]

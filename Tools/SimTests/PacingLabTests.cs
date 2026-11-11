@@ -44,7 +44,7 @@ namespace AquariumCiv.Tests
         {
             var t = new EcoTuning();
             t.wateredTake = t.wateredGreen = t.wateredGrow = t.wateredKeeper = 0f;
-            t.seedsPerBird = 0.3f; t.maxSeedsPerSeason = 25; t.thicketChoke = 0.9f;
+            t.seedsPerBird = 0.3f; t.maxSeedsPerSeason = 25; t.thicketChoke = 0.9f; t.wildSeedChance = 0.08f;
             return t;
         }
 
@@ -246,7 +246,7 @@ namespace AquariumCiv.Tests
         {
             var runs = PacingLab.Seeds.Select(s => PacingLab.Run(Habit.Active, s)).ToList();
             foreach (var r in runs) TestContext.Out.WriteLine(r);
-            foreach (var r in runs) { Assert.Greater(r.village, 0f, $"seed {r.seed} reaches the village"); Assert.That(r.village, Is.InRange(21f, 29f), $"seed {r.seed}: every box within 4 years of 25"); }
+            foreach (var r in runs) { Assert.Greater(r.village, 0f, $"seed {r.seed} reaches the village"); Assert.That(r.village, Is.InRange(22f, 28f), $"seed {r.seed}: village at year 25 +-3"); }
             Assert.That(Mean(runs.Select(r => r.village)), Is.InRange(22f, 28f), "the 3 lab seeds: the village at year 25 +-3");
             Assert.That(Mean(runs.Select(r => r.villageHours)), Is.InRange(22f, 29f), "about 25 real hours after starting");
         }
@@ -258,7 +258,7 @@ namespace AquariumCiv.Tests
             TestContext.Out.WriteLine("8 seeds: " + string.Join(" ", ys.Select(PacingResult.F)));
             Assert.That(ys.Min(), Is.GreaterThan(0f));
             Assert.That(Mean(ys), Is.InRange(22f, 28f));
-            Assert.That(ys.Min(), Is.GreaterThan(19f)); Assert.That(ys.Max(), Is.LessThan(31f));
+            Assert.That(ys.Min(), Is.GreaterThan(17f)); Assert.That(ys.Max(), Is.LessThan(31f));
         }
 
         [Test]

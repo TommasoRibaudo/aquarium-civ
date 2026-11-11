@@ -137,6 +137,7 @@ namespace AquariumCiv.View
             Row();
             if (Btn("Mist big here")) last = EcoDebug.MistBigCamp();
             if (Btn("Mist trees")) last = EcoDebug.MistTrees(); // #569
+            if (Btn("Mist one half, skip 3 yr")) last = EcoDebug.MistHalf(12); // #569
             if (Btn("Puddles now")) last = EcoDebug.PuddlesNow();
             if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
             EndRow();

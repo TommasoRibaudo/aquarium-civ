@@ -62,6 +62,20 @@ namespace AquariumCiv.View
 
         public static string MistBigCamp() { var st = Sim?.Settlement; return st != null ? MistBig(st.Map.greenX + 0.5f, st.Map.greenZ) : "no sim"; }
 
+        /// <summary>#569 side by side: mists every cell of the box's left half (x &lt; 0; the right half stays the control) with full 4-second
+        /// strokes at the start of each season, for <paramref name="seasons"/> seasons, with time running. "Mist one half, skip 3 yr" = 12 seasons.</summary>
+        public static string MistHalf(int seasons)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            for (int k = 0; k < seasons; k++)
+            {
+                foreach (float x in new[] { -2.3f, -1.2f }) foreach (float z in new[] { -1.5f, -0.5f, 0.5f, 1.5f }) s.Mist(x, z, 4f, 4f);
+                s.DebugSkipSeasons(1);
+            }
+            return Refresh($"left half misted every season for {seasons} seasons; the right half is the control");
+        }
+
         /// <summary>#569 "Mist trees": a full 4-second mist on the Keeper's tree, each stand of wild seedlings and young trees and each grown
         /// tree (at most 6 spots), the way a player waters the wood. Then "+1 yr" shows misted ground seeding and growing faster than the rest.</summary>
         public static string MistTrees()

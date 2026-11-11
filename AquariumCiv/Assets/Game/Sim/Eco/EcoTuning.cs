@@ -80,14 +80,14 @@ namespace AquariumCiv.Sim.Eco
         public int seedReach = 8, maxSeedsPerSeason = 25;
         public float seedTakeGrass = 0.5f, seedTakeTall = 0.4f, seedTakeBush = 0.9f, seedTakeBare = 0.3f;
         public float seedlingRate = 0.06f, youngRate = 0.045f;
-        public float wildSeedChance = 0.08f, wildSeedAfterBush = 0f; // a bird drops a seed from outside (a box with no Keeper)
+        public float wildSeedChance = 0.04f, wildSeedAfterBush = 0f; // a bird drops a seed from outside (a box with no Keeper)
 
         // #569 (b): the mister's water grows the forest. Mist stamps `watered` on the cells it falls on (wateredAt in the middle, less at
         // the edge); it fades by wateredKeep a season. On watered ground: a seed takes (x 1 + wateredTake * w), the grass comes (x 1 +
         // wateredGreen * w), seedlings and young trees grow (x 1 + wateredGrow * w) and count as at least wateredMoist * w damp; the
         // Keeper's own tree grows x 1 + wateredKeeper * w. All [est]: PacingLab sets them so an active player reaches the village near year 25.
-        public float wateredAt = 1f, wateredKeep = 0.95f, wateredMoist = 0.5f;
-        public float wateredTake = 0.5f, wateredGreen = 1f, wateredGrow = 0.6f, wateredKeeper = 1f;
+        public float wateredAt = 1f, wateredKeep = 0.9f, wateredMoist = 0.5f;
+        public float wateredTake = 2f, wateredGreen = 1f, wateredGrow = 3f, wateredKeeper = 0f;
 
         // The one tree
         public float treeRate = 0.35f;                            // progress per season at full care
