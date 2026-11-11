@@ -62,6 +62,16 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - 09:46 Batched Editor pass started (Sonnet, vs/feedback5-pass from dd9621a) on everything but #578; Fb5PassShots for the workers' Editor checks. Watcher 900 s. Editor tickets since restart: 2.
 - 10:00 #578 round 1 back (4559cab): land-true words (woods/pond/meadow fixed when raised), PondCamp/MeadowCamp, ApartLife.CarryAt log cycle, pile x1.5 for 36 months, joining at the village/next Hut, camp teardown; SimTests 1816. Round 2 sent (join + first load must be watched; pond words need water).
 - 10:30 #578 round 2 merged (22df0c7, branch 4857c23): joining waits for a calm watched moment (JoinCalm), camera nudges, arrival caption; first-load caption; pond words only with water. My checks on the merge: offline csc 0 errors, SimTests 1817/1817. All lane A merged. Walkthrough + Feedback5Playthrough worker started offline (wt fb5walk).
+- 10:50 Walkthrough worker done (vs/fb5-walkthrough f9ab909, offline csc 0): Feedback5Playthrough (beats a-i), OpenQuestionsSignOff.Fb5.cs (22 stops #569-#578), open-questions.md Feedback 5 section (10 look, 3 decisions, 11 calls). Round 2: #569 stop on a young box. Merge after the Editor auto run.
+- 11:45 Batched pass PAUSED by the user ("pause, close Unity, stop; we continue later"). Merged vs/feedback5-pass so far (0fd4936 fixes + a0f577e results; see docs/overnight/feedback5-pass-results.md): EditMode 10 asm run once (only an EcoRabbitTests fixture moved by #569: re-seeded 7→31); PlayMode list green except the re-runs below; fixes: #575 pencil/Keep reachable, #574 egg gatherer at the water's edge, #573 wild-tree cheat on drawn cells, FisherShore test waits for the first-water moment. Fb5PassShots 5/5 (shots read by the worker; I haven't looked at them yet). Unity closed by the orchestrator.
+
+## RESUME HERE (next session)
+1. Health gate + lock + watcher; open the Editor on a branch from p9/feedback-5 (F:\GameDev is on vs/feedback5-pass).
+2. Finish the pass: re-run EditMode Life and View (cancelled); PlayMode PersonCardRename, FisherShore, Fishing, HuntView, BuildingCard, PondLife, then SmokePlay. Look at the shots in Temp/agent/fb5/pass/ (re-run Fb5PassShots: Temp is wiped on quit).
+3. #578's Editor delta: ApartGroupsPlayTests, TravellersPlayTests (category Travellers; check the join test is not Inconclusive), shots of the carry and the joining.
+4. Branch vs/fb5-walkthrough (f9ab909, NOT merged): merge into p9/feedback-5, run Feedback5Playthrough (explicit) and the OpenQuestionsSignOff auto run (Temp/agent/oqsignoff/AUTO): every new stop staged, look at every shot, fix, delete AUTO.
+5. Polish noted: the rename field half scrolled off at the top when Keep is visible (#575).
+6. Tester (45 min brief), close work issues (#570 #571 #572 #573 #574 #575 #578 + their notes; #569 needs the misted-patch look in the walkthrough → keep open if the user signs off there; #576 #577 stay open), PR p9/feedback-5 → dev, final report.
 
 ## Round logs
 - #575 round 1: claims sim + card + test; diff read (OK: chronicle lines are plain text). Pending: Unity shots (pass).
@@ -76,3 +86,4 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - #576 round 2: accepted.
 - #578 round 1: content OK; short: join can fire unseen (away/off-camera), first load unseen, pond words with an empty basin. Round 2 sent.
 - #578 round 2: accepted. TravellersPlayTests' join test Assumes camp_fire raise: confirm it runs (not Inconclusive) in the pass.
+- Pass round 1 (paused): fixes accepted on report; re-runs and shots still to check.
