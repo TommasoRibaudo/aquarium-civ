@@ -781,6 +781,9 @@
 .kit-life-row--open { display: flex; }
 .kit-life-choice { width: 140px; height: 140px; min-width: 0; padding: 0; margin: 0 16.5px var(--space-8) 0; flex-direction: column; justify-content: center; align-items: center; }
 .kit-life-choice > .kg-icon { width: 77px; height: 77px; }
+/* #570: a shut jar stands greyed with its need in the note; the picked one is a little stronger */
+.kit-life-choice--locked { opacity: 0.4; }
+.kit-life-choice--locked.kit-life-choice--picked { opacity: 0.75; }
 .kg-tool > .kg-tool-dot { position: absolute; right: 22px; top: 18px; display: none; }
 .kg-tool--life > .kg-tool-dot { display: flex; }
 .office-holder.kg-btn { -unity-font-style: bold; }
