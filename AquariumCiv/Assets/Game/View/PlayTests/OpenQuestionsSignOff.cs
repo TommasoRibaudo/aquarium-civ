@@ -778,6 +778,7 @@ namespace AquariumCiv.View.PlayTests
                     panel.Show(i + 1, stops.Count, ModeOf(st.Kind), crumb, (st.Issue.Length > 0 ? st.Issue + " " : "") + st.Name, st.Judge, st.Extras.Select(x => x.label).ToArray(), st.Options, st.Bullets, st.BulletTitles, st.NotStaged);
                     if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
                     if (youngBox && !st.Slug.StartsWith("pacing_")) { yield return RebuildPlayedBox(); }
+                    yield return CloseLooseUi();
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {
