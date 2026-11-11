@@ -34,6 +34,8 @@ explicit play test `Feedback4SignOff` (category `Feedback4SignOff`) walks throug
 - #541: about 1.2 s with no cue when a kid joins another group.
 - AnimLab's close camera crops the doll at the frame edge (the 543 sheet is still judgeable).
 - `CarePlayTests.Glass_CleanIsClear_DirtyIsObvious_AndAWipeShows` failed twice (render flake, as in batch 3).
+- The debug cheat "Fill fish basket" (`LifePlanner.DebugRackAt`) overflows the stack once a frame if the view hour is
+  jumped while its duty is live (cheat only; the sign-off walkthrough clears it first).
 
 ## Playtest-feedback batch 3 (2026-11-09)
 Shots in `design/results/p9/feedback3/` (`5xx_*` per issue, `f3_*` the touch play-through, `tester_*`/`tfix_*` the tester run and its fixes).
