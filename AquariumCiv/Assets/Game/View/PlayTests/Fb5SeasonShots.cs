@@ -17,7 +17,7 @@ namespace AquariumCiv.View.PlayTests
     [Explicit("Screenshots for the eye: run by hand"), Category("Fb5Season")]
     public class Fb5SeasonShots : PlayTestBase
     {
-        public static string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb5/576/spec2/";
+        public static string Dir = "F:/GameDev/AquariumCiv/Temp/agent/fb5/576/spec3/";
         static SimCore Sim => GameClock.Instance.ActiveSim;
         static BoxCamera Rig => Camera.main.GetComponent<BoxCamera>();
 
@@ -66,16 +66,34 @@ namespace AquariumCiv.View.PlayTests
             ShowMeDirector.BubblesOn = false;
             yield return Stage(villageYears: 3);
             var rig = Rig;
-            var home = (target: new Vector3(0f, 1f, 0f), yaw: 28f, pitch: 34f, zoom: rig.minZoom);
+            var home = rig.Home; // the camp frame: the default camera
+            var box = (target: new Vector3(0f, 1f, 0f), yaw: 28f, pitch: 34f, zoom: 1f); // the whole box
             for (int s = 0; s < 4; s++)
             {
                 yield return ToSeason(s);
-                rig.EaseTo(home.target, home.yaw, home.pitch, home.zoom, 0.3f); // the whole box
+                rig.EaseTo(home.target, home.yaw, home.pitch, home.zoom, 0.3f);
                 yield return new WaitForSecondsRealtime(1.2f);
                 yield return Shot(Names[s] + "_default");
+                rig.EaseTo(box.target, box.yaw, box.pitch, box.zoom, 0.3f);
+                yield return new WaitForSecondsRealtime(1.2f);
+                yield return Shot(Names[s] + "_box");
                 rig.FlyToPlace(Place.Land(PlaceKind.Fire), 0.4f, 0.3f);
                 yield return new WaitForSecondsRealtime(1.6f);
                 yield return Shot(Names[s] + "_close");
+            }
+            CloseSlice();
+        }
+
+        /// <summary>The title line with the season word at 750x1334 (autumn, then winter).</summary>
+        [UnityTest]
+        public IEnumerator Title750()
+        {
+            ShowMeDirector.BubblesOn = false;
+            yield return Stage(750, 1334, villageYears: 3);
+            foreach (int s in new[] { 2, 3 })
+            {
+                yield return ToSeason(s);
+                yield return Shot("title750_" + Names[s]);
             }
             CloseSlice();
         }

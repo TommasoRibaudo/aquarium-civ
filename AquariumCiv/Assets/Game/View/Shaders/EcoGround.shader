@@ -62,7 +62,7 @@ Shader "AquariumCiv/View/EcoGround"
                 half m = max(h.r, max(h.g, h.b));
                 half3 aut = half3(1.0, 0.74, 0.36) * m;
                 half3 win = half3(0.88, 0.92, 1.0) * m * 0.92;
-                return (h * (_AC_Season.x + _AC_Season.y) + aut * _AC_Season.z + win * _AC_Season.w) / tot;
+                return (h * half3(1.1, 1.0, 0.72) * _AC_Season.x + h * half3(0.88, 1.0, 0.92) * _AC_Season.y + aut * _AC_Season.z + win * _AC_Season.w) / tot;
             }
 
             struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; };

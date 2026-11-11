@@ -79,6 +79,12 @@ Shader "AquariumCiv/View/Stylized"
         float _AC_Snow;
 
         float Hash21(float2 p) { return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
+        float VNoise(float2 q)
+        {
+            float2 i = floor(q), f = frac(q);
+            f = f * f * (3.0 - 2.0 * f);
+            return lerp(lerp(Hash21(i), Hash21(i + float2(1, 0)), f.x), lerp(Hash21(i + float2(0, 1)), Hash21(i + float2(1, 1)), f.x), f.y);
+        }
 
         half3 SeasonColour(half3 c, float3 p, float3 nWS, float sway, float2 lamp)
         {
@@ -91,22 +97,27 @@ Shader "AquariumCiv/View/Stylized"
             if (foliage > 0.001)
             {
                 float h = Hash21(floor(p.xz * 7.0));                       // a patch of leaves turns together: gold here, red there
-                half3 spring = c * half3(1.12, 1.2, 0.8);
+                half3 spring = c * half3(1.3, 1.32, 0.62); // fresh, lighter, yellower
                 half3 gold = l * half3(2.0, 1.3, 0.28);
                 half3 red = l * half3(2.1, 0.55, 0.22);
                 half3 autumn = lerp(gold, red, smoothstep(0.4, 0.9, h)) * 1.12;
                 if (sway < 0.01) autumn = l * half3(1.75, 1.35, 0.6);     // the ground's grass dries to straw
                 half3 winter = lerp(c, half3(l, l, l) * half3(1.0, 1.04, 1.1) * 1.45 + 0.05, 0.85);
-                half3 tinted = (spring * _AC_Season.x + c * _AC_Season.y + autumn * _AC_Season.z + winter * _AC_Season.w) / tot;
+                half3 tinted = (spring * _AC_Season.x + c * half3(0.8, 0.95, 0.78) * _AC_Season.y + autumn * _AC_Season.z + winter * _AC_Season.w) / tot;
                 col = lerp(c, tinted, foliage);
             }
             if (land > 0.5 && _AC_Snow > 0.001)
             {
-                half up = smoothstep(0.45, 0.8, nWS.y);
-                half patch = Hash21(floor(p.xz * 5.0));
-                half sat = (max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b))) / (max(c.r, max(c.g, c.b)) + 1e-3);
-                half amt = saturate(_AC_Snow * up * 1.25 - patch * 0.3) * (1.0 - 0.6 * saturate((sat - 0.5) * 2.0));
-                col = lerp(col, half3(0.8, 0.86, 0.96), amt * 0.92);
+                // a light dusting, not a blanket (#576 round 2): only flat natural ground (steep roofs, grey stones and white canvas
+                // stay as they are), in soft patches that grow with the snow and leave the meadow showing through
+                half up = smoothstep(0.82, 0.96, nWS.y);
+                half mx = max(c.r, max(c.g, c.b));
+                half sat = (mx - min(c.r, min(c.g, c.b))) / (mx + 1e-3);
+                half natural = smoothstep(0.22, 0.38, sat) * (1.0 - smoothstep(0.7, 0.9, sat));
+                half h = VNoise(p.xz * 2.0) * 0.65 + VNoise(p.xz * 5.0) * 0.35; // soft drifts, bilinear value noise
+                half t = 1.0 - _AC_Snow * 0.5;
+                half amt = smoothstep(t, t + 0.22, h) * up * natural;
+                col = lerp(col, half3(0.7, 0.76, 0.86), amt * 0.75);
             }
             return col;
         }

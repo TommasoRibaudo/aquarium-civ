@@ -242,7 +242,7 @@ namespace AquariumCiv.View
             var fm = new MeshBuilder(seed + 1);
             BoxAndRoom(bm, fm);
             var baseMesh = bm.ToMesh("BoxBase");
-            Spawn("Base", baseMesh, SnowMaterial, true);
+            Spawn("Base", baseMesh, Solid, true);
             AoCollider("AO Base", baseMesh);
             var frameMesh = fm.ToMesh("BoxFrame");
             Spawn("Frame", frameMesh, FrameMaterial(), true);
