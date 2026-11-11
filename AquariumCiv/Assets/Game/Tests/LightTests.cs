@@ -535,6 +535,17 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
+        public void TheLid_FadesWhenLookedDownThroughSteeply_OrWhenClose_AndNeverFromTheSide()
+        {
+            Assert.AreEqual(0f, NearGlassFade.LidAmount(1f, 0.5f), "default view (30 degrees up), full box: the lid is there");
+            Assert.AreEqual(0f, NearGlassFade.LidAmount(1f, 0.0f), "level with the lid: edge on, nothing");
+            Assert.AreEqual(1f, NearGlassFade.LidAmount(1f, 0.93f), 1e-6f, "at the pitch ceiling the lid is gone, whatever the zoom");
+            Assert.AreEqual(1f, NearGlassFade.LidAmount(0.2f, 0.5f), 1e-6f, "zoomed in, looking down: gone like a side pane");
+            Assert.AreEqual(0f, NearGlassFade.LidAmount(0.2f, -0.2f), "a camera below the lid never fades it");
+            Assert.AreEqual(1f, NearGlassFade.LidAmount(1f, 0.95f, cleanMode: true), 1e-6f, "clean mode does not bring the lid back: it has no grime");
+        }
+
+        [Test]
         public void Fade_IsSmoothInDistanceAndAngle_NoPop()
         {
             float prev = NearGlassFade.Amount(1.2f, 0.8f);

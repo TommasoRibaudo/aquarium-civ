@@ -53,6 +53,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/WolfContactTests.cs" /><!-- #437 no wolf plan has contact, against the real planner -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/VillageDeerHuntTests.cs" /><!-- 2026-11-08 the village hunts deer, half as often -->
     <Compile Include="../../AquariumCiv/Assets/Game/Life/Tests/CampSpreadTests.cs" /><!-- #521 the first camp days spread out -->
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoPacingTests.cs" /><!-- #569 the mister waters the forest -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoWetTests.cs" /><!-- P8 polish 266 sim half, 271 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoSeenTests.cs" /><!-- P8 polish 281 -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EcoRabbitTests.cs" /><!-- P8 polish 282 -->
@@ -100,6 +101,7 @@
     <Compile Include="../../AquariumCiv/Assets/Game/View/Tests/GrimePatchTests.cs" />
     <Compile Include="Shims/*.cs" />
     <Compile Include="Readthrough/*.cs" /><!-- #61: [Explicit] transcript dump, run on demand -->
+    <Compile Include="PacingLabTests.cs" /><!-- #569: the pacing lab on the real sim -->
     <Compile Include="CameraGlassTests.cs" /><!-- #273: the glass limits of the camera -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/CampFrameTests.cs" /><!-- t1-camera: the camp frame -->
     <Compile Include="CrowdCardLifeTests.cs" /><!-- #148: the sim card from the real planner; here because Sim.Tests cannot see Life -->
