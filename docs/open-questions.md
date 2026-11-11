@@ -3,7 +3,37 @@
 Everything waiting on a decision by the user, in one place. Answered items move to [decisions.md](decisions.md) and are
 deleted here. Recommended options come first and are marked ★. On GitHub: issues labelled `needs:user`.
 
-_Last updated 2026-11-09._
+_Last updated 2026-11-10._
+
+## Playtest-feedback batch 4 (2026-11-10)
+Run log: `overnight/FEEDBACK-4-STATUS.md`; pass results: `overnight/feedback4-pass-results.md`. In the Editor, the
+explicit play test `Feedback4SignOff` (category `Feedback4SignOff`) walks through every item below and records your verdicts.
+
+### Sign-offs on the phone (built, merged, issue open)
+- **#538 camera feel**: the free camera's pan now reaches both side walls at close, mid and far zoom (the close-zoom limit
+  that stopped short is gone); the soft band at the walls stays. Feel it with two fingers.
+- **#526 poles (#537, #499)**: the poles were the storyteller's feather prop. Now a pale stake in a stone ring with three
+  fanned feathers. Camp props no longer stand on the rack, pot, stash or tents.
+- **#543 fish basket and rack**: fishers carry a reed creel with fish in it; full baskets are hung on a drying rack at camp
+  (silver fresh fish, brown when dry); dried fish go to the stash pile, laid on a dark mat in front of the logs.
+
+### Calls I made without you
+- #539: settlers' camps keep clear of where the pond will grow (woods or shore). The spot is checked again every 5 s, so a
+  camp the water reaches moves at the next check, possibly while you watch.
+- #540: camp props are moved apart in the view only; the people still walk to the old spot.
+- #541: lone kids within 3.2 u of each other play as one group.
+- #542: taking ducks or fish frames the whole pond (zoom 0.3-0.6); any tap on the water confirms at the ghost.
+- #543: fish counts on the rack and pile are saved (old saves start at 0); a fisher's basket count isn't (empty after a reload).
+- #495: fishers stand where the shore is now, also while the pond grows.
+- Every worker ran on Sonnet (you asked), including #542 and #543 (the plan had Opus).
+
+### Polish noted, not fixed
+- #542: the duck ghost is small; the pond framing isn't centred when the pond is at the box edge.
+- #543: a fisher who misses three times walks to the rack and back with nothing to hang; the pile's fish reach 0.04 u past
+  the pile's own footprint (still inside its 0.06 u margin).
+- #541: about 1.2 s with no cue when a kid joins another group.
+- AnimLab's close camera crops the doll at the frame edge (the 543 sheet is still judgeable).
+- `CarePlayTests.Glass_CleanIsClear_DirtyIsObvious_AndAWipeShows` failed twice (render flake, as in batch 3).
 
 ## Playtest-feedback batch 3 (2026-11-09)
 Shots in `design/results/p9/feedback3/` (`5xx_*` per issue, `f3_*` the touch play-through, `tester_*`/`tfix_*` the tester run and its fixes).
