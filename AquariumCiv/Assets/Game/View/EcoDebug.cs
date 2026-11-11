@@ -219,6 +219,16 @@ namespace AquariumCiv.View
             return MistAt(x, z, 2f);
         }
 
+        /// <summary>#576 "Skip to next season": the sim's clock moves on to the middle of the next season (the land, the light and the title word follow).</summary>
+        public static string SkipToNextSeason()
+        {
+            var s = Sim;
+            if (s == null) return "no sim";
+            float d = SeasonLook.MonthsToNextSeasonMiddle(SeasonLook.PhaseOf(s));
+            s.Advance(d * s.Config.StepHours);
+            return Refresh($"now {SeasonLook.Word(s.State.month)} (month {s.State.month % 12})");
+        }
+
         public static string SkipSeasons(int n)
         {
             var s = Sim;

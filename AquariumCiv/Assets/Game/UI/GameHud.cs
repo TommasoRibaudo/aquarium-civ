@@ -1042,8 +1042,8 @@ namespace AquariumCiv.GameUI
             return line + " · " + population.ToString(CultureInfo.InvariantCulture) + (population == 1 ? " person" : " people");
         }
 
-        /// <summary>The season slot of the title line; empty until #576.</summary>
-        static string SeasonWord(AquariumCiv.Sim.SimState s) => null;
+        /// <summary>#576: the season slot of the title line, from the sim's month ("Spring", "Summer", "Autumn", "Winter").</summary>
+        public static string SeasonWord(AquariumCiv.Sim.SimState s) => AquariumCiv.Life.LifeClock.SeasonOf(s.month).ToString();
 
         /// <summary>The name just changed: the title shows it at once.</summary>
         public void RefreshNow() => RefreshText();
