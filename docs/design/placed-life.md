@@ -300,3 +300,67 @@ white stag now · wolves bold (boldness 1) · meat thief now · lost pup now · 
 | #437 wolves, #438 dogs | §5.6, §5.7 |
 | #439–#447 wolf and dog scenes, audio | §5.6, §5.7, B20–B26 |
 | #435 done | §8 end to end, no cheats |
+
+## 12. Pacing (#569)
+
+**Target (the user, 2026-11-11; decisions.md):** an active player reaches the village at **game year 25, about 25 real hours
+after starting** (1 game year = 1 real hour). The tester played 8 days, ~2.5 h watched, and reached year 37 with no village:
+a seedling needed ~13 years, the birds dropped ~1 seed a season, the thicket choked 90% of them, and water only lifted the
+moisture factor.
+
+**The change (user's choice b + d), all numbers in `EcoTuning`:**
+
+- **b, the mister's water grows the forest.** `EcoState.watered` (per cell, 0..1, saved; an old save makes it empty): a mist
+  stamps it on every cell it falls on (`wateredAt` in the middle, less toward the edge; not on water), it fades `wateredKeep`
+  (0.95) a season, a half-life of about 3.4 game years. On watered ground: a seed takes `x (1 + wateredTake 0.5 * w)`; the grass
+  comes `x (1 + wateredGreen 1.0 * w)`; seedlings and young trees grow `x (1 + wateredGrow 0.6 * w)` and count as at least
+  `wateredMoist 0.5 * w` damp (so a dry spell does not stop them); the Keeper's own tree grows `x (1 + wateredKeeper 1.0 * w)`.
+  A box nobody mists keeps `watered` at 0 and plays as before.
+- **d, more seeds.** `seedsPerBird` 0.3 to 0.4 (a third more seeds a spring and autumn), `thicketChoke` 0.9 to 0.6.
+- The village gate keeps **8 trees**, pond 20, ducks and fish placed.
+- No new dice: the new terms only scale the existing hash chances (`Chance(kind, cell)`); nothing is drawn from the main stream.
+
+**How it is measured.** `Tools/SimTests/PacingLabTests.cs` (`dotnet test Tools/SimTests --filter PacingLabTests`; the table
+prints with `-- NUnit.RunExplicit=true`, filter `PrintTable`). It plays the **game's own `SimCore` + `EcoModel` + `EcoTuning`**
+(the old `Tools/EcologyLab` keeps its own copy of the model and is not used) on the real-hour clock, with the game's offline
+catch-up (8 h away at full speed, the rest at a quarter). Keepers, all assumptions:
+
+| Keeper | Visits | Each visit |
+|---|---|---|
+| (a) Active | 08:00, 08:30, 10:00, 12:30, 16:00, 19:00, 22:30, then every day 08:00 ... (six a day, asleep 22:30-08:00) | place what is ready (by the camp), plant the seed, wipe, pluck; **six 3-second mist strokes** (~20 s of spray, a finger's visit) |
+| (b) The user's habit | 08:00, 12:30, 17:00, 21:30, then 08:00 next day (every 4.5 h, offline overnight) | the same visit |
+| (c) Never mists | as (a) | places and plants, but one first-run rain only; no other mist |
+
+The six strokes go: the Keeper's tree while it grows; the wild seedlings and young trees (up to 3 strokes, most covered
+first); the open ground round the grown trees where a seed would fall (up to 3); the rest on the driest ground near the camp.
+The player sees the saplings, so they water them: this is what "misting grows a wood" asks of them. Years are game years.
+
+| Keeper, seed | Camp gate | Pond 20 cells | 8 trees | **Village** (before) | **Village** (after) | after, in real hours |
+|---|---|---|---|---|---|---|
+| (a) Active, 7 | 4.8 / 4.8 | 11.3 / 11.0 | 30.3 / 21.5 | 30.3 | **21.5** | 22.5 |
+| (a) Active, 21 | 4.8 / 2.3 | 11.3 / 11.0 | 38.3 / 27.3 | 38.3 | **27.3** | 28.4 |
+| (a) Active, 42 | 4.8 / 4.8 | 10.3 / 10.3 | 36.5 / 28.3 | 36.5 | **28.3** | 29.4 |
+| (b) Habit, 7 | 9.3 / 9.3 | 19.3 / 18.8 | 34.5 / 31.3 | 34.5 | **31.3** | 33.1 |
+| (b) Habit, 21 | 9.3 / 9.3 | 18.0 / 17.8 | 46.5 / 29.8 | 46.5 | **29.8** | 31.6 |
+| (b) Habit, 42 | 9.3 / 9.3 | 16.8 / 16.5 | 41.3 / 32.5 | 41.3 | **32.5** | 34.3 |
+| (c) Never mists, 7 | 16.5 / 16.5 | 55 / 55 | 52.3 / 52.3 | not in 60 y | not in 60 y | - |
+| (c) Never mists, 21 | 15.5 / 15.5 | 50 / 50 | none in 60 y | not in 60 y | not in 60 y | - |
+| (c) Never mists, 42 | 13.3 / 13.3 | 44.3 / 44.3 | 49.3 / 49.3 | 49.3 | 49.3 | 51.6 |
+
+(Each cell reads "before / after"; the village columns are the gate, which opens at the first visit after the 8th tree because
+the ducks and fish are placed by hand.) The mean for (a) is **before 35.0, after 25.7** (3 seeds); over 8 seeds the after-mean is
+25.2 (21.5, 27.3, 28.3, 22.5, 23.3, 25.5, 26.3, 27.5). (b) is **before 40.8, after 31.2**. (c) is untouched: with no mist nothing
+is watered, so the new rules change nothing for a box nobody mists. The camp and the pond come at the same years as before for
+(a) (the early game was already about right); the wait was the wood.
+
+**What is left, said plainly.**
+- (b) lands **5.5 years after (a)**, not 2-3. The rest is the chain, not the forest: the camp gate opens at visit 3 or 4, and the
+  thicket, the rabbits, the camp, the seed, the tree and the ducks and fish are each one placement per visit (#434's design), so
+  every 4.5 h gap costs 4.5 years at each step. Shortening that chain is a different decision (two placements per visit); I did
+  not make it.
+- The three-seed spread of (a) is 21.5-28.3: the wood's first seeds are luck. Tests check the mean (22-28), each seed 21-29, and
+  eight seeds with none outside 19-31.
+- The pond comes at year ~11 for (a) and is not the bottleneck; the 8 trees are.
+
+**Assumptions to confirm by watching real play:** six strokes of 3 s a visit, aimed at saplings and tree surroundings; six
+visits a day for an active player. A player who mists less, or elsewhere, lands between (b) and (c).

@@ -36,7 +36,11 @@ namespace AquariumCiv.Sim.Eco
             if (st.wet == null || st.wet.Length != EcoLand.N) st.wet = new float[EcoLand.N];
             if (st.puddle == null || st.puddle.Length != EcoLand.N) st.puddle = new float[EcoLand.N];
             if (st.sprout == null || st.sprout.Length != EcoLand.N) st.sprout = new float[EcoLand.N];
+            if (st.watered == null || st.watered.Length != EcoLand.N) st.watered = new float[EcoLand.N]; // #569
         }
+
+        /// <summary>#569: how much of the mister's water the ground at <paramref name="c"/> still remembers, 0..1.</summary>
+        public float Watered(int c) => st.watered == null ? 0f : st.watered[c];
 
         /// <summary>The barren start: bare ground, a thin soil, the table below the lowest ground, no tree.</summary>
         public static void Init(EcoState st, EcoLand land, EcoTuning t, int seed)
@@ -45,7 +49,7 @@ namespace AquariumCiv.Sim.Eco
             st.cover = new byte[EcoLand.N];
             st.soil = new float[EcoLand.N];
             st.moisture = new float[EcoLand.N];
-            st.wet = new float[EcoLand.N]; st.puddle = new float[EcoLand.N]; st.sprout = new float[EcoLand.N];
+            st.wet = new float[EcoLand.N]; st.puddle = new float[EcoLand.N]; st.sprout = new float[EcoLand.N]; st.watered = new float[EcoLand.N];
             for (int c = 0; c < EcoLand.N; c++)
             {
                 st.cover[c] = (byte)EcoCover.Bare;
@@ -119,6 +123,7 @@ namespace AquariumCiv.Sim.Eco
             Animals(month);
             PlacedSeason(s, month); // #420, #421: the deer, the ducks and the fish the Keeper placed
             Vines(s);
+            FadeWatered(); // #569
             st.season++;
             Count();
             Gates(month);
@@ -146,6 +151,7 @@ namespace AquariumCiv.Sim.Eco
                     float f = 1f - d / r;
                     st.moisture[c] = MathF.Min(1f, st.moisture[c] + t.mistWet * amount * f);
                     if (Cv(c) == EcoCover.Water) continue;
+                    st.watered[c] = MathF.Max(st.watered[c], t.wateredAt * MathF.Sqrt(f) * Terrain.Clamp01(0.5f + amount * 0.5f)); // #569: the ground remembers
                     st.wet[c] = MathF.Min(1f, MathF.Max(st.wet[c], t.mistShow * MathF.Sqrt(f) * Terrain.Clamp01(0.5f + amount * 0.5f)));
                     float soak = rAmt * f - t.puddleAt;
                     if (soak > 0f && land.slope[c] <= t.puddleMaxSlope && !land.yard[c])
@@ -185,6 +191,21 @@ namespace AquariumCiv.Sim.Eco
             float k = t.mistMaxAmount <= 0f ? 1f : Terrain.Clamp01(amount / t.mistMaxAmount);
             return t.mistRadius + (t.mistRadiusMax - t.mistRadius) * k;
         }
+
+        /// <summary>#569: once a season the watered ground forgets a little.</summary>
+        void FadeWatered()
+        {
+            var w = st.watered;
+            if (w == null) return;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                float v = w[c] * t.wateredKeep;
+                w[c] = v < 0.02f ? 0f : v;
+            }
+        }
+
+        /// <summary>The ground's dampness for growth: the soil's own, or the water the mister left, whichever is more.</summary>
+        float Damp(int c) => st.watered == null ? st.moisture[c] : MathF.Max(st.moisture[c], t.wateredMoist * st.watered[c]);
 
         // ---------------------------------------------------------------- the wet area, the shoots, the puddles (monthly)
         float ChanceM(int kind, int cell, long month) => Terrain.Hash3(st.seed * 7919 + kind * 977, cell, (int)(month & 0x7fffffff));
@@ -441,6 +462,7 @@ namespace AquariumCiv.Sim.Eco
                 var cv = Cv(c);
                 if (cv == EcoCover.Water) continue;
                 float m = moist[c];
+                float wd = Watered(c); // #569
                 int n = EcoLand.Neighbours8(c, nb), green = 0, bushes = 0, water = 0;
                 for (int k = 0; k < n; k++)
                 {
@@ -472,20 +494,20 @@ namespace AquariumCiv.Sim.Eco
                     case EcoCover.Bare:
                         if (m < t.grassAt) break;
                         float nbf = t.grassAlone + (1f - t.grassAlone) * MathF.Min(1f, green / 2f);
-                        if (Chance(11, c) < t.grassRate * Terrain.Smooth(t.grassAt, t.grassFull, m) * nbf * g) next[c] = (byte)EcoCover.Grass;
+                        if (Chance(11, c) < t.grassRate * Terrain.Smooth(t.grassAt, t.grassFull, m) * nbf * g * (1f + t.wateredGreen * wd)) next[c] = (byte)EcoCover.Grass;
                         break;
                     case EcoCover.Grass:
                         if (land.yard[c]) break; // the camp keeps its yard short
-                        if (m >= t.tallAt && soil[c] >= t.tallSoil && Chance(12, c) < t.tallRate * Terrain.Smooth(t.tallAt, 0.7f, m) * (1f - t.grazeTall * graze) * g) next[c] = (byte)EcoCover.Tall;
+                        if (m >= t.tallAt && soil[c] >= t.tallSoil && Chance(12, c) < t.tallRate * Terrain.Smooth(t.tallAt, 0.7f, m) * (1f - t.grazeTall * graze) * g * (1f + t.wateredGreen * wd)) next[c] = (byte)EcoCover.Tall;
                         break; // #418: no bush comes up by itself; the placed thicket fills (Thickets)
                     case EcoCover.Bush:
                         if (ThinBush(c)) next[c] = (byte)(m >= t.tallAt && !land.yard[c] ? EcoCover.Tall : EcoCover.Grass); // #385
                         break;
                     case EcoCover.Seedling:
-                        if (Chance(14, c) < t.seedlingRate * t.treeSeason[s] * Terrain.Smooth(0.15f, 0.45f, m) * (1f - t.grazeSeedling * graze)) next[c] = (byte)EcoCover.Young;
+                        if (Chance(14, c) < t.seedlingRate * t.treeSeason[s] * Terrain.Smooth(0.15f, 0.45f, Damp(c)) * (1f - t.grazeSeedling * graze) * (1f + t.wateredGrow * wd)) next[c] = (byte)EcoCover.Young;
                         break;
                     case EcoCover.Young:
-                        if (Chance(15, c) < t.youngRate * t.treeSeason[s] * Terrain.Smooth(0.15f, 0.45f, m)) next[c] = (byte)EcoCover.Tree;
+                        if (Chance(15, c) < t.youngRate * t.treeSeason[s] * Terrain.Smooth(0.15f, 0.45f, Damp(c)) * (1f + t.wateredGrow * wd)) next[c] = (byte)EcoCover.Tree;
                         break;
                 }
             }
@@ -510,11 +532,11 @@ namespace AquariumCiv.Sim.Eco
             bool grown = st.treeStage >= 4;
             if (s <= 1 && meadow >= t.weedNeighbours && !grown)
                 st.treeWeeds = MathF.Min(1f, st.treeWeeds + t.weedGrow * (st.keeperMistings >= t.learnRing ? t.ringSlowsWeeds : 1f));
-            float m = st.moisture[c];
+            float m = Damp(c);
             float water = Terrain.Smooth(t.treeWetAt, t.treeWetFull, m);
             st.treeWilting = s != 3 && water < 0.35f;
             if (grown) return;
-            float d = t.treeRate * t.treeSeason[s] * water * Light * (1f - t.weedSlows * st.treeWeeds) * (TooDry ? 0.5f : 1f);
+            float d = t.treeRate * t.treeSeason[s] * water * (1f + t.wateredKeeper * Watered(c)) * Light * (1f - t.weedSlows * st.treeWeeds) * (TooDry ? 0.5f : 1f);
             st.treeProgress += d;
             while (st.treeStage < 4 && st.treeProgress >= t.treeStages[st.treeStage])
             {
@@ -564,9 +586,10 @@ namespace AquariumCiv.Sim.Eco
                 case EcoCover.Grass: p = t.seedTakeGrass; break;
                 case EcoCover.Tall: p = t.seedTakeTall; break;
                 case EcoCover.Bush: p = t.seedTakeBush; break;
-                case EcoCover.Bare: p = st.moisture[c] > 0.3f ? t.seedTakeBare : 0f; break;
+                case EcoCover.Bare: p = Damp(c) > 0.3f ? t.seedTakeBare : 0f; break;
                 default: p = 0f; break;
             }
+            p *= 1f + t.wateredTake * Watered(c); // #569: a seed takes where the mister's water fell
             if (st.thicketA >= 0) p *= 1f - t.thicketChoke * ThicketZone(c); // #385: a berry thicket chokes the seedlings, so it stays a thicket
             return roll < p;
         }
@@ -661,6 +684,7 @@ namespace AquariumCiv.Sim.Eco
                 ulong h = 1469598103934665603UL;
                 void Mix(ulong v) { h ^= v; h *= 1099511628211UL; }
                 for (int c = 0; c < EcoLand.N; c++) { Mix(st.cover[c]); Mix((ulong)BitConverter.SingleToInt32Bits(st.moisture[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.soil[c])); if (st.sprout != null) { Mix((ulong)BitConverter.SingleToInt32Bits(st.sprout[c])); Mix((ulong)BitConverter.SingleToInt32Bits(st.puddle[c])); } }
+                if (st.watered != null) for (int c = 0; c < EcoLand.N; c++) Mix((ulong)BitConverter.SingleToInt32Bits(st.watered[c]));
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.table)); Mix((ulong)BitConverter.SingleToInt32Bits(st.humidity));
                 Mix((ulong)BitConverter.SingleToInt32Bits(st.rabbits)); Mix((ulong)BitConverter.SingleToInt32Bits(st.treeProgress));
                 Mix((ulong)(st.deerStags * 1000 + st.deerDoes)); Mix((ulong)(st.ducks * 1000 + st.fish)); // #420, #421

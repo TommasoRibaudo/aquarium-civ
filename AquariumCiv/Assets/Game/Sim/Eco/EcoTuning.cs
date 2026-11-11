@@ -63,7 +63,7 @@ namespace AquariumCiv.Sim.Eco
         // #385: bushes grow in one or two thickets, not a carpet. Inside a thicket they spread as before; outside, a stray now and then
         // (bushStray of the rate) that dies back (bushStrayDie a season). The count settles at the cap (bushPerMeadow of the meadow, at
         // most bushCap); above it the bushes thin, outside the thickets first (bushThin a season at most): old carpeted saves thin in a few years.
-        public float thicketBoost = 6f, thicketChoke = 0.9f, thicketR1 = 0.52f, thicketR2 = 0.36f, thicketEdge = 0.35f, thicketFromCamp = 1.45f, bushCampMargin = 0.9f, bushMarginDie = 0.5f, thicketApart = 1.4f;
+        public float thicketBoost = 6f, thicketChoke = 0.6f, thicketR1 = 0.52f, thicketR2 = 0.36f, thicketEdge = 0.35f, thicketFromCamp = 1.45f, bushCampMargin = 0.9f, bushMarginDie = 0.5f, thicketApart = 1.4f;
         public int thicketBAfter = 15, bushCap = 60;
         public float bushPerMeadow = 0.04f, bushStray = 0.03f, bushStrayDie = 0.04f, bushThin = 0.12f;
         public float soilGrass = 0.012f, soilTall = 0.02f, soilBush = 0.025f, soilTree = 0.03f, soilStart = 0.08f, soilStartBase = 0.15f;
@@ -76,11 +76,18 @@ namespace AquariumCiv.Sim.Eco
         public float firstBirdAt = 0.5f;                          // birds (a smoothed count) before the first one is told
 
         // The forest
-        public float seedsPerBird = 0.3f, seedFalloff = 1.8f;
+        public float seedsPerBird = 0.4f, seedFalloff = 1.8f;   // #569 (d): more seeds; see PacingLab (the "before" values are in PacingLab.Before)
         public int seedReach = 8, maxSeedsPerSeason = 25;
         public float seedTakeGrass = 0.5f, seedTakeTall = 0.4f, seedTakeBush = 0.9f, seedTakeBare = 0.3f;
         public float seedlingRate = 0.06f, youngRate = 0.045f;
         public float wildSeedChance = 0.08f, wildSeedAfterBush = 0f; // a bird drops a seed from outside (a box with no Keeper)
+
+        // #569 (b): the mister's water grows the forest. Mist stamps `watered` on the cells it falls on (wateredAt in the middle, less at
+        // the edge); it fades by wateredKeep a season. On watered ground: a seed takes (x 1 + wateredTake * w), the grass comes (x 1 +
+        // wateredGreen * w), seedlings and young trees grow (x 1 + wateredGrow * w) and count as at least wateredMoist * w damp; the
+        // Keeper's own tree grows x 1 + wateredKeeper * w. All [est]: PacingLab sets them so an active player reaches the village near year 25.
+        public float wateredAt = 1f, wateredKeep = 0.95f, wateredMoist = 0.5f;
+        public float wateredTake = 0.5f, wateredGreen = 1f, wateredGrow = 0.6f, wateredKeeper = 1f;
 
         // The one tree
         public float treeRate = 0.35f;                            // progress per season at full care
