@@ -800,3 +800,12 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   ground: aim it with `BoxCameraMath.PivotOver` or a spot on higher land sits above mid-screen.
 
 - **2026-11-10 · Feedback-4 run: three notes.** [verified] (1) `watch-editor-stall.sh` with a 300 s quiet window fired during a worker's blocking EditMode Life run: a synchronous EditMode run writes nothing to Editor.log for minutes, and no dialog was up (`dismiss-dialogs.ps1` empty). Use a 900 s window while an Editor worker runs EditMode suites; check for dialogs before acting on a stall. (2) "Expected: Arms But was: Arms" is two enums with one name (`View.PropSlot` and `Life.PropSlot`): qualify the type in the test. (3) run-tests.sh still printed the previous run's totals for short runs (Life showed Sim's 973, Audio 417) in a 10-assembly batch: the pass checked each count against the console's "Run finished" line; the 2026-11-06 count check still applies.
+
+- **2026-11-10 · `OpenQuestionsSignOff`: a play test a person drives.** `PlayTestBase` is an `InputTestFixture`, which isolates the input
+  system from the real devices, so a human can't orbit, pan or tap in the Game view. `OpenQuestionsSignOff` therefore does not derive from it
+  (own `Open`, no fake Touchscreen) and shows an IMGUI panel (`SignOffPanel`, registered in `UiInput.DebugBlocks` and `UiInput.Add` so a
+  click on it never reaches the camera or HUD; the dock clears `DebugBlocks` in its own OnGUI, so the panel re-adds its rect every
+  Update/LateUpdate/OnGUI). Start it from the menu "Aquarium Civ/Open questions sign-off" (TestRunnerApi by test name, which selects an
+  `[Explicit]` test) or by name in the Test Runner. Auto mode (file `Temp/agent/f4signoff/AUTO`) signs each stop and shoots it.
+  Gotcha: `LifePlanner.DebugRackAt` ("Fill fish basket" / "Fish on the rack") recurses into `BasePlace` -> `PlanBase` -> `DebugRackAt`
+  (stack overflow, one per frame) when the view hour is jumped while its duty is live; call `Planner.ClearLive()` before `DebugSetHour`.
