@@ -143,7 +143,11 @@ namespace AquariumCiv.View.PlayTests
         // ---------------------------------------------------------------- a) pacing: the misted half against the control (#569)
         IEnumerator BeatPacing()
         {
-            Cheat("young box", "Keeper's tree: " + EcoDebug.PlantHere() + "; seedlings: " + EcoDebug.MistTrees()); // a young box, so the control half is sparse
+            // the setup of Fb5PassShots.MistHalf_GreenerWithMoreYoungTrees: big mists (a seed) on both sides, a grown Keeper's tree as the seed source,
+            // seedling pairs mirrored across the middle; the half-year after the run goes on to summer, since winter snow hides the green
+            foreach (var (mx, mz) in new[] { (-1.6f, 0.6f), (1.6f, 0.9f) }) EcoDebug.MistBig(mx, mz);
+            string planted = EcoDebug.PlantHere();
+            Cheat("young box", "Keeper's tree: " + planted + "; " + EcoDebug.TreeStage(4) + "; seedling cells " + Fb5PassShots.PlantSeedlingPairs(8));
             PeopleView.DebugSetHour(10f);
             DefaultView();
             yield return Settle(1f);
@@ -151,13 +155,14 @@ namespace AquariumCiv.View.PlayTests
             Log($"a before: young+grown trees left half {y0}, right half {c0}");
             yield return Snap("a_0_before");
             Cheat("mist one half, skip 3 yr", EcoDebug.MistHalf(12)); // SliceDebugPanel's #569 button: the left half (x < 0) misted each season, the right is the control
+            yield return Fb5SeasonShots.ToSeason(1, 2f);
             yield return Frames(30);
             DefaultView();
             yield return Settle(1.5f);
             int misted = Count(c => c == EcoCover.Young || c == EcoCover.Tree, true), control = Count(c => c == EcoCover.Young || c == EcoCover.Tree, false);
             int mGrass = Count(c => c == EcoCover.Grass || c == EcoCover.Tall, true), cGrass = Count(c => c == EcoCover.Grass || c == EcoCover.Tall, false);
             Log($"a after 3 yr: young+grown trees misted half {misted} vs control {control}; grass cells {mGrass} vs {cGrass}");
-            Check("a", misted >= control, $"the misted half holds at least as many young and grown trees ({misted} vs {control})");
+            Check("a", misted > control && mGrass > cGrass, $"the misted half holds at least as many young and grown trees ({misted} vs {control})");
             yield return Snap("a_1_misted_vs_control");
         }
 
@@ -251,7 +256,7 @@ namespace AquariumCiv.View.PlayTests
                     chopsSeen++;
                     float d = Vector2.Distance(p, new Vector2(kx, kz));
                     nearest = Mathf.Min(nearest, d);
-                    if (d < clear) chopsNear++;
+                    if (d < clear - 0.25f) chopsNear++; // the rule clears the TREE cell by woodsClearRadius; the chopper stands about a quarter unit off the tree, toward the camp
                 }
             }
             Look(World(kx, kz), 0.35f);
@@ -575,11 +580,12 @@ namespace AquariumCiv.View.PlayTests
             var care = CareView.Instance;
             Sim.CleanAll();
             Cheat("a weed", "SimCore.AddMess puts a weed in view");
-            Sim.AddMess(0f, 0.4f);
+            for (int wi = 0; wi < 6; wi++) Sim.AddMess(0f, 0.4f); // weeds land at random spots: one far enough back has its ray cross the lid
             yield return Frames(60);
             DefaultView();
             yield return Frames(10);
-            var weed = care.Props.AllPieces.FirstOrDefault(p => !p.leaving && p.kind == MessProps.Kind.Weed && OnScreen(Camera.main.WorldToScreenPoint(p.Center)));
+            var weeds = care.Props.AllPieces.Where(p => !p.leaving && p.kind == MessProps.Kind.Weed && OnScreen(Camera.main.WorldToScreenPoint(p.Center))).ToList();
+            var weed = weeds.FirstOrDefault(p => LidInTheWay(Camera.main.WorldToScreenPoint(p.Center))) ?? weeds.FirstOrDefault();
             Check("i", weed != null, "a weed in view");
             if (weed != null)
             {

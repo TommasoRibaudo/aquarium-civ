@@ -92,6 +92,19 @@ namespace AquariumCiv.View.PlayTests
         bool mistedHalf;    // the young box has had its half misted
         string halfCounts = "";
 
+        /// <summary>Before every stop: the person card, a sheet and a Kit tool left over from the stop before must not cover this one's frame.</summary>
+        IEnumerator CloseLooseUi()
+        {
+            var h = GameHud.Instance;
+            if (PersonCardView.Instance != null && PersonCardView.Instance.IsOpen) PersonCardView.Instance.Close();
+            if (h != null)
+            {
+                if (h.SheetOpen) h.CloseSheet();
+                if (h.Hand != GameHud.KitTool.None) h.SetHand(GameHud.KitTool.None);
+            }
+            yield return Frames(8);
+        }
+
         void Rebind()
         {
             hud = GameHud.Instance;
@@ -124,12 +137,17 @@ namespace AquariumCiv.View.PlayTests
             GameUiPanel.AcceptInputUnfocused(true);
             Rebind();
             youngBox = true;
-            StateCheat("young box", "fresh box; Keeper's tree: " + EcoDebug.PlantHere() + "; seedlings: " + EcoDebug.MistTrees());
+            // the setup that works (Fb5PassShots.MistHalf_GreenerWithMoreYoungTrees): a seed first (big mists both sides), a grown Keeper's tree as the
+            // seed source, seedling pairs mirrored across the middle; then the half run and the half-year on to summer (snow would hide the green)
+            foreach (var (mx, mz) in new[] { (-1.6f, 0.6f), (1.6f, 0.9f) }) EcoDebug.MistBig(mx, mz);
+            string planted = EcoDebug.PlantHere();
+            StateCheat("young box", "fresh box; Keeper's tree: " + planted + "; " + EcoDebug.TreeStage(4) + "; seedling cells " + Fb5PassShots.PlantSeedlingPairs(8));
             Hour(10f);
             yield return Frames(20);
             int bl = TreesIn(true), br = TreesIn(false);
             StateCheat("mist one half, skip 3 yr", EcoDebug.MistHalf(12));
             mistedHalf = true;
+            yield return Fb5SeasonShots.ToSeason(1, 2f);
             yield return Frames(30);
             halfCounts = $"misted half: {TreesIn(true)} young/grown trees (was {bl}) · control half: {TreesIn(false)} (was {br})";
             Log("pacing: " + halfCounts);
@@ -217,10 +235,10 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => Seen(a => a.kind == ActivityKind.Chop && !a.moving, out _), 90f);
             if (!Seen(a => a.kind == ActivityKind.Chop && !a.moving, out var at)) { Say("setup failed: nobody chopped in time; press Set up again"); DefaultView(); yield break; }
             Look(World(at.x, at.y), 0.2f, 45f);
-            if (mode == 1) { Say("chopping at the wild tree: chips, then logs on the ground"); yield return Wait(1f); yield break; }
+            if (mode == 1) { pv.timeScale = 1f; Say("chopping at the wild tree: chips, then logs on the ground"); yield return Wait(1f); yield break; }
             Say("waiting for a log to be carried");
             yield return Until(() => Seen(a => a.moving && a.prop == Prop.Log, out _), 90f);
-            if (Seen(a => a.moving && a.prop == Prop.Log, out var carry)) { Look(World(carry.x, carry.y), 0.25f, 45f); Say("a log on its way to the stash"); }
+            if (Seen(a => a.moving && a.prop == Prop.Log, out var carry)) { pv.timeScale = 1f; Look(World(carry.x, carry.y), 0.25f, 45f); Say("a log on its way to the stash"); }
             else Say("no log carried yet; press Set up again");
             yield return Wait(1f);
         }
