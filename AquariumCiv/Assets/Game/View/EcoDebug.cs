@@ -178,6 +178,29 @@ namespace AquariumCiv.View
             return Refresh($"bush carpet: {c} came up; the land holds {s.BushCap}");
         }
 
+        /// <summary>"Make a hunter" (#574): a grown-up (not the toolmaker) takes the hunter's job now; the planner replans the days at once.</summary>
+        public static string MakeHunter()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            string who = s.DebugMakeHunter();
+            if (who.Length == 0) return "nobody free to take the spear";
+            var pv = PeopleView.Find();
+            if (pv != null && pv.Planner != null) pv.Planner.Invalidate();
+            return who + " is a hunter now";
+        }
+
+        /// <summary>"Gather an egg now" (#574): eggs in the nests (ducks placed first), and a grown-up walks to the reeds with a basket and carries one to the pile.</summary>
+        public static string GatherEggNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            if (s.DebugEggsToNests(2) <= 0) return "no eggs: the flock is at its floor, or no pond for ducks";
+            return pv.Planner.DebugStartEggGather(pv.Now, out var plan) ? "an egg gather started: walking to the reeds, the egg is taken in " + (plan.resolveHour - pv.Now.hour).ToString("0.0") + " h" : "no gather: no water, or nobody free";
+        }
+
         /// <summary>"Start a hunt now" (#283): a hunter takes a spear and goes after the nearest rabbit, starting now.</summary>
         public static string StartHunt()
         {

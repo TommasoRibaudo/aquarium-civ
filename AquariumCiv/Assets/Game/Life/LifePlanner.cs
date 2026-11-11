@@ -188,6 +188,7 @@ namespace AquariumCiv.Life
             if (DeerHuntActivityAt(p, t, out var deerHunting)) return deerHunting; // #426: the deer hunt with bows, the pole carry home
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
+            if (EggActivityAt(p, t, out var gathering)) return gathering; // #574: an egg gathered at the reeds, carried to the pile
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
             if (DebugRackAt(p, t, out var racking)) return racking; // #543 debug: "fill fish basket" / "fish on the rack"

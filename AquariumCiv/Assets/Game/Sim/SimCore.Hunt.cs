@@ -54,6 +54,24 @@ namespace AquariumCiv.Sim
             State.eco.huntDone++;
         }
 
+        /// <summary>Debug ("Make a hunter", #574): a grown-up who is not the toolmaker takes the hunter's job now (rabbits are added first when the
+        /// land has none, which opens the job). The name, or "" when nobody can.</summary>
+        public string DebugMakeHunter()
+        {
+            if (!EcologyOn) return "";
+            if (!JobOpen(JobType.Hunter)) DebugAddRabbits(4);
+            Notable pick = null;
+            foreach (var n in State.notables)
+            {
+                if (!n.alive || n.age < 16f || n.age >= Config.retireAge || n.job == JobType.Toolmaker || n.job == JobType.Hunter) continue;
+                if (pick == null || n.job == JobType.Gatherer && pick.job != JobType.Gatherer) pick = n;
+            }
+            if (pick == null) return "";
+            DebugSetJob(pick, JobType.Hunter);
+            pick.jobChangedMonth = State.month;
+            return pick.FullName;
+        }
+
         /// <summary>Debug ("+N hides"): hides drying by the fire, for #284's tents.</summary>
         public int DebugAddHides(int n)
         {
