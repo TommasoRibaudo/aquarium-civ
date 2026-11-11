@@ -263,6 +263,30 @@ namespace AquariumCiv.Sim
         public int EcoGrownTrees => EcologyOn ? EcoM.Live().trees : 0;
         /// <summary>A stable hash of the whole ecology (determinism and catch-up tests); 0 when it is off.</summary>
         public ulong EcoFingerprint => EcologyOn ? EcoM.Fingerprint() : 0UL;
+        /// <summary>#573: the cell woodcutters chop at: the grown wild tree nearest (<paramref name="nearX"/>, <paramref name="nearZ"/>) that is inside the glass
+        /// margin and at least <c>woodsClearRadius</c> from the Keeper's tree (a sapling, a young tree and the Keeper's own tree never count), or -1.</summary>
+        public int WoodsTreeCell(float nearX, float nearZ)
+        {
+            if (!EcologyOn) return -1;
+            var e = State.eco; var cfg = Config.eco ?? (Config.eco = new EcoTuning());
+            const float mx = Settle.Terrain.HX - Settle.Terrain.GlassMargin, mz = Settle.Terrain.HZ - Settle.Terrain.GlassMargin;
+            bool kt = e.treeCell >= 0 && e.treeCell < EcoLand.N;
+            float kx = kt ? Settle.SiteMap.CXc(e.treeCell) : 0f, kz = kt ? Settle.SiteMap.CZc(e.treeCell) : 0f;
+            int best = -1; float bd = float.MaxValue;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if ((EcoCover)e.cover[c] != EcoCover.Tree || c == e.treeCell) continue;
+                float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
+                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (kt && Settle.Terrain.Dist(x, z, kx, kz) < cfg.woodsClearRadius) continue;
+                float d = (x - nearX) * (x - nearX) + (z - nearZ) * (z - nearZ);
+                if (d < bd) { bd = d; best = c; }
+            }
+            return best;
+        }
+        /// <summary>#573: a woods spot exists (off the ecology there is always a forest).</summary>
+        public bool WoodsExist => !EcologyOn || WoodsTreeCell(0f, 0f) >= 0;
+
         public EcoCover EcoCoverAt(int cell) => EcologyOn && cell >= 0 && cell < EcoLand.N ? (EcoCover)State.eco.cover[cell] : EcoCover.Bare;
         /// <summary>The game month a milestone was reached (an <see cref="EcoMilestones"/> key), or -1.</summary>
         public long EcoMilestoneMonth(string key) => EcologyOn ? State.eco.MonthOf(key) : -1;
@@ -354,6 +378,49 @@ namespace AquariumCiv.Sim
         public void DebugSetHumidity(float v)
         {
             if (EcologyOn) State.eco.humidity = Math.Clamp(v, 0f, 1f);
+        }
+
+        /// <summary>#573 debug: a grown wild tree and a young one (sapling) right beside the Keeper's tree (<paramref name="beside"/>), or one grown wild tree
+        /// well away from it (the woods spot). Plants the Keeper's grown tree first if there is none. Returns a one-line answer.</summary>
+        public string DebugWildTrees(bool beside)
+        {
+            if (!EcologyOn) return "living land off";
+            var e = State.eco; var cfg = Config.eco ?? (Config.eco = new EcoTuning());
+            if (e.treeCell < 0 && !DebugTreeStage(4)) return "no Keeper's tree can be planted";
+            var g = EcoGround;
+            float kx = Settle.SiteMap.CXc(e.treeCell), kz = Settle.SiteMap.CZc(e.treeCell);
+            const float mx = Settle.Terrain.HX - Settle.Terrain.GlassMargin - 0.1f, mz = Settle.Terrain.HZ - Settle.Terrain.GlassMargin - 0.1f;
+            int Pick(float rMin, float rMax, int skip)
+            {
+                int best = -1; float bd = float.MaxValue;
+                for (int c = 0; c < EcoLand.N; c++)
+                {
+                    float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
+                    var cv = (EcoCover)e.cover[c];
+                    if (c == e.treeCell || c == skip || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall)) continue;
+                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                    float dk = Settle.Terrain.Dist(x, z, kx, kz);
+                    if (dk < rMin || dk > rMax) continue;
+                    float dc = Settle.Terrain.Dist(x, z, g.campX, g.campZ);
+                    if (dc < bd) { bd = dc; best = c; }
+                }
+                return best;
+            }
+            if (beside)
+            {
+                int a = Pick(0.25f, 0.5f, -1), b = Pick(0.25f, 0.5f, a);
+                if (a < 0 || b < 0) return "no room beside the Keeper's tree";
+                e.cover[a] = (byte)EcoCover.Tree; e.cover[b] = (byte)EcoCover.Young;
+                EcoM.Reach(EcoMilestones.FirstWoodTree, State.month);
+                EcoTell();
+                return $"a grown wild tree (cell {a}) and a sapling (cell {b}) beside the Keeper's tree";
+            }
+            int far = Pick(cfg.woodsClearRadius + 0.3f, 99f, -1);
+            if (far < 0) return "no room away from the Keeper's tree";
+            e.cover[far] = (byte)EcoCover.Tree;
+            EcoM.Reach(EcoMilestones.FirstWoodTree, State.month);
+            EcoTell();
+            return $"a grown wild tree (cell {far}) away from the Keeper's tree";
         }
 
         /// <summary>Debug: set the Keeper's tree to stage 0 (seed) .. 4 (grown), planting it near the camp if there is none.</summary>

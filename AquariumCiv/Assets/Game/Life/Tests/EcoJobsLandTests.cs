@@ -135,6 +135,61 @@ namespace AquariumCiv.Life.Tests
             Assert.AreEqual(wild, AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z), "the edge is the wild tree");
         }
 
+        // ---- #573: the woods spot is a grown wild tree away from the Keeper's tree
+        static bool Chops(SimCore sim)
+        {
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            foreach (var season in new[] { Season.Spring, Season.Summer, Season.Autumn, Season.Winter })
+            {
+                planner.ForcedSeason = season;
+                for (int d = 0; d < 4; d++)
+                    foreach (var who in planner.People)
+                    {
+                        planner.DaySchedule(who, d, day);
+                        if (day.Any(a => a.kind == ActivityKind.Chop && a.place.kind == PlaceKind.Woods)) return true;
+                    }
+            }
+            return false;
+        }
+
+        [Test]
+        public void ASaplingAndAGrownTreeBesideTheKeepersTreeAreNeverTheWoodsSpot()
+        {
+            var sim = KeeperOnly(out int cell);
+            AllWoodcutters(sim);
+            TestContext.WriteLine(sim.DebugWildTrees(true));
+            Assert.IsTrue(sim.TreesGrow, "a wild tree has grown");
+            Assert.IsFalse(sim.WoodsExist, "but it stands in the Keeper's tree's clear radius");
+            Assert.IsFalse(new SettlePlacePositions(sim).TryGetPosition(Place.Land(PlaceKind.Woods), out _, out _), "no woods spot");
+            Assert.IsFalse(Chops(sim), "nobody swings an axe beside the Keeper's tree; woodcutters do the tribe's work");
+            // a sapling alone far away is no wood either
+            var eco = sim.State.eco;
+            int far = -1;
+            for (int c = 0; c < EcoLand.N && far < 0; c++)
+                if ((EcoCover)eco.cover[c] == EcoCover.Bare && Math.Abs(AquariumCiv.Sim.Settle.SiteMap.CXc(c)) < 2.4f && Math.Abs(AquariumCiv.Sim.Settle.SiteMap.CZc(c)) < 1.6f
+                    && AquariumCiv.Sim.Settle.Terrain.Dist(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c), AquariumCiv.Sim.Settle.SiteMap.CXc(cell), AquariumCiv.Sim.Settle.SiteMap.CZc(cell)) > 2f) far = c;
+            Assert.GreaterOrEqual(far, 0);
+            eco.cover[far] = (byte)EcoCover.Young;
+            Assert.IsFalse(sim.WoodsExist, "a sapling does not make a woods");
+        }
+
+        [Test]
+        public void AGrownTreeBeyondTheClearRadiusIsTheWoodsSpotAndTheyChopThere()
+        {
+            var sim = KeeperOnly(out int cell);
+            AllWoodcutters(sim);
+            TestContext.WriteLine(sim.DebugWildTrees(false));
+            Assert.IsTrue(sim.WoodsExist);
+            var pos = new SettlePlacePositions(sim);
+            Assert.IsTrue(pos.TryGetPosition(Place.Land(PlaceKind.Woods), out float x, out float z));
+            int wc = AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z);
+            Assert.AreEqual(EcoCover.Tree, sim.EcoCoverAt(wc), "the spot is a grown tree");
+            Assert.GreaterOrEqual(AquariumCiv.Sim.Settle.Terrain.Dist(x, z, AquariumCiv.Sim.Settle.SiteMap.CXc(cell), AquariumCiv.Sim.Settle.SiteMap.CZc(cell)),
+                sim.Config.eco.woodsClearRadius, "beyond the clear radius");
+            Assert.IsTrue(Chops(sim), "woodcutters chop at it");
+        }
+
         [Test]
         public void AJobThatOpenedNeverCloses()
         {

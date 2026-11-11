@@ -54,6 +54,7 @@ namespace AquariumCiv.Life
             h = h * 31 + S.nudges.Count;
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
+            h = h * 31 + sim.EcoGrownTrees; // #573: a grown tree between months (the woods spot is asked again)
             h = h * 31 + sim.EcoPondCells; // #495: the pond grows between months' lots: its shore is asked again
             if (h == sig && s == st) return true;
             bool newSettlement = s != st;
@@ -303,6 +304,7 @@ namespace AquariumCiv.Life
             float dEdge = float.MaxValue, dWoods = float.MaxValue, dBushes = float.MaxValue, dMeadow = float.MaxValue, dRock = float.MaxValue;
             float dRoad = -1f, hHill = float.MinValue;
             int keeperTree = sim != null && sim.State.eco != null && sim.State.eco.on ? sim.State.eco.treeCell : -1; // #493: never a woods / chopping spot
+            bool livingWoods = sim != null && sim.EcologyOn; // #573: on a living land the woods is a grown wild tree away from the Keeper's tree (or nothing: the edge is not chopped)
             for (int c = 0; c < SiteMap.N; c++)
             {
                 float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
@@ -313,7 +315,7 @@ namespace AquariumCiv.Life
                 {
                     if (c == keeperTree) continue;
                     if (d < dEdge) { dEdge = d; edge = c; }
-                    if (d < dWoods && ForestAround(map, c) >= 8) { dWoods = d; woods = c; }
+                    if (!livingWoods && d < dWoods && ForestAround(map, c) >= 8) { dWoods = d; woods = c; }
                 }
                 else if (!water && st.WalkCost(c) > 0 && d < dBushes && ForestAround(map, c) > 0) { dBushes = d; bushes = c; }
                 if (map.Has(c, SiteMap.FMeadow) && d < dMeadow) { dMeadow = d; meadow = c; }
@@ -325,7 +327,8 @@ namespace AquariumCiv.Life
                     if (h > hHill) { hHill = h; hill = c; }
                 }
             }
-            if (woods < 0) woods = edge;
+            if (livingWoods) woods = sim.WoodsTreeCell(gx, gz);
+            else if (woods < 0) woods = edge;
             if (bushes < 0) bushes = edge;
 
             // The pond's shore nearest the green.

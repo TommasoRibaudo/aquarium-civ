@@ -144,5 +144,9 @@ namespace AquariumCiv.Sim.Eco
         public float campMeadow = 0.20f;
         public int campRabbits = 2;
         public int villageTrees = 8;
+
+        // #573 the woods spot (where woodcutters chop): only a GROWN wild tree makes one, and never within this of the Keeper's tree (its canopy + a margin).
+        public float woodsClearRadius = 1.1f;
+        public int chopHitsPerLog = 4; // #573: this many axe hits make one log on the ground
     }
 }
