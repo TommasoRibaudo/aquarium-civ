@@ -41,6 +41,7 @@ namespace AquariumCiv.Sim
         public int visitNo;                 // the SimState.visitCount of the last visit that counted
         public double raisedHours;          // the SimState.clockHours it was raised at (real hours)
         public int subjectId = -1;          // #372: a small choice's subject (the newborn being named); -1 = none
+        public string land = "";            // #578: where the words put it ("woods", "meadow" or "pond"; "" = the woods), fixed when it is raised
         public string nameA = "", nameB = ""; // #372: a small choice's two offered words ({n1}, {n2}); empty = none
 
         /// <summary>The person option <paramref name="i"/> points at (-1 = none).</summary>
@@ -403,7 +404,7 @@ namespace AquariumCiv.Sim
             if (t.IndexOf('{') < 0) return t;
             if (d.subjectId >= 0 || !string.IsNullOrEmpty(d.nameA)) t = SmallText(t, d);
             return t.Replace("{a}", FindNotable(d.personA)?.name ?? "someone").Replace("{b}", FindNotable(d.personB)?.name ?? "someone")
-                    .Replace("{place}", DilemmaPlace);
+                    .Replace("{place}", DilemmaPlace).Replace("{land}", LandWords(d)).Replace("{camp}", CampWords(d));
         }
 
         /// <summary>{place}: the settlement's name, or "the camp" / "the village" before it has one (it is named at 12 people), so a
@@ -478,6 +479,7 @@ namespace AquariumCiv.Sim
             int id = s.dilemmaNextId++;
             if (s.visitCount < 1) s.visitCount = 1; // a session in progress is a visit; the raise is the first time it is shown
             var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b, size = def.size, visits = 1, visitNo = s.visitCount, raisedHours = Math.Round(s.clockHours, 6) };
+            if (def.landWords) d.land = PickLand(id);
             PrepareSmall(d, def);
             var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
             if (def.askerNotLeader)
@@ -629,7 +631,7 @@ namespace AquariumCiv.Sim
 
             if (!string.IsNullOrEmpty(o.custom) && !s.customs.Contains(o.custom)) s.customs.Add(o.custom);
 
-            if (o.strangers > 0 && !string.IsNullOrEmpty(o.apart)) StrangersApart(d, o.strangers, o.apart);
+            if (o.strangers > 0 && !string.IsNullOrEmpty(o.apart)) StrangersApart(d, o.strangers, ApartKindFor(d, o.apart), o.joins);
             else if (o.strangers > 0) StrangersJoin(d, o.strangers);
         }
 

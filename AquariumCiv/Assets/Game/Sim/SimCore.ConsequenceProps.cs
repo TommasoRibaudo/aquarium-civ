@@ -151,7 +151,7 @@ namespace AquariumCiv.Sim
                     return true;
                 case PropAnchor.Edge:
                 {
-                    var (x, z) = ApartSpotPreview(ApartKind.WoodsCamp);
+                    var (x, z) = ApartSpotPreview(ApartKindFor(FindDilemma(p.dilemmaId), ApartKind.WoodsCamp));
                     ax = x * 0.8f; az = z * 0.8f; minR = 0.05f; maxR = 0.5f;
                     return true;
                 }

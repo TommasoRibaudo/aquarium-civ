@@ -29,6 +29,7 @@ namespace AquariumCiv.Sim
         public DilemmaTies ties;            // the unchosen person: a rival chance or grace, by trait
         public string custom = "";          // a stored custom ("burial:stone"), see SimCore.HasCustom
         public int strangers;               // a family of this many adults joins (0 = none)
+        public bool joins;                  // #578: with apart: when the village is made (or at the next new house in a village) they walk in and join
         public string apart = "";           // with strangers: they live apart instead of joining (ApartKind: "woods_camp", "shore_hut"; #231)
         public string buildingType = "";    // the place this option refers to ("Well"): its first building is the dilemma's place for the option
         public DilemmaCallbackDef[] callbacks;  // storylets that fire 4-15 years after this option was taken (answered or lapsed); null = none
@@ -71,6 +72,7 @@ namespace AquariumCiv.Sim
         public string id = "";
         public DilemmaKind kind;
         public Era minEra = Era.Camp, maxEra = Era.Town;
+        public bool landWords;              // #578: the words say where (the woods, the meadow or the pond: {land}, {camp}), set when it is raised from the land
         public bool needsDeath;             // #380: the def's words assume a loss ("the ones we lose"): only once someone in this box has died
         public string needs;                // building types that must stand ("a|b" = either), null = none (as the roles' table)
         public DilemmaCast cast;
@@ -266,14 +268,15 @@ namespace AquariumCiv.Sim
         static readonly DilemmaDef CampTravellers = new DilemmaDef
         {
             id = "camp_travellers", kind = DilemmaKind.Strangers, minEra = Era.Camp, maxEra = Era.Camp,
-            question = "Lost travellers at the edge of the woods. Can they stay?",
+            landWords = true,
+            question = "Lost travellers at the edge of {land}. Can they stay?",
             askedBy = new Dictionary<string, string>
             {
                 ["the kind"] = "Two lost travellers, cold and hungry. Can they stay?",
                 ["the worrier"] = "Strangers! Two of them. Probably fine? Can they stay?",
                 ["the gossip"] = "Travellers! From past the sky wall, they say. Can they stay?",
-                ["the brave"] = "I found two travellers in the woods. Can they stay?",
-                ["the grump"] = "Two more mouths at the edge of the woods. Can they stay?",
+                ["the brave"] = "I found two travellers by {land}. Can they stay?",
+                ["the grump"] = "Two more mouths at the edge of {land}. Can they stay?",
             },
             options = new[]
             {
@@ -292,16 +295,16 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "full packs", hint = "They'll camp in the far woods, and leave us their trick with an axe.",
-                    done = "The Keeper sent the travellers from a far-away tank to the far woods, with full packs.",
-                    lean = SimCore.Lean.Craft, custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp,
+                    label = "full packs", hint = "They camp {camp} with their axe trick, and join us later.",
+                    done = "The Keeper sent the travellers from a far-away tank to camp {camp}, with full packs.",
+                    lean = SimCore.Lean.Craft, custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp, joins = true,
                     prop = ConsequenceKind.AxeStump, propAt = PropAnchor.Edge,
                     favouredBy = new[] { "the grump", "the worrier", "the stubborn", "the clever", "the tinkerer", "the lazy" },
                     callbacks = new[]
                     {
                         Cb("travellers_notch", "every axe in {place} still has the travellers' little notch in the handle. Nobody knows why it helps. It helps."),
-                        Cb("travellers_wave", "the travellers still live wild in the far woods. Some evenings you can see their fire, and all of {place} waves at it.",
-                            "the travellers' fire in the far woods has gone cold, but {place} still waves at the spot some evenings.", needsApart: true, minYears: 6),
+                        Cb("travellers_wave", "the travellers still live wild {camp}. Some evenings you can see their fire, and all of {place} waves at it.",
+                            "the travellers' old camp {camp} is grass again, but {place} still waves at the spot some evenings.", needsApart: true, minYears: 6),
                     },
                 },
             },

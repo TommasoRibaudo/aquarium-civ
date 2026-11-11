@@ -85,6 +85,7 @@ namespace AquariumCiv.Sim
                 AddBuilding(BuildingType.Well, tellFirst: false);
                 Settlement?.PlacePending();
             }
+            if (s.era == Era.Village) ApartJoinOnVillage(); // #578: the travellers pack up and walk in (SimCore.ApartTravellers.cs)
             JobsOnEraChange(); // jobs the new era doesn't have change (SimCore.Jobs.cs)
             RolesOnEraChange(); // the leader carries over, new offices fill (SimCore.Roles.cs)
             GlassOnEraChange(); // the people's view of the glass moves on (SimCore.Cards.cs)

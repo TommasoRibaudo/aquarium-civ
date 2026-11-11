@@ -218,6 +218,8 @@ namespace AquariumCiv.View
             if (Btn("Settlers: woods")) last = EcoDebug.SettlersArrive(false); // fb4 #539
             if (Btn("Settlers: shore")) last = EcoDebug.SettlersArrive(true); // fb4 #539
             if (Btn("Pond to full")) last = EcoDebug.PondToFull(); // fb4 #539
+            if (Btn("Travellers bring wood now")) last = ApartGroupsView.DebugWoodNow(); // fb5 #578
+            if (Btn("Travellers join now")) last = ApartGroupsView.DebugJoinNow(); // fb5 #578
             if (Btn("Dry air")) last = EcoDebug.Humidity(0.1f);
             if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
             if (Btn("Plant tree")) last = EcoDebug.PlantHere();
