@@ -802,7 +802,7 @@ namespace AquariumCiv.GameUI
                     {
                         // #572: the holder's name is a button: it opens their card (and the camera brings them over), as tapping the person does.
                         int hid = holder.id;
-                        var btn = new GlassButton(holder.name + "  203A", () => OfficeHolderTapped(hid), ButtonKind.Quiet, UiRole.Open) { name = row.name + "-holder", Compact = true };
+                        var btn = new GlassButton(holder.name + "  ›", () => OfficeHolderTapped(hid), ButtonKind.Quiet, UiRole.Open) { name = row.name + "-holder", Compact = true };
                         btn.AddToClassList("office-holder");
                         who = btn;
                     }
