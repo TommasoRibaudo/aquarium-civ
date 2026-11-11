@@ -155,6 +155,24 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
+        public void AnEmptyBasinIsNotAPondSoTheyAreByTheMeadow()
+        {
+            int seen = 0;
+            foreach (int seed in new[] { 7, 42, 4242, 5 })
+            {
+                var sim = Eco(seed);
+                if (sim.Settlement?.Map == null) continue;
+                Assert.AreEqual(0, sim.EcoPondCells, "no open water yet");
+                var d = Raise(sim);
+                if (d == null) continue;
+                Assert.AreEqual("meadow", d.land, $"seed {seed}: never 'by the pond' with nothing in the basin");
+                StringAssert.DoesNotContain("pond", AllWords(sim, d));
+                seen++;
+            }
+            Assert.Greater(seen, 0);
+        }
+
+        [Test]
         public void ThePickIsFixedWhenItIsRaisedAndTheWoodsComingLaterDoesNotChangeTheWords()
         {
             var sim = Eco(7);
@@ -257,7 +275,13 @@ namespace AquariumCiv.Life.Tests
             Assert.IsTrue(people.All(n => !sim.State.notables.Contains(n)), "apart: not the settlement's");
             Assert.IsTrue(sim.ForceNextEra());
             Assert.AreEqual(Era.Village, sim.State.era);
-            Assert.AreEqual(2, g.joinState, "the village is made: they pack up");
+            Assert.AreEqual(1, g.joinState, "the village is made: they are due to join, on a watched visit");
+            for (int m = 0; m < 12; m++) sim.Step();
+            Assert.AreEqual(1, g.joinState, "a year unwatched: still due, the camp is not just gone");
+            Assert.IsFalse(sim.BeginApartJoin(9999));
+            Assert.IsTrue(sim.BeginApartJoin(g.id), "the view starts it at a calm moment");
+            Assert.AreEqual(2, g.joinState);
+            Assert.IsFalse(sim.BeginApartJoin(g.id), "once");
             CollectionAssert.Contains(sim.State.apartGroups, g, "still there until they have walked in");
             Assert.IsTrue(sim.FinishApartJoin(g.id), "the view walks them in");
             CollectionAssert.DoesNotContain(sim.State.apartGroups, g, "the apart group is gone");
@@ -274,8 +298,10 @@ namespace AquariumCiv.Life.Tests
             var sim = Plain(7531, 72);
             var g = sim.DebugSettlersArrive(ApartKind.WoodsCamp, true);
             Assert.IsTrue(sim.ForceNextEra());
-            Assert.AreEqual(2, g.joinState);
-            for (int m = 0; m < SimCore.JoinFallbackMonths + 1; m++) sim.Step();
+            Assert.AreEqual(1, g.joinState);
+            for (int m = 0; m < SimCore.JoinDueMonths - 2; m++) sim.Step();
+            Assert.AreEqual(1, g.joinState, "still due, waiting for the visit");
+            for (int m = 0; m < 4; m++) sim.Step();
             CollectionAssert.DoesNotContain(sim.State.apartGroups, g);
             Assert.IsTrue(g.members.All(n => sim.State.notables.Contains(n)));
         }
@@ -286,12 +312,13 @@ namespace AquariumCiv.Life.Tests
             var sim = Plain(7531, 72);
             Assert.IsTrue(sim.ForceNextEra());
             var g = sim.DebugSettlersArrive(ApartKind.WoodsCamp, true);
-            Assert.AreEqual(1, g.joinState, "waits for a house");
+            Assert.AreEqual(3, g.joinState, "waits for a house");
             for (int m = 0; m < 3; m++) sim.Step();
-            Assert.AreEqual(1, g.joinState, "no new house yet");
+            Assert.AreEqual(3, g.joinState, "no new house yet");
             sim.DebugBuild(BuildingType.Hut);
             sim.Step();
-            Assert.AreEqual(2, g.joinState, "a new house: they pack up");
+            Assert.AreEqual(1, g.joinState, "a new house: they are due");
+            Assert.IsTrue(sim.BeginApartJoin(g.id));
             int pop = sim.State.population;
             Assert.IsTrue(sim.FinishApartJoin(g.id));
             Assert.AreEqual(pop + 2, sim.State.population);
@@ -333,7 +360,7 @@ namespace AquariumCiv.Life.Tests
             Assert.AreSame(g, sim.DebugTravellersBringWood(), "the same camp the second time");
             Assert.AreEqual(0, g.joinState);
             sim.DebugTravellersJoin();
-            Assert.AreEqual(2, g.joinState);
+            Assert.AreEqual(1, g.joinState, "due: the view walks them in when it is calm");
         }
     }
 }

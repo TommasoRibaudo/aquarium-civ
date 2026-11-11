@@ -24,6 +24,40 @@ namespace AquariumCiv.View
         /// <summary>Box units: they have arrived this close to their place on the green.</summary>
         const float JoinArrive = 0.12f;
 
+        /// <summary>For tests and the panel: camera leans made for the walk, and the last caption said (the first load's, or the arrival's).</summary>
+        public int JoinLeans { get; private set; }
+        public int JoinsPlayed { get; private set; }
+        public string LastCaption { get; private set; } = "";
+        /// <summary>The words said on the caption when they reach the green (a traveller's voice).</summary>
+        public const string ArrivalLine = "Here we are, then. We brought our own logs.";
+
+        /// <summary>A watched, calm moment to start the walk: the Keeper is here (not catching up from away), nothing else owns the camera or the word
+        /// (a card, a sheet, a tool, the era or welcome moment, a staged moment, the choice scene, the first run).</summary>
+        bool JoinCalm(SimCore sim)
+        {
+            if (sim.CatchingUp || sim.State.firstRun.active || !GlassVoice.CameraFree()) return false;
+            if (sim.PlayingMoments().Count > 0 || sim.MomentBeforeChoice() || StagedMoments.Playing > 0) return false;
+            var choice = ChoiceSceneView.Instance;
+            if (choice != null && choice.Stage != null) return false;
+            return sim.OpenDilemma == null;
+        }
+
+        /// <summary>The camera leans to <paramref name="at"/> a little (the same nudge the live moments use; it never fights a finger or a busy camera).</summary>
+        bool LeanTo(Vector2 at)
+        {
+            var cam = Cam;
+            if (cam == null || !GlassVoice.CameraFree()) return false;
+            if (!cam.NudgeToward(transform.TransformPoint(box.land.OnGround(at)))) return false;
+            JoinLeans++;
+            return true;
+        }
+
+        void CaptionLine(string line)
+        {
+            LastCaption = line;
+            ShowMeDirector.Instance?.SayLine("“" + line + "”", PersonRef.None, 4.5f);
+        }
+
         static Vector2 Stash(Camp c) => c.work + c.side * 0.14f;
 
         Vector2 CarryGoal(Camp c, Member m) => m.carry == CarryPhase.Chop || m.carry == CarryPhase.Lift ? c.chopAt : Stash(c);
@@ -41,7 +75,8 @@ namespace AquariumCiv.View
             {
                 m.dropped = true;
                 c.carryNow = false;
-                Sim?.ApartBringsWood(c.groupId);
+                var sim = Sim;
+                if (sim != null && sim.ApartBringsWood(c.groupId) && sim.ApartGroupById(c.groupId).woodLoads == 1 && !sim.CatchingUp) CaptionLine(SimCore.FirstLoadLine); // the first load, seen
             }
             m.carry = ph;
             return ph;
@@ -74,6 +109,7 @@ namespace AquariumCiv.View
             c.joinClock += dt;
             c.carryNow = false;
             float pack = Mathf.Clamp01(c.joinClock / PackSeconds);
+            if (c.leanStage == 0 && (LeanTo(c.fire) || c.joinClock > 3f)) c.leanStage = 1; // the camera leans to the camp while it packs up
             float shrink = Mathf.Max(0.001f, 1f - Mathf.SmoothStep(0f, 1f, pack));
             foreach (Transform t in c.root)
             {
@@ -98,6 +134,7 @@ namespace AquariumCiv.View
                 if (pack < 1f) { s.at = m.pos; s.face = green - m.pos; s.style = DollStyle.Stand; s.walk = false; }
                 else
                 {
+                    if (c.leanStage == 1 && (LeanTo(green) || c.joinClock > PackSeconds + 3f)) c.leanStage = 2; // and then to the green they walk to
                     float a = (rank - (alive - 1) * 0.5f) * 0.9f;
                     s.at = green + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.16f;
                     s.face = s.at - m.pos; s.style = DollStyle.Walk; s.walk = true;
@@ -106,7 +143,12 @@ namespace AquariumCiv.View
                 StepScripted(c, m, s, k, dt);
                 rank++;
             }
-            if (alive == 0 || (pack >= 1f && arrived == alive)) sim.FinishApartJoin(g.id);
+            if (alive == 0 || (pack >= 1f && arrived == alive))
+            {
+                if (alive > 0) CaptionLine(ArrivalLine);
+                JoinsPlayed++;
+                sim.FinishApartJoin(g.id);
+            }
         }
 
         // ================================================================== debug

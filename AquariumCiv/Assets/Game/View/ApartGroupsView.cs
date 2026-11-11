@@ -80,6 +80,7 @@ namespace AquariumCiv.View
             public float rate = 1f;
             public bool carryNow;
             public float joinClock;
+            public int leanStage;
         }
 
         BoxView box;
@@ -175,6 +176,7 @@ namespace AquariumCiv.View
                 if (c.root == null || clock >= c.nextCheck) Place(sim, c);
                 bool alive = g.AnyAlive;
                 if (c.root == null || alive != c.lit) Build(sim, c, alive);
+                if (g.joinState == 1 && c.root != null && JoinCalm(sim)) sim.BeginApartJoin(g.id); // #578: due; it starts when watched and calm
                 if (g.joinState == 2 && c.root != null) { DriveJoin(sim, c, g, k, dt); continue; } // #578: packing up and walking in to the green
                 UpdateTower(sim, c, g, hour); // #404
                 UpdateBoat(sim, c, hour);

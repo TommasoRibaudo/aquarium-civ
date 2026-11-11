@@ -32,7 +32,7 @@ namespace AquariumCiv.Sim
         public long sinceMonth;
         // #578: the travellers (an option with joins): carry wood to their stash, and walk in and join the village
         public bool joins;
-        public int joinState;               // 0 = not joining, 1 = waits for the next new house (answered in a village), 2 = joining now (the view walks them in)
+        public int joinState;               // 0 = not joining, 1 = due (the village is made, or the new house stands): the view starts the walk at a calm, watched moment, 2 = walking in now, 3 = waits for the next new house (answered in a village)
         public long joinMonth;              // the month joinState became 2
         public int joinAfterId;             // joinState 1: a house with an id above this is a new one
         public int woodLoads;               // loads of logs their people have set on the camp's pile
@@ -110,7 +110,7 @@ namespace AquariumCiv.Sim
             foreach (var n in made) s.notables.Remove(n);
             var g = new ApartGroup { id = (s.apartGroups.Count == 0 ? 0 : s.apartGroups.Max(x => x.id)) + 1, dilemmaId = d.id, kind = kind, family = family, sinceMonth = s.month, members = made, joins = joins };
             ApartSpot(g);
-            if (joins && s.era >= Era.Village) { g.joinState = 1; g.joinAfterId = s.buildings.Count == 0 ? 0 : s.buildings.Max(b => b.id); } // answered in a village: they join at the next new house
+            if (joins && s.era >= Era.Village) { g.joinState = 3; g.joinAfterId = s.buildings.Count == 0 ? 0 : s.buildings.Max(b => b.id); } // answered in a village: they join at the next new house
             s.apartGroups.Add(g);
             string names = string.Join(" and ", made.Select(n => n.name));
             string home = kind == ApartKind.ShoreHut ? "built a hut on the far shore of the pond" : "made a camp " + ApartWhere(kind);

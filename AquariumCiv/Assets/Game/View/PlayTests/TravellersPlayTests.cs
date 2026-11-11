@@ -70,6 +70,7 @@ namespace AquariumCiv.View.PlayTests
             yield return new WaitForSecondsRealtime(0.5f);
             yield return Shot("578-carry-pile-1170x2532");
             Assert.AreEqual(1, Sim.State.chronicle.Count(e => e.text.Contains("first full load")), "the first load is told, once");
+            Assert.AreEqual(SimCore.FirstLoadLine, View.LastCaption, "and seen: the carrier says it on the caption");
             var camp = GameObject.Find("ApartCamp" + g.id);
             Assert.IsNotNull(camp, "the camp is drawn");
             Assert.IsNotNull(camp.transform.Find("PileLogs"), "a log on the pile for the load");
@@ -87,13 +88,28 @@ namespace AquariumCiv.View.PlayTests
             var people = g.members.ToList();
             int id = g.id, pop = Sim.State.population;
             Assert.Greater(ApartObjects(), 0, "the camp is drawn before");
+            // The Keeper is busy (a question is open): they are due, but the camp is not just gone, nor does the walk start under a card.
+            DilemmaCheats.Raise("camp_fire");
+            Assume.That(Sim.OpenDilemma, Is.Not.Null, "a camp question to keep the Keeper busy");
             Debug.Log("[Travellers] " + ApartGroupsView.DebugJoinNow());
-            ApartGroupsView.DebugFly(id, 0.4f);
+            Assert.AreEqual(1, g.joinState, "due");
+            yield return new WaitForSecondsRealtime(5f);
+            Assert.AreEqual(1, g.joinState, "it waits while the Keeper is busy");
+            Assert.Greater(ApartObjects(), 0, "the camp stands");
+            Assert.AreEqual(0, View.JoinsPlayed);
+            // the visit goes calm: the walk begins and the camera leans to them
+            Debug.Log("[Travellers] " + DilemmaCheats.AnswerOnCard(0));
+            var cm = CardStackView.Instance.Model;
+            if (cm.Mode == CardStackMode.Open) cm.Close();
+            Cam.GoHome(0.01f, true);
+            yield return Frames(10);
+            float w = 0f;
+            while (g.joinState == 1 && w < 15f) { w += Time.unscaledDeltaTime; yield return null; }
+            Assert.AreEqual(2, g.joinState, "calm: they pack up and walk");
             yield return new WaitForSecondsRealtime(1.2f);
+            Assert.GreaterOrEqual(View.JoinLeans, 1, "the camera leaned to the camp");
             yield return Shot("578-join-pack-1170x2532");
             yield return new WaitForSecondsRealtime(3.0f);
-            Cam.GoHome(0.01f, true);
-            yield return new WaitForSecondsRealtime(0.8f);
             yield return Shot("578-join-walk-1170x2532");
             float t = 0f;
             while (Sim.ApartGroups.Any(x => x.id == id) && t < 40f) { t += Time.unscaledDeltaTime; yield return null; }
@@ -101,6 +117,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(people.All(n => Sim.State.notables.Contains(n)), "they are the village's notables now");
             Assert.AreEqual(pop + people.Count(n => n.alive), Sim.State.population, "and counted");
             Assert.AreEqual(1, Sim.State.chronicle.Count(e => e.text.Contains("walked in to the green")), "one line");
+            Assert.AreEqual(ApartGroupsView.ArrivalLine, View.LastCaption, "and a caption when they reach the green");
+            Assert.AreEqual(1, View.JoinsPlayed);
             yield return Frames(6);
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(0, ApartObjects(), "no camp root, no doll left");

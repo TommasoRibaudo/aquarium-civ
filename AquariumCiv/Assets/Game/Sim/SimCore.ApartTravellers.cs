@@ -31,13 +31,16 @@ namespace AquariumCiv.Sim
             }
         }
 
+        /// <summary>"By the pond" only holds when there is water to be by: a living-land box needs open water now (an empty basin is not a pond); the legacy box has its map pond.</summary>
+        bool PondHasWater => EcologyOn ? EcoPondCells > 0 : PondInBox;
+
         /// <summary>Where the travellers are found: the woods when a grown wild stand stands (<see cref="WoodsExist"/>), else by the pond (when there
         /// is one) or the meadow, picked from the dilemma id and month.</summary>
         string PickLand(int dilemmaId)
         {
             if (!string.IsNullOrEmpty(DebugLand)) return DebugLand;
             if (WoodsExist) return "woods";
-            return PondInBox && DilemmaRoll(120, dilemmaId, State.month) < 0.5f ? "pond" : "meadow";
+            return PondHasWater && DilemmaRoll(120, dilemmaId, State.month) < 0.5f ? "pond" : "meadow";
         }
 
         /// <summary>{land}: "the woods", "the meadow" or "the pond" (a dilemma without a land is the woods).</summary>
@@ -75,25 +78,43 @@ namespace AquariumCiv.Sim
                 g.firstLoadTold = true;
                 var who = g.members.FirstOrDefault(n => n.alive);
                 if (who != null)
-                    Chronicle("newcomer", $"{who.name} set down the first full load of logs on the camp's pile and called across to {DilemmaPlace}: \"The notch in the axe handle works. Come and see the pile!\"", 0.6f, who.id);
+                    Chronicle("newcomer", $"{who.name} set down the first full load of logs on the camp's pile and called across to {DilemmaPlace}: \"{FirstLoadLine}\"", 0.6f, who.id);
             }
             return true;
         }
 
-        /// <summary>Monthly: a group waiting for a house joins at the next new one; one the view should have walked in by now is finished.</summary>
+        /// <summary>Months a join may stay due, unwatched, before the sim finishes it quietly (the view never found a calm moment).</summary>
+        public const int JoinDueMonths = 36;
+
+        /// <summary>Monthly, live only (never while the Keeper is away: they join on a visit, watched): a group waiting for a house is due at the next new one;
+        /// one the view has not started in a long while, or has not finished walking, is finished.</summary>
         void JoinStep()
         {
             var s = State;
+            if (CatchingUp) return;
             foreach (var g in s.apartGroups.ToList())
             {
                 if (!g.joins || g.tower || g.joinState == 0) continue;
-                if (g.joinState == 1)
+                if (g.joinState == 3)
                 {
-                    if (s.buildings.Any(b => b.type == BuildingType.Hut && b.id > g.joinAfterId)) { g.joinState = 2; g.joinMonth = s.month; }
+                    if (s.buildings.Any(b => b.type == BuildingType.Hut && b.id > g.joinAfterId)) { g.joinState = 1; g.joinMonth = s.month; }
                 }
+                else if (g.joinState == 1) { if (s.month - g.joinMonth >= JoinDueMonths) FinishApartJoin(g.id); }
                 else if (s.month - g.joinMonth >= JoinFallbackMonths) FinishApartJoin(g.id);
             }
         }
+
+        /// <summary>The view starts the walk (a calm, watched moment): due becomes walking. False if the group is not due.</summary>
+        public bool BeginApartJoin(int groupId)
+        {
+            var g = ApartGroupById(groupId);
+            if (g == null || g.joinState != 1) return false;
+            g.joinState = 2; g.joinMonth = State.month;
+            return true;
+        }
+
+        /// <summary>The first load's words, said by the carrier on the caption when it is watched (the chronicle keeps its own line).</summary>
+        public const string FirstLoadLine = "The notch in the axe handle works. Come and see the pile!";
 
         /// <summary>The village is made: every travellers' camp starts to pack up (the view walks them to the green, then finishes the join).</summary>
         void ApartJoinOnVillage()
@@ -103,7 +124,7 @@ namespace AquariumCiv.Sim
             {
                 if (!g.joins || g.tower || g.joinState == 2) continue;
                 if (!g.AnyAlive) { s.apartGroups.Remove(g); continue; }
-                g.joinState = 2; g.joinMonth = s.month;
+                g.joinState = 1; g.joinMonth = s.month; // due: the view walks them in at a calm, watched moment
             }
         }
 
@@ -132,11 +153,11 @@ namespace AquariumCiv.Sim
         /// <summary>Debug: make sure the travellers' camp stands and say which group it is (the view starts a carry; see ApartGroupsView.DebugCarryNow).</summary>
         public ApartGroup DebugTravellersBringWood() => DebugTravellers();
 
-        /// <summary>Debug: the travellers (made if none stand) start to pack up and walk in now, whatever the era.</summary>
+        /// <summary>Debug: the travellers (made if none stand) are due to join now, whatever the era (the view starts the walk at the next calm moment).</summary>
         public ApartGroup DebugTravellersJoin()
         {
             var g = DebugTravellers();
-            g.joinState = 2; g.joinMonth = State.month;
+            g.joinState = 1; g.joinMonth = State.month;
             return g;
         }
     }
