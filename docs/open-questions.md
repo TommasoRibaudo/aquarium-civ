@@ -38,6 +38,9 @@ questions sign-off**) stages every look item below with the cheats and walks the
 - #573: the CampRhythm test fixture now plants 5 wild trees (re-seeded: a real wood has several, and the one-tree fixture put every chopper in step at one tree).
 - #574: the HuntThrow test is bound only where the clock rate is the same at both ends of the walk (a test bound, not a re-seed).
 - #576: winter snow is light and patchy, on flat natural ground only (the first version was a full white blanket); spring is yellower and summer deeper so the two differ.
+- #569: the view now draws a young tree on about 80 % of young-tree cells and a seedling on about 75 % (was 45 % / 55 %): the forest the sim grew was half invisible at phone size. Every box looks a little more wooded.
+- #573: when every grown tree already has two choppers, the extra woodcutters do chores at home (sending them to the tribe's work put them all on one berry spot).
+- #578: the first load says "The notch in the axe handle works. Come and see the pile!"; on arrival "Here we are, then. We brought our own logs." They join at the first calm moment while you watch (never while you're away); a group that built the Keeper's tower doesn't join.
 
 ## Waiting on you (after the 2026-11-10 sign-off)
 Everything else was answered in the Editor walkthrough on 2026-11-10 and moved to [decisions.md](decisions.md)

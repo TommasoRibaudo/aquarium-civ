@@ -20,10 +20,10 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - [x] 8 · #576 merged (open for look sign-off)
 - [x] 9 · #577 merged (open for look sign-off)
 - [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
-- [ ] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
-- [ ] `Feedback5Playthrough` + the touch play-through done, every beat looked at
+- [x] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
+- [x] `Feedback5Playthrough` + the touch play-through done, every beat looked at
 - [ ] Tester run; [real] fixed; [polish] listed
-- [ ] Walkthrough: open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
+- [x] Walkthrough: open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
 - [ ] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
 - [ ] `docs/tooling.md` entry for any tooling problem solved; Run In Background ON; lock released; Editor ready
 - [ ] PR → `dev`, CI green, merged
@@ -70,6 +70,9 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - 14:45 Fix round 3 merged (be43983, branch 6fc3cb9): #569 halves differ only in mist (6 mirrored seedling pairs), view draws young trees ~80% / seedlings ~75% of cells (was 45/55: hid the forest); #573 cheat tree placed where BoxView.Free allows (0.6-0.9 u from the Keeper's tree). Fb5Pass 5/5, EcoPacing 4/4, EcoJobsLand 16/16, ChopLogs 2/2, Smoke 2/2. I looked: misted half clearly greener; wild tree beside the Keeper's tree, no one chopping.
 - 14:48 Walkthrough auto run + Feedback5Playthrough + draw-rate regression (Editor, Sonnet, vs/fb5-walk-run). Editor tickets since restart: 3 (restart before the tester).
 - 15:45 Walkthrough/playthrough round 1 (d20c349, merged): draw-rate regression green (View 319+1, LifeArrival 8/8, SeedGhost 4/4, LifeSlot 5/5, WorldTap 7/7); Feedback5Playthrough 0 soft fails, 13 state cheats; 22 new stops all stage (CloseLooseUi between stops). Short: #573 chop stops don't frame the chopper, #574 egg under Kit / beat e gatherer in the meadow, season carried into #577/#578 stops, panel over the title in #571. Editor restarted (3 tickets); round 2 sent. SimTests on be43983: 1817/1817.
+- 16:37 Walkthrough round 2 (c8ba073, merged): chopper/carrier followed, egg stop kneels at the water, summer reset between stops, title visible; auto 22/22 staged; I looked at all 22 shots (strips). Playthrough beat e = REAL BUG: with a 106-cell pond the egg gatherer kneels 1.97 u from water (Pond place, not the shore). Fix worker started (Editor, vs/574-egg-shore).
+- 17:10 Egg shore fix merged (f24fe34, branch b7bf1e9): cause = LifePlanner.PositionAt ignored the egg plan (the gatherer stayed at their base spot ~2 u from a small pond); now follows the egg route; polyCache cleared when the pond grows. HuntsAndEggs 16/16, FisherShore 1/1, Fishing 2/2, Feedback5Playthrough 0 soft fails, Smoke 2/2, SimTests 1819. I looked at beat e: kneeling at the pond's edge.
+- 17:13 Tester started (45 min brief, vs/fb5-tester = f24fe34). Editor tickets since restart: 3.
 
 ## RESUME HERE (next session)
 1. Health gate + lock + watcher; open the Editor on a branch from p9/feedback-5 (F:\GameDev is on vs/feedback5-pass).
