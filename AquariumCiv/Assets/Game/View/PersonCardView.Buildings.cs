@@ -23,6 +23,10 @@ namespace AquariumCiv.View
         /// <summary>The solid middle of a lot's box: a ray through it beats one that only clips another lot's corner.</summary>
         const float CoreShare = 0.7f;
 
+        /// <summary>#572: the Offices sheet's holder buttons open that person's card here.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void HookOfficeTaps() => GameHud.OpenPerson = id => Instance?.Open(id);
+
         GlassSheet buildingSheet;
         Label buildingTitle, buildingWhat, buildingYear, buildingBy;
         GlassButton buildingBuilder;
