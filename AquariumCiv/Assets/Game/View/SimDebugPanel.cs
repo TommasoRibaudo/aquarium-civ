@@ -294,6 +294,8 @@ namespace AquariumCiv.View
                 var all = AquariumCiv.Sim.Eco.LifeJar.All;
                 GUILayout.Label(string.Join(" · ", all.Select(s => s + " " + sim.JarStateOf(s))));
                 if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
+                if (GUILayout.Button("Lock all jars (#570: see the greyed list)")) last = Done($"{sim.DebugLockJars()} jars shut"); // #570
+                GUILayout.Label("village line: " + (sim.VillageWaitsLine is { Length: > 0 } vl ? vl : "(none)")); // #570
                 for (int i = 0; i < all.Length; i += 3)
                 {
                     GUILayout.BeginHorizontal();

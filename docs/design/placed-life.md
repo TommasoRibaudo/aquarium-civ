@@ -223,6 +223,12 @@ never scored; moods may dip a little at night, as with weather.
   the slot until that jar is placed.
 - **Choosing:** with one ready jar, tapping the slot takes that species in hand. With two or more, a small row of
   icons opens above the slot (a bush, a rabbit pair, a stag, a duck, a fish, a wolf); tap one.
+- **What is missing (#570):** the slot also shows while every jar is shut. The chooser lists the ready jars first, then the shut
+  ones greyed; a tap on a shut one picks it and its need shows under the icons ("Rabbits need a meadow", "Ducks need a bigger
+  pond", "Deer need more trees (2/5)"), never a silent no-op. The words come from `EcoModel.JarNeed`, read from the same conditions
+  as `LandReady`. Under it (and under the kit's note) one line says what the camp, then the village, waits for ("The village waits
+  for: more trees (3/8) · fish in the pond"), from `EcoModel.WaitsFor`, the same conditions as the gates; it goes when the village
+  stands. With any shut jar the chooser opens even for one ready jar (two taps instead of one).
 - **Placing (ghost, then tap):** while a species is in hand, its valid ground glows softly and everything else stays
   dark. The first tap on a glowing spot shows a faint **ghost** of the group there. Tapping the ghost again (or the
   small "Place" chip by it) places it; tapping elsewhere on valid ground moves the ghost; tapping the slot or outside
