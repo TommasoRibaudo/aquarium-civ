@@ -387,7 +387,7 @@ namespace AquariumCiv.Sim
 
         /// <summary>#573 debug: a grown wild tree and a young one (sapling) right beside the Keeper's tree (<paramref name="beside"/>), or one grown wild tree
         /// well away from it (the woods spot). Plants the Keeper's grown tree first if there is none. Returns a one-line answer.</summary>
-        public string DebugWildTrees(bool beside, int count = 1)
+        public string DebugWildTrees(bool beside, int count = 1, Func<float, float, float, bool> drawable = null)
         {
             if (!EcologyOn) return "living land off";
             var e = State.eco; var cfg = Config.eco ?? (Config.eco = new EcoTuning());
@@ -395,7 +395,7 @@ namespace AquariumCiv.Sim
             var g = EcoGround;
             float kx = Settle.SiteMap.CXc(e.treeCell), kz = Settle.SiteMap.CZc(e.treeCell);
             const float mx = Settle.Terrain.HX - Settle.Terrain.GlassMargin - 0.1f, mz = Settle.Terrain.HZ - Settle.Terrain.GlassMargin - 0.1f;
-            int Pick(float rMin, float rMax, int skip, float apart = 0f)
+            int Pick(float rMin, float rMax, int skip, float apart = 0f, bool evenOnly = true, int from = -1, float near = 0f, float campMin = 0f, float rad = 0.2f)
             {
                 int best = -1; float bd = float.MaxValue;
                 for (int c = 0; c < EcoLand.N; c++)
@@ -404,7 +404,8 @@ namespace AquariumCiv.Sim
                     var cv = (EcoCover)e.cover[c];
                     if (c == e.treeCell || c == skip || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall)) continue;
                     if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
-                    if ((Settle.SiteMap.I(c) & 1) != 0 || (Settle.SiteMap.J(c) & 1) != 0) continue;
+                    if (evenOnly && ((Settle.SiteMap.I(c) & 1) != 0 || (Settle.SiteMap.J(c) & 1) != 0)) continue;
+                    if (from >= 0 && Settle.Terrain.Dist(x, z, Settle.SiteMap.CXc(from), Settle.SiteMap.CZc(from)) < near) continue;
                     float dk = Settle.Terrain.Dist(x, z, kx, kz);
                     if (dk < rMin || dk > rMax) continue;
                     if (apart > 0f)
@@ -415,15 +416,29 @@ namespace AquariumCiv.Sim
                         if (crowded) continue;
                     }
                     float dc = Settle.Terrain.Dist(x, z, g.campX, g.campZ);
+                    if (dc < campMin) continue;
+                    if (drawable != null && !drawable(x, z, rad)) continue; // the view's own room test: a tree on a path, a clearing or a prop is not drawn
                     if (dc < bd) { bd = dc; best = c; }
                 }
                 return best;
             }
             if (beside)
             {
-                int a = Pick(0.25f, 0.5f, -1), b = Pick(0.25f, 0.5f, a);
-                if (a < 0 || b < 0) return "no room beside the Keeper's tree";
-                e.cover[a] = (byte)EcoCover.Tree; e.cover[b] = (byte)EcoCover.Young;
+                // The Keeper's grown crown is 0.36 u across from its trunk and the view skips any tree that would overlap it (BoxView.Free), so "beside"
+                // is just outside the crown: 0.6 to 0.9 u (still inside woodsClearRadius). The view draws a young tree on only ~45% of its cells, so
+                // plant three saplings, 0.3 u from the grown one, to be sure one shows.
+                // (and out of the camp's bare clearing, GreenR + 0.12 round the fire, where the view draws no tree)
+                float cm = Settle.SiteMap.GreenR + 0.45f;
+                int a = Pick(0.6f, 0.9f, -1, 0f, true, -1, 0f, cm), b = -1;
+                if (a < 0) return "no room beside the Keeper's tree";
+                e.cover[a] = (byte)EcoCover.Tree;
+                for (int k = 0; k < 3; k++)
+                {
+                    int y = Pick(0.6f, 1.0f, -1, 0f, false, a, 0.3f, cm, 0.07f);
+                    if (y < 0) break;
+                    e.cover[y] = (byte)EcoCover.Young; if (b < 0) b = y;
+                }
+                if (b < 0) { e.cover[a] = (byte)EcoCover.Grass; return "no room beside the Keeper's tree"; }
                 EcoM.Reach(EcoMilestones.FirstWoodTree, State.month);
                 EcoTell();
                 return $"a grown wild tree (cell {a}) and a sapling (cell {b}) beside the Keeper's tree";
