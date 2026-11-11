@@ -26,6 +26,8 @@ namespace AquariumCiv.View
         PlaySplash, PlayJump, PlayShake, PlayCircle, PlayPeek, PlayDuel, PlayBlock, PlayCount, PlaySeek, PlayHide, PlayFound, PlayTouch, PlaySnowball,
         // #365 B9 meals and the fire (View/Beats/MealBeats.cs): eating in the ring, the stick into the fire (small, big: the flare)
         EatMeal, PokeFire, PokeFireBig,
+        // fb4 #566: hands together, a small bow, at the feather pole
+        Pray,
     }
 
     /// <summary>
@@ -74,6 +76,7 @@ namespace AquariumCiv.View
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
             ActivityKind.HangWashing or ActivityKind.HangFish => DollStyle.Hang, // #543
             ActivityKind.TakeDownFish => DollStyle.Lift, // #543
+            ActivityKind.Pray => DollStyle.Pray, // fb4 #566
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
             ActivityKind.Hammer or ActivityKind.Repair => DollStyle.Hammer,
             ActivityKind.Saw => DollStyle.Saw,
@@ -622,6 +625,17 @@ namespace AquariumCiv.View
                     p.armL = new Vector3(10f, 0, -45f); p.armR = new Vector3(10f, 0, 45f);
                     p.lean = -4f;
                     break;
+
+                case DollStyle.Pray:
+                {
+                    // Hands together at the chest, a small bow and a pause, up and a breath, down again (a 4 s round).
+                    float k = Frac(t / 4f);
+                    float bow = k < 0.2f ? Mathf.SmoothStep(0f, 1f, k / 0.2f) : k < 0.65f ? 1f : k < 0.85f ? Mathf.SmoothStep(1f, 0.15f, (k - 0.65f) / 0.2f) : 0.15f;
+                    p.lean = 6f + bow * 20f;
+                    p.armL = new Vector3(62f + bow * 8f, 0, -3f); p.armR = new Vector3(62f + bow * 8f, 0, 3f);
+                    p.squash = 1f - bow * 0.03f;
+                    break;
+                }
 
                 case DollStyle.Bow:
                     p.lean = 32f + Mathf.Sin(t * 0.6f) * 2f;

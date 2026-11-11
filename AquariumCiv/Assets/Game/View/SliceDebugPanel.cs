@@ -225,6 +225,9 @@ namespace AquariumCiv.View
             if (Btn("Fish on the rack")) last = FishRackView.DebugRack();
             if (Btn("Dried fish to pile")) last = FishRackView.DebugToPile();
             EndRow();
+            Row(); // fb4 #566: the feather pole
+            if (Btn("Feather pole: pray now")) last = ConsequenceCheats.PrayNow();
+            EndRow();
         }
 
         void OnGUI()

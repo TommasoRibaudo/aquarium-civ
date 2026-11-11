@@ -417,6 +417,7 @@ namespace AquariumCiv.Sim
         public List<HeldMoment> moments = new();
         public WelcomeMemo welcomeMemo = new(); // t3-welcome: the box at the last watched step, to tell what is new at the next open
         public List<ConsequenceProp> consequenceProps = new(); // #371: the things the Keeper's choices left in the box
+        public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
         public float Year => month / (float)SimConfig.MonthsPerYear;
