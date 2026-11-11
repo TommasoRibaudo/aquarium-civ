@@ -196,6 +196,8 @@ namespace AquariumCiv.View
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
             if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
             if (Btn("Slow-mo next hunt")) last = EcoDebug.HuntSlowMoNext();   // #362
+            if (Btn("Make a hunter")) last = EcoDebug.MakeHunter();   // #574
+            if (Btn("Gather an egg now")) last = EcoDebug.GatherEggNow();   // #574
             EndRow();
             Row();
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);

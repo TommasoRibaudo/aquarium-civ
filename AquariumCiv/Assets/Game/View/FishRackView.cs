@@ -70,6 +70,7 @@ namespace AquariumCiv.View
             if (rootSeen != box.Root) { holder = null; rack = null; key = 0; rootSeen = box.Root; }
             var planner = pv.Planner;
             planner.ResolveFishChain(pv.Now);
+            planner.ResolveEggGathers(pv.Now); // #574: the egg gather's take is settled here, once per gather (same per-frame hook)
             if (!planner.TryGetFishRack(pv.Now, out var look)) { Hide(); return; }
             bool wanted = sim.FishingWater || look.Fish > 0 || sim.FishInBasket > 0 || sim.FishInPile > 0;
             if (!wanted) { Hide(); return; }
