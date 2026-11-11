@@ -719,6 +719,7 @@ namespace AquariumCiv.View.PlayTests
                 box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
                 pv = PeopleView.Find();
                 panelGo = new GameObject("OpenQuestionsSignOffPanel");
+                UnityEngine.Object.DontDestroyOnLoad(panelGo); // #569 reloads a young box for its stop and the played box afterwards
                 panel = panelGo.AddComponent<SignOffPanel>();
                 panel.Note("Getting the box ready...");
                 Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
@@ -776,6 +777,7 @@ namespace AquariumCiv.View.PlayTests
                     string crumb = st.Section + (st.Sub.Length > 0 && st.Kind != Kind.Look ? " · " + st.Sub : "") + (st.Kind == Kind.Look ? "" : " · " + st.Kind.ToString().ToLowerInvariant());
                     panel.Show(i + 1, stops.Count, ModeOf(st.Kind), crumb, (st.Issue.Length > 0 ? st.Issue + " " : "") + st.Name, st.Judge, st.Extras.Select(x => x.label).ToArray(), st.Options, st.Bullets, st.BulletTitles, st.NotStaged);
                     if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
+                    if (youngBox && !st.Slug.StartsWith("pacing_")) { yield return RebuildPlayedBox(); }
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {

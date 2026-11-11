@@ -143,6 +143,7 @@ namespace AquariumCiv.View.PlayTests
         // ---------------------------------------------------------------- a) pacing: the misted half against the control (#569)
         IEnumerator BeatPacing()
         {
+            Cheat("young box", "Keeper's tree: " + EcoDebug.PlantHere() + "; seedlings: " + EcoDebug.MistTrees()); // a young box, so the control half is sparse
             PeopleView.DebugSetHour(10f);
             DefaultView();
             yield return Settle(1f);

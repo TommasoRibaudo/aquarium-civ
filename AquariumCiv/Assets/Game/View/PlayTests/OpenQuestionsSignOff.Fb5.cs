@@ -30,7 +30,7 @@ namespace AquariumCiv.View.PlayTests
                     S("#569", "pacing: before and after", "pacing_table",
                         "The mister's water now makes trees grow and seed where it falls. The village used to come at year 35 for the active player; now year 25.\n" +
                         "Active player (six visits a day): 35.0 years before, 25.1 after.   The user's habit (every 4.5 h): 40.8 before, 31.0 after.   Never mists: not in 60 years, unchanged.\n" +
-                        "Left half of the box misted for 3 years, right half the control. Is that the pace you wanted?", SetupPacingTable),
+                        "Below: the counts of young and grown trees per half on a young box, left half misted for 3 years, right half the control. Is that the pace you wanted?", SetupPacingTable),
                     S("#569", "the misted half against the control", "pacing_halves",
                         "Left half: misted every season for 3 years. Right half: nothing. Does the misted half look greener and denser, enough to see at a glance?", SetupPacingHalves) };
                 case "#570": return new[] { S("#570", "locked seeds and the village line", "locked_seeds",
@@ -88,34 +88,68 @@ namespace AquariumCiv.View.PlayTests
             return n;
         }
 
-        bool mistedHalf;
+        bool youngBox;      // the world is the young pacing box, not the played one
+        bool mistedHalf;    // the young box has had its half misted
+        string halfCounts = "";
 
+        void Rebind()
+        {
+            hud = GameHud.Instance;
+            box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+            pv = PeopleView.Find();
+        }
+
+        /// <summary>The played box every other stop expects: a fresh box with 50 seasons gone and the camp gate open (what the walk starts with).</summary>
+        IEnumerator RebuildPlayedBox()
+        {
+            Say("putting the played box back...");
+            yield return Open(1179, 2556, 4242);
+            GameUiPanel.AcceptInputUnfocused(true);
+            Rebind();
+            Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
+            if (Sim.State.era != Era.Camp) Log("camp gate: " + EcoDebug.CampGate());
+            youngBox = false; mistedHalf = false;
+            Hour(10f);
+            yield return Wait(2f);
+            DefaultView();
+            yield return Frames(10);
+        }
+
+        /// <summary>#569: a YOUNG box (fresh, the Keeper's tree planted, a few seedlings), then the left half misted for 12 seasons: the control is visibly sparser.</summary>
         IEnumerator MistTheHalfOnce()
         {
-            if (!mistedHalf)
-            {
-                mistedHalf = true;
-                StateCheat("mist one half, skip 3 yr", EcoDebug.MistHalf(12));
-                yield return Frames(30);
-            }
+            if (mistedHalf) yield break;
+            Say("a young box for the comparison...");
+            yield return Open(1179, 2556, 4242);
+            GameUiPanel.AcceptInputUnfocused(true);
+            Rebind();
+            youngBox = true;
+            StateCheat("young box", "fresh box; Keeper's tree: " + EcoDebug.PlantHere() + "; seedlings: " + EcoDebug.MistTrees());
+            Hour(10f);
+            yield return Frames(20);
+            int bl = TreesIn(true), br = TreesIn(false);
+            StateCheat("mist one half, skip 3 yr", EcoDebug.MistHalf(12));
+            mistedHalf = true;
+            yield return Frames(30);
+            halfCounts = $"misted half: {TreesIn(true)} young/grown trees (was {bl}) · control half: {TreesIn(false)} (was {br})";
+            Log("pacing: " + halfCounts);
         }
 
         IEnumerator SetupPacingTable()
         {
-            Hour(10f);
             yield return MistTheHalfOnce();
+            Hour(10f);
             DefaultView();
-            Say($"young and grown trees: misted half {TreesIn(true)}, control half {TreesIn(false)}");
+            Say(halfCounts);
             yield return Wait(1f);
         }
 
         IEnumerator SetupPacingHalves()
         {
-            Hour(10f);
             yield return MistTheHalfOnce();
-            // the whole box from above the front edge, both halves in the frame
+            Hour(10f);
             Look(box.transform.position, 1f, 58f);
-            Say($"left (misted) {TreesIn(true)} young and grown trees, right (control) {TreesIn(false)}");
+            Say(halfCounts);
             yield return Wait(1f);
         }
 
