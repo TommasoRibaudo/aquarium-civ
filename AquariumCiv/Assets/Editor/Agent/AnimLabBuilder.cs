@@ -370,6 +370,13 @@ namespace AquariumCiv.EditorTools
                         rig.go = MeshObject(s, root, o.id, b.ToMesh("LabRack"), Solid, p0);
                         break;
                     }
+                    case "feather":
+                    {
+                        // #566: the feather pole, as the game draws it (ConsequenceMeshes at its Scale)
+                        rig.go = MeshObject(s, root, o.id, ConsequenceMeshes.Build(AquariumCiv.Sim.ConsequenceKind.Feather), Solid, p0);
+                        rig.go.transform.localScale = Vector3.one * ConsequenceMeshes.Scale;
+                        break;
+                    }
                     case "stash":
                     {
                         // look-fix: the camp's stash is a low heap of berries on a mat, not a grey boulder

@@ -809,3 +809,6 @@ A native dialog in the Editor blocks the main thread, so every `unity command` t
   `[Explicit]` test) or by name in the Test Runner. Auto mode (file `Temp/agent/f4signoff/AUTO`) signs each stop and shoots it.
   Gotcha: `LifePlanner.DebugRackAt` ("Fill fish basket" / "Fish on the rack") recurses into `BasePlace` -> `PlanBase` -> `DebugRackAt`
   (stack overflow, one per frame) when the view hour is jumped while its duty is live; call `Planner.ClearLive()` before `DebugSetHour`.
+
+### 2026-11-10: restart-editor.sh stalls on "Save Scene" with an Untitled scene open
+`SaveOpenScenes()` in the restart script opens a native "Save Scene" file dialog when the Editor holds an untitled scene, and the quit never finishes (`unity status` says unreachable). Cancel it with a Win32 `SendMessage(BM_CLICK)` to the dialog's Cancel button (`FindWindow('#32770','Save Scene')` + `FindWindowEx(..,'Button','Cancel')`; UIAutomation Invoke is unsupported). The Editor then quits; run `bash Tools/restart-editor.sh` again to open it (`unity open` isn't supported here). Also: a play test finds props via `ConsequencePropsView.Instance.Standing`; names are lowercase (`Consequence_feather_*`), and `FindObjectsByType<Transform>` doesn't see them.

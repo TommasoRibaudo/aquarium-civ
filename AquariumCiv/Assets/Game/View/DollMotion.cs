@@ -628,12 +628,14 @@ namespace AquariumCiv.View
 
                 case DollStyle.Pray:
                 {
-                    // Hands together at the chest, a small bow and a pause, up and a breath, down again (a 4 s round).
-                    float k = Frac(t / 4f);
-                    float bow = k < 0.2f ? Mathf.SmoothStep(0f, 1f, k / 0.2f) : k < 0.65f ? 1f : k < 0.85f ? Mathf.SmoothStep(1f, 0.15f, (k - 0.65f) / 0.2f) : 0.15f;
-                    p.lean = 6f + bow * 20f;
-                    p.armL = new Vector3(62f + bow * 8f, 0, -3f); p.armR = new Vector3(62f + bow * 8f, 0, 3f);
-                    p.squash = 1f - bow * 0.03f;
+                    // fb4 #566: kneeling (the doll sunk, as the pickers crouch), hands together in front, and a clear slow bow: down over two
+                    // seconds, held, up a little, a breath, down again (a 6 s round). The head goes with the torso.
+                    float k = Frac(t / 6f);
+                    float bow = k < 0.3f ? Mathf.SmoothStep(0f, 1f, k / 0.3f) : k < 0.55f ? 1f : k < 0.75f ? Mathf.SmoothStep(1f, 0.2f, (k - 0.55f) / 0.2f) : k < 0.85f ? 0.2f : Mathf.SmoothStep(0.2f, 0f, (k - 0.85f) / 0.15f);
+                    p.squash = 0.74f - bow * 0.03f;
+                    p.lean = 8f + bow * 30f;
+                    p.offset.z = bow * 0.012f;
+                    p.armL = new Vector3(70f + bow * 12f, 0, -3f); p.armR = new Vector3(70f + bow * 12f, 0, 3f);
                     break;
                 }
 

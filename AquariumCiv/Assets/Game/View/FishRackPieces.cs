@@ -21,7 +21,7 @@ namespace AquariumCiv.View
         public const float Height = 0.19f;
         public const int MaxFish = Sim.SimCore.FishRackMax;
         /// <summary>A fish's length hanging, and the gap between two (the bar is <c>2 * FishRackSpot.HalfLength</c> long).</summary>
-        public const float FishLength = 0.05f;
+        public const float FishLength = 0.085f;
         public static float Spacing => (2f * FishRackSpot.HalfLength - 0.04f) / (MaxFish - 1);
 
         static readonly Color Wood = new Color(0.40f, 0.28f, 0.16f), WoodDark = new Color(0.28f, 0.19f, 0.11f), Cord = new Color(0.93f, 0.86f, 0.68f);
@@ -102,11 +102,11 @@ namespace AquariumCiv.View
             var q = Quaternion.Euler(0f, 0f, sway);
             Vector3 P(float x, float y, float z) => top + q * new Vector3(x, y, z);
             var back = dry ? DryBack : FreshBack; var belly = dry ? DryBelly : FreshBelly; var tail = dry ? DryTail : FreshTail;
-            float w = dry ? 0.007f : 0.011f;     // across the bar: thin, the fish hangs flat side to the sides
-            mb.Box(P(0f, -0.004f, 0f), new Vector3(0.004f, 0.012f, 0.004f), tail);                               // the tail root, tied to the cord
-            mb.Ico(P(0f, -len * 0.5f - 0.004f, 0f), len * 0.5f, new Vector3(w / (len * 0.5f), 1f, (dry ? 0.30f : 0.42f)), back, 0.02f, belly); // the body
-            mb.Ico(P(0f, -len - 0.004f, 0f), 0.006f, new Vector3(0.55f, 0.9f, 0.9f), back, 0.02f);              // the head, at the bottom
-            mb.Box(P(0f, -0.006f, 0f), new Vector3(0.002f, 0.010f, 0.016f), tail, Quaternion.Euler(0f, 0f, 0f)); // the tail fin
+            float w = dry ? 0.010f : 0.016f;     // across the bar: thin, the fish hangs flat side to the sides
+            mb.Box(P(0f, -0.006f, 0f), new Vector3(0.006f, 0.018f, 0.006f), tail);                               // the tail root, tied to the cord
+            mb.Ico(P(0f, -len * 0.5f - 0.004f, 0f), len * 0.5f, new Vector3(w / (len * 0.5f), 1f, (dry ? 0.26f : 0.32f)), back, 0.02f, belly); // the body
+            mb.Ico(P(0f, -len - 0.004f, 0f), 0.010f, new Vector3(0.55f, 0.9f, 0.9f), back, 0.02f);              // the head, at the bottom
+            mb.Box(P(0f, -0.008f, 0f), new Vector3(0.003f, 0.016f, 0.024f), tail, Quaternion.Euler(0f, 0f, 0f)); // the tail fin
             if (!dry) mb.Box(P(0.0034f, -len - 0.004f, 0.002f), new Vector3(0.0015f, 0.0025f, 0.0025f), new Color(0.12f, 0.12f, 0.14f)); // an eye on the near side
             mb.jitter = sj;
         }
