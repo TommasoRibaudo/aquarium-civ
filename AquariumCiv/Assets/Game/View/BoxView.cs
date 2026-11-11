@@ -172,6 +172,7 @@ namespace AquariumCiv.View
             panes.Clear();
             paneRenderers.Clear();
             lidRenderer = null;
+            if (landMat != null) { DestroyImmediate(landMat); landMat = null; }
             if (frameMat != null) DestroyImmediate(frameMat);
             frameMat = null;
             dolls.Clear();
@@ -213,6 +214,9 @@ namespace AquariumCiv.View
         }
 
         Material Solid => solid != null ? solid : solid = new Material(Shader.Find("AquariumCiv/View/Stylized")) { hideFlags = HideFlags.DontSave };
+        /// <summary>#576: the solid material for the ground and what is built into it: snow settles on it (people, props and frames keep <see cref="Solid"/>).</summary>
+        Material SnowMaterial { get { if (landMat == null) { landMat = new Material(Solid) { hideFlags = HideFlags.DontSave, name = "Land" }; landMat.SetFloat("_SeasonSnow", 1f); } return landMat; } }
+        Material landMat;
 
         int NX => Mathf.Max(8, terrainX + (terrainX & 1));
         int NZ => Mathf.Max(8, terrainZ + (terrainZ & 1));
@@ -252,7 +256,7 @@ namespace AquariumCiv.View
             {
                 builders[k] = BuildChunk(k, out terrainVerts[k]);
                 meshes[k] = builders[k].ToMesh("BoxChunk" + k);
-                chunkFilters[k] = Spawn("Chunk " + k, meshes[k], Solid, true).GetComponent<MeshFilter>();
+                chunkFilters[k] = Spawn("Chunk " + k, meshes[k], SnowMaterial, true).GetComponent<MeshFilter>();
                 chunkColliders[k] = AoCollider("AO " + k, meshes[k]);
                 verts += meshes[k].vertexCount; tris += builders[k].TriangleCount;
             }

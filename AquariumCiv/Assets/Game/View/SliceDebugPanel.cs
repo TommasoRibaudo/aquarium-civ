@@ -202,6 +202,7 @@ namespace AquariumCiv.View
             if (Btn("Gather an egg now")) last = EcoDebug.GatherEggNow();   // #574
             EndRow();
             Row();
+            if (Btn("Skip to next season")) last = EcoDebug.SkipToNextSeason(); // #576: the real clock, to the middle of the next season
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
             if (Btn("+1 yr")) last = EcoDebug.SkipSeasons(4);
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);
