@@ -204,6 +204,21 @@ namespace AquariumCiv.View.PlayTests
 
         protected static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
 
+        /// <summary>#558: with the Kit open, the seed is a choice in the life jar: the life slot, then the seed beside the species (the slot
+        /// takes the seed straight when it is the only choice). Asserts the seed ends up in hand.</summary>
+        protected IEnumerator PickSeedFromLifeJar(GameHud hud, string shot = null)
+        {
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            yield return new WaitForSecondsRealtime(0.4f);
+            if (hud.LifeRowOpen)
+            {
+                if (shot != null) yield return Shot(shot);
+                yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-seed"));
+                yield return new WaitForSecondsRealtime(0.4f);
+            }
+            Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand, picked from the life jar");
+        }
+
         /// <summary>P9 (#417-#419, #423): the Keeper places a ready jar's founding group near the camp by touch, the way a player
         /// does: Kit, the life slot (and the species in the chooser when two jars are ready), a tap on a glowing spot (the ghost),
         /// a tap on the ghost. Sets <see cref="LastPlaced"/>; asserts each UI step.</summary>
