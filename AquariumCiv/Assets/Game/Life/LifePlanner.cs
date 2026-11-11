@@ -191,6 +191,7 @@ namespace AquariumCiv.Life
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
             if (DebugRackAt(p, t, out var racking)) return racking; // #543 debug: "fill fish basket" / "fish on the rack"
+            if (PrayerActivityAt(p, t, out var praying)) return praying; // fb4 #566: a visit to the feather pole
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);

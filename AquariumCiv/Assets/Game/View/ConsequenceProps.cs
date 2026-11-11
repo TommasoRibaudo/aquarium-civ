@@ -233,7 +233,11 @@ namespace AquariumCiv.View
         /// <summary>A callback moment starts at this thing: it bobs once.</summary>
         public static void Pulse(int propId)
         {
-            if (Instance != null) Instance.pulses[propId] = Time.unscaledTime;
+            if (Instance == null) return;
+            var sim = Sim; // fb4 #566: every feather answer is the one pole
+            var pole = sim?.FeatherPoleProp;
+            if (pole != null && sim.FindConsequenceProp(propId)?.kind == ConsequenceKind.Feather) propId = pole.id;
+            Instance.pulses[propId] = Time.unscaledTime;
         }
 
         void LateUpdate()
@@ -262,9 +266,15 @@ namespace AquariumCiv.View
                 rackAngle = Mathf.Atan2(hz - fz, hx - fx);
                 fishAngle = FishRackSpot.AngleFor(fx, fz, sim.State.seed); // #543
             }
+            var pole = sim.FeatherPoleProp; // fb4 #566: one feather pole, however many answers asked for a feather (old saves too)
             foreach (var p in list)
             {
                 if (!p.placed) continue;
+                if (p.kind == ConsequenceKind.Feather && p != pole)
+                {
+                    if (made.TryGetValue(p.id, out var gone)) { Kill(gone.mesh); if (gone.t != null) Kill(gone.t.gameObject); made.Remove(p.id); }
+                    continue;
+                }
                 float px = p.x, pz = p.z;
                 if (haveFire && p.anchor == PropAnchor.Fire)
                 {
@@ -314,6 +324,15 @@ namespace AquariumCiv.View
             if (sim == null) return "no box";
             int n = sim.DebugPlaceEveryProp();
             return $"{n} things stand in the box";
+        }
+
+        /// <summary>fb4 #566: "Feather pole: pray now": the one pole stands (made if need be) and two grown-ups and a kid walk to it and pray.</summary>
+        public static string PrayNow()
+        {
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no PeopleView";
+            int n = pv.Planner.DebugPrayNow(pv.Now);
+            return n < 0 ? "nobody free to pray (or no box)" : $"{n} walk to the feather pole and pray";
         }
 
         /// <summary>fb4 #540: every fire-side thing at once: the drying rack with 6 hides, every Keeper's prop (the stew pot, the feathers...),
