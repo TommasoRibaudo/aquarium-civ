@@ -320,7 +320,7 @@ moisture factor.
   (`wildSeedChance`) is halved, 0.08 to 0.04: one lucky early wild tree was what made a box 8 years early, and it spread the
   per-seed results (round 2 of #569).
 - The village gate keeps **8 trees**, pond 20, ducks and fish placed.
-- No new dice: the new terms only scale the existing hash chances.
+- No new dice: the new terms only scale the existing hash chances. The extra seed-take never applies to a bush cell, so the placed thicket keeps its cap.
 
 **A misted patch vs an unmisted one** (`EcoPacingTests.MistedGround_GrowsAndSeedsFasterThanUnmisted`: two equal patches, a grown
 tree, six seedlings and six young trees each, both kept equally damp, one misted once; 3 boxes x 2 swaps, after 3 game years):
@@ -347,7 +347,7 @@ The player sees the saplings, so they water them: this is what "misting grows a 
 | (a) Active, 21 | 4.8 / 2.3 | 11.3 / 11.0 | 38.3 / 24.5 | 38.3 | **24.5** | 25.7 |
 | (a) Active, 42 | 4.8 / 4.8 | 10.3 / 10.3 | 36.5 / 24.3 | 36.5 | **24.3** | 25.4 |
 | (b) Habit, 7 | 9.3 / 9.3 | 19.3 / 19.0 | 34.5 / 33.3 | 34.5 | **33.3** | 35.1 |
-| (b) Habit, 21 | 9.3 / 9.3 | 18.0 / 17.8 | 46.5 / 29.3 | 46.5 | **29.3** | 31.1 |
+| (b) Habit, 21 | 9.3 / 9.3 | 18.0 / 17.8 | 46.5 / 30.3 | 46.5 | **30.3** | 32.1 |
 | (b) Habit, 42 | 9.3 / 9.3 | 16.8 / 16.8 | 41.3 / 29.3 | 41.3 | **29.3** | 31.1 |
 | (c) Never mists, 7 | 16.5 / 16.5 | 55 / 55 | 52.3 / 52.3 | not in 60 y | not in 60 y | - |
 | (c) Never mists, 21 | 15.5 / 15.5 | 50 / 50 | none in 60 y | not in 60 y | not in 60 y | - |
@@ -356,14 +356,14 @@ The player sees the saplings, so they water them: this is what "misting grows a 
 (Each cell reads "before / after"; the village opens at the first visit after the 8th tree because the ducks and fish are
 placed by hand.) (a) mean: **before 35.0, after 25.1**, every seed within 22-28 (the test asserts it). Over 8 seeds the
 after-years are 26.5, 24.5, 24.3, 18.3, 23.3, 26.5, 26.5, 23.8 (mean 24.2; seed 3 is a lucky early wood). (b) mean: **before
-40.8, after 30.6**. (c) is unchanged (nothing is watered; 49.3 to 49.5 is the extra seeds on the Keeper's own tree): a box
+40.8, after 31.0**. (c) is unchanged (nothing is watered; 49.3 to 49.5 is the extra seeds on the Keeper's own tree): a box
 nobody mists gets no faster.
 
 **What is left, said plainly.**
-- (b) lands **5.5 years after (a)**, not 2-3. The cause is the chain, not the forest: the camp gate opens at visit 3 or 4, and the
+- (b) lands **5.8 years after (a)**, not 2-3. The cause is the chain, not the forest: the camp gate opens at visit 3 or 4, and the
   thicket, the rabbits, the camp, the seed, the tree and the ducks and fish are each one placement per visit (#434's design),
   so each 4.5 h gap costs 4.5 years at each step (the Keeper's tree is planted at year 13.5 for (b), 4.5-8 for (a)). Making the
-  mist stronger did not close it (it narrowed 8 to 5.5). Decision for the user: **(recommended) leave it**: the habit player is
+  mist stronger did not close it (it narrowed 8 to 5.8). Decision for the user: **(recommended) leave it**: the habit player is
   5-6 years behind, and the visit loop's one-choice-per-visit is the design. Alternative: let one visit place two jars in a row
   (the thicket and the rabbits when both are ready), which would put (b) about 3 years behind but changes #434.
 - (a)'s spread over 8 seeds is 18.3-26.5; the 3 lab seeds sit at 24.3-26.5.

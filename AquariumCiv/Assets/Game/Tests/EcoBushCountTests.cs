@@ -55,9 +55,7 @@ namespace AquariumCiv.Tests
             }
         }
 
-        // #569 re-seed: seed 11 became 13. The thicket now chokes fewer seedlings (thicketChoke 0.9 to 0.6), so on seed 11 one seed took on a
-        // thicket bush in a year and the count read 21 for a year instead of the cap. That is the new rule working, not a leak.
-        static readonly int[] BushSeeds = { 7, 3, 13 };
+        static readonly int[] BushSeeds = { 7, 3, 11 };
 
         [Test]
         public void Bushes_FillTheThicketToItsCap_AndStop([ValueSource(nameof(BushSeeds))] int seed)

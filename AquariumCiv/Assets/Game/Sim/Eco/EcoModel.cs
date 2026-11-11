@@ -589,7 +589,7 @@ namespace AquariumCiv.Sim.Eco
                 case EcoCover.Bare: p = Damp(c) > 0.3f ? t.seedTakeBare : 0f; break;
                 default: p = 0f; break;
             }
-            p *= 1f + t.wateredTake * Watered(c); // #569: a seed takes where the mister's water fell
+            if (Cv(c) != EcoCover.Bush) p *= 1f + t.wateredTake * Watered(c); // #569: a seed takes where the mister's water fell (not on the berry thicket: it stays at its cap)
             if (st.thicketA >= 0) p *= 1f - t.thicketChoke * ThicketZone(c); // #385: a berry thicket chokes the seedlings, so it stays a thicket
             return roll < p;
         }
