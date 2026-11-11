@@ -775,6 +775,14 @@ namespace AquariumCiv.GameUI
         /// <summary>The Offices sheet's scroll (tests).</summary>
         public GlassScroll OfficesScroll { get; private set; }
 
+        /// <summary>#572: set by the person card (View): open a notable's card and bring the camera to them.</summary>
+        public static Action<int> OpenPerson;
+
+        void OfficeHolderTapped(int notableId)
+        {
+            if (OpenPerson != null) OpenPerson(notableId); // the person card (View) closes this sheet
+        }
+
         void RefreshOffices()
         {
             officesList.Clear();
@@ -789,8 +797,20 @@ namespace AquariumCiv.GameUI
                     row.AddToClassList("kg-row");
                     row.AddToClassList(GlassScroll.RowClass);
                     var label = Text(char.ToUpperInvariant(role[0]) + role.Substring(1), "type-body", "kg-row-label");
-                    var who = Text(holder != null ? holder.name : "Vacant", "type-body", "office-holder");
-                    if (holder == null) who.AddToClassList("office-vacant");
+                    VisualElement who;
+                    if (holder != null)
+                    {
+                        // #572: the holder's name is a button: it opens their card (and the camera brings them over), as tapping the person does.
+                        int hid = holder.id;
+                        var btn = new GlassButton(holder.name, () => OfficeHolderTapped(hid), ButtonKind.Quiet, UiRole.Open) { name = row.name + "-holder", Compact = true };
+                        btn.AddToClassList("office-holder");
+                        who = btn;
+                    }
+                    else
+                    {
+                        who = Text("Vacant", "type-body", "office-holder");
+                        who.AddToClassList("office-vacant");
+                    }
                     row.Add(label);
                     row.Add(who);
                     officesList.Add(row);
@@ -1014,8 +1034,19 @@ namespace AquariumCiv.GameUI
             PlaceToast();
         }
 
+        /// <summary>#571: the line under the box name, built from parts: "Year 37 · 16 people". #576 fills <paramref name="season"/> ("Year 37 · Autumn · 16 people").</summary>
+        public static string TitleLine(int year, string season, int population)
+        {
+            string line = "Year " + year.ToString(CultureInfo.InvariantCulture);
+            if (!string.IsNullOrEmpty(season)) line += " · " + season;
+            return line + " · " + population.ToString(CultureInfo.InvariantCulture) + (population == 1 ? " person" : " people");
+        }
+
+        /// <summary>The season slot of the title line; empty until #576.</summary>
+        static string SeasonWord(AquariumCiv.Sim.SimState s) => null;
+
         /// <summary>The name just changed: the title shows it at once.</summary>
-        internal void RefreshNow() => RefreshText();
+        public void RefreshNow() => RefreshText();
 
         void RefreshText()
         {
@@ -1024,7 +1055,7 @@ namespace AquariumCiv.GameUI
             var s = sim.State;
             string place = string.IsNullOrEmpty(s.settlementName) ? "Your box" : s.settlementName;
             nameLabel.text = place;
-            yearLabel.text = "Year " + Mathf.FloorToInt(s.Year).ToString(CultureInfo.InvariantCulture);
+            yearLabel.text = TitleLine(Mathf.FloorToInt(s.Year), SeasonWord(s), s.population);
             if (historyBody != null)
                 historyBody.text = $"{place}, year {Mathf.FloorToInt(s.Year)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
         }

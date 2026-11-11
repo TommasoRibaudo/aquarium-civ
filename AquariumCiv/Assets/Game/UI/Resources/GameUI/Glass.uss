@@ -577,7 +577,7 @@
 }
 .hud-title-text { flex-shrink: 1; min-width: 0; padding: 8.25px 24.75px; margin-left: -24.75px; border-radius: 27.5px; }
 .hud-title-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -unity-text-align: middle-left; }
-.hud-title-year { white-space: nowrap; -unity-text-align: middle-left; }
+.hud-title-year { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -unity-text-align: middle-left; }
 .hud-disc { width: 121px; height: 121px; border-radius: 50%; justify-content: center; align-items: center; }
 .hud-spacer { flex-grow: 1; }
 .office-holder { flex-shrink: 0; -unity-text-align: middle-right; }
