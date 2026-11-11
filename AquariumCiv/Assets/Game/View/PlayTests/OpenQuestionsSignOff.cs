@@ -31,7 +31,7 @@ namespace AquariumCiv.View.PlayTests
     /// three sample text stops to Temp/agent/oqsignoff/NN_name.png and writes auto-results.md there instead.
     /// </summary>
     [Explicit, Category("OpenQuestionsSignOff")]
-    public class OpenQuestionsSignOff
+    public partial class OpenQuestionsSignOff
     {
         public static bool AutoAnswer;
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
@@ -275,6 +275,9 @@ namespace AquariumCiv.View.PlayTests
             ["#273"] = new[] { P("#273", "camera reach at the walls", "camera273", "default view: pan to the walls at close and far zoom") },
             ["#249"] = new[] { P("#249", "the Kit button", "kit249", "default view: open the Kit") },
             ["#281"] = new[] { P("#281", "fresh green on return", "green281", "default view: the fresh green shows after you come back") },
+            // feedback batch 5 (#569-#578): the stops are in OpenQuestionsSignOff.Fb5.cs
+            ["#569"] = Fb5("#569"), ["#570"] = Fb5("#570"), ["#571"] = Fb5("#571"), ["#572"] = Fb5("#572"), ["#573"] = Fb5("#573"),
+            ["#574"] = Fb5("#574"), ["#575"] = Fb5("#575"), ["#576"] = Fb5("#576"), ["#577"] = Fb5("#577"), ["#578"] = Fb5("#578"),
         };
 
         // ---------------------------------------------------------------- reading docs/open-questions.md
@@ -772,6 +775,7 @@ namespace AquariumCiv.View.PlayTests
                     var st = stops[i];
                     string crumb = st.Section + (st.Sub.Length > 0 && st.Kind != Kind.Look ? " · " + st.Sub : "") + (st.Kind == Kind.Look ? "" : " · " + st.Kind.ToString().ToLowerInvariant());
                     panel.Show(i + 1, stops.Count, ModeOf(st.Kind), crumb, (st.Issue.Length > 0 ? st.Issue + " " : "") + st.Name, st.Judge, st.Extras.Select(x => x.label).ToArray(), st.Options, st.Bullets, st.BulletTitles, st.NotStaged);
+                    if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {
