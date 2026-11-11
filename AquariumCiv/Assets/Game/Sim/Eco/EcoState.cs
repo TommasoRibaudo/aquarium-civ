@@ -22,6 +22,9 @@ namespace AquariumCiv.Sim.Eco
         /// puddle = water standing on soaked low ground (a drinking source while there is no pond); sprout = first shoots on
         /// bare ground, 1 = it turns to grass. Null in an old save (EcoModel makes them).</summary>
         public float[] wet, puddle, sprout;
+        /// <summary>#569, per cell, 0..1: the ground the mister's water fell on, remembered. Seedlings take and seedlings and young
+        /// trees grow faster on it, and it greens sooner; it fades a little each season (EcoTuning.wateredKeep). Null in an old save (EcoModel makes it).</summary>
+        public float[] watered;
         public float humidity, grime, droplets;
         /// <summary>The water table (terrain height units), its peak so far, and the pond's level (-1000 = no pond yet).</summary>
         public float table, tablePeak, pondLevel = -1000f;
