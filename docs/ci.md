@@ -59,4 +59,15 @@ zizmor's audits.
 - StepSecurity Harden-Runner (egress monitoring) and OpenSSF Scorecard: worth it if the project gains contributors.
 - CODEOWNERS on `.github/` only matters once there's more than one maintainer.
 
-- **2026-11-11:** the Unity tests job's limit went from 60 to 90 min. PR #579 (feedback batch 5) was cancelled at 60 min while EditMode was still running (batch 4's PR took 51 min); the suite grew with the eco pacing tests. If it nears 90, split EditMode and PlayMode into two jobs rather than raising it again.
+- **2026-11-11 (the user's call): Unity tests only where they gate.** A batch used to run the full EditMode suite three times in CI
+  (PR into dev, PR dev -> main, push to main; 60-90 min each) on top of the local batched Editor pass. Now:
+  - **PR into dev:** Workflow lint, Secret scan and Sim tests run; the Unity jobs are skipped and the required "Unity tests" check
+    passes as "not needed". The local batched Editor pass (docs/workflow.md §7: 10 EditMode assemblies + PlayMode + smoke) is the
+    Unity check for dev.
+  - **PR dev -> main:** the full EditMode suite, in four parallel jobs (`Unity EditMode (sim|life|view|rest)`, each by
+    `-assemblyNames`), gated by the "Unity tests" job (the required check on both rulesets). A clean machine catches what a
+    local Library hides.
+  - **Push to main:** no Unity run (the PR into main tested the same content). **Docs-only PRs** (only `docs/` or `*.md`) skip Unity.
+  - A manual run (`workflow_dispatch`) runs everything.
+  - A new EditMode test assembly must be added to a group's `assemblies` list in ci.yml, or CI won't run it.
+  - The earlier note: PR #579 was cancelled at 60 min in a single EditMode job (batch 4's took 51 min).
