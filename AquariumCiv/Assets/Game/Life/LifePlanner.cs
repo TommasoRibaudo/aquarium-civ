@@ -314,6 +314,7 @@ namespace AquariumCiv.Life
             h = h * 31 + s.chronicle.Count;
             h = h * 31 + s.nudges.Count;
             h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
+            h = h * 31 + s.supperPick * 7 + s.supperMonth; // #589
             h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
             if (s.roles != null)
                 for (int i = 0; i < s.roles.Count; i++) h = h * 31 + s.roles[i].holderId * (i + 7);
@@ -363,7 +364,7 @@ namespace AquariumCiv.Life
             fire = campB != null ? new Place(PlaceKind.Fire, campB.id) : any != null ? PlaceOf(any) : Place.Land(PlaceKind.Hill);
             stash = era == Era.Camp && fire.kind == PlaceKind.Fire ? CampStash.Stand : fire; // #150
             gather = era == Era.Camp ? fire
-                : era == Era.Village ? (wellB != null ? PlaceOf(wellB) : fire)
+                : era == Era.Village ? (campB != null ? fire : wellB != null ? PlaceOf(wellB) : fire) // #588: the stone fire pit on the green
                 : marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : fire;
             remembering = Place.Land(PlaceKind.Remembering, churchB != null ? 1 : 0); // a cairn, later the churchyard
 

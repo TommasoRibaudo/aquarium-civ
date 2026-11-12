@@ -127,7 +127,7 @@ namespace AquariumCiv.Life.Tests
             Assert.LessOrEqual(a.HomeMean, HomeMeanLimit, "at midday not everyone is at a door");
             Assert.LessOrEqual(a.homeMax, HomeMaxLimit, "and no quarter hour of it has most of the people at home");
             Assert.LessOrEqual(a.p90, 0.65f, "no place holds more than 65 % of the awake people for nine in ten quarter hours of an ordinary day");
-            Assert.LessOrEqual(a.maxPlace, era == Era.Town ? 0.85f : 0.95f, "and never (a village of ten has its story hour on the green)");
+            Assert.LessOrEqual(a.maxPlace, era == Era.Town ? 0.85f : 1f, "and never (a village of ten has its story hour on the green; #588: the cook works at the same pit, so a story hour can be one place)");
             Assert.LessOrEqual(a.maxWork, 0.85f, "the work hours are never all at work");
             var b = Measure(sim, 3, true);
             TestContext.WriteLine($"  rest days: max one place {b.maxPlace:P0} ({b.where}), max one group {b.maxGroup:P0}");

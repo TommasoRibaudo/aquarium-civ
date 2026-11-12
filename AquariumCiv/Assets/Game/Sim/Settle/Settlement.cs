@@ -332,8 +332,8 @@ namespace AquariumCiv.Sim.Settle
             {
                 // The founding hearth is the green's centre; the first well goes beside it (lots never move).
                 site.open = true;
-                site.x = Map.greenX + (kind == LotKind.Well ? 0.17f : 0f);
-                site.z = Map.greenZ + (kind == LotKind.Well ? -0.1f : 0f);
+                site.x = Map.greenX + (kind == LotKind.Well ? FirstWellDX : 0f);
+                site.z = Map.greenZ + (kind == LotKind.Well ? FirstWellDZ : 0f);
                 site.door = SiteMap.CellAt(site.x, site.z);
                 site.doorX = site.x; site.doorZ = site.z;
                 Lots.Add(site);
@@ -348,6 +348,9 @@ namespace AquariumCiv.Sim.Settle
             foreach (var s in Lots) if (s.kind == k && !s.retired) return true;
             return false;
         }
+
+        /// <summary>#588: where the first well stands from the green's centre (the stone fire pit): about 5 cells off, a short walk, clear of the dance ring.</summary>
+        public const float FirstWellDX = 0.40f, FirstWellDZ = -0.30f;
 
         bool HasOpenWell()
         {
