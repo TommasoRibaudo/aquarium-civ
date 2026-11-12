@@ -69,7 +69,7 @@ namespace AquariumCiv.Tests
             int full = r.count.FindIndex(n => n >= cap);
             Assert.That(full, Is.InRange(2, 12), "it fills over a few years, not at once");
             for (int y = full; y < 40; y++) Assert.AreEqual(cap, r.count[y], $"year {y + 1}: stays at the cap");
-            for (int y = 1; y < full; y++) if (r.count[y - 1] > 0) Assert.LessOrEqual(r.count[y] - r.count[y - 1], 4, $"year {y + 1}: about a bush a season");
+            for (int y = 1; y < full; y++) if (r.count[y - 1] > 0) Assert.LessOrEqual(r.count[y] - r.count[y - 1], 6, $"year {y + 1}: about a bush a season, a few more where the mister watered it (#605)");
         }
 
         [Test]
