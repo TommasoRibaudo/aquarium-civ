@@ -71,3 +71,35 @@ Verdicts from the `OpenQuestionsSignOff` play test, one run per section.
 | 63. Two years on the time-lapse screen | From tester run 4, first play through clear glass | other | dont do nything | 22:24:40 |
 | 64. Small UI tidy | From tester run 4, first play through clear glass | ★ One ticket |  | 22:24:45 |
 | 65. Tall sheets | From tester run 4, first play through clear glass | other | fine as it is | 22:25:32 |
+
+## Run 2026-11-11 19:07
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 1. #569 pacing: before and after | Feedback 5 / Look | signed off |  | 19:08:46 |
+| 2. #569 the misted half against the control | Feedback 5 / Look | signed off |  | 19:26:21 |
+| 3. #570 locked seeds and the village line | Feedback 5 / Look | signed off |  | 19:49:29 |
+| 4. #571 population on the title | Feedback 5 / Look | signed off |  | 19:49:38 |
+| 5. #572 the chief's office | Feedback 5 / Look | signed off |  | 19:49:50 |
+| 6. #573 no chopping by the Keeper's tree | Feedback 5 / Look | signed off |  | 19:49:54 |
+| 7. #573 chopping with chips and logs | Feedback 5 / Look | signed off |  | 19:51:49 |
+| 8. #573 the log carried to the stash | Feedback 5 / Look | signed off |  | 19:52:04 |
+| 9. #574 a rabbit hunt | Feedback 5 / Look | signed off |  | 19:53:16 |
+| 10. #574 the egg gather | Feedback 5 / Look | signed off |  | 19:54:10 |
+| 11. #575 rename on the card | Feedback 5 / Look | needs change | the buttons have no margin with the name and the nevermind button does not look like a button, keep is vague, use save. | 19:54:56 |
+| 12. #576 spring | Feedback 5 / Look | signed off |  | 19:55:06 |
+| 13. #576 summer | Feedback 5 / Look | signed off |  | 19:55:10 |
+| 14. #576 autumn | Feedback 5 / Look | signed off |  | 19:55:12 |
+| 15. #576 winter | Feedback 5 / Look | signed off |  | 19:55:13 |
+| 16. #577 glass: dry land close | Feedback 5 / Look | signed off |  | 19:55:23 |
+| 17. #577 glass: the lit camp at night | Feedback 5 / Look | signed off |  | 19:55:28 |
+| 18. #577 the lid at the default view | Feedback 5 / Look | signed off |  | 19:55:32 |
+| 19. #577 the lid, top-down | Feedback 5 / Look | signed off |  | 19:55:36 |
+| 20. #578 the travellers' words (no woods) | Feedback 5 / Look | signed off |  | 19:55:48 |
+| 21. #578 the travellers' wood is carried | Feedback 5 / Look | signed off |  | 19:55:57 |
+| 22. #578 the travellers join | Feedback 5 / Look | signed off |  | 19:56:00 |
+| 23. #569 the habit player lands later | Feedback 5 / Decisions | ★ Leave it (the one-placement-per-visit chain of #434) |  | 19:56:07 |
+| 24. The season word's place on the title line (#576) | Feedback 5 / Decisions | ★ Keep it in the title line |  | 19:58:18 |
+| 25. The lid's look (#577) | Feedback 5 / Decisions | ★ Keep it |  | 19:58:21 |
+| 26. Calls I made without you | Feedback 5 / Calls I made | accepted all |  | 19:58:23 |
+| 27. Being built now | Waiting on you | decide later |  | 19:58:41 |
