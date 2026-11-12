@@ -28,6 +28,8 @@ namespace AquariumCiv.View
         public Color coat, belly, saddle, patchCol; public float patch; public bool rump, paleFace;
         /// <summary>Antlers (size 0 none .. 1.4 the white stag's great ones), a hide collar, the eye's glint (the white stag's gold).</summary>
         public float antlers; public bool collar; public Color eye;
+        /// <summary>#504: 0 = the lean build (wolves, dogs, pups); the deer carry 0.4: a wider and deeper barrel (chest and belly) and a thicker neck.</summary>
+        public float fullness;
         /// <summary>Litter-mates and herd-mates differ a little (a hash of the animal).</summary>
         public int variant;
 
@@ -46,8 +48,9 @@ namespace AquariumCiv.View
                 case QuadKind.Stag: case QuadKind.Doe: case QuadKind.Fawn: case QuadKind.WhiteStag:
                     l.shoulder = k == QuadKind.Fawn ? 0.09f : k == QuadKind.Doe ? 0.15f : 0.16f;
                     l.bodyLen = k == QuadKind.Fawn ? 0.12f : 0.20f;
-                    l.legShare = k == QuadKind.Fawn ? 0.66f : 0.62f;
-                    l.neckLen = k == QuadKind.Fawn ? 0.05f : 0.085f; l.neckRise = 58f;
+                    l.legShare = k == QuadKind.Fawn ? 0.62f : 0.57f; // #504: shorter legs under a deeper body (it read long and thin)
+                    l.fullness = k == QuadKind.Fawn ? 0.3f : 0.4f;
+                    l.neckLen = k == QuadKind.Fawn ? 0.05f : 0.1f; l.neckRise = 58f; // a longer neck reaches the grass
                     l.headLen = k == QuadKind.Fawn ? 0.04f : 0.05f; l.muzzle = 0.75f; l.headRound = k == QuadKind.Fawn ? 1.25f : 1f;
                     l.earSize = k == QuadKind.Fawn ? 0.019f : 0.017f; l.wideEars = true;
                     l.tailLen = 0.022f; l.tailHang = 20f; l.flag = true;
@@ -96,7 +99,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>A key for the mesh cache: looks that build the same meshes share them.</summary>
-        public string Key() => $"{kind}:{shoulder:0.000}:{bodyLen:0.000}:{earDroop:0.00}:{patch:0.00}:{tailCurl:0.00}:{muzzle:0.00}:{antlers:0.00}:{collar}:{variant % 4}:{ColorUtility.ToHtmlStringRGB(coat)}";
+        public string Key() => $"{kind}:{shoulder:0.000}:{bodyLen:0.000}:{fullness:0.00}:{legShare:0.00}:{neckLen:0.000}:{earDroop:0.00}:{patch:0.00}:{tailCurl:0.00}:{muzzle:0.00}:{antlers:0.00}:{collar}:{variant % 4}:{ColorUtility.ToHtmlStringRGB(coat)}";
     }
 
     /// <summary>
@@ -116,6 +119,8 @@ namespace AquariumCiv.View
         public float lie, sit, bow, curl;
         /// <summary>The tail (degrees up from its rest hang), its wag (degrees, side to side).</summary>
         public float tail, wag;
+        /// <summary>#504 ears (degrees): each ear's flick out and down (0 at rest), and both ears' swivel (+ forward, - back).</summary>
+        public float earL, earR, earSwivel;
         public float scale;
 
         public static QuadPose Stand(Vector3 at, float yaw) => new QuadPose { at = at, yaw = yaw, phase = float.NaN, scale = 1f };
@@ -145,13 +150,53 @@ namespace AquariumCiv.View
             p.neck = 6f; p.head = 4f; p.tail = -4f;
         }
 
-        /// <summary>Head down to the ground (0.6 s Smooth from <paramref name="since"/>), small nods, a step now and then.</summary>
-        public static void Graze(ref QuadPose p, float t, float since, int seed)
+        /// <summary>Graze cycle in seconds: head down and chewing, up to look round, down again (a per-deer offset keeps a herd out of step).</summary>
+        public const float GrazeCycle = 11f;
+
+        /// <summary>
+        /// #504: how far down the head is (0 = up and looking, 1 = at the grass) at cycle time <paramref name="c"/> (0..<see cref="GrazeCycle"/>):
+        /// down and chewing to 6.0 s, up by 6.6 s, a look round to 8.6 s, down again by 9.3 s.
+        /// </summary>
+        public static float GrazeDown(float c)
         {
-            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(since / 0.6f));
+            if (c < 6f) return 1f;
+            if (c < 6.6f) return 1f - Mathf.SmoothStep(0f, 1f, (c - 6f) / 0.6f);
+            if (c < 8.6f) return 0f;
+            if (c < 9.3f) return Mathf.SmoothStep(0f, 1f, (c - 8.6f) / 0.7f);
+            return 1f;
+        }
+
+        /// <summary>
+        /// #504 (playtest 582: "their eating animation sucks"). The old graze put the neck 14 degrees below level and the head 112 degrees
+        /// down, nose tucked under the chin and still 8 cm off the grass, held for ever with a 5 degree sway: no chewing, no lift, ears dead.
+        /// Now the neck goes 58 degrees below level and the head 75, so the muzzle reaches the ground; it chews (small 2.6 Hz bobs, a
+        /// tug of the neck every 1.9 s), lifts to look round (head swings, ears turn forward, one flicks), then goes down again.
+        /// <paramref name="neckRise"/> is the look's rest rise (the deer's 58): the pose angles are relative to it.
+        /// </summary>
+        public static void Graze(ref QuadPose p, float t, float since, int seed, float neckRise = 58f)
+        {
+            float kIn = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(since / 0.6f));
+            float c = Mathf.Repeat(since + seed * 1.7f, GrazeCycle);
+            float down = GrazeDown(c);
+            float eff = Mathf.Min(kIn, down);   // 1 = head at the grass
+            float look = (1f - down) * kIn;     // 1 = head up and looking round
+            float chew = Mathf.Clamp01((eff - 0.85f) / 0.15f);
+            float tugPhase = Mathf.Repeat(t + seed * 0.37f, 1.9f) / 1.9f;
+            float tug = tugPhase < 0.25f ? Mathf.Sin(tugPhase / 0.25f * Mathf.PI) * 7f * chew : 0f;
+            float bob = Mathf.Sin((t + seed * 0.21f) * Mathf.PI * 2f * 2.6f) * 3.5f * chew;
             p.phase = float.NaN;
-            p.neck = 72f * k; p.head = 40f * k + Mathf.Sin(t * 2.3f + seed) * 5f * k;
-            p.bodyPitch = 4f * k;
+            // world angles below level, from the rest pose (neck -rise, head 0) to looking round (neck -22, head -4) or the grass (58, 75)
+            float neckDown = Mathf.Lerp(-neckRise, Mathf.Lerp(-22f, 58f, down), kIn);
+            float headDown = Mathf.Lerp(0f, Mathf.Lerp(-4f, 75f, down), kIn);
+            p.neck = neckDown + neckRise - tug;                 // the pose's neck is relative to its rest rise
+            p.head = headDown - (neckDown + neckRise) + bob + tug * 0.5f; // and its head relative to the neck
+            p.bodyPitch = 6f * eff;
+            float w = Mathf.Clamp01((c - 6.6f) / 2f); // the look round: one sweep left and right
+            p.headYaw = Mathf.Sin(w * Mathf.PI * 2f) * 40f;
+            p.earSwivel = -10f * eff + 30f * look;
+            p.earR = c >= 3f && c < 3.3f ? 32f * Mathf.Sin((c - 3f) / 0.3f * Mathf.PI) : 0f; // a flick while grazing
+            p.earL = c >= 7.4f && c < 7.7f ? 38f * Mathf.Sin((c - 7.4f) / 0.3f * Mathf.PI) : 0f; // and one while looking round
+            p.tail = c >= 4.6f && c < 5.1f ? 18f * Mathf.Sin((c - 4.6f) / 0.5f * Mathf.PI) : 0f; // the tail flicks too
         }
 
         /// <summary>Head up and turned to the cause in 0.25 s (Snap), tail flag up, still.</summary>
@@ -162,6 +207,8 @@ namespace AquariumCiv.View
             p.neck = -14f * k; p.head = -6f * k;
             p.headYaw = Mathf.Clamp(yawToCause, -80f, 80f) * k;
             p.tail = flag ? 80f * k : 10f * k;
+            p.earSwivel = (flag ? 32f : 18f) * k; // ears turn to the cause
+            if (since < 0.35f) p.earL = 28f * Mathf.Sin(since / 0.35f * Mathf.PI); // and one flicks as the head comes up
         }
 
         /// <summary>The deer's bound (leaps of 0.04 u, the white rump flashing: tail up) or the wolf's flat run.</summary>
@@ -252,6 +299,7 @@ namespace AquariumCiv.View
         public readonly GameObject go;
         public readonly QuadLook look;
         readonly Transform body, neck, head, tail;
+        readonly Transform[] ears = new Transform[2]; // #504: left (-x) and right (+x), pivoting at the root
         readonly Transform[] legs = new Transform[4];
 
         static readonly Dictionary<string, Mesh> meshes = new();
@@ -269,6 +317,7 @@ namespace AquariumCiv.View
             body = Part(go.transform, "Body", MeshOf(look, 0), mat, new Vector3(0f, look.Leg, 0f));
             neck = Part(body, "Neck", MeshOf(look, 1), mat, NeckBase(look));
             head = Part(neck, "Head", MeshOf(look, 2), mat, new Vector3(0f, 0f, look.neckLen));
+            for (int i = 0; i < 2; i++) ears[i] = Part(head, i == 0 ? "EarL" : "EarR", MeshOf(look, 5 + i), mat, EarAt(look, i == 0 ? -1 : 1));
             tail = Part(body, "Tail", MeshOf(look, 3), mat, new Vector3(0f, H * 0.78f, -L * 0.47f));
             for (int i = 0; i < 4; i++) legs[i] = Part(body, "Leg" + i, MeshOf(look, 4), mat, LegAt(look, i));
             Apply(QuadPose.Stand(Vector3.zero, 0f));
@@ -276,6 +325,13 @@ namespace AquariumCiv.View
 
         static Vector3 NeckBase(QuadLook l) => new(0f, l.BodyH * 0.72f, l.bodyLen * 0.4f);
         static Vector3 LegAt(QuadLook l, int i) => new((i % 2 == 0 ? -1f : 1f) * l.BodyH * 0.32f, l.BodyH * 0.2f, (i < 2 ? 1f : -1f) * l.bodyLen * 0.36f);
+
+        /// <summary>Where an ear's root sits in the head's space (sd -1 left, +1 right).</summary>
+        static Vector3 EarAt(QuadLook l, int sd)
+        {
+            float r = l.headLen * 0.42f * l.headRound;
+            return new Vector3(sd * r * 0.55f, r * 0.85f, l.headLen * 0.05f);
+        }
 
         static Transform Part(Transform parent, string name, Mesh m, Material mat, Vector3 at)
         {
@@ -289,7 +345,7 @@ namespace AquariumCiv.View
             return g.transform;
         }
 
-        /// <summary>The look's part meshes: 0 body, 1 neck, 2 head, 3 tail, 4 leg (hanging from 0 to -leg). Cached per look.</summary>
+        /// <summary>The look's part meshes: 0 body, 1 neck, 2 head, 3 tail, 4 leg (hanging from 0 to -leg), 5 left ear and 6 right ear (from their roots). Cached per look.</summary>
         static Mesh MeshOf(QuadLook l, int part)
         {
             string key = l.Key() + "#" + part;
@@ -307,8 +363,10 @@ namespace AquariumCiv.View
             switch (part)
             {
                 case 0: // the body: a long ico, belly pale underneath, then the saddle, patches, the rump
-                    mb.Ico(new Vector3(0f, H * 0.5f, 0f), L * 0.5f, new Vector3(W / L, H / L * 1.0f, 1f), l.coat, 0.05f, l.belly);
-                    mb.Ico(new Vector3(0f, H * 0.62f, L * 0.26f), H * 0.62f, new Vector3(0.95f, 1.05f, 1.1f), l.coat, 0.05f, l.belly); // the chest
+                    // #504: a full build widens the barrel and drops the belly (the back stays where it was), and the chest swells
+                    float fw = 1f + l.fullness * 0.9f, fh = 1f + l.fullness * 0.6f;
+                    mb.Ico(new Vector3(0f, H * (1f - 0.5f * fh), 0f), L * 0.5f, new Vector3(W * fw / L, H * fh / L, 1f), l.coat, 0.05f, l.belly);
+                    mb.Ico(new Vector3(0f, H * 0.62f - H * 0.1f * l.fullness, L * 0.26f), H * 0.62f, new Vector3(0.95f * fw, 1.05f * fh, 1.1f), l.coat, 0.05f, l.belly); // the chest
                     if (l.saddle != l.coat) mb.Ico(new Vector3(0f, H * 0.93f, -L * 0.04f), L * 0.3f, new Vector3(W / L * 1.25f, 0.18f, 1f), l.saddle, 0.04f);
                     if (l.rump) mb.Ico(new Vector3(0f, H * 0.6f, -L * 0.47f), H * 0.42f, new Vector3(1.05f, 1f, 0.45f), l.belly, 0.04f);
                     if (l.patch > 0.05f)
@@ -325,7 +383,7 @@ namespace AquariumCiv.View
                     if (l.collar) mb.Prism(new Vector3(0f, H * 0.75f, L * 0.44f), H * 0.42f, H * 0.42f, 0.008f, 7, new Color(0.45f, 0.30f, 0.18f), Quaternion.Euler(70f, 0f, 0f));
                     break;
                 case 1: // the neck: along +z from the withers (the rest rise is the transform's)
-                    mb.Ico(new Vector3(0f, 0f, l.neckLen * 0.5f), Mathf.Max(l.neckLen * 0.5f, H * 0.3f), new Vector3(H * 0.62f / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), H * 0.7f / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), 1.1f), l.coat, 0.05f, l.belly);
+                    mb.Ico(new Vector3(0f, 0f, l.neckLen * 0.5f), Mathf.Max(l.neckLen * 0.5f, H * 0.3f), new Vector3(H * 0.62f * (1f + l.fullness * 0.45f) / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), H * 0.7f * (1f + l.fullness * 0.45f) / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), 1.1f), l.coat, 0.05f, l.belly); // thicker with a full build (#504)
                     break;
                 case 2: // the head, facing +z from the neck's tip
                     {
@@ -338,16 +396,6 @@ namespace AquariumCiv.View
                         foreach (int sd in new[] { -1, 1 })
                         {
                             mb.Ico(new Vector3(sd * r * 0.62f, r * 0.45f, hl * 0.3f), r * 0.2f, Vector3.one, l.eye, 0.02f);
-                            float e = l.earSize;
-                            var earAt = new Vector3(sd * r * 0.55f, r * 0.85f, hl * 0.05f);
-                            if (l.wideEars)
-                                mb.Ico(earAt + new Vector3(sd * e * 0.7f, e * 0.3f, 0f), e, new Vector3(1.25f, 0.45f, 0.7f), l.coat, 0.04f, l.belly);
-                            else
-                            {
-                                // upright and pointed, or drooping to the side and down (the dog's drift)
-                                var rot = Quaternion.Euler(0f, 0f, -sd * (8f + 110f * l.earDroop)) * Quaternion.Euler(-10f * (1f - l.earDroop), 0f, 0f);
-                                mb.Prism(earAt, e * 0.55f, 0.0006f, e * 1.4f, 4, Color.Lerp(l.saddle, l.coat, 0.4f), rot);
-                            }
                             if (l.antlers > 0.01f)
                             {
                                 // the beam up and back, then out, with tines: reads as "antlers" at phone size
@@ -360,6 +408,20 @@ namespace AquariumCiv.View
                                 mb.Box(b0 + new Vector3(sd * 0.016f, 0.036f, 0.010f) * a, new Vector3(0.005f, 0.026f * a, 0.005f), col, Quaternion.Euler(40f, 0f, -sd * 12f));
                                 mb.Box(top + new Vector3(sd * 0.002f, 0.018f, 0.002f) * a, new Vector3(0.005f, 0.028f * a, 0.005f), col, Quaternion.Euler(-8f, 0f, -sd * 18f));
                             }
+                        }
+                    }
+                    break;
+                case 5: case 6: // an ear from its root (#504: its own part, so it can turn and flick)
+                    {
+                        int sd = part == 5 ? -1 : 1;
+                        float e = l.earSize;
+                        if (l.wideEars)
+                            mb.Ico(new Vector3(sd * e * 0.7f, e * 0.3f, 0f), e, new Vector3(1.25f, 0.45f, 0.7f), l.coat, 0.04f, l.belly);
+                        else
+                        {
+                            // upright and pointed, or drooping to the side and down (the dog's drift)
+                            var rot = Quaternion.Euler(0f, 0f, -sd * (8f + 110f * l.earDroop)) * Quaternion.Euler(-10f * (1f - l.earDroop), 0f, 0f);
+                            mb.Prism(Vector3.zero, e * 0.55f, 0.0006f, e * 1.4f, 4, Color.Lerp(l.saddle, l.coat, 0.4f), rot);
                         }
                     }
                     break;
@@ -406,7 +468,9 @@ namespace AquariumCiv.View
             mb.M = bodyM; BuildPart(mb, l, 0);
             var neckM = bodyM * Matrix4x4.TRS(NeckBase(l), Quaternion.Euler(-l.neckRise, 0f, 0f), Vector3.one);
             mb.M = neckM; BuildPart(mb, l, 1);
-            mb.M = neckM * Matrix4x4.TRS(new Vector3(0f, 0f, l.neckLen), Quaternion.Euler(l.neckRise, 0f, 0f), Vector3.one); BuildPart(mb, l, 2);
+            var headM = neckM * Matrix4x4.TRS(new Vector3(0f, 0f, l.neckLen), Quaternion.Euler(l.neckRise, 0f, 0f), Vector3.one);
+            mb.M = headM; BuildPart(mb, l, 2);
+            for (int i = 0; i < 2; i++) { mb.M = headM * Matrix4x4.Translate(EarAt(l, i == 0 ? -1 : 1)); BuildPart(mb, l, 5 + i); }
             mb.M = bodyM * Matrix4x4.TRS(new Vector3(0f, l.BodyH * 0.78f, -l.bodyLen * 0.47f), Quaternion.Euler(l.tailHang, 0f, 0f), Vector3.one); BuildPart(mb, l, 3);
             for (int i = 0; i < 4; i++) { mb.M = bodyM * Matrix4x4.Translate(LegAt(l, i)); BuildPart(mb, l, 4); }
             mb.M = root;
@@ -452,10 +516,19 @@ namespace AquariumCiv.View
             neck.localRotation = Quaternion.Euler(-look.neckRise + p.neck - p.bodyPitch * 0.5f + p.sit * 30f, p.headYaw * 0.45f + p.curl * 40f, 0f);
             head.localRotation = Quaternion.Euler(look.neckRise + p.head, p.headYaw * 0.55f, 0f);
             tail.localRotation = Quaternion.Euler(look.tailHang - p.tail, p.wag, 0f);
+            // the ears: a flick turns the ear out and down about its root, the swivel turns both toward (+) or away from (-) the front
+            for (int i = 0; i < 2; i++)
+            {
+                float sd = i == 0 ? -1f : 1f, flick = i == 0 ? p.earL : p.earR;
+                ears[i].localRotation = Quaternion.Euler(0f, -sd * p.earSwivel, -sd * flick);
+            }
         }
 
         /// <summary>Where the head is now (world): the cause a person turns to, the shots.</summary>
         public Vector3 HeadWorld => head.position;
+
+        /// <summary>#504: the muzzle's tip (world), for the graze tests and shots: it should touch the grass when the head is down.</summary>
+        public Vector3 MuzzleWorld => head.TransformPoint(new Vector3(0f, 0f, look.headLen * 0.8f));
 
         public void SetActive(bool on) { if (go.activeSelf != on) go.SetActive(on); }
 
