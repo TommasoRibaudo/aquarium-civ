@@ -58,3 +58,5 @@ zizmor's audits.
   repo-level because the test job runs on every branch.
 - StepSecurity Harden-Runner (egress monitoring) and OpenSSF Scorecard: worth it if the project gains contributors.
 - CODEOWNERS on `.github/` only matters once there's more than one maintainer.
+
+- **2026-11-11:** the Unity tests job's limit went from 60 to 90 min. PR #579 (feedback batch 5) was cancelled at 60 min while EditMode was still running (batch 4's PR took 51 min); the suite grew with the eco pacing tests. If it nears 90, split EditMode and PlayMode into two jobs rather than raising it again.
