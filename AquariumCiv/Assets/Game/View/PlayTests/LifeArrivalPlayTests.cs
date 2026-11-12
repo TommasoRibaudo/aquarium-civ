@@ -251,24 +251,18 @@ namespace AquariumCiv.View.PlayTests
             AssertNoErrors("lean cancel");
         }
 
-        /// <summary>#587: a one-finger pan drag (past the slop) while the camera leans cancels it, like two fingers do; a tap does not.</summary>
+        /// <summary>#587: a one-finger pan drag (past the slop) while the camera leans cancels it, like two fingers do. With a tool in hand the
+        /// tool owns one finger on the ground (#518) and two fingers are the pan, so this lean is held with no tool in hand.</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator Lean_OneFingerPan_Cancels_It()
         {
             yield return LivingLand();
-            var lpv = LifePlaceView.Instance; var hud = GameHud.Instance;
-            hud.TakeLife(LifeSpecies.Rabbits);
-            yield return Frames(5);
-            int cell = GlowingCellOnScreen(Sim, LifeSpecies.Rabbits);
-            Assert.GreaterOrEqual(cell, 0, "a glowing spot");
-            yield return TapAt(lpv.ScreenOf(cell));
-            yield return new WaitForSecondsRealtime(0.3f);
+            Assert.AreEqual(GameHud.KitTool.None, GameHud.Instance.Hand, "no tool in hand");
+            Assert.IsTrue(Cam.LeanIn(new Vector3(0.2f, 0f, 0.1f), 0.3f, () => true), "the camera leans in");
             yield return Until(() => !Cam.IsFlying, 8f);
-            Assert.IsTrue(Cam.Leaning, "leaning on the ghost");
+            Assert.IsTrue(Cam.Leaning, "leaning");
             int c0 = Cam.LeanCancels;
-            // the life tool owns a press on the ground, so the pan starts off the land: a strip under the box
-            var a = new Vector2(Screen.width * 0.5f, Screen.height * 0.12f);
-            Assert.IsFalse(EcoMistView.Instance.ClaimsPress(a), "the strip is the camera's");
+            var a = new Vector2(Screen.width * 0.5f, Screen.height * 0.45f);
             BeginTouch(903, a, queueEventOnly: true);
             yield return null;
             for (int i = 1; i <= 12; i++) { MoveTouch(903, a + new Vector2(i * Screen.width * 0.015f, 0f), delta: Vector2.zero, queueEventOnly: true); yield return null; }
@@ -276,6 +270,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(3);
             Assert.Greater(Cam.LeanCancels, c0, "a one-finger pan cancelled the lean");
             Assert.IsFalse(Cam.Leaning, "no lean now");
+            Cam.ReleaseLean();
             AssertNoErrors("lean pan cancel");
         }
 

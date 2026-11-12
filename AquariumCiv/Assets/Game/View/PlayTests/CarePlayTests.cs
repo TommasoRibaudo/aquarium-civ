@@ -294,6 +294,9 @@ namespace AquariumCiv.View.PlayTests
                 // Mode on: a stroke that starts on the glass wipes and does not orbit.
                 hud.SetCleanMode(true);
                 yield return Settle(rig);
+                rows = RowStrokes(CareView.Instance); // #587: the pan above moved the view, so find the glass again
+                onGlass = rows[rows.Count / 2][0];
+                Assert.IsTrue(CareView.Instance.GlassAt(onGlass), "still a point on the glass after the pan");
                 yaw0 = rig.yaw;
                 float pitch0 = rig.pitch;
                 yield return Drag(new[] { onGlass, onGlass + new Vector2(0.2f * Screen.width, -0.05f * Screen.height) }, 0.02f * Screen.height);
