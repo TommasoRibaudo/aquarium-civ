@@ -1,0 +1,32 @@
+using UnityEngine;
+
+namespace AquariumCiv.GameUI
+{
+    /// <summary>#604: the box name and the year line have no pill and no outline. Their ink eases between dark (bright day) and
+    /// light with a soft shadow (dusk, night, dark winter) as the daylight changes. Pure maths; <see cref="GameHud"/> applies it.</summary>
+    public static class HudInk
+    {
+        /// <summary>The scene's daylight (0 night .. 1 full day), written by DayLightDriver each frame; 1 when nothing drives the light.</summary>
+        public static float Daylight = 1f;
+
+        public const float DarkBelow = 0.45f, LightAbove = 0.8f, EaseSeconds = 1f;
+        public static readonly Color Dark = new(0.239f, 0.165f, 0.118f, 1f);   // #3D2A1E, var(--ink)
+        public static readonly Color Light = new(0.953f, 0.914f, 0.839f, 1f);  // #F3E9D6
+        public const float ShadowAlpha = 0.6f;
+
+        /// <summary>0 = dark ink (bright day), 1 = light ink (dusk to dark). Smooth between 0.8 and 0.45 daylight.</summary>
+        public static float Target(float daylight)
+        {
+            float t = Mathf.Clamp01((LightAbove - daylight) / (LightAbove - DarkBelow));
+            return t * t * (3f - 2f * t);
+        }
+
+        /// <summary>One frame of the ease: the full swing takes <see cref="EaseSeconds"/>, never a snap.</summary>
+        public static float Step(float current, float target, float dt) => Mathf.MoveTowards(current, target, dt / EaseSeconds);
+
+        public static Color Ink(float lightness) => Color.Lerp(Dark, Light, Mathf.Clamp01(lightness));
+
+        /// <summary>The soft shadow only grows in as the ink goes light (dark ink on a bright day needs none).</summary>
+        public static Color Shadow(float lightness) => new(0f, 0f, 0f, ShadowAlpha * Mathf.Clamp01(lightness));
+    }
+}

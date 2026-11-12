@@ -40,6 +40,7 @@ namespace AquariumCiv.GameUI
         GlassScrim openSheet;
         readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
         Label nameLabel, yearLabel;
+        float inkLightness = -1f; // #604: eased 0 (dark ink) .. 1 (light ink); -1 = not applied yet
         PinChip pinChip;
         StoriesChip storiesChip;
         SettingsSheets settings;
@@ -693,6 +694,19 @@ namespace AquariumCiv.GameUI
 
         public bool OffHome => offHome;
 
+        /// <summary>#604: the title's ink eases between dark and light with the daylight; no pill behind it.</summary>
+        void FollowInk()
+        {
+            if (nameLabel == null) return;
+            float target = HudInk.Target(HudInk.Daylight);
+            float next = inkLightness < 0f ? target : HudInk.Step(inkLightness, target, Time.unscaledDeltaTime);
+            if (Mathf.Approximately(next, inkLightness)) return;
+            inkLightness = next;
+            var ink = HudInk.Ink(next);
+            var shadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = HudInk.Shadow(next) };
+            foreach (var l in new[] { nameLabel, yearLabel }) { l.style.color = ink; l.style.textShadow = shadow; }
+        }
+
         bool IsOverUi(Vector2 screenPos) => !hidden && GameUiPanel.Over(root, screenPos);
 
         void Update()
@@ -705,6 +719,7 @@ namespace AquariumCiv.GameUI
             if (outsideSheet != null) PlaceToast(); // it has no height until its first layout
             FollowFirstRun();
             FollowKit();
+            FollowInk();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             settings.Tick(SafeNow, BottomPadNow, OpenSheet == Settings);
             // Android Back / Esc closes the open sheet.
