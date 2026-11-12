@@ -86,6 +86,48 @@ namespace AquariumCiv.Life
                 if (day[i].kind == ActivityKind.SitOut && day[i].place == p.home && !day[i].Moving) { day[i].kind = ActivityKind.Indoors; day[i].prop = Prop.None; }
         }
 
+        // ---------------------------------------------------------------- sleepers stay asleep through a replan (#607)
+
+        /// <summary>The sim moved (a month ticked mid-night, an entry, a newcomer) and every day is planned again from the new snapshot;
+        /// a different night owl, a changed bedtime or a new pairing then got people who were already asleep up and out of the tent, and
+        /// back in again. So a stay in bed that is under way is kept: the new plan may change anything but that.</summary>
+        readonly Dictionary<int, (float start, float end)> sleeperPins = new Dictionary<int, (float start, float end)>();
+        long pinDay = long.MinValue;
+        ViewTime lastAsked;
+
+        void PinSleepers()
+        {
+            if (dayInfo.day == long.MinValue || lastAsked.day != dayInfo.day) return;
+            if (pinDay != dayInfo.day) { sleeperPins.Clear(); pinDay = dayInfo.day; }
+            float h = lastAsked.hour;
+            foreach (var kv in dayCache)
+            {
+                var segs = kv.Value;
+                var s = segs[Find(segs, h)];
+                if (s.kind != ActivityKind.Sleep || s.Moving || h < s.start || h >= s.end) continue;
+                sleeperPins[kv.Key] = (s.start, s.end);
+            }
+        }
+
+        /// <summary>The new plan with a pinned sleeper's stay in bed put back over whatever it planned for those hours.</summary>
+        Seg[] KeepSleepersIn(Person p, Seg[] segs)
+        {
+            if (pinDay != dayInfo.day || !sleeperPins.TryGetValue(p.key, out var pin) || !IsValidPlace(p.home)) return segs;
+            var list = new List<Seg>(segs.Length + 2);
+            bool put = false;
+            foreach (var s0 in segs)
+            {
+                var s = s0;
+                if (s.end <= pin.start + 1e-4f) { list.Add(s); continue; }
+                if (s.start < pin.start) { s.end = pin.start; list.Add(s); s = s0; }
+                if (!put) { put = true; list.Add(new Seg { start = pin.start, end = pin.end, kind = ActivityKind.Sleep, place = p.home, from = p.home, src = ActivitySource.Schedule, trip = TripType.Home, chronicleId = -1, partner = PersonRef.None }); }
+                if (s.start >= pin.end - 1e-4f) { list.Add(s); continue; }
+                if (s.end > pin.end + 1e-4f) { s.start = pin.end; list.Add(s); }
+            }
+            if (!put) list.Add(new Seg { start = pin.start, end = pin.end, kind = ActivityKind.Sleep, place = p.home, from = p.home, src = ActivitySource.Schedule, trip = TripType.Home, chronicleId = -1, partner = PersonRef.None });
+            return list.ToArray();
+        }
+
         readonly DayInfo dayInfo = new DayInfo();
         readonly Dictionary<int, Seg[]> dayCache = new Dictionary<int, Seg[]>();
         Person dayFireKeeper;
@@ -96,6 +138,7 @@ namespace AquariumCiv.Life
         void EnsureDay(long day)
         {
             if (dayInfo.day == day) return;
+            if (pinDay != day) sleeperPins.Clear(); // #607: a pin lasts for the view day it was taken on
             dayCache.Clear();
             blockCache.Clear();
             carryPlans.Clear();
@@ -185,6 +228,7 @@ namespace AquariumCiv.Life
             try { segs = BuildDay(p, dayInfo); }
             finally { buildDepth--; }
             KeepDoorsQuiet(p, segs);
+            segs = KeepSleepersIn(p, segs);
             dayCache[p.key] = segs;
             return segs;
         }
@@ -1152,9 +1196,9 @@ namespace AquariumCiv.Life
             if (d.supper != SupperPick.None && p.Grown && !EveningBusy(p))
             {
                 if (d.supper == SupperPick.Pot) return EveningStyle.Gather;
-                return p == leader || R(p.partner != null ? PairKey(p, p.partner) : p.key, d.day, 589) < LingerAtFire ? EveningStyle.Gather : EveningStyle.Home;
+                return p == leader || p == dayFireKeeper || R(p.partner != null ? PairKey(p, p.partner) : p.key, d.day, 589) < LingerAtFire ? EveningStyle.Gather : EveningStyle.Home;
             }
-            if (!p.Grown || EveningBusy(p) || p == leader || p.hints.singChance > 0f || d.feast) return EveningStyle.Gather;
+            if (!p.Grown || EveningBusy(p) || p == leader || p == dayFireKeeper || p.hints.singChance > 0f || d.feast) return EveningStyle.Gather; // #607: the fire keeper spends the evening at the fire, not in bed first
             float r = R(p.partner != null ? PairKey(p, p.partner) : p.key, d.day, 54);
             if (r < 0.42f) return EveningStyle.Gather;
             float tav = tavernB != null ? 0.22f : 0f;
@@ -1206,7 +1250,8 @@ namespace AquariumCiv.Life
         void NightOwls(Person p, DayInfo d, List<Seg> list)
         {
             int k = p.key;
-            if (p == dayFireKeeper) Put(list, Mk(ActivityKind.SitOut, 20.2f, 23f, fire, Prop.Stick), d);
+            // #607: the keeper stays up from the moment their evening ends (it used to be 20.2: bed at 19.8, up again 12 minutes later, back at 23:30)
+            if (p == dayFireKeeper) Put(list, Mk(ActivityKind.SitOut, Math.Min(20.2f, EndOfEvening(p, d)), 23f, fire, Prop.Stick), d);
             if (p.job == CrowdServer && tavernB != null) Put(list, Mk(ActivityKind.Serve, 18f, 22f, PlaceOf(tavernB), Prop.Mug), d);
             else if (p.job == JobType.Brewer && tavernB != null) Put(list, Mk(ActivityKind.Serve, 18f, 20f, PlaceOf(tavernB), Prop.Mug), d);
             else if (tavernB != null && !EveningBusy(p) && R(k, d.day, 70) < 0.15f) Put(list, Mk(ActivityKind.Drink, 18.3f, 21.8f, PlaceOf(tavernB), Prop.Mug), d);
