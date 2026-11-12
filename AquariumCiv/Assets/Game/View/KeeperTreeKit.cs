@@ -40,10 +40,13 @@ namespace AquariumCiv.View
 
         /// <summary>Builds the tree at ground point <paramref name="g"/>. <paramref name="need"/>: 1 thirst (fallen leaves at its
         /// foot), 3 weeds (tufts crowding it).</summary>
-        public static void Build(MeshBuilder mb, Vector3 g, int stage, int need, LandColors co)
+        public static void Build(MeshBuilder mb, Vector3 g, int stage, int need, LandColors co, Land land = null)
         {
             stage = Mathf.Clamp(stage, 0, 4);
-            Ring(mb, g, stage);
+            // #609: with the land at hand the pad, mound and stones lie on the slope; the plant stays upright at the middle.
+            var tilt = Quaternion.identity; float lift = 0f;
+            if (land != null) PadFit(land, g.x, g.z, out tilt, out lift);
+            Ring(mb, g, stage, tilt, lift);
             switch (stage)
             {
                 case 0: Seed(mb, g); break;
@@ -54,7 +57,38 @@ namespace AquariumCiv.View
         }
 
         // A mound of dark soil with a ring of stones round it: bigger as the tree grows.
-        static void Ring(MeshBuilder mb, Vector3 g, int stage)
+        static void Ring(MeshBuilder mb, Vector3 g, int stage, Quaternion tilt, float lift)
+        {
+            var prevM = mb.M;
+            mb.M = prevM * Matrix4x4.Translate(g + Vector3.up * lift) * Matrix4x4.Rotate(tilt) * Matrix4x4.Translate(-g);
+            RingParts(mb, g, stage);
+            mb.M = prevM;
+        }
+
+        /// <summary>Half the pad's width: where the land is sampled for the slope.</summary>
+        public const float PadSpan = 0.2f;
+        /// <summary>The pad never leans past this, however steep the ground (the plant stays upright anyway).</summary>
+        public const float MaxTiltDeg = 40f;
+        public const float MaxPadLift = 0.03f;
+
+        /// <summary>The ground normal from the heights a span east, west, north (+z) and south of a point (central differences).</summary>
+        public static Vector3 PadNormal(float hE, float hW, float hN, float hS, float span)
+            => new Vector3(-(hE - hW) / (2f * span), 1f, -(hN - hS) / (2f * span)).normalized;
+
+        /// <summary>The pad's lean from the ground normal (capped at <see cref="MaxTiltDeg"/>) and the lift that keeps its rim out of
+        /// a hollow: the plane through the middle misses a curved ground by the mean of opposite samples minus the middle.</summary>
+        public static void PadFit(float hC, float hE, float hW, float hN, float hS, float span, out Quaternion tilt, out float lift)
+        {
+            var n = PadNormal(hE, hW, hN, hS, span);
+            tilt = Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(Vector3.up, n), MaxTiltDeg);
+            float miss = Mathf.Max((hE + hW) * 0.5f - hC, (hN + hS) * 0.5f - hC);
+            lift = Mathf.Clamp(miss, 0f, MaxPadLift);
+        }
+
+        public static void PadFit(Land land, float x, float z, out Quaternion tilt, out float lift)
+            => PadFit(land.Height(x, z), land.Height(x + PadSpan, z), land.Height(x - PadSpan, z), land.Height(x, z + PadSpan), land.Height(x, z - PadSpan), PadSpan, out tilt, out lift);
+
+        static void RingParts(MeshBuilder mb, Vector3 g, int stage)
         {
             // #317 / tester: the seed and the sprout were lost at the default view. They get a wider ring and a halo of fresh
             // green moss, so the one spot the Keeper planted reads at a glance on bare sand or among the grass.
