@@ -249,7 +249,7 @@ namespace AquariumCiv.View
             if (s == null) return "no sim";
             float d = SeasonLook.MonthsToNextSeasonMiddle(SeasonLook.PhaseOf(s));
             s.Advance(d * s.Config.StepHours);
-            return Refresh($"now {SeasonLook.Word(s.State.month)} (month {s.State.month % 12})");
+            return Refresh($"now {SeasonLook.Word(s.State.month)} (month {s.CalendarMonth})");
         }
 
         public static string SkipSeasons(int n)

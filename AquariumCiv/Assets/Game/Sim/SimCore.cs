@@ -17,6 +17,7 @@ namespace AquariumCiv.Sim
         public SimCore(SimConfig config, SimState state)
         {
             Config = config; State = state;
+            SeasonCalendar.Shift = state.seasonShift; // #603: the seasons of the box in play
             // A save from before placement (#32): every building gets a lot now, once (Sim/Settle migrates from slots).
             if (config.settle && state.settle != null && state.settle.version == 0 && state.buildings.Count > 0) _ = Settlement;
             StartCardLedger();
@@ -28,7 +29,7 @@ namespace AquariumCiv.Sim
             var s = new SimState
             {
                 seed = seed, rng = new SimRandom(seed), econRng = new SimRandom(seed ^ 0x2C1B3C6D), storyRng = new SimRandom(seed ^ 0x51ED270B),
-                population = 5, food = 20, wood = 4, mood = 0.7f,
+                population = 5, food = 20, wood = 4, mood = 0.7f, seasonShift = SeasonCalendar.NewBoxShift, // #603: a new box opens in spring
             };
             var core = new SimCore(config, s);
             if (config.ecology) core.StartEcology(); // a barren land; the camp waits for its gate (SimCore.Eco.cs)
@@ -107,12 +108,15 @@ namespace AquariumCiv.Sim
             return r;
         }
 
+        /// <summary>This box's month of the calendar year, 0..11 (winter 11, 0, 1; spring 2-4): SeasonCalendar, #603.</summary>
+        public int CalendarMonth => SeasonCalendar.OfMonth(State.month, State.seasonShift);
+
         public void Step()
         {
             var s = State;
             float birthRoll = s.econRng.Value(), deathRoll = s.econRng.Value(), festivalRoll = s.econRng.Value();
             s.month++;
-            int season = (int)(s.month % SimConfig.MonthsPerYear);
+            int season = CalendarMonth;
             bool winter = season == 11 || season == 0 || season == 1;
             EcoStep(); // the land, once a season; hash dice only, nothing off the sim's streams (SimCore.Eco.cs)
             float mult = OutputMultiplier;

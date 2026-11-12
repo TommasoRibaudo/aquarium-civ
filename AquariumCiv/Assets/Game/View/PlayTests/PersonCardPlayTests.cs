@@ -667,6 +667,7 @@ namespace AquariumCiv.View.PlayTests
                 var view = root.Q<ScrollView>("person-card-body");
                 Assert.GreaterOrEqual(view.worldBound.yMin, root.Q("person-card-tabs").worldBound.yMax - 1f, "the tab line clears the text");
                 var face = root.Query<GlassChip>().First()?.Face;
+                yield return Shot($"pc-board-{w}x{h}");
                 if (face != null) Assert.LessOrEqual(face.worldBound.yMax, view.worldBound.yMax + 1f, "a row of chips shows under the line");
 
                 // every control reaches a thumb

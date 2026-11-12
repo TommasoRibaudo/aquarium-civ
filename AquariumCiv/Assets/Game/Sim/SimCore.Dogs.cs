@@ -100,10 +100,10 @@ namespace AquariumCiv.Sim
         /// <summary>How many times the lost pup was asked about (it comes again next spring after "leave it").</summary>
         public int LostPupAsked => EcologyOn ? State.eco.pupAsked : 0;
 
-        /// <summary>The first spring step (month % 12 == 3) strictly after <paramref name="m"/>, then <paramref name="n"/> - 1 more.</summary>
-        static long SpringAfter(long m, int n)
+        /// <summary>The first spring step (calendar month 3) strictly after <paramref name="m"/>, then <paramref name="n"/> - 1 more.</summary>
+        long SpringAfter(long m, int n)
         {
-            long first = m - ((m % 12) + 12) % 12 + 3;
+            long first = m - SeasonCalendar.OfMonth(m, State.seasonShift) + 3;
             if (first <= m) first += 12;
             return first + 12L * (n - 1);
         }
@@ -269,7 +269,7 @@ namespace AquariumCiv.Sim
                     DogFirstGuard?.Invoke(guard);
                 }
             }
-            if (season == 0 && month % 3 == 0 && e.nextLitterMonth >= 0 && month >= e.nextLitterMonth) Litter(month, false);
+            if (season == 0 && CalendarMonth % 3 == 0 && e.nextLitterMonth >= 0 && month >= e.nextLitterMonth) Litter(month, false);
         }
 
         /// <summary>A grown dog's litter (2-3 pups) while there is room under the cap: the youngest line's grown dog is the mother; one pup

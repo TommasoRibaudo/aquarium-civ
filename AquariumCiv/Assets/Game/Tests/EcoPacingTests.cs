@@ -160,5 +160,45 @@ namespace AquariumCiv.Tests
             sim.Advance(6);
             Assert.IsTrue(sim.State.eco.watered.All(v => v == 0f));
         }
+
+        /// <summary>#605: a placed thicket on a box; watered or not, then stepped season by season with the same damp everywhere.</summary>
+        static (int bushes, int outside, int cap) ThicketAfter(int seed, bool watered, int seasons)
+        {
+            var sim = World(seed);
+            Assert.GreaterOrEqual(sim.DebugPlaceNearCamp(LifeSpecies.Thicket), 0);
+            var st = sim.State.eco;
+            var m = new EcoModel(st, sim.EcoGround, sim.Config.eco);
+            if (watered)
+                for (int c = 0; c < EcoLand.N; c++) if (m.ThicketZone(c) > 0f && (EcoCover)st.cover[c] != EcoCover.Water) st.watered[c] = 1f;
+            for (int s = 0; s < seasons; s++)
+            {
+                if (watered) for (int c = 0; c < EcoLand.N; c++) if (m.ThicketZone(c) > 0f) st.watered[c] = Math.Max(st.watered[c], 0.8f); // kept misted
+                m.Step(s % 4, s * 3);
+            }
+            int n = 0, outside = 0;
+            for (int c = 0; c < EcoLand.N; c++)
+                if ((EcoCover)st.cover[c] == EcoCover.Bush) { n++; if (m.ThicketZone(c) <= 0f) outside++; }
+            return (n, outside, m.BushCap);
+        }
+
+        [Test]
+        public void AWateredThicket_FillsFasterThanADryOne_AndStaysInItsArea()
+        {
+            int wet = 0, dry = 0;
+            foreach (int seed in new[] { 7, 21, 42 })
+            {
+                var w = ThicketAfter(seed, true, 6); var d = ThicketAfter(seed, false, 6);
+                TestContext.Out.WriteLine($"seed {seed}: bushes after 6 seasons watered {w.bushes} vs dry {d.bushes} (cap {w.cap})");
+                wet += w.bushes; dry += d.bushes;
+                Assert.AreEqual(0, w.outside, "no bush outside the thicket's area");
+                Assert.LessOrEqual(w.bushes, w.cap);
+                var long1 = ThicketAfter(seed, true, 60);
+                Assert.LessOrEqual(long1.bushes, long1.cap, "a watered thicket still stops at its cap");
+                Assert.AreEqual(0, long1.outside);
+            }
+            TestContext.Out.WriteLine($"total watered {wet} vs dry {dry}");
+            Assert.Greater(wet, dry, "the mister's water brings the thicket on faster");
+            Assert.LessOrEqual(wet, dry * 2f, "but only a little faster");
+        }
     }
 }

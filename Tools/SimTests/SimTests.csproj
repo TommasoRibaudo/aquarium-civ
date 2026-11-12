@@ -19,6 +19,7 @@
     <!-- #88: the moment director's pure core (beats as data, rail, hurry, waiting state) and its tests -->
     <Compile Include="../../AquariumCiv/Assets/Game/View/Moments/Core/**/*.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/SimCoreTests.cs" />
+    <Compile Include="../../AquariumCiv/Assets/Game/Tests/SeasonCalendarFixture.cs" /><!-- #603: sim tests keep the old calendar -->
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/StoryAndNudgeTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/OfflineCatchUpTests.cs" />
     <Compile Include="../../AquariumCiv/Assets/Game/Tests/EraTests.cs" />

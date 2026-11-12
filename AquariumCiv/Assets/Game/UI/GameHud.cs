@@ -40,6 +40,8 @@ namespace AquariumCiv.GameUI
         GlassScrim openSheet;
         readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
         Label nameLabel, yearLabel;
+        float inkHalo; // #604 (fb7 pass): 0 .. 1, the pale halo under dark ink while the camera is off home
+        float inkLightness = -1f; // #604: eased 0 (dark ink) .. 1 (light ink); -1 = not applied yet
         PinChip pinChip;
         StoriesChip storiesChip;
         SettingsSheets settings;
@@ -693,6 +695,21 @@ namespace AquariumCiv.GameUI
 
         public bool OffHome => offHome;
 
+        /// <summary>#604: the title's ink eases between dark and light with the daylight; no pill behind it.</summary>
+        void FollowInk()
+        {
+            if (nameLabel == null) return;
+            float target = inkLightness < 0f ? HudInk.Target(HudInk.Daylight) : HudInk.Target(HudInk.Daylight, inkLightness);
+            float next = inkLightness < 0f ? target : HudInk.Step(inkLightness, target, Time.unscaledDeltaTime);
+            float halo = HudInk.Step(inkHalo, offHome ? 1f : 0f, Time.unscaledDeltaTime);
+            if (Mathf.Approximately(next, inkLightness) && Mathf.Approximately(halo, inkHalo)) return;
+            inkLightness = next; inkHalo = halo;
+            var ink = HudInk.Ink(next);
+            // fb7 pass: off home the dark ink can sit on the glass rails and the room: a soft pale halo then (the light ink keeps its dark shadow)
+            var shadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = HudInk.Shadow(next, halo) };
+            foreach (var l in new[] { nameLabel, yearLabel }) { l.style.color = ink; l.style.textShadow = shadow; }
+        }
+
         bool IsOverUi(Vector2 screenPos) => !hidden && GameUiPanel.Over(root, screenPos);
 
         void Update()
@@ -705,6 +722,7 @@ namespace AquariumCiv.GameUI
             if (outsideSheet != null) PlaceToast(); // it has no height until its first layout
             FollowFirstRun();
             FollowKit();
+            FollowInk();
             if (Time.unscaledTime >= nextText) { nextText = Time.unscaledTime + 0.5f; RefreshText(); }
             settings.Tick(SafeNow, BottomPadNow, OpenSheet == Settings);
             // Android Back / Esc closes the open sheet.

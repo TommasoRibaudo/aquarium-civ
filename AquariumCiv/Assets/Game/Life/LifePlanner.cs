@@ -170,6 +170,7 @@ namespace AquariumCiv.Life
 
         PersonActivity PlanPerson(Person p, ViewTime t)
         {
+            lastAsked = t; // #607
             var a = PlanBase(p, t);
             ApplyCarry(p, ref a, t); // #192: a parent carrying a baby, a baby carried
             HeldMomentCarry(p, ref a, t); // #370: the newborn in the arms, held up to the glass
@@ -298,6 +299,7 @@ namespace AquariumCiv.Life
             if (sig == snapSig) return;
             snapSig = sig;
             polyCache.Clear();
+            PinSleepers(); // #607: a replan at night leaves the ones already in bed in bed
             Snapshot();
             ClearDays();
             DropReactionsToGoneGifts();

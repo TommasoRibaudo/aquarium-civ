@@ -172,7 +172,7 @@ namespace AquariumCiv.View
 
         /// <summary>Draws the silhouettes (<paramref name="fill"/> in front, <paramref name="edge"/> a little larger behind) at a box-local
         /// point, turned side-on to the camera, scaled.</summary>
-        public void Draw(Mesh fill, Mesh edge, Vector3 local, float scale, Color fillColor, Color edgeColor)
+        public void Draw(Mesh fill, Mesh edge, Vector3 local, float scale, Color fillColor, Color edgeColor, Quaternion? tilt = null)
         {
             if (fillGo == null)
             {
@@ -197,7 +197,7 @@ namespace AquariumCiv.View
             {
                 go.SetActive(true);
                 go.transform.localPosition = local;
-                go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                go.transform.localRotation = (tilt ?? Quaternion.identity) * Quaternion.Euler(0f, yaw, 0f);
                 go.transform.localScale = Vector3.one * Mathf.Max(0.001f, scale);
             }
         }

@@ -3,14 +3,14 @@
 Everything waiting on a decision by the user, in one place. Answered items move to [decisions.md](decisions.md) and are
 deleted here. Recommended options come first and are marked ★. On GitHub: issues labelled `needs:user`.
 
-_Last updated 2026-11-11._
+_Last updated 2026-11-12._
 
 ## Feedback 5 (build 25 notes): still open after the 2026-11-11 sign-off
 Everything else in this batch was signed off in the Editor walkthrough on 2026-11-11 and moved to [decisions.md](decisions.md)
 (verdicts: `overnight/open-questions-signoff.md`). The rename card's changes: #584.
 
 ### Decisions
-- **A new box starts in winter (#576)**: the sim's first month is winter, so after the first run a new box shows "Year 0 · Winter" with light snow on bare sand (the tester found it a cold first impression). The first run itself now plays in a neutral summer look. ★ Start new boxes in spring (the first month moves; pacing re-checked). Alternative: keep winter, the land's honest clock.
+- _#576 answered 2026-11-12: a new box starts in spring (#603); see [decisions.md](decisions.md)._
 
 ### Tester polish (2026-11-11, no [real] findings)
 - #573 close-up chopping: the chopper hides behind the tree's crown; chips and the log on the ground are a few pixels.

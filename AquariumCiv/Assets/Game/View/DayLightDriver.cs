@@ -156,6 +156,7 @@ namespace AquariumCiv.View
         {
             var v = Logic.Current;
             wrote = true;
+            HudInk.Daylight = v.Daylight;
             sun.color = C(v.SunColor);
             sun.transform.rotation = Quaternion.Euler(v.SunPitch, v.SunYaw, 0f);
             sun.shadowStrength = v.ShadowStrength;
@@ -213,6 +214,7 @@ namespace AquariumCiv.View
         {
             if (!wrote) return;
             wrote = false;
+            HudInk.Daylight = 1f;
             if (sun != null)
             {
                 sun.color = sceneSun; sun.transform.rotation = sceneRot; sun.shadowStrength = sceneShadow;

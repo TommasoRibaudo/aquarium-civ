@@ -315,6 +315,30 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
+        public IEnumerator TwoFingerSlideAndTwist_WithSmallDistanceDrift_DoNotZoom()
+        {
+            yield return Open();
+            try
+            {
+                var rig = Rig;
+                rig.EaseTo(new Vector3(0f, 1f, 0f), 28f, 40f, 0.8f, 0f);
+                for (int i = 0; i < 40; i++) yield return null;
+                float zoom0 = rig.zoom, pitch0 = rig.pitch, yaw0 = rig.yaw;
+                float r = Screen.width * 0.2f;
+                yield return Twist(0f, 0f, slide: new Vector2(0f, 0.12f * Screen.height), r0: r, r1: r * 1.04f); // #587 round 2: a slide with 4% finger drift
+                yield return new WaitForSecondsRealtime(0.3f);
+                Assert.Greater(Mathf.Abs(rig.pitch - pitch0), 3f, "the slide still tilts");
+                Assert.AreEqual(zoom0, rig.zoom, 1e-4f, "a slide with a little finger drift does not zoom");
+                yield return Twist(0f, -30f, r0: r, r1: r * 1.10f); // after a twist is latched the dead zone is wider (13%): 10% drift
+                yield return new WaitForSecondsRealtime(0.3f);
+                Assert.Less(rig.yaw - yaw0, -8f, "the twist still turns");
+                Assert.AreEqual(zoom0, rig.zoom, 1e-4f, "a twist with 10% finger drift does not zoom");
+                Assert.IsEmpty(errors, string.Join("\n", errors));
+            }
+            finally { Close(); }
+        }
+
+        [UnityTest]
         public IEnumerator Pinch_Zooms_AndNeverTurns()
         {
             yield return Open();

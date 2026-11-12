@@ -52,14 +52,15 @@ namespace AquariumCiv.View
             var s = sim.State;
             double months = s.simHours / sim.Config.StepHours;
             float frac = (float)(months - System.Math.Floor(months));
-            return (float)(((s.month % 12) + 12) % 12) + Mathf.Clamp01(frac);
+            return (float)sim.CalendarMonth + Mathf.Clamp01(frac);
         }
 
         /// <summary>The season word the title line shows, from the sim's month: "Spring", "Summer", "Autumn", "Winter".</summary>
         public static string Word(long month) => LifeClock.SeasonOf(month).ToString();
 
-        /// <summary>The middle of summer as a phase: the neutral look (full summer weight, no snow).</summary>
-        public const float SummerMiddle = 6.5f;
+        /// <summary>The middle of spring as a phase: the look the first run holds (full spring weight, no snow), so the year it
+        /// skips through does not flash summer, autumn and winter at the opening (#603).</summary>
+        public const float SpringMiddle = 3.5f;
 
         /// <summary>#576 cheat: the real clock moves on to the middle of the next season (months from the sim's phase now).</summary>
         public static float MonthsToNextSeasonMiddle(float phase)
@@ -115,10 +116,10 @@ namespace AquariumCiv.View
         void Update()
         {
             var clock = GameClock.Instance;
-            // The first run is the approved opening (mist -> pond): it plays in a neutral summer look, whatever month the box starts in
-            // (a new box starts in winter); the season shows from the first visit after it. Tester fb5 finding 4.
+            // The first run is the approved opening (mist -> pond). A new box starts in spring (#603), so it holds the spring look for the
+            // whole run (its year skip would otherwise cycle through every season); the seasons show from the first visit after it.
             var day = DayLightDriver.Instance;
-            if (SeasonLook.HoldPhase == null && day != null && day.HeldForFirstRun) { SeasonLook.Apply(SeasonLook.SummerMiddle); return; }
+            if (SeasonLook.HoldPhase == null && day != null && day.HeldForFirstRun) { SeasonLook.Apply(SeasonLook.SpringMiddle); return; }
             float p = SeasonLook.HoldPhase ?? SeasonLook.PhaseOf(clock != null ? clock.Sim : null);
             SeasonLook.Apply(p);
         }

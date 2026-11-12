@@ -189,7 +189,7 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             s.roles ??= new List<RoleSeat>();
-            bool spring = s.month % SimConfig.MonthsPerYear == SpringSeason;
+            bool spring = s.month > 0 && CalendarMonth == SpringSeason; // (not the founding month: a new box's month 0 is spring, #603)
             SyncSeats();
 
             List<(RoleSeat seat, Notable dead)> diedInOffice = null;
