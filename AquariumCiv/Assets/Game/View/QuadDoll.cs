@@ -532,6 +532,6 @@ namespace AquariumCiv.View
 
         public void SetActive(bool on) { if (go.activeSelf != on) go.SetActive(on); }
 
-        public void Destroy() { if (go != null) Object.Destroy(go); }
+        public void Destroy() { if (go == null) return; if (Application.isPlaying) Object.Destroy(go); else Object.DestroyImmediate(go); } // edit-mode shots and tests build dolls too
     }
 }
