@@ -19,15 +19,15 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - [x] 7 · #571 + #572 merged (population, chief's office)
 - [x] 8 · #576 merged (open for look sign-off)
 - [x] 9 · #577 merged (open for look sign-off)
-- [ ] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
+- [x] Every issue's *Done when* ticked with evidence, or listed as short after 4 rounds
 - [x] Batched Editor pass green (EditMode 10 assemblies, PlayMode classes, smoke); failures fixed or noted as baseline
 - [x] `Feedback5Playthrough` + the touch play-through done, every beat looked at
 - [x] Tester run; [real] fixed; [polish] listed
 - [x] Walkthrough: open-questions.md section, `Staged()` stops, auto run clean, every shot looked at
-- [ ] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
-- [ ] `docs/tooling.md` entry for any tooling problem solved; Run In Background ON; lock released; Editor ready
-- [ ] PR → `dev`, CI green, merged
-- [ ] Final report to the user
+- [x] Work issues closed (sign-off ones left open with a comment); answered feedback notes closed
+- [x] `docs/tooling.md` entry for any tooling problem solved; Run In Background ON; lock released; Editor ready
+- [x] PR → `dev`, CI green, merged
+- [x] Final report to the user
 
 ## Calls made without the user
 - #570: the waits-for line sits on the Kit sheet (not History: History opens the time-lapse); a 'camp waits for' stage before the camp; the chooser now opens whenever a jar is shut (one ready jar = two taps).
@@ -74,8 +74,12 @@ Prompt: `docs/prompts/feedback-batch-5-run.md` (build 25 notes #544-#567 → iss
 - 17:10 Egg shore fix merged (f24fe34, branch b7bf1e9): cause = LifePlanner.PositionAt ignored the egg plan (the gatherer stayed at their base spot ~2 u from a small pond); now follows the egg route; polyCache cleared when the pond grows. HuntsAndEggs 16/16, FisherShore 1/1, Fishing 2/2, Feedback5Playthrough 0 soft fails, Smoke 2/2, SimTests 1819. I looked at beat e: kneeling at the pond's edge.
 - 17:13 Tester started (45 min brief, vs/fb5-tester = f24fe34). Editor tickets since restart: 3.
 - 18:00 Tester done (sonnet, ~60 min incl. lost runner time): no [real]; 7 [polish] (into open-questions). Pass list all PASS; not checked: travellers' captions, title on a birth, rename at 750, pane count after reload as its own step. I treated 'a new box opens in snow' as a regression of the approved opening: the first run now plays in a neutral summer look (SeasonLook, HeldForFirstRun); Seasons 2/2, FirstRunPolish 10/10, Smoke 2/2. 'Start boxes in spring?' is a Decision for the user. Run In Background set ON; lock released.
+- 18:36 PR #579 CI: the single Unity job hit its 60 min cap in EditMode. The user asked whether CI must run the full suite on every PR: applied all recommendations on #579 (Unity EditMode only on PRs into main, 4 parallel groups gated by 'Unity tests'; none on PRs into dev, pushes to main, docs-only). First push failed Workflow lint (a cp1252 '§' byte in ci.yml; I missed it because my wait only watched the whole run) — fixed, tooling note. CI green in ~5 min.
+- 19:10 PR #579 merged into dev (e1b1437). Closed #569 #570 #571 #572 #573 #574 #575 #578 and notes #567 #547 #549 #554 #555 #545 #557 #551 #544 #550 #548 #556 (GitHub API timeouts: retried via REST); board cards Done. #576 #577 (+ notes #553 #546) open for sign-off with a comment.
 
-## RESUME HERE (next session)
+## DONE (no resume needed). Next: the user's walkthrough; act on its verdicts (prompt §6.6).
+
+## (old) RESUME HERE (next session)
 1. Health gate + lock + watcher; open the Editor on a branch from p9/feedback-5 (F:\GameDev is on vs/feedback5-pass).
 2. Finish the pass: re-run EditMode Life and View (cancelled); PlayMode PersonCardRename, FisherShore, Fishing, HuntView, BuildingCard, PondLife, then SmokePlay. Look at the shots in Temp/agent/fb5/pass/ (re-run Fb5PassShots: Temp is wiped on quit).
 3. #578's Editor delta: ApartGroupsPlayTests, TravellersPlayTests (category Travellers; check the join test is not Inconclusive), shots of the carry and the joining.
