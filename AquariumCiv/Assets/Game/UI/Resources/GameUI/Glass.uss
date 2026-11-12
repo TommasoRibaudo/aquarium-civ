@@ -575,7 +575,7 @@
     flex-direction: row; align-items: center; justify-content: flex-start;
     border-width: 0; background-color: var(--clear);
 }
-.hud-title-text { flex-shrink: 1; min-width: 0; padding: 8.25px 24.75px; margin-left: -24.75px; border-radius: 27.5px; }
+.hud-title-text { flex-shrink: 1; min-width: 0; padding: 8.25px 24.75px; margin-left: -24.75px; } /* #604: no pill; the ink eases with the light (HudInk) */
 .hud-title-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -unity-text-align: middle-left; }
 .hud-title-year { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -unity-text-align: middle-left; }
 .hud-disc { width: 121px; height: 121px; border-radius: 50%; justify-content: center; align-items: center; }
@@ -585,9 +585,8 @@
 .hud-corner { flex-direction: row; align-items: center; flex-shrink: 0; }
 .hud-icon { width: 144px; height: 144px; min-width: 144px; }
 .hud-icon--quiet { opacity: 0.72; }
-.hud-top--backed .hud-title-text { background-color: var(--quiet-backing); }
 .hud-top--backed .hud-disc { background-color: var(--quiet-backing); }
-.hud-icon:active .hud-disc, .hud-title:active .hud-disc, .hud-title:active .hud-title-text { background-color: var(--pressed-fill); }
+.hud-icon:active .hud-disc, .hud-title:active .hud-disc { background-color: var(--pressed-fill); }
 .hud-icon--shot { transition-duration: 0s; }
 .hud-icon.hud-icon--shot:active { background-color: rgba(0, 0, 0, 0); scale: 1 1; }
 
