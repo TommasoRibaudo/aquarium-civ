@@ -275,7 +275,7 @@ namespace AquariumCiv.Sim.Eco
         }
 
         /// <summary>The game season of a month as the land steps it (0 spring .. 3 winter; SimCore.EcoStep).</summary>
-        public static int SeasonOf(long month) => (int)((month / 3 + 3) % 4);
+        public static int SeasonOf(long month) => (SeasonCalendar.OfMonth(month) / 3 + 3) % 4;
 
         /// <summary>#422: the people's take of the species pauses in spring once a notable has ruled on it (the wolves keep no rule).</summary>
         public bool SpringPaused(LifeSpecies s, LifeTaker who, long month) =>
