@@ -494,7 +494,7 @@ namespace AquariumCiv.View.PlayTests
             Check("g", cards.RenameOpen, "the field opens");
             yield return Snap("g_1_field");
             cards.RenameField.value = "Wren";
-            yield return TapEl(cards.CardRoot.Q("person-card-rename-keep"));
+            yield return TapEl(cards.CardRoot.Q("person-card-rename-save"));
             yield return Frames(10);
             Check("g", sim.FindNotable(id).name == "Wren", $"the sim holds the new name (was {was})");
             var label = cards.CardRoot.Q<Label>("person-card-name");

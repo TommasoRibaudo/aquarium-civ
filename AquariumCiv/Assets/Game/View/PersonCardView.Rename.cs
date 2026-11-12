@@ -8,11 +8,11 @@ namespace AquariumCiv.View
 {
     /// <summary>
     /// #575 (playtest note #548): the Keeper can rename a notable from their card. A small "Call them something else" pencil button at the
-    /// top of the About tab opens a one-line field with Keep; Keep tidies the text, empty keeps the old name, a refusal is said under the
+    /// top of the About tab opens a one-line field with Save; Save tidies the text, empty keeps the old name, a refusal is said under the
     /// field. The new first name shows everywhere from then on (the card, the paper tag, History lines written later); chronicle lines
-    /// already written keep the old name (they are plain text). While the field is open the card rides the phone keyboard up. Two living
+    /// already written keep the old name (they are plain text). While the field is open the card sits on the phone keyboard and fits the room between the top safe area and the keyboard (#584): shorter, tabs folded away, the field and its buttons scrolled into view. Two living
     /// people may not share a first name (the same rule as at birth): that is refused with a kind word. Names: <c>person-card-rename</c>
-    /// (the button), <c>person-card-rename-field</c>, <c>-keep</c>, <c>-cancel</c>, <c>-msg</c>.
+    /// (the button), <c>person-card-rename-field</c>, <c>-save</c>, <c>-cancel</c>, <c>-msg</c>.
     /// </summary>
     public partial class PersonCardView
     {
@@ -22,7 +22,12 @@ namespace AquariumCiv.View
         TextField renameField;
         Label renameMsg;
         VisualElement renameActs;
+        VisualElement renameRow;
         float renamed;
+        /// <summary>Room kept clear under the safe area's top (the HUD's strip), panel px: 44 pt.</summary>
+        public const float TopClear = 121f;
+        /// <summary>The card never gets shorter than this while renaming: head, field and the buttons (panel px).</summary>
+        const float RenameMinHeight = 560f;
 
         /// <summary>The field (tests).</summary>
         public TextField RenameField => renameField;
@@ -36,7 +41,8 @@ namespace AquariumCiv.View
             renameField = null;
             renameMsg = null;
             renameActs = null;
-            if (sheet != null && renamed > 0f) { sheet.style.translate = StyleKeyword.Null; renamed = 0f; }
+            renameRow = null;
+            if (sheet != null && renamed > 0f) LandKeyboard();
         }
 
         /// <summary>The top of the About tab for a living person: the pencil, or the open field.</summary>
@@ -44,6 +50,7 @@ namespace AquariumCiv.View
         {
             var wrap = Section("person-card-rename-row");
             wrap.style.flexShrink = 0;
+            if (RenameOpen) renameRow = wrap;
             if (!RenameOpen)
             {
                 var open = new GlassButton("Call them something else", () => OpenRename(c), ButtonKind.Secondary, UiRole.Open) { name = "person-card-rename", Compact = true };
@@ -58,11 +65,13 @@ namespace AquariumCiv.View
             wrap.Add(renameField);
             renameMsg = new Label("") { name = "person-card-rename-msg", pickingMode = PickingMode.Ignore };
             renameMsg.AddToClassList("type-note");
+            renameMsg.AddToClassList("pc-rename-msg");
             wrap.Add(renameMsg);
             var acts = new VisualElement();
             acts.AddToClassList("kg-card-acts");
-            acts.Add(new GlassButton("Never mind", CancelRename, ButtonKind.Quiet, UiRole.Close) { name = "person-card-rename-cancel" });
-            acts.Add(new GlassButton("Keep", () => DoKeep(), ButtonKind.Primary, UiRole.None) { name = "person-card-rename-keep" });
+            acts.AddToClassList("pc-rename-acts");
+            acts.Add(new GlassButton("Never mind", CancelRename, ButtonKind.Ghost, UiRole.Close) { name = "person-card-rename-cancel" });
+            acts.Add(new GlassButton("Save", () => DoKeep(), ButtonKind.Primary, UiRole.None) { name = "person-card-rename-save" });
             wrap.Add(acts);
             renameActs = acts;
         }
@@ -76,12 +85,18 @@ namespace AquariumCiv.View
             ShowRenameActs();
         }
 
-        /// <summary>The card is a short scroll: bring Never mind / Keep fully into view (the pass found them half cut off, and a tap on the cut half missed).</summary>
-        void ShowRenameActs()
+        /// <summary>The card is a short scroll: bring the field, Never mind and Save fully into view (the pass found them half cut off, and a tap
+        /// on the cut half missed). The field first, then the buttons, so a short card ends on the buttons with the field still showing.</summary>
+        void ShowRenameActs(long delayMs = 30)
         {
             var acts = renameActs;
             if (acts == null || body == null) return;
-            body.schedule.Execute(() => { if (renameActs == acts && body != null) body.ScrollTo(acts); }).ExecuteLater(30);
+            body.schedule.Execute(() =>
+            {
+                if (renameActs != acts || body == null) return;
+                if (renameRow != null) body.ScrollTo(renameRow);
+                body.ScrollTo(acts);
+            }).ExecuteLater(delayMs);
         }
 
         void CancelRename()
@@ -116,14 +131,46 @@ namespace AquariumCiv.View
             return r;
         }
 
-        /// <summary>Each frame: while the field is open the card follows the phone keyboard up (as the naming sheets do).</summary>
+        /// <summary>The card's top edge now (panel px, y down; tests).</summary>
+        public float SheetTop => sheet == null ? 0f : sheet.worldBound.yMin;
+        /// <summary>The lowest the card's top may go while renaming: under the safe area and the HUD's strip (panel px; tests).</summary>
+        public float RenameTopLimit => (sheet != null ? sheet.Insets.y : 0f) + TopClear;
+
+        /// <summary>
+        /// Each frame: while the field is open and the phone keyboard is up, the card sits on the keyboard and is made to fit the room
+        /// above it (#584): translated up by the keyboard's height as the naming sheets are, but no taller than the space under the top
+        /// safe area, with the tabs folded away so the field and its buttons are what is shown.
+        /// </summary>
         void RideKeyboard()
         {
             if (sheet == null) return;
             float h = RenameOpen ? GlassKeyboard.Height() : 0f;
             if (Mathf.Abs(h - renamed) < 0.5f) return;
+            bool wasDown = renamed <= 0f;
             renamed = h;
-            sheet.style.translate = h > 0f ? new Translate(0f, -h) : StyleKeyword.Null;
+            if (h <= 0f) { LandKeyboard(); if (RenameOpen) ShowRenameActs(); return; }
+            var i = GameUiPanel.SafeInsets(Screen.safeArea, Screen.width, Screen.height);
+            float panelH = cardRoot != null && cardRoot.layout.height > 0f ? cardRoot.layout.height : GameUiPanel.ReferenceWidth * Screen.height / Mathf.Max(1f, Screen.width);
+            float room = panelH - h - (i.y + TopClear);
+            float fit = Mathf.Min(room, Mathf.Max(panelH * CardMaxShare, RenameMinHeight));
+            sheet.EnableInClassList(GlassKeyboard.RidingClass, true);
+            sheet.EnableInClassList("pc--renaming", true);
+            sheet.SetInsets(new Vector4(i.x, i.y, i.z, 0f), GlassKeyboard.Pad);
+            sheet.style.height = Mathf.Max(fit, 200f);
+            sheet.style.translate = new Translate(0f, -h);
+            sheet.Surface.Follow(GlassMotion.SlideMs);
+            ShowRenameActs(wasDown ? 120 : 30); // the layout changes under it: scroll once it has settled
+        }
+
+        /// <summary>Off the keyboard at once (closing, or the keyboard went down): the card's own height and safe-area insets again.</summary>
+        void LandKeyboard()
+        {
+            renamed = 0f;
+            sheet.style.translate = StyleKeyword.Null;
+            sheet.style.height = StyleKeyword.Null;
+            sheet.RemoveFromClassList(GlassKeyboard.RidingClass);
+            sheet.RemoveFromClassList("pc--renaming");
+            ApplySafeArea();
         }
 
         /// <summary>Tests: open the field with a text and press Keep.</summary>

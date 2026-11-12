@@ -475,6 +475,10 @@
 /* 375 x 667: the quote and one row of chips still fit under the tabs */
 .pc--short .pc-tabs { margin-top: -22px; margin-bottom: 0; }
 .pc--short .pc-scroll { margin-top: 0; }
+.pc-rename-msg { margin-top: var(--space-6); }
+.pc-rename-acts { margin-top: var(--space-12); margin-bottom: var(--space-6); }
+/* #584: renaming on the keyboard: the card is shorter, so only the head, the field and its buttons show */
+.pc--renaming .pc-sub, .pc--renaming .pc-tabs { display: none; }
 .pc--short .pc-line { margin-bottom: 5.5px; }
 .pc-story { flex-direction: row; align-items: center; margin-bottom: var(--space-8); }
 .pc-story-text { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-right: var(--space-8); white-space: normal; }

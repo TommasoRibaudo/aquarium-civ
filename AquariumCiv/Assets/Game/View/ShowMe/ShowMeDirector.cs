@@ -844,6 +844,16 @@ namespace AquariumCiv.View
             return $"first {(first ? "shows" : "waits")}, second {(second ? "shows" : "waits")} · waiting {d.WaitingLines}";
         }
 
+        /// <summary>Debug (#606): the speech mark over this person for <paramref name="seconds"/>, no line (tests, the pin-clears-bubble cheat).</summary>
+        public static string DebugSpeechOver(PersonRef who, float seconds)
+        {
+            var d = Instance;
+            if (d == null) return "no ShowMeDirector";
+            d.debugSpeechWho = who;
+            d.debugSpeechUntil = Time.unscaledTime + seconds;
+            return "speech mark over " + who;
+        }
+
         /// <summary>Debug (#327): "Speech mark": the speech mark alone over the person nearest the middle for 4 s (no line), to judge its look.</summary>
         public static string DebugSpeechMark()
         {
