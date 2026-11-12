@@ -14,3 +14,8 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+    ignore:
+      # 4.4.0 runs a new game-ci CLI that passes customParameters with their quotes, so -assemblyNames matched nothing and
+      # every EditMode group ran 0 tests (PR #611); it also posts a check run the job has no permission for. Revisit with 4.5.
+      - dependency-name: game-ci/unity-test-runner
+        versions: [">= 4.4.0, < 4.5.0"]
