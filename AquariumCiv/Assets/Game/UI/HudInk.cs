@@ -9,17 +9,24 @@ namespace AquariumCiv.GameUI
         /// <summary>The scene's daylight (0 night .. 1 full day), written by DayLightDriver each frame; 1 when nothing drives the light.</summary>
         public static float Daylight = 1f;
 
-        // fb7 pass: a narrow band, so the ink never sits at a mid-tone that vanishes on a mid-tone dusk sky (0.67 daylight drew grey-brown on terracotta)
-        public const float DarkBelow = 0.65f, LightAbove = 0.75f, EaseSeconds = 1f;
+        // The ink is either dark or light, never a mid-tone that vanishes on a mid-tone dusk sky: a running dusk sat at 0.71-0.75
+        // daylight for a long stretch and drew grey-brown on terracotta (tester, fb7). The switch has hysteresis, so daylight
+        // hovering at the edge doesn't flip it back and forth; only the switch itself eases (EaseSeconds).
+        public const float ToLightBelow = 0.70f, ToDarkAbove = 0.74f, EaseSeconds = 1f;
         public static readonly Color Dark = new(0.239f, 0.165f, 0.118f, 1f);   // #3D2A1E, var(--ink)
         public static readonly Color Light = new(0.953f, 0.914f, 0.839f, 1f);  // #F3E9D6
         public const float ShadowAlpha = 0.6f;
 
-        /// <summary>0 = dark ink (bright day), 1 = light ink (dusk to dark). Smooth between 0.75 and 0.65 daylight.</summary>
-        public static float Target(float daylight)
+        /// <summary>0 = dark ink (bright day), 1 = light ink (dusk to dark), with no history: light below the middle of the band.</summary>
+        public static float Target(float daylight) => daylight < (ToLightBelow + ToDarkAbove) * 0.5f ? 1f : 0f;
+
+        /// <summary>Like <see cref="Target(float)"/>, but inside the band it keeps the side the ink is on (or heading to):
+        /// <paramref name="current"/> is the eased lightness now (0..1).</summary>
+        public static float Target(float daylight, float current)
         {
-            float t = Mathf.Clamp01((LightAbove - daylight) / (LightAbove - DarkBelow));
-            return t * t * (3f - 2f * t);
+            if (daylight < ToLightBelow) return 1f;
+            if (daylight > ToDarkAbove) return 0f;
+            return current >= 0.5f ? 1f : 0f;
         }
 
         /// <summary>One frame of the ease: the full swing takes <see cref="EaseSeconds"/>, never a snap.</summary>

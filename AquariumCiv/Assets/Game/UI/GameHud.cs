@@ -699,7 +699,7 @@ namespace AquariumCiv.GameUI
         void FollowInk()
         {
             if (nameLabel == null) return;
-            float target = HudInk.Target(HudInk.Daylight);
+            float target = inkLightness < 0f ? HudInk.Target(HudInk.Daylight) : HudInk.Target(HudInk.Daylight, inkLightness);
             float next = inkLightness < 0f ? target : HudInk.Step(inkLightness, target, Time.unscaledDeltaTime);
             float halo = HudInk.Step(inkHalo, offHome ? 1f : 0f, Time.unscaledDeltaTime);
             if (Mathf.Approximately(next, inkLightness) && Mathf.Approximately(halo, inkHalo)) return;

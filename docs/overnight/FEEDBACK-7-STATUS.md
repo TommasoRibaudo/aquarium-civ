@@ -8,9 +8,9 @@ Worker rules: session scratchpad worker-rules.md. C: had 19 GB free at the start
 
 ## Checklist
 - [x] p9/feedback-7 from origin/dev (569e846) in F:\GameDev; worktrees F:\GameDev-wt\fb7-{603,604,605,606,607,608,587b}
-- [ ] workers reported; branches reviewed and merged; SimTests on the merge
-- [ ] Editor pass: health gate, recompile, EditMode per assembly, PlayMode named classes + smoke, screenshots looked at
-- [ ] tester run; [real] findings fixed
+- [x] workers reported; branches reviewed and merged; SimTests on the merge 1838/1838
+- [x] Editor pass (attempt 1; attempt 2 collided, see log): all green bar 3 failures confirmed on dev
+- [x] tester run; 1 [real] (running-dusk mid-tone ink) fixed with hysteresis
 - [ ] PR → dev; issues commented/closed (Tools/close-issue.sh); notes closed with their issue
 - [ ] finish checklist: Run In Background ON, lock released, tooling.md note
 
@@ -80,3 +80,17 @@ Worker rules: session scratchpad worker-rules.md. C: had 19 GB free at the start
 - 14:23 GlassUi 14/14 after the HUD change; SlicePlaythroughSmoke 2/2 on final code; Feedback5Playthrough running
 - 14:24 PlayMode p-fb5: completed {'total': 1, 'passed': 1, 'failed': 0, 'skipped': 0, 'inconclusive': 0} 180s | log: [TestResultCollector] Run finished: 1 total, 1 passed, 0 failed
 - 14:24 Feedback5Playthrough 1/1. Pass done: lock released next
+- 14:31 orchestrator: baseline on dev 569e846 (Editor restarted there): WalkSmooth 3/6 fail (stride x2 + a crowd test; Town on fb7, Village on dev = flaky), PersonCard HoldsTheBoard x2 fail with identical numbers -> all pre-existing. Back on p9/feedback-7, recompile clean.
+- 14:34 tester: throwaway TesterFb7 written, recompiling
+- 14:35 tester: compiled; running TFirst (first run by touch)
+- 14:36 tester: TFirst 1179 done by touch (spring, Year 0 · Spring), 750 running
+- 14:36 tester: TFirst 1/1 both sizes; running TCam
+- 14:36 tester: TCam running
+- 14:37 tester: TCam restarted (two runners had clashed; killed)
+- 14:38 tester: TCam 1179 done (no accidental zoom, pinch works); 750 running
+- 14:38 tester: TCam 1/1 both sizes; running TPin
+- 14:39 tester: TPin 1/1 both sizes; running TNight
+- 14:40 tester: TNight done (5 asleep, nobody woke); running TLife
+- 14:41 tester: TLife 1/1 (rabbits placed by touch, seed planted on 36.6deg slope); running THud
+- 14:42 tester: all checks done; _AgentPlaytest removed, recompiled clean, scene untitled not dirty, 0 meshes, Run In Background ON; lock released
+- 14:48 orchestrator: #604 hysteresis fix (0.70/0.74, dark or light only); HudInk 6/6, GlassUi 14/14, SlicePlaythroughSmoke 2/2, console 0 errors; tooling.md entry; lock released; PR next
