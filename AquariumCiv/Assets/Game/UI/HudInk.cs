@@ -9,12 +9,13 @@ namespace AquariumCiv.GameUI
         /// <summary>The scene's daylight (0 night .. 1 full day), written by DayLightDriver each frame; 1 when nothing drives the light.</summary>
         public static float Daylight = 1f;
 
-        public const float DarkBelow = 0.45f, LightAbove = 0.8f, EaseSeconds = 1f;
+        // fb7 pass: a narrow band, so the ink never sits at a mid-tone that vanishes on a mid-tone dusk sky (0.67 daylight drew grey-brown on terracotta)
+        public const float DarkBelow = 0.65f, LightAbove = 0.75f, EaseSeconds = 1f;
         public static readonly Color Dark = new(0.239f, 0.165f, 0.118f, 1f);   // #3D2A1E, var(--ink)
         public static readonly Color Light = new(0.953f, 0.914f, 0.839f, 1f);  // #F3E9D6
         public const float ShadowAlpha = 0.6f;
 
-        /// <summary>0 = dark ink (bright day), 1 = light ink (dusk to dark). Smooth between 0.8 and 0.45 daylight.</summary>
+        /// <summary>0 = dark ink (bright day), 1 = light ink (dusk to dark). Smooth between 0.75 and 0.65 daylight.</summary>
         public static float Target(float daylight)
         {
             float t = Mathf.Clamp01((LightAbove - daylight) / (LightAbove - DarkBelow));
@@ -28,5 +29,16 @@ namespace AquariumCiv.GameUI
 
         /// <summary>The soft shadow only grows in as the ink goes light (dark ink on a bright day needs none).</summary>
         public static Color Shadow(float lightness) => new(0f, 0f, 0f, ShadowAlpha * Mathf.Clamp01(lightness));
+
+        /// <summary>The shadow with an off-home halo: dark ink gets a soft pale glow (<paramref name="halo"/> 0..1) so it reads over the glass rails
+        /// and the room; light ink keeps its dark shadow.</summary>
+        public static Color Shadow(float lightness, float halo)
+        {
+            float l = Mathf.Clamp01(lightness), h = Mathf.Clamp01(halo) * (1f - l);
+            if (h <= l) return Shadow(lightness);
+            return new Color(Light.r, Light.g, Light.b, HaloAlpha * h);
+        }
+
+        public const float HaloAlpha = 0.85f;
     }
 }

@@ -40,6 +40,7 @@ namespace AquariumCiv.GameUI
         GlassScrim openSheet;
         readonly System.Collections.Generic.Dictionary<string, GlassScrim> sheets = new();
         Label nameLabel, yearLabel;
+        float inkHalo; // #604 (fb7 pass): 0 .. 1, the pale halo under dark ink while the camera is off home
         float inkLightness = -1f; // #604: eased 0 (dark ink) .. 1 (light ink); -1 = not applied yet
         PinChip pinChip;
         StoriesChip storiesChip;
@@ -700,10 +701,12 @@ namespace AquariumCiv.GameUI
             if (nameLabel == null) return;
             float target = HudInk.Target(HudInk.Daylight);
             float next = inkLightness < 0f ? target : HudInk.Step(inkLightness, target, Time.unscaledDeltaTime);
-            if (Mathf.Approximately(next, inkLightness)) return;
-            inkLightness = next;
+            float halo = HudInk.Step(inkHalo, offHome ? 1f : 0f, Time.unscaledDeltaTime);
+            if (Mathf.Approximately(next, inkLightness) && Mathf.Approximately(halo, inkHalo)) return;
+            inkLightness = next; inkHalo = halo;
             var ink = HudInk.Ink(next);
-            var shadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = HudInk.Shadow(next) };
+            // fb7 pass: off home the dark ink can sit on the glass rails and the room: a soft pale halo then (the light ink keeps its dark shadow)
+            var shadow = new TextShadow { offset = new Vector2(0f, 2f), blurRadius = 6f, color = HudInk.Shadow(next, halo) };
             foreach (var l in new[] { nameLabel, yearLabel }) { l.style.color = ink; l.style.textShadow = shadow; }
         }
 
