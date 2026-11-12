@@ -4,7 +4,7 @@
 # - Sim tests: dotnet test Tools/SimTests (pure-C# sim, no Unity, no secrets; runs on fork PRs too).
 # - Unity tests (2026-11-11, the user's call): EditMode via GameCI, only on PRs into main (the gate) and on a manual run,
 #   never for a docs-only diff; four assembly groups run in parallel and the "Unity tests" job (the required check) gates them.
-#   PRs into dev rely on the local batched Editor pass (docs/workflow.md §7) plus the fast checks; pushes to main skip it
+#   PRs into dev rely on the local batched Editor pass (docs/workflow.md section 7) plus the fast checks; pushes to main skip it
 #   (the PR into main already tested that content). Needs the Unity license secrets, so it is skipped for PRs from forks
 #   (GitHub never gives secrets to fork PRs; don't change this to pull_request_target).
 # Setup and rationale: docs/ci.md
