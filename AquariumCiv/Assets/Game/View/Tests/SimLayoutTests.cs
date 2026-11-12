@@ -40,7 +40,7 @@ namespace AquariumCiv.View.Tests
 
             var st = sim.Settlement;
             var green = Fill(sim, l => l == null ? Era.Village : Era.Camp);
-            Assert.IsFalse(green.pieces.Any(p => p.kind == PieceKind.Fire), "the fire ring has become the green");
+            Assert.IsTrue(green.pieces.Any(p => p.kind == PieceKind.Fire), "#588: the fire stays on the green as a stone pit");
             var well = green.pieces.Single(p => p.kind == PieceKind.Well);
             Assert.AreEqual(st.GreenX + SimLayout.FirstWellDX, well.x, 1e-4f);
             Assert.AreEqual(st.GreenZ + SimLayout.FirstWellDZ, well.z, 1e-4f);
@@ -78,7 +78,7 @@ namespace AquariumCiv.View.Tests
                 Assert.AreEqual(l.x, p.x, 1e-5f); Assert.AreEqual(l.z, p.z, 1e-5f); Assert.AreEqual(l.yaw, p.yaw, 1e-5f);
                 Assert.AreEqual(era, p.era);
             }
-            Assert.IsFalse(L.pieces.Any(p => p.kind == PieceKind.Fire), "the camp's fire gave way to the green");
+            Assert.AreEqual(era == Era.Village ? 1 : 0, L.pieces.Count(p => p.kind == PieceKind.Fire), "#588: the village keeps the fire as a stone pit, a town does not");
             Assert.IsTrue(L.clearings.Any(c => c.kind == ClearingKind.Green || (era == Era.Town && c.kind == ClearingKind.Cobble)), "a green (a square in a town with a market)");
         }
 

@@ -23,7 +23,7 @@ namespace AquariumCiv.View.PlayTests
     /// d) ducks then fish placed by Kit and touch on the pond (#542); e) the pond growing with fishers on dry feet (#495); f) settlers while the pond
     /// is small, then "Pond to full" (#539); g) a catch goes basket, rack, pile (#543). Each beat is in its own try/catch: a failure is recorded as a
     /// soft failure and the run goes on; the test asserts at the end that there are none. Shots: Temp/agent/f4/*.png. Explicit.
-    /// Note: in this build one finger orbits and TWO fingers pan, so beat a pans with two fingers (as CameraGlassFeelPlayTests does).
+    /// Note (#587): ONE finger pans and two fingers turn and zoom, so beat a pans with one finger (as CameraGlassFeelPlayTests does).
     /// </summary>
     [Explicit, Category("Feedback4Play")]
     public class Feedback4Playthrough : PlayTestBase
@@ -92,15 +92,14 @@ namespace AquariumCiv.View.PlayTests
         // ---------------------------------------------------------------- a) the free pan (#538)
         IEnumerator PanBy(Vector2 dir, int steps, List<Vector3> trace, List<bool> inBox, int[] ids)
         {
-            var a = new Vector2(Screen.width * 0.4f, Screen.height * 0.5f); var b = new Vector2(Screen.width * 0.6f, Screen.height * 0.5f);
-            int ia = touchId++, ib = touchId++; ids[0] = ia; ids[1] = ib;
-            BeginTouch(ia, a, queueEventOnly: true); BeginTouch(ib, b, queueEventOnly: true);
+            var a = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f); var b = a;
+            int ia = touchId++; ids[0] = ia; ids[1] = -1;
+            BeginTouch(ia, a, queueEventOnly: true);
             yield return Frames(3);
             for (int i = 1; i <= steps; i++)
             {
                 float t = i / (float)steps;
                 MoveTouch(ia, a + dir * t, delta: Vector2.zero, queueEventOnly: true);
-                MoveTouch(ib, b + dir * t, delta: Vector2.zero, queueEventOnly: true);
                 yield return null;
                 trace.Add(Rig.target); inBox.Add(CameraInBox(Rig));
             }
@@ -122,8 +121,7 @@ namespace AquariumCiv.View.PlayTests
                     string tag = $"{zoomName}_{(side < 0 ? "left" : "right")}";
                     Log($"a {zoomName} side {side:+0;-0}: pivot x {x:F2} (max |x| {maxAbs:F2}) against the wall {side * Land.HX:F2}; reach target {reach:F2}; margin to the glass {Land.HX - Mathf.Abs(x):F2}; camera inside the box ever: {inBox.Contains(true)}");
                     yield return Shot("f4/a_pan_" + tag);
-                    EndTouch(ids[0], new Vector2(Screen.width * 0.4f, Screen.height * 0.5f), delta: Vector2.zero, queueEventOnly: true);
-                    EndTouch(ids[1], new Vector2(Screen.width * 0.6f, Screen.height * 0.5f), delta: Vector2.zero, queueEventOnly: true);
+                    EndTouch(ids[0], new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), delta: Vector2.zero, queueEventOnly: true);
                     yield return Frames(30);
                     Check("a", !inBox.Contains(true), $"{tag}: the camera never sits inside the box");
                     Check("a", maxAbs < Land.HX, $"{tag}: the pivot never reaches the glass ({maxAbs:F2} < {Land.HX:F2})");
