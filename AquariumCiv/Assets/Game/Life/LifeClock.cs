@@ -139,7 +139,7 @@ namespace AquariumCiv.Life
         /// <summary>The sim's season is month % 12; winter is 11, 0, 1 (SimCore). Spring 2–4, summer 5–7, autumn 8–10.</summary>
         public static Season SeasonOf(long day)
         {
-            int m = (int)(((day % 12) + 12) % 12);
+            int m = AquariumCiv.Sim.SeasonCalendar.OfMonth(day); // the box's calendar: a new box's day 0 is spring (#603)
             return m <= 1 || m == 11 ? Season.Winter : m <= 4 ? Season.Spring : m <= 7 ? Season.Summer : Season.Autumn;
         }
 
