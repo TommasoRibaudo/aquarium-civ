@@ -70,4 +70,7 @@ zizmor's audits.
   - **Push to main:** no Unity run (the PR into main tested the same content). **Docs-only PRs** (only `docs/` or `*.md`) skip Unity.
   - A manual run (`workflow_dispatch`) runs everything.
   - A new EditMode test assembly must be added to a group's `assemblies` list in ci.yml, or CI won't run it.
+  - `-assemblyNames` counts as an explicit selection, so Unity also runs `[Explicit]` tests in those assemblies (PR #586: the
+    200-seed walk sweep timed out at 180 s). An on-demand test in an EditMode assembly carries `Category("OnDemand")` too;
+    the groups pass `-testCategory "!OnDemand"`.
   - The earlier note: PR #579 was cancelled at 60 min in a single EditMode job (batch 4's took 51 min).
