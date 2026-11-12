@@ -227,7 +227,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => !Cam.IsFlying, 8f);
             Assert.IsTrue(Cam.Leaning, "leaning on the ghost");
             int c0 = Cam.LeanCancels;
-            // two fingers pan across the screen
+            // two fingers move up the screen (a tilt now, #587)
             var a = new Vector2(Screen.width * 0.4f, Screen.height * 0.5f); var b = new Vector2(Screen.width * 0.6f, Screen.height * 0.5f);
             BeginTouch(901, a, queueEventOnly: true); BeginTouch(902, b, queueEventOnly: true);
             yield return null;

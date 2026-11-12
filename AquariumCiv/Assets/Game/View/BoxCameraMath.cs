@@ -152,6 +152,26 @@ namespace AquariumCiv.View
         /// <summary>A fling is capped at <see cref="InertiaCap"/> degrees per second.</summary>
         public static Vector2 CapFling(Vector2 v) => v.magnitude > InertiaCap ? v.normalized * InertiaCap : v;
 
+        // ---------------- #587: one finger pans, two fingers turn ----------------
+        /// <summary>A pan fling is capped at this many world units per second, stops below <see cref="PanInertiaStop"/> and decays like the angles' inertia.</summary>
+        public const float PanFlingCap = 12f, PanInertiaStop = 0.25f;
+        /// <summary>A twist of fewer degrees than this, with the fingers' midpoint still, is a pinch's jitter and turns nothing; the fingers must also be
+        /// further apart than <see cref="TwistMinSpan"/> of the screen height for the angle between them to mean anything.</summary>
+        public const float TwistSlopDegrees = 3f, TwistMinSpan = 0.04f;
+
+        /// <summary>Yaw degrees for a twist of the line between two fingers (screen pixels, y up): a clockwise twist (the angle shrinks) turns yaw down, so the
+        /// world turns with the fingers like a dial. 0 when either line is too short to have a direction.</summary>
+        public static float TwistDegrees(Vector2 from, Vector2 to)
+            => from.sqrMagnitude < 1e-4f || to.sqrMagnitude < 1e-4f ? 0f : Vector2.SignedAngle(from, to);
+
+        public static Vector2 CapPanFling(Vector2 v) => v.magnitude > PanFlingCap ? v.normalized * PanFlingCap : v;
+
+        public static Vector2 PanInertiaStep(Vector2 v, float dt)
+        {
+            v *= Mathf.Exp(-dt / InertiaTau);
+            return v.magnitude < PanInertiaStop ? Vector2.zero : v;
+        }
+
         /// <summary>One frame of inertia: v · exp(-dt / InertiaTau), and zero once it is below <see cref="InertiaStop"/> degrees per second.</summary>
         public static Vector2 InertiaStep(Vector2 v, float dt)
         {

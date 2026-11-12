@@ -19,9 +19,9 @@ namespace AquariumCiv.View
     }
 
     /// <summary>
-    /// The slice's camera on the box. One meaning per gesture: one finger orbits, two fingers pan and zoom together, a tap is
-    /// left to selection (a touch that stays within a small slop never moves the camera). In the Editor, left drag orbits,
-    /// right or middle drag pans, scroll zooms towards the pointer. The default distance fits the whole box across the
+    /// The slice's camera on the box. One meaning per gesture (#587): one finger pans, two fingers turn (twist = yaw, slide up or down = pitch) and pinch-zoom together, a tap is
+    /// left to selection (a touch that stays within a small slop never moves the camera). In the Editor, left drag pans,
+    /// right or middle drag turns, scroll zooms towards the pointer. The default distance fits the whole box across the
     /// screen and is refitted whenever the aspect changes (the Game view size lands a few frames into play mode,
     /// docs/tooling.md). Input only in play mode. The numbers live in <see cref="BoxCameraMath"/> (unit-tested).
     /// <list type="bullet">
@@ -51,11 +51,12 @@ namespace AquariumCiv.View
         Vector2 velocity; // degrees per second (yaw, pitch)
         readonly List<(float t, Vector2 d)> samples = new();
 
-        enum Mode { None, Orbit, TwoFinger, Locked }
+        enum Mode { None, Pan, Gesture, Locked }
         Mode mode;
-        Vector2 pressPos, lastPos, prevMid;
-        float prevDist;
-        bool orbiting, moved;
+        Vector2 pressPos, lastPos, prevMid, prevVec, startMid;
+        float prevDist, twistTotal;
+        bool panning, moved, turnLatched;
+        Vector2 panVelocity; // world units per second (x, z): the pan fling
         bool pressOnUi, pressClaimed;
         readonly List<ICameraGate> gates = new();
 
@@ -80,7 +81,7 @@ namespace AquariumCiv.View
         /// <summary>True while a press is owned by a gate (a tool) and the camera ignores it.</summary>
         public bool PressClaimed => pressClaimed;
 
-        /// <summary>A one-finger press doesn't start orbiting before this <c>Time.unscaledTime</c>: a tool that tells a flick from a drag
+        /// <summary>A one-finger press doesn't start panning before this <c>Time.unscaledTime</c>: a tool that tells a flick from a drag
         /// by its speed (the herd, #145) gets that long to see which it is, and a drag then orbits from where the finger is.</summary>
         public float HoldOrbitUntil { get; set; }
 
@@ -248,7 +249,7 @@ namespace AquariumCiv.View
         /// <summary>A lean is on: the camera went in close for something small (placed life) and stays while <c>hold</c> says so, then glides
         /// back to where the player had it.</summary>
         public bool Leaning => leanHold != null && (glide.Armed || IsFlying);
-        /// <summary>Leans the player cancelled (a two-finger move, an orbit drag or a scroll while a lean held the camera).</summary>
+        /// <summary>Leans the player cancelled (a two-finger move, a pan drag or a scroll while a lean held the camera).</summary>
         public int LeanCancels { get; private set; }
         /// <summary>A lean looks down from at least this pitch (degrees), a little steeper than a nudge so a small group on the ground spreads out.</summary>
         public const float LeanPitch = 52f, LeanSeconds = 1.4f;
@@ -263,13 +264,13 @@ namespace AquariumCiv.View
         /// P9 (user 2026-11-08, "the camera leans in"): eases in close to <paramref name="worldPoint"/> at <paramref name="zoomTo"/> so a small
         /// group reads at phone size, keeps the view there while <paramref name="hold"/> is true, then glides back to where the player had the
         /// camera (the first lean of a chain keeps the way home). Unlike a nudge it leans even when the spot is framed, and a one-finger tap (the
-        /// life tool's own taps) doesn't stop it; a two-finger move, an orbit drag or a scroll does (<see cref="LeanCancels"/>). Never against a
+        /// life tool's own taps) doesn't stop it; a two-finger move, a pan drag or a scroll does (<see cref="LeanCancels"/>). Never against a
         /// finger already moving the camera. True when the camera moves.
         /// </summary>
         public bool LeanIn(Vector3 worldPoint, float zoomTo, System.Func<bool> hold, float seconds = LeanSeconds)
         {
             if (cam == null) cam = GetComponent<Camera>();
-            if (cam == null || !isActiveAndEnabled || (Touching && (moved || mode == Mode.TwoFinger))) return false;
+            if (cam == null || !isActiveAndEnabled || (Touching && (moved || mode == Mode.Gesture))) return false;
             float floor = Mathf.Min(minZoom, LeanMinZoom);
             float z1 = Mathf.Min(zoom, Mathf.Clamp(zoomTo, floor, maxZoom));
             ReturnAfterFlight();
@@ -452,24 +453,24 @@ namespace AquariumCiv.View
             synced = true;
             HookHud();
 
-            ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mousePan);
+            ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mouseTurn);
             // A press that starts on the HUD belongs to the HUD until every finger lifts.
             if (n == 0) pressOnUi = false;
             else if (mode == Mode.None && AquariumCiv.Game.UiInput.Over(a)) pressOnUi = true;
-            if (pressOnUi) { n = 0; mode = Mode.None; orbiting = false; }
+            if (pressOnUi) { n = 0; mode = Mode.None; panning = false; }
             // A press a tool (the wipe) claims at touch-down is not ours until every finger lifts.
             if (n == 0) pressClaimed = false;
             else if (mode == Mode.None && !pressClaimed && ClaimedByGate(a)) pressClaimed = true;
             float scrollY = Mouse.current != null && n == 0 ? Mouse.current.scroll.ReadValue().y : 0f;
             // A firm flight has the camera: the finger's press counts from where the camera lands, so nothing jumps.
-            if (firmFlight && n > 0) { mode = Mode.None; orbiting = moved = false; velocity = Vector2.zero; samples.Clear(); }
+            if (firmFlight && n > 0) { mode = Mode.None; panning = moved = false; velocity = Vector2.zero; samples.Clear(); }
             if (pressClaimed)
             {
                 // The tool keeps the touch; a flight still gives way to it.
                 if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
                 // a second finger on a tool's press is the player taking the camera: it ends a lean (user 2026-11-08)
                 if (n >= 2 && leanHold != null) { LeanCancels++; leanHold = null; glide.Cancel(); }
-                n = 0; mode = Mode.None; orbiting = false; velocity = Vector2.zero;
+                n = 0; mode = Mode.None; panning = false; velocity = Vector2.zero;
                 if (!(glide.Armed && LeanHeld())) glide.Cancel(); // a lean stays through the life tool's taps
                 return;
             }
@@ -478,8 +479,8 @@ namespace AquariumCiv.View
             float H = Mathf.Max(1f, Screen.height);
 
             if (n == 0) EndPress(now);
-            else if (n >= 2 || mousePan) PanZoom(n, a, b, mousePan);
-            else Orbit(a, H, now);
+            else if (n >= 2 || mouseTurn) Turn(n, a, b, H, now);
+            else Pan(a, H, now);
 
             if (Mouse.current != null && n == 0)
             {
@@ -487,9 +488,9 @@ namespace AquariumCiv.View
                 if (Mathf.Abs(scroll) > 0.01f) ZoomAbout(Mathf.Clamp(zoom * (1f - scroll * 0.0008f), Mathf.Min(minZoom, zoom), maxZoom), Mouse.current.position.ReadValue());
             }
 
-            bool dragging = mode == Mode.Orbit && orbiting;
+            bool turning = mode == Mode.Gesture, panDrag = mode == Mode.Pan && panning, dragging = turning || panDrag;
             float lo = BoxCameraMath.PitchFloor(zoom), hi = BoxCameraMath.PitchCeiling;
-            if (!dragging)
+            if (!turning)
             {
                 if (velocity != Vector2.zero)
                 {
@@ -500,7 +501,12 @@ namespace AquariumCiv.View
                 targetYaw = BoxCameraMath.Spring(targetYaw, minYaw, maxYaw, dt);
                 targetPitch = BoxCameraMath.Spring(targetPitch, lo, hi, dt);
             }
-            if (mode != Mode.TwoFinger) { StepFollow(dt); SpringPan(dt); }
+            if (!panDrag)
+            {
+                if (panVelocity != Vector2.zero && !turning) PanFling(dt);
+                StepFollow(dt); // a turn or a pinch keeps the person in the middle; only a pan lets them go
+                if (!turning) SpringPan(dt);
+            }
             AutoOrbit(n, dragging, dt, now);
 
             float f = 1f - Mathf.Exp(-BoxCameraMath.FollowRate * dt);
@@ -535,8 +541,8 @@ namespace AquariumCiv.View
         // ---------------- camera mode: follow the person you were following (#70, user 2026-10-30) ----------------
         /// <summary>The person the camera follows in camera mode (<see cref="PersonRef.None"/> = nobody): picked when camera
         /// mode starts from what the player was following (an open person card, a Show me on a person, the pinned notable,
-        /// wherever they are). The target eases after their doll; one finger still orbits round them and a pinch
-        /// still zooms, a two-finger pan of more than <see cref="FollowReleaseFraction"/> of the screen height lets go.</summary>
+        /// wherever they are). The target eases after their doll; two fingers still turn round them and a pinch
+        /// still zooms, a one-finger pan of more than <see cref="FollowReleaseFraction"/> of the screen height lets go.</summary>
         public AquariumCiv.Life.PersonRef Following { get; private set; }
         public bool IsFollowing => !Following.IsNone;
         public const float FollowRate = 3f, FollowReleaseFraction = 0.08f;
@@ -620,10 +626,10 @@ namespace AquariumCiv.View
             target.z += (gz - target.z) * k;
         }
         // ---------------- input ----------------
-        /// <summary>The first two live fingers (or the mouse). <paramref name="mousePan"/>: a right or middle button is down.</summary>
-        static void ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mousePan)
+        /// <summary>The first two live fingers (or the mouse). <paramref name="mouseTurn"/>: a right or middle button is down (the mouse's turn; the left drag pans).</summary>
+        static void ReadPointers(out int n, out Vector2 a, out Vector2 b, out bool mouseTurn)
         {
-            n = 0; a = b = default; mousePan = false;
+            n = 0; a = b = default; mouseTurn = false;
             var ts = Touchscreen.current;
             if (ts != null)
             {
@@ -638,7 +644,7 @@ namespace AquariumCiv.View
             var m = Mouse.current;
             if (m == null) return;
             a = m.position.ReadValue();
-            if (m.rightButton.isPressed || m.middleButton.isPressed) { n = 1; mousePan = true; }
+            if (m.rightButton.isPressed || m.middleButton.isPressed) { n = 1; mouseTurn = true; }
             else if (m.leftButton.isPressed) n = 1;
         }
 
@@ -650,49 +656,32 @@ namespace AquariumCiv.View
 
         void EndPress(float now)
         {
-            if (mode == Mode.Orbit && orbiting) velocity = BoxCameraMath.CapFling(BoxCameraMath.Velocity(samples, now));
-            // A two-finger pan that moved away from the person followed lets them go (a pinch on the spot keeps them).
+            if (mode == Mode.Gesture) velocity = BoxCameraMath.CapFling(BoxCameraMath.Velocity(samples, now));
+            else if (mode == Mode.Pan && panning) panVelocity = BoxCameraMath.CapPanFling(BoxCameraMath.Velocity(samples, now));
+            // A one-finger pan that moved away from the person followed lets them go (a turn or a pinch on the spot keeps them).
             if (IsFollowing && panTravel > FollowReleaseFraction * Mathf.Max(1f, Screen.height)) Follow(AquariumCiv.Life.PersonRef.None);
             panTravel = 0f;
-            mode = Mode.None; orbiting = false; moved = false; samples.Clear();
+            mode = Mode.None; panning = false; moved = false; samples.Clear();
         }
 
-        void Orbit(Vector2 pos, float H, float now)
+        /// <summary>#587: one finger (or a left mouse drag) pans, grabbing the ground: the point under the finger stays under it. The bounds, the glass feel and the slop
+        /// (a tap never moves the camera) are the old two-finger pan's; a release flings the pan.</summary>
+        void Pan(Vector2 pos, float H, float now)
         {
-            if (mode == Mode.TwoFinger || mode == Mode.Locked) { mode = Mode.Locked; return; } // one finger left of a two-finger gesture: ignore until all lift
+            if (mode == Mode.Gesture || mode == Mode.Locked) { mode = Mode.Locked; return; } // one finger left of a two-finger gesture: ignore until all lift
             if (mode == Mode.None)
             {
-                mode = Mode.Orbit; pressPos = lastPos = pos; orbiting = moved = false; velocity = Vector2.zero; samples.Clear();
+                mode = Mode.Pan; pressPos = lastPos = pos; panning = moved = false; velocity = Vector2.zero; panVelocity = Vector2.zero; samples.Clear(); panTravel = 0f;
                 return;
             }
-            if (!orbiting)
+            if (!panning)
             {
                 if (!BoxCameraMath.PastSlop(pos - pressPos, H) || now < HoldOrbitUntil) return;
-                orbiting = moved = true; lastPos = pos; // the slop itself is swallowed: no jump when it is crossed
+                panning = moved = true; codeHold = false; lastPos = pos; // the slop itself is swallowed: no jump when it is crossed
                 return;
             }
-            var d = pos - lastPos; lastPos = pos;
-            float dYaw = BoxCameraMath.YawDegrees(d.x, H), dPitch = -BoxCameraMath.PitchDegrees(d.y, H);
-            targetYaw = BoxCameraMath.SoftStep(targetYaw, dYaw, minYaw, maxYaw);
-            targetPitch = BoxCameraMath.SoftStep(targetPitch, dPitch, BoxCameraMath.PitchFloor(zoom), BoxCameraMath.PitchCeiling);
-            samples.Add((now, new Vector2(dYaw, dPitch)));
-            if (samples.Count > 32) samples.RemoveAt(0);
-        }
-
-        /// <summary>Two fingers (or a right / middle mouse drag): pinch zoom towards the fingers and pan grabbing the ground.</summary>
-        void PanZoom(int n, Vector2 a, Vector2 b, bool mousePan)
-        {
-            Vector2 mid = n >= 2 ? (a + b) * 0.5f : a;
-            float dist = n >= 2 ? Vector2.Distance(a, b) : 0f;
-            if (mode != Mode.TwoFinger)
-            {
-                mode = Mode.TwoFinger; codeHold = false; orbiting = false; moved = true; velocity = Vector2.zero; samples.Clear();
-                prevMid = mid; prevDist = dist; panTravel = 0f;
-                return;
-            }
-            panTravel += (mid - prevMid).magnitude;
-            if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, Mathf.Min(minZoom, zoom), maxZoom), mid);
-            if (GroundAt(prevMid, out var g0) && GroundAt(mid, out var g1))
+            var before = target;
+            if (GroundAt(lastPos, out var g0) && GroundAt(pos, out var g1))
             {
                 var bound = ViewBounds(zoom);
                 var d = g0 - g1;
@@ -700,8 +689,63 @@ namespace AquariumCiv.View
                 target.z = BoxCameraMath.GlassStep(target.z, d.z, -bound.y, bound.y);
             }
             StayOnLand();
+            panTravel += (pos - lastPos).magnitude;
+            lastPos = pos;
+            samples.Add((now, new Vector2(target.x - before.x, target.z - before.z)));
+            if (samples.Count > 32) samples.RemoveAt(0);
             Apply();
-            prevMid = mid; prevDist = dist;
+        }
+
+        /// <summary>The pan's fling after the finger lifts: the same glass step and bounds as the drag, decaying like the angles' inertia.</summary>
+        void PanFling(float dt)
+        {
+            var bound = ViewBounds(zoom);
+            target.x = BoxCameraMath.GlassStep(target.x, panVelocity.x * dt, -bound.x, bound.x);
+            target.z = BoxCameraMath.GlassStep(target.z, panVelocity.y * dt, -bound.y, bound.y);
+            StayOnLand();
+            panVelocity = BoxCameraMath.PanInertiaStep(panVelocity, dt);
+        }
+
+        /// <summary>#587: two fingers (or a right / middle mouse drag) turn and zoom. Twisting the fingers changes yaw, moving them up or down changes pitch, a pinch
+        /// zooms about the midpoint; all in the same gesture. A twist or a slide that stays under its slop is a pinch's jitter and turns nothing.
+        /// The mouse's turn has no twist: its drag yaws and pitches.</summary>
+        void Turn(int n, Vector2 a, Vector2 b, float H, float now)
+        {
+            Vector2 mid = n >= 2 ? (a + b) * 0.5f : a;
+            Vector2 vec = n >= 2 ? b - a : Vector2.zero;
+            float dist = vec.magnitude;
+            if (mode != Mode.Gesture)
+            {
+                mode = Mode.Gesture; codeHold = false; panning = false; moved = true; velocity = Vector2.zero; panVelocity = Vector2.zero; samples.Clear();
+                prevMid = startMid = mid; prevDist = dist; prevVec = vec; twistTotal = 0f; turnLatched = false; panTravel = 0f;
+                return;
+            }
+            if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, Mathf.Min(minZoom, zoom), maxZoom), mid);
+            float dYaw = 0f, dPitch = 0f;
+            var dm = mid - prevMid;
+            if (n >= 2)
+            {
+                bool wide = dist > BoxCameraMath.TwistMinSpan * H && prevDist > BoxCameraMath.TwistMinSpan * H;
+                float tw = wide ? BoxCameraMath.TwistDegrees(prevVec, vec) : 0f;
+                twistTotal += tw;
+                if (!turnLatched && (Mathf.Abs(twistTotal) >= BoxCameraMath.TwistSlopDegrees || BoxCameraMath.PastSlop(mid - startMid, H))) turnLatched = true;
+                if (turnLatched) { dYaw = tw; dPitch = -BoxCameraMath.PitchDegrees(dm.y, H); }
+            }
+            else
+            {
+                if (!turnLatched && BoxCameraMath.PastSlop(mid - startMid, H)) { turnLatched = true; dm = Vector2.zero; }
+                if (turnLatched) { dYaw = BoxCameraMath.YawDegrees(dm.x, H); dPitch = -BoxCameraMath.PitchDegrees(dm.y, H); }
+            }
+            if (dYaw != 0f || dPitch != 0f)
+            {
+                targetYaw = BoxCameraMath.SoftStep(targetYaw, dYaw, minYaw, maxYaw);
+                targetPitch = BoxCameraMath.SoftStep(targetPitch, dPitch, BoxCameraMath.PitchFloor(zoom), BoxCameraMath.PitchCeiling);
+                samples.Add((now, new Vector2(dYaw, dPitch)));
+                if (samples.Count > 32) samples.RemoveAt(0);
+            }
+            StayOnLand();
+            Apply();
+            prevMid = mid; prevDist = dist; prevVec = vec;
         }
 
         /// <summary>Changes the zoom and moves the target (1 - z1/z0) of the way to the ground under <paramref name="screenPoint"/>.</summary>
