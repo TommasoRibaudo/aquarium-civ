@@ -237,7 +237,7 @@ namespace AquariumCiv.View.PlayTests
         Dictionary<string, Stop[]> Staged() => new Dictionary<string, Stop[]>
         {
             ["#538"] = new[] { S("#538", "camera pan to the walls", "camera",
-                "Pan with two fingers (the right or middle mouse button) to the left and right wall at close, mid and far zoom (scroll or pinch). The camera should reach both side walls at every zoom, with a soft stop at the wall. You drive: nothing is framed.", SetupCamera) },
+                "Pan with one finger (the left mouse button) to the left and right wall at close, mid and far zoom (scroll or pinch). The camera should reach both side walls at every zoom, with a soft stop at the wall. You drive: nothing is framed.", SetupCamera) },
             ["#526"] = new[] {
                 S("#526", "feather stake, day", "stake_day", "A pale stake in a stone ring with three fanned feathers. Does it read as a feather stake, and does it stand clear of the tents, rack, pot and stash?", () => SetupStake(11.5f)),
                 S("#526", "feather stake, night", "stake_night", "The same stake at night. Is it still readable in the dark (and near the fire's light), not a tall dark pole?", () => SetupStake(22.5f)) },
@@ -433,7 +433,7 @@ namespace AquariumCiv.View.PlayTests
         {
             Hour(10f);
             DefaultView(0f);
-            Say("Mouse: right or middle drag pans, left drag orbits, wheel zooms.");
+            Say("Mouse: left drag pans, right or middle drag turns, wheel zooms.");
             yield return Frames(2);
         }
 

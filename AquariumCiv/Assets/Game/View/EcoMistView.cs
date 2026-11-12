@@ -215,7 +215,7 @@ namespace AquariumCiv.View
             }
         }
 
-        /// <summary>The camera leaves one finger to the kit's mister and seed while one is in hand (two fingers still move the view).</summary>
+        /// <summary>The camera leaves one finger to the kit's mister and seed while one is in hand (two fingers still turn and zoom the view).</summary>
         public bool ClaimsPress(Vector2 screenPos)
         {
             hud ??= GameHud.Instance;

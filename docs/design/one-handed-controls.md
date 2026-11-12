@@ -51,3 +51,7 @@ needs two fingers, so one-handed play doesn't work.
 - Auto-exit rule (timeout length, spotless exit).
 - Left-handed placement: mirror option or a centred button?
 - On return to a dirty tank (check-in: chronicle → clean → nudge), should clean mode start on?
+
+## Update 2026-11-11 (#587)
+One finger now pans the camera (it used to turn it); two fingers turn and zoom. The Clean button rule is unchanged: with the mode
+off, one finger always moves the camera (now a pan, on glass too); with it on, a stroke on glass wipes.
