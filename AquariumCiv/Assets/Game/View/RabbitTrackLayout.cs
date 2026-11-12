@@ -31,10 +31,10 @@ namespace AquariumCiv.View
             float heading = F(2) * Mathf.PI * 2f;
             float bend = (F(3) - 0.5f) * 0.7f;                // radians turned per hop: a curve to either side
             float spacing = Mathf.Lerp(HopMin, HopMax, F(4));
-            // the trail is centred on the cell's middle
+            // laid from the cell's middle, then the whole trail is moved so its prints centre on it (a bent trail's chord is not
+            // its first heading: centring on that let a long curved one reach past the cell)
             var pos = new Vector2(cx, cz);
-            float total = spacing * (hops - 1);
-            pos -= new Vector2(Mathf.Sin(heading), Mathf.Cos(heading)) * (total * 0.5f);
+            int first = into.Count;
             for (int h = 0; h < hops; h++)
             {
                 var dir = new Vector2(Mathf.Sin(heading), Mathf.Cos(heading));
@@ -50,6 +50,11 @@ namespace AquariumCiv.View
                 pos += dir * spacing;
                 heading += bend + (RabbitHerd.F(r, (uint)(30 + h), 5) - 0.5f) * 0.25f;
             }
+            var mid = Vector2.zero;
+            for (int i = first; i < into.Count; i++) mid += into[i].at;
+            mid /= Mathf.Max(1, into.Count - first);
+            var shift = new Vector2(cx, cz) - mid;
+            for (int i = first; i < into.Count; i++) { var p = into[i]; p.at += shift; into[i] = p; }
         }
     }
 }
