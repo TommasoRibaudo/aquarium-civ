@@ -4,6 +4,12 @@ using System.Linq;
 
 namespace AquariumCiv.Sim
 {
+    /// <summary>#589: the supper choice as the life planner reads it.</summary>
+    public static class SupperPick
+    {
+        public const int None = 0, Pot = 1, Baskets = 2;
+    }
+
     /// <summary>
     /// #372: the small choices that sit between the big dilemmas (visit-loop.md 2.4). A small choice is a <see cref="DilemmaDef"/>
     /// with <see cref="DilemmaDef.smallKind"/> set: it rides the dilemma machinery (one open at a time, the gap, three visits, Let them
@@ -102,6 +108,13 @@ namespace AquariumCiv.Sim
             }
             return null;
         }
+
+        /// <summary>#589: how supper goes on a view day (<see cref="SupperPick"/>): the evening the choice ended and the one after.
+        /// <see cref="SupperPick.None"/> on every other day.</summary>
+        public int SupperOn(long day) => State.supperPick != SupperPick.None && (day == State.supperMonth || day == State.supperMonth + 1) ? State.supperPick : SupperPick.None;
+
+        /// <summary>Debug (#589): settle supper now, as if the Keeper had picked.</summary>
+        public void DebugSupper(int pick) { State.supperPick = pick; State.supperMonth = State.month; }
 
         string SmallDefId(string kind) => SmallCatalog.FirstOrDefault(x => x.smallKind == kind)?.id ?? "";
 
@@ -208,6 +221,13 @@ namespace AquariumCiv.Sim
         void ApplySmall(Dilemma d, DilemmaDef def, int option)
         {
             if (LifeChoices.Is(def)) { ApplyLife(d, def, option); return; } // #437/#438
+            if (def.smallKind == SmallChoices.Supper)
+            {
+                // #589: the pick is played out that evening (and the next): one pot at the fire, or a basket each at home.
+                State.supperPick = option == 0 ? SupperPick.Pot : SupperPick.Baskets;
+                State.supperMonth = State.month;
+                return;
+            }
             if (def.smallKind != SmallChoices.Naming) return;
             var c = FindNotable(d.subjectId);
             if (c == null || !c.alive) return;

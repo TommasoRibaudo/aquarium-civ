@@ -62,6 +62,16 @@ namespace AquariumCiv.View
             PeopleView.DollScaleAmount = GUILayout.HorizontalSlider(PeopleView.DollScaleAmount, 0f, 0.4f);
             GUILayout.EndHorizontal();
             if (GUILayout.Button("Canal across a path (bridge)")) last = DebugCanalAcrossPath();
+            // ---- #588 / #589: the village fire pit and the supper played out (the supper choice itself: DilemmaCheats "Small: supper")
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Village evening dance now")) last = DebugVillageEvening();
+            if (GUILayout.Button("Skip to supper")) last = PeopleView.DebugSetHour(17.6f);
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Supper: one pot")) last = DebugSupper(AquariumCiv.Sim.SupperPick.Pot);
+            if (GUILayout.Button("Supper: baskets")) last = DebugSupper(AquariumCiv.Sim.SupperPick.Baskets);
+            GUILayout.EndHorizontal();
+            // ---- end #588 / #589
             var rig = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
             if (rig == null) return;
             GUILayout.BeginHorizontal();
@@ -76,6 +86,25 @@ namespace AquariumCiv.View
             if (GUILayout.Button("Camera: whole box")) last = CampFrameView.DebugWholeBox();
             GUILayout.EndHorizontal();
             // ---- end t1-camera
+        }
+
+        /// <summary>#588: a village (the camp crosses over if it still is one) at the evening gathering, 18.6 h: the ring dance round the lit pit.</summary>
+        public static string DebugVillageEvening()
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (sim == null) return "no sim";
+            if (sim.State.era == AquariumCiv.Sim.Era.Camp) { GameClock.DebugSkipHours(12f); sim.ForceNextEra(); }
+            if (sim.State.era != AquariumCiv.Sim.Era.Village) return "not a village";
+            return "village evening: " + PeopleView.DebugSetHour(18.6f);
+        }
+
+        /// <summary>#589: settle supper as if the Keeper picked (tonight and tomorrow), then show the hour supper starts.</summary>
+        public static string DebugSupper(int pick)
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (sim == null) return "no sim";
+            sim.DebugSupper(pick);
+            return (pick == AquariumCiv.Sim.SupperPick.Pot ? "one big pot" : "a basket each") + ": " + PeopleView.DebugSetHour(17.6f);
         }
 
         /// <summary>#274: digs a canal across the path nearest the green; a bridge is drawn where they cross.</summary>

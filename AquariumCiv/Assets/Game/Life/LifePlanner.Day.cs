@@ -40,6 +40,8 @@ namespace AquariumCiv.Life
             public Season season;
             public Weather weather;
             public bool rest, ducks, feast, announce;
+            /// <summary>#589: how supper goes this view day (<see cref="SupperPick"/>).</summary>
+            public int supper;
             public int rainNudgeId = -1;
             public float pace = 1f;
             public readonly List<Scene> scenes = new List<Scene>();
@@ -138,6 +140,7 @@ namespace AquariumCiv.Life
             foreach (var sc in d.scenes) festival |= sc.kind == SceneKind.Festival;
             d.rest = LifeClock.IsRestDay(day) && !festival;
             d.feast = !festival && box.feastChance > 0f && R(1, day, 911) < box.feastChance;
+            d.supper = sim.SupperOn(day);
             d.announce = box.announceChance > 0f && R(1, day, 912) < box.announceChance;
             d.pace = (1f - sim.OutputPenalty) * (d.weather == Weather.Fog ? 0.8f : 1f);
 
@@ -614,6 +617,20 @@ namespace AquariumCiv.Life
                 t = end; block++;
             }
             float home = 19.3f + R(k, day, 2) * 0.3f - box.homeEarlyHours;
+            // #589: supper played out: the kids eat with their family, at home with a basket or at the fire round the pot.
+            if (d.supper == SupperPick.Baskets)
+            {
+                At(ActivityKind.Eat, Math.Max(home, 18.9f), p.home, Prop.Basket, p.parent != null ? Ref(p.parent) : default, TripType.Home);
+                At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
+                return;
+            }
+            if (d.supper == SupperPick.Pot)
+            {
+                At(ActivityKind.Play, 18.2f, gather, Prop.Ball, default, TripType.HomeToGreen);
+                At(ActivityKind.Eat, Math.Max(home, 18.9f), gather, Prop.None, p.parent != null ? Ref(p.parent) : default);
+                At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
+                return;
+            }
             // #404: some evenings the kids dare each other at the lookout tower (one roll for all of them, so they go together)
             if (TowerOpen && (DebugTowerEvenings || R(PlayBlockKey, day, 404) < TowerDareEvening) && R(k, day, 57) < 0.5f)
             {
@@ -699,9 +716,9 @@ namespace AquariumCiv.Life
             if (farms.Count > 0 && R(k, day, 7) < 0.5f) At(ActivityKind.WatchWork, 17f, PlaceOf(farms[(int)(H(k, day, 8) % (uint)farms.Count)]), Prop.Stick);
             else At(ActivityKind.SitOut, 17f, ElderSitPlace(p, d, 4), Prop.Stool);
             float home = 19.4f + R(k, day, 2) * 0.4f - box.homeEarlyHours - p.hints.homeEarlyHours;
-            if (StyleOf(p, d) != EveningStyle.Gather) { At(ActivityKind.SitOut, home, p.home, Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197
+            if (StyleOf(p, d) != EveningStyle.Gather) { At(d.supper == SupperPick.Baskets ? ActivityKind.Eat : ActivityKind.SitOut, home, p.home, d.supper == SupperPick.Baskets ? Prop.Basket : Prop.Stool, default, TripType.Home); At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home); return; } // #197, #589
             At(ActivityKind.SitOut, 18.3f, gather, Prop.Stool, default, TripType.HomeToGreen);
-            At(d.teller == p ? ActivityKind.StoryTell : ActivityKind.SitOut, Math.Min(home, 19.1f), gather);
+            At(d.supper == SupperPick.Pot ? ActivityKind.Eat : d.teller == p ? ActivityKind.StoryTell : ActivityKind.SitOut, Math.Min(home, 19.1f), gather);
             At(ActivityKind.SitOut, home, gather);
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
         }
@@ -1042,11 +1059,14 @@ namespace AquariumCiv.Life
             if (box.sweeperExtraBlocks >= 2 && p.job == JobType.Sweeper && !d.rest) At(ActivityKind.Sweep, 17.5f, gather, Prop.Broom);
             if (style != EveningStyle.Gather) { OtherEvening(p, d, style, home); return; }
             if (!CampEveningRole(p, d)) At(ActivityKind.SitOut, 17.6f, gather, Prop.None, default, TripType.HomeToGreen); // tester run 1 #3: the fire's roles
-            At(leader != null && leader != p ? ActivityKind.Listen : ActivityKind.Chat, 18.3f, gather, Prop.None, Ref(leader));
+            bool pot = d.supper == SupperPick.Pot;
+            At(pot ? ActivityKind.Eat : leader != null && leader != p ? ActivityKind.Listen : ActivityKind.Chat, pot ? 18.6f : 18.3f, gather, Prop.None, pot ? default : Ref(leader)); // #589: the big pot, bowls round the fire
             ActivityKind free;
             var place = gather;
             float r = R(k, day, 51);
-            if (p.hints.singChance > 0f && R(k, day, 52) < p.hints.singChance) free = ActivityKind.Sing;
+            if (pot && R(k, day, 590) < 0.35f) free = ActivityKind.Sing; // #589: a song over the pot
+            else if (pot) { free = r < 0.7f ? ActivityKind.Chat : ActivityKind.SitOut; }
+            else if (p.hints.singChance > 0f && R(k, day, 52) < p.hints.singChance) free = ActivityKind.Sing;
             else if (tavernB != null && r < 0.3f) { free = ActivityKind.Drink; place = PlaceOf(tavernB); }
             else free = r < 0.7f ? ActivityKind.Chat : ActivityKind.SitOut;
             At(free, Math.Min(home, 19.1f), place, free == ActivityKind.Drink ? Prop.Mug : Prop.None);
@@ -1060,6 +1080,7 @@ namespace AquariumCiv.Life
         void Relationships(Person p, DayInfo d, List<Seg> list)
         {
             if (EveningBusy(p)) return;
+            if (d.supper == SupperPick.Pot || (d.supper == SupperPick.Baskets && StyleOf(p, d) != EveningStyle.Gather)) return; // #589: everyone eats together / the family eats at home
             var f = p.friend;
             if (f != null && f.Grown && !EveningBusy(f) && (StyleOf(p, d) == EveningStyle.Gather || StyleOf(f, d) == EveningStyle.Gather))
             {
@@ -1121,8 +1142,18 @@ namespace AquariumCiv.Life
         /// <summary>Debug (the panel, the tester): half the free evenings go to the tower, and every evening is a dare evening.</summary>
         public static bool DebugTowerEvenings;
 
+        /// <summary>#589: the share of grown-ups who still sit at the fire on a basket-each evening.</summary>
+        public const float LingerAtFire = 0.12f;
+
         EveningStyle StyleOf(Person p, DayInfo d)
         {
+            // #589: supper played out. One big pot: everyone sits down at the fire. A basket each: families eat at home, and only the leader
+            // and a few (about one in eight, by the pair's roll) linger at the fire.
+            if (d.supper != SupperPick.None && p.Grown && !EveningBusy(p))
+            {
+                if (d.supper == SupperPick.Pot) return EveningStyle.Gather;
+                return p == leader || R(p.partner != null ? PairKey(p, p.partner) : p.key, d.day, 589) < LingerAtFire ? EveningStyle.Gather : EveningStyle.Home;
+            }
             if (!p.Grown || EveningBusy(p) || p == leader || p.hints.singChance > 0f || d.feast) return EveningStyle.Gather;
             float r = R(p.partner != null ? PairKey(p, p.partner) : p.key, d.day, 54);
             if (r < 0.42f) return EveningStyle.Gather;
@@ -1157,6 +1188,12 @@ namespace AquariumCiv.Life
             else
             {
                 At(chore, 18.2f, p.home, ChoreProp(chore));
+                if (d.supper == SupperPick.Baskets) // #589: a basket each, on the doorstep with the family
+                {
+                    At(ActivityKind.Eat, Math.Max(late, bt + 0.6f), p.home, Prop.Basket, p.partner != null ? Ref(p.partner) : default);
+                    At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
+                    return;
+                }
                 At(R(k, d.day, 55) < 0.5f ? ActivityKind.SitOut : ActivityKind.Chat, Math.Max(late, bt + 0.5f), p.home, Prop.None, p.partner != null ? Ref(p.partner) : default);
             }
             At(ActivityKind.Sleep, 24f, p.home, Prop.None, default, TripType.Home);
