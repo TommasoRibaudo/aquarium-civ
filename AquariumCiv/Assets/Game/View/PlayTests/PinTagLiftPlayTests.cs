@@ -53,6 +53,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("pin-lift-1-clear");
 
             // smooth: one frame at a time, no jump bigger than a few px once it has settled
+            float speechLift = Cards.PinLift;
             float last = Cards.PinLift;
             for (int i = 0; i < 20; i++)
             {
@@ -63,7 +64,14 @@ namespace AquariumCiv.View.PlayTests
 
             ShowMeDirector.DebugSpeechOver(PersonRef.None, 0f);
             yield return new WaitForSecondsRealtime(1.5f);
-            Assert.That(Cards.PinLift, Is.EqualTo(0f).Within(0.5f), "the mark is gone: the tag settles back");
+            marks.Clear();
+            foreach (var c in ChatterView.Drawing) c.ScreenMarks(marks);
+            string left = string.Join(", ", marks.Select(m => $"{m.who} {m.rect}")) + $" | bubbles {GlassBubble.OnPanel.Count(b => b.Showing)} | speech {chatter.SpeechDrawn} | target {Cards.PinLiftTarget:0.0} | tag {Cards.PinTagRect}";
+            // the people at the camp chat on their own: a natural chatter mark near the head may still hold the tag up a little.
+            // The forced mark is gone, so the tag comes down to where the marks left on screen put it (all the way when there are none).
+            Assert.That(Cards.PinLift, Is.EqualTo(Cards.PinLiftTarget).Within(0.5f), "the tag has settled (" + left + ")");
+            Assert.That(Cards.PinLift, Is.LessThan(speechLift - 1f), "and came down from above the speech mark (" + left + ")");
+            if (marks.Count == 0) Assert.That(Cards.PinLift, Is.EqualTo(0f).Within(0.5f), "nothing on screen: the tag rests on their head");
             yield return Shot("pin-lift-2-back");
             CloseSlice();
         }

@@ -43,6 +43,7 @@ namespace AquariumCiv.View
             renameActs = null;
             renameRow = null;
             if (sheet != null && renamed > 0f) LandKeyboard();
+            sheet?.RemoveFromClassList("pc--renaming");
         }
 
         /// <summary>The top of the About tab for a living person: the pencil, or the open field.</summary>
@@ -91,6 +92,9 @@ namespace AquariumCiv.View
         {
             var acts = renameActs;
             if (acts == null || body == null) return;
+            // the field open: the subtitle and the tabs fold away with or without the keyboard (fb7 pass: without it the short card
+            // scrolled to the buttons with the field itself off the top)
+            sheet?.EnableInClassList("pc--renaming", true);
             body.schedule.Execute(() =>
             {
                 if (renameActs != acts || body == null) return;

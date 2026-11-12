@@ -214,8 +214,9 @@ namespace AquariumCiv.View
         {
             var mb = new MeshBuilder(box.seed + 77) { jitter = 0f };
             var land = box.land;
-            var fresh = new Color(0.25f, 0.18f, 0.10f);   // pressed in: a shade darker than the ground, not black blobs
-            var worn = new Color(0.34f, 0.28f, 0.17f);    // weathered nearly into it
+            // pressed in: a shade darker than the ground, not black blobs (fb7 pass: 0.25/0.18/0.10 still drew near-black pellets)
+            var fresh = new Color(0.44f, 0.35f, 0.22f);
+            var worn = new Color(0.52f, 0.43f, 0.29f);    // weathered nearly into it
             var list = new List<RabbitTrackLayout.Print>();
             for (int i = 0; i < n; i++)
             {
