@@ -159,6 +159,13 @@ namespace AquariumCiv.View
         /// further apart than <see cref="TwistMinSpan"/> of the screen height for the angle between them to mean anything.</summary>
         public const float TwistSlopDegrees = 3f, TwistMinSpan = 0.04f;
 
+        /// <summary>#587 round 2 (playtest #596: any small two-finger move zoomed a little): a pinch zooms only once the finger distance has moved this fraction of its start
+        /// distance, or <see cref="PinchAfterTurnFraction"/> once the gesture is already a twist or a slide. The zoom then runs from that point, with no catch-up.</summary>
+        public const float PinchStartFraction = 0.07f, PinchAfterTurnFraction = 0.13f;
+
+        public static bool PinchPast(float startDist, float dist, bool turnLatched)
+            => startDist > 1f && Mathf.Abs(dist - startDist) >= (turnLatched ? PinchAfterTurnFraction : PinchStartFraction) * startDist;
+
         /// <summary>Yaw degrees for a twist of the line between two fingers (screen pixels, y up): a clockwise twist (the angle shrinks) turns yaw down, so the
         /// world turns with the fingers like a dial. 0 when either line is too short to have a direction.</summary>
         public static float TwistDegrees(Vector2 from, Vector2 to)

@@ -54,7 +54,8 @@ namespace AquariumCiv.View
         enum Mode { None, Pan, Gesture, Locked }
         Mode mode;
         Vector2 pressPos, lastPos, prevMid, prevVec, startMid;
-        float prevDist, twistTotal;
+        float prevDist, startDist, twistTotal;
+        bool pinchLatched;
         bool panning, moved, turnLatched, gestureTool;
         Vector2 panVelocity; // world units per second (x, z): the pan fling
         bool pressOnUi, pressClaimed;
@@ -724,10 +725,11 @@ namespace AquariumCiv.View
             if (mode != Mode.Gesture)
             {
                 mode = Mode.Gesture; codeHold = false; panning = false; moved = true; velocity = Vector2.zero; panVelocity = Vector2.zero; samples.Clear();
-                prevMid = startMid = mid; prevDist = dist; prevVec = vec; twistTotal = 0f; turnLatched = false; panTravel = 0f;
+                prevMid = startMid = mid; prevDist = startDist = dist; prevVec = vec; twistTotal = 0f; turnLatched = false; pinchLatched = false; panTravel = 0f;
                 return;
             }
-            if (n >= 2 && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, Mathf.Min(minZoom, zoom), maxZoom), mid);
+            if (n >= 2 && !pinchLatched && BoxCameraMath.PinchPast(startDist, dist, turnLatched)) pinchLatched = true; // #587 round 2: the zoom starts from here, with no catch-up for the dead zone
+            if (n >= 2 && pinchLatched && dist > 1f && prevDist > 1f) ZoomAbout(Mathf.Clamp(zoom * prevDist / dist, Mathf.Min(minZoom, zoom), maxZoom), mid);
             float dYaw = 0f, dPitch = 0f;
             var dm = mid - prevMid;
             if (n >= 2)
