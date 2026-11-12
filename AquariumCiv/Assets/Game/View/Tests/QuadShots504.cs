@@ -38,9 +38,9 @@ namespace AquariumCiv.View.Tests
                 var camGo = new GameObject("cam", typeof(Camera));
                 camGo.transform.SetParent(root.transform, false);
                 var cam = camGo.GetComponent<Camera>();
-                cam.orthographic = true; cam.orthographicSize = 0.15f; cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.orthographic = true; cam.orthographicSize = 0.19f; cam.clearFlags = CameraClearFlags.SolidColor;
                 cam.backgroundColor = new Color(0.72f, 0.84f, 0.92f); cam.nearClipPlane = 0.01f; cam.farClipPlane = 5f;
-                cam.transform.position = new Vector3(1f, 0.09f, 0f); cam.transform.rotation = Quaternion.Euler(0f, -90f, 0f); // side view, deer faces +z (screen left)
+                cam.transform.position = new Vector3(1f, 0.12f, 0f); cam.transform.rotation = Quaternion.Euler(0f, -90f, 0f); // side view, deer faces +z (screen left)
                 var rt = new RenderTexture(W, H, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
                 cam.targetTexture = rt;
 

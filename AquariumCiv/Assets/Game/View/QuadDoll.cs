@@ -50,7 +50,7 @@ namespace AquariumCiv.View
                     l.bodyLen = k == QuadKind.Fawn ? 0.12f : 0.20f;
                     l.legShare = k == QuadKind.Fawn ? 0.62f : 0.57f; // #504: shorter legs under a deeper body (it read long and thin)
                     l.fullness = k == QuadKind.Fawn ? 0.3f : 0.4f;
-                    l.neckLen = k == QuadKind.Fawn ? 0.05f : 0.1f; l.neckRise = 58f; // a longer neck reaches the grass
+                    l.neckLen = k == QuadKind.Fawn ? 0.05f : 0.09f; l.neckRise = 58f; // a longer neck reaches the grass
                     l.headLen = k == QuadKind.Fawn ? 0.04f : 0.05f; l.muzzle = 0.75f; l.headRound = k == QuadKind.Fawn ? 1.25f : 1f;
                     l.earSize = k == QuadKind.Fawn ? 0.019f : 0.017f; l.wideEars = true;
                     l.tailLen = 0.022f; l.tailHang = 20f; l.flag = true;
@@ -383,7 +383,14 @@ namespace AquariumCiv.View
                     if (l.collar) mb.Prism(new Vector3(0f, H * 0.75f, L * 0.44f), H * 0.42f, H * 0.42f, 0.008f, 7, new Color(0.45f, 0.30f, 0.18f), Quaternion.Euler(70f, 0f, 0f));
                     break;
                 case 1: // the neck: along +z from the withers (the rest rise is the transform's)
-                    mb.Ico(new Vector3(0f, 0f, l.neckLen * 0.5f), Mathf.Max(l.neckLen * 0.5f, H * 0.3f), new Vector3(H * 0.62f * (1f + l.fullness * 0.45f) / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), H * 0.7f * (1f + l.fullness * 0.45f) / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), 1.1f), l.coat, 0.05f, l.belly); // thicker with a full build (#504)
+                    if (l.fullness > 0.01f)
+                    {
+                        // #504: a deer's neck is a slim tapered column, narrower than the chest, ending at the head's width
+                        float rb = H * 0.5f, rt = l.headLen * 0.42f * l.headRound * 1.15f;
+                        mb.Prism(new Vector3(0f, 0f, -H * 0.12f), rb, rt, l.neckLen + H * 0.12f, 6, l.coat, Quaternion.Euler(90f, 0f, 0f), true, false, l.coat);
+                    }
+                    else
+                    mb.Ico(new Vector3(0f, 0f, l.neckLen * 0.5f), Mathf.Max(l.neckLen * 0.5f, H * 0.3f), new Vector3(H * 0.62f / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), H * 0.7f / Mathf.Max(l.neckLen * 0.5f, H * 0.3f), 1.1f), l.coat, 0.05f, l.belly);
                     break;
                 case 2: // the head, facing +z from the neck's tip
                     {
@@ -401,12 +408,18 @@ namespace AquariumCiv.View
                                 // the beam up and back, then out, with tines: reads as "antlers" at phone size
                                 float a = l.antlers;
                                 var col = new Color(0.86f, 0.78f, 0.62f);
-                                var b0 = new Vector3(sd * r * 0.35f, r * 0.95f, 0f);
-                                mb.Box(b0 + new Vector3(sd * 0.010f, 0.026f, -0.004f) * a, new Vector3(0.006f, 0.058f * a, 0.006f), col, Quaternion.Euler(-18f, 0f, -sd * 30f));
-                                var top = b0 + new Vector3(sd * 0.026f, 0.052f, -0.012f) * a;
-                                mb.Box(top + new Vector3(sd * 0.012f, 0.012f, 0f) * a, new Vector3(0.005f, 0.034f * a, 0.005f), col, Quaternion.Euler(-30f, 0f, -sd * 62f));
-                                mb.Box(b0 + new Vector3(sd * 0.016f, 0.036f, 0.010f) * a, new Vector3(0.005f, 0.026f * a, 0.005f), col, Quaternion.Euler(40f, 0f, -sd * 12f));
-                                mb.Box(top + new Vector3(sd * 0.002f, 0.018f, 0.002f) * a, new Vector3(0.005f, 0.028f * a, 0.005f), col, Quaternion.Euler(-8f, 0f, -sd * 18f));
+                                // from the top of the skull behind the ears, sweeping back (so they point up when the head is down)
+                                var b0 = new Vector3(sd * r * 0.4f, r * 0.8f, -hl * 0.1f);
+                                Vector3 Tine(Vector3 from, Vector3 dir, float len)
+                                {
+                                    dir.Normalize();
+                                    mb.Box(from + dir * (len * 0.5f), new Vector3(0.006f, len, 0.006f), col, Quaternion.FromToRotation(Vector3.up, dir));
+                                    return from + dir * len;
+                                }
+                                var tip = Tine(b0, new Vector3(sd * 0.3f, 0.8f, -0.55f), 0.04f * a);
+                                Tine(b0 + (tip - b0) * 0.3f, new Vector3(sd * 0.1f, 0.5f, 0.85f), 0.02f * a); // the brow tine
+                                Tine(tip, new Vector3(sd * 0.55f, 0.8f, -0.1f), 0.028f * a);
+                                Tine(tip, new Vector3(sd * 0.05f, 0.9f, -0.4f), 0.026f * a);
                             }
                         }
                     }
@@ -450,8 +463,9 @@ namespace AquariumCiv.View
                     {
                         float leg = l.Leg + l.BodyH * 0.2f;
                         bool deer = l.wideEars;
-                        float w0 = deer ? H * 0.2f : H * 0.24f, w1 = deer ? H * 0.11f : H * 0.17f;
+                        float w0 = deer ? H * 0.26f : H * 0.24f, w1 = deer ? H * 0.11f : H * 0.17f;
                         mb.Prism(new Vector3(0f, -leg, 0f), w1 * 0.5f, w0 * 0.5f, leg, 5, l.coat, null, true, false, l.coat);
+                        if (deer) mb.Ico(new Vector3(0f, -leg * 0.1f, 0f), H * 0.36f, new Vector3(0.8f, 1.4f, 1f), l.coat, 0.04f); // thigh / shoulder mass (#504)
                         mb.Box(new Vector3(0f, -leg + 0.004f, 0.002f), new Vector3(w1 * 1.1f, 0.008f, w1 * 1.3f), deer ? new Color(0.12f, 0.09f, 0.07f) : Color.Lerp(l.saddle, l.coat, 0.3f));
                     }
                     break;
