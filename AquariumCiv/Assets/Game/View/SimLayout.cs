@@ -91,7 +91,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>Where the sim puts the first well, from the green's centre (Settlement.TryPlace, "first on green").</summary>
-        public const float FirstWellDX = 0.17f, FirstWellDZ = -0.1f;
+        public const float FirstWellDX = Settlement.FirstWellDX, FirstWellDZ = Settlement.FirstWellDZ;
 
         /// <summary>#115: which tree a forest cell of a setting grows, by the look's shares. A cactus wants dry ground: by the water it is a palm.</summary>
         static void PickTree(TreeData t, SettingLook look, float pick, float pondDist)
@@ -263,7 +263,12 @@ namespace AquariumCiv.View
                 L.Clearing(new Vector2(camp.x, camp.z), SiteMap.GreenR + 0.12f, ClearingKind.Dirt);
                 L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp));
             }
-            else L.Clearing(green, SiteMap.GreenR + 0.04f, greenEra == Era.Town && st.Has(LotKind.Market) ? ClearingKind.Cobble : ClearingKind.Green);
+            else
+            {
+                L.Clearing(green, SiteMap.GreenR + 0.04f, greenEra == Era.Town && st.Has(LotKind.Market) ? ClearingKind.Cobble : ClearingKind.Green);
+                // #588: the village keeps the old fire as a stone fire pit on the green (the dance, the story and supper gather there).
+                if (camp != null && greenEra == Era.Village) L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Village, SeedOf(camp));
+            }
             // The village green has its well from the era moment on (era-moment.md §4, #89). The sim builds it at the era change
             // (the cheer); this stand-in covers only the moment before the cheer, a replay of those years and older saves, on the
             // same spot (Settlement: green + (0.17, -0.1)) and looking the same, so the handover shows nothing.

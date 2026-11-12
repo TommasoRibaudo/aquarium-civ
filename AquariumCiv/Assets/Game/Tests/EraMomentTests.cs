@@ -143,8 +143,8 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(sim.AdvanceEra());
             Assert.AreEqual(1, sim.Count(BuildingType.Well), "the village green has its well from the moment");
             var lot = sim.Settlement.Lots.First(l => l.kind == AquariumCiv.Sim.Settle.LotKind.Well);
-            Assert.AreEqual(sim.Settlement.GreenX + 0.17f, lot.x, 1e-4f, "where the view's own well stood (SimLayout.FirstWellDX)");
-            Assert.AreEqual(sim.Settlement.GreenZ - 0.1f, lot.z, 1e-4f);
+            Assert.AreEqual(sim.Settlement.GreenX + AquariumCiv.Sim.Settle.Settlement.FirstWellDX, lot.x, 1e-4f, "where the view's own well stood (SimLayout.FirstWellDX)");
+            Assert.AreEqual(sim.Settlement.GreenZ + AquariumCiv.Sim.Settle.Settlement.FirstWellDZ, lot.z, 1e-4f);
             sim.Advance(40 * SimConfig.MonthsPerYear);
             Assert.AreEqual(1, sim.Count(BuildingType.Well), "the pop >= 8 rule builds no second");
         }

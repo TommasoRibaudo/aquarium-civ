@@ -363,7 +363,7 @@ namespace AquariumCiv.Life
             fire = campB != null ? new Place(PlaceKind.Fire, campB.id) : any != null ? PlaceOf(any) : Place.Land(PlaceKind.Hill);
             stash = era == Era.Camp && fire.kind == PlaceKind.Fire ? CampStash.Stand : fire; // #150
             gather = era == Era.Camp ? fire
-                : era == Era.Village ? (wellB != null ? PlaceOf(wellB) : fire)
+                : era == Era.Village ? (campB != null ? fire : wellB != null ? PlaceOf(wellB) : fire) // #588: the stone fire pit on the green
                 : marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : fire;
             remembering = Place.Land(PlaceKind.Remembering, churchB != null ? 1 : 0); // a cairn, later the churchyard
 
