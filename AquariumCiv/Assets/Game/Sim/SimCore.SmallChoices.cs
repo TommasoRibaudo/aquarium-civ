@@ -114,7 +114,7 @@ namespace AquariumCiv.Sim
         public int SupperOn(long day) => State.supperPick != SupperPick.None && (day == State.supperMonth || day == State.supperMonth + 1) ? State.supperPick : SupperPick.None;
 
         /// <summary>Debug (#589): settle supper now, as if the Keeper had picked.</summary>
-        public void DebugSupper(int pick) { State.supperPick = pick; State.supperMonth = State.month; }
+        public void DebugSupper(int pick) { if (FestivalOn) State.festivalUntilMonth = State.month; State.supperPick = pick; State.supperMonth = State.month; } // the cheat ends a festival year so the supper is seen
 
         string SmallDefId(string kind) => SmallCatalog.FirstOrDefault(x => x.smallKind == kind)?.id ?? "";
 
@@ -137,7 +137,7 @@ namespace AquariumCiv.Sim
             var lastSmall = State.dilemmas.LastOrDefault(x => x.size == DilemmaSize.Small);
             if (lastSmall != null && lastSmall.defId == def.id) return "asked last time";
             if (State.dilemmas.Count(x => x.defId == def.id) >= SmallChoices.RepeatMax) return "asked enough in this box";
-            if (def.smallKind == SmallChoices.Supper) return null;
+            if (def.smallKind == SmallChoices.Supper) return FestivalOn ? "the festival year: every evening is a feast already" : null; // #589 tester: a festival evening would hide the pick
             return StoryPair(def, out a, out b) ? null : "fewer than two adults";
         }
 
@@ -163,6 +163,7 @@ namespace AquariumCiv.Sim
             if (def == null) return null;
             int a = -1, b = -1;
             if (kind == SmallChoices.Story && !StoryPair(def, out a, out b)) return null;
+            if (kind == SmallChoices.Supper && FestivalOn) State.festivalUntilMonth = State.month; // #589: the cheat ends a festival year so the supper is seen
             var open = OpenDilemma;
             if (open != null) LapseDilemma(open);
             var w = OpenWish;

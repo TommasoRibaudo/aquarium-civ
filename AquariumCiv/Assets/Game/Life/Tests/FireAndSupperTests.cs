@@ -73,6 +73,26 @@ namespace AquariumCiv.Life.Tests
             }
         }
 
+        /// <summary>#589 tester: on the village's first day the era festival made every evening a feast, so both picks looked the same. The supper
+        /// isn't asked in a festival year, and the cheat ends the festival so a village supper can be seen.</summary>
+        [Test]
+        public void NoSupperChoiceInTheFestivalYear_AndTheCheatEndsItSoThePickShows()
+        {
+            var cfg = new SimConfig();
+            var sim = new SimCore(cfg, SimCore.NewWorld(3, cfg));
+            for (int m = 0; m < 120 * 12 && sim.State.era < Era.Village; m++) { sim.Step(); if (sim.State.eraReady) sim.AdvanceEra(); }
+            Assert.AreEqual(Era.Village, sim.State.era);
+            Assert.IsTrue(sim.FestivalOn, "the village's first year is a festival year");
+            for (int m = 0; m < 6; m++) sim.Step();
+            Assert.IsTrue(sim.FestivalOn);
+            Assert.IsFalse(sim.State.dilemmas.Exists(d => d.defId == "small_supper" && d.month >= sim.State.month - 6), "no supper choice raised in the festival year");
+            Count(sim, SupperPick.Pot, out int n1, out int fire1, out _, out _);
+            Assert.IsFalse(sim.FestivalOn, "the supper cheat ended the festival");
+            Count(sim, SupperPick.Baskets, out int n2, out int fire2, out _, out int home2);
+            Assert.That(fire2, Is.LessThan(fire1), $"baskets empty the fire ({fire2} vs {fire1})");
+            Assert.That(home2, Is.GreaterThan(0), "families eat at home");
+        }
+
         [TestCase(3, Era.Camp)]
         [TestCase(7, Era.Camp)]
         [TestCase(3, Era.Village)]
