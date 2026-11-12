@@ -49,7 +49,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.AreEqual(DilemmaState.Answered, d.state);
             var g = Sim.ApartOf(d);
             Assert.IsNotNull(g, def + ": option 2 keeps them apart");
-            Assert.AreEqual(kind, g.kind);
+            if (def == "camp_travellers") CollectionAssert.Contains(new[] { ApartKind.WoodsCamp, ApartKind.MeadowCamp, ApartKind.PondCamp }, g.kind, "#578: where the words said"); // the woods, the meadow or the pond
+            else Assert.AreEqual(kind, g.kind);
             var m = CardStackView.Instance.Model;
             if (m.Mode == CardStackMode.Open) m.Close();
             Cam.GoHome(0.01f, true);

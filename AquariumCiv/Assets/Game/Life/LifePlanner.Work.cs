@@ -26,6 +26,8 @@ namespace AquariumCiv.Life
             /// <summary>#405: the day's work starts with a fetch: to <see cref="fetchFrom"/> with the empty bucket, then the load to
             /// <see cref="dest"/>, before the first loop at the site (the cook draws water before stirring the pot).</summary>
             public bool fetchFirst;
+            /// <summary>#543: the day's work starts at the fish rack: the dry fish taken down and carried to the pile, then the walk to the site.</summary>
+            public bool takeDownFirst;
             public Person with;         // a work partner (the two-man saw)
         }
 
@@ -55,7 +57,7 @@ namespace AquariumCiv.Life
 
         // ---- P8 (#285, #267): the land decides the work and the water
         bool OnLiving => sim != null && sim.EcologyOn;
-        bool WoodsStand => !OnLiving || sim.TreesGrow;
+        bool WoodsStand => !OnLiving || (sim.TreesGrow && sim.WoodsExist); // #573: a grown wild tree away from the Keeper's tree
         /// <summary>Where berries are gathered. On a living land (P8 #288): a real grown bush cell near the camp that has berries
         /// today (spread over the few nearest by the person's hash, <paramref name="salt"/> for a second spot); with none in
         /// fruit (spring flowers, winter bare, all picked) roots in the dry hollow (the stream bed), as before the first bush.
@@ -124,7 +126,41 @@ namespace AquariumCiv.Life
                 var rw = RoleWork(p, d, morning);
                 if (rw.HasValue) return rw.Value;
             }
-            return SpreadDiggers(p, d, JobWork(p, d)); // tester run 1 #3: two or three dig the stream bed, the rest find other work
+            var jw = SpreadDiggers(p, d, JobWork(p, d)); // tester run 1 #3: two or three dig the stream bed, the rest find other work
+            return OnLiving && !chopScan ? ChopSlots(p, d, jw) : jw;
+        }
+
+        // #573: at most two choppers to a grown wild tree (Place.Land(Woods, slot/2)); the rest go to the next tree, or to the tribe's work when the trees are taken.
+        long chopDay = long.MinValue;
+        bool chopScan;
+        readonly System.Collections.Generic.List<int> chopCrew = new System.Collections.Generic.List<int>();
+        public const int ChoppersPerTree = 2;
+        Work ChopSlots(Person p, DayInfo d, Work w)
+        {
+            if (w.loop != ActivityKind.Chop || w.site.kind != PlaceKind.Woods) return w;
+            if (chopDay != d.day)
+            {
+                chopDay = d.day; chopCrew.Clear();
+                chopScan = true;
+                try
+                {
+                    var order = new System.Collections.Generic.List<Person>();
+                    foreach (var q in people) if (q.Adult) order.Add(q);
+                    order.Sort((a, b) => a.key.CompareTo(b.key));
+                    foreach (var q in order) { var qw = SpreadDiggers(q, d, JobWork(q, d)); if (qw.loop == ActivityKind.Chop && qw.site.kind == PlaceKind.Woods) chopCrew.Add(q.key); }
+                }
+                finally { chopScan = false; }
+            }
+            int slot = chopCrew.IndexOf(p.key);
+            if (slot < 0) return w;
+            if (slot >= sim.WoodsTreeCount * ChoppersPerTree)
+            {   // every tree has its two: the rest do the chores at home (not all at one berry spot)
+                var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
+                c.chores = true;
+                return Fetch(c, WaterPlace);
+            }
+            w.site = Place.Land(PlaceKind.Woods, slot / ChoppersPerTree);
+            return w;
         }
 
         Work JobWork(Person p, DayInfo d)
@@ -144,7 +180,7 @@ namespace AquariumCiv.Life
                     var site = !jb.IsNone ? jb : farms.Count > 0 ? PlaceOf(farms[(int)(H(p.key, 0, 72) % (uint)farms.Count)]) : BerryPlaceFor(p, d); // P8 (#285): roots in the dry hollow until a bush comes up
                     w = W(site, ActivityKind.Gather, Prop.Basket, Prop.Basket, Store(Prop.Basket));
                     if (season == Season.Autumn && WoodsStand) w = Alt(w, Woods, ActivityKind.Gather, Prop.Basket, 0.5f);       // mushrooms and nuts
-                    else if (season == Season.Winter && WoodsStand) { w.site = Woods; w.carryShare = 0.4f; w.load = Prop.Log; w.dest = stash; } // wood carried in
+                    else if (season == Season.Winter && WoodsStand) w = CarryLogs(w, Woods, stash, 0.4f); // wood carried in
                     else w = Alt(w, BerryPlaceFor(p, d, 1), ActivityKind.Gather, Prop.Basket, 0.4f);
                     return w;
                 }
@@ -152,11 +188,11 @@ namespace AquariumCiv.Life
                     if (sim != null && sim.EcologyOn) return TribeWork(p, d); // P8 (#285, #283): the job opens with the first rabbit; the hunt itself is planned in LifePlanner.Hunt.cs (HuntPlan) and plays over the day; between hunts: the tribe's work
                     return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, stash, season == Season.Winter ? 0.35f : 0.25f);
                 case JobType.Fisher:
-                    if (sim != null && !sim.FishingOpen) // P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
+                    if (sim != null && !sim.FishingWater) // P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
                         return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
-                    return W(Pond, ActivityKind.Fish, Prop.Rod, camp ? Prop.FishStick : Prop.Basket, camp ? stash : Store(Prop.Goods), 0.25f);
+                    return camp ? FishWork() : W(Pond, ActivityKind.Fish, Prop.Rod, Prop.Basket, Store(Prop.Goods), 0.25f); // #543: a camp's catch goes to the fish rack
                 case JobType.Woodcutter:
-                    if (sim != null && sim.EcologyOn && !sim.TreesGrow) return TribeWork(p, d); // P8 (#285): no trees, no chopping
+                    if (sim != null && sim.EcologyOn && !WoodsStand) return TribeWork(p, d); // P8 (#285): no trees, no chopping (#573: a sapling or the Keeper's tree is not a wood)
                     w = W(Woods, ActivityKind.Chop, Prop.Axe, camp ? Prop.Log : Prop.Handcart, Store(Prop.Log), 0.3f);
                     if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Log : Prop.Saw, 0.35f);
                     return w;
@@ -257,6 +293,15 @@ namespace AquariumCiv.Life
         /// <summary>Where a sweeper sweeps the streets today: the door of one of the homes (hashed per person and day), so the
         /// sweepers spread through the town instead of all standing at the market; the gathering place with no homes.</summary>
         Place StreetOf(Person p, long day) => homes.Count > 0 ? PlaceOf(homes[(int)(H(p.key, day, 77) % (uint)homes.Count)]) : gather;
+
+        /// <summary>#573 (reused by #578, travellers carrying logs): turns <paramref name="w"/> into "take logs from <paramref name="from"/> to <paramref name="to"/>
+        /// (the stash)": the person works at <c>from</c>, the last <paramref name="carryShare"/> of the block carries a <see cref="Prop.Log"/> to <c>to</c>.
+        /// The ground logs at a chopping spot are the view's (ChopLogsView); the pile at the stash grows with the stock.</summary>
+        static Work CarryLogs(Work w, Place from, Place to, float carryShare = 0.4f)
+        {
+            w.site = from; w.carryShare = carryShare; w.load = Prop.Log; w.dest = to;
+            return w;
+        }
 
         static Work Fetch(Work w, Place from)
         {

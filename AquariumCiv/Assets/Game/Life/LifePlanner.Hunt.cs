@@ -81,6 +81,11 @@ namespace AquariumCiv.Life
         public const float HuntCatchChance = 0.62f;
         /// <summary>The share of days a hunter goes out, and a second time that day.</summary>
         public const float HuntDayChance = 0.9f, HuntSecondChance = 0.4f;
+        /// <summary>#574: a camp with one or two hunters is the common case (a notable or two hold the job), and at the 0.4 above a 2-minute
+        /// visit saw a hunt about half the time (49 % with one hunter, 63 % with two; measured over 60 days). With few hunters the second
+        /// hunt of the day is likelier (57 % and 72 %).</summary>
+        public const float HuntSecondChanceFew = 0.9f;
+        public const int HuntersFew = 2;
         /// <summary>A kid tags along on this share of hunts.</summary>
         public const float HuntKidChance = 0.3f;
         /// <summary>How close the hunter stalks from, and the beat lengths in view hours.</summary>
@@ -173,12 +178,15 @@ namespace AquariumCiv.Life
             BuildCarers();
             var season = dayInfo.season;
             var tries = new List<(float start, Person p, int slot)>();
+            int hunterCount = 0;
+            foreach (var p in people) if (p.job == JobType.Hunter && p.Adult) hunterCount++;
+            float second = hunterCount <= HuntersFew ? HuntSecondChanceFew : HuntSecondChance;
             foreach (var p in people)
             {
-                if (p.job != JobType.Hunter || !p.Adult || carerBabies.ContainsKey(p.key)) continue;
+                if (p.job != JobType.Hunter || !p.Adult) continue; // #574: a parent of a baby hunts too (ApplyCarry leaves the baby in while they are out); before, such a hunter never hunted
                 if (R(p.key, day, 300) >= HuntDayChance) continue;
                 tries.Add((HuntStartHour(R(p.key, day, 301), R(p.key, day, 302), season), p, 0));
-                if (R(p.key, day, 303) < HuntSecondChance) tries.Add((HuntStartHour(R(p.key, day, 304), R(p.key, day, 305), season), p, 1));
+                if (R(p.key, day, 303) < second) tries.Add((HuntStartHour(R(p.key, day, 304), R(p.key, day, 305), season), p, 1));
             }
             tries.Sort((a, b) => { int c = a.start.CompareTo(b.start); return c != 0 ? c : a.p.key.CompareTo(b.p.key); });
             int allowed = (sim.HuntSurplus + 1) / 2; // the hunt takes half the surplus a day at most

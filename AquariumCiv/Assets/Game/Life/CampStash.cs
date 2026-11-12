@@ -1,4 +1,5 @@
 using System;
+using AquariumCiv.Sim;
 
 namespace AquariumCiv.Life
 {
@@ -6,6 +7,8 @@ namespace AquariumCiv.Life
     public struct StashStock
     {
         public int logs, baskets, hides;
+        /// <summary>#543: dried fish on the pile (0..<see cref="CampStash.MaxFish"/>).</summary>
+        public int fish;
     }
 
     /// <summary>The stash as a view needs it (<see cref="LifePlanner.TryGetStash"/>): the pile's world spot, the way from it
@@ -39,7 +42,7 @@ namespace AquariumCiv.Life
         /// <summary>The ground a full pile may cover, round its middle.</summary>
         public const float PileExtent = 0.1f;
 
-        public const int MaxLogs = 10, MaxBaskets = 4, MaxHides = 3;
+        public const int MaxLogs = 10, MaxBaskets = 4, MaxHides = 3, MaxFish = 6;
         /// <summary>The stock that shows as a full pile. A camp's food sits at the sim's cap (20 + 6 a head), and its wood
         /// runs from a few logs to hundreds, so the two are read as plain amounts, not against a cap.</summary>
         public const float FullFood = 150f, FullWood = 400f;
@@ -63,6 +66,10 @@ namespace AquariumCiv.Life
                 hides = Steps(food - half, half, MaxHides),
             };
         }
+
+        /// <summary>#543: the pile's dried fish as the view draws them: every fish shows up to <see cref="MaxFish"/> (the sim's pile holds
+        /// <see cref="SimCore.FishPileMax"/>, three to a drawn fish beyond that).</summary>
+        public static int FishShown(int inPile) => inPile <= 0 ? 0 : Math.Min(MaxFish, inPile <= 4 ? inPile : 4 + (inPile - 4 + 6) / 7);
 
         static int Steps(float value, float full, int max)
         {

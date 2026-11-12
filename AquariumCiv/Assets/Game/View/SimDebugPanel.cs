@@ -229,6 +229,8 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Show me on this card (the bar)")) last = CardStackView.DebugShowMe();
             }
+            if (Section("Rename a notable (#575)"))
+                if (GUILayout.Button("Open a card with the rename field")) last = PersonCardView.DebugRenameField(); // #575
             if (Section("Dilemmas (P7)")) { var line = DilemmaCheats.Gui(); if (line != null) last = line; }
             if (Section("Hit puffs (#357)")) { var line = HitFxCheats.Gui(); if (line != null) last = line; } // #357
             // ---- #369: the moment queue and director ----
@@ -271,6 +273,10 @@ namespace AquariumCiv.View
                 GUILayout.EndHorizontal();
             }
             // ---- end #371 ----
+            // ---- fb4 #540: camp props ----
+            if (Section("Camp props (fb4 #540)"))
+                if (GUILayout.Button("Camp props: show all (rack, every prop)")) last = ConsequenceCheats.ShowCampProps();
+            // ---- end fb4 #540 ----
             if (Section("Staged moments (#370)")) { var line = StagedMoments.Gui(); if (line != null) last = line; } // #370
             // ---- #373: the Keeper's choices page and the hand pins ----
             if (Section("Keeper's choices (#373)"))
@@ -288,6 +294,8 @@ namespace AquariumCiv.View
                 var all = AquariumCiv.Sim.Eco.LifeJar.All;
                 GUILayout.Label(string.Join(" · ", all.Select(s => s + " " + sim.JarStateOf(s))));
                 if (GUILayout.Button("Ready every species")) last = Done($"{sim.DebugJarsReady()} jars opened");
+                if (GUILayout.Button("Lock all jars (#570: see the greyed list)")) last = Done($"{sim.DebugLockJars()} jars shut"); // #570
+                GUILayout.Label("village line: " + (sim.VillageWaitsLine is { Length: > 0 } vl ? vl : "(none)")); // #570
                 for (int i = 0; i < all.Length; i += 3)
                 {
                     GUILayout.BeginHorizontal();

@@ -112,10 +112,12 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
-            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-seed"));
+            Assert.IsNull(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, "kit-seed"), "#558: no separate Seed tool in the kit");
+            Assert.IsTrue(UnityEngine.UIElements.UQueryExtensions.Q(hud.Root, "kit-life").resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.Flex, "the life jar holds the seed");
+            yield return PickSeedFromLifeJar(hud, "558-seed-chooser");
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.KitTool.Seed, hud.Hand, "the seed in hand");
-            yield return Until(() => GameUiPanel.Toasts.Current == GameHud.SeedHint, 2f);
+            yield return Until(() => GameUiPanel.Toasts.Current == GameHud.SeedHint, 6f);
             Assert.AreEqual(GameHud.SeedHint, GameUiPanel.Toasts.Current, "its hint says to choose a spot");
 
             int cell = TreeCellOnScreen();

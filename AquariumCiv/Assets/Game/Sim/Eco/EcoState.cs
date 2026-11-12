@@ -22,6 +22,9 @@ namespace AquariumCiv.Sim.Eco
         /// puddle = water standing on soaked low ground (a drinking source while there is no pond); sprout = first shoots on
         /// bare ground, 1 = it turns to grass. Null in an old save (EcoModel makes them).</summary>
         public float[] wet, puddle, sprout;
+        /// <summary>#569, per cell, 0..1: the ground the mister's water fell on, remembered. Seedlings take and seedlings and young
+        /// trees grow faster on it, and it greens sooner; it fades a little each season (EcoTuning.wateredKeep). Null in an old save (EcoModel makes it).</summary>
+        public float[] watered;
         public float humidity, grime, droplets;
         /// <summary>The water table (terrain height units), its peak so far, and the pond's level (-1000 = no pond yet).</summary>
         public float table, tablePeak, pondLevel = -1000f;
@@ -95,6 +98,11 @@ namespace AquariumCiv.Sim.Eco
         public long fletchedMonth = -1;
         /// <summary>#421 the fish (spec §5.5): the stock, its home (the placed deep cell) and the fish caught.</summary>
         public int fish, fishHome = -1, fishCaught;
+        /// <summary>#543 the fish chain: fish in the fish basket (just caught), fish hanging on the rack to dry (fresh, hung on view day
+        /// <see cref="fishRackDay"/>, and dry: hung before that day), dried fish on the food pile, and the last view day the camp ate from it.
+        /// Old saves have none of these: all zero, no day.</summary>
+        public int fishBasket, fishRackFresh, fishRackDry, fishPile;
+        public long fishRackDay = -1, fishEatDay = -1;
 
         /// <summary>#437 the wolves (spec §4.1, §5.6): the jar's clock (the first season-end the herd held 5 deer in a row; -1 not now),
         /// the pack (the pair is the floor; <see cref="wolfPups"/> born this spring, <see cref="wolfYearlings"/> last spring's, who

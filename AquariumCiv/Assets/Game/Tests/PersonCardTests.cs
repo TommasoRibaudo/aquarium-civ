@@ -1,6 +1,7 @@
 using System.Linq;
 using AquariumCiv.Sim;
 using NUnit.Framework;
+using UnityEngine;
 using static AquariumCiv.Tests.SimCoreTests;
 
 namespace AquariumCiv.Tests
@@ -300,6 +301,47 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(Fingerprint(b), Fingerprint(a));
             a.Advance(20); b.Advance(20);
             Assert.AreEqual(Fingerprint(b), Fingerprint(a), "the world goes on the same after cards were read");
+        }
+
+        // ---- #575: rename a notable from the card ----
+        [Test]
+        public void RenamingKeepsOldLinesAndNewLinesUseTheNewName()
+        {
+            var sim = Grown(3, 30);
+            var n = sim.State.notables.First(x => x.alive);
+            string was = n.name, family = n.family;
+            var old = sim.Chronicle("test_old", $"{n.FullName} mended the roof.", 0.5f, n.id);
+            Assert.AreEqual(SimCore.RenameResult.Renamed, sim.RenameNotable(n.id, "  zinnia   rae ", out string clean));
+            Assert.AreEqual("Zinnia Rae", clean, "tidied: trimmed, squeezed, capitalised");
+            Assert.AreEqual("Zinnia Rae " + family, n.FullName);
+            Assert.AreEqual("Zinnia Rae " + family, sim.PersonCardOf(n.id).fullName);
+            var fresh = sim.Chronicle("test_new", $"{n.FullName} told a tale.", 0.5f, n.id);
+            StringAssert.Contains("Zinnia Rae", fresh.text);
+            StringAssert.Contains(was, old.text, "old lines keep the old name");
+            StringAssert.DoesNotContain("Zinnia", old.text);
+            // survives the save
+            var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
+            Assert.AreEqual("Zinnia Rae", loaded.FindNotable(n.id).name);
+            Assert.AreEqual(old.text, loaded.State.chronicle.First(e => e.id == old.id).text);
+            Assert.AreEqual(fresh.text, loaded.State.chronicle.First(e => e.id == fresh.id).text);
+        }
+
+        [Test]
+        public void RenamingRefusesJunkAndKeepsTheOldNameOnEmpty()
+        {
+            var sim = Grown(4, 30);
+            var live = sim.State.notables.Where(x => x.alive).ToList();
+            var a = live[0]; var b = live[1];
+            string was = a.name;
+            Assert.AreEqual(SimCore.RenameResult.Kept, sim.RenameNotable(a.id, "   ", out string k));
+            Assert.AreEqual(was, k);
+            Assert.AreEqual(was, a.name);
+            Assert.AreEqual(SimCore.RenameResult.TooLong, sim.RenameNotable(a.id, new string('a', 30) + "b", out _));
+            Assert.AreEqual(SimCore.RenameResult.TooShort, sim.RenameNotable(a.id, "Q", out _));
+            Assert.AreEqual(SimCore.RenameResult.Refused, sim.RenameNotable(a.id, "<b>Hi</b>", out _));
+            Assert.AreEqual(SimCore.RenameResult.Taken, sim.RenameNotable(a.id, b.name, out _), "two living people never share a first name");
+            Assert.AreEqual(was, a.name);
+            Assert.AreEqual(SimCore.RenameResult.NoSuchPerson, sim.RenameNotable(-99, "Zed", out _));
         }
     }
 }

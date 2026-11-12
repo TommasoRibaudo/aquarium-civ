@@ -37,6 +37,31 @@ namespace AquariumCiv.Sim
         /// <summary>The life slot shows (spec §6): at least one jar is Ready.</summary>
         public bool AnyJarReady { get { if (!EcologyOn) return false; foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Ready) return true; return false; } }
 
+        /// <summary>#570 the shut jars, in <see cref="LifeJar.All"/> order (the chooser lists them greyed, after the ready ones).</summary>
+        public void LockedJars(List<LifeSpecies> into)
+        {
+            into.Clear();
+            if (!EcologyOn) return;
+            foreach (var s in LifeJar.All) if (EcoM.JarStateOf(s) == JarState.Locked) into.Add(s);
+        }
+
+        /// <summary>#570 what a shut jar waits for, in the people's words ("Rabbits need a meadow"); null when it is not shut or its land is
+        /// ready (it opens at the season's end).</summary>
+        public string JarNeed(LifeSpecies s) => EcologyOn ? EcoM.JarNeed(s, State.month) : null;
+
+        /// <summary>#570 the line the kit shows: what the camp, then the village, still waits for ("The village waits for: more trees (3/8)
+        /// · fish in the pond"). Empty when the village stands, or every piece is there.</summary>
+        public string VillageWaitsLine
+        {
+            get
+            {
+                if (!EcologyOn) return "";
+                var pieces = new List<string>();
+                EcoM.WaitsFor(pieces, out bool village);
+                return pieces.Count == 0 ? "" : (village ? "The village waits for: " : "The camp waits for: ") + string.Join(" · ", pieces);
+            }
+        }
+
         /// <summary>The jar is Ready and its wiggle has not been shown yet (it opened since the last open, perhaps while away).</summary>
         public bool JarWiggleDue(LifeSpecies s) => JarReady(s) && !EcoM.Jar(s).readySeen;
         /// <summary>The view showed the wiggle. True the first time only; the dot stays until the jar is placed.</summary>
@@ -157,6 +182,16 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- debug (the panel's "Life jar" block; CLAUDE.md "debug panel stays current") ----------
+        /// <summary>Debug (#570 "Lock all jars"): every jar that is not placed shuts again, to see the greyed list. It opens again at the next
+        /// season's end if its land is ready. How many shut.</summary>
+        public int DebugLockJars()
+        {
+            if (!EcologyOn) return 0;
+            int n = 0;
+            foreach (var s in LifeJar.All) { var j = EcoM.Jar(s); if (j.State == JarState.Ready) { j.state = (int)JarState.Locked; n++; } }
+            return n;
+        }
+
         /// <summary>Debug ("ready every species"): every shut jar opens now, whatever the land says. How many opened.</summary>
         public int DebugJarsReady()
         {

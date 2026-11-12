@@ -138,7 +138,7 @@ namespace AquariumCiv.View.Moments
         public string audio = "";         // a cue id for the view's audio ("flute", "drum", "knock_scale", "chord", ...)
         public bool haptic;               // a light tick (per lot during the wave)
         public List<CameraKey> camera = new();
-        /// <summary>The camera is released at this beat (one finger orbits freely; no more guided rail).</summary>
+        /// <summary>The camera is released at this beat (the player has the camera: one finger pans, two turn; no more guided rail).</summary>
         public bool freeCamera;
 
         public bool Has(BeatAction a) => actions.Contains(a);

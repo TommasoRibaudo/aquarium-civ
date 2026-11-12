@@ -148,51 +148,45 @@ namespace AquariumCiv.Tests
             nx = right / (depth * TanV * aspect); ny = up / (depth * TanV);
         }
 
+        /// <summary>#538: the view no longer limits the pan. At close, mid and far zoom the pivot rests at the glass's full range
+        /// (as far as the hull allows); the old view limit (#273) left almost nothing at mid and far zoom.</summary>
         [Test]
-        public void FarZoom_TheWholeBoxStaysOnScreen_AtEveryHeldLimit()
+        public void ViewPan_IsFree_AtCloseMidAndFarZoom_AsFarAsTheGlassRange()
         {
+            CameraGlass.PanBounds(HX, HZ, out float maxX, out float maxZ);
             foreach (float aspect in new[] { 1179f / 2556f, 1080f / 1920f })
-                foreach (float yaw in new[] { -30f, 0f, 28f, 55f })
-                    foreach (float pitch in new[] { 24f, 34f, 50f })
+                foreach (float zoom in new[] { 0.2f, 0.5f, 1f })
+                    foreach (float pitch in new[] { 26f, 34f, 50f })
                     {
-                        float dist = FitDist(aspect);
-                        CameraGlass.PanBoundsFor(yaw, pitch, dist, 1f, TanV, aspect, HX, HZ, HullX, HullZ, Bottom, Top, out float bx, out float bz);
-                        foreach (float sx in new[] { -1f, 1f }) foreach (float sz in new[] { -1f, 1f })
-                        {
-                            float px = sx * (bx + CameraGlass.Gap), pz = sz * (bz + CameraGlass.Gap); // the held end: the soft band's reach
-                            for (int c = 0; c < 8; c++)
-                            {
-                                Project(yaw, pitch, dist, aspect, px, 1f, pz, (c & 1) == 0 ? -HX : HX, (c & 2) == 0 ? Bottom + 1f : Top, (c & 4) == 0 ? -HZ : HZ, out float nx, out float ny);
-                                Assert.LessOrEqual(Math.Abs(nx), 1.03f, $"x on screen: yaw {yaw} pitch {pitch} aspect {aspect} corner {c} pivot {px},{pz}");
-                                Assert.LessOrEqual(Math.Abs(ny), 1.03f, $"y on screen: yaw {yaw} pitch {pitch} aspect {aspect} corner {c} pivot {px},{pz}");
-                            }
-                        }
+                        float dist = FitDist(aspect) * zoom;
+                        CameraGlass.PanBoundsFor(0f, pitch, dist, 1f, TanV, aspect, HX, HZ, HullX, HullZ, Bottom, Top, out float bx, out float bz);
+                        CameraGlass.PanBoundsFor(0f, pitch, dist, 1f, HX, HZ, HullX, HullZ, Bottom, Top, out float gx, out float gz);
+                        Assert.AreEqual(gx, bx, 1e-5f, $"x is the glass's range: zoom {zoom} pitch {pitch} aspect {aspect}");
+                        Assert.AreEqual(gz, bz, 1e-5f, $"z: zoom {zoom} pitch {pitch} aspect {aspect}");
+                        if (zoom >= 0.5f) Assert.AreEqual(maxX, bx, 1e-4f, $"mid / far zoom, camera clear of the box: the pivot reaches each side wall");
                     }
         }
 
+        /// <summary>#538: wherever the pivot rests (up to the hard stop with the soft band), the camera is never inside the box's hull.</summary>
         [Test]
-        public void CloseZoom_TheGlassEdgeReachesTheScreenEdge_OnEachSide()
+        public void FreePan_TheCameraNeverEntersTheBox_AtAnyHeldLimit()
         {
-            foreach (float aspect in new[] { 1179f / 2556f, 1080f / 1920f })
-            {
-                float dist = FitDist(aspect) * 0.2f;
-                CameraGlass.PanBoundsFor(0f, 24f, dist, 1f, TanV, aspect, HX, HZ, HullX, HullZ, Bottom, Top, out float bx, out float bz);
-                CameraGlass.PanBounds(HX, HZ, out float maxX, out float maxZ);
-                Assert.Greater(bx, 0.5f * HX, "a long way: close up the view can go most of the way to the wall");
-                foreach (float sx in new[] { -1f, 1f })
-                {
-                    // pivot at the limit: the glass wall (at the pivot's height, centre row) is at or just past the screen's side edge
-                    Project(0f, 24f, dist, aspect, sx * bx, 1f, 0f, sx * HX, 1f, 0f, out float nx, out _);
-                    Console.WriteLine($"close aspect {aspect}: bx {bx:F3} bz {bz:F3} maxX {maxX:F3} nx {nx:F3}");
-                    if (bx < maxX - 1e-4f) Assert.AreEqual(1f, Math.Abs(nx), 0.03f, $"x side {sx} aspect {aspect}");
-                    else Assert.LessOrEqual(Math.Abs(nx), 1.03f, $"clamped at the rest limit: the glass is still on screen, side {sx}");
-                }
-                Assert.Greater(bz, 0.2f, "front to back too, if less: the screen is tall and the box shallow");
-                Assert.LessOrEqual(bz, maxZ + 1e-4f);
-                // the near and far edges of the middle of the screen reach the front and back glass at the limit
-                CameraGlass.VisibleExtent(0f, 24f, dist, TanV, aspect, out _, out float ez);
-                Assert.AreEqual(HZ, bz + ez, 1e-3f);
-            }
+            CameraGlass.HardStop(HX, HZ, out float stopX, out float stopZ);
+            foreach (float aspect in new[] { 1179f / 2556f })
+                foreach (float zoom in new[] { 0.2f, 0.35f, 0.5f, 1f })
+                    foreach (float yaw in new[] { -30f, 0f, 28f, 55f })
+                        foreach (float pitch in new[] { 14f, 24f, 34f, 50f })
+                        {
+                            float dist = FitDist(aspect) * zoom;
+                            CameraGlass.PanBoundsFor(yaw, pitch, dist, 1f, TanV, aspect, HX, HZ, HullX, HullZ, Bottom, Top, out float bx, out float bz);
+                            CameraGlass.CameraOffset(yaw, pitch, dist, out float ox, out float oy, out float oz);
+                            foreach (float sx in new[] { -1f, 1f }) foreach (float sz in new[] { -1f, 1f })
+                            {
+                                float px = sx * Math.Min(stopX, bx + CameraGlass.Gap), pz = sz * Math.Min(stopZ, bz + CameraGlass.Gap);
+                                Assert.IsFalse(CameraGlass.CameraInsideBox(px + ox, 1f + oy, pz + oz, HullX, HullZ, Bottom, Top, 0.3f),
+                                    $"camera in the box: zoom {zoom} yaw {yaw} pitch {pitch} pivot {px},{pz}");
+                            }
+                        }
         }
     }
 }

@@ -1,5 +1,6 @@
 // #364 B8 Fishing pays off (animation-specs B8). Pure: Mathf, Vector3 and DollPose only, so Tools/AnimBench compiles it.
 // The view side (the fish in its arc, the basket, the splash, the frog that moves off) is View/FishingView.cs.
+using AquariumCiv.Life;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -27,6 +28,14 @@ namespace AquariumCiv.View
         public const int MaxShown = 2;
         /// <summary>The nibble's two tiny rings, seconds into the bite (the bottoms of the two dips).</summary>
         public static readonly float[] NibbleRingAt = { 0.12f, 0.42f };
+
+        // ---- #543: the hang and the take-down at the fish rack (planner: LifePlanner.FishChain.cs; the timing is Life/FishRackSpot.cs)
+        /// <summary>A fish's hop from the basket (or the rack) to the hanger's hand or the rack: seconds and the arc's height (box units).</summary>
+        public const float HangFlight = 0.25f, HangApex = 0.04f;
+        /// <summary>The seconds into a beat of <paramref name="beatSeconds"/> at which fish <paramref name="i"/> of <paramref name="n"/> goes onto the rack.</summary>
+        public static float HangAt(int i, int n, float beatSeconds) => FishRackSpot.HangFraction(i, n) * beatSeconds - HangFlight;
+        /// <summary>The seconds into a take-down beat at which fish <paramref name="i"/> of <paramref name="n"/> leaves the rack.</summary>
+        public static float TakeAt(int i, int n, float beatSeconds) => FishRackSpot.TakeFraction(i, n) * beatSeconds - HangFlight;
 
         public static readonly Beat CatchBeat, MissBeat, EndWithFish, EndEmpty;
 

@@ -69,6 +69,19 @@ namespace AquariumCiv.Lighting
             return close * near * max;
         }
 
+        /// <summary>#577: the lid's fade starts at this facing (sine of the camera's elevation over the lid) and is complete at <see cref="LidDownEnd"/>:
+        /// looking steeply down through it (the rig's pitch ceiling is 68 degrees, sin 0.93) the lid is gone, whatever the zoom.</summary>
+        public const float LidDownStart = 0.80f, LidDownEnd = 0.92f;
+
+        /// <summary>#577: how much the lid fades. <paramref name="facing"/> = dot(up, direction from the lid to the camera). Like a side pane
+        /// (zoom, plane distance, camp closeness) plus the steep look-down term; clean mode (grime to wipe) doesn't bring it back: it has no grime.</summary>
+        public static float LidAmount(float distanceRatio, float facing, bool cleanMode = false, float forced = -1f, float planeRatio = float.MaxValue, float campCloseness = 0f)
+        {
+            float side = Amount(distanceRatio, facing, false, cleanMode, forced, planeRatio, campCloseness);
+            float down = forced >= 0f ? 0f : Smooth((facing - LidDownStart) / (LidDownEnd - LidDownStart));
+            return System.Math.Max(side, down);
+        }
+
         /// <summary>Opacity multiplier for the pane: 1 - Amount.</summary>
         public static float Opacity(float distanceRatio, float facing, bool isFrame = false, bool cleanMode = false, float forced = -1f, float planeRatio = float.MaxValue, float campCloseness = 0f)
             => 1f - Amount(distanceRatio, facing, isFrame, cleanMode, forced, planeRatio, campCloseness);

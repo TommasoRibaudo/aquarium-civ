@@ -171,6 +171,8 @@ namespace AquariumCiv.View
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
             paneRenderers.Clear();
+            lidRenderer = null;
+            if (landMat != null) { DestroyImmediate(landMat); landMat = null; }
             if (frameMat != null) DestroyImmediate(frameMat);
             frameMat = null;
             dolls.Clear();
@@ -212,6 +214,9 @@ namespace AquariumCiv.View
         }
 
         Material Solid => solid != null ? solid : solid = new Material(Shader.Find("AquariumCiv/View/Stylized")) { hideFlags = HideFlags.DontSave };
+        /// <summary>#576: the solid material for the ground and what is built into it: snow settles on it (people, props and frames keep <see cref="Solid"/>).</summary>
+        Material SnowMaterial { get { if (landMat == null) { landMat = new Material(Solid) { hideFlags = HideFlags.DontSave, name = "Land" }; landMat.SetFloat("_SeasonSnow", 1f); } return landMat; } }
+        Material landMat;
 
         int NX => Mathf.Max(8, terrainX + (terrainX & 1));
         int NZ => Mathf.Max(8, terrainZ + (terrainZ & 1));
@@ -251,7 +256,7 @@ namespace AquariumCiv.View
             {
                 builders[k] = BuildChunk(k, out terrainVerts[k]);
                 meshes[k] = builders[k].ToMesh("BoxChunk" + k);
-                chunkFilters[k] = Spawn("Chunk " + k, meshes[k], Solid, true).GetComponent<MeshFilter>();
+                chunkFilters[k] = Spawn("Chunk " + k, meshes[k], SnowMaterial, true).GetComponent<MeshFilter>();
                 chunkColliders[k] = AoCollider("AO " + k, meshes[k]);
                 verts += meshes[k].vertexCount; tris += builders[k].TriangleCount;
             }
@@ -467,7 +472,7 @@ namespace AquariumCiv.View
                 var whole = Hash.New();
                 foreach (Transform t in b.root)
                 {
-                    if (!t.TryGetComponent<MeshFilter>(out var mf) || mf.sharedMesh == null || t.name.StartsWith("Glass") || t.name == "Glows" || t.name == "Smoke") continue;
+                    if (!t.TryGetComponent<MeshFilter>(out var mf) || mf.sharedMesh == null || t.name.StartsWith("Glass") || t.name == "Lid" || t.name == "Glows" || t.name == "Smoke") continue;
                     var m = mf.sharedMesh;
                     var e = Hash.New();
                     foreach (var v in m.vertices) { e.Add(Mathf.RoundToInt(v.x * 2048f)); e.Add(Mathf.RoundToInt(v.y * 2048f)); e.Add(Mathf.RoundToInt(v.z * 2048f)); } // past float noise
@@ -1605,6 +1610,22 @@ namespace AquariumCiv.View
                 r.receiveShadows = false;
                 paneRenderers.Add(r);
             }
+            // #577: the lid. One more pane in the glass's look, flat on top of the frame (no collider and not on the grime layer: taps, the mister
+            // and the tweezers go through it; no grime mask, CareView binds only the "Glass*" sides). Named "Lid" so nothing counts it as a side.
+            {
+                var lidMat = new Material(glass != null ? glass : new Material(shader)) { hideFlags = HideFlags.DontSave };
+                lidMat.SetFloat("_Axis", 2f);
+                lidMat.SetVector("_PaneSize", new Vector4(2 * gx, 2 * gz, 0, 0));
+                lidMat.SetFloat("_StreakOffset", 1.9f);
+                lidMat.renderQueue = 3005; // after the back panes, before the front ones: the camera is always above it
+                panes.Add(lidMat);
+                var lid = Spawn("Lid", cube, lidMat, false);
+                lid.transform.localPosition = new Vector3(0, Land.GlassTop, 0);
+                lid.transform.localScale = new Vector3(2 * gx, t, 2 * gz);
+                lidRenderer = lid.GetComponent<MeshRenderer>();
+                lidRenderer.receiveShadows = false;
+                lidFade = 1f;
+            }
             System.Array.Fill(paneFade, 1f);
             System.Array.Clear(frameFade, 0, frameFade.Length);
             System.Array.Fill(frameShown, 1f);
@@ -1623,6 +1644,12 @@ namespace AquariumCiv.View
         /// <summary>The debug panel's near-glass force: 0..1 stands in for the zoom, negative = off.</summary>
         public static float NearGlassForce = -1f;
         bool frameFadeSent;
+        MeshRenderer lidRenderer;
+        float lidFade = 1f;
+        /// <summary>#577: the lid (null before the glass is built).</summary>
+        public MeshRenderer Lid => lidRenderer;
+        /// <summary>#577: what the lid shows now (1 = there, 0 = gone).</summary>
+        public float LidOpacity => lidFade;
         readonly float[] paneFade = new float[4], frameShown = new float[8], frameFade = new float[8];
         /// <summary>What a pane shows now (1 = there, 0 = gone): tests and the debug read-out.</summary>
         public float PaneOpacity(int pane) => paneFade[pane];
@@ -1660,6 +1687,17 @@ namespace AquariumCiv.View
                 if (now == paneFade[i]) continue;
                 paneFade[i] = now;
                 panes[i].SetFloat(FadeId, now);
+            }
+            if (lidRenderer != null && panes.Count > 4)
+            {
+                var up = camLocal - new Vector3(0f, Land.GlassTop, 0f);
+                float facing = up.sqrMagnitude > 1e-6f ? up.y / up.magnitude : 0f;
+                var nearLid = new Vector3(Mathf.Clamp(camLocal.x, -gx, gx), Land.GlassTop, Mathf.Clamp(camLocal.z, -gz, gz));
+                float pd = camLocal.y < Land.GlassTop ? float.MaxValue : Vector3.Distance(camLocal, nearLid) / fit;
+                float want = 1f - NearGlassFade.LidAmount(ratio, facing, clean, NearGlassForce, pd, camp);
+                float now = NearGlassFade.Follow(lidFade, want, dt);
+                if (Mathf.Abs(want - now) < 0.002f) now = want;
+                if (now != lidFade) { lidFade = now; panes[4].SetFloat(FadeId, now); }
             }
             bool changed = false;
             for (int i = 0; i < 8; i++)

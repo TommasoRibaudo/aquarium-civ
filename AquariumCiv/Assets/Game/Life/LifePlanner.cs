@@ -188,8 +188,11 @@ namespace AquariumCiv.Life
             if (DeerHuntActivityAt(p, t, out var deerHunting)) return deerHunting; // #426: the deer hunt with bows, the pole carry home
             // #284: a tent being raised from the hides takes its builders (and a watching kid) until it stands.
             if (TentActivityAt(p, t, out var raising)) return raising;
+            if (EggActivityAt(p, t, out var gathering)) return gathering; // #574: an egg gathered at the reeds, carried to the pile
             if (DebugPickerAt(p, t, out var picking)) return picking; // #361 debug: pickers to the nearest bush
             if (DebugFishAt(p, t, out var fishing)) return fishing; // #364 debug: "Fish bite now"
+            if (DebugRackAt(p, t, out var racking)) return racking; // #543 debug: "fill fish basket" / "fish on the rack"
+            if (PrayerActivityAt(p, t, out var praying)) return praying; // fb4 #566: a visit to the feather pole
             // 3+4. The day: this month's story scenes > role beats > the schedule, already layered.
             var segs = DayOf(p);
             int i = Find(segs, t.hour);
@@ -285,8 +288,12 @@ namespace AquariumCiv.Life
         BoxHints box;
         int crowdCount;
 
+        int pondSeen = -1;
+
         void Sync()
         {
+            int pond = sim.EcologyOn ? sim.EcoPondCells : 0; // #574: the shore moves as the pond grows: routes to and from it are asked again
+            if (pond != pondSeen) { pondSeen = pond; polyCache.Clear(); }
             long sig = Signature();
             if (sig == snapSig) return;
             snapSig = sig;
@@ -307,6 +314,7 @@ namespace AquariumCiv.Life
             h = h * 31 + s.chronicle.Count;
             h = h * 31 + s.nudges.Count;
             h = h * 31 + (int)s.era * 2 + (s.eraReady ? 1 : 0);
+            h = h * 31 + s.supperPick * 7 + s.supperMonth; // #589
             h = h * 31 + sim.BeliefStage * 2 + (sim.BeliefHalfNow == BeliefHalf.Later ? 1 : 0); // #92: how they see the glass
             if (s.roles != null)
                 for (int i = 0; i < s.roles.Count; i++) h = h * 31 + s.roles[i].holderId * (i + 7);
@@ -356,7 +364,7 @@ namespace AquariumCiv.Life
             fire = campB != null ? new Place(PlaceKind.Fire, campB.id) : any != null ? PlaceOf(any) : Place.Land(PlaceKind.Hill);
             stash = era == Era.Camp && fire.kind == PlaceKind.Fire ? CampStash.Stand : fire; // #150
             gather = era == Era.Camp ? fire
-                : era == Era.Village ? (wellB != null ? PlaceOf(wellB) : fire)
+                : era == Era.Village ? (campB != null ? fire : wellB != null ? PlaceOf(wellB) : fire) // #588: the stone fire pit on the green
                 : marketB != null ? PlaceOf(marketB) : wellB != null ? PlaceOf(wellB) : fire;
             remembering = Place.Land(PlaceKind.Remembering, churchB != null ? 1 : 0); // a cairn, later the churchyard
 
@@ -541,9 +549,12 @@ namespace AquariumCiv.Life
 
         // ======================================================================== hashing (never the sim's dice)
 
-        uint H(int key, long day, int salt)
+        uint H(int key, long day, int salt) => Mix(sim.State.seed, key, day, salt);
+
+        /// <summary>The planner's hash for a seed (static so geometry that must agree with it, <see cref="FishRackSpot"/>, can use it).</summary>
+        public static uint Mix(int seed, int key, long day, int salt)
         {
-            uint h = (uint)sim.State.seed * 0x9E3779B1u ^ (uint)key * 0x85EBCA77u ^ (uint)day * 0xC2B2AE3Du ^ (uint)(day >> 32) * 0x165667B1u ^ (uint)salt * 0x27D4EB2Fu;
+            uint h = (uint)seed * 0x9E3779B1u ^ (uint)key * 0x85EBCA77u ^ (uint)day * 0xC2B2AE3Du ^ (uint)(day >> 32) * 0x165667B1u ^ (uint)salt * 0x27D4EB2Fu;
             h ^= h >> 16; h *= 0x7FEB352Du; h ^= h >> 15; h *= 0x846CA68Bu; h ^= h >> 16;
             return h;
         }

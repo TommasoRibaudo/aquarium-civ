@@ -18,7 +18,7 @@ namespace AquariumCiv.View
     /// <item>While an era waits: <b>Watch</b> on the prompt lane (hidden in camera mode, clean mode, with a sheet
     /// open), and the piles in the box (<see cref="WaitingProps"/>). Very grimy glass first offers a wipe; never blocks.</item>
     /// <item>Watch: sheets and clean mode close, the HUD hides, the sim clock holds (<see cref="GameClock.Held"/>), the
-    /// camera follows the rail (BoxCamera is switched off and posed from here; one finger still orbits on top of the rail
+    /// camera follows the rail (BoxCamera is switched off and posed from here; two fingers still turn on top of the rail
     /// and eases back on release). A press that stays put hurries the moment (2×); the "Hold to hurry" hint shows for 3 s.</item>
     /// <item>The cheer beat calls <c>SimCore.AdvanceEra</c>, then SimLayoutSource's rebuild wave refreshes the box.</item>
     /// <item>Leaving (app paused) before the cheer drops the moment: it replays next time.</item>
@@ -34,7 +34,7 @@ namespace AquariumCiv.View
         public static MomentPlayer Instance { get; private set; }
         public static bool AutoCreate = true;
 
-        /// <summary>A press that moves less than this fraction of the screen height hurries; more, and it orbits.</summary>
+        /// <summary>A press that moves less than this fraction of the screen height hurries; more, and it is a drag (one finger: nothing, two fingers: a turn).</summary>
         public const float HurrySlopFraction = 0.02f;
         /// <summary>How long a speech bubble stays, in moment seconds (at most to the end of its beat).</summary>
         public const float BubbleSeconds = 4.5f;
@@ -59,7 +59,8 @@ namespace AquariumCiv.View
         float lastTime;
         // input
         bool pressDown, pressMoved;
-        Vector2 pressStart, lastPos;
+        Vector2 pressStart, lastPos, lastMid, lastVec;
+        bool turning;
         // UI
         UIDocument doc;
         VisualElement root, safe;
@@ -351,25 +352,35 @@ namespace AquariumCiv.View
 
         void Play(float dt)
         {
-            // Input: a press that stays put hurries; one that moves orbits on top of the rail.
-            ReadPointer(out bool down, out Vector2 pos);
+            // Input (#587): a press that stays put hurries; one finger that moves does nothing (the rail cannot pan, and it never hurries);
+            // two fingers turn on top of the rail (twist = yaw, slide up or down = pitch), and so does a right or middle mouse drag.
+            ReadFingers(out int n, out Vector2 fa, out Vector2 fb, out bool mouseTurn);
+            bool down = n > 0; Vector2 pos = fa;
             float slop = Screen.height * HurrySlopFraction;
-            if (down && !pressDown && !GameUiPanel.Over(root, pos)) { pressDown = true; pressMoved = false; pressStart = lastPos = pos; }
-            if (!down) pressDown = false;
+            if (down && !pressDown && !GameUiPanel.Over(root, pos)) { pressDown = true; pressMoved = false; pressStart = lastPos = pos; turning = false; }
+            if (!down) { pressDown = false; turning = false; }
             float dragYaw = 0f, dragPitch = 0f;
+            bool turnNow = pressDown && (n >= 2 || mouseTurn);
             if (pressDown)
             {
                 if ((pos - pressStart).sqrMagnitude > slop * slop) pressMoved = true;
-                var d = pos - lastPos;
-                lastPos = pos;
-                if (pressMoved)
+                if (turnNow)
                 {
-                    dragYaw = BoxCameraMath.YawDegrees(d.x, Screen.height);
-                    dragPitch = -BoxCameraMath.PitchDegrees(d.y, Screen.height);
+                    pressMoved = true; // a turn never hurries
+                    Vector2 mid = n >= 2 ? (fa + fb) * 0.5f : fa, vec = n >= 2 ? fb - fa : Vector2.zero;
+                    if (turning)
+                    {
+                        var dm = mid - lastMid;
+                        if (n >= 2) { var t = BoxCameraMath.TwoFingerTurn(lastVec, vec, dm, Screen.height); dragYaw = t.x; dragPitch = t.y; }
+                        else { dragYaw = BoxCameraMath.YawDegrees(dm.x, Screen.height); dragPitch = -BoxCameraMath.PitchDegrees(dm.y, Screen.height); }
+                    }
+                    turning = true; lastMid = mid; lastVec = vec;
                 }
+                else turning = false;
+                lastPos = pos;
             }
             bool hurry = (pressDown && !pressMoved) || DebugHoldHurry;
-            Offset.Step(dt, pressDown && pressMoved, dragYaw, dragPitch);
+            Offset.Step(dt, turnNow, dragYaw, dragPitch);
 
             Director.Tick(dt, hurry);
             if (wave != null)
@@ -396,14 +407,26 @@ namespace AquariumCiv.View
             if (!Playing) EndMoment(true);
         }
 
-        static void ReadPointer(out bool down, out Vector2 pos)
+        /// <summary>The first two live fingers, or the mouse (a right or middle button = <paramref name="mouseTurn"/>).</summary>
+        static void ReadFingers(out int n, out Vector2 a, out Vector2 b, out bool mouseTurn)
         {
-            pos = default; down = false;
+            n = 0; a = b = default; mouseTurn = false;
             var ts = Touchscreen.current;
             if (ts != null)
+            {
                 foreach (var t in ts.touches)
-                    if (t.press.isPressed) { down = true; pos = t.position.ReadValue(); break; }
-            if (!down && Mouse.current != null && Mouse.current.leftButton.isPressed) { down = true; pos = Mouse.current.position.ReadValue(); }
+                {
+                    if (!t.isInProgress) continue;
+                    if (n == 0) a = t.position.ReadValue(); else if (n == 1) b = t.position.ReadValue();
+                    n++;
+                }
+                if (n > 0) return;
+            }
+            var m = Mouse.current;
+            if (m == null) return;
+            a = m.position.ReadValue();
+            if (m.rightButton.isPressed || m.middleButton.isPressed) { n = 1; mouseTurn = true; }
+            else if (m.leftButton.isPressed) n = 1;
         }
 
         // ---------------- beats (placeholder staging) ----------------

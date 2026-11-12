@@ -28,7 +28,7 @@ namespace AquariumCiv.View.PlayTests
         }
 
         /// <summary>A living box with a meadow, after the first run, at 10 h, with nothing on screen.</summary>
-        IEnumerator LivingMeadow(int w = 1179, int h = 2556)
+        IEnumerator LivingMeadow(int w = 1179, int h = 2556, bool mist = true)
         {
             UseLivingLand(true);
             GameUiPanel.AcceptInputUnfocused(true);
@@ -36,7 +36,7 @@ namespace AquariumCiv.View.PlayTests
             GameUiPanel.AcceptInputUnfocused(true);
             Assert.IsTrue(Sim.EcologyOn, "a living-land box");
             PeopleView.DebugSetHour(10f);
-            foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            if (mist) foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
             yield return Frames(10);
         }
 
@@ -87,7 +87,10 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("p9-slot-3-kit");
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
             yield return new WaitForSecondsRealtime(0.5f);
-            Assert.IsFalse(hud.LifeRowOpen, "one ready jar: no chooser");
+            // #570: the shut jars stand in the chooser beside the one ready jar, so it opens; the thicket's icon takes it in hand
+            Assert.IsTrue(hud.LifeRowOpen, "one ready jar and shut ones: the chooser opens");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-thicket"));
+            yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.KitTool.Life, hud.Hand, "the thicket in hand");
             Assert.AreEqual(LifeSpecies.Thicket, hud.HeldLife);
             Assert.IsNull(hud.OpenSheet, "the kit closes with the tool in hand");
@@ -202,6 +205,74 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(LastPlaced, "the rabbits placed by touch");
             Assert.Greater(Sim.EcoRabbitCount, 0, "a pair in the box");
             AssertNoErrors("life row");
+        }
+
+        /// <summary>
+        /// #570 what is missing, by touch on a portrait phone. A fresh living box: no jar is ready yet, but the Life slot is in the kit and its
+        /// chooser lists every shut jar greyed, in the people's words; a tap on a shut jar says what it waits for (never nothing); the village
+        /// line shows under it. Then the thicket opens: the ready jar comes first, the shut ones after. Shots go to Temp/agent/p570-*.png:
+        ///  1 (kit): the Kit sheet with the Life slot and "The camp waits for: a meadow · rabbits in the meadow" under its note;
+        ///  2 (chooser): six greyed icons (bushes, rabbits, deer, ducks, fish, wolves), the first one a little stronger, its need and the line below;
+        ///  3 (picked): the deer's icon picked, "Deer need the rabbits first" in the note;
+        ///  4 (ready): the thicket's icon bright and first, the five others greyed.
+        /// </summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator ShutJars_ShowGreyedWithTheirNeed_ATapSaysIt()
+        {
+            yield return LivingMeadow(mist: false); // bare land: nothing is ready, every need is real
+            var hud = GameHud.Instance;
+            Sim.DebugLockJars(); // (the cheat; nothing to shut on a bare box, but it keeps the test honest)
+            yield return Frames(10);
+            var shut = new List<LifeSpecies>(); Sim.LockedJars(shut);
+            Assert.AreEqual(LifeJar.All.Length, shut.Count, "every jar is shut");
+            Assert.IsFalse(hud.LifeSlotShown, "nothing ready (the slot's ready flag)");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.AreEqual(GameHud.Kit, hud.OpenSheet, "Kit opens the kit");
+            Assert.IsTrue(Shown(hud.Root.Q("kit-life")), "the Life slot is there with every jar shut");
+            yield return Shot("p570-1-kit");
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.IsTrue(hud.LifeRowOpen, "the chooser opens on the shut jars");
+            foreach (var s in shut)
+            {
+                var icon = hud.Root.Q("kit-life-locked-" + s.ToString().ToLowerInvariant());
+                Assert.IsNotNull(icon, "a greyed icon for " + s);
+                Assert.IsTrue(icon.ClassListContains("kit-life-choice--locked"), s + " is greyed");
+                Assert.Less(icon.resolvedStyle.opacity, 0.9f, s + " reads as shut");
+            }
+            Assert.IsNull(hud.Root.Q("kit-life-thicket"), "no live icon for a shut jar");
+            Assert.AreEqual(LifeSpecies.Thicket, hud.LockedPick, "the first shut jar is picked");
+            StringAssert.StartsWith(Sim.JarNeed(LifeSpecies.Thicket), hud.LifeNoteText, "the note says what it waits for");
+            Assert.IsNotEmpty(Sim.VillageWaitsLine, "a fresh box: the camp waits for something");
+            StringAssert.Contains(Sim.VillageWaitsLine, hud.LifeNoteText, "and what the camp waits for");
+            StringAssert.Contains("waits for:", hud.LifeNoteText);
+            yield return Shot("p570-2-chooser");
+            // a tap on a shut jar says its need, and picks it; it is never taken in hand
+            var rung = Sim.JarNeed(LifeSpecies.Deer);
+            Assert.IsNotNull(rung);
+            yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life-locked-deer"));
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.AreEqual(LifeSpecies.Deer, hud.LockedPick, "the deer are picked");
+            StringAssert.StartsWith(rung, hud.LifeNoteText, "the note says what the deer wait for: " + hud.LifeNoteText);
+            Assert.AreEqual(GameHud.KitTool.None, hud.Hand, "a shut jar is never taken in hand");
+            Assert.IsTrue(hud.LifeRowOpen, "and the chooser stays open");
+            Assert.AreEqual(GameHud.Kit, hud.OpenSheet);
+            yield return Shot("p570-3-picked");
+            // the land gets its meadow and the thicket opens: it comes first, bright; the rest stay greyed
+            foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            for (int i = 0; i < 16 && !Sim.JarReady(LifeSpecies.Thicket); i++) EcoDebug.SkipSeasons(1);
+            Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "the thicket's jar opened on a meadow");
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.IsTrue(hud.LifeRowOpen, "the chooser stays open as a jar opens");
+            var live = hud.Root.Q("kit-life-thicket");
+            Assert.IsNotNull(live, "the thicket's live icon");
+            Assert.IsNull(hud.Root.Q("kit-life-locked-thicket"), "and no greyed one");
+            var row = hud.Root.Q("kit-life-row");
+            Assert.AreEqual("kit-life-thicket", row.ElementAt(0).name, "the ready jar comes first");
+            Assert.IsTrue(row.ElementAt(1).ClassListContains("kit-life-choice--locked"), "the shut ones after");
+            yield return Shot("p570-4-ready");
+            AssertNoErrors("shut jars");
         }
 
         [UnityTest, Timeout(600000)]

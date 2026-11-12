@@ -12,6 +12,7 @@ namespace AquariumCiv.Life.Tests
     {
         /// <summary>View hours after the moment's end to keep sampling: long enough for the longest walk back.</summary>
         public const float Rejoin = 2f;
+        // #588: a hop under 0.02 u is a scene slot nudge (two people swapping a spot at a doorstep), not a walk.
 
         public static (float worst, string what, int steps) Worst(LifePlanner planner, long day, float from, float end, string tag)
         {
@@ -36,7 +37,7 @@ namespace AquariumCiv.Life.Tests
                         float d = (float)Math.Sqrt((x - l.x) * (x - l.x) + (z - l.z) * (z - l.z));
                         float secs = LifeClock.RealSecondsBetween(l.h, h);
                         var now = planner.Plan(p, new ViewTime(day, h));
-                        if (d > 1e-4f && secs > 0f && !plain[p.Key].Contains((now.start, now.end)))
+                        if (d > 0.02f && secs > 0f && !plain[p.Key].Contains((now.start, now.end)))
                         {
                             steps++;
                             float pace = d / secs / LifePlanner.RealWalkSpeed;

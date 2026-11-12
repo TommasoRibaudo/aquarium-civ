@@ -148,6 +148,58 @@ namespace AquariumCiv.Life
             return size <= MaxBall ? PlayGame.Ball : PlayGame.Tag;
         }
 
+        /// <summary>#541: one place's free kids, for <see cref="Gather"/>: an id (any stable int), where it is, how many kids, and a class
+        /// (a home's yard and open ground don't mix: only spots of one class gather).</summary>
+        public readonly struct KidSpot
+        {
+            public readonly int id, count, cls; public readonly float x, z;
+            public KidSpot(int id, float x, float z, int count, int cls = 0) { this.id = id; this.x = x; this.z = z; this.count = count; this.cls = cls; }
+        }
+
+        /// <summary>#541 reach: lone kids this near each other (box units) play one game together instead of two solo copies.</summary>
+        public const float GatherReach = 3.2f;
+
+        /// <summary>
+        /// #541: two kids on view never play alone side by side. Each spot holding one kid joins the nearest other spot (same class, within
+        /// <paramref name="reach"/>) whose group still has room (<see cref="MaxGroup"/>), so two free kids become one group that plays a together
+        /// game (tag, splash, a partner game). Returns, per spot, the index of the spot whose group it plays in (itself when it stays).
+        /// Pure and order-stable: sorted by (count, id), ties to the nearest then the lowest id.
+        /// </summary>
+        public static int[] Gather(IReadOnlyList<KidSpot> spots, float reach = GatherReach)
+        {
+            int n = spots.Count;
+            var host = new int[n]; var size = new int[n];
+            for (int i = 0; i < n; i++) { host[i] = i; size[i] = spots[i].count; }
+            var order = new List<int>();
+            for (int i = 0; i < n; i++) if (spots[i].count == 1) order.Add(i);
+            order.Sort((a, b) => spots[a].id.CompareTo(spots[b].id));
+            foreach (int i in order)
+            {
+                if (host[i] != i || size[i] != 1) continue; // already someone's host
+                int best = -1; float bestD = reach * reach;
+                for (int j = 0; j < n; j++)
+                {
+                    if (j == i || host[j] != j || spots[j].cls != spots[i].cls || size[j] + 1 > MaxGroup) continue;
+                    float dx = spots[j].x - spots[i].x, dz = spots[j].z - spots[i].z, d = dx * dx + dz * dz;
+                    if (d < bestD || (d == bestD && best >= 0 && spots[j].id < spots[best].id)) { bestD = d; best = j; }
+                }
+                if (best < 0) continue;
+                host[i] = best; size[best]++;
+            }
+            return host;
+        }
+
+        /// <summary>#541: a game for a group that never repeats a game another group in view is playing (two solo ball games side by side
+        /// look like a copy): a game that fits <paramref name="size"/> and isn't in <paramref name="inView"/>, the pick first, else the first free.</summary>
+        public static PlayGame Differ(PlayGame pick, int size, ICollection<PlayGame> inView, bool roomy = true)
+        {
+            if (inView == null || !inView.Contains(pick)) return pick;
+            if (!roomy) return pick; // a yard has the one game
+            foreach (var g in new[] { PlayGame.Tag, PlayGame.Ball, PlayGame.ChaseRabbits })
+                if (g != PlayGame.ChaseRabbits && Fits(g, size) && !inView.Contains(g)) return g;
+            return pick;
+        }
+
         /// <summary>How many groups <paramref name="n"/> kids make (at most <see cref="MaxGroup"/> each, as even as can be).</summary>
         public static int GroupCount(int n, bool roomy = true) { int m = roomy ? MaxGroup : MaxBall; return n <= 0 ? 0 : (n + m - 1) / m; }
 

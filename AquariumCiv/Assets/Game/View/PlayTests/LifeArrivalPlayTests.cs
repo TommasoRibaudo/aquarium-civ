@@ -186,7 +186,7 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(Cam.Leaning, $"{s}: and holds there while the ghost waits");
                 Assert.LessOrEqual(Cam.zoom, Mathf.Min(zoom0, LifeArrivalView.LeanZoom(s)) + 0.02f, $"{s}: close in");
                 // user 2026-11-08: the smallest groups lean past the player's floor (0.2) to about 0.15; the rest stay above it
-                bool small = s is LifeSpecies.Rabbits or LifeSpecies.Ducks or LifeSpecies.Fish;
+                bool small = s is LifeSpecies.Rabbits; // fb4 #542: the ducks and the fish frame the whole pond instead
                 if (small) Assert.Less(Cam.zoom, AquariumCiv.Lighting.CameraReach.MinZoom - 0.02f, $"{s}: past the player's zoom floor");
                 else Assert.GreaterOrEqual(Cam.zoom, AquariumCiv.Lighting.CameraReach.MinZoom - 0.005f, $"{s}: not past the floor");
                 Assert.GreaterOrEqual(Cam.zoom, BoxCamera.LeanMinZoom - 0.005f, $"{s}: never past the lean's own floor");
@@ -227,7 +227,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Until(() => !Cam.IsFlying, 8f);
             Assert.IsTrue(Cam.Leaning, "leaning on the ghost");
             int c0 = Cam.LeanCancels;
-            // two fingers pan across the screen
+            // two fingers move up the screen (a tilt now, #587)
             var a = new Vector2(Screen.width * 0.4f, Screen.height * 0.5f); var b = new Vector2(Screen.width * 0.6f, Screen.height * 0.5f);
             BeginTouch(901, a, queueEventOnly: true); BeginTouch(902, b, queueEventOnly: true);
             yield return null;
@@ -249,6 +249,79 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(5);
             Assert.IsFalse(la.LeanRefused, "put down: the next placing may lean again");
             AssertNoErrors("lean cancel");
+        }
+
+        /// <summary>#587: a one-finger pan drag (past the slop) while the camera leans cancels it, like two fingers do. With a tool in hand the
+        /// tool owns one finger on the ground (#518) and two fingers are the pan, so this lean is held with no tool in hand.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Lean_OneFingerPan_Cancels_It()
+        {
+            yield return LivingLand();
+            Assert.AreEqual(GameHud.KitTool.None, GameHud.Instance.Hand, "no tool in hand");
+            Assert.IsTrue(Cam.LeanIn(new Vector3(0.2f, 0f, 0.1f), 0.3f, () => true), "the camera leans in");
+            yield return Until(() => !Cam.IsFlying, 8f);
+            Assert.IsTrue(Cam.Leaning, "leaning");
+            int c0 = Cam.LeanCancels;
+            var a = new Vector2(Screen.width * 0.5f, Screen.height * 0.45f);
+            BeginTouch(903, a, queueEventOnly: true);
+            yield return null;
+            for (int i = 1; i <= 12; i++) { MoveTouch(903, a + new Vector2(i * Screen.width * 0.015f, 0f), delta: Vector2.zero, queueEventOnly: true); yield return null; }
+            EndTouch(903, a, delta: Vector2.zero, queueEventOnly: true);
+            yield return Frames(3);
+            Assert.Greater(Cam.LeanCancels, c0, "a one-finger pan cancelled the lean");
+            Assert.IsFalse(Cam.Leaning, "no lean now");
+            Cam.ReleaseLean();
+            AssertNoErrors("lean pan cancel");
+        }
+
+        /// <summary>#587: with a tool owning one finger (the mister), two fingers still move the view: the midpoint pans the ground, a pinch zooms, a twist
+        /// turns yaw, and sliding up or down does not change pitch.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator ToolInHand_TwoFingers_Pan_Zoom_AndTwist_ButNeverTilt()
+        {
+            yield return LivingLand();
+            var hud = GameHud.Instance;
+            hud.SetHand(GameHud.KitTool.Mister);
+            yield return Frames(5);
+            Cam.EaseTo(new Vector3(0f, 1f, 0f), 20f, 40f, 0.8f, 0f);
+            yield return Frames(40);
+            var c = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            Assert.IsTrue(EcoMistView.Instance.ClaimsPress(c), "the tool owns a press on the land");
+            float pitch0 = Cam.pitch, yaw0 = Cam.yaw, zoom0 = Cam.zoom; var t0 = Cam.target;
+            var off = new Vector2(Screen.width * 0.12f, 0f);
+            // a slide: the first finger lands (the tool's), the second joins, both move up and right
+            BeginTouch(911, c - off, queueEventOnly: true);
+            yield return Frames(3);
+            BeginTouch(912, c + off, queueEventOnly: true);
+            yield return Frames(3);
+            for (int i = 1; i <= 20; i++)
+            {
+                var d = new Vector2(Screen.width * 0.004f, Screen.height * 0.004f) * i;
+                MoveTouch(911, c - off + d, delta: Vector2.zero, queueEventOnly: true); MoveTouch(912, c + off + d, delta: Vector2.zero, queueEventOnly: true);
+                yield return null;
+            }
+            EndTouch(911, c, delta: Vector2.zero, queueEventOnly: true); EndTouch(912, c, delta: Vector2.zero, queueEventOnly: true);
+            yield return Frames(30);
+            Assert.Greater(new Vector2(Cam.target.x - t0.x, Cam.target.z - t0.z).magnitude, 0.15f, "two fingers pan with a tool in hand");
+            Assert.AreEqual(pitch0, Cam.pitch, 0.5f, "and sliding does not change pitch");
+            Assert.IsFalse(EcoMistView.Instance.Misting, "the mister did not spray");
+            // a pinch zooms and a twist turns
+            t0 = Cam.target;
+            BeginTouch(913, c - off, queueEventOnly: true); yield return Frames(3);
+            BeginTouch(914, c + off, queueEventOnly: true); yield return Frames(3);
+            for (int i = 1; i <= 20; i++)
+            {
+                float k = 1f + i * 0.05f, ang = i * 1.5f * Mathf.Deg2Rad; // wider and twisting counter-clockwise
+                var v = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * off.x * k;
+                MoveTouch(913, c - v, delta: Vector2.zero, queueEventOnly: true); MoveTouch(914, c + v, delta: Vector2.zero, queueEventOnly: true);
+                yield return null;
+            }
+            EndTouch(913, c, delta: Vector2.zero, queueEventOnly: true); EndTouch(914, c, delta: Vector2.zero, queueEventOnly: true);
+            yield return Frames(30);
+            Assert.Less(Cam.zoom, zoom0 * 0.9f, "a pinch zooms with a tool in hand");
+            Assert.Greater(Cam.yaw - yaw0, 5f, "a twist turns yaw");
+            hud.SetHand(GameHud.KitTool.None);
+            AssertNoErrors("tool two fingers");
         }
 
         [UnityTest, Timeout(600000)]

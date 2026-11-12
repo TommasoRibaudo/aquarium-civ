@@ -138,7 +138,7 @@ namespace AquariumCiv.Life
         }
 
         /// <summary>The pond has fish to catch: on a living land, water and the fish the Keeper placed (#421, placed-life spec §5.5).</summary>
-        bool WaterHere(Place pond) => !OnLiving || sim.FishingOpen;
+        bool WaterHere(Place pond) => !OnLiving || sim.FishingWater;
 
         // ---------------------------------------------------------------- the crowd's helpers
 
@@ -149,9 +149,9 @@ namespace AquariumCiv.Life
         {
             if (!CampSpread || !p.Adult) return null;
             float r = R(p.key, d.day, 147);
-            bool water = !OnLiving || sim.FishingOpen; // #421: fishing waits for the fish
+            bool water = !OnLiving || sim.FishingWater; // #421: fishing waits for the fish
             if (r < 0.35f && (!OnLiving || sim.BerriesGrow)) return TribeWork(p, d);
-            if (r < 0.55f && water) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);
+            if (r < 0.55f && water) return FishWork();
             if (r < 0.70f && WoodsStand) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
             return null; // the chores at home, as before
         }
@@ -252,8 +252,8 @@ namespace AquariumCiv.Life
                 return cook;
             }
             float r = R(p.key, d.day, 149);
-            bool water = !OnLiving || sim.FishingOpen; // #421: fishing waits for the fish
-            if (water && r < 0.45f) return W(Pond, ActivityKind.Fish, Prop.Rod, Prop.FishStick, stash, 0.25f);
+            bool water = !OnLiving || sim.FishingWater; // #421: fishing waits for the fish
+            if (water && r < 0.45f) return FishWork();
             if (WoodsStand && r < 0.8f) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
             var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
             c.chores = true;

@@ -114,7 +114,7 @@ namespace AquariumCiv.View
                         // A grown crown is two cells across: one per 2 × 2 block, plus a few in between for an uneven edge.
                         bool grown = cv == EcoLayer.Tree;
                         if (grown && ((i | j) & 1) != 0 && H(c, 3) > 0.15f) continue;
-                        if (!grown && H(c, 3) > 0.45f) continue;
+                        if (!grown && H(c, 3) > 0.8f) continue; // #569: a young tree was drawn on 45% of its cells, so a misted half's saplings did not read
                         float s = grown ? Mathf.Lerp(0.75f, 1.15f, H(c, 4)) : Mathf.Lerp(0.42f, 0.58f, H(c, 4));
                         if (!Free(p, 0.12f * s, near)) continue;
                         var ib = Item(c, 1);
@@ -139,7 +139,7 @@ namespace AquariumCiv.View
                         }
                         else
                         {
-                            if (H(c, 3) > 0.55f) continue;
+                            if (H(c, 3) > 0.75f) continue; // #569: was 0.55
                             float s = Mathf.Lerp(0.2f, 0.3f, H(c, 4));
                             if (!Free(p, 0.04f, near)) continue;
                             var ib = Item(c, 3);

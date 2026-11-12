@@ -15,7 +15,7 @@ Shader "AquariumCiv/View/Glass"
         _NoiseDensity2 ("Second detail layer, tiles per unit", Float) = 0.37
         _NoiseOffset ("Detail offset (per pane)", Vector) = (0, 0, 0, 0)
         _NoiseRot ("Detail turn, radians (per pane)", Float) = 0
-        _Axis ("UV axis (0 = XY pane, 1 = ZY pane)", Float) = 0
+        _Axis ("UV axis (0 = XY pane, 1 = ZY pane, 2 = XZ lid)", Float) = 0
         _PaneSize ("Pane size (u, v) in world units", Vector) = (1, 1, 0, 0)
         _CleanColor ("Clean glass", Color) = (0.85, 0.95, 1, 0.10)
         _GrimeColor ("Grime", Color) = (0.42, 0.47, 0.30, 1)
@@ -97,13 +97,14 @@ Shader "AquariumCiv/View/Glass"
                 o.positionCS = p.positionCS;
                 o.positionWS = p.positionWS;
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
-                float2 xy = v.positionOS.xy, zy = v.positionOS.zy;
-                o.uv = lerp(xy, zy, step(0.5, _Axis)) + 0.5;
+                float2 xy = v.positionOS.xy, zy = v.positionOS.zy, xz = v.positionOS.xz;
+                o.uv = lerp(lerp(xy, zy, step(0.5, _Axis)), xz, step(1.5, _Axis)) + 0.5;
                 return o;
             }
 
             half4 frag(Varyings i) : SV_Target
             {
+                half lid = step(1.5, _Axis); // #577: the lid has no soil line, so no condensation, fog, droplets, streaks or rim run along it
                 half mask = SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, i.uv).r;
                 // Two layers of the detail tile (#121), each pane turned and offset its own way: the second is coarser and turned 37 degrees
                 // more, so the 1.67 u tile never lines up with itself and no grid of smudges shows. One more sample on the glass.
@@ -152,17 +153,17 @@ Shader "AquariumCiv/View/Glass"
                 half s1 = smoothstep(0.0, 0.12, frac(d)) * (1 - smoothstep(0.12, 0.3, frac(d)));
                 half s2 = smoothstep(0.0, 0.03, frac(d + 0.42)) * (1 - smoothstep(0.03, 0.08, frac(d + 0.42)));
                 // Only on the upper half of the pane, fading out toward the bottom.
-                half streak = (s1 + s2 * 0.6) * _StreakAlpha * (0.35 + fresnel * 3) * (1 - cover) * smoothstep(0.9, 2.2, w.y);
+                half streak = (s1 + s2 * 0.6) * _StreakAlpha * (0.35 + fresnel * 3) * (1 - cover) * smoothstep(0.9, 2.2, w.y) * (1 - lid);
                 rgb = lerp(rgb, 1 - night * 0.5, saturate(streak * 2));
                 alpha = saturate(alpha + streak);
 
                 // Condensation: a faint misty band just above the soil line (the ground sits at about 1 unit).
-                half mist = smoothstep(0.8, 1.0, w.y) * (1 - smoothstep(1.05, 1.6, w.y)) * _Condensation * (0.6 + 0.4 * n.g) * (1 - cover);
+                half mist = smoothstep(0.8, 1.0, w.y) * (1 - smoothstep(1.05, 1.6, w.y)) * _Condensation * (0.6 + 0.4 * n.g) * (1 - cover) * (1 - lid);
                 rgb = lerp(rgb, half3(0.92, 0.96, 0.97) * dim, mist * 0.6);
                 alpha = saturate(alpha + mist * 0.25);
                 // P8 (keepers-hands §5.1): the box's humidity on the glass. Fog climbs from the soil line and beads of water
                 // gather in it as the air gets wetter; the cloth wipes them off with the grime.
-                if (_Droplets > 0.001)
+                if (_Droplets > 0.001 && lid < 0.5)
                 {
                     float topY = 1.0 + 1.7 * _Droplets;
                     half band = smoothstep(0.85, 1.0, w.y) * (1 - smoothstep(topY - 0.5, topY, w.y)) * (1 - cover);
@@ -183,7 +184,7 @@ Shader "AquariumCiv/View/Glass"
                 float topDist = _PaneSize.y - w.y;
                 half rimTop = (1 - smoothstep(_RimWidth * 0.35, _RimWidth, topDist)) * smoothstep(0.0, _RimWidth * 0.2, topDist + 0.004);
                 half rimSide = (1 - smoothstep(_RimWidth * 0.25, _RimWidth * 0.8, min(w.x, _PaneSize.x - w.x))) * _RimSide * smoothstep(0.6, 2.0, w.y);
-                half rim = saturate(max(rimTop, rimSide) * (0.75 + fresnel * 2.0)) * (1 - cover * 0.7);
+                half rim = saturate(max(rimTop, rimSide) * (0.75 + fresnel * 2.0)) * (1 - cover * 0.7) * (1 - lid);
                 rgb = lerp(rgb, _RimColor.rgb, rim);
                 alpha = max(alpha, rim * _RimColor.a);
                 return half4(rgb, alpha * _Fade);

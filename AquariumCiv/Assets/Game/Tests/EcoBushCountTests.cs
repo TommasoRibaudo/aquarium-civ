@@ -274,7 +274,7 @@ namespace AquariumCiv.Tests
             foreach (var c in after) Assert.Greater(fresh.BushThicketZone(c), 0f);
         }
 
-        [Test, Explicit("measurement: prints the 62-year bush curve (#385 before/after)")]
+        [Test, Explicit("measurement: prints the 62-year bush curve (#385 before/after)"), Category("OnDemand")]
         public void BushCurve_Measure()
         {
             var sb = new StringBuilder("seed,care,year,bush\n");

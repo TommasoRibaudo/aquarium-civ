@@ -48,6 +48,18 @@ namespace AquariumCiv.Sim
         /// never while the flock is at its floor. False, and nothing changes, when there is none to take.</summary>
         public bool TakeEgg() => EcologyOn && EcoM.TryTake(LifeSpecies.Ducks, LifeTaker.EggGatherers, State.month, out _);
 
+        /// <summary>Debug ("Gather an egg now", #574): put <paramref name="n"/> eggs in the nests (the model lays them in spring only), placing the
+        /// pair first if no ducks are placed. Refused (returns the nests' count unchanged) when the flock is at its floor: an egg is never taken then.</summary>
+        public int DebugEggsToNests(int n)
+        {
+            if (!EcologyOn || n <= 0) return EcoDuckEggs;
+            if (EcoDucks == 0 && DebugPlaceNearCamp(LifeSpecies.Ducks) < 0) return 0;
+            if (EcoDucks <= (int)EcoModel.Floor(LifeSpecies.Ducks)) return EcoDuckEggs;
+            State.eco.duckEggs = Math.Max(State.eco.duckEggs, n);
+            EcoTell();
+            return State.eco.duckEggs;
+        }
+
         /// <summary>The hunters' arrows are fletched with the ducks' feathers (once, from the first summer after the ducks came).</summary>
         public bool ArrowsAreFletched => EcologyOn && State.eco.fletchedMonth >= 0;
         public long ArrowsFletchedMonth => EcologyOn ? State.eco.fletchedMonth : -1;
@@ -67,6 +79,9 @@ namespace AquariumCiv.Sim
         /// splashing and the ducks). Fish are placed in water and a pond never shrinks, so it stays open from then on (a job that
         /// opened never closes). With the ecology off the old box: always.</summary>
         public bool FishingOpen => !EcologyOn || LifeIsPlaced(LifeSpecies.Fish);
+
+        /// <summary>#495: fishing happens only with fish placed AND open water at the shore (the drawn pond; a dried one stops the lines, the job stays open).</summary>
+        public bool FishingWater => FishingOpen && OpenWater;
 
         /// <summary>How many fish the fishers may still take now: the stock above its floor; none in spring once the people have
         /// ruled on it (#422).</summary>

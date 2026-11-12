@@ -196,6 +196,8 @@ namespace AquariumCiv.Sim
         // ---------- an open job gets someone (#67) ----------
         /// <summary>A notable doesn't switch again for this many months after a change (3 years).</summary>
         const int JobChangeCooldownMonths = 36;
+        /// <summary>#574: the shorter wait before the hunter's job may take someone from a job they hold alone (a year).</summary>
+        const int HunterFillCooldownMonths = 12;
 
         /// <summary>A job that is open (its building or land is there) but no one holds: one suitable notable takes it,
         /// at most one a month. Trait-weighted, preferring someone from a crowded job; never an elder, a child, someone
@@ -210,6 +212,13 @@ namespace AquariumCiv.Sim
                 var cands = workers.Where(n => !string.IsNullOrEmpty(n.job) && n.job != JobType.Elder &&
                     workers.Count(o => o.job == n.job) >= 2 &&
                     State.month - n.jobChangedMonth >= JobChangeCooldownMonths).ToList();
+                // #574: a camp with rabbits to spare always has a hunter. With about five workers on five jobs nobody holds a crowded one,
+                // so the rule above never freed anybody (6 of 60 camps at year 29 had no hunter, 30-45 rabbits in the meadow). The hunter's
+                // job may then take a worker off any other job except the toolmaker (who hands the hunters their spears), not someone who changed
+                // lately (a year).
+                if (cands.Count == 0 && job == JobType.Hunter && HuntSurplus > 0)
+                    cands = workers.Where(n => n.job != JobType.Toolmaker && !string.IsNullOrEmpty(n.job) && n.job != JobType.Elder && n.job != JobType.Hunter &&
+                        State.month - n.jobChangedMonth >= HunterFillCooldownMonths).ToList();
                 if (cands.Count == 0) continue;
                 var weights = new float[cands.Count];
                 float total = 0;
@@ -217,7 +226,7 @@ namespace AquariumCiv.Sim
                 {
                     TraitJobs.TryGetValue(cands[i].trait ?? "", out var liked);
                     int holders = workers.Count(o => o.job == cands[i].job);
-                    weights[i] = (liked != null && Array.IndexOf(liked, job) >= 0 ? 4f : 1f) * (holders - 1);
+                    weights[i] = (liked != null && Array.IndexOf(liked, job) >= 0 ? 4f : 1f) * Math.Max(1, holders - 1);
                     total += weights[i];
                 }
                 float pick = JobRoll(cands[0]) * total;

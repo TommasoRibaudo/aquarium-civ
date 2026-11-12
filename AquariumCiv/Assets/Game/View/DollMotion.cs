@@ -26,6 +26,8 @@ namespace AquariumCiv.View
         PlaySplash, PlayJump, PlayShake, PlayCircle, PlayPeek, PlayDuel, PlayBlock, PlayCount, PlaySeek, PlayHide, PlayFound, PlayTouch, PlaySnowball,
         // #365 B9 meals and the fire (View/Beats/MealBeats.cs): eating in the ring, the stick into the fire (small, big: the flare)
         EatMeal, PokeFire, PokeFireBig,
+        // fb4 #566: hands together, a small bow, at the feather pole
+        Pray,
     }
 
     /// <summary>
@@ -72,7 +74,9 @@ namespace AquariumCiv.View
             ActivityKind.Play or ActivityKind.Snowball => DollStyle.Hop, // #358: Play is a play group's (KidPlayDirector); Hop is what a kid out of one shows
             ActivityKind.Toddle => DollStyle.Toddle, ActivityKind.Dance => DollStyle.RingDance, // #358
             ActivityKind.SweepStep or ActivityKind.Sweep => DollStyle.Sweep,
-            ActivityKind.HangWashing => DollStyle.Hang,
+            ActivityKind.HangWashing or ActivityKind.HangFish => DollStyle.Hang, // #543
+            ActivityKind.TakeDownFish => DollStyle.Lift, // #543
+            ActivityKind.Pray => DollStyle.Pray, // fb4 #566
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
             ActivityKind.Hammer or ActivityKind.Repair => DollStyle.Hammer,
             ActivityKind.Saw => DollStyle.Saw,
@@ -621,6 +625,19 @@ namespace AquariumCiv.View
                     p.armL = new Vector3(10f, 0, -45f); p.armR = new Vector3(10f, 0, 45f);
                     p.lean = -4f;
                     break;
+
+                case DollStyle.Pray:
+                {
+                    // fb4 #566: kneeling (the doll sunk, as the pickers crouch), hands together in front, and a clear slow bow: down over two
+                    // seconds, held, up a little, a breath, down again (a 6 s round). The head goes with the torso.
+                    float k = Frac(t / 6f);
+                    float bow = k < 0.3f ? Mathf.SmoothStep(0f, 1f, k / 0.3f) : k < 0.55f ? 1f : k < 0.75f ? Mathf.SmoothStep(1f, 0.2f, (k - 0.55f) / 0.2f) : k < 0.85f ? 0.2f : Mathf.SmoothStep(0.2f, 0f, (k - 0.85f) / 0.15f);
+                    p.squash = 0.74f - bow * 0.03f;
+                    p.lean = 8f + bow * 30f;
+                    p.offset.z = bow * 0.012f;
+                    p.armL = new Vector3(70f + bow * 12f, 0, -3f); p.armR = new Vector3(70f + bow * 12f, 0, 3f);
+                    break;
+                }
 
                 case DollStyle.Bow:
                     p.lean = 32f + Mathf.Sin(t * 0.6f) * 2f;

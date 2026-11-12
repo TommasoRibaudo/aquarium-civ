@@ -39,7 +39,24 @@ namespace AquariumCiv.Life
                 BlockPos(b, t.hour, out x, out z);
                 return true;
             }
+            if (EggActivityAt(p, t, out var egg) && PrayerPos(egg, out x, out z)) return true; // #574: out along the route to the real shore, back to the pile (their base day does not move them)
+            if (PrayerActivityAt(p, t, out var pray) && PrayerPos(pray, out x, out z)) return true; // fb4 #566: on a visit to the feather pole
             return PlanPos(p, t.hour, out x, out z);
+        }
+
+        /// <summary>fb4 #566: where a prayer visit has someone: along the way to the pole or back, or at the pole itself.</summary>
+        bool PrayerPos(in PersonActivity a, out float x, out float z)
+        {
+            x = z = 0f;
+            if (!IsValidPlace(a.place) || !IsValidPlace(a.from)) return false;
+            if (a.from != a.place)
+            {
+                var poly = RouteBetween(a.from, a.place);
+                if (poly == null) return false;
+                poly.At(Math.Max(0f, Math.Min(1f, a.progress)), out x, out z);
+                return true;
+            }
+            return positions.TryGetPosition(a.place, out x, out z);
         }
 
         /// <summary>#150: what a view needs to draw the camp's stash: where the pile stands and what's in it (read fresh, so a
@@ -54,6 +71,7 @@ namespace AquariumCiv.Life
             look.faceX = fx - look.x;
             look.faceZ = fz - look.z;
             look.stock = CampStash.StockOf(sim.State.food, sim.State.wood);
+            look.stock.fish = CampStash.FishShown(sim.FishInPile); // #543
             return true;
         }
 

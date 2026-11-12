@@ -263,6 +263,35 @@ namespace AquariumCiv.Sim
         public int EcoGrownTrees => EcologyOn ? EcoM.Live().trees : 0;
         /// <summary>A stable hash of the whole ecology (determinism and catch-up tests); 0 when it is off.</summary>
         public ulong EcoFingerprint => EcologyOn ? EcoM.Fingerprint() : 0UL;
+        /// <summary>#573: the cell woodcutters chop at: the grown wild tree nearest (<paramref name="nearX"/>, <paramref name="nearZ"/>) that is inside the glass
+        /// margin and at least <c>woodsClearRadius</c> from the Keeper's tree (a sapling, a young tree and the Keeper's own tree never count), or -1.</summary>
+        public int WoodsTreeCell(float nearX, float nearZ, int rank = 0)
+        {
+            if (!EcologyOn) return -1;
+            var e = State.eco; var cfg = Config.eco ?? (Config.eco = new EcoTuning());
+            const float mx = Settle.Terrain.HX - Settle.Terrain.GlassMargin, mz = Settle.Terrain.HZ - Settle.Terrain.GlassMargin;
+            bool kt = e.treeCell >= 0 && e.treeCell < EcoLand.N;
+            float kx = kt ? Settle.SiteMap.CXc(e.treeCell) : 0f, kz = kt ? Settle.SiteMap.CZc(e.treeCell) : 0f;
+            var found = woodsScratch; found.Clear();
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if ((EcoCover)e.cover[c] != EcoCover.Tree || c == e.treeCell) continue;
+                float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
+                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (kt && Settle.Terrain.Dist(x, z, kx, kz) < cfg.woodsClearRadius) continue;
+                float d = (x - nearX) * (x - nearX) + (z - nearZ) * (z - nearZ);
+                found.Add((d, c));
+            }
+            if (found.Count == 0 || rank >= found.Count) return -1;
+            found.Sort((a, b) => a.d != b.d ? a.d.CompareTo(b.d) : a.c.CompareTo(b.c));
+            return found[Math.Max(0, rank)].c;
+        }
+        readonly List<(float d, int c)> woodsScratch = new();
+        /// <summary>#573: how many grown wild trees away from the Keeper's tree there are (the woods: at most two choppers to a tree).</summary>
+        public int WoodsTreeCount { get { if (!EcologyOn) return 0; WoodsTreeCell(0f, 0f, 1 << 20); return woodsScratch.Count; } }
+        /// <summary>#573: a woods spot exists (off the ecology there is always a forest).</summary>
+        public bool WoodsExist => !EcologyOn || WoodsTreeCell(0f, 0f) >= 0;
+
         public EcoCover EcoCoverAt(int cell) => EcologyOn && cell >= 0 && cell < EcoLand.N ? (EcoCover)State.eco.cover[cell] : EcoCover.Bare;
         /// <summary>The game month a milestone was reached (an <see cref="EcoMilestones"/> key), or -1.</summary>
         public long EcoMilestoneMonth(string key) => EcologyOn ? State.eco.MonthOf(key) : -1;
@@ -354,6 +383,77 @@ namespace AquariumCiv.Sim
         public void DebugSetHumidity(float v)
         {
             if (EcologyOn) State.eco.humidity = Math.Clamp(v, 0f, 1f);
+        }
+
+        /// <summary>#573 debug: a grown wild tree and a young one (sapling) right beside the Keeper's tree (<paramref name="beside"/>), or one grown wild tree
+        /// well away from it (the woods spot). Plants the Keeper's grown tree first if there is none. Returns a one-line answer.</summary>
+        public string DebugWildTrees(bool beside, int count = 1, Func<float, float, float, bool> drawable = null)
+        {
+            if (!EcologyOn) return "living land off";
+            var e = State.eco; var cfg = Config.eco ?? (Config.eco = new EcoTuning());
+            if (e.treeCell < 0 && !DebugTreeStage(4)) return "no Keeper's tree can be planted";
+            var g = EcoGround;
+            float kx = Settle.SiteMap.CXc(e.treeCell), kz = Settle.SiteMap.CZc(e.treeCell);
+            const float mx = Settle.Terrain.HX - Settle.Terrain.GlassMargin - 0.1f, mz = Settle.Terrain.HZ - Settle.Terrain.GlassMargin - 0.1f;
+            int Pick(float rMin, float rMax, int skip, float apart = 0f, bool evenOnly = true, int from = -1, float near = 0f, float campMin = 0f, float rad = 0.2f)
+            {
+                int best = -1; float bd = float.MaxValue;
+                for (int c = 0; c < EcoLand.N; c++)
+                {
+                    float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
+                    var cv = (EcoCover)e.cover[c];
+                    if (c == e.treeCell || c == skip || (cv != EcoCover.Bare && cv != EcoCover.Grass && cv != EcoCover.Tall)) continue;
+                    if (g.InBasin(c) || g.yard[c] || Math.Abs(x) > mx || Math.Abs(z) > mz) continue; // (even cells only: the view draws a grown crown per 2 x 2 block, so a tree on an odd cell would stand in the sim and not on screen)
+                    if (evenOnly && ((Settle.SiteMap.I(c) & 1) != 0 || (Settle.SiteMap.J(c) & 1) != 0)) continue;
+                    if (from >= 0 && Settle.Terrain.Dist(x, z, Settle.SiteMap.CXc(from), Settle.SiteMap.CZc(from)) < near) continue;
+                    float dk = Settle.Terrain.Dist(x, z, kx, kz);
+                    if (dk < rMin || dk > rMax) continue;
+                    if (apart > 0f)
+                    {
+                        bool crowded = false;
+                        for (int o = 0; o < EcoLand.N && !crowded; o++)
+                            if (o != c && (EcoCover)e.cover[o] == EcoCover.Tree && o != e.treeCell && Settle.Terrain.Dist(x, z, Settle.SiteMap.CXc(o), Settle.SiteMap.CZc(o)) < apart) crowded = true;
+                        if (crowded) continue;
+                    }
+                    float dc = Settle.Terrain.Dist(x, z, g.campX, g.campZ);
+                    if (dc < campMin) continue;
+                    if (drawable != null && !drawable(x, z, rad)) continue; // the view's own room test: a tree on a path, a clearing or a prop is not drawn
+                    if (dc < bd) { bd = dc; best = c; }
+                }
+                return best;
+            }
+            if (beside)
+            {
+                // The Keeper's grown crown is 0.36 u across from its trunk and the view skips any tree that would overlap it (BoxView.Free), so "beside"
+                // is just outside the crown: 0.6 to 0.9 u (still inside woodsClearRadius). The view draws a young tree on only ~45% of its cells, so
+                // plant three saplings, 0.3 u from the grown one, to be sure one shows.
+                // (and out of the camp's bare clearing, GreenR + 0.12 round the fire, where the view draws no tree)
+                float cm = Settle.SiteMap.GreenR + 0.45f;
+                int a = Pick(0.6f, 0.9f, -1, 0f, true, -1, 0f, cm), b = -1;
+                if (a < 0) return "no room beside the Keeper's tree";
+                e.cover[a] = (byte)EcoCover.Tree;
+                for (int k = 0; k < 3; k++)
+                {
+                    int y = Pick(0.6f, 1.0f, -1, 0f, false, a, 0.3f, cm, 0.07f);
+                    if (y < 0) break;
+                    e.cover[y] = (byte)EcoCover.Young; if (b < 0) b = y;
+                }
+                if (b < 0) { e.cover[a] = (byte)EcoCover.Grass; return "no room beside the Keeper's tree"; }
+                EcoM.Reach(EcoMilestones.FirstWoodTree, State.month);
+                EcoTell();
+                return $"a grown wild tree (cell {a}) and a sapling (cell {b}) beside the Keeper's tree";
+            }
+            // count > 1: trees at least 0.8 apart (a real wood is spread out; two choppers to a tree)
+            int far = -1;
+            for (int k = 0; k < Math.Max(1, count); k++)
+            {
+                far = Pick(cfg.woodsClearRadius + 0.3f, 99f, -1, 0.8f);
+                if (far < 0) { if (k == 0) return "no room away from the Keeper's tree"; break; }
+                e.cover[far] = (byte)EcoCover.Tree;
+            }
+            EcoM.Reach(EcoMilestones.FirstWoodTree, State.month);
+            EcoTell();
+            return $"a grown wild tree (cell {far}) away from the Keeper's tree";
         }
 
         /// <summary>Debug: set the Keeper's tree to stage 0 (seed) .. 4 (grown), planting it near the camp if there is none.</summary>

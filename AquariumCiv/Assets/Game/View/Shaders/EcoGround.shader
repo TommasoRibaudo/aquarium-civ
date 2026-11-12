@@ -53,6 +53,18 @@ Shader "AquariumCiv/View/EcoGround"
                 half _SheenAmount, _Gloss, _Ripple, _WetBoost, _FreshLift, _FreshDay;
             CBUFFER_END
 
+            // #576: the season (SeasonLook; all 0 = none). The new grass and the green tint go gold in autumn and grey-blue in winter.
+            float4 _AC_Season;
+            half3 SeasonHue(half3 h)
+            {
+                half tot = (half)(_AC_Season.x + _AC_Season.y + _AC_Season.z + _AC_Season.w);
+                if (tot < 0.01) return h;
+                half m = max(h.r, max(h.g, h.b));
+                half3 aut = half3(1.0, 0.74, 0.36) * m;
+                half3 win = half3(0.88, 0.92, 1.0) * m * 0.92;
+                return (h * half3(1.1, 1.0, 0.72) * _AC_Season.x + h * half3(0.88, 1.0, 0.92) * _AC_Season.y + aut * _AC_Season.z + win * _AC_Season.w) / tot;
+            }
+
             struct Attributes { float4 positionOS : POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; };
             struct Varyings { float4 positionCS : SV_POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; float2 uv1 : TEXCOORD1; float3 posWS : TEXCOORD2; };
 
@@ -121,10 +133,10 @@ Shader "AquariumCiv/View/EcoGround"
                     half see = lerp(0.5, 0.95, saturate(far + glint + spec));
                     return half4(col, a * see * lerp(1.0, 0.8, mud));
                 }
-                if (_Mode < 3.5) return half4(i.color.rgb * (0.35 + day * 0.65), a); // the cheap lit tint
+                if (_Mode < 3.5) return half4(SeasonHue(i.color.rgb) * (0.35 + day * 0.65), a); // the cheap lit tint
                 if (_Mode > 4.5)
                 {
-                    half3 hue = i.color.rgb / max(1e-3, max(i.color.r, max(i.color.g, i.color.b))); // no channel above 1: never brighter by itself
+                    half3 hue = SeasonHue(i.color.rgb) / max(1e-3, max(i.color.r, max(i.color.g, i.color.b))); // no channel above 1: never brighter by itself
                     half lift = 1.0 + _FreshLift * smoothstep(0.55, 0.9, _FreshDay); // by day only: the night stays as dark as the land
                     half3 f = lerp(half3(1, 1, 1), hue * lift, a);
                     return half4(f * 0.5, 1); // 2x multiply: 0.5 leaves the ground as it is
