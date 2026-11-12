@@ -283,11 +283,11 @@ namespace AquariumCiv.View.PlayTests
                 var onGlass = rows[rows.Count / 2][0];
                 Assert.IsTrue(CareView.Instance.GlassAt(onGlass));
 
-                // Mode off: a drag on the glass orbits.
-                float yaw0 = rig.yaw;
+                // Mode off: a drag on the glass pans (#587).
+                float yaw0 = rig.yaw; var tgt0 = rig.target;
                 yield return Drag(new[] { onGlass, onGlass + new Vector2(0.18f * Screen.width, 0f) }, 0.02f * Screen.height);
                 yield return Settle(rig);
-                Assert.Greater(Mathf.Abs(rig.yaw - yaw0), 1f, "with clean mode off, one finger orbits even on the glass");
+                Assert.Greater(new Vector2(rig.target.x - tgt0.x, rig.target.z - tgt0.z).magnitude, 0.1f, "with clean mode off, one finger pans even on the glass");
                 float grime0 = sim.State.grime;
                 Assert.AreEqual(grime0, 1f, 1e-4f, "and nothing was wiped");
 
@@ -298,18 +298,18 @@ namespace AquariumCiv.View.PlayTests
                 float pitch0 = rig.pitch;
                 yield return Drag(new[] { onGlass, onGlass + new Vector2(0.2f * Screen.width, -0.05f * Screen.height) }, 0.02f * Screen.height);
                 yield return Settle(rig);
-                Assert.AreEqual(yaw0, rig.yaw, 0.05f, "a wipe on the glass never becomes an orbit");
+                Assert.AreEqual(yaw0, rig.yaw, 0.05f, "a wipe on the glass never turns the camera");
                 Assert.AreEqual(pitch0, rig.pitch, 0.05f);
                 Assert.Less(sim.State.grime, grime0 - 0.002f, "it wiped");
 
                 // Mode on, but the stroke starts off the glass (below the tank): the camera takes it.
                 var off = new Vector2(Screen.width * 0.5f, 0.2f * Screen.height);
                 Assert.IsFalse(CareView.Instance.ClaimsPress(off), "a press off the glass is not ours");
-                yaw0 = rig.yaw;
+                tgt0 = rig.target;
                 float grime1 = sim.State.grime;
                 yield return Drag(new[] { off, off + new Vector2(0.2f * Screen.width, 0f) }, 0.02f * Screen.height);
                 yield return Settle(rig);
-                Assert.Greater(Mathf.Abs(rig.yaw - yaw0), 1f, "a stroke that starts off the glass stays the camera's");
+                Assert.Greater(new Vector2(rig.target.x - tgt0.x, rig.target.z - tgt0.z).magnitude, 0.1f, "a stroke that starts off the glass stays the camera's (a pan)");
                 Assert.AreEqual(grime1, sim.State.grime, 1e-4f, "and wipes nothing");
 
                 // Two fingers are always the camera: a pinch on the glass zooms.
