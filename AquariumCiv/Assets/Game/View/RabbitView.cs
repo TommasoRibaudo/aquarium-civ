@@ -186,43 +186,47 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- tracks
+        /// <summary>#608: how many of the sim's track cells to draw: two trails for a pair, a third once the warren has grown (the sim picks three).</summary>
+        public static int TrailsShown(int rabbits, int cells) => Mathf.Clamp(rabbits >= 5 ? 3 : 2, 0, cells);
+
+        /// <summary>#608: 0 fresh .. 1 old, from the months since the tracks first showed (they leave six months after the first rabbit).</summary>
+        public static float TrackAge(long monthsSince) => Mathf.Clamp01(monthsSince / 8f);
+
         void UpdateTracks(SimCore sim)
         {
             var cells = sim.EcoRabbitTrackCells;
             if (cells.Count == 0) { if (tracks != null) tracks.SetActive(false); return; }
-            int key = 7;
-            foreach (int c in cells) key = key * 31 + c;
+            int n = TrailsShown(sim.EcoRabbitCount, cells.Count);
+            long since = Mathf.Max(0, (int)(sim.State.month - Mathf.Max(0, (int)sim.State.eco.MonthOf(EcoMilestones.RabbitTracks))));
+            int ageStep = Mathf.RoundToInt(TrackAge(since) * 8f);
+            int key = 7 + ageStep * 131 + n * 17;
+            for (int i = 0; i < n; i++) key = key * 31 + cells[i];
             if (tracks == null || key != tracksKey)
             {
                 if (tracks != null) Destroy(tracks);
-                tracks = BuildTracks(sim, cells);
+                tracks = BuildTracks(sim, cells, n, TrackAge(since));
                 tracksKey = key;
             }
             tracks.SetActive(true);
         }
 
-        GameObject BuildTracks(SimCore sim, IReadOnlyList<int> cells)
+        GameObject BuildTracks(SimCore sim, IReadOnlyList<int> cells, int n, float age)
         {
             var mb = new MeshBuilder(box.seed + 77) { jitter = 0f };
             var land = box.land;
-            var soil = new Color(0.22f, 0.14f, 0.07f);
-            foreach (int cell in cells)
+            // pressed in: a shade darker than the ground, not black blobs (fb7 pass: 0.25/0.18/0.10 still drew near-black pellets)
+            var fresh = new Color(0.44f, 0.35f, 0.22f);
+            var worn = new Color(0.52f, 0.43f, 0.29f);    // weathered nearly into it
+            var list = new List<RabbitTrackLayout.Print>();
+            for (int i = 0; i < n; i++)
             {
-                float cx = SiteMap.CXc(cell), cz = SiteMap.CZc(cell);
-                uint r = RabbitHerd.H((uint)sim.State.eco.seed, (uint)cell, 77);
-                float a = RabbitHerd.F(r, 1, 2) * Mathf.PI * 2f;
-                var dir = new Vector2(Mathf.Sin(a), Mathf.Cos(a));
-                var side = new Vector2(dir.y, -dir.x);
-                // prints sized for the doll (RabbitDoll.Scale 1.2): a trail of small dark prints (no trodden patch: raised, it read as beetles)
-                for (int g = 0; g < 4; g++)
-                {
-                    var at = new Vector2(cx, cz) + dir * ((g - 1.5f) * 0.075f) + side * (((g & 1) == 0 ? 1f : -1f) * 0.006f);
-                    // the hind feet side by side, the forefeet one behind the other ahead of them
-                    foreach (float s in new[] { -1f, 1f })
-                        Print(mb, land, at - dir * 0.01f + side * (s * 0.012f), soil, 0.007f, 0.016f, a, 0.005f);
-                    Print(mb, land, at + dir * 0.02f + side * 0.003f, soil, 0.005f, 0.008f, a, 0.005f);
-                    Print(mb, land, at + dir * 0.033f - side * 0.003f, soil, 0.005f, 0.008f, a, 0.005f);
-                }
+                int cell = cells[i];
+                list.Clear();
+                // the later trails are the older ones
+                float old = Mathf.Clamp01(age + i * 0.2f);
+                RabbitTrackLayout.Build(SiteMap.CXc(cell), SiteMap.CZc(cell), (uint)sim.State.eco.seed, (uint)cell, 1f - old, list);
+                var col = Color.Lerp(fresh, worn, old);
+                foreach (var p in list) Print(mb, land, p.at, p.hind ? col : Color.Lerp(col, worn, 0.2f), p.rx, p.rz, p.yaw);
             }
             var go = new GameObject("RabbitTracks") { hideFlags = HideFlags.DontSave };
             go.transform.SetParent(Holder(), false);
@@ -233,11 +237,12 @@ namespace AquariumCiv.View
             return go;
         }
 
-        static void Print(MeshBuilder mb, Land land, Vector2 at, Color col, float rx, float rz, float yawRad, float lift)
+        /// <summary>One print: a flat oval pressed into the ground (a hair above it, so it never sinks into the faceted land).</summary>
+        static void Print(MeshBuilder mb, Land land, Vector2 at, Color col, float rx, float rz, float yawRad)
         {
             var g = land.OnGround(at.x, at.y);
-            mb.M = Matrix4x4.TRS(g + Vector3.up * lift, Quaternion.Euler(0f, yawRad * Mathf.Rad2Deg, 0f), Vector3.one);
-            mb.Ico(Vector3.zero, 1f, new Vector3(rx, Mathf.Max(0.003f, rx * 0.25f), rz), col, 0.05f);
+            mb.M = Matrix4x4.TRS(g + Vector3.up * 0.0025f, Quaternion.Euler(0f, yawRad * Mathf.Rad2Deg, 0f), Vector3.one);
+            mb.Ico(Vector3.zero, 1f, new Vector3(rx, 0.0012f, rz), col, 0.04f);
             mb.M = Matrix4x4.identity;
         }
 

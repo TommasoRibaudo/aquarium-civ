@@ -14,7 +14,7 @@ namespace AquariumCiv.Sim
     /// </summary>
     public partial class SimCore
     {
-        public const int TrackCellCount = 5;
+        public const int TrackCellCount = 3; // #608: a few short trails, not a scatter
 
         /// <summary>The first rabbits were placed: the cell (the view plays the sign, then <see cref="AckRabbitArrival"/>).</summary>
         public event Action<int> RabbitArrived;

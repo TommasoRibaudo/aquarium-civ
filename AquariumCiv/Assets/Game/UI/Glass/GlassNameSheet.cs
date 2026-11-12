@@ -10,6 +10,8 @@ namespace AquariumCiv.GameUI
     {
         /// <summary>A raised keyboard for the debug panel, which an Editor never raises: the board's 291 pt.</summary>
         public static bool Debug { get; set; }
+        /// <summary>Tests: a keyboard of exactly this height (panel px), whatever the device says; null when not faked.</summary>
+        public static float? Fake { get; set; }
         const float DebugHeight = 291f * GlassType.Pt;
         /// <summary>Under the buttons while a sheet rides it: 12 pt.</summary>
         public const float Pad = 33f;
@@ -19,6 +21,7 @@ namespace AquariumCiv.GameUI
         /// <summary>Its height in panel px, 0 when it's down.</summary>
         public static float Height()
         {
+            if (Fake.HasValue) return Fake.Value;
             if (Debug) return DebugHeight;
             if (!TouchScreenKeyboard.isSupported || !TouchScreenKeyboard.visible) return 0f;
             return TouchScreenKeyboard.area.height * GameUiPanel.ReferenceWidth / Mathf.Max(1f, Screen.width);

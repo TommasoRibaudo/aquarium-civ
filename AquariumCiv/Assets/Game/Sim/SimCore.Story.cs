@@ -432,7 +432,7 @@ namespace AquariumCiv.Sim
         {
             float chance = Config.storyChancePerMonth;
             Config.storyChancePerMonth = 1f;
-            int season = (int)(State.month % SimConfig.MonthsPerYear);
+            int season = CalendarMonth;
             try { StoryStep(season, season == 11 || season == 0 || season == 1); }
             finally { Config.storyChancePerMonth = chance; }
         }

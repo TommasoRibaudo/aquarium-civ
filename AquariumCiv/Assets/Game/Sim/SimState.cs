@@ -422,6 +422,9 @@ namespace AquariumCiv.Sim
         public bool featherPoleSet; public float featherPoleX, featherPoleZ; // fb4 #566: the one feather pole's spot (SimCore.FeatherPole.cs); an old save has none until asked
         public List<ApartGroup> apartGroups = new(); // strangers who live apart in the box (#231): not the settlement's people
 
+        /// <summary>#603: months added before the calendar reads the season (SeasonCalendar). New boxes: 2 (they open in spring); a save without it: 0.</summary>
+        public int seasonShift;
+
         public float Year => month / (float)SimConfig.MonthsPerYear;
         public int NextId() => nextId++;
     }

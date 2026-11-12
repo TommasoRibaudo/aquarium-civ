@@ -21,10 +21,29 @@ namespace AquariumCiv.Sim.Eco
         public bool ThicketPlaced => st.thicketA >= 0 && st.thicketRadius > 0f;
 
         /// <summary>The placed thicket fills: one bush a season next to a standing one, heart first, until it holds the cap.
+        /// #605: where the mister's water fell on it, now and then a second one comes up (never past the cap, never outside the area).
         /// Runs before the season's succession.</summary>
         void Thickets()
         {
             if (!ThicketPlaced || BushesInThicket() >= BushCap) return;
+            AddThicketBush();
+            if (BushesInThicket() >= BushCap || t.thicketWatered <= 0f) return;
+            float w = ThicketWatered();
+            if (w > 0f && Chance(31, 0) < t.thicketWatered * w) AddThicketBush();
+        }
+
+        /// <summary>#605: how watered the thicket is, 0..1: the mean of the mister's water over its bushes.</summary>
+        public float ThicketWatered()
+        {
+            if (st.watered == null) return 0f;
+            float sum = 0f; int n = 0;
+            for (int c = 0; c < EcoLand.N; c++)
+                if (Cv(c) == EcoCover.Bush && ThicketZone(c) > 0f) { sum += st.watered[c]; n++; }
+            return n == 0 ? 0f : sum / n;
+        }
+
+        void AddThicketBush()
+        {
             int best = -1; float bestScore = float.MinValue;
             for (int c = 0; c < EcoLand.N; c++)
             {

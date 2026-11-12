@@ -541,6 +541,7 @@ namespace AquariumCiv.Life.Tests
         [Test]
         public void TheViewClockRunsAboutFiveMinutesADayWithAShortNight()
         {
+            AquariumCiv.Sim.SeasonCalendar.Shift = 0; // the calendar as old boxes have it: day 12 is winter, day 14 spring (#603: a new box's is shifted)
             Assert.That(LifeClock.RealSecondsPerDay, Is.InRange(280f, 320f));
             var t = new ViewTime(10, 20f);
             var later = LifeClock.Advance(t, 45f);

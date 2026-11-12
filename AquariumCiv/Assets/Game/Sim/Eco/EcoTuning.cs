@@ -146,6 +146,7 @@ namespace AquariumCiv.Sim.Eco
         public float thicketRadius = 0.45f;
         public float rabbitThicketMargin = 0.12f; // tester 2026-11-08: the rabbits' ground stays this far outside the thicket's widest edge
         public int thicketBushes = 22, thicketFounders = 3;
+        public float thicketWatered = 0.6f; // #605: a watered thicket (mean water w at its bushes) adds a second bush in a season with chance thicketWatered * w, never past the cap
 
         // Gates
         public float campMeadow = 0.20f;

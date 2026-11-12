@@ -56,8 +56,8 @@ namespace AquariumCiv.Sim
         {
             var s = State;
             s.month++;
-            int season = (int)(s.month % SimConfig.MonthsPerYear);
-            if (season == 0) YearlyNotables(); // age, births, deaths (the notables' own dice)
+            int season = CalendarMonth;
+            if (s.month % SimConfig.MonthsPerYear == 0) YearlyNotables(); // age, births, deaths (the notables' own dice)
             JobsStep();
             RolesStep();
             StoryStep(season, season == 11 || season == 0 || season == 1); // weddings, friendships, quarrels: the story stream
@@ -103,7 +103,7 @@ namespace AquariumCiv.Sim
             var s = new SimState
             {
                 seed = seed, rng = new SimRandom(seed), econRng = new SimRandom(seed ^ 0x2C1B3C6D), storyRng = new SimRandom(seed ^ 0x51ED270B),
-                population = 5, food = 20, wood = 4, mood = 0.7f, boxIndex = boxIndex,
+                population = 5, food = 20, wood = 4, mood = 0.7f, boxIndex = boxIndex, seasonShift = SeasonCalendar.NewBoxShift, // #603: every new box opens in spring
                 settle = new Settle.SettleState { terrain = terrainPreset }, // the setting's land (#115); 0 = the config's
             };
             var core = new SimCore(config, s);

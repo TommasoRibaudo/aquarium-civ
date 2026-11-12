@@ -76,7 +76,7 @@ namespace AquariumCiv.View.Shaping
             var style = GroveStyleOf(c.era);
             var trees = new List<TreeLook>();
             var season = LifeClock.SeasonOf(c.day);
-            int m = (int)(((c.day % 12) + 12) % 12);
+            int m = AquariumCiv.Sim.SeasonCalendar.OfMonth(c.day);
             float leave = c.Leaving ? 1f - Smooth(Ramp(c.sinceLeaving, 0f, T.LeaveSeconds)) : 1f;
             int k = 0;
             foreach (int cell in f.cells)

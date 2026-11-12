@@ -63,9 +63,10 @@ namespace AquariumCiv.Sim
             var e = State.eco;
             if (e == null || !e.on) return;
             var s = State;
-            int season = (int)((s.month / 3 + 3) % 4);
+            int cal = CalendarMonth; // the land steps by the calendar, not the raw month (#603)
+            int season = (cal / 3 + 3) % 4;
             EcoM.Month(season, s.month); // the surface, every month: the wet area dries, shoots grow (#266, #271)
-            if (s.month % 3 == 0)
+            if (cal % 3 == 0)
             {
                 EcoM.Step(season, s.month);
                 if (Config.settle) Settlement.SyncEco(); // flags and pond into the land, before the month's placing

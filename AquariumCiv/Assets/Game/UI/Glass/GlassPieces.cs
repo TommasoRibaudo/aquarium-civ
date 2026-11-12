@@ -230,6 +230,12 @@ namespace AquariumCiv.GameUI
     {
         public GlassBubble() : this("", "") { }
 
+        /// <summary>Every bubble that is on a panel now (#606: the name pin keeps clear of the ones that show).</summary>
+        public static readonly System.Collections.Generic.List<GlassBubble> OnPanel = new();
+
+        /// <summary>It is showing: displayed, not faded out, laid out.</summary>
+        public bool Showing => panel != null && resolvedStyle.display != DisplayStyle.None && resolvedStyle.opacity > 0.05f && worldBound.width > 1f;
+
         /// <summary>Longer lines become a caption, not a bigger bubble.</summary>
         public const int MaxChars = 48;
 
@@ -239,6 +245,8 @@ namespace AquariumCiv.GameUI
         public GlassBubble(string who, string line)
         {
             pickingMode = PickingMode.Ignore;
+            RegisterCallback<AttachToPanelEvent>(_ => { if (!OnPanel.Contains(this)) OnPanel.Add(this); });
+            RegisterCallback<DetachFromPanelEvent>(_ => OnPanel.Remove(this));
             AddToClassList("kg-bubble");
             whoLabel = new Label() { pickingMode = PickingMode.Ignore };
             whoLabel.AddToClassList("type-head");

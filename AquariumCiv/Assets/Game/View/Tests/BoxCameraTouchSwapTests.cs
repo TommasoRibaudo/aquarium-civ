@@ -50,5 +50,17 @@ namespace AquariumCiv.View.Tests
             var close = BoxCameraMath.TwoFingerTurn(new Vector2(20f, 0f), new Vector2(0f, 20f), Vector2.zero, 2000f);
             Assert.That(close.x, Is.EqualTo(0f), "fingers too close have no direction");
         }
+
+        [Test]
+        public void PinchPast_NeedsARealChange_AndMoreAfterATurn()
+        {
+            Assert.That(BoxCameraMath.PinchPast(200f, 200f, false), Is.False);
+            Assert.That(BoxCameraMath.PinchPast(200f, 210f, false), Is.False, "5% is jitter");
+            Assert.That(BoxCameraMath.PinchPast(200f, 215f, false), Is.True, "7.5% outward latches");
+            Assert.That(BoxCameraMath.PinchPast(200f, 185f, false), Is.True, "and inward");
+            Assert.That(BoxCameraMath.PinchPast(200f, 215f, true), Is.False, "after a twist or slide 7.5% is still not a pinch");
+            Assert.That(BoxCameraMath.PinchPast(200f, 230f, true), Is.True, "15% is");
+            Assert.That(BoxCameraMath.PinchPast(0f, 50f, false), Is.False, "no start distance, no pinch");
+        }
     }
 }

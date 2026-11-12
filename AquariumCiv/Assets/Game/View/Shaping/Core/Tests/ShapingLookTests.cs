@@ -162,6 +162,7 @@ namespace AquariumCiv.View.Shaping.Tests
         public void TheGroveLevelsUpWithTheEra_WoodsBlossomOrchard()
         {
             var sim = NewSim(5);
+            AquariumCiv.Sim.SeasonCalendar.Shift = 0; // days here are on the old calendar (#603: a new box's is shifted by 2)
             var (x, z) = OpenLand(sim, -1.2f, 0.7f);
             var f = Shaped(sim, SimCore.NudgeKind.Grove, x, z);
             var map = sim.Settlement.Map;
