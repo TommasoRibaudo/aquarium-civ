@@ -41,6 +41,8 @@ namespace AquariumCiv.View
             public DollStyle style;
             public PropKind prop;
             public bool walk, onBoat, wade, climb;
+            /// <summary>#578: a walk's pace as a multiple of the camp walk (0 = 1): the travellers hurry to the green.</summary>
+            public float speed;
             /// <summary>A climb's ladder foot: nobody starts up before they've walked to it.</summary>
             public Vector2 foot;
         }
@@ -339,7 +341,7 @@ namespace AquariumCiv.View
             if (s.walk)
             {
                 if (m.lift > 0.02f && !m.onBoat) { m.pos = s.at; m.lift = 0f; } // never walk off a platform (the climb ends at its foot); out of a boat they step
-                m.pos = Vector2.MoveTowards(m.pos, s.at, WalkSpeed * dt);
+                m.pos = Vector2.MoveTowards(m.pos, s.at, WalkSpeed * (s.speed > 0f ? s.speed : 1f) * dt);
                 if (Wet(m.pos) && !s.wade) m.pos = before;
                 walking = (m.pos - s.at).sqrMagnitude > 0.0004f;
                 m.lift = 0f;

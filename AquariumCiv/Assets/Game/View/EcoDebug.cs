@@ -1,6 +1,10 @@
+using System.Collections.Generic;
+using AquariumCiv.Sim.Eco;
+using AquariumCiv.Sim.Settle;
 using AquariumCiv.Game;
 using AquariumCiv.Sim;
 using UnityEngine;
+using Terrain = AquariumCiv.Sim.Settle.Terrain;
 
 namespace AquariumCiv.View
 {
@@ -57,6 +61,39 @@ namespace AquariumCiv.View
         }
 
         public static string MistBigCamp() { var st = Sim?.Settlement; return st != null ? MistBig(st.Map.greenX + 0.5f, st.Map.greenZ) : "no sim"; }
+
+        /// <summary>#569 side by side: mists every cell of the box's left half (x &lt; 0; the right half stays the control) with full 4-second
+        /// strokes at the start of each season, for <paramref name="seasons"/> seasons, with time running. "Mist one half, skip 3 yr" = 12 seasons.</summary>
+        public static string MistHalf(int seasons)
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            for (int k = 0; k < seasons; k++)
+            {
+                foreach (float x in new[] { -2.3f, -1.2f }) foreach (float z in new[] { -1.5f, -0.5f, 0.5f, 1.5f }) s.Mist(x, z, 4f, 4f);
+                s.DebugSkipSeasons(1);
+            }
+            return Refresh($"left half misted every season for {seasons} seasons; the right half is the control");
+        }
+
+        /// <summary>#569 "Mist trees": a full 4-second mist on the Keeper's tree, each stand of wild seedlings and young trees and each grown
+        /// tree (at most 6 spots), the way a player waters the wood. Then "+1 yr" shows misted ground seeding and growing faster than the rest.</summary>
+        public static string MistTrees()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var e = s.State.eco; var spots = new List<int>();
+            for (int c = 0; c < EcoLand.N && spots.Count < 6; c++)
+            {
+                var cv = (EcoCover)e.cover[c];
+                if (cv != EcoCover.Tree && cv != EcoCover.Young && cv != EcoCover.Seedling) continue;
+                bool near = false;
+                foreach (var o in spots) if (Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), SiteMap.CXc(o), SiteMap.CZc(o)) < 0.8f) { near = true; break; }
+                if (!near) spots.Add(c);
+            }
+            foreach (var c in spots) s.Mist(SiteMap.CXc(c), SiteMap.CZc(c), 4f, 4f);
+            return Refresh(spots.Count == 0 ? "no trees or seedlings to water yet" : $"watered {spots.Count} spots round the trees (+1 yr to see it)");
+        }
 
         /// <summary>"Puddles now": soak the ground round the camp so wet ground and puddles show at once (#266).</summary>
         public static string PuddlesNow()
@@ -141,6 +178,29 @@ namespace AquariumCiv.View
             return Refresh($"bush carpet: {c} came up; the land holds {s.BushCap}");
         }
 
+        /// <summary>"Make a hunter" (#574): a grown-up (not the toolmaker) takes the hunter's job now; the planner replans the days at once.</summary>
+        public static string MakeHunter()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            string who = s.DebugMakeHunter();
+            if (who.Length == 0) return "nobody free to take the spear";
+            var pv = PeopleView.Find();
+            if (pv != null && pv.Planner != null) pv.Planner.Invalidate();
+            return who + " is a hunter now";
+        }
+
+        /// <summary>"Gather an egg now" (#574): eggs in the nests (ducks placed first), and a grown-up walks to the reeds with a basket and carries one to the pile.</summary>
+        public static string GatherEggNow()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            if (s.DebugEggsToNests(2) <= 0) return "no eggs: the flock is at its floor, or no pond for ducks";
+            return pv.Planner.DebugStartEggGather(pv.Now, out var plan) ? "an egg gather started: walking to the reeds, the egg is taken in " + (plan.resolveHour - pv.Now.hour).ToString("0.0") + " h" : "no gather: no water, or nobody free";
+        }
+
         /// <summary>"Start a hunt now" (#283): a hunter takes a spear and goes after the nearest rabbit, starting now.</summary>
         public static string StartHunt()
         {
@@ -180,6 +240,16 @@ namespace AquariumCiv.View
         {
             float x = Random.Range(-2.5f, 2.5f), z = Random.Range(-1.8f, 1.8f);
             return MistAt(x, z, 2f);
+        }
+
+        /// <summary>#576 "Skip to next season": the sim's clock moves on to the middle of the next season (the land, the light and the title word follow).</summary>
+        public static string SkipToNextSeason()
+        {
+            var s = Sim;
+            if (s == null) return "no sim";
+            float d = SeasonLook.MonthsToNextSeasonMiddle(SeasonLook.PhaseOf(s));
+            s.Advance(d * s.Config.StepHours);
+            return Refresh($"now {SeasonLook.Word(s.State.month)} (month {s.State.month % 12})");
         }
 
         public static string SkipSeasons(int n)
@@ -309,6 +379,14 @@ namespace AquariumCiv.View
             return "the seed in hand: tap the land, then the outline" + (sp != null && sp.Last.Length > 0 ? $" (last: {sp.Last})" : "");
         }
         // ---- end #518 ----
+        // ---- #573: wild trees to reproduce the woods spot ----
+        public static string WildTrees(bool beside)
+        {
+            var s = Sim; if (s == null) return "no sim";
+            var src = SimLayoutSource.Find(); var bv = src != null ? src.GetComponent<BoxView>() : null;
+            // #573: only cells where the box has room to draw the tree (BoxView.Free: paths, clearings, props), or the cheat plants a tree nobody sees
+            return Refresh(s.DebugWildTrees(beside, 1, bv == null ? null : (x, z, r) => bv.FreeForProp(new UnityEngine.Vector2(x, z), r)));
+        }
         public static string TreeStage(int stage) { var s = Sim; return s != null && s.DebugTreeStage(stage) ? Refresh($"tree stage {stage}") : "no tree"; }
     }
 }

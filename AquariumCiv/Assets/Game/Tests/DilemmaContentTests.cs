@@ -18,7 +18,7 @@ namespace AquariumCiv.Tests
 
         static IEnumerable<DilemmaDef> Defs => DilemmaDefs.All;
 
-        static string Fill(string t) => (t ?? "").Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place);
+        static string Fill(string t) => (t ?? "").Replace("{a}", Name).Replace("{b}", Name).Replace("{p}", Name).Replace("{q}", Name).Replace("{place}", Place).Replace("{land}", "the meadow").Replace("{camp}", "out in the meadow"); // #578: the longest of the three lands
 
         static IEnumerable<string> Questions(DilemmaDef d) => new[] { d.question }.Concat(d.askedBy?.Values ?? Enumerable.Empty<string>());
 
@@ -170,6 +170,7 @@ namespace AquariumCiv.Tests
                     {
                         var ok = new List<string> { "{place}" };
                         if (who) ok.AddRange(new[] { "{a}", "{b}", "{p}", "{q}" });
+                        if (d.landWords) ok.AddRange(new[] { "{land}", "{camp}" }); // #578
                         Assert.Contains(m.Value, ok, $"{d.id}: \"{t}\"");
                     }
                 if (d.traitHints != null)

@@ -37,6 +37,7 @@ namespace AquariumCiv.Life
         readonly Dictionary<int, Spot> land = new Dictionary<int, Spot>();
         readonly List<int> sources = new List<int>(1), cells = new List<int>(64);
         bool landReady;
+        readonly Dictionary<int, int> woodsRank = new Dictionary<int, int>(); // #573: rank -> the cell of the rank-th nearest woods tree
 
         struct Spot { public float x, z; public Spot(float x, float z) { this.x = x; this.z = z; } }
 
@@ -54,11 +55,12 @@ namespace AquariumCiv.Life
             h = h * 31 + S.nudges.Count;
             h = h * 31 + S.buildings.Count;
             h = h * 31 + (int)S.era;
+            h = h * 31 + sim.EcoGrownTrees; // #573: a grown tree between months (the woods spot is asked again)
             h = h * 31 + sim.EcoPondCells; // #495: the pond grows between months' lots: its shore is asked again
             if (h == sig && s == st) return true;
             bool newSettlement = s != st;
             sig = h; st = s;
-            lotOfBuilding.Clear(); walkCell.Clear(); land.Clear();
+            lotOfBuilding.Clear(); walkCell.Clear(); land.Clear(); woodsRank.Clear();
             landReady = false; FieldsBuilt = 0;
             // Walking costs only change with the ground (a lot, a shaping, the wear pass every third month): keep the flow
             // fields while every cell's step cost is the same.
@@ -287,6 +289,12 @@ namespace AquariumCiv.Life
             int key = (int)p.kind * 4 + (p.kind is PlaceKind.Remembering or PlaceKind.Stash or PlaceKind.FishRack && p.index == 1 ? 1 : 0);
             if (!land.TryGetValue(key, out var s)) return false;
             x = s.x; z = s.z;
+            if (p.kind == PlaceKind.Woods && p.index > 0 && sim != null && sim.EcologyOn) // #573: the next grown wild tree (two choppers to a tree)
+            {
+                if (!woodsRank.TryGetValue(p.index, out int wcell)) woodsRank[p.index] = wcell = sim.WoodsTreeCell(st.GreenX, st.GreenZ, p.index);
+                if (wcell < 0) return false;
+                x = SiteMap.CXc(wcell); z = SiteMap.CZc(wcell);
+            }
             if (p.kind == PlaceKind.Stream && p.index > 0) DigSpot(p.index, ref x, ref z); // #521: the stream bed other dry patches
             return true;
         }
@@ -303,6 +311,7 @@ namespace AquariumCiv.Life
             float dEdge = float.MaxValue, dWoods = float.MaxValue, dBushes = float.MaxValue, dMeadow = float.MaxValue, dRock = float.MaxValue;
             float dRoad = -1f, hHill = float.MinValue;
             int keeperTree = sim != null && sim.State.eco != null && sim.State.eco.on ? sim.State.eco.treeCell : -1; // #493: never a woods / chopping spot
+            bool livingWoods = sim != null && sim.EcologyOn; // #573: on a living land the woods is a grown wild tree away from the Keeper's tree (or nothing: the edge is not chopped)
             for (int c = 0; c < SiteMap.N; c++)
             {
                 float x = SiteMap.CXc(c), z = SiteMap.CZc(c);
@@ -313,7 +322,7 @@ namespace AquariumCiv.Life
                 {
                     if (c == keeperTree) continue;
                     if (d < dEdge) { dEdge = d; edge = c; }
-                    if (d < dWoods && ForestAround(map, c) >= 8) { dWoods = d; woods = c; }
+                    if (!livingWoods && d < dWoods && ForestAround(map, c) >= 8) { dWoods = d; woods = c; }
                 }
                 else if (!water && st.WalkCost(c) > 0 && d < dBushes && ForestAround(map, c) > 0) { dBushes = d; bushes = c; }
                 if (map.Has(c, SiteMap.FMeadow) && d < dMeadow) { dMeadow = d; meadow = c; }
@@ -325,7 +334,8 @@ namespace AquariumCiv.Life
                     if (h > hHill) { hHill = h; hill = c; }
                 }
             }
-            if (woods < 0) woods = edge;
+            if (livingWoods) woods = sim.WoodsTreeCell(gx, gz);
+            else if (woods < 0) woods = edge;
             if (bushes < 0) bushes = edge;
 
             // The pond's shore nearest the green.

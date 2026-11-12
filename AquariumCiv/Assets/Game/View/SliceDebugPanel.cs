@@ -136,6 +136,8 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Mist big here")) last = EcoDebug.MistBigCamp();
+            if (Btn("Mist trees")) last = EcoDebug.MistTrees(); // #569
+            if (Btn("Mist one half, skip 3 yr")) last = EcoDebug.MistHalf(12); // #569
             if (Btn("Puddles now")) last = EcoDebug.PuddlesNow();
             if (Btn("Puddle visit")) last = EcoDebug.PuddleVisit();
             EndRow();
@@ -196,8 +198,11 @@ namespace AquariumCiv.View
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
             if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
             if (Btn("Slow-mo next hunt")) last = EcoDebug.HuntSlowMoNext();   // #362
+            if (Btn("Make a hunter")) last = EcoDebug.MakeHunter();   // #574
+            if (Btn("Gather an egg now")) last = EcoDebug.GatherEggNow();   // #574
             EndRow();
             Row();
+            if (Btn("Skip to next season")) last = EcoDebug.SkipToNextSeason(); // #576: the real clock, to the middle of the next season
             if (Btn("+1 season")) last = EcoDebug.SkipSeasons(1);
             if (Btn("+1 yr")) last = EcoDebug.SkipSeasons(4);
             if (Btn("+5 yr")) last = EcoDebug.SkipSeasons(20);
@@ -213,12 +218,18 @@ namespace AquariumCiv.View
             if (Btn("Settlers: woods")) last = EcoDebug.SettlersArrive(false); // fb4 #539
             if (Btn("Settlers: shore")) last = EcoDebug.SettlersArrive(true); // fb4 #539
             if (Btn("Pond to full")) last = EcoDebug.PondToFull(); // fb4 #539
+            if (Btn("Travellers bring wood now")) last = ApartGroupsView.DebugWoodNow(); // fb5 #578
+            if (Btn("Travellers join now")) last = ApartGroupsView.DebugJoinNow(); // fb5 #578
             if (Btn("Dry air")) last = EcoDebug.Humidity(0.1f);
             if (Btn("Humid air")) last = EcoDebug.Humidity(0.85f);
             if (Btn("Plant tree")) last = EcoDebug.PlantHere();
             if (Btn("Plant at edge")) last = EcoDebug.PlantAtEdge(); // #378
             if (Btn("Seed in hand")) last = EcoDebug.SeedInHand(); // #518: a ghost first, then a tap on it plants
             for (int i = 0; i <= 4; i++) if (Btn("T" + i)) last = EcoDebug.TreeStage(i);
+            EndRow();
+            Row(); // fb5 #573: the woods spot
+            if (Btn("Wild trees beside Keeper's")) last = EcoDebug.WildTrees(true); // a grown one and a sapling next to it: nobody chops there
+            if (Btn("Wild tree away")) last = EcoDebug.WildTrees(false); // a grown one away from it: the woods spot, with chips and logs
             EndRow();
             Row(); // fb4 #543: the fish chain
             if (Btn("Fill fish basket")) last = FishRackView.DebugFillBasket();

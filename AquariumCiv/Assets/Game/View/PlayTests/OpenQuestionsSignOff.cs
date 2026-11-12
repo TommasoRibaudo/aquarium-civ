@@ -31,7 +31,7 @@ namespace AquariumCiv.View.PlayTests
     /// three sample text stops to Temp/agent/oqsignoff/NN_name.png and writes auto-results.md there instead.
     /// </summary>
     [Explicit, Category("OpenQuestionsSignOff")]
-    public class OpenQuestionsSignOff
+    public partial class OpenQuestionsSignOff
     {
         public static bool AutoAnswer;
         const string ScenePath = "Assets/Game/Scenes/Slice.unity";
@@ -275,6 +275,9 @@ namespace AquariumCiv.View.PlayTests
             ["#273"] = new[] { P("#273", "camera reach at the walls", "camera273", "default view: pan to the walls at close and far zoom") },
             ["#249"] = new[] { P("#249", "the Kit button", "kit249", "default view: open the Kit") },
             ["#281"] = new[] { P("#281", "fresh green on return", "green281", "default view: the fresh green shows after you come back") },
+            // feedback batch 5 (#569-#578): the stops are in OpenQuestionsSignOff.Fb5.cs
+            ["#569"] = Fb5("#569"), ["#570"] = Fb5("#570"), ["#571"] = Fb5("#571"), ["#572"] = Fb5("#572"), ["#573"] = Fb5("#573"),
+            ["#574"] = Fb5("#574"), ["#575"] = Fb5("#575"), ["#576"] = Fb5("#576"), ["#577"] = Fb5("#577"), ["#578"] = Fb5("#578"),
         };
 
         // ---------------------------------------------------------------- reading docs/open-questions.md
@@ -716,6 +719,7 @@ namespace AquariumCiv.View.PlayTests
                 box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
                 pv = PeopleView.Find();
                 panelGo = new GameObject("OpenQuestionsSignOffPanel");
+                UnityEngine.Object.DontDestroyOnLoad(panelGo); // #569 reloads a young box for its stop and the played box afterwards
                 panel = panelGo.AddComponent<SignOffPanel>();
                 panel.Note("Getting the box ready...");
                 Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
@@ -772,6 +776,10 @@ namespace AquariumCiv.View.PlayTests
                     var st = stops[i];
                     string crumb = st.Section + (st.Sub.Length > 0 && st.Kind != Kind.Look ? " · " + st.Sub : "") + (st.Kind == Kind.Look ? "" : " · " + st.Kind.ToString().ToLowerInvariant());
                     panel.Show(i + 1, stops.Count, ModeOf(st.Kind), crumb, (st.Issue.Length > 0 ? st.Issue + " " : "") + st.Name, st.Judge, st.Extras.Select(x => x.label).ToArray(), st.Options, st.Bullets, st.BulletTitles, st.NotStaged);
+                    if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
+                    if (youngBox && !st.Slug.StartsWith("pacing_")) { yield return RebuildPlayedBox(); }
+                    yield return CloseLooseUi();
+                    if (!st.Slug.StartsWith("season_") && !st.Slug.StartsWith("pacing_")) yield return ResetSeason();
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {
@@ -781,7 +789,9 @@ namespace AquariumCiv.View.PlayTests
                         if (shoot)
                         {
                             if (st.Kind != Kind.Look) textShots++;
+                            if (st.Slug == "title_line") { panel.collapsed = true; yield return Frames(3); } // the title sits behind the panel: fold it for the shot
                             yield return Shot((i + 1).ToString("00") + "_" + st.Slug);
+                            panel.collapsed = false;
                         }
                         for (int e = 0; e < st.Extras.Length; e++)
                         {
@@ -870,7 +880,8 @@ namespace AquariumCiv.View.PlayTests
         string[] extras = new string[0], options = new string[0], bulletTitles = new string[0], bullets = new string[0];
         string[] secNames = new string[0]; int[] secFirst = new int[0], secCount = new int[0];
         int mode;
-        bool collapsed, typing, jumpOpen;
+        internal bool collapsed;
+        bool typing, jumpOpen;
         Rect screenRect, pub, noteRect;
         float measuredH = 200f;
         bool pubSet;
@@ -981,6 +992,7 @@ namespace AquariumCiv.View.PlayTests
             const float X = 6f, W = UnitsWide - 12f, IW = W - 16f;
             float y = TopPx / sc;
             var e = Event.current;
+            if (collapsed) y += 70f / sc; // folded, the bar sits below the HUD title line (it hid it)
             if (collapsed)
             {
                 var r = new Rect(X, y, W, 40f);

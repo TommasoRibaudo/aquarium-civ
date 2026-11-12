@@ -53,6 +53,7 @@ namespace AquariumCiv.Life.Tests
             // #285: the camp's own jobs come back as the land offers them, not with the gate alone
             foreach (var key in new[] { EcoMilestones.FirstBush, EcoMilestones.WaterSurfaced, EcoMilestones.FirstWoodTree })
             { sim.State.eco.milestoneKeys.Add(key); sim.State.eco.milestoneMonths.Add(sim.State.month); }
+            sim.DebugWildTrees(false); // #573: the wood job needs a real grown tree away from the Keeper's tree, not only the milestone
             sim.DebugRedrawJobs();
             Assert.IsFalse(Work(sim).All(a => a.place.kind == PlaceKind.Stream || a.place.kind == PlaceKind.Fire || a.place == CampStash.Stand),
                 "once the land offers it the camp's own jobs come back");

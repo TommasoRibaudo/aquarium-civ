@@ -29,6 +29,7 @@ namespace AquariumCiv.Life.Tests
             foreach (var key in new[] { EcoMilestones.FirstBush, EcoMilestones.WaterSurfaced, EcoMilestones.FirstWoodTree })
                 if (!sim.State.eco.milestoneKeys.Contains(key)) { sim.State.eco.milestoneKeys.Add(key); sim.State.eco.milestoneMonths.Add(sim.State.month); }
             sim.DebugAddRabbits(8);
+            sim.DebugWildTrees(false, 5); // #573: the woodcutters need real grown wild trees away from the Keeper's tree (five, spread out, two choppers to each), not only the milestone
             sim.DebugRedrawJobs();
             for (int m = 0; m < 24; m++) sim.Step();
             Assert.AreEqual(Era.Camp, sim.State.era, "still a camp");

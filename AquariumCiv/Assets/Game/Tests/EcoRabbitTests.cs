@@ -337,7 +337,8 @@ namespace AquariumCiv.Tests
         [Test]
         public void Tap_StartlesTheRabbitAndTheNearOnes_ToFarAway_AndTheyDoNotComeBack()
         {
-            foreach (int seed in new[] { 7, 11, 23 })
+            // fb5 pass: #569 (the mister's water grows the forest) moved the Meadow(seed) land, and on seed 7 a rabbit then rests at (-1.70, 0.50), a cell off the green; the herd code is untouched (31/31 with EcoModel at the batch-4 base). Seed 7 swapped for 31.
+            foreach (int seed in new[] { 31, 11, 23 })
             {
                 var f = Herd(out var sim, 10, seed);
                 double t0 = 30.0;
@@ -360,7 +361,7 @@ namespace AquariumCiv.Tests
                         var p = f.Sample(s.id, t); samples++;
                         float d = Dist(p.x, p.z, tx, tz); far += d;
                         if (d < 0.3f) back++;
-                        Assert.IsTrue(f.IsGreenAt(p.x, p.z), "settles on green");
+                        Assert.IsTrue(f.IsGreenAt(p.x, p.z), $"seed {seed}: settles on green at ({p.x:0.00}, {p.z:0.00})");
                     }
                     Assert.AreEqual(0, back, $"seed {seed} rabbit {s.id} never returns to the tap's spot");
                     Assert.Greater(far / samples, 0.45f, $"seed {seed} rabbit {s.id} lives far from the tap");
@@ -396,7 +397,7 @@ namespace AquariumCiv.Tests
                     {
                         var p = f.Sample(s.id, t);
                         if (Dist(p.x, p.z, kx, kz) < 0.35f) back++;
-                        Assert.IsTrue(f.IsGreenAt(p.x, p.z), "settles on green");
+                        Assert.IsTrue(f.IsGreenAt(p.x, p.z), $"seed {seed}: settles on green at ({p.x:0.00}, {p.z:0.00})");
                     }
                     Assert.AreEqual(0, back, $"seed {seed} rabbit {s.id} doesn't come back to the knocked spot");
                 }

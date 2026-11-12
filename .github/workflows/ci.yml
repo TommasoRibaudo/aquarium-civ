@@ -1,8 +1,11 @@
-# Checks for every pull request and every push to main. Required to pass before merging (ruleset on main).
+# Checks for every pull request and every push to main. Required to pass before merging (rulesets on dev and main).
 # - Workflow lint: actionlint (syntax) + zizmor (Actions security audit).
 # - Secret scan: gitleaks over the commits being checked (GitHub secret scanning also runs on every push).
 # - Sim tests: dotnet test Tools/SimTests (pure-C# sim, no Unity, no secrets; runs on fork PRs too).
-# - Unity tests: EditMode tests via GameCI. Needs the Unity license secrets, so it is skipped for PRs from forks
+# - Unity tests (2026-11-11, the user's call): EditMode via GameCI, only on PRs into main (the gate) and on a manual run,
+#   never for a docs-only diff; four assembly groups run in parallel and the "Unity tests" job (the required check) gates them.
+#   PRs into dev rely on the local batched Editor pass (docs/workflow.md section 7) plus the fast checks; pushes to main skip it
+#   (the PR into main already tested that content). Needs the Unity license secrets, so it is skipped for PRs from forks
 #   (GitHub never gives secrets to fork PRs; don't change this to pull_request_target).
 # Setup and rationale: docs/ci.md
 name: CI
@@ -95,13 +98,58 @@ jobs:
       - name: dotnet test
         run: dotnet test Tools/SimTests
 
-  unity-tests:
-    name: Unity tests
+  # Does this run need Unity at all? Only a PR into main (or a manual run), and only when something other than docs changed.
+  unity-scope:
+    name: Unity scope
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 5
     permissions:
       contents: read
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          run=false
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            run=true
+          elif [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" = "main" ] && [ "$SAME_REPO" = "true" ]; then
+            if git diff --name-only "$BASE...$HEAD" | grep -qvE '^docs/|\.md$'; then run=true; fi
+          fi
+          echo "Unity tests needed: $run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  unity-editmode:
+    name: Unity EditMode (${{ matrix.group }})
+    needs: unity-scope
+    if: needs.unity-scope.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: sim
+            assemblies: AquariumCiv.Sim.Tests
+          - group: life
+            assemblies: AquariumCiv.Life.Tests
+          - group: view
+            assemblies: AquariumCiv.View.Tests
+          - group: rest
+            assemblies: AquariumCiv.Audio.Tests;AquariumCiv.Game.UI.Tests;AquariumCiv.Cards.Tests;AquariumCiv.Moments.Tests;AquariumCiv.Shaping.Tests;AquariumCiv.ShowMe.Tests;AquariumCiv.TimeLapseScreen.Tests;AquariumCiv.Prototypes.Shared.Tests;AquariumCiv.Spikes.Growth.Tests;AquariumCiv.View.PlayTests;AquariumCiv.Game.UI.PlayTests;AquariumCiv.Prototypes.Shared.PlayTests
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
@@ -143,11 +191,33 @@ jobs:
         with:
           projectPath: ${{ env.PROJECT_PATH }}
           testMode: editmode
+          customParameters: -assemblyNames "${{ matrix.assemblies }}"
           artifactsPath: test-results
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: test-results
+          name: test-results-${{ matrix.group }}
           path: test-results
           retention-days: 14
+
+  # The required check (rulesets on dev and main): green when the EditMode groups passed, or were not needed (unity-scope).
+  unity-tests:
+    name: Unity tests
+    needs: [unity-scope, unity-editmode]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Gate
+        env:
+          SCOPE: ${{ needs.unity-scope.result }}
+          NEEDED: ${{ needs.unity-scope.outputs.run }}
+          EDITMODE: ${{ needs.unity-editmode.result }}
+        run: |
+          echo "scope=$SCOPE needed=$NEEDED editmode=$EDITMODE"
+          if [ "$SCOPE" != "success" ]; then echo "Unity scope did not run cleanly"; exit 1; fi
+          if [ "$NEEDED" != "true" ]; then echo "Unity tests not needed for this run (PR into dev, push, or docs only)."; exit 0; fi
+          if [ "$EDITMODE" = "success" ]; then exit 0; fi
+          echo "EditMode groups: $EDITMODE"; exit 1

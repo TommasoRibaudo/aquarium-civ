@@ -1,3 +1,4 @@
+using AquariumCiv.Life;
 using UnityEngine;
 
 namespace AquariumCiv.View
@@ -47,6 +48,19 @@ namespace AquariumCiv.View
             Pieces.Woodpile(mb, Vector3.zero, 0f);
             mb.Prism(new Vector3(0f, 0f, -0.16f), 0.05f, 0.048f, 0.07f, 7, Palette.Bark, topCol: Palette.WoodLight); // the block
             return Done(mb, "ApartWoodpile");
+        }
+
+        /// <summary>#578: a loose stack of <paramref name="count"/> logs (a log a load the travellers set down, up to <see cref="ApartLife.MaxPileLogs"/>), lying along local z,
+        /// centred <paramref name="xOffset"/> to the side of the origin. The chopping spot keeps two.</summary>
+        public static Mesh Logs(int count, int seed = 0, float xOffset = 0f)
+        {
+            var mb = new MeshBuilder(2320 + seed) { jitter = 0.02f, M = Matrix4x4.Scale(Vector3.one * CampScale) };
+            int n = ApartLife.PileLogs(count), placed = 0;
+            int[] row = { 5, 4, 3 };
+            for (int r = 0; r < row.Length && placed < n; r++)
+                for (int i = 0; i < row[r] && placed < n; i++, placed++)
+                    Pieces.Log(mb, new Vector3(xOffset + (i - (row[r] - 1) / 2f) * 0.055f, 0.028f + r * 0.048f, 0f), 0.026f, 0.26f, 0f, placed % 2 == 0 ? Palette.Bark : Palette.WoodLight);
+            return Done(mb, "ApartLogs");
         }
 
         /// <summary>The shore family's hut: plank walls under a peaked thatch, the door on local -z; a window that lights at night while

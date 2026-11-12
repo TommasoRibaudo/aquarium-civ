@@ -143,7 +143,8 @@ namespace AquariumCiv.Life.Tests
                     float speed = Dist(carry.x0, carry.z0, carry.x1, carry.z1) / LifeClock.RealSecondsBetween(carry.start, carry.end);
                     float walk = LifePlanner.WalkSpeed / LifeClock.RealSecondsPerViewHour(carry.start);
                     Assert.Less(speed, walk * 0.95f, "a slow proud walk home, slower than a plain one");
-                    Assert.Greater(speed, walk * 0.6f);
+                    // #574: parents hunt now, which adds plans; a walk home that crosses into the evening changes clock rate mid-walk (the pace is measured at its start), so the lower bound holds only where the rate is the same at both ends
+                    if (Math.Abs(LifeClock.RealSecondsPerViewHour(carry.start) - LifeClock.RealSecondsPerViewHour(carry.end - 0.001f)) < 0.01f) Assert.Greater(speed, walk * 0.6f);
                     Assert.Greater(p.takeHour, p.steps.First(x => x.phase == HuntPhase.PickUp).start);
                 }
                 else

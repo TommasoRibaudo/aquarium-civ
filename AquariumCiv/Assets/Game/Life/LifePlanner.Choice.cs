@@ -122,8 +122,9 @@ namespace AquariumCiv.Life
                         {
                             var o = v.def.options[i];
                             if (o == null || o.strangers <= 0 || string.IsNullOrEmpty(o.apart)) continue;
-                            var spot = sim.ApartSpotPreview(o.apart);
-                            var home = sim.ApartCampSpot(spot.x, spot.z, o.apart, out _); // where ApartGroupsView will draw their camp
+                            string akind = SimCore.ApartKindFor(v.dilemma, o.apart); // #578: the camp sits where the words said
+                            var spot = sim.ApartSpotPreview(akind);
+                            var home = sim.ApartCampSpot(spot.x, spot.z, akind, out _); // where ApartGroupsView will draw their camp
                             var toward = ChoiceScenes.HomeWard(c, home, hx, hz, out bool homeOk);
                             if (!homeOk) break;
                             edge = toward;

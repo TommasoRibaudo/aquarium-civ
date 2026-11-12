@@ -123,12 +123,13 @@ namespace AquariumCiv.Life
                 if (plan.carer != null && t.hour >= plan.start && t.hour < plan.end)
                 {
                     var ca = PlanBase(plan.carer, t);
+                    if (ca.hunt != HuntPhase.None) return; // #574: a hunter who is a parent hunts; the baby stays in while they are out
                     bool foot = OnFoot(p, ca, t); // 2026-11-06: a walking-age one toddles after them for the short walks
                     if (foot || CanHold(ca.kind, plan.onBack)) { a.carriedBy = plan.carer.who; a.carryOnBack = plan.onBack && !foot; a.carryOnFoot = foot; }
                 }
                 return;
             }
-            if (!carerBabies.TryGetValue(p.key, out var babies) || !CanHold(a.kind, true)) return;
+            if (!carerBabies.TryGetValue(p.key, out var babies) || !CanHold(a.kind, true) || a.hunt != HuntPhase.None) return;
             foreach (var b in babies)
             {
                 var plan = CarryOf(b);

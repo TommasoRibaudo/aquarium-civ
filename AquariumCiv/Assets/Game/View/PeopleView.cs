@@ -492,7 +492,7 @@ namespace AquariumCiv.View
             bool drawing = a.kind == ActivityKind.FetchWater && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && a.place.kind is PlaceKind.Pond or PlaceKind.Stream or PlaceKind.Puddle;
             if (drawing) target = DrawStand(land, plannerSim, a.place.kind, spot, target, a.slot, out face);
             // #364: fishing: the fisher stands 0.06 u back from the real water edge facing the water (the water run's spot), so the line's end is on the water
-            bool fishing = a.kind == ActivityKind.Fish && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
+            bool fishing = (a.kind == ActivityKind.Fish || a.kind == ActivityKind.Gather && a.prop == Prop.Basket /* #574: the egg pick at the reeds */) && !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && a.place.kind == PlaceKind.Pond;
             if (fishing) target = DrawStand(land, plannerSim, PlaceKind.Pond, spot, target, a.slot, out face);
             if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
@@ -624,7 +624,7 @@ namespace AquariumCiv.View
                 if (d.drew != DollStyle.TipBasket) d.tipStart = time;
                 tipSince = since = time - d.tipStart;
             }
-            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, a.pace, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
+            var pose = playing ? playGame.PoseOf(playIx, time, phase, d.stride, d.speed, out _) : DollMotion.Evaluate(style, phase, style == DollStyle.Chop ? a.pace * (0.9f + 0.2f * Hash01(a.who.Key, 6)) : a.pace /* #573: each chopper has their own tempo, so two at one tree never strike together */, a.step, steps, babyArms ? PropSlot.Arms : slot, holds || babyArms, d.speed, a.progress, since, a.count, d.stride); // #358
             if (style != d.drew)
             {
                 d.blendFrom = d.pose;
@@ -1398,6 +1398,14 @@ namespace AquariumCiv.View
         public bool TryGetActivity(PegDollView view, out PersonActivity act)
         {
             foreach (var d in dolls.Values) if (d.view == view) { act = d.act; return true; }
+            act = default;
+            return false;
+        }
+
+        /// <summary>#573: the activity a person's doll is showing (false when they have no doll).</summary>
+        public bool TryGetActivityOf(PersonRef who, out PersonActivity act)
+        {
+            if (dolls.TryGetValue(who.Key, out var d)) { act = d.act; return true; }
             act = default;
             return false;
         }
