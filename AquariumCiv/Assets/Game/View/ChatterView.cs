@@ -334,9 +334,29 @@ namespace AquariumCiv.View
 
         // ================================================================== drawing
 
+        /// <summary>A mark drawn last frame: its box in screen pixels (y down, as UI Toolkit's screen-to-panel wants) and whose it is.</summary>
+        public struct ScreenMark { public Rect rect; public PersonRef who; }
+
+        /// <summary>Views that drew a frame ago or less (#606: the name pin keeps clear of their marks).</summary>
+        public static readonly List<ChatterView> Drawing = new();
+        public int DrawFrame { get; private set; } = -10;
+
+        /// <summary>Adds the marks drawn last frame (the chatter marks and the speech mark) to <paramref name="into"/>.</summary>
+        public void ScreenMarks(List<ScreenMark> into)
+        {
+            if (Time.frameCount - DrawFrame > 2) return;
+            float half = MarkPixels * 0.75f;
+            for (int i = 0; i < DrawnAt.Count && i < DrawnOver.Count; i++)
+                into.Add(new ScreenMark { rect = new Rect(DrawnAt[i].x - half, Screen.height - DrawnAt[i].y - half, half * 2f, half * 2f), who = DrawnOver[i] });
+            if (SpeechDrawn)
+                into.Add(new ScreenMark { rect = new Rect(SpeechAt.x - half, Screen.height - SpeechAt.y - half, half * 2f, half * 2f), who = SpeechDrawnOver });
+        }
+
         /// <summary>Lays out the live marks for this frame. Call it after the dolls and the camera have moved.</summary>
         public void Draw(PeopleView pv, Camera cam)
         {
+            DrawFrame = Time.frameCount;
+            if (!Drawing.Contains(this)) Drawing.Add(this);
             if (pv == null || cam == null) { Hide(); return; }
             long t0 = Stopwatch.GetTimestamp();
             watch.Start();
@@ -488,6 +508,7 @@ namespace AquariumCiv.View
         /// <summary>The director is going: nothing outlives it.</summary>
         public void Dispose()
         {
+            Drawing.Remove(this);
             if (go != null) UnityEngine.Object.Destroy(go);
             if (mesh != null) UnityEngine.Object.Destroy(mesh);
             if (material != null) UnityEngine.Object.Destroy(material);

@@ -441,6 +441,7 @@ namespace AquariumCiv.View
             Row();
             if (Btn("Line: caption here")) last = ShowMeDirector.DebugLineHere();
             if (Btn("Speech mark")) last = ShowMeDirector.DebugSpeechMark();
+            if (Btn("Speech over pin")) last = PersonCardView.DebugSpeechOverPin();
             if (Btn("Line: 2nd waits")) last = ShowMeDirector.DebugWaitingLines();
             EndRow();
             // #363: pairs (talk is "Force chat" above; the hug shows the variant even while BeatFlags.Hugs is off)

@@ -69,6 +69,18 @@ namespace AquariumCiv.View
         /// <summary>The pin tag is on screen, and where (screen pixels, y up; tests).</summary>
         public bool PinTagShown { get; private set; }
         public Vector2 PinTagScreen { get; private set; }
+        /// <summary>#606: how far (panel px, up is positive) the pin tag sits above its head spot to keep clear of a speech mark or bubble; and where it is heading.</summary>
+        public float PinLift { get; private set; }
+        public float PinLiftTarget { get; private set; }
+        /// <summary>The pin tag's box now (panel px, y down; tests).</summary>
+        public Rect PinTagRect => new(pinTag.style.left.value.value - Sized(pinTag.resolvedStyle.width, 160f) * 0.5f, pinTag.style.top.value.value - Sized(pinTag.resolvedStyle.height, 72f), Sized(pinTag.resolvedStyle.width, 160f), Sized(pinTag.resolvedStyle.height, 72f));
+        float pinLiftVel;
+        readonly List<Rect> blockers = new();
+        readonly List<ChatterView.ScreenMark> marksTmp = new();
+        /// <summary>The pin tag settles to its target in about this many seconds (smooth, no jitter).</summary>
+        const float PinLiftSeconds = 0.14f;
+        /// <summary>Clear space kept between the lifted pin and what it clears (panel px).</summary>
+        const float PinGap = 10f;
         public VisualElement CardRoot => cardRoot;
         /// <summary>#148: the crowd person whose small card is open (-1 = none), and that card.</summary>
         public int CrowdIndex { get; private set; } = -1;
@@ -510,6 +522,7 @@ namespace AquariumCiv.View
             bool pinDrawn = pinOn && pinFade > 0.01f;
             SetTag(pinTag, pinDrawn);
             PinTagShown = pinOn;
+            if (!pinOn) { PinLift = 0f; PinLiftTarget = 0f; pinLiftVel = 0f; }
             // the open card's person (when not the pin): a paper tag
             bool named = CrowdOpen || (IsOpen && Card != null && Card.alive && (pinned == null || pinned.id != OpenId));
             bool nameOn = !hide && named && Place(nameTag, pv, cam, Who);
@@ -722,9 +735,68 @@ namespace AquariumCiv.View
             float W = overlayRoot.layout.width;
             if (float.IsNaN(half)) half = 0f;
             tag.style.left = W > 0f ? Mathf.Clamp(p.x, half + 16f, Mathf.Max(half + 16f, W - half - 16f)) : p.x;
-            tag.style.top = p.y - 10f;
-            if (tag == pinTag) { var s = cam.WorldToScreenPoint(w); PinTagScreen = new Vector2(s.x, s.y); }
+            float top = p.y - 10f;
+            if (tag == pinTag)
+            {
+                var s = cam.WorldToScreenPoint(w); PinTagScreen = new Vector2(s.x, s.y);
+                top -= LiftPin(pv, cam, who, tag.style.left.value.value, top, Sized(tag.resolvedStyle.width, 160f), Sized(tag.resolvedStyle.height, 72f));
+            }
+            tag.style.top = top;
             return true;
+        }
+
+        /// <summary>
+        /// #606: how far up the pin tag goes this frame. Every speech mark, chatter mark and bubble on screen is a blocker; a tag whose box meets
+        /// one goes up to rest above it (or, with no room at the top of the screen, down below the feet), and eases back once nothing is there.
+        /// Worked out from the tag's resting spot each frame, so it doesn't chase its own lifted box.
+        /// </summary>
+        float LiftPin(PeopleView pv, Camera cam, PersonRef who, float cx, float baseTop, float w, float h)
+        {
+            blockers.Clear();
+            marksTmp.Clear();
+            float k = Screen.width > 0 ? overlayRoot.layout.width / Screen.width : 1f;
+            foreach (var c in ChatterView.Drawing) c.ScreenMarks(marksTmp);
+            foreach (var m in marksTmp)
+            {
+                var a = RuntimePanelUtils.ScreenToPanel(overlayRoot.panel, m.rect.position);
+                blockers.Add(new Rect(a.x, a.y, m.rect.width * k, m.rect.height * k));
+            }
+            foreach (var b in GlassBubble.OnPanel)
+                if (b.Showing && b.panel == overlayRoot.panel) blockers.Add(b.worldBound);
+            float lift = 0f, x0 = cx - w * 0.5f, x1 = cx + w * 0.5f;
+            for (int pass = 0; pass < 6; pass++)
+            {
+                float bottom = baseTop - lift, topEdge = bottom - h;
+                int hit = -1;
+                for (int i = 0; i < blockers.Count; i++)
+                {
+                    var r = blockers[i];
+                    if (r.xMax > x0 && r.xMin < x1 && r.yMax > topEdge && r.yMin < bottom && (hit < 0 || r.yMin < blockers[hit].yMin)) hit = i;
+                }
+                if (hit < 0) break;
+                lift = baseTop - (blockers[hit].yMin - PinGap);
+            }
+            // no room above (the HUD's strip): below the feet instead
+            if (lift > 0f && baseTop - lift - h < FarEndTopMin && pv.TryGetDollFeet(who, out var feetW))
+            {
+                var f = ToPanel(cam, feetW, out bool ok);
+                if (ok) lift = baseTop - (f.y + h + PinGap);
+            }
+            PinLiftTarget = lift;
+            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            PinLift = Mathf.Abs(lift - PinLift) < 0.5f ? lift : Mathf.SmoothDamp(PinLift, lift, ref pinLiftVel, PinLiftSeconds, float.MaxValue, dt);
+            return PinLift;
+        }
+
+        /// <summary>The highest a lifted pin tag may reach (panel px from the top): the HUD's strip, as the tie labels keep.</summary>
+        const float FarEndTopMin = 120f;
+
+        /// <summary>Debug (#606): a speech mark over the pinned person for 8 s, to see the name pin lift clear of it.</summary>
+        public static string DebugSpeechOverPin()
+        {
+            var sim = Sim;
+            if (sim == null || sim.Pinned == null) return "pin someone first";
+            return ShowMeDirector.DebugSpeechOver(PersonRef.Notable(sim.Pinned.id), 8f);
         }
 
         static void SetTag(VisualElement tag, bool on) { if (tag != null) tag.style.display = on ? DisplayStyle.Flex : DisplayStyle.None; }
