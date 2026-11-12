@@ -94,7 +94,7 @@ namespace AquariumCiv.View
             {
                 var p = new Vector2(Site.CXc(ec.treeCell), Site.CZc(ec.treeCell));
                 var ib = Item(ec.treeCell, 9);
-                KeeperTree(ib, land.OnGround(p), ec.treeStage, ec.treeNeed, co);
+                KeeperTree(ib, land.OnGround(p), ec.treeStage, ec.treeNeed, co, land);
                 mb.AppendFree(ib);
                 if (ec.treeStage >= 4) lock (TreeSpots) TreeSpots[ec.treeCell] = (land.OnGround(p), 0.12f + 0.06f * ec.treeStage); // #359: the Keeper's grown tree is a tree to play round
                 near.Add((p, 0.12f + 0.06f * ec.treeStage));
@@ -183,7 +183,7 @@ namespace AquariumCiv.View
 
         /// <summary>The Keeper's one tree, by stage (0 seed in a mound, 1 sprout, 2 sapling, 3 young, 4 grown, larger than the
         /// forest's), showing one need at a time: 1 thirst (fallen leaves at its foot), 3 weeds (tufts crowding it).</summary>
-        static void KeeperTree(MeshBuilder mb, Vector3 g, int stage, int need, LandColors co) => KeeperTreeKit.Build(mb, g, stage, need, co);
+        static void KeeperTree(MeshBuilder mb, Vector3 g, int stage, int need, LandColors co, Land land) => KeeperTreeKit.Build(mb, g, stage, need, co, land);
 
         /// <summary>How far past the land's edge the glass stands inside (the water meets the pane, #269): the panes sit 7.5 cm out
         /// and are 2 cm thick.</summary>
