@@ -40,5 +40,15 @@ namespace AquariumCiv.View.Tests
             var s = new System.Collections.Generic.List<(float t, Vector2 d)> { (0.95f, new Vector2(0.04f, 0f)), (0.98f, new Vector2(0.04f, 0f)) };
             Assert.That(BoxCameraMath.Velocity(s, 1f).x, Is.EqualTo(1f).Within(1e-3f), "0.08 units over 80 ms");
         }
+
+        [Test]
+        public void TwoFingerTurn_IsTwistForYaw_AndMidpointSlideForPitch()
+        {
+            var t = BoxCameraMath.TwoFingerTurn(new Vector2(200f, 0f), new Vector2(0f, 200f), new Vector2(0f, -25f), 2000f);
+            Assert.That(t.x, Is.EqualTo(90f).Within(1e-3f), "yaw from the twist");
+            Assert.That(t.y, Is.EqualTo(BoxCameraMath.PitchDegrees(25f, 2000f)).Within(1e-4f), "pitch from the slide (up the screen lowers the camera)");
+            var close = BoxCameraMath.TwoFingerTurn(new Vector2(20f, 0f), new Vector2(0f, 20f), Vector2.zero, 2000f);
+            Assert.That(close.x, Is.EqualTo(0f), "fingers too close have no direction");
+        }
     }
 }

@@ -55,7 +55,7 @@ namespace AquariumCiv.View
         Mode mode;
         Vector2 pressPos, lastPos, prevMid, prevVec, startMid;
         float prevDist, twistTotal;
-        bool panning, moved, turnLatched;
+        bool panning, moved, turnLatched, gestureTool;
         Vector2 panVelocity; // world units per second (x, z): the pan fling
         bool pressOnUi, pressClaimed;
         readonly List<ICameraGate> gates = new();
@@ -459,6 +459,7 @@ namespace AquariumCiv.View
             else if (mode == Mode.None && AquariumCiv.Game.UiInput.Over(a)) pressOnUi = true;
             if (pressOnUi) { n = 0; mode = Mode.None; panning = false; }
             // A press a tool (the wipe) claims at touch-down is not ours until every finger lifts.
+            bool toolGesture = false;
             if (n == 0) pressClaimed = false;
             else if (mode == Mode.None && !pressClaimed && ClaimedByGate(a)) pressClaimed = true;
             float scrollY = Mouse.current != null && n == 0 ? Mouse.current.scroll.ReadValue().y : 0f;
@@ -470,16 +471,21 @@ namespace AquariumCiv.View
                 if (IsFlying && TickFlight(dt, n, scrollY)) FollowAngles(dt);
                 // a second finger on a tool's press is the player taking the camera: it ends a lean (user 2026-11-08)
                 if (n >= 2 && leanHold != null) { LeanCancels++; leanHold = null; glide.Cancel(); }
-                n = 0; mode = Mode.None; panning = false; velocity = Vector2.zero;
-                if (!(glide.Armed && LeanHeld())) glide.Cancel(); // a lean stays through the life tool's taps
-                return;
+                // #587: two fingers while a tool owns the press are the camera's: they pan by the midpoint, zoom and twist (no pitch)
+                if (n >= 2 && !IsFlying && !mouseTurn) toolGesture = true;
+                else
+                {
+                    n = 0; mode = Mode.None; panning = false; velocity = Vector2.zero;
+                    if (!(glide.Armed && LeanHeld())) glide.Cancel(); // a lean stays through the life tool's taps
+                    return;
+                }
             }
             if (IsFlying && TickFlight(dt, n, scrollY)) { FollowAngles(dt); return; }
             if (!IsFlying && StepGlide(dt, n, scrollY)) return;
             float H = Mathf.Max(1f, Screen.height);
 
             if (n == 0) EndPress(now);
-            else if (n >= 2 || mouseTurn) Turn(n, a, b, H, now);
+            else if (n >= 2 || mouseTurn) Turn(n, a, b, H, now, toolGesture);
             else Pan(a, H, now);
 
             if (Mouse.current != null && n == 0)
@@ -504,7 +510,7 @@ namespace AquariumCiv.View
             if (!panDrag)
             {
                 if (panVelocity != Vector2.zero && !turning) PanFling(dt);
-                StepFollow(dt); // a turn or a pinch keeps the person in the middle; only a pan lets them go
+                if (!(turning && gestureTool)) StepFollow(dt); // a turn or a pinch keeps the person in the middle; only a pan lets them go
                 if (!turning) SpringPan(dt);
             }
             AutoOrbit(n, dragging, dt, now);
@@ -709,8 +715,9 @@ namespace AquariumCiv.View
         /// <summary>#587: two fingers (or a right / middle mouse drag) turn and zoom. Twisting the fingers changes yaw, moving them up or down changes pitch, a pinch
         /// zooms about the midpoint; all in the same gesture. A twist or a slide that stays under its slop is a pinch's jitter and turns nothing.
         /// The mouse's turn has no twist: its drag yaws and pitches.</summary>
-        void Turn(int n, Vector2 a, Vector2 b, float H, float now)
+        void Turn(int n, Vector2 a, Vector2 b, float H, float now, bool tool = false)
         {
+            gestureTool = tool;
             Vector2 mid = n >= 2 ? (a + b) * 0.5f : a;
             Vector2 vec = n >= 2 ? b - a : Vector2.zero;
             float dist = vec.magnitude;
@@ -728,8 +735,16 @@ namespace AquariumCiv.View
                 bool wide = dist > BoxCameraMath.TwistMinSpan * H && prevDist > BoxCameraMath.TwistMinSpan * H;
                 float tw = wide ? BoxCameraMath.TwistDegrees(prevVec, vec) : 0f;
                 twistTotal += tw;
-                if (!turnLatched && (Mathf.Abs(twistTotal) >= BoxCameraMath.TwistSlopDegrees || BoxCameraMath.PastSlop(mid - startMid, H))) turnLatched = true;
-                if (turnLatched) { dYaw = tw; dPitch = -BoxCameraMath.PitchDegrees(dm.y, H); }
+                if (!turnLatched && (Mathf.Abs(twistTotal) >= BoxCameraMath.TwistSlopDegrees || (!tool && BoxCameraMath.PastSlop(mid - startMid, H)))) turnLatched = true;
+                if (turnLatched) { dYaw = tw; if (!tool) dPitch = -BoxCameraMath.PitchDegrees(dm.y, H); }
+                if (tool && GroundAt(prevMid, out var g0) && GroundAt(mid, out var g1)) // a tool owns one finger: the midpoint grabs the ground, as the old two-finger pan did
+                {
+                    var bound = ViewBounds(zoom);
+                    var d = g0 - g1;
+                    target.x = BoxCameraMath.GlassStep(target.x, d.x, -bound.x, bound.x);
+                    target.z = BoxCameraMath.GlassStep(target.z, d.z, -bound.y, bound.y);
+                    panTravel += dm.magnitude;
+                }
             }
             else
             {

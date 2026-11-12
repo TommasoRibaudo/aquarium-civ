@@ -164,6 +164,14 @@ namespace AquariumCiv.View
         public static float TwistDegrees(Vector2 from, Vector2 to)
             => from.sqrMagnitude < 1e-4f || to.sqrMagnitude < 1e-4f ? 0f : Vector2.SignedAngle(from, to);
 
+        /// <summary>(yaw, pitch) degrees for one frame of a two-finger turn: the twist of the line between the fingers and the slide of their midpoint
+        /// (the Moments rail uses this; <see cref="BoxCamera"/> adds latches on top).</summary>
+        public static Vector2 TwoFingerTurn(Vector2 prevVec, Vector2 vec, Vector2 midDelta, float screenHeight)
+        {
+            bool wide = prevVec.magnitude > TwistMinSpan * screenHeight && vec.magnitude > TwistMinSpan * screenHeight;
+            return new Vector2(wide ? TwistDegrees(prevVec, vec) : 0f, -PitchDegrees(midDelta.y, screenHeight));
+        }
+
         public static Vector2 CapPanFling(Vector2 v) => v.magnitude > PanFlingCap ? v.normalized * PanFlingCap : v;
 
         public static Vector2 PanInertiaStep(Vector2 v, float dt)

@@ -196,11 +196,11 @@ namespace AquariumCiv.GameUI
 
         // Tester run 2: the Mister's hint is for the first meeting. It shows the first time the mister is picked up, once more if the
         // player put it down without misting, then never again (PlayerPrefs: it is about the player, not the box).
-        public const string MisterHint = "Hold a finger over the land to mist it. Two fingers turn and zoom the view.";
+        public const string MisterHint = "Hold a finger over the land to mist it. Two fingers move, turn and zoom the view.";
         /// <summary>#311: the tweezers pluck what overgrows; the cloth keeps the glass.</summary>
-        public const string TweezersHint = "Tap or drag over weeds, vines and saplings to pluck them. Two fingers turn and zoom the view.";
+        public const string TweezersHint = "Tap or drag over weeds, vines and saplings to pluck them. Two fingers move, turn and zoom the view.";
         /// <summary>#518: the seed places like the life slot: a tap shows where it would go, a second tap on that plants it.</summary>
-        public const string SeedHint = "Tap the land to choose where the seed goes. Two fingers turn and zoom the view.";
+        public const string SeedHint = "Tap the land to choose where the seed goes. Two fingers move, turn and zoom the view.";
         const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
         public static bool MisterHintDue
         {
@@ -279,8 +279,8 @@ namespace AquariumCiv.GameUI
         AquariumCiv.Sim.Eco.LifeSpecies? lockedPick;
         string lifeRowKey = "";
         bool lifeShown;
-        public const string LifeWaterHint = "Tap the water to choose a spot. Two fingers turn and zoom the view."; // fb4 #542
-        public const string LifeHint = "Tap the glowing ground to choose a spot. Two fingers turn and zoom the view.";
+        public const string LifeWaterHint = "Tap the water to choose a spot. Two fingers move, turn and zoom the view."; // fb4 #542
+        public const string LifeHint = "Tap the glowing ground to choose a spot. Two fingers move, turn and zoom the view.";
         /// <summary>The species in hand while <see cref="Hand"/> is <see cref="KitTool.Life"/>.</summary>
         public AquariumCiv.Sim.Eco.LifeSpecies HeldLife => heldLife;
         /// <summary>How many times the ready wiggle played (tests).</summary>

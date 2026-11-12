@@ -5,7 +5,7 @@ namespace AquariumCiv.View.Moments
 {
     /// <summary>
     /// The guided camera of a moment (era-moment.md §3–§5) as pure maths: the beats' camera keys flattened onto one time
-    /// line, eased between keys, from the pose the player left the camera in. One finger can still orbit while it plays;
+    /// line, eased between keys, from the pose the player left the camera in. Two fingers can still turn the view while it plays (#587; one finger pans in the box, but the rail cannot pan, so a moving finger does nothing);
     /// let go and the offset eases back to the rail (<see cref="GuidedOffset"/>). Poses stay inside BoxCamera's ranges
     /// (<see cref="Limits"/>; the same numbers as BoxCamera's fields and BoxCameraMath, tester #31: the orbit stays in
     /// front of the box).
@@ -142,7 +142,7 @@ namespace AquariumCiv.View.Moments
     }
 
     /// <summary>
-    /// The player's own orbit on top of the rail (§3: "one finger can still orbit; let go and it eases back"). While a
+    /// The player's own orbit on top of the rail (§3, #587: "two fingers can still turn; let go and it eases back"). While a
     /// finger is down the drag adds to the offset; released, the offset decays as exp(-dt / <see cref="ReturnTau"/>).
     /// </summary>
     public class GuidedOffset
