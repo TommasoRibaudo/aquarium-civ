@@ -43,6 +43,7 @@ namespace AquariumCiv.Sim
         public int subjectId = -1;          // #372: a small choice's subject (the newborn being named); -1 = none
         public string land = "";            // #578: where the words put it ("woods", "meadow" or "pond"; "" = the woods), fixed when it is raised
         public string nameA = "", nameB = ""; // #372: a small choice's two offered words ({n1}, {n2}); empty = none
+        public int deadId = -1;             // #635: a choice about the lost names the latest death when it was raised ({dead}); -1 = none
 
         /// <summary>The person option <paramref name="i"/> points at (-1 = none).</summary>
         public int PersonOf(int i) => i == 0 ? personA : i == 1 ? personB : -1;
@@ -404,7 +405,8 @@ namespace AquariumCiv.Sim
             if (t.IndexOf('{') < 0) return t;
             if (d.subjectId >= 0 || !string.IsNullOrEmpty(d.nameA)) t = SmallText(t, d);
             return t.Replace("{a}", FindNotable(d.personA)?.name ?? "someone").Replace("{b}", FindNotable(d.personB)?.name ?? "someone")
-                    .Replace("{place}", DilemmaPlace).Replace("{land}", LandWords(d)).Replace("{camp}", CampWords(d));
+                    .Replace("{place}", DilemmaPlace).Replace("{land}", LandWords(d)).Replace("{camp}", CampWords(d))
+                    .Replace("{dead}", FindNotable(d.deadId)?.name ?? "the one we lost").Replace("{tree}", t.Contains("{tree}") ? CharmTreeWords : "");
         }
 
         /// <summary>{place}: the settlement's name, or "the camp" / "the village" before it has one (it is named at 12 people), so a
@@ -480,6 +482,7 @@ namespace AquariumCiv.Sim
             if (s.visitCount < 1) s.visitCount = 1; // a session in progress is a visit; the raise is the first time it is shown
             var d = new Dilemma { id = id, defId = def.id, month = s.month, personA = a, personB = b, size = def.size, visits = 1, visitNo = s.visitCount, raisedHours = Math.Round(s.clockHours, 6) };
             if (def.landWords) d.land = PickLand(id);
+            if (def.needsDeath) d.deadId = s.notables.Where(n => !n.alive).OrderByDescending(n => n.diedMonth).ThenByDescending(n => n.id).FirstOrDefault()?.id ?? -1;
             PrepareSmall(d, def);
             var leader = Alive(SeatOf(LeaderOf(s.era))?.holderId ?? -1);
             if (def.askerNotLeader)

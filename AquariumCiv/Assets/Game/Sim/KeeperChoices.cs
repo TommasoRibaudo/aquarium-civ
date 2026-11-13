@@ -17,6 +17,7 @@ namespace AquariumCiv.Sim
         public DilemmaEnd end;
         public List<string> touched = new List<string>();   // the people it was about, first the one taken
         public string propKind = "";        // ConsequenceKind, "" = it left nothing
+        public string propWords = "";       // #635: the thing in words when its kind's own words don't fit (charms on a tree); "" = by kind
         public bool propPlaced;
         public int answerEntryId = -1;      // the Keeper's chronicle line (an answer), the hand pin's entry; -1 for a lapse
         public int personId = -1;           // the person taken (the pin's card button)
@@ -74,7 +75,7 @@ namespace AquariumCiv.Sim
                 ask = ShortAsk(string.IsNullOrEmpty(i.shortAsk) ? i.question : i.shortAsk),
                 chosenLine = ChosenLine(i.end, i.chosen),
                 touchedLine = TouchedLine(i.touched),
-                propLine = PropLine(i.propKind, i.propPlaced),
+                propLine = string.IsNullOrEmpty(i.propWords) ? PropLine(i.propKind, i.propPlaced) : PropLine(i.propKind, i.propPlaced, i.propWords),
                 answerEntryId = credited ? i.answerEntryId : -1, personId = i.personId,
             };
             if (credited) l.pinText = (l.ask.Length > 0 ? l.ask + " " : "") + l.chosenLine;
@@ -96,7 +97,13 @@ namespace AquariumCiv.Sim
         public static string PropLine(string kind, bool placed)
         {
             if (string.IsNullOrEmpty(kind)) return "";
-            return placed ? $"It left {PropName(kind)} in the box." : $"It will leave {PropName(kind)} in the box.";
+            return PropLine(kind, placed, PropName(kind));
+        }
+
+        public static string PropLine(string kind, bool placed, string words)
+        {
+            if (string.IsNullOrEmpty(kind)) return "";
+            return placed ? $"It left {words} in the box." : $"It will leave {words} in the box.";
         }
 
         /// <summary>The thing, in words ("a feather on a post"). An unknown kind reads from its id.</summary>

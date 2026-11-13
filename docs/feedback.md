@@ -1,6 +1,7 @@
 # Playtest feedback → GitHub
 
-Testers never copy-paste anything. Everything lands as a **GitHub issue** in `TommasoRibaudo/aquarium-civ`, and
+Testers never copy-paste anything. Everything lands as a **GitHub issue** in the **private** repo
+`TommasoRibaudo/aquarium-civ-feedback` (since 2026-11-13, #637; earlier notes are in the public `aquarium-civ`), and
 the project **[Aquarium Civ Playtest Feedback](https://github.com/users/TommasoRibaudo/projects/17)** collects them.
 
 ## Sources in the app
@@ -28,26 +29,59 @@ Offline or with no token, reports wait in `persistentDataPath/feedback_outbox/` 
   - A machine-readable footer: `<!-- aquarium-civ-feedback v1 kind=… proto=… variant=… tester=… build=… -->`
 
 Reading it as an agent:
-`gh issue list -R TommasoRibaudo/aquarium-civ --label feedback --state open --json number,title,labels,body`.
+`gh issue list -R TommasoRibaudo/aquarium-civ-feedback --label feedback --state open --json number,title,labels,body`.
 Filter with `--label fb:survey`, `--label proto:P1`, and so on. Issue #2 is a closed format sample.
 
 ## Setup
 1. **Token (the user):** github.com → Settings → Developer settings → Fine-grained tokens → Generate.
-   - Repository access: **Only select repositories → aquarium-civ**.
+   - Repository access: **Only select repositories → aquarium-civ-feedback** (only the private one: an extracted
+     token then can't write to the code repo).
    - Permissions: **Issues: Read and write** (Metadata: read is added automatically). Nothing else.
-   - Store it without pasting it into the chat: `gh secret set FEEDBACK_TOKEN -R TommasoRibaudo/aquarium-civ`.
+   - Store it without pasting it into the chat: `gh secret set FEEDBACK_TOKEN -R TommasoRibaudo/aquarium-civ` (the
+     secret lives in the code repo, where the build runs).
    - CI writes it into `Assets/Prototypes/_Shared/Resources/FeedbackToken.txt` at build time (gitignored). The
      same step writes `BuildInfo.txt`.
    - For Editor tests, put a token in `AquariumCiv/UserSettings/FeedbackToken.txt` (gitignored, Editor only).
 2. **Board auto-add (the user, once):** open the project → ⋯ → **Workflows** → **Auto-add to project** → Edit →
-   repository `aquarium-civ`, filter `is:issue label:feedback` → Save and turn it on. The free plan allows one
+   repository `aquarium-civ-feedback`, filter `is:issue label:feedback` → Save and turn it on. The free plan allows one
    auto-add workflow per project.
 
 ## Security trade-off
 The token ships inside the app, so anyone holding the build could extract it. It can only read and write issues of
-this one private repo: an attacker could spam issues or read them, but couldn't touch code or anything else. That's
-acceptable for a friends-only TestFlight. Before any public build, replace it with a small relay (for example a
+the private feedback repo: an attacker could spam or read notes there, but couldn't touch code or anything else.
+That's acceptable for an invite-only TestFlight. Before any public build, replace it with a small relay (for example a
 serverless function holding the token, with rate limits) and rotate the token.
+
+## Privacy (user, 2026-11-13, #637)
+**Nothing from feedback goes public.** The code repo is public, so:
+- Notes and quick-question answers go only to `aquarium-civ-feedback` (`FeedbackSender.repo`, not serialized, so an
+  old scene can't point it back).
+- Triage turns a note into a work issue in the public repo **in our own words**: the design point and a link to the
+  private note. Never the tester's words, screenshot, device, tester id or nickname, or their box's names.
+- Docs, decisions, commits and PRs follow the same rule: no tester quotes.
+- Builds from before this change (TestFlight #27 and earlier) still send to the public repo until they update.
+
+## Quick questions (#636, first outside playtest)
+One tap-sized question per session, on a small sheet at the bottom (no scrim), at a calm moment: never during the first run, a
+moment, an open sheet or a tool in hand, and never in a visit that already had a choice. At most one per session and three a day;
+"Not now" asks again in a later session, twice at most. The set, its days and rules: `Runtime/Telemetry/PulseQuestions.cs`
+(`know`, `back`, `name`, `time`, `event`, `mine`, `tidy`, `lost`, `miss`, `keep`); the sheet: `View/PulseQuestionView.cs`.
+While it runs, the old day-2/3 recall question stays quiet (its words are in `name` and `event` now).
+
+- **Every answer goes out with the full package**, like a note: an issue labelled `feedback`, `fb:pulse`, `proto:slice`, titled
+  `[Slice] Pulse <id> (day D, session S): <answer>[ - <typed>]`, with the answer table, the screenshot taken just before the sheet
+  opened, the Context table, the session stats, the last 40 events, the game log, and **the box now**: the living and gone
+  people's names and the 15 latest stories, to check a recall answer against what really happened.
+- Typed words go to the issue only; the telemetry log gets `pulse_shown`, `pulse_answer` (question, answer index, day, session,
+  whether something was typed) and `pulse_dismissed`.
+- "Anything confusing?" answered Yes opens the Feedback sheet with Confusing picked.
+- Report: `bash Tools/pulse-report.sh [tester-id]`, one table per tester (day, session, question, answer, issue).
+- Debug panel (telemetry block): "Ask <id>", "Reset questions", "Questions: on/off". PlayMode tests run with the questions off
+  (`SaveSandbox`); `PulseQuestionPlayTests` asks on purpose.
+- `fb:pulse` issues need no triage: read them with the report.
+- Timing (tester 2026-11-13): no question until the player has had the box to themselves for 60 s after the first run
+  (`PulseQuestionView.SettleSeconds`) and 5 s without a touch (`CalmSeconds`). A question asked with "Ask <id>" goes out
+  as `[Slice] [debug] Pulse ...` and the report skips it.
 
 ## In the slice (#55)
 Code: `Assets/Game/UI/` (`FeedbackUI`, `FeedbackSender`, `FeedbackReport`, `LogRing`, `DeviceInfo`). A **Feedback** pill (bottom-left,

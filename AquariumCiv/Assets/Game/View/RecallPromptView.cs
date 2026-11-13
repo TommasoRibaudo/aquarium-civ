@@ -139,7 +139,8 @@ namespace AquariumCiv.View
                     || PersonCardView.Instance != null && PersonCardView.Instance.AnyOpen
                     || tl != null && tl.Active,
                 captionOrToast = GameUiPanel.Toasts.Current != null || GameUiPanel.Toasts.Waiting > 0,
-                anotherPromptUp = IsOpen || FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen,
+                anotherPromptUp = IsOpen || FeedbackUI.Instance != null && FeedbackUI.Instance.IsOpen
+                    || PulseQuestionView.Instance != null && PulseQuestionView.Instance.IsOpen, // #636
                 secondsSinceTouch = now - lastTouchTime,
                 secondsSinceBusy = now - lastBusyTime,
             };
@@ -190,11 +191,19 @@ namespace AquariumCiv.View
             if (!loaded) LoadState();
             if (IsOpen) return;
             if (askWhenCalm) { if (CalmFor()) { askWhenCalm = false; Show(); } return; }
+            if (PulseQuestionView.Active) return; // #636: the quick questions ask about recall now (one prompt, not two)
             // cheap checks first; reading the log (stories seen) only when everything else says yes
             if (!RecallPrompt.ShouldAsk(State, Context(false), FirstDay, LastDay)) return;
             if (!RecallPrompt.ShouldAsk(State, Context(true), FirstDay, LastDay)) return;
             if (!CalmFor()) return; // #328: wait for a calm moment, ask again at the next check
             Show();
+        }
+
+        /// <summary>#636: calm now (nothing on screen, no touch for <see cref="calmSeconds"/>), for the quick questions.</summary>
+        public bool CalmNow(double seconds)
+        {
+            var s = CalmState();
+            return !RecallCalm.Busy(s) && s.secondsSinceTouch >= seconds && s.secondsSinceBusy >= seconds;
         }
 
         bool CalmFor()

@@ -16,7 +16,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-REPO = "TommasoRibaudo/aquarium-civ"
+REPO = "TommasoRibaudo/aquarium-civ-feedback"
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "docs" / "design" / "results" / "data"
 

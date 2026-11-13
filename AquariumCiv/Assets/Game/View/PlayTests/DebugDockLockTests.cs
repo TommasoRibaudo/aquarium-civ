@@ -2,6 +2,8 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
+using AquariumCiv.Sim;
 
 namespace AquariumCiv.View.PlayTests
 {
@@ -108,6 +110,30 @@ namespace AquariumCiv.View.PlayTests
                 yield return HoldFor(InTheCorner, 2.3f);
                 Assert.IsFalse(DebugDock.Locked, "2 s in the corner unlocks");
                 AssertNoErrors("the long-press");
+            }
+            finally { DebugDock.ResetLock(); }
+        }
+
+        /// <summary>#637: in a locked build (the outside tester's) the first run has no Skip; the hidden unlock brings it back.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator SkipWaitsBehindTheUnlock()
+        {
+            DebugDock.ResetLock();
+            DebugDock.ForceLocked = true;
+            try
+            {
+                yield return OpenSlice(seed: 4242, skipFirstRun: false);
+                var fr = FirstRunView.Instance;
+                Assert.IsTrue(fr.Active, "the first run");
+                yield return Until(() => fr.Step == FirstRunStep.Wipe, 6f);
+                yield return Frames(4);
+                var row = fr.Root.Q("firstrun-skip-row");
+                Assert.AreEqual(DisplayStyle.None, row.resolvedStyle.display, "no Skip for the outside tester");
+                yield return HoldFor(InTheCorner, 2.3f);
+                Assert.IsFalse(DebugDock.Locked);
+                yield return Frames(4);
+                Assert.AreEqual(DisplayStyle.Flex, row.resolvedStyle.display, "the unlock shows Skip");
+                AssertNoErrors("skip lock");
             }
             finally { DebugDock.ResetLock(); }
         }

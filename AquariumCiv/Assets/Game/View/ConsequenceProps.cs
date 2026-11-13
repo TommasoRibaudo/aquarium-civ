@@ -163,6 +163,58 @@ namespace AquariumCiv.View
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
         }
+
+        /// <summary>#635: <paramref name="count"/> charms hanging from a tree's lower crown: each a pale cord and a little coloured charm,
+        /// spread round the trunk. Origin = the tree's ground point; box units, not scaled. <paramref name="attachY"/> / <paramref name="ringR"/>:
+        /// where the cords tie on (just under the leaves).</summary>
+        public static Mesh Charms(int count, float attachY, float ringR)
+        {
+            var mb = new MeshBuilder(3790 + count) { jitter = 0.01f };
+            for (int i = 0; i < count; i++)
+            {
+                float a = i * 2.39996f + 0.4f;                       // the golden angle: never two on one side
+                float r = ringR * (0.8f + 0.2f * ((i * 7) % 3) / 2f);
+                float len = 0.055f + 0.025f * (i % 3);
+                var top = new Vector3(Mathf.Cos(a) * r, attachY, Mathf.Sin(a) * r);
+                var col = Palette.Accents[i % Palette.Accents.Length];
+                mb.Box(top - Vector3.up * len * 0.5f, new Vector3(0.006f, len, 0.006f), Palette.Plaster);
+                var at = top - Vector3.up * (len + 0.026f);
+                mb.Box(at, new Vector3(0.05f, 0.05f, 0.012f), col, Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 45f)); // tester: 0.034 was a speck at home zoom
+                mb.Ico(at - Vector3.up * 0.04f, 0.015f, Vector3.one, Palette.Plaster, 0.05f);
+            }
+            var mesh = mb.ToMesh("Consequence_charms_" + count);
+            mesh.hideFlags = HideFlags.DontSave;
+            return mesh;
+        }
+
+        /// <summary>#635: the stand-in pole with <paramref name="count"/> charms on its bough (the sim's count, not always four).</summary>
+        public static Mesh PoleWithCharms(int count)
+        {
+            var mb = new MeshBuilder(3780 + count) { jitter = 0.025f };
+            mb.Prism(Vector3.zero, 0.02f, 0.014f, 0.36f, 6, Palette.Bark, topCol: Palette.WoodLight);
+            mb.Box(new Vector3(0.06f, 0.32f, 0f), new Vector3(0.14f, 0.014f, 0.014f), Palette.Bark);
+            int n = Mathf.Clamp(count, 1, 6);
+            float step = n <= 4 ? 0.045f : 0.12f / (n - 1);
+            for (int i = 0; i < n; i++)
+            {
+                float x = 0.02f + i * step;
+                mb.Box(new Vector3(x, 0.29f, 0f), new Vector3(0.003f, 0.05f, 0.003f), Palette.Plaster);
+                mb.Ico(new Vector3(x, 0.26f, 0f), 0.014f, Vector3.one, Palette.Accents[i % Palette.Accents.Length], 0.05f);
+            }
+            mb.Ico(new Vector3(0f, 0.38f, 0f), 0.07f, new Vector3(1f, 0.7f, 1f), Palette.LeafB, 0.15f);
+            var mesh = mb.ToMesh("Consequence_pole_charms_" + count);
+            mesh.hideFlags = HideFlags.DontSave;
+            return mesh;
+        }
+
+        /// <summary>Where the cords tie on for a drawn tree of play radius <paramref name="spotR"/> (BoxView.TreeSpots): the Keeper's grown tree
+        /// (KeeperTreeKit stage 4) or a wild one (Pieces.Tree, radius 0.16 x its scale).</summary>
+        public static void CharmTie(bool keeperTree, float spotR, out float attachY, out float ringR)
+        {
+            if (keeperTree) { attachY = 0.4f; ringR = 0.11f; return; }
+            float s = spotR / 0.16f;
+            attachY = 0.27f * s; ringR = 0.12f * s;
+        }
     }
 
     /// <summary>
@@ -178,6 +230,27 @@ namespace AquariumCiv.View
         public const float PulseSeconds = 1.6f;
 
         sealed class Made { public Transform t; public Mesh mesh; public string kind; public float yaw; public Vector3 at; }
+
+        /// <summary>#635: the mesh key of a thing: its kind, or for charms on a tree the tree and the count (a new death adds a charm).</summary>
+        static string KeyOf(ConsequenceProp p, int charms) => p.anchor != PropAnchor.Tree ? p.kind : p.treeCell >= 0 ? $"charms:{p.treeCell}:{charms}" : $"pole:{charms}";
+
+        /// <summary>#635: the drawn tree a tree thing hangs on: its cell's spot, else the nearest drawn grown tree (a wild crown is drawn on
+        /// some of its cells only). False when none is drawn near.</summary>
+        bool TreeSpotOf(int cell, float x, float z, out Vector3 at, out float r)
+        {
+            at = default; r = 0f;
+            lock (box.TreeSpots)
+            {
+                if (box.TreeSpots.TryGetValue(cell, out var s)) { at = s.pos; r = s.r; return true; }
+                float best = 0.35f * 0.35f; bool found = false;
+                foreach (var kv in box.TreeSpots)
+                {
+                    float dx = kv.Value.pos.x - x, dz = kv.Value.pos.z - z, d = dx * dx + dz * dz;
+                    if (d < best) { best = d; at = kv.Value.pos; r = kv.Value.r; found = true; }
+                }
+                return found;
+            }
+        }
 
         BoxView box;
         Transform root;
@@ -282,10 +355,28 @@ namespace AquariumCiv.View
                     spots.Add(new CampSpots.Disc(px, pz, CampSpots.PropRadius));
                 }
                 else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
-                if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != p.kind)
+                // #635: charms on a tree hang from the drawn crown (no post, not scaled up); a tree not drawn yet: wait a frame
+                bool onTree = p.anchor == PropAnchor.Tree && p.treeCell >= 0;
+                Vector3 treeAt = default; float treeR = 0f;
+                if (onTree && !TreeSpotOf(p.treeCell, p.x, p.z, out treeAt, out treeR))
+                {
+                    if (made.TryGetValue(p.id, out var hide) && hide.t != null) hide.t.gameObject.SetActive(false);
+                    continue;
+                }
+                int charms = p.anchor == PropAnchor.Tree ? sim.CharmsOn(p) : 0;
+                string key = KeyOf(p, charms);
+                if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != key)
                 {
                     if (m != null) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }
-                    m = new Made { kind = p.kind, mesh = ConsequenceMeshes.Build(p.kind) };
+                    Mesh mesh;
+                    if (onTree)
+                    {
+                        ConsequenceMeshes.CharmTie(p.treeCell == sim.State.eco.treeCell, treeR, out float ty, out float tr);
+                        mesh = ConsequenceMeshes.Charms(charms, ty, tr);
+                    }
+                    else if (p.anchor == PropAnchor.Tree) mesh = ConsequenceMeshes.PoleWithCharms(charms); // tester: the pole always drew four
+                    else mesh = ConsequenceMeshes.Build(p.kind);
+                    m = new Made { kind = key, mesh = mesh };
                     var go = new GameObject("Consequence_" + p.kind + "_" + p.id) { hideFlags = HideFlags.DontSave };
                     go.transform.SetParent(root, false);
                     go.AddComponent<MeshFilter>().sharedMesh = m.mesh;
@@ -302,6 +393,13 @@ namespace AquariumCiv.View
                     float k = (Time.unscaledTime - t0) / PulseSeconds;
                     if (k >= 1f) pulses.Remove(p.id);
                     else { float w = Mathf.Sin(k * Mathf.PI); s *= 1f + 0.25f * w; lift = 0.04f * w; }
+                }
+                if (!m.t.gameObject.activeSelf) m.t.gameObject.SetActive(true);
+                if (onTree)
+                {
+                    m.t.localScale = Vector3.one * (s / ConsequenceMeshes.Scale);
+                    m.t.SetLocalPositionAndRotation(treeAt + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f));
+                    continue;
                 }
                 m.t.localScale = Vector3.one * s;
                 m.t.SetLocalPositionAndRotation(box.land.OnGround(px, pz) + Vector3.up * lift, Quaternion.Euler(0f, p.yaw, 0f));
@@ -324,6 +422,38 @@ namespace AquariumCiv.View
             if (sim == null) return "no box";
             int n = sim.DebugPlaceEveryProp();
             return $"{n} things stand in the box";
+        }
+
+        /// <summary>#635: raises "where do we remember the ones we lose" (a death first if nobody has died) and answers "the tree": the
+        /// charms hang on the Keeper's tree if grown, else the nearest grown tree, else a pole stands in.</summary>
+        public static string RememberOnTree()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            var d = sim.DebugRaiseDilemma("camp_remember");
+            if (d == null) return "camp_remember can't be raised here (Camp only): " + sim.DilemmaWhyNot("camp_remember");
+            if (!sim.AnswerDilemma(d.id, 1, DilemmaPath.Card)) return "could not answer it";
+            var p = sim.ConsequencePropFor(d.id, 1);
+            return p == null ? "answered, but no thing was left"
+                : p.treeCell < 0 ? $"answered: no grown tree, a pole stands in ({sim.CharmsOn(p)} charm)"
+                : $"answered: {sim.CharmsOn(p)} charm(s) on {(p.treeCell == sim.State.eco.treeCell ? "the Keeper's tree" : "a wild tree")}";
+        }
+
+        /// <summary>#635: the Keeper's tree grown now (planted first if need be); charms on a pole or a wild tree move to it next month.</summary>
+        public static string GrowKeeperTree()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            return sim.DebugTreeStage(4) ? "the Keeper's tree is grown" : "no Keeper's tree can grow here";
+        }
+
+        /// <summary>#635: the oldest dies: one more charm on the tree.</summary>
+        public static string OneMoreDeath()
+        {
+            var sim = Sim;
+            if (sim == null) return "no box";
+            sim.DebugKillOldest();
+            return "the oldest died";
         }
 
         /// <summary>fb4 #566: "Feather pole: pray now": the one pole stands (made if need be) and two grown-ups and a kid walk to it and pray.</summary>

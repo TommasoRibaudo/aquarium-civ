@@ -297,6 +297,7 @@ namespace AquariumCiv.View
         {
             var recall = RecallPromptView.Instance;
             if (recall != null && recall.IsOpen) return true;
+            if (PulseQuestionView.Instance != null && PulseQuestionView.Instance.IsOpen) return true; // #636
             var tool = ShapingView.Instance;
             if (tool != null && tool.WishArmed) return true;
             var sm = ShowMeDirector.Instance;

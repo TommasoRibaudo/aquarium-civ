@@ -109,9 +109,13 @@ namespace AquariumCiv.Game
 
         string BoxTelemetryId() => "b" + (Session?.shelf?.activeIndex ?? 0);
 
+        /// <summary>#636: how long the player was away before this session (0 on a first open).</summary>
+        public double SessionAwayHours { get; private set; }
+
         void BeginSession(string reason, double awayHours)
         {
             sessionStart = Time.realtimeSinceStartup;
+            SessionAwayHours = awayHours;
             Telemetry.SetVariant(DilemmaSurvey.VariantOf(config.dilemmas), false); // P7 (#225): A = dilemmas off, B = on, in every session_start
             Telemetry.StartSession(reason, awayHours, Application.version, Application.platform.ToString(),
                 (int)TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalMinutes);

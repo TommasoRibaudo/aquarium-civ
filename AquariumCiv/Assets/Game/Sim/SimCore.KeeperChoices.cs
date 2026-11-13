@@ -47,7 +47,12 @@ namespace AquariumCiv.Sim
                     if (n != null) input.touched.Add(n.FullName);
                 }
                 var prop = ConsequencePropFor(d.id, d.option);
-                if (prop != null) { input.propKind = prop.kind; input.propPlaced = prop.placed; }
+                if (prop != null)
+                {
+                    input.propKind = prop.kind; input.propPlaced = prop.placed;
+                    if (prop.anchor == PropAnchor.Tree && prop.placed && prop.treeCell >= 0)
+                        input.propWords = prop.treeCell == State.eco.treeCell ? "charms on the Keeper's tree" : "charms on a tree"; // #635
+                }
                 res.Add(input);
             }
             return res;

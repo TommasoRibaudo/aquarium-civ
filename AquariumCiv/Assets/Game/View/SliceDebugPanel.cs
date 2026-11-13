@@ -334,6 +334,16 @@ namespace AquariumCiv.View
             if (Btn("Reset recall")) last = RecallPromptView.DebugReset();
             if (Btn("Week report")) last = RecallPromptView.DebugReport();
             EndRow();
+            // #636: the playtest's quick questions (one per session)
+            GUILayout.Label(PulseQuestionView.Status());
+            Row();
+            foreach (var q in PulseQuestions.All)
+                if (Btn("Ask " + q.id)) last = PulseQuestionView.DebugAsk(q.id);
+            EndRow();
+            Row();
+            if (Btn("Reset questions")) last = PulseQuestionView.DebugReset();
+            if (Btn(PulseQuestionView.On ? "Questions: on" : "Questions: off")) { PulseQuestionView.On = !PulseQuestionView.On; last = PulseQuestionView.On ? "quick questions on" : "quick questions off (the old recall asks)"; }
+            EndRow();
             if (GameHud.Instance != null && Btn(GameHud.Instance.IsVisible ? "Hide HUD" : "Show HUD"))
             {
                 GameHud.Instance.SetVisible(!GameHud.Instance.IsVisible);
