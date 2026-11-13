@@ -49,6 +49,25 @@ this one private repo: an attacker could spam issues or read them, but couldn't 
 acceptable for a friends-only TestFlight. Before any public build, replace it with a small relay (for example a
 serverless function holding the token, with rate limits) and rotate the token.
 
+## Quick questions (#636, first outside playtest)
+One tap-sized question per session, on a small sheet at the bottom (no scrim), at a calm moment: never during the first run, a
+moment, an open sheet or a tool in hand, and never in a visit that already had a choice. At most one per session and three a day;
+"Not now" asks again in a later session, twice at most. The set, its days and rules: `Runtime/Telemetry/PulseQuestions.cs`
+(`know`, `back`, `name`, `time`, `event`, `mine`, `tidy`, `lost`, `miss`, `keep`); the sheet: `View/PulseQuestionView.cs`.
+While it runs, the old day-2/3 recall question stays quiet (its words are in `name` and `event` now).
+
+- **Every answer goes out with the full package**, like a note: an issue labelled `feedback`, `fb:pulse`, `proto:slice`, titled
+  `[Slice] Pulse <id> (day D, session S): <answer>[ - <typed>]`, with the answer table, the screenshot taken just before the sheet
+  opened, the Context table, the session stats, the last 40 events, the game log, and **the box now**: the living and gone
+  people's names and the 15 latest stories, to check a recall answer against what really happened.
+- Typed words go to the issue only; the telemetry log gets `pulse_shown`, `pulse_answer` (question, answer index, day, session,
+  whether something was typed) and `pulse_dismissed`.
+- "Anything confusing?" answered Yes opens the Feedback sheet with Confusing picked.
+- Report: `bash Tools/pulse-report.sh [tester-id]`, one table per tester (day, session, question, answer, issue).
+- Debug panel (telemetry block): "Ask <id>", "Reset questions", "Questions: on/off". PlayMode tests run with the questions off
+  (`SaveSandbox`); `PulseQuestionPlayTests` asks on purpose.
+- `fb:pulse` issues need no triage: read them with the report.
+
 ## In the slice (#55)
 Code: `Assets/Game/UI/` (`FeedbackUI`, `FeedbackSender`, `FeedbackReport`, `LogRing`, `DeviceInfo`). A **Feedback** pill (bottom-left,
 safe area) opens a sheet: kind (bug / confusing / idea / feel / praise), text, optional screenshot of the box taken just before it opens.

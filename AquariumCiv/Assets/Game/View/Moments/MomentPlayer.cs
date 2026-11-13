@@ -737,6 +737,7 @@ namespace AquariumCiv.View
             if (stack != null && stack.Showing) return true; // the peek holds the same lane, the stack covers it
             var recall = RecallPromptView.Instance;
             if (recall != null && recall.IsOpen) return true; // the prompt would stick out over the sheet on a short phone
+            if (PulseQuestionView.Instance != null && PulseQuestionView.Instance.IsOpen) return true; // #636
             var tool = ShapingView.Instance;
             if (tool != null && tool.WishArmed) return true; // its banner and Cancel too
             var tl = TimeLapseView.Find();

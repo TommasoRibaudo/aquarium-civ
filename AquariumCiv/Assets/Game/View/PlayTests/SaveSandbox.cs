@@ -26,15 +26,18 @@ namespace AquariumCiv.View.PlayTests
             GameClock.SaveFolderOverride = Folder;
             ecologyWas = GameClock.EcologyPref; // #298: the run plays the old slice unless a test turns the living land on
             GameClock.EcologyPref = false;
+            pulseWas = PulseQuestionView.On; // #636: a quick question popping up after 20 calm seconds would cover what a test taps;
+            PulseQuestionView.On = false;    // its own tests ask on purpose (DebugAsk)
         }
 
-        bool ecologyWas;
+        bool ecologyWas, pulseWas;
 
         [OneTimeTearDown]
         public void Leave()
         {
             GameClock.SaveFolderOverride = null;
             GameClock.EcologyPref = ecologyWas; // the Editor's own switch (debug panel) comes back after the run
+            PulseQuestionView.On = pulseWas;
         }
     }
 

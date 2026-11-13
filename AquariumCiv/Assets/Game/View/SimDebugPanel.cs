@@ -271,6 +271,11 @@ namespace AquariumCiv.View
                 if (GUILayout.Button("Place every consequence prop")) last = ConsequenceCheats.PlaceEvery();
                 if (GUILayout.Button("Play a callback moment now")) last = ConsequenceCheats.PlayCallbackNow();
                 GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal(); // #635: remembering the dead on a tree
+                if (GUILayout.Button("Remember: answer the tree")) last = ConsequenceCheats.RememberOnTree();
+                if (GUILayout.Button("Grow the Keeper's tree")) last = ConsequenceCheats.GrowKeeperTree();
+                if (GUILayout.Button("One more death (a charm)")) last = ConsequenceCheats.OneMoreDeath();
+                GUILayout.EndHorizontal();
             }
             // ---- end #371 ----
             // ---- fb4 #540: camp props ----

@@ -223,21 +223,22 @@ namespace AquariumCiv.Sim
         static readonly DilemmaDef CampRemember = new DilemmaDef
         {
             id = "camp_remember", kind = DilemmaKind.Tradition, minEra = Era.Camp, maxEra = Era.Camp, needsDeath = true, // #346: nobody to remember before the first death
-            question = "Where do we remember the ones we lose: stone or tree?",
+            // #635 (playtest #634): the words name who died ({dead}, fixed when raised), so "the ones we lose" is somebody
+            question = "We lost {dead}. Do we remember them by stone or tree?",
             askedBy = new Dictionary<string, string>
             {
-                ["the kind"] = "Nobody should be forgotten. The stone, or the tree?",
-                ["the dreamer"] = "I dreamt of the ones before us. Stone or tree?",
-                ["the singer"] = "Where do I sing for the ones we lose: stone or tree?",
-                ["the worrier"] = "What if we forget someone? Stone or tree, to remember?",
-                ["the stubborn"] = "Stone. Obviously. But some say the tree. Well?",
+                ["the kind"] = "Nobody should forget {dead}. The stone, or the tree?",
+                ["the dreamer"] = "I dreamt of {dead}. Stone or tree, to remember?",
+                ["the singer"] = "Where do I sing for {dead}: by the stone or the tree?",
+                ["the worrier"] = "What if we forget {dead}? Stone or tree, to remember?",
+                ["the stubborn"] = "A stone for {dead}. Obviously. But some say the tree. Well?",
             },
             options = new[]
             {
                 new DilemmaOptionDef
                 {
-                    label = "the stone", hint = "Names on the big stone by the pond, there for good.",
-                    done = "The Keeper chose the stone. The first name went on it that spring.",
+                    label = "the stone", hint = "{dead}'s name on the stone by the pond, then every name after.",
+                    done = "The Keeper chose the stone. {dead}'s name went on it first, that spring.",
                     custom = "remember:stone",
                     prop = ConsequenceKind.NameStone, propAt = PropAnchor.Pond,
                     favouredBy = new[] { "the stubborn", "the clever", "the grump", "the brave", "the tinkerer" },
@@ -249,10 +250,10 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "the tree", hint = "A charm on the old tree for each of them, growing with it.",
-                    done = "The Keeper chose the old tree. The first charm went up that spring.",
+                    label = "the tree", hint = "Charms on {tree}: one for {dead}, one for each after.",
+                    done = "The Keeper chose the tree. The first charm went up for {dead} that spring.",
                     custom = "remember:tree",
-                    prop = ConsequenceKind.CharmPole, propAt = PropAnchor.Edge,
+                    prop = ConsequenceKind.CharmPole, propAt = PropAnchor.Tree, // #635: on the Keeper's tree first
                     favouredBy = new[] { "the kind", "the gardener", "the dreamer", "the singer", "the worrier" },
                     callbacks = new[]
                     {

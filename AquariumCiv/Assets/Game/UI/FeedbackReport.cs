@@ -100,9 +100,30 @@ namespace AquariumCiv.GameUI
         {
             var b = new StringBuilder("### What the tester said\n\n");
             foreach (var line in (text ?? "").Trim().Split('\n')) b.Append("> ").Append(line.TrimEnd('\r')).Append('\n');
+            return Tail(b, KindLabel(k), k.ToString().ToLowerInvariant(), hasScreenshot, nick, context, logLines, telemetryJson, telemetryLines);
+        }
+
+        /// <summary>#636: a quick question's answer, with everything a note carries plus <paramref name="boxFacts"/> (the people and the
+        /// latest stories, to check a recall answer).</summary>
+        public static string PulseBody(string id, string question, string answer, string typed, int day, int session, bool hasScreenshot, string nick,
+            IReadOnlyList<(string key, string value)> context, IReadOnlyList<string> logLines, string telemetryJson, IReadOnlyList<string> telemetryLines, string boxFacts)
+        {
+            var b = new StringBuilder("### Quick question\n\n| | |\n|---|---|\n");
+            b.Append("| Question | ").Append(Cell(question)).Append(" (`").Append(id).Append("`) |\n");
+            b.Append("| Answer | **").Append(Cell(answer)).Append("** |\n");
+            if (!string.IsNullOrWhiteSpace(typed)) b.Append("| Typed | ").Append(Cell(typed.Trim())).Append(" |\n");
+            b.Append("| Day / session | ").Append(day).Append(" / ").Append(session).Append(" |\n");
+            if (!string.IsNullOrEmpty(boxFacts)) b.Append('\n').Append(boxFacts.TrimEnd('\n')).Append('\n');
+            return Tail(b, "Pulse", "pulse q=" + id, hasScreenshot, nick, context, logLines, telemetryJson, telemetryLines);
+        }
+
+        static string Tail(StringBuilder b, string kindLabel, string footerKind, bool hasScreenshot, string nick,
+            IReadOnlyList<(string key, string value)> context, IReadOnlyList<string> logLines,
+            string telemetryJson, IReadOnlyList<string> telemetryLines)
+        {
             if (hasScreenshot) b.Append("\n### Screenshot\n\n").Append(ScreenshotMarker).Append('\n');
             b.Append("\n### Context\n\n| | |\n|---|---|\n");
-            b.Append("| Kind | ").Append(KindLabel(k)).Append(" |\n");
+            b.Append("| Kind | ").Append(kindLabel).Append(" |\n");
             b.Append("| Tester | ").Append(Cell(nick)).Append(" |\n");
             foreach (var (key, value) in context) b.Append("| ").Append(Cell(key)).Append(" | ").Append(Cell(value)).Append(" |\n");
             if (logLines != null && logLines.Count > 0)
@@ -119,7 +140,7 @@ namespace AquariumCiv.GameUI
                 foreach (var line in telemetryLines) b.Append(line.Replace("```", "'''").TrimEnd('\n')).Append('\n');
                 b.Append("```\n</details>\n");
             }
-            b.Append("\n<!-- aquarium-civ-feedback v1 kind=").Append(k.ToString().ToLowerInvariant()).Append(" proto=slice -->\n");
+            b.Append("\n<!-- aquarium-civ-feedback v1 kind=").Append(footerKind).Append(" proto=slice -->\n");
             return b.ToString();
         }
 
