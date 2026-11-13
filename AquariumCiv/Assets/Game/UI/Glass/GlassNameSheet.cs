@@ -51,7 +51,8 @@ namespace AquariumCiv.GameUI
         /// <param name="closeWord">The quiet word in the head, or null for the icon Close.</param>
         public GlassNameSheet(string id, string title, string closeWord, Action close, Action another, Action keep)
         {
-            Sheet = new GlassSheet();
+            // #637 tester (1640x2360): at 30 % of a tablet's shorter panel, Another and Keep rode up over the field; as tall as it needs instead
+            Sheet = new GlassSheet(SheetHeight.Content);
             Scrim = new GlassScrim(id, Sheet);
             Scrim.TappedOutside += close;
             var head = GlassSheet.Head(title, closeWord == null ? id + "-close" : null, closeWord == null ? close : null);
@@ -80,6 +81,7 @@ namespace AquariumCiv.GameUI
 
             var acts = new VisualElement();
             acts.AddToClassList("kg-card-acts");
+            acts.AddToClassList("kg-name-acts");
             acts.Add(new GlassButton("Another", another) { name = id + "-reroll" });
             acts.Add(Keep = new GlassButton("Keep", keep, ButtonKind.Primary, UiRole.None) { name = id + "-keep" });
             Sheet.Add(acts);

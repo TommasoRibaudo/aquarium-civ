@@ -646,6 +646,8 @@
 .fr-year-fill { height: 100%; width: 0; border-radius: 8.25px; background-color: var(--brass-light); }
 .kg-name-note { flex-direction: row; align-items: center; flex-shrink: 0; margin-bottom: var(--space-6); }
 .kg-name-alert { margin-right: 13.75px; }
+/* #637: a content-height name sheet keeps a gap between the field and its buttons (the riding sheet had one already) */
+.kg-name-acts { margin-top: var(--space-6); }
 .kg-field { height: 126.5px; margin: 0; padding: 0; flex-shrink: 0; }
 .kg-field > .unity-base-text-field__input {
     height: 126.5px; margin: 0; padding: 0 38.5px;
