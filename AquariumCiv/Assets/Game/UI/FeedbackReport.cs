@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -26,7 +27,56 @@ namespace AquariumCiv.GameUI
         /// <summary>Is the note in a reply from GitHub's issue list? (The list's JSON holds the bodies, comment and all.)</summary>
         public static bool AlreadyFiled(string issuesJson, string id) => !string.IsNullOrEmpty(issuesJson) && issuesJson.Contains("note-id " + id + " ");
         public const int MaxLogLines = 150;
-        public const int MaxTextChars = 600;
+        /// <summary>#619: how much a tester may write (dictation runs long; the old 600 cut a note mid-word without a sign).</summary>
+        public const int MaxTextChars = 4000;
+        /// <summary>#619: the box shows how many characters are left once the text is this close to <see cref="MaxTextChars"/>.</summary>
+        public const int CounterFrom = MaxTextChars - MaxTextChars / 10;
+        /// <summary>#619: the smallest picture worth keeping; with less room the note goes without one before the words are cut.</summary>
+        public const int MinScreenshotChars = 6000;
+
+        /// <summary>#619: the counter under the text box: "" until the text is near the cap, then "N left".</summary>
+        public static string CounterText(int length) => length < CounterFrom ? "" : $"{Math.Max(0, MaxTextChars - length)} left";
+
+        /// <summary>#619: what a note keeps so its body fits GitHub's limit (<see cref="MaxIssueChars"/>).</summary>
+        public struct Fit
+        {
+            public string text;
+            public int logLines;
+            public bool events, stats, screenshot;
+            /// <summary>Characters the screenshot may take (base64), when <see cref="screenshot"/>.</summary>
+            public int screenshotRoom;
+            public bool textCut;
+        }
+
+        /// <summary>#619: the tester's words win. What gives way, in order: the game log (halved until none), the recent events,
+        /// the session stats, the screenshot (shrunk to its room, then left out under <see cref="MinScreenshotChars"/>); only then
+        /// the text, with a visible "(cut at N characters)". <paramref name="body"/> builds the body for a choice (without the picture).</summary>
+        public static Fit FitNote(string text, int logCount, bool wantShot, int shotChars, Func<Fit, string> body)
+        {
+            text = (text ?? "").Trim();
+            if (text.Length > MaxTextChars) text = text.Substring(0, MaxTextChars);
+            var f = new Fit { text = text, logLines = logCount, events = true, stats = true, screenshot = wantShot };
+            // the log gives way to the whole picture (as before #619); the rest only to the smallest picture worth keeping
+            int Need(Fit x, int shot) => body(x).Length + (x.screenshot ? shot + ScreenshotWrapChars : 0);
+            for (int lines = logCount; ; lines /= 2)
+            {
+                f.logLines = lines;
+                if (Need(f, shotChars) <= MaxIssueChars || lines == 0) break;
+            }
+            int small = Math.Min(shotChars, MinScreenshotChars);
+            int Need2(Fit x) => Need(x, small);
+            if (Need2(f) > MaxIssueChars) f.events = false;
+            if (Need2(f) > MaxIssueChars) f.stats = false;
+            if (Need2(f) > MaxIssueChars) f.screenshot = false;
+            if (Need2(f) > MaxIssueChars)
+            {
+                int over = Need2(f) - MaxIssueChars, keep = Math.Max(0, text.Length - over - 64);
+                f.text = text.Substring(0, keep).TrimEnd() + $" (cut at {keep} characters)";
+                f.textCut = true;
+            }
+            f.screenshotRoom = f.screenshot ? MaxIssueChars - body(f).Length - ScreenshotWrapChars : 0;
+            return f;
+        }
 
         public static string KindLabel(FeedbackKind k) => k switch
         {

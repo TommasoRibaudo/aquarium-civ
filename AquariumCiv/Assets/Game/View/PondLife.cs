@@ -43,7 +43,16 @@ namespace AquariumCiv.View
             public Vector2 shore;
             /// <summary>#364: seconds it keeps paddling off fast after a splash (the fisher's yank).</summary>
             public float flee;
+            /// <summary>#618: seconds into the fly-off (winter) or the fly-in (spring); -100 = neither, below 0 = waiting its turn.</summary>
+            public float fly = -100f; public bool flyIn; public Vector2 flyFrom, flyTo;
         }
+
+        /// <summary>#618: the wild ducks are away for the winter (PondIce.DucksAway): the flock flies off at the freeze and back in spring.</summary>
+        public bool DucksAway { get; private set; }
+        /// <summary>#618: seconds of a fly-off or a fly-in, and how high and far it goes (u).</summary>
+        public const float FlySeconds = 2.6f, FlyHigh = 0.9f, FlyFar = 1.6f;
+        /// <summary>Ducks flying now (tests).</summary>
+        public int DucksFlying { get; private set; }
 
         BoxView box;
         Transform holder, rootSeen;
@@ -154,17 +163,23 @@ namespace AquariumCiv.View
 
             int season = (int)((sim.State.month / 3 + 3) % 4);
             bool night = hour >= 17.5f || hour < 6f;
-            int wantF = water.Count == 0 ? 0 : season == 3 ? 0 : night ? 5 : 2;
+            var iceNow = IceView.Instance; // #618: nothing sits on the ice: the frogs keep under, the pads are frozen in
+            bool iced = iceNow != null && iceNow.Amount > 0.3f;
+            int wantF = water.Count == 0 || iced ? 0 : season == 3 ? 0 : night ? 5 : 2;
             wantF = Mathf.Min(wantF + (night ? 1 : 0) * (hour >= 20f || hour < 5f ? 1 : 0), MaxFrogs);
             wantF = Mathf.Min(wantF, 1 + water.Count / 3);
             if (Time.unscaledTime < forceFrogsUntil) wantF = MaxFrogs;
             // P9 #421/#424 (B12.d): the ducks are the sim's (placed by the Keeper), no longer the pond's size; none while their arrival plays
             int wantD = Mathf.Min(MaxDucks, sim.EcoDucksShown());
+            bool away = pv != null && AquariumCiv.Sim.Eco.PondIce.DucksAway(sim, pv.Now.day); // #618
+            if (away != DucksAway) StartFlights(away, wantD);
+            DucksAway = away;
+            if (away) wantD = 0;
             if (Time.unscaledTime < forceDucksUntil) wantD = MaxDucks;
             if (Time.unscaledTime < HoldDucksUntil) wantD = 0;
             WantedFrogs = wantF; WantedDucks = wantD;
 
-            UpdatePads(eco);
+            if (iced) { foreach (var p in pads) if (p != null) p.gameObject.SetActive(false); PadsShown = 0; } else UpdatePads(eco);
             UpdateFrogs(eco, wantF, night, dt);
             UpdateDucks(eco, wantD, dt);
         }
@@ -483,12 +498,63 @@ namespace AquariumCiv.View
         }
 
         // ---------------------------------------------------------------- ducks
-        void UpdateDucks(EcoLayer eco, int want, float dt)
+        /// <summary>#618: the shown ducks take off (winter) or the flock comes back (spring): each on its own line, a moment apart.</summary>
+        void StartFlights(bool leaving, int flock)
         {
-            int shown = 0;
+            if (water.Count == 0) return;
             for (int i = 0; i < ducks.Count; i++)
             {
                 var d = ducks[i];
+                var outward = new Vector2(Mathf.Cos(i * 2.1f + 0.4f), Mathf.Sin(i * 2.1f + 0.4f));
+                if (leaving)
+                {
+                    if (d.state == 0) continue;
+                    d.fly = -0.25f * i - 0.001f; d.flyIn = false; d.flyFrom = d.at; d.flyTo = d.at + outward * FlyFar;
+                }
+                else if (i < flock)
+                {
+                    int c = water[(i * 13 + 5) % water.Count];
+                    var spot = new Vector2(SiteMap.CXc(c), SiteMap.CZc(c));
+                    d.fly = -0.3f * i - 0.001f; d.flyIn = true; d.flyFrom = spot + outward * FlyFar; d.flyTo = spot;
+                    d.at = spot; d.to = spot; d.state = 1; d.timer = 3f;
+                    d.go.SetActive(false);
+                }
+            }
+        }
+
+        /// <summary>#618: one step of a duck's flight; true while it flies or waits its turn (then it is posed here, not on the water).</summary>
+        bool Fly(Duck d, EcoLayer eco, float dt)
+        {
+            if (d.fly <= -10f) return false;
+            if (d.fly < 0f)
+            {   // its turn hasn't come: a leaver holds where it is, a comer isn't here yet
+                d.fly += dt;
+                if (d.flyIn) d.go.SetActive(false);
+                return true;
+            }
+            float u = Mathf.Clamp01(d.fly / FlySeconds);
+            float k = d.flyIn ? 1f - u : u; // 0 on the water .. 1 far up and away
+            var p = Vector2.Lerp(d.flyIn ? d.flyTo : d.flyFrom, d.flyIn ? d.flyFrom : d.flyTo, k * k);
+            float y = eco.waterY + 0.004f + FlyHigh * k * k;
+            var dir = d.flyIn ? d.flyTo - d.flyFrom : d.flyTo - d.flyFrom;
+            d.go.SetActive(true);
+            d.root.localPosition = new Vector3(p.x, y, p.y);
+            d.root.localRotation = Quaternion.Euler(d.flyIn ? 8f : -14f, Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg, Mathf.Sin(d.fly * 14f) * 6f);
+            d.fly += dt;
+            if (d.fly < FlySeconds) return true;
+            d.fly = -100f;
+            if (!d.flyIn) { d.go.SetActive(false); d.state = 0; }
+            else { d.at = d.flyTo; d.to = d.at; d.yaw = Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg; }
+            return false;
+        }
+
+        void UpdateDucks(EcoLayer eco, int want, float dt)
+        {
+            int shown = 0, flying = 0;
+            for (int i = 0; i < ducks.Count; i++)
+            {
+                var d = ducks[i];
+                if (d.fly > -10f && Fly(d, eco, dt)) { flying++; continue; }
                 if (i >= want) { if (d.state != 0) { d.go.SetActive(false); d.state = 0; } continue; }
                 if (d.state == 0)
                 {
@@ -533,7 +599,7 @@ namespace AquariumCiv.View
                 Pose(d, eco);
                 shown++;
             }
-            DucksShown = shown;
+            DucksShown = shown; DucksFlying = flying;
         }
 
         void StartShore(Duck d, EcoLayer eco)

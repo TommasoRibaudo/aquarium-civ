@@ -41,6 +41,7 @@ namespace AquariumCiv.View
         {
             var s = PlaySites.None;
             if (rabbitsOk && HerdNear(planner, viewNow, at).HasValue) s |= PlaySites.Rabbits;
+            if (real.kind == PlaceKind.Pond && IceSite(planner, at, out _)) s |= PlaySites.Ice; // #618
             if (IsWaterPlace(real.kind) && WaterSite(planner, real, at, out _)) s |= PlaySites.Water;
             if (!roomy) return s;
             if (snow) s |= PlaySites.Snow;
@@ -58,6 +59,12 @@ namespace AquariumCiv.View
             {
                 case PlayGame.Splash:
                     return WaterSite(planner, real, centre, out var w) ? w : null;
+                case PlayGame.IceSlide:
+                {
+                    if (!IceSite(planner, centre, out var ice)) return null;
+                    centre = ice.slideA;
+                    return ice;
+                }
                 case PlayGame.Woods:
                 {
                     if (!NearestTree(centre, WoodsReach, usedTrees, out var trunk, out _)) return null;
@@ -70,6 +77,19 @@ namespace AquariumCiv.View
                 default:
                     return null;
             }
+        }
+
+        /// <summary>#618: the slide on a frozen pond big enough, nearest <paramref name="at"/> (PondIce.SlideLine); false while nobody may be
+        /// on the ice (not frozen whole, too small) or the ice has no room for a slide.</summary>
+        bool IceSite(LifePlanner planner, Vector2 at, out PlaySite site)
+        {
+            site = null;
+            var ice = IceView.Instance;
+            var sim = planner?.Sim;
+            if (ice == null || sim == null || !ice.PeopleOnIce) return false;
+            if (!AquariumCiv.Sim.Eco.PondIce.SlideLine(sim, at.x, at.y, out float ax, out float az, out float bx, out float bz)) return false;
+            site = new PlaySite { ice = true, slideA = new Vector2(ax, az), slideB = new Vector2(bx, bz), snow = true };
+            return true;
         }
 
         /// <summary>
@@ -309,6 +329,10 @@ namespace AquariumCiv.View
                     }
                     return LifeClock.SeasonOf(pv.Now.day) == Season.Winter ? "winter: no splashing" : "no water: no pond yet and no puddle ('Puddles now' first)";
                 }
+                case PlayGame.IceSlide:
+                    if (!IceSite(planner, spot, out site)) return IceView.Instance != null && IceView.Instance.Frozen ? "the ice is not whole yet, or the pond is too small to go on" : "no ice: the pond isn't frozen ('Ice: on' first)";
+                    place = Place.Land(PlaceKind.Pond); centre = site.slideA; spot = site.slideA;
+                    break;
                 case PlayGame.Woods:
                     if (!NearestTree(spot, 99f, null, out var trunk, out _)) return "no grown tree yet";
                     site = new PlaySite { tree = true, trunk = trunk, autumn = LifeClock.SeasonOf(pv.Now.day) == Season.Autumn, snow = LifeClock.SeasonOf(pv.Now.day) == Season.Winter };
@@ -321,7 +345,7 @@ namespace AquariumCiv.View
                     centre = Vector2.Lerp(site.home.pos, spot, 0.5f);
                     break;
             }
-            int want = game switch { PlayGame.Woods => 2, PlayGame.HideSeek => site != null ? Mathf.Min(4, 1 + site.covers.Count) : 3, PlayGame.Splash => 2, _ => 3 };
+            int want = game switch { PlayGame.IceSlide => 3, PlayGame.Woods => 2, PlayGame.HideSeek => site != null ? Mathf.Min(4, 1 + site.covers.Count) : 3, PlayGame.Splash => 2, _ => 3 };
             var who = new List<int>();
             while (who.Count < want)
             {

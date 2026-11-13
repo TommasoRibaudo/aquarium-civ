@@ -142,6 +142,7 @@ namespace AquariumCiv.View
             PlayGame.Woods => new WoodsGame(seed, t0, members, centre, site),
             PlayGame.HideSeek => new HideSeekGame(seed, t0, members, centre, site),
             PlayGame.Snowball => new SnowballGame(seed, t0, members, centre),
+            PlayGame.IceSlide => site != null && site.ice ? new IceSlideGame(seed, t0, members, site.slideA, site.slideB) : null, // #618
             PlayGame.Tag => new TagGame(seed, t0, members, centre),
             PlayGame.Ball => new BallGame(seed, t0, members, centre),
             PlayGame.ChaseRabbits => new RabbitChaseGame(seed, t0, members, centre),

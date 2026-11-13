@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 
 namespace AquariumCiv.Life
 {
@@ -161,7 +162,7 @@ namespace AquariumCiv.Life
                     case "snow": if (w != Weather.Storm) w = Weather.Snow; break;
                     case "rainbow": if (w == Weather.Clear || w == Weather.Fog) w = Weather.Rainbow; break;
                     case "fog": if (w == Weather.Clear) w = Weather.Fog; break;
-                    case "ducks": d.ducks = true; break;
+                    case "ducks": d.ducks = !PondIce.DucksAway(sim, day); break; // #618: not while they are away for the winter
                 }
                 AddChronicleScene(d, e);
             }
@@ -703,6 +704,7 @@ namespace AquariumCiv.Life
         {
             float r = R(p.key, d.day, salt + 400);
             if (d.ducks && r < 0.4f) return Place.Land(PlaceKind.Pond);       // chasing the ducks
+            if (d.season == Season.Winter && sim != null && PondIce.OnIce(sim, d.day) && r < 0.45f) return Place.Land(PlaceKind.Pond); // #618: sliding on the ice
             if (d.weather == Weather.KeeperRain && d.rainNudgeId >= 0 && r < 0.5f) return Place.Land(PlaceKind.Nudge, d.rainNudgeId); // puddles
             if (d.season == Season.Summer && r < 0.3f) return Place.Land(PlaceKind.Pond);
             if (era != Era.Camp && r > 0.92f) return Place.Land(PlaceKind.Hill);    // running up the Keeper's hill
@@ -1255,7 +1257,7 @@ namespace AquariumCiv.Life
             if (p.job == CrowdServer && tavernB != null) Put(list, Mk(ActivityKind.Serve, 18f, 22f, PlaceOf(tavernB), Prop.Mug), d);
             else if (p.job == JobType.Brewer && tavernB != null) Put(list, Mk(ActivityKind.Serve, 18f, 20f, PlaceOf(tavernB), Prop.Mug), d);
             else if (tavernB != null && !EveningBusy(p) && R(k, d.day, 70) < 0.15f) Put(list, Mk(ActivityKind.Drink, 18.3f, 21.8f, PlaceOf(tavernB), Prop.Mug), d);
-            else if (p.job == JobType.Fisher && (sim == null || sim.FishingWater) && R(k, d.day, 71) < 0.3f) // P8: no evening fishing in a dry hollow; #421: nor before the fish
+            else if (p.job == JobType.Fisher && (sim == null || sim.FishingWater && !PondIce.Frozen(sim, d.day)) && R(k, d.day, 71) < 0.3f) // #618: no lantern fishing on the ice // P8: no evening fishing in a dry hollow; #421: nor before the fish
                 Put(list, Mk(ActivityKind.Fish, 19.7f, 22f, Place.Land(PlaceKind.Pond), Prop.Lantern), d);
         }
 

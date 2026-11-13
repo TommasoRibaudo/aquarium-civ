@@ -64,6 +64,9 @@ namespace AquariumCiv.View
         public PlayCover home;
         public readonly List<PlayCover> covers = new List<PlayCover>();
         public bool snow;
+        /// <summary>#618: the ice slide: run up to <see cref="slideA"/>, glide to <see cref="slideB"/> (both on inner ice).</summary>
+        public bool ice;
+        public Vector2 slideA, slideB;
     }
 
     // ==================================================================== B3.a Splash

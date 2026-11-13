@@ -41,6 +41,7 @@ namespace AquariumCiv.GameUI
         GlassSheet sheet;
         GlassScrim scrim;
         TextField text;
+        Label count;
         GlassButton send;
         VisualElement shotMark;
         Image shotImage;
@@ -150,6 +151,8 @@ namespace AquariumCiv.GameUI
             text.AddToClassList("kg-field--area");
             text.RegisterValueChangedCallback(_ => Refresh());
             sheet.Add(text);
+            count = Text("", "type-note", "fb-count"); // #619: "N left" near the cap, so a long dictation never loses words unseen
+            sheet.Add(count);
 
             var shotRow = new Button(() => { UiSound.Play(UiRole.Toggle); SetShot(!shotOn); }) { name = "fb-shot" };
             shotRow.RemoveFromClassList(Button.ussClassName);
@@ -269,6 +272,11 @@ namespace AquariumCiv.GameUI
         {
             for (int i = 0; i < kindChips.Length; i++) kindChips[i].On = i == kind;
             bool ready = text.value.Trim().Length > 0;
+            if (count != null)
+            {
+                count.text = FeedbackReport.CounterText(text.value.Length);
+                count.style.display = count.text.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            }
             send.Available = ready;
             send.Kind = ready ? ButtonKind.Primary : ButtonKind.Secondary;
         }
