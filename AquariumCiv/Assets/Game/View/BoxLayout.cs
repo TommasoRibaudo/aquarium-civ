@@ -45,6 +45,9 @@ namespace AquariumCiv.View
         public int variant;
         /// <summary>0..1: how much of the piece is there (the time-lapse grows a new building in and shrinks a cleared one away, #78).</summary>
         public float grow = 1f;
+        /// <summary>#632: drawn apart from its ground chunk while it grows (a tent being raised): <see cref="grow"/> scales its own
+        /// object, so a raising step rebuilds no chunk. The chunk takes it back (one rebuild) when it stops being live.</summary>
+        [NonSerialized] public bool live;
 
         public Vector2 Pos => new(x, z);
     }

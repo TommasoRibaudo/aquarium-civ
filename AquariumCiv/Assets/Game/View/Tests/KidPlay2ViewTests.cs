@@ -26,6 +26,27 @@ namespace AquariumCiv.View.Tests
         }
 
         [Test]
+        public void SplashWater_WithTheLivingLand_IsOnlyTheEcoPondsCells()
+        {
+            // #630: a hollow under the pond's level that the eco pond doesn't cover is grass, not water to splash in.
+            var land = new Land();
+            var p = land.pond;
+            float level = land.Height(p.x, p.y) + 0.05f;
+            var eco = new EcoLayer { on = true };
+            Assert.IsTrue(KidPlayDirector.PondWaterAt(land, null, level, p.x, p.y), "without the eco layer the height alone says water");
+            Assert.IsFalse(KidPlayDirector.PondWaterAt(land, eco, level, p.x, p.y), "no eco water cell there: dry");
+            Assert.IsFalse(KidPlayDirector.NearestPondWater(land, eco, level, Vector2.zero, out _), "no water cell anywhere: no pond edge");
+
+            int c = AquariumCiv.Sim.Settle.SiteMap.CellAt(p.x, p.y);
+            eco.cover[c] = EcoLayer.Water;
+            var centre = new Vector2(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c));
+            Assert.IsTrue(KidPlayDirector.PondWaterAt(land, eco, land.Height(centre.x, centre.y) + 0.05f, centre.x, centre.y), "on the water cell, under the level");
+            Assert.IsTrue(KidPlayDirector.NearestPondWater(land, eco, land.Height(centre.x, centre.y) + 0.05f, Vector2.zero, out var at));
+            Assert.AreEqual(centre.x, at.x, 1e-4f);
+            Assert.AreEqual(centre.y, at.y, 1e-4f);
+        }
+
+        [Test]
         public void ThePlayMoves_AreNotPuffedByWorkHit()
         {
             // The B3 games spawn their own puffs (KidPlayDirector.Sites); the generic WorkHit map must not add a second one.

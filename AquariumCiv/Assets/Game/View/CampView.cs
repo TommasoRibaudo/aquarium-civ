@@ -29,7 +29,8 @@ namespace AquariumCiv.View
 
         /// <summary>A raising that cannot start (nobody free, no lot) is given up on after this many real seconds: the tent just stands.</summary>
         public const float GiveUpSeconds = 8f;
-        /// <summary>The tent grows in steps of this much (each step rebuilds its chunk once).</summary>
+        /// <summary>The tent grows in steps of this much (each step refreshes the box once; the rising tent is a live piece, #632,
+        /// so a step rescales it and rebuilds no chunk).</summary>
         public const float GrowStep = 0.1f;
 
         BoxView box;

@@ -92,13 +92,15 @@ namespace AquariumCiv.View
             placesBuf.Clear();
             foreach (var kv in atPlace) placesBuf.Add(kv.Key);
             foreach (var g in groups) if (!g.forced && !atPlace.ContainsKey(g.place)) placesBuf.Add(g.place);
+            bool waterCheck = time >= nextWaterCheck || nextWaterCheck - time > WaterCheckSeconds; // #630 (a clock set back checks at once)
+            if (waterCheck) { nextWaterCheck = time + WaterCheckSeconds; EndDrySplashCheats(planner); }
             foreach (var place in placesBuf)
             {
                 atPlace.TryGetValue(place, out var kids);
                 int n = kids?.Count ?? 0;
                 long sig = Sig(kids, block, viewNow.day);
                 if (n == 0) { RemoveAt(place); sigOf.Remove(place); pending.Remove(place); continue; }
-                bool lost = ChaseLostItsRabbits(place, time);
+                bool lost = ChaseLostItsRabbits(place, time) || (waterCheck && SplashLostItsWater(planner, place, time));
                 if (sigOf.TryGetValue(place, out long have) && have == sig && !lost) { pending.Remove(place); continue; }
                 if (sigOf.ContainsKey(place) && !lost)
                 {
