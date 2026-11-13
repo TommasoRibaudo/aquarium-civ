@@ -832,3 +832,6 @@ The Editor shut down and restarted during `DeerHuntPlayTests`. `test status` kep
 now stops the **whole batch** with exit 3 and a `STALLED` line in summary.txt when the Editor log stops growing for
 `STALL_S` (default 180 s) during a run, when the Editor's pid changes, or when RUN_LIMIT_S is hit. A background batch
 therefore wakes its caller within about 3 minutes of a dead run. Still check in after 1 minute on every run you start.
+
+- **2026-11-13 · TestFlight export: "Failed to resolve the latest game-ci CLI release: GitHub API returned 403".** [verified] `game-ci/unity-builder` v6 looks up its CLI release on the GitHub API without a token, and the anonymous rate limit refused it (run #28, the Linux export job, before any Unity work). `gh run rerun <id> --failed` passed on the first retry (export, archive, sign and upload all green). It is transient: rerun first; if it keeps failing, look for a token input on the builder.
+- **2026-11-13 · Kids or adults pushed off the frozen pond.** [verified] Two PeopleView helpers treat every pond cell as unwalkable: `Clear()` (the walk goes to the place's spot instead of a target over water) and `PlayOffLots()`/`Standable()` (play positions are nudged out of cells with `WalkCost == 0`). Anything that stands on the ice (#618) must ask `IceView.Instance.OnIce(p)` in all three, or it ends up on the bank.
