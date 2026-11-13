@@ -7,7 +7,7 @@
 # Reads the `fb:pulse` issues the game files (docs/feedback.md, "Quick questions"). Each title is
 # "[Slice] Pulse <id> (day D, session S): <answer>[ - <text>]"; the tester id is in the issue's Context table.
 set -euo pipefail
-REPO="${REPO:-TommasoRibaudo/aquarium-civ}"
+REPO="${REPO:-TommasoRibaudo/aquarium-civ-feedback}"
 ONLY="${1:-}"
 gh issue list -R "$REPO" --label fb:pulse --state all --limit 500 --json number,title,body,createdAt \
   --jq '.[] | [.number, .createdAt, .title, ((.body | capture("\\| Tester \\| (?<t>[^|]+) \\|").t // "?") | gsub(" "; ""))] | @tsv' |

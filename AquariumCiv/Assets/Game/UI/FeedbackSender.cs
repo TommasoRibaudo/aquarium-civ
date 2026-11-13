@@ -22,7 +22,9 @@ namespace AquariumCiv.GameUI
     [DefaultExecutionOrder(-140)]
     public class FeedbackSender : MonoBehaviour
     {
-        public string repo = "TommasoRibaudo/aquarium-civ";
+        /// <summary>#637 (user, 2026-11-13): feedback goes to a private repo; the code repo is public. Not serialized, so an old
+        /// scene that saved the public repo can't send there.</summary>
+        [System.NonSerialized] public string repo = "TommasoRibaudo/aquarium-civ-feedback";
         /// <summary>A second note inside this window is refused (a stuck finger must not flood the board).</summary>
         public float minSecondsBetween = 4f;
 

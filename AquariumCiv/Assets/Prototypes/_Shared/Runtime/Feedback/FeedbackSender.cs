@@ -21,7 +21,9 @@ namespace AquariumCiv.Prototypes
     {
         public enum Kind { Bug, Feel, Confusing, Idea, Praise, Survey }
 
-        public string repo = "TommasoRibaudo/aquarium-civ";
+        /// <summary>#637 (user, 2026-11-13): feedback goes to a private repo; the code repo is public. Not serialized, so an old
+        /// scene that saved the public repo can't send there.</summary>
+        [System.NonSerialized] public string repo = "TommasoRibaudo/aquarium-civ-feedback";
 
         public static FeedbackSender Instance { get; private set; }
         /// <summary>Raised after each attempt: (sent now, message for the player).</summary>
