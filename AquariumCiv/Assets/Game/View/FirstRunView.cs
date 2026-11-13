@@ -702,7 +702,8 @@ namespace AquariumCiv.View
             // The prompt waits for the welcome: it would take the toast down (question 22), and the name deserves its moment.
             bool rainUp = !quiet && step == FirstRunStep.Rain && !rainArmed && !named && !(Sim != null && Sim.EcologyOn); // P8: a held finger mists, no button
             if (rainBtn.Ready != rainUp) rainBtn.Ready = rainUp;
-            bool skips = FeedbackUI.InTestBuild && !quiet && step != FirstRunStep.Card && step != FirstRunStep.Year && step != FirstRunStep.Arrive && !NameSheetOpen;
+            // #637: the outside tester's build hides Skip with the debug panel (it would void "do you know what to do?"); the hidden unlock shows both
+            bool skips = FeedbackUI.InTestBuild && !DebugDock.Locked && !quiet && step != FirstRunStep.Card && step != FirstRunStep.Year && step != FirstRunStep.Arrive && !NameSheetOpen;
             skipRow.style.display = skips ? DisplayStyle.Flex : DisplayStyle.None;
             Fade(yearBox, ref yearUp, !quiet && step == FirstRunStep.Year, GlassMotion.CaptionOff, GlassMotion.CaptionOutMs);
             if (step == FirstRunStep.Year) yearFill.style.width = Length.Percent(100f * run.YearProgress);
