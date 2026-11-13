@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 
 namespace AquariumCiv.Life
 {
@@ -188,7 +189,7 @@ namespace AquariumCiv.Life
                     if (sim != null && sim.EcologyOn) return TribeWork(p, d); // P8 (#285, #283): the job opens with the first rabbit; the hunt itself is planned in LifePlanner.Hunt.cs (HuntPlan) and plays over the day; between hunts: the tribe's work
                     return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, stash, season == Season.Winter ? 0.35f : 0.25f);
                 case JobType.Fisher:
-                    if (sim != null && !sim.FishingWater) // P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
+                    if (sim != null && (!sim.FishingWater || PondIce.FishingStopped(sim, d.day))) // #618: a small frozen pond isn't fished; P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
                         return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
                     return camp ? FishWork() : W(Pond, ActivityKind.Fish, Prop.Rod, Prop.Basket, Store(Prop.Goods), 0.25f); // #543: a camp's catch goes to the fish rack
                 case JobType.Woodcutter:

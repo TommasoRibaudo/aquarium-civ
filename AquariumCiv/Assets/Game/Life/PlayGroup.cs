@@ -28,6 +28,8 @@ namespace AquariumCiv.Life
         HideSeek,
         /// <summary>#359 (B2's stretch): a snowball fight on a snow day.</summary>
         Snowball,
+        /// <summary>#618: on a frozen pond big enough: in turn, a run-up and a long slide across the ice, arms out; now and then a fall.</summary>
+        IceSlide,
     }
 
     /// <summary>#359: what a group's spot offers (the owner looks at the real land): the B3 games need their real thing.</summary>
@@ -45,6 +47,8 @@ namespace AquariumCiv.Life
         Cover = 8,
         /// <summary>Snow on the ground: a snowball fight.</summary>
         Snow = 16,
+        /// <summary>#618: the kids are at a frozen pond big enough to go on: they slide.</summary>
+        Ice = 32,
     }
 
     /// <summary>One play group the split asks for: its game, its members (person keys, in order) and where it plays.</summary>
@@ -97,6 +101,7 @@ namespace AquariumCiv.Life
             PlayGame.Woods => size == 2,
             PlayGame.HideSeek => size >= 3 && size <= MaxGroup,
             PlayGame.Snowball => size >= 2 && size <= MaxGroup,
+            PlayGame.IceSlide => size >= 2 && size <= MaxGroup, // #618
             _ => false,
         };
 
@@ -109,6 +114,7 @@ namespace AquariumCiv.Life
         public static PlayGame Pick(int seed, int size, PlaySites sites, ICollection<PlayGame> taken, bool roomy = true)
         {
             bool Free(PlayGame g) => Fits(g, size) && (taken == null || !taken.Contains(g));
+            if ((sites & PlaySites.Ice) != 0 && Fits(PlayGame.IceSlide, size)) return PlayGame.IceSlide; // #618: the ice is the game
             if ((sites & PlaySites.Water) != 0 && Fits(PlayGame.Splash, size)) return PlayGame.Splash;
             if (roomy)
             {

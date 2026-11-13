@@ -101,5 +101,61 @@ namespace AquariumCiv.GameUI.Tests
             foreach (var (k, v) in DeviceInfo.Rows("local")) { keys.Add(k); Assert.IsNotEmpty(v, k); }
             foreach (var want in new[] { "Build", "Device", "GPU", "Memory", "Screen" }) CollectionAssert.Contains(keys, want);
         }
+
+        // ---------------------------------------------------------------- #619: long notes
+        static string BuildFor(FeedbackReport.Fit f, List<string> log, string stats, List<string> events) =>
+            FeedbackReport.Body(FeedbackKind.Idea, f.text, f.screenshot, "ab12cd34", Ctx, log.GetRange(log.Count - f.logLines, f.logLines), f.stats ? stats : null, f.events ? events : null);
+
+        static List<string> Lines(int n, int width) { var l = new List<string>(); for (int i = 0; i < n; i++) l.Add(i + " " + new string('l', width)); return l; }
+
+        [Test]
+        public void ALong3000CharNote_ArrivesWhole_WithItsScreenshot()
+        {
+            string text = string.Join(" ", System.Linq.Enumerable.Repeat("winter freezes the pond and", 112)); // ~3,000 chars, as a dictation
+            Assert.That(text.Length, Is.InRange(2900, FeedbackReport.MaxTextChars));
+            var log = Lines(FeedbackReport.MaxLogLines, 200); var events = Lines(40, 150); string stats = "{" + new string('s', 1500) + "}";
+            var f = FeedbackReport.FitNote(text, log.Count, true, 40000, x => BuildFor(x, log, stats, events));
+            Assert.AreEqual(text, f.text, "the words arrive whole");
+            Assert.IsFalse(f.textCut);
+            Assert.IsTrue(f.screenshot, "the picture stays");
+            Assert.That(f.screenshotRoom, Is.GreaterThanOrEqualTo(FeedbackReport.MinScreenshotChars));
+            Assert.That(BuildFor(f, log, stats, events).Length + f.screenshotRoom + FeedbackReport.ScreenshotWrapChars, Is.LessThanOrEqualTo(FeedbackReport.MaxIssueChars));
+            Assert.That(f.logLines, Is.LessThan(log.Count), "the log gave way first");
+        }
+
+        [Test]
+        public void TheLogGivesWayBeforeTheEventsTheStatsAndThePicture()
+        {
+            var log = Lines(150, 300); var events = Lines(40, 600); string stats = "{" + new string('s', 20000) + "}";
+            var f = FeedbackReport.FitNote("short", log.Count, true, 40000, x => BuildFor(x, log, stats, events));
+            Assert.AreEqual(0, f.logLines, "no log left");
+            Assert.IsTrue(f.screenshot);
+            Assert.AreEqual("short", f.text);
+        }
+
+        [Test]
+        public void OnlyAsALastResort_TheTextIsCut_WithAVisibleMark()
+        {
+            var log = Lines(10, 10); var events = Lines(2, 10);
+            string huge = new string('w', FeedbackReport.MaxTextChars);
+            // a context so long nothing else can fit: the words are cut, never silently
+            var big = new List<(string, string)> { ("Box", new string('b', FeedbackReport.MaxIssueChars - 2000)) };
+            string Build(FeedbackReport.Fit x) => FeedbackReport.Body(FeedbackKind.Idea, x.text, x.screenshot, "t", big, log.GetRange(log.Count - x.logLines, x.logLines), x.stats ? "{}" : null, x.events ? events : null);
+            var f = FeedbackReport.FitNote(huge, log.Count, true, 40000, Build);
+            Assert.IsTrue(f.textCut);
+            Assert.IsFalse(f.screenshot, "the picture went before the words");
+            StringAssert.EndsWith("characters)", f.text);
+            Assert.That(Build(f).Length, Is.LessThanOrEqualTo(FeedbackReport.MaxIssueChars));
+        }
+
+        [Test]
+        public void TheCounterShowsOnlyNearTheCap()
+        {
+            Assert.AreEqual("", FeedbackReport.CounterText(100));
+            Assert.AreEqual("", FeedbackReport.CounterText(FeedbackReport.CounterFrom - 1));
+            Assert.AreEqual((FeedbackReport.MaxTextChars - FeedbackReport.CounterFrom) + " left", FeedbackReport.CounterText(FeedbackReport.CounterFrom));
+            Assert.AreEqual("0 left", FeedbackReport.CounterText(FeedbackReport.MaxTextChars));
+            Assert.That(FeedbackReport.MaxTextChars, Is.GreaterThanOrEqualTo(3000), "#619: a dictated note fits");
+        }
     }
 }

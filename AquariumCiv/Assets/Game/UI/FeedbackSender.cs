@@ -123,22 +123,22 @@ namespace AquariumCiv.GameUI
         {
             text = (text ?? "").Trim();
             if (text.Length == 0 || Time.realtimeSinceStartup - lastSubmit < minSecondsBetween) return false;
-            if (text.Length > FeedbackReport.MaxTextChars) text = text.Substring(0, FeedbackReport.MaxTextChars);
             lastSubmit = Time.realtimeSinceStartup;
 
             var stamp = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{TesterId()}";
             var stats = TelemetryJson();
             var events = GameClock.Tel?.RecentLines(40);
             var log = LogRing.Last(FeedbackReport.MaxLogLines);
-            string body = null;
-            for (int lines = log.Count; ; lines /= 2) // the log gives way first: an issue over the limit is refused outright
-            {
-                var kept = new List<string>(log.GetRange(log.Count - lines, lines));
-                body = FeedbackReport.Body(kind, text, jpg != null, TesterId(), Context(buildInfo), kept, stats, events) + FeedbackReport.NoteIdLine(stamp);
-                if (lines == 0 || body.Length + (jpg != null ? ScreenShot.MaxBase64Chars : 0) <= FeedbackReport.MaxIssueChars) break;
-            }
-            int room = FeedbackReport.MaxIssueChars - body.Length - FeedbackReport.ScreenshotWrapChars;
-            if (jpg != null && ScreenShot.Base64Chars(jpg.Length) > room) jpg = ScreenShot.Shrink(jpg, room / 4 * 3);
+            var ctx = Context(buildInfo);
+            string Build(FeedbackReport.Fit f) => FeedbackReport.Body(kind, f.text, f.screenshot, TesterId(), ctx, log.GetRange(log.Count - f.logLines, f.logLines),
+                f.stats ? stats : null, f.events ? events : null) + FeedbackReport.NoteIdLine(stamp);
+            // #619: the tester's words win; the log, the events, the stats and the picture give way first (FitNote)
+            var fit = FeedbackReport.FitNote(text, log.Count, jpg != null, jpg != null ? ScreenShot.Base64Chars(jpg.Length) : 0, Build);
+            text = fit.text;
+            string body = Build(fit);
+            if (!fit.screenshot) jpg = null;
+            else if (ScreenShot.Base64Chars(jpg.Length) > fit.screenshotRoom) jpg = ScreenShot.Shrink(jpg, fit.screenshotRoom / 4 * 3);
+            if (fit.textCut) Debug.LogWarning($"[Feedback] note too long even without the log and picture: {text.Length} chars kept");
             var payload = FeedbackReport.PayloadJson(FeedbackReport.Title(kind, text, EraAndYear()), body, FeedbackReport.Labels(kind));
             try
             {
