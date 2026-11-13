@@ -59,6 +59,10 @@ later launch or resume). The same `FeedbackToken.txt` is used.
   (decode to view: `base64 -d > shot.jpg`). `ScreenShot.Jpg` steps the size and quality down until it's within 40,000 base64 characters; a note with long logs
   drops log lines first and shrinks the picture further, so the body stays under GitHub's 65,536. There is no upload: the token keeps **Issues** only, because it
   ships in the build, and the `feedback-assets` branch was never needed.
+- **Long notes (#619):** the text box takes up to 4,000 characters (it was 600, which cut a dictated note mid-word) and shows "N left" in
+  the last 10 %. The tester's words win: `FeedbackReport.FitNote` lets the log give way first (halved until none), then the recent events,
+  the session stats and the screenshot (shrunk, then left out under 6,000 base64 characters); only then is the text cut, with
+  "(cut at N characters)" in the issue.
 - **Duplicates (#155, #171):** each note carries `<!-- note-id ... -->`. A `.sending` file beside it marks a send under way; at the next flush a note with that
   mark is looked for in the latest 30 feedback issues before it goes again, and if GitHub can't say, it waits.
 - Debug panel: "Send test feedback". The Settings page of the HUD shell (#36) should call `FeedbackUI.Instance.Open()`.

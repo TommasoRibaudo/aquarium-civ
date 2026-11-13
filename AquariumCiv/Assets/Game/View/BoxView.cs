@@ -791,6 +791,8 @@ namespace AquariumCiv.View
         public float SurfaceHeight(float x, float z)
         {
             float h = land.Height(x, z);
+            var ice = IceView.Instance; // #618: on a frozen pond big enough, people stand on the ice
+            if (ice != null && ice.IceTop(x, z, out float iy) && iy > h) return iy;
             if (layout != null)
                 foreach (var b in layout.bridges)
                     if ((b.centre - new Vector2(x, z)).sqrMagnitude < 0.36f * 0.36f && Bridges.Deck(b, land.Height, new Vector2(x, z), out float y)) return Mathf.Max(h, y);

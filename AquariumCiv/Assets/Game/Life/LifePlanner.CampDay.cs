@@ -6,6 +6,7 @@
 // (a couple by the pair) and day: no new dice from any stream.
 using System;
 using AquariumCiv.Sim;
+using AquariumCiv.Sim.Eco;
 
 namespace AquariumCiv.Life
 {
@@ -138,7 +139,11 @@ namespace AquariumCiv.Life
         }
 
         /// <summary>The pond has fish to catch: on a living land, water and the fish the Keeper placed (#421, placed-life spec §5.5).</summary>
-        bool WaterHere(Place pond) => !OnLiving || sim.FishingWater;
+        bool WaterHere(Place pond) => !OnLiving || sim.FishingWater && !PondIce.FishingStopped(sim, dayInfo.day);
+
+        /// <summary>#618: fish can be caught on view day <paramref name="day"/>: fish placed and water, and not a frozen pond too small to fish
+        /// through the ice (a big one is fished through holes, LifePlanner/PeopleView put the fisher on the ice).</summary>
+        bool FishingOn(long day) => !OnLiving || sim.FishingWater && !PondIce.FishingStopped(sim, day);
 
         // ---------------------------------------------------------------- the crowd's helpers
 
@@ -149,7 +154,7 @@ namespace AquariumCiv.Life
         {
             if (!CampSpread || !p.Adult) return null;
             float r = R(p.key, d.day, 147);
-            bool water = !OnLiving || sim.FishingWater; // #421: fishing waits for the fish
+            bool water = FishingOn(d.day); // #421: fishing waits for the fish; #618: and for the thaw on a small pond
             if (r < 0.35f && (!OnLiving || sim.BerriesGrow)) return TribeWork(p, d);
             if (r < 0.55f && water) return FishWork();
             if (r < 0.70f && WoodsStand) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
@@ -252,7 +257,7 @@ namespace AquariumCiv.Life
                 return cook;
             }
             float r = R(p.key, d.day, 149);
-            bool water = !OnLiving || sim.FishingWater; // #421: fishing waits for the fish
+            bool water = FishingOn(d.day); // #421: fishing waits for the fish; #618: and for the thaw on a small pond
             if (water && r < 0.45f) return FishWork();
             if (WoodsStand && r < 0.8f) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
             var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);

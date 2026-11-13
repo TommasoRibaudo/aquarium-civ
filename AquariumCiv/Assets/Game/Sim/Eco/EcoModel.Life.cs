@@ -271,6 +271,7 @@ namespace AquariumCiv.Sim.Eco
                 LifeSpecies.Fish => who == LifeTaker.Fishers,
                 _ => false,
             };
+            if (s == LifeSpecies.Ducks && (PondIce.Force ?? PondIce.Winter(month))) return false; // #618: the wild ducks are away for the winter
             return right && !SpringPaused(s, who, month);
         }
 

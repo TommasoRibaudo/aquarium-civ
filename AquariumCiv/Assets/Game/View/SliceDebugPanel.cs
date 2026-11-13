@@ -222,6 +222,12 @@ namespace AquariumCiv.View
             if (Btn("Kids play: hide and seek")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.HideSeek);
             if (Btn("Kids play: snowball")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.Snowball);
             EndRow();
+            Row(); // #618 winter on the pond: the freeze (and the ducks' leave), and the kids' slide
+            if (Btn("Ice: on")) last = IceView.DebugIce(true);
+            if (Btn("Ice: off")) last = IceView.DebugIce(false);
+            if (Btn("Ice: as the season")) last = IceView.DebugIce(null);
+            if (Btn("Kids play: slide on ice")) last = KidPlayDirector.Debug(AquariumCiv.Life.PlayGame.IceSlide);
+            EndRow();
             Row();
             if (Btn("Start a hunt now")) last = EcoDebug.StartHunt();
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);

@@ -117,6 +117,7 @@ namespace AquariumCiv.Life.Tests
             sim.DebugOpenCampGate();
             Block(sim, 6, 6, 1.2f, EcoCover.Water);
             Assert.GreaterOrEqual(sim.DebugPlaceNearCamp(LifeSpecies.Ducks), 0);
+            while (PondIce.Winter(sim.State.month)) sim.Advance(sim.Config.StepHours); // #618: the wild ducks are away in winter, and nobody takes their eggs
             sim.State.eco.ducks = ducks; sim.State.eco.duckEggs = eggs;
             return sim;
         }

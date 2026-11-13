@@ -137,7 +137,8 @@ namespace AquariumCiv.Sim.Eco
             var prey = new List<(LifeSpecies s, bool pen, float w)>(4);
             if (Surplus(LifeSpecies.Deer, LifeTaker.Wolves) > 0) prey.Add((LifeSpecies.Deer, false, 0.55f));
             if (Surplus(LifeSpecies.Rabbits, LifeTaker.Wolves) > 0) prey.Add((LifeSpecies.Rabbits, false, 0.3f));
-            if (Surplus(LifeSpecies.Ducks, LifeTaker.Wolves) > 0) prey.Add((LifeSpecies.Ducks, false, 0.15f));
+            if (Surplus(LifeSpecies.Ducks, LifeTaker.Wolves) > 0 && MayTake(LifeSpecies.Ducks, LifeTaker.Wolves, month)) // #618: not while the wild ducks are away for the winter
+                prey.Add((LifeSpecies.Ducks, false, 0.15f));
             if (PenOpenToWolves && st.penDucks > (int)Floor(LifeSpecies.Ducks)) prey.Add((LifeSpecies.Ducks, true, 0.1f));
             if (prey.Count == 0) return null;
             float sum = 0f; foreach (var p in prey) sum += p.w;

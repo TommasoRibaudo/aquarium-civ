@@ -212,7 +212,7 @@ namespace AquariumCiv.View
                 var game = p.game;
                 if (game is PlayGame.Tag or PlayGame.Ball) { GamesElsewhere(place, inViewBuf); game = PlayGroups.Differ(game, p.members.Length, inViewBuf, roomy); } // #541
                 var site = SiteFor(planner, game, real, ref centre, viewNow); // #359
-                if (site == null && game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek) game = PlayGroups.Fits(PlayGame.Tag, p.members.Length) ? PlayGame.Tag : PlayGame.Ball;
+                if (site == null && game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek or PlayGame.IceSlide) game = PlayGroups.Fits(PlayGame.Tag, p.members.Length) ? PlayGame.Tag : PlayGame.Ball;
                 var g = MakeGroup(planner, viewNow, place, game, p.seed, p.members, centre, time, site);
                 Add(g);
             }
@@ -377,7 +377,7 @@ namespace AquariumCiv.View
         {
             var planner = pv.Planner;
             if (planner == null) return "no planner";
-            if (game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek) return ForceB3(game); // #359
+            if (game is PlayGame.Splash or PlayGame.Woods or PlayGame.HideSeek or PlayGame.IceSlide) return ForceB3(game); // #359, #618
             var gather = planner.GatherPlace;
             if (!planner.Positions.TryGetPosition(gather, out float gx, out float gz)) return "no gathering place";
             var spot = new Vector2(gx, gz);
