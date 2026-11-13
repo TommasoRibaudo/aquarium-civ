@@ -200,7 +200,11 @@ namespace AquariumCiv.View
         }
 
         /// <summary>#636: calm now (nothing on screen, no touch for <see cref="calmSeconds"/>), for the quick questions.</summary>
-        public bool CalmNow() => CalmFor();
+        public bool CalmNow(double seconds)
+        {
+            var s = CalmState();
+            return !RecallCalm.Busy(s) && s.secondsSinceTouch >= seconds && s.secondsSinceBusy >= seconds;
+        }
 
         bool CalmFor()
         {

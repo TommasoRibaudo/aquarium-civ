@@ -46,6 +46,7 @@ namespace AquariumCiv.View
         byte[] shot;
         int chosen = -1;
         int askedDay, askedSession;
+        bool askedByCheat;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -105,10 +106,20 @@ namespace AquariumCiv.View
             return sim.State.dilemmas != null && sim.State.dilemmas.Any(d => d.visitNo == v);
         }
 
-        static bool FirstRunDone()
+        /// <summary>Tester: "know" came 2-7 s after the box was named, over the tools it asks about. The first run counts as done only
+        /// after the player has had the box to themselves for this long (real seconds).</summary>
+        public static float SettleSeconds = 60f;
+        /// <summary>No touch for this long before a question (the recall question's 2 s caught the player between two taps).</summary>
+        public static float CalmSeconds = 5f;
+        float firstRunDoneAt = -1f;
+
+        bool FirstRunDone()
         {
             var fr = FirstRunView.Instance;
-            return fr == null || fr.Step == FirstRunStep.Done;
+            bool done = fr == null || fr.Step == FirstRunStep.Done;
+            if (!done) { firstRunDoneAt = -1f; return false; }
+            if (firstRunDoneAt < 0f) firstRunDoneAt = Time.unscaledTime;
+            return Time.unscaledTime - firstRunDoneAt >= SettleSeconds;
         }
 
         public PulseContext Context()
@@ -124,7 +135,7 @@ namespace AquariumCiv.View
                 awayHours = clock != null ? clock.SessionAwayHours : 0,
                 firstRunDone = FirstRunDone(),
                 choiceThisVisit = ChoiceThisVisit(),
-                busy = IsOpen || capturing || RecallPromptView.Busy() || recall != null && (recall.IsOpen || !recall.CalmNow()),
+                busy = IsOpen || capturing || RecallPromptView.Busy() || recall != null && (recall.IsOpen || !recall.CalmNow(CalmSeconds)),
             };
         }
 
@@ -189,6 +200,10 @@ namespace AquariumCiv.View
                 int n = i;
                 var b = new GlassButton(def.answers[i], () => Pick(n), ButtonKind.Secondary, UiRole.Confirm) { name = "pulse-answer-" + i };
                 b.AddToClassList("pulse-answer");
+                // one row of up to three; four go two by two, so every answer keeps a thumb-sized button
+                b.style.flexGrow = 1;
+                b.style.flexBasis = def.answers.Length > 3 ? new StyleLength(Length.Percent(40)) : new StyleLength(0f);
+                b.style.marginLeft = 4f; b.style.marginRight = 4f; b.style.marginTop = 4f; b.style.marginBottom = 4f;
                 answers.Add(b);
             }
             answers.style.display = DisplayStyle.Flex;
@@ -226,7 +241,8 @@ namespace AquariumCiv.View
             GameClock.Tel?.Log("pulse_answer", "q", def.id, "a", i, "day", askedDay, "session", askedSession, "typed", string.IsNullOrWhiteSpace(text) ? 0 : 1);
             GameClock.Tel?.Flush();
             var sender = FeedbackSender.Ensure();
-            sender.SubmitPulse(def, answer, text, askedDay, askedSession, shot, BoxFacts());
+            sender.SubmitPulse(def, answer, text, askedDay, askedSession, shot, BoxFacts(), askedByCheat);
+            askedByCheat = false;
             shot = null;
             Close();
             if (def.feedbackOn == i && FeedbackUI.Instance != null) FeedbackUI.Instance.OpenAs(FeedbackKind.Confusing);
@@ -235,6 +251,7 @@ namespace AquariumCiv.View
 
         void Dismiss()
         {
+            askedByCheat = false;
             var def = Asking;
             if (def != null)
             {
@@ -288,7 +305,9 @@ namespace AquariumCiv.View
             root.style.display = DisplayStyle.None;
             parent.Add(root);
 
-            sheet = new GlassSheet { name = "pulse-sheet" };
+            // tester (tablet): a fixed 30 % sheet let a second row of answers ride up over the question; as tall as it needs instead
+            sheet = new GlassSheet(SheetHeight.Content) { name = "pulse-sheet" };
+            sheet.style.position = Position.Absolute;
             sheet.style.display = DisplayStyle.None;
             root.Add(sheet);
 
@@ -297,6 +316,8 @@ namespace AquariumCiv.View
             card.Head.Add(new GlassButton("Not now", Dismiss, ButtonKind.Quiet, UiRole.Close) { name = "pulse-dismiss" });
             card.Actions.name = "pulse-actions";
             card.Actions.style.flexDirection = FlexDirection.Column;
+            card.Actions.style.alignItems = Align.Stretch;
+            card.Actions.style.marginTop = 12f;
 
             answers = new VisualElement { name = "pulse-answers", pickingMode = PickingMode.Ignore };
             answers.style.flexDirection = FlexDirection.Row;
@@ -307,6 +328,7 @@ namespace AquariumCiv.View
             textStep = new VisualElement { name = "pulse-text-step", pickingMode = PickingMode.Ignore };
             textStep.style.flexGrow = 1;
             field = new TextField { name = "pulse-text", maxLength = 200 };
+            field.style.alignSelf = Align.Stretch;
             field.textEdition.placeholder = "Type here...";
             field.AddToClassList("kg-field");
             textStep.Add(field);
@@ -334,7 +356,8 @@ namespace AquariumCiv.View
             if (!v.loaded) v.LoadState();
             var c = v.Context();
             v.Ask(def, c);
-            return $"asking '{id}' (day {c.dayIndex}, session {c.session})";
+            v.askedByCheat = true; // tester: a cheat's answer goes out marked [debug], so the report never counts it
+            return $"asking '{id}' (day {c.dayIndex}, session {c.session}, marked debug)";
         }
 
         public static string DebugReset()

@@ -67,6 +67,9 @@ While it runs, the old day-2/3 recall question stays quiet (its words are in `na
 - Debug panel (telemetry block): "Ask <id>", "Reset questions", "Questions: on/off". PlayMode tests run with the questions off
   (`SaveSandbox`); `PulseQuestionPlayTests` asks on purpose.
 - `fb:pulse` issues need no triage: read them with the report.
+- Timing (tester 2026-11-13): no question until the player has had the box to themselves for 60 s after the first run
+  (`PulseQuestionView.SettleSeconds`) and 5 s without a touch (`CalmSeconds`). A question asked with "Ask <id>" goes out
+  as `[Slice] [debug] Pulse ...` and the report skips it.
 
 ## In the slice (#55)
 Code: `Assets/Game/UI/` (`FeedbackUI`, `FeedbackSender`, `FeedbackReport`, `LogRing`, `DeviceInfo`). A **Feedback** pill (bottom-left,

@@ -225,6 +225,7 @@ namespace AquariumCiv.Sim
             id = "camp_remember", kind = DilemmaKind.Tradition, minEra = Era.Camp, maxEra = Era.Camp, needsDeath = true, // #346: nobody to remember before the first death
             // #635 (playtest #634): the words name who died ({dead}, fixed when raised), so "the ones we lose" is somebody
             question = "We lost {dead}. Do we remember them by stone or tree?",
+            shortAsk = "Remembering {dead}: stone or tree?", // tester: the book cut "We lost ..." and left "them" with no one
             askedBy = new Dictionary<string, string>
             {
                 ["the kind"] = "Nobody should forget {dead}. The stone, or the tree?",

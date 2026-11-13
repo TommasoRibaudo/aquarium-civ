@@ -160,7 +160,7 @@ namespace AquariumCiv.GameUI
         /// <summary>#636: queues a quick question's answer as an <c>fb:pulse</c> issue, with the same package as a note (context, the
         /// screenshot taken when the question opened, session stats, recent events, the game log) plus <paramref name="boxFacts"/>.
         /// No refusal for an empty text or a quick second answer: an answer is always kept. Returns the outbox file's stamp.</summary>
-        public string SubmitPulse(PulseDef def, string answer, string typed, int day, int session, byte[] jpg, string boxFacts)
+        public string SubmitPulse(PulseDef def, string answer, string typed, int day, int session, byte[] jpg, string boxFacts, bool debug = false)
         {
             typed = (typed ?? "").Trim();
             var stamp = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{TesterId()}-pulse";
@@ -174,7 +174,9 @@ namespace AquariumCiv.GameUI
             string body = Build(fit);
             if (!fit.screenshot) jpg = null;
             else if (ScreenShot.Base64Chars(jpg.Length) > fit.screenshotRoom) jpg = ScreenShot.Shrink(jpg, fit.screenshotRoom / 4 * 3);
-            var payload = FeedbackReport.PayloadJson(PulseQuestions.Title(def, answer, day, session, typed), body, PulseQuestions.Labels);
+            var title = PulseQuestions.Title(def, answer, day, session, typed);
+            if (debug) { title = title.Replace("[Slice] Pulse", "[Slice] [debug] Pulse"); body = "_Asked from the debug panel: not a real answer._\n\n" + body; }
+            var payload = FeedbackReport.PayloadJson(title, body, PulseQuestions.Labels);
             try
             {
                 Directory.CreateDirectory(OutboxDir);

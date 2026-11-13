@@ -174,15 +174,35 @@ namespace AquariumCiv.View
             {
                 float a = i * 2.39996f + 0.4f;                       // the golden angle: never two on one side
                 float r = ringR * (0.8f + 0.2f * ((i * 7) % 3) / 2f);
-                float len = 0.05f + 0.022f * (i % 3);
+                float len = 0.055f + 0.025f * (i % 3);
                 var top = new Vector3(Mathf.Cos(a) * r, attachY, Mathf.Sin(a) * r);
                 var col = Palette.Accents[i % Palette.Accents.Length];
-                mb.Box(top - Vector3.up * len * 0.5f, new Vector3(0.004f, len, 0.004f), Palette.Plaster);
-                var at = top - Vector3.up * (len + 0.018f);
-                mb.Box(at, new Vector3(0.034f, 0.034f, 0.009f), col, Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 45f));
-                mb.Ico(at - Vector3.up * 0.028f, 0.011f, Vector3.one, Palette.Plaster, 0.05f);
+                mb.Box(top - Vector3.up * len * 0.5f, new Vector3(0.006f, len, 0.006f), Palette.Plaster);
+                var at = top - Vector3.up * (len + 0.026f);
+                mb.Box(at, new Vector3(0.05f, 0.05f, 0.012f), col, Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 45f)); // tester: 0.034 was a speck at home zoom
+                mb.Ico(at - Vector3.up * 0.04f, 0.015f, Vector3.one, Palette.Plaster, 0.05f);
             }
             var mesh = mb.ToMesh("Consequence_charms_" + count);
+            mesh.hideFlags = HideFlags.DontSave;
+            return mesh;
+        }
+
+        /// <summary>#635: the stand-in pole with <paramref name="count"/> charms on its bough (the sim's count, not always four).</summary>
+        public static Mesh PoleWithCharms(int count)
+        {
+            var mb = new MeshBuilder(3780 + count) { jitter = 0.025f };
+            mb.Prism(Vector3.zero, 0.02f, 0.014f, 0.36f, 6, Palette.Bark, topCol: Palette.WoodLight);
+            mb.Box(new Vector3(0.06f, 0.32f, 0f), new Vector3(0.14f, 0.014f, 0.014f), Palette.Bark);
+            int n = Mathf.Clamp(count, 1, 6);
+            float step = n <= 4 ? 0.045f : 0.12f / (n - 1);
+            for (int i = 0; i < n; i++)
+            {
+                float x = 0.02f + i * step;
+                mb.Box(new Vector3(x, 0.29f, 0f), new Vector3(0.003f, 0.05f, 0.003f), Palette.Plaster);
+                mb.Ico(new Vector3(x, 0.26f, 0f), 0.014f, Vector3.one, Palette.Accents[i % Palette.Accents.Length], 0.05f);
+            }
+            mb.Ico(new Vector3(0f, 0.38f, 0f), 0.07f, new Vector3(1f, 0.7f, 1f), Palette.LeafB, 0.15f);
+            var mesh = mb.ToMesh("Consequence_pole_charms_" + count);
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
         }
@@ -212,7 +232,7 @@ namespace AquariumCiv.View
         sealed class Made { public Transform t; public Mesh mesh; public string kind; public float yaw; public Vector3 at; }
 
         /// <summary>#635: the mesh key of a thing: its kind, or for charms on a tree the tree and the count (a new death adds a charm).</summary>
-        static string KeyOf(ConsequenceProp p, int charms) => p.anchor == PropAnchor.Tree && p.treeCell >= 0 ? $"charms:{p.treeCell}:{charms}" : p.kind;
+        static string KeyOf(ConsequenceProp p, int charms) => p.anchor != PropAnchor.Tree ? p.kind : p.treeCell >= 0 ? $"charms:{p.treeCell}:{charms}" : $"pole:{charms}";
 
         /// <summary>#635: the drawn tree a tree thing hangs on: its cell's spot, else the nearest drawn grown tree (a wild crown is drawn on
         /// some of its cells only). False when none is drawn near.</summary>
@@ -343,7 +363,7 @@ namespace AquariumCiv.View
                     if (made.TryGetValue(p.id, out var hide) && hide.t != null) hide.t.gameObject.SetActive(false);
                     continue;
                 }
-                int charms = onTree ? sim.CharmsOn(p) : 0;
+                int charms = p.anchor == PropAnchor.Tree ? sim.CharmsOn(p) : 0;
                 string key = KeyOf(p, charms);
                 if (!made.TryGetValue(p.id, out var m) || m.t == null || m.kind != key)
                 {
@@ -354,6 +374,7 @@ namespace AquariumCiv.View
                         ConsequenceMeshes.CharmTie(p.treeCell == sim.State.eco.treeCell, treeR, out float ty, out float tr);
                         mesh = ConsequenceMeshes.Charms(charms, ty, tr);
                     }
+                    else if (p.anchor == PropAnchor.Tree) mesh = ConsequenceMeshes.PoleWithCharms(charms); // tester: the pole always drew four
                     else mesh = ConsequenceMeshes.Build(p.kind);
                     m = new Made { kind = key, mesh = mesh };
                     var go = new GameObject("Consequence_" + p.kind + "_" + p.id) { hideFlags = HideFlags.DontSave };

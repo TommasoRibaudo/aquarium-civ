@@ -20,13 +20,13 @@ namespace AquariumCiv.View.PlayTests
     {
         string outboxBackup;
 
-        IEnumerator Open()
+        IEnumerator Open(int w = 1179, int h = 2556)
         {
             outboxBackup = FeedbackSender.OutboxDir + "~pulsetest";
             if (Directory.Exists(outboxBackup)) Directory.Delete(outboxBackup, true);
             if (Directory.Exists(FeedbackSender.OutboxDir)) Directory.Move(FeedbackSender.OutboxDir, outboxBackup);
             Directory.CreateDirectory(Shots + "636");
-            yield return OpenSlice(1179, 2556, seed: 5151);
+            yield return OpenSlice(w, h, seed: 5151);
             var sender = FeedbackSender.Ensure();
             typeof(FeedbackSender).GetField("token", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(sender, ""); // never reaches GitHub
             Assert.IsNotNull(PulseQuestionView.Instance, "the bootstrap made the view");
@@ -70,6 +70,7 @@ namespace AquariumCiv.View.PlayTests
             try
             {
                 var v = PulseQuestionView.Instance;
+                Assert.IsFalse(v.Context().firstRunDone, "tester: a minute to themselves after the first run before any question");
                 yield return AskAndWait("know");
                 Assert.AreEqual("know", v.Asking.id);
                 yield return Shot("636/know_open");
@@ -96,6 +97,38 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsNull(PulseQuestions.Next(v.State, v.Context()), "one question per session");
             }
             finally { Restore(); }
+        }
+
+        /// <summary>Tester (1640x2360): a second row of answers covered the question. At a phone and a tablet size the question sits
+        /// above every answer, and every answer is on screen.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator TheQuestionNeverHidesBehindItsAnswers()
+        {
+            foreach (var (w, h) in new[] { (1640, 2360), (750, 1334), (1179, 2556) })
+            {
+                yield return Open(w, h);
+                try
+                {
+                    var v = PulseQuestionView.Instance;
+                    foreach (var id in new[] { "mine", "back", "know" })
+                    {
+                        yield return AskAndWait(id);
+                        yield return Shot($"636/layout_{id}_{w}x{h}");
+                        var body = v.Root.Q<GlassCard>("pulse-card").Body.worldBound;
+                        var panel = v.Root.panel.visualTree.worldBound;
+                        for (int i = 0; i < PulseQuestions.Find(id).answers.Length; i++)
+                        {
+                            var b = v.Root.Q("pulse-answer-" + i).worldBound;
+                            Assert.GreaterOrEqual(b.yMin + 0.5f, body.yMax, $"{id} {w}x{h}: answer {i} starts below the question");
+                            Assert.LessOrEqual(b.yMax, panel.yMax + 0.5f, $"{id} {w}x{h}: answer {i} on screen");
+                            Assert.Greater(b.width, 60f, $"{id} {w}x{h}: answer {i} is a real button");
+                        }
+                        yield return Tap("pulse-dismiss");
+                        yield return new WaitForSecondsRealtime(0.5f);
+                    }
+                }
+                finally { Restore(); }
+            }
         }
 
         [UnityTest, Timeout(240000)]
