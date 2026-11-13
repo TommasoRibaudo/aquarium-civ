@@ -157,6 +157,38 @@ namespace AquariumCiv.GameUI
             return true;
         }
 
+        /// <summary>#636: queues a quick question's answer as an <c>fb:pulse</c> issue, with the same package as a note (context, the
+        /// screenshot taken when the question opened, session stats, recent events, the game log) plus <paramref name="boxFacts"/>.
+        /// No refusal for an empty text or a quick second answer: an answer is always kept. Returns the outbox file's stamp.</summary>
+        public string SubmitPulse(PulseDef def, string answer, string typed, int day, int session, byte[] jpg, string boxFacts, bool debug = false)
+        {
+            typed = (typed ?? "").Trim();
+            var stamp = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{TesterId()}-pulse";
+            var stats = TelemetryJson();
+            var events = GameClock.Tel?.RecentLines(40);
+            var log = LogRing.Last(FeedbackReport.MaxLogLines);
+            var ctx = Context(buildInfo);
+            string Build(FeedbackReport.Fit f) => FeedbackReport.PulseBody(def.id, def.question, answer, f.text, day, session, f.screenshot, TesterId(), ctx,
+                log.GetRange(log.Count - f.logLines, f.logLines), f.stats ? stats : null, f.events ? events : null, boxFacts) + FeedbackReport.NoteIdLine(stamp);
+            var fit = FeedbackReport.FitNote(typed, log.Count, jpg != null, jpg != null ? ScreenShot.Base64Chars(jpg.Length) : 0, Build);
+            string body = Build(fit);
+            if (!fit.screenshot) jpg = null;
+            else if (ScreenShot.Base64Chars(jpg.Length) > fit.screenshotRoom) jpg = ScreenShot.Shrink(jpg, fit.screenshotRoom / 4 * 3);
+            var title = PulseQuestions.Title(def, answer, day, session, typed);
+            if (debug) { title = title.Replace("[Slice] Pulse", "[Slice] [debug] Pulse"); body = "_Asked from the debug panel: not a real answer._\n\n" + body; }
+            var payload = FeedbackReport.PayloadJson(title, body, PulseQuestions.Labels);
+            try
+            {
+                Directory.CreateDirectory(OutboxDir);
+                if (jpg != null) File.WriteAllBytes(Path.Combine(OutboxDir, stamp + ".jpg"), jpg);
+                File.WriteAllText(Path.Combine(OutboxDir, stamp + ".json"), payload);
+            }
+            catch (Exception e) { Debug.LogWarning($"[Feedback] could not save the pulse answer: {e.Message}"); return null; }
+            Debug.Log($"[Feedback] queued pulse '{def.id}' = {answer} (day {day}, session {session}, screenshot {(jpg != null ? jpg.Length / 1024 + " KB" : "none")})");
+            StartCoroutine(Flush(false));
+            return stamp;
+        }
+
         /// <summary>Debug panel cheat: a test note with the current screen, to check the whole path end to end.</summary>
         public static string DebugSendTest()
         {

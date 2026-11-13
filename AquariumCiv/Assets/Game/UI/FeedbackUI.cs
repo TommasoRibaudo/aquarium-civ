@@ -190,8 +190,19 @@ namespace AquariumCiv.GameUI
         public void Open()
         {
             if (capturing || IsOpen) return;
+            preset = -1;
             StartCoroutine(OpenRoutine());
         }
+
+        /// <summary>#636: open with a kind already picked (the quick question "Anything confusing?" answered Yes).</summary>
+        public void OpenAs(FeedbackKind k)
+        {
+            if (capturing || IsOpen) return;
+            preset = System.Array.IndexOf(Kinds, k);
+            StartCoroutine(OpenRoutine());
+        }
+
+        int preset = -1;
 
         IEnumerator OpenRoutine()
         {
@@ -212,7 +223,7 @@ namespace AquariumCiv.GameUI
             shotImage.image = ok ? shotPreview : null;
             sheet.Q("fb-shot").EnableInClassList("fb-no-shot", !ok); // a class, so the keyboard's fold can still hide it
             SetShot(ok);
-            kind = -1;
+            kind = preset;
             text.value = "";
             Refresh();
             ridden = 0f;

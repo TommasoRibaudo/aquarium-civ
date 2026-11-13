@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AquariumCiv.Sim.Eco;
 using AquariumCiv.Sim.Settle;
 
 namespace AquariumCiv.Sim
@@ -33,6 +34,9 @@ namespace AquariumCiv.Sim
         Edge,
         /// <summary>By the remembering stone / the pond side.</summary>
         Pond,
+        /// <summary>#635: on a grown tree: the Keeper's tree first, else the grown tree nearest the fire. With no grown tree the thing
+        /// stands at the <see cref="Edge"/> as its own pole until a tree grows, and it moves to the Keeper's tree once that is grown.</summary>
+        Tree,
     }
 
     /// <summary>One thing an answered (or lapsed) choice left in the box. Saved with the box. Placed by the sim at a real, open spot
@@ -53,6 +57,7 @@ namespace AquariumCiv.Sim
         public long dueMonth;               // the choice ended this month; it must stand within PropWithinMonths
         public long placedMonth = -1;
         public bool keeper;                 // the Keeper's choice (answered or "let them decide"), not the people's
+        public int treeCell = -1;           // #635 (PropAnchor.Tree): the grown tree it hangs on (an eco cell); -1 = it stands on its own
     }
 
     public partial class SimCore
@@ -100,11 +105,95 @@ namespace AquariumCiv.Sim
             var list = State.consequenceProps;
             if (list == null || list.Count == 0) return;
             foreach (var p in list)
+            {
                 if (!p.placed) TryPlaceProp(p, State.month >= p.dueMonth + PropWithinMonths - 1);
+                else if (p.anchor == PropAnchor.Tree) KeepOnTree(p);
+            }
+        }
+
+        // ---------- #635: charms on a tree ----------
+        /// <summary>The grown tree a <see cref="PropAnchor.Tree"/> thing hangs on: the Keeper's tree when it is grown, else the grown tree
+        /// nearest the fire; -1 when no tree has grown (or the ecology is off).</summary>
+        public int CharmTreeCell()
+        {
+            if (!EcologyOn) return -1;
+            var e = State.eco;
+            if (KeeperTreeGrown) return e.treeCell;
+            float fx = 0f, fz = 0f;
+            Settlement?.Fire(out fx, out fz, out _);
+            int best = -1; float bestD = float.MaxValue;
+            for (int c = 0; c < EcoLand.N; c++)
+            {
+                if ((EcoCover)e.cover[c] != EcoCover.Tree) continue;
+                float dx = SiteMap.CXc(c) - fx, dz = SiteMap.CZc(c) - fz, d = dx * dx + dz * dz;
+                if (d < bestD) { bestD = d; best = c; }
+            }
+            return best;
+        }
+
+        /// <summary>The Keeper's tree stands grown.</summary>
+        bool KeeperTreeGrown
+        {
+            get
+            {
+                var e = State.eco;
+                return EcologyOn && e.treeCell >= 0 && e.treeCell < EcoLand.N && e.treeStage >= 4 && (EcoCover)e.cover[e.treeCell] == EcoCover.Tree;
+            }
+        }
+
+        /// <summary>The words for where the charms go: "the Keeper's tree", "the old tree", or "a pole till a tree grows".</summary>
+        public string CharmTreeWords => KeeperTreeGrown ? "the Keeper's tree" : CharmTreeCell() >= 0 ? "the old tree" : "a pole till a tree grows";
+
+        /// <summary>Charms hanging for the dead: one for the death the choice was about, and one for each death since (at most
+        /// <see cref="MaxCharms"/>).</summary>
+        public int CharmsOn(ConsequenceProp p)
+        {
+            if (p == null) return 0;
+            int n = 1;
+            foreach (var x in State.notables) if (!x.alive && x.diedMonth > p.dueMonth) n++;
+            return Math.Min(MaxCharms, n);
+        }
+
+        public const int MaxCharms = 9;
+
+        /// <summary>Hangs a tree thing on its tree; with none grown, it stands at the edge as a pole.</summary>
+        void HangOnTree(ConsequenceProp p)
+        {
+            int c = CharmTreeCell();
+            p.treeCell = c;
+            if (c >= 0) { p.x = SiteMap.CXc(c); p.z = SiteMap.CZc(c); }
+            else
+            {
+                float ax = 0f, az = 0f, minR = 0.05f, maxR = 0.5f;
+                var keep = p.anchor;
+                p.anchor = PropAnchor.Edge;
+                AnchorOf(p, ref ax, ref az, ref minR, ref maxR);
+                p.anchor = keep;
+                PropSpot(p, ax, az, minR, maxR, out p.x, out p.z);
+            }
+        }
+
+        /// <summary>Monthly: a tree thing whose tree is gone moves (to another tree, or back to a pole); a pole or a wild tree's charms move
+        /// to the Keeper's tree once it is grown, and a pole moves to the first tree that grows.</summary>
+        void KeepOnTree(ConsequenceProp p)
+        {
+            bool onTree = p.treeCell >= 0 && EcologyOn && (EcoCover)State.eco.cover[p.treeCell] == EcoCover.Tree;
+            int want = CharmTreeCell();
+            if (onTree && (want == p.treeCell || !KeeperTreeGrown)) return;
+            if (!onTree && p.treeCell < 0 && want < 0) return; // a pole, and still no tree
+            HangOnTree(p);
         }
 
         void TryPlaceProp(ConsequenceProp p, bool force)
         {
+            if (p.anchor == PropAnchor.Tree)
+            {
+                HangOnTree(p); // #635: never waits: a pole stands in until a tree grows
+                p.yaw = (int)(DilemmaRoll(110, p.dilemmaId * 8 + p.option, p.id) * 360f);
+                p.placed = true;
+                p.placedMonth = State.month;
+                return;
+            }
             float ax = 0f, az = 0f, minR = 0.12f, maxR = 0.4f;
             bool found = AnchorOf(p, ref ax, ref az, ref minR, ref maxR);
             if (!found)
