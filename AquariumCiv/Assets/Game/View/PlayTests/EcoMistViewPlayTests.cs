@@ -205,6 +205,164 @@ namespace AquariumCiv.View.PlayTests
             finally { Close(); }
         }
 
+        /// <summary>#624 (playtest note #621): mid-stroke, the chunks rebuilt without the AO bake keep the shading they had,
+        /// instead of going flat and bright. Two holds on the same spot: the old look (carry off), then the fix.</summary>
+        [UnityTest]
+        public IEnumerator Stroke_StrokedChunkKeepsItsShading()
+        {
+            yield return Open();
+            try
+            {
+                yield return Barren();
+                var sim = GameClock.Instance.Sim;
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                var mist = EcoMistView.Instance;
+                mist.cheapStrokes = true;
+                var st = sim.Settlement;
+                float x = st.Map.greenX - 0.4f, z = st.Map.greenZ - 0.5f;
+                var rig = Camera.main.GetComponent<BoxCamera>();
+                rig.FlyTo(box.transform.TransformPoint(box.land.OnGround(x, z)), Mathf.Max(rig.minZoom * 1.6f, 0.35f), 0.4f);
+                for (int i = 0; i < 200 && rig.IsFlying; i++) yield return null;
+                for (int i = 0; i < 20; i++) yield return null;
+                var drift = new float[2];
+                for (int pass = 0; pass < 2; pass++)
+                {
+                    box.carryAo = pass == 1;
+                    var before = new float[BoxView.ChunkCount];
+                    for (int k = 0; k < BoxView.ChunkCount; k++) before[k] = box.ChunkAoMean(k);
+                    var at = ScreenOf(box, x, z);
+                    int id = touchId++;
+                    BeginTouch(id, at, queueEventOnly: true);
+                    float t0 = Time.unscaledTime;
+                    while (Time.unscaledTime - t0 < 2.5f)
+                    {
+                        MoveTouch(id, at + new Vector2(Mathf.Sin(Time.unscaledTime * 9f) * 30f, 0f), delta: Vector2.zero, queueEventOnly: true);
+                        yield return null;
+                    }
+                    Assert.IsTrue(mist.Misting, "held");
+                    Assert.Greater(box.AoPending, 0, "chunks were rebuilt without the bake during the hold");
+                    float worst = 0f; var line = new System.Text.StringBuilder();
+                    for (int k = 0; k < BoxView.ChunkCount; k++)
+                    {
+                        float now = box.ChunkAoMean(k);
+                        worst = Mathf.Max(worst, Mathf.Abs(now - before[k]));
+                        line.Append($" {k}: {before[k]:0.000}->{now:0.000}");
+                    }
+                    drift[pass] = worst;
+                    Debug.Log($"[ao624] carry {box.carryAo}: worst chunk AO change {worst:0.000} |{line}");
+                    yield return Shot(pass == 1 ? "ao624_after_midstroke" : "ao624_before_midstroke");
+                    EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true);
+                    var series = new List<float[]>();
+                    for (int i = 0; i < 40; i++) // the catch-up draws a chunk a frame before it bakes it: no frame may show it flat
+                    {
+                        yield return null;
+                        var f = new float[BoxView.ChunkCount];
+                        for (int k = 0; k < BoxView.ChunkCount; k++) f[k] = box.ChunkAoMean(k);
+                        series.Add(f);
+                    }
+                    for (int i = 0; i < 240 && box.AoPending > 0; i++) yield return null;
+                    for (int i = 0; i < 30; i++) yield return null;
+                    Assert.AreEqual(0, box.AoPending, "the AO caught up after the lift");
+                    // A flash is a frame outside the range from the look before the stroke to the baked look after it (the
+                    // stroke's new grass may move the real AO a little; that is not a flash).
+                    float liftWorst = 0f;
+                    for (int k = 0; k < BoxView.ChunkCount; k++)
+                    {
+                        float fin = box.ChunkAoMean(k), lo = Mathf.Min(before[k], fin), hi = Mathf.Max(before[k], fin);
+                        foreach (var f in series) liftWorst = Mathf.Max(liftWorst, Mathf.Max(f[k] - hi, lo - f[k]));
+                    }
+                    Debug.Log($"[ao624] carry {box.carryAo}: worst chunk AO change during the catch-up {liftWorst:0.000}");
+                    if (pass == 1)
+                    {
+                        Assert.Less(liftWorst, 0.05f, "no quarter flashes flat while the AO catches up after the lift");
+                        yield return Shot("ao624_after_lift");
+                    }
+                }
+                Assert.Greater(drift[0], 0.02f, "without the carry a stroked chunk loses its shading (the bug the test guards)");
+                Assert.Less(drift[1], drift[0] * 0.3f, "with the carry the stroked chunk keeps most of its shading");
+            }
+            finally { Close(); }
+        }
+
+        /// <summary>#624, the user's check: watering a field of full grass at four times of day. Each hour gets two holds on the
+        /// same spot, the old look (carry off) and the fix, with a shot of each mid-stroke and one of the field before.</summary>
+        [UnityTest]
+        public IEnumerator Stroke_FullGrass_TimesOfDay()
+        {
+            yield return Open();
+            try
+            {
+                yield return Barren();
+                var sim = GameClock.Instance.Sim;
+                var cover = sim.State.eco.cover;
+                int greened = 0;
+                for (int c = 0; c < cover.Length; c++) if ((Sim.Eco.EcoCover)cover[c] == Sim.Eco.EcoCover.Bare) { cover[c] = (byte)Sim.Eco.EcoCover.Grass; greened++; }
+                var box = UnityEngine.Object.FindAnyObjectByType<BoxView>();
+                box.Refresh();
+                for (int i = 0; i < 30 || box.ChunksWaiting > 0 && i < 200; i++) yield return null;
+                Debug.Log($"[ao624] full grass: {greened} cells greened");
+                var mist = EcoMistView.Instance;
+                mist.cheapStrokes = true;
+                var st = sim.Settlement;
+                float x = st.Map.greenX - 0.4f, z = st.Map.greenZ - 0.5f;
+                var rig = Camera.main.GetComponent<BoxCamera>();
+                rig.FlyTo(box.transform.TransformPoint(box.land.OnGround(x, z)), Mathf.Max(rig.minZoom * 2.2f, 0.45f), 0.4f);
+                for (int i = 0; i < 200 && rig.IsFlying; i++) yield return null;
+                for (int i = 0; i < 20; i++) yield return null;
+                var report = new List<string>();
+                // #278 holds the light at 11 h while the first run is on: end it for real, or every hour looks like noon.
+                for (int i = 0; i < 120 && FirstRunView.Instance != null && FirstRunView.Instance.Active; i++) { FirstRunView.DebugSkipAll(); yield return null; }
+                Assert.IsFalse(FirstRunView.Instance != null && FirstRunView.Instance.Active, "the first run is over, so the light follows the hour");
+                // The driver's bootstrap runs on the first scene load only; a test that loads the scene later adds it like the others.
+                if (DayLightDriver.Instance == null) box.gameObject.AddComponent<DayLightDriver>();
+                for (int i = 0; i < 5; i++) yield return null;
+                Assert.IsNotNull(DayLightDriver.Instance, "the day light runs, so the hours look different");
+                DayLightDriver.DebugPauseClock(true);
+                var hours = new[] { (7f, "morning"), (12.5f, "noon"), (18.5f, "dusk"), (22.5f, "night") };
+                int compared = 0;
+                foreach (var (hour, name) in hours)
+                {
+                    PeopleView.DebugSetHour(hour);
+                    for (int i = 0; i < 30; i++) yield return null;
+                    Debug.Log($"[ao624] {name}: {DayLightDriver.Status()}");
+                    yield return Shot($"ao624_grass_{name}_0still");
+                    var drift = new float[2]; var pending = new int[2];
+                    for (int pass = 0; pass < 2; pass++)
+                    {
+                        box.carryAo = pass == 1;
+                        var before = new float[BoxView.ChunkCount];
+                        for (int k = 0; k < BoxView.ChunkCount; k++) before[k] = box.ChunkAoMean(k);
+                        var at = ScreenOf(box, x, z);
+                        int id = touchId++;
+                        BeginTouch(id, at, queueEventOnly: true);
+                        float t0 = Time.unscaledTime;
+                        while (Time.unscaledTime - t0 < 2.5f)
+                        {
+                            MoveTouch(id, at + new Vector2(Mathf.Sin(Time.unscaledTime * 9f) * 30f, 0f), delta: Vector2.zero, queueEventOnly: true);
+                            yield return null;
+                        }
+                        pending[pass] = box.AoPending;
+                        for (int k = 0; k < BoxView.ChunkCount; k++) drift[pass] = Mathf.Max(drift[pass], Mathf.Abs(box.ChunkAoMean(k) - before[k]));
+                        yield return Shot($"ao624_grass_{name}_{(pass == 1 ? "2fixed" : "1old")}_midstroke");
+                        EndTouch(id, at, delta: Vector2.zero, queueEventOnly: true);
+                        for (int i = 0; i < 240 && box.AoPending > 0; i++) yield return null;
+                        for (int i = 0; i < 30; i++) yield return null;
+                        Assert.AreEqual(0, box.AoPending, $"{name}: the AO caught up after the lift");
+                    }
+                    string line = $"[ao624] {name} ({hour:0.0} h): chunks pending mid-stroke old {pending[0]} / fixed {pending[1]}, worst chunk AO change old {drift[0]:0.000} / fixed {drift[1]:0.000}";
+                    report.Add(line); Debug.Log(line);
+                    if (pending[0] > 0 && drift[0] > 0.02f)
+                    {
+                        compared++;
+                        Assert.Less(drift[1], drift[0] * 0.3f, $"{name}: with the carry the stroked chunk keeps most of its shading");
+                    }
+                }
+                File.WriteAllLines(Shots + "ao624_grass_times.txt", report);
+                Assert.Greater(compared, 0, "watering full grass rebuilt chunks mid-stroke at least once (else the check saw nothing)");
+            }
+            finally { DayLightDriver.DebugPauseClock(false); Close(); }
+        }
+
         /// <summary>The rebuild cost of a phone-like stroke: a finger dragging slowly over bare ground for six seconds, a pulse
         /// four times a second. Measured with the old way (every dirty chunk rebuilt with AO on each refresh) and the new.</summary>
         [UnityTest]

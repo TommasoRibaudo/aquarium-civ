@@ -367,9 +367,17 @@ namespace AquariumCiv.View
             var built = new MeshBuilder[lastChunks.Count];
             var tvs = new int[lastChunks.Count];
             // The dirty chunks build side by side on worker threads (pure maths into their own builders).
-            System.Threading.Tasks.Parallel.For(0, lastChunks.Count, i => built[i] = BuildChunk(lastChunks[i], out tvs[i]));
+            // The catch-up after a stroke draws a chunk a frame before it bakes it (aoQueue): it carries the old AO too, or each
+            // quarter would flash flat for that frame.
+            bool defer = bakeAO && deferAO, carry = bakeAO && carryAo && (deferAO || spreadCatchUp);
+            System.Threading.Tasks.Parallel.For(0, lastChunks.Count, i =>
+            {
+                int k = lastChunks[i];
+                built[i] = BuildChunk(k, out tvs[i]);
+                // #624: a chunk built without the bake keeps the AO it had, so the stroked quarter doesn't go flat and bright.
+                if (carry) CarryAo(built[i], tvs[i], aoMemory[k]);
+            });
             buildMs = sw.Elapsed.TotalMilliseconds;
-            bool defer = bakeAO && deferAO;
             for (int i = 0; i < lastChunks.Count; i++)
             {
                 int k = lastChunks[i], tv = tvs[i];
@@ -411,6 +419,93 @@ namespace AquariumCiv.View
         }
 
         readonly List<(int k, MeshBuilder mb, int tv, Mesh mesh)> aoQueue = new();
+
+        /// <summary>#624: the AO a chunk had at its last bake, by sample key (<see cref="PackKey"/>), by ground cell
+        /// (<see cref="AoCellSize"/>, for samples the bake never saw, such as a new grass tuft) and on average.</summary>
+        sealed class AoMemory
+        {
+            public readonly Dictionary<long, float> byKey;
+            public readonly Dictionary<int, float> byCell = new();
+            public float mean = 1f;
+            public AoMemory(int keys) { byKey = new Dictionary<long, float>(keys); }
+        }
+        readonly AoMemory[] aoMemory = new AoMemory[ChunkCount];
+        const float AoCellSize = 0.05f; // half a site cell
+        /// <summary>Tests turn it off to see the old look (a stroked chunk with no AO at all).</summary>
+        [System.NonSerialized] public bool carryAo = true;
+
+        /// <summary>Mean vertex AO (colour alpha) of chunk <paramref name="k"/> as drawn now; 1 = no shading.</summary>
+        public float ChunkAoMean(int k)
+        {
+            var mesh = chunkFilters[k] != null ? chunkFilters[k].sharedMesh : null;
+            if (mesh == null || mesh.vertexCount == 0) return 1f;
+            var cols = new List<Color>(mesh.vertexCount);
+            mesh.GetColors(cols);
+            double s = 0; foreach (var c in cols) s += c.a;
+            return cols.Count > 0 ? (float)(s / cols.Count) : 1f;
+        }
+
+        static int AoCell(float x, float z) => (Mathf.FloorToInt(x / AoCellSize) + 2048) | ((Mathf.FloorToInt(z / AoCellSize) + 2048) << 12);
+
+        /// <summary>Which chunk a mesh is drawn as, or -1 (the base and the frame).</summary>
+        int ChunkOfMesh(Mesh mesh)
+        {
+            for (int k = 0; k < ChunkCount; k++) if (chunkFilters[k] != null && chunkFilters[k].sharedMesh == mesh) return k;
+            return -1;
+        }
+
+        /// <summary>Keeps a finished bake of chunk <paramref name="k"/> for <see cref="CarryAo"/>.</summary>
+        void RememberAo(int k, AoWork w)
+        {
+            var m = new AoMemory(w.nk);
+            var sum = new Dictionary<int, Vector2>();
+            double total = 0;
+            for (int id = 0; id < w.nk; id++)
+            {
+                float a = w.ao[id];
+                m.byKey[w.keys[id]] = a;
+                total += a;
+                var o = w.origins[id];
+                int c = AoCell(o.x, o.z);
+                sum.TryGetValue(c, out var s);
+                sum[c] = new Vector2(s.x + a, s.y + 1f);
+            }
+            foreach (var kv in sum) m.byCell[kv.Key] = kv.Value.x / kv.Value.y;
+            if (w.nk > 0) m.mean = (float)(total / w.nk);
+            aoMemory[k] = m;
+        }
+
+        /// <summary>
+        /// #624: writes the remembered AO into a chunk built without the bake (a mist stroke, #277; the time-lapse scrub, #78),
+        /// keyed the same way <see cref="AoBegin"/> keys its samples. A sample the last bake didn't have takes its ground cell's
+        /// AO, else the chunk's mean. Runs on worker threads: it only reads the memory, which changes on the main thread.
+        /// </summary>
+        static void CarryAo(MeshBuilder mb, int terrainVerts, AoMemory m)
+        {
+            if (m == null) return;
+            var verts = mb.verts; var norms = mb.normals; var uvs = mb.uvs; var colors = mb.colors;
+            int nv = verts.Count;
+            float Look(long key, Vector3 p)
+            {
+                if (m.byKey.TryGetValue(key, out float a)) return a;
+                return m.byCell.TryGetValue(AoCell(p.x, p.z), out a) ? a : m.mean;
+            }
+            void Set(int i, float a) { var c = colors[i]; c.a = a; colors[i] = c; }
+            for (int i = 0; i < terrainVerts && i < nv; i++) Set(i, Look(PackKey(verts[i], default, false), verts[i]));
+            for (int i = terrainVerts; i + 2 < nv; i += 3)
+            {
+                Vector3 a = verts[i], b = verts[i + 1], c = verts[i + 2], n = norms[i];
+                float area = Vector3.Cross(b - a, c - a).sqrMagnitude;
+                if (area < 0.000025f || uvs[i].x > 0.5f)
+                {
+                    var mid = (a + b + c) * (1f / 3f);
+                    float v = Look(PackKey(mid, n, true), mid);
+                    Set(i, v); Set(i + 1, v); Set(i + 2, v);
+                    continue;
+                }
+                for (int q = 0; q < 3; q++) Set(i + q, Look(PackKey(verts[i + q], n, true), verts[i + q]));
+            }
+        }
 
         void DropQueuedAo(int k)
         {
@@ -1799,6 +1894,7 @@ namespace AquariumCiv.View
             public int[] keyOf;
             public Mesh mesh;
             public Color[] colors;
+            public long[] keys; // each sample's PackKey, kept for the chunk's AoMemory (#624)
             public NativeArray<Vector3> origins, normals, dirs;
             public NativeArray<RaycastCommand> cmds;
             public NativeArray<RaycastHit> hits;
@@ -1842,6 +1938,8 @@ namespace AquariumCiv.View
                     w.handle.Complete();
                     for (int i = 0; i < w.nv; i++) w.colors[i].a = w.ao[w.keyOf[i]];
                     w.mesh.SetColors(w.colors);
+                    int k = ChunkOfMesh(w.mesh);
+                    if (k >= 0) RememberAo(k, w);
                 }
                 aoStats = $"{works.Count} mesh(es), {keys} keys: keyed {keyMs:0.0} ms, total {sw.Elapsed.TotalMilliseconds:0.0} ms";
             }
@@ -1855,8 +1953,9 @@ namespace AquariumCiv.View
             var verts = mb.verts.ToArray();
             var norms = mb.normals.ToArray();
             var uvs = mb.uvs.ToArray();
-            var w = new AoWork { nv = nv, mesh = mesh, keyOf = new int[nv], colors = mb.colors.ToArray() };
+            var w = new AoWork { nv = nv, mesh = mesh, keyOf = new int[nv], keys = new long[nv], colors = mb.colors.ToArray() };
             var keyOf = w.keyOf;
+            var keys = w.keys;
             var origins = w.origins = new NativeArray<Vector3>(nv, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
             var normals = w.normals = new NativeArray<Vector3>(nv, Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
             int nk = 0;
@@ -1864,7 +1963,7 @@ namespace AquariumCiv.View
             for (int i = 0; i < terrainVerts; i++)
             {
                 long key = PackKey(verts[i], default, false);
-                if (!byKey.TryGetValue(key, out int id)) { id = nk++; byKey[key] = id; origins[id] = verts[i]; normals[id] = norms[i]; }
+                if (!byKey.TryGetValue(key, out int id)) { id = nk++; byKey[key] = id; keys[id] = key; origins[id] = verts[i]; normals[id] = norms[i]; }
                 keyOf[i] = id;
             }
             for (int i = terrainVerts; i + 2 < nv; i += 3)
@@ -1873,14 +1972,14 @@ namespace AquariumCiv.View
                 float area = Vector3.Cross(b - a, c - a).sqrMagnitude; // (2 x area) squared
                 if (area < 0.000025f || uvs[i].x > 0.5f) // small faces and swaying foliage: once per face
                 {
-                    origins[nk] = (a + b + c) * (1f / 3f); normals[nk] = n;
+                    origins[nk] = (a + b + c) * (1f / 3f); normals[nk] = n; keys[nk] = PackKey(origins[nk], n, true);
                     keyOf[i] = keyOf[i + 1] = keyOf[i + 2] = nk++;
                     continue;
                 }
                 for (int q = 0; q < 3; q++)
                 {
                     long key = PackKey(verts[i + q], n, true);
-                    if (!byKey.TryGetValue(key, out int id)) { id = nk++; byKey[key] = id; origins[id] = verts[i + q]; normals[id] = n; }
+                    if (!byKey.TryGetValue(key, out int id)) { id = nk++; byKey[key] = id; keys[id] = key; origins[id] = verts[i + q]; normals[id] = n; }
                     keyOf[i + q] = id;
                 }
             }
