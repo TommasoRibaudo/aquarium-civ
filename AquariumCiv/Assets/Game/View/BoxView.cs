@@ -170,6 +170,7 @@ namespace AquariumCiv.View
             }
             foreach (var m in panes) if (m != null) DestroyImmediate(m);
             panes.Clear();
+            livePieces.Clear(); // #632: their objects and "BoxLive" meshes went with the root
             paneRenderers.Clear();
             lidRenderer = null;
             if (landMat != null) { DestroyImmediate(landMat); landMat = null; }
@@ -274,6 +275,7 @@ namespace AquariumCiv.View
             waterHash = Eco ? layout.eco.WaterHash() : 0;
             tableFilter = null; sheenFilter = null; tableKey = int.MinValue; SyncEcoTable(); // P8: the water table in the soil cut
             Glows();
+            SyncLivePieces();
             SyncPeople();
             Glass();
             SetDroplets(Eco ? layout.eco.droplets : 0f);
@@ -281,8 +283,9 @@ namespace AquariumCiv.View
             aoPending.Clear();
             for (int k = 0; k < ChunkCount; k++) chunkHash[k] = 0;
             ChunkBuilds++;
-            ChunkHashes(chunkHash);
+            ChunkHashes(chunkHash, haveParts);
             System.Array.Copy(chunkHash, wantHash, ChunkCount);
+            for (int i = 0; i < haveParts.Length; i++) System.Array.Copy(haveParts[i], wantParts[i], ChunkCount);
             landHash = LandHash();
             lastBuildInfo = $"{verts} verts, {tris} tris, {layout.pieces.Count} pieces, {dolls.Count} people, AO {aoMs:0} ms, total {sw.ElapsedMilliseconds} ms";
         }
@@ -312,14 +315,16 @@ namespace AquariumCiv.View
             PrepareFields();
             Reserve();
             System.Array.Clear(wantHash, 0, ChunkCount);
-            ChunkHashes(wantHash);
+            ChunkHashes(wantHash, wantParts);
             PickChunks(Spread ? ScrubChunksPerFrame : ChunkCount);
+            string why = logRebuilds && lastChunks.Count > 0 ? WhyRebuilt() : ""; // #632: before RebuildChunks takes the new parts
             double prepMs = sw.Elapsed.TotalMilliseconds;
             RebuildChunks(sw, out double buildMs, out double meshMs, out double aoMs);
             if (Eco && layout.eco.WaterHash() != waterHash) RefreshEcoWater();
             SyncEcoTable();
             if (!Application.isPlaying || EcoMistView.Instance == null) SetDroplets(Eco ? layout.eco.droplets : 0f); // live, the mist view eases it
             Glows();
+            SyncLivePieces(); // #632
             int made = SyncPeople();
             lastRefreshMs = sw.Elapsed.TotalMilliseconds;
             RebuildMsTotal += lastRefreshMs;
@@ -327,7 +332,7 @@ namespace AquariumCiv.View
             lastRefreshInfo = lastChunks.Count == 0
                 ? $"no chunk changed, {made} new people, {lastRefreshMs:0.0} ms"
                 : $"rebuilt chunk(s) {string.Join(",", lastChunks)} in {lastRefreshMs:0.0} ms (AO {aoMs:0.0} ms), {made} new people, {layout.pieces.Count} pieces, {ChunksWaiting} waiting " +
-                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}, gc {System.GC.CollectionCount(0) - gc0}]";
+                  $"[fill {fillMs:0.0}, fields+hash {prepMs - fillMs:0.0}, build {buildMs - prepMs:0.0}, mesh+collider {meshMs - buildMs:0.0}, AO {aoMs:0.0}, rest {lastRefreshMs - meshMs - aoMs:0.0}, gc {System.GC.CollectionCount(0) - gc0}]" + why;
             if (logRebuilds && lastChunks.Count > 0) Debug.Log("[BoxView] " + lastRefreshInfo);
             return lastRefreshInfo;
         }
@@ -339,6 +344,26 @@ namespace AquariumCiv.View
 
         // What the layout wants each chunk to hash to, and how many refreshes each has waited (the longest wait goes first).
         readonly uint[] wantHash = new uint[ChunkCount];
+        // #632: the same, part by part (BoxView.HashParts), for the rebuild log's "why".
+        uint[][] wantPartsBuf, havePartsBuf;
+        uint[][] wantParts => wantPartsBuf ??= NewParts();
+        uint[][] haveParts => havePartsBuf ??= NewParts();
+
+        /// <summary>#632: which parts of each chunk picked for a rebuild changed, e.g. " why 1: eco; 3: pieces, eco".</summary>
+        string WhyRebuilt()
+        {
+            var sb = new System.Text.StringBuilder(" why");
+            foreach (int k in lastChunks)
+            {
+                sb.Append(' ').Append(k).Append(':');
+                bool any = false;
+                for (int i = 0; i < HashParts.Length; i++)
+                    if (wantParts[i][k] != haveParts[i][k]) { sb.Append(any ? ", " : " ").Append(HashParts[i]); any = true; }
+                if (!any) sb.Append(" new");
+                sb.Append(';');
+            }
+            return sb.ToString();
+        }
         readonly int[] chunkWaited = new int[ChunkCount];
         int refreshFrame = -1;
         /// <summary>Milliseconds the last catch-up chunk took (tests time these with the scrub steps).</summary>
@@ -391,6 +416,7 @@ namespace AquariumCiv.View
                 Kill(old);
                 builders.Add((k, mb, tv, mesh));
                 chunkHash[k] = wantHash[k];
+                for (int pi = 0; pi < HashParts.Length; pi++) haveParts[pi][k] = wantParts[pi][k]; // #632
                 SnapBaked(k);
                 ChunkBuilds++;
                 chunkWaited[k] = 0;
@@ -635,7 +661,7 @@ namespace AquariumCiv.View
             foreach (var f in layout.fields)
                 if (f.polygon != null && f.polygon.Length >= 3 && ChunkOf(Centroid(f.polygon)) == k) FieldMesh(mb, f);
             foreach (var p in layout.pieces)
-                if (ChunkOf(p.x, p.z) == k) PieceMesh(mb, p);
+                if (!p.live && ChunkOf(p.x, p.z) == k) PieceMesh(mb, p); // #632: live pieces are their own objects
             foreach (var br in layout.bridges)
                 if (ChunkOf(br.centre.x, br.centre.y) == k) Bridges.Build(mb, br, land.Height);
             Nature(mb, k);
@@ -684,32 +710,38 @@ namespace AquariumCiv.View
             }
         }
 
-        void ChunkHashes(uint[] h)
+        /// <summary>#632: the parts of a chunk's hash, kept apart so the rebuild log can say which one changed.</summary>
+        static readonly string[] HashParts = { "base", "eco", "bushes", "pieces", "fields", "paths", "clearings", "trees", "boulders", "bridges", "canals" };
+        uint[][] NewParts() { var a = new uint[HashParts.Length][]; for (int i = 0; i < a.Length; i++) a[i] = new uint[ChunkCount]; return a; }
+
+        void ChunkHashes(uint[] h, uint[][] parts)
         {
+            foreach (var a in parts) System.Array.Clear(a, 0, ChunkCount);
             var g = Hash.New();
             g.Add(seed); g.Add(NX); g.Add(NZ); g.Add(layout.autoNature); g.Add(layout.autoTrees); g.Add(layout.natureDensity);
             g.Add(layout.reeds); g.Add(bakeAO); g.Add(aoRays); g.Add(aoDistance);
-            for (int k = 0; k < ChunkCount; k++) h[k] = g.h + (uint)k;
+            for (int k = 0; k < ChunkCount; k++) parts[0][k] = g.h + (uint)k;
             if (Eco)
                 for (int k = 0; k < ChunkCount; k++)
                 {
                     ChunkBounds(k, out float ex0, out float ex1, out float ez0, out float ez1);
-                    unchecked { h[k] = (h[k] ^ layout.eco.HashRect(ex0 - 0.25f, ex1 + 0.25f, ez0 - 0.25f, ez1 + 0.25f)) * 16777619u; }
+                    parts[1][k] = layout.eco.HashRect(ex0 - 0.25f, ex1 + 0.25f, ez0 - 0.25f, ez1 + 0.25f);
                 }
             if (Eco)
                 lock (BushSpots)
                     foreach (int c in HiddenBushes) // #424: a bush the thicket's arrival draws (and gives back) rebuilds its chunk
                     {
                         float bx = AquariumCiv.Sim.Settle.SiteMap.CXc(c), bz = AquariumCiv.Sim.Settle.SiteMap.CZc(c);
-                        Into(h, bx - 0.15f, bz - 0.15f, bx + 0.15f, bz + 0.15f, unchecked((uint)c * 2654435761u + 424u));
+                        Into(parts[2], bx - 0.15f, bz - 0.15f, bx + 0.15f, bz + 0.15f, unchecked((uint)c * 2654435761u + 424u));
                     }
             foreach (var p in layout.pieces)
             {
                 var e = Hash.New();
                 e.Add((int)p.kind); e.Add(p.x); e.Add(p.z); e.Add(p.yaw); e.Add(p.w); e.Add(p.d); e.Add((int)p.era); e.Add((int)p.roof);
-                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant); e.Add(p.grow);
+                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.seed); e.Add(p.variant); e.Add(p.live);
+                if (!p.live) e.Add(p.grow); // #632: a live piece's grow scales its own object (SyncLivePieces), not the chunk
                 float r = PieceRadius(p) + (p.kind == PieceKind.Fire ? 0.6f : 0f);
-                Into(h, p.x - r, p.z - r, p.x + r, p.z + r, e.h);
+                Into(parts[3], p.x - r, p.z - r, p.x + r, p.z + r, e.h);
             }
             foreach (var f in layout.fields)
             {
@@ -718,7 +750,7 @@ namespace AquariumCiv.View
                 Vector2 min = f.polygon[0], max = f.polygon[0];
                 foreach (var q in f.polygon) { e.Add(q); min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
                 e.Add((int)f.crop); e.Add(f.rowYaw); e.Add(f.fence); e.Add(f.gateEdge); e.Add(f.seed);
-                Into(h, min.x - 0.1f, min.y - 0.1f, max.x + 0.1f, max.y + 0.1f, e.h);
+                Into(parts[4], min.x - 0.1f, min.y - 0.1f, max.x + 0.1f, max.y + 0.1f, e.h);
             }
             foreach (var path in layout.paths)
             {
@@ -727,30 +759,30 @@ namespace AquariumCiv.View
                 {
                     Vector2 a = path.points[i], b = path.points[i + 1];
                     var e = Hash.New(); e.Add(a); e.Add(b); e.Add((int)path.tier); e.Add(path.cobbled);
-                    Into(h, Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y), e.h);
+                    Into(parts[5], Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y), e.h);
                 }
             }
             foreach (var c in layout.clearings)
             {
                 var e = Hash.New(); e.Add(c.centre); e.Add(c.radius); e.Add((int)c.kind);
                 float r = c.radius + 0.12f;
-                Into(h, c.centre.x - r, c.centre.y - r, c.centre.x + r, c.centre.y + r, e.h);
+                Into(parts[6], c.centre.x - r, c.centre.y - r, c.centre.x + r, c.centre.y + r, e.h);
             }
             foreach (var t in layout.trees)
             {
                 var e = Hash.New(); e.Add(t.pos); e.Add(t.scale); e.Add(t.pine); e.Add((int)t.shape);
                 float r = 0.2f * t.scale;
-                Into(h, t.pos.x - r, t.pos.y - r, t.pos.x + r, t.pos.y + r, e.h);
+                Into(parts[7], t.pos.x - r, t.pos.y - r, t.pos.x + r, t.pos.y + r, e.h);
             }
             foreach (var b in layout.boulders)
             {
                 var e = Hash.New(); e.Add(b.pos); e.Add(b.radius); e.Add(b.shade);
-                Into(h, b.pos.x - b.radius, b.pos.y - b.radius, b.pos.x + b.radius, b.pos.y + b.radius, e.h);
+                Into(parts[8], b.pos.x - b.radius, b.pos.y - b.radius, b.pos.x + b.radius, b.pos.y + b.radius, e.h);
             }
             foreach (var br in layout.bridges)
             {
                 var e = Hash.New(); e.Add(br.centre); e.Add(br.dir); e.Add(br.length); e.Add(br.width); e.Add((int)br.era);
-                Into(h, br.centre.x - 0.3f, br.centre.y - 0.3f, br.centre.x + 0.3f, br.centre.y + 0.3f, e.h);
+                Into(parts[9], br.centre.x - 0.3f, br.centre.y - 0.3f, br.centre.x + 0.3f, br.centre.y + 0.3f, e.h);
             }
             foreach (var cn in layout.canals)
             {
@@ -758,7 +790,13 @@ namespace AquariumCiv.View
                 var e = Hash.New();
                 Vector2 min = cn[0], max = cn[0];
                 foreach (var q in cn) { e.Add(q); min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
-                Into(h, min.x - 0.1f, min.y - 0.1f, max.x + 0.1f, max.y + 0.1f, e.h);
+                Into(parts[10], min.x - 0.1f, min.y - 0.1f, max.x + 0.1f, max.y + 0.1f, e.h);
+            }
+            for (int k = 0; k < ChunkCount; k++)
+            {
+                uint v = 2166136261u;
+                foreach (var a in parts) unchecked { v = (v ^ a[k]) * 16777619u; }
+                h[k] = v;
             }
         }
 
@@ -978,10 +1016,22 @@ namespace AquariumCiv.View
                 if (InPolygon(f.polygon, p) || DistToRing(f.polygon, p) < r + 0.06f) return false;
             }
             for (int t = 0; t < 3; t++)
-                if (Sample(pathField[t], p.x, p.y, PathRange) < Mathf.Min(PathWidth((PathTier)t) + 0.05f + r, PathRange * 0.999f)) return false;
+            {
+                float d = Sample(pathField[t], p.x, p.y, PathRange), pw = PathWidth((PathTier)t) + r;
+                if (d >= Mathf.Min(pw + 0.075f, PathRange * 0.999f)) continue; // past the widest margin: no noise needed (#631)
+                if (d < Mathf.Min(pw + (r < 0.03f ? TuftMargin((PathTier)t, p.x, p.y) : 0.05f), PathRange * 0.999f)) return false;
+            }
             if (CanalDist(p.x, p.y) < Mathf.Min(0.1f + r, CanalRange * 0.999f)) return false;
             return true;
         }
+
+        /// <summary>#631: a trail's or path's edge wanders by about a triangle of the ground grid (0.0625), so it frays the same on both
+        /// sides whatever its angle to the grid. Without it, a path along a grid axis showed one edge as a ruler line (it sat on a grid
+        /// line) and the other jagged (it cut through the split triangles). A road keeps its kerb.</summary>
+        static float EdgeFray(PathTier t, float x, float z) => t == PathTier.Road ? 0f : (Land.Noise(x * 14f + 3.1f, z * 14f - 1.7f) - 0.5f) * 0.06f;
+
+        /// <summary>#631: the grass tufts keep this far off a path's edge, wandering too (a fixed margin lined them up along a straight path).</summary>
+        static float TuftMargin(PathTier t, float x, float z) => t == PathTier.Road ? 0.05f : Mathf.Lerp(0.015f, 0.075f, Land.Noise(x * 11f - 5.3f, z * 11f + 2.9f));
 
         // ---------------- ground ----------------
         Color Cobble(float x, float z, float n)
@@ -1080,6 +1130,8 @@ namespace AquariumCiv.View
             for (int t = 0; t < 3; t++)
             {
                 float d = Sample(pathField[t], x, z, PathRange), w = PathWidth((PathTier)t) + thrN;
+                if (d >= w + 0.03f) continue; // past the most the edge frays: no noise needed (#631)
+                w += EdgeFray((PathTier)t, x, z);
                 if (d >= w) continue;
                 col = (PathTier)t switch
                 {
@@ -1092,7 +1144,10 @@ namespace AquariumCiv.View
             }
             if (!onPath && !painted)
                 for (int t = 0; t < 3; t++)
-                    if (Sample(pathField[t], x, z, PathRange) < PathWidth((PathTier)t) + thrN + 0.035f) { col = Color.Lerp(col, co.dirt, 0.25f); break; }
+                {
+                    float d = Sample(pathField[t], x, z, PathRange), w = PathWidth((PathTier)t) + thrN + 0.035f;
+                    if (d < w + 0.03f && d < w + EdgeFray((PathTier)t, x, z)) { col = Color.Lerp(col, co.dirt, 0.25f); break; }
+                }
             foreach (var pc in layout.pieces)
             {
                 if (pc.kind != PieceKind.Fire || Mathf.Abs(pc.x - x) > 0.6f || Mathf.Abs(pc.z - z) > 0.6f) continue;
@@ -1310,6 +1365,55 @@ namespace AquariumCiv.View
                 var g = land.OnGround(wp.x, wp.z);
                 return mb.M.inverse.MultiplyPoint3x4(g);
             };
+        }
+
+        // ---------------- #632: live pieces (a tent being raised) ----------------
+        readonly Dictionary<int, (GameObject go, uint key)> livePieces = new();
+        readonly List<int> liveGone = new();
+
+        /// <summary>Live pieces drawn now (tests).</summary>
+        public int LivePieceCount => livePieces.Count;
+
+        /// <summary>#632: each live piece is its own object, its mesh built once at full size and scaled by <see cref="PieceData.grow"/>
+        /// about its foot, exactly as <see cref="PieceMesh"/> would scale it, so a raising step costs a transform, not a chunk rebuild
+        /// with its AO (90 ms on an A13, tester log #629). Objects of pieces no longer live (or gone) are removed.</summary>
+        void SyncLivePieces()
+        {
+            if (root == null) return;
+            liveGone.Clear();
+            foreach (var kv in livePieces) liveGone.Add(kv.Key);
+            foreach (var p in layout.pieces)
+            {
+                if (!p.live) continue;
+                var e = Hash.New();
+                e.Add((int)p.kind); e.Add(p.x); e.Add(p.z); e.Add(p.yaw); e.Add(p.w); e.Add(p.d); e.Add((int)p.era); e.Add((int)p.roof);
+                e.Add(p.storeys); e.Add(p.chimney); e.Add(p.variant);
+                if (!livePieces.TryGetValue(p.seed, out var o) || o.go == null || o.key != e.h)
+                {
+                    if (o.go != null) { Kill(o.go.GetComponent<MeshFilter>().sharedMesh); Kill(o.go); }
+                    float g = p.grow;
+                    p.grow = 1f;
+                    var mb = MeshBuilder.Rent(p.seed * 31 + 632);
+                    PieceMesh(mb, p);
+                    p.grow = g;
+                    var mesh = mb.ToMesh("BoxLive" + p.seed);
+                    mb.Free();
+                    o = (Spawn("Live " + p.seed, mesh, SnowMaterial, true), e.h);
+                    livePieces[p.seed] = o;
+                }
+                liveGone.Remove(p.seed);
+                float sink = p.kind == PieceKind.Home && p.era != Era.Camp ? 0.04f : 0f;
+                var foot = land.OnGround(p.x, p.z) - Vector3.up * sink;
+                float s = Mathf.Max(0.02f, p.grow);
+                o.go.transform.localScale = Vector3.one * s;
+                o.go.transform.localPosition = foot * (1f - s); // scaled about the foot, as PieceMesh's matrix does
+            }
+            foreach (int seed in liveGone)
+            {
+                var go = livePieces[seed].go;
+                if (go != null) { Kill(go.GetComponent<MeshFilter>().sharedMesh); Kill(go); }
+                livePieces.Remove(seed);
+            }
         }
 
         void PieceMesh(MeshBuilder mb, PieceData p)

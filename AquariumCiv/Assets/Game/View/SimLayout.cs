@@ -322,7 +322,11 @@ namespace AquariumCiv.View
                         if (e == Era.Camp)
                         {
                             var tent = P(PieceKind.Home, l.w, l.d);
-                            if (replay == null && BuildingGrow != null && l.buildingId > 0) tent.grow = Mathf.Clamp(BuildingGrow(l.buildingId), 0.02f, 1f); // #284
+                            if (replay == null && BuildingGrow != null && l.buildingId > 0)
+                            {
+                                tent.grow = Mathf.Clamp(BuildingGrow(l.buildingId), 0.02f, 1f); // #284
+                                tent.live = tent.grow < 1f; // #632: a rising tent scales its own object, not its chunk
+                            }
                             break;
                         }
                         int tier = st.Tier(l.door);

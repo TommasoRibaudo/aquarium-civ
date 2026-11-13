@@ -106,14 +106,20 @@ namespace AquariumCiv.View
             if (real.kind == PlaceKind.Pond)
             {
                 if (!PondLevel(out float level)) return false;
-                var dir = at - land.pond;
-                if (dir.sqrMagnitude < 1e-4f) dir = land.centre - land.pond;
+                // #630: with the living land on, the water is drawn only over the eco pond's cells. A hollow below the level
+                // elsewhere is grass, so the walk out to the edge starts on, and stays on, the drawn water.
+                var box = BoxNow;
+                var eco = box != null && box.layout.eco.on ? box.layout.eco : null;
+                bool Wet(Vector2 p) => PondWaterAt(land, eco, level, p.x, p.y);
+                var start = land.pond;
+                if (eco != null && !NearestPondWater(land, eco, level, at, out start)) return false;
+                if (!Wet(start)) return false; // the middle isn't water: no pond there
+                var dir = at - start;
+                if (dir.sqrMagnitude < 1e-4f) dir = land.centre - start;
                 if (dir.sqrMagnitude < 1e-6f) dir = Vector2.down;
                 dir.Normalize();
-                var edge = land.pond;
-                int i = 0;
-                for (; i < 200 && land.Height(edge.x, edge.y) < level; i++) edge += dir * 0.02f;
-                if (i == 0) return false; // the middle isn't water: no pond there
+                var edge = start;
+                for (int i = 0; i < 200 && Wet(edge); i++) edge += dir * 0.02f;
                 site = new PlaySite { water = true, edge = edge, toLand = dir };
                 return true;
             }
@@ -129,10 +135,71 @@ namespace AquariumCiv.View
                 var pp = surf.PuddlePoint(real.index);
                 px = pp.x; pz = pp.z;
             }
+            else if (real.kind == PlaceKind.Nudge && !RainSpotWet(real.index)) return false; // #630: the rain's wet ground has dried
             var along = at - new Vector2(px, pz);
             if (along.sqrMagnitude < 1e-4f) along = Vector2.right;
             site = new PlaySite { water = true, puddle = true, mud = true, edge = new Vector2(px, pz), toLand = new Vector2(-along.y, along.x).normalized, puddleR = r };
             return true;
+        }
+
+        /// <summary>#630: the rain look's wet ground at least this dark (it dries to <see cref="AquariumCiv.View.Shaping.ShapingTuning.DampAfter"/>): kids splash there.</summary>
+        public const float RainWetEnough = AquariumCiv.View.Shaping.ShapingTuning.DampAfter + 0.1f;
+
+        /// <summary>#630: a point is pond water: under the level and, with the living land on, on one of the eco pond's cells.</summary>
+        public static bool PondWaterAt(Land land, EcoLayer eco, float level, float x, float z)
+        {
+            if (land.Height(x, z) >= level) return false;
+            return eco == null || eco.WaterCell(AquariumCiv.Sim.Settle.SiteMap.CellAt(x, z));
+        }
+
+        /// <summary>#630: the centre of the eco pond's water cell nearest <paramref name="at"/> (false: no cell holds water).</summary>
+        public static bool NearestPondWater(Land land, EcoLayer eco, float level, Vector2 at, out Vector2 point)
+        {
+            point = default;
+            float best = float.MaxValue;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N; c++)
+            {
+                if (!eco.WaterCell(c)) continue;
+                var p = new Vector2(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c));
+                if (land.Height(p.x, p.y) >= level) continue;
+                float d = (p - at).sqrMagnitude;
+                if (d < best) { best = d; point = p; }
+            }
+            return best < float.MaxValue;
+        }
+
+        /// <summary>#630: the Keeper's rain at this nudge still shows its wet ground. Unknown (no shaping view): no.</summary>
+        bool RainSpotWet(int nudgeId)
+        {
+            var show = ShapingView.Instance != null ? ShapingView.Instance.Show : null;
+            var e = show?.Find(nudgeId);
+            if (e == null || e.footprint.kind != AquariumCiv.Sim.SimCore.NudgeKind.Rain) return false;
+            return show.Rain(e).wet >= RainWetEnough;
+        }
+
+        /// <summary>#630: how often a running splash game checks that its water is still there.</summary>
+        public const float WaterCheckSeconds = 1f;
+        float nextWaterCheck;
+
+        /// <summary>#630: a splash game whose water has gone (a puddle dried, the rain's wet ground dried): its place splits again,
+        /// and with no water on offer the kids play a dry game. A cheat's game just ends.</summary>
+        bool SplashLostItsWater(LifePlanner planner, Place place, float time)
+        {
+            foreach (var g in groups)
+            {
+                if (g.place != place || g.site == null || !g.site.water || g.forced) continue;
+                if (!WaterSite(planner, RealPlace(place), g.site.edge, out _)) return true;
+            }
+            return false;
+        }
+
+        void EndDrySplashCheats(LifePlanner planner)
+        {
+            for (int i = groups.Count - 1; i >= 0; i--)
+            {
+                var g = groups[i];
+                if (g.forced && g.site != null && g.site.water && !WaterSite(planner, RealPlace(g.place), g.site.edge, out _)) Remove(i);
+            }
         }
 
         /// <summary>The nearest real grown tree (BoxView.TreeSpots, still grown) within <paramref name="reach"/>, not one in <paramref name="not"/>.</summary>
