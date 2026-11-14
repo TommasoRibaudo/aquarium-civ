@@ -1299,7 +1299,7 @@ namespace AquariumCiv.View
             frameMat = new Material(Solid) { hideFlags = HideFlags.DontSave, name = "Frame" };
             frameMat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
             frameMat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            frameMat.renderQueue = 2900; // after the opaque world, before the glass
+            frameMat.renderQueue = 2950; // after the opaque world and the ground overlays (EcoGround 2940-2946: #671, a fading part's depth cut them), before the glass
             return frameMat;
         }
 
