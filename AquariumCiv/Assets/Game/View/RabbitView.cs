@@ -61,6 +61,10 @@ namespace AquariumCiv.View
         // tracks
         GameObject tracks;
         int tracksKey;
+        // #665: living tracks, fresh prints where the rabbits hop while they live
+        GameObject liveTracks;
+        Mesh liveMesh;
+        long liveKey = long.MinValue;
         // the first rabbit's sign
         sealed class Sign { public int id; public float t; public Vector2 from; public PersonRef pointer; public readonly List<int> ids = new(); public readonly Dictionary<int, RabbitPose> at = new(); public bool landed; }
         Sign sign;
@@ -69,6 +73,10 @@ namespace AquariumCiv.View
         public int Shown { get { int n = 0; foreach (var s in slots.Values) if (s.doll != null && s.doll.gameObject.activeSelf) n++; return n; } }
         public int Fleeing { get { int n = 0; foreach (var s in slots.Values) if (s.scare.Fleeing) n++; return n; } }
         public bool TracksShown => tracks != null && tracks.activeSelf;
+        /// <summary>#665: living trails drawn now (fresh prints of the rabbits alive), for tests and the tester. Never above <see cref="LiveTrailsMax"/>.</summary>
+        public int LiveTrails { get; private set; }
+        /// <summary>#665: where the living trails drawn now lie (box units), for tests and shots.</summary>
+        public readonly List<Vector2> LiveTrailSpots = new();
         public bool SignPlaying => sign != null;
         public int SignsPlayed { get; private set; }
         /// <summary>#400 (playtest: "jump up and down on the same spot"): frames a rabbit was shown in the air in a hop or a bound without
@@ -135,6 +143,7 @@ namespace AquariumCiv.View
             if (Instance == this) Instance = null;
             if (holder != null) Destroy(holder.gameObject);
             if (tracks != null) Destroy(tracks);
+            DropLiveTracks();
             holder = null; tracks = null; slots.Clear(); pool.Clear();
         }
 
@@ -147,6 +156,7 @@ namespace AquariumCiv.View
             if (rootSeen != box.Root) { ForgetDolls(); rootSeen = box.Root; } // the box was rebuilt: its children went with the old root
             EnsureField(sim, dt);
             UpdateTracks(sim);
+            UpdateLiveTracks(sim);
             TryStartSign(sim);
             UpdateRabbits(sim, dt);
         }
@@ -170,10 +180,12 @@ namespace AquariumCiv.View
             foreach (var s in slots.Values) if (s.doll != null) { s.doll.gameObject.SetActive(false); pool.Add(s.doll); }
             slots.Clear();
             if (tracks != null) tracks.SetActive(false);
+            if (liveTracks != null) liveTracks.SetActive(false);
+            LiveTrails = 0;
             sign = null;
         }
 
-        void ForgetDolls() { slots.Clear(); pool.Clear(); holder = null; tracks = null; tracksKey = 0; }
+        void ForgetDolls() { slots.Clear(); pool.Clear(); holder = null; tracks = null; tracksKey = 0; DropLiveTracks(); }
 
         Transform Holder()
         {
@@ -208,6 +220,107 @@ namespace AquariumCiv.View
                 tracksKey = key;
             }
             tracks.SetActive(true);
+        }
+
+        // ---------------------------------------------------------------- #665: living tracks
+        /// <summary>#665: a trail's life in view hours (three view days), and a slot for a new trail every quarter of it: at most
+        /// <see cref="LiveTrailsMax"/> trails at once, each fading as it ages and replaced by a fresh one.</summary>
+        public const float LiveTrailHours = 72f, LiveTrailEvery = LiveTrailHours / 4f;
+        public const int LiveTrailsMax = 4;
+
+        /// <summary>#665: the share of slots that leave a trail: every one on winter snow, fewer in the tall summer grass.</summary>
+        public static float LiveTrailShare(Season season) => season == Season.Winter ? 1f : season == Season.Summer ? 0.5f : 0.75f;
+
+        /// <summary>#665: which trail slots show at a view time (hours since day 0), oldest first: the slots born in the last
+        /// <see cref="LiveTrailHours"/> that the season keeps. Stateless, so a skip or a reload draws the same prints.</summary>
+        public static void LiveTrailSlots(double nowHours, uint seed, List<long> into)
+        {
+            into.Clear();
+            long last = (long)System.Math.Floor(nowHours / LiveTrailEvery);
+            for (long k = last - LiveTrailsMax + 1; k <= last; k++)
+            {
+                if (k < 0) continue;
+                double born = k * (double)LiveTrailEvery;
+                if (nowHours - born >= LiveTrailHours) continue;
+                var season = LifeClock.SeasonOf((long)System.Math.Floor(born / 24.0));
+                if (RabbitHerd.F(seed, (uint)k, 41) >= LiveTrailShare(season)) continue;
+                into.Add(k);
+            }
+        }
+
+        readonly List<long> liveSlots = new();
+        readonly List<RabbitTrackLayout.Print> livePrints = new();
+
+        void DropLiveTracks()
+        {
+            if (liveTracks != null) Destroy(liveTracks);
+            if (liveMesh != null) Destroy(liveMesh);
+            liveTracks = null; liveMesh = null; liveKey = long.MinValue; LiveTrails = 0;
+        }
+
+        /// <summary>#665: while rabbits live, a few fresh trails where they hop: each slot takes one rabbit (hashed) and lays a short trail
+        /// at the spot the field had it when the slot was born, if that is green. Trails fade (lighter, fewer hops) over their life. The mesh is
+        /// rebuilt only when the slots, the rabbits or a trail's fade step change.</summary>
+        void UpdateLiveTracks(SimCore sim)
+        {
+            var pv = People;
+            if (pv == null || pv.Planner == null || !Field.HasGreen || Field.Alive.Count == 0 || sim.EcoRabbitCount <= 0)
+            {
+                if (liveTracks != null) liveTracks.SetActive(false);
+                LiveTrails = 0;
+                return;
+            }
+            uint seed = (uint)sim.State.eco.seed;
+            double nowH = pv.Now.Absolute;
+            LiveTrailSlots(nowH, seed, liveSlots);
+            long key = 17 + Field.Alive.Count * 7919L + greenHash;
+            foreach (long k in liveSlots)
+            {
+                int step = Mathf.Clamp((int)((nowH - k * (double)LiveTrailEvery) / LiveTrailHours * 6.0), 0, 5);
+                key = key * 31 + k * 7 + step;
+            }
+            if (liveTracks != null && key == liveKey) { liveTracks.SetActive(LiveTrails > 0); return; }
+            liveKey = key;
+            var mb = new MeshBuilder(box.seed + 78) { jitter = 0f };
+            var land = box.land;
+            var fresh = new Color(0.44f, 0.35f, 0.22f);
+            var worn = new Color(0.52f, 0.43f, 0.29f);
+            int drawn = 0;
+            LiveTrailSpots.Clear();
+            foreach (long k in liveSlots)
+            {
+                double born = k * (double)LiveTrailEvery;
+                int id = Field.Alive[(int)(RabbitHerd.H(seed, (uint)k, 43) % (uint)Field.Alive.Count)];
+                long day = (long)System.Math.Floor(born / 24.0);
+                var pose = Field.Sample(id, HuntClock.FieldSeconds(day, (float)(born - day * 24.0)));
+                if (!Field.IsGreenAt(pose.x, pose.z)) continue;
+                float age = Mathf.Clamp01((float)((nowH - born) / LiveTrailHours));
+                float old = Mathf.Round(age * 5f) / 5f;
+                livePrints.Clear();
+                RabbitTrackLayout.Build(pose.x, pose.z, seed, (uint)(k * 2654435761L) ^ (uint)id, 1f - old * 0.8f, livePrints);
+                bool fits = true;
+                foreach (var pr in livePrints) if (!Field.IsGreenAt(pr.at.x, pr.at.y)) { fits = false; break; }
+                if (!fits) continue;
+                var col = Color.Lerp(fresh, worn, old);
+                foreach (var pr in livePrints) Print(mb, land, pr.at, pr.hind ? col : Color.Lerp(col, worn, 0.2f), pr.rx, pr.rz, pr.yaw);
+                LiveTrailSpots.Add(new Vector2(pose.x, pose.z));
+                drawn++;
+            }
+            LiveTrails = drawn;
+            if (liveTracks == null)
+            {
+                liveTracks = new GameObject("RabbitLiveTracks") { hideFlags = HideFlags.DontSave };
+                liveTracks.transform.SetParent(Holder(), false);
+                liveTracks.AddComponent<MeshFilter>();
+                var rend = liveTracks.AddComponent<MeshRenderer>();
+                rend.sharedMaterial = box.SolidMaterial;
+                rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+            if (liveMesh != null) Destroy(liveMesh);
+            liveMesh = mb.ToMesh("RabbitLiveTracks");
+            liveMesh.hideFlags = HideFlags.DontSave;
+            liveTracks.GetComponent<MeshFilter>().sharedMesh = liveMesh;
+            liveTracks.SetActive(drawn > 0);
         }
 
         GameObject BuildTracks(SimCore sim, IReadOnlyList<int> cells, int n, float age)

@@ -193,6 +193,7 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Rabbit tracks now")) last = EcoDebug.RabbitTracksNow();
+            if (Btn("Rabbit trails: count")) last = EcoDebug.LiveTrailsNow();   // #665
             if (Btn("+1 rabbit")) last = EcoDebug.AddRabbits(1);
             if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);
             EndRow();

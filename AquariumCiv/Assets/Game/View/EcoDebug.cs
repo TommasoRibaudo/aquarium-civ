@@ -109,6 +109,15 @@ namespace AquariumCiv.View
         public static string PuddleVisit() { var p = PuddleLife.Instance; return p != null ? p.VisitNow() : "no puddle life"; }
 
         /// <summary>"Rabbit tracks now": the tracks show at the meadow's edge at once (#282).</summary>
+        /// <summary>"Rabbit trails: count" (#665): the living trails drawn now (fresh prints while rabbits live), and the season's share.</summary>
+        public static string LiveTrailsNow()
+        {
+            var rv = RabbitView.Instance; var pv = PeopleView.Find();
+            if (rv == null || pv == null) return "no rabbit view";
+            var season = AquariumCiv.Life.LifeClock.SeasonOf(pv.Now.day);
+            return $"{rv.LiveTrails} living trails (at most {RabbitView.LiveTrailsMax}; {season}: {RabbitView.LiveTrailShare(season):0%} of slots), a new slot every {RabbitView.LiveTrailEvery:0} view hours";
+        }
+
         public static string RabbitTracksNow()
         {
             var s = Sim;
