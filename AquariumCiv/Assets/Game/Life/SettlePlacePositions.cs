@@ -252,6 +252,7 @@ namespace AquariumCiv.Life
                     st.MarketCentre(out x, out z);
                     return true;
                 case PlaceKind.BushCell: // P8 #288
+                case PlaceKind.Deadfall: // #656/#677: the tree's foot
                     if (p.index < 0 || p.index >= SiteMap.N) return false;
                     x = SiteMap.CXc(p.index); z = SiteMap.CZc(p.index);
                     return true;

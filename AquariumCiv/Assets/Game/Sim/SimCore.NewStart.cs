@@ -40,8 +40,9 @@ namespace AquariumCiv.Sim
     /// sticks (<see cref="CarriedSticks"/>, shown and kept, NOT spendable wood). Usable wood starts at 0.</item>
     /// <item>Until the land gives food (a bush or the rabbits) the basket runs down at <see cref="CarriedRation"/> a person a month; the
     /// land's food comes after that (the usual economy). Food never goes below 0 and nobody dies of hunger (<see cref="Hungry"/> is shown, never punished).</item>
-    /// <item>Monthly wood comes only from grown WILD trees (<see cref="WoodsTreeCount"/>: never the Keeper's tree), <see cref="WildWoodPerTree"/>
-    /// a tree, capped by the people's hands and the lumber mill (the old income).</item>
+    /// <item>Monthly wood comes only from grown WILD trees, never the Keeper's tree: the woods (<see cref="WoodsTreeCount"/>, chopped)
+    /// <see cref="WildWoodPerTree"/> a tree, and the wild trees near the Keeper's tree (<see cref="DeadfallTreeCount"/>: their fallen branches
+    /// gathered, never chopped) <see cref="DeadfallPerTree"/>, capped by the people's hands and the lumber mill (the old income).</item>
     /// <item>The fire (<see cref="FireStage"/>): none before any bush, grass and twigs from the first bush, logs from the first wild wood
     /// (<see cref="FirstWildWoodPending"/>: a moment the view plays once).</item>
     /// </list>
@@ -55,8 +56,10 @@ namespace AquariumCiv.Sim
         public const int CarriedSticks = 5;
         /// <summary>What a person eats from the basket a month before the land gives food [est]: 12 last 5 people about a year (an hour of play).</summary>
         public const float CarriedRation = 0.2f;
-        /// <summary>Wood a month from each grown wild tree [est], before the mood/mess pace and the lean.</summary>
+        /// <summary>Wood a month from each grown wild tree of the woods [est], before the mood/mess pace and the lean.</summary>
         public const float WildWoodPerTree = 0.6f;
+        /// <summary>Wood a month from each grown wild tree near the Keeper's tree [est]: its fallen branches, gathered (never chopped, #573).</summary>
+        public const float DeadfallPerTree = 0.3f;
 
         /// <summary>The first logs came home from a wild tree (raised once, live or in catch-up; the view plays the moment when it is watched).</summary>
         public event Action FirstWildWood;
@@ -119,14 +122,45 @@ namespace AquariumCiv.Sim
             return true;
         }
 
-        /// <summary>The month's wood (before the pace and the lean). A new box: only from grown wild trees, capped by the hands and the mill.</summary>
+        /// <summary>The month's wood (before the pace and the lean). A new box: only from grown wild trees (the woods, chopped; and the
+        /// deadfall of those near the Keeper's tree, gathered), capped by the hands and the mill. The Keeper's own tree gives nothing.</summary>
         float WoodIncome(int pop)
         {
             float hands = 1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f;
             if (!NewStartOn) return hands;
-            int trees = WoodsTreeCount;
-            return trees <= 0 ? 0f : Math.Min(trees * WildWoodPerTree, hands);
+            float wild = WoodsTreeCount * WildWoodPerTree + DeadfallTreeCount * DeadfallPerTree;
+            return wild <= 0f ? 0f : Math.Min(wild, hands);
         }
+
+        /// <summary>Grown wild trees that give wood at all: the woods (<see cref="WoodsTreeCount"/>) and the deadfall trees (<see cref="DeadfallTreeCount"/>).</summary>
+        public int WildWoodTreeCount => WoodsTreeCount + DeadfallTreeCount;
+
+        /// <summary>#656/#677: a grown wild tree inside the clear radius round the Keeper's tree (never the Keeper's own tree), nearest
+        /// (<paramref name="nearX"/>, <paramref name="nearZ"/>), or -1. It is never chopped (#573): its fallen branches are gathered (deadfall).</summary>
+        public int DeadfallTreeCell(float nearX, float nearZ, int rank = 0)
+        {
+            if (!EcologyOn) return -1;
+            var e = State.eco; var cfg = Config.eco ?? (Config.eco = new Eco.EcoTuning());
+            if (e.treeCell < 0 || e.treeCell >= Eco.EcoLand.N) return -1; // no Keeper's tree: every wild tree is the woods
+            const float mx = Settle.Terrain.HX - Settle.Terrain.GlassMargin, mz = Settle.Terrain.HZ - Settle.Terrain.GlassMargin;
+            float kx = Settle.SiteMap.CXc(e.treeCell), kz = Settle.SiteMap.CZc(e.treeCell);
+            var found = deadfallScratch; found.Clear();
+            for (int c = 0; c < Eco.EcoLand.N; c++)
+            {
+                if ((Eco.EcoCover)e.cover[c] != Eco.EcoCover.Tree || c == e.treeCell) continue;
+                float x = Settle.SiteMap.CXc(c), z = Settle.SiteMap.CZc(c);
+                if (Math.Abs(x) > mx || Math.Abs(z) > mz) continue;
+                if (Settle.Terrain.Dist(x, z, kx, kz) >= cfg.woodsClearRadius) continue; // out there it is the woods (WoodsTreeCell)
+                found.Add(((x - nearX) * (x - nearX) + (z - nearZ) * (z - nearZ), c));
+            }
+            if (found.Count == 0 || rank >= found.Count) return -1;
+            found.Sort((a, b) => a.d != b.d ? a.d.CompareTo(b.d) : a.c.CompareTo(b.c));
+            return found[Math.Max(0, rank)].c;
+        }
+        readonly System.Collections.Generic.List<(float d, int c)> deadfallScratch = new();
+
+        /// <summary>How many grown wild trees near the Keeper's tree give deadfall.</summary>
+        public int DeadfallTreeCount { get { if (!EcologyOn) return 0; DeadfallTreeCell(0f, 0f, 1 << 20); return deadfallScratch.Count; } }
 
         /// <summary>The month's food before the land gives any: the basket runs down. Null once the land gives (the usual economy then).</summary>
         float? BasketFood(int pop)
@@ -162,8 +196,8 @@ namespace AquariumCiv.Sim
         public string DebugFirstWildWoodNow(Func<float, float, float, bool> drawable = null)
         {
             if (!NewStartOn) return "not a new-start box (living land off, or an old box)";
-            string tree = WoodsTreeCount > 0 ? "a wild tree stood" : DebugWildTrees(false, 1, drawable);
-            if (WoodsTreeCount <= 0) return "no wild tree: " + tree;
+            string tree = WildWoodTreeCount > 0 ? "a wild tree stood" : DebugWildTrees(false, 1, drawable);
+            if (WildWoodTreeCount <= 0) return "no wild tree: " + tree;
             if (FirstWildWoodReached) return "the first wild wood came already (month " + NewStart.firstWildWoodMonth + ")";
             float gain = WoodIncome(State.population);
             State.wood = Math.Min(State.wood + gain, 2000f);

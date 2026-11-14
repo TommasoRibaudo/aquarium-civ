@@ -81,7 +81,7 @@ namespace AquariumCiv.Tests
             for (int m = 0; m < 36; m++)
             {
                 sim.Step();
-                if (sim.WoodsTreeCount > 0) break;
+                if (sim.WildWoodTreeCount > 0) break;
                 Assert.AreEqual(0f, sim.State.wood, $"month {sim.State.month}: no wood without a grown wild tree");
             }
             Assert.AreEqual(-1, sim.FirstWildWoodMonth);
@@ -94,10 +94,11 @@ namespace AquariumCiv.Tests
             var sim = NewBox();
             Assert.IsTrue(sim.DebugTreeStage(4), "the Keeper's tree, grown");
             Assert.AreEqual(0, sim.WoodsTreeCount, "the Keeper's tree is not the woods");
+            Assert.AreEqual(0, sim.DeadfallTreeCount, "nor deadfall");
             for (int m = 0; m < 24; m++)
             {
                 sim.Step();
-                if (sim.WoodsTreeCount > 0) break; // a wild tree grew by itself: past what this test is about
+                if (sim.WildWoodTreeCount > 0) break; // a wild tree grew by itself: past what this test is about
                 Assert.AreEqual(0f, sim.State.wood, $"month {sim.State.month}: the Keeper's grown tree gives no wood, not even dropped branches");
             }
             Assert.IsFalse(sim.FirstWildWoodReached);
@@ -124,6 +125,22 @@ namespace AquariumCiv.Tests
             sim.Step();
             Assert.Greater(sim.State.wood, before, "the wood keeps coming");
             Assert.AreEqual(1, raised, "the first logs come once");
+        }
+
+        [Test]
+        public void AWildTreeBesideTheKeepersTree_GivesDeadfall_TheFirstWoodToo()
+        {
+            var sim = NewBox();
+            StringAssert.Contains("beside the Keeper's tree", sim.DebugWildTrees(true));
+            Assert.AreEqual(0, sim.WoodsTreeCount, "too near the Keeper's tree to be the woods (#573: never chopped)");
+            Assert.Greater(sim.DeadfallTreeCount, 0, "its fallen branches can be gathered");
+            int cell = sim.DeadfallTreeCell(0f, 0f);
+            Assert.AreNotEqual(sim.State.eco.treeCell, cell, "never the Keeper's own tree");
+            sim.Step();
+            Assert.Greater(sim.State.wood, 0f, "deadfall wood");
+            Assert.LessOrEqual(sim.State.wood, sim.DeadfallTreeCount * SimCore.DeadfallPerTree * 1.2f * 1.5f + 1e-3f, "at the deadfall rate");
+            Assert.IsTrue(sim.FirstWildWoodReached, "the first wild wood comes from either source");
+            Assert.AreEqual(CampFireStage.Logs, sim.FireStage);
         }
 
         [Test]

@@ -98,7 +98,23 @@ namespace AquariumCiv.Life
 
         /// <summary>#656/#677: a gather of dry grass and twigs for the grass fire (the loop at the meadow's edge; its carry is a
         /// <see cref="ActivityKind.Carry"/> of <see cref="Prop.Stick"/> to the fire).</summary>
-        public static bool IsTinderGather(PersonActivity a) => a.kind == ActivityKind.Gather && a.prop == Prop.Stick;
+        public static bool IsTinderGather(PersonActivity a) => a.kind == ActivityKind.Gather && a.prop == Prop.Stick && a.place.kind != PlaceKind.Deadfall;
+
+        /// <summary>#656/#677: gathering the fallen branches under a grown wild tree near the Keeper's tree (bare hands; the carry home is a
+        /// <see cref="ActivityKind.Carry"/> of <see cref="Prop.Log"/> to the pile). Never chopping: that tree stands too near the Keeper's (#573).</summary>
+        public static bool IsDeadfallGather(PersonActivity a) => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Deadfall;
+
+        /// <summary>#656/#677: a wild tree near the Keeper's tree drops branches to gather (no woods needed).</summary>
+        bool DeadfallStands => OnLiving && sim.DeadfallTreeCount > 0;
+
+        /// <summary>#656/#677: the deadfall run: to one of the deadfall trees (by the person's hash), the branches gathered, carried to the pile.</summary>
+        Work DeadfallWork(Person p, DayInfo d)
+        {
+            int n = sim.DeadfallTreeCount;
+            var g = sim.EcoGround;
+            int cell = sim.DeadfallTreeCell(g.campX, g.campZ, n <= 1 ? 0 : (int)(H(p.key, d.day, 657) % (uint)n));
+            return W(Place.Land(PlaceKind.Deadfall, cell), ActivityKind.Gather, Prop.None, Prop.Log, stash, 0.4f);
+        }
 
         /// <summary>#521/#656: a camp's work when the land gives nothing to gather today (no bush yet, none in fruit, no fish): the cook tends
         /// the fire, the rest fetch water, fish, chop where the land allows it, tend the grass fire (gathering dry grass and twigs), or do the
@@ -122,6 +138,7 @@ namespace AquariumCiv.Life
             switch (IdleIndex(p, d) % 3)
             {
                 case 1:
+                    if (DeadfallStands) return DeadfallWork(p, d); // #656/#677: the fallen branches under the wild tree by the Keeper's
                     if (FireNow == CampFireStage.GrassAndTwig) return TinderWork(); // #677: the grass fire is fed by hand
                     if (OnLiving && era == Era.Camp) return W(Place.Land(PlaceKind.Hill), ActivityKind.Explore, Prop.None, Prop.None, default, 0f);
                     break;
@@ -261,7 +278,7 @@ namespace AquariumCiv.Life
                         return CampOtherWork(p, d); // #656: the camp's other work, not a root dig
                     return camp ? FishWork() : W(Pond, ActivityKind.Fish, Prop.Rod, Prop.Basket, Store(Prop.Goods), 0.25f); // #543: a camp's catch goes to the fish rack
                 case JobType.Woodcutter:
-                    if (sim != null && sim.EcologyOn && !WoodsStand) return TribeWork(p, d); // P8 (#285): no trees, no chopping (#573: a sapling or the Keeper's tree is not a wood)
+                    if (sim != null && sim.EcologyOn && !WoodsStand) return DeadfallStands ? DeadfallWork(p, d) : TribeWork(p, d); // P8 (#285): no trees, no chopping (#573: a sapling or the Keeper's tree is not a wood); #656: the deadfall by the Keeper's tree is gathered
                     w = W(Woods, ActivityKind.Chop, Prop.Axe, camp ? Prop.Log : Prop.Handcart, Store(Prop.Log), 0.3f);
                     if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Log : Prop.Saw, 0.35f);
                     return w;

@@ -573,6 +573,7 @@ namespace AquariumCiv.Life
                 ActivityKind.FetchWater => a.moving ? $"carrying water to {where}" : $"drawing water at {where}",
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
+                ActivityKind.Gather when a.place.kind == PlaceKind.Deadfall => "gathering fallen branches under the wild tree", // #656/#677: never chopped
                 ActivityKind.Gather when a.prop == Prop.Stick => "gathering dry grass and twigs for the fire", // #677: the grass fire, never "wood"
                 ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
                 ActivityKind.Pray => "praying at the feather pole", // fb4 #566
@@ -675,6 +676,7 @@ namespace AquariumCiv.Life
             PlaceKind.Prop => "the Keeper's choice", // #371
             PlaceKind.Tower => "the lookout tower", // #404
             PlaceKind.FishRack => "the fish rack", // #543
+            PlaceKind.Deadfall => "the wild tree by the Keeper's", // #656/#677
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }

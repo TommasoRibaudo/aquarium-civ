@@ -119,6 +119,8 @@ namespace AquariumCiv.Life
         Arrival,
         /// <summary>#543: the camp's fish rack by the fire (land; index -1 = where people stand to hang and take down fish, 1 = the rack itself, see <see cref="FishRackSpot"/>). Appended last.</summary>
         FishRack,
+        /// <summary>#656/#677: a grown wild tree near the Keeper's tree (index = the site cell): its fallen branches are gathered there, never chopped (#573). Appended last.</summary>
+        Deadfall,
     }
 
     /// <summary>Where a person is. <see cref="buildingId"/> is the sim building (−1 for land); <see cref="index"/> is the

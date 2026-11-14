@@ -94,6 +94,29 @@ namespace AquariumCiv.Life.Tests
             Assert.IsFalse(Plan(sim, 24).Any(RootDig), "a gatherer with no berries today does other work, not a root dig");
         }
 
+        [TestCase(1)]
+        [TestCase(7)]
+        public void TheDeadfall_IsGatheredUnderTheTree_NeverChopped(int seed)
+        {
+            var sim = NewBox(seed);
+            sim.DebugOpenCampGate();
+            Reach(sim, EcoMilestones.FirstBush);
+            StringAssert.Contains("beside the Keeper's tree", sim.DebugWildTrees(true));
+            Assume.That(sim.WoodsTreeCount, Is.EqualTo(0));
+            sim.Step();
+            Assert.AreEqual(CampFireStage.Logs, sim.FireStage, "the deadfall is the first wild wood");
+            var plan = Plan(sim, 24);
+            var df = plan.Where(LifePlanner.IsDeadfallGather).ToList();
+            Assert.IsNotEmpty(df, "someone gathers the fallen branches");
+            Assert.IsTrue(df.All(a => sim.EcoCoverAt(a.place.index) == EcoCover.Tree && a.place.index != sim.State.eco.treeCell), "under a wild tree, never the Keeper's");
+            Assert.IsFalse(plan.Any(a => a.kind == ActivityKind.Chop), "nothing is chopped near the Keeper's tree (#573)");
+            Assert.IsFalse(df.Any(LifePlanner.IsTinderGather));
+            Assert.IsTrue(plan.Any(a => a.kind == ActivityKind.Carry && a.prop == Prop.Log), "the branches carried home");
+            var planner = LifePlanner.Wired(sim);
+            StringAssert.Contains("fallen branches", planner.Describe(df[0]));
+            Assert.IsTrue(planner.IsValidPlace(df[0].place));
+        }
+
         [Test]
         public void TheFirstWildWood_BringsTheLogFire_AndItsChores()
         {
