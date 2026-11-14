@@ -173,9 +173,9 @@ namespace AquariumCiv.Life
             if (!CampSpread || !p.Adult || p == leader) return false;
             int rank = EveningRank(p, d);
             var fireStage = FireNow; // #656/#677: no fire before the first bush (the pot and the woodpile wait); a grass fire is fed twigs, not logs
-            if (rank == 0 && fireStage != CampFireStage.None) { At(ActivityKind.Cook, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; }
+            if (rank == 0 && fireStage != CampFireStage.None) { At(fireStage == CampFireStage.GrassAndTwig ? ActivityKind.FeedFire : ActivityKind.Cook, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; } // sign-off 2026-11-14: a grass fire is fed, not stirred
             if (rank == 1 && fireStage == CampFireStage.Logs) { At(ActivityKind.StackWood, 17.6f, stash, Prop.Log, default, TripType.HomeToGreen); return true; }
-            if (rank == 1 && fireStage == CampFireStage.GrassAndTwig) { At(ActivityKind.SitOut, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; } // feeding the grass fire
+            if (rank == 1 && fireStage == CampFireStage.GrassAndTwig) { At(ActivityKind.SitOut, 17.6f, fire, Prop.None, default, TripType.HomeToGreen); return true; } // sitting by the grass fire, its turn to feed it next (2026-11-14: no stick held over it)
             if (R(p.key, d.day, 210) < 0.35f)
             {
                 var ch = Chore(p, d, 211);

@@ -24,7 +24,10 @@ namespace AquariumCiv.View
         FishBasket,
         // #656/#677: an armful of dry grass and thin twigs for the grass fire (never a log); a fallen branch gathered under a wild
         // tree (never chopped); the carried basket of food and the tied bundle of sticks the founders walk in with
-        Tinder, Branch, FoodBasket, StickBundle }
+        Tinder, Branch, FoodBasket, StickBundle,
+        // sign-off 2026-11-14 (ChoreBeats): the flat scraper stone held in both hands at the hide rack; a hide spread on the ground to
+        // mend (a bedroll), in front of someone seated
+        Scraper, Pelt }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

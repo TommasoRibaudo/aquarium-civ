@@ -133,7 +133,7 @@ namespace AquariumCiv.Life
         {
             if (p.job == CrowdCook && FireNow != CampFireStage.None)
             {
-                var cook = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
+                var cook = CookAtFire();
                 cook.keepsRestDay = true;
                 if (HasRealWater) { cook = Fetch(cook, WaterPlace); cook.dest = stash; cook.fetchFirst = true; }
                 return cook;
@@ -153,12 +153,37 @@ namespace AquariumCiv.Life
                     if (OnLiving && era == Era.Camp) return W(Place.Land(PlaceKind.Hill), ActivityKind.Explore, Prop.None, Prop.None, default, 0f);
                     break;
                 case 2:
-                    if (OnLiving && era == Era.Camp) return W(gather, ActivityKind.SitOut, Prop.None, Prop.None, default, 0f);
+                    if (OnLiving && era == Era.Camp) return CampHandWork(p, d);
                     break;
             }
             var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
             c.chores = true;
             return Fetch(c, WaterPlace);
+        }
+
+        /// <summary>The cook at the fire: the pot stirred; at the grass fire (sign-off 2026-11-14) the cook also keeps it fed, turn about
+        /// (an armful from the heap pushed in: ChoreBeats.Feed), so the fire is tended by feeding it, not by a stir over the flames.</summary>
+        Work CookAtFire()
+        {
+            if (FireNow != CampFireStage.GrassAndTwig) return W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
+            return Alt(W(fire, ActivityKind.FeedFire, Prop.Stick, Prop.Buckets, fire, 0.2f), fire, ActivityKind.Cook, Prop.Stick, 0.45f);
+        }
+
+        /// <summary>Sign-off 2026-11-14 (#651, the user's pick of the proposal): the camp's hand work, each at a real thing, never at an
+        /// empty fire spot: scraping a hide at the rack (while hides hang there drying), sorting the basket at the pile (once the land gives
+        /// food), mending a bedroll at the tent. One of what the camp has, per person and day, so a camp shows a mix. With none of
+        /// them (no tent yet), sitting where the camp is.</summary>
+        Work CampHandWork(Person p, DayInfo d)
+        {
+            bool scrape = sim != null && sim.HidesDrying > 0 && HideFrame(out _, out _, out _, out _); // only with a hide on the rack to scrape
+            bool sort = sim != null && sim.LandGivesFood && sim.StockSetDown;
+            bool mend = !p.home.IsNone;
+            int n = (scrape ? 1 : 0) + (sort ? 1 : 0) + (mend ? 1 : 0);
+            if (n == 0) return W(gather, ActivityKind.SitOut, Prop.None, Prop.None, default, 0f);
+            int pick = (int)(H(p.key, d.day, 652) % (uint)n);
+            if (scrape && pick-- == 0) return W(Place.Land(PlaceKind.HideRack), ActivityKind.ScrapeHide, Prop.Hammerstone, Prop.None, default, 0f);
+            if (sort && pick-- == 0) return W(stash, ActivityKind.Prepare, Prop.Basket, Prop.None, default, 0f);
+            return W(p.home, ActivityKind.Weave, Prop.Hide, Prop.None, default, 0f);
         }
 
         long idleDay = long.MinValue;
@@ -358,7 +383,7 @@ namespace AquariumCiv.Life
                 // ---- crowd slot jobs
                 case CrowdCook:
                     if (FireNow == CampFireStage.None) return CampOtherWork(p, d); // #656: no fire yet, no pot over it
-                    w = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
+                    w = CookAtFire();
                     w.keepsRestDay = true;
                     if (!HasRealWater) return w; // verify run 2026-11-07: a living-land box with no well, pond or puddle has nothing to draw; the cook doesn't dip into dry grass
                     w = Fetch(w, WaterPlace);

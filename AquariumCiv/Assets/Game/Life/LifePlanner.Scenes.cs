@@ -577,6 +577,9 @@ namespace AquariumCiv.Life
                 ActivityKind.Gather when a.prop == Prop.Stick => "gathering dry grass and twigs for the fire", // #677: the grass fire, never "wood"
                 ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
                 ActivityKind.Pray => "praying at the feather pole", // fb4 #566
+                ActivityKind.FeedFire => "feeding dry grass to the fire", ActivityKind.ScrapeHide => "scraping a hide at the rack", // sign-off 2026-11-14
+                ActivityKind.Weave when a.prop == Prop.Hide => "mending a bedroll at the tent",
+                ActivityKind.Prepare when a.place.kind == PlaceKind.Stash => "sorting the basket at the pile",
                 ActivityKind.Walk => $"walking to {where}",
                 ActivityKind.Sleep => "asleep at home",
                 ActivityKind.Indoors => "indoors",
@@ -677,6 +680,7 @@ namespace AquariumCiv.Life
             PlaceKind.Tower => "the lookout tower", // #404
             PlaceKind.FishRack => "the fish rack", // #543
             PlaceKind.Deadfall => "the wild tree by the Keeper's", // #656/#677
+            PlaceKind.HideRack => "the hide rack",
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }

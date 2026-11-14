@@ -503,6 +503,20 @@ namespace AquariumCiv.View
             if (!hunting && !tenting && !a.moving && !drawing && !fishing && !playing /* #359 */ && a.place.kind is PlaceKind.Pond or PlaceKind.Stream) face = land.pond;
             if (!hunting && !tenting && !a.moving && lookAt.Count > 0 && lookAt.TryGetValue(a.who.Key, out var lookTo)) face = lookTo; // #282: turned to the first rabbit
             if (!hunting && !tenting && !a.moving && a.facesGlass && a.place.kind != PlaceKind.Glass) face = target + GlassNormal(planner.GlassSide); // #92: a dance for the sky, a wave; at the glass itself SlotSpot turns each one a little (#190)
+            // sign-off 2026-11-14 (ChoreBeats): the feeder kneels close at the fire (the ring's 0.3 is too far to push grass in); the scraper
+            // stands at the hide rack facing it
+            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire && planner.FirePoint(out float ffx, out float ffz))
+            {
+                // between the fire and its grass heap (Pieces.GrassHeapAt), the heap behind them: the gather is a turn round to it
+                var fp = new Vector2(ffx, ffz); var away = new Vector2(Pieces.GrassHeapAt.x, Pieces.GrassHeapAt.z);
+                target = fp + away.normalized * FeedReach; face = fp;
+            }
+            if (!hidden && !a.moving && !a.enRoute && a.kind == ActivityKind.ScrapeHide && planner.Positions.TryGetPosition(RackMiddle, out float rkx, out float rkz))
+            {
+                var rk = new Vector2(rkx, rkz); var away = target - rk;
+                if (away.sqrMagnitude < 1e-6f) away = Vector2.right;
+                target = rk + away.normalized * ScrapeReach; face = rk;
+            }
             // #494: at the glass, looking out: turned toward the camera, from where they stand (see GazesAtCamera).
             bool gazing = !a.moving && !a.enRoute && !hidden && !hunting && !tenting && !playing && GazesAtCamera(a.kind, a.place.kind) && CameraPlanePoint(out camPlane);
             float rim = !a.moving && a.place.kind == PlaceKind.Glass ? 0.05f : 0.12f; // #92: right up at the glass
@@ -554,6 +568,8 @@ namespace AquariumCiv.View
             if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
             if (started && !walking) style = startCue.style; // #656/#677: the scene's pose (stand, set down, pick up)
+            if (!walking && !hidden && !started && style == DollStyle.Lift && a.kind == ActivityKind.Prepare && a.place.kind == PlaceKind.Stash && a.prop == LifeProp.Basket) style = DollStyle.SortBasket; // sign-off 2026-11-14
+            if (!walking && !hidden && !started && style == DollStyle.SitWeave && a.prop == LifeProp.Hide) style = DollStyle.Mend; // sign-off 2026-11-14: a bedroll mended
             // #656/#677: hungry, shown, never punished: now and then someone stops and looks up at the sky
             if (!started && !walking && !hidden && !hunting && !playing && !paired && HungryLook != null && style is DollStyle.Stand or DollStyle.Talk or DollStyle.Pick && HungryLook(a.who, time)) style = DollStyle.LookUp;
             if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = pairEv.takerSeated && pairCue.index == 1 ? DollStyle.Sit : DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over); #365: a bowl is handed to someone who stays seated
@@ -586,6 +602,13 @@ namespace AquariumCiv.View
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
             if (playing && playCue.stick) { kind = PropKind.Twig; slot = PropSlot.Hand; } // #359: the stick duel (batch 2: a short twig)
             if (!started && !hunting && !playing && !paired) (kind, slot) = NewStartProp(a, kind, slot, walking); // #656/#677: dry grass and twigs, a fallen branch
+            if (!walking && !started && !hunting && !playing && !paired) // sign-off 2026-11-14 (ChoreBeats): what each hand-work move holds
+            {
+                if (style == DollStyle.FeedFire) (kind, slot) = ChoreBeats.FeedHolds(ChoreBeats.Clock(ChoreBeats.FeedBeat, time + d.phase, a.pace)) ? (PropKind.Tinder, PropSlot.Arms) : (PropKind.None, PropSlot.Hand);
+                else if (style == DollStyle.ScrapeHide) (kind, slot) = (PropKind.Scraper, PropSlot.Hand);
+                else if (style == DollStyle.SortBasket) (kind, slot) = (PropKind.Basket, PropSlot.Hand); // in the left hand (HoldInLeft), the right sorts
+                else if (style == DollStyle.Mend) (kind, slot) = (PropKind.Pelt, PropSlot.Front);
+            }
             if (started) (kind, slot) = (startCue.prop, startCue.slot); // #656/#677: the scene says what they carry
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind == PropKind.Bowl); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
@@ -1419,6 +1442,10 @@ namespace AquariumCiv.View
         public delegate bool StartCueHook(in PersonActivity a, out StartCue cue);
         /// <summary>#656/#677: the new start's scenes (NewStartView: the arrival, the first logs). True holds the person this frame.</summary>
         public static StartCueHook StartHook;
+        /// <summary>Sign-off 2026-11-14 (ChoreBeats): how close the grass-fire feeder kneels to the flames, and the scraper stands to the hide rack.</summary>
+        public const float FeedReach = 0.15f, ScrapeReach = 0.11f;
+        static readonly Place RackMiddle = Place.Land(PlaceKind.HideRack, 1);
+
         /// <summary>#656/#677: true while this person (standing) looks up at the sky for hunger (NewStartView).</summary>
         public static System.Func<PersonRef, float, bool> HungryLook;
 
