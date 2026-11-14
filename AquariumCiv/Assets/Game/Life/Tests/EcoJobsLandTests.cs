@@ -48,10 +48,13 @@ namespace AquariumCiv.Life.Tests
             var sim = Barren(3);
             var open = sim.OpenJobs();
             TestContext.WriteLine(sim.DebugJobsReadout());
-            Assert.IsTrue(open.Contains(JobType.Gatherer), "roots and berries");
+            // #656 (the user, 2026-11-14): this pinned the gatherer open on bare land (the root dig); now the gatherer's job waits for
+            // real food on the land (a bush or the rabbits), and the founders who have no work yet hold none.
+            Assert.IsFalse(open.Contains(JobType.Gatherer), "no berries, no rabbits: nothing to gather (no root dig)");
+            Assert.IsTrue(open.Contains(JobType.Toolmaker), "the toolmaker knaps by the camp");
             foreach (var j in new[] { JobType.Woodcutter, JobType.Fisher, JobType.Hunter })
                 Assert.IsFalse(open.Contains(j), j + " has no land yet");
-            Assert.IsTrue(sim.State.notables.Where(n => n.alive && n.age >= 16f).All(n => sim.JobOpen(n.job) || n.job == JobType.Elder), "nobody holds a closed job");
+            Assert.IsTrue(sim.State.notables.Where(n => n.alive && n.age >= 16f).All(n => sim.JobOpen(n.job) || n.job == JobType.Elder || string.IsNullOrEmpty(n.job)), "nobody holds a closed job");
         }
 
         [Test]
@@ -262,10 +265,11 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
-        public void TheCardsSayTheRootDiggerUntilABushComesUp()
+        public void TheCardsNeverSayRootDigger()
         {
+            // #656: this pinned "root digger" on the cards before the first bush; the root dig is gone, so the card says the job's own name.
             var sim = Barren(3);
-            Assert.AreEqual("root digger", sim.JobLabel(JobType.Gatherer));
+            Assert.AreEqual("gatherer", sim.JobLabel(JobType.Gatherer));
             Reach(sim, EcoMilestones.FirstBush);
             Assert.AreEqual("gatherer", sim.JobLabel(JobType.Gatherer));
             Assert.AreEqual("fisher", sim.JobLabel(JobType.Fisher));
@@ -356,6 +360,16 @@ namespace AquariumCiv.Life.Tests
             return work;
         }
 
+        static List<PersonActivity> BusyOf(SimCore sim)
+        {
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            var busy = new List<PersonActivity>();
+            for (int i = 0; i < 6; i++)
+                foreach (var who in planner.People) { planner.DaySchedule(who, i * 7, day); busy.AddRange(day.Where(a => a.Group == ActivityGroup.Work || a.Group == ActivityGroup.Chore)); }
+            return busy;
+        }
+
         [Test]
         public void AHunterHasTribeWorkUntilTheHuntIsBuilt()
         {
@@ -364,7 +378,9 @@ namespace AquariumCiv.Life.Tests
             foreach (var n in sim.State.notables.Where(x => x.alive && x.age >= 16f && x.age < sim.Config.retireAge)) sim.DebugSetJob(n, JobType.Hunter);
             sim.DebugOpenCampGate();
             var work = WorkOf(sim);
-            Assert.IsNotEmpty(work);
+            // #656: this pinned the hunters' tribe work as a root dig (a Work-group gather) on a land with no bush; the root dig is gone,
+            // so with no berries the tribe's work is the camp's other work (chores, water, a look over the land): busy, not idle.
+            Assert.IsNotEmpty(BusyOf(sim), "they keep busy");
             Assert.IsFalse(work.Any(a => a.kind == ActivityKind.Stalk), "no hunt yet (#283)");
         }
 

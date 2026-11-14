@@ -89,15 +89,19 @@ namespace AquariumCiv.Life.Tests
         }
 
         [Test]
-        public void WithNoBerriesTheyDigRootsInTheHollow()
+        public void WithNoBerriesTheyDoOtherWork_NeverARootDig()
         {
+            // #656 (the user, 2026-11-14): this pinned the root dig in the hollow when no bush has fruit; the root dig is gone, so a
+            // gatherer with nothing to pick does the camp's other work, never a basket at the hollow.
             var sim = Land();
             AllGatherers(sim);
             foreach (var s in new[] { Season.Spring, Season.Winter })
             {
-                var gather = Gathering(sim, s).Where(a => a.kind == ActivityKind.Gather && !a.moving && a.prop == Prop.Basket).ToList();
-                Assert.IsNotEmpty(gather, s.ToString());
-                Assert.IsTrue(gather.All(a => a.place.kind != PlaceKind.BushCell), s + ": nothing to pick");
+                var all = Gathering(sim, s);
+                Assert.IsNotEmpty(all.Where(a => !a.moving && (a.Group == ActivityGroup.Work || a.Group == ActivityGroup.Chore)), s + ": they keep busy");
+                var gather = all.Where(a => a.kind == ActivityKind.Gather && !a.moving && a.prop == Prop.Basket).ToList();
+                Assert.IsTrue(gather.All(a => a.place.kind == PlaceKind.BushCell), s + ": a basket only at a bush with fruit");
+                Assert.IsFalse(all.Any(a => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Stream), s + ": no root dig");
             }
         }
 

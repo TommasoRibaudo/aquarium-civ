@@ -27,6 +27,9 @@ namespace AquariumCiv.Life.Tests
         {
             var cfg = new SimConfig { ecology = true };
             var sim = new SimCore(cfg, SimCore.NewWorld(seed, cfg));
+            // #656: these hunt tests were measured on the old start (food 20, growing from month 1), whose births give the kid who follows a
+            // hunt; the carried-basket start (NewStartTests) runs the food down first. Keep the old start here.
+            sim.State.newStart = new NewStartState(); sim.State.food = 20f; sim.State.wood = 4f;
             for (int i = 0; i < 12; i++) { var s = Spots[i % Spots.Length]; sim.DebugMistBig(sim.EcoGround.campX + s.dx, sim.EcoGround.campZ + s.dz); sim.Advance(1.0 / 12); }
             sim.DebugAddRabbits(rabbits);
             if (hunters)
