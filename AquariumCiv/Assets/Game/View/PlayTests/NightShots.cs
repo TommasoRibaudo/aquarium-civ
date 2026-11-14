@@ -59,6 +59,46 @@ namespace AquariumCiv.View.PlayTests
             CloseSlice();
         }
 
+        /// <summary>#671: wet ground along the near glass, a slow zoom from the default view to the closest; a shot per step with the
+        /// panes' and frame's fade logged. <paramref name="winter"/>: the same in snow.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator NearGlass671([Values(false, true)] bool winter)
+        {
+            UseLivingLand(true);
+            yield return OpenSlice(1179, 2556, 4242);
+            ShowMeDirector.BubblesOn = false;
+            PeopleView.DebugSetHour(11f);
+            var box = Object.FindAnyObjectByType<BoxView>();
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            var camLocal = box.transform.InverseTransformPoint(Camera.main.transform.position);
+            float nx = Mathf.Clamp(camLocal.x, -Land.HX + 0.5f, Land.HX - 0.5f), nz = Mathf.Clamp(camLocal.z, -Land.HZ + 0.5f, Land.HZ - 0.5f);
+            // wet the ground along the two near panes
+            for (float t = -1f; t <= 1f; t += 0.5f)
+            {
+                EcoDebug.MistBig(nx, nz + t * 1.2f * -Mathf.Sign(nz));
+                EcoDebug.MistBig(nx + t * 1.6f * -Mathf.Sign(nx), nz);
+            }
+            if (winter) EcoDebug.SkipSeasons(3);
+            yield return new WaitForSecondsRealtime(2f);
+            var focus = box.transform.TransformPoint(box.land.OnGround(nx, nz));
+            string tag = winter ? "winter" : "wet";
+            foreach (float zoom in new[] { 1f, 0.6f, 0.45f, 0.35f, 0.28f, 0.22f, 0.18f })
+            {
+                for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 1.5f;)
+                {
+                    rig.CancelFlight();
+                    rig.target = focus; rig.zoom = zoom;
+                    rig.Apply();
+                    yield return null;
+                }
+                Debug.Log($"[night] 671 {tag} z{zoom}: panes {box.PaneOpacity(0):0.00} {box.PaneOpacity(1):0.00} {box.PaneOpacity(2):0.00} {box.PaneOpacity(3):0.00}" +
+                          $" frame {box.FrameOpacity(0):0.00} {box.FrameOpacity(1):0.00} {box.FrameOpacity(2):0.00} {box.FrameOpacity(3):0.00} {box.FrameOpacity(4):0.00} {box.FrameOpacity(5):0.00} {box.FrameOpacity(6):0.00} {box.FrameOpacity(7):0.00}" +
+                          $" shadowDist {UnityEngine.Rendering.Universal.UniversalRenderPipeline.asset.shadowDistance:0.0} near {Camera.main.nearClipPlane:0.000}");
+                yield return Snap($"671_{tag}_z{zoom:0.00}");
+            }
+            CloseSlice();
+        }
+
         /// <summary>#676: the camp's stew pot up close, by day, at dusk (the cook's hour) and in winter (more steam).</summary>
         [UnityTest, Timeout(600000)]
         public IEnumerator StewPot676()
