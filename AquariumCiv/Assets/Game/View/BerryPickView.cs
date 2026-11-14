@@ -454,14 +454,5 @@ namespace AquariumCiv.View
             int n = pv.Planner.DebugTipNow(pv.Now);
             return n < 0 ? "no stash pile (camp era only)" : n == 0 ? "nobody free" : $"{n} tipping baskets at the stash";
         }
-
-        /// <summary>"Root dig now": the same, at the dry stream bed: three grown-ups dig roots for 0.8 view hours.</summary>
-        public static string DebugRootDigNow()
-        {
-            var pv = PeopleView.Find();
-            if (pv == null || pv.Planner == null) return "no PeopleView";
-            int n = pv.Planner.DebugRootDigNow(pv.Now);
-            return n <= 0 ? "nobody free" : $"{n} digging roots";
-        }
     }
 }

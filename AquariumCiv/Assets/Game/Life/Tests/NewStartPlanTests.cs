@@ -40,6 +40,24 @@ namespace AquariumCiv.Life.Tests
 
         static bool RootDig(PersonActivity a) => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Stream;
 
+        /// <summary>#656/#677 (view pass): hunger is shown, never punished: with the basket empty every walk is timed
+        /// <see cref="LifePlanner.HungryPace"/> longer (the day's fixed hours absorb much of it); the view adds the looks at the sky.
+        /// An old box or the old slice never slows.</summary>
+        [Test]
+        public void Hungry_TheirWalksAreTimedSlower()
+        {
+            var sim = NewBox(7);
+            Assert.IsFalse(sim.Hungry, "the basket is full at the start");
+            Assert.AreEqual(1f, LifePlanner.Wired(sim).WalkPace, 1e-6f);
+            sim.DebugEmptyBasket();
+            Assert.IsTrue(sim.Hungry, "the food is gone");
+            Assert.AreEqual(LifePlanner.HungryPace, LifePlanner.Wired(sim).WalkPace, 1e-6f, "hungry: slower");
+            Assert.That(LifePlanner.HungryPace, Is.InRange(1.1f, 1.5f), "a little slower, not a crawl");
+            var old = new SimCore(new SimConfig(), SimCore.NewWorld(7, new SimConfig()));
+            old.State.food = 0f;
+            Assert.AreEqual(1f, LifePlanner.Wired(old).WalkPace, 1e-6f, "the old slice never slows");
+        }
+
         [TestCase(1)]
         [TestCase(7)]
         [TestCase(42)]

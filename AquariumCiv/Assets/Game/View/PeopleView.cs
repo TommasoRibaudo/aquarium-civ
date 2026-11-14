@@ -373,7 +373,7 @@ namespace AquariumCiv.View
             // #365 B9: the bowls round the fire, who pokes it, the pot beside it
             meals.Step(acts, time, pl => planner.Positions.TryGetPosition(pl, out float mx, out float mz) ? new Vector2(mx, mz) : (Vector2?)null, planner.StageOf, planner.JobOf,
                 k => dolls.TryGetValue(k, out var md) && md.placed ? md.pos : (Vector2?)null);
-            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter); // #676: it simmers
+            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp && planner.FireNow != CampFireStage.None /* #656: no pot by a fire that isn't lit */, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter); // #676: it simmers
             seen.Clear();
             claimed.Clear();
             playSpots.Clear();
@@ -434,7 +434,11 @@ namespace AquariumCiv.View
             float x = 0f, z = 0f;
             Vector2? huntFace = null;
             bool hunting = a.hunt != HuntPhase.None && HuntSpot(a, out x, out z, out huntFace);
-            bool tenting = !hunting && ((a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
+            // #656/#677: the new start's own scenes (the arrival with the basket and the bundle, the first logs carried home) hold their cast
+            StartCue startCue = default;
+            bool started = !hunting && StartHook != null && stage != LifeStage.Baby && StartHook(a, out startCue);
+            if (started) { x = startCue.pos.x; z = startCue.pos.y; huntFace = startCue.face; }
+            bool tenting = !hunting && (started || (a.tent != TentPhase.None && TentSpot(a, out x, out z, out huntFace)) // #284: the planned walk to the frame and the lot
                 || (StagedSpot != null && StagedSpot(a, now, out x, out z, out huntFace)) // #370: a staged moment's own spots (the aisle, the ring, the glass) ride the same path
                 || (LifeSpot != null && LifeSpot(a, now, out x, out z, out huntFace))); // #427: a placed-life scene holds them (the dawn drink: stop and watch)
             if (hunting || tenting) hidden = false;
@@ -549,6 +553,9 @@ namespace AquariumCiv.View
             if (playing) style = playCue.style; // #358
             if (d.atTower && !walking) style = d.towerStyle; // #404
             if (toddling) style = DollStyle.Toddle; // 2026-11-06: it toddles, walking or not
+            if (started && !walking) style = startCue.style; // #656/#677: the scene's pose (stand, set down, pick up)
+            // #656/#677: hungry, shown, never punished: now and then someone stops and looks up at the sky
+            if (!started && !walking && !hidden && !hunting && !playing && !paired && HungryLook != null && style is DollStyle.Stand or DollStyle.Talk or DollStyle.Pick && HungryLook(a.who, time)) style = DollStyle.LookUp;
             if (paired && !walking && pairEv.kind != PairKind.WalkTogether) style = pairEv.takerSeated && pairCue.index == 1 ? DollStyle.Sit : DollStyle.Stand; // #363: the beat is the whole pose (no seated knapper under a hand-over); #365: a bowl is handed to someone who stays seated
             else if (style == DollStyle.EatMeal && !walking && meals.Waiting(a.who.Key, time)) style = DollStyle.Sit; // #365 B9.b: sitting, hands in the lap, until the bowl comes round
             if (!a.moving && !a.partner.IsNone && a.kind is ActivityKind.Chat or ActivityKind.Court or ActivityKind.SitTogether or ActivityKind.Eat or ActivityKind.Visit)
@@ -578,6 +585,8 @@ namespace AquariumCiv.View
             if (paired && pairCue.propMode == 1) (kind, slot) = (pairCue.prop, pairCue.slot); // #363: the handed thing is in exactly one pair of hands
             if (playing && !(kind == PropKind.Stick && playGame is TagGame)) kind = PropKind.None; // #358: the group's ball is the director's; a stick is kept for tag
             if (playing && playCue.stick) { kind = PropKind.Twig; slot = PropSlot.Hand; } // #359: the stick duel (batch 2: a short twig)
+            if (!started && !hunting && !playing && !paired) (kind, slot) = NewStartProp(a, kind, slot, walking); // #656/#677: dry grass and twigs, a fallen branch
+            if (started) (kind, slot) = (startCue.prop, startCue.slot); // #656/#677: the scene says what they carry
             if (v.propKind != kind || v.propSlot != slot || (kind != PropKind.None && v.prop == null)) v.SetProp(kind, slot);
             v.HoldInLeft(BerryMotion.BasketInLeft(style) || kind == PropKind.Bowl); // #361: the right hand picks, the basket rides in the left; #365: so does the meal's bowl
 
@@ -1396,6 +1405,34 @@ namespace AquariumCiv.View
         /// <summary>#427: the placed-life scenes' own hooks (DeerScenesView: the dawn at the pond), beside the staged moments'.</summary>
         public static StagedSpotHook LifeSpot;
         public static StagedPoseHook LifePose;
+
+        /// <summary>#656/#677: what a new-start scene asks of one person this frame: where they stand (box units), what they face, the
+        /// pose while they stand still, and what they hold.</summary>
+        public struct StartCue
+        {
+            public Vector2 pos;
+            public Vector2? face;
+            public DollStyle style;
+            public PropKind prop;
+            public PropSlot slot;
+        }
+        public delegate bool StartCueHook(in PersonActivity a, out StartCue cue);
+        /// <summary>#656/#677: the new start's scenes (NewStartView: the arrival, the first logs). True holds the person this frame.</summary>
+        public static StartCueHook StartHook;
+        /// <summary>#656/#677: true while this person (standing) looks up at the sky for hunger (NewStartView).</summary>
+        public static System.Func<PersonRef, float, bool> HungryLook;
+
+        /// <summary>#656/#677: the grass fire's tending reads as an armful of dry grass and twigs (the gather at the meadow's edge picks by
+        /// hand, the walk to the fire hugs the armful), never a staff, an axe or a log; the deadfall run's carry home is a fallen branch
+        /// over the shoulder, never a cut log. Off a new-start box, what the planner said.</summary>
+        static (PropKind, PropSlot) NewStartProp(in PersonActivity a, PropKind kind, PropSlot slot, bool walking)
+        {
+            if (LifePlanner.IsTinderGather(a)) return walking ? (PropKind.Tinder, PropSlot.Arms) : (PropKind.None, PropSlot.Hand); // the walk out with nothing; the pick by hand
+            if (a.kind == ActivityKind.Carry && a.prop == LifeProp.Stick && a.from.kind == PlaceKind.Meadow) return (PropKind.Tinder, PropSlot.Arms);
+            if (a.kind == ActivityKind.Carry && a.prop == LifeProp.Log && a.from.kind == PlaceKind.Deadfall) return (PropKind.Branch, PropSlot.Shoulder);
+            if (LifePlanner.IsDeadfallGather(a)) return (PropKind.None, PropSlot.Hand); // bare hands under the tree
+            return (kind, slot);
+        }
 
         /// <summary>#282: everyone standing out in the box now (placed, shown), with their box-local spots: what rabbits keep away from
         /// and who is nearest to a sign.</summary>

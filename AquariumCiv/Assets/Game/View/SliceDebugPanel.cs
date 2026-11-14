@@ -183,8 +183,18 @@ namespace AquariumCiv.View
             EndRow();
             Row(); // #361
             if (Btn("Pickers to the nearest bush now")) last = BerryPickView.DebugPickersToBush();
-            if (Btn("Root dig now")) last = BerryPickView.DebugRootDigNow();
             if (Btn("Tip at the stash now")) last = BerryPickView.DebugTipNow();
+            EndRow();
+            Row(); // #656/#677: the new start (the root dig is gone)
+            if (Btn("Arrival again")) last = NewStartView.DebugArrivalAgain();
+            if (Btn("First wild wood now")) last = NewStartView.DebugFirstWildWoodNow();
+            if (Btn("Empty the basket")) { var ns = GameClock.Instance != null ? GameClock.Instance.Sim : null; if (ns != null) { ns.DebugEmptyBasket(); last = "the basket is empty: hungry (slower, looking at the sky), nobody harmed"; } }
+            EndRow();
+            Row();
+            if (Btn("Fire: none")) last = NewStartFire(0);
+            if (Btn("Fire: grass and twigs")) last = NewStartFire(1);
+            if (Btn("Fire: logs")) last = NewStartFire(2);
+            if (Btn("Fire: as the land")) last = NewStartFire(-1);
             EndRow();
             Row();
             if (Btn("First bush now")) last = EcoDebug.FirstBushNow();
@@ -560,6 +570,16 @@ namespace AquariumCiv.View
             GUILayout.EndVertical();
             if (Event.current.type == EventType.Repaint) contentH = GUILayoutUtility.GetLastRect().height;
             GUILayout.EndArea();
+        }
+
+        /// <summary>#656/#677: the panel's "fire" cheats (0 none, 1 grass and twigs, 2 logs, -1 as the land lets it burn).</summary>
+        static string NewStartFire(int stage)
+        {
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (sim == null || !sim.NewStartOn) return "not a new-start box (living land off, or an old box)";
+            sim.DebugFireStage(stage);
+            var src = SimLayoutSource.Find(); if (src != null) src.GetComponent<BoxView>().Refresh();
+            return "fire: " + sim.FireStage;
         }
     }
 }

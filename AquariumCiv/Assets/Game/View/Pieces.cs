@@ -40,7 +40,7 @@ namespace AquariumCiv.View
                         House(mb, Front(hd), hw, hd, wallH, roofH, Wall(p.seed), RoofColor(p.roof, p.seed, p.era), p.chimney, true, storeys, Phase(p.seed));
                     }
                     break;
-                case PieceKind.Fire: Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
+                case PieceKind.Fire: if (p.variant == SimLayout.GrassFireVariant) GrassFire(mb, Vector3.zero, Phase(p.seed)); else Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
                 case PieceKind.Well:
                     if (town) Fountain(mb, Vector3.zero, p.seed);
                     else Well(mb, Vector3.zero, !camp);
@@ -417,6 +417,50 @@ namespace AquariumCiv.View
             FireBody(mb, p, phase, look);
             mb.emission = 0f;
             // #332: no log seats round the fire any more (the `seats` flag stays for callers): people sit on the ground.
+        }
+
+        /// <summary>
+        /// #656/#677: the fire before the first wild wood: a small heap of dry grass and thin twigs in a scrape, with a few low, quick
+        /// flames (shorter and narrower than the log fire's, more of them, each on its own fast flicker phase) and a small ember bed.
+        /// No logs, no ring of stones: a handful of pebbles kicked round it. The view gives it a smaller light (BoxView.Glows).
+        /// </summary>
+        public static void GrassFire(MeshBuilder mb, Vector3 p, float phase)
+        {
+            // the scrape and a few pebbles
+            mb.Prism(p + Vector3.up * 0.002f, 0.12f, 0.11f, 0.004f, 9, Color.Lerp(Palette.RockDark, Palette.Bark, 0.5f));
+            for (int i = 0; i < 5; i++)
+            {
+                float a = i / 5f * Mathf.PI * 2f + 0.4f;
+                mb.Ico(p + new Vector3(Mathf.Cos(a), 0.004f, Mathf.Sin(a)) * 0.115f, 0.016f, new Vector3(1f, 0.6f, 1f), i % 2 == 0 ? Palette.Rock : Palette.RockDark, 0.25f);
+            }
+            // the heap of dry grass round the flames (warmed where it burns)
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i / 6f * Mathf.PI * 2f + 0.2f;
+                var at = p + new Vector3(Mathf.Cos(a) * 0.055f, 0.01f, Mathf.Sin(a) * 0.055f);
+                mb.Ico(at, 0.03f, new Vector3(1.2f, 0.45f, 1f), Color.Lerp(PegDoll.DryGrass, Palette.Ember, 0.15f), 0.3f, PegDoll.DryGrassDark);
+            }
+            // thin twigs leaned in over the grass, crossing in the middle (sticks, never logs)
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * 60f + 15f;
+                var rot = Quaternion.Euler(0, a, 0) * Quaternion.Euler(62f, 0, 0);
+                mb.Prism(p + Quaternion.Euler(0, a, 0) * new Vector3(0, 0.008f, -0.085f), 0.0045f, 0.003f, 0.1f, 4, Palette.Bark, rot);
+            }
+            mb.emission = 0.6f;
+            mb.Prism(p, 0.05f, 0.045f, 0.012f, 7, Palette.Ember);
+            Coals(mb, p, 0.05f, 0.025f, 0.02f, 6);
+            float y0 = 0.02f;
+            mb.flameBaseY = mb.M.MultiplyPoint3x4(p + Vector3.up * y0).y; mb.flameHeight = 0.12f; mb.sway = 0f; mb.emission = 1f;
+            float yaw0 = H01(phase * 91f + 3f) * 72f;
+            for (int i = 0; i < 5; i++)
+            {
+                var yaw = Quaternion.Euler(0, yaw0 + i * 72f, 0);
+                float h = Mathf.Lerp(0.07f, 0.105f, H01(phase * 29f + i * 5.3f));
+                mb.flamePhase = Mathf.Repeat(phase + i * 0.23f, 1f);
+                mb.Prism(p + yaw * new Vector3(0, y0, i == 0 ? 0f : 0.022f), 0.026f, 0f, h, 4, Hot(Palette.FlameCoreA, 1.1f), yaw * Quaternion.Euler(i == 0 ? 0f : 14f, 0, 0), topCol: Hot(Palette.FlameBodyA, 1f), ramp: true);
+            }
+            mb.emission = 0f; mb.flameHeight = 0f;
         }
 
         /// <summary>The look's flame body, on top of the ember bed. Soft has only coals: its flames are glow quads

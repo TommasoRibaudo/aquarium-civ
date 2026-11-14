@@ -575,15 +575,23 @@ namespace AquariumCiv.Life
         {
             if (a == b) return 0f;
             var route = RouteBetween(a, b);
-            if (route != null && route.len > 1e-4f) return Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
-            if (positions.TryWalkLength(a, b, out float len)) return Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
+            float slow = HungerPace; // #656/#677: hungry, a little slower (shown, never punished)
+            if (route != null && route.len > 1e-4f) return slow * Math.Max(MinWalk, Math.Min(MaxWalk, route.len / WalkSpeed));
+            if (positions.TryWalkLength(a, b, out float len)) return slow * Math.Max(MinWalk, Math.Min(MaxWalk, len / WalkSpeed));
             if (positions.TryGetPosition(a, out float ax, out float az) && positions.TryGetPosition(b, out float bx, out float bz))
             {
                 float dx = ax - bx, dz = az - bz;
-                return Math.Max(MinWalk, Math.Min(MaxWalk, (float)Math.Sqrt(dx * dx + dz * dz) / WalkSpeed));
+                return slow * Math.Max(MinWalk, Math.Min(MaxWalk, (float)Math.Sqrt(dx * dx + dz * dz) / WalkSpeed));
             }
             return 0.25f;
         }
+
+        /// <summary>#656/#677: on a new-start box with the food gone (<see cref="SimCore.Hungry"/>) the walks take this much longer: hunger
+        /// is shown (slower, looking at the sky in the view), never punished.</summary>
+        public const float HungryPace = 1.25f;
+        float HungerPace => sim != null && sim.NewStartOn && sim.Hungry ? HungryPace : 1f;
+        /// <summary>#656/#677: how much longer a walk takes now (1, or <see cref="HungryPace"/> while hungry on a new start).</summary>
+        public float WalkPace => HungerPace;
 
         /// <summary>World units of plain ground walked per view hour [est], and the shortest and longest walk in view hours.</summary>
         public const float WalkSpeed = 5f, MinWalk = 0.08f, MaxWalk = 0.6f;

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AquariumCiv.Game;
 using AquariumCiv.Life;
 using AquariumCiv.Sim;
 using UnityEngine;
@@ -41,6 +42,15 @@ namespace AquariumCiv.View
             new(-0.002f, FishHeight, -0.100f), new(0.0f, 2f * FishHeight, -0.113f),
         };
         public static readonly float[] FishTurns = { 0f, 180f, 180f, 0f, 20f, -25f };
+
+        /// <summary>#656/#677: the founders' own things, set down beside the pile (x across, z towards the fire; the pile's left side, clear
+        /// of the logs and the baskets): the carried basket of food and the tied bundle of sticks, lying across. They stay there for the
+        /// camp (the bundle is kept when logs come; it is never burned or built with).</summary>
+        public static readonly Vector3 CarriedBasketSpot = new(-0.118f, 0f, 0.012f), CarriedBundleSpot = new(-0.112f, 0.006f, -0.062f);
+        public const float CarriedBundleTurn = 18f;
+
+        /// <summary>#656/#677: while the first logs are carried home (NewStartView), the pile shows no logs until they are set on it.</summary>
+        public static bool HoldLogs;
         /// <summary>The mat the fish lie on: centre and half sizes (a contrasting ground so each fish reads).</summary>
         public static readonly Vector3 MatSpot = new(-0.002f, 0f, -0.1065f);
         public const float MatHalfX = 0.062f, MatHalfZ = 0.021f, MatHeight = 0.003f;
@@ -57,8 +67,9 @@ namespace AquariumCiv.View
 
         BoxView box;
         Transform root;
-        Mesh logMesh, basketMesh, hideMesh, fishMesh, matMesh;
-        readonly List<Transform> logs = new(), baskets = new(), hides = new(), fishes = new(), mats = new();
+        Mesh logMesh, basketMesh, hideMesh, fishMesh, matMesh, carriedBasketMesh, carriedBundleMesh;
+        readonly List<Transform> logs = new(), baskets = new(), hides = new(), fishes = new(), mats = new(), carried = new();
+        bool carriedOn;
         StashLook shown;
         bool drawn;
 
@@ -69,6 +80,16 @@ namespace AquariumCiv.View
         /// <summary>#543: dried fish lying on the pile.</summary>
         public int FishShown => CountOn(fishes);
         public bool Visible => root != null && root.gameObject.activeSelf;
+        /// <summary>#656/#677: the carried basket and the bundle of sticks stand beside the pile (a new-start box, set down).</summary>
+        public bool CarriedShown => Visible && carried.Count == 2 && carried[0].gameObject.activeSelf && carried[1].gameObject.activeSelf;
+        /// <summary>#656/#677: the carried pieces in world space (tests, shots): 0 the basket, 1 the bundle.</summary>
+        public bool TryGetCarried(int i, out Vector3 world)
+        {
+            world = default;
+            if (!CarriedShown || i < 0 || i > 1) return false;
+            world = carried[i].position;
+            return true;
+        }
         public Transform Root => root;
 
         static int CountOn(List<Transform> parts)
@@ -122,9 +143,9 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (root != null) Kill(root.gameObject);
-            Kill(logMesh); Kill(basketMesh); Kill(hideMesh); Kill(fishMesh); Kill(matMesh);
+            Kill(logMesh); Kill(basketMesh); Kill(hideMesh); Kill(fishMesh); Kill(matMesh); Kill(carriedBasketMesh); Kill(carriedBundleMesh);
             root = null;
-            logs.Clear(); baskets.Clear(); hides.Clear(); fishes.Clear(); mats.Clear();
+            logs.Clear(); baskets.Clear(); hides.Clear(); fishes.Clear(); mats.Clear(); carried.Clear();
             drawn = false;
         }
 
@@ -134,10 +155,17 @@ namespace AquariumCiv.View
         {
             if (box == null || box.Root == null || planner == null) return;
             bool on = planner.TryGetStash(out var look);
+            // #656/#677: a new box's stock shows from the moment the founders set the basket and the bundle down (the arrival)
+            var sim = GameClock.Instance != null ? GameClock.Instance.Sim : null;
+            if (on && sim != null && !sim.StockSetDown) on = false;
             if (root != null && root.gameObject.activeSelf != on) root.gameObject.SetActive(on);
             if (!on) return;
             if (root == null) Build();
-            if (drawn && Same(look, shown)) return;
+            if (HoldLogs) look.stock.logs = 0;
+            else if (sim != null && sim.FirstWildWoodReached && sim.State.wood > 0f) look.stock.logs = Mathf.Max(look.stock.logs, 2); // #656/#677: the first logs carried home lie on the pile
+            bool wantCarried = sim != null && sim.NewStartOn;
+            if (drawn && Same(look, shown) && wantCarried == carriedOn) return;
+            carriedOn = wantCarried;
             shown = look;
             drawn = true;
             Draw(look);
@@ -156,6 +184,19 @@ namespace AquariumCiv.View
             Lay(hides, HideSpots, s, rot, s.stock.hides);
             Lay(fishes, FishSpots, s, rot, s.stock.fish, FishTurns); // #543: each lies along its own turn
             LayMat(s, rot);
+            LayCarried(s, rot);
+        }
+
+        void LayCarried(in StashLook s, Quaternion rot)
+        {
+            for (int i = 0; i < carried.Count; i++)
+            {
+                carried[i].gameObject.SetActive(carriedOn);
+                if (!carriedOn) continue;
+                var spot = i == 0 ? CarriedBasketSpot : CarriedBundleSpot;
+                var at = rot * spot;
+                carried[i].SetLocalPositionAndRotation(box.land.OnGround(s.x + at.x, s.z + at.z) + Vector3.up * spot.y, rot * Quaternion.Euler(0f, i == 0 ? 0f : CarriedBundleTurn, 0f));
+            }
         }
 
         void Lay(List<Transform> parts, Vector3[] spots, in StashLook s, Quaternion rot, int count, float[] turns = null)
@@ -194,6 +235,11 @@ namespace AquariumCiv.View
             Parts(logs, LogSpots.Length, "StashLog", logMesh);
             Parts(baskets, BasketSpots.Length, "StashBasket", basketMesh);
             Parts(hides, HideSpots.Length, "StashHide", hideMesh);
+            // #656/#677: the founders' basket (food heaped in it) and the bundle of sticks, as they carried them
+            carriedBasketMesh = Mesh("StashCarriedBasket", mb => { mb.M = Matrix4x4.Translate(new Vector3(0f, 0.016f, 0f)); PegDoll.FoodBasket(mb); mb.M = Matrix4x4.identity; });
+            carriedBundleMesh = Mesh("StashCarriedBundle", mb => { mb.M = Matrix4x4.Translate(new Vector3(0f, 0.007f, 0f)); PegDoll.StickBundle(mb); mb.M = Matrix4x4.identity; });
+            Parts(carried, 1, "StashCarriedBasket", carriedBasketMesh);
+            Parts(carried, 1, "StashCarriedBundle", carriedBundleMesh);
         }
 
         static Mesh Mesh(string name, System.Action<MeshBuilder> build)
