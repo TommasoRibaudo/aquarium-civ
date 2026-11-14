@@ -80,7 +80,7 @@ namespace AquariumCiv.Life.Tests
             var sim = Land();
             AllGatherers(sim);
             var cells = new List<int>(); sim.BushCells(cells);
-            var gather = Gathering(sim, Season.Summer).Where(a => a.kind == ActivityKind.Gather && !a.moving).ToList();
+            var gather = Gathering(sim, Season.Summer).Where(a => a.kind == ActivityKind.Gather && !a.moving && !LifePlanner.IsTinderGather(a)).ToList(); // #656/#677: one grown-up a day feeds the grass fire instead
             Assert.IsNotEmpty(gather);
             Assert.IsTrue(gather.All(a => a.place.kind == PlaceKind.BushCell), "all at bush cells: " + string.Join(",", gather.Select(a => a.place.ToString()).Distinct()));
             Assert.IsTrue(gather.All(a => cells.Contains(a.place.index)), "real grown cells");

@@ -40,6 +40,28 @@ namespace AquariumCiv.Life.Tests
 
         static bool RootDig(PersonActivity a) => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Stream;
 
+        /// <summary>#656/#677 (tester 2026-11-14: no tinder run in 150 s at 4x): while the grass fire burns, someone feeds it every day.</summary>
+        [TestCase(7)]
+        [TestCase(42)]
+        public void TheGrassFire_IsFedEveryDay(int seed)
+        {
+            var sim = NewBox(seed);
+            sim.DebugFireStage(1);
+            Assert.AreEqual(CampFireStage.GrassAndTwig, sim.FireStage);
+            var planner = LifePlanner.Wired(sim);
+            var day = new List<PersonActivity>();
+            for (int d = 0; d < 10; d++)
+            {
+                bool fed = false;
+                foreach (var who in planner.People)
+                {
+                    planner.DaySchedule(who, d, day);
+                    if (day.Any(LifePlanner.IsTinderGather)) fed = true;
+                }
+                Assert.IsTrue(fed, $"day {d}: an armful of dry grass and twigs for the fire");
+            }
+        }
+
         /// <summary>#656/#677 (view pass): hunger is shown, never punished: with the basket empty every walk is timed
         /// <see cref="LifePlanner.HungryPace"/> longer (the day's fixed hours absorb much of it); the view adds the looks at the sky.
         /// An old box or the old slice never slows.</summary>

@@ -96,6 +96,12 @@ namespace AquariumCiv.Life
         /// bushes) and carried to the fire. Never "chopping kindling", never wood. The view tells it by <see cref="IsTinderGather"/>.</summary>
         Work TinderWork() => W(Place.Land(PlaceKind.Meadow), ActivityKind.Gather, Prop.Stick, Prop.Stick, fire, 0.35f);
 
+        /// <summary>#656/#677 (tester 2026-11-14: no tinder run in 150 s at 4x): while the grass fire burns, the day's second grown-up in the
+        /// share-out order (<see cref="IdleIndex"/>; never the toolmaker or the cook) spends the day's work feeding it: at least one tinder
+        /// run every day, whoever has berries to pick.</summary>
+        bool TinderRunner(Person p, DayInfo d) => OnLiving && era == Era.Camp && p.Adult && p.job != JobType.Toolmaker && p.job != CrowdCook
+                                                  && FireNow == CampFireStage.GrassAndTwig && !DeadfallStands && IdleIndex(p, d) == 1; // with deadfall to gather, the first logs are near
+
         /// <summary>#656/#677: a gather of dry grass and twigs for the grass fire (the loop at the meadow's edge; its carry is a
         /// <see cref="ActivityKind.Carry"/> of <see cref="Prop.Stick"/> to the fire).</summary>
         public static bool IsTinderGather(PersonActivity a) => a.kind == ActivityKind.Gather && a.prop == Prop.Stick && a.place.kind != PlaceKind.Deadfall;
@@ -252,6 +258,7 @@ namespace AquariumCiv.Life
         {
             // P8, before the camp (keepers-hands §2.1): one work for everyone who works: the tribe's (berries once a bush has fruit,
             // else the camp's other work: #656, they live off the carried basket and never dig roots). The toolmaker still knaps by the fire.
+            if (TinderRunner(p, d)) { var tinder = TinderWork(); tinder.keepsRestDay = true; return tinder; } // #656/#677 (tester): the grass fire is fed every day (rest days too), by one grown-up
             if (sim != null && sim.BeforeCamp && p.job != JobType.Toolmaker)
                 return TribeWork(p, d);
             var season = d.season;

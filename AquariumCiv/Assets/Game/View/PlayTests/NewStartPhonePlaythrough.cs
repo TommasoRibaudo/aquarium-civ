@@ -105,35 +105,43 @@ namespace AquariumCiv.View.PlayTests
                 }
             Assert.AreNotEqual(FirstRunStep.Wipe, Run.Step, "the glass wiped by touch");
 
-            // ---- the arrival: they walk in, carrying the basket and the bundle
-            yield return Until(() => View.ArrivalPlaying && !View.ArrivalWaiting, 5f);
+            // ---- the first mist, by touch: the founders still wait at the edge (tester 2026-11-14: the mist ring sat on the walkers)
+            yield return Until(() => Run.Step == FirstRunStep.Rain, 10f);
+            Assert.IsTrue(View.ArrivalWaiting, "they wait while the mist prompt is up");
+            var (rx, rz) = Run.Run.SuggestedRainSpot;
+            yield return Hold(ScreenOf(rx, rz), 2.5f, () => Run.Step != FirstRunStep.Rain);
+            yield return Frames(20);
+
+            // ---- the arrival: they walk in, carrying the basket and the bundle; the camera leans in on them
+            yield return Until(() => View.ArrivalPlaying && !View.ArrivalWaiting, 8f);
+            Assert.IsFalse(View.ArrivalWaiting, "the walk-in starts once the first mist is done");
             var props = View.HeldPeople.Select(w => View.Holds(w, out var k) ? k : PropKind.None).ToList();
             Assert.Contains(PropKind.FoodBasket, props, "the basket of food is carried in");
             Assert.Contains(PropKind.StickBundle, props, "and the bundle of sticks");
-            yield return new WaitForSecondsRealtime(2.5f);
-            yield return Png("newstart_01_arrival_default");
+            yield return new WaitForSecondsRealtime(3f);
+            Assert.That(View.Leans, Is.GreaterThan(0), "the camera leans in on the walk-in");
+            yield return Png("newstart_01_arrival_lean");
             var carrier = View.HeldPeople.First(w => View.Holds(w, out var k) && k == PropKind.FoodBasket);
             if (PeopleView.Find().TryGetDollTransform(carrier, out var ct)) yield return Close("newstart_01b_arrival_basket_bundle", ct.position, 0.25f, 45f);
             yield return Until(() => Sim.StockSetDown, 40f);
             Assert.IsTrue(Sim.StockSetDown, "the walk-in ends with the set-down");
             yield return new WaitForSecondsRealtime(0.6f);
             Assert.IsTrue(stash.Visible && stash.CarriedShown, "the stock shows from the set-down: the basket and the bundle beside the pile");
-            yield return Png("newstart_02_set_down");
+            yield return Png("newstart_02_set_down_lean");
             if (stash.TryGetCarried(0, out var basketAt)) yield return Close("newstart_02b_set_down_close", basketAt, 0.2f, 48f);
             Assert.AreEqual(-1, FireVariant(), "no fire before the first bush: they sit together where the camp will be");
+            Assert.AreEqual("", View.LastLine, "the arrival's line waits for the first run's prompts to clear");
 
-            // ---- the rest of the first run, by touch
-            yield return Until(() => Run.Step == FirstRunStep.Rain, 10f);
-            var (rx, rz) = Run.Run.SuggestedRainSpot;
-            yield return Hold(ScreenOf(rx, rz), 2.5f, () => Run.Step != FirstRunStep.Rain);
-            yield return Frames(20);
-            yield return Until(() => Run.Step == FirstRunStep.Name, 5f);
+            // ---- the name, by touch
+            yield return Until(() => Run.Step == FirstRunStep.Name, 10f);
             yield return new WaitForSecondsRealtime(4.5f);
             yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-plate"));
             yield return new WaitForSecondsRealtime(0.4f);
             yield return TapAt(GameUiPanel.ScreenCenter(Run.Root, "firstrun-name-keep"));
             yield return Frames(30);
             Assert.IsFalse(Run.Active, "named: the first run is done");
+            yield return Until(() => View.LastLine != "", 8f);
+            Assert.AreNotEqual("", View.LastLine, "then the arrival's line");
             yield return new WaitForSecondsRealtime(2f);
             yield return Png("newstart_03_no_fire_yet");
             Assert.AreEqual(-1, FireVariant(), "still no fire");

@@ -270,5 +270,45 @@ namespace AquariumCiv.Tests
             sim.Step();
             Assert.Greater(sim.State.wood, before, "the old wood income");
         }
-    }
+            // ---------- #656/#677 (tester 2026-11-14): the chronicle's stories fit the living land ----------
+        static readonly string[] NeverOnALivingLand = { "stream", "goat", "hens", "fox", "kitten", "wet dog", "the hut", "fence post", "apple", "lumber mill" };
+
+        /// <summary>A living-land camp with no pond, no wood and no animals placed, told stories for decades: never a stream, goats, hens or a
+        /// hut; the pond only once there is one; firewood or the woodpile only once a wild tree gives wood. The dice are untouched (the
+        /// swap is on the finished line), so a second box with the ecology off tells the old words.</summary>
+        [TestCase(7)]
+        [TestCase(42)]
+        [TestCase(1656)]
+        public void ALivingLandCamp_TellsStoriesThatFitItsLand(int seed)
+        {
+            var sim = NewBox(seed);
+            int seen = 0, told = 0;
+            for (int m = 0; m < 12 * 40; m++)
+            {
+                if (m % 3 == 0) sim.ForceStory(); // many more stories than a box tells
+                sim.Step();
+                bool water = sim.OpenWater, wood = sim.WildWoodTreeCount > 0 || sim.FirstWildWoodReached;
+                for (; seen < sim.State.chronicle.Count; seen++)
+                {
+                    string t = sim.State.chronicle[seen].text; told++;
+                    foreach (var w in NeverOnALivingLand) StringAssert.DoesNotContain(w, t, $"month {sim.State.month}: \"{t}\"");
+                    if (!water) StringAssert.DoesNotContain("pond", t, $"no pond yet, month {sim.State.month}: \"{t}\"");
+                    if (!wood) { StringAssert.DoesNotContain("firewood", t, $"no wood yet: \"{t}\""); StringAssert.DoesNotContain("woodpile", t, $"no wood yet: \"{t}\""); }
+                    if (sim.State.era == Era.Camp) StringAssert.DoesNotContain(" hut", t, $"a camp has tents: \"{t}\"");
+                }
+            }
+            Assert.That(told, Is.GreaterThan(60), "plenty of stories were told");
+        }
+
+        [Test]
+        public void TheLandWords_SwapOnlyOnALivingLand()
+        {
+            var sim = NewBox();
+            Assert.AreEqual("A rainbow arched over the glass. Nobody worked that afternoon.", sim.LandWords("A rainbow arched over the pond. Nobody worked that afternoon."));
+            Assert.AreEqual("A and B fell out over the warmest spot in the tent. They no longer share a bench.", sim.LandWords("A and B fell out over a goat. They no longer share a bench."));
+            StringAssert.Contains("sulks by the tents", sim.LandWords("B sulks by the woodpile."));
+            var old = new SimCore(new SimConfig(), SimCore.NewWorld(7, new SimConfig()));
+            Assert.AreEqual("A rainbow arched over the pond.", old.LandWords("A rainbow arched over the pond."), "the old slice keeps its words");
+        }
+}
 }

@@ -20,6 +20,7 @@ namespace AquariumCiv.Sim
             ChronicleEntry Line(string k, string text, int x, int y)
             {
                 var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = k, text = text, salience = 0.6f, notableId = x, otherNotableId = y };
+                e.text = LandWords(e.text); // #656/#677
                 State.chronicle.Add(e);
                 Chronicled?.Invoke(e);
                 return e;

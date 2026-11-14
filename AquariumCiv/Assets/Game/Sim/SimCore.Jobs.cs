@@ -244,7 +244,7 @@ namespace AquariumCiv.Sim
                 string from = who.job;
                 who.job = job;
                 who.jobChangedMonth = State.month;
-                Chronicle("job_fill", $"{OpenedLabel(job)}, {who.FullName} left {LeftLabel(from)} to {Verb(job)}.", 0.5f, who.id);
+                Chronicle("job_fill", $"{(EcologyOn && job == JobType.Woodcutter && State.era == Era.Camp ? "When the wild trees began to give wood" : OpenedLabel(job))}, {who.FullName} left {LeftLabel(from)} to {Verb(job)}.", 0.5f, who.id);
                 return; // one a month: the next open job waits its turn
             }
         }

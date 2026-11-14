@@ -192,6 +192,7 @@ namespace AquariumCiv.Sim
             for (int i = 1; line == last && i < forms.Length; i++) line = string.Format(forms[(f + i) % forms.Length], who, thing);
             int wid = State.wishNextId++;
             var e = new ChronicleEntry { id = WishIdBase + wid, month = State.month, kind = "wish", text = line, salience = 0.55f, notableId = n.id };
+            e.text = LandWords(e.text); // #656/#677
             State.chronicle.Add(e);
             Chronicled?.Invoke(e);
             var w = new Wish { id = wid, notableId = n.id, kind = kind, x = x, z = z, month = State.month, entryId = e.id };

@@ -491,6 +491,7 @@ namespace AquariumCiv.Sim
         ChronicleEntry Record(string kind, string text, float salience, int notableId, int otherId)
         {
             text = TermCoda(kind, text, notableId, otherId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
+            text = LandWords(text); // #656/#677: a living land's words (no stream, goats or huts; no wood before the wild trees)
             var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
             MomentFromLine(e); // #369: a wedding, a birth, a new leader, a callback or a festival queues its ceremony for the Keeper
