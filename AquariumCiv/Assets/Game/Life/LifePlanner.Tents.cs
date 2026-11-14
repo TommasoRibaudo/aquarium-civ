@@ -287,6 +287,9 @@ namespace AquariumCiv.Life
         }
 
         /// <summary>Forget finished raisings (the view calls this now and then; plans a day old are dropped).</summary>
+        /// <summary>#656: forget a tent's raising (an arrival replayed: the founders raise it again after the set-down). True when there was one.</summary>
+        public bool ForgetTent(int buildingId) => tentPlans.Remove(buildingId);
+
         public void PruneTents(ViewTime now)
         {
             List<int> drop = null;

@@ -464,7 +464,9 @@
 .pc-grab { position: absolute; top: -85px; left: 50%; width: 330px; height: 121px; translate: -50% 0; align-items: center; justify-content: flex-end; padding-bottom: 14px; }
 .pc-grab-pill { width: 99px; height: 11px; border-radius: 5.5px; background-color: var(--edge); }
 .pc-grab:active > .pc-grab-pill { background-color: var(--brass-light); }
-.pc-tabs { flex-shrink: 0; margin-top: -5.5px; margin-bottom: -5.5px; }
+.pc-tabs { flex-shrink: 0; margin-top: -5.5px; margin-bottom: -5.5px; display: none; }
+/* #674 (2026-11-14): About, Recent and Best show on the expanded card only, in the same place */
+.pc--tall .pc-tabs { display: flex; }
 .pc-scroll { min-height: 0; margin-top: var(--space-4); }
 .pc-scroll-pad { width: 100%; padding-right: 24.75px; padding-bottom: 16.5px; }
 .pc-line { white-space: normal; margin-bottom: var(--space-6); }
@@ -790,9 +792,13 @@
 .kit-life-choice > .kg-icon { width: 66px; height: 66px; }
 /* #675: a short word under each jar choice ("Seed", "Rabbits") */
 .kit-life-choice > .kit-life-name { margin: 5.5px 0 0 0; padding: 0; font-size: 27.5px; white-space: nowrap; -unity-text-align: middle-center; }
-/* #570: a shut jar stands greyed with its need in the note; the picked one is a little stronger */
-.kit-life-choice--locked { opacity: 0.4; }
-.kit-life-choice--locked.kit-life-choice--picked { opacity: 0.75; }
+/* #570: a shut jar stands greyed with its need in the note. 2026-11-14: a tap never makes it look chosen or open (no darker press, no
+   stronger grey); the note names the jar it speaks of, and that jar only gets a thin ink underline under its word */
+.kit-life-choice--locked, .kit-life-choice--locked:hover, .kit-life-choice--locked:active, .kit-life-choice--locked.kg-btn--pressed {
+    opacity: 0.4; scale: 1 1; background-color: var(--flat-tint);
+}
+.kit-life-choice--locked > .kit-life-name { border-bottom-width: 0; border-color: var(--ink-soft); }
+.kit-life-choice--locked.kit-life-choice--picked > .kit-life-name { border-bottom-width: 3px; }
 .kg-tool > .kg-tool-dot { position: absolute; right: 22px; top: 18px; display: none; }
 .kg-tool--life > .kg-tool-dot { display: flex; }
 .office-holder.kg-btn { -unity-font-style: bold; }

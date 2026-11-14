@@ -41,12 +41,28 @@ namespace AquariumCiv.View
                         mb.Box(at, new Vector3(0.006f, 0.21f, 0.011f), Palette.Timber, rot);
                     }
                     break;
-                case ConsequenceKind.Baskets: // three berry baskets, stacked
+                case ConsequenceKind.Baskets: // three berry baskets side by side (2026-11-14: the pink domes on flat rims read as odd discs):
+                    // a woven basket (body, two darker bands, a rim, a bent handle) heaped with separate small berries, the berry-pick's red
                     for (int i = 0; i < 3; i++)
                     {
                         var at = new Vector3((i - 1) * 0.1f, 0f, i == 1 ? 0.05f : 0f);
-                        mb.Prism(at, 0.05f, 0.065f, 0.06f, 8, Palette.Thatch, topCol: Palette.Straw);
-                        mb.Ico(at + new Vector3(0f, 0.065f, 0f), 0.04f, new Vector3(1f, 0.55f, 1f), i == 1 ? Palette.Accents[0] : Palette.Accents[4], 0.1f);
+                        mb.Prism(at, 0.042f, 0.05f, 0.055f, 8, Palette.Thatch, topCol: Palette.Timber); // the dark inside shows at the top
+                        mb.Prism(at + new Vector3(0f, 0.016f, 0f), 0.046f, 0.047f, 0.008f, 8, Palette.WoodLight);
+                        mb.Prism(at + new Vector3(0f, 0.034f, 0f), 0.049f, 0.05f, 0.008f, 8, Palette.WoodLight);
+                        mb.Prism(at + new Vector3(0f, 0.052f, 0f), 0.053f, 0.053f, 0.008f, 8, Palette.Straw);
+                        var berry = i == 1 ? new Color(0.36f, 0.16f, 0.42f) : new Color(0.78f, 0.1f, 0.15f); // the middle one: dark blue-black berries
+                        for (int k = 0; k < 9; k++)
+                        {
+                            float a = k * 2.4f + i, r = k == 0 ? 0f : 0.012f + 0.022f * ((k % 3) / 2f);
+                            float y = 0.058f + (k == 0 ? 0.016f : (0.026f - r) * 0.55f);
+                            mb.Ico(at + new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r), 0.011f, Vector3.one, Color.Lerp(berry, Color.black, (k % 4) * 0.07f), 0.1f);
+                        }
+                        // a bent handle over the berries, across the basket
+                        for (int k = 0; k <= 4; k++)
+                        {
+                            float t = k / 4f * Mathf.PI, hx = Mathf.Cos(t) * 0.044f, hy = 0.06f + Mathf.Sin(t) * 0.05f;
+                            mb.Box(at + new Vector3(hx, hy, 0f), new Vector3(0.008f, 0.026f, 0.008f), Palette.WoodLight, Quaternion.Euler(0f, 0f, (t - Mathf.PI * 0.5f) * Mathf.Rad2Deg));
+                        }
                     }
                     break;
                 case ConsequenceKind.WoodpileRoof: // a tall woodpile under its own little roof
@@ -120,7 +136,18 @@ namespace AquariumCiv.View
                         mb.Box(new Vector3(s * 0.19f, 0.035f, 0f), new Vector3(0.015f, 0.07f, 0.09f), Palette.Timber);
                         mb.Box(new Vector3(0f, 0.04f, s * 0.085f), new Vector3(0.4f, 0.012f, 0.04f), Palette.Timber);
                     }
-                    for (int i = 0; i < 3; i++) mb.Ico(new Vector3(-0.12f + i * 0.12f, 0.085f, 0f), 0.02f, new Vector3(1f, 0.6f, 1f), Palette.Accents[i * 2 % Palette.Accents.Length], 0.05f);
+                    // 2026-11-14: wooden bowls of food (berries, stew, greens), not bright blobs (a pink one read as a gem)
+                    var foods = new[] { new Color(0.72f, 0.12f, 0.16f), new Color(0.55f, 0.36f, 0.2f), new Color(0.42f, 0.55f, 0.25f) };
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var at = new Vector3(-0.12f + i * 0.12f, 0.077f, 0f);
+                        mb.Prism(at, 0.018f, 0.026f, 0.014f, 8, Palette.Timber, topCol: Palette.WoodLight);
+                        for (int k = 0; k < 4; k++)
+                        {
+                            float a = k * 1.7f + i;
+                            mb.Ico(at + new Vector3(Mathf.Cos(a) * 0.009f, 0.017f, Mathf.Sin(a) * 0.009f), 0.009f, Vector3.one, Color.Lerp(foods[i], Color.black, k * 0.06f), 0.1f);
+                        }
+                    }
                     break;
                 case ConsequenceKind.OfferingBasket: // the best basket on a flat stone, a cloth over it
                     mb.Prism(Vector3.zero, 0.09f, 0.075f, 0.04f, 7, Palette.Rock, topCol: Palette.RockLight);

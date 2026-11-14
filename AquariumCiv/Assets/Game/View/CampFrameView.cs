@@ -162,16 +162,19 @@ namespace AquariumCiv.View
             var c = cam.GetComponent<Camera>();
             float tan = Mathf.Tan((c != null ? c.fieldOfView : 22f) * 0.5f * Mathf.Deg2Rad), aspect = c != null ? c.aspect : 9f / 16f;
             float fit = cam.FitDistance();
-            float zoom = Mathf.Clamp(CampFrame.Zoom(f.radius, fit, tan, aspect, CampFrame.Pitch, PeopleView.DollScaleAmount), cam.minZoom, 1f);
-            float pitch = Mathf.Max(CampFrame.Pitch, BoxCameraMath.PitchFloor(zoom));
-            var world = pv.transform.TransformPoint(new Vector3(f.x, 0f, f.z));
+            // #658 framing B: much closer than the fitted frame, centred on the fire when there is one, a little lower
+            float zoom = Mathf.Clamp(CampFrame.Zoom(f.radius, fit, tan, aspect, CampFrame.Pitch, PeopleView.DollScaleAmount) * CampFrame.CloseShare, cam.minZoom, 1f);
+            float pitch = Mathf.Max(CampFrame.ClosePitch, BoxCameraMath.PitchFloor(zoom));
+            float cx = f.x, cz = f.z;
+            if (pv.Planner.FirePoint(out float fx, out float fz)) { cx = fx; cz = fz; }
+            var world = pv.transform.TransformPoint(new Vector3(cx, 0f, cz));
             world.y = cam.target.y;
             cam.EaseTo(world, CampFrame.Yaw, pitch, zoom, seconds);
             cam.SetHome(new Vector3(world.x, cam.target.y, world.z), CampFrame.Yaw, pitch, zoom);
             Last = f; LastZoom = zoom; Framed++;
             framedAspect = aspect;
             // t3-hunt: the planner prefers hunts inside what this view really shows (read from the frame's own maths, never a hard-coded radius)
-            pv.Planner.SetHuntFrame(f.x, f.z, Mathf.Clamp(Mathf.Min(f.radius, CampFrame.VisibleRadius(fit * zoom, tan, aspect)), CampFrame.MinRadius * 0.5f, CampFrame.MaxRadius));
+            pv.Planner.SetHuntFrame(cx, cz, Mathf.Clamp(Mathf.Min(f.radius, CampFrame.VisibleRadius(fit * zoom, tan, aspect)), CampFrame.MinRadius * 0.5f, CampFrame.MaxRadius));
             float px = CampFrame.DollPx(fit * zoom, pitch, Screen.height, tan, CameraReach.DollScale(zoom, PeopleView.DollScaleAmount));
             string s = $"camp frame {f}: zoom {zoom:0.00}, doll {px:0} px of {Screen.height}";
             Debug.Log("[CampFrame] " + s);

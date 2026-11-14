@@ -104,7 +104,7 @@ namespace AquariumCiv.View
             if (sim == boundSim) return;
             if (boundSim != null) { boundSim.TentRaised -= OnTent; boundSim.CampBegan -= OnCamp; }
             boundSim = sim;
-            pending.Clear(); active.Clear(); shownStep.Clear(); lineSaid.Clear();
+            pending.Clear(); active.Clear(); shownStep.Clear(); lineSaid.Clear(); foundersHeld = false;
             if (sim == null) return;
             sim.TentRaised += OnTent;
             sim.CampBegan += OnCamp;
@@ -119,9 +119,25 @@ namespace AquariumCiv.View
 
         void OnCamp(Building b) { MomentsPlayed++; }
 
+        /// <summary>#656 (2026-11-14, "they should build them after dropping the inventory"): on a new start the founders' tents stand
+        /// only once the basket and the bundle are set down; then they are raised, one after another, the usual way (poles and hides
+        /// carried from the frame).</summary>
+        bool foundersHeld;
+        /// <summary>Times the founders' tents were released to go up after a set-down (tests, debug).</summary>
+        public int FounderRaisings { get; private set; }
+
+        static bool FoundersWait(SimCore sim) => sim != null && sim.NewStartOn && !sim.StockSetDown;
+
+        static bool IsHut(SimCore sim, int buildingId)
+        {
+            foreach (var b in sim.State.buildings) if (b.id == buildingId) return b.type == BuildingType.Hut;
+            return false;
+        }
+
         /// <summary>How much of a building stands: 1, unless its tent is waiting to be raised or is being raised.</summary>
         float GrowOf(int buildingId)
         {
+            if (FoundersWait(boundSim) && IsHut(boundSim, buildingId)) return 0.02f; // #656: not before the set-down
             foreach (var p in pending) if (p.id == buildingId) return 0.02f;
             if (active.TryGetValue(buildingId, out var plan) && People != null && People.Planner != null)
                 return Quantize(People.Planner.TentRaised(buildingId, People.Now));
@@ -153,11 +169,41 @@ namespace AquariumCiv.View
                 Carried++;
             }
 
-            // raisings waiting for their lot
+            // #656: the founders' tents wait for the set-down, then go up one by one
+            if (FoundersWait(sim))
+            {
+                if (!foundersHeld)
+                {
+                    foundersHeld = true; refresh = true;
+                    // an arrival replayed (cheat, walkthrough): any raising of the founders' tents starts over after the set-down
+                    foreach (var b in sim.State.buildings)
+                    {
+                        if (b.type != BuildingType.Hut) continue;
+                        active.Remove(b.id); shownStep.Remove(b.id); planner.ForgetTent(b.id);
+                        pending.RemoveAll(q => q.id == b.id);
+                    }
+                }
+            }
+            else if (foundersHeld)
+            {
+                foundersHeld = false;
+                foreach (var b in sim.State.buildings)
+                {
+                    if (b.type != BuildingType.Hut || active.ContainsKey(b.id)) continue;
+                    bool queued = false;
+                    foreach (var q in pending) if (q.id == b.id) { queued = true; break; }
+                    if (!queued) pending.Add(new Pending { id = b.id });
+                }
+                FounderRaisings++; // a release after a set-down (a tent still going up from before simply carries on)
+                refresh = true;
+            }
+
+            // raisings waiting for their lot (one at a time: a second waits for the first to stand)
             for (int i = 0; i < pending.Count; i++)
             {
                 var p = pending[i];
                 if (!p.placed) { p.placed = true; sim.Settlement?.PlacePending(); } // the lot comes now, not at the month's end (as the shaping show does)
+                if (active.Count > 0) continue; // one tent at a time
                 if (planner.BeginTentRaising(p.id, now, p.first, out var plan))
                 {
                     pending.RemoveAt(i--);
@@ -244,6 +290,7 @@ namespace AquariumCiv.View
 
         void UpdateFrame(SimCore sim, LifePlanner planner, ViewTime now)
         {
+            if (FoundersWait(sim)) { HideFrame(); return; } // #656 (2026-11-14): no rack before the basket and the bundle are set down
             int n = planner.HideFramePoints(now, points);
             bool wanted = n > 0 || sim.HidesTotal > 0 || active.Count > 0 || pending.Count > 0;
             if (!wanted || !planner.HideFrame(out float cx, out float cz, out float dx, out float dz)) { HideFrame(); return; }

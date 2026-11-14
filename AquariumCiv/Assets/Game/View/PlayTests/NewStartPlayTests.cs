@@ -98,6 +98,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(View.ArrivalPlaying, "the founders walk in");
             yield return Frames(5);
             Assert.IsFalse(Stash.Visible, "no stock shows before the set-down");
+            var huts = Sim.State.buildings.Where(b => b.type == BuildingType.Hut).Select(b => b.id).ToList();
+            Assert.IsNotEmpty(huts, "the founders have a tent to raise");
+            foreach (int h in huts) Assert.Less(SimLayout.BuildingGrow(h), 0.1f, "sign-off 2026-11-14: no tent stands before the set-down");
+            int raisedBefore = CampView.Instance.FounderRaisings;
             var props = View.HeldPeople.Select(w => View.Holds(w, out var k) ? k : PropKind.None).ToList();
             Assert.Contains(PropKind.FoodBasket, props, "one carries the basket of food");
             Assert.Contains(PropKind.StickBundle, props, "one carries the bundle of sticks");
@@ -108,6 +112,10 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Stash.Visible && Stash.CarriedShown, "from the set-down: the pile, the basket and the bundle");
             yield return Until(() => !View.ArrivalPlaying, 10f);
             Assert.IsFalse(View.ArrivalPlaying, "then they go about their day");
+            Assert.Greater(CampView.Instance.FounderRaisings, raisedBefore, "after the set-down the founders raise their tent");
+            yield return Until(() => huts.All(h => SimLayout.BuildingGrow(h) >= 1f), 60f);
+            Debug.Log($"[newstart] tents: started {CampView.Instance.RaisingsStarted}, gave up {CampView.Instance.GaveUp}");
+            foreach (int h in huts) Assert.AreEqual(1f, SimLayout.BuildingGrow(h), 1e-3f, "then it stands");
             StringAssert.DoesNotContain("wood", View.LastLine.ToLowerInvariant(), "the sticks are never called wood");
             AssertNoErrors("the arrival");
         }

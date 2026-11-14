@@ -89,6 +89,10 @@ namespace AquariumCiv.Life
             return b.IsNone ? CampOtherWork(p, d) : W(b, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
         }
 
+        /// <summary>2026-11-14 (sign-off #651): where the toolmaker knaps: by the fire once one burns, before that at their own door
+        /// (knapping at the bare fire spot read as tending a fire that isn't there).</summary>
+        Place KnapPlace(Person p) => FireNow != CampFireStage.None || p.home.IsNone ? fire : p.home;
+
         /// <summary>#656/#677: the fire as the land lets it burn (none, grass and twigs, logs). Off the living land, or an old box: logs.</summary>
         public CampFireStage FireNow => sim != null ? sim.FireStage : CampFireStage.Logs;
 
@@ -290,7 +294,7 @@ namespace AquariumCiv.Life
                     if (lumberB != null) w = Alt(w, PlaceOf(lumberB), camp ? ActivityKind.StackWood : ActivityKind.Saw, camp ? Prop.Log : Prop.Saw, 0.35f);
                     return w;
                 case JobType.Toolmaker:
-                    w = W(fire, ActivityKind.Knap, Prop.Hammerstone, Prop.Spear, ForestEdge, 0.15f); // hands tools to the hunters
+                    w = W(KnapPlace(p), ActivityKind.Knap, Prop.Hammerstone, Prop.Spear, ForestEdge, 0.15f); // hands tools to the hunters
                     return w;
                 case JobType.Farmer:
                 {

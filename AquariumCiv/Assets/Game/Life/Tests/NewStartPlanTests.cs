@@ -93,6 +93,8 @@ namespace AquariumCiv.Life.Tests
             Assert.IsFalse(plan.Any(LifePlanner.IsTinderGather), "no fire yet: nothing to gather for it");
             Assert.IsFalse(plan.Any(a => a.kind == ActivityKind.ChopKindling || a.kind == ActivityKind.StackWood || a.kind == ActivityKind.Chop), "no wood work without wild wood");
             Assert.IsFalse(plan.Any(a => a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && a.start >= 17f), "no evening pot over a fire that isn't lit");
+            Assert.IsFalse(plan.Any(a => (a.kind == ActivityKind.Cook || a.kind == ActivityKind.Knap) && a.place.kind == PlaceKind.Fire),
+                "sign-off 2026-11-14: nobody works at the fire spot before there is a fire (knapping there read as tending it)");
 
             // two years on, no Keeper: still no root dig, whatever the land did
             for (int m = 0; m < 24; m++) sim.Step();

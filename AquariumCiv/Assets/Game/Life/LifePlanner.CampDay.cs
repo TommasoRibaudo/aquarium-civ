@@ -131,7 +131,7 @@ namespace AquariumCiv.Life
                 else { var ch = Chore(p, d, 170 + slot); At(ch, until, p.home, ChoreProp(ch)); }
                 return;
             }
-            if (p.job == JobType.Toolmaker && r < 0.86f) { At(ActivityKind.Knap, until, fire, Prop.Hammerstone); return; }
+            if (p.job == JobType.Toolmaker && r < 0.86f) { At(ActivityKind.Knap, until, KnapPlace(p), Prop.Hammerstone); return; } // 2026-11-14: by the fire only once there is one
             // A sit at the fire: one of a few, a short one, then home to the door.
             float sit = Math.Min(until, bt + 0.6f + 0.4f * R(p.key, d.day, 180 + slot));
             At(r < 0.88f ? ActivityKind.Chat : ActivityKind.SitOut, sit, fire, Prop.None, with);
