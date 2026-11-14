@@ -11,6 +11,8 @@ Shader "AquariumCiv/View/FireSmoke"
         _Rise ("Rise (u)", Float) = 0.6
         _SizeFrom ("Size at start (u)", Float) = 0.05
         _SizeTo ("Size at end (u)", Float) = 0.14
+        _NightFade ("Fade with the night level", Range(0, 1)) = 1
+        _Drift ("Sideways drift (u)", Float) = 0.05
     }
     SubShader
     {
@@ -30,7 +32,7 @@ Shader "AquariumCiv/View/FireSmoke"
 
             CBUFFER_START(UnityPerMaterial)
                 half _Alpha;
-                float _Rise, _SizeFrom, _SizeTo;
+                float _Rise, _SizeFrom, _SizeTo, _NightFade, _Drift;
             CBUFFER_END
             float _AC_LampLevel;
 
@@ -45,14 +47,14 @@ Shader "AquariumCiv/View/FireSmoke"
                 float3 c = TransformObjectToWorld(v.positionOS.xyz);
                 // Rises and drifts a little with the wind.
                 c.y += _Rise * u;
-                c.x += 0.05 * u * sin(phase * 31.0 + u * 2.0);
-                c.z += 0.04 * u * cos(phase * 17.0 + u * 1.7);
+                c.x += _Drift * u * sin(phase * 31.0 + u * 2.0);
+                c.z += _Drift * 0.8 * u * cos(phase * 17.0 + u * 1.7);
                 float size = lerp(_SizeFrom, _SizeTo, u);
                 float3 vs = TransformWorldToView(c);
                 vs.xy += v.corner * size;
                 o.positionCS = TransformWViewToHClip(vs);
                 o.corner = v.corner;
-                float a = _Alpha * (1.0 - u) * saturate(u * 6.0) * (1.0 - saturate(_AC_LampLevel));
+                float a = _Alpha * (1.0 - u) * saturate(u * 6.0) * (1.0 - saturate(_AC_LampLevel) * _NightFade);
                 o.color = half4(v.color.rgb, a);
                 return o;
             }

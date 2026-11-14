@@ -676,8 +676,7 @@ namespace AquariumCiv.View
                 if (a.who.Key > d.mateKey) d.stride = mate.stride;   // strides in step (a pair is exempt from the neighbours rule)
                 PairBeats.WalkTogether(ref pose, mateLead, time, d.stride, PairBeats.PairSeed(a.who.Key, d.mateKey));
             }
-            if (style == DollStyle.Stir && a.kind == ActivityKind.Cook && a.place.kind == PlaceKind.Fire && !a.moving && meals.HasFire && meals.StirBegan(a.who.Key, phase, a.pace))
-                HitFx.Puff(PuffKind.Steam, peopleRoot.TransformPoint(meals.PotTopLocal((sx, sz) => Box.SurfaceHeight(sx, sz))), Vector3.up, 1.2f); // #365 B9.d: steam at the top of each stir
+            // #676 (tester): no opaque HitFx puff at each stir any more (it read as a lid or a dumpling at close zoom): the pot's own soft steam rises all the time
             if (d.gaze > 0f && !pose.lying) pose.lean -= GazeHeadUp * d.gaze; // #494: the head tilts up a little more toward the camera
             d.pose = pose;
             v.gameObject.SetActive(!pose.hidden);

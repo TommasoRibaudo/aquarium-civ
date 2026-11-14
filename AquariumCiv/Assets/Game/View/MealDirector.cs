@@ -42,9 +42,11 @@ namespace AquariumCiv.View
         bool pokeBig;
         int fireSeed;
         GameObject potGo;
-        Mesh potMesh, bubbleMesh;
+        Mesh potMesh, bubbleMesh, steamMesh;
         readonly Transform[] bubbles = new Transform[3];
-        float steamWait;
+        GameObject steamGo;
+        Material steamMat;
+        bool steamWinter;
 
         static readonly HashSet<ActivityKind> Pokers = new HashSet<ActivityKind>
         {
@@ -199,16 +201,72 @@ namespace AquariumCiv.View
                 bubbles[i].localPosition = at;
                 bubbles[i].localScale = new Vector3(k, k * 0.8f, k);
             }
-            steamWait -= Time.deltaTime;
-            if (steamWait <= 0f)
-            {
-                steamWait = winter ? SteamEveryWinter : SteamEvery;
-                HitFx.Puff(PuffKind.Steam, parent.TransformPoint(PotTopLocal(heightAt)), Vector3.up, winter ? 1f : 0.65f);
-            }
+            DrawSteam(winter);
         }
 
-        /// <summary>#676: a wisp of steam rises this often while the pot shows (the stir still puffs its own, bigger one); winter shows more.</summary>
-        public const float SteamEvery = 1.1f, SteamEveryWinter = 0.55f;
+        // ---------------------------------------------------------------- #676 (tester): steam that reads as steam
+        /// <summary>#676: the soft puffs over the stew (more in winter). Each rises <see cref="SteamRise"/> over <see cref="SteamPeriod"/> s,
+        /// widening <see cref="SteamSizeFrom"/> to <see cref="SteamSizeTo"/> and fading from <see cref="SteamAlpha"/> to 0, drifting aside;
+        /// their phases are spread, so they never stack in a column. Drawn by the FireSmoke shader (alpha-blended, soft edged, animated on the
+        /// GPU) at a light steam colour; it fades only a little at night (the cook works at dusk).</summary>
+        public const int SteamPuffs = 4, SteamPuffsWinter = 7;
+        public const float SteamPeriod = 2.6f, SteamRise = 0.16f, SteamSizeFrom = 0.007f, SteamSizeTo = 0.03f, SteamAlpha = 0.3f, SteamDrift = 0.035f;
+
+        /// <summary>#676: puff <paramref name="i"/> of <paramref name="n"/>: its start over the stew (pot space, off the middle) and its phase.</summary>
+        public static Vector3 SteamStart(int i, int n, out float phase)
+        {
+            phase = (i + 0.37f * ((i * 7) % 3)) / n;
+            float a = i * 2.39996f + 0.4f, r = 0.012f + 0.018f * ((i * 5) % 4) / 3f;   // golden-angle ring: never two on one spot
+            return new Vector3(Mathf.Cos(a) * r, PotTop - 0.004f, Mathf.Sin(a) * r);
+        }
+
+        void DrawSteam(bool winter)
+        {
+            if (steamGo != null && steamWinter == winter) { steamGo.SetActive(true); return; }
+            if (steamMat == null)
+            {
+                var sh = Shader.Find("AquariumCiv/View/FireSmoke");
+                if (sh == null) return;
+                steamMat = new Material(sh) { name = "Camp_StewSteam", hideFlags = HideFlags.DontSave };
+                steamMat.SetFloat("_Alpha", SteamAlpha);
+                steamMat.SetFloat("_Rise", SteamRise);
+                steamMat.SetFloat("_SizeFrom", SteamSizeFrom);
+                steamMat.SetFloat("_SizeTo", SteamSizeTo);
+                steamMat.SetFloat("_Drift", SteamDrift);
+                steamMat.SetFloat("_NightFade", 0.4f);
+            }
+            steamWinter = winter;
+            int n = winter ? SteamPuffsWinter : SteamPuffs;
+            var verts = new List<Vector3>(); var cols = new List<Color>(); var corner = new List<Vector2>(); var data = new List<Vector2>(); var tris = new List<int>();
+            var col = MeshBuilder.Linear(new Color(0.97f, 0.96f, 0.93f));
+            Vector2[] corners = { new(-1f, -1f), new(-1f, 1f), new(1f, 1f), new(1f, -1f) };
+            for (int i = 0; i < n; i++)
+            {
+                var at = SteamStart(i, n, out float phase);
+                int o = verts.Count;
+                foreach (var k in corners) { verts.Add(at); cols.Add(col); corner.Add(k); data.Add(new Vector2(phase, SteamPeriod)); }
+                tris.AddRange(new[] { o, o + 1, o + 2, o, o + 2, o + 3 });
+            }
+            if (steamMesh != null) UnityEngine.Object.Destroy(steamMesh);
+            steamMesh = new Mesh { name = "Camp_StewSteam", hideFlags = HideFlags.DontSave };
+            steamMesh.SetVertices(verts); steamMesh.SetColors(cols); steamMesh.SetUVs(0, corner); steamMesh.SetUVs(1, data); steamMesh.SetTriangles(tris, 0);
+            steamMesh.bounds = new Bounds(new Vector3(0f, PotTop + SteamRise * 0.5f, 0f), new Vector3(0.3f, SteamRise + 0.1f, 0.3f));
+            if (steamGo == null)
+            {
+                steamGo = new GameObject("Stew steam") { hideFlags = HideFlags.DontSave };
+                steamGo.transform.SetParent(potGo.transform, false);
+                steamGo.AddComponent<MeshFilter>();
+                var r = steamGo.AddComponent<MeshRenderer>();
+                r.sharedMaterial = steamMat;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+            }
+            steamGo.GetComponent<MeshFilter>().sharedMesh = steamMesh;
+            steamGo.SetActive(true);
+        }
+
+        /// <summary>#676: the steam puffs drawn now (tests).</summary>
+        public int SteamShown => steamGo != null && steamGo.activeInHierarchy && steamMesh != null ? steamMesh.vertexCount / 4 : 0;
         /// <summary>#676: one bubble's life on the stew: it swells, holds a moment, pops, and comes back elsewhere after a rest.</summary>
         public const float BubbleCycle = 1.4f;
 
@@ -238,7 +296,9 @@ namespace AquariumCiv.View
             if (potGo != null) UnityEngine.Object.Destroy(potGo);
             if (potMesh != null) UnityEngine.Object.Destroy(potMesh);
             if (bubbleMesh != null) UnityEngine.Object.Destroy(bubbleMesh);
-            potGo = null; potMesh = null; bubbleMesh = null;
+            if (steamMesh != null) UnityEngine.Object.Destroy(steamMesh);
+            if (steamMat != null) UnityEngine.Object.Destroy(steamMat);
+            potGo = null; potMesh = null; bubbleMesh = null; steamMesh = null; steamMat = null; steamGo = null;
         }
 
         /// <summary>The stew's middle above the pot's foot, where the bubbles sit (AddStewPot's dome for the camp pot).</summary>
@@ -268,7 +328,7 @@ namespace AquariumCiv.View
         static Mesh BuildBubble()
         {
             var mb = new MeshBuilder(3652);
-            mb.Ico(Vector3.zero, 0.0055f, new Vector3(1f, 0.7f, 1f), StewBubble, 0.05f);
+            mb.Ico(Vector3.zero, 0.008f, new Vector3(1f, 0.7f, 1f), StewBubble, 0.05f);   // #676 (tester): big and light enough to read up close
             var mesh = mb.ToMesh("Camp_StewBubble");
             mesh.hideFlags = HideFlags.DontSave;
             return mesh;
@@ -322,7 +382,7 @@ namespace AquariumCiv.View
 
         static readonly Color PotSoot = new Color(0.10f, 0.08f, 0.07f), PotBody = new Color(0.17f, 0.12f, 0.09f),
             PotUpper = new Color(0.25f, 0.18f, 0.13f), PotLip = new Color(0.47f, 0.35f, 0.25f),
-            StewMid = new Color(0.50f, 0.27f, 0.12f), StewEdge = new Color(0.33f, 0.17f, 0.08f), StewBubble = new Color(0.62f, 0.38f, 0.20f),
+            StewMid = new Color(0.50f, 0.27f, 0.12f), StewEdge = new Color(0.33f, 0.17f, 0.08f), StewBubble = new Color(0.80f, 0.62f, 0.42f),
             StewRoot = new Color(0.90f, 0.50f, 0.16f), StewMeat = new Color(0.45f, 0.22f, 0.16f), StewGreen = new Color(0.36f, 0.55f, 0.20f),
             StewTuber = new Color(0.86f, 0.77f, 0.56f);
     }
