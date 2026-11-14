@@ -191,7 +191,7 @@ namespace AquariumCiv.GameUI
             if (t == KitTool.Seed) Toast(SeedHint, 4f);
             else if (was == KitTool.Seed) WithdrawToast(SeedHint); // #558: the seed is back in the jar; its hint no longer applies (it would sit in the queue and show with nothing in hand)
             if (t == KitTool.Tweezers) Toast(TweezersHint, 4f);
-            if (t == KitTool.Life) Toast(heldLife is AquariumCiv.Sim.Eco.LifeSpecies.Ducks or AquariumCiv.Sim.Eco.LifeSpecies.Fish ? LifeWaterHint : LifeHint, 4f);
+            if (t == KitTool.Life) Toast(LifeHintFor(heldLife), 4f);
             if (kitLife != null) kitLife.EnableInClassList("kg-tool--on", t == KitTool.Life || t == KitTool.Seed);
             HandChanged?.Invoke(t);
         }
@@ -283,6 +283,17 @@ namespace AquariumCiv.GameUI
         bool lifeShown;
         public const string LifeWaterHint = "Tap the water to choose a spot. Two fingers move, turn and zoom the view."; // fb4 #542
         public const string LifeHint = "Tap the glowing ground to choose a spot. Two fingers move, turn and zoom the view.";
+        /// <summary>#643 (playtest): the hint as a group is taken names it first, so the player knows what is in hand (the chooser's pick).</summary>
+        public static string LifeHintFor(AquariumCiv.Sim.Eco.LifeSpecies s) => s switch
+        {
+            AquariumCiv.Sim.Eco.LifeSpecies.Ducks => "The ducks: " + Lower(LifeWaterHint),
+            AquariumCiv.Sim.Eco.LifeSpecies.Fish => "The fish: " + Lower(LifeWaterHint),
+            AquariumCiv.Sim.Eco.LifeSpecies.Thicket => "The bushes: " + Lower(LifeHint),
+            AquariumCiv.Sim.Eco.LifeSpecies.Rabbits => "The rabbits: " + Lower(LifeHint),
+            AquariumCiv.Sim.Eco.LifeSpecies.Deer => "The deer: " + Lower(LifeHint),
+            _ => "The wolves: tap a glowing den spot in the wood. Two fingers move, turn and zoom the view.",
+        };
+        static string Lower(string h) => char.ToLowerInvariant(h[0]) + h.Substring(1);
         /// <summary>The species in hand while <see cref="Hand"/> is <see cref="KitTool.Life"/>.</summary>
         public AquariumCiv.Sim.Eco.LifeSpecies HeldLife => heldLife;
         /// <summary>How many times the ready wiggle played (tests).</summary>
@@ -325,8 +336,8 @@ namespace AquariumCiv.GameUI
             sim.LockedJars(lockedJars);
             int choices = readyJars.Count + (kitSeedShown ? 1 : 0);
             if (choices + lockedJars.Count == 0) return;
-            // #570: with shut jars to show the chooser opens even for one choice (or none: the list of what is missing)
-            if (choices == 1 && lockedJars.Count == 0) { SetLifeRow(false); if (readyJars.Count == 1) TakeLife(readyJars[0]); else SetHand(KitTool.Seed); return; }
+            // #570: with shut jars to show the chooser opens even for one choice (or none: the list of what is missing).
+            // #643 (playtest, the user 2026-11-13): always the chooser, a single ready jar too: the player picks the group, never finds it in hand.
             bool open = !LifeRowOpen;
             if (open) FillLifeRow();
             SetLifeRow(open);

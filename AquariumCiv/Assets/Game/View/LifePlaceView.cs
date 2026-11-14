@@ -142,6 +142,7 @@ namespace AquariumCiv.View
                 glowGo.GetComponent<MeshRenderer>().SetPropertyBlock(mpb);
             }
             if (IsWater(s) && framedFor != s) { framedFor = s; FramePond(); }
+            else if (!IsWater(s) && framedFor != s) { framedFor = s; FrameGround(sim, s); }
             Dim();
             DrawGhost();
             DrawNo();
@@ -199,6 +200,31 @@ namespace AquariumCiv.View
             }
             float width = Mathf.Max(x1 - x0, (z1 - z0) * 1.3f) + 0.6f;
             LifeArrivalView.Instance?.LeanOnPond(hud.HeldLife, new Vector3((x0 + x1) * 0.5f, 0f, (z0 + z1) * 0.5f), width);
+        }
+
+        /// <summary>#643 (playtest): a land group was just taken and too little of its glowing ground is on screen (the wolves' den spots sit
+        /// deep in the wood, often out of view): the camera flies to the valid cell nearest the camp, close enough for the glow to read.
+        /// Ground already in view is left alone.</summary>
+        public float GroundFrameZoom = 0.5f;
+        public const int SmallGround = 30;
+        public int GroundFrames { get; private set; }
+        void FrameGround(SimCore sim, LifeSpecies s)
+        {
+            var cam = Camera.main;
+            var bc = cam != null ? cam.GetComponent<BoxCamera>() : null;
+            if (bc == null || cells.Count == 0) return;
+            int seen = 0;
+            foreach (int c in cells)
+            {
+                var v = cam.WorldToViewportPoint(box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(c), SiteMap.CZc(c))));
+                if (v.z > 0f && v.x > 0.08f && v.x < 0.92f && v.y > 0.2f && v.y < 0.85f) seen++;
+            }
+            bool small = cells.Count < SmallGround && bc.zoom > GroundFrameZoom + 0.15f; // a few cells, seen from far: a speck
+            if (seen * 2 >= cells.Count && !small) return;
+            int at = sim.LifePlaceCellNearCamp(s);
+            if (at < 0) at = cells[0];
+            bc.FlyTo(box.transform.TransformPoint(box.land.OnGround(SiteMap.CXc(at), SiteMap.CZc(at))), Mathf.Min(bc.zoom, GroundFrameZoom));
+            GroundFrames++;
         }
 
         /// <summary>The cell under the water's surface at a screen point (the ray meets the water plane, not the bed).</summary>
@@ -358,7 +384,7 @@ namespace AquariumCiv.View
             if (ghostGo == null) ghostGo = Child("LifeGhost", out ghostMesh);
             ghostGo.SetActive(true);
             Ghost.SetHint(TapAgainHintFor(s), hud);
-            Ghost.Show(cell, target, hud, GameHud.LifeHint);
+            Ghost.Show(cell, target, hud, GameHud.LifeHintFor(s));
             ghostFor = s;
         }
 

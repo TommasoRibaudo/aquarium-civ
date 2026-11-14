@@ -38,9 +38,15 @@ namespace AquariumCiv.Sim.Eco
 
         /// <summary>Spec §3: deer placed (the rung, checked by the caller), the herd at 5 or more for a year, the wood of 20, a den spot.</summary>
         bool WolvesLandReady(long month) =>
-            st.deerFiveSince >= 0 && month - st.deerFiveSince >= t.wolvesDeerMonths && st.cTrees >= t.wolvesTrees && AnyDen();
+            st.deerFiveSince >= 0 && month - st.deerFiveSince >= t.wolvesDeerMonths && st.cTrees >= t.wolvesTrees && DenRoom();
 
-        bool AnyDen() { for (int c = 0; c < EcoLand.N; c++) if (DenOk(c, null)) return true; return false; }
+        bool AnyDen() => DenCells() > 0;
+
+        /// <summary>#643 (playtest): the den spots on the land now. The jar waits for <see cref="EcoTuning.wolvesDenCells"/> of them, so
+        /// the glow is never a few cells lost in a young wood (the user, 2026-11-13: the wolves come when there is more space).</summary>
+        public int DenCells() { int n = 0; for (int c = 0; c < EcoLand.N; c++) if (DenOk(c, null)) n++; return n; }
+
+        bool DenRoom() => DenCells() >= Math.Max(1, t.wolvesDenCells);
 
         /// <summary>A den spot (spec §5.6): a grown tree inside the wood (at least <see cref="EcoTuning.denTrees"/> grown trees round it),
         /// at least <see cref="EcoTuning.denFromFire"/> from the fire, on the far side of the wood (a grown tree between it and the fire, within

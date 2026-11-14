@@ -61,7 +61,7 @@ namespace AquariumCiv.Tests
             return v;
         }
 
-        public static PacingResult Run(Habit habit, int seed, EcoTuning tuning = null, int maxYears = 60, bool before = false)
+        public static PacingResult Run(Habit habit, int seed, EcoTuning tuning = null, int maxYears = 60, bool before = false, Action<SimCore> perMonth = null)
         {
             var cfg = new SimConfig { ecology = true };
             cfg.eco = tuning ?? new EcoTuning();
@@ -91,8 +91,9 @@ namespace AquariumCiv.Tests
                     if (res.trees8 < 0 && e.cTrees >= cfg.eco.villageTrees) res.trees8 = y;
                     if (res.treeGrown < 0 && e.treeStage >= 4) res.treeGrown = y;
                     if (res.village < 0 && e.villageGateMonth >= 0) { res.village = e.villageGateMonth / 12f; res.villageHours = (float)rt; }
+                    perMonth?.Invoke(sim);
                 }
-                if (res.village >= 0) break;
+                if (res.village >= 0 && perMonth == null) break; // a probe (#643) runs on to maxYears
             }
             long M(string k) { long m = sim.EcoMilestoneMonth(k); return m; }
             res.seedUnlocked = M(EcoMilestones.SeedUnlocked) / 12f; res.planted = M(EcoMilestones.TreePlanted) / 12f; res.firstWood = M(EcoMilestones.FirstWoodTree) / 12f;
@@ -292,6 +293,25 @@ namespace AquariumCiv.Tests
             var ys = PacingLab.Seeds.Select(s => PacingLab.Run(Habit.Active, s, PacingLab.Before(), 60, true).village).ToList();
             TestContext.Out.WriteLine("before: " + string.Join(" ", ys.Select(PacingResult.F)));
             Assert.That(Mean(ys), Is.GreaterThan(32f));
+        }
+
+        [Test, Explicit("#643: the den ground the wolf jar opens on, with the old gate (any den) and wolvesDenCells")]
+        public void WolfDenRoom_Measure()
+        {
+            var ground = new List<int>();
+            foreach (int need in new[] { 1, new EcoTuning().wolvesDenCells })
+                foreach (var s in Eight)
+                {
+                    var t = new EcoTuning { wolvesDenCells = need };
+                    float ready = -1; int denAtReady = 0; var line = new StringBuilder();
+                    PacingLab.Run(Habit.Active, s, t, 50, false, sim =>
+                    {
+                        sim.LifeGround(LifeSpecies.Wolves, ground);
+                        if (sim.State.month % 60 == 0) line.Append($" y{sim.State.month / 12}:{ground.Count}");
+                        if (ready < 0 && sim.JarReadyMonth(LifeSpecies.Wolves) >= 0) { ready = sim.JarReadyMonth(LifeSpecies.Wolves) / 12f; denAtReady = ground.Count; }
+                    });
+                    TestContext.Out.WriteLine($"need {need,2} seed {s,2}: wolves ready {PacingResult.F(ready)} on {denAtReady,3} den cells |{line}");
+                }
         }
 
         [Test, Explicit("prints the before/after table (docs/design/placed-life.md, Pacing (#569))")]
