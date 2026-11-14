@@ -496,7 +496,8 @@ namespace AquariumCiv.GameUI
             Drag(this.WorldToLocal(at).x);
         }
 
-        void Let()
+        /// <summary>The finger lifted (the slider's own up, or <see cref="GlassScroll"/> handing it on).</summary>
+        public void Let()
         {
             this.ReleasePointer(pointer);
             pointer = -1;
@@ -511,6 +512,11 @@ namespace AquariumCiv.GameUI
             Add(e);
             return e;
         }
+
+        /// <summary>#654: the finger at <paramref name="at"/> (panel space) while this slider holds it; <see cref="GlassScroll"/> feeds it so its scroll view never sees the move.</summary>
+        public void DragAt(Vector2 at) => Drag(this.WorldToLocal(at).x);
+        /// <summary>The pointer this slider holds, or -1.</summary>
+        public int Holding => pointer;
 
         void Drag(float x)
         {

@@ -92,7 +92,7 @@ namespace AquariumCiv.View.TimeLapseScreen
             if (yearsPerSecond >= 0.999f) return yearsPerSecond.ToString("0.#", ci) + " yr/s";
             float months = yearsPerSecond * 12f;
             if (months >= 0.95f) return months.ToString("0.#", ci) + " mo/s";
-            return Math.Max(1f, yearsPerSecond * 365f).ToString("0", ci) + " days/s";
+            return Math.Max(1f, yearsPerSecond * 365f).ToString("0", ci) + " d/s"; // tester: "days/s" pushed Close off the row at 750 wide
         }
         public bool HasHistory => Clock.End > 0f;
 

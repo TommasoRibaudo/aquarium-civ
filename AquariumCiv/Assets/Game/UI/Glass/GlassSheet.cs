@@ -266,9 +266,28 @@ namespace AquariumCiv.GameUI
                 var slider = SliderFor(e.target as VisualElement, e.position);
                 if (slider == null) return;
                 slider.Grab(e.pointerId, e.position);
+                held = slider; heldOffset = view.scrollOffset; heldDecel = view.scrollDecelerationRate;
+                view.scrollDecelerationRate = 0f; // no momentum left over from a scroll just before
                 e.StopPropagation();
             }, TrickleDown.TrickleDown);
+            // #654 (tester): on a sheet already scrolled, the view still took a sideways drag mid-way (it captured the finger and scrolled).
+            // While a slider holds the finger, the sheet feeds it every move itself and keeps the view where it was.
+            RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (held == null || held.Holding != e.pointerId) return;
+                held.DragAt(e.position);
+                view.scrollOffset = heldOffset;
+                e.StopPropagation();
+            }, TrickleDown.TrickleDown);
+            RegisterCallback<PointerUpEvent>(e => { if (held != null && held.Holding == e.pointerId) { var s = held; LetGo(); s.Let(); e.StopPropagation(); } }, TrickleDown.TrickleDown);
+            RegisterCallback<PointerCancelEvent>(e => { if (held != null && held.Holding == e.pointerId) { var s = held; LetGo(); s.Let(); } }, TrickleDown.TrickleDown);
+            view.verticalScroller.valueChanged += _ => { if (held != null && view.scrollOffset != heldOffset) view.scrollOffset = heldOffset; };
         }
+
+        GlassSlider held;
+        Vector2 heldOffset;
+        float heldDecel;
+        void LetGo() { held = null; view.scrollDecelerationRate = heldDecel; }
 
         /// <summary>The slider a finger at <paramref name="at"/> (panel space) belongs to: the one it is on, or the one in the row it is on
         /// when the finger is within its strip's width plus <see cref="SliderReach"/> either side. Null when it's a scroll.</summary>

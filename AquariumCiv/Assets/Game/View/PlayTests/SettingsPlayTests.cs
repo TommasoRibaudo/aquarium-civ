@@ -84,9 +84,9 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(4);
         }
 
-        IEnumerator SlideTo(string name, float value)
+        IEnumerator SlideTo(string name, float value, bool reveal = true)
         {
-            yield return Reveal(name);
+            if (reveal) yield return Reveal(name);
             float scrolled = Hud.SettingsView.Scroll.View.scrollOffset.y;
             var b = Root.Q(name).worldBound;
             var from = GameUiPanel.ScreenCenter(Root, name);
@@ -96,6 +96,36 @@ namespace AquariumCiv.View.PlayTests
             yield return Drag(new[] { from, from + new Vector2((to.x - from.x) * 0.5f, Screen.height * 0.012f), to }, Screen.width * 0.03f);
             yield return Frames(3);
             Assert.AreEqual(scrolled, Hud.SettingsView.Scroll.View.scrollOffset.y, 1f, "a slider keeps its finger: the sheet stays put");
+        }
+
+        [UnityTest]
+        public IEnumerator ASliderStillTakesItsFingerAfterTheSheetWasScrolled()
+        {
+            // #654 (tester): once the sheet had been scrolled by a finger, a sideways drag on a slider lost to the scroll
+            yield return OpenSlice(seed: 9501);
+            yield return OpenSettings();
+            var view = Hud.SettingsView.Scroll.View;
+            for (int round = 0; round < 2; round++)
+            {
+                // a real finger scroll down the list (on the labels, not a slider), as a player looking around
+                // the middle of the list on screen (panel y down, screen y up), on the labels' side
+                float midY = Screen.height - view.worldBound.center.y * Screen.height / Root.worldBound.height;
+                var start = new Vector2(Screen.width * 0.2f, midY - Screen.height * 0.05f);
+                yield return Drag(new[] { start, start + new Vector2(0f, Screen.height * 0.12f) }, Screen.width * 0.02f); // the finger up: the list scrolls down
+                // the list coasts a moment after a flick: wait until it rests (the hand reaches for the slider after that)
+                float last = float.NaN, still = 0f, waited = 0f;
+                while (still < 0.3f && waited < 4f) { yield return null; float d = Time.unscaledDeltaTime; waited += d; still = Mathf.Abs(view.scrollOffset.y - last) < 0.01f ? still + d : 0f; last = view.scrollOffset.y; }
+                Assert.Greater(view.scrollOffset.y, 1f, $"round {round}: the sheet is scrolled");
+                foreach (var name in new[] { "settings-effects", "settings-ambience", "settings-music" })
+                {
+                    var b = Root.Q(name).worldBound;
+                    if (b.yMin < view.worldBound.yMin || b.yMax > view.worldBound.yMax) continue; // off the sheet: not this one
+                    float v = round % 2 == 0 ? 0.8f : 0.2f;
+                    yield return SlideTo(name, v, reveal: false);
+                    float got = name == "settings-effects" ? GameSettings.SfxVolume : name == "settings-ambience" ? GameSettings.AmbienceVolume : GameSettings.MusicVolume;
+                    Assert.AreEqual(v, got, 0.06f, $"round {round}, {name} at offset {view.scrollOffset.y:0}: the slider follows the finger");
+                }
+            }
         }
 
         [UnityTest]
