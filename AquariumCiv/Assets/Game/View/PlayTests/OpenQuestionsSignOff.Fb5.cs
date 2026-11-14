@@ -102,6 +102,7 @@ namespace AquariumCiv.View.PlayTests
                 if (h.SheetOpen) h.CloseSheet();
                 if (h.Hand != GameHud.KitTool.None) h.SetHand(GameHud.KitTool.None);
             }
+            CloseLoosePt1(); // History, photo mode, the evening talk, the close-up zoom floor, a pin (playtest 1 stops)
             yield return Frames(8);
         }
 
@@ -157,7 +158,7 @@ namespace AquariumCiv.View.PlayTests
             Rebind();
             Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
             if (Sim.State.era != Era.Camp) Log("camp gate: " + EcoDebug.CampGate());
-            youngBox = false; mistedHalf = false;
+            youngBox = false; mistedHalf = false; ownBox = "";
             Hour(10f);
             yield return Wait(2f);
             DefaultView();
@@ -172,7 +173,7 @@ namespace AquariumCiv.View.PlayTests
             yield return Open(1179, 2556, 4242);
             GameUiPanel.AcceptInputUnfocused(true);
             Rebind();
-            youngBox = true;
+            youngBox = true; ownBox = "";
             // the setup that works (Fb5PassShots.MistHalf_GreenerWithMoreYoungTrees): a seed first (big mists both sides), a grown Keeper's tree as the
             // seed source, seedling pairs mirrored across the middle; then the half run and the half-year on to summer (snow would hide the green)
             foreach (var (mx, mz) in new[] { (-1.6f, 0.6f), (1.6f, 0.9f) }) EcoDebug.MistBig(mx, mz);

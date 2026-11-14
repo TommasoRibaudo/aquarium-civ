@@ -61,7 +61,7 @@ namespace AquariumCiv.View.PlayTests
             }
         }
 
-        IEnumerator Open(int w, int h, int seed)
+        IEnumerator Open(int w, int h, int seed, bool skipFirstRun = true)
         {
             LogAssert.ignoreFailingMessages = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -82,7 +82,7 @@ namespace AquariumCiv.View.PlayTests
             if (GameClock.Instance != null) Bootstraps.All();
             EveningTalkView.AutoStart = false;
             yield return null; yield return null;
-            if (FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll();
+            if (skipFirstRun && FirstRunView.Instance != null && FirstRunView.Instance.Active) FirstRunView.DebugSkipAll(); // #647's stop keeps a box in its first run
             yield return null; yield return null;
         }
 
@@ -200,6 +200,10 @@ namespace AquariumCiv.View.PlayTests
         sealed class Stop
         {
             public string Section = "", Sub = "", Issue = "", Name = "", Slug = "", Judge = "", NotStaged;
+            /// <summary>The Game view size for this stop (playtest 1: most at 1179x2556, a few at 750x1334 or 1206x2622).</summary>
+            public int W = 1179, H = 2556;
+            /// <summary>"" = the played box; else the key of a box the stop's setup opens itself (it keeps that box while the next stop has the same key).</summary>
+            public string Box = "";
             public Kind Kind;
             public Func<IEnumerator> Setup;
             public (string label, Func<IEnumerator> run)[] Extras = new (string, Func<IEnumerator>)[0];
@@ -276,6 +280,12 @@ namespace AquariumCiv.View.PlayTests
             ["#249"] = new[] { P("#249", "the Kit button", "kit249", "default view: open the Kit") },
             ["#281"] = new[] { P("#281", "fresh green on return", "green281", "default view: the fresh green shows after you come back") },
             // feedback batch 5 (#569-#578): the stops are in OpenQuestionsSignOff.Fb5.cs
+            // playtest 1 (#643-#680) and the new start (#656, #677): the stops are in OpenQuestionsSignOff.Pt1.cs
+            ["#643"] = Pt1("#643"), ["#644"] = Pt1("#644"), ["#645"] = Pt1("#645"), ["#647"] = Pt1("#647"), ["#648"] = Pt1("#648"),
+            ["#649"] = Pt1("#649"), ["#650"] = Pt1("#650"), ["#651"] = Pt1("#651"), ["#652"] = Pt1("#652"), ["#654"] = Pt1("#654"),
+            ["#657"] = Pt1("#657"), ["#659"] = Pt1("#659"), ["#669"] = Pt1("#669"), ["#670"] = Pt1("#670"), ["#672"] = Pt1("#672"),
+            ["#673"] = Pt1("#673"), ["#674"] = Pt1("#674"), ["#680"] = Pt1("#680"), ["#675"] = Pt1("#675"), ["#676"] = Pt1("#676"),
+            ["#665"] = Pt1("#665"), ["#671"] = Pt1("#671"), ["#656"] = Pt1("#656"), ["#677"] = Pt1("#677"), ["#658"] = Pt1("#658"),
             ["#569"] = Fb5("#569"), ["#570"] = Fb5("#570"), ["#571"] = Fb5("#571"), ["#572"] = Fb5("#572"), ["#573"] = Fb5("#573"),
             ["#574"] = Fb5("#574"), ["#575"] = Fb5("#575"), ["#576"] = Fb5("#576"), ["#577"] = Fb5("#577"), ["#578"] = Fb5("#578"),
         };
@@ -419,7 +429,7 @@ namespace AquariumCiv.View.PlayTests
                         foreach (var it in sub.Items)
                             list.Add(new Stop
                             {
-                                Section = secShort, Sub = subShort, Kind = Kind.Decision, Name = (sub.Title.Length > 0 && !sub.Title.StartsWith("Decisions")) ? sub.Title : it.Title, Slug = Slug(it.Title), Judge = it.Text,
+                                Section = secShort, Sub = subShort, Kind = Kind.Decision, Name = it.Title, Slug = Slug(it.Title), Judge = it.Text,
                                 Options = OptionsOf(it.Text), Setup = NoSetup,
                             });
                 }
@@ -777,7 +787,9 @@ namespace AquariumCiv.View.PlayTests
                     string crumb = st.Section + (st.Sub.Length > 0 && st.Kind != Kind.Look ? " · " + st.Sub : "") + (st.Kind == Kind.Look ? "" : " · " + st.Kind.ToString().ToLowerInvariant());
                     panel.Show(i + 1, stops.Count, ModeOf(st.Kind), crumb, (st.Issue.Length > 0 ? st.Issue + " " : "") + st.Name, st.Judge, st.Extras.Select(x => x.label).ToArray(), st.Options, st.Bullets, st.BulletTitles, st.NotStaged);
                     if (pv != null) pv.timeScale = 1f; // a live stop may have sped the view clock up
-                    if (youngBox && !st.Slug.StartsWith("pacing_")) { yield return RebuildPlayedBox(); }
+                    panel.collapsed = false; // a stop before may have folded it (the HUD icons, the caption, the framings)
+                    if (st.Box.Length == 0 && ((youngBox && !st.Slug.StartsWith("pacing_")) || ownBox.Length > 0)) { yield return RebuildPlayedBox(); }
+                    if (Screen.width != st.W || Screen.height != st.H) { SetSize(st.W, st.H); yield return Until(() => Screen.width == st.W && Screen.height == st.H, 4f); yield return Frames(4); }
                     yield return CloseLooseUi();
                     if (!st.Slug.StartsWith("season_") && !st.Slug.StartsWith("pacing_")) yield return ResetSeason();
                     yield return Steps(st.Setup(), st.Name);
@@ -849,6 +861,7 @@ namespace AquariumCiv.View.PlayTests
             {
                 if (panelGo != null) UnityEngine.Object.Destroy(panelGo);
                 GameSettings.Sound = soundWas;
+                RestorePt1();
                 ShowMeDirector.BubblesOn = true;
                 var p = PeopleView.Find();
                 if (p != null) p.timeScale = 1f;
