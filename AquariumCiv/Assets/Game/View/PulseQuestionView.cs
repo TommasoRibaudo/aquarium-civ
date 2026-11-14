@@ -327,7 +327,7 @@ namespace AquariumCiv.View
 
             textStep = new VisualElement { name = "pulse-text-step", pickingMode = PickingMode.Ignore };
             textStep.style.flexGrow = 1;
-            field = new TextField { name = "pulse-text", maxLength = 200 };
+            field = GlassKeyboard.Tame(new TextField { name = "pulse-text", maxLength = 200 }); // #645
             field.style.alignSelf = Align.Stretch;
             field.textEdition.placeholder = "Type here...";
             field.AddToClassList("kg-field");

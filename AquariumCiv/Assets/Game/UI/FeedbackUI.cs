@@ -145,7 +145,7 @@ namespace AquariumCiv.GameUI
             }
             sheet.Add(chips);
 
-            text = new TextField { name = "fb-text", multiline = true, maxLength = FeedbackReport.MaxTextChars };
+            text = GlassKeyboard.Tame(new TextField { name = "fb-text", multiline = true, maxLength = FeedbackReport.MaxTextChars }); // #645
             text.textEdition.placeholder = "Type here...";
             text.AddToClassList("kg-field");
             text.AddToClassList("kg-field--area");

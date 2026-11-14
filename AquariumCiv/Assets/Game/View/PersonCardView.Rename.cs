@@ -38,6 +38,7 @@ namespace AquariumCiv.View
         {
             RenameOpen = false;
             renameText = "";
+            GlassKeyboard.Down(renameField); // #645: before the redraw drops it, or the phone's keyboard stays up
             renameField = null;
             renameMsg = null;
             renameActs = null;
@@ -60,7 +61,7 @@ namespace AquariumCiv.View
                 wrap.Add(open);
                 return;
             }
-            renameField = new TextField { name = "person-card-rename-field", maxLength = SimCore.RenameMaxLength + 4, value = renameText };
+            renameField = GlassKeyboard.Tame(new TextField { name = "person-card-rename-field", maxLength = SimCore.RenameMaxLength + 4, value = renameText });
             renameField.AddToClassList("kg-field");
             renameField.RegisterValueChangedCallback(e => { renameText = e.newValue; if (renameMsg != null) renameMsg.text = ""; });
             wrap.Add(renameField);

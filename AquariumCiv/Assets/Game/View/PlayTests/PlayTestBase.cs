@@ -205,7 +205,7 @@ namespace AquariumCiv.View.PlayTests
         protected static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
 
         /// <summary>#558: with the Kit open, the seed is a choice in the life jar: the life slot, then the seed beside the species (the slot
-        /// takes the seed straight when it is the only choice). Asserts the seed ends up in hand.</summary>
+        /// #643: the chooser always opens, the seed alone too). Asserts the seed ends up in hand.</summary>
         protected IEnumerator PickSeedFromLifeJar(GameHud hud, string shot = null)
         {
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-life"));
