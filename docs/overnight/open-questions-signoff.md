@@ -170,3 +170,25 @@ Verdicts from the `OpenQuestionsSignOff` play test, one run per section.
 | 60. #575 after a rename the card is scrolled so "Call them so... | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | change the text to Rename | 14:20:57 |
 | 61. #570 a tapped locked seed looks darker (selected) and cou... | Feedback 5 / Tester polish (2026-11-11, no [real] findings) | other | ok fix cleanly and clearly, coherently withthe ui | 14:21:17 |
 | 62. Being built now | Waiting on you | other | agreed | 14:21:24 |
+
+## Run 2026-11-14 17:17
+
+| Stop | Section | Verdict | Note | Time |
+|---|---|---|---|---|
+| 7. #651 camp chores with no wild wood | Playtest 1 / Look | needs change | I like the feeding, why doesnt this happen for the wooden fire as well? mending a bedroll should happen near the fire only and an actual bedroll should appear, people resting on it. it should last until the end of current session | 17:27:15 |
+| 8. #652 the gatherers' place word | Playtest 1 / Look | skipped |  | 17:27:24 |
+| 9. #654 the Settings sliders | Playtest 1 / Look | skipped |  | 17:27:37 |
+| 10. #657 grass tufts up close | Playtest 1 / Look | skipped |  | 17:27:41 |
+| 11. #659 the caption under the title (iPhone 16 Pro) | Playtest 1 / Look | skipped |  | 17:27:46 |
+| 12. #669 History on the played box | Playtest 1 / Look | skipped |  | 17:27:48 |
+| 13. #670 History on a young box | Playtest 1 / Look | skipped |  | 17:27:51 |
+| 14. #672 the evening talk and your view | Playtest 1 / Look | skipped |  | 17:28:04 |
+| 15. #673 photo mode with someone pinned | Playtest 1 / Look | skipped |  | 17:28:09 |
+| 16. #674 the person card's first view (750x1334) | Playtest 1 / Look | signed off |  | 17:28:27 |
+| 17. #680 the hunter tries again | Playtest 1 / Look | skipped |  | 17:28:36 |
+| 18. #675 the seed first, on bare sand | Playtest 1 / Look | skipped |  | 17:28:38 |
+| 19. #676 the stew pot at dusk | Playtest 1 / Look | skipped |  | 17:28:52 |
+| 20. #665 rabbit tracks keep coming | Playtest 1 / Look | signed off |  | 17:29:51 |
+| 21. #671 faded near glass up close | Playtest 1 / Look | skipped |  | 17:29:57 |
+| 22. #656 the arrival with the basket and the bundle | Playtest 1 / Look | signed off |  | 17:30:09 |
+| 62. Being built now | Waiting on you | decide later |  | 17:30:32 |
