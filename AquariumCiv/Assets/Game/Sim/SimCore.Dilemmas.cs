@@ -496,6 +496,7 @@ namespace AquariumCiv.Sim
                 if (i == 0) d.buildingA = bld?.id ?? -1; else d.buildingB = bld?.id ?? -1;
             }
             var e = new ChronicleEntry { id = DilemmaIdBase + id, month = s.month, kind = "dilemma", text = QuestionOf(d), salience = 0.6f, notableId = a, otherNotableId = b };
+            e.text = LandWords(e.text); // #656/#677
             s.chronicle.Add(e);
             Chronicled?.Invoke(e);
             d.entryId = e.id;

@@ -277,5 +277,58 @@ namespace AquariumCiv.View.PlayTests
             yield return Png("newstart_07_deadfall_" + (carrying ? "carry" : "pickup"));
             AssertNoErrors("the runs and hunger");
         }
-    }
+            // ------------------------------------------------------------------ tester 2026-11-14
+        /// <summary>Hungry on bare land with nothing placed: once a visit someone says what they lack: the land greening while no jar is
+        /// ready; something that grows food once the bushes' jar is ready (and the Kit's dot stays on).</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Hungry_OnBareLand_TheWayOutShows()
+        {
+            yield return OpenNewBox(2656);
+            Assert.IsFalse(Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Thicket), "a bare box: the bushes' jar is not ready");
+            Sim.DebugEmptyBasket();
+            View.DebugNewVisit();
+            yield return Until(() => View.HungerLinesSaid > 0, 20f);
+            Assert.AreEqual(1, View.HungerLinesSaid, "a hunger line, once");
+            CollectionAssert.Contains(NewStartView.HungryLandLines, View.LastHungerLine, "no jar ready: the line looks to the land greening");
+            yield return new WaitForSecondsRealtime(8f);
+            Assert.AreEqual(1, View.HungerLinesSaid, "at most once a visit");
+
+            Sim.DebugJarsReady();
+            Assert.IsTrue(Sim.JarReady(AquariumCiv.Sim.Eco.LifeSpecies.Thicket));
+            View.DebugNewVisit();
+            yield return Until(() => View.HungerLinesSaid > 1, 20f);
+            Assert.AreEqual(2, View.HungerLinesSaid, "the next visit says it again");
+            CollectionAssert.Contains(NewStartView.HungryJarLines, View.LastHungerLine, "the jar is ready: they want something that grows food");
+            yield return Frames(10);
+            Assert.IsTrue(GameHud.Instance.LifeDotShown, "the Kit's dot stays on while the jar waits");
+            Look(FireWorld(), 0.35f);
+            yield return Png("newstart_13_hungry_jar_line");
+            StringAssert.DoesNotContain("root", View.LastHungerLine.ToLowerInvariant());
+            AssertNoErrors("hunger's way out");
+        }
+
+        /// <summary>The first logs wait for a wedding (or any moment) to end, and lie on the pile only once they are set down.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator TheFirstWood_WaitsForAMoment_LogsOnlyWhenSetDown()
+        {
+            yield return OpenNewBox(4677);
+            EcoDebug.FirstBushNow();
+            yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 15f);
+            string m = StagedMoments.DebugPlayNow(MomentKind.Wedding);
+            Debug.Log("[newstart] " + m);
+            yield return Frames(30);
+            bool moment = StagedMoments.Playing > 0 || StagedMoments.PlayingMoment(Sim) != null;
+            NewStartView.DebugFirstWildWoodNow();
+            yield return Frames(30);
+            Assert.IsTrue(Sim.FirstWildWoodPending);
+            Assert.AreEqual(0, Stash.LogsShown, "no logs on the pile before they are carried home");
+            if (moment) Assert.IsFalse(View.FirstWoodPlaying, "the first logs wait while the wedding plays");
+            yield return Until(() => View.FirstWoodPlaying, 120f);
+            Assert.IsTrue(View.FirstWoodPlaying, "then they come");
+            Assert.AreEqual(0, Stash.LogsShown, "still none on the pile while they are carried");
+            yield return Until(() => !View.FirstWoodPlaying, 45f);
+            Assert.That(Stash.LogsShown, Is.GreaterThan(0), "set down: on the pile");
+            AssertNoErrors("the queued first wood");
+        }
+}
 }

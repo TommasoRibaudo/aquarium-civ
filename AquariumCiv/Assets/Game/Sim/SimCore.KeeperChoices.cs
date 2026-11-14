@@ -94,6 +94,7 @@ namespace AquariumCiv.Sim
                             id = s.NextId(), month = month, kind = "keeper", keeper = true, salience = 0.8f, notableId = d.PersonOf(option), otherNotableId = d.PersonOf(1 - option),
                             text = outcomes[k] == DilemmaEnd.Answered ? $"The Keeper chose {label}." : $"The Keeper let the people decide, and they chose {label}.",
                         };
+                        entry.text = LandWords(entry.text); // #656/#677
                         s.chronicle.Add(entry);
                         d.answerEntryId = entry.id;
                     }

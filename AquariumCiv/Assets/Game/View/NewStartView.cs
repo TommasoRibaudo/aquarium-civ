@@ -120,6 +120,8 @@ namespace AquariumCiv.View
         void OnDisable()
         {
             if (Instance == this) Instance = null;
+            if (caughtUpBound && GameClock.Instance != null) GameClock.Instance.CaughtUp -= OnReturn;
+            caughtUpBound = false;
             if (PeopleView.StartHook == (PeopleView.StartCueHook)Hook) PeopleView.StartHook = null;
             if (PeopleView.HungryLook == (System.Func<PersonRef, float, bool>)LookingUp) PeopleView.HungryLook = null;
             if (SimLayout.FireStageShown == (System.Func<SimCore, CampFireStage>)StageShown) SimLayout.FireStageShown = null;
@@ -184,7 +186,11 @@ namespace AquariumCiv.View
             }
             if (aPhase != ArrivalPhase.None) StepArrival(sim, pv, dt);
 
-            if (fwT < 0f && sim.FirstWildWoodPending && !sim.CatchingUp && aPhase == ArrivalPhase.None && sim.StockSetDown && !FirstRunBusy())
+            StepArrivalLine(sim, dt);
+            // the first logs lie on the pile only once they are carried home and set down (tester 2026-11-14: they were there before the beat)
+            StashProps.HoldLogs = sim.FirstWildWoodPending && !fwSetDown && sim.State.newStart.fireOverride < 0;
+            StepHunger(sim, pv, dt);
+            if (fwT < 0f && sim.FirstWildWoodPending && !sim.CatchingUp && aPhase == ArrivalPhase.None && sim.StockSetDown && !PromptUp() && !StageBusy(sim))
             {
                 if (sim.State.era != Era.Camp || pv == null || pv.Planner == null || !pv.Planner.TryGetStash(out _)) sim.MarkFirstWildWoodSeen(); // past the camp: nothing to show at a pile
                 else BeginFirstWood(sim, pv);
@@ -192,10 +198,33 @@ namespace AquariumCiv.View
             if (fwT >= 0f) StepFirstWood(sim, pv, dt);
         }
 
+        /// <summary>The first run still has the glass misted or its own mist prompt up (tester 2026-11-14: the "Hold to mist" ring sat
+        /// on the walking group): the founders wait at the edge until the first mist is done.</summary>
         static bool FirstRunBusy()
         {
             var fr = FirstRunView.Instance;
-            return fr != null && fr.Active && fr.Step <= FirstRunStep.Wipe;
+            return fr != null && fr.Active && fr.Step is FirstRunStep.Arrive or FirstRunStep.Wipe or FirstRunStep.Rain; // (Name comes after Rain on a living land, but is a lower number)
+        }
+
+        /// <summary>A first-run prompt or sheet is on screen: a line waits for it to clear.</summary>
+        static bool PromptUp()
+        {
+            var fr = FirstRunView.Instance;
+            return fr != null && fr.Active;
+        }
+
+        /// <summary>Any other moment or beat has the stage (a wedding, a staged moment, a placed-life arrival, Show me): the first logs wait.</summary>
+        static bool StageBusy(SimCore sim)
+        {
+            var mp = MomentPlayer.Instance;
+            if (mp != null && mp.Playing) return true;
+            if (StagedMoments.Playing > 0 || StagedMoments.PlayingMoment(sim) != null) return true;
+            var show = ShowMeDirector.Instance;
+            if (show != null && show.Busy) return true;
+            var life = LifeArrivalView.Instance;
+            if (life != null && life.AnyPlaying) return true;
+            var water = FirstWaterView.Instance;
+            return water != null && water.Playing;
         }
 
         // ---------------------------------------------------------------- the arrival
@@ -272,7 +301,7 @@ namespace AquariumCiv.View
             {
                 case ArrivalPhase.Wait:
                     foreach (var m in arrival) { m.style = DollStyle.Stand; m.faceTo = m.path[m.path.Count - 1]; }
-                    if (!FirstRunBusy()) { aPhase = ArrivalPhase.Walk; aT = 0f; }
+                    if (!FirstRunBusy()) { aPhase = ArrivalPhase.Walk; aT = 0f; LeanArrival(); }
                     break;
                 case ArrivalPhase.Walk:
                 {
@@ -299,7 +328,7 @@ namespace AquariumCiv.View
                     if (aT >= SetDownSeconds) { aPhase = ArrivalPhase.Settle; aT = 0f; foreach (var m in arrival) { m.style = DollStyle.Stand; m.faceTo = fire; } }
                     break;
                 case ArrivalPhase.Settle:
-                    if (!lined && aT > 0.3f) { lined = true; Say(sim, arrival, ArrivalLines); }
+                    if (!lined) { lined = true; lineWho = arrival.Count > 0 ? arrival[0].who : default; foreach (var m in arrival) if (m.who.IsNotable) { lineWho = m.who; break; } lineDue = 60f; }
                     if (aT >= SettleSeconds) EndArrival();
                     break;
             }
@@ -374,7 +403,7 @@ namespace AquariumCiv.View
             StashProps.HoldLogs = true;
             fwT = 0f; fwSetDown = false; lined = false;
             FirstWoodPlayed++;
-            Lean(tree);
+            LeanHold(Vector2.Lerp(tree, fire, 0.5f), 0.4f, () => FirstWoodPlaying);
             return true;
         }
 
@@ -426,7 +455,6 @@ namespace AquariumCiv.View
                 StashProps.HoldLogs = false;
                 var stash = box.GetComponent<StashProps>();
                 if (pv != null && pv.Planner != null && stash != null) { stash.Sync(pv.Planner); stash.Bump(); }
-                Lean(fire);
             }
             if (fwSetDown && !lined && done) { lined = true; Say(sim, wood, FirstWoodLines); fwT = Mathf.Max(fwT, 0f); doneAt = fwT; }
             if ((lined && fwT - doneAt >= SettleSeconds) || fwT > MaxFirstWoodSeconds)
@@ -437,6 +465,22 @@ namespace AquariumCiv.View
             }
         }
         float doneAt;
+        PersonRef lineWho; float lineDue = -1f; // the arrival's line, waiting for the first run's prompts to clear
+
+        /// <summary>The arrival's line once nothing of the first run is on screen (gives up after a minute).</summary>
+        void StepArrivalLine(SimCore sim, float dt)
+        {
+            if (lineDue < 0f) return;
+            lineDue -= dt;
+            if (lineDue < 0f) return;
+            if (PromptUp()) return;
+            lineDue = -1f;
+            var show = ShowMeDirector.Instance;
+            if (show == null || lineWho.IsNone) return;
+            string line = ArrivalLines[(sim.State.seed & int.MaxValue) % ArrivalLines.Length];
+            show.SayLine(line, lineWho, 4f);
+            LastLine = line;
+        }
 
         void EndFirstWood()
         {
@@ -444,6 +488,58 @@ namespace AquariumCiv.View
             wood.Clear();
             if (fwT >= 0f) StashProps.HoldLogs = false;
             fwT = -1f;
+        }
+
+        // ---------------------------------------------------------------- hunger's way out
+        /// <summary>Tester 2026-11-14: hungry on bare land, with nothing placed, the way out must show (nothing big comes by itself, 2026-11-08):
+        /// once a visit a person says what they lack. With the bushes' jar ready (unplaced) the line wants something that grows food (and the
+        /// Kit's dot and the life slot's stay on, GameHud.FollowLife); with no jar ready yet, the line looks to the land greening first.</summary>
+        public static readonly string[] HungryJarLines =
+        {
+            "Nothing here grows anything we can eat. Not yet.",
+            "If only something with berries would come up out of this grass.",
+        };
+        public static readonly string[] HungryLandLines =
+        {
+            "The ground is bare. When it greens, maybe something we can eat will grow.",
+            "Nothing grows here yet. We wait for the green.",
+        };
+        /// <summary>Real seconds into a visit before the hunger line (so it never lands on the return's own beats).</summary>
+        public const float HungerLineAfter = 6f;
+        public int HungerLinesSaid { get; private set; }
+        public string LastHungerLine { get; private set; } = "";
+        bool hungerSaid; float visitT; bool caughtUpBound;
+
+        void OnReturn(CatchUpResult _) { hungerSaid = false; visitT = 0f; }
+        /// <summary>Tests and the panel: a new visit begins (the hunger line may be said again).</summary>
+        public void DebugNewVisit() => OnReturn(default);
+
+        /// <summary>The line a hungry camp says now, or null when none is due (not hungry, the land gives food, the bushes are placed).</summary>
+        public static string HungerLineFor(SimCore sim)
+        {
+            if (sim == null || !sim.NewStartOn || !sim.Hungry || sim.LandGivesFood) return null;
+            var thicket = AquariumCiv.Sim.Eco.LifeSpecies.Thicket;
+            if (sim.LifeIsPlaced(thicket)) return null;
+            var lines = sim.JarReady(thicket) ? HungryJarLines : HungryLandLines;
+            return lines[(sim.State.seed & int.MaxValue) % lines.Length];
+        }
+
+        void StepHunger(SimCore sim, PeopleView pv, float dt)
+        {
+            if (!caughtUpBound && GameClock.Instance != null) { GameClock.Instance.CaughtUp += OnReturn; caughtUpBound = true; }
+            visitT += dt;
+            if (hungerSaid || visitT < HungerLineAfter || PromptUp() || StageBusy(sim) || aPhase != ArrivalPhase.None || fwT >= 0f) return;
+            string line = HungerLineFor(sim);
+            if (line == null || pv == null || pv.Planner == null) return;
+            var show = ShowMeDirector.Instance;
+            if (show == null) return;
+            pv.StandingNow(whoBuf, px, pz);
+            PersonRef who = default;
+            foreach (var w in whoBuf) { var st = pv.Planner.StageOf(w); if (st != LifeStage.Adult && st != LifeStage.Elder) continue; who = w; if (w.IsNotable) break; }
+            if (who.IsNone) return;
+            hungerSaid = true;
+            show.SayLine(line, who, 4.5f);
+            LastHungerLine = line; HungerLinesSaid++;
         }
 
         // ---------------------------------------------------------------- shared
@@ -456,6 +552,22 @@ namespace AquariumCiv.View
             foreach (var m in cast) if (m.who.IsNotable) { who = m.who; break; }
             show.SayLine(line, who, 4f);
             LastLine = line;
+        }
+
+        /// <summary>Tester 2026-11-14: the walk-in at the default zoom is ~20 px dolls: the camera leans in on the way they walk (like the
+        /// placed-life arrivals: eases back to the player's view after the set-down; a two-finger move or a pan cancels it).</summary>
+        void LeanArrival()
+        {
+            if (arrival.Count == 0) return;
+            var a = arrival[0].path[0]; var b = arrival[0].path[arrival[0].path.Count - 1];
+            LeanHold(Vector2.Lerp(a, b, 0.55f), 0.42f, () => ArrivalPlaying);
+        }
+
+        void LeanHold(Vector2 at, float zoom, System.Func<bool> hold)
+        {
+            var cam = Camera.main != null ? Camera.main.GetComponent<BoxCamera>() : null;
+            if (cam == null || box == null || box.land == null) return;
+            if (cam.LeanIn(box.transform.TransformPoint(box.land.OnGround(at.x, at.y)), zoom, hold)) Leans++;
         }
 
         void Lean(Vector2 at)

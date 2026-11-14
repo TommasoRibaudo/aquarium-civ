@@ -469,6 +469,7 @@ namespace AquariumCiv.Sim
         ChronicleEntry RelicLine(string kind, string text, float salience, int notableId, int buildingId)
         {
             var s = State;
+            text = LandWords(text); // #656/#677
             if (s.relicLineNextId < RelicLineIdBase) s.relicLineNextId = RelicLineIdBase;
             var e = new ChronicleEntry { id = s.relicLineNextId++, month = s.month, kind = kind, text = text, salience = salience, notableId = notableId, buildingId = buildingId };
             s.chronicle.Add(e);
