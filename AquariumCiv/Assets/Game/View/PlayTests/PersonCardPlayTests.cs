@@ -107,7 +107,7 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(Shots);
+            Directory.CreateDirectory(Path.GetDirectoryName(Shots + name + ".png"));
             File.WriteAllBytes(Shots + name + ".png", tex.EncodeToPNG());
             UnityEngine.Object.Destroy(tex);
         }
@@ -253,6 +253,8 @@ namespace AquariumCiv.View.PlayTests
                 yield return Shot("pc-card");
                 // the stories under their tab, and one "Show me"
                 var scroll = cards.CardRoot.Q<ScrollView>("person-card-body");
+                cards.SetExpanded(true); // #674: the tabs show on the tall card only
+                yield return new WaitForSecondsRealtime(1.0f);
                 yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-recent")));
                 Assert.AreEqual(CardTab.Recent, cards.Tab, "a tap on Recent");
                 yield return null; yield return null;
@@ -269,6 +271,7 @@ namespace AquariumCiv.View.PlayTests
 
                 // lines to the ties: zoom out so their dolls are in view
                 yield return TapAt(GameUiPanel.ScreenCenter(cards.CardRoot.Q("person-card-about")));
+                cards.SetExpanded(false);
                 cards.Open(id, false);
                 cam.FlyTo(Vector3.zero, 1f, 0.2f);
                 yield return new WaitForSecondsRealtime(0.5f);
@@ -710,13 +713,14 @@ namespace AquariumCiv.View.PlayTests
 
                 // the first view shows a line and the ties, with nothing cut
                 var view = root.Q<ScrollView>("person-card-body");
-                Assert.GreaterOrEqual(view.worldBound.yMin, root.Q("person-card-tabs").worldBound.yMax - 1f, "the tab line clears the text");
+                Assert.AreEqual(DisplayStyle.None, root.Q("person-card-tabs").resolvedStyle.display, "#674: no tabs on the first view");
+                Assert.GreaterOrEqual(view.worldBound.yMin, sub.worldBound.yMax - 1f, "the subtitle clears the text");
                 var face = root.Query<GlassChip>().First()?.Face;
                 yield return Shot($"pc-board-{w}x{h}{(longSub ? "-long" : "")}");
                 if (face != null) Assert.LessOrEqual(face.worldBound.yMax, view.worldBound.yMax + 1f, "a row of chips shows under the line");
 
                 // every control reaches a thumb
-                foreach (var tab in root.Query<Button>(className: "kg-tab").ToList()) Assert.GreaterOrEqual(tab.worldBound.height, GameUiPanel.MinTarget - 1f, tab.name);
+                foreach (var tab in root.Query<Button>(className: "kg-tab").ToList()) if (tab.resolvedStyle.display == DisplayStyle.Flex && tab.worldBound.height > 0f) Assert.GreaterOrEqual(tab.worldBound.height, GameUiPanel.MinTarget - 1f, tab.name);
                 foreach (var chip in root.Query<GlassChip>().ToList()) Assert.GreaterOrEqual(chip.worldBound.height, GameUiPanel.MinTarget - 1f, chip.name);
                 Assert.IsTrue(((GlassButton)close).ContainsPoint(new Vector2(close.layout.width * 0.5f, -10f)), "Close reaches past its drawn edge");
 
@@ -824,6 +828,12 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsTrue(root.Q("person-card-about").ClassListContains("kg-tab--on"));
                 Assert.IsNotNull(root.Q("person-card-about-stories"), "question 35: About ends in a story");
                 Assert.IsNull(root.Q("person-card-stories"), "the story lists wait under their tabs");
+                Assert.AreEqual(DisplayStyle.None, root.Q("person-card-tabs").resolvedStyle.display, "#674: the short card has no tabs");
+                var tabsAt = root.Q("person-card-tabs");
+                cards.SetExpanded(true);
+                yield return new WaitForSecondsRealtime(1.0f);
+                Assert.AreEqual(DisplayStyle.Flex, tabsAt.resolvedStyle.display, "#674: the tall card shows them");
+                Assert.Greater(tabsAt.worldBound.yMin, root.Q("person-card-sub").worldBound.yMax - 8f, "under the subtitle, where they always stood (pc-tabs tucks up 5.5 px)");
 
                 yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-recent"));
                 Assert.AreEqual(CardTab.Recent, cards.Tab);
@@ -832,9 +842,14 @@ namespace AquariumCiv.View.PlayTests
                 yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-best"));
                 Assert.IsTrue(cards.ShowingBest);
                 Assert.AreEqual("card tab: About", PersonCardView.DebugNextTab(), "the cheat goes round");
+                yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-recent"));
+                cards.SetExpanded(false);
+                yield return null;
+                Assert.AreEqual(CardTab.About, cards.Tab, "#674: folding the card goes back to About");
 
                 // the toast rides above the card, the pin mark shows
-                cards.ShowTab(CardTab.Recent);
+                cards.ShowTab(CardTab.Recent); // #674: expands the card first
+                yield return new WaitForSecondsRealtime(1.0f);
                 yield return TapAt(GameUiPanel.ScreenCenter(root, "person-card-pin"));
                 yield return null; yield return null;
                 Assert.IsTrue(root.Q("person-card-pin").ClassListContains("kg-btn--marked"), "Pinned has its mark");

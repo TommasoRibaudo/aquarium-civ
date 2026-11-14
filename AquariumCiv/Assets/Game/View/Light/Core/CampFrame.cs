@@ -22,6 +22,9 @@ namespace AquariumCiv.Lighting
         public const float DollHeight = 0.213f;
         /// <summary>The frame's angles: the opening view's (the camera doesn't tilt to dodge the rim: the near glass fades instead).</summary>
         public const float Yaw = 28f, Pitch = 34f;
+        /// <summary>#658 (signed off 2026-11-14, framing B): the default view sits much closer on the camp than the fitted frame, centred on
+        /// the fire, a little lower. The zoom is this share of the fitted zoom; the pitch is at least <see cref="ClosePitch"/> (and the floor).</summary>
+        public const float CloseShare = 0.55f, ClosePitch = 30f;
         /// <summary>How long the ease to the frame takes on an open or a return.</summary>
         public const float EaseSeconds = 1.4f;
 

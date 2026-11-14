@@ -135,10 +135,10 @@ namespace AquariumCiv.Tests
         {
             var sim = World(); var m = Model(sim); var st = sim.State.eco;
             int V = sim.Config.eco.villageTrees; // the gate's tree count (10 since 2026-11-14)
-            // before the camp: the camp's pieces
-            Assert.AreEqual("The camp waits for: a meadow · rabbits in the meadow", sim.VillageWaitsLine);
+            // before the camp: no list (2026-11-14: the first upgrade gets none, only later ones)
+            Assert.AreEqual("", sim.VillageWaitsLine);
             st.cGrass = 1;
-            Assert.AreEqual("The camp waits for: more meadow · rabbits in the meadow", sim.VillageWaitsLine);
+            Assert.AreEqual("", sim.VillageWaitsLine);
             st.cGrass = (int)(sim.Config.eco.campMeadow * EcoLand.N) + 1;
             SetPlaced(m, LifeSpecies.Rabbits); st.rabbits = 2f;
             Assert.AreEqual("", sim.VillageWaitsLine, "every piece of the camp is there: the gate opens at the next step");

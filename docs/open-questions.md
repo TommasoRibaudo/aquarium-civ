@@ -6,6 +6,15 @@ deleted here. Recommended options come first and are marked ★. On GitHub: issu
 _Last updated 2026-11-14._
 
 ## Playtest 1 (first outside player, 2026-11-13/14)
+> **Walkthrough 2026-11-14 (verdicts: `overnight/open-questions-signoff.md`).** Signed off, with these built after it on p9/signoff:
+> #656 the founders' tents and the hide frame wait for the set-down, then go up one by one; #651 nobody works at the bare fire
+> spot before there is a fire (the toolmaker knaps at their door); #674 About/Recent/Best only on the expanded card; #665 a new
+> rabbit trail is pressed in hop by hop, trails one after another; #658 framing B is the default camp view; #570 no waits-for
+> list before the camp, a tapped locked seed stays greyed; #575 the button reads "Rename"; the berry baskets and the long table's
+> dishes redrawn. #679 closed (no tree notification). Still open for a design call: #651/#677 the camp's chores (too little to
+> do, the fire-tending pose reads as stroking). Closed on the older list: #99 #102 #103 #175 #178 #228 #279 #366 (axe bug
+> #684) #516 #518 #520 #524 #525 #526 #538 #587.
+
 Everything built from the first outside playtest, and what tonight's run adds. Look stops are staged in the box; judge each one at
 phone size. Merged to dev: #646 (#643-#645), #678 (quick wins). Tonight: the polish batch and the new start (its own PR, not merged).
 
