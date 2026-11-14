@@ -21,7 +21,7 @@ namespace AquariumCiv.EditorTools
         public const string ScenePath = "Assets/Game/Scenes/Slice.unity";
         const string ViewDir = "Assets/Game/View";
 
-        [MenuItem("AquariumCiv/Agent/Slice/Build Slice Scene")]
+        [MenuItem("Aquarium Civ/Agent tools/Slice/Build Slice Scene")]
         public static string Build()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);

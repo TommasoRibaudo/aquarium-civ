@@ -17,7 +17,7 @@ namespace AquariumCiv.EditorTools
     {
         const string Dir = "Assets/Spikes/StyleKit";
 
-        [MenuItem("AquariumCiv/Agent/Style Spike/Build Camp + Village")]
+        [MenuItem("Aquarium Civ/Agent tools/Style Spike/Build Camp + Village")]
         public static string BuildBoth() => Build(Era.Camp) + "\n" + Build(Era.Village);
 
         public static string Build(Era era)

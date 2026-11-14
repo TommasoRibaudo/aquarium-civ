@@ -124,7 +124,7 @@ namespace AquariumCiv.Sim.Eco
             if (below.HasValue && !IsPlaced(below.Value)) return false;
             switch (s)
             {
-                case LifeSpecies.Thicket: return MeadowFrac >= t.jarThicketMeadow;
+                case LifeSpecies.Thicket: return st.treeCell >= 0 && MeadowFrac >= t.jarThicketMeadow; // 2026-11-14: the seed is in the ground first
                 case LifeSpecies.Rabbits: return MeadowFrac >= t.jarRabbitsMeadow;
                 case LifeSpecies.Deer: return st.cTrees >= t.jarDeerTrees;      // the Keeper's own grown tree counts
                 case LifeSpecies.Ducks: return st.cPond >= t.jarDucksPond;

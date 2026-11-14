@@ -5,13 +5,13 @@ namespace AquariumCiv.EditorTools
 {
     /// <summary>
     /// Makes the four materials the living land's wet look uses (#266), as assets under <c>Game/View/Resources/EcoGround/</c> so the
-    /// shader is in every build (EcoSurface loads them with Resources.Load). Run once: <c>AquariumCiv/Agent/Make EcoGround materials</c>.
+    /// shader is in every build (EcoSurface loads them with Resources.Load). Run once: <c>Aquarium Civ/Agent tools/Make EcoGround materials</c>.
     /// </summary>
     public static class EcoGroundMaterials
     {
         const string Dir = "Assets/Game/View/Resources/EcoGround";
 
-        [MenuItem("AquariumCiv/Agent/Make EcoGround materials")]
+        [MenuItem("Aquarium Civ/Agent tools/Make EcoGround materials")]
         public static string Make()
         {
             var sh = Shader.Find("AquariumCiv/View/EcoGround");

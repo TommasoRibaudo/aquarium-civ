@@ -264,6 +264,7 @@ namespace AquariumCiv.Tests
             var sim = World();
             for (int s = 0; s < seasons && !sim.CampGateOpen; s++)
             {
+                if (care && s == 0) LifeJarTests.PlantKeepersTree(sim); // 2026-11-14: the seed first, the bushes wait for it
                 if (care && (s <= 1 || s % 4 == 0)) EcoTests.PlaceReadyJars(sim); // #417-#419: the thicket, then the rabbits
                 if (care && (s <= 1 || s % 4 == 0))
                     for (int k = 0; k < 3; k++)

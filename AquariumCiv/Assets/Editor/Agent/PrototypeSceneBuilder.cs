@@ -41,7 +41,7 @@ namespace AquariumCiv.EditorTools
             public string scenePath;
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P0 Sandbox")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P0 Sandbox")]
         public static string BuildSandbox()
         {
             var b = BuildBase("P0", $"{SharedDir}/Sandbox.unity", "Cleaning felt satisfying", TestMode.Lab);
@@ -49,7 +49,7 @@ namespace AquariumCiv.EditorTools
             return Report(b);
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P1 Glass and Mess")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P1 Glass and Mess")]
         public static string BuildP1()
         {
             var b = BuildBase("P1", "Assets/Prototypes/P1_GlassMess/P1_GlassMess.unity", "Cleaning felt satisfying", TestMode.Lab);
@@ -66,7 +66,7 @@ namespace AquariumCiv.EditorTools
             return Report(b);
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P2 Return to Mess")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P2 Return to Mess")]
         public static string BuildP2()
         {
             // Diary by default: real time at design speed (1 real hour = 1 game year, mess caps at 48 h).
@@ -89,7 +89,7 @@ namespace AquariumCiv.EditorTools
             return Report(b);
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build Test Hub")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build Test Hub")]
         public static string BuildHub()
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -112,7 +112,7 @@ namespace AquariumCiv.EditorTools
         }
 
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P3 While You Were Away")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P3 While You Were Away")]
         public static string BuildP3()
         {
             // Lab by default (the Test Hub opens it in lab or diary). Diary = real time at design speed.
@@ -125,7 +125,7 @@ namespace AquariumCiv.EditorTools
             return Report(b);
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P4 Book of Ages")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P4 Book of Ages")]
         public static string BuildP4()
         {
             var b = BuildLabBase("P4", "Assets/Prototypes/P4_BookOfAges/P4_BookOfAges.unity", "I'd show this to a friend");
@@ -143,7 +143,7 @@ namespace AquariumCiv.EditorTools
             return Report(b);
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P5 Keeper's Nudge")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P5 Keeper's Nudge")]
         public static string BuildP5()
         {
             var b = BuildLabBase("P5", "Assets/Prototypes/P5_KeepersNudge/P5_KeepersNudge.unity", "I felt I shaped what happened");
@@ -172,7 +172,7 @@ namespace AquariumCiv.EditorTools
             return Report(b);
         }
 
-        [MenuItem("AquariumCiv/Agent/Prototypes/Build P6 Eras and Shelf")]
+        [MenuItem("Aquarium Civ/Agent tools/Prototypes/Build P6 Eras and Shelf")]
         public static string BuildP6()
         {
             var b = BuildLabBase("P6", "Assets/Prototypes/P6_ErasAndShelf/P6_ErasAndShelf.unity", "I want to see what comes next");

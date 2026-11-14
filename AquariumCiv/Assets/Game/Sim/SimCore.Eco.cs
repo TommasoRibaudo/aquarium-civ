@@ -145,7 +145,7 @@ namespace AquariumCiv.Sim
             return EcologyOn ? EcoM.MistRadius(Math.Min(cfg.mistMaxAmount, Math.Max(0f, seconds) / cfg.mistSecondsPerUnit)) : 0f;
         }
 
-        /// <summary>The seed is unlocked (the first bushes came after the camp) and no tree stands yet.</summary>
+        /// <summary>The seed is in the life jar (from the start: the first rung, before the bushes) and no tree stands yet.</summary>
         public bool CanPlantTree => EcologyOn && State.eco.treeCell < 0 && EcoM.SeedAvailable;
 
         /// <summary>Plant the Keeper's one tree at (x, z). False when the seed isn't unlocked, a tree stands already, or the

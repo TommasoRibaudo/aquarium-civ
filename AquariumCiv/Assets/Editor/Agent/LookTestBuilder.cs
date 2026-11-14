@@ -15,7 +15,7 @@ namespace AquariumCiv.EditorTools
         const string ScenePath = "Assets/Scenes/LookTest.unity";
         const int Radius = 3;
 
-        [MenuItem("AquariumCiv/Agent/Build Look Test Scene")]
+        [MenuItem("Aquarium Civ/Agent tools/Build Look Test Scene")]
         public static string Build()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
