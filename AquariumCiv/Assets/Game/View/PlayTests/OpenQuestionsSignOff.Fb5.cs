@@ -350,7 +350,7 @@ namespace AquariumCiv.View.PlayTests
             Hour(11f);
             DefaultView();
             yield return Wait(1.5f);
-            Say("the title: " + GameHud.TitleLine(Mathf.FloorToInt(Sim.State.Year), GameHud.SeasonWord(Sim.State), Sim.State.population));
+            Say("the title: " + GameHud.TitleLine(AquariumCiv.Sim.SimCore.YearNo(Sim.State.month), GameHud.SeasonWord(Sim.State), Sim.State.population));
         }
 
         // ---------------------------------------------------------------- #577 glass and lid

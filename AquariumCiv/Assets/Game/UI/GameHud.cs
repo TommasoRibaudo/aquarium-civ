@@ -780,7 +780,7 @@ namespace AquariumCiv.GameUI
             var words = new VisualElement { name = "hud-title-text", pickingMode = PickingMode.Ignore };
             words.AddToClassList("hud-title-text");
             words.Add(nameLabel = Text("Your box", "hud-title-name", "type-box"));
-            words.Add(yearLabel = Text("Year 0", "hud-title-year", "type-sub"));
+            words.Add(yearLabel = Text("Year 1", "hud-title-year", "type-sub"));
             nameLabel.pickingMode = yearLabel.pickingMode = PickingMode.Ignore;
             title.Add(words);
             topRow.Add(title);
@@ -1128,7 +1128,7 @@ namespace AquariumCiv.GameUI
             PlaceToast();
         }
 
-        /// <summary>#571: the line under the box name, built from parts: "Year 37 · 16 people". #576 fills <paramref name="season"/> ("Year 37 · Autumn · 16 people").</summary>
+        /// <summary>#571: the line under the box name (years count from 1, as History and the book do), built from parts: "Year 37 · 16 people". #576 fills <paramref name="season"/> ("Year 37 · Autumn · 16 people").</summary>
         public static string TitleLine(int year, string season, int population)
         {
             string line = "Year " + year.ToString(CultureInfo.InvariantCulture);
@@ -1149,9 +1149,9 @@ namespace AquariumCiv.GameUI
             var s = sim.State;
             string place = string.IsNullOrEmpty(s.settlementName) ? "Your box" : s.settlementName;
             nameLabel.text = place;
-            yearLabel.text = TitleLine(Mathf.FloorToInt(s.Year), SeasonWord(s), s.population);
+            yearLabel.text = TitleLine(AquariumCiv.Sim.SimCore.YearNo(s.month), SeasonWord(s), s.population);
             if (historyBody != null)
-                historyBody.text = $"{place}, year {Mathf.FloorToInt(s.Year)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
+                historyBody.text = $"{place}, year {AquariumCiv.Sim.SimCore.YearNo(s.month)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
         }
 
         // ---------------- element helpers ----------------
