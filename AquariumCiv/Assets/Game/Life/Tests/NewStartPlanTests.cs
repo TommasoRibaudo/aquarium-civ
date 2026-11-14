@@ -40,6 +40,22 @@ namespace AquariumCiv.Life.Tests
 
         static bool RootDig(PersonActivity a) => a.kind == ActivityKind.Gather && a.place.kind == PlaceKind.Stream;
 
+        /// <summary>#656/#677 (view pass): hunger is shown, never punished: with the basket empty the same days' walks take longer
+        /// (<see cref="LifePlanner.HungryPace"/>); the view adds the looks at the sky.</summary>
+        [Test]
+        public void Hungry_TheyWalkALittleSlower()
+        {
+            var sim = NewBox(7);
+            float Walks() => Plan(sim, 4).Where(a => a.moving).Sum(a => a.end - a.start);
+            Assert.IsFalse(sim.Hungry, "the basket is full at the start");
+            float fed = Walks();
+            sim.DebugEmptyBasket();
+            Assert.IsTrue(sim.Hungry, "the food is gone");
+            float hungry = Walks();
+            Assert.That(fed, Is.GreaterThan(0f), "they walk somewhere");
+            Assert.That(hungry, Is.GreaterThan(fed * 1.08f), $"hungry, the walks take longer ({fed:0.00} h fed, {hungry:0.00} h hungry)");
+        }
+
         [TestCase(1)]
         [TestCase(7)]
         [TestCase(42)]

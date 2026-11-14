@@ -336,6 +336,10 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0, 0.045f, 0), new Vector3(0.012f, 0.17f, 0.012f), Palette.Bark);
                     mb.Box(new Vector3(0.012f, 0.06f, 0), new Vector3(0.022f, 0.008f, 0.008f), Palette.Bark);
                     break;
+                case PropKind.Tinder: Tinder(mb); break;
+                case PropKind.Branch: Branch(mb); break;
+                case PropKind.FoodBasket: FoodBasket(mb); break;
+                case PropKind.StickBundle: StickBundle(mb); break;
                 case PropKind.Stick:
                     // A plain staff or stirring paddle (0.24), flat at the low end.
                     mb.Box(new Vector3(0, 0.06f, 0), new Vector3(0.011f, 0.24f, 0.011f), Palette.Bark);
@@ -461,6 +465,57 @@ namespace AquariumCiv.View
 
         /// <summary>#185: the suit: a sun-faded beige. Not a stone's or a tunic's colour.</summary>
         public static readonly Color SuitBeige = new(0.78f, 0.69f, 0.52f);
+
+        /// <summary>#656/#677: dry grass, pale and a little grey-green, for the tinder and the grass fire's heap.</summary>
+        public static readonly Color DryGrass = new(0.80f, 0.72f, 0.46f), DryGrassDark = new(0.62f, 0.58f, 0.36f);
+
+        /// <summary>#656/#677: an armful of dry grass and thin twigs (hugged, Arms slot): a loose pale heap with a few dark twig ends
+        /// sticking out both sides, so it reads as grass and twigs, never a log.</summary>
+        public static void Tinder(MeshBuilder mb)
+        {
+            mb.Ico(new Vector3(0f, 0.004f, 0f), 0.04f, new Vector3(1.5f, 0.75f, 0.9f), DryGrass, 0.18f, DryGrassDark);
+            mb.Ico(new Vector3(0.022f, 0.02f, 0.004f), 0.022f, new Vector3(1.3f, 0.8f, 1f), Color.Lerp(DryGrass, Palette.Straw, 0.5f), 0.2f);
+            for (int i = 0; i < 4; i++)
+            {
+                float a = -18f + i * 12f;
+                var q = Quaternion.Euler(0f, i * 9f - 14f, -90f + a);
+                mb.Prism(new Vector3(-0.07f, -0.004f + i * 0.006f, -0.006f + i * 0.004f), 0.0035f, 0.0025f, 0.14f, 4, Palette.Bark, q);
+            }
+        }
+
+        /// <summary>#656/#677: a fallen branch (over the shoulder): a crooked bark limb with two side twigs and a leaf tuft at the thin end,
+        /// picked up off the ground. Not a cut log (no pale end face).</summary>
+        public static void Branch(MeshBuilder mb)
+        {
+            var q = Quaternion.Euler(0f, 0f, -90f);
+            mb.Prism(new Vector3(-0.08f, 0f, 0f), 0.011f, 0.007f, 0.17f, 5, Palette.Bark, q);
+            mb.Prism(new Vector3(0.02f, 0.002f, 0f), 0.005f, 0.002f, 0.06f, 4, Palette.Bark, Quaternion.Euler(0f, 0f, 45f));
+            mb.Prism(new Vector3(0.05f, 0.002f, 0f), 0.004f, 0.002f, 0.05f, 4, Palette.Bark, Quaternion.Euler(30f, 0f, 120f));
+            mb.Ico(new Vector3(0.095f, 0.004f, 0f), 0.016f, new Vector3(1.2f, 0.8f, 1f), new Color(0.47f, 0.56f, 0.3f), 0.2f);
+        }
+
+        /// <summary>#656/#677: the founders' carried basket of food (held in the hand): a deeper basket with a rim, dried food heaped in it.</summary>
+        public static void FoodBasket(MeshBuilder mb)
+        {
+            mb.Prism(new Vector3(0, -0.016f, 0), 0.034f, 0.046f, 0.046f, 8, Palette.Thatch, topCol: Color.Lerp(Palette.Thatch, Palette.Bark, 0.4f));
+            mb.Prism(new Vector3(0, 0.028f, 0), 0.047f, 0.047f, 0.006f, 8, Palette.Bark);
+            mb.Ico(new Vector3(-0.012f, 0.034f, 0.004f), 0.017f, new Vector3(1f, 0.7f, 1f), new Color(0.55f, 0.30f, 0.32f), 0.1f);
+            mb.Ico(new Vector3(0.014f, 0.034f, -0.006f), 0.015f, new Vector3(1f, 0.7f, 1f), new Color(0.72f, 0.52f, 0.30f), 0.1f);
+            mb.Ico(new Vector3(0.002f, 0.036f, 0.016f), 0.012f, new Vector3(1f, 0.7f, 1f), new Color(0.45f, 0.36f, 0.55f), 0.1f);
+        }
+
+        /// <summary>#656/#677: the founders' bundle of sticks (hugged, Arms slot), tied in two places: kept, never burned or built with.</summary>
+        public static void StickBundle(MeshBuilder mb)
+        {
+            var q = Quaternion.Euler(0f, 0f, -90f);
+            for (int i = 0; i < 5; i++)
+            {
+                float y = (i % 3) * 0.009f - 0.006f, z = (i / 3) * 0.01f - 0.004f + (i % 2) * 0.003f;
+                mb.Prism(new Vector3(-0.075f + (i % 2) * 0.008f, y, z), 0.0055f, 0.0045f, 0.15f, 5, i % 2 == 0 ? Palette.Bark : Color.Lerp(Palette.Bark, Palette.WoodLight, 0.35f), q);
+            }
+            mb.Prism(new Vector3(-0.035f, 0.003f, 0.001f), 0.016f, 0.017f, 0.008f, 6, Palette.Straw, q);
+            mb.Prism(new Vector3(0.03f, 0.003f, 0.001f), 0.016f, 0.017f, 0.008f, 6, Palette.Straw, q);
+        }
 
         /// <summary>Where a slot sits on an adult doll (scale 1), relative to the feet, and how the prop is turned there.</summary>
         public static (Vector3 pos, Quaternion rot) SlotPose(PropSlot slot)
