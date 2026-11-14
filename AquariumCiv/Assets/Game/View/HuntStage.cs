@@ -96,8 +96,8 @@ namespace AquariumCiv.View
 
         static bool Active(HuntPlan plan, ViewTime now)
         {
-            if (plan.steps.Count < 5) return false;
-            return now.day == plan.day && now.hour < plan.takeHour + 0.05f && now.hour >= plan.steps[4].start;
+            if (!plan.TryStep(HuntPhase.Strike, out var strike)) return false;   // #680: a second try has fewer steps before it
+            return now.day == plan.day && now.hour < plan.takeHour + 0.05f && now.hour >= strike.start;
         }
 
         void Remove(HuntPlan plan)

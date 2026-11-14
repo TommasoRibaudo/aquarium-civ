@@ -70,6 +70,7 @@ namespace AquariumCiv.View.PlayTests
             var seen = new HashSet<HuntPhase>();
             bool spearWalkOut = false, stalkCrouch = false, rabbitShoulder = false, fledAfterStrike = false, calmBeforeStrike = true;
             bool spearStuck = false, spearFlew = false; float closest = 99f; bool shotStalk = false, shotStrike = false, shotCarry = false;
+            bool retryStalk = false, retryStrike = false, shotRetry = false;   // #680: a miss tries once more
             float t0 = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - t0 < 300f)
             {
@@ -77,6 +78,18 @@ namespace AquariumCiv.View.PlayTests
                 var a = ActOf(pv, who);
                 if (a.hunt == HuntPhase.None && seen.Contains(HuntPhase.Return)) break;
                 if (a.hunt != HuntPhase.None) seen.Add(a.hunt);
+                bool inRetry = plan.retry != null && pv.Planner.HuntStepAt(who, pv.Now, out _, out var cur) && cur == plan.retry;
+                if (inRetry)
+                {
+                    if (a.hunt == HuntPhase.Stalk)
+                    {
+                        retryStalk = true; pv.timeScale = 1f;
+                        if (!shotRetry && a.progress > 0.5f) { shotRetry = true; yield return Shot($"hunt_{tag}_retry_stalk"); yield return Close(pv, who, $"hunt_{tag}_retry_stalk_close"); }
+                    }
+                    if (a.hunt == HuntPhase.Strike) retryStrike = true;
+                    if (a.hunt is HuntPhase.WalkOut or HuntPhase.Return or HuntPhase.WalkBack or HuntPhase.Skin or HuntPhase.Cook) pv.timeScale = 6f;
+                    continue;
+                }
                 if (a.hunt == HuntPhase.WalkOut && a.prop == Prop.Spear) spearWalkOut = true;
                 if (a.hunt == HuntPhase.Stalk)
                 {
@@ -129,8 +142,11 @@ namespace AquariumCiv.View.PlayTests
                 Assert.IsFalse(plan.caught);
                 Assert.IsTrue(rv.Field.Alive.Contains(id), "a miss: the rabbit is still there");
                 Assert.IsTrue(fledAfterStrike, "and it bolts");
-                Assert.AreEqual(simBefore, Sim.EcoRabbitCount, "nothing taken");
-                Assert.AreEqual(hidesBefore, Sim.HidesDrying);
+                int second = plan.retry != null && plan.retry.caught ? 1 : 0;
+                if (plan.retry != null) Assert.IsTrue(retryStalk && retryStrike, "#680: the hunter stalks and throws once more");
+                Debug.Log($"[hunt] {tag}: second try {(plan.retry == null ? "none" : plan.retry.caught ? "caught" : "missed")}");
+                Assert.AreEqual(simBefore - second, Sim.EcoRabbitCount, "nothing taken by the miss");
+                Assert.AreEqual(hidesBefore + second, Sim.HidesDrying);
             }
         }
 

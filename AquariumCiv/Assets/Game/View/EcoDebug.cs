@@ -212,6 +212,20 @@ namespace AquariumCiv.View
             return $"hunt started: rabbit {plan.rabbitId}, {(plan.catches ? "will catch" : "will miss")}, strike in {(plan.strikeStart - pv.Now.hour):0.0} h";
         }
 
+        /// <summary>"Hunt: miss, then try again" (#680): a hunt starts now, misses, and the hunter tries once more (that try misses too, so
+        /// the walk home after it shows), even late in the day.</summary>
+        public static string HuntMissThenRetry()
+        {
+            var s = Sim;
+            if (s == null || !s.EcologyOn) return "living land off";
+            var pv = PeopleView.Find();
+            if (pv == null || pv.Planner == null) return "no people";
+            pv.Planner.DebugRetryNext = true;
+            if (!pv.Planner.DebugStartHunt(pv.Now, out var plan)) { pv.Planner.DebugRetryNext = false; return "no hunt: no rabbit shown, or nobody free"; }
+            return plan.retry != null ? $"hunt started: misses rabbit {plan.rabbitId}, then tries rabbit {plan.retry.rabbitId}; first strike in {(plan.strikeStart - pv.Now.hour):0.0} h"
+                                      : "hunt started, but no second try: no other rabbit, or no time left today";
+        }
+
         /// <summary>"Next hunt succeeds / misses" (#283): fixes how the next hunt that has not struck yet ends.</summary>
         public static string ForceHunt(bool catches)
         {

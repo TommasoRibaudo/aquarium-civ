@@ -525,9 +525,8 @@ namespace AquariumCiv.View
         /// <summary>Is the hunted rabbit sitting up now (the hunter freezes at the same moment)?</summary>
         static bool StalkFreeze(HuntPlan hunt, float hour)
         {
-            if (hunt.steps.Count < 4) return false;
-            var st = hunt.steps[3];
-            if (st.phase != HuntPhase.Stalk || hour < st.start || hour >= st.end) return false;
+            if (!hunt.TryStep(HuntPhase.Stalk, out var st)) return false;   // #680: by phase, a second try has no walk to the fire
+            if (hour < st.start || hour >= st.end) return false;
             return HuntStalk.RabbitUp(LifeClock.RealSecondsBetween(st.start, hour), hunt.freezeA, hunt.freezeB);
         }
 
@@ -540,8 +539,8 @@ namespace AquariumCiv.View
             for (int i = 0; i < hunts.Count; i++)
             {
                 var plan = hunts[i];
-                if (plan.steps.Count < 5 || plan.steps[4].phase != HuntPhase.Strike) continue;
-                double rel = HuntClock.FieldSeconds(pv.Now.day, pv.Now.hour) - HuntClock.FieldSeconds(plan.day, plan.steps[4].start);
+                if (!plan.TryStep(HuntPhase.Strike, out var strike)) continue;
+                double rel = HuntClock.FieldSeconds(pv.Now.day, pv.Now.hour) - HuntClock.FieldSeconds(plan.day, strike.start);
                 if (rel < HuntTiming.ReleaseAt) continue;
                 huntFired.TryGetValue(plan, out int fired);
                 if ((fired & 1) == 0)
@@ -590,7 +589,7 @@ namespace AquariumCiv.View
                 var s = kv.Value;
                 if (s.fallenPlan == null || s.doll == null || !Lies(s, pv)) continue;
                 var plan = s.fallenPlan;
-                double landAt = HuntClock.FieldSeconds(plan.day, plan.steps[4].start) + HuntTiming.LandAt;
+                double landAt = HuntClock.FieldSeconds(plan.day, plan.TryStep(HuntPhase.Strike, out var strike) ? strike.start : plan.strikeStart) + HuntTiming.LandAt;
                 float u = Mathf.Clamp01((float)(t - landAt) / HuntTiming.FallSeconds);
                 float e = u * u * (3f - 2f * u);
                 var d = s.doll;
@@ -609,7 +608,7 @@ namespace AquariumCiv.View
             {
                 var h = hunts[i];
                 if (h.rabbitId != id || h.resolved || h.steps.Count < 3) continue;
-                if (hour >= h.steps[0].start && hour < h.resolveHour) return h; // from the walk-out on: spooked by a passer-by then, it was gone before the stalk
+                if (hour >= h.GuardFrom && hour < h.resolveHour) return h; // from the walk-out on: spooked by a passer-by then, it was gone before the stalk (#680: a second try's rabbit from the first throw's walk-out)
             }
             return null;
         }
