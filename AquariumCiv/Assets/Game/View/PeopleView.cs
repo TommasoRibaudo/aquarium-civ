@@ -373,7 +373,7 @@ namespace AquariumCiv.View
             // #365 B9: the bowls round the fire, who pokes it, the pot beside it
             meals.Step(acts, time, pl => planner.Positions.TryGetPosition(pl, out float mx, out float mz) ? new Vector2(mx, mz) : (Vector2?)null, planner.StageOf, planner.JobOf,
                 k => dolls.TryGetValue(k, out var md) && md.placed ? md.pos : (Vector2?)null);
-            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp, (mx, mz) => Box.SurfaceHeight(mx, mz));
+            meals.DrawPot(peopleRoot, Box.SolidMaterial, camp, (mx, mz) => Box.SurfaceHeight(mx, mz), LifeClock.SeasonOf(now.day) == Season.Winter); // #676: it simmers
             seen.Clear();
             claimed.Clear();
             playSpots.Clear();

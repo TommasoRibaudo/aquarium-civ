@@ -58,5 +58,43 @@ namespace AquariumCiv.View.PlayTests
             yield return Snap($"675_seed_hint_{w}x{h}");
             CloseSlice();
         }
+
+        /// <summary>#676: the camp's stew pot up close, by day, at dusk (the cook's hour) and in winter (more steam).</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator StewPot676()
+        {
+            UseLivingLand(true);
+            yield return OpenSlice(1179, 2556, 1234);
+            ShowMeDirector.BubblesOn = false;
+            S.CleanAll();
+            var rig = Camera.main.GetComponent<BoxCamera>();
+            foreach (var (tag, hour, winter) in new[] { ("day", 11.5f, false), ("dusk", 17.8f, false), ("winter", 17.8f, true) })
+            {
+                if (winter) { EcoDebug.SkipSeasons(3); yield return new WaitForSecondsRealtime(1f); }
+                GameObject pot = null;
+                foreach (float hr in new[] { hour, 12.5f, 16.5f, 8f })
+                {
+                    PeopleView.DebugSetHour(hr);
+                    yield return new WaitForSecondsRealtime(3f);
+                    pot = GameObject.Find("Camp stew pot");
+                    if (pot != null && pot.activeInHierarchy) { Debug.Log($"[night] 676 {tag}: pot at {hr}"); break; }
+                }
+                if (pot == null) { Debug.Log($"[night] 676 {tag}: no pot (nobody at the fire)"); continue; }
+                foreach (var (zoom, yaw) in new[] { (0.06f, 0f), (0.03f, 25f) })
+                {
+                    rig.yaw += yaw;
+                    for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 1.2f;)
+                    {
+                        rig.CancelFlight(); rig.minZoom = 0.02f;
+                        rig.target = pot.transform.position + Vector3.up * 0.05f; rig.zoom = zoom; rig.pitch = 40f;
+                        rig.Apply();
+                        yield return null;
+                    }
+                    Debug.Log($"[night] 676 {tag} z{zoom}: pot on screen at {Camera.main.WorldToViewportPoint(pot.transform.position)}");
+                    yield return Snap($"676_pot_{tag}_z{zoom:0.00}");
+                }
+            }
+            CloseSlice();
+        }
     }
 }

@@ -86,5 +86,23 @@ namespace AquariumCiv.View.Tests
             for (float t = 0f; t < 16f; t += 1f / 30f) if (d.StirBegan(7, t, 1f)) began++;
             Assert.That(began, Is.InRange(6, 8), "16 s: 1.6 s stirs, four to a taste (1.9 s): seven new ones");
         }
+
+        [Test]
+        public void StewBubbles_StayOnTheStew_SwellPopAndRest()
+        {
+            // #676: each bubble sits on the stew inside the lip, never grows much past full size, and rests (size 0) part of each cycle
+            for (int i = 0; i < 3; i++)
+            {
+                int resting = 0, n = 0;
+                for (float t = 0f; t < 30f; t += 1f / 30f, n++)
+                {
+                    float k = MealDirector.BubbleAt(t, i, out Vector3 at);
+                    Assert.That(k, Is.InRange(0f, 1.31f));
+                    Assert.Less(new Vector2(at.x, at.z).magnitude, 0.052f * 0.92f, "inside the pot's lip");
+                    if (k == 0f) resting++;
+                }
+                Assert.That(resting / (float)n, Is.InRange(0.3f, 0.5f), "popped and resting about 40 % of the time");
+            }
+        }
     }
 }
