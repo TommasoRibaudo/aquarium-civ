@@ -27,7 +27,7 @@ namespace AquariumCiv.Sim
         /// type (<see cref="BuildingType"/>) or a land feature (<see cref="HasFeature"/>).</summary>
         static readonly (Era era, string job, string[] needs)[] JobTable =
         {
-            (Era.Camp, JobType.Gatherer, new string[0]),
+            (Era.Camp, JobType.Gatherer, new[] { "berries|rabbits" }), // #656: only with real food on the land (a bush, the rabbits); no root dig on bare land
             (Era.Camp, JobType.Hunter, new[] { "rabbits" }), // P8 (#285): a living land opens it with the first rabbit; without the ecology it is always there
             (Era.Camp, JobType.Fisher, new[] { "fish" }), // #421: no fishing of any kind until fish are placed (off the ecology: the pond)
             (Era.Camp, JobType.Woodcutter, new[] { "trees" }),
@@ -98,6 +98,7 @@ namespace AquariumCiv.Sim
             "fish" => FishingOpen, // #421 (placed-life spec §5.5): fish placed in a pond with water; off the ecology always
             "trees" => !EcologyOn || TreesGrow,
             "rabbits" => !EcologyOn || State.eco.Reached(EcoMilestones.FirstRabbit),
+            "berries" => BerriesGrow, // #656
             "forest" => true,
             "grove" => State.nudges.Any(n => n.kind == NudgeKind.Grove && n.credited),
             // The later shaping tools (research 10, #32): an answered shaping opens its trade. Read from the shaping and
@@ -117,9 +118,15 @@ namespace AquariumCiv.Sim
         /// <summary>P8 (#285): rabbits have been seen (the hunter's job opens).</summary>
         public bool RabbitsSeen => !EcologyOn || State.eco.Reached(EcoMilestones.FirstRabbit);
 
-        /// <summary>The job as the person card shows it. On a living land with no bushes yet the gatherer digs roots, and
-        /// says so; everything else is the job's own name.</summary>
-        public string JobLabel(string job) => job == JobType.Gatherer && EcologyOn && !BerriesGrow ? "root digger" : job;
+        /// <summary>The job as the person card shows it: the job's own name. (#656: the root digger is gone; the gatherer's job opens
+        /// with real food on the land.)</summary>
+        public string JobLabel(string job) => job;
+
+        /// <summary>#656: a living-land camp whose land gives no work yet (no bush, no rabbits): the gatherer's job is shut, one founder
+        /// makes tools and the others hold no job until the land gives (they live off the carried basket; no root dig).</summary>
+        public bool NoWorkYet => EcologyOn && State.era == Era.Camp && !JobOpen(JobType.Gatherer);
+
+        bool ToolmakerBesides(Notable n) => State.notables.Any(o => o != n && o.alive && o.job == JobType.Toolmaker && o.age >= 16f && o.age < Config.retireAge);
 
         /// <summary>The bucket's water (P8 #267): with no open water the dawn trip scoops muddy water from the wet low
         /// ground; once the pond has water it is the pond's, clean. Off the ecology it is always clean. Hook: the mist's
@@ -156,6 +163,7 @@ namespace AquariumCiv.Sim
             if (!n.alive) return true;
             if (n.age < 16f) return string.IsNullOrEmpty(n.job);
             if (n.age >= Config.retireAge) return n.job == JobType.Elder;
+            if (string.IsNullOrEmpty(n.job)) return NoWorkYet && ToolmakerBesides(n); // #656: waiting for the land to give work (once someone makes the tools)
             return JobOpen(n.job);
         }
 
@@ -298,6 +306,8 @@ namespace AquariumCiv.Sim
         /// <summary>The nearest open job to the one lost, else a trait-weighted pick that spreads people over the open jobs.</summary>
         string ChooseJob(Notable n, string from)
         {
+            // #656: on a bare living land one founder makes tools and the rest wait for the land (no root dig)
+            if (NoWorkYet) return ToolmakerBesides(n) ? JobType.None : JobType.Toolmaker;
             var open = OpenJobs();
             if (open.Count == 0) return JobType.Gatherer; // never happens: every era has a job that needs nothing
             if (from != null && NearestJobs.TryGetValue(from, out var near))
@@ -360,6 +370,7 @@ namespace AquariumCiv.Sim
         string ComingOfAgeLine(Notable n)
         {
             n.job = ChooseJob(n, null);
+            if (string.IsNullOrEmpty(n.job)) return $"{n.FullName} came of age, and waited with the others for the land to give them work."; // #656
             return $"{n.FullName} came of age and took up work as {A(n.job)}.";
         }
 
