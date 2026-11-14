@@ -90,6 +90,15 @@ namespace AquariumCiv.View.PlayTests
         static IEnumerator Frames(int n) { for (int i = 0; i < n; i++) yield return null; }
         static IEnumerator Wait(float s) { float t = 0f; while (t < s) { t += Time.unscaledDeltaTime; yield return null; } }
 
+        /// <summary>Auto runs: what a stop keeps on screen until its shot (a camera pose, a follow), run every frame of <see cref="HoldWait"/>.</summary>
+        Action hold;
+
+        IEnumerator HoldWait(float s)
+        {
+            float t = 0f;
+            while (t < s) { t += Time.unscaledDeltaTime; try { hold?.Invoke(); } catch (Exception e) { Log("hold: " + e.Message); hold = null; } yield return null; }
+        }
+
         static IEnumerator Until(Func<bool> done, float seconds)
         {
             float t = 0f;
@@ -734,6 +743,7 @@ namespace AquariumCiv.View.PlayTests
                 panel.Note("Getting the box ready...");
                 Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
                 if (Sim.State.era != Era.Camp) Log("camp gate: " + EcoDebug.CampGate());
+                yield return StagePlayedBox(); // the new start greens nothing by itself: a lived-in camp for the look stops
                 Hour(10f);
                 yield return Wait(2f);
                 DefaultView();
@@ -792,24 +802,26 @@ namespace AquariumCiv.View.PlayTests
                     if (Screen.width != st.W || Screen.height != st.H) { SetSize(st.W, st.H); yield return Until(() => Screen.width == st.W && Screen.height == st.H, 4f); yield return Frames(4); }
                     yield return CloseLooseUi();
                     if (!st.Slug.StartsWith("season_") && !st.Slug.StartsWith("pacing_")) yield return ResetSeason();
+                    hold = null; // a stop's camera hold (auto runs) never outlives it
                     yield return Steps(st.Setup(), st.Name);
                     if (auto && panel.verdict == SignOffPanel.V.None)
                     {
                         if (st.Kind == Kind.Calls && panel.ticks.Length > 1) panel.ticks[1] = false; // shows the unticked look in the shot
                         bool shoot = st.Kind == Kind.Look || textShots < 3;
-                        yield return Wait(st.Kind == Kind.Look ? 4f : 1f);
+                        yield return HoldWait(st.Kind == Kind.Look ? 4f : 1f);
                         if (shoot)
                         {
                             if (st.Kind != Kind.Look) textShots++;
                             if (st.Slug == "title_line") { panel.collapsed = true; yield return Frames(3); } // the title sits behind the panel: fold it for the shot
+                            if (st.Slug == "pt1_caption") { panel.hidden = true; yield return Frames(3); } // the caption plate: nothing over it
                             yield return Shot((i + 1).ToString("00") + "_" + st.Slug);
-                            panel.collapsed = false;
+                            panel.collapsed = false; panel.hidden = false;
                         }
                         for (int e = 0; e < st.Extras.Length; e++)
                         {
                             yield return Steps(st.Extras[e].run(), st.Extras[e].label);
-                            yield return Wait(3f);
-                            yield return Shot((i + 1).ToString("00") + "_" + st.Slug + "_extra");
+                            yield return HoldWait(3f);
+                            yield return Shot((i + 1).ToString("00") + "_" + st.Slug + "_x" + (e + 1) + "_" + Slug(st.Extras[e].label)); // one shot per extra
                         }
                         if (st.Kind == Kind.Decision) { if (st.Options.Length > 0) { panel.verdict = SignOffPanel.V.Option; panel.optionIndex = 0; } else panel.verdict = SignOffPanel.V.Other; }
                         else panel.verdict = SignOffPanel.V.Signed;
@@ -894,6 +906,8 @@ namespace AquariumCiv.View.PlayTests
         string[] secNames = new string[0]; int[] secFirst = new int[0], secCount = new int[0];
         int mode;
         internal bool collapsed;
+        /// <summary>Auto runs: no panel at all for a shot whose subject sits where even the folded bar would be.</summary>
+        internal bool hidden;
         bool typing, jumpOpen;
         Rect screenRect, pub, noteRect;
         float measuredH = 200f;
@@ -998,6 +1012,7 @@ namespace AquariumCiv.View.PlayTests
         void OnGUI()
         {
             if (box == null) Init();
+            if (hidden) { screenRect = Rect.zero; return; }
             float sc = Screen.width / UnitsWide;
             var old = GUI.matrix;
             GUI.matrix = Matrix4x4.Scale(new Vector3(sc, sc, 1f));
@@ -1005,7 +1020,7 @@ namespace AquariumCiv.View.PlayTests
             const float X = 6f, W = UnitsWide - 12f, IW = W - 16f;
             float y = TopPx / sc;
             var e = Event.current;
-            if (collapsed) y += 70f / sc; // folded, the bar sits below the HUD title line (it hid it)
+            if (collapsed) y = (Screen.height - 470f) / sc; // folded, the bar sits low, above the bottom tools: the title, the top icons and the caption stay clear
             if (collapsed)
             {
                 var r = new Rect(X, y, W, 40f);

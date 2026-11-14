@@ -18,17 +18,19 @@ namespace AquariumCiv.View.PlayTests
     /// <summary>
     /// The stops of the first outside playtest (#643-#680) and the new start (#656, #677) for the sign-off walk. The text of the section is
     /// in docs/open-questions.md ("Playtest 1"). Each stop stages its state with the existing cheats (EcoDebug, SimCore.Debug*, the views'
-    /// Debug* helpers) and says in its judge text what to look at and what good is. A few stops open a box of their own (<see cref="Stop.Box"/>:
+    /// Debug* helpers) and says in its judge text what to look at and what good is. The played box is staged as a lived-in camp first
+    /// (<see cref="StagePlayedBox"/>: the new start greens nothing by itself). A few stops open a box of their own (<see cref="Stop.Box"/>:
     /// a plain village with fields, a box in its first run, a fresh camp with no wild wood, a young box, a new-start box); the walk puts the
     /// played box back before the next stop that needs it. #658 sets three candidate default framings on the rig directly (the game's
-    /// default is unchanged). Every setup keeps the walk's contract: Setup and Extras are IEnumerators, abortable by a verdict, so auto
-    /// mode (Temp/agent/oqsignoff/AUTO, "from,to") shoots them like any other look stop.
+    /// default is unchanged). Every setup keeps the walk's contract: Setup and Extras are IEnumerators, abortable by a verdict; a stop may
+    /// set <see cref="hold"/> so an auto run keeps its frame until the shot.
     /// </summary>
     public partial class OpenQuestionsSignOff
     {
         string ownBox = "";        // the key of the box a stop opened itself ("" = the played box or the young pacing box)
         bool pinnedHere;           // #673 pinned someone: unpinned before the next stop
         bool zoomFloorChanged;     // #676 lowered the rig's zoom floor for the close look at the pot
+        bool yawWidened;           // #658 C widened the orbit to look along the land's long side
         float sfxWas = -1f, ambWas = -1f;
         int framing;               // #658: the framing Set up again shows next
         (Vector3 target, float yaw, float pitch, float zoom)? framingA;
@@ -52,13 +54,14 @@ namespace AquariumCiv.View.PlayTests
                     "(if not, the jar says it waits for room). Tap the wolves and judge the hint and the framing.", SetupWolves) };
                 case "#644": return new[] { With(S("#644", "fields through the seasons", "pt1_fields",
                     "A grown village (a plain box, its own) framed on a farm field in spring. Good: spring green shoots, summer standing wheat, autumn stubble, " +
-                    "winter bare soil (no green or wheat in winter). Press Next season three times and judge each.", SetupFields, ("Next season", NextFieldSeason)), box: "fields") };
+                    "winter bare soil (no green or wheat in winter). Press Summer, Autumn and Winter and judge each.", SetupFields,
+                    ("Summer", () => FieldSeason(1)), ("Autumn", () => FieldSeason(2)), ("Winter", () => FieldSeason(3))), box: "fields") };
                 case "#645": return new[] { With(S("#645", "name fields and the iPhone keyboard", "pt1_keyboard",
                     "Save on a name field must close the iPhone keyboard, with no second input bar. Judge on the next phone build: Skip here.", () => PlainSetup("", null, false, false, false)),
                     notStaged: "not staged: phone only (the Editor has no iPhone keyboard); judge it on the next build, or Skip") };
                 case "#647": return new[] { With(S("#647", "the first run without the Photo button", "pt1_firstrun",
-                    "A fresh box in its first run (its own box; the panel is folded: tap the arrow to read this). Good: the top-right corner has Settings " +
-                    "(and Feedback) but NO Photo button while the first-run steps go on; press Skip first run and the Photo button comes back.", SetupFirstRun,
+                    "A fresh box in its first run (its own box; the panel is folded: tap the arrow to read this). Good: no Photo button while the first-run " +
+                    "steps go on (the first run shows no top row at all early on); press Skip first run: the top row comes back with the Photo button.", SetupFirstRun,
                     ("Skip first run", SkipFirstRunExtra)), box: "firstrun") };
                 case "#648": return new[] { S("#648", "quieter sound at the default view", "pt1_sound",
                     "Sound on, the default view, midday. Good: the effects and the ambience sit under the music, nothing harsh or loud. The line below shows " +
@@ -73,20 +76,20 @@ namespace AquariumCiv.View.PlayTests
                     "sitting out, water; nobody chops kindling or swings an axe at a block. (Winter farmers hoeing need a village: covered by the planner tests.)",
                     SetupKindling), box: "camp") };
                 case "#652": return new[] { With(S("#652", "the gatherers' place word", "pt1_place_word",
-                    "A camp with berries and a gatherer; their card is open. Read the card's doing line and the tag over the doll (and the line below, the " +
-                    "planner's own words). Good: no pond: \"the dry hollow\"; press Add a pond: \"the water's edge\". Never \"the stream\".", SetupPlaceWord,
+                    "A camp with no pond; someone's card is open while the planner names the low ground (the line below quotes it). Good: \"the dry hollow\"; " +
+                    "press Add a pond: \"the water's edge\". Never \"the stream\". Read the card's doing line and the tag over the doll.", SetupPlaceWord,
                     ("Add a pond", PlaceWordPondExtra)), box: "camp") };
                 case "#654": return new[] { S("#654", "the Settings sliders", "pt1_sliders",
                     "The Settings sheet is open. Drag Music, Effects and Ambience sideways; scroll the sheet and drag again. Good: each slider follows the " +
                     "finger from anywhere on its row, and the list does not move while you drag.", SetupSliders) };
                 case "#657": return new[] { S("#657", "grass tufts up close", "pt1_grass",
-                    "Grass by the camp at the closest zoom, low pitch. Good: every tuft's base sits in the soil; no tuft floats or shows a gap under it. Orbit a little to check.", SetupGrass) };
+                    "Grass tufts by the camp at the closest zoom, low pitch. Good: every tuft's base sits in the soil; no tuft floats or shows a gap under it. Orbit a little to check.", SetupGrass) };
                 case "#659": return new[] { With(S("#659", "the caption under the title (iPhone 16 Pro)", "pt1_caption",
                     "1206x2622 (iPhone 16 Pro). Someone near the middle speaks a line; the panel is folded so the top shows. Good: the caption plate sits " +
                     "fully below the title line (year, season, people), never over it. Set up again says another line.", SetupCaption), w: 1206, h: 2622) };
                 case "#669": return new[] { S("#669", "History on the played box", "pt1_history_old",
-                    "The played box (rabbits and berries today) with History open. Drag the bar back to the early years. Good: no berries, rabbits, deer or " +
-                    "wolves of today in the old years; they are back after Close.", SetupHistoryOld) };
+                    "The played box (berries, rabbits and deer today) with History open. Drag the bar back to the early years. Good: no berries, rabbits, deer or " +
+                    "wolves of today in the old years; they are back after Close. Early years shows the start.", SetupHistoryOld, ("Early years", HistoryEarlyExtra)) };
                 case "#670": return new[] { With(S("#670", "History on a young box", "pt1_history_young",
                     "A young box (its own, about a year and a half) with History open. Press play. Good: the whole span plays in about 12 s, not in a blink; " +
                     "press Slowest speed: the speed reads like \"9 d/s\" and Close stays on screen.", SetupHistoryYoung, ("Slowest speed", SlowestSpeedExtra)), box: "young") };
@@ -95,15 +98,15 @@ namespace AquariumCiv.View.PlayTests
                     "the camera eases back to this corner view, not to the camp frame. Zoomed in watching: the talk must not start by itself (wait 30 s).",
                     SetupEvening, ("Zoomed in watching", EveningZoomedExtra)) };
                 case "#673": return new[] { S("#673", "photo mode with someone pinned", "pt1_photo",
-                    "Someone is pinned and the camera sits away from them; photo mode is on (the panel folded). Good: the view stays where it was (no jump " +
-                    "to the pinned person), the pill shows about 4 s and then fades out fully. A tap on the screen brings the UI back.", SetupPhoto,
+                    "Someone is pinned and framed; then photo mode (the panel folded). Good: the view stays exactly where it was (no jump or fly to the pinned " +
+                    "person), the pill shows about 4 s and then fades out fully. A tap on the screen brings the UI back.", SetupPhoto,
                     ("Photo mode again", PhotoAgainExtra)) };
                 case "#674": return new[] { With(S("#674", "the person card's first view (750x1334)", "pt1_card_short",
-                    "750x1334. A notable with a long two-line subtitle (a woodcutter who is also headman); their card is open at its first height. Good: " +
+                    "750x1334. A notable with a long subtitle (a woodcutter who holds an office); their card is open at its first height. Good: " +
                     "the first view shows a row of family and friend chips under the subtitle, before the quote; nothing cut at the card's edge.", SetupCardShort), w: 750, h: 1334) };
                 case "#680": return new[] { S("#680", "the hunter tries again", "pt1_hunt_retry",
-                    "A hunt that misses (cheat), close. Good: after the miss the hunter stalks once more and throws again (that one misses too here), " +
-                    "then walks home; one retry, never more. Set up again to watch twice.", SetupHuntRetry) };
+                    "A hunt that misses (cheat), close on the hunter. Good: after the miss the hunter stalks once more and throws again (that one misses too here), " +
+                    "then walks home; one retry, never more. Set up again to watch twice.", SetupHuntRetry, ("The retry", HuntRetryExtra)) };
                 case "#675": return new[] { S("#675", "the seed in the life jar", "pt1_seed",
                     "The Kit is open on Life with the seed ready beside the groups. Good: the seed is a sprout icon with the word Seed; tap it: the hint " +
                     "says one seed grows into the box's tree, and where to tap.", SetupSeedJar) };
@@ -111,22 +114,22 @@ namespace AquariumCiv.View.PlayTests
                     "The camp's stew pot up close at the cook's hour. Good: a dark sooty pot, a lumpy brown stew that reads as food, soft white steam rising " +
                     "and a few bubbles on the surface.", SetupStew) };
                 case "#665": return new[] { S("#665", "rabbit tracks keep coming", "pt1_tracks",
-                    "Rabbits in the meadow, framed on their tracks. Good: fresh hop prints show near them; press Skip a season (more than once): new prints keep " +
+                    "Rabbits in the meadow, framed on a fresh trail. Good: hop prints show near them; press Skip a season (more than once): new prints keep " +
                     "appearing while rabbits live (the line below counts the living trails).", SetupTracks, ("Skip a season", TracksSeasonExtra)) };
                 case "#671": return new[] { S("#671", "faded near glass up close", "pt1_near_glass",
                     "Misted wet ground along the near glass, zoomed in so the near panes and frame fade. Good: the wet darkening runs right up to the glass " +
                     "with no straight cut or pale band where the faded frame is; press Winter: the snow does the same.", SetupNearGlass, ("Winter", NearGlassWinterExtra)) };
                 case "#656": return new[] { With(S("#656", "the arrival with the basket and the bundle", "pt1_arrival",
-                    "A new-start box (its own) as the camp is founded, with the stock carried in again (cheat). Good: the people walk in carrying a basket " +
-                    "of food and a bundle of sticks and set them down where they settle; the HUD's food and wood numbers show only after that. Arrival again repeats it.",
-                    SetupArrival, ("Arrival again", ArrivalAgainExtra)), box: "newstart") };
+                    "A new-start box (its own) as the camp is founded: the founders walk in (the camera follows them). Good: they carry a basket of food and " +
+                    "a bundle of sticks and set them down where they settle; the HUD's food and wood numbers show only after that. The set-down shows the end; Arrival again repeats it.",
+                    SetupArrival, ("The set-down", ArrivalSetDownExtra), ("Arrival again", ArrivalAgainExtra)), box: "newstart") };
                 case "#677": return new[] { With(S("#677", "the fire stages and the first wild wood", "pt1_fire",
-                    "The new-start camp at dusk, on its fire. Good: No fire: the people sit together, nothing burns; Grass fire: a small low fire of grass and " +
+                    "The new-start camp at dusk, close on its fire. Good: No fire: the people sit together, nothing burns; Grass fire: a small low fire of grass and " +
                     "twigs, no logs; Log fire: a bigger log fire with warmer light. First wild wood now: the first logs are carried home from a wild tree and the fire becomes a log fire.",
                     SetupFire, ("No fire", () => FireExtra(0)), ("Grass fire", () => FireExtra(1)), ("Log fire", () => FireExtra(2)), ("First wild wood now", FirstWildWoodExtra)), box: "newstart") };
                 case "#658": return new[] { S("#658", "three default framings", "pt1_framing",
                     "Three candidate default views of the camp on a tall phone (the panel folded; tap the arrow to read this). A: today's default (the camp frame). " +
-                    "B: closer on the camp's fire with a lower pitch. C: turned to the orbit's limit (55 degrees) so the land's long side runs into the screen, and closer. " +
+                    "B: much closer on the camp, lower pitch. C: turned to look along the land's long side, closer. " +
                     "Good: the camp and the people fill the screen, the action reads, the glass does not crowd it. Write the letter you like in the note (the decision asks again).",
                     SetupFraming, ("Framing A", () => FramingExtra(0)), ("Framing B", () => FramingExtra(1)), ("Framing C", () => FramingExtra(2))) };
             }
@@ -145,7 +148,12 @@ namespace AquariumCiv.View.PlayTests
             var talk = EveningTalkView.Instance;
             if (talk != null && talk.Open) EveningTalkView.DebugLeave();
             EveningTalkView.AutoStart = false;
-            if (zoomFloorChanged && Camera.main != null) { Rig.minZoom = CameraReach.MinZoom; zoomFloorChanged = false; }
+            ShowMeDirector.BubblesOn = false; // #659 turns them on for its line
+            if (Camera.main != null && Camera.main.GetComponent<BoxCamera>() != null)
+            {
+                if (zoomFloorChanged) { Rig.minZoom = CameraReach.MinZoom; zoomFloorChanged = false; }
+                if (yawWidened) { Rig.maxYaw = 55f; Rig.yaw = Mathf.Min(Rig.yaw, 55f); yawWidened = false; }
+            }
             if (pinnedHere && GameClock.Instance != null && Sim != null) { Sim.Unpin(); pinnedHere = false; }
             if (pv != null) pv.timeScale = 1f;
         }
@@ -155,8 +163,40 @@ namespace AquariumCiv.View.PlayTests
         {
             if (sfxWas >= 0f) { GameSettings.SfxVolume = sfxWas; sfxWas = -1f; }
             if (ambWas >= 0f) { GameSettings.AmbienceVolume = ambWas; ambWas = -1f; }
-            if (Camera.main != null && Camera.main.GetComponent<BoxCamera>() != null) Rig.minZoom = CameraReach.MinZoom;
+            if (Camera.main != null && Camera.main.GetComponent<BoxCamera>() != null) { Rig.minZoom = CameraReach.MinZoom; Rig.maxYaw = 55f; }
             EveningTalkView.AutoStart = true;
+        }
+
+        /// <summary>The played box: 50 seasons of a new start with nobody's hand on it is a bare camp (87 % bare, no rabbits, no pond, no
+        /// trees, no fire). The look stops need it lived in: a meadow, the thicket, rabbits and deer, a pond with ducks and fish, the Keeper's
+        /// tree grown, a wild tree, the first logs (a log fire) and the camp's props.</summary>
+        IEnumerator StagePlayedBox()
+        {
+            Say("staging a lived-in camp...");
+            var camp = Sim.Settlement != null ? new Vector2(Sim.Settlement.Map.greenX, Sim.Settlement.Map.greenZ) : Vector2.zero;
+            for (int k = 0; k < 2; k++)
+                foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f), (0f, 1.4f), (2.2f, -1.2f), (-2.4f, 1.3f) })
+                    EcoDebug.MistBig(x, z);
+            EcoDebug.MistBig(camp.x + 0.8f, camp.y + 0.6f);
+            EcoDebug.MistBig(camp.x - 0.8f, camp.y - 0.5f);
+            Log("green: " + EcoDebug.SkipSeasons(4));
+            yield return EnsurePond();
+            Log("bushes: " + EcoDebug.AddBushes(5));
+            foreach (var s in new[] { LifeSpecies.Thicket, LifeSpecies.Rabbits, LifeSpecies.Deer, LifeSpecies.Ducks, LifeSpecies.Fish })
+                if (!Sim.LifeIsPlaced(s)) { if (!Sim.JarReady(s)) Sim.DebugJarsReady(); Log($"{s} placed near the camp ({Sim.DebugPlaceNearCamp(s)})"); }
+            yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 25f);
+            if (Sim.EcoRabbitsShown() < 4) Log(EcoDebug.AddRabbits(5));
+            if (Sim.State.eco.treeCell < 0) { Log(EcoDebug.SeedInHand()); hud.SetHand(GameHud.KitTool.None); Log("Keeper's tree: " + EcoDebug.PlantHere()); }
+            Log(EcoDebug.TreeStage(4));
+            Log("wild tree: " + EcoDebug.WildTrees(false));
+            Log("first wood: " + NewStartView.DebugFirstWildWoodNow());
+            Sim.MarkFirstWildWoodSeen(); // the first-logs beat is #677's, on its own box
+            if (!Sim.StockSetDown) Sim.SetDownStock();
+            Log("camp props: " + ConsequenceCheats.ShowCampProps());
+            yield return Frames(10);
+            for (int calm = 0, f = 0; calm < 90 && f < 1500; f++) { calm = StagedMoments.StopAll() == 0 && StagedMoments.Playing == 0 ? calm + 1 : 0; yield return null; }
+            Hour(10f);
+            Log("staged: " + EcoDebug.Status() + " · fire " + Sim.FireStage);
         }
 
         /// <summary>A box of the stop's own (a fresh box at the current Game view size; the first run skipped unless asked), and the walk's handles on it.</summary>
@@ -183,12 +223,44 @@ namespace AquariumCiv.View.PlayTests
         Notable Grown(Func<Notable, bool> also = null) =>
             Sim.State.notables.FirstOrDefault(n => n.alive && n.age >= 16f && n.age < Sim.Config.retireAge && (also == null || also(n)));
 
-        IEnumerator LookAtCamp(float zoom = 0.35f)
+        /// <summary>The camp's middle: the fire, else the camp green, else the box's middle (world).</summary>
+        Vector3 CampCentre()
         {
-            if (FireAndRack(out var fire, out var rack)) Look((fire + rack) * 0.5f, zoom);
-            else DefaultView();
-            yield return Wait(0.6f);
+            if (pv != null && pv.Planner != null && pv.Planner.FirePoint(out float fx, out float fz)) return World(fx, fz);
+            var st = Sim.Settlement;
+            return st != null ? World(st.Map.greenX, st.Map.greenZ) : box.transform.position;
         }
+
+        /// <summary>The camera on a subject (no flight), shifted past it so it sits below the sign-off panel; an auto run keeps this frame until its shot.</summary>
+        void Frame(Vector3 world, float zoom, float pitch, float yaw = float.NaN, bool shift = true)
+        {
+            Rig.CancelFlight();
+            if (!float.IsNaN(yaw)) Rig.yaw = yaw;
+            Rig.pitch = pitch; Rig.zoom = zoom; Rig.target = world; Rig.Apply();
+            if (shift)
+            {
+                var f = Camera.main.transform.forward; f.y = 0f;
+                if (f.sqrMagnitude > 1e-4f) { Rig.target = world + f.normalized * (ShiftPerZoom * zoom); Rig.Apply(); }
+            }
+            var t = Rig.target; float y = Rig.yaw;
+            hold = () => { Rig.CancelFlight(); Rig.target = t; Rig.yaw = y; Rig.pitch = pitch; Rig.zoom = zoom; Rig.Apply(); };
+        }
+
+        /// <summary>The camera follows a person each frame (an auto run until its shot too).</summary>
+        void FollowWho(PersonRef who, float zoom, float pitch)
+        {
+            hold = () =>
+            {
+                if (!pv.TryGetDollPosition(who, out var p)) return;
+                Rig.CancelFlight(); Rig.pitch = pitch; Rig.zoom = zoom; Rig.target = World(p.x, p.y);
+                var f = Camera.main.transform.forward; f.y = 0f;
+                if (f.sqrMagnitude > 1e-4f) Rig.target += f.normalized * (ShiftPerZoom * zoom);
+                Rig.Apply();
+            };
+            hold();
+        }
+
+        IEnumerator Held(float seconds) { float t = 0f; while (t < seconds) { t += Time.unscaledDeltaTime; hold?.Invoke(); yield return null; } }
 
         // ---------------------------------------------------------------- #643 the wolves
         IEnumerator SetupWolves()
@@ -227,25 +299,19 @@ namespace AquariumCiv.View.PlayTests
                 yield return Frames(4);
                 Sim.CleanAll();
             }
-            fieldSeason = 0;
-            yield return ShowField();
+            yield return FieldSeason(0);
         }
 
-        IEnumerator ShowField()
+        IEnumerator FieldSeason(int season)
         {
+            fieldSeason = season;
             yield return Fb5SeasonShots.ToSeason(fieldSeason, 1f);
             Hour(12f);
             var farm = Sim.Settlement != null ? Sim.Settlement.Lots.FirstOrDefault(l => l.kind == LotKind.Farm) : null;
             if (farm == null) { Say("setup failed: no farm lot in the village; press Set up again"); DefaultView(); yield break; }
-            Look(World(farm.x, farm.z), 0.35f, 45f);
-            yield return Wait(1f);
+            Frame(World(farm.x, farm.z), 0.35f, 45f);
+            yield return Held(1f);
             Say("now: " + LifeClock.SeasonOf(Sim.State.month) + " (farm " + farm.id + ")");
-        }
-
-        IEnumerator NextFieldSeason()
-        {
-            fieldSeason = (fieldSeason + 1) % 4;
-            yield return ShowField();
         }
 
         // ---------------------------------------------------------------- #647 the first run
@@ -329,9 +395,12 @@ namespace AquariumCiv.View.PlayTests
             yield return FreshCamp();
             Hour(6.8f, true);
             yield return Wait(1f);
-            yield return LookAtCamp(0.3f);
+            Frame(CampCentre(), 0.3f, 45f);
+            yield return Held(0.6f);
             Say($"wild trees grown: {Sim.WildWoodTreeCount} (woods {Sim.WoodsTreeCount}) · watch the dawn chores");
         }
+
+        static bool NamesThePlace(string d) => d.Contains("hollow") || d.Contains("water's edge") || d.Contains("stream");
 
         IEnumerator SetupPlaceWord()
         {
@@ -340,24 +409,33 @@ namespace AquariumCiv.View.PlayTests
             yield return PlaceWordCard();
         }
 
+        /// <summary>#652: steps through the day until someone's doing line names the low ground (fetching water, the gatherers), then opens their card.</summary>
         IEnumerator PlaceWordCard()
         {
             var g = Grown(n => n.job == JobType.Gatherer) ?? Grown(n => n.job != JobType.Toolmaker);
-            if (g == null) { Say("setup failed: nobody grown up"); yield break; }
-            if (g.job != JobType.Gatherer) { Sim.DebugSetJob(g, JobType.Gatherer); Log(g.FullName + " gathers now"); }
+            if (g != null && g.job != JobType.Gatherer) { Sim.DebugSetJob(g, JobType.Gatherer); Log(g.FullName + " gathers now"); }
             pv.Planner.Invalidate();
-            Hour(10f, true);
-            yield return Wait(1.5f);
             var cards = PersonCardView.Instance;
-            if (cards != null) { if (cards.IsOpen) cards.Close(); yield return null; cards.Open(g.id, true); }
-            yield return Wait(1.2f);
-            var words = new List<string>();
-            foreach (var a in pv.Activities)
+            if (cards != null && cards.IsOpen) cards.Close();
+            PersonRef who = PersonRef.None; string line = "";
+            foreach (float h in new[] { 7f, 8f, 9f, 10f, 11f, 13f, 14f, 15f, 16f, 17f, 18f, 6f })
             {
-                string d = pv.Planner.Describe(a) ?? "";
-                if ((d.Contains("hollow") || d.Contains("water's edge") || d.Contains("stream")) && !words.Contains(d)) words.Add(d);
+                Hour(h, true);
+                yield return Wait(0.6f);
+                foreach (var a in pv.Activities)
+                {
+                    if (!a.who.IsNotable) continue;
+                    string d = pv.Planner.Describe(a) ?? "";
+                    if (NamesThePlace(d)) { who = a.who; line = d; break; }
+                }
+                if (!who.IsNone) break;
             }
-            Say($"pond cells {Sim.EcoPondCells} · {g.FullName}: \"{(cards != null ? cards.DoingNow : "")}\" · lines naming the place now: " + (words.Count > 0 ? string.Join(" / ", words.Take(3)) : "none at this hour"));
+            int id = who.IsNone ? (g != null ? g.id : -1) : who.notableId;
+            if (id < 0) { Say("setup failed: nobody grown up"); yield break; }
+            if (pv.TryGetDollPosition(who.IsNone ? PersonRef.Notable(id) : who, out var p)) Frame(World(p.x, p.y), 0.3f, 45f);
+            if (cards != null) cards.Open(id, false);
+            yield return Held(1.2f);
+            Say($"pond cells {Sim.EcoPondCells} · " + (line.Length > 0 ? $"the planner says: \"{line}\" · card: \"{cards?.DoingNow}\"" : "no line names the low ground at any hour (only the card's text to judge)"));
         }
 
         IEnumerator PlaceWordPondExtra()
@@ -371,7 +449,7 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator SetupGrass()
         {
             Hour(11f);
-            if (!FireAndRack(out var fire, out _)) fire = box.transform.position;
+            var fire = CampCentre();
             var local = box.transform.InverseTransformPoint(fire);
             int best = -1; float bestD = float.MaxValue;
             for (int c = 0; c < EcoLand.N; c++)
@@ -379,24 +457,30 @@ namespace AquariumCiv.View.PlayTests
                 var cv = Sim.EcoCoverAt(c);
                 if (cv != EcoCover.Grass && cv != EcoCover.Tall) continue;
                 float d = Vector2.Distance(new Vector2(SiteMap.CXc(c), SiteMap.CZc(c)), new Vector2(local.x, local.z));
-                if (d > 0.7f && d < bestD) { bestD = d; best = c; }
+                if (cv == EcoCover.Grass) d += 1f; // tall tufts first
+                if (d > 1.0f && d < bestD) { bestD = d; best = c; }
             }
-            if (best < 0) { Say("no grass cell found: misting the camp"); Log(EcoDebug.MistBigCamp()); yield return Frames(20); DefaultView(); yield break; }
-            var at = World(SiteMap.CXc(best), SiteMap.CZc(best));
-            Rig.CancelFlight(); Rig.pitch = 26f; Rig.zoom = 0.2f; Rig.target = at; Rig.Apply();
-            yield return Wait(1f);
-            Say($"grass cell {best}, {bestD:0.0} u from the fire, zoom 0.20, pitch 26");
+            if (best < 0) { Say("no grass cell found"); DefaultView(); yield break; }
+            zoomFloorChanged = true; Rig.minZoom = 0.05f; // closer than a player can pinch: the tufts' bases fill the screen
+            Frame(World(SiteMap.CXc(best), SiteMap.CZc(best)), 0.09f, 26f, shift: false);
+            yield return Held(1f);
+            Say($"grass cell {best}, {bestD:0.0} u from the fire, zoom 0.09, pitch 26 (the zoom floor is lowered for this stop only)");
         }
 
         // ---------------------------------------------------------------- #659 the caption on an iPhone 16 Pro
         IEnumerator SetupCaption()
         {
             Hour(10f);
-            yield return LookAtCamp(0.4f);
-            yield return Wait(0.5f);
+            Frame(CampCentre(), 0.35f, 45f, shift: false);
+            yield return Held(0.8f);
             panel.collapsed = true;
-            Say(ShowMeDirector.DebugLineHere() + $" · {Screen.width}x{Screen.height}");
-            yield return Wait(1.2f); // the plate and the ring fade in (tooling 2026-11-08)
+            ShowMeDirector.BubblesOn = true; // the walk keeps ambient lines off; this stop's line needs the caption
+            string said = ShowMeDirector.DebugLineHere();
+            float again = Time.unscaledTime + 4f;
+            var keep = hold;
+            hold = () => { keep?.Invoke(); if (Time.unscaledTime > again && (ShowMeDirector.Instance == null || ShowMeDirector.Instance.ShownBubble == null)) { again = Time.unscaledTime + 4f; ShowMeDirector.DebugLineHere(); } };
+            yield return Held(1.2f); // the plate and the ring fade in (tooling 2026-11-08)
+            Say(said + $" · {Screen.width}x{Screen.height}");
         }
 
         // ---------------------------------------------------------------- #669 / #670 History
@@ -414,9 +498,18 @@ namespace AquariumCiv.View.PlayTests
             Hour(10f);
             if (Sim.EcoRabbitsShown() < 3) Log(EcoDebug.AddRabbits(4));
             if (!Sim.BerriesGrow) Log(EcoDebug.AddBushes(3));
-            DefaultView();
-            yield return Wait(1.5f);
+            Frame(CampCentre(), 0.6f, 45f);
+            yield return Held(1.5f);
             yield return OpenHistory();
+        }
+
+        IEnumerator HistoryEarlyExtra()
+        {
+            var tl = TimeLapseView.Find();
+            if (tl == null || !tl.Active) { Say("History is not open: Set up again"); yield break; }
+            tl.Seek(tl.Clock.Start + (tl.Clock.End - tl.Clock.Start) * 0.15f);
+            yield return Held(1f);
+            Say("early years: " + tl.LastInfo);
         }
 
         IEnumerator SetupHistoryYoung()
@@ -470,14 +563,14 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator SetupPhoto()
         {
             Hour(10f);
-            var g = Grown();
+            var g = Grown(n => pv.TryGetDollPosition(PersonRef.Notable(n.id), out _)) ?? Grown();
             if (g == null || !Sim.Pin(g.id)) { Say("setup failed: nobody to pin"); yield break; }
             pinnedHere = true;
             yield return Frames(4);
-            Vector3 far = Corner();
-            if (pv.TryGetDollPosition(PersonRef.Notable(g.id), out var p)) { var w = World(p.x, p.y); far = World(w.x > box.transform.position.x ? -2.2f : 2.2f, w.z > box.transform.position.z ? -1.3f : 1.3f); }
-            Rig.CancelFlight(); Rig.pitch = 40f; Rig.zoom = 0.45f; Rig.target = far; Rig.Apply();
-            yield return Wait(1f);
+            if (pv.TryGetDollPosition(PersonRef.Notable(g.id), out var p)) Frame(World(p.x, p.y), 0.3f, 42f, shift: false);
+            else Frame(CampCentre(), 0.35f, 42f, shift: false);
+            yield return Held(0.8f);
+            hold = null; // photo mode must start from here and stay
             yield return PhotoAgainExtra();
         }
 
@@ -499,7 +592,9 @@ namespace AquariumCiv.View.PlayTests
             var n = Grown(x => x.id != (Sim.Pinned != null ? Sim.Pinned.id : -1));
             if (n == null) { Say("setup failed: nobody grown up"); yield break; }
             Sim.DebugSetJob(n, JobType.Woodcutter);
-            Log("headman: " + Sim.DebugSetRoleHolder(RoleType.Headman, n));
+            bool office = false;
+            foreach (var role in new[] { RoleType.Headman, RoleType.Chief }) if (Sim.DebugSetRoleHolder(role, n)) { Log("office: " + role); office = true; break; }
+            if (!office) Log("no office could be given");
             pv.Planner.Invalidate();
             yield return Frames(4);
             var cards = PersonCardView.Instance;
@@ -513,6 +608,8 @@ namespace AquariumCiv.View.PlayTests
         }
 
         // ---------------------------------------------------------------- #680 the retry
+        PersonRef hunter;
+
         IEnumerator SetupHuntRetry()
         {
             Hour(9f);
@@ -522,11 +619,31 @@ namespace AquariumCiv.View.PlayTests
             yield return Frames(10);
             StateCheat("hunt: miss, then try again", EcoDebug.HuntMissThenRetry());
             Say("waiting for the stalk");
-            yield return Until(() => Seen(a => a.kind == ActivityKind.Stalk, out _), 90f);
-            if (!Seen(a => a.kind == ActivityKind.Stalk, out var at)) { Say("setup failed: no stalk seen; press Set up again"); DefaultView(); yield break; }
-            Look(World(at.x, at.y), 0.25f, 45f);
-            Say("the hunter stalks: watch the miss, the second stalk and throw, the walk home");
-            yield return Follow(a => a.kind == ActivityKind.Stalk, 0.25f, 45f, 2f);
+            hunter = PersonRef.None;
+            yield return Until(() => Stalker(out hunter), 90f);
+            if (hunter.IsNone) { Say("setup failed: no stalk seen; press Set up again"); DefaultView(); yield break; }
+            pv.timeScale = 0.7f;
+            FollowWho(hunter, 0.15f, 42f);
+            yield return Held(1f);
+            Say("the hunter stalks: watch the miss, the second stalk and throw, the walk home (The retry waits for the second stalk)");
+        }
+
+        bool Stalker(out PersonRef who)
+        {
+            foreach (var a in pv.Activities) if (a.kind == ActivityKind.Stalk) { who = a.who; return true; }
+            who = PersonRef.None; return false;
+        }
+
+        IEnumerator HuntRetryExtra()
+        {
+            if (hunter.IsNone) { Say("no hunt: Set up again"); yield break; }
+            // the first stalk ends in a throw; the retry is the next stalk by the same hunter
+            float t0 = Time.unscaledTime;
+            yield return Until(() => !Stalker(out _), 60f);
+            yield return Until(() => Stalker(out _), 60f);
+            FollowWho(hunter, 0.15f, 42f);
+            yield return Held(1f);
+            Say(Stalker(out _) ? $"the second stalk ({Time.unscaledTime - t0:0} s after)" : "no second stalk seen");
         }
 
         // ---------------------------------------------------------------- #675 the seed in the jar
@@ -552,7 +669,7 @@ namespace AquariumCiv.View.PlayTests
         {
             Log("camp props: " + ConsequenceCheats.ShowCampProps());
             GameObject pot = null;
-            foreach (float hr in new[] { 17.8f, 12.5f, 16.5f, 8f })
+            foreach (float hr in new[] { 17.8f, 18.3f, 12.5f, 16.5f, 8f })
             {
                 Hour(hr, true);
                 yield return Wait(3f);
@@ -560,15 +677,12 @@ namespace AquariumCiv.View.PlayTests
                 if (pot != null && pot.activeInHierarchy) { Log("pot at " + hr); break; }
                 pot = null;
             }
-            if (pot == null) { Say("setup failed: no stew pot (nobody at the fire); press Set up again"); yield return LookAtCamp(); yield break; }
+            if (pot == null) { Say("setup failed: no stew pot (fire " + Sim.FireStage + "); press Set up again"); Frame(CampCentre(), 0.3f, 45f); yield break; }
             zoomFloorChanged = true;
-            for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 1.2f;)
-            {
-                Rig.CancelFlight(); Rig.minZoom = 0.02f;
-                Rig.target = pot.transform.position + Vector3.up * 0.05f; Rig.zoom = 0.06f; Rig.pitch = 40f;
-                Rig.Apply();
-                yield return null;
-            }
+            Rig.minZoom = 0.02f;
+            var at = pot.transform.position + Vector3.up * 0.05f;
+            Frame(at, 0.06f, 40f, Rig.yaw + 25f, shift: false); // turned a little: a rack pole stood in front of the pot
+            yield return Held(1.2f);
             Say($"the pot at {pv.Now.hour:0.0} h, zoom 0.06 (the zoom floor is lowered for this stop only)");
         }
 
@@ -578,17 +692,28 @@ namespace AquariumCiv.View.PlayTests
             Hour(10f);
             if (Sim.EcoRabbitsShown() < 4) Log(EcoDebug.AddRabbits(6));
             Log(EcoDebug.RabbitTracksNow());
-            yield return Wait(1.5f);
+            for (int k = 0; k < 4 && LifeClock.SeasonOf(Sim.State.month) != Season.Autumn; k++) Log(EcoDebug.SkipToNextSeason()); // more trail slots than summer
+            Hour(10f);
+            yield return Wait(2f);
             yield return FrameTracks();
         }
 
         IEnumerator FrameTracks()
         {
-            var cells = Sim.EcoRabbitTrackCells;
-            if (cells == null || cells.Count == 0) { DefaultView(); Say("no track cells yet · " + EcoDebug.LiveTrailsNow()); yield break; }
-            int c = cells[cells.Count / 2];
-            Look(World(SiteMap.CXc(c), SiteMap.CZc(c)), 0.3f, 50f);
-            yield return Wait(0.8f);
+            var rv = RabbitView.Instance;
+            yield return Until(() => rv != null && rv.LiveTrails > 0, 6f);
+            if (rv != null && rv.LiveTrailSpots.Count > 0)
+            {
+                var s = rv.LiveTrailSpots[rv.LiveTrailSpots.Count - 1];
+                Frame(World(s.x, s.y), 0.13f, 60f, shift: false);
+            }
+            else
+            {
+                var cells = Sim.EcoRabbitTrackCells;
+                if (cells != null && cells.Count > 0) { int c = cells[cells.Count / 2]; Frame(World(SiteMap.CXc(c), SiteMap.CZc(c)), 0.25f, 52f, shift: false); }
+                else DefaultView();
+            }
+            yield return Held(0.8f);
             Say(SeasonLook.Word(Sim.State.month) + " · " + EcoDebug.LiveTrailsNow());
         }
 
@@ -617,17 +742,14 @@ namespace AquariumCiv.View.PlayTests
                 EcoDebug.MistBig(nx + t * 1.6f * -Mathf.Sign(nx), nz);
             }
             yield return Wait(1.5f);
-            nearFocus = World(nx, nz);
+            nearFocus = World(nx - Mathf.Sign(nx) * 0.7f, nz - Mathf.Sign(nz) * 0.55f); // a little inside the near corner: the wet ground fills the frame down to the glass
             yield return HoldNearGlass();
         }
 
         IEnumerator HoldNearGlass()
         {
-            for (float t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 1.5f;)
-            {
-                Rig.CancelFlight(); Rig.target = nearFocus; Rig.zoom = 0.22f; Rig.pitch = 40f; Rig.Apply();
-                yield return null;
-            }
+            Frame(nearFocus, 0.22f, 52f, shift: false);
+            yield return Held(1.5f);
             Say($"{SeasonLook.Word(Sim.State.month)} · near panes {box.PaneOpacity(0):0.00} {box.PaneOpacity(1):0.00} {box.PaneOpacity(2):0.00} {box.PaneOpacity(3):0.00} at zoom 0.22");
         }
 
@@ -650,24 +772,73 @@ namespace AquariumCiv.View.PlayTests
             if (!Sim.NewStartOn) Say("note: not a new-start box (living land off, or an old box)");
         }
 
+        /// <summary>#656: the carriers' middle (the people walking in with the basket and the bundle).</summary>
+        bool Carriers(out Vector3 mid)
+        {
+            mid = default;
+            var v = NewStartView.Instance;
+            if (v == null) return false;
+            Vector2 sum = Vector2.zero; int n = 0;
+            foreach (var who in v.HeldPeople) if (pv.TryGetDollPosition(who, out var p)) { sum += p; n++; }
+            if (n == 0) return false;
+            mid = World(sum.x / n, sum.y / n);
+            return true;
+        }
+
+        void FollowCarriers(float zoom, float pitch)
+        {
+            hold = () => { if (Carriers(out var m)) { Rig.CancelFlight(); Rig.pitch = pitch; Rig.zoom = zoom; Rig.target = m; Rig.Apply(); } };
+            hold();
+        }
+
+        IEnumerator StartArrival()
+        {
+            Hour(10f);
+            if (Sim.State.eco.campGateMonth < 0) { Sim.DebugArrivalAgain(); StateCheat("found the camp", EcoDebug.CampGate()); yield return Wait(0.5f); }
+            StateCheat("arrival again", NewStartView.DebugArrivalAgain());
+            var v = NewStartView.Instance;
+            yield return Until(() => v == null || !v.ArrivalWaiting, 15f);
+            yield return Wait(0.3f); // into the walk (it lasts a few seconds)
+            FollowCarriers(0.18f, 45f);
+            yield return Held(0.3f);
+        }
+
         IEnumerator SetupArrival()
         {
             yield return NewStartBox();
-            Hour(10f);
-            bool campStood = Sim.State.eco.campGateMonth >= 0;
-            Sim.DebugArrivalAgain();
-            StateCheat("arrival again", "the basket and the bundle are carried in again");
-            if (!campStood) StateCheat("found the camp", EcoDebug.CampGate());
-            yield return Wait(1.5f);
-            yield return LookAtCamp(0.35f);
-            Say($"{(campStood ? "the camp stood already" : "the camp is founded now")} · stock set down: {Sim.StockSetDown} · food {Sim.State.food:0.0}, wood {Sim.State.wood:0.0}");
+            if (auto)
+            {
+                // the walk lasts a few seconds and the auto shot comes 4 s after the setup: start it from the hold so the shot falls mid-walk
+                yield return StartArrival();
+                yield return Until(() => Sim.StockSetDown, 20f);
+                float at = Time.unscaledTime + 2.6f; bool started = false;
+                hold = () =>
+                {
+                    if (!started && Time.unscaledTime > at) { started = true; NewStartView.DebugArrivalAgain(); FollowCarriers(0.18f, 45f); }
+                    else if (started && Carriers(out var m)) { Rig.CancelFlight(); Rig.pitch = 45f; Rig.zoom = 0.18f; Rig.target = m; Rig.Apply(); }
+                };
+            }
+            else yield return StartArrival();
+            var v = NewStartView.Instance;
+            Say($"walking in: {(v != null && v.ArrivalPlaying ? "yes" : "no")} · carrying {(v != null ? v.HeldCount : 0)} · stock set down: {Sim.StockSetDown} · food {Sim.State.food:0.0}, wood {Sim.State.wood:0.0}");
+        }
+
+        IEnumerator ArrivalSetDownExtra()
+        {
+            var v = NewStartView.Instance;
+            if (v == null || !v.ArrivalPlaying) yield return StartArrival();
+            FollowCarriers(0.18f, 45f);
+            float t0 = Time.unscaledTime;
+            while (!Sim.StockSetDown && Time.unscaledTime - t0 < 45f) { hold?.Invoke(); yield return null; }
+            var keep = Rig.target;
+            Frame(keep, 0.18f, 45f, shift: false);
+            yield return Held(0.5f);
+            Say($"stock set down: {Sim.StockSetDown} after {Time.unscaledTime - t0:0} s · food {Sim.State.food:0.0}, wood {Sim.State.wood:0.0}");
         }
 
         IEnumerator ArrivalAgainExtra()
         {
-            Sim.DebugArrivalAgain();
-            yield return Wait(0.5f);
-            yield return LookAtCamp(0.35f);
+            yield return StartArrival();
             Say("carried in again · stock set down: " + Sim.StockSetDown);
         }
 
@@ -675,10 +846,12 @@ namespace AquariumCiv.View.PlayTests
         {
             yield return NewStartBox();
             if (Sim.State.eco.campGateMonth < 0) StateCheat("found the camp", EcoDebug.CampGate());
+            if (!Sim.StockSetDown) Sim.SetDownStock();
             Sim.DebugFireStage(-1);
             Hour(18.6f, true);
             yield return Wait(2f);
-            yield return LookAtCamp(0.3f);
+            Frame(CampCentre(), 0.18f, 42f);
+            yield return Held(1f);
             Say("the land's fire now: " + Sim.FireStage + " (first wild wood " + (Sim.FirstWildWoodReached ? "came" : "not yet") + ")");
         }
 
@@ -686,24 +859,27 @@ namespace AquariumCiv.View.PlayTests
         {
             Sim.DebugFireStage(stage);
             yield return Wait(1.5f);
-            yield return LookAtCamp(0.3f);
+            Frame(CampCentre(), 0.18f, 42f);
+            yield return Held(0.8f);
             Say("fire held at: " + Sim.FireStage);
         }
 
         IEnumerator FirstWildWoodExtra()
         {
             Sim.DebugFireStage(-1);
-            var bv = box;
-            StateCheat("first wild wood now", Sim.DebugFirstWildWoodNow(bv == null ? null : (x, z, r) => bv.FreeForProp(new Vector2(x, z), r)));
+            Hour(15.5f, true);
+            StateCheat("first wild wood now", NewStartView.DebugFirstWildWoodNow());
             ownBox = "newstart_wood"; // the first wood comes once: Set up again opens a fresh new-start box
-            Hour(16.5f, true);
-            yield return Wait(1f);
-            yield return LookAtCamp(0.35f);
-            Say("the first logs: watch them carried home; the fire: " + Sim.FireStage);
+            var v = NewStartView.Instance;
+            yield return Until(() => v != null && v.FirstWoodPlaying, 15f);
+            yield return Wait(2f);
+            if (v != null && v.FirstWoodPlaying) FollowCarriers(0.2f, 45f); else Frame(CampCentre(), 0.3f, 42f);
+            yield return Held(1f);
+            Say($"the first logs: {(v != null && v.FirstWoodPlaying ? "carried home now" : "the beat did not start")}; the fire: " + Sim.FireStage);
         }
 
         // ---------------------------------------------------------------- #658 three default framings (the rig only; the game's default is unchanged)
-        static readonly string[] FramingNames = { "A: today's default (the camp frame)", "B: closer on the fire, lower pitch", "C: turned to the orbit's limit, closer" };
+        static readonly string[] FramingNames = { "A: today's default (the camp frame)", "B: much closer on the camp, lower pitch", "C: along the land's long side, closer" };
 
         IEnumerator SetupFraming()
         {
@@ -716,6 +892,7 @@ namespace AquariumCiv.View.PlayTests
 
         IEnumerator FramingExtra(int which)
         {
+            if (yawWidened) { Rig.maxYaw = 55f; yawWidened = false; }
             if (framingA == null)
             {
                 var cf = CampFrameView.Instance;
@@ -728,19 +905,21 @@ namespace AquariumCiv.View.PlayTests
             Vector3 target = a.target; float yaw = a.yaw, pitch = a.pitch, zoom = a.zoom;
             if (which == 1)
             {
-                if (FireAndRack(out var fire, out _)) target = new Vector3(fire.x, a.target.y, fire.z);
-                zoom = a.zoom * 0.72f;
-                pitch = Mathf.Max(28f, CameraReach.PitchFloor(zoom));
+                var c = CampCentre();
+                target = new Vector3(c.x, a.target.y, c.z);
+                zoom = a.zoom * 0.55f;
+                pitch = Mathf.Max(30f, CameraReach.PitchFloor(zoom));
             }
             else if (which == 2)
             {
-                yaw = Rig.maxYaw; // 55: the orbit's limit (the shelf and the wall behind stay in view, tester #31)
-                zoom = a.zoom * 0.8f;
-                pitch = Mathf.Max(40f, CameraReach.PitchFloor(zoom));
+                Rig.maxYaw = 90f; yawWidened = true; // past today's orbit (55): the land's 6 u side runs up the screen
+                yaw = 90f;
+                zoom = a.zoom * 0.72f;
+                pitch = Mathf.Max(38f, CameraReach.PitchFloor(zoom));
             }
-            Rig.CancelFlight(); Rig.target = target; Rig.yaw = yaw; Rig.pitch = pitch; Rig.zoom = zoom; Rig.Apply();
+            Frame(target, zoom, pitch, yaw, shift: false);
             panel.collapsed = true;
-            yield return Wait(0.8f);
+            yield return Held(0.8f);
             Say($"Framing {FramingNames[which]} · target {target.x:0.00},{target.z:0.00} yaw {yaw:0} pitch {pitch:0} zoom {zoom:0.00}");
         }
     }

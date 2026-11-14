@@ -158,6 +158,7 @@ namespace AquariumCiv.View.PlayTests
             Rebind();
             Log("skipped seasons: " + EcoDebug.SkipSeasons(50));
             if (Sim.State.era != Era.Camp) Log("camp gate: " + EcoDebug.CampGate());
+            yield return StagePlayedBox(); // the new start greens nothing by itself: a lived-in camp for the look stops
             youngBox = false; mistedHalf = false; ownBox = "";
             Hour(10f);
             yield return Wait(2f);
