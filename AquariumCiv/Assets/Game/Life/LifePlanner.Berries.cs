@@ -31,16 +31,9 @@ namespace AquariumCiv.Life
             return debugPickers.Count > 0 ? cell : -1;
         }
 
-        /// <summary>"Root dig now": up to three grown-ups (not the toolmaker) dig roots at the stream bed for <paramref name="hours"/> view hours. Returns how many.</summary>
-        public int DebugRootDigNow(ViewTime now, int grownUps = 3, float hours = 0.8f)
-        {
-            Sync();
-            debugPickers.Clear();
-            int adults = 0;
-            foreach (var p in people)
-                if (p.Adult && p.job != JobType.Toolmaker && adults < grownUps) { debugPickers[p.key] = (-1, now.hour, now.hour + hours, false); adults++; }
-            return adults;
-        }
+        /// <summary>"Root dig now": #656, the root dig is gone (the people live off the carried basket until the land gives). Does nothing
+        /// and returns 0; kept only so the old debug button compiles until the view work takes it off the panel.</summary>
+        public int DebugRootDigNow(ViewTime now, int grownUps = 3, float hours = 0.8f) => 0;
 
         readonly Dictionary<int, (float start, float until)> debugTips = new();
 
@@ -76,7 +69,7 @@ namespace AquariumCiv.Life
             }
             if (debugPickers.Count == 0 || !debugPickers.TryGetValue(p.key, out var d)) return false;
             if (t.hour >= d.until || t.hour < d.start) { if (t.hour >= d.until) debugPickers.Remove(p.key); return false; }
-            var place = d.cell < 0 ? Place.Land(PlaceKind.Stream) : Place.Land(PlaceKind.BushCell, d.cell);
+            var place = Place.Land(PlaceKind.BushCell, d.cell);
             a = new PersonActivity
             {
                 who = p.who, kind = d.eat ? ActivityKind.Eat : ActivityKind.Gather, place = place, from = place, prop = d.eat ? Prop.None : Prop.Basket,

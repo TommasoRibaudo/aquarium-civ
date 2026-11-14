@@ -231,6 +231,12 @@ namespace AquariumCiv.View
         /// for an answer, animated; while it does, the live layout leaves them out (the time-lapse keeps them).</summary>
         public static bool KeeperOverlays;
 
+        /// <summary>#656/#677: the camp fire's stage the box draws (NewStartView holds the grass fire while the first logs are carried
+        /// home, then lets the log fire in); null = the sim's <see cref="SimCore.FireStage"/>.</summary>
+        public static Func<SimCore, CampFireStage> FireStageShown;
+        /// <summary>#656/#677: <see cref="PieceData.variant"/> of a camp fire of dry grass and twigs (0 = the log fire).</summary>
+        public const int GrassFireVariant = 1;
+
         /// <summary>#284: how much of a building stands, 0..1, while its tent is being raised (the camp view sets it; null = all of them stand).</summary>
         public static Func<int, float> BuildingGrow;
 
@@ -263,7 +269,11 @@ namespace AquariumCiv.View
             if (campFire)
             {
                 L.Clearing(new Vector2(camp.x, camp.z), SiteMap.GreenR + 0.12f, ClearingKind.Dirt);
-                L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp));
+                // #656/#677: the fire as the land lets it burn: none before the first bush (the wanderers huddle there), a small fire of dry
+                // grass and twigs (variant 1), the log fire from the first wild wood. A replay draws the log fire, as before.
+                var stage = replay != null ? CampFireStage.Logs : FireStageShown != null ? FireStageShown(sim) : sim.FireStage;
+                if (stage != CampFireStage.None)
+                    L.Add(PieceKind.Fire, camp.x, camp.z, 0f, 0.4f, 0.4f, Era.Camp, SeedOf(camp)).variant = stage == CampFireStage.GrassAndTwig ? GrassFireVariant : 0;
             }
             else
             {

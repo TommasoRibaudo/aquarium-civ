@@ -397,6 +397,7 @@ namespace AquariumCiv.Sim
         public List<int> founderIds = new(); // the notables who crossed to the next box
         public int boxIndex;                 // which box of the shelf this is (0 = the first; SimShelf.cs, #87)
         public FirstRunState firstRun = new(); // the first run's progress; inactive unless FirstRun.Begin ran (#94)
+        public NewStartState newStart = new(); // #656/#677: the carried stock, its set-down and the camp fire of a new living-land box (SimCore.NewStart.cs); an old save: off
         public HistoryState history = new(); // time-lapse and book records (SimCore.History.cs, #73)
         public CardLedger cards = new();     // which cards have been read, across kills (SimCore.CardLedger.cs, #75)
         public List<string> crowdNames = new(); // first names of the crowd, by crowd index (SimCore.Crowd.cs, #148); old saves fill it from the seed

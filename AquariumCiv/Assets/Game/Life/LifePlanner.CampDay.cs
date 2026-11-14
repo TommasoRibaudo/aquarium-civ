@@ -106,7 +106,7 @@ namespace AquariumCiv.Life
             bool berries = !OnLiving || sim.BerriesGrow;
             var with = p.partner != null && p.partner.Grown ? Ref(p.partner) : default;
             if (r < 0.16f && water && WaterHere(Pond)) { At(ActivityKind.Fish, until, Pond, Prop.Rod, with); return; } // #421: WaterHere = fish to catch
-            if (r < 0.32f && berries) { At(ActivityKind.Gather, until, BerryPlaceFor(p, d, slot), Prop.Basket, with); return; }
+            if (r < 0.32f && berries) { var bp = BerryPlaceFor(p, d, slot); if (!bp.IsNone) { At(ActivityKind.Gather, until, bp, Prop.Basket, with); return; } } // #656: no berries today: no roots either
             if (r < 0.42f)
             {
                 // Water for the tent: the walk with the empty bucket, the draw, the full one home, then a chore at the door.
@@ -172,8 +172,10 @@ namespace AquariumCiv.Life
         {
             if (!CampSpread || !p.Adult || p == leader) return false;
             int rank = EveningRank(p, d);
-            if (rank == 0) { At(ActivityKind.Cook, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; }
-            if (rank == 1) { At(ActivityKind.StackWood, 17.6f, stash, Prop.Log, default, TripType.HomeToGreen); return true; }
+            var fireStage = FireNow; // #656/#677: no fire before the first bush (the pot and the woodpile wait); a grass fire is fed twigs, not logs
+            if (rank == 0 && fireStage != CampFireStage.None) { At(ActivityKind.Cook, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; }
+            if (rank == 1 && fireStage == CampFireStage.Logs) { At(ActivityKind.StackWood, 17.6f, stash, Prop.Log, default, TripType.HomeToGreen); return true; }
+            if (rank == 1 && fireStage == CampFireStage.GrassAndTwig) { At(ActivityKind.SitOut, 17.6f, fire, Prop.Stick, default, TripType.HomeToGreen); return true; } // feeding the grass fire
             if (R(p.key, d.day, 210) < 0.35f)
             {
                 var ch = Chore(p, d, 211);
@@ -205,65 +207,9 @@ namespace AquariumCiv.Life
 
         // ---------------------------------------------------------------- the stream bed
 
-        long diggersDay = long.MinValue;
-        readonly System.Collections.Generic.List<int> diggers = new System.Collections.Generic.List<int>();
-
-        /// <summary>How many may dig roots in the stream bed at once in a camp: four or more diggers at one bed knelt and dug in
-        /// step [est]. #521: two (three in a big camp), each at their own dry patch (<see cref="DigSpots"/>).</summary>
-        int DiggerSlots => people.Count >= 14 ? 3 : 2;
-
-        /// <summary>#521: the dry patches of the stream bed where roots are dug (patch 0 is the bed itself; the others a few steps
-        /// along it, SettlePlacePositions.DigSpot). Two diggers never share one.</summary>
+        /// <summary>#521: the dry patches of the stream bed (patch 0 is the bed itself; the others a few steps along it,
+        /// SettlePlacePositions.DigSpot). #656: nobody digs roots there any more; the spots stay for the old saves' places.</summary>
         public const int DigSpots = 3;
-
-        /// <summary>Today's diggers: the grown-ups by the day's hash, the first <see cref="DiggerSlots"/> (stable for the day).</summary>
-        bool MayDig(Person p, DayInfo d) => DigIndex(p, d) >= 0;
-
-        int DigIndex(Person p, DayInfo d)
-        {
-            if (diggersDay != d.day)
-            {
-                diggersDay = d.day;
-                diggers.Clear();
-                var order = new System.Collections.Generic.List<Person>();
-                foreach (var q in people) if (q.Adult && q.job != JobType.Toolmaker && q.job != CrowdCook && (sim.BeforeCamp || q.job == JobType.Gatherer)) order.Add(q); // #521: only those whose work is roots take a bed slot
-                order.Sort((a, b) => { int c = H(a.key, d.day, 148).CompareTo(H(b.key, d.day, 148)); return c != 0 ? c : a.key.CompareTo(b.key); });
-                // the day's first patch is a hash too, so it is not always the same bed
-                for (int i = 0; i < order.Count && diggers.Count < DiggerSlots; i++) diggers.Add(order[i].key);
-            }
-            return diggers.IndexOf(p.key);
-        }
-
-        /// <summary>A camp's work in the stream bed goes to today's few diggers, each at their own patch; the others do the
-        /// camp's other work: the cook tends the fire, the rest fetch water, fish, or chop where the land allows it, and do the
-        /// chores at their tent (hashed per person and day [est]). #521: this also holds before the camp gate, when everyone
-        /// used to dig at the one bed (JobWork sent every worker to the Stream; the fishing and chopping stay shut on a dead land).</summary>
-        Work SpreadDiggers(Person p, DayInfo d, Work w)
-        {
-            if (!CampSpread || w.site != Stream || w.loop != ActivityKind.Gather) return w;
-            int dig = DigIndex(p, d);
-            if (dig >= 0)
-            {
-                int spot = (dig + (int)(H(0, d.day, 524) % (uint)DigSpots)) % DigSpots;
-                w.site = Place.Land(PlaceKind.Stream, spot);
-                if (w.altSite == Stream) w.altSite = w.site; // the second spot of the day is the same patch
-                return w;
-            }
-            if (p.job == CrowdCook)
-            {
-                var cook = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
-                cook.keepsRestDay = true;
-                if (HasRealWater) { cook = Fetch(cook, WaterPlace); cook.dest = stash; cook.fetchFirst = true; }
-                return cook;
-            }
-            float r = R(p.key, d.day, 149);
-            bool water = FishingOn(d.day); // #421: fishing waits for the fish; #618: and for the thaw on a small pond
-            if (water && r < 0.45f) return FishWork();
-            if (WoodsStand && r < 0.8f) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
-            var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
-            c.chores = true;
-            return Fetch(c, WaterPlace);
-        }
 
         // ---------------------------------------------------------------- elders
 

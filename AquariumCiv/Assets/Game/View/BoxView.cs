@@ -1604,6 +1604,9 @@ namespace AquariumCiv.View
         /// per lantern a small light that follows the night level. The motion of all of it is in the Glow shader. The fires'
         /// smoke is a second tiny mesh with its own alpha-blended material (one more draw for every fire in the box).
         /// </summary>
+        /// <summary>#656/#677: the grass-and-twig fire's glow: a smaller halo and pool than the log fire's, a few quick sparks, thin smoke.</summary>
+        public static readonly FireSpec GrassFireSpec = new FireSpec { haloRadius = 0.24f, poolRadius = 0.46f, poolBoost = 0.7f, washRadius = 0f, embers = 3, emberY = 0.06f, sparks = 6, smokePuffs = 1 };
+
         void Glows()
         {
             if (glowGo != null) { Kill(glowGo.GetComponent<MeshFilter>().sharedMesh); Kill(glowGo); glowGo = null; }
@@ -1653,6 +1656,7 @@ namespace AquariumCiv.View
                     var foot = frame.MultiplyPoint3x4(Vector3.zero);
                     float phase = Pieces.Phase(p.seed);
                     var look = FireLooks.Spec(FireLooks.Active);
+                    if (p.kind == PieceKind.Fire && p.variant == SimLayout.GrassFireVariant) look = GrassFireSpec; // #656/#677: the small grass-and-twig fire's smaller light
                     spots.Add((frame.MultiplyPoint3x4(new Vector3(0, 0.16f, 0)), 0.05f));                                         // a fire lights its neighbours from the first dusk
                     Add(frame.MultiplyPoint3x4(new Vector3(0, 0.13f, 0)), look.haloRadius, 0f, Palette.FireHalo, phase, 0.13f);   // halo, behind the flame (y: its height above the ground, so the shader can fade it there)
                     Add(foot + Vector3.up * 0.02f, look.poolRadius, 4f, Palette.FirePool, phase, look.poolBoost);                 // warm pool on the ground

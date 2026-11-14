@@ -21,7 +21,10 @@ namespace AquariumCiv.View
         // P9 #426 (B13): the hunter's bow (a bark arc with a string) and the carrying pole
         Bow, Pole,
         // #543: the fish basket (a fisher's catch, carried to the rack)
-        FishBasket }
+        FishBasket,
+        // #656/#677: an armful of dry grass and thin twigs for the grass fire (never a log); a fallen branch gathered under a wild
+        // tree (never chopped); the carried basket of food and the tied bundle of sticks the founders walk in with
+        Tinder, Branch, FoodBasket, StickBundle }
 
     /// <summary>Where a prop rides (life-in-the-box §9): in the right hand, on the head, on the back or on the shoulder,
     /// hugged in both arms, or rolled along the ground in front (a barrel).</summary>

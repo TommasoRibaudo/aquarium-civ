@@ -573,6 +573,8 @@ namespace AquariumCiv.Life
                 ActivityKind.FetchWater => a.moving ? $"carrying water to {where}" : $"drawing water at {where}",
                 ActivityKind.RollBarrel => $"rolling a barrel to {where}",
                 ActivityKind.TipLoad => "tipping a basket onto the pile", // #361
+                ActivityKind.Gather when a.place.kind == PlaceKind.Deadfall => "gathering fallen branches under the wild tree", // #656/#677: never chopped
+                ActivityKind.Gather when a.prop == Prop.Stick => "gathering dry grass and twigs for the fire", // #677: the grass fire, never "wood"
                 ActivityKind.HangFish => "hanging fish up to dry", ActivityKind.TakeDownFish => "taking the dry fish down", // #543
                 ActivityKind.Pray => "praying at the feather pole", // fb4 #566
                 ActivityKind.Walk => $"walking to {where}",
@@ -639,7 +641,7 @@ namespace AquariumCiv.Life
             Prop.Log => "logs", Prop.Handcart => "a handcart", Prop.Sheaf => "sheaves", Prop.Basket => "a basket", Prop.Hide => "a hide",
             Prop.FishStick or Prop.FishBasket => "fish", Prop.Pots => "pots", Prop.Block => "a stone block", Prop.Cloth => "cloth", Prop.Loaves => "loaves",
             Prop.Goods => "goods", Prop.Sack => "flour sacks", Prop.Honey => "honey", Prop.Wool => "wool", Prop.Lamb => "a lamb",
-            Prop.Buckets => "water", Prop.Spear => "new tools", Prop.SeedBag => "seed baskets", Prop.Barrel => "a barrel", _ => "things",
+            Prop.Buckets => "water", Prop.Spear => "new tools", Prop.Stick => "dry grass and twigs", // #677 Prop.SeedBag => "seed baskets", Prop.Barrel => "a barrel", _ => "things",
         };
 
         static string RelicNoun(int index) => index switch
@@ -674,6 +676,7 @@ namespace AquariumCiv.Life
             PlaceKind.Prop => "the Keeper's choice", // #371
             PlaceKind.Tower => "the lookout tower", // #404
             PlaceKind.FishRack => "the fish rack", // #543
+            PlaceKind.Deadfall => "the wild tree by the Keeper's", // #656/#677
             _ => "the " + p.kind.ToString().ToLowerInvariant(),
         };
     }

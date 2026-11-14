@@ -33,6 +33,7 @@ namespace AquariumCiv.Sim
             };
             var core = new SimCore(config, s);
             if (config.ecology) core.StartEcology(); // a barren land; the camp waits for its gate (SimCore.Eco.cs)
+            core.BeginCarriedStock(); // #656/#677: on a living land, the carried basket (food 12) and no usable wood (SimCore.NewStart.cs)
             core.AddBuilding(BuildingType.Camp);
             core.AddBuilding(BuildingType.Hut);
             // Clamped into the camp's band (#26): a scene saved before the bands may still carry the old 5.
@@ -126,8 +127,12 @@ namespace AquariumCiv.Sim
             // the surplus (what pays for growth) is scaled by mood and mess.
             float subsistence = pop * (winter ? 0.85f : 1f);
             float surplus = (2f + pop * 0.2f + Count(BuildingType.Farm) * 3f + Count(BuildingType.Windmill) * 3f) * mult * (winter ? 0.5f : 1f) * NudgeFood;
-            s.food = Math.Clamp(s.food + subsistence + surplus - pop, 0f, FoodCap);
-            s.wood = Math.Min(s.wood + (1f + pop * 0.15f + Count(BuildingType.Lumbermill) * 1.5f) * mult * NudgeWood, 2000f);
+            // #656/#677: on a new living-land box the carried basket runs down until the land gives food (never below 0, nobody starves),
+            // and the wood comes only from grown wild trees (SimCore.NewStart.cs). Elsewhere both are as before.
+            s.food = BasketFood(pop) ?? Math.Clamp(s.food + subsistence + surplus - pop, 0f, FoodCap);
+            float woodGain = WoodIncome(pop) * mult * NudgeWood;
+            s.wood = Math.Min(s.wood + woodGain, 2000f);
+            NewStartStep(woodGain);
 
             if (s.food > pop * 1.5f && pop < Housing && birthRoll < 0.025f * (0.5f + s.mood) * (1f - OutputPenalty)) s.population++; // happier = more births; a mess penalty slows growth too
             if (pop > 5 && deathRoll < 0.008f) s.population--; // crowd old age
@@ -368,7 +373,8 @@ namespace AquariumCiv.Sim
             if (winter && s.food < s.population && year - s.lastLeanYear >= 5)
             {
                 s.lastLeanYear = year;
-                Chronicle("lean_winter", "A lean winter: the granaries ran low and the people tightened their belts.", 0.5f);
+                Chronicle("lean_winter", EcologyOn && s.era == Era.Camp ? "A lean winter: the baskets ran low and the people tightened their belts." // #656: a camp has no granaries
+                    : "A lean winter: the granaries ran low and the people tightened their belts.", 0.5f);
             }
             if (!winter && s.food > FoodCap * 0.9f && festivalRoll < 0.02f)
             {
@@ -485,6 +491,7 @@ namespace AquariumCiv.Sim
         ChronicleEntry Record(string kind, string text, float salience, int notableId, int otherId)
         {
             text = TermCoda(kind, text, notableId, otherId); // a role-holder's clause on a few story lines (SimCore.Office.cs)
+            text = LandWords(text); // #656/#677: a living land's words (no stream, goats or huts; no wood before the wild trees)
             var e = new ChronicleEntry { id = State.NextId(), month = State.month, kind = kind, text = text, salience = salience, notableId = notableId, otherNotableId = otherId };
             State.chronicle.Add(e);
             MomentFromLine(e); // #369: a wedding, a birth, a new leader, a callback or a festival queues its ceremony for the Keeper

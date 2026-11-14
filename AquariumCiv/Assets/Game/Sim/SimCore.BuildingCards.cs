@@ -82,7 +82,7 @@ namespace AquariumCiv.Sim
         {
             BuildingType.Camp => "Where everyone gathers at night. It keeps the cold off and the stories going.",
             BuildingType.Hut => era == Era.Camp ? "Somewhere to sleep out of the wind." : "A family's home.",
-            BuildingType.Farm => era == Era.Camp ? "Where the berries and roots are gathered." : "Fields that put food on the tables.",
+            BuildingType.Farm => era == Era.Camp ? "Where the berries are gathered." : "Fields that put food on the tables.",
             BuildingType.Lumbermill => era == Era.Camp ? "Where the wood is stacked for the fire." : "Turns trees into planks and beams.",
             BuildingType.Well => "Fresh water for the whole place.",
             BuildingType.Windmill => "Grinds the grain into flour.",
