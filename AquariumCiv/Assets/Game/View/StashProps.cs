@@ -162,6 +162,7 @@ namespace AquariumCiv.View
             if (!on) return;
             if (root == null) Build();
             if (HoldLogs) look.stock.logs = 0;
+            else if (sim != null && sim.FirstWildWoodReached && sim.State.wood > 0f) look.stock.logs = Mathf.Max(look.stock.logs, 2); // #656/#677: the first logs carried home lie on the pile
             bool wantCarried = sim != null && sim.NewStartOn;
             if (drawn && Same(look, shown) && wantCarried == carriedOn) return;
             carriedOn = wantCarried;

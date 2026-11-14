@@ -31,11 +31,16 @@ namespace AquariumCiv.View.PlayTests
         static IEnumerator Png(string name)
         {
             Directory.CreateDirectory(Dir);
+            // the camera glides home after a lean or a placed-life arrival: hold the shot's view for a moment, then take it
+            if (lookSet) for (int i = 0; i < 12; i++) { Look(lookAt, lookZoom, lookPitch); yield return null; }
             yield return Shot("night/" + name);
+            lookSet = false;
         }
+        static bool lookSet; static Vector3 lookAt; static float lookZoom, lookPitch;
 
         static void Look(Vector3 world, float zoom, float pitch = 52f)
         {
+            lookSet = true; lookAt = world; lookZoom = zoom; lookPitch = pitch;
             var rig = Cam;
             rig.CancelFlight();
             rig.target = world; rig.zoom = zoom; rig.pitch = pitch;
@@ -149,6 +154,8 @@ namespace AquariumCiv.View.PlayTests
             EcoDebug.FirstBushNow();
             PeopleView.DebugSetHour(10.5f);
             yield return new WaitForSecondsRealtime(2f);
+            yield return Until(() => LifeArrivalView.Instance == null || !LifeArrivalView.Instance.AnyPlaying, 15f); // the bushes' arrival and its lean are over
+            yield return new WaitForSecondsRealtime(6f);
             Assert.AreEqual(SimLayout.GrassFireVariant, FireVariant());
             string r = NewStartView.DebugFirstWildWoodNow();
             Debug.Log("[newstart] " + r);
@@ -231,7 +238,7 @@ namespace AquariumCiv.View.PlayTests
                 yield return null;
             }
             Assert.IsFalse(looker.IsNone, "hungry: someone looks up at the sky");
-            Look(Doll(looker), 0.18f, 35f);
+            Look(Doll(looker), 0.2f, 68f);
             yield return Frames(2);
             yield return Png("newstart_11_hungry_looks_up");
             Assert.AreEqual(0, Sim.State.food, 0.001f);

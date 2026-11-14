@@ -590,6 +590,8 @@ namespace AquariumCiv.Life
         /// is shown (slower, looking at the sky in the view), never punished.</summary>
         public const float HungryPace = 1.25f;
         float HungerPace => sim != null && sim.NewStartOn && sim.Hungry ? HungryPace : 1f;
+        /// <summary>#656/#677: how much longer a walk takes now (1, or <see cref="HungryPace"/> while hungry on a new start).</summary>
+        public float WalkPace => HungerPace;
 
         /// <summary>World units of plain ground walked per view hour [est], and the shortest and longest walk in view hours.</summary>
         public const float WalkSpeed = 5f, MinWalk = 0.08f, MaxWalk = 0.6f;

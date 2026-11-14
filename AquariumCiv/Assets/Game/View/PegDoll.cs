@@ -473,13 +473,14 @@ namespace AquariumCiv.View
         /// sticking out both sides, so it reads as grass and twigs, never a log.</summary>
         public static void Tinder(MeshBuilder mb)
         {
-            mb.Ico(new Vector3(0f, 0.004f, 0f), 0.04f, new Vector3(1.5f, 0.75f, 0.9f), DryGrass, 0.18f, DryGrassDark);
-            mb.Ico(new Vector3(0.022f, 0.02f, 0.004f), 0.022f, new Vector3(1.3f, 0.8f, 1f), Color.Lerp(DryGrass, Palette.Straw, 0.5f), 0.2f);
+            mb.Ico(new Vector3(0f, 0.006f, 0f), 0.05f, new Vector3(1.7f, 0.85f, 1f), DryGrass, 0.2f, DryGrassDark);
+            mb.Ico(new Vector3(0.03f, 0.03f, 0.004f), 0.03f, new Vector3(1.4f, 0.8f, 1f), Color.Lerp(DryGrass, Palette.Straw, 0.5f), 0.22f);
+            mb.Ico(new Vector3(-0.04f, 0.026f, -0.004f), 0.024f, new Vector3(1.3f, 0.8f, 1f), Color.Lerp(DryGrass, PegDoll.DryGrassDark, 0.3f), 0.22f);
             for (int i = 0; i < 4; i++)
             {
                 float a = -18f + i * 12f;
                 var q = Quaternion.Euler(0f, i * 9f - 14f, -90f + a);
-                mb.Prism(new Vector3(-0.07f, -0.004f + i * 0.006f, -0.006f + i * 0.004f), 0.0035f, 0.0025f, 0.14f, 4, Palette.Bark, q);
+                mb.Prism(new Vector3(-0.095f, 0f + i * 0.008f, -0.008f + i * 0.005f), 0.004f, 0.003f, 0.19f, 4, Palette.Bark, q);
             }
         }
 
