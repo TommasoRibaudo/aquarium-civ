@@ -84,5 +84,7 @@ The playtest sees the camp, so it goes first:
 3. Dogs and wolves (the chain is built, the people's side is not).
 4. Village and town gaps.
 
-Each step is a polish issue listed under the audit issue. Each is "done" when a close shot at phone portrait shows the
+**Animations are signed off by the user (2026-11-14).** Every use is first written as an animation spec in [animation-specs.md](animation-specs.md): who does it, when in the day, the beats in order, poses, props in hand, timing and what the player should read. The user signs off the spec, then the clip in the AnimLab review, before it goes into the game. Nothing merges unsigned.
+
+Each step is a polish issue listed under the audit issue. Each is "done" when the user has signed off its clips, a close shot at phone portrait shows the
 use, and there is a debug cheat for it.

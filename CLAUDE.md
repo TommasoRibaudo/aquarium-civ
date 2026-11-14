@@ -68,6 +68,8 @@ Every time something runs in Unity (open, recompile, eval, tests, builds, import
 - **People use everything (core rule):** any new thing in the box (prop, building, plant, animal, decoration) ships
   with how the people use it, for work **and** for play or life (kids play, grown-ups sit, gather, react), plus a
   debug cheat to trigger it; add its row to `docs/design/people-and-things.md`. A thing nobody touches is not done.
+  Their animations are **specced first and signed off by the user** (spec in `docs/design/animation-specs.md`, then
+  the clip in the AnimLab review) before they merge.
 - Judge player-facing work against `docs/game-design-practices.md` (the design docs still win).
 - Editor helper tools live in `Assets/Editor/Agent/`.
 - Free assets only for now (KayKit CC0, Kenney CC0). Record source + license of every imported pack in `docs/assets-log.md`.
