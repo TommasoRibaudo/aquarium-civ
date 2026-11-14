@@ -53,3 +53,9 @@ When citing a finding, name the section: "§2 readability", "§11 return".
     matches what is actually built.
 14. **Fair to time and wallet (pillar 6).** No timers built to be skipped, no FOMO, never sell relief from neglect.
     In prototypes this mostly means: don't design anything that would only make sense with those.
+15. **People use everything in the world (core, 2026-11-14).** Every thing in the box (prop, building, plant, animal,
+    water, ground feature, Keeper-placed life, decoration) is touched by the people in ways the player can watch:
+    **work** with it (gather, cook, fix, carry) **and live with it** (kids play on or with it, grown-ups sit, lean,
+    chat, show it off, pray, react to it). A thing nobody comes near is a finding, and so is a thing used only for
+    work. Watch for: a prop that only stands there, a thing the people walk past, the same single use forever.
+    Every new thing ships with its uses (#691); the list per thing is in [design/people-and-things.md](design/people-and-things.md).
