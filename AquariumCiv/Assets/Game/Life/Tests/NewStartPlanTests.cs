@@ -62,6 +62,29 @@ namespace AquariumCiv.Life.Tests
             }
         }
 
+        /// <summary>Sign-off 2026-11-14 (#651/#677, the user's pick): a grass fire is fed (a crouch, an armful pushed in: stirring over
+        /// it read as stroking the fire); the camp's hand work is at real things: a bedroll mended at a tent, and once there
+        /// are hides, a hide scraped at the rack, still with some mending (a mix, per person and day).</summary>
+        [TestCase(1)]
+        [TestCase(7)]
+        [TestCase(42)]
+        public void TheGrassFire_IsFedNeverStirred_TheHandWorkIsAtRealThings(int seed)
+        {
+            var sim = NewBox(seed);
+            sim.DebugFireStage(1);
+            var plan = Plan(sim);
+            Assert.IsTrue(plan.Any(a => a.kind == ActivityKind.FeedFire && a.place.kind == PlaceKind.Fire), "someone feeds it (the pot is stirred too: there is one)");
+            Assert.IsTrue(plan.Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide && a.place.kind == PlaceKind.Home), "a bedroll mended at a tent");
+            Assert.IsFalse(plan.Any(a => a.kind == ActivityKind.ScrapeHide), "no hides yet: nothing to scrape");
+            var pastHides = sim.State.eco; pastHides.hidesTotal = 3; pastHides.hidesDrying = 0;
+            Assert.IsFalse(Plan(sim).Any(a => a.kind == ActivityKind.ScrapeHide), "hides all gone into tents: an empty rack is never scraped");
+
+            sim.State.eco.hidesTotal = 3; sim.State.eco.hidesDrying = 3; // hides hang on the rack
+            var withHides = Plan(sim);
+            Assert.IsTrue(withHides.Any(a => a.kind == ActivityKind.ScrapeHide && a.place.kind == PlaceKind.HideRack), "a hide scraped at the rack");
+            Assert.IsTrue(withHides.Any(a => a.kind == ActivityKind.Weave && a.prop == Prop.Hide), "and still some mending: a mix");
+        }
+
         /// <summary>#656/#677 (view pass): hunger is shown, never punished: with the basket empty every walk is timed
         /// <see cref="LifePlanner.HungryPace"/> longer (the day's fixed hours absorb much of it); the view adds the looks at the sky.
         /// An old box or the old slice never slows.</summary>

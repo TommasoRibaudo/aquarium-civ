@@ -72,9 +72,12 @@ namespace AquariumCiv.View.PlayTests
                     "the Feedback button is full ink, as dark (or light) as its neighbours, not faded like a disabled button.", SetupHudIcons) };
                 case "#650": return new Stop[0]; // in #649's stop
                 case "#651": return new[] { With(S("#651", "camp chores with no wild wood", "pt1_kindling",
-                    "A fresh camp (its own box) with no wild tree grown, at dawn: the morning chores. Watch about a minute. Good: sweeping, washing, " +
-                    "sitting out, water; nobody chops kindling or swings an axe at a block. (Winter farmers hoeing need a village: covered by the planner tests.)",
-                    SetupKindling), box: "camp") };
+                    "A fresh camp (its own box) with a grass fire and no wild tree: the camp's hand work, each at a real thing (2026-11-14). The buttons " +
+                    "frame one person at each, close: feeding the fire (turn to the grass heap, an armful, push it in: the sparks flare, hands to the heat), " +
+                    "scraping a hide on the rack (a hard push down, shavings), sorting the basket over the pile, mending a bedroll at the tent. " +
+                    "Good: each reads at a glance, nobody works at a fire spot with no fire, nobody strokes the flames.",
+                    SetupKindling, ("Feeding the fire", () => ChoreExtra(ActivityKind.FeedFire)), ("Scraping a hide", () => ChoreExtra(ActivityKind.ScrapeHide)),
+                    ("Sorting the basket", () => ChoreExtra(ActivityKind.Prepare)), ("Mending a bedroll", () => ChoreExtra(ActivityKind.Weave))), box: "camp") };
                 case "#652": return new[] { With(S("#652", "the gatherers' place word", "pt1_place_word",
                     "A camp with no pond; someone's card is open while the planner names the low ground (the line below quotes it). Good: \"the dry hollow\"; " +
                     "press Add a pond: \"the water's edge\". Never \"the stream\". Read the card's doing line and the tag over the doll.", SetupPlaceWord,
@@ -398,11 +401,75 @@ namespace AquariumCiv.View.PlayTests
         IEnumerator SetupKindling()
         {
             yield return FreshCamp();
-            Hour(6.8f, true);
-            yield return Wait(1f);
+            Sim.DebugFireStage((int)CampFireStage.GrassAndTwig);
+            if (Sim.State.eco.hidesTotal < 2) { Sim.State.eco.hidesTotal += 2; Sim.State.eco.hidesDrying += 2; } // a hide or two on the rack
+            pv.Planner.Invalidate();
+            Hour(9f, true);
+            yield return Wait(1.5f);
             Frame(CampCentre(), 0.3f, 45f);
             yield return Held(0.6f);
-            Say($"wild trees grown: {Sim.WildWoodTreeCount} (woods {Sim.WoodsTreeCount}) · watch the dawn chores");
+            Say($"wild trees grown: {Sim.WildWoodTreeCount} · fire: {Sim.FireStage} · hides {Sim.HidesTotal} · {ChoreCount()}");
+        }
+
+        string ChoreCount()
+        {
+            int feed = 0, scrape = 0, sort = 0, mend = 0, atBareFire = 0;
+            foreach (var a in pv.Activities)
+            {
+                if (a.moving) continue;
+                if (a.kind == ActivityKind.FeedFire) feed++;
+                else if (a.kind == ActivityKind.ScrapeHide) scrape++;
+                else if (a.kind == ActivityKind.Prepare && a.place.kind == PlaceKind.Stash) sort++;
+                else if (a.kind == ActivityKind.Weave && a.prop == Prop.Hide) mend++;
+                if (Sim.FireStage == CampFireStage.None && a.place.kind == PlaceKind.Fire && a.kind is ActivityKind.Cook or ActivityKind.Knap or ActivityKind.FeedFire) atBareFire++;
+            }
+            return $"feeding {feed}, scraping {scrape}, sorting {sort}, mending {mend}, working at a bare fire spot {atBareFire}";
+        }
+
+        /// <summary>2026-11-14: steps the day (and on a season at a time) until someone stands doing <paramref name="kind"/>, then follows them close.</summary>
+        IEnumerator ChoreExtra(ActivityKind kind)
+        {
+            bool Match(in PersonActivity a) => !a.moving && !a.enRoute && a.kind == kind && (kind != ActivityKind.Weave || a.prop == Prop.Hide)
+                                                && (kind != ActivityKind.Prepare || a.place.kind == PlaceKind.Stash);
+            // what each chore needs: hides on the rack for the scraper; food on the land for the sorter (and the rack bare, so the hand
+            // work falls to the basket or a bedroll)
+            var e = Sim.State.eco;
+            if (kind == ActivityKind.ScrapeHide) { if (e.hidesDrying < 6) { e.hidesTotal += 6; e.hidesDrying += 6; } }
+            else if (kind is ActivityKind.Prepare or ActivityKind.Weave) { e.hidesDrying = 0; if (kind == ActivityKind.Prepare && !Sim.BerriesGrow) Log("bushes: " + EcoDebug.AddBushes(3)); }
+            pv.Planner.Invalidate();
+            PersonRef who = PersonRef.None;
+            for (int day = 0; day < 4 && who.IsNone; day++)
+            {
+                if (day > 0) { Log(EcoDebug.SkipToNextSeason()); pv.Planner.Invalidate(); yield return Wait(1f); } // another day deals the chores again
+                foreach (float h in new[] { 8.5f, 9.5f, 10.5f, 13.5f, 14.5f, 15.5f, 17.2f })
+                {
+                    Hour(h, true);
+                    yield return Wait(0.8f);
+                    // of those doing it, the one nearest the camera (a tent's far door, the far side of the rack hide the hands)
+                    var camPos = Camera.main.transform.position; float best = float.MaxValue;
+                    foreach (var a in pv.Activities)
+                        if (Match(a) && pv.TryGetDollPosition(a.who, out var at))
+                        {
+                            float dd = (World(at.x, at.y) - camPos).sqrMagnitude;
+                            if (dd < best) { best = dd; who = a.who; }
+                        }
+                    if (!who.IsNone) break;
+                }
+            }
+            if (who.IsNone) { Say($"nobody is {kind} in four seasons · {ChoreCount()}"); yield break; }
+            // centred on them with the panel folded (the arrow opens it): a close look at the hands, from high enough that a tent or the
+            // rack doesn't stand in front
+            hold = () =>
+            {
+                if (!pv.TryGetDollPosition(who, out var p)) return;
+                Rig.CancelFlight(); Rig.pitch = 50f; Rig.zoom = 0.14f; Rig.target = World(p.x, p.y); Rig.Apply();
+            };
+            hold();
+            panel.collapsed = true;
+            yield return Held(1.2f);
+            string d = "";
+            foreach (var a in pv.Activities) if (a.who.Equals(who)) { d = pv.Planner.Describe(a) ?? ""; break; }
+            Say($"{d} · {ChoreCount()}");
         }
 
         static bool NamesThePlace(string d) => d.Contains("hollow") || d.Contains("water's edge") || d.Contains("stream");

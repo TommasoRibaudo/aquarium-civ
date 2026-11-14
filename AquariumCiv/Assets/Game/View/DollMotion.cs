@@ -28,6 +28,8 @@ namespace AquariumCiv.View
         EatMeal, PokeFire, PokeFireBig,
         // fb4 #566: hands together, a small bow, at the feather pole
         Pray,
+        // sign-off 2026-11-14 (#651/#677, View/Beats/ChoreBeats.cs): the camp's hand work
+        FeedFire, ScrapeHide, SortBasket, Mend,
     }
 
     /// <summary>
@@ -77,6 +79,7 @@ namespace AquariumCiv.View
             ActivityKind.HangWashing or ActivityKind.HangFish => DollStyle.Hang, // #543
             ActivityKind.TakeDownFish => DollStyle.Lift, // #543
             ActivityKind.Pray => DollStyle.Pray, // fb4 #566
+            ActivityKind.FeedFire => DollStyle.FeedFire, ActivityKind.ScrapeHide => DollStyle.ScrapeHide, // sign-off 2026-11-14 (ChoreBeats)
             ActivityKind.ChopKindling or ActivityKind.Chop or ActivityKind.CutStone => DollStyle.Chop,
             ActivityKind.Hammer or ActivityKind.Repair => DollStyle.Hammer,
             ActivityKind.Saw => DollStyle.Saw,
@@ -331,6 +334,12 @@ namespace AquariumCiv.View
                     p.lean = -2f;
                     break;
                 }
+
+                // sign-off 2026-11-14 (#651/#677): the camp's hand work, told on what you can see (ChoreBeats)
+                case DollStyle.FeedFire: ChoreBeats.Feed(ref p, ChoreBeats.Clock(ChoreBeats.FeedBeat, t, pace)); break;
+                case DollStyle.ScrapeHide: ChoreBeats.Scrape(ref p, ChoreBeats.Clock(ChoreBeats.ScrapeBeat, t, pace)); break;
+                case DollStyle.SortBasket: ChoreBeats.Sort(ref p, ChoreBeats.Clock(ChoreBeats.SortBeat, t, pace)); break;
+                case DollStyle.Mend: ChoreBeats.Mend(ref p, ChoreBeats.Clock(ChoreBeats.MendBeat, t, pace)); break;
 
                 case DollStyle.Stir:
                     p.extend = hasProp;

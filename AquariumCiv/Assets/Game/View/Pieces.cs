@@ -40,7 +40,7 @@ namespace AquariumCiv.View
                         House(mb, Front(hd), hw, hd, wallH, roofH, Wall(p.seed), RoofColor(p.roof, p.seed, p.era), p.chimney, true, storeys, Phase(p.seed));
                     }
                     break;
-                case PieceKind.Fire: if (p.variant == SimLayout.GrassFireVariant) GrassFire(mb, Vector3.zero, Phase(p.seed)); else Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
+                case PieceKind.Fire: if (p.variant == SimLayout.GrassFireVariant) { GrassFire(mb, Vector3.zero, Phase(p.seed)); GrassHeap(mb, GrassHeapAt); } else Firepit(mb, Vector3.zero, true, Phase(p.seed)); break;
                 case PieceKind.Well:
                     if (town) Fountain(mb, Vector3.zero, p.seed);
                     else Well(mb, Vector3.zero, !camp);
@@ -424,6 +424,25 @@ namespace AquariumCiv.View
         /// flames (shorter and narrower than the log fire's, more of them, each on its own fast flicker phase) and a small ember bed.
         /// No logs, no ring of stones: a handful of pebbles kicked round it. The view gives it a smaller light (BoxView.Glows).
         /// </summary>
+        /// <summary>Sign-off 2026-11-14 (ChoreBeats.Feed): the heap of dry grass and twigs kept beside the grass fire, where the feeder
+        /// crouches to gather an armful: a low straw mound, a few loose tufts, thin twigs poking out.</summary>
+        /// <summary>Where the grass heap lies from the fire's middle (the fire piece is never turned, so this is box-local too): the
+        /// feeder kneels between the two (PeopleView, <see cref="PeopleView.FeedReach"/>), the heap behind them.</summary>
+        public static readonly Vector3 GrassHeapAt = new Vector3(0.24f, 0f, 0.07f);
+
+        public static void GrassHeap(MeshBuilder mb, Vector3 p)
+        {
+            var dry = PegDoll.DryGrass; var dark = PegDoll.DryGrassDark;
+            mb.Ico(p + new Vector3(0f, 0.012f, 0f), 0.055f, new Vector3(1.5f, 0.55f, 1.1f), dry, 0.2f, dark);
+            mb.Ico(p + new Vector3(0.035f, 0.022f, 0.015f), 0.032f, new Vector3(1.3f, 0.7f, 1f), Color.Lerp(dry, Palette.Straw, 0.5f), 0.22f);
+            mb.Ico(p + new Vector3(-0.05f, 0.008f, -0.02f), 0.026f, new Vector3(1.4f, 0.5f, 1f), Color.Lerp(dry, dark, 0.4f), 0.22f);
+            for (int i = 0; i < 4; i++)
+            {
+                var q = Quaternion.Euler(0f, i * 47f + 10f, -72f + i * 9f);
+                mb.Prism(p + new Vector3(-0.03f + i * 0.02f, 0.02f, -0.01f + (i % 2) * 0.02f), 0.0035f, 0.0028f, 0.11f, 4, Palette.Bark, q);
+            }
+        }
+
         public static void GrassFire(MeshBuilder mb, Vector3 p, float phase)
         {
             // the scrape and a few pebbles
@@ -700,7 +719,7 @@ namespace AquariumCiv.View
         }
 
         /// <summary>The hide outline (#332): a pelt with four legs and a neck, as (across -1..1, down 0..1).</summary>
-        static readonly Vector2[] HideOutline =
+        internal static readonly Vector2[] HideOutline =
         {
             new(-0.5f, 0f), new(0.5f, 0f), new(0.95f, 0.12f), new(0.7f, 0.30f), new(0.8f, 0.58f), new(1f, 0.84f), new(0.55f, 0.80f),
             new(0.28f, 1f), new(-0.28f, 1f), new(-0.55f, 0.80f), new(-1f, 0.84f), new(-0.8f, 0.58f), new(-0.7f, 0.30f), new(-0.95f, 0.12f),

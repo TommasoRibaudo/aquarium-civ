@@ -263,12 +263,7 @@ namespace AquariumCiv.View
                 case PropKind.Log:
                     Pieces.Log(mb, Vector3.zero, 0.02f, 0.14f, 90f, Palette.Bark);
                     break;
-                case PropKind.Bundle:
-                    // A canvas roll (0.075 × 0.085 × 0.045) with two dark straps; a lighter colour than the tunics so it shows.
-                    mb.Box(Vector3.zero, new Vector3(0.075f, 0.085f, 0.045f), Palette.Canvas);
-                    mb.Box(new Vector3(0, 0.022f, 0), new Vector3(0.079f, 0.009f, 0.049f), Palette.Timber);
-                    mb.Box(new Vector3(0, -0.022f, 0), new Vector3(0.079f, 0.009f, 0.049f), Palette.Timber);
-                    break;
+                case PropKind.Bundle: Bedroll(mb); break; // 2026-11-14 (the user: "the bedroll assets look weird"): a real rolled bedroll, not a box
                 case PropKind.Pot:
                 {
                     // 0.075 tall: a straw head-ring (r 0.03, h 0.008), a narrow foot, a wide belly (r 0.04) with a plaster
@@ -337,6 +332,8 @@ namespace AquariumCiv.View
                     mb.Box(new Vector3(0.012f, 0.06f, 0), new Vector3(0.022f, 0.008f, 0.008f), Palette.Bark);
                     break;
                 case PropKind.Tinder: Tinder(mb); break;
+                case PropKind.Scraper: Scraper(mb); break;
+                case PropKind.Pelt: Pelt(mb); break;
                 case PropKind.Branch: Branch(mb); break;
                 case PropKind.FoodBasket: FoodBasket(mb); break;
                 case PropKind.StickBundle: StickBundle(mb); break;
@@ -471,6 +468,74 @@ namespace AquariumCiv.View
 
         /// <summary>#656/#677: an armful of dry grass and thin twigs (hugged, Arms slot): a loose pale heap with a few dark twig ends
         /// sticking out both sides, so it reads as grass and twigs, never a log.</summary>
+        /// <summary>The rolled bedroll carried across the back (2026-11-14, after references of camp bedrolls: a blanket rolled tight and
+        /// carried crosswise, the rolled layers showing as rings at both ends, two leather straps round it, a woven band of colour):
+        /// a lying roll 0.1 long and 0.05 thick, along the shoulders (local x), riding a little high on the back.</summary>
+        public static void Bedroll(MeshBuilder mb)
+        {
+            const float L = 0.1f, R = 0.025f, Y = 0.006f;
+            var lie = Quaternion.Euler(0f, 0f, -90f); // a prism's up along +x
+            var blanket = Color.Lerp(Palette.Hide, Palette.Canvas, 0.45f);
+            var layer = Color.Lerp(blanket, Palette.Plaster, 0.5f);
+            var deep = Color.Lerp(blanket, Palette.Bark, 0.45f);
+            mb.Prism(new Vector3(-L * 0.5f, Y, 0f), R, R, L, 10, blanket, lie, capTop: false, capBottom: false);
+            // the ends: the rolled layers as rings, each a hair proud of the last, so the roll reads as rolled from any side
+            foreach (int s in new[] { -1, 1 })
+            {
+                float x = s * L * 0.5f;
+                (float r, Color c)[] rings = { (R, blanket), (R * 0.8f, layer), (R * 0.6f, deep), (R * 0.4f, layer), (R * 0.2f, deep) };
+                for (int i = 0; i < rings.Length; i++)
+                {
+                    float x0 = x + s * i * 0.0012f - (s < 0 ? 0.0012f : 0f);
+                    mb.Prism(new Vector3(x0, Y, 0f), rings[i].r, rings[i].r, 0.0012f, 10, rings[i].c, lie, capTop: true, capBottom: true);
+                }
+            }
+            // a woven band of colour off the middle, and the two leather straps, a little proud of the roll
+            mb.Prism(new Vector3(-0.012f, Y, 0f), R + 0.0008f, R + 0.0008f, 0.01f, 10, Color.Lerp(Palette.Accents[0], blanket, 0.35f), lie, capTop: false, capBottom: false);
+            foreach (float sx in new[] { -0.032f, 0.026f })
+            {
+                mb.Prism(new Vector3(sx, Y, 0f), R + 0.003f, R + 0.003f, 0.007f, 10, Palette.Timber, lie, capTop: true, capBottom: true);
+                mb.Box(new Vector3(sx + 0.0035f, Y + R + 0.004f, 0f), new Vector3(0.009f, 0.004f, 0.012f), Palette.RockLight); // the buckle on top
+            }
+        }
+
+        /// <summary>A bedroll unrolled on the ground to be mended (Front slot, before someone seated): the pelt-shaped hide spread flat
+        /// (the rack's hide outline, darker rim), its far end still rolled up, a half-sewn seam across it and the bone awl lying on it.</summary>
+        public static void Pelt(MeshBuilder mb)
+        {
+            var skin = Color.Lerp(Palette.Hide, Palette.Canvas, 0.45f);
+            var rim = Color.Lerp(skin, Palette.Bark, 0.5f);
+            var fur = Color.Lerp(skin, Palette.Plaster, 0.35f);
+            const float W = 0.06f, D = 0.085f, Y = 0.003f; // half across, full length (toward the far end, local -z)
+            Vector3 P(Vector2 q, float sc, float y) => new Vector3(q.x * W * sc, y, 0.035f - (0.5f + (q.y - 0.5f) * sc) * D);
+            void Fan(float sc, float y, Color col)
+            {
+                var c = P(new Vector2(0f, 0.5f), sc, y);
+                var o = Pieces.HideOutline;
+                for (int i = 0; i < o.Length; i++)
+                {
+                    var a = P(o[i], sc, y); var b = P(o[(i + 1) % o.Length], sc, y);
+                    mb.Tri(c, a, b, col); mb.Tri(c, b, a, col); // both faces (it is seen from above, the winding never matters)
+                }
+            }
+            Fan(1f, Y, rim);
+            Fan(0.82f, Y + 0.0015f, fur);
+            // the far end still rolled (along x)
+            var lie = Quaternion.Euler(0f, 0f, -90f);
+            mb.Prism(new Vector3(-0.05f, 0.014f, -0.052f), 0.014f, 0.014f, 0.1f, 8, skin, lie, capTop: true, capBottom: true, topCol: fur);
+            mb.Prism(new Vector3(-0.01f, 0.014f, -0.052f), 0.0165f, 0.0165f, 0.006f, 8, Palette.Timber, lie, capTop: true, capBottom: true);
+            // the seam: dark stitches across the middle, half done; the bone awl beside them
+            for (int i = 0; i < 5; i++) mb.Box(new Vector3(-0.03f + i * 0.012f, Y + 0.003f, -0.006f + (i % 2) * 0.004f), new Vector3(0.007f, 0.002f, 0.002f), Palette.Timber, Quaternion.Euler(0f, 30f, 0f));
+            mb.Box(new Vector3(0.03f, Y + 0.004f, 0.012f), new Vector3(0.045f, 0.004f, 0.005f), Palette.Plaster, Quaternion.Euler(0f, 25f, 0f));
+        }
+
+        /// <summary>Sign-off 2026-11-14: the hide scraper: a flat grey stone with a pale worked edge, held in the fist, edge down the arm.</summary>
+        public static void Scraper(MeshBuilder mb)
+        {
+            mb.Ico(new Vector3(0f, -0.012f, 0f), 0.026f, new Vector3(1.35f, 0.55f, 0.9f), Palette.Rock, 0.12f, Palette.RockDark);
+            mb.Box(new Vector3(0f, -0.03f, 0f), new Vector3(0.05f, 0.006f, 0.018f), Palette.RockLight);
+        }
+
         public static void Tinder(MeshBuilder mb)
         {
             mb.Ico(new Vector3(0f, 0.006f, 0f), 0.05f, new Vector3(1.7f, 0.85f, 1f), DryGrass, 0.2f, DryGrassDark);
