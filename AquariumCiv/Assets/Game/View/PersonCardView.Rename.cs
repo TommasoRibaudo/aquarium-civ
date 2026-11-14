@@ -54,7 +54,9 @@ namespace AquariumCiv.View
             wrap.style.flexShrink = 0;
             if (RenameOpen) renameRow = wrap;
             if (!RenameOpen)
-            {
+            {   // #674 (tester): the row is a whole scroll row with room for the pill's rim, so the view never ends inside it
+                wrap.AddToClassList(GlassScroll.RowClass);
+                wrap.style.paddingBottom = 8f;
                 var open = new GlassButton("Call them something else", () => OpenRename(c), ButtonKind.Secondary, UiRole.Open) { name = "person-card-rename", Compact = true };
                 open.Marked("pencil", true);
                 open.style.alignSelf = Align.FlexStart;

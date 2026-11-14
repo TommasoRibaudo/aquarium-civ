@@ -656,7 +656,21 @@ namespace AquariumCiv.View.PlayTests
             done(id);
         }
 
-        IEnumerator HoldsTheBoard(int w, int h)
+        /// <summary>#674 (tester): a woodcutter who is headman, "the worrier" and the like: the subtitle wraps to two lines.</summary>
+        static IEnumerator LongSubtitle(int id)
+        {
+            var sim = GameClock.Instance.Sim;
+            var n = sim.FindNotable(id);
+            sim.DebugSetJob(n, JobType.Woodcutter);
+            sim.DebugSetRoleHolder(RoleType.Headman, n);
+            var cards = PersonCardView.Instance;
+            cards.Close();
+            yield return null;
+            Assert.IsTrue(cards.Open(id, true));
+            yield return new WaitForSecondsRealtime(1.2f);
+        }
+
+        IEnumerator HoldsTheBoard(int w, int h, bool longSub = false)
         {
             int id = -1;
             yield return CardUp(w, h, i => id = i);
@@ -664,6 +678,12 @@ namespace AquariumCiv.View.PlayTests
             {
                 var cards = PersonCardView.Instance;
                 var root = cards.CardRoot;
+                if (longSub)
+                {
+                    yield return LongSubtitle(id);
+                    var subLine = root.Q<Label>("person-card-sub");
+                    Assert.Greater(subLine.worldBound.height, subLine.resolvedStyle.fontSize * 1.8f, "the subtitle wraps: \"" + subLine.text + "\"");
+                }
                 var sheet = root.Q<GlassSheet>("person-card");
                 float H = root.worldBound.height;
                 Assert.AreEqual(H * 0.3f, sheet.worldBound.height, H * 0.005f, "the sheet is 30 % of the screen");
@@ -692,7 +712,7 @@ namespace AquariumCiv.View.PlayTests
                 var view = root.Q<ScrollView>("person-card-body");
                 Assert.GreaterOrEqual(view.worldBound.yMin, root.Q("person-card-tabs").worldBound.yMax - 1f, "the tab line clears the text");
                 var face = root.Query<GlassChip>().First()?.Face;
-                yield return Shot($"pc-board-{w}x{h}");
+                yield return Shot($"pc-board-{w}x{h}{(longSub ? "-long" : "")}");
                 if (face != null) Assert.LessOrEqual(face.worldBound.yMax, view.worldBound.yMax + 1f, "a row of chips shows under the line");
 
                 // every control reaches a thumb
@@ -734,6 +754,59 @@ namespace AquariumCiv.View.PlayTests
 
         [UnityTest, Timeout(120000)]
         public IEnumerator HoldsTheBoardOnAShortPhone() => HoldsTheBoard(750, 1334);
+
+        /// <summary>#674 (tester): on a short phone a two-line subtitle left room for the quote only; the chips lead now.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator HoldsTheBoardOnAShortPhoneWithATwoLineSubtitle() => HoldsTheBoard(750, 1334, true);
+
+        /// <summary>#674 (tester): scrolled to the end of the 30 % card, the pencil row showed half under the card's edge and a tap on its
+        /// visible half did nothing. The view ends on whole rows and the content has room under the last one.</summary>
+        IEnumerator PencilAtTheEnd(int w, int h)
+        {
+            int id = -1;
+            yield return CardUp(w, h, i => id = i);
+            try
+            {
+                yield return LongSubtitle(id);
+                var cards = PersonCardView.Instance;
+                var root = cards.CardRoot;
+                var view = root.Q<ScrollView>("person-card-body");
+                // the end of the card: the last row shows whole, with room under it
+                view.scrollOffset = new Vector2(0f, 99999f);
+                yield return new WaitForSecondsRealtime(0.6f);
+                var content = view.contentContainer;
+                var last = content[content.childCount - 1];
+                Assert.LessOrEqual(last.worldBound.yMax, view.worldBound.yMax + 1f, "scrolled to the end, the last row shows whole");
+                // scrolled just far enough to bring the pencil up from under the edge (a finger stops as soon as it shows)
+                view.scrollOffset = Vector2.zero;
+                yield return null; yield return null;
+                var pencil = root.Q("person-card-rename");
+                Assert.IsNotNull(pencil);
+                view.ScrollTo(root.Q("person-card-rename-row"));
+                yield return new WaitForSecondsRealtime(0.6f);
+                var vb = view.worldBound; var pb = pencil.worldBound;
+                Debug.Log($"[pc-pencil] view {vb} viewport {view.contentViewport.worldBound} scroll {view.scrollOffset.y:0} of {view.verticalScroller.highValue:0} content {view.contentContainer.worldBound} row {root.Q("person-card-rename-row").worldBound} pill {pb} glassScroll {view.parent.worldBound}");
+                Assert.LessOrEqual(pb.yMax, vb.yMax + 1f, "the pill's bottom rim shows");
+                yield return Shot($"night/fix_674_pencil_end_{w}x{h}");
+                // ScrollTo brings the button's layout box in; its drawn pill sits a few units inside that box
+                float shown = Mathf.Min(pb.yMax, vb.yMax) - Mathf.Max(pb.yMin, vb.yMin);
+                Assert.GreaterOrEqual(shown, pb.height * 0.9f, $"the pencil shows (nearly) whole: {shown:0} of {pb.height:0}");
+                // a tap on the part that shows opens it
+                var seen = new Vector2(pb.center.x, (Mathf.Max(pb.yMin, vb.yMin) + Mathf.Min(pb.yMax, vb.yMax)) * 0.5f);
+                float k = Screen.width / root.panel.visualTree.worldBound.width;
+                yield return TapAt(new Vector2(seen.x * k, Screen.height - seen.y * k));
+                yield return null; yield return null;
+                Assert.IsTrue(cards.RenameOpen, "a tap on the pencil opens rename");
+                Assert.IsEmpty(errors, string.Join(" | ", errors));
+            }
+            finally { Close(); }
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ThePencilShowsWholeAtTheEndOfTheCardOnATallPhone() => PencilAtTheEnd(1179, 2556);
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ThePencilShowsWholeAtTheEndOfTheCardOnAShortPhone() => PencilAtTheEnd(750, 1334);
 
         [UnityTest, Timeout(120000)]
         public IEnumerator TabsSwitchAndANewPersonStartsOnAbout()
