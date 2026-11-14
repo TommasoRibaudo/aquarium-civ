@@ -7,8 +7,8 @@ using UnityEngine.UIElements;
 namespace AquariumCiv.View
 {
     /// <summary>
-    /// #575 (playtest note #548): the Keeper can rename a notable from their card. A small "Call them something else" pencil button at the
-    /// top of the About tab opens a one-line field with Save; Save tidies the text, empty keeps the old name, a refusal is said under the
+    /// #575 (playtest note #548): the Keeper can rename a notable from their card. A small "Call them something else" pencil button on the
+    /// About tab, under the family and friend chips (#674) opens a one-line field with Save; Save tidies the text, empty keeps the old name, a refusal is said under the
     /// field. The new first name shows everywhere from then on (the card, the paper tag, History lines written later); chronicle lines
     /// already written keep the old name (they are plain text). While the field is open the card sits on the phone keyboard and fits the room between the top safe area and the keyboard (#584): shorter, tabs folded away, the field and its buttons scrolled into view. Two living
     /// people may not share a first name (the same rule as at birth): that is refused with a kind word. Names: <c>person-card-rename</c>
@@ -47,7 +47,7 @@ namespace AquariumCiv.View
             sheet?.RemoveFromClassList("pc--renaming");
         }
 
-        /// <summary>The top of the About tab for a living person: the pencil, or the open field.</summary>
+        /// <summary>On the About tab of a living person, under the chips (#674): the pencil, or the open field.</summary>
         void BuildRenameRow(PersonCard c)
         {
             var wrap = Section("person-card-rename-row");

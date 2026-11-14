@@ -1100,7 +1100,7 @@ namespace AquariumCiv.View
 
         void BuildAbout(PersonCard c)
         {
-            if (c.alive) BuildRenameRow(c); // #575
+            if (c.alive && RenameOpen) BuildRenameRow(c); // #575: the open field leads the tab (the card folds to it, #584)
             if (c.memorial != null)
             {
                 var m = c.memorial;
@@ -1142,6 +1142,8 @@ namespace AquariumCiv.View
             foreach (var t in c.rivals) listed.Add(t.otherId);
             AddTies(ties, "person-card-friends", Fresh(c.friends.OrderBy(t => t.kind == TieKind.Friend ? 0 : 1)));
             AddTies(ties, "person-card-mentors", Fresh(c.mentors));
+            // #575 rename, under the chips (#674: at the top it pushed the first row of chips out of the card's first view)
+            if (c.alive && !RenameOpen) BuildRenameRow(c);
             if (c.role != null || c.terms.Count > 0)
             {
                 var r = Section("person-card-roles");
