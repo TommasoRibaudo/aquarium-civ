@@ -41,6 +41,7 @@ phone size. Merged to dev: #646 (#643-#645), #678 (quick wins). Tonight: the pol
 - #656 the carried food: the basket holds food for a while, then runs down until berries or rabbits. ★ Keep 12 food in the basket (about a year). Alternative: A smaller basket that empties within a season.
 - #658 which framing becomes the default: from the framing stop. ★ The framing you liked best in the look stop (write its letter in the note). Alternative: Keep today's default view.
 - #679 a notification when the Keeper's tree grows: today only a ready era notifies (decided 2026-10-29). ★ Notify for the next tree stage or era, whichever comes first, one at a time. Alternative: Keep the rule, no tree notification.
+- #656 a hungry camp before the first bushes: no bushes come until the Keeper places the thicket, and the root dig is gone, so a player who never opens the life jar sees the people hungry for years (they never die). ★ A hunger line once a visit and the jar's dot stay on, pointing at the life jar. Alternative: The land gives a little food (grass seeds) once the meadow is green.
 - #680 the hunter's retry: one more throw after a miss. ★ Keep one retry. Alternative: No retry, the hunter walks home after a miss.
 
 ### Calls I made: the new start (#656, #677)
