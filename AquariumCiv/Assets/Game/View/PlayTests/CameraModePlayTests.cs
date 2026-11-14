@@ -357,47 +357,55 @@ namespace AquariumCiv.View.PlayTests
         }
 
         [UnityTest]
-        public IEnumerator ThePinnedPersonIsAlwaysFlownTo_AndAnUnpinnedBoxIsNot()
+        public IEnumerator PhotoModeStartsWhereTheCameraIs_ThePinnedPersonIsNeverFlownTo()
         {
+            // #673 (user 2026-11-14, replacing 2026-10-30): no jump to the pin, on screen or off
             yield return Open();
             try
             {
                 var hud = GameHud.Instance;
                 var rig = Rig;
                 var sim = GameClock.Instance.Sim;
-                hud.SetCameraMode(true);
-                Assert.IsFalse(rig.IsFollowing, "nobody to follow");
-                hud.SetCameraMode(false);
-                yield return null;
-
                 int id = -1;
                 yield return FindDoll(x => id = x);
                 Assert.IsTrue(sim.Pin(id));
                 Assert.IsTrue(DollWorld(PersonRef.Notable(id), out var w));
-                rig.FlyTo(w, 0.7f, 0.01f);
-                yield return null; yield return null;
-                hud.SetCameraMode(true);
-                Assert.AreEqual(PersonRef.Notable(id), rig.Following, "the pinned person in view is followed");
-                hud.SetCameraMode(false);
-                yield return null;
-
-                // Off screen (user 2026-10-30): the far corner of the box, zoomed in.
-                rig.FlyTo(new Vector3(w.x > 0f ? -2.4f : 2.4f, w.y, w.z > 0f ? -1.4f : 1.4f), 0.3f, 0.01f);
+                var corner = new Vector3(w.x > 0f ? -2.4f : 2.4f, w.y, w.z > 0f ? -1.4f : 1.4f);
+                rig.FlyTo(corner, 0.3f, 0.01f);
                 yield return new WaitForSecondsRealtime(0.2f);
-                Assert.IsTrue(DollWorld(PersonRef.Notable(id), out w));
-                var seen = Camera.main.WorldToViewportPoint(w);
-                Assert.IsFalse(seen.z > 0f && seen.x > 0.05f && seen.x < 0.95f && seen.y > 0.05f && seen.y < 0.95f, "they start off screen");
+                var at = rig.target;
                 hud.SetCameraMode(true);
-                Assert.AreEqual(PersonRef.Notable(id), rig.Following, "off screen, they are still followed");
-                Assert.IsTrue(rig.IsFlying, "and the camera flies to them");
-                yield return new WaitForSecondsRealtime(BoxCameraMath.FlyDefaultSeconds + 0.8f);
-                Assert.IsTrue(DollWorld(PersonRef.Notable(id), out w));
-                seen = Camera.main.WorldToViewportPoint(w);
-                Assert.IsTrue(seen.z > 0f && seen.x > 0.1f && seen.x < 0.9f && seen.y > 0.1f && seen.y < 0.9f, $"they are on screen after the flight ({seen})");
+                Assert.IsFalse(rig.IsFollowing, "the pinned person is not followed");
+                Assert.IsFalse(rig.IsFlying, "and the camera stays where it is");
+                yield return new WaitForSecondsRealtime(0.5f);
+                Assert.Less((rig.target - at).magnitude, 0.05f, "still where the player put it");
                 hud.SetCameraMode(false);
                 sim.Unpin();
             }
             finally { Close(); }
+        }
+
+        [UnityTest]
+        public IEnumerator DuringTheFirstRunThereIsNoPhotoMode()
+        {
+            // #647 (playtest: a first run played with no UI): the Photo button steps out and photo mode ends while the first run is on
+            yield return Open();
+            var sim = GameClock.Instance.Sim;
+            bool was = sim.State.firstRun.active;
+            try
+            {
+                var hud = GameHud.Instance;
+                hud.SetCameraMode(true);
+                Assert.IsTrue(hud.CameraMode);
+                sim.State.firstRun.active = true;
+                yield return null; yield return null;
+                Assert.IsFalse(hud.CameraMode, "the first run ends photo mode");
+                Assert.AreEqual(UnityEngine.UIElements.DisplayStyle.None, hud.Root.Q("hud-photo").resolvedStyle.display, "and hides the Photo button");
+                sim.State.firstRun.active = false;
+                yield return null; yield return null;
+                Assert.AreEqual(UnityEngine.UIElements.DisplayStyle.Flex, hud.Root.Q("hud-photo").resolvedStyle.display, "it comes back after");
+            }
+            finally { sim.State.firstRun.active = was; Close(); }
         }
 
         [UnityTest]

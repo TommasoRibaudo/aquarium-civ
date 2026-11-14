@@ -168,6 +168,32 @@ namespace AquariumCiv.View.PlayTests
 
         /// <summary>The user (2026-11-05): a tap ON a rabbit does nothing to it; a knock on the GLASS close to a rabbit (on screen) makes
         /// it run off, to another part of the meadow, and it stays away; none is lost.</summary>
+        /// <summary>#669 (playtest): History replays the land by year; today's rabbits and berries step out of the replay and come back after.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator History_TodaysRabbitsAndBerriesStepOutOfTheReplay()
+        {
+            bool prefWas = GameClock.EcologyPref;
+            GameClock.EcologyPref = true;
+            try
+            {
+                yield return OpenSlice(seed: 4242);
+                Meadow();
+                PlacePairInMeadow();
+                yield return Frames(30);
+                Assert.IsNotNull(RabbitView.Instance, "rabbits live in the box");
+                TimeLapseView.DebugOpen();
+                yield return Frames(10);
+                Assert.IsNull(RabbitView.Instance, "no rabbit view in the replay");
+                Assert.IsNull(BushView.Instance, "no berries in the replay");
+                TimeLapseView.DebugClose();
+                yield return Frames(10);
+                Assert.IsNotNull(RabbitView.Instance, "back in the live box");
+                Assert.IsNotNull(BushView.Instance);
+                CloseSlice();
+            }
+            finally { GameClock.EcologyPref = prefWas; }
+        }
+
         [UnityTest, Timeout(600000)]
         public IEnumerator Touch_TapOnARabbitDoesNothing_AKnockOnTheGlassNearItSendsItOff()
         {

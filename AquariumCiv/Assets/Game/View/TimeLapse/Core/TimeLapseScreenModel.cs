@@ -84,7 +84,16 @@ namespace AquariumCiv.View.TimeLapseScreen
         public string PlayLabel => Clock.Playing ? "Pause" : (Clock.AtEnd ? "Replay" : "Play");
         public int SpeedIndex => Clock.SpeedIndex;
         public int SpeedCount => ReplayClock.Speeds.Length;
-        public string SpeedLabel => ReplayClock.Speeds[Clock.SpeedIndex].ToString("0.#", CultureInfo.InvariantCulture) + " yr/s";
+        public string SpeedLabel => SpeedWords(Clock.Speed);
+        /// <summary>#670: a slow step reads in months or days a second, not "0.03 yr/s".</summary>
+        public static string SpeedWords(float yearsPerSecond)
+        {
+            var ci = CultureInfo.InvariantCulture;
+            if (yearsPerSecond >= 0.999f) return yearsPerSecond.ToString("0.#", ci) + " yr/s";
+            float months = yearsPerSecond * 12f;
+            if (months >= 0.95f) return months.ToString("0.#", ci) + " mo/s";
+            return Math.Max(1f, yearsPerSecond * 365f).ToString("0", ci) + " d/s"; // tester: "days/s" pushed Close off the row at 750 wide
+        }
         public bool HasHistory => Clock.End > 0f;
 
         // ---------- play, pause, speed ----------

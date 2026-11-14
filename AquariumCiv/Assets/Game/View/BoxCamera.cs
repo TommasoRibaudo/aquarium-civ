@@ -608,10 +608,8 @@ namespace AquariumCiv.View
             var sm = ShowMeDirector.Instance;
             if (sm != null && sm.Busy && sm.Current != null && sm.Current.target.followId >= 0)
                 return AquariumCiv.Life.PersonRef.Notable(sm.Current.target.followId);
-            var sim = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
-            var pin = sim?.Pinned;
-            // Always the pinned person, on screen or not (user 2026-10-30): OnCameraMode flies there.
-            return pin != null && pin.alive ? AquariumCiv.Life.PersonRef.Notable(pin.id) : AquariumCiv.Life.PersonRef.None;
+            // #673 (user 2026-11-14, replacing 2026-10-30): photo mode starts where the camera is; it never jumps to the pinned person
+            return AquariumCiv.Life.PersonRef.None;
         }
 
         void StepFollow(float dt)

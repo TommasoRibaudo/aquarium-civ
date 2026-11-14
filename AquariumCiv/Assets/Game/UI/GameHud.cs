@@ -406,6 +406,18 @@ namespace AquariumCiv.GameUI
 
         /// <summary>Each frame: the slot shows while a jar is ready, the Kit button keeps a small dot until it is placed, and a jar
         /// that opened (here or while away) wiggles the Kit button once, the next time the HUD is up to see it.</summary>
+        VisualElement photoButton;
+
+        /// <summary>#647 (playtest: a first run played with no UI at all): photo mode hides every prompt, and only a short tap brings them
+        /// back, which misting (a held drag) never is. While the first run is on, the Photo button steps out and photo mode ends.</summary>
+        void GuardFirstRun(AquariumCiv.Sim.SimCore sim)
+        {
+            bool first = sim.State.firstRun.active;
+            var show = first ? DisplayStyle.None : DisplayStyle.Flex;
+            if (photoButton != null && photoButton.style.display != show) photoButton.style.display = show;
+            if (first && cameraMode) SetCameraMode(false);
+        }
+
         void FollowLife(AquariumCiv.Sim.SimCore sim)
         {
             bool any = sim.AnyJarReady;
@@ -457,6 +469,7 @@ namespace AquariumCiv.GameUI
                 ShowToolWord();
                 if (shapeButton != null) shapeButton.style.display = eco || toolBlocks.Count > 0 ? DisplayStyle.None : DisplayStyle.Flex;
             }
+            if (sim != null) GuardFirstRun(sim); // #647: every box, the living land or not
             if (!eco || kitLife == null) return;
             bool seed = sim.CanPlantTree;
             bool seedChanged = seed != kitSeedShown;
@@ -482,6 +495,8 @@ namespace AquariumCiv.GameUI
         /// DebugDock.Hidden), the camera stays fully usable. A short tap anywhere (not a drag, not a pinch) or the small
         /// "Tap to show the UI" pill brings it all back. Clean mode and any open sheet are closed first.</summary>
         public bool CameraMode => cameraMode;
+        /// <summary>#673: how long the photo pill shows before it fades, and how long the fade takes (s).</summary>
+        public const float PillSeconds = 4f, PillFadeSeconds = 1f;
 
         public void SetCameraMode(bool on)
         {
@@ -500,12 +515,16 @@ namespace AquariumCiv.GameUI
             cameraModeSince = exitFadeAt = Time.unscaledTime;
             tapDown = false;
             CameraModeChanged?.Invoke(on);
+            var simNow = AquariumCiv.Game.GameClock.Instance != null ? AquariumCiv.Game.GameClock.Instance.Sim : null;
+            AquariumCiv.Game.GameClock.Tel.PhotoMode(on, simNow != null && simNow.State.firstRun.active); // #647: the next first run tells us
         }
 
         // Camera mode each frame: the pill fades to a whisper after a few seconds; a tap anywhere brings the UI back.
         void UpdateCameraMode()
         {
-            exitButton.style.opacity = Time.unscaledTime - exitFadeAt < 4f ? 1f : 0.45f;
+            // #673 (user 2026-11-14): photo mode leaves no button on screen: the pill says it, then fades out fully (a tap anywhere still brings the UI back)
+            float since = Time.unscaledTime - exitFadeAt;
+            exitButton.style.opacity = since < PillSeconds ? 1f : Mathf.Clamp01(1f - (since - PillSeconds) / PillFadeSeconds);
             ReadPointer(out bool down, out int count, out Vector2 pos);
             float slop = Screen.height * TapSlopFraction;
             if (!tapDown)
@@ -761,7 +780,7 @@ namespace AquariumCiv.GameUI
             var words = new VisualElement { name = "hud-title-text", pickingMode = PickingMode.Ignore };
             words.AddToClassList("hud-title-text");
             words.Add(nameLabel = Text("Your box", "hud-title-name", "type-box"));
-            words.Add(yearLabel = Text("Year 0", "hud-title-year", "type-sub"));
+            words.Add(yearLabel = Text("Year 1", "hud-title-year", "type-sub"));
             nameLabel.pickingMode = yearLabel.pickingMode = PickingMode.Ignore;
             title.Add(words);
             topRow.Add(title);
@@ -771,8 +790,8 @@ namespace AquariumCiv.GameUI
             topRow.Add(spacer);
             var corner = new VisualElement { name = "hud-corner", pickingMode = PickingMode.Ignore };
             corner.AddToClassList("hud-corner");
-            if (FeedbackUI.InTestBuild) corner.Add(IconButton("hud-feedback", "feedback", OpenFeedback, UiRole.Tap, "hud-icon--quiet"));
-            corner.Add(IconButton("hud-photo", "photo", () => SetCameraMode(true), UiRole.Toggle));
+            if (FeedbackUI.InTestBuild) corner.Add(IconButton("hud-feedback", "feedback", OpenFeedback, UiRole.Tap)); // #650: full ink like its neighbours (the quiet fade read as disabled)
+            corner.Add(photoButton = IconButton("hud-photo", "photo", () => SetCameraMode(true), UiRole.Toggle));
             topRow.Add(corner);
             safe.Add(topRow);
 
@@ -1109,7 +1128,7 @@ namespace AquariumCiv.GameUI
             PlaceToast();
         }
 
-        /// <summary>#571: the line under the box name, built from parts: "Year 37 · 16 people". #576 fills <paramref name="season"/> ("Year 37 · Autumn · 16 people").</summary>
+        /// <summary>#571: the line under the box name (years count from 1, as History and the book do), built from parts: "Year 37 · 16 people". #576 fills <paramref name="season"/> ("Year 37 · Autumn · 16 people").</summary>
         public static string TitleLine(int year, string season, int population)
         {
             string line = "Year " + year.ToString(CultureInfo.InvariantCulture);
@@ -1130,9 +1149,9 @@ namespace AquariumCiv.GameUI
             var s = sim.State;
             string place = string.IsNullOrEmpty(s.settlementName) ? "Your box" : s.settlementName;
             nameLabel.text = place;
-            yearLabel.text = TitleLine(Mathf.FloorToInt(s.Year), SeasonWord(s), s.population);
+            yearLabel.text = TitleLine(AquariumCiv.Sim.SimCore.YearNo(s.month), SeasonWord(s), s.population);
             if (historyBody != null)
-                historyBody.text = $"{place}, year {Mathf.FloorToInt(s.Year)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
+                historyBody.text = $"{place}, year {AquariumCiv.Sim.SimCore.YearNo(s.month)}. {s.population} {(s.population == 1 ? "person lives" : "people live")} here.";
         }
 
         // ---------------- element helpers ----------------

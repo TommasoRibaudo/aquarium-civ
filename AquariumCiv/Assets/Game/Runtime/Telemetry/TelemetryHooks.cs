@@ -43,6 +43,7 @@ namespace AquariumCiv.Game
         public static void TimelapseOpened(this TelemetryLog l, bool prompted) => l?.Log(Ev.TimelapseOpen, "prompted", prompted);
         public static void TimelapseScrubbed(this TelemetryLog l, double fromYear, double toYear) => l?.Log(Ev.TimelapseScrub, "from_year", fromYear, "to_year", toYear);
         public static void TimelapsePlayed(this TelemetryLog l) => l?.Log(Ev.TimelapsePlay);
+        public static void PhotoMode(this TelemetryLog l, bool on, bool firstRun) => l?.Log(Ev.PhotoMode, "on", on, "first_run", firstRun);
         public static void PinTapped(this TelemetryLog l, int personId) => l?.Log(Ev.PinTap, "person", personId);
         public static void SnapshotTaken(this TelemetryLog l) => l?.Log(Ev.Snapshot);
         public static void BookPageTurned(this TelemetryLog l, int page) => l?.Log(Ev.BookPage, "page", page);

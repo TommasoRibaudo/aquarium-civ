@@ -428,7 +428,7 @@ namespace AquariumCiv.View
             if (IsOpen && Blocked()) Close();
             if (CrowdOpen && Blocked()) CloseCrowd();
             if (BuildingOpen && (Blocked() || sim.BuildingCardOf(BuildingId) == null)) CloseBuilding();
-            if (IsOpen && (Time.unscaledTime >= nextRefresh)) { nextRefresh = Time.unscaledTime + 1f; Refresh(false); }
+            if (IsOpen && (Time.unscaledTime >= nextRefresh)) { nextRefresh = Time.unscaledTime + 1f; Refresh(false); ShowDoing(); }
             if (CrowdOpen && Time.unscaledTime >= nextRefresh) { nextRefresh = Time.unscaledTime + 1f; RefreshCrowd(); }
             if ((AnyOpen || BuildingOpen) && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); CloseCrowd(); CloseBuilding(); }
             if (AnyOpen) KeepInView();
@@ -513,7 +513,7 @@ namespace AquariumCiv.View
             // the pin's gold tag over their head
             var pinned = hide ? null : sim.Pinned;
             bool pinOn = pinned != null && pinned.alive && Place(pinTag, pv, cam, PersonRef.Notable(pinned.id));
-            if (pinOn) pinTag.Word = pinned.name;
+            if (pinOn) pinTag.Word = IsOpen && OpenId == pinned.id ? TagWord(pinned.name) : pinned.name; // #653
             // #320: zoomed out, the pinned name fades away (the pin, the follow and the chip stay)
             var rig = pinOn ? cam.GetComponent<BoxCamera>() : null;
             float pinFade = rig != null ? BoxCameraMath.PinTagOpacity(rig.zoom) : 1f;
@@ -526,7 +526,7 @@ namespace AquariumCiv.View
             // the open card's person (when not the pin): a paper tag
             bool named = CrowdOpen || (IsOpen && Card != null && Card.alive && (pinned == null || pinned.id != OpenId));
             bool nameOn = !hide && named && Place(nameTag, pv, cam, Who);
-            if (nameOn) nameTag.Word = CrowdOpen ? Crowd.name : Card.name;
+            if (nameOn) nameTag.Word = CrowdOpen ? Crowd.name : TagWord(Card.name); // #653: and what they're doing
             SetTag(nameTag, nameOn);
             // relationship lines
             drawn.Clear(); drawnTo.Clear(); leaders.Clear();
@@ -1042,6 +1042,41 @@ namespace AquariumCiv.View
             return sb.ToString();
         }
 
+        /// <summary>#653 (playtest: you couldn't see what a notable was doing): while their card is open, their tag over the doll reads
+        /// "Name · doing" ("Mira · gathering"), the planner's verb without the place. The card itself has no room for another row (its board).
+        /// Empty for the dead or when nobody plans them.</summary>
+        public string DoingNow { get; private set; } = "";
+
+        void ShowDoing()
+        {
+            string doing = "";
+            var pv = PeopleView.Find();
+            var planner = pv != null ? pv.Planner : null;
+            if (IsOpen && Card != null && Card.alive && planner != null)
+            {
+                string report = planner.Describe(planner.Plan(PersonRef.Notable(OpenId), pv.Now));
+                int verb = string.IsNullOrEmpty(report) ? -1 : report.IndexOf(" is ", System.StringComparison.Ordinal);
+                if (verb >= 0) doing = ShortDoing(report.Substring(verb + 4));
+            }
+            DoingNow = doing;
+        }
+
+        /// <summary>"gathering at the dry hollow." → "gathering": the verb phrase before its place, at most three words.</summary>
+        public static string ShortDoing(string phrase)
+        {
+            if (string.IsNullOrEmpty(phrase)) return "";
+            phrase = phrase.TrimEnd('.', ' ');
+            foreach (var cut in new[] { " at ", " by ", " in ", " on ", " near ", " with ", " to ", " for ", ", " })
+            {
+                int i = phrase.IndexOf(cut, System.StringComparison.Ordinal);
+                if (i > 0) phrase = phrase.Substring(0, i);
+            }
+            var words = phrase.Split(' ');
+            return words.Length <= 3 ? phrase : string.Join(" ", words, 0, 3);
+        }
+
+        string TagWord(string name) => string.IsNullOrEmpty(DoingNow) ? name : name + " · " + DoingNow;
+
         void Build(PersonCard c)
         {
             sig = Signature(c);
@@ -1052,6 +1087,7 @@ namespace AquariumCiv.View
             sub.Add(c.alive ? $"{c.age} years" : $"{c.bornYear}–{c.diedYear}");
             if (!string.IsNullOrEmpty(c.trait)) sub.Add(c.trait);
             subtitle.text = string.Join(" · ", sub);
+            ShowDoing();
             pinButton.text = c.pinned ? "Pinned" : "Pin";
             pinButton.Marked("pin", c.pinned);
             pinButton.style.display = c.alive || c.pinned ? DisplayStyle.Flex : DisplayStyle.None;

@@ -375,6 +375,31 @@ namespace AquariumCiv.View.PlayTests
         /// <summary>#403 (note #384): the handle grows the card to 59 % and the person stays above it; a swipe down on the head brings it
         /// back to 30 %; a closed card opens at 30 % again. Shots: pc-tall, pc-tall-short.</summary>
         [UnityTest]
+        public IEnumerator TheirTagSaysWhatTheyAreDoingNow()
+        {
+            // #653 (playtest): while a notable's card is open, their tag over the doll says what they're doing now
+            yield return Open(true, 1179, 2556);
+            try
+            {
+                yield return Grow();
+                var sim = GameClock.Instance.Sim;
+                var cards = PersonCardView.Instance;
+                int id = PickSubject(sim);
+                Assert.IsTrue(cards.Open(id, true), "the card opens");
+                yield return new WaitForSecondsRealtime(1.2f);
+                Assert.IsNotEmpty(cards.DoingNow, "the planner says what they're doing");
+                yield return Shot("pc-doing");
+                StringAssert.DoesNotContain(" at ", cards.DoingNow, "the verb, not the place");
+                var n = sim.FindNotable(id);
+                bool shown = false;
+                foreach (var doc in UnityEngine.Object.FindObjectsByType<UnityEngine.UIElements.UIDocument>(FindObjectsSortMode.None))
+                    doc.rootVisualElement?.panel?.visualTree.Query<UnityEngine.UIElements.Label>().ForEach(l => { if (l.text == n.name + " · " + cards.DoingNow && l.resolvedStyle.display == UnityEngine.UIElements.DisplayStyle.Flex) shown = true; });
+                Assert.IsTrue(shown, $"a tag over them reads '{n.name} · {cards.DoingNow}'");
+            }
+            finally { Close(); }
+        }
+
+        [UnityTest]
         public IEnumerator TheHandleGrowsTheCardAndThePersonStaysAboveIt()
         {
             foreach (var (w, h, shot) in new[] { (1179, 2556, "pc-tall"), (750, 1334, "pc-tall-short") })

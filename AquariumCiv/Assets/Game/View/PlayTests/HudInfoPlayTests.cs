@@ -32,7 +32,7 @@ namespace AquariumCiv.View.PlayTests
             var year = Panel.Q<Label>(className: "hud-title-year");
             Assert.IsNotNull(year);
             yield return Until(() => year.text.Contains("people") || year.text.Contains("person"), 4f);
-            Assert.AreEqual(GameHud.TitleLine(Mathf.FloorToInt(Sim.State.Year), GameHud.SeasonWord(Sim.State), Sim.State.population), year.text);
+            Assert.AreEqual(GameHud.TitleLine(AquariumCiv.Sim.SimCore.YearNo(Sim.State.month), GameHud.SeasonWord(Sim.State), Sim.State.population), year.text);
             yield return Shot("fb5-571-title-1179");
             int pop = Sim.State.population;
             Sim.DebugBirth();      // a newborn notable...

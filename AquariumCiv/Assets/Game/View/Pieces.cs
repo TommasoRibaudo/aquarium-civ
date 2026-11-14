@@ -1108,8 +1108,13 @@ namespace AquariumCiv.View
             if (b.radius > 0.13f) mb.Ico(g + new Vector3(b.radius * 0.9f, b.radius * 0.05f, b.radius * 0.5f), b.radius * 0.5f, new Vector3(1f, 0.7f, 1f), Color.Lerp(col, look.rockDark, 0.4f), 0.3f, look.rockDark);
         }
 
+        /// <summary>#657 (playtest: the grass looked like it floats): how far a tuft's base sinks into the ground, so it never starts above
+        /// the low-poly triangle under it (the ground point is the smooth height, the drawn face can sit a little lower).</summary>
+        public const float TuftSink = 0.012f;
+
         public static void GrassTuft(MeshBuilder mb, Vector3 g, float h, Color col, bool tall = false)
         {
+            g.y -= TuftSink; h += TuftSink; // the same height above the ground as before, the base below it
             mb.sway = tall ? GrassHide.TallSway : 1f; // the tall-grass marker: the hunt's hide-near safety net reads it
             for (int b = 0; b < 3; b++)
             {
