@@ -27,6 +27,7 @@ namespace AquariumCiv.Tests
         /// rabbit stands in the box.</summary>
         static void GrowUntilRabbit(SimCore sim, int maxMonths = 120)
         {
+            LifeJarTests.PlantKeepersTree(sim); // 2026-11-14: seed, then bushes, then rabbits
             for (int m = 0; m < maxMonths && !sim.RabbitsSeen; m++)
             {
                 if (m % 2 == 0 && m < 80) MistSpot(sim, m / 2);
@@ -68,6 +69,7 @@ namespace AquariumCiv.Tests
         public void TrackCells_AreGreenCellsOutsideTheYard_AndGoAway()
         {
             var sim = World();
+            LifeJarTests.PlantKeepersTree(sim);
             for (int m = 0; m < 60 && !sim.EcoRabbitTracksSeen; m++)
             {
                 if (m % 2 == 0) MistSpot(sim, m / 2);

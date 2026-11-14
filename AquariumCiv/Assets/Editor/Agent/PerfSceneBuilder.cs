@@ -38,7 +38,7 @@ namespace AquariumCiv.EditorTools
             "Assets/Scenes/SampleScene.unity",
         };
 
-        [MenuItem("AquariumCiv/Agent/Perf Check/Build Scene")]
+        [MenuItem("Aquarium Civ/Agent tools/Perf Check/Build Scene")]
         public static string BuildScene()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -129,7 +129,7 @@ namespace AquariumCiv.EditorTools
         /// Perf build (issue #35): only PerfCheck.unity is enabled (first = launch scene); the prototype scenes stay in
         /// the list, disabled, in their old order. Frame Timing Stats on (FrameTimingManager needs it in release builds).
         /// </summary>
-        [MenuItem("AquariumCiv/Agent/Perf Check/Build Settings: perf build")]
+        [MenuItem("Aquarium Civ/Agent tools/Perf Check/Build Settings: perf build")]
         public static string UsePerfBuildSettings()
         {
             var list = new List<EditorBuildSettingsScene> { new(ScenePath, true) };
@@ -142,7 +142,7 @@ namespace AquariumCiv.EditorTools
         }
 
         /// <summary>Back to the 0.3.x prototype build list (Hub first, all prototypes enabled, no perf scene).</summary>
-        [MenuItem("AquariumCiv/Agent/Perf Check/Build Settings: prototype build")]
+        [MenuItem("Aquarium Civ/Agent tools/Perf Check/Build Settings: prototype build")]
         public static string UsePrototypeBuildSettings()
         {
             EditorBuildSettings.scenes = PrototypeScenes.Select(p => new EditorBuildSettingsScene(p, true)).ToArray();

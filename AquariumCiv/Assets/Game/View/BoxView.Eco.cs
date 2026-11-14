@@ -80,6 +80,36 @@ namespace AquariumCiv.View
         /// <summary>#359: where each grown tree was drawn (site cell -> ground point, crown radius), as BushSpots: the kids play round the real trunks.</summary>
         public readonly Dictionary<int, (Vector3 pos, float r)> TreeSpots = new();
 
+        /// <summary>The radius round the Keeper's tree inside which a grown wild tree drops branches the people gather (SimCore.DeadfallTreeCell).</summary>
+        static readonly float DeadfallRadius = new AquariumCiv.Sim.Eco.EcoTuning().woodsClearRadius;
+
+        /// <summary>#677 (the user, 2026-11-14): a grown wild tree near the Keeper's tree has fallen branches lying round its foot, the deadfall
+        /// the people pick up by hand: two to four, each a shape of four and maybe mirrored, its own size, angle and weathering,
+        /// all from the cell's hash (a rebuild never shuffles them).</summary>
+        void FallenBranches(MeshBuilder mb, int c, Vector2 p, float s, EcoLayer ec, List<(Vector2 p, float r)> near, System.Func<int, int, float> H)
+        {
+            if (ec.treeCell < 0) return;
+            if (Vector2.Distance(p, new Vector2(Site.CXc(ec.treeCell), Site.CZc(ec.treeCell))) >= DeadfallRadius) return;
+            int n = 2 + (int)(H(c, 40) * 2.99f);
+            float a0 = H(c, 41) * 360f;
+            for (int b = 0; b < n; b++)
+            {
+                float ang = (a0 + b * (360f / n) + (H(c, 42 + b) - 0.5f) * 50f) * Mathf.Deg2Rad;
+                float d = (0.19f + 0.10f * H(c, 46 + b)) * s;
+                var q = p + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * d;
+                if (Mathf.Abs(q.x) > AquariumCiv.Sim.Settle.Terrain.HX - AquariumCiv.Sim.Settle.Terrain.GlassMargin || Mathf.Abs(q.y) > AquariumCiv.Sim.Settle.Terrain.HZ - AquariumCiv.Sim.Settle.Terrain.GlassMargin) continue;
+                if (!Free(q, 0.025f, near)) continue;
+                var ib = MeshBuilder.Rent(seed * 7919 + c * 104729 + (20 + b) * 15485863);
+                int variant = (int)(H(c, 50 + b) * 3.99f);
+                bool mirror = H(c, 54 + b) < 0.5f;
+                float len = Mathf.Lerp(0.10f, 0.18f, H(c, 58 + b)) * (variant == 3 ? 0.8f : 1f);
+                float yaw = ang * Mathf.Rad2Deg + 90f + (H(c, 62 + b) - 0.5f) * 70f; // lying roughly round the trunk, never all one way
+                Pieces.FallenBranch(ib, land.OnGround(q), len, yaw, variant, mirror, H(c, 66 + b));
+                mb.AppendFree(ib);
+                near.Add((q, 0.03f));
+            }
+        }
+
         /// <summary>What grows in this chunk, from the cover cell by cell (deterministic per cell, so a rebuild never shuffles it).</summary>
         void EcoNature(MeshBuilder mb, int k, List<(Vector2 p, float r)> near)
         {
@@ -122,6 +152,7 @@ namespace AquariumCiv.View
                         mb.AppendFree(ib);
                         near.Add((p, 0.16f * s));
                         if (grown) lock (TreeSpots) TreeSpots[c] = (land.OnGround(p), 0.16f * s); // #359
+                        if (grown) FallenBranches(mb, c, p, s, ec, near, H);
                     }
                     else if (pass == 1 && (cv == EcoLayer.Bush || cv == EcoLayer.Seedling))
                     {

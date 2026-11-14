@@ -37,6 +37,8 @@ namespace AquariumCiv.View.PlayTests
             Assert.IsTrue(Sim.EcologyOn, "a living-land box");
             PeopleView.DebugSetHour(10f);
             if (mist) foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            // 2026-11-14: seed, then bushes: the thicket's jar opens only once the Keeper's tree is in the ground
+            if (mist && Sim.CanPlantTree) Assert.IsTrue(Sim.PlantTree(Sim.EcoGround.campX + 0.9f, Sim.EcoGround.campZ), "the seed goes in by the camp");
             yield return Frames(10);
         }
 
@@ -261,6 +263,8 @@ namespace AquariumCiv.View.PlayTests
             yield return Shot("p570-3-picked");
             // the land gets its meadow and the thicket opens: it comes first, bright; the rest stay greyed
             foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (-2.0f, -0.2f), (1.6f, 0.9f), (0.8f, -0.9f) }) EcoDebug.MistBig(x, z);
+            StringAssert.Contains("seed in the ground", Sim.JarNeed(LifeSpecies.Thicket), "2026-11-14: the bushes wait for the seed");
+            Assert.IsTrue(Sim.PlantTree(Sim.EcoGround.campX + 0.9f, Sim.EcoGround.campZ), "the seed goes in first");
             for (int i = 0; i < 16 && !Sim.JarReady(LifeSpecies.Thicket); i++) EcoDebug.SkipSeasons(1);
             Assert.IsTrue(Sim.JarReady(LifeSpecies.Thicket), "the thicket's jar opened on a meadow");
             yield return new WaitForSecondsRealtime(0.6f);

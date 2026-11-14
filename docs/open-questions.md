@@ -28,16 +28,16 @@ phone size. Merged to dev: #646 (#643-#645), #678 (quick wins). Tonight: the pol
 - #673 photo mode: it starts where the camera is (no jump to the pinned person), and its pill fades out fully.
 - #674 the person card: its first view shows a row of family and friend chips again.
 - #680 the hunter tries again: after a miss, one more stalk and throw before walking home.
-- #675 the seed in the life jar: a seed icon and a word, and the hint says one seed grows into the box's one tree.
+- #675 the seed first: on a fresh bare box the seed is the one thing ready in the life jar (a sprout icon and the word Seed), the bushes wait for it, and it goes into bare sand as well as meadow; the hint says one seed grows into the box's one tree, anywhere.
 - #676 the stew pot: a darker pot, a stew that looks like stew, steam and a few bubbles.
 - #665 rabbit tracks: fresh prints keep appearing while rabbits live.
 - #671 faded glass up close: zoomed in, the faded near glass no longer cuts the wet or snow look of the ground.
 - #656 the new start, arrival: the people walk in carrying a basket of food and a bundle of sticks and set them down where they settle; the HUD numbers show only after that. (Branch p9/new-start, not merged.)
-- #677 the new start, fire and wood: a small grass-and-twig fire before any wood; the first logs from the first grown wild tree are carried home and the fire becomes a log fire. (Branch p9/new-start, not merged.)
+- #677 the new start, fire and wood: a small grass-and-twig fire before any wood; the first logs from the first grown wild tree are carried home and the fire becomes a log fire. Fallen branches (four shapes, some mirrored, each its own size and shade) lie under the wild trees near the Keeper's tree, where the people gather them. (Branch p9/new-start, not merged.)
 - #658 framing the action: two or three default-camera framings that fill a tall screen with the camp. Pick one (the Framing A, B and C buttons, or Set up again, switch between them).
 
 ### Decisions needed
-- #677 the fire before the first wild wood: the first wild tree grows at about year 15-23 for an active player, so a fire only from wild wood leaves the camp 12-20 hours with no fire. ★ A grass-and-twig fire early, a log fire with the first wild wood. Alternative: No fire at all until the first wild wood.
+- #677 the fire before the first wild wood: with the seed first, the first wild tree grows at about year 11-14 for an active player, so a fire only from wild wood leaves the camp about 7-12 hours with no fire. ★ A grass-and-twig fire early, a log fire with the first wild wood. Alternative: No fire at all until the first wild wood.
 - #656 the carried food: the basket holds food for a while, then runs down until berries or rabbits. ★ Keep 12 food in the basket (about a year). Alternative: A smaller basket that empties within a season.
 - #658 which framing becomes the default: from the framing stop. ★ The framing you liked best in the look stop (write its letter in the note). Alternative: Keep today's default view.
 - #679 a notification when the Keeper's tree grows: today only a ready era notifies (decided 2026-10-29). ★ Notify for the next tree stage or era, whichever comes first, one at a time. Alternative: Keep the rule, no tree notification.
@@ -45,10 +45,12 @@ phone size. Merged to dev: #646 (#643-#645), #678 (quick wins). Tonight: the pol
 - #680 the hunter's retry: one more throw after a miss. ★ Keep one retry. Alternative: No retry, the hunter walks home after a miss.
 
 ### Calls I made: the new start (#656, #677)
+- The ladder is seed, then bushes, then rabbits (your call, 2026-11-14): the seed is in the life jar from the end of the first run, and the bushes jar opens only once it is in the ground. It goes anywhere but the hollow (the pond's bed), the water and the strip along the glass.
+- With the seed planted at the start, the Keeper's tree grew by year 5 and the village came at year 15-23. To keep the village near year 25 for an active player, the tree now grows about a third slower (grown at about year 8 instead of 5 after planting) and the village needs 10 grown trees instead of 8. Village: year 23.3 on all three test seeds (active), 26.8-27.5 (one visit every 4.5 h).
 - The new start applies to living-land boxes only; old boxes keep their stock.
 - The basket holds 12 food and the people eat about 0.2 each a month from it, so it lasts about a year; at 0 they're hungry (slower, looking up) and nobody dies.
 - Before the first bush there is no fire (the wanderers sit together); the grass-and-twig fire starts with the first bush and is fed with armfuls of dry grass and twigs from the meadow edge.
-- Wild wood: a grown wild tree in the woods gives about 0.6 wood a month (chopped); a grown wild tree near the Keeper's tree gives about 0.3 as fallen branches gathered by hand, never chopped. The Keeper's own tree gives nothing. First logs then come at year 15-23 for an active player, before the village (24-27).
+- Wild wood: a grown wild tree in the woods gives about 0.6 wood a month (chopped); a grown wild tree near the Keeper's tree gives about 0.3 as fallen branches gathered by hand, never chopped. The Keeper's own tree gives nothing. With the seed first, the first logs come at year 11-14 for an active player, well before the village (about 23).
 - With no work on bare land, one founder is the toolmaker and the rest hold no job; the gatherer opens with the first berries or rabbits. Their day: chores and water, looking over the land from the hill, grass and twigs for the fire, sitting at the camp.
 - The lean-winter line in a camp talks of baskets, not granaries.
 - The founders wait by the misted glass, out of sight, and walk in once it's wiped; one carries the basket, one hugs the stick bundle, the rest carry rolled bundles on their backs.

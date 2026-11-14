@@ -21,7 +21,7 @@ namespace AquariumCiv.EditorTools
         public const string Version = "0.4.0";
         public const string OutputRoot = @"F:\GameDevBuilds";
 
-        [MenuItem("AquariumCiv/Agent/Slice/Build Settings: slice build")]
+        [MenuItem("Aquarium Civ/Agent tools/Slice/Build Settings: slice build")]
         public static string UseSliceBuildSettings()
         {
             var others = EditorBuildSettings.scenes.Select(s => s.path).Where(p => p != SliceScene).Distinct();
@@ -56,14 +56,14 @@ namespace AquariumCiv.EditorTools
             return $"{s.result} {target} -> {path} | size {s.totalSize / (1024.0 * 1024.0):0.0} MB | {s.totalTime.TotalMinutes:0.0} min | errors {s.totalErrors}, warnings {s.totalWarnings}";
         }
 
-        [MenuItem("AquariumCiv/Agent/Slice/Build Android (apk)")]
+        [MenuItem("Aquarium Civ/Agent tools/Slice/Build Android (apk)")]
         public static string Android()
         {
             if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android)) return "Android build support is not installed";
             return Build(BuildTarget.Android, BuildTargetGroup.Android, Path.Combine(OutputRoot, "android", "AquariumCiv-" + Version + ".apk"), BuildOptions.None);
         }
 
-        [MenuItem("AquariumCiv/Agent/Slice/Build iOS (Xcode project)")]
+        [MenuItem("Aquarium Civ/Agent tools/Slice/Build iOS (Xcode project)")]
         public static string Ios()
         {
             if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.iOS, BuildTarget.iOS)) return "iOS build support is not installed";

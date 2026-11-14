@@ -629,6 +629,56 @@ namespace AquariumCiv.View
             mb.Prism(centre - rot * Vector3.up * (len / 2f), r, r, len, 6, col, rot, true, true, Palette.WoodLight);
         }
 
+        /// <summary>#677 (the user, 2026-11-14): a fallen branch lying under a wild tree near the Keeper's tree, the deadfall the people
+        /// gather by hand. Four shapes (<paramref name="variant"/> 0..3: a limb with side twigs, a fork, a bent limb with a dry leaf
+        /// tuft, a little heap of twigs), each one <paramref name="mirror"/>ed to the other side for more variety, sized by
+        /// <paramref name="len"/> and laid along <paramref name="yaw"/> (degrees). <paramref name="p"/> is the ground point at its middle.</summary>
+        public static void FallenBranch(MeshBuilder mb, Vector3 p, float len, float yaw, int variant, bool mirror, float dryness)
+        {
+            float side = mirror ? -1f : 1f;
+            var bark = Color.Lerp(Palette.Bark, new Color(0.56f, 0.52f, 0.47f), Mathf.Clamp01(dryness)); // weathered: browner to greyer
+            var light = Color.Lerp(bark, Palette.WoodLight, 0.45f);
+            var yawQ = Quaternion.Euler(0f, yaw, 0f);
+            // a limb lying flat from a (local x across, z along) point, turned by a (local) angle, thickness r0 -> r1
+            void Limb(float x, float z, float ang, float l, float r0, float r1, Color col)
+            {
+                var start = p + yawQ * new Vector3(x * side, 0f, z);
+                var rot = yawQ * Quaternion.Euler(0f, ang * side, 0f) * Quaternion.Euler(90f, 0f, 0f);
+                mb.Prism(start + Vector3.up * (r0 * 0.7f), r0, r1, l, 5, col, rot, true, true, light);
+            }
+            float h = len * 0.5f, r = Mathf.Max(0.006f, len * 0.08f);
+            switch (variant & 3)
+            {
+                case 0: // a straight limb, two twigs off one side, a stub off the other
+                    Limb(0f, -h, 0f, len, r, r * 0.55f, bark);
+                    Limb(0f, -h * 0.15f, 38f, len * 0.34f, r * 0.45f, r * 0.2f, bark);
+                    Limb(0f, h * 0.45f, 30f, len * 0.24f, r * 0.35f, r * 0.15f, bark);
+                    Limb(0f, -h * 0.55f, -55f, len * 0.12f, r * 0.5f, r * 0.4f, light);
+                    break;
+                case 1: // a fork: the limb splits two thirds along
+                    Limb(0f, -h, 0f, len * 0.6f, r, r * 0.7f, bark);
+                    Limb(0f, -h + len * 0.58f, 24f, len * 0.46f, r * 0.68f, r * 0.3f, bark);
+                    Limb(0f, -h + len * 0.58f, -20f, len * 0.4f, r * 0.62f, r * 0.25f, bark);
+                    break;
+                case 2: // a bent limb in two pieces, a tuft of dry leaves still on its end
+                    Limb(0f, -h, 0f, len * 0.55f, r, r * 0.8f, bark);
+                    Limb(0f, -h + len * 0.53f, 28f, len * 0.5f, r * 0.8f, r * 0.4f, bark);
+                    {
+                        var tip = p + yawQ * new Vector3(side * len * 0.24f, 0f, -h + len * 0.98f);
+                        mb.Ico(tip + Vector3.up * (r * 1.4f), len * 0.11f, new Vector3(1.2f, 0.55f, 1f), Color.Lerp(new Color(0.62f, 0.5f, 0.28f), new Color(0.47f, 0.52f, 0.3f), 1f - dryness), 0.25f);
+                    }
+                    break;
+                default: // a small heap of thin twigs, crossed
+                    for (int i = 0; i < 4; i++)
+                    {
+                        float a = -35f + i * 24f + (i % 2) * 9f;
+                        float l = len * (0.55f + 0.12f * (i % 3));
+                        Limb((i - 1.5f) * r * 1.6f, -l * 0.5f, a, l, r * 0.55f, r * 0.3f, i % 2 == 0 ? bark : light);
+                    }
+                    break;
+            }
+        }
+
         public static void Woodpile(MeshBuilder mb, Vector3 p, float yaw)
         {
             var r = Quaternion.Euler(0, yaw, 0);

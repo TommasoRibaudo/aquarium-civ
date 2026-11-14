@@ -107,9 +107,10 @@ namespace AquariumCiv.View.PlayTests
                 case "#680": return new[] { S("#680", "the hunter tries again", "pt1_hunt_retry",
                     "A hunt that misses (cheat), close on the hunter. Good: after the miss the hunter stalks once more and throws again (that one misses too here), " +
                     "then walks home; one retry, never more. Set up again to watch twice.", SetupHuntRetry, ("The retry", HuntRetryExtra)) };
-                case "#675": return new[] { S("#675", "the seed in the life jar", "pt1_seed",
-                    "The Kit is open on Life with the seed ready beside the groups. Good: the seed is a sprout icon with the word Seed; tap it: the hint " +
-                    "says one seed grows into the box's tree, and where to tap.", SetupSeedJar) };
+                case "#675": return new[] { S("#675", "the seed first, on bare sand", "pt1_seed",
+                    "A fresh box just after the first run, still bare sand, the Kit open on Life. Good: the seed is the one thing ready (a sprout icon, the word " +
+                    "Seed), and the Bushes wait greyed with \"Bushes need the seed in the ground first\". Tap the seed: the hint says it grows anywhere, even on " +
+                    "bare sand. Plant in the sand puts it in the dry sand; then the Bushes ask only for a meadow.", SetupSeedJar, ("Plant in the sand", SeedSandExtra)) };
                 case "#676": return new[] { S("#676", "the stew pot at dusk", "pt1_stew",
                     "The camp's stew pot up close at the cook's hour. Good: a dark sooty pot, a lumpy brown stew that reads as food, soft white steam rising " +
                     "and a few bubbles on the surface.", SetupStew) };
@@ -126,7 +127,11 @@ namespace AquariumCiv.View.PlayTests
                 case "#677": return new[] { With(S("#677", "the fire stages and the first wild wood", "pt1_fire",
                     "The new-start camp at dusk, close on its fire. Good: No fire: the people sit together, nothing burns; Grass fire: a small low fire of grass and " +
                     "twigs, no logs; Log fire: a bigger log fire with warmer light. First wild wood now: the first logs are carried home from a wild tree and the fire becomes a log fire.",
-                    SetupFire, ("No fire", () => FireExtra(0)), ("Grass fire", () => FireExtra(1)), ("Log fire", () => FireExtra(2)), ("First wild wood now", FirstWildWoodExtra)), box: "newstart") };
+                    SetupFire, ("No fire", () => FireExtra(0)), ("Grass fire", () => FireExtra(1)), ("Log fire", () => FireExtra(2)), ("First wild wood now", FirstWildWoodExtra)), box: "newstart"),
+                    With(S("#677", "fallen branches under the wild trees", "pt1_deadfall",
+                    "Wild trees grown beside the Keeper's tree, close on their feet. Good: two to four fallen branches lie round each trunk: a limb with twigs, " +
+                    "a fork, a bent limb with dry leaves, a little heap of twigs, some mirrored, each its own size, angle and shade, none floating; nothing like " +
+                    "it under the Keeper's own tree. Next tree turns to another one.", SetupDeadfall, ("Next tree", DeadfallNextExtra)), box: "newstart") };
                 case "#658": return new[] { S("#658", "three default framings", "pt1_framing",
                     "Three candidate default views of the camp on a tall phone (the panel folded; tap the arrow to read this). A: today's default (the camp frame). " +
                     "B: much closer on the camp, lower pitch. C: turned to look along the land's long side, closer. " +
@@ -646,15 +651,14 @@ namespace AquariumCiv.View.PlayTests
             Say(Stalker(out _) ? $"the second stalk ({Time.unscaledTime - t0:0} s after)" : "no second stalk seen");
         }
 
-        // ---------------------------------------------------------------- #675 the seed in the jar
+        // ---------------------------------------------------------------- #675 the seed first (the user, 2026-11-14: seed, then bushes, then rabbits)
         IEnumerator SetupSeedJar()
         {
-            if (Sim.State.eco.treeCell >= 0) yield return OpenOwn("seed", 4242); // one seed per box: a tree stands on the played box
+            yield return OpenOwn("seed", 4242); // a fresh bare box: the seed is the first rung
             Hour(11f);
-            foreach (var (x, z) in new[] { (-1.6f, 0.6f), (-1.0f, -0.8f), (1.6f, 0.9f) }) EcoDebug.MistBig(x, z);
             yield return Frames(10);
+            Log("bushes: " + (Sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Thicket) ?? "ready"));
             Log(EcoDebug.SeedInHand());
-            Log("jars ready: " + Sim.DebugJarsReady()); // a full row: the groups beside the seed
             hud.SetHand(GameHud.KitTool.None);
             DefaultView();
             yield return Wait(1f);
@@ -662,6 +666,62 @@ namespace AquariumCiv.View.PlayTests
             bool open = OpenLifeRow();
             yield return Wait(0.6f);
             Say(open ? "the chooser is open: find the seed, tap it, read the hint" : "the chooser did not open: tap Kit, then Life");
+        }
+
+        IEnumerator SeedSandExtra()
+        {
+            if (hud.SheetOpen) hud.CloseSheet();
+            hud.SetHand(GameHud.KitTool.None);
+            // the driest bare cell in the tree's bed, away from the hollow: the seed goes into the sand
+            int best = -1; float dry = float.MaxValue;
+            var e = Sim.State.eco; var g = Sim.EcoGround;
+            for (int c = 0; c < AquariumCiv.Sim.Settle.SiteMap.N; c++)
+            {
+                if (!AquariumCiv.Sim.Eco.EcoModel.InTreeBed(c) || g.InBasin(c) || (AquariumCiv.Sim.Eco.EcoCover)e.cover[c] != AquariumCiv.Sim.Eco.EcoCover.Bare) continue;
+                float m = e.moisture[c] + 0.05f * Mathf.Abs(AquariumCiv.Sim.Settle.SiteMap.CXc(c));
+                if (m < dry) { dry = m; best = c; }
+            }
+            if (best < 0) { Say("no bare sand in the tree's bed (Set up again)"); yield break; }
+            float x = AquariumCiv.Sim.Settle.SiteMap.CXc(best), z = AquariumCiv.Sim.Settle.SiteMap.CZc(best);
+            bool ok = Sim.PlantTree(x, z);
+            box.Refresh();
+            yield return Wait(1f);
+            Frame(World(x, z), 0.3f, 40f);
+            yield return Held(0.8f);
+            Say((ok ? $"planted in the sand (moisture {dry:0.00})" : "refused") + " · bushes now: " + (Sim.JarNeed(AquariumCiv.Sim.Eco.LifeSpecies.Thicket) ?? "ready"));
+        }
+
+        // ---------------------------------------------------------------- #677 fallen branches (the deadfall the people gather)
+        int deadfallRank;
+
+        IEnumerator SetupDeadfall()
+        {
+            yield return NewStartBox();
+            if (Sim.State.eco.treeStage < 4) Log(EcoDebug.TreeStage(4));
+            for (int k = 0; k < 4 && Sim.DeadfallTreeCount < 3; k++) Log(EcoDebug.WildTrees(true));
+            box.Refresh();
+            yield return Wait(1.5f);
+            deadfallRank = 0;
+            yield return FrameDeadfall();
+        }
+
+        IEnumerator DeadfallNextExtra()
+        {
+            deadfallRank++;
+            yield return FrameDeadfall();
+        }
+
+        IEnumerator FrameDeadfall()
+        {
+            var e = Sim.State.eco;
+            float kx = AquariumCiv.Sim.Settle.SiteMap.CXc(e.treeCell), kz = AquariumCiv.Sim.Settle.SiteMap.CZc(e.treeCell);
+            int n = Sim.DeadfallTreeCount;
+            if (n == 0) { Say("no wild tree beside the Keeper's tree (Set up again)"); yield break; }
+            int c = Sim.DeadfallTreeCell(kx, kz, deadfallRank % n);
+            Hour(10.5f);
+            Frame(World(AquariumCiv.Sim.Settle.SiteMap.CXc(c), AquariumCiv.Sim.Settle.SiteMap.CZc(c)), 0.16f, 38f);
+            yield return Held(1f);
+            Say($"wild tree {deadfallRank % n + 1} of {n} beside the Keeper's tree");
         }
 
         // ---------------------------------------------------------------- #676 the stew pot

@@ -79,7 +79,9 @@ namespace AquariumCiv.Sim.Eco
         // The step's own counts (taken at the end of the last step; the lab's model reads them mid-step).
         float MeadowFrac => Frac(st.cGrass + st.cTall);
         float BushFrac => Frac(st.cBush);
-        public bool SeedAvailable => st.campGateMonth >= 0 && st.Reached(EcoMilestones.SeedUnlocked);
+        /// <summary>The seed is the first rung of the ladder (the user, 2026-11-14: seed, then bushes, then rabbits): in the life jar
+        /// from the start, and it grows anywhere outside the hollow and the water, the bare sand too.</summary>
+        public bool SeedAvailable => true;
 
         /// <summary>Counts of the cover as it is right now (the view and the sound read these).</summary>
         public EcoLiveCounts Live()
@@ -338,7 +340,7 @@ namespace AquariumCiv.Sim.Eco
             return best;
         }
 
-        /// <summary>The seed goes into open ground (not the hollow, not the water), once the seed is unlocked.</summary>
+        /// <summary>The seed goes into open ground, bare sand or meadow (not the hollow, not the water).</summary>
         public bool Plant(float x, float z, long month)
         {
             if (st.treeCell >= 0 || !SeedAvailable) return false;
@@ -639,7 +641,7 @@ namespace AquariumCiv.Sim.Eco
             {
                 st.campGateMonth = (int)month; Reach(EcoMilestones.CampGate, month); newGates.Add("camp");
             }
-            if (st.campGateMonth >= 0 && IsPlaced(LifeSpecies.Thicket)) Reach(EcoMilestones.SeedUnlocked, month); // #418: after the thicket is placed (was: the first wild bushes)
+            Reach(EcoMilestones.SeedUnlocked, month); // 2026-11-14: the seed comes first, from the start (was #418: after the camp and the thicket)
             // #493: the milestone is the first WILD grown tree (the woodcutter's work); the Keeper's own tree never counts.
             bool keeperGrown = st.treeCell >= 0 && st.treeCell < EcoLand.N && Cv(st.treeCell) == EcoCover.Tree;
             if (st.cTrees - (keeperGrown ? 1 : 0) > 0) Reach(EcoMilestones.FirstWoodTree, month);

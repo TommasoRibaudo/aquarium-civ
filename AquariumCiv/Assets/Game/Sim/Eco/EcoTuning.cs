@@ -90,7 +90,7 @@ namespace AquariumCiv.Sim.Eco
         public float wateredTake = 2f, wateredGreen = 1f, wateredGrow = 3f, wateredKeeper = 0f;
 
         // The one tree
-        public float treeRate = 0.35f;                            // progress per season at full care
+        public float treeRate = 0.22f;                            // progress per season at full care
         public float[] treeStages = { 0.5f, 1.5f, 3.0f, 4.5f };   // progress to sprout, sapling, young, grown
         public float treeWetAt = 0.15f, treeWetFull = 0.5f;
         public float weedGrow = 0.12f, weedSlows = 0.6f;
@@ -156,7 +156,7 @@ namespace AquariumCiv.Sim.Eco
         // Gates
         public float campMeadow = 0.20f;
         public int campRabbits = 2;
-        public int villageTrees = 8;
+        public int villageTrees = 10;
 
         // #573 the woods spot (where woodcutters chop): only a GROWN wild tree makes one, and never within this of the Keeper's tree (its canopy + a margin).
         public float woodsClearRadius = 1.1f;

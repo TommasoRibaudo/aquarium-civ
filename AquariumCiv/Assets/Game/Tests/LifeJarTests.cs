@@ -27,9 +27,10 @@ namespace AquariumCiv.Tests
 
         /// <summary>Greens the dry cells nearest the camp until <paramref name="frac"/> of the land is meadow, then lives a season
         /// (the jars open at a season's end).</summary>
-        internal static void Meadow(SimCore sim, float frac, bool step = true)
+        internal static void Meadow(SimCore sim, float frac, bool step = true, bool plant = true)
         {
             var e = sim.State.eco; var g = sim.EcoGround;
+            if (plant) PlantKeepersTree(sim); // 2026-11-14: the bushes wait for the planted seed
             var order = Enumerable.Range(0, EcoLand.N).Where(c => !g.InBasin(c))
                 .OrderBy(c => Terrain.Dist(SiteMap.CXc(c), SiteMap.CZc(c), g.campX, g.campZ)).ThenBy(c => c).ToList();
             int want = Cells(frac), have = e.cover.Count(v => v == (byte)EcoCover.Grass || v == (byte)EcoCover.Tall);
@@ -41,6 +42,12 @@ namespace AquariumCiv.Tests
                 e.moisture[c] = Math.Max(e.moisture[c], 0.4f);
             }
             if (step) sim.DebugSkipSeasons(1);
+        }
+
+        /// <summary>2026-11-14: the seed comes first. The Keeper's tree goes in by the camp (the thicket jar opens only after it).</summary>
+        internal static void PlantKeepersTree(SimCore sim)
+        {
+            if (sim.CanPlantTree) Assert.IsTrue(sim.PlantTree(sim.EcoGround.campX + 0.9f, sim.EcoGround.campZ), "the seed goes in by the camp");
         }
 
         static void SetPlaced(EcoModel m, LifeSpecies s, long month = 0)
@@ -88,6 +95,8 @@ namespace AquariumCiv.Tests
             e.cGrass = Cells(0.10f) - 2; m.UpdateJars(5);
             Assert.AreEqual(JarState.Locked, m.JarStateOf(LifeSpecies.Thicket), "under 10 %");
             e.cGrass = Cells(0.06f); e.cTall = Cells(0.04f); m.UpdateJars(6);
+            Assert.AreEqual(JarState.Locked, m.JarStateOf(LifeSpecies.Thicket), "10 % meadow, but the seed is not in the ground yet");
+            PlantKeepersTree(sim); m.UpdateJars(6);
             Assert.AreEqual(JarState.Ready, m.JarStateOf(LifeSpecies.Thicket), "grass and tall grass count");
             Assert.AreEqual(6, m.Jar(LifeSpecies.Thicket).readyMonth);
             Assert.IsFalse(m.Jar(LifeSpecies.Thicket).readySeen, "the wiggle waits");
@@ -409,7 +418,7 @@ namespace AquariumCiv.Tests
 
         // ---------------------------------------------------------------- #418 the thicket (spec §5.1)
         [Test]
-        public void PlacingTheThicket_ThreeFounders_TheAreaReservedAtOnce_TheSeedAfter()
+        public void PlacingTheThicket_ThreeFounders_TheAreaReservedAtOnce_TheSeedWasFirst()
         {
             var sim = World(); Meadow(sim, 0.3f);
             var e = sim.State.eco; var map = sim.Settlement.Map;
@@ -433,14 +442,13 @@ namespace AquariumCiv.Tests
                 Assert.IsTrue(map.Reserved(x) && map.NoBuild(x), "reserved like water, at once");
             }
             Assert.Greater(area, 30);
-            // the seed waits on the camp as before, and now on the thicket (not on wild bushes)
-            Assert.IsFalse(e.Reached(EcoMilestones.SeedUnlocked));
-            var noThicket = World(); Meadow(noThicket, 0.3f);
-            noThicket.DebugOpenCampGate(); noThicket.DebugSkipSeasons(1);
-            Assert.IsFalse(noThicket.State.eco.Reached(EcoMilestones.SeedUnlocked), "camp but no thicket: no seed");
-            sim.DebugOpenCampGate(); sim.DebugSkipSeasons(1);
-            Assert.IsTrue(e.Reached(EcoMilestones.SeedUnlocked), "camp and thicket: the seed");
-            Assert.IsTrue(sim.CanPlantTree);
+            // 2026-11-14: the seed came first (the thicket opened only after it), and it is the only tree: no second
+            Assert.IsTrue(e.Reached(EcoMilestones.SeedUnlocked));
+            Assert.IsTrue(e.treeCell >= 0, "the Keeper's tree was planted before the bushes");
+            Assert.IsFalse(sim.CanPlantTree, "one tree only");
+            var noSeed = World(); noSeed.DebugOpenCampGate(); noSeed.DebugSkipSeasons(1);
+            Assert.IsTrue(noSeed.State.eco.Reached(EcoMilestones.SeedUnlocked), "the seed is in the jar from the start");
+            Assert.IsTrue(noSeed.CanPlantTree);
             // the area keeps its reservation across a save
             var loaded = new SimCore(sim.Config, JsonUtility.FromJson<SimState>(JsonUtility.ToJson(sim.State)));
             Assert.IsTrue(loaded.Settlement.Map.Reserved(c));
