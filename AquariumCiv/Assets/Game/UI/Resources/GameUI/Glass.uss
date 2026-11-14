@@ -773,6 +773,7 @@
 .kg-i-life-duck { background-image: url("Icons/life-duck.svg"); }
 .kg-i-life-fish { background-image: url("Icons/life-fish.svg"); }
 .kg-i-life-wolf { background-image: url("Icons/life-wolf.svg"); }
+.kg-i-life-seed { background-image: url("Icons/life-seed.svg"); }
 .kit-acts { flex-wrap: wrap; }
 .kit-acts > .kg-btn { margin-bottom: var(--space-8); }
 .kit-life { padding-left: 88px; }
@@ -786,7 +787,9 @@
 .kit-life-row { flex-direction: row; flex-wrap: wrap; align-items: center; margin-bottom: var(--space-8); display: none; flex-shrink: 0; }
 .kit-life-row--open { display: flex; }
 .kit-life-choice { width: 140px; height: 140px; min-width: 0; padding: 0; margin: 0 16.5px var(--space-8) 0; flex-direction: column; justify-content: center; align-items: center; }
-.kit-life-choice > .kg-icon { width: 77px; height: 77px; }
+.kit-life-choice > .kg-icon { width: 66px; height: 66px; }
+/* #675: a short word under each jar choice ("Seed", "Rabbits") */
+.kit-life-choice > .kit-life-name { margin: 5.5px 0 0 0; padding: 0; font-size: 27.5px; white-space: nowrap; -unity-text-align: middle-center; }
 /* #570: a shut jar stands greyed with its need in the note; the picked one is a little stronger */
 .kit-life-choice--locked { opacity: 0.4; }
 .kit-life-choice--locked.kit-life-choice--picked { opacity: 0.75; }
