@@ -61,15 +61,15 @@ namespace AquariumCiv.Life
         bool WoodsStand => !OnLiving || (sim.TreesGrow && sim.WoodsExist); // #573: a grown wild tree away from the Keeper's tree
         /// <summary>Where berries are gathered. On a living land (P8 #288): a real grown bush cell near the camp that has berries
         /// today (spread over the few nearest by the person's hash, <paramref name="salt"/> for a second spot); with none in
-        /// fruit (spring flowers, winter bare, all picked) roots in the dry hollow (the stream bed), as before the first bush.
-        /// Off the ecology: the old fixed bushes spot.</summary>
+        /// fruit (spring flowers, winter bare, all picked), or before the first bush, <see cref="Place.None"/>: #656, no roots are
+        /// dug, the caller finds the camp's other work (<see cref="CampOtherWork"/>). Off the ecology: the old fixed bushes spot.</summary>
         Place BerryPlaceFor(Person p, DayInfo d, int salt = 0)
         {
             if (!OnLiving) return Bushes;
-            if (!sim.BerriesGrow) return Stream;
+            if (!sim.BerriesGrow) return Place.None;
             var g = sim.EcoGround;
             sim.NearestBushes(g.campX, g.campZ, 4, d.day, (int)d.season, true, bushScratch);
-            if (bushScratch.Count == 0) return Stream;
+            if (bushScratch.Count == 0) return Place.None;
             return Place.Land(PlaceKind.BushCell, bushScratch[(int)(H(p.key, d.day, 76 + salt) % (uint)bushScratch.Count)]);
         }
         /// <summary>P8 #288: some days, in summer and autumn, a child eats from a bush that has berries instead of the late-morning play.</summary>
@@ -81,9 +81,76 @@ namespace AquariumCiv.Life
         }
         readonly List<int> bushScratch = new List<int>();
 
-        /// <summary>The tribe's own work, for anyone whose job the land hasn't opened (or whose hunt isn't built yet): digging roots
-        /// or gathering berries and bringing them to the fire.</summary>
-        Work TribeWork(Person p, DayInfo d) => W(BerryPlaceFor(p, d), ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
+        /// <summary>The tribe's own work, for anyone whose job the land hasn't opened (or whose hunt isn't built yet): gathering
+        /// berries and bringing them to the pile; with no berries to pick today, the camp's other work (#656: never a root dig).</summary>
+        Work TribeWork(Person p, DayInfo d)
+        {
+            var b = BerryPlaceFor(p, d);
+            return b.IsNone ? CampOtherWork(p, d) : W(b, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
+        }
+
+        /// <summary>#656/#677: the fire as the land lets it burn (none, grass and twigs, logs). Off the living land, or an old box: logs.</summary>
+        public CampFireStage FireNow => sim != null ? sim.FireStage : CampFireStage.Logs;
+
+        /// <summary>#656/#677: tending the grass-and-twig fire: an armful of dry grass and twigs gathered at the meadow's edge (by the
+        /// bushes) and carried to the fire. Never "chopping kindling", never wood. The view tells it by <see cref="IsTinderGather"/>.</summary>
+        Work TinderWork() => W(Place.Land(PlaceKind.Meadow), ActivityKind.Gather, Prop.Stick, Prop.Stick, fire, 0.35f);
+
+        /// <summary>#656/#677: a gather of dry grass and twigs for the grass fire (the loop at the meadow's edge; its carry is a
+        /// <see cref="ActivityKind.Carry"/> of <see cref="Prop.Stick"/> to the fire).</summary>
+        public static bool IsTinderGather(PersonActivity a) => a.kind == ActivityKind.Gather && a.prop == Prop.Stick;
+
+        /// <summary>#521/#656: a camp's work when the land gives nothing to gather today (no bush yet, none in fruit, no fish): the cook tends
+        /// the fire, the rest fetch water, fish, chop where the land allows it, tend the grass fire (gathering dry grass and twigs), or do the
+        /// chores at their tent (hashed per person and day [est]). This was the "everyone else" of the root dig, which is gone (#656).</summary>
+        Work CampOtherWork(Person p, DayInfo d)
+        {
+            if (p.job == CrowdCook && FireNow != CampFireStage.None)
+            {
+                var cook = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
+                cook.keepsRestDay = true;
+                if (HasRealWater) { cook = Fetch(cook, WaterPlace); cook.dest = stash; cook.fetchFirst = true; }
+                return cook;
+            }
+            float r = R(p.key, d.day, 149);
+            bool water = FishingOn(d.day); // #421: fishing waits for the fish; #618: and for the thaw on a small pond
+            if (water && r < 0.45f) return FishWork();
+            if (WoodsStand && r < 0.8f) return W(Woods, ActivityKind.Chop, Prop.Axe, Prop.Log, stash, 0.3f);
+            // #656: the rest share three things out by the day's order (not a dice each, so never most of the camp on one): the chores at
+            // their tent and the water; the grass fire's dry grass and twigs (#677), or, with no fire yet, a look over the land for what it
+            // may give; and a sit together where the camp is (with nothing to burn, they huddle).
+            switch (IdleIndex(p, d) % 3)
+            {
+                case 1:
+                    if (FireNow == CampFireStage.GrassAndTwig) return TinderWork(); // #677: the grass fire is fed by hand
+                    if (OnLiving && era == Era.Camp) return W(Place.Land(PlaceKind.Hill), ActivityKind.Explore, Prop.None, Prop.None, default, 0f);
+                    break;
+                case 2:
+                    if (OnLiving && era == Era.Camp) return W(gather, ActivityKind.SitOut, Prop.None, Prop.None, default, 0f);
+                    break;
+            }
+            var c = W(p.home, ActivityKind.SweepStep, Prop.Broom, Prop.Buckets, p.home, 0.3f);
+            c.chores = true;
+            return Fetch(c, WaterPlace);
+        }
+
+        long idleDay = long.MinValue;
+        readonly List<int> idleOrder = new List<int>();
+
+        /// <summary>#656: the grown-ups' order for the day (the day's hash; stable for the day), for <see cref="CampOtherWork"/>'s share-out.</summary>
+        int IdleIndex(Person p, DayInfo d)
+        {
+            if (idleDay != d.day)
+            {
+                idleDay = d.day; idleOrder.Clear();
+                var order = new List<Person>();
+                foreach (var q in people) if (q.Adult && q.job != JobType.Toolmaker && q.job != CrowdCook) order.Add(q);
+                order.Sort((a, b) => { int c = H(a.key, d.day, 148).CompareTo(H(b.key, d.day, 148)); return c != 0 ? c : a.key.CompareTo(b.key); });
+                foreach (var q in order) idleOrder.Add(q.key);
+            }
+            int i = idleOrder.IndexOf(p.key);
+            return i < 0 ? (int)(H(p.key, d.day, 148) % 3u) : i;
+        }
 
         /// <summary>P8 #288: the first bush is news for a month: one grown-up of the tribe walks over to look at it instead of
         /// their morning work. Stable for the day (the lowest hash), never the toolmaker.</summary>
@@ -127,7 +194,7 @@ namespace AquariumCiv.Life
                 var rw = RoleWork(p, d, morning);
                 if (rw.HasValue) return rw.Value;
             }
-            var jw = SpreadDiggers(p, d, JobWork(p, d)); // tester run 1 #3: two or three dig the stream bed, the rest find other work
+            var jw = JobWork(p, d); // #656: no root dig, so nobody is spread over the stream bed any more (CampOtherWork)
             return OnLiving && !chopScan ? ChopSlots(p, d, jw) : jw;
         }
 
@@ -148,7 +215,7 @@ namespace AquariumCiv.Life
                     var order = new System.Collections.Generic.List<Person>();
                     foreach (var q in people) if (q.Adult) order.Add(q);
                     order.Sort((a, b) => a.key.CompareTo(b.key));
-                    foreach (var q in order) { var qw = SpreadDiggers(q, d, JobWork(q, d)); if (qw.loop == ActivityKind.Chop && qw.site.kind == PlaceKind.Woods) chopCrew.Add(q.key); }
+                    foreach (var q in order) { var qw = JobWork(q, d); if (qw.loop == ActivityKind.Chop && qw.site.kind == PlaceKind.Woods) chopCrew.Add(q.key); }
                 }
                 finally { chopScan = false; }
             }
@@ -166,10 +233,10 @@ namespace AquariumCiv.Life
 
         Work JobWork(Person p, DayInfo d)
         {
-            // P8, before the camp (keepers-hands §2.1): the land is dead, so there is one job for everyone who works: digging
-            // roots in the dry hollow (the stream bed) and bringing them to the fire. The toolmaker still knaps by the fire.
+            // P8, before the camp (keepers-hands §2.1): one work for everyone who works: the tribe's (berries once a bush has fruit,
+            // else the camp's other work: #656, they live off the carried basket and never dig roots). The toolmaker still knaps by the fire.
             if (sim != null && sim.BeforeCamp && p.job != JobType.Toolmaker)
-                return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
+                return TribeWork(p, d);
             var season = d.season;
             bool camp = era == Era.Camp;
             var jb = p.jobBuilding != null ? PlaceOf(p.jobBuilding) : Place.None;
@@ -178,19 +245,20 @@ namespace AquariumCiv.Life
             {
                 case JobType.Gatherer:
                 {
-                    var site = !jb.IsNone ? jb : farms.Count > 0 ? PlaceOf(farms[(int)(H(p.key, 0, 72) % (uint)farms.Count)]) : BerryPlaceFor(p, d); // P8 (#285): roots in the dry hollow until a bush comes up
+                    var site = !jb.IsNone ? jb : farms.Count > 0 ? PlaceOf(farms[(int)(H(p.key, 0, 72) % (uint)farms.Count)]) : BerryPlaceFor(p, d);
+                    if (site.IsNone) return CampOtherWork(p, d); // #656: no berries to pick today (or the job came with the rabbits): no root dig
                     w = W(site, ActivityKind.Gather, Prop.Basket, Prop.Basket, Store(Prop.Basket));
                     if (season == Season.Autumn && WoodsStand) w = Alt(w, Woods, ActivityKind.Gather, Prop.Basket, 0.5f);       // mushrooms and nuts
                     else if (season == Season.Winter && WoodsStand) w = CarryLogs(w, Woods, stash, 0.4f); // wood carried in
-                    else w = Alt(w, BerryPlaceFor(p, d, 1), ActivityKind.Gather, Prop.Basket, 0.4f);
+                    else { var second = BerryPlaceFor(p, d, 1); if (!second.IsNone) w = Alt(w, second, ActivityKind.Gather, Prop.Basket, 0.4f); }
                     return w;
                 }
                 case JobType.Hunter:
                     if (sim != null && sim.EcologyOn) return TribeWork(p, d); // P8 (#285, #283): the job opens with the first rabbit; the hunt itself is planned in LifePlanner.Hunt.cs (HuntPlan) and plays over the day; between hunts: the tribe's work
                     return W(ForestEdge, ActivityKind.Stalk, Prop.Spear, Prop.Hide, stash, season == Season.Winter ? 0.35f : 0.25f);
                 case JobType.Fisher:
-                    if (sim != null && (!sim.FishingWater || PondIce.FishingStopped(sim, d.day))) // #618: a small frozen pond isn't fished; P8: no water yet (#421: or no fish placed): the hollow is dug for roots, not fished
-                        return W(Stream, ActivityKind.Gather, Prop.Basket, Prop.Basket, stash, 0.35f);
+                    if (sim != null && (!sim.FishingWater || PondIce.FishingStopped(sim, d.day))) // #618: a small frozen pond isn't fished; P8: no water yet (#421: or no fish placed)
+                        return CampOtherWork(p, d); // #656: the camp's other work, not a root dig
                     return camp ? FishWork() : W(Pond, ActivityKind.Fish, Prop.Rod, Prop.Basket, Store(Prop.Goods), 0.25f); // #543: a camp's catch goes to the fish rack
                 case JobType.Woodcutter:
                     if (sim != null && sim.EcologyOn && !WoodsStand) return TribeWork(p, d); // P8 (#285): no trees, no chopping (#573: a sapling or the Keeper's tree is not a wood)
@@ -261,6 +329,7 @@ namespace AquariumCiv.Life
                 }
                 // ---- crowd slot jobs
                 case CrowdCook:
+                    if (FireNow == CampFireStage.None) return CampOtherWork(p, d); // #656: no fire yet, no pot over it
                     w = W(fire, ActivityKind.Cook, Prop.Stick, Prop.Buckets, fire, 0.2f);
                     w.keepsRestDay = true;
                     if (!HasRealWater) return w; // verify run 2026-11-07: a living-land box with no well, pond or puddle has nothing to draw; the cook doesn't dip into dry grass
@@ -286,6 +355,7 @@ namespace AquariumCiv.Life
             // everyone helps in the fields (§3 seasons). Never wandering (rule 2).
             if (season == Season.Autumn && era != Era.Camp && farms.Count > 0 && p.Adult)
                 return W(PlaceOf(farms[(int)(H(p.key, d.day, 75) % (uint)farms.Count)]), ActivityKind.Harvest, Prop.Scythe, Prop.Sheaf, Store(Prop.Sheaf), 0.35f);
+            if (sim != null && sim.NoWorkYet) return CampOtherWork(p, d); // #656: no work on the land yet (no root dig): the camp's other work, shared out
             var campHelp = CampHelperWork(p, d); // tester run 1 #3: a camp's helpers out on the land, not all sweeping at a few tents
             if (campHelp.HasValue) return campHelp.Value;
             w = W(p.home, ActivityKind.SweepStep, Prop.Broom, marketB != null ? Prop.Basket : Prop.Buckets, p.home, 0.3f);

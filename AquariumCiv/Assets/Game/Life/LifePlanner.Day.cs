@@ -134,7 +134,7 @@ namespace AquariumCiv.Life
         Person dayFireKeeper;
         int buildDepth;
 
-        void ClearDays() { prayerDay = long.MinValue; /* #566 */ runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; diggersDay = long.MinValue; /* tester run 1 #3 */ }
+        void ClearDays() { prayerDay = long.MinValue; /* #566 */ runInReady = false; runInCache.Clear(); dayCache.Clear(); blockCache.Clear(); carryPlans.Clear(); fishDutiesDay = long.MinValue; dayInfo.day = long.MinValue; idleDay = long.MinValue; /* #656 */ }
 
         void EnsureDay(long day)
         {
