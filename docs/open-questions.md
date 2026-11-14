@@ -38,7 +38,7 @@ phone size. Merged to dev: #646 (#643-#645), #678 (quick wins). Tonight: the pol
 
 ### Decisions needed
 - #677 the fire before the first wild wood: the first wild tree grows at about year 15-23 for an active player, so a fire only from wild wood leaves the camp 12-20 hours with no fire. ★ A grass-and-twig fire early, a log fire with the first wild wood. Alternative: No fire at all until the first wild wood.
-- #656 the carried food: the basket holds food for a while, then runs down until berries or rabbits. ★ Keep 12 food in the basket (about a year). Alternative: A smaller basket that empties within the first year.
+- #656 the carried food: the basket holds food for a while, then runs down until berries or rabbits. ★ Keep 12 food in the basket (about a year). Alternative: A smaller basket that empties within a season.
 - #658 which framing becomes the default: from the framing stop. ★ The framing you liked best in the look stop (write its letter in the note). Alternative: Keep today's default view.
 - #679 a notification when the Keeper's tree grows: today only a ready era notifies (decided 2026-10-29). ★ Notify for the next tree stage or era, whichever comes first, one at a time. Alternative: Keep the rule, no tree notification.
 - #680 the hunter's retry: one more throw after a miss. ★ Keep one retry. Alternative: No retry, the hunter walks home after a miss.
@@ -50,8 +50,14 @@ phone size. Merged to dev: #646 (#643-#645), #678 (quick wins). Tonight: the pol
 - Wild wood: a grown wild tree in the woods gives about 0.6 wood a month (chopped); a grown wild tree near the Keeper's tree gives about 0.3 as fallen branches gathered by hand, never chopped. The Keeper's own tree gives nothing. First logs then come at year 15-23 for an active player, before the village (24-27).
 - With no work on bare land, one founder is the toolmaker and the rest hold no job; the gatherer opens with the first berries or rabbits. Their day: chores and water, looking over the land from the hill, grass and twigs for the fire, sitting at the camp.
 - The lean-winter line in a camp talks of baskets, not granaries.
+- The founders wait by the misted glass, out of sight, and walk in once it's wiped; one carries the basket, one hugs the stick bundle, the rest carry rolled bundles on their backs.
+- Their words at the set-down: "Here. Set the basket down, and the sticks with it." At the first logs: "Real wood, from the wild tree. Tonight the fire gets logs."
+- The game has no food or wood numbers on the HUD, so what waits for the set-down is the pile itself (it appears when they put things down).
+- The grass fire has a ring of pebbles and no log seats; when hungry, people walk about a quarter slower and now and then stop to look up.
 
 ### Polish noted, not fixed
+- #656 hunger: the person stopping to look up is hard to spot at the default zoom.
+- #677 the first-wood beat: the logs on the carriers' shoulders read small.
 - #665 rabbit trails on winter ground: the brown dot pairs read more like droppings than prints, and at the default zoom they can't be seen (tester, 2026-11-14).
 - #674 the person card at 750 wide, card pulled tall: big gaps (~70 px) between the chip rows.
 - #653 the doing tag ("Marta · cheering") can crowd the relationship labels at the default zoom: you chose to keep it as is (2026-11-14).
