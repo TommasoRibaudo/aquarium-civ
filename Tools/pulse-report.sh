@@ -26,6 +26,7 @@ for tester, items in sorted(rows.items()):
     print(f"## Tester {tester}  ({len(items)} answers)\n")
     print("| day | session | question | answer | issue |\n|---|---|---|---|---|")
     for day, sess, q, ans, num in sorted(items):
-        print(f"| {day} | {sess} | {q} | {ans.replace(\"|\", \"/\")} | #{num} |")
+        a = ans.replace("|", "/")
+        print(f"| {day} | {sess} | {q} | {a} | #{num} |")
     print()
 ' "$ONLY"
