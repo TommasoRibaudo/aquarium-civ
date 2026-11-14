@@ -64,6 +64,36 @@ namespace AquariumCiv.Life
 
         public bool HasKid => !kid.IsNone;
         public double ResolveAbsolute => day * 24.0 + resolveHour;
+
+        /// <summary>#680: after a miss the hunter pulls the spear and tries once more. On the first throw: the second try that follows
+        /// it (the first then ends at the pulled spear, the try carries on from there). Null when none.</summary>
+        public HuntPlan retry;
+        /// <summary>#680: on the second try: the missed throw it follows (null on a first throw). A second try never retries.</summary>
+        public HuntPlan retryOf;
+        public bool IsRetry => retryOf != null;
+        /// <summary>#680: from when the target rabbit minds nobody else: the walk-out of the first throw, also for the second try's rabbit
+        /// (the first spear's flight would scatter it before its own stalk).</summary>
+        public float GuardFrom => retryOf != null ? retryOf.GuardFrom : steps.Count > 0 ? steps[0].start : start;
+        /// <summary>#680: where the walk out to the stalk starts (the fire; a second try: where the first spear was pulled out).</summary>
+        public float outX, outZ;
+
+        /// <summary>The first step of a phase (false when the plan has none). The view finds the stalk and the strike this way: a second
+        /// try has no walk to the fire or spear to take, so its beats are not at the first throw's indexes.</summary>
+        public bool TryStep(HuntPhase phase, out HuntStep step)
+        {
+            for (int i = 0; i < steps.Count; i++) if (steps[i].phase == phase) { step = steps[i]; return true; }
+            step = default;
+            return false;
+        }
+
+        /// <summary>#680: where the kid stood watching this throw (false without a kid).</summary>
+        public bool TryKidSpot(out float x, out float z)
+        {
+            for (int i = kidSteps.Count - 1; i >= 0; i--)
+                if (kidSteps[i].phase == HuntPhase.KidWatch) { x = kidSteps[i].x0; z = kidSteps[i].z0; return true; }
+            x = z = 0f;
+            return false;
+        }
     }
 
     /// <summary>The rabbit field's clock: real seconds of the view day clock (what the view feeds <c>Field.Sample</c>).</summary>
@@ -212,10 +242,71 @@ namespace AquariumCiv.Life
                 if (plan.catches) catchesPlanned++;
                 taken.Add(plan.rabbitId);
                 if (plan.HasKid) usedKids.Add(plan.kid.Key);
-                lastEnd[t.p.key] = plan.end;
                 list.Add(plan);
+                // #680: a miss: one more try when a rabbit is left and the afternoon has time; its catch is hashed like the first and
+                // counts against the day's allowed catches
+                if (!plan.catches)
+                {
+                    bool again = R(t.p.key, day, 380 + t.slot) < HuntCatchChance && catchesPlanned < allowed;
+                    var r = TryAgain(plan, t.p, again, taken, t.slot, limit);
+                    if (r != null) { if (r.catches) catchesPlanned++; list.Add(r); }
+                }
+                lastEnd[t.p.key] = (plan.retry ?? plan).end;
             }
             Reindex(list);
+        }
+
+        /// <summary>#680: the second try after a missed throw: planned from the pulled spear, kept when it ends by <paramref name="limit"/>.
+        /// Then the first throw is rebuilt to end at the pulled spear (no walk home) and the try is linked to it. Null when no rabbit is
+        /// left or the day has no room.</summary>
+        HuntPlan TryAgain(HuntPlan first, Person hunter, bool wantCatch, HashSet<int> taken, int slot, float limit)
+        {
+            if (first.catches || first.IsRetry || first.retry != null) return null;
+            var r = MakeRetry(first, hunter, wantCatch, taken, slot);
+            if (r == null || r.end > limit) return null;
+            first.retry = r;
+            BuildSteps(first);
+            taken.Add(r.rabbitId);
+            return r;
+        }
+
+        /// <summary>#680: the second try: from where the first spear was pulled out, after the nearest rabbit nobody is after (open, in the
+        /// camp frame first, as <see cref="MakeHunt"/>), stalk, throw; then the catch or the walk home as any hunt. The kid who followed stays.</summary>
+        HuntPlan MakeRetry(HuntPlan first, Person hunter, bool wantCatch, HashSet<int> taken, int slot)
+        {
+            if (!first.TryStep(HuntPhase.PullSpear, out var pull)) return null;
+            float start = pull.end;
+            var plan = new HuntPlan
+            {
+                day = first.day, hunter = first.hunter, fireX = first.fireX, fireZ = first.fireZ, start = start, retryOf = first,
+                outX = first.standX, outZ = first.standZ, hunterBase = first.hunterBase, kid = first.kid, kidBase = first.kidBase,
+            };
+            double t0 = HuntClock.FieldSeconds(first.day, start + 0.3f);
+            var cands = new List<(float d, int id)>();
+            foreach (int id in huntField.Alive)
+            {
+                if (taken.Contains(id) || id == first.rabbitId) continue;
+                var pose = huntField.Sample(id, t0);
+                float dx = pose.x - plan.outX, dz = pose.z - plan.outZ;
+                cands.Add((dx * dx + dz * dz, id));
+            }
+            if (cands.Count == 0) { plan.retryOf = null; return null; }
+            cands.Sort((a, b) => { int c = a.d.CompareTo(b.d); return c != 0 ? c : a.id.CompareTo(b.id); });
+            int aimSlot = slot + 50;
+            int bestRank = -1, bestId = cands[0].id;
+            for (int k = 0; k < cands.Count && k < 6; k++)
+            {
+                plan.rabbitId = cands[k].id;
+                SolveAim(plan, hunter, plan.day, start, aimSlot, 0f, plan.outX, plan.outZ);
+                bool inFrame = InHuntFrame(plan.lungeX, plan.lungeZ) && InHuntFrame(plan.targetX, plan.targetZ);
+                int rank = (inFrame ? 4 : 0) + (plan.openLine ? 2 : 0) + (StrikeWellInFrame(plan.lungeX, plan.lungeZ) ? 1 : 0);
+                if (rank > bestRank) { bestRank = rank; bestId = plan.rabbitId; }
+                if (rank == 7) break;
+            }
+            if (plan.rabbitId != bestId) { plan.rabbitId = bestId; SolveAim(plan, hunter, plan.day, start, aimSlot, 0f, plan.outX, plan.outZ); }
+            plan.catches = wantCatch && sim.HuntSurplus > 0;
+            BuildSteps(plan);
+            return plan;
         }
 
         static void Reindex(List<HuntPlan> list)
@@ -230,7 +321,7 @@ namespace AquariumCiv.Life
         {
             var ground = sim.EcoGround;
             float fx = ground.campX, fz = ground.campZ;
-            var plan = new HuntPlan { day = day, hunter = hunter.who, fireX = fx, fireZ = fz, start = start };
+            var plan = new HuntPlan { day = day, hunter = hunter.who, fireX = fx, fireZ = fz, start = start, outX = fx, outZ = fz };
 
             // the rabbit: one of the two nearest the fire that nobody else is after
             double t0 = HuntClock.FieldSeconds(day, start + 0.8f);
@@ -258,14 +349,14 @@ namespace AquariumCiv.Life
             for (int oi = 0; oi < order.Count; oi++)
             {
                 plan.rabbitId = order[oi];
-                strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz);
+                strikeAt = SolveAim(plan, hunter, day, start, slot, toFire + TakeSpearHours, fx, fz);
                 bool inFrame = InHuntFrame(plan.lungeX, plan.lungeZ) && InHuntFrame(plan.targetX, plan.targetZ);
                 // t4-fixes: the old order (in the frame, then an open line), then a strike point well inside the frame (not at the edge)
                 int rank = (inFrame ? 4 : 0) + (plan.openLine ? 2 : 0) + (StrikeWellInFrame(plan.lungeX, plan.lungeZ) ? 1 : 0);
                 if (rank > bestRank) { bestRank = rank; bestIdx = oi; }
                 if (rank == 7) break;
             }
-            if (plan.rabbitId != order[bestIdx]) { plan.rabbitId = order[bestIdx]; strikeAt = SolveAim(plan, hunter, day, start, slot, toFire, fx, fz); }
+            if (plan.rabbitId != order[bestIdx]) { plan.rabbitId = order[bestIdx]; strikeAt = SolveAim(plan, hunter, day, start, slot, toFire + TakeSpearHours, fx, fz); }
             plan.strikeStart = strikeAt;
             plan.catches = wantCatch && sim.HuntSurplus > 0;
             if (useHeldForce && huntForceNext.HasValue) { plan.catches = huntForceNext.Value && sim.HuntSurplus > 0; plan.forced = true; huntForceNext = null; }
@@ -276,29 +367,29 @@ namespace AquariumCiv.Life
         }
 
         /// <summary>The stalk's rhythm and where the spear flies for the plan's rabbit; returns the strike hour (the old body of MakeHunt).</summary>
-        float SolveAim(HuntPlan plan, Person hunter, long day, float start, int slot, float toFire, float fx, float fz)
+        float SolveAim(HuntPlan plan, Person hunter, long day, float start, int slot, float lead, float fx, float fz)
         {
             // #362: the stalk's rhythm (the two freezes), then where the spear flies: the rabbit's spot at the strike, a fixed point of
             // the iteration start -> strike time -> spot. The strike waits for a moment the rabbit is not hopping (it stands still for the throw).
             plan.freezeA = 0.8f + 0.7f * R(hunter.key, day, 360 + slot);
             plan.freezeB = R(hunter.key, day, 362 + slot) < 0.5f ? 0.8f + 0.7f * R(hunter.key, day, 364 + slot) : 0f;
             plan.stalkExtra = 0f;
-            float tx = 0f, tz = 0f, strikeAt = start + toFire + TakeSpearHours + 0.4f;
+            float tx = 0f, tz = 0f, strikeAt = start + lead + 0.4f;
             for (int wait = 0; wait < 14; wait++)
             {
-                strikeAt = start + toFire + TakeSpearHours + 0.4f + StalkHoursOf(plan, start);
+                strikeAt = start + lead + 0.4f + StalkHoursOf(plan, start);
                 for (int it = 0; it < 4; it++)
                 {
                     huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
                     Geometry(plan, fx, fz, tx, tz);
-                    float stalkAt = start + toFire + TakeSpearHours + WalkOutHours(plan);   // exactly as BuildSteps lays the steps out
+                    float stalkAt = start + lead + WalkOutHours(plan);   // exactly as BuildSteps lays the steps out
                     strikeAt = stalkAt + Hrs(stalkAt, plan.StalkSeconds);
                 }
                 // Batch 1: the geometry is re-aimed at the strike below; the strike must not move with it (a rabbit that hopped in
                 // between left the spear 0.4 off and the rabbit hopping through the throw: EcoHuntTests/HuntThrowTests).
                 huntField.PositionOf(plan.rabbitId, HuntClock.FieldSeconds(day, strikeAt), out tx, out tz);
                 Geometry(plan, fx, fz, tx, tz);
-                float stalkAt2 = start + toFire + TakeSpearHours + WalkOutHours(plan);
+                float stalkAt2 = start + lead + WalkOutHours(plan);
                 bool settled = Math.Abs(stalkAt2 + Hrs(stalkAt2, plan.StalkSeconds) - strikeAt) < 1e-4f;
                 if (settled && !RabbitHopsBetween(plan.rabbitId, day, strikeAt, HuntTiming.StrikeSeconds + 0.3f)) break;
                 plan.stalkExtra += 0.4f;
@@ -375,7 +466,7 @@ namespace AquariumCiv.Life
 
         static float Dist(float ax, float az, float bx, float bz) { float dx = ax - bx, dz = az - bz; return (float)Math.Sqrt(dx * dx + dz * dz); }
         static float WalkH(float d, float speed = WalkSpeed) => Math.Max(0.1f, d / speed);
-        float WalkOutHours(HuntPlan plan) => WalkH(Dist(plan.fireX, plan.fireZ, plan.stalkX, plan.stalkZ));
+        float WalkOutHours(HuntPlan plan) => WalkH(Dist(plan.outX, plan.outZ, plan.stalkX, plan.stalkZ));
 
         /// <summary>The hours of a walk between a building place and a world point (the straight line when the place has a spot,
         /// else a flat quarter hour).</summary>
@@ -431,8 +522,9 @@ namespace AquariumCiv.Life
             if (plan.catches) { plan.landX = plan.targetX; plan.landZ = plan.targetZ; }
             else
             {
-                float past = HuntTiming.MissPast + HuntTiming.MissPastMore * R(plan.hunter.Key, plan.day, 370);
-                float side = (R(plan.hunter.Key, plan.day, 371) < 0.5f ? -1f : 1f) * HuntTiming.MissSide * (0.6f + 0.8f * R(plan.hunter.Key, plan.day, 372));
+                int ms = plan.IsRetry ? 373 : 370;   // #680: the second try's spear comes down on its own spot
+                float past = HuntTiming.MissPast + HuntTiming.MissPastMore * R(plan.hunter.Key, plan.day, ms);
+                float side = (R(plan.hunter.Key, plan.day, ms + 1) < 0.5f ? -1f : 1f) * HuntTiming.MissSide * (0.6f + 0.8f * R(plan.hunter.Key, plan.day, ms + 2));
                 plan.landX = plan.targetX + ux * past - uz * side; plan.landZ = plan.targetZ + uz * past + ux * side;
             }
             float sx = plan.landX - plan.lungeX, sz = plan.landZ - plan.lungeZ, sl = (float)Math.Sqrt(sx * sx + sz * sz);
@@ -440,10 +532,15 @@ namespace AquariumCiv.Life
             plan.standX = plan.landX - sx * HuntTiming.StandOff; plan.standZ = plan.landZ - sz * HuntTiming.StandOff;
             HoldSpot(plan);
 
-            float toFire = HuntWalkHours(plan.hunterBase, fx, fz);
-            AddStep(plan, ref t, toFire, HuntPhase.ToFire, ActivityKind.Walk, Prop.None, plan.hunterBase, fire, true, false);
-            AddStep(plan, ref t, TakeSpearHours, HuntPhase.TakeSpear, ActivityKind.Prepare, Prop.Spear, fire, fire, false, false, fx, fz, fx, fz);
-            AddStep(plan, ref t, WalkOutHours(plan), HuntPhase.WalkOut, ActivityKind.Walk, Prop.Spear, fire, meadowStalk, true, false, fx, fz, plan.stalkX, plan.stalkZ);
+            if (plan.IsRetry)   // #680: spear in hand already: from where it was pulled out straight to the next stalk
+                AddStep(plan, ref t, WalkOutHours(plan), HuntPhase.WalkOut, ActivityKind.Walk, Prop.Spear, FieldPlace(plan.outX, plan.outZ), meadowStalk, true, false, plan.outX, plan.outZ, plan.stalkX, plan.stalkZ);
+            else
+            {
+                float toFire = HuntWalkHours(plan.hunterBase, fx, fz);
+                AddStep(plan, ref t, toFire, HuntPhase.ToFire, ActivityKind.Walk, Prop.None, plan.hunterBase, fire, true, false);
+                AddStep(plan, ref t, TakeSpearHours, HuntPhase.TakeSpear, ActivityKind.Prepare, Prop.Spear, fire, fire, false, false, fx, fz, fx, fz);
+                AddStep(plan, ref t, WalkOutHours(plan), HuntPhase.WalkOut, ActivityKind.Walk, Prop.Spear, fire, meadowStalk, true, false, fx, fz, plan.stalkX, plan.stalkZ);
+            }
             plan.stalkStart = t;
             AddStep(plan, ref t, Hrs(t, plan.StalkSeconds), HuntPhase.Stalk, ActivityKind.Stalk, Prop.Spear, meadowStalk, meadowThrow, false, true, plan.stalkX, plan.stalkZ, plan.lungeX, plan.lungeZ);
             float strike0 = t;
@@ -479,6 +576,12 @@ namespace AquariumCiv.Life
                 float pull0 = t;
                 AddStep(plan, ref t, Hrs(t, HuntTiming.PullSeconds), HuntPhase.PullSpear, ActivityKind.Prepare, Prop.Spear, atSpear, atSpear, false, false, plan.standX, plan.standZ, plan.standX, plan.standZ);
                 plan.takeHour = pull0 + Hrs(pull0, HuntTiming.PullSeconds * HuntTiming.PullTakeAt);
+                if (plan.retry != null)
+                {   // #680: the spear is out: the second try carries on from here (no walk home)
+                    plan.end = t;
+                    if (!plan.kid.IsNone) BuildKidSteps(plan, afterStrike);
+                    return;
+                }
                 float back = WalkH(Dist(plan.standX, plan.standZ, fx, fz));
                 AddStep(plan, ref t, back, HuntPhase.WalkBack, ActivityKind.Walk, Prop.Spear, atSpear, fire, true, false, plan.standX, plan.standZ, fx, fz);
             }
@@ -528,14 +631,28 @@ namespace AquariumCiv.Life
             if (kid == null) { plan.kid = PersonRef.None; return; }
             float fx = plan.fireX, fz = plan.fireZ;
             // the kid trails the hunter and stops short of the stalk point, on the line back to the fire
-            float dx = fx - plan.stalkX, dz = fz - plan.stalkZ, len = (float)Math.Sqrt(dx * dx + dz * dz);
+            // #680: on a second try the kid comes on from where they watched the first throw, and stays on the line back to it
+            float ox = 0f, oz = 0f;
+            bool again = plan.IsRetry && plan.retryOf.TryKidSpot(out ox, out oz);
+            float bx0 = again ? ox : fx, bz0 = again ? oz : fz;
+            float dx = bx0 - plan.stalkX, dz = bz0 - plan.stalkZ, len = (float)Math.Sqrt(dx * dx + dz * dz);
             float ux = len > 0.001f ? dx / len : 0f, uz = len > 0.001f ? dz / len : 1f;
             float back = Math.Min(0.5f, len);
             float kx = plan.stalkX + ux * back, kz = plan.stalkZ + uz * back;
             var kidSpot = FieldPlace(kx, kz);
-            float t = plan.steps.Count > 1 ? plan.steps[1].start : plan.start;   // leaves as the hunter takes the spear
-            float follow = Math.Max(HuntWalkHours(plan.kidBase, kx, kz), plan.steps[2].end - t + 0.05f);
-            AddKid(plan, ref t, follow, HuntPhase.KidFollow, ActivityKind.Walk, plan.kidBase, kidSpot, true, false, kx, kz);
+            float t;
+            if (again)
+            {
+                t = plan.start;
+                float hours = Math.Max(WalkH(Dist(ox, oz, kx, kz)), plan.steps[0].end - t + 0.05f);
+                AddKidXY(plan, ref t, hours, HuntPhase.KidWatch, ActivityKind.Walk, FieldPlace(ox, oz), kidSpot, true, false, ox, oz, kx, kz);
+            }
+            else
+            {
+                t = plan.steps.Count > 1 ? plan.steps[1].start : plan.start;   // leaves as the hunter takes the spear
+                float follow = Math.Max(HuntWalkHours(plan.kidBase, kx, kz), plan.steps[2].end - t + 0.05f);
+                AddKid(plan, ref t, follow, HuntPhase.KidFollow, ActivityKind.Walk, plan.kidBase, kidSpot, true, false, kx, kz);
+            }
             if (plan.catches)
             {
                 // watches until the spear comes down, cheers while the hunter walks to the rabbit, runs over as he lifts it, walks home beside him
@@ -554,6 +671,11 @@ namespace AquariumCiv.Life
             {
                 var bolt = plan.steps.Find(s => s.phase == HuntPhase.Bolt);
                 AddKid(plan, ref t, Math.Max(0.05f, bolt.end - t), HuntPhase.KidWatch, ActivityKind.Watch, kidSpot, kidSpot, false, true, kx, kz);
+                if (plan.retry != null)
+                {   // #680: the kid waits while the spear is pulled out, then follows the second try
+                    if (plan.end > t) AddKid(plan, ref t, plan.end - t, HuntPhase.KidWatch, ActivityKind.Watch, kidSpot, kidSpot, false, false, kx, kz);
+                    return;
+                }
             }
             plan.kidBaseEnd = BasePlace(kid, plan.day, t + 0.5f);
             float home = Math.Max(HuntWalkHours(plan.kidBaseEnd, plan.catches ? fx : kx, plan.catches ? fz : kz), 0.15f);
@@ -720,8 +842,18 @@ namespace AquariumCiv.Life
             foreach (var pl in list) if (!pl.resolved) taken.Add(pl.rabbitId);
             plan = MakeHunt(pick, now.day, now.hour + 0.02f, R(pick.key, now.day, 350) < HuntCatchChance, taken, new HashSet<int>(), 9, true);
             if (plan == null) return false;
+            if (DebugRetryNext && plan.catches) { plan.catches = false; plan.forced = true; BuildSteps(plan); }
             plan.debugStarted = true;
             list.Add(plan);
+            if (!plan.catches)
+            {   // #680: as a planned hunt (with "miss, then try again" armed: it always tries, until late in the day)
+                taken.Add(plan.rabbitId);
+                bool again = !DebugRetryNext && R(pick.key, now.day, 351) < HuntCatchChance;
+                float limit = DebugRetryNext ? 23.5f : LifeClock.AfternoonEnd(dayInfo.season) + 0.5f;
+                var r = TryAgain(plan, pick, again, taken, 9, limit);
+                if (r != null) { r.debugStarted = true; list.Add(r); }
+            }
+            DebugRetryNext = false;
             Reindex(list);
             return true;
         }
@@ -729,6 +861,10 @@ namespace AquariumCiv.Life
         /// <summary>Debug ("hunt succeeds" / "hunt misses"): fixes how the next hunt that has not struck yet ends. A hunt already
         /// planned and still ahead of its strike changes now; with none, the next hunt started by <see cref="DebugStartHunt"/> takes it. A catch is refused (it stays a
         /// miss) while the herd is at its floor. Returns false for that.</summary>
+        /// <summary>#680 cheat ("Hunt: miss, then try again"): the next <see cref="DebugStartHunt"/> misses and tries once more (that try
+        /// misses too, so the walk home shows), even late in the day.</summary>
+        public bool DebugRetryNext;
+
         public bool DebugForceHunt(bool catches)
         {
             Sync();
@@ -739,6 +875,11 @@ namespace AquariumCiv.Life
                     if (!pl.resolved && pl.strikeStart > huntNow.hour && (target == null || pl.strikeStart < target.strikeStart)) target = pl;
             if (target == null) { huntForceNext = catches; return ok; }
             target.catches = catches && ok; target.forced = true;
+            if (target.catches && target.retry != null)
+            {   // #680: a catch needs no second try
+                list.Remove(target.retry);
+                target.retry = null;
+            }
             BuildSteps(target);
             Reindex(huntDays[huntNow.day]);
             return ok;

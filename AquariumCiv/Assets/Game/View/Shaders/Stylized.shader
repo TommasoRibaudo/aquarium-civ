@@ -268,6 +268,9 @@ Shader "AquariumCiv/View/Stylized"
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.color = half4(SeasonColour(v.color.rgb, TransformObjectToWorld(v.positionOS.xyz), o.normalWS, v.uv.x, v.lamp), v.color.a);
                 float opacity = v.lamp.x < -0.5 ? 1.0 - _AC_FrameFade[(int)(-v.lamp.x - 0.5)] : 1.0;
+                // #671: a frame part faded all the way is not drawn at all: at alpha 0 it still wrote depth, and its edges cut the
+                // wet/snow overlays of the ground behind it (a pale band down the gone corner post when zoomed in)
+                if (opacity < 0.01) o.positionCS = float4(0, 0, 0, 1);
                 o.uv = float4(v.uv, LampOn(v.lamp), opacity);
                 o.fog = half2(ComputeFogFactor(o.positionCS.z), LampLight(p, o.normalWS));
                 return o;

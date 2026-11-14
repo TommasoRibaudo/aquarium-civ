@@ -313,9 +313,22 @@ namespace AquariumCiv.GameUI
             float room = layout.height;
             if (float.IsNaN(room) || room <= 0f || LinePitch <= 0f) return;
             float fit = WholeRows ? LastWholeRow(room) : 0f;
+            // #674 (tester): a view snapped under the first rows could be shorter than a taller row further down (the person card's
+            // pencil, 121 against 113): that row then never showed whole at any scroll. The view is at least as tall as its tallest row.
+            if (fit > 0f) fit = Mathf.Max(fit, Mathf.Min(room, TallestRow()));
             float lead = WholeRows ? FirstRowTop() : 0f; // a first row's top margin isn't a line
             view.style.height = fit > 0f ? fit : lead + Mathf.Floor((room - lead) / LinePitch) * LinePitch;
             Bar();
+        }
+
+        float TallestRow()
+        {
+            float tall = 0f;
+            view.contentContainer.Query(className: RowClass).ForEach(r =>
+            {
+                if (r.resolvedStyle.display != DisplayStyle.None) tall = Mathf.Max(tall, r.worldBound.height);
+            });
+            return tall;
         }
 
         float FirstRowTop()

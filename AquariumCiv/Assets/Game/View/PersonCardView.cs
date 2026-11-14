@@ -23,8 +23,8 @@ namespace AquariumCiv.View
     /// closes it. A tap that hits nobody is still the Keeper's knock.</item>
     /// <item><b>The person card</b> (<see cref="SimCore.PersonCardOf"/>, spec §4, board 3.4): a <see cref="GlassSheet"/> at 30 % of the
     /// screen, the person in view above it and kept there while they walk. Portrait, name, Pin and Close in one row, the subtitle
-    /// on its own row, then About, Recent, Best. About holds their line for the belief stage, their wish, family, friends, rivals
-    /// and mentors as chips (a tap opens that person's card), their roles and relics, and a story (question 35: never half empty).
+    /// on its own row, then About, Recent, Best. About holds family, friends, rivals and mentors as chips
+    /// first (a tap opens that person's card; #674: the first view shows a row of them), then their line for the belief stage, their wish, their roles and relics, and a story (question 35: never half empty).
     /// Recent and Best hold stories, each with "Show me" (<see cref="ShowMeDirector"/>). The dead get a memorial (when, how old,
     /// why they are a legend, who remembers them) and no Pin.</item>
     /// <item><b>Relationships visible.</b> While a card is open, light arcs run from the person's doll to the dolls of their
@@ -1100,7 +1100,7 @@ namespace AquariumCiv.View
 
         void BuildAbout(PersonCard c)
         {
-            if (c.alive) BuildRenameRow(c); // #575
+            if (c.alive && RenameOpen) BuildRenameRow(c); // #575: the open field leads the tab (the card folds to it, #584)
             if (c.memorial != null)
             {
                 var m = c.memorial;
@@ -1117,6 +1117,20 @@ namespace AquariumCiv.View
                 }
                 if (note.Count > 0) box.Add(Note(string.Join(" ", note)));
             }
+            // one chip per person, strongest tie first (a partner who was once a friend shows as the partner); rivals always
+            // show, even in the family (the drama)
+            var ties = new VisualElement();
+            ties.AddToClassList("pc-ties");
+            body.Add(ties);
+            var listed = new HashSet<int>();
+            List<PersonTie> Fresh(IEnumerable<PersonTie> ts) => ts.Where(t => listed.Add(t.otherId)).ToList();
+            AddTies(ties, "person-card-family", Fresh(c.family));
+            AddTies(ties, "person-card-rivals", c.rivals);
+            foreach (var t in c.rivals) listed.Add(t.otherId);
+            AddTies(ties, "person-card-friends", Fresh(c.friends.OrderBy(t => t.kind == TieKind.Friend ? 0 : 1)));
+            AddTies(ties, "person-card-mentors", Fresh(c.mentors));
+            // #674: the chips lead the tab, then the Keeper's line, their words and wish, then the pencil: on a short phone with a
+            // two-line subtitle the 30 % card has room for one row only, and it is the chips
             if (!string.IsNullOrEmpty(c.keeperLine)) // #371: the Keeper's hand on this person
             {
                 var k = Note(c.keeperLine);
@@ -1130,18 +1144,7 @@ namespace AquariumCiv.View
                 body.Add(q);
             }
             if (c.wish != null && !string.IsNullOrEmpty(c.wishText)) Section("person-card-wish").Add(Body(c.wishText));
-            // one chip per person, strongest tie first (a partner who was once a friend shows as the partner); rivals always
-            // show, even in the family (the drama)
-            var ties = new VisualElement();
-            ties.AddToClassList("pc-ties");
-            body.Add(ties);
-            var listed = new HashSet<int>();
-            List<PersonTie> Fresh(IEnumerable<PersonTie> ts) => ts.Where(t => listed.Add(t.otherId)).ToList();
-            AddTies(ties, "person-card-family", Fresh(c.family));
-            AddTies(ties, "person-card-rivals", c.rivals);
-            foreach (var t in c.rivals) listed.Add(t.otherId);
-            AddTies(ties, "person-card-friends", Fresh(c.friends.OrderBy(t => t.kind == TieKind.Friend ? 0 : 1)));
-            AddTies(ties, "person-card-mentors", Fresh(c.mentors));
+            if (c.alive && !RenameOpen) BuildRenameRow(c); // #575
             if (c.role != null || c.terms.Count > 0)
             {
                 var r = Section("person-card-roles");

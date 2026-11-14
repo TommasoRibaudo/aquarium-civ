@@ -193,6 +193,7 @@ namespace AquariumCiv.View
             EndRow();
             Row();
             if (Btn("Rabbit tracks now")) last = EcoDebug.RabbitTracksNow();
+            if (Btn("Rabbit trails: count")) last = EcoDebug.LiveTrailsNow();   // #665
             if (Btn("+1 rabbit")) last = EcoDebug.AddRabbits(1);
             if (Btn("+5 rabbits")) last = EcoDebug.AddRabbits(5);
             EndRow();
@@ -233,6 +234,7 @@ namespace AquariumCiv.View
             if (Btn("Next hunt succeeds")) last = EcoDebug.ForceHunt(true);
             if (Btn("Next hunt misses")) last = EcoDebug.ForceHunt(false);
             if (Btn("Slow-mo next hunt")) last = EcoDebug.HuntSlowMoNext();   // #362
+            if (Btn("Hunt: miss, try again")) last = EcoDebug.HuntMissThenRetry();   // #680
             if (Btn("Make a hunter")) last = EcoDebug.MakeHunter();   // #574
             if (Btn("Gather an egg now")) last = EcoDebug.GatherEggNow();   // #574
             EndRow();
