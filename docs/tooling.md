@@ -853,3 +853,8 @@ a lean or nudge earlier in the test (placed-life arrival after "First bush now",
 (`ReturnAfterFlight`), and it glides home as soon as nothing holds the view. Fix: set the view every frame for ~12 frames right
 before the capture (`CancelFlight` + set + `Apply`), and wait for `LifeArrivalView.AnyPlaying` to end before a scene you want close
 (NewStartPlayTests.Png / NewStartPhonePlaythrough.Close).
+- **2026-11-14 · Tester new-start notes.** [verified] (1) Scanning `TextElement`s in every panel for "what's on screen" also returns closed sheets (Settings, Licences): their parents are hidden, not the labels; check `worldBound` against the screen or walk up the parents, or trust the shots. (2) Turning `EveningTalkView.AutoStart` back on in a test, then jumping hours with `PeopleView.DebugSetHour`, leaves the evening close banner up for the rest of the test (HUD hidden, the line lane held); a later beat then plays with no line and no lean. Leave it off unless the evening is under test. (3) Taps on `hud-clean` then `kit-life` then `hud-history` in quick succession land on a sheet that is still opening/closing: wait ~1 s and re-read the rects between them.
+- **2026-11-14 · First-run step order is not the enum order.** [verified] A living land runs Wipe → Rain → Name, but
+  `FirstRunStep.Name` (3) < `Rain` (4): a gate written `Step <= FirstRunStep.Rain` also holds through the Name step. Test the steps
+  by name (`Step is Arrive or Wipe or Rain`). Also: TaskStop on a background `run-tests.sh`, then `Get-CimInstance` + `Stop-Process`
+  on its shells and `unity command test cancel` (the Editor dropped the Pipeline socket for ~30 s afterwards; wait for `ready`).
