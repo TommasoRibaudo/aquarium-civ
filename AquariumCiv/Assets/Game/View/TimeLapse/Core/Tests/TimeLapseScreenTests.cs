@@ -341,6 +341,15 @@ namespace AquariumCiv.View.TimeLapseScreen.Tests
         }
 
         [Test]
+        public void SlowStepsReadInMonthsOrDays()
+        {
+            // #670: a young box's steps read as months or days a second
+            Assert.AreEqual("4 yr/s", TimeLapseScreenModel.SpeedWords(4f));
+            Assert.AreEqual("3 mo/s", TimeLapseScreenModel.SpeedWords(0.25f));
+            Assert.AreEqual("9 days/s", TimeLapseScreenModel.SpeedWords(0.025f));
+        }
+
+        [Test]
         public void SpeedStepsCycleAndReadOut()
         {
             var m = Real();

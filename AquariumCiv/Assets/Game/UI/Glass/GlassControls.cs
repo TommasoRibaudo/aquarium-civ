@@ -482,9 +482,10 @@ namespace AquariumCiv.GameUI
             thumb = Part("kg-slider-thumb");
             if (changed != null) Changed += changed;
             Value = value;
-            RegisterCallback<PointerDownEvent>(e => Grab(e.pointerId, e.position));
-            RegisterCallback<PointerMoveEvent>(e => { if (pointer == e.pointerId) Drag(e.localPosition.x); });
-            RegisterCallback<PointerUpEvent>(e => { if (pointer == e.pointerId) Let(); });
+            RegisterCallback<PointerDownEvent>(e => { Grab(e.pointerId, e.position); e.StopPropagation(); });
+            // #654: a held slider keeps its moves to itself, so a scroll view round it never reads them as a drag of the sheet
+            RegisterCallback<PointerMoveEvent>(e => { if (pointer == e.pointerId) { Drag(e.localPosition.x); e.StopPropagation(); } });
+            RegisterCallback<PointerUpEvent>(e => { if (pointer == e.pointerId) { Let(); e.StopPropagation(); } });
         }
 
         /// <summary>A finger came down on the strip, at <paramref name="at"/> in panel space. <see cref="GlassScroll"/> calls this too, ahead of its view.</summary>

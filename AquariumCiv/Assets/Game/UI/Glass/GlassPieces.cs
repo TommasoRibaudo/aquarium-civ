@@ -407,6 +407,28 @@ namespace AquariumCiv.GameUI
             this.who.AddToClassList("kg-caption-who");
             this.who.style.display = string.IsNullOrEmpty(who) ? DisplayStyle.None : DisplayStyle.Flex;
             Add(this.who);
+            // #659 (playtest, iPhone 16 Pro): the plate's fixed top let it cover the HUD title's second line (year, season, people) on a
+            // phone with a taller safe area or a wrapped title; it keeps below the title's real bottom
+            RegisterCallback<AttachToPanelEvent>(_ => { KeepBelowTitle(); fit ??= schedule.Execute(KeepBelowTitle).Every(250); fit.Resume(); });
+            RegisterCallback<DetachFromPanelEvent>(_ => fit?.Pause());
+        }
+
+        IVisualElementScheduledItem fit;
+        /// <summary>The gap kept under the HUD title, panel px.</summary>
+        public const float TitleGap = 22f;
+
+        /// <summary>#659: a floating plate (not inline, not in a panel) never starts above the HUD title's bottom plus <see cref="TitleGap"/>.</summary>
+        public void KeepBelowTitle()
+        {
+            if (parent == null || ClassListContains("kg-caption--inline") || ClassListContains("kg-caption--panel")) return;
+            var hud = GameHud.Instance;
+            var title = hud != null && hud.IsVisible && hud.Root != null ? hud.Root.Q("hud-title") : null;
+            float baseTop = ClassListContains("kg-caption--up") ? 275f : 143f; // Glass.uss .kg-caption / --up
+            float bottom = title != null && title.resolvedStyle.display == DisplayStyle.Flex ? title.worldBound.yMax : float.NaN;
+            if (float.IsNaN(bottom) || title.worldBound.height <= 0f) { if (style.top != StyleKeyword.Null) style.top = StyleKeyword.Null; return; }
+            float want = parent.WorldToLocal(new Vector2(0f, bottom)).y + TitleGap;
+            if (want > baseTop + 0.5f) { if (Mathf.Abs(resolvedStyle.top - want) > 0.5f) style.top = want; }
+            else if (style.top != StyleKeyword.Null) style.top = StyleKeyword.Null;
         }
 
         /// <summary>New words for a caption that stays on screen.</summary>

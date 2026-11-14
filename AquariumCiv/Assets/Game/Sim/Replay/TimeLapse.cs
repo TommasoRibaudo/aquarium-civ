@@ -361,7 +361,12 @@ namespace AquariumCiv.Sim.Replay
         public bool Playing { get; private set; }
         public bool Loop { get; set; }
         public int SpeedIndex { get; private set; } = DefaultSpeedIndex;
-        public float Speed => Speeds[SpeedIndex];
+        public float Speed => Speeds[SpeedIndex] * Scale;
+        /// <summary>#670 (playtest: a young box replayed in a blink): every step is scaled so the default plays the whole span in about
+        /// <see cref="TargetSeconds"/>; a history of 48 years or more keeps the steps as they are (1).</summary>
+        public float Scale { get; private set; } = 1f;
+        public const float TargetSeconds = 12f;
+        public void FitTo(float span) => Scale = Math.Min(1f, Math.Max(span, 0.01f) / (Speeds[DefaultSpeedIndex] * TargetSeconds));
         public bool AtEnd => Position >= End;
 
         public ReplayClock(float end = 0f) { End = end; }

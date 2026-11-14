@@ -34,6 +34,16 @@ namespace AquariumCiv.View
         PeopleView people;
         CareView care;
         bool hadPeople, hadCare, heldBefore;
+        readonly System.Collections.Generic.List<Behaviour> hiddenLife = new();
+
+        /// <summary>#669 (playtest): the replay draws the land as it was each year, but the berries and the animals were today's (berries
+        /// with no bush, rabbits before they came): no record keeps them by year, so they step out of the replay, like the people.</summary>
+        void HideLiveLife()
+        {
+            hiddenLife.Clear();
+            foreach (var b in new Behaviour[] { BushView.Instance, RabbitView.Instance, DeerView.Instance, WolfView.Instance })
+                if (b != null && b.enabled) { b.enabled = false; hiddenLife.Add(b); }
+        }
         float shownPos = -1f;
         int shownKey = -1;
 
@@ -74,6 +84,7 @@ namespace AquariumCiv.View
             if (Application.isPlaying && MomentPlayer.Instance != null && MomentPlayer.Instance.Playing) return false;
             Lapse = new TimeLapse(sim);
             Clock = new ReplayClock(Lapse.EndPosition);
+            Clock.FitTo(Clock.End - Clock.Start); // #670: a young box plays over about 12 s, not in a blink
             var clock = GameClock.Instance;
             if (clock != null) { heldBefore = clock.Held; clock.Held = true; }
             people = GetComponent<PeopleView>();
@@ -82,6 +93,7 @@ namespace AquariumCiv.View
             care = GetComponent<CareView>();
             hadCare = care != null && care.enabled;
             if (hadCare) care.enabled = false;
+            HideLiveLife();
             if (DayLightDriver.Instance != null) DayLightDriver.Instance.HoldFlicker = true; // lamps must not strobe under a running clock (practices section 12)
             Active = true;
             GameClock.Tel.TimelapseOpened(false);
@@ -119,6 +131,8 @@ namespace AquariumCiv.View
             if (clock != null) clock.Held = heldBefore;
             if (hadPeople && people != null) people.enabled = true;
             if (hadCare && care != null) care.enabled = true;
+            foreach (var b in hiddenLife) if (b != null) b.enabled = true;
+            hiddenLife.Clear();
             if (DayLightDriver.Instance != null) DayLightDriver.Instance.HoldFlicker = false;
             if (AquariumCiv.GameUI.GameHud.Instance != null) AquariumCiv.GameUI.GameHud.Instance.HideTools("timelapse", false);
             if (refresh) Box.Refresh();

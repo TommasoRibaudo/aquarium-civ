@@ -34,6 +34,8 @@ namespace AquariumCiv.View.Moments
         public const float IdleSeconds = 20f;
         /// <summary>The fitted view is 1 and the camera stops at 1.3: past this, the player has stepped back.</summary>
         public const float StepBackZoom = 1.15f;
+        /// <summary>#672: closer in than this (BoxCamera zoom, smaller = closer) the player is watching up close: idle never starts the close.</summary>
+        public const float WatchingZoom = 0.7f;
 
         public const float LeavingSeconds = 0.4f, GatherSeconds = 2.6f, SpeakSeconds = 2.2f, ShelfSeconds = 2.8f;
         public const float TotalSeconds = LeavingSeconds + GatherSeconds + SpeakSeconds + ShelfSeconds;
@@ -43,7 +45,8 @@ namespace AquariumCiv.View.Moments
         public static bool ShouldStart(in CloseAsk a)
         {
             if (a.busy || a.touching || !LongEnough(a)) return false;
-            return a.zoom >= StepBackZoom || a.idleSeconds >= IdleSeconds;
+            // #672 (playtest): a player who zoomed in and set the phone down is watching the people; idle doesn't end that
+            return a.zoom >= StepBackZoom || (a.idleSeconds >= IdleSeconds && a.zoom >= WatchingZoom);
         }
 
         /// <summary>The step at this many seconds into the close.</summary>

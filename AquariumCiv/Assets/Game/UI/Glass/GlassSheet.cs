@@ -259,13 +259,35 @@ namespace AquariumCiv.GameUI
             view.RegisterCallback<GeometryChangedEvent>(_ => Bar()); // the height just set lands a layout later
             view.verticalScroller.valueChanged += _ => Bar();
             // A slider takes its finger before the view can, or a drag that wanders a little moves the sheet instead of the thumb.
+            // #654 (playtest): a finger a little above or below the thin strip landed on the row and scrolled the sheet; the slider's whole
+            // row is its grab area now (within the strip's width, a little either side).
             RegisterCallback<PointerDownEvent>(e =>
             {
-                if (e.target is not GlassSlider slider) return;
+                var slider = SliderFor(e.target as VisualElement, e.position);
+                if (slider == null) return;
                 slider.Grab(e.pointerId, e.position);
                 e.StopPropagation();
             }, TrickleDown.TrickleDown);
         }
+
+        /// <summary>The slider a finger at <paramref name="at"/> (panel space) belongs to: the one it is on, or the one in the row it is on
+        /// when the finger is within its strip's width plus <see cref="SliderReach"/> either side. Null when it's a scroll.</summary>
+        GlassSlider SliderFor(VisualElement target, Vector2 at)
+        {
+            if (target is GlassSlider direct) return direct;
+            for (var e = target; e != null && e != this; e = e.parent)
+            {
+                if (!e.ClassListContains(RowClass)) continue;
+                var s = e.Q<GlassSlider>();
+                if (s == null) return null;
+                var b = s.worldBound;
+                return at.x >= b.xMin - SliderReach && at.x <= b.xMax + SliderReach ? s : null;
+            }
+            return null;
+        }
+
+        /// <summary>#654: how far either side of a slider's strip a finger in its row still takes the slider (panel px).</summary>
+        public const float SliderReach = 24f;
 
         void Snap()
         {
