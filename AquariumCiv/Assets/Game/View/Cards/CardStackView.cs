@@ -654,7 +654,7 @@ namespace AquariumCiv.View
             if (model != null && model.DilemmaShowMe())
             {
                 // The choice scene (#224) took it: the sheet slides off so the people can be touched, the bar keeps the ask.
-                showBar.Set(ChoiceNote, null); // the ask itself is said in the box, by the one who asks
+                showBar.Set(ChoiceSceneView.Instance != null ? ChoiceSceneView.Instance.AskLine : ChoiceNote, null); // #706: names the options; the ask itself is said in the box, by the one who asks
                 showingPlace = true;
                 choiceUp = true;
                 return;

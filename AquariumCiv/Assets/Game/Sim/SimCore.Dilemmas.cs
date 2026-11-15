@@ -64,6 +64,7 @@ namespace AquariumCiv.Sim
     {
         public int index;
         public string label, hint;
+        public string touch;                // #706: the tag's words in the box (what touching it does); the label when the def has none
         public int personId = -1;           // the notable it points at (-1 = none)
         public int buildingId = -1;         // the building it points at (-1 = none)
         public string buildingType = "";
@@ -449,7 +450,7 @@ namespace AquariumCiv.Sim
                 var o = def.options[i];
                 v.options[i] = new DilemmaOptionView
                 {
-                    index = i, label = DilemmaText(o.label, d), hint = HintOf(def, d, i),
+                    index = i, label = DilemmaText(o.label, d), touch = DilemmaText(string.IsNullOrEmpty(o.touch) ? o.label : o.touch, d), hint = HintOf(def, d, i),
                     personId = d.PersonOf(i), buildingId = d.BuildingOf(i), buildingType = o.buildingType ?? "", icon = o.icon ?? "",
                 };
             }

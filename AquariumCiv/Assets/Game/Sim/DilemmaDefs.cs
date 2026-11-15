@@ -22,6 +22,7 @@ namespace AquariumCiv.Sim
     public sealed class DilemmaOptionDef
     {
         public string label = "";           // short: "Ada as chief", "the woods". Also fills "The people chose … themselves."
+        public string touch = "";           // #706: 1-3 words on the option's tag in the box: what touching it does ("take them in"); empty = the label
         public string hint = "";            // one line, the people's voice: "Ada will run it her way, and Bo won't like it."
         public string done = "";            // the Keeper's chronicle line when answered; empty = a plain line from the label
         public bool takesRole;              // this option's person takes the def's role (bypasses the succession roll); a holder steps aside if the def allows
@@ -148,7 +149,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "{a}", hint = "{a} will lead {place} their own way, and {b} will watch.",
+                    touch = "{a} leads", label = "{a}", hint = "{a} will lead {place} their own way, and {b} will watch.",
                     done = "The old chief stepped down, and the Keeper chose {a} to lead.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     prop = ConsequenceKind.Feather, propAt = PropAnchor.Home,
@@ -161,7 +162,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "{b}", hint = "{b} will lead {place} their own way, and {a} will watch.",
+                    touch = "{b} leads", label = "{b}", hint = "{b} will lead {place} their own way, and {a} will watch.",
                     done = "The old chief stepped down, and the Keeper chose {b} to lead.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     prop = ConsequenceKind.Feather, propAt = PropAnchor.Home,
@@ -192,7 +193,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "the baskets", hint = "Full bellies all winter, and a thinner woodpile.",
+                    touch = "baskets first", label = "the baskets", hint = "Full bellies all winter, and a thinner woodpile.",
                     done = "The Keeper chose the baskets, and everyone went berrying.",
                     lean = SimCore.Lean.Food, custom = "winter:baskets", buildingType = BuildingType.Farm,
                     prop = ConsequenceKind.Baskets, propAt = PropAnchor.Building,
@@ -205,7 +206,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "the woodpile", hint = "Warm huts and new building, and a plainer winter table.",
+                    touch = "wood first", label = "the woodpile", hint = "Warm huts and new building, and a plainer winter table.",
                     done = "The Keeper chose the woodpile. The axes rang till the first snow.",
                     lean = SimCore.Lean.Craft, custom = "winter:wood", buildingType = BuildingType.Lumbermill,
                     prop = ConsequenceKind.WoodpileRoof, propAt = PropAnchor.Building,
@@ -238,7 +239,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "the stone", hint = "{dead}'s name on the stone by the pond, then every name after.",
+                    touch = "a stone", label = "the stone", hint = "{dead}'s name on the stone by the pond, then every name after.",
                     done = "The Keeper chose the stone. {dead}'s name went on it first, that spring.",
                     custom = "remember:stone",
                     prop = ConsequenceKind.NameStone, propAt = PropAnchor.Pond,
@@ -251,7 +252,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "the tree", hint = "Charms on {tree}: one for {dead}, one for each after.",
+                    touch = "a tree", label = "the tree", hint = "Charms on {tree}: one for {dead}, one for each after.",
                     done = "The Keeper chose the tree. The first charm went up for {dead} that spring.",
                     custom = "remember:tree",
                     prop = ConsequenceKind.CharmPole, propAt = PropAnchor.Tree, // #635: on the Keeper's tree first
@@ -284,7 +285,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "a place by the fire", hint = "Two new faces round the fire, and new ways of doing things.",
+                    touch = "take them in", label = "a place by the fire", hint = "Two new faces round the fire, and new ways of doing things.",
                     done = "The Keeper let the travellers from a far-away tank stay. They slept by the fire and never left.",
                     strangers = 2, custom = "travellers:stayed",
                     prop = ConsequenceKind.StewPot, propAt = PropAnchor.Fire,
@@ -297,7 +298,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "full packs", hint = "They camp {camp} with their axe trick, and join us later.",
+                    touch = "camp apart", label = "full packs", hint = "They camp {camp} with their axe trick, and join us later.",
                     done = "The Keeper sent the travellers from a far-away tank to camp {camp}, with full packs.",
                     lean = SimCore.Lean.Craft, custom = "travellers:sent", strangers = 2, apart = ApartKind.WoodsCamp, joins = true,
                     prop = ConsequenceKind.AxeStump, propAt = PropAnchor.Edge,
@@ -350,7 +351,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "{a}", hint = "{a} will run {place} their way, and {b} will watch.",
+                    touch = "{a} as headman", label = "{a}", hint = "{a} will run {place} their way, and {b} will watch.",
                     done = "The vote was split, and the Keeper chose {a} as headman.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     prop = ConsequenceKind.Staff, propAt = PropAnchor.Home,
@@ -363,7 +364,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "{b}", hint = "{b} will run {place} their way, and {a} will watch.",
+                    touch = "{b} as headman", label = "{b}", hint = "{b} will run {place} their way, and {a} will watch.",
                     done = "The vote was split, and the Keeper chose {b} as headman.",
                     takesRole = true, ties = DilemmaTies.RivalOrGrace,
                     prop = ConsequenceKind.Staff, propAt = PropAnchor.Home,
@@ -395,7 +396,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "the miller", hint = "Full sacks and fresh bread, and the roofs drip a while longer.",
+                    touch = "to the miller", label = "the miller", hint = "Full sacks and fresh bread, and the roofs drip a while longer.",
                     done = "The Keeper sent the young ones to the miller. The mill sang all summer.",
                     lean = SimCore.Lean.Food, custom = "spring:miller", buildingType = BuildingType.Windmill,
                     prop = ConsequenceKind.FlourSacks, propAt = PropAnchor.Building,
@@ -409,7 +410,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "the roofers", hint = "Dry roofs and new rafters, and the bread a little thin.",
+                    touch = "to the roofers", label = "the roofers", hint = "Dry roofs and new rafters, and the bread a little thin.",
                     done = "The Keeper sent the young ones up the ladders. Sawdust got into everything, including the soup.",
                     lean = SimCore.Lean.Craft, custom = "spring:roofers", buildingType = BuildingType.Hut,
                     prop = ConsequenceKind.RoofBird, propAt = PropAnchor.Building,
@@ -440,7 +441,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "a feast", hint = "Long tables with everyone at them, and the Keeper watching.",
+                    touch = "a feast", label = "a feast", hint = "Long tables with everyone at them, and the Keeper watching.",
                     done = "The Keeper chose a feast. The tables ran the length of {place}.",
                     custom = "harvest:feast",
                     prop = ConsequenceKind.LongTable, propAt = PropAnchor.Fire,
@@ -454,7 +455,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "an offering", hint = "The best basket left on the hill for the Keeper, and quiet thanks.",
+                    touch = "an offering", label = "an offering", hint = "The best basket left on the hill for the Keeper, and quiet thanks.",
                     done = "The Keeper chose an offering. The best basket went up the hill, very carefully.",
                     custom = "harvest:offering",
                     prop = ConsequenceKind.OfferingBasket, propAt = PropAnchor.Edge,
@@ -487,7 +488,7 @@ namespace AquariumCiv.Sim
             {
                 new DilemmaOptionDef
                 {
-                    label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
+                    touch = "a home here", label = "a home here", hint = "New neighbours at the next hearth, and new names in {place}.",
                     done = "The Keeper gave the family from a far-away tank a home here. They moved in with a goat.",
                     strangers = 3, custom = "pond:joined",
                     prop = ConsequenceKind.GoatFence, propAt = PropAnchor.Fire,
@@ -500,7 +501,7 @@ namespace AquariumCiv.Sim
                 },
                 new DilemmaOptionDef
                 {
-                    label = "a home across the pond", hint = "They'll keep their own shore, and trade us their catch.",
+                    touch = "their own shore", label = "a home across the pond", hint = "They'll keep their own shore, and trade us their catch.",
                     done = "The Keeper left the family from a far-away tank on their shore. They waved, and sent fish.",
                     lean = SimCore.Lean.Food, custom = "pond:neighbours", strangers = 3, apart = ApartKind.ShoreHut,
                     prop = ConsequenceKind.FishCrate, propAt = PropAnchor.Pond,
