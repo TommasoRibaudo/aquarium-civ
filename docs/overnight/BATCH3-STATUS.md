@@ -23,7 +23,10 @@ sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Wo
   (NestBirdSlots 0, nestChicks 2, nestWhichThicket 0), nestWinterGone false. **Editor pass:** move
   `ResolveNestVisits` out of FishRackView into the nest view (it rides the rack view's Update today); draw B71.a–d
   after the user's spec OK.
-- [ ] Editor: landscaping view/UI #726/#730/#731/#732 — pt1b Editor (port 7800), branch vs/731-landscaping-view in F:\GameDev-wt\pt1b, lock taken 12:27, watcher running
+- [x] Editor: landscaping view/UI #726/#730/#731/#732 — merged d5452a0 (incl. the #658 save fix d10720a from Implement).
+  Unity: Nest 19, NestPlan 6, ThicketList 11, PluckTool 14, LandscapingPlay 1, Smoke 2, Eco 51, LifeJar 19, PlacedLife 23,
+  BoxGrow 6, all pass. Shots in scratchpad shots-731. Open [est]: tool name, earned-seed ghost is still the Keeper's mound,
+  small pluck ring, the rail wraps to two rows (both for #668). pt1b worktree left on vs/731-landscaping-view, Editor ready, lock released.
 - [ ] Editor: AnimLab clips for approved specs; #708 fish; #709 nest view
 - [ ] Editor: writing #714 boat, #717, #718 UI, #719, #720, #721, #723
 - [ ] Editor: #668 build of the chosen mock-up
