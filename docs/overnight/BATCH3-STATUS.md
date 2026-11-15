@@ -1,0 +1,32 @@
+# Batch 3 status (started 2026-11-15)
+
+User, 2026-11-15: "do 708, 709, full landscaping, full weeding, full people and things, and 668 kit mock ups. I will
+have to approve the animations and assets." Another session (Implement) held the Editor at the start: lane A only until
+it hands over.
+
+Integration branch: `p9/batch3` (worktree F:\GameDev-wt\batch3), from p9/playtest1-b-signoff (= deeper box #737 +
+sign-off #736 + dev). PR into dev at the end. Mode: hybrid (workflow.md §7). Worker rules: scratchpad batch3-rules.md.
+
+## Gates the user approves
+- Animation + asset specs (#692–#695, #708 fish, #709 nest) → docs/design/batch3-approvals.md, BEFORE AnimLab clips.
+- Then each AnimLab clip, before merge (user rule 2026-11-14).
+- Kit mock-up pick + words (#668) → docs/design/kit-mockups.html, kit-words.md.
+- Writing lines [est] (#714–#721) and the plucking tool name / grown-tree pluck (#730).
+
+## Plan
+- [ ] Lane A: landscaping sim #726–#730 (vs/724-landscaping-sim, F:\GameDev-wt\b3-724, Sonnet)
+- [ ] Lane A: writing #713–#716 (+ sim parts of #718, #721) (vs/713-writing, b3-713, Opus)
+- [ ] Lane A: specs #692–#695, #708, #709 (vs/692-people-things-specs, b3-692, Opus)
+- [ ] Lane A: kit inventory, mock-ups, words #668 (vs/668-kit-mockups, b3-668, Opus)
+- [ ] Approvals page for the user (specs, mock-ups, words)
+- [ ] Lane A: #709 nest sim (after landscaping merges)
+- [ ] Editor (after handover from Implement, F:\GameDev-wt\pt1b Editor or F:\GameDev): landscaping view/UI #726/#730/#731/#732
+- [ ] Editor: AnimLab clips for approved specs; #708 fish; #709 nest view
+- [ ] Editor: writing #714 boat, #717, #718 UI, #719, #720, #721, #723
+- [ ] Editor: #668 build of the chosen mock-up
+- [ ] People and things #692–#695 builds (after clip sign-off)
+- [ ] Batched pass, smoke, tester, walkthrough stops, PR to dev
+
+## Log
+- 2026-11-15: p9/batch3 created and pushed; four lane A workers started. Implement says its Editor (pt1b) frees in
+  ~20–30 min, left on p9/playtest1-b-signoff; #737 auto-merges into dev, then #736.
