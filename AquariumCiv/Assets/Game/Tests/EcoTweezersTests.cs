@@ -84,10 +84,11 @@ namespace AquariumCiv.Tests
         public void PluckSapling_NeverAGrownTree_NeverTheHeartOfAWood()
         {
             var sim = World();
+            sim.Config.eco.landscapePluckGrown = false; // the sapling rules; grown trees come out by default since K6 (PluckToolTests)
             int c = OpenCell(sim);
             int i = SiteMap.I(c), j = SiteMap.J(c);
             Set(sim, c, EcoCover.Tree);
-            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.15f), "a grown tree stays");
+            Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.15f), "a grown tree stays with the flag off");
             // a sapling at the wood's edge (two grown trees by it) comes out; inside the wood (three) it stays
             int s = SiteMap.Index(i + 2, j);
             Set(sim, s, EcoCover.Young);

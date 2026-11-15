@@ -171,7 +171,7 @@ namespace AquariumCiv.Sim
                 case RelicId.FestivalMask: return "The Sky's Face. Worn at the first village dance. Smiles on one side; the other side was still drying.";
                 case RelicId.KeeperDoll: return "The Keeper. Hands: very large. Eye: always open.";
                 case RelicId.LeftSandal:
-                    return $"The Left Sandal of {Named(FindRelic(id)?.ownerId ?? -1)}. Lost to the stream, found by the Keeper. The right one was never seen again.";
+                    return $"The Left Sandal of {Named(FindRelic(id)?.ownerId ?? -1)}. Lost in the mud, found by the Keeper. The right one was never seen again.";
                 // #718: an old save that holds one keeps its label in the book; no new box makes these
                 case RelicId.SkyCrumb: return "Sky Bread. It fed us all winter. Delicious.";
                 case RelicId.Lens: return "The Great Eye-Glass.";

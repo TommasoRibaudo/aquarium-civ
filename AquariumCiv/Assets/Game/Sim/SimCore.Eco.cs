@@ -233,8 +233,8 @@ namespace AquariumCiv.Sim
         }
 
         // ---------- the landscaping tool (#730 phase 1; EcoModel.Pluck.cs). The tweezers no longer take saplings. ----------
-        /// <summary>The landscaping tool's name is the user's to give (open question in #724): until then the sim and the debug panel call it this. [est]</summary>
-        public const string LandscapeToolName = "the landscaping tool";
+        /// <summary>The landscaping tool's name: the user picked "Spade" 2026-11-15 (K2).</summary>
+        public const string LandscapeToolName = "the spade";
 
         /// <summary>The cell the landscaping tool would take nearest a point (within <paramref name="radius"/> box units): a wild seedling or young tree, a bush,
         /// or, with <see cref="EcoTuning.landscapePluckGrown"/> on, a grown forest tree. Never the Keeper's tree. -1 if none. Plucks nothing (the hover ghost).</summary>

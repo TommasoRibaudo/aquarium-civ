@@ -214,11 +214,12 @@ namespace AquariumCiv.Tests
         public void ThePluckedThicket_TakesTheNest_AndNextSpringItMovesToAnotherThicket()
         {
             var sim = WithThicket(1); BirdCame(sim);
+            sim.Config.eco.nestWhichThicket = 0; // pin the nest to the first thicket, so this test plucks the right one
             var l = Thickets(sim);
             Assert.AreEqual(2, l.Count);
             sim.DebugAddBushes(0);
             foreach (int cal in new[] { 2, 3 }) sim.DebugNestMonth(cal, 0);
-            Assert.AreEqual(l[0].cell, sim.NestThicketCell, "Q6 default: the first thicket");
+            Assert.AreEqual(l[0].cell, sim.NestThicketCell, "nestWhichThicket 0: the first thicket");
             var ev = Listen(sim);
             // pluck the whole first thicket
             var first = l[0];
@@ -252,12 +253,12 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void Q6_TheBiggestThicket_WhenAsked()
+        public void Q6_TheBiggestThicket_ByDefault()
         {
             var sim = WithThicket(1); BirdCame(sim);
             var l = Thickets(sim);
             sim.State.eco.thickets[0].trim = 0;
-            sim.Config.eco.nestWhichThicket = 1;
+            Assert.AreEqual(1, new EcoTuning().nestWhichThicket, "the user's pick 2026-11-15: the biggest");
             sim.DebugNestMonth(2, 0);
             int big = l.OrderByDescending(t => t.bushes).First().cell;
             Assert.AreEqual(big, sim.NestThicketCell);

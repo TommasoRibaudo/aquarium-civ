@@ -222,7 +222,7 @@ namespace AquariumCiv.View.PlayTests
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "hud-clean"));
             yield return new WaitForSecondsRealtime(0.5f);
             Assert.AreEqual(GameHud.Kit, hud.OpenSheet);
-            Assert.AreEqual(GameHud.LandscapeLabel, ((Button)hud.Root.Q("kit-landscape")).text, "the tool's word (its name is still open)");
+            Assert.AreEqual(GameHud.LandscapeLabel, ((Button)hud.Root.Q("kit-landscape")).text, "the tool's word: Spade (K2)");
             yield return Shot("731-6-kit-rail");
             yield return TapAt(GameUiPanel.ScreenCenter(hud.Root, "kit-landscape"));
             yield return new WaitForSecondsRealtime(0.5f);

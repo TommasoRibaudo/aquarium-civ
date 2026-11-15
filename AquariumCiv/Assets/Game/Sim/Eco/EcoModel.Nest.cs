@@ -11,7 +11,7 @@ namespace AquariumCiv.Sim.Eco
     /// the winter, <see cref="EcoTuning.nestWinterGone"/> aside). A gatherer may take an egg now and then (<see cref="TakeNestEgg"/>), never the last,
     /// never more than <see cref="EcoTuning.nestTakeMax"/> a spring. There is no hunting: the bird is never a target. Its own dice
     /// (a hash of seed and year, never the main streams); every number is [est]. The nest goes with its thicket (plucked or shrunk away) and
-    /// comes back in the oldest thicket of 6 bushes or more next spring (Q6: <see cref="EcoTuning.nestWhichThicket"/>).
+    /// comes back in the biggest thicket of 6 bushes or more next spring (Q6, the user's pick: <see cref="EcoTuning.nestWhichThicket"/>).
     /// </summary>
     public sealed partial class EcoModel
     {
@@ -36,7 +36,7 @@ namespace AquariumCiv.Sim.Eco
             return null;
         }
 
-        /// <summary>The thicket the nest should be in this spring: the oldest with enough bushes (Q6 default), or the biggest (nestWhichThicket 1). Null = none.</summary>
+        /// <summary>The thicket the nest should be in this spring: the biggest with enough bushes (nestWhichThicket 1, Q6 default), or the oldest (0). Null = none.</summary>
         public Thicket NestThicketChoice()
         {
             Thicket best = null; int bestN = -1;

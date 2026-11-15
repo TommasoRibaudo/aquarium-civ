@@ -227,7 +227,7 @@ namespace AquariumCiv.GameUI
             }
         }
         /// <summary>#730: what the plucking tool does, as it is picked up.</summary>
-        public const string LandscapeHint = "Tap or drag over seedlings, young trees and bushes to lift them out. Two fingers move, turn and zoom the view.";
+        public const string LandscapeHint = "Tap or drag over seedlings, trees and bushes to lift them out. Your tree stays. Two fingers move, turn and zoom the view.";
         const string MisterShownKey = "p8.misterHint.shown", MisterUsedKey = "p8.misterHint.used";
         public static bool MisterHintDue
         {
@@ -567,7 +567,7 @@ namespace AquariumCiv.GameUI
             }
             if (kitNote != null)
                 kitNote.text = (seed && sim.CanPlantTree ? "Cloth wipes the glass. Mister wets the land. Tweezers pluck what overgrows. The life jar holds the seed: plant the one tree."
-                    : sim.EcoTree.cell >= 0 ? "Cloth wipes the glass. Mister wets the land and the tree. Tweezers pluck what overgrows. " + LandscapeLabel + " lifts seedlings and bushes out."
+                    : sim.EcoTree.cell >= 0 ? "Cloth wipes the glass. Mister wets the land and the tree. Tweezers pluck what overgrows. " + LandscapeLabel + " lifts seedlings, trees and bushes out."
                     : "Cloth wipes the glass. Mister wets the land. Tweezers pluck what overgrows. A seed comes when the land can hold a tree.")
                     + (sim.VillageWaitsLine is { Length: > 0 } waits ? "\n" + waits : ""); // #570
         }

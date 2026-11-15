@@ -168,11 +168,11 @@ namespace AquariumCiv.Tests
         [Test]
         public void AGrownTree_StaysByDefault_AndComesOutWhenTheFlagIsOn()
         {
-            var sim = WithThickets(0);
+            Assert.IsTrue(new EcoTuning().landscapePluckGrown, "on by default: the user's call 2026-11-15 (K6)");
+            var sim = WithThickets(0, 7, new EcoTuning { landscapePluckGrown = false });
             var e = sim.State.eco;
             int c = OpenCell(sim);
             e.cover[c] = (byte)EcoCover.Tree;
-            Assert.IsFalse(new EcoTuning().landscapePluckGrown, "the flag is off by default (the user has not said)");
             Assert.IsFalse(sim.EcoLandscapeTakesGrownTrees);
             Assert.AreEqual(-1, sim.EcoLandscapePluck(X(c), Z(c), 0.1f), "a grown tree stays");
             Assert.AreEqual((byte)EcoCover.Tree, e.cover[c]);

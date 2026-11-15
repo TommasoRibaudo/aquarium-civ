@@ -161,11 +161,12 @@ namespace AquariumCiv.Sim.Eco
         public int landscapePouchCap = 3, landscapeStartPeople = 5, landscapePeopleStep = 2, landscapeTreesPerStep = 8, landscapeStartKinds = 2;
         public int thicketMax = 12, thicketShrinkPerSeason = 1;
         public float thicketCrowdExp = 0.5f, thicketRadiusExp = 0.25f;
-        /// <summary>#730: the landscaping tool may also pluck a grown forest tree (never the Keeper's). OFF until the user decides (open question in #724).</summary>
-        public bool landscapePluckGrown = false;
+        /// <summary>#730: the spade may also pluck a grown forest tree (never the Keeper's). ON: the user's call 2026-11-15 (K6, "grown trees too").</summary>
+        public bool landscapePluckGrown = true;
         // #709 the nest (B71, decision 2026-11-15; every number [est]). nestChicks is Q5 (0 = the eggs are simply gone at the end of spring), nestWhichThicket Q6
-        // (0 = the oldest thicket with nestMinBushes or more, 1 = the biggest); Q4 (the bird outside the animal budget) is AnimalBudget.NestBirdSlots.
-        public int nestEggsMin = 2, nestEggsMax = 3, nestTakeMax = 2, nestMinBushes = 6, nestChicks = 2, nestWhichThicket = 0;
+        // (0 = the oldest thicket with nestMinBushes or more, 1 = the biggest; the user picked the biggest 2026-11-15); Q4 (the bird outside the animal
+        // budget, the user's pick) is AnimalBudget.NestBirdSlots.
+        public int nestEggsMin = 2, nestEggsMax = 3, nestTakeMax = 2, nestMinBushes = 6, nestChicks = 2, nestWhichThicket = 1;
         public float nestEggFood = 0.5f;      // food an egg is worth at the stash (a berry basket is about 3)
         public bool nestWinterGone = false;   // true = the nest is blown down in the first winter month (B71.a's first wording); the brief keeps it as an empty nest
         public float thicketWatered = 0.6f; // #605: a watered thicket (mean water w at its bushes) adds a second bush in a season with chance thicketWatered * w, never past the cap

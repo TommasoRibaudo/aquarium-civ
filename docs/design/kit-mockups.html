@@ -35,6 +35,8 @@ nav a { color: inherit; border: 1px solid var(--rule); border-radius: 999px; pad
 .state-note { font-size: 13.5px; opacity: .85; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; padding: 16px; border-radius: 14px; background: #E3CFA6; font-size: 15.7px; color: var(--ink); overflow-x: auto; }
 .legend .lab { font-size: 12px; text-align: center; margin-top: 6px; font-family: "PT Serif", serif; }
+.decided { margin: 14px 0; padding: 12px 16px; border-radius: 12px; border-left: 4px solid var(--moss); background: rgba(82,110,58,.12); max-width: 900px; font-size: 15px; }
+.decided ul { margin: 6px 0 10px; padding-left: 20px; }
 .est { font-size: 12px; border: 1px solid var(--rule); border-radius: 6px; padding: 0 5px; }
 table { border-collapse: collapse; font-size: 14px; }
 td, th { border-bottom: 1px solid var(--rule); padding: 4px 8px; text-align: left; vertical-align: top; }
@@ -160,7 +162,19 @@ svg.i { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round
 <p>One tile family for every thing in the kit: the tools, the seed, the bushes and the life jars. Each mock-up is drawn in every state at
 375×667 and 393×852 (CSS pixels, so 1 game pt is 0.95 and 1.0 px), from the Keeper's Glass tokens in <code>Game.uss</code>. The box
 behind is a sketch. Words are the proposals in <code>kit-words.md</code>, all <span class="est">est</span>. Icons for the cloth, mister,
-tweezers and trowel are new drawings in the style of <code>Icons/life-*.svg</code> and need the user's sign-off; the trowel's name is open (#730).</p>
+tweezers and spade are new drawings in the style of <code>Icons/life-*.svg</code>.</p>
+<div class="decided"><b>Your answers, 2026-11-15</b>
+<ul>
+<li><b>K1:</b> A, the tile shelf. That's the one I'll build. B and C stay below for the record.</li>
+<li><b>K2:</b> the plucking tool is the <b>Spade</b>. The mock-ups and the game now say Spade, with a spade icon.</li>
+<li><b>K3:</b> no rename. The tree's words stay as they are in the game today.</li>
+<li><b>K4:</b> no answer yet on the kit words (<code>kit-words.md</code>). I'll build with these proposals, and you'll see every string in the build's shots before it merges.</li>
+<li><b>K5:</b> the new icons are OK. The spade icon is new because of K2, so check it in the build's shots.</li>
+<li><b>K6:</b> the Spade pulls grown trees too, never your tree. It's on in the sim now.</li>
+</ul>
+<b>The feedback this answers:</b> feedback#29, the first outside playtest ("the kit's buttons look incoherent, not designed; texts need revision"):
+one tile family and one voice for the words. feedback#70, a second player ("the bottom part of the UI looks flat"): the bottom bar gets depth in every design.
+Also #660 (a new thing was missed: toast, dot and pulse), #661 (the tool in hand shows in the bar) and #662 (shut jars looked broken: a lock, never a fade).</div>
 <nav><a href="#family">The tile family</a><a href="#A">A: Tile shelf ★</a><a href="#B">B: Coin row</a><a href="#C">C: Rail</a><a href="#choose">Pick</a></nav>
 
 <h2 id="family">The tile family</h2>
@@ -173,7 +187,7 @@ shut jar is a 40 % fade, #662). In hand only shows in the bar, because picking a
 
 <div id="designs"></div>
 
-<h2 id="choose">Pick one</h2>
+<h2 id="choose">The comparison (you picked A)</h2>
 <table>
 <tr><th></th><th>Taps to place life</th><th>Sheet height (375×667, fullest state)</th><th>Room for words</th><th>Fits #726 counts and #730</th><th>Build size [est]</th></tr>
 <tr><td>A ★</td><td>2 (Kit, rabbits)</td><td>about 60 %</td><td>a line under every tile, one note</td><td>yes, a tile each</td><td>M, 6 to 8 h</td></tr>
@@ -206,7 +220,7 @@ A shows every ready and shut thing the moment the kit opens, each with what it d
   <symbol id="i-cloth" viewBox="0 0 24 24"><path d="M5 7h10a4 4 0 0 1 4 4v7H9a4 4 0 0 1-4-4z"/><path d="M9 18v-3a2 2 0 0 0-2-2H5M3 4c2 .8 4 .8 6 0M14 3.5c1.5.6 3 .6 4.5 0"/></symbol>
   <symbol id="i-mister" viewBox="0 0 24 24"><path d="M8 10h7v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1zM9.5 10V7h4v3M9.5 7V4.5h4.5L16 6.5"/><circle cx="19" cy="4" r=".5"/><circle cx="20.5" cy="7" r=".5"/><circle cx="18.5" cy="9.5" r=".5"/></symbol>
   <symbol id="i-tweezers" viewBox="0 0 24 24"><path d="M7 2.5l4.3 17.2a.7.7 0 0 0 1.4 0L17 2.5M8.6 9.5h6.8"/><path d="M11.2 21.5c-.6.6-1.8.6-2.2-.2"/></symbol>
-  <symbol id="i-trowel" viewBox="0 0 24 24"><path d="M3.5 20.5l5-5M8.5 15.5l1.5-1.5M10 14l1.2-5.4L17 3l4 4-5.6 5.8z"/><path d="M13.5 9.5l2-2"/></symbol>
+  <symbol id="i-spade" viewBox="0 0 24 24"><path d="M9.5 2.5h5M12 2.5v9.5M8 12h8v4.5a4 4 0 0 1-8 0z"/><path d="M10.5 15.5h3"/></symbol>
 </defs>
 </svg>
 
@@ -223,7 +237,7 @@ const DESIGNS = [
 // the things in the kit: name, icon, the line under the name (what it does / where it goes)
 const T = {
   cloth: ['Cloth', 'cloth', 'wipes the glass'], mister: ['Mister', 'mister', 'wets the land'],
-  tweezers: ['Tweezers', 'tweezers', 'pull weeds'], trowel: ['Trowel', 'trowel', 'lifts plants'],
+  tweezers: ['Tweezers', 'tweezers', 'pull weeds'], trowel: ['Spade', 'spade', 'lifts plants'],
   seed1: ['Seed', 'seed', 'grows your tree'], seed: ['Seed', 'seed', 'a young tree'], bushes: ['Bushes', 'bushes', 'grow berries'],
   rabbits: ['Rabbits', 'rabbits', 'for the meadow'], deer: ['Deer', 'deer', 'for the wood'], ducks: ['Ducks', 'duck', 'for the pond'],
   fish: ['Fish', 'fish', 'for the pond'], wolves: ['Wolves', 'wolves', 'for the wood'],
@@ -342,7 +356,7 @@ function legend() {
 function build() {
   let h = '';
   for (const D of DESIGNS) {
-    h += `<h2 id="${D.id}">${D.id}: ${D.name}${D.star ? ' <span class="rec">★ recommended</span>' : ''}</h2><p class="tradeoff">${D.off}</p>`;
+    h += `<h2 id="${D.id}">${D.id}: ${D.name}${D.star ? ' <span class="rec">★ your pick</span>' : ''}</h2><p class="tradeoff">${D.off}</p>`;
     const only = new URLSearchParams(location.search).get('state');
     for (const s of STATES) {
       if (only && s.key !== only) continue;

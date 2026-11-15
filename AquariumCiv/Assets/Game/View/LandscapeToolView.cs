@@ -23,8 +23,8 @@ namespace AquariumCiv.View
         public static bool AutoCreate = true;
         public static LandscapeToolView Instance { get; private set; }
 
-        public const string KeepersTreeStays = "Your tree stays. The tool lifts seedlings, young trees and bushes.";
-        public const string GrownTreeStays = "Grown trees stay. The tool lifts seedlings, young trees and bushes.";
+        public const string KeepersTreeStays = "Your tree stays. The spade lifts seedlings, trees and bushes.";
+        public const string GrownTreeStays = "Grown trees stay. The spade lifts seedlings, young trees and bushes.";
 
         [Tooltip("How far from the finger (box units) a thing still counts as touched.")] public float reach = CareView.SaplingReach;
         [Tooltip("A held finger lifts at most one thing this often (seconds).")] public float dragEvery = 0.12f;
