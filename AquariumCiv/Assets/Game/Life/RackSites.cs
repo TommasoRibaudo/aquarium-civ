@@ -45,6 +45,9 @@ namespace AquariumCiv.Life
             if (sim != null) Get(sim).night = LifeClock.PhaseOf(now.hour) == DayPhase.Night;
         }
 
+        /// <summary>True when the last observed hour was night (a quiet moment for moving a camp thing).</summary>
+        public static bool IsNight(SimCore sim) => sim != null && Get(sim).night;
+
         /// <summary>How many times a rack has moved because of a path (a change counter for caches).</summary>
         public static int Moves(SimCore sim) => sim == null ? 0 : Get(sim).moves;
 

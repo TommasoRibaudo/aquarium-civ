@@ -278,6 +278,8 @@ namespace AquariumCiv.View
         float fx, fz, rackAngle, fishAngle = float.NaN;
         PeopleView people;
         readonly List<CampSpots.Disc> spots = new();
+        readonly Dictionary<int, Vector2> settledSpot = new(); // #700: where each fire prop stands now
+        readonly List<CampSpots.Disc> fixedScratch = new();
         readonly Dictionary<int, Made> made = new();
         readonly Dictionary<int, float> pulses = new();
 
@@ -316,7 +318,7 @@ namespace AquariumCiv.View
         void ClearAll()
         {
             foreach (var m in made.Values) { Kill(m.mesh); if (m.t != null) Kill(m.t.gameObject); }
-            made.Clear();
+            made.Clear(); settledSpot.Clear();
             pulses.Clear();
             if (root != null) Kill(root.gameObject);
             root = null;
@@ -371,7 +373,16 @@ namespace AquariumCiv.View
                 float px = p.x, pz = p.z;
                 if (haveFire && p.anchor == PropAnchor.Fire)
                 {
-                    CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle);
+                    // #700: never on a path; one that a path grows over (or a moved rack reaches) moves at night, not in front of the player
+                    var onPath = RackSites.PathTest(sim);
+                    CampSpots.Spot(fx, fz, rackAngle, LifePlanner.HideFrameDistance, p.x, p.z, spots, out px, out pz, fishAngle, onPath);
+                    if (settledSpot.TryGetValue(p.id, out var was) && (was.x != px || was.y != pz))
+                    {
+                        fixedScratch.Clear(); CampSpots.FireSide(fx, fz, fixedScratch);
+                        bool stillOk = CampSpots.Clear(fx, fz, rackAngle, LifePlanner.HideFrameDistance, was.x, was.y, fixedScratch, spots, fishAngle, onPath);
+                        if (stillOk || !RackSites.IsNight(sim)) { px = was.x; pz = was.y; }
+                    }
+                    settledSpot[p.id] = new Vector2(px, pz);
                     spots.Add(new CampSpots.Disc(px, pz, CampSpots.PropRadius));
                 }
                 else if (haveFire) spots.Add(new CampSpots.Disc(p.x, p.z, CampSpots.PropRadius));
