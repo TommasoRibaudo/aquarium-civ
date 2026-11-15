@@ -222,19 +222,6 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void EachGiftHasItsOwnTeaser()
-        {
-            var sim = NewSim(9);
-            sim.ForceNextEra(); sim.ForceNextEra();
-            sim.State.roles.Clear(); sim.TermFlavourOn = false;
-            foreach (var n in sim.State.notables) { n.friendId = n.rivalId = -1; }
-            sim.PlaceNudge(SimCore.NudgeKind.Outcrop, 4);
-            var t = sim.OpenTeaserThread();
-            Assert.AreEqual(ThreadSource.Gift, t.source);
-            StringAssert.Contains("rock", t.teaser);
-        }
-
-        [Test]
         public void TheCampGathersBeforeItSows()
         {
             StringAssert.Contains("gathering grounds", NameData.FirstBuildingLine(BuildingType.Farm, null, Era.Camp));

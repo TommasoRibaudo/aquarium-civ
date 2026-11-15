@@ -149,39 +149,6 @@ namespace AquariumCiv.Tests
         }
 
         [Test]
-        public void NeverBesideAWishAndAGapFollowsEach()
-        {
-            for (int seed = 1; seed <= 8; seed++)
-            {
-                var sim = NewSim(seed, Cfg(true));
-                sim.DilemmaCatalog = Enumerable.Range(0, 20).Select(i => StrangersDef("s" + i)).ToArray();
-                for (int m = 0; m < 16 * 12; m++)
-                {
-                    sim.Advance(1.0 / 12);
-                    if (sim.OpenDilemma != null && m % 7 == 0) sim.LetThemDecide(sim.OpenDilemma.id); // #368: answered, not lapsed by the clock
-                    Assert.IsFalse(sim.OpenWish != null && sim.OpenDilemma != null, $"seed {seed} month {sim.State.month}: a wish and a dilemma together");
-                    Assert.LessOrEqual(sim.State.dilemmas.Count(d => d.state == DilemmaState.Open), 1);
-                }
-                Assert.Greater(sim.State.wishes.Count, 0, $"seed {seed}: wishes still come");
-                foreach (var d in sim.State.dilemmas)
-                {
-                    long dEnd = d.endMonth >= 0 ? d.endMonth : sim.State.month;
-                    foreach (var w in sim.State.wishes)
-                    {
-                        long wEnd = w.endMonth >= 0 ? w.endMonth : sim.State.month;
-                        Assert.IsFalse(w.month < dEnd && d.month < wEnd, $"seed {seed}: dilemma {d.id} and wish {w.id} overlap");
-                        if (w.month >= dEnd) // the next wish after a dilemma waits the gap
-                        {
-                            var between = sim.State.wishes.Where(x => x.month >= dEnd && x.month < w.month).Count();
-                            var nextDilemma = sim.State.dilemmas.Where(x => x.month > d.month).Select(x => x.month).DefaultIfEmpty(long.MaxValue).Min();
-                            if (between == 0 && w.month < nextDilemma) Assert.GreaterOrEqual(w.month - dEnd, SimCore.WishGapMonths, $"seed {seed}: wish {w.id} after dilemma {d.id}");
-                        }
-                    }
-                }
-            }
-        }
-
-        [Test]
         public void ADueDilemmaNeverLapsAnOpenWishButWaitsForItsEnd()
         {
             for (int seed = 1; seed <= 12; seed++)

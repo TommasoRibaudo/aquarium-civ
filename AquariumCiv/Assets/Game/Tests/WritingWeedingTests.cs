@@ -351,6 +351,46 @@ namespace AquariumCiv.Tests
             Assert.IsTrue(told.Any(t => t.Contains("seats now")), string.Join(" / ", told));
         }
 
+        // ---------- #718: the shaping-only text is gone ----------
+
+        [Test]
+        public void NobodyMakesAWish_AndAnOldSavesOpenWishStillCloses()
+        {
+            var sim = NewSim(1); // the slice (no ecology): wishes used to come every few years
+            for (int y = 0; y < 30; y++) { sim.Advance(1); if (y % 3 == 0) sim.PlaceNudge(SimCore.NudgeKind.Rain, 0.2f, 0.1f); }
+            Assert.AreEqual(0, sim.State.wishes.Count, "no wish in 30 years");
+            Assert.IsFalse(sim.State.chronicle.Any(e => e.kind == "wish"));
+
+            var old = NewSim(2);
+            var n = old.State.notables.First(x => x.alive);
+            old.State.wishes.Add(new Wish { id = 1, notableId = n.id, kind = SimCore.NudgeKind.Rain, month = old.State.month, state = WishState.Open });
+            var back = new SimCore(new SimConfig(), JsonUtility.FromJson<SimState>(JsonUtility.ToJson(old.State)));
+            for (int m = 0; m < SimCore.WishLapseMonths + 1; m++) back.Step();
+            Assert.AreNotEqual(WishState.Open, back.State.wishes.Single().state, "an old open wish closes quietly");
+        }
+
+        [Test]
+        public void NoSkyCrumbNoLensNoTapBackNoGiftTeaser_TheDollHoldsTheCloth()
+        {
+            var sim = NewSim(4);
+            for (int y = 0; y < 60; y++)
+            {
+                sim.Advance(1);
+                if (sim.State.eraReady) sim.AdvanceEra();
+                if (y % 2 == 0) sim.PlaceNudge(y % 4 == 0 ? SimCore.NudgeKind.Lamp : SimCore.NudgeKind.Rain, 0.1f * (y % 5), -0.1f);
+                sim.OpenTeaser();
+            }
+            Assert.IsNull(sim.FindRelic(RelicId.SkyCrumb)); Assert.IsNull(sim.FindRelic(RelicId.Lens));
+            Assert.IsNull(sim.DebugGiveRelic(RelicId.SkyCrumb)); Assert.IsNull(sim.DebugGiveRelic(RelicId.Lens));
+            CollectionAssert.AreEquivalent(new[] { RelicId.FestivalMask, RelicId.KeeperDoll, RelicId.LeftSandal }, RelicId.All, "the book's three");
+            Assert.IsEmpty(sim.TapBackCandidates(3)); Assert.AreEqual(-1, sim.KeeperTapped(3));
+            Assert.IsFalse(sim.State.threads.Any(t => t.source == ThreadSource.Gift), "no gift teaser");
+            Assert.AreEqual("cloth", sim.DollProp);
+            foreach (int no in new[] { 9, 10, 13, 19, 20, 32, 33, 34, 39 }) Assert.IsFalse(SimCore.LineBank.Any(l => l.no == no), $"bank line {no}");
+            foreach (var e in sim.State.chronicle) foreach (var w in new[] { "Sky Bread", "Eye-Glass", "knocked" }) StringAssert.DoesNotContain(w, e.text);
+            foreach (Era era in new[] { Era.Camp, Era.Village }) StringAssert.DoesNotContain("Sky Bread", sim.EraTitle(era));
+        }
+
         // ---------- #715: the story stream ----------
 
         /// <summary>The story stream's kinds (SimCore.Story.cs), the kept ones and the dropped ones.</summary>

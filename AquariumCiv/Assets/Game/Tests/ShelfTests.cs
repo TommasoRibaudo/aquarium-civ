@@ -245,27 +245,15 @@ namespace AquariumCiv.Tests
             Assert.AreEqual(done.leader.FullName, box2.HolderOf(RoleType.Chief).FullName, "the leader of the founders is the first chief");
             Assert.IsTrue(s.chronicle.Any(e => e.kind == "founders"));
 
-            // The three default relics crossed; the old box keeps them on plinths too.
+            // The default relic (#718: the Keeper Doll) crossed; the old box keeps them on plinths too.
             var carried = s.relics.Where(r => r.carriedFromBox == 0).Select(r => r.id).ToList();
             CollectionAssert.AreEquivalent(RelicId.DefaultCarried, carried);
-            Assert.IsTrue(box2.HasRelic(RelicId.SkyCrumb));
+            Assert.IsTrue(box2.HasRelic(RelicId.KeeperDoll));
             Assert.AreEqual(sim.FoundRelics.Count(), shelf.plinths.Count(p => p.boxIndex == 0));
-            Assert.AreEqual(3, shelf.plinths.Count(p => p.boxIndex == 0 && p.carried));
+            Assert.AreEqual(1, shelf.plinths.Count(p => p.boxIndex == 0 && p.carried));
             // The old box is not touched by the new one.
             Assert.IsTrue(shelf.Box(0).museum);
             Assert.AreEqual(0, shelf.Box(0).state.boxIndex);
-        }
-
-        [Test]
-        public void Box2PlaysOnAndNeverMakesASecondSkyCrumb()
-        {
-            var (sim, done) = Finished();
-            var session = Session(sim);
-            var box2 = ClockLogic.StartNextBox(session, new SimConfig(), done, BoxSetting.MountainVillage, 31, Now);
-            box2.Advance(30); // 30 game years of the new camp
-            Assert.AreEqual(1, box2.State.relics.Count(r => r.id == RelicId.SkyCrumb));
-            Assert.AreEqual(0, box2.State.relics.First(r => r.id == RelicId.SkyCrumb).carriedFromBox, "the one it crossed with");
-            Assert.Greater(box2.State.month, 300);
         }
 
         [Test]

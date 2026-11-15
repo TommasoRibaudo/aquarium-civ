@@ -208,8 +208,8 @@ namespace AquariumCiv.Sim
             if (top == null) return fallback;
             string relic = top.relicId switch
             {
-                RelicId.SkyCrumb => "the Sky Bread", RelicId.FestivalMask => "the Festival Mask", RelicId.KeeperDoll => "the Keeper Doll",
-                RelicId.LeftSandal => "the Lost Sandal", RelicId.Lens => "the Great Eye-Glass", _ => null,
+                // #718: no era is titled by the Sky Crumb or the Lens (an old save's written title stays)
+                RelicId.FestivalMask => "the Festival Mask", RelicId.KeeperDoll => "the Keeper Doll", RelicId.LeftSandal => "the Lost Sandal", _ => null,
             };
             if (relic != null) return $"The Years of {relic}";
             string thing = top.kind switch

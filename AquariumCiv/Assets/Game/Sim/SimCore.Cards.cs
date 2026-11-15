@@ -706,21 +706,7 @@ namespace AquariumCiv.Sim
                 break;
             }
 
-            // A gift not yet answered.
-            var gift = s.nudges.Where(n => !n.credited && s.month - n.month < NudgeMonths).OrderBy(n => n.id).FirstOrDefault();
-            if (gift != null)
-                yield return (ThreadSource.Gift, gift.kind switch
-                {
-                    NudgeKind.Grove => "People keep walking out to look at the new trees.",
-                    NudgeKind.Channel => "Everyone keeps going down to look at the new water.",
-                    // #61: every gift had the rain's line ("the gatherers", in a town, about an outcrop).
-                    NudgeKind.Herd => "People keep walking out to look at the new animals.",
-                    NudgeKind.Lamp => "Everyone keeps stopping to stand in the new light.",
-                    NudgeKind.Outcrop => "The craftsfolk keep going out to tap the new rock.",
-                    NudgeKind.Spring => "Everyone keeps going down to taste the new spring.",
-                    NudgeKind.DyeMeadow => "People keep walking through the new flowers, looking thoughtful.",
-                    _ => s.era == Era.Camp ? "The gatherers keep checking the wet ground." : "The farmers keep checking the wet ground.",
-                }, -1, -1, gift.id, "");
+            // #718: no gift teaser (shaping-only text, deleted)
 
             // A rivalry.
             foreach (var a in adults)

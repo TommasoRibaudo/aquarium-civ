@@ -37,7 +37,7 @@ namespace AquariumCiv.Sim
         public const int WishGapMonths = 8, WishLapseMonths = 24;
         /// <summary>Wish entries take their own ids (above the term lines'), so the shared ids never shift.</summary>
         public const int WishIdBase = 1_100_000_000;
-        public const float WishChancePerMonth = 0.12f;
+
 
         /// <summary>Debug switch: false stops new wishes (the tests run the box both ways to show the economy is the same).</summary>
         public bool WishesOn { get; set; } = true;
@@ -120,14 +120,8 @@ namespace AquariumCiv.Sim
                 if (who == null || !who.alive || State.month - open.month >= WishLapseMonths) CloseWish(open, WishState.Lapsed);
                 return;
             }
-            if (!WishesOn) return;
-            if (EcologyOn) return; // P8: a wish's Give puts an old shaping tool in hand (grove, herd); the kit has no wishes yet (keepers-hands 3.2)
-            if (DilemmaHoldsSlot) return; // the slot is shared with the Keeper's dilemmas (SimCore.Dilemmas.cs): one or the other
-            long last = State.wishes.Count == 0 ? long.MinValue / 2 : State.wishes.Max(w => w.endMonth >= 0 ? w.endMonth : w.month);
-            last = Math.Max(last, DilemmaLastEnd);
-            if (State.month - last < WishGapMonths) return;
-            if (WishRoll(1, 0) >= WishChancePerMonth) return;
-            TryMakeWish(null, null, false);
+            // #718 (user 2026-11-14: shaping-only text is deleted): nobody makes a new wish. An old save's open wish still closes
+            // (above). DebugForceWish stays for the old first run and the views until the Editor pass removes them.
         }
 
         void CloseWish(Wish w, WishState s) { w.state = s; w.endMonth = State.month; }

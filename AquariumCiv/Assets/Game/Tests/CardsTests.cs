@@ -295,23 +295,6 @@ namespace AquariumCiv.Tests
             Assert.IsNull(sim.CurrentTeaser);
         }
 
-        [Test]
-        public void AnUnansweredGiftIsTeasedAndItsAnswerPaysOff()
-        {
-            var sim = Quiet(11);
-            var nudge = sim.PlaceNudge(SimCore.NudgeKind.Rain, 3);
-            var t = sim.OpenTeaserThread();
-            Assert.AreEqual(ThreadSource.Gift, t.source);
-            Assert.AreEqual("The gatherers keep checking the wet ground.", t.teaser);
-            long since = sim.State.month;
-            for (int m = 0; m < SimCore.NudgeMonths && !nudge.credited; m++) sim.Step();
-            Assert.IsTrue(nudge.credited);
-            var card = sim.ReturnCards(since, 24).cards.Single(c => c.paysOffTeaser);
-            Assert.AreEqual(CardKind.Keeper, card.kind);
-            Assert.AreEqual(nudge.buildingId, card.buildingId);
-            Assert.AreEqual(t.teaser, card.teaser);
-        }
-
         [TestCase(1)]
         [TestCase(7)]
         [TestCase(77)]

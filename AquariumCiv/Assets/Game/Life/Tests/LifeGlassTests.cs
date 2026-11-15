@@ -97,7 +97,7 @@ namespace AquariumCiv.Life.Tests
         [TestCase(Era.Village, 7, 2, false)]
         [TestCase(Era.Village, 7, 2, true)]
         [TestCase(Era.Town, 1234, 3, false)]
-        [TestCase(Era.Town, 1234, 3, true)]
+        // #718: no Lens, so stage 3 has no later half in a real box (the debug belief case is gone)
         public void ThePeopleAtTheGlassFollowTheirBelief(Era era, int seed, int stage, bool later)
         {
             var sim = Believing(era, seed, stage, later);
@@ -284,41 +284,6 @@ namespace AquariumCiv.Life.Tests
 
         // ------------------------------------------------------------------ the tap-back (Choice 9)
 
-        [TestCase(1234)]
-        [TestCase(7)]
-        public void AScholarTapsBackTheSameNumberOfTimes(int seed)
-        {
-            var sim = Believing(Era.Town, seed, 3, true);
-            Assume.That(sim.Scholars.Count, Is.GreaterThan(0));
-            Assert.AreEqual(-1, Believing(Era.Town, seed, 3, false).KeeperTapped(3), "no tap-back before the Lens");
-            int scholar = sim.KeeperTapped(3);
-            Assert.GreaterOrEqual(scholar, 0, "the sim names a scholar");
-            var planner = LifePlanner.Wired(sim);
-            long day = sim.State.month;
-            var at = new ViewTime(day, 9.5f);
-            Assert.IsTrue(planner.TapBack(at, scholar, 3));
-            var who = PersonRef.Notable(scholar);
-            var seen = new List<ActivityKind>();
-            PersonActivity knock = default;
-            for (float h = at.hour; h < at.hour + 3f; h += 0.01f)
-            {
-                var a = planner.Plan(who, new ViewTime(day, h));
-                if (seen.Count == 0 || seen[seen.Count - 1] != a.kind) seen.Add(a.kind);
-                if (a.kind == ActivityKind.TapBack) knock = a;
-            }
-            TestContext.WriteLine($"seed {seed}: {string.Join(" > ", seen)}");
-            Assert.AreEqual(ActivityKind.TapBack, knock.kind, "the scholar knocks back");
-            Assert.AreEqual(3, knock.count, "the same number of times");
-            Assert.AreEqual(PlaceKind.Glass, knock.place.kind, "on the glass");
-            Assert.IsTrue(knock.facesGlass);
-            Assert.Less(seen.IndexOf(ActivityKind.TapBack), seen.IndexOf(ActivityKind.WriteDown), "then writes it on a slate");
-            // They are at the glass's spot while knocking.
-            Assert.IsTrue(planner.Positions.TryGetPosition(planner.GlassPlace, out float gx, out float gz));
-            Assert.IsTrue(planner.PositionAt(who, new ViewTime(day, (knock.start + knock.end) * 0.5f), out float x, out float z));
-            Assert.Less(Math.Sqrt((x - gx) * (x - gx) + (z - gz) * (z - gz)), 0.05, "knocking at the glass, not somewhere else");
-            Assert.IsFalse(planner.TapBack(at, 999999, 3), "nobody to tap back");
-        }
-
         /// <summary>Tester batch 2: a knock right after the Lens moment, after the day's five relic moments, credited a tap-back
         /// but the scholar stayed in the Lens moment (its later beats won). The scholar now really knocks back, and the
         /// chronicle credit only comes when it plays; a knock too late to finish before midnight gets no answer and no card.</summary>
@@ -373,8 +338,8 @@ namespace AquariumCiv.Life.Tests
 
         static readonly (string relic, Era era, int stage)[] Moments =
         {
-            (RelicId.SkyCrumb, Era.Camp, 1), (RelicId.FestivalMask, Era.Village, 2), (RelicId.KeeperDoll, Era.Village, 2),
-            (RelicId.LeftSandal, Era.Village, 2), (RelicId.Lens, Era.Town, 3),
+            // #718: the Sky Crumb and the Lens are gone
+            (RelicId.FestivalMask, Era.Village, 2), (RelicId.KeeperDoll, Era.Village, 2), (RelicId.LeftSandal, Era.Village, 2),
         };
 
         static SimCore WithRelic(string relic, Era era, int seed)
@@ -396,11 +361,9 @@ namespace AquariumCiv.Life.Tests
             [RelicId.Lens] = (ActivityKind.LookThroughLens, RelicCast.Queue),
         };
 
-        [TestCase(RelicId.SkyCrumb)]
         [TestCase(RelicId.FestivalMask)]
         [TestCase(RelicId.KeeperDoll)]
         [TestCase(RelicId.LeftSandal)]
-        [TestCase(RelicId.Lens)]
         public void EachRelicMomentPlays(string relic)
         {
             var m = Moments.First(x => x.relic == relic);
@@ -468,41 +431,16 @@ namespace AquariumCiv.Life.Tests
         static bool Alive(SimCore sim, int id) => sim.State.notables.Any(n => n.id == id && n.alive);
 
         [Test]
-        public void TheLensQueueTakesTurns()
-        {
-            var sim = WithRelic(RelicId.Lens, Era.Town, 1234);
-            var planner = LifePlanner.Wired(sim);
-            long day = sim.State.month;
-            var info = planner.StartRelicMoment(RelicId.Lens, new ViewTime(day, 18.4f));
-            Assert.IsNotNull(info);
-            var queue = info.cast.Where(c => c.role == RelicCast.Queue).Select(c => c.who).ToList();
-            Assume.That(queue.Count, Is.GreaterThanOrEqualTo(2), "a queue forms");
-            var acts = new List<PersonActivity>();
-            int most = 0;
-            var looked = new HashSet<int>();
-            for (float h = 18.4f; h < info.end; h += 0.005f)
-            {
-                planner.PlanAll(new ViewTime(day, h), acts);
-                int looking = acts.Count(a => a.kind == ActivityKind.LookThroughLens && queue.Contains(a.who));
-                most = Math.Max(most, looking);
-                foreach (var a in acts) if (a.kind == ActivityKind.LookThroughLens && queue.Contains(a.who)) looked.Add(a.who.Key);
-            }
-            Assert.AreEqual(1, most, "one at a time");
-            Assert.AreEqual(queue.Count, looked.Count, "everyone in the queue gets a look");
-        }
-
-        [Test]
         public void AShowMeOfARelicCardEchoesItsOwnersGesture()
         {
-            var sim = WithRelic(RelicId.SkyCrumb, Era.Camp, 1);
-            var r = sim.FindRelic(RelicId.SkyCrumb);
+            var sim = WithRelic(RelicId.FestivalMask, Era.Village, 1); // #718: the Sky Crumb is gone
+            var r = sim.FindRelic(RelicId.FestivalMask);
             var e = sim.State.chronicle.First(x => x.id == r.entryId);
             var planner = LifePlanner.Wired(sim);
             var at = new ViewTime(sim.State.month, 11f);
             Assert.IsTrue(planner.Echo(e, at));
             var a = planner.Plan(PersonRef.Notable(r.ownerId), new ViewTime(at.day, 11f + LifeClock.ViewHoursFor(11f, 3f)));
-            Assert.AreEqual(ActivityKind.Taste, a.kind, "the taster tastes again");
-            Assert.AreEqual(Prop.Crumb, a.prop);
+            Assert.AreEqual(ActivityKind.Dance, a.kind, "the mask's wearer dances again"); // #718: was the Sky Crumb's taster
         }
 
         /// <summary>Every walk in a relic moment, a gathering or a tap-back keeps the walking pace (≤ 2x, as the day's walks,

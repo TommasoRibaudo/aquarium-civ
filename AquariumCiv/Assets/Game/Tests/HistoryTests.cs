@@ -260,10 +260,10 @@ namespace AquariumCiv.Tests
         {
             var sim = NewSim(2);
             sim.Advance(6);
-            sim.State.chronicle.Add(new ChronicleEntry { id = 9000, month = sim.State.month - 3, kind = "keeper", text = "x", salience = 0.99f, relicId = RelicId.SkyCrumb });
+            sim.State.chronicle.Add(new ChronicleEntry { id = 9000, month = sim.State.month - 3, kind = "keeper", text = "x", salience = 0.99f, relicId = RelicId.FestivalMask }); // #718: the Sky Crumb no longer titles an era
             Assert.IsTrue(sim.ForceNextEra());
             sim.Step();
-            Assert.AreEqual("The Years of the Sky Bread", sim.EraTitle(Era.Camp));
+            Assert.AreEqual("The Years of the Festival Mask", sim.EraTitle(Era.Camp));
             Assert.AreEqual("", sim.EraTitle(Era.Town));
             sim.ForceCompleteBox();
             StringAssert.StartsWith("The ", sim.EraTitle(Era.Town), "the final era is titled when the box completes");
